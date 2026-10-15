@@ -13,8 +13,8 @@ import { ALICE_ID, BOB, BOB_ID, CAROL, CAROL_ID, person, projectMember, shareInf
 import { useCollabActivity } from "./activity-store";
 import { presentPeople } from "./presence";
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabTrashList: vi.fn(async () => []),
   collabTrashRestore: vi.fn(async () => undefined),
 }));

@@ -220,7 +220,7 @@
     "already_member": "Tento člověk už má účet. Jeho roli změníte v sekci Lidé.",
     "project_not_shared": "Tento projekt ještě není sdílený. Nejdřív ho sdílejte a pak pozvěte lidi.",
     "project_full": "Tento projekt už má tolik lidí, kolik server dovoluje. Nejdřív někoho odeberte, nebo se obraťte na administrátora serveru.",
-    "owner_away": "Vlastník projektu je na tomto serveru pozastavený nebo odebraný, takže projekt teď nemůže přijmout nové lidi. Obraťte se na administrátora serveru.",
+    "owner_away": "Vlastník projektu je na tomto serveru pozastavený nebo odebraný, takže projekt nemůže přijmout nové lidi, dokud jeho účet nebude znovu aktivní.",
     "wrong_server": "Tento server poslal svou přihlašovací stránku z jiné adresy, a proto Oleafly přestal. Zkontrolujte adresu serveru, nebo se zeptejte toho, kdo ho spravuje.",
     "not_a_link": "To není odkaz na sdílený projekt. Zkopírujte celý odkaz a zkuste to znovu.",
     "signed_out": "Jste z tohoto serveru odhlášeni. Přihlaste se znovu, aby se projekt synchronizoval.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "Zapnutí komentářů v projektu",
         "projectCommentsOff": "Vypnutí komentářů v projektu",
         "projectRejoinRefused": "Pokus o návrat do projektu po odebrání",
+        "commentsChangedWhileOff": "Změna komentářů, když byly vypnuté",
         "guestInvited": "Pozvání hosta",
         "guestInvitationApproved": "Schválení pozvánky pro hosta",
         "guestInvitationDeclined": "Odmítnutí pozvánky pro hosta",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly potřebuje aktualizaci",
     "serverTooOld": "Server potřebuje aktualizaci",
     "serverChanged": "Na adrese je nový server",
-    "failed": "Zastaveno po chybě"
+    "failed": "Zastaveno po chybě",
+    "engineSpent": "Je potřeba restart"
   },
   "toolbar": {
     "noFile": "Žádný otevřený soubor",
@@ -689,6 +691,8 @@
     "serverChanged": "Adresa serveru {{server}} teď vede na jiný server. Odeberte ho v nastavení spolupráce a přidejte ho znovu. Vaše změny zůstanou v tomto počítači.",
     "failed": "Synchronizace tohoto projektu se po chybě zastavila. Pokud chcete pokračovat, spusťte ji znovu.",
     "goLiveAgain": "Znovu synchronizovat",
+    "engineSpent": "Pokud chcete tento projekt dál synchronizovat, restartujte Oleafly.",
+    "restartApp": "Restartovat Oleafly",
     "accessEnded": "K serveru {{server}} už nemáte přístup. Vaše kopie zůstane v tomto počítači jako běžný projekt.",
     "accessEndedGuest": "K serveru {{server}} už nemáte přístup, protože nejste v žádném z jeho sdílených projektů. Vaše kopie zůstane v tomto počítači jako běžný projekt.",
     "signIn": "Přihlásit se",
@@ -709,6 +713,7 @@
     "showComment": "Zobrazit komentář",
     "settings": {
       "mainDocument": "Uživatel {{name}} nastavil {{path}} jako hlavní dokument",
+      "mainDocumentNow": "Hlavním dokumentem je teď {{path}}",
       "compiler": "Uživatel {{name}} nastavil překladač na {{compiler}}",
       "spellingLanguage": "Uživatel {{name}} nastavil jazyk kontroly pravopisu na {{language}}",
       "spellingCleared": "Uživatel {{name}} zrušil jazyk kontroly pravopisu projektu",
@@ -784,6 +789,8 @@
         "okLabel": "Vše funguje",
         "okDescription": "Lidé se mohou přihlásit a server může ukládat soubory.",
         "problem": "Přihlašování přes {{provider}} selhává od {{time}}",
+        "commentChange": "{{project}}: změna od {{name}}, {{time}}",
+        "commentChangeUnknown": "{{project}}: změna {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nikdo se nemůže přihlásit",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Přihlašovací e-maily jsou pozastavené",
             "description": "Server už poslal tolik přihlašovacích e-mailů, kolik za tuto hodinu dovoluje. Znovu je začne posílat, až hodina skončí."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Komentáře se změnily, když byly vypnuté",
+            "description": "Server našel změny komentářů, které uložil dřív, než je mohl zkontrolovat, zatímco byly komentáře vypnuté. Projekty jsou uvedené níže a každou změnu najdete v protokolu zabezpečení."
           },
           "unknown": {
             "label": "Server nahlásil problém",
@@ -1040,6 +1051,7 @@
     "viewerBy": "Uživatel {{name}} vám nastavil roli čtenáře. Projekt můžete číst, ale ne upravovat.",
     "viewer": "Teď jste čtenář. Projekt můžete číst, ale ne upravovat.",
     "viewOnly": "Tento sdílený projekt můžete zobrazit, ale ne upravovat.",
+    "connecting": "Tento sdílený projekt se ještě připojuje, takže ho zatím nelze měnit. Zkuste to za chvíli znovu.",
     "unsentReadOnly": "Vaše poslední změny v souboru {{path}} se neodeslaly, protože tento projekt teď můžete jen prohlížet.",
     "unsentRefused": "Oleafly nemohl odeslat vaše poslední změny v souboru {{path}}, a tak byly zahozeny.",
     "removedBy": "Uživatel {{name}} vás odebral z tohoto projektu. Vaše kopie zůstane v tomto počítači a už není sdílená.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "Čeká na sdílení: {{files}}",
     "failed": "Nepodařilo se sdílet: {{files}}",
+    "uploading": "Nahrává se {{file}}: {{done}} z {{total}}",
     "tooLarge": "{{file}} má {{size}}, což je víc, než tento server povoluje ({{limit}}). Zůstane jen v tomto počítači.",
     "tooLargeUnknown": "{{file}} je větší, než tento server povoluje. Zůstane jen v tomto počítači.",
     "projectTooLarge": "{{file}} zůstane v tomto počítači, protože projekt dosáhl limitu velikosti serveru {{limit}}. Požádejte toho, kdo server spravuje, aby limit zvýšil.",

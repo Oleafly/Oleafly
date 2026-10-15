@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/intl";
+import type {
+  CollabDomainRule,
+  CollabNewDomainRule,
+} from "@/lib/tauri";
 import {
   collabAdminAddDomainRule,
   collabAdminDomainRules,
   collabAdminRemoveDomainRule,
-  type CollabDomainRule,
-  type CollabNewDomainRule,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { looksLikeDomain } from "./address-checks";
 import { useBusyRows } from "./busy-rows";
 import { collabErrorMessage, collabErrorText } from "./errors";

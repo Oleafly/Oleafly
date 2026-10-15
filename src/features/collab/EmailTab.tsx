@@ -8,13 +8,15 @@ import { LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { formatDateTime } from "@/lib/intl";
+import type {
+  CollabEmailStatus,
+  CollabServer,
+} from "@/lib/tauri";
 import {
   collabAdminEmailStatus,
   collabAdminEmailTest,
   collabAdminPatchSettings,
-  type CollabEmailStatus,
-  type CollabServer,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { serverRoleAllows, type ServerRole } from "./roles";

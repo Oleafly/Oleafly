@@ -108,8 +108,7 @@ Each account can hold up to 32 live connections at once, across all its devices 
 
 Large file transfers and documents share the memory `OLEAFLY_SNAPSHOT_MEMORY_MB` sets. An upload or download of a megabyte or more waits up to 30 seconds for room in its quarter. If there is still none, the server answers 503 `server_busy` with `Retry-After: 5`. One account can have four large transfers under way at once, and together they can hold at most half of that quarter, 128 MB when `OLEAFLY_SNAPSHOT_MEMORY_MB` is 1024. A transfer past either limit gets 429. When it's the account's only transfer, it can use the whole quarter, so one large snapshot still goes through. One long-polling session posts one batch of edits at a time, and one account has at most eight batches being read at once across all its sessions. A batch past either limit gets 429. These are normal answers to a busy server, and Oleafly tries again by itself.
 
-<!-- FILL IN (controller): the two timeouts below are the server sync area's planned values. Replace each bracket with the number from its header-read and keep-alive timeout commit, then delete this comment. -->
-The server gives a new connection **[FILL IN: header-read timeout, planned 15]** seconds to send its request headers, and closes a connection that sits idle between requests after **[FILL IN: keep-alive timeout, planned 75]** seconds. That way a client can't hold connections open before it signs in by sending its headers slowly or by sending nothing.
+The server gives a new connection 15 seconds to send its first request's headers. After each answer, a connection may stay idle and then send its next request's headers for 75 seconds in all, and is closed after that. That way a client can't hold connections open before it signs in by sending its headers slowly or by sending nothing. Both times are fixed in the server, not settings.
 
 ### Files in a bucket
 

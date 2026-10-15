@@ -16,8 +16,8 @@ const mocks = vi.hoisted(() => ({
   collabAccessLogPage: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabAccessLogStatus: mocks.collabAccessLogStatus,
   collabAccessLogPage: mocks.collabAccessLogPage,
 }));

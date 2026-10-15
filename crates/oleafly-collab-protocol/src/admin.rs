@@ -172,6 +172,7 @@ pub enum SecurityEventKind {
     GuestInvitationRevoked,
     GuestAdmissionEnded,
     ProjectRejoinRefused,
+    CommentsChangedWhileOff,
     #[serde(other)]
     Unknown,
 }
@@ -531,6 +532,10 @@ mod tests {
             (
                 SecurityEventKind::ProjectRejoinRefused,
                 "project_rejoin_refused",
+            ),
+            (
+                SecurityEventKind::CommentsChangedWhileOff,
+                "comments_changed_while_off",
             ),
             (SecurityEventKind::Unknown, "unknown"),
         ];

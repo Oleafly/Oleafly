@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { collabAdminOverview, type CollabAdminOverview, type CollabErrorCode } from "@/lib/tauri";
+import type { CollabAdminOverview, CollabErrorCode } from "@/lib/tauri";
+import { collabAdminOverview } from "@/lib/tauri-collab";
 import { collabErrorCode } from "../errors";
 
 export type OverviewState =

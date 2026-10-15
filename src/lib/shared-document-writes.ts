@@ -1,6 +1,5 @@
 import { i18n } from "@/i18n";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
-import { collabWriteText } from "@/lib/tauri";
 
 export function sharedDocumentLive(projectId: string | null): boolean {
   const gate = useCollabEditorGate.getState();
@@ -29,6 +28,29 @@ export function sharedViewOnly(projectId: string | null): boolean {
   return projectId !== null && gate.projectId === projectId && gate.viewer;
 }
 
+// While a shared project goes live, this person's role isn't known yet, so a
+// change made from inside the app waits until it is. Accepted now, it would be
+// written to the local file, which a viewer's copy must never get.
+export class SharedConnectingError extends Error {
+  constructor() {
+    super(i18n.t(($) => $.collab.access.connecting));
+    this.name = "SharedConnectingError";
+  }
+}
+
+export function sharedConnecting(projectId: string | null): boolean {
+  const gate = useCollabEditorGate.getState();
+  return projectId !== null && gate.projectId === projectId && gate.connecting;
+}
+
+// Why a change from inside the app can't be made to this project now, or null
+// when it can.
+export function sharedWriteRefusal(projectId: string | null): SharedReadOnlyError | SharedConnectingError | null {
+  if (sharedViewOnly(projectId)) return new SharedReadOnlyError();
+  if (sharedConnecting(projectId)) return new SharedConnectingError();
+  return null;
+}
+
 export async function writeSharedText(
   projectId: string,
   path: string,
@@ -39,6 +61,9 @@ export async function writeSharedText(
   if (useCollabEditorGate.getState().viewer) throw new SharedReadOnlyError();
   let handled: boolean;
   try {
+    // Loaded with collaboration, never with the window: a project is only
+    // live once collaboration runs.
+    const { collabWriteText } = await import("@/lib/tauri-collab");
     const outcome = await collabWriteText(projectId, path, base == null ? null : lf(base), lf(text));
     if (!outcome.handled && outcome.reason === "read_only") throw new SharedReadOnlyError();
     handled = outcome.handled;

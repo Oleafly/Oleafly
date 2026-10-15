@@ -75,13 +75,14 @@ import {
   invalidateWysiwygProjectSession,
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
+import { collabHandBack } from "@/lib/collab-live-bridge";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
 import { readProjectSourcesBatch } from "@/lib/project-sources";
 import {
-  SharedReadOnlyError,
+  SharedConnectingError,
   sharedDocumentLive,
-  sharedViewOnly,
+  sharedWriteRefusal,
   writeSharedText,
 } from "@/lib/shared-document-writes";
 
@@ -254,6 +255,7 @@ interface SaveFailureNotice {
 }
 
 const VIEW_ONLY_TOAST = "collab-view-only";
+const CONNECTING_TOAST = "collab-connecting";
 
 let saveFailureNotice: SaveFailureNotice | null = null;
 const saveFailureWarned = new Set<string>();
@@ -704,6 +706,21 @@ function noteChangedOnDisk(projectId: string, path: string): void {
   const state = useFilesStore.getState();
   if (state.projectId !== projectId || state.changedOnDisk.includes(path)) return;
   useFilesStore.setState({ changedOnDisk: [...state.changedOnDisk, path] });
+}
+
+// A live session that stopped wrote these files while editors had them open,
+// and the window doesn't hear about such writes, so its disk snapshots of them
+// are out of date. Each comes with the snapshot of what the disk holds now,
+// so a save that follows isn't taken for a change made outside Oleafly.
+export function refreshDiskSnapshots(
+  projectId: string,
+  files: readonly ({ path: string } & DiskSnapshot)[],
+): void {
+  for (const { path, hash, crlf, length } of files) {
+    const key = writeKey(projectId, path);
+    diskSnapshots.set(key, { hash, crlf, length });
+    settleDiskConflict(key);
+  }
 }
 
 export async function detectDiskChange(projectId: string, path: string): Promise<boolean> {
@@ -1290,6 +1307,7 @@ async function prepareProjectSwitch(
     set({ loading: true });
     try {
       flushWysiwygPendingEdits();
+      await collabHandBack(previousProjectId);
       await flushDirtyBuffers(previousProjectId, get);
     } catch (error) {
       set({ loading: false });
@@ -1786,6 +1804,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       set({ loading: true });
       try {
         flushWysiwygPendingEdits();
+        await collabHandBack(projectId);
         await flushDirtyBuffers(projectId, get);
       } catch (error) {
         set({ loading: false });
@@ -1846,7 +1865,11 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  flushForQuit: () => enqueueProjectTransition(() => get().saveAllDirty()),
+  flushForQuit: () =>
+    enqueueProjectTransition(async () => {
+      await collabHandBack(get().projectId);
+      await get().saveAllDirty();
+    }),
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
@@ -2014,10 +2037,13 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const { projectId, manifestHome, tree } = get();
     if (projectFolderIsReadOnly(projectId) || isReadOnlyProjectPath(path, manifestHome, tree)) return false;
     const before = get().files[path];
-    // A viewer can't change a shared project. Refusing here keeps the buffer
-    // as it was instead of leaving a tab that can never be saved.
-    if (sharedViewOnly(projectId)) {
-      if (before?.content !== content) toast.infoUnique(VIEW_ONLY_TOAST, new SharedReadOnlyError().message);
+    // A viewer can't change a shared project, and while it goes live the role
+    // isn't known yet. Refusing here keeps the buffer as it was instead of
+    // leaving a tab that can never be saved, or one saved to the local file.
+    const refusal = sharedWriteRefusal(projectId);
+    if (refusal) {
+      const key = refusal instanceof SharedConnectingError ? CONNECTING_TOAST : VIEW_ONLY_TOAST;
+      if (before?.content !== content) toast.infoUnique(key, refusal.message);
       return false;
     }
     const same = before?.content === content;
@@ -2421,6 +2447,10 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   writeProjectFile: async (projectId, path, content, options) => {
     if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessage());
+    // A shared project still going live would take this write on the local
+    // file, so it is refused like a viewer's until the role is known.
+    const refusal = sharedWriteRefusal(projectId);
+    if (refusal) throw refusal;
     const baselineRevision = fileReloadRevision;
     const adoptable = (file: FileState | undefined) =>
       file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;

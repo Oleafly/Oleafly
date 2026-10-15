@@ -5,9 +5,10 @@ use tauri::Emitter;
 use super::moves::{RemovedPayload, LIVE_REMOVED_EVENT};
 use super::payloads::{
     ChangeSkippedPayload, MembersPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload,
-    PresencePayload, ProjectFullPayload, RolePayload, StatusPayload, CHANGE_SKIPPED_EVENT,
-    LIVE_MEMBERS_EVENT, LIVE_MERGED_EVENT, LIVE_NEW_DEVICE_EVENT, LIVE_ROLE_EVENT,
-    LIVE_STATUS_EVENT, PRESENCE_EVENT, PRESENCE_LEFT_EVENT, PROJECT_FULL_EVENT,
+    PresencePayload, ProjectFullPayload, RolePayload, StatusPayload, WrittenPayload,
+    CHANGE_SKIPPED_EVENT, LIVE_MEMBERS_EVENT, LIVE_MERGED_EVENT, LIVE_NEW_DEVICE_EVENT,
+    LIVE_ROLE_EVENT, LIVE_STATUS_EVENT, LIVE_WRITTEN_EVENT, PRESENCE_EVENT, PRESENCE_LEFT_EVENT,
+    PROJECT_FULL_EVENT,
 };
 use super::{kept, unwritten, uploads};
 use crate::collab::state::CollabState;
@@ -32,8 +33,10 @@ pub trait LiveHost: Send + Sync + 'static {
     fn removed(&self, _payload: RemovedPayload) {}
     fn kept(&self, _payload: kept::KeptPayload) {}
     fn uploads(&self, _payload: uploads::UploadsPayload) {}
+    fn upload_progress(&self, _payload: uploads::UploadProgress) {}
     fn unwritten(&self, _payload: unwritten::UnwrittenPayload) {}
     fn settings_changed(&self, _applied: crate::collab::settings::Applied) {}
+    fn written(&self, _payload: WrittenPayload) {}
     fn app(&self) -> Option<tauri::AppHandle> {
         None
     }
@@ -128,6 +131,10 @@ impl LiveHost for AppLiveHost {
         let _ = self.app.emit(uploads::LIVE_UPLOADS_EVENT, payload);
     }
 
+    fn upload_progress(&self, payload: uploads::UploadProgress) {
+        let _ = self.app.emit(uploads::UPLOAD_PROGRESS_EVENT, payload);
+    }
+
     fn unwritten(&self, payload: unwritten::UnwrittenPayload) {
         let _ = self.app.emit(unwritten::LIVE_UNWRITTEN_EVENT, payload);
     }
@@ -151,6 +158,10 @@ impl LiveHost for AppLiveHost {
                 .app
                 .emit(crate::collab::settings::LIVE_SETTINGS_EVENT, payload);
         }
+    }
+
+    fn written(&self, payload: WrittenPayload) {
+        let _ = self.app.emit(LIVE_WRITTEN_EVENT, payload);
     }
 
     fn app(&self) -> Option<tauri::AppHandle> {

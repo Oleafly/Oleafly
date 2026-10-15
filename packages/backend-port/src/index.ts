@@ -1101,6 +1101,10 @@ export type CollabSecurityEventKind =
     | "domain_rule_added"
     | "domain_rule_removed"
     | "settings_changed"
+    // A change stored while comments were off in its project that turned out
+    // to change comments once the server could check it. The actor made it,
+    // and `detail` is `{ project, seq, device }`.
+    | "comments_changed_while_off"
     | "unknown";
 export interface CollabSecurityEvent {
     id: number;
@@ -1242,7 +1246,10 @@ export type CollabLiveEndReason =
     | "server_changed"
     // The document engine hit an error on a change. The next start skips
     // that change, so going live again continues.
-    | "failed";
+    | "failed"
+    // Too many shared documents broke in this run of the app, so a new start
+    // would fail too. Restarting the app clears it.
+    | "engine_spent";
 export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }
@@ -1630,7 +1637,7 @@ export interface BackendPort {
   collabPendingLinks: () => Promise<string[]>;
   collabLiveStart: (projectId: string) => Promise<CollabLiveInfo>;
   collabLiveStop: (projectId: string) => Promise<void>;
-  collabLiveFlush: (projectId: string) => Promise<void>;
+  collabLiveFlush: (projectId: string, options?: { waitForFigures?: boolean }) => Promise<void>;
   collabLiveReconnectNow: () => Promise<void>;
   collabDocOpen: (projectId: string, path: string, onMessage: (message: CollabDocMessage) => void) => Promise<CollabDocOpened | null>;
   collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
@@ -1790,6 +1797,23 @@ export interface CollabUploadFile {
 export interface CollabLiveProjectFull {
   projectId: string;
 }
+// Sent when a live session stops or the server ends it: the files it wrote
+// while editors had them open, each with the disk snapshot of what it holds
+// now (the window's own hash, whether it has CRLF line ends, and its length in
+// UTF-16 units). Files changed outside Oleafly since are left out, so their
+// change still shows.
+export interface CollabLiveWritten {
+  projectId: string;
+  files: { path: string; hash: string; crlf: boolean; length: number }[];
+}
+// How far the upload of one figure got, in bytes. Sent a few times a second
+// at most while it goes up.
+export interface CollabUploadProgress {
+  projectId: string;
+  path: string;
+  done: number;
+  total: number;
+}
 export interface CollabLiveUploads {
   projectId: string;
   files: CollabUploadFile[];
@@ -1817,6 +1841,7 @@ export type CollabHealthIssue =
     | "storage_not_writable"
     | "sign_in_failing"
     | "sign_in_emails_paused"
+    | "comments_changed_while_off"
     | "unknown";
 // A sign-in option that keeps failing: its provider id, when it started and
 // the provider's own message.
@@ -1824,6 +1849,14 @@ export interface CollabSignInProblem {
     provider: string;
     at: number;
     reason: string;
+}
+// One change the server stored while comments were off in its project and
+// later found had changed comments.
+export interface CollabCommentChangeWhileOff {
+    project_id: string;
+    project_title?: string | null;
+    account_id?: string | null;
+    at: number;
 }
 export type CollabFilesLocation = "disk" | "s3" | "unknown";
 export interface CollabServerCounts {
@@ -1859,6 +1892,8 @@ export interface CollabAdminOverview {
     limits: CollabCapabilities["limits"];
     archive_days: number;
     sign_in_problems?: CollabSignInProblem[];
+    // Newest first, at most 20 from the last 30 days. Left out when empty.
+    comments_changed_while_off?: CollabCommentChangeWhileOff[];
 }
 export type CollabAdminProjectSort = "title" | "owner" | "members" | "size" | "activity" | "created";
 export type CollabSortOrder = "asc" | "desc";

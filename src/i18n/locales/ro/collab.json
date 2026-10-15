@@ -220,7 +220,7 @@
     "already_member": "Această persoană are deja un cont. Schimbă-i rolul la Persoane.",
     "project_not_shared": "Acest proiect nu este încă partajat. Partajează-l mai întâi, apoi invită oameni.",
     "project_full": "Acest proiect are deja câte persoane permite serverul. Elimină mai întâi pe cineva sau întreabă-l pe administratorul serverului.",
-    "owner_away": "Proprietarul proiectului este suspendat sau eliminat de pe acest server, așa că proiectul nu poate primi persoane noi acum. Întreabă un administrator al serverului.",
+    "owner_away": "Proprietarul proiectului este suspendat sau eliminat de pe acest server, așa că proiectul nu poate primi persoane noi până când contul său devine din nou activ.",
     "wrong_server": "Acest server a trimis pagina de autentificare de la altă adresă, așa că Oleafly s-a oprit. Verifică adresa serverului sau întreabă persoana care îl administrează.",
     "not_a_link": "Acesta nu este un link către un proiect partajat. Copiază tot linkul, apoi încearcă din nou.",
     "signed_out": "Ești deconectat de la acest server. Autentifică-te din nou ca să sincronizezi acest proiect.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "A activat comentariile într-un proiect",
         "projectCommentsOff": "A dezactivat comentariile într-un proiect",
         "projectRejoinRefused": "A încercat să revină într-un proiect din care fusese eliminat",
+        "commentsChangedWhileOff": "A modificat comentariile cât timp erau dezactivate",
         "guestInvited": "A trimis o invitație pentru un invitat",
         "guestInvitationApproved": "A aprobat o invitație pentru un invitat",
         "guestInvitationDeclined": "A refuzat o invitație pentru un invitat",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly trebuie actualizat",
     "serverTooOld": "Serverul trebuie actualizat",
     "serverChanged": "Server nou la această adresă",
-    "failed": "Oprit după o eroare"
+    "failed": "Oprit după o eroare",
+    "engineSpent": "Este nevoie de repornire"
   },
   "toolbar": {
     "noFile": "Niciun fișier deschis",
@@ -689,6 +691,8 @@
     "serverChanged": "Adresa {{server}} duce acum la alt server. Elimină-l din setările de Colaborare și adaugă-l din nou. Modificările tale rămân pe acest computer.",
     "failed": "Sincronizarea acestui proiect s-a oprit după o eroare. Pornește-o din nou ca să continui.",
     "goLiveAgain": "Sincronizează din nou",
+    "engineSpent": "Repornește Oleafly ca să continui sincronizarea acestui proiect.",
+    "restartApp": "Repornește Oleafly",
     "accessEnded": "Nu mai ai acces la {{server}}. Copia ta rămâne pe acest computer ca proiect obișnuit.",
     "accessEndedGuest": "Nu mai ai acces la {{server}} pentru că nu faci parte din niciunul dintre proiectele lui partajate. Copia ta rămâne pe acest computer ca proiect obișnuit.",
     "signIn": "Autentifică-te",
@@ -709,6 +713,7 @@
     "showComment": "Arată comentariul",
     "settings": {
       "mainDocument": "{{name}} a setat {{path}} ca document principal",
+      "mainDocumentNow": "{{path}} este acum documentul principal",
       "compiler": "{{name}} a setat compilatorul la {{compiler}}",
       "spellingLanguage": "{{name}} a setat limba verificării ortografice la {{language}}",
       "spellingCleared": "{{name}} a eliminat limba verificării ortografice a proiectului",
@@ -784,6 +789,8 @@
         "okLabel": "Totul funcționează",
         "okDescription": "Persoanele se pot autentifica, iar serverul poate salva fișiere.",
         "problem": "Autentificarea prin {{provider}} eșuează din {{time}}",
+        "commentChange": "{{project}}, modificat de {{name}} pe {{time}}",
+        "commentChangeUnknown": "{{project}}, modificat pe {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nimeni nu se poate autentifica",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "E-mailurile de autentificare sunt în pauză",
             "description": "Serverul a trimis câte e-mailuri de autentificare permite în această oră. Se reiau după ce trece ora."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Comentarii modificate cât timp erau dezactivate",
+            "description": "Serverul a găsit modificări ale comentariilor pe care le-a salvat înainte să le poată verifica, cât timp comentariile erau dezactivate. Proiectele sunt mai jos, iar jurnalul de securitate are fiecare modificare."
           },
           "unknown": {
             "label": "Serverul a raportat o problemă",
@@ -1040,6 +1051,7 @@
     "viewerBy": "{{name}} te-a făcut cititor. Poți citi acest proiect, dar nu îl poți edita.",
     "viewer": "Acum ești cititor. Poți citi acest proiect, dar nu îl poți edita.",
     "viewOnly": "Poți vedea acest proiect partajat, dar nu îl poți edita.",
+    "connecting": "Acest proiect partajat încă se conectează, așa că nu poate fi modificat încă. Încearcă din nou peste câteva momente.",
     "unsentReadOnly": "Ultimele tale modificări din {{path}} nu au fost trimise, pentru că acum poți doar să vezi acest proiect.",
     "unsentRefused": "Oleafly nu a putut trimite ultimele tale modificări din {{path}}, așa că au fost abandonate.",
     "removedBy": "{{name}} te-a eliminat din acest proiect. Copia ta rămâne pe acest computer și nu mai este partajată.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "Așteaptă să fie partajat: {{files}}",
     "failed": "Nu s-a putut partaja: {{files}}",
+    "uploading": "Se încarcă {{file}}: {{done}} din {{total}}",
     "tooLarge": "{{file}} are {{size}}, mai mult decât permite acest server ({{limit}}). Rămâne doar pe acest computer.",
     "tooLargeUnknown": "{{file}} este mai mare decât permite acest server. Rămâne doar pe acest computer.",
     "projectTooLarge": "{{file}} rămâne pe acest computer pentru că proiectul a atins limita de mărime a serverului, de {{limit}}. Roagă persoana care administrează serverul să o mărească.",

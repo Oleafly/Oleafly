@@ -42,6 +42,7 @@ export type NewActivity =
   | { kind: "removed"; at: number; by?: string }
   | { kind: "archived"; at: number }
   | { kind: "failed"; at: number }
+  | { kind: "engineSpent"; at: number }
   | {
       kind: "signedOut" | "suspended" | "clientTooOld" | "serverTooOld" | "serverChanged";
       at: number;

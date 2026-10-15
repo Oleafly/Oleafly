@@ -17,6 +17,16 @@ strip = true
 [profile.release.package.oleafly-server]
 opt-level = 3
 
+# The server image and its release binaries are built with this profile.
+# Most of the server's work happens in its dependencies (Loro, serde_json,
+# base64, SQLite), so they are built for speed too, not only its own code.
+[profile.server-release]
+inherits = "release"
+opt-level = 3
+
+[profile.server-release.package."*"]
+opt-level = 3
+
 # The upstream bridge resolves windows through `webview_windows()`, which
 # drops a window the moment it hosts a second webview (the browser dock), so
 # every eval after opening the dock failed with "window not found". The

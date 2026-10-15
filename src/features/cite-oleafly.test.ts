@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const target = vi.fn();
 vi.mock("@/features/citation", () => ({
@@ -23,6 +23,8 @@ import { useFilesStore } from "@/store/files";
 import { useFolderAccessStore } from "@/store/folder-access";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { notifyError } from "@/lib/toast";
+import { loadNamespace } from "@/i18n";
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const writeProjectFile = vi.fn(async () => {});
@@ -319,6 +321,42 @@ describe("runCiteOleaflyAction outcomes", () => {
 });
 
 describe("citeOleafly in a live shared project", () => {
+  beforeAll(async () => {
+    await loadNamespace("collab");
+  });
+
+  it("tells a viewer once that the project can only be viewed, and changes nothing", async () => {
+    latexProject();
+    useCollabEditorGate.setState({ projectId: "paper", viewer: true, connecting: false });
+    try {
+      useFilesStore.setState({ files: { "refs.bib": { content: "" } } } as never);
+      target.mockResolvedValue({ path: "refs.bib", exists: true, content: "" });
+      expect(await citeOleafly()).toEqual({ kind: "refused", message: enCollab.access.viewOnly });
+      await runCiteOleaflyAction();
+      expect(toasts.error).toHaveBeenCalledExactlyOnceWith(enCollab.access.viewOnly);
+      expect(setContent).not.toHaveBeenCalled();
+      expect(writeProjectFile).not.toHaveBeenCalled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+
+  it("says once why an undo can't run after the person can only view the project", async () => {
+    latexProject();
+    useFilesStore.setState({ files: { "refs.bib": { content: "" } } } as never);
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "" });
+    const outcome = await citeOleafly();
+    if (outcome.kind !== "added") throw new Error("the entry was not added");
+    setContent.mockClear();
+    useCollabEditorGate.setState({ projectId: "paper", viewer: true, connecting: false });
+    try {
+      await expect(outcome.undo()).rejects.toThrow(enCollab.access.viewOnly);
+      expect(setContent).not.toHaveBeenCalled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+
   it("merges the entry into a closed bibliography from the text it read, and undoes it the same way", async () => {
     latexProject();
     useCollabEditorGate.setState({ projectId: "paper", viewer: false, connecting: false });

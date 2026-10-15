@@ -42,7 +42,8 @@ pub struct MockS3 {
 
 #[derive(Default)]
 struct Shared {
-    objects: Mutex<BTreeMap<String, Vec<u8>>>,
+    // Shared bytes, so answering a read never copies a large object.
+    objects: Mutex<BTreeMap<String, Bytes>>,
     fault: Mutex<Option<MockS3Fault>>,
     rejections: Mutex<Vec<String>>,
     requests: Mutex<usize>,
@@ -101,11 +102,13 @@ impl MockS3 {
     }
 
     pub fn object(&self, key: &str) -> Option<Vec<u8>> {
-        locked(&self.shared.objects).get(key).cloned()
+        locked(&self.shared.objects)
+            .get(key)
+            .map(|bytes| bytes.to_vec())
     }
 
     pub fn insert_object(&self, key: &str, bytes: &[u8]) {
-        locked(&self.shared.objects).insert(key.to_string(), bytes.to_vec());
+        locked(&self.shared.objects).insert(key.to_string(), Bytes::copy_from_slice(bytes));
     }
 
     pub fn set_fault(&self, fault: Option<MockS3Fault>) {
@@ -175,7 +178,7 @@ async fn handle(
     match method {
         Method::PUT => {
             if fault != Some(MockS3Fault::LoseWrites) {
-                objects.insert(key.to_string(), body.to_vec());
+                objects.insert(key.to_string(), body);
             }
             StatusCode::OK.into_response()
         }

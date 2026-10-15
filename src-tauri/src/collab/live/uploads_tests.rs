@@ -27,7 +27,7 @@ use super::super::{
     NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
     WriterSignal,
 };
-use super::{attach, Retry, UploadFile, UploadState, UploadsPayload};
+use super::{attach, progress_for, Retry, UploadFile, UploadProgress, UploadState, UploadsPayload};
 use crate::collab::disk::{sha256_hex, DiskState};
 use crate::folder_watch::FolderChange;
 
@@ -37,6 +37,7 @@ const WAIT: Duration = Duration::from_secs(25);
 struct Recording {
     uploads: Mutex<Vec<UploadsPayload>>,
     statuses: Mutex<Vec<LiveStatus>>,
+    progress: Mutex<Vec<UploadProgress>>,
 }
 
 impl Recording {
@@ -65,6 +66,9 @@ impl LiveHost for Recording {
     fn new_device(&self, _: NewDevicePayload) {}
     fn uploads(&self, payload: UploadsPayload) {
         self.uploads.lock().unwrap().push(payload);
+    }
+    fn upload_progress(&self, payload: UploadProgress) {
+        self.progress.lock().unwrap().push(payload);
     }
 }
 
@@ -324,6 +328,7 @@ struct Canned {
     slow_ms: Arc<AtomicU64>,
     asked: Arc<Mutex<Vec<String>>>,
     project_mb: Arc<AtomicU64>,
+    retry_after: Arc<AtomicU64>,
 }
 
 impl Canned {
@@ -357,6 +362,7 @@ struct Counters {
     slow_ms: Arc<AtomicU64>,
     asked: Arc<Mutex<Vec<String>>>,
     project_mb: Arc<AtomicU64>,
+    retry_after: Arc<AtomicU64>,
 }
 
 async fn answer(mut stream: TcpStream, counters: Counters, max_file_mb: u64, fail: usize) {
@@ -428,6 +434,7 @@ async fn answer(mut stream: TcpStream, counters: Counters, max_file_mb: u64, fai
             return;
         }
     }
+    let mut extra = String::new();
     let (status, reply) = if line.starts_with("GET /.well-known/oleafly-server") {
         let project_mb = counters.project_mb.load(Ordering::SeqCst);
         ("200 OK", manifest(max_file_mb, project_mb))
@@ -439,6 +446,10 @@ async fn answer(mut stream: TcpStream, counters: Counters, max_file_mb: u64, fai
                 "{\"code\":\"project_too_large\",\"message\":\"full\"}".to_owned(),
             )
         } else if count <= fail {
+            let wait = counters.retry_after.load(Ordering::SeqCst);
+            if wait > 0 {
+                extra = format!("Retry-After: {wait}\r\n");
+            }
             (
                 "503 Service Unavailable",
                 "{\"code\":\"unavailable\",\"message\":\"busy\"}".to_owned(),
@@ -459,7 +470,7 @@ async fn answer(mut stream: TcpStream, counters: Counters, max_file_mb: u64, fai
         )
     };
     let response = format!(
-        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{reply}",
+        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\n{extra}Content-Length: {}\r\nConnection: close\r\n\r\n{reply}",
         reply.len()
     );
     let _ = stream.write_all(response.as_bytes()).await;
@@ -479,6 +490,7 @@ async fn canned(fail: usize, max_file_mb: u64) -> Canned {
         slow_ms: Arc::new(AtomicU64::new(0)),
         asked: Arc::default(),
         project_mb: Arc::new(AtomicU64::new(200)),
+        retry_after: Arc::new(AtomicU64::new(0)),
     };
     let counted = counters.clone();
     tokio::spawn(async move {
@@ -497,6 +509,7 @@ async fn canned(fail: usize, max_file_mb: u64) -> Canned {
         slow_ms: counters.slow_ms,
         asked: counters.asked,
         project_mb: counters.project_mb,
+        retry_after: counters.retry_after,
     }
 }
 
@@ -570,6 +583,85 @@ fn a_figure_whose_upload_fails_stays_waiting_and_is_retried_until_it_is_shared()
         })
         .await;
         assert_eq!(server.puts.load(Ordering::SeqCst), 2);
+    });
+}
+
+#[test]
+fn a_figure_the_server_asked_to_wait_for_is_sent_again_no_sooner_than_asked() {
+    run(async {
+        let server = canned(1, 50).await;
+        server.retry_after.store(4, Ordering::SeqCst);
+        let alice = canned_side(&server).await;
+        alice.online();
+        let figure = [0x89, b'P', b'N', b'G', 4, 4];
+        alice.write("figures/plot.png", &figure);
+        alice
+            .active
+            .import_paths(Some(vec!["figures/plot.png".to_owned()]))
+            .await
+            .unwrap();
+        assert_eq!(server.puts.load(Ordering::SeqCst), 1);
+        tokio::time::sleep(Duration::from_millis(3000)).await;
+        assert_eq!(
+            server.puts.load(Ordering::SeqCst),
+            1,
+            "the figure went again before the server's Retry-After"
+        );
+        until("the upload after the asked wait", || {
+            alice.shared_blob("figures/plot.png").is_some()
+        })
+        .await;
+        assert_eq!(server.puts.load(Ordering::SeqCst), 2);
+    });
+}
+
+#[test]
+fn upload_progress_reaches_the_window_a_few_times_a_second_and_at_the_end() {
+    let host = Arc::new(Recording::default());
+    let progress = progress_for(Arc::clone(&host) as Arc<dyn LiveHost>, "p", "figs/a.png");
+    for done in 1..=100 {
+        progress(done, 100);
+    }
+    let told: Vec<(u64, u64)> = host
+        .progress
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|payload| (payload.done, payload.total))
+        .collect();
+    assert_eq!(told, vec![(1, 100), (100, 100)]);
+    std::thread::sleep(Duration::from_millis(300));
+    progress(101, 200);
+    assert_eq!(host.progress.lock().unwrap().len(), 3);
+}
+
+#[test]
+fn a_figure_upload_tells_the_window_how_far_it_got() {
+    run(async {
+        let server = canned(0, 50).await;
+        let alice = canned_side(&server).await;
+        alice.online();
+        let mut figure = vec![0u8; 300 * 1024];
+        figure[..4].copy_from_slice(&[0x89, b'P', b'N', b'G']);
+        alice.write("figures/big.png", &figure);
+        alice
+            .active
+            .import_paths(Some(vec!["figures/big.png".to_owned()]))
+            .await
+            .unwrap();
+        assert_eq!(server.puts.load(Ordering::SeqCst), 1);
+        let told = alice.host.progress.lock().unwrap().clone();
+        let size = figure.len() as u64;
+        assert_eq!(
+            told.last(),
+            Some(&UploadProgress {
+                project_id: "uploads".to_owned(),
+                path: "figures/big.png".to_owned(),
+                done: size,
+                total: size,
+            })
+        );
+        assert!(told.iter().all(|payload| payload.done <= payload.total));
     });
 }
 

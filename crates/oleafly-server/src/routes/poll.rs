@@ -260,9 +260,14 @@ async fn frames(
     if session.is_ended() {
         return Err(ServerError::NotFound);
     }
-    // A session reads one post at a time, and a large one takes its room
-    // in the transfer budget before its body is read.
+    // A session reads one post at a time and an account at most a few
+    // across its sessions, and a large one takes its room in the transfer
+    // budget before its body is read.
     let _posting = session.posting().ok_or(ServerError::RateLimited)?;
+    let _turn = state
+        .polls
+        .post_turn(session.account)
+        .ok_or(ServerError::RateLimited)?;
     let largest = MAX_FRAME_BYTES as u64;
     let _room = state
         .transfers

@@ -11,8 +11,8 @@ const mocks = vi.hoisted(() => ({
   collabLiveFlush: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabTrashRestore: mocks.collabTrashRestore,
   collabLiveFlush: mocks.collabLiveFlush,
 }));

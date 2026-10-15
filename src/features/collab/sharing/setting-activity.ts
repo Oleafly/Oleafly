@@ -30,10 +30,14 @@ function languageName(locale: string): string {
   return dictionaryLabel({ id: locale, language: locale, region: null }, currentLocale());
 }
 
-export function settingActivityText(change: CollabSettingNotice, name: string, t: CollabT): string {
+// `byPerson` is false for a change that came with no account, such as the
+// main document following its file to the name the shared layout gave it.
+export function settingActivityText(change: CollabSettingNotice, name: string, t: CollabT, byPerson = true): string {
   switch (change.kind) {
     case "mainDocument":
-      return t(($) => $.collab.activity.settings.mainDocument, { name, path: change.path });
+      return byPerson
+        ? t(($) => $.collab.activity.settings.mainDocument, { name, path: change.path })
+        : t(($) => $.collab.activity.settings.mainDocumentNow, { path: change.path });
     case "compiler":
       return t(($) => $.collab.activity.settings.compiler, { name, compiler: compilerName(change, t) });
     case "spellingLanguage":

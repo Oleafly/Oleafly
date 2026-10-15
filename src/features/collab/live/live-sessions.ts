@@ -65,16 +65,20 @@ export class LiveSessions {
   }
 
   async flush(write: () => Promise<void>): Promise<void> {
+    await this.settledWithin([...this.sessions.values()], this.options.settleTimeoutMs ?? SETTLE_TIMEOUT_MS);
+    await write();
+  }
+
+  private async settledWithin(sessions: readonly RemoteDocumentSession[], ms: number): Promise<void> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, this.options.settleTimeoutMs ?? SETTLE_TIMEOUT_MS);
+      timer = setTimeout(resolve, ms);
     });
     try {
-      await Promise.race([Promise.all([...this.sessions.values()].map((session) => session.settled())), timeout]);
+      await Promise.race([Promise.all(sessions.map((session) => session.settled())), timeout]);
     } finally {
       clearTimeout(timer);
     }
-    await write();
   }
 
   move(from: string, to: string): void {
@@ -122,6 +126,26 @@ export class LiveSessions {
       this.sessions.delete(session.path);
       session.close();
     });
+  }
+
+  // The project is about to close. The shared document gets a moment to
+  // take the typing in flight, and what it still lacks then goes back as
+  // unsaved text while the files store has this project, so the save before
+  // the switch keeps it. Afterwards the store has moved on and can't take it.
+  async handBack(waitMs: number): Promise<void> {
+    const open = [...this.sessions];
+    if (open.length === 0) return;
+    await this.settledWithin(
+      open.map(([, session]) => session),
+      waitMs,
+    );
+    for (const [path, session] of open) {
+      if (this.sessions.get(path) !== session || !session.unconfirmed) continue;
+      const shared = sharedText(session);
+      this.sessions.delete(path);
+      session.close();
+      this.options.detached(path, session.text(), true, shared);
+    }
   }
 
   // Live editing stopped. Typing Rust never confirmed goes back as unsaved,

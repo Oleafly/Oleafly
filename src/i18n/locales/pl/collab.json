@@ -220,7 +220,7 @@
     "already_member": "Ta osoba ma już konto. Zmień jej rolę w sekcji Osoby.",
     "project_not_shared": "Ten projekt nie jest jeszcze udostępniony. Najpierw go udostępnij, a potem zaproś osoby.",
     "project_full": "Ten projekt ma już tyle osób, ile pozwala serwer. Najpierw usuń kogoś albo zwróć się do administratora serwera.",
-    "owner_away": "Właściciel projektu jest zawieszony lub usunięty z tego serwera, więc projekt nie może teraz przyjąć nowych osób. Zapytaj administratora serwera.",
+    "owner_away": "Właściciel projektu jest zawieszony lub usunięty z tego serwera, więc projekt nie może przyjąć nowych osób, dopóki jego konto nie będzie znowu aktywne.",
     "wrong_server": "Ten serwer wysłał stronę logowania z innego adresu, więc Oleafly przerwał. Sprawdź adres serwera albo zapytaj osobę, która go prowadzi.",
     "not_a_link": "To nie jest link do udostępnionego projektu. Skopiuj cały link i spróbuj ponownie.",
     "signed_out": "Wylogowano Cię z tego serwera. Zaloguj się ponownie, aby synchronizować ten projekt.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "Włączenie komentarzy w projekcie",
         "projectCommentsOff": "Wyłączenie komentarzy w projekcie",
         "projectRejoinRefused": "Próba powrotu do projektu po usunięciu",
+        "commentsChangedWhileOff": "Zmiana komentarzy, gdy były wyłączone",
         "guestInvited": "Zaproszenie gościa",
         "guestInvitationApproved": "Zatwierdzenie zaproszenia gościa",
         "guestInvitationDeclined": "Odrzucenie zaproszenia gościa",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly wymaga aktualizacji",
     "serverTooOld": "Serwer wymaga aktualizacji",
     "serverChanged": "Nowy serwer pod tym adresem",
-    "failed": "Zatrzymano po błędzie"
+    "failed": "Zatrzymano po błędzie",
+    "engineSpent": "Wymagane ponowne uruchomienie"
   },
   "toolbar": {
     "noFile": "Brak otwartego pliku",
@@ -689,6 +691,8 @@
     "serverChanged": "Adres serwera {{server}} prowadzi teraz do innego serwera. Usuń go w Ustawieniach w sekcji Współpraca i dodaj ponownie. Twoje zmiany zostają na tym komputerze.",
     "failed": "Synchronizacja tego projektu zatrzymała się po błędzie. Uruchom ją ponownie, aby kontynuować.",
     "goLiveAgain": "Synchronizuj ponownie",
+    "engineSpent": "Uruchom ponownie Oleafly, aby dalej synchronizować ten projekt.",
+    "restartApp": "Uruchom ponownie Oleafly",
     "accessEnded": "Nie masz już dostępu do serwera {{server}}. Twoja kopia zostaje na tym komputerze jako zwykły projekt.",
     "accessEndedGuest": "Nie masz już dostępu do serwera {{server}}, bo nie należysz do żadnego z jego udostępnionych projektów. Twoja kopia zostaje na tym komputerze jako zwykły projekt.",
     "signIn": "Zaloguj się",
@@ -709,6 +713,7 @@
     "showComment": "Pokaż komentarz",
     "settings": {
       "mainDocument": "Użytkownik {{name}} ustawił {{path}} jako dokument główny",
+      "mainDocumentNow": "Dokumentem głównym jest teraz {{path}}",
       "compiler": "Użytkownik {{name}} ustawił kompilator na {{compiler}}",
       "spellingLanguage": "Użytkownik {{name}} ustawił język sprawdzania pisowni na {{language}}",
       "spellingCleared": "Użytkownik {{name}} usunął język sprawdzania pisowni projektu",
@@ -784,6 +789,8 @@
         "okLabel": "Wszystko działa",
         "okDescription": "Można się logować, a serwer może zapisywać pliki.",
         "problem": "Logowanie przez {{provider}} nie działa od {{time}}",
+        "commentChange": "{{project}}: zmiana od {{name}}, {{time}}",
+        "commentChangeUnknown": "{{project}}: zmiana {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nikt nie może się zalogować",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "E-maile do logowania są wstrzymane",
             "description": "Serwer wysłał już tyle e-maili do logowania, ile pozwala w tej godzinie. Wysyłanie wznowi się, gdy godzina minie."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Komentarze zmieniono, gdy były wyłączone",
+            "description": "Serwer znalazł zmiany komentarzy, które zapisał, zanim mógł je sprawdzić, gdy komentarze były wyłączone. Projekty są wymienione poniżej, a każdą zmianę zawiera dziennik bezpieczeństwa."
           },
           "unknown": {
             "label": "Serwer zgłosił problem",
@@ -1040,6 +1051,7 @@
     "viewerBy": "Użytkownik {{name}} zmienił Twoją rolę na przeglądającego. Możesz czytać ten projekt, ale nie możesz go edytować.",
     "viewer": "Masz teraz rolę przeglądającego. Możesz czytać ten projekt, ale nie możesz go edytować.",
     "viewOnly": "Możesz przeglądać ten udostępniony projekt, ale nie możesz go edytować.",
+    "connecting": "Ten udostępniony projekt wciąż się łączy, więc nie można go jeszcze zmieniać. Spróbuj ponownie za chwilę.",
     "unsentReadOnly": "Twoje ostatnie zmiany w {{path}} nie zostały wysłane, bo możesz teraz tylko przeglądać ten projekt.",
     "unsentRefused": "Oleafly nie mógł wysłać Twoich ostatnich zmian w {{path}}, więc zostały odrzucone.",
     "removedBy": "Użytkownik {{name}} usunął Cię z tego projektu. Twoja kopia zostaje na tym komputerze i nie jest już udostępniana.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "Czeka na udostępnienie: {{files}}",
     "failed": "Nie udało się udostępnić: {{files}}",
+    "uploading": "Przesyłanie {{file}}: {{done}} z {{total}}",
     "tooLarge": "{{file}} ma {{size}}, więcej, niż pozwala ten serwer ({{limit}}). Plik zostaje tylko na tym komputerze.",
     "tooLargeUnknown": "{{file}} jest większy, niż pozwala ten serwer. Plik zostaje tylko na tym komputerze.",
     "projectTooLarge": "{{file}} zostaje na tym komputerze, bo projekt osiągnął limit rozmiaru serwera ({{limit}}). Poproś osobę, która prowadzi serwer, o jego podniesienie.",

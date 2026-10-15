@@ -1,16 +1,18 @@
 import { create } from "zustand";
 import { logError } from "@/lib/log";
+import type {
+  CollabErrorCode,
+  CollabLiveEndedReason,
+  CollabLiveRemoved,
+  CollabLiveRemovedFile,
+} from "@/lib/tauri";
 import {
   collabLiveFlush,
   collabLiveRemovedDismiss,
   collabLiveRemovedList,
   collabTrashRestore,
   onCollabLiveRemoved,
-  type CollabErrorCode,
-  type CollabLiveEndedReason,
-  type CollabLiveRemoved,
-  type CollabLiveRemovedFile,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
 import { useCollabLiveStore } from "./live-store";

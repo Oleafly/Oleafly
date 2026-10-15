@@ -60,7 +60,7 @@ impl KeptDocuments {
             .sum()
     }
 
-    // Takes the least recently used document out, for the caller to drop
+    // Takes the least recently used document out, for the caller to free
     // once no lock is held, since dropping it returns its reservation.
     pub(super) fn least_recent(&self) -> Option<Budgeted> {
         let mut entries = self.lock();
@@ -79,13 +79,22 @@ fn idle(entries: &mut Entries, now: Instant) -> Vec<Entry> {
         .collect()
 }
 
+// Documents that leave the pool are freed once its lock is released, large
+// ones on a blocking thread (see `Snapshots::free`).
 impl Snapshots {
+    fn free_entries(&self, entries: Vec<Entry>) -> usize {
+        let count = entries.len();
+        self.free(entries.into_iter().map(|entry| entry.replay));
+        count
+    }
+
     pub fn take_kept(&self, keep: Keep, project: SharedProjectId) -> Option<(Budgeted, u64)> {
-        let (taken, _idle) = {
+        let (taken, idle) = {
             let mut entries = self.kept.lock();
             let idle = idle(&mut entries, Instant::now());
             (entries.remove(&(keep, project)), idle)
         };
+        self.free_entries(idle);
         taken.map(|entry| (entry.replay, entry.seq))
     }
 
@@ -122,12 +131,12 @@ impl Snapshots {
                 dropped.push(entry);
             }
         }
-        drop(dropped);
+        self.free_entries(dropped);
     }
 
     pub fn forget_kept(&self, keep: Keep, project: SharedProjectId) {
         let forgotten = self.kept.lock().remove(&(keep, project));
-        drop(forgotten);
+        self.free_entries(forgotten.into_iter().collect());
     }
 
     pub fn clear_kept(&self, keep: Keep) {
@@ -137,13 +146,13 @@ impl Snapshots {
             .extract_if(|(kept_for, _), _| *kept_for == keep)
             .map(|(_, entry)| entry)
             .collect();
-        drop(cleared);
+        self.free_entries(cleared);
     }
 
     // Drops documents nobody has used for a while. Returns how many went.
     pub fn sweep_kept(&self) -> usize {
         let swept = idle(&mut self.kept.lock(), Instant::now());
-        swept.len()
+        self.free_entries(swept)
     }
 
     pub fn kept_bytes(&self) -> u64 {

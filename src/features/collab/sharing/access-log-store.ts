@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { logError } from "@/lib/log";
-import { collabAccessLogStatus, type CollabAccessLogStatus } from "@/lib/tauri";
+import type { CollabAccessLogStatus } from "@/lib/tauri";
+import { collabAccessLogStatus } from "@/lib/tauri-collab";
 
 interface AccessLogSwitches {
   byProject: Readonly<Record<string, CollabAccessLogStatus>>;

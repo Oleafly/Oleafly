@@ -198,6 +198,20 @@ impl LiveRig {
         });
     }
 
+    pub(crate) fn remote_remove(&self, path: &str) {
+        let id = self.id_of(path).expect("the removed path is shared");
+        self.arrive(|peer| {
+            peer.trash(&id).unwrap();
+        });
+    }
+
+    pub(crate) fn remote_rename(&self, path: &str, name: &str) {
+        let id = self.id_of(path).expect("the renamed path is shared");
+        self.arrive(|peer| {
+            peer.rename(&id, name).unwrap();
+        });
+    }
+
     pub(crate) fn remote_new_dir(&self, path: &str) {
         self.arrive(|peer| {
             peer.add_node(None, path, NodeKind::Dir, None, "").unwrap();

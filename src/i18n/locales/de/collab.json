@@ -220,7 +220,7 @@
     "already_member": "Diese Person hat bereits ein Konto. Ändern Sie ihre Rolle unter Personen.",
     "project_not_shared": "Dieses Projekt ist noch nicht geteilt. Teilen Sie es zuerst und laden Sie dann Personen ein.",
     "project_full": "Dieses Projekt hat bereits so viele Personen, wie der Server erlaubt. Entfernen Sie zuerst jemanden oder fragen Sie den Admin des Servers.",
-    "owner_away": "Die Person, der das Projekt gehört, ist auf diesem Server gesperrt oder entfernt, daher kann das Projekt gerade keine neuen Personen aufnehmen. Fragen Sie einen Admin des Servers.",
+    "owner_away": "Die Person, der das Projekt gehört, ist auf diesem Server gesperrt oder entfernt, daher kann das Projekt keine neuen Personen aufnehmen, bis ihr Konto wieder aktiv ist.",
     "wrong_server": "Dieser Server hat seine Anmeldeseite von einer anderen Adresse geschickt, deshalb hat Oleafly abgebrochen. Prüfen Sie die Serveradresse oder fragen Sie die Person, die den Server betreibt.",
     "not_a_link": "Das ist kein Link zu einem geteilten Projekt. Kopieren Sie den ganzen Link und versuchen Sie es dann erneut.",
     "signed_out": "Sie sind von diesem Server abgemeldet. Melden Sie sich erneut an, um dieses Projekt zu synchronisieren.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "Hat Kommentare in einem Projekt eingeschaltet",
         "projectCommentsOff": "Hat Kommentare in einem Projekt ausgeschaltet",
         "projectRejoinRefused": "Wollte einem Projekt erneut beitreten, aus dem die Person entfernt wurde",
+        "commentsChangedWhileOff": "Hat Kommentare geändert, während sie ausgeschaltet waren",
         "guestInvited": "Hat einen Gast eingeladen",
         "guestInvitationApproved": "Hat eine Gasteinladung freigegeben",
         "guestInvitationDeclined": "Hat eine Gasteinladung abgelehnt",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly braucht ein Update",
     "serverTooOld": "Server braucht ein Update",
     "serverChanged": "Neuer Server unter dieser Adresse",
-    "failed": "Nach einem Fehler beendet"
+    "failed": "Nach einem Fehler beendet",
+    "engineSpent": "Neustart nötig"
   },
   "toolbar": {
     "noFile": "Keine Datei geöffnet",
@@ -689,6 +691,8 @@
     "serverChanged": "Die Adresse von {{server}} zeigt jetzt auf einen anderen Server. Entfernen Sie ihn in den Einstellungen für die Zusammenarbeit und fügen Sie ihn erneut hinzu. Ihre Änderungen bleiben auf diesem Computer.",
     "failed": "Der Abgleich dieses Projekts wurde nach einem Fehler beendet. Starten Sie ihn erneut, um weiterzuarbeiten.",
     "goLiveAgain": "Erneut abgleichen",
+    "engineSpent": "Starten Sie Oleafly neu, um den Abgleich dieses Projekts fortzusetzen.",
+    "restartApp": "Oleafly neu starten",
     "accessEnded": "Sie haben keinen Zugriff mehr auf {{server}}. Ihre Kopie bleibt als normales Projekt auf diesem Computer.",
     "accessEndedGuest": "Sie haben keinen Zugriff mehr auf {{server}}, weil Sie zu keinem seiner geteilten Projekte gehören. Ihre Kopie bleibt als normales Projekt auf diesem Computer.",
     "signIn": "Anmelden",
@@ -709,6 +713,7 @@
     "showComment": "Kommentar anzeigen",
     "settings": {
       "mainDocument": "{{name}} hat {{path}} zum Hauptdokument gemacht",
+      "mainDocumentNow": "{{path}} ist jetzt das Hauptdokument",
       "compiler": "{{name}} hat den Compiler auf {{compiler}} gestellt",
       "spellingLanguage": "{{name}} hat die Sprache der Rechtschreibprüfung auf {{language}} gestellt",
       "spellingCleared": "{{name}} hat die Sprache der Rechtschreibprüfung des Projekts entfernt",
@@ -784,6 +789,8 @@
         "okLabel": "Alles funktioniert",
         "okDescription": "Personen können sich anmelden, und der Server kann Dateien speichern.",
         "problem": "Die Anmeldung mit {{provider}} schlägt seit {{time}} fehl",
+        "commentChange": "{{project}}, geändert von {{name}} am {{time}}",
+        "commentChangeUnknown": "{{project}}, geändert am {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Niemand kann sich anmelden",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Anmelde-E-Mails sind pausiert",
             "description": "Der Server hat so viele Anmelde-E-Mails gesendet, wie er in dieser Stunde erlaubt. Sie werden wieder gesendet, wenn die Stunde vorbei ist."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Kommentare wurden geändert, während sie ausgeschaltet waren",
+            "description": "Der Server hat Änderungen an Kommentaren gefunden, die er gespeichert hat, bevor er sie prüfen konnte, während Kommentare ausgeschaltet waren. Die Projekte stehen unten, und das Sicherheitsprotokoll enthält jede Änderung."
           },
           "unknown": {
             "label": "Der Server hat ein Problem gemeldet",
@@ -1040,6 +1051,7 @@
     "viewerBy": "{{name}} hat Sie zum Betrachter gemacht. Sie können dieses Projekt lesen, aber nicht bearbeiten.",
     "viewer": "Sie sind jetzt Betrachter. Sie können dieses Projekt lesen, aber nicht bearbeiten.",
     "viewOnly": "Sie können dieses geteilte Projekt ansehen, aber nicht bearbeiten.",
+    "connecting": "Dieses geteilte Projekt wird noch verbunden und kann daher noch nicht geändert werden. Versuchen Sie es gleich noch einmal.",
     "unsentReadOnly": "Ihre letzten Änderungen an {{path}} wurden nicht gesendet, weil Sie dieses Projekt jetzt nur ansehen können.",
     "unsentRefused": "Oleafly konnte Ihre letzten Änderungen an {{path}} nicht senden, daher wurden sie verworfen.",
     "removedBy": "{{name}} hat Sie aus diesem Projekt entfernt. Ihre Kopie bleibt auf diesem Computer und wird nicht mehr geteilt.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "Wartet darauf, geteilt zu werden: {{files}}",
     "failed": "Konnte nicht geteilt werden: {{files}}",
+    "uploading": "{{file}} wird hochgeladen: {{done}} von {{total}}",
     "tooLarge": "{{file}} ist {{size}} groß und damit größer, als dieser Server erlaubt ({{limit}}). Die Datei bleibt nur auf diesem Computer.",
     "tooLargeUnknown": "{{file}} ist größer, als dieser Server erlaubt. Die Datei bleibt nur auf diesem Computer.",
     "projectTooLarge": "{{file}} bleibt auf diesem Computer, weil das Projekt die Größengrenze des Servers von {{limit}} erreicht hat. Bitten Sie die Person, die den Server betreibt, sie zu erhöhen.",

@@ -18,7 +18,8 @@ function listener(name: string) {
   });
 }
 
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", () => ({}));
+vi.mock("@/lib/tauri-collab", () => ({
   collabSyncDecide: mocks.collabSyncDecide,
   onCollabSyncPaused: listener("paused"),
   onCollabSyncResumed: listener("resumed"),

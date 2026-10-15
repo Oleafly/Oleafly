@@ -13,6 +13,36 @@ pub const LIVE_NEW_DEVICE_EVENT: &str = "collab-live-new-device";
 pub const LIVE_MEMBERS_EVENT: &str = "collab-live-members";
 pub const CHANGE_SKIPPED_EVENT: &str = "collab-change-skipped";
 pub const PROJECT_FULL_EVENT: &str = "collab-live-project-full";
+pub const LIVE_WRITTEN_EVENT: &str = "collab-live-written";
+
+// A file the session wrote while the window had it open, as it is on disk
+// now. It is fingerprinted the way the window fingerprints its own disk
+// snapshots: FNV-1a 64 over the bytes in hex, whether every line break is
+// CRLF, and the length in UTF-16 units.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WrittenFile {
+    pub path: String,
+    pub hash: String,
+    pub crlf: bool,
+    pub length: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WrittenPayload {
+    pub project_id: String,
+    pub files: Vec<WrittenFile>,
+}
+
+pub(super) fn window_hash(bytes: &[u8]) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0100_0000_01b3);
+    }
+    format!("{hash:016x}")
+}
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

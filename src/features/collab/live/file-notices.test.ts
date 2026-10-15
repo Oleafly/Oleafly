@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CollabLiveKept, CollabLiveKeptFile, CollabLiveUploads, CollabUploadFile } from "@/lib/tauri";
+import type {
+  CollabLiveKept,
+  CollabLiveKeptFile,
+  CollabLiveUploads,
+  CollabUploadFile,
+  CollabUploadProgress,
+} from "@/lib/tauri";
 
 const mocks = vi.hoisted(() => ({
   collabUploadList: vi.fn(),
@@ -10,9 +16,11 @@ const mocks = vi.hoisted(() => ({
   collabLocalCopyDecline: vi.fn(),
   uploadsHandler: null as null | ((payload: CollabLiveUploads) => void),
   keptHandler: null as null | ((payload: CollabLiveKept) => void),
+  progressHandler: null as null | ((payload: CollabUploadProgress) => void),
 }));
 
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", () => ({}));
+vi.mock("@/lib/tauri-collab", () => ({
   collabUploadList: mocks.collabUploadList,
   collabUploadRetry: mocks.collabUploadRetry,
   collabUploadDismiss: mocks.collabUploadDismiss,
@@ -31,6 +39,12 @@ vi.mock("@/lib/tauri", () => ({
     mocks.keptHandler = handler;
     return () => {
       mocks.keptHandler = null;
+    };
+  }),
+  onCollabUploadProgress: vi.fn(async (handler: (payload: CollabUploadProgress) => void) => {
+    mocks.progressHandler = handler;
+    return () => {
+      mocks.progressHandler = null;
     };
   }),
   collabShareInfo: vi.fn(),
@@ -102,6 +116,30 @@ describe("file notices", () => {
     expect(useFileNotices.getState().uploads.map((file) => file.path)).toEqual(["figures/plot.png", "big.png"]);
     mocks.uploadsHandler?.({ projectId: "paper", files: [] });
     expect(useFileNotices.getState().uploads).toEqual([]);
+  });
+
+  it("follows how far each waiting figure got in the open project until it is up", () => {
+    mocks.uploadsHandler?.({ projectId: "paper", files: [upload(), upload({ path: "figures/map.png" })] });
+    mocks.progressHandler?.({ projectId: "other", path: "figures/plot.png", done: 1, total: 4 });
+    expect(useFileNotices.getState().progress).toEqual({});
+    mocks.progressHandler?.({ projectId: "paper", path: "figures/plot.png", done: 1024, total: 4096 });
+    mocks.progressHandler?.({ projectId: "paper", path: "figures/map.png", done: 10, total: 20 });
+    expect(useFileNotices.getState().progress).toEqual({
+      "figures/plot.png": { done: 1024, total: 4096 },
+      "figures/map.png": { done: 10, total: 20 },
+    });
+    mocks.progressHandler?.({ projectId: "paper", path: "figures/plot.png", done: 4096, total: 4096 });
+    expect(useFileNotices.getState().progress).toEqual({ "figures/map.png": { done: 10, total: 20 } });
+    mocks.uploadsHandler?.({ projectId: "paper", files: [upload({ path: "figures/map.png", state: "failed" })] });
+    expect(useFileNotices.getState().progress).toEqual({});
+  });
+
+  it("forgets upload progress when another project opens", async () => {
+    mocks.uploadsHandler?.({ projectId: "paper", files: [upload()] });
+    mocks.progressHandler?.({ projectId: "paper", path: "figures/plot.png", done: 1, total: 4 });
+    useFilesStore.setState({ projectId: "thesis" });
+    await settle();
+    expect(useFileNotices.getState().progress).toEqual({});
   });
 
   it("loads the waiting figures when a project opens", async () => {

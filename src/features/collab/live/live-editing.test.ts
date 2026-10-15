@@ -4,6 +4,7 @@ import type { RemoteCursorSource } from "./remote-cursors";
 import {
   collabCompileBarrier,
   collabDocumentSession,
+  collabHandBack,
   collabProjectReadOnly,
   collabVisualReadOnly,
 } from "@/lib/collab-live-bridge";
@@ -26,7 +27,8 @@ const mocks = vi.hoisted(() => ({
   pathDeletes: new Set<(event: { projectId: string; path: string }) => void>(),
 }));
 
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", () => ({}));
+vi.mock("@/lib/tauri-collab", () => ({
   collabDocOpen: mocks.collabDocOpen,
   collabDocChange: mocks.collabDocChange,
   collabDocClose: mocks.collabDocClose,
@@ -100,7 +102,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { PRESENCE_INTERVAL_MS, PRESENCE_KEEP_ALIVE_MS } from "./presence";
 import { type LivePeer, useCollabLiveStore } from "./live-store";
-import { BACKGROUND_INDEX_MS, peerCursors, startLiveEditing } from "./live-editing";
+import { BACKGROUND_INDEX_MS, HAND_BACK_WAIT_MS, peerCursors, startLiveEditing } from "./live-editing";
 
 const PROJECT = "project-1";
 let channels: Map<string, (message: CollabDocMessage) => void>;
@@ -237,12 +239,12 @@ describe("live editing", () => {
     expect(useFilesStore.getState().setContent).not.toHaveBeenCalled();
   });
 
-  it("flushes the live project before a compile and nothing else", async () => {
+  it("flushes the live project before a compile and nothing else, waiting for figures", async () => {
     start();
     await collabCompileBarrier("other");
     expect(mocks.collabLiveFlush).not.toHaveBeenCalled();
     await collabCompileBarrier(PROJECT);
-    expect(mocks.collabLiveFlush).toHaveBeenCalledWith(PROJECT);
+    expect(mocks.collabLiveFlush).toHaveBeenCalledExactlyOnceWith(PROJECT, { waitForFigures: true });
   });
 
   it("makes a role from a later server read-only, like a viewer", () => {
@@ -375,6 +377,23 @@ describe("live editing edges", () => {
       base: "log",
     });
     expect(useFilesStore.getState().docVersion).toBe(version);
+  });
+
+  it("hands back typing Rust hasn't confirmed before the files store leaves the project", async () => {
+    start();
+    const session = collabDocumentSession("main.tex");
+    await settle();
+    session?.applyLocal([{ from: 6, to: 6, insert: "!" }], session.version());
+    session?.applyLocal([{ from: 7, to: 7, insert: "?" }], session.version());
+    await collabHandBack("other");
+    expect(useFilesStore.getState().setContent).not.toHaveBeenCalled();
+    const handing = collabHandBack(PROJECT);
+    await vi.advanceTimersByTimeAsync(HAND_BACK_WAIT_MS);
+    await handing;
+    expect(useFilesStore.getState().setContent).toHaveBeenCalledExactlyOnceWith("main.tex", "shared!?", {
+      unsaved: true,
+      base: "shared",
+    });
   });
 
   it("keeps typing Rust never confirmed when live editing stops, to merge from the shared text", async () => {

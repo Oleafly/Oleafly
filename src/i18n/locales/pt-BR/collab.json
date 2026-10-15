@@ -220,7 +220,7 @@
     "already_member": "Essa pessoa já tem uma conta. Mude a função dela em Pessoas.",
     "project_not_shared": "Este projeto ainda não está compartilhado. Compartilhe primeiro e depois convide pessoas.",
     "project_full": "Este projeto já tem o número máximo de pessoas que o servidor permite. Remova alguém primeiro ou fale com o administrador do servidor.",
-    "owner_away": "A pessoa dona do projeto está suspensa ou foi removida deste servidor, então o projeto não pode receber novas pessoas agora. Peça ajuda a um administrador do servidor.",
+    "owner_away": "A pessoa dona do projeto está suspensa ou foi removida deste servidor, então o projeto não pode receber novas pessoas até que a conta dela volte a ficar ativa.",
     "wrong_server": "Este servidor enviou a página de login de outro endereço, então o Oleafly parou. Confira o endereço do servidor ou pergunte a quem o administra.",
     "not_a_link": "Isso não é um link para um projeto compartilhado. Copie o link inteiro e tente de novo.",
     "signed_out": "A sua sessão neste servidor foi encerrada. Faça login de novo para sincronizar este projeto.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "Ativou os comentários em um projeto",
         "projectCommentsOff": "Desativou os comentários em um projeto",
         "projectRejoinRefused": "Tentou voltar a um projeto do qual foi removido",
+        "commentsChangedWhileOff": "Alterou comentários enquanto estavam desativados",
         "guestInvited": "Enviou um convite de convidado",
         "guestInvitationApproved": "Aprovou um convite de convidado",
         "guestInvitationDeclined": "Recusou um convite de convidado",
@@ -589,7 +590,8 @@
     "clientTooOld": "O Oleafly precisa ser atualizado",
     "serverTooOld": "O servidor precisa ser atualizado",
     "serverChanged": "Novo servidor neste endereço",
-    "failed": "Parado após um erro"
+    "failed": "Parado após um erro",
+    "engineSpent": "É preciso reiniciar"
   },
   "toolbar": {
     "noFile": "Nenhum arquivo aberto",
@@ -689,6 +691,8 @@
     "serverChanged": "O endereço de {{server}} agora leva a outro servidor. Remova-o nas configurações de Colaboração e adicione-o de novo. As suas alterações ficam neste computador.",
     "failed": "A sincronização deste projeto parou após um erro. Sincronize de novo para continuar.",
     "goLiveAgain": "Sincronizar de novo",
+    "engineSpent": "Reinicie o Oleafly para continuar sincronizando este projeto.",
+    "restartApp": "Reiniciar o Oleafly",
     "accessEnded": "Você não tem mais acesso a {{server}}. A sua cópia fica neste computador como um projeto comum.",
     "accessEndedGuest": "Você não tem mais acesso a {{server}} porque não participa de nenhum dos projetos compartilhados dele. A sua cópia fica neste computador como um projeto comum.",
     "signIn": "Fazer login",
@@ -709,6 +713,7 @@
     "showComment": "Ver comentário",
     "settings": {
       "mainDocument": "{{name}} definiu {{path}} como documento principal",
+      "mainDocumentNow": "{{path}} agora é o documento principal",
       "compiler": "{{name}} mudou o compilador para {{compiler}}",
       "spellingLanguage": "{{name}} mudou o idioma da verificação ortográfica para {{language}}",
       "spellingCleared": "{{name}} removeu o idioma da verificação ortográfica do projeto",
@@ -784,6 +789,8 @@
         "okLabel": "Tudo está funcionando",
         "okDescription": "As pessoas conseguem fazer login e o servidor consegue salvar arquivos.",
         "problem": "O login com {{provider}} está falhando desde {{time}}",
+        "commentChange": "{{project}}, alterado por {{name}} em {{time}}",
+        "commentChangeUnknown": "{{project}}, alterado em {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ninguém consegue fazer login",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Os e-mails de login estão pausados",
             "description": "O servidor já enviou todos os e-mails de login que permite nesta hora. O envio volta quando a hora acabar."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Comentários alterados enquanto estavam desativados",
+            "description": "O servidor encontrou alterações em comentários que salvou antes de conseguir verificá-las, enquanto os comentários estavam desativados. Os projetos aparecem abaixo, e o registro de segurança tem cada alteração."
           },
           "unknown": {
             "label": "O servidor relatou um problema",
@@ -1040,6 +1051,7 @@
     "viewerBy": "{{name}} tornou você leitor. Você pode ler este projeto, mas não editá-lo.",
     "viewer": "Agora você é leitor. Você pode ler este projeto, mas não editá-lo.",
     "viewOnly": "Você pode ver este projeto compartilhado, mas não pode editá-lo.",
+    "connecting": "Este projeto compartilhado ainda está se conectando, então ainda não pode ser alterado. Tente de novo em instantes.",
     "unsentReadOnly": "Suas últimas alterações em {{path}} não foram enviadas porque agora você só pode ver este projeto.",
     "unsentRefused": "O Oleafly não conseguiu enviar suas últimas alterações em {{path}}, então elas foram descartadas.",
     "removedBy": "{{name}} removeu você deste projeto. A sua cópia continua neste computador e não é mais compartilhada.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "Aguardando compartilhamento: {{files}}",
     "failed": "Não foi possível compartilhar: {{files}}",
+    "uploading": "Enviando {{file}}: {{done}} de {{total}}",
     "tooLarge": "{{file}} tem {{size}}, mais do que este servidor permite ({{limit}}). Ele fica só neste computador.",
     "tooLargeUnknown": "{{file}} é maior do que este servidor permite. Ele fica só neste computador.",
     "projectTooLarge": "{{file}} fica neste computador porque o projeto chegou ao limite de tamanho do servidor, de {{limit}}. Peça a quem administra o servidor para aumentá-lo.",

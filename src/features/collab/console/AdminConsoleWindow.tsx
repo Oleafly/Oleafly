@@ -4,13 +4,15 @@ import { LogIn, PowerOff, ServerOff, ShieldX } from "lucide-react";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { useWindowGeometry } from "@/lib/preview-geometry";
+import type {
+  CollabServer,
+  CollabServerChanged,
+} from "@/lib/tauri";
 import {
   COLLAB_SERVER_CHANGED_EVENT,
   collabServerRefresh,
   collabServersList,
-  type CollabServer,
-  type CollabServerChanged,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { LIVE_COLLABORATION_KEY, useSettingsStore } from "@/store/settings";
 import { collabErrorText } from "../errors";
 import { LoadFailed } from "../feedback";

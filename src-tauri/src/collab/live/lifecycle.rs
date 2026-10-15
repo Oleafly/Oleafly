@@ -180,6 +180,7 @@ async fn finish(active: Arc<Active>) {
     let _ = tokio::time::timeout(Duration::from_secs(5), wait).await;
     active.close_figures();
     active.save_now();
+    active.announce_written();
     active.handle.stop();
 }
 

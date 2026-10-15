@@ -220,7 +220,7 @@
     "already_member": "Den personen har redan ett konto. Ändra rollen under Personer.",
     "project_not_shared": "Projektet är inte delat än. Dela det först och bjud sedan in personer.",
     "project_full": "Projektet har redan så många personer som servern tillåter. Ta bort någon först, eller fråga serverns administratör.",
-    "owner_away": "Ägaren till projektet är avstängd eller borttagen från den här servern, så projektet kan inte ta emot nya personer just nu. Fråga en administratör för servern.",
+    "owner_away": "Ägaren till projektet är avstängd eller borttagen från den här servern, så projektet kan inte ta emot nya personer förrän ägarens konto är aktivt igen.",
     "wrong_server": "Servern skickade sin inloggningssida från en annan adress, så Oleafly avbröt. Kontrollera serverns adress eller fråga den som driver servern.",
     "not_a_link": "Det är ingen länk till ett delat projekt. Kopiera hela länken och försök sedan igen.",
     "signed_out": "Du är utloggad från den här servern. Logga in igen för att synkronisera projektet.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "Slog på kommentarer i ett projekt",
         "projectCommentsOff": "Slog av kommentarer i ett projekt",
         "projectRejoinRefused": "Försökte gå med igen i ett projekt de tagits bort från",
+        "commentsChangedWhileOff": "Ändrade kommentarer medan de var avstängda",
         "guestInvited": "Bjöd in en gäst",
         "guestInvitationApproved": "Godkände en gästinbjudan",
         "guestInvitationDeclined": "Avböjde en gästinbjudan",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly behöver uppdateras",
     "serverTooOld": "Servern behöver uppdateras",
     "serverChanged": "Ny server på adressen",
-    "failed": "Stoppad efter ett fel"
+    "failed": "Stoppad efter ett fel",
+    "engineSpent": "Omstart krävs"
   },
   "toolbar": {
     "noFile": "Ingen fil öppen",
@@ -689,6 +691,8 @@
     "serverChanged": "Adressen till {{server}} leder nu till en annan server. Ta bort den i samarbetsinställningarna och lägg till den igen. Dina ändringar stannar på den här datorn.",
     "failed": "Synkningen av det här projektet stoppades efter ett fel. Starta den igen för att fortsätta.",
     "goLiveAgain": "Synka igen",
+    "engineSpent": "Starta om Oleafly för att fortsätta synka det här projektet.",
+    "restartApp": "Starta om Oleafly",
     "accessEnded": "Du har inte längre åtkomst till {{server}}. Din kopia ligger kvar på den här datorn som ett vanligt projekt.",
     "accessEndedGuest": "Du har inte längre åtkomst till {{server}} eftersom du inte är med i något av dess delade projekt. Din kopia ligger kvar på den här datorn som ett vanligt projekt.",
     "signIn": "Logga in",
@@ -709,6 +713,7 @@
     "showComment": "Visa kommentar",
     "settings": {
       "mainDocument": "{{name}} gjorde {{path}} till huvuddokument",
+      "mainDocumentNow": "{{path}} är nu huvuddokumentet",
       "compiler": "{{name}} ställde in kompilatorn på {{compiler}}",
       "spellingLanguage": "{{name}} ställde in språket för stavningskontroll på {{language}}",
       "spellingCleared": "{{name}} tog bort projektets språk för stavningskontroll",
@@ -784,6 +789,8 @@
         "okLabel": "Allt fungerar",
         "okDescription": "Personer kan logga in och servern kan spara filer.",
         "problem": "Inloggning med {{provider}} har misslyckats sedan {{time}}",
+        "commentChange": "{{project}}, ändrat av {{name}} {{time}}",
+        "commentChangeUnknown": "{{project}}, ändrat {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Ingen kan logga in",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Inloggningsmejl är pausade",
             "description": "Servern har skickat så många inloggningsmejl som den tillåter den här timmen. De börjar skickas igen när timmen är slut."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Kommentarer ändrades medan de var avstängda",
+            "description": "Servern hittade ändringar av kommentarer som den sparade innan den kunde kontrollera dem, medan kommentarer var avstängda. Projekten står nedan, och säkerhetsloggen har varje ändring."
           },
           "unknown": {
             "label": "Servern rapporterade ett problem",
@@ -1040,6 +1051,7 @@
     "viewerBy": "{{name}} har gjort dig till läsare. Du kan läsa projektet men inte redigera det.",
     "viewer": "Du är nu läsare. Du kan läsa projektet men inte redigera det.",
     "viewOnly": "Du kan visa det här delade projektet men inte redigera det.",
+    "connecting": "Det här delade projektet ansluter fortfarande, så det går inte att ändra ännu. Försök igen om en liten stund.",
     "unsentReadOnly": "Dina senaste ändringar i {{path}} skickades inte eftersom du nu bara kan visa det här projektet.",
     "unsentRefused": "Oleafly kunde inte skicka dina senaste ändringar i {{path}}, så de kastades.",
     "removedBy": "{{name}} tog bort dig från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "Väntar på att delas: {{files}}",
     "failed": "Kunde inte delas: {{files}}",
+    "uploading": "Laddar upp {{file}}: {{done}} av {{total}}",
     "tooLarge": "{{file}} är {{size}}, mer än den här servern tillåter ({{limit}}). Filen finns bara kvar på den här datorn.",
     "tooLargeUnknown": "{{file}} är större än den här servern tillåter. Filen finns bara kvar på den här datorn.",
     "projectTooLarge": "{{file}} stannar på den här datorn eftersom projektet har nått serverns storleksgräns på {{limit}}. Be den som driver servern att höja den.",

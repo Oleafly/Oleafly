@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ZoteroExportedEntry, ZoteroHit, ZoteroProjectLink } from "@oleafly/backend-port";
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
   exportEntries: vi.fn(),
@@ -64,6 +65,7 @@ vi.mock("@/lib/tauri", () => ({
 
 import { entryHash } from "@/lib/zotero/bib-text";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { loadNamespace } from "@/i18n";
 import {
   citationKeyForHit,
   ensureZoteroEntries,
@@ -440,6 +442,27 @@ describe("latexCiteSources", () => {
 });
 
 describe("adding a Zotero item to a live shared project", () => {
+  beforeAll(async () => {
+    await loadNamespace("collab");
+  });
+
+  it("tells a viewer once that the project can only be viewed, and leaves the open bibliography alone", async () => {
+    useCollabEditorGate.setState({ projectId: "p1", viewer: true, connecting: false });
+    try {
+      const main = PLAIN.replace("\\end{document}", "\\bibliography{refs}\n\\end{document}");
+      const bib = "@book{doe2019,\n  title = {Kept}\n}\n";
+      project({ "main.tex": main, "refs.bib": bib }, ["main.tex", "refs.bib"]);
+      await expect(ensureZoteroEntries([{ hit: hit(), key: "smithBBT2020" }])).rejects.toThrow(
+        enCollab.access.viewOnly,
+      );
+      expect(mocks.setContent).not.toHaveBeenCalled();
+      expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+      expect(files.files["refs.bib"].content).toBe(bib);
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+
   it("merges the entry into a closed bibliography from the text it read", async () => {
     useCollabEditorGate.setState({ projectId: "p1", viewer: false, connecting: false });
     try {

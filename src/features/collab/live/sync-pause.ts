@@ -1,13 +1,15 @@
 import { create } from "zustand";
 import { logError } from "@/lib/log";
+import type {
+  CollabSyncDecision,
+  CollabSyncPaused,
+  CollabSyncResumed,
+} from "@/lib/tauri";
 import {
   collabSyncDecide,
   onCollabSyncPaused,
   onCollabSyncResumed,
-  type CollabSyncDecision,
-  type CollabSyncPaused,
-  type CollabSyncResumed,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 
 export interface SyncPauseState {
   waiting: Readonly<Record<string, number>>;

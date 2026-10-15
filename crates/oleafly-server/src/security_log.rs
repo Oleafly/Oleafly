@@ -47,6 +47,7 @@ pub fn kind_to_str(kind: &SecurityEventKind) -> &'static str {
         SecurityEventKind::GuestInvitationRevoked => "guest_invitation_revoked",
         SecurityEventKind::GuestAdmissionEnded => "guest_admission_ended",
         SecurityEventKind::ProjectRejoinRefused => "project_rejoin_refused",
+        SecurityEventKind::CommentsChangedWhileOff => "comments_changed_while_off",
         SecurityEventKind::Unknown => "unknown",
     }
 }
@@ -82,6 +83,7 @@ pub fn kind_from_str(text: &str) -> Option<SecurityEventKind> {
         "guest_invitation_revoked" => Some(SecurityEventKind::GuestInvitationRevoked),
         "guest_admission_ended" => Some(SecurityEventKind::GuestAdmissionEnded),
         "project_rejoin_refused" => Some(SecurityEventKind::ProjectRejoinRefused),
+        "comments_changed_while_off" => Some(SecurityEventKind::CommentsChangedWhileOff),
         _ => None,
     }
 }
@@ -195,7 +197,7 @@ mod tests {
     use oleafly_collab_protocol::ids::SharedProjectId;
     use serde_json::json;
 
-    const ALL_KINDS: [SecurityEventKind; 29] = [
+    const ALL_KINDS: [SecurityEventKind; 30] = [
         SecurityEventKind::SetupCompleted,
         SecurityEventKind::SignIn,
         SecurityEventKind::SignInRefused,
@@ -225,6 +227,7 @@ mod tests {
         SecurityEventKind::GuestInvitationRevoked,
         SecurityEventKind::GuestAdmissionEnded,
         SecurityEventKind::ProjectRejoinRefused,
+        SecurityEventKind::CommentsChangedWhileOff,
     ];
 
     fn event(target: &str) -> NewSecurityEvent {
@@ -280,6 +283,7 @@ mod tests {
                 "guest_invitation_revoked",
                 "guest_admission_ended",
                 "project_rejoin_refused",
+                "comments_changed_while_off",
             ]
         );
         for name in &names {

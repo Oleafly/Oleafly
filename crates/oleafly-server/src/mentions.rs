@@ -258,13 +258,9 @@ fn kept(text: &str) -> String {
     text.chars().take(KEPT_CHARS).collect()
 }
 
-pub fn queue(
-    conn: &Connection,
-    project: SharedProjectId,
-    seq: u64,
-    reach: &Reach,
-) -> Result<(), ServerError> {
-    let spans: Vec<Span> = reach
+// The ids a change's operations take, per writer.
+pub fn spans_of(reach: &Reach) -> Vec<Span> {
+    reach
         .ends
         .iter()
         .map(|(peer, end)| {
@@ -276,7 +272,16 @@ pub fn queue(
             (*peer, start, *end)
         })
         .filter(|(_, start, end)| start < end)
-        .collect();
+        .collect()
+}
+
+pub fn queue(
+    conn: &Connection,
+    project: SharedProjectId,
+    seq: u64,
+    reach: &Reach,
+) -> Result<(), ServerError> {
+    let spans = spans_of(reach);
     if spans.is_empty() || !settings::load(conn)?.email_notifications {
         return Ok(());
     }

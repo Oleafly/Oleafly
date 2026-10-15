@@ -1,5 +1,5 @@
 import { logError } from "@/lib/log";
-import { collabLiveReconnectNow } from "@/lib/tauri";
+import { collabLiveReconnectNow } from "@/lib/tauri-collab";
 
 // After a long outage the live session waits up to a minute between tries.
 // When the network comes back, or the laptop wakes and the window shows

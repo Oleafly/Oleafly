@@ -5,7 +5,7 @@ use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::crypto::sha256_b64url;
 use oleafly_collab_protocol::ids::{DeviceId, ServerId};
 use ring::rand::{SecureRandom, SystemRandom};
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 
 use crate::auth::ProviderRegistry;
 use crate::blobs::{cleanup, BlobStore};
@@ -191,15 +191,7 @@ impl AppState {
         self.db
             .call(move |conn| {
                 let transaction = conn.transaction()?;
-                transaction.execute(
-                    "UPDATE devices SET revoked_at = ?2 WHERE id = ?1 AND revoked_at IS NULL",
-                    params![device.to_string(), now],
-                )?;
-                tokens::revoke_device_tokens(&transaction, device)?;
-                transaction.execute(
-                    "UPDATE refresh_tokens SET revoked_at = ?2, grace_reply = NULL WHERE device_id = ?1 AND revoked_at IS NULL",
-                    params![device.to_string(), now],
-                )?;
+                tokens::sign_out_device(&transaction, device, now)?;
                 transaction.commit()?;
                 Ok(())
             })

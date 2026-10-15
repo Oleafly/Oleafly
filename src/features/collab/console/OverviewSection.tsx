@@ -11,7 +11,7 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { StatGrid, type Stat } from "@/components/ui/stat-grid";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatDateTime, formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
-import type { CollabAdminOverview, CollabHealthIssue } from "@/lib/tauri";
+import type { CollabAdminOverview, CollabHealthIssue, CollabMember } from "@/lib/tauri";
 import { collabErrorMessage } from "../errors";
 import { LoadFailed } from "../feedback";
 import { RUNTIME_SETTING_COPY, RUNTIME_SETTING_FIELDS } from "../RuntimeSettingsTab";
@@ -23,10 +23,12 @@ const ISSUE_KEYS = {
   storage_not_writable: "storageNotWritable",
   sign_in_failing: "signInFailing",
   sign_in_emails_paused: "signInEmailsPaused",
+  comments_changed_while_off: "commentsChangedWhileOff",
   unknown: "unknown",
 } as const satisfies Record<CollabHealthIssue, string>;
 
 const MEGABYTE = 1024 * 1024;
+const COMMENT_CHANGES_SHOWN = 20;
 
 function Block({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   const id = useId();
@@ -46,7 +48,10 @@ function Figures({ stats }: Readonly<{ stats: readonly Stat[] }>) {
   );
 }
 
-function Health({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
+function Health({
+  overview,
+  members,
+}: Readonly<{ overview: CollabAdminOverview; members: readonly CollabMember[] | null }>) {
   const { t } = useTranslation(["collab"]);
   const issues = overview.health.issues;
   if (issues.length === 0) {
@@ -71,6 +76,7 @@ function Health({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
               description={t(($) => $.collab.console.overview.health.issues[key].description)}
             />
             {issue === "sign_in_failing" ? <SignInProblems overview={overview} name={providerName} /> : null}
+            {issue === "comments_changed_while_off" ? <CommentChanges overview={overview} members={members} /> : null}
           </div>
         );
       })}
@@ -99,6 +105,35 @@ function SignInProblems({
           {problem.reason ? <p className="select-text break-words text-muted-foreground">{problem.reason}</p> : null}
         </li>
       ))}
+    </ul>
+  );
+}
+
+// Where comments changed while they were off, by whom and when. The server
+// stored those changes before it could check them.
+function CommentChanges({
+  overview,
+  members,
+}: Readonly<{ overview: CollabAdminOverview; members: readonly CollabMember[] | null }>) {
+  const { t } = useTranslation(["collab"]);
+  const changes = (overview.comments_changed_while_off ?? []).slice(0, COMMENT_CHANGES_SHOWN);
+  if (changes.length === 0) return null;
+  const nameOf = (accountId: string | null | undefined) =>
+    accountId ? members?.find((member) => member.account.account_id === accountId)?.account.display_name : undefined;
+  return (
+    <ul className="ml-6 space-y-1 text-xs" data-testid="console-comment-changes">
+      {changes.map((change) => {
+        const project = change.project_title || change.project_id;
+        const name = nameOf(change.account_id);
+        const time = formatDateTime(change.at);
+        return (
+          <li key={`${change.project_id}-${change.at}-${change.account_id ?? ""}`} className="select-text break-words">
+            {name
+              ? t(($) => $.collab.console.overview.health.commentChange, { project, name, time })
+              : t(($) => $.collab.console.overview.health.commentChangeUnknown, { project, time })}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -299,10 +334,13 @@ function SettingsGlance({
 
 export function OverviewSection({
   state,
+  members = null,
   onNavigate,
   onRetry,
 }: Readonly<{
   state: OverviewState;
+  // The server's people, to name who made a change, once they are loaded.
+  members?: readonly CollabMember[] | null;
   onNavigate: (section: ConsoleSection) => void;
   onRetry: () => void;
 }>) {
@@ -323,7 +361,7 @@ export function OverviewSection({
   return (
     <div className="space-y-6" data-testid="console-overview">
       <Block title={t(($) => $.collab.console.overview.health.title)}>
-        <Health overview={overview} />
+        <Health overview={overview} members={members} />
       </Block>
       <Block title={t(($) => $.collab.console.overview.glance.title)}>
         <PendingGuests count={overview.counts.pending_guest_approvals ?? 0} onNavigate={onNavigate} />

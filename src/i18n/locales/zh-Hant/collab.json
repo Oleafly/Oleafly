@@ -220,7 +220,7 @@
     "already_member": "這個人已經有帳戶。請在「人員」中變更其角色。",
     "project_not_shared": "這個專案尚未分享。請先分享，再邀請其他人。",
     "project_full": "這個專案的人數已達伺服器允許的上限。請先移除某人，或聯絡伺服器的管理員。",
-    "owner_away": "這個專案的擁有者在這個伺服器上已被停權或移除，所以專案目前無法接納新成員。請聯絡伺服器的管理員。",
+    "owner_away": "這個專案的擁有者在這個伺服器上已被停權或移除，所以在其帳號恢復啟用之前，專案無法接納新成員。",
     "wrong_server": "這個伺服器從另一個位址傳來登入頁面，所以 Oleafly 已停止。請檢查伺服器位址，或詢問管理伺服器的人。",
     "not_a_link": "這不是分享的專案連結。請複製完整連結，然後再試一次。",
     "signed_out": "你已登出這個伺服器。請重新登入以同步這個專案。",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "開啟專案評論",
         "projectCommentsOff": "關閉專案評論",
         "projectRejoinRefused": "嘗試重新加入已被移出的專案",
+        "commentsChangedWhileOff": "在評論關閉期間變更了評論",
         "guestInvited": "邀請訪客",
         "guestInvitationApproved": "核准訪客邀請",
         "guestInvitationDeclined": "拒絕訪客邀請",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly 需要更新",
     "serverTooOld": "伺服器需要更新",
     "serverChanged": "這個位址已換成新伺服器",
-    "failed": "因出錯已停止"
+    "failed": "因出錯已停止",
+    "engineSpent": "需要重新啟動"
   },
   "toolbar": {
     "noFile": "未開啟檔案",
@@ -689,6 +691,8 @@
     "serverChanged": "{{server}} 的位址現在指向另一個伺服器。請在協作設定中移除它，然後重新新增。你的變更會留在這台電腦上。",
     "failed": "這個專案因出錯已停止同步。重新開始同步即可繼續。",
     "goLiveAgain": "重新同步",
+    "engineSpent": "重新啟動 Oleafly，才能繼續同步這個專案。",
+    "restartApp": "重新啟動 Oleafly",
     "accessEnded": "你已無法存取 {{server}}。你的副本會以一般專案的形式留在這台電腦上。",
     "accessEndedGuest": "你已無法存取 {{server}}，因為你不在它的任何分享專案中。你的副本會以一般專案的形式留在這台電腦上。",
     "signIn": "登入",
@@ -709,6 +713,7 @@
     "showComment": "查看評論",
     "settings": {
       "mainDocument": "{{name}} 將 {{path}} 設為主要文件",
+      "mainDocumentNow": "{{path}} 現在是主要文件",
       "compiler": "{{name}} 將編譯器設為 {{compiler}}",
       "spellingLanguage": "{{name}} 將拼字檢查語言設為 {{language}}",
       "spellingCleared": "{{name}} 清除了專案的拼字檢查語言",
@@ -784,6 +789,8 @@
         "okLabel": "一切正常",
         "okDescription": "使用者可以登入，伺服器也可以儲存檔案。",
         "problem": "使用 {{provider}} 登入從 {{time}} 起一直失敗",
+        "commentChange": "{{project}}：{{name}} 於 {{time}} 變更",
+        "commentChangeUnknown": "{{project}}：於 {{time}} 變更",
         "issues": {
           "noSignInProvider": {
             "label": "沒有人能登入",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "登入郵件已暫停",
             "description": "伺服器本小時傳送的登入郵件已達上限。這一小時過去後會恢復傳送。"
+          },
+          "commentsChangedWhileOff": {
+            "label": "評論在關閉期間遭到變更",
+            "description": "伺服器發現了評論關閉期間、在檢查之前就已儲存的評論變更。專案列在下方，每項變更都在安全性記錄中。"
           },
           "unknown": {
             "label": "伺服器回報了問題",
@@ -1040,6 +1051,7 @@
     "viewerBy": "{{name}} 已將你設為檢視者。你可以閱讀這個專案，但不能編輯。",
     "viewer": "你現在是檢視者。你可以閱讀這個專案，但不能編輯。",
     "viewOnly": "你可以檢視這個分享的專案，但不能編輯。",
+    "connecting": "這個分享的專案仍在連線，所以暫時無法變更。請稍後再試。",
     "unsentReadOnly": "你現在只能檢視這個專案，因此你對 {{path}} 的最後變更沒有送出。",
     "unsentRefused": "Oleafly 無法送出你對 {{path}} 的最後變更，因此已將其捨棄。",
     "removedBy": "{{name}} 已將你移出這個專案。你的副本會保留在這台電腦上，不再分享。",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "等待分享：{{files}}",
     "failed": "無法分享：{{files}}",
+    "uploading": "正在上傳 {{file}}：{{done}}/{{total}}",
     "tooLarge": "{{file}} 大小為 {{size}}，超過此伺服器允許的上限（{{limit}}）。它只會保留在這台電腦上。",
     "tooLargeUnknown": "{{file}} 超過此伺服器允許的大小。它只會保留在這台電腦上。",
     "projectTooLarge": "這個專案已達到伺服器的大小上限 {{limit}}，所以 {{file}} 會留在這台電腦上。請讓管理伺服器的人提高上限。",

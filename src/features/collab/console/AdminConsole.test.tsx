@@ -40,6 +40,10 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
 }));
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
+  ...mocks,
+}));
 
 vi.mock("../EmailTab", () => ({
   EmailTab: ({ server: entry, actor }: { server: { server_id: string }; actor: string }) => (

@@ -26,6 +26,7 @@ describe("syncState", () => {
     ["server_too_old", "serverTooOld"],
     ["server_changed", "serverChanged"],
     ["failed", "failed"],
+    ["engine_spent", "engineSpent"],
   ])("reads a session that ended with %s as %s", (reason, expected) => {
     const status: CollabLiveSyncState = { state: "ended", reason };
     expect(syncState(status, 0)).toBe(expected);

@@ -220,7 +220,7 @@
     "already_member": "이 사람은 이미 계정이 있습니다. 역할은 사용자에서 바꾸세요.",
     "project_not_shared": "이 프로젝트는 아직 공유되지 않았습니다. 먼저 공유한 다음 사람을 초대하세요.",
     "project_full": "이 프로젝트에는 서버가 허용하는 최대 인원이 이미 있습니다. 먼저 다른 사람을 제거하거나 서버 관리자에게 문의하세요.",
-    "owner_away": "이 프로젝트의 소유자가 이 서버에서 정지되었거나 제거되어 지금은 새 사람을 받을 수 없습니다. 서버 관리자에게 문의하세요.",
+    "owner_away": "이 프로젝트의 소유자가 이 서버에서 정지되었거나 제거되어, 소유자의 계정이 다시 활성화될 때까지 새 사람을 받을 수 없습니다.",
     "wrong_server": "이 서버가 다른 주소에서 로그인 페이지를 보내서 Oleafly가 중단했습니다. 서버 주소를 확인하거나 서버를 운영하는 사람에게 문의하세요.",
     "not_a_link": "공유 프로젝트 링크가 아닙니다. 링크 전체를 복사한 다음 다시 시도하세요.",
     "signed_out": "이 서버에서 로그아웃되었습니다. 이 프로젝트를 동기화하려면 다시 로그인하세요.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "프로젝트의 댓글을 켬",
         "projectCommentsOff": "프로젝트의 댓글을 끔",
         "projectRejoinRefused": "제거된 프로젝트에 다시 참여하려고 함",
+        "commentsChangedWhileOff": "댓글이 꺼져 있는 동안 댓글을 변경함",
         "guestInvited": "게스트를 초대함",
         "guestInvitationApproved": "게스트 초대를 승인함",
         "guestInvitationDeclined": "게스트 초대를 거절함",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly 업데이트 필요",
     "serverTooOld": "서버 업데이트 필요",
     "serverChanged": "이 주소에 새 서버가 있음",
-    "failed": "오류로 중지됨"
+    "failed": "오류로 중지됨",
+    "engineSpent": "다시 시작해야 함"
   },
   "toolbar": {
     "noFile": "열린 파일 없음",
@@ -689,6 +691,8 @@
     "serverChanged": "{{server}} 주소가 이제 다른 서버를 가리킵니다. 공동 작업 설정에서 서버를 제거한 다음 다시 추가하세요. 변경 내용은 이 컴퓨터에 남아 있습니다.",
     "failed": "오류가 발생해 이 프로젝트의 동기화가 중지되었습니다. 계속하려면 동기화를 다시 시작하세요.",
     "goLiveAgain": "동기화 다시 시작",
+    "engineSpent": "이 프로젝트를 계속 동기화하려면 Oleafly를 다시 시작하세요.",
+    "restartApp": "Oleafly 다시 시작",
     "accessEnded": "더 이상 {{server}}에 접근할 수 없습니다. 내 사본은 일반 프로젝트로 이 컴퓨터에 남습니다.",
     "accessEndedGuest": "{{server}}의 어떤 공유 프로젝트에도 속해 있지 않아 더 이상 접근할 수 없습니다. 내 사본은 일반 프로젝트로 이 컴퓨터에 남습니다.",
     "signIn": "로그인",
@@ -709,6 +713,7 @@
     "showComment": "댓글 보기",
     "settings": {
       "mainDocument": "{{name}} 님이 {{path}}을(를) 주 문서로 지정했습니다",
+      "mainDocumentNow": "이제 {{path}}이(가) 주 문서입니다",
       "compiler": "{{name}} 님이 컴파일러를 {{compiler}}(으)로 설정했습니다",
       "spellingLanguage": "{{name}} 님이 맞춤법 검사 언어를 {{language}}(으)로 설정했습니다",
       "spellingCleared": "{{name}} 님이 프로젝트의 맞춤법 검사 언어를 해제했습니다",
@@ -784,6 +789,8 @@
         "okLabel": "모두 정상입니다",
         "okDescription": "사용자가 로그인할 수 있고 서버가 파일을 저장할 수 있습니다.",
         "problem": "{{provider}}을(를) 사용한 로그인이 {{time}}부터 실패하고 있습니다",
+        "commentChange": "{{project}}: {{name}} 님이 {{time}}에 변경",
+        "commentChangeUnknown": "{{project}}: {{time}}에 변경",
         "issues": {
           "noSignInProvider": {
             "label": "아무도 로그인할 수 없습니다",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "로그인 이메일이 일시 중지되었습니다",
             "description": "서버가 이번 시간에 허용된 만큼 로그인 이메일을 보냈습니다. 이번 시간이 지나면 다시 보냅니다."
+          },
+          "commentsChangedWhileOff": {
+            "label": "댓글이 꺼져 있는 동안 변경됨",
+            "description": "댓글이 꺼져 있는 동안 서버가 확인하기 전에 저장한 댓글 변경이 발견되었습니다. 프로젝트는 아래에 있고, 각 변경은 보안 로그에 있습니다."
           },
           "unknown": {
             "label": "서버가 문제를 보고했습니다",
@@ -1040,6 +1051,7 @@
     "viewerBy": "{{name}} 님이 나를 뷰어로 변경했습니다. 이 프로젝트를 읽을 수는 있지만 편집할 수는 없습니다.",
     "viewer": "이제 뷰어입니다. 이 프로젝트를 읽을 수는 있지만 편집할 수는 없습니다.",
     "viewOnly": "이 공유 프로젝트를 볼 수는 있지만 편집할 수는 없습니다.",
+    "connecting": "이 공유 프로젝트는 아직 연결 중이라 아직 변경할 수 없습니다. 잠시 후 다시 시도하세요.",
     "unsentReadOnly": "이제 이 프로젝트를 보기만 할 수 있어서 {{path}}의 마지막 변경 내용을 보내지 못했습니다.",
     "unsentRefused": "Oleafly가 {{path}}의 마지막 변경 내용을 보내지 못해 변경 내용을 버렸습니다.",
     "removedBy": "{{name}} 님이 이 프로젝트에서 나를 제거했습니다. 내 사본은 이 컴퓨터에 남고 더 이상 공유되지 않습니다.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "공유 대기 중: {{files}}",
     "failed": "공유하지 못함: {{files}}",
+    "uploading": "{{file}} 업로드 중: {{done}} / {{total}}",
     "tooLarge": "{{file}} 파일은 {{size}}로, 이 서버에서 허용하는 크기({{limit}})보다 큽니다. 이 컴퓨터에만 남습니다.",
     "tooLargeUnknown": "{{file}} 파일은 이 서버에서 허용하는 크기보다 큽니다. 이 컴퓨터에만 남습니다.",
     "projectTooLarge": "이 프로젝트가 서버의 크기 제한({{limit}})에 도달해 {{file}}은(는) 이 컴퓨터에 남습니다. 서버를 운영하는 사람에게 제한을 늘려 달라고 요청하세요.",

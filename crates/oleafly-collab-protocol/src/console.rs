@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::admin::RuntimeSettings;
 use crate::capabilities::{Limits, ProtocolRange, ProviderInfo};
-use crate::ids::SharedProjectId;
+use crate::ids::{AccountId, SharedProjectId};
 use crate::projects::{PersonSummary, ProjectStatus};
 
 pub const ADMIN_PROJECTS_PAGE_SIZE: u32 = 50;
@@ -26,6 +26,7 @@ pub enum HealthIssue {
     StorageNotWritable,
     SignInFailing,
     SignInEmailsPaused,
+    CommentsChangedWhileOff,
     #[serde(other)]
     Unknown,
 }
@@ -35,6 +36,19 @@ pub struct SignInProblem {
     pub provider: String,
     pub at: i64,
     pub reason: String,
+}
+
+// A change that turned out to change comments in a project with comments
+// off. It could not be checked when it arrived, so it was stored and sent
+// to the project's members before a later check found it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommentChangeWhileOff {
+    pub project_id: SharedProjectId,
+    #[serde(default)]
+    pub project_title: Option<String>,
+    #[serde(default)]
+    pub account_id: Option<AccountId>,
+    pub at: i64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,6 +108,8 @@ pub struct AdminOverview {
     pub archive_days: u32,
     #[serde(default)]
     pub sign_in_problems: Vec<SignInProblem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comments_changed_while_off: Vec<CommentChangeWhileOff>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

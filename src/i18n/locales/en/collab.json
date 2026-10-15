@@ -220,7 +220,7 @@
     "already_member": "That person already has an account. Change their role under People.",
     "project_not_shared": "This project isn't shared yet. Share it first, then invite people.",
     "project_full": "This project already has as many people as the server allows. Remove someone first, or ask the server's admin.",
-    "owner_away": "The project's owner is suspended or removed on this server, so the project can't take new people right now. Ask an admin of the server.",
+    "owner_away": "The project's owner is suspended or removed on this server, so the project can't take new people until their account is active again.",
     "wrong_server": "This server sent its sign-in page from a different address, so Oleafly stopped. Check the server address, or ask the person who runs it.",
     "not_a_link": "That isn't a link to a shared project. Copy the whole link, then try again.",
     "signed_out": "You're signed out of this server. Sign in again to sync this project.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "Turned on comments in a project",
         "projectCommentsOff": "Turned off comments in a project",
         "projectRejoinRefused": "Tried to rejoin a project they were removed from",
+        "commentsChangedWhileOff": "Changed comments while they were off",
         "guestInvited": "Invited a guest",
         "guestInvitationApproved": "Approved a guest invitation",
         "guestInvitationDeclined": "Declined a guest invitation",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly needs an update",
     "serverTooOld": "Server needs an update",
     "serverChanged": "New server at this address",
-    "failed": "Stopped after an error"
+    "failed": "Stopped after an error",
+    "engineSpent": "Restart needed"
   },
   "toolbar": {
     "noFile": "No file open",
@@ -689,6 +691,8 @@
     "serverChanged": "The address of {{server}} now points at a different server. Remove it in Collaboration settings and add it again. Your changes stay on this computer.",
     "failed": "Syncing this project stopped after an error. Go live again to continue.",
     "goLiveAgain": "Go live again",
+    "engineSpent": "Restart Oleafly to keep syncing this project.",
+    "restartApp": "Restart Oleafly",
     "accessEnded": "You no longer have access to {{server}}. Your copy stays on this computer as an ordinary project.",
     "accessEndedGuest": "You no longer have access to {{server}} because you're not in any of its shared projects. Your copy stays on this computer as an ordinary project.",
     "signIn": "Sign in",
@@ -709,6 +713,7 @@
     "showComment": "Show comment",
     "settings": {
       "mainDocument": "{{name}} made {{path}} the main document",
+      "mainDocumentNow": "{{path}} is the main document now",
       "compiler": "{{name}} set the compiler to {{compiler}}",
       "spellingLanguage": "{{name}} set the spelling language to {{language}}",
       "spellingCleared": "{{name}} cleared the project's spelling language",
@@ -784,6 +789,8 @@
         "okLabel": "Everything is working",
         "okDescription": "People can sign in and the server can save files.",
         "problem": "Signing in with {{provider}} has been failing since {{time}}",
+        "commentChange": "{{project}}, changed by {{name}} on {{time}}",
+        "commentChangeUnknown": "{{project}}, changed on {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Nobody can sign in",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Sign-in emails are paused",
             "description": "The server has sent as many sign-in emails as it allows this hour. They start again when the hour is over."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Comments changed while they were off",
+            "description": "The server found changes to comments that it stored before it could check them, while comments were off. The projects are listed below, and the security log has each change."
           },
           "unknown": {
             "label": "The server reported a problem",
@@ -1040,6 +1051,7 @@
     "viewerBy": "{{name}} made you a viewer. You can read this project but not edit it.",
     "viewer": "You're now a viewer. You can read this project but not edit it.",
     "viewOnly": "You can view this shared project but not edit it.",
+    "connecting": "This shared project is still connecting, so it can't be changed yet. Try again in a moment.",
     "unsentReadOnly": "Your last changes to {{path}} weren't sent because you can only view this project now.",
     "unsentRefused": "Oleafly couldn't send your last changes to {{path}}, so they were dropped.",
     "removedBy": "{{name}} removed you from this project. Your copy stays on this computer and is no longer shared.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "Waiting to be shared: {{files}}",
     "failed": "Couldn't be shared: {{files}}",
+    "uploading": "Uploading {{file}}: {{done}} of {{total}}",
     "tooLarge": "{{file}} is {{size}}, larger than this server allows ({{limit}}). It stays on this computer only.",
     "tooLargeUnknown": "{{file}} is larger than this server allows. It stays on this computer only.",
     "projectTooLarge": "{{file}} stays on this computer because this project reached the server's size limit of {{limit}}. Ask the person who runs the server to raise it.",

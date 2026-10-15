@@ -220,7 +220,7 @@
     "already_member": "Cette personne a déjà un compte. Changez son rôle dans Personnes.",
     "project_not_shared": "Ce projet n'est pas encore partagé. Partagez-le d'abord, puis invitez des personnes.",
     "project_full": "Ce projet compte déjà autant de personnes que le serveur le permet. Retirez d'abord quelqu'un, ou demandez à l'administrateur du serveur.",
-    "owner_away": "La personne propriétaire du projet est suspendue ou retirée de ce serveur, le projet ne peut donc pas accueillir de nouvelles personnes pour l'instant. Demandez à un administrateur du serveur.",
+    "owner_away": "La personne propriétaire du projet est suspendue ou retirée de ce serveur, le projet ne peut donc pas accueillir de nouvelles personnes tant que son compte n'est pas de nouveau actif.",
     "wrong_server": "Ce serveur a envoyé sa page de connexion depuis une autre adresse, Oleafly s'est donc arrêté. Vérifiez l'adresse du serveur ou demandez à la personne qui le gère.",
     "not_a_link": "Ce n'est pas un lien vers un projet partagé. Copiez le lien en entier, puis réessayez.",
     "signed_out": "Vous êtes déconnecté de ce serveur. Reconnectez-vous pour synchroniser ce projet.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "Commentaires activés dans un projet",
         "projectCommentsOff": "Commentaires désactivés dans un projet",
         "projectRejoinRefused": "Tentative de retour dans un projet après un retrait",
+        "commentsChangedWhileOff": "Commentaires modifiés alors qu'ils étaient désactivés",
         "guestInvited": "Invitation envoyée à un invité",
         "guestInvitationApproved": "Invitation d'invité approuvée",
         "guestInvitationDeclined": "Invitation d'invité refusée",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly doit être mis à jour",
     "serverTooOld": "Le serveur doit être mis à jour",
     "serverChanged": "Nouveau serveur à cette adresse",
-    "failed": "Arrêté après une erreur"
+    "failed": "Arrêté après une erreur",
+    "engineSpent": "Redémarrage nécessaire"
   },
   "toolbar": {
     "noFile": "Aucun fichier ouvert",
@@ -689,6 +691,8 @@
     "serverChanged": "L'adresse de {{server}} mène maintenant à un autre serveur. Retirez-le dans les paramètres de collaboration, puis ajoutez-le de nouveau. Vos modifications restent sur cet ordinateur.",
     "failed": "La synchronisation de ce projet s'est arrêtée après une erreur. Relancez-la pour continuer.",
     "goLiveAgain": "Relancer la synchronisation",
+    "engineSpent": "Redémarrez Oleafly pour continuer à synchroniser ce projet.",
+    "restartApp": "Redémarrer Oleafly",
     "accessEnded": "Vous n'avez plus accès à {{server}}. Votre copie reste sur cet ordinateur comme un projet ordinaire.",
     "accessEndedGuest": "Vous n'avez plus accès à {{server}} car vous ne faites partie d'aucun de ses projets partagés. Votre copie reste sur cet ordinateur comme un projet ordinaire.",
     "signIn": "Se connecter",
@@ -709,6 +713,7 @@
     "showComment": "Voir le commentaire",
     "settings": {
       "mainDocument": "{{name}} a défini {{path}} comme document principal",
+      "mainDocumentNow": "{{path}} est maintenant le document principal",
       "compiler": "{{name}} a choisi le compilateur {{compiler}}",
       "spellingLanguage": "{{name}} a choisi {{language}} comme langue de correction orthographique",
       "spellingCleared": "{{name}} a retiré la langue de correction orthographique du projet",
@@ -784,6 +789,8 @@
         "okLabel": "Tout fonctionne",
         "okDescription": "Les personnes peuvent se connecter et le serveur peut enregistrer des fichiers.",
         "problem": "La connexion avec {{provider}} échoue depuis {{time}}",
+        "commentChange": "{{project}}, modifié par {{name}} le {{time}}",
+        "commentChangeUnknown": "{{project}}, modifié le {{time}}",
         "issues": {
           "noSignInProvider": {
             "label": "Personne ne peut se connecter",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Les e-mails de connexion sont en pause",
             "description": "Le serveur a envoyé autant d'e-mails de connexion qu'il le permet pour cette heure. Ils reprennent une fois l'heure écoulée."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Des commentaires ont été modifiés alors qu'ils étaient désactivés",
+            "description": "Le serveur a trouvé des modifications de commentaires qu'il a enregistrées avant de pouvoir les vérifier, alors que les commentaires étaient désactivés. Les projets sont listés ci-dessous, et le journal de sécurité contient chaque modification."
           },
           "unknown": {
             "label": "Le serveur a signalé un problème",
@@ -1040,6 +1051,7 @@
     "viewerBy": "{{name}} vous a passé en lecteur. Vous pouvez lire ce projet, mais pas le modifier.",
     "viewer": "Vous êtes maintenant lecteur. Vous pouvez lire ce projet, mais pas le modifier.",
     "viewOnly": "Vous pouvez consulter ce projet partagé, mais pas le modifier.",
+    "connecting": "Ce projet partagé est encore en cours de connexion, il ne peut donc pas encore être modifié. Réessayez dans un instant.",
     "unsentReadOnly": "Vos dernières modifications de {{path}} n'ont pas été envoyées, car vous pouvez maintenant seulement consulter ce projet.",
     "unsentRefused": "Oleafly n'a pas pu envoyer vos dernières modifications de {{path}}, elles ont donc été abandonnées.",
     "removedBy": "{{name}} vous a retiré de ce projet. Votre copie reste sur cet ordinateur et n'est plus partagée.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "En attente de partage : {{files}}",
     "failed": "Partage impossible : {{files}}",
+    "uploading": "Envoi de {{file}} : {{done}} sur {{total}}",
     "tooLarge": "{{file}} pèse {{size}}, plus que ce que ce serveur accepte ({{limit}}). Il reste uniquement sur cet ordinateur.",
     "tooLargeUnknown": "{{file}} dépasse la taille acceptée par ce serveur. Il reste uniquement sur cet ordinateur.",
     "projectTooLarge": "{{file}} reste sur cet ordinateur, car le projet a atteint la limite de taille du serveur, {{limit}}. Demandez à la personne qui gère le serveur de l'augmenter.",

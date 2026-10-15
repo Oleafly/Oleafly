@@ -532,6 +532,8 @@ pub fn follow_project(
     base_file: &Path,
     me: Option<AccountId>,
 ) -> Result<Applied, String> {
+    #[cfg(test)]
+    crate::paths::assert_test_data_dir();
     let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
     let base = recall(base_file);
     let (followed, meta) = crate::project::follow_shared_settings(project_id, |meta| {
@@ -566,6 +568,8 @@ pub fn follow_renamed_main(project_id: &str, renamed: &[(String, String)]) -> Op
             .iter()
             .find_map(|(from, to)| super::disk::moved_key(main, from, to))
     };
+    #[cfg(test)]
+    crate::paths::assert_test_data_dir();
     moved(&crate::project::read_meta(project_id).ok()?.main_doc)?;
     let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
     let ((), meta) = crate::project::follow_shared_settings(project_id, |meta| {

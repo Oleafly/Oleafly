@@ -338,7 +338,7 @@ fn a_different_figure_under_a_name_never_written_here_is_kept_beside_the_shared_
         next,
         &[],
         &BTreeSet::new(),
-        &|_| false,
+        &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();
     assert_eq!(
@@ -432,7 +432,7 @@ fn edit_main_then_write_out(live: &mut LiveProject, disk: &mut DiskState, root: 
         next,
         &[],
         &BTreeSet::new(),
-        &|_| false,
+        &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();
 }
@@ -548,7 +548,7 @@ fn a_case_rename_that_arrives_as_remove_and_add_keeps_the_file() {
         next,
         &texts,
         &BTreeSet::new(),
-        &|_| false,
+        &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();
     assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
@@ -594,7 +594,7 @@ fn files_in_a_folder_renamed_elsewhere_stay_writable() {
         next,
         &texts,
         &BTreeSet::new(),
-        &|_| false,
+        &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();
     assert!(pass.conflicts.is_empty(), "{:?}", pass.conflicts);
@@ -639,7 +639,7 @@ fn a_folder_removed_elsewhere_is_reported_once() {
         next,
         &[],
         &BTreeSet::new(),
-        &|_| false,
+        &super::disk_pass::NOTHING_LEFT,
     )
     .unwrap();
     assert!(!root.join("data").exists());

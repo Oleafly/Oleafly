@@ -220,7 +220,7 @@
     "already_member": "Bu kişinin zaten bir hesabı var. Rolünü Kişiler bölümünden değiştirin.",
     "project_not_shared": "Bu proje henüz paylaşılmadı. Önce paylaşın, ardından kişileri davet edin.",
     "project_full": "Bu projede sunucunun izin verdiği kadar kişi zaten var. Önce birini çıkarın veya sunucunun yöneticisine danışın.",
-    "owner_away": "Projenin sahibi bu sunucuda askıya alınmış veya kaldırılmış, bu yüzden proje şu anda yeni kişi alamıyor. Sunucunun bir yöneticisine sorun.",
+    "owner_away": "Projenin sahibi bu sunucuda askıya alınmış veya kaldırılmış, bu yüzden sahibinin hesabı yeniden etkin olana kadar proje yeni kişi alamıyor.",
     "wrong_server": "Bu sunucu oturum açma sayfasını farklı bir adresten gönderdi, bu yüzden Oleafly durdu. Sunucu adresini denetleyin veya sunucuyu yöneten kişiye sorun.",
     "not_a_link": "Bu, paylaşılan bir projenin bağlantısı değil. Bağlantının tamamını kopyalayıp yeniden deneyin.",
     "signed_out": "Bu sunucudaki oturumunuz kapalı. Bu projeyi eşitlemek için yeniden oturum açın.",
@@ -412,6 +412,7 @@
         "projectCommentsOn": "Bir projede yorumları açtı",
         "projectCommentsOff": "Bir projede yorumları kapattı",
         "projectRejoinRefused": "Kaldırıldığı bir projeye yeniden katılmaya çalıştı",
+        "commentsChangedWhileOff": "Yorumlar kapalıyken yorumları değiştirdi",
         "guestInvited": "Bir konuk davet etti",
         "guestInvitationApproved": "Bir konuk davetini onayladı",
         "guestInvitationDeclined": "Bir konuk davetini reddetti",
@@ -589,7 +590,8 @@
     "clientTooOld": "Oleafly güncellenmeli",
     "serverTooOld": "Sunucu güncellenmeli",
     "serverChanged": "Bu adreste yeni bir sunucu var",
-    "failed": "Bir hatadan sonra durdu"
+    "failed": "Bir hatadan sonra durdu",
+    "engineSpent": "Yeniden başlatma gerekiyor"
   },
   "toolbar": {
     "noFile": "Açık dosya yok",
@@ -689,6 +691,8 @@
     "serverChanged": "{{server}} adresi artık farklı bir sunucuyu gösteriyor. Sunucuyu Ayarlar'daki İş Birliği bölümünden kaldırıp yeniden ekleyin. Değişiklikleriniz bu bilgisayarda kalır.",
     "failed": "Bu projenin eşitlenmesi bir hatadan sonra durdu. Devam etmek için eşitlemeyi yeniden başlatın.",
     "goLiveAgain": "Yeniden eşitle",
+    "engineSpent": "Bu projeyi eşitlemeye devam etmek için Oleafly'yi yeniden başlatın.",
+    "restartApp": "Oleafly'yi yeniden başlat",
     "accessEnded": "{{server}} sunucusuna artık erişiminiz yok. Kopyanız bu bilgisayarda sıradan bir proje olarak kalır.",
     "accessEndedGuest": "{{server}} sunucusuna artık erişiminiz yok çünkü oradaki paylaşılan projelerin hiçbirinde yer almıyorsunuz. Kopyanız bu bilgisayarda sıradan bir proje olarak kalır.",
     "signIn": "Oturum aç",
@@ -709,6 +713,7 @@
     "showComment": "Yorumu göster",
     "settings": {
       "mainDocument": "{{name}}, {{path}} dosyasını ana belge yaptı",
+      "mainDocumentNow": "Ana belge artık {{path}}",
       "compiler": "{{name}}, derleyiciyi {{compiler}} olarak ayarladı",
       "spellingLanguage": "{{name}}, yazım denetimi dilini {{language}} olarak ayarladı",
       "spellingCleared": "{{name}}, projenin yazım denetimi dilini kaldırdı",
@@ -784,6 +789,8 @@
         "okLabel": "Her şey çalışıyor",
         "okDescription": "Kişiler oturum açabiliyor ve sunucu dosyaları kaydedebiliyor.",
         "problem": "{{provider}} ile oturum açma {{time}} tarihinden beri başarısız",
+        "commentChange": "{{project}}: {{name}} tarafından {{time}} tarihinde değiştirildi",
+        "commentChangeUnknown": "{{project}}: {{time}} tarihinde değiştirildi",
         "issues": {
           "noSignInProvider": {
             "label": "Kimse oturum açamıyor",
@@ -800,6 +807,10 @@
           "signInEmailsPaused": {
             "label": "Oturum açma e-postaları duraklatıldı",
             "description": "Sunucu bu saat için izin verdiği kadar oturum açma e-postası gönderdi. Saat dolunca yeniden gönderilir."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Yorumlar kapalıyken değiştirildi",
+            "description": "Sunucu, yorumlar kapalıyken kontrol edemeden kaydettiği yorum değişiklikleri buldu. Projeler aşağıda listeleniyor ve her değişiklik güvenlik günlüğünde yer alıyor."
           },
           "unknown": {
             "label": "Sunucu bir sorun bildirdi",
@@ -1040,6 +1051,7 @@
     "viewerBy": "{{name}} sizi görüntüleyen yaptı. Bu projeyi okuyabilirsiniz ancak düzenleyemezsiniz.",
     "viewer": "Artık görüntüleyensiniz. Bu projeyi okuyabilirsiniz ancak düzenleyemezsiniz.",
     "viewOnly": "Bu paylaşılan projeyi görüntüleyebilirsiniz ama düzenleyemezsiniz.",
+    "connecting": "Bu paylaşılan proje hâlâ bağlanıyor, bu yüzden henüz değiştirilemez. Birazdan yeniden deneyin.",
     "unsentReadOnly": "Bu projeyi artık yalnızca görüntüleyebildiğiniz için {{path}} dosyasındaki son değişiklikleriniz gönderilmedi.",
     "unsentRefused": "Oleafly, {{path}} dosyasındaki son değişikliklerinizi gönderemediği için bunlar atıldı.",
     "removedBy": "{{name}} sizi bu projeden çıkardı. Kopyanız bu bilgisayarda kalır ve artık paylaşılmaz.",
@@ -1048,6 +1060,7 @@
   "files": {
     "waiting": "Paylaşılmayı bekliyor: {{files}}",
     "failed": "Paylaşılamadı: {{files}}",
+    "uploading": "{{file}} yükleniyor: {{done}} / {{total}}",
     "tooLarge": "{{file}} {{size}} boyutunda, bu sunucunun izin verdiğinden ({{limit}}) büyük. Yalnızca bu bilgisayarda kalır.",
     "tooLargeUnknown": "{{file}} bu sunucunun izin verdiğinden büyük. Yalnızca bu bilgisayarda kalır.",
     "projectTooLarge": "Proje sunucunun {{limit}} boyut sınırına ulaştığı için {{file}} bu bilgisayarda kalıyor. Sunucuyu yöneten kişiden sınırı artırmasını isteyin.",

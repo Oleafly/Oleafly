@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDateTime } from "@/lib/intl";
+import type {
+  CollabMember,
+  CollabProjectRole,
+  CollabSecurityEvent,
+  CollabSecurityLogKind,
+} from "@/lib/tauri";
 import {
   collabAdminSecurityLog,
-  type CollabMember,
-  type CollabProjectRole,
-  type CollabSecurityEvent,
-  type CollabSecurityLogKind,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { toServerRole } from "./roles";
@@ -46,6 +48,7 @@ const KIND_KEYS = {
   guest_invitation_revoked: "guestInvitationRevoked",
   guest_admission_ended: "guestAdmissionEnded",
   project_rejoin_refused: "projectRejoinRefused",
+  comments_changed_while_off: "commentsChangedWhileOff",
   unknown: "unknown",
 } as const satisfies Record<CollabSecurityLogKind, string>;
 
@@ -129,8 +132,12 @@ function projectRole(value: string | null): CollabProjectRole | null {
   return PROJECT_ROLES.find((role) => role === value) ?? null;
 }
 
+// A change stored while comments were off: the actor made it, and the project
+// it is about is named in the details, not as the target.
+const COMMENTS_CHANGED_WHILE_OFF = "comments_changed_while_off";
+
 function isProjectKind(kind: string): boolean {
-  return kind.startsWith("project_") || kind.startsWith("guest_");
+  return kind.startsWith("project_") || kind.startsWith("guest_") || kind === COMMENTS_CHANGED_WHILE_OFF;
 }
 
 export function eventKindKey(kind: string): KindKey {
@@ -274,6 +281,7 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
   };
 
   const targetOf = (event: CollabSecurityEvent, detail: Detail): string | null => {
+    if (event.kind === COMMENTS_CHANGED_WHILE_OFF) return null;
     if (INVITATION_KINDS.has(event.kind)) return text(detail, "email");
     const rule = ruleTarget(event, detail);
     if (rule !== null) return rule;
