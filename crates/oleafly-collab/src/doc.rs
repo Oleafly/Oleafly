@@ -29,6 +29,56 @@ const BLOB_BY: &str = "blob_by:";
 const STAGED_IMPORT_BYTES: usize = 64 * 1024;
 const STAGE_ATOMS: i32 = 16_384;
 
+pub(crate) fn engine_failed() -> CollabError {
+    CollabError::Corrupt("a change made the document engine fail".to_owned())
+}
+
+// Tests mark a payload so that taking it in panics, the way a malformed
+// change can make Loro panic, either in the document or in the scratch copy
+// a large change is tried in first.
+#[cfg(test)]
+pub(crate) mod failpoint {
+    use std::sync::{Mutex, PoisonError};
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum At {
+        Document,
+        Scratch,
+    }
+
+    static ARMED: Mutex<Vec<(Vec<u8>, At)>> = Mutex::new(Vec::new());
+
+    pub(crate) fn panic_on(payload: &[u8], at: At) {
+        ARMED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push((payload.to_vec(), at));
+    }
+
+    thread_local! {
+        static FORKS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    pub(crate) fn forked() {
+        FORKS.with(|forks| forks.set(forks.get() + 1));
+    }
+
+    pub(crate) fn forks() -> usize {
+        FORKS.with(std::cell::Cell::get)
+    }
+
+    pub(crate) fn hit(payload: &[u8], at: At) {
+        let armed = ARMED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .any(|(marked, place)| marked == payload && *place == at);
+        if armed {
+            panic!("a test made taking in this change panic");
+        }
+    }
+}
+
 struct Staged {
     pieces: Vec<Vec<u8>>,
     target: VersionVector,
@@ -696,6 +746,14 @@ impl ProjectDoc {
                 _ => continue,
             };
             let meta = self.tree.get_meta(node.id).map_err(doc_error)?;
+            // A deleted file is stamped when it goes to the trash, so it
+            // stays deleted even if an edit turns the trash folder into an
+            // ordinary one.
+            let parent = if meta.get("trashed_at").is_some() {
+                NodeParent::Trash
+            } else {
+                parent
+            };
             views.push(FileNode {
                 id: (*id).to_owned(),
                 parent,
@@ -845,8 +903,13 @@ impl ProjectDoc {
             return Ok(());
         }
         let before = self.doc.oplog_vv();
-        let (status, changes) =
-            self.recording(|doc| doc.import_batch(&payloads).map_err(doc_error));
+        let (status, changes) = self.recording(|doc| {
+            #[cfg(test)]
+            for payload in &payloads {
+                failpoint::hit(payload, failpoint::At::Document);
+            }
+            doc.import_batch(&payloads).map_err(doc_error)
+        });
         let status = status.map(|status| (arrived_in(&status), waiting_in(&status)));
         self.keep(imported, &before, status, changes)
     }
@@ -891,9 +954,11 @@ impl ProjectDoc {
 
     fn import_one(&mut self, bytes: &[u8], imported: &mut Imported) -> Result<(), CollabError> {
         let before = self.doc.oplog_vv();
-        let (status, changes) = match self.staged(bytes) {
+        let (status, changes) = match self.staged(bytes)? {
             Some(staged) => {
                 let (done, changes) = self.recording(|doc| {
+                    #[cfg(test)]
+                    failpoint::hit(bytes, failpoint::At::Document);
                     for piece in &staged.pieces {
                         doc.import(piece).map_err(doc_error)?;
                     }
@@ -905,12 +970,23 @@ impl ProjectDoc {
                 (done.map(|()| (staged.arrived, Vec::new())), changes)
             }
             None => {
-                let (status, changes) = self.recording(|doc| doc.import(bytes).map_err(doc_error));
+                let (status, changes) = self.recording(|doc| {
+                    #[cfg(test)]
+                    failpoint::hit(bytes, failpoint::At::Document);
+                    doc.import(bytes).map_err(doc_error)
+                });
                 let status = status.map(|status| (arrived_in(&status), waiting_in(&status)));
                 (status, changes)
             }
         };
         self.keep(imported, &before, status, changes)
+    }
+
+    // A change the document already holds in full needs no scratch copy:
+    // taking it in again changes nothing.
+    fn holds_all_of(&self, bytes: &[u8]) -> bool {
+        LoroDoc::decode_import_blob_meta(bytes, false)
+            .is_ok_and(|meta| self.doc.oplog_vv().includes_vv(&meta.partial_end_vv))
     }
 
     // One writer carrying on from the document's only head, say someone
@@ -941,17 +1017,46 @@ impl ProjectDoc {
         }
     }
 
-    fn staged(&self, bytes: &[u8]) -> Option<Staged> {
-        if self.doc.oplog_vv().is_empty() || self.continues_its_own_head(bytes) {
-            return None;
+    // A large change is tried in a scratch copy first. If Loro panics there,
+    // the copy is left alone in memory, because dropping a document Loro
+    // panicked in can panic again, and the change counts as unreadable: the
+    // document itself never sees it.
+    fn staged(&self, bytes: &[u8]) -> Result<Option<Staged>, CollabError> {
+        if self.doc.oplog_vv().is_empty()
+            || self.continues_its_own_head(bytes)
+            || self.holds_all_of(bytes)
+        {
+            return Ok(None);
         }
+        #[cfg(test)]
+        failpoint::forked();
         let scratch = self.doc.fork();
         scratch.detach();
-        let status = scratch.import(bytes).ok()?;
+        let tried = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            #[cfg(test)]
+            failpoint::hit(bytes, failpoint::At::Scratch);
+            scratch.import(bytes)
+        }));
+        let Ok(tried) = tried else {
+            std::mem::forget(scratch);
+            return Err(engine_failed());
+        };
+        Ok(Self::staged_from(
+            &self.doc.oplog_vv(),
+            &scratch,
+            tried.ok(),
+        ))
+    }
+
+    fn staged_from(
+        known: &VersionVector,
+        scratch: &LoroDoc,
+        status: Option<loro::ImportStatus>,
+    ) -> Option<Staged> {
+        let status = status?;
         if status.pending.is_some() {
             return None;
         }
-        let known = self.doc.oplog_vv();
         let target = scratch.oplog_vv();
         let mut chunks: Vec<(u32, u64, i32, i32)> = Vec::new();
         for (peer, end) in target.iter() {
@@ -985,12 +1090,12 @@ impl ProjectDoc {
             span.1 = to;
             atoms += to - from;
             if atoms >= STAGE_ATOMS {
-                pieces.push(export_spans(&scratch, &std::mem::take(&mut spans))?);
+                pieces.push(export_spans(scratch, &std::mem::take(&mut spans))?);
                 atoms = 0;
             }
         }
         if !spans.is_empty() {
-            pieces.push(export_spans(&scratch, &spans)?);
+            pieces.push(export_spans(scratch, &spans)?);
         }
         let arrived = status
             .success
@@ -1403,6 +1508,9 @@ mod tests {
                 .unwrap();
             assert!(alice.trash.is_none(), "round {round}");
             let mut reopened = ProjectDoc::load(&alice.snapshot().unwrap()).unwrap();
+            let placed = crate::materialize::layout(&alice.nodes().unwrap());
+            assert!(!placed.contains_key(&notes), "round {round}");
+            assert!(placed.values().all(|placed| !placed.path.contains("notes")));
             reopened.trash(&main).unwrap();
             assert!(reopened.trash.is_some(), "round {round}");
             let trashed = reopened.trashed().unwrap();

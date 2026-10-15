@@ -32,6 +32,8 @@ use crate::error::ServerError;
 pub const PROVIDER_TIMEOUT: Duration = Duration::from_secs(15);
 pub const USER_AGENT: &str = concat!("oleafly-server/", env!("CARGO_PKG_VERSION"));
 pub const DETAIL_CHARS: usize = 300;
+pub const PROBLEM_TTL_MS: i64 = 24 * 60 * 60 * 1000;
+const ERROR_CODE_CHARS: usize = 40;
 
 tokio::task_local! {
     static FAILURE: RefCell<Option<String>>;
@@ -72,7 +74,12 @@ pub struct ExternalIdentity {
 pub struct ProviderRegistry {
     infos: Vec<ProviderInfo>,
     providers: Vec<Box<dyn IdentityProvider>>,
-    problems: Mutex<BTreeMap<String, SignInProblem>>,
+    problems: Mutex<BTreeMap<String, Noted>>,
+}
+
+struct Noted {
+    problem: SignInProblem,
+    seen_by_server: bool,
 }
 
 impl ProviderRegistry {
@@ -152,18 +159,52 @@ impl ProviderRegistry {
             .map(|info| info.kind)
     }
 
+    // A failure the server saw itself, while building the provider's address
+    // or exchanging the code. Only these carry the provider's own words.
     pub fn note_problem(&self, provider: &str, at: i64, reason: &str) {
         self.problems
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .insert(
                 provider.to_string(),
-                SignInProblem {
-                    provider: provider.to_string(),
-                    at,
-                    reason: short(reason),
+                Noted {
+                    problem: SignInProblem {
+                        provider: provider.to_string(),
+                        at,
+                        reason: short(reason),
+                    },
+                    seen_by_server: true,
                 },
             );
+    }
+
+    // An error the browser brought back from the provider. Anyone can send
+    // one, so only a well-formed error code is kept, it says that it is the
+    // browser's report, and it never replaces a failure the server saw.
+    pub fn note_reported_error(&self, provider: &str, at: i64, error: &str) {
+        let Some(code) = error_code(error) else {
+            return;
+        };
+        let mut problems = self.problems.lock().unwrap_or_else(PoisonError::into_inner);
+        let seen = problems
+            .get(provider)
+            .is_some_and(|noted| noted.seen_by_server && at - noted.problem.at < PROBLEM_TTL_MS);
+        if seen {
+            return;
+        }
+        problems.insert(
+            provider.to_string(),
+            Noted {
+                problem: SignInProblem {
+                    provider: provider.to_string(),
+                    at,
+                    reason: format!(
+                        "{code}, as reported by the browser. The server could not check it."
+                    ),
+                },
+                seen_by_server: false,
+            },
+        );
     }
 
     pub fn clear_problem(&self, provider: &str) {
@@ -173,18 +214,46 @@ impl ProviderRegistry {
             .remove(provider);
     }
 
-    pub fn problems(&self) -> Vec<SignInProblem> {
-        self.problems
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
+    pub fn problems(&self, now: i64) -> Vec<SignInProblem> {
+        let mut problems = self.problems.lock().unwrap_or_else(PoisonError::into_inner);
+        problems.retain(|_, noted| now - noted.problem.at < PROBLEM_TTL_MS);
+        problems
             .values()
-            .cloned()
+            .map(|noted| noted.problem.clone())
             .collect()
     }
 }
 
+// An OAuth error code the way RFC 6749 and OpenID Connect write them.
+pub fn error_code(text: &str) -> Option<&str> {
+    let well_formed = !text.is_empty()
+        && text.len() <= ERROR_CODE_CHARS
+        && text
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte == b'_');
+    well_formed.then_some(text)
+}
+
+// Text from a provider or a browser, made safe for one log line: control
+// characters such as CR and LF, and the marks that reorder or break lines,
+// become spaces.
+pub fn plain(text: &str) -> String {
+    text.chars().map(printable).collect()
+}
+
 pub fn short(text: &str) -> String {
-    text.chars().take(DETAIL_CHARS).collect()
+    text.chars().map(printable).take(DETAIL_CHARS).collect()
+}
+
+fn printable(character: char) -> char {
+    let reorders_or_breaks = matches!(character, '\u{200e}' | '\u{200f}' | '\u{2028}' | '\u{2029}')
+        || ('\u{202a}'..='\u{202e}').contains(&character)
+        || ('\u{2066}'..='\u{2069}').contains(&character);
+    if character.is_control() || reorders_or_breaks {
+        ' '
+    } else {
+        character
+    }
 }
 
 pub async fn noting_failure<F: Future>(work: F) -> (F::Output, Option<String>) {
@@ -211,10 +280,10 @@ pub fn normalize_email(email: &str) -> String {
 }
 
 pub fn provider_failed(provider: &str, detail: impl std::fmt::Display) -> ServerError {
+    let detail = plain(&detail.to_string());
     tracing::warn!(provider, %detail, "sign-in provider request failed");
     let _ = FAILURE.try_with(|slot| {
-        slot.borrow_mut()
-            .get_or_insert_with(|| short(&detail.to_string()));
+        slot.borrow_mut().get_or_insert_with(|| short(&detail));
     });
     ServerError::Auth(AuthErrorCode::ProviderFailed)
 }
@@ -304,6 +373,100 @@ mod tests {
             parse_device("NOT-AN-ID"),
             Err(ServerError::Internal(_))
         ));
+    }
+
+    fn registry() -> ProviderRegistry {
+        let mut config = test_config();
+        config.providers.push(github_config());
+        ProviderRegistry::from_config(&config, reqwest::Client::new())
+    }
+
+    #[test]
+    fn provider_text_reaches_a_log_line_without_line_breaks_or_reordering_marks() {
+        let forged = concat!(
+            "bad_code\r\n2026-10-14T03:12:00Z  INFO admin signed in",
+            "\u{202e}txt.exe\u{2028}\u{1b}[2J\tend"
+        );
+        let cleaned = plain(forged);
+        assert!(
+            !cleaned
+                .chars()
+                .any(|character| character.is_control()
+                    || matches!(character, '\u{202e}' | '\u{2028}')),
+            "{cleaned:?}"
+        );
+        assert!(cleaned.starts_with("bad_code  2026-10-14"), "{cleaned:?}");
+        assert_eq!(short(forged), cleaned);
+        assert_eq!(
+            short(&"x".repeat(DETAIL_CHARS + 5)).chars().count(),
+            DETAIL_CHARS
+        );
+    }
+
+    #[test]
+    fn only_a_well_formed_oauth_error_code_counts_as_one() {
+        for code in [
+            "access_denied",
+            "invalid_scope",
+            "interaction_required",
+            "redirect_uri_mismatch",
+        ] {
+            assert_eq!(error_code(code), Some(code));
+        }
+        let too_long = "a".repeat(ERROR_CODE_CHARS + 1);
+        for text in [
+            "",
+            "Invalid_Client",
+            "rotate the secret",
+            "server_error\n",
+            "a-b",
+            too_long.as_str(),
+        ] {
+            assert_eq!(error_code(text), None, "{text:?}");
+        }
+    }
+
+    #[test]
+    fn a_browser_report_keeps_only_its_code_and_never_replaces_what_the_server_saw() {
+        let registry = registry();
+        registry.note_reported_error("github", 1_000, "Visit https://evil.example to fix this");
+        assert!(registry.problems(1_000).is_empty());
+        registry.note_reported_error("github", 1_000, "invalid_client");
+        let reported = registry.problems(1_000);
+        assert_eq!(reported.len(), 1);
+        assert_eq!(
+            reported[0].reason,
+            "invalid_client, as reported by the browser. The server could not check it."
+        );
+        registry.note_problem(
+            "github",
+            2_000,
+            "bad_verification_code: The code passed is incorrect or expired.",
+        );
+        registry.note_reported_error("github", 3_000, "server_error");
+        let seen = registry.problems(3_000);
+        assert_eq!(seen.len(), 1);
+        assert_eq!(seen[0].at, 2_000);
+        assert!(
+            seen[0].reason.starts_with("bad_verification_code"),
+            "{seen:?}"
+        );
+        registry.note_reported_error("github", 2_000 + PROBLEM_TTL_MS, "server_error");
+        let later = registry.problems(2_000 + PROBLEM_TTL_MS);
+        assert_eq!(later.len(), 1);
+        assert!(
+            later[0].reason.starts_with("server_error, as reported"),
+            "{later:?}"
+        );
+    }
+
+    #[test]
+    fn a_sign_in_problem_is_forgotten_after_a_day() {
+        let registry = registry();
+        registry.note_problem("github", 5_000, "the token endpoint answered 500");
+        assert_eq!(registry.problems(5_000 + PROBLEM_TTL_MS - 1).len(), 1);
+        assert!(registry.problems(5_000 + PROBLEM_TTL_MS).is_empty());
+        assert!(registry.problems(5_000).is_empty());
     }
 
     #[test]

@@ -21,8 +21,8 @@ use crate::auth::admission::{self, Applied, Via};
 use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
 use crate::auth::refresh::{self, RefreshOutcome};
 use crate::auth::{
-    browser_binding, db_error, device_code, devices, email_link, nonce, noting_failure, setup,
-    short, ExternalIdentity,
+    browser_binding, db_error, device_code, devices, email_link, error_code, nonce, noting_failure,
+    plain, setup, short, ExternalIdentity,
 };
 use crate::config::ServerConfig;
 use crate::error::ServerError;
@@ -450,13 +450,15 @@ async fn callback(
     let code = match (query.code, query.error.as_deref()) {
         (Some(code), None) => code,
         (_, error) => {
-            let error = short(error.unwrap_or("no_code"));
+            let error = error.unwrap_or("no_code");
+            let code = error_code(error);
             let description = query
                 .error_description
                 .as_deref()
                 .map(short)
                 .unwrap_or_default();
-            if cancelled_by_the_person(&state, &provider_id, &error, &description) {
+            if cancelled_by_the_person(&state, &provider_id, code.unwrap_or_default(), &description)
+            {
                 return conclude(
                     locale,
                     &state,
@@ -466,20 +468,16 @@ async fn callback(
             }
             tracing::warn!(
                 provider = %provider_id,
-                error = %error,
-                description = %description,
-                "the sign-in provider turned the sign-in down"
+                error = code.unwrap_or("not_an_error_code"),
+                "the sign-in came back with a provider error, described in the security log"
             );
-            let reason = if description.is_empty() {
-                error.clone()
-            } else {
-                format!("{error}: {description}")
-            };
-            state.providers.note_problem(&provider_id, now, &reason);
+            state
+                .providers
+                .note_reported_error(&provider_id, now, error);
             let detail = json!({
                 "provider": provider_id,
                 "reason": "provider_error",
-                "error": error,
+                "error": code.map_or_else(|| short(error), str::to_owned),
                 "description": description,
                 "device_code": pending.device_authorization.is_some()
             });
@@ -639,17 +637,14 @@ pub(crate) fn complete_sign_in(
                 NewSecurityEvent {
                     actor: None,
                     kind: SecurityEventKind::SignInRefused,
-                    target: Some(
-                        identity
-                            .login
-                            .clone()
-                            .unwrap_or_else(|| identity.subject.clone()),
-                    ),
+                    target: Some(plain(
+                        identity.login.as_deref().unwrap_or(&identity.subject),
+                    )),
                     ip,
                     detail: json!({
                         "provider": identity.provider_id,
-                        "issuer": identity.issuer,
-                        "subject": identity.subject,
+                        "issuer": plain(&identity.issuer),
+                        "subject": plain(&identity.subject),
                         "reason": reason,
                         "device_code": pending.device_authorization.is_some()
                     }),
