@@ -254,6 +254,34 @@ describe("LinkIntake", () => {
     expect(screen.queryByTestId("collab-link-notice")).not.toBeInTheDocument();
   });
 
+  it("takes the same link again right after the person declined it", async () => {
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    const user = userEvent.setup();
+    const view = deliver([OPEN]);
+    const first = await screen.findByRole("dialog", { name: copy.confirm.title });
+    await user.click(within(first).getByRole("button", { name: enCommon.actions.cancel }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: copy.confirm.title })).not.toBeInTheDocument());
+    view.rerender(<LinkIntake links={[OPEN]} onTaken={onTaken} />);
+    expect(await screen.findByRole("dialog", { name: copy.confirm.title })).toBeInTheDocument();
+    expect(mocks.collabLinkPreview).toHaveBeenCalledTimes(2);
+  });
+
+  it("takes the same link again right after the person stopped its download", async () => {
+    const join = deferred<string>();
+    mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
+    mocks.collabOpenLink.mockReturnValueOnce(join.promise);
+    mocks.collabJoinCancel.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    const view = deliver([OPEN]);
+    await joinWhenAsked(user);
+    const opening = await screen.findByTestId("collab-link-opening");
+    await user.click(within(opening).getByRole("button", { name: enCommon.actions.cancel }));
+    await act(async () => join.reject(collabError("cancelled")));
+    await waitFor(() => expect(screen.queryByTestId("collab-link-opening")).toBeNull());
+    view.rerender(<LinkIntake links={[OPEN_SLASHED]} onTaken={onTaken} />);
+    expect(await screen.findByRole("dialog", { name: copy.confirm.title })).toBeInTheDocument();
+  });
+
   it("treats Escape as not joining", async () => {
     mocks.collabLinkPreview.mockResolvedValue(PREVIEW);
     const user = userEvent.setup();
