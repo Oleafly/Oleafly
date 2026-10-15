@@ -1041,6 +1041,7 @@
     "viewerBy": "{{name}} made you a viewer. You can read this project but not edit it.",
     "viewer": "You're now a viewer. You can read this project but not edit it.",
     "viewOnly": "You can view this shared project but not edit it.",
+    "connecting": "This shared project is still connecting, so it can't be changed yet. Try again in a moment.",
     "unsentReadOnly": "Your last changes to {{path}} weren't sent because you can only view this project now.",
     "unsentRefused": "Oleafly couldn't send your last changes to {{path}}, so they were dropped.",
     "removedBy": "{{name}} removed you from this project. Your copy stays on this computer and is no longer shared.",

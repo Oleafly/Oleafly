@@ -1041,6 +1041,7 @@
     "viewerBy": "Użytkownik {{name}} zmienił Twoją rolę na przeglądającego. Możesz czytać ten projekt, ale nie możesz go edytować.",
     "viewer": "Masz teraz rolę przeglądającego. Możesz czytać ten projekt, ale nie możesz go edytować.",
     "viewOnly": "Możesz przeglądać ten udostępniony projekt, ale nie możesz go edytować.",
+    "connecting": "Ten udostępniony projekt wciąż się łączy, więc nie można go jeszcze zmieniać. Spróbuj ponownie za chwilę.",
     "unsentReadOnly": "Twoje ostatnie zmiany w {{path}} nie zostały wysłane, bo możesz teraz tylko przeglądać ten projekt.",
     "unsentRefused": "Oleafly nie mógł wysłać Twoich ostatnich zmian w {{path}}, więc zostały odrzucone.",
     "removedBy": "Użytkownik {{name}} usunął Cię z tego projektu. Twoja kopia zostaje na tym komputerze i nie jest już udostępniana.",

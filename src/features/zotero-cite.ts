@@ -50,7 +50,7 @@ import {
   type HandListRequest,
 } from "./zotero-hand-bibliography";
 import { useFilesStore } from "@/store/files";
-import { SharedReadOnlyError, sharedBaseOption, sharedViewOnly } from "@/lib/shared-document-writes";
+import { sharedBaseOption, sharedWriteRefusal } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
@@ -327,9 +327,11 @@ async function writeText(
   exists: boolean,
   base: string | undefined,
 ): Promise<void> {
-  // A viewer's change stops here with one message. The files store would
-  // refuse it as well and say so in a toast of its own.
-  if (sharedViewOnly(projectId)) throw new SharedReadOnlyError();
+  // A viewer's change, or one while the project goes live, stops here with
+  // one message. The files store would refuse it as well and say so in a
+  // toast of its own.
+  const refusal = sharedWriteRefusal(projectId);
+  if (refusal) throw refusal;
   written.set(path, { projectId, text: next, previous: knownText(path) });
   const files = useFilesStore.getState();
   if (files.projectId !== projectId) throw new Error(i18n.t(($) => $.core.citation.projectChanged));

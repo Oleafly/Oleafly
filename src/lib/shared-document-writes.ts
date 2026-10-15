@@ -29,6 +29,29 @@ export function sharedViewOnly(projectId: string | null): boolean {
   return projectId !== null && gate.projectId === projectId && gate.viewer;
 }
 
+// While a shared project goes live, this person's role isn't known yet, so a
+// change made from inside the app waits until it is. Accepted now, it would be
+// written to the local file, which a viewer's copy must never get.
+export class SharedConnectingError extends Error {
+  constructor() {
+    super(i18n.t(($) => $.collab.access.connecting));
+    this.name = "SharedConnectingError";
+  }
+}
+
+export function sharedConnecting(projectId: string | null): boolean {
+  const gate = useCollabEditorGate.getState();
+  return projectId !== null && gate.projectId === projectId && gate.connecting;
+}
+
+// Why a change from inside the app can't be made to this project now, or null
+// when it can.
+export function sharedWriteRefusal(projectId: string | null): SharedReadOnlyError | SharedConnectingError | null {
+  if (sharedViewOnly(projectId)) return new SharedReadOnlyError();
+  if (sharedConnecting(projectId)) return new SharedConnectingError();
+  return null;
+}
+
 export async function writeSharedText(
   projectId: string,
   path: string,

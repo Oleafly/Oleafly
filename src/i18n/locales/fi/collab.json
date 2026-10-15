@@ -1041,6 +1041,7 @@
     "viewerBy": "{{name}} muutti sinut katselijaksi. Voit lukea projektia mutta et muokata sitä.",
     "viewer": "Olet nyt katselija. Voit lukea projektia mutta et muokata sitä.",
     "viewOnly": "Voit katsoa tätä jaettua projektia, mutta et muokata sitä.",
+    "connecting": "Tätä jaettua projektia yhdistetään vielä, joten sitä ei voi vielä muuttaa. Yritä hetken päästä uudelleen.",
     "unsentReadOnly": "Viimeisimpiä muutoksiasi tiedostoon {{path}} ei lähetetty, koska voit nyt vain katsella tätä projektia.",
     "unsentRefused": "Oleafly ei voinut lähettää viimeisimpiä muutoksiasi tiedostoon {{path}}, joten ne hylättiin.",
     "removedBy": "{{name}} poisti sinut tästä projektista. Kopiosi jää tälle tietokoneelle eikä sitä enää jaeta.",

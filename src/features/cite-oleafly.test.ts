@@ -331,7 +331,7 @@ describe("citeOleafly in a live shared project", () => {
     try {
       useFilesStore.setState({ files: { "refs.bib": { content: "" } } } as never);
       target.mockResolvedValue({ path: "refs.bib", exists: true, content: "" });
-      expect(await citeOleafly()).toEqual({ kind: "read-only", path: "refs.bib" });
+      expect(await citeOleafly()).toEqual({ kind: "refused", message: enCollab.access.viewOnly });
       await runCiteOleaflyAction();
       expect(toasts.error).toHaveBeenCalledExactlyOnceWith(enCollab.access.viewOnly);
       expect(setContent).not.toHaveBeenCalled();

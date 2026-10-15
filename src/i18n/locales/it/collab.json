@@ -1041,6 +1041,7 @@
     "viewerBy": "{{name}} ti ha reso visualizzatore. Puoi leggere questo progetto, ma non modificarlo.",
     "viewer": "Ora sei un visualizzatore. Puoi leggere questo progetto, ma non modificarlo.",
     "viewOnly": "Puoi vedere questo progetto condiviso, ma non modificarlo.",
+    "connecting": "Questo progetto condiviso si sta ancora collegando, quindi non può ancora essere modificato. Riprova tra un momento.",
     "unsentReadOnly": "Le tue ultime modifiche a {{path}} non sono state inviate perché ora puoi solo visualizzare questo progetto.",
     "unsentRefused": "Oleafly non è riuscito a inviare le tue ultime modifiche a {{path}}, quindi sono state scartate.",
     "removedBy": "{{name}} ti ha rimosso da questo progetto. La tua copia resta su questo computer e non è più condivisa.",

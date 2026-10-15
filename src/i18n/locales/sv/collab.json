@@ -1041,6 +1041,7 @@
     "viewerBy": "{{name}} har gjort dig till läsare. Du kan läsa projektet men inte redigera det.",
     "viewer": "Du är nu läsare. Du kan läsa projektet men inte redigera det.",
     "viewOnly": "Du kan visa det här delade projektet men inte redigera det.",
+    "connecting": "Det här delade projektet ansluter fortfarande, så det går inte att ändra ännu. Försök igen om en liten stund.",
     "unsentReadOnly": "Dina senaste ändringar i {{path}} skickades inte eftersom du nu bara kan visa det här projektet.",
     "unsentRefused": "Oleafly kunde inte skicka dina senaste ändringar i {{path}}, så de kastades.",
     "removedBy": "{{name}} tog bort dig från det här projektet. Din kopia finns kvar på den här datorn och delas inte längre.",

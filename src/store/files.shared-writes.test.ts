@@ -311,6 +311,36 @@ describe("a viewer's change from an in-app writer", () => {
   });
 });
 
+describe("a change from an in-app writer while the project goes live", () => {
+  function connecting(): void {
+    useCollabEditorGate.setState({ projectId: "project", viewer: false, connecting: true });
+  }
+
+  it("never reaches the buffer or the local file, since the role isn't known yet", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    connecting();
+    expect(useFilesStore.getState().setContent("main.tex", "a\nb\n")).toBe(false);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: "a\n", dirty: false });
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith("collab-connecting", enCollab.access.connecting);
+    await expect(useFilesStore.getState().writeProjectFile("project", "refs.bib", "@book{new}\n")).rejects.toThrow(
+      enCollab.access.connecting,
+    );
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+    expect(mocks.collabWriteText).not.toHaveBeenCalled();
+  });
+
+  it("is taken once the project is live and the person can edit", async () => {
+    mocks.readFileContent.mockResolvedValue("a\n");
+    await useFilesStore.getState().openFile("main.tex");
+    connecting();
+    useFilesStore.getState().setContent("main.tex", "a\nb\n");
+    goLive();
+    expect(useFilesStore.getState().setContent("main.tex", "a\nb\n")).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"]).toMatchObject({ content: "a\nb\n", dirty: true });
+  });
+});
+
 describe("text a live session hands back to local editing", () => {
   it("merges into a project that is still live from the text the shared document confirmed", async () => {
     goLive();

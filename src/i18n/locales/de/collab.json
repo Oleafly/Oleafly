@@ -1041,6 +1041,7 @@
     "viewerBy": "{{name}} hat Sie zum Betrachter gemacht. Sie können dieses Projekt lesen, aber nicht bearbeiten.",
     "viewer": "Sie sind jetzt Betrachter. Sie können dieses Projekt lesen, aber nicht bearbeiten.",
     "viewOnly": "Sie können dieses geteilte Projekt ansehen, aber nicht bearbeiten.",
+    "connecting": "Dieses geteilte Projekt wird noch verbunden und kann daher noch nicht geändert werden. Versuchen Sie es gleich noch einmal.",
     "unsentReadOnly": "Ihre letzten Änderungen an {{path}} wurden nicht gesendet, weil Sie dieses Projekt jetzt nur ansehen können.",
     "unsentRefused": "Oleafly konnte Ihre letzten Änderungen an {{path}} nicht senden, daher wurden sie verworfen.",
     "removedBy": "{{name}} hat Sie aus diesem Projekt entfernt. Ihre Kopie bleibt auf diesem Computer und wird nicht mehr geteilt.",

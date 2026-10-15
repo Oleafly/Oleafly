@@ -1041,6 +1041,7 @@
     "viewerBy": "{{name}} sizi görüntüleyen yaptı. Bu projeyi okuyabilirsiniz ancak düzenleyemezsiniz.",
     "viewer": "Artık görüntüleyensiniz. Bu projeyi okuyabilirsiniz ancak düzenleyemezsiniz.",
     "viewOnly": "Bu paylaşılan projeyi görüntüleyebilirsiniz ama düzenleyemezsiniz.",
+    "connecting": "Bu paylaşılan proje hâlâ bağlanıyor, bu yüzden henüz değiştirilemez. Birazdan yeniden deneyin.",
     "unsentReadOnly": "Bu projeyi artık yalnızca görüntüleyebildiğiniz için {{path}} dosyasındaki son değişiklikleriniz gönderilmedi.",
     "unsentRefused": "Oleafly, {{path}} dosyasındaki son değişikliklerinizi gönderemediği için bunlar atıldı.",
     "removedBy": "{{name}} sizi bu projeden çıkardı. Kopyanız bu bilgisayarda kalır ve artık paylaşılmaz.",
