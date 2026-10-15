@@ -34,8 +34,8 @@ const mocks = vi.hoisted(() => ({
   collabGuestInvitations: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabProjectSummary: mocks.collabProjectSummary,
   collabMembersList: mocks.collabMembersList,
   collabCommentsStatus: mocks.collabCommentsStatus,

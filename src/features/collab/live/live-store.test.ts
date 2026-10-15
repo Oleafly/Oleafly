@@ -41,7 +41,8 @@ function listener(name: string) {
   });
 }
 
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", () => ({}));
+vi.mock("@/lib/tauri-collab", () => ({
   collabShareInfo: mocks.collabShareInfo,
   collabLiveStart: mocks.collabLiveStart,
   collabLiveStop: mocks.collabLiveStop,

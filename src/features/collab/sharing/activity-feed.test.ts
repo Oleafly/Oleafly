@@ -20,8 +20,8 @@ const skipped = vi.hoisted(() => ({
   unlisten: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   onCollabLiveRenamed: vi.fn(async (handler: (payload: CollabLiveRenamed) => void) => {
     renamed.handler = handler;
     return renamed.unlisten;
@@ -256,7 +256,7 @@ describe("startCollabActivity", () => {
   });
 
   it("keeps the feed working when it cannot listen for renames", async () => {
-    const { onCollabLiveRenamed } = await import("@/lib/tauri");
+    const { onCollabLiveRenamed } = await import("@/lib/tauri-collab");
     vi.mocked(onCollabLiveRenamed).mockRejectedValueOnce(new Error("no bridge"));
     joined();
     stop = startCollabActivity();

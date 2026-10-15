@@ -10,6 +10,13 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
+import type {
+  CollabCommentsStatus,
+  CollabPerson,
+  CollabProjectMember,
+  CollabProjectSummary,
+  CollabShareInfo,
+} from "@/lib/tauri";
 import {
   collabAccessLogSetEnabled,
   collabCommentsSetEnabled,
@@ -22,12 +29,7 @@ import {
   collabPeopleSearch,
   collabProjectSummary,
   collabStopSharing,
-  type CollabCommentsStatus,
-  type CollabPerson,
-  type CollabProjectMember,
-  type CollabProjectSummary,
-  type CollabShareInfo,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useBusyRows } from "../busy-rows";
 import { looksLikeEmailAddress } from "../address-checks";
 import { collabErrorText } from "../errors";

@@ -1,5 +1,14 @@
 import { create } from "zustand";
 import { logError } from "@/lib/log";
+import type {
+  CollabErrorCode,
+  CollabLiveKept,
+  CollabLiveKeptFile,
+  CollabLiveUploads,
+  CollabLocalCopyOffer,
+  CollabUploadFile,
+  CollabUploadProgress,
+} from "@/lib/tauri";
 import {
   collabLocalCopyBringIn,
   collabLocalCopyDecline,
@@ -10,14 +19,7 @@ import {
   onCollabLiveKept,
   onCollabLiveUploads,
   onCollabUploadProgress,
-  type CollabErrorCode,
-  type CollabLiveKept,
-  type CollabLiveKeptFile,
-  type CollabLiveUploads,
-  type CollabLocalCopyOffer,
-  type CollabUploadFile,
-  type CollabUploadProgress,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
 import { useCollabLiveStore } from "./live-store";

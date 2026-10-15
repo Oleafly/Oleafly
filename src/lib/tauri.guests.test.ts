@@ -8,7 +8,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: vi.fn() 
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 
-import * as tauri from "./tauri";
+import * as tauri from "./tauri-collab";
 
 const SERVER = "0192f5a4-7b1c-7d2e-8f3a-1b2c3d4e5f60";
 const PROJECT = "grant-proposal";

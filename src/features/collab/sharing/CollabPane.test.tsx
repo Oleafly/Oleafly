@@ -38,8 +38,8 @@ vi.mock("@/lib/open-location", async (importOriginal) => ({
   openProjectLocation: spies.openProjectLocation,
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabTrashList: vi.fn(async () => []),
   collabTrashRestore: vi.fn(async () => undefined),
   collabAccessLogStatus: vi.fn(async () => ({ serverAllowed: true, enabled: true })),

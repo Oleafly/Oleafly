@@ -11,7 +11,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: vi.fn() 
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 
-import * as tauri from "./tauri";
+import * as tauri from "./tauri-collab";
 
 beforeEach(() => {
   mocks.invoke.mockReset().mockResolvedValue(undefined);

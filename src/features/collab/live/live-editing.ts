@@ -11,7 +11,7 @@ import {
   collabLiveFlush,
   collabPresenceLeave,
   collabPresenceSet,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";

@@ -1,6 +1,5 @@
 import { i18n } from "@/i18n";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
-import { collabWriteText } from "@/lib/tauri";
 
 export function sharedDocumentLive(projectId: string | null): boolean {
   const gate = useCollabEditorGate.getState();
@@ -62,6 +61,9 @@ export async function writeSharedText(
   if (useCollabEditorGate.getState().viewer) throw new SharedReadOnlyError();
   let handled: boolean;
   try {
+    // Loaded with collaboration, never with the window: a project is only
+    // live once collaboration runs.
+    const { collabWriteText } = await import("@/lib/tauri-collab");
     const outcome = await collabWriteText(projectId, path, base == null ? null : lf(base), lf(text));
     if (!outcome.handled && outcome.reason === "read_only") throw new SharedReadOnlyError();
     handled = outcome.handled;

@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { i18n, loadNamespace } from "@/i18n";
 import { logError } from "@/lib/log";
+import type {
+  CollabErrorCode,
+  CollabProjectSummary,
+  CollabServer,
+} from "@/lib/tauri";
 import {
   collabLinkPreview,
   collabOpenLink,
   collabShareInfo,
-  type CollabErrorCode,
-  type CollabProjectSummary,
-  type CollabServer,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { AddServerDialog } from "../AddServerDialog";

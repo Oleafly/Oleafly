@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { formatDateTime } from "@/lib/intl";
+import type {
+  CollabMember,
+  CollabProjectRole,
+  CollabSecurityEvent,
+  CollabSecurityLogKind,
+} from "@/lib/tauri";
 import {
   collabAdminSecurityLog,
-  type CollabMember,
-  type CollabProjectRole,
-  type CollabSecurityEvent,
-  type CollabSecurityLogKind,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";
 import { toServerRole } from "./roles";

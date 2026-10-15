@@ -15,8 +15,8 @@ const mocks = vi.hoisted(() => ({
   rows: 0,
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabCommentThreadList: mocks.collabCommentThreadList,
 }));
 

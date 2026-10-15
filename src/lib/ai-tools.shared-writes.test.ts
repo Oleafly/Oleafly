@@ -49,6 +49,7 @@ vi.mock("@oleafly/ai-tools", async (importOriginal) => {
   };
 });
 vi.mock("@/lib/tauri", () => mocks.api);
+vi.mock("@/lib/tauri-collab", () => mocks.api);
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => mocks.files, setState: vi.fn() },
 }));

@@ -18,7 +18,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: vi.fn() 
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 
-import * as tauri from "./tauri";
+import * as tauri from "./tauri-collab";
 
 const SERVER = "0192f5a4-7b1c-7d2e-8f3a-1b2c3d4e5f60";
 const ACCOUNT = "0192f5a4-7b1c-7d2e-8f3a-1b2c3d4e5f61";
@@ -282,13 +282,13 @@ describe("collaboration command drift", () => {
       (match) => match[1],
     );
     expect(live).toContain("collab_live_reconnect_now");
-    const wrappers = read("./tauri.ts");
+    const wrappers = read("./tauri-collab.ts");
     for (const name of live) expect(wrappers).toContain(`"${name}"`);
     expect(read("../../packages/backend-port/src/index.ts")).toContain("collabLiveReconnectNow:");
   });
 
-  it("gives every registered command a wrapper and a contract entry", () => {
-    const wrappers = read("./tauri.ts");
+  it("gives every registered command a wrapper in the collaboration module and a contract entry", () => {
+    const wrappers = read("./tauri-collab.ts");
     const contract = read("../../packages/backend-port/src/index.ts");
     for (const name of registered) {
       expect(wrappers).toContain(`"${name}"`);

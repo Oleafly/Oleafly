@@ -1,6 +1,6 @@
 import { openCommentThread } from "@/components/collab/comments-rail";
 import { logError } from "@/lib/log";
-import { collabCommentFilePath } from "@/lib/tauri";
+import { collabCommentFilePath } from "@/lib/tauri-collab";
 import { useComments } from "../comments/comments-store";
 import type { CommentTarget } from "./app-link";
 

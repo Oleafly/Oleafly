@@ -1,5 +1,6 @@
 import { i18n } from "@/i18n";
-import { isCollabCommentError, type CollabCommentErrorCode } from "@/lib/tauri";
+import type { CollabCommentErrorCode } from "@/lib/tauri";
+import { isCollabCommentError } from "@/lib/tauri-collab";
 import { collabErrorText } from "../errors";
 
 const REFUSALS: Readonly<Record<CollabCommentErrorCode, () => string>> = {

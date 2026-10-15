@@ -13,7 +13,8 @@ const mocks = vi.hoisted(() => ({
   refreshProjects: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", () => ({}));
+vi.mock("@/lib/tauri-collab", () => ({
   collabTrashRestore: mocks.collabTrashRestore,
   collabLiveFlush: mocks.collabLiveFlush,
   collabLiveRemovedList: mocks.collabLiveRemovedList,

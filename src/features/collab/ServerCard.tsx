@@ -9,13 +9,15 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { formatNumber } from "@/lib/intl";
+import type {
+  CollabAccount,
+  CollabServer,
+  CollabUnsentProject,
+} from "@/lib/tauri";
 import {
   collabServerDevices,
   collabServerSignOutDevice,
-  type CollabAccount,
-  type CollabServer,
-  type CollabUnsentProject,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { openAdminConsole } from "./console/open-console";
 import { ConnectionChecks } from "./ConnectionChecks";
 import { DevicesList } from "./DevicesList";

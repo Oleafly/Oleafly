@@ -1,6 +1,27 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
+import type {
+  CollabCommentNotSent,
+  CollabCommentsNotSent,
+  CollabErrorCode,
+  CollabLiveEndedReason,
+  CollabLiveMembers,
+  CollabLiveMerged,
+  CollabLiveNewDevice,
+  CollabLiveRole,
+  CollabLiveSyncState,
+  CollabLiveStatus,
+  CollabLiveUnwritten,
+  CollabLiveWritten,
+  CollabPerson,
+  CollabPresence,
+  CollabPresenceLeft,
+  CollabProjectMember,
+  CollabProjectRole,
+  CollabServerChanged,
+  CollabShareInfo,
+} from "@/lib/tauri";
 import {
   collabLiveStart,
   collabLiveStop,
@@ -19,26 +40,7 @@ import {
   onCollabPresence,
   onCollabPresenceLeft,
   onCollabServerChanged,
-  type CollabCommentNotSent,
-  type CollabCommentsNotSent,
-  type CollabErrorCode,
-  type CollabLiveEndedReason,
-  type CollabLiveMembers,
-  type CollabLiveMerged,
-  type CollabLiveNewDevice,
-  type CollabLiveRole,
-  type CollabLiveSyncState,
-  type CollabLiveStatus,
-  type CollabLiveUnwritten,
-  type CollabLiveWritten,
-  type CollabPerson,
-  type CollabPresence,
-  type CollabPresenceLeft,
-  type CollabProjectMember,
-  type CollabProjectRole,
-  type CollabServerChanged,
-  type CollabShareInfo,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { refreshDiskSnapshots, useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
 import { isReadOnlyProjectRole } from "../roles";

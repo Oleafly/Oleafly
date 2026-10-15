@@ -27,7 +27,8 @@ const mocks = vi.hoisted(() => ({
   pathDeletes: new Set<(event: { projectId: string; path: string }) => void>(),
 }));
 
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", () => ({}));
+vi.mock("@/lib/tauri-collab", () => ({
   collabDocOpen: mocks.collabDocOpen,
   collabDocChange: mocks.collabDocChange,
   collabDocClose: mocks.collabDocClose,

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useTreeClashes } from "@/components/collab/tree-clashes";
 import { logError } from "@/lib/log";
-import { collabTreeClashes, type CollabTreeClash } from "@/lib/tauri";
+import type { CollabTreeClash } from "@/lib/tauri";
+import { collabTreeClashes } from "@/lib/tauri-collab";
 import { useLiveTree } from "./tree-version";
 
 const NONE: readonly CollabTreeClash[] = [];

@@ -1,5 +1,13 @@
 import { create } from "zustand";
 import { logError } from "@/lib/log";
+import type {
+  CollabErrorCode,
+  CollabDetachedProject,
+  CollabServer,
+  CollabSignInCode,
+  CollabSignOut,
+  CollabUnsentProject,
+} from "@/lib/tauri";
 import {
   collabServerCodeSignIn,
   collabServerRefresh,
@@ -8,13 +16,7 @@ import {
   collabServerSignOut,
   collabServersList,
   onCollabServerChanged,
-  type CollabErrorCode,
-  type CollabDetachedProject,
-  type CollabServer,
-  type CollabSignInCode,
-  type CollabSignOut,
-  type CollabUnsentProject,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { collabErrorCode } from "./errors";
 import { followLocalCopies } from "./live/removed-notices";
 

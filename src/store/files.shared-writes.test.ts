@@ -37,10 +37,12 @@ vi.mock("@/lib/tauri", () => ({
   }),
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
-  collabWriteText: mocks.collabWriteText,
   projectTexStatus: mocks.projectTexStatus,
   listProjects: vi.fn(async () => []),
   mcpSetActiveProject: mocks.mcpSetActiveProject,
+}));
+vi.mock("@/lib/tauri-collab", () => ({
+  collabWriteText: mocks.collabWriteText,
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({

@@ -19,7 +19,8 @@ const mocks = vi.hoisted(() => ({
   progressHandler: null as null | ((payload: CollabUploadProgress) => void),
 }));
 
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", () => ({}));
+vi.mock("@/lib/tauri-collab", () => ({
   collabUploadList: mocks.collabUploadList,
   collabUploadRetry: mocks.collabUploadRetry,
   collabUploadDismiss: mocks.collabUploadDismiss,

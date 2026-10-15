@@ -5,13 +5,15 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/intl";
+import type {
+  CollabGuestInvitation,
+} from "@/lib/tauri";
 import {
   collabAdminGuestApprove,
   collabAdminGuestDecline,
   collabAdminGuestInvitations,
   collabAdminGuestRevoke,
-  type CollabGuestInvitation,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useBusyRows } from "./busy-rows";
 import { collabErrorText } from "./errors";
 import { InlineAlert, LoadFailed } from "./feedback";

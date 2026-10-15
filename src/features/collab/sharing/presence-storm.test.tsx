@@ -25,8 +25,8 @@ function listener(name: string) {
   };
 }
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabShareInfo: vi.fn(async () => STORM_SHARE),
   collabLiveStart: vi.fn(async () => ({ role: "editor", account_id: SELF_ID, device_id: "device-self" })),
   collabLiveStop: vi.fn(async () => undefined),

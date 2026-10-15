@@ -8,8 +8,8 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabCommentFilePath: mocks.collabCommentFilePath,
 }));
 vi.mock("@/components/collab/comments-rail", async (importOriginal) => ({

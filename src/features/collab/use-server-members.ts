@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { collabAdminMembers, type CollabMember } from "@/lib/tauri";
+import type { CollabMember } from "@/lib/tauri";
+import { collabAdminMembers } from "@/lib/tauri-collab";
 import { collabErrorText } from "./errors";
 import type { MembersUpdate } from "./MembersTab";
 

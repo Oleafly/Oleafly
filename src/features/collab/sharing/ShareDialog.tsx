@@ -11,15 +11,17 @@ import { Spinner } from "@/components/ui/spinner";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber } from "@/lib/intl";
 import { isFolderProject } from "@/lib/library-projects";
+import type {
+  CollabServer,
+  CollabShareCheck,
+  CollabShareInfo,
+} from "@/lib/tauri";
 import {
   collabShareCheck,
   collabShareInfo,
   collabShareProject,
   onCollabShareProgress,
-  type CollabServer,
-  type CollabShareCheck,
-  type CollabShareInfo,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { collabErrorCode, collabErrorText } from "../errors";

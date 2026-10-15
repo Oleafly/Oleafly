@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
   collabWriteText: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", () => ({ collabWriteText: mocks.collabWriteText }));
+vi.mock("@/lib/tauri", () => ({}));
+vi.mock("@/lib/tauri-collab", () => ({
+  collabWriteText: mocks.collabWriteText,
+}));
 
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { SharedReadOnlyError, sharedBaseOption, sharedDocumentLive, writeSharedText } from "./shared-document-writes";

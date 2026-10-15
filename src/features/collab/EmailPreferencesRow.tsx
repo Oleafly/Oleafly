@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { AtSign, Mail } from "lucide-react";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { Button } from "@/components/ui/button";
-import { collabEmailPreferences, collabSetEmailPreferences, type CollabEmailPreferences } from "@/lib/tauri";
+import type { CollabEmailPreferences } from "@/lib/tauri";
+import { collabEmailPreferences, collabSetEmailPreferences } from "@/lib/tauri-collab";
 import { collabErrorText } from "./errors";
 import { InlineAlert } from "./feedback";
 

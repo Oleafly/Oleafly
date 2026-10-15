@@ -1,14 +1,16 @@
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { logError } from "@/lib/log";
+import type {
+  CollabChangeSkipped,
+  CollabLiveRenamed,
+  CollabLiveSettings,
+  CollabProjectMember,
+} from "@/lib/tauri";
 import {
   onCollabChangeSkipped,
   onCollabLiveRenamed,
   onCollabLiveSettings,
-  type CollabChangeSkipped,
-  type CollabLiveRenamed,
-  type CollabLiveSettings,
-  type CollabProjectMember,
-} from "@/lib/tauri";
+} from "@/lib/tauri-collab";
 import { useCollabLiveStore, type CollabLiveStoreState, type LivePeer } from "../live/live-store";
 import { useCollabActivity, type NewActivity } from "./activity-store";
 

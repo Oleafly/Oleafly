@@ -17,11 +17,13 @@ vi.mock("@/lib/tauri", () => ({
   gitShow: mocks.gitShow,
   readFileContent: mocks.readFileContent,
   writeFileContent: mocks.writeFileContent,
-  collabWriteText: mocks.collabWriteText,
   projectMutationGeneration: mocks.projectMutationGeneration,
   projectManifestHome: vi.fn(async () => "library"),
   mcpSetActiveProject: vi.fn(async () => {}),
   listProjects: vi.fn(async () => []),
+}));
+vi.mock("@/lib/tauri-collab", () => ({
+  collabWriteText: mocks.collabWriteText,
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/toast", () => ({

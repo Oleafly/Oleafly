@@ -14,8 +14,8 @@ const mocks = vi.hoisted(() => ({
   collabLocalCopyDecline: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabUploadRetry: mocks.collabUploadRetry,
   collabUploadDismiss: mocks.collabUploadDismiss,
   collabLocalCopyBringIn: mocks.collabLocalCopyBringIn,
