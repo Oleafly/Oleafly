@@ -247,6 +247,15 @@ function lfEdits(edits: Utf16Edit[]): Utf16Edit[] {
 // CRLF or a lone carriage return can't make the editor and the session count
 // the text differently. Remote changes and the session's own text stay as the
 // session sent them.
+//
+// Undo and redo dispatch with `filter: false`, so they skip this filter, and
+// need nothing of their own. History records the change this filter already
+// rewrote, so a redo puts back line feeds. An undo puts back text the document
+// held, and a bound document never holds a carriage return: an unbound
+// editor splits lines on every break and keeps none, local inserts are
+// rewritten here, and the shared text is LF only, since the desktop writes
+// LF into it. If one ever got in, the length check after each change would
+// take the session's text back.
 const lfLocalInserts = EditorState.transactionFilter.of((transaction) => {
   if (!transaction.docChanged || transaction.annotation(remoteChange) || transaction.annotation(documentLoad)) {
     return transaction;
