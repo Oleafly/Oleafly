@@ -70,7 +70,7 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
-const PASSED_THROUGH: [&str; 21] = [
+const PASSED_THROUGH: [&str; 23] = [
     "not_admitted",
     "setup_code_invalid",
     "device_in_use",
@@ -92,6 +92,8 @@ const PASSED_THROUGH: [&str; 21] = [
     "share_in_progress",
     "cancelled",
     "cloud_synced",
+    "owner_away",
+    "wrong_server",
 ];
 
 fn api_code(status: u16, code: &str) -> &'static str {
@@ -1615,7 +1617,7 @@ mod tests {
         );
     }
 
-    const NEW_CODES: [(u16, &str); 20] = [
+    const NEW_CODES: [(u16, &str); 22] = [
         (400, "invalid_domain"),
         (400, "invalid_email"),
         (400, "invalid_login"),
@@ -1636,6 +1638,8 @@ mod tests {
         (400, "setup_code_invalid"),
         (409, "device_in_use"),
         (404, "server_unknown"),
+        (409, "owner_away"),
+        (400, "wrong_server"),
     ];
 
     #[test]
@@ -1678,7 +1682,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs the frontend's CollabErrorCode additions from contracts C-5, C-7, C-11, C-12 and C-13; run once both sides are merged"]
     fn every_code_added_for_refusals_is_one_the_frontend_knows() {
         let contract = include_str!("../../../packages/backend-port/src/index.ts");
         let start = contract
