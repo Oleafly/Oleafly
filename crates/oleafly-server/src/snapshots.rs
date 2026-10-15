@@ -66,6 +66,7 @@ pub struct Snapshots {
     policy: Arc<RwLock<Policy>>,
     budget: Arc<RwLock<Budget>>,
     reserved: Arc<RwLock<u64>>,
+    freeing: Arc<AtomicU64>,
     reported: Arc<RwLock<HashMap<SharedProjectId, u64>>>,
     reads: Arc<AtomicU64>,
     building: Running,
@@ -187,6 +188,29 @@ impl Budgeted {
         let bytes = replay.finish()?;
         reserved.shrink_to(bytes.len() as u64);
         Some((bytes, reserved))
+    }
+}
+
+// Giving back a large document's memory takes long enough to hold up the
+// other tasks on an async worker, so documents whose share of the budget is
+// at least this are dropped on a blocking thread.
+const FREE_APART_BYTES: u64 = 4 * 1024 * 1024;
+
+// Documents on their way to a blocking thread. Each keeps its share of the
+// budget counted until its memory is back, and is dropped here even when the
+// blocking thread never runs because the runtime is stopping.
+struct Freeing {
+    documents: Vec<Budgeted>,
+    counted: Arc<AtomicU64>,
+}
+
+impl Drop for Freeing {
+    fn drop(&mut self) {
+        for Budgeted { replay, reserved } in self.documents.drain(..) {
+            drop(replay);
+            self.counted.fetch_sub(reserved.bytes, Ordering::SeqCst);
+            drop(reserved);
+        }
     }
 }
 
@@ -406,6 +430,7 @@ impl Snapshots {
             policy: Arc::new(RwLock::new(Policy::default())),
             budget: Arc::new(RwLock::new(Budget::default())),
             reserved: Arc::new(RwLock::new(0)),
+            freeing: Arc::new(AtomicU64::new(0)),
             reported: Arc::new(RwLock::new(HashMap::new())),
             reads: Arc::new(AtomicU64::new(0)),
             building: Arc::new(std::sync::Mutex::new(HashMap::new())),
@@ -475,9 +500,33 @@ impl Snapshots {
         self.store(db, project, 0, bytes, by, signed, now).await
     }
 
+    // Drops documents without holding up the async worker this runs on:
+    // large ones go to a blocking thread. Their share of the budget stays
+    // counted until they are gone, but a reservation can count on it.
+    pub(crate) fn free(&self, documents: impl IntoIterator<Item = Budgeted>) {
+        let (large, small): (Vec<Budgeted>, Vec<Budgeted>) = documents
+            .into_iter()
+            .partition(|document| document.reserved_bytes() >= FREE_APART_BYTES);
+        drop(small);
+        if large.is_empty() {
+            return;
+        }
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            drop(large);
+            return;
+        };
+        let bytes: u64 = large.iter().map(Budgeted::reserved_bytes).sum();
+        self.freeing.fetch_add(bytes, Ordering::SeqCst);
+        let freeing = Freeing {
+            documents: large,
+            counted: Arc::clone(&self.freeing),
+        };
+        drop(runtime.spawn_blocking(move || drop(freeing)));
+    }
+
     // Kept documents give their memory back when a reservation needs it,
     // least recently used first, so only documents in use and builds can
-    // make a reservation wait.
+    // make a reservation wait. Memory still being given back counts as free.
     fn reserve(&self, bytes: u64) -> Option<Reserved> {
         loop {
             let limit = self.budget().memory_bytes;
@@ -486,18 +535,23 @@ impl Snapshots {
                     .reserved
                     .write()
                     .unwrap_or_else(PoisonError::into_inner);
-                if held.saturating_add(bytes) <= limit {
+                let staying = held.saturating_sub(self.freeing.load(Ordering::SeqCst));
+                if staying.saturating_add(bytes) <= limit {
                     *held += bytes;
                     return Some(Reserved {
                         held: Arc::clone(&self.reserved),
                         bytes,
                     });
                 }
-                if held.saturating_sub(self.kept.bytes()).saturating_add(bytes) > limit {
+                if staying
+                    .saturating_sub(self.kept.bytes())
+                    .saturating_add(bytes)
+                    > limit
+                {
                     return None;
                 }
             }
-            drop(self.kept.least_recent()?);
+            self.free([self.kept.least_recent()?]);
         }
     }
 
@@ -1731,6 +1785,131 @@ mod tests {
         tokio::time::advance(Duration::from_secs(2 * 60)).await;
         assert_eq!(snapshots.sweep_kept(), 1);
         assert_eq!(snapshots.kept_bytes(), 0);
+    }
+
+    // Holds the runtime's only blocking thread, so a document sent there to
+    // be freed waits until `let_go`.
+    struct HeldThread {
+        release: std::sync::mpsc::Sender<()>,
+        held: tokio::task::JoinHandle<()>,
+    }
+
+    impl HeldThread {
+        fn hold() -> HeldThread {
+            let (release, wait) = std::sync::mpsc::channel::<()>();
+            let held = tokio::task::spawn_blocking(move || {
+                let _ = wait.recv();
+            });
+            HeldThread { release, held }
+        }
+
+        // Lets the thread go and waits for everything queued behind it.
+        async fn let_go(self) {
+            drop(self.release);
+            self.held.await.unwrap();
+            tokio::task::spawn_blocking(|| ()).await.unwrap();
+        }
+    }
+
+    async fn large_document(
+        snapshots: &Snapshots,
+        db: &Db,
+        project: SharedProjectId,
+    ) -> (Budgeted, u64) {
+        let (mut document, head) = snapshots
+            .current(db, project)
+            .await
+            .unwrap()
+            .expect("the document fits the budget");
+        assert!(document.grow(snapshots, FREE_APART_BYTES));
+        (document, head)
+    }
+
+    #[test]
+    fn large_documents_leaving_the_kept_pool_are_freed_on_a_blocking_thread() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .start_paused(true)
+            .max_blocking_threads(1)
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let (_dir, snapshots) = snapshots();
+            let db = Db::open_in_memory().unwrap();
+            let held = || *snapshots.reserved.read().unwrap();
+            let mut projects = Vec::new();
+            for _ in 0..4 {
+                projects.push(project_with_snapshot(&snapshots, &db, "Hello").await);
+            }
+            snapshots.set_budget(Budget {
+                memory_bytes: 64 << 20,
+                max_snapshot_bytes: 1 << 20,
+            });
+
+            let (document, head) = large_document(&snapshots, &db, projects[0]).await;
+            let size = document.reserved_bytes();
+            snapshots.keep(Keep::CommentChecks, projects[0], document, head);
+            tokio::time::advance(Duration::from_secs(16 * 60)).await;
+            let thread = HeldThread::hold();
+            assert_eq!(snapshots.sweep_kept(), 1);
+            assert_eq!(snapshots.kept_bytes(), 0);
+            assert_eq!(
+                held(),
+                size,
+                "a swept document is freed on the blocking thread"
+            );
+            thread.let_go().await;
+            assert_eq!(held(), 0);
+
+            let (document, head) = large_document(&snapshots, &db, projects[1]).await;
+            snapshots.keep(Keep::MentionScans, projects[1], document, head);
+            tokio::time::advance(Duration::from_secs(6 * 60)).await;
+            let thread = HeldThread::hold();
+            assert!(snapshots
+                .take_kept(Keep::CommentChecks, projects[0])
+                .is_none());
+            assert_eq!(snapshots.kept_bytes(), 0);
+            assert_eq!(
+                held(),
+                size,
+                "an idle document met on a take is freed apart"
+            );
+            thread.let_go().await;
+            assert_eq!(held(), 0);
+
+            snapshots.set_budget(Budget {
+                memory_bytes: 3 * size,
+                max_snapshot_bytes: 1 << 20,
+            });
+            let (older, older_head) = large_document(&snapshots, &db, projects[2]).await;
+            let (newer, newer_head) = large_document(&snapshots, &db, projects[3]).await;
+            let thread = HeldThread::hold();
+            snapshots.keep(Keep::CommentChecks, projects[2], older, older_head);
+            snapshots.keep(Keep::CommentChecks, projects[3], newer, newer_head);
+            assert_eq!(snapshots.kept_bytes(), size);
+            assert_eq!(held(), 2 * size, "a document pushed out is freed apart");
+            thread.let_go().await;
+            assert_eq!(held(), size);
+
+            snapshots.set_budget(Budget {
+                memory_bytes: size,
+                max_snapshot_bytes: 1 << 20,
+            });
+            let thread = HeldThread::hold();
+            let reserved = snapshots
+                .reserve(size)
+                .expect("the memory a kept document is giving back counts as free");
+            assert_eq!(snapshots.kept_bytes(), 0);
+            assert_eq!(
+                held(),
+                2 * size,
+                "a document given up for a reservation is freed apart"
+            );
+            thread.let_go().await;
+            assert_eq!(held(), size);
+            drop(reserved);
+            assert_eq!(held(), 0);
+        });
     }
 
     #[tokio::test]
