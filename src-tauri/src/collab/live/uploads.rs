@@ -26,6 +26,7 @@ pub enum UploadState {
     Waiting,
     Failed,
     TooLarge,
+    ProjectTooLarge,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -50,6 +51,7 @@ enum Outcome {
     Retry,
     Refused,
     TooLarge(Option<u64>),
+    ProjectTooLarge(Option<u64>),
 }
 
 struct Pending {
@@ -72,7 +74,13 @@ type Key = (SharedProjectId, DeviceId);
 
 static UPLOADS: LazyLock<Mutex<HashMap<Key, Uploads>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
-static LIMITS: LazyLock<Mutex<HashMap<ServerId, (u64, Instant)>>> =
+#[derive(Clone, Copy)]
+struct Limits {
+    file: u64,
+    project: u64,
+}
+
+static LIMITS: LazyLock<Mutex<HashMap<ServerId, (Limits, Instant)>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn key(link: &LiveLink) -> Key {
@@ -81,6 +89,9 @@ fn key(link: &LiveLink) -> Key {
 
 fn judged(error: &CollabError) -> Outcome {
     match error {
+        CollabError::Api {
+            status: 413, code, ..
+        } if code == "project_too_large" => Outcome::ProjectTooLarge(None),
         CollabError::Api { status: 413, .. } => Outcome::TooLarge(None),
         CollabError::Api { status, .. }
             if (400..500).contains(status) && !matches!(status, 401 | 408 | 425 | 429) =>
@@ -91,19 +102,26 @@ fn judged(error: &CollabError) -> Outcome {
     }
 }
 
-async fn server_limit(link: &LiveLink, fresh: bool) -> Option<u64> {
+async fn server_limits(link: &LiveLink, fresh: bool) -> Option<Limits> {
     let cached = guard(&LIMITS).get(&link.server_id).copied();
-    if let Some((limit, _)) = cached.filter(|(_, at)| !fresh && at.elapsed() < LIMIT_KEPT) {
-        return Some(limit);
+    if let Some((limits, _)) = cached.filter(|(_, at)| !fresh && at.elapsed() < LIMIT_KEPT) {
+        return Some(limits);
     }
     match link.client.capabilities().await {
         Ok(manifest) => {
-            let limit = manifest.limits.max_file_mb.saturating_mul(MEBIBYTE);
-            guard(&LIMITS).insert(link.server_id, (limit, Instant::now()));
-            Some(limit)
+            let limits = Limits {
+                file: manifest.limits.max_file_mb.saturating_mul(MEBIBYTE),
+                project: manifest.limits.max_project_mb.saturating_mul(MEBIBYTE),
+            };
+            guard(&LIMITS).insert(link.server_id, (limits, Instant::now()));
+            Some(limits)
         }
-        Err(_) => cached.map(|(limit, _)| limit),
+        Err(_) => cached.map(|(limits, _)| limits),
     }
+}
+
+async fn server_limit(link: &LiveLink, fresh: bool) -> Option<u64> {
+    server_limits(link, fresh).await.map(|limits| limits.file)
 }
 
 pub(super) async fn send(
@@ -141,6 +159,10 @@ pub(super) async fn send(
                     if let Some(limit) = limit.filter(|limit| size > *limit) {
                         outcome = Outcome::TooLarge(Some(limit));
                     }
+                }
+                if outcome == Outcome::ProjectTooLarge(None) {
+                    let project = server_limits(link, true).await.map(|limits| limits.project);
+                    outcome = Outcome::ProjectTooLarge(project);
                 }
                 known.insert(hash, outcome);
                 outcome
@@ -216,6 +238,10 @@ fn record(
             }
             Outcome::TooLarge(limit) => {
                 pending.state = UploadState::TooLarge;
+                pending.limit = limit;
+            }
+            Outcome::ProjectTooLarge(limit) => {
+                pending.state = UploadState::ProjectTooLarge;
                 pending.limit = limit;
             }
             Outcome::Sent => {}
