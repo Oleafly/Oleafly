@@ -61,6 +61,7 @@ import { InlineAlert } from "../feedback";
 import { goToPerson } from "../live/go-to-person";
 import { peerPlaces, useCollabLiveStore, type PeerPlaces } from "../live/live-store";
 import { GuestBadge } from "../GuestBadge";
+import { InactiveBadge, isInactive } from "../InactiveBadge";
 import { collabPerson } from "../people";
 import { peerHue } from "../live/peer-hue";
 import { AccessLog, useAccessLogShown } from "./AccessLog";
@@ -140,6 +141,7 @@ function PersonRow({
         <p className="flex min-w-0 items-center gap-1.5 text-xs">
           <span className="truncate font-medium">{member.person.display_name}</span>
           {member.person.guest ? <GuestBadge /> : null}
+          {isInactive(member.person) ? <InactiveBadge /> : null}
           {self ? (
             <Badge variant="primaryGhost" size="sm">
               {t(($) => $.collab.manage.you)}

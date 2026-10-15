@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly couldn't load who has access.",
     "people": "People with access",
     "you": "You",
+    "inactive": "Removed or suspended",
+    "ownerInactive": "Owner removed or suspended",
     "roleLabel": "Role for {{name}}",
     "remove": "Remove",
     "removeNamed": "Remove {{name}}",

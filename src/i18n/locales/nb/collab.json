@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly kunne ikke laste hvem som har tilgang.",
     "people": "Personer med tilgang",
     "you": "Du",
+    "inactive": "Fjernet eller suspendert",
+    "ownerInactive": "Eieren er fjernet eller suspendert",
     "roleLabel": "Rolle for {{name}}",
     "remove": "Fjern",
     "removeNamed": "Fjern {{name}}",

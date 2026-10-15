@@ -2048,6 +2048,9 @@ export interface BackendPort {
 
 export interface CollabPerson {
     guest?: boolean;
+    // False for someone removed from or suspended on this server. Older
+    // servers never send it, and everyone they list is active.
+    active?: boolean;
 }
 export type CollabGuestInvitationStatus =
     | "awaiting_approval"

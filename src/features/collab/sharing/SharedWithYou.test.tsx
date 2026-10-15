@@ -10,6 +10,7 @@ import { COLLAB_SERVER_CHANGED_EVENT } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useCollabStore } from "../store";
 import {
+  BOB,
   CAROL,
   SERVER_ID,
   SHARED_ID,
@@ -78,6 +79,17 @@ describe("SharedWithYou", () => {
     expect(rows[1]).toHaveTextContent("Thesis");
     expect(rows[1]).toHaveTextContent(enCollab.projectRoles.viewer);
     expect(screen.queryByText("Already here")).toBeNull();
+  });
+
+  it("says when a project's owner was removed from the server or suspended on it", async () => {
+    mocks.collabSharedWithMe.mockResolvedValue([
+      sharedWithMe({ project: projectSummary({ owner: { ...BOB, active: false } }) }),
+      thesis,
+    ]);
+    render(<SharedWithYou />);
+    const rows = within(await screen.findByRole("list", { name: copy.title })).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(enCollab.manage.ownerInactive);
+    expect(rows[1]).not.toHaveTextContent(enCollab.manage.ownerInactive);
   });
 
   it("checks again when the window is shown and on a timer, so new shares appear while the app is open", async () => {

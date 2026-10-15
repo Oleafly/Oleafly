@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly가 접근 권한이 있는 사람을 불러오지 못했습니다.",
     "people": "접근 권한이 있는 사람",
     "you": "나",
+    "inactive": "제거됨 또는 정지됨",
+    "ownerInactive": "소유자 제거됨 또는 정지됨",
     "roleLabel": "{{name}}의 역할",
     "remove": "제거",
     "removeNamed": "{{name}} 제거",

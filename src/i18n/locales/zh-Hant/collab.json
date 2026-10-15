@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly 無法載入有存取權的人。",
     "people": "有存取權的人",
     "you": "你",
+    "inactive": "已移除或已停權",
+    "ownerInactive": "擁有者已移除或已停權",
     "roleLabel": "{{name}} 的角色",
     "remove": "移除",
     "removeNamed": "移除 {{name}}",

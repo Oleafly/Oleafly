@@ -35,6 +35,7 @@ import { InlineAlert, LoadFailed } from "../feedback";
 import { collabPerson, personDetail } from "../people";
 import { useAccessLogSwitches } from "./access-log-store";
 import { GuestBadge } from "../GuestBadge";
+import { InactiveBadge, isInactive } from "../InactiveBadge";
 import { syncMembersChange, syncShareChange } from "./after-change";
 import {
   GuestInvitationList,
@@ -516,6 +517,7 @@ export function ManageSharing({
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-sm font-medium">{person.display_name}</span>
             {person.guest ? <GuestBadge /> : null}
+            {isInactive(person) ? <InactiveBadge /> : null}
             {accountId === share.account_id ? (
               <Badge variant="primaryGhost" size="sm">
                 {t(($) => $.collab.manage.you)}

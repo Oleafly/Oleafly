@@ -35,6 +35,16 @@ describe("JoinLinkDialog", () => {
     expect(fact(copy.role)).toHaveTextContent(enCollab.projectRoles.viewer);
   });
 
+  it("says when the owner was removed from the server or suspended on it", () => {
+    const { unmount } = render(
+      <JoinLinkDialog server={server()} project={projectSummary({ owner: { ...BOB, active: false } })} onAnswer={vi.fn()} />,
+    );
+    expect(fact(copy.owner)).toHaveTextContent(`Bob Smith${BOB.email}${enCollab.manage.inactive}`);
+    unmount();
+    render(<JoinLinkDialog server={server()} project={projectSummary()} onAnswer={vi.fn()} />);
+    expect(fact(copy.owner)).not.toHaveTextContent(enCollab.manage.inactive);
+  });
+
   it("answers no from Cancel and the close button, and yes from Join", async () => {
     const user = userEvent.setup();
     const onAnswer = vi.fn();

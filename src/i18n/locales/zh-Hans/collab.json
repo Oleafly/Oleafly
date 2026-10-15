@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly 无法加载有权访问的人员。",
     "people": "有权访问的人员",
     "you": "你",
+    "inactive": "已移除或已停用",
+    "ownerInactive": "所有者已移除或已停用",
     "roleLabel": "{{name}} 的角色",
     "remove": "移除",
     "removeNamed": "移除 {{name}}",

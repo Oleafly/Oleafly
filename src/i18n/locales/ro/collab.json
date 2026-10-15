@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly nu a putut încărca cine are acces.",
     "people": "Persoane cu acces",
     "you": "Tu",
+    "inactive": "Eliminat sau suspendat",
+    "ownerInactive": "Proprietar eliminat sau suspendat",
     "roleLabel": "Rol pentru {{name}}",
     "remove": "Elimină",
     "removeNamed": "Elimină {{name}}",

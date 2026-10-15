@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly ei voinut ladata käyttöoikeuksia.",
     "people": "Henkilöt, joilla on pääsy",
     "you": "Sinä",
+    "inactive": "Poistettu tai jäädytetty",
+    "ownerInactive": "Omistaja poistettu tai jäädytetty",
     "roleLabel": "Käyttäjän {{name}} rooli",
     "remove": "Poista",
     "removeNamed": "Poista {{name}}",

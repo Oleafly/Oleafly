@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly non è riuscito a caricare chi ha accesso.",
     "people": "Persone con accesso",
     "you": "Tu",
+    "inactive": "Rimosso o sospeso",
+    "ownerInactive": "Proprietario rimosso o sospeso",
     "roleLabel": "Ruolo di {{name}}",
     "remove": "Rimuovi",
     "removeNamed": "Rimuovi {{name}}",

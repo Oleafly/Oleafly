@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly はアクセスできる人を読み込めませんでした。",
     "people": "アクセスできる人",
     "you": "あなた",
+    "inactive": "削除済みまたは利用停止中",
+    "ownerInactive": "所有者は削除済みまたは利用停止中",
     "roleLabel": "{{name}} の役割",
     "remove": "削除",
     "removeNamed": "{{name}} を削除",

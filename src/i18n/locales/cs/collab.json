@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly nemohl načíst, kdo má přístup.",
     "people": "Lidé s přístupem",
     "you": "Vy",
+    "inactive": "Odebráno nebo pozastaveno",
+    "ownerInactive": "Vlastník odebrán nebo pozastaven",
     "roleLabel": "Role pro {{name}}",
     "remove": "Odebrat",
     "removeNamed": "Odebrat {{name}}",

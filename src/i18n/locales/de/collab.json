@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly konnte nicht laden, wer Zugriff hat.",
     "people": "Personen mit Zugriff",
     "you": "Sie",
+    "inactive": "Entfernt oder gesperrt",
+    "ownerInactive": "Inhaber entfernt oder gesperrt",
     "roleLabel": "Rolle von {{name}}",
     "remove": "Entfernen",
     "removeNamed": "{{name}} entfernen",

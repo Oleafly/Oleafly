@@ -239,6 +239,21 @@ describe("CollabPane", () => {
     expect(glyph).toHaveClass(`lucide-${icon}`, tone);
   });
 
+  it("marks someone removed from the server or suspended on it, and reads a missing mark as active", () => {
+    useCollabLiveStore.setState({
+      members: [
+        projectMember(BOB, "owner"),
+        projectMember(person(), "editor"),
+        projectMember({ ...CAROL, active: false }, "viewer"),
+      ],
+    });
+    render(<CollabPane />);
+    const rows = within(screen.getByRole("list", { name: pane.people })).getAllByRole("listitem");
+    const carol = rows.find((row) => row.textContent?.includes("Carol Diaz"));
+    expect(carol).toHaveTextContent(enCollab.manage.inactive);
+    expect(rows.filter((row) => row.textContent?.includes(enCollab.manage.inactive))).toHaveLength(1);
+  });
+
   it("lists everyone with access, you first, with role and where they are", () => {
     render(<CollabPane />);
     const people = screen.getByRole("list", { name: pane.people });

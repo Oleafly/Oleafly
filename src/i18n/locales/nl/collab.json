@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly kon niet laden wie toegang heeft.",
     "people": "Mensen met toegang",
     "you": "Jij",
+    "inactive": "Verwijderd of geschorst",
+    "ownerInactive": "Eigenaar verwijderd of geschorst",
     "roleLabel": "Rol van {{name}}",
     "remove": "Weghalen",
     "removeNamed": "{{name}} weghalen",

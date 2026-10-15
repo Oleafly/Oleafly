@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly nie mógł wczytać listy osób z dostępem.",
     "people": "Osoby z dostępem",
     "you": "Ty",
+    "inactive": "Usunięty lub zawieszony",
+    "ownerInactive": "Właściciel usunięty lub zawieszony",
     "roleLabel": "Rola użytkownika {{name}}",
     "remove": "Usuń",
     "removeNamed": "Usuń użytkownika {{name}}",

@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly erişimi olanları yükleyemedi.",
     "people": "Erişimi olan kişiler",
     "you": "Siz",
+    "inactive": "Kaldırıldı veya askıya alındı",
+    "ownerInactive": "Sahip kaldırıldı veya askıya alındı",
     "roleLabel": "{{name}} için rol",
     "remove": "Kaldır",
     "removeNamed": "{{name}} kişisini kaldır",

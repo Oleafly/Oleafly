@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly kunde inte läsa in vem som har åtkomst.",
     "people": "Personer med åtkomst",
     "you": "Du",
+    "inactive": "Borttagen eller avstängd",
+    "ownerInactive": "Ägaren är borttagen eller avstängd",
     "roleLabel": "Roll för {{name}}",
     "remove": "Ta bort",
     "removeNamed": "Ta bort {{name}}",

@@ -521,6 +521,8 @@
     "loadFailed": "Oleafly n'a pas pu charger la liste des personnes qui ont accès.",
     "people": "Personnes ayant accès",
     "you": "Vous",
+    "inactive": "Retiré ou suspendu",
+    "ownerInactive": "Propriétaire retiré ou suspendu",
     "roleLabel": "Rôle de {{name}}",
     "remove": "Retirer",
     "removeNamed": "Retirer {{name}}",
