@@ -217,6 +217,15 @@ describe("collaboration IPC helpers", () => {
     expect(seen).toEqual([{ projectId: "grant" }]);
   });
 
+  it("flushes a live project, waiting for figures only when asked", async () => {
+    await tauri.collabLiveFlush("grant");
+    await tauri.collabLiveFlush("grant", { waitForFigures: true });
+    expect(mocks.invoke.mock.calls).toEqual([
+      ["collab_live_flush", { projectId: "grant", waitForFigures: false }],
+      ["collab_live_flush", { projectId: "grant", waitForFigures: true }],
+    ]);
+  });
+
   it("asks a waiting live session to reconnect now, with no arguments", async () => {
     await tauri.collabLiveReconnectNow();
     expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith("collab_live_reconnect_now");

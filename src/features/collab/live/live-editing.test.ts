@@ -237,12 +237,12 @@ describe("live editing", () => {
     expect(useFilesStore.getState().setContent).not.toHaveBeenCalled();
   });
 
-  it("flushes the live project before a compile and nothing else", async () => {
+  it("flushes the live project before a compile and nothing else, waiting for figures", async () => {
     start();
     await collabCompileBarrier("other");
     expect(mocks.collabLiveFlush).not.toHaveBeenCalled();
     await collabCompileBarrier(PROJECT);
-    expect(mocks.collabLiveFlush).toHaveBeenCalledWith(PROJECT);
+    expect(mocks.collabLiveFlush).toHaveBeenCalledExactlyOnceWith(PROJECT, { waitForFigures: true });
   });
 
   it("makes a role from a later server read-only, like a viewer", () => {

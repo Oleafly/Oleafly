@@ -137,6 +137,9 @@ describe("files someone else deleted", () => {
     useFilesStore.setState({ tree: [{ path: "sections/results.tex", is_dir: false }] });
     await useRemovedNotices.getState().restore("results-id");
     expect(mocks.collabTrashRestore).toHaveBeenCalledWith("paper", "results-id");
+    // Reopening a text file needs only its text, so the flush doesn't wait
+    // for figures that are still downloading.
+    expect(mocks.collabLiveFlush).toHaveBeenCalledExactlyOnceWith("paper");
     expect(mocks.openFile).toHaveBeenCalledWith("sections/results.tex");
     expect(useRemovedNotices.getState().notices).toEqual([]);
   });

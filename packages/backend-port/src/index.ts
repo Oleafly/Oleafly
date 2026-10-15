@@ -1630,7 +1630,7 @@ export interface BackendPort {
   collabPendingLinks: () => Promise<string[]>;
   collabLiveStart: (projectId: string) => Promise<CollabLiveInfo>;
   collabLiveStop: (projectId: string) => Promise<void>;
-  collabLiveFlush: (projectId: string) => Promise<void>;
+  collabLiveFlush: (projectId: string, options?: { waitForFigures?: boolean }) => Promise<void>;
   collabLiveReconnectNow: () => Promise<void>;
   collabDocOpen: (projectId: string, path: string, onMessage: (message: CollabDocMessage) => void) => Promise<CollabDocOpened | null>;
   collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;

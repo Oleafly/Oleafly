@@ -179,7 +179,12 @@ export function startLiveEditing(live: LiveSession): () => void {
     documentSession: (path) =>
       useFilesStore.getState().projectId === projectId ? sessions.documentSession(path) : null,
     holds: (path) => useFilesStore.getState().projectId === projectId && sessions.holds(path),
-    flush: (id) => (id === projectId ? sessions.flush(() => collabLiveFlush(projectId)) : Promise.resolve()),
+    // A compile reads figures too, so this flush waits for ones still
+    // downloading.
+    flush: (id) =>
+      id === projectId
+        ? sessions.flush(() => collabLiveFlush(projectId, { waitForFigures: true }))
+        : Promise.resolve(),
   });
   useCollabEditorGate.setState({ projectId, viewer: isViewer(), connecting: false });
   const unsubscribeRole = useCollabLiveStore.subscribe((state, previous) => {

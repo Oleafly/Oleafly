@@ -1843,8 +1843,11 @@ export const collabLiveStart = (projectId: string) =>
   invoke<CollabLiveInfo>("collab_live_start", { projectId });
 export const collabLiveStop = (projectId: string) =>
   invoke<void>("collab_live_stop", { projectId });
-export const collabLiveFlush = (projectId: string) =>
-  invoke<void>("collab_live_flush", { projectId });
+// Writes the live project's text to disk now. With `waitForFigures` it also
+// waits a few seconds for figures still downloading, which only a compile
+// needs.
+export const collabLiveFlush = (projectId: string, options: { waitForFigures?: boolean } = {}) =>
+  invoke<void>("collab_live_flush", { projectId, waitForFigures: options.waitForFigures ?? false });
 // Asks a live session that waits between reconnect tries to try now. It
 // answers even with nothing running, so callers can fire and forget.
 export const collabLiveReconnectNow = () => invoke<void>("collab_live_reconnect_now");
