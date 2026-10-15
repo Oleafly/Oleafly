@@ -691,6 +691,7 @@ impl ProjectDoc {
         let node = self.tree_id(id)?;
         let parent = self.parent_of(parent)?;
         self.tree.mov(node, parent).map_err(doc_error)?;
+        self.moved_out_of_trash(node, parent)?;
         self.doc.commit();
         Ok(())
     }

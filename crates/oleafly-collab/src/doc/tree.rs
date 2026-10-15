@@ -266,12 +266,40 @@ impl ProjectDoc {
             .filter(|folder| self.alive(*folder))
             .map_or(TreeParentId::Root, TreeParentId::Node);
         self.tree.mov(node, target).map_err(doc_error)?;
+        self.clear_trash_stamps(node)?;
+        self.doc.commit();
+        Ok(())
+    }
+
+    fn clear_trash_stamps(&self, node: TreeID) -> Result<(), CollabError> {
+        let meta = self.tree.get_meta(node).map_err(doc_error)?;
         for key in TRASH_KEYS {
             if meta.get(key).is_some() {
                 meta.delete(key).map_err(doc_error)?;
             }
         }
-        self.doc.commit();
+        Ok(())
+    }
+
+    // A node moved anywhere outside the trash is no longer deleted, so the
+    // stamps that keep it deleted go, as when it is restored. The desktop
+    // brings a deleted file back this way when it was moved on disk, and a
+    // stamp left behind would have the next disk pass remove the file.
+    pub(super) fn moved_out_of_trash(
+        &self,
+        node: TreeID,
+        parent: TreeParentId,
+    ) -> Result<(), CollabError> {
+        let outside = match parent {
+            TreeParentId::Root => true,
+            TreeParentId::Node(folder) => {
+                Some(folder) != self.trash && !self.is_trash_folder(folder) && self.alive(folder)
+            }
+            _ => false,
+        };
+        if outside {
+            self.clear_trash_stamps(node)?;
+        }
         Ok(())
     }
 
@@ -476,6 +504,51 @@ mod tests {
         assert_eq!(paths(&alice), vec!["intro.tex"]);
         alice.restore(&intro).unwrap();
         assert_eq!(parent_of(&alice, &intro), NodeParent::Root);
+    }
+
+    #[test]
+    fn a_file_moved_out_of_the_trash_is_kept_on_disk_with_its_content() {
+        let (mut alice, mut bob) = pair();
+        let chapters = alice
+            .add_node(None, "chapters", NodeKind::Dir, None, "")
+            .unwrap();
+        let intro = alice
+            .add_node(Some(&chapters), "intro.tex", NodeKind::Text, None, "Intro")
+            .unwrap();
+        let notes = alice
+            .add_node(None, "notes", NodeKind::Dir, None, "")
+            .unwrap();
+        sync(&alice, &mut bob);
+        let shown = layout(&bob.nodes().unwrap());
+        alice.trash(&intro).unwrap();
+        sync(&alice, &mut bob);
+        assert_eq!(parent_of(&bob, &intro), NodeParent::Trash);
+        bob.move_to(&intro, Some(&notes)).unwrap();
+        assert_eq!(parent_of(&bob, &intro), NodeParent::Node(notes.clone()));
+        assert!(bob.trashed().unwrap().is_empty());
+        let after = layout(&bob.nodes().unwrap());
+        assert_eq!(after[&intro].path, "notes/intro.tex");
+        let disk = crate::materialize::plan(&shown, &after);
+        assert!(disk.removed.is_empty(), "{disk:?}");
+        assert_eq!(
+            disk.moved,
+            vec![(
+                "chapters/intro.tex".to_owned(),
+                "notes/intro.tex".to_owned()
+            )]
+        );
+        assert_eq!(bob.text(&intro).unwrap(), "Intro");
+        sync(&bob, &mut alice);
+        assert_eq!(parent_of(&alice, &intro), NodeParent::Node(notes.clone()));
+        assert_eq!(paths(&alice), vec!["chapters", "notes", "notes/intro.tex"]);
+        bob.move_to(&intro, None).unwrap();
+        assert_eq!(parent_of(&bob, &intro), NodeParent::Root);
+        alice.trash(&chapters).unwrap();
+        sync(&alice, &mut bob);
+        bob.move_to(&intro, Some(&chapters)).unwrap();
+        assert_eq!(paths(&bob), vec!["notes"]);
+        bob.restore(&chapters).unwrap();
+        assert_eq!(paths(&bob), vec!["chapters", "chapters/intro.tex", "notes"]);
     }
 
     #[test]
