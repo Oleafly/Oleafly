@@ -382,12 +382,10 @@ pub async fn share_project(
     {
         return Err(api(409, "conflict", "only library projects can be shared"));
     }
+    refuse_synced_library(crate::folder_status::library_sync_service())?;
     let check = share_check(state, project_id, server).await?;
     if !check.too_large.is_empty() {
         return Err(api(413, "too_large", &check.too_large.join(", ")));
-    }
-    if check.cloud_synced {
-        return Err(cloud_synced());
     }
     crate::trust::mark_library_restricted(project_id)
         .map_err(|error| CollabError::Io(format!("{error:?}")))?;
