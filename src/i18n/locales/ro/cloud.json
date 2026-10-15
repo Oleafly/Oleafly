@@ -47,6 +47,10 @@
   "quotaFull": "Spațiul tău din Dropbox este plin. Modificările noi rămân pe acest computer până când se face loc. Ca să faci loc, dezactivează sincronizarea pentru proiectele mari sau elimină-le din Dropbox.",
   "advanced": "Avansat",
   "disconnect": "Deconectează",
+  "disconnectRow": {
+    "label": "Deconectează Dropbox",
+    "description": "Oprește sincronizarea pe acest computer și elimină accesul Oleafly la Dropbox. Nu se șterge nimic, nici aici, nici în Dropbox."
+  },
   "attention": "Sincronizarea în cloud are nevoie de atenția ta.",
   "settingsUnreadable": "Oleafly nu poate citi setările din Dropbox. Nu se vor sincroniza până nu le înlocuiești.",
   "useLocalSettings": "Folosește setările acestui computer",

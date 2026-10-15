@@ -47,6 +47,10 @@
   "quotaFull": "Din Dropbox är full. Nya ändringar stannar på den här datorn tills det finns plats. Du kan frigöra utrymme genom att stänga av synkronisering för stora projekt eller ta bort dem från Dropbox.",
   "advanced": "Avancerat",
   "disconnect": "Koppla från",
+  "disconnectRow": {
+    "label": "Koppla från Dropbox",
+    "description": "Stoppar synkroniseringen på den här datorn och tar bort Oleaflys åtkomst till din Dropbox. Inget raderas, varken här eller i Dropbox."
+  },
   "attention": "Molnsynkroniseringen behöver din uppmärksamhet.",
   "settingsUnreadable": "Oleafly kan inte läsa inställningarna i din Dropbox. De synkroniseras inte förrän du ersätter dem.",
   "useLocalSettings": "Använd den här datorns inställningar",

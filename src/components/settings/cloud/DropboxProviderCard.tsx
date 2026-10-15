@@ -5,6 +5,7 @@ import { CloudSyncControls } from "@/components/settings/cloud/CloudSyncControls
 import { StorageRing } from "@/components/settings/cloud/StorageRing";
 import { IntegrationBusyButton, IntegrationError } from "@/components/settings/IntegrationCard";
 import { DropboxBrandIcon } from "@/components/settings/IntegrationBrandIcons";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -225,18 +226,25 @@ function AdvancedSection({
   const { t } = useTranslation(["cloud"]);
   return (
     <CollapsibleSection id="cloud-advanced" title={t(($) => $.cloud.advanced)}>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        data-testid="cloud-disconnect"
-        disabled={disconnecting}
-        onClick={onDisconnect}
-        className="hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
-      >
-        {disconnecting ? <Spinner /> : <Unplug aria-hidden className="size-3.5" />}
-        {t(($) => $.cloud.disconnect)}
-      </Button>
+      <SettingsRow
+        testId="cloud-disconnect-row"
+        label={t(($) => $.cloud.disconnectRow.label)}
+        description={t(($) => $.cloud.disconnectRow.description)}
+        control={
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            data-testid="cloud-disconnect"
+            disabled={disconnecting}
+            onClick={onDisconnect}
+            className="shrink-0 hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
+          >
+            {disconnecting ? <Spinner /> : <Unplug aria-hidden className="size-3.5" />}
+            {t(($) => $.cloud.disconnect)}
+          </Button>
+        }
+      />
     </CollapsibleSection>
   );
 }

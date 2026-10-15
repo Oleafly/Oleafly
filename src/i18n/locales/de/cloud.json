@@ -47,6 +47,10 @@
   "quotaFull": "Ihre Dropbox ist voll. Neue Änderungen bleiben auf diesem Computer, bis wieder Platz ist. Um Platz zu schaffen, schalten Sie den Abgleich für große Projekte aus oder entfernen Sie sie aus Dropbox.",
   "advanced": "Erweitert",
   "disconnect": "Verbindung trennen",
+  "disconnectRow": {
+    "label": "Verbindung zu Dropbox trennen",
+    "description": "Beendet den Abgleich auf diesem Computer und hebt den Zugriff von Oleafly auf Ihre Dropbox auf. Es wird nichts gelöscht, weder hier noch in Dropbox."
+  },
   "attention": "Der Cloud-Abgleich braucht Ihre Aufmerksamkeit.",
   "settingsUnreadable": "Oleafly kann die Einstellungen in Ihrer Dropbox nicht lesen. Bis Sie sie ersetzen, werden sie nicht abgeglichen.",
   "useLocalSettings": "Einstellungen dieses Computers verwenden",

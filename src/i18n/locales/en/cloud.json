@@ -47,6 +47,10 @@
   "quotaFull": "Your Dropbox is full. New changes stay on this computer until there's space. To make room, turn off sync for large projects or remove them from Dropbox.",
   "advanced": "Advanced",
   "disconnect": "Disconnect",
+  "disconnectRow": {
+    "label": "Disconnect Dropbox",
+    "description": "Stops syncing on this computer and removes Oleafly's access to your Dropbox. Nothing is deleted, here or in Dropbox."
+  },
   "attention": "Cloud sync needs your attention.",
   "settingsUnreadable": "Oleafly can't read the settings in your Dropbox. They won't sync until you replace them.",
   "useLocalSettings": "Use this computer's settings",

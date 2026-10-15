@@ -47,6 +47,10 @@
   "quotaFull": "Je Dropbox is vol. Nieuwe wijzigingen blijven op deze computer tot er weer ruimte is. Maak ruimte vrij door synchronisatie uit te zetten voor grote projecten of door ze uit Dropbox te verwijderen.",
   "advanced": "Geavanceerd",
   "disconnect": "Verbinding verbreken",
+  "disconnectRow": {
+    "label": "Verbinding met Dropbox verbreken",
+    "description": "Stopt de synchronisatie op deze computer en trekt de toegang van Oleafly tot je Dropbox in. Er wordt niets verwijderd, niet hier en niet in Dropbox."
+  },
   "attention": "Cloudsynchronisatie heeft je aandacht nodig.",
   "settingsUnreadable": "Oleafly kan de instellingen in je Dropbox niet lezen. Ze worden niet gesynchroniseerd totdat je ze vervangt.",
   "useLocalSettings": "Instellingen van deze computer gebruiken",

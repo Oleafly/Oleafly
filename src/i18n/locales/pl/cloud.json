@@ -47,6 +47,10 @@
   "quotaFull": "Twoje konto Dropbox jest pełne. Nowe zmiany zostaną na tym komputerze, dopóki nie zwolni się miejsce. Aby zrobić miejsce, wyłącz synchronizację dużych projektów albo usuń je z Dropboxa.",
   "advanced": "Zaawansowane",
   "disconnect": "Rozłącz",
+  "disconnectRow": {
+    "label": "Rozłącz Dropbox",
+    "description": "Zatrzymuje synchronizację na tym komputerze i odbiera Oleafly dostęp do twojego konta Dropbox. Nic nie zostanie usunięte ani tutaj, ani w Dropbox."
+  },
   "attention": "Synchronizacja w chmurze wymaga twojej uwagi.",
   "settingsUnreadable": "Oleafly nie może odczytać ustawień na twoim koncie Dropbox. Nie będą synchronizowane, dopóki ich nie zastąpisz.",
   "useLocalSettings": "Użyj ustawień tego komputera",

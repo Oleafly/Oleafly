@@ -47,6 +47,10 @@
   "quotaFull": "Dropbox の容量がいっぱいです。空きができるまで、新しい変更はこのコンピューターに残ります。空きを作るには、大きなプロジェクトの同期をオフにするか、Dropbox から削除してください。",
   "advanced": "詳細設定",
   "disconnect": "接続を解除",
+  "disconnectRow": {
+    "label": "Dropbox の接続を解除",
+    "description": "このコンピューターでの同期を停止し、Oleafly の Dropbox へのアクセスを取り消します。このコンピューターと Dropbox のどちらからも何も削除されません。"
+  },
   "attention": "クラウド同期で対応が必要です。",
   "settingsUnreadable": "Oleafly は Dropbox 内の設定を読み込めません。置き換えるまで、設定は同期されません。",
   "useLocalSettings": "このコンピューターの設定を使う",

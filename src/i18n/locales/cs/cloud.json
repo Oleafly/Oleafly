@@ -47,6 +47,10 @@
   "quotaFull": "Váš Dropbox je plný. Nové změny zůstanou na tomto počítači, dokud se neuvolní místo. Místo uvolníte tak, že vypnete synchronizaci velkých projektů nebo je z Dropboxu odeberete.",
   "advanced": "Pokročilé",
   "disconnect": "Odpojit",
+  "disconnectRow": {
+    "label": "Odpojit Dropbox",
+    "description": "Zastaví synchronizaci na tomto počítači a odebere Oleafly přístup k vašemu Dropboxu. Nic se nesmaže, ani tady, ani v Dropboxu."
+  },
   "attention": "Synchronizace v cloudu vyžaduje vaši pozornost.",
   "settingsUnreadable": "Oleafly nedokáže přečíst nastavení ve vašem Dropboxu. Nebude se synchronizovat, dokud ho nenahradíte.",
   "useLocalSettings": "Použít nastavení tohoto počítače",

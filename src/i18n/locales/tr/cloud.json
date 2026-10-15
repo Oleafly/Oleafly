@@ -47,6 +47,10 @@
   "quotaFull": "Dropbox'ınız dolu. Yer açılana kadar yeni değişiklikler bu bilgisayarda kalır. Yer açmak için büyük projelerin eşitlemesini kapatın veya onları Dropbox'tan kaldırın.",
   "advanced": "Gelişmiş",
   "disconnect": "Bağlantıyı kes",
+  "disconnectRow": {
+    "label": "Dropbox bağlantısını kes",
+    "description": "Bu bilgisayarda eşitlemeyi durdurur ve Oleafly'nin Dropbox'ınıza erişimini kaldırır. Ne burada ne de Dropbox'ta hiçbir şey silinmez."
+  },
   "attention": "Bulut eşitleme dikkatinizi gerektiriyor.",
   "settingsUnreadable": "Oleafly, Dropbox'ınızdaki ayarları okuyamıyor. Siz değiştirene kadar ayarlar eşitlenmeyecek.",
   "useLocalSettings": "Bu bilgisayarın ayarlarını kullan",

@@ -47,6 +47,10 @@
   "quotaFull": "你的 Dropbox 已滿。在騰出空間之前，新的變更會保留在這台電腦上。如要騰出空間，請關閉大型專案的同步，或將它們從 Dropbox 中移除。",
   "advanced": "進階",
   "disconnect": "中斷連接",
+  "disconnectRow": {
+    "label": "中斷 Dropbox 的連接",
+    "description": "停止這台電腦上的同步，並移除 Oleafly 對你 Dropbox 的存取權限。這台電腦和 Dropbox 中的內容都不會被刪除。"
+  },
   "attention": "雲端同步需要你處理。",
   "settingsUnreadable": "Oleafly 無法讀取你 Dropbox 中的設定。在你取代這些設定之前，它們不會同步。",
   "useLocalSettings": "使用這台電腦的設定",

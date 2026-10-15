@@ -455,7 +455,10 @@ describe("CloudTab", () => {
     serve(cloudState());
     render(<CloudTab />);
     await userEvent.click(await screen.findByTestId("cloud-advanced-toggle"));
-    await userEvent.click(await screen.findByTestId("cloud-disconnect"));
+    const row = await screen.findByTestId("cloud-disconnect-row");
+    expect(row).toHaveTextContent("Disconnect Dropbox");
+    expect(row).toHaveTextContent("Nothing is deleted, here or in Dropbox.");
+    await userEvent.click(within(row).getByTestId("cloud-disconnect"));
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent("Your projects stay on this computer and in your Dropbox.");
     expect(mocks.cloud.cloudDisconnect).not.toHaveBeenCalled();

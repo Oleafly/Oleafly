@@ -47,6 +47,10 @@
   "quotaFull": "Dropboxisi on täynnä. Uudet muutokset pysyvät tällä tietokoneella, kunnes tilaa vapautuu. Voit vapauttaa tilaa poistamalla synkronoinnin käytöstä suurilta projekteilta tai poistamalla ne Dropboxista.",
   "advanced": "Lisäasetukset",
   "disconnect": "Katkaise yhteys",
+  "disconnectRow": {
+    "label": "Katkaise yhteys Dropboxiin",
+    "description": "Pysäyttää synkronoinnin tällä tietokoneella ja poistaa Oleaflyn pääsyn Dropboxiisi. Mitään ei poisteta, ei täältä eikä Dropboxista."
+  },
   "attention": "Pilvisynkronointi vaatii huomiotasi.",
   "settingsUnreadable": "Oleafly ei pysty lukemaan Dropboxissasi olevia asetuksia. Niitä ei synkronoida, ennen kuin korvaat ne.",
   "useLocalSettings": "Käytä tämän tietokoneen asetuksia",

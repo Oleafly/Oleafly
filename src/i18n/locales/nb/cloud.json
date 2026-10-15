@@ -47,6 +47,10 @@
   "quotaFull": "Dropboxen din er full. Nye endringer blir værende på denne datamaskinen til det er plass. Du kan frigjøre plass ved å slå av synkronisering for store prosjekter eller fjerne dem fra Dropbox.",
   "advanced": "Avansert",
   "disconnect": "Koble fra",
+  "disconnectRow": {
+    "label": "Koble fra Dropbox",
+    "description": "Stopper synkroniseringen på denne datamaskinen og fjerner tilgangen Oleafly har til Dropboxen din. Ingenting slettes, verken her eller i Dropbox."
+  },
   "attention": "Skysynkronisering trenger oppmerksomheten din.",
   "settingsUnreadable": "Oleafly kan ikke lese innstillingene i Dropboxen din. De synkroniseres ikke før du erstatter dem.",
   "useLocalSettings": "Bruk innstillingene på denne datamaskinen",

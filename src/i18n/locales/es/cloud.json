@@ -47,6 +47,10 @@
   "quotaFull": "Tu Dropbox está lleno. Los cambios nuevos se quedan en este ordenador hasta que haya espacio. Para liberar espacio, desactiva la sincronización de los proyectos grandes o quítalos de Dropbox.",
   "advanced": "Avanzado",
   "disconnect": "Desconectar",
+  "disconnectRow": {
+    "label": "Desconectar Dropbox",
+    "description": "Detiene la sincronización en este ordenador y le quita a Oleafly el acceso a tu Dropbox. No se borra nada, ni aquí ni en Dropbox."
+  },
   "attention": "La sincronización en la nube necesita tu atención.",
   "settingsUnreadable": "Oleafly no puede leer los ajustes de tu Dropbox. No se sincronizarán hasta que los reemplaces.",
   "useLocalSettings": "Usar los ajustes de este ordenador",
