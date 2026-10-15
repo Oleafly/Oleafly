@@ -104,17 +104,22 @@ fn all_or_nothing<T>(
     name: &str,
     work: impl FnOnce(&Connection) -> Result<T, ServerError>,
 ) -> Result<T, ServerError> {
+    let outermost = conn.is_autocommit();
     conn.execute_batch(&format!("SAVEPOINT {name}"))?;
-    match work(conn) {
-        Ok(value) => {
-            conn.execute_batch(&format!("RELEASE {name}"))?;
-            Ok(value)
-        }
-        Err(error) => {
-            let _ = conn.execute_batch(&format!("ROLLBACK TO {name}; RELEASE {name}"));
-            Err(error)
+    let released = work(conn).and_then(|value| {
+        conn.execute_batch(&format!("RELEASE {name}"))?;
+        Ok(value)
+    });
+    if released.is_err() {
+        let _ = conn.execute_batch(&format!("ROLLBACK TO {name}; RELEASE {name}"));
+        // The outermost release is the commit. When it fails SQLite can
+        // leave the transaction open, and every later write on the one
+        // writer connection would then fail.
+        if outermost && !conn.is_autocommit() {
+            let _ = conn.execute_batch("ROLLBACK");
         }
     }
+    released
 }
 
 pub fn create_pending(
@@ -627,15 +632,29 @@ pub fn drop_unused_blob(
 }
 
 // What a project keeps on this server: its files and its change log.
-// Snapshots are left out because they are rebuilt from those.
+// Snapshots are left out because they are rebuilt from those. Triggers
+// keep both totals, so this reads one row.
 pub fn stored_bytes(conn: &Connection, project: SharedProjectId) -> Result<u64, ServerError> {
-    let bytes: i64 = conn.query_row(
-        "SELECT (SELECT COALESCE(SUM(size), 0) FROM project_blobs WHERE project_id = ?1) \
-         + (SELECT COALESCE(SUM(length(envelope)), 0) FROM project_updates WHERE project_id = ?1)",
-        [project.to_string()],
-        |row| row.get(0),
-    )?;
-    Ok(seq_from(bytes))
+    let (log, files) = sizes(conn, project)?;
+    Ok(log.saturating_add(files))
+}
+
+// Changes count only the change log against the project's size limit, so
+// a project whose files fill it can still take typing.
+pub fn log_bytes(conn: &Connection, project: SharedProjectId) -> Result<u64, ServerError> {
+    Ok(sizes(conn, project)?.0)
+}
+
+fn sizes(conn: &Connection, project: SharedProjectId) -> Result<(u64, u64), ServerError> {
+    let sizes: Option<(i64, i64)> = conn
+        .query_row(
+            "SELECT log_bytes, file_bytes FROM projects WHERE id = ?1",
+            [project.to_string()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    let (log, files) = sizes.unwrap_or((0, 0));
+    Ok((seq_from(log), seq_from(files)))
 }
 
 pub fn too_large_for(limit_mb: u64) -> ServerError {
@@ -1410,6 +1429,32 @@ mod tests {
     use super::*;
     use crate::db::Db;
     use oleafly_collab_protocol::roles::ServerRole;
+
+    #[test]
+    fn a_commit_that_fails_never_leaves_the_connection_inside_a_transaction() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "PRAGMA foreign_keys = ON;
+             CREATE TABLE parent (id INTEGER PRIMARY KEY);
+             CREATE TABLE child (parent INTEGER REFERENCES parent (id) DEFERRABLE INITIALLY DEFERRED);",
+        )
+        .unwrap();
+        let committed = all_or_nothing(&conn, "work", |conn| {
+            conn.execute("INSERT INTO child (parent) VALUES (1)", [])?;
+            Ok(())
+        });
+        assert!(committed.is_err(), "the deferred check fails the commit");
+        assert!(
+            conn.is_autocommit(),
+            "the connection stayed in a transaction"
+        );
+        let children: i64 = conn
+            .query_row("SELECT COUNT(*) FROM child", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(children, 0);
+        conn.execute_batch("BEGIN; INSERT INTO parent (id) VALUES (1); COMMIT;")
+            .unwrap();
+    }
 
     #[tokio::test]
     async fn a_role_this_server_does_not_know_is_never_written() {

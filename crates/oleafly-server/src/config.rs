@@ -412,14 +412,14 @@ impl ServerConfig {
         startup_notes.push(StartupNote::Info(
             match (source.is_set("OLEAFLY_SNAPSHOT_MEMORY_MB"), memory) {
                 (true, _) => format!(
-                    "Snapshot builds may use {snapshot_memory_mb} MB, as OLEAFLY_SNAPSHOT_MEMORY_MB says."
+                    "Documents and large file transfers may use {snapshot_memory_mb} MB together, as OLEAFLY_SNAPSHOT_MEMORY_MB says."
                 ),
                 (false, Some(memory)) => format!(
-                    "Snapshot builds may use {snapshot_memory_mb} MB (half of {} MB).",
+                    "Documents and large file transfers may use {snapshot_memory_mb} MB together (half of {} MB).",
                     memory / MB
                 ),
                 (false, None) => format!(
-                    "Snapshot builds may use {snapshot_memory_mb} MB. The server could not tell how much memory it has, so set OLEAFLY_SNAPSHOT_MEMORY_MB to about half of it."
+                    "Documents and large file transfers may use {snapshot_memory_mb} MB together. The server could not tell how much memory it has, so set OLEAFLY_SNAPSHOT_MEMORY_MB to about half of it."
                 ),
             },
         ));
@@ -1393,7 +1393,8 @@ mod tests {
         assert_eq!(
             notes,
             [StartupNote::Info(
-                "Snapshot builds may use 488 MB (half of 976 MB).".to_string()
+                "Documents and large file transfers may use 488 MB together (half of 976 MB)."
+                    .to_string()
             )]
         );
         let (bigger_limit, _) = budget_and_note(&[
@@ -1460,7 +1461,7 @@ mod tests {
         assert_eq!(
             set.startup_notes,
             [StartupNote::Info(
-                "Snapshot builds may use 300 MB, as OLEAFLY_SNAPSHOT_MEMORY_MB says.".to_string()
+                "Documents and large file transfers may use 300 MB together, as OLEAFLY_SNAPSHOT_MEMORY_MB says.".to_string()
             )]
         );
     }

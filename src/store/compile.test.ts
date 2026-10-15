@@ -160,6 +160,7 @@ import {
   acceptCompileOffer,
   beginCompileRequestIdentity,
   clearFolderPause,
+  compileSaveFailureReason,
   downloadMissingTypst,
   switchToDefaultTypst,
   installerNotices,
@@ -1168,13 +1169,46 @@ describe("saving before a compile", () => {
     it("stops when a package, class or style the main document loads by name can't be saved", async () => {
       // \usepackage{macros}, \documentclass{localclass} and \bibliographystyle
       // have no edge in the graph, but LaTeX reads them during the build.
-      for (const path of ["macros.sty", "styles/localclass.cls", "plain.bst", ".latexmkrc"]) {
+      for (const path of [
+        "macros.sty",
+        "styles/localclass.cls",
+        "plain.bst",
+        ".latexmkrc",
+        "scripts/helpers.lua",
+        "book.ist",
+      ]) {
         mocks.compileProject.mockClear();
         mocks.saveAllDirty.mockRejectedValue(new SaveFlushError([{ path, reason: "disk full" }]));
         await useCompileStore.getState().recompile();
         expect(mocks.compileProject, path).not.toHaveBeenCalled();
         expect(useCompileStore.getState().failureReason).toBe(enCore.compile.saveFailed.replace("{{path}}", path));
       }
+    });
+
+    it("stops for a Markdown file only when the LaTeX project loads the markdown package", async () => {
+      mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]));
+      await expect(saveAllForCompile()).resolves.toBeUndefined();
+      // \usepackage{markdown} lets \markdownInput read any .md file by name.
+      (index.intelligenceState as { data: { detectedPackages?: string[] } }).data.detectedPackages = ["markdown"];
+      mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]));
+      await expect(saveAllForCompile()).rejects.toBeInstanceOf(SaveFlushError);
+    });
+
+    it("stops for templates and styles a Markdown build reads, and not for data it doesn't", async () => {
+      mocks.files.mainDoc = "paper.md";
+      mocks.files.engine = {
+        ...LATEX_ENGINE,
+        id: "markdown",
+        source_extensions: ["md"],
+        capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "markdown" },
+      };
+      graph([edge("include", "paper.md", "chapter.md")]);
+      for (const path of ["template.sty", "report.cls", "styles/print.css", "header.html"]) {
+        mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path, reason: "disk full" }]));
+        await expect(saveAllForCompile(), path).rejects.toBeInstanceOf(SaveFlushError);
+      }
+      mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path: "results.csv", reason: "disk full" }]));
+      await expect(saveAllForCompile()).resolves.toBeUndefined();
     });
 
     it("stops when the project folder is gone, even for a file the build doesn't read", async () => {
@@ -1209,7 +1243,7 @@ describe("saving before a compile", () => {
       };
       graph([edge("include", "main.typ", "chapter.typ")]);
       // #let d = json("data.json") reads the file from code, without an edge.
-      for (const path of ["data.json", "results.toml", "table.cbor", "plugin.wasm"]) {
+      for (const path of ["data.json", "results.toml", "table.cbor", "plugin.wasm", "styles/ieee.csl"]) {
         mocks.saveAllDirty.mockRejectedValueOnce(new SaveFlushError([{ path, reason: "disk full" }]));
         await expect(saveAllForCompile(), path).rejects.toBeInstanceOf(SaveFlushError);
       }
@@ -1259,6 +1293,23 @@ describe("saving before a compile", () => {
         false,
       );
     });
+  });
+});
+
+describe("the reason a compile shows when a save fails", () => {
+  it("names the file that couldn't be saved, or the first of several", () => {
+    expect(compileSaveFailureReason(new SaveFlushError([{ path: "notes.md", reason: "disk full" }]))).toBe(
+      enCore.compile.saveFailed.replace("{{path}}", "notes.md"),
+    );
+    expect(
+      compileSaveFailureReason(
+        new SaveFlushError([
+          { path: "chapters/one.tex", reason: "disk full" },
+          { path: "refs.bib", reason: "disk full" },
+        ]),
+      ),
+    ).toBe(enCore.compile.saveFailedSeveral.replace("{{path}}", "chapters/one.tex"));
+    expect(compileSaveFailureReason(new Error("disk full"))).toContain("disk full");
   });
 });
 

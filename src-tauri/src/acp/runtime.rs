@@ -1613,11 +1613,30 @@ impl AcpRuntime {
             .iter()
             .find(|option| option.kind == "allow_once")
             .map(|option| option.option_id.clone());
+        // A research task works on a temporary copy and nobody answers its
+        // cards, so it never waits for one. The original project's deny rules
+        // still hold. The runtime lives in the data folder next to them.
+        let task_refused = session.task_temp.is_some()
+            && crate::approvals::task_request_refused(
+                self.root.parent(),
+                &record.project_id,
+                request.kind.as_deref(),
+            );
         // A skill read without an "allow once" choice goes to the card.
         let automatic = session.task_temp.is_some()
             || delegate == PermissionDelegate::AutoAllow
             || (skill_read && allow_once.is_some());
-        let auto_option = if automatic { allow_once } else { None };
+        let auto_option = if task_refused {
+            request
+                .options
+                .iter()
+                .find(|option| option.kind == "reject_once")
+                .map(|option| option.option_id.clone())
+        } else if automatic {
+            allow_once
+        } else {
+            None
+        };
         let permission_id = request.id.clone();
         {
             let mut state = session

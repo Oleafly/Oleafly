@@ -19,7 +19,9 @@ use crate::auth::device_code::{self, Authorization, NewAuthorization, Pace, Stat
 use crate::auth::email_link;
 use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
 use crate::auth::throttle::{self, Throttle};
-use crate::auth::{browser_binding, csrf, db_error, devices, nonce, noting_failure, refresh};
+use crate::auth::{
+    browser_binding, clean_label, csrf, db_error, devices, nonce, noting_failure, refresh,
+};
 use crate::error::ServerError;
 use crate::i18n::{Key, Locale, PageLocale};
 use crate::mail::messages::escape;
@@ -66,7 +68,8 @@ const PLATFORMS: [&str; 3] = ["macos", "windows", "linux"];
 
 fn well_formed(request: &DeviceCodeRequest) -> bool {
     let key = b64url_decode(&request.device_public_key).is_ok_and(|bytes| bytes.len() == 32);
-    let name = !request.device_name.trim().is_empty() && request.device_name.chars().count() <= 100;
+    let name =
+        !clean_label(&request.device_name).is_empty() && request.device_name.chars().count() <= 100;
     let platform = PLATFORMS.contains(&request.platform.trim().to_ascii_lowercase().as_str());
     key && name && platform
 }
@@ -107,7 +110,7 @@ async fn issue(
     let now = state.clock.now_ms();
     let new = NewAuthorization {
         device_public_key: request.device_public_key.clone(),
-        device_name: request.device_name.trim().to_string(),
+        device_name: clean_label(&request.device_name),
         platform: request.platform.trim().to_ascii_lowercase(),
         setup_code_hash,
         requested_from: ip.as_deref().map(client_key),

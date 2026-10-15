@@ -75,27 +75,37 @@ async fn hiding_tells_the_others_this_device_left_after_its_last_presence() {
         anchor: None,
     });
     handle.leave_presence();
-    let device = pair.alice.tokens.device_id;
+    left_without_a_later_cursor(&mut bob, pair.alice.tokens.device_id).await;
+    assert!(!alice.handle.as_ref().unwrap().is_finished());
+}
+
+// The server keeps only the latest cursor or leave of each device beside its
+// edit queue, so a cursor sent just before leaving may be folded into the
+// leave. Waits for the leave and checks that no cursor of that device comes
+// after it.
+pub(super) async fn left_without_a_later_cursor(side: &mut Side, device: DeviceId) {
     tokio::time::timeout(WAIT, async {
-        let mut placed = false;
-        while let Some(event) = bob.events.recv().await {
-            match event {
-                LiveEvent::Presence {
-                    device_id, state, ..
-                } if device_id == device => {
-                    placed = state.cursor == Some(1);
-                }
-                LiveEvent::PresenceLeft { device_id } if device_id == device => {
-                    assert!(placed, "the leave arrived after the last presence");
-                    return;
-                }
-                _ => {}
+        while let Some(event) = side.events.recv().await {
+            if matches!(event, LiveEvent::PresenceLeft { device_id } if device_id == device) {
+                return;
             }
         }
     })
     .await
     .expect("the leave arrived");
-    assert!(!alice.handle.as_ref().unwrap().is_finished());
+    let later = tokio::time::timeout(Duration::from_millis(500), async {
+        while let Some(event) = side.events.recv().await {
+            if matches!(&event, LiveEvent::Presence { device_id, .. } if *device_id == device) {
+                return event;
+            }
+        }
+        std::future::pending().await
+    })
+    .await;
+    assert!(
+        later.is_err(),
+        "a cursor arrived after the leave: {later:?}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

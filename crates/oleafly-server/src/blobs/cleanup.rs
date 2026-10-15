@@ -20,20 +20,40 @@ pub struct UnusedFile {
     pub hash: String,
 }
 
+// Stores a file and records it for the project. The project's size limit
+// is checked again where the file is recorded, so uploads that pass the
+// first check together can't take the project past it: the one that
+// would is refused, and its file is removed later unless another project
+// holds it.
 pub async fn upload(
     db: &Db,
     blobs: &BlobStore,
     project: SharedProjectId,
     hash: &str,
     bytes: Bytes,
+    limit_mb: u64,
     now: i64,
 ) -> Result<(), ServerError> {
     let _held = blobs.hold(hash).await;
     let size = bytes.len() as u64;
     blobs.put(hash, bytes).await?;
     let hash = hash.to_string();
-    db.call(move |conn| projects::add_blob(conn, project, &hash, size, now))
-        .await
+    db.call(move |conn| {
+        let transaction = conn.transaction()?;
+        let held = projects::blob_size(&transaction, project, &hash)?.is_some();
+        let after = projects::stored_bytes(&transaction, project)?.saturating_add(size);
+        if !held && after > limit_mb.saturating_mul(1024 * 1024) {
+            if !projects::blob_in_use(&transaction, &hash)? {
+                projects::queue_removal(&transaction, Removal::File, None, &hash, now)?;
+            }
+            transaction.commit()?;
+            return Err(projects::too_large_for(limit_mb));
+        }
+        projects::add_blob(&transaction, project, &hash, size, now)?;
+        transaction.commit()?;
+        Ok(())
+    })
+    .await
 }
 
 pub async fn unused_files(
@@ -176,4 +196,62 @@ async fn retry_file(db: &Db, blobs: &BlobStore, hash: &str) -> Result<bool, Serv
         })
         .await?;
     Ok(used || remove_file(db, blobs, hash).await)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blobs::sha256_hex;
+    use oleafly_collab_protocol::roles::ServerRole;
+
+    async fn project(db: &Db) -> SharedProjectId {
+        let project = SharedProjectId::new_v7();
+        db.call(move |conn| {
+            let owner = crate::members::create_account(conn, "Ada", None, ServerRole::Member, 1)?;
+            conn.execute(
+                "INSERT INTO projects (id, owner_account, title, status, created_at) VALUES (?1, ?2, 'Thesis', 'active', 1)",
+                rusqlite::params![project.to_string(), owner.to_string()],
+            )?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+        project
+    }
+
+    #[tokio::test]
+    async fn uploads_that_passed_the_first_check_together_cannot_pass_the_project_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let blobs = BlobStore::filesystem(dir.path());
+        let db = Db::open_in_memory().unwrap();
+        let project = project(&db).await;
+        let first = Bytes::from(vec![1u8; 600 * 1024]);
+        let second = Bytes::from(vec![2u8; 600 * 1024]);
+        let (kept, refused) = (sha256_hex(&first), sha256_hex(&second));
+        upload(&db, &blobs, project, &kept, first.clone(), 1, 1)
+            .await
+            .expect("the first file fits");
+        let answer = upload(&db, &blobs, project, &refused, second, 1, 2).await;
+        assert_eq!(
+            answer.err().map(|error| error.code()),
+            Some("project_too_large")
+        );
+        let (stored, queued) = db
+            .call(move |conn| {
+                Ok((
+                    projects::stored_bytes(conn, project)?,
+                    projects::pending_removals(conn, 10)?,
+                ))
+            })
+            .await
+            .unwrap();
+        assert_eq!(stored, 600 * 1024);
+        assert!(
+            queued.iter().any(|removal| removal.hash == refused),
+            "the refused file is removed later: {queued:?}"
+        );
+        upload(&db, &blobs, project, &kept, first, 1, 3)
+            .await
+            .expect("a file the project holds is taken again");
+    }
 }

@@ -28,6 +28,9 @@ const GUESTS_IMPLEMENTED: bool = true;
 const READINESS_REUSED_FOR: Duration = Duration::from_secs(5);
 const BUCKET_READY_FOR: Duration = Duration::from_secs(5 * 60);
 const BUCKET_FAILING_FOR: Duration = Duration::from_secs(30);
+// Health checks wait behind the probe, so it gets a few seconds and a
+// bucket slower than that counts as failing.
+const BUCKET_PROBE_LIMIT: Duration = Duration::from_secs(5);
 const READINESS_KEY: &str = "readiness_probe";
 
 pub const PROTOCOLS: ProtocolRange = ProtocolRange {
@@ -80,11 +83,18 @@ async fn bucket_ready(state: &AppState, readiness: &Readiness) -> bool {
             return ready;
         }
     }
-    let ready = match state.blobs.probe().await {
-        Ok(()) => true,
-        Err(error) => {
+    let ready = match tokio::time::timeout(BUCKET_PROBE_LIMIT, state.blobs.probe()).await {
+        Ok(Ok(())) => true,
+        Ok(Err(error)) => {
             tracing::warn!(
                 "The S3 bucket does not accept files, so the server is not ready: {error}"
+            );
+            false
+        }
+        Err(_) => {
+            tracing::warn!(
+                "The S3 bucket did not answer within {} seconds, so the server is not ready",
+                BUCKET_PROBE_LIMIT.as_secs()
             );
             false
         }
@@ -257,6 +267,44 @@ mod tests {
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(body["failing"], "files");
         mock.set_fault(None);
+    }
+
+    #[tokio::test]
+    async fn a_bucket_that_does_not_answer_makes_the_server_unready_within_seconds() {
+        let mock = MockS3::start().await;
+        let directory = tempfile::tempdir().unwrap();
+        let mut config = test_config();
+        config.data_dir = directory.path().to_path_buf();
+        config.blob_store = crate::config::BlobStoreConfig::S3(Box::new(mock.config("oleafly")));
+        let app = test_app_with(config).await;
+        mock.set_fault(Some(MockS3Fault::Stall(Duration::from_secs(30))));
+        let asked = Instant::now();
+        let (status, body) = readiness(&app).await;
+        assert!(
+            asked.elapsed() < Duration::from_secs(10),
+            "{:?}",
+            asked.elapsed()
+        );
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(body["failing"], "files");
+        mock.set_fault(None);
+    }
+
+    #[tokio::test]
+    async fn probes_that_cannot_delete_leave_one_object_behind() {
+        let mock = MockS3::start().await;
+        let store = mock.store("oleafly");
+        mock.set_fault(Some(MockS3Fault::RefuseDeletes));
+        for _ in 0..3 {
+            assert!(store.probe().await.is_err());
+        }
+        mock.set_fault(None);
+        let left: Vec<String> = mock
+            .keys()
+            .into_iter()
+            .filter(|key| key.contains(".oleafly-ready-"))
+            .collect();
+        assert_eq!(left.len(), 1, "{left:?}");
     }
 
     #[test]
