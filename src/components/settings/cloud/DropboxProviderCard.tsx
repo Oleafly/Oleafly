@@ -241,7 +241,7 @@ function AdvancedSection({
   );
 }
 
-function AccountView({ experimentOn }: Readonly<{ experimentOn: boolean }>) {
+function AccountView() {
   const { t } = useTranslation(["cloud"]);
   const titleId = useId();
   const state = useCloudStore((s) => s.state);
@@ -252,7 +252,7 @@ function AccountView({ experimentOn }: Readonly<{ experimentOn: boolean }>) {
   const watchDetails = useCloudStore((s) => s.watchDetails);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
-  const showDetails = experimentOn && status === "connected";
+  const showDetails = status === "connected";
   useEffect(() => {
     if (!showDetails) return;
     return watchDetails();
@@ -287,25 +287,18 @@ function AccountView({ experimentOn }: Readonly<{ experimentOn: boolean }>) {
         <ProviderIdentity titleId={titleId} badge={badge} email={state.email ?? state.lastEmail} />
         {showDetails ? <StorageRing space={space} /> : null}
       </header>
-      {experimentOn ? (
-        <div className="space-y-4 px-4 pb-4">
-          {revoked ? <RevokedNotice /> : null}
-          {quotaFull ? (
-            <CloudNotice tone="warning" icon={HardDriveUpload} testId="cloud-quota-full">
-              {t(($) => $.cloud.quotaFull)}
-            </CloudNotice>
-          ) : null}
-          {revoked ? null : <SettingsNotice />}
-          <CloudSyncControls />
-          <CloudProjectsCard />
-          <AdvancedSection disconnecting={disconnecting} onDisconnect={() => setConfirmDisconnect(true)} />
-        </div>
-      ) : (
-        <div className="space-y-4 px-4 pb-4">
-          <p className="text-xs leading-relaxed text-muted-foreground">{t(($) => $.cloud.flagOff)}</p>
-          <AdvancedSection disconnecting={disconnecting} onDisconnect={() => setConfirmDisconnect(true)} />
-        </div>
-      )}
+      <div className="space-y-4 px-4 pb-4">
+        {revoked ? <RevokedNotice /> : null}
+        {quotaFull ? (
+          <CloudNotice tone="warning" icon={HardDriveUpload} testId="cloud-quota-full">
+            {t(($) => $.cloud.quotaFull)}
+          </CloudNotice>
+        ) : null}
+        {revoked ? null : <SettingsNotice />}
+        <CloudSyncControls />
+        <CloudProjectsCard />
+        <AdvancedSection disconnecting={disconnecting} onDisconnect={() => setConfirmDisconnect(true)} />
+      </div>
       <ConfirmationDialog
         open={confirmDisconnect}
         destructive
@@ -322,8 +315,8 @@ function AccountView({ experimentOn }: Readonly<{ experimentOn: boolean }>) {
   );
 }
 
-export function DropboxProviderCard({ experimentOn }: Readonly<{ experimentOn: boolean }>) {
+export function DropboxProviderCard() {
   const status = useCloudStore((s) => s.status);
-  if (status === "connected" || status === "revoked") return <AccountView experimentOn={experimentOn} />;
+  if (status === "connected" || status === "revoked") return <AccountView />;
   return <ConnectView />;
 }

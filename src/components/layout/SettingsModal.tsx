@@ -298,8 +298,6 @@ export function SettingsModal() {
   const setOffline = useSettingsStore((s) => s.setOffline);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
-  const cloudSync = useSettingsStore((s) => s.cloudSync);
-  const setCloudSync = useSettingsStore((s) => s.setCloudSync);
   const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
 
@@ -772,12 +770,6 @@ export function SettingsModal() {
           description={t(($) => $.shell.settings.experimentation.webBrowser.description)}
           checked={webBrowser}
           onChange={setWebBrowser}
-        />
-        <SettingsToggleRow
-          label={t(($) => $.shell.settings.experimentation.cloudSync.label)}
-          description={t(($) => $.shell.settings.experimentation.cloudSync.description)}
-          checked={cloudSync}
-          onChange={setCloudSync}
         />
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.experimentation)}

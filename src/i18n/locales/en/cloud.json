@@ -1,7 +1,5 @@
 {
   "title": "Cloud sync",
-  "comingSoon": "Coming soon",
-  "placeholder": "Back up your projects to your own Dropbox and open them on your other computers.",
   "dropbox": "Dropbox",
   "about": "About cloud sync",
   "aboutHint": "Oleafly keeps a copy of your Library projects and settings in your own Dropbox, so you can pick up where you left off on another computer. It syncs while Oleafly is open.",
@@ -47,7 +45,6 @@
   "revoked": "Dropbox access ended. Connect again to keep syncing.",
   "connectAgain": "Connect again",
   "quotaFull": "Your Dropbox is full. New changes stay on this computer until there's space. To make room, turn off sync for large projects or remove them from Dropbox.",
-  "flagOff": "Cloud sync is turned off in Experimentation, so nothing syncs. Disconnect to remove Oleafly's access to your Dropbox.",
   "advanced": "Advanced",
   "disconnect": "Disconnect",
   "attention": "Cloud sync needs your attention.",

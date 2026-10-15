@@ -1,7 +1,5 @@
 {
   "title": "Sincronización en la nube",
-  "comingSoon": "Muy pronto",
-  "placeholder": "Haz una copia de seguridad de tus proyectos en tu propio Dropbox y ábrelos en tus otros ordenadores.",
   "dropbox": "Dropbox",
   "about": "Acerca de la sincronización en la nube",
   "aboutHint": "Oleafly guarda una copia de los proyectos de tu biblioteca y de tus ajustes en tu propio Dropbox, para que puedas seguir donde lo dejaste en otro ordenador. Se sincroniza mientras Oleafly está abierto.",
@@ -47,7 +45,6 @@
   "revoked": "El acceso a Dropbox terminó. Conecta de nuevo para seguir sincronizando.",
   "connectAgain": "Conectar de nuevo",
   "quotaFull": "Tu Dropbox está lleno. Los cambios nuevos se quedan en este ordenador hasta que haya espacio. Para liberar espacio, desactiva la sincronización de los proyectos grandes o quítalos de Dropbox.",
-  "flagOff": "La sincronización en la nube está desactivada en Experimentación, así que no se sincroniza nada. Desconecta para quitarle a Oleafly el acceso a tu Dropbox.",
   "advanced": "Avanzado",
   "disconnect": "Desconectar",
   "attention": "La sincronización en la nube necesita tu atención.",

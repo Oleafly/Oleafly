@@ -873,10 +873,6 @@
       "webBrowser": {
         "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi. Když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
         "label": "Webový prohlížeč"
-      },
-      "cloudSync": {
-        "description": "Zálohuje projekty do vašeho Dropboxu, abyste je mohli otvírat na ostatních počítačích. Experimentální funkce Oleafly, synchronizuje se jen při otevřené aplikaci.",
-        "label": "Synchronizace v cloudu"
       }
     },
     "footer": {

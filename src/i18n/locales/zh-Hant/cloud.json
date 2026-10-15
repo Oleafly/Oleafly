@@ -1,7 +1,5 @@
 {
   "title": "雲端同步",
-  "comingSoon": "即將推出",
-  "placeholder": "將專案備份到你自己的 Dropbox，並在你的其他電腦上開啟。",
   "dropbox": "Dropbox",
   "about": "關於雲端同步",
   "aboutHint": "Oleafly 會在你自己的 Dropbox 中保存一份專案庫中專案和設定的副本，讓你在另一台電腦上從上次停下的地方繼續。同步會在 Oleafly 開啟時進行。",
@@ -47,7 +45,6 @@
   "revoked": "Dropbox 存取已結束。請重新連接以繼續同步。",
   "connectAgain": "重新連接",
   "quotaFull": "你的 Dropbox 已滿。在騰出空間之前，新的變更會保留在這台電腦上。如要騰出空間，請關閉大型專案的同步，或將它們從 Dropbox 中移除。",
-  "flagOff": "雲端同步已在「實驗功能」中關閉，因此不會同步任何內容。中斷連接即可移除 Oleafly 對你 Dropbox 的存取權限。",
   "advanced": "進階",
   "disconnect": "中斷連接",
   "attention": "雲端同步需要你處理。",

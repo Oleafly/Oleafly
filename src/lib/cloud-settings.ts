@@ -17,7 +17,7 @@ const THEME = {
   setPreference: (preference: ThemePreference) => requestThemePreference(preference),
 };
 
-const LOCAL_ONLY_EXPERIMENTS: ReadonlySet<string> = new Set(["cloudSync", "webBrowser"]);
+const LOCAL_ONLY_EXPERIMENTS: ReadonlySet<string> = new Set(["webBrowser"]);
 
 export function withoutLocalOnlySettings(document: Record<string, unknown>): Record<string, unknown> {
   const experimentation = document.experimentation;

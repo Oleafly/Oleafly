@@ -1,7 +1,5 @@
 {
   "title": "Synchronisation cloud",
-  "comingSoon": "Bientôt disponible",
-  "placeholder": "Sauvegardez vos projets dans votre propre Dropbox et ouvrez-les sur vos autres ordinateurs.",
   "dropbox": "Dropbox",
   "about": "À propos de la synchronisation cloud",
   "aboutHint": "Oleafly garde une copie des projets de votre bibliothèque et de vos paramètres dans votre propre Dropbox, pour que vous puissiez reprendre votre travail sur un autre ordinateur là où vous l'avez laissé. La synchronisation a lieu tant qu'Oleafly est ouvert.",
@@ -47,7 +45,6 @@
   "revoked": "L'accès à Dropbox a pris fin. Reconnectez-vous pour continuer la synchronisation.",
   "connectAgain": "Se reconnecter",
   "quotaFull": "Votre Dropbox est plein. Les nouvelles modifications restent sur cet ordinateur jusqu'à ce qu'il y ait de la place. Pour libérer de l'espace, désactivez la synchronisation des gros projets ou retirez-les de Dropbox.",
-  "flagOff": "La synchronisation cloud est désactivée dans Expérimentation, donc rien n'est synchronisé. Déconnectez-vous pour retirer à Oleafly l'accès à votre Dropbox.",
   "advanced": "Avancé",
   "disconnect": "Déconnecter",
   "attention": "La synchronisation cloud demande votre attention.",

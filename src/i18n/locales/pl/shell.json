@@ -873,10 +873,6 @@
       "webBrowser": {
         "description": "Pokazuje wbudowaną przeglądarkę internetową (jej przycisk w doku i skrót) oraz pozwala AI sterować nią przez obsługę komputera. Domyślnie wyłączone, bo funkcja jest w wersji beta. Po wyłączeniu nie ma przycisku przeglądarki, a AI nie ma narzędzia przeglądarki.",
         "label": "Przeglądarka internetowa"
-      },
-      "cloudSync": {
-        "description": "Zapisuj kopie projektów na koncie Dropbox i otwieraj je na innych komputerach. Funkcja eksperymentalna Oleafly, synchronizuje tylko przy otwartej aplikacji.",
-        "label": "Synchronizacja w chmurze"
       }
     },
     "footer": {

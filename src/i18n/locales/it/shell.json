@@ -858,10 +858,6 @@
       "webBrowser": {
         "description": "Mostra il browser web integrato (il suo pulsante e la scorciatoia) e permette all'AI di guidarlo. Disattivato per impostazione predefinita finché è in beta. Quando è disattivato, non c'è nessun pulsante del browser e l'AI non ha lo strumento del browser.",
         "label": "Browser web"
-      },
-      "cloudSync": {
-        "description": "Esegui il backup dei progetti nel tuo Dropbox e aprili su altri computer. Sperimentale in Oleafly, sincronizza solo con l'app aperta.",
-        "label": "Sincronizzazione cloud"
       }
     },
     "footer": {

@@ -843,10 +843,6 @@
       "webBrowser": {
         "description": "Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while in beta. When off, there is no browser button and the AI has no browser tool.",
         "label": "Web browser"
-      },
-      "cloudSync": {
-        "description": "Back up projects to your own Dropbox and open them on your other computers. Experimental, and syncs only while Oleafly is open.",
-        "label": "Cloud sync"
       }
     },
     "footer": {

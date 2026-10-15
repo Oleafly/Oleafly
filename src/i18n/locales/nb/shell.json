@@ -843,10 +843,6 @@
       "webBrowser": {
         "description": "Vis nettleseren i appen (bryteren i panelet og hurtigtasten), og la AI-en styre den med datamaskinbruk. Av som standard mens det fortsatt er i beta. Når den er av, finnes det ingen nettleserknapp, og AI-en har ikke noe nettleserverktøy.",
         "label": "Nettleser"
-      },
-      "cloudSync": {
-        "description": "Sikkerhetskopierer prosjekter til Dropbox så du kan åpne dem på andre datamaskiner. Eksperimentelt i Oleafly og synkroniserer bare mens appen er åpen.",
-        "label": "Skysynkronisering"
       }
     },
     "footer": {

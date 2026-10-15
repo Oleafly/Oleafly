@@ -112,7 +112,6 @@ beforeEach(() => {
   vi.useFakeTimers();
   setHidden(false);
   useCloudStore.setState(initialCloud, true);
-  useSettingsStore.setState({ cloudSync: true });
   useCloudStore.setState({ autoSync: true });
   useFilesStore.setState({ projectId: null, files: {}, refreshProjects: vi.fn(async () => undefined) });
   useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" });
@@ -449,14 +448,7 @@ describe("CloudSyncHost", () => {
     vi.useRealTimers();
   });
 
-  it("does not load the keeper while the experiment is off", async () => {
-    useSettingsStore.setState({ cloudSync: false });
-    render(<CloudSyncHost />);
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(mocks.cloud.cloudState).not.toHaveBeenCalled();
-  });
-
-  it("loads the keeper when the experiment is on", async () => {
+  it("loads the keeper at start without syncing yet", async () => {
     render(<CloudSyncHost />);
     await waitFor(() => expect(mocks.cloud.cloudState).toHaveBeenCalled());
     expect(mocks.cloud.cloudSyncNow).not.toHaveBeenCalled();

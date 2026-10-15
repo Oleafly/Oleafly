@@ -53,7 +53,6 @@ vi.mock("@/lib/cloud-settings", () => ({
 import { loadNamespace } from "@/i18n/lazy-namespaces";
 import { useCloudStore } from "@/store/cloud";
 import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
 import { CloudTab } from "./CloudTab";
 import { storageTone } from "./StorageRing";
 
@@ -136,7 +135,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   useCloudStore.setState(initialCloud, true);
-  useSettingsStore.setState({ cloudSync: true });
   useCloudStore.setState({ autoSync: true });
   useFilesStore.setState({ refreshProjects: mocks.refreshProjects });
   mocks.cloud.cloudSyncNow.mockResolvedValue({ projects: [], lastSyncedMs: 1, error: null });
@@ -144,28 +142,6 @@ beforeEach(() => {
 });
 
 describe("CloudTab", () => {
-  it("keeps the placeholder while the experiment is off and nothing is connected", async () => {
-    useSettingsStore.setState({ cloudSync: false });
-    render(<CloudTab />);
-    expect(screen.getByText(/own Dropbox/i)).toBeInTheDocument();
-    await waitFor(() => expect(mocks.cloud.cloudState).toHaveBeenCalled());
-    expect(screen.queryByRole("button", { name: /Connect Dropbox/ })).toBeNull();
-    expect(mocks.cloud.cloudDetails).not.toHaveBeenCalled();
-  });
-
-  it("still offers Disconnect for an account connected while the experiment is off", async () => {
-    useSettingsStore.setState({ cloudSync: false });
-    serve(cloudState());
-    render(<CloudTab />);
-    expect(await screen.findByText("ada@uni.edu")).toBeInTheDocument();
-    expect(screen.getByText(/turned off in Experimentation/)).toBeInTheDocument();
-    expect(screen.queryByTestId("cloud-projects")).toBeNull();
-    expect(screen.queryByTestId("cloud-disconnect")).toBeNull();
-    await userEvent.click(screen.getByTestId("cloud-advanced-toggle"));
-    expect(screen.getByTestId("cloud-disconnect")).toBeInTheDocument();
-    expect(mocks.cloud.cloudDetails).not.toHaveBeenCalled();
-  });
-
   it("explains what syncs and connects with a busy button", async () => {
     let begin!: (value: unknown) => void;
     mocks.cloud.cloudConnectBegin.mockReturnValue(new Promise((resolve) => (begin = resolve)));

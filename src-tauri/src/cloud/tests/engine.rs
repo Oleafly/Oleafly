@@ -1000,7 +1000,7 @@ async fn settings_start_with_a_choice_on_a_new_computer_and_then_merge() {
     let desk_values = serde_json::json!({
         "appearance": {"theme": "dark", "fontSize": 14},
         "dictionary": {"words": ["alpha"]},
-        "experimentation": {"cloudSync": true}
+        "experimentation": {"webBrowser": true}
     });
     let pushed = settings::sync_settings(
         &store,

@@ -843,10 +843,6 @@
       "webBrowser": {
         "description": "Zeigt den integrierten Webbrowser (seinen Umschalter im Dock und sein Kürzel) und lässt die KI ihn per Computernutzung steuern. Standardmäßig aus, solange es in der Beta ist. Ausgeschaltet gibt es keine Browser-Schaltfläche und die KI hat kein Browser-Werkzeug.",
         "label": "Webbrowser"
-      },
-      "cloudSync": {
-        "description": "Sichert Projekte in Ihrer Dropbox, damit Sie sie auf anderen Computern öffnen können. Experimentell in Oleafly und gleicht nur ab, solange die App geöffnet ist.",
-        "label": "Cloud-Abgleich"
       }
     },
     "footer": {

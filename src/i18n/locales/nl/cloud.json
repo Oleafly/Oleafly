@@ -1,7 +1,5 @@
 {
   "title": "Cloudsynchronisatie",
-  "comingSoon": "Binnenkort",
-  "placeholder": "Maak een back-up van je projecten in je eigen Dropbox en open ze op je andere computers.",
   "dropbox": "Dropbox",
   "about": "Over cloudsynchronisatie",
   "aboutHint": "Oleafly bewaart een kopie van de projecten in je bibliotheek en van je instellingen in je eigen Dropbox, zodat je op een andere computer verder kunt waar je gebleven was. Er wordt gesynchroniseerd zolang Oleafly open is.",
@@ -47,7 +45,6 @@
   "revoked": "De toegang tot Dropbox is beëindigd. Verbind opnieuw om te blijven synchroniseren.",
   "connectAgain": "Opnieuw verbinden",
   "quotaFull": "Je Dropbox is vol. Nieuwe wijzigingen blijven op deze computer tot er weer ruimte is. Maak ruimte vrij door synchronisatie uit te zetten voor grote projecten of door ze uit Dropbox te verwijderen.",
-  "flagOff": "Cloudsynchronisatie staat uit in Experimenten, dus er wordt niets gesynchroniseerd. Verbreek de verbinding om de toegang van Oleafly tot je Dropbox in te trekken.",
   "advanced": "Geavanceerd",
   "disconnect": "Verbinding verbreken",
   "attention": "Cloudsynchronisatie heeft je aandacht nodig.",

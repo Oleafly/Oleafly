@@ -843,10 +843,6 @@
       "webBrowser": {
         "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Beta aşamasında olduğu için varsayılan olarak kapalıdır. Kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
         "label": "Web tarayıcısı"
-      },
-      "cloudSync": {
-        "description": "Projeleri Dropbox'a yedekleyip diğer bilgisayarlarda açın. Oleafly'de deneyseldir ve yalnızca uygulama açıkken eşitlenir.",
-        "label": "Bulut eşitleme"
       }
     },
     "footer": {

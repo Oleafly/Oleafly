@@ -858,10 +858,6 @@
       "webBrowser": {
         "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta. Când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
         "label": "Browser web"
-      },
-      "cloudSync": {
-        "description": "Fă copii ale proiectelor în Dropbox și deschide-le pe alte computere. Experimental în Oleafly, sincronizează doar cu aplicația deschisă.",
-        "label": "Sincronizare în cloud"
       }
     },
     "footer": {

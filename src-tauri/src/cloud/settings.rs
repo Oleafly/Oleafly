@@ -11,10 +11,7 @@ pub(crate) const SETTINGS_REMOTE: &str = "/settings/settings.json";
 const SETTINGS_VERSION: u32 = 1;
 const MAX_SETTINGS_BYTES: usize = 8 * 1024 * 1024;
 const MAX_FUTURE_SKEW_MS: u64 = 24 * 60 * 60 * 1000;
-const DEVICE_ONLY: [(&str, &str); 2] = [
-    ("experimentation", "cloudSync"),
-    ("experimentation", "webBrowser"),
-];
+const DEVICE_ONLY: [(&str, &str); 1] = [("experimentation", "webBrowser")];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct SettingsBlob {

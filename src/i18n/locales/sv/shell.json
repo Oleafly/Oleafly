@@ -843,10 +843,6 @@
       "webBrowser": {
         "description": "Visa den inbyggda webbläsaren (dess knapp i dockan och dess kortkommando) och låt AI:n styra den med datoranvändning. Av som standard medan det fortfarande är i beta. När det är av finns ingen webbläsarknapp och AI:n har inget webbläsarverktyg.",
         "label": "Webbläsare"
-      },
-      "cloudSync": {
-        "description": "Säkerhetskopierar projekt till Dropbox så du kan öppna dem på andra datorer. Experimentellt i Oleafly och synkroniserar bara medan appen är öppen.",
-        "label": "Molnsynkronisering"
       }
     },
     "footer": {

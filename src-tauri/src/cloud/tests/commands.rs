@@ -1195,7 +1195,7 @@ async fn settings_push_apply_choose_and_keep_local() {
         json!({"values": null, "stamp": "0"})
     );
 
-    let mine = json!({"appearance": {"theme": "dark"}, "experimentation": {"cloudSync": true}});
+    let mine = json!({"appearance": {"theme": "dark"}, "experimentation": {"webBrowser": true}});
     let dark = json!({"appearance": {"theme": "dark"}});
     assert_eq!(
         view(cloud_settings_sync(mine.clone()).await.unwrap()),

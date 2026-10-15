@@ -1,7 +1,5 @@
 {
   "title": "Pilvisynkronointi",
-  "comingSoon": "Tulossa pian",
-  "placeholder": "Varmuuskopioi projektisi omaan Dropboxiisi ja avaa ne muilla tietokoneillasi.",
   "dropbox": "Dropbox",
   "about": "Tietoa pilvisynkronoinnista",
   "aboutHint": "Oleafly säilyttää kopion kirjastosi projekteista ja asetuksistasi omassa Dropboxissasi, joten voit jatkaa toisella tietokoneella siitä, mihin jäit. Synkronointi toimii, kun Oleafly on auki.",
@@ -47,7 +45,6 @@
   "revoked": "Dropboxin käyttöoikeus päättyi. Yhdistä uudelleen, jotta synkronointi jatkuu.",
   "connectAgain": "Yhdistä uudelleen",
   "quotaFull": "Dropboxisi on täynnä. Uudet muutokset pysyvät tällä tietokoneella, kunnes tilaa vapautuu. Voit vapauttaa tilaa poistamalla synkronoinnin käytöstä suurilta projekteilta tai poistamalla ne Dropboxista.",
-  "flagOff": "Pilvisynkronointi on poistettu käytöstä Kokeilut-osiossa, joten mitään ei synkronoida. Katkaise yhteys, jos haluat poistaa Oleaflyn pääsyn Dropboxiisi.",
   "advanced": "Lisäasetukset",
   "disconnect": "Katkaise yhteys",
   "attention": "Pilvisynkronointi vaatii huomiotasi.",

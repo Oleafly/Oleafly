@@ -828,10 +828,6 @@
       "webBrowser": {
         "description": "显示应用内浏览器（含侧边栏开关和快捷方式），并允许 AI 通过 computer use 操控浏览器。目前处于测试阶段，默认关闭。关闭时不会显示浏览器按钮，AI 也没有浏览器工具。",
         "label": "网页浏览器"
-      },
-      "cloudSync": {
-        "description": "将项目备份到 Dropbox 并在其他电脑上打开。Oleafly 的实验功能，仅在应用打开时同步。",
-        "label": "云同步"
       }
     },
     "footer": {

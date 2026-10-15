@@ -858,10 +858,6 @@
       "webBrowser": {
         "description": "Muestra el navegador web integrado (su botón del panel y su atajo) y deja que la IA lo maneje con uso del ordenador. Desactivado por omisión mientras esté en beta. Cuando está desactivado, no hay botón de navegador y la IA no tiene herramienta de navegador.",
         "label": "Navegador web"
-      },
-      "cloudSync": {
-        "description": "Haz copias de tus proyectos en tu Dropbox y ábrelos en otros ordenadores. Experimental en Oleafly, y solo sincroniza con la app abierta.",
-        "label": "Sincronización en la nube"
       }
     },
     "footer": {

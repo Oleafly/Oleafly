@@ -843,10 +843,6 @@
       "webBrowser": {
         "description": "Toon de ingebouwde webbrowser (de dockknop en de sneltoets) en laat de AI hem besturen met computergebruik. Staat standaard uit zolang dit in bèta is. Als het uitstaat, is er geen browserknop en heeft de AI geen browsertool.",
         "label": "Webbrowser"
-      },
-      "cloudSync": {
-        "description": "Back-upt projecten naar je Dropbox zodat je ze op andere computers kunt openen. Experimenteel in Oleafly en synchroniseert alleen terwijl de app open is.",
-        "label": "Cloudsynchronisatie"
       }
     },
     "footer": {

@@ -828,10 +828,6 @@
       "webBrowser": {
         "description": "顯示應用程式內建的網頁瀏覽器（含停駐列切換與快捷鍵），並允許 AI 透過 computer use 操作它。目前在 beta 階段，預設為關閉。關閉時不會有瀏覽器按鈕，AI 也沒有瀏覽器工具。",
         "label": "網頁瀏覽器"
-      },
-      "cloudSync": {
-        "description": "將專案備份到 Dropbox 並在其他電腦上開啟。Oleafly 的實驗功能，僅在應用開啟時同步。",
-        "label": "雲端同步"
       }
     },
     "footer": {

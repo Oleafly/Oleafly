@@ -12,7 +12,6 @@ import { cloudSettingsDownload } from "@/lib/cloud";
 import { readCloudSettings } from "@/lib/cloud-settings";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { useCloudStore } from "@/store/cloud";
-import { useSettingsStore } from "@/store/settings";
 import { highlightSnippet } from "@/components/settings/snippet";
 import { useCatalogUpdates } from "@/i18n/use-catalog-updates";
 import { Button } from "@/components/ui/button";
@@ -257,7 +256,6 @@ export default function SettingsFileCard() {
   const [pending, setPending] = useState<PendingImport | null>(null);
   const [problem, setProblem] = useState<ImportProblem | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
-  const cloudSync = useSettingsStore((s) => s.cloudSync);
 
   const exportSettings = async () => {
     setBusy(true);
@@ -417,38 +415,24 @@ export default function SettingsFileCard() {
             <Download aria-hidden className="size-3.5" />
             {t(($) => $.settingsFile.export)}
           </Button>
-          {cloudSync ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="secondary" size="sm" disabled={busy} data-testid="settings-file-import">
-                  <Upload aria-hidden className="size-3.5" />
-                  {t(($) => $.settingsFile.import)}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-[100]">
-                <DropdownMenuItem data-testid="settings-file-import-local" onSelect={() => void importSettings()}>
-                  <HardDrive aria-hidden className="size-4" />
-                  {t(($) => $.settingsFile.importFromLocal)}
-                </DropdownMenuItem>
-                <DropdownMenuItem data-testid="settings-file-import-cloud" onSelect={() => void importFromCloud()}>
-                  <Cloud aria-hidden className="size-4" />
-                  {t(($) => $.settingsFile.importFromCloud)}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={busy}
-              data-testid="settings-file-import"
-              onClick={() => void importSettings()}
-            >
-              <Upload aria-hidden className="size-3.5" />
-              {t(($) => $.settingsFile.import)}
-            </Button>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="secondary" size="sm" disabled={busy} data-testid="settings-file-import">
+                <Upload aria-hidden className="size-3.5" />
+                {t(($) => $.settingsFile.import)}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="z-[100]">
+              <DropdownMenuItem data-testid="settings-file-import-local" onSelect={() => void importSettings()}>
+                <HardDrive aria-hidden className="size-4" />
+                {t(($) => $.settingsFile.importFromLocal)}
+              </DropdownMenuItem>
+              <DropdownMenuItem data-testid="settings-file-import-cloud" onSelect={() => void importFromCloud()}>
+                <Cloud aria-hidden className="size-4" />
+                {t(($) => $.settingsFile.importFromCloud)}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       {problem && <ProblemNotice problem={problem} onDismiss={() => setProblem(null)} />}

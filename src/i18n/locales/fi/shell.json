@@ -843,10 +843,6 @@
       "webBrowser": {
         "description": "Näytä sovelluksen sisäinen selain (sen telakkavalitsin ja pikanäppäin) ja anna tekoälyn ohjata sitä tietokoneen käytöllä. Oletuksena pois, koska tämä on vielä beta-vaiheessa. Kun asetus on pois, selainpainiketta ei ole eikä tekoälyllä ole selaintyökalua.",
         "label": "Verkkoselain"
-      },
-      "cloudSync": {
-        "description": "Varmuuskopioi projektit Dropboxiisi, jotta voit avata ne muilla tietokoneilla. Kokeellinen Oleaflyssä ja synkronoi vain sovelluksen ollessa auki.",
-        "label": "Pilvisynkronointi"
       }
     },
     "footer": {

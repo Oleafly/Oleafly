@@ -858,10 +858,6 @@
       "webBrowser": {
         "description": "Mostra o navegador web interno (o botão no painel e o atalho dele) e deixa a IA conduzi-lo por uso do computador. Desligado por padrão enquanto está em beta. Quando desligado, não há botão de navegador e a IA não tem ferramenta de navegador.",
         "label": "Navegador web"
-      },
-      "cloudSync": {
-        "description": "Faça backup dos projetos no Dropbox e abra-os em outros computadores. Experimental no Oleafly e sincroniza só com o app aberto.",
-        "label": "Sincronização na nuvem"
       }
     },
     "footer": {

@@ -858,10 +858,6 @@
       "webBrowser": {
         "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta. Une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
         "label": "Navigateur web"
-      },
-      "cloudSync": {
-        "description": "Sauvegarde vos projets dans votre Dropbox pour les ouvrir sur d'autres ordinateurs. Expérimental dans Oleafly, synchronisation seulement quand l'app est ouverte.",
-        "label": "Synchronisation cloud"
       }
     },
     "footer": {
