@@ -74,12 +74,12 @@ export function DailyAreaChart({
   points,
   label,
   title,
-  reading,
+  renderReading,
 }: Readonly<{
   points: readonly DailyAreaPoint[];
   label: string;
   title: string;
-  reading: (index: number) => ReactNode;
+  renderReading: (index: number) => ReactNode;
 }>) {
   const [hover, setHover] = useState<number | null>(null);
   const chart = useMemo(() => geometry(points), [points]);
@@ -166,17 +166,16 @@ export function DailyAreaChart({
           )}
         </svg>
         {hovered && (
-          <div
-            role="status"
+          <output
             className="pointer-events-none absolute top-0 z-10 rounded-md border bg-popover px-2 py-1 text-[0.6875rem] text-popover-foreground shadow-md motion-safe:transition-opacity"
             style={{
               left: `${chart.x(hover ?? 0)}%`,
               transform: `translateX(${(hover ?? 0) > points.length / 2 ? "calc(-100% - 8px)" : "8px"})`,
             }}
           >
-            <p className="font-medium">{formatUtcDay(hovered.day, true)}</p>
-            {reading(hover ?? 0)}
-          </div>
+            <span className="block font-medium">{formatUtcDay(hovered.day, true)}</span>
+            {renderReading(hover ?? 0)}
+          </output>
         )}
       </div>
       <div className="relative mt-1 h-4 text-[0.625rem] text-muted-foreground">

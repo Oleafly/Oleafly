@@ -388,21 +388,21 @@ function UsageTrend({ report }: Readonly<{ report: UsageReportData }>) {
         points={points}
         label={t(($) => $.usage.trend.chartLabel)}
         title={t(($) => $.usage.trend.chartTitle)}
-        reading={(index) => {
+        renderReading={(index) => {
           const day = series[index];
           return (
             <>
               {points[index].value === null ? (
-                <p className="text-muted-foreground">{t(($) => $.usage.trend.tokensUnavailable)}</p>
+                <span className="block text-muted-foreground">{t(($) => $.usage.trend.tokensUnavailable)}</span>
               ) : (
-                <p className="tabular-nums text-muted-foreground">
+                <span className="block tabular-nums text-muted-foreground">
                   {t(($) => $.usage.trend.inOut, {
                     input: formatExact(day.inputTotal ?? 0),
                     output: formatExact(day.outputTotal ?? 0),
                   })}
-                </p>
+                </span>
               )}
-              <p className="text-muted-foreground">{records(day.recordCount)}</p>
+              <span className="block text-muted-foreground">{records(day.recordCount)}</span>
             </>
           );
         }}

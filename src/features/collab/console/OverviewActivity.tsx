@@ -46,16 +46,16 @@ function SignInTrend({ days }: Readonly<{ days: readonly CollabDailyActivity[] }
         points={points}
         label={t(($) => $.collab.console.overview.activity.dailyLabel)}
         title={t(($) => $.collab.console.overview.activity.daily)}
-        reading={(index) => (
+        renderReading={(index) => (
           <>
-            <p className="tabular-nums text-muted-foreground">
+            <span className="block tabular-nums text-muted-foreground">
               {t(($) => $.collab.console.overview.activity.signIns, {
                 number: formatNumber(days[index].sign_ins),
               })}
-            </p>
-            <p className="tabular-nums text-muted-foreground">
+            </span>
+            <span className="block tabular-nums text-muted-foreground">
               {t(($) => $.collab.console.overview.activity.people, { number: formatNumber(days[index].people) })}
-            </p>
+            </span>
           </>
         )}
       />

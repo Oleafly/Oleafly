@@ -58,8 +58,8 @@ export function WeekHourHeatmap({
           ];
           for (const hour of HOURS) {
             const cell = byHour.get(`${weekdayIndex}:${hour}`);
-            const intensity =
-              cell === undefined || cell.value === null ? 0 : 0.15 + (cell.value / maximum) * 0.85;
+            const value = cell?.value ?? null;
+            const intensity = value === null ? 0 : 0.15 + (value / maximum) * 0.85;
             row.push(
               <svg key={`${weekday}:${hour}`} viewBox="0 0 10 10" className="block aspect-square w-full">
                 <title>{describe(weekday, hour, cell)}</title>
