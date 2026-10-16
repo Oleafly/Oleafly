@@ -88,7 +88,6 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/tools/SymbolsToolView.tsx": 1,
   "src/components/tour/TourGuide.tsx": 1,
   "src/components/ui/copyable-block.tsx": 1,
-  "src/components/usage/UsageReport.tsx": 2,
 };
 const INTRINSIC_TAG = /<([a-z][a-z0-9]*)(?=[\s/>])/g;
 const PILL_ALLOWLIST: Record<string, string> = {

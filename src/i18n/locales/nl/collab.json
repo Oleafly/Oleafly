@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Aangemeld",
       "signedOut": "Afgemeld",
-      "signedInAs": "Aangemeld als {{name}}",
       "signedOutHint": "Deze computer is niet aangemeld bij deze server.",
       "suspended": "Geschorst",
       "noAccess": "Geen toegang",
@@ -460,7 +459,12 @@
         "copyPath": "Stuur nieuwe mensen tot die tijd zelf deze link. Die voegt de server toe aan Oleafly.",
         "address": "Ze kunnen dit adres ook invullen bij Server toevoegen:"
       },
+      "broken": {
+        "title": "E-mail werkt niet",
+        "description": "De server heeft mailinstellingen, maar de e-mails komen niet aan. Controleer de instellingen en stuur daarna een test-e-mail."
+      },
       "needsSettings": "Zet eerst e-mail aan voor de server.",
+      "needsWorking": "Stuur een test-e-mail die aankomt en zet dit daarna aan.",
       "lastFailure": "De laatste mislukte e-mail was op {{date}}. De mailserver antwoordde:",
       "test": {
         "title": "Test-e-mail",
@@ -824,6 +828,25 @@
         "protocol": "Protocol {{protocol}}",
         "pendingGuests": "Gastuitnodigingen die op goedkeuring wachten: {{number}}",
         "reviewGuests": "Bekijken bij Mensen"
+      },
+      "activity": {
+        "title": "Activiteit",
+        "description": "Aanmeldingen van de afgelopen 30 dagen, in UTC. Oleafly houdt mensen aangemeld, dus dit telt elke nieuwe aanmelding, niet elk bezoek.",
+        "none": "Niemand heeft zich de afgelopen 30 dagen aangemeld.",
+        "daily": "Aanmeldingen per dag",
+        "dailyLabel": "Aanmeldingen per UTC-dag in de afgelopen 30 dagen",
+        "total": "{{number}} in 30 dagen",
+        "hourly": "Aanmeldingen per uur",
+        "hourlyLabel": "Aanmeldingen per weekdag en uur in UTC",
+        "day": "Dag",
+        "signInsColumn": "Aanmeldingen",
+        "peopleColumn": "Mensen",
+        "signIns": "Aanmeldingen: {{number}}",
+        "people": "Mensen: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, aanmeldingen: {{number}}",
+        "hoursInUtc": "Uren in UTC",
+        "less": "Minder",
+        "more": "Meer"
       },
       "storage": {
         "title": "Opslag",

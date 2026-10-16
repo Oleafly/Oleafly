@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "已登入",
       "signedOut": "已登出",
-      "signedInAs": "已以 {{name}} 的身分登入",
       "signedOutHint": "這台電腦尚未登入這個伺服器。",
       "suspended": "已停權",
       "noAccess": "無存取權",
@@ -460,7 +459,12 @@
         "copyPath": "在那之前，請自己把這個連結寄給新成員。它會把伺服器新增到 Oleafly。",
         "address": "他們也可以在「新增伺服器」中輸入這個位址："
       },
+      "broken": {
+        "title": "電子郵件無法正常運作",
+        "description": "伺服器已有郵件設定，但郵件沒有成功送達。請檢查設定，然後寄一封測試郵件。"
+      },
       "needsSettings": "請先為伺服器開啟電子郵件。",
+      "needsWorking": "請先寄一封能成功送達的測試郵件，然後再開啟此項。",
       "lastFailure": "上一封寄送失敗的郵件：{{date}}。郵件伺服器的回覆：",
       "test": {
         "title": "測試郵件",
@@ -824,6 +828,25 @@
         "protocol": "通訊協定 {{protocol}}",
         "pendingGuests": "等待核准的訪客邀請：{{number}}",
         "reviewGuests": "在「人員」中查看"
+      },
+      "activity": {
+        "title": "活動",
+        "description": "過去 30 天的登入情況，以 UTC 計算。Oleafly 會保持登入狀態，所以這裡計算的是每次新的登入，而不是每次造訪。",
+        "none": "過去 30 天沒有人登入。",
+        "daily": "每日登入",
+        "dailyLabel": "過去 30 天依 UTC 日期統計的登入",
+        "total": "30 天內 {{number}} 次",
+        "hourly": "每小時登入",
+        "hourlyLabel": "依 UTC 星期與小時統計的登入",
+        "day": "日期",
+        "signInsColumn": "登入次數",
+        "peopleColumn": "人數",
+        "signIns": "登入：{{number}}",
+        "people": "人數：{{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC，登入：{{number}}",
+        "hoursInUtc": "時間為 UTC",
+        "less": "少",
+        "more": "多"
       },
       "storage": {
         "title": "儲存空間",

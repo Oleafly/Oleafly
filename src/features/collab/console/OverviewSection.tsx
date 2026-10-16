@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { CheckBadge } from "@/components/ui/check-badge";
 import { LoadingState } from "@/components/ui/empty";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { StatGrid, type Stat } from "@/components/ui/stat-grid";
+import { StatCard } from "@/components/ui/stat-card";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatDateTime, formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import type { CollabAdminOverview, CollabHealthIssue, CollabMember } from "@/lib/tauri";
+import { cn } from "@/lib/utils";
 import { collabErrorMessage } from "../errors";
 import { LoadFailed } from "../feedback";
 import { RUNTIME_SETTING_COPY, RUNTIME_SETTING_FIELDS } from "../RuntimeSettingsTab";
+import { OverviewActivity } from "./OverviewActivity";
 import type { ConsoleSection } from "./sections";
 import type { OverviewState } from "./use-admin-overview";
 
@@ -29,6 +31,11 @@ const ISSUE_KEYS = {
 
 const MEGABYTE = 1024 * 1024;
 const COMMENT_CHANGES_SHOWN = 20;
+// Card columns by how many cards there are, so a full row never leaves a gap.
+const CARD_COLUMNS: Record<number, string> = {
+  4: "grid-cols-2 @3xl:grid-cols-4",
+  5: "grid-cols-2 @lg:grid-cols-3 @3xl:grid-cols-5",
+};
 
 function Block({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   const id = useId();
@@ -40,13 +47,7 @@ function Block({ title, children }: Readonly<{ title: string; children: ReactNod
   );
 }
 
-function Figures({ stats }: Readonly<{ stats: readonly Stat[] }>) {
-  return (
-    <div className="overflow-hidden rounded-lg border">
-      <StatGrid className="border-t-0 sm:grid-cols-3" stats={stats} />
-    </div>
-  );
-}
+type Card = Readonly<{ id: string; label: string; value: string; detail?: string }>;
 
 function Health({
   overview,
@@ -162,8 +163,8 @@ function PendingGuests({
 
 function Glance({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
   const { t } = useTranslation(["collab"]);
-  const counts = overview.counts;
-  const stats: Stat[] = [
+  const { counts, storage } = overview;
+  const cards: Card[] = [
     {
       id: "people",
       label: t(($) => $.collab.console.overview.glance.people),
@@ -193,49 +194,109 @@ function Glance({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
       value: formatNumber(counts.people_online),
       detail: t(($) => $.collab.console.overview.glance.onlineDetail, { number: formatNumber(counts.open_rooms) }),
     },
-    {
-      id: "started",
-      label: t(($) => $.collab.console.overview.glance.started),
-      value: formatRelativeTimeFrom(overview.started_at, overview.now),
-      detail: formatDateTime(overview.started_at),
-    },
-    {
-      id: "version",
-      label: t(($) => $.collab.console.overview.glance.version),
-      value: overview.version,
-      detail: t(($) => $.collab.console.overview.glance.protocol, { protocol: String(overview.protocol.max) }),
-    },
   ];
-  return <Figures stats={stats} />;
+  if (storage) {
+    cards.push({
+      id: "storage",
+      label: t(($) => $.collab.console.overview.storage.title),
+      value: formatBytes(storage.database_bytes + storage.snapshot_bytes + storage.file_bytes),
+      detail: t(($) => $.collab.console.overview.storage.location[storage.files_location]),
+    });
+  }
+  return (
+    <div className="space-y-3">
+      <dl className={cn("grid gap-3", CARD_COLUMNS[cards.length])}>
+        {cards.map((card) => (
+          <StatCard key={card.id} id={card.id} label={card.label} value={card.value} detail={card.detail} />
+        ))}
+      </dl>
+      <ServerFacts overview={overview} />
+    </div>
+  );
 }
+
+// When the server started and which version it runs, as one quiet line.
+function ServerFacts({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
+  const { t } = useTranslation(["collab"]);
+  return (
+    <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+      <div data-stat="started" className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+        <dt className="text-muted-foreground">{t(($) => $.collab.console.overview.glance.started)}</dt>
+        <dd className="font-medium">{formatRelativeTimeFrom(overview.started_at, overview.now)}</dd>
+        <dd className="text-muted-foreground">{formatDateTime(overview.started_at)}</dd>
+      </div>
+      <div data-stat="version" className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+        <dt className="text-muted-foreground">{t(($) => $.collab.console.overview.glance.version)}</dt>
+        <dd className="font-medium">{overview.version}</dd>
+        <dd className="text-muted-foreground">
+          {t(($) => $.collab.console.overview.glance.protocol, { protocol: String(overview.protocol.max) })}
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+// Shades of one colour, darkest first, in the order of the bar.
+const STORAGE_TONES = ["bg-primary", "bg-primary/65", "bg-primary/35"] as const;
 
 function Storage({ overview }: Readonly<{ overview: CollabAdminOverview }>) {
   const { t } = useTranslation(["collab"]);
   const storage = overview.storage;
   if (!storage) return <SettingsNote>{t(($) => $.collab.console.overview.storage.adminOnly)}</SettingsNote>;
+  const parts = [
+    {
+      id: "database",
+      label: t(($) => $.collab.console.overview.storage.database),
+      bytes: storage.database_bytes,
+      detail: t(($) => $.collab.console.overview.storage.databaseDetail),
+    },
+    {
+      id: "snapshots",
+      label: t(($) => $.collab.console.overview.storage.snapshots),
+      bytes: storage.snapshot_bytes,
+      detail: t(($) => $.collab.console.overview.storage.snapshotsDetail),
+    },
+    {
+      id: "files",
+      label: t(($) => $.collab.console.overview.storage.files),
+      bytes: storage.file_bytes,
+      detail: t(($) => $.collab.console.overview.storage.location[storage.files_location]),
+    },
+  ].map((part, index) => ({ ...part, tone: STORAGE_TONES[index] }));
+  const total = parts.reduce((sum, part) => sum + Math.max(0, part.bytes), 0);
   return (
-    <Figures
-      stats={[
-        {
-          id: "database",
-          label: t(($) => $.collab.console.overview.storage.database),
-          value: formatBytes(storage.database_bytes),
-          detail: t(($) => $.collab.console.overview.storage.databaseDetail),
-        },
-        {
-          id: "snapshots",
-          label: t(($) => $.collab.console.overview.storage.snapshots),
-          value: formatBytes(storage.snapshot_bytes),
-          detail: t(($) => $.collab.console.overview.storage.snapshotsDetail),
-        },
-        {
-          id: "files",
-          label: t(($) => $.collab.console.overview.storage.files),
-          value: formatBytes(storage.file_bytes),
-          detail: t(($) => $.collab.console.overview.storage.location[storage.files_location]),
-        },
-      ]}
-    />
+    <div className="rounded-lg border bg-card p-4" data-testid="console-storage">
+      <div
+        aria-hidden
+        data-testid="console-storage-bar"
+        className={cn("flex h-2.5 gap-0.5 overflow-hidden rounded-full", total === 0 && "bg-muted")}
+      >
+        {total > 0
+          ? parts
+              .filter((part) => part.bytes > 0)
+              .map((part) => (
+                <span
+                  key={part.id}
+                  data-part={part.id}
+                  className={cn("h-full min-w-1", part.tone)}
+                  style={{ flexGrow: part.bytes / total, flexBasis: 0 }}
+                />
+              ))
+          : null}
+      </div>
+      <dl className="mt-4 grid gap-3 @lg:grid-cols-3">
+        {parts.map((part) => (
+          <div key={part.id} data-stat={part.id} className="min-w-0">
+            <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span aria-hidden className={cn("size-2.5 shrink-0 rounded-[2px]", part.tone)} />
+              {part.label}
+            </dt>
+            <dd className="mt-1 text-base font-semibold tabular-nums">{formatBytes(part.bytes)}</dd>
+            <dd className="mt-0.5 text-[0.6875rem] text-muted-foreground">{part.detail}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -359,7 +420,7 @@ export function OverviewSection({
   }
   const overview = state.overview;
   return (
-    <div className="space-y-6" data-testid="console-overview">
+    <div className="@container space-y-6" data-testid="console-overview">
       <Block title={t(($) => $.collab.console.overview.health.title)}>
         <Health overview={overview} members={members} />
       </Block>
@@ -367,6 +428,11 @@ export function OverviewSection({
         <PendingGuests count={overview.counts.pending_guest_approvals ?? 0} onNavigate={onNavigate} />
         <Glance overview={overview} />
       </Block>
+      {overview.activity ? (
+        <Block title={t(($) => $.collab.console.overview.activity.title)}>
+          <OverviewActivity activity={overview.activity} />
+        </Block>
+      ) : null}
       <Block title={t(($) => $.collab.console.overview.storage.title)}>
         <Storage overview={overview} />
       </Block>

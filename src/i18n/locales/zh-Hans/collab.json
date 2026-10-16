@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "已登录",
       "signedOut": "未登录",
-      "signedInAs": "已以 {{name}} 的身份登录",
       "signedOutHint": "这台电脑尚未登录此服务器。",
       "suspended": "已停用",
       "noAccess": "无访问权限",
@@ -460,7 +459,12 @@
         "copyPath": "在此之前，请自己把这个链接发给新成员。它会把服务器添加到 Oleafly。",
         "address": "他们也可以在“添加服务器”中输入这个地址："
       },
+      "broken": {
+        "title": "电子邮件无法正常工作",
+        "description": "服务器已有邮件设置，但邮件没有成功送达。请检查设置，然后发送一封测试邮件。"
+      },
       "needsSettings": "请先为服务器开启电子邮件。",
+      "needsWorking": "请先发送一封能成功送达的测试邮件，然后再开启此项。",
       "lastFailure": "上一封发送失败的邮件：{{date}}。邮件服务器的回复：",
       "test": {
         "title": "测试邮件",
@@ -824,6 +828,25 @@
         "protocol": "协议 {{protocol}}",
         "pendingGuests": "等待批准的访客邀请：{{number}}",
         "reviewGuests": "在“人员”中查看"
+      },
+      "activity": {
+        "title": "活动",
+        "description": "过去 30 天的登录情况，按 UTC 计算。Oleafly 会保持登录状态，所以这里统计的是每次新登录，而不是每次访问。",
+        "none": "过去 30 天没有人登录。",
+        "daily": "每日登录",
+        "dailyLabel": "过去 30 天按 UTC 日期统计的登录",
+        "total": "30 天内 {{number}} 次",
+        "hourly": "按小时登录",
+        "hourlyLabel": "按 UTC 星期和小时统计的登录",
+        "day": "日期",
+        "signInsColumn": "登录次数",
+        "peopleColumn": "人数",
+        "signIns": "登录：{{number}}",
+        "people": "人数：{{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC，登录：{{number}}",
+        "hoursInUtc": "小时（UTC）",
+        "less": "少",
+        "more": "多"
       },
       "storage": {
         "title": "存储",

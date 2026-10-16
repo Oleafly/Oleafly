@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Oturum açık",
       "signedOut": "Oturum kapalı",
-      "signedInAs": "{{name}} olarak oturum açıldı",
       "signedOutHint": "Bu bilgisayarda bu sunucu için oturum açık değil.",
       "suspended": "Askıya alındı",
       "noAccess": "Erişim yok",
@@ -460,7 +459,12 @@
         "copyPath": "O zamana kadar bu bağlantıyı yeni kişilere kendiniz gönderin. Bağlantı, sunucuyu Oleafly uygulamasına ekler.",
         "address": "Bu adresi Sunucu ekle bölümüne de girebilirler:"
       },
+      "broken": {
+        "title": "E-posta çalışmıyor",
+        "description": "Sunucunun posta ayarları var ama e-postaları ulaşmıyor. Ayarları kontrol edin, sonra bir deneme e-postası gönderin."
+      },
       "needsSettings": "Önce sunucu için e-postayı açın.",
+      "needsWorking": "Yerine ulaşan bir deneme e-postası gönderin, sonra bu ayarı açın.",
       "lastFailure": "Gönderilemeyen son e-posta: {{date}}. Posta sunucusunun yanıtı:",
       "test": {
         "title": "Deneme e-postası",
@@ -824,6 +828,25 @@
         "protocol": "Protokol {{protocol}}",
         "pendingGuests": "Onay bekleyen konuk davetleri: {{number}}",
         "reviewGuests": "Kişiler bölümünde incele"
+      },
+      "activity": {
+        "title": "Etkinlik",
+        "description": "Son 30 gündeki oturum açmalar, UTC'ye göre. Oleafly oturumu açık tutar, bu yüzden burada her ziyaret değil, her yeni oturum açma sayılır.",
+        "none": "Son 30 günde kimse oturum açmadı.",
+        "daily": "Günlük oturum açmalar",
+        "dailyLabel": "Son 30 günde UTC gününe göre oturum açmalar",
+        "total": "30 günde {{number}}",
+        "hourly": "Saate göre oturum açmalar",
+        "hourlyLabel": "UTC'ye göre haftanın günü ve saate göre oturum açmalar",
+        "day": "Gün",
+        "signInsColumn": "Oturum açmalar",
+        "peopleColumn": "Kişiler",
+        "signIns": "Oturum açmalar: {{number}}",
+        "people": "Kişiler: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, oturum açmalar: {{number}}",
+        "hoursInUtc": "Saatler UTC'dir",
+        "less": "Az",
+        "more": "Çok"
       },
       "storage": {
         "title": "Depolama",

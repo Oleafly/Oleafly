@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "로그인됨",
       "signedOut": "로그아웃됨",
-      "signedInAs": "{{name}}(으)로 로그인됨",
       "signedOutHint": "이 컴퓨터는 이 서버에 로그인되어 있지 않습니다.",
       "suspended": "정지됨",
       "noAccess": "접근 권한 없음",
@@ -460,7 +459,12 @@
         "copyPath": "그때까지는 새로 온 사람에게 이 링크를 직접 보내세요. Oleafly에 서버를 추가합니다.",
         "address": "서버 추가에서 이 주소를 입력할 수도 있습니다:"
       },
+      "broken": {
+        "title": "이메일이 작동하지 않습니다",
+        "description": "서버에 메일 설정이 있지만 이메일이 전달되지 않습니다. 설정을 확인한 다음 테스트 이메일을 보내세요."
+      },
       "needsSettings": "먼저 서버의 이메일을 켜세요.",
+      "needsWorking": "테스트 이메일을 보내 전달되는지 확인한 다음 켜세요.",
       "lastFailure": "마지막으로 실패한 이메일: {{date}}. 메일 서버 응답:",
       "test": {
         "title": "테스트 이메일",
@@ -824,6 +828,25 @@
         "protocol": "프로토콜 {{protocol}}",
         "pendingGuests": "승인 대기 중인 게스트 초대: {{number}}",
         "reviewGuests": "사용자에서 검토"
+      },
+      "activity": {
+        "title": "활동",
+        "description": "최근 30일 동안의 로그인을 UTC 기준으로 보여 줍니다. Oleafly는 로그인 상태를 유지하므로 방문할 때마다가 아니라 새로 로그인할 때마다 집계합니다.",
+        "none": "최근 30일 동안 로그인한 사용자가 없습니다.",
+        "daily": "일별 로그인",
+        "dailyLabel": "최근 30일 동안의 UTC 기준 일별 로그인",
+        "total": "30일 동안 {{number}}",
+        "hourly": "시간대별 로그인",
+        "hourlyLabel": "UTC 기준 요일 및 시간대별 로그인",
+        "day": "날짜",
+        "signInsColumn": "로그인",
+        "peopleColumn": "사용자",
+        "signIns": "로그인: {{number}}",
+        "people": "사용자: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, 로그인: {{number}}",
+        "hoursInUtc": "시간은 UTC 기준",
+        "less": "적음",
+        "more": "많음"
       },
       "storage": {
         "title": "저장소",

@@ -1484,6 +1484,36 @@ async fn suspending_or_removing_someone_signs_out_every_device_in_the_same_step(
 }
 
 #[tokio::test]
+async fn email_notifications_cannot_be_turned_on_until_email_is_known_to_work() {
+    let smtp = MockSmtp::start().await;
+    let app = test_app_with(mail_config(&smtp)).await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let off = json!({ "email_notifications": false });
+    let on = json!({ "email_notifications": true });
+    let settings: RuntimeSettings = parse(expect_status(
+        support::send_patch(&app.router, SETTINGS, token(&admin), off).await,
+        StatusCode::OK,
+    ));
+    assert!(!settings.email_notifications);
+    let refused = expect_status(
+        support::send_patch(&app.router, SETTINGS, token(&admin), on.clone()).await,
+        StatusCode::CONFLICT,
+    );
+    assert_eq!(refused.body["code"], "mail_not_working");
+    assert!(
+        refused.body["message"].as_str().is_some_and(
+            |message| message.contains("notifications") && message.contains("test email")
+        )
+    );
+    app.state.mailer.check().await.expect("the mock answers");
+    let settings: RuntimeSettings = parse(expect_status(
+        support::send_patch(&app.router, SETTINGS, token(&admin), on).await,
+        StatusCode::OK,
+    ));
+    assert!(settings.email_notifications);
+}
+
+#[tokio::test]
 async fn email_sign_in_stays_off_until_email_is_known_to_work() {
     let smtp = MockSmtp::start().await;
     let app = test_app_with(mail_config(&smtp)).await;

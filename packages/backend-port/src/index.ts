@@ -1883,6 +1883,28 @@ export interface CollabStorageUsage {
     file_bytes: number;
     files_location: CollabFilesLocation;
 }
+// Sign-ins on one UTC day, starting at `day` (midnight UTC, in ms): how many,
+// and how many different people.
+export interface CollabDailyActivity {
+    day: number;
+    sign_ins: number;
+    people: number;
+}
+// Sign-ins in one UTC hour of one weekday over the whole range. Weekday 0 is
+// Sunday.
+export interface CollabHourlyActivity {
+    weekday: number;
+    hour: number;
+    sign_ins: number;
+}
+// The security log's sign-ins over `days` UTC days from `since`. Only days
+// and hours with a sign-in are listed.
+export interface CollabServerActivity {
+    since: number;
+    days: number;
+    daily: CollabDailyActivity[];
+    by_hour: CollabHourlyActivity[];
+}
 export interface CollabAdminOverview {
     server_name: string;
     version: string;
@@ -1900,6 +1922,8 @@ export interface CollabAdminOverview {
     sign_in_problems?: CollabSignInProblem[];
     // Newest first, at most 20 from the last 30 days. Left out when empty.
     comments_changed_while_off?: CollabCommentChangeWhileOff[];
+    // Left out by servers older than the activity charts.
+    activity?: CollabServerActivity;
 }
 export type CollabAdminProjectSort = "title" | "owner" | "members" | "size" | "activity" | "created";
 export type CollabSortOrder = "asc" | "desc";
@@ -1943,6 +1967,8 @@ export interface CollabEmailStatus {
     from: string | null;
     notifications: boolean;
     last_failure: CollabEmailFailure | null;
+    // Whether email is known to get through. An older server leaves it out.
+    working?: boolean | null;
 }
 export interface CollabEmailTestResult {
     sent_to: string[];

@@ -1,18 +1,21 @@
 // @vitest-environment jsdom
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import { formatUtcDay } from "@/components/ui/daily-area-chart";
 import { loadNamespace } from "@/i18n";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatDateTime } from "@/lib/intl";
 import { fill, member, runtimeSettings } from "../tests/fixtures";
 import { OverviewSection } from "./OverviewSection";
-import { STARTED, overview } from "./tests/fixtures";
+import { DAY, STARTED, TODAY, overview, signInActivity } from "./tests/fixtures";
 
 const copy = enCollab.console.overview;
+const MB = 1024 * 1024;
+const STORED = 4096 + 3 * MB + 1536;
 
 beforeAll(async () => {
   await loadNamespace("collab");
@@ -22,6 +25,16 @@ function stat(id: string): HTMLElement {
   const tile = document.querySelector<HTMLElement>(`[data-stat="${id}"]`);
   if (!tile) throw new Error(`no ${id} figure`);
   return tile;
+}
+
+function isoDay(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+function card(name: string): HTMLElement {
+  const section = screen.getByRole("heading", { name }).closest("section");
+  if (!section) throw new Error(`no ${name} card`);
+  return section;
 }
 
 function renderReady(props: Partial<Parameters<typeof OverviewSection>[0]> = {}) {
@@ -101,6 +114,106 @@ describe("OverviewSection", () => {
     renderReady({ state: { status: "ready", overview: overview({ storage: null }) } });
     expect(screen.getByText(copy.storage.adminOnly)).toBeInTheDocument();
     expect(document.querySelector('[data-stat="database"]')).toBeNull();
+  });
+
+  it("adds up storage on its own card with where the files live", () => {
+    renderReady();
+    expect(within(stat("storage")).getByText(copy.storage.title)).toBeInTheDocument();
+    expect(within(stat("storage")).getByText(formatBytes(STORED))).toBeInTheDocument();
+    expect(within(stat("storage")).getByText(copy.storage.location.disk)).toBeInTheDocument();
+    expect(screen.getByTestId("console-overview").querySelector("dl")?.children).toHaveLength(5);
+  });
+
+  it("splits the storage bar by what takes the space, in the legend's order", () => {
+    renderReady();
+    const parts = [...screen.getByTestId("console-storage-bar").querySelectorAll<HTMLElement>("[data-part]")];
+    expect(parts.map((part) => part.dataset.part)).toEqual(["database", "snapshots", "files"]);
+    expect(Number(parts[1].style.flexGrow)).toBeCloseTo((3 * MB) / STORED);
+    expect(Number(parts[0].style.flexGrow)).toBeCloseTo(4096 / STORED);
+    const legend = [...screen.getByTestId("console-storage").querySelectorAll<HTMLElement>("[data-stat]")];
+    expect(legend.map((item) => item.dataset.stat)).toEqual(["database", "snapshots", "files"]);
+  });
+
+  it("draws an empty storage bar while the server stores nothing", () => {
+    renderReady({
+      state: {
+        status: "ready",
+        overview: overview({
+          storage: { database_bytes: 0, snapshot_bytes: 0, file_bytes: 0, files_location: "disk" },
+        }),
+      },
+    });
+    expect(screen.getByTestId("console-storage-bar").children).toHaveLength(0);
+    expect(within(stat("files")).getByText(formatBytes(0))).toBeInTheDocument();
+  });
+
+  it("leaves the storage card out for maintainers", () => {
+    renderReady({ state: { status: "ready", overview: overview({ storage: null }) } });
+    expect(document.querySelector('[data-stat="storage"]')).toBeNull();
+    expect(screen.getByTestId("console-overview").querySelector("dl")?.children).toHaveLength(4);
+  });
+
+  it("charts sign-ins per day over the last 30 days, with quiet days at zero", () => {
+    renderReady({ state: { status: "ready", overview: overview({ activity: signInActivity() }) } });
+    expect(screen.getByText(copy.activity.title)).toBeInTheDocument();
+    expect(screen.getByText(copy.activity.description)).toBeInTheDocument();
+    expect(screen.queryByText(copy.activity.none)).not.toBeInTheDocument();
+    const daily = card(copy.activity.daily);
+    expect(within(daily).getByRole("img", { name: copy.activity.dailyLabel })).toBeInTheDocument();
+    expect(within(daily).getByTestId("console-activity-total")).toHaveTextContent(
+      fill(copy.activity.total, { number: "4" }),
+    );
+    const rows = within(daily).getAllByRole("row").slice(1);
+    expect(rows).toHaveLength(30);
+    expect(rows[0]).toHaveTextContent(`${isoDay(TODAY - 29 * DAY)}00`);
+    expect(rows[28]).toHaveTextContent(`${isoDay(TODAY - DAY)}11`);
+    expect(rows[29]).toHaveTextContent(`${isoDay(TODAY)}32`);
+    expect(within(daily).getByText(formatUtcDay(TODAY - 29 * DAY))).toBeInTheDocument();
+  });
+
+  it("reads out the day under the pointer", () => {
+    renderReady({ state: { status: "ready", overview: overview({ activity: signInActivity() }) } });
+    const plot = screen.getByRole("img", { name: copy.activity.dailyLabel }).parentElement as HTMLElement;
+    vi.spyOn(plot, "getBoundingClientRect").mockReturnValue({ left: 0, width: 290 } as DOMRect);
+    fireEvent.mouseMove(plot, { clientX: 290 });
+    const reading = within(card(copy.activity.daily)).getByRole("status");
+    expect(reading).toHaveTextContent(formatUtcDay(TODAY, true));
+    expect(reading).toHaveTextContent(fill(copy.activity.signIns, { number: "3" }));
+    expect(reading).toHaveTextContent(fill(copy.activity.people, { number: "2" }));
+    fireEvent.mouseLeave(plot);
+    expect(within(card(copy.activity.daily)).queryByRole("status")).toBeNull();
+  });
+
+  it("maps sign-ins by UTC weekday and hour", () => {
+    renderReady({ state: { status: "ready", overview: overview({ activity: signInActivity() }) } });
+    const hourly = card(copy.activity.hourly);
+    expect(within(hourly).getByRole("img", { name: copy.activity.hourlyLabel })).toBeInTheDocument();
+    // The fixture's today is a Sunday.
+    expect(within(hourly).getByTitle(fill(copy.activity.cell, { weekday: "Sun", hour: "9", number: "3" }))).toBeInTheDocument();
+    expect(within(hourly).getByTitle(fill(copy.activity.cell, { weekday: "Sat", hour: "23", number: "1" }))).toBeInTheDocument();
+    expect(within(hourly).getByTitle(fill(copy.activity.cell, { weekday: "Mon", hour: "0", number: "0" }))).toBeInTheDocument();
+    for (const text of [copy.activity.hoursInUtc, copy.activity.less, copy.activity.more]) {
+      expect(hourly).toHaveTextContent(text);
+    }
+  });
+
+  it("says when nobody signed in and still draws the empty charts", () => {
+    renderReady({
+      state: { status: "ready", overview: overview({ activity: signInActivity({ daily: [], by_hour: [] }) }) },
+    });
+    expect(screen.getByText(copy.activity.none)).toBeInTheDocument();
+    expect(screen.getByTestId("console-activity-total")).toHaveTextContent(fill(copy.activity.total, { number: "0" }));
+    expect(within(card(copy.activity.daily)).getAllByRole("row").slice(1)).toHaveLength(30);
+    expect(screen.getByRole("img", { name: copy.activity.hourlyLabel })).toBeInTheDocument();
+  });
+
+  it("leaves the activity charts out when the server is older than them", () => {
+    renderReady();
+    expect(screen.queryByText(copy.activity.title)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("console-activity")).toBeNull();
+    expect(screen.queryByRole("img", { name: copy.activity.dailyLabel })).toBeNull();
+    expect(screen.queryByRole("img", { name: copy.activity.hourlyLabel })).toBeNull();
+    expect(stat("people")).toBeInTheDocument();
   });
 
   it("says when everything is working", () => {

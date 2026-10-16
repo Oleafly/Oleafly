@@ -29,21 +29,25 @@ import { canManageServer, toServerRole, type ServerRole } from "./roles";
 import { useCollabStore } from "./store";
 import { useConnectionTest, type ConnectionTest } from "./use-connection-test";
 
-function SignedInSummary({ account, role }: Readonly<{ account: CollabAccount; role: ServerRole | null }>) {
+function RoleBadge({ role }: Readonly<{ role: ServerRole }>) {
   const { t } = useTranslation(["collab"]);
+  return (
+    <Badge variant="primaryGhost" size="sm" data-testid="collab-server-role">
+      {t(($) => $.collab.roles[role])}
+    </Badge>
+  );
+}
+
+function SignedInSummary({ account, role }: Readonly<{ account: CollabAccount; role: ServerRole | null }>) {
   return (
     <div className="flex items-center gap-3">
       <Avatar person={accountPerson(account)} size="md" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
-          {t(($) => $.collab.section.server.signedInAs, { name: account.display_name })}
-        </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-medium">{account.display_name}</p>
+          {role ? <RoleBadge role={role} /> : null}
+        </div>
         <p className="truncate text-xs text-muted-foreground">{accountDetail(account)}</p>
-        {role ? (
-          <p className="text-xs text-muted-foreground">
-            {t(($) => $.collab.section.server.role, { role: t(($) => $.collab.roles[role]) })}
-          </p>
-        ) : null}
       </div>
     </div>
   );
@@ -137,23 +141,45 @@ export function ServerCard({
 
   const removing = unsent?.action === "remove";
 
-  // Open, the card says who is signed in, so the header only summarises that
-  // while folded. Why someone is signed out stays.
+  const removeButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="hover:bg-destructive/10 hover:text-destructive"
+      disabled={pending !== null}
+      onClick={() => setConfirmRemove(true)}
+    >
+      {pending === "remove" ? <Spinner /> : <Trash2 aria-hidden />}
+      {t(($) => $.collab.section.server.remove)}
+    </Button>
+  );
+
+  // Folded, the header sums up who is signed in: their picture and their
+  // role, since being signed in shows already. Open, the card says that
+  // itself and the header holds Remove. Why someone is signed out stays.
   const headerTrailing = () => {
     if (!account) {
       return (
-        <Badge variant="muted" size="sm">
-          {signedOutBadge()}
-        </Badge>
+        <>
+          <Badge variant="muted" size="sm">
+            {signedOutBadge()}
+          </Badge>
+          {open ? removeButton : null}
+        </>
       );
     }
-    if (open) return null;
+    if (open) return removeButton;
     return (
       <>
         <Avatar person={accountPerson(account)} size="sm" />
-        <Badge variant="success" size="sm">
-          {t(($) => $.collab.section.server.signedIn)}
-        </Badge>
+        {role ? (
+          <RoleBadge role={role} />
+        ) : (
+          <Badge variant="success" size="sm">
+            {t(($) => $.collab.section.server.signedIn)}
+          </Badge>
+        )}
       </>
     );
   };
@@ -226,17 +252,6 @@ export function ServerCard({
                 {t(($) => $.collab.section.server.signIn)}
               </Button>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="hover:bg-destructive/10 hover:text-destructive"
-              disabled={pending !== null}
-              onClick={() => setConfirmRemove(true)}
-            >
-              {pending === "remove" ? <Spinner /> : <Trash2 aria-hidden />}
-              {t(($) => $.collab.section.server.remove)}
-            </Button>
           </div>
         </div>
         {canManage ? (

@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Sesión iniciada",
       "signedOut": "Sesión cerrada",
-      "signedInAs": "Sesión iniciada como {{name}}",
       "signedOutHint": "Este equipo no tiene la sesión iniciada en este servidor.",
       "suspended": "Suspendida",
       "noAccess": "Sin acceso",
@@ -460,7 +459,12 @@
         "copyPath": "Mientras tanto, envía tú mismo este enlace a las personas nuevas. Añade el servidor a Oleafly.",
         "address": "También pueden escribir esta dirección en Añadir servidor:"
       },
+      "broken": {
+        "title": "El correo no funciona",
+        "description": "El servidor tiene ajustes de correo, pero sus correos no llegan. Revisa los ajustes y luego envía un correo de prueba."
+      },
       "needsSettings": "Primero activa el correo en el servidor.",
+      "needsWorking": "Envía un correo de prueba que llegue y luego activa esta opción.",
       "lastFailure": "El último correo que falló fue el {{date}}. El servidor de correo respondió:",
       "test": {
         "title": "Correo de prueba",
@@ -824,6 +828,25 @@
         "protocol": "Protocolo {{protocol}}",
         "pendingGuests": "Invitaciones de invitados pendientes de aprobación: {{number}}",
         "reviewGuests": "Revisar en Personas"
+      },
+      "activity": {
+        "title": "Actividad",
+        "description": "Inicios de sesión de los últimos 30 días, en UTC. Oleafly mantiene la sesión iniciada, así que aquí se cuenta cada nuevo inicio de sesión, no cada visita.",
+        "none": "Nadie inició sesión en los últimos 30 días.",
+        "daily": "Inicios de sesión por día",
+        "dailyLabel": "Inicios de sesión por día UTC en los últimos 30 días",
+        "total": "{{number}} en 30 días",
+        "hourly": "Inicios de sesión por hora",
+        "hourlyLabel": "Inicios de sesión por día de la semana y hora UTC",
+        "day": "Día",
+        "signInsColumn": "Inicios de sesión",
+        "peopleColumn": "Personas",
+        "signIns": "Inicios de sesión: {{number}}",
+        "people": "Personas: {{number}}",
+        "cell": "{{weekday}} a las {{hour}}:00 UTC, inicios de sesión: {{number}}",
+        "hoursInUtc": "Horas en UTC",
+        "less": "Menos",
+        "more": "Más"
       },
       "storage": {
         "title": "Almacenamiento",

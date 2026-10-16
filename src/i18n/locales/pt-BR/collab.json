@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Conectado",
       "signedOut": "Desconectado",
-      "signedInAs": "Conectado como {{name}}",
       "signedOutHint": "Este computador não está conectado a este servidor.",
       "suspended": "Suspensa",
       "noAccess": "Sem acesso",
@@ -460,7 +459,12 @@
         "copyPath": "Até lá, envie você mesmo este link para as pessoas novas. Ele adiciona o servidor ao Oleafly.",
         "address": "Elas também podem digitar este endereço em Adicionar servidor:"
       },
+      "broken": {
+        "title": "O e-mail não está funcionando",
+        "description": "O servidor tem configurações de e-mail, mas os e-mails dele não estão chegando. Confira as configurações e depois envie um e-mail de teste."
+      },
       "needsSettings": "Primeiro ative o e-mail no servidor.",
+      "needsWorking": "Envie um e-mail de teste que chegue e depois ative esta opção.",
       "lastFailure": "O último e-mail que falhou foi em {{date}}. O servidor de e-mail respondeu:",
       "test": {
         "title": "E-mail de teste",
@@ -824,6 +828,25 @@
         "protocol": "Protocolo {{protocol}}",
         "pendingGuests": "Convites de convidados aguardando aprovação: {{number}}",
         "reviewGuests": "Revisar em Pessoas"
+      },
+      "activity": {
+        "title": "Atividade",
+        "description": "Logins dos últimos 30 dias, em UTC. O Oleafly mantém as pessoas conectadas, então aqui conta cada novo login, não cada visita.",
+        "none": "Ninguém fez login nos últimos 30 dias.",
+        "daily": "Logins por dia",
+        "dailyLabel": "Logins por dia UTC nos últimos 30 dias",
+        "total": "{{number}} em 30 dias",
+        "hourly": "Logins por hora",
+        "hourlyLabel": "Logins por dia da semana e hora UTC",
+        "day": "Dia",
+        "signInsColumn": "Logins",
+        "peopleColumn": "Pessoas",
+        "signIns": "Logins: {{number}}",
+        "people": "Pessoas: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, logins: {{number}}",
+        "hoursInUtc": "Horas em UTC",
+        "less": "Menos",
+        "more": "Mais"
       },
       "storage": {
         "title": "Armazenamento",

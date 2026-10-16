@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Signed in",
       "signedOut": "Signed out",
-      "signedInAs": "Signed in as {{name}}",
       "signedOutHint": "This computer isn't signed in to this server.",
       "suspended": "Suspended",
       "noAccess": "No access",
@@ -460,7 +459,12 @@
         "copyPath": "Until then, send new people this link yourself. It adds the server to Oleafly.",
         "address": "They can also enter this address under Add server:"
       },
+      "broken": {
+        "title": "Email isn't working",
+        "description": "The server has mail settings, but its emails aren't getting through. Check the settings, then send a test email."
+      },
       "needsSettings": "Turn email on for the server first.",
+      "needsWorking": "Send a test email that gets through, then turn this on.",
       "lastFailure": "The last email that failed was on {{date}}. The mail server said:",
       "test": {
         "title": "Test email",
@@ -824,6 +828,25 @@
         "protocol": "Protocol {{protocol}}",
         "pendingGuests": "Guest invitations waiting for approval: {{number}}",
         "reviewGuests": "Review in People"
+      },
+      "activity": {
+        "title": "Activity",
+        "description": "Sign-ins over the last 30 days, in UTC. Oleafly keeps people signed in, so this counts each new sign-in, not every visit.",
+        "none": "Nobody signed in during the last 30 days.",
+        "daily": "Sign-ins per day",
+        "dailyLabel": "Sign-ins per UTC day over the last 30 days",
+        "total": "{{number}} in 30 days",
+        "hourly": "Sign-ins by hour",
+        "hourlyLabel": "Sign-ins by UTC weekday and hour",
+        "day": "Day",
+        "signInsColumn": "Sign-ins",
+        "peopleColumn": "People",
+        "signIns": "Sign-ins: {{number}}",
+        "people": "People: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, sign-ins: {{number}}",
+        "hoursInUtc": "Hours in UTC",
+        "less": "Less",
+        "more": "More"
       },
       "storage": {
         "title": "Storage",

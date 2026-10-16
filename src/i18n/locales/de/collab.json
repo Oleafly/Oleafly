@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Angemeldet",
       "signedOut": "Abgemeldet",
-      "signedInAs": "Angemeldet als {{name}}",
       "signedOutHint": "Dieser Computer ist bei diesem Server nicht angemeldet.",
       "suspended": "Gesperrt",
       "noAccess": "Kein Zugriff",
@@ -460,7 +459,12 @@
         "copyPath": "Bis dahin schicken Sie neuen Personen diesen Link selbst. Er fügt den Server in Oleafly hinzu.",
         "address": "Sie können diese Adresse auch unter Server hinzufügen eingeben:"
       },
+      "broken": {
+        "title": "E-Mail funktioniert nicht",
+        "description": "Der Server hat Mail-Einstellungen, aber seine E-Mails kommen nicht an. Prüfen Sie die Einstellungen und senden Sie dann eine Test-E-Mail."
+      },
       "needsSettings": "Schalten Sie zuerst E-Mail für den Server ein.",
+      "needsWorking": "Senden Sie eine Test-E-Mail, die ankommt, und schalten Sie dies dann ein.",
       "lastFailure": "Die letzte fehlgeschlagene E-Mail war am {{date}}. Der Mailserver meldete:",
       "test": {
         "title": "Test-E-Mail",
@@ -824,6 +828,25 @@
         "protocol": "Protokoll {{protocol}}",
         "pendingGuests": "Gasteinladungen, die auf Freigabe warten: {{number}}",
         "reviewGuests": "Unter Personen prüfen"
+      },
+      "activity": {
+        "title": "Aktivität",
+        "description": "Anmeldungen der letzten 30 Tage, in UTC. Oleafly hält Personen angemeldet, daher zählt hier jede neue Anmeldung, nicht jeder Besuch.",
+        "none": "In den letzten 30 Tagen hat sich niemand angemeldet.",
+        "daily": "Anmeldungen pro Tag",
+        "dailyLabel": "Anmeldungen pro UTC-Tag in den letzten 30 Tagen",
+        "total": "{{number}} in 30 Tagen",
+        "hourly": "Anmeldungen nach Stunde",
+        "hourlyLabel": "Anmeldungen nach Wochentag und Stunde in UTC",
+        "day": "Tag",
+        "signInsColumn": "Anmeldungen",
+        "peopleColumn": "Personen",
+        "signIns": "Anmeldungen: {{number}}",
+        "people": "Personen: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, Anmeldungen: {{number}}",
+        "hoursInUtc": "Stunden in UTC",
+        "less": "Weniger",
+        "more": "Mehr"
       },
       "storage": {
         "title": "Speicher",

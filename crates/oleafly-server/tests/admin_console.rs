@@ -1,10 +1,11 @@
 mod support;
 
 use axum::http::{Method, StatusCode};
-use oleafly_collab_protocol::admin::{RuntimeSettingsPatch, SecurityEvent};
+use oleafly_collab_protocol::admin::{RuntimeSettingsPatch, SecurityEvent, SecurityEventKind};
 use oleafly_collab_protocol::capabilities::{ProviderKind, WELL_KNOWN_PATH};
 use oleafly_collab_protocol::console::{
-    AdminOverview, AdminProject, AdminProjectsPage, FilesLocation, HealthIssue, HealthStatus,
+    AdminOverview, AdminProject, AdminProjectsPage, DailyActivity, FilesLocation, HealthIssue,
+    HealthStatus, HourlyActivity, ServerActivity, ACTIVITY_DAYS,
 };
 use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::ids::{AccountId, BatchId, DeviceId, SharedProjectId};
@@ -13,7 +14,7 @@ use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::clock::Clock;
 use oleafly_server::config::{BlobStoreConfig, ServerConfig};
 use oleafly_server::rooms::{outbox, Outbound, RoomMember};
-use oleafly_server::security_log;
+use oleafly_server::security_log::{self, NewSecurityEvent};
 use oleafly_server::sockets::SocketControl;
 use oleafly_server::test_support::{
     seed_member, test_app, test_app_with, test_config, MockS3, SeededMember, TestApp,
@@ -29,6 +30,8 @@ const OVERVIEW: &str = "/api/v1/admin/overview";
 const PROJECTS: &str = "/api/v1/admin/projects";
 const UNKNOWN_ID: &str = "0192f0c4-7c00-7000-8000-000000000000";
 const MINUTE: i64 = 60_000;
+const HOUR: i64 = 60 * MINUTE;
+const DAY: i64 = 24 * HOUR;
 
 fn token(member: &SeededMember) -> Option<&str> {
     Some(member.access_token.as_str())
@@ -424,6 +427,128 @@ async fn the_overview_counts_guest_invitations_waiting_for_an_admin() {
             parse(support::send_get(&app.router, OVERVIEW, token(caller)).await);
         assert_eq!(overview.counts.pending_guest_approvals, 2);
     }
+}
+
+async fn log_events(app: &TestApp, events: Vec<(SecurityEventKind, AccountId, i64)>) {
+    app.state
+        .db
+        .call(move |conn| {
+            for (kind, actor, at) in events {
+                security_log::record(
+                    conn,
+                    at,
+                    NewSecurityEvent {
+                        actor: Some(actor),
+                        kind,
+                        target: Some(actor.to_string()),
+                        ip: None,
+                        detail: serde_json::json!({}),
+                    },
+                )?;
+            }
+            Ok(())
+        })
+        .await
+        .expect("the events are logged");
+}
+
+async fn activity(app: &TestApp, caller: &SeededMember) -> ServerActivity {
+    let overview: AdminOverview =
+        parse(support::send_get(&app.router, OVERVIEW, token(caller)).await);
+    overview.activity.expect("the overview has activity")
+}
+
+#[tokio::test]
+async fn the_overview_charts_sign_ins_over_the_last_30_utc_days() {
+    let app = test_app().await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let maintainer = seed_member(&app, ServerRole::Maintainer).await;
+    let member = seed_member(&app, ServerRole::Member).await;
+    // The test clock starts on Thursday 9 October 2025 at 08:53 UTC.
+    let now = app.clock.now_ms();
+    let today = now - now.rem_euclid(DAY);
+    let first = today - 29 * DAY;
+
+    let quiet = activity(&app, &admin).await;
+    assert_eq!((quiet.since, quiet.days), (first, ACTIVITY_DAYS));
+    assert!(quiet.daily.is_empty() && quiet.by_hour.is_empty());
+
+    let (alice, bob) = (admin.account_id, member.account_id);
+    log_events(
+        &app,
+        vec![
+            (SecurityEventKind::SignIn, alice, today + HOUR),
+            (SecurityEventKind::SignIn, alice, today + HOUR + 30 * MINUTE),
+            (SecurityEventKind::SignIn, bob, today + 7 * HOUR),
+            (SecurityEventKind::SignIn, bob, today - 1),
+            (SecurityEventKind::SignIn, alice, first),
+            (SecurityEventKind::SignIn, bob, first - 1),
+            (SecurityEventKind::SignInRefused, bob, today + 2 * HOUR),
+            (SecurityEventKind::DeviceAdded, bob, today + 7 * HOUR),
+            (SecurityEventKind::SettingsChanged, alice, today + 3 * HOUR),
+        ],
+    )
+    .await;
+
+    let charted = activity(&app, &admin).await;
+    assert_eq!(charted.since, first);
+    assert_eq!(
+        charted.daily,
+        vec![
+            DailyActivity {
+                day: first,
+                sign_ins: 1,
+                people: 1
+            },
+            DailyActivity {
+                day: today - DAY,
+                sign_ins: 1,
+                people: 1
+            },
+            DailyActivity {
+                day: today,
+                sign_ins: 3,
+                people: 2
+            },
+        ]
+    );
+    // 29 days before a Thursday is a Wednesday, like the day before.
+    assert_eq!(
+        charted.by_hour,
+        vec![
+            HourlyActivity {
+                weekday: 3,
+                hour: 0,
+                sign_ins: 1
+            },
+            HourlyActivity {
+                weekday: 3,
+                hour: 23,
+                sign_ins: 1
+            },
+            HourlyActivity {
+                weekday: 4,
+                hour: 1,
+                sign_ins: 2
+            },
+            HourlyActivity {
+                weekday: 4,
+                hour: 7,
+                sign_ins: 1
+            },
+        ]
+    );
+    assert_eq!(activity(&app, &maintainer).await, charted);
+
+    app.clock.advance(DAY);
+    let signed_in_again = seed_member(&app, ServerRole::Admin).await;
+    let next_day = activity(&app, &signed_in_again).await;
+    assert_eq!(next_day.since, first + DAY);
+    assert_eq!(
+        next_day.daily.first().map(|day| day.day),
+        Some(today - DAY),
+        "the first day drops out of the range a day later"
+    );
 }
 
 #[tokio::test]

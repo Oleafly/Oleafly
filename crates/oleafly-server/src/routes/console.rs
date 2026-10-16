@@ -51,13 +51,14 @@ async fn overview(
 ) -> Result<Json<AdminOverview>, ServerError> {
     auth.require(ServerAction::ManageMembers)?;
     let storage_visible = sees_storage(&auth);
+    let activity_visible = auth.require(ServerAction::ReadSecurityLog).is_ok();
     let location = match state.config.blob_store {
         BlobStoreConfig::Filesystem => FilesLocation::Disk,
         BlobStoreConfig::S3(_) => FilesLocation::S3,
     };
     let now = state.clock.now_ms();
     let per_hour = state.config.sign_in.email_links_per_hour;
-    let (mut counts, storage, runtime, emails_paused, comment_changes) = state
+    let (mut counts, storage, runtime, emails_paused, comment_changes, activity) = state
         .db
         .call(move |conn| {
             let counts = console::counts(conn, now)?;
@@ -68,12 +69,18 @@ async fn overview(
             };
             let paused = throttle::reached(conn, email_link::SERVER_LIMIT_KEY, per_hour, now)?;
             let comment_changes = comment_guard::noticed(conn, now)?;
+            let activity = if activity_visible {
+                Some(console::activity(conn, now)?)
+            } else {
+                None
+            };
             Ok((
                 counts,
                 storage,
                 settings::load(conn)?,
                 paused,
                 comment_changes,
+                activity,
             ))
         })
         .await?;
@@ -128,6 +135,7 @@ async fn overview(
         archive_days: config.archive_days,
         sign_in_problems,
         comments_changed_while_off: comment_changes,
+        activity,
     }))
 }
 

@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Connecté",
       "signedOut": "Déconnecté",
-      "signedInAs": "Connecté avec le compte {{name}}",
       "signedOutHint": "Cet ordinateur n'est pas connecté à ce serveur.",
       "suspended": "Suspendu",
       "noAccess": "Sans accès",
@@ -460,7 +459,12 @@
         "copyPath": "En attendant, envoyez vous-même ce lien aux nouvelles personnes. Il ajoute le serveur dans Oleafly.",
         "address": "Elles peuvent aussi saisir cette adresse dans Ajouter un serveur :"
       },
+      "broken": {
+        "title": "Le courriel ne fonctionne pas",
+        "description": "Le serveur a des paramètres de messagerie, mais ses courriels n'arrivent pas. Vérifiez les paramètres, puis envoyez un courriel de test."
+      },
       "needsSettings": "Activez d'abord le courriel sur le serveur.",
+      "needsWorking": "Envoyez un courriel de test qui arrive bien, puis activez cette option.",
       "lastFailure": "Le dernier courriel qui a échoué date du {{date}}. Le serveur de messagerie a répondu :",
       "test": {
         "title": "Courriel de test",
@@ -824,6 +828,25 @@
         "protocol": "Protocole {{protocol}}",
         "pendingGuests": "Invitations d'invités en attente d'approbation : {{number}}",
         "reviewGuests": "Examiner dans Personnes"
+      },
+      "activity": {
+        "title": "Activité",
+        "description": "Connexions des 30 derniers jours, en UTC. Oleafly garde les personnes connectées, donc chaque nouvelle connexion est comptée, pas chaque visite.",
+        "none": "Personne ne s'est connecté au cours des 30 derniers jours.",
+        "daily": "Connexions par jour",
+        "dailyLabel": "Connexions par jour UTC sur les 30 derniers jours",
+        "total": "{{number}} en 30 jours",
+        "hourly": "Connexions par heure",
+        "hourlyLabel": "Connexions par jour de la semaine et par heure UTC",
+        "day": "Jour",
+        "signInsColumn": "Connexions",
+        "peopleColumn": "Personnes",
+        "signIns": "Connexions : {{number}}",
+        "people": "Personnes : {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, connexions : {{number}}",
+        "hoursInUtc": "Heures en UTC",
+        "less": "Moins",
+        "more": "Plus"
       },
       "storage": {
         "title": "Stockage",

@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Přihlášeno",
       "signedOut": "Odhlášeno",
-      "signedInAs": "Přihlášeno jako {{name}}",
       "signedOutHint": "Tento počítač není k tomuto serveru přihlášený.",
       "suspended": "Pozastaveno",
       "noAccess": "Bez přístupu",
@@ -460,7 +459,12 @@
         "copyPath": "Do té doby posílejte novým lidem tento odkaz sami. Přidá server do Oleafly.",
         "address": "Mohou také zadat tuto adresu v části Přidat server:"
       },
+      "broken": {
+        "title": "E-mail nefunguje",
+        "description": "Server má nastavení pošty, ale jeho e-maily se nedoručují. Zkontrolujte nastavení a pak pošlete zkušební e-mail."
+      },
       "needsSettings": "Nejdřív zapněte e-mail pro server.",
+      "needsWorking": "Pošlete zkušební e-mail, který se doručí, a pak to zapněte.",
       "lastFailure": "Poslední neúspěšný e-mail byl {{date}}. Poštovní server odpověděl:",
       "test": {
         "title": "Zkušební e-mail",
@@ -824,6 +828,25 @@
         "protocol": "Protokol {{protocol}}",
         "pendingGuests": "Pozvánky hostů čekající na schválení: {{number}}",
         "reviewGuests": "Zkontrolovat v sekci Lidé"
+      },
+      "activity": {
+        "title": "Aktivita",
+        "description": "Přihlášení za posledních 30 dní v UTC. Oleafly lidi nechává přihlášené, takže se tu počítá každé nové přihlášení, ne každá návštěva.",
+        "none": "Za posledních 30 dní se nikdo nepřihlásil.",
+        "daily": "Přihlášení za den",
+        "dailyLabel": "Přihlášení podle dnů v UTC za posledních 30 dní",
+        "total": "{{number}} za 30 dní",
+        "hourly": "Přihlášení podle hodin",
+        "hourlyLabel": "Přihlášení podle dne v týdnu a hodiny v UTC",
+        "day": "Den",
+        "signInsColumn": "Přihlášení",
+        "peopleColumn": "Lidé",
+        "signIns": "Přihlášení: {{number}}",
+        "people": "Lidé: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, přihlášení: {{number}}",
+        "hoursInUtc": "Hodiny v UTC",
+        "less": "Méně",
+        "more": "Více"
       },
       "storage": {
         "title": "Úložiště",

@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Inloggad",
       "signedOut": "Utloggad",
-      "signedInAs": "Inloggad som {{name}}",
       "signedOutHint": "Den här datorn är inte inloggad på den här servern.",
       "suspended": "Avstängt",
       "noAccess": "Ingen åtkomst",
@@ -460,7 +459,12 @@
         "copyPath": "Tills dess kan du själv skicka den här länken till nya personer. Den lägger till servern i Oleafly.",
         "address": "De kan också skriva in den här adressen under Lägg till server:"
       },
+      "broken": {
+        "title": "E-post fungerar inte",
+        "description": "Servern har e-postinställningar, men dess mejl kommer inte fram. Kontrollera inställningarna och skicka sedan ett testmejl."
+      },
       "needsSettings": "Slå på e-post för servern först.",
+      "needsWorking": "Skicka ett testmejl som kommer fram och slå sedan på det här.",
       "lastFailure": "Det senaste mejlet som misslyckades skickades {{date}}. E-postservern svarade:",
       "test": {
         "title": "Testmejl",
@@ -824,6 +828,25 @@
         "protocol": "Protokoll {{protocol}}",
         "pendingGuests": "Gästinbjudningar som väntar på godkännande: {{number}}",
         "reviewGuests": "Granska under Personer"
+      },
+      "activity": {
+        "title": "Aktivitet",
+        "description": "Inloggningar de senaste 30 dagarna, i UTC. Oleafly håller personer inloggade, så här räknas varje ny inloggning, inte varje besök.",
+        "none": "Ingen loggade in under de senaste 30 dagarna.",
+        "daily": "Inloggningar per dag",
+        "dailyLabel": "Inloggningar per UTC-dag de senaste 30 dagarna",
+        "total": "{{number}} på 30 dagar",
+        "hourly": "Inloggningar per timme",
+        "hourlyLabel": "Inloggningar per veckodag och timme i UTC",
+        "day": "Dag",
+        "signInsColumn": "Inloggningar",
+        "peopleColumn": "Personer",
+        "signIns": "Inloggningar: {{number}}",
+        "people": "Personer: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, inloggningar: {{number}}",
+        "hoursInUtc": "Timmar i UTC",
+        "less": "Mindre",
+        "more": "Mer"
       },
       "storage": {
         "title": "Lagring",

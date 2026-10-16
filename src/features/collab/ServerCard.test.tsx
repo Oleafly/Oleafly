@@ -75,7 +75,7 @@ describe("ServerCard", () => {
     renderCard();
     expect(screen.getByRole("heading", { name: "Smith Lab" })).toBeInTheDocument();
     expect(screen.getByText("https://collab.uni.edu")).toBeInTheDocument();
-    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
+    expect(screen.getByText("Alice Chen")).toBeInTheDocument();
     expect(screen.getByText("alice@uni.edu")).toBeInTheDocument();
     expect(await screen.findByTestId("collab-device-d-1")).toBeInTheDocument();
     expect(mocks.collabServerDevices).toHaveBeenCalledWith(SERVER_ID);
@@ -101,22 +101,32 @@ describe("ServerCard", () => {
       copy.server.manage,
       copy.server.testShort,
       copy.server.signOut,
-      copy.server.remove,
     ]);
     cleanup();
     renderCard(signedOutServer());
-    expect(actions()).toEqual([copy.server.testShort, copy.server.signIn, copy.server.remove]);
+    expect(actions()).toEqual([copy.server.testShort, copy.server.signIn]);
   });
 
-  it("says who is signed in once: in the header while folded, in the card while open", async () => {
+  it("says who is signed in once: their role in the header while folded, the card while open", async () => {
     const user = userEvent.setup();
     renderCard();
-    const signedInAs = fill(copy.server.signedInAs, { name: "Alice Chen" });
+    const signedInAs = "Alice Chen";
     expect(screen.getByText(signedInAs)).toBeInTheDocument();
+    expect(screen.getByTestId("collab-server-role")).toHaveTextContent(enCollab.roles.member);
+    expect(screen.queryByText(fill(copy.server.role, { role: enCollab.roles.member }))).toBeNull();
+    expect(screen.getByRole("button", { name: copy.server.remove })).toBeInTheDocument();
+    await user.click(screen.getByTestId(`collab-server-${SERVER_ID}-toggle`));
+    expect(screen.queryByText(signedInAs)).toBeNull();
+    expect(screen.getByTestId("collab-server-role")).toHaveTextContent(enCollab.roles.member);
     expect(screen.queryByText(copy.server.signedIn)).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.server.remove })).toBeNull();
+  });
+
+  it("says Signed in in the folded header when the role is one this version doesn't know", async () => {
+    const user = userEvent.setup();
+    renderCard(server({ account: account({ server_role: "auditor" as never }) }));
     await user.click(screen.getByTestId(`collab-server-${SERVER_ID}-toggle`));
     expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
-    expect(screen.queryByText(signedInAs)).toBeNull();
   });
 
   it("signs out and then offers to sign in again", async () => {
@@ -134,7 +144,7 @@ describe("ServerCard", () => {
   it("treats a server whose session ended as signed out even if it still names the account", () => {
     renderCard(server({ signed_in: false }));
     expect(screen.getByText(copy.server.signedOut)).toBeInTheDocument();
-    expect(screen.queryByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeNull();
+    expect(screen.queryByText("Alice Chen")).toBeNull();
     expect(mocks.collabServerDevices).not.toHaveBeenCalled();
   });
 
@@ -170,7 +180,7 @@ describe("ServerCard", () => {
 
   it("ignores an old reason once this computer is signed in again", () => {
     renderCard(server({ signed_in: true, ended: "account_suspended" }));
-    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
+    expect(screen.getByText("Alice Chen")).toBeInTheDocument();
     expect(screen.queryByText(copy.server.suspended)).toBeNull();
   });
 
@@ -180,7 +190,7 @@ describe("ServerCard", () => {
     renderCard();
     await user.click(screen.getByRole("button", { name: copy.server.signOut }));
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
-    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
+    expect(screen.getByText("Alice Chen")).toBeInTheDocument();
   });
 
   it("asks before removing a server, and removes it", async () => {
@@ -206,7 +216,7 @@ describe("ServerCard", () => {
     await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${copy.server.unsent.stay}`) }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(mocks.collabServerSignOut).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
+    expect(screen.getByText("Alice Chen")).toBeInTheDocument();
   });
 
   it("lists each project with its unsent changes and the name it keeps, in words that match Remove", async () => {
@@ -281,12 +291,12 @@ describe("ServerCard", () => {
     await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${copy.server.unsent.keep}`) }));
     expect(mocks.collabServerSignOut).toHaveBeenLastCalledWith(SERVER_ID, true);
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
-    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
+    expect(screen.getByText("Alice Chen")).toBeInTheDocument();
   });
 
   it("shows no role and no Manage server for a role this version does not know", () => {
     renderCard(server({ account: account({ server_role: "auditor" as never }) }));
-    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
+    expect(screen.getByText("Alice Chen")).toBeInTheDocument();
     expect(screen.queryByText(/auditor/)).toBeNull();
     expect(screen.queryByRole("button", { name: copy.server.manage })).toBeNull();
   });
@@ -339,7 +349,7 @@ describe("ServerCard", () => {
     ] as const;
     for (const [role, offered] of cases) {
       const { onManage } = renderCard(server({ account: account({ server_role: role }) }));
-      expect(screen.getByText(fill(copy.server.role, { role: enCollab.roles[role] }))).toBeInTheDocument();
+      expect(screen.getByTestId("collab-server-role")).toHaveTextContent(enCollab.roles[role]);
       const manage = screen.queryByRole("button", { name: copy.server.manage });
       expect(manage !== null, role).toBe(offered);
       if (manage) {

@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Kirjautunut",
       "signedOut": "Ei kirjautunut",
-      "signedInAs": "Kirjautunut käyttäjänä {{name}}",
       "signedOutHint": "Tämä kone ei ole kirjautunut tälle palvelimelle.",
       "suspended": "Jäädytetty",
       "noAccess": "Ei pääsyä",
@@ -460,7 +459,12 @@
         "copyPath": "Siihen asti lähetä tämä linkki uusille ihmisille itse. Se lisää palvelimen Oleafly-sovellukseen.",
         "address": "He voivat myös kirjoittaa tämän osoitteen kohtaan Lisää palvelin:"
       },
+      "broken": {
+        "title": "Sähköposti ei toimi",
+        "description": "Palvelimella on sähköpostiasetukset, mutta sen viestit eivät mene perille. Tarkista asetukset ja lähetä sitten testiviesti."
+      },
       "needsSettings": "Ota ensin sähköposti käyttöön palvelimella.",
+      "needsWorking": "Lähetä testiviesti, joka menee perille, ja ota tämä sitten käyttöön.",
       "lastFailure": "Viimeisin epäonnistunut sähköposti: {{date}}. Postipalvelin vastasi:",
       "test": {
         "title": "Testiviesti",
@@ -824,6 +828,25 @@
         "protocol": "Protokolla {{protocol}}",
         "pendingGuests": "Hyväksyntää odottavat vieraskutsut: {{number}}",
         "reviewGuests": "Tarkista kohdassa Henkilöt"
+      },
+      "activity": {
+        "title": "Toiminta",
+        "description": "Kirjautumiset viimeisten 30 päivän ajalta UTC-ajassa. Oleafly pitää ihmiset kirjautuneina, joten tässä lasketaan jokainen uusi kirjautuminen, ei jokaista käyntiä.",
+        "none": "Kukaan ei kirjautunut sisään viimeisten 30 päivän aikana.",
+        "daily": "Kirjautumiset päivittäin",
+        "dailyLabel": "Kirjautumiset UTC-päivittäin viimeisten 30 päivän ajalta",
+        "total": "{{number}} 30 päivässä",
+        "hourly": "Kirjautumiset tunneittain",
+        "hourlyLabel": "Kirjautumiset viikonpäivän ja tunnin mukaan UTC-ajassa",
+        "day": "Päivä",
+        "signInsColumn": "Kirjautumiset",
+        "peopleColumn": "Henkilöt",
+        "signIns": "Kirjautumiset: {{number}}",
+        "people": "Henkilöt: {{number}}",
+        "cell": "{{weekday}} klo {{hour}}:00 UTC, kirjautumisia: {{number}}",
+        "hoursInUtc": "Tunnit UTC-aikaa",
+        "less": "Vähemmän",
+        "more": "Enemmän"
       },
       "storage": {
         "title": "Tallennustila",

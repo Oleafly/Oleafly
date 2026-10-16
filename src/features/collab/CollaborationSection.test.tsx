@@ -79,7 +79,8 @@ describe("CollaborationSection", () => {
     expect(await screen.findByRole("heading", { name: "Smith Lab" })).toBeInTheDocument();
     expect(screen.getByText("https://collab.uni.edu")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Jones Lab" })).toBeInTheDocument();
-    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+    // A signed-in server shows the role it signed in as; signed in is evident.
+    expect(screen.getByText(enCollab.roles.member)).toBeInTheDocument();
     expect(screen.getByText(copy.server.signedOut)).toBeInTheDocument();
   });
 

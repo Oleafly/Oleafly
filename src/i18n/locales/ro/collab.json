@@ -14,7 +14,6 @@
     "server": {
       "signedIn": "Autentificat",
       "signedOut": "Deconectat",
-      "signedInAs": "Autentificat ca {{name}}",
       "signedOutHint": "Acest computer nu este autentificat pe acest server.",
       "suspended": "Suspendat",
       "noAccess": "Fără acces",
@@ -460,7 +459,12 @@
         "copyPath": "Până atunci, trimite tu acest link persoanelor noi. Adaugă serverul în Oleafly.",
         "address": "Pot introduce și această adresă la Adaugă server:"
       },
+      "broken": {
+        "title": "E-mailul nu funcționează",
+        "description": "Serverul are setări de e-mail, dar e-mailurile lui nu ajung. Verifică setările, apoi trimite un e-mail de test."
+      },
       "needsSettings": "Activează mai întâi e-mailul pentru server.",
+      "needsWorking": "Trimite un e-mail de test care să ajungă, apoi activează această opțiune.",
       "lastFailure": "Ultimul e-mail eșuat a fost pe {{date}}. Serverul de e-mail a răspuns:",
       "test": {
         "title": "E-mail de test",
@@ -824,6 +828,25 @@
         "protocol": "Protocol {{protocol}}",
         "pendingGuests": "Invitații pentru invitați care așteaptă aprobarea: {{number}}",
         "reviewGuests": "Verifică în Persoane"
+      },
+      "activity": {
+        "title": "Activitate",
+        "description": "Autentificările din ultimele 30 de zile, în UTC. Oleafly păstrează persoanele autentificate, așa că aici se numără fiecare autentificare nouă, nu fiecare vizită.",
+        "none": "Nimeni nu s-a autentificat în ultimele 30 de zile.",
+        "daily": "Autentificări pe zi",
+        "dailyLabel": "Autentificări pe zi UTC în ultimele 30 de zile",
+        "total": "{{number}} în 30 de zile",
+        "hourly": "Autentificări pe ore",
+        "hourlyLabel": "Autentificări după ziua săptămânii și ora UTC",
+        "day": "Ziua",
+        "signInsColumn": "Autentificări",
+        "peopleColumn": "Persoane",
+        "signIns": "Autentificări: {{number}}",
+        "people": "Persoane: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, autentificări: {{number}}",
+        "hoursInUtc": "Ore în UTC",
+        "less": "Mai puțin",
+        "more": "Mai mult"
       },
       "storage": {
         "title": "Stocare",
