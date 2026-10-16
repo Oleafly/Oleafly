@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { useAutoSizeTextarea } from "@/components/ai/use-auto-size-textarea";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -95,6 +96,7 @@ export function CommentComposer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const field = useRef<HTMLTextAreaElement>(null);
+  const shell = useRef<HTMLDivElement>(null);
   const placeCaret = useRef<number | null>(null);
   const listId = useId();
 
@@ -186,10 +188,12 @@ export function CommentComposer({
   };
 
   const showActions = !compact || body.trim() !== "";
+  // Grow with the text and with a placeholder that wraps in a narrow pane.
+  useAutoSizeTextarea(field, shell, body, placeholder ?? "", 192);
 
   return (
     <div className="space-y-1.5">
-      <div className="relative">
+      <div ref={shell} className="relative">
         <Textarea
           ref={field}
           value={body}

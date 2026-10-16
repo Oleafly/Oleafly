@@ -11,15 +11,6 @@
         "description": "Peça o endereço à pessoa que mantém o servidor do seu grupo e depois adicione o servidor aqui."
       }
     },
-    "presence": {
-      "label": "O que os outros veem",
-      "description": "Escolha o que as pessoas dos seus projetos compartilhados veem enquanto você trabalha. Configure separadamente em cada computador.",
-      "options": {
-        "cursor": "Mostrar meu cursor",
-        "file": "Mostrar só o arquivo em que estou",
-        "hidden": "Me ocultar"
-      }
-    },
     "server": {
       "signedIn": "Conectado",
       "signedOut": "Desconectado",

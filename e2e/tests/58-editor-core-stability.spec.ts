@@ -354,6 +354,14 @@ async function expectStableGeometry(
 async function expectFullAuthoringWorkspace(
   page: Parameters<typeof expectDesktopShellAnchored>[0],
 ) {
+  // A new PDF swaps each page's canvas for a stale copy (pdf-canvas-stale)
+  // until it is drawn again, so a check right after a compile can land
+  // mid-swap on a slow runner. Wait for a drawn page instead of sampling once.
+  await waitLong(
+    page,
+    `Array.from(document.querySelectorAll(".pdf-canvas")).some((canvas) => canvas.getClientRects().length > 0)`,
+    30_000,
+  );
   const state = await page.evaluate<{
     viewMode: string;
     sourceTree: boolean;

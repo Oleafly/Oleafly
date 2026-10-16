@@ -1,13 +1,25 @@
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 const DEFAULT_MAX_HEIGHT = 128;
+
+// WebKit leaves part of a wrapped placeholder out of scrollHeight (two lines
+// measure about one and a half), so an empty box is measured with its
+// placeholder typed in, then emptied again before anything paints.
+function contentHeight(textarea: HTMLTextAreaElement, placeholder: string): number {
+  if (textarea.value !== "" || placeholder === "") return textarea.scrollHeight;
+  textarea.value = placeholder;
+  const height = textarea.scrollHeight;
+  textarea.value = "";
+  return height;
+}
 
 function fitTextareaToContent(
   textarea: HTMLTextAreaElement,
   maxHeight: number,
+  placeholder: string,
 ) {
   textarea.style.height = "auto";
-  textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+  textarea.style.height = `${Math.min(contentHeight(textarea, placeholder), maxHeight)}px`;
 }
 
 export function useAutoSizeTextarea(
@@ -17,14 +29,16 @@ export function useAutoSizeTextarea(
   placeholder: string,
   maxHeight = DEFAULT_MAX_HEIGHT,
 ) {
+  const latestPlaceholder = useRef(placeholder);
+  latestPlaceholder.current = placeholder;
+
   useEffect(() => {
-    // Reading both controlled strings keeps resizing coupled to text and
-    // placeholder wrapping, even though their pixels are measured from the DOM.
+    // Reading the controlled value keeps resizing coupled to typing, even
+    // though its pixels are measured from the DOM.
     void value;
-    void placeholder;
     const textarea = textareaRef.current;
     if (!textarea) return;
-    fitTextareaToContent(textarea, maxHeight);
+    fitTextareaToContent(textarea, maxHeight, placeholder);
   }, [maxHeight, placeholder, textareaRef, value]);
 
   useEffect(() => {
@@ -38,7 +52,7 @@ export function useAutoSizeTextarea(
       previousWidth = nextWidth;
 
       const textarea = textareaRef.current;
-      if (textarea) fitTextareaToContent(textarea, maxHeight);
+      if (textarea) fitTextareaToContent(textarea, maxHeight, latestPlaceholder.current);
     });
 
     observer.observe(shell);

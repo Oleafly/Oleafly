@@ -1,12 +1,9 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, Server } from "lucide-react";
-import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useFilesStore } from "@/store/files";
-import { COLLAB_PRESENCE_OPTIONS, type CollabPresence, useSettingsStore } from "@/store/settings";
 import { AddServerDialog } from "./AddServerDialog";
 import { collabErrorMessage } from "./errors";
 import { LoadFailed } from "./feedback";
@@ -50,37 +47,6 @@ function DetachedProjects() {
         {t(($) => $.common.actions.ok)}
       </Button>
     </div>
-  );
-}
-
-function PresenceChoice() {
-  const { t } = useTranslation(["collab"]);
-  const id = useId();
-  const presence = useSettingsStore((state) => state.collabPresence);
-  const setPresence = useSettingsStore((state) => state.setCollabPresence);
-  return (
-    <SettingsRow
-      testId="settings-row-collab-presence"
-      label={<span id={`${id}-label`}>{t(($) => $.collab.section.presence.label)}</span>}
-      description={t(($) => $.collab.section.presence.description)}
-      details={
-        <RadioGroup
-          value={presence}
-          onValueChange={(value) => setPresence(value as CollabPresence)}
-          aria-labelledby={`${id}-label`}
-          className="mt-2.5 gap-2"
-        >
-          {COLLAB_PRESENCE_OPTIONS.map((option) => (
-            <div key={option} className="flex items-center gap-2">
-              <RadioGroupItem id={`${id}-${option}`} value={option} />
-              <label htmlFor={`${id}-${option}`} className="cursor-pointer text-sm">
-                {t(($) => $.collab.section.presence.options[option])}
-              </label>
-            </div>
-          ))}
-        </RadioGroup>
-      }
-    />
   );
 }
 
@@ -163,7 +129,6 @@ export function CollaborationSection() {
       ) : null}
       <DetachedProjects />
       {renderServers()}
-      <PresenceChoice />
       <AddServerDialog open={adding !== null} initialUrl={adding?.url ?? null} onClose={() => setAdding(null)} />
     </div>
   );

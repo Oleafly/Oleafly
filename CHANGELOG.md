@@ -42,7 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   console window in Oleafly for people, access rules, projects, settings,
   email, the security log and connection checks. Every device signs its
   changes, and the server builds each snapshot from that signed history
-  instead of trusting uploads. The
+  instead of trusting uploads. Sign-in by email only appears once the server
+  has reached its mail server, and an admin can't turn it on before that. The
   [server guide](https://github.com/Oleafly/oleafly-server) covers setup and
   backups.
 
@@ -241,6 +242,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   garbage collection at the wrong moment. It no longer does, and a window that
   stops answering for 30 seconds while idle now reloads and reopens its
   project and file.
+- On macOS and Linux, a placeholder long enough to wrap is no longer cut off
+  in the assistant's message box.
 
 ## [0.4.6] - 2026-10-09
 

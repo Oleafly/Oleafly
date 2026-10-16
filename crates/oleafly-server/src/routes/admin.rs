@@ -559,6 +559,9 @@ async fn get_settings(
     Ok(Json(current))
 }
 
+const MAIL_NOT_SET_UP: &str = "This server has no email settings, so it can't send sign-in links. Set OLEAFLY_SMTP_URL and OLEAFLY_MAIL_FROM, restart the server, then send a test email.";
+const MAIL_NOT_WORKING: &str = "Email isn't working on this server yet, so it can't send sign-in links. Send a test email from the Email page, then turn this on.";
+
 async fn patch_settings(
     State(state): State<AppState>,
     auth: Authenticated,
@@ -567,6 +570,16 @@ async fn patch_settings(
 ) -> Result<Json<RuntimeSettings>, ServerError> {
     auth.require(ServerAction::ChangeSettings)?;
     let change = json_body(body)?;
+    // Offering sign-in by email only makes sense once mail is known to get
+    // through; until then people would wait for links that never come.
+    if change.email_link_sign_in == Some(true) && !state.mailer.is_working() {
+        let message = if state.mailer.is_configured() {
+            MAIL_NOT_WORKING
+        } else {
+            MAIL_NOT_SET_UP
+        };
+        return Err(ServerError::refused("mail_not_working", message));
+    }
     let now = state.clock.now_ms();
     let (updated, comments_switched) = state
         .db

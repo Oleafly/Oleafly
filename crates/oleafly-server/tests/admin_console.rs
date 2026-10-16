@@ -470,8 +470,19 @@ struct SignInSetup {
     email_link_setting: bool,
 }
 
+// `mail` means email is set up and a check reached the mail server.
 async fn overview_and_manifest(
     setup: &SignInSetup,
+) -> (
+    AdminOverview,
+    oleafly_collab_protocol::capabilities::CapabilityManifest,
+) {
+    overview_and_manifest_with_mail_checked(setup, true).await
+}
+
+async fn overview_and_manifest_with_mail_checked(
+    setup: &SignInSetup,
+    mail_checked: bool,
 ) -> (
     AdminOverview,
     oleafly_collab_protocol::capabilities::CapabilityManifest,
@@ -495,6 +506,9 @@ async fn overview_and_manifest(
         config.mail_from = Some("Smith Lab <lab@uni.edu>".to_string());
     }
     let app = test_app_with(config).await;
+    if setup.mail && mail_checked {
+        app.state.mailer.assume_working();
+    }
     let email_link = setup.email_link_setting;
     app.state
         .db
@@ -533,6 +547,25 @@ async fn the_overview_lists_sign_in_by_email_link_and_counts_it_as_a_way_in() {
     assert_eq!(kinds, vec![ProviderKind::EmailLink]);
     assert_eq!(overview.health.status, HealthStatus::Ok);
     assert!(overview.health.issues.is_empty());
+}
+
+#[tokio::test]
+async fn sign_in_by_email_stays_hidden_until_email_is_shown_to_work() {
+    let (overview, manifest) = overview_and_manifest_with_mail_checked(
+        &SignInSetup {
+            github: false,
+            mail: true,
+            email_link_setting: true,
+        },
+        false,
+    )
+    .await;
+    assert!(overview.providers.is_empty());
+    assert!(manifest.providers.is_empty());
+    assert!(overview
+        .health
+        .issues
+        .contains(&HealthIssue::NoSignInProvider));
 }
 
 #[tokio::test]

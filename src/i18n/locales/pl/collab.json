@@ -11,15 +11,6 @@
         "description": "Poproś osobę, która prowadzi serwer Twojej grupy, o jego adres, a potem dodaj go tutaj."
       }
     },
-    "presence": {
-      "label": "Co widzą inni",
-      "description": "Wybierz, co osoby w Twoich udostępnionych projektach widzą podczas Twojej pracy. Ustawia się to osobno na każdym komputerze.",
-      "options": {
-        "cursor": "Pokazuj mój kursor",
-        "file": "Pokazuj tylko, w którym pliku jestem",
-        "hidden": "Ukryj mnie"
-      }
-    },
     "server": {
       "signedIn": "Zalogowano",
       "signedOut": "Wylogowano",

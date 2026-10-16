@@ -75,12 +75,21 @@ describe("ServerCard", () => {
     renderCard();
     expect(screen.getByRole("heading", { name: "Smith Lab" })).toBeInTheDocument();
     expect(screen.getByText("https://collab.uni.edu")).toBeInTheDocument();
-    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
     expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
     expect(screen.getByText("alice@uni.edu")).toBeInTheDocument();
-    expect(document.querySelectorAll('[data-slot="avatar"]').length).toBeGreaterThanOrEqual(2);
     expect(await screen.findByTestId("collab-device-d-1")).toBeInTheDocument();
     expect(mocks.collabServerDevices).toHaveBeenCalledWith(SERVER_ID);
+  });
+
+  it("says who is signed in once: in the header while folded, in the card while open", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const signedInAs = fill(copy.server.signedInAs, { name: "Alice Chen" });
+    expect(screen.getByText(signedInAs)).toBeInTheDocument();
+    expect(screen.queryByText(copy.server.signedIn)).toBeNull();
+    await user.click(screen.getByTestId(`collab-server-${SERVER_ID}-toggle`));
+    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+    expect(screen.queryByText(signedInAs)).toBeNull();
   });
 
   it("signs out and then offers to sign in again", async () => {
@@ -134,7 +143,7 @@ describe("ServerCard", () => {
 
   it("ignores an old reason once this computer is signed in again", () => {
     renderCard(server({ signed_in: true, ended: "account_suspended" }));
-    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
     expect(screen.queryByText(copy.server.suspended)).toBeNull();
   });
 
@@ -144,7 +153,7 @@ describe("ServerCard", () => {
     renderCard();
     await user.click(screen.getByRole("button", { name: copy.server.signOut }));
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
-    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
   });
 
   it("asks before removing a server, and removes it", async () => {
@@ -170,7 +179,7 @@ describe("ServerCard", () => {
     await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${copy.server.unsent.stay}`) }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(mocks.collabServerSignOut).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
   });
 
   it("lists each project with its unsent changes and the name it keeps, in words that match Remove", async () => {
@@ -245,7 +254,7 @@ describe("ServerCard", () => {
     await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${copy.server.unsent.keep}`) }));
     expect(mocks.collabServerSignOut).toHaveBeenLastCalledWith(SERVER_ID, true);
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
-    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+    expect(screen.getByText(fill(copy.server.signedInAs, { name: "Alice Chen" }))).toBeInTheDocument();
   });
 
   it("shows no role and no Manage server for a role this version does not know", () => {

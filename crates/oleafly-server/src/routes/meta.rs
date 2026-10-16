@@ -129,7 +129,7 @@ async fn manifest(State(state): State<AppState>) -> Result<Response, ServerError
         needs_setup: admins == 0,
         providers: email_link::with_email_link(
             state.providers.infos(),
-            email_link::available(state.mailer.is_configured(), &runtime),
+            email_link::available(state.mailer.is_working(), &runtime),
         ),
         features: Features {
             email: state.mailer.is_configured(),

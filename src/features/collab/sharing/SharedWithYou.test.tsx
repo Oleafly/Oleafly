@@ -58,6 +58,7 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.listeners.clear();
+  localStorage.removeItem("oleafly.collab.sharedWithYou.collapsed");
   useCollabStore.setState({ servers: [], status: "idle", loadError: null, pending: {} });
   useFilesStore.setState({ refreshProjects, openProject });
 });
@@ -79,6 +80,27 @@ describe("SharedWithYou", () => {
     expect(rows[1]).toHaveTextContent("Thesis");
     expect(rows[1]).toHaveTextContent(enCollab.projectRoles.viewer);
     expect(screen.queryByText("Already here")).toBeNull();
+  });
+
+  it("folds away from its heading and stays folded the next time the library opens", async () => {
+    mocks.collabSharedWithMe.mockResolvedValue([sharedWithMe(), thesis]);
+    const user = userEvent.setup();
+    const first = render(<SharedWithYou />);
+    const toggle = await screen.findByRole("button", { name: copy.title });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("list", { name: copy.title })).toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("list", { name: copy.title })).toBeNull();
+
+    first.unmount();
+    render(<SharedWithYou />);
+    const again = await screen.findByRole("button", { name: copy.title });
+    expect(again).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("list", { name: copy.title })).toBeNull();
+    await user.click(again);
+    expect(await screen.findByRole("list", { name: copy.title })).toBeInTheDocument();
   });
 
   it("says when a project's owner was removed from the server or suspended on it", async () => {

@@ -13,7 +13,9 @@ use oleafly_collab_protocol::projects::{ProjectRole, ProjectStatus};
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::clock::Clock;
 use oleafly_server::security_log::{self, NewSecurityEvent};
-use oleafly_server::test_support::{seed_member, test_app, test_app_with, SeededMember, TestApp};
+use oleafly_server::test_support::{
+    mail_config, seed_member, test_app, test_app_with, MockSmtp, SeededMember, TestApp,
+};
 use oleafly_server::{members, projects, tokens};
 use serde_json::{json, Value};
 use support::Reply;
@@ -1479,4 +1481,26 @@ async fn suspending_or_removing_someone_signs_out_every_device_in_the_same_step(
     );
     assert_eq!(live_sign_ins(&app, gone.account_id).await, (0, 0, 0));
     assert_eq!(live_sign_ins(&app, admin.account_id).await.0, 1);
+}
+
+#[tokio::test]
+async fn email_sign_in_stays_off_until_email_is_known_to_work() {
+    let smtp = MockSmtp::start().await;
+    let app = test_app_with(mail_config(&smtp)).await;
+    let admin = seed_member(&app, ServerRole::Admin).await;
+    let on = json!({ "email_link_sign_in": true });
+    let refused = expect_status(
+        support::send_patch(&app.router, SETTINGS, token(&admin), on.clone()).await,
+        StatusCode::CONFLICT,
+    );
+    assert_eq!(refused.body["code"], "mail_not_working");
+    assert!(refused.body["message"]
+        .as_str()
+        .is_some_and(|message| message.contains("test email")));
+    app.state.mailer.check().await.expect("the mock answers");
+    let settings: RuntimeSettings = parse(expect_status(
+        support::send_patch(&app.router, SETTINGS, token(&admin), on).await,
+        StatusCode::OK,
+    ));
+    assert!(settings.email_link_sign_in);
 }

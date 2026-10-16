@@ -11,15 +11,6 @@
         "description": "Spørg den person, der driver din gruppes server, om adressen, og tilføj den så her."
       }
     },
-    "presence": {
-      "label": "Hvad andre ser",
-      "description": "Vælg, hvad personer i dine delte projekter ser, mens du arbejder. Indstil det separat på hver computer.",
-      "options": {
-        "cursor": "Vis min markør",
-        "file": "Vis kun, hvilken fil jeg er i",
-        "hidden": "Skjul mig"
-      }
-    },
     "server": {
       "signedIn": "Logget ind",
       "signedOut": "Logget ud",

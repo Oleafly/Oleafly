@@ -82,7 +82,7 @@ async fn overview(
     counts.people_online = u32::try_from(people_online).unwrap_or(u32::MAX);
     let providers = email_link::with_email_link(
         state.providers.infos(),
-        email_link::available(state.mailer.is_configured(), &runtime),
+        email_link::available(state.mailer.is_working(), &runtime),
     );
     let mut issues = Vec::new();
     if providers.is_empty() {

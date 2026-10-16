@@ -11,15 +11,6 @@
         "description": "請向負責你團隊伺服器的人索取位址，然後在這裡新增。"
       }
     },
-    "presence": {
-      "label": "其他人能看到什麼",
-      "description": "選擇你在分享的專案中工作時，其他人能看到的內容。每台電腦需要分別設定。",
-      "options": {
-        "cursor": "顯示我的游標",
-        "file": "只顯示我所在的檔案",
-        "hidden": "隱藏我"
-      }
-    },
     "server": {
       "signedIn": "已登入",
       "signedOut": "已登出",

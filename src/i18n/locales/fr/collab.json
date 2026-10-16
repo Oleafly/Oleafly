@@ -11,15 +11,6 @@
         "description": "Demandez son adresse à la personne qui gère le serveur de votre groupe, puis ajoutez-le ici."
       }
     },
-    "presence": {
-      "label": "Ce que voient les autres",
-      "description": "Choisissez ce que les personnes de vos projets partagés voient pendant que vous travaillez. Réglez-le séparément sur chaque ordinateur.",
-      "options": {
-        "cursor": "Afficher mon curseur",
-        "file": "Afficher seulement le fichier où je suis",
-        "hidden": "Me masquer"
-      }
-    },
     "server": {
       "signedIn": "Connecté",
       "signedOut": "Déconnecté",

@@ -92,6 +92,7 @@ export function ServerCard({
   const unsent = useCollabStore((state) => state.unsent[serverId] ?? null);
   const keepLocalCopies = useCollabStore((state) => state.keepLocalCopies);
   const stay = useCollabStore((state) => state.stay);
+  const [open, setOpen] = useState(defaultOpen);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { test, run: runTest } = useConnectionTest(server.url);
@@ -143,20 +144,25 @@ export function ServerCard({
         title={server.name}
         description={server.url}
         icon={Server}
-        defaultOpen={defaultOpen}
+        open={open}
+        onOpenChange={setOpen}
+        // Open, the card says who is signed in, so the header only
+        // summarises that while folded. Why someone is signed out stays.
         trailing={
-          <>
-            {account ? <Avatar person={accountPerson(account)} size="sm" /> : null}
-            {account ? (
-              <Badge variant="success" size="sm">
-                {t(($) => $.collab.section.server.signedIn)}
-              </Badge>
-            ) : (
-              <Badge variant="muted" size="sm">
-                {signedOutBadge()}
-              </Badge>
-            )}
-          </>
+          account ? (
+            open ? null : (
+              <>
+                <Avatar person={accountPerson(account)} size="sm" />
+                <Badge variant="success" size="sm">
+                  {t(($) => $.collab.section.server.signedIn)}
+                </Badge>
+              </>
+            )
+          ) : (
+            <Badge variant="muted" size="sm">
+              {signedOutBadge()}
+            </Badge>
+          )
         }
       >
         {account ? (

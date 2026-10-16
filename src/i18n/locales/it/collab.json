@@ -11,15 +11,6 @@
         "description": "Chiedi l'indirizzo a chi gestisce il server del tuo gruppo, poi aggiungilo qui."
       }
     },
-    "presence": {
-      "label": "Cosa vedono gli altri",
-      "description": "Scegli cosa vedono le persone dei tuoi progetti condivisi mentre lavori. Si imposta separatamente su ogni computer.",
-      "options": {
-        "cursor": "Mostra il mio cursore",
-        "file": "Mostra solo in quale file sono",
-        "hidden": "Nascondimi"
-      }
-    },
     "server": {
       "signedIn": "Accesso eseguito",
       "signedOut": "Accesso non eseguito",

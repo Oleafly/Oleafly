@@ -1,14 +1,5 @@
 {
   "section": {
-    "presence": {
-      "label": "Name of the setting that decides what other people in a shared project see of this person while they work",
-      "description": "Explains the setting is stored on this computer only, so each computer the person uses has its own choice",
-      "options": {
-        "cursor": "Default choice. Others see this person's text cursor and selection inside the file",
-        "file": "Others see which file this person has open, but not where the cursor is",
-        "hidden": "Others do not see this person at all while they work. Short, like a menu choice"
-      }
-    },
     "server": {
       "signOut": "Button that ends this computer's session on the collaboration server. It does not quit the app.",
       "remove": "Button that removes the server from this computer's list. Nothing is deleted on the server.",

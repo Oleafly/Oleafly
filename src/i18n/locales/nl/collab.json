@@ -11,15 +11,6 @@
         "description": "Vraag het adres aan de persoon die de server van je groep beheert en voeg het daarna hier toe."
       }
     },
-    "presence": {
-      "label": "Wat anderen zien",
-      "description": "Kies wat mensen in je gedeelde projecten zien terwijl je werkt. Stel dit apart in op elke computer.",
-      "options": {
-        "cursor": "Mijn cursor tonen",
-        "file": "Alleen tonen in welk bestand ik ben",
-        "hidden": "Mij verbergen"
-      }
-    },
     "server": {
       "signedIn": "Aangemeld",
       "signedOut": "Afgemeld",

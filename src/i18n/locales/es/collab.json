@@ -11,15 +11,6 @@
         "description": "Pide la dirección del servidor a la persona que lo gestiona en tu grupo y añádelo aquí."
       }
     },
-    "presence": {
-      "label": "Lo que ven los demás",
-      "description": "Elige qué ven las personas de tus proyectos compartidos mientras trabajas. Se configura por separado en cada equipo.",
-      "options": {
-        "cursor": "Mostrar mi cursor",
-        "file": "Mostrar solo en qué archivo estoy",
-        "hidden": "Ocultarme"
-      }
-    },
     "server": {
       "signedIn": "Sesión iniciada",
       "signedOut": "Sesión cerrada",

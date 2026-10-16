@@ -11,15 +11,6 @@
         "description": "Pyydä palvelimen osoite henkilöltä, joka ylläpitää ryhmäsi palvelinta, ja lisää se sitten tähän."
       }
     },
-    "presence": {
-      "label": "Mitä muut näkevät",
-      "description": "Valitse, mitä jaettujen projektiesi muut osallistujat näkevät, kun työskentelet. Asetus tehdään erikseen jokaisella koneella.",
-      "options": {
-        "cursor": "Näytä kohdistimeni",
-        "file": "Näytä vain, missä tiedostossa olen",
-        "hidden": "Piilota minut"
-      }
-    },
     "server": {
       "signedIn": "Kirjautunut",
       "signedOut": "Ei kirjautunut",

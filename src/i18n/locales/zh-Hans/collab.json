@@ -11,15 +11,6 @@
         "description": "向运行你团队服务器的人索取服务器地址，然后在这里添加。"
       }
     },
-    "presence": {
-      "label": "其他人能看到什么",
-      "description": "选择你在共享项目中工作时，其他人能看到的内容。每台电脑需要分别设置。",
-      "options": {
-        "cursor": "显示我的光标",
-        "file": "只显示我所在的文件",
-        "hidden": "隐藏我"
-      }
-    },
     "server": {
       "signedIn": "已登录",
       "signedOut": "未登录",

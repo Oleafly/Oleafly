@@ -26,8 +26,9 @@ pub const STYLE: &str = concat!(
     "color:#18181b;background-color:#ffffff;",
     "background-image:radial-gradient(rgba(156,163,175,0.5) 1px,transparent 1px);background-size:22px 22px}",
     ".shell{width:100%;max-width:26rem;display:flex;flex-direction:column;align-items:center;gap:1.25rem}",
-    ".brand{display:flex;flex-direction:column;align-items:center;gap:0.5rem;font-weight:600;font-size:0.9375rem;letter-spacing:-0.01em}",
-    ".brand svg{width:3.5rem;height:3.5rem;display:block}",
+    ".brand{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:0.75rem;font-weight:650;letter-spacing:-0.02em}",
+    ".brand svg{width:3.5rem;height:3.5rem;display:block;flex-shrink:0}",
+    ".brand span{font-size:2.25rem;line-height:1}",
     ".card{width:100%;background:#ffffff;border:1px solid #e4e4e7;border-radius:1rem;padding:2rem 1.75rem;text-align:center}",
     ".status{width:3rem;height:3rem;margin:0 auto 1rem;border-radius:999px;display:flex;align-items:center;justify-content:center}",
     ".status svg{width:1.5rem;height:1.5rem}",
@@ -152,6 +153,13 @@ mod tests {
         assert!(html.contains("<section class=\"card\"><h1>Done</h1></section>"));
         assert!(html.contains("<footer class=\"foot\">Oleafly Lab</footer>"));
         assert!(!document("Title", "<p>Body</p>", None).contains("<footer"));
+    }
+
+    #[test]
+    fn the_logo_sits_left_of_a_wordmark_sized_to_match_it() {
+        assert!(STYLE.contains(".brand{display:flex;flex-direction:row;align-items:center"));
+        assert!(STYLE.contains(".brand svg{width:3.5rem;height:3.5rem"));
+        assert!(STYLE.contains(".brand span{font-size:2.25rem;line-height:1}"));
     }
 
     #[test]

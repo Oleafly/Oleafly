@@ -11,15 +11,6 @@
         "description": "Fragen Sie die Person, die den Server Ihrer Gruppe betreibt, nach seiner Adresse und fügen Sie ihn dann hier hinzu."
       }
     },
-    "presence": {
-      "label": "Was andere sehen",
-      "description": "Wählen Sie, was Personen in Ihren geteilten Projekten sehen, während Sie arbeiten. Die Einstellung gilt für jeden Computer einzeln.",
-      "options": {
-        "cursor": "Meinen Cursor zeigen",
-        "file": "Nur zeigen, in welcher Datei ich bin",
-        "hidden": "Mich verbergen"
-      }
-    },
     "server": {
       "signedIn": "Angemeldet",
       "signedOut": "Abgemeldet",

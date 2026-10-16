@@ -11,15 +11,6 @@
         "description": "Grubunuzun sunucusunu çalıştıran kişiden sunucunun adresini isteyin, ardından buraya ekleyin."
       }
     },
-    "presence": {
-      "label": "Başkalarının gördükleri",
-      "description": "Siz çalışırken paylaşılan projelerinizdeki kişilerin ne göreceğini seçin. Her bilgisayarda ayrı ayarlanır.",
-      "options": {
-        "cursor": "İmlecimi göster",
-        "file": "Yalnızca hangi dosyada olduğumu göster",
-        "hidden": "Beni gizle"
-      }
-    },
     "server": {
       "signedIn": "Oturum açık",
       "signedOut": "Oturum kapalı",

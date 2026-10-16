@@ -11,15 +11,6 @@
         "description": "Cere-i adresa persoanei care administrează serverul grupului tău, apoi adaug-o aici."
       }
     },
-    "presence": {
-      "label": "Ce văd ceilalți",
-      "description": "Alege ce văd persoanele din proiectele tale partajate cât timp lucrezi. Se setează separat pe fiecare computer.",
-      "options": {
-        "cursor": "Arată cursorul meu",
-        "file": "Arată doar fișierul în care sunt",
-        "hidden": "Ascunde-mă"
-      }
-    },
     "server": {
       "signedIn": "Autentificat",
       "signedOut": "Deconectat",

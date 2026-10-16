@@ -11,15 +11,6 @@
         "description": "Be den som drifter serveren til gruppen din om adressen, og legg den til her."
       }
     },
-    "presence": {
-      "label": "Hva andre ser",
-      "description": "Velg hva folk i de delte prosjektene dine ser mens du jobber. Innstillingen gjelder for hver maskin for seg.",
-      "options": {
-        "cursor": "Vis markøren min",
-        "file": "Vis bare hvilken fil jeg er i",
-        "hidden": "Skjul meg"
-      }
-    },
     "server": {
       "signedIn": "Logget inn",
       "signedOut": "Logget ut",

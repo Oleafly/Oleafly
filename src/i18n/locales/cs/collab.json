@@ -11,15 +11,6 @@
         "description": "Požádejte člověka, který provozuje server vaší skupiny, o jeho adresu a pak ji přidejte sem."
       }
     },
-    "presence": {
-      "label": "Co vidí ostatní",
-      "description": "Vyberte, co lidé ve vašich sdílených projektech uvidí, když pracujete. Nastavuje se zvlášť na každém počítači.",
-      "options": {
-        "cursor": "Zobrazit můj kurzor",
-        "file": "Zobrazit jen soubor, ve kterém jsem",
-        "hidden": "Skrýt mě"
-      }
-    },
     "server": {
       "signedIn": "Přihlášeno",
       "signedOut": "Odhlášeno",

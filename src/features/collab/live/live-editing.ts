@@ -16,10 +16,9 @@ import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { isReadOnlyProjectRole } from "../roles";
-import { useSettingsStore } from "@/store/settings";
 import { LiveSessions } from "./live-sessions";
 import { type LivePeer, type LiveSession, useCollabLiveStore } from "./live-store";
-import { createPresencePublisher, type Presence, visiblePresence } from "./presence";
+import { createPresencePublisher, type Presence } from "./presence";
 import { type RemoteCursor, type RemoteCursorSource, remoteCursors } from "./remote-cursors";
 
 export function peerCursors(peers: Record<string, LivePeer>, path: string | null): RemoteCursor[] {
@@ -197,7 +196,7 @@ export function startLiveEditing(live: LiveSession): () => void {
 
   const queue = inOrder();
   const presence = createPresencePublisher(
-    () => visiblePresence(currentPresence(projectId), useSettingsStore.getState().collabPresence),
+    () => currentPresence(projectId),
     ({ path, cursor, anchor }) => queue(() => collabPresenceSet(projectId, path, cursor, anchor)),
     () => queue(() => collabPresenceLeave(projectId)),
   );
@@ -210,9 +209,6 @@ export function startLiveEditing(live: LiveSession): () => void {
       if (!state.openTabs.includes(path)) sessions.release(path);
     }
   });
-  const unsubscribeVisibility = useSettingsStore.subscribe((state, previous) => {
-    if (state.collabPresence !== previous.collabPresence) presence.schedule();
-  });
   const releaseCursors = setCollabEditorExtension(remoteCursors(peerCursorSource(() => presence.schedule())));
   presence.schedule();
   useFilesStore.getState().bumpDocVersion();
@@ -221,7 +217,6 @@ export function startLiveEditing(live: LiveSession): () => void {
     presence.dispose();
     unsubscribeActive();
     unsubscribeTabs();
-    unsubscribeVisibility();
     unsubscribeRole();
     releaseCursors();
     stopMoves();

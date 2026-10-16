@@ -1,12 +1,13 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FolderDown } from "lucide-react";
+import { ChevronRight, FolderDown } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { logError } from "@/lib/log";
+import { cn } from "@/lib/utils";
 import type {
   CollabServer,
   CollabSharedWithMe,
@@ -43,10 +44,30 @@ function hidden(): boolean {
   return document.visibilityState === "hidden";
 }
 
+const COLLAPSED_KEY = "oleafly.collab.sharedWithYou.collapsed";
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveCollapsed(collapsed: boolean) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
+  } catch {
+    // Without storage the section still folds; it just opens again next time.
+  }
+}
+
 export function SharedWithYou() {
   const { t } = useTranslation(["collab"]);
   const titleId = useId();
+  const listId = useId();
   const servers = useCollabStore((state) => serversKey(state.servers));
+  const [collapsed, setCollapsed] = useState(readCollapsed);
   const [items, setItems] = useState<CollabSharedWithMe[]>([]);
   const [failure, setFailure] = useState<string | null>(null);
   const [request, setRequest] = useState(0);
@@ -133,12 +154,36 @@ export function SharedWithYou() {
   }
   if (items.length === 0) return null;
 
+  const toggle = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    saveCollapsed(next);
+  };
+
   return (
     <section aria-labelledby={titleId} className="mb-5 space-y-2" data-testid="collab-shared-with-you">
-      <h2 id={titleId} className="text-sm font-semibold">
-        {t(($) => $.collab.library.sharedWithYou.title)}
+      <h2 className="text-sm font-semibold">
+        <button
+          type="button"
+          aria-expanded={!collapsed}
+          aria-controls={listId}
+          onClick={toggle}
+          className="-mx-1 flex items-center gap-1.5 rounded-md px-1 py-0.5 hover:bg-accent/60 focus-visible:bg-accent/60"
+        >
+          <ChevronRight
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
+              !collapsed && "rotate-90",
+            )}
+          />
+          <span id={titleId}>{t(($) => $.collab.library.sharedWithYou.title)}</span>
+          <span aria-hidden className="text-xs font-normal text-muted-foreground">
+            {items.length}
+          </span>
+        </button>
       </h2>
-      <ul aria-labelledby={titleId} className="divide-y rounded-xl border bg-card">
+      <ul id={listId} hidden={collapsed} aria-labelledby={titleId} className="divide-y rounded-xl border bg-card">
         {items.map((item) => {
           const key = itemKey(item);
           const project = item.project;
