@@ -6,9 +6,9 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | **中文** | [العربية](README.ar.md)
 
-[![下载 macOS 版（Apple Silicon）](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![下载 Windows 版](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![下载 Linux 版](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![下载 macOS 版（Apple Silicon）](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![下载 Windows 版](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![下载 Linux 版](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
 
 [![开放议题](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![下载量](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml) [![SonarQube 质量门禁](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![代码覆盖率](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![开发状态：超活跃](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![最近提交日期](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![许可证：AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
@@ -313,10 +313,10 @@ Tectonic、Typst 和 Pandoc 随应用提供，因此新项目无需安装任何�
 
 | 平台 | 软件包 | 下载 |
 | --- | --- | --- |
-| macOS · Apple Silicon | DMG | [![下载 macOS 版（Apple Silicon）](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | MSI 或 EXE | [![下载 Windows 版](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImage、DEB 或 RPM | [![下载 Linux 版（x86_64）](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImage、DEB 或 RPM | [![下载 Linux 版（ARM64）](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Apple Silicon | DMG | [![下载 macOS 版（Apple Silicon）](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSI 或 EXE | [![下载 Windows 版](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage、DEB 或 RPM | [![下载 Linux 版（x86_64）](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage、DEB 或 RPM | [![下载 Linux 版（ARM64）](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 在 x86_64 上，Linux 软件包需要 glibc 2.35 或更高版本（Ubuntu 22.04 或更高版本）。ARM64 软件包在 Ubuntu 24.04 上构建。发行版包含签名的更新产物，应用内更新器会在安装任何内容之前验证签名。
 

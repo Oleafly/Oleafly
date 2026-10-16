@@ -6,9 +6,9 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | **Español** | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md) | [العربية](README.ar.md)
 
-[![Descargar para macOS (Apple Silicon)](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Descargar para Windows](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Descargar para Linux](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Descargar para macOS (Apple Silicon)](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Descargar para Windows](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Descargar para Linux](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
 
 [![Incidencias abiertas](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![Descargas](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml) [![Quality Gate de SonarQube](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![Cobertura de código](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![Estado del desarrollo: extremadamente activo](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![Último commit](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![Licencia: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![Estrellas](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
@@ -313,10 +313,10 @@ El paquete `research-core` incluido contiene 36 skills. Los nombres siguientes s
 
 | Plataforma | Paquete | Descarga |
 | --- | --- | --- |
-| macOS · Apple Silicon | DMG | [![Descargar para macOS (Apple Silicon)](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | MSI o EXE | [![Descargar para Windows](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImage, DEB o RPM | [![Descargar para Linux (x86_64)](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImage, DEB o RPM | [![Descargar para Linux (ARM64)](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Apple Silicon | DMG | [![Descargar para macOS (Apple Silicon)](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSI o EXE | [![Descargar para Windows](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage, DEB o RPM | [![Descargar para Linux (x86_64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage, DEB o RPM | [![Descargar para Linux (ARM64)](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 En x86_64, los paquetes de Linux necesitan glibc 2.35 o una versión posterior (Ubuntu 22.04 o posterior). Los paquetes ARM64 se compilan en Ubuntu 24.04. Las versiones incluyen artefactos de actualización firmados, y el actualizador integrado comprueba la firma antes de instalar nada.
 

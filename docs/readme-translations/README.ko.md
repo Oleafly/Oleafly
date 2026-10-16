@@ -6,9 +6,9 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | **한국어** | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md) | [العربية](README.ar.md)
 
-[![macOS(Apple Silicon)용 다운로드](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Windows용 다운로드](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Linux용 다운로드](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![macOS(Apple Silicon)용 다운로드](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Windows용 다운로드](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Linux용 다운로드](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
 
 [![열린 이슈](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![다운로드](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml) [![SonarQube 품질 게이트](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![코드 커버리지](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![개발 상태: 엄청나게 활발함](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![마지막 커밋](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![라이선스: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![스타](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
@@ -313,10 +313,10 @@ Skills는 Agent Skills 형식을 따르는 일반 `SKILL.md` 폴더입니다. �
 
 | 플랫폼 | 패키지 | 다운로드 |
 | --- | --- | --- |
-| macOS · Apple Silicon | DMG | [![macOS(Apple Silicon)용 다운로드](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | MSI 또는 EXE | [![Windows용 다운로드](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImage, DEB 또는 RPM | [![Linux(x86_64)용 다운로드](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImage, DEB 또는 RPM | [![Linux(ARM64)용 다운로드](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Apple Silicon | DMG | [![macOS(Apple Silicon)용 다운로드](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSI 또는 EXE | [![Windows용 다운로드](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage, DEB 또는 RPM | [![Linux(x86_64)용 다운로드](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage, DEB 또는 RPM | [![Linux(ARM64)용 다운로드](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 x86_64에서 Linux 패키지에는 glibc 2.35 이상(Ubuntu 22.04 이상)이 필요합니다. ARM64 패키지는 Ubuntu 24.04에서 빌드됩니다. 릴리스에는 서명된 업데이트 산출물이 포함되며, 앱 내 업데이터는 무엇이든 설치하기 전에 서명을 확인합니다.
 

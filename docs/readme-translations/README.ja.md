@@ -6,9 +6,9 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | **日本語** | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md) | [العربية](README.ar.md)
 
-[![macOS（Apple Silicon）をダウンロード](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Windowsをダウンロード](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
-[![Linuxをダウンロード](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![macOS（Apple Silicon）をダウンロード](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Windowsをダウンロード](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Linuxをダウンロード](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest)
 
 [![未解決のIssue](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![ダウンロード数](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml) [![SonarQube品質ゲート](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![コードカバレッジ](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![開発状況: 超活発](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![最終コミット日](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![ライセンス: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![スター](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
@@ -313,10 +313,10 @@ skillはAgent Skillsの形式に従う通常の`SKILL.md`フォルダーです�
 
 | プラットフォーム | パッケージ | ダウンロード |
 | --- | --- | --- |
-| macOS · Apple Silicon | DMG | [![macOS（Apple Silicon）をダウンロード](../assets/readme/download-button-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Windows · x86_64 | MSIまたはEXE | [![Windowsをダウンロード](../assets/readme/download-button-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImage、DEB、またはRPM | [![Linux（x86_64）をダウンロード](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImage、DEB、またはRPM | [![Linux（ARM64）をダウンロード](../assets/readme/download-button-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| macOS · Apple Silicon | DMG | [![macOS（Apple Silicon）をダウンロード](../assets/readme/download-glass-macos.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Windows · x86_64 | MSIまたはEXE | [![Windowsをダウンロード](../assets/readme/download-glass-windows.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage、DEB、またはRPM | [![Linux（x86_64）をダウンロード](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage、DEB、またはRPM | [![Linux（ARM64）をダウンロード](../assets/readme/download-glass-linux.svg)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
 x86_64のLinuxパッケージにはglibc 2.35以降（Ubuntu 22.04以降）が必要です。ARM64パッケージはUbuntu 24.04でビルドされています。リリースには署名付き更新アーティファクトが含まれ、アプリ内アップデーターはインストール前に署名を確認します。
 
