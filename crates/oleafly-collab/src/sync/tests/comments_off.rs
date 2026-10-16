@@ -219,6 +219,10 @@ async fn the_edits_around_every_refused_comment_arrive_within_seconds(blocked: b
         arrived_promptly(&mut alice, &bob, &main, round, since, told).await;
         append(&bob, &main, &format!(" B{round}"));
         flushed(&bob);
+        // Alice gets Bob's word before the next round. Otherwise it can reach
+        // her between her two appends there, and land between them.
+        let bobs = format!(" B{round}");
+        until(|| text(&alice, &main).ends_with(&bobs)).await;
     }
     acknowledged(&alice).await;
     until(|| text(&alice, &main) == text(&bob, &main)).await;
