@@ -480,6 +480,9 @@ jobs:
               echo
               echo "The container image is ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/oleafly-server:$VERSION. Setup steps: https://oleafly.com/docs/collaboration/server/"
             } > "$notes"
+            # No --latest=false: GitHub doesn't let a draft be set as latest,
+            # and documents no way for a draft to carry make_latest to its
+            # publishing. The desktop-latest job checks the label afterwards.
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
               --title "Oleafly Server $VERSION" \
               --notes-file "$notes"
@@ -505,7 +508,13 @@ jobs:
             echo '   sudo OLEAFLY_RELEASE_URL="file://$PWD/rel" sh rel/install.sh'
             echo '   ```'
             echo
-            echo "3. [ ] Publish the draft. That moves the image's minor and latest tags, and copies the release to Oleafly/oleafly-server."
+            echo "3. [ ] Publish the draft with \"Set as the latest release\" unticked. The desktop app's updater and the download links read this repository's latest release, and a server release has no latest.json. To publish from a terminal instead:"
+            echo
+            echo '   ```sh'
+            echo "   gh release edit ${TAG} --repo ${GITHUB_REPOSITORY} --draft=false --latest=false"
+            echo '   ```'
+            echo
+            echo "   Publishing moves the image's minor and latest tags and copies the release to Oleafly/oleafly-server. If the latest label ends up on ${TAG} anyway, the same run moves it back to the newest desktop release."
             echo "4. [ ] Check that the Release server run for the published release passed. Then check that this prints \`installer_version=${VERSION}\`:"
             echo
             echo '   ```sh'
@@ -580,6 +589,68 @@ jobs:
           fi
           docker buildx imagetools create "${moves[@]}" "${image}@${digest}"
           echo "Moved ${moves[*]} to ${image}@${digest}"
+
+  # The desktop app's updater (releases/latest/download/latest.json) and the
+  # download links read this repository's latest release, and only desktop
+  # releases have latest.json. A server release published with "Set as the
+  # latest release" ticked, which the web form does by default, takes that
+  # label, and every installed app stops seeing updates. Give it back.
+  desktop-latest:
+    name: Keep the latest release a desktop release
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'server-v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    concurrency:
+      group: release-server-desktop-latest
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - name: Give the latest label back to the newest desktop release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          latest="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)"
+          if [[ "$latest" != server-v* ]]; then
+            echo "The latest release is ${latest}, so the desktop app's updater still finds latest.json."
+            exit 0
+          fi
+          # Published, not a prerelease, carries latest.json, and is tagged
+          # v<major>.<minor>.<patch>. A suffix ranks below the same version
+          # without one, so v0.4.7 beats v0.4.7-beta.
+          desktop="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | jq -rs '
+            add // []
+            | map(select(.draft == false and .prerelease == false and any(.assets[]?; .name == "latest.json"))
+                | .tag_name as $tag
+                | ($tag | capture("^v(?<major>[0-9]+)[.](?<minor>[0-9]+)[.](?<patch>[0-9]+)(-(?<pre>.+))?$")) as $v
+                | {tag: $tag, key: [($v.major | tonumber), ($v.minor | tonumber), ($v.patch | tonumber), (if $v.pre == null then 1 else 0 end), ($v.pre // "")]})
+            | sort_by(.key)
+            | last
+            | .tag // empty')"
+          if [ -z "$desktop" ]; then
+            echo "::error::${latest} is the latest release, and no published desktop release has a latest.json to take the label back. Installed desktop apps see no updates until one does."
+            exit 1
+          fi
+          by_hand="gh release edit ${desktop} --repo ${GITHUB_REPOSITORY} --latest"
+          if ! gh release edit "$desktop" --repo "$GITHUB_REPOSITORY" --latest; then
+            echo "::error::Couldn't mark ${desktop} as the latest release, so installed desktop apps see no updates. Run: ${by_hand}"
+            exit 1
+          fi
+          now=
+          for attempt in 1 2 3; do
+            now="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name || true)"
+            if [ "$now" = "$desktop" ]; then
+              echo "${latest} had taken the latest label. It is back on ${desktop}, so installed desktop apps find latest.json again."
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep 5
+            fi
+          done
+          echo "::error::Marked ${desktop} as the latest release, but GitHub still reports '${now}'. Run: ${by_hand}"
+          exit 1
 
   sync:
     name: Copy the release to Oleafly/oleafly-server
