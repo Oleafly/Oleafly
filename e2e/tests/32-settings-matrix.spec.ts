@@ -15,8 +15,12 @@ async function pickOption(page: Page, rowText: string, optionText: string) {
     .replace(/^-|-$/g, "");
   const row = page.locator(`[data-testid="settings-row-${rowId}"]`);
   await expect(row).toBeVisible({ timeout: 10_000 });
+  // The list a previous pick closed stays in the page while it fades out, and
+  // its options would match the wait below. Wait until it's gone, then only
+  // take an option from the list that is open.
+  await page.waitForFunction(`!document.querySelector('[role="listbox"][data-state="closed"]')`, 5_000);
   await page.click(`[data-testid="settings-row-${rowId}"] [role="combobox"]`);
-  const optionSelector = `[role="option"][data-label=${JSON.stringify(optionText)}]`;
+  const optionSelector = `[role="listbox"][data-state="open"] [role="option"][data-label=${JSON.stringify(optionText)}]`;
   await page.waitForFunction(`!!document.querySelector(${JSON.stringify(optionSelector)})`, 5_000);
   await page.evaluate(
     `document.querySelector(${JSON.stringify(optionSelector)}).scrollIntoView({ block: "nearest" })`,
