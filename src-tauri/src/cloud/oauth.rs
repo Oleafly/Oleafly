@@ -271,10 +271,21 @@ pub(crate) async fn bind_loopback(
     expected_state: String,
     pages: LoopbackPages,
 ) -> OAuthResult<LoopbackListener> {
+    bind_loopback_on(&LOOPBACK_PORTS, expected_state, pages).await
+}
+
+// Dropbox only redirects to the registered ports above. Tests pass port 0 for
+// any free port, so a machine that holds those ports can't fail them.
+async fn bind_loopback_on(
+    ports: &[u16],
+    expected_state: String,
+    pages: LoopbackPages,
+) -> OAuthResult<LoopbackListener> {
     let mut listener = None;
-    for port in LOOPBACK_PORTS {
+    for &port in ports {
         match tokio::net::TcpListener::bind(("127.0.0.1", port)).await {
             Ok(bound) => {
+                let port = bound.local_addr().map_or(port, |address| address.port());
                 listener = Some((port, bound));
                 break;
             }
@@ -558,8 +569,8 @@ impl DropboxAuthClient {
 #[cfg(test)]
 mod tests {
     use super::{
-        authorize_url, bind_loopback, query_value, redirect_uri, DropboxAuthClient, LoopbackPages,
-        OAuthError, PkceFlow,
+        authorize_url, bind_loopback_on, query_value, redirect_uri, DropboxAuthClient,
+        LoopbackPages, OAuthError, PkceFlow,
     };
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
     use sha2::{Digest, Sha256};
@@ -611,7 +622,7 @@ mod tests {
     #[tokio::test]
     async fn loopback_accepts_only_the_matching_state_and_then_the_code() {
         let flow = PkceFlow::generate();
-        let listener = bind_loopback(flow.state.clone(), LoopbackPages::default())
+        let listener = bind_loopback_on(&[0], flow.state.clone(), LoopbackPages::default())
             .await
             .unwrap();
         let port = listener.port;
@@ -641,7 +652,7 @@ mod tests {
     #[tokio::test]
     async fn loopback_reports_refusals_and_timeouts() {
         let flow = PkceFlow::generate();
-        let listener = bind_loopback(flow.state.clone(), LoopbackPages::default())
+        let listener = bind_loopback_on(&[0], flow.state.clone(), LoopbackPages::default())
             .await
             .unwrap();
         let port = listener.port;
@@ -655,7 +666,7 @@ mod tests {
             .await
             .unwrap();
         assert!(matches!(waiting.await.unwrap(), Err(OAuthError::Cancelled)));
-        let listener = bind_loopback("state".into(), LoopbackPages::default())
+        let listener = bind_loopback_on(&[0], "state".into(), LoopbackPages::default())
             .await
             .unwrap();
         assert!(matches!(
