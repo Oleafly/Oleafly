@@ -312,7 +312,7 @@ done
 run_block draft.sh GH_LOG="$ws/gh/log" GH_STATE="$ws/gh" GH_TOKEN=token TAG=server-v0.1.0 VERSION=0.1.0 GITHUB_REPOSITORY=Oleafly/Oleafly GITHUB_REPOSITORY_OWNER=Oleafly
 expect "exit 0, got $status" [ "$status" = 0 ]
 expect "a draft is created" grep -q 'gh release create server-v0.1.0 --repo Oleafly/Oleafly --draft --verify-tag' "$ws/gh/log"
-expect "the draft doesn't pass --latest, which GitHub doesn't keep for a draft" sh -c "! grep -q -- '--latest' '$ws/gh/log'"
+expect "the draft is created without --latest" sh -c "! grep -q -- '--latest' '$ws/gh/log'"
 expect "the notes have the install command" grep -qxF 'curl -fsSL https://oleafly.com/server/install.sh | sudo sh' "$ws/gh/notes"
 expect "the notes name the image in lower case" grep -qF 'ghcr.io/oleafly/oleafly-server:0.1.0' "$ws/gh/notes"
 expect "the notes avoid semicolons" sh -c "! grep -q ';' '$ws/gh/notes'"

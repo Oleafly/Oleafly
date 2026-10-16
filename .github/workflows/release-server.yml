@@ -481,8 +481,8 @@ jobs:
               echo "The container image is ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/oleafly-server:$VERSION. Setup steps: https://oleafly.com/docs/collaboration/server/"
             } > "$notes"
             # No --latest=false: GitHub doesn't let a draft be set as latest,
-            # and a draft keeps no make_latest for when it is published. The
-            # desktop-latest job checks the label after publishing instead.
+            # and documents no way for a draft to carry make_latest to its
+            # publishing. The desktop-latest job checks the label afterwards.
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
               --title "Oleafly Server $VERSION" \
               --notes-file "$notes"
