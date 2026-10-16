@@ -5452,7 +5452,13 @@ pub async fn import_overleaf_project<R: tauri::Runtime>(
 }
 
 fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<String, String> {
-    import_overleaf_project_blocking_with(name, path, |_| None, |_| Ok(()))
+    let path = Path::new(path);
+    let source = if path.is_dir() {
+        ImportSource::Folder(path)
+    } else {
+        ImportSource::Archive(path)
+    };
+    import_overleaf_project_blocking_with(name, source, |_| None, |_| Ok(()))
 }
 
 /// Import an already-unpacked directory tree as a new project (shared by the
@@ -5462,24 +5468,49 @@ pub(crate) fn import_project_directory_blocking(
     dir: &str,
     fallback_main: fn(&Path) -> Option<String>,
 ) -> Result<String, String> {
-    import_overleaf_project_blocking_with(name, dir, fallback_main, |_| Ok(()))
+    import_overleaf_project_blocking_with(
+        name,
+        ImportSource::Folder(Path::new(dir)),
+        fallback_main,
+        |_| Ok(()),
+    )
+}
+
+#[derive(Clone, Copy)]
+enum ImportSource<'a> {
+    /// A ZIP archive. A single wrapping folder is unwrapped.
+    Archive(&'a Path),
+    /// A project archive downloaded from an online account. Its layout is
+    /// kept exactly, so the main file path the server gave stays valid and
+    /// paths written from the project root still resolve.
+    OnlineProject(&'a Path),
+    /// A folder. A single wrapping folder is unwrapped.
+    Folder(&'a Path),
+}
+
+impl<'a> ImportSource<'a> {
+    fn path(self) -> &'a Path {
+        match self {
+            Self::Archive(path) | Self::OnlineProject(path) | Self::Folder(path) => path,
+        }
+    }
 }
 
 fn import_overleaf_project_blocking_with(
     name: Option<String>,
-    path: &str,
+    source: ImportSource<'_>,
     fallback_main: fn(&Path) -> Option<String>,
     finalize: impl FnOnce(&str) -> Result<(), String>,
 ) -> Result<String, String> {
-    let source = PathBuf::from(path);
-    if !source.exists() {
-        return Err(format!("import source not found: {path}"));
+    let path = source.path();
+    if !path.exists() {
+        return Err(format!("import source not found: {}", path.display()));
     }
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let project_id = reservation.project_id().to_string();
     let dir = reservation.path().to_path_buf();
-    let fallback_name = source
+    let fallback_name = path
         .file_stem()
         .map(|stem| stem.to_string_lossy().into_owned())
         .filter(|stem| !stem.trim().is_empty())
@@ -5488,12 +5519,17 @@ fn import_overleaf_project_blocking_with(
         .filter(|candidate| !candidate.trim().is_empty())
         .unwrap_or(fallback_name);
     create_project_transaction(reservation, || {
-        if source.is_dir() {
-            copy_tree_for_import(&source, &dir, 0, &mut 0, &mut 0)?;
-        } else {
-            extract_zip_for_import(&source, &dir)?;
+        match source {
+            ImportSource::Archive(archive) => {
+                extract_zip_for_import(archive, &dir)?;
+                flatten_single_root_folder(&dir)?;
+            }
+            ImportSource::OnlineProject(archive) => extract_zip_for_import(archive, &dir)?,
+            ImportSource::Folder(folder) => {
+                copy_tree_for_import(folder, &dir, 0, &mut 0, &mut 0)?;
+                flatten_single_root_folder(&dir)?;
+            }
         }
-        flatten_single_root_folder(&dir)?;
         let existing = read_import_meta(&dir);
         let mut meta = match existing {
             Some(mut meta) if dir.join(&meta.main_doc).is_file() => {
@@ -5550,7 +5586,7 @@ pub(crate) fn import_project_zip_bytes_with(
         .map_err(|error| format!("could not stage the repository archive: {error}"))?;
     let result = import_overleaf_project_blocking_with(
         Some(name),
-        &archive.to_string_lossy(),
+        ImportSource::Archive(&archive),
         |_| None,
         finalize,
     );
@@ -5558,14 +5594,16 @@ pub(crate) fn import_project_zip_bytes_with(
     result
 }
 
-pub(crate) fn import_project_archive_with(
+/// Import a project archive downloaded from an online account, keeping its
+/// folders exactly as they are online.
+pub(crate) fn import_online_project_archive_with(
     name: String,
     archive: &Path,
     finalize: impl FnOnce(&str) -> Result<(), String>,
 ) -> Result<String, String> {
     import_overleaf_project_blocking_with(
         Some(name),
-        &archive.to_string_lossy(),
+        ImportSource::OnlineProject(archive),
         |_| None,
         finalize,
     )
@@ -16767,6 +16805,29 @@ mod tests {
         assert!(dir.join("main.tex").is_file());
         assert!(dir.join("refs.bib").is_file());
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn importing_a_zip_or_a_folder_unwraps_its_single_wrapping_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("import-unwraps-wrapper");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let document = "\\documentclass{article}\\begin{document}x\\end{document}";
+        let archive = data.join("paper.zip");
+        zip_with_member(&archive, "paper/main.tex", document.as_bytes());
+        let folder = data.join("picked");
+        std::fs::create_dir_all(folder.join("paper")).unwrap();
+        std::fs::write(folder.join("paper/main.tex"), document).unwrap();
+        let mains = [archive, folder].map(|source| {
+            super::import_overleaf_project_blocking(None, &source.to_string_lossy())
+                .and_then(|project_id| read_meta(&project_id).map(|meta| meta.main_doc))
+        });
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(&data).unwrap();
+        assert_eq!(
+            mains,
+            [Ok("main.tex".to_string()), Ok("main.tex".to_string())]
+        );
     }
 
     #[test]
