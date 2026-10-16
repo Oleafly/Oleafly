@@ -9,6 +9,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Live collaboration, as an experiment. Turn it on under
+  Settings > Experimentation, share a project to an Oleafly Server, and edit
+  it with your coauthors in real time. You see each person's cursor and
+  selection and who's online. The People and Activity pane shows what changed
+  while you were away, and clicking someone's avatar jumps to the line they're
+  on. Edits made offline merge when you reconnect, and if they overlap with
+  someone else's, Oleafly shows you both and asks before it applies anything.
+  AI edits, citations, Zotero, renames, deletes (with Restore), figures and
+  changes made outside Oleafly all travel. When two people replace the same
+  figure at once, both versions are kept. The main file, compiler, spelling
+  language and Typst options are shared, so everyone compiles the same way.
+  External commands (shell escape) never travel. Each person can turn them on
+  for their own computer after a warning. Sign in with GitHub, any OpenID
+  Connect provider, an email link, or a code when the browser can't get back
+  to the app. Guests invited by email see only the projects they were invited
+  to.
+
+  ![Oleafly with a LaTeX research paper open: the file tree, outline and structure on the left, the source with five coauthors' cursors and highlighted comments, and the compiled PDF](https://cdn.oleafly.com/images/changelog/0.4.7/live-collaboration.png)
+
+- Comments on shared projects. Select text in a LaTeX, Typst or Markdown file
+  and comment on it, then reply, mention someone, resolve or reopen. A
+  coauthor you mention gets one email about a minute later and can turn those
+  emails off.
+
+  ![The Comments pane in Oleafly with threads, mentions and replies on a LaTeX file, next to the source and the compiled PDF](https://cdn.oleafly.com/images/changelog/0.4.7/comments.png)
+
+- Oleafly Server, which your lab runs itself. It's a single Rust binary that
+  uses SQLite, keeps files on disk or in any S3-compatible store, and sends
+  email over SMTP if you set that up. People sign in with GitHub or any OpenID
+  Connect provider, so a university's single sign-on works. Admins get a
+  console window in Oleafly for people, access rules, projects, settings,
+  email, the security log and connection checks. Every device signs its
+  changes, and the server builds each snapshot from that signed history
+  instead of trusting uploads. The
+  [server guide](https://github.com/Oleafly/oleafly-server) covers setup and
+  backups.
+
+  ![Oleafly Server admin console showing people, access rules and the security log](https://cdn.oleafly.com/images/changelog/0.4.7/server-admin-console.png)
+
+- Cloud sync with Dropbox. Connect your Dropbox under Settings > Data
+  storage > Cloud sync to back up your Library projects and app settings and
+  use them on your other computers. Each project has its own switch, and there
+  are Download all and Sync now buttons. Every download is checked against its
+  record before it replaces a file, and a file you have open with unsaved
+  changes is never overwritten. When two computers edit the same file, both
+  versions are kept, each named after the computer that wrote it. Deleting
+  most of a project at once puts it on hold until you confirm, and files
+  deleted on another computer go to the Trash here. On a new computer, Oleafly
+  asks once whether to keep this computer's settings or the synced ones. AI
+  chats, passwords and keys stay on your computer, and Git history and
+  checkpoints don't sync yet. Projects opened from a folder outside the
+  Library aren't synced.
+
+  ![Oleafly Cloud sync settings with the Dropbox card and a list of what syncs](https://cdn.oleafly.com/images/changelog/0.4.7/cloud-sync.png)
+
+- Preflight warns when a citation key is defined more than once.
 - Templates of your own. Import template, in the New Project gallery and in
   Settings > Downloads > Templates, adds one from a ZIP, a folder, a page in
   an online LaTeX template gallery, or one of the projects in your online
@@ -35,6 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with hundreds of templates opens and scrolls quickly. When templates in a
   pack ship the same font or other large file, it downloads once and they
   share it.
+
+  ![Settings > Downloads > Templates with the Conference preprint styles pack open and a preview of each template's first page](https://cdn.oleafly.com/images/changelog/0.4.7/template-packs.png)
+
 - Open in Oleafly links. The Open in Oleafly button on oleafly.com/templates
   opens that template in the app, whether Oleafly is running or not: you land
   on its preview in Settings > Downloads > Templates, and Get and create
@@ -52,6 +111,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A university's own server works too. The sign-in is kept encrypted on your
   computer, and Settings > Integrations shows it and signs you out. The
   assistant can list and import these projects for you as well.
+
+  ![Oleafly Import a project dialog with options for local files, arXiv, GitHub and an online LaTeX account](https://cdn.oleafly.com/images/changelog/0.4.7/import-online-account.png)
+
 - Keep an imported project in sync with its online copy. With a Git token
   from your online account, the sync button in the toolbar sends your changes
   up and brings your co-authors' changes down, on its own every few minutes
@@ -108,6 +170,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- AI deny rules in `~/.oleafly/approvals.toml` now refuse their tool in every
+  approval mode, Full access included. That covers app tools, MCP tools, the
+  command gate and helper agents. Allow rules still apply only in Custom mode.
+- Oleafly saves every open file before it compiles.
+- The README now leads with live collaboration, cloud sync, importing from an
+  online LaTeX account and AI agents, and has new screenshots. Its new hero
+  image is the live collaboration screenshot above.
 - On Auto, Chinese documents that use the `ctex` classes, the `ctex` package
   or `xeCJK` compile with XeLaTeX instead of pdfLaTeX, and documents that use
   LuaTeX-ja (the `ltjs` classes or `luatexja`) compile with LuaLaTeX.
@@ -168,6 +237,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in References for a Typst project, changed the file open in the editor
   without updating the editor, so the next keystroke undid the change. The
   editor now shows the new text right away.
+- On macOS, the PDF viewer could freeze its window when WebKit started a
+  garbage collection at the wrong moment. It no longer does, and a window that
+  stops answering for 30 seconds while idle now reloads and reopens its
+  project and file.
 
 ## [0.4.6] - 2026-10-09
 
