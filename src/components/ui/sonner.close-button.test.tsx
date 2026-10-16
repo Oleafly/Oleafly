@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Toaster } from "./sonner";
 import { toast } from "@/lib/toast";
@@ -81,5 +81,8 @@ describe("Toaster close button", () => {
 
     expect(undo).not.toHaveBeenCalled();
     expect(useToastStore.getState().toasts).toEqual([]);
+    // sonner keeps a closed toast for 200 ms before it removes it. Wait for
+    // that here, so its timer never fires after the test environment is gone.
+    await waitFor(() => expect(screen.queryByRole("button", { name: UNDO })).toBeNull());
   });
 });
