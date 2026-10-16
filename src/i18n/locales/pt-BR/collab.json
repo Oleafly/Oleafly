@@ -26,8 +26,10 @@
       "signOut": "Encerrar sessão",
       "remove": "Remover",
       "manage": "Gerenciar servidor",
+      "adminConsole": "Console de administração",
       "manageHint": "Gerenciar servidor mostra aqui Pessoas, Pessoas permitidas, Domínios, Configurações do servidor, E-mail e Registro de segurança. O console de administração abre em uma janela própria e também tem visão geral, projetos e testes de conexão.",
       "test": "Testar conexão",
+      "testShort": "Testar",
       "removeConfirm": {
         "title": "Remover {{name}}?",
         "description": "O Oleafly sai de {{name}} e o esquece. Os projetos compartilhados de {{name}} param de sincronizar e ficam neste computador como projetos comuns, cada um renomeado como cópia local.",

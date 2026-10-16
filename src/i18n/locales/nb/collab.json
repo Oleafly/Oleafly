@@ -26,8 +26,10 @@
       "signOut": "Logg ut",
       "remove": "Fjern",
       "manage": "Administrer serveren",
+      "adminConsole": "Administrasjonskonsoll",
       "manageHint": "Administrer serveren viser Personer, Tillatte personer, Domener, Serverinnstillinger, E-post og Sikkerhetslogg her. Administrasjonskonsollen åpnes i et eget vindu og har også oversikt, prosjekter og tilkoblingssjekk.",
       "test": "Test tilkoblingen",
+      "testShort": "Prøv",
       "removeConfirm": {
         "title": "Fjerne {{name}}?",
         "description": "Oleafly logger ut av {{name}} og glemmer den. Delte prosjekter fra {{name}} slutter å synkronisere og blir værende på denne maskinen som vanlige prosjekter, hvert med nytt navn som lokal kopi.",

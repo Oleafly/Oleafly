@@ -26,8 +26,10 @@
       "signOut": "Cerrar sesión",
       "remove": "Quitar",
       "manage": "Gestionar el servidor",
+      "adminConsole": "Consola de administración",
       "manageHint": "Gestionar el servidor muestra aquí Personas, Personas permitidas, Dominios, Ajustes del servidor, Correo y Registro de seguridad. La consola de administración se abre en su propia ventana y además tiene un resumen, los proyectos y las pruebas de conexión.",
       "test": "Probar la conexión",
+      "testShort": "Probar",
       "removeConfirm": {
         "title": "¿Quitar {{name}}?",
         "description": "Oleafly cierra la sesión en {{name}} y lo olvida. Los proyectos compartidos de {{name}} dejan de sincronizarse y se quedan en este equipo como proyectos normales, cada uno con el nombre de copia local.",

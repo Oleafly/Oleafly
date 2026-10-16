@@ -26,8 +26,10 @@
       "signOut": "Kirjaudu ulos",
       "remove": "Poista",
       "manage": "Hallitse palvelinta",
+      "adminConsole": "Hallintakonsoli",
       "manageHint": "Hallitse palvelinta näyttää tässä osiot Henkilöt, Sallitut henkilöt, Verkkotunnukset, Palvelimen asetukset, Sähköposti ja Tietoturvaloki. Hallintakonsoli avautuu omaan ikkunaansa, ja siinä on lisäksi yleiskatsaus, projektit ja yhteystarkistukset.",
       "test": "Testaa yhteys",
+      "testShort": "Testaa",
       "removeConfirm": {
         "title": "Poistetaanko {{name}}?",
         "description": "Oleafly kirjautuu ulos palvelimelta {{name}} ja unohtaa sen. Palvelimen {{name}} jaetut projektit lakkaavat synkronoitumasta ja pysyvät tällä koneella tavallisina projekteina, ja jokainen nimetään paikalliseksi kopioksi.",

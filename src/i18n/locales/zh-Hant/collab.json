@@ -26,8 +26,10 @@
       "signOut": "登出",
       "remove": "移除",
       "manage": "管理伺服器",
+      "adminConsole": "管理主控台",
       "manageHint": "管理伺服器會在這裡顯示人員、允許名單、網域、伺服器設定、電子郵件和安全性記錄。管理主控台會在獨立視窗中開啟，另外還有總覽、專案和連線檢查。",
       "test": "測試連線",
+      "testShort": "測試",
       "removeConfirm": {
         "title": "要移除 {{name}} 嗎？",
         "description": "Oleafly 會登出 {{name}} 並忘記這個伺服器。來自 {{name}} 的分享專案會停止同步，各自改名為本機副本，並以一般專案的形式留在這台電腦上。",

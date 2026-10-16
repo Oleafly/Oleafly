@@ -26,8 +26,10 @@
       "signOut": "Odhlásit se",
       "remove": "Odebrat",
       "manage": "Spravovat server",
+      "adminConsole": "Konzole pro správu",
       "manageHint": "Spravovat server tady zobrazí sekce Lidé, Povolení lidé, Domény, Nastavení serveru, E-mail a Protokol zabezpečení. Konzole pro správu se otevře ve vlastním okně a má navíc přehled, projekty a kontroly připojení.",
       "test": "Otestovat připojení",
+      "testShort": "Otestovat",
       "removeConfirm": {
         "title": "Odebrat {{name}}?",
         "description": "Oleafly se odhlásí ze serveru {{name}} a zapomene ho. Sdílené projekty ze serveru {{name}} se přestanou synchronizovat a zůstanou v tomto počítači jako běžné projekty, každý přejmenovaný na místní kopii.",

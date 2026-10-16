@@ -26,8 +26,10 @@
       "signOut": "Logga ut",
       "remove": "Ta bort",
       "manage": "Hantera servern",
+      "adminConsole": "Administratörskonsol",
       "manageHint": "Hantera servern visar Personer, Tillåtna personer, Domäner, Serverinställningar, E-post och Säkerhetslogg här. Administratörskonsolen öppnas i ett eget fönster och har också översikt, projekt och anslutningskontroller.",
       "test": "Testa anslutningen",
+      "testShort": "Testa",
       "removeConfirm": {
         "title": "Ta bort {{name}}?",
         "description": "Oleafly loggar ut från {{name}} och glömmer den. Delade projekt från {{name}} slutar synkas och stannar på den här datorn som vanliga projekt, vart och ett omdöpt till en lokal kopia.",

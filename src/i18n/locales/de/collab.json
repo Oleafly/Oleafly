@@ -26,8 +26,10 @@
       "signOut": "Abmelden",
       "remove": "Entfernen",
       "manage": "Server verwalten",
+      "adminConsole": "Admin-Konsole",
       "manageHint": "Server verwalten zeigt hier Personen, Zugelassene Personen, Domains, Servereinstellungen, E-Mail und Sicherheitsprotokoll. Die Admin-Konsole öffnet sich in einem eigenen Fenster und hat zusätzlich Überblick, Projekte und Verbindungstests.",
       "test": "Verbindung testen",
+      "testShort": "Testen",
       "removeConfirm": {
         "title": "{{name}} entfernen?",
         "description": "Oleafly meldet sich von {{name}} ab und vergisst den Server. Geteilte Projekte von {{name}} werden nicht mehr abgeglichen und bleiben als normale Projekte auf diesem Computer, jeweils als lokale Kopie umbenannt.",

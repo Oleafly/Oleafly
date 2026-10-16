@@ -26,8 +26,10 @@
       "signOut": "退出登录",
       "remove": "移除",
       "manage": "管理服务器",
+      "adminConsole": "管理控制台",
       "manageHint": "管理服务器会在这里显示人员、允许的人员、域名、服务器设置、电子邮件和安全日志。管理控制台在单独的窗口中打开，还包含概览、项目和连接检查。",
       "test": "测试连接",
+      "testShort": "测试",
       "removeConfirm": {
         "title": "要移除 {{name}} 吗？",
         "description": "Oleafly 会退出 {{name}} 的登录并忘记该服务器。来自 {{name}} 的共享项目会停止同步，各自改名为本地副本，并作为普通项目保留在这台电脑上。",

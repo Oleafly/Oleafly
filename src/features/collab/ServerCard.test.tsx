@@ -81,6 +81,33 @@ describe("ServerCard", () => {
     expect(mocks.collabServerDevices).toHaveBeenCalledWith(SERVER_ID);
   });
 
+  it("tops the card with the server's own icon, as the add-server dialog shows it", () => {
+    renderCard(server({ icon_url: "https://collab.uni.edu/icon.png" }));
+    const header = screen.getByTestId(`collab-server-${SERVER_ID}-toggle`);
+    expect(header.querySelector("img")).toHaveAttribute("src", "https://collab.uni.edu/icon.png");
+    cleanup();
+    renderCard();
+    expect(screen.getByTestId(`collab-server-${SERVER_ID}-toggle`).querySelector("img")).toBeNull();
+  });
+
+  it("lines up the actions on the right in the order people use them", () => {
+    const actions = () =>
+      within(screen.getByTestId("collab-server-actions"))
+        .getAllByRole("button")
+        .map((button) => button.textContent);
+    renderCard(server({ account: account({ server_role: "admin" }) }));
+    expect(actions()).toEqual([
+      copy.server.adminConsole,
+      copy.server.manage,
+      copy.server.testShort,
+      copy.server.signOut,
+      copy.server.remove,
+    ]);
+    cleanup();
+    renderCard(signedOutServer());
+    expect(actions()).toEqual([copy.server.testShort, copy.server.signIn, copy.server.remove]);
+  });
+
   it("says who is signed in once: in the header while folded, in the card while open", async () => {
     const user = userEvent.setup();
     renderCard();
@@ -278,7 +305,7 @@ describe("ServerCard", () => {
     mocks.collabServerTest.mockResolvedValue([check("reachable", "pass"), check("https", "fail", "certificate expired")]);
     const user = userEvent.setup();
     renderCard();
-    await user.click(screen.getByRole("button", { name: copy.server.test }));
+    await user.click(screen.getByRole("button", { name: copy.server.testShort }));
     expect(mocks.collabServerTest).toHaveBeenCalledWith("https://collab.uni.edu");
     expect(await screen.findByRole("heading", { name: copy.checks.title })).toBeInTheDocument();
     expect(screen.getByText(copy.checks.items.https.fail)).toBeInTheDocument();
@@ -294,12 +321,12 @@ describe("ServerCard", () => {
     );
     const user = userEvent.setup();
     renderCard();
-    await user.click(screen.getByRole("button", { name: copy.server.test }));
+    await user.click(screen.getByRole("button", { name: copy.server.testShort }));
     expect(screen.getByText(copy.checks.running)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: copy.server.test })).toBeDisabled();
+    expect(screen.getByRole("button", { name: copy.server.testShort })).toBeDisabled();
     finish(collabError("internal"));
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.internal);
-    expect(screen.getByRole("button", { name: copy.server.test })).toBeEnabled();
+    expect(screen.getByRole("button", { name: copy.server.testShort })).toBeEnabled();
   });
 
   it("shows your role and offers Manage server to admins and maintainers only", async () => {
@@ -331,7 +358,7 @@ describe("ServerCard admin console", () => {
     const user = userEvent.setup();
     const entry = server({ account: account({ server_role: role }) });
     renderCard(entry);
-    await user.click(screen.getByRole("button", { name: enCollab.console.open }));
+    await user.click(screen.getByRole("button", { name: copy.server.adminConsole }));
     expect(consoleMocks.openAdminConsole).toHaveBeenCalledWith(entry);
   });
 
@@ -345,10 +372,10 @@ describe("ServerCard admin console", () => {
 
   it("keeps the admin console from members and signed out computers", () => {
     renderCard(server({ account: account({ server_role: "member" }) }));
-    expect(screen.queryByRole("button", { name: enCollab.console.open })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: copy.server.adminConsole })).not.toBeInTheDocument();
     cleanup();
     renderCard(signedOutServer({ account: account({ server_role: "admin" }) }));
-    expect(screen.queryByRole("button", { name: enCollab.console.open })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: copy.server.adminConsole })).not.toBeInTheDocument();
   });
 });
 

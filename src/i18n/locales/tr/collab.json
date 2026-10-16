@@ -26,8 +26,10 @@
       "signOut": "Oturumu kapat",
       "remove": "Kaldır",
       "manage": "Sunucuyu yönet",
+      "adminConsole": "Yönetici konsolu",
       "manageHint": "Sunucuyu yönet seçeneği burada Kişiler, İzinli kişiler, Alan adları, Sunucu ayarları, E-posta ve Güvenlik günlüğü bölümlerini gösterir. Yönetici konsolu kendi penceresinde açılır ve ayrıca genel bakış, projeler ve bağlantı denetimleri içerir.",
       "test": "Bağlantıyı test et",
+      "testShort": "Test et",
       "removeConfirm": {
         "title": "{{name}} kaldırılsın mı?",
         "description": "Oleafly, {{name}} sunucusundaki oturumu kapatır ve sunucuyu unutur. {{name}} sunucusundaki paylaşılan projeler eşitlenmeyi bırakır ve her biri yerel kopya olarak yeniden adlandırılıp bu bilgisayarda sıradan projeler olarak kalır.",

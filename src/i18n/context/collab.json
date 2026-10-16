@@ -11,7 +11,9 @@
       "noAccess": "Badge on a server card when this person's account was removed from the server. Short, like Signed out.",
       "suspendedHint": "Under the server name when an admin suspended this account. {{server}} is the server's name. A Sign in button follows.",
       "endedHint": "Under the server name when this person was removed from the server. {{server}} is the server's name. There is no Sign in button.",
-      "endedGuestHint": "Same message for a guest whose access ended because no shared project on the server includes them any more."
+      "endedGuestHint": "Same message for a guest whose access ended because no shared project on the server includes them any more.",
+      "testShort": "Short button on a collaboration server's card that checks the app can reach the server. Keep it to one word if the language allows.",
+      "adminConsole": "Short button on a collaboration server's card that opens the separate admin console window. A name, not a sentence."
     },
     "devices": {
       "current": "Badge on the row for the computer the person is using right now"

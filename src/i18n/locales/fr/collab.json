@@ -26,8 +26,10 @@
       "signOut": "Se déconnecter",
       "remove": "Retirer",
       "manage": "Gérer le serveur",
+      "adminConsole": "Console d'administration",
       "manageHint": "Gérer le serveur affiche ici Personnes, Personnes autorisées, Domaines, Paramètres du serveur, Courriel et Journal de sécurité. La console d'administration s'ouvre dans sa propre fenêtre et propose aussi une vue d'ensemble, les projets et les tests de connexion.",
       "test": "Tester la connexion",
+      "testShort": "Tester",
       "removeConfirm": {
         "title": "Retirer {{name}} ?",
         "description": "Oleafly se déconnecte de {{name}} et l'oublie. Les projets partagés de {{name}} cessent de se synchroniser et restent sur cet ordinateur comme des projets ordinaires, chacun renommé en copie locale.",

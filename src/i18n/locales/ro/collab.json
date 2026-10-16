@@ -26,8 +26,10 @@
       "signOut": "Deconectează-te",
       "remove": "Elimină",
       "manage": "Gestionează serverul",
+      "adminConsole": "Consola de administrare",
       "manageHint": "Gestionează serverul arată aici Persoane, Persoane permise, Domenii, Setările serverului, E-mail și Jurnal de securitate. Consola de administrare se deschide într-o fereastră separată și are în plus o prezentare generală, proiectele și verificările de conexiune.",
       "test": "Testează conexiunea",
+      "testShort": "Testează",
       "removeConfirm": {
         "title": "Elimini {{name}}?",
         "description": "Oleafly se deconectează de la {{name}} și îl uită. Proiectele partajate de pe {{name}} nu se mai sincronizează și rămân pe acest computer ca proiecte obișnuite, fiecare redenumit ca copie locală.",

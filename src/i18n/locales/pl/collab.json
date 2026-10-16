@@ -26,8 +26,10 @@
       "signOut": "Wyloguj się",
       "remove": "Usuń",
       "manage": "Zarządzaj serwerem",
+      "adminConsole": "Konsola administracyjna",
       "manageHint": "Zarządzaj serwerem pokazuje tutaj sekcje Osoby, Dozwolone osoby, Domeny, Ustawienia serwera, E-mail i Dziennik bezpieczeństwa. Konsola administracyjna otwiera się w osobnym oknie i ma też przegląd, projekty oraz testy połączenia.",
       "test": "Testuj połączenie",
+      "testShort": "Testuj",
       "removeConfirm": {
         "title": "Usunąć serwer {{name}}?",
         "description": "Oleafly wyloguje się z serwera {{name}} i go zapomni. Udostępnione projekty z serwera {{name}} przestaną się synchronizować i zostaną na tym komputerze jako zwykłe projekty, każdy z nazwą kopii lokalnej.",

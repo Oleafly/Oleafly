@@ -26,8 +26,10 @@
       "signOut": "Esci",
       "remove": "Rimuovi",
       "manage": "Gestisci il server",
+      "adminConsole": "Console di amministrazione",
       "manageHint": "Gestisci il server mostra qui Persone, Persone autorizzate, Domini, Impostazioni del server, Email e Registro di sicurezza. La console di amministrazione si apre in una finestra a parte e include anche panoramica, progetti e verifiche della connessione.",
       "test": "Verifica la connessione",
+      "testShort": "Verifica",
       "removeConfirm": {
         "title": "Vuoi rimuovere il server {{name}}?",
         "description": "Oleafly esce da {{name}} e lo dimentica. I progetti condivisi di {{name}} smettono di sincronizzarsi e restano su questo computer come progetti normali, ognuno rinominato come copia locale.",

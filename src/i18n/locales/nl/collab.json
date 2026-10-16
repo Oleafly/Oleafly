@@ -26,8 +26,10 @@
       "signOut": "Afmelden",
       "remove": "Weghalen",
       "manage": "Server beheren",
+      "adminConsole": "Beheerconsole",
       "manageHint": "Server beheren toont hier Mensen, Toegestane personen, Domeinen, Serverinstellingen, E-mail en Beveiligingslogboek. De beheerconsole opent in een eigen venster en heeft ook een overzicht, projecten en verbindingscontroles.",
       "test": "Verbinding testen",
+      "testShort": "Testen",
       "removeConfirm": {
         "title": "{{name}} weghalen?",
         "description": "Oleafly meldt zich af bij {{name}} en vergeet deze server. Gedeelde projecten van {{name}} synchroniseren niet meer en blijven op deze computer als gewone projecten, elk hernoemd tot een lokale kopie.",
