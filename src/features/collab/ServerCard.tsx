@@ -137,6 +137,27 @@ export function ServerCard({
 
   const removing = unsent?.action === "remove";
 
+  // Open, the card says who is signed in, so the header only summarises that
+  // while folded. Why someone is signed out stays.
+  const headerTrailing = () => {
+    if (!account) {
+      return (
+        <Badge variant="muted" size="sm">
+          {signedOutBadge()}
+        </Badge>
+      );
+    }
+    if (open) return null;
+    return (
+      <>
+        <Avatar person={accountPerson(account)} size="sm" />
+        <Badge variant="success" size="sm">
+          {t(($) => $.collab.section.server.signedIn)}
+        </Badge>
+      </>
+    );
+  };
+
   return (
     <>
       <CollapsibleSection
@@ -146,24 +167,7 @@ export function ServerCard({
         icon={Server}
         open={open}
         onOpenChange={setOpen}
-        // Open, the card says who is signed in, so the header only
-        // summarises that while folded. Why someone is signed out stays.
-        trailing={
-          account ? (
-            open ? null : (
-              <>
-                <Avatar person={accountPerson(account)} size="sm" />
-                <Badge variant="success" size="sm">
-                  {t(($) => $.collab.section.server.signedIn)}
-                </Badge>
-              </>
-            )
-          ) : (
-            <Badge variant="muted" size="sm">
-              {signedOutBadge()}
-            </Badge>
-          )
-        }
+        trailing={headerTrailing()}
       >
         {account ? (
           <SignedInSummary account={account} role={role} />
