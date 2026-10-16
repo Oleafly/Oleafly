@@ -440,7 +440,14 @@ Do the steps in this order:
    sudo OLEAFLY_RELEASE_URL="file://$PWD/rel" sh rel/install.sh
    ```
 
-5. Publish the draft. The workflow then moves the image's minor tag, such as
+5. Publish the draft with **Set as the latest release** unticked, or run
+   `gh release edit server-v<version> --repo Oleafly/Oleafly --draft=false --latest=false`.
+   Desktop and server releases share this repository. The desktop app's
+   updater and the download links read its latest release, so the latest
+   release has to stay a desktop one with `latest.json`. If the label lands on
+   the server release anyway, the workflow moves it back to the newest desktop
+   release.
+   The workflow then moves the image's minor tag, such as
    `:0.1`, and `:latest`, which Coolify, Render and Railway follow. It also
    starts `sync-release.yml` in Oleafly/oleafly-server, which copies the
    release there, and waits until the copy answers. That needs the

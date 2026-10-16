@@ -9,9 +9,9 @@ failed=0
 failures=
 status=
 
-if ! python3 -c 'import yaml' 2>/dev/null || ! docker compose version >/dev/null 2>&1 || ! command -v file >/dev/null 2>&1; then
+if ! python3 -c 'import yaml' 2>/dev/null || ! docker compose version >/dev/null 2>&1 || ! command -v file >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
 	apt-get update -qq >/dev/null
-	DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-yaml docker-compose-v2 file >/dev/null 2>&1
+	DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-yaml docker-compose-v2 file jq >/dev/null 2>&1
 fi
 
 extract() {
@@ -65,6 +65,14 @@ extract "Point the minor and latest tags at this release" "$blocks/promote.sh" |
 }
 extract "Start the copy and wait for the installer to see it" "$blocks/sync.sh" || {
 	echo "the workflow has no 'Start the copy and wait for the installer to see it' step"
+	exit 1
+}
+extract "Give the latest label back to the newest desktop release" "$blocks/desktop-latest.sh" || {
+	echo "the workflow has no 'Give the latest label back to the newest desktop release' step"
+	exit 1
+}
+extract "Write the release checklist" "$blocks/checklist.sh" || {
+	echo "the workflow has no 'Write the release checklist' step"
 	exit 1
 }
 
@@ -304,6 +312,7 @@ done
 run_block draft.sh GH_LOG="$ws/gh/log" GH_STATE="$ws/gh" GH_TOKEN=token TAG=server-v0.1.0 VERSION=0.1.0 GITHUB_REPOSITORY=Oleafly/Oleafly GITHUB_REPOSITORY_OWNER=Oleafly
 expect "exit 0, got $status" [ "$status" = 0 ]
 expect "a draft is created" grep -q 'gh release create server-v0.1.0 --repo Oleafly/Oleafly --draft --verify-tag' "$ws/gh/log"
+expect "the draft doesn't pass --latest, which GitHub doesn't keep for a draft" sh -c "! grep -q -- '--latest' '$ws/gh/log'"
 expect "the notes have the install command" grep -qxF 'curl -fsSL https://oleafly.com/server/install.sh | sudo sh' "$ws/gh/notes"
 expect "the notes name the image in lower case" grep -qF 'ghcr.io/oleafly/oleafly-server:0.1.0' "$ws/gh/notes"
 expect "the notes avoid semicolons" sh -c "! grep -q ';' '$ws/gh/notes'"
@@ -612,6 +621,162 @@ echo SHA256SUMS >"$ws/archives/SHA256SUMS"
 run_block draft.sh GH_LOG="$ws/gh/log" GH_STATE="$ws/gh" GH_TOKEN=token TAG=server-v0.1.0 VERSION=0.1.0 GITHUB_REPOSITORY=Oleafly/Oleafly GITHUB_REPOSITORY_OWNER=Oleafly
 expect "exit 0, got $status" [ "$status" = 0 ]
 expect "the last line explains the copy" out_has 'The installer offers the release only once that copy is done.'
+finish
+
+begin "the checklist says to publish without the latest label"
+run_block checklist.sh GITHUB_STEP_SUMMARY="$ws/summary" IMAGE=ghcr.io/oleafly/oleafly-server TAG=server-v0.1.0 VERSION=0.1.0 GITHUB_REPOSITORY=Oleafly/Oleafly
+expect "exit 0, got $status" [ "$status" = 0 ]
+expect "it says to untick the box" grep -qF 'Publish the draft with "Set as the latest release" unticked.' "$ws/summary"
+expect "it gives the command that publishes without the label" grep -qxF '   gh release edit server-v0.1.0 --repo Oleafly/Oleafly --draft=false --latest=false' "$ws/summary"
+finish
+
+# GitHub as far as the desktop-latest step sees it: GH_STATE/latest holds the
+# tag of the latest release, GH_STATE/releases.json the release list.
+latest_stubs() {
+	gh_stub
+	cat >>"$ws/stubs/gh" <<'EOF'
+case "$1" in
+	api)
+		case "$*" in
+			*/releases/latest*)
+				if [ ! -s "$GH_STATE/latest" ]; then
+					echo 'gh: Not Found (HTTP 404)' >&2
+					exit 1
+				fi
+				cat "$GH_STATE/latest"
+				;;
+			*"--paginate repos/Oleafly/Oleafly/releases?per_page=100") cat "$GH_STATE/releases.json" ;;
+			*)
+				echo "unexpected: gh $*" >&2
+				exit 1
+				;;
+		esac
+		;;
+esac
+case "$1 $2" in
+	"release edit")
+		if [ -f "$GH_STATE/edit-fails" ]; then
+			echo 'HTTP 422: Validation Failed' >&2
+			exit 1
+		fi
+		if [ "$*" = "release edit $3 --repo Oleafly/Oleafly --latest" ] && [ ! -f "$GH_STATE/edit-ignored" ]; then
+			echo "$3" >"$GH_STATE/latest"
+		fi
+		;;
+esac
+EOF
+	cat >"$ws/stubs/sleep" <<'EOF'
+#!/bin/sh
+echo "sleep $*" >>"$GH_LOG"
+EOF
+	chmod 755 "$ws/stubs/sleep"
+}
+
+desktop_latest() {
+	: >"$ws/gh/log"
+	run_block desktop-latest.sh GH_LOG="$ws/gh/log" GH_STATE="$ws/gh" GH_TOKEN=token GITHUB_REPOSITORY=Oleafly/Oleafly
+}
+
+# Two arrays back to back, which jq -s has to merge. Current gh merges the
+# pages into one array itself, like the second run below. Only v0.4.10 and
+# the releases below it are published desktop releases with the updater feed.
+two_pages() {
+	cat >"$ws/gh/releases.json" <<'EOF'
+[
+  {"tag_name": "server-v0.1.0", "draft": false, "prerelease": false, "assets": [{"name": "SHA256SUMS"}, {"name": "install.sh"}]},
+  {"tag_name": "v0.5.0", "draft": false, "prerelease": false, "assets": [{"name": "Oleafly_0.5.0_aarch64.dmg"}]},
+  {"tag_name": "v0.4.12", "draft": true, "prerelease": false, "assets": [{"name": "latest.json"}]},
+  {"tag_name": "v0.4.11", "draft": false, "prerelease": true, "assets": [{"name": "latest.json"}]},
+  {"tag_name": "v0.4.10-beta", "draft": false, "prerelease": false, "assets": [{"name": "latest.json"}]},
+  {"tag_name": "main", "draft": false, "prerelease": false, "assets": [{"name": "latest.json"}]}
+]
+[
+  {"tag_name": "v0.4.10", "draft": false, "prerelease": false, "assets": [{"name": "Oleafly_0.4.10_aarch64.dmg"}, {"name": "latest.json"}]},
+  {"tag_name": "v0.4.9", "draft": false, "prerelease": false, "assets": [{"name": "latest.json"}]}
+]
+EOF
+}
+
+begin "a server release that took the latest label gives it back to the newest desktop release"
+latest_stubs
+two_pages
+echo server-v0.1.0 >"$ws/gh/latest"
+desktop_latest
+expect "exit 0, got $status" [ "$status" = 0 ]
+expect "v0.4.10 is marked latest, once" [ "$(grep -cxF 'gh release edit v0.4.10 --repo Oleafly/Oleafly --latest' "$ws/gh/log")" = 1 ]
+expect "nothing else is edited" [ "$(grep -c 'release edit' "$ws/gh/log")" = 1 ]
+expect "GitHub now reports v0.4.10" [ "$(cat "$ws/gh/latest")" = v0.4.10 ]
+expect "it says what it did" out_has 'server-v0.1.0 had taken the latest label. It is back on v0.4.10'
+cat >"$ws/gh/releases.json" <<'EOF'
+[
+  {"tag_name": "server-v0.2.0", "draft": false, "prerelease": false, "assets": [{"name": "SHA256SUMS"}]},
+  {"tag_name": "v0.4.10-beta", "draft": false, "prerelease": false, "assets": [{"name": "latest.json"}]},
+  {"tag_name": "v0.4.9", "draft": false, "prerelease": false, "assets": [{"name": "latest.json"}]}
+]
+EOF
+echo server-v0.2.0 >"$ws/gh/latest"
+desktop_latest
+expect "one page works too, got $status" [ "$status" = 0 ]
+expect "a published beta beats the version before it" grep -qxF 'gh release edit v0.4.10-beta --repo Oleafly/Oleafly --latest' "$ws/gh/log"
+finish
+
+begin "a desktop release that has the latest label is left alone"
+latest_stubs
+two_pages
+echo v0.4.9 >"$ws/gh/latest"
+desktop_latest
+expect "exit 0, got $status" [ "$status" = 0 ]
+expect "nothing is edited" sh -c "! grep -q 'release edit' '$ws/gh/log'"
+expect "the releases aren't even listed" sh -c "! grep -q -- '--paginate' '$ws/gh/log'"
+expect "it says why" out_has 'The latest release is v0.4.9, so the desktop app'"'"'s updater still finds latest.json.'
+finish
+
+begin "the latest label fails loudly when it can't be given back"
+latest_stubs
+cat >"$ws/gh/releases.json" <<'EOF'
+[
+  {"tag_name": "server-v0.1.0", "draft": false, "prerelease": false, "assets": [{"name": "SHA256SUMS"}]},
+  {"tag_name": "v0.4.7", "draft": true, "prerelease": false, "assets": [{"name": "latest.json"}]}
+]
+EOF
+echo server-v0.1.0 >"$ws/gh/latest"
+desktop_latest
+expect "no desktop release to take it fails, got $status" [ "$status" != 0 ]
+expect "it says so" out_has '::error::server-v0.1.0 is the latest release, and no published desktop release has a latest.json'
+expect "nothing is edited" sh -c "! grep -q 'release edit' '$ws/gh/log'"
+two_pages
+touch "$ws/gh/edit-fails"
+desktop_latest
+expect "an edit GitHub refuses fails, got $status" [ "$status" != 0 ]
+expect "it gives the command to run by hand" out_has "Couldn't mark v0.4.10 as the latest release, so installed desktop apps see no updates. Run: gh release edit v0.4.10 --repo Oleafly/Oleafly --latest"
+rm -f "$ws/gh/edit-fails"
+touch "$ws/gh/edit-ignored"
+desktop_latest
+expect "a label that doesn't move fails, got $status" [ "$status" != 0 ]
+expect "it checks three times after the edit" [ "$(grep -c 'releases/latest' "$ws/gh/log")" = 4 ]
+expect "it waits between checks" [ "$(grep -c '^sleep 5$' "$ws/gh/log")" = 2 ]
+expect "it names what GitHub reports and the command" out_has "GitHub still reports 'server-v0.1.0'. Run: gh release edit v0.4.10 --repo Oleafly/Oleafly --latest"
+finish
+
+begin "only published server releases run desktop-latest, one at a time"
+python3 - "$workflow" >"$work/out" 2>&1 <<'EOF'
+import sys
+import yaml
+
+job = yaml.safe_load(open(sys.argv[1]))["jobs"]["desktop-latest"]
+problems = []
+if job.get("if") != "github.event_name == 'release' && startsWith(github.event.release.tag_name, 'server-v')":
+    problems.append(f"desktop-latest runs for more than published server releases: {job.get('if')}")
+if job.get("permissions") != {"contents": "write"}:
+    problems.append(f"desktop-latest needs contents: write and nothing else, has {job.get('permissions')}")
+if job.get("concurrency") != {"group": "release-server-desktop-latest", "cancel-in-progress": False}:
+    problems.append("desktop-latest doesn't run one at a time")
+for problem in problems:
+    print(problem)
+sys.exit(1 if problems else 0)
+EOF
+status=$?
+expect "the workflow passes the desktop-latest checks, got $status" [ "$status" = 0 ]
 finish
 
 rm -rf "$work"
