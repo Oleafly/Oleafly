@@ -2354,21 +2354,30 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn admin_calls_in_a_row_share_one_connection_and_one_server_check() {
+    async fn admin_calls_in_a_row_share_one_client_kept_alive_and_one_server_check() {
         let relay = crate::collab::testing::Relay::bind().await;
         let lab = crate::collab::testing::Lab::behind(&relay).await;
         let dir = tempfile::tempdir().expect("tempdir");
         let state = collab_state(&dir);
         let server = lab.sign_in(&state, &relay.url, true).await;
+        let entry = known(&state, server).expect("known server");
+        assert!(Arc::ptr_eq(
+            &state.client(&entry).expect("client"),
+            &state.client(&entry).expect("client"),
+        ));
         relay.forget_seen();
-        let before = relay.connections();
         let host = TestHost::following();
-        for _ in 0..2 {
+        for _ in 0..4 {
             admin_members(&state, &host, server).await.expect("members");
         }
         assert_eq!(relay.requests("GET /.well-known/oleafly-server"), 1);
-        assert_eq!(relay.requests("GET /api/v1/admin/members"), 2);
-        assert_eq!(relay.connections() - before, 1);
+        assert_eq!(relay.requests("GET /api/v1/admin/members"), 4);
+        // The HTTP client puts a finished connection back in its pool from
+        // a spawned task, so on a busy runner the next request can start
+        // first and open another connection. How many connections open is
+        // therefore a race. That they stay open and carry more than one
+        // request is not.
+        assert!(relay.most_requests_on_one_connection() >= 2);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

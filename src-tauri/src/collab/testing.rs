@@ -207,11 +207,12 @@ pub(crate) struct Relay {
     upstream: std::sync::Arc<Mutex<String>>,
     down: std::sync::Arc<std::sync::atomic::AtomicBool>,
     seen: std::sync::Arc<Mutex<Vec<u8>>>,
+    // What the client sent on each connection, in the order they opened.
+    streams: std::sync::Arc<Mutex<Vec<Vec<u8>>>>,
     refused: std::sync::Arc<Mutex<Option<String>>>,
     refusals: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     stalled: std::sync::Arc<Mutex<Option<String>>>,
     stalls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
-    accepted: std::sync::Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl Relay {
@@ -235,6 +236,7 @@ impl Relay {
         let target = Arc::clone(&upstream);
         let down = Arc::new(AtomicBool::new(false));
         let seen = Arc::new(Mutex::new(Vec::new()));
+        let streams: Arc<Mutex<Vec<Vec<u8>>>> = Arc::default();
         let refused: Arc<Mutex<Option<String>>> = Arc::default();
         let refusals = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let stalled: Arc<Mutex<Option<String>>> = Arc::default();
@@ -242,14 +244,18 @@ impl Relay {
         let (gate, log) = (Arc::clone(&down), Arc::clone(&seen));
         let (refusing, counted) = (Arc::clone(&refused), Arc::clone(&refusals));
         let (stalling, held) = (Arc::clone(&stalled), Arc::clone(&stalls));
-        let accepted = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        let connected = Arc::clone(&accepted);
+        let opened = Arc::clone(&streams);
         tokio::spawn(async move {
             while let Ok((client, _)) = listener.accept().await {
                 if gate.load(Ordering::SeqCst) {
                     continue;
                 }
-                connected.fetch_add(1, Ordering::SeqCst);
+                let stream = {
+                    let mut opened = opened.lock().unwrap_or_else(PoisonError::into_inner);
+                    opened.push(Vec::new());
+                    opened.len() - 1
+                };
+                let sent = Arc::clone(&opened);
                 let upstream = target
                     .lock()
                     .unwrap_or_else(PoisonError::into_inner)
@@ -292,6 +298,8 @@ impl Relay {
                             log.lock()
                                 .unwrap_or_else(PoisonError::into_inner)
                                 .extend_from_slice(&buffer[..count]);
+                            sent.lock().unwrap_or_else(PoisonError::into_inner)[stream]
+                                .extend_from_slice(&buffer[..count]);
                             if server_write.write_all(&buffer[..count]).await.is_err() {
                                 break;
                             }
@@ -319,20 +327,16 @@ impl Relay {
             upstream,
             down,
             seen,
+            streams,
             refused,
             refusals,
             stalled,
             stalls,
-            accepted,
         }
     }
 
     pub(crate) fn point_at(&self, upstream: String) {
         *self.upstream.lock().unwrap_or_else(PoisonError::into_inner) = upstream;
-    }
-
-    pub(crate) fn connections(&self) -> usize {
-        self.accepted.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     pub(crate) fn refuse(&self, needle: Option<&str>) {
@@ -366,6 +370,31 @@ impl Relay {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .clear();
+        for sent in self
+            .streams
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter_mut()
+        {
+            sent.clear();
+        }
+    }
+
+    /// The most requests any one connection carried since the last
+    /// `forget_seen`. Above one means the client kept a connection open and
+    /// sent another request on it.
+    pub(crate) fn most_requests_on_one_connection(&self) -> usize {
+        self.streams
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .map(|sent| {
+                String::from_utf8_lossy(sent)
+                    .matches(" HTTP/1.1\r\n")
+                    .count()
+            })
+            .max()
+            .unwrap_or(0)
     }
 }
 
