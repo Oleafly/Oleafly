@@ -85,6 +85,9 @@ beforeAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // A test that times out leaves its queued one-off replies behind, and the
+  // next test would consume them. Resetting drops them.
+  for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.collabServerSignInCancel.mockResolvedValue(undefined);
   useCollabStore.setState({ servers: [], status: "ready", loadError: null, pending: {} });
 });
@@ -183,19 +186,17 @@ describe("AddServerDialog", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("shows every error code in plain words where it happened", async () => {
+  // A `server` error in the server's own words came from a server that
+  // answered, so it reads as that server's problem, not as no server.
+  const notAServer = new Set(["not_found", "invalid"]);
+  it.each(COLLAB_ERROR_CODES)("shows the %s error code in plain words where it happened", async (code) => {
+    mocks.collabServerProbe.mockRejectedValueOnce(collabError(code));
     const user = userEvent.setup();
     renderDialog();
     await user.type(screen.getByLabelText(copy.addressLabel), "collab.uni.edu");
-    // A `server` error in the server's own words came from a server that
-    // answered, so it reads as that server's problem, not as no server.
-    const notAServer = new Set(["not_found", "invalid"]);
-    for (const code of COLLAB_ERROR_CODES) {
-      mocks.collabServerProbe.mockRejectedValueOnce(collabError(code));
-      await user.click(screen.getByRole("button", { name: copy.continue }));
-      const expected = notAServer.has(code) ? copy.notAServer : collabErrorText(collabError(code));
-      expect(await screen.findByRole("alert")).toHaveTextContent(expected);
-    }
+    await user.click(screen.getByRole("button", { name: copy.continue }));
+    const expected = notAServer.has(code) ? copy.notAServer : collabErrorText(collabError(code));
+    expect(await screen.findByRole("alert")).toHaveTextContent(expected);
   });
 
   it.each(["not_found", "server", "invalid"])(
