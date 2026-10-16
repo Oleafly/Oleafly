@@ -41,7 +41,15 @@ type Step =
   | { kind: "checking" }
   | { kind: "server"; url: string; capabilities: CollabCapabilities }
   | { kind: "signingIn"; url: string; capabilities: CollabCapabilities; provider: CollabProvider }
-  | { kind: "code"; url: string; capabilities: CollabCapabilities; code: CollabSignInCode | null }
+  | {
+      kind: "code";
+      url: string;
+      capabilities: CollabCapabilities;
+      code: CollabSignInCode | null;
+      // The way this person picked before falling back to a code, so the
+      // browser page offers only that one instead of asking again.
+      provider: CollabProvider | null;
+    }
   | { kind: "done"; server: CollabServer };
 
 export const CODE_OFFER_DELAY_MS = 20_000;
@@ -126,6 +134,19 @@ function cancelPendingSignIn() {
   collabServerSignInCancel().catch(() => undefined);
 }
 
+// The page Oleafly opens already has the code, and the way picked in Oleafly
+// tells it to offer only that way to sign in.
+function codePageLink(code: CollabSignInCode, provider: CollabProvider | null): string {
+  if (!provider) return code.verificationUriComplete;
+  try {
+    const link = new URL(code.verificationUriComplete);
+    link.searchParams.set("provider", provider.id);
+    return link.toString();
+  } catch {
+    return code.verificationUriComplete;
+  }
+}
+
 function CodeValue({
   label,
   value,
@@ -173,7 +194,7 @@ export function AddServerDialog({
   const [step, setStep] = useState<Step>({ kind: "address" });
   const [error, setError] = useState<string | null>(null);
   const [trouble, setTrouble] = useState<ProbeTrouble | null>(null);
-  const [codeHint, setCodeHint] = useState(false);
+  const [codeHint, setCodeHint] = useState<CollabProvider | null>(null);
   const [offerCode, setOfferCode] = useState(false);
   const waiting = step.kind === "signingIn";
   const {
@@ -244,7 +265,7 @@ export function AddServerDialog({
   const startSignIn = async (url: string, capabilities: CollabCapabilities, provider: CollabProvider) => {
     const current = ++attempt.current;
     setError(null);
-    setCodeHint(false);
+    setCodeHint(null);
     setStep({ kind: "signingIn", url, capabilities, provider });
     try {
       const server = await signIn(url, provider.id, capabilities.needs_setup ? setupCode.trim() : undefined);
@@ -254,22 +275,26 @@ export function AddServerDialog({
       if (current !== attempt.current) return;
       const code = collabErrorCode(error_);
       setError(collabErrorText(error_));
-      setCodeHint(code === "sign_in_timed_out");
+      setCodeHint(code === "sign_in_timed_out" ? provider : null);
       setStep({ kind: "server", url, capabilities });
     }
   };
 
-  const startCodeSignIn = async (url: string, capabilities: CollabCapabilities) => {
+  const startCodeSignIn = async (
+    url: string,
+    capabilities: CollabCapabilities,
+    provider: CollabProvider | null,
+  ) => {
     const current = ++attempt.current;
     setError(null);
-    setCodeHint(false);
-    setStep({ kind: "code", url, capabilities, code: null });
+    setCodeHint(null);
+    setStep({ kind: "code", url, capabilities, code: null, provider });
     try {
       const server = await signInWithCode(
         url,
         capabilities.needs_setup ? setupCode.trim() : undefined,
         (code) => {
-          if (current === attempt.current) setStep({ kind: "code", url, capabilities, code });
+          if (current === attempt.current) setStep({ kind: "code", url, capabilities, code, provider });
         },
       );
       if (current !== attempt.current) return;
@@ -277,21 +302,23 @@ export function AddServerDialog({
     } catch (error_) {
       if (current !== attempt.current) return;
       setError(collabErrorText(error_));
+      // A code that ran out can be replaced with a new one right away.
+      setCodeHint(collabErrorCode(error_) === "sign_in_timed_out" ? provider : null);
       setStep({ kind: "server", url, capabilities });
     }
   };
 
-  const switchToCode = async (url: string, capabilities: CollabCapabilities) => {
+  const switchToCode = async (url: string, capabilities: CollabCapabilities, provider: CollabProvider) => {
     attempt.current += 1;
     await collabServerSignInCancel().catch(() => undefined);
-    await startCodeSignIn(url, capabilities);
+    await startCodeSignIn(url, capabilities, provider);
   };
 
   const goTo = (next: Step) => {
     attempt.current += 1;
     setError(null);
     setTrouble(null);
-    setCodeHint(false);
+    setCodeHint(null);
     setStep(next);
   };
 
@@ -313,7 +340,7 @@ export function AddServerDialog({
     setSetupCode("");
     setError(null);
     setTrouble(null);
-    setCodeHint(false);
+    setCodeHint(null);
     resetConnectionTest();
     setStep({ kind: "address" });
     if (initialUrl) void probe(initialUrl);
@@ -424,21 +451,25 @@ export function AddServerDialog({
                   {t(($) => $.collab.addServer.continueWith, { provider: provider.label })}
                 </Button>
               ))}
-              <Button
-                type="button"
-                variant={codeHint ? "outline" : "ghost"}
-                disabled={codeMissing}
-                onClick={() => void startCodeSignIn(url, capabilities)}
-              >
-                <Hash aria-hidden />
-                {t(($) => $.collab.addServer.codeSignIn)}
-              </Button>
-              <p className="text-xs text-muted-foreground">{t(($) => $.collab.addServer.codeSignInDescription)}</p>
             </div>
           )}
         </div>
         {error ? <InlineAlert>{error}</InlineAlert> : null}
-        {codeHint ? <p className="text-xs text-muted-foreground">{t(($) => $.collab.addServer.codeHint)}</p> : null}
+        {codeHint ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-muted-foreground">{t(($) => $.collab.addServer.codeHint)}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={codeMissing}
+              onClick={() => void startCodeSignIn(url, capabilities, codeHint)}
+            >
+              <Hash aria-hidden />
+              {t(($) => $.collab.addServer.codeSignIn)}
+            </Button>
+          </div>
+        ) : null}
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => goTo({ kind: "address" })}>
             {t(($) => $.collab.addServer.back)}
@@ -448,7 +479,7 @@ export function AddServerDialog({
     );
   };
 
-  const renderWaiting = (url: string, capabilities: CollabCapabilities) => (
+  const renderWaiting = (url: string, capabilities: CollabCapabilities, provider: CollabProvider) => (
     <div className="space-y-4">
       <output className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
         <Spinner />
@@ -457,7 +488,12 @@ export function AddServerDialog({
       {offerCode ? (
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-xs text-muted-foreground">{t(($) => $.collab.addServer.codeOffer)}</p>
-          <Button type="button" variant="outline" size="sm" onClick={() => void switchToCode(url, capabilities)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void switchToCode(url, capabilities, provider)}
+          >
             <Hash aria-hidden />
             {t(($) => $.collab.addServer.codeSignIn)}
           </Button>
@@ -471,7 +507,12 @@ export function AddServerDialog({
     </div>
   );
 
-  const renderCode = (url: string, capabilities: CollabCapabilities, code: CollabSignInCode | null) => (
+  const renderCode = (
+    url: string,
+    capabilities: CollabCapabilities,
+    code: CollabSignInCode | null,
+    provider: CollabProvider | null,
+  ) => (
     <div className="space-y-4">
       {code === null ? (
         <LoadingState size="compact" label={t(($) => $.collab.addServer.codeRequesting)} />
@@ -507,7 +548,7 @@ export function AddServerDialog({
           <Button
             type="button"
             variant="ghost"
-            onClick={() => void openExternal(code.verificationUriComplete).catch(() => undefined)}
+            onClick={() => void openExternal(codePageLink(code, provider)).catch(() => undefined)}
           >
             <ExternalLink aria-hidden />
             {t(($) => $.collab.addServer.codeOpen)}
@@ -596,9 +637,9 @@ export function AddServerDialog({
       case "server":
         return renderServer(step.url, step.capabilities);
       case "signingIn":
-        return renderWaiting(step.url, step.capabilities);
+        return renderWaiting(step.url, step.capabilities, step.provider);
       case "code":
-        return renderCode(step.url, step.capabilities, step.code);
+        return renderCode(step.url, step.capabilities, step.code, step.provider);
       case "done":
         return renderDone(step.server);
     }

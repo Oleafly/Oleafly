@@ -11,6 +11,7 @@ import { COLLAB_ERROR_CODES, collabErrorText } from "./errors";
 import { account, capabilities, collabError, deferred, fill, server } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
+  openExternal: vi.fn(async () => undefined),
   collabServerProbe: vi.fn(),
   collabServerSignIn: vi.fn(),
   collabServerCodeSignIn: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   ...mocks,
 }));
+vi.mock("@tauri-apps/plugin-shell", () => ({ open: mocks.openExternal }));
 vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   ...mocks,
@@ -49,6 +51,13 @@ function codeSignInShowing(result: Promise<CollabServer>) {
       return result;
     },
   );
+}
+
+// The code is a fallback: it appears once a browser sign-in timed out.
+async function codeAfterTimeout(user: ReturnType<typeof userEvent.setup>) {
+  mocks.collabServerSignIn.mockRejectedValueOnce(collabError("sign_in_timed_out"));
+  await user.click(await screen.findByRole("button", { name: github }));
+  await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
 }
 
 function renderDialog(initialUrl: string | null = null) {
@@ -338,7 +347,9 @@ describe("AddServerDialog", () => {
     codeSignInShowing(pending.promise);
     const user = userEvent.setup();
     renderDialog("https://collab.uni.edu");
-    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    await screen.findByRole("button", { name: github });
+    expect(screen.queryByRole("button", { name: copy.codeSignIn })).toBeNull();
+    await codeAfterTimeout(user);
     expect(mocks.collabServerCodeSignIn).toHaveBeenCalledWith(
       "https://collab.uni.edu",
       undefined,
@@ -348,7 +359,7 @@ describe("AddServerDialog", () => {
     expect(screen.getByText("https://collab.uni.edu/auth/device")).toBeInTheDocument();
     expect(screen.getByText(copy.codeSteps)).toBeInTheDocument();
     expect(screen.getByText(copy.codeWaiting)).toBeInTheDocument();
-    expect(mocks.collabServerSignIn).not.toHaveBeenCalled();
+    expect(mocks.collabServerSignIn).toHaveBeenCalledTimes(1);
     await act(async () => {
       pending.resolve(server());
       await pending.promise;
@@ -364,9 +375,8 @@ describe("AddServerDialog", () => {
     codeSignInShowing(new Promise(() => undefined));
     const user = userEvent.setup();
     renderDialog("https://collab.uni.edu");
-    expect(await screen.findByRole("button", { name: copy.codeSignIn })).toBeDisabled();
-    await user.type(screen.getByLabelText(copy.setupCodeLabel), " 4F7K-Q2ZX ");
-    await user.click(screen.getByRole("button", { name: copy.codeSignIn }));
+    await user.type(await screen.findByLabelText(copy.setupCodeLabel), " 4F7K-Q2ZX ");
+    await codeAfterTimeout(user);
     expect(mocks.collabServerCodeSignIn).toHaveBeenCalledWith(
       "https://collab.uni.edu",
       "4F7K-Q2ZX",
@@ -379,7 +389,7 @@ describe("AddServerDialog", () => {
     codeSignInShowing(new Promise(() => undefined));
     const user = userEvent.setup();
     renderDialog("https://collab.uni.edu");
-    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    await codeAfterTimeout(user);
     await screen.findByText("BCDF-GHJK");
     await user.click(screen.getByRole("button", { name: copy.cancel }));
     expect(mocks.collabServerSignInCancel).toHaveBeenCalledTimes(1);
@@ -391,7 +401,7 @@ describe("AddServerDialog", () => {
     mocks.collabServerCodeSignIn.mockRejectedValueOnce(collabError("sign_in_timed_out"));
     const user = userEvent.setup();
     renderDialog("https://collab.uni.edu");
-    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    await codeAfterTimeout(user);
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.sign_in_timed_out);
     mocks.collabServerCodeSignIn.mockRejectedValueOnce(collabError("not_admitted"));
     await user.click(screen.getByRole("button", { name: copy.codeSignIn }));
@@ -403,7 +413,7 @@ describe("AddServerDialog", () => {
     mocks.collabServerCodeSignIn.mockRejectedValueOnce(collabError("wrong_server", "approval page on another host"));
     const user = userEvent.setup();
     renderDialog("https://collab.uni.edu");
-    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    await codeAfterTimeout(user);
     expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.wrong_server);
     expect(screen.queryByText(enCollab.errors.internal)).toBeNull();
   });
@@ -415,6 +425,20 @@ describe("AddServerDialog", () => {
     renderDialog("https://collab.uni.edu");
     await user.click(await screen.findByRole("button", { name: github }));
     expect(await screen.findByText(copy.codeHint)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: copy.codeSignIn })).toBeInTheDocument();
+  });
+
+  it("opens the code page with the code in it, offering only the way picked in Oleafly", async () => {
+    mocks.collabServerProbe.mockResolvedValue(capabilities());
+    codeSignInShowing(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderDialog("https://collab.uni.edu");
+    await codeAfterTimeout(user);
+    await screen.findByText("BCDF-GHJK");
+    await user.click(screen.getByRole("button", { name: copy.codeOpen }));
+    expect(mocks.openExternal).toHaveBeenCalledWith(
+      "https://collab.uni.edu/auth/device?code=BCDF-GHJK&provider=github",
+    );
   });
 
   it("offers a code while waiting when the browser has not come back", async () => {
@@ -494,7 +518,7 @@ describe("AddServerDialog", () => {
     codeSignInShowing(new Promise(() => undefined));
     const user = userEvent.setup();
     renderDialog("https://collab.uni.edu");
-    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    await codeAfterTimeout(user);
     await screen.findByText("BCDF-GHJK");
     expectHeader(copy.codeTitle, copy.codeSteps);
     expect(screen.getAllByText(copy.codeSteps)).toHaveLength(1);
@@ -545,7 +569,7 @@ describe("AddServerDialog", () => {
     codeSignInShowing(new Promise(() => undefined));
     const user = userEvent.setup();
     renderDialog("https://collab.uni.edu");
-    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    await codeAfterTimeout(user);
     await screen.findByText("BCDF-GHJK");
     const [addressCopy, codeCopy] = screen.getAllByRole("button", { name: enCommon.actions.copy });
     await user.click(codeCopy);
@@ -617,7 +641,7 @@ describe("AddServerDialog", () => {
       .mockImplementationOnce(() => second.promise);
     const user = userEvent.setup();
     renderDialog("https://collab.uni.edu");
-    await user.click(await screen.findByRole("button", { name: copy.codeSignIn }));
+    await codeAfterTimeout(user);
     expect(screen.getByText(copy.codeRequesting)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: copy.cancel }));
     await act(async () => {
@@ -627,7 +651,7 @@ describe("AddServerDialog", () => {
     });
     expect(screen.queryByText("BCDF-GHJK")).toBeNull();
     expect(screen.queryByRole("button", { name: copy.done })).toBeNull();
-    await user.click(screen.getByRole("button", { name: copy.codeSignIn }));
+    await codeAfterTimeout(user);
     await user.click(screen.getByRole("button", { name: copy.cancel }));
     await act(async () => {
       second.reject(collabError("sign_in_timed_out"));

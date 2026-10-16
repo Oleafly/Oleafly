@@ -61,6 +61,12 @@ impl Callback {
     }
 }
 
+enum Issuer {
+    Here,
+    Unnamed,
+    Elsewhere,
+}
+
 struct Pages {
     server: Option<String>,
     provider: Option<String>,
@@ -247,6 +253,16 @@ impl Speaking {
         )
     }
 
+    fn old_server(&self) -> String {
+        self.page(
+            Text::OldServerTitle,
+            Tone::Problem,
+            Text::OldServerTitle,
+            self.html(Text::OldServerBody),
+            Some(Text::OldServerNext),
+        )
+    }
+
     fn other_server(&self) -> String {
         self.page(
             Text::OtherServerTitle,
@@ -308,14 +324,17 @@ impl LoopbackListener {
         })
     }
 
-    fn issued_here(&self, target: &Url) -> bool {
+    fn issuer_of(&self, target: &Url) -> Issuer {
         let mut named = target
             .query_pairs()
             .filter(|(name, _)| name == "iss")
             .map(|(_, value)| ServerUrl::parse(&value));
         match (named.next(), named.next()) {
-            (Some(Ok(issuer)), None) => issuer.as_str() == self.issuer.as_str(),
-            _ => false,
+            (Some(Ok(issuer)), None) if issuer.as_str() == self.issuer.as_str() => Issuer::Here,
+            // Servers from before the issuer check never send one. That is an
+            // update for the admin, not a sign of another server.
+            (None, _) => Issuer::Unnamed,
+            _ => Issuer::Elsewhere,
         }
     }
 
@@ -384,9 +403,16 @@ impl LoopbackListener {
                 respond(&mut stream, "400 Bad Request", &speaking.out_of_date()).await;
                 return Err(CollabError::Unauthorized);
             }
-            if !self.issued_here(&target) {
-                respond(&mut stream, "400 Bad Request", &speaking.other_server()).await;
-                continue;
+            match self.issuer_of(&target) {
+                Issuer::Here => {}
+                Issuer::Unnamed => {
+                    respond(&mut stream, "400 Bad Request", &speaking.old_server()).await;
+                    continue;
+                }
+                Issuer::Elsewhere => {
+                    respond(&mut stream, "400 Bad Request", &speaking.other_server()).await;
+                    continue;
+                }
             }
             if let Some(code) = query.get("error") {
                 let account = query
@@ -605,7 +631,7 @@ mod tests {
             Err(&CollabError::NotAdmitted),
         )
         .await;
-        assert!(page.contains("didn't let you in"), "{page}");
+        assert!(page.contains("<h1>Access denied</h1>"), "{page}");
     }
 
     async fn lab() -> LoopbackListener {
@@ -679,7 +705,7 @@ mod tests {
             "{page}"
         );
         assert!(page.contains("<strong>@carol</strong>"), "{page}");
-        assert!(!page.contains("didn't let you in"), "{page}");
+        assert!(!page.contains("<h1>Access denied</h1>"), "{page}");
         let page = page_in(lab().await, "error=revoked&state=s1", "pt, en;q=0.1").await;
         assert!(
             page.starts_with("<!doctype html><html lang=\"pt-BR\">"),
@@ -730,13 +756,10 @@ mod tests {
             "error=not_admitted&account=dave%40example.edu&state=s1",
         )
         .await;
+        assert!(page.contains("<h1>Access denied</h1>"), "{page}");
         assert!(
-            page.contains("<h1>Oleafly Lab didn't let you in</h1>"),
-            "{page}"
+            page.contains("<strong>dave@example.edu</strong> doesn't have access to Oleafly Lab.")
         );
-        assert!(page.contains(
-            "You signed in with <strong>dave@example.edu</strong>, and that address isn't on this server's list."
-        ));
         assert!(page.contains("start again in Oleafly with an address they added"));
         assert!(!page.contains("sign out"));
         assert!(!page.contains("Email account"));
@@ -756,9 +779,11 @@ mod tests {
     async fn a_refused_sign_in_names_the_account_and_says_what_to_do() {
         let page = page_after(lab().await, "error=not_admitted&account=%40carol&state=s1").await;
         assert!(page.contains("class=\"status problem\""), "{page}");
-        assert!(page.contains("<h1>Oleafly Lab didn't let you in</h1>"));
-        assert!(page.contains("You signed in to GitHub as <strong>@carol</strong>"));
-        assert!(page.contains("Ask the server's admin to add you."));
+        assert!(page.contains("<h1>Access denied</h1>"));
+        assert!(page.contains(
+            "Your GitHub account <strong>@carol</strong> doesn't have access to Oleafly Lab."
+        ));
+        assert!(page.contains("Ask the Oleafly Lab admin to give you access."));
         assert!(page.contains("sign out of GitHub in this browser"));
     }
 
@@ -766,7 +791,7 @@ mod tests {
     async fn a_refusal_without_an_account_still_gives_the_reason() {
         let page = page_after(lab().await, "error=not_admitted&state=s1").await;
         assert!(
-            page.contains("Your GitHub account isn't on this server's list."),
+            page.contains("Your GitHub account doesn't have access to Oleafly Lab."),
             "{page}"
         );
     }
@@ -920,13 +945,18 @@ mod tests {
         callback.answer(Ok(())).await;
         let (refused, finished) = requests.await.expect("requests");
         assert_eq!(refused.len(), 4);
-        for (status, page) in refused {
+        // No issuer at all comes from a server older than the check, which is
+        // an update for its admin; a different one is stopped.
+        let expected = [
+            "Sign-in stopped",
+            "Sign-in stopped",
+            "Oleafly Lab needs an update",
+            "Sign-in stopped",
+        ];
+        for ((status, page), heading_text) in refused.into_iter().zip(expected) {
             assert_eq!(status, reqwest::StatusCode::BAD_REQUEST);
-            assert_eq!(heading(&page), "This sign-in came from a different server");
-            assert!(
-                page.contains("You started signing in to Oleafly Lab, but the reply came"),
-                "{page}"
-            );
+            assert_eq!(heading(&page), heading_text, "{page}");
+            assert!(page.contains("Ask the Oleafly Lab admin to"), "{page}");
             assert!(page.contains("class=\"status problem\""), "{page}");
         }
         assert_eq!(finished, reqwest::StatusCode::OK);

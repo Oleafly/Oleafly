@@ -679,10 +679,7 @@ mod tests {
             "the app sent something to the server that bounced the sign-in"
         );
         let page = last_page(&pages).await;
-        assert!(
-            page.contains("<h1>This sign-in came from a different server</h1>"),
-            "{page}"
-        );
+        assert!(page.contains("<h1>Sign-in stopped</h1>"), "{page}");
     }
 
     #[test]

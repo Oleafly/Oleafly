@@ -59,6 +59,9 @@ pub const STYLE: &str = concat!(
     "button.primary,a.button.primary{background:#2563eb;border-color:#2563eb;color:#ffffff}",
     "button.primary:hover,a.button.primary:hover{background:#1d4ed8;border-color:#1d4ed8}",
     "button.primary:focus-visible,a.button.primary:focus-visible{background:#1e40af;border-color:#1e40af}",
+    "button.quiet{width:auto;margin:0.5rem auto 0;padding:0.25rem 0.5rem;border-color:transparent;background:none;color:#71717a;font-size:0.8125rem;font-weight:500;text-decoration:underline;text-underline-offset:2px}",
+    "button.quiet:hover{background:none;color:#3f3f46}",
+    "button.quiet:focus-visible{background:#f4f4f5}",
     ".foot{font-size:0.8125rem;color:#71717a;text-align:center}",
     "@media (prefers-color-scheme:dark){",
     "body{color:#f4f4f5;background-color:#121317;background-image:radial-gradient(rgba(255,255,255,0.17) 1px,transparent 1px)}",
@@ -78,6 +81,9 @@ pub const STYLE: &str = concat!(
     "button,a.button{background:#18191d;color:#f4f4f5;border-color:rgba(255,255,255,0.16)}",
     "button:hover,a.button:hover{background:#23242a}",
     "button:focus-visible,a.button:focus-visible{background:#2c2d33}",
+    "button.quiet{background:none;border-color:transparent;color:#a1a1aa}",
+    "button.quiet:hover{background:none;color:#e4e4e7}",
+    "button.quiet:focus-visible{background:#23242a}",
     ".foot{color:#a1a1aa}",
     "}"
 );

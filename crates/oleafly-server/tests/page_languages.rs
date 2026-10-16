@@ -269,6 +269,7 @@ async fn too_many_wrong_codes_are_reported_in_the_browser_language() {
 #[tokio::test]
 async fn a_refused_person_reads_why_in_the_browser_language() {
     let setup = setup("", false).await;
+    let server = setup.server_name();
     let device = TestDevice::generate();
     let code = request_code(&setup.server, &device, None)
         .await
@@ -283,7 +284,6 @@ async fn a_refused_person_reads_why_in_the_browser_language() {
     assert_eq!(refused.status, 403, "{}", refused.body);
     in_language(&refused, "pl");
     shows(&refused, "pl", Key::RefusedTitle, &[]);
-    shows(&refused, "pl", Key::NotAdmitted, &[]);
     shows(
         &refused,
         "pl",
@@ -295,6 +295,7 @@ async fn a_refused_person_reads_why_in_the_browser_language() {
         &[
             ("provider", "GitHub"),
             ("account", "<strong>@mallory</strong>"),
+            ("server", &server),
         ],
     );
     assert!(refused.body.contains(&named), "{}", refused.body);
@@ -519,6 +520,7 @@ async fn an_emailed_link_for_a_code_sign_in_follows_the_browser_language() {
 #[tokio::test]
 async fn a_turned_away_address_is_named_in_the_browser_language() {
     let setup = setup("dana@uni.edu", true).await;
+    let server = setup.server_name();
     let device = TestDevice::generate();
     let code = request_code(&setup.server, &device, None)
         .await
@@ -542,7 +544,10 @@ async fn a_turned_away_address_is_named_in_the_browser_language() {
     shows(&refused, "nl", Key::RefusedEmailAdvice, &[]);
     let named = locale("nl").fill_html(
         Key::RefusedEmailAccount,
-        &[("account", "<strong>dave@else.where</strong>")],
+        &[
+            ("account", "<strong>dave@else.where</strong>"),
+            ("server", &server),
+        ],
     );
     assert!(refused.body.contains(&named), "{}", refused.body);
 }
