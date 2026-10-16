@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly ne peut pas effectuer cette modification, car {{name}} ou son dossier est en lecture seule. Copiez dans la bibliothèque le dossier que vous avez ouvert, puis modifiez la copie.",
     "shared_settings_viewer": "Les lecteurs ne peuvent pas modifier les paramètres d'un projet partagé."
   },
+  "template": {
+    "name_required": "Donnez un nom au modèle.",
+    "folder_holds_templates": "Ce dossier contient les modèles propres à Oleafly. Choisissez plutôt le dossier du modèle."
+  },
   "settings": {
     "locale_unsupported": "La langue {{locale}} n'est pas disponible."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Ajoutez votre jeton Git Overleaf pour synchroniser ce projet.",
     "git_token_invalid": "Ceci ne ressemble pas à un jeton Git Overleaf. Copiez le jeton en entier et réessayez.",
     "git_token_rejected": "Overleaf n'a pas accepté le jeton Git. Il a peut-être expiré. Créez-en un nouveau dans les paramètres de votre compte Overleaf.",
-    "git_unavailable": "L'intégration Git d'Overleaf n'est pas disponible pour ce projet. Elle nécessite un abonnement payant ou universitaire pour le propriétaire du projet."
+    "git_unavailable": "L'intégration Git d'Overleaf n'est pas disponible pour ce projet. Elle nécessite un abonnement payant ou universitaire pour le propriétaire du projet.",
+    "template_link_invalid": "Ce lien ne mène pas à une page de modèle Overleaf. Copiez l'adresse d'une page de overleaf.com/latex/templates et réessayez.",
+    "template_unavailable": "Oleafly n'a pas pu ouvrir ce modèle. Il a peut-être été retiré de la galerie d'Overleaf."
   },
   "collab": {
     "turned_off": "La collaboration en direct est désactivée. Activez-la dans Paramètres, sous Expérimentation."

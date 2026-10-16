@@ -53,6 +53,7 @@ vi.mock("@/components/typst-export/open", () => ({ openTypstExport: mocks.openTy
 import { TopToolbar } from "./TopToolbar";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
+import { useSaveAsTemplateStore } from "@/store/save-as-template";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useShortcutStore, shortcutLabel, shortcutParts } from "@/store/shortcuts";
@@ -348,6 +349,18 @@ describe("TopToolbar layout menu and Zen mode", () => {
 });
 
 describe("TopToolbar export menu", () => {
+  it("saves the open project as a template from the export menu", async () => {
+    useSaveAsTemplateStore.setState({ target: null });
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(toolbar.export));
+    await user.click(await screen.findByTestId("export-save-as-template"));
+    expect(useSaveAsTemplateStore.getState().target).toEqual({
+      projectId: "p1",
+      name: useFilesStore.getState().projectName,
+    });
+  });
+
   it("exports the project sources as a zip", async () => {
     renderToolbar();
     const user = userEvent.setup();

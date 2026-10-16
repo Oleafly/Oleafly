@@ -1004,13 +1004,15 @@
       "download": "Download",
       "downloadAll": "Download all"
     },
-    "aiTemplates": {
-      "deleteDescription": "Delete \"{{name}}\" from your library? Projects already created from it keep their own copy and are not affected.",
-      "deleteTitle": "Delete AI generated template",
-      "deleted": "Deleted \"{{name}}\" from your library",
-      "empty": "No AI generated templates yet. Create one from the template gallery.",
-      "fallbackDescription": "AI generated template",
-      "toggle": "Manage AI generated templates",
+    "yourTemplates": {
+      "toggle": "Manage your templates",
+      "import": "Import template",
+      "empty": "No templates of your own yet. Import one here, save a project as a template from its menu, or generate one in the template gallery.",
+      "aiDescription": "AI generated template",
+      "customDescription": "Your template",
+      "deleteTitle": "Delete template",
+      "deleteDescription": "Delete \"{{name}}\" from your templates? Projects you already made from it keep their own copy.",
+      "deleted": "Deleted \"{{name}}\" from your templates",
       "deleteFailed": "Couldn't delete \"{{name}}\"."
     },
     "fontPacks": {

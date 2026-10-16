@@ -5,6 +5,7 @@
       "nameProject": "Pojmenujte projekt",
       "import": "Importovat",
       "generateWithAi": "Vytvořit šablonu",
+      "importTemplate": "Importovat šablonu",
       "close": "Zavřít",
       "getMoreTemplates": "Získat další šablony",
       "searchPlaceholder": "Hledat šablony",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Vše",
       "aiGenerated": "Vytvořeno pomocí AI",
+      "custom": "Vlastní",
       "blank": "Prázdný dokument",
       "diagrams": "Diagramy",
       "diagramsFull": "Diagramy a obrázky",

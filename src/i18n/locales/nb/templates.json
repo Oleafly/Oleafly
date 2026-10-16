@@ -5,6 +5,7 @@
       "nameProject": "Gi prosjektet et navn",
       "import": "Importer",
       "generateWithAi": "Generer en mal",
+      "importTemplate": "Importer mal",
       "close": "Lukk",
       "getMoreTemplates": "Hent flere maler",
       "searchPlaceholder": "Søk i maler",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Alle",
       "aiGenerated": "AI-generert",
+      "custom": "Egne",
       "blank": "Tom",
       "diagrams": "Diagrammer",
       "diagramsFull": "Diagrammer og figurer",

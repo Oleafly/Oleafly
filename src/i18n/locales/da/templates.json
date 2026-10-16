@@ -5,6 +5,7 @@
       "nameProject": "Giv projektet et navn",
       "import": "Importer",
       "generateWithAi": "Generer en skabelon",
+      "importTemplate": "Importer skabelon",
       "close": "Luk",
       "getMoreTemplates": "Hent flere skabeloner",
       "searchPlaceholder": "Søg i skabeloner",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Alle",
       "aiGenerated": "AI-genereret",
+      "custom": "Egne",
       "blank": "Tom",
       "diagrams": "Diagrammer",
       "diagramsFull": "Diagrammer og figurer",

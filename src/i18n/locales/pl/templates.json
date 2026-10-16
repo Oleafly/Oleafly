@@ -5,6 +5,7 @@
       "nameProject": "Nazwij projekt",
       "import": "Importuj",
       "generateWithAi": "Wygeneruj szablon",
+      "importTemplate": "Importuj szablon",
       "close": "Zamknij",
       "getMoreTemplates": "Pobierz więcej szablonów",
       "searchPlaceholder": "Szukaj szablonów",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Wszystkie",
       "aiGenerated": "Wygenerowane przez AI",
+      "custom": "Własne",
       "blank": "Pusty",
       "diagrams": "Diagramy",
       "diagramsFull": "Diagramy i rysunki",

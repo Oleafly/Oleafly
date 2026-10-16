@@ -5,6 +5,7 @@
       "nameProject": "Projenize ad verin",
       "import": "İçe aktar",
       "generateWithAi": "Şablon oluştur",
+      "importTemplate": "Şablon içe aktar",
       "close": "Kapat",
       "getMoreTemplates": "Daha fazla şablon edin",
       "searchPlaceholder": "Şablonlarda ara",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Tümü",
       "aiGenerated": "Yapay zeka ile oluşturulan",
+      "custom": "Özel",
       "blank": "Boş",
       "diagrams": "Diyagramlar",
       "diagramsFull": "Diyagramlar ve şekiller",

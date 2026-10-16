@@ -132,5 +132,16 @@
       "count": "Progress, for example 12 of 40 items or 1.2 MB of 3 MB",
       "doneLeftOut": "Links are symbolic links pointing outside the folder; nested too deeply means past the folder depth Oleafly walks"
     }
+  },
+  "customTemplates": {
+    "saveDescription": "<name> wraps the project's name. Custom is the template gallery category for the user's own templates",
+    "alsoSaveAsTemplate": "Checkbox in the project import dialog. When ticked, the imported project is also saved as a template",
+    "import": {
+      "linkTitle": "Card title. A link to a page in Overleaf's public template gallery",
+      "from": "{{source}} is a file or folder name, or the name of an online project",
+      "by": "{{author}} is the template's author as shown on its gallery page",
+      "copyNote": "Open as Template is the label of a button on Overleaf. Use the name Overleaf's own interface gives it in this language if there is one",
+      "lookUp": "Button that fetches the template's details from the pasted link"
+    }
   }
 }

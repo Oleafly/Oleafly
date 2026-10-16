@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly ei voi tehdä tätä muutosta, koska {{name}} tai sen kansio on vain luku -tilassa. Kopioi avaamasi kansio kirjastoon ja muokkaa sitä siellä.",
     "shared_settings_viewer": "Katselijat eivät voi muuttaa jaetun projektin asetuksia."
   },
+  "template": {
+    "name_required": "Anna mallipohjalle nimi.",
+    "folder_holds_templates": "Oleafly säilyttää tässä kansiossa omia mallipohjiaan. Valitse sen sijaan mallipohjan kansio."
+  },
   "settings": {
     "locale_unsupported": "Kieli {{locale}} ei ole saatavilla."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Lisää Overleafin Git-tokeni, jotta voit synkronoida tämän projektin.",
     "git_token_invalid": "Tämä ei näytä Overleafin Git-tokenilta. Kopioi koko tokeni ja yritä uudelleen.",
     "git_token_rejected": "Overleaf ei hyväksynyt Git-tokenia. Se on ehkä vanhentunut. Luo uusi Overleafin tiliasetuksissa.",
-    "git_unavailable": "Overleafin Git-integraatio ei ole käytettävissä tälle projektille. Projektin omistaja tarvitsee maksullisen tai yliopiston tilauksen."
+    "git_unavailable": "Overleafin Git-integraatio ei ole käytettävissä tälle projektille. Projektin omistaja tarvitsee maksullisen tai yliopiston tilauksen.",
+    "template_link_invalid": "Linkki ei vie Overleafin mallipohjasivulle. Avaa mallipohjan sivu osoitteessa overleaf.com/latex/templates, kopioi sen osoite ja yritä uudelleen.",
+    "template_unavailable": "Oleafly ei voinut avata tätä mallipohjaa. Se on ehkä poistettu Overleafin mallipohjagalleriasta."
   },
   "collab": {
     "turned_off": "Reaaliaikainen yhteistyö on pois päältä. Ota se käyttöön Asetusten kohdassa Kokeilut."

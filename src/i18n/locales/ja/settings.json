@@ -999,13 +999,15 @@
       "download": "ダウンロード",
       "downloadAll": "すべてダウンロード"
     },
-    "aiTemplates": {
-      "deleteDescription": "ライブラリから「{{name}}」を削除しますか？すでに作成したプロジェクトは独自のコピーを持っているため、影響はありません。",
-      "deleteTitle": "AI 生成のテンプレートを削除",
-      "deleted": "ライブラリから「{{name}}」を削除しました",
-      "empty": "AI 生成のテンプレートはまだありません。テンプレートギャラリーから作成できます。",
-      "fallbackDescription": "AI 生成のテンプレート",
-      "toggle": "AI 生成のテンプレートを管理",
+    "yourTemplates": {
+      "toggle": "自分のテンプレートを管理",
+      "import": "テンプレートを読み込む",
+      "empty": "自分のテンプレートはまだありません。ここで読み込むか、プロジェクトのメニューからテンプレートとして保存するか、テンプレートギャラリーで生成してください。",
+      "aiDescription": "AI 生成のテンプレート",
+      "customDescription": "自分のテンプレート",
+      "deleteTitle": "テンプレートを削除",
+      "deleteDescription": "自分のテンプレートから「{{name}}」を削除しますか？このテンプレートから作成済みのプロジェクトは、それぞれのコピーを保持します。",
+      "deleted": "自分のテンプレートから「{{name}}」を削除しました",
       "deleteFailed": "「{{name}}」を削除できませんでした。"
     },
     "fontPacks": {

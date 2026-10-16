@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Templates of your own. Import template, in the New Project gallery and in
+  Settings > Downloads > Templates, adds one from a ZIP, a folder, a page in
+  an online LaTeX template gallery, or one of the projects in your online
+  LaTeX account. Save as template, in a library project's menu and in the
+  toolbar's Export menu, keeps a project's files as a template, and the
+  import dialog has a checkbox to keep an imported project as a template too.
+  They all show up under Custom in the gallery. Every file comes along as it
+  was, licence, class files, fonts and images included, nothing is rewritten,
+  and each project you make from a template is its own copy. A template made
+  for one LaTeX compiler, such as pdfLaTeX, starts new projects with that
+  compiler. A gallery page keeps its author and licence and uses its first
+  page as the preview. Importing one needs your online account's sign-in,
+  and like the gallery's own button it leaves a copy in that account's
+  projects. Settings > Downloads > Templates lists your templates, AI
+  generated ones included, and deletes them. Projects made from a deleted
+  template keep their files.
 - Template packs can be browsed before you download them. Settings >
   Downloads > Templates now shows each pack with a few page previews, and
   opening a pack shows every template in it with a preview of its first

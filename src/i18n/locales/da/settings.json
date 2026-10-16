@@ -1004,14 +1004,16 @@
       "download": "Hent",
       "downloadAll": "Hent alle"
     },
-    "aiTemplates": {
-      "deleteDescription": "Vil du slette »{{name}}« fra dit bibliotek? Projekter, der allerede er oprettet ud fra den, beholder deres egen kopi og påvirkes ikke.",
-      "deleteTitle": "Slet AI-genereret skabelon",
-      "deleted": "Slettede »{{name}}« fra dit bibliotek",
-      "empty": "Der er endnu ingen AI-genererede skabeloner. Opret en fra skabelongalleriet.",
-      "fallbackDescription": "AI-genereret skabelon",
-      "toggle": "Administrer AI-genererede skabeloner",
-      "deleteFailed": "Kunne ikke slette \"{{name}}\"."
+    "yourTemplates": {
+      "toggle": "Administrer dine skabeloner",
+      "import": "Importer skabelon",
+      "empty": "Du har endnu ingen egne skabeloner. Importer en her, gem et projekt som skabelon fra dets menu, eller generer en i skabelongalleriet.",
+      "aiDescription": "AI-genereret skabelon",
+      "customDescription": "Egen skabelon",
+      "deleteTitle": "Slet skabelon",
+      "deleteDescription": "Vil du slette »{{name}}« fra dine skabeloner? Projekter, du allerede har oprettet ud fra den, beholder deres egen kopi.",
+      "deleted": "Slettede »{{name}}« fra dine skabeloner",
+      "deleteFailed": "Kunne ikke slette »{{name}}«."
     },
     "fontPacks": {
       "lato": {

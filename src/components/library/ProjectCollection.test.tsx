@@ -41,6 +41,7 @@ const actions: ProjectCardActions = {
   details: noop,
   history: noop,
   fork: noop,
+  saveAsTemplate: noop,
   trash: noop,
 };
 

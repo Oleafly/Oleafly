@@ -5,6 +5,7 @@
       "nameProject": "为项目命名",
       "import": "导入",
       "generateWithAi": "生成模板",
+      "importTemplate": "导入模板",
       "close": "关闭",
       "getMoreTemplates": "获取更多模板",
       "searchPlaceholder": "搜索模板",
@@ -41,6 +42,7 @@
     "category": {
       "all": "全部",
       "aiGenerated": "AI 生成",
+      "custom": "自定义",
       "blank": "空白",
       "diagrams": "图表",
       "diagramsFull": "图表与图片",

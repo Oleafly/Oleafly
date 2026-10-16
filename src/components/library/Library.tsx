@@ -121,6 +121,7 @@ import { LibraryStartChoices } from "@/components/library/LibraryStartChoices";
 import { OpenFolderButton } from "@/components/library/OpenFolderButton";
 import { OpenFolderNotice } from "@/components/library/OpenFolderNotice";
 import { Spinner } from "@/components/ui/spinner";
+import { useSaveAsTemplateStore } from "@/store/save-as-template";
 
 const thumbCache = new Map<string, string | null>();
 const MAX_THUMBNAILS = 64;
@@ -429,6 +430,9 @@ export function Library() {
       setForkName(t(($) => $.library.projects.forkDialog.copySuffix, { name: project.name }));
       setForkTarget({ id: project.id, name: project.name });
     },
+    saveAsTemplate: (project) => {
+      window.setTimeout(() => useSaveAsTemplateStore.getState().openFor(project.id, project.name), 0);
+    },
     trash: (project) => {
       window.setTimeout(() => setDeleteTarget({ id: project.id, name: project.name }), 0);
     },
@@ -448,6 +452,7 @@ export function Library() {
       details: (project) => cardHandlers.current?.details(project),
       history: (project) => cardHandlers.current?.history(project),
       fork: (project) => cardHandlers.current?.fork(project),
+      saveAsTemplate: (project) => cardHandlers.current?.saveAsTemplate(project),
       trash: (project) => cardHandlers.current?.trash(project),
       share: (project) => useShareDialog.getState().openFor(project.id),
     }),

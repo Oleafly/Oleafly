@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ChevronLeft, ExternalLink, Github, Lock } from "lucide-react";
@@ -6,6 +6,9 @@ import { ChoiceCard } from "@/components/library/ChoiceCard";
 import { CHOICE_ART } from "@/components/library/choice-art";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { announceSavedTemplate, saveProjectTemplate } from "@/features/custom-templates";
+import { i18n } from "@/i18n";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +63,26 @@ const SOURCE_ART: Record<ProjectImportFileKind, string> = {
   typst: CHOICE_ART.importTypst,
 };
 
+/**
+ * Save the project an import just opened as a custom template too. It runs
+ * after the dialog closes and reports through a toast, like the import.
+ */
+async function keepImportAsTemplate(previousProjectId: string | null): Promise<void> {
+  const { projectId, projectName } = useFilesStore.getState();
+  if (!projectId || projectId === previousProjectId) return;
+  const name = projectName.trim() || basename(projectId);
+  try {
+    const templateId = await saveProjectTemplate(projectId, name);
+    announceSavedTemplate(templateId, name);
+  } catch (error) {
+    notifyError(
+      "save the import as a template",
+      error,
+      i18n.t(($) => $.library.customTemplates.saveFailed),
+    );
+  }
+}
+
 export function ProjectImportDialog({
   open,
   onClose,
@@ -107,6 +130,9 @@ export function ProjectImportDialog({
   const busyRef = useRef(false);
   const sessionRef = useRef(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Off every time the dialog opens: keeping an import as a template is rare.
+  const [alsoTemplate, setAlsoTemplate] = useState(false);
+  const alsoTemplateId = useId();
   const [repositoryAttempt, setRepositoryAttempt] = useState(0);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
@@ -117,6 +143,7 @@ export function ProjectImportDialog({
     setView(initialView);
     setPendingPath(null);
     setErrorMessage(null);
+    setAlsoTemplate(false);
     if (!open) setArxivId("");
     return () => { sessionRef.current += 1; };
   }, [open, initialView]);
@@ -159,6 +186,8 @@ export function ProjectImportDialog({
     busyRef.current = true;
     setBusy(true);
     setErrorMessage(null);
+    const keepAsTemplate = alsoTemplate;
+    const before = useFilesStore.getState().projectId;
     try {
       const imported = await work();
       if (imported === false) {
@@ -166,6 +195,7 @@ export function ProjectImportDialog({
       } else {
         onImported?.();
         onClose();
+        if (keepAsTemplate) void keepImportAsTemplate(before);
       }
     } catch (error) {
       reportError(error);
@@ -485,6 +515,25 @@ export function ProjectImportDialog({
                   />
                 </div>
               </section>
+
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  id={alsoTemplateId}
+                  data-testid="project-import-also-template"
+                  checked={alsoTemplate}
+                  disabled={busy}
+                  onCheckedChange={(checked) => setAlsoTemplate(checked === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor={alsoTemplateId} className="min-w-0 cursor-pointer">
+                  <span className="block text-sm font-medium text-foreground">
+                    {t(($) => $.library.customTemplates.alsoSaveAsTemplate)}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t(($) => $.library.customTemplates.alsoSaveHint)}
+                  </span>
+                </label>
+              </div>
             </div>
       );
     }

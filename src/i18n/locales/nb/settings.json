@@ -1004,14 +1004,16 @@
       "download": "Last ned",
       "downloadAll": "Last ned alt"
     },
-    "aiTemplates": {
-      "deleteDescription": "Slette \"{{name}}\" fra biblioteket ditt? Prosjekter som allerede er laget fra den, har sin egen kopi og berøres ikke.",
-      "deleteTitle": "Slett AI-generert mal",
-      "deleted": "Slettet \"{{name}}\" fra biblioteket ditt",
-      "empty": "Ingen AI-genererte maler ennå. Lag en fra malgalleriet.",
-      "fallbackDescription": "AI-generert mal",
-      "toggle": "Administrer AI-genererte maler",
-      "deleteFailed": "Kunne ikke slette \"{{name}}\"."
+    "yourTemplates": {
+      "toggle": "Administrer malene dine",
+      "import": "Importer mal",
+      "empty": "Du har ingen egne maler ennå. Importer en her, lagre et prosjekt som mal fra menyen til prosjektet, eller generer en i malgalleriet.",
+      "aiDescription": "AI-generert mal",
+      "customDescription": "Egen mal",
+      "deleteTitle": "Slett mal",
+      "deleteDescription": "Slette «{{name}}» fra malene dine? Prosjekter du allerede har laget fra den, beholder sin egen kopi.",
+      "deleted": "Slettet «{{name}}» fra malene dine",
+      "deleteFailed": "Kunne ikke slette «{{name}}»."
     },
     "fontPacks": {
       "lato": {

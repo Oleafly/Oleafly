@@ -48,6 +48,18 @@ describe("compilerLabel", () => {
     expect(compilerLabel(template("markdown", "markdown"), stubT)).toBe("Pandoc");
     expect(compilerLabel(template("unknown", "unknown"), stubT)).toBe("compiler.unknown");
   });
+
+  it("names the compiler a LaTeX template was made for", () => {
+    const pinned = (tex_flavor: string | null) => ({ ...template("latex", "xetex"), tex_flavor });
+    expect(compilerLabel(pinned("pdflatex"), stubT)).toBe("pdfLaTeX");
+    expect(compilerLabel(pinned("xelatex"), stubT)).toBe("XeLaTeX");
+    expect(compilerLabel(pinned("lualatex"), stubT)).toBe("LuaLaTeX");
+    expect(compilerLabel(pinned("uplatex"), stubT)).toBe("upLaTeX");
+    expect(compilerLabel(pinned("platex"), stubT)).toBe("pLaTeX");
+    expect(compilerLabel(pinned("bogus"), stubT)).toBe("Tectonic");
+    expect(compilerLabel(pinned(null), stubT)).toBe("Tectonic");
+    expect(compilerLabel({ ...template("typst", "typst"), tex_flavor: "pdflatex" }, stubT)).toBe("Typst");
+  });
 });
 
 describe("orderedCategories", () => {
@@ -60,6 +72,16 @@ describe("orderedCategories", () => {
   it("keeps the curated order rather than sorting it alphabetically", () => {
     const result = orderedCategories(of("Assignments", "Blank", "CVs & Resumes"));
     expect(result).toEqual(["All", "Blank", "CVs & Resumes", "Assignments"]);
+  });
+
+  it("puts the person's own templates first: Custom, then AI Generated", () => {
+    expect(orderedCategories(of("Blank", "AI Generated", "Custom")).slice(0, 4)).toEqual([
+      "All",
+      "Custom",
+      "AI Generated",
+      "Blank",
+    ]);
+    expect(orderedCategories(of("Zebra", "Custom"))).toEqual(["All", "Custom", "Zebra"]);
   });
 
   it("puts AI Generated directly after All, ahead of the curated order", () => {

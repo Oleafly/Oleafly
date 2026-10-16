@@ -1014,13 +1014,15 @@
       "download": "Pobierz",
       "downloadAll": "Pobierz wszystko"
     },
-    "aiTemplates": {
-      "deleteDescription": "Usunąć \"{{name}}\" z biblioteki? Projekty już z niego utworzone mają własną kopię i nie zostaną zmienione.",
-      "deleteTitle": "Usuń szablon wygenerowany przez AI",
-      "deleted": "Usunięto \"{{name}}\" z biblioteki",
-      "empty": "Nie ma jeszcze szablonów wygenerowanych przez AI. Utwórz jeden w galerii szablonów.",
-      "fallbackDescription": "Szablon wygenerowany przez AI",
-      "toggle": "Zarządzaj szablonami wygenerowanymi przez AI",
+    "yourTemplates": {
+      "toggle": "Zarządzaj swoimi szablonami",
+      "import": "Importuj szablon",
+      "empty": "Nie masz jeszcze własnych szablonów. Zaimportuj szablon tutaj, zapisz projekt jako szablon z jego menu albo wygeneruj nowy w galerii szablonów.",
+      "aiDescription": "Szablon wygenerowany przez AI",
+      "customDescription": "Twój szablon",
+      "deleteTitle": "Usuń szablon",
+      "deleteDescription": "Usunąć \"{{name}}\" z Twoich szablonów? Projekty już z niego utworzone zachowają własną kopię.",
+      "deleted": "Usunięto \"{{name}}\" z Twoich szablonów",
       "deleteFailed": "Nie udało się usunąć \"{{name}}\"."
     },
     "fontPacks": {

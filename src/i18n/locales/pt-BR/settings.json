@@ -1009,13 +1009,15 @@
       "download": "Baixar",
       "downloadAll": "Baixar tudo"
     },
-    "aiTemplates": {
-      "deleteDescription": "Excluir \"{{name}}\" da sua biblioteca? Os projetos já criados a partir dele ficam com a cópia própria e não são afetados.",
-      "deleteTitle": "Excluir modelo gerado por IA",
-      "deleted": "\"{{name}}\" excluído da sua biblioteca",
-      "empty": "Ainda não há modelos gerados por IA. Crie um pela galeria de modelos.",
-      "fallbackDescription": "Modelo gerado por IA",
-      "toggle": "Gerenciar os modelos gerados por IA",
+    "yourTemplates": {
+      "toggle": "Gerenciar seus modelos",
+      "import": "Importar um modelo",
+      "empty": "Você ainda não tem modelos próprios. Importe um aqui, salve um projeto como modelo pelo menu dele ou gere um na galeria de modelos.",
+      "aiDescription": "Modelo gerado por IA",
+      "customDescription": "Seu modelo",
+      "deleteTitle": "Excluir modelo",
+      "deleteDescription": "Excluir \"{{name}}\" dos seus modelos? Os projetos que você já criou a partir dele ficam com a própria cópia.",
+      "deleted": "\"{{name}}\" excluído dos seus modelos",
       "deleteFailed": "Não foi possível excluir \"{{name}}\"."
     },
     "fontPacks": {

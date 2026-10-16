@@ -39,6 +39,7 @@ mod config;
 mod connectors;
 mod conversion;
 mod cua_policy;
+mod custom_templates;
 mod deadlines;
 mod deep_link;
 mod dictionaries;
@@ -950,6 +951,10 @@ pub fn run() {
             overleaf::overleaf_sign_out,
             overleaf::overleaf_list_projects,
             overleaf::overleaf_import_projects,
+            overleaf::template::overleaf_template_details,
+            overleaf::template::overleaf_template_pdf,
+            overleaf::template::overleaf_import_template,
+            overleaf::template::overleaf_save_project_as_template,
             overleaf::overleaf_sync_status,
             overleaf::overleaf_sync_link,
             overleaf::overleaf_sync_now,
@@ -1007,6 +1012,8 @@ pub fn run() {
             template_packs::remove_template_pack,
             templates::save_custom_template,
             templates::delete_custom_template,
+            custom_templates::import_template_from_path,
+            custom_templates::save_project_as_template,
             deadlines::read_deadlines,
             deadlines::refresh_deadlines,
             project::export_pdf,

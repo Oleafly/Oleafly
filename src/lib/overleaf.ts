@@ -85,3 +85,66 @@ export function isOverleafError(error: unknown, code: string): boolean {
   else if (error instanceof Error) text = error.message;
   return text.includes(`"overleaf.${code}"`);
 }
+
+/** What a gallery template page shows, read before anything is imported. */
+export interface OverleafTemplateDetails {
+  /** The server whose sign-in the import needs. */
+  server: string;
+  link: string;
+  title: string;
+  author: string | null;
+  license: string | null;
+  description: string | null;
+  compiler: string | null;
+  mainFile: string | null;
+  hasPdf: boolean;
+}
+
+export function overleafTemplateDetails(
+  server: string | null | undefined,
+  link: string,
+): Promise<OverleafTemplateDetails> {
+  return invoke<OverleafTemplateDetails>("overleaf_template_details", {
+    server: serverArg(server),
+    link,
+  });
+}
+
+/** The PDF the gallery shows for a template. */
+export function overleafTemplatePdf(
+  server: string | null | undefined,
+  link: string,
+): Promise<ArrayBuffer> {
+  return invoke<ArrayBuffer>("overleaf_template_pdf", { server: serverArg(server), link });
+}
+
+/**
+ * Copy a gallery template into the signed-in account, as Open as Template
+ * does there, and save the copy as a custom template. Resolves to its id.
+ */
+export function overleafImportTemplate(
+  server: string | null | undefined,
+  link: string,
+  name: string,
+  previewPngBase64: string | null,
+): Promise<string> {
+  return invoke<string>("overleaf_import_template", {
+    server: serverArg(server),
+    link,
+    name,
+    previewPngBase64,
+  });
+}
+
+/** Save one of the account's projects as a custom template. Resolves to its id. */
+export function overleafSaveProjectAsTemplate(
+  server: string | null | undefined,
+  projectId: string,
+  name: string,
+): Promise<string> {
+  return invoke<string>("overleaf_save_project_as_template", {
+    server: serverArg(server),
+    projectId,
+    name,
+  });
+}

@@ -39,6 +39,10 @@
     "folder_read_only": "Oleafly kann diese Änderung nicht vornehmen, weil {{name}} oder der übergeordnete Ordner schreibgeschützt ist. Kopieren Sie den geöffneten Ordner in die Bibliothek und bearbeiten Sie ihn dort.",
     "shared_settings_viewer": "Betrachter können die Einstellungen eines geteilten Projekts nicht ändern."
   },
+  "template": {
+    "name_required": "Geben Sie der Vorlage einen Namen.",
+    "folder_holds_templates": "Dieser Ordner enthält die Vorlagen von Oleafly selbst. Wählen Sie stattdessen den Ordner der Vorlage."
+  },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."
   },
@@ -215,7 +219,9 @@
     "git_token_missing": "Fügen Sie Ihr Overleaf-Git-Token hinzu, um dieses Projekt zu synchronisieren.",
     "git_token_invalid": "Das sieht nicht wie ein Overleaf-Git-Token aus. Kopieren Sie das ganze Token und versuchen Sie es erneut.",
     "git_token_rejected": "Overleaf hat das Git-Token nicht akzeptiert. Möglicherweise ist es abgelaufen. Erstellen Sie in Ihren Overleaf-Kontoeinstellungen ein neues.",
-    "git_unavailable": "Die Git-Integration von Overleaf ist für dieses Projekt nicht verfügbar. Dafür braucht der Eigentümer des Projekts einen kostenpflichtigen Tarif oder einen Hochschultarif."
+    "git_unavailable": "Die Git-Integration von Overleaf ist für dieses Projekt nicht verfügbar. Dafür braucht der Eigentümer des Projekts einen kostenpflichtigen Tarif oder einen Hochschultarif.",
+    "template_link_invalid": "Dieser Link führt nicht zu einer Vorlagenseite von Overleaf. Kopieren Sie die Adresse einer Seite unter overleaf.com/latex/templates und versuchen Sie es erneut.",
+    "template_unavailable": "Oleafly konnte diese Vorlage nicht öffnen. Möglicherweise wurde sie aus der Vorlagengalerie von Overleaf entfernt."
   },
   "collab": {
     "turned_off": "Live-Zusammenarbeit ist ausgeschaltet. Schalten Sie sie in den Einstellungen unter Experimente ein."

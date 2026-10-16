@@ -4280,6 +4280,32 @@ pub(crate) fn engine_for_new_project(main_doc: &str) -> Result<String, String> {
     Ok(latexmk)
 }
 
+/// The engine for a project made from a template. A template made for one
+/// LaTeX compiler (pdfLaTeX, XeLaTeX, ...) gets latexmk with that compiler,
+/// as an imported online project does; any other template follows the
+/// default engine for its main document.
+pub(crate) fn template_engine(
+    main_doc: &str,
+    tex_flavor: Option<&str>,
+) -> Result<(String, Option<String>), String> {
+    let engine = engine_for_new_project(main_doc)?;
+    let pinned = tex_flavor
+        .and_then(crate::document_engine::LatexmkFlavor::parse)
+        .filter(|_| {
+            oleafly_core::SourceFamily::of(main_doc) == Some(oleafly_core::SourceFamily::Latex)
+        })
+        .filter(|_| {
+            crate::document_engine::engine_for(crate::config::LATEXMK_ENGINE, main_doc).is_ok()
+        });
+    Ok(match pinned {
+        Some(flavor) => (
+            crate::config::LATEXMK_ENGINE.to_string(),
+            Some(flavor.as_str().to_string()),
+        ),
+        None => (engine, None),
+    })
+}
+
 #[tauri::command(async)]
 pub fn set_default_latex_engine(engine: String) -> Result<(), String> {
     crate::config::set_latex_default_engine_choice(&engine)
@@ -5574,7 +5600,7 @@ fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {
     serde_json::from_str::<ProjectMeta>(&raw).ok()
 }
 
-fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), String> {
+pub(crate) fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), String> {
     let file = std::fs::File::open(archive).map_err(|e| format!("failed to open archive: {e}"))?;
     let mut zip = zip::ZipArchive::new(file).map_err(|e| format!("not a readable ZIP: {e}"))?;
     if zip.len() > IMPORT_MAX_ENTRIES {
@@ -5611,7 +5637,7 @@ fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn copy_tree_for_import(
+pub(crate) fn copy_tree_for_import(
     source: &Path,
     dest: &Path,
     depth: usize,
@@ -5656,7 +5682,7 @@ fn copy_tree_for_import(
 
 /// Zipping a folder usually wraps everything in one top-level directory.
 /// Unwrap it so the project root holds the actual files.
-fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
+pub(crate) fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
     let entries: Vec<_> = std::fs::read_dir(dir)
         .map_err(|e| e.to_string())?
         .flatten()
@@ -5680,7 +5706,7 @@ fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn infer_main_document(dir: &Path) -> Result<String, String> {
+pub(crate) fn infer_main_document(dir: &Path) -> Result<String, String> {
     let detection =
         oleafly_core::detect_main_document(dir, &oleafly_core::DetectOptions::default())
             .map_err(|error| error.to_string())?;
@@ -7381,7 +7407,8 @@ pub fn create_project_from_template(
     let dir = reservation.path().to_path_buf();
     let project_id = create_project_transaction(reservation, || {
         let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
-        let engine = engine_for_new_project(&manifest.main_doc)?;
+        let (engine, tex_flavor) =
+            template_engine(&manifest.main_doc, manifest.tex_flavor.as_deref())?;
         crate::document_engine::engine_for(&engine, &manifest.main_doc)?;
         crate::assets::stage_template_fonts(&app, &manifest, &dir)?;
         let color = color
@@ -7402,7 +7429,7 @@ pub fn create_project_from_template(
                 hidden: false,
                 forked_from: None,
                 tex: None,
-                tex_flavor: None,
+                tex_flavor,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),

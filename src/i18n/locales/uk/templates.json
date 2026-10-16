@@ -5,6 +5,7 @@
       "nameProject": "Назвіть проєкт",
       "import": "Імпортувати",
       "generateWithAi": "Згенерувати шаблон",
+      "importTemplate": "Імпортувати шаблон",
       "close": "Закрити",
       "getMoreTemplates": "Отримати більше шаблонів",
       "searchPlaceholder": "Пошук шаблонів",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Усі",
       "aiGenerated": "Згенеровано ШІ",
+      "custom": "Власні",
       "blank": "Порожній",
       "diagrams": "Діаграми",
       "diagramsFull": "Діаграми та рисунки",

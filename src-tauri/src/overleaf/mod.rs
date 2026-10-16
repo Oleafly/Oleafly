@@ -5,6 +5,7 @@ mod session;
 mod signin;
 mod socket;
 mod sync;
+pub(crate) mod template;
 
 #[cfg(test)]
 mod sync_tests;

@@ -5,6 +5,7 @@
       "nameProject": "Ge projektet ett namn",
       "import": "Importera",
       "generateWithAi": "Generera en mall",
+      "importTemplate": "Importera mall",
       "close": "Stäng",
       "getMoreTemplates": "Hämta fler mallar",
       "searchPlaceholder": "Sök mallar",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Alla",
       "aiGenerated": "AI-genererat",
+      "custom": "Egna",
       "blank": "Tom",
       "diagrams": "Diagram",
       "diagramsFull": "Diagram och figurer",

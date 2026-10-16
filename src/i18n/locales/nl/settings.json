@@ -1004,14 +1004,16 @@
       "download": "Downloaden",
       "downloadAll": "Alles downloaden"
     },
-    "aiTemplates": {
-      "deleteDescription": "\"{{name}}\" uit je bibliotheek verwijderen? Projecten die er al mee zijn gemaakt houden hun eigen kopie en veranderen niet.",
-      "deleteTitle": "Door AI gemaakt sjabloon verwijderen",
-      "deleted": "\"{{name}}\" uit je bibliotheek verwijderd",
-      "empty": "Nog geen sjablonen die met AI zijn gemaakt. Maak er een via de sjabloongalerij.",
-      "fallbackDescription": "Door AI gemaakt sjabloon",
-      "toggle": "Door AI gemaakte sjablonen beheren",
-      "deleteFailed": "Kon \"{{name}}\" niet verwijderen."
+    "yourTemplates": {
+      "toggle": "Je sjablonen beheren",
+      "import": "Sjabloon importeren",
+      "empty": "Je hebt nog geen eigen sjablonen. Importeer er hier een, sla een project op als sjabloon via het menu van dat project, of maak er een in de sjabloongalerij.",
+      "aiDescription": "Door AI gemaakt sjabloon",
+      "customDescription": "Eigen sjabloon",
+      "deleteTitle": "Sjabloon verwijderen",
+      "deleteDescription": "“{{name}}” uit je sjablonen verwijderen? Projecten die je er al mee hebt gemaakt, houden hun eigen kopie.",
+      "deleted": "“{{name}}” uit je sjablonen verwijderd",
+      "deleteFailed": "Kon “{{name}}” niet verwijderen."
     },
     "fontPacks": {
       "lato": {

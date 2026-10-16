@@ -999,13 +999,15 @@
       "download": "下載",
       "downloadAll": "全部下載"
     },
-    "aiTemplates": {
-      "deleteDescription": "要從你的範本中刪除「{{name}}」嗎？已經用它建立的專案會保留自己的副本，不受影響。",
-      "deleteTitle": "刪除 AI 產生的範本",
+    "yourTemplates": {
+      "toggle": "管理你的範本",
+      "import": "匯入範本",
+      "empty": "你還沒有自己的範本。可以在這裡匯入，從專案選單把專案儲存為範本，或在範本庫中生成一份。",
+      "aiDescription": "AI 產生的範本",
+      "customDescription": "你的範本",
+      "deleteTitle": "刪除範本",
+      "deleteDescription": "要從你的範本中刪除「{{name}}」嗎？已經用它建立的專案會保留自己的副本。",
       "deleted": "已從你的範本中刪除「{{name}}」",
-      "empty": "還沒有 AI 產生的範本。請從範本庫建立一個。",
-      "fallbackDescription": "AI 產生的範本",
-      "toggle": "管理 AI 產生的範本",
       "deleteFailed": "無法刪除「{{name}}」。"
     },
     "fontPacks": {

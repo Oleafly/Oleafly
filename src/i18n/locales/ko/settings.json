@@ -999,13 +999,15 @@
       "download": "다운로드",
       "downloadAll": "모두 다운로드"
     },
-    "aiTemplates": {
-      "deleteDescription": "라이브러리에서 \"{{name}}\"을(를) 삭제할까요? 이미 이 템플릿으로 만든 프로젝트는 자체 사본을 갖고 있어 영향을 받지 않습니다.",
-      "deleteTitle": "AI 생성 템플릿 삭제",
-      "deleted": "라이브러리에서 \"{{name}}\"을(를) 삭제했습니다",
-      "empty": "아직 AI 생성 템플릿이 없습니다. 템플릿 갤러리에서 만들어 보세요.",
-      "fallbackDescription": "AI 생성 템플릿",
-      "toggle": "AI 생성 템플릿 관리",
+    "yourTemplates": {
+      "toggle": "내 템플릿 관리",
+      "import": "템플릿 가져오기",
+      "empty": "아직 내 템플릿이 없습니다. 여기에서 가져오거나, 프로젝트 메뉴에서 템플릿으로 저장하거나, 템플릿 갤러리에서 생성해 보세요.",
+      "aiDescription": "AI 생성 템플릿",
+      "customDescription": "내 템플릿",
+      "deleteTitle": "템플릿 삭제",
+      "deleteDescription": "내 템플릿에서 \"{{name}}\"을(를) 삭제할까요? 이 템플릿으로 이미 만든 프로젝트는 자체 사본을 그대로 유지합니다.",
+      "deleted": "내 템플릿에서 \"{{name}}\"을(를) 삭제했습니다",
       "deleteFailed": "\"{{name}}\"을(를) 삭제하지 못했습니다."
     },
     "fontPacks": {

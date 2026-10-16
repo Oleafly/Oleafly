@@ -5,6 +5,7 @@
       "nameProject": "프로젝트 이름 지정",
       "import": "가져오기",
       "generateWithAi": "템플릿 생성",
+      "importTemplate": "템플릿 가져오기",
       "close": "닫기",
       "getMoreTemplates": "템플릿 더 받기",
       "searchPlaceholder": "템플릿 검색",
@@ -41,6 +42,7 @@
     "category": {
       "all": "전체",
       "aiGenerated": "AI 생성",
+      "custom": "사용자 지정",
       "blank": "빈 문서",
       "diagrams": "다이어그램",
       "diagramsFull": "다이어그램 및 그림",

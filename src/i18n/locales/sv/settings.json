@@ -1004,14 +1004,16 @@
       "download": "Ladda ner",
       "downloadAll": "Ladda ner allt"
     },
-    "aiTemplates": {
-      "deleteDescription": "Vill du radera \"{{name}}\" från ditt bibliotek? Projekt som redan skapats från den har en egen kopia och påverkas inte.",
-      "deleteTitle": "Radera AI-genererad mall",
-      "deleted": "Raderade \"{{name}}\" från ditt bibliotek",
-      "empty": "Inga AI-genererade mallar än. Skapa en i mallgalleriet.",
-      "fallbackDescription": "AI-genererad mall",
-      "toggle": "Hantera AI-genererade mallar",
-      "deleteFailed": "Det gick inte att radera \"{{name}}\"."
+    "yourTemplates": {
+      "toggle": "Hantera dina mallar",
+      "import": "Importera mall",
+      "empty": "Du har inga egna mallar än. Importera en här, spara ett projekt som mall från dess meny eller generera en i mallgalleriet.",
+      "aiDescription": "AI-genererad mall",
+      "customDescription": "Egen mall",
+      "deleteTitle": "Radera mall",
+      "deleteDescription": "Vill du radera ”{{name}}” från dina mallar? Projekt som du redan har skapat från den behåller sin egen kopia.",
+      "deleted": "Raderade ”{{name}}” från dina mallar",
+      "deleteFailed": "Det gick inte att radera ”{{name}}”."
     },
     "fontPacks": {
       "lato": {

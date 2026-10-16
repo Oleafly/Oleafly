@@ -5,6 +5,7 @@
       "nameProject": "Nimeä projekti",
       "import": "Tuo",
       "generateWithAi": "Luo mallipohja",
+      "importTemplate": "Tuo mallipohja",
       "close": "Sulje",
       "getMoreTemplates": "Hae lisää mallipohjia",
       "searchPlaceholder": "Hae mallipohjia",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Kaikki",
       "aiGenerated": "Tekoälyn luomat",
+      "custom": "Omat",
       "blank": "Tyhjä",
       "diagrams": "Kaaviot",
       "diagramsFull": "Kaaviot ja kuvat",

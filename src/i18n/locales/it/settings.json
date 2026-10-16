@@ -1009,13 +1009,15 @@
       "download": "Scarica",
       "downloadAll": "Scarica tutto"
     },
-    "aiTemplates": {
-      "deleteDescription": "Vuoi eliminare \"{{name}}\" dalla tua libreria? I progetti già creati da questo modello ne conservano una copia propria e non vengono toccati.",
-      "deleteTitle": "Elimina il modello generato con l'AI",
-      "deleted": "\"{{name}}\" eliminato dalla tua libreria",
-      "empty": "Ancora nessun modello generato con l'AI. Creane uno dalla galleria dei modelli.",
-      "fallbackDescription": "Modello generato con l'AI",
-      "toggle": "Gestisci i modelli generati con l'AI",
+    "yourTemplates": {
+      "toggle": "Gestisci i tuoi modelli",
+      "import": "Importa un modello",
+      "empty": "Non hai ancora modelli tuoi. Importane uno qui, salva un progetto come modello dal suo menu oppure generane uno nella galleria dei modelli.",
+      "aiDescription": "Modello generato con l'AI",
+      "customDescription": "Il tuo modello",
+      "deleteTitle": "Elimina il modello",
+      "deleteDescription": "Vuoi eliminare \"{{name}}\" dai tuoi modelli? I progetti che hai già creato da questo modello ne conservano una copia propria.",
+      "deleted": "\"{{name}}\" eliminato dai tuoi modelli",
       "deleteFailed": "Impossibile eliminare \"{{name}}\"."
     },
     "fontPacks": {

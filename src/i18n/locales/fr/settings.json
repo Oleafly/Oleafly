@@ -1009,14 +1009,16 @@
       "download": "Télécharger",
       "downloadAll": "Tout télécharger"
     },
-    "aiTemplates": {
-      "deleteDescription": "Supprimer « {{name}} » de votre bibliothèque ? Les projets déjà créés à partir de ce modèle en gardent leur propre copie et ne sont pas touchés.",
-      "deleteTitle": "Supprimer le modèle généré par IA",
-      "deleted": "« {{name}} » supprimé de votre bibliothèque",
-      "empty": "Aucun modèle généré par IA pour l'instant. Créez-en un depuis la galerie de modèles.",
-      "fallbackDescription": "Modèle généré par IA",
-      "toggle": "Gérer les modèles générés par IA",
-      "deleteFailed": "Impossible de supprimer « {{name}} »."
+    "yourTemplates": {
+      "toggle": "Gérer vos modèles",
+      "import": "Importer un modèle",
+      "empty": "Vous n'avez encore aucun modèle à vous. Importez-en un ici, enregistrez un projet comme modèle depuis son menu, ou générez-en un dans la galerie de modèles.",
+      "aiDescription": "Modèle généré par IA",
+      "customDescription": "Votre modèle",
+      "deleteTitle": "Supprimer le modèle",
+      "deleteDescription": "Supprimer « {{name}} » de vos modèles ? Les projets que vous avez déjà créés à partir de ce modèle gardent leur propre copie.",
+      "deleted": "« {{name}} » supprimé de vos modèles",
+      "deleteFailed": "Impossible de supprimer « {{name}} »."
     },
     "fontPacks": {
       "lato": {

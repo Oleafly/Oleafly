@@ -100,6 +100,18 @@ impl Http {
             .header(ORIGIN, &self.origin)
     }
 
+    /// A request for a public page, sent without the account's cookie.
+    pub(crate) fn public_get(&self, path: &str) -> reqwest::RequestBuilder {
+        self.client.get(self.url(path))
+    }
+
+    pub(crate) async fn send_public(
+        &self,
+        request: reqwest::RequestBuilder,
+    ) -> Result<Response, String> {
+        self.send(request).await
+    }
+
     pub(crate) fn post(&self, path: &str, cookie: &str) -> reqwest::RequestBuilder {
         self.client
             .post(self.url(path))
@@ -186,6 +198,45 @@ impl Http {
             .ok_or_else(|| AppError::new("overleaf.unrecognized").into())
     }
 
+    /// Ask the server to copy a gallery template into the account, as its
+    /// Open as Template button does, and return the new project's id.
+    pub(crate) async fn create_from_template(
+        &self,
+        cookie: &str,
+        csrf: &str,
+        body: &Value,
+    ) -> Result<String, String> {
+        let response = self
+            .send(
+                self.post("/project/new/template", cookie)
+                    .header("X-Csrf-Token", csrf)
+                    .header(ACCEPT, "text/html")
+                    .header(CONTENT_TYPE, "application/json")
+                    .body(body.to_string()),
+            )
+            .await?;
+        let status = response.status();
+        if status.is_redirection() {
+            let location = response
+                .headers()
+                .get(LOCATION)
+                .and_then(|value| value.to_str().ok())
+                .unwrap_or_default();
+            if let Some(id) = project_id_in(location) {
+                return Ok(id);
+            }
+        }
+        match status {
+            StatusCode::NOT_FOUND | StatusCode::BAD_REQUEST | StatusCode::UNPROCESSABLE_ENTITY => {
+                Err(AppError::new("overleaf.template_unavailable").into())
+            }
+            _ => {
+                self.classify(&response)?;
+                Err(AppError::new("overleaf.template_unavailable").into())
+            }
+        }
+    }
+
     pub(crate) async fn download_zip(
         &self,
         cookie: &str,
@@ -245,6 +296,18 @@ impl Http {
         progress(received, total.or(Some(received)));
         Ok(received)
     }
+}
+
+/// The project id in a redirect to `/project/<id>`, absolute or relative,
+/// and under a server's sub-path too.
+pub(crate) fn project_id_in(location: &str) -> Option<String> {
+    let path = location.split_once("://").map_or(location, |(_, rest)| {
+        rest.find('/').map_or("", |at| &rest[at..])
+    });
+    let path = path.split(['?', '#']).next().unwrap_or_default();
+    let at = path.rfind("/project/")?;
+    let id = path[at + "/project/".len()..].trim_end_matches('/');
+    valid_project_id(id).then(|| id.to_string())
 }
 
 pub(crate) fn parse_dashboard(page: &str) -> Result<Dashboard, String> {
