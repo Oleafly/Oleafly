@@ -11,19 +11,9 @@
         "description": "Chiedi l'indirizzo a chi gestisce il server del tuo gruppo, poi aggiungilo qui."
       }
     },
-    "presence": {
-      "label": "Cosa vedono gli altri",
-      "description": "Scegli cosa vedono le persone dei tuoi progetti condivisi mentre lavori. Si imposta separatamente su ogni computer.",
-      "options": {
-        "cursor": "Mostra il mio cursore",
-        "file": "Mostra solo in quale file sono",
-        "hidden": "Nascondimi"
-      }
-    },
     "server": {
       "signedIn": "Accesso eseguito",
       "signedOut": "Accesso non eseguito",
-      "signedInAs": "Accesso eseguito come {{name}}",
       "signedOutHint": "Questo computer non ha eseguito l'accesso a questo server.",
       "suspended": "Sospeso",
       "noAccess": "Nessun accesso",
@@ -35,8 +25,10 @@
       "signOut": "Esci",
       "remove": "Rimuovi",
       "manage": "Gestisci il server",
+      "adminConsole": "Console di amministrazione",
       "manageHint": "Gestisci il server mostra qui Persone, Persone autorizzate, Domini, Impostazioni del server, Email e Registro di sicurezza. La console di amministrazione si apre in una finestra a parte e include anche panoramica, progetti e verifiche della connessione.",
       "test": "Verifica la connessione",
+      "testShort": "Verifica",
       "removeConfirm": {
         "title": "Vuoi rimuovere il server {{name}}?",
         "description": "Oleafly esce da {{name}} e lo dimentica. I progetti condivisi di {{name}} smettono di sincronizzarsi e restano su questo computer come progetti normali, ognuno rinominato come copia locale.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "Hai eseguito l'accesso come {{name}}. Ora puoi condividere progetti e aprire quelli condivisi con te. Puoi anche gestire il server dalla console di amministrazione.",
     "doneGuestDescription": "Hai eseguito l'accesso come {{name}}. Come ospite, puoi aprire i progetti a cui sei invitato.",
     "done": "Fatto",
-    "codeSignIn": "Accedi con un codice",
-    "codeSignInDescription": "Usalo quando il browser non riesce a tornare a Oleafly o per accedere da un altro dispositivo.",
+    "codeSignIn": "Usa invece un codice",
     "codeTitle": "Accedi con un codice",
     "codeRequesting": "Recupero del codice…",
     "codeSteps": "Su qualsiasi telefono o computer, apri questo indirizzo e inserisci il codice.",
@@ -468,7 +459,12 @@
         "copyPath": "Nel frattempo, invia tu questo link alle nuove persone. Aggiunge il server a Oleafly.",
         "address": "Possono anche inserire questo indirizzo in Aggiungi un server:"
       },
+      "broken": {
+        "title": "L'email non funziona",
+        "description": "Il server ha le impostazioni di posta, ma le sue email non arrivano. Controlla le impostazioni, poi invia un'email di prova."
+      },
       "needsSettings": "Prima attiva l'email sul server.",
+      "needsWorking": "Invia un'email di prova che arrivi a destinazione, poi attiva questa opzione.",
       "lastFailure": "L'ultima email non riuscita è del {{date}}. Il server di posta ha risposto:",
       "test": {
         "title": "Email di prova",
@@ -832,6 +828,25 @@
         "protocol": "Protocollo {{protocol}}",
         "pendingGuests": "Inviti per ospiti in attesa di approvazione: {{number}}",
         "reviewGuests": "Esamina in Persone"
+      },
+      "activity": {
+        "title": "Attività",
+        "description": "Accessi degli ultimi 30 giorni, in UTC. Oleafly mantiene le persone connesse, quindi qui conta ogni nuovo accesso, non ogni visita.",
+        "none": "Nessuno ha eseguito l'accesso negli ultimi 30 giorni.",
+        "daily": "Accessi al giorno",
+        "dailyLabel": "Accessi per giorno UTC negli ultimi 30 giorni",
+        "total": "{{number}} in 30 giorni",
+        "hourly": "Accessi per ora",
+        "hourlyLabel": "Accessi per giorno della settimana e ora UTC",
+        "day": "Giorno",
+        "signInsColumn": "Accessi",
+        "peopleColumn": "Persone",
+        "signIns": "Accessi: {{number}}",
+        "people": "Persone: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, accessi: {{number}}",
+        "hoursInUtc": "Ore in UTC",
+        "less": "Meno",
+        "more": "Più"
       },
       "storage": {
         "title": "Spazio di archiviazione",

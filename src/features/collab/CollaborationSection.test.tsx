@@ -7,7 +7,6 @@ import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
 import { account, capabilities, collabError, fill, libraryProject, server, signedOutServer } from "./tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -80,7 +79,8 @@ describe("CollaborationSection", () => {
     expect(await screen.findByRole("heading", { name: "Smith Lab" })).toBeInTheDocument();
     expect(screen.getByText("https://collab.uni.edu")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Jones Lab" })).toBeInTheDocument();
-    expect(screen.getByText(copy.server.signedIn)).toBeInTheDocument();
+    // A signed-in server shows the role it signed in as; signed in is evident.
+    expect(screen.getByText(enCollab.roles.member)).toBeInTheDocument();
     expect(screen.getByText(copy.server.signedOut)).toBeInTheDocument();
   });
 
@@ -218,24 +218,11 @@ describe("CollaborationSection", () => {
     expect(mocks.collabServerRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it("lets this person choose what others see of them on this computer", async () => {
+  it("offers no way to hide from collaborators, since edits from someone nobody can see are a surprise", async () => {
     mocks.collabServersList.mockResolvedValue([]);
-    useSettingsStore.setState({ collabPresence: "cursor" });
-    const presence = copy.presence;
-    const user = userEvent.setup();
     render(<CollaborationSection />);
-    const row = screen.getByTestId("settings-row-collab-presence");
-    expect(within(row).getByText(presence.description)).toBeInTheDocument();
-    const group = within(row).getByRole("radiogroup", { name: presence.label });
-    const choice = (name: string) => within(group).getByRole("radio", { name });
-    expect(within(group).getAllByRole("radio")).toHaveLength(3);
-    expect(choice(presence.options.cursor)).toBeChecked();
-    await user.click(choice(presence.options.hidden));
-    expect(useSettingsStore.getState().collabPresence).toBe("hidden");
-    expect(choice(presence.options.hidden)).toBeChecked();
-    expect(choice(presence.options.cursor)).not.toBeChecked();
-    await user.click(screen.getByText(presence.options.file));
-    expect(useSettingsStore.getState().collabPresence).toBe("file");
-    expect(choice(presence.options.file)).toBeChecked();
+    await screen.findByText(copy.servers.empty.title);
+    expect(screen.queryByTestId("settings-row-collab-presence")).toBeNull();
+    expect(screen.queryByRole("radiogroup")).toBeNull();
   });
 });

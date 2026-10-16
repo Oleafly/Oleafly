@@ -1,5 +1,3 @@
-import type { CollabPresence } from "@/store/settings";
-
 export interface Presence {
   path: string | null;
   cursor: number | null;
@@ -16,12 +14,6 @@ export interface PresencePublisher {
 
 const sameAs = (a: Presence | null, b: Presence) =>
   a !== null && a.path === b.path && a.cursor === b.cursor && a.anchor === b.anchor;
-
-export function visiblePresence(presence: Presence, visibility: CollabPresence): Presence | null {
-  if (visibility === "hidden") return null;
-  if (visibility === "file") return { path: presence.path, cursor: null, anchor: null };
-  return presence;
-}
 
 export function createPresencePublisher(
   read: () => Presence | null,

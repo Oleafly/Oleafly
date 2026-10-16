@@ -262,6 +262,13 @@ async fn turning_email_notifications_off_stops_all_three_emails() {
     sign_in_again(&stage).await;
     settled(server.state()).await;
     assert!(smtp.messages().is_empty(), "{:?}", smtp.messages());
+    // Notifications only turn back on once mail is known to get through.
+    server
+        .state()
+        .mailer
+        .check()
+        .await
+        .expect("the mock answers");
     let on = call(
         server,
         Method::PATCH,

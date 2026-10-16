@@ -11,19 +11,9 @@
         "description": "向运行你团队服务器的人索取服务器地址，然后在这里添加。"
       }
     },
-    "presence": {
-      "label": "其他人能看到什么",
-      "description": "选择你在共享项目中工作时，其他人能看到的内容。每台电脑需要分别设置。",
-      "options": {
-        "cursor": "显示我的光标",
-        "file": "只显示我所在的文件",
-        "hidden": "隐藏我"
-      }
-    },
     "server": {
       "signedIn": "已登录",
       "signedOut": "未登录",
-      "signedInAs": "已以 {{name}} 的身份登录",
       "signedOutHint": "这台电脑尚未登录此服务器。",
       "suspended": "已停用",
       "noAccess": "无访问权限",
@@ -35,8 +25,10 @@
       "signOut": "退出登录",
       "remove": "移除",
       "manage": "管理服务器",
+      "adminConsole": "管理控制台",
       "manageHint": "管理服务器会在这里显示人员、允许的人员、域名、服务器设置、电子邮件和安全日志。管理控制台在单独的窗口中打开，还包含概览、项目和连接检查。",
       "test": "测试连接",
+      "testShort": "测试",
       "removeConfirm": {
         "title": "要移除 {{name}} 吗？",
         "description": "Oleafly 会退出 {{name}} 的登录并忘记该服务器。来自 {{name}} 的共享项目会停止同步，各自改名为本地副本，并作为普通项目保留在这台电脑上。",
@@ -174,8 +166,7 @@
     "doneManageDescription": "你已以 {{name}} 的身份登录。现在你可以共享项目，也可以打开与你共享的项目。你还可以在管理控制台中管理此服务器。",
     "doneGuestDescription": "你已以 {{name}} 的身份登录。作为访客，你可以打开受邀的项目。",
     "done": "完成",
-    "codeSignIn": "用登录码登录",
-    "codeSignInDescription": "当浏览器无法回到 Oleafly，或要在其他设备上登录时使用。",
+    "codeSignIn": "改用登录码",
     "codeTitle": "用登录码登录",
     "codeRequesting": "正在获取登录码…",
     "codeSteps": "在任意手机或电脑上打开这个地址并输入登录码。",
@@ -468,7 +459,12 @@
         "copyPath": "在此之前，请自己把这个链接发给新成员。它会把服务器添加到 Oleafly。",
         "address": "他们也可以在“添加服务器”中输入这个地址："
       },
+      "broken": {
+        "title": "电子邮件无法正常工作",
+        "description": "服务器已有邮件设置，但邮件没有成功送达。请检查设置，然后发送一封测试邮件。"
+      },
       "needsSettings": "请先为服务器开启电子邮件。",
+      "needsWorking": "请先发送一封能成功送达的测试邮件，然后再开启此项。",
       "lastFailure": "上一封发送失败的邮件：{{date}}。邮件服务器的回复：",
       "test": {
         "title": "测试邮件",
@@ -832,6 +828,25 @@
         "protocol": "协议 {{protocol}}",
         "pendingGuests": "等待批准的访客邀请：{{number}}",
         "reviewGuests": "在“人员”中查看"
+      },
+      "activity": {
+        "title": "活动",
+        "description": "过去 30 天的登录情况，按 UTC 计算。Oleafly 会保持登录状态，所以这里统计的是每次新登录，而不是每次访问。",
+        "none": "过去 30 天没有人登录。",
+        "daily": "每日登录",
+        "dailyLabel": "过去 30 天按 UTC 日期统计的登录",
+        "total": "30 天内 {{number}} 次",
+        "hourly": "按小时登录",
+        "hourlyLabel": "按 UTC 星期和小时统计的登录",
+        "day": "日期",
+        "signInsColumn": "登录次数",
+        "peopleColumn": "人数",
+        "signIns": "登录：{{number}}",
+        "people": "人数：{{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC，登录：{{number}}",
+        "hoursInUtc": "小时（UTC）",
+        "less": "少",
+        "more": "多"
       },
       "storage": {
         "title": "存储",

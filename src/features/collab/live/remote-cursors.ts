@@ -85,10 +85,15 @@ export const REMOTE_CURSOR_STYLES = {
     borderRight: "1px solid hsl(var(--remote-hue) 70% 45%)",
     pointerEvents: "none",
   },
+  // The label hangs above its own line from inside an inline caret. WebKit
+  // repaints only the line box when CodeMirror moves the widget, so without
+  // a layer of its own the old label stays on screen and the line above
+  // paints over the new one, until something else forces a repaint.
   ".cm-remote-caret-label": {
     position: "absolute",
     bottom: "100%",
     left: "-1px",
+    willChange: "transform",
     padding: "0 0.25rem",
     borderRadius: "0.25rem 0.25rem 0.25rem 0",
     backgroundColor: `hsl(var(--remote-hue) ${LABEL_SATURATION}% var(--remote-label-lightness, ${LABEL_LIGHTNESS}%))`,

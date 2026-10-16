@@ -256,6 +256,11 @@ pub struct MailStats {
     pub abandoned: u64,
     pub dropped: u64,
     pub last_failure: Option<EmailFailure>,
+    // Whether email works, as far as the server knows. A connection check
+    // decides it either way and mail that gets through sets it. One refused
+    // recipient doesn't make email broken for everyone, so a failed delivery
+    // leaves it to the next check.
+    pub working: Option<bool>,
 }
 
 #[derive(Default)]
@@ -439,12 +444,41 @@ impl Delivery {
         };
         let mut stats = locked(&self.stats);
         match &outcome {
-            Ok(()) => stats.delivered += 1,
+            Ok(()) => {
+                stats.delivered += 1;
+                stats.working = Some(true);
+            }
             Err(failure) => {
                 stats.failed_attempts += 1;
                 stats.last_failure = Some(EmailFailure {
                     at: self.clock.now_ms(),
                     message: failure.message.clone(),
+                });
+            }
+        }
+        outcome
+    }
+
+    // Connects, signs in and says NOOP, then hangs up. Nothing is sent.
+    async fn check(&self) -> Result<(), String> {
+        let outcome =
+            match tokio::time::timeout(self.timeout, self.transport.test_connection()).await {
+                Ok(Ok(true)) => Ok(()),
+                Ok(Ok(false)) => Err("the mail server closed the connection".to_string()),
+                Ok(Err(error)) => Err(self.scrub(describe(&error))),
+                Err(_) => Err(format!(
+                    "the mail server did not answer within {}",
+                    spoken(self.timeout)
+                )),
+            };
+        let mut stats = locked(&self.stats);
+        match &outcome {
+            Ok(()) => stats.working = Some(true),
+            Err(message) => {
+                stats.working = Some(false);
+                stats.last_failure = Some(EmailFailure {
+                    at: self.clock.now_ms(),
+                    message: message.clone(),
                 });
             }
         }
@@ -607,6 +641,30 @@ impl Mailer {
 
     pub fn is_configured(&self) -> bool {
         self.inner.is_some()
+    }
+
+    /// True once a check reached the mail server and signed in, or mail got
+    /// through, and nothing has failed a check since. Email sign-in is only
+    /// offered while this holds.
+    pub fn is_working(&self) -> bool {
+        self.inner
+            .as_ref()
+            .is_some_and(|inner| locked(&inner.delivery.stats).working == Some(true))
+    }
+
+    pub async fn check(&self) -> Result<(), String> {
+        match &self.inner {
+            Some(inner) => inner.delivery.check().await,
+            None => Err("this server has no email settings".to_string()),
+        }
+    }
+
+    /// For tests whose mail server address only has to look real.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn assume_working(&self) {
+        if let Some(inner) = &self.inner {
+            locked(&inner.delivery.stats).working = Some(true);
+        }
     }
 
     pub fn from_address(&self) -> Option<String> {
@@ -783,6 +841,61 @@ mod tests {
         assert!(smtp.messages().is_empty());
         assert_eq!(smtp.sessions(), 1);
         assert_eq!(mailer.stats().abandoned, 1);
+    }
+
+    #[tokio::test]
+    async fn email_counts_as_working_only_once_the_mail_server_answers_and_a_check_sends_nothing() {
+        let smtp = MockSmtp::start().await;
+        let clock = ManualClock::new(TEST_START_MS);
+        let mailer = mailer(&smtp, &clock, hanging_for(Duration::from_secs(5)));
+        assert!(!mailer.is_working());
+        mailer.check().await.expect("the mock answers");
+        assert!(mailer.is_working());
+        assert_eq!(smtp.sessions(), 1);
+        assert!(smtp.messages().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_mail_server_that_turns_the_check_away_counts_as_not_working_until_mail_gets_through()
+    {
+        let smtp = MockSmtp::start().await;
+        let clock = ManualClock::new(TEST_START_MS);
+        let mailer = mailer(&smtp, &clock, hanging_for(Duration::from_secs(5)));
+        smtp.fail_next(1, MockSmtpFault::Unavailable);
+        let refusal = mailer
+            .check()
+            .await
+            .expect_err("the mock turns the check away");
+        assert!(refusal.contains("421"), "{refusal}");
+        assert!(!mailer.is_working());
+        assert_eq!(
+            mailer.stats().last_failure.map(|failure| failure.message),
+            Some(refusal)
+        );
+        mailer
+            .send_now(notification("ada@uni.edu"))
+            .await
+            .expect("the mock takes the mail");
+        assert!(mailer.is_working());
+    }
+
+    #[tokio::test]
+    async fn one_refused_recipient_does_not_count_as_email_being_broken() {
+        let smtp = MockSmtp::start().await;
+        let clock = ManualClock::new(TEST_START_MS);
+        let mailer = mailer(&smtp, &clock, hanging_for(Duration::from_secs(5)));
+        mailer.check().await.expect("the mock answers");
+        smtp.fail_next(1, MockSmtpFault::RejectRecipient);
+        mailer
+            .send_now(notification("gone@uni.edu"))
+            .await
+            .expect_err("the mock refuses the recipient");
+        assert!(mailer.is_working());
+    }
+
+    #[test]
+    fn a_server_without_email_settings_never_counts_email_as_working() {
+        assert!(!Mailer::disabled().is_working());
     }
 
     #[tokio::test]

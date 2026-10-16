@@ -133,6 +133,10 @@ describe("remote cursors", () => {
     expect(REMOTE_CURSOR_STYLES[".cm-remote-flash"].backgroundColor).toMatch(/^hsl\(/);
   });
 
+  it("gives the name label its own compositing layer, so WebKit repaints it when the caret moves", () => {
+    expect(REMOTE_CURSOR_STYLES[".cm-remote-caret-label"].willChange).toBe("transform");
+  });
+
   it("tints the line a peer's caret is on for a moment, in their colour", async () => {
     vi.useFakeTimers();
     try {

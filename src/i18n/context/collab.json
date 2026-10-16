@@ -1,14 +1,5 @@
 {
   "section": {
-    "presence": {
-      "label": "Name of the setting that decides what other people in a shared project see of this person while they work",
-      "description": "Explains the setting is stored on this computer only, so each computer the person uses has its own choice",
-      "options": {
-        "cursor": "Default choice. Others see this person's text cursor and selection inside the file",
-        "file": "Others see which file this person has open, but not where the cursor is",
-        "hidden": "Others do not see this person at all while they work. Short, like a menu choice"
-      }
-    },
     "server": {
       "signOut": "Button that ends this computer's session on the collaboration server. It does not quit the app.",
       "remove": "Button that removes the server from this computer's list. Nothing is deleted on the server.",
@@ -20,7 +11,9 @@
       "noAccess": "Badge on a server card when this person's account was removed from the server. Short, like Signed out.",
       "suspendedHint": "Under the server name when an admin suspended this account. {{server}} is the server's name. A Sign in button follows.",
       "endedHint": "Under the server name when this person was removed from the server. {{server}} is the server's name. There is no Sign in button.",
-      "endedGuestHint": "Same message for a guest whose access ended because no shared project on the server includes them any more."
+      "endedGuestHint": "Same message for a guest whose access ended because no shared project on the server includes them any more.",
+      "testShort": "Short button on a collaboration server's card that checks the app can reach the server. Keep it to one word if the language allows.",
+      "adminConsole": "Short button on a collaboration server's card that opens the separate admin console window. A name, not a sentence."
     },
     "devices": {
       "current": "Badge on the row for the computer the person is using right now"
@@ -164,7 +157,12 @@
       "test": {
         "description": "{{address}} is one or more email addresses separated by commas",
         "sent": "{{address}} is one or more email addresses separated by commas"
-      }
+      },
+      "broken": {
+        "title": "Status heading on a collaboration server's Email page when mail settings exist but emails fail to send",
+        "description": "Explains that emails are failing and what the admin should do"
+      },
+      "needsWorking": "Note under the email notifications switch while it can't be turned on because email is failing"
     },
     "settings": {
       "emailLinkSignIn": {
@@ -271,6 +269,25 @@
       "glance": {
         "started": "Label above a relative time such as 3 days ago that says when the server program last started",
         "projectsDetail": "Counts under the number of shared projects. Uploading means the owner is still sending the project for the first time"
+      },
+      "activity": {
+        "title": "Heading of the admin console overview part with charts of when people signed in to the server",
+        "description": "Explains the activity charts. Oleafly is the app name. The app stays signed in, so one person working every day may sign in only once",
+        "none": "Shown above the charts when the server recorded no sign-ins in the last 30 days",
+        "daily": "Title of an area chart with one point per day showing how many sign-ins the server recorded",
+        "dailyLabel": "Screen reader name of the daily sign-ins chart. UTC is the time zone",
+        "total": "Shown beside the daily chart title. {{number}} is how many sign-ins the server recorded in the last 30 days, such as 42",
+        "hourly": "Title of a grid that shows sign-ins by weekday (rows) and hour of the day (columns)",
+        "hourlyLabel": "Screen reader name of the weekday and hour grid. UTC is the time zone",
+        "day": "Column heading in a screen reader table of the daily chart. Each row is one date",
+        "signInsColumn": "Column heading in a screen reader table: how many sign-ins happened that day",
+        "peopleColumn": "Column heading in a screen reader table: how many different people signed in that day",
+        "signIns": "Line in the chart tooltip for one day. {{number}} is how many sign-ins happened that day",
+        "people": "Line in the chart tooltip for one day. {{number}} is how many different people signed in that day",
+        "cell": "Hover text of one square in the weekday and hour grid. {{weekday}} is a short weekday such as Mon, {{hour}} is 0 to 23 and {{number}} is a count",
+        "hoursInUtc": "Note under the weekday and hour grid saying its hours are in the UTC time zone",
+        "less": "Start of a colour legend that runs from light squares (few sign-ins) to dark squares (many)",
+        "more": "End of a colour legend that runs from light squares (few sign-ins) to dark squares (many)"
       },
       "storage": {
         "snapshots": "Whole saved copies of each project that the server keeps so new people can download it"

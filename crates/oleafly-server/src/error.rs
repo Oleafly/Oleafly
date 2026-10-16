@@ -127,7 +127,7 @@ fn auth_status(code: &AuthErrorCode) -> StatusCode {
 fn auth_message(code: &AuthErrorCode) -> &'static str {
     match code {
         AuthErrorCode::NotAdmitted => {
-            "You're not on this server's list yet. Ask its admin to add you."
+            "You don't have access to this server. Ask its admin to give you access."
         }
         AuthErrorCode::InvalidCode => "The sign-in code is wrong or has expired. Sign in again.",
         AuthErrorCode::InvalidSignature => "This device couldn't prove who it is. Sign in again.",
@@ -256,7 +256,7 @@ mod tests {
                 ServerError::Auth(AuthErrorCode::NotAdmitted),
                 StatusCode::FORBIDDEN,
                 "not_admitted",
-                "You're not on this server's list yet. Ask its admin to add you.",
+                "You don't have access to this server. Ask its admin to give you access.",
             ),
             (
                 ServerError::Internal("disk full under /data".to_string()),

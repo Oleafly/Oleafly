@@ -11,19 +11,9 @@
         "description": "Pyydä palvelimen osoite henkilöltä, joka ylläpitää ryhmäsi palvelinta, ja lisää se sitten tähän."
       }
     },
-    "presence": {
-      "label": "Mitä muut näkevät",
-      "description": "Valitse, mitä jaettujen projektiesi muut osallistujat näkevät, kun työskentelet. Asetus tehdään erikseen jokaisella koneella.",
-      "options": {
-        "cursor": "Näytä kohdistimeni",
-        "file": "Näytä vain, missä tiedostossa olen",
-        "hidden": "Piilota minut"
-      }
-    },
     "server": {
       "signedIn": "Kirjautunut",
       "signedOut": "Ei kirjautunut",
-      "signedInAs": "Kirjautunut käyttäjänä {{name}}",
       "signedOutHint": "Tämä kone ei ole kirjautunut tälle palvelimelle.",
       "suspended": "Jäädytetty",
       "noAccess": "Ei pääsyä",
@@ -35,8 +25,10 @@
       "signOut": "Kirjaudu ulos",
       "remove": "Poista",
       "manage": "Hallitse palvelinta",
+      "adminConsole": "Hallintakonsoli",
       "manageHint": "Hallitse palvelinta näyttää tässä osiot Henkilöt, Sallitut henkilöt, Verkkotunnukset, Palvelimen asetukset, Sähköposti ja Tietoturvaloki. Hallintakonsoli avautuu omaan ikkunaansa, ja siinä on lisäksi yleiskatsaus, projektit ja yhteystarkistukset.",
       "test": "Testaa yhteys",
+      "testShort": "Testaa",
       "removeConfirm": {
         "title": "Poistetaanko {{name}}?",
         "description": "Oleafly kirjautuu ulos palvelimelta {{name}} ja unohtaa sen. Palvelimen {{name}} jaetut projektit lakkaavat synkronoitumasta ja pysyvät tällä koneella tavallisina projekteina, ja jokainen nimetään paikalliseksi kopioksi.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "Olet kirjautunut käyttäjänä {{name}}. Voit nyt jakaa projekteja ja avata kanssasi jaettuja projekteja. Voit myös hallita palvelinta hallintakonsolissa.",
     "doneGuestDescription": "Olet kirjautunut käyttäjänä {{name}}. Vieraana voit avata projektit, joihin sinut on kutsuttu.",
     "done": "Valmis",
-    "codeSignIn": "Kirjaudu koodilla",
-    "codeSignInDescription": "Käytä tätä, jos selain ei pääse takaisin Oleafly-sovellukseen, tai kun haluat kirjautua toisella laitteella.",
+    "codeSignIn": "Käytä sen sijaan koodia",
     "codeTitle": "Kirjaudu koodilla",
     "codeRequesting": "Haetaan koodia…",
     "codeSteps": "Avaa tämä osoite millä tahansa puhelimella tai tietokoneella ja kirjoita koodi.",
@@ -468,7 +459,12 @@
         "copyPath": "Siihen asti lähetä tämä linkki uusille ihmisille itse. Se lisää palvelimen Oleafly-sovellukseen.",
         "address": "He voivat myös kirjoittaa tämän osoitteen kohtaan Lisää palvelin:"
       },
+      "broken": {
+        "title": "Sähköposti ei toimi",
+        "description": "Palvelimella on sähköpostiasetukset, mutta sen viestit eivät mene perille. Tarkista asetukset ja lähetä sitten testiviesti."
+      },
       "needsSettings": "Ota ensin sähköposti käyttöön palvelimella.",
+      "needsWorking": "Lähetä testiviesti, joka menee perille, ja ota tämä sitten käyttöön.",
       "lastFailure": "Viimeisin epäonnistunut sähköposti: {{date}}. Postipalvelin vastasi:",
       "test": {
         "title": "Testiviesti",
@@ -832,6 +828,25 @@
         "protocol": "Protokolla {{protocol}}",
         "pendingGuests": "Hyväksyntää odottavat vieraskutsut: {{number}}",
         "reviewGuests": "Tarkista kohdassa Henkilöt"
+      },
+      "activity": {
+        "title": "Toiminta",
+        "description": "Kirjautumiset viimeisten 30 päivän ajalta UTC-ajassa. Oleafly pitää ihmiset kirjautuneina, joten tässä lasketaan jokainen uusi kirjautuminen, ei jokaista käyntiä.",
+        "none": "Kukaan ei kirjautunut sisään viimeisten 30 päivän aikana.",
+        "daily": "Kirjautumiset päivittäin",
+        "dailyLabel": "Kirjautumiset UTC-päivittäin viimeisten 30 päivän ajalta",
+        "total": "{{number}} 30 päivässä",
+        "hourly": "Kirjautumiset tunneittain",
+        "hourlyLabel": "Kirjautumiset viikonpäivän ja tunnin mukaan UTC-ajassa",
+        "day": "Päivä",
+        "signInsColumn": "Kirjautumiset",
+        "peopleColumn": "Henkilöt",
+        "signIns": "Kirjautumiset: {{number}}",
+        "people": "Henkilöt: {{number}}",
+        "cell": "{{weekday}} klo {{hour}}:00 UTC, kirjautumisia: {{number}}",
+        "hoursInUtc": "Tunnit UTC-aikaa",
+        "less": "Vähemmän",
+        "more": "Enemmän"
       },
       "storage": {
         "title": "Tallennustila",

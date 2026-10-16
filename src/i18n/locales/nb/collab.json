@@ -11,19 +11,9 @@
         "description": "Be den som drifter serveren til gruppen din om adressen, og legg den til her."
       }
     },
-    "presence": {
-      "label": "Hva andre ser",
-      "description": "Velg hva folk i de delte prosjektene dine ser mens du jobber. Innstillingen gjelder for hver maskin for seg.",
-      "options": {
-        "cursor": "Vis markøren min",
-        "file": "Vis bare hvilken fil jeg er i",
-        "hidden": "Skjul meg"
-      }
-    },
     "server": {
       "signedIn": "Logget inn",
       "signedOut": "Logget ut",
-      "signedInAs": "Logget inn som {{name}}",
       "signedOutHint": "Denne maskinen er ikke logget inn på denne serveren.",
       "suspended": "Suspendert",
       "noAccess": "Ingen tilgang",
@@ -35,8 +25,10 @@
       "signOut": "Logg ut",
       "remove": "Fjern",
       "manage": "Administrer serveren",
+      "adminConsole": "Administrasjonskonsoll",
       "manageHint": "Administrer serveren viser Personer, Tillatte personer, Domener, Serverinnstillinger, E-post og Sikkerhetslogg her. Administrasjonskonsollen åpnes i et eget vindu og har også oversikt, prosjekter og tilkoblingssjekk.",
       "test": "Test tilkoblingen",
+      "testShort": "Prøv",
       "removeConfirm": {
         "title": "Fjerne {{name}}?",
         "description": "Oleafly logger ut av {{name}} og glemmer den. Delte prosjekter fra {{name}} slutter å synkronisere og blir værende på denne maskinen som vanlige prosjekter, hvert med nytt navn som lokal kopi.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "Du er logget inn som {{name}}. Nå kan du dele prosjekter og åpne dem som deles med deg. Du kan også administrere serveren i administrasjonskonsollen.",
     "doneGuestDescription": "Du er logget inn som {{name}}. Som gjest kan du åpne prosjektene du er invitert til.",
     "done": "Ferdig",
-    "codeSignIn": "Logg inn med en kode",
-    "codeSignInDescription": "Bruk dette når nettleseren ikke kommer tilbake til Oleafly, eller for å logge inn på en annen enhet.",
+    "codeSignIn": "Bruk en kode i stedet",
     "codeTitle": "Logg inn med en kode",
     "codeRequesting": "Henter en kode…",
     "codeSteps": "Åpne denne adressen på en hvilken som helst telefon eller datamaskin, og skriv inn koden.",
@@ -468,7 +459,12 @@
         "copyPath": "Inntil da kan du sende denne lenken til nye personer selv. Den legger til serveren i Oleafly.",
         "address": "De kan også skrive inn denne adressen under Legg til server:"
       },
+      "broken": {
+        "title": "E-post virker ikke",
+        "description": "Serveren har e-postinnstillinger, men e-postene kommer ikke fram. Sjekk innstillingene, og send deretter en test-e-post."
+      },
       "needsSettings": "Slå på e-post for serveren først.",
+      "needsWorking": "Send en test-e-post som kommer fram, og slå deretter på dette.",
       "lastFailure": "Den siste e-posten som feilet, var {{date}}. E-postserveren svarte:",
       "test": {
         "title": "Test-e-post",
@@ -832,6 +828,25 @@
         "protocol": "Protokoll {{protocol}}",
         "pendingGuests": "Gjesteinvitasjoner som venter på godkjenning: {{number}}",
         "reviewGuests": "Se gjennom under Personer"
+      },
+      "activity": {
+        "title": "Aktivitet",
+        "description": "Innlogginger de siste 30 dagene, i UTC. Oleafly holder folk innlogget, så her telles hver nye innlogging, ikke hvert besøk.",
+        "none": "Ingen logget inn de siste 30 dagene.",
+        "daily": "Innlogginger per dag",
+        "dailyLabel": "Innlogginger per UTC-dag de siste 30 dagene",
+        "total": "{{number}} på 30 dager",
+        "hourly": "Innlogginger per time",
+        "hourlyLabel": "Innlogginger per ukedag og time i UTC",
+        "day": "Dag",
+        "signInsColumn": "Innlogginger",
+        "peopleColumn": "Personer",
+        "signIns": "Innlogginger: {{number}}",
+        "people": "Personer: {{number}}",
+        "cell": "{{weekday}} kl. {{hour}}:00 UTC, innlogginger: {{number}}",
+        "hoursInUtc": "Timer i UTC",
+        "less": "Mindre",
+        "more": "Mer"
       },
       "storage": {
         "title": "Lagring",

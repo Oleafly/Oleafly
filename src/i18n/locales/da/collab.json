@@ -11,19 +11,9 @@
         "description": "Spørg den person, der driver din gruppes server, om adressen, og tilføj den så her."
       }
     },
-    "presence": {
-      "label": "Hvad andre ser",
-      "description": "Vælg, hvad personer i dine delte projekter ser, mens du arbejder. Indstil det separat på hver computer.",
-      "options": {
-        "cursor": "Vis min markør",
-        "file": "Vis kun, hvilken fil jeg er i",
-        "hidden": "Skjul mig"
-      }
-    },
     "server": {
       "signedIn": "Logget ind",
       "signedOut": "Logget ud",
-      "signedInAs": "Logget ind som {{name}}",
       "signedOutHint": "Denne computer er ikke logget ind på denne server.",
       "suspended": "Suspenderet",
       "noAccess": "Ingen adgang",
@@ -35,8 +25,10 @@
       "signOut": "Log ud",
       "remove": "Fjern",
       "manage": "Administrer server",
+      "adminConsole": "Administrationskonsol",
       "manageHint": "Administrer server viser Personer, Tilladte personer, Domæner, Serverindstillinger, E-mail og Sikkerhedslog her. Administrationskonsollen åbner i sit eget vindue og har også overblik, projekter og forbindelsestjek.",
       "test": "Test forbindelsen",
+      "testShort": "Afprøv",
       "removeConfirm": {
         "title": "Vil du fjerne {{name}}?",
         "description": "Oleafly logger ud af {{name}} og glemmer den. Delte projekter fra {{name}} holder op med at synkronisere og bliver på denne computer som almindelige projekter, hver omdøbt til en lokal kopi.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "Du er logget ind som {{name}}. Nu kan du dele projekter og åbne dem, der deles med dig. Du kan også administrere serveren i administrationskonsollen.",
     "doneGuestDescription": "Du er logget ind som {{name}}. Som gæst kan du åbne de projekter, du er inviteret til.",
     "done": "Færdig",
-    "codeSignIn": "Log ind med en kode",
-    "codeSignInDescription": "Brug dette, når din browser ikke kan komme tilbage til Oleafly, eller for at logge ind på en anden enhed.",
+    "codeSignIn": "Brug en kode i stedet",
     "codeTitle": "Log ind med en kode",
     "codeRequesting": "Henter en kode…",
     "codeSteps": "Åbn denne adresse på en telefon eller computer, og skriv koden.",
@@ -468,7 +459,12 @@
         "copyPath": "Indtil da kan du selv sende dette link til nye personer. Det tilføjer serveren i Oleafly.",
         "address": "De kan også skrive denne adresse under Tilføj server:"
       },
+      "broken": {
+        "title": "E-mail virker ikke",
+        "description": "Serveren har mailindstillinger, men dens e-mails når ikke frem. Tjek indstillingerne, og send derefter en test-e-mail."
+      },
       "needsSettings": "Slå først e-mail til for serveren.",
+      "needsWorking": "Send en test-e-mail, der når frem, og slå derefter dette til.",
       "lastFailure": "Den seneste e-mail, der mislykkedes, var {{date}}. Mailserveren svarede:",
       "test": {
         "title": "Test-e-mail",
@@ -832,6 +828,25 @@
         "protocol": "Protokol {{protocol}}",
         "pendingGuests": "Gæsteinvitationer, der venter på godkendelse: {{number}}",
         "reviewGuests": "Gennemgå under Personer"
+      },
+      "activity": {
+        "title": "Aktivitet",
+        "description": "Logins de seneste 30 dage, i UTC. Oleafly holder folk logget ind, så her tælles hvert nyt login, ikke hvert besøg.",
+        "none": "Ingen loggede ind i de seneste 30 dage.",
+        "daily": "Logins pr. dag",
+        "dailyLabel": "Logins pr. UTC-dag de seneste 30 dage",
+        "total": "{{number}} på 30 dage",
+        "hourly": "Logins pr. time",
+        "hourlyLabel": "Logins pr. ugedag og time i UTC",
+        "day": "Dag",
+        "signInsColumn": "Logins",
+        "peopleColumn": "Personer",
+        "signIns": "Logins: {{number}}",
+        "people": "Personer: {{number}}",
+        "cell": "{{weekday}} kl. {{hour}}:00 UTC, logins: {{number}}",
+        "hoursInUtc": "Timer i UTC",
+        "less": "Mindre",
+        "more": "Mere"
       },
       "storage": {
         "title": "Lagring",

@@ -89,6 +89,9 @@ texts! {
     OtherServerTitle => "other_server.title",
     OtherServerBody => "other_server.body",
     OtherServerNext => "other_server.next",
+    OldServerTitle => "old_server.title",
+    OldServerBody => "old_server.body",
+    OldServerNext => "old_server.next",
     ElsewhereTitle => "elsewhere.title",
     ElsewhereHeading => "elsewhere.heading",
     ElsewhereBody => "elsewhere.body",
@@ -235,12 +238,13 @@ mod tests {
         );
         assert_eq!(
             Language::of_request(language::ENGLISH)
-                .html(Text::RefusedHeading, &[("server", "<b>Lab</b>")]),
-            "<b>Lab</b> didn&#39;t let you in"
+                .html(Text::RefusedEmail, &[("server", "<b>Lab</b>")]),
+            "This email address doesn&#39;t have access to <b>Lab</b>."
         );
         assert_eq!(
-            Language::of_request(language::ENGLISH).plain(Text::RefusedTitle, &[("server", "Lab")]),
-            "Not allowed on Lab"
+            Language::of_request(language::ENGLISH)
+                .plain(Text::OldServerTitle, &[("server", "Lab")]),
+            "Lab needs an update"
         );
     }
 }

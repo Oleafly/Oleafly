@@ -248,7 +248,7 @@ describe("AdminConsole", () => {
       people.resolve([member({ server_role: "admin" })]);
       await people.promise;
     });
-    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent(`Alice Chen · ${enCollab.admin.log.kinds.signIn}`);
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent(`Alice Chen → ${enCollab.admin.log.kinds.signIn}`);
   });
 
   it("marks People with the number of guest invitations waiting for approval", async () => {

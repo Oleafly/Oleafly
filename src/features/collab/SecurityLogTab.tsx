@@ -393,7 +393,7 @@ export function SecurityLogTab({
             <li key={event.id} className="space-y-0.5 px-3 py-2">
               <p className="text-xs">
                 <span className="font-medium">{subject ?? actorName(event.actor)}</span>
-                <span className="text-muted-foreground">{" · "}</span>
+                <span className="text-muted-foreground">{" → "}</span>
                 <span>{label}</span>
               </p>
               {facts.length > 0 ? <p className="text-xs text-muted-foreground">{facts.join(" · ")}</p> : null}

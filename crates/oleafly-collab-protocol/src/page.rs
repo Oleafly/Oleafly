@@ -26,8 +26,9 @@ pub const STYLE: &str = concat!(
     "color:#18181b;background-color:#ffffff;",
     "background-image:radial-gradient(rgba(156,163,175,0.5) 1px,transparent 1px);background-size:22px 22px}",
     ".shell{width:100%;max-width:26rem;display:flex;flex-direction:column;align-items:center;gap:1.25rem}",
-    ".brand{display:flex;flex-direction:column;align-items:center;gap:0.5rem;font-weight:600;font-size:0.9375rem;letter-spacing:-0.01em}",
-    ".brand svg{width:3.5rem;height:3.5rem;display:block}",
+    ".brand{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:0.75rem;font-weight:650;letter-spacing:-0.02em}",
+    ".brand svg{width:3.5rem;height:3.5rem;display:block;flex-shrink:0}",
+    ".brand span{font-size:2.25rem;line-height:1}",
     ".card{width:100%;background:#ffffff;border:1px solid #e4e4e7;border-radius:1rem;padding:2rem 1.75rem;text-align:center}",
     ".status{width:3rem;height:3rem;margin:0 auto 1rem;border-radius:999px;display:flex;align-items:center;justify-content:center}",
     ".status svg{width:1.5rem;height:1.5rem}",
@@ -58,6 +59,9 @@ pub const STYLE: &str = concat!(
     "button.primary,a.button.primary{background:#2563eb;border-color:#2563eb;color:#ffffff}",
     "button.primary:hover,a.button.primary:hover{background:#1d4ed8;border-color:#1d4ed8}",
     "button.primary:focus-visible,a.button.primary:focus-visible{background:#1e40af;border-color:#1e40af}",
+    "button.quiet{width:auto;margin:0.5rem auto 0;padding:0.25rem 0.5rem;border-color:transparent;background:none;color:#71717a;font-size:0.8125rem;font-weight:500;text-decoration:underline;text-underline-offset:2px}",
+    "button.quiet:hover{background:none;color:#3f3f46}",
+    "button.quiet:focus-visible{background:#f4f4f5}",
     ".foot{font-size:0.8125rem;color:#71717a;text-align:center}",
     "@media (prefers-color-scheme:dark){",
     "body{color:#f4f4f5;background-color:#121317;background-image:radial-gradient(rgba(255,255,255,0.17) 1px,transparent 1px)}",
@@ -77,6 +81,9 @@ pub const STYLE: &str = concat!(
     "button,a.button{background:#18191d;color:#f4f4f5;border-color:rgba(255,255,255,0.16)}",
     "button:hover,a.button:hover{background:#23242a}",
     "button:focus-visible,a.button:focus-visible{background:#2c2d33}",
+    "button.quiet{background:none;border-color:transparent;color:#a1a1aa}",
+    "button.quiet:hover{background:none;color:#e4e4e7}",
+    "button.quiet:focus-visible{background:#23242a}",
     ".foot{color:#a1a1aa}",
     "}"
 );
@@ -152,6 +159,13 @@ mod tests {
         assert!(html.contains("<section class=\"card\"><h1>Done</h1></section>"));
         assert!(html.contains("<footer class=\"foot\">Oleafly Lab</footer>"));
         assert!(!document("Title", "<p>Body</p>", None).contains("<footer"));
+    }
+
+    #[test]
+    fn the_logo_sits_left_of_a_wordmark_sized_to_match_it() {
+        assert!(STYLE.contains(".brand{display:flex;flex-direction:row;align-items:center"));
+        assert!(STYLE.contains(".brand svg{width:3.5rem;height:3.5rem"));
+        assert!(STYLE.contains(".brand span{font-size:2.25rem;line-height:1}"));
     }
 
     #[test]

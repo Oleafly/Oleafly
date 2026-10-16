@@ -11,19 +11,9 @@
         "description": "Poproś osobę, która prowadzi serwer Twojej grupy, o jego adres, a potem dodaj go tutaj."
       }
     },
-    "presence": {
-      "label": "Co widzą inni",
-      "description": "Wybierz, co osoby w Twoich udostępnionych projektach widzą podczas Twojej pracy. Ustawia się to osobno na każdym komputerze.",
-      "options": {
-        "cursor": "Pokazuj mój kursor",
-        "file": "Pokazuj tylko, w którym pliku jestem",
-        "hidden": "Ukryj mnie"
-      }
-    },
     "server": {
       "signedIn": "Zalogowano",
       "signedOut": "Wylogowano",
-      "signedInAs": "Zalogowano jako {{name}}",
       "signedOutHint": "Ten komputer nie jest zalogowany do tego serwera.",
       "suspended": "Zawieszone",
       "noAccess": "Brak dostępu",
@@ -35,8 +25,10 @@
       "signOut": "Wyloguj się",
       "remove": "Usuń",
       "manage": "Zarządzaj serwerem",
+      "adminConsole": "Konsola administracyjna",
       "manageHint": "Zarządzaj serwerem pokazuje tutaj sekcje Osoby, Dozwolone osoby, Domeny, Ustawienia serwera, E-mail i Dziennik bezpieczeństwa. Konsola administracyjna otwiera się w osobnym oknie i ma też przegląd, projekty oraz testy połączenia.",
       "test": "Testuj połączenie",
+      "testShort": "Testuj",
       "removeConfirm": {
         "title": "Usunąć serwer {{name}}?",
         "description": "Oleafly wyloguje się z serwera {{name}} i go zapomni. Udostępnione projekty z serwera {{name}} przestaną się synchronizować i zostaną na tym komputerze jako zwykłe projekty, każdy z nazwą kopii lokalnej.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "Zalogowano jako {{name}}. Teraz możesz udostępniać projekty i otwierać te, które udostępniono Tobie. Możesz też zarządzać serwerem w konsoli administracyjnej.",
     "doneGuestDescription": "Zalogowano jako {{name}}. Jako gość możesz otwierać projekty, do których Cię zaproszono.",
     "done": "Gotowe",
-    "codeSignIn": "Zaloguj się kodem",
-    "codeSignInDescription": "Użyj tego, gdy przeglądarka nie może wrócić do Oleafly albo gdy chcesz zalogować się na innym urządzeniu.",
+    "codeSignIn": "Zamiast tego użyj kodu",
     "codeTitle": "Zaloguj się kodem",
     "codeRequesting": "Pobieranie kodu…",
     "codeSteps": "Na dowolnym telefonie lub komputerze otwórz ten adres i wpisz kod.",
@@ -468,7 +459,12 @@
         "copyPath": "Do tego czasu wysyłaj nowym osobom ten link samodzielnie. Dodaje on serwer do Oleafly.",
         "address": "Mogą też wpisać ten adres w sekcji Dodaj serwer:"
       },
+      "broken": {
+        "title": "E-mail nie działa",
+        "description": "Serwer ma ustawienia poczty, ale jego e-maile nie docierają. Sprawdź ustawienia, a potem wyślij e-mail testowy."
+      },
       "needsSettings": "Najpierw włącz e-mail na serwerze.",
+      "needsWorking": "Wyślij e-mail testowy, który dotrze, a potem włącz tę opcję.",
       "lastFailure": "Ostatni nieudany e-mail: {{date}}. Serwer poczty odpowiedział:",
       "test": {
         "title": "E-mail testowy",
@@ -832,6 +828,25 @@
         "protocol": "Protokół {{protocol}}",
         "pendingGuests": "Zaproszenia gości czekające na zatwierdzenie: {{number}}",
         "reviewGuests": "Przejrzyj w sekcji Osoby"
+      },
+      "activity": {
+        "title": "Aktywność",
+        "description": "Logowania z ostatnich 30 dni w strefie UTC. Oleafly nie wylogowuje osób, więc liczy się tu każde nowe logowanie, a nie każda wizyta.",
+        "none": "W ciągu ostatnich 30 dni nikt się nie zalogował.",
+        "daily": "Logowania dziennie",
+        "dailyLabel": "Logowania według dni UTC w ostatnich 30 dniach",
+        "total": "{{number}} w ciągu 30 dni",
+        "hourly": "Logowania według godzin",
+        "hourlyLabel": "Logowania według dnia tygodnia i godziny UTC",
+        "day": "Dzień",
+        "signInsColumn": "Logowania",
+        "peopleColumn": "Osoby",
+        "signIns": "Logowania: {{number}}",
+        "people": "Osoby: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, logowania: {{number}}",
+        "hoursInUtc": "Godziny w strefie UTC",
+        "less": "Mniej",
+        "more": "Więcej"
       },
       "storage": {
         "title": "Przechowywanie",

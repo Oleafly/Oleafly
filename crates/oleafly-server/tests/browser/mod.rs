@@ -279,6 +279,10 @@ pub fn text_of(page: &Page) -> String {
 }
 
 pub async fn set_email_link(server: &TestServer, on: bool) {
+    // Sign-in by email is only offered once a check reaches the mail server.
+    if on {
+        let _ = server.state().mailer.check().await;
+    }
     server
         .state()
         .db

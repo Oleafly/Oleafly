@@ -75,6 +75,17 @@ function CopyAddLink({ server }: Readonly<{ server: CollabServer }>) {
 
 function EmailState({ status, server }: Readonly<{ status: CollabEmailStatus; server: CollabServer }>) {
   const { t } = useTranslation(["collab"]);
+  if (status.configured && status.working === false) {
+    return (
+      <div className="flex items-start gap-2 rounded-lg border px-3 py-2" data-testid="collab-email-state">
+        <MailX aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{t(($) => $.collab.admin.email.broken.title)}</p>
+          <p className="text-xs text-muted-foreground">{t(($) => $.collab.admin.email.broken.description)}</p>
+        </div>
+      </div>
+    );
+  }
   if (status.configured) {
     return (
       <div className="flex items-start gap-2 rounded-lg border px-3 py-2" data-testid="collab-email-state">
@@ -109,7 +120,14 @@ function TestEmail({
   configured,
   admin,
   addresses,
-}: Readonly<{ serverId: string; configured: boolean; admin: boolean; addresses: string[] }>) {
+  onDelivered,
+}: Readonly<{
+  serverId: string;
+  configured: boolean;
+  admin: boolean;
+  addresses: string[];
+  onDelivered: () => void;
+}>) {
   const { t } = useTranslation(["collab"]);
   const [test, setTest] = useState<TestState>({ state: "idle" });
   const ready = configured && admin && addresses.length > 0;
@@ -119,6 +137,8 @@ function TestEmail({
     try {
       const result = await collabAdminEmailTest(serverId);
       setTest(result.delivered ? { state: "sent", to: result.sent_to } : { state: "refused", detail: result.error });
+      // A delivered test proves email works, which can unlock notifications.
+      if (result.delivered) onDelivered();
     } catch (error) {
       setTest({ state: "failed", message: collabErrorText(error) });
     }
@@ -223,6 +243,14 @@ export function EmailTab({ server, actor }: Readonly<{ server: CollabServer; act
   if (!status) return <LoadingState size="compact" label={t(($) => $.collab.admin.email.loading)} />;
 
   const failure = status.last_failure;
+  // Notifications stay off while email fails. An older server doesn't say
+  // whether it works, so only its settings count there.
+  const working = status.configured && status.working !== false;
+  const notificationsNote = () => {
+    if (!status.configured) return t(($) => $.collab.admin.email.needsSettings);
+    if (!working) return t(($) => $.collab.admin.email.needsWorking);
+    return t(($) => $.collab.admin.settings.emailNotifications.description);
+  };
   return (
     <div className="space-y-3" data-testid="collab-email-tab">
       <p className="text-xs text-muted-foreground">{t(($) => $.collab.admin.email.description)}</p>
@@ -231,17 +259,19 @@ export function EmailTab({ server, actor }: Readonly<{ server: CollabServer; act
       <SettingsToggleRow
         testId="collab-setting-email_notifications"
         label={t(($) => $.collab.admin.settings.emailNotifications.label)}
-        description={
-          status.configured
-            ? t(($) => $.collab.admin.settings.emailNotifications.description)
-            : t(($) => $.collab.admin.email.needsSettings)
-        }
-        checked={status.configured && status.notifications}
-        disabled={!status.configured || !admin || saving}
+        description={notificationsNote()}
+        checked={working && status.notifications}
+        disabled={!working || !admin || saving}
         onChange={(value) => void changeNotifications(value)}
       />
       {saveError ? <InlineAlert>{saveError}</InlineAlert> : null}
-      <TestEmail serverId={serverId} configured={status.configured} admin={admin} addresses={addresses} />
+      <TestEmail
+        serverId={serverId}
+        configured={status.configured}
+        admin={admin}
+        addresses={addresses}
+        onDelivered={() => setRequest((count) => count + 1)}
+      />
       {failure ? (
         <div className="space-y-1 text-xs text-muted-foreground" data-testid="collab-email-last-failure">
           <p>{t(($) => $.collab.admin.email.lastFailure, { date: formatDateTime(failure.at) })}</p>

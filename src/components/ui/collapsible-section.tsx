@@ -7,6 +7,7 @@ export function CollapsibleSection({
   title,
   description,
   icon: Icon,
+  leading,
   trailing,
   defaultOpen = false,
   open: controlledOpen,
@@ -19,6 +20,8 @@ export function CollapsibleSection({
   title: React.ReactNode;
   description?: React.ReactNode;
   icon?: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  // Drawn before the title in place of `icon`, for a picture such as a logo.
+  leading?: React.ReactNode;
   trailing?: React.ReactNode;
   defaultOpen?: boolean;
   open?: boolean;
@@ -52,7 +55,7 @@ export function CollapsibleSection({
           onClick={toggle}
           className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left after:absolute after:inset-0 after:content-[''] focus-visible:bg-accent/60"
         >
-          {Icon ? <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" /> : null}
+          {leading ?? (Icon ? <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" /> : null)}
           <span className="min-w-0 flex-1">
             <Heading id={titleId} className="text-sm font-medium leading-snug">
               {title}

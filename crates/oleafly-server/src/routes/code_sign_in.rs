@@ -307,27 +307,55 @@ fn entry_body(
 #[derive(Deserialize)]
 struct EntryQuery {
     code: Option<String>,
+    provider: Option<String>,
 }
 
 async fn entry(
     State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
     PageLocale(locale): PageLocale,
     headers: HeaderMap,
     Query(query): Query<EntryQuery>,
-) -> Response {
+) -> Result<Response, ServerError> {
     let csrf = csrf::token(&headers);
-    let code = query
+    let cookie = Some(csrf::cookie(&state.config, &csrf));
+    // Oleafly's own link carries the code, so it goes straight to the page
+    // that names the device instead of asking for the code again. Someone
+    // typing the address on another device gets the empty form.
+    let Some(code) = query
         .code
         .as_deref()
         .and_then(device_code::normalize_user_code)
-        .unwrap_or_default();
-    sign_in_pages::render(
-        locale,
-        StatusCode::OK,
-        &title(locale, &state),
-        &entry_body(locale, &state, &csrf, &code, None),
-        Some(csrf::cookie(&state.config, &csrf)),
-    )
+    else {
+        return Ok(sign_in_pages::render(
+            locale,
+            StatusCode::OK,
+            &title(locale, &state),
+            &entry_body(locale, &state, &csrf, "", None),
+            cookie,
+        ));
+    };
+    let here = ip.as_deref().map(client_key);
+    Ok(match lookup(&state, ip, &code).await? {
+        Lookup::Found(authorization) => {
+            let page = Confirm {
+                csrf: &csrf,
+                authorization: &authorization,
+                user_code: &code,
+                here: here.as_deref(),
+                chosen: query.provider.as_deref(),
+            };
+            confirm_page(locale, &state, &page, cookie).await?
+        }
+        Lookup::LockedOut => locked_out(locale),
+        Lookup::Wrong => sign_in_pages::render(
+            locale,
+            StatusCode::BAD_REQUEST,
+            &title(locale, &state),
+            &entry_body(locale, &state, &csrf, &code, Some(Key::CodeWrong)),
+            cookie,
+        ),
+    })
 }
 
 #[derive(Deserialize)]
@@ -473,32 +501,71 @@ async fn check(
         Err(page) => return Ok(page),
     };
     let user_code = device_code::normalize_user_code(&form.user_code).unwrap_or_default();
+    let page = Confirm {
+        csrf: &form.csrf,
+        authorization: &authorization,
+        user_code: &user_code,
+        here: here.as_deref(),
+        chosen: None,
+    };
+    confirm_page(locale, &state, &page, None).await
+}
+
+struct Confirm<'a> {
+    csrf: &'a str,
+    authorization: &'a Authorization,
+    user_code: &'a str,
+    here: Option<&'a str>,
+    // The sign-in method picked in Oleafly, when the link came from there.
+    chosen: Option<&'a str>,
+}
+
+// Names the device that asked, so nobody approves someone else's computer by
+// following their link, then offers the ways to sign in.
+async fn confirm_page(
+    locale: Locale,
+    state: &AppState,
+    page: &Confirm<'_>,
+    cookie: Option<HeaderValue>,
+) -> Result<Response, ServerError> {
+    let authorization = page.authorization;
     let device = device_label(&authorization.device_name, &authorization.platform);
-    let mut body = sign_in_pages::heading(&title(locale, &state));
+    let mut body = sign_in_pages::heading(&title(locale, state));
     body.push_str(&sign_in_pages::paragraph(
         &locale.fill(Key::CodeAsked, &[("device", &device)]),
     ));
-    body.push_str(&sign_in_pages::code(&user_code));
-    if from_another_network(authorization.requested_from.as_deref(), here.as_deref()) {
+    body.push_str(&sign_in_pages::code(page.user_code));
+    if from_another_network(authorization.requested_from.as_deref(), page.here) {
         body.push_str(&sign_in_pages::error(locale.text(Key::CodeOtherNetwork)));
     }
     body.push_str(&sign_in_pages::paragraph(locale.text(Key::CodeOnlyIfYou)));
-    let runtime_email = email_link_available(&state).await?;
+    let runtime_email = email_link_available(state).await?;
     let providers = email_link::with_email_link(state.providers.infos(), runtime_email);
     if providers.is_empty() {
         body.push_str(&sign_in_pages::paragraph(locale.text(Key::CodeNoProviders)));
     }
-    for provider in &providers {
+    // Asking again for the way someone already chose in Oleafly is one more
+    // decision for nothing, so only that one is offered when it's known.
+    let chosen: Vec<_> = providers
+        .iter()
+        .filter(|provider| page.chosen == Some(provider.id.as_str()))
+        .collect();
+    let offered: Vec<_> = if chosen.is_empty() {
+        providers.iter().collect()
+    } else {
+        chosen
+    };
+    for provider in offered {
         body.push_str(&sign_in_pages::form(
-            &path(&state, "/auth/device/continue"),
+            &path(state, "/auth/device/continue"),
             &[
                 Field {
                     name: "csrf",
-                    value: &form.csrf,
+                    value: page.csrf,
                 },
                 Field {
                     name: "user_code",
-                    value: &user_code,
+                    value: page.user_code,
                 },
                 Field {
                     name: "provider",
@@ -510,28 +577,26 @@ async fn check(
             true,
         ));
     }
-    body.push_str(&sign_in_pages::form(
-        &path(&state, "/auth/device/deny"),
+    body.push_str(&sign_in_pages::quiet_form(
+        &path(state, "/auth/device/deny"),
         &[
             Field {
                 name: "csrf",
-                value: &form.csrf,
+                value: page.csrf,
             },
             Field {
                 name: "user_code",
-                value: &user_code,
+                value: page.user_code,
             },
         ],
-        None,
         locale.text(Key::CodeDeny),
-        false,
     ));
     Ok(sign_in_pages::render(
         locale,
         StatusCode::OK,
-        &title(locale, &state),
+        &title(locale, state),
         &body,
-        None,
+        cookie,
     ))
 }
 
@@ -698,20 +763,27 @@ fn refused(
 ) -> Response {
     let by_email = pending.provider_id == email_link::PROVIDER_ID;
     let provider = provider_label(locale, state, &pending.provider_id);
-    let who = account
-        .map(|account| {
-            let account = format!("<strong>{}</strong>", escape(account));
-            let named = if by_email {
-                locale.fill_html(Key::RefusedEmailAccount, &[("account", &account)])
-            } else {
-                locale.fill_html(
-                    Key::RefusedProviderAccount,
-                    &[("provider", &escape(&provider)), ("account", &account)],
-                )
-            };
-            format!("<p>{named}</p>")
-        })
-        .unwrap_or_default();
+    let server = escape(&state.config.server_name);
+    // Say who was turned away and whom to ask, in one line.
+    let who = account.map(|account| {
+        let account = format!("<strong>{}</strong>", escape(account));
+        let named = if by_email {
+            locale.fill_html(
+                Key::RefusedEmailAccount,
+                &[("account", &account), ("server", &server)],
+            )
+        } else {
+            locale.fill_html(
+                Key::RefusedProviderAccount,
+                &[
+                    ("provider", &escape(&provider)),
+                    ("account", &account),
+                    ("server", &server),
+                ],
+            )
+        };
+        format!("<p>{named}</p>")
+    });
     let advice = if by_email {
         locale.text(Key::RefusedEmailAdvice).to_owned()
     } else {
@@ -723,10 +795,10 @@ fn refused(
         StatusCode::FORBIDDEN,
         title,
         &format!(
-            "{}{}{who}{}{}",
+            "{}{}{}{}",
             status(Tone::Problem),
             heading(title),
-            paragraph(locale.auth_error(AuthErrorCode::NotAdmitted)),
+            who.unwrap_or_else(|| paragraph(locale.auth_error(AuthErrorCode::NotAdmitted))),
             next(&advice),
         ),
         None,
@@ -876,7 +948,8 @@ mod tests {
                 Key::RefusedProviderAccount,
                 &[
                     ("provider", &escape(provider)),
-                    ("account", "<strong>@ada</strong>")
+                    ("account", "<strong>@ada</strong>"),
+                    ("server", &escape(&app.state.config.server_name))
                 ]
             )),
             "{page}"

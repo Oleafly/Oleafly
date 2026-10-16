@@ -29,21 +29,25 @@ import { canManageServer, toServerRole, type ServerRole } from "./roles";
 import { useCollabStore } from "./store";
 import { useConnectionTest, type ConnectionTest } from "./use-connection-test";
 
-function SignedInSummary({ account, role }: Readonly<{ account: CollabAccount; role: ServerRole | null }>) {
+function RoleBadge({ role }: Readonly<{ role: ServerRole }>) {
   const { t } = useTranslation(["collab"]);
+  return (
+    <Badge variant="primaryGhost" size="sm" data-testid="collab-server-role">
+      {t(($) => $.collab.roles[role])}
+    </Badge>
+  );
+}
+
+function SignedInSummary({ account, role }: Readonly<{ account: CollabAccount; role: ServerRole | null }>) {
   return (
     <div className="flex items-center gap-3">
       <Avatar person={accountPerson(account)} size="md" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
-          {t(($) => $.collab.section.server.signedInAs, { name: account.display_name })}
-        </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-medium">{account.display_name}</p>
+          {role ? <RoleBadge role={role} /> : null}
+        </div>
         <p className="truncate text-xs text-muted-foreground">{accountDetail(account)}</p>
-        {role ? (
-          <p className="text-xs text-muted-foreground">
-            {t(($) => $.collab.section.server.role, { role: t(($) => $.collab.roles[role]) })}
-          </p>
-        ) : null}
       </div>
     </div>
   );
@@ -92,6 +96,7 @@ export function ServerCard({
   const unsent = useCollabStore((state) => state.unsent[serverId] ?? null);
   const keepLocalCopies = useCollabStore((state) => state.keepLocalCopies);
   const stay = useCollabStore((state) => state.stay);
+  const [open, setOpen] = useState(defaultOpen);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const { test, run: runTest } = useConnectionTest(server.url);
@@ -136,86 +141,118 @@ export function ServerCard({
 
   const removing = unsent?.action === "remove";
 
+  const removeButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="hover:bg-destructive/10 hover:text-destructive"
+      disabled={pending !== null}
+      onClick={() => setConfirmRemove(true)}
+    >
+      {pending === "remove" ? <Spinner /> : <Trash2 aria-hidden />}
+      {t(($) => $.collab.section.server.remove)}
+    </Button>
+  );
+
+  // Folded, the header sums up who is signed in: their picture and their
+  // role, since being signed in shows already. Open, the card says that
+  // itself and the header holds Remove. Why someone is signed out stays.
+  const headerTrailing = () => {
+    if (!account) {
+      return (
+        <>
+          <Badge variant="muted" size="sm">
+            {signedOutBadge()}
+          </Badge>
+          {open ? removeButton : null}
+        </>
+      );
+    }
+    if (open) return removeButton;
+    return (
+      <>
+        <Avatar person={accountPerson(account)} size="sm" />
+        {role ? (
+          <RoleBadge role={role} />
+        ) : (
+          <Badge variant="success" size="sm">
+            {t(($) => $.collab.section.server.signedIn)}
+          </Badge>
+        )}
+      </>
+    );
+  };
+
   return (
     <>
       <CollapsibleSection
         id={`collab-server-${serverId}`}
         title={server.name}
         description={server.url}
-        icon={Server}
-        defaultOpen={defaultOpen}
-        trailing={
-          <>
-            {account ? <Avatar person={accountPerson(account)} size="sm" /> : null}
-            {account ? (
-              <Badge variant="success" size="sm">
-                {t(($) => $.collab.section.server.signedIn)}
-              </Badge>
-            ) : (
-              <Badge variant="muted" size="sm">
-                {signedOutBadge()}
-              </Badge>
-            )}
-          </>
+        // The server's own icon, as the add-server dialog shows it.
+        leading={
+          <Avatar
+            person={{ id: serverId, name: server.name, imageUrl: server.icon_url }}
+            size="md"
+            fallbackIcon={<Server />}
+          />
         }
+        open={open}
+        onOpenChange={setOpen}
+        trailing={headerTrailing()}
       >
-        {account ? (
-          <SignedInSummary account={account} role={role} />
-        ) : (
-          <p className="text-xs text-muted-foreground">{signedOutHint()}</p>
-        )}
-        <div className="flex flex-wrap items-center gap-2">
-          {account ? (
+        {/* Who is signed in on the left, the actions on the right. They wrap
+            below it when the card is too narrow for one line. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="min-w-0 flex-1 basis-60">
+            {account ? (
+              <SignedInSummary account={account} role={role} />
+            ) : (
+              <p className="text-xs text-muted-foreground">{signedOutHint()}</p>
+            )}
+          </div>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2" data-testid="collab-server-actions">
+            {canManage ? (
+              <>
+                <Button type="button" variant="outline" size="sm" onClick={() => void openAdminConsole(server)}>
+                  <AppWindow aria-hidden />
+                  {t(($) => $.collab.section.server.adminConsole)}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={onManage}>
+                  <ShieldCheck aria-hidden />
+                  {t(($) => $.collab.section.server.manage)}
+                </Button>
+              </>
+            ) : null}
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={pending !== null}
-              onClick={() => void doSignOut()}
+              disabled={test.state === "running"}
+              onClick={() => void runTest()}
             >
-              {pending === "signOut" ? <Spinner /> : <LogOut aria-hidden />}
-              {t(($) => $.collab.section.server.signOut)}
+              <Activity aria-hidden />
+              {t(($) => $.collab.section.server.testShort)}
             </Button>
-          ) : null}
-          {!account ? (
-            <Button type="button" size="sm" disabled={pending !== null} onClick={onSignIn}>
-              <LogIn aria-hidden />
-              {t(($) => $.collab.section.server.signIn)}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={test.state === "running"}
-            onClick={() => void runTest()}
-          >
-            <Activity aria-hidden />
-            {t(($) => $.collab.section.server.test)}
-          </Button>
-          {canManage ? (
-            <>
-              <Button type="button" variant="outline" size="sm" onClick={onManage}>
-                <ShieldCheck aria-hidden />
-                {t(($) => $.collab.section.server.manage)}
+            {account ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={pending !== null}
+                onClick={() => void doSignOut()}
+              >
+                {pending === "signOut" ? <Spinner /> : <LogOut aria-hidden />}
+                {t(($) => $.collab.section.server.signOut)}
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => void openAdminConsole(server)}>
-                <AppWindow aria-hidden />
-                {t(($) => $.collab.console.open)}
+            ) : (
+              <Button type="button" size="sm" disabled={pending !== null} onClick={onSignIn}>
+                <LogIn aria-hidden />
+                {t(($) => $.collab.section.server.signIn)}
               </Button>
-            </>
-          ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="ml-auto hover:bg-destructive/10 hover:text-destructive"
-            disabled={pending !== null}
-            onClick={() => setConfirmRemove(true)}
-          >
-            {pending === "remove" ? <Spinner /> : <Trash2 aria-hidden />}
-            {t(($) => $.collab.section.server.remove)}
-          </Button>
+            )}
+          </div>
         </div>
         {canManage ? (
           <p className="text-xs text-muted-foreground">{t(($) => $.collab.section.server.manageHint)}</p>

@@ -122,6 +122,38 @@ describe("EmailTab", () => {
     expect(mocks.collabAdminPatchSettings).not.toHaveBeenCalled();
   });
 
+  it("keeps notifications off while email fails, and unlocks them once a test email gets through", async () => {
+    mocks.collabAdminEmailStatus
+      .mockResolvedValueOnce(status({ working: false }))
+      .mockResolvedValue(status({ working: true }));
+    mocks.collabAdminEmailTest.mockResolvedValue({ sent_to: ["alice@uni.edu"], delivered: true, error: null });
+    const user = userEvent.setup();
+    render(<EmailTab server={adminServer()} actor="admin" />);
+    expect(await screen.findByText(copy.broken.title)).toBeInTheDocument();
+    expect(screen.getByText(copy.broken.description)).toBeInTheDocument();
+    expect(screen.queryByText(copy.on.title)).toBeNull();
+    const notifications = screen.getByRole("switch", { name: enCollab.admin.settings.emailNotifications.label });
+    expect(notifications).toHaveAttribute("aria-checked", "false");
+    expect(notifications).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText(copy.needsWorking)).toBeInTheDocument();
+    await user.click(notifications);
+    expect(mocks.collabAdminPatchSettings).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: copy.test.send }));
+    expect(await screen.findByText(copy.on.title)).toBeInTheDocument();
+    expect(mocks.collabAdminEmailStatus).toHaveBeenCalledTimes(2);
+    const unlocked = screen.getByRole("switch", { name: enCollab.admin.settings.emailNotifications.label });
+    expect(unlocked).toHaveAttribute("aria-checked", "true");
+    expect(unlocked).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("trusts the settings of an older server that doesn't say whether email works", async () => {
+    mocks.collabAdminEmailStatus.mockResolvedValue(status({ working: undefined }));
+    render(<EmailTab server={adminServer()} actor="admin" />);
+    expect(await screen.findByText(copy.on.title)).toBeInTheDocument();
+    const notifications = screen.getByRole("switch", { name: enCollab.admin.settings.emailNotifications.label });
+    expect(notifications).toHaveAttribute("aria-checked", "true");
+  });
+
   it("lets an admin turn email notifications off", async () => {
     mocks.collabAdminEmailStatus.mockResolvedValue(status());
     mocks.collabAdminPatchSettings.mockResolvedValue({ email_notifications: false });

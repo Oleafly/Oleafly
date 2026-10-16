@@ -11,19 +11,9 @@
         "description": "請向負責你團隊伺服器的人索取位址，然後在這裡新增。"
       }
     },
-    "presence": {
-      "label": "其他人能看到什麼",
-      "description": "選擇你在分享的專案中工作時，其他人能看到的內容。每台電腦需要分別設定。",
-      "options": {
-        "cursor": "顯示我的游標",
-        "file": "只顯示我所在的檔案",
-        "hidden": "隱藏我"
-      }
-    },
     "server": {
       "signedIn": "已登入",
       "signedOut": "已登出",
-      "signedInAs": "已以 {{name}} 的身分登入",
       "signedOutHint": "這台電腦尚未登入這個伺服器。",
       "suspended": "已停權",
       "noAccess": "無存取權",
@@ -35,8 +25,10 @@
       "signOut": "登出",
       "remove": "移除",
       "manage": "管理伺服器",
+      "adminConsole": "管理主控台",
       "manageHint": "管理伺服器會在這裡顯示人員、允許名單、網域、伺服器設定、電子郵件和安全性記錄。管理主控台會在獨立視窗中開啟，另外還有總覽、專案和連線檢查。",
       "test": "測試連線",
+      "testShort": "測試",
       "removeConfirm": {
         "title": "要移除 {{name}} 嗎？",
         "description": "Oleafly 會登出 {{name}} 並忘記這個伺服器。來自 {{name}} 的分享專案會停止同步，各自改名為本機副本，並以一般專案的形式留在這台電腦上。",
@@ -174,8 +166,7 @@
     "doneManageDescription": "你已以 {{name}} 的身分登入。現在你可以分享專案，也可以開啟與你分享的專案。你也可以在管理主控台中管理這個伺服器。",
     "doneGuestDescription": "你已以 {{name}} 的身分登入。身為訪客，你可以開啟受邀的專案。",
     "done": "完成",
-    "codeSignIn": "用登入碼登入",
-    "codeSignInDescription": "當瀏覽器無法回到 Oleafly，或要在其他裝置上登入時使用。",
+    "codeSignIn": "改用登入碼",
     "codeTitle": "用登入碼登入",
     "codeRequesting": "正在取得登入碼…",
     "codeSteps": "在任何手機或電腦上開啟這個網址並輸入登入碼。",
@@ -468,7 +459,12 @@
         "copyPath": "在那之前，請自己把這個連結寄給新成員。它會把伺服器新增到 Oleafly。",
         "address": "他們也可以在「新增伺服器」中輸入這個位址："
       },
+      "broken": {
+        "title": "電子郵件無法正常運作",
+        "description": "伺服器已有郵件設定，但郵件沒有成功送達。請檢查設定，然後寄一封測試郵件。"
+      },
       "needsSettings": "請先為伺服器開啟電子郵件。",
+      "needsWorking": "請先寄一封能成功送達的測試郵件，然後再開啟此項。",
       "lastFailure": "上一封寄送失敗的郵件：{{date}}。郵件伺服器的回覆：",
       "test": {
         "title": "測試郵件",
@@ -832,6 +828,25 @@
         "protocol": "通訊協定 {{protocol}}",
         "pendingGuests": "等待核准的訪客邀請：{{number}}",
         "reviewGuests": "在「人員」中查看"
+      },
+      "activity": {
+        "title": "活動",
+        "description": "過去 30 天的登入情況，以 UTC 計算。Oleafly 會保持登入狀態，所以這裡計算的是每次新的登入，而不是每次造訪。",
+        "none": "過去 30 天沒有人登入。",
+        "daily": "每日登入",
+        "dailyLabel": "過去 30 天依 UTC 日期統計的登入",
+        "total": "30 天內 {{number}} 次",
+        "hourly": "每小時登入",
+        "hourlyLabel": "依 UTC 星期與小時統計的登入",
+        "day": "日期",
+        "signInsColumn": "登入次數",
+        "peopleColumn": "人數",
+        "signIns": "登入：{{number}}",
+        "people": "人數：{{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC，登入：{{number}}",
+        "hoursInUtc": "時間為 UTC",
+        "less": "少",
+        "more": "多"
       },
       "storage": {
         "title": "儲存空間",

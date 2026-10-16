@@ -122,7 +122,13 @@ const limits = {
   // cloud sync is on, except about 0.5 KB in the entry. Together with live
   // collaboration the combined graph measures 20.37 MB on macOS and Linux
   // and about 20.39 MB on Windows.
-  totalJavaScript: 20_400_000,
+  // +20 KB for the 0.4.7 beta feedback: the admin console's activity charts
+  // and storage bar (chart pieces now shared with the usage report, loaded
+  // with the console), the tools gallery picture headers (the pictures are
+  // in public/ and not counted here), and the server card and Email page
+  // changes. About 1.3 KB of it is English strings in the entry. CI measured
+  // 20,405,179 bytes on both Linux and Windows for one tree.
+  totalJavaScript: 20_420_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice

@@ -54,6 +54,9 @@ const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
 // Documents kept between comment checks and mention scans are dropped once
 // idle, even when no check or scan comes along to do it.
 const KEPT_SWEEP_INTERVAL: Duration = Duration::from_secs(60);
+// How often the server checks it can still reach its mail server. Sign-in by
+// email is only offered while it can.
+const MAIL_CHECK_INTERVAL: Duration = Duration::from_secs(10 * 60);
 // Sockets are told the server is restarting and get this long to close.
 const SOCKET_FAREWELL: Duration = Duration::from_secs(2);
 
@@ -226,6 +229,7 @@ where
     comment_guard::resume(&state).await;
     let maintenance = tokio::spawn(maintenance_loop(state.clone()));
     let sweeping = tokio::spawn(sweep_kept_loop(state.snapshots.clone()));
+    let mail_checks = tokio::spawn(mail_check_loop(state.mailer.clone()));
     let polls = Arc::clone(&state.polls);
     let sockets = Arc::clone(&state.sockets);
     let app = build_router(state).layer(axum::middleware::from_fn(connections::connect_info));
@@ -242,6 +246,7 @@ where
     }
     maintenance.abort();
     sweeping.abort();
+    mail_checks.abort();
     Ok(())
 }
 
@@ -250,6 +255,22 @@ async fn sweep_kept_loop(snapshots: snapshots::Snapshots) {
     loop {
         interval.tick().await;
         snapshots.sweep_kept();
+    }
+}
+
+async fn mail_check_loop(mailer: mail::Mailer) {
+    if !mailer.is_configured() {
+        return;
+    }
+    let mut interval = tokio::time::interval(MAIL_CHECK_INTERVAL);
+    loop {
+        interval.tick().await;
+        match mailer.check().await {
+            Ok(()) => tracing::debug!("The mail server answered, so sign-in by email is available"),
+            Err(error) => tracing::warn!(
+                "Email isn't working, so sign-in by email is hidden until it is: {error}"
+            ),
+        }
     }
 }
 

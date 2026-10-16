@@ -11,19 +11,9 @@
         "description": "Fragen Sie die Person, die den Server Ihrer Gruppe betreibt, nach seiner Adresse und fügen Sie ihn dann hier hinzu."
       }
     },
-    "presence": {
-      "label": "Was andere sehen",
-      "description": "Wählen Sie, was Personen in Ihren geteilten Projekten sehen, während Sie arbeiten. Die Einstellung gilt für jeden Computer einzeln.",
-      "options": {
-        "cursor": "Meinen Cursor zeigen",
-        "file": "Nur zeigen, in welcher Datei ich bin",
-        "hidden": "Mich verbergen"
-      }
-    },
     "server": {
       "signedIn": "Angemeldet",
       "signedOut": "Abgemeldet",
-      "signedInAs": "Angemeldet als {{name}}",
       "signedOutHint": "Dieser Computer ist bei diesem Server nicht angemeldet.",
       "suspended": "Gesperrt",
       "noAccess": "Kein Zugriff",
@@ -35,8 +25,10 @@
       "signOut": "Abmelden",
       "remove": "Entfernen",
       "manage": "Server verwalten",
+      "adminConsole": "Admin-Konsole",
       "manageHint": "Server verwalten zeigt hier Personen, Zugelassene Personen, Domains, Servereinstellungen, E-Mail und Sicherheitsprotokoll. Die Admin-Konsole öffnet sich in einem eigenen Fenster und hat zusätzlich Überblick, Projekte und Verbindungstests.",
       "test": "Verbindung testen",
+      "testShort": "Testen",
       "removeConfirm": {
         "title": "{{name}} entfernen?",
         "description": "Oleafly meldet sich von {{name}} ab und vergisst den Server. Geteilte Projekte von {{name}} werden nicht mehr abgeglichen und bleiben als normale Projekte auf diesem Computer, jeweils als lokale Kopie umbenannt.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "Sie sind als {{name}} angemeldet. Sie können jetzt Projekte teilen und Projekte öffnen, die mit Ihnen geteilt werden. In der Admin-Konsole können Sie außerdem den Server verwalten.",
     "doneGuestDescription": "Sie sind als {{name}} angemeldet. Als Gast können Sie die Projekte öffnen, zu denen Sie eingeladen sind.",
     "done": "Fertig",
-    "codeSignIn": "Mit einem Code anmelden",
-    "codeSignInDescription": "Nutzen Sie das, wenn Ihr Browser nicht zu Oleafly zurückfindet, oder um sich auf einem anderen Gerät anzumelden.",
+    "codeSignIn": "Stattdessen einen Code verwenden",
     "codeTitle": "Mit einem Code anmelden",
     "codeRequesting": "Code wird abgerufen…",
     "codeSteps": "Öffnen Sie diese Adresse auf einem beliebigen Telefon oder Computer und geben Sie den Code ein.",
@@ -468,7 +459,12 @@
         "copyPath": "Bis dahin schicken Sie neuen Personen diesen Link selbst. Er fügt den Server in Oleafly hinzu.",
         "address": "Sie können diese Adresse auch unter Server hinzufügen eingeben:"
       },
+      "broken": {
+        "title": "E-Mail funktioniert nicht",
+        "description": "Der Server hat Mail-Einstellungen, aber seine E-Mails kommen nicht an. Prüfen Sie die Einstellungen und senden Sie dann eine Test-E-Mail."
+      },
       "needsSettings": "Schalten Sie zuerst E-Mail für den Server ein.",
+      "needsWorking": "Senden Sie eine Test-E-Mail, die ankommt, und schalten Sie dies dann ein.",
       "lastFailure": "Die letzte fehlgeschlagene E-Mail war am {{date}}. Der Mailserver meldete:",
       "test": {
         "title": "Test-E-Mail",
@@ -832,6 +828,25 @@
         "protocol": "Protokoll {{protocol}}",
         "pendingGuests": "Gasteinladungen, die auf Freigabe warten: {{number}}",
         "reviewGuests": "Unter Personen prüfen"
+      },
+      "activity": {
+        "title": "Aktivität",
+        "description": "Anmeldungen der letzten 30 Tage, in UTC. Oleafly hält Personen angemeldet, daher zählt hier jede neue Anmeldung, nicht jeder Besuch.",
+        "none": "In den letzten 30 Tagen hat sich niemand angemeldet.",
+        "daily": "Anmeldungen pro Tag",
+        "dailyLabel": "Anmeldungen pro UTC-Tag in den letzten 30 Tagen",
+        "total": "{{number}} in 30 Tagen",
+        "hourly": "Anmeldungen nach Stunde",
+        "hourlyLabel": "Anmeldungen nach Wochentag und Stunde in UTC",
+        "day": "Tag",
+        "signInsColumn": "Anmeldungen",
+        "peopleColumn": "Personen",
+        "signIns": "Anmeldungen: {{number}}",
+        "people": "Personen: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, Anmeldungen: {{number}}",
+        "hoursInUtc": "Stunden in UTC",
+        "less": "Weniger",
+        "more": "Mehr"
       },
       "storage": {
         "title": "Speicher",

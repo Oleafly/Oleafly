@@ -1083,8 +1083,6 @@ interface SettingsState {
   setWebBrowser: (v: boolean) => void;
   liveCollaboration: boolean;
   setLiveCollaboration: (v: boolean) => void;
-  collabPresence: CollabPresence;
-  setCollabPresence: (v: CollabPresence) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
   // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
   // their own pin in project.json.
@@ -1101,13 +1099,6 @@ export type DefaultLatexEngine = "tectonic" | "latexmk";
 
 function readDefaultLatexEngine(raw: string): DefaultLatexEngine {
   return raw === "latexmk" ? "latexmk" : "tectonic";
-}
-
-export const COLLAB_PRESENCE_OPTIONS = ["cursor", "file", "hidden"] as const;
-export type CollabPresence = (typeof COLLAB_PRESENCE_OPTIONS)[number];
-
-function readCollabPresence(raw: string): CollabPresence {
-  return COLLAB_PRESENCE_OPTIONS.find((option) => option === raw) ?? "cursor";
 }
 
 function readEditorKeymap(): EditorKeymapMode {
@@ -2025,12 +2016,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLiveCollaboration: (v) => {
     saveLs(LIVE_COLLABORATION_KEY, v ? "1" : "0");
     set({ liveCollaboration: v });
-  },
-  collabPresence: readCollabPresence(ls("oleafly.collab.presence", "cursor")),
-  setCollabPresence: (v) => {
-    const presence = readCollabPresence(v);
-    saveLs("oleafly.collab.presence", presence);
-    set({ collabPresence: presence });
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),

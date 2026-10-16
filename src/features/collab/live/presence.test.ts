@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CollabPresence } from "@/store/settings";
 import {
   createPresencePublisher,
   PRESENCE_INTERVAL_MS,
   PRESENCE_KEEP_ALIVE_MS,
   type Presence,
-  visiblePresence,
 } from "./presence";
 
 let current: Presence;
@@ -97,82 +95,5 @@ describe("presence publisher", () => {
     vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS * 2);
     publisher.dispose();
     expect(leave).not.toHaveBeenCalled();
-  });
-});
-
-describe("presence visibility", () => {
-  let visibility: CollabPresence;
-  const read = () => visiblePresence(current, visibility);
-
-  beforeEach(() => {
-    visibility = "cursor";
-  });
-
-  it("passes the cursor through, keeps only the file, or shares nothing", () => {
-    const here = { path: "main.tex", cursor: 7, anchor: 3 };
-    expect(visiblePresence(here, "cursor")).toEqual(here);
-    expect(visiblePresence(here, "file")).toEqual({ path: "main.tex", cursor: null, anchor: null });
-    expect(visiblePresence(here, "hidden")).toBeNull();
-  });
-
-  it("shares only the file, even while the cursor moves", () => {
-    visibility = "file";
-    const publisher = createPresencePublisher(read, send, leave);
-    publisher.schedule();
-    expect(send).toHaveBeenCalledWith({ path: "main.tex", cursor: null, anchor: null });
-    current = { path: "main.tex", cursor: 40, anchor: 12 };
-    publisher.schedule();
-    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
-    expect(send).toHaveBeenCalledTimes(1);
-    vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS);
-    expect(send).toHaveBeenCalledTimes(2);
-    expect(send).toHaveBeenLastCalledWith({ path: "main.tex", cursor: null, anchor: null });
-    publisher.dispose();
-  });
-
-  it("sends nothing at all while hidden, not even a keep-alive or a leave", () => {
-    visibility = "hidden";
-    const publisher = createPresencePublisher(read, send, leave);
-    publisher.schedule();
-    current = { path: "intro.tex", cursor: 2, anchor: 2 };
-    publisher.schedule();
-    vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS * 3);
-    publisher.dispose();
-    expect(send).not.toHaveBeenCalled();
-    expect(leave).not.toHaveBeenCalled();
-  });
-
-  it("tells the others once when the person hides mid-session, then goes quiet", () => {
-    const publisher = createPresencePublisher(read, send, leave);
-    publisher.schedule();
-    expect(send).toHaveBeenCalledTimes(1);
-    visibility = "hidden";
-    publisher.schedule();
-    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
-    expect(leave).toHaveBeenCalledTimes(1);
-    current = { path: "intro.tex", cursor: 5, anchor: 5 };
-    publisher.schedule();
-    vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS * 3);
-    publisher.schedule();
-    expect(leave).toHaveBeenCalledTimes(1);
-    expect(send).toHaveBeenCalledTimes(1);
-    publisher.dispose();
-  });
-
-  it("comes back with the current place and keeps it alive after showing again", () => {
-    const publisher = createPresencePublisher(read, send, leave);
-    publisher.schedule();
-    visibility = "hidden";
-    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
-    publisher.schedule();
-    expect(leave).toHaveBeenCalledTimes(1);
-    visibility = "cursor";
-    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
-    publisher.schedule();
-    expect(send).toHaveBeenCalledTimes(2);
-    expect(send).toHaveBeenLastCalledWith({ path: "main.tex", cursor: 1, anchor: 1 });
-    vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS);
-    expect(send).toHaveBeenCalledTimes(3);
-    publisher.dispose();
   });
 });

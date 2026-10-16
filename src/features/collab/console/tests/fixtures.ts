@@ -1,4 +1,9 @@
-import type { CollabAdminOverview, CollabAdminProject, CollabAdminProjectsPage } from "@/lib/tauri";
+import type {
+  CollabAdminOverview,
+  CollabAdminProject,
+  CollabAdminProjectsPage,
+  CollabServerActivity,
+} from "@/lib/tauri";
 import { BOB, SHARED_ID, runtimeSettings } from "../../tests/fixtures";
 
 export const DAY = 86_400_000;
@@ -30,6 +35,28 @@ export function overview(overrides: Partial<CollabAdminOverview> = {}): CollabAd
     settings: runtimeSettings(),
     limits: { max_project_mb: 200, max_file_mb: 50, max_members_per_project: 20 },
     archive_days: 30,
+    ...overrides,
+  };
+}
+
+// Midnight UTC at the start of the day NOW falls on.
+export const TODAY = NOW - (NOW % DAY);
+
+// Sign-ins over the 30 days up to NOW: three today by two people at 9:00 UTC,
+// one the day before at 23:00 UTC, and none on the other days.
+export function signInActivity(overrides: Partial<CollabServerActivity> = {}): CollabServerActivity {
+  const yesterday = new Date(TODAY - DAY).getUTCDay();
+  return {
+    since: TODAY - 29 * DAY,
+    days: 30,
+    daily: [
+      { day: TODAY - DAY, sign_ins: 1, people: 1 },
+      { day: TODAY, sign_ins: 3, people: 2 },
+    ],
+    by_hour: [
+      { weekday: yesterday, hour: 23, sign_ins: 1 },
+      { weekday: new Date(TODAY).getUTCDay(), hour: 9, sign_ins: 3 },
+    ],
     ...overrides,
   };
 }

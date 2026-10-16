@@ -2,17 +2,21 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use oleafly_collab_protocol::admin::SecurityEventKind;
 use oleafly_collab_protocol::console::{
-    AdminProject, AdminProjectSort, FilesLocation, ServerCounts, SortOrder, StorageUsage,
+    AdminProject, AdminProjectSort, DailyActivity, FilesLocation, HourlyActivity, ServerActivity,
+    ServerCounts, SortOrder, StorageUsage, ACTIVITY_DAYS,
 };
 use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::projects::{PersonSummary, ProjectStatus};
-use rusqlite::{params_from_iter, Connection, Statement};
+use rusqlite::{params, params_from_iter, Connection, Statement};
 
 use crate::db::parse_id;
 use crate::error::ServerError;
 use crate::projects;
+use crate::security_log;
 use crate::settings;
+use crate::state::DAY_MS;
 
 const PROJECT_COLUMNS: &str = "SELECT p.id, p.title, p.status, p.owner_account, p.created_at, \
      MAX(p.created_at, COALESCE(p.committed_at, 0), COALESCE(p.archived_at, 0), \
@@ -104,6 +108,58 @@ pub fn storage(conn: &Connection, location: FilesLocation) -> Result<StorageUsag
             "SELECT COALESCE(SUM(size), 0) FROM (SELECT MAX(size) AS size FROM project_blobs GROUP BY hash)",
         )?,
         files_location: location,
+    })
+}
+
+// Both read sign-ins through the security log's time index, so they cost
+// the same however long the log is kept. 1 January 1970 was a Thursday,
+// which makes (day + 4) % 7 the weekday counted from Sunday.
+const DAILY_SIGN_INS: &str = "SELECT at / 86400000, COUNT(*), COUNT(DISTINCT actor) \
+     FROM security_log WHERE at >= ?1 AND at < ?2 AND kind = ?3 GROUP BY 1 ORDER BY 1";
+const HOURLY_SIGN_INS: &str =
+    "SELECT (at / 86400000 + 4) % 7, (at % 86400000) / 3600000, COUNT(*) \
+     FROM security_log WHERE at >= ?1 AND at < ?2 AND kind = ?3 GROUP BY 1, 2 ORDER BY 1, 2";
+
+fn small(value: i64) -> u8 {
+    u8::try_from(value).unwrap_or(0)
+}
+
+fn tally(value: i64) -> u32 {
+    u32::try_from(value).unwrap_or(u32::MAX)
+}
+
+// Sign-ins over the last ACTIVITY_DAYS UTC days, today included: per day,
+// with how many people signed in, and per weekday and hour.
+pub fn activity(conn: &Connection, now: i64) -> Result<ServerActivity, ServerError> {
+    let today = now.div_euclid(DAY_MS);
+    let since = ((today - i64::from(ACTIVITY_DAYS) + 1) * DAY_MS).max(0);
+    let until = (today + 1) * DAY_MS;
+    let kind = security_log::kind_to_str(&SecurityEventKind::SignIn);
+    let daily = conn
+        .prepare_cached(DAILY_SIGN_INS)?
+        .query_map(params![since, until, kind], |row| {
+            Ok(DailyActivity {
+                day: row.get::<_, i64>(0)? * DAY_MS,
+                sign_ins: tally(row.get(1)?),
+                people: tally(row.get(2)?),
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    let by_hour = conn
+        .prepare_cached(HOURLY_SIGN_INS)?
+        .query_map(params![since, until, kind], |row| {
+            Ok(HourlyActivity {
+                weekday: small(row.get(0)?),
+                hour: small(row.get(1)?),
+                sign_ins: tally(row.get(2)?),
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(ServerActivity {
+        since,
+        days: ACTIVITY_DAYS,
+        daily,
+        by_hour,
     })
 }
 
@@ -462,6 +518,113 @@ mod tests {
             assert_eq!(counts(conn, START).unwrap().pending_guest_approvals, 1);
             guests_allowed(conn, false);
             assert_eq!(counts(conn, START).unwrap().pending_guest_approvals, 0);
+        })
+        .await;
+    }
+
+    fn log(conn: &Connection, kind: SecurityEventKind, actor: AccountId, at: i64) {
+        security_log::record(
+            conn,
+            at,
+            security_log::NewSecurityEvent {
+                actor: Some(actor),
+                kind,
+                target: Some(actor.to_string()),
+                ip: None,
+                detail: serde_json::json!({}),
+            },
+        )
+        .unwrap();
+    }
+
+    fn sign_ins(conn: &mut Connection, count: i64, from: i64, step: i64) {
+        let transaction = conn.transaction().unwrap();
+        for index in 0..count {
+            log(
+                &transaction,
+                SecurityEventKind::SignIn,
+                AccountId::new_v7(),
+                from + index * step,
+            );
+        }
+        transaction.commit().unwrap();
+    }
+
+    fn activity_steps(conn: &Connection) -> i32 {
+        activity(conn, START).unwrap();
+        [DAILY_SIGN_INS, HOURLY_SIGN_INS]
+            .into_iter()
+            .map(|sql| {
+                conn.prepare_cached(sql)
+                    .unwrap()
+                    .get_status(StatementStatus::VmStep)
+            })
+            .sum()
+    }
+
+    #[tokio::test]
+    async fn counting_activity_costs_nothing_for_older_events() {
+        let recent = |conn: &mut Connection| sign_ins(conn, 40, START - 20 * DAY_MS, 3_600_000);
+        let alone = with_db(move |conn| {
+            recent(conn);
+            activity_steps(conn)
+        })
+        .await;
+        let crowded = with_db(move |conn| {
+            recent(conn);
+            sign_ins(conn, 5_000, START - 300 * DAY_MS, 60_000);
+            activity_steps(conn)
+        })
+        .await;
+        assert!(alone > 0);
+        assert!(
+            crowded <= alone + alone / 10,
+            "counting 40 recent sign-ins took {alone} steps alone and {crowded} next to 5000 older ones"
+        );
+    }
+
+    #[tokio::test]
+    async fn activity_counts_each_utc_day_and_hour_from_midnight() {
+        with_db(|conn| {
+            let today = START - START.rem_euclid(DAY_MS);
+            let (alice, bob) = (AccountId::new_v7(), AccountId::new_v7());
+            log(conn, SecurityEventKind::SignIn, alice, today);
+            log(conn, SecurityEventKind::SignIn, alice, today + 1);
+            log(conn, SecurityEventKind::SignIn, bob, today - 1);
+            log(conn, SecurityEventKind::DeviceAdded, bob, today);
+            let counted = activity(conn, START).unwrap();
+            assert_eq!(counted.since, today - 29 * DAY_MS);
+            assert_eq!(
+                counted.daily,
+                vec![
+                    DailyActivity {
+                        day: today - DAY_MS,
+                        sign_ins: 1,
+                        people: 1
+                    },
+                    DailyActivity {
+                        day: today,
+                        sign_ins: 2,
+                        people: 1
+                    },
+                ]
+            );
+            // START falls on a Thursday, so the day before is a Wednesday.
+            assert_eq!(
+                counted.by_hour,
+                vec![
+                    HourlyActivity {
+                        weekday: 3,
+                        hour: 23,
+                        sign_ins: 1
+                    },
+                    HourlyActivity {
+                        weekday: 4,
+                        hour: 0,
+                        sign_ins: 2
+                    },
+                ]
+            );
         })
         .await;
     }

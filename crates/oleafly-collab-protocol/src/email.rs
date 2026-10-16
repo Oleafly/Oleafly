@@ -15,6 +15,10 @@ pub struct EmailStatus {
     pub notifications: bool,
     #[serde(default)]
     pub last_failure: Option<EmailFailure>,
+    // Whether email is known to get through: a connection check passed or
+    // an email was delivered. An older server doesn't say.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub working: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -64,6 +68,7 @@ mod tests {
                 from: None,
                 notifications: false,
                 last_failure: None,
+                working: None,
             }
         );
         let preferences: EmailPreferences = serde_json::from_value(json!({})).unwrap();
@@ -124,6 +129,7 @@ mod tests {
                 at: 1_760_000_000_000,
                 message: "Connection refused".to_string(),
             }),
+            working: Some(false),
         };
         let text = serde_json::to_string(&status).unwrap();
         assert_eq!(serde_json::from_str::<EmailStatus>(&text).unwrap(), status);

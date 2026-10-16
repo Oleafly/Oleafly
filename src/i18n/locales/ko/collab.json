@@ -11,19 +11,9 @@
         "description": "그룹 서버를 운영하는 사람에게 서버 주소를 물어본 다음 여기에 추가하세요."
       }
     },
-    "presence": {
-      "label": "다른 사람에게 보이는 정보",
-      "description": "공유 프로젝트에서 작업하는 동안 다른 사람에게 무엇을 보여줄지 선택하세요. 컴퓨터마다 따로 설정합니다.",
-      "options": {
-        "cursor": "내 커서 표시",
-        "file": "내가 연 파일만 표시",
-        "hidden": "나를 숨기기"
-      }
-    },
     "server": {
       "signedIn": "로그인됨",
       "signedOut": "로그아웃됨",
-      "signedInAs": "{{name}}(으)로 로그인됨",
       "signedOutHint": "이 컴퓨터는 이 서버에 로그인되어 있지 않습니다.",
       "suspended": "정지됨",
       "noAccess": "접근 권한 없음",
@@ -35,8 +25,10 @@
       "signOut": "로그아웃",
       "remove": "제거",
       "manage": "서버 관리",
+      "adminConsole": "관리 콘솔",
       "manageHint": "서버 관리에서는 사용자, 허용된 사람, 도메인, 서버 설정, 이메일, 보안 로그를 여기에서 다룹니다. 관리 콘솔은 별도 창에서 열리며 개요, 프로젝트, 연결 점검도 있습니다.",
       "test": "연결 테스트",
+      "testShort": "테스트",
       "removeConfirm": {
         "title": "{{name}}을(를) 제거할까요?",
         "description": "Oleafly가 {{name}}에서 로그아웃하고 이 서버를 목록에서 지웁니다. {{name}}의 공유 프로젝트는 동기화가 중단되고, 각각 로컬 사본으로 이름이 바뀌어 일반 프로젝트로 이 컴퓨터에 남습니다.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "{{name}}(으)로 로그인되었습니다. 이제 프로젝트를 공유하고 공유받은 프로젝트를 열 수 있습니다. 관리 콘솔에서 서버를 관리할 수도 있습니다.",
     "doneGuestDescription": "{{name}}(으)로 로그인되었습니다. 게스트로서 초대받은 프로젝트를 열 수 있습니다.",
     "done": "완료",
-    "codeSignIn": "코드로 로그인",
-    "codeSignInDescription": "브라우저가 Oleafly로 돌아오지 못할 때나 다른 기기에서 로그인할 때 사용하세요.",
+    "codeSignIn": "대신 코드 사용",
     "codeTitle": "코드로 로그인",
     "codeRequesting": "코드를 받는 중…",
     "codeSteps": "아무 휴대폰이나 컴퓨터에서 이 주소를 열고 코드를 입력하세요.",
@@ -468,7 +459,12 @@
         "copyPath": "그때까지는 새로 온 사람에게 이 링크를 직접 보내세요. Oleafly에 서버를 추가합니다.",
         "address": "서버 추가에서 이 주소를 입력할 수도 있습니다:"
       },
+      "broken": {
+        "title": "이메일이 작동하지 않습니다",
+        "description": "서버에 메일 설정이 있지만 이메일이 전달되지 않습니다. 설정을 확인한 다음 테스트 이메일을 보내세요."
+      },
       "needsSettings": "먼저 서버의 이메일을 켜세요.",
+      "needsWorking": "테스트 이메일을 보내 전달되는지 확인한 다음 켜세요.",
       "lastFailure": "마지막으로 실패한 이메일: {{date}}. 메일 서버 응답:",
       "test": {
         "title": "테스트 이메일",
@@ -832,6 +828,25 @@
         "protocol": "프로토콜 {{protocol}}",
         "pendingGuests": "승인 대기 중인 게스트 초대: {{number}}",
         "reviewGuests": "사용자에서 검토"
+      },
+      "activity": {
+        "title": "활동",
+        "description": "최근 30일 동안의 로그인을 UTC 기준으로 보여 줍니다. Oleafly는 로그인 상태를 유지하므로 방문할 때마다가 아니라 새로 로그인할 때마다 집계합니다.",
+        "none": "최근 30일 동안 로그인한 사용자가 없습니다.",
+        "daily": "일별 로그인",
+        "dailyLabel": "최근 30일 동안의 UTC 기준 일별 로그인",
+        "total": "30일 동안 {{number}}",
+        "hourly": "시간대별 로그인",
+        "hourlyLabel": "UTC 기준 요일 및 시간대별 로그인",
+        "day": "날짜",
+        "signInsColumn": "로그인",
+        "peopleColumn": "사용자",
+        "signIns": "로그인: {{number}}",
+        "people": "사용자: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, 로그인: {{number}}",
+        "hoursInUtc": "시간은 UTC 기준",
+        "less": "적음",
+        "more": "많음"
       },
       "storage": {
         "title": "저장소",

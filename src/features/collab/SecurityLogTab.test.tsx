@@ -61,10 +61,10 @@ describe("SecurityLogTab", () => {
     render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
     const items = await screen.findAllByRole("listitem");
     expect(mocks.collabAdminSecurityLog).toHaveBeenCalledWith(SERVER_ID);
-    expect(items[0]).toHaveTextContent(`Alice Chen · ${copy.kinds.signIn}`);
+    expect(items[0]).toHaveTextContent(`Alice Chen → ${copy.kinds.signIn}`);
     expect(items[0]).toHaveTextContent(fill(copy.ip, { ip: "203.0.113.7" }));
-    expect(items[1]).toHaveTextContent(`${copy.server} · ${copy.kinds.setupCompleted}`);
-    expect(items[2]).toHaveTextContent(`Bob Smith · ${copy.kinds.roleChanged}`);
+    expect(items[1]).toHaveTextContent(`${copy.server} → ${copy.kinds.setupCompleted}`);
+    expect(items[2]).toHaveTextContent(`Bob Smith → ${copy.kinds.roleChanged}`);
     expect(items[2]).toHaveTextContent(fill(copy.target, { target: "Alice Chen" }));
 
     await user.click(screen.getByRole("button", { name: copy.loadMore }));
@@ -73,7 +73,7 @@ describe("SecurityLogTab", () => {
     const all = screen.getAllByRole("listitem");
     expect(all).toHaveLength(5);
     expect(all[3]).toHaveTextContent(fill(copy.target, { target: "someone-gone" }));
-    expect(all[4]).toHaveTextContent(`Alice Chen · ${copy.kinds.unknown}`);
+    expect(all[4]).toHaveTextContent(`Alice Chen → ${copy.kinds.unknown}`);
     expect(screen.queryByRole("button", { name: copy.loadMore })).toBeNull();
   });
 
@@ -100,14 +100,14 @@ describe("SecurityLogTab", () => {
     });
     render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
     const items = await screen.findAllByRole("listitem");
-    expect(items[0]).toHaveTextContent(`octocat · ${copy.kinds.signInRefused}`);
+    expect(items[0]).toHaveTextContent(`octocat → ${copy.kinds.signInRefused}`);
     expect(items[0]).toHaveTextContent(copy.details.reasons.notAdmitted);
     expect(items[0]).not.toHaveTextContent(copy.server);
     expect(items[0]).not.toHaveTextContent(fill(copy.target, { target: "octocat" }));
     expect(items[0]).toHaveTextContent(fill(copy.ip, { ip: "203.0.113.7" }));
-    expect(items[1]).toHaveTextContent(`203.0.113.7 · ${copy.kinds.signInRefused}`);
+    expect(items[1]).toHaveTextContent(`203.0.113.7 → ${copy.kinds.signInRefused}`);
     expect(items[1]).not.toHaveTextContent(fill(copy.ip, { ip: "203.0.113.7" }));
-    expect(items[2]).toHaveTextContent(`${copy.unknownAccount} · ${copy.kinds.signInRefused}`);
+    expect(items[2]).toHaveTextContent(`${copy.unknownAccount} → ${copy.kinds.signInRefused}`);
     expect(items[2]).not.toHaveTextContent(copy.server);
   });
 
@@ -218,7 +218,7 @@ describe("SecurityLogTab", () => {
     const items = await screen.findAllByRole("listitem");
     const details = copy.details;
     const thesis = fill(details.project, { title: "Thesis" });
-    expect(items[0]).toHaveTextContent(`Alice Chen · ${copy.kinds.projectArchived}`);
+    expect(items[0]).toHaveTextContent(`Alice Chen → ${copy.kinds.projectArchived}`);
     expect(items[0]).toHaveTextContent(`${thesis} · ${details.byAdmin}`);
     expect(items[1]).toHaveTextContent(copy.kinds.projectShared);
     expect(items[1]).toHaveTextContent(thesis);
@@ -273,7 +273,7 @@ describe("SecurityLogTab", () => {
     });
     render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
     const [item] = await screen.findAllByRole("listitem");
-    expect(item).toHaveTextContent(`Bob Smith · ${copy.kinds.commentsChangedWhileOff}`);
+    expect(item).toHaveTextContent(`Bob Smith → ${copy.kinds.commentsChangedWhileOff}`);
     expect(item).toHaveTextContent(fill(copy.details.project, { title: "Thesis" }));
     expect(item).not.toHaveTextContent(project);
     expect(item).not.toHaveTextContent("0192a0b0-0000-7000-8000-0000000000d1");
@@ -340,7 +340,7 @@ describe("SecurityLogTab", () => {
     expect(items[3]).toHaveTextContent(`${github} · ${details.via.guest}`);
     expect(items[4]).toHaveTextContent(`${copy.kinds.setupCompleted}${github}`);
     expect(items[5]).toHaveTextContent(`${details.providerEmailLink} · ${details.reasons.lockedOutAddress}`);
-    expect(items[5]).toHaveTextContent(`dana@field.org · ${copy.kinds.signInRefused}`);
+    expect(items[5]).toHaveTextContent(`dana@field.org → ${copy.kinds.signInRefused}`);
     expect(items[6]).toHaveTextContent(details.reasons.lockedOutIp);
     expect(items[7]).toHaveTextContent(`${details.signInCode} · ${details.reasons.stoppedByPerson}`);
     expect(items[8]).toHaveTextContent(`${fill(details.provider, { provider: "uni" })} · ${details.reasons.notAdmitted}`);
@@ -400,7 +400,7 @@ describe("SecurityLogTab", () => {
       `${fill(details.provider, { provider: "uni" })} · ${details.signInCode} · ${details.reasons.otherBrowser}`,
     );
     expect(items[1]).toHaveTextContent(`${details.providerEmailLink} · ${details.reasons.inactiveAccountAddress}`);
-    expect(items[1]).toHaveTextContent(`mallory@uni.edu · ${copy.kinds.signInRefused}`);
+    expect(items[1]).toHaveTextContent(`mallory@uni.edu → ${copy.kinds.signInRefused}`);
     expect(items[2]).toHaveTextContent(`${details.signInCode} · ${details.reasons.lockedOutIp}`);
     expect(items[3]).toHaveTextContent(`${details.signInCode} · ${details.reasons.stoppedByPerson}`);
   });
@@ -522,7 +522,7 @@ describe("SecurityLogTab", () => {
     });
     render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
     const items = await screen.findAllByRole("listitem");
-    expect(items[0]).toHaveTextContent(`Alice Chen · ${copy.kinds.projectAccessChanged}`);
+    expect(items[0]).toHaveTextContent(`Alice Chen → ${copy.kinds.projectAccessChanged}`);
     expect(items[0]).toHaveTextContent(fill(copy.target, { target: "share-9" }));
     expect(items[1]).toHaveTextContent(copy.kinds.settingsChanged);
     expect(items[1].querySelectorAll("p")).toHaveLength(2);

@@ -11,19 +11,9 @@
         "description": "Vraag het adres aan de persoon die de server van je groep beheert en voeg het daarna hier toe."
       }
     },
-    "presence": {
-      "label": "Wat anderen zien",
-      "description": "Kies wat mensen in je gedeelde projecten zien terwijl je werkt. Stel dit apart in op elke computer.",
-      "options": {
-        "cursor": "Mijn cursor tonen",
-        "file": "Alleen tonen in welk bestand ik ben",
-        "hidden": "Mij verbergen"
-      }
-    },
     "server": {
       "signedIn": "Aangemeld",
       "signedOut": "Afgemeld",
-      "signedInAs": "Aangemeld als {{name}}",
       "signedOutHint": "Deze computer is niet aangemeld bij deze server.",
       "suspended": "Geschorst",
       "noAccess": "Geen toegang",
@@ -35,8 +25,10 @@
       "signOut": "Afmelden",
       "remove": "Weghalen",
       "manage": "Server beheren",
+      "adminConsole": "Beheerconsole",
       "manageHint": "Server beheren toont hier Mensen, Toegestane personen, Domeinen, Serverinstellingen, E-mail en Beveiligingslogboek. De beheerconsole opent in een eigen venster en heeft ook een overzicht, projecten en verbindingscontroles.",
       "test": "Verbinding testen",
+      "testShort": "Testen",
       "removeConfirm": {
         "title": "{{name}} weghalen?",
         "description": "Oleafly meldt zich af bij {{name}} en vergeet deze server. Gedeelde projecten van {{name}} synchroniseren niet meer en blijven op deze computer als gewone projecten, elk hernoemd tot een lokale kopie.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "Je bent aangemeld als {{name}}. Je kunt nu projecten delen en projecten openen die met je gedeeld zijn. Je kunt de server ook beheren in de beheerconsole.",
     "doneGuestDescription": "Je bent aangemeld als {{name}}. Als gast kun je de projecten openen waarvoor je bent uitgenodigd.",
     "done": "Klaar",
-    "codeSignIn": "Aanmelden met een code",
-    "codeSignInDescription": "Gebruik dit als je browser niet terug kan naar Oleafly, of om je op een ander apparaat aan te melden.",
+    "codeSignIn": "In plaats daarvan een code gebruiken",
     "codeTitle": "Aanmelden met een code",
     "codeRequesting": "Code ophalen…",
     "codeSteps": "Open dit adres op een willekeurige telefoon of computer en vul de code in.",
@@ -468,7 +459,12 @@
         "copyPath": "Stuur nieuwe mensen tot die tijd zelf deze link. Die voegt de server toe aan Oleafly.",
         "address": "Ze kunnen dit adres ook invullen bij Server toevoegen:"
       },
+      "broken": {
+        "title": "E-mail werkt niet",
+        "description": "De server heeft mailinstellingen, maar de e-mails komen niet aan. Controleer de instellingen en stuur daarna een test-e-mail."
+      },
       "needsSettings": "Zet eerst e-mail aan voor de server.",
+      "needsWorking": "Stuur een test-e-mail die aankomt en zet dit daarna aan.",
       "lastFailure": "De laatste mislukte e-mail was op {{date}}. De mailserver antwoordde:",
       "test": {
         "title": "Test-e-mail",
@@ -832,6 +828,25 @@
         "protocol": "Protocol {{protocol}}",
         "pendingGuests": "Gastuitnodigingen die op goedkeuring wachten: {{number}}",
         "reviewGuests": "Bekijken bij Mensen"
+      },
+      "activity": {
+        "title": "Activiteit",
+        "description": "Aanmeldingen van de afgelopen 30 dagen, in UTC. Oleafly houdt mensen aangemeld, dus dit telt elke nieuwe aanmelding, niet elk bezoek.",
+        "none": "Niemand heeft zich de afgelopen 30 dagen aangemeld.",
+        "daily": "Aanmeldingen per dag",
+        "dailyLabel": "Aanmeldingen per UTC-dag in de afgelopen 30 dagen",
+        "total": "{{number}} in 30 dagen",
+        "hourly": "Aanmeldingen per uur",
+        "hourlyLabel": "Aanmeldingen per weekdag en uur in UTC",
+        "day": "Dag",
+        "signInsColumn": "Aanmeldingen",
+        "peopleColumn": "Mensen",
+        "signIns": "Aanmeldingen: {{number}}",
+        "people": "Mensen: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, aanmeldingen: {{number}}",
+        "hoursInUtc": "Uren in UTC",
+        "less": "Minder",
+        "more": "Meer"
       },
       "storage": {
         "title": "Opslag",

@@ -100,7 +100,7 @@ vi.mock("@/store/files", async () => {
 
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { PRESENCE_INTERVAL_MS, PRESENCE_KEEP_ALIVE_MS } from "./presence";
+import { PRESENCE_INTERVAL_MS } from "./presence";
 import { type LivePeer, useCollabLiveStore } from "./live-store";
 import { BACKGROUND_INDEX_MS, HAND_BACK_WAIT_MS, peerCursors, startLiveEditing } from "./live-editing";
 
@@ -136,7 +136,6 @@ beforeEach(() => {
   mocks.collabLiveFlush.mockResolvedValue(undefined);
   mocks.collabPresenceSet.mockResolvedValue(undefined);
   mocks.collabPresenceLeave.mockResolvedValue(undefined);
-  useSettingsStore.setState({ collabPresence: "cursor" });
   useFilesStore.setState({
     projectId: PROJECT,
     activePath: "main.tex",
@@ -278,67 +277,6 @@ describe("live editing", () => {
     await settle();
     expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "figure.png", null, null);
     expect(mocks.setCollabEditorExtension).toHaveBeenCalledOnce();
-  });
-
-  it("shares only the open file when this person chooses that", async () => {
-    useSettingsStore.getState().setCollabPresence("file");
-    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
-    mocks.documentPath = "main.tex";
-    start();
-    await settle();
-    expect(mocks.collabPresenceSet).toHaveBeenCalledExactlyOnceWith(PROJECT, "main.tex", null, null);
-  });
-
-  it("sends no presence at all while hidden and starts again when shown", async () => {
-    useSettingsStore.getState().setCollabPresence("hidden");
-    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
-    mocks.documentPath = "main.tex";
-    start();
-    vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS * 2);
-    await settle();
-    expect(mocks.collabPresenceSet).not.toHaveBeenCalled();
-    expect(mocks.collabPresenceLeave).not.toHaveBeenCalled();
-    useSettingsStore.getState().setCollabPresence("cursor");
-    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
-    await settle();
-    expect(mocks.collabPresenceSet).toHaveBeenCalledExactlyOnceWith(PROJECT, "main.tex", 4, 1);
-  });
-
-  it("tells the others when this person hides mid-session, only after what is already on its way", async () => {
-    let finish = () => {};
-    mocks.collabPresenceSet.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          finish = resolve;
-        }),
-    );
-    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
-    mocks.documentPath = "main.tex";
-    start();
-    await settle();
-    expect(mocks.collabPresenceSet).toHaveBeenCalledTimes(1);
-    useSettingsStore.getState().setCollabPresence("hidden");
-    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
-    await settle();
-    expect(mocks.collabPresenceLeave).not.toHaveBeenCalled();
-    finish();
-    await settle();
-    expect(mocks.collabPresenceLeave).toHaveBeenCalledExactlyOnceWith(PROJECT);
-    vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS * 2);
-    await settle();
-    expect(mocks.collabPresenceSet).toHaveBeenCalledTimes(1);
-    expect(mocks.collabPresenceLeave).toHaveBeenCalledTimes(1);
-  });
-
-  it("stops following the presence choice when live editing stops", async () => {
-    start();
-    await settle();
-    release?.();
-    release = null;
-    useSettingsStore.getState().setCollabPresence("hidden");
-    vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS);
-    await settle();
-    expect(mocks.collabPresenceLeave).not.toHaveBeenCalled();
   });
 
   it("closes everything and returns the editor to local files when it stops", async () => {
@@ -494,10 +432,6 @@ describe("live editing edges", () => {
     await settle();
     useSettingsStore.setState({ editorFontSize: fontSize });
     expect(mocks.collabPresenceSet).toHaveBeenCalledOnce();
-    useSettingsStore.setState({ collabPresence: "file" });
-    vi.advanceTimersByTime(PRESENCE_INTERVAL_MS);
-    await settle();
-    expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "main.tex", null, null);
   });
 });
 

@@ -43,6 +43,7 @@ async fn status(
         from: state.mailer.from_address(),
         notifications,
         last_failure: state.mailer.stats().last_failure,
+        working: Some(state.mailer.is_working()),
     }))
 }
 

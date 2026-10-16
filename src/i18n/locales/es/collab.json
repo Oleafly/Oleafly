@@ -11,19 +11,9 @@
         "description": "Pide la dirección del servidor a la persona que lo gestiona en tu grupo y añádelo aquí."
       }
     },
-    "presence": {
-      "label": "Lo que ven los demás",
-      "description": "Elige qué ven las personas de tus proyectos compartidos mientras trabajas. Se configura por separado en cada equipo.",
-      "options": {
-        "cursor": "Mostrar mi cursor",
-        "file": "Mostrar solo en qué archivo estoy",
-        "hidden": "Ocultarme"
-      }
-    },
     "server": {
       "signedIn": "Sesión iniciada",
       "signedOut": "Sesión cerrada",
-      "signedInAs": "Sesión iniciada como {{name}}",
       "signedOutHint": "Este equipo no tiene la sesión iniciada en este servidor.",
       "suspended": "Suspendida",
       "noAccess": "Sin acceso",
@@ -35,8 +25,10 @@
       "signOut": "Cerrar sesión",
       "remove": "Quitar",
       "manage": "Gestionar el servidor",
+      "adminConsole": "Consola de administración",
       "manageHint": "Gestionar el servidor muestra aquí Personas, Personas permitidas, Dominios, Ajustes del servidor, Correo y Registro de seguridad. La consola de administración se abre en su propia ventana y además tiene un resumen, los proyectos y las pruebas de conexión.",
       "test": "Probar la conexión",
+      "testShort": "Probar",
       "removeConfirm": {
         "title": "¿Quitar {{name}}?",
         "description": "Oleafly cierra la sesión en {{name}} y lo olvida. Los proyectos compartidos de {{name}} dejan de sincronizarse y se quedan en este equipo como proyectos normales, cada uno con el nombre de copia local.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "Has iniciado sesión como {{name}}. Ya puedes compartir proyectos y abrir los que compartan contigo. También puedes gestionar el servidor desde la consola de administración.",
     "doneGuestDescription": "Has iniciado sesión como {{name}}. Como invitado, puedes abrir los proyectos a los que te invitaron.",
     "done": "Listo",
-    "codeSignIn": "Iniciar sesión con un código",
-    "codeSignInDescription": "Úsalo si el navegador no puede volver a Oleafly o para iniciar sesión en otro dispositivo.",
+    "codeSignIn": "Usar un código en su lugar",
     "codeTitle": "Iniciar sesión con un código",
     "codeRequesting": "Obteniendo un código…",
     "codeSteps": "En cualquier teléfono u ordenador, abre esta dirección y escribe el código.",
@@ -468,7 +459,12 @@
         "copyPath": "Mientras tanto, envía tú mismo este enlace a las personas nuevas. Añade el servidor a Oleafly.",
         "address": "También pueden escribir esta dirección en Añadir servidor:"
       },
+      "broken": {
+        "title": "El correo no funciona",
+        "description": "El servidor tiene ajustes de correo, pero sus correos no llegan. Revisa los ajustes y luego envía un correo de prueba."
+      },
       "needsSettings": "Primero activa el correo en el servidor.",
+      "needsWorking": "Envía un correo de prueba que llegue y luego activa esta opción.",
       "lastFailure": "El último correo que falló fue el {{date}}. El servidor de correo respondió:",
       "test": {
         "title": "Correo de prueba",
@@ -832,6 +828,25 @@
         "protocol": "Protocolo {{protocol}}",
         "pendingGuests": "Invitaciones de invitados pendientes de aprobación: {{number}}",
         "reviewGuests": "Revisar en Personas"
+      },
+      "activity": {
+        "title": "Actividad",
+        "description": "Inicios de sesión de los últimos 30 días, en UTC. Oleafly mantiene la sesión iniciada, así que aquí se cuenta cada nuevo inicio de sesión, no cada visita.",
+        "none": "Nadie inició sesión en los últimos 30 días.",
+        "daily": "Inicios de sesión por día",
+        "dailyLabel": "Inicios de sesión por día UTC en los últimos 30 días",
+        "total": "{{number}} en 30 días",
+        "hourly": "Inicios de sesión por hora",
+        "hourlyLabel": "Inicios de sesión por día de la semana y hora UTC",
+        "day": "Día",
+        "signInsColumn": "Inicios de sesión",
+        "peopleColumn": "Personas",
+        "signIns": "Inicios de sesión: {{number}}",
+        "people": "Personas: {{number}}",
+        "cell": "{{weekday}} a las {{hour}}:00 UTC, inicios de sesión: {{number}}",
+        "hoursInUtc": "Horas en UTC",
+        "less": "Menos",
+        "more": "Más"
       },
       "storage": {
         "title": "Almacenamiento",

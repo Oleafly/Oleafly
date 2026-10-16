@@ -142,7 +142,7 @@ async fn a_code_sign_in_finishes_in_any_browser_and_the_device_gets_its_session(
 }
 
 #[tokio::test]
-async fn the_complete_link_fills_in_the_code() {
+async fn the_complete_link_goes_straight_to_the_page_that_names_the_device() {
     let setup = setup().await;
     let device = TestDevice::generate();
     let code = request_code(&setup.server, &device, None)
@@ -151,7 +151,63 @@ async fn the_complete_link_fills_in_the_code() {
     let page = Browser::new()
         .get(&Url::parse(&code.verification_uri_complete).expect("complete uri"))
         .await;
-    assert!(page.body.contains(&format!("value=\"{}\"", code.user_code)));
+    assert_eq!(page.status, 200, "{}", page.body);
+    assert!(
+        !page.body.contains("name=\"user_code\" value=\"\""),
+        "{}",
+        page.body
+    );
+    assert!(
+        !page.body.contains("<label for=\"user_code\">"),
+        "{}",
+        page.body
+    );
+    assert!(
+        text_of(&page).contains("asked to sign in with this code"),
+        "{}",
+        page.body
+    );
+    assert!(text_of(&page).contains(&code.user_code), "{}", page.body);
+    assert!(
+        text_of(&page).contains("Continue with GitHub"),
+        "{}",
+        page.body
+    );
+    // Turning someone else's sign-in away is still one click, as a quiet link.
+    assert!(
+        page.body
+            .contains("<button type=\"submit\" class=\"quiet\">"),
+        "{}",
+        page.body
+    );
+}
+
+#[tokio::test]
+async fn the_complete_link_offers_only_the_way_picked_in_oleafly() {
+    let smtp = MockSmtp::start().await;
+    let setup = email_setup(&smtp).await;
+    let device = TestDevice::generate();
+    let code = request_code(&setup.server, &device, None)
+        .await
+        .expect("a code");
+    let mut picked = Url::parse(&code.verification_uri_complete).expect("complete uri");
+    picked.query_pairs_mut().append_pair("provider", "github");
+    let only_github = text_of(&Browser::new().get(&picked).await);
+    assert!(
+        only_github.contains("Continue with GitHub"),
+        "{only_github}"
+    );
+    assert!(
+        !only_github.contains("Continue with Email"),
+        "{only_github}"
+    );
+    let both = text_of(
+        &Browser::new()
+            .get(&Url::parse(&code.verification_uri_complete).expect("complete uri"))
+            .await,
+    );
+    assert!(both.contains("Continue with GitHub"), "{both}");
+    assert!(both.contains("Continue with Email"), "{both}");
 }
 
 #[tokio::test]
@@ -289,12 +345,17 @@ async fn a_person_the_server_does_not_admit_sees_the_usual_refusal() {
     let refused = continue_with(&browser, &confirm, "GitHub").await;
     assert_eq!(refused.status, 403);
     assert!(
-        text_of(&refused).contains("You're not on this server's list yet"),
+        text_of(&refused).contains("Access denied"),
         "{}",
         refused.body
     );
     assert!(
-        text_of(&refused).contains("You signed in to GitHub as @mallory"),
+        text_of(&refused).contains("Your GitHub account @mallory doesn't have access to"),
+        "{}",
+        refused.body
+    );
+    assert!(
+        text_of(&refused).contains("admin to give you access"),
         "{}",
         refused.body
     );
@@ -534,9 +595,10 @@ async fn a_stranger_who_signs_in_by_email_hears_which_address_was_turned_away() 
     assert_eq!(refused.status, 403, "{}", refused.body);
     let text = text_of(&refused);
     assert!(
-        text.contains("You signed in with dave@else.where"),
+        text.contains("dave@else.where doesn't have access to"),
         "{text}"
     );
+    assert!(text.contains("admin to give you access"), "{text}");
     assert!(!text.contains("sign out"), "{text}");
     assert!(!text.contains("to Email"), "{text}");
 }

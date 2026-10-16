@@ -186,15 +186,14 @@ pub(crate) async fn checked_setup_code(
     })
 }
 
+// Offered only while email is known to work, so nobody waits for a link
+// that a misconfigured or unreachable mail server will never send.
 pub(crate) async fn email_link_available(state: &AppState) -> Result<bool, ServerError> {
-    if !state.mailer.is_configured() {
+    if !state.mailer.is_working() {
         return Ok(false);
     }
     let runtime = state.db.call(|conn| settings::load(conn)).await?;
-    Ok(email_link::available(
-        state.mailer.is_configured(),
-        &runtime,
-    ))
+    Ok(email_link::available(true, &runtime))
 }
 
 fn a_pkce_challenge(text: &str) -> bool {

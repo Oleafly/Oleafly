@@ -9,6 +9,8 @@ pub const ADMIN_PROJECTS_PAGE_SIZE: u32 = 50;
 pub const ADMIN_PROJECTS_MAX_PAGE_SIZE: u32 = 100;
 pub const ADMIN_PROJECTS_MAX_QUERY_CHARS: usize = 200;
 pub const ADMIN_PROJECTS_MAX_OFFSET: u32 = 1_000_000;
+// How many UTC days, ending with today, the overview's activity covers.
+pub const ACTIVITY_DAYS: u32 = 30;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -89,6 +91,36 @@ pub struct StorageUsage {
     pub files_location: FilesLocation,
 }
 
+// Sign-ins on one UTC day: how many, and how many different people.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DailyActivity {
+    // Midnight UTC that starts the day, in milliseconds.
+    pub day: i64,
+    pub sign_ins: u32,
+    pub people: u32,
+}
+
+// Sign-ins in one hour of one weekday, in UTC, over the whole range.
+// Weekday 0 is Sunday.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HourlyActivity {
+    pub weekday: u8,
+    pub hour: u8,
+    pub sign_ins: u32,
+}
+
+// What the security log recorded over the last `days` UTC days, starting at
+// `since`. Only days and hours with a sign-in are listed; the rest had none.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServerActivity {
+    pub since: i64,
+    pub days: u32,
+    #[serde(default)]
+    pub daily: Vec<DailyActivity>,
+    #[serde(default)]
+    pub by_hour: Vec<HourlyActivity>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AdminOverview {
     pub server_name: String,
@@ -110,6 +142,9 @@ pub struct AdminOverview {
     pub sign_in_problems: Vec<SignInProblem>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comments_changed_while_off: Vec<CommentChangeWhileOff>,
+    // Left out by servers older than the activity charts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub activity: Option<ServerActivity>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -285,6 +320,63 @@ mod tests {
         assert_eq!(without.counts.pending_guest_approvals, 0);
         let tape: FilesLocation = serde_json::from_value(json!("tape")).unwrap();
         assert_eq!(tape, FilesLocation::Unknown);
+    }
+
+    #[test]
+    fn an_overview_carries_activity_and_an_older_server_leaves_it_out() {
+        let activity = json!({
+            "since": 1_757_376_000_000_i64,
+            "days": 30,
+            "daily": [{ "day": 1_759_881_600_000_i64, "sign_ins": 3, "people": 2 }],
+            "by_hour": [{ "weekday": 4, "hour": 9, "sign_ins": 3 }]
+        });
+        let wire = json!({
+            "server_name": "Smith Lab",
+            "version": "0.1.0",
+            "protocol": { "min": 1, "max": 1 },
+            "started_at": 10,
+            "now": 70,
+            "health": { "status": "ok", "issues": [] },
+            "counts": ServerCounts::default(),
+            "storage": null,
+            "email_configured": false,
+            "providers": [],
+            "settings": RuntimeSettings::default(),
+            "limits": { "max_project_mb": 200, "max_file_mb": 50, "max_members_per_project": 20 },
+            "archive_days": 30,
+            "sign_in_problems": [],
+            "activity": activity
+        });
+        let overview: AdminOverview = serde_json::from_value(wire.clone()).unwrap();
+        let parsed = overview.activity.clone().expect("the activity is read");
+        assert_eq!(parsed.days, ACTIVITY_DAYS);
+        assert_eq!(
+            parsed.daily,
+            vec![DailyActivity {
+                day: 1_759_881_600_000,
+                sign_ins: 3,
+                people: 2
+            }]
+        );
+        assert_eq!(
+            parsed.by_hour,
+            vec![HourlyActivity {
+                weekday: 4,
+                hour: 9,
+                sign_ins: 3
+            }]
+        );
+        assert_eq!(serde_json::to_value(&overview).unwrap(), wire);
+
+        let mut older = wire;
+        older.as_object_mut().unwrap().remove("activity");
+        let without: AdminOverview = serde_json::from_value(older.clone()).unwrap();
+        assert_eq!(without.activity, None);
+        assert_eq!(serde_json::to_value(&without).unwrap(), older);
+
+        let sparse: ServerActivity =
+            serde_json::from_value(json!({ "since": 0, "days": 30 })).unwrap();
+        assert!(sparse.daily.is_empty() && sparse.by_hour.is_empty());
     }
 
     #[test]

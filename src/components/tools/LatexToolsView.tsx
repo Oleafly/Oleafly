@@ -14,6 +14,7 @@ import {
   type ToolDefinition,
 } from "@/lib/tool-catalog";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
+import { TOOL_ART_HEIGHT, TOOL_ART_WIDTH, toolArt } from "@/components/tools/tool-art";
 
 const TOOL_TONES: Record<
   ToolDefinition["tone"],
@@ -63,40 +64,61 @@ function ToolCard({ tool }: Readonly<{
   const name = toolName(tool.id);
   const description = toolDescription(tool.id);
   const tags = toolTags(tool.id);
+  const art = toolArt(tool.id);
   return (
     <button
       type="button"
       data-testid={`latex-tool-card-${tool.id}`}
       onClick={() => void openTool(tool)}
-      className="group flex w-full items-start gap-4 rounded-xl border bg-card p-5 text-left shadow-sm transition-[border-color,background-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-accent/25 hover:shadow-md motion-reduce:transform-none"
+      className="group flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card text-left shadow-sm transition-[border-color,background-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-accent/25 hover:shadow-md focus-visible:border-primary focus-visible:bg-accent/25 motion-reduce:transform-none"
     >
-      <span
-        className={cn(
-          "flex size-12 shrink-0 items-center justify-center rounded-xl border",
-          tone.icon,
+      {art && (
+        <img
+          src={art}
+          alt=""
+          aria-hidden="true"
+          width={TOOL_ART_WIDTH}
+          height={TOOL_ART_HEIGHT}
+          draggable={false}
+          loading="lazy"
+          decoding="async"
+          // The background is the pictures' average glass blue, as on the
+          // project-kind cards, so a picture still loading never shows as an
+          // empty patch.
+          className="pointer-events-none aspect-[16/9] w-full shrink-0 select-none bg-[#acd2f8] object-cover"
+        />
+      )}
+      <span className="flex w-full min-w-0 flex-1 items-start gap-4 p-5">
+        {!art && (
+          <span
+            className={cn(
+              "flex size-12 shrink-0 items-center justify-center rounded-xl border",
+              tone.icon,
+            )}
+          >
+            <tool.icon className="size-5.5" />
+          </span>
         )}
-      >
-        <tool.icon className="size-5.5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="text-base font-semibold">{name}</span>
-          <code className={cn("rounded px-2 py-0.5 text-[0.625rem] font-semibold", tone.slash)}>
-            {`/${tool.slash[0]}`}
-          </code>
-        </span>
-        <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
-          {description}
-        </span>
-        <span className="mt-3 flex flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className={cn("rounded-full px-2.5 py-1 text-[0.625rem] font-medium", tone.badge)}
-            >
-              {tag}
-            </span>
-          ))}
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="text-base font-semibold">{name}</span>
+            <code className={cn("rounded px-2 py-0.5 text-[0.625rem] font-semibold", tone.slash)}>
+              {`/${tool.slash[0]}`}
+            </code>
+          </span>
+          <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </span>
+          <span className="mt-3 flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className={cn("rounded-full px-2.5 py-1 text-[0.625rem] font-medium", tone.badge)}
+              >
+                {tag}
+              </span>
+            ))}
+          </span>
         </span>
       </span>
     </button>
@@ -185,7 +207,7 @@ export function LatexToolsView() {
                     </h2>
                     <span className="text-xs tabular-nums text-muted-foreground/70">{tools.length}</span>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                     {tools.map((tool) => (
                       <ToolCard key={tool.id} tool={tool} />
                     ))}

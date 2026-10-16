@@ -450,9 +450,13 @@ mod tests {
         assert_eq!(
             Locale::ENGLISH.fill(
                 Key::RefusedProviderAccount,
-                &[("provider", "{account}"), ("account", "@ada")]
+                &[
+                    ("provider", "{account}"),
+                    ("account", "@ada"),
+                    ("server", "Lab")
+                ]
             ),
-            "You signed in to {account} as @ada."
+            "Your {account} account @ada doesn't have access to Lab. Ask the Lab admin to give you access."
         );
         assert_eq!(fill("{a}{b} {c", &[("a", "1"), ("b", "2")]), "12 {c");
         assert_eq!(fill("{x} and {", &[]), "{x} and {");
@@ -464,9 +468,9 @@ mod tests {
         assert_eq!(
             locale.fill_html(
                 Key::RefusedEmailAccount,
-                &[("account", "<strong>a&amp;b</strong>")]
+                &[("account", "<strong>a&amp;b</strong>"), ("server", "Lab")]
             ),
-            "You signed in with <strong>a&amp;b</strong>."
+            "<strong>a&amp;b</strong> doesn&#39;t have access to Lab. Ask the Lab admin to give you access."
         );
         assert_eq!(
             locale.fill_html(Key::CodeDeny, &[]),

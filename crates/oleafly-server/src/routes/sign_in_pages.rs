@@ -52,6 +52,23 @@ pub fn form(
     button: &str,
     primary: bool,
 ) -> String {
+    let class = if primary { " class=\"primary\"" } else { "" };
+    form_with(action, hidden, input, button, class)
+}
+
+// A small text link that still posts a form, for a choice almost nobody needs
+// but that has to stay one click away.
+pub fn quiet_form(action: &str, hidden: &[Field<'_>], button: &str) -> String {
+    form_with(action, hidden, None, button, " class=\"quiet\"")
+}
+
+fn form_with(
+    action: &str,
+    hidden: &[Field<'_>],
+    input: Option<Input<'_>>,
+    button: &str,
+    class: &str,
+) -> String {
     let mut html = format!("<form method=\"post\" action=\"{}\">", escape(action));
     for field in hidden {
         html.push_str(&format!(
@@ -70,7 +87,6 @@ pub fn form(
             autocomplete = escape(input.autocomplete),
         ));
     }
-    let class = if primary { " class=\"primary\"" } else { "" };
     html.push_str(&format!(
         "<button type=\"submit\"{class}>{}</button></form>",
         escape(button)

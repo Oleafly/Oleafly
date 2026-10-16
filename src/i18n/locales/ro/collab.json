@@ -11,19 +11,9 @@
         "description": "Cere-i adresa persoanei care administrează serverul grupului tău, apoi adaug-o aici."
       }
     },
-    "presence": {
-      "label": "Ce văd ceilalți",
-      "description": "Alege ce văd persoanele din proiectele tale partajate cât timp lucrezi. Se setează separat pe fiecare computer.",
-      "options": {
-        "cursor": "Arată cursorul meu",
-        "file": "Arată doar fișierul în care sunt",
-        "hidden": "Ascunde-mă"
-      }
-    },
     "server": {
       "signedIn": "Autentificat",
       "signedOut": "Deconectat",
-      "signedInAs": "Autentificat ca {{name}}",
       "signedOutHint": "Acest computer nu este autentificat pe acest server.",
       "suspended": "Suspendat",
       "noAccess": "Fără acces",
@@ -35,8 +25,10 @@
       "signOut": "Deconectează-te",
       "remove": "Elimină",
       "manage": "Gestionează serverul",
+      "adminConsole": "Consola de administrare",
       "manageHint": "Gestionează serverul arată aici Persoane, Persoane permise, Domenii, Setările serverului, E-mail și Jurnal de securitate. Consola de administrare se deschide într-o fereastră separată și are în plus o prezentare generală, proiectele și verificările de conexiune.",
       "test": "Testează conexiunea",
+      "testShort": "Testează",
       "removeConfirm": {
         "title": "Elimini {{name}}?",
         "description": "Oleafly se deconectează de la {{name}} și îl uită. Proiectele partajate de pe {{name}} nu se mai sincronizează și rămân pe acest computer ca proiecte obișnuite, fiecare redenumit ca copie locală.",
@@ -174,8 +166,7 @@
     "doneManageDescription": "Te-ai autentificat ca {{name}}. Acum poți partaja proiecte și le poți deschide pe cele partajate cu tine. Poți și să gestionezi serverul din consola de administrare.",
     "doneGuestDescription": "Te-ai autentificat ca {{name}}. Ca invitat, poți deschide proiectele la care ești invitat.",
     "done": "Gata",
-    "codeSignIn": "Autentifică-te cu un cod",
-    "codeSignInDescription": "Folosește asta când browserul nu poate reveni în Oleafly sau ca să te autentifici pe alt dispozitiv.",
+    "codeSignIn": "Folosește în schimb un cod",
     "codeTitle": "Autentifică-te cu un cod",
     "codeRequesting": "Se obține un cod…",
     "codeSteps": "Pe orice telefon sau computer, deschide această adresă și introdu codul.",
@@ -468,7 +459,12 @@
         "copyPath": "Până atunci, trimite tu acest link persoanelor noi. Adaugă serverul în Oleafly.",
         "address": "Pot introduce și această adresă la Adaugă server:"
       },
+      "broken": {
+        "title": "E-mailul nu funcționează",
+        "description": "Serverul are setări de e-mail, dar e-mailurile lui nu ajung. Verifică setările, apoi trimite un e-mail de test."
+      },
       "needsSettings": "Activează mai întâi e-mailul pentru server.",
+      "needsWorking": "Trimite un e-mail de test care să ajungă, apoi activează această opțiune.",
       "lastFailure": "Ultimul e-mail eșuat a fost pe {{date}}. Serverul de e-mail a răspuns:",
       "test": {
         "title": "E-mail de test",
@@ -832,6 +828,25 @@
         "protocol": "Protocol {{protocol}}",
         "pendingGuests": "Invitații pentru invitați care așteaptă aprobarea: {{number}}",
         "reviewGuests": "Verifică în Persoane"
+      },
+      "activity": {
+        "title": "Activitate",
+        "description": "Autentificările din ultimele 30 de zile, în UTC. Oleafly păstrează persoanele autentificate, așa că aici se numără fiecare autentificare nouă, nu fiecare vizită.",
+        "none": "Nimeni nu s-a autentificat în ultimele 30 de zile.",
+        "daily": "Autentificări pe zi",
+        "dailyLabel": "Autentificări pe zi UTC în ultimele 30 de zile",
+        "total": "{{number}} în 30 de zile",
+        "hourly": "Autentificări pe ore",
+        "hourlyLabel": "Autentificări după ziua săptămânii și ora UTC",
+        "day": "Ziua",
+        "signInsColumn": "Autentificări",
+        "peopleColumn": "Persoane",
+        "signIns": "Autentificări: {{number}}",
+        "people": "Persoane: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, autentificări: {{number}}",
+        "hoursInUtc": "Ore în UTC",
+        "less": "Mai puțin",
+        "more": "Mai mult"
       },
       "storage": {
         "title": "Stocare",
