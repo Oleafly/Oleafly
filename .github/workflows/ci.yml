@@ -213,7 +213,10 @@ jobs:
   rust:
     name: Rust (test + clippy)
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    # The work takes 25 to 29 minutes (tests with coverage alone are about 23).
+    # At 30 the limit cut off the cache save afterwards, so the next run started
+    # cold and timed out too.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
 
