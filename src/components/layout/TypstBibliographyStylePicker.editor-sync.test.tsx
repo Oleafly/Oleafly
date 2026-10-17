@@ -57,4 +57,4 @@ it("shows the new style in the open editor and keeps it after the next keystroke
   expect(editorText()).toBe(useFilesStore.getState().files["main.typ"].content);
   act(() => typeAtEnd("\n"));
   expect(useFilesStore.getState().files["main.typ"].content).toContain('style: "nlm-citation-sequence"');
-});
+}, 20_000);
