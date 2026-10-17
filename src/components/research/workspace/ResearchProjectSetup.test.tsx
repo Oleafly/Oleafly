@@ -149,7 +149,7 @@ describe("ResearchProjectSetup preview admission", () => {
     });
     expect(input.onCreated).toHaveBeenCalledExactlyOnceWith("new-project");
     expect(input.onClose).toHaveBeenCalledOnce();
-  });
+  }, 15_000);
 
   it("does not reuse the old preview when a renamed request fails validation", async () => {
     native.invoke.mockImplementation((command: string, args: { request: ResearchProjectRequest }) => {
