@@ -10,16 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Thanks
 
 Many thanks to the people who tested early builds, told us what broke and
-checked our fixes.
+checked our fixes. 💚
 
-- Saran Bodda ([@ssbodda-powern](https://github.com/ssbodda-powern), thanos on
-  Discord): live collaboration testing, import and sync for online LaTeX
-  accounts, settings export (#278), search scrolling (#270) and figure
-  warnings (#269).
+- Saran Bodda ([@ssbodda-powern](https://github.com/ssbodda-powern)): live
+  collaboration testing, import and sync for online LaTeX accounts, Zen mode
+  (#255), settings export (#278), search scrolling (#270) and figure warnings
+  (#269).
 - Wahid Mounir ([@wahidmounir](https://github.com/wahidmounir)): the original
   request for real-time collaboration (#98).
 - [@Fxde42](https://github.com/Fxde42): templates of your own (#285).
-- Stentor Coeruleus on Discord: parser loading during release testing.
 - [@Fravoj3](https://github.com/Fravoj3): typing performance on large projects
   (#248) and drag and drop on Linux (#247).
 - [@wangtao11987](https://github.com/wangtao11987): PDF jump accuracy (#234).
@@ -46,8 +45,6 @@ checked our fixes.
   undo after compiling (#101), the diagram composer (#108) and Gemini (#81).
 - Fxde42 asked to import templates from a computer or an online account
   (#285), now available as Templates of your own.
-- Stentor Coeruleus reported a parser loading problem on Discord on October 16
-  and answered our follow-up questions.
 - Fravoj3 verified the 0.4.5 typing performance fix (#248) on a 249,623-word
   project and found that hiding the PDF preview removed the lag that remained
   at that size. Fravoj3 also verified the Linux drag and drop fix (#247) and
