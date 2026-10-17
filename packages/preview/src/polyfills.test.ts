@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   installGetOrInsert,
+  installIteratorConstructor,
   installIteratorFind,
   installPromiseTry,
   installSettledFontFaceLoad,
@@ -173,12 +174,63 @@ describe("PDF runtime polyfills", () => {
     installIteratorFind(prototype);
     expect(prototype.find).toBe(native);
   });
+
+  it("installs a global Iterator over the engine's iterator prototype", () => {
+    const engine = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())) as object;
+    const global: { Iterator?: unknown } = {};
+    installIteratorConstructor(global, engine);
+    const Iterator = global.Iterator as new () => object;
+
+    expect(Object.getOwnPropertyDescriptor(global, "Iterator")?.enumerable).toBe(false);
+    expect(Iterator.prototype).toBe(engine);
+    expect(Object.getOwnPropertyDescriptor(Iterator, "prototype")?.writable).toBe(false);
+    expect([1, 2].values()).toBeInstanceOf(Iterator);
+    expect(new Map().keys()).toBeInstanceOf(Iterator);
+  });
+
+  it("lets pdf.js add Iterator.prototype.join when its module loads", () => {
+    const prototype: { join?: unknown } = {};
+    const global: { Iterator?: { prototype: { join?: unknown } } } = {};
+    installIteratorConstructor(global, prototype);
+    const Iterator = global.Iterator as { prototype: { join?: unknown } };
+
+    // The statement pdf.js 6 runs at the top of pdf.mjs and pdf.worker.mjs.
+    if (typeof Iterator.prototype.join !== "function") {
+      Iterator.prototype.join = function () {
+        return "joined";
+      };
+    }
+
+    expect(typeof prototype.join).toBe("function");
+  });
+
+  it("keeps the installed Iterator abstract while subclasses construct", () => {
+    const prototype = {};
+    const global: { Iterator?: unknown } = {};
+    installIteratorConstructor(global, prototype);
+    const Iterator = global.Iterator as new () => object;
+
+    expect(() => (Iterator as unknown as () => unknown)()).toThrow(TypeError);
+    expect(() => new Iterator()).toThrow(TypeError);
+    class Counter extends Iterator {}
+    expect(new Counter()).toBeInstanceOf(Iterator);
+    expect(Object.getPrototypeOf(Counter.prototype)).toBe(prototype);
+  });
+
+  it("preserves a native Iterator constructor", () => {
+    const native = function Iterator() {};
+    const global = { Iterator: native };
+    installIteratorConstructor(global, {});
+    expect(global.Iterator).toBe(native);
+  });
 });
 
 describe("PDF runtime polyfills on engines without the constructors", () => {
   it("skips installation when the runtime lacks the target", () => {
     expect(() => {
       installGetOrInsert(undefined);
+      installIteratorConstructor(undefined, undefined);
+      installIteratorConstructor({}, undefined);
       installIteratorFind(undefined);
       installUint8ArrayToHex(undefined);
       installPromiseTry(undefined);

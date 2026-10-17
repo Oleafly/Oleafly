@@ -40,6 +40,47 @@ export function localeChunk(id: string): string | undefined {
   return LAZY_LOCALE_NAMESPACES.has(match[2]) ? `locale-${match[1]}-${match[2]}` : `locale-${match[1]}`;
 }
 
+// The runtime polyfills must run before any library code. An entry chunk runs
+// the chunks it imports before its own body, so polyfills inlined in the entry
+// ran after the pdf.js chunk, which reads the global `Iterator` (Safari 18.4+)
+// as it loads; on older WebKit the app then stopped at the splash. In a chunk
+// of their own the polyfills are the entry's first import and run first.
+export const POLYFILLS_CHUNK = "polyfills";
+
+export function polyfillsChunk(id: string): string | undefined {
+  return /\/packages\/preview\/src\/polyfills\.ts$/.test(id) ? POLYFILLS_CHUNK : undefined;
+}
+
+type OutputSummary = {
+  type: string;
+  fileName: string;
+  name?: string;
+  isEntry?: boolean;
+  imports?: readonly string[];
+};
+
+/** Entry chunks that import something before the polyfills chunk. */
+export function entriesLoadingBeforePolyfills(outputs: readonly OutputSummary[]): string[] {
+  const chunks = outputs.filter((output) => output.type === "chunk");
+  const polyfills = chunks.find((chunk) => chunk.name === POLYFILLS_CHUNK);
+  return chunks
+    .filter((chunk) => chunk.isEntry && (!polyfills || chunk.imports?.[0] !== polyfills.fileName))
+    .map((chunk) => chunk.fileName);
+}
+
+const requirePolyfillsFirst = (): Plugin => ({
+  name: "require-polyfills-first",
+  apply: "build",
+  generateBundle(_options, bundle) {
+    const late = entriesLoadingBeforePolyfills(Object.values(bundle));
+    if (late.length > 0) {
+      this.error(
+        `${late.join(", ")} must import the ${POLYFILLS_CHUNK} chunk before any other chunk, or library code runs before the polyfills on older WebViews`,
+      );
+    }
+  },
+});
+
 const preserveWorkerExports = (): Plugin => ({
   name: "preserve-worker-exports",
   options: (options) => ({ ...options, preserveEntrySignatures: "strict" }),
@@ -87,7 +128,14 @@ export const rejectProductionDevHooks = (): Plugin => ({
 });
 
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss(), tailwindPropertiesFallbackPlugin(), rejectProductionDevHooks(), staticE2eClient()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    tailwindPropertiesFallbackPlugin(),
+    rejectProductionDevHooks(),
+    requirePolyfillsFirst(),
+    staticE2eClient(),
+  ],
   optimizeDeps: {
     exclude: ["harper.js"],
     include: [
@@ -136,7 +184,7 @@ export default defineConfig(async () => ({
           if (/pdf\.worker\.ts\?worker/.test(id)) {
             return "pdf-worker-url";
           }
-          return localeChunk(id);
+          return polyfillsChunk(id) ?? localeChunk(id);
         },
       },
     },
