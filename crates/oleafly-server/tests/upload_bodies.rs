@@ -187,17 +187,23 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
         .await
         .expect("response");
     assert_eq!(stored.status(), StatusCode::NO_CONTENT);
-    app.state.transfers.set_budget(MIB as u64);
-    let spent = app
-        .state
-        .transfers
+    let transfers = &app.state.transfers;
+    transfers.set_budget(MIB as u64);
+    let spent = transfers
         .hold(AccountId::new_v7(), MIB as u64)
         .await
         .expect("room");
-    let mut download = tokio::spawn(
+    assert_eq!(transfers.room_left(), 0);
+    let download = tokio::spawn(
         app.router
             .clone()
             .oneshot(request(Method::GET, Body::empty())),
+    );
+    // Room goes to transfers in the order they asked for it, so the upload
+    // starts only once the download is in line.
+    assert!(
+        eventually(|| transfers.waiting_for_room() == 1).await,
+        "the download waits for room"
     );
     let other = seed_member(&app, ServerRole::Member).await;
     let elsewhere = create_project(&app, &other.access_token).await;
@@ -210,25 +216,48 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
         )
         .body(Body::from(content.clone()))
         .expect("request");
-    let mut upload = tokio::spawn(app.router.clone().oneshot(upload_request));
-    let waiting = std::time::Duration::from_millis(300);
-    assert!(tokio::time::timeout(waiting, &mut download).await.is_err());
-    assert!(tokio::time::timeout(waiting, &mut upload).await.is_err());
+    let upload = tokio::spawn(app.router.clone().oneshot(upload_request));
+    assert!(
+        eventually(|| transfers.waiting_for_room() == 2).await,
+        "the upload waits for room behind the download"
+    );
     drop(spent);
     let downloaded = download.await.expect("task").expect("response");
     assert_eq!(downloaded.status(), StatusCode::OK);
-    assert!(tokio::time::timeout(waiting, &mut upload).await.is_err());
+    assert_eq!(
+        transfers.under_way(owner.account_id),
+        MIB as u64,
+        "the download keeps its room until it is sent"
+    );
+    assert_eq!(transfers.waiting_for_room(), 1, "the upload still waits");
+    assert!(!upload.is_finished());
     let bytes = axum::body::to_bytes(downloaded.into_body(), 2 * MIB)
         .await
         .expect("the file");
     assert_eq!(bytes.len(), MIB);
-    drop(bytes);
+    assert_eq!(transfers.under_way(owner.account_id), 0);
     let uploaded = tokio::time::timeout(std::time::Duration::from_secs(5), upload)
         .await
         .expect("the upload gets room once the download is sent")
         .expect("task")
         .expect("response");
     assert_eq!(uploaded.status(), StatusCode::NO_CONTENT);
+    assert_eq!(transfers.waiting_for_room(), 0);
+    assert_eq!(transfers.room_left(), MIB as u64, "all the room comes back");
+}
+
+// Waits for a change another task makes. The limit only bounds a failure.
+async fn eventually(check: impl Fn() -> bool) -> bool {
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        if check() {
+            return true;
+        }
+        if tokio::time::Instant::now() >= deadline {
+            return false;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
 }
 
 #[tokio::test]
