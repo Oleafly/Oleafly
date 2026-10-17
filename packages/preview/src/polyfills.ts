@@ -62,13 +62,13 @@ export function installIteratorConstructor(
   prototype: object | undefined,
 ) {
   if (!global || !prototype || typeof global.Iterator === "function") return;
-  function Iterator(this: unknown) {
-    if (new.target === undefined || new.target === Iterator) {
+  function AbstractIterator(this: unknown) {
+    if (new.target === undefined || new.target === AbstractIterator) {
       throw new TypeError("Iterator cannot be constructed directly");
     }
   }
-  Object.defineProperty(Iterator, "prototype", { value: prototype, writable: false });
-  Object.defineProperty(global, "Iterator", { value: Iterator, writable: true, configurable: true });
+  Object.defineProperty(AbstractIterator, "prototype", { value: prototype, writable: false });
+  Object.defineProperty(global, "Iterator", { value: AbstractIterator, writable: true, configurable: true });
 }
 
 installIteratorConstructor(
