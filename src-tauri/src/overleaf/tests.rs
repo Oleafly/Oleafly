@@ -715,6 +715,54 @@ fn importing_downloads_each_project_and_carries_its_settings() {
 }
 
 #[test]
+fn importing_keeps_a_project_whose_files_all_sit_in_one_folder_as_it_is_online() {
+    let _guard = crate::paths::data_dir_env_lock();
+    let data = tempfile::tempdir().unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let outcomes = runtime.block_on(async {
+        let page = dashboard_page(&json!({ "totalSize": 1, "projects": [remote("a1", "Thesis")] }));
+        let archive = zip_bytes(&[
+            ("thesis/main.tex", "\\documentclass{book}\\begin{document}\\input{thesis/chapters/intro}\\end{document}"),
+            ("thesis/chapters/intro.tex", "Hello."),
+        ]);
+        let project = json!({
+            "compiler": "pdflatex",
+            "rootDoc_id": "m",
+            "rootFolder": [{ "docs": [], "folders": [{ "name": "thesis", "docs": [{ "_id": "m", "name": "main.tex" }], "folders": [{ "name": "chapters", "docs": [{ "_id": "i", "name": "intro.tex" }] }] }] }]
+        });
+        let socket = socket_handler(project, Arc::new(Mutex::new(0)));
+        let fixture = serve(Arc::new(move |request: &Request| {
+            if let Some(reply) = socket(request) {
+                return reply;
+            }
+            match request.path.as_str() {
+                "/project" => Reply::ok(page.clone()),
+                "/project/a1/download/zip" => Reply::ok(archive.clone()),
+                _ => Reply::status(404),
+            }
+        }))
+        .await;
+        let base = fixture.base.clone();
+        session::save(&base, &Session { cookie: "overleaf_session2=good".into(), user_id: "user-1".into(), email: "ada@uni.edu".into() }).unwrap();
+        import::import(&base, &["a1".to_string()], &|_| {}).await.unwrap()
+    });
+    let project_id = outcomes[0].project_id.clone().unwrap();
+    let dir = crate::paths::projects_root().unwrap().join(&project_id);
+    let meta: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(dir.join("project.json")).unwrap()).unwrap();
+    assert_eq!(meta["main_doc"], "thesis/main.tex");
+    assert!(dir.join("thesis/main.tex").is_file());
+    assert!(dir.join("thesis/chapters/intro.tex").is_file());
+    assert!(!dir.join("main.tex").exists());
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+}
+
+#[test]
 fn listing_without_a_session_asks_to_sign_in_and_an_expired_session_is_forgotten() {
     let _guard = crate::paths::data_dir_env_lock();
     let data = tempfile::tempdir().unwrap();

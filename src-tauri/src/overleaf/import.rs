@@ -264,14 +264,18 @@ pub(crate) fn import_archive(
         .and_then(socket::flavor_for_compiler)
         .map(str::to_string);
     let main_doc = settings.main_doc.clone();
-    crate::project::import_project_archive_with(remote.name.clone(), archive, move |project_id| {
-        crate::project::apply_imported_settings(
-            project_id,
-            main_doc.as_deref(),
-            flavor.as_deref(),
-            origin,
-        )
-    })
+    crate::project::import_online_project_archive_with(
+        remote.name.clone(),
+        archive,
+        move |project_id| {
+            crate::project::apply_imported_settings(
+                project_id,
+                main_doc.as_deref(),
+                flavor.as_deref(),
+                origin,
+            )
+        },
+    )
 }
 
 async fn import_one(
