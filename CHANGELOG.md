@@ -9,80 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Thanks
 
-A lot of what's in this release started as someone's issue or Discord
-message. Thank you to everyone who tried early builds, filed issues and came
-back to tell us whether the fix worked. You made Oleafly better.
+Many thanks to the people who tested early builds, told us what broke and
+checked our fixes.
 
 - Saran Bodda ([@ssbodda-powern](https://github.com/ssbodda-powern), thanos on
-  Discord) asked for import and sync with online LaTeX accounts, tried live
-  collaboration before it shipped, caught a sync bug in the release candidate,
-  and filed the issues behind three more fixes (#269, #270, #278).
-- Wahid Mounir ([@wahidmounir](https://github.com/wahidmounir)) asked for
-  real-time collaboration back in August (#98), and it's here as an
-  experiment in this release.
-- [@Fxde42](https://github.com/Fxde42) asked for your own templates in the New
-  Project gallery (#285), and now you can have them.
-- Stentor Coeruleus on Discord reported a problem loading parsers while this
-  release was being finished.
-- [@Fravoj3](https://github.com/Fravoj3) put typing through a 600-page,
-  249,623-word project (#248) and checked drag and drop on Linux (#247).
-- [@wangtao11987](https://github.com/wangtao11987) reported the PDF jump
-  problems (#234) and confirmed the fix.
-- [@multics](https://github.com/multics) sent our first pull request from
-  outside the project (#170).
+  Discord): live collaboration testing, import and sync for online LaTeX
+  accounts, settings export (#278), search scrolling (#270) and figure
+  warnings (#269).
+- Wahid Mounir ([@wahidmounir](https://github.com/wahidmounir)): the original
+  request for real-time collaboration (#98).
+- [@Fxde42](https://github.com/Fxde42): templates of your own (#285).
+- Stentor Coeruleus on Discord: parser loading during release testing.
+- [@Fravoj3](https://github.com/Fravoj3): typing performance on large projects
+  (#248) and drag and drop on Linux (#247).
+- [@wangtao11987](https://github.com/wangtao11987): PDF jump accuracy (#234).
+- [@multics](https://github.com/multics): IEEE template author groups (#170),
+  the first code contribution from outside the project.
 
 <details>
-<summary>What each of them did</summary>
+<summary>Details</summary>
 
-**Saran Bodda** works with coauthors on an online LaTeX account and asked on
-Discord whether Oleafly could join in. That question became importing projects
-from your online LaTeX account and keeping them in sync with a Git token, both
-new in this release. Saran also tried live collaboration before it shipped and
-told us what wasn't working yet. When sync failed on the release candidate,
-one screenshot of the error was enough to find the cause: the service now
-names the Git branch `main` for many projects, and Oleafly only looked for
-`master`. Three more changes here started as Saran's issues: settings export
-and import (#278), search that brings an off-screen match to the middle of
-the editor (#270), and figure warnings that leave `\graphicspath` and
-`\svgpath` files alone and ask for alt text only in tagged PDFs (#269). Before
-that, Saran's reports gave 0.4.6 Zen mode (#255), the Mac Settings shortcut
-(#256), editor fonts and line height (#257), a sharper PDF on Retina and
-external screens (#258) and a default compiler setting that actually applies
-(#259).
-
-**Wahid Mounir** asked for local-first real-time collaboration in August
-(#98), and live collaboration arrives in this release as an experiment. Along
-the way Wahid translated the README into Arabic (#93), asked for pluggable
-research agents (#84) and for AI model lists that fill in by themselves (#82),
-pointed us to SwiftLaTeX while we rebuilt Visual mode (#97), suggested a
-tidier layout with workspace preferences that stick (#177), and reported bugs
-in undo after compiling (#101), the diagram composer (#108) and Gemini (#81).
-
-**Fxde42** asked (#285) for templates from your computer and from your online
-account in the New Project gallery. Templates of your own does exactly that,
-from a ZIP, a folder, a gallery page or an account project, and Save as
-template turns any project into one.
-
-**Stentor Coeruleus** opened a bug report on Discord about loading parsers on
-October 16, the day the release candidate was cut, and stuck around for our
-follow-up questions the rest of the day.
-
-**Fravoj3** tests on Fedora and doesn't go easy on us. For 0.4.5 they checked
-the typing lag fix (#248) on their own projects, where typing felt instant
-with spelling and grammar marks on, and then on a 249,623-word document of
-about 600 PDF pages, where some lag stayed until they hid the PDF preview.
-They noticed spelling marks stopping after a few dozen pasted lines,
-confirmed the Linux drag and drop fix with Dolphin (#247), and suggested that
-moving a file should update the paths pointing to it, which 0.4.6 does
-(#254).
-
-**wangtao11987** reported that jumping between the source and the PDF landed
-in the wrong place (#234), and came back with a warm thank-you when the fix
-shipped in 0.4.4.
-
-**multics** fixed the off-center author groups in the IEEE Research Paper
-template (#170) in 0.4.4. It was our first code contribution from outside the
-project.
+- Saran Bodda tested live collaboration before release and asked for the
+  online account import and sync that ship in this release. Their report of a
+  sync error in the release candidate traced it to the service's Git bridge
+  using `main` instead of `master` for many projects. Saran also reported the
+  issues behind settings export and import (#278), centered search matches
+  (#270) and the figure and alt text warnings (#269). In 0.4.6, their reports
+  led to Zen mode (#255), the Mac Settings shortcut (#256), editor fonts and
+  line height (#257), sharper PDFs on high-resolution screens (#258) and a
+  working default compiler setting (#259).
+- Wahid Mounir asked for local-first real-time collaboration in August (#98),
+  which ships in this release as an experiment. Wahid also contributed the
+  Arabic README (#93), asked for pluggable research agents (#84) and automatic
+  AI model lists (#82), suggested SwiftLaTeX for Visual mode (#97) and a
+  layout with saved workspace preferences (#177), and reported issues with
+  undo after compiling (#101), the diagram composer (#108) and Gemini (#81).
+- Fxde42 asked to import templates from a computer or an online account
+  (#285), now available as Templates of your own.
+- Stentor Coeruleus reported a parser loading problem on Discord on October 16
+  and answered our follow-up questions.
+- Fravoj3 verified the 0.4.5 typing performance fix (#248) on a 249,623-word
+  project and found that hiding the PDF preview removed the lag that remained
+  at that size. Fravoj3 also verified the Linux drag and drop fix (#247) and
+  asked for paths to update when files move, added in 0.4.6 (#254).
+- wangtao11987 reported PDF jump positions (#234), fixed in 0.4.4.
+- multics fixed the author groups in the IEEE Research Paper template (#170)
+  in 0.4.4.
 
 </details>
 
