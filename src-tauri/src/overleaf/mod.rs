@@ -463,7 +463,7 @@ pub async fn overleaf_sync_now<R: Runtime>(
     for _ in 0..3 {
         let known = if reuse_fetch {
             let known_repo = target.repo.clone();
-            blocking(move || Ok(sync::rev(&known_repo, sync::REMOTE_REF))).await?
+            blocking(move || Ok(sync::remote_tip(&known_repo))).await?
         } else {
             None
         };

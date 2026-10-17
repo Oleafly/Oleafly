@@ -32,6 +32,11 @@ come from the version's `CHANGELOG.md` section: `release.yml` runs
 changed, then a short downloads line), and tauri-action copies that body into
 `latest.json`'s `notes`, which the window displays.
 
+The window shows markdown but not HTML, and copies of Oleafly that are already
+installed render the notes for the next version. So the script drops the
+`<details>` tags of a collapsible block and turns its `<summary>` line into a
+bold line. `CHANGELOG.md` on GitHub still shows the block collapsed.
+
 ## One-time maintainer setup (required)
 
 The updater public key is committed in `src-tauri/tauri.conf.json`
