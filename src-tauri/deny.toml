@@ -26,6 +26,9 @@ ignore = [
   { id = "RUSTSEC-2026-0247", reason = "bitmaps is unmaintained, reached only through loro via im; no vulnerability and no upgrade in that chain" },
   { id = "RUSTSEC-2026-0248", reason = "im is unmaintained, used by loro-internal for persistent maps; no vulnerability and no upgrade in that chain" },
   { id = "RUSTSEC-2026-0251", reason = "sized-chunks is unmaintained, reached only through loro via im; no vulnerability and no upgrade in that chain" },
+  { id = "RUSTSEC-2026-0367", reason = "zip extract() keeps SUID/SGID bits on Unix; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract()" },
+  { id = "RUSTSEC-2026-0368", reason = "zip extract() writes symlinks that point outside the target; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract()" },
+  { id = "RUSTSEC-2026-0369", reason = "zip extract() sets Unix permissions through symlinks; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract()" },
 ]
 
 [licenses]
