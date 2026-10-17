@@ -78,5 +78,8 @@
       "invalidNumber": "{{value}} 不是数字",
       "sortNegated": "{{key}} 不能排除"
     }
+  },
+  "avatar": {
+    "more_other": "另外 {{count}} 人"
   }
 }

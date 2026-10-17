@@ -45,7 +45,15 @@ vi.mock("@/lib/native-file-dialog", () => ({
 }));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => {}) }));
+vi.mock("@/lib/overleaf", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/overleaf")>()),
+  overleafStatus: vi.fn(async () => ({ server: "https://www.overleaf.com", signedIn: false, email: null })),
+}));
 vi.mock("@/lib/toast", () => ({ notifyError: vi.fn(), toast: { error: vi.fn(), success: vi.fn() } }));
+vi.mock("@/features/custom-templates", () => ({
+  saveProjectTemplate: vi.fn(async () => "imported-template"),
+  announceSavedTemplate: vi.fn(),
+}));
 
 import {
   importArxivPaper,
@@ -60,6 +68,8 @@ import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { useSettingsStore } from "@/store/settings";
 import { CHOICE_ART } from "./choice-art";
 import { ProjectImportDialog } from "./ProjectImportDialog";
+import { announceSavedTemplate, saveProjectTemplate } from "@/features/custom-templates";
+import { useFilesStore } from "@/store/files";
 
 const LOCAL_CARDS = [
   ["project-import-project", CHOICE_ART.importArchive, "Existing project", "A .zip archive of a project folder."],
@@ -71,6 +81,7 @@ const LOCAL_CARDS = [
 const CLOUD_CARDS = [
   ["project-import-arxiv", CHOICE_ART.importArxiv, "arXiv paper", "Download a paper's LaTeX source by its arXiv id."],
   ["project-import-github", CHOICE_ART.importGithub, "GitHub", "Pick from the repositories you can reach."],
+  ["project-import-overleaf", CHOICE_ART.importOverleaf, "Overleaf", "Pick projects from your Overleaf account"],
 ] as const;
 const ALL_CARDS = [...LOCAL_CARDS, ...CLOUD_CARDS];
 
@@ -115,6 +126,17 @@ describe("ProjectImportDialog", () => {
         expect.objectContaining({ full_name: "oleafly/paper" }),
       ),
     );
+  });
+
+  it("opens the Overleaf step from its card and from the menu's initial view", async () => {
+    const { unmount } = render(<ProjectImportDialog open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("project-import-overleaf"));
+    expect(await screen.findByTestId("overleaf-sign-in-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("project-import-dialog")).toHaveTextContent("Import from Overleaf");
+    unmount();
+
+    render(<ProjectImportDialog open initialView="overleaf" onClose={vi.fn()} />);
+    expect(await screen.findByTestId("overleaf-sign-in-panel")).toBeInTheDocument();
   });
 
   it("returns from the GitHub step to the sources", async () => {
@@ -424,5 +446,89 @@ describe("ProjectImportDialog file errors", () => {
     fireEvent.keyDown(screen.getByTestId("project-import-dialog"), { key: "Escape" });
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ProjectImportDialog also saves as a template", () => {
+  const openImported = () => {
+    useFilesStore.setState({ projectId: "imported-1", projectName: "Imported paper" });
+  };
+
+  beforeEach(() => {
+    useFilesStore.setState({ projectId: null, projectName: "" });
+  });
+
+  it("is off each time the dialog opens and saves nothing then", async () => {
+    vi.mocked(importSelectedFile).mockImplementation(async () => {
+      openImported();
+      return true;
+    });
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    expect(screen.getByTestId("project-import-also-template")).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText(enLibrary.customTemplates.alsoSaveHint)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("project-import-project"));
+
+    await waitFor(() => expect(importSelectedFile).toHaveBeenCalled());
+    expect(saveProjectTemplate).not.toHaveBeenCalled();
+  });
+
+  it("keeps the imported project as a template when ticked", async () => {
+    vi.mocked(importSelectedFile).mockImplementation(async () => {
+      openImported();
+      return true;
+    });
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+
+    fireEvent.click(screen.getByTestId("project-import-also-template"));
+    expect(screen.getByTestId("project-import-also-template")).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByTestId("project-import-project"));
+
+    await waitFor(() =>
+      expect(saveProjectTemplate).toHaveBeenCalledWith("imported-1", "Imported paper"),
+    );
+    expect(onClose).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(announceSavedTemplate).toHaveBeenCalledWith("imported-template", "Imported paper"),
+    );
+  });
+
+  it("reports a template that could not be saved without undoing the import", async () => {
+    vi.mocked(importArxivPaper).mockImplementation(async () => {
+      openImported();
+      return true;
+    });
+    vi.mocked(saveProjectTemplate).mockRejectedValueOnce(new Error("disk full"));
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("project-import-also-template"));
+    fireEvent.click(screen.getByTestId("project-import-arxiv"));
+    fireEvent.change(screen.getByTestId("project-import-arxiv-id"), {
+      target: { value: "2301.01234" },
+    });
+    fireEvent.keyDown(screen.getByTestId("project-import-arxiv-id"), { key: "Enter" });
+
+    await waitFor(() =>
+      expect(notifyError).toHaveBeenCalledWith(
+        "save the import as a template",
+        expect.any(Error),
+        enLibrary.customTemplates.saveFailed,
+      ),
+    );
+    expect(announceSavedTemplate).not.toHaveBeenCalled();
+  });
+
+  it("saves nothing when the import did not open a new project", async () => {
+    useFilesStore.setState({ projectId: "already-open", projectName: "Open one" });
+    vi.mocked(importSelectedFile).mockResolvedValue(true);
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("project-import-also-template"));
+    fireEvent.click(screen.getByTestId("project-import-project"));
+
+    await waitFor(() => expect(importSelectedFile).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(saveProjectTemplate).not.toHaveBeenCalled();
   });
 });

@@ -14,19 +14,15 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use fastcdc::v2020::StreamCDC;
+use oleafly_core::content::{Chunker, MAX_CHUNK_SIZE};
 use rand::RngCore;
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use unicode_normalization::UnicodeNormalization;
 
 const FORMAT_VERSION: u32 = 2;
 const UNSTORED_MANIFEST_VERSION: u32 = 2;
 const PACK_MAGIC: &[u8; 12] = b"OLEAPACK\0\0\0\x01";
-const MIN_CHUNK_SIZE: u32 = 256 * 1024;
-const AVG_CHUNK_SIZE: u32 = 1024 * 1024;
-const MAX_CHUNK_SIZE: u32 = 4 * 1024 * 1024;
 const ZSTD_LEVEL: i32 = 3;
 const EXPORT_MAGIC: &[u8] = b"OLEAFLY-CKPT\0\x01";
 const HISTORY_EXPORT_MAGIC: &[u8] = b"OLEAFLY-HISTORY\0\x02";
@@ -81,6 +77,14 @@ pub enum HistoryError {
 
 pub type Result<T> = std::result::Result<T, HistoryError>;
 
+pub use oleafly_core::content::ContentHash;
+
+impl From<oleafly_core::Error> for HistoryError {
+    fn from(error: oleafly_core::Error) -> Self {
+        HistoryError::Corrupt(error.to_string())
+    }
+}
+
 /// Coordinates cancellation with the one operation that makes a checkpoint
 /// visible.
 ///
@@ -126,60 +130,6 @@ fn ensure_publication_active(gate: &dyn PublicationGate) -> Result<()> {
         return Err(HistoryError::PublicationCancelled);
     }
     Ok(())
-}
-
-/// A BLAKE3 content identity.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ContentHash([u8; 32]);
-
-impl ContentHash {
-    pub fn digest(bytes: &[u8]) -> Self {
-        Self(*blake3::hash(bytes).as_bytes())
-    }
-
-    /// Streams one regular file into a BLAKE3 identity without retaining its
-    /// contents in memory. Callers must still seal and identity-check the file
-    /// before treating this hash as replay evidence.
-    pub fn digest_file(path: impl AsRef<Path>) -> Result<Self> {
-        let file = File::open(path)?;
-        let mut reader = BufReader::new(file);
-        let mut hasher = blake3::Hasher::new();
-        io::copy(&mut reader, &mut hasher)?;
-        Ok(Self::from_bytes(*hasher.finalize().as_bytes()))
-    }
-
-    /// Streams a file identity while polling the same gate used for staging
-    /// and publication.
-    pub fn digest_file_controlled(
-        path: impl AsRef<Path>,
-        gate: &dyn PublicationGate,
-    ) -> Result<Self> {
-        hash_file_controlled(path.as_ref(), gate)
-    }
-
-    pub fn from_bytes(bytes: [u8; 32]) -> Self {
-        Self(bytes)
-    }
-
-    pub fn as_bytes(&self) -> &[u8; 32] {
-        &self.0
-    }
-
-    pub fn to_hex(self) -> String {
-        encode_hex(&self.0)
-    }
-
-    fn from_hex(value: &str) -> Result<Self> {
-        let decoded = decode_hex_32(value)
-            .ok_or_else(|| HistoryError::Corrupt(format!("invalid BLAKE3 hash {value:?}")))?;
-        Ok(Self(decoded))
-    }
-}
-
-impl fmt::Display for ContentHash {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(&encode_hex(&self.0))
-    }
 }
 
 /// The identity of a deterministic source manifest.
@@ -237,7 +187,7 @@ pub enum ProjectManifestBytes<'a> {
 }
 
 pub fn portable_fold(path: &str) -> String {
-    path.nfc().flat_map(char::to_lowercase).collect()
+    oleafly_core::portable::fold(path)
 }
 
 pub fn conflicting_portable_paths<'a>(
@@ -1286,20 +1236,15 @@ impl Store {
             let mut logical_size = 0_u64;
             let mut chunks = Vec::new();
             let mut source_reader = BufReader::new(source_handle.as_file_mut());
-            for chunk in StreamCDC::new(
-                &mut source_reader,
-                MIN_CHUNK_SIZE as usize,
-                AVG_CHUNK_SIZE as usize,
-                MAX_CHUNK_SIZE as usize,
-            ) {
-                let chunk = chunk.map_err(io::Error::from)?;
+            for chunk in Chunker::new(&mut source_reader) {
+                let chunk = chunk?;
                 ensure_publication_active(gate)?;
                 let (next_file_size, next_candidate_size, next_chunk_references) =
                     advance_capture_budget(
                         logical_size,
                         candidate_logical_size,
                         candidate_chunk_references,
-                        chunk.length as u64,
+                        chunk.data.len() as u64,
                     )?;
                 destination_file.write_all(&chunk.data)?;
                 content_hasher.update(&chunk.data);
@@ -1311,7 +1256,7 @@ impl Store {
                 let chunk_hash_hex = chunk_hash.to_hex();
                 chunks.push(ManifestChunk {
                     hash: chunk_hash_hex.clone(),
-                    raw_len: chunk.length as u64,
+                    raw_len: chunk.data.len() as u64,
                 });
 
                 let already_published = connection
@@ -3727,7 +3672,9 @@ fn checkpoint_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Checkpoint> 
     let root: String = row.get(0)?;
     let output_hash: String = row.get(5)?;
     let snapshot_root = SnapshotRoot::from_hex(&root).map_err(to_sql_conversion_error)?;
-    let output_hash = ContentHash::from_hex(&output_hash).map_err(to_sql_conversion_error)?;
+    let output_hash = ContentHash::from_hex(&output_hash)
+        .map_err(HistoryError::from)
+        .map_err(to_sql_conversion_error)?;
     Ok(Checkpoint {
         snapshot_root,
         completed_at_unix_ms: row.get(1)?,
@@ -4525,46 +4472,19 @@ fn validate_existing_format(root: &Path) -> Result<u32> {
 }
 
 fn validate_portable_relative_path(path: &str) -> Result<()> {
-    if path.is_empty()
-        || path.starts_with('/')
-        || path.starts_with('\\')
-        || path.contains('\\')
-        || path.contains(':')
-        || path.chars().any(char::is_control)
-    {
-        return Err(HistoryError::InvalidInput(format!(
+    use oleafly_core::portable::PortableProblem;
+    match oleafly_core::portable::relative_problem(path) {
+        None => Ok(()),
+        Some(PortableProblem::NotPortable) => Err(HistoryError::InvalidInput(format!(
             "{path:?} is not a portable project-relative path"
-        )));
-    }
-    let components = path.split('/').collect::<Vec<_>>();
-    if components.iter().any(|component| {
-        component.is_empty()
-            || *component == "."
-            || *component == ".."
-            || component.ends_with(['.', ' '])
-            || is_windows_reserved_component(component)
-    }) {
-        return Err(HistoryError::InvalidInput(format!(
+        ))),
+        Some(PortableProblem::NotNormalized) => Err(HistoryError::InvalidInput(format!(
             "{path:?} is not a normalized project-relative path"
-        )));
-    }
-    let first = components.first().copied().unwrap_or_default();
-    if first.eq_ignore_ascii_case(".git") || first.eq_ignore_ascii_case(".oleafly") {
-        return Err(HistoryError::InvalidInput(format!(
+        ))),
+        Some(PortableProblem::ProtectedRoot) => Err(HistoryError::InvalidInput(format!(
             "{path:?} is inside a protected project-internal root"
-        )));
+        ))),
     }
-    Ok(())
-}
-
-fn is_windows_reserved_component(component: &str) -> bool {
-    let stem = component.split('.').next().unwrap_or_default();
-    let upper = stem.to_ascii_uppercase();
-    matches!(upper.as_str(), "CON" | "PRN" | "AUX" | "NUL")
-        || upper
-            .strip_prefix("COM")
-            .or_else(|| upper.strip_prefix("LPT"))
-            .is_some_and(|suffix| suffix.len() == 1 && matches!(suffix.as_bytes()[0], b'1'..=b'9'))
 }
 
 fn validate_portable_path_set<'a>(paths: impl IntoIterator<Item = &'a str>) -> Result<()> {
@@ -4719,28 +4639,6 @@ fn validate_store_lineage(lineage: &str) -> Result<()> {
         )));
     }
     Ok(())
-}
-
-fn decode_hex_32(value: &str) -> Option<[u8; 32]> {
-    if value.len() != 64 {
-        return None;
-    }
-    let mut decoded = [0_u8; 32];
-    for (index, pair) in value.as_bytes().chunks_exact(2).enumerate() {
-        let high = decode_hex_digit(pair[0])?;
-        let low = decode_hex_digit(pair[1])?;
-        decoded[index] = (high << 4) | low;
-    }
-    Some(decoded)
-}
-
-fn decode_hex_digit(digit: u8) -> Option<u8> {
-    match digit {
-        b'0'..=b'9' => Some(digit - b'0'),
-        b'a'..=b'f' => Some(digit - b'a' + 10),
-        b'A'..=b'F' => Some(digit - b'A' + 10),
-        _ => None,
-    }
 }
 
 fn sync_directory(path: &Path) -> Result<()> {
@@ -5005,15 +4903,10 @@ mod tests {
             state ^= state << 17;
             data.extend_from_slice(&state.to_le_bytes());
         }
-        let cuts: Vec<(u64, usize)> = StreamCDC::new(
-            &data[..],
-            MIN_CHUNK_SIZE as usize,
-            AVG_CHUNK_SIZE as usize,
-            MAX_CHUNK_SIZE as usize,
-        )
-        .map(|chunk| chunk.unwrap())
-        .map(|chunk| (chunk.offset, chunk.length))
-        .collect();
+        let cuts: Vec<(u64, usize)> = Chunker::new(&data[..])
+            .map(|chunk| chunk.unwrap())
+            .map(|chunk| (chunk.offset, chunk.data.len()))
+            .collect();
         assert_eq!(
             cuts,
             [

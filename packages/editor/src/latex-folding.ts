@@ -26,17 +26,22 @@ function environmentFoldRange(
   lineEnd: number,
   env: string,
 ): { from: number; to: number } | null {
-  const rest = state.doc.sliceString(lineEnd, Math.min(state.doc.length, lineEnd + WINDOW));
+  const next = state.doc.lineAt(lineStart).number + 1;
+  if (next > state.doc.lines) return null;
   const re = new RegExp(String.raw`\\(begin|end)\{${escapeRegExp(env)}\}`, "g");
+  const limit = Math.min(state.doc.length, lineEnd + WINDOW);
   let depth = 1;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(rest))) {
-    depth += m[1] === "begin" ? 1 : -1;
-    if (depth === 0) {
-      const endLine = state.doc.lineAt(lineEnd + m.index);
-      if (endLine.number > state.doc.lineAt(lineStart).number) return { from: lineEnd, to: endLine.to };
-      return null; // single-line block, nothing to fold
+  let from = lineEnd + 1;
+  for (const line of state.doc.iterLines(next)) {
+    if (from > limit) break;
+    const to = from + line.length;
+    const text = to > limit ? line.slice(0, limit - from) : line;
+    re.lastIndex = 0;
+    for (let match = re.exec(text); match; match = re.exec(text)) {
+      depth += match[1] === "begin" ? 1 : -1;
+      if (depth === 0) return { from: lineEnd, to };
     }
+    from = to + 1;
   }
   return null;
 }
@@ -46,13 +51,12 @@ function sectionFoldEnd(
   startNo: number,
   level: number,
 ): number {
-  const total = state.doc.lines;
-  for (let ln = startNo + 1; ln <= total; ln++) {
-    const line = state.doc.line(ln);
-    const lm = SECTION_RE.exec(line.text);
-    if (lm && SECTION_LEVEL[lm[1]] <= level) {
-      return state.doc.line(ln - 1).to;
-    }
+  if (startNo >= state.doc.lines) return state.doc.length;
+  let previousEnd = state.doc.line(startNo).to;
+  for (const line of state.doc.iterLines(startNo + 1)) {
+    const match = SECTION_RE.exec(line);
+    if (match && SECTION_LEVEL[match[1]] <= level) return previousEnd;
+    previousEnd += line.length + 1;
   }
   return state.doc.length;
 }

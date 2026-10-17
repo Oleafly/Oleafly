@@ -9,12 +9,15 @@ import { usePdfKeyboardShortcuts } from "./use-pdf-keyboard-shortcuts";
 import { CompileControlsView } from "@/components/layout/CompileControls";
 import { LogPane } from "@/components/editor/LogPane";
 import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-workspace";
+import { usesNativeDockMenu } from "@/lib/native-dock-shortcuts";
+import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { logError } from "@/lib/log";
 import { downloadBytes } from "@/lib/download-blob";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
 import { usePdfPosition } from "@/lib/use-pdf-position";
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { usePreviewGeometry } from "@/lib/preview-geometry";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
 import {
@@ -72,6 +75,8 @@ import {
   MIN_PREVIEW_SCALE,
 } from "./preview-zoom";
 import { Spinner } from "@/components/ui/spinner";
+
+const PDF_SCROLL_AXES = ["y", "x"] as const;
 
 const INITIAL_LOAD_STATE: PdfLoadState = {
   status: "idle",
@@ -328,9 +333,6 @@ export function PreviewWindow({
   const [rotation, setRotation] = useState<PdfRotation>(0);
   const inverted = useSettingsStore((state) => state.pdfDarkMode);
   const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
-  const pdfZoomShortcuts = useSettingsStore(
-    (state) => state.pdfZoomShortcuts,
-  );
   const [screenReaderMode, setScreenReaderMode] = useState(false);
   const [page, setPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
@@ -355,8 +357,15 @@ export function PreviewWindow({
 
   const rootRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<PdfViewerHandle>(null);
-  const pdfPosition = usePdfPosition(projectId, pdfRef);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
+  const readyRotationRef = useRef(rotation);
+  const pdfPosition = usePdfPosition(
+    projectId,
+    pdfRef,
+    scrollBoxRef,
+    rotation === readyRotationRef.current,
+  );
+  useOverlayScrollbar(scrollBoxRef, PDF_SCROLL_AXES);
   const searchInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const onChange = () => {
@@ -405,6 +414,18 @@ export function PreviewWindow({
   compileStateRef.current = compileState;
   previewDocumentRef.current = previewDocument;
   scaleRef.current = scale;
+
+  useEffect(() => {
+    if (disableNativeBridge || !isTauri() || usesNativeDockMenu()) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (!matchesShortcut(event, useShortcutStore.getState().bindings.openSettings)) return;
+      event.preventDefault();
+      void sendPreviewCommand(projectIdRef.current, { action: "settings" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [disableNativeBridge]);
 
   const setClampedScale = useCallback((next: number) => {
     setScale(
@@ -730,14 +751,11 @@ export function PreviewWindow({
     rootRef,
     searchOpen,
     outlineOpen,
-    zoomShortcuts: pdfZoomShortcuts,
     searchInputRef,
     setSearchOpen,
     setSearchInput,
     setOutlineOpen,
-    setScale,
     setRotation,
-    userZoom,
   });
 
   useEffect(() => {
@@ -784,6 +802,7 @@ export function PreviewWindow({
     if (next.status !== "loading") setRotationPending(false);
     if (next.status === "ready") {
       lastReadyDocumentRef.current = current;
+      readyRotationRef.current = rotation;
       setRetainedLoadFailure(null);
       return;
     }
@@ -933,8 +952,9 @@ export function PreviewWindow({
       ref={scrollBoxRef}
       data-testid="detached-preview-scroll"
       data-pdf-scroll-root
+      data-select-all-scope
       aria-label={t(($) => $.preview.viewer.scrollArea)}
-      className="h-full overflow-auto focus-visible:bg-accent/20"
+      className="isolate h-full overflow-auto focus-visible:bg-accent/20"
       style={
         inverted && !screenReaderMode
           ? { filter: "invert(1) hue-rotate(180deg)" }
@@ -1079,6 +1099,7 @@ export function PreviewWindow({
   return (
     <div
       ref={rootRef}
+      tabIndex={-1}
       data-testid="detached-preview-window"
       data-preview-layout={layout}
       data-preview-page={page}

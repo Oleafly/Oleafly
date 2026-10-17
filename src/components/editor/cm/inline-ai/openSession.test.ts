@@ -68,6 +68,13 @@ describe("openInlineEdit", () => {
     openInlineEdit(editorAt("second", 0, 6));
     expect(useInlineEditStore.getState().session).toMatchObject({ original: "first", autoRun: false });
   });
+
+  it("replaces a session that was withdrawn by someone else's edit", () => {
+    openInlineEdit(editorAt("first", 0, 5));
+    useInlineEditStore.getState().withdraw();
+    openInlineEdit(editorAt("second", 0, 6));
+    expect(useInlineEditStore.getState().session).toMatchObject({ original: "second", phase: "prompting" });
+  });
 });
 
 describe("openInlineEditWithInstruction", () => {
@@ -92,5 +99,16 @@ describe("openInlineEditWithInstruction", () => {
     useInlineEditStore.getState().open({ from: 0, to: 1, original: "x" });
     expect(openInlineEditWithInstruction(editorAt("hello", 0, 5), "Shorten")).toBe(false);
     expect(useInlineEditStore.getState().session?.original).toBe("x");
+  });
+
+  it("replaces a session that was withdrawn by someone else's edit", () => {
+    useInlineEditStore.getState().open({ from: 0, to: 1, original: "x" });
+    useInlineEditStore.getState().withdraw();
+    expect(openInlineEditWithInstruction(editorAt("hello", 0, 5), "Shorten")).toBe(true);
+    expect(useInlineEditStore.getState().session).toMatchObject({
+      original: "hello",
+      instruction: "Shorten",
+      phase: "prompting",
+    });
   });
 });

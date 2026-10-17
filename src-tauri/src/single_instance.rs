@@ -42,6 +42,7 @@ pub(crate) fn on_second_launch<R: tauri::Runtime>(
     cwd: String,
 ) {
     reveal_main_window(app);
+    crate::collab::links::arrive(app, crate::collab::links::links_in(args.iter().cloned()));
     crate::open_request::arrive(
         app,
         args.into_iter().map(OsString::from).collect(),
@@ -50,7 +51,7 @@ pub(crate) fn on_second_launch<R: tauri::Runtime>(
     );
 }
 
-fn reveal_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+pub(crate) fn reveal_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(window) = app.get_window("main") {
         let _ = window.unminimize();
         let _ = window.show();
@@ -222,6 +223,38 @@ mod tests {
                 ("notes".to_string(), "forwarded"),
             ]
         );
+    }
+
+    #[test]
+    fn a_second_launch_hands_app_links_to_the_link_queue_and_opens_no_folder() {
+        let _queue = crate::collab::links::QUEUE_TEST_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        crate::collab::links::take();
+        let project = "01920000-0000-7000-8000-0000000000aa";
+        let link = format!("oleafly://open?server=https%3A%2F%2Funi.edu&project={project}");
+        let slashed = format!("oleafly://open/?server=https%3A%2F%2Funi.edu&project={project}");
+        let app = app_built_like_run();
+        on_second_launch(
+            app.handle(),
+            vec![
+                r"C:\Program Files\Oleafly\oleafly.exe".into(),
+                format!("\"{slashed}\""),
+            ],
+            r"C:\Users\me".into(),
+        );
+        on_second_launch(
+            app.handle(),
+            vec!["/usr/bin/oleafly-desktop".into(), format!("{link}/")],
+            "/home/me".into(),
+        );
+        on_second_launch(
+            app.handle(),
+            vec!["/usr/bin/oleafly-desktop".into(), format!(" '{link}'\n")],
+            "/home/me".into(),
+        );
+        assert_eq!(queued(&app), Vec::<(String, &str)>::new());
+        assert_eq!(crate::collab::links::take(), [slashed, link.clone(), link]);
     }
 
     #[cfg(target_os = "macos")]

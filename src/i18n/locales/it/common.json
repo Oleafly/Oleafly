@@ -78,5 +78,10 @@
       "invalidNumber": "{{value}} non è un numero",
       "sortNegated": "{{key}} non può essere escluso"
     }
+  },
+  "avatar": {
+    "more_one": "{{count}} altra persona",
+    "more_many": "{{count}} altre persone",
+    "more_other": "{{count}} altre persone"
   }
 }

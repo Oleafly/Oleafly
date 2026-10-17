@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { create } from "zustand";
-import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Sparkles, Trash2, Type } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, FileText, FileUp, Info, LayoutTemplate, Trash2, Type } from "lucide-react";
+import { PackList } from "@/components/settings/template-packs/PackList";
+import { PackView } from "@/components/settings/template-packs/PackView";
+import { announceSavedTemplate } from "@/features/custom-templates";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DictionaryDownloads } from "@/components/settings/DictionaryDownloads";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -16,21 +19,28 @@ import {
   deleteCustomTemplate,
   downloadAllFonts,
   installFontComponent,
-  installTemplatePack,
   listFontComponents,
-  listTemplatePacks,
   listTemplates,
-  refreshPackCatalog,
   removeFontComponent,
-  removeTemplatePack,
   templatePreview,
   withAssetProgress,
   type ComponentInfo,
-  type PackInfo,
   type TemplateInfo,
 } from "@/lib/tauri";
 import { Spinner } from "@/components/ui/spinner";
-import { SECTION_HEADING_CLASS, SectionHeading } from "@/components/ui/section-heading";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { CheckBadge } from "@/components/ui/check-badge";
+import { isTypstFontPackId, type TypstFontPackId } from "@/lib/typst-font-packs";
+import { useFilesStore } from "@/store/files";
+import { useFontPacksStore } from "@/store/font-packs";
+import { loadPacks, refreshPackCatalogInBackground } from "@/store/template-packs";
+import { takeTemplateLink, useTemplateLinkStore, type PendingTemplateLink } from "@/store/template-link";
+
+function afterTypstPackChange(id: string) {
+  if (!isTypstFontPackId(id)) return;
+  void useFontPacksStore.getState().load();
+  void useFilesStore.getState().refreshEngine();
+}
 
 const ALL = "__all__";
 
@@ -44,25 +54,24 @@ function isFontPackId(id: string): id is FontPackId {
 interface DownloadActivity {
   fontBusyId: string | null;
   fontProgress: string;
-  packBusyId: string | null;
-  packProgress: string;
 }
 
 const useDownloadActivity = create<DownloadActivity>(() => ({
   fontBusyId: null,
   fontProgress: "",
-  packBusyId: null,
-  packProgress: "",
 }));
 
 const setBusyId = (fontBusyId: string | null) =>
   useDownloadActivity.setState({ fontBusyId });
 const setProgress = (fontProgress: string) =>
   useDownloadActivity.setState({ fontProgress });
-const setPackBusyId = (packBusyId: string | null) =>
-  useDownloadActivity.setState({ packBusyId });
-const setPackProgress = (packProgress: string) =>
-  useDownloadActivity.setState({ packProgress });
+
+// Importing a template is rare, so its dialog loads when it is first opened.
+const TemplateImportDialog = lazy(() =>
+  import("@/components/library/TemplateImportDialog").then((module) => ({
+    default: module.TemplateImportDialog,
+  })),
+);
 
 export function DownloadsSection() {
   const { t } = useTranslation(["common", "settings"]);
@@ -74,30 +83,58 @@ export function DownloadsSection() {
   const [tab, setTab] = useState<"fonts" | "templates" | "dictionaries">(
     "fonts",
   );
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiTemplates, setAiTemplates] = useState<TemplateInfo[]>([]);
-  const [aiPreviews, setAiPreviews] = useState<Record<string, string>>({});
-  const [aiConfirm, setAiConfirm] = useState<TemplateInfo | null>(null);
-  const [aiBusy, setAiBusy] = useState(false);
-  const refreshAiTemplates = useCallback(async () => {
+  const [openPackId, setOpenPackId] = useState<string | null>(null);
+  const [link, setLink] = useState<PendingTemplateLink | null>(null);
+  const [packSearch, setPackSearch] = useState<{ text: string; serial: number } | null>(null);
+  const openPack = useCallback((packId: string) => {
+    setLink(null);
+    setPackSearch(null);
+    setOpenPackId(packId);
+  }, []);
+  const closePack = useCallback(() => {
+    setLink(null);
+    setOpenPackId(null);
+  }, []);
+  const missingPack = useCallback((packId: string) => {
+    setLink(null);
+    setOpenPackId(null);
+    setPackSearch((current) => ({ text: packId, serial: (current?.serial ?? 0) + 1 }));
+  }, []);
+  const pendingLink = useTemplateLinkStore((s) => s.pending);
+  useEffect(() => {
+    if (!pendingLink) return;
+    const taken = takeTemplateLink();
+    if (!taken) return;
+    setTab("templates");
+    setLink(taken);
+    setOpenPackId(taken.packId);
+  }, [pendingLink]);
+  // Templates the person made: imported, saved from a project, or generated.
+  const [ownOpen, setOwnOpen] = useState(false);
+  const [ownTemplates, setOwnTemplates] = useState<TemplateInfo[]>([]);
+  const [ownPreviews, setOwnPreviews] = useState<Record<string, string>>({});
+  const [ownConfirm, setOwnConfirm] = useState<TemplateInfo | null>(null);
+  const [ownBusy, setOwnBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const refreshOwnTemplates = useCallback(async () => {
     try {
       const all = await listTemplates();
-      const ai = all.filter((t) => (t.category || "") === "AI Generated");
-      setAiTemplates(ai);
-      for (const t of ai) {
+      const own = all.filter((t) => t.source === "custom");
+      setOwnTemplates(own);
+      for (const t of own) {
         void templatePreview(t.id)
           .then((uri) => {
-            if (uri) setAiPreviews((prev) => ({ ...prev, [t.id]: uri }));
+            if (uri) setOwnPreviews((prev) => ({ ...prev, [t.id]: uri }));
           })
           .catch(() => {});
       }
     } catch (e) {
-      void logError("list AI templates", e);
+      void logError("list your templates", e);
     }
   }, []);
   useEffect(() => {
-    if (aiOpen) void refreshAiTemplates();
-  }, [aiOpen, refreshAiTemplates]);
+    if (ownOpen) void refreshOwnTemplates();
+  }, [ownOpen, refreshOwnTemplates]);
   const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
   const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
   useEffect(() => {
@@ -156,7 +193,7 @@ export function DownloadsSection() {
   );
 
   const install = (id: string) =>
-    withProgress(id, () => installFontComponent(id), "download the font", () =>
+    withProgress(id, () => installFontComponent(id).then(() => afterTypstPackChange(id)), "download the font", () =>
       t(($) => $.settings.downloads.errors.fontDownloadFailed),
     );
   const downloadAll = () =>
@@ -169,6 +206,7 @@ export function DownloadsSection() {
     try {
       await removeFontComponent(id);
       await refresh();
+      afterTypstPackChange(id);
     } catch (e) {
       notifyError("remove the font", e, t(($) => $.settings.downloads.errors.fontRemoveFailed));
     } finally {
@@ -177,108 +215,61 @@ export function DownloadsSection() {
   };
 
   const anyBusy = busyId !== null;
-  const allInstalled = components.length > 0 && components.every((c) => c.installed);
+  const packText = (c: ComponentInfo, field: "label" | "description") => {
+    if (isFontPackId(c.id)) return t(($) => $.settings.downloads.fontPacks[c.id as FontPackId][field]);
+    if (isTypstFontPackId(c.id)) return t(($) => $.settings.downloads.fontPacks[c.id as TypstFontPackId][field]);
+    return field === "label" ? c.label : c.description;
+  };
+  const fontRow = (c: ComponentInfo) => {
+    const busy = busyId === c.id || (busyId === ALL && !c.installed);
+    return (
+      <div
+        key={c.id}
+        {...(E2E_HOOKS ? { "data-e2e-font-pack": c.id } : {})}
+        className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
+      >
+        <Type className="size-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{packText(c, "label")}</span>
+            {c.installed && <CheckBadge tone="success" />}
+            {c.approx_bytes > 0 && (
+              <span className="text-[0.6875rem] text-muted-foreground">{formatDownloadSize(c.approx_bytes)}</span>
+            )}
+          </div>
+          <p className="truncate text-[0.6875rem] text-muted-foreground">
+            {busy && progress ? progress : packText(c, "description")}
+            {!busy && c.license?.spdx ? ` · ${c.license.spdx}` : ""}
+          </p>
+        </div>
+        {c.installed ? (
+          <button type="button"
+            onClick={() => void remove(c.id)}
+            disabled={anyBusy}
+            className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
+          >
+            <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
+          </button>
+        ) : (
+          <button type="button"
+            onClick={() => void install(c.id)}
+            disabled={anyBusy}
+            className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
+          >
+            {busy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
+            {busy ? "" : t(($) => $.settings.downloads.actions.download)}
+          </button>
+        )}
+      </div>
+    );
+  };
+  const templateFonts = components.filter((c) => c.kind !== "typst-font");
+  const typstFonts = components.filter((c) => c.kind === "typst-font");
+  const allInstalled = templateFonts.length > 0 && templateFonts.every((c) => c.installed);
 
-  const [packs, setPacks] = useState<PackInfo[]>([]);
-  const packBusyId = useDownloadActivity((s) => s.packBusyId);
-  const packProgress = useDownloadActivity((s) => s.packProgress);
-
-  const refreshPacks = useCallback(async () => {
-    try {
-      await refreshPackCatalog().catch(() => {});
-      setPacks(await listTemplatePacks());
-    } catch (e) {
-      void logError("list template packs", e);
-    }
+  useEffect(() => {
+    void loadPacks().then(() => refreshPackCatalogInBackground());
   }, []);
-
-  useEffect(() => {
-    void refreshPacks();
-  }, [refreshPacks]);
-
-  const inheritedPackWork = useRef(packBusyId !== null);
-  useEffect(() => {
-    if (packBusyId !== null || !inheritedPackWork.current) return;
-    inheritedPackWork.current = false;
-    void refreshPacks();
-  }, [packBusyId, refreshPacks]);
-
-  const runPackInstall = async (id: string) => {
-    try {
-      await withAssetProgress(
-        {
-          component: (p) => {
-            if (p.component !== id) return;
-            setPackProgress(
-              t(($) => $.settings.downloads.packProgress, {
-                index: formatNumber(p.index),
-                total: formatNumber(p.total),
-              }),
-            );
-          },
-        },
-        () => installTemplatePack(id),
-      );
-      await refreshPacks();
-    } finally {
-      setPackProgress("");
-    }
-  };
-
-  const installPack = async (id: string) => {
-    if (useDownloadActivity.getState().packBusyId !== null) return;
-    setPackBusyId(id);
-    try {
-      await runPackInstall(id);
-    } catch (e) {
-      notifyError(
-        "download the template pack",
-        e,
-        t(($) => $.settings.downloads.errors.packDownloadFailed),
-      );
-    } finally {
-      setPackBusyId(null);
-    }
-  };
-
-  const downloadAllPacks = async () => {
-    if (useDownloadActivity.getState().packBusyId !== null) return;
-    setPackBusyId(ALL);
-    try {
-      for (const p of packs) {
-        if (p.installed) continue;
-        await runPackInstall(p.id);
-      }
-    } catch (e) {
-      notifyError(
-        "download the template packs",
-        e,
-        t(($) => $.settings.downloads.errors.packsDownloadFailed),
-      );
-    } finally {
-      setPackBusyId(null);
-    }
-  };
-
-  const removePack = async (id: string) => {
-    if (useDownloadActivity.getState().packBusyId !== null) return;
-    setPackBusyId(id);
-    try {
-      await removeTemplatePack(id);
-      await refreshPacks();
-    } catch (e) {
-      notifyError(
-        "remove the template pack",
-        e,
-        t(($) => $.settings.downloads.errors.packRemoveFailed),
-      );
-    } finally {
-      setPackBusyId(null);
-    }
-  };
-
-  const anyPackBusy = packBusyId !== null;
-  const allPacksInstalled = packs.length > 0 && packs.every((p) => p.installed);
 
   return (
     <Tabs
@@ -332,186 +323,92 @@ export function DownloadsSection() {
       </div>
 
       <div className="overflow-hidden rounded-lg border">
-        {components.length === 0 ? (
+        {templateFonts.length === 0 ? (
           <p className="px-3 py-4 text-sm text-muted-foreground">
             {t(($) => $.settings.downloads.fonts.empty)}
           </p>
         ) : (
-          components.map((c) => {
-            const busy = busyId === c.id || (busyId === ALL && !c.installed);
-            const rowDetail = () => {
-              if (busy && progress) {
-                return progress;
-              }
-              if (isFontPackId(c.id)) {
-                return t(($) => $.settings.downloads.fontPacks[c.id as FontPackId].description);
-              }
-              return c.description;
-            };
-
-            return (
-              <div
-                key={c.id}
-                {...(E2E_HOOKS ? { "data-e2e-font-pack": c.id } : {})}
-                className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
-              >
-                <Type className="size-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">
-                      {isFontPackId(c.id) ? t(($) => $.settings.downloads.fontPacks[c.id as FontPackId].label) : c.label}
-                    </span>
-                    {c.installed && <Check className="size-3.5 text-emerald-500" />}
-                    {c.approx_bytes > 0 && (
-                      <span className="text-[11px] text-muted-foreground">{formatDownloadSize(c.approx_bytes)}</span>
-                    )}
-                  </div>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {rowDetail()}
-                    {!busy && c.license?.spdx ? ` · ${c.license.spdx}` : ""}
-                  </p>
-                </div>
-                {c.installed ? (
-                  <button type="button"
-                    onClick={() => void remove(c.id)}
-                    disabled={anyBusy}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-                  >
-                    <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
-                  </button>
-                ) : (
-                  <button type="button"
-                    onClick={() => void install(c.id)}
-                    disabled={anyBusy}
-                    className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
-                  >
-                    {busy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
-                    {busy ? "" : t(($) => $.settings.downloads.actions.download)}
-                  </button>
-                )}
-              </div>
-            );
-          })
+          templateFonts.map(fontRow)
         )}
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      {typstFonts.length > 0 && (
+        <>
+          <div className="flex items-center gap-1.5">
+            <SectionHeading>{t(($) => $.settings.downloads.typstFonts.heading)}</SectionHeading>
+            <Tooltip wide side="right" label={t(($) => $.settings.downloads.typstFonts.tooltip)}>
+              <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+            </Tooltip>
+          </div>
+          <div className="overflow-hidden rounded-lg border">{typstFonts.map(fontRow)}</div>
+        </>
+      )}
+
+      <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
         {t(($) => $.settings.downloads.fonts.engineNote)}
       </p>
       </TabsContent>
 
       <TabsContent value="templates" className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <h3 ref={templatesHeadingRef} className={SECTION_HEADING_CLASS}>
-            {t(($) => $.settings.downloads.templates.heading)}
-          </h3>
-          <Tooltip
-            wide
-            side="right"
-            label={t(($) => $.settings.downloads.templates.tooltip)}
-          >
-            <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
-          </Tooltip>
-        </div>
-        <button type="button"
-          onClick={() => void downloadAllPacks()}
-          disabled={anyPackBusy || allPacksInstalled}
-          className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-        >
-          {packBusyId === ALL ? <Spinner size="sm" /> : <Download className="size-3.5" />}
-          {allPacksInstalled
-            ? t(($) => $.settings.downloads.actions.allDownloaded)
-            : t(($) => $.settings.downloads.actions.downloadAll)}
-        </button>
-      </div>
-
-      <div className="overflow-hidden rounded-lg border">
-        {packs.length === 0 ? (
-          <p className="px-3 py-4 text-sm text-muted-foreground">
-            {t(($) => $.settings.downloads.templates.empty)}
-          </p>
-        ) : (
-          packs.map((p) => {
-            const busy = packBusyId === p.id || (packBusyId === ALL && !p.installed);
-            return (
-              <div
-                key={p.id}
-                data-testid={`pack-row-${p.id}`}
-                className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
-              >
-                <FileText className="size-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{p.label}</span>
-                    {p.installed && <Check className="size-3.5 text-emerald-500" />}
-                    {p.approx_bytes > 0 && (
-                      <span className="text-[11px] text-muted-foreground">{formatDownloadSize(p.approx_bytes)}</span>
-                    )}
-                  </div>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {busy && packProgress ? packProgress : p.description}
-                    {!busy && p.license_summary ? ` · ${p.license_summary}` : ""}
-                  </p>
-                </div>
-                {p.installed ? (
-                  <button type="button"
-                    data-testid={`pack-remove-${p.id}`}
-                    onClick={() => void removePack(p.id)}
-                    disabled={anyPackBusy}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-                  >
-                    <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
-                  </button>
-                ) : (
-                  <button type="button"
-                    data-testid={`pack-install-${p.id}`}
-                    onClick={() => void installPack(p.id)}
-                    disabled={anyPackBusy}
-                    className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
-                  >
-                    {busy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
-                    {busy ? "" : t(($) => $.settings.downloads.actions.download)}
-                  </button>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+      {openPackId !== null ? (
+        <PackView
+          key={link ? `${openPackId}:${link.serial}` : openPackId}
+          packId={openPackId}
+          link={link?.packId === openPackId ? link : null}
+          onBack={closePack}
+          onMissing={missingPack}
+        />
+      ) : (
+      <>
+      <PackList
+        key={packSearch?.serial ?? 0}
+        initialQuery={packSearch?.text}
+        onOpenPack={openPack}
+        headingRef={templatesHeadingRef}
+      />
 
       <div className="overflow-hidden rounded-lg border bg-card">
-        <button
-          type="button"
-          data-testid="manage-ai-templates"
-          onClick={() => setAiOpen((v) => !v)}
-          aria-expanded={aiOpen}
-          className="flex w-full items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
-        >
-          <Sparkles className="size-3.5 text-primary" />
-          {t(($) => $.settings.downloads.aiTemplates.toggle)}
-          {aiOpen ? (
-            <ChevronDown className="ml-auto size-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="ml-auto size-3.5 text-muted-foreground" />
-          )}
-        </button>
-        {aiOpen && (
+        <div className="flex items-center gap-2 pr-2">
+          <button
+            type="button"
+            data-testid="manage-your-templates"
+            onClick={() => setOwnOpen((v) => !v)}
+            aria-expanded={ownOpen}
+            className="flex min-w-0 flex-1 items-center gap-1.5 p-3 text-left text-xs font-semibold hover:bg-accent/40"
+          >
+            <LayoutTemplate className="size-3.5 text-primary" />
+            <span className="truncate">{t(($) => $.settings.downloads.yourTemplates.toggle)}</span>
+            {ownOpen ? (
+              <ChevronDown className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+            )}
+          </button>
+          <button
+            type="button"
+            data-testid="settings-import-template"
+            onClick={() => setImportOpen(true)}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <FileUp className="size-3.5" /> {t(($) => $.settings.downloads.yourTemplates.import)}
+          </button>
+        </div>
+        {ownOpen && (
           <div className="border-t">
-            {aiTemplates.length === 0 ? (
+            {ownTemplates.length === 0 ? (
               <p className="px-3 py-4 text-sm text-muted-foreground">
-                {t(($) => $.settings.downloads.aiTemplates.empty)}
+                {t(($) => $.settings.downloads.yourTemplates.empty)}
               </p>
             ) : (
-              aiTemplates.map((template) => (
+              ownTemplates.map((template) => (
                 <div
                   key={template.id}
-                  data-testid={`ai-template-row-${template.id}`}
+                  data-testid={`your-template-row-${template.id}`}
                   className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
                 >
-                  {aiPreviews[template.id] ? (
+                  {ownPreviews[template.id] ? (
                     <img
-                      src={aiPreviews[template.id]}
+                      src={ownPreviews[template.id]}
                       alt={""}
                       className="h-14 w-11 shrink-0 rounded border border-black/10 bg-white object-cover object-top shadow-sm"
                     />
@@ -521,17 +418,19 @@ export function DownloadsSection() {
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    <span className="text-sm font-medium">{template.name}</span>
-                    <p className="truncate text-[11px] text-muted-foreground">
+                    <span className="block truncate text-sm font-medium">{template.name}</span>
+                    <p className="truncate text-[0.6875rem] text-muted-foreground">
                       {template.description ||
-                        t(($) => $.settings.downloads.aiTemplates.fallbackDescription)}
+                        ((template.category || "") === "AI Generated"
+                          ? t(($) => $.settings.downloads.yourTemplates.aiDescription)
+                          : t(($) => $.settings.downloads.yourTemplates.customDescription))}
                     </p>
                   </div>
                   <button
                     type="button"
-                    data-testid={`ai-template-delete-${template.id}`}
-                    onClick={() => setAiConfirm(template)}
-                    disabled={aiBusy}
+                    data-testid={`your-template-delete-${template.id}`}
+                    onClick={() => setOwnConfirm(template)}
+                    disabled={ownBusy}
                     className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                   >
                     <Trash2 className="size-3.5" /> {t(($) => $.common.actions.delete)}
@@ -542,38 +441,54 @@ export function DownloadsSection() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       <ConfirmationDialog
-        open={aiConfirm !== null}
-        title={t(($) => $.settings.downloads.aiTemplates.deleteTitle)}
-        description={t(($) => $.settings.downloads.aiTemplates.deleteDescription, {
-          name: aiConfirm?.name ?? "",
+        open={ownConfirm !== null}
+        title={t(($) => $.settings.downloads.yourTemplates.deleteTitle)}
+        description={t(($) => $.settings.downloads.yourTemplates.deleteDescription, {
+          name: ownConfirm?.name ?? "",
         })}
         confirmLabel={t(($) => $.common.actions.delete)}
         destructive
         onConfirm={() => {
-          const target = aiConfirm;
-          setAiConfirm(null);
+          const target = ownConfirm;
+          setOwnConfirm(null);
           if (!target) return;
-          setAiBusy(true);
+          setOwnBusy(true);
           void deleteCustomTemplate(target.id)
             .then(() => {
               toast.success(
-                t(($) => $.settings.downloads.aiTemplates.deleted, { name: target.name }),
+                t(($) => $.settings.downloads.yourTemplates.deleted, { name: target.name }),
               );
-              return refreshAiTemplates();
+              return refreshOwnTemplates();
             })
             .catch((e) =>
               notifyError(
                 "delete the template",
                 e,
-                t(($) => $.settings.downloads.aiTemplates.deleteFailed, { name: target.name }),
+                t(($) => $.settings.downloads.yourTemplates.deleteFailed, { name: target.name }),
               ),
             )
-            .finally(() => setAiBusy(false));
+            .finally(() => setOwnBusy(false));
         }}
-        onCancel={() => setAiConfirm(null)}
+        onCancel={() => setOwnConfirm(null)}
       />
+      {importOpen ? (
+        <Suspense fallback={null}>
+          <TemplateImportDialog
+            open
+            onClose={() => setImportOpen(false)}
+            onImported={(templateId, name) => {
+              setImportOpen(false);
+              setOwnOpen(true);
+              void refreshOwnTemplates();
+              announceSavedTemplate(templateId, name);
+            }}
+          />
+        </Suspense>
+      ) : null}
       </TabsContent>
     </Tabs>
   );

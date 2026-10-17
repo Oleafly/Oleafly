@@ -171,5 +171,100 @@
     "label": "Styl citace",
     "ariaLabel": "Styl citace pro bibliografii v {{path}}",
     "failed": "Oleafly nedokázal změnit styl citace."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} a {{second}}",
+      "authorsMany": "{{first}} et al.",
+      "noYear": "b.r.",
+      "keySource": {
+        "bbt": "Klíč z Better BibTeX",
+        "native": "Klíč z aplikace Zotero",
+        "extra": "Klíč z pole Extra v aplikaci Zotero",
+        "generated": "Klíč vytvořený aplikací Oleafly"
+      },
+      "addFailed": "Oleafly nemohl přidat {{key}} do bibliografie. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "V aplikaci Zotero otevřete Nastavení > Pokročilé a zapněte „Povolit ostatním aplikacím v tomto počítači komunikovat s Zotero“.",
+      "unsupported": "Aktualizujte Zotero na verzi 7 nebo novější, abyste mohli prohledávat svou knihovnu z aplikace Oleafly.",
+      "keyRejected": "Zotero už váš klíč API nepřijímá. Znovu připojte svůj účet v nastavení Zotero.",
+      "closed": "Otevřete Zotero a prohledávejte svou knihovnu tady, nebo připojte svůj účet zotero.org.",
+      "closedCached": "Aplikace Zotero je zavřená. Výsledky pocházejí z poslední synchronizace, {{time}}.",
+      "bbtMissing": "Better BibTeX neodpovídá, takže nové klíče pocházejí z aplikace Zotero. Zkontrolujte, že je nainstalovaný a zapnutý.",
+      "action": "Nastavení Zotero"
+    },
+    "actions": {
+      "addFromZotero": "Přidat z knihovny Zotero",
+      "addAllMissing_one": "Přidat {{count}} chybějící citaci z knihovny Zotero",
+      "addAllMissing_few": "Přidat všechny {{count}} chybějící citace z knihovny Zotero",
+      "addAllMissing_many": "Přidat všech {{count}} chybějící citace z knihovny Zotero",
+      "addAllMissing_other": "Přidat všech {{count}} chybějících citací z knihovny Zotero",
+      "notInLibrary": "{{key}} není ve vaší knihovně Zotero.",
+      "changed": "Tento záznam se od přidání v knihovně Zotero změnil.",
+      "changedEdited": "Tento záznam se změnil v knihovně Zotero a vy jste ho upravili i tady.",
+      "update": "Aktualizovat z knihovny Zotero",
+      "updated": "Záznam {{key}} byl aktualizován z knihovny Zotero.",
+      "updateFailed": "Oleafly nemohl aktualizovat {{key}} z knihovny Zotero. Zkuste to znovu."
+    },
+    "chooseBibliography": {
+      "title": "Kam přidávat nové reference?",
+      "description": "Tento projekt má víc než jeden soubor bibliografie. Oleafly přidá nové reference do souboru, který vyberete, a zapamatuje si ho pro tento projekt.",
+      "confirm": "Použít tento soubor"
+    },
+    "handEdits": {
+      "title": "Nahradit vaše úpravy?",
+      "description": "Záznam {{key}} jste upravili ručně. Když ho nahradíte verzí z knihovny Zotero, tyto změny se odstraní.",
+      "confirm": "Použít verzi z knihovny Zotero",
+      "cancel": "Ponechat moji"
+    },
+    "handList": {
+      "title": "Přesunout seznam literatury?",
+      "description": "Tento dokument uvádí reference ručně. Přesuňte je do {{path}}, aby s články citovanými z knihovny Zotero tvořily jeden číslovaný seznam.",
+      "confirm": "Přesunout seznam"
+    },
+    "missing": {
+      "title": "Přidat chybějící citace z knihovny Zotero",
+      "loading": "Kontroluje se vaše knihovna Zotero…",
+      "none": "Všechny citované klíče už v bibliografii jsou.",
+      "found_one": "{{count}} citovaný klíč je v knihovně Zotero",
+      "found_few": "{{count}} citované klíče jsou v knihovně Zotero",
+      "found_many": "{{count}} citovaného klíče je v knihovně Zotero",
+      "found_other": "{{count}} citovaných klíčů je v knihovně Zotero",
+      "duplicates_one": "{{count}} klíč cituje článek, který už v bibliografii je",
+      "duplicates_few": "{{count}} klíče citují články, které už v bibliografii jsou",
+      "duplicates_many": "{{count}} klíče cituje články, které už v bibliografii jsou",
+      "duplicates_other": "{{count}} klíčů cituje články, které už v bibliografii jsou",
+      "duplicateRow": "{{key}} je stejný článek jako {{existing}}",
+      "notFound_one": "{{count}} citovaný klíč není v knihovně Zotero",
+      "notFound_few": "{{count}} citované klíče nejsou v knihovně Zotero",
+      "notFound_many": "{{count}} citovaného klíče není v knihovně Zotero",
+      "notFound_other": "{{count}} citovaných klíčů není v knihovně Zotero",
+      "confirm_one": "Přidat {{count}} záznam",
+      "confirm_few": "Přidat {{count}} záznamy",
+      "confirm_many": "Přidat {{count}} záznamu",
+      "confirm_other": "Přidat {{count}} záznamů",
+      "done_one": "{{count}} záznam je teď v souboru {{path}}.",
+      "done_few": "{{count}} záznamy jsou teď v souboru {{path}}.",
+      "done_many": "{{count}} záznamu je teď v souboru {{path}}.",
+      "done_other": "{{count}} záznamů je teď v souboru {{path}}.",
+      "failed": "Oleafly nemohl přidat záznamy. {{detail}}"
+    },
+    "update": {
+      "title": "Aktualizovat záznamy .bib z knihovny Zotero",
+      "loading": "Hledají se změny v knihovně Zotero…",
+      "none": "Vaše bibliografie odpovídá knihovně Zotero.",
+      "handEdited": "Upraveno ručně",
+      "handEditedNote": "Záznamy, které jste upravili ručně, nejsou vybrané. Pokud některý chcete nahradit verzí z knihovny Zotero, vyberte ho.",
+      "confirm_one": "Aktualizovat {{count}} záznam",
+      "confirm_few": "Aktualizovat {{count}} záznamy",
+      "confirm_many": "Aktualizovat {{count}} záznamu",
+      "confirm_other": "Aktualizovat {{count}} záznamů",
+      "done_one": "Aktualizován {{count}} záznam.",
+      "done_few": "Aktualizovány {{count}} záznamy.",
+      "done_many": "Aktualizováno {{count}} záznamu.",
+      "done_other": "Aktualizováno {{count}} záznamů."
+    }
   }
 }

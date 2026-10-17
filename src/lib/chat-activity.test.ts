@@ -515,3 +515,25 @@ describe("createResearchArtifactAction", () => {
     expect(p.openProject).toHaveBeenCalledWith("proj", target);
   });
 });
+
+describe("projectToolEntry reuse", () => {
+  it("projects an unchanged tool entry once and again after a language switch", async () => {
+    const { applyLocale } = await import("@/i18n");
+    const entry = { id: "t1", name: "read_file", status: "done" as const, output: JSON.stringify({ path: "a.tex", content: "x" }) };
+    const parse = vi.spyOn(JSON, "parse");
+    try {
+      const first = projectToolEntry(entry);
+      expect(projectToolEntry(entry)).toBe(first);
+      expect(projectToolEntry({ ...entry })).not.toBe(first);
+      expect(parse).toHaveBeenCalledTimes(2);
+
+      await applyLocale("de");
+      const german = projectToolEntry(entry);
+      expect(german).not.toBe(first);
+      expect(german.label).not.toBe(first.label);
+    } finally {
+      parse.mockRestore();
+      await applyLocale("en");
+    }
+  });
+});

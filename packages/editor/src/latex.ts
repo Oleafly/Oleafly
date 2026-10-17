@@ -1,4 +1,4 @@
-import { stex, stexMath } from "@codemirror/legacy-modes/mode/stex";
+import { stexMath } from "@codemirror/legacy-modes/mode/stex";
 import { LanguageSupport, StreamLanguage } from "@codemirror/language";
 import { type EditorState } from "@codemirror/state";
 import {
@@ -16,6 +16,7 @@ import {
   maskLatexIgnoredRegions,
 } from "./latex-lexical";
 import { environmentSnippet } from "./latex-environments";
+import { latexStreamParser } from "./latex-stream";
 import {
   LATEX_DELIMITER_COMPLETIONS,
   latexDelimiterFamilySpecs,
@@ -70,7 +71,7 @@ const latexLanguageData = {
 
 export const latexLanguage = () =>
   new LanguageSupport(
-    StreamLanguage.define({ ...stex, languageData: latexLanguageData }),
+    StreamLanguage.define({ ...latexStreamParser, languageData: latexLanguageData }),
     [latexIgnoredRangesField],
   );
 

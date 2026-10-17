@@ -5,6 +5,7 @@ import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" }
 
 const mocks = vi.hoisted(() => ({
   tauri: false,
+  nativeDockMenu: false,
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   openUpdateWindow: vi.fn(),
   checkForUpdatesOnStartup: vi.fn(async () => {}),
@@ -25,6 +26,9 @@ const mocks = vi.hoisted(() => ({
   initAiPdfCaptureFlag: vi.fn(),
   sidebarThrows: false,
   previewRenders: 0,
+  previewMounts: 0,
+  previewUnmounts: 0,
+  previewActive: null as boolean | null,
   editorRenders: 0,
 }));
 
@@ -145,7 +149,7 @@ vi.mock("@/lib/preview-workspace", () => ({ startPreviewWorkspaceBridge: vi.fn(a
 vi.mock("@/lib/preview-window", () => ({ restorePreviewWindow: vi.fn(async () => {}) }));
 vi.mock("@/lib/native-dock-shortcuts", () => ({
   startNativeDockShortcutBridge: vi.fn(async () => () => {}),
-  usesNativeDockMenu: () => false,
+  usesNativeDockMenu: () => mocks.nativeDockMenu,
 }));
 vi.mock("@/lib/browser-window", () => ({
   registerBrowserCuaSurface: () => () => {},
@@ -184,12 +188,22 @@ vi.mock("@/components/editor/Editor", () => ({
     return <div data-testid="editor-surface" />;
   },
 }));
-vi.mock("@/components/preview/PreviewPane", () => ({
-  PreviewPane: () => {
-    mocks.previewRenders++;
-    return <div data-testid="preview-surface" />;
-  },
-}));
+vi.mock("@/components/preview/PreviewPane", async () => {
+  const { useEffect } = await import("react");
+  return {
+    PreviewPane: ({ active = true }: { active?: boolean }) => {
+      mocks.previewRenders++;
+      mocks.previewActive = active;
+      useEffect(() => {
+        mocks.previewMounts++;
+        return () => {
+          mocks.previewUnmounts++;
+        };
+      }, []);
+      return <div data-testid="preview-surface" />;
+    },
+  };
+});
 vi.mock("@/components/import/PdfImportView", () => ({ PdfImportView: () => <div data-testid="tool-pdf-import" /> }));
 vi.mock("@/components/layout/Sidebar", () => ({
   Sidebar: () => {
@@ -287,6 +301,9 @@ async function renderApp() {
 beforeEach(() => {
   mocks.tauri = false;
   mocks.sidebarThrows = false;
+  mocks.previewMounts = 0;
+  mocks.previewUnmounts = 0;
+  mocks.previewActive = null;
   mocks.listeners.clear();
   vi.clearAllMocks();
   mocks.editorVimUndo.mockReturnValue(true);
@@ -306,6 +323,7 @@ beforeEach(() => {
   useCompileStore.setState({ ...initialCompile, recompile: vi.fn(async () => undefined), status: "idle", autoCompile: false }, true);
   useHomeViewStore.setState({ page: "library", queuedPageAfterProjectClose: null });
   useTourStore.setState({ activeTourId: null });
+  mocks.nativeDockMenu = false;
   usePreviewDetachedStore.setState({ projectId: null });
   useSettingsStore.setState(
     {
@@ -404,10 +422,74 @@ describe("project workspace", () => {
     expect(mocks.editorRenders).toBe(renders.editor);
   });
 
+  it("keeps the editor and preview still when the shell around them changes", async () => {
+    await renderApp();
+    const renders = { preview: mocks.previewRenders, editor: mocks.editorRenders };
+
+    act(() => useSettingsStore.getState().setTerminalOpen(true));
+    act(() => useSettingsStore.getState().setTerminalOpen(false));
+
+    expect(mocks.previewRenders).toBe(renders.preview);
+    expect(mocks.editorRenders).toBe(renders.editor);
+  });
+
   it("drops the preview pane while the preview is detached", async () => {
     usePreviewDetachedStore.setState({ projectId: "p1" });
     await renderApp();
     expect(screen.getByTestId("editor-surface")).toBeInTheDocument();
+    expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
+  });
+
+  it("keeps the preview alive while the editor fills the window", async () => {
+    await renderApp();
+    expect(mocks.previewMounts).toBe(1);
+
+    act(() => useSettingsStore.getState().setViewMode("editor"));
+    expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
+    expect(mocks.previewActive).toBe(false);
+
+    act(() => useSettingsStore.getState().setViewMode("split"));
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+    expect(mocks.previewActive).toBe(true);
+    expect(mocks.previewMounts).toBe(1);
+    expect(mocks.previewUnmounts).toBe(0);
+  });
+
+  it("keeps the preview alive while the assistant takes over the window", async () => {
+    await renderApp();
+    act(() => useSettingsStore.setState({ assistantOpen: true, workspaceHidden: true }));
+    expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
+    expect(mocks.previewActive).toBe(false);
+
+    act(() => useSettingsStore.setState({ workspaceHidden: false }));
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+    expect(mocks.previewUnmounts).toBe(0);
+  });
+
+  it("keeps no preview for a project that opens with the editor filling the window", async () => {
+    savedLayout({ viewMode: "editor" });
+    await renderApp();
+    expect(mocks.previewMounts - mocks.previewUnmounts).toBe(0);
+
+    act(() => useSettingsStore.getState().setViewMode("split"));
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+    expect(mocks.previewMounts - mocks.previewUnmounts).toBe(1);
+  });
+
+  it("lets go of a hidden preview when the preview opens in its own window", async () => {
+    await renderApp();
+    act(() => useSettingsStore.getState().setViewMode("editor"));
+    act(() => usePreviewDetachedStore.setState({ projectId: "p1" }));
+    expect(mocks.previewUnmounts).toBe(1);
+  });
+
+  it("lets go of a hidden preview when another project opens", async () => {
+    await renderApp();
+    act(() => useSettingsStore.getState().setViewMode("editor"));
+    localStorage.setItem("oleafly.workspace.p2", JSON.stringify({ version: 1, viewMode: "editor" }));
+    act(() => useFilesStore.setState({ projectId: "p2", projectName: "Thesis" }));
+    await act(async () => {});
+    expect(mocks.previewUnmounts).toBe(1);
     expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
   });
 
@@ -454,28 +536,121 @@ describe("project workspace", () => {
     mocks.getEditorView.mockReturnValue({ contentDOM: document.createElement("div"), requestMeasure });
     await renderApp();
     const root = document.documentElement;
-    expect(root.style.fontFamily).toBe("Inter");
-    expect(root.style.getPropertyValue("--cm-font-family")).toBe("JetBrains Mono");
+    expect(root.style.getPropertyValue("--app-font")).toBe('"Inter"');
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe('"JetBrains Mono", var(--font-mono)');
     expect(root.style.fontSize).toBe("18px");
     expect(requestMeasure).toHaveBeenCalled();
     act(() => useSettingsStore.setState({ appFontFamily: "", editorFontFamily: "" }));
-    expect(root.style.fontFamily).toBe("");
+    expect(root.style.getPropertyValue("--app-font")).toBe("");
     expect(root.style.getPropertyValue("--cm-font-family")).toBe("");
   });
 
-  it("refreshes git status and open files when the window regains focus or becomes visible", async () => {
+  it("applies the editor line height and cursor width to the document root", async () => {
+    useSettingsStore.setState({ editorLineHeight: "wide", editorCustomLineHeight: 1.55, editorCursorWidth: 1 });
     await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-line-height")).toBe("2");
+    expect(root.style.getPropertyValue("--cm-cursor-width")).toBe("1px");
+    act(() => useSettingsStore.setState({ editorLineHeight: "custom", editorCursorWidth: 3 }));
+    expect(root.style.getPropertyValue("--cm-line-height")).toBe("1.55");
+    expect(root.style.getPropertyValue("--cm-cursor-width")).toBe("3px");
+  });
+
+  it("makes the editor follow the app font and size while Use the app font is on", async () => {
+    useSettingsStore.setState({
+      editorUsesAppFont: true,
+      appFontSize: 18,
+      editorFontSize: 13,
+      editorFontFamily: "Fira Code",
+    });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe("var(--font-sans)");
+    expect(root.style.getPropertyValue("--cm-font-size")).toBe("18px");
+    act(() => useSettingsStore.setState({ editorUsesAppFont: false }));
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe('"Fira Code", var(--font-mono)');
+    expect(root.style.getPropertyValue("--cm-font-size")).toBe("13px");
+    act(() => useSettingsStore.setState({ editorFontFamily: "" }));
+  });
+
+  it("applies the editor letter spacing to the document root", async () => {
+    useSettingsStore.setState({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 2.5 });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-letter-spacing")).toBe("0px");
+    act(() => useSettingsStore.setState({ editorLetterSpacing: "slight" }));
+    expect(root.style.getPropertyValue("--cm-letter-spacing")).toBe("0.5px");
+    act(() => useSettingsStore.setState({ editorLetterSpacing: "custom" }));
+    expect(root.style.getPropertyValue("--cm-letter-spacing")).toBe("2.5px");
+    act(() => useSettingsStore.setState({ editorLetterSpacing: "normal" }));
+  });
+
+  it("sets a cursor color for light and dark editor themes only while each is custom", async () => {
+    useSettingsStore.setState({ editorCursorColorLight: "#ff8800", editorCursorColorDark: "" });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-cursor-custom-light")).toBe("#ff8800");
+    expect(root.style.getPropertyValue("--cm-cursor-custom-dark")).toBe("");
+    act(() => useSettingsStore.setState({ editorCursorColorLight: "", editorCursorColorDark: "#88ccff" }));
+    expect(root.style.getPropertyValue("--cm-cursor-custom-light")).toBe("");
+    expect(root.style.getPropertyValue("--cm-cursor-custom-dark")).toBe("#88ccff");
+    act(() => useSettingsStore.setState({ editorCursorColorDark: "" }));
+  });
+
+  it("applies the custom colors of the editor theme shown in the current mode", async () => {
+    useSettingsStore.setState({
+      editorThemeLight: "paper",
+      editorThemeDark: "nord",
+      editorColors: { paper: { heading: "#aa0000" }, nord: { comment: "#00aa00", background: "#101010" } },
+    });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-user-comment")).toBe("#00aa00");
+    expect(root.style.getPropertyValue("--cm-user-background")).toBe("#101010");
+    expect(root.style.getPropertyValue("--cm-user-heading")).toBe("");
+
+    act(() => useSettingsStore.setState({ editorThemeDark: "paper" }));
+    expect(root.style.getPropertyValue("--cm-user-heading")).toBe("#aa0000");
+    expect(root.style.getPropertyValue("--cm-user-comment")).toBe("");
+
+    act(() => useSettingsStore.setState({ editorThemeLight: "system", editorThemeDark: "system", editorColors: {} }));
+    expect(root.style.getPropertyValue("--cm-user-heading")).toBe("");
+  });
+
+  it("keeps the macOS system monospace font reachable by its name", async () => {
+    useSettingsStore.setState({ editorFontFamily: "SF Mono" });
+    await renderApp();
+    expect(document.documentElement.style.getPropertyValue("--cm-font-family")).toBe(
+      '"SF Mono", ui-monospace, var(--font-mono)',
+    );
+    act(() => useSettingsStore.setState({ editorFontFamily: "" }));
+  });
+
+  it("falls back to the default editor font when the chosen name is only spaces", async () => {
+    useSettingsStore.setState({ editorFontFamily: "   " });
+    await renderApp();
+    expect(document.documentElement.style.getPropertyValue("--cm-font-family")).toBe("");
+  });
+
+  it("refreshes git status and open files once each time the window comes back", async () => {
+    await renderApp();
+    const now = vi.spyOn(Date, "now").mockReturnValue(10_000);
     mocks.gitRefresh.mockClear();
+    mocks.refreshOpenFilesFromDisk.mockClear();
     act(() => {
       window.dispatchEvent(new Event("focus"));
+      document.dispatchEvent(new Event("visibilitychange"));
     });
+    expect(mocks.gitRefresh).toHaveBeenCalledTimes(1);
     expect(mocks.gitRefresh).toHaveBeenCalledWith("p1");
+    expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledTimes(1);
     expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledWith("p1");
-    mocks.refreshOpenFilesFromDisk.mockClear();
+    now.mockReturnValue(12_000);
     act(() => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
-    expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledWith("p1");
+    expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledTimes(2);
+    now.mockRestore();
   });
 });
 
@@ -508,6 +683,14 @@ describe("native events", () => {
     act(() => useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" }));
     emit("settings:open", null);
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "general" });
+  });
+
+  it("ignores the app menu's Settings item during a tour", async () => {
+    await renderApp();
+    await waitFor(() => expect(mocks.listeners.has("settings:open")).toBe(true));
+    act(() => useTourStore.setState({ activeTourId: "home" }));
+    emit("settings:open", null);
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
   });
 
   it("applies file changes and compile results reported by other windows", async () => {
@@ -563,6 +746,41 @@ describe("keyboard shortcuts", () => {
     expect(event.defaultPrevented).toBe(true);
     expect(useCompileStore.getState().recompile).toHaveBeenCalled();
     expect(useSettingsStore.getState().viewMode).toBe("split");
+  });
+
+  it("opens settings from the settings shortcut, in a project and in the library", async () => {
+    await renderApp();
+    const event = keydown(window, { key: ",", ctrlKey: true });
+    expect(event.defaultPrevented).toBe(true);
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+
+    act(() => useSettingsStore.setState({ settingsOpen: false }));
+    act(() => useFilesStore.setState({ projectId: null }));
+    keydown(window, { key: ",", ctrlKey: true });
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+  });
+
+  it("leaves Cmd+Comma to the macOS menu so the key reaches it", async () => {
+    mocks.nativeDockMenu = true;
+    await renderApp();
+    const event = keydown(window, { key: ",", ctrlKey: true });
+    expect(event.defaultPrevented).toBe(false);
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
+  });
+
+  it("leaves the settings shortcut alone during a tour or once another handler took it", async () => {
+    await renderApp();
+    act(() => useTourStore.setState({ activeTourId: "home" }));
+    keydown(window, { key: ",", ctrlKey: true });
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
+
+    act(() => useTourStore.setState({ activeTourId: null }));
+    const field = document.createElement("input");
+    document.body.append(field);
+    field.addEventListener("keydown", (event) => event.preventDefault());
+    keydown(field, { key: ",", ctrlKey: true });
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
+    field.remove();
   });
 
   it("runs forward search and ignores shortcuts during a tour", async () => {

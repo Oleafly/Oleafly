@@ -1,0 +1,11 @@
+dbs:
+  - path: /data/oleafly-server.sqlite3
+    replica:
+      type: s3
+      url: ${LITESTREAM_REPLICA_URL}
+      endpoint: ${LITESTREAM_ENDPOINT}
+      region: ${LITESTREAM_REGION}
+
+snapshot:
+  interval: 24h
+  retention: 168h

@@ -36,7 +36,12 @@
     "not_removable": "只有在原位置開啟的資料夾才能從 Oleafly 移除。",
     "trash_unavailable": "Oleafly 無法將 {{path}} 移到垃圾桶或資源回收筒，這個磁碟機可能不支援。",
     "linked_replace_folder": "{{path}} 是資料夾，因此 Oleafly 不會取代它。請先移動或重新命名。",
-    "folder_read_only": "{{name}} 或其所在的資料夾為唯讀，因此 Oleafly 無法進行這項變更。請將你開啟的資料夾複製到專案庫，並在那裡編輯。"
+    "folder_read_only": "{{name}} 或其所在的資料夾為唯讀，因此 Oleafly 無法進行這項變更。請將你開啟的資料夾複製到專案庫，並在那裡編輯。",
+    "shared_settings_viewer": "檢視者無法變更共享專案的設定。"
+  },
+  "template": {
+    "name_required": "請為範本命名。",
+    "folder_holds_templates": "這個資料夾存放的是 Oleafly 內建的範本。請改選範本本身的資料夾。"
   },
   "settings": {
     "locale_unsupported": "語言 {{locale}} 無法使用。"
@@ -56,7 +61,11 @@
     "unreachable": "Oleafly 無法連線到 Zotero。請檢查網路連線後再試一次。",
     "http_error": "Zotero 傳回錯誤（HTTP {{status}}）。請稍後再試。",
     "invalid_response": "Zotero 傳來的回應 Oleafly 無法讀取。請稍後再試。",
-    "too_large": "你的 Zotero 文獻庫太大，無法一次匯入。請改為在 Zotero 中把某個收藏匯出成 RDF 檔案，再匯入該檔案。"
+    "too_large": "你的 Zotero 文獻庫太大，無法一次匯入。請改為在 Zotero 中把某個收藏匯出成 RDF 檔案，再匯入該檔案。",
+    "local_not_running": "Zotero 未在這台電腦上執行。請開啟 Zotero，或連接你的 zotero.org 帳號。",
+    "local_api_disabled": "在 Zotero 中開啟「設定 > 進階」，然後勾選「允許此電腦上的其他應用程式與 Zotero 通訊」。",
+    "local_unsupported": "這個版本的 Zotero 無法與 Oleafly 分享文獻庫。請更新至 Zotero 7 或以上版本。",
+    "offline": "Oleafly 處於離線模式，因此無法連線到 zotero.org。"
   },
   "tex": {
     "no_host_binary": "TinyTeX 沒有與此主機相容的 {{name}} 執行檔。",
@@ -65,7 +74,8 @@
     "latexmk_network_folder": "latexmk 無法編譯網路共用上的資料夾。請將此專案切換為 Tectonic，或將資料夾複製到這台電腦。",
     "shell_escape_denied_minted": "minted 需要執行另一個程式來醒目提示程式碼，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
     "shell_escape_denied_pythontex": "PythonTeX 需要執行 Python，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
-    "shell_escape_denied_command": "此文件會執行 shell 命令，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。"
+    "shell_escape_denied_command": "此文件會執行 shell 命令，但此專案封鎖了這項操作。如要允許，請點選編輯器上方橫幅中的「{{setting}}」。只有在你信任專案中的每個檔案時才這麼做。開啟後，LaTeX 可以用你的權限執行任何程式，而且它啟動的程式可能在你停止編譯後繼續執行。",
+    "japanese_compiler_missing": "你的 TeX 發行版沒有安裝 {{compiler}}。在 TeX Live 或 TinyTeX 中執行 tlmgr install collection-langjapanese 即可加入，也可以改用其他編譯器。"
   },
   "export": {
     "bibliography_unreadable": "Oleafly 無法讀取參考文獻 {{name}}。請檢查其中是否有損壞的條目，然後重新匯出。"
@@ -181,5 +191,39 @@
     "failed": "Typst 無法匯出這份文件。",
     "unsupported": "這個 Typst 版本無法以這些設定匯出。",
     "invalid_ppi": "請選擇 1 到 {{max}} PPI 之間的解析度。"
+  },
+  "overleaf": {
+    "signed_out": "請先登入 Overleaf。",
+    "session_expired": "你的 Overleaf 登入已過期。請重新登入以繼續。",
+    "sign_in_cancelled": "Overleaf 登入視窗在完成前就被關閉了。",
+    "sign_in_failed": "Oleafly 無法確認你的 Overleaf 登入。請再登入一次。",
+    "invalid_server": "「{{server}}」不是 Oleafly 可以使用的伺服器位址。",
+    "unreachable": "Oleafly 無法連線到 {{server}}。",
+    "unrecognized": "Overleaf 的專案頁面和 Oleafly 預期的不同。請從 Overleaf 將專案下載為 .zip，然後改為匯入該檔案。",
+    "project_unavailable": "無法下載這個專案。你可能已經沒有存取權。",
+    "not_an_archive": "Overleaf 傳來的內容不是專案壓縮檔。",
+    "too_large": "這個專案超過 2 GB 的匯入上限。",
+    "rate_limited": "Overleaf 要求 Oleafly 放慢速度。請等一分鐘後再試一次。",
+    "sync_busy": "這個專案已在與 Overleaf 同步。",
+    "sync_not_linked": "這個專案沒有連結到 Overleaf。",
+    "sync_needs_relink": "這個專案的同步副本不見了。請停止同步，再重新連結專案。",
+    "sync_already_linked": "這個專案已連結到另一個 Overleaf 專案。請先停止同步。",
+    "sync_offline": "Oleafly 無法連線到 Overleaf。你的變更在本機很安全，下次會同步。",
+    "sync_failed": "與 Overleaf 的同步沒有完成。本機檔案沒有變動。",
+    "sync_kept_changing": "同步期間，Overleaf 上的專案一直在變動。請稍後再試一次。",
+    "sync_case_clash": "Overleaf 上有檔名只差在大小寫的檔案（{{files}}）。請在 Overleaf 上重新命名其中一個，再重新同步。",
+    "sync_invalid_names": "Overleaf 上有些檔名無法儲存到這台電腦（{{files}}）。請在 Overleaf 上重新命名這些檔案，再重新同步。",
+    "sync_file_too_large": "{{file}} 超過 Overleaf 允許的單一檔案 50 MB 上限。",
+    "sync_too_large": "這個專案太大，無法同步。上限是 5,000 個檔案或 2 GB。",
+    "sync_path_blocked": "無法在這裡寫入 {{file}}，因為已有同名資料夾佔用這個位置。",
+    "git_token_missing": "新增你的 Overleaf Git 權杖即可同步這個專案。",
+    "git_token_invalid": "這看起來不像 Overleaf Git 權杖。請複製完整的權杖後再試一次。",
+    "git_token_rejected": "Overleaf 不接受這個 Git 權杖，它可能已過期。請在 Overleaf 帳號設定中建立新的權杖。",
+    "git_unavailable": "這個專案無法使用 Overleaf 的 Git 整合。專案擁有者需要付費方案或學校方案。",
+    "template_link_invalid": "這個連結不是 Overleaf 範本頁面。請複製 overleaf.com/latex/templates 中某個頁面的網址，再試一次。",
+    "template_unavailable": "Oleafly 無法開啟這個範本。它可能已從 Overleaf 的範本庫移除。"
+  },
+  "collab": {
+    "turned_off": "即時協作已關閉。請在設定的「實驗功能」中開啟。"
   }
 }

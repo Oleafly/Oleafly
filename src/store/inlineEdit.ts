@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 // Session state machine for the inline AI edit feature. Single source of truth:
 // the CodeMirror diff plugin and the React overlay both read/drive this store.
-export type Phase = "idle" | "prompting" | "streaming" | "reviewing" | "error";
+export type Phase = "idle" | "prompting" | "streaming" | "reviewing" | "error" | "withdrawn";
 
 export interface Session {
   phase: Phase;
@@ -28,11 +28,19 @@ interface InlineEditState {
     autoRun?: boolean;
   }) => void;
   setInstruction: (s: string) => void;
-  startStreaming: () => void;
+  // `original` is the target text as it is when the run starts, which
+  // collaborators may have changed while the instruction was being typed.
+  startStreaming: (original?: string) => void;
   appendProposed: (full: string) => void;
   finishReviewing: () => void;
   fail: (msg: string) => void;
+  relocate: (from: number, to: number) => void;
+  withdraw: () => void;
   reset: () => void;
+}
+
+function active(session: Session | null): session is Session {
+  return session !== null && session.phase !== "withdrawn";
 }
 
 export const useInlineEditStore = create<InlineEditState>((set) => ({
@@ -50,14 +58,22 @@ export const useInlineEditStore = create<InlineEditState>((set) => ({
       },
     }),
   setInstruction: (instruction) =>
-    set((st) => (st.session ? { session: { ...st.session, instruction } } : st)),
-  startStreaming: () =>
-    set((st) => (st.session ? { session: { ...st.session, phase: "streaming", proposed: "" } } : st)),
+    set((st) => (active(st.session) ? { session: { ...st.session, instruction } } : st)),
+  startStreaming: (original) =>
+    set((st) =>
+      active(st.session)
+        ? { session: { ...st.session, phase: "streaming", proposed: "", original: original ?? st.session.original } }
+        : st,
+    ),
   appendProposed: (full) =>
-    set((st) => (st.session ? { session: { ...st.session, proposed: full } } : st)),
+    set((st) => (active(st.session) ? { session: { ...st.session, proposed: full } } : st)),
   finishReviewing: () =>
-    set((st) => (st.session ? { session: { ...st.session, phase: "reviewing" } } : st)),
+    set((st) => (active(st.session) ? { session: { ...st.session, phase: "reviewing" } } : st)),
   fail: (error) =>
-    set((st) => (st.session ? { session: { ...st.session, phase: "error", error } } : st)),
+    set((st) => (active(st.session) ? { session: { ...st.session, phase: "error", error } } : st)),
+  relocate: (from, to) =>
+    set((st) => (st.session ? { session: { ...st.session, from, to } } : st)),
+  withdraw: () =>
+    set((st) => (active(st.session) ? { session: { ...st.session, phase: "withdrawn" } } : st)),
   reset: () => set({ session: null }),
 }));

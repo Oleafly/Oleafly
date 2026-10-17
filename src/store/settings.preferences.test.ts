@@ -40,10 +40,10 @@ describe("on/off preferences", () => {
     ["setShowWordChoice", "showWordChoice", "oleafly.harper.wordchoice"],
     ["setChatFloating", "chatFloating", "oleafly.ai.floating"],
     ["setLatexTools", "latexTools", "oleafly.latexTools"],
+    ["setLiveCollaboration", "liveCollaboration", "oleafly.liveCollaboration"],
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
     ["setEditorStickyScroll", "editorStickyScroll", "oleafly.editor.stickyScroll"],
-    ["setEditorNonBlinkingCursor", "editorNonBlinkingCursor", "oleafly.editor.solidCursor"],
     ["setEditorMathPreview", "editorMathPreview", "oleafly.editor.mathPreview"],
     ["setTypstInlayHints", "typstInlayHints", "oleafly.typst.inlayHints"],
     ["setTypstLint", "typstLint", "oleafly.typst.lint"],
@@ -52,7 +52,7 @@ describe("on/off preferences", () => {
     ["setTerminalStartWithProject", "terminalStartWithProject", "oleafly.terminal.startWithProject"],
     ["setOpenInTree", "openInTree", "oleafly.openInTree"],
     ["setPdfDarkMode", "pdfDarkMode", "oleafly.pdf.darkMode"],
-    ["setPdfZoomShortcuts", "pdfZoomShortcuts", "oleafly.pdf.zoomShortcuts"],
+    ["setEditorUsesAppFont", "editorUsesAppFont", "oleafly.editor.useAppFont"],
   ];
 
   it.each(toggles)("%s saves both states", (setter, field, key) => {
@@ -76,6 +76,18 @@ describe("on/off preferences", () => {
     useSettingsStore.getState().toggleSpellcheck();
     expect(localStorage.getItem("oleafly.spellcheck")).toBe(initial ? "1" : "0");
     expect(useSettingsStore.getState().spellcheck).toBe(initial);
+  });
+
+  it("has no setting that hides this person from collaborators, even with an old choice saved", async () => {
+    const settings = await reload({ "oleafly.collab.presence": "hidden" });
+    expect("collabPresence" in settings).toBe(false);
+  });
+
+  it("keeps live collaboration off on a new install", async () => {
+    const fresh = await reload({});
+    expect(fresh.liveCollaboration).toBe(false);
+    const on = await reload({ "oleafly.liveCollaboration": "1" });
+    expect(on.liveCollaboration).toBe(true);
   });
 });
 
@@ -123,20 +135,23 @@ describe("value preferences", () => {
     const settings = useSettingsStore.getState();
 
     settings.setDictionaryLocale("en-GB");
-    settings.setEditorTheme("dracula");
+    settings.setEditorTheme("dark", "dracula");
+    settings.setEditorTheme("light", "paper");
     settings.setAccentColor("#db2777");
     settings.setBgPattern("grid");
     settings.setHomeProjectLayout("list");
 
     expect(useSettingsStore.getState()).toMatchObject({
       dictionaryLocale: "en_GB",
-      editorTheme: "dracula",
+      editorThemeDark: "dracula",
+      editorThemeLight: "paper",
       accentColor: "#db2777",
       bgPattern: "grid",
       homeProjectLayout: "list",
     });
     expect(localStorage.getItem("oleafly.dictionary.locale")).toBe("en_GB");
-    expect(localStorage.getItem("oleafly.editorTheme")).toBe("dracula");
+    expect(localStorage.getItem("oleafly.editorTheme.dark")).toBe("dracula");
+    expect(localStorage.getItem("oleafly.editorTheme.light")).toBe("paper");
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
     expect(localStorage.getItem("oleafly.bgPattern")).toBe("grid");
     expect(localStorage.getItem("oleafly.library.projectLayout")).toBe("list");
@@ -224,6 +239,7 @@ describe("loading saved preferences", () => {
       "oleafly.fontSize": "big",
       "oleafly.appFontSize": "0",
       "oleafly.editorTheme": "neon",
+      "oleafly.editor.colors": "{\"nord\":{\"heading\":\"#FF0000\",\"math\":\"#12345\",\"title\":\"#123456\"},\"neon\":{\"math\":\"#123456\"}}",
       "oleafly.dockPlacement": "",
       "oleafly.bgPattern": "",
       "oleafly.defaultLatexEngine": "pdflatex",
@@ -233,7 +249,9 @@ describe("loading saved preferences", () => {
     expect(state).toMatchObject({
       editorFontSize: 13,
       appFontSize: 16,
-      editorTheme: "system",
+      editorThemeLight: "system",
+      editorThemeDark: "system",
+      editorColors: { nord: { heading: "#ff0000" } },
       dockPlacement: "left",
       bgPattern: "dots",
       defaultLatexEngine: "tectonic",
@@ -244,6 +262,8 @@ describe("loading saved preferences", () => {
   it("restores valid stored choices", async () => {
     const state = await reload({
       "oleafly.editorTheme": "nord",
+      "oleafly.editorTheme.light": "one-light",
+      "oleafly.editor.colors": "{\"system-dark\":{\"comment\":\"#AABBCC\"}}",
       "oleafly.library.projectLayout": "list",
       "oleafly.defaultLatexEngine": "latexmk",
       "oleafly.typst.formatterIndent": "8",
@@ -251,7 +271,9 @@ describe("loading saved preferences", () => {
     });
 
     expect(state).toMatchObject({
-      editorTheme: "nord",
+      editorThemeLight: "one-light",
+      editorThemeDark: "nord",
+      editorColors: { "system-dark": { comment: "#aabbcc" } },
       homeProjectLayout: "list",
       defaultLatexEngine: "latexmk",
       typstFormatterIndent: 8,

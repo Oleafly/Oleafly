@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { cn } from "@/lib/utils";
 import { HighlightedCode } from "./code-highlighter";
-import { MarkdownBlock } from "./markdown-block";
+import { CopyableBlock } from "./copyable-block";
 import { MermaidDiagram } from "./mermaid-diagram";
 import { RenderCache } from "./render-cache";
 import {
@@ -69,18 +69,23 @@ function createMarkdownComponents(inverted: boolean): Components {
     ) {
       const source = codeText(child.props.children).replace(/\n$/, "");
       return (
-        <MarkdownBlock kind="diagram" source={source}>
+        <CopyableBlock
+          source={source}
+          className="mb-2"
+          copyLabel="Copy diagram source"
+          copiedLabel="Diagram source copied"
+        >
           <MermaidDiagram key={source} source={source} />
-        </MarkdownBlock>
+        </CopyableBlock>
       );
     }
     const source = isValidElement<{ children?: ReactNode }>(child)
       ? codeText(child.props.children).replace(/\n$/, "")
       : codeText(children).replace(/\n$/, "");
     return (
-      <MarkdownBlock kind="code" source={source}>
-        <pre className={codeBlockClassName}>{children}</pre>
-      </MarkdownBlock>
+      <CopyableBlock source={source} className="mb-2" copyLabel="Copy code" copiedLabel="Code copied">
+        <pre data-select-all-scope className={codeBlockClassName}>{children}</pre>
+      </CopyableBlock>
     );
   },
   code: ({ className, children }) => {
@@ -238,7 +243,7 @@ export default function MarkdownRenderer({
     <div
       data-streaming-markdown={streaming ? "true" : undefined}
       className={cn(
-        "min-w-0 [&_.katex-display]:overflow-x-auto",
+        "min-w-0 select-text [&_.katex-display]:overflow-x-auto",
         className,
       )}
     >

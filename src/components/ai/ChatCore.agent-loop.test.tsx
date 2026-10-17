@@ -109,6 +109,8 @@ const mocks = vi.hoisted(() => ({
   goalInputProps: null as null | {
     onChange: (event: { target: { value: string } }) => void;
   },
+  modelSelectorRenders: 0,
+  messageItemProps: [] as Array<{ msg: ChatMessage; live?: boolean }>,
   modelSelectorProps: null as null | {
     modelId?: string;
     open?: boolean;
@@ -309,6 +311,7 @@ vi.mock("@/components/ai/ModelSelector", async () => {
   return {
     ModelSelector: (props: typeof mocks.modelSelectorProps) => {
       mocks.modelSelectorProps = props;
+      mocks.modelSelectorRenders += 1;
       return React.createElement(
         React.Fragment,
         null,
@@ -421,7 +424,10 @@ vi.mock("@/components/ai/chat-parts", async () => {
     });
   },
   InfoHint: () => null,
-  MessageItem: () => null,
+  MessageItem: (props: { msg: ChatMessage; live?: boolean }) => {
+    mocks.messageItemProps.push(props);
+    return null;
+  },
   Shimmer: () => null,
   formatError: (error: unknown) => String(error),
   formatToolOutput: (output: unknown) =>
@@ -587,6 +593,8 @@ beforeEach(() => {
   mocks.textareaProps = null;
   mocks.goalInputProps = null;
   mocks.modelSelectorProps = null;
+  mocks.modelSelectorRenders = 0;
+  mocks.messageItemProps.length = 0;
   mocks.historyProps = null;
   mocks.agentProbeModel
     .mockReset()
@@ -1916,6 +1924,86 @@ describe("ChatCore agent turns", () => {
     }
   });
 
+  it("streams text into the newest message without rendering the rest of the assistant", async () => {
+    const callbacks = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => {
+      nextFrame += 1;
+      callbacks.set(nextFrame, callback);
+      return nextFrame;
+    });
+    const cancelFrame = vi.fn((handle: number) => {
+      callbacks.delete(handle);
+    });
+    const originalRequestFrame = globalThis.requestAnimationFrame;
+    const originalCancelFrame = globalThis.cancelAnimationFrame;
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+    Object.defineProperties(globalThis, {
+      requestAnimationFrame: { configurable: true, value: requestFrame },
+      cancelAnimationFrame: { configurable: true, value: cancelFrame },
+    });
+    Object.defineProperties(window, {
+      requestAnimationFrame: { configurable: true, value: requestFrame },
+      cancelAnimationFrame: { configurable: true, value: cancelFrame },
+    });
+
+    try {
+      const rendered = await renderChat();
+      submit(rendered, "Stream quietly");
+      await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      const flushFrame = (timestamp: number) => {
+        const scheduled = [...callbacks.values()];
+        callbacks.clear();
+        act(() => { for (const callback of scheduled) callback(timestamp); });
+      };
+      flushFrame(-16);
+      const shellRenders = mocks.modelSelectorRenders;
+
+      act(() => mocks.runs[0].options.handlers.onText("Hello "));
+      flushFrame(0);
+      act(() => mocks.runs[0].options.handlers.onText("world"));
+      flushFrame(16);
+
+      expect(mocks.modelSelectorRenders).toBe(shellRenders);
+      expect(mocks.messageItemProps.at(-1)?.msg.content).toBe("Hello world");
+      expect(mocks.messageItemProps.at(-1)?.live).toBe(true);
+      expect(useChatsStore.getState().live["chat-1"]?.at(-1)?.content).toBe("Hello world");
+
+      await act(async () => {
+        mocks.runs[0].resolve({
+          text: "Hello world",
+          usage: { input: 0, output: 0 },
+          steps: 1,
+          stopped_at_cap: false,
+          error: null,
+        });
+      });
+      for (let frame = 1; frame <= 6 && activeChatRun(); frame++) {
+        flushFrame(16 + frame * 16);
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 40));
+        });
+      }
+      await waitFor(() => expect(activeChatRun()).toBeNull());
+      expect(mocks.messageItemProps.at(-1)?.msg.content).toBe("Hello world");
+      expect(mocks.messageItemProps.at(-1)?.live).toBe(false);
+      expect(useChatsStore.getState().byId("chat-1")?.messages.at(-1)?.content).toBe("Hello world");
+    } finally {
+      Reflect.deleteProperty(document, "visibilityState");
+      Object.defineProperties(globalThis, {
+        requestAnimationFrame: { configurable: true, value: originalRequestFrame },
+        cancelAnimationFrame: { configurable: true, value: originalCancelFrame },
+      });
+      Object.defineProperties(window, {
+        requestAnimationFrame: { configurable: true, value: originalRequestFrame },
+        cancelAnimationFrame: { configurable: true, value: originalCancelFrame },
+      });
+    }
+  });
+
   it.each(["ask-for-approval", "approve-for-me"] as const)(
     "prompts for a risky tool in %s mode",
     async (mode) => {
@@ -1967,6 +2055,45 @@ describe("ChatCore agent turns", () => {
     fireEvent.click(rendered.getByRole("button", { name: "Reject" }));
     await expect(result).resolves.toEqual({ approved: false });
     await act(async () => finishRun(0, "Not changed"));
+  });
+
+  it.each(["ask-for-approval", "approve-for-me", "full-access"] as const)(
+    "denies an explicit rule without ToolConfirm in %s mode",
+    async (mode) => {
+      const { rendered, result } = await beginApprovalCall(mode, "run_command", {
+        run_command: "deny",
+      });
+
+      await expect(result).resolves.toEqual({ approved: false });
+      expect(mocks.approvalsList).toHaveBeenCalledWith(useFilesStore.getState().projectId);
+      expect(rendered.queryByRole("alertdialog", { name: "Confirm command" })).toBeNull();
+      await act(async () => finishRun(0, "Denied"));
+    },
+  );
+
+  it("ignores an allow rule outside Custom mode", async () => {
+    const { rendered, result } = await beginApprovalCall("approve-for-me", "write_file", {
+      write_file: "allow",
+    });
+
+    await waitFor(() =>
+      expect(rendered.getByRole("alertdialog", { name: "Confirm AI edit" })).toBeTruthy(),
+    );
+    fireEvent.click(rendered.getByRole("button", { name: "Reject" }));
+    await expect(result).resolves.toEqual({ approved: false });
+    await act(async () => finishRun(0, "Not changed"));
+  });
+
+  it("aborts a Full access run when project approval rules cannot be loaded", async () => {
+    mocks.approvalsModeGet.mockResolvedValue("full-access");
+    mocks.approvalsList.mockRejectedValue(new Error("unreadable approvals"));
+    const rendered = await renderChat();
+
+    submit(rendered, "Search the literature");
+
+    await waitFor(() => expect(mocks.approvalsList).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(mocks.runAgentHarness).not.toHaveBeenCalled();
   });
 
   it("aborts a Custom run when project approval rules cannot be loaded", async () => {

@@ -118,12 +118,16 @@ async function requestAt(
   return request;
 }
 
-async function readyClient(transport: CoordinatorTransport) {
+async function readyClient(
+  transport: CoordinatorTransport,
+  diagnosticQuietWindowMs?: number,
+) {
   const client = new LanguageServiceClient({
     transport,
     kind: "texlab",
     projectId: "project-a",
     requestTimeoutMs: 1_000,
+    ...(diagnosticQuietWindowMs === undefined ? {} : { diagnosticQuietWindowMs }),
   });
   const starting = client.start({
     runtimeProfile: getLanguageServiceRuntimeProfile("texlab"),
@@ -385,6 +389,126 @@ describe("ProjectAnalysisCoordinator", () => {
         ],
       },
     );
+    coordinator.dispose();
+  });
+
+  it("lets a later publication replace diagnostics for an unchanged document", async () => {
+    const uri = "file:///project/main.tex";
+    const transport = new CoordinatorTransport();
+    const client = await readyClient(transport, 0);
+    const store = createProjectAnalysisStore();
+    const coordinator = new ProjectAnalysisCoordinator(client, store);
+    coordinator.activateProject({
+      projectId: "project-a",
+      projectRevision: 1,
+    });
+    coordinator.trackDocument(uri, 1);
+    await openDocument(client);
+    transport.respond(
+      await requestAt(transport, "textDocument/documentSymbol"),
+      [],
+    );
+    coordinator.updateProjectRevision(2);
+    client.acknowledgeDocumentRevision(uri, 2);
+    transport.respond(
+      await requestAt(transport, "textDocument/documentSymbol", 1),
+      [],
+    );
+    const session = client.session;
+    if (!session) throw new Error("Expected active client");
+    const publish = (messages: string[]) =>
+      transport.emit(session, {
+        jsonrpc: "2.0",
+        method: "textDocument/publishDiagnostics",
+        params: {
+          uri,
+          diagnostics: messages.map((message) => ({
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 4 },
+            },
+            severity: 1,
+            message,
+          })),
+        },
+      });
+    const messages = () =>
+      store
+        .getState()
+        .snapshot.diagnosticsByUri[uri]?.data.map(
+          (diagnostic) => diagnostic.message,
+        );
+
+    publish(["Undefined reference"]);
+    await vi.waitFor(() =>
+      expect(messages()).toEqual(["Undefined reference"]),
+    );
+    publish([]);
+    await vi.waitFor(() => expect(messages()).toEqual([]));
+    expect(store.getState().snapshot.diagnosticsByUri[uri]).toMatchObject({
+      status: "acknowledged",
+      diagnosticEpoch: 2,
+      request: { projectRevision: 2, documentVersion: 1 },
+    });
+    coordinator.dispose();
+  });
+
+  it("keeps an unchanged document's diagnostics across a project revision the server stays quiet about", async () => {
+    const uri = "file:///project/main.tex";
+    const transport = new CoordinatorTransport();
+    const client = await readyClient(transport, 0);
+    const store = createProjectAnalysisStore();
+    const coordinator = new ProjectAnalysisCoordinator(client, store);
+    coordinator.activateProject({
+      projectId: "project-a",
+      projectRevision: 1,
+    });
+    coordinator.trackDocument(uri, 1);
+    await openDocument(client);
+    transport.respond(
+      await requestAt(transport, "textDocument/documentSymbol"),
+      [],
+    );
+    const session = client.session;
+    if (!session) throw new Error("Expected active client");
+    transport.emit(session, {
+      jsonrpc: "2.0",
+      method: "textDocument/publishDiagnostics",
+      params: {
+        uri,
+        diagnostics: [
+          {
+            range: {
+              start: { line: 0, character: 0 },
+              end: { line: 0, character: 4 },
+            },
+            severity: 1,
+            message: "Undefined reference",
+          },
+        ],
+      },
+    });
+    await vi.waitFor(() =>
+      expect(
+        store.getState().snapshot.diagnosticsByUri[uri]?.status,
+      ).toBe("acknowledged"),
+    );
+
+    coordinator.updateProjectRevision(2);
+    client.acknowledgeDocumentRevision(uri, 2);
+
+    expect(store.getState().snapshot.diagnosticsByUri[uri]).toMatchObject({
+      status: "acknowledged",
+      diagnosticEpoch: 2,
+      request: { projectRevision: 2, documentVersion: 1 },
+      data: [
+        {
+          message: "Undefined reference",
+          projectRevision: 2,
+          documentVersion: 1,
+        },
+      ],
+    });
     coordinator.dispose();
   });
 });

@@ -304,7 +304,7 @@ export function projectHoverCard(view: EditorView, position: number) {
     above: true,
     create() {
       const dom = document.createElement("div");
-      dom.className = "cm-code-hover";
+      dom.className = "cm-code-hover select-text";
       const title = dom.appendChild(document.createElement("div"));
       title.className = "cm-code-hover-title";
       title.textContent = info.title;

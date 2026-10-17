@@ -1,0 +1,64 @@
+{
+  "title": "Ustawienia aplikacji",
+  "description": "Zapisz ustawienia w pliku JSON albo wczytaj plik, który ktoś ci udostępnił. Klucze API, konta, integracje i agenci nigdy nie są w nim zapisywani.",
+  "export": "Eksportuj",
+  "import": "Importuj",
+  "view": {
+    "label": "Pokaż JSON ustawień",
+    "summary": "Podgląd tylko do odczytu pliku, który zapisuje eksport.",
+    "loading": "Odczytywanie ustawień",
+    "failed": "Nie udało się odczytać ustawień."
+  },
+  "dialog": {
+    "pickTitle": "Importuj ustawienia",
+    "filterName": "Ustawienia Oleafly"
+  },
+  "toast": {
+    "exported": "Wyeksportowano {{name}} na dysk",
+    "exportFailed": "Nie udało się zapisać pliku ustawień.",
+    "readFailed": "Nie udało się otworzyć tego pliku.",
+    "imported": "Zaimportowano ustawienia.",
+    "unchanged": "Twoje ustawienia są już zgodne z plikiem {{name}}.",
+    "applyFailed": "Nie udało się zapisać niektórych ustawień. Spróbuj zaimportować ponownie.",
+    "cloudEmpty": "Na twoim koncie Dropbox nie ma jeszcze ustawień Oleafly. Najpierw włącz synchronizację w chmurze na innym komputerze.",
+    "cloudLoadFailed": "Nie udało się wczytać ustawień z twojego konta Dropbox.",
+    "cloudUnreadable": "Nie da się odczytać ustawień zapisanych na twoim koncie Dropbox."
+  },
+  "confirm": {
+    "title": "Zastąpić twoje ustawienia?",
+    "description": "Ustawienia z pliku {{name}} zastąpią twoje. Wszystko, czego plik nie zawiera, pozostanie bez zmian.",
+    "changes": "Liczba ustawień, które się zmienią: {{count}}",
+    "ignored": "Nierozpoznane, więc zostaną pominięte:",
+    "action": "Importuj",
+    "cloudDescription": "Ustawienia z twojego konta Dropbox zastąpią twoje. Wszystko, czego w nich nie ma, pozostanie bez zmian."
+  },
+  "error": {
+    "title": "Nie zaimportowano pliku {{name}}",
+    "notJson": "Plik nie jest prawidłowym plikiem JSON.",
+    "notSettings": "To nie jest plik ustawień Oleafly.",
+    "invalid": "Konfiguracja ustawień, którą próbujesz zaimportować, jest nieprawidłowa. Popraw te błędy i spróbuj zaimportować ją ponownie:",
+    "more": "+{{count}} więcej"
+  },
+  "valueErrors": {
+    "boolean": "musi mieć wartość true lub false",
+    "oneOf": "musi mieć jedną z wartości: {{values}}",
+    "range": "musi być liczbą od {{min}} do {{max}}",
+    "wholeRange": "musi być liczbą całkowitą od {{min}} do {{max}}",
+    "wholeRangeStep": "musi być liczbą całkowitą od {{min}} do {{max}} z krokiem {{step}}",
+    "hexColor": "musi być kolorem, na przykład #2563eb",
+    "hexColorOrEmpty": "musi być kolorem, na przykład #2563eb, albo \"\", aby użyć koloru motywu",
+    "text": "musi być tekstem (maksymalna długość: {{max}})",
+    "webAddress": "musi być adresem internetowym, który zaczyna się od http:// lub https://",
+    "list": "musi być listą (maksymalna liczba elementów: {{max}})",
+    "listItem": "nie jest dozwolonym elementem",
+    "duplicate": "występuje dwukrotnie",
+    "object": "musi być grupą ustawień w nawiasach klamrowych",
+    "unknownKey": "nie jest ustawieniem znanym Oleafly",
+    "dictionaryLocale": "musi być kodem słownika, na przykład en_US",
+    "shortcut": "musi być skrótem klawiszowym, na przykład Mod-Shift-k, albo \"default\"",
+    "editorKey": "musi być klawiszem, na przykład Mod-d, \"\", jeśli bez klawisza, albo \"default\""
+  },
+  "importFromLocal": "Importuj z tego urządzenia",
+  "importFromCloud": "Importuj z chmury",
+  "cloudSource": "na twoim koncie Dropbox"
+}

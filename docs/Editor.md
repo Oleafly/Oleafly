@@ -296,10 +296,61 @@ Reset to defaults at the foot of Appearance.
 
 - Keybindings: Default, Vim or Emacs. See
   [KeyboardShortcuts.md](KeyboardShortcuts.md) for what each mode binds.
-- Editor font size, editor font and editor theme.
+- Use the app font: off by default. When it's on, the editor uses the App
+  font and App font size, and the Editor font and Editor font size settings
+  are locked until it's turned off again.
+- Theme in light mode and Theme in dark mode: the editor uses one theme while
+  the app is light and another while it's dark, the way VS Code and Zed pair
+  them. Match app follows the app's own colors. Paper, a warm off-white, and
+  One Light are light themes. Linear, GitHub Dark, Dracula, Nord, Tokyo Night,
+  Rosé Pine, Catppuccin and One Dark are dark. A theme saved by an older
+  version is used for both modes.
+- Editor colors: change any color of the theme picked for light or dark mode,
+  with a live preview in LaTeX, Typst and Markdown. Editor covers the
+  background, text, line numbers and selection. Syntax covers commands,
+  preamble and imports, headings, formatting, environments, citations and
+  references, math, values and strings, names and keys, links, brackets and
+  symbols, and comments. A role means the same thing in every language, so
+  the heading color applies to `\section`, a Typst `=` heading and a Markdown
+  `#` heading alike. Colors are kept per theme, and Match app keeps one set
+  for light mode and one for dark. Each swatch shows the theme's own color
+  until you pick yours, and Use theme colors puts them all back. Exporting a
+  theme from Appearance > App also saves the editor themes and colors, and
+  importing one applies them.
+
+  The roles live in `packages/editor/src/color-roles.ts`, and
+  `syntax-colors.ts` maps each language's highlight tags onto them. Every
+  color resolves as `var(--cm-user-*, var(--cm-theme-*, palette))`: your
+  color, then the theme's own value for that role, then the theme's palette.
+  Changing a color only sets a variable on the root element, so open editors
+  never reconfigure. Source-mode LaTeX uses the legacy `stex` tokenizer,
+  which tags every command the same way; `latex-stream.ts` wraps it and
+  splits commands and their arguments into roles, which adds about 1 ms to a
+  full parse of a 9,000-line document.
+- Editor font size and editor font. The size list runs from 11
+  to 24 pixels, and Custom takes any size from 6 to 100, the same range as VS
+  Code. The font list holds every font installed on the computer, monospaced
+  ones first, each drawn in its own font. A typed name works even when the list doesn't show it, and a
+  saved name that isn't installed gets a note under the setting. Rust lists
+  the fonts with `fontdb`, the same way Typst finds system fonts. It leaves
+  out symbol and icon fonts such as Webdings and Wingdings, and it counts a
+  font as monospaced when its letters all have the same width, even if the
+  font file doesn't say so (Monaco and Courier don't).
 - Tab size: 2, 4 or 8 spaces. It sets the indent unit and the width a
   literal tab renders at.
-- Line height: compact (1.4), normal (1.7) or wide (2.0).
+- Letter spacing: normal, +0.5, +1 or +1.5 pixels, or custom from 0 to 4
+  pixels. It adds the same space between every pair of characters, so the
+  cursor also gets more room. How close the cursor sits to a letter otherwise
+  depends on the font.
+- Line height: compact (1.4), normal (1.7), wide (2.0) or custom, which takes
+  any value from 1 to 3 with up to two decimals. The arrow keys move it by
+  0.05. The first time you pick custom it starts from the preset you had.
+- Cursor width: 1, 2 or 3 pixels.
+- Cursor color: one color for light editor themes and one for dark ones, so
+  a cursor picked for a white page doesn't vanish on a dark one. Each swatch
+  shows the theme's color until you pick your own, and Use theme colors goes
+  back to both. The color also applies to the Vim block cursor and to the
+  Markdown Visual editor's caret.
 - Wrap long lines: on by default. Turn it off and the editor scrolls
   sideways instead.
 - Auto-complete, auto-close brackets, auto-close math, auto-close

@@ -77,6 +77,14 @@ export function resolveProjectPath(
   rawTarget: string,
   defaultExtension?: string,
 ): string | null {
+  return resolveProjectPathFrom(dirname(fromFile), rawTarget, defaultExtension);
+}
+
+export function resolveProjectPathFrom(
+  directory: string,
+  rawTarget: string,
+  defaultExtension?: string,
+): string | null {
   const raw = rawTarget.trim().replace(/^["']|["']$/g, "");
   if (
     !raw ||
@@ -87,8 +95,8 @@ export function resolveProjectPath(
   ) {
     return null;
   }
-  const joined = dirname(fromFile)
-    ? `${dirname(fromFile)}/${raw.replace(/^\.\//, "")}`
+  const joined = directory
+    ? `${directory}/${raw.replace(/^\.\//, "")}`
     : raw.replace(/^\.\//, "");
   let normalized = normalizeProjectPath(joined);
   if (!normalized) return null;

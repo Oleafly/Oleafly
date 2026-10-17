@@ -85,6 +85,17 @@ describe("Settings search", () => {
     expect(screen.getByText("1 section matches")).toBeInTheDocument();
   });
 
+  it("shows the matching sections from the top of the list", async () => {
+    renderSettings();
+    const list = screen.getByTestId("settings-section-scroll");
+    list.scrollTop = 240;
+
+    typeQuery("zotero");
+
+    await waitFor(() => expect(visibleSections()).toEqual(["settings-section-integrations"]));
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("finds a setting that lives in a section with a different name", async () => {
     renderSettings();
     typeQuery("spellcheck");
@@ -291,7 +302,7 @@ describe("Settings search", () => {
     expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
     act(() => useSettingsStore.getState().setSettingsOpen(true));
     expect(searchField()).toHaveValue("");
-    const everySection = SETTINGS_SEARCH_SECTIONS.filter((id) => id !== "developer").map(
+    const everySection = SETTINGS_SEARCH_SECTIONS.filter((id) => id !== "developer" && id !== "collaboration").map(
       (id) => `settings-section-${id}`,
     );
     await waitFor(() => expect(visibleSections()).toEqual(expect.arrayContaining(everySection)));

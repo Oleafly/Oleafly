@@ -20,7 +20,12 @@ import {
   hayagrivaKeys,
   isHayagrivaPath,
 } from "@/lib/citation/hayagriva";
-import { hasTypstBibliography, typstBibliographySources } from "@/lib/citation/typst-bibliography";
+import { typstBibliographySources } from "@/lib/citation/typst-bibliography";
+import {
+  ensureMarkdownBibliography,
+  ensureTypstBibliography,
+  markdownBibliographyPaths,
+} from "@/lib/citation/declarations";
 import { parseBib } from "@/lib/latex-tools";
 import {
   type BibliographyEngine,
@@ -36,13 +41,16 @@ import { parseZoteroRdf } from "@/lib/citation/zotero-rdf";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { isReadOnlyLink } from "@/lib/project-paths";
 import { useFilesStore } from "@/store/files";
+import { SharedReadOnlyError, sharedBaseOption, sharedViewOnly, sharedWriteRefusal } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
-import { getEditorView, insertAtCursor } from "@/components/editor/cm/controller";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { logError } from "@/lib/log";
 import { basename } from "@/lib/path-utils";
+import { insertCitationKey } from "./cite-insert";
+
+export { ensureMarkdownBibliography, ensureTypstBibliography, markdownBibliographyPaths };
 
 export async function resolveCitation(
   input: string,
@@ -85,69 +93,6 @@ export async function bibtexForHit(hit: CitationHit): Promise<string> {
     hit.doi ? `  doi = {${hit.doi}}` : "",
   ].filter(Boolean);
   return `@article{ref,\n${fields.join(",\n")}\n}`;
-}
-
-export function ensureTypstBibliography(source: string, path: string): string {
-  if (hasTypstBibliography(source)) return source;
-  const safePath = path.replaceAll("\\", "/").replaceAll('"', String.raw`\"`);
-  return `${source.trimEnd()}\n\n#bibliography("${safePath}")\n`;
-}
-
-export function ensureMarkdownBibliography(source: string, path: string): string {
-  const normalizedPath = path.replaceAll("\\", "/");
-  const declaration = `bibliography: ${JSON.stringify(normalizedPath)}`;
-  const frontMatter = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(source);
-  if (!frontMatter) return `---\n${declaration}\n---\n\n${source}`;
-  if (/^bibliography\s*:/m.test(frontMatter[1])) return source;
-  const closingOffset = frontMatter[0].lastIndexOf("---");
-  return `${source.slice(0, closingOffset)}${declaration}\n${source.slice(closingOffset)}`;
-}
-
-function unquoteYamlScalar(value: string): string | null {
-  const withoutComment = value.replace(/(?<!\s)\s+#.*$/, "").trim();
-  if (!withoutComment) return null;
-  if (withoutComment.startsWith('"') && withoutComment.endsWith('"')) {
-    try {
-      const parsed = JSON.parse(withoutComment);
-      return typeof parsed === "string" ? parsed : null;
-    } catch {
-      return null;
-    }
-  }
-  if (withoutComment.startsWith("'") && withoutComment.endsWith("'")) {
-    return withoutComment.slice(1, -1).replaceAll("''", "'");
-  }
-  return withoutComment;
-}
-
-export function markdownBibliographyPaths(source: string): string[] {
-  const frontMatter = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(source);
-  if (!frontMatter) return [];
-  const lines = frontMatter[1].split(/\r?\n/);
-  const declaration = lines.findIndex((line) => /^bibliography\s*:/.test(line));
-  if (declaration < 0) return [];
-  const value = lines[declaration].replace(/^bibliography\s*:\s*/, "").trim();
-  if (value.startsWith("[") && value.endsWith("]")) {
-    return value
-      .slice(1, -1)
-      .split(",")
-      .map(unquoteYamlScalar)
-      .filter((path): path is string => Boolean(path));
-  }
-  const scalar = unquoteYamlScalar(value);
-  if (scalar) return [scalar];
-
-  const paths: string[] = [];
-  for (const line of lines.slice(declaration + 1)) {
-    const item = /^\s*-\s+(?=\S|$)(?=((?:\S(?:.*\S)?)?))\1\s*$/.exec(line);
-    if (item) {
-      const path = unquoteYamlScalar(item[1]);
-      if (path) paths.push(path);
-      continue;
-    }
-    if (!/^\s/.test(line)) break;
-  }
-  return paths;
 }
 
 function resolveDeclaredBib(reference: string, bibPaths: string[], addExtension: boolean): string | null {
@@ -241,6 +186,8 @@ export function selectCitationBibliography(
 }
 
 function linkedBibliographyMessage(path: string): string {
+  const projectId = useFilesStore.getState().projectId;
+  if (sharedViewOnly(projectId)) return new SharedReadOnlyError().message;
   return i18n.t(($) => $.core.citation.linkedBibliography, { path });
 }
 
@@ -384,9 +331,16 @@ async function writeCitationTarget(
   id: string | null,
   targetPath: string,
   newContent: string,
+  base: string,
 ): Promise<string | null> {
+  // A viewer's change, or one while the project goes live, stops here with
+  // one message. The files store would refuse it as well and say so in a
+  // toast of its own.
+  const refusal = sharedWriteRefusal(id);
+  if (refusal) return refusal.message;
   if (files.files[targetPath] !== undefined) {
-    if (!files.setContent(targetPath, newContent)) return linkedBibliographyMessage(targetPath);
+    const bumpVersion = useFilesStore.getState().activePath === targetPath;
+    if (!files.setContent(targetPath, newContent, { bumpVersion })) return linkedBibliographyMessage(targetPath);
     // Persist now instead of waiting for the autosave debounce, so a compile
     // (which reads from disk) resolves the new \cite immediately.
     try {
@@ -402,7 +356,9 @@ async function writeCitationTarget(
   }
   if (id) {
     try {
-      await useFilesStore.getState().writeProjectFile(id, targetPath, newContent);
+      await useFilesStore
+        .getState()
+        .writeProjectFile(id, targetPath, newContent, ...sharedBaseOption(id, base));
       assertCitationProject(id);
     } catch (e) {
       return i18n.t(($) => $.core.citation.writeFailed, {
@@ -420,12 +376,14 @@ async function writeBibliographyDeclaration(
   mainPath: string,
   next: string,
   currentMainLoaded: boolean,
+  base: string,
 ): Promise<void> {
-  if (currentMainLoaded && files.setContent(mainPath, next)) {
+  const bumpVersion = useFilesStore.getState().activePath === mainPath;
+  if (currentMainLoaded && files.setContent(mainPath, next, { bumpVersion })) {
     await useFilesStore.getState().saveFile(mainPath);
     return;
   }
-  await useFilesStore.getState().writeProjectFile(id, mainPath, next);
+  await useFilesStore.getState().writeProjectFile(id, mainPath, next, ...sharedBaseOption(id, base));
 }
 
 async function ensureBibliographyDeclared(
@@ -445,7 +403,7 @@ async function ensureBibliographyDeclared(
       ? ensureTypstBibliography(main, targetPath)
       : ensureMarkdownBibliography(main, targetPath);
   if (next === main) return;
-  await writeBibliographyDeclaration(files, id, mainPath, next, currentMain !== undefined);
+  await writeBibliographyDeclaration(files, id, mainPath, next, currentMain !== undefined, main);
 }
 
 function appendBibEntries(content: string, blocks: readonly string[], format: BibliographyFormat = "bibtex"): string {
@@ -480,7 +438,7 @@ function dedupeImportedEntries(
 export async function addCitation(
   bibtex: string,
   options: { bibliography?: string } = {},
-): Promise<{ key: string } | { error: string }> {
+): Promise<{ key: string; cite: string | null } | { error: string }> {
   if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
     return { error: readOnlyFolderMessage() };
   }
@@ -497,10 +455,7 @@ export async function addCitation(
 
   const doi = parsed.fields.doi;
   const existing = doi ? keyForDoi(content, doi, format) : null;
-  if (existing) {
-    insertCite(existing);
-    return { key: existing };
-  }
+  if (existing) return { key: existing, cite: insertCitationKey(existing) };
 
   if (target.readOnly) return { error: linkedBibliographyMessage(target.path) };
 
@@ -510,7 +465,7 @@ export async function addCitation(
     : setKey(bibtex.trim(), key);
   const newContent = appendBibEntries(content, [entry], format);
 
-  const writeError = await writeCitationTarget(files, id, target.path, newContent);
+  const writeError = await writeCitationTarget(files, id, target.path, newContent, content);
   if (writeError) return { error: writeError };
 
   await ensureBibliographyDeclared(files, id, loaded.main, target.path);
@@ -518,9 +473,9 @@ export async function addCitation(
   if (useFilesStore.getState().projectId !== id) {
     return { error: i18n.t(($) => $.core.citation.projectChangedNotInserted) };
   }
-  insertCite(key);
+  const cite = insertCitationKey(key);
   await useIndexStore.getState().rebuildFromDisk();
-  return { key };
+  return { key, cite };
 }
 
 export interface BatchImportResult {
@@ -579,7 +534,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
   const newContent = appendBibEntries(content, newBlocks, format);
 
   const errors: string[] = [];
-  const writeError = await writeCitationTarget(files, id, target.path, newContent);
+  const writeError = await writeCitationTarget(files, id, target.path, newContent, content);
   if (writeError) errors.push(writeError);
 
   if (!errors.length) {
@@ -615,20 +570,4 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
     if (!entries.length) return { error: i18n.t(($) => $.core.citation.noReferences) };
     return addCitations(entries);
   };
-}
-
-function citationSnippet(profile: string, key: string): string {
-  if (profile === "typst") return `@${key}`;
-  if (profile === "markdown") return `[@${key}]`;
-  return String.raw`\cite{${key}}`;
-}
-
-function insertCite(key: string) {
-  const v = getEditorView();
-  if (!v) return;
-  const files = useFilesStore.getState();
-  const extension = files.activePath?.split(".").pop()?.toLowerCase();
-  if (!extension || !files.engine.source_extensions.includes(extension)) return;
-  const profile = files.engine.capabilities.formatting_profile;
-  insertAtCursor(citationSnippet(profile, key));
 }

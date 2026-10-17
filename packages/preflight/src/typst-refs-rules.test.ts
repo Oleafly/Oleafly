@@ -165,4 +165,102 @@ describe("Typst references", () => {
     );
     expect(findings.filter((finding) => finding.id === "refs-project-duplicate-label")).toHaveLength(1);
   });
+
+  describe("bibliography keys defined more than once", () => {
+    const definition = (key: string, file: string, line: number, from: number) => ({
+      key,
+      file,
+      line,
+      from,
+      to: from + key.length + 10,
+    });
+
+    it("reports a repeated key once as an error that stops the compile, at its first definition", () => {
+      const findings = run(
+        { "main.typ": '@cross\n#bibliography(("refs.bib", "extra.bib"))', "chapters/intro.typ": "More" },
+        {
+          bibKeys: ["cross"],
+          bibKeyDefinitions: [definition("cross", "refs.bib", 4, 80), definition("cross", "extra.bib", 1, 0)],
+        },
+      );
+      expect(findings.filter((finding) => finding.id === "refs-duplicate-bib-key")).toEqual([
+        {
+          id: "refs-duplicate-bib-key",
+          lens: "refs",
+          severity: "error",
+          certainty: "verified",
+          title: { key: "rules.refs-duplicate-bib-key.title", params: { key: "cross" } },
+          detail: { key: "rules.refs-duplicate-bib-key.detailTypst", params: { places: "refs.bib:4, extra.bib:1" } },
+          file: "refs.bib",
+          from: 80,
+          to: 95,
+        },
+      ]);
+    });
+
+    it("counts only the .bib files the document loads", () => {
+      const findings = run(
+        { "main.typ": '@cross\n#bibliography("refs/main.bib")', "chapters/intro.typ": "More" },
+        {
+          bibKeys: ["cross"],
+          bibKeyDefinitions: [
+            definition("cross", "refs/main.bib", 4, 80),
+            definition("cross", "refs/main (conflicted copy 2026-10-14).bib", 4, 80),
+            definition("cross", "old/refs.bib", 1, 0),
+          ],
+        },
+      );
+      expect(findings.some((finding) => finding.id === "refs-duplicate-bib-key")).toBe(false);
+    });
+
+    it("still finds a key repeated inside a loaded file, whatever the letter case of its path", () => {
+      const findings = run(
+        { "chapters/main.typ": '@cross\n#bibliography("../Refs.bib")' },
+        {
+          bibKeys: ["cross"],
+          bibKeyDefinitions: [definition("cross", "refs.bib", 4, 80), definition("cross", "refs.bib", 9, 200)],
+        },
+      );
+      expect(findings.filter((finding) => finding.id === "refs-duplicate-bib-key")).toHaveLength(1);
+    });
+
+    it("keeps keys that differ only in letter case apart, as Typst does", () => {
+      const findings = run(
+        { "main.typ": '@smith2020 @Smith2020\n#bibliography("refs.bib")' },
+        {
+          bibKeys: ["smith2020", "Smith2020"],
+          bibKeyDefinitions: [definition("smith2020", "refs.bib", 1, 0), definition("Smith2020", "refs.bib", 2, 70)],
+        },
+      );
+      expect(findings.some((finding) => finding.id === "refs-duplicate-bib-key")).toBe(false);
+    });
+
+    it("still reports two keys that differ only in letter case and share a DOI", () => {
+      const findings = run(
+        { "main.typ": '@smith2020 @Smith2020\n#bibliography("refs.bib")' },
+        {
+          bibKeys: ["smith2020", "Smith2020"],
+          duplicateDois: [{ doi: "10.1/x", keys: ["smith2020", "Smith2020"] }],
+        },
+      );
+      expect(findings.find((finding) => finding.id === "refs-duplicate-bib")?.title).toEqual({
+        key: "rules.refs-duplicate-bib.title",
+        params: { keys: "smith2020, Smith2020" },
+      });
+    });
+
+    it("leaves one key defined twice with the same DOI to the repeated-key finding", () => {
+      const findings = run(
+        { "main.typ": '@same\n#bibliography(("refs.bib", "extra.bib"))' },
+        {
+          bibKeys: ["same"],
+          duplicateDois: [{ doi: "10.1/x", keys: ["same", "same"] }],
+          bibKeyDefinitions: [definition("same", "refs.bib", 1, 0), definition("same", "extra.bib", 1, 0)],
+        },
+      );
+      expect(findings.map((finding) => finding.id).filter((id) => id.startsWith("refs-duplicate-bib"))).toEqual([
+        "refs-duplicate-bib-key",
+      ]);
+    });
+  });
 });

@@ -217,6 +217,8 @@ describe("GitHubSection connected account", () => {
       "src",
       "https://avatars.test/octocat.png",
     );
+    expect(screen.getByRole("presentation")).toHaveAttribute("data-slot", "avatar");
+    expect(screen.getByRole("presentation")).toHaveClass("size-8", "rounded-full", "object-cover");
   });
 
   it("falls back to a generic label when the profile has no name or avatar", async () => {
@@ -226,6 +228,7 @@ describe("GitHubSection connected account", () => {
 
     expect(await screen.findByText(github.account.connected)).toBeInTheDocument();
     expect(screen.queryByRole("presentation")).not.toBeInTheDocument();
+    expect(document.querySelector('[data-slot="avatar"]')).toHaveClass("size-8", "bg-foreground", "text-background");
   });
 
   it("disconnects and says so", async () => {

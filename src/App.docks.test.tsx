@@ -108,6 +108,7 @@ vi.mock("@/lib/mcp-bridge", () => ({
 }));
 
 const assistantLayoutMocks = vi.hoisted(() => ({
+  FILE_SIDEBAR_MIN_WIDTH: 250,
   sidebarMinimumPercent: vi.fn(() => 48),
   sidebarPanelGroupWidth: vi.fn(() => 825),
   assistantMinimumWidth: vi.fn(() => 480),
@@ -514,7 +515,7 @@ describe("project dock layout", () => {
     expect(assistantLayoutMocks.sidebarMinimumPercent).toHaveBeenCalledWith(825, false, 20);
   });
 
-  it("restores the sidebar default width when the sidebar reopens", async () => {
+  it("leaves a reopened sidebar at the size its panel group gives it", async () => {
     const React = await import("react");
     const { act } = React;
     const { createRoot } = await import("react-dom/client");
@@ -544,7 +545,7 @@ describe("project dock layout", () => {
     });
 
     expect(useSettingsStore.getState()).toMatchObject({ showTree: true });
-    expect(panelHandleMocks.resize).toHaveBeenLastCalledWith("sidebar", expect.stringMatching(/%$/));
+    expect(panelHandleMocks.resize).not.toHaveBeenCalledWith("sidebar", expect.anything());
   });
 
   it("reopens the terminal when its panel is dragged back up after collapsing", async () => {

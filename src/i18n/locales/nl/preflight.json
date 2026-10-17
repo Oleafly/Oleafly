@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Tabelinhoud wordt mogelijk niet als cv-velden gelezen",
-      "detailTable": "ATS-tools maken tabelinhoud vaak onvoorspelbaar plat. Gebruik geen tabel om cv-tekst naast elkaar te zetten; echte onderzoeksdatatabellen worden apart beoordeeld bij Toegankelijkheid.",
+      "detailTable": "ATS-tools maken tabelinhoud vaak onvoorspelbaar plat. Gebruik geen tabel om cv-tekst naast elkaar te zetten. Echte onderzoeksdatatabellen worden apart gecontroleerd bij Toegankelijkheid.",
       "titleTikz": "TikZ-inhoud heeft een semantisch alternatief nodig",
       "detailTikz": "TikZ tekent visuele inhoud zonder de betekenis ervan als gewone tekst beschikbaar te maken. Geef een toegankelijke beschrijving voor publicatie-uitvoer en gebruik het niet voor cv-inhoud die naar een ATS gaat."
     },
@@ -256,7 +256,7 @@
       "title_one": "{{count}} bibliografie-item heeft onvolledige metagegevens",
       "title_other": "{{count}} bibliografie-items hebben onvolledige metagegevens",
       "detail": "Onvolledige records kunnen in uitgeversstijlen kapotte of dubbelzinnige verwijzingen opleveren. {{examples}}.",
-      "detailTruncated": "Onvolledige records kunnen in uitgeversstijlen kapotte of dubbelzinnige verwijzingen opleveren. {{examples}}; …"
+      "detailTruncated": "Onvolledige records kunnen in uitgeversstijlen kapotte of dubbelzinnige verwijzingen opleveren. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-waarde ziet er onjuist uit",
@@ -318,6 +318,12 @@
     "refs-duplicate-bib": {
       "title": "Dubbele bibliografie-items: {{keys}}",
       "detail": "Deze items delen de DOI {{doi}}, dus het is dezelfde referentie onder verschillende sleutels. Houd er één en citeer die, anders staat hij twee keer in je bibliografie."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "Citatiesleutel \"{{key}}\" is meer dan één keer gedefinieerd",
+      "detail": "Gedefinieerd in {{places}}. BibTeX gebruikt alleen het eerste item met deze sleutel en maakt bij het vergelijken van sleutels geen onderscheid tussen hoofdletters en kleine letters. Houd één item over, of geef de andere nieuwe sleutels en werk de citaties bij die ze gebruiken.",
+      "detailBiber": "Gedefinieerd in {{places}}. Als biber de bibliografie maakt, gebruikt het alleen het eerste item met deze sleutel. Houd één item over, of geef de andere nieuwe sleutels en werk de citaties bij die ze gebruiken.",
+      "detailTypst": "Gedefinieerd in {{places}}. Typst stopt met compileren als twee bibliografie-items dezelfde sleutel hebben. Houd één item over, of geef de andere nieuwe sleutels en werk de citaties bij die ze gebruiken."
     },
     "submission-path-case": {
       "title": "Hoofdlettergebruik in de bestandsnaam klopt niet: {{target}}",
@@ -604,7 +610,7 @@
     "title": "Preflight",
     "readerDisabled": "Compileer en voer eerst een uitvoercontrole uit",
     "readerEnabled": "Open de tekst die uit de PDF is gehaald",
-    "readerButton": "Tonen wat de lezer ziet",
+    "readerButton": "Schermlezer",
     "aboutLabel": "Over Preflight",
     "aboutTitle": "Wat Preflight controleert",
     "aboutIntro": "Preflight leest de projectbroncode, het compilerlogboek en de huidige PDF. Zet alleen de controles aan die bij dit document passen.",

@@ -4,6 +4,7 @@ import type { Tree } from "@lezer/common";
 import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { highlightTree } from "@lezer/highlight";
 import { EDITOR_LINE_HEIGHT_CSS, editorHighlightStyle } from "./theme";
+import { editorColor } from "./color-roles";
 import {
   latexStickySource,
   scopesAtLine,
@@ -39,8 +40,9 @@ const stickyTheme = EditorView.theme({
     overflow: "hidden",
     fontFamily: "var(--cm-font-family, var(--font-mono))",
     fontSize: "var(--cm-font-size, 13px)",
+    letterSpacing: "var(--cm-letter-spacing, normal)",
     lineHeight: EDITOR_LINE_HEIGHT_CSS,
-    backgroundColor: "var(--cm-editor-bg, var(--background))",
+    backgroundColor: editorColor("background"),
     boxShadow: "0 4px 8px -6px rgb(0 0 0 / 0.45)",
     borderBottom: "1px solid var(--border)",
   },
@@ -59,7 +61,7 @@ const stickyTheme = EditorView.theme({
     padding: "0.25em 0",
     textAlign: "left",
     font: "inherit",
-    color: "var(--cm-editor-fg, var(--foreground))",
+    color: editorColor("text"),
   },
   ".cm-stickyRow:hover": {
     backgroundColor: "var(--cm-active-line, color-mix(in oklch, var(--muted) 45%, transparent))",
@@ -68,7 +70,7 @@ const stickyTheme = EditorView.theme({
     flex: "none",
     boxSizing: "border-box",
     textAlign: "right",
-    color: "var(--cm-gutter-fg, var(--muted-foreground))",
+    color: editorColor("lineNumbers"),
     paddingLeft: "var(--cm-gutter-inset, 6px)",
     // Only until the gutter has been measured; see `measureColumns`.
     paddingRight: "8px",
@@ -122,6 +124,8 @@ class StickyScrollPlugin {
   private scannedTree: Tree | null = null;
   private rows: RenderedRow[] = [];
   private columns: Columns | null = null;
+  private columnsDirty = true;
+  private horizontalOffset = -1;
   private rescanTimer: ReturnType<typeof setTimeout> | null = null;
   private frame = 0;
   private readonly onScroll: () => void;
@@ -149,6 +153,7 @@ class StickyScrollPlugin {
       if (update.state.doc.lines <= INLINE_RESCAN_LINES) this.rescan();
       else this.scheduleRescan();
     }
+    if (update.docChanged || update.geometryChanged) this.columnsDirty = true;
     if (update.docChanged || treeChanged || update.viewportChanged || update.geometryChanged) {
       this.schedulePaint();
     }
@@ -210,7 +215,7 @@ class StickyScrollPlugin {
       view.state.doc,
       scopesAtLine(this.scopes, this.topLine(), MAX_STICKY_ROWS),
     );
-    const columns = next.length > 0 ? this.measureColumns() : this.columns;
+    const columns = next.length > 0 ? this.currentColumns() : this.columns;
     if (sameRows(next, this.rows) && sameColumns(columns, this.columns)) {
       this.syncHorizontalScroll();
       return;
@@ -222,7 +227,15 @@ class StickyScrollPlugin {
     for (const row of next) {
       this.container.appendChild(this.renderRow(row, columns));
     }
+    this.horizontalOffset = -1;
     this.syncHorizontalScroll();
+  }
+
+  private currentColumns(): Columns | null {
+    if (!this.columnsDirty && this.columns) return this.columns;
+    const measured = this.measureColumns();
+    if (measured) this.columnsDirty = false;
+    return measured;
   }
 
   /**
@@ -255,6 +268,8 @@ class StickyScrollPlugin {
 
   private syncHorizontalScroll() {
     const offset = this.view.scrollDOM.scrollLeft;
+    if (offset === this.horizontalOffset) return;
+    this.horizontalOffset = offset;
     for (const code of this.container.querySelectorAll<HTMLElement>(".cm-stickyCode")) {
       code.style.transform = offset ? `translateX(${-offset}px)` : "";
     }

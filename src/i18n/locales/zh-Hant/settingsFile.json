@@ -1,0 +1,64 @@
+{
+  "title": "應用程式設定",
+  "description": "將設定儲存為 JSON 檔案，或載入別人分享給你的檔案。API 金鑰、帳號、整合和代理程式一律不會包含在內。",
+  "export": "匯出",
+  "import": "匯入",
+  "view": {
+    "label": "檢視設定 JSON",
+    "summary": "匯出時所儲存檔案的唯讀預覽。",
+    "loading": "正在讀取你的設定",
+    "failed": "無法讀取你的設定。"
+  },
+  "dialog": {
+    "pickTitle": "匯入設定",
+    "filterName": "Oleafly 設定"
+  },
+  "toast": {
+    "exported": "已將 {{name}} 匯出到磁碟",
+    "exportFailed": "無法儲存設定檔。",
+    "readFailed": "無法開啟該檔案。",
+    "imported": "設定已匯入。",
+    "unchanged": "你的設定已與 {{name}} 相同。",
+    "applyFailed": "部分設定無法儲存。請重新匯入。",
+    "cloudEmpty": "你的 Dropbox 中還沒有 Oleafly 設定。請先在另一台電腦上開啟雲端同步。",
+    "cloudLoadFailed": "無法從你的 Dropbox 載入設定。",
+    "cloudUnreadable": "無法讀取你 Dropbox 中的設定。"
+  },
+  "confirm": {
+    "title": "要取代你的設定嗎？",
+    "description": "{{name}} 中的設定將取代你目前的設定。檔案中沒有的設定會維持不變。",
+    "changes": "將變更的設定：{{count}} 項",
+    "ignored": "無法辨識，將略過：",
+    "action": "匯入",
+    "cloudDescription": "你 Dropbox 中的設定將取代你目前的設定。其中沒有的設定會維持不變。"
+  },
+  "error": {
+    "title": "未匯入 {{name}}",
+    "notJson": "該檔案不是有效的 JSON。",
+    "notSettings": "這不是 Oleafly 設定檔。",
+    "invalid": "你嘗試匯入的設定組態無效。請修正以下錯誤，然後重新匯入：",
+    "more": "還有 {{count}} 項"
+  },
+  "valueErrors": {
+    "boolean": "必須是 true 或 false",
+    "oneOf": "必須是下列值之一：{{values}}",
+    "range": "必須是 {{min}} 到 {{max}} 之間的數字",
+    "wholeRange": "必須是 {{min}} 到 {{max}} 之間的整數",
+    "wholeRangeStep": "必須是 {{min}} 到 {{max}} 之間的整數，間隔為 {{step}}",
+    "hexColor": "必須是 #2563eb 這類的顏色",
+    "hexColorOrEmpty": "必須是 #2563eb 這類的顏色，或為 \"\" 以使用主題的顏色",
+    "text": "必須是文字，最多 {{max}} 個字元",
+    "webAddress": "必須是以 http:// 或 https:// 開頭的網址",
+    "list": "必須是最多包含 {{max}} 個項目的清單",
+    "listItem": "不是允許的項目",
+    "duplicate": "出現了兩次",
+    "object": "必須是以大括號括住的一組設定",
+    "unknownKey": "不是 Oleafly 能辨識的設定",
+    "dictionaryLocale": "必須是 en_US 這類的字典代碼",
+    "shortcut": "必須是 Mod-Shift-k 這類的快捷鍵，或為 \"default\"",
+    "editorKey": "必須是 Mod-d 這類的按鍵，或用 \"\" 表示不設按鍵，或為 \"default\""
+  },
+  "importFromLocal": "從此裝置匯入",
+  "importFromCloud": "從雲端匯入",
+  "cloudSource": "你的 Dropbox"
+}

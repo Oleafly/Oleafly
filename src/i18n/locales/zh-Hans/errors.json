@@ -36,7 +36,12 @@
     "not_removable": "只有在原位置打开的文件夹才能从 Oleafly 中移除。",
     "trash_unavailable": "Oleafly 无法将 {{path}} 移到废纸篓或回收站，该驱动器可能不支持。",
     "linked_replace_folder": "{{path}} 是文件夹，因此 Oleafly 不会替换它。请先移动或重命名它。",
-    "folder_read_only": "{{name}} 或其所在的文件夹为只读，因此 Oleafly 无法进行此更改。请将你打开的文件夹复制到库，并在那里编辑。"
+    "folder_read_only": "{{name}} 或其所在的文件夹为只读，因此 Oleafly 无法进行此更改。请将你打开的文件夹复制到库，并在那里编辑。",
+    "shared_settings_viewer": "查看者无法更改共享项目的设置。"
+  },
+  "template": {
+    "name_required": "请为模板命名。",
+    "folder_holds_templates": "此文件夹存放的是 Oleafly 自带的模板。请改为选择模板本身所在的文件夹。"
   },
   "settings": {
     "locale_unsupported": "语言 {{locale}} 不可用。"
@@ -56,7 +61,11 @@
     "unreachable": "Oleafly 无法连接到 Zotero。请检查网络连接后重试。",
     "http_error": "Zotero 返回了错误（HTTP {{status}}）。请稍后重试。",
     "invalid_response": "Zotero 发来的回复 Oleafly 无法读取。请稍后重试。",
-    "too_large": "你的 Zotero 库太大，无法一次导入。请改为在 Zotero 中将某个分类导出为 RDF 文件，再导入该文件。"
+    "too_large": "你的 Zotero 库太大，无法一次导入。请改为在 Zotero 中将某个分类导出为 RDF 文件，再导入该文件。",
+    "local_not_running": "Zotero 未在本机上运行。请打开 Zotero，或连接你的 zotero.org 账户。",
+    "local_api_disabled": "在 Zotero 中，打开“设置 > 高级”，然后勾选“允许此计算机上的其他应用程序与 Zotero 通讯”。",
+    "local_unsupported": "此版本的 Zotero 无法与 Oleafly 共享其库。请更新到 Zotero 7 或更高版本。",
+    "offline": "Oleafly 处于离线模式，因此无法访问 zotero.org。"
   },
   "tex": {
     "no_host_binary": "TinyTeX 没有与主机兼容的 {{name}} 二进制文件。",
@@ -65,7 +74,8 @@
     "latexmk_network_folder": "latexmk 无法编译网络共享上的文件夹。请将此项目切换到 Tectonic，或将文件夹复制到这台电脑。",
     "shell_escape_denied_minted": "minted 需要运行另一个程序来高亮代码，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
     "shell_escape_denied_pythontex": "PythonTeX 需要运行 Python，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
-    "shell_escape_denied_command": "此文档会运行 shell 命令，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。"
+    "shell_escape_denied_command": "此文档会运行 shell 命令，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
+    "japanese_compiler_missing": "你的 TeX 发行版没有安装 {{compiler}}。在 TeX Live 或 TinyTeX 中运行 tlmgr install collection-langjapanese 即可添加，也可以改用其他编译器。"
   },
   "export": {
     "bibliography_unreadable": "Oleafly 无法读取参考文献 {{name}}。请检查其中是否有损坏的条目，然后重新导出。"
@@ -181,5 +191,39 @@
     "failed": "Typst 无法导出该文档。",
     "unsupported": "此 Typst 版本无法使用这些设置导出。",
     "invalid_ppi": "请选择 1 到 {{max}} PPI 之间的分辨率。"
+  },
+  "overleaf": {
+    "signed_out": "请先登录 Overleaf。",
+    "session_expired": "你的 Overleaf 登录已过期。请重新登录以继续。",
+    "sign_in_cancelled": "Overleaf 登录窗口在完成前被关闭了。",
+    "sign_in_failed": "Oleafly 无法确认你的 Overleaf 登录。请重新登录。",
+    "invalid_server": "“{{server}}”不是 Oleafly 可以使用的服务器地址。",
+    "unreachable": "Oleafly 无法连接到 {{server}}。",
+    "unrecognized": "Overleaf 的项目页面与 Oleafly 预期的不同。请从 Overleaf 将项目下载为 .zip，然后改为导入该文件。",
+    "project_unavailable": "无法下载此项目。你可能已无权访问它。",
+    "not_an_archive": "Overleaf 发送的内容不是项目压缩包。",
+    "too_large": "此项目超过了 2 GB 的导入上限。",
+    "rate_limited": "Overleaf 要求 Oleafly 放慢速度。请等待一分钟后重试。",
+    "sync_busy": "此项目已在与 Overleaf 同步。",
+    "sync_not_linked": "此项目未关联到 Overleaf。",
+    "sync_needs_relink": "此项目的同步副本丢失。请停止同步，然后重新关联项目。",
+    "sync_already_linked": "此项目已关联到另一个 Overleaf 项目。请先停止同步。",
+    "sync_offline": "Oleafly 无法连接到 Overleaf。你的更改在本地是安全的，下次会同步。",
+    "sync_failed": "与 Overleaf 的同步未完成。本地文件没有变化。",
+    "sync_kept_changing": "同步期间，Overleaf 上的项目一直在变化。请稍后重试。",
+    "sync_case_clash": "Overleaf 上有文件名仅大小写不同的文件（{{files}}）。请在 Overleaf 上重命名其中一个，然后重新同步。",
+    "sync_invalid_names": "Overleaf 上的一些文件名无法保存到这台电脑（{{files}}）。请在 Overleaf 上重命名这些文件，然后重新同步。",
+    "sync_file_too_large": "{{file}} 超过了 Overleaf 允许的单个文件 50 MB 上限。",
+    "sync_too_large": "此项目太大，无法同步。上限为 5,000 个文件或 2 GB。",
+    "sync_path_blocked": "无法在此处写入 {{file}}，因为已有同名文件夹占用了该位置。",
+    "git_token_missing": "添加你的 Overleaf Git 令牌即可同步此项目。",
+    "git_token_invalid": "这看起来不像 Overleaf Git 令牌。请复制完整的令牌后重试。",
+    "git_token_rejected": "Overleaf 未接受此 Git 令牌，它可能已过期。请在 Overleaf 账户设置中创建新的令牌。",
+    "git_unavailable": "此项目无法使用 Overleaf 的 Git 集成。项目所有者需要付费方案或大学方案。",
+    "template_link_invalid": "该链接不是 Overleaf 模板页面。请复制 overleaf.com/latex/templates 中某个页面的地址，然后重试。",
+    "template_unavailable": "Oleafly 无法打开此模板。它可能已从 Overleaf 的模板库中移除。"
+  },
+  "collab": {
+    "turned_off": "实时协作已关闭。请在设置的“实验功能”中开启。"
   }
 }

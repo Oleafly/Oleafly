@@ -206,5 +206,16 @@
     "clearFilter": "清除筛选",
     "filterPlaceholder": "筛选…",
     "noProject": "无项目"
+  },
+  "fileReferences": {
+    "title": "更新对 {{name}} 的引用？",
+    "files_other": "{{count}} 个文件",
+    "summary_other": "$t(workspace:fileReferences.files, { \"count\": {{files}} })中有 {{count}} 处引用仍在使用旧路径 {{path}}。",
+    "fileCount_other": "{{count}} 处引用",
+    "dontAsk": "不再询问",
+    "update": "更新引用",
+    "skip": "不更新",
+    "failed_other": "{{count}} 个文件在移动后被修改或无法保存，仍在使用旧路径。",
+    "close": "关闭且不更新引用"
   }
 }

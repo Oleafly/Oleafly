@@ -51,6 +51,32 @@ describe("getConfigCached", () => {
     expect(getConfig).toHaveBeenCalledTimes(2);
   });
 
+  it("serves a config handed over at startup without reading it again", async () => {
+    const { getConfigCached, primeConfigCache } = await loadModule();
+    primeConfigCache({ ai_provider: "anthropic" } as never);
+    await expect(getConfigCached()).resolves.toEqual({ ai_provider: "anthropic" });
+    expect(getConfig).not.toHaveBeenCalled();
+  });
+
+  it("keeps an in-flight read instead of a later startup config", async () => {
+    const { getConfigCached, primeConfigCache } = await loadModule();
+    getConfig.mockResolvedValue({ ai_provider: "openai" });
+    const pending = getConfigCached();
+    primeConfigCache({ ai_provider: "anthropic" } as never);
+    await expect(pending).resolves.toEqual({ ai_provider: "openai" });
+    await expect(getConfigCached()).resolves.toEqual({ ai_provider: "openai" });
+    expect(getConfig).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops a startup config once the config changes", async () => {
+    const { getConfigCached, primeConfigCache } = await loadModule();
+    getConfig.mockResolvedValue({ ai_provider: "openai" });
+    primeConfigCache({ ai_provider: "anthropic" } as never);
+    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed"));
+    await expect(getConfigCached()).resolves.toEqual({ ai_provider: "openai" });
+    expect(getConfig).toHaveBeenCalledTimes(1);
+  });
+
   it("invalidates when the ai-config-changed event fires", async () => {
     const { getConfigCached } = await loadModule();
     getConfig.mockResolvedValue({ ai_provider: "openai" });

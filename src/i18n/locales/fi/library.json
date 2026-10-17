@@ -137,7 +137,8 @@
       "document": "dokumentti",
       "image": "kuva",
       "diagram": "kaavio",
-      "external": "ulkoinen"
+      "external": "ulkoinen",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF-esikatselu: {{name}}",
@@ -181,12 +182,24 @@
       "failed": "Projektin haaroittaminen ei onnistunut."
     },
     "deleteDialog": {
-      "title": "Siirretäänkö ”{{name}}” roskakoriin?",
+      "title": "Siirretäänkö ”<name>{{name}}</name>” roskakoriin?",
       "fallbackName": "projekti",
       "description": "Projekti poistuu kirjastosta mutta säilyy Tietojen tallennus -osiossa, kunnes se palautetaan tai poistetaan pysyvästi.",
       "confirm": "Siirrä roskakoriin",
       "moved": "\"{{name}}\" siirrettiin roskakoriin.",
       "failed": "Kohdetta \"{{name}}\" ei voitu poistaa."
+    },
+    "bulkDelete": {
+      "button_one": "Poista {{count}} valittu projekti",
+      "button_other": "Poista {{count}} valittua projektia",
+      "title_one": "Siirretäänkö {{count}} projekti roskakoriin?",
+      "title_other": "Siirretäänkö {{count}} projektia roskakoriin?",
+      "description": "Projektit poistuvat kirjastosta mutta säilyvät Tietojen tallennus -osiossa, kunnes ne palautetaan tai poistetaan pysyvästi.",
+      "folderNote": "Paikallaan avatut kansiot poistuvat vain Oleaflysta. Niiden tiedostot pysyvät paikoillaan.",
+      "done_one": "{{count}} projekti poistettiin kirjastosta.",
+      "done_other": "{{count}} projektia poistettiin kirjastosta.",
+      "failed_one": "{{count}} projektin poistaminen epäonnistui.",
+      "failed_other": "{{count}} projektin poistaminen epäonnistui."
     }
   },
   "newProject": {
@@ -293,6 +306,64 @@
       "connect": "Yhdistä GitHub asetuksissa",
       "repositoriesFailed": "Repositorioita ei voitu ladata.",
       "repositoriesRetry": "Repositorioita ei voitu ladata. Yritä uudelleen"
+    },
+    "overleaf": {
+      "cardDescription": "Valitse projekteja Overleaf-tililtäsi",
+      "title": "Tuo Overleafista",
+      "description": "Valitse tuotavat projektit. Jokainen säilyttää tiedostonsa, kääntäjänsä ja päätiedostonsa.",
+      "checking": "Tarkistetaan Overleaf-kirjautumistasi",
+      "loading": "Ladataan Overleaf-projektejasi",
+      "loadFailed": "Oleafly ei voinut ladata Overleaf-projektejasi.",
+      "signInPrompt": "Kirjaudu Overleafiin nähdäksesi projektisi. Kirjautumisikkuna avautuu ja sulkeutuu itsestään, kun olet kirjautunut.",
+      "signingIn": "Viimeistele Overleaf-kirjautuminen avautuneessa ikkunassa.",
+      "passkeyHint": "Jos pääsyavaimesi ei toimi kirjautumisikkunassa, valitse siellä toinen tapa, kuten salasana tai vahvistus puhelimessa.",
+      "expired": "Overleaf-kirjautumisesi on vanhentunut. Kirjaudu uudelleen nähdäksesi projektisi.",
+      "signIn": "Kirjaudu Overleafiin",
+      "signInWindowTitle": "Kirjaudu Overleafiin",
+      "server": "Palvelin: {{server}}",
+      "serverLabel": "Overleaf-palvelimen osoite",
+      "useDifferentServer": "Käytä toista palvelinta",
+      "useDefaultServer": "Käytä osoitetta overleaf.com",
+      "saveServer": "Käytä tätä palvelinta",
+      "signedInAs": "Kirjautunut käyttäjänä {{email}}",
+      "signedIn": "Kirjautunut Overleafiin",
+      "signOut": "Kirjaudu ulos",
+      "searchLabel": "Hae Overleaf-projekteja",
+      "searchPlaceholder_one": "Hae {{count}} projektista",
+      "searchPlaceholder_other": "Hae {{count}} projektista",
+      "filterLabel": "Näytä projektit",
+      "filter": {
+        "all": "Kaikki",
+        "owned": "Omat",
+        "shared": "Jaettu kanssasi"
+      },
+      "empty": "Tällä Overleaf-tilillä ei ole vielä projekteja.",
+      "noMatches": "Hakuasi vastaavia projekteja ei löytynyt.",
+      "selectAll": "Valitse kaikki",
+      "clearSelection": "Tyhjennä valinta",
+      "selectProject": "Valitse {{name}}",
+      "selected_one": "{{count}} projekti valittu",
+      "selected_other": "{{count}} projektia valittu",
+      "import_one": "Tuo {{count}} projekti",
+      "import_other": "Tuo {{count}} projektia",
+      "imported": "Tuotu",
+      "open": "Avaa",
+      "ownedByYou": "Oma",
+      "owner": "Omistaja: {{name}}",
+      "archived": "Arkistoitu",
+      "notCarried": "Kommentit, seuratut muutokset, keskustelu ja historia jäävät Overleafiin.",
+      "importingProjects": "Tuodaan projektejasi",
+      "done": "Valmis",
+      "doneSummary_one": "Tuotiin {{count}} projekti.",
+      "doneSummary_other": "Tuotiin {{count}} projektia.",
+      "failedSummary_one": "{{count}} projektia ei voitu tuoda.",
+      "failedSummary_other": "{{count}} projektia ei voitu tuoda.",
+      "progress": {
+        "queued": "Odottaa",
+        "downloading": "Ladataan {{percent}} %",
+        "downloadingUnknown": "Ladataan",
+        "importing": "Valmistellaan"
+      }
     }
   },
   "pdfImport": {
@@ -537,7 +608,7 @@
       "remove": "Poista Oleaflystä"
     },
     "remove": {
-      "title": "Poistetaanko ”{{name}}” Oleaflystä?",
+      "title": "Poistetaanko ”<name>{{name}}</name>” Oleaflystä?",
       "description": "Tiedostosi pysyvät paikoillaan. Oleafly poistaa tämän kansion käännöstiedostot ja nollaa sen luottamuksen, hyväksynnät ja linkitetyt kansiot. Avaa kansio uudelleen 30 päivän kuluessa, niin saat sen keskustelut ja historian takaisin. Muut asetukset pitää tehdä uudelleen.",
       "confirm": "Poista Oleaflystä",
       "done": "”{{name}}” poistettiin Oleaflystä. Sen tiedostot ovat yhä kansiossa.",
@@ -580,6 +651,55 @@
       "done": "”{{name}}” on nyt kirjastossasi.",
       "doneLeftOut": "”{{name}}” on nyt kirjastossasi. Muualle osoittavia linkkejä ja liian syvälle sisäkkäisiä kansioita ei kopioitu.",
       "failed": "Kohdetta ”{{name}}” ei voitu kopioida kirjastoosi."
+    }
+  },
+  "customTemplates": {
+    "saveAsTemplate": "Tallenna mallipohjaksi",
+    "saveTitle": "Tallenna mallipohjaksi",
+    "saveDescription": "Kopio projektista <name>{{name}}</name> tallentuu mallipohjiisi kohtaan ”Omat”. Itse projekti pysyy ennallaan.",
+    "nameLabel": "Mallipohjan nimi",
+    "save": "Tallenna",
+    "saving": "Tallennetaan…",
+    "saveFailed": "Oleafly ei voinut tallentaa mallipohjaa.",
+    "saved": "”{{name}}” tallennettiin mallipohjiisi",
+    "useTemplate": "Käytä mallipohjaa",
+    "alsoSaveAsTemplate": "Tallenna myös mallipohjaksi",
+    "alsoSaveHint": "Kopio tallentuu mallipohjiisi kohtaan ”Omat”.",
+    "import": {
+      "title": "Tuo mallipohja",
+      "description": "Lisää mallipohja, joka sinulla jo on. Se näkyy mallipohjagalleriassa kohdassa ”Omat”.",
+      "zipTitle": "ZIP-tiedosto",
+      "zipDescription": "Mallipohjan lähdetiedostot .zip-tiedostona",
+      "folderTitle": "Kansio",
+      "folderDescription": "Kansio, jossa on mallipohjan tiedostot",
+      "linkTitle": "Overleaf-mallipohjan linkki",
+      "linkDescription": "Sivu Overleafin mallipohjagalleriasta",
+      "accountTitle": "Overleaf-projektisi",
+      "accountDescription": "Käytä jotakin projektiasi mallipohjana",
+      "pickerZipTitle": "Valitse mallipohjan ZIP-tiedosto",
+      "pickerZipFilter": "ZIP-arkistot",
+      "pickerFolderTitle": "Valitse mallipohjan kansio",
+      "from": "Lähde: {{source}}",
+      "saveTemplate": "Tallenna mallipohja",
+      "back": "Takaisin",
+      "linkLabel": "Mallipohjasivun linkki",
+      "linkPlaceholder": "https://www.overleaf.com/latex/templates/...",
+      "lookUp": "Hae",
+      "lookingUp": "Haetaan mallipohjaa…",
+      "by": "Tekijä: {{author}}",
+      "previewAlt": "Ensimmäinen sivu: {{name}}",
+      "noPreview": "Ei esikatselua",
+      "copyNote": "Kuten Overleafin ”Open as Template”, tämä lisää mallipohjasta kopion Overleaf-projekteihisi.",
+      "importAction": "Tuo",
+      "signInNeeded": "Overleaf antaa mallipohjien tiedostot vain kirjautuneille tileille. Kirjaudu kerran, niin tuonti jatkuu.",
+      "signIn": "Kirjaudu Overleafiin",
+      "signingIn": "Viimeistele Overleaf-kirjautuminen avautuneessa ikkunassa.",
+      "accountSearch": "Hae projekteistasi",
+      "accountLoading": "Ladataan Overleaf-projektejasi…",
+      "accountEmpty": "Hakuasi vastaavia projekteja ei löytynyt.",
+      "accountFailed": "Oleafly ei voinut ladata Overleaf-projektejasi.",
+      "tryAgain": "Yritä uudelleen",
+      "failed": "Oleafly ei voinut tuoda mallipohjaa."
     }
   }
 }

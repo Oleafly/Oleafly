@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Check,
   CircleMinus,
   CirclePlus,
   CircleSlash2,
@@ -34,6 +33,7 @@ import {
   type SuggestContext,
 } from "@oleafly/search-query";
 import { INLINE_KEYWORD, INLINE_TOKEN_AMBER, INLINE_TOKEN_BLUE } from "@/components/ui/inline-token";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import {
   buildSuggestions,
   type QueryMeta,
@@ -41,11 +41,12 @@ import {
   type QuerySuggestions,
 } from "@/lib/query-suggestions";
 import { cn } from "@/lib/utils";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 const MENU_WIDTH = 288;
 const UNFINISHED = new Set<Diagnostic["code"]>(["unclosed-group", "dangling-operator", "unterminated-quote"]);
 const OPTION_CLASS = "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors";
-const HEADING_CLASS = "px-2.5 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground";
+const HEADING_CLASS = "px-2.5 pb-1 pt-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground";
 
 const ISSUE_KEYS = {
   "unclosed-group": "unclosedGroup",
@@ -86,6 +87,8 @@ function segmentClass(segment: Segment): string | undefined {
   if (segment.kind === "operator") return INLINE_KEYWORD;
   return undefined;
 }
+
+const NO_SUGGESTIONS: QuerySuggestions = { heading: null, items: [], operators: [], hint: null };
 
 function visibleIssues(diagnostics: readonly Diagnostic[], source: string, caret: number, focused: boolean): Diagnostic[] {
   if (!focused) return [...diagnostics];
@@ -216,7 +219,7 @@ function SuggestionOption({ suggestion, id, active, divided, onHover, onChoose }
       </span>
       <span className="min-w-0 flex-1 truncate">{optionLabel(t, suggestion)}</span>
       {suggestion.kind === "negate" && suggestion.negated ? (
-        <Check aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+        <CheckBadge />
       ) : null}
     </button>
   );
@@ -250,6 +253,7 @@ function SuggestionMenu<T>({
   onChoose,
 }: Readonly<MenuProps<T>>) {
   const { t } = useTranslation(["common"]);
+  const listRef = useScrollTopOnChange(value);
   const firstOperator = suggestions.items.length > 0 ? suggestions.items.length : -1;
   return (
     <div
@@ -262,6 +266,7 @@ function SuggestionMenu<T>({
       ) : null}
       {options.length > 0 ? (
         <div
+          ref={listRef}
           id={listId}
           role="listbox"
           aria-label={t(($) => $.common.querySearch.suggestions)}
@@ -332,7 +337,10 @@ export function QuerySearch<T>({
   const [menuLeft, setMenuLeft] = useState(0);
 
   const context = useMemo(() => suggestAt(query, schema, caret), [query, schema, caret]);
-  const suggestions = useMemo(() => buildSuggestions(context, schema), [context, schema]);
+  const suggestions = useMemo(
+    () => (focused ? buildSuggestions(context, schema) : NO_SUGGESTIONS),
+    [focused, context, schema],
+  );
   const issues = useMemo(
     () => visibleIssues(query.diagnostics, value, caret, focused),
     [query.diagnostics, value, caret, focused],

@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Úplný přístup",
-        "description": "Spouštět akce nástrojů bez žádosti o schválení."
+        "description": "Spouštět akce nástrojů bez ptaní, kromě nástrojů blokovaných pravidlem deny."
       },
       "custom": {
         "label": "Vlastní (approvals.toml)",
@@ -333,7 +333,9 @@
       "closeAgent": "Zavřít pomocného agenta.",
       "runCommand": "Spustit příkaz shell ve složce projektu s dvouminutovým limitem.",
       "computerUse": "Otevřít webovou stránku v okně prohlížeče asistenta.",
-      "toggleTheme": "Přepnout mezi světlým a tmavým režimem."
+      "toggleTheme": "Přepnout mezi světlým a tmavým režimem.",
+      "listOverleafProjects": "Vypsat vaše projekty z Overleafu, v případě potřeby se nejdřív přihlásit.",
+      "importOverleafProjects": "Importovat projekty z Overleafu do knihovny i s překladačem a hlavním souborem."
     },
     "disableAll": "Vypnout vše",
     "emptyContext": "V tomto kontextu nejsou k dispozici žádné nástroje.",

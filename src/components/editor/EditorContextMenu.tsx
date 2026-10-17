@@ -10,6 +10,7 @@ import {
   Code,
   Divide,
   FileDown,
+  FilePen,
   Hash,
   Heading,
   Image,
@@ -17,6 +18,7 @@ import {
   Link,
   List,
   MessageSquareCode,
+  MessageSquarePlus,
   Pencil,
   Quote,
   Rows3,
@@ -41,6 +43,8 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { getEditorView, insertAtCursor, wrapSelection } from "./cm/controller";
+import { commentTarget, requestComment, useCommentsRail } from "@/components/collab/comments-rail";
+import { useCollabReady } from "@/components/collab/CollabSlots";
 import { openInlineEdit } from "./cm/inline-ai/openSession";
 import { formatWithLanguageService, type FormatScope } from "./cm/language-service-format";
 import {
@@ -50,6 +54,7 @@ import {
   showLookupResult,
   startRename,
 } from "@/lib/index/nav";
+import { useFileRename } from "@/lib/file-references/rename-trigger";
 import { goToSyncTex } from "@/features/synctex";
 import { engineSyncsPath, sourceLanguageForPath } from "@/lib/document-engine";
 import { saveEquationAsPng, saveEquationAsSvg } from "@/features/equation-export";
@@ -130,12 +135,62 @@ function openAskAi() {
   if (view) openInlineEdit(view);
 }
 
+function useFileRenameAvailable(): boolean {
+  const fileRename = useFileRename();
+  const view = getEditorView();
+  return fileRename !== null && view !== null && fileRename.pathReferenceUnderCursor(view) !== null;
+}
+
+function RenameFileMenuItem({ separator = false }: Readonly<{ separator?: boolean }>) {
+  const { t } = useTranslation(["common", "editor"]);
+  const fileRename = useFileRename();
+  const view = getEditorView();
+  if (!fileRename || !view || !fileRename.pathReferenceUnderCursor(view)) return null;
+  return (
+    <>
+      <ContextMenuItem
+        data-testid="context-rename-file"
+        onClick={() => {
+          const current = getEditorView();
+          if (current) fileRename.startFileRenameAtCursor(current);
+        }}
+      >
+        <FilePen className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.renameFile)}
+        <span className="ml-auto text-xs text-muted-foreground">{shortcut("F2")}</span>
+      </ContextMenuItem>
+      {separator && <ContextMenuSeparator />}
+    </>
+  );
+}
+
+function CommentMenuEntry() {
+  const { t } = useTranslation(["collab"]);
+  const target = commentTarget(getEditorView());
+  return (
+    <ContextMenuItem
+      data-testid="context-comment"
+      disabled={!target}
+      onClick={() => requestComment(getEditorView())}
+    >
+      <MessageSquarePlus className="mr-2 size-4" /> {t(($) => $.collab.comments.add)}
+      <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘⌥M")}</span>
+    </ContextMenuItem>
+  );
+}
+
+function CommentMenuItem() {
+  const ready = useCollabReady();
+  const canCompose = useCommentsRail((state) => state.canCompose);
+  return ready && canCompose ? <CommentMenuEntry /> : null;
+}
+
 function TypstNavigationItems({ pdfSync }: Readonly<{ pdfSync: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   const definition = typstLanguageServiceOffers("definition");
   const references = typstLanguageServiceOffers("references");
   const rename = typstLanguageServiceOffers("rename");
-  if (!pdfSync && !definition && !references && !rename) return null;
+  const renameFile = useFileRenameAvailable();
+  if (!pdfSync && !definition && !references && !rename && !renameFile) return null;
   const run = (action: (view: NonNullable<ReturnType<typeof getEditorView>>) => boolean) => {
     const view = getEditorView();
     if (view) action(view);
@@ -165,6 +220,7 @@ function TypstNavigationItems({ pdfSync }: Readonly<{ pdfSync: boolean }>) {
           <span className="ml-auto text-xs text-muted-foreground">{shortcut("F2")}</span>
         </ContextMenuItem>
       )}
+      <RenameFileMenuItem />
       <ContextMenuSeparator />
     </>
   );
@@ -181,6 +237,7 @@ function TypstMenuItems({
         <Sparkles className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.askAi)}
         <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘L")}</span>
       </ContextMenuItem>
+      <CommentMenuItem />
       <ContextMenuSeparator />
       <TypstNavigationItems pdfSync={pdfSync} />
       <ContextMenuItem onClick={insertTypstBold}>
@@ -339,7 +396,9 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
           <ContextMenuItem onClick={() => { const view = getEditorView(); if (view) openInlineEdit(view); }}>
             <Sparkles className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.askAi)}
           </ContextMenuItem>
+          <CommentMenuItem />
           <ContextMenuSeparator />
+          <RenameFileMenuItem separator />
           <ContextMenuItem onClick={() => wrapSelection("**", "**")}>
             <Bold className="mr-2 size-4" /> {t(($) => $.editor.toolbar.bold)}
           </ContextMenuItem>
@@ -371,6 +430,7 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
           <Sparkles className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.askAi)}
           <span className="ml-auto text-xs text-muted-foreground">{shortcut("⌘L")}</span>
         </ContextMenuItem>
+        <CommentMenuItem />
         <ContextMenuSeparator />
         {syncTexSupported && (
           <ContextMenuItem onClick={goToSyncTex}>
@@ -413,6 +473,7 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
           <Pencil className="mr-2 size-4" /> {t(($) => $.editor.toolbar.renameSymbol)}
           <span className="ml-auto text-xs text-muted-foreground">{shortcut("F2")}</span>
         </ContextMenuItem>
+        <RenameFileMenuItem />
         <ContextMenuSeparator />
         <ContextMenuItem onClick={insertBold}>
           <Bold className="mr-2 size-4" /> {t(($) => $.editor.toolbar.bold)}

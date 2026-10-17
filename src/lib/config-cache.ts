@@ -14,6 +14,10 @@ export function getConfigCached(): Promise<AppConfig> {
   return cached;
 }
 
+export function primeConfigCache(config: AppConfig): void {
+  cached ??= Promise.resolve(config);
+}
+
 export function invalidateConfigCache(): void {
   cached = null;
 }

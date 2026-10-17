@@ -14,6 +14,8 @@ import { railSections, railTabLabel, type AppContext, type RailTabContribution }
 import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useMcpActivityStore } from "@/store/mcp-activity";
+import { useCollabRail } from "@/components/collab/collab-rail";
+import { useCommentsRail } from "@/components/collab/comments-rail";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
 import { toggleBrowser } from "@/lib/browser-window";
@@ -22,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu, THEME_PREFERENCES, themePreferenceLabel, themeMenuLabel } from "@/components/layout/ThemeControls";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
+import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
 import { TOOLBAR_OVERFLOW } from "@/lib/use-toolbar-layout";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuRadioGroup,
@@ -77,12 +80,12 @@ function ViewButton({
       >
         <Icon className="size-4" aria-hidden />
         {tab.beta ? (
-          <BetaBadge className="pointer-events-none absolute -right-5 -top-1 border-background bg-primary px-1 text-[8px] leading-[13px] text-primary-foreground" />
+          <BetaBadge className="pointer-events-none absolute -right-5 -top-1 border-background bg-primary px-1 text-[0.5rem] leading-[0.8125rem] text-primary-foreground" />
         ) : null}
         {badge > 0 && (
           <output
             aria-label={t(($) => $.shell.rail.pendingBadge, { count: badge })}
-            className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white border border-background"
+            className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[0.5625rem] font-bold text-white border border-background"
           >
             {badge > 99 ? "99+" : badge}
           </output>
@@ -100,11 +103,23 @@ export function SidebarViews() {
   const showTree = useSettingsStore((s) => s.showTree);
   const toggleTree = useSettingsStore((s) => s.toggleTree);
   const mcpEnabled = useMcpActivityStore((s) => s.serverRunning);
+  const collabShown = useCollabRail((s) => s.visible);
+  useCollabRail((s) => s.unread);
+  const commentsShown = useCommentsRail((s) => s.visible);
+  useCommentsRail((s) => s.unread);
   const { theme } = useTheme();
 
   useEffect(() => {
     if (!mcpEnabled && railTab === "mcp") setRailTab("files");
   }, [mcpEnabled, railTab, setRailTab]);
+
+  useEffect(() => {
+    if (!collabShown && railTab === "collab") setRailTab("files");
+  }, [collabShown, railTab, setRailTab]);
+
+  useEffect(() => {
+    if (!commentsShown && railTab === "comments") setRailTab("files");
+  }, [commentsShown, railTab, setRailTab]);
 
   const select = (tab: RailTab) => {
     setRailTab(tab);
@@ -176,6 +191,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
   const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
+  const settingsShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.openSettings));
   const terminalLabel = terminalOpen
     ? t(($) => $.shell.dock.terminal.hide, { shortcut: terminalShortcut })
     : t(($) => $.shell.dock.terminal.show, { shortcut: terminalShortcut });
@@ -186,6 +202,10 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
   const assistantLabel = assistantOpen
     ? t(($) => $.shell.dock.assistant.hide)
     : t(($) => $.shell.dock.assistant.show);
+  const settingsLabel = t(($) => $.shell.rail.withShortcut, {
+    label: t(($) => $.shell.dock.settings),
+    shortcut: settingsShortcut,
+  });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Resizing changes which actions this menu owns.
   useEffect(() => setMenuOpen(false), [overflow]);
@@ -236,9 +256,10 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
         <ThemeMenu key={hideTheme ? "hidden" : "visible"} triggerClassName={dockBtn(false)} />
       </ToolbarAction>
       <ToolbarAction name="settings" order={TOOLBAR_OVERFLOW.settings} hidden={hideSettings}>
-        <Tooltip label={t(($) => $.shell.dock.settings)} side="bottom">
+        <Tooltip label={settingsLabel} side="bottom">
           <Button type="button" variant="ghost" size="icon" className={dockBtn(false)}
             data-testid={hideSettings ? undefined : "open-settings"} aria-label={t(($) => $.shell.dock.settings)}
+            aria-describedby={CLOUD_ATTENTION_HINT_ID}
             onClick={() => setSettingsOpen(true)}><SettingsIcon className="size-4" /></Button>
         </Tooltip>
       </ToolbarAction>
@@ -276,7 +297,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
             </DropdownMenuSubContent></DropdownMenuPortal>
           </DropdownMenuSub>}
           {hideSettings && <DropdownMenuItem data-testid="open-settings" onSelect={() => setSettingsOpen(true)}>
-            <SettingsIcon className="size-4" />{t(($) => $.shell.dock.settings)}
+            <SettingsIcon className="size-4" />{settingsLabel}
           </DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>

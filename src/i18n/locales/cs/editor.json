@@ -188,7 +188,8 @@
     "quote": "Citát",
     "addLabel": "Přidat návěští",
     "convertLatexMath": "Převést matematiku LaTeX do formátu Typst",
-    "noLatexMath": "Nejprve vyberte matematiku LaTeX."
+    "noLatexMath": "Nejprve vyberte matematiku LaTeX.",
+    "renameFile": "Přejmenovat soubor…"
   },
   "shell": {
     "noFileOpenTab": "Není otevřený soubor",
@@ -378,7 +379,11 @@
     "summaryReferences_one": "{{count}} nevyřešený odkaz",
     "summaryReferences_few": "{{count}} nevyřešené odkazy",
     "summaryReferences_many": "{{count}} nevyřešeného odkazu",
-    "summaryReferences_other": "{{count}} nevyřešených odkazů"
+    "summaryReferences_other": "{{count}} nevyřešených odkazů",
+    "fontPack": "{{family}} je v bezplatném balíčku písem {{pack}}.",
+    "fontPackAction": "Stáhnout a přeložit",
+    "fontPackDownloading": "Stahování…",
+    "fontPackFailed": "Balíček písem se nepodařilo stáhnout. Zkontrolujte připojení a zkuste to znovu."
   },
   "history": {
     "untitledCommit": "Commit bez názvu",
@@ -406,7 +411,9 @@
     "unifiedView": "V jednom sloupci",
     "loading": "Načítá se porovnání…",
     "previewTooLarge": "Soubor je příliš velký na náhled rozdílů.",
-    "diskHeading": "Na disku ↔ Vaše úpravy"
+    "diskHeading": "Na disku ↔ Vaše úpravy",
+    "sharedReadOnly": "Ve sdíleném projektu je toto porovnání jen pro čtení. Soubor upravte v editoru.",
+    "viewerReadOnly": "Tento sdílený projekt můžete zobrazit, ale ne upravovat."
   },
   "hotkeys": {
     "title": "Klávesové zkratky",
@@ -440,7 +447,7 @@
       "indentOrAccept": "Odsadit / přijmout doplnění",
       "goToDefinition": "Přejít na definici",
       "findReferences": "Najít reference",
-      "renameSymbol": "Přejmenovat symbol (v celém projektu)",
+      "renameSymbol": "Přejmenovat symbol nebo soubor (v celém projektu)",
       "formatDocument": "Formátovat dokument Typst",
       "commandPalette": "Paleta příkazů",
       "searchAllDocuments": "Hledat ve všech dokumentech",
@@ -468,7 +475,8 @@
     "noEntries": "V tomto projektu zatím nejsou žádné záznamy bibliografie.",
     "addNew": "Najít a přidat novou citaci…",
     "duplicate": "duplicita {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Z vaší knihovny Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Popište změnu…  (Shift+Enter vloží nový řádek)",
@@ -482,6 +490,7 @@
     "openInAgent": "Pokračovat v asistentovi AI s plnými nástroji projektu",
     "generateFailed": "Úpravu se nepodařilo vytvořit. {{message}}",
     "dismiss": "Zavřít",
+    "withdrawn": "Tento text mezitím upravil někdo jiný, takže návrh už nejde použít.",
     "setUpProvider": "Nastavit poskytovatele AI",
     "setUpProviderHint": "Přidejte klíč API (nebo místní Ollama) a můžete používat úpravy AI přímo v textu.",
     "openAiSettings": "Otevřít Nastavení → AI"
@@ -669,6 +678,7 @@
     "endOfDocument": "Konec dokumentu",
     "hidePreamble": "Skrýt preambuli dokumentu",
     "showPreamble": "Zobrazit preambuli dokumentu",
+    "sharedReadOnly": "Ve sdíleném projektu vizuální režim soubor jen zobrazuje. Chcete-li ho upravit, přepněte na zobrazení zdroje.",
     "findingLabel": "{{message}}. Otevřít návrhy korektury.",
     "rawBlockFindings_one": "{{count}} nález korektury v tomto bloku zdroje. {{message}}. Otevřít návrhy.",
     "rawBlockFindings_few": "{{count}} nálezy korektury v tomto bloku zdroje. {{message}}. Otevřít návrhy.",
@@ -1502,7 +1512,8 @@
     "sources": {
       "project": "Projekt",
       "system": "Systém",
-      "embedded": "Vestavěné"
+      "embedded": "Vestavěné",
+      "pack": "Balíček písem"
     },
     "fontsFolder": "Chcete-li v tomto projektu použít písmo, přidejte jeho soubor do složky fonts v projektu."
   },
@@ -1529,5 +1540,6 @@
     "keyInvalid": "Názvy hodnot nesmějí být prázdné ani obsahovat rovnítko.",
     "keyTaken": "Varianta nemůže nastavit stejný název dvakrát.",
     "saveFailed": "Varianty se nepodařilo uložit."
-  }
+  },
+  "sharedSettingsViewer": "Čtenáři ve sdíleném projektu toto nastavení nemohou měnit."
 }

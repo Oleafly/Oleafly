@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} tiedostoa muuttui projektissa tämän tehtävän käynnistymisen jälkeen. Niiden vertailut ovat vanhempia versioita vasten, joten niitä ei voi ottaa käyttöön.",
       "applyAria": "Ota käyttöön {{path}}",
       "changedSince": "Muuttunut sen jälkeen",
+      "mergesOnApply": "Tätä tiedostoa muokattiin tehtävän käynnistymisen jälkeen. Käyttöönotto säilyttää nuo muokkaukset ja lisää tehtävän muutokset.",
       "loading": "Ladataan...",
       "refreshPreview": "Päivitä esikatselu",
       "preview": "Esikatsele",
@@ -1359,7 +1360,6 @@
     "captionAria": "Taulukkoteksti",
     "preview": "Esikatselu",
     "output": "LaTeX-tuloste",
-    "copiedSource": "LaTeX-lähdekoodi kopioitiin",
     "booktabsHint": "Vaatii esittelyosaan komennon <code>\\usepackage{booktabs}</code>."
   },
   "review": {

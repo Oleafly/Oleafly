@@ -110,12 +110,14 @@ export function createCompileSuccessCheckpoint({
 export function fingerprintCompileOutput(bytes: Uint8Array): string {
   let first = 0x811c9dc5;
   let second = 0x9e3779b9;
-  for (const byte of bytes) {
-    first = Math.imul(first ^ byte, 0x01000193) >>> 0;
-    second = Math.imul(second ^ byte, 0x85ebca6b) >>> 0;
-    second = ((second << 13) | (second >>> 19)) >>> 0;
+  const length = bytes.length;
+  for (let index = 0; index < length; index++) {
+    const byte = bytes[index];
+    first = Math.imul(first ^ byte, 0x01000193);
+    second = Math.imul(second ^ byte, 0x85ebca6b);
+    second = (second << 13) | (second >>> 19);
   }
-  return `pdf-v1:${bytes.byteLength}:${first.toString(16).padStart(8, "0")}${second
+  return `pdf-v1:${bytes.byteLength}:${(first >>> 0).toString(16).padStart(8, "0")}${(second >>> 0)
     .toString(16)
     .padStart(8, "0")}`;
 }

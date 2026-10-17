@@ -9,7 +9,7 @@
 # which avoids version skew with system TeX Live.
 set -euo pipefail
 
-# biblatex 3.17 (Tectonic 0.16.9 bundle) requires Biber 2.17.
+# biblatex 3.17 (the TL2022 bundle Tectonic is pointed at) requires Biber 2.17.
 VERSION="2.17"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_DIR="$ROOT/src-tauri/binaries"

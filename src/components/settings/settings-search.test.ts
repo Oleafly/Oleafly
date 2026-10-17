@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import enSettingsFile from "@/i18n/locales/en/settingsFile.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import {
   bestSettingsHit,
@@ -19,7 +20,12 @@ import {
   type SettingsSearchIndex,
 } from "./settings-search";
 
-const BUNDLES: Record<string, unknown> = { core: enCore, settings: enSettings, shell: enShell };
+const BUNDLES: Record<string, unknown> = {
+  core: enCore,
+  settings: enSettings,
+  settingsFile: enSettingsFile,
+  shell: enShell,
+};
 
 function lookup(path: CatalogPath): unknown {
   const [namespace, ...keys] = path;
@@ -52,6 +58,13 @@ describe("settings search index", () => {
   it("finds a setting by its row label", () => {
     expect(matchSettingsSections(index, SECTIONS, "font size")).toEqual(["appearance"]);
     expect(matchSettingsSections(index, SECTIONS, "zotero")).toEqual(["integrations"]);
+  });
+
+  it("finds the settings file card in General by its words, not its error messages", () => {
+    expect(matchSettingsSections(index, SECTIONS, "export settings")).toEqual(["general"]);
+    expect(matchSettingsSections(index, SECTIONS, "settings json")).toContain("general");
+    expect(rowLabels(index, "general")).toContain("Application Settings");
+    expect(matchSettingsSections(index, SECTIONS, "whole number steps")).toEqual([]);
   });
 
   it("matches the section title and every word of the query", () => {
@@ -276,3 +289,39 @@ describe("settings search tabs", () => {
 function samePrefix(entry: CatalogPath, path: CatalogPath): boolean {
   return samePath(entry.slice(0, path.length), path);
 }
+
+describe("Zen mode settings in the search", () => {
+  it("finds the group by its name and its options", () => {
+    for (const query of ["zen", "zen mode", "full screen", "show the pdf"]) {
+      expect(matchSettingsSections(index, SECTIONS, query), query).toContain("appearance");
+    }
+    const [appearance] = searchSettings(index, SECTIONS, "go full screen");
+    expect(appearance.id).toBe("appearance");
+    expect(appearance.rows[0]).toEqual({
+      label: enSettings.appearance.zen.fullScreen.label,
+      path: ["appearance", "zen", "fullScreen"],
+    });
+  });
+
+  it("opens the Zen rows on the Project tab", () => {
+    expect(settingsTabFor(["appearance", "zen"])).toBe("files");
+    expect(settingsTabFor(["appearance", "zen", "showPdf"])).toBe("files");
+  });
+
+  it("finds the Zen shortcut on the Shortcuts tab", () => {
+    const [shortcuts] = searchSettings(index, SECTIONS, "toggle zen mode");
+    expect(shortcuts.id === "shortcuts" || shortcuts.id === "appearance").toBe(true);
+    expect(matchSettingsSections(index, SECTIONS, "toggle zen mode")).toContain("shortcuts");
+    expect(settingsTabFor(["shortcuts", "actions", "toggleZenMode"])).toBe("application");
+  });
+});
+
+describe("Collaboration settings in the search", () => {
+  it("finds the section by the words people use for it", () => {
+    for (const query of ["collaboration", "maintainers", "live editing", "security log", "lab server"]) {
+      expect(matchSettingsSections(index, SECTIONS, query), query).toContain("collaboration");
+    }
+    expect(bestSettingsHit(searchSettings(index, SECTIONS, "collaboration"))).toBe("collaboration");
+    expect(bestSettingsHit(searchSettings(index, SECTIONS, "maintainers"))).toBe("collaboration");
+  });
+});

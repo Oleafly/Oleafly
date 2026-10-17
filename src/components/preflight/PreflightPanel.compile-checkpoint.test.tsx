@@ -51,7 +51,7 @@ describe("Preflight document suggestion checkpoint", () => {
     usePreflightStore.setState({ pageText: ["Title\nFirst page", "Methods\nSecond page"] });
     render(<PreflightPanel />);
 
-    const readerButton = screen.getByRole("button", { name: "Show what the reader sees" });
+    const readerButton = screen.getByRole("button", { name: "Screen Reader" });
     expect(readerButton).toBeEnabled();
     fireEvent.click(readerButton);
 

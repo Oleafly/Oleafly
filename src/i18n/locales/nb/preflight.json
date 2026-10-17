@@ -256,7 +256,7 @@
       "title_one": "{{count}} oppføring i litteraturlisten har ufullstendige metadata",
       "title_other": "{{count}} oppføringer i litteraturlisten har ufullstendige metadata",
       "detail": "Ufullstendige oppføringer kan gi ødelagte eller tvetydige referanser i forlagsstiler. {{examples}}.",
-      "detailTruncated": "Ufullstendige oppføringer kan gi ødelagte eller tvetydige referanser i forlagsstiler. {{examples}}; …"
+      "detailTruncated": "Ufullstendige oppføringer kan gi ødelagte eller tvetydige referanser i forlagsstiler. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-verdi ser feilformet ut",
@@ -318,6 +318,12 @@
     "refs-duplicate-bib": {
       "title": "Dupliserte oppføringer i litteraturlisten: {{keys}}",
       "detail": "Disse oppføringene deler DOI-en {{doi}}, så de er den samme referansen under ulike nøkler. Behold én og siter den, ellers står den oppført to ganger i litteraturlisten."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "Siteringsnøkkelen \"{{key}}\" er definert mer enn én gang",
+      "detail": "Definert i {{places}}. BibTeX bruker bare den første oppføringen med denne nøkkelen, og skiller ikke mellom store og små bokstaver når den sammenligner nøkler. Behold én oppføring, eller gi de andre nye nøkler og oppdater siteringene som bruker dem.",
+      "detailBiber": "Definert i {{places}}. Når biber lager litteraturlisten, bruker den bare den første oppføringen med denne nøkkelen. Behold én oppføring, eller gi de andre nye nøkler og oppdater siteringene som bruker dem.",
+      "detailTypst": "Definert i {{places}}. Typst stopper kompileringen når to oppføringer i litteraturlisten har samme nøkkel. Behold én oppføring, eller gi de andre nye nøkler og oppdater siteringene som bruker dem."
     },
     "submission-path-case": {
       "title": "Store og små bokstaver i filnavnet stemmer ikke: {{target}}",
@@ -604,7 +610,7 @@
     "title": "Forhåndssjekk",
     "readerDisabled": "Kompiler og kjør en resultatsjekk først",
     "readerEnabled": "Åpne teksten som er hentet ut av PDF-en",
-    "readerButton": "Vis hva leseren ser",
+    "readerButton": "Skjermleser",
     "aboutLabel": "Om forhåndssjekken",
     "aboutTitle": "Dette sjekker forhåndssjekken",
     "aboutIntro": "Forhåndssjekken leser prosjektkilden, kompileringsloggen og den gjeldende PDF-en. Slå bare på sjekkene som passer dette dokumentet.",

@@ -16,6 +16,7 @@ import {
   typstAutolinkEnd,
 } from "@oleafly/editor/typst-syntax";
 import { type BibliographyEngine, bibliographyCandidatePaths } from "@oleafly/latex";
+import { type LatexSearchPaths, latexSearchPaths } from "@oleafly/editor/file-references";
 import { astAugmentLatexFile } from "./latex-ast";
 import { bibliographyEntrySummary } from "./bibliography-summary";
 import { parseBibtexIntelligence } from "./parse-bibtex";
@@ -1810,6 +1811,36 @@ function addLatexImportEdges(
 
 }
 
+const NO_SEARCH_PATHS: LatexSearchPaths = { graphics: [], svg: [] };
+const SEARCH_PATH_COMMAND = /\\(?:graphicspath|svgpath)\s*\{/g;
+
+function closingBrace(text: string, open: number): number {
+  let depth = 0;
+  for (let index = open; index < text.length; index++) {
+    const character = text[index];
+    if (character === "{") depth++;
+    else if (character === "}" && --depth === 0) return index;
+  }
+  return -1;
+}
+
+function latexSearchPathsIn(file: string, masked: string): LatexSearchPaths {
+  const commands: string[] = [];
+  for (const match of masked.matchAll(SEARCH_PATH_COMMAND)) {
+    const close = closingBrace(masked, match.index + match[0].length - 1);
+    if (close !== -1) commands.push(masked.slice(match.index, close + 1));
+  }
+  return commands.length > 0
+    ? latexSearchPaths([{ path: file, text: commands.join("\n") }])
+    : NO_SEARCH_PATHS;
+}
+
+const ASSET_SEARCH_PATHS: Readonly<Record<string, "graphics" | "svg">> = {
+  includegraphics: "graphics",
+  includepdf: "graphics",
+  includesvg: "svg",
+};
+
 function addLatexAssetEdges(
   file: string,
   masked: string,
@@ -1818,9 +1849,9 @@ function addLatexAssetEdges(
   edges: ProjectEdge[],
 ): void {
   const assets =
-    /\\(?:includegraphics|includesvg|includepdf|lstinputlisting|verbatiminput)\*?(?:\s*\[[^\]]*\])?\s*\{([^}]*)\}/g;
+    /\\(includegraphics|includesvg|includepdf|lstinputlisting|verbatiminput)\*?(?:\s*\[[^\]]*\])?\s*\{([^}]*)\}/g;
   for (const match of masked.matchAll(assets)) {
-    const raw = match[1].trim();
+    const raw = match[2].trim();
     const nameOffset =
       match.index + match[0].lastIndexOf("{") + 1;
     const target = resolveProjectPath(file, raw);
@@ -1832,10 +1863,11 @@ function addLatexAssetEdges(
       "asset",
       raw,
       nameOffset,
-      nameOffset + match[1].length,
+      nameOffset + match[2].length,
       target ?? undefined,
     );
-    edges.push(edgeForUse(use, target));
+    const searchPath = ASSET_SEARCH_PATHS[match[1]];
+    edges.push({ ...edgeForUse(use, target), ...(searchPath ? { searchPath } : {}) });
   }
 
   const mintedAssets =
@@ -3034,7 +3066,7 @@ function addLegacyUses(
 function analyzeLatexBody(
   context: LegacyContext,
   diagnostics: ProjectDiagnostic[],
-): { partial: boolean; packageRefs: PackageReference[] } {
+): { partial: boolean; packageRefs: PackageReference[]; searchPaths: LatexSearchPaths } {
   const { engine, file, source, starts, definitions, uses, edges } = context;
   const ignored = latexIgnoredRanges(source);
   const masked = maskLatexIgnoredRegions(source, ignored);
@@ -3056,8 +3088,9 @@ function analyzeLatexBody(
   );
   const ast = astAugmentLatexFile(file, source, starts);
   if (ast) definitions.push(...ast.definitions);
+  const searchPaths = latexSearchPathsIn(file, masked);
   const novalidate = scanLatexNovalidate(source, ignored);
-  if (novalidate.fileDisabled) return { partial: false, packageRefs };
+  if (novalidate.fileDisabled) return { partial: false, packageRefs, searchPaths };
   const checked = maskNovalidateRegions(masked, novalidate.regions);
   const delimiterPartial = addDelimiterDiagnostics(
     file,
@@ -3076,6 +3109,7 @@ function analyzeLatexBody(
   return {
     partial: delimiterPartial || environmentPartial,
     packageRefs,
+    searchPaths,
   };
 }
 
@@ -3177,10 +3211,12 @@ export function analyzeProjectFile(
 
   let partial = false;
   let packageRefs: PackageReference[] = [];
+  let searchPaths = NO_SEARCH_PATHS;
   if (engine === "latex") {
     const latex = analyzeLatexBody(context, diagnostics);
     partial = latex.partial;
     packageRefs = latex.packageRefs;
+    searchPaths = latex.searchPaths;
   } else if (engine === "markdown") {
     partial = markdownAdditionalSyntax(
       file,
@@ -3225,5 +3261,8 @@ export function analyzeProjectFile(
     diagnostics,
     bibliographyEntries,
     ...(packageRefs.length ? { packageRefs } : {}),
+    ...(searchPaths.graphics.length || searchPaths.svg.length
+      ? { latexSearchPaths: searchPaths }
+      : {}),
   };
 }

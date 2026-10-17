@@ -5,6 +5,7 @@
       "nameProject": "Name your project",
       "import": "Import",
       "generateWithAi": "Generate a template",
+      "importTemplate": "Import template",
       "close": "Close",
       "getMoreTemplates": "Get more templates",
       "searchPlaceholder": "Search templates",
@@ -41,6 +42,7 @@
     "category": {
       "all": "All",
       "aiGenerated": "AI Generated",
+      "custom": "Custom",
       "blank": "Blank",
       "diagrams": "Diagrams",
       "diagramsFull": "Diagrams & Figures",

@@ -199,6 +199,11 @@ describe("preflightEngineFor", () => {
     expect(preflightEngineFor("latexmk", "pdflatex")).toBe("pdflatex");
   });
 
+  it("treats the Japanese compilers as an engine preflight has no rules for", () => {
+    expect(preflightEngineFor("latexmk", "uplatex")).toBe("unknown");
+    expect(preflightEngineFor("latexmk", "platex")).toBe("unknown");
+  });
+
   it("falls back to \"unknown\" for latexmk with no pinned flavor", () => {
     expect(preflightEngineFor("latexmk", undefined)).toBe("unknown");
     expect(preflightEngineFor("latexmk", null)).toBe("unknown");
@@ -455,6 +460,101 @@ describe("preflight store", () => {
       ).not.toContain("refs-undefined-ref");
     },
   );
+
+  it("lists every .bib key definition with its file, line and range, from the text in the editor", async () => {
+    seedProject();
+    const refsBib = [
+      '@string{jn = "Journal"}',
+      "@comment{jn, kept as a note}",
+      '@preamble{"\\newcommand{\\noop}[1]{}"}',
+      "@article{smith2020, title={A}}",
+      "% @article{smith2020, title={Commented out}}",
+      "@book{Jones2019, title={B}}",
+    ].join("\n");
+    const extraBib = "@inproceedings{smith2020,\n  title={Other}\n}";
+    useFilesStore.setState((state) => ({
+      tree: [...state.tree, { path: "extra.bib", is_dir: false }],
+      files: { ...state.files, "refs.bib": { content: refsBib, dirty: true } },
+    }));
+    useIndexStore.setState({
+      texts: { "refs.bib": "@article{stale, title={S}}", "extra.bib": extraBib },
+    });
+
+    await usePreflightStore.getState().run();
+
+    const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+    const head = (text: string, entry: string) => {
+      const from = text.indexOf(entry);
+      return { from, to: from + entry.length };
+    };
+    expect(refs.bibKeyDefinitions).toEqual([
+      { key: "smith2020", file: "refs.bib", line: 4, ...head(refsBib, "@article{smith2020") },
+      { key: "Jones2019", file: "refs.bib", line: 6, ...head(refsBib, "@book{Jones2019") },
+      { key: "smith2020", file: "extra.bib", line: 1, ...head(extraBib, "@inproceedings{smith2020") },
+    ]);
+    const [finding] = runRefsRules("", refs).filter((f) => f.id === "refs-duplicate-bib-key");
+    expect(finding).toMatchObject({
+      file: "refs.bib",
+      ...head(refsBib, "@article{smith2020"),
+      detail: { params: { places: "refs.bib:4, extra.bib:1" } },
+    });
+  });
+
+  it("checks only the .bib files the document loads for repeated keys", async () => {
+    seedProject();
+    const refsBib = "@article{alpha, title={A}}\n@article{beta, title={B}}";
+    useFilesStore.setState((state) => ({
+      tree: [
+        ...state.tree,
+        { path: "refs (conflicted copy 2026-10-14).bib", is_dir: false },
+        { path: "old/sample.bib", is_dir: false },
+      ],
+      files: {
+        ...state.files,
+        "main.tex": { content: "\\documentclass{article}\\begin{document}\\bibliography{refs}\\end{document}", dirty: false },
+        "refs.bib": { content: refsBib, dirty: false },
+      },
+    }));
+    useIndexStore.setState({
+      texts: {
+        "refs (conflicted copy 2026-10-14).bib": refsBib,
+        "old/sample.bib": "@article{alpha, title={Sample}, doi={10.1/a}}",
+      },
+    });
+
+    await usePreflightStore.getState().run();
+
+    const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+    expect(refs.bibKeyDefinitions?.map((definition) => definition.file)).toEqual(["refs.bib", "refs.bib"]);
+    expect(refs.bibKeyDialect).toBe("bibtex");
+    expect(runRefsRules("", refs).map((finding) => finding.id)).not.toContain("refs-duplicate-bib-key");
+  });
+
+  it("keeps biber keys that differ in letter case apart and still reports their shared DOI", async () => {
+    seedProject();
+    useFilesStore.setState((state) => ({
+      files: {
+        ...state.files,
+        "main.tex": {
+          content: "\\documentclass{article}\\usepackage{biblatex}\\addbibresource{refs.bib}\\begin{document}\\end{document}",
+          dirty: false,
+        },
+        "refs.bib": {
+          content: "@article{Smith2020, title={A}, doi={10.1/same}}\n@article{smith2020, title={B}, doi={10.1/same}}",
+          dirty: false,
+        },
+      },
+    }));
+    useIndexStore.setState({ texts: {} });
+
+    await usePreflightStore.getState().run();
+
+    const refs: RefsContext = mocks.runPreflight.mock.calls[0][0].refs;
+    expect(refs.bibKeyDialect).toBe("biber");
+    const ids = runRefsRules("", refs).map((finding) => finding.id);
+    expect(ids).toContain("refs-duplicate-bib");
+    expect(ids).not.toContain("refs-duplicate-bib-key");
+  });
 
   it("does not call one heading id in two Markdown files a duplicate", async () => {
     seedProject();

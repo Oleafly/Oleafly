@@ -350,7 +350,7 @@ function FiguresStrip() {
               onClick={() => void downloadFigure(f)}
             >
               <img src={f.pngDataUrl} alt={f.name} className="h-20 w-auto" />
-              <div className="mt-1 font-mono text-[10px] text-muted-foreground">{f.name}</div>
+              <div className="mt-1 font-mono text-[0.625rem] text-muted-foreground">{f.name}</div>
             </button>
           </Tooltip>
         ))}
@@ -519,7 +519,7 @@ export function PdfImportView() {
                 {t(($) => $.library.pdfImport.converting)}
               </span>
             )}
-            {error && <span className="ml-3 text-xs text-destructive">{error}</span>}
+            {error && <span className="ml-3 select-text text-xs text-destructive">{error}</span>}
             <span className="ml-auto text-xs text-muted-foreground">
               {scanTranscribed
                 ? "Transcribed on this device. Review equations and tables."

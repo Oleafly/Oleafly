@@ -27,6 +27,10 @@ import {
 } from "@/components/layout/IntelligenceTree";
 import { ImportReferenceLibraryDialog } from "@/components/layout/ImportReferenceLibraryDialog";
 import { Button } from "@/components/ui/button";
+import { type ScrollMemory, useScrollMemory } from "@/hooks/use-scroll-memory";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
+import { readSidebarView } from "@/store/sidebar-view-state";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
@@ -119,13 +123,18 @@ function resolveQuery(
 }
 
 function ReferencesUnavailable({
-  state,
   projectId,
 }: Readonly<{
-  state: ProjectIntelligenceState;
   projectId: string | null;
 }>) {
   const { t } = useTranslation(["references"]);
+  const status = useIndexStore((state) => state.intelligenceState.status);
+  const reasonText = useIndexStore((state) =>
+    projectIntelligenceReasonText(state.intelligenceState.reason),
+  );
+  const failureText = useIndexStore((state) =>
+    projectIntelligenceFailureText(state.intelligenceState),
+  );
   if (!projectId) {
     return (
       <PanelState
@@ -135,7 +144,7 @@ function ReferencesUnavailable({
       />
     );
   }
-  switch (state.status) {
+  switch (status) {
     case "running":
     case "not_run":
       return (
@@ -150,10 +159,7 @@ function ReferencesUnavailable({
         <PanelState
           state="unsupported"
           title={t(($) => $.references.unavailable.unsupported.title)}
-          detail={
-            projectIntelligenceReasonText(state.reason) ??
-            t(($) => $.references.unavailable.unsupported.detail)
-          }
+          detail={reasonText ?? t(($) => $.references.unavailable.unsupported.detail)}
         />
       );
     case "unavailable":
@@ -161,10 +167,7 @@ function ReferencesUnavailable({
         <PanelState
           state="error"
           title={t(($) => $.references.unavailable.offline.title)}
-          detail={
-            projectIntelligenceReasonText(state.reason) ??
-            t(($) => $.references.unavailable.offline.detail)
-          }
+          detail={reasonText ?? t(($) => $.references.unavailable.offline.detail)}
         />
       );
     case "error":
@@ -172,10 +175,7 @@ function ReferencesUnavailable({
         <PanelState
           state="error"
           title={t(($) => $.references.unavailable.failed.title)}
-          detail={
-            projectIntelligenceFailureText(state) ??
-            t(($) => $.references.unavailable.failed.detail)
-          }
+          detail={failureText ?? t(($) => $.references.unavailable.failed.detail)}
         />
       );
     default:
@@ -189,12 +189,21 @@ function ReferencesUnavailable({
   }
 }
 
-function useAnalysisNotice(state: ProjectIntelligenceState): string | null {
+type AnalysisNotice = "stale" | "partial" | null;
+
+function analysisNotice(state: ProjectIntelligenceState): AnalysisNotice {
+  if (state.stale) return "stale";
+  if (state.status === "partial" || state.data?.status === "partial") return "partial";
+  return null;
+}
+
+function useAnalysisNotice(): string | null {
   const { t } = useTranslation(["references"]);
-  if (state.stale) {
+  const notice = useIndexStore((state) => analysisNotice(state.intelligenceState));
+  if (notice === "stale") {
     return t(($) => $.references.notice.stale);
   }
-  if (state.status === "partial" || state.data?.status === "partial") {
+  if (notice === "partial") {
     return t(($) => $.references.notice.partial);
   }
   return null;
@@ -202,19 +211,23 @@ function useAnalysisNotice(state: ProjectIntelligenceState): string | null {
 
 function QueryContent({
   query,
-  state,
   snapshot,
   filter,
   onActivate,
+  memoryProjectId,
+  scrollMemory,
 }: Readonly<{
   query: ReferenceQuery | null;
-  state: ProjectIntelligenceState;
   snapshot: ProjectIntelligenceSnapshot;
   filter: string;
   onActivate: (node: IntelligenceTreeNode) => void;
+  memoryProjectId: string | null;
+  scrollMemory: ScrollMemory;
 }>) {
   const { t } = useTranslation(["references"]);
-  const current = queryIsCurrent(query, state, snapshot);
+  const current = useIndexStore((state) =>
+    queryIsCurrent(query, state.intelligenceState, snapshot),
+  );
   const result = useMemo(
     () =>
       query && current && !query.locations
@@ -261,6 +274,9 @@ function QueryContent({
       nodes={nodes}
       query={filter}
       onActivate={onActivate}
+      memoryProjectId={memoryProjectId}
+      memorySlot="references.results"
+      scrollMemory={scrollMemory}
       emptyMessage={t(($) => $.references.filter.noResult, { query: filter.trim() })}
     />
   );
@@ -268,7 +284,6 @@ function QueryContent({
 
 export function ReferencesPanel() {
   const { t } = useTranslation(["references"]);
-  const intelligenceState = useIndexStore((state) => state.intelligenceState);
   const projectId = useFilesStore((state) => state.projectId);
   const projectName = useFilesStore((state) => state.projectName);
   const activePath = useFilesStore((state) => state.activePath);
@@ -280,17 +295,30 @@ export function ReferencesPanel() {
   );
   const [importOpen, setImportOpen] = useState(false);
   const [cleanOpen, setCleanOpen] = useState(false);
+  const [remembered] = useState(() => readSidebarView(projectId, "references"));
   const [view, setView] = useState<ReferencePanelView>(
-    query ? "results" : "citations",
+    remembered?.view ?? (query ? "results" : "citations"),
   );
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState(remembered?.filter ?? "");
+  const [handledFocusRequest, setHandledFocusRequest] = useState(
+    remembered?.handledFocusRequest ?? 0,
+  );
+  useSidebarViewMemory(projectId, "references", { view, filter, handledFocusRequest });
+  const [filterEdits, setFilterEdits] = useState(0);
+  const editFilter = (value: string) => {
+    setFilter(value);
+    setFilterEdits((count) => count + 1);
+  };
   const filterRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useScrollTopOnChange(filterEdits);
 
-  const snapshot = acceptedProjectSnapshot(
-    intelligenceState,
-    projectId,
+  const snapshot = useIndexStore((state) =>
+    acceptedProjectSnapshot(state.intelligenceState, projectId),
   );
-  const notice = useAnalysisNotice(intelligenceState);
+  const analysisRunning = useIndexStore(
+    (state) => state.intelligenceState.status === "running",
+  );
+  const notice = useAnalysisNotice();
   const citationNodes = useMemo(
     () => (snapshot ? buildCitationNodes(snapshot) : []),
     [snapshot],
@@ -300,13 +328,30 @@ export function ReferencesPanel() {
     [snapshot],
   );
   const issues = snapshot ? projectIssueCount(snapshot) : 0;
+  const scrollMemory = useScrollMemory({
+    scrollRef: bodyRef,
+    projectId,
+    slot: `references.${view}`,
+    ready: snapshot !== null,
+  });
+
+  const previousProjectId = useRef(projectId);
+  useEffect(() => {
+    if (previousProjectId.current === projectId) return;
+    previousProjectId.current = projectId;
+    const next = readSidebarView(projectId, "references");
+    setView(next?.view ?? (query ? "results" : "citations"));
+    setFilter(next?.filter ?? "");
+    setHandledFocusRequest(next?.handledFocusRequest ?? 0);
+  }, [projectId, query]);
 
   useEffect(() => {
-    if (!query || focusRequest < 1) return;
+    if (!query || focusRequest < 1 || focusRequest === handledFocusRequest) return;
+    setHandledFocusRequest(focusRequest);
     setView("results");
     setFilter("");
     filterRef.current?.focus({ preventScroll: true });
-  }, [focusRequest, query]);
+  }, [focusRequest, handledFocusRequest, query]);
 
   const navigate = useCallback((node: IntelligenceTreeNode) => {
     if (!node.target) return;
@@ -356,21 +401,17 @@ export function ReferencesPanel() {
 
   const renderPanelBody = () => {
     if (!snapshot) {
-      return (
-        <ReferencesUnavailable
-          state={intelligenceState}
-          projectId={projectId}
-        />
-      );
+      return <ReferencesUnavailable projectId={projectId} />;
     }
     if (view === "results") {
       return (
         <QueryContent
           query={query}
-          state={intelligenceState}
           snapshot={snapshot}
           filter={filter}
           onActivate={navigate}
+          memoryProjectId={projectId}
+          scrollMemory={scrollMemory}
         />
       );
     }
@@ -381,6 +422,9 @@ export function ReferencesPanel() {
           nodes={citationNodes}
           query={filter}
           onActivate={navigate}
+          memoryProjectId={projectId}
+          memorySlot="references.citations"
+          scrollMemory={scrollMemory}
           emptyMessage={
             filter
               ? t(($) => $.references.filter.noCitation, { query: filter.trim() })
@@ -396,7 +440,7 @@ export function ReferencesPanel() {
             <Button
               size="sm"
               onClick={() => setImportOpen(true)}
-              className="h-8 gap-1.5 rounded-full px-3.5 text-[11px] shadow-sm"
+              className="h-8 gap-1.5 rounded-full px-3.5 text-[0.6875rem] shadow-sm"
             >
               <BookPlus aria-hidden className="size-3.5" />
               {t(($) => $.references.import.title)}
@@ -411,6 +455,9 @@ export function ReferencesPanel() {
         nodes={symbolNodes}
         query={filter}
         onActivate={navigate}
+        memoryProjectId={projectId}
+        memorySlot="references.symbols"
+        scrollMemory={scrollMemory}
         emptyMessage={
           filter
             ? t(($) => $.references.filter.noSymbol, { query: filter.trim() })
@@ -436,7 +483,7 @@ export function ReferencesPanel() {
       </div>
       {view === "results" && query ? (
         <Tooltip label={query.title} side="bottom">
-          <span className="min-w-0 max-w-[48%] shrink truncate text-[9px] font-medium text-sidebar-foreground/75">
+          <span className="min-w-0 max-w-[48%] shrink truncate text-[0.5625rem] font-medium text-sidebar-foreground/75">
             {query.title}
           </span>
         </Tooltip>
@@ -460,7 +507,7 @@ export function ReferencesPanel() {
     <>
       <section
         aria-label={t(($) => $.references.panel.ariaLabel)}
-        aria-busy={intelligenceState.status === "running"}
+        aria-busy={analysisRunning}
         className="flex h-full min-h-0 flex-col"
       >
         <SidebarPanelHeader icon={SearchCode} title={t(($) => $.references.panel.title)}>
@@ -492,7 +539,7 @@ export function ReferencesPanel() {
         {issues > 0 ? (
           <output
             aria-label={t(($) => $.references.panel.issues, { count: issues })}
-            className="rounded-sm bg-amber-500/12 px-1 font-mono text-[9px] text-amber-700 dark:text-amber-300"
+            className="rounded-sm bg-amber-500/12 px-1 font-mono text-[0.5625rem] text-amber-700 dark:text-amber-300"
           >
             {issues}
           </output>
@@ -540,7 +587,7 @@ export function ReferencesPanel() {
                   <Badge
                     aria-hidden
                     variant="secondary"
-                    className="h-4 min-w-4 px-1 text-[10px] tabular-nums"
+                    className="h-4 min-w-4 px-1 text-[0.625rem] tabular-nums"
                   >
                     {count}
                   </Badge>
@@ -558,7 +605,7 @@ export function ReferencesPanel() {
             ref={filterRef}
             type="search"
             value={filter}
-            onChange={(event) => setFilter(event.target.value)}
+            onChange={(event) => editFilter(event.target.value)}
             aria-label={filterAriaLabel()}
             placeholder={filterPlaceholder()}
             className="h-8 pl-7 pr-8 text-xs"
@@ -567,7 +614,7 @@ export function ReferencesPanel() {
             <button
               type="button"
               aria-label={t(($) => $.references.filter.clear)}
-              onClick={() => setFilter("")}
+              onClick={() => editFilter("")}
               className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
             >
               <X aria-hidden className="size-3" />
@@ -581,7 +628,10 @@ export function ReferencesPanel() {
         <output className="sr-only">{notice}</output>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">
+      <div
+        ref={bodyRef}
+        className="isolate min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]"
+      >
         {renderPanelBody()}
         </div>
         {view === "citations" && projectId ? (
@@ -591,7 +641,7 @@ export function ReferencesPanel() {
               type="button"
               data-testid="cite-oleafly-row"
               onClick={() => void runCiteOleaflyAction()}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[0.6875rem] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground"
             >
               <Quote aria-hidden className="size-3.5 shrink-0" />
               <span className="min-w-0 flex-1 truncate">

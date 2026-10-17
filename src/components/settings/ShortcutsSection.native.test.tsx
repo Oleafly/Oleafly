@@ -14,6 +14,7 @@ import { ShortcutsSection } from "./ShortcutsSection";
 
 const toggleTerminal = enSettings.shortcuts.actions.toggleTerminal.label;
 const nativeKeyError = enSettings.shortcuts.error.nativeKey;
+const optionEqual = { key: "≠", code: "Equal", ctrlKey: true, altKey: true };
 const optionT = { key: "†", code: "KeyT", ctrlKey: true, altKey: true };
 const pauses = () =>
   native.invoke.mock.calls
@@ -40,12 +41,28 @@ describe("ShortcutsSection with native menu shortcuts", () => {
     const capture = screen.getByRole("button", { name: new RegExp(`^Recording ${toggleTerminal}`) });
     await waitFor(() => expect(pauses()).toEqual([true]));
 
-    fireEvent.keyDown(capture, optionT);
+    fireEvent.keyDown(capture, optionEqual);
 
     expect(screen.getByText(nativeKeyError)).toBeInTheDocument();
     expect(useShortcutStore.getState().bindings.toggleTerminal).toEqual(before);
 
     fireEvent.keyDown(capture, { key: "Escape" });
     await waitFor(() => expect(pauses()).toEqual([true, false]));
+  });
+
+  it("records Ctrl+Option+letter as the letter pressed, which the menu can use", async () => {
+    render(<ShortcutsSection />);
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^Edit ${toggleTerminal}`) }));
+    const capture = screen.getByRole("button", { name: new RegExp(`^Recording ${toggleTerminal}`) });
+
+    fireEvent.keyDown(capture, optionT);
+
+    expect(screen.queryByText(nativeKeyError)).toBeNull();
+    expect(useShortcutStore.getState().bindings.toggleTerminal).toEqual({
+      key: "t",
+      ctrl: true,
+      shift: false,
+      alt: true,
+    });
   });
 });

@@ -45,7 +45,9 @@
     "privacyNote": "Odesílá se jen identifikátor nebo název, a to na doi.org, arXiv nebo Crossref.",
     "title": "Přidat citaci",
     "bibliography": "Bibliografie",
-    "bibliographyHint": "Tento projekt má víc než jednu bibliografii. Záznam se uloží do souboru, který zde vyberete."
+    "bibliographyHint": "Tento projekt má víc než jednu bibliografii. Záznam se uloží do souboru, který zde vyberete.",
+    "zoteroMatches": "Z vaší knihovny Zotero",
+    "zoteroPlaceholder": "Prohledejte knihovnu Zotero, nebo vložte DOI, identifikátor arXiv či název"
   },
   "backendProtocol": {
     "mismatch": "Toto okno a jeho backend byly sestaveny pro různé verze Oleafly, takže některé funkce nemusí fungovat. Pomůže přeinstalování aplikace."
@@ -330,6 +332,38 @@
     "presentWithPresenter": {
       "label": "Prezentovat snímky se zobrazením přednášejícího",
       "keywords": "prezentovat snímky zobrazení přednášejícího poznámky přednášejícího časovač další snímek"
+    },
+    "zenMode": {
+      "keywords": "bez rušení soustředění celá obrazovka skrýt rozhraní minimalistický psaní",
+      "label": "Přepnout režim Zen"
+    },
+    "togglePreview": {
+      "keywords": "pdf náhled zobrazit skrýt rozdělit jen editor",
+      "label": "Přepnout náhled PDF"
+    },
+    "zoomIn": {
+      "keywords": "zvětšit větší lupa",
+      "label": "Přiblížit"
+    },
+    "zoomOut": {
+      "keywords": "zmenšit menší",
+      "label": "Oddálit"
+    },
+    "resetZoom": {
+      "keywords": "skutečná velikost 100",
+      "label": "Obnovit přiblížení"
+    },
+    "zoteroAddMissing": {
+      "label": "Přidat chybějící citace z knihovny Zotero",
+      "keywords": "zotero chybějící citace nedefinované klíče bibliografie oprava"
+    },
+    "zoteroUpdate": {
+      "label": "Aktualizovat záznamy .bib z knihovny Zotero",
+      "keywords": "zotero aktualizovat obnovit bibliografie záznamy změněné"
+    },
+    "zoteroSync": {
+      "label": "Synchronizovat knihovnu Zotero",
+      "keywords": "zotero synchronizovat obnovit knihovna"
     }
   },
   "community": {
@@ -352,11 +386,13 @@
     "compile": "Kompilovat",
     "compiler": {
       "auto": "Automaticky <note>[systémový TeX]</note>",
-      "help": "Tectonic je vestavěný a nepotřebuje žádné nastavení. Ostatní volby spouštějí systémový TeX, který umí číst místní soubory dostupné vašemu účtu, proto je používejte jen u důvěryhodných projektů. Automatická volba vybere překladač podle zdroje. pdfLaTeX odpovídá většině šablon časopisů. XeLaTeX a LuaLaTeX přidávají systémová písma a Unicode.",
+      "help": "Tectonic je vestavěný a nepotřebuje žádné nastavení. Ostatní volby spouštějí systémový TeX, který umí číst místní soubory dostupné vašemu účtu, proto je používejte jen u důvěryhodných projektů. Automatická volba vybere překladač podle zdroje. pdfLaTeX odpovídá většině šablon časopisů. XeLaTeX a LuaLaTeX přidávají systémová písma a Unicode. upLaTeX a pLaTeX překládají japonské dokumenty.",
       "lualatex": "LuaLaTeX <note>[systémový TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[systémový TeX]</note>",
+      "platex": "pLaTeX <note>[systémový TeX]</note>",
       "tectonic": "Tectonic <note>[vestavěný]</note>",
       "title": "Překladač (tento projekt)",
+      "uplatex": "upLaTeX <note>[systémový TeX]</note>",
       "xelatex": "XeLaTeX <note>[systémový TeX]</note>"
     },
     "errors": {
@@ -413,7 +449,8 @@
       "title": "Varianta (tento projekt)",
       "help": "Varianta předává do sys.inputs vlastní hodnoty, například pro koncept nebo finální verzi do tisku. Vybraná varianta zůstává v tomto počítači. Varianty přidáte nebo upravíte v Nastavení dokumentu.",
       "none": "Bez varianty"
-    }
+    },
+    "sharedViewer": "Čtenáři ve sdíleném projektu nemohou tato nastavení měnit."
   },
   "datePicker": {
     "placeholder": "Vyberte datum"
@@ -728,11 +765,6 @@
   "settings": {
     "close": "Zavřít nastavení",
     "data": {
-      "cloud": {
-        "comingSoon": "Již brzy",
-        "description": "Udržujte projekty synchronizované mezi svými zařízeními, aniž byste nastavovali vzdálený repozitář Git. Každý přenos bude šifrovaný od konce ke konci, takže vaše práce zůstane po cestě soukromá. Zdrojem pravdy zůstanou vaše místní složky projektů.",
-        "title": "Synchronizace v cloudu"
-      },
       "danger": {
         "confirmDeleteAllAction": "Smazat všechny projekty",
         "confirmDeleteAllDescription": "Každý aktuální projekt se přesune do koše včetně svých souborů a historie Git. Projekty pak můžete obnovovat jednotlivě.",
@@ -838,9 +870,13 @@
         "description": "Zobrazí galerii Oleafly Tools a jednotlivé nástroje (import PDF, rovnice, tabulky, BibTeX, hledání laboratoří a literatury, termíny) i jejich příkazy s lomítkem. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
         "label": "Nástroje LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Upravujte projekty s dalšími lidmi přes server pro spolupráci, který provozujete vy nebo vaše skupina. Přidá do Nastavení sekci „Spolupráce“. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
+        "label": "Živá spolupráce"
+      },
       "warning": "Tyto funkce jsou experimentální a stále v beta verzi. Nejsou plně otestované a mohou se změnit, přestat fungovat nebo být v některém dalším vydání odebrány. Zapínejte je jen tehdy, pokud si chcete rozpracovanou práci vyzkoušet.",
       "webBrowser": {
-        "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi; když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
+        "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi. Když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
         "label": "Webový prohlížeč"
       }
     },
@@ -921,6 +957,7 @@
     "nav": {
       "ai": "Asistent AI",
       "appearance": "Vzhled",
+      "collaboration": "Spolupráce",
       "data": "Úložiště dat",
       "dictionary": "Slovník",
       "downloads": "Stahování",
@@ -936,6 +973,7 @@
       "keywords": {
         "ai": "asistent, chat, modely, poskytovatelé, klíče API, agenti, prompty, rozpočet, servery MCP",
         "appearance": "motiv, vzhled, tmavý režim, světlý režim, barva, barvy, písma, velikost textu, přiblížení, zoom, rozvržení",
+        "collaboration": "servery, přihlášení, zařízení, členové, správci, sdílení, týmy, laboratoře, živé úpravy, reálný čas, protokol zabezpečení",
         "data": "záloha, zálohování, složka knihovny, složka projektů, úložiště, místo na disku, koš, smazat projekty, záchytné body",
         "dictionary": "pravopis, vlastní slova, ignorovaná slova, korektura, gramatická pravidla",
         "downloads": "balíčky, písma, slovníky, soubory offline",
@@ -1163,7 +1201,8 @@
       "editorPreview": "Editor a náhled",
       "editorPreviewAi": "Editor, náhled a AI",
       "previewAi": "Náhled a AI",
-      "previewOnly": "Jen náhled"
+      "previewOnly": "Jen náhled",
+      "zenMode": "Režim Zen"
     },
     "newProjectName": "Název nového projektu",
     "projectName": "Název projektu",
@@ -1418,5 +1457,86 @@
     "location": "{{file}}, řádek {{line}}",
     "error": "Chyba",
     "warning": "Varování"
+  },
+  "fileRenameDialog": {
+    "title": "Přejmenovat soubor",
+    "titleFolder": "Přejmenovat složku",
+    "newPath": "Nová cesta",
+    "hint": "Chybějící složky se vytvoří.",
+    "invalid": "Použijte cestu uvnitř tohoto projektu.",
+    "exists": "{{path}} už existuje."
+  },
+  "zen": {
+    "compileFailed": "Kompilace selhala",
+    "compiling": "Kompilace probíhá",
+    "hideLog": "Skrýt protokol kompilace",
+    "showLog": "Zobrazit protokol kompilace"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} soubor se změnil mimo Oleafly. Odeslat tuto změnu všem, nebo ji ponechat jen místně?",
+    "paused_few": "{{count}} soubory se změnily mimo Oleafly. Odeslat tyto změny všem, nebo je ponechat jen místně?",
+    "paused_many": "{{count}} souboru se změnilo mimo Oleafly. Odeslat tyto změny všem, nebo je ponechat jen místně?",
+    "paused_other": "{{count}} souborů se změnilo mimo Oleafly. Odeslat tyto změny všem, nebo je ponechat jen místně?",
+    "send": "Odeslat",
+    "keepLocal": "Ponechat místně",
+    "unavailable": "Složka projektu není dostupná, takže synchronizace je pozastavená. Znovu se spustí, až se složka vrátí."
+  },
+  "overleafSync": {
+    "button": "Synchronizace s Overleafem",
+    "title": "Synchronizovat s Overleafem",
+    "cancel": "Zrušit",
+    "more_one": "a {{count}} další soubor",
+    "more_few": "a {{count}} další soubory",
+    "more_many": "a {{count}} dalšího souboru",
+    "more_other": "a {{count}} dalších souborů",
+    "status": {
+      "notLinked": "Zatím nesynchronizováno s Overleafem.",
+      "linking": "Propojování s Overleafem",
+      "syncing": "Synchronizace s Overleafem",
+      "needsToken": "Pro synchronizaci přidejte svůj token Git z Overleafu.",
+      "never": "Zatím nesynchronizováno.",
+      "justNow": "před chvílí",
+      "synced": "Synchronizováno {{time}}.",
+      "conflicts_one": "{{count}} soubor se změnil na obou stranách. Vyberte, kterou verzi ponechat.",
+      "conflicts_few": "{{count}} soubory se změnily na obou stranách. Vyberte, které verze ponechat.",
+      "conflicts_many": "{{count}} souboru se změnilo na obou stranách. Vyberte, které verze ponechat.",
+      "conflicts_other": "{{count}} souborů se změnilo na obou stranách. Vyberte, které verze ponechat."
+    },
+    "actions": {
+      "keepInSync": "Udržovat synchronizované s Overleafem",
+      "syncNow": "Synchronizovat teď",
+      "auto": "Synchronizovat automaticky",
+      "resolve": "Vybrat verze",
+      "unlink": "Ukončit synchronizaci",
+      "addToken": "Přidat token Git",
+      "changeToken": "Změnit token Git"
+    },
+    "token": {
+      "title": "Přidejte svůj token Git z Overleafu",
+      "description": "Oleafly synchronizuje přes integraci Git v Overleafu. Vytvořte token v nastavení svého účtu Overleaf v části Integrace Git a vložte ho sem. Zůstane v tomto počítači zašifrovaný.",
+      "openSettings": "Otevřít nastavení účtu Overleaf",
+      "label": "Token Git",
+      "note": "Integrace Git vyžaduje, aby vlastník projektu měl placený nebo univerzitní tarif Overleaf.",
+      "save": "Uložit a synchronizovat"
+    },
+    "choice": {
+      "title": "Která verze má platit?",
+      "description": "Tyto soubory se tady a v Overleafu liší. Soubory, které existují jen na jedné straně, se ponechají na obou, takže se nic nesmaže.",
+      "mine": "Použít moje verze",
+      "theirs": "Použít verze z Overleafu"
+    },
+    "conflicts": {
+      "title": "Vybrat verze",
+      "description": "Tyto soubory se od poslední synchronizace změnily tady i v Overleafu. U každého vyberte verzi, kterou chcete ponechat. Dokud volbu nepoužijete, nic se nezmění.",
+      "mine": "Moje",
+      "theirs": "Z Overleafu",
+      "allMine": "Ponechat všechny moje",
+      "allTheirs": "Použít všechny z Overleafu",
+      "apply": "Použít a synchronizovat"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly toto okno znovu načetlo, protože 30 sekund nereagovalo. Změny provedené těsně předtím se možná neuložily.",
+    "reloadedAgain": "Oleafly toto okno znovu načetlo, protože opět přestalo reagovat. Váš projekt tentokrát neotevřelo pro případ, že problém způsobuje něco v něm."
   }
 }

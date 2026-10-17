@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "完全访问权限",
-        "description": "无需批准即可执行工具操作。"
+        "description": "无需询问即可执行工具操作，被拒绝规则阻止的工具除外。"
       },
       "custom": {
         "label": "自定义（approvals.toml）",
@@ -142,7 +142,7 @@
       "overloaded": "提供商的服务器当前过载（已自动重试过）。请稍等片刻再重试，或{{where}}切换到同系列的其他模型。",
       "rateLimited": "提供商正在限制请求频率。请稍等片刻再重试，或{{where}}切换提供商。",
       "retiredModel": "提供商已停用或限制此模型。请{{where}}选择更新的模型（设置 → AI 助手中列出了你的密钥可用的模型）。",
-      "unreachable": "无法连接到 AI 提供商。请检查网络连接；如果你在使用 Ollama，请确保它正在运行（设置 → AI 助手 → 检查 Ollama）。",
+      "unreachable": "无法连接到 AI 提供商。请检查网络连接。如果你在使用 Ollama，请确保它正在运行（设置 → AI 助手 → 检查 Ollama）。",
       "where": {
         "inSettings": "在设置 → AI 助手中",
         "modelMenu": "在上方的模型菜单中"
@@ -312,7 +312,9 @@
       "closeAgent": "关闭辅助代理。",
       "runCommand": "在项目文件夹中运行 shell 命令，限时两分钟。",
       "computerUse": "在助手的浏览器窗口中打开网页。",
-      "toggleTheme": "在浅色和深色模式之间切换。"
+      "toggleTheme": "在浅色和深色模式之间切换。",
+      "listOverleafProjects": "列出你的 Overleaf 项目，必要时先登录。",
+      "importOverleafProjects": "将 Overleaf 项目连同其编译器和主文件设置导入你的库。"
     },
     "disableAll": "全部禁用",
     "emptyContext": "此上下文中没有可用的工具。",

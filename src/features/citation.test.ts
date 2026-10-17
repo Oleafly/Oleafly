@@ -1,6 +1,8 @@
+import { EditorState } from "@codemirror/state";
+import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ParsedBib } from "@/lib/citation/types";
 
 const mocks = vi.hoisted(() => ({
@@ -73,6 +75,8 @@ import {
 import { resolveBibliographyPath } from "@oleafly/latex";
 import { hayagrivaEntries } from "@/lib/citation/hayagriva";
 import { useFolderAccessStore } from "@/store/folder-access";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { loadNamespace } from "@/i18n";
 
 const BIBTEX = "@article{placeholder,\n  title = {Edge Sensing},\n  author = {Ada Lovelace},\n  year = {2024}\n}";
 
@@ -130,7 +134,7 @@ beforeEach(() => {
       completed: refreshCompletions,
     };
   });
-  mocks.getEditorView.mockReturnValue({});
+  mocks.getEditorView.mockReturnValue({ state: EditorState.create() });
   mocks.setContent.mockImplementation((path: string, content: string) => {
     filesState.files[path] = { content };
     return true;
@@ -314,7 +318,7 @@ describe("addCitation", () => {
 
     const result = await addCitation(BIBTEX);
 
-    expect(result).toEqual({ key: "lovelace2024edge" });
+    expect(result).toEqual({ key: "lovelace2024edge", cite: "[@lovelace2024edge]" });
     expect(filesState.files["refs.bib"].content).toContain("@article{lovelace2024edge,");
     expect(filesState.files["paper.md"].content).toBe(
       '---\nbibliography: "refs.bib"\n---\n\n# Paper\n',
@@ -338,7 +342,7 @@ describe("addCitation", () => {
 
     const result = await addCitation(BIBTEX);
 
-    expect(result).toEqual({ key: "lovelace2024edge" });
+    expect(result).toEqual({ key: "lovelace2024edge", cite: "@lovelace2024edge" });
     expect(mocks.writeProjectFile).toHaveBeenCalledWith(
       "project-1",
       "paper.typ",
@@ -379,7 +383,7 @@ describe("addCitation", () => {
       "@article{fresh,\n  title = {Edge Sensing},\n  doi = {10.1000/edge}\n}",
     );
 
-    expect(result).toEqual({ key: "earlier2020work" });
+    expect(result).toEqual({ key: "earlier2020work", cite: "[@earlier2020work]" });
     expect(mocks.saveFile).not.toHaveBeenCalled();
     expect(mocks.insertAtCursor).toHaveBeenCalledWith("[@earlier2020work]");
   });
@@ -625,7 +629,7 @@ describe("citation read failures", () => {
   it("allows an absent bibliography without masking other read errors", async () => {
     filesState.files = { "paper.md": { content: "# Paper\n" } };
     mocks.readFileContent.mockResolvedValue("");
-    expect(await addCitation(BIBTEX)).toEqual({ key: "lovelace2024edge" });
+    expect(await addCitation(BIBTEX)).toMatchObject({ key: "lovelace2024edge" });
     expect(mocks.readFileContent).toHaveBeenCalledWith("project-1", "references.bib", true);
     expect(mocks.writeProjectFile).toHaveBeenCalledWith("project-1", "references.bib", expect.stringContaining("Edge Sensing"));
   });
@@ -713,7 +717,7 @@ describe("Typst Hayagriva bibliographies", () => {
 
     const result = await addCitation(`${BIBTEX.slice(0, -1)},\n  doi = {10.1000/edge}\n}`);
 
-    expect(result).toEqual({ key: "lovelace2024edge" });
+    expect(result).toMatchObject({ key: "lovelace2024edge" });
     const yaml = filesState.files["refs.yml"].content;
     expect(yaml.startsWith('existing:\n  type: book\n  title: "Old"\n\nlovelace2024edge:\n  type: article\n')).toBe(true);
     expect(yaml).not.toContain("parent:");
@@ -730,7 +734,7 @@ describe("Typst Hayagriva bibliographies", () => {
   it("writes BibTeX when the declaration also lists a .bib file", async () => {
     typstProject('#bibliography(("refs.yml", "refs.bib"))\n', { "refs.yml": "", "refs.bib": "" });
 
-    expect(await addCitation(BIBTEX)).toEqual({ key: "lovelace2024edge" });
+    expect(await addCitation(BIBTEX)).toMatchObject({ key: "lovelace2024edge" });
     expect(filesState.files["refs.bib"].content).toContain("@article{lovelace2024edge,");
     expect(filesState.files["refs.yml"].content).toBe("");
   });
@@ -739,7 +743,7 @@ describe("Typst Hayagriva bibliographies", () => {
     typstProject('#bibliography(\n  "refs.yaml",\n  title: [References],\n)\n', {});
     mocks.readFileContent.mockResolvedValue("");
 
-    expect(await addCitation(BIBTEX)).toEqual({ key: "lovelace2024edge" });
+    expect(await addCitation(BIBTEX)).toMatchObject({ key: "lovelace2024edge" });
     expect(mocks.writeProjectFile).toHaveBeenCalledWith(
       "project-1",
       "refs.yaml",
@@ -753,10 +757,10 @@ describe("Typst Hayagriva bibliographies", () => {
       "refs.yml": 'earlier:\n  type: article\n  title: "Edge"\n  serial-number:\n    doi: "10.1000/EDGE"\nlovelace2024edge:\n  title: "Taken"\n',
     });
 
-    expect(await addCitation("@article{x,\n  title = {Edge Sensing},\n  doi = {10.1000/edge}\n}")).toEqual({ key: "earlier" });
+    expect(await addCitation("@article{x,\n  title = {Edge Sensing},\n  doi = {10.1000/edge}\n}")).toMatchObject({ key: "earlier" });
     expect(mocks.saveFile).not.toHaveBeenCalled();
 
-    expect(await addCitation(BIBTEX)).toEqual({ key: "lovelace2024edgea" });
+    expect(await addCitation(BIBTEX)).toMatchObject({ key: "lovelace2024edgea" });
     expect(hayagrivaEntries(filesState.files["refs.yml"].content).map((entry) => entry.key)).toEqual([
       "earlier",
       "lovelace2024edge",
@@ -780,5 +784,73 @@ describe("Typst Hayagriva bibliographies", () => {
       ["hopper1959looms", "book", "10.1/one"],
       ["lovelace1843cards", "article", undefined],
     ]);
+  });
+});
+
+describe("adding a citation in a live shared project", () => {
+  beforeAll(async () => {
+    await loadNamespace("collab");
+  });
+
+  it("tells a viewer once that the project can only be viewed, and leaves the open bibliography alone", async () => {
+    useCollabEditorGate.setState({ projectId: "project-1", viewer: true, connecting: false });
+    try {
+      const bib = "@book{old,\n  title = {Old}\n}\n";
+      filesState.mainDoc = "paper.typ";
+      filesState.activePath = "paper.typ";
+      filesState.engine = {
+        source_extensions: ["typ"],
+        capabilities: { formatting_profile: "typst" },
+      };
+      filesState.files = { "refs.bib": { content: bib } };
+      filesState.tree = [{ path: "refs.bib", is_dir: false }];
+      mocks.readFileContent.mockImplementation(async (_id: string, path: string) =>
+        path === "refs.bib" ? bib : "= Paper\n",
+      );
+
+      expect(await addCitation(BIBTEX)).toEqual({ error: enCollab.access.viewOnly });
+      expect(await addCitations([{ key: "x", type: "article", fields: { title: "New" } } as ParsedBib])).toMatchObject({
+        errors: [enCollab.access.viewOnly],
+      });
+      expect(mocks.setContent).not.toHaveBeenCalled();
+      expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
+  });
+
+  it("merges the entry and the bibliography line into closed files from the text it read", async () => {
+    useCollabEditorGate.setState({ projectId: "project-1", viewer: false, connecting: false });
+    try {
+      const bib = "@book{old,\n  title = {Old}\n}\n";
+      filesState.mainDoc = "paper.typ";
+      filesState.activePath = "paper.typ";
+      filesState.engine = {
+        source_extensions: ["typ"],
+        capabilities: { formatting_profile: "typst" },
+      };
+      filesState.files = {};
+      filesState.tree = [{ path: "refs.bib", is_dir: false }];
+      mocks.readFileContent.mockImplementation(async (_id: string, path: string) =>
+        path === "refs.bib" ? bib : "= Paper\n",
+      );
+
+      await addCitation(BIBTEX);
+
+      expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+        "project-1",
+        "refs.bib",
+        expect.stringContaining("lovelace2024edge"),
+        { base: bib },
+      );
+      expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+        "project-1",
+        "paper.typ",
+        '= Paper\n\n#bibliography("refs.bib")\n',
+        { base: "= Paper\n" },
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

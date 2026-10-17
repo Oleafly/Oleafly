@@ -76,6 +76,8 @@ $dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp"
 if (-not $env:OLEAFLY_PACKS_BASE_URL) { $env:OLEAFLY_PACKS_BASE_URL = "http://127.0.0.1:38999" }
 if (-not $env:OLEAFLY_DEADLINES_URL) { $env:OLEAFLY_DEADLINES_URL = "http://127.0.0.1:38999/allconf.yml" }
 if (-not $env:OLEAFLY_SKILLS_BASE_URL) { $env:OLEAFLY_SKILLS_BASE_URL = "http://127.0.0.1:38999" }
+if (-not $env:OLEAFLY_ZOTERO_LOCAL_BASE_URL) { $env:OLEAFLY_ZOTERO_LOCAL_BASE_URL = "http://127.0.0.1:38999" }
+if (-not $env:OLEAFLY_ZOTERO_BASE_URL) { $env:OLEAFLY_ZOTERO_BASE_URL = "http://127.0.0.1:38999" }
 
 function Start-OutputProcess([string]$command) {
   $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
@@ -318,6 +320,12 @@ try {
     $code = 0
     $failures = 0
     $specs = Get-ChildItem -Path "e2e/tests" -Filter "*.spec.ts" | Sort-Object Name
+    $specs = $specs | Where-Object {
+      if ($_.Name -like "*-peer.spec.ts") {
+        Write-Host "e2e: skipping $($_.Name) (needs the headless collaboration peer; the collaboration job runs it)"
+        $false
+      } else { $true }
+    }
     if ($appBinary) {
       $specs = $specs | Where-Object {
         if ($_.Name -like "*-browser.spec.ts") {

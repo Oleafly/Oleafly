@@ -245,11 +245,11 @@ fn template_id(engine: ResearchDocumentEngine) -> &'static str {
     }
 }
 
-fn engine_id(engine: ResearchDocumentEngine) -> &'static str {
+fn engine_id(engine: ResearchDocumentEngine, main_document: &str) -> Result<String, String> {
     match engine {
-        ResearchDocumentEngine::Latex => "xetex",
-        ResearchDocumentEngine::Typst => "typst",
-        ResearchDocumentEngine::Markdown => "markdown",
+        ResearchDocumentEngine::Latex => crate::project::engine_for_new_project(main_document),
+        ResearchDocumentEngine::Typst => Ok("typst".into()),
+        ResearchDocumentEngine::Markdown => Ok("markdown".into()),
     }
 }
 
@@ -328,13 +328,14 @@ fn create_at(
     initialize_template: impl FnOnce(&str, &Path) -> Result<(), String>,
 ) -> Result<String, String> {
     let preview = build_preview(request)?;
+    let engine = engine_id(preview.engine, &preview.main_document)?;
     let reservation = ProjectReservation::reserve(root)?;
     initialize_template(template_id(preview.engine), &reservation.path)?;
     write_preview_tree(&reservation.path, &preview)?;
     let mut project = serde_json::json!({
         "name": preview.name,
         "main_doc": preview.main_document,
-        "engine": engine_id(preview.engine),
+        "engine": &engine,
         "allow_shell_escape": false,
         "color": "",
         "kind": "",
@@ -347,7 +348,7 @@ fn create_at(
             "initialTask": preview.initial_task
         }
     });
-    if let Some(pin) = crate::typst_toolchain::creation_pin(engine_id(preview.engine)) {
+    if let Some(pin) = crate::typst_toolchain::creation_pin(&engine) {
         project["typst"] = serde_json::to_value(pin)
             .map_err(|error| format!("could not encode project metadata: {error}"))?;
     }
@@ -361,9 +362,11 @@ fn create_at(
 
 pub fn create(app: &tauri::AppHandle, request: ResearchProjectRequest) -> Result<String, String> {
     let root = crate::paths::projects_root()?;
-    create_at(&root, request, |id, destination| {
+    let project_id = create_at(&root, request, |id, destination| {
         crate::templates::instantiate(app, id, destination).map(|_| ())
-    })
+    })?;
+    crate::project::record_tex_spec_for_new_project(app, &project_id);
+    Ok(project_id)
 }
 
 #[cfg(test)]

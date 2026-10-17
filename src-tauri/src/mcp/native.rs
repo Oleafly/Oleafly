@@ -235,6 +235,7 @@ fn read_skill_file(arguments: &Value) -> Result<Value, String> {
 fn read_file(project_id: &str, arguments: &Value) -> Result<Value, String> {
     let path = required(arguments, "path")?;
     let body = crate::project::read_file_limited(project_id, path, MAX_READ_FILE_BYTES)?;
+    crate::collab::live::write::note_read(project_id, path, &body);
     let offset = arguments
         .get("offset")
         .and_then(|v| v.as_u64())

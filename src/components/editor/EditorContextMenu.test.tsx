@@ -37,6 +37,11 @@ const nav = vi.hoisted(() => ({
 
 const projectIndex = vi.hoisted(() => ({ state: { index: {} as unknown } }));
 
+const fileRename = vi.hoisted(() => ({
+  pathReferenceUnderCursor: vi.fn<(view: unknown) => unknown>(() => null),
+  startFileRenameAtCursor: vi.fn((_view: unknown) => true),
+}));
+
 const inlineAi = vi.hoisted(() => ({ openInlineEdit: vi.fn() }));
 const synctex = vi.hoisted(() => ({ goToSyncTex: vi.fn() }));
 const toasts = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn(), success: vi.fn() }));
@@ -99,6 +104,7 @@ vi.mock("@/components/editor/cm/controller", () => controller);
 vi.mock("./cm/inline-ai/openSession", () => inlineAi);
 vi.mock("./cm/language-service-format", () => formatting);
 vi.mock("@/lib/index/nav", () => nav);
+vi.mock("@/lib/file-references/rename-at-cursor", () => fileRename);
 vi.mock("@/features/synctex", () => synctex);
 vi.mock("@/features/equation-export", () => equationExport);
 vi.mock("@/lib/toast", () => ({ toast: toasts }));
@@ -113,6 +119,7 @@ vi.mock("@/components/editor/latex-commands", async (importOriginal) => {
 
 import { HEADING_LEVELS } from "@/components/editor/latex-commands";
 import { TYPST_HEADING_LEVELS } from "@/components/editor/typst-commands";
+import { loadFileRename } from "@/lib/file-references/rename-trigger";
 import { EditorContextMenu } from "./EditorContextMenu";
 
 const menu = en.contextMenu;
@@ -152,6 +159,7 @@ describe("EditorContextMenu", () => {
     nav.startRename.mockReturnValue(true);
     projectIndex.state = { index: {} };
     typstCommands.typstLanguageServiceOffers.mockImplementation(() => false);
+    fileRename.pathReferenceUnderCursor.mockReturnValue(null);
   });
 
   it("offers only a disabled notice before an engine is loaded", () => {
@@ -502,5 +510,23 @@ describe("EditorContextMenu", () => {
 
     expect(view.dispatch).not.toHaveBeenCalled();
     expect(inlineAi.openInlineEdit).not.toHaveBeenCalled();
+  });
+
+  it("offers Rename file only when the caret is on a file path", async () => {
+    await loadFileRename();
+    openMenu(LATEX_ENGINE, true, "", "main.tex");
+    expect(screen.queryByText(menu.renameFile)).not.toBeInTheDocument();
+
+    fileRename.pathReferenceUnderCursor.mockReturnValue({ raw: "figures/plot" });
+    for (const [engine, path] of [
+      [LATEX_ENGINE, "main.tex"],
+      [engineWithProfile("typst"), "main.typ"],
+      [engineWithProfile("markdown"), "README.md"],
+    ] as const) {
+      openMenu(engine, true, "", path);
+      fireEvent.click(screen.getByText(menu.renameFile));
+      expect(fileRename.startFileRenameAtCursor).toHaveBeenLastCalledWith(view);
+    }
+    expect(fileRename.startFileRenameAtCursor).toHaveBeenCalledTimes(3);
   });
 });

@@ -2,13 +2,22 @@ import {
   markdown,
   markdownLanguage as gfmMarkdownLanguage,
 } from "@codemirror/lang-markdown";
-import { tags } from "@lezer/highlight";
+import { styleTags } from "@lezer/highlight";
 import type {
   InlineContext,
   MarkdownExtension,
 } from "@lezer/markdown";
+import { syntaxTags } from "./syntax-colors";
 
 const DOLLAR = "$".codePointAt(0);
+const AT = "@".codePointAt(0);
+const CITATION_KEY =
+  /^@(?:\{[^}\n]+\}|[\p{L}\p{N}_](?:[\p{L}\p{N}_]|[:.#$%&+?<>~/-](?=[\p{L}\p{N}_]))*)/u;
+const KEY_CHARACTER = /[\p{L}\p{N}_]/u;
+const OPEN_BRACKET = "[".codePointAt(0);
+const CLOSE_BRACKET = "]".codePointAt(0);
+const LINK_FOLLOWERS = new Set(["(", "[", ":"].map((character) => character.codePointAt(0)));
+const GROUP_KEY_PREFIX = /[\s;-]/u;
 const BACKSLASH = "\\".codePointAt(0);
 
 const whitespace = (code: number): boolean =>
@@ -94,15 +103,62 @@ function parsePandocMath(
   );
 }
 
+function parsePandocCitation(
+  context: InlineContext,
+  next: number,
+  position: number,
+): number {
+  if (next !== AT) return -1;
+  if (position > context.offset) {
+    const previous = String.fromCodePoint(context.char(position - 1));
+    if (KEY_CHARACTER.test(previous) || previous === "@" || previous === ".") return -1;
+  }
+  const match = CITATION_KEY.exec(context.slice(position, context.end));
+  if (!match) return -1;
+  return context.addElement(context.elt("PandocCitation", position, position + match[0].length));
+}
+
+function parsePandocCitationGroup(
+  context: InlineContext,
+  next: number,
+  position: number,
+): number {
+  if (next !== OPEN_BRACKET) return -1;
+  let close = position + 1;
+  while (close < context.end && context.char(close) !== CLOSE_BRACKET) {
+    if (context.char(close) === OPEN_BRACKET) return -1;
+    close += 1;
+  }
+  if (close >= context.end || LINK_FOLLOWERS.has(context.char(close + 1))) return -1;
+  const inner = context.slice(position + 1, close);
+  const keys = [];
+  for (let index = inner.indexOf("@"); index >= 0; index = inner.indexOf("@", index + 1)) {
+    if (index > 0 && !GROUP_KEY_PREFIX.test(inner[index - 1])) continue;
+    const match = CITATION_KEY.exec(inner.slice(index));
+    if (!match) continue;
+    const from = position + 1 + index;
+    keys.push(context.elt("PandocCitation", from, from + match[0].length));
+  }
+  if (keys.length === 0) return -1;
+  return context.addElement(context.elt("PandocCitationGroup", position, close + 1, keys));
+}
+
 const pandocMarkdownExtensions: MarkdownExtension = {
   defineNodes: [
     {
       name: "PandocMath",
-      style: tags.special(tags.string),
+      style: syntaxTags.math,
     },
     {
       name: "PandocMathMark",
-      style: tags.processingInstruction,
+      style: syntaxTags.math,
+    },
+    {
+      name: "PandocCitation",
+      style: syntaxTags.reference,
+    },
+    {
+      name: "PandocCitationGroup",
     },
   ],
   parseInline: [
@@ -111,6 +167,20 @@ const pandocMarkdownExtensions: MarkdownExtension = {
       parse: parsePandocMath,
       before: "Escape",
     },
+    {
+      name: "PandocCitationGroup",
+      parse: parsePandocCitationGroup,
+      before: "Link",
+    },
+    {
+      name: "PandocCitation",
+      parse: parsePandocCitation,
+    },
+  ],
+  props: [
+    styleTags({
+      "EmphasisMark StrikethroughMark": syntaxTags.formatting,
+    }),
   ],
 };
 

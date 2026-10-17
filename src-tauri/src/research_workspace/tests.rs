@@ -118,6 +118,32 @@ fn a_typst_research_project_records_the_default_typst_version() {
 }
 
 #[test]
+fn a_latex_research_project_follows_the_default_engine() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let temp = tempfile::tempdir().unwrap();
+    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+    std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
+    crate::config::set_latex_default_engine_choice("latexmk").unwrap();
+    let projects = crate::paths::projects_root().unwrap();
+    let mut engines = Vec::new();
+    for engine in [ResearchDocumentEngine::Latex, ResearchDocumentEngine::Typst] {
+        let project_id = setup::create_at_for_test(
+            &projects,
+            request(engine, ResearchStarter::Article),
+            |_, _| Ok(()),
+        )
+        .unwrap();
+        let bytes = std::fs::read(projects.join(&project_id).join("project.json")).unwrap();
+        engines.push(crate::project::parse_project_meta(&bytes).unwrap().engine);
+    }
+    assert_eq!(engines, ["latexmk", "typst"]);
+    match previous {
+        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+    }
+}
+
+#[test]
 fn invalid_names_do_not_create_a_destination() {
     let temp = tempfile::tempdir().unwrap();
     let result = setup::create_at_for_test(
@@ -512,7 +538,7 @@ fn strict_forget_unlinks_every_root_and_refuses_a_symlinked_record() {
     let outside = tempfile::tempdir().unwrap();
     let previous = std::env::var_os("OLEAFLY_DATA_DIR");
     std::env::set_var("OLEAFLY_DATA_DIR", data.path());
-    let project_id = crate::project::create_project("Linked roots".into()).unwrap();
+    let project_id = crate::project::create_blank_project("Linked roots".into()).unwrap();
     roots::add_root(AddResearchRootRequest {
         project_id: project_id.clone(),
         path: outside.path().to_string_lossy().into_owned(),

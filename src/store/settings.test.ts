@@ -3,7 +3,14 @@ import {
   BROWSER_SEARCH_ENGINES,
   DEFAULT_HIDDEN_FILE_PATTERNS,
   DEFAULT_TERMINAL_FONT_FAMILY,
+  EDITOR_LETTER_SPACINGS,
+  EDITOR_LINE_HEIGHTS,
   TERMINAL_COLOR_THEMES,
+  clampEditorFontSize,
+  clampEditorLetterSpacing,
+  clampEditorLineHeight,
+  editorLetterSpacingValue,
+  editorLineHeightValue,
   fileTreePathIsHidden,
   resolveTerminalColorTheme,
   sectionDiffersFromDefaults,
@@ -85,6 +92,12 @@ describe("useSettingsStore dock appearance settings", () => {
     useSettingsStore.getState().setSettingsInitialSection("mcp");
 
     expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
+  });
+
+  it("accepts the Collaboration section", () => {
+    useSettingsStore.getState().setSettingsInitialSection("collaboration");
+    expect(useSettingsStore.getState().settingsInitialSection).toBe("collaboration");
+    useSettingsStore.getState().setSettingsInitialSection("general");
   });
 
   it("setDockPlacement updates state and persists to localStorage", () => {
@@ -315,7 +328,7 @@ describe("useSettingsStore reset", () => {
     settings.setEditorAutoCloseMath(false);
     settings.setEditorAutoCloseEnvironments(false);
     settings.setEditorGhostCompletion(false);
-    settings.setEditorNonBlinkingCursor(true);
+    settings.setEditorCursorBlinking("off");
     settings.setEditorKeymap("emacs");
     settings.setEditorTabSize(2);
     settings.setEditorLineWrap(false);
@@ -336,7 +349,7 @@ describe("useSettingsStore reset", () => {
       editorAutoCloseMath: true,
       editorAutoCloseEnvironments: true,
       editorGhostCompletion: true,
-      editorNonBlinkingCursor: false,
+      editorCursorBlinking: "blink",
       editorKeymap: "default",
       vim: false,
       editorTabSize: 4,
@@ -348,7 +361,7 @@ describe("useSettingsStore reset", () => {
     expect(localStorage.getItem("oleafly.editor.closeMath")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.closeEnvironments")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.ghostCompletion")).toBe("1");
-    expect(localStorage.getItem("oleafly.editor.solidCursor")).toBe("0");
+    expect(localStorage.getItem("oleafly.editor.cursorBlinking")).toBe("blink");
     expect(localStorage.getItem("oleafly.editor.keymap")).toBe("default");
     expect(localStorage.getItem("oleafly.vim")).toBe("0");
     expect(localStorage.getItem("oleafly.editor.tabSize")).toBe("4");
@@ -371,6 +384,171 @@ describe("useSettingsStore reset", () => {
     settings.setEditorKeymap("emacs");
     expect(useSettingsStore.getState().vim).toBe(false);
     settings.resetToDefaults();
+  });
+
+  it("keeps a custom line height inside the allowed range", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorLineHeight("custom");
+    settings.setEditorCustomLineHeight(1.55);
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorLineHeight: "custom",
+      editorCustomLineHeight: 1.55,
+    });
+    expect(localStorage.getItem("oleafly.editor.lineHeight")).toBe("custom");
+    expect(localStorage.getItem("oleafly.editor.lineHeightCustom")).toBe("1.55");
+
+    settings.setEditorCustomLineHeight(9);
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(3);
+    settings.setEditorCustomLineHeight(0.2);
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(1);
+    settings.setEditorCustomLineHeight(Number.NaN);
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(EDITOR_LINE_HEIGHTS.normal);
+
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorLineHeight: "normal",
+      editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
+    });
+  });
+
+  it("offers cursor widths of one to three pixels and resets to one", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorCursorWidth(3);
+    expect(useSettingsStore.getState().editorCursorWidth).toBe(3);
+    expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("3");
+    settings.setEditorCursorWidth(7);
+    expect(useSettingsStore.getState().editorCursorWidth).toBe(1);
+    settings.setEditorCursorWidth(2);
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorCursorWidth).toBe(1);
+    expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("1");
+  });
+
+  it("offers VS Code's cursor blinking styles and falls back to Blink", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState().editorCursorBlinking).toBe("blink");
+    for (const style of ["smooth", "phase", "expand", "off", "blink"] as const) {
+      settings.setEditorCursorBlinking(style);
+      expect(useSettingsStore.getState().editorCursorBlinking).toBe(style);
+      expect(localStorage.getItem("oleafly.editor.cursorBlinking")).toBe(style);
+    }
+    settings.setEditorCursorBlinking("wobble" as never);
+    expect(useSettingsStore.getState().editorCursorBlinking).toBe("blink");
+  });
+
+  it("draws the cursor as tall as the text or the line and resets to text", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState().editorCursorHeight).toBe("text");
+    settings.setEditorCursorHeight("line");
+    expect(useSettingsStore.getState().editorCursorHeight).toBe("line");
+    expect(localStorage.getItem("oleafly.editor.cursorHeight")).toBe("line");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorCursorHeight).toBe("text");
+    expect(localStorage.getItem("oleafly.editor.cursorHeight")).toBe("text");
+  });
+
+  it("highlights the current line until it is turned off and restores it on reset", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState().editorHighlightCurrentLine).toBe(true);
+    settings.setEditorHighlightCurrentLine(false);
+    expect(useSettingsStore.getState().editorHighlightCurrentLine).toBe(false);
+    expect(localStorage.getItem("oleafly.editor.highlightCurrentLine")).toBe("0");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorHighlightCurrentLine).toBe(true);
+  });
+
+  it("keeps a valid custom cursor color for each editor surface and follows the theme otherwise", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
+    settings.setEditorCursorColor("light", "#FF8800");
+    settings.setEditorCursorColor("dark", "#88CCFF");
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorCursorColorLight: "#ff8800",
+      editorCursorColorDark: "#88ccff",
+    });
+    expect(localStorage.getItem("oleafly.editor.cursorColor.light")).toBe("#ff8800");
+    expect(localStorage.getItem("oleafly.editor.cursorColor.dark")).toBe("#88ccff");
+    settings.setEditorCursorColor("light", "orange");
+    expect(useSettingsStore.getState().editorCursorColorLight).toBe("");
+    settings.setEditorCursorColor("light", "#123456");
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
+    expect(localStorage.getItem("oleafly.editor.cursorColor.light")).toBe("");
+    expect(localStorage.getItem("oleafly.editor.cursorColor.dark")).toBe("");
+  });
+
+  it("keeps letter spacing to a preset or a custom value from 0 to 4 pixels", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState()).toMatchObject({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 0 });
+    settings.setEditorLetterSpacing("wide");
+    expect(localStorage.getItem("oleafly.editor.letterSpacing")).toBe("wide");
+    expect(editorLetterSpacingValue("wide", 3)).toBe(EDITOR_LETTER_SPACINGS.wide);
+    localStorage.removeItem("oleafly.editor.letterSpacingCustom");
+    settings.setEditorLetterSpacing("custom");
+    expect(useSettingsStore.getState().editorCustomLetterSpacing).toBe(1);
+    settings.setEditorCustomLetterSpacing(9);
+    expect(useSettingsStore.getState().editorCustomLetterSpacing).toBe(4);
+    expect(editorLetterSpacingValue("custom", 2.345)).toBe(2.35);
+    expect(clampEditorLetterSpacing(-1)).toBe(0);
+    expect(clampEditorLetterSpacing(Number.NaN)).toBe(0);
+    settings.setEditorLetterSpacing("tight" as never);
+    expect(useSettingsStore.getState().editorLetterSpacing).toBe("normal");
+    settings.setEditorLetterSpacing("wider");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState()).toMatchObject({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 0 });
+  });
+
+  it("takes any editor font size from 6 to 100 pixels, like VS Code", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorFontSize(28);
+    expect(useSettingsStore.getState().editorFontSize).toBe(28);
+    expect(localStorage.getItem("oleafly.fontSize")).toBe("28");
+    settings.setEditorFontSize(240);
+    expect(useSettingsStore.getState().editorFontSize).toBe(100);
+    settings.setEditorFontSize(2);
+    expect(useSettingsStore.getState().editorFontSize).toBe(6);
+    expect(clampEditorFontSize(13.37)).toBe(13.4);
+    expect(clampEditorFontSize(Number.NaN)).toBe(13);
+    settings.setEditorFontSize(13);
+  });
+
+  it("starts a first custom line height at the preset it replaces", () => {
+    localStorage.removeItem("oleafly.editor.lineHeightCustom");
+    useSettingsStore.setState({ editorLineHeight: "wide", editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal });
+    useSettingsStore.getState().setEditorLineHeight("custom");
+    expect(useSettingsStore.getState()).toMatchObject({ editorLineHeight: "custom", editorCustomLineHeight: 2 });
+    expect(localStorage.getItem("oleafly.editor.lineHeightCustom")).toBe("2");
+
+    useSettingsStore.getState().setEditorCustomLineHeight(1.35);
+    useSettingsStore.getState().setEditorLineHeight("compact");
+    useSettingsStore.getState().setEditorLineHeight("custom");
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(1.35);
+  });
+
+  it("stores the editor font as the typed family name", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorFontFamily("iA Writer Mono S ");
+    expect(useSettingsStore.getState().editorFontFamily).toBe("iA Writer Mono S ");
+    settings.setEditorFontFamily("Fira\u0007 Code");
+    expect(localStorage.getItem("oleafly.editorFont")).toBe("Fira Code");
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorFontFamily).toBe("");
+  });
+
+  it("persists what happens to references when a file moves", () => {
+    const settings = useSettingsStore.getState();
+    expect(settings.fileMoveReferences).toBe("ask");
+    settings.setFileMoveReferences("never");
+    expect(useSettingsStore.getState().fileMoveReferences).toBe("never");
+    expect(localStorage.getItem("oleafly.editor.fileMoveReferences")).toBe("never");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().fileMoveReferences).toBe("ask");
+    expect(localStorage.getItem("oleafly.editor.fileMoveReferences")).toBe("ask");
   });
 
   it("rejects a tab size outside the offered set", () => {
@@ -413,12 +591,91 @@ describe("editor keymap migration", () => {
     lsValues.set("oleafly.editor.keymap", "acme");
     lsValues.set("oleafly.editor.tabSize", "7");
     lsValues.set("oleafly.editor.lineHeight", "huge");
+    lsValues.set("oleafly.editor.fileMoveReferences", "sometimes");
     vi.resetModules();
     const migrated = await import("./settings");
     expect(migrated.useSettingsStore.getState()).toMatchObject({
       editorKeymap: "default",
       editorTabSize: 4,
       editorLineHeight: "normal",
+      fileMoveReferences: "ask",
+    });
+  });
+});
+
+describe("editor line height values", () => {
+  it("resolves presets and rounds a custom value to two decimals", () => {
+    expect(editorLineHeightValue("compact", 2.5)).toBe(1.4);
+    expect(editorLineHeightValue("wide", 2.5)).toBe(2);
+    expect(editorLineHeightValue("custom", 1.234)).toBe(1.23);
+    expect(clampEditorLineHeight(Number.POSITIVE_INFINITY)).toBe(EDITOR_LINE_HEIGHTS.normal);
+  });
+});
+
+describe("editor appearance migration", () => {
+  it("turns a stored font stack into its first family name", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.editorFont", '"JetBrains Mono", ui-monospace, monospace');
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState().editorFontFamily).toBe("JetBrains Mono");
+    expect(localStorage.getItem("oleafly.editorFont")).toBe("JetBrains Mono");
+  });
+
+  it("turns a stored app font stack into its first family name", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.appFont", '"Helvetica Neue", Helvetica, Arial, sans-serif');
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState().appFontFamily).toBe("Helvetica Neue");
+    expect(localStorage.getItem("oleafly.appFont")).toBe("Helvetica Neue");
+  });
+
+  it("keeps a plain family name and reads the custom line height and cursor settings", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.editorFont", "  iA Writer Quattro S ");
+    lsValues.set("oleafly.editor.lineHeight", "custom");
+    lsValues.set("oleafly.editor.lineHeightCustom", "1.62");
+    lsValues.set("oleafly.editor.cursorWidth", "2");
+    lsValues.set("oleafly.editor.cursorHeight", "line");
+    lsValues.set("oleafly.editor.highlightCurrentLine", "0");
+    lsValues.set("oleafly.editor.cursorBlinking", "phase");
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState()).toMatchObject({
+      editorFontFamily: "iA Writer Quattro S",
+      editorLineHeight: "custom",
+      editorCustomLineHeight: 1.62,
+      editorCursorWidth: 2,
+      editorCursorHeight: "line",
+      editorHighlightCurrentLine: false,
+      editorCursorBlinking: "phase",
+    });
+  });
+
+  it("turns a solid cursor saved before blinking styles existed into Off", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.editor.solidCursor", "1");
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState().editorCursorBlinking).toBe("off");
+    lsValues.set("oleafly.editor.cursorBlinking", "expand");
+    vi.resetModules();
+    const chosen = await import("./settings");
+    expect(chosen.useSettingsStore.getState().editorCursorBlinking).toBe("expand");
+  });
+
+  it("falls back for a bad custom line height, cursor width or cursor height", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.editor.lineHeightCustom", "tall");
+    lsValues.set("oleafly.editor.cursorWidth", "9");
+    lsValues.set("oleafly.editor.cursorHeight", "huge");
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState()).toMatchObject({
+      editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
+      editorCursorWidth: 1,
+      editorCursorHeight: "text",
     });
   });
 });
@@ -673,6 +930,7 @@ describe("section reset checks", () => {
     ["appearance", { editorMathPreview: false }, "resetAppearancePreferences"],
     ["appearance", { hiddenFilePatterns: [] }, "resetAppearancePreferences"],
     ["experimentation", { webBrowser: true }, "resetExperimentationPreferences"],
+    ["experimentation", { liveCollaboration: true }, "resetExperimentationPreferences"],
     ["engine", { defaultLatexEngine: "latexmk" }, "resetEnginePreferences"],
   ];
 

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { ProjectIndex } from "@/lib/index/types";
 import {
   normalizeAnalysisFailure,
   normalizeDiagnostics,
+  normalizeProjectIndex,
 } from "./project-snapshot";
 
 describe("normalizeDiagnostics", () => {
@@ -60,5 +62,40 @@ describe("normalizeAnalysisFailure", () => {
       message: "42",
       retryable: false,
     });
+  });
+});
+
+describe("normalizeProjectIndex", () => {
+  function index(name: string): ProjectIndex {
+    const symbol = {
+      kind: "label" as const,
+      name,
+      file: "main.tex",
+      line: 1,
+      from: 0,
+      to: name.length,
+      nameFrom: 0,
+      nameTo: name.length,
+    };
+    return {
+      defs: [symbol],
+      uses: [],
+      symbolAt: () => null,
+      definitionFor: () => null,
+      references: () => [],
+      allReferences: () => [],
+      renamePlan: () => ({ edits: [], conflicts: [] }) as never,
+    } as unknown as ProjectIndex;
+  }
+
+  it("converts an index once and hands back the same data for it", () => {
+    const first = index("intro");
+    const normalized = normalizeProjectIndex(first);
+    expect(normalizeProjectIndex(first)).toBe(normalized);
+    expect(normalized.definitions.map((symbol) => symbol.name)).toEqual(["intro"]);
+
+    const next = normalizeProjectIndex(index("methods"));
+    expect(next).not.toBe(normalized);
+    expect(next.definitions.map((symbol) => symbol.name)).toEqual(["methods"]);
   });
 });

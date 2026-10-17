@@ -1,7 +1,14 @@
 import { syntaxTree } from "@codemirror/language";
-import { type EditorState, type Extension, type Range, StateField } from "@codemirror/state";
+import {
+  type ChangeSet,
+  type EditorState,
+  type Extension,
+  type Range,
+  StateField,
+  type Transaction,
+} from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, type WidgetType } from "@codemirror/view";
-import type { SyntaxNode, SyntaxNodeRef, Tree } from "@lezer/common";
+import type { NodeType, SyntaxNode, SyntaxNodeRef, Tree } from "@lezer/common";
 import {
   ALIGNMENT_ENVIRONMENTS,
   centeringCommandWithin,
@@ -63,10 +70,15 @@ export interface TheoremInfo {
   style: string;
 }
 
+export interface SelectionProbe extends Extents {
+  hit: boolean;
+}
+
 export interface VisualAtomicState {
   decorations: DecorationSet;
   preamble: Preamble;
   theorems: ReadonlyMap<string, TheoremInfo>;
+  probes: readonly SelectionProbe[];
   tree: Tree;
   mousedown: boolean;
 }
@@ -75,6 +87,7 @@ export interface AtomicDecorationResult {
   decorations: DecorationSet;
   preamble: Preamble;
   theorems: ReadonlyMap<string, TheoremInfo>;
+  probes: readonly SelectionProbe[];
 }
 
 const PANEL_ENVIRONMENTS = new Set([
@@ -183,8 +196,64 @@ function maketitleOpensDocument(maketitle: SyntaxNode): boolean {
   return true;
 }
 
+type EnterKind =
+  | "environment"
+  | "centering"
+  | "begin"
+  | "end"
+  | "sectioning"
+  | "math"
+  | "item"
+  | "unknownCommand"
+  | "toggleFormatting"
+  | "otherFormatting";
+
+type PreambleKind = "document" | "maketitle" | "titleOrAuthor" | "affiliation";
+
+const ENTER_KINDS: readonly (readonly [string, EnterKind])[] = [
+  ["$Environment", "environment"],
+  ["Centering", "centering"],
+  ["BeginEnv", "begin"],
+  ["EndEnv", "end"],
+  ["SectioningCommand", "sectioning"],
+  ["Math", "math"],
+  ["Item", "item"],
+  ["UnknownCommand", "unknownCommand"],
+  ["$ToggleTextFormattingCommand", "toggleFormatting"],
+  ["$OtherTextFormattingCommand", "otherFormatting"],
+];
+
+const PREAMBLE_KINDS: readonly (readonly [string, PreambleKind])[] = [
+  ["DocumentEnvironment", "document"],
+  ["Maketitle", "maketitle"],
+  ["Title", "titleOrAuthor"],
+  ["Author", "titleOrAuthor"],
+  ["Affil", "affiliation"],
+  ["Affiliation", "affiliation"],
+];
+
+interface NodeTypeKinds {
+  readonly enter: EnterKind | null;
+  readonly preamble: PreambleKind | null;
+}
+
+const nodeTypeKinds = new WeakMap<NodeType, NodeTypeKinds>();
+
+function kindsOf(type: NodeType): NodeTypeKinds {
+  let kinds = nodeTypeKinds.get(type);
+  if (!kinds) {
+    kinds = {
+      enter: ENTER_KINDS.find(([name]) => type.is(name))?.[1] ?? null,
+      preamble: PREAMBLE_KINDS.find(([name]) => type.is(name))?.[1] ?? null,
+    };
+    nodeTypeKinds.set(type, kinds);
+  }
+  return kinds;
+}
+
 class AtomicDecorationBuilder {
   readonly decorations: Range<Decoration>[] = [];
+  readonly probes: SelectionProbe[] = [];
   readonly preamble: Preamble = { from: 0, to: 0, authors: [] };
   readonly theorems = defaultTheorems();
   private theoremStyle = "plain";
@@ -226,6 +295,7 @@ class AtomicDecorationBuilder {
       decorations: Decoration.set(this.decorations, true),
       preamble: this.preamble,
       theorems: this.theorems,
+      probes: this.probes,
     };
   }
 
@@ -234,26 +304,44 @@ class AtomicDecorationBuilder {
   }
 
   private enter(node: SyntaxNodeRef): boolean | undefined {
-    this.trackPreamble(node);
     const { type } = node;
-    if (type.is("$Environment")) return this.enterEnvironment(node);
-    if (type.is("Centering")) return this.enterCentering(node);
-    if (type.is("BeginEnv")) return this.enterBegin(node);
-    if (type.is("EndEnv")) return this.enterEnd(node);
-    if (type.is("SectioningCommand")) return this.enterSectioning(node);
-    if (type.is("Math")) {
-      this.enterMath(node);
-      return false;
+    const kinds = kindsOf(type);
+    if (kinds.preamble) this.trackPreamble(node, kinds.preamble);
+    switch (kinds.enter) {
+      case "environment":
+        return this.enterEnvironment(node);
+      case "centering":
+        return this.enterCentering(node);
+      case "begin":
+        return this.enterBegin(node);
+      case "end":
+        return this.enterEnd(node);
+      case "sectioning":
+        return this.enterSectioning(node);
+      case "math":
+        this.enterMath(node);
+        return false;
+      case "item":
+        return this.enterItem(node);
+      case "unknownCommand":
+        return this.enterUnknownCommand(node);
+      case "toggleFormatting":
+        return this.enterToggleFormatting(node);
+      case "otherFormatting":
+        return this.enterOtherFormatting(node);
+      default:
+        return this.handlers.get(type.name)?.(node);
     }
-    if (type.is("Item")) return this.enterItem(node);
-    if (type.is("UnknownCommand")) return this.enterUnknownCommand(node);
-    if (type.is("$ToggleTextFormattingCommand")) return this.enterToggleFormatting(node);
-    if (type.is("$OtherTextFormattingCommand")) return this.enterOtherFormatting(node);
-    return this.handlers.get(type.name)?.(node);
+  }
+
+  private touches(extents: Extents): boolean {
+    const hit = selectionIntersects(this.state.selection, extents);
+    this.probes.push({ from: extents.from, to: extents.to, hit });
+    return hit;
   }
 
   private shouldDecorate(extents: Extents): boolean {
-    return this.state.readOnly || !selectionIntersects(this.state.selection, extents);
+    return this.state.readOnly || !this.touches(extents);
   }
 
   private shouldDecorateLines(extents: Extents): boolean {
@@ -275,19 +363,19 @@ class AtomicDecorationBuilder {
     this.decorations.push(...ranges);
   }
 
-  private trackPreamble(node: SyntaxNodeRef): void {
+  private trackPreamble(node: SyntaxNodeRef, kind: PreambleKind): void {
     const { type } = node;
-    if (type.is("DocumentEnvironment")) {
+    if (kind === "document") {
       if (this.documentSeen) return;
       this.documentSeen = true;
       this.preamble.to = node.node.getChild("Content")?.from ?? node.from;
       return;
     }
-    if (type.is("Maketitle")) {
+    if (kind === "maketitle") {
       if (maketitleOpensDocument(node.node)) this.preamble.to = node.from;
       return;
     }
-    if (type.is("Title") || type.is("Author")) {
+    if (kind === "titleOrAuthor") {
       const argument = node.node.getChild("TextArgument");
       if (!argument) return;
       const entry = { node: argument, content: nodeText(this.state, argument) };
@@ -296,7 +384,7 @@ class AtomicDecorationBuilder {
       this.preamble.to = node.to;
       return;
     }
-    if ((type.is("Affil") || type.is("Affiliation")) && node.node.getChild("TextArgument")) {
+    if (node.node.getChild("TextArgument")) {
       this.preamble.to = node.to;
     }
   }
@@ -361,8 +449,8 @@ class AtomicDecorationBuilder {
   private hideEnvironmentEdges(node: SyntaxNodeRef): void {
     const edges = this.environmentEdges(node);
     if (!edges) return;
-    const { selection, doc } = this.state;
-    if (selectionIntersects(selection, edges.beginRange) || selectionIntersects(selection, edges.endRange)) return;
+    const { doc } = this.state;
+    if (this.touches(edges.beginRange) || this.touches(edges.endRange)) return;
     if (lineHoldsOnlyNode(doc.lineAt(edges.begin.from), edges.begin)) this.push(replaceBlock(edges.beginRange));
     if (lineHoldsOnlyNode(doc.lineAt(edges.end.from), edges.end)) this.push(replaceBlock(edges.endRange));
   }
@@ -442,11 +530,7 @@ class AtomicDecorationBuilder {
     const title = argument?.getChild("LongArg");
     if (!ctrlSeq || !open || !close || !title) return undefined;
     if (!nodeText(this.state, title).trim()) return undefined;
-    const { selection } = this.state;
-    const showBraces =
-      selectionIntersects(selection, ctrlSeq) ||
-      selectionIntersects(selection, open) ||
-      selectionIntersects(selection, close);
+    const showBraces = this.touches(ctrlSeq) || this.touches(open) || this.touches(close);
     this.push(
       replaceInline(node.from, title.from, new BraceWidget(showBraces ? "{" : "")),
       replaceInline(close.from, close.to, new BraceWidget(showBraces ? "}" : "")),
@@ -708,7 +792,7 @@ class AtomicDecorationBuilder {
   private enterNote(node: SyntaxNodeRef, kind: NoteKind): boolean | undefined {
     const argument = node.node.getChild("TextArgument");
     if (!argument) return undefined;
-    if (this.state.readOnly && selectionIntersects(this.state.selection, node)) {
+    if (this.state.readOnly && this.touches(node)) {
       this.push(
         ...argumentBraces(new BraceWidget(), argument, { start: node.from }),
         Decoration.mark({ class: "ofl-visual-footnote ofl-visual-footnote-view" }).range(argument.from, argument.to),
@@ -722,7 +806,7 @@ class AtomicDecorationBuilder {
 
   private decoratePreamble(): void {
     if (this.preamble.to <= 0) return;
-    const { doc, selection } = this.state;
+    const { doc } = this.state;
     const lastLine = doc.lineAt(this.preamble.to).number;
     for (let number = 1; number <= lastLine; number += 1) {
       const line = doc.line(number);
@@ -731,7 +815,7 @@ class AtomicDecorationBuilder {
       if (number === lastLine) classes.push("ofl-visual-environment-last-line");
       this.push(Decoration.line({ class: classes.join(" ") }).range(line.from));
     }
-    if (selectionIntersects(selection, this.preamble)) {
+    if (this.touches(this.preamble)) {
       this.push(Decoration.widget({ widget: new PreambleWidget(true), block: true, side: -1 }).range(0));
     } else {
       this.push(replaceBlock({ from: 0, to: this.preamble.to }, new PreambleWidget(false)));
@@ -741,6 +825,115 @@ class AtomicDecorationBuilder {
 
 export function buildAtomicDecorations(state: EditorState, tree: Tree): AtomicDecorationResult {
   return new AtomicDecorationBuilder(state).build(tree);
+}
+
+const PLAIN_LEAVES: ReadonlySet<string> = new Set(["Normal", "Whitespace"]);
+const PLAIN_CONTAINERS: ReadonlySet<string> = new Set([
+  "LaTeX",
+  "Text",
+  "Content",
+  "Book",
+  "Part",
+  "Chapter",
+  "Section",
+  "SubSection",
+  "SubSubSection",
+  "Paragraph",
+  "SubParagraph",
+  "Environment",
+  "KnownEnvironment",
+  "ListEnvironment",
+  "DocumentEnvironment",
+]);
+
+function plainLine(state: EditorState, tree: Tree, position: number): boolean {
+  const line = state.doc.lineAt(position);
+  if (BLANK.test(line.text)) return false;
+  let plain = true;
+  tree.iterate({
+    from: line.from,
+    to: line.to,
+    enter(node) {
+      if (!plain || node.to <= line.from || node.from >= line.to) return false;
+      const name = node.type.name;
+      if (PLAIN_LEAVES.has(name)) return false;
+      if (PLAIN_CONTAINERS.has(name)) return undefined;
+      plain = false;
+      return false;
+    },
+  });
+  return plain;
+}
+
+function plainLeaves(tree: Tree, from: number, to: number): SyntaxNode[] {
+  const leaves: SyntaxNode[] = [];
+  for (const side of [-1, 1] as const) {
+    const node = tree.resolveInner(from, side);
+    if (
+      node.from <= from &&
+      node.to >= to &&
+      node.firstChild === null &&
+      PLAIN_LEAVES.has(node.type.name) &&
+      !leaves.some((leaf) => leaf.from === node.from && leaf.to === node.to)
+    ) {
+      leaves.push(node);
+    }
+  }
+  return leaves;
+}
+
+function sameAncestry(before: SyntaxNode, after: SyntaxNode, changes: ChangeSet): boolean {
+  let left: SyntaxNode | null = before;
+  let right: SyntaxNode | null = after;
+  while (left && right) {
+    if (left.type !== right.type) return false;
+    if (changes.mapPos(left.from, -1) !== right.from || changes.mapPos(left.to, 1) !== right.to) return false;
+    if (left !== before && !PLAIN_CONTAINERS.has(left.type.name)) return false;
+    left = left.parent;
+    right = right.parent;
+  }
+  return left === null && right === null;
+}
+
+function plainTextEdit(value: VisualAtomicState, tr: Transaction, tree: Tree): VisualAtomicState | null {
+  if (!tr.docChanged || tr.reconfigured || hasMouseDownEffect(tr)) return null;
+  if (tr.state.readOnly !== tr.startState.readOnly) return null;
+  if (value.tree !== syntaxTree(tr.startState) || tree.length !== tr.state.doc.length) return null;
+  const { changes, startState, state } = tr;
+  let plain = true;
+  changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+    if (!plain) return;
+    if (fromA <= value.preamble.to || inserted.lines > 1) {
+      plain = false;
+      return;
+    }
+    if (startState.doc.lineAt(fromA).number !== startState.doc.lineAt(toA).number) {
+      plain = false;
+      return;
+    }
+    if (!plainLine(startState, value.tree, fromA) || !plainLine(state, tree, fromB)) {
+      plain = false;
+      return;
+    }
+    const after = plainLeaves(tree, fromB, toB);
+    const before = plainLeaves(value.tree, fromA, toA);
+    plain = after.some((leaf) => before.some((old) => sameAncestry(old, leaf, changes)));
+  });
+  if (!plain) return null;
+  const probes = value.probes.map((probe) => ({
+    from: changes.mapPos(probe.from, 1),
+    to: changes.mapPos(probe.to, -1),
+    hit: probe.hit,
+  }));
+  if (probes.some((probe) => selectionIntersects(state.selection, probe) !== probe.hit)) return null;
+  return { ...value, decorations: value.decorations.map(changes), probes, tree };
+}
+
+function selectionKeepsDecorations(value: VisualAtomicState, tr: Transaction, tree: Tree): boolean {
+  if (tree !== value.tree || tr.docChanged || tr.reconfigured || hasMouseDownEffect(tr)) return false;
+  if (tr.state.readOnly !== tr.startState.readOnly) return false;
+  const { selection } = tr.state;
+  return value.probes.every((probe) => selectionIntersects(selection, probe) === probe.hit);
 }
 
 export const visualAtomicField = StateField.define<VisualAtomicState>({
@@ -755,8 +948,15 @@ export const visualAtomicField = StateField.define<VisualAtomicState>({
     }
     const tree = syntaxTree(tr.state);
     const stillParsing = tree.length < tr.state.doc.length && tree.type === value.tree.type;
+    if (!stillParsing && !mousedown && !value.mousedown) {
+      const edited = plainTextEdit(value, tr, tree);
+      if (edited) return edited;
+    }
     const rebuild =
-      !stillParsing && !mousedown && (tree !== value.tree || tr.selection !== undefined || hasMouseDownEffect(tr));
+      !stillParsing &&
+      !mousedown &&
+      (tree !== value.tree || tr.selection !== undefined || hasMouseDownEffect(tr)) &&
+      !selectionKeepsDecorations(value, tr, tree);
     if (rebuild) return { ...buildAtomicDecorations(tr.state, tree), tree, mousedown };
     const decorations = tr.docChanged ? value.decorations.map(tr.changes) : value.decorations;
     if (decorations === value.decorations && mousedown === value.mousedown) return value;

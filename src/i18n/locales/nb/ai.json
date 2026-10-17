@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Full tilgang",
-        "description": "Kjør verktøyhandlinger uten å spørre om godkjenning."
+        "description": "Kjør verktøyhandlinger uten å spørre, unntatt verktøy som en deny-regel blokkerer."
       },
       "custom": {
         "label": "Egendefinert (approvals.toml)",
@@ -319,7 +319,9 @@
       "closeAgent": "Lukk en hjelpeagent.",
       "runCommand": "Kjør en shell-kommando i prosjektmappen, med en grense på to minutter.",
       "computerUse": "Åpne en nettside i nettleservinduet til assistenten.",
-      "toggleTheme": "Bytt mellom lys og mørk modus."
+      "toggleTheme": "Bytt mellom lys og mørk modus.",
+      "listOverleafProjects": "List opp Overleaf-prosjektene dine, og logg inn først ved behov.",
+      "importOverleafProjects": "Importer Overleaf-prosjekter til biblioteket ditt, med kompilator og hovedfil."
     },
     "disableAll": "Slå av alle",
     "emptyContext": "Ingen verktøy er tilgjengelige i denne sammenhengen.",

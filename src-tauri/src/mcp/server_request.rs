@@ -313,32 +313,62 @@ async fn dispatch_authenticated(
     Ok(dispatch(message, &tools, INSTRUCTIONS))
 }
 
+pub(super) const DENIED_BY_RULES: &str = "This tool is denied for this project in approvals.toml.";
+
+/// Whether approvals.toml denies the tool for the project. It is read on every
+/// call, so a new rule applies to the next request. No data folder or a file
+/// that can't be read denies, the same as for the in-app assistant.
+pub(super) fn denied_by_rules(
+    rules_root: Option<&std::path::Path>,
+    project_id: &str,
+    name: &str,
+) -> bool {
+    rules_root.is_none_or(|root| {
+        crate::approvals::effective_decision_for(root, project_id, name)
+            == Some(crate::approvals::ToolDecision::Deny)
+    })
+}
+
+/// Where a call goes, and the open project whose trust and rules were checked
+/// for it. A native call runs on that project even if another one opens
+/// before it starts, so it never reaches a project whose rules weren't read.
 pub(super) async fn forward_route(
     state: &McpState,
     renderer_session: u64,
     name: &str,
     config: Option<(String, bool)>,
-) -> Result<ToolRoute, &'static str> {
+    rules_root: Option<std::path::PathBuf>,
+) -> Result<(ToolRoute, Option<String>), &'static str> {
     let (policy, read_only) = effective_policy(config);
     if tool_disabled_by_read_only(read_only, name) {
         return Err("tool disabled by read-only mode");
     }
-    if crate::mcp::native::needs_project(name) {
-        if let Some(project) = state.active_project.lock().await.clone() {
-            let exposure =
-                tokio::task::spawn_blocking(move || crate::trust::mcp_exposure(&project))
-                    .await
-                    .unwrap_or(crate::trust::McpExposure::Closed);
-            if let Some(message) = linked_exposure_refusal(exposure, name) {
-                return Err(message);
-            }
+    let checked = state.active_project.lock().await.clone();
+    if let Some(project) = checked.clone() {
+        let needs_project = crate::mcp::native::needs_project(name);
+        let tool = name.to_owned();
+        let (exposure, denied) = tokio::task::spawn_blocking(move || {
+            (
+                needs_project.then(|| crate::trust::mcp_exposure(&project)),
+                denied_by_rules(rules_root.as_deref(), &project, &tool),
+            )
+        })
+        .await
+        .unwrap_or((Some(crate::trust::McpExposure::Closed), true));
+        if let Some(message) = exposure.and_then(|exposure| linked_exposure_refusal(exposure, name))
+        {
+            return Err(message);
+        }
+        if denied {
+            return Err(DENIED_BY_RULES);
         }
     }
-    Ok(tool_route(
+    let route = tool_route(
         name,
         &policy,
         renderer_session_is_fresh(state, renderer_session),
-    ))
+    );
+    Ok((route, checked))
 }
 
 async fn handle_forward_call(
@@ -356,12 +386,16 @@ async fn handle_forward_call(
     .await
     .ok()
     .and_then(|read| read.ok());
-    let route = match forward_route(state, renderer_session, &name, config).await {
-        Ok(route) => route,
-        Err(message) => return json_tool_error(id, message),
-    };
+    let rules_root = crate::paths::oleafly_root().ok();
+    let (route, checked_project) =
+        match forward_route(state, renderer_session, &name, config, rules_root).await {
+            Ok(routed) => routed,
+            Err(message) => return json_tool_error(id, message),
+        };
     match route {
-        ToolRoute::Native => run_native_call(app, state, epoch, id, name, arguments).await,
+        ToolRoute::Native => {
+            run_native_call(app, state, epoch, id, name, arguments, checked_project).await
+        }
         ToolRoute::Renderer => {
             forward_to_renderer(app, state, epoch, renderer_session, id, name, arguments).await
         }
@@ -379,11 +413,11 @@ async fn run_native_call(
     id: Value,
     name: String,
     arguments: Value,
+    checked_project: Option<String>,
 ) -> Response {
     let mut activity = NativeActivity::start(app, state, epoch, &name);
     let outcome = if crate::mcp::native::needs_project(&name) {
-        let reported = state.active_project.lock().await.clone();
-        match crate::mcp::native::resolve_project(&arguments, reported) {
+        match crate::mcp::native::resolve_project(&arguments, checked_project) {
             Ok(project_id) => {
                 let result = crate::mcp::native::call(&project_id, &name, &arguments).await;
                 (Some(project_id), result)

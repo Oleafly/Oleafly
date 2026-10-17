@@ -11,7 +11,13 @@ export type ShortcutId =
   | "toggleTerminal"
   | "toggleBrowser"
   | "toggleSidebar"
-  | "openFolder";
+  | "togglePreview"
+  | "toggleZenMode"
+  | "openFolder"
+  | "openSettings"
+  | "zoomIn"
+  | "zoomOut"
+  | "resetZoom";
 
 export interface ShortcutBinding {
   key: string;
@@ -28,6 +34,14 @@ export interface ShortcutDefinition {
 
 const BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, shift: true };
 const LINUX_BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, alt: true };
+
+const ZEN_MAC_BINDING: ShortcutBinding = { key: "f", mod: true, ctrl: true, shift: true };
+const ZEN_BINDING: ShortcutBinding = { key: "F11", shift: true };
+const FUNCTION_KEY = /^F(?:[1-9]|1\d|2[0-4])$/;
+
+function onApplePlatform(): boolean {
+  return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+}
 
 function onLinuxDesktop(): boolean {
   const tauri = Boolean((globalThis as { isTauri?: unknown }).isTauri);
@@ -70,8 +84,34 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     defaultBinding: { key: "b", mod: true },
   },
   {
+    id: "togglePreview",
+    defaultBinding: { key: "p", mod: true, alt: true },
+  },
+  {
+    id: "toggleZenMode",
+    get defaultBinding() {
+      return onApplePlatform() ? ZEN_MAC_BINDING : ZEN_BINDING;
+    },
+  },
+  {
     id: "openFolder",
     defaultBinding: { key: "o", mod: true, shift: true },
+  },
+  {
+    id: "openSettings",
+    defaultBinding: { key: ",", mod: true },
+  },
+  {
+    id: "zoomIn",
+    defaultBinding: { key: "=", mod: true },
+  },
+  {
+    id: "zoomOut",
+    defaultBinding: { key: "-", mod: true },
+  },
+  {
+    id: "resetZoom",
+    defaultBinding: { key: "0", mod: true },
   },
 ];
 
@@ -92,11 +132,14 @@ function isRetiredDefault(id: ShortcutId, binding: ShortcutBinding): boolean {
   return id === "toggleBrowser" && onLinuxDesktop() && sameShortcutBinding(binding, BROWSER_BINDING);
 }
 
-function isValidBinding(value: unknown): value is ShortcutBinding {
+export function isValidBinding(value: unknown): value is ShortcutBinding {
   if (!value || typeof value !== "object") return false;
   const { key, mod, ctrl } = value as { key?: unknown; mod?: unknown; ctrl?: unknown };
   return (
-    typeof key === "string" && key !== "" && !isUnbindableKey(key) && Boolean(mod || ctrl)
+    typeof key === "string" &&
+    key !== "" &&
+    !isUnbindableKey(key) &&
+    Boolean(mod || ctrl || FUNCTION_KEY.test(key))
   );
 }
 
@@ -147,14 +190,28 @@ export const useShortcutStore = create<ShortcutState>((set) => ({
   },
 }));
 
+const PHYSICAL_KEY = /^(?:Key([A-Z])|Digit(\d))$/;
+const PRINTABLE_ASCII = /^[\x20-\x7e]$/;
+
+function physicalKey(event: KeyboardEvent): string | null {
+  const match = PHYSICAL_KEY.exec(event.code ?? "");
+  return match ? (match[1] ?? match[2]).toLowerCase() : null;
+}
+
+function optionLevelKey(event: KeyboardEvent, apple: boolean): string | null {
+  if (!apple || !event.altKey || event.key.length !== 1 || PRINTABLE_ASCII.test(event.key)) return null;
+  return physicalKey(event);
+}
+
 export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding): boolean {
   if (isAltGraphCharacter(event)) return false;
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const ctrl = Boolean(binding.ctrl) || (!apple && Boolean(binding.mod));
   const meta = apple && Boolean(binding.mod);
+  const key = binding.key.toLowerCase();
   return (
-    event.key.toLowerCase() === binding.key.toLowerCase() &&
+    (event.key.toLowerCase() === key || optionLevelKey(event, apple) === key) &&
     event.ctrlKey === ctrl &&
     event.metaKey === meta &&
     event.shiftKey === Boolean(binding.shift) &&
@@ -164,7 +221,7 @@ export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding):
 
 export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   if (
-    (!event.metaKey && !event.ctrlKey) ||
+    (!event.metaKey && !event.ctrlKey && !FUNCTION_KEY.test(event.key)) ||
     isUnbindableKey(event.key) ||
     event.key === "Tab" ||
     event.key === "Escape" ||
@@ -175,7 +232,7 @@ export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return {
-    key: event.key.length === 1 ? event.key.toLowerCase() : event.key,
+    key: optionLevelKey(event, apple) ?? (event.key.length === 1 ? event.key.toLowerCase() : event.key),
     ...(event.metaKey || (event.ctrlKey && !apple) ? { mod: true } : {}),
     ...(event.ctrlKey && apple ? { ctrl: true } : {}),
     shift: event.shiftKey,
@@ -235,8 +292,12 @@ export function sameShortcutBinding(left: ShortcutBinding, right: ShortcutBindin
   );
 }
 
-export function shortcutLabel(binding: ShortcutBinding): string {
-  const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+function onMacKeyboard(): boolean {
+  return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+}
+
+export function shortcutParts(binding: ShortcutBinding): string[] {
+  const mac = onMacKeyboard();
   const parts: string[] = [];
   if (binding.mod) parts.push(mac ? "⌘" : "Ctrl");
   if (binding.ctrl && (mac || !binding.mod)) parts.push("Ctrl");
@@ -244,5 +305,9 @@ export function shortcutLabel(binding: ShortcutBinding): string {
   if (binding.alt) parts.push(mac ? "⌥" : "Alt");
   const key = binding.key === " " ? "Space" : binding.key;
   parts.push(key.length === 1 ? key.toUpperCase() : key);
-  return mac ? parts.join("") : parts.join("+");
+  return parts;
+}
+
+export function shortcutLabel(binding: ShortcutBinding): string {
+  return shortcutParts(binding).join(onMacKeyboard() ? "" : "+");
 }

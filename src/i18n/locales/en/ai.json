@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Full access",
-        "description": "Run tool actions without asking for approval."
+        "description": "Run tool actions without asking, except tools a deny rule blocks."
       },
       "custom": {
         "label": "Custom (approvals.toml)",
@@ -319,7 +319,9 @@
       "closeAgent": "Close a helper agent.",
       "runCommand": "Run a shell command in the project folder, with a two minute limit.",
       "computerUse": "Open a web page in the assistant's browser window.",
-      "toggleTheme": "Switch between light and dark mode."
+      "toggleTheme": "Switch between light and dark mode.",
+      "listOverleafProjects": "List your Overleaf projects, signing in first when needed.",
+      "importOverleafProjects": "Import Overleaf projects into your library, with their compiler and main file."
     },
     "disableAll": "Disable all",
     "emptyContext": "No tools are available in this context.",

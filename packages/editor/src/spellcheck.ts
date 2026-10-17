@@ -169,8 +169,14 @@ function needsRefresh(update: ViewUpdate): boolean {
   );
 }
 
+const explicitRefreshGenerations = new WeakMap<EditorView, number>();
+
 export function refreshEditorLints(view: EditorView | null): void {
   if (!view) return;
+  explicitRefreshGenerations.set(
+    view,
+    (explicitRefreshGenerations.get(view) ?? 0) + 1,
+  );
   view.dispatch({ effects: refreshLints.of(null) });
   forceLinting(view);
 }
@@ -202,6 +208,7 @@ interface PresentedProofreadingCache {
   mode: ProofreadingMode;
   path: string;
   projectId: string | null;
+  refreshGeneration: number;
   result: ProofreadingResult;
 }
 
@@ -751,6 +758,7 @@ function retainedPresentationCache(
       mode,
       path,
       projectId,
+      refreshGeneration: -1,
       result,
     };
   }
@@ -902,9 +910,12 @@ async function proofreadWithWorker(
   const contextKey =
     h.getProofreadingContextKey?.(projectId) ?? "";
   const presentationOnly = presentationRefreshViews.delete(view);
+  const refreshGeneration = explicitRefreshGenerations.get(view) ?? 0;
   const cached = presentedProofreadingCache.get(view);
   const canReusePresentedResult =
-    presentationOnly &&
+    (presentationOnly ||
+      (cached?.result.status === "ready" &&
+        cached.refreshGeneration === refreshGeneration)) &&
     cached?.document === document &&
     cached.contextKey === contextKey &&
     cached.mode === mode &&
@@ -912,7 +923,6 @@ async function proofreadWithWorker(
     cached.projectId === projectId;
   const pending = pendingProofreadingRequests.get(view);
   const canReusePendingResult =
-    presentationOnly &&
     !canReusePresentedResult &&
     pending?.contextKey === contextKey &&
     pending.mode === mode &&
@@ -970,6 +980,13 @@ async function proofreadWithWorker(
     result = cached.result;
   } else if (canReusePendingResult) {
     result = await pending.promise;
+    if (
+      !presentationOnly &&
+      result.status !== "ready" &&
+      view.state.doc === document
+    ) {
+      result = await requestWorker();
+    }
   } else {
     result = retainedResult ?? (await requestWorker());
   }
@@ -993,6 +1010,7 @@ async function proofreadWithWorker(
     mode,
     path,
     projectId,
+    refreshGeneration,
     result,
   });
   return presentedProofreadingDiagnostics(

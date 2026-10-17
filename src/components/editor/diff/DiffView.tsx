@@ -9,13 +9,16 @@ import {
   unifiedMergeView,
 } from "@codemirror/merge";
 import { scrollEditorPositionLocally } from "@oleafly/editor";
-import { ChevronDown, ChevronUp, Columns2, GitCompare, Rows3 } from "lucide-react";
+import { ChevronDown, ChevronUp, Columns2, GitCompare, Lock, Rows3 } from "lucide-react";
 import { editorTheme } from "../cm/theme";
 import { languageForPath } from "../cm/languages";
 import { gitShow, readFileContent } from "@/lib/tauri";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { isReadOnlyProjectPath } from "@/lib/project-paths";
 import { useDiffStore, activeDiff, diffKey, type DiffSide } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
-import { useProjectFolderReadOnly } from "@/store/folder-access";
+import { projectFolderIsReadOnly, useProjectFolderReadOnly } from "@/store/folder-access";
+import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { diffSides } from "./sides";
@@ -38,6 +41,28 @@ function hasNullByte(s: string): boolean {
 }
 
 type ChunkInfo = NonNullable<ReturnType<typeof getChunks>>;
+
+type CollabGate = ReturnType<typeof useCollabEditorGate.getState>;
+type SharedLock = "shared" | "viewer" | null;
+
+function sharedLock(gate: CollabGate, projectId: string | null): SharedLock {
+  if (projectId === null || gate.projectId !== projectId) return null;
+  return gate.viewer ? "viewer" : "shared";
+}
+
+function diffFileReadOnly(projectId: string, path: string): boolean {
+  const { manifestHome, tree } = useFilesStore.getState();
+  return (
+    projectFolderIsReadOnly(projectId) ||
+    sharedLock(useCollabEditorGate.getState(), projectId) !== null ||
+    isReadOnlyProjectPath(path, manifestHome, tree)
+  );
+}
+
+const SHARED_NOTE = {
+  shared: "sharedReadOnly",
+  viewer: "viewerReadOnly",
+} as const satisfies Record<NonNullable<SharedLock>, string>;
 
 const DIFF_SIDE_HEADING = {
   working: "workingHeading",
@@ -70,7 +95,12 @@ export function DiffView() {
   const setMode = useDiffStore((s) => s.setMode);
   const projectId = useFilesStore((s) => s.projectId);
   const folderReadOnly = useProjectFolderReadOnly(projectId);
-  const folderReadOnlyRef = useRef(folderReadOnly);
+  const shared = useCollabEditorGate((gate) => sharedLock(gate, projectId));
+  const pathReadOnly = useFilesStore(
+    (s) => diff !== null && isReadOnlyProjectPath(diff.path, s.manifestHome, s.tree),
+  );
+  const diffReadOnly = folderReadOnly || shared !== null || pathReadOnly;
+  const diffReadOnlyRef = useRef(diffReadOnly);
   const refreshEditabilityRef = useRef<(() => void) | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const navViewRef = useRef<EditorView | null>(null);
@@ -110,10 +140,10 @@ export function DiffView() {
   }, []);
 
   useEffect(() => {
-    if (folderReadOnlyRef.current === folderReadOnly) return;
-    folderReadOnlyRef.current = folderReadOnly;
+    if (diffReadOnlyRef.current === diffReadOnly) return;
+    diffReadOnlyRef.current = diffReadOnly;
     refreshEditabilityRef.current?.();
-  }, [folderReadOnly]);
+  }, [diffReadOnly]);
 
   useEffect(() => {
     void reloadKey;
@@ -131,7 +161,7 @@ export function DiffView() {
     let synchronizing = false;
     const editability = new Compartment();
     const editabilityExtensions = (locked: boolean) => {
-      const writable = editable && !locked && !folderReadOnlyRef.current;
+      const writable = editable && !locked && !diffFileReadOnly(projectId, path);
       return [EditorState.readOnly.of(!writable), EditorView.editable.of(writable)];
     };
     refreshEditabilityRef.current = () => navViewRef.current?.dispatch({
@@ -214,7 +244,9 @@ export function DiffView() {
           ...base,
           editability.of(editabilityExtensions(isEditorMutationLocked(projectId))),
           EditorState.transactionFilter.of((transaction) =>
-            transaction.docChanged && isEditorMutationLocked(projectId) ? [] : transaction),
+            transaction.docChanged && (isEditorMutationLocked(projectId) || diffFileReadOnly(projectId, path))
+              ? []
+              : transaction),
           ...(editable ? [onEdit] : readOnly),
         ];
 
@@ -287,12 +319,13 @@ export function DiffView() {
   };
 
   if (!diff) return null;
+  const sharedNote = shared !== null && diffSides(diff.side).editable ? SHARED_NOTE[shared] : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-8 shrink-0 items-center gap-2 border-b px-2">
         <GitCompare className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-[0.6875rem] text-muted-foreground">
           {t(($) => $.editor.diff[DIFF_SIDE_HEADING[diff.side]])}
         </span>
         <div className="ml-auto flex items-center gap-1">
@@ -341,8 +374,15 @@ export function DiffView() {
         </div>
       </div>
 
+      {sharedNote && (
+        <WorkspaceBanner tone="primary">
+          <Lock aria-hidden className="size-3.5 shrink-0 text-primary" />
+          <p className="min-w-0 flex-1">{t(($) => $.editor.diff[sharedNote])}</p>
+        </WorkspaceBanner>
+      )}
+
       <div className="relative min-h-0 flex-1 overflow-auto">
-        <div ref={hostRef} className="h-full" />
+        <div ref={hostRef} className="h-full select-text" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
             {t(($) => $.editor.diff.loading)}

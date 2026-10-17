@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { BookmarkPlus, Search, Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverItem } from "@/components/ui/popover";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { addTypstLabel, insertTypstReferenceTo } from "@/components/editor/typst-commands";
 import { parseTypstFile } from "@/lib/index/parse-typst";
 import type { Sym } from "@/lib/index/types";
@@ -66,7 +67,7 @@ function LabelList({ query }: Readonly<{ query: string }>) {
     <PopoverItem key={`${label.file}:${label.name}`} onClick={() => void insertTypstReferenceTo(label.name)}>
       <span className="grid min-w-0 flex-1 gap-y-0.5 py-0.5">
         <span className="truncate font-mono text-xs">{label.name}</span>
-        <span className="truncate text-[10px] text-muted-foreground">
+        <span className="truncate text-[0.625rem] text-muted-foreground">
           {t(($) => $.editor.labels.location, { file: label.file, line: label.line })}
         </span>
       </span>
@@ -78,6 +79,7 @@ export function TypstLabelPicker({ variant }: Readonly<{ variant: "bar" | "menu"
   const { t } = useTranslation(["common", "editor"]);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
+  const listRef = useScrollTopOnChange(deferredQuery);
   return (
     <Popover
       ariaLabel={t(($) => $.editor.toolbar.insertCrossReference)}
@@ -105,7 +107,7 @@ export function TypstLabelPicker({ variant }: Readonly<{ variant: "bar" | "menu"
           className="h-7 border-0 bg-transparent px-0 text-xs shadow-none"
         />
       </div>
-      <div className="max-h-72 overflow-y-auto p-1">
+      <div ref={listRef} className="max-h-72 overflow-y-auto p-1">
         <LabelList query={deferredQuery} />
       </div>
       <div className="border-t p-1">

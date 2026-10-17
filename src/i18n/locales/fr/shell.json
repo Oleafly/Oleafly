@@ -44,7 +44,9 @@
     "privacyNote": "Seul l'identifiant ou le titre est envoyé, à doi.org, arXiv ou Crossref.",
     "title": "Ajouter une citation",
     "bibliography": "Bibliographie",
-    "bibliographyHint": "Ce projet a plus d'une bibliographie. L'entrée va dans le fichier choisi ici."
+    "bibliographyHint": "Ce projet a plus d'une bibliographie. L'entrée va dans le fichier choisi ici.",
+    "zoteroMatches": "De votre bibliothèque Zotero",
+    "zoteroPlaceholder": "Cherchez dans votre bibliothèque Zotero, ou collez un DOI, un identifiant arXiv ou un titre"
   },
   "backendProtocol": {
     "mismatch": "Cette fenêtre et son backend ont été construits pour des versions différentes d'Oleafly, certaines fonctions peuvent donc ne pas marcher. Réinstaller l'application règle le problème."
@@ -328,6 +330,38 @@
     "presentWithPresenter": {
       "label": "Présenter les diapositives avec le mode présentateur",
       "keywords": "présenter diapositives mode présentateur notes orateur minuteur diapositive suivante"
+    },
+    "zenMode": {
+      "keywords": "sans distraction concentration plein écran masquer interface minimal écriture",
+      "label": "Activer ou désactiver le mode Zen"
+    },
+    "togglePreview": {
+      "keywords": "pdf aperçu afficher masquer partager éditeur seul",
+      "label": "Afficher ou masquer l'aperçu PDF"
+    },
+    "zoomIn": {
+      "keywords": "agrandir plus grand loupe",
+      "label": "Zoom avant"
+    },
+    "zoomOut": {
+      "keywords": "réduire plus petit",
+      "label": "Zoom arrière"
+    },
+    "resetZoom": {
+      "keywords": "taille réelle 100",
+      "label": "Réinitialiser le zoom"
+    },
+    "zoteroAddMissing": {
+      "label": "Ajouter depuis Zotero les citations manquantes",
+      "keywords": "zotero citations manquantes clés non définies bibliographie réparer"
+    },
+    "zoteroUpdate": {
+      "label": "Mettre à jour les entrées .bib depuis Zotero",
+      "keywords": "zotero mettre à jour actualiser bibliographie entrées modifiées"
+    },
+    "zoteroSync": {
+      "label": "Synchroniser la bibliothèque Zotero",
+      "keywords": "zotero synchroniser actualiser bibliothèque"
     }
   },
   "community": {
@@ -350,11 +384,13 @@
     "compile": "Compiler",
     "compiler": {
       "auto": "Auto <note>[TeX du système]</note>",
-      "help": "Tectonic est intégré et ne demande aucune installation. Les autres choix utilisent le TeX du système, qui peut lire les fichiers locaux accessibles à votre compte : réservez-les aux projets de confiance. Auto choisit le compilateur d'après le source. pdfLaTeX convient à la plupart des modèles de revues. XeLaTeX et LuaLaTeX ajoutent les polices système et l'Unicode.",
+      "help": "Tectonic est intégré et ne demande aucune installation. Les autres choix utilisent le TeX du système, qui peut lire les fichiers locaux accessibles à votre compte : réservez-les aux projets de confiance. Auto choisit le compilateur d'après le source. pdfLaTeX convient à la plupart des modèles de revues. XeLaTeX et LuaLaTeX ajoutent les polices système et l'Unicode. upLaTeX et pLaTeX compilent les documents en japonais.",
       "lualatex": "LuaLaTeX <note>[TeX du système]</note>",
       "pdflatex": "pdfLaTeX <note>[TeX du système]</note>",
+      "platex": "pLaTeX <note>[TeX du système]</note>",
       "tectonic": "Tectonic <note>[intégré]</note>",
       "title": "Compilateur (ce projet)",
+      "uplatex": "upLaTeX <note>[TeX du système]</note>",
       "xelatex": "XeLaTeX <note>[TeX du système]</note>"
     },
     "errors": {
@@ -411,7 +447,8 @@
       "title": "Variante (ce projet)",
       "help": "Une variante passe ses propres valeurs à sys.inputs, par exemple pour une version brouillon ou définitive. La variante choisie reste sur cet ordinateur. Ajoutez ou modifiez des variantes dans les Réglages du document.",
       "none": "Aucune variante"
-    }
+    },
+    "sharedViewer": "Les lecteurs ne peuvent pas modifier ces paramètres dans un projet partagé."
   },
   "datePicker": {
     "placeholder": "Choisir une date"
@@ -722,11 +759,6 @@
   "settings": {
     "close": "Fermer les paramètres",
     "data": {
-      "cloud": {
-        "comingSoon": "Bientôt disponible",
-        "description": "Gardez vos projets synchronisés entre vos appareils sans configurer de dépôt Git distant. Chaque transfert sera chiffré de bout en bout, votre travail restera donc privé pendant le transit. Vos dossiers de projet locaux resteront la référence.",
-        "title": "Synchronisation cloud"
-      },
       "danger": {
         "confirmDeleteAllAction": "Supprimer tous les projets",
         "confirmDeleteAllDescription": "Tous les projets actuels iront à la corbeille, avec leurs fichiers et leur historique Git. Vous pourrez ensuite les restaurer un par un.",
@@ -823,9 +855,13 @@
         "description": "Afficher la galerie Oleafly Tools et les outils individuels (import PDF, équations, tableaux, BibTeX, laboratoire et recherche bibliographique, échéances) ainsi que leurs commandes slash. Désactivé par défaut tant que c'est en bêta.",
         "label": "Outils LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Modifier des projets avec d'autres personnes via un serveur de collaboration que vous ou votre groupe hébergez. Ajoute une section Collaboration aux Paramètres. Désactivé par défaut tant que c'est en bêta.",
+        "label": "Collaboration en direct"
+      },
       "warning": "Ces fonctions sont expérimentales et encore en bêta. Elles ne sont pas entièrement testées et peuvent changer, casser ou disparaître dans une prochaine version. Ne les activez que si vous voulez essayer un travail en cours.",
       "webBrowser": {
-        "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta ; une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
+        "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta. Une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
         "label": "Navigateur web"
       }
     },
@@ -859,7 +895,7 @@
         "description": "Compiler avec --only-cached et ne jamais récupérer de paquets sur le réseau.",
         "label": "Mode hors ligne"
       },
-      "proofreadingNote": "La relecture s'exécute localement, dans un processus d'arrière-plan. Harper suit la variante de l'anglais sélectionnée ; l'orthographe utilise toujours exactement le paquet Hunspell choisi. Les maths, le code, les commentaires, la syntaxe des citations, les métadonnées et les URL sont exclus.",
+      "proofreadingNote": "La relecture s'exécute localement, dans un processus d'arrière-plan. Harper suit la variante de l'anglais sélectionnée, et l'orthographe utilise toujours exactement le paquet Hunspell choisi. Les maths, le code, les commentaires, la syntaxe des citations, les métadonnées et les URL sont exclus.",
       "regionalism": {
         "description": "Signaler les termes qui ne correspondent pas à la variante de l'anglais sélectionnée. Désactivez cette option si vous utilisez de tels termes comme noms de produits ou de code.",
         "label": "Suggestions de régionalismes"
@@ -904,6 +940,7 @@
     "nav": {
       "ai": "Assistant IA",
       "appearance": "Apparence",
+      "collaboration": "Collaboration",
       "data": "Stockage des données",
       "dictionary": "Dictionnaire",
       "downloads": "Téléchargements",
@@ -919,6 +956,7 @@
       "keywords": {
         "ai": "assistant, chat, discussion, modèles, fournisseurs, clés API, agents, prompts, invites, budget, serveurs MCP",
         "appearance": "thème, mode sombre, mode clair, couleur, polices, taille du texte, zoom, disposition, mise en page",
+        "collaboration": "serveurs, connexion, se connecter, appareils, membres, mainteneurs, partage, équipes, labos, laboratoires, édition en direct, temps réel, journal de sécurité",
         "data": "sauvegarde, dossier de la bibliothèque, dossier des projets, stockage, espace disque, corbeille, supprimer des projets, points de contrôle",
         "dictionary": "orthographe, mots personnalisés, mots ignorés, relecture, correction, règles de grammaire",
         "downloads": "paquets, polices, dictionnaires, fichiers hors ligne",
@@ -1142,7 +1180,8 @@
       "editorPreview": "Éditeur + aperçu",
       "editorPreviewAi": "Éditeur + aperçu + IA",
       "previewAi": "Aperçu + IA",
-      "previewOnly": "Aperçu seul"
+      "previewOnly": "Aperçu seul",
+      "zenMode": "Mode Zen"
     },
     "newProjectName": "Nom du nouveau projet",
     "projectName": "Nom du projet",
@@ -1385,5 +1424,83 @@
     "location": "{{file}}, ligne {{line}}",
     "error": "Erreur",
     "warning": "Avertissement"
+  },
+  "fileRenameDialog": {
+    "title": "Renommer le fichier",
+    "titleFolder": "Renommer le dossier",
+    "newPath": "Nouveau chemin",
+    "hint": "Les dossiers manquants sont créés.",
+    "invalid": "Utilisez un chemin à l'intérieur de ce projet.",
+    "exists": "{{path}} existe déjà."
+  },
+  "zen": {
+    "compileFailed": "Échec de la compilation",
+    "compiling": "Compilation en cours",
+    "hideLog": "Masquer le journal de compilation",
+    "showLog": "Afficher le journal de compilation"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} fichier a été modifié en dehors d'Oleafly. Envoyer cette modification à tout le monde ou la garder en local ?",
+    "paused_many": "{{count}} fichiers ont été modifiés en dehors d'Oleafly. Envoyer ces modifications à tout le monde ou les garder en local ?",
+    "paused_other": "{{count}} fichiers ont été modifiés en dehors d'Oleafly. Envoyer ces modifications à tout le monde ou les garder en local ?",
+    "send": "Envoyer",
+    "keepLocal": "Garder en local",
+    "unavailable": "Le dossier du projet n'est pas disponible, la synchronisation est donc en pause. Elle reprendra quand le dossier sera de retour."
+  },
+  "overleafSync": {
+    "button": "Synchronisation Overleaf",
+    "title": "Synchroniser avec Overleaf",
+    "cancel": "Annuler",
+    "more_one": "et {{count}} autre fichier",
+    "more_many": "et {{count}} autres fichiers",
+    "more_other": "et {{count}} autres fichiers",
+    "status": {
+      "notLinked": "Pas encore synchronisé avec Overleaf.",
+      "linking": "Liaison avec Overleaf",
+      "syncing": "Synchronisation avec Overleaf",
+      "needsToken": "Ajoutez votre jeton Git Overleaf pour synchroniser.",
+      "never": "Aucune synchronisation pour l'instant.",
+      "justNow": "à l'instant",
+      "synced": "Synchronisé {{time}}.",
+      "conflicts_one": "{{count}} fichier a changé des deux côtés. Choisissez la version à garder.",
+      "conflicts_many": "{{count}} fichiers ont changé des deux côtés. Choisissez les versions à garder.",
+      "conflicts_other": "{{count}} fichiers ont changé des deux côtés. Choisissez les versions à garder."
+    },
+    "actions": {
+      "keepInSync": "Garder synchronisé avec Overleaf",
+      "syncNow": "Synchroniser maintenant",
+      "auto": "Synchroniser automatiquement",
+      "resolve": "Choisir les versions",
+      "unlink": "Arrêter la synchronisation",
+      "addToken": "Ajouter un jeton Git",
+      "changeToken": "Changer de jeton Git"
+    },
+    "token": {
+      "title": "Ajoutez votre jeton Git Overleaf",
+      "description": "Oleafly synchronise via l'intégration Git d'Overleaf. Créez un jeton dans la section Intégration Git des paramètres de votre compte Overleaf, puis collez-le ici. Il reste chiffré sur cet ordinateur.",
+      "openSettings": "Ouvrir les paramètres du compte Overleaf",
+      "label": "Jeton Git",
+      "note": "L'intégration Git nécessite un abonnement Overleaf payant ou universitaire pour le propriétaire du projet.",
+      "save": "Enregistrer et synchroniser"
+    },
+    "choice": {
+      "title": "Quelle version doit l'emporter ?",
+      "description": "Ces fichiers sont différents ici et sur Overleaf. Les fichiers présents d'un seul côté sont conservés des deux côtés, donc rien n'est supprimé.",
+      "mine": "Utiliser mes versions",
+      "theirs": "Utiliser les versions d'Overleaf"
+    },
+    "conflicts": {
+      "title": "Choisir les versions",
+      "description": "Ces fichiers ont changé ici et sur Overleaf depuis la dernière synchronisation. Choisissez la version à garder pour chacun. Rien ne change tant que vous n'avez pas appliqué votre choix.",
+      "mine": "La mienne",
+      "theirs": "Celle d'Overleaf",
+      "allMine": "Garder toutes les miennes",
+      "allTheirs": "Prendre toutes celles d'Overleaf",
+      "apply": "Appliquer et synchroniser"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly a rechargé cette fenêtre, car elle ne répondait plus depuis 30 secondes. Les modifications faites juste avant n'ont peut-être pas été enregistrées.",
+    "reloadedAgain": "Oleafly a de nouveau rechargé cette fenêtre, car elle ne répondait plus. Votre projet n'a pas été rouvert, au cas où quelque chose dedans serait en cause."
   }
 }

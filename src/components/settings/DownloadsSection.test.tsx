@@ -16,11 +16,14 @@ const mocks = vi.hoisted(() => ({
   removeFontComponent: vi.fn(),
   downloadAllFonts: vi.fn(),
   installTemplatePack: vi.fn(),
+  installPackTemplate: vi.fn(),
+  packIndex: vi.fn(),
   removeTemplatePack: vi.fn(),
   deleteCustomTemplate: vi.fn(),
   success: vi.fn(),
   notifyError: vi.fn(),
   logError: vi.fn(),
+  announceSavedTemplate: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
@@ -35,6 +38,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   removeFontComponent: mocks.removeFontComponent,
   downloadAllFonts: mocks.downloadAllFonts,
   installTemplatePack: mocks.installTemplatePack,
+  installPackTemplate: mocks.installPackTemplate,
+  packIndex: mocks.packIndex,
   removeTemplatePack: mocks.removeTemplatePack,
   deleteCustomTemplate: mocks.deleteCustomTemplate,
 }));
@@ -43,11 +48,36 @@ vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/features/custom-templates", () => ({
+  announceSavedTemplate: mocks.announceSavedTemplate,
+}));
+vi.mock("@/components/library/TemplateImportDialog", () => ({
+  TemplateImportDialog: ({
+    open,
+    onClose,
+    onImported,
+  }: {
+    open: boolean;
+    onClose: () => void;
+    onImported: (id: string, name: string) => void;
+  }) =>
+    open ? (
+      <div data-testid="template-import-stub">
+        <button type="button" onClick={() => onImported("lab-1", "Lab thesis")}>
+          {"finish import"}
+        </button>
+        <button type="button" onClick={onClose}>
+          {"close import"}
+        </button>
+      </div>
+    ) : null,
+}));
 
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
+import { resetTemplatePacks } from "@/store/template-packs";
 import { DownloadsSection } from "./DownloadsSection";
 
 const downloads = enSettings.downloads;
@@ -59,8 +89,8 @@ const errors = {
   packDownload: () => i18n.t(($) => $.settings.downloads.errors.packDownloadFailed),
   packsDownload: () => i18n.t(($) => $.settings.downloads.errors.packsDownloadFailed),
   packRemove: () => i18n.t(($) => $.settings.downloads.errors.packRemoveFailed),
-  aiDelete: (name: string) =>
-    i18n.t(($) => $.settings.downloads.aiTemplates.deleteFailed, { name }),
+  ownDelete: (name: string) =>
+    i18n.t(($) => $.settings.downloads.yourTemplates.deleteFailed, { name }),
 };
 
 function deferred() {
@@ -89,10 +119,14 @@ const pack = (over: Partial<PackInfo> = {}): PackInfo => ({
   label: "Resumes",
   description: "Resume templates",
   category: "resume",
+  group: "curated",
   approx_bytes: 640_000,
   count: 4,
   license_summary: "MIT",
+  covers: [],
   installed: false,
+  installed_count: 0,
+  version: 2,
   ...over,
 });
 
@@ -121,6 +155,7 @@ let emit: ((event: { payload: AssetProgress }) => void) | null = null;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetTemplatePacks();
   emit = null;
   mocks.listen.mockImplementation(
     async (_name: string, handler: (event: { payload: AssetProgress }) => void) => {
@@ -132,7 +167,7 @@ beforeEach(() => {
   mocks.listTemplatePacks.mockResolvedValue([]);
   mocks.listTemplates.mockResolvedValue([]);
   mocks.templatePreview.mockResolvedValue(null);
-  mocks.refreshPackCatalog.mockResolvedValue(undefined);
+  mocks.refreshPackCatalog.mockResolvedValue(false);
   mocks.installFontComponent.mockResolvedValue(undefined);
   mocks.removeFontComponent.mockResolvedValue(undefined);
   mocks.downloadAllFonts.mockResolvedValue(undefined);
@@ -189,6 +224,30 @@ describe("DownloadsSection fonts tab", () => {
     expect(
       screen.getByRole("button", { name: enCommon.actions.remove }),
     ).toBeInTheDocument();
+  });
+
+  it("lists Typst font packs in their own group and leaves them out of download all", async () => {
+    mocks.listFontComponents.mockResolvedValue([
+      component({ installed: true }),
+      component({
+        id: "typst-cjk",
+        label: "CJK",
+        kind: "typst-font",
+        approx_bytes: 120_000_000,
+        families: ["Noto Serif CJK SC"],
+      }),
+    ]);
+    render(<DownloadsSection />);
+
+    expect(await screen.findByText(downloads.typstFonts.heading)).toBeInTheDocument();
+    expect(screen.getByText(downloads.fontPacks["typst-cjk"].label)).toBeInTheDocument();
+    expect(
+      screen.getByText(downloads.fontPacks["typst-cjk"].description, { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: downloads.actions.allDownloaded }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: downloads.actions.download })).toBeEnabled();
   });
 
   it("disables the bulk button once everything is installed", async () => {
@@ -544,41 +603,49 @@ describe("DownloadsSection templates tab", () => {
   });
 });
 
-describe("DownloadsSection AI templates", () => {
+describe("DownloadsSection your templates", () => {
   it("lists nothing until the panel is opened, then shows the empty state", async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({ settingsScrollTarget: "templates" });
     render(<DownloadsSection />);
 
-    const toggle = await screen.findByTestId("manage-ai-templates");
+    const toggle = await screen.findByTestId("manage-your-templates");
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(mocks.listTemplates).not.toHaveBeenCalled();
 
     await user.click(toggle);
     expect(
-      await screen.findByText(downloads.aiTemplates.empty),
+      await screen.findByText(downloads.yourTemplates.empty),
     ).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("renders previews, the fallback description, and deletes on confirmation", async () => {
+  it("renders previews, the fallback descriptions, and deletes on confirmation", async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({ settingsScrollTarget: "templates" });
     mocks.listTemplates.mockResolvedValue([
       template(),
       template({ id: "ai-2", name: "Poster", description: "A poster" }),
-      template({ id: "plain", category: "Reports" }),
+      template({ id: "lab", name: "Lab thesis", category: "Custom" }),
+      template({ id: "plain", category: "Reports", source: "bundled" }),
     ]);
     mocks.templatePreview.mockImplementation(async (id: string) =>
       id === "ai-2" ? "data:image/png;base64,AAA" : null,
     );
     render(<DownloadsSection />);
 
-    await user.click(await screen.findByTestId("manage-ai-templates"));
-    await screen.findByTestId("ai-template-row-ai-1");
-    expect(screen.queryByTestId("ai-template-row-plain")).not.toBeInTheDocument();
+    await user.click(await screen.findByTestId("manage-your-templates"));
+    await screen.findByTestId("your-template-row-ai-1");
+    expect(screen.queryByTestId("your-template-row-plain")).not.toBeInTheDocument();
     expect(
-      screen.getByText(downloads.aiTemplates.fallbackDescription),
+      within(screen.getByTestId("your-template-row-ai-1")).getByText(
+        downloads.yourTemplates.aiDescription,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("your-template-row-lab")).getByText(
+        downloads.yourTemplates.customDescription,
+      ),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByRole("presentation")).toHaveAttribute(
@@ -587,13 +654,13 @@ describe("DownloadsSection AI templates", () => {
       ),
     );
 
-    await user.click(screen.getByTestId("ai-template-delete-ai-1"));
+    await user.click(screen.getByTestId("your-template-delete-ai-1"));
     expect(
-      await screen.findByText(downloads.aiTemplates.deleteTitle),
+      await screen.findByText(downloads.yourTemplates.deleteTitle),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        downloads.aiTemplates.deleteDescription.replace("{{name}}", "Grant draft"),
+        downloads.yourTemplates.deleteDescription.replace("{{name}}", "Grant draft"),
       ),
     ).toBeInTheDocument();
 
@@ -604,7 +671,7 @@ describe("DownloadsSection AI templates", () => {
     );
     await waitFor(() => expect(mocks.deleteCustomTemplate).toHaveBeenCalledWith("ai-1"));
     expect(mocks.success).toHaveBeenCalledWith(
-      downloads.aiTemplates.deleted.replace("{{name}}", "Grant draft"),
+      downloads.yourTemplates.deleted.replace("{{name}}", "Grant draft"),
     );
   });
 
@@ -615,8 +682,8 @@ describe("DownloadsSection AI templates", () => {
     mocks.deleteCustomTemplate.mockRejectedValue(new Error("busy"));
     render(<DownloadsSection />);
 
-    await user.click(await screen.findByTestId("manage-ai-templates"));
-    await user.click(await screen.findByTestId("ai-template-delete-ai-1"));
+    await user.click(await screen.findByTestId("manage-your-templates"));
+    await user.click(await screen.findByTestId("your-template-delete-ai-1"));
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
         name: new RegExp(enCommon.actions.cancel),
@@ -624,7 +691,7 @@ describe("DownloadsSection AI templates", () => {
     );
     expect(mocks.deleteCustomTemplate).not.toHaveBeenCalled();
 
-    await user.click(screen.getByTestId("ai-template-delete-ai-1"));
+    await user.click(screen.getByTestId("your-template-delete-ai-1"));
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
         name: enCommon.actions.delete,
@@ -634,19 +701,44 @@ describe("DownloadsSection AI templates", () => {
       expect(mocks.notifyError).toHaveBeenCalledWith(
         "delete the template",
         expect.any(Error),
-        errors.aiDelete("Grant draft"),
+        errors.ownDelete("Grant draft"),
       ),
     );
     expect(mocks.success).not.toHaveBeenCalled();
   });
 
-  it("logs a failed AI template read", async () => {
+  it("logs a failed read of your templates", async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({ settingsScrollTarget: "templates" });
     mocks.listTemplates.mockRejectedValue(new Error("no library"));
     render(<DownloadsSection />);
 
-    await user.click(await screen.findByTestId("manage-ai-templates"));
+    await user.click(await screen.findByTestId("manage-your-templates"));
     await waitFor(() => expect(mocks.logError).toHaveBeenCalled());
+  });
+});
+
+describe("DownloadsSection importing a template", () => {
+  it("opens the import from the list's header and shows the new template after it", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ settingsScrollTarget: "templates" });
+    render(<DownloadsSection />);
+
+    const importButton = await screen.findByTestId("settings-import-template");
+    expect(importButton).toHaveTextContent(downloads.yourTemplates.import);
+    await user.click(importButton);
+    await user.click(await screen.findByRole("button", { name: "close import" }));
+    expect(screen.queryByTestId("template-import-stub")).not.toBeInTheDocument();
+
+    mocks.listTemplates.mockResolvedValue([
+      template({ id: "lab-1", name: "Lab thesis", category: "Custom" }),
+    ]);
+    await user.click(screen.getByTestId("settings-import-template"));
+    await user.click(await screen.findByRole("button", { name: "finish import" }));
+
+    expect(await screen.findByTestId("your-template-row-lab-1")).toBeInTheDocument();
+    expect(screen.getByTestId("manage-your-templates")).toHaveAttribute("aria-expanded", "true");
+    expect(mocks.announceSavedTemplate).toHaveBeenCalledWith("lab-1", "Lab thesis");
+    expect(screen.queryByTestId("template-import-stub")).not.toBeInTheDocument();
   });
 });

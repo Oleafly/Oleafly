@@ -43,7 +43,9 @@
     "privacyNote": "Vain tunniste tai otsikko lähetetään, ja vain doi.orgille, arXiville tai Crossrefille.",
     "title": "Lisää viittaus",
     "bibliography": "Lähdeluettelo",
-    "bibliographyHint": "Tässä projektissa on useampi kuin yksi lähdeluettelo. Viite lisätään tässä valitsemaasi tiedostoon."
+    "bibliographyHint": "Tässä projektissa on useampi kuin yksi lähdeluettelo. Viite lisätään tässä valitsemaasi tiedostoon.",
+    "zoteroMatches": "Zotero-kirjastostasi",
+    "zoteroPlaceholder": "Hae Zotero-kirjastostasi tai liitä DOI, arXiv-tunnus tai otsikko"
   },
   "backendProtocol": {
     "mismatch": "Tämä ikkuna ja sen taustaosa on koostettu eri Oleafly-versioille, joten kaikki toiminnot eivät ehkä toimi. Sovelluksen uudelleenasennus korjaa tämän."
@@ -326,6 +328,38 @@
     "presentWithPresenter": {
       "label": "Esitä kalvot esittäjän näkymällä",
       "keywords": "esitä kalvot esittäjän näkymä puhujan muistiinpanot ajastin seuraava kalvo present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "häiriötön keskittyminen koko näyttö piilota käyttöliittymä minimaalinen kirjoitus",
+      "label": "Vaihda Zen-tilaa"
+    },
+    "togglePreview": {
+      "keywords": "pdf esikatselu näytä piilota jaa vain editori",
+      "label": "Näytä tai piilota PDF-esikatselu"
+    },
+    "zoomIn": {
+      "keywords": "suurenna isompi",
+      "label": "Lähennä"
+    },
+    "zoomOut": {
+      "keywords": "pienennä pienempi",
+      "label": "Loitonna"
+    },
+    "resetZoom": {
+      "keywords": "todellinen koko 100",
+      "label": "Palauta zoomaus"
+    },
+    "zoteroAddMissing": {
+      "label": "Lisää puuttuvat viittaukset Zoterosta",
+      "keywords": "zotero puuttuvat viittaukset määrittelemättömät avaimet lähdeluettelo korjaa missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": "Päivitä .bib-viitteet Zoterosta",
+      "keywords": "zotero päivitä lähdeluettelo viitteet muuttuneet update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Synkronoi Zotero-kirjasto",
+      "keywords": "zotero synkronoi päivitä kirjasto sync refresh library"
     }
   },
   "community": {
@@ -348,11 +382,13 @@
     "compile": "Käännä",
     "compiler": {
       "auto": "Automaattinen <note>[järjestelmän TeX]</note>",
-      "help": "Tectonic on sisäänrakennettu eikä vaadi asennusta. Muut vaihtoehdot käyttävät järjestelmän TeX-asennusta, joka voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja, joten käytä niitä vain luotettujen projektien kanssa. Automaattinen valitsee kääntäjän lähdekoodin perusteella. pdfLaTeX sopii useimpiin lehtien mallipohjiin. XeLaTeX ja LuaLaTeX tuovat mukaan järjestelmän fontit ja Unicoden.",
+      "help": "Tectonic on sisäänrakennettu eikä vaadi asennusta. Muut vaihtoehdot käyttävät järjestelmän TeX-asennusta, joka voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja, joten käytä niitä vain luotettujen projektien kanssa. Automaattinen valitsee kääntäjän lähdekoodin perusteella. pdfLaTeX sopii useimpiin lehtien mallipohjiin. XeLaTeX ja LuaLaTeX tuovat mukaan järjestelmän fontit ja Unicoden. upLaTeX ja pLaTeX kääntävät japaninkielisiä asiakirjoja.",
       "lualatex": "LuaLaTeX <note>[järjestelmän TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[järjestelmän TeX]</note>",
+      "platex": "pLaTeX <note>[järjestelmän TeX]</note>",
       "tectonic": "Tectonic <note>[sisäänrakennettu]</note>",
       "title": "Kääntäjä (tämä projekti)",
+      "uplatex": "upLaTeX <note>[järjestelmän TeX]</note>",
       "xelatex": "XeLaTeX <note>[järjestelmän TeX]</note>"
     },
     "errors": {
@@ -409,7 +445,8 @@
       "title": "Muunnelma (tämä projekti)",
       "help": "Muunnelma välittää omat arvonsa kohteeseen sys.inputs, esimerkiksi luonnosta tai lopullista painoversiota varten. Valitsemasi muunnelma säilyy tällä tietokoneella. Lisää tai muokkaa muunnelmia kohdassa Dokumentin asetukset.",
       "none": "Ei muunnelmaa"
-    }
+    },
+    "sharedViewer": "Katselijat eivät voi muuttaa näitä asetuksia jaetussa projektissa."
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"
@@ -716,11 +753,6 @@
   "settings": {
     "close": "Sulje asetukset",
     "data": {
-      "cloud": {
-        "comingSoon": "Tulossa pian",
-        "description": "Pidä projektit synkronoituina laitteiden välillä ilman Git-etäosoitteen määrittämistä. Jokainen siirto salataan päästä päähän, joten työ pysyy yksityisenä matkalla. Paikalliset projektikansiot pysyvät totuuden lähteenä.",
-        "title": "Pilvisynkronointi"
-      },
       "danger": {
         "confirmDeleteAllAction": "Poista kaikki projektit",
         "confirmDeleteAllDescription": "Jokainen nykyinen projekti siirtyy roskakoriin, mukaan lukien sen tiedostot ja Git-historia. Projektit voi palauttaa jälkeenpäin yksitellen.",
@@ -808,6 +840,10 @@
         "description": "Näytä Oleafly Tools -galleria ja yksittäiset työkalut (PDF-tuonti, kaavat, taulukot, BibTeX, labra- ja kirjallisuushaku, määräajat) sekä niiden kauttaviivakomennot. Oletuksena pois, koska nämä ovat vielä beta-vaiheessa.",
         "label": "LaTeX-työkalut"
       },
+      "liveCollaboration": {
+        "description": "Muokkaa projekteja muiden kanssa yhteistyöpalvelimen kautta, jota sinä tai ryhmäsi ylläpitää. Lisää asetuksiin Yhteistyö-osion. Oletuksena pois, koska ominaisuus on vielä beta-vaiheessa.",
+        "label": "Reaaliaikainen yhteistyö"
+      },
       "warning": "Nämä ominaisuudet ovat kokeellisia ja yhä beta-vaiheessa. Niitä ei ole vielä testattu kattavasti, ja ne voivat muuttua, hajota tai poistua tulevassa julkaisussa. Ota ne käyttöön vain, jos haluat kokeilla keskeneräistä työtä.",
       "webBrowser": {
         "description": "Näytä sovelluksen sisäinen selain (sen telakkavalitsin ja pikanäppäin) ja anna tekoälyn ohjata sitä tietokoneen käytöllä. Oletuksena pois, koska tämä on vielä beta-vaiheessa. Kun asetus on pois, selainpainiketta ei ole eikä tekoälyllä ole selaintyökalua.",
@@ -844,7 +880,7 @@
         "description": "Käännä valitsimella --only-cached äläkä koskaan hae paketteja verkosta.",
         "label": "Offline-tila"
       },
-      "proofreadingNote": "Kielentarkistus ajetaan paikallisesti taustaprosessissa. Harper noudattaa valittua englannin muunnosta; oikoluku käyttää aina täsmälleen valittua Hunspell-pakettia. Matematiikka, koodi, kommentit, viittausten syntaksi, metatiedot ja URL-osoitteet jätetään pois.",
+      "proofreadingNote": "Kielentarkistus ajetaan paikallisesti taustaprosessissa. Harper noudattaa valittua englannin muunnosta, ja oikoluku käyttää aina täsmälleen valittua Hunspell-pakettia. Matematiikka, koodi, kommentit, viittausten syntaksi, metatiedot ja URL-osoitteet jätetään pois.",
       "regionalism": {
         "description": "Nosta esiin termit, jotka eivät vastaa valittua englannin muunnosta. Poista käytöstä, jos käytät tällaisia termejä tuote- tai koodiniminä.",
         "label": "Aluemuotoehdotukset"
@@ -887,6 +923,7 @@
     "nav": {
       "ai": "Tekoälyavustaja",
       "appearance": "Ulkoasu",
+      "collaboration": "Yhteistyö",
       "data": "Tietojen tallennus",
       "dictionary": "Sanakirja",
       "downloads": "Lataukset",
@@ -902,6 +939,7 @@
       "keywords": {
         "ai": "avustaja, keskustelu, chat, mallit, palveluntarjoajat, API-avaimet, agentit, kehotteet, budjetti, MCP-palvelimet",
         "appearance": "teema, ulkoasu, tumma tila, vaalea tila, väri, värit, fontit, tekstin koko, zoomaus, asettelu",
+        "collaboration": "palvelimet, kirjautuminen, kirjaudu sisään, laitteet, jäsenet, valvojat, jakaminen, tiimit, laboratoriot, reaaliaikainen muokkaus, reaaliaika, tietoturvaloki",
         "data": "varmuuskopio, kirjastokansio, projektikansio, tallennustila, levytila, roskakori, poista projekteja, tarkistuspisteet",
         "dictionary": "oikeinkirjoitus, omat sanat, ohitetut sanat, oikoluku, kielioppisäännöt",
         "downloads": "paketit, fontit, sanakirjat, offline-tiedostot",
@@ -1121,7 +1159,8 @@
       "editorPreview": "Editori ja esikatselu",
       "editorPreviewAi": "Editori, esikatselu ja tekoäly",
       "previewAi": "Esikatselu ja tekoäly",
-      "previewOnly": "Vain esikatselu"
+      "previewOnly": "Vain esikatselu",
+      "zenMode": "Zen-tila"
     },
     "newProjectName": "Uuden projektin nimi",
     "projectName": "Projektin nimi",
@@ -1352,5 +1391,80 @@
     "location": "{{file}}, rivi {{line}}",
     "error": "Virhe",
     "warning": "Varoitus"
+  },
+  "fileRenameDialog": {
+    "title": "Nimeä tiedosto uudelleen",
+    "titleFolder": "Nimeä kansio uudelleen",
+    "newPath": "Uusi polku",
+    "hint": "Puuttuvat kansiot luodaan.",
+    "invalid": "Käytä polkua tämän projektin sisällä.",
+    "exists": "{{path}} on jo olemassa."
+  },
+  "zen": {
+    "compileFailed": "Kääntäminen epäonnistui",
+    "compiling": "Käännetään",
+    "hideLog": "Piilota käännöslokit",
+    "showLog": "Näytä käännöslokit"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} tiedosto muuttui Oleaflyn ulkopuolella. Lähetetäänkö muutos kaikille vai pidetäänkö se paikallisena?",
+    "paused_other": "{{count}} tiedostoa muuttui Oleaflyn ulkopuolella. Lähetetäänkö muutokset kaikille vai pidetäänkö ne paikallisina?",
+    "send": "Lähetä",
+    "keepLocal": "Pidä paikallisena",
+    "unavailable": "Projektikansio ei ole käytettävissä, joten synkronointi on keskeytetty. Se jatkuu, kun kansio on taas käytettävissä."
+  },
+  "overleafSync": {
+    "button": "Overleaf-synkronointi",
+    "title": "Synkronoi Overleafin kanssa",
+    "cancel": "Peruuta",
+    "more_one": "ja {{count}} muu tiedosto",
+    "more_other": "ja {{count}} muuta tiedostoa",
+    "status": {
+      "notLinked": "Ei vielä synkronoitu Overleafin kanssa.",
+      "linking": "Yhdistetään Overleafiin",
+      "syncing": "Synkronoidaan Overleafin kanssa",
+      "needsToken": "Lisää Overleafin Git-tokeni, jotta voit synkronoida.",
+      "never": "Ei vielä synkronoitu.",
+      "justNow": "juuri äsken",
+      "synced": "Synkronoitu {{time}}.",
+      "conflicts_one": "{{count}} tiedosto muuttui molemmilla puolilla. Valitse, kumpi versio säilytetään.",
+      "conflicts_other": "{{count}} tiedostoa muuttui molemmilla puolilla. Valitse, mitkä versiot säilytetään."
+    },
+    "actions": {
+      "keepInSync": "Pidä synkronoituna Overleafin kanssa",
+      "syncNow": "Synkronoi nyt",
+      "auto": "Synkronoi automaattisesti",
+      "resolve": "Valitse versiot",
+      "unlink": "Lopeta synkronointi",
+      "addToken": "Lisää Git-tokeni",
+      "changeToken": "Vaihda Git-tokeni"
+    },
+    "token": {
+      "title": "Lisää Overleafin Git-tokeni",
+      "description": "Oleafly synkronoi Overleafin Git-integraation kautta. Luo tokeni Overleafin tiliasetusten kohdassa Git-integraatio ja liitä se tähän. Se säilyy salattuna tällä koneella.",
+      "openSettings": "Avaa Overleafin tiliasetukset",
+      "label": "Git-tokeni",
+      "note": "Git-integraatio vaatii, että projektin omistajalla on maksullinen tai yliopiston Overleaf-tilaus.",
+      "save": "Tallenna ja synkronoi"
+    },
+    "choice": {
+      "title": "Kumpi versio jää voimaan?",
+      "description": "Nämä tiedostot eroavat täällä ja Overleafissa. Tiedostot, jotka ovat vain toisella puolella, säilytetään molemmilla, joten mitään ei poisteta.",
+      "mine": "Käytä omia versioitani",
+      "theirs": "Käytä Overleafin versioita"
+    },
+    "conflicts": {
+      "title": "Valitse versiot",
+      "description": "Nämä tiedostot ovat muuttuneet sekä täällä että Overleafissa edellisen synkronoinnin jälkeen. Valitse kullekin säilytettävä versio. Mikään ei muutu, ennen kuin otat valinnat käyttöön.",
+      "mine": "Oma",
+      "theirs": "Overleafin",
+      "allMine": "Pidä kaikki omat",
+      "allTheirs": "Käytä kaikkia Overleafin",
+      "apply": "Käytä ja synkronoi"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly latasi tämän ikkunan uudelleen, koska se ei vastannut 30 sekuntiin. Juuri ennen sitä tehdyt muutokset eivät ehkä tallentuneet.",
+    "reloadedAgain": "Oleafly latasi tämän ikkunan uudelleen, koska se lakkasi taas vastaamasta. Projektiasi ei avattu uudelleen siltä varalta, että ongelma johtuu jostakin siinä."
   }
 }

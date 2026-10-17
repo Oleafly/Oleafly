@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Modul de aprobare Personalizat citește acest fișier. Se află la ~/.oleafly/approvals.toml și se aplică fiecărui proiect de pe acest dispozitiv.",
+        "description": "Fișierul se află la ~/.oleafly/approvals.toml și se aplică fiecărui proiect de pe acest dispozitiv. Regulile de refuz blochează un instrument în orice mod de aprobare. Regulile de permitere au efect doar în modul Personalizat.",
         "discard": "Renunță la modificări",
         "emptyFile": "Deocamdată fișierul este gol.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Primul tabel, <modesTable>[\"$approval_modes\"]</modesTable>, stabilește modul de aprobare pentru fiecare proiect: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> sau <custom>\"custom\"</custom>. Un proiect care nu apare în listă folosește Aprobă în locul meu.",
           "openProject": "Proiectul deschis, {{name}}, are identificatorul <projectId>{{id}}</projectId>.",
           "projectIds": "Identificatorii proiectelor sunt numele folderelor din ~/.oleafly/projects.",
-          "rules": "Apoi câte un tabel pentru fiecare identificator de proiect, cu o regulă pentru fiecare instrument: <allow>\"allow\"</allow> rulează instrumentul fără să întrebe, iar <deny>\"deny\"</deny> îl refuză. Regulile de refuz sunt respectate în orice mod; regulile de permitere au efect în modul Personalizat, iar pentru run_command sar peste confirmare și în celelalte moduri.",
+          "rules": "Apoi câte un tabel pentru fiecare identificator de proiect, cu o regulă pentru fiecare instrument: <allow>\"allow\"</allow> rulează instrumentul fără să întrebe, iar <deny>\"deny\"</deny> îl refuză. Regulile de refuz sunt respectate în orice mod, inclusiv în Acces complet. Regulile de permitere au efect doar în modul Personalizat.",
           "toolNames": "Nume de instrumente pe care le poți folosi: <names>{{names}}</names> și orice instrument MCP, după numele lui complet din lista Instrumente."
         },
         "helpToggle": "Cum funcționează fișierul",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Întotdeauna permis",
         "denied": "Întotdeauna refuzat",
-        "description": "Reguli salvate pentru {{name}}. Se aplică atunci când modul de aprobare este Personalizat. Elimină o regulă ca să folosești politica standard de risc pentru acel instrument.",
+        "description": "Reguli salvate pentru {{name}}. Instrumentele refuzate rămân blocate în orice mod de aprobare. Instrumentele permise sar peste confirmare doar în modul Personalizat. Elimină o regulă ca să folosești politica standard de risc pentru acel instrument.",
         "empty": "Încă nu există reguli salvate. Folosește „Întotdeauna în acest proiect” pe o cerere de aprobare ca să adaugi una.",
         "removeRule": "Elimină regula pentru {{tool}}",
         "thisProject": "acest proiect",
@@ -536,12 +536,17 @@
         "right": "Dreapta"
       },
       "font": {
-        "description": "Folosește fontul de rezervă al sistemului atunci când un font nu este instalat.",
+        "description": "Alege pentru meniuri, panouri și dialoguri orice font instalat pe computer.",
         "label": "Fontul aplicației"
       },
       "fontSize": {
         "description": "Scalează textul din meniuri, panouri și butoane.",
         "label": "Dimensiunea fontului aplicației"
+      },
+      "zoom": {
+        "description": "Face tot Oleafly mai mare sau mai mic, inclusiv editorul și PDF-ul.",
+        "label": "Zoom",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "Varianta Sistem urmează sistemul de operare și se schimbă odată cu el.",
@@ -589,7 +594,7 @@
         "label": "Raza colțurilor"
       },
       "resetAll": "Resetează tot",
-      "resetMode": "Resetează acest mod",
+      "resetMode": "Resetează",
       "title": "Personalizarea temei",
       "tokenInputDark": "Elementul {{token}} pentru modul întunecat",
       "tokenInputLight": "Elementul {{token}} pentru modul deschis",
@@ -638,28 +643,72 @@
         "label": "Completare automată"
       },
       "font": {
-        "description": "Alege fontul monospațiat folosit pentru fișierele sursă.",
-        "label": "Fontul editorului"
+        "description": "Alege pentru fișierele sursă orice font instalat pe computer.",
+        "label": "Fontul editorului",
+        "monospace": "Monospațiat"
+      },
+      "useAppFont": {
+        "description": "Editorul urmează fontul și dimensiunea fontului aplicației.",
+        "disabledHint": "Dezactivează Folosește fontul aplicației ca să schimbi asta.",
+        "label": "Folosește fontul aplicației"
       },
       "fontSize": {
         "description": "Stabilește dimensiunea textului din editorul de sursă.",
-        "label": "Dimensiunea fontului din editor"
+        "label": "Dimensiunea fontului din editor",
+        "custom": "Personalizată",
+        "customLabel": "Dimensiune personalizată a fontului din editor, în pixeli"
       },
       "ghostCompletion": {
         "description": "Arată completarea probabilă după cursor. Apasă Tab ca să o accepți.",
         "label": "Sugestie în text"
-      },
-      "nonBlinkingCursor": {
-        "description": "Păstrează cursorul din editor continuu.",
-        "label": "Cursor care nu clipește"
       },
       "stickyScroll": {
         "description": "Păstrează în partea de sus secțiunile, titlurile și mediile curente în timp ce derulezi.",
         "label": "Derulare cu antet fix"
       },
       "theme": {
-        "description": "Stabilește culorile de sintaxă separat de tema aplicației.",
-        "label": "Tema editorului"
+        "dark": {
+          "description": "Tema editorului cât timp aplicația este întunecată.",
+          "label": "Tema în modul întunecat"
+        },
+        "light": {
+          "description": "Tema editorului cât timp aplicația este deschisă.",
+          "label": "Tema în modul deschis"
+        }
+      },
+      "colors": {
+        "description": "Schimbă orice culoare a unei teme a editorului. Modificările se păstrează pentru fiecare temă.",
+        "editing": "Se editează {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Mod întunecat",
+          "light": "Mod deschis"
+        },
+        "modeAriaLabel": "Tema de personalizat",
+        "names": {
+          "background": "Fundal",
+          "command": "Comenzi",
+          "comment": "Comentarii",
+          "environment": "Medii",
+          "formatting": "Formatare",
+          "heading": "Titluri",
+          "lineNumbers": "Numere de linie",
+          "link": "Linkuri",
+          "math": "Formule",
+          "name": "Nume și chei",
+          "reference": "Citări și referințe",
+          "selection": "Selecție",
+          "structure": "Preambul și importuri",
+          "symbol": "Paranteze și simboluri",
+          "text": "Text",
+          "value": "Valori și șiruri"
+        },
+        "pick": "Alege o culoare pentru {{color}}",
+        "previewAriaLabel": "Limbajul previzualizării",
+        "reset": "Resetează",
+        "syntaxGroup": "Sintaxă",
+        "title": "Culorile editorului",
+        "useThemeColor": "Folosește culoarea temei pentru {{color}}"
       },
       "keymap": {
         "description": "Alege setul de scurtături folosit de editorul de sursă.",
@@ -676,12 +725,61 @@
         "options": {
           "compact": "Compactă",
           "normal": "Normală",
-          "wide": "Largă"
+          "wide": "Largă",
+          "custom": "Personalizată"
+        },
+        "customLabel": "Înălțime personalizată a liniei"
+      },
+      "letterSpacing": {
+        "customLabel": "Spațiere personalizată a literelor, în pixeli",
+        "description": "Adaugă spațiu între caracterele din editorul de sursă. Lasă și mai mult loc în jurul cursorului.",
+        "label": "Spațierea literelor",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normală",
+          "custom": "Personalizată"
         }
+      },
+      "cursorWidth": {
+        "label": "Lățimea cursorului",
+        "description": "Setează cât de gros este cursorul din editor.",
+        "option": "{{width}}px"
+      },
+      "cursorHeight": {
+        "label": "Înălțimea cursorului",
+        "description": "Setează cât de înalt este cursorul din editor. Linie îl face la fel de înalt ca întreaga linie.",
+        "options": {
+          "text": "Text",
+          "line": "Linie"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Clipirea cursorului",
+        "description": "Setează cum clipește cursorul din editor. Oprit îl lasă fix.",
+        "options": {
+          "blink": "Clipire",
+          "smooth": "Lin",
+          "phase": "Fază",
+          "expand": "Extindere",
+          "off": "Oprit"
+        }
+      },
+      "cursorColor": {
+        "label": "Culoarea cursorului",
+        "description": "Temele deschise și cele întunecate ale editorului au fiecare propria culoare a cursorului. Până alegi una, se folosește culoarea temei.",
+        "light": "Deschisă",
+        "dark": "Întunecată",
+        "pickLight": "Alege culoarea cursorului pentru temele deschise ale editorului",
+        "pickDark": "Alege culoarea cursorului pentru temele întunecate ale editorului",
+        "useTheme": "Folosește culorile temei"
       },
       "lineWrap": {
         "description": "Rupe liniile lungi în loc să derulezi lateral.",
         "label": "Rupe liniile lungi"
+      },
+      "highlightCurrentLine": {
+        "label": "Evidențiază linia curentă",
+        "description": "Colorează fundalul liniei pe care se află cursorul."
       },
       "tabSize": {
         "description": "Spațiile inserate pentru fiecare nivel de indentare și lățimea cu care se afișează un tab.",
@@ -713,6 +811,15 @@
           "description": "Verifică fișierele Typst pentru greșeli probabile ori de câte ori sunt salvate. Activarea sau dezactivarea repornește serverul de limbaj Typst.",
           "label": "Verificări lint Typst"
         }
+      },
+      "fileMove": {
+        "label": "Când un fișier este mutat",
+        "description": "Actualizează căile către un fișier redenumit sau mutat în sursele LaTeX, Typst și Markdown.",
+        "options": {
+          "ask": "Întreabă",
+          "always": "Actualizează mereu",
+          "never": "Nu actualiza niciodată"
+        }
       }
     },
     "files": {
@@ -740,6 +847,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} nu este instalat, așa că se folosește fontul implicit.",
     "preview": {
       "darkMode": {
         "description": "Inversează implicit culorile PDF-ului. Poți schimba oricând culorile din bara previzualizării.",
@@ -748,10 +856,6 @@
       "hoverPreview": {
         "description": "Arată ultima pagină compilată atunci când treci cu mouse-ul peste un proiect din bibliotecă.",
         "label": "Previzualizează PDF-ul la trecerea cu mouse-ul"
-      },
-      "zoomShortcuts": {
-        "description": "Folosește Cmd/Ctrl cu +, - și 0 ca să mărești PDF-ul, nu fereastra aplicației.",
-        "label": "Scurtături de mărire pentru PDF"
       }
     },
     "sectionName": "Aspect",
@@ -815,6 +919,17 @@
         "description": "Pornește shell-ul la deschiderea unui proiect, nu prima dată când arăți terminalul.",
         "label": "Pornește shell-ul odată cu proiectul"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Umple ecranul în modul Zen și restabilește fereastra la ieșire.",
+        "label": "Treci pe ecran complet"
+      },
+      "showPdf": {
+        "description": "Dacă PDF-ul este ascuns în modul Zen, îl deschide lângă editor la compilare.",
+        "label": "Arată PDF-ul la compilare"
+      },
+      "title": "Modul Zen"
     }
   },
   "checkpoints": {
@@ -885,7 +1000,6 @@
   },
   "cite": {
     "apa": "Aceeași referință în stil APA se află în spatele opțiunii Cite this repository de pe GitHub",
-    "copyBibtex": "Copiază BibTeX",
     "description": "Oleafly este gratuit și open source și rămâne așa atât timp cât lumea știe că există. Dacă ți-a ajutat o lucrare, o singură intrare în bibliografia ta îi spune următorului cercetător de unde vine instrumentul. Copiaz-o, lipește-o în fișierul tău .bib și citează cheia <citeKey>oleafly</citeKey>.",
     "title": "Citează Oleafly în lucrarea ta"
   },
@@ -895,13 +1009,15 @@
       "download": "Descarcă",
       "downloadAll": "Descarcă tot"
     },
-    "aiTemplates": {
-      "deleteDescription": "Ștergi „{{name}}” din biblioteca ta? Proiectele deja create din el își păstrează propria copie și nu sunt afectate.",
-      "deleteTitle": "Șterge șablonul generat cu AI",
-      "deleted": "„{{name}}” a fost șters din biblioteca ta",
-      "empty": "Încă nu ai șabloane generate cu AI. Creează unul din galeria de șabloane.",
-      "fallbackDescription": "Șablon generat cu AI",
-      "toggle": "Gestionează șabloanele generate cu AI",
+    "yourTemplates": {
+      "toggle": "Gestionează șabloanele tale",
+      "import": "Importă un șablon",
+      "empty": "Încă nu ai șabloane proprii. Importă unul aici, salvează un proiect ca șablon din meniul lui sau generează unul în galeria de șabloane.",
+      "aiDescription": "Șablon generat cu AI",
+      "customDescription": "Șablonul tău",
+      "deleteTitle": "Șterge șablonul",
+      "deleteDescription": "Ștergi „{{name}}” din șabloanele tale? Proiectele pe care le-ai creat deja din el își păstrează propria copie.",
+      "deleted": "„{{name}}” a fost șters din șabloanele tale",
       "deleteFailed": "„{{name}}” nu a putut fi șters."
     },
     "fontPacks": {
@@ -916,6 +1032,26 @@
       "ptserif": {
         "description": "Un serif de tranziție rafinat, potrivit pentru documente academice și executive.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans și Serif CJK, Fandol și LXGW WenKai. Ele țin locul și pentru SimSun, SimHei și KaiTi.",
+        "label": "Chineză, japoneză și coreeană"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 și 7 Free și Noto Color Emoji.",
+        "label": "Pictograme și emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code și Source Code Pro.",
+        "label": "Cod"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans și IBM Plex.",
+        "label": "Sans și serif moderne"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus și New Computer Modern Sans și Mono.",
+        "label": "Text clasic"
       }
     },
     "fonts": {
@@ -952,7 +1088,58 @@
       "fontRemoveFailed": "Fontul nu a putut fi eliminat.",
       "packDownloadFailed": "Pachetul de șabloane nu a putut fi descărcat.",
       "packsDownloadFailed": "Pachetele de șabloane nu au putut fi descărcate.",
-      "packRemoveFailed": "Pachetul de șabloane nu a putut fi eliminat."
+      "packRemoveFailed": "Pachetul de șabloane nu a putut fi eliminat.",
+      "templateDownloadFailed": "Șablonul nu a putut fi descărcat.",
+      "packsRefreshFailed": "Nu s-au putut căuta pachete noi."
+    },
+    "typstFonts": {
+      "heading": "Fonturi pentru Typst",
+      "tooltip": "Fonturi gratuite pe care le cer multe șabloane Typst. După descărcare, orice proiect Typst le poate folosi, mai puțin un proiect care dezactivează fonturile sistemului."
+    },
+    "packs": {
+      "browse": "Răsfoiește",
+      "back": "Înapoi la pachete",
+      "count_one": "{{count}} șablon",
+      "count_few": "{{count}} șabloane",
+      "count_other": "{{count}} de șabloane",
+      "installedCount": "{{installed}} din {{total}} instalate",
+      "downloadPack": "Descarcă pachetul",
+      "refresh": "Caută pachete noi",
+      "searchPacks": "Caută pachete",
+      "searchTemplates": "Caută șabloane",
+      "noPacks": "Niciun pachet nu se potrivește",
+      "noTemplates": "Niciun șablon nu se potrivește",
+      "loading": "Se încarcă șabloanele",
+      "loadFailed": "Pachetul nu a putut fi încărcat.",
+      "retry": "Încearcă din nou",
+      "installed": "Instalat",
+      "engineFilter": "Motor",
+      "kindFilter": "Tip",
+      "languageFilter": "Limbă",
+      "allEngines": "Toate motoarele",
+      "allKinds": "Toate tipurile",
+      "allLanguages": "Toate limbile",
+      "groups": {
+        "curated": "Selectate",
+        "community": "Comunitate",
+        "typst": "Typst",
+        "university": "Universități"
+      },
+      "preview": {
+        "image": "Prima pagină din {{name}}",
+        "previous": "Șablonul anterior",
+        "next": "Șablonul următor",
+        "engine": "Motor",
+        "license": "Licență",
+        "kind": "Tip",
+        "languages": "Limbi",
+        "country": "Țară",
+        "institution": "Instituție",
+        "originalSource": "Sursa originală",
+        "getTemplate": "Obține acest șablon",
+        "useTemplate": "Folosește acest șablon",
+        "getAndCreate": "Obține și creează proiectul"
+      }
     }
   },
   "engine": {
@@ -987,10 +1174,10 @@
       "status": {
         "checking": "Se caută pandoc…",
         "installing": "Se aduce o versiune fixată de pandoc. Prima dată durează un moment.",
-        "missing": "Nu a fost găsit. Oleafly poate descărca un pandoc compatibil (2.19 sau mai nou) în propriul lui folder; nimic altceva din sistemul tău nu se schimbă.",
+        "missing": "Nu a fost găsit. Oleafly poate descărca un pandoc compatibil (2.19 sau mai nou) în propriul lui folder. Nimic altceva din sistemul tău nu se schimbă.",
         "ready": "Detectat. Proiectele Markdown se convertesc în LaTeX cu pandoc, apoi se compilează cu Tectonic-ul inclus."
       },
-      "tectonicDetail": "Tehnoredactează codul LaTeX produs de pandoc. Vine cu Oleafly; nu ai nimic de configurat.",
+      "tectonicDetail": "Tehnoredactează codul LaTeX produs de pandoc. Vine cu Oleafly și nu necesită configurare.",
       "tooltip": "Proiectele Markdown sunt convertite cu pandoc (Pandoc Markdown: tabele, note de subsol, citări, formule) în LaTeX, apoi tehnoredactate în PDF de Tectonic-ul inclus. Pandoc vine cu Oleafly."
     },
     "packages": {
@@ -1204,11 +1391,71 @@
       "apiKeyLabel": "Cheie API Zotero",
       "connected": "Conectat la biblioteca ta Zotero.",
       "connectedAs": "Conectat ca {{username}}.",
-      "description": "Importă citări și referințe din biblioteca ta Zotero.",
       "disconnectFailed": "Oleafly nu a putut elimina cheia Zotero salvată. Încearcă din nou.",
-      "importHint": "Pentru import, deschide panoul Referințe dintr-un proiect și alege Importă bibliotecă de referințe.",
       "userIdLabel": "Identificator de utilizator Zotero",
-      "userIdPlaceholder": "Identificator de utilizator"
+      "userIdPlaceholder": "Identificator de utilizator",
+      "citeDescription": "Caută în toată biblioteca ta Zotero în timp ce scrii și adaugă doar ce citezi. Oleafly îți citește biblioteca și nu o modifică niciodată.",
+      "local": {
+        "heading": "Zotero pe acest computer",
+        "ready": "Conectat la Zotero {{version}}.",
+        "readyNoVersion": "Conectat la Zotero.",
+        "bbtFound": "Better BibTeX {{version}} este instalat, așa că cheile de citare vin din Better BibTeX.",
+        "bbtMissing": "Better BibTeX nu este instalat, așa că cheile de citare vin din Zotero.",
+        "notRunning": "Zotero nu rulează. Deschide Zotero ca să cauți în bibliotecă sau conectează-ți mai jos contul zotero.org.",
+        "apiDisabled": "În Zotero, deschide Setări > Avansate și activează „Allow other applications on this computer to communicate with Zotero”.",
+        "unsupported": "Această versiune de Zotero nu își poate partaja biblioteca. Actualizează la Zotero 7 sau la o versiune mai nouă.",
+        "unknown": "Oleafly nu a căutat încă Zotero."
+      },
+      "test": "Testează conexiunea",
+      "syncNow": "Sincronizează acum",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX nu a fost găsit",
+        "local": "Citit din Zotero de pe acest computer",
+        "web": "Citit de pe zotero.org",
+        "library_one": "{{name}}: {{formatted}} element",
+        "library_few": "{{name}}: {{formatted}} elemente",
+        "library_other": "{{name}}: {{formatted}} de elemente"
+      },
+      "library": {
+        "heading": "Biblioteci în care să cauți",
+        "myLibrary": "Biblioteca mea",
+        "toggle": "Caută în {{name}}",
+        "items_one": "{{formatted}} element",
+        "items_few": "{{formatted}} elemente",
+        "items_other": "{{formatted}} de elemente"
+      },
+      "sync": {
+        "never": "Nesincronizat încă.",
+        "syncing": "Se sincronizează biblioteca ta Zotero…",
+        "progress": "Se sincronizează elementele: {{done}} din {{total}}…",
+        "status_one": "{{formatted}} element gata de citat, sincronizat {{time}}.",
+        "status_few": "{{formatted}} elemente gata de citat, sincronizate {{time}}.",
+        "status_other": "{{formatted}} de elemente gata de citat, sincronizate {{time}}.",
+        "fromCache": "Zotero este închis, așa că căutarea cu @ folosește copia din ultima sincronizare.",
+        "rateLimited": "zotero.org i-a cerut lui Oleafly să aștepte. Va încerca din nou după {{time}}."
+      },
+      "account": {
+        "heading": "Contul zotero.org",
+        "description": "Folosește contul când Zotero nu este deschis pe acest computer. Sunt incluse și bibliotecile de grup."
+      }
+    },
+    "overleaf": {
+      "description": "Adu proiecte din contul tău Overleaf sau de pe serverul Overleaf al universității tale și păstrează-le sincronizate. Oleafly păstrează autentificarea și tokenul Git criptate pe acest computer.",
+      "signedInAs": "Autentificat ca {{email}} pe {{server}}",
+      "signedIn": "Autentificat pe {{server}}",
+      "signOut": "Deconectează-te",
+      "signOutFailed": "Oleafly nu s-a putut deconecta de la Overleaf.",
+      "gitTitle": "Token Git pentru sincronizare",
+      "gitSaved": "Un token Git este salvat. Proiectele pe care le asociezi rămân sincronizate cu Overleaf.",
+      "gitMissing": "Niciun token Git încă. Creează unul la Integrare Git în setările contului tău Overleaf ca să sincronizezi proiecte.",
+      "gitOpenSettings": "Deschide setările contului Overleaf",
+      "gitPlanNote": "Integrarea Git necesită ca proprietarul proiectului să aibă un plan Overleaf plătit sau universitar.",
+      "gitLabel": "Token Git pentru Overleaf",
+      "gitSave": "Salvează",
+      "gitRemove": "Elimină",
+      "gitFailed": "Oleafly nu a putut salva tokenul Git. Verifică dacă ai lipit tot tokenul."
     }
   },
   "language": {
@@ -1579,6 +1826,10 @@
         "description": "Arată sau ascunde bara laterală a proiectului.",
         "label": "Arată sau ascunde bara laterală"
       },
+      "togglePreview": {
+        "label": "Arată sau ascunde previzualizarea PDF",
+        "description": "Afișează sau ascunde PDF-ul de lângă editor, și în modul Zen."
+      },
       "toggleTerminal": {
         "description": "Arată sau ascunde terminalul proiectului.",
         "label": "Arată sau ascunde terminalul"
@@ -1586,6 +1837,26 @@
       "openFolder": {
         "label": "Deschide un folder",
         "description": "Deschide un folder de pe computer ca proiect."
+      },
+      "toggleZenMode": {
+        "description": "Ascunde tot în afară de text sau readu totul.",
+        "label": "Comută modul Zen"
+      },
+      "openSettings": {
+        "label": "Deschide setările",
+        "description": "Deschide setările Oleafly."
+      },
+      "zoomIn": {
+        "description": "Mărește toată aplicația.",
+        "label": "Mărește"
+      },
+      "zoomOut": {
+        "description": "Micșorează toată aplicația.",
+        "label": "Micșorează"
+      },
+      "resetZoom": {
+        "description": "Readuce aplicația la 100%.",
+        "label": "Resetează zoomul"
       }
     },
     "application": {
@@ -1608,7 +1879,7 @@
         "italic": "Cursiv",
         "jumpToSourceFromPdf": "Sari la sursă din PDF",
         "redo": "Refă",
-        "renameSymbol": "Redenumește simbolul în tot proiectul",
+        "renameSymbol": "Redenumește simbolul sau fișierul în tot proiectul",
         "slashCommandMenu": "Meniu de inserare cu bară oblică",
         "triggerAutocomplete": "Pornește completarea automată",
         "undo": "Anulează"

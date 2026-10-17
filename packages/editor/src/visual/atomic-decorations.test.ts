@@ -613,6 +613,20 @@ describe("visual atomic field updates", () => {
     expect(released.field(visualAtomicField).mousedown).toBe(false);
   });
 
+  it("keeps the decoration set while the cursor moves through plain text", () => {
+    const text = "Plain words here.\n\nSee \\cite{key} now.\n\nMore plain words.\n";
+    const state = createState(text, 2);
+    const decorations = state.field(visualAtomicField).decorations;
+    const moved = state.update({ selection: { anchor: 8 } }).state;
+    expect(moved.field(visualAtomicField).decorations).toBe(decorations);
+    const farther = moved.update({ selection: { anchor: positionOf(text, "More") + 2 } }).state;
+    expect(farther.field(visualAtomicField).decorations).toBe(decorations);
+    const onCitation = farther.update({ selection: { anchor: positionOf(text, "\\cite") + 2 } }).state;
+    expect(widgets(onCitation, IconBraceWidget)).toEqual([]);
+    const back = onCitation.update({ selection: { anchor: 2 } }).state;
+    expect(widgets(back, IconBraceWidget)).toHaveLength(1);
+  });
+
   it("returns the same value when nothing relevant changes", () => {
     const state = createState(doc, endOfDocument);
     const pressed = state.update({ effects: mouseDownEffect.of(true) }).state;

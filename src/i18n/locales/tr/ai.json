@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Tam erişim",
-        "description": "Araç eylemlerini onay istemeden çalıştırır."
+        "description": "Deny kuralıyla engellenen araçlar dışında araç eylemlerini sormadan çalıştırır."
       },
       "custom": {
         "label": "Özel (approvals.toml)",
@@ -148,7 +148,7 @@
       "overloaded": "Sağlayıcının sunucuları şu anda aşırı yüklü (bu istek zaten yeniden denendi). Bir dakika bekleyip tekrar deneyin ya da {{where}} benzer bir modele geçin.",
       "rateLimited": "Sağlayıcı istekleri hız sınırına takıyor. Biraz bekleyip yeniden deneyin ya da {{where}} sağlayıcı değiştirin.",
       "retiredModel": "Sağlayıcı bu modeli kaldırdı veya kısıtladı. {{where}} daha yeni bir model seçin (Ayarlar → Yapay zeka asistanı, anahtarınızın kullanabileceklerini listeler).",
-      "unreachable": "Yapay zeka sağlayıcısına ulaşılamadı. Bağlantınızı denetleyin; Ollama kullanıyorsanız çalıştığından emin olun (Ayarlar → Yapay zeka asistanı → Ollama'yı denetle).",
+      "unreachable": "Yapay zeka sağlayıcısına ulaşılamadı. Bağlantınızı denetleyin. Ollama kullanıyorsanız çalıştığından emin olun (Ayarlar → Yapay zeka asistanı → Ollama'yı denetle).",
       "where": {
         "inSettings": "Ayarlar'daki Yapay zeka asistanı bölümünden",
         "modelMenu": "yukarıdaki model menüsünden"
@@ -319,7 +319,9 @@
       "closeAgent": "Bir yardımcı ajanı kapatır.",
       "runCommand": "Proje klasöründe iki dakikalık sınırla bir shell komutu çalıştırır.",
       "computerUse": "Asistanın tarayıcı penceresinde bir web sayfası açar.",
-      "toggleTheme": "Açık ve koyu kip arasında geçiş yapar."
+      "toggleTheme": "Açık ve koyu kip arasında geçiş yapar.",
+      "listOverleafProjects": "Overleaf projelerinizi listeler, gerekirse önce oturum açar.",
+      "importOverleafProjects": "Overleaf projelerini derleyicileri ve ana dosyalarıyla birlikte kitaplığınıza aktarır."
     },
     "disableAll": "Tümünü kapat",
     "emptyContext": "Bu bağlamda kullanılabilir araç yok.",

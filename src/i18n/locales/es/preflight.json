@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "El contenido de la tabla puede no leerse como campos del currículum",
-      "detailTable": "Las herramientas ATS suelen aplanar el contenido tabular de forma impredecible. No uses una tabla para colocar texto del currículum en paralelo; las tablas de datos de investigación de verdad se evalúan aparte en Accesibilidad.",
+      "detailTable": "Las herramientas ATS suelen aplanar el contenido tabular de forma impredecible. No uses una tabla para colocar texto del currículum en paralelo. Las tablas de datos de investigación de verdad se revisan aparte en Accesibilidad.",
       "titleTikz": "El contenido de TikZ necesita una alternativa semántica",
       "detailTikz": "TikZ dibuja contenido visual sin exponer su significado como texto normal. Aporta una descripción accesible para las publicaciones y evítalo en el contenido de currículum destinado a un ATS."
     },
@@ -266,7 +266,7 @@
       "title_many": "{{count}} entradas de bibliografía tienen metadatos incompletos",
       "title_other": "{{count}} entradas de bibliografía tienen metadatos incompletos",
       "detail": "Los registros incompletos pueden producir referencias rotas o ambiguas en los estilos de las editoriales. {{examples}}.",
-      "detailTruncated": "Los registros incompletos pueden producir referencias rotas o ambiguas en los estilos de las editoriales. {{examples}}; …"
+      "detailTruncated": "Los registros incompletos pueden producir referencias rotas o ambiguas en los estilos de las editoriales. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} valor de DOI parece mal formado",
@@ -333,6 +333,12 @@
     "refs-duplicate-bib": {
       "title": "Entradas de bibliografía duplicadas: {{keys}}",
       "detail": "Estas entradas comparten el DOI {{doi}}, así que son la misma referencia con claves distintas. Quédate con una y cítala, o tu bibliografía la listará dos veces."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "La clave de cita \"{{key}}\" está definida más de una vez",
+      "detail": "Definida en {{places}}. BibTeX usa solo la primera entrada con esta clave y no distingue mayúsculas de minúsculas al comparar claves. Conserva una entrada, o da claves nuevas a las demás y actualiza las citas que las usan.",
+      "detailBiber": "Definida en {{places}}. Cuando biber crea la bibliografía, solo usa la primera entrada con esta clave. Conserva una entrada, o da claves nuevas a las demás y actualiza las citas que las usan.",
+      "detailTypst": "Definida en {{places}}. Typst detiene la compilación cuando dos entradas de la bibliografía comparten clave. Conserva una entrada, o da claves nuevas a las demás y actualiza las citas que las usan."
     },
     "submission-path-case": {
       "title": "Las mayúsculas del nombre de archivo no coinciden: {{target}}",
@@ -623,7 +629,7 @@
     "title": "Preflight",
     "readerDisabled": "Compila y ejecuta antes una comprobación de la salida",
     "readerEnabled": "Abrir el texto extraído del PDF",
-    "readerButton": "Ver lo que ve el lector",
+    "readerButton": "Lector de pantalla",
     "aboutLabel": "Sobre Preflight",
     "aboutTitle": "Qué comprueba Preflight",
     "aboutIntro": "Preflight lee el código del proyecto, el registro del compilador y el PDF actual. Activa solo las comprobaciones que encajen con este documento.",

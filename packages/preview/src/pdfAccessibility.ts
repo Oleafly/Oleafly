@@ -9,12 +9,29 @@
  */
 export class PdfTextAccessibilityManager {
   private enabled = false;
+  private sorted = false;
   private textChildren: HTMLElement[] | null = null;
   private readonly textNodes = new Map<string, number>();
   private readonly waitingElements = new Map<HTMLElement, boolean>();
 
   setTextMapping(textDivs: HTMLElement[]): void {
     this.textChildren = textDivs;
+    this.sorted = false;
+  }
+
+  private orderedChildren(): HTMLElement[] {
+    const children = this.textChildren;
+    if (!children) return [];
+    if (this.sorted) return children;
+    const boxes = new Map<Element, DOMRect>();
+    for (const child of children) boxes.set(child, child.getBoundingClientRect());
+    this.textChildren = children
+      .slice()
+      .sort((first, second) =>
+        compareBoxes(boxes.get(first) as DOMRect, boxes.get(second) as DOMRect),
+      );
+    this.sorted = true;
+    return this.textChildren;
   }
 
   enable(): void {
@@ -22,10 +39,12 @@ export class PdfTextAccessibilityManager {
     if (!this.textChildren) throw new Error("PDF text mapping has not been set");
 
     this.enabled = true;
-    this.textChildren = this.textChildren.slice().sort(compareElementPositions);
+    this.sorted = false;
+    const ordered =
+      this.textNodes.size > 0 || this.waitingElements.size > 0 ? this.orderedChildren() : [];
     for (const [id, nodeIndex] of this.textNodes) {
       const element = document.getElementById(id);
-      const child = this.textChildren[nodeIndex];
+      const child = ordered[nodeIndex];
       if (!element || !child) {
         this.textNodes.delete(id);
         continue;
@@ -42,6 +61,7 @@ export class PdfTextAccessibilityManager {
     if (!this.enabled) return;
     this.waitingElements.clear();
     this.textChildren = null;
+    this.sorted = false;
     this.enabled = false;
   }
 
@@ -51,9 +71,10 @@ export class PdfTextAccessibilityManager {
       return;
     }
     const id = element.id;
-    const children = this.textChildren;
     const nodeIndex = this.textNodes.get(id);
-    if (!id || !children?.length || nodeIndex === undefined) return;
+    if (!id || nodeIndex === undefined) return;
+    const children = this.orderedChildren();
+    if (!children.length) return;
 
     const node = children[nodeIndex];
     this.textNodes.delete(id);
@@ -77,8 +98,8 @@ export class PdfTextAccessibilityManager {
     }
     if (isRemovable) this.removePointerInTextLayer(element);
 
-    const children = this.textChildren;
-    if (!children?.length) return null;
+    const children = this.orderedChildren();
+    if (!children.length) return null;
     const insertion = firstIndex(
       children,
       (node) => compareElementPositions(element, node) < 0,
@@ -128,8 +149,10 @@ function addAriaOwner(id: string, node: Element): void {
 }
 
 function compareElementPositions(first: Element, second: Element): number {
-  const a = first.getBoundingClientRect();
-  const b = second.getBoundingClientRect();
+  return compareBoxes(first.getBoundingClientRect(), second.getBoundingClientRect());
+}
+
+function compareBoxes(a: DOMRect, b: DOMRect): number {
   if (a.width === 0 && a.height === 0) return 1;
   if (b.width === 0 && b.height === 0) return -1;
   const aMid = a.y + a.height / 2;

@@ -37,7 +37,7 @@ function withOccurrenceKeys(values: string[]) {
 function ReviewMarkdown({ text }: Readonly<{ text: string }>) {
   const blocks = withOccurrenceKeys(text.split(/\n{2,}/));
   return (
-    <div className="space-y-3 text-sm leading-relaxed">
+    <div className="select-text space-y-3 text-sm leading-relaxed">
       {blocks.map(({ key, value: block }) => {
         const trimmed = block.trim();
         if (!trimmed) return null;
@@ -299,7 +299,7 @@ export function PaperReviewPanel() {
         )}
         {error && (
           <div
-            className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            className="select-text rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
             data-testid="paper-review-error"
           >
             {error}

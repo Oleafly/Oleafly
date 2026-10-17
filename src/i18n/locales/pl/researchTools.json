@@ -249,6 +249,7 @@
       "driftedMany": "Po rozpoczęciu tego zadania w Twoim projekcie zmieniło się {{fileCount}} plików. Ich porównania dotyczą starszych wersji, więc nie da się ich zastosować.",
       "applyAria": "Zastosuj {{path}}",
       "changedSince": "Zmieniony od tego czasu",
+      "mergesOnApply": "Ten plik edytowano po rozpoczęciu zadania. Zastosowanie zachowa te edycje i doda zmiany z zadania.",
       "loading": "Wczytywanie...",
       "refreshPreview": "Odśwież podgląd",
       "preview": "Podgląd",
@@ -1381,7 +1382,6 @@
     "captionAria": "Podpis tabeli",
     "preview": "Podgląd",
     "output": "Wynik LaTeX",
-    "copiedSource": "Skopiowano kod LaTeX",
     "booktabsHint": "Wymaga <code>\\usepackage{booktabs}</code> w preambule."
   },
   "review": {

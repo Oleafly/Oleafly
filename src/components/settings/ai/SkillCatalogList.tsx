@@ -87,7 +87,7 @@ export function SkillsNoMatch() {
 }
 
 const DOMAIN_CHIP =
-  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:border-primary/50";
+  "rounded-full border px-2.5 py-1 text-[0.6875rem] font-medium transition-colors focus-visible:border-primary/50";
 const DOMAIN_CHIP_ACTIVE = "border-primary/35 bg-primary/10 text-primary";
 const DOMAIN_CHIP_IDLE =
   "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground";
@@ -191,7 +191,7 @@ function ShelfRow({
             </Badge>
           ) : null}
         </div>
-        <p className="truncate text-[11px] text-muted-foreground">
+        <p className="truncate text-[0.6875rem] text-muted-foreground">
           {busy && progress
             ? progressText(progress)
             : entryLine(entry)}
@@ -425,7 +425,7 @@ export function SkillCatalogList({
         </div>
       ) : null}
 
-      {catalog ? <p className="text-[11px] text-muted-foreground">{sourceLine}</p> : null}
+      {catalog ? <p className="text-[0.6875rem] text-muted-foreground">{sourceLine}</p> : null}
 
       {message ? <SkillResultMessage ok={message.ok} text={message.text} /> : null}
     </div>

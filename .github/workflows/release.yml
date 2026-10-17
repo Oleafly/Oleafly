@@ -75,6 +75,9 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
+      # xdg-utils: with a deep-link scheme in tauri.conf.json the AppImage
+      # bundler runs /usr/bin/xdg-mime. ubuntu-22.04 ships it, the
+      # ubuntu-24.04-arm image does not.
       - name: Install Linux system dependencies (Tauri)
         if: startsWith(matrix.os, 'ubuntu-')
         run: |
@@ -85,6 +88,7 @@ jobs:
             librsvg2-dev \
             patchelf \
             libxdo-dev \
+            xdg-utils \
             build-essential \
             curl wget file
 

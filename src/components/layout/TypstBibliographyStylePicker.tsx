@@ -15,6 +15,7 @@ import { isReadOnlyLink } from "@/lib/project-paths";
 import { notifyError } from "@/lib/toast";
 import { readFileContent } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { sharedBaseOption } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly } from "@/store/folder-access";
 import { useIndexStore } from "@/store/project-index";
 
@@ -36,14 +37,16 @@ function currentSource(projectId: string, path: string): Promise<string> {
   return readFileContent(projectId, path);
 }
 
-async function writeSource(projectId: string, path: string, content: string): Promise<void> {
+async function writeSource(projectId: string, path: string, content: string, base: string): Promise<void> {
   const files = useFilesStore.getState();
   if (files.projectId === projectId && files.files[path] !== undefined) {
-    if (!files.setContent(path, content)) throw new Error(`${path} is read-only`);
+    if (!files.setContent(path, content, { bumpVersion: files.activePath === path })) {
+      throw new Error(`${path} is read-only`);
+    }
     await useFilesStore.getState().saveFile(path);
     return;
   }
-  await files.writeProjectFile(projectId, path, content);
+  await files.writeProjectFile(projectId, path, content, ...sharedBaseOption(projectId, base));
 }
 
 export function TypstBibliographyStylePicker({
@@ -72,9 +75,10 @@ export function TypstBibliographyStylePicker({
     if (style === current || busy) return;
     setBusy(true);
     try {
-      const next = setTypstBibliographyStyle(await currentSource(projectId, path), style);
+      const source = await currentSource(projectId, path);
+      const next = setTypstBibliographyStyle(source, style);
       if (next === null || useFilesStore.getState().projectId !== projectId) return;
-      await writeSource(projectId, path, next);
+      await writeSource(projectId, path, next, source);
     } catch (error) {
       notifyError("change Typst citation style", error, t(($) => $.references.bibliographyStyle.failed));
     } finally {
@@ -85,13 +89,13 @@ export function TypstBibliographyStylePicker({
   return (
     <div className="flex items-center gap-2 px-2 py-1" data-testid="typst-style-picker">
       <BookMarked aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="shrink-0 text-[11px] text-muted-foreground">
+      <span className="shrink-0 text-[0.6875rem] text-muted-foreground">
         {t(($) => $.references.bibliographyStyle.label)}
       </span>
       <Select value={current} onValueChange={(style) => void apply(style)} disabled={busy || readOnly}>
         <SelectTrigger
           aria-label={t(($) => $.references.bibliographyStyle.ariaLabel, { path })}
-          className="h-7 min-w-0 flex-1 px-2 text-[11px]"
+          className="h-7 min-w-0 flex-1 px-2 text-[0.6875rem]"
         >
           <SelectValue />
         </SelectTrigger>

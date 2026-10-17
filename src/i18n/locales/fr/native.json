@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "À propos d'Oleafly",
     "checkUpdates": "Rechercher des mises à jour…",
+    "settings": "Paramètres…",
     "reloadViews": "Recharger les vues",
     "restartApp": "Redémarrer l'application",
     "quit": "Quitter Oleafly",
@@ -30,7 +31,8 @@
     "newTab": "Nouvel onglet",
     "openLocation": "Ouvrir une adresse…",
     "closeTab": "Fermer l'onglet",
-    "reloadPage": "Recharger la page"
+    "reloadPage": "Recharger la page",
+    "zenMode": "Mode Zen"
   },
   "window": {
     "browser": "Navigateur Oleafly",
@@ -42,6 +44,11 @@
       "title": "Activer l'accès complet ?",
       "message": "L'accès complet permet à l'assistant d'exécuter des commandes shell et de modifier des fichiers sans demander votre autorisation à chaque fois. Activer l'accès complet ?",
       "confirm": "Activer l'accès complet"
+    },
+    "sharedShellEscape": {
+      "title": "Autoriser les commandes externes dans ce projet partagé ?",
+      "message": "Toute personne qui peut modifier ce projet pourrait alors lancer des programmes sur cet ordinateur quand vous compilez. Autorisez-le seulement si vous faites confiance à tous les membres du projet.",
+      "confirm": "Autoriser sur cet ordinateur"
     },
     "cookieImport": {
       "title": "Confirmer l'importation des cookies",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "Ouvrir dans Oleafly",
     "openWithOleafly": "Ouvrir avec Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (copie locale)"
+  },
+  "approvals": {
+    "helperRefused": "Refusé par la règle {{tool}} dans approvals.toml",
+    "unknownTool": "Aucun outil ne s'appelle {{name}}, donc la règle n'a aucun effet.",
+    "unknownToolSuggestion": "Aucun outil ne s'appelle {{name}}, donc la règle n'a aucun effet. Vouliez-vous dire {{suggestion}} ?"
+  },
+  "cloud": {
+    "connectedPage": "Vous êtes connecté. Vous pouvez fermer cet onglet et retourner à Oleafly.",
+    "failedPage": "La connexion ne s'est pas terminée. Vous pouvez fermer cet onglet et retourner à Oleafly."
   }
 }

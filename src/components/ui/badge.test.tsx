@@ -32,7 +32,7 @@ describe("Badge", () => {
       </Badge>,
     );
     const badge = screen.getByText(LABEL);
-    expect(badge).toHaveClass("px-1.5", "text-[10px]", "gap-1");
+    expect(badge).toHaveClass("px-1.5", "text-[0.625rem]", "gap-1");
     expect(badge).not.toHaveClass("px-2", "text-xs");
   });
 });

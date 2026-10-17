@@ -15,7 +15,6 @@ import {
   Check,
   ChevronRight,
   CircleHelp,
-  Cloud,
   Compass,
   Copy,
   Cpu,
@@ -40,6 +39,7 @@ import {
   Star,
   Trash2,
   TriangleAlert,
+  Users,
   X,
 } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
@@ -47,11 +47,14 @@ import { reportCrashToGithub } from "@/lib/crash-report";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
+import { NavItem } from "@/components/ui/nav-item";
+import { StatGrid } from "@/components/ui/stat-grid";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPath } from "@/components/settings/SettingsPath";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { LoadingState } from "@/components/ui/empty";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
@@ -76,6 +79,8 @@ import {
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useGithubStore } from "@/store/github";
+import { useCloudStore } from "@/store/cloud";
+import { useTemplateLinkStore } from "@/store/template-link";
 import {
   appVersion,
   libraryRoot,
@@ -89,7 +94,7 @@ import {
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { DISCORD_URL, useDiscordOnlineCount } from "@/lib/community";
-import { currentLocale, i18n } from "@/i18n";
+import { currentLocale, i18n, loadNamespace } from "@/i18n";
 import { formatBytes } from "@/lib/format-bytes";
 import {
   dictionaryLabel,
@@ -124,7 +129,7 @@ import {
 } from "@/components/settings/SettingsToggleRow";
 import {
   SETTINGS_SEARCH_HIT_CLASSES,
-  SettingsSearchField,
+  SettingsSearchQueryField,
   SettingsSearchRows,
   SettingsSearchStatus,
   useSettingsSearch,
@@ -136,9 +141,29 @@ import {
   type GitHubRepoStats,
 } from "@/lib/github";
 import { Badge } from "@/components/ui/badge";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 
+const SettingsFileCard = lazy(() =>
+  Promise.all([
+    import("@/components/settings/SettingsFileCard"),
+    loadNamespace("settingsFile"),
+    loadNamespace("cloud"),
+  ]).then(([module]) => module),
+);
+const CloudTab = lazy(() =>
+  Promise.all([
+    import("@/components/settings/cloud/CloudTab"),
+    loadNamespace("cloud").catch((error: unknown) => logError("load cloud sync strings", error)),
+  ]).then(([module]) => ({ default: module.CloudTab })),
+);
 const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
+);
+
+const CollaborationSection = lazy(() =>
+  Promise.all([import("@/features/collab/CollaborationSection"), loadNamespace("collab")]).then(
+    ([module]) => ({ default: module.CollaborationSection }),
+  ),
 );
 
 type Section = SettingsSearchSection;
@@ -213,6 +238,13 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
     icon: Blocks,
   },
   {
+    id: "collaboration",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.collaboration);
+    },
+    icon: Users,
+  },
+  {
     id: "shortcuts",
     get label() {
       return i18n.t(($) => $.shell.settings.nav.shortcuts);
@@ -234,6 +266,8 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
     icon: LifeBuoy,
   },
 ];
+
+const NAV_WITHOUT_COLLABORATION = NAV.filter((item) => item.id !== "collaboration");
 const TOUR_SECTION_TARGETS: Partial<Record<Section, string>> = {
   general: "settings-general",
   appearance: "settings-appearance",
@@ -281,6 +315,8 @@ export function SettingsModal() {
   const latexTools = useSettingsStore((s) => s.latexTools);
   const webBrowser = useSettingsStore((s) => s.webBrowser);
   const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
+  const liveCollaboration = useSettingsStore((s) => s.liveCollaboration);
+  const setLiveCollaboration = useSettingsStore((s) => s.setLiveCollaboration);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
 
   const projectId = useFilesStore((s) => s.projectId);
@@ -291,6 +327,22 @@ export function SettingsModal() {
   const githubStatus = useGithubStore((s) => s.status);
 
   const [section, setSection] = useState<Section>("general");
+  const [dataTab, setDataTab] = useState("local");
+  const settingsNavRequest = useCloudStore((s) => s.navRequest);
+  const requestSettingsNav = useCloudStore((s) => s.requestNav);
+  useEffect(() => {
+    if (!settingsNavRequest) return;
+    if (settingsNavRequest === "data-cloud") {
+      setSection("data");
+      setDataTab("cloud");
+    } else if (settingsNavRequest === "general") {
+      setSection("general");
+    }
+    requestSettingsNav(null);
+  }, [settingsNavRequest, requestSettingsNav]);
+  useEffect(() => {
+    loadNamespace("settingsFile").catch((error: unknown) => void logError("load settings file strings", error));
+  }, []);
   const [developerSettings, setDeveloperSettings] =
     useState<DeveloperSettingsModule | null>(null);
   const [libRoot, setLibRoot] = useState("");
@@ -319,20 +371,21 @@ export function SettingsModal() {
   const dismissedTours = AVAILABLE_TOUR_IDS.filter(
     (id) => tours[id].status === "dismissed",
   ).length;
+  const sectionNav = liveCollaboration ? NAV : NAV_WITHOUT_COLLABORATION;
   const navigation = developerSettings
     ? [
-        ...NAV.slice(0, -1),
+        ...sectionNav.slice(0, -1),
         developerSettings.DEVELOPER_NAV_ITEM,
-        ...NAV.slice(-1),
+        ...sectionNav.slice(-1),
       ]
-    : NAV;
+    : sectionNav;
   const settingsInitialSection = useSettingsStore((s) => s.settingsInitialSection);
   const closeSettings = () => {
     if (useTourStore.getState().activeTourId === "settings") return;
     setOpen(false);
     useSettingsStore.getState().setSettingsInitialSection("general");
   };
-  const settingsBodyRef = useRef<HTMLDivElement>(null);
+  const settingsBodyRef = useScrollTopOnChange(section);
   const sectionListId = useId();
   const settingsTourActive = useTourStore((s) => s.activeTourId === "settings");
   const search = useSettingsSearch({
@@ -344,6 +397,7 @@ export function SettingsModal() {
     suspended: settingsTourActive,
     containerRef: settingsBodyRef,
   });
+  const sectionListRef = useScrollTopOnChange(search.hits?.map((hit) => hit.id).join("\n") ?? "");
   const searchRows = new Map(search.hits?.map((hit) => [hit.id, hit.rows]));
   const visibleNavigation = search.hits
     ? navigation.filter((item) => searchRows.has(item.id))
@@ -364,12 +418,34 @@ export function SettingsModal() {
 
   useEffect(() => {
     if (!open) return;
-    const next = NAV.some((item) => item.id === settingsInitialSection)
+    const available = useSettingsStore.getState().liveCollaboration ? NAV : NAV_WITHOUT_COLLABORATION;
+    const next = available.some((item) => item.id === settingsInitialSection)
       ? (settingsInitialSection as Section)
       : "general";
     setSection(next);
     libraryRoot().then(setLibRoot).catch(() => {});
   }, [open, settingsInitialSection]);
+
+  const templateLinkSerial = useTemplateLinkStore((s) => s.serial);
+  const seenTemplateLink = useRef(templateLinkSerial);
+  useEffect(() => {
+    if (templateLinkSerial === seenTemplateLink.current) return;
+    seenTemplateLink.current = templateLinkSerial;
+    setSection("downloads");
+  }, [templateLinkSerial]);
+
+  const cloudLibraryRevision = useCloudStore((s) => s.libraryRevision);
+  useEffect(() => {
+    if (!open) useCloudStore.getState().clearSettingsImport();
+  }, [open]);
+
+  useEffect(() => {
+    if (cloudLibraryRevision > 0) setStorageRefreshKey((value) => value + 1);
+  }, [cloudLibraryRevision]);
+
+  useEffect(() => {
+    if (!liveCollaboration && section === "collaboration") setSection("general");
+  }, [liveCollaboration, section]);
 
   useEffect(() => {
     if (!open || section !== "data" || !isTauri()) return;
@@ -540,8 +616,8 @@ export function SettingsModal() {
     }
     if (storageSummary) {
       return (
-        <dl className="grid grid-cols-2 gap-px border-t bg-border text-xs sm:grid-cols-4">
-          {[
+        <StatGrid
+          stats={[
             {
               id: "projects",
               label: t(($) => $.shell.settings.data.storage.stats.projects),
@@ -592,18 +668,8 @@ export function SettingsModal() {
               value: formatBytes(storageSummary.app_data_bytes),
               detail: t(($) => $.shell.settings.data.storage.stats.appDataDetail),
             },
-          ].map((item) => (
-            <div key={item.id} className="min-w-0 bg-card px-3 py-3">
-              <dt className="text-muted-foreground">{item.label}</dt>
-              <dd className="mt-1 truncate text-sm font-semibold text-foreground">
-                {item.value}
-              </dd>
-              <dd className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                {item.detail}
-              </dd>
-            </div>
-          ))}
-        </dl>
+          ]}
+        />
       );
     }
     return (
@@ -647,7 +713,7 @@ export function SettingsModal() {
                 <p className="truncate text-sm font-medium text-foreground">
                   {project.name}
                 </p>
-                <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                <p className="mt-0.5 truncate text-[0.625rem] text-muted-foreground">
                   {t(($) => $.shell.settings.data.recycleBin.deletedAt, {
                     date: formatDateTime(project.deleted_at * 1000),
                     size: formatBytes(project.size_bytes),
@@ -717,6 +783,13 @@ export function SettingsModal() {
           checked={webBrowser}
           onChange={setWebBrowser}
         />
+        <SettingsToggleRow
+          testId="settings-live-collaboration"
+          label={t(($) => $.shell.settings.experimentation.liveCollaboration.label)}
+          description={t(($) => $.shell.settings.experimentation.liveCollaboration.description)}
+          checked={liveCollaboration}
+          onChange={setLiveCollaboration}
+        />
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.experimentation)}
           onReset={resetExperimentationPreferences}
@@ -726,10 +799,17 @@ export function SettingsModal() {
     )
   );
 
+  const renderCollaborationSection = () =>
+    section === "collaboration" && liveCollaboration ? (
+      <Suspense fallback={<LoadingState size="compact" label={t(($) => $.common.state.loading)} />}>
+        <CollaborationSection />
+      </Suspense>
+    ) : null;
   const renderSettingsBody = () => (
     <div
       ref={settingsBodyRef}
-      className={cn("flex-1 overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
+      data-testid="settings-body"
+      className={cn("flex-1 select-text overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
     >
       {section === "appearance" && <AppearanceSection />}
 
@@ -745,6 +825,8 @@ export function SettingsModal() {
       {section === "downloads" && <DownloadsSection />}
 
       {section === "integrations" && <IntegrationsSection />}
+
+      {renderCollaborationSection()}
 
       {section === "shortcuts" && <ShortcutsSection />}
 
@@ -812,7 +894,7 @@ export function SettingsModal() {
         </p>
       ) : null}
       {storageSummary && storageSummary.unreadable_entries > 0 ? (
-        <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
+        <p className="border-t px-4 py-2 text-[0.625rem] text-muted-foreground">
           {t(($) => $.shell.settings.data.storage.unreadable, {
             count: storageSummary.unreadable_entries,
           })}
@@ -823,7 +905,7 @@ export function SettingsModal() {
 
   const renderDataSection = () => (
     section === "data" && (
-      <Tabs defaultValue="local" className="space-y-4 text-sm">
+      <Tabs value={dataTab} onValueChange={setDataTab} className="space-y-4 text-sm">
         <TabsList>
           <TabsTrigger value="local" data-testid="data-tab-local">
             {t(($) => $.shell.settings.data.tabs.local)}
@@ -964,25 +1046,9 @@ export function SettingsModal() {
         </section>
         </TabsContent>
         <TabsContent value="cloud">
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex max-w-xl flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <span className="relative size-6 shrink-0 text-primary" aria-hidden>
-                <Cloud className="absolute left-0 top-0 size-5" />
-                <RefreshCw className="absolute bottom-0 right-0 size-3 rounded-full bg-card stroke-[2.5]" />
-              </span>
-              <h3 className="font-semibold text-foreground">
-                {t(($) => $.shell.settings.data.cloud.title)}
-              </h3>
-              <Badge variant="muted" size="sm" className="uppercase tracking-wide">
-                {t(($) => $.shell.settings.data.cloud.comingSoon)}
-              </Badge>
-            </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {t(($) => $.shell.settings.data.cloud.description)}
-            </p>
-          </div>
-        </div>
+          <Suspense fallback={null}>
+            <CloudTab />
+          </Suspense>
         </TabsContent>
       </Tabs>
     )
@@ -1100,21 +1166,14 @@ export function SettingsModal() {
           onChange={setOffline}
         />
         <div className="overflow-hidden rounded-lg border bg-card">
-          <div className="flex items-center gap-2 p-3">
+          <div className="relative flex items-center gap-2 p-3">
             <button
               type="button"
               aria-expanded={tourGuidesOpen}
               aria-controls="tour-guides-panel"
               onClick={() => setTourGuidesOpen((value) => !value)}
-              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left after:absolute after:inset-0 after:content-[''] focus-visible:bg-accent/60"
             >
-              <ChevronRight
-                className={cn(
-                  "size-4 shrink-0 text-muted-foreground transition-transform",
-                  tourGuidesOpen && "rotate-90",
-                )}
-                aria-hidden
-              />
               <span className="min-w-0">
                 <span className="block text-sm font-medium">
                   {t(($) => $.shell.settings.tours.enable)}
@@ -1144,10 +1203,17 @@ export function SettingsModal() {
                   startTour(projectId ? "workspace" : "home"),
                 );
               }}
-              className="-m-1 rounded-full p-1 transition-colors hover:bg-accent focus-visible:bg-accent"
+              className="relative -m-1 rounded-full p-1 transition-colors hover:bg-accent focus-visible:bg-accent"
             >
               <SettingsSwitchIndicator checked={toursEnabled} />
             </button>
+            <ChevronRight
+              aria-hidden
+              className={cn(
+                "pointer-events-none size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
+                tourGuidesOpen && "rotate-90",
+              )}
+            />
           </div>
           {tourGuidesOpen && (
             <div id="tour-guides-panel" className="space-y-2 border-t p-3">
@@ -1211,6 +1277,9 @@ export function SettingsModal() {
           )}
         </div>
         <SystemIntegrationSection shellCommandRow={<ShellCommandRow />} />
+        <Suspense fallback={null}>
+          <SettingsFileCard />
+        </Suspense>
         <ResetToDefaults
           sectionName={t(($) => $.shell.settings.nav.general)}
           onReset={resetGeneralPreferences}
@@ -1227,7 +1296,7 @@ export function SettingsModal() {
         onClose={closeSettings}
         closeLabel={t(($) => $.shell.settings.close)}
         label={t(($) => $.shell.settings.title)}
-        className="flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden"
+        className="flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(1040px,94vw)] min-w-[min(640px,94vw)] overflow-hidden"
       >
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}
@@ -1240,34 +1309,22 @@ export function SettingsModal() {
           >
             {t(($) => $.shell.settings.title)}
           </div>
-          <SettingsSearchField
-            value={search.query}
-            onChange={search.setQuery}
-            controls={sectionListId}
-          />
+          <SettingsSearchQueryField search={search} controls={sectionListId} />
           <div
+            ref={sectionListRef}
             data-testid="settings-section-scroll"
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           >
             <div id={sectionListId} className="flex flex-col gap-0.5">
             {visibleNavigation.map(({ id, label, icon: Icon }) => (
             <Fragment key={id}>
-            <button
-              type="button"
-              aria-current={section === id ? "page" : undefined}
+            <NavItem
+              icon={Icon}
+              label={label}
+              active={section === id}
               data-testid={`settings-section-${id}`}
               onClick={() => setSection(id)}
-              className={cn(
-                // Every row carries a border so the active one can show it without shifting.
-                "flex items-center gap-2.5 whitespace-nowrap rounded-md border px-2.5 py-2 text-sm transition-colors",
-                section === id
-                  ? "border-border bg-background font-medium text-foreground"
-                  : "border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground"
-              )}
-            >
-              <Icon className="size-4 shrink-0" aria-hidden />
-              {label}
-            </button>
+            />
             <SettingsSearchRows
               label={label}
               rows={searchRows.get(id) ?? []}
@@ -1276,7 +1333,7 @@ export function SettingsModal() {
             </Fragment>
             ))}
             </div>
-            {search.query !== "" && (
+            {search.hasQuery && (
               <SettingsSearchStatus count={search.hits ? search.hits.length : null} />
             )}
           </div>
@@ -1562,7 +1619,7 @@ function HelpSection() {
         <div
           role="note"
           aria-label={t(($) => $.shell.settings.help.supportAriaLabel)}
-          className="relative mt-1 min-w-0 flex-1 rounded-xl border border-border bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))] px-3 py-2.5 text-left text-[11px] leading-relaxed text-muted-foreground"
+          className="relative mt-1 min-w-0 flex-1 rounded-xl border border-border bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))] px-3 py-2.5 text-left text-[0.6875rem] leading-relaxed text-muted-foreground"
         >
           <span
             aria-hidden="true"
@@ -1598,7 +1655,7 @@ function HelpSection() {
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <h3 className="text-sm font-semibold">{"Oleafly"}</h3>
             {version && (
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[0.6875rem] text-muted-foreground">
                 {t(($) => $.shell.settings.help.versionShort, { version })}
               </span>
             )}
@@ -1638,7 +1695,7 @@ function HelpSection() {
       </div>
 
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
           {t(($) => $.shell.settings.help.community)}
         </p>
         {community.map((item) => (
@@ -1651,14 +1708,14 @@ function HelpSection() {
             <item.icon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
             <span className="min-w-0 flex-1">
               <span className="block text-sm">{item.label}</span>
-              <span className="block truncate text-[11px] text-muted-foreground">
+              <span className="block truncate text-[0.6875rem] text-muted-foreground">
                 {item.description}
               </span>
             </span>
             {item.id === "discord" && (
               <DiscordOnlineCount
                 online={discordOnline}
-                className="shrink-0 text-[11px] text-muted-foreground"
+                className="shrink-0 text-[0.6875rem] text-muted-foreground"
               />
             )}
             <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
@@ -1669,7 +1726,7 @@ function HelpSection() {
       {/* Author row removed for now; will re-add later.
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Author</p>
+          <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Author</p>
           <button type="button"
             onClick={ext(AUTHOR_URL)}
             className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
@@ -1682,7 +1739,7 @@ function HelpSection() {
       </div>
       */}
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
           {t(($) => $.shell.settings.help.project)}
         </p>
         <button type="button"
@@ -1692,7 +1749,7 @@ function HelpSection() {
           <Github className="size-4 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">{t(($) => $.shell.settings.help.starRepo)}</span>
           {repoStats && (
-            <span className="flex shrink-0 items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
+            <span className="flex shrink-0 items-center gap-3 text-[0.6875rem] tabular-nums text-muted-foreground">
               <span
                 role="img"
                 className="inline-flex items-center gap-1"
@@ -1722,7 +1779,7 @@ function HelpSection() {
       </div>
 
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
           {t(($) => $.shell.settings.help.resourcesTitle)}
         </p>
         {resources.map((r) => (

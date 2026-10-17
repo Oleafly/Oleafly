@@ -69,7 +69,10 @@
       "localNotFound": "Den lokale pakke {{spec}} er ikke installeret. Læg den i Oleaflys mappe til Typst-pakker eller i projektets typst-packages-mappe.",
       "versionMissing": "Denne pakke har ingen version {{version}}. Den nyeste version er {{latest}}.",
       "versionMissingNoLatest": "Denne pakke har ingen version {{version}}. Tjek versionen i importen."
-    }
+    },
+    "saveFailed": "{{path}} kunne ikke gemmes, så Oleafly kompilerede ikke. Tjek filen, og kompilér igen.",
+    "saveFailedSeveral": "{{path}} og andre filer kunne ikke gemmes, så Oleafly kompilerede ikke. Tjek filerne, og kompilér igen.",
+    "saveFailedOther": "Dokumentet kunne ikke gemmes, så Oleafly kompilerede ikke. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -284,7 +287,9 @@
     "yearRangeInvalid": "Startåret kan ikke ligge efter slutåret."
   },
   "mcp": {
+    "deniedByRules": "Afvist af en deny-regel i approvals.toml",
     "openProjectSummary": "Åbn projektet {{id}}",
+    "rulesUnreadable": "Afvist, fordi approvals.toml ikke kunne læses",
     "useToolSummary": "Brug {{tool}} fra MCP-serveren {{server}}"
   },
   "mcpConfig": {
@@ -358,7 +363,8 @@
     "referencesFor": "Referencer til {{name}}",
     "renameFailed": "Kunne ikke omdøbe til \"{{name}}\".",
     "renamePartial": "Omdøbt til \"{{name}}\" i {{edited}} af {{total}} filer. Kunne ikke skrive {{files}}.",
-    "renamed": "Omdøbt til \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Omdøbt til \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" svarer ikke til nogen fil i dette projekt."
   },
   "pandoc": {
     "downloadFailed": "Kunne ikke downloade pandoc. Installer den manuelt, og prøv igen.",

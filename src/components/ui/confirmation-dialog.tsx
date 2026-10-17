@@ -1,4 +1,4 @@
-import { useEffect, useId } from "react";
+import { type ReactNode, useEffect, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -6,13 +6,15 @@ import { ModalShell } from "@/components/ui/modal-shell";
 
 interface ConfirmationDialogProps {
   open: boolean;
-  title: string;
+  title: ReactNode;
   description: string;
   confirmLabel: string;
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
   destructive?: boolean;
+  // Shown under the description, for details such as the items affected.
+  children?: ReactNode;
 }
 
 export function ConfirmationDialog({
@@ -24,6 +26,7 @@ export function ConfirmationDialog({
   onConfirm,
   onCancel,
   destructive = false,
+  children,
 }: Readonly<ConfirmationDialogProps>) {
   const { t } = useTranslation(["common", "shell"]);
   const titleId = useId();
@@ -67,14 +70,15 @@ export function ConfirmationDialog({
       </h2>
       <p
         id={descriptionId}
-        className="mt-2 text-xs leading-relaxed text-muted-foreground"
+        className="mt-2 select-text text-xs leading-relaxed text-muted-foreground"
       >
         {description}
       </p>
+      {children}
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel} data-modal-initial-focus>
           {cancelLabel ?? t(($) => $.common.actions.cancel)}
-          <Kbd className="h-4 min-w-4 px-1 text-[10px]">{t(($) => $.shell.keys.esc)}</Kbd>
+          <Kbd className="h-4 min-w-4 px-1 text-[0.625rem]">{t(($) => $.shell.keys.esc)}</Kbd>
         </Button>
         <Button
           variant={destructive ? "destructive" : "default"}
@@ -84,7 +88,7 @@ export function ConfirmationDialog({
           {confirmLabel}
           {/* Only advertise the shortcut where it actually exists. */}
           {destructive ? null : (
-            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
+            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[0.625rem] text-current">↵</Kbd>
           )}
         </Button>
       </div>

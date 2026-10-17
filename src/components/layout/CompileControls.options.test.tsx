@@ -149,6 +149,17 @@ describe("CompileControls options menu", () => {
     await waitFor(() => expect(setEngine).toHaveBeenCalledWith("latexmk", "lualatex"));
   });
 
+  it("pins upLaTeX and pLaTeX for Japanese documents", async () => {
+    render(<CompileControls />);
+    const user = await openOptions();
+    await user.click(screen.getByTestId("compiler-uplatex"));
+    await waitFor(() => expect(setEngine).toHaveBeenCalledWith("latexmk", "uplatex"));
+    setEngine.mockClear();
+    const again = await openOptions();
+    await again.click(screen.getByTestId("compiler-platex"));
+    await waitFor(() => expect(setEngine).toHaveBeenCalledWith("latexmk", "platex"));
+  });
+
   it("lets latexmk pick the compiler", async () => {
     useFilesStore.setState({
       engine: { ...LATEX_ENGINE, id: "latexmk", tex_flavor: "xelatex" },

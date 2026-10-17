@@ -23,6 +23,7 @@ import { decodeAppError, describeError } from "@/lib/app-error";
 import { useDisplayText } from "@/lib/display-path";
 import { isWindows } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 export const NODE_DOWNLOAD_URL = "https://nodejs.org/en/download";
 
@@ -326,11 +327,11 @@ export function AgentProgramField({
   return (
     <div data-testid={`acp-agent-program-${id}`} className="min-w-0 space-y-2">
       <div className="min-w-0">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className={path ? "mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground" : "mt-1 text-xs leading-relaxed text-muted-foreground"}>
+        <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className={path ? "mt-1 break-all font-mono text-[0.6875rem] leading-relaxed text-foreground" : "mt-1 text-xs leading-relaxed text-muted-foreground"}>
           {path ? <SettingsPath path={path} /> : valueText}
         </p>
-        {source && <p className="text-[11px] leading-relaxed text-muted-foreground">{source}</p>}
+        {source && <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">{source}</p>}
       </div>
       {showInput && (
         <form
@@ -422,7 +423,7 @@ export function AgentProgramField({
         >
           <ul aria-label={t(($) => $.settings.ai.agents.program.skippedTitle)} className="space-y-1.5">
             {rejected.map((candidate) => (
-              <li key={`${candidate.path}:${candidate.reason}`} className="min-w-0 text-[11px] leading-relaxed">
+              <li key={`${candidate.path}:${candidate.reason}`} className="min-w-0 text-[0.6875rem] leading-relaxed">
                 <span className="block break-all font-mono text-foreground">
                   <SettingsPath path={candidate.path} />
                 </span>
@@ -478,13 +479,13 @@ function ProgramResult({
     return (
       <div data-testid={testId} className="space-y-1">
         <output aria-live="polite" className="flex items-start gap-1.5 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400">
-          <Check aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+          <CheckBadge tone="success" className="mt-0.5" />
           <span>
             <SettingsPathText text={displayText(message)} />
           </span>
         </output>
         {agent.signInHint && (
-          <p className="text-[11px] leading-relaxed text-muted-foreground">{agent.signInHint}</p>
+          <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">{agent.signInHint}</p>
         )}
       </div>
     );
@@ -499,12 +500,12 @@ function ProgramResult({
         <SettingsPathText text={displayText(message)} />
       </p>
       {showDetail && (
-        <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-2 font-mono text-[11px] text-muted-foreground">
+        <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-2 font-mono text-[0.6875rem] text-muted-foreground">
           <SettingsPathText text={displayText(check.detail ?? "")} />
         </pre>
       )}
       {code === "bridge_missing" && !onInstallBridge && agent.reason && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
           <SettingsPathText text={displayText(agent.reason)} />
         </p>
       )}

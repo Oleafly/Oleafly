@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "About Oleafly",
     "checkUpdates": "Check for Updates…",
+    "settings": "Settings…",
     "reloadViews": "Reload Views",
     "restartApp": "Restart Application",
     "quit": "Quit Oleafly",
@@ -30,7 +31,8 @@
     "newTab": "New Tab",
     "openLocation": "Open Location…",
     "closeTab": "Close Tab",
-    "reloadPage": "Reload Page"
+    "reloadPage": "Reload Page",
+    "zenMode": "Zen Mode"
   },
   "window": {
     "browser": "Oleafly Browser",
@@ -42,6 +44,11 @@
       "title": "Enable full access?",
       "message": "Full access lets the assistant run shell commands and edit files without asking for approval each time. Enable full access?",
       "confirm": "Enable full access"
+    },
+    "sharedShellEscape": {
+      "title": "Allow external commands in this shared project?",
+      "message": "Anyone who can edit this project could then run programs on this computer when you compile. Only allow this if you trust everyone in the project.",
+      "confirm": "Allow on this computer"
     },
     "cookieImport": {
       "title": "Confirm cookie import",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "Open in Oleafly",
     "openWithOleafly": "Open with Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (local copy)"
+  },
+  "approvals": {
+    "helperRefused": "Refused by the {{tool}} rule in approvals.toml",
+    "unknownTool": "No tool is named {{name}}, so its rule does nothing.",
+    "unknownToolSuggestion": "No tool is named {{name}}, so its rule does nothing. Did you mean {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "You're connected. You can close this tab and go back to Oleafly.",
+    "failedPage": "Sign-in did not finish. You can close this tab and go back to Oleafly."
   }
 }

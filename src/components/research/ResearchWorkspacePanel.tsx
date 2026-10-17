@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlaskConical, Settings2 } from "lucide-react";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useScrollMemory } from "@/hooks/use-scroll-memory";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
+import { readSidebarView } from "@/store/sidebar-view-state";
 import { ResearchRootsPanel } from "@/components/research/workspace/ResearchRootsPanel";
 import { ResearchTasksPanel, type ResearchTaskAgentOption } from "@/components/research/tasks/ResearchTasksPanel";
 import { knownProviderConfig, loadProviderConfig, subscribeProviderConfig, deriveProviderState } from "@/components/ai/provider-config";
@@ -21,6 +24,18 @@ import { i18n } from "@/i18n";
 export function ResearchWorkspacePanel() {
   const { t } = useTranslation(["common", "researchTools"]);
   const projectId = useFilesStore((state) => state.projectId);
+  const [tab, setTab] = useState<"tasks" | "folders">(
+    () => readSidebarView(projectId, "researchWorkspace")?.tab ?? "tasks",
+  );
+  useSidebarViewMemory(projectId, "researchWorkspace", { tab });
+  const previousProjectId = useRef(projectId);
+  useEffect(() => {
+    if (previousProjectId.current === projectId) return;
+    previousProjectId.current = projectId;
+    setTab((current) => readSidebarView(projectId, "researchWorkspace")?.tab ?? current);
+  }, [projectId]);
+  const foldersRef = useRef<HTMLDivElement>(null);
+  useScrollMemory({ scrollRef: foldersRef, projectId, slot: "research.folders" });
   const [config, setConfig] = useState(knownProviderConfig);
   const [configError, setConfigError] = useState<string | null>(null);
   useEffect(() => {
@@ -90,7 +105,11 @@ export function ResearchWorkspacePanel() {
         </Button>
       </SidebarPanelHeader>
       {configError && <output className="block px-3 pt-2 text-xs text-destructive">{configError}</output>}
-      <Tabs defaultValue="tasks" className="flex min-h-0 flex-1 flex-col">
+      <Tabs
+        value={tab}
+        onValueChange={(next) => setTab(next === "folders" ? "folders" : "tasks")}
+        className="flex min-h-0 flex-1 flex-col"
+      >
         <TabsList fill className="mx-3 mt-2 shrink-0">
           <TabsTrigger value="tasks" data-tour="research-tasks" className="px-2">
             <span className="truncate">{t(($) => $.researchTools.workspace.tabTasks)}</span>
@@ -102,7 +121,7 @@ export function ResearchWorkspacePanel() {
         <TabsContent value="tasks" className="min-h-0 flex-1 overflow-auto">
           <ResearchTasksPanel projectId={projectId} agents={agents} onOpenSession={openSession} />
         </TabsContent>
-        <TabsContent value="folders" className="min-h-0 flex-1 overflow-auto">
+        <TabsContent value="folders" ref={foldersRef} className="min-h-0 flex-1 overflow-auto">
           {projectId ? (
             <ResearchRootsPanel key={projectId} projectId={projectId} />
           ) : (

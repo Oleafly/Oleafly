@@ -16,6 +16,7 @@ operator-list names. A source assertion alone is never labeled Render.
 | --- | --- | --- |
 | Library | welcome state, book grid | 01, 21 |
 | Template gallery | open/close, cards, search rail, name+color step, create | 01, 02 |
+| Custom templates | import a ZIP as a template, two independent projects from it, save an open project as a template from Export, import a gallery link through the signed-in account | 110 |
 | Every bundled template | create + compile with zero errors (all 19, incl. modern-resume's font-pack download) | 30 |
 | Export menu per document kind | beamer offers pptx (not epub), book offers epub (not pptx), plain doc offers neither, image project offers PNG and hides doc formats | 30 |
 | Book | open project, favorite toggle (hover-revealed) | 02, 21 |

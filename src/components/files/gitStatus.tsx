@@ -106,15 +106,16 @@ export function GitStatusBadge({
       id={id}
       data-testid={testId}
       title={name}
+      role="img"
+      aria-label={name}
       className={cn(
-        "flex size-4 shrink-0 items-center justify-center rounded text-[10px] font-semibold",
+        "flex size-4 shrink-0 items-center justify-center rounded text-[0.625rem] font-semibold",
         meta.fill,
         meta.text,
         className,
       )}
     >
       <span aria-hidden>{meta.label}</span>
-      <span className="sr-only">{name}</span>
     </span>
   );
 }
@@ -125,10 +126,11 @@ export function GitFolderDot({ meta }: Readonly<{ meta: GitStatusMeta }>) {
   return (
     <span
       title={label}
+      role="img"
+      aria-label={label}
       className={cn("flex size-4 shrink-0 items-center justify-center", meta.text)}
     >
       <span aria-hidden className="size-1.5 rounded-full bg-current" />
-      <span className="sr-only">{label}</span>
     </span>
   );
 }

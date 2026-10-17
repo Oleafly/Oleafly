@@ -25,7 +25,7 @@ function ChangeRow({
   const panelId = useId();
   if (change.truncated) {
     return (
-      <li className="px-1 py-0.5 text-[11px] text-muted-foreground">
+      <li className="px-1 py-0.5 text-[0.6875rem] text-muted-foreground">
         {t(($) => $.ai.acp.permission.diff.large, { path: shown })}
       </li>
     );
@@ -34,7 +34,7 @@ function ChangeRow({
     <li className="py-0.5">
       <div className="flex min-w-0 items-center gap-2">
         <FileDiff aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-        <span id={pathId} className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground">
+        <span id={pathId} className="min-w-0 flex-1 truncate font-mono text-[0.6875rem] text-foreground">
           {shown}
         </span>
         <button
@@ -43,7 +43,7 @@ function ChangeRow({
           aria-controls={panelId}
           aria-describedby={pathId}
           onClick={onToggle}
-          className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent"
+          className="shrink-0 rounded px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent"
         >
           {open ? t(($) => $.ai.acp.permission.diff.hideChange) : t(($) => $.ai.acp.permission.diff.showChange)}
         </button>
@@ -103,7 +103,7 @@ export function ChangeList({
       {others.map((path) => (
         <li key={path} className="flex min-w-0 items-center gap-2 py-0.5">
           <FileDiff aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground">
+          <span className="min-w-0 flex-1 truncate font-mono text-[0.6875rem] text-foreground">
             {displayPath(path)}
           </span>
         </li>

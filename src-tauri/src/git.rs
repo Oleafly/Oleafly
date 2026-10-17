@@ -1443,6 +1443,97 @@ fn run_git_authed(
     )
 }
 
+fn mirror_settings() -> Vec<String> {
+    [
+        format!("core.hooksPath={}", null_device()),
+        "commit.gpgsign=false".to_string(),
+        "tag.gpgsign=false".to_string(),
+        "core.fsmonitor=false".to_string(),
+        "core.autocrlf=false".to_string(),
+        "core.safecrlf=false".to_string(),
+        "core.longpaths=true".to_string(),
+        "core.quotepath=false".to_string(),
+        "core.precomposeunicode=true".to_string(),
+        "core.filemode=false".to_string(),
+        "core.symlinks=false".to_string(),
+        "core.protectNTFS=true".to_string(),
+        "core.protectHFS=true".to_string(),
+        "gc.auto=0".to_string(),
+        "merge.conflictstyle=merge".to_string(),
+        "user.name=Oleafly".to_string(),
+        "user.email=sync@oleafly.invalid".to_string(),
+        "credential.helper=".to_string(),
+    ]
+    .into_iter()
+    .flat_map(|setting| ["-c".to_string(), setting])
+    .collect()
+}
+
+const GIT_TRACE_ENV: [&str; 9] = [
+    "GIT_TRACE",
+    "GIT_TRACE2",
+    "GIT_TRACE2_EVENT",
+    "GIT_TRACE2_PERF",
+    "GIT_TRACE_CURL",
+    "GIT_TRACE_PACKET",
+    "GIT_TRACE_PERFORMANCE",
+    "GIT_TRACE_SETUP",
+    "GIT_CURL_VERBOSE",
+];
+
+fn mirror_command_env(command: &mut Command) {
+    for variable in GIT_TRACE_ENV {
+        command.env_remove(variable);
+    }
+    command
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env_remove("GIT_ASKPASS")
+        .env_remove("SSH_ASKPASS")
+        .env("GIT_LITERAL_PATHSPECS", "1");
+}
+
+pub(crate) fn run_mirror_git(root: &Path, args: &[&str]) -> Result<std::process::Output, String> {
+    let settings = mirror_settings();
+    let mut full: Vec<&str> = settings.iter().map(String::as_str).collect();
+    full.extend_from_slice(args);
+    run_configured_git(&root.to_path_buf(), &full, true, mirror_command_env)
+}
+
+pub(crate) fn run_mirror_git_remote(
+    root: &Path,
+    credential_origin: &str,
+    token: &str,
+    args: &[&str],
+) -> Result<std::process::Output, String> {
+    let mut settings = mirror_settings();
+    settings.extend([
+        "-c".to_string(),
+        format!("credential.{credential_origin}.helper="),
+        "-c".to_string(),
+        format!(
+            "credential.{credential_origin}.helper=!f() {{ test \"$1\" = get && printf 'username=git\\npassword=%s\\n' \"$OLEAFLY_MIRROR_TOKEN\"; }}; f"
+        ),
+        "-c".to_string(),
+        format!("credential.{credential_origin}.useHttpPath=false"),
+    ]);
+    let mut full: Vec<&str> = settings.iter().map(String::as_str).collect();
+    full.extend_from_slice(args);
+    run_configured_git_bounded(
+        &root.to_path_buf(),
+        &full,
+        true,
+        remote_bounds(),
+        |command| {
+            mirror_command_env(command);
+            command.env("OLEAFLY_MIRROR_TOKEN", token);
+        },
+    )
+}
+
+pub(crate) fn git_failure_text(out: &std::process::Output) -> String {
+    out_to_string(out)
+}
+
 /// Attach the authenticated repository history to content imported through the
 /// guarded archive path. Resetting only the index keeps the archive import's
 /// path and symlink protections intact while placing the worktree on top of the
@@ -2057,7 +2148,26 @@ fn workspace_snapshot_at(root: &PathBuf) -> Result<GitWorkspaceSnapshot, String>
             git_available,
         });
     }
-    let changes = status_at(root)?;
+    let (changes, branch, remote, ahead_behind, merging, branches, commits) =
+        std::thread::scope(|scope| {
+            let branch = scope.spawn(|| current_branch(root).ok());
+            let remote = scope.spawn(|| origin_url(root));
+            let ahead_behind = scope.spawn(|| ahead_behind_at(root));
+            let merging = scope.spawn(|| merge_in_progress(root));
+            let branches = scope.spawn(|| branches_at(root));
+            let commits = scope.spawn(|| git_log_at(root));
+            let changes = status_at(root);
+            (
+                changes,
+                joined(branch),
+                joined(remote),
+                joined(ahead_behind),
+                joined(merging),
+                joined(branches),
+                joined(commits),
+            )
+        });
+    let changes = changes?;
     let conflicts = changes
         .iter()
         .filter(|change| change.conflict)
@@ -2068,21 +2178,22 @@ fn workspace_snapshot_at(root: &PathBuf) -> Result<GitWorkspaceSnapshot, String>
         .collect();
     Ok(GitWorkspaceSnapshot {
         initialized: true,
-        branch: current_branch(root).ok(),
-        remote: origin_url(root).map(|remote| remote.map(|value| sanitize_url(&value)))?,
-        ahead_behind: ahead_behind_at(root)?,
-        operation: if merge_in_progress(root)? {
-            "merge"
-        } else {
-            "idle"
-        }
-        .into(),
+        branch: branch?,
+        remote: remote?.map(|remote| remote.map(|value| sanitize_url(&value)))?,
+        ahead_behind: ahead_behind??,
+        operation: if merging?? { "merge" } else { "idle" }.into(),
         changes,
         conflicts,
-        branches: branches_at(root)?,
-        commits: git_log_at(root)?,
+        branches: branches??,
+        commits: commits??,
         git_available: true,
     })
+}
+
+fn joined<T>(handle: std::thread::ScopedJoinHandle<'_, T>) -> Result<T, String> {
+    handle
+        .join()
+        .map_err(|_| "a git snapshot worker stopped unexpectedly".to_string())
 }
 
 #[tauri::command]

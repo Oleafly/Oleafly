@@ -159,5 +159,84 @@
     "label": "Siteringsstil",
     "ariaLabel": "Siteringsstil for litteraturlisten i {{path}}",
     "failed": "Oleafly kunne ikke endre siteringsstilen."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} mfl.",
+      "noYear": "u.å.",
+      "keySource": {
+        "bbt": "Nøkkel fra Better BibTeX",
+        "native": "Nøkkel fra Zotero",
+        "extra": "Nøkkel fra Ekstra-feltet i Zotero",
+        "generated": "Nøkkel laget av Oleafly"
+      },
+      "addFailed": "Oleafly kunne ikke legge {{key}} til i litteraturlisten. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Åpne Innstillinger > Avansert i Zotero, og slå på «Tillat andre programmer på denne datamaskinen å kommunisere med Zotero».",
+      "unsupported": "Oppdater Zotero til versjon 7 eller nyere for å søke i biblioteket ditt fra Oleafly.",
+      "keyRejected": "Zotero godtar ikke lenger API-nøkkelen din. Koble til kontoen din på nytt i Zotero-innstillingene.",
+      "closed": "Åpne Zotero for å søke i biblioteket ditt her, eller koble til zotero.org-kontoen din.",
+      "closedCached": "Zotero er lukket. Resultatene er fra forrige synkronisering, {{time}}.",
+      "bbtMissing": "Better BibTeX svarer ikke, så nye nøkler kommer fra Zotero. Sjekk at det er installert og slått på.",
+      "action": "Zotero-innstillinger"
+    },
+    "actions": {
+      "addFromZotero": "Legg til fra Zotero",
+      "addAllMissing_one": "Legg til {{count}} manglende sitering fra Zotero",
+      "addAllMissing_other": "Legg til alle {{count}} manglende siteringer fra Zotero",
+      "notInLibrary": "{{key}} finnes ikke i Zotero-biblioteket ditt.",
+      "changed": "Denne oppføringen er endret i Zotero siden du la den til.",
+      "changedEdited": "Denne oppføringen er endret i Zotero, og du har også redigert den her.",
+      "update": "Oppdater fra Zotero",
+      "updated": "Oppdaterte {{key}} fra Zotero.",
+      "updateFailed": "Oleafly kunne ikke oppdatere {{key}} fra Zotero. Prøv igjen."
+    },
+    "chooseBibliography": {
+      "title": "Hvor skal nye referanser legges?",
+      "description": "Dette prosjektet har mer enn én litteraturfil. Oleafly legger nye referanser i den du velger, og husker valget for dette prosjektet.",
+      "confirm": "Bruk denne filen"
+    },
+    "handEdits": {
+      "title": "Erstatte endringene dine?",
+      "description": "Du har redigert {{key}} for hånd. Hvis du erstatter den med versjonen fra Zotero, forsvinner disse endringene.",
+      "confirm": "Bruk Zotero-versjonen",
+      "cancel": "Behold min"
+    },
+    "handList": {
+      "title": "Flytte referanselisten?",
+      "description": "Dette dokumentet har referansene skrevet inn for hånd. Flytt dem til {{path}}, så havner de i én nummerert liste sammen med artiklene du siterer fra Zotero.",
+      "confirm": "Flytt listen"
+    },
+    "missing": {
+      "title": "Legg til manglende siteringer fra Zotero",
+      "loading": "Sjekker Zotero-biblioteket ditt…",
+      "none": "Alle siterte nøkler finnes allerede i litteraturlisten din.",
+      "found_one": "{{count}} sitert nøkkel finnes i Zotero",
+      "found_other": "{{count}} siterte nøkler finnes i Zotero",
+      "duplicates_one": "{{count}} nøkkel siterer en artikkel som allerede finnes i litteraturlisten din",
+      "duplicates_other": "{{count}} nøkler siterer artikler som allerede finnes i litteraturlisten din",
+      "duplicateRow": "{{key}} er samme artikkel som {{existing}}",
+      "notFound_one": "{{count}} sitert nøkkel finnes ikke i Zotero",
+      "notFound_other": "{{count}} siterte nøkler finnes ikke i Zotero",
+      "confirm_one": "Legg til {{count}} oppføring",
+      "confirm_other": "Legg til {{count}} oppføringer",
+      "done_one": "{{count}} oppføring ligger nå i {{path}}.",
+      "done_other": "{{count}} oppføringer ligger nå i {{path}}.",
+      "failed": "Oleafly kunne ikke legge til oppføringene. {{detail}}"
+    },
+    "update": {
+      "title": "Oppdater .bib-oppføringer fra Zotero",
+      "loading": "Ser etter endringer i Zotero…",
+      "none": "Litteraturlisten din samsvarer med Zotero.",
+      "handEdited": "Redigert for hånd",
+      "handEditedNote": "Oppføringer du har redigert for hånd, er ikke valgt. Velg en for å erstatte den med versjonen fra Zotero.",
+      "confirm_one": "Oppdater {{count}} oppføring",
+      "confirm_other": "Oppdater {{count}} oppføringer",
+      "done_one": "Oppdaterte {{count}} oppføring.",
+      "done_other": "Oppdaterte {{count}} oppføringer."
+    }
   }
 }

@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Mukautettu hyväksyntätila lukee tämän tiedoston. Se sijaitsee polussa ~/.oleafly/approvals.toml ja koskee jokaista tämän laitteen projektia.",
+        "description": "Tiedosto sijaitsee polussa ~/.oleafly/approvals.toml ja koskee jokaista tämän laitteen projektia. Deny-säännöt estävät työkalun kaikissa hyväksyntätiloissa. Allow-säännöt vaikuttavat vain mukautetussa tilassa.",
         "discard": "Hylkää muutokset",
         "emptyFile": "Tiedosto on toistaiseksi tyhjä.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Ensimmäinen taulu, <modesTable>[\"$approval_modes\"]</modesTable>, asettaa hyväksyntätilan projektikohtaisesti: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> tai <custom>\"custom\"</custom>. Projekti, jota ei ole listattu, käyttää tilaa Hyväksy puolestani.",
           "openProject": "Avoimen projektin {{name}} tunnus on <projectId>{{id}}</projectId>.",
           "projectIds": "Projektien tunnukset ovat kansionimiä polussa ~/.oleafly/projects.",
-          "rules": "Sen jälkeen yksi taulu projektitunnusta kohden, ja siinä yksi sääntö työkalua kohden: <allow>\"allow\"</allow> ajaa työkalun kysymättä ja <deny>\"deny\"</deny> estää sen. Deny-sääntöjä noudatetaan joka tilassa; allow-säännöt vaikuttavat mukautetussa tilassa, ja run_command-työkalun osalta ne ohittavat kysymisen myös muissa tiloissa.",
+          "rules": "Sen jälkeen yksi taulu projektitunnusta kohden, ja siinä yksi sääntö työkalua kohden: <allow>\"allow\"</allow> ajaa työkalun kysymättä ja <deny>\"deny\"</deny> estää sen. Deny-sääntöjä noudatetaan joka tilassa, myös tilassa Täysi käyttöoikeus. Allow-säännöt vaikuttavat vain mukautetussa tilassa.",
           "toolNames": "Käytettävissä olevat työkalunimet: <names>{{names}}</names> sekä mikä tahansa MCP-työkalu koko nimellään Työkalut-luettelosta."
         },
         "helpToggle": "Miten tiedosto toimii",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Aina sallittu",
         "denied": "Aina estetty",
-        "description": "Projektin {{name}} tallennetut säännöt. Ne vaikuttavat, kun hyväksyntätila on Mukautettu. Poista sääntö, niin kyseiseen työkaluun sovelletaan tavallista riskikäytäntöä.",
+        "description": "Projektin {{name}} tallennetut säännöt. Estetyt työkalut pysyvät estettyinä kaikissa hyväksyntätiloissa. Sallitut työkalut ohittavat kysymisen vain Mukautettu-tilassa. Poista sääntö, niin kyseiseen työkaluun sovelletaan tavallista riskikäytäntöä.",
         "empty": "Ei vielä tallennettuja sääntöjä. Käytä hyväksyntäkehotteessa valintaa \"Aina tässä projektissa\", niin sääntö syntyy.",
         "removeRule": "Poista työkalun {{tool}} sääntö",
         "thisProject": "tämä projekti",
@@ -533,12 +533,17 @@
         "right": "Oikealla"
       },
       "font": {
-        "description": "Käyttää järjestelmän varafonttia, jos fonttia ei ole asennettu.",
+        "description": "Valitse valikoille, paneeleille ja valintaikkunoille mikä tahansa tietokoneelle asennettu fontti.",
         "label": "Sovelluksen fontti"
       },
       "fontSize": {
         "description": "Skaalaa tekstin kokoa valikoissa, paneeleissa ja painikkeissa.",
         "label": "Sovelluksen fonttikoko"
+      },
+      "zoom": {
+        "description": "Suurentaa tai pienentää kaiken Oleaflyssa, myös editorin ja PDF:n.",
+        "label": "Zoomaus",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "Järjestelmä seuraa käyttöjärjestelmää ja muuttuu sen mukana.",
@@ -584,7 +589,7 @@
         "label": "Kulman pyöristys"
       },
       "resetAll": "Palauta kaikki",
-      "resetMode": "Palauta tämä tila",
+      "resetMode": "Palauta",
       "title": "Teeman mukautus",
       "tokenInputDark": "Tunnus {{token}} tummaan tilaan",
       "tokenInputLight": "Tunnus {{token}} vaaleaan tilaan",
@@ -633,28 +638,72 @@
         "label": "Automaattitäydennys"
       },
       "font": {
-        "description": "Valitse lähdetiedostoissa käytettävä tasalevyinen fontti.",
-        "label": "Editorin fontti"
+        "description": "Valitse lähdetiedostoille mikä tahansa tietokoneelle asennettu fontti.",
+        "label": "Editorin fontti",
+        "monospace": "Tasalevyinen"
+      },
+      "useAppFont": {
+        "description": "Editori käyttää sovelluksen fonttia ja fonttikokoa.",
+        "disabledHint": "Muuta tätä poistamalla Käytä sovelluksen fonttia käytöstä.",
+        "label": "Käytä sovelluksen fonttia"
       },
       "fontSize": {
         "description": "Aseta lähdekoodieditorin tekstikoko.",
-        "label": "Editorin fonttikoko"
+        "label": "Editorin fonttikoko",
+        "custom": "Mukautettu",
+        "customLabel": "Mukautettu editorin fonttikoko pikseleinä"
       },
       "ghostCompletion": {
         "description": "Näytä todennäköinen täydennys kohdistimen jälkeen. Hyväksy se painamalla Tab.",
         "label": "Tekstin sisäinen ehdotus"
-      },
-      "nonBlinkingCursor": {
-        "description": "Pidä editorin kohdistin yhtenäisenä.",
-        "label": "Vilkkumaton kohdistin"
       },
       "stickyScroll": {
         "description": "Pidä nykyiset luvut, otsikot ja ympäristöt ylhäällä vierittäessä.",
         "label": "Tarttuva vieritys"
       },
       "theme": {
-        "description": "Aseta lähdekoodin syntaksivärit erikseen sovelluksen teemasta.",
-        "label": "Editorin teema"
+        "dark": {
+          "description": "Editorin teema, kun sovellus on tumma.",
+          "label": "Teema tummassa tilassa"
+        },
+        "light": {
+          "description": "Editorin teema, kun sovellus on vaalea.",
+          "label": "Teema vaaleassa tilassa"
+        }
+      },
+      "colors": {
+        "description": "Muuta mitä tahansa editorin teeman väriä. Muutokset säilyvät teemakohtaisesti.",
+        "editing": "Muokataan: {{theme}}",
+        "editorGroup": "Editori",
+        "mode": {
+          "dark": "Tumma tila",
+          "light": "Vaalea tila"
+        },
+        "modeAriaLabel": "Mukautettava teema",
+        "names": {
+          "background": "Tausta",
+          "command": "Komennot",
+          "comment": "Kommentit",
+          "environment": "Ympäristöt",
+          "formatting": "Muotoilu",
+          "heading": "Otsikot",
+          "lineNumbers": "Rivinumerot",
+          "link": "Linkit",
+          "math": "Matematiikka",
+          "name": "Nimet ja avaimet",
+          "reference": "Lähdeviitteet ja viittaukset",
+          "selection": "Valinta",
+          "structure": "Preambuli ja tuonnit",
+          "symbol": "Sulkeet ja symbolit",
+          "text": "Teksti",
+          "value": "Arvot ja merkkijonot"
+        },
+        "pick": "Valitse väri: {{color}}",
+        "previewAriaLabel": "Esikatselun kieli",
+        "reset": "Palauta",
+        "syntaxGroup": "Syntaksi",
+        "title": "Editorin värit",
+        "useThemeColor": "Käytä teeman väriä: {{color}}"
       },
       "keymap": {
         "description": "Valitse näppäinkomentojoukko, jota lähdekoodieditori käyttää.",
@@ -671,12 +720,61 @@
         "options": {
           "compact": "Tiivis",
           "normal": "Normaali",
-          "wide": "Väljä"
+          "wide": "Väljä",
+          "custom": "Mukautettu"
+        },
+        "customLabel": "Mukautettu riviväli"
+      },
+      "letterSpacing": {
+        "customLabel": "Mukautettu merkkiväli pikseleinä",
+        "description": "Lisää tilaa lähdekoodieditorin merkkien väliin. Se jättää myös enemmän tilaa kohdistimen ympärille.",
+        "label": "Merkkiväli",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normaali",
+          "custom": "Mukautettu"
         }
+      },
+      "cursorWidth": {
+        "label": "Kohdistimen leveys",
+        "description": "Määritä, kuinka paksu editorin kohdistin on.",
+        "option": "{{width}} px"
+      },
+      "cursorHeight": {
+        "label": "Kohdistimen korkeus",
+        "description": "Määritä editorin kohdistimen korkeus. Rivi tekee siitä koko rivin korkuisen.",
+        "options": {
+          "text": "Teksti",
+          "line": "Rivi"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Kohdistimen vilkkuminen",
+        "description": "Valitse, miten editorin kohdistin vilkkuu. Pois pitää sen jatkuvasti näkyvissä.",
+        "options": {
+          "blink": "Vilkkuu",
+          "smooth": "Pehmeä",
+          "phase": "Vaihe",
+          "expand": "Venyvä",
+          "off": "Pois"
+        }
+      },
+      "cursorColor": {
+        "label": "Kohdistimen väri",
+        "description": "Editorin vaaleilla ja tummilla teemoilla on kummallakin oma kohdistimen värinsä. Kunnes valitset värin, käytetään teeman väriä.",
+        "light": "Vaalea",
+        "dark": "Tumma",
+        "pickLight": "Valitse kohdistimen väri editorin vaaleille teemoille",
+        "pickDark": "Valitse kohdistimen väri editorin tummille teemoille",
+        "useTheme": "Käytä teeman värejä"
       },
       "lineWrap": {
         "description": "Rivitä pitkät rivit sen sijaan että vieritettäisiin sivusuunnassa.",
         "label": "Rivitä pitkät rivit"
+      },
+      "highlightCurrentLine": {
+        "label": "Korosta nykyinen rivi",
+        "description": "Väritä sen rivin tausta, jolla kohdistin on."
       },
       "tabSize": {
         "description": "Sisennystasoa kohden lisättävät välilyönnit ja leveys, jolla sarkain piirretään.",
@@ -708,6 +806,15 @@
           "description": "Tarkistaa Typst-tiedostot todennäköisten virheiden varalta aina tallennettaessa. Asetuksen vaihtaminen käynnistää Typst-kielipalvelimen uudelleen.",
           "label": "Typst-lint-tarkistukset"
         }
+      },
+      "fileMove": {
+        "label": "Kun tiedosto siirretään",
+        "description": "Päivitä polut, jotka osoittavat uudelleennimettyyn tai siirrettyyn tiedostoon LaTeX-, Typst- ja Markdown-lähteissä.",
+        "options": {
+          "ask": "Kysy",
+          "always": "Päivitä aina",
+          "never": "Älä koskaan päivitä"
+        }
       }
     },
     "files": {
@@ -735,6 +842,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} ei ole asennettu, joten käytössä on oletusfontti.",
     "preview": {
       "darkMode": {
         "description": "Käännä PDF:n värit oletuksena. Värit voi silti vaihtaa esikatselun työkalupalkista.",
@@ -743,10 +851,6 @@
       "hoverPreview": {
         "description": "Näytä viimeisin käännetty sivu, kun viet osoittimen projektin päälle kirjastossa.",
         "label": "Esikatsele PDF osoittimella"
-      },
-      "zoomShortcuts": {
-        "description": "Zoomaa PDF:ää näppäimillä Cmd/Ctrl +, - ja 0 sovellusikkunan sijaan.",
-        "label": "PDF:n zoomauspikanäppäimet"
       }
     },
     "sectionName": "Ulkoasu",
@@ -810,6 +914,17 @@
         "description": "Käynnistä shell-prosessi projektin avautuessa eikä vasta, kun pääte näytetään ensimmäisen kerran.",
         "label": "Käynnistä shell projektin mukana"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Täyttää näytön Zen-tilassa ja palauttaa ikkunan poistuttaessa.",
+        "label": "Siirry koko näyttöön"
+      },
+      "showPdf": {
+        "description": "Jos PDF on piilotettu Zen-tilassa, se avataan editorin viereen, kun käännät.",
+        "label": "Näytä PDF käännettäessä"
+      },
+      "title": "Zen-tila"
     }
   },
   "checkpoints": {
@@ -880,7 +995,6 @@
   },
   "cite": {
     "apa": "Sama viite APA-muodossa on GitHubissa kohdan Cite this repository takana",
-    "copyBibtex": "Kopioi BibTeX",
     "description": "Oleafly on maksuton ja avointa lähdekoodia, ja se pysyy sellaisena, kun ihmiset tietävät siitä. Jos se auttoi artikkelia eteenpäin, yksi merkintä lähdeluettelossasi kertoo seuraavalle tutkijalle, mistä työkalu on peräisin. Kopioi se, liitä se .bib-tiedostoosi ja viittaa avaimella <citeKey>oleafly</citeKey>.",
     "title": "Viittaa Oleaflyyn artikkelissasi"
   },
@@ -890,14 +1004,16 @@
       "download": "Lataa",
       "downloadAll": "Lataa kaikki"
     },
-    "aiTemplates": {
-      "deleteDescription": "Poistetaanko \"{{name}}\" kirjastostasi? Siitä jo luodut projektit säilyttävät oman kopionsa, eikä poisto vaikuta niihin.",
-      "deleteTitle": "Poista tekoälyn luoma mallipohja",
-      "deleted": "\"{{name}}\" poistettiin kirjastostasi",
-      "empty": "Ei vielä tekoälyn luomia mallipohjia. Luo sellainen mallipohjagalleriasta.",
-      "fallbackDescription": "Tekoälyn luoma mallipohja",
-      "toggle": "Hallitse tekoälyn luomia mallipohjia",
-      "deleteFailed": "Kohdetta \"{{name}}\" ei voitu poistaa."
+    "yourTemplates": {
+      "toggle": "Hallitse mallipohjiasi",
+      "import": "Tuo mallipohja",
+      "empty": "Sinulla ei ole vielä omia mallipohjia. Tuo sellainen tästä, tallenna projekti mallipohjaksi sen valikosta tai luo sellainen mallipohjagalleriassa.",
+      "aiDescription": "Tekoälyn luoma mallipohja",
+      "customDescription": "Oma mallipohja",
+      "deleteTitle": "Poista mallipohja",
+      "deleteDescription": "Poistetaanko ”{{name}}” mallipohjistasi? Siitä jo luomasi projektit säilyttävät oman kopionsa.",
+      "deleted": "”{{name}}” poistettiin mallipohjistasi",
+      "deleteFailed": "Kohdetta ”{{name}}” ei voitu poistaa."
     },
     "fontPacks": {
       "lato": {
@@ -911,6 +1027,26 @@
       "ptserif": {
         "description": "Hillitty siirtymäkauden antiikva, joka sopii hyvin tieteellisiin ja virallisiin asiakirjoihin.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans ja Serif CJK, Fandol ja LXGW WenKai. Ne korvaavat myös SimSunin, SimHein ja KaiTin.",
+        "label": "Kiina, japani ja korea"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 ja 7 Free sekä Noto Color Emoji.",
+        "label": "Kuvakkeet ja emojit"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code ja Source Code Pro.",
+        "label": "Koodi"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans ja IBM Plex.",
+        "label": "Modernit päätteettömät ja päätteelliset"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus sekä New Computer Modern Sans ja Mono.",
+        "label": "Klassiset tekstifontit"
       }
     },
     "fonts": {
@@ -947,7 +1083,57 @@
       "fontRemoveFailed": "Fonttia ei voitu poistaa.",
       "packDownloadFailed": "Mallipohjapakettia ei voitu ladata.",
       "packsDownloadFailed": "Mallipohjapaketteja ei voitu ladata.",
-      "packRemoveFailed": "Mallipohjapakettia ei voitu poistaa."
+      "packRemoveFailed": "Mallipohjapakettia ei voitu poistaa.",
+      "templateDownloadFailed": "Mallipohjaa ei voitu ladata.",
+      "packsRefreshFailed": "Uusia paketteja ei voitu tarkistaa."
+    },
+    "typstFonts": {
+      "heading": "Fontit Typstille",
+      "tooltip": "Ilmaisia fontteja, joita moni Typst-malli pyytää. Kun ne on ladattu, jokainen Typst-projekti voi käyttää niitä, paitsi projekti, joka ottaa järjestelmän fontit pois käytöstä."
+    },
+    "packs": {
+      "browse": "Selaa",
+      "back": "Takaisin paketteihin",
+      "count_one": "{{count}} mallipohja",
+      "count_other": "{{count}} mallipohjaa",
+      "installedCount": "{{installed}}/{{total}} asennettu",
+      "downloadPack": "Lataa paketti",
+      "refresh": "Tarkista uudet paketit",
+      "searchPacks": "Hae paketteja",
+      "searchTemplates": "Hae mallipohjia",
+      "noPacks": "Ei osuvia paketteja",
+      "noTemplates": "Ei osuvia mallipohjia",
+      "loading": "Ladataan mallipohjia",
+      "loadFailed": "Pakettia ei voitu ladata.",
+      "retry": "Yritä uudelleen",
+      "installed": "Asennettu",
+      "engineFilter": "Moottori",
+      "kindFilter": "Tyyppi",
+      "languageFilter": "Kieli",
+      "allEngines": "Kaikki moottorit",
+      "allKinds": "Kaikki tyypit",
+      "allLanguages": "Kaikki kielet",
+      "groups": {
+        "curated": "Valikoidut",
+        "community": "Yhteisö",
+        "typst": "Typst",
+        "university": "Yliopistot"
+      },
+      "preview": {
+        "image": "Mallipohjan {{name}} ensimmäinen sivu",
+        "previous": "Edellinen mallipohja",
+        "next": "Seuraava mallipohja",
+        "engine": "Moottori",
+        "license": "Lisenssi",
+        "kind": "Tyyppi",
+        "languages": "Kielet",
+        "country": "Maa",
+        "institution": "Oppilaitos",
+        "originalSource": "Alkuperäinen lähde",
+        "getTemplate": "Hae mallipohja",
+        "useTemplate": "Käytä mallipohjaa",
+        "getAndCreate": "Hae ja luo projekti"
+      }
     }
   },
   "engine": {
@@ -982,7 +1168,7 @@
       "status": {
         "checking": "Etsitään pandocia…",
         "installing": "Haetaan kiinnitettyä pandoc-julkaisua. Tämä kestää hetken ensimmäisellä kerralla.",
-        "missing": "Ei löytynyt. Oleafly voi ladata yhteensopivan pandocin (2.19 tai uudempi) omaan kansioonsa; mikään muu järjestelmässäsi ei muutu.",
+        "missing": "Ei löytynyt. Oleafly voi ladata yhteensopivan pandocin (2.19 tai uudempi) omaan kansioonsa. Mikään muu järjestelmässäsi ei muutu.",
         "ready": "Havaittu. Markdown-projektit muunnetaan LaTeXiksi pandocilla ja käännetään sitten mukana tulevalla Tectonicilla."
       },
       "tectonicDetail": "Latoo pandocin tuottaman LaTeXin. Tulee Oleaflyn mukana, eikä sitä tarvitse määrittää.",
@@ -1192,11 +1378,68 @@
       "apiKeyLabel": "Zoteron API-avain",
       "connected": "Yhdistetty Zotero-kirjastoosi.",
       "connectedAs": "Yhdistetty käyttäjänä {{username}}.",
-      "description": "Tuo viittauksia ja viitteitä Zotero-kirjastostasi.",
       "disconnectFailed": "Oleafly ei voinut poistaa tallennettua Zotero-avainta. Yritä uudelleen.",
-      "importHint": "Tuo kirjasto avaamalla projektin Viitteet-paneeli ja valitsemalla Tuo lähdekirjasto.",
       "userIdLabel": "Zoteron käyttäjätunnus",
-      "userIdPlaceholder": "Käyttäjätunnus"
+      "userIdPlaceholder": "Käyttäjätunnus",
+      "citeDescription": "Hae koko Zotero-kirjastostasi kirjoittaessasi ja lisää vain se, mihin viittaat. Oleafly lukee kirjastoasi eikä koskaan muuta sitä.",
+      "local": {
+        "heading": "Zotero tällä koneella",
+        "ready": "Yhdistetty Zoteroon (versio {{version}}).",
+        "readyNoVersion": "Yhdistetty Zoteroon.",
+        "bbtFound": "Better BibTeX {{version}} on asennettu, joten viiteavaimet tulevat Better BibTeX -lisäosasta.",
+        "bbtMissing": "Better BibTeX ei ole asennettuna, joten viiteavaimet tulevat Zoterosta.",
+        "notRunning": "Zotero ei ole käynnissä. Avaa Zotero, niin voit hakea kirjastostasi, tai yhdistä zotero.org-tilisi alla.",
+        "apiDisabled": "Avaa Zoterossa Asetukset > Lisäasetukset ja ota käyttöön ”Salli muiden tämän koneen ohjelmien viestiä Zoteron kanssa”.",
+        "unsupported": "Tämä Zotero-versio ei voi jakaa kirjastoaan. Päivitä Zotero versioon 7 tai uudempaan.",
+        "unknown": "Oleafly ei ole vielä etsinyt Zoteroa."
+      },
+      "test": "Testaa yhteys",
+      "syncNow": "Synkronoi nyt",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX -lisäosaa ei löytynyt",
+        "local": "Luettu tämän koneen Zoterosta",
+        "web": "Luettu sivustolta zotero.org",
+        "library_one": "{{name}}: {{formatted}} kohde",
+        "library_other": "{{name}}: {{formatted}} kohdetta"
+      },
+      "library": {
+        "heading": "Haettavat kirjastot",
+        "myLibrary": "Oma kirjasto",
+        "toggle": "Hae kirjastosta {{name}}",
+        "items_one": "{{formatted}} kohde",
+        "items_other": "{{formatted}} kohdetta"
+      },
+      "sync": {
+        "never": "Ei vielä synkronoitu.",
+        "syncing": "Synkronoidaan Zotero-kirjastoasi…",
+        "progress": "Synkronoidaan: {{done}}/{{total}} kohdetta…",
+        "status_one": "{{formatted}} kohde valmiina viitattavaksi, synkronoitu {{time}}.",
+        "status_other": "{{formatted}} kohdetta valmiina viitattavaksi, synkronoitu {{time}}.",
+        "fromCache": "Zotero on suljettu, joten @-haku käyttää viimeisimmän synkronoinnin kopiota.",
+        "rateLimited": "zotero.org pyysi Oleaflya odottamaan. Oleafly yrittää uudelleen kello {{time}} jälkeen."
+      },
+      "account": {
+        "heading": "zotero.org-tili",
+        "description": "Käytä tiliäsi, kun Zotero ei ole auki tällä koneella. Myös ryhmäkirjastot tulevat mukaan."
+      }
+    },
+    "overleaf": {
+      "description": "Tuo projekteja Overleaf-tililtäsi tai yliopistosi Overleaf-palvelimelta ja pidä ne synkronoituina. Oleafly säilyttää kirjautumisen ja Git-tokenin salattuina tällä koneella.",
+      "signedInAs": "Kirjautunut palvelimelle {{server}} käyttäjänä {{email}}",
+      "signedIn": "Kirjautunut palvelimelle {{server}}",
+      "signOut": "Kirjaudu ulos",
+      "signOutFailed": "Oleafly ei voinut kirjautua ulos Overleafista.",
+      "gitTitle": "Git-tokeni synkronointia varten",
+      "gitSaved": "Git-tokeni on tallennettu. Linkittämäsi projektit pysyvät synkronoituina Overleafin kanssa.",
+      "gitMissing": "Git-tokenia ei vielä ole. Luo se Overleafin tiliasetusten kohdassa Git-integraatio, niin voit synkronoida projekteja.",
+      "gitOpenSettings": "Avaa Overleafin tiliasetukset",
+      "gitPlanNote": "Git-integraatio vaatii, että projektin omistajalla on maksullinen tai yliopiston Overleaf-tilaus.",
+      "gitLabel": "Overleafin Git-tokeni",
+      "gitSave": "Tallenna",
+      "gitRemove": "Poista",
+      "gitFailed": "Oleafly ei voinut tallentaa Git-tokenia. Tarkista, että liitit koko tokenin."
     }
   },
   "language": {
@@ -1561,6 +1804,10 @@
         "description": "Näytä tai piilota projektin sivupalkki.",
         "label": "Näytä tai piilota sivupalkki"
       },
+      "togglePreview": {
+        "label": "Näytä tai piilota PDF-esikatselu",
+        "description": "Näyttää tai piilottaa PDF:n editorin vieressä, myös Zen-tilassa."
+      },
       "toggleTerminal": {
         "description": "Näytä tai piilota projektin pääte.",
         "label": "Näytä tai piilota pääte"
@@ -1568,6 +1815,26 @@
       "openFolder": {
         "label": "Avaa kansio",
         "description": "Avaa tietokoneen kansio projektina."
+      },
+      "toggleZenMode": {
+        "description": "Piilota kaikki tekstiä lukuun ottamatta tai tuo kaikki takaisin.",
+        "label": "Vaihda Zen-tilaa"
+      },
+      "openSettings": {
+        "label": "Avaa asetukset",
+        "description": "Avaa Oleaflyn asetukset."
+      },
+      "zoomIn": {
+        "description": "Suurentaa koko sovelluksen.",
+        "label": "Lähennä"
+      },
+      "zoomOut": {
+        "description": "Pienentää koko sovelluksen.",
+        "label": "Loitonna"
+      },
+      "resetZoom": {
+        "description": "Palauttaa sovelluksen 100 prosenttiin.",
+        "label": "Palauta zoomaus"
       }
     },
     "application": {
@@ -1590,7 +1857,7 @@
         "italic": "Kursivointi",
         "jumpToSourceFromPdf": "Hyppää PDF:stä lähdekoodiin",
         "redo": "Tee uudelleen",
-        "renameSymbol": "Nimeä symboli uudelleen koko projektissa",
+        "renameSymbol": "Nimeä symboli tai tiedosto uudelleen koko projektissa",
         "slashCommandMenu": "Kauttaviivakomentojen lisäysvalikko",
         "triggerAutocomplete": "Käynnistä automaattitäydennys",
         "undo": "Kumoa"

@@ -1,0 +1,64 @@
+{
+  "title": "Application Settings",
+  "description": "Save your settings to a JSON file, or load one someone shared with you. API keys, accounts, integrations and agents are never included.",
+  "export": "Export",
+  "import": "Import",
+  "view": {
+    "label": "View settings JSON",
+    "summary": "Read-only preview of the file that Export saves.",
+    "loading": "Reading your settings",
+    "failed": "Couldn't read your settings."
+  },
+  "dialog": {
+    "pickTitle": "Import settings",
+    "filterName": "Oleafly settings"
+  },
+  "toast": {
+    "exported": "Exported {{name}} to disk",
+    "exportFailed": "Couldn't save the settings file.",
+    "readFailed": "Couldn't open that file.",
+    "imported": "Settings imported.",
+    "unchanged": "Your settings already match {{name}}.",
+    "applyFailed": "Some settings couldn't be saved. Try the import again.",
+    "cloudEmpty": "Your Dropbox has no Oleafly settings yet. Turn on cloud sync on another computer first.",
+    "cloudLoadFailed": "Couldn't load settings from your Dropbox.",
+    "cloudUnreadable": "The settings in your Dropbox couldn't be read."
+  },
+  "confirm": {
+    "title": "Replace your settings?",
+    "description": "Settings from {{name}} will replace yours. Anything the file leaves out stays as it is.",
+    "changes": "Settings that will change: {{count}}",
+    "ignored": "Not recognized, so they'll be skipped:",
+    "action": "Import",
+    "cloudDescription": "Settings from your Dropbox will replace yours. Anything they leave out stays as it is."
+  },
+  "error": {
+    "title": "{{name}} wasn't imported",
+    "notJson": "The file isn't valid JSON.",
+    "notSettings": "This isn't an Oleafly settings file.",
+    "invalid": "The settings config you tried to import is invalid, please fix these errors and try importing again:",
+    "more": "+{{count}} more"
+  },
+  "valueErrors": {
+    "boolean": "must be true or false",
+    "oneOf": "must be one of: {{values}}",
+    "range": "must be a number from {{min}} to {{max}}",
+    "wholeRange": "must be a whole number from {{min}} to {{max}}",
+    "wholeRangeStep": "must be a whole number from {{min}} to {{max}}, in steps of {{step}}",
+    "hexColor": "must be a color like #2563eb",
+    "hexColorOrEmpty": "must be a color like #2563eb, or \"\" to use the theme's color",
+    "text": "must be text, at most {{max}} characters",
+    "webAddress": "must be a web address that starts with http:// or https://",
+    "list": "must be a list of at most {{max}} entries",
+    "listItem": "isn't an allowed entry",
+    "duplicate": "is listed twice",
+    "object": "must be a group of settings in braces",
+    "unknownKey": "isn't a setting Oleafly knows",
+    "dictionaryLocale": "must be a dictionary code like en_US",
+    "shortcut": "must be a shortcut like Mod-Shift-k, or \"default\"",
+    "editorKey": "must be a key like Mod-d, \"\" for none, or \"default\""
+  },
+  "importFromLocal": "Import from this device",
+  "importFromCloud": "Import from cloud",
+  "cloudSource": "your Dropbox"
+}

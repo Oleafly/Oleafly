@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "admin-console",
+  "description": "The admin console window for a collaboration server. It reads and changes the server through the app's own collaboration commands, so it needs only events, its own window and zoom.",
+  "windows": ["admin-console-*"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-set-webview-zoom",
+    "core:window:allow-close",
+    "core:window:allow-set-focus"
+  ]
+}

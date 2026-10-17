@@ -42,7 +42,9 @@
     "privacyNote": "仅会将标识符或标题发送至 doi.org、arXiv 或 Crossref。",
     "title": "添加引用",
     "bibliography": "参考文献",
-    "bibliographyHint": "此项目有多个参考文献文件。条目会添加到你在此处选择的文件中。"
+    "bibliographyHint": "此项目有多个参考文献文件。条目会添加到你在此处选择的文件中。",
+    "zoteroMatches": "来自你的 Zotero 库",
+    "zoteroPlaceholder": "搜索你的 Zotero 库，或粘贴 DOI、arXiv 编号或标题"
   },
   "backendProtocol": {
     "mismatch": "此窗口与后端基于不同的 Oleafly 版本构建，部分功能可能无法正常使用。重新安装应用即可解决。"
@@ -324,6 +326,38 @@
     "presentWithPresenter": {
       "label": "使用演示者视图放映幻灯片",
       "keywords": "放映 幻灯片 演示者视图 演讲者备注 计时器 下一张幻灯片"
+    },
+    "zenMode": {
+      "keywords": "专注 无干扰 全屏 隐藏界面 极简 写作",
+      "label": "切换禅模式"
+    },
+    "togglePreview": {
+      "keywords": "pdf 预览 显示 隐藏 分屏 仅编辑器",
+      "label": "切换 PDF 预览"
+    },
+    "zoomIn": {
+      "keywords": "放大 变大",
+      "label": "放大"
+    },
+    "zoomOut": {
+      "keywords": "缩小 变小",
+      "label": "缩小"
+    },
+    "resetZoom": {
+      "keywords": "实际大小 100",
+      "label": "重置缩放"
+    },
+    "zoteroAddMissing": {
+      "label": "从 Zotero 添加缺失的引用",
+      "keywords": "zotero 缺失 引用 未定义 键 参考文献 修复"
+    },
+    "zoteroUpdate": {
+      "label": "从 Zotero 更新 .bib 条目",
+      "keywords": "zotero 更新 刷新 参考文献 条目 已更改"
+    },
+    "zoteroSync": {
+      "label": "同步 Zotero 库",
+      "keywords": "zotero 同步 刷新 库"
     }
   },
   "community": {
@@ -346,11 +380,13 @@
     "compile": "编译",
     "compiler": {
       "auto": "自动 <note>[系统 TeX]</note>",
-      "help": "Tectonic 为内置编译器，无需设置。其余选项运行系统 TeX，可读取你的账户能访问的本地文件，只应在受信任的项目中使用。自动会根据源码选择编译器。pdfLaTeX 与大多数期刊模板兼容。XeLaTeX 和 LuaLaTeX 额外支持系统字体和 Unicode。",
+      "help": "Tectonic 为内置编译器，无需设置。其余选项运行系统 TeX，可读取你的账户能访问的本地文件，只应在受信任的项目中使用。自动会根据源码选择编译器。pdfLaTeX 与大多数期刊模板兼容。XeLaTeX 和 LuaLaTeX 额外支持系统字体和 Unicode。upLaTeX 和 pLaTeX 用于编译日文文档。",
       "lualatex": "LuaLaTeX <note>[系统 TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[系统 TeX]</note>",
+      "platex": "pLaTeX <note>[系统 TeX]</note>",
       "tectonic": "Tectonic <note>[内置]</note>",
       "title": "编译器（本项目）",
+      "uplatex": "upLaTeX <note>[系统 TeX]</note>",
       "xelatex": "XeLaTeX <note>[系统 TeX]</note>"
     },
     "errors": {
@@ -407,7 +443,8 @@
       "title": "变体（本项目）",
       "help": "变体会将自己的值传给 sys.inputs，例如草稿版或终稿版构建。你选择的变体只保存在这台电脑上。可在文档设置中添加或编辑变体。",
       "none": "无变体"
-    }
+    },
+    "sharedViewer": "在共享项目中，查看者无法更改这些设置。"
   },
   "datePicker": {
     "placeholder": "选择日期"
@@ -710,11 +747,6 @@
   "settings": {
     "close": "关闭设置",
     "data": {
-      "cloud": {
-        "comingSoon": "即将推出",
-        "description": "无需配置 Git 远程仓库，即可让项目在多台设备间保持同步。每次传输都将采用端到端加密，你的内容在传输过程中始终保持私密。本地项目文件夹仍是唯一可信的数据来源。",
-        "title": "云同步"
-      },
       "danger": {
         "confirmDeleteAllAction": "删除所有项目",
         "confirmDeleteAllDescription": "每个当前项目都会移入回收站，包括其中的文件和 Git 历史。之后你可以逐个恢复项目。",
@@ -793,9 +825,13 @@
         "description": "显示 Oleafly 工具库以及各个工具（PDF 导入、公式、表格、BibTeX、实验与文献检索、截止日期）及其斜杠命令。仍处于测试阶段，默认关闭。",
         "label": "LaTeX 工具"
       },
+      "liveCollaboration": {
+        "description": "通过你或你的团队运行的协作服务器，与他人一起编辑项目。会在设置中添加“协作”分区。仍处于测试阶段，默认关闭。",
+        "label": "实时协作"
+      },
       "warning": "这些功能为实验性功能，仍处于测试阶段。它们尚未经过完整测试，可能会在未来的版本中变化、出错或被移除。仅在你想要尝试开发中的功能时才开启。",
       "webBrowser": {
-        "description": "显示应用内浏览器（含侧边栏开关和快捷方式），并允许 AI 通过 computer use 操控浏览器。仍处于测试阶段，默认关闭；关闭时不会显示浏览器按钮，AI 也没有浏览器工具。",
+        "description": "显示应用内浏览器（含侧边栏开关和快捷方式），并允许 AI 通过 computer use 操控浏览器。目前处于测试阶段，默认关闭。关闭时不会显示浏览器按钮，AI 也没有浏览器工具。",
         "label": "网页浏览器"
       }
     },
@@ -829,7 +865,7 @@
         "description": "使用 --only-cached 编译，从不联网获取软件包。",
         "label": "离线模式"
       },
-      "proofreadingNote": "校对在本地后台工作进程中运行。Harper 遵循所选的英语方言；拼写检查始终使用所选的 Hunspell 词典包。数学公式、代码、注释、引用语法、元数据和 URL 会被排除。",
+      "proofreadingNote": "校对在本地后台工作进程中运行。Harper 遵循所选的英语方言，拼写检查始终使用所选的 Hunspell 词典包。数学公式、代码、注释、引用语法、元数据和 URL 会被排除。",
       "regionalism": {
         "description": "标记与所选英语方言不一致的词语。如果你将这类词语用作产品名或代码名，请关闭此选项。",
         "label": "地域用语建议"
@@ -870,6 +906,7 @@
     "nav": {
       "ai": "AI 助手",
       "appearance": "外观",
+      "collaboration": "协作",
       "data": "数据存储",
       "dictionary": "词典",
       "downloads": "下载",
@@ -885,6 +922,7 @@
       "keywords": {
         "ai": "助手，聊天，模型，提供商，API 密钥，代理，智能体，提示词，预算，MCP 服务器",
         "appearance": "主题，深色模式，暗色模式，浅色模式，颜色，字体，文字大小，缩放，布局",
+        "collaboration": "服务器，登录，设备，成员，维护者，共享，团队，实验室，实时编辑，实时，安全日志",
         "data": "备份，库文件夹，项目文件夹，存储，磁盘空间，废纸篓，回收站，删除项目，检查点",
         "dictionary": "拼写，自定义词语，忽略的词语，校对，语法规则",
         "downloads": "宏包，软件包，字体，词典，离线文件",
@@ -1100,7 +1138,8 @@
       "editorPreview": "编辑器 + 预览",
       "editorPreviewAi": "编辑器 + 预览 + AI",
       "previewAi": "预览 + AI",
-      "previewOnly": "仅预览"
+      "previewOnly": "仅预览",
+      "zenMode": "禅模式"
     },
     "newProjectName": "新项目名称",
     "projectName": "项目名称",
@@ -1319,5 +1358,77 @@
     "location": "{{file}}，第 {{line}} 行",
     "error": "错误",
     "warning": "警告"
+  },
+  "fileRenameDialog": {
+    "title": "重命名文件",
+    "titleFolder": "重命名文件夹",
+    "newPath": "新路径",
+    "hint": "不存在的文件夹会自动创建。",
+    "invalid": "请使用此项目内的路径。",
+    "exists": "{{path}} 已存在。"
+  },
+  "zen": {
+    "compileFailed": "编译失败",
+    "compiling": "正在编译",
+    "hideLog": "隐藏编译日志",
+    "showLog": "显示编译日志"
+  },
+  "collabSync": {
+    "paused_other": "有 {{count}} 个文件在 Oleafly 之外被更改。要把这些更改发送给所有人，还是只保留在本地？",
+    "send": "发送",
+    "keepLocal": "保留在本地",
+    "unavailable": "项目文件夹不可用，同步已暂停。文件夹恢复后会自动继续。"
+  },
+  "overleafSync": {
+    "button": "Overleaf 同步",
+    "title": "与 Overleaf 同步",
+    "cancel": "取消",
+    "more_other": "以及另外 {{count}} 个文件",
+    "status": {
+      "notLinked": "尚未与 Overleaf 同步。",
+      "linking": "正在关联 Overleaf",
+      "syncing": "正在与 Overleaf 同步",
+      "needsToken": "添加你的 Overleaf Git 令牌即可同步。",
+      "never": "尚未同步。",
+      "justNow": "刚刚",
+      "synced": "上次同步：{{time}}。",
+      "conflicts_other": "{{count}} 个文件在两边都有更改。请选择要保留的版本。"
+    },
+    "actions": {
+      "keepInSync": "与 Overleaf 保持同步",
+      "syncNow": "立即同步",
+      "auto": "自动同步",
+      "resolve": "选择版本",
+      "unlink": "停止同步",
+      "addToken": "添加 Git 令牌",
+      "changeToken": "更换 Git 令牌"
+    },
+    "token": {
+      "title": "添加你的 Overleaf Git 令牌",
+      "description": "Oleafly 通过 Overleaf 的 Git 集成进行同步。请在 Overleaf 账户设置的“Git 集成”中创建令牌，然后粘贴到这里。令牌会加密保存在这台电脑上。",
+      "openSettings": "打开 Overleaf 账户设置",
+      "label": "Git 令牌",
+      "note": "使用 Git 集成需要项目所有者订阅 Overleaf 付费方案或大学方案。",
+      "save": "保存并同步"
+    },
+    "choice": {
+      "title": "保留哪个版本？",
+      "description": "这些文件在本地和 Overleaf 上的内容不同。只存在于一边的文件会在两边都保留，因此不会删除任何内容。",
+      "mine": "使用我的版本",
+      "theirs": "使用 Overleaf 的版本"
+    },
+    "conflicts": {
+      "title": "选择版本",
+      "description": "自上次同步以来，这些文件在本地和 Overleaf 上都有更改。请为每个文件选择要保留的版本。在你应用之前，不会有任何更改。",
+      "mine": "我的",
+      "theirs": "Overleaf 的",
+      "allMine": "全部保留我的",
+      "allTheirs": "全部使用 Overleaf 的",
+      "apply": "应用并同步"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "此窗口 30 秒没有响应，Oleafly 已重新加载它。在此之前刚做的更改可能没有保存。",
+    "reloadedAgain": "此窗口再次停止响应，Oleafly 又重新加载了它。由于问题可能出在你的项目里，这次没有重新打开项目。"
   }
 }

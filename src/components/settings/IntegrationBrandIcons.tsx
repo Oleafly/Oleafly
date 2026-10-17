@@ -38,6 +38,14 @@ export function ZoteroBrandIcon({ className }: BrandIconProps) {
   );
 }
 
+export function OverleafBrandIcon({ className }: BrandIconProps) {
+  return (
+    <BrandSvg className={className} viewBox="0 0 24 24">
+      <path d="M22.3515.7484C19.1109-.5101 7.365-.982 7.3452 6.0266c-3.4272 2.194-5.6967 5.768-5.6967 9.598a8.373 8.373 0 0 0 13.1225 6.898 8.373 8.373 0 0 0-1.7668-14.7194c-.6062-.2339-1.9234-.6481-2.9753-.559-1.5007.9544-3.3308 2.9155-4.1949 4.8693 2.5894-3.082 7.5046-2.425 9.1937 1.2287 1.6892 3.6538-.9944 7.8237-5.0198 7.7998a5.4995 5.4995 0 0 1-4.1949-1.9328c-1.485-1.7483-1.8678-3.6444-1.5615-5.4975 1.057-6.4947 8.759-10.1894 14.486-11.6094-1.8677.989-5.2373 2.6134-7.5948 4.3837C18.015 9.1382 19.1308 3.345 22.3515.7484z" />
+    </BrandSvg>
+  );
+}
+
 export function GitHubBrandIcon({ className }: BrandIconProps) {
   return (
     <BrandSvg className={className} viewBox="0 0 24 24">
@@ -86,6 +94,14 @@ export function PubMedBrandIcon({ className }: BrandIconProps) {
   return (
     <BrandSvg className={className} viewBox="0 0 24 24">
       <path d="M8.23 7.982l.006-1.005C7.846 1.417 5.096 0 5.096 0l.048 2.291C3.73 1.056 2.6 1.444 2.6 1.444l.118 15.307s4.218-1.796 5.428 5.505C10.238 13.535 21.401 24 21.401 24V9S10.52-.18 8.231 7.982zm9.79 9.941l-1.046-5.232-1.904 4.507h-.96l-1.72-4.301-1.046 5.04H9.321l2.093-9.39h.802l2.491 5.543 2.508-5.557h.869l2.075 9.39h-2.138z" />
+    </BrandSvg>
+  );
+}
+
+export function DropboxBrandIcon({ className }: BrandIconProps) {
+  return (
+    <BrandSvg className={className} viewBox="0 0 24 24">
+      <path d="M6 1.807L0 5.629l6 3.822 6.001-3.822L6 1.807zM18 1.807l-6 3.822 6 3.822 6-3.822-6-3.822zM0 13.274l6 3.822 6.001-3.822L6 9.452l-6 3.822zM18 9.452l-6 3.822 6 3.822 6-3.822-6-3.822zM6 18.371l6.001 3.822 6-3.822-6-3.822L6 18.371z" />
     </BrandSvg>
   );
 }

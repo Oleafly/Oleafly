@@ -18,7 +18,7 @@ import { useFilesStore } from "@/store/files";
 import { useTourStore } from "@/store/tours";
 import { acceptInlineEdit, rejectInlineEdit } from "./plugin";
 import { PromptPopover } from "./PromptPopover";
-import { DiffActionBar, DiffErrorBar } from "./DiffActionBar";
+import { DiffActionBar, DiffErrorBar, DiffWithdrawnBar } from "./DiffActionBar";
 
 // Rendered inside a CodeMirror block widget below the target line; the widget
 // mounts it when a session opens and unmounts it when it closes.
@@ -64,6 +64,12 @@ export function InlineEditPanel() {
     };
   }, []);
 
+  useEffect(() => {
+    if (session?.phase !== "withdrawn") return;
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, [session?.phase]);
+
   const reset = () => useInlineEditStore.getState().reset();
   const stop = () => {
     abortRef.current?.abort();
@@ -95,7 +101,10 @@ export function InlineEditPanel() {
     if (!instruction) return;
     const store = useInlineEditStore.getState();
     store.setInstruction(instruction);
-    store.startStreaming();
+    // Someone may have edited the target while the instruction was typed.
+    const view = getEditorView();
+    const original = view ? view.state.sliceDoc(s.from, s.to) : s.original;
+    store.startStreaming(original);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
@@ -104,7 +113,7 @@ export function InlineEditPanel() {
           ? useFilesStore.getState().engine
           : undefined,
         instruction,
-        selection: s.original,
+        selection: original,
         signal: ctrl.signal,
         onToken: (full) => useInlineEditStore.getState().appendProposed(full),
       });
@@ -223,6 +232,9 @@ export function InlineEditPanel() {
   );
 
   const renderPanel = () => {
+    if (session.phase === "withdrawn") {
+      return <DiffWithdrawnBar onDismiss={reset} />;
+    }
     if (!providerReady) {
       return (
         <AiChrome

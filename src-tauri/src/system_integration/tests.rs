@@ -97,6 +97,10 @@ fn the_app_run_builds_hears_open_events_before_any_window_exists() {
 #[cfg(target_os = "macos")]
 #[test]
 fn open_events_without_a_local_folder_leave_the_intake_empty() {
+    let _queue = crate::collab::links::QUEUE_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    crate::collab::links::take();
     let app = app_built_like_run();
     on_run_event(app.handle(), &tauri::RunEvent::Ready);
     on_run_event(app.handle(), &tauri::RunEvent::Opened { urls: Vec::new() });
@@ -110,6 +114,7 @@ fn open_events_without_a_local_folder_leave_the_intake_empty() {
         },
     );
     assert!(pending(&app).is_empty());
+    assert_eq!(crate::collab::links::take(), ["oleafly://open?path=/srv/x"]);
 }
 
 #[test]
@@ -973,6 +978,25 @@ fn the_explorer_menu_is_written_repaired_and_removed_under_the_user_key() {
     let _ = root.remove_tree(&prefix);
 }
 
+fn merged_config(target: tauri::utils::platform::Target) -> serde_json::Value {
+    let (merged, _) =
+        tauri::utils::config::parse::read_from(target, Path::new(env!("CARGO_MANIFEST_DIR")))
+            .unwrap();
+    serde_json::from_value::<tauri::utils::config::Config>(merged.clone())
+        .unwrap_or_else(|error| panic!("the {target} config does not parse: {error}"));
+    merged
+}
+
+fn installer_schemes(target: tauri::utils::platform::Target) -> Vec<String> {
+    let desktop = merged_config(target)["plugins"]["deep-link"]["desktop"].clone();
+    if desktop.is_null() {
+        return Vec::new();
+    }
+    serde_json::from_value::<tauri::utils::config::DeepLinkProtocol>(desktop)
+        .unwrap()
+        .schemes
+}
+
 fn desktop_template_rendered(exec: &str) -> String {
     let template = include_str!("../../linux/main.desktop");
     let name = config(include_str!("../../tauri.conf.json"))["productName"]
@@ -1040,6 +1064,29 @@ fn the_appimage_launcher_runs_its_own_binary_by_name() {
 }
 
 #[test]
+fn both_windows_installers_register_app_links() {
+    use tauri::utils::platform::Target;
+    assert_eq!(
+        installer_schemes(Target::Windows),
+        [crate::collab::links::SCHEME]
+    );
+    let windows = merged_config(Target::Windows);
+    let nsis = &windows["bundle"]["windows"]["nsis"];
+    assert!(
+        matches!(nsis["installMode"].as_str(), None | Some("currentUser")),
+        "the NSIS installer registers app links for the current user only in currentUser mode"
+    );
+    let targets = &windows["bundle"]["targets"];
+    assert!(
+        targets == "all"
+            || ["nsis", "msi"].iter().all(|format| targets
+                .as_array()
+                .is_some_and(|list| list.contains(&(*format).into()))),
+        "{targets}"
+    );
+}
+
+#[test]
 fn packages_ship_the_dolphin_and_nemo_actions_the_builders_describe() {
     assert_eq!(
         include_str!("../../linux/oleafly-open-folder.desktop"),
@@ -1078,7 +1125,12 @@ fn packages_ship_the_dolphin_and_nemo_actions_the_builders_describe() {
             "linux/com.oleafly.app.metainfo.xml",
             "{format}"
         );
-        assert_eq!(files.as_object().unwrap().len(), 4, "{format}");
+        assert_eq!(
+            files["/usr/share/applications/oleafly-url-handler.desktop"],
+            "linux/oleafly-url-handler.desktop",
+            "{format}"
+        );
+        assert_eq!(files.as_object().unwrap().len(), 5, "{format}");
     }
 }
 

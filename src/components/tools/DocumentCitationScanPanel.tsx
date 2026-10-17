@@ -93,12 +93,6 @@ function formatAuthors(authors: string[]): string {
 const COPY_BIBTEX_TOAST = "copy-bibtex";
 const ADD_TO_BIB_TOAST = "citation-scan-add-bib";
 
-function citeMarkup(profile: string, key: string): string {
-  if (profile === "typst") return `@${key}`;
-  if (profile === "markdown") return `[@${key}]`;
-  return String.raw`\cite{${key}}`;
-}
-
 export function CopyBibtexButton({
   bibtex,
   label,
@@ -137,7 +131,7 @@ function isScannablePath(path: string | null | undefined): boolean {
 function SourceBadge({ source }: Readonly<{ source: LiteratureSource }>) {
   const definition = SOURCE_LABEL.get(source);
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/35 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/35 px-2 py-0.5 text-[0.625rem] font-medium text-muted-foreground">
       <span className={cn("size-1.5 rounded-full", SOURCE_DOT[source])} />
       {definition?.shortLabel ?? source}
     </span>
@@ -170,12 +164,10 @@ function SuggestionCard({
     try {
       const result = await addCitation(bibtexForLiteratureRecord(record));
       if ("key" in result) {
-        const profile =
-          useFilesStore.getState().engine.capabilities.formatting_profile;
         toast.successUnique(
           ADD_TO_BIB_TOAST,
           i18n.t(($) => $.researchTools.citationScan.citeAdded, {
-            citation: citeMarkup(profile, result.key),
+            citation: result.cite ?? result.key,
           }),
         );
       } else {
@@ -200,12 +192,12 @@ function SuggestionCard({
             <SourceBadge key={source} source={source} />
           ))}
           {record.year != null && (
-            <span className="text-[11px] tabular-nums text-muted-foreground">
+            <span className="text-[0.6875rem] tabular-nums text-muted-foreground">
               {record.year}
             </span>
           )}
           {record.citationCount != null && (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.researchTools.citationScan.citationCount, {
                 citations: formatCount(record.citationCount),
               })}
@@ -344,7 +336,7 @@ function ParagraphGroup({ result }: Readonly<{ result: ParagraphCitationResult }
               })}
             </Badge>
             {result.query && (
-              <span className="truncate text-[11px] text-muted-foreground/80">
+              <span className="truncate text-[0.6875rem] text-muted-foreground/80">
                 {t(($) => $.researchTools.citationScan.query, { query: result.query })}
               </span>
             )}
@@ -801,7 +793,7 @@ export function DocumentCitationScanPanel() {
           {error && (
             <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              <span className="min-w-0 flex-1">{error}</span>
+              <span className="min-w-0 flex-1 select-text">{error}</span>
               <button
                 type="button"
                 className="shrink-0 rounded p-0.5 hover:bg-destructive/10"

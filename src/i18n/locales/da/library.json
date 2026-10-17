@@ -137,7 +137,8 @@
       "document": "dokument",
       "image": "billede",
       "diagram": "diagram",
-      "external": "ekstern"
+      "external": "ekstern",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF-forhåndsvisning: {{name}}",
@@ -181,12 +182,24 @@
       "failed": "Kunne ikke forgrene projektet."
     },
     "deleteDialog": {
-      "title": "Vil du flytte »{{name}}« til papirkurven?",
+      "title": "Vil du flytte »<name>{{name}}</name>« til papirkurven?",
       "fallbackName": "projektet",
       "description": "Projektet forsvinder fra dit bibliotek, men findes stadig under Datalagring, indtil du gendanner det eller sletter det permanent.",
       "confirm": "Flyt til papirkurven",
       "moved": "Flyttede \"{{name}}\" til papirkurven.",
       "failed": "Kunne ikke slette \"{{name}}\"."
+    },
+    "bulkDelete": {
+      "button_one": "Slet {{count}} valgt projekt",
+      "button_other": "Slet {{count}} valgte projekter",
+      "title_one": "Vil du flytte {{count}} projekt til papirkurven?",
+      "title_other": "Vil du flytte {{count}} projekter til papirkurven?",
+      "description": "De forsvinder fra dit bibliotek, men findes stadig under Datalagring, indtil du gendanner dem eller sletter dem permanent.",
+      "folderNote": "Mapper, der er åbnet på stedet, forsvinder kun fra Oleafly. Deres filer bliver, hvor de er.",
+      "done_one": "Fjernede {{count}} projekt fra dit bibliotek.",
+      "done_other": "Fjernede {{count}} projekter fra dit bibliotek.",
+      "failed_one": "{{count}} projekt kunne ikke slettes.",
+      "failed_other": "{{count}} projekter kunne ikke slettes."
     }
   },
   "newProject": {
@@ -293,6 +306,64 @@
       "connect": "Forbind GitHub under Indstillinger",
       "repositoriesFailed": "Kunne ikke indlæse repositories.",
       "repositoriesRetry": "Kunne ikke indlæse repositories. Prøv igen"
+    },
+    "overleaf": {
+      "cardDescription": "Vælg projekter fra din Overleaf-konto",
+      "title": "Importer fra Overleaf",
+      "description": "Vælg de projekter, du vil hente over. Hvert projekt beholder sine filer, sin kompilator og sin hovedfil.",
+      "checking": "Tjekker dit Overleaf-login",
+      "loading": "Indlæser dine Overleaf-projekter",
+      "loadFailed": "Oleafly kunne ikke indlæse dine Overleaf-projekter.",
+      "signInPrompt": "Log ind på Overleaf for at se dine projekter. Et loginvindue åbner og lukker af sig selv, når du er logget ind.",
+      "signingIn": "Gør dit login på Overleaf færdigt i det vindue, der blev åbnet.",
+      "passkeyHint": "Hvis din adgangsnøgle ikke virker i login-vinduet, så vælg en anden mulighed dér, fx din adgangskode eller en anmodning på din telefon.",
+      "expired": "Dit Overleaf-login er udløbet. Log ind igen for at se dine projekter.",
+      "signIn": "Log ind på Overleaf",
+      "signInWindowTitle": "Log ind på Overleaf",
+      "server": "Server: {{server}}",
+      "serverLabel": "Adresse på Overleaf-serveren",
+      "useDifferentServer": "Brug en anden server",
+      "useDefaultServer": "Brug overleaf.com",
+      "saveServer": "Brug denne server",
+      "signedInAs": "Logget ind som {{email}}",
+      "signedIn": "Logget ind på Overleaf",
+      "signOut": "Log ud",
+      "searchLabel": "Søg i Overleaf-projekter",
+      "searchPlaceholder_one": "Søg i {{count}} projekt",
+      "searchPlaceholder_other": "Søg i {{count}} projekter",
+      "filterLabel": "Vis projekter",
+      "filter": {
+        "all": "Alle",
+        "owned": "Dine",
+        "shared": "Delt med dig"
+      },
+      "empty": "Der er endnu ingen projekter på denne Overleaf-konto.",
+      "noMatches": "Ingen projekter matcher din søgning.",
+      "selectAll": "Vælg alle",
+      "clearSelection": "Ryd markering",
+      "selectProject": "Vælg {{name}}",
+      "selected_one": "{{count}} projekt valgt",
+      "selected_other": "{{count}} projekter valgt",
+      "import_one": "Importer {{count}} projekt",
+      "import_other": "Importer {{count}} projekter",
+      "imported": "Importeret",
+      "open": "Åbn",
+      "ownedByYou": "Dit",
+      "owner": "Ejes af {{name}}",
+      "archived": "Arkiveret",
+      "notCarried": "Kommentarer, sporede ændringer, chat og historik bliver på Overleaf.",
+      "importingProjects": "Importerer dine projekter",
+      "done": "Færdig",
+      "doneSummary_one": "Importerede {{count}} projekt.",
+      "doneSummary_other": "Importerede {{count}} projekter.",
+      "failedSummary_one": "{{count}} projekt kunne ikke importeres.",
+      "failedSummary_other": "{{count}} projekter kunne ikke importeres.",
+      "progress": {
+        "queued": "Venter",
+        "downloading": "Downloader {{percent}} %",
+        "downloadingUnknown": "Downloader",
+        "importing": "Klargør"
+      }
     }
   },
   "pdfImport": {
@@ -537,7 +608,7 @@
       "remove": "Fjern fra Oleafly"
     },
     "remove": {
-      "title": "Vil du fjerne »{{name}}« fra Oleafly?",
+      "title": "Vil du fjerne »<name>{{name}}</name>« fra Oleafly?",
       "description": "Dine filer bliver, hvor de er. Oleafly sletter sine byggefiler for mappen og nulstiller dens tillid, godkendelser og tilknyttede mapper. Åbn mappen igen inden for 30 dage for at få dens chats og historik tilbage. Resten skal du sætte op igen.",
       "confirm": "Fjern fra Oleafly",
       "done": "»{{name}}« er fjernet fra Oleafly. Filerne ligger stadig i mappen.",
@@ -580,6 +651,55 @@
       "done": "»{{name}}« er nu i dit bibliotek.",
       "doneLeftOut": "»{{name}}« er nu i dit bibliotek. Links til filer andre steder og mapper, der ligger for dybt, blev ikke kopieret.",
       "failed": "»{{name}}« kunne ikke kopieres til dit bibliotek."
+    }
+  },
+  "customTemplates": {
+    "saveAsTemplate": "Gem som skabelon",
+    "saveTitle": "Gem som skabelon",
+    "saveDescription": "En kopi af <name>{{name}}</name> kommer med i dine skabeloner under »Egne«. Projektet forbliver, som det er.",
+    "nameLabel": "Skabelonnavn",
+    "save": "Gem",
+    "saving": "Gemmer…",
+    "saveFailed": "Oleafly kunne ikke gemme skabelonen.",
+    "saved": "Gemte »{{name}}« i dine skabeloner",
+    "useTemplate": "Brug skabelonen",
+    "alsoSaveAsTemplate": "Gem også som skabelon",
+    "alsoSaveHint": "En kopi kommer med i dine skabeloner under »Egne«.",
+    "import": {
+      "title": "Importer skabelon",
+      "description": "Tilføj en skabelon, du allerede har. Den vises under »Egne« i skabelongalleriet.",
+      "zipTitle": "ZIP-fil",
+      "zipDescription": "En skabelons kildefiler i en .zip",
+      "folderTitle": "Mappe",
+      "folderDescription": "En mappe med skabelonens filer",
+      "linkTitle": "Link til en Overleaf-skabelon",
+      "linkDescription": "En side fra Overleafs skabelongalleri",
+      "accountTitle": "Dine Overleaf-projekter",
+      "accountDescription": "Brug et af dine projekter som skabelon",
+      "pickerZipTitle": "Vælg en ZIP-fil med en skabelon",
+      "pickerZipFilter": "ZIP-arkiver",
+      "pickerFolderTitle": "Vælg en skabelonmappe",
+      "from": "Fra {{source}}",
+      "saveTemplate": "Gem skabelon",
+      "back": "Tilbage",
+      "linkLabel": "Link til skabelonsiden",
+      "linkPlaceholder": "https://www.overleaf.com/latex/templates/...",
+      "lookUp": "Slå op",
+      "lookingUp": "Slår skabelonen op…",
+      "by": "Af {{author}}",
+      "previewAlt": "Første side af {{name}}",
+      "noPreview": "Ingen forhåndsvisning",
+      "copyNote": "Ligesom »Åben som skabelon« på Overleaf tilføjer dette en kopi af skabelonen til dine Overleaf-projekter.",
+      "importAction": "Importer",
+      "signInNeeded": "Overleaf giver kun skabelonfiler til konti, der er logget ind. Log ind én gang, så fortsætter importen.",
+      "signIn": "Log ind på Overleaf",
+      "signingIn": "Gør dit login på Overleaf færdigt i det vindue, der blev åbnet.",
+      "accountSearch": "Søg i dine projekter",
+      "accountLoading": "Indlæser dine Overleaf-projekter…",
+      "accountEmpty": "Ingen projekter matcher din søgning.",
+      "accountFailed": "Oleafly kunne ikke indlæse dine Overleaf-projekter.",
+      "tryAgain": "Prøv igen",
+      "failed": "Oleafly kunne ikke importere skabelonen."
     }
   }
 }

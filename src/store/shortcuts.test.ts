@@ -217,6 +217,25 @@ describe("shortcut bindings", () => {
     }
   });
 
+  it("matches and records Cmd+Option+letter by the key pressed when Option types another character", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    try {
+      const { bindingFromEvent, matchesShortcut } = await import("@/store/shortcuts");
+      const pi = keyboard("π", { code: "KeyP", metaKey: true, altKey: true });
+
+      expect(matchesShortcut(pi, { key: "p", mod: true, alt: true })).toBe(true);
+      expect(matchesShortcut(pi, { key: "π", mod: true, alt: true })).toBe(true);
+      expect(matchesShortcut(pi, { key: "o", mod: true, alt: true })).toBe(false);
+      expect(bindingFromEvent(pi)).toEqual({ key: "p", mod: true, shift: false, alt: true });
+      expect(
+        bindingFromEvent(keyboard("@", { code: "KeyL", metaKey: true, altKey: true })),
+      ).toEqual({ key: "@", mod: true, shift: false, alt: true });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
   it("keeps fixed Ctrl distinct from the macOS platform modifier", async () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "MacIntel" });
@@ -279,6 +298,34 @@ describe("shortcut bindings", () => {
     expect(
       SHORTCUT_DEFINITIONS.filter(({ id, defaultBinding }) =>
         id !== "openFolder" && sameShortcutBinding(defaultBinding, openFolder),
+      ),
+    ).toEqual([]);
+  });
+
+  it("opens settings with Cmd or Ctrl+Comma by default, without clashing with another action", async () => {
+    const { SHORTCUT_DEFINITIONS, sameShortcutBinding, useShortcutStore } = await import(
+      "@/store/shortcuts"
+    );
+    const openSettings = useShortcutStore.getState().bindings.openSettings;
+
+    expect(openSettings).toEqual({ key: ",", mod: true });
+    expect(
+      SHORTCUT_DEFINITIONS.filter(({ id, defaultBinding }) =>
+        id !== "openSettings" && sameShortcutBinding(defaultBinding, openSettings),
+      ),
+    ).toEqual([]);
+  });
+
+  it("toggles the PDF preview with Cmd or Ctrl+Option or Alt+P by default, without clashing with another action", async () => {
+    const { SHORTCUT_DEFINITIONS, sameShortcutBinding, useShortcutStore } = await import(
+      "@/store/shortcuts"
+    );
+    const togglePreview = useShortcutStore.getState().bindings.togglePreview;
+
+    expect(togglePreview).toEqual({ key: "p", mod: true, alt: true });
+    expect(
+      SHORTCUT_DEFINITIONS.filter(({ id, defaultBinding }) =>
+        id !== "togglePreview" && sameShortcutBinding(defaultBinding, togglePreview),
       ),
     ).toEqual([]);
   });

@@ -165,6 +165,18 @@ describe("InlineEditPanel", () => {
     });
   });
 
+  it("asks about the text as it is when the run starts, after someone changed it", async () => {
+    useFilesStore.setState({ engineLoaded: false });
+    openSession();
+    await renderPanel();
+    act(() => view?.dispatch({ changes: { from: 0, to: 5, insert: "HELLO" } }));
+    fireEvent.change(promptBox(), { target: { value: "Make it friendlier" } });
+    fireEvent.click(screen.getByLabelText(inlineAi.submit));
+    await waitFor(() => expect(inline.runInlineCompletion).toHaveBeenCalled());
+    expect(inline.runInlineCompletion).toHaveBeenCalledWith(expect.objectContaining({ selection: "HELLO" }));
+    expect(useInlineEditStore.getState().session?.original).toBe("HELLO");
+  });
+
   it("passes the loaded document engine and runs a preset", async () => {
     const engine = useFilesStore.getState().engine;
     useFilesStore.setState({ engineLoaded: true });
@@ -281,6 +293,63 @@ describe("InlineEditPanel", () => {
     const [prompt] = handoff.handoffToAssistant.mock.calls[0];
     expect(prompt).toContain("Instruction: (no instruction)");
     expect(prompt).not.toContain("Proposed rewrite so far");
+  });
+
+  describe("withdrawn by someone else's edit", () => {
+    function withdraw() {
+      act(() => useInlineEditStore.getState().withdraw());
+    }
+
+    it("shows a quiet note with only a dismiss action", async () => {
+      openSession({ instruction: "Capitalise" });
+      await renderPanel();
+      setPhase("reviewing", { proposed: "HELLO" });
+      withdraw();
+      expect(screen.getByText(inlineAi.withdrawn)).toBeInTheDocument();
+      expect(screen.queryByLabelText(inlineAi.accept)).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([inlineAi.dismiss]);
+      fireEvent.click(screen.getByRole("button", { name: inlineAi.dismiss }));
+      expect(useInlineEditStore.getState().session).toBeNull();
+      expect(view?.state.doc.toString()).toBe("hello world");
+    });
+
+    it("never accepts with Enter and closes with Escape", async () => {
+      openSession({ instruction: "Capitalise" });
+      await renderPanel();
+      setPhase("reviewing", { proposed: "HELLO" });
+      withdraw();
+      const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+      act(() => {
+        window.dispatchEvent(enter);
+      });
+      expect(enter.defaultPrevented).toBe(false);
+      expect(view?.state.doc.toString()).toBe("hello world");
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      });
+      expect(useInlineEditStore.getState().session).toBeNull();
+    });
+
+    it("stops a running request without reporting a failure", async () => {
+      openSession({ instruction: "Shorten" });
+      await renderPanel();
+      let signal: AbortSignal | null = null;
+      inline.runInlineCompletion.mockImplementation(
+        (options) =>
+          new Promise((_resolve, reject) => {
+            signal = options.signal;
+            options.signal.addEventListener("abort", () => reject(new Error("aborted")));
+          }),
+      );
+      fireEvent.click(screen.getByLabelText(inlineAi.submit));
+      await screen.findByText(inlineAi.thinking);
+      withdraw();
+      await act(async () => {});
+      expect((signal as AbortSignal | null)?.aborted).toBe(true);
+      expect(useInlineEditStore.getState().session?.phase).toBe("withdrawn");
+      expect(screen.getByText(inlineAi.withdrawn)).toBeInTheDocument();
+      expect(log.logError).not.toHaveBeenCalled();
+    });
   });
 
   describe("keyboard", () => {

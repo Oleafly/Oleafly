@@ -116,8 +116,9 @@ test("the Tools page exposes all 22 converters and the palette opens one directl
   for (const id of CONVERTER_IDS) {
     await expect(tauriPage.getByTestId(`latex-tool-card-${id}`)).toBeVisible();
   }
+  // Cards with a picture show it in place of the tool's icon.
   await expect(
-    tauriPage.getByTestId("latex-tool-card-arxiv-to-latex").locator('[data-icon="arxiv"]'),
+    tauriPage.getByTestId("latex-tool-card-arxiv-to-latex").locator('img[src="/tool-art/arxiv-to-latex.webp"]'),
   ).toBeVisible();
 
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });
@@ -137,7 +138,9 @@ test("the Tools page exposes the complete reference toolkit and the palette open
     await expect(tauriPage.getByTestId(`latex-tool-card-${id}`)).toBeVisible();
   }
   await expect(
-    tauriPage.getByTestId("latex-tool-card-arxiv-citation-generator").locator('[data-icon="arxiv"]'),
+    tauriPage
+      .getByTestId("latex-tool-card-arxiv-citation-generator")
+      .locator('img[src="/tool-art/arxiv-citation-generator.webp"]'),
   ).toBeVisible();
 
   await pressGlobal(tauriPage, "f", { meta: true, shift: true });

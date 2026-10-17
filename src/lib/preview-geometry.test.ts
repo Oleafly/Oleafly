@@ -8,7 +8,13 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => mocks }));
 
-import { readPreviewGeometry, usePreviewGeometry } from "./preview-geometry";
+import {
+  geometryOnScreen,
+  readPreviewGeometry,
+  readWindowGeometry,
+  usePreviewGeometry,
+  useWindowGeometry,
+} from "./preview-geometry";
 
 const geometry = { x: -800, y: 100, width: 800, height: 600 };
 const storageKey = "oleafly.preview.geometry.paper";
@@ -98,5 +104,38 @@ describe("preview geometry persistence", () => {
     renderHook(() => usePreviewGeometry("paper", true));
     await waitFor(() => expect(write).toHaveBeenCalledOnce());
     expect(readPreviewGeometry("paper")).toBeNull();
+  });
+});
+
+describe("geometry for any window", () => {
+  it("reads and records under the key it is given", async () => {
+    const { unmount } = renderHook(() => useWindowGeometry("oleafly.console.geometry.lab"));
+    await waitFor(() => expect(readWindowGeometry("oleafly.console.geometry.lab")).toEqual(geometry));
+    expect(readPreviewGeometry("lab")).toBeNull();
+    unmount();
+    await waitFor(() => expect(mocks.offMoved).toHaveBeenCalledOnce());
+  });
+
+  it("does nothing without a key", () => {
+    renderHook(() => useWindowGeometry(null));
+    expect(mocks.outerPosition).not.toHaveBeenCalled();
+    expect(readWindowGeometry("oleafly.console.geometry.lab")).toBeNull();
+  });
+});
+
+describe("geometryOnScreen", () => {
+  const retina = { position: { x: 0, y: 0 }, size: { width: 2880, height: 1800 }, scaleFactor: 2 };
+  const left = { position: { x: -1920, y: 0 }, size: { width: 1920, height: 1080 }, scaleFactor: 1 };
+
+  it("keeps a window that still sits on a connected screen", () => {
+    expect(geometryOnScreen({ x: 100, y: 100, width: 800, height: 600 }, [retina])).toBe(true);
+    expect(geometryOnScreen(geometry, [retina, left])).toBe(true);
+  });
+
+  it("drops a window whose screen is gone or that would hide past an edge", () => {
+    expect(geometryOnScreen(geometry, [retina])).toBe(false);
+    expect(geometryOnScreen({ x: 1400, y: 100, width: 800, height: 600 }, [retina])).toBe(false);
+    expect(geometryOnScreen({ x: 100, y: -10, width: 800, height: 600 }, [retina])).toBe(false);
+    expect(geometryOnScreen(geometry, [])).toBe(false);
   });
 });

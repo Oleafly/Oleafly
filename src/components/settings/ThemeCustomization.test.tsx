@@ -2,7 +2,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/theme", () => ({
+vi.mock("@/lib/theme", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/theme")>()),
   useTheme: () => ({
     preference: "light",
     theme: "light",
@@ -17,6 +18,7 @@ import {
   readThemeCustomization,
   resetThemeCustomization,
 } from "@/lib/theme-customization";
+import { useSettingsStore } from "@/store/settings";
 import { ThemeCustomization } from "./ThemeCustomization";
 
 const customTheme = enSettings.appearance.customTheme;
@@ -89,6 +91,49 @@ describe("ThemeCustomization", () => {
       customTheme.lightRestored,
     );
     expect(readThemeCustomization().light.background).toBeUndefined();
+  });
+
+  it("shows the default colors of the mode that is not on screen", () => {
+    const palette = document.createElement("style");
+    palette.textContent = ".dark { --background: #101820; --primary: #4f7cff; }";
+    document.head.append(palette);
+    open();
+
+    fireEvent.click(screen.getByRole("button", { name: customTheme.modeDark }));
+    const swatch = (token: string) =>
+      screen.getByLabelText(customTheme.pickColorDark.replace("{{token}}", token)).parentElement;
+    expect(swatch(customTheme.tokens.background)).toHaveStyle({ backgroundColor: "#101820" });
+    expect(swatch(customTheme.tokens.primary)).toHaveStyle({ backgroundColor: "#2563eb" });
+    expect(document.querySelector("body > .dark")).toBeNull();
+    palette.remove();
+  });
+
+  it("shows the accent color, not the stylesheet's, for the other mode's primary", () => {
+    localStorage.setItem("oleafly.accent", "#db2777");
+    useSettingsStore.setState({ accentColor: "#db2777" });
+    open();
+
+    fireEvent.click(screen.getByRole("button", { name: customTheme.modeDark }));
+    const swatch = (token: string) =>
+      screen.getByLabelText(customTheme.pickColorDark.replace("{{token}}", token)).parentElement;
+    expect(swatch(customTheme.tokens.primary)).toHaveStyle({ backgroundColor: "#db2777" });
+    expect(swatch(customTheme.tokens.primaryForeground)).toHaveStyle({ backgroundColor: "#ffffff" });
+    localStorage.removeItem("oleafly.accent");
+    useSettingsStore.setState({ accentColor: "#2563eb" });
+  });
+
+  it("keeps showing an edit made to the mode that is not on screen", async () => {
+    open();
+
+    fireEvent.click(screen.getByRole("button", { name: customTheme.modeDark }));
+    const field = tokenInput(customTheme.tokens.background, "dark");
+    fireEvent.change(field, { target: { value: "#223344" } });
+    fireEvent.blur(field, { target: { value: "#223344" } });
+    await waitFor(() => expect(readThemeCustomization().dark.background).toBe("#223344"));
+    expect(
+      screen.getByLabelText(customTheme.pickColorDark.replace("{{token}}", customTheme.tokens.background))
+        .parentElement,
+    ).toHaveStyle({ backgroundColor: "#223344" });
   });
 
   it("edits the dark palette separately", async () => {

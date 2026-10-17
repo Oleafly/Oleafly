@@ -25,6 +25,8 @@ import {
   useResearchTasksStore,
 } from "@/store/research-tasks";
 import { useFilesStore } from "@/store/files";
+import { readSidebarView } from "@/store/sidebar-view-state";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { SIDEBAR_TITLE_CLASS } from "@/components/layout/SidebarSection";
 import { useTauriSubscription } from "@/hooks/use-tauri-event";
 import { cn } from "@/lib/utils";
@@ -71,7 +73,16 @@ export function TaskOutputsSection() {
   const projectId = useFilesStore((state) => state.projectId);
   const tasks = useResearchTasksStore((state) => state.tasks);
   const openTaskDetail = useResearchTasksStore((state) => state.openTaskDetail);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(
+    () => readSidebarView(projectId, "taskOutputs")?.open ?? true,
+  );
+  useSidebarViewMemory(projectId, "taskOutputs", { open });
+  const previousProjectId = useRef(projectId);
+  useEffect(() => {
+    if (previousProjectId.current === projectId) return;
+    previousProjectId.current = projectId;
+    setOpen(readSidebarView(projectId, "taskOutputs")?.open ?? true);
+  }, [projectId]);
   const [preview, setPreview] = useState<OpenPreview | null>(null);
   const previewRequest = useRef(0);
 
@@ -192,7 +203,7 @@ export function TaskOutputsSection() {
         <span className={cn("flex-1", SIDEBAR_TITLE_CLASS)}>
           {t(($) => $.researchTools.outputs.title)}
         </span>
-        <Badge variant="quiet" className="px-1.5 text-[10px] tabular-nums">
+        <Badge variant="quiet" className="px-1.5 text-[0.625rem] tabular-nums">
           {groups.length}
         </Badge>
       </button>
@@ -226,7 +237,7 @@ export function TaskOutputsSection() {
                   className="flex w-full items-center gap-1.5 rounded-md py-1 pl-6 pr-2 text-left text-xs text-sidebar-foreground hover:bg-sidebar-accent"
                   onClick={() => void openFile(task, change)}
                 >
-                  <span className="w-3 shrink-0 font-mono text-[10px] text-muted-foreground">
+                  <span className="w-3 shrink-0 font-mono text-[0.625rem] text-muted-foreground">
                     {CHANGE_MARKS[change.kind]}
                   </span>
                   <span className="min-w-0 truncate">{change.path}</span>
@@ -241,7 +252,7 @@ export function TaskOutputsSection() {
                 >
                   <Paperclip aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 truncate">{artifact.label}</span>
-                  <span className="min-w-0 shrink truncate font-mono text-[10px] text-muted-foreground">
+                  <span className="min-w-0 shrink truncate font-mono text-[0.625rem] text-muted-foreground">
                     {artifact.path}
                   </span>
                 </button>
@@ -269,7 +280,7 @@ export function TaskOutputsSection() {
               })}
             </DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 overflow-auto rounded-md border bg-muted/20 p-3">
+          <div data-select-all-scope className="min-h-0 select-text overflow-auto rounded-md border bg-muted/20 p-3">
             {preview?.error ? (
               <p role="alert" className="text-sm text-destructive">
                 {preview.error}

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { type Diagnostic, forceLinting, forEachDiagnostic, setDiagnostics } from "@codemirror/lint";
-import { EditorState, type Extension } from "@codemirror/state";
+import { type Diagnostic, forceLinting, forEachDiagnostic, linter, setDiagnostics } from "@codemirror/lint";
+import { EditorState, type Extension, StateEffect } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PROOFREADING_PROTOCOL_VERSION, type ProofreadingResult } from "./proofreading";
@@ -341,6 +341,37 @@ describe("worker proofreading", () => {
     refreshEditorLints(editor);
     await vi.waitFor(() => expect(calls).toBeGreaterThan(before), { timeout: 2_000 });
     expect(() => refreshEditorLints(null)).not.toThrow();
+  });
+
+  it("answers a background re-lint of unchanged text from the last complete check", async () => {
+    let calls = 0;
+    let otherRuns = 0;
+    const text = "A wrod here.";
+    const poke = StateEffect.define<null>();
+    spellHost({
+      proofread: async () => {
+        calls += 1;
+        return workerResult(text, "wrod");
+      },
+    });
+    const other = linter(
+      () => {
+        otherRuns += 1;
+        return [];
+      },
+      { needsRefresh: (update) => update.transactions.some((tr) => tr.effects.some((effect) => effect.is(poke))) },
+    );
+    const editor = mount(text, [createSpellLinter(), other]);
+    await linted(editor, 1);
+    const before = { calls, otherRuns };
+
+    editor.dispatch({ effects: poke.of(null) });
+    forceLinting(editor);
+    await vi.waitFor(() => expect(otherRuns).toBeGreaterThan(before.otherRuns), { timeout: 2_000 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(calls).toBe(before.calls);
+    expect(diagnostics(editor)).toHaveLength(1);
   });
 
   it("forwards cancellation to the host and exposes the action host", () => {

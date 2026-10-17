@@ -165,5 +165,92 @@
     "label": "Style de citation",
     "ariaLabel": "Style de citation de la bibliographie dans {{path}}",
     "failed": "Oleafly n'a pas pu changer le style de citation."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} et al.",
+      "noYear": "s.d.",
+      "keySource": {
+        "bbt": "Clé issue de Better BibTeX",
+        "native": "Clé issue de Zotero",
+        "extra": "Clé issue du champ Extra de Zotero",
+        "generated": "Clé créée par Oleafly"
+      },
+      "addFailed": "Oleafly n'a pas pu ajouter {{key}} à la bibliographie. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Dans Zotero, ouvrez Paramètres > Avancé et cochez « Autoriser d'autres applications sur cet ordinateur à communiquer avec Zotero ».",
+      "unsupported": "Mettez à jour Zotero vers la version 7 ou ultérieure pour chercher dans votre bibliothèque depuis Oleafly.",
+      "keyRejected": "Zotero n'accepte plus votre clé API. Reconnectez votre compte dans les paramètres Zotero.",
+      "closed": "Ouvrez Zotero pour chercher dans votre bibliothèque ici, ou connectez votre compte zotero.org.",
+      "closedCached": "Zotero est fermé. Les résultats proviennent de la dernière synchronisation, {{time}}.",
+      "bbtMissing": "Better BibTeX ne répond pas, les nouvelles clés viennent donc de Zotero. Vérifiez qu'il est installé et activé.",
+      "action": "Paramètres Zotero"
+    },
+    "actions": {
+      "addFromZotero": "Ajouter depuis Zotero",
+      "addAllMissing_one": "Ajouter depuis Zotero {{count}} citation manquante",
+      "addAllMissing_many": "Ajouter depuis Zotero les {{count}} citations manquantes",
+      "addAllMissing_other": "Ajouter depuis Zotero les {{count}} citations manquantes",
+      "notInLibrary": "{{key}} n'est pas dans votre bibliothèque Zotero.",
+      "changed": "Cette entrée a changé dans Zotero depuis que vous l'avez ajoutée.",
+      "changedEdited": "Cette entrée a changé dans Zotero, et vous l'avez aussi modifiée ici.",
+      "update": "Mettre à jour depuis Zotero",
+      "updated": "Entrée {{key}} mise à jour depuis Zotero.",
+      "updateFailed": "Oleafly n'a pas pu mettre à jour {{key}} depuis Zotero. Réessayez."
+    },
+    "chooseBibliography": {
+      "title": "Où placer les nouvelles références ?",
+      "description": "Ce projet comporte plus d'un fichier bibliographique. Oleafly ajoute les nouvelles références à celui que vous choisissez et le retient pour ce projet.",
+      "confirm": "Utiliser ce fichier"
+    },
+    "handEdits": {
+      "title": "Remplacer vos modifications ?",
+      "description": "Vous avez modifié l'entrée {{key}} à la main. La remplacer par la version de Zotero supprime ces modifications.",
+      "confirm": "Utiliser la version de Zotero",
+      "cancel": "Garder ma version"
+    },
+    "handList": {
+      "title": "Déplacer votre liste de références ?",
+      "description": "Les références de ce document sont saisies à la main. Déplacez-les dans {{path}} pour qu'elles forment une seule liste numérotée avec les articles que vous citez depuis Zotero.",
+      "confirm": "Déplacer la liste"
+    },
+    "missing": {
+      "title": "Ajouter depuis Zotero les citations manquantes",
+      "loading": "Vérification de votre bibliothèque Zotero…",
+      "none": "Toutes les clés citées sont déjà dans votre bibliographie.",
+      "found_one": "{{count}} clé citée est dans Zotero",
+      "found_many": "{{count}} clés citées sont dans Zotero",
+      "found_other": "{{count}} clés citées sont dans Zotero",
+      "duplicates_one": "{{count}} clé cite un article déjà présent dans votre bibliographie",
+      "duplicates_many": "{{count}} clés citent des articles déjà présents dans votre bibliographie",
+      "duplicates_other": "{{count}} clés citent des articles déjà présents dans votre bibliographie",
+      "duplicateRow": "{{key}} désigne le même article que {{existing}}",
+      "notFound_one": "{{count}} clé citée n'est pas dans Zotero",
+      "notFound_many": "{{count}} clés citées ne sont pas dans Zotero",
+      "notFound_other": "{{count}} clés citées ne sont pas dans Zotero",
+      "confirm_one": "Ajouter {{count}} entrée",
+      "confirm_many": "Ajouter {{count}} entrées",
+      "confirm_other": "Ajouter {{count}} entrées",
+      "done_one": "{{count}} entrée est maintenant dans {{path}}.",
+      "done_many": "{{count}} entrées sont maintenant dans {{path}}.",
+      "done_other": "{{count}} entrées sont maintenant dans {{path}}.",
+      "failed": "Oleafly n'a pas pu ajouter les entrées. {{detail}}"
+    },
+    "update": {
+      "title": "Mettre à jour les entrées .bib depuis Zotero",
+      "loading": "Recherche de modifications dans Zotero…",
+      "none": "Votre bibliographie correspond à Zotero.",
+      "handEdited": "Modifiée à la main",
+      "handEditedNote": "Les entrées que vous avez modifiées à la main ne sont pas sélectionnées. Sélectionnez-en une pour la remplacer par la version de Zotero.",
+      "confirm_one": "Mettre à jour {{count}} entrée",
+      "confirm_many": "Mettre à jour {{count}} entrées",
+      "confirm_other": "Mettre à jour {{count}} entrées",
+      "done_one": "{{count}} entrée mise à jour.",
+      "done_many": "{{count}} entrées mises à jour.",
+      "done_other": "{{count}} entrées mises à jour."
+    }
   }
 }

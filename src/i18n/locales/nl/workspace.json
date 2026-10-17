@@ -210,5 +210,20 @@
     "clearFilter": "Filter wissen",
     "filterPlaceholder": "Filteren…",
     "noProject": "Geen project"
+  },
+  "fileReferences": {
+    "title": "Verwijzingen naar {{name}} bijwerken?",
+    "files_one": "{{count}} bestand",
+    "files_other": "{{count}} bestanden",
+    "summary_one": "{{count}} verwijzing in $t(workspace:fileReferences.files, { \"count\": {{files}} }) gebruikt nog het oude pad, {{path}}.",
+    "summary_other": "{{count}} verwijzingen in $t(workspace:fileReferences.files, { \"count\": {{files}} }) gebruiken nog het oude pad, {{path}}.",
+    "fileCount_one": "{{count}} verwijzing",
+    "fileCount_other": "{{count}} verwijzingen",
+    "dontAsk": "Niet meer vragen",
+    "update": "Verwijzingen bijwerken",
+    "skip": "Niet bijwerken",
+    "failed_one": "{{count}} bestand is na het verplaatsen gewijzigd of kon niet worden opgeslagen. Het gebruikt nog het oude pad.",
+    "failed_other": "{{count}} bestanden zijn na het verplaatsen gewijzigd of konden niet worden opgeslagen. Ze gebruiken nog het oude pad.",
+    "close": "Sluiten zonder verwijzingen bij te werken"
   }
 }

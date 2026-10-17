@@ -1008,7 +1008,9 @@ pub async fn research_task_apply(
     };
     let completed_id = task.id.clone();
     let task = blocking_task_command(&state, move |state| {
-        let task = state.store()?.complete_apply(&completed_id, &review)?;
+        let store = state.store()?;
+        let task = store.complete_apply(&completed_id, &review)?;
+        apply::release_completed_journal(&store, &task);
         state.emit_task(&task);
         Ok(task)
     })

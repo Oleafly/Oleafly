@@ -431,3 +431,25 @@ describe("TourGuide overlay reachability", () => {
     }
   });
 });
+
+describe("Document watching while a project is open", () => {
+  it("leaves the document alone when no tour can start", () => {
+    const tours = useTourStore.getState().tours;
+    useTourStore.setState({
+      activeTourId: null,
+      tours: { ...tours, workspace: { ...tours.workspace, status: "completed" } },
+    });
+    useFilesStore.setState({ projectId: "project-1" });
+    const observe = vi.spyOn(MutationObserver.prototype, "observe");
+    try {
+      render(<TourGuide />);
+      act(() => {
+        document.body.appendChild(document.createElement("div"));
+      });
+      expect(observe.mock.calls.filter(([target]) => target === document.body)).toEqual([]);
+    } finally {
+      observe.mockRestore();
+      useTourStore.setState({ tours });
+    }
+  });
+});

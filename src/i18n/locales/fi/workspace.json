@@ -210,5 +210,20 @@
     "clearFilter": "Tyhjennä suodatin",
     "filterPlaceholder": "Suodata…",
     "noProject": "Ei projektia"
+  },
+  "fileReferences": {
+    "title": "Päivitetäänkö viittaukset kohteeseen {{name}}?",
+    "files_one": "{{count}} tiedostossa",
+    "files_other": "{{count}} tiedostossa",
+    "summary_one": "{{count}} viittaus $t(workspace:fileReferences.files, { \"count\": {{files}} }) käyttää yhä vanhaa polkua {{path}}.",
+    "summary_other": "{{count}} viittausta $t(workspace:fileReferences.files, { \"count\": {{files}} }) käyttää yhä vanhaa polkua {{path}}.",
+    "fileCount_one": "{{count}} viittaus",
+    "fileCount_other": "{{count}} viittausta",
+    "dontAsk": "Älä kysy uudelleen",
+    "update": "Päivitä viittaukset",
+    "skip": "Älä päivitä",
+    "failed_one": "{{count}} tiedosto muuttui siirron jälkeen tai sitä ei voitu tallentaa. Se käyttää yhä vanhaa polkua.",
+    "failed_other": "{{count}} tiedostoa muuttui siirron jälkeen tai niitä ei voitu tallentaa. Ne käyttävät yhä vanhaa polkua.",
+    "close": "Sulje päivittämättä viittauksia"
   }
 }

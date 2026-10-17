@@ -69,7 +69,10 @@
       "localNotFound": "Das lokale Paket {{spec}} ist nicht installiert. Legen Sie es in den Typst-Paketordner von Oleafly oder in den Ordner typst-packages des Projekts.",
       "versionMissing": "Dieses Paket hat keine Version {{version}}. Die neueste Version ist {{latest}}.",
       "versionMissingNoLatest": "Dieses Paket hat keine Version {{version}}. Prüfen Sie die Version im Import."
-    }
+    },
+    "saveFailed": "{{path}} konnte nicht gespeichert werden, deshalb hat Oleafly nicht kompiliert. Prüfen Sie die Datei und kompilieren Sie dann erneut.",
+    "saveFailedSeveral": "{{path}} und weitere Dateien konnten nicht gespeichert werden, deshalb hat Oleafly nicht kompiliert. Prüfen Sie die Dateien und kompilieren Sie dann erneut.",
+    "saveFailedOther": "Das Dokument konnte nicht gespeichert werden, deshalb hat Oleafly nicht kompiliert. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -284,7 +287,9 @@
     "yearRangeInvalid": "Das Startjahr darf nicht nach dem Endjahr liegen."
   },
   "mcp": {
+    "deniedByRules": "Von einer Deny-Regel in approvals.toml abgelehnt",
     "openProjectSummary": "Projekt {{id}} öffnen",
+    "rulesUnreadable": "Abgelehnt, weil approvals.toml nicht gelesen werden konnte",
     "useToolSummary": "{{tool}} vom MCP-Server {{server}} verwenden"
   },
   "mcpConfig": {
@@ -358,7 +363,8 @@
     "referencesFor": "Referenzen auf {{name}}",
     "renameFailed": "Umbenennen in „{{name}}“ ist fehlgeschlagen.",
     "renamePartial": "In {{edited}} von {{total}} Dateien zu „{{name}}“ umbenannt. {{files}} konnte nicht geschrieben werden.",
-    "renamed": "Umbenannt zu „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Umbenannt zu „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "„{{path}}“ passt zu keiner Datei in diesem Projekt."
   },
   "pandoc": {
     "downloadFailed": "pandoc konnte nicht geladen werden. Installieren Sie es von Hand und versuchen Sie es erneut.",

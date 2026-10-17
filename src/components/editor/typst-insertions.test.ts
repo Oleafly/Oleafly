@@ -32,6 +32,7 @@ vi.mock("@/lib/toast", () => ({ toast: mocks.toast, notifyError: vi.fn() }));
 
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import {
   addTypstLabel,
   addTypstNumberingRule,
@@ -155,6 +156,33 @@ describe("typst references and citations", () => {
     const code = mount('#let c = |\n#bibliography("a.bib")');
     await insertTypstCitation("k", "a.bib");
     expect(code.state.doc.toString()).toBe('#let c = cite(<k>)\n#bibliography("a.bib")');
+  });
+
+  it("adds a citation next to the reference under the caret instead of nesting it", async () => {
+    const view = mount('As @efron|.\n#bibliography("a.bib")');
+    await insertTypstCitation("cox", "a.bib");
+    expect(view.state.doc.toString()).toBe('As @efron @cox.\n#bibliography("a.bib")');
+    expect(view.state.selection.main.head).toBe("As @efron @cox".length);
+    view.destroy();
+    const inside = mount('As @ef|ron.\n#bibliography("a.bib")');
+    await insertTypstCitation("cox", "a.bib");
+    expect(inside.state.doc.toString()).toBe('As @efron @cox.\n#bibliography("a.bib")');
+    inside.destroy();
+    const filled = mount('See #cite(<a|>).\n#bibliography("a.bib")');
+    await insertTypstCitation("cox", "a.bib");
+    expect(filled.state.doc.toString()).toBe('See #cite(<a>) @cox.\n#bibliography("a.bib")');
+    filled.destroy();
+    const empty = mount('See #cite(<|>).\n#bibliography("a.bib")');
+    await insertTypstCitation("cox", "a.bib");
+    expect(empty.state.doc.toString()).toBe('See #cite(<cox>).\n#bibliography("a.bib")');
+  });
+
+  it("declares the bibliography when it joins an existing reference", async () => {
+    const view = mount("As @ef|ron.\n");
+    project({ "main.typ": "As @efron.\n" });
+    await insertTypstCitation("cox", "refs.bib");
+    expect(view.state.doc.toString()).toBe('As @efron @cox.\n\n#bibliography("refs.bib")\n');
+    expect(view.state.selection.main.head).toBe("As @efron @cox".length);
   });
 
   it("leaves the bibliography alone when another project file declares it", async () => {
@@ -329,5 +357,24 @@ describe("typst symbols in the editor", () => {
     const view = mount("$|$");
     insertTypstSymbolFor("\\circledast", "⊛");
     expect(view.state.doc.toString()).toBe("$⊛$");
+  });
+});
+
+describe("citing from a chapter in a live shared project", () => {
+  it("merges the bibliography line into the closed main file from the text it read", async () => {
+    useCollabEditorGate.setState({ projectId: "p1", viewer: false, connecting: false });
+    try {
+      mount("See |.");
+      project({ "chapters/one.typ": "See ." }, "chapters/one.typ", "main.typ");
+      await insertTypstCitation("k", "refs.bib");
+      expect(useFilesStore.getState().writeProjectFile).toHaveBeenCalledWith(
+        "p1",
+        "main.typ",
+        '= Main\n\n#bibliography("refs.bib")\n',
+        { base: "= Main\n" },
+      );
+    } finally {
+      useCollabEditorGate.setState({ projectId: null, viewer: false, connecting: false });
+    }
   });
 });

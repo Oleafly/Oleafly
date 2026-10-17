@@ -188,7 +188,8 @@
     "quote": "Citat",
     "addLabel": "Lägg till etikett",
     "convertLatexMath": "Konvertera LaTeX-matematik till Typst",
-    "noLatexMath": "Markera lite LaTeX-matematik först."
+    "noLatexMath": "Markera lite LaTeX-matematik först.",
+    "renameFile": "Byt namn på fil…"
   },
   "shell": {
     "noFileOpenTab": "Ingen fil är öppen",
@@ -364,7 +365,11 @@
     "summaryWarnings_one": "{{count}} varning",
     "summaryWarnings_other": "{{count}} varningar",
     "summaryReferences_one": "{{count}} olöst referens",
-    "summaryReferences_other": "{{count}} olösta referenser"
+    "summaryReferences_other": "{{count}} olösta referenser",
+    "fontPack": "{{family}} finns i det kostnadsfria typsnittspaketet {{pack}}.",
+    "fontPackAction": "Ladda ned och kompilera",
+    "fontPackDownloading": "Laddar ned…",
+    "fontPackFailed": "Typsnittspaketet kunde inte laddas ned. Kontrollera anslutningen och försök igen."
   },
   "history": {
     "untitledCommit": "Namnlös commit",
@@ -392,7 +397,9 @@
     "unifiedView": "Sammanslagen vy",
     "loading": "Läser in jämförelsen…",
     "previewTooLarge": "Filen är för stor för att förhandsvisa en jämförelse.",
-    "diskHeading": "På disken ↔ Dina ändringar"
+    "diskHeading": "På disken ↔ Dina ändringar",
+    "sharedReadOnly": "I ett delat projekt är jämförelsen skrivskyddad. Redigera filen i redigeraren.",
+    "viewerReadOnly": "Du kan visa det här delade projektet men inte redigera det."
   },
   "hotkeys": {
     "title": "Kortkommandon",
@@ -426,7 +433,7 @@
       "indentOrAccept": "Indrag / acceptera komplettering",
       "goToDefinition": "Gå till definitionen",
       "findReferences": "Hitta referenser",
-      "renameSymbol": "Byt namn på symbolen (i hela projektet)",
+      "renameSymbol": "Byt namn på symbolen eller filen (i hela projektet)",
       "formatDocument": "Formatera Typst-dokumentet",
       "commandPalette": "Kommandopalett",
       "searchAllDocuments": "Sök i alla dokument",
@@ -454,7 +461,8 @@
     "noEntries": "Inga bibliografiposter i det här projektet än.",
     "addNew": "Hitta och lägg till en ny citering…",
     "duplicate": "dubblett {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Från ditt Zotero-bibliotek"
   },
   "inlineAi": {
     "promptPlaceholder": "Beskriv ändringen…  (Shift+Enter för ny rad)",
@@ -468,6 +476,7 @@
     "openInAgent": "Fortsätt i AI-assistenten med projektets alla verktyg",
     "generateFailed": "Det gick inte att generera ändringen. {{message}}",
     "dismiss": "Stäng",
+    "withdrawn": "Någon annan har redigerat texten, så förslaget kan inte längre användas.",
     "setUpProvider": "Konfigurera en AI-leverantör",
     "setUpProviderHint": "Lägg till en API-nyckel (eller lokal Ollama) för att använda AI-ändringar i löptext.",
     "openAiSettings": "Öppna Inställningar → AI"
@@ -649,6 +658,7 @@
     "endOfDocument": "Dokumentets slut",
     "hidePreamble": "Dölj dokumentets ingress",
     "showPreamble": "Visa dokumentets ingress",
+    "sharedReadOnly": "I ett delat projekt visar det visuella läget bara filen. Byt till källkodsvyn för att redigera den.",
     "findingLabel": "{{message}}. Öppna korrekturförslag.",
     "rawBlockFindings_one": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag.",
     "rawBlockFindings_other": "{{count}} korrekturfynd i det här råblocket. {{message}}. Öppna förslag."
@@ -1460,7 +1470,8 @@
     "sources": {
       "project": "Projekt",
       "system": "System",
-      "embedded": "Inbyggt"
+      "embedded": "Inbyggt",
+      "pack": "Typsnittspaket"
     },
     "fontsFolder": "Lägg typsnittets fil i projektets mapp fonts för att använda det i projektet."
   },
@@ -1487,5 +1498,6 @@
     "keyInvalid": "Värdenamn får inte vara tomma eller innehålla ett likhetstecken.",
     "keyTaken": "En variant kan inte ange samma namn två gånger.",
     "saveFailed": "Det gick inte att spara varianterna."
-  }
+  },
+  "sharedSettingsViewer": "Läsare kan inte ändra det här i ett delat projekt."
 }

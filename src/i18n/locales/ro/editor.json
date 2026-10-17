@@ -188,7 +188,8 @@
     "quote": "Citat",
     "addLabel": "Adaugă o etichetă",
     "convertLatexMath": "Convertește formula LaTeX în Typst",
-    "noLatexMath": "Selectează întâi o formulă LaTeX."
+    "noLatexMath": "Selectează întâi o formulă LaTeX.",
+    "renameFile": "Redenumește fișierul…"
   },
   "shell": {
     "noFileOpenTab": "Niciun fișier deschis",
@@ -247,7 +248,7 @@
     "issues": "Probleme",
     "spelling": "Ortografie",
     "grammarAndStyle": "Gramatică și stil",
-    "findingsTruncated": "Lista rezultatelor este trunchiată; numărul de mai sus este complet.",
+    "findingsTruncated": "Lista rezultatelor este trunchiată. Numărul de mai sus este complet.",
     "spellLanguage": "Limba verificării ortografice",
     "spellLanguageAppSetting": "Folosește setarea aplicației",
     "spellLanguageAriaLabel": "Limba verificării ortografice pentru acest proiect",
@@ -371,7 +372,11 @@
     "summaryWarnings_other": "{{count}} de avertismente",
     "summaryReferences_one": "{{count}} referință nerezolvată",
     "summaryReferences_few": "{{count}} referințe nerezolvate",
-    "summaryReferences_other": "{{count}} de referințe nerezolvate"
+    "summaryReferences_other": "{{count}} de referințe nerezolvate",
+    "fontPack": "{{family}} se află în pachetul gratuit de fonturi {{pack}}.",
+    "fontPackAction": "Descarcă și compilează",
+    "fontPackDownloading": "Se descarcă…",
+    "fontPackFailed": "Pachetul de fonturi nu a putut fi descărcat. Verifică conexiunea și încearcă din nou."
   },
   "history": {
     "untitledCommit": "Comitere fără titlu",
@@ -399,7 +404,9 @@
     "unifiedView": "Vizualizare unificată",
     "loading": "Se încarcă comparația…",
     "previewTooLarge": "Fișierul este prea mare pentru a previzualiza o comparație.",
-    "diskHeading": "Pe disc ↔ Modificările tale"
+    "diskHeading": "Pe disc ↔ Modificările tale",
+    "sharedReadOnly": "Într-un proiect partajat, această comparație este doar pentru citire. Editează fișierul în editor.",
+    "viewerReadOnly": "Poți vedea acest proiect partajat, dar nu îl poți edita."
   },
   "hotkeys": {
     "title": "Scurtături de tastatură",
@@ -433,7 +440,7 @@
       "indentOrAccept": "Indentează / acceptă completarea automată",
       "goToDefinition": "Mergi la definiție",
       "findReferences": "Găsește referințele",
-      "renameSymbol": "Redenumește simbolul (în tot proiectul)",
+      "renameSymbol": "Redenumește simbolul sau fișierul (în tot proiectul)",
       "formatDocument": "Formatează documentul Typst",
       "commandPalette": "Paleta de comenzi",
       "searchAllDocuments": "Caută în toate documentele",
@@ -461,7 +468,8 @@
     "noEntries": "Acest proiect nu are încă intrări bibliografice.",
     "addNew": "Găsește și adaugă o citare nouă…",
     "duplicate": "duplicatul {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Din biblioteca ta Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Descrie modificarea…  (Shift+Enter pentru rând nou)",
@@ -475,6 +483,7 @@
     "openInAgent": "Continuă în asistentul AI, cu toate instrumentele de proiect",
     "generateFailed": "Modificarea nu a putut fi generată. {{message}}",
     "dismiss": "Închide",
+    "withdrawn": "Altcineva a editat acest text, așa că sugestia nu mai poate fi aplicată.",
     "setUpProvider": "Configurează un furnizor AI",
     "setUpProviderHint": "Adaugă o cheie API (sau Ollama local) ca să folosești modificările AI din text.",
     "openAiSettings": "Deschide Setări → AI"
@@ -659,6 +668,7 @@
     "endOfDocument": "Sfârșitul documentului",
     "hidePreamble": "Ascunde preambulul documentului",
     "showPreamble": "Arată preambulul documentului",
+    "sharedReadOnly": "Într-un proiect partajat, modul vizual doar afișează fișierul. Treci la vizualizarea sursei ca să-l editezi.",
     "findingLabel": "{{message}}. Deschide sugestiile de corectură.",
     "rawBlockFindings_one": "{{count}} observație de corectură în acest bloc brut. {{message}}. Deschide sugestiile.",
     "rawBlockFindings_few": "{{count}} observații de corectură în acest bloc brut. {{message}}. Deschide sugestiile.",
@@ -1481,7 +1491,8 @@
     "sources": {
       "project": "Proiect",
       "system": "Sistem",
-      "embedded": "Inclus"
+      "embedded": "Inclus",
+      "pack": "Pachet de fonturi"
     },
     "fontsFolder": "Ca să folosești un font în acest proiect, adaugă fișierul lui în folderul fonts al proiectului."
   },
@@ -1508,5 +1519,6 @@
     "keyInvalid": "Numele valorilor nu pot fi goale și nici nu pot conține semnul egal.",
     "keyTaken": "O variantă nu poate seta același nume de două ori.",
     "saveFailed": "Variantele nu au putut fi salvate."
-  }
+  },
+  "sharedSettingsViewer": "Cititorii nu pot modifica asta într-un proiect partajat."
 }

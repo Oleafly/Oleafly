@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   wanted: { value: true },
   revision: { value: 4 },
   saveActive: vi.fn(async () => {}),
+  saveAll: vi.fn(async () => {}),
   reportSaveFailure: vi.fn(),
   logError: vi.fn(),
   offline: { value: false },
@@ -71,7 +72,7 @@ vi.mock("@/store/compile", () => ({
   applyTypstLiveResult: mocks.apply,
   compileProjectRevision: () => mocks.revision.value,
   reportCompileSaveFailure: mocks.reportSaveFailure,
-  saveActiveForCompile: (files: FakeFiles) => files.saveActive(),
+  saveAllForCompile: mocks.saveAll,
   typstLivePreviewWanted: () => mocks.wanted.value,
   useCompileStore: {
     getState: () => ({
@@ -138,6 +139,7 @@ beforeEach(async () => {
   mocks.apply.mockClear();
   mocks.setStatus.mockClear();
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
+  mocks.saveAll.mockClear();
   mocks.reportSaveFailure.mockClear();
   mocks.logError.mockClear();
 });
@@ -171,6 +173,7 @@ describe("Typst live preview", () => {
     edit("= Hello again");
     await vi.advanceTimersByTimeAsync(LIVE_SAVE_DEBOUNCE_MS);
     expect(mocks.saveActive).toHaveBeenCalledTimes(1);
+    expect(mocks.saveAll).not.toHaveBeenCalled();
   });
 
   it("does not save while live preview is off", async () => {
@@ -188,6 +191,52 @@ describe("Typst live preview", () => {
     edit("= Broken save");
     await vi.advanceTimersByTimeAsync(LIVE_SAVE_DEBOUNCE_MS);
     expect(mocks.reportSaveFailure).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a live save once when an outside write moved the project on", async () => {
+    await syncLivePreview();
+    mocks.saveActive
+      .mockRejectedValueOnce("mutation conflict at generation 3")
+      .mockResolvedValueOnce(undefined);
+    edit("= Raced");
+    await vi.advanceTimersByTimeAsync(LIVE_SAVE_DEBOUNCE_MS);
+    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+    expect(mocks.reportSaveFailure).not.toHaveBeenCalled();
+  });
+
+  it("reports a second conflict and any other failure without retrying again", async () => {
+    await syncLivePreview();
+    mocks.saveActive
+      .mockRejectedValueOnce("mutation conflict at generation 3")
+      .mockRejectedValueOnce("mutation conflict at generation 4")
+      .mockRejectedValueOnce(new Error("disk full"));
+    edit("= Raced twice");
+    await vi.advanceTimersByTimeAsync(LIVE_SAVE_DEBOUNCE_MS);
+    edit("= Broken");
+    await vi.advanceTimersByTimeAsync(LIVE_SAVE_DEBOUNCE_MS);
+    expect(mocks.saveActive).toHaveBeenCalledTimes(3);
+    expect(mocks.reportSaveFailure).toHaveBeenCalledTimes(2);
+  });
+
+  it("writes once per typing pause even when typing resumes during the save", async () => {
+    await syncLivePreview();
+    let finish: () => void = () => {};
+    mocks.saveActive.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    edit("= One");
+    await vi.advanceTimersByTimeAsync(LIVE_SAVE_DEBOUNCE_MS);
+    expect(mocks.saveActive).toHaveBeenCalledTimes(1);
+    edit("= One more");
+    finish();
+    await vi.advanceTimersByTimeAsync(LIVE_SAVE_DEBOUNCE_MS - 1);
+    expect(mocks.saveActive).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+    expect(mocks.saveAll).not.toHaveBeenCalled();
   });
 
   it("hands each watch result to the compile store with the revision that was saved", async () => {

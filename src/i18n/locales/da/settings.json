@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Godkendelsestilstanden Egne regler læser denne fil. Den ligger i ~/.oleafly/approvals.toml og gælder for alle projekter på denne enhed.",
+        "description": "Filen ligger i ~/.oleafly/approvals.toml og gælder for alle projekter på denne enhed. Deny-regler blokerer et værktøj i alle godkendelsestilstande. Allow-regler virker kun i tilstanden Egne regler.",
         "discard": "Kasser ændringerne",
         "emptyFile": "Filen er tom indtil videre.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Den første tabel, <modesTable>[\"$approval_modes\"]</modesTable>, sætter godkendelsestilstanden for hvert projekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> eller <custom>\"custom\"</custom>. Et projekt, der ikke står på listen, bruger Godkend for mig.",
           "openProject": "Det åbne projekt, {{name}}, har id'et <projectId>{{id}}</projectId>.",
           "projectIds": "Projekt-id'er er navnene på mapperne under ~/.oleafly/projects.",
-          "rules": "Derefter én tabel pr. projekt-id med en regel for hvert værktøj: <allow>\"allow\"</allow> kører værktøjet uden at spørge, og <deny>\"deny\"</deny> afviser det. Deny-regler gælder i alle tilstande. Allow-regler virker i tilstanden Egne regler, og for run_command springer de også spørgsmålet over i de andre tilstande.",
+          "rules": "Derefter én tabel pr. projekt-id med en regel for hvert værktøj: <allow>\"allow\"</allow> kører værktøjet uden at spørge, og <deny>\"deny\"</deny> afviser det. Deny-regler gælder i alle tilstande, også Fuld adgang. Allow-regler virker kun i tilstanden Egne regler.",
           "toolNames": "Værktøjsnavne, du kan bruge: <names>{{names}}</names> og ethvert MCP-værktøj med dets fulde navn fra listen Værktøjer."
         },
         "helpToggle": "Sådan virker filen",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Altid tilladt",
         "denied": "Altid afvist",
-        "description": "Gemte regler for {{name}}. De gælder, når godkendelsestilstanden er Egne regler. Fjern en regel for at bruge den almindelige risikopolitik for det værktøj.",
+        "description": "Gemte regler for {{name}}. Afviste værktøjer forbliver blokeret i alle godkendelsestilstande. Tilladte værktøjer springer kun spørgsmålet over i tilstanden Egne regler. Fjern en regel for at bruge den almindelige risikopolitik for det værktøj.",
         "empty": "Der er endnu ingen gemte regler. Brug »Altid i dette projekt« på et godkendelsesspørgsmål for at tilføje en.",
         "removeRule": "Fjern reglen for {{tool}}",
         "thisProject": "dette projekt",
@@ -533,12 +533,17 @@
         "right": "Til højre"
       },
       "font": {
-        "description": "Bruger systemets reserveskrifttype, hvis en skrifttype ikke er installeret.",
+        "description": "Vælg en hvilken som helst skrifttype, der er installeret på din computer, til menuer, paneler og dialogbokse.",
         "label": "Appens skrifttype"
       },
       "fontSize": {
         "description": "Skaler teksten i menuer, paneler og knapper.",
         "label": "Appens skriftstørrelse"
+      },
+      "zoom": {
+        "description": "Gør alt i Oleafly større eller mindre, også editoren og PDF'en.",
+        "label": "Zoom",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "System følger styresystemet og skifter, når det skifter.",
@@ -584,7 +589,7 @@
         "label": "Hjørneradius"
       },
       "resetAll": "Nulstil alle",
-      "resetMode": "Nulstil denne tilstand",
+      "resetMode": "Nulstil",
       "title": "Tematilpasning",
       "tokenInputDark": "Token {{token}} til mørk tilstand",
       "tokenInputLight": "Token {{token}} til lys tilstand",
@@ -633,28 +638,72 @@
         "label": "Automatisk fuldførelse"
       },
       "font": {
-        "description": "Vælg den monospace-skrifttype, der bruges til kildefiler.",
-        "label": "Editorens skrifttype"
+        "description": "Vælg en hvilken som helst skrifttype, der er installeret på din computer, til kildefiler.",
+        "label": "Editorens skrifttype",
+        "monospace": "Monospace"
+      },
+      "useAppFont": {
+        "description": "Editoren følger appens skrifttype og skriftstørrelse.",
+        "disabledHint": "Slå Brug appens skrifttype fra for at ændre dette.",
+        "label": "Brug appens skrifttype"
       },
       "fontSize": {
         "description": "Indstil tekststørrelsen i kildeeditoren.",
-        "label": "Editorens skriftstørrelse"
+        "label": "Editorens skriftstørrelse",
+        "custom": "Brugerdefineret",
+        "customLabel": "Brugerdefineret skriftstørrelse i editoren i pixel"
       },
       "ghostCompletion": {
         "description": "Vis den sandsynlige fuldførelse efter markøren. Tryk Tab for at acceptere den.",
         "label": "Forslag i linjen"
-      },
-      "nonBlinkingCursor": {
-        "description": "Hold markøren i editoren fast, så den ikke blinker.",
-        "label": "Markør, der ikke blinker"
       },
       "stickyScroll": {
         "description": "Hold de aktuelle afsnit, overskrifter og miljøer øverst, mens du ruller.",
         "label": "Fastlåst rulning"
       },
       "theme": {
-        "description": "Vælg farver til syntaksen i kildekoden uafhængigt af appens tema.",
-        "label": "Editorens tema"
+        "dark": {
+          "description": "Editorens tema, når appen er mørk.",
+          "label": "Tema i mørk tilstand"
+        },
+        "light": {
+          "description": "Editorens tema, når appen er lys.",
+          "label": "Tema i lys tilstand"
+        }
+      },
+      "colors": {
+        "description": "Skift en hvilken som helst farve i et editortema. Ændringer gemmes for hvert tema.",
+        "editing": "Redigerer {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Mørk tilstand",
+          "light": "Lys tilstand"
+        },
+        "modeAriaLabel": "Tema, der tilpasses",
+        "names": {
+          "background": "Baggrund",
+          "command": "Kommandoer",
+          "comment": "Kommentarer",
+          "environment": "Miljøer",
+          "formatting": "Formatering",
+          "heading": "Overskrifter",
+          "lineNumbers": "Linjenumre",
+          "link": "Links",
+          "math": "Matematik",
+          "name": "Navne og nøgler",
+          "reference": "Citationer og referencer",
+          "selection": "Markering",
+          "structure": "Præambel og importer",
+          "symbol": "Parenteser og symboler",
+          "text": "Tekst",
+          "value": "Værdier og strenge"
+        },
+        "pick": "Vælg en farve til {{color}}",
+        "previewAriaLabel": "Forhåndsvisningens sprog",
+        "reset": "Nulstil",
+        "syntaxGroup": "Syntaks",
+        "title": "Editorens farver",
+        "useThemeColor": "Brug temaets farve til {{color}}"
       },
       "keymap": {
         "description": "Vælg det sæt tastaturgenveje, som kildeeditoren bruger.",
@@ -671,12 +720,61 @@
         "options": {
           "compact": "Kompakt",
           "normal": "Normal",
-          "wide": "Bred"
+          "wide": "Bred",
+          "custom": "Brugerdefineret"
+        },
+        "customLabel": "Brugerdefineret linjehøjde"
+      },
+      "letterSpacing": {
+        "customLabel": "Brugerdefineret tegnafstand i pixel",
+        "description": "Tilføjer plads mellem tegnene i kildeeditoren. Det giver også mere plads omkring markøren.",
+        "label": "Tegnafstand",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Brugerdefineret"
         }
+      },
+      "cursorWidth": {
+        "label": "Markørbredde",
+        "description": "Angiv, hvor tyk markøren i editoren er.",
+        "option": "{{width}} px"
+      },
+      "cursorHeight": {
+        "label": "Markørhøjde",
+        "description": "Angiv, hvor høj markøren i editoren er. Linje gør den lige så høj som hele linjen.",
+        "options": {
+          "text": "Tekst",
+          "line": "Linje"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Markørblink",
+        "description": "Vælg, hvordan markøren i editoren blinker. Fra holder den fast.",
+        "options": {
+          "blink": "Blink",
+          "smooth": "Blød",
+          "phase": "Fase",
+          "expand": "Udvid",
+          "off": "Fra"
+        }
+      },
+      "cursorColor": {
+        "label": "Markørfarve",
+        "description": "Lyse og mørke editortemaer har hver deres markørfarve. Indtil du vælger en, bruges temaets farve.",
+        "light": "Lyst",
+        "dark": "Mørkt",
+        "pickLight": "Vælg markørfarven til lyse editortemaer",
+        "pickDark": "Vælg markørfarven til mørke editortemaer",
+        "useTheme": "Brug temaets farver"
       },
       "lineWrap": {
         "description": "Ombryd lange linjer i stedet for at rulle sidelæns.",
         "label": "Ombryd lange linjer"
+      },
+      "highlightCurrentLine": {
+        "label": "Fremhæv den aktuelle linje",
+        "description": "Farv baggrunden på den linje, markøren står på."
       },
       "tabSize": {
         "description": "Antal mellemrum pr. indrykningsniveau og den bredde, en tabulator vises med.",
@@ -708,6 +806,15 @@
           "description": "Tjek Typst-filer for sandsynlige fejl, hver gang de gemmes. Når du slår det til eller fra, genstarter Typst-sprogserveren.",
           "label": "Lint-tjek af Typst"
         }
+      },
+      "fileMove": {
+        "label": "Når en fil flyttes",
+        "description": "Opdater stier, der peger på en omdøbt eller flyttet fil i LaTeX-, Typst- og Markdown-kilder.",
+        "options": {
+          "ask": "Spørg",
+          "always": "Opdater altid",
+          "never": "Opdater aldrig"
+        }
       }
     },
     "files": {
@@ -735,6 +842,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} er ikke installeret, så standardskrifttypen bruges i stedet.",
     "preview": {
       "darkMode": {
         "description": "Vend PDF'ens farver om som udgangspunkt. Du kan stadig skifte farver på forhåndsvisningens værktøjslinje.",
@@ -743,10 +851,6 @@
       "hoverPreview": {
         "description": "Vis den senest kompilerede side, når du holder musen over et projekt i biblioteket.",
         "label": "Forhåndsvis PDF, når musen holdes over"
-      },
-      "zoomShortcuts": {
-        "description": "Brug Cmd/Ctrl +, - og 0 til at zoome i PDF'en i stedet for i appens vindue.",
-        "label": "Zoomgenveje til PDF"
       }
     },
     "sectionName": "Udseende",
@@ -810,6 +914,17 @@
         "description": "Start shell, når et projekt åbnes, i stedet for første gang du viser terminalen.",
         "label": "Start shell sammen med projektet"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Fylder skærmen i Zen-tilstand og gendanner vinduet, når du forlader den.",
+        "label": "Gå til fuld skærm"
+      },
+      "showPdf": {
+        "description": "Hvis PDF'en er skjult i Zen-tilstand, åbnes den ved siden af editoren, når du kompilerer.",
+        "label": "Vis PDF'en ved kompilering"
+      },
+      "title": "Zen-tilstand"
     }
   },
   "checkpoints": {
@@ -880,7 +995,6 @@
   },
   "cite": {
     "apa": "Den samme reference i APA ligger bag Cite this repository på GitHub",
-    "copyBibtex": "Kopier BibTeX",
     "description": "Oleafly er gratis og open source, og det bliver ved med at være det, når folk ved, at det findes. Har det hjulpet en artikel på vej, fortæller én post i din litteraturliste den næste forsker, hvor værktøjet kommer fra. Kopier den, indsæt den i din .bib-fil, og citer nøglen <citeKey>oleafly</citeKey>.",
     "title": "Citer Oleafly i din artikel"
   },
@@ -890,14 +1004,16 @@
       "download": "Hent",
       "downloadAll": "Hent alle"
     },
-    "aiTemplates": {
-      "deleteDescription": "Vil du slette »{{name}}« fra dit bibliotek? Projekter, der allerede er oprettet ud fra den, beholder deres egen kopi og påvirkes ikke.",
-      "deleteTitle": "Slet AI-genereret skabelon",
-      "deleted": "Slettede »{{name}}« fra dit bibliotek",
-      "empty": "Der er endnu ingen AI-genererede skabeloner. Opret en fra skabelongalleriet.",
-      "fallbackDescription": "AI-genereret skabelon",
-      "toggle": "Administrer AI-genererede skabeloner",
-      "deleteFailed": "Kunne ikke slette \"{{name}}\"."
+    "yourTemplates": {
+      "toggle": "Administrer dine skabeloner",
+      "import": "Importer skabelon",
+      "empty": "Du har endnu ingen egne skabeloner. Importer en her, gem et projekt som skabelon fra dets menu, eller generer en i skabelongalleriet.",
+      "aiDescription": "AI-genereret skabelon",
+      "customDescription": "Egen skabelon",
+      "deleteTitle": "Slet skabelon",
+      "deleteDescription": "Vil du slette »{{name}}« fra dine skabeloner? Projekter, du allerede har oprettet ud fra den, beholder deres egen kopi.",
+      "deleted": "Slettede »{{name}}« fra dine skabeloner",
+      "deleteFailed": "Kunne ikke slette »{{name}}«."
     },
     "fontPacks": {
       "lato": {
@@ -911,6 +1027,26 @@
       "ptserif": {
         "description": "En forfinet overgangsantikva, der passer godt til akademiske og formelle dokumenter.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans og Serif CJK, Fandol og LXGW WenKai. De træder også i stedet for SimSun, SimHei og KaiTi.",
+        "label": "Kinesisk, japansk og koreansk"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 og 7 Free samt Noto Color Emoji.",
+        "label": "Ikoner og emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code og Source Code Pro.",
+        "label": "Kode"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans og IBM Plex.",
+        "label": "Moderne sans og serif"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus og New Computer Modern Sans og Mono.",
+        "label": "Klassisk tekst"
       }
     },
     "fonts": {
@@ -947,7 +1083,57 @@
       "fontRemoveFailed": "Kunne ikke fjerne skrifttypen.",
       "packDownloadFailed": "Kunne ikke hente skabelonpakken.",
       "packsDownloadFailed": "Kunne ikke hente skabelonpakkerne.",
-      "packRemoveFailed": "Kunne ikke fjerne skabelonpakken."
+      "packRemoveFailed": "Kunne ikke fjerne skabelonpakken.",
+      "templateDownloadFailed": "Kunne ikke hente skabelonen.",
+      "packsRefreshFailed": "Kunne ikke se efter nye pakker."
+    },
+    "typstFonts": {
+      "heading": "Skrifttyper til Typst",
+      "tooltip": "Gratis skrifttyper, som mange Typst-skabeloner beder om. Når de er hentet, kan alle Typst-projekter bruge dem, undtagen et projekt, der slår systemets skrifttyper fra."
+    },
+    "packs": {
+      "browse": "Gennemse",
+      "back": "Tilbage til pakker",
+      "count_one": "{{count}} skabelon",
+      "count_other": "{{count}} skabeloner",
+      "installedCount": "{{installed}} af {{total}} installeret",
+      "downloadPack": "Hent pakke",
+      "refresh": "Se efter nye pakker",
+      "searchPacks": "Søg i pakker",
+      "searchTemplates": "Søg i skabeloner",
+      "noPacks": "Ingen pakker passer",
+      "noTemplates": "Ingen skabeloner passer",
+      "loading": "Indlæser skabeloner",
+      "loadFailed": "Kunne ikke indlæse pakken.",
+      "retry": "Prøv igen",
+      "installed": "Installeret",
+      "engineFilter": "Motor",
+      "kindFilter": "Type",
+      "languageFilter": "Sprog",
+      "allEngines": "Alle motorer",
+      "allKinds": "Alle typer",
+      "allLanguages": "Alle sprog",
+      "groups": {
+        "curated": "Udvalgte",
+        "community": "Fællesskab",
+        "typst": "Typst",
+        "university": "Universiteter"
+      },
+      "preview": {
+        "image": "Første side af {{name}}",
+        "previous": "Forrige skabelon",
+        "next": "Næste skabelon",
+        "engine": "Motor",
+        "license": "Licens",
+        "kind": "Type",
+        "languages": "Sprog",
+        "country": "Land",
+        "institution": "Institution",
+        "originalSource": "Oprindelig kilde",
+        "getTemplate": "Hent skabelonen",
+        "useTemplate": "Brug skabelonen",
+        "getAndCreate": "Hent og opret projekt"
+      }
     }
   },
   "engine": {
@@ -1192,11 +1378,68 @@
       "apiKeyLabel": "API-nøgle til Zotero",
       "connected": "Forbundet til dit Zotero-bibliotek.",
       "connectedAs": "Forbundet som {{username}}.",
-      "description": "Importer citationer og referencer fra dit Zotero-bibliotek.",
       "disconnectFailed": "Oleafly kunne ikke fjerne den gemte Zotero-nøgle. Prøv igen.",
-      "importHint": "Du importerer ved at åbne panelet Referencer i et projekt og vælge Importer referencebibliotek.",
       "userIdLabel": "Bruger-id til Zotero",
-      "userIdPlaceholder": "Bruger-id"
+      "userIdPlaceholder": "Bruger-id",
+      "citeDescription": "Søg i hele dit Zotero-bibliotek, mens du skriver, og tilføj kun det, du citerer. Oleafly læser dit bibliotek og ændrer det aldrig.",
+      "local": {
+        "heading": "Zotero på denne computer",
+        "ready": "Forbundet til Zotero {{version}}.",
+        "readyNoVersion": "Forbundet til Zotero.",
+        "bbtFound": "Better BibTeX {{version}} er installeret, så citationsnøglerne kommer fra Better BibTeX.",
+        "bbtMissing": "Better BibTeX er ikke installeret, så citationsnøglerne kommer fra Zotero.",
+        "notRunning": "Zotero kører ikke. Åbn Zotero for at søge i dit bibliotek, eller forbind din zotero.org-konto nedenfor.",
+        "apiDisabled": "Åbn Indstillinger > Avanceret i Zotero, og slå »Allow other applications on this computer to communicate with Zotero« til.",
+        "unsupported": "Denne version af Zotero kan ikke dele sit bibliotek. Opdater til Zotero 7 eller nyere.",
+        "unknown": "Oleafly har ikke søgt efter Zotero endnu."
+      },
+      "test": "Test forbindelsen",
+      "syncNow": "Synkroniser nu",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX blev ikke fundet",
+        "local": "Læst fra Zotero på denne computer",
+        "web": "Læst fra zotero.org",
+        "library_one": "{{name}}: {{formatted}} element",
+        "library_other": "{{name}}: {{formatted}} elementer"
+      },
+      "library": {
+        "heading": "Biblioteker, der søges i",
+        "myLibrary": "Mit bibliotek",
+        "toggle": "Søg i {{name}}",
+        "items_one": "{{formatted}} element",
+        "items_other": "{{formatted}} elementer"
+      },
+      "sync": {
+        "never": "Ikke synkroniseret endnu.",
+        "syncing": "Synkroniserer dit Zotero-bibliotek…",
+        "progress": "Synkroniserer {{done}} af {{total}} elementer…",
+        "status_one": "{{formatted}} element klar til citering, synkroniseret {{time}}.",
+        "status_other": "{{formatted}} elementer klar til citering, synkroniseret {{time}}.",
+        "fromCache": "Zotero er lukket, så @-søgning bruger kopien fra den seneste synkronisering.",
+        "rateLimited": "zotero.org bad Oleafly om at vente. Oleafly prøver igen efter {{time}}."
+      },
+      "account": {
+        "heading": "zotero.org-konto",
+        "description": "Brug din konto, når Zotero ikke er åben på denne computer. Gruppebiblioteker kommer også med."
+      }
+    },
+    "overleaf": {
+      "description": "Hent projekter fra din Overleaf-konto eller fra dit universitets Overleaf-server, og hold dem synkroniseret. Oleafly gemmer login og Git-token krypteret på denne computer.",
+      "signedInAs": "Logget ind som {{email}} på {{server}}",
+      "signedIn": "Logget ind på {{server}}",
+      "signOut": "Log ud",
+      "signOutFailed": "Oleafly kunne ikke logge ud af Overleaf.",
+      "gitTitle": "Git-token til synkronisering",
+      "gitSaved": "Et Git-token er gemt. Projekter, du kobler til, holdes synkroniseret med Overleaf.",
+      "gitMissing": "Intet Git-token endnu. Opret et under Git-integration i dine kontoindstillinger på Overleaf for at synkronisere projekter.",
+      "gitOpenSettings": "Åbn kontoindstillinger på Overleaf",
+      "gitPlanNote": "Git-integration kræver, at projektets ejer har et betalt abonnement eller et universitetsabonnement hos Overleaf.",
+      "gitLabel": "Git-token fra Overleaf",
+      "gitSave": "Gem",
+      "gitRemove": "Fjern",
+      "gitFailed": "Oleafly kunne ikke gemme Git-tokenet. Tjek, at du har indsat hele tokenet."
     }
   },
   "language": {
@@ -1561,6 +1804,10 @@
         "description": "Vis eller skjul projektets sidepanel.",
         "label": "Vis eller skjul sidepanelet"
       },
+      "togglePreview": {
+        "label": "Vis eller skjul PDF-visningen",
+        "description": "Viser eller skjuler PDF'en ved siden af editoren, også i Zen-tilstand."
+      },
       "toggleTerminal": {
         "description": "Vis eller skjul projektets terminal.",
         "label": "Vis eller skjul terminalen"
@@ -1568,6 +1815,26 @@
       "openFolder": {
         "label": "Åbn mappe",
         "description": "Åbn en mappe fra din computer som et projekt."
+      },
+      "toggleZenMode": {
+        "description": "Skjul alt undtagen din tekst, eller få det hele tilbage.",
+        "label": "Slå Zen-tilstand til eller fra"
+      },
+      "openSettings": {
+        "label": "Åbn indstillinger",
+        "description": "Åbn indstillingerne for Oleafly."
+      },
+      "zoomIn": {
+        "description": "Gør hele appen større.",
+        "label": "Zoom ind"
+      },
+      "zoomOut": {
+        "description": "Gør hele appen mindre.",
+        "label": "Zoom ud"
+      },
+      "resetZoom": {
+        "description": "Sætter appen tilbage til 100 %.",
+        "label": "Nulstil zoom"
       }
     },
     "application": {
@@ -1590,7 +1857,7 @@
         "italic": "Kursiv",
         "jumpToSourceFromPdf": "Spring til kildekoden fra PDF'en",
         "redo": "Gentag",
-        "renameSymbol": "Omdøb symbolet i hele projektet",
+        "renameSymbol": "Omdøb symbol eller fil i hele projektet",
         "slashCommandMenu": "Indsætningsmenu med skråstregskommandoer",
         "triggerAutocomplete": "Udløs automatisk fuldførelse",
         "undo": "Fortryd"

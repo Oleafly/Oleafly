@@ -120,6 +120,8 @@ import {
   collectOpenBuffersForCopy,
   detectDiskChange,
   engineErrorMessage,
+  type EntryRenamedEvent,
+  onEntryRenamed,
   onSaveBlockedSettled,
   projectCompatibilityFindings,
   reportFileSaveFailure,
@@ -179,6 +181,12 @@ describe("writeProjectFile", () => {
     );
     expect(mocks.listFiles).toHaveBeenCalledWith("project");
     expect(useFilesStore.getState().tree).toEqual(WITH_BIB);
+  });
+
+  it("keeps CRLF line endings when the caller asks for them", async () => {
+    await useFilesStore.getState().writeProjectFile("project", "main.tex", "a\nb\n", { crlf: true });
+
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "a\r\nb\r\n", 3);
   });
 
   it("leaves a closed file closed", async () => {
@@ -2510,40 +2518,16 @@ describe("creating and renaming projects", () => {
     useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
   });
 
-  it("pins latexmk on a new LaTeX project when that is the default engine", async () => {
+  it("leaves the new project's engine to the backend, which applies the default", async () => {
     primeOpen();
     useSettingsStore.setState({ defaultLatexEngine: "latexmk" });
     mocks.createProject.mockResolvedValue("opened");
-    mocks.setProjectEngineCmd.mockResolvedValue(META);
-    mocks.recordProjectTexSpec.mockResolvedValue(null);
 
     await useFilesStore.getState().createProject("Thesis");
 
     expect(mocks.createProject).toHaveBeenCalledWith("Thesis");
-    expect(mocks.setProjectEngineCmd).toHaveBeenCalledWith("opened", "latexmk");
-    expect(mocks.recordProjectTexSpec).toHaveBeenCalledWith("opened");
-    expect(useFilesStore.getState().projectId).toBe("opened");
-  });
-
-  it("keeps the project's own engine when the latexmk pin is refused", async () => {
-    primeOpen();
-    useSettingsStore.setState({ defaultLatexEngine: "latexmk" });
-    mocks.createProject.mockResolvedValue("opened");
-    mocks.setProjectEngineCmd.mockRejectedValue(new Error("not a LaTeX project"));
-
-    await useFilesStore.getState().createProject("Thesis");
-
-    expect(mocks.recordProjectTexSpec).not.toHaveBeenCalled();
-    expect(useFilesStore.getState().projectId).toBe("opened");
-  });
-
-  it("leaves the engine alone when the default is the bundled one", async () => {
-    primeOpen();
-    mocks.createProject.mockResolvedValue("opened");
-
-    await useFilesStore.getState().createProject("Notes");
-
     expect(mocks.setProjectEngineCmd).not.toHaveBeenCalled();
+    expect(mocks.recordProjectTexSpec).not.toHaveBeenCalled();
     expect(useFilesStore.getState().projectId).toBe("opened");
   });
 
@@ -2876,11 +2860,167 @@ describe("renaming entries", () => {
     expect(state.activePath).toBe("final.tex");
   });
 
+  it("tells rename listeners about the move with the trees on both sides", async () => {
+    const before = [
+      { path: "main.tex", is_dir: false },
+      { path: "figures", is_dir: true },
+      { path: "figures/plot.png", is_dir: false },
+    ];
+    const after = [
+      { path: "main.tex", is_dir: false },
+      { path: "images", is_dir: true },
+      { path: "images/plot.png", is_dir: false },
+    ];
+    mocks.renameFile.mockResolvedValue("images");
+    mocks.listFiles.mockResolvedValue(after);
+    useFilesStore.setState({ tree: before });
+    const events: EntryRenamedEvent[] = [];
+    const stop = onEntryRenamed((event) => events.push(event));
+
+    await useFilesStore.getState().renameEntry("figures", "images");
+    stop();
+    await useFilesStore.getState().renameEntry("figures", "images");
+
+    expect(events).toEqual([
+      {
+        projectId: "project",
+        from: "figures",
+        to: "images",
+        previousTree: before,
+        tree: after,
+        previousMainDoc: "main.tex",
+        mainDoc: "main.tex",
+      },
+    ]);
+  });
+
+  it("stays quiet when the rename fails or changes nothing", async () => {
+    const events: EntryRenamedEvent[] = [];
+    const stop = onEntryRenamed((event) => events.push(event));
+    mocks.renameFile.mockRejectedValueOnce(new Error("denied"));
+    await expect(useFilesStore.getState().renameEntry("main.tex", "paper.tex")).rejects.toThrow("denied");
+    mocks.renameFile.mockResolvedValueOnce("main.tex");
+    await useFilesStore.getState().renameEntry("main.tex", "main.tex");
+    stop();
+
+    expect(events).toEqual([]);
+  });
+
   it("returns the requested name without an open project", async () => {
     useFilesStore.setState({ projectId: null });
 
     await expect(useFilesStore.getState().renameEntry("a.tex", "b.tex")).resolves.toBe("b.tex");
     expect(mocks.renameFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("saving every open file", () => {
+  it("saves pending visual edits and every dirty buffer, and leaves clean buffers alone", async () => {
+    useFilesStore.setState({
+      files: {
+        "main.tex": { content: "main changes", dirty: true },
+        "chapter.tex": { content: "chapter changes", dirty: true },
+        "notes.md": { content: "notes", dirty: false },
+        "clean.tex": { content: "clean", dirty: false },
+      },
+    });
+    mocks.flushWysiwygPendingEdits.mockImplementation(() => {
+      useFilesStore.getState().setContent("notes.md", "notes from the visual editor");
+    });
+
+    await useFilesStore.getState().saveAllDirty();
+
+    const written = mocks.writeFileContent.mock.calls.map(([, path, content]) => [path, content]);
+    expect(written).toHaveLength(3);
+    expect(written).toEqual(
+      expect.arrayContaining([
+        ["main.tex", "main changes"],
+        ["chapter.tex", "chapter changes"],
+        ["notes.md", "notes from the visual editor"],
+      ]),
+    );
+    expect(mocks.flushWysiwygPendingEdits.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.writeFileContent.mock.invocationCallOrder[0],
+    );
+    expect(Object.values(useFilesStore.getState().files).some((file) => file.dirty)).toBe(false);
+  });
+
+  it("does not finish before a write that was already on its way lands", async () => {
+    let land: (value: { path: string; generation: number }) => void = () => {};
+    mocks.writeFileContent.mockImplementationOnce(
+      () =>
+        new Promise<{ path: string; generation: number }>((resolve) => {
+          land = resolve;
+        }),
+    );
+    useFilesStore.setState({ files: { "main.tex": { content: "first", dirty: true } } });
+    const autosave = useFilesStore.getState().saveFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "second");
+    let finished = false;
+    const saving = useFilesStore
+      .getState()
+      .saveAllDirty()
+      .then(() => {
+        finished = true;
+      });
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(finished).toBe(false);
+
+    land({ path: "main.tex", generation: 9 });
+    await saving;
+    await autosave;
+
+    expect(mocks.writeFileContent.mock.calls[1].slice(0, 4)).toEqual(["project", "main.tex", "second", 9]);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+  });
+
+  it("does nothing without an open project", async () => {
+    useFilesStore.setState({ projectId: null, files: { "main.tex": { content: "x", dirty: true } } });
+
+    await useFilesStore.getState().saveAllDirty();
+
+    expect(mocks.flushWysiwygPendingEdits).not.toHaveBeenCalled();
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("names every file it could not save and keeps those files dirty", async () => {
+    useFilesStore.setState({
+      files: {
+        "main.tex": { content: "main changes", dirty: true },
+        "chapter.tex": { content: "chapter changes", dirty: true },
+      },
+    });
+    mocks.writeFileContent.mockImplementation(async (_projectId: string, path: string) => {
+      if (path === "chapter.tex") throw new Error("disk full");
+      return { path, generation: 9 };
+    });
+
+    await expect(useFilesStore.getState().saveAllDirty()).rejects.toMatchObject({
+      name: "SaveFlushError",
+      failures: [{ path: "chapter.tex", reason: "disk full" }],
+    });
+    expect(useFilesStore.getState().files["chapter.tex"].dirty).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+  });
+
+  it("saves pending visual edits before an external change runs", async () => {
+    useFilesStore.setState({ files: { "notes.md": { content: "notes", dirty: false } } });
+    mocks.flushWysiwygPendingEdits.mockImplementation(() => {
+      useFilesStore.getState().setContent("notes.md", "notes from the visual editor");
+    });
+
+    await expect(useFilesStore.getState().prepareExternalMutation("project")).resolves.toEqual(
+      expect.any(Number),
+    );
+
+    expect(mocks.writeFileContent).toHaveBeenCalledExactlyOnceWith(
+      "project",
+      "notes.md",
+      "notes from the visual editor",
+      expect.any(Number),
+    );
+    expect(useFilesStore.getState().files["notes.md"].dirty).toBe(false);
   });
 });
 

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeftRight, BookMarked, Check, Maximize2, Sparkles } from "lucide-react";
+import { ArrowLeftRight, BookMarked, Check, Maximize2, MessageSquarePlus, Sparkles } from "lucide-react";
+import { requestComment, useCommentsRail } from "@/components/collab/comments-rail";
+import { useCollabReady } from "@/components/collab/CollabSlots";
 import { MenuRow } from "@/components/ui/menu-row";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
@@ -47,45 +49,92 @@ const ACTIONS: Action[] = [
   },
 ];
 
+const PILL =
+  "flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-lg";
+
+function CommentPill({ onDone }: Readonly<{ onDone: () => void }>) {
+  const { t } = useTranslation(["collab"]);
+  return (
+    <button
+      type="button"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => {
+        requestComment(getEditorView());
+        onDone();
+      }}
+      className={PILL}
+    >
+      <MessageSquarePlus className="size-3.5" />
+      {t(($) => $.collab.comments.add)}
+    </button>
+  );
+}
+
 export function SelectionActionMenu() {
   const { t } = useTranslation(["common", "editor"]);
+  const collabReady = useCollabReady();
+  const canCompose = useCommentsRail((state) => state.canCompose);
+  const canComment = collabReady && canCompose;
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const posRef = useRef(pos);
+  posRef.current = pos;
+  const textRef = useRef(text);
+  textRef.current = text;
+  const expandedRef = useRef(expanded);
+  expandedRef.current = expanded;
 
   useEffect(() => {
+    const hide = (collapse: boolean) => {
+      if (posRef.current !== null) {
+        posRef.current = null;
+        setPos(null);
+      }
+      if (collapse && expandedRef.current) {
+        expandedRef.current = false;
+        setExpanded(false);
+      }
+    };
     const update = (e?: Event) => {
       const target = e?.target as Node | null;
       if (target && containerRef.current?.contains(target)) return;
       const v = getEditorView();
       if (!v?.hasFocus) {
-        setPos(null);
+        hide(false);
         return;
       }
       if (v.state.readOnly) {
-        setPos(null);
-        setExpanded(false);
+        hide(true);
         return;
       }
       const sel = v.state.selection.main;
       if (sel.from === sel.to) {
-        setPos(null);
-        setExpanded(false);
+        hide(true);
         return;
       }
       const selected = v.state.sliceDoc(sel.from, sel.to);
       if (!selected.trim()) {
-        setPos(null);
+        hide(false);
         return;
       }
       const coords = v.coordsAtPos(sel.head);
       if (!coords) {
-        setPos(null);
+        hide(false);
         return;
       }
-      setText(selected);
-      setPos({ top: coords.top - 36, left: coords.left });
+      if (textRef.current !== selected) {
+        textRef.current = selected;
+        setText(selected);
+      }
+      const top = coords.top - 36;
+      const left = coords.left;
+      if (posRef.current?.top !== top || posRef.current.left !== left) {
+        const next = { top, left };
+        posRef.current = next;
+        setPos(next);
+      }
     };
     document.addEventListener("selectionchange", update);
     window.addEventListener("mouseup", update);
@@ -139,14 +188,20 @@ export function SelectionActionMenu() {
           ))}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-lg"
-        >
-          <Sparkles className="size-3.5" />
-          {t(($) => $.editor.selectionActions.askAi)}
-        </button>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setExpanded(true)} className={PILL}>
+            <Sparkles className="size-3.5" />
+            {t(($) => $.editor.selectionActions.askAi)}
+          </button>
+          {canComment ? (
+            <CommentPill
+              onDone={() => {
+                setPos(null);
+                setExpanded(false);
+              }}
+            />
+          ) : null}
+        </div>
       )}
     </div>
   );

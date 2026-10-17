@@ -40,6 +40,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { cn } from "@/lib/utils";
 import {
   DEFAULT_LITERATURE_SOURCES,
@@ -155,7 +156,7 @@ function SourceBadge({
       className={cn(
         "inline-flex items-center rounded-full border border-border/80 bg-muted/35 font-medium text-muted-foreground",
         compact
-          ? "gap-1.5 px-2 py-0.5 text-[10px]"
+          ? "gap-1.5 px-2 py-0.5 text-[0.625rem]"
           : "gap-1.5 px-2.5 py-1 text-xs",
       )}
     >
@@ -241,7 +242,7 @@ function SourceSelector({
               >
                 <Pause className="size-3.5 opacity-65" aria-hidden="true" />
                 {source.label}
-                <span className="text-[9px] uppercase tracking-wide">
+                <span className="text-[0.5625rem] uppercase tracking-wide">
                   {t(($) => $.researchTools.literature.pausedTag)}
                 </span>
               </span>
@@ -302,7 +303,7 @@ function SourceRunSummary({ runs }: Readonly<{ runs: LiteratureSourceRun[] }>) {
           >
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 text-[11px]",
+                "inline-flex items-center gap-1.5 text-[0.6875rem]",
                 run.status === "error"
                   ? "text-amber-700 dark:text-amber-400"
                   : "text-muted-foreground",
@@ -340,13 +341,13 @@ function ResultRow({
   return (
     <article className="group border-b border-border/70 px-1 py-5 last:border-b-0 sm:px-2">
       <div className="flex items-start gap-4">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 select-text">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
             {record.sources.map((source) => (
               <SourceBadge key={source} source={source} compact />
             ))}
             {record.year && (
-              <span className="text-[11px] tabular-nums text-muted-foreground">
+              <span className="text-[0.6875rem] tabular-nums text-muted-foreground">
                 {record.year}
               </span>
             )}
@@ -514,11 +515,11 @@ function EmptySearch({
                   onClick={() => onTry(suggestion.query)}
                   className="group flex w-full items-center gap-3 border-b border-border/60 py-2.5 text-left text-sm text-muted-foreground transition-colors last:border-b-0 hover:text-foreground"
                 >
-                  <span className="font-mono text-[11px] text-muted-foreground/60">
+                  <span className="font-mono text-[0.6875rem] text-muted-foreground/60">
                     {`0${index + 1}`}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                    <span className="block text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
                       {suggestion.domain()}
                     </span>
                     <span className="mt-0.5 block text-foreground/85">
@@ -647,6 +648,7 @@ export function LiteratureSearchPanel() {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] =
     useState<LiteratureSearchResponse | null>(null);
+  const resultsRef = useScrollTopOnChange(response);
   const [error, setError] = useState<string | null>(null);
 
   // Honor command-palette / selection entry points that request document mode.
@@ -885,7 +887,7 @@ export function LiteratureSearchPanel() {
         </div>
       )}
       {error && (
-        <div className="mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+        <div className="mt-3 flex select-text items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           {error}
         </div>
@@ -992,6 +994,7 @@ export function LiteratureSearchPanel() {
       </div>
 
       <TabsContent
+        ref={resultsRef}
         value="search"
         className="m-0 min-h-0 flex-1 overflow-y-auto"
       >
@@ -1088,7 +1091,7 @@ export function LiteratureSearchPanel() {
                 {t(($) => $.researchTools.literature.eyebrow)}
               </p>
               <span className="h-4 w-px bg-border" />
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[0.6875rem] text-muted-foreground">
                 {t(($) => $.researchTools.literature.openSource)}
               </span>
             </div>

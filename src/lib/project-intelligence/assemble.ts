@@ -8,9 +8,12 @@ import {
   definitionCandidatesForUse,
   definitionsByKey,
 } from "./resolution";
+import type { LatexSearchPaths } from "@oleafly/editor/file-references";
+import { dirname } from "@/lib/path-utils";
 import {
   engineForPath,
   normalizeProjectPath,
+  resolveProjectPathFrom,
   stableId,
 } from "./source";
 import {
@@ -303,17 +306,131 @@ function addExtensionCandidates(
   }
 }
 
+interface AssetSearch {
+  readonly mainDirectory: string;
+  readonly mainDocumentFiles: ReadonlySet<string>;
+  readonly mainDocumentPaths: LatexSearchPaths;
+  readonly files: Readonly<Record<string, FileAnalysis>>;
+}
+
+const NO_SEARCH_PATHS: LatexSearchPaths = { graphics: [], svg: [] };
+
+function searchesFromMainDirectory(edge: ProjectEdge): boolean {
+  return edge.kind === "include" && engineForPath(edge.fromFile) === "latex";
+}
+
+function includeSearchDirectories(edge: ProjectEdge, mainDirectory: string): string[] {
+  return [...new Set([mainDirectory, "", dirname(edge.fromFile)])];
+}
+
+function linkDocuments(
+  edges: readonly ProjectEdge[],
+  mainDocument: string | undefined,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): { linked: ProjectEdge[]; mainDocumentFiles: ReadonlySet<string> } {
+  const linked = edges.map((edge) => (edge.searchPath ? edge : resolveEdge(edge, known, knownByLower)));
+  const reachable = new Set<string>();
+  if (!mainDocument) return { linked, mainDocumentFiles: reachable };
+  const mainDirectory = dirname(mainDocument);
+  const byFile = new Map<string, number[]>();
+  linked.forEach((edge, index) => {
+    if (edge.kind !== "include" && edge.kind !== "import") return;
+    const indices = byFile.get(edge.fromFile) ?? [];
+    indices.push(index);
+    byFile.set(edge.fromFile, indices);
+  });
+  const pending = [mainDocument];
+  for (let file = pending.pop(); file !== undefined; file = pending.pop()) {
+    if (reachable.has(file)) continue;
+    reachable.add(file);
+    for (const index of byFile.get(file) ?? []) {
+      const original = edges[index];
+      if (searchesFromMainDirectory(original)) {
+        linked[index] = resolveEdgeIn(
+          original,
+          includeSearchDirectories(original, mainDirectory),
+          known,
+          knownByLower,
+        );
+      }
+      const edge = linked[index];
+      if (edge.resolution === "resolved" && edge.targetFile) pending.push(edge.targetFile);
+    }
+  }
+  return { linked, mainDocumentFiles: reachable };
+}
+
+function projectSearchPaths(files: readonly FileAnalysis[]): LatexSearchPaths {
+  const graphics: string[] = [];
+  const svg: string[] = [];
+  for (const file of files) {
+    for (const path of file.latexSearchPaths?.graphics ?? []) {
+      if (!graphics.includes(path)) graphics.push(path);
+    }
+    for (const path of file.latexSearchPaths?.svg ?? []) {
+      if (!svg.includes(path)) svg.push(path);
+    }
+  }
+  return { graphics, svg };
+}
+
+function assetSearchDirectories(edge: ProjectEdge, search: AssetSearch): string[] {
+  const inMainDocument = search.mainDocumentFiles.has(edge.fromFile);
+  const declared = inMainDocument
+    ? search.mainDocumentPaths
+    : search.files[edge.fromFile]?.latexSearchPaths ?? NO_SEARCH_PATHS;
+  const paths = edge.searchPath === "svg" ? [...declared.svg, ...declared.graphics] : declared.graphics;
+  const bases = inMainDocument
+    ? [search.mainDirectory, "", dirname(edge.fromFile)]
+    : [dirname(edge.fromFile)];
+  const directories: string[] = [];
+  for (const base of bases) {
+    for (const directory of [base, ...paths.map((path) => (base ? `${base}/${path}` : path))]) {
+      if (!directories.includes(directory)) directories.push(directory);
+    }
+  }
+  return directories;
+}
+
+function filesInDirectories(
+  edge: ProjectEdge,
+  directories: readonly string[],
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): readonly string[] {
+  for (const directory of directories) {
+    const target = resolveProjectPathFrom(directory, edge.rawTarget);
+    const candidates = target ? candidatesForPath(target, edge, known, knownByLower) : [];
+    if (candidates.length > 0) return candidates;
+  }
+  return [];
+}
+
 function candidateTargetFiles(
   edge: ProjectEdge,
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
+  search?: AssetSearch,
 ): readonly string[] {
   if (!edge.targetFile) return [];
   if (edge.kind === "bibliography") {
     return bibliographyTargetFiles(edge, known, knownByLower);
   }
+  if (edge.searchPath && search) {
+    return filesInDirectories(edge, assetSearchDirectories(edge, search), known, knownByLower);
+  }
   const normalized = normalizeProjectPath(edge.targetFile);
   if (!normalized) return [];
+  return candidatesForPath(normalized, edge, known, knownByLower);
+}
+
+function candidatesForPath(
+  normalized: string,
+  edge: ProjectEdge,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): readonly string[] {
   const candidates = new Set<string>();
   if (known.has(normalized)) candidates.add(normalized);
   for (const candidate of knownByLower.get(pathFoldKey(normalized)) ?? []) {
@@ -331,9 +448,23 @@ function resolveEdge(
   edge: ProjectEdge,
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
+  search?: AssetSearch,
 ): ProjectEdge {
   if (edge.resolution === "external" || !edge.targetFile) return edge;
-  const candidates = candidateTargetFiles(edge, known, knownByLower);
+  return withCandidates(edge, candidateTargetFiles(edge, known, knownByLower, search));
+}
+
+function resolveEdgeIn(
+  edge: ProjectEdge,
+  directories: readonly string[],
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): ProjectEdge {
+  if (edge.resolution === "external" || !edge.targetFile) return edge;
+  return withCandidates(edge, filesInDirectories(edge, directories, known, knownByLower));
+}
+
+function withCandidates(edge: ProjectEdge, candidates: readonly string[]): ProjectEdge {
   const resolution: ResolutionStatus = resolutionForCandidateCount(
     candidates.length,
   );
@@ -664,9 +795,20 @@ export function assembleProjectIntelligenceResult(
   const byKey = definitionsByKey(definitions);
 
   const { known, knownByLower } = knownFileIndex(input.knownFiles);
-  const edges = Object.values(orderedFiles)
-    .flatMap((file) => file.edges)
-    .map((edge) => resolveEdge(edge, known, knownByLower))
+  const { linked, mainDocumentFiles } = linkDocuments(
+    fileList.flatMap((file) => file.edges),
+    input.mainDocument,
+    known,
+    knownByLower,
+  );
+  const search: AssetSearch = {
+    mainDirectory: input.mainDocument ? dirname(input.mainDocument) : "",
+    mainDocumentFiles,
+    mainDocumentPaths: projectSearchPaths(fileList.filter((file) => mainDocumentFiles.has(file.file))),
+    files: orderedFiles,
+  };
+  const edges = linked
+    .map((edge) => (edge.searchPath ? resolveEdge(edge, known, knownByLower, search) : edge))
     .sort(
       (left, right) =>
         left.fromFile.localeCompare(right.fromFile) ||

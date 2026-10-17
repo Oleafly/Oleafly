@@ -6,6 +6,7 @@ import App from "./App";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DevContextMenu } from "@/components/layout/DevContextMenu";
 import { IndexKeeper } from "@/components/editor/IndexKeeper";
+import { ZoteroKeeper } from "@/components/zotero/ZoteroKeeper";
 import { ThemeProvider } from "@/lib/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
@@ -14,6 +15,7 @@ import { appendAppLog } from "@/lib/tauri";
 import { loadDisplayHomes } from "@/lib/display-path";
 import { logError } from "@/lib/log";
 import { installQuitFallback } from "@/lib/quit-flush";
+import { syncLiveCollaborationSwitch } from "@/lib/collab-switch";
 import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "@/lib/initial-state";
 import { prepareColdOpen } from "@/features/open-folder";
@@ -29,8 +31,11 @@ import { installExternalDropGuard } from "@/lib/external-drop-guard";
 import "@/styles/globals.css";
 import { isTauri } from "@tauri-apps/api/core";
 import { isMac } from "@/lib/utils";
+import { StoredAppTypography } from "@/lib/app-typography";
+import { AppZoom } from "@/lib/app-zoom";
 import { registerE2EImports } from "@/lib/e2e-import-registry";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { AdminConsoleSlot } from "@/components/collab/CollabSlots";
 
 markBootStage("entry-evaluated");
 
@@ -49,7 +54,7 @@ if ((window as { __OLEAFLY_E2E_BOOT__?: boolean }).__OLEAFLY_E2E_BOOT__) {
   registerE2EImports();
 }
 
-type WindowView = "main" | "update" | "preview" | "browser" | "present" | "presenter";
+type WindowView = "main" | "update" | "preview" | "browser" | "present" | "presenter" | "admin";
 
 function currentWindowView(): WindowView {
   const view = new URLSearchParams(window.location.search).get("view");
@@ -58,7 +63,8 @@ function currentWindowView(): WindowView {
     view === "preview" ||
     view === "browser" ||
     view === "present" ||
-    view === "presenter"
+    view === "presenter" ||
+    view === "admin"
   ) {
     return view;
   }
@@ -92,7 +98,7 @@ function prepareWindow(view: WindowView): void {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
   }
-  if (view === "browser" || view === "present" || view === "presenter") {
+  if (view === "browser" || view === "present" || view === "presenter" || view === "admin") {
     document.documentElement.style.setProperty("--app-surface", "var(--background)");
   }
   dismissBootSplash();
@@ -114,8 +120,17 @@ const BrowserChrome = lazy(() =>
 const RenameDialog = lazy(() =>
   import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
 );
+const FileRenameDialog = lazy(() =>
+  import("@/components/layout/FileRenameDialog").then((module) => ({ default: module.FileRenameDialog })),
+);
+const FileReferencesDialog = lazy(() =>
+  import("@/components/files/FileReferencesDialog").then((module) => ({ default: module.FileReferencesDialog })),
+);
 const AddCitationDialog = lazy(() =>
   import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })),
+);
+const ZoteroDialogs = lazy(() =>
+  import("@/components/zotero/ZoteroDialogs").then((module) => ({ default: module.ZoteroDialogs })),
 );
 const TableImportDialog = lazy(() =>
   import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })),
@@ -154,6 +169,8 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   if (view === "update") {
     return (
       <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
         <Suspense fallback={null}>
           <UpdateWindow />
         </Suspense>
@@ -164,6 +181,8 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
+          <StoredAppTypography />
+          <AppZoom />
           <Suspense fallback={null}>
             <PreviewWindow />
           </Suspense>
@@ -175,15 +194,28 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   if (view === "present" || view === "presenter") {
     return (
       <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
         <Suspense fallback={null}>
           {view === "present" ? <PresentationWindow /> : <PresenterWindow />}
         </Suspense>
       </ThemeProvider>
     );
   }
+  if (view === "admin") {
+    return (
+      <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
+        <AdminConsoleSlot />
+      </ThemeProvider>
+    );
+  }
   if (view === "browser") {
     return (
       <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
         <Suspense fallback={null}>
           <BrowserChrome />
         </Suspense>
@@ -192,13 +224,18 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   }
   return (
     <QueryClientProvider client={queryClient}>
+      <AppZoom />
       <App />
       <Toaster />
       <DevContextMenu />
       <IndexKeeper />
+      <ZoteroKeeper />
       <Suspense fallback={null}>
         <RenameDialog />
+        <FileRenameDialog />
+        <FileReferencesDialog />
         <AddCitationDialog />
+        <ZoteroDialogs />
         <TableImportDialog />
         <FigureDialog />
         <TypstMigrationHost />
@@ -218,6 +255,7 @@ async function bootstrap(): Promise<void> {
   // Fetched early so the first paint already shows home paths as ~/…
   void loadDisplayHomes();
   if (view === "main") {
+    syncLiveCollaborationSwitch();
     void installQuitFallback().catch((error) => logError("prepare quit fallback", error));
     await Promise.all([reapOrphanAgentRuns(), hydrateFromSnapshot(), initializeDesktopI18n()]);
     await syncLocaleFromConfig(getSnapshotConfig()?.ui_locale);

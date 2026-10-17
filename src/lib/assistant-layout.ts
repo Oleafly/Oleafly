@@ -1,6 +1,6 @@
 const BASE_APP_FONT_SIZE = 16;
 export const ASSISTANT_MIN_WIDTH = 480;
-const FILE_SIDEBAR_MIN_WIDTH = 250;
+export const FILE_SIDEBAR_MIN_WIDTH = 250;
 const SIDEBAR_HANDLE_WIDTH_REM = 0.75;
 
 function normalizedFontSize(appFontSize: number): number {

@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Godkännandeläget Anpassad läser den här filen. Den ligger i ~/.oleafly/approvals.toml och gäller alla projekt på den här enheten.",
+        "description": "Filen ligger i ~/.oleafly/approvals.toml och gäller alla projekt på den här enheten. Deny-regler blockerar ett verktyg i alla godkännandelägen. Allow-regler gäller bara i läget Anpassad.",
         "discard": "Släng ändringarna",
         "emptyFile": "Filen är tom än så länge.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Den första tabellen, <modesTable>[\"$approval_modes\"]</modesTable>, anger godkännandeläget per projekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> eller <custom>\"custom\"</custom>. Ett projekt som inte listas använder Godkänn åt mig.",
           "openProject": "Det öppna projektet, {{name}}, har id <projectId>{{id}}</projectId>.",
           "projectIds": "Projekt-id är mappnamnen under ~/.oleafly/projects.",
-          "rules": "Sedan en tabell per projekt-id, med en regel per verktyg: <allow>\"allow\"</allow> kör verktyget utan att fråga, och <deny>\"deny\"</deny> vägrar det. Deny-regler följs i alla lägen, medan allow-regler gäller i läget Anpassad, och för run_command hoppar de även över frågan i de andra lägena.",
+          "rules": "Sedan en tabell per projekt-id, med en regel per verktyg: <allow>\"allow\"</allow> kör verktyget utan att fråga, och <deny>\"deny\"</deny> vägrar det. Deny-regler följs i alla lägen, även Fullständig åtkomst. Allow-regler gäller bara i läget Anpassad.",
           "toolNames": "Verktygsnamn du kan använda: <names>{{names}}</names> och alla MCP-verktyg med sitt fullständiga namn ur listan Verktyg."
         },
         "helpToggle": "Så fungerar filen",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Alltid tillåtet",
         "denied": "Alltid nekat",
-        "description": "Sparade regler för {{name}}. De gäller när godkännandeläget är Anpassad. Ta bort en regel för att använda standardpolicyn för risk för det verktyget.",
+        "description": "Sparade regler för {{name}}. Nekade verktyg förblir blockerade i alla godkännandelägen. Tillåtna verktyg hoppar över frågan bara i läget Anpassad. Ta bort en regel för att använda standardpolicyn för risk för det verktyget.",
         "empty": "Inga sparade regler än. Använd \"Alltid i det här projektet\" i en godkännandefråga för att lägga till en.",
         "removeRule": "Ta bort regeln för {{tool}}",
         "thisProject": "det här projektet",
@@ -533,12 +533,17 @@
         "right": "Höger"
       },
       "font": {
-        "description": "Använder systemets reservtypsnitt när ett typsnitt inte är installerat.",
+        "description": "Välj valfritt typsnitt som är installerat på datorn för menyer, paneler och dialogrutor.",
         "label": "Appens typsnitt"
       },
       "fontSize": {
         "description": "Skala texten i menyer, paneler och knappar.",
         "label": "Appens teckenstorlek"
+      },
+      "zoom": {
+        "description": "Gör allt i Oleafly större eller mindre, även redigeraren och PDF:en.",
+        "label": "Zoom",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "System följer operativsystemet och ändras när det gör det.",
@@ -584,7 +589,7 @@
         "label": "Hörnradie"
       },
       "resetAll": "Återställ allt",
-      "resetMode": "Återställ det här läget",
+      "resetMode": "Återställ",
       "title": "Temaanpassning",
       "tokenInputDark": "Värdet {{token}} för mörkt läge",
       "tokenInputLight": "Värdet {{token}} för ljust läge",
@@ -633,28 +638,72 @@
         "label": "Automatisk komplettering"
       },
       "font": {
-        "description": "Välj typsnittet med fast bredd som används för källfiler.",
-        "label": "Redigerarens typsnitt"
+        "description": "Välj valfritt typsnitt som är installerat på datorn för källfiler.",
+        "label": "Redigerarens typsnitt",
+        "monospace": "Fast bredd"
+      },
+      "useAppFont": {
+        "description": "Redigeraren följer appens teckensnitt och teckenstorlek.",
+        "disabledHint": "Stäng av Använd appens teckensnitt för att ändra detta.",
+        "label": "Använd appens teckensnitt"
       },
       "fontSize": {
         "description": "Ange textstorleken i källkodsredigeraren.",
-        "label": "Redigerarens teckenstorlek"
+        "label": "Redigerarens teckenstorlek",
+        "custom": "Anpassad",
+        "customLabel": "Anpassad teckenstorlek i redigeraren i pixlar"
       },
       "ghostCompletion": {
         "description": "Visa den troliga kompletteringen efter markören. Tryck på Tab för att acceptera den.",
         "label": "Förslag i löptext"
-      },
-      "nonBlinkingCursor": {
-        "description": "Håll redigerarens markör stadig.",
-        "label": "Markör utan blinkning"
       },
       "stickyScroll": {
         "description": "Håll kvar aktuella avsnitt, rubriker och miljöer högst upp medan du rullar.",
         "label": "Klistrig rullning"
       },
       "theme": {
-        "description": "Ange syntaxfärgerna för källkod separat från appens tema.",
-        "label": "Redigerarens tema"
+        "dark": {
+          "description": "Redigerarens tema när appen är mörk.",
+          "label": "Tema i mörkt läge"
+        },
+        "light": {
+          "description": "Redigerarens tema när appen är ljus.",
+          "label": "Tema i ljust läge"
+        }
+      },
+      "colors": {
+        "description": "Ändra valfri färg i ett redigerartema. Ändringarna sparas för varje tema.",
+        "editing": "Redigerar {{theme}}",
+        "editorGroup": "Redigerare",
+        "mode": {
+          "dark": "Mörkt läge",
+          "light": "Ljust läge"
+        },
+        "modeAriaLabel": "Tema att anpassa",
+        "names": {
+          "background": "Bakgrund",
+          "command": "Kommandon",
+          "comment": "Kommentarer",
+          "environment": "Miljöer",
+          "formatting": "Formatering",
+          "heading": "Rubriker",
+          "lineNumbers": "Radnummer",
+          "link": "Länkar",
+          "math": "Matematik",
+          "name": "Namn och nycklar",
+          "reference": "Citeringar och referenser",
+          "selection": "Markering",
+          "structure": "Preambel och importer",
+          "symbol": "Parenteser och symboler",
+          "text": "Text",
+          "value": "Värden och strängar"
+        },
+        "pick": "Välj en färg för {{color}}",
+        "previewAriaLabel": "Förhandsvisningens språk",
+        "reset": "Återställ",
+        "syntaxGroup": "Syntax",
+        "title": "Redigerarens färger",
+        "useThemeColor": "Använd temats färg för {{color}}"
       },
       "keymap": {
         "description": "Välj den uppsättning tangentbindningar som källkodsredigeraren använder.",
@@ -671,12 +720,61 @@
         "options": {
           "compact": "Kompakt",
           "normal": "Normal",
-          "wide": "Bred"
+          "wide": "Bred",
+          "custom": "Anpassad"
+        },
+        "customLabel": "Anpassad radhöjd"
+      },
+      "letterSpacing": {
+        "customLabel": "Anpassat teckenavstånd i pixlar",
+        "description": "Lägger till avstånd mellan tecknen i källredigeraren. Det ger också mer plats runt markören.",
+        "label": "Teckenavstånd",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Anpassad"
         }
+      },
+      "cursorWidth": {
+        "label": "Markörbredd",
+        "description": "Ange hur tjock redigerarens markör är.",
+        "option": "{{width}} px"
+      },
+      "cursorHeight": {
+        "label": "Markörhöjd",
+        "description": "Ange hur hög markören i redigeraren är. Rad gör den lika hög som hela raden.",
+        "options": {
+          "text": "Text",
+          "line": "Rad"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Markörblinkning",
+        "description": "Välj hur markören i redigeraren blinkar. Av håller den stilla.",
+        "options": {
+          "blink": "Blinka",
+          "smooth": "Mjuk",
+          "phase": "Fas",
+          "expand": "Expandera",
+          "off": "Av"
+        }
+      },
+      "cursorColor": {
+        "label": "Markörfärg",
+        "description": "Ljusa och mörka redigerarteman har var sin markörfärg. Tills du väljer en används temats färg.",
+        "light": "Ljust",
+        "dark": "Mörkt",
+        "pickLight": "Välj markörfärg för ljusa redigerarteman",
+        "pickDark": "Välj markörfärg för mörka redigerarteman",
+        "useTheme": "Använd temats färger"
       },
       "lineWrap": {
         "description": "Bryt långa rader i stället för att rulla i sidled.",
         "label": "Bryt långa rader"
+      },
+      "highlightCurrentLine": {
+        "label": "Markera aktuell rad",
+        "description": "Färga bakgrunden på raden där markören står."
       },
       "tabSize": {
         "description": "Antal mellanslag per indragsnivå, och bredden en tabb ritas med.",
@@ -708,6 +806,15 @@
           "description": "Kontrollera Typst-filer efter troliga misstag varje gång de sparas. Att slå på eller av detta startar om Typst-språkservern.",
           "label": "Lint-kontroller för Typst"
         }
+      },
+      "fileMove": {
+        "label": "När en fil flyttas",
+        "description": "Uppdatera sökvägar som pekar på en omdöpt eller flyttad fil i LaTeX-, Typst- och Markdown-källor.",
+        "options": {
+          "ask": "Fråga",
+          "always": "Uppdatera alltid",
+          "never": "Uppdatera aldrig"
+        }
       }
     },
     "files": {
@@ -735,6 +842,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} är inte installerat, så standardteckensnittet används i stället.",
     "preview": {
       "darkMode": {
         "description": "Invertera PDF-färgerna som standard. Du kan fortfarande byta färger i förhandsvisningens verktygsfält.",
@@ -743,10 +851,6 @@
       "hoverPreview": {
         "description": "Visa den senast kompilerade sidan när du håller muspekaren över ett projekt i biblioteket.",
         "label": "Förhandsvisa PDF vid hovring"
-      },
-      "zoomShortcuts": {
-        "description": "Använd Cmd/Ctrl +, - och 0 för att zooma PDF:en i stället för appfönstret.",
-        "label": "Kortkommandon för PDF-zoom"
       }
     },
     "sectionName": "Utseende",
@@ -810,6 +914,17 @@
         "description": "Starta shell när ett projekt öppnas i stället för första gången du visar terminalen.",
         "label": "Starta shell med projektet"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Fyller skärmen i Zen-läge och återställer fönstret när du lämnar det.",
+        "label": "Gå till helskärm"
+      },
+      "showPdf": {
+        "description": "Om PDF:en är dold i Zen-läge öppnas den bredvid redigeraren när du kompilerar.",
+        "label": "Visa PDF:en vid kompilering"
+      },
+      "title": "Zen-läge"
     }
   },
   "checkpoints": {
@@ -880,7 +995,6 @@
   },
   "cite": {
     "apa": "Samma referens i APA ligger bakom Cite this repository på GitHub",
-    "copyBibtex": "Kopiera BibTeX",
     "description": "Oleafly är gratis och har öppen källkod, och förblir det så länge folk vet att programmet finns. Om det hjälpte en artikel på traven talar en rad i din bibliografi om för nästa forskare var verktyget kom ifrån. Kopiera den, klistra in den i din .bib-fil och citera nyckeln <citeKey>oleafly</citeKey>.",
     "title": "Citera Oleafly i din artikel"
   },
@@ -890,14 +1004,16 @@
       "download": "Ladda ner",
       "downloadAll": "Ladda ner allt"
     },
-    "aiTemplates": {
-      "deleteDescription": "Vill du radera \"{{name}}\" från ditt bibliotek? Projekt som redan skapats från den har en egen kopia och påverkas inte.",
-      "deleteTitle": "Radera AI-genererad mall",
-      "deleted": "Raderade \"{{name}}\" från ditt bibliotek",
-      "empty": "Inga AI-genererade mallar än. Skapa en i mallgalleriet.",
-      "fallbackDescription": "AI-genererad mall",
-      "toggle": "Hantera AI-genererade mallar",
-      "deleteFailed": "Det gick inte att radera \"{{name}}\"."
+    "yourTemplates": {
+      "toggle": "Hantera dina mallar",
+      "import": "Importera mall",
+      "empty": "Du har inga egna mallar än. Importera en här, spara ett projekt som mall från dess meny eller generera en i mallgalleriet.",
+      "aiDescription": "AI-genererad mall",
+      "customDescription": "Egen mall",
+      "deleteTitle": "Radera mall",
+      "deleteDescription": "Vill du radera ”{{name}}” från dina mallar? Projekt som du redan har skapat från den behåller sin egen kopia.",
+      "deleted": "Raderade ”{{name}}” från dina mallar",
+      "deleteFailed": "Det gick inte att radera ”{{name}}”."
     },
     "fontPacks": {
       "lato": {
@@ -911,6 +1027,26 @@
       "ptserif": {
         "description": "Ett förfinat transitionellt serif-typsnitt som passar akademiska och formella dokument.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans och Serif CJK, Fandol och LXGW WenKai. De ersätter också SimSun, SimHei och KaiTi.",
+        "label": "Kinesiska, japanska och koreanska"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 och 7 Free samt Noto Color Emoji.",
+        "label": "Ikoner och emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code och Source Code Pro.",
+        "label": "Kod"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans och IBM Plex.",
+        "label": "Moderna sans och serif"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus samt New Computer Modern Sans och Mono.",
+        "label": "Klassisk text"
       }
     },
     "fonts": {
@@ -947,7 +1083,57 @@
       "fontRemoveFailed": "Det gick inte att ta bort typsnittet.",
       "packDownloadFailed": "Det gick inte att ladda ner mallpaketet.",
       "packsDownloadFailed": "Det gick inte att ladda ner mallpaketen.",
-      "packRemoveFailed": "Det gick inte att ta bort mallpaketet."
+      "packRemoveFailed": "Det gick inte att ta bort mallpaketet.",
+      "templateDownloadFailed": "Det gick inte att ladda ner mallen.",
+      "packsRefreshFailed": "Det gick inte att söka efter nya paket."
+    },
+    "typstFonts": {
+      "heading": "Typsnitt för Typst",
+      "tooltip": "Kostnadsfria typsnitt som många Typst-mallar ber om. När de är nedladdade kan alla Typst-projekt använda dem, utom ett projekt som stänger av systemtypsnitt."
+    },
+    "packs": {
+      "browse": "Bläddra",
+      "back": "Tillbaka till paketen",
+      "count_one": "{{count}} mall",
+      "count_other": "{{count}} mallar",
+      "installedCount": "{{installed}} av {{total}} installerade",
+      "downloadPack": "Ladda ner paket",
+      "refresh": "Sök efter nya paket",
+      "searchPacks": "Sök paket",
+      "searchTemplates": "Sök mallar",
+      "noPacks": "Inga paket matchar",
+      "noTemplates": "Inga mallar matchar",
+      "loading": "Läser in mallar",
+      "loadFailed": "Det gick inte att läsa in paketet.",
+      "retry": "Försök igen",
+      "installed": "Installerad",
+      "engineFilter": "Motor",
+      "kindFilter": "Typ",
+      "languageFilter": "Språk",
+      "allEngines": "Alla motorer",
+      "allKinds": "Alla typer",
+      "allLanguages": "Alla språk",
+      "groups": {
+        "curated": "Utvalda",
+        "community": "Gemenskap",
+        "typst": "Typst",
+        "university": "Universitet"
+      },
+      "preview": {
+        "image": "Första sidan av {{name}}",
+        "previous": "Föregående mall",
+        "next": "Nästa mall",
+        "engine": "Motor",
+        "license": "Licens",
+        "kind": "Typ",
+        "languages": "Språk",
+        "country": "Land",
+        "institution": "Lärosäte",
+        "originalSource": "Ursprunglig källa",
+        "getTemplate": "Hämta mallen",
+        "useTemplate": "Använd mallen",
+        "getAndCreate": "Hämta och skapa projekt"
+      }
     }
   },
   "engine": {
@@ -1192,11 +1378,68 @@
       "apiKeyLabel": "API-nyckel för Zotero",
       "connected": "Anslutet till ditt Zotero-bibliotek.",
       "connectedAs": "Ansluten som {{username}}.",
-      "description": "Importera citeringar och referenser från ditt Zotero-bibliotek.",
       "disconnectFailed": "Oleafly kunde inte ta bort den sparade Zotero-nyckeln. Försök igen.",
-      "importHint": "Om du vill importera öppnar du panelen Referenser i ett projekt och väljer Importera referensbibliotek.",
       "userIdLabel": "Användar-ID i Zotero",
-      "userIdPlaceholder": "Användar-ID"
+      "userIdPlaceholder": "Användar-ID",
+      "citeDescription": "Sök i hela ditt Zotero-bibliotek medan du skriver och lägg bara till det du citerar. Oleafly läser ditt bibliotek och ändrar det aldrig.",
+      "local": {
+        "heading": "Zotero på den här datorn",
+        "ready": "Ansluten till Zotero {{version}}.",
+        "readyNoVersion": "Ansluten till Zotero.",
+        "bbtFound": "Better BibTeX {{version}} är installerat, så citeringsnycklarna kommer från Better BibTeX.",
+        "bbtMissing": "Better BibTeX är inte installerat, så citeringsnycklarna kommer från Zotero.",
+        "notRunning": "Zotero körs inte. Öppna Zotero för att söka i ditt bibliotek, eller anslut ditt zotero.org-konto nedan.",
+        "apiDisabled": "Öppna Inställningar > Avancerat i Zotero och slå på ”Allow other applications on this computer to communicate with Zotero”.",
+        "unsupported": "Den här versionen av Zotero kan inte dela sitt bibliotek. Uppdatera till Zotero 7 eller senare.",
+        "unknown": "Oleafly har inte letat efter Zotero än."
+      },
+      "test": "Testa anslutningen",
+      "syncNow": "Synka nu",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX hittades inte",
+        "local": "Läst från Zotero på den här datorn",
+        "web": "Läst från zotero.org",
+        "library_one": "{{name}}: {{formatted}} objekt",
+        "library_other": "{{name}}: {{formatted}} objekt"
+      },
+      "library": {
+        "heading": "Bibliotek att söka i",
+        "myLibrary": "Mitt bibliotek",
+        "toggle": "Sök i {{name}}",
+        "items_one": "{{formatted}} objekt",
+        "items_other": "{{formatted}} objekt"
+      },
+      "sync": {
+        "never": "Inte synkat än.",
+        "syncing": "Synkar ditt Zotero-bibliotek…",
+        "progress": "Synkar {{done}} av {{total}} objekt…",
+        "status_one": "{{formatted}} objekt redo att citera, synkat {{time}}.",
+        "status_other": "{{formatted}} objekt redo att citera, synkat {{time}}.",
+        "fromCache": "Zotero är stängt, så @-sökningen använder kopian från den senaste synkningen.",
+        "rateLimited": "zotero.org bad Oleafly att vänta. Oleafly försöker igen efter {{time}}."
+      },
+      "account": {
+        "heading": "zotero.org-konto",
+        "description": "Använd ditt konto när Zotero inte är öppet på den här datorn. Gruppbibliotek följer också med."
+      }
+    },
+    "overleaf": {
+      "description": "Hämta projekt från ditt Overleaf-konto eller från ditt universitets Overleaf-server och håll dem synkade. Oleafly sparar inloggningen och Git-token krypterade på den här datorn.",
+      "signedInAs": "Inloggad som {{email}} på {{server}}",
+      "signedIn": "Inloggad på {{server}}",
+      "signOut": "Logga ut",
+      "signOutFailed": "Oleafly kunde inte logga ut från Overleaf.",
+      "gitTitle": "Git-token för synkning",
+      "gitSaved": "En Git-token är sparad. Projekt som du länkar hålls synkade med Overleaf.",
+      "gitMissing": "Ingen Git-token än. Skapa en under Git-integration i dina kontoinställningar på Overleaf för att synka projekt.",
+      "gitOpenSettings": "Öppna kontoinställningarna på Overleaf",
+      "gitPlanNote": "Git-integration kräver att projektets ägare har ett betalt abonnemang eller ett universitetsabonnemang hos Overleaf.",
+      "gitLabel": "Git-token från Overleaf",
+      "gitSave": "Spara",
+      "gitRemove": "Ta bort",
+      "gitFailed": "Oleafly kunde inte spara Git-token. Kontrollera att du klistrade in hela token."
     }
   },
   "language": {
@@ -1561,6 +1804,10 @@
         "description": "Visa eller dölj projektets sidofält.",
         "label": "Visa eller dölj sidofältet"
       },
+      "togglePreview": {
+        "label": "Visa eller dölj PDF-förhandsvisning",
+        "description": "Visar eller döljer PDF:en bredvid redigeraren, även i Zen-läge."
+      },
       "toggleTerminal": {
         "description": "Visa eller dölj projektets terminal.",
         "label": "Visa eller dölj terminalen"
@@ -1568,6 +1815,26 @@
       "openFolder": {
         "label": "Öppna mapp",
         "description": "Öppna en mapp från datorn som ett projekt."
+      },
+      "toggleZenMode": {
+        "description": "Dölj allt utom din text, eller visa allt igen.",
+        "label": "Växla Zen-läge"
+      },
+      "openSettings": {
+        "label": "Öppna inställningar",
+        "description": "Öppna inställningarna för Oleafly."
+      },
+      "zoomIn": {
+        "description": "Gör hela appen större.",
+        "label": "Zooma in"
+      },
+      "zoomOut": {
+        "description": "Gör hela appen mindre.",
+        "label": "Zooma ut"
+      },
+      "resetZoom": {
+        "description": "Återställer appen till 100 %.",
+        "label": "Återställ zoom"
       }
     },
     "application": {
@@ -1590,7 +1857,7 @@
         "italic": "Kursiv",
         "jumpToSourceFromPdf": "Hoppa till källkoden från PDF:en",
         "redo": "Gör om",
-        "renameSymbol": "Byt namn på symbolen i hela projektet",
+        "renameSymbol": "Byt namn på symbolen eller filen i hela projektet",
         "slashCommandMenu": "Infogningsmeny med snedstreckskommandon",
         "triggerAutocomplete": "Utlös komplettering",
         "undo": "Ångra"

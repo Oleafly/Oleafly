@@ -210,5 +210,20 @@
     "clearFilter": "Ryd filteret",
     "filterPlaceholder": "Filtrer…",
     "noProject": "Intet projekt"
+  },
+  "fileReferences": {
+    "title": "Opdater henvisninger til {{name}}?",
+    "files_one": "{{count}} fil",
+    "files_other": "{{count}} filer",
+    "summary_one": "{{count}} henvisning i $t(workspace:fileReferences.files, { \"count\": {{files}} }) bruger stadig den gamle sti, {{path}}.",
+    "summary_other": "{{count}} henvisninger i $t(workspace:fileReferences.files, { \"count\": {{files}} }) bruger stadig den gamle sti, {{path}}.",
+    "fileCount_one": "{{count}} henvisning",
+    "fileCount_other": "{{count}} henvisninger",
+    "dontAsk": "Spørg ikke igen",
+    "update": "Opdater henvisninger",
+    "skip": "Opdater ikke",
+    "failed_one": "{{count}} fil blev ændret efter flytningen eller kunne ikke gemmes. Den bruger stadig den gamle sti.",
+    "failed_other": "{{count}} filer blev ændret efter flytningen eller kunne ikke gemmes. De bruger stadig den gamle sti.",
+    "close": "Luk uden at opdatere henvisninger"
   }
 }

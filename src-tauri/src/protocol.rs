@@ -3,12 +3,13 @@ use serde::Serialize;
 // Mirrors packages/backend-port/src/index.ts. The vitest conformance test
 // (src/lib/backend-port-protocol.test.ts) parses this file and fails on any
 // drift between the two, so bump both sides together.
-pub const PROTOCOL_VERSION: u32 = 5;
-pub const CAPABILITIES: [&str; 11] = [
+pub const PROTOCOL_VERSION: u32 = 6;
+pub const CAPABILITIES: [&str; 12] = [
     "agent-server",
     "agent-stream",
     "chats",
     "checkpoints",
+    "collab",
     "compile",
     "git",
     "initial-state",
@@ -49,5 +50,10 @@ mod tests {
         let info = backend_protocol_info();
         assert_eq!(info.protocol_version, PROTOCOL_VERSION);
         assert_eq!(info.capabilities, CAPABILITIES.to_vec());
+    }
+
+    #[test]
+    fn reports_the_collaboration_capability() {
+        assert!(backend_protocol_info().capabilities.contains(&"collab"));
     }
 }

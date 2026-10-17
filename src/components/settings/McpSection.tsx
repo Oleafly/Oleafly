@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Check, Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip } from "@/components/ui/tooltip";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
-import { useCopyStatus } from "@/components/ui/use-copy-status";
+import { CopyTextButton, highlightSnippet, type SnippetLang } from "@/components/settings/snippet";
+import { CodeBlock } from "@/components/ui/code-block";
 import {
   getConfig,
   mcpConnectionInfo,
@@ -32,25 +33,6 @@ import { useMcpActivityStore } from "@/store/mcp-activity";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
-function CopyBtn({ text, testId }: Readonly<{ text: string; testId?: string }>) {
-  const { t } = useTranslation(["common", "settings"]);
-  const { copied, copy } = useCopyStatus();
-  return (
-    <Button
-      type="button"
-      variant="secondary"
-      size="sm"
-      data-testid={testId}
-      disabled={!text}
-      onClick={() => void copy(text)}
-    >
-      {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-      {copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy)}
-    </Button>
-  );
-}
-
-type SnippetLang = "json" | "shell" | "toml";
 type McpClientTab = "claude-code" | "claude-desktop" | "cursor" | "codex" | "grok";
 
 const CLIENT_NAMES: Record<McpClientTab, string> = {
@@ -71,97 +53,9 @@ const CLIENT_CONFIG_FILES = {
 const SNIPPET_TITLE_SUFFIX = ")";
 
 
-type PushSnippetToken = (cls: string | null, text: string) => void;
-
-function highlightJsonSnippet(source: string, push: PushSnippetToken) {
-  // Keys, strings, numbers, booleans/null, punctuation.
-  const re =
-    /("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+(?:\.\d+)?)\b|(\b(?:true|false|null)\b)|([{}[\],:])|(\s+)|([^\s"{}[\],:]+)/g;
-  for (const m of source.matchAll(re)) {
-    if (m[1] !== undefined && m[2] !== undefined) {
-      push("text-sky-700 dark:text-sky-300", m[1]);
-      push("text-muted-foreground", m[2]);
-    } else if (m[1] !== undefined) {
-      push("text-emerald-700 dark:text-emerald-400", m[1]);
-    } else if (m[3] !== undefined) {
-      push("text-amber-700 dark:text-amber-400", m[3]);
-    } else if (m[4] !== undefined) {
-      push("text-violet-700 dark:text-violet-400", m[4]);
-    } else if (m[5] !== undefined) {
-      push("text-muted-foreground", m[5]);
-    } else if (m[6] !== undefined) {
-      push(null, m[6]);
-    } else if (m[7] !== undefined) {
-      push(null, m[7]);
-    }
-  }
-}
-
-function highlightTomlSnippet(source: string, push: PushSnippetToken) {
-  const re =
-    /(\[[^\]]+\])|([A-Za-z_][\w.]*)(\s*=\s*)|("(?:\\.|[^"\\])*")|([{}=,])|(\s+)|([^\s[\]"={}]+)/g;
-  for (const m of source.matchAll(re)) {
-    if (m[1] !== undefined) {
-      push("text-sky-700 dark:text-sky-300", m[1]);
-    } else if (m[2] !== undefined) {
-      push("text-sky-700 dark:text-sky-300", m[2]);
-      push("text-muted-foreground", m[3] ?? "");
-    } else if (m[4] !== undefined) {
-      push("text-emerald-700 dark:text-emerald-400", m[4]);
-    } else if (m[5] !== undefined) {
-      push("text-muted-foreground", m[5]);
-    } else if (m[6] !== undefined) {
-      push(null, m[6]);
-    } else if (m[7] !== undefined) {
-      push(null, m[7]);
-    }
-  }
-}
-
-function highlightShellSnippet(source: string, push: PushSnippetToken) {
-  // shell: flag, quoted string, bare token
-  const re = /("(?:\\.|[^"\\])*")|(--?[\w-]+)|(\s+)|([^\s"]+)/g;
-  let first = true;
-  for (const m of source.matchAll(re)) {
-    if (m[1] !== undefined) {
-      push("text-emerald-700 dark:text-emerald-400", m[1]);
-    } else if (m[2] !== undefined) {
-      push("text-violet-700 dark:text-violet-400", m[2]);
-    } else if (m[3] !== undefined) {
-      push(null, m[3]);
-    } else if (m[4] !== undefined) {
-      push(first ? "text-sky-700 dark:text-sky-300 font-medium" : null, m[4]);
-      first = false;
-    }
-  }
-}
-
-// Avoids pulling in a full syntax-highlighter dependency for these small snippets.
-function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
-  const out: ReactNode[] = [];
-  let key = 0;
-  const push: PushSnippetToken = (cls, text) => {
-    if (!text) return;
-    out.push(
-      cls ? (
-        <span key={key++} className={cls}>
-          {text}
-        </span>
-      ) : (
-        <span key={key++}>{text}</span>
-      ),
-    );
-  };
-
-  if (lang === "json") highlightJsonSnippet(source, push);
-  else if (lang === "toml") highlightTomlSnippet(source, push);
-  else highlightShellSnippet(source, push);
-  return out;
-}
-
 function FileName({ children }: Readonly<{ children: string }>) {
   return (
-    <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] font-normal text-foreground">
+    <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.6875rem] font-normal text-foreground">
       {children}
     </code>
   );
@@ -194,13 +88,10 @@ function Snippet({
   const highlighted = useMemo(() => highlightSnippet(body, lang), [body, lang]);
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-foreground">{title}</p>
-        <CopyBtn text={copyText} />
-      </div>
-      <pre className="overflow-x-auto rounded-md border bg-muted/40 p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all">
+      <p className="text-xs font-medium text-foreground">{title}</p>
+      <CodeBlock code={copyText} preClassName="p-2.5 pr-10 whitespace-pre-wrap break-all">
         <code>{highlighted}</code>
-      </pre>
+      </CodeBlock>
     </div>
   );
 }
@@ -447,7 +338,7 @@ export function McpSection() {
   const renderMcpTokenCard = () => (
     <div className="space-y-2 rounded-lg border bg-card p-3">
       <div className="text-xs font-medium">{t(($) => $.settings.mcp.section.token.label)}</div>
-      <code className="block w-full truncate rounded bg-muted px-2 py-1.5 text-[11px] font-mono">
+      <code className="block w-full truncate rounded bg-muted px-2 py-1.5 text-[0.6875rem] font-mono">
         {status?.running
           ? shownToken
           : t(($) => $.settings.mcp.section.token.enableToView)}
@@ -471,7 +362,7 @@ export function McpSection() {
             ? t(($) => $.settings.mcp.section.token.hide)
             : t(($) => $.settings.mcp.section.token.reveal)}
         </Button>
-        <CopyBtn text={token ?? ""} testId="mcp-copy-token" />
+        <CopyTextButton text={token ?? ""} testId="mcp-copy-token" />
         <Button
           type="button"
           variant="secondary"
@@ -512,7 +403,7 @@ export function McpSection() {
           </div>
         )}
       </div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
         {t(($) => $.settings.mcp.section.token.help)}
       </p>
     </div>
@@ -717,7 +608,7 @@ export function McpSection() {
         </Tabs>
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
         {t(($) => $.settings.mcp.section.footer)}
       </p>
 

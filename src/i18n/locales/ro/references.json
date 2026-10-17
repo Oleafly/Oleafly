@@ -165,5 +165,92 @@
     "label": "Stilul citării",
     "ariaLabel": "Stilul citării pentru bibliografia din {{path}}",
     "failed": "Oleafly nu a putut schimba stilul citării."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} și {{second}}",
+      "authorsMany": "{{first}} et al.",
+      "noYear": "f.a.",
+      "keySource": {
+        "bbt": "Cheie din Better BibTeX",
+        "native": "Cheie din Zotero",
+        "extra": "Cheie din câmpul Extra din Zotero",
+        "generated": "Cheie creată de Oleafly"
+      },
+      "addFailed": "Oleafly nu a putut adăuga {{key}} în bibliografie. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "În Zotero, deschide Setări > Avansate și activează „Allow other applications on this computer to communicate with Zotero”.",
+      "unsupported": "Actualizează Zotero la versiunea 7 sau la una mai nouă ca să cauți în bibliotecă din Oleafly.",
+      "keyRejected": "Zotero nu mai acceptă cheia ta API. Reconectează-ți contul din setările Zotero.",
+      "closed": "Deschide Zotero ca să cauți aici în biblioteca ta sau conectează-ți contul zotero.org.",
+      "closedCached": "Zotero este închis. Rezultatele sunt din ultima sincronizare, {{time}}.",
+      "bbtMissing": "Better BibTeX nu răspunde, așa că cheile noi vin din Zotero. Verifică dacă este instalat și activat.",
+      "action": "Setări Zotero"
+    },
+    "actions": {
+      "addFromZotero": "Adaugă din Zotero",
+      "addAllMissing_one": "Adaugă {{count}} citare lipsă din Zotero",
+      "addAllMissing_few": "Adaugă toate cele {{count}} citări lipsă din Zotero",
+      "addAllMissing_other": "Adaugă toate cele {{count}} de citări lipsă din Zotero",
+      "notInLibrary": "{{key}} nu se află în biblioteca ta Zotero.",
+      "changed": "Această intrare s-a modificat în Zotero de când ai adăugat-o.",
+      "changedEdited": "Această intrare s-a modificat în Zotero, iar tu ai editat-o și aici.",
+      "update": "Actualizează din Zotero",
+      "updated": "S-a actualizat {{key}} din Zotero.",
+      "updateFailed": "Oleafly nu a putut actualiza {{key}} din Zotero. Încearcă din nou."
+    },
+    "chooseBibliography": {
+      "title": "Unde să ajungă referințele noi?",
+      "description": "Acest proiect are mai multe fișiere de bibliografie. Oleafly adaugă referințele noi în fișierul pe care îl alegi și îl reține pentru acest proiect.",
+      "confirm": "Folosește acest fișier"
+    },
+    "handEdits": {
+      "title": "Înlocuiești modificările tale?",
+      "description": "Ai editat manual {{key}}. Dacă înlocuiești intrarea cu versiunea din Zotero, acele modificări se pierd.",
+      "confirm": "Folosește versiunea din Zotero",
+      "cancel": "Păstrează versiunea mea"
+    },
+    "handList": {
+      "title": "Muți lista de referințe?",
+      "description": "Acest document are referințele scrise manual. Mută-le în {{path}} ca să formeze o singură listă numerotată cu lucrările pe care le citezi din Zotero.",
+      "confirm": "Mută lista"
+    },
+    "missing": {
+      "title": "Adaugă citările lipsă din Zotero",
+      "loading": "Se verifică biblioteca ta Zotero…",
+      "none": "Toate cheile citate sunt deja în bibliografie.",
+      "found_one": "{{count}} cheie citată se află în Zotero",
+      "found_few": "{{count}} chei citate se află în Zotero",
+      "found_other": "{{count}} de chei citate se află în Zotero",
+      "duplicates_one": "{{count}} cheie citează o lucrare care este deja în bibliografie",
+      "duplicates_few": "{{count}} chei citează lucrări care sunt deja în bibliografie",
+      "duplicates_other": "{{count}} de chei citează lucrări care sunt deja în bibliografie",
+      "duplicateRow": "{{key}} este aceeași lucrare ca {{existing}}",
+      "notFound_one": "{{count}} cheie citată nu se află în Zotero",
+      "notFound_few": "{{count}} chei citate nu se află în Zotero",
+      "notFound_other": "{{count}} de chei citate nu se află în Zotero",
+      "confirm_one": "Adaugă {{count}} intrare",
+      "confirm_few": "Adaugă {{count}} intrări",
+      "confirm_other": "Adaugă {{count}} de intrări",
+      "done_one": "{{count}} intrare se află acum în {{path}}.",
+      "done_few": "{{count}} intrări se află acum în {{path}}.",
+      "done_other": "{{count}} de intrări se află acum în {{path}}.",
+      "failed": "Oleafly nu a putut adăuga intrările. {{detail}}"
+    },
+    "update": {
+      "title": "Actualizează intrările .bib din Zotero",
+      "loading": "Se caută modificări în Zotero…",
+      "none": "Bibliografia ta corespunde cu Zotero.",
+      "handEdited": "Editată manual",
+      "handEditedNote": "Intrările editate manual nu sunt selectate. Selectează una ca s-o înlocuiești cu versiunea din Zotero.",
+      "confirm_one": "Actualizează {{count}} intrare",
+      "confirm_few": "Actualizează {{count}} intrări",
+      "confirm_other": "Actualizează {{count}} de intrări",
+      "done_one": "S-a actualizat {{count}} intrare.",
+      "done_few": "S-au actualizat {{count}} intrări.",
+      "done_other": "S-au actualizat {{count}} de intrări."
+    }
   }
 }

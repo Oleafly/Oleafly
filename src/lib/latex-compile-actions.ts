@@ -1,9 +1,13 @@
 import { i18n } from "@/i18n";
-import { decodeAppError, describeError } from "@/lib/app-error";
+import { decodeAppError, describeError, SHELL_ESCAPE_DECLINED } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { recompileWithPreview } from "@/lib/compile-preview";
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
+
+export function shellEscapeDeclined(error: unknown): boolean {
+  return decodeAppError(error)?.code === SHELL_ESCAPE_DECLINED;
+}
 
 export async function applyShellEscape(
   allow: boolean,
@@ -15,6 +19,7 @@ export async function applyShellEscape(
   try {
     await files.setShellEscape(allow);
   } catch (error) {
+    if (shellEscapeDeclined(error)) return false;
     void logError("update external command access", error);
     toast.errorUnique(
       engineSwitchToastKey(projectId),

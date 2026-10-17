@@ -206,6 +206,26 @@ describe("SlashCommandMenu", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    const commands = [
+      command("goal", "Goal", "Set a persistent target", () => {}),
+      command("model", "Model", "Choose the model for this chat", () => {}),
+      command("plan", "Plan mode", "Turn structured planning on or off", () => {}),
+    ];
+    const view = render(
+      <SlashCommandMenu commands={commands} query="" onSelect={() => {}} onClose={() => {}} />,
+    );
+    const list = screen.getByRole("listbox");
+    list.scrollTop = 240;
+
+    view.rerender(
+      <SlashCommandMenu commands={commands} query="mo" onSelect={() => {}} onClose={() => {}} />,
+    );
+
+    expect(screen.getByRole("option", { name: /Model/ })).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("filters a command list the same way the menu does", () => {
     const commands = [
       command("goal", "Goal", "Set a persistent target", () => {}),

@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} Dateien haben sich in Ihrem Projekt geändert, nachdem diese Aufgabe begann. Ihre Vergleiche beziehen sich auf die älteren Fassungen, deshalb lassen sie sich nicht übernehmen.",
       "applyAria": "{{path}} übernehmen",
       "changedSince": "Seither geändert",
+      "mergesOnApply": "Diese Datei wurde bearbeitet, nachdem die Aufgabe begann. Beim Übernehmen bleiben diese Bearbeitungen erhalten, und die Änderungen der Aufgabe kommen hinzu.",
       "loading": "Wird geladen...",
       "refreshPreview": "Vorschau aktualisieren",
       "preview": "Vorschau",
@@ -1359,7 +1360,6 @@
     "captionAria": "Tabellenbeschriftung",
     "preview": "Vorschau",
     "output": "LaTeX-Ausgabe",
-    "copiedSource": "LaTeX-Quelltext kopiert",
     "booktabsHint": "Braucht <code>\\usepackage{booktabs}</code> in Ihrer Präambel."
   },
   "review": {

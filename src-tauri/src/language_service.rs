@@ -31,7 +31,8 @@ const MAX_STDERR_BYTES: usize = 256 * 1024;
 const STDERR_CHUNK_BYTES: usize = 8 * 1024;
 const MAX_ACTIVE_SESSIONS: usize = 4;
 const MAX_TERMINAL_SESSIONS: usize = 32;
-const OUTBOUND_QUEUE_DEPTH: usize = 4;
+const OUTBOUND_QUEUE_DEPTH: usize = 64;
+const OUTBOUND_SEND_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_OUTBOUND_QUEUE_BYTES: usize = 2 * MAX_MESSAGE_BYTES;
 const STOP_TIMEOUT: Duration = Duration::from_secs(8);
 const PIPE_DRAIN_TIMEOUT: Duration = Duration::from_secs(1);
@@ -806,21 +807,24 @@ pub async fn language_service_send(
         bytes: frame,
         queued_bytes: record.queued_bytes.clone(),
     };
-    match record.outbound.try_send(outbound) {
-        Ok(()) => Ok(SendLanguageServiceResponse {
+    match tokio::time::timeout(OUTBOUND_SEND_TIMEOUT, record.outbound.send(outbound)).await {
+        Ok(Ok(())) => Ok(SendLanguageServiceResponse {
             session: record.meta.session,
             kind: record.meta.kind,
             generation: record.meta.generation,
             accepted: true,
             message_bytes,
         }),
-        Err(mpsc::error::TrySendError::Full(_frame)) => Err(LanguageServiceError::new(
-            LanguageServiceErrorCode::Backpressure,
-            "language-service outbound queue is full",
-        )),
-        Err(mpsc::error::TrySendError::Closed(_frame)) => Err(LanguageServiceError::new(
+        Ok(Err(_closed)) => Err(LanguageServiceError::new(
             LanguageServiceErrorCode::TransportClosed,
             "language-service stdin is closed",
+        )),
+        Err(_elapsed) => Err(LanguageServiceError::new(
+            LanguageServiceErrorCode::Backpressure,
+            format!(
+                "language-service outbound queue stayed full for {} s",
+                OUTBOUND_SEND_TIMEOUT.as_secs()
+            ),
         )),
     }
 }

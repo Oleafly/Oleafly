@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { AlertCircle, Check, ExternalLink } from "lucide-react";
+import { AlertCircle, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 export function integrationLink(href: string) {
   return (
@@ -16,8 +17,7 @@ export function integrationLink(href: string) {
 
 export function ConnectedBadge({ label }: Readonly<{ label: string }>) {
   return (
-    <Badge variant="success" size="sm" className="gap-1">
-      <Check aria-hidden className="size-3" />
+    <Badge variant="success" size="sm">
       {label}
     </Badge>
   );
@@ -48,7 +48,7 @@ export function IntegrationConnected({
       data-testid={testId}
       className="flex items-start gap-1.5 text-xs text-emerald-700 dark:text-emerald-300"
     >
-      <Check aria-hidden className="mt-px size-3.5 shrink-0" />
+      <CheckBadge tone="success" className="mt-px" />
       {children}
     </p>
   );
@@ -108,7 +108,7 @@ export function IntegrationKeyField({
   submitTestId?: string;
 }>) {
   return (
-    <div className="mt-4 flex max-w-md gap-2">
+    <div className="mt-4 flex gap-2">
       <Input
         type={type}
         data-testid={inputTestId}
@@ -158,7 +158,7 @@ export function IntegrationCard({
   return (
     <Root
       data-testid={testId}
-      className={framed ? "rounded-lg border bg-background p-4" : "space-y-2"}
+      className={framed ? "rounded-lg border p-4" : "space-y-2"}
     >
       <div
         className={cn(
@@ -166,7 +166,7 @@ export function IntegrationCard({
           framed ? "flex-wrap items-start" : "items-center",
         )}
       >
-        <div className={framed ? "max-w-md" : undefined}>
+        <div className={framed ? "min-w-0 flex-1" : undefined}>
           <div className="flex items-center gap-2">
             {icon}
             <Heading className="text-sm font-medium">{title}</Heading>

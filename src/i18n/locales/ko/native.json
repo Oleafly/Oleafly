@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "Oleafly 정보",
     "checkUpdates": "업데이트 확인…",
+    "settings": "설정…",
     "reloadViews": "뷰 다시 불러오기",
     "restartApp": "응용 프로그램 다시 시작",
     "quit": "Oleafly 종료",
@@ -30,7 +31,8 @@
     "newTab": "새 탭",
     "openLocation": "위치 열기…",
     "closeTab": "탭 닫기",
-    "reloadPage": "페이지 다시 불러오기"
+    "reloadPage": "페이지 다시 불러오기",
+    "zenMode": "Zen 모드"
   },
   "window": {
     "browser": "Oleafly 브라우저",
@@ -42,6 +44,11 @@
       "title": "전체 접근 권한을 활성화할까요?",
       "message": "전체 접근 권한을 사용하면 어시스턴트가 매번 승인을 요청하지 않고 shell 명령을 실행하고 파일을 편집할 수 있습니다. 전체 접근 권한을 활성화할까요?",
       "confirm": "전체 접근 권한 활성화"
+    },
+    "sharedShellEscape": {
+      "title": "이 공유 프로젝트에서 외부 명령을 허용할까요?",
+      "message": "허용하면 이 프로젝트를 편집할 수 있는 사람은 누구나 내가 컴파일할 때 이 컴퓨터에서 프로그램을 실행할 수 있습니다. 프로젝트의 모든 사람을 신뢰할 때만 허용하세요.",
+      "confirm": "이 컴퓨터에서 허용"
     },
     "cookieImport": {
       "title": "Cookie 가져오기 확인",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "Oleafly에서 열기",
     "openWithOleafly": "Oleafly로 열기"
+  },
+  "collab": {
+    "localCopy": "{{name}} (로컬 사본)"
+  },
+  "approvals": {
+    "helperRefused": "approvals.toml의 {{tool}} 규칙에 따라 거부됨",
+    "unknownTool": "{{name}}(이)라는 도구가 없어서 이 규칙은 아무 효과가 없습니다.",
+    "unknownToolSuggestion": "{{name}}(이)라는 도구가 없어서 이 규칙은 아무 효과가 없습니다. {{suggestion}}을(를) 말씀하신 건가요?"
+  },
+  "cloud": {
+    "connectedPage": "연결되었습니다. 이 탭을 닫고 Oleafly로 돌아가세요.",
+    "failedPage": "로그인이 완료되지 않았습니다. 이 탭을 닫고 Oleafly로 돌아가세요."
   }
 }

@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import { useSettingsStore } from "@/store/settings";
@@ -309,7 +310,7 @@ function InstitutionCard({
         </div>
         {institution.countryCode && (
           <span
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border bg-background/80 px-2 py-1 text-[10px] font-semibold text-muted-foreground shadow-sm"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border bg-background/80 px-2 py-1 text-[0.625rem] font-semibold text-muted-foreground shadow-sm"
             title={countryLabel(institution.countryCode)}
           >
             <span className="text-sm leading-none" aria-hidden="true">
@@ -330,7 +331,7 @@ function InstitutionCard({
 
       <dl className="mt-4 grid grid-cols-2 divide-x border-y py-3">
         <div className="px-3 first:pl-0">
-          <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+          <dt className="text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground">
             {t(($) => $.researchTools.labSearch.works)}
           </dt>
           <dd className="mt-1 text-lg font-semibold tabular-nums text-blue-700 dark:text-blue-300">
@@ -338,7 +339,7 @@ function InstitutionCard({
           </dd>
         </div>
         <div className="px-3">
-          <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
+          <dt className="text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-muted-foreground">
             {t(($) => $.researchTools.labSearch.citations)}
           </dt>
           <dd className="mt-1 text-lg font-semibold tabular-nums text-violet-700 dark:text-violet-300">
@@ -467,11 +468,11 @@ function EmptyLabSearch({
                   onClick={() => onTry(suggestion.query)}
                   className="group flex w-full items-center gap-3 border-b border-border/60 py-2.5 text-left text-sm text-muted-foreground transition-colors last:border-b-0 hover:text-foreground"
                 >
-                  <span className="font-mono text-[11px] text-muted-foreground/60">
+                  <span className="font-mono text-[0.6875rem] text-muted-foreground/60">
                     {`0${index + 1}`}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                    <span className="block text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
                       {suggestion.domain()}
                     </span>
                     <span className="mt-0.5 block text-foreground/85">
@@ -496,6 +497,7 @@ export function LabSearchPanel() {
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [country, setCountry] = useState("all");
   const [results, setResults] = useState<Institution[] | null>(null);
+  const resultsRef = useScrollTopOnChange(results);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -579,7 +581,7 @@ export function LabSearchPanel() {
               {t(($) => $.researchTools.labSearch.eyebrow)}
             </p>
             <span className="h-4 w-px bg-border" />
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.researchTools.labSearch.directory)}
             </span>
           </div>
@@ -659,7 +661,7 @@ export function LabSearchPanel() {
             </div>
           )}
           {error && (
-            <div className="mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+            <div className="mt-3 flex select-text items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               {error}
             </div>
@@ -667,7 +669,7 @@ export function LabSearchPanel() {
         </div>
       </section>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={resultsRef} className="min-h-0 flex-1 overflow-y-auto">
         {busy ? <LabSearchSkeleton /> : null}
         {!busy && results === null ? (
           <EmptyLabSearch noResults={false} onTry={trySuggestion} />

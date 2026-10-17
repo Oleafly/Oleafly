@@ -249,6 +249,7 @@
       "driftedMany": "此任务开始后，项目中有 {{fileCount}} 个文件已发生更改。它们的差异对比的是旧版本，因此无法应用。",
       "applyAria": "应用 {{path}}",
       "changedSince": "任务开始后已更改",
+      "mergesOnApply": "此任务开始后，这个文件已被编辑。应用时会保留这些编辑，并加入任务的更改。",
       "loading": "正在加载…",
       "refreshPreview": "刷新预览",
       "preview": "预览",
@@ -281,7 +282,7 @@
     "gallerySubtitle": "无需设置，即可使用研究、写作与 LaTeX 工具",
     "toolCount_other": "{{count}} 个免费工具",
     "heroTitle": "面向研究、写作与 LaTeX 的免费工具",
-    "heroBody": "无需创建项目即可转换文件、检查 BibTeX、查找论文或进行计算。结果可以直接复制或保存；需要继续编辑时，再在 Oleafly 中打开。",
+    "heroBody": "无需创建项目即可转换文件、检查 BibTeX、查找论文或进行计算。结果可以直接复制或保存。需要继续编辑时，再在 Oleafly 中打开。",
     "typstDefaultName": "无标题 Typst 文档",
     "typstStartFailed": "Oleafly 无法启动 Typst 文档。",
     "resizePanels": "调整工具面板大小",
@@ -1348,7 +1349,6 @@
     "captionAria": "表格题注",
     "preview": "预览",
     "output": "LaTeX 输出",
-    "copiedSource": "已复制 LaTeX 源码",
     "booktabsHint": "需要在导言区添加 <code>\\usepackage{booktabs}</code>。"
   },
   "review": {

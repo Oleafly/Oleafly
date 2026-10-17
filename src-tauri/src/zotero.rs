@@ -9,6 +9,18 @@ use serde_json::Value;
 
 use crate::app_error::AppError;
 
+#[cfg(test)]
+mod bridge;
+pub mod commands;
+mod export;
+mod http;
+mod item;
+mod links;
+#[cfg(test)]
+mod mock;
+mod search;
+mod sync;
+
 const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; Zotero import)";
 const API_BASE: &str = "https://api.zotero.org";
 const API_VERSION: &str = "3";
@@ -23,6 +35,7 @@ const MAX_USER_ID_LEN: usize = 20;
 const MAX_API_KEY_LEN: usize = 128;
 const USER_ID_SECRET: &str = "zotero-user-id";
 const API_KEY_SECRET: &str = "zotero-api-key";
+const USERNAME_SECRET: &str = "zotero-username";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -96,8 +109,8 @@ fn is_valid_api_key(api_key: &str) -> bool {
         && api_key.bytes().all(|byte| byte.is_ascii_alphanumeric())
 }
 
-fn keys_url() -> String {
-    format!("{API_BASE}/keys/current")
+fn keys_url(base: &str) -> String {
+    format!("{}/keys/current", base.trim_end_matches('/'))
 }
 
 fn items_url(user_id: &UserId, start: usize) -> String {
@@ -300,7 +313,7 @@ async fn get_page(
     }
 }
 
-async fn verify(user_id: &str, api_key: &str) -> Result<ZoteroAccount, AppError> {
+async fn verify_at(base: &str, user_id: &str, api_key: &str) -> Result<ZoteroAccount, AppError> {
     let expected = if user_id.is_empty() {
         None
     } else {
@@ -310,7 +323,13 @@ async fn verify(user_id: &str, api_key: &str) -> Result<ZoteroAccount, AppError>
         return Err(AppError::new("zotero.key_rejected"));
     }
     let client = client()?;
-    let page = get_page(&client, &keys_url(), api_key, &mut WaitBudget::default()).await?;
+    let page = get_page(
+        &client,
+        &keys_url(base),
+        api_key,
+        &mut WaitBudget::default(),
+    )
+    .await?;
     account_for(parse_key_info(&page.body)?, expected.as_ref())
 }
 
@@ -347,7 +366,7 @@ async fn export_library(user_id: &UserId, api_key: &str) -> Result<ZoteroLibrary
 
 #[tauri::command]
 pub async fn zotero_verify(user_id: String, api_key: String) -> Result<ZoteroAccount, String> {
-    verify(user_id.trim(), api_key.trim())
+    verify_at(API_BASE, user_id.trim(), api_key.trim())
         .await
         .map_err(String::from)
 }
@@ -413,7 +432,11 @@ mod tests {
 
     #[test]
     fn builds_the_zotero_urls() {
-        assert_eq!(keys_url(), "https://api.zotero.org/keys/current");
+        assert_eq!(keys_url(API_BASE), "https://api.zotero.org/keys/current");
+        assert_eq!(
+            keys_url("http://127.0.0.1:9/"),
+            "http://127.0.0.1:9/keys/current"
+        );
         let user = UserId::parse("475425").unwrap();
         assert_eq!(
             items_url(&user, 0),

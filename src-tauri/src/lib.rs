@@ -29,7 +29,9 @@ mod checkpoint_publication;
 mod checkpoints;
 mod chunked;
 mod citation;
+mod cloud;
 mod cloud_files;
+mod collab;
 mod commands;
 mod community;
 mod compile_fingerprint;
@@ -37,7 +39,9 @@ mod config;
 mod connectors;
 mod conversion;
 mod cua_policy;
+mod custom_templates;
 mod deadlines;
+mod deep_link;
 mod dictionaries;
 mod document_engine;
 mod document_stats;
@@ -70,6 +74,7 @@ mod ollama;
 mod open_folder;
 mod open_request;
 mod os_trash;
+mod overleaf;
 mod pandoc_citations;
 mod paths;
 mod proc;
@@ -79,6 +84,7 @@ mod project;
 mod project_availability;
 mod project_file_sizes;
 mod project_grants;
+mod project_ids;
 mod project_location;
 mod project_manifest;
 mod project_rebind;
@@ -99,6 +105,7 @@ mod usage_report;
 mod rollout;
 mod sandbox;
 mod secrets;
+mod settings_file;
 mod shell_command;
 mod single_instance;
 mod skills;
@@ -110,6 +117,7 @@ mod state;
 mod stats;
 mod storage;
 mod synctex;
+mod system_fonts;
 mod system_integration;
 mod template_packs;
 mod templates;
@@ -159,6 +167,7 @@ where
     R: tauri::Runtime,
     F: Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static,
 {
+    let handler = collab::switch::gated(handler);
     move |invoke| {
         let command = invoke.message.command().to_string();
         let _traced = crate::stall_trace::watch(|| format!("command {command}"));
@@ -210,6 +219,10 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         let handle = app.handle().clone();
         project_availability::install_sink(Box::new(move |event| {
             let _ = handle.emit("project-availability", event);
+        }));
+        let handle = app.handle().clone();
+        cloud::progress::install_sink(Box::new(move |progress| {
+            let _ = handle.emit(cloud::progress::EVENT, progress);
         }));
     }
     program_locator::start_background_probe();
@@ -297,7 +310,9 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             ));
         }
     });
+    crate::collab::links::remember(crate::collab::links::links_in(std::env::args_os().skip(1)));
     crate::open_request::start(app.handle());
+    crate::deep_link::start(app.handle());
     #[cfg(windows)]
     crate::system_integration::repair_at_launch();
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
@@ -356,16 +371,22 @@ pub fn run() {
         open_request::OpenSource::Launch,
     );
     i18n::startup();
+    collab::switch::startup();
     let mut builder = tauri::Builder::default();
     if single_instance::enabled_for_this_launch() {
         builder = builder.plugin(single_instance::plugin());
+    }
+    if deep_link::enabled_for_this_launch() {
+        builder = builder.plugin(tauri_plugin_deep_link::init());
     }
     builder = with_open_intake(builder, open_intake)
         .on_page_load(|webview, payload| {
             browser::on_page_load(webview, payload);
             terminal::on_page_load(webview, payload);
+            deep_link::on_page_load(webview, payload);
         })
         .manage(language_service::LanguageServiceState::default())
+        .manage(web_process::RestoreAfterReload::default())
         .plugin(language_service::lifecycle_plugin())
         .plugin(terminal::lifecycle_plugin())
         .plugin(acp::lifecycle_plugin())
@@ -381,7 +402,10 @@ pub fn run() {
     // of the main, preview and update windows (issue #169).
     #[cfg(target_os = "macos")]
     {
-        builder = builder.plugin(webview_frame::plugin());
+        builder = builder
+            .plugin(webview_frame::plugin())
+            .plugin(web_process::plugin())
+            .on_web_content_process_terminate(web_process::on_web_content_process_terminate);
     }
     #[cfg(windows)]
     {
@@ -414,7 +438,15 @@ pub fn run() {
     // builds (real-webview Playwright control; see e2e/README.md).
     #[cfg(feature = "e2e-testing")]
     {
-        builder = builder.plugin(tauri_plugin_playwright::init());
+        let socket = std::env::var("TAURI_PLAYWRIGHT_SOCKET")
+            .ok()
+            .filter(|path| !path.is_empty());
+        builder = builder.plugin(match socket {
+            Some(path) => tauri_plugin_playwright::init_with_config(
+                tauri_plugin_playwright::PluginConfig::default().socket_path(path),
+            ),
+            None => tauri_plugin_playwright::init(),
+        });
         // Packaged suites cannot reload through the Vite dev server the way
         // the dev fixture seeds localStorage, so seed it before any app code
         // runs instead. The env var holds a JSON object of key -> string
@@ -422,6 +454,7 @@ pub fn run() {
         // fails the launch instead of silently skipping the seed.
         let every_load = e2e_localstorage_seed("OLEAFLY_E2E_BOOT_LOCALSTORAGE");
         let once_per_launch = e2e_localstorage_seed("OLEAFLY_E2E_LAUNCH_LOCALSTORAGE");
+        collab::switch::adopt_seeds(every_load.as_ref(), once_per_launch.as_ref());
         if every_load.is_some() || once_per_launch.is_some() {
             let empty = serde_json::Value::Object(serde_json::Map::new());
             let launch = format!(
@@ -454,6 +487,9 @@ pub fn run() {
         .manage(mcp::server::McpState::default())
         .manage(mcp::client::McpClientState::default())
         .manage(native_drop::NativeDropState::default())
+        .manage(zotero::commands::ZoteroState::default())
+        .manage(collab::state::CollabState::for_app())
+        .manage(deep_link::LinkInbox::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -574,6 +610,7 @@ pub fn run() {
             open_request::open_folder_request,
             open_request::pick_open_folder,
             open_request::debug_inject_open_request,
+            deep_link::template_link_ready,
             system_integration::system_integration_status,
             system_integration::system_integration_set,
             system_integration::claim_quick_action_offer,
@@ -595,6 +632,10 @@ pub fn run() {
             trust::debug_answer_next_confirmation,
             #[cfg(all(target_os = "macos", feature = "e2e-testing"))]
             webview_frame::debug_webview_frame,
+            #[cfg(all(target_os = "macos", feature = "e2e-testing"))]
+            web_process::macos_wk::debug_freeze_webview,
+            web_process::web_process_note_location,
+            web_process::web_process_take_restore,
             folder_status::project_folder_status,
             skills::skills_list,
             skills::skills_add,
@@ -665,6 +706,29 @@ pub fn run() {
             commands::write_project_bytes,
             commands::write_bytes_file,
             commands::export_project_image,
+            cloud::commands::cloud_state,
+            cloud::commands::cloud_details,
+            cloud::commands::cloud_connect_begin,
+            cloud::commands::cloud_connect_wait,
+            cloud::commands::cloud_connect_paste,
+            cloud::commands::cloud_connect_cancel,
+            cloud::commands::cloud_disconnect,
+            cloud::commands::cloud_set_enabled,
+            cloud::commands::cloud_set_device_name,
+            cloud::commands::cloud_sync_now,
+            cloud::commands::cloud_project_set_mode,
+            cloud::commands::cloud_project_resolve_hold,
+            cloud::commands::cloud_project_remove,
+            cloud::commands::cloud_project_replace_remote,
+            cloud::commands::cloud_project_dismiss_conflicts,
+            cloud::commands::cloud_remove_remote,
+            cloud::commands::cloud_download_project,
+            cloud::commands::cloud_settings_sync,
+            cloud::commands::cloud_settings_download,
+            cloud::commands::cloud_settings_applied,
+            cloud::commands::cloud_settings_defer,
+            cloud::commands::cloud_wait_for_changes,
+            cloud::commands::cloud_settings_keep_local,
             github::gh_request_device_code,
             github::gh_check_device_token,
             github::gh_current_user,
@@ -674,6 +738,102 @@ pub fn run() {
             github::gh_create_repo,
             github::gh_public_repo_stats,
             github::gh_import_repo,
+            collab::switch::collab_live_collaboration_set,
+            collab::commands::collab_servers_list,
+            collab::commands::collab_server_probe,
+            collab::commands::collab_server_sign_in,
+            collab::commands::collab_server_sign_in_cancel,
+            collab::commands::collab_server_code_sign_in,
+            collab::commands::collab_server_sign_out,
+            collab::commands::collab_server_remove,
+            collab::commands::collab_server_devices,
+            collab::commands::collab_server_sign_out_device,
+            collab::commands::collab_server_test,
+            collab::commands::collab_server_refresh,
+            collab::commands::collab_admin_members,
+            collab::commands::collab_admin_member_devices,
+            collab::commands::collab_admin_patch_member,
+            collab::commands::collab_admin_remove_member,
+            collab::commands::collab_admin_sign_out_device,
+            collab::commands::collab_admin_allowlist,
+            collab::commands::collab_admin_add_allowlist,
+            collab::commands::collab_admin_remove_allowlist,
+            collab::commands::collab_admin_domain_rules,
+            collab::commands::collab_admin_add_domain_rule,
+            collab::commands::collab_admin_remove_domain_rule,
+            collab::commands::collab_admin_settings,
+            collab::commands::collab_admin_patch_settings,
+            collab::commands::collab_admin_security_log,
+            collab::email::collab_admin_email_status,
+            collab::email::collab_admin_email_test,
+            collab::email::collab_email_preferences,
+            collab::email::collab_set_email_preferences,
+            collab::console::collab_admin_overview,
+            collab::console::collab_admin_projects,
+            collab::console::collab_admin_archive_project,
+            collab::console::collab_admin_unarchive_project,
+            collab::guests::collab_guest_invitations,
+            collab::guests::collab_guest_invite,
+            collab::guests::collab_guest_invitation_revoke,
+            collab::guests::collab_admin_guest_invitations,
+            collab::guests::collab_admin_guest_approve,
+            collab::guests::collab_admin_guest_decline,
+            collab::guests::collab_admin_guest_revoke,
+            collab::share::collab_share_info,
+            collab::share::collab_share_check,
+            collab::share::collab_share_project,
+            collab::share::collab_project_summary,
+            collab::share::collab_members_list,
+            collab::share::collab_member_set,
+            collab::share::collab_member_remove,
+            collab::share::collab_people_search,
+            collab::share::collab_link_sharing_set,
+            collab::share::collab_stop_sharing,
+            collab::share::collab_leave_project,
+            collab::share::collab_shared_with_me,
+            collab::share::collab_join_project,
+            collab::joining::collab_join_cancel,
+            collab::share::collab_open_link,
+            collab::share::collab_link_preview,
+            collab::live::commands::collab_live_start,
+            collab::live::commands::collab_live_stop,
+            collab::live::commands::collab_live_flush,
+            collab::live::commands::collab_live_reconnect_now,
+            collab::live::commands::collab_doc_open,
+            collab::live::commands::collab_doc_change,
+            collab::live::commands::collab_doc_close,
+            collab::live::commands::collab_presence_set,
+            collab::live::commands::collab_presence_leave,
+            collab::live::commands::collab_sync_resume,
+            collab::live::write::collab_write_text,
+            collab::live::uploads::collab_upload_list,
+            collab::live::uploads::collab_upload_retry,
+            collab::live::uploads::collab_upload_dismiss,
+            collab::live::local_copy::collab_local_copy_offer,
+            collab::live::local_copy::collab_local_copy_bring_in,
+            collab::live::local_copy::collab_local_copy_decline,
+            collab::review::collab_merge_review,
+            collab::tree::collab_trash_list,
+            collab::tree::collab_trash_restore,
+            collab::tree::collab_tree_clashes,
+            collab::tree::collab_live_removed_list,
+            collab::tree::collab_live_removed_dismiss,
+            collab::links::collab_pending_links,
+            collab::access_log::collab_access_log_status,
+            collab::access_log::collab_access_log_set_enabled,
+            collab::access_log::collab_access_log_page,
+            collab::comments::collab_comments_status,
+            collab::comments::collab_comments_set_enabled,
+            collab::comments::collab_comment_thread_list,
+            collab::comments::collab_comment_counts,
+            collab::comments::collab_comment_file_path,
+            collab::comments::collab_comment_create,
+            collab::comments::collab_comment_reply,
+            collab::comments::collab_comment_edit,
+            collab::comments::collab_comment_delete,
+            collab::comments::collab_comment_resolve,
+            collab::comments::collab_comment_reopen,
+            collab::comments::collab_comment_thread_delete,
             community::discord_community_stats,
             release_notes::release_notes_page,
             ollama::ollama_list_models,
@@ -708,6 +868,7 @@ pub fn run() {
             project::read_file_base64,
             project::read_picked_file_base64,
             project::pick_table_import_file,
+            settings_file::pick_settings_file,
             project::register_picked_file_for_e2e,
             project::append_app_log,
             project::read_app_log,
@@ -745,6 +906,20 @@ pub fn run() {
             connectors::set_connector_key,
             zotero::zotero_verify,
             zotero::zotero_library_bibtex,
+            zotero::commands::zotero_library_status,
+            zotero::commands::zotero_library_sync,
+            zotero::commands::zotero_library_test,
+            zotero::commands::zotero_library_search,
+            zotero::commands::zotero_library_lookup,
+            zotero::commands::zotero_library_keys,
+            zotero::commands::zotero_library_items,
+            zotero::commands::zotero_library_export,
+            zotero::commands::zotero_library_set_enabled,
+            zotero::commands::zotero_web_account,
+            zotero::commands::zotero_web_connect,
+            zotero::commands::zotero_web_disconnect,
+            zotero::commands::zotero_project_links,
+            zotero::commands::zotero_update_project_links,
             project::set_main_doc,
             project::set_project_engine,
             typst_toolchain::typst_toolchain_status,
@@ -760,6 +935,7 @@ pub fn run() {
             typst_options::typst_project_options,
             typst_options::set_typst_project_options,
             typst_options::typst_project_fonts,
+            system_fonts::list_system_fonts,
             typst_export::export_typst_document,
             typst_packages::typst_universe_index,
             typst_packages::typst_package_settings,
@@ -767,8 +943,27 @@ pub fn run() {
             typst_packages::vendor_typst_packages,
             project::set_project_shell_escape,
             project::record_project_tex_spec,
+            project::set_default_latex_engine,
             project::project_tex_status,
             project::import_overleaf_project,
+            overleaf::overleaf_status,
+            overleaf::overleaf_sign_in,
+            overleaf::overleaf_sign_out,
+            overleaf::overleaf_list_projects,
+            overleaf::overleaf_import_projects,
+            overleaf::template::overleaf_template_details,
+            overleaf::template::overleaf_template_pdf,
+            overleaf::template::overleaf_import_template,
+            overleaf::template::overleaf_save_project_as_template,
+            overleaf::overleaf_sync_status,
+            overleaf::overleaf_sync_link,
+            overleaf::overleaf_sync_now,
+            overleaf::overleaf_sync_check,
+            overleaf::overleaf_sync_unlink,
+            overleaf::overleaf_sync_set_auto,
+            overleaf::overleaf_git_token_status,
+            overleaf::overleaf_git_token_set,
+            overleaf::overleaf_git_token_clear,
             project::set_project_color,
             project::rename_project,
             project::open_devtools,
@@ -811,10 +1006,14 @@ pub fn run() {
             dictionaries::read_dictionary,
             template_packs::list_template_packs,
             template_packs::refresh_pack_catalog,
+            template_packs::pack_index,
             template_packs::install_template_pack,
+            template_packs::install_pack_template,
             template_packs::remove_template_pack,
             templates::save_custom_template,
             templates::delete_custom_template,
+            custom_templates::import_template_from_path,
+            custom_templates::save_project_as_template,
             deadlines::read_deadlines,
             deadlines::refresh_deadlines,
             project::export_pdf,
@@ -899,6 +1098,7 @@ pub fn run() {
         .expect("error while running Oleafly")
         .run(|_, event| {
             if let tauri::RunEvent::Exit = event {
+                collab::live::finish_for_quit(collab::live::QUIT_WAIT);
                 quit_gate::on_app_exit();
             }
         });

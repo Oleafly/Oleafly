@@ -101,7 +101,7 @@ export function ApprovalModeSelector({
                   <span className="block text-xs font-medium text-foreground">{labels[option.key]}</span>
                   <span
                     id={`approval-mode-description-${option.mode}`}
-                    className="block text-[11px] leading-snug text-muted-foreground"
+                    className="block text-[0.6875rem] leading-snug text-muted-foreground"
                   >
                     {descriptions[option.key]}
                   </span>
@@ -113,20 +113,18 @@ export function ApprovalModeSelector({
             );
           })}
         </div>
-        {mode === "custom" && (
-          <button
-            type="button"
-            aria-label={t(($) => $.ai.approval.editProjectRules)}
-            disabled={disabled}
-            onClick={() => {
-              if (!disabled) onOpenProjectRules();
-            }}
-            className="mt-1 flex w-full items-center gap-2 border-t px-2.5 pb-1 pt-2.5 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Settings2 className="size-3.5 shrink-0" />
-            {t(($) => $.ai.approval.editProjectRules)}
-          </button>
-        )}
+        <button
+          type="button"
+          aria-label={t(($) => $.ai.approval.editProjectRules)}
+          disabled={disabled}
+          onClick={() => {
+            if (!disabled) onOpenProjectRules();
+          }}
+          className="mt-1 flex w-full items-center gap-2 border-t px-2.5 pb-1 pt-2.5 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Settings2 className="size-3.5 shrink-0" />
+          {t(($) => $.ai.approval.editProjectRules)}
+        </button>
       </Popover>
     </Tooltip>
   );

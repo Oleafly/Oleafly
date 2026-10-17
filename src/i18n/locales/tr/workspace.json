@@ -210,5 +210,20 @@
     "clearFilter": "Filtreyi temizle",
     "filterPlaceholder": "Filtrele…",
     "noProject": "Proje yok"
+  },
+  "fileReferences": {
+    "title": "{{name}} için başvurular güncellensin mi?",
+    "files_one": "{{count}} dosyada",
+    "files_other": "{{count}} dosyada",
+    "summary_one": "$t(workspace:fileReferences.files, { \"count\": {{files}} }) {{count}} başvuru hâlâ eski yolu kullanıyor: {{path}}.",
+    "summary_other": "$t(workspace:fileReferences.files, { \"count\": {{files}} }) {{count}} başvuru hâlâ eski yolu kullanıyor: {{path}}.",
+    "fileCount_one": "{{count}} başvuru",
+    "fileCount_other": "{{count}} başvuru",
+    "dontAsk": "Bir daha sorma",
+    "update": "Başvuruları güncelle",
+    "skip": "Güncelleme",
+    "failed_one": "{{count}} dosya taşındıktan sonra değişti veya kaydedilemedi. Hâlâ eski yolu kullanıyor.",
+    "failed_other": "{{count}} dosya taşındıktan sonra değişti veya kaydedilemedi. Hâlâ eski yolu kullanıyor.",
+    "close": "Başvuruları güncellemeden kapat"
   }
 }

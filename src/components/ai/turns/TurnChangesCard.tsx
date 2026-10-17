@@ -124,14 +124,14 @@ function PreviewBody({ file, review }: Readonly<{ file: TurnChange; review: Turn
   const preview = review.previews[file.index];
   if (review.previewFailed === file.index) {
     return (
-      <p role="alert" className="text-[11px] text-destructive">
+      <p role="alert" className="text-[0.6875rem] text-destructive">
         {t(($) => $.ai.turnChanges.previewFailed)}
       </p>
     );
   }
-  if (!preview) return <p className="text-[11px]">{t(($) => $.ai.turnChanges.previewLoading)}</p>;
-  if (preview.binary) return <p className="text-[11px]">{t(($) => $.ai.turnChanges.binary)}</p>;
-  if (preview.tooLarge) return <p className="text-[11px]">{t(($) => $.ai.turnChanges.tooLarge)}</p>;
+  if (!preview) return <p className="text-[0.6875rem]">{t(($) => $.ai.turnChanges.previewLoading)}</p>;
+  if (preview.binary) return <p className="text-[0.6875rem]">{t(($) => $.ai.turnChanges.binary)}</p>;
+  if (preview.tooLarge) return <p className="text-[0.6875rem]">{t(($) => $.ai.turnChanges.tooLarge)}</p>;
   return (
     <DiffPreview
       path={preview.path}
@@ -277,7 +277,7 @@ function FileRow({
         ) : null}
       </div>
       {file.alsoEditedHere ? (
-        <p className="pl-6 text-[10px] text-amber-700 dark:text-amber-300">
+        <p className="pl-6 text-[0.625rem] text-amber-700 dark:text-amber-300">
           {t(($) => $.ai.turnChanges.alsoEdited)}
         </p>
       ) : null}
@@ -476,7 +476,7 @@ export function TurnChangesCard({
 
   if (!hasFiles) {
     return showUnavailable && changes.unavailable ? (
-      <p data-testid="turn-changes-unavailable" className={cn("px-1 text-[11px] text-muted-foreground", className)}>
+      <p data-testid="turn-changes-unavailable" className={cn("px-1 text-[0.6875rem] text-muted-foreground", className)}>
         {turnUnavailableText(changes.unavailable)}
       </p>
     ) : null;
@@ -496,7 +496,7 @@ export function TurnChangesCard({
       data-testid="turn-changes"
       data-tour="ai-turn-changes"
       aria-label={t(($) => $.ai.turnChanges.ariaLabel)}
-      className={cn("min-w-0 rounded-md border bg-muted/40 px-2.5 py-1.5 text-[11px] text-muted-foreground", className)}
+      className={cn("min-w-0 rounded-md border bg-muted/40 px-2.5 py-1.5 text-[0.6875rem] text-muted-foreground", className)}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <FileDiff aria-hidden className="size-3.5 shrink-0" />

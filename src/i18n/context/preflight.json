@@ -20,7 +20,8 @@
     "collapse": "Collapses one check card in the panel",
     "expand": "Expands one check card in the panel",
     "groupSource": "Heading over findings that come from the project source files",
-    "groupOutput": "Heading over findings that come from the compiled PDF"
+    "groupOutput": "Heading over findings that come from the compiled PDF",
+    "readerButton": "Short button label in the Preflight panel that opens the text a screen reader would read from the compiled PDF. Keep it to one or two words."
   },
   "finding": {
     "review": "Badge on an advisory finding that a person still has to judge",
@@ -33,5 +34,12 @@
   "prepExport": {
     "applied": "Button label after the prepared source was written into the document",
     "copied": "Button label after the prepared source was copied to the clipboard"
+  },
+  "rules": {
+    "refs-duplicate-bib-key": {
+      "title": "Preflight finding title. \"Citation key\" is the name a .bib entry is cited by, not a keyboard key. {{key}} is that name, for example smith2020",
+      "detail": "Detail of the finding for LaTeX projects. {{places}} is a list of file:line locations, for example refs.bib:4, extra.bib:1",
+      "detailTypst": "Detail of the finding for Typst projects, where a repeated key makes the compile fail. {{places}} is a list of file:line locations, for example refs.bib:4, extra.bib:1"
+    }
   }
 }

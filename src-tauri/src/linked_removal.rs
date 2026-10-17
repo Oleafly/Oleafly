@@ -199,6 +199,7 @@ fn purge_project_data(project_id: &str) -> Result<(), String> {
     if data_root.join("library.db").is_file() {
         crate::library_db::index_project_chats(&data_root, project_id, "[]")?;
     }
+    crate::project_ids::forget(project_id)?;
     Ok(())
 }
 
@@ -464,6 +465,9 @@ mod tests {
         let early = purge_expired_removals(1_000 + 29 * DAY_MS).unwrap();
 
         assert_eq!(early, PurgeOutcome::default());
+        assert!(crate::project_ids::binding(&seeded.project_id)
+            .unwrap()
+            .is_some());
         assert!(seeded.chats.exists() && seeded.checkpoints.exists());
         assert!(turns.is_dir());
         assert!(linked_entry(&seeded.project_id).exists());
@@ -476,6 +480,10 @@ mod tests {
         assert!(!seeded.checkpoints.exists());
         assert!(!turns.exists());
         assert!(!linked_entry(&seeded.project_id).exists());
+        assert!(crate::project_ids::binding(&seeded.project_id)
+            .unwrap()
+            .is_none());
+        assert!(crate::project_ids::binding(&kept).unwrap().is_some());
         assert_eq!(
             only_entries(&crate::paths::existing_linked_root().unwrap().unwrap()),
             std::slice::from_ref(&kept)

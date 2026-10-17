@@ -123,7 +123,7 @@ export function TypstExportDialog({ open, onClose }: Readonly<{ open: boolean; o
             ))}
           </RadioGroup>
           {format === "html" && (
-            <p className="text-[11px] text-muted-foreground">{t(($) => $.shell.typstExport.htmlNote)}</p>
+            <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.shell.typstExport.htmlNote)}</p>
           )}
         </fieldset>
         {format === "png" && (
@@ -167,7 +167,7 @@ export function TypstExportDialog({ open, onClose }: Readonly<{ open: boolean; o
                 <p
                   id={pagesHelpId}
                   role={pagesInvalid ? "alert" : undefined}
-                  className={pagesInvalid ? "text-[11px] text-destructive" : "text-[11px] text-muted-foreground"}
+                  className={pagesInvalid ? "text-[0.6875rem] text-destructive" : "text-[0.6875rem] text-muted-foreground"}
                 >
                   {pagesInvalid
                     ? t(($) => $.shell.typstExport.pagesInvalid)
@@ -175,9 +175,9 @@ export function TypstExportDialog({ open, onClose }: Readonly<{ open: boolean; o
                 </p>
               </>
             ) : (
-              <p className="text-[11px] text-muted-foreground">{t(($) => $.shell.typstExport.pagesUnsupported)}</p>
+              <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.shell.typstExport.pagesUnsupported)}</p>
             )}
-            <p className="text-[11px] text-muted-foreground">{t(($) => $.shell.typstExport.multiPage)}</p>
+            <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.shell.typstExport.multiPage)}</p>
           </div>
         )}
       </div>

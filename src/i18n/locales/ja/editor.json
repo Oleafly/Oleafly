@@ -188,7 +188,8 @@
     "quote": "引用文",
     "addLabel": "ラベルを追加",
     "convertLatexMath": "LaTeX の数式を Typst に変換",
-    "noLatexMath": "先に LaTeX の数式を選択してください。"
+    "noLatexMath": "先に LaTeX の数式を選択してください。",
+    "renameFile": "ファイル名を変更…"
   },
   "shell": {
     "noFileOpenTab": "ファイルが開かれていません",
@@ -357,7 +358,11 @@
     "sourceExcerpt": "ソースの {{line}} 行目",
     "summaryErrors_other": "{{count}} 件のエラー",
     "summaryWarnings_other": "{{count}} 件の警告",
-    "summaryReferences_other": "{{count}} 件の未解決の参照"
+    "summaryReferences_other": "{{count}} 件の未解決の参照",
+    "fontPack": "{{family}} は無料のフォントパック「{{pack}}」に入っています。",
+    "fontPackAction": "ダウンロードしてコンパイル",
+    "fontPackDownloading": "ダウンロード中…",
+    "fontPackFailed": "フォントパックをダウンロードできませんでした。接続を確認して、もう一度お試しください。"
   },
   "history": {
     "untitledCommit": "無題のコミット",
@@ -385,7 +390,9 @@
     "unifiedView": "1 列で表示",
     "loading": "差分を読み込み中…",
     "previewTooLarge": "ファイルが大きすぎるため、差分をプレビューできません。",
-    "diskHeading": "ディスク上 ↔ 自分の編集"
+    "diskHeading": "ディスク上 ↔ 自分の編集",
+    "sharedReadOnly": "共有プロジェクトでは、この差分は読み取り専用です。ファイルはエディターで編集してください。",
+    "viewerReadOnly": "この共有プロジェクトは閲覧できますが、編集はできません。"
   },
   "hotkeys": {
     "title": "キーボードショートカット",
@@ -419,7 +426,7 @@
       "indentOrAccept": "インデント / 補完を確定",
       "goToDefinition": "定義へ移動",
       "findReferences": "参照を検索",
-      "renameSymbol": "シンボルの名前を変更（プロジェクト全体）",
+      "renameSymbol": "シンボルまたはファイルの名前を変更（プロジェクト全体）",
       "formatDocument": "Typst の文書を整形",
       "commandPalette": "コマンドパレット",
       "searchAllDocuments": "すべての文書を検索",
@@ -447,7 +454,8 @@
     "noEntries": "このプロジェクトには参考文献の項目がまだありません。",
     "addNew": "新しい引用を探して追加…",
     "duplicate": "重複 {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Zotero ライブラリから"
   },
   "inlineAi": {
     "promptPlaceholder": "変更したい内容を書いてください…（Shift+Enter で改行）",
@@ -461,6 +469,7 @@
     "openInAgent": "プロジェクトのツールをすべて使える AI アシスタントで続ける",
     "generateFailed": "編集を生成できませんでした。{{message}}",
     "dismiss": "閉じる",
+    "withdrawn": "他の人がこのテキストを編集したため、この提案は適用できません。",
     "setUpProvider": "AI プロバイダを設定する",
     "setUpProviderHint": "インラインの AI 編集を使うには、API キー（またはローカルの Ollama）を追加してください。",
     "openAiSettings": "設定 → AI を開く"
@@ -639,6 +648,7 @@
     "endOfDocument": "文書の終わり",
     "hidePreamble": "文書のプリアンブルを隠す",
     "showPreamble": "文書のプリアンブルを表示",
+    "sharedReadOnly": "共有プロジェクトでは、ビジュアルモードはファイルを表示するだけです。編集するにはソース表示に切り替えてください。",
     "findingLabel": "{{message}}。校正の候補を開きます。",
     "rawBlockFindings_other": "この未加工ブロックに校正の指摘が {{count}} 件あります。{{message}}。候補を開きます。"
   },
@@ -1439,7 +1449,8 @@
     "sources": {
       "project": "プロジェクト",
       "system": "システム",
-      "embedded": "組み込み"
+      "embedded": "組み込み",
+      "pack": "フォントパック"
     },
     "fontsFolder": "このプロジェクトでフォントを使うには、そのファイルをプロジェクトの fonts フォルダに追加してください。"
   },
@@ -1466,5 +1477,6 @@
     "keyInvalid": "値の名前は空にできず、等号を含めることもできません。",
     "keyTaken": "1 つのバリアントで同じ名前を 2 回設定することはできません。",
     "saveFailed": "バリアントを保存できませんでした。"
-  }
+  },
+  "sharedSettingsViewer": "共有プロジェクトでは、閲覧者はこの設定を変更できません。"
 }

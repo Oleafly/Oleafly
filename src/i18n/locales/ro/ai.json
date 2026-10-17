@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Acces complet",
-        "description": "Rulează acțiunile instrumentelor fără să ceară aprobare."
+        "description": "Rulează acțiunile instrumentelor fără să întrebe, cu excepția celor blocate de o regulă de refuz."
       },
       "custom": {
         "label": "Personalizat (approvals.toml)",
@@ -326,7 +326,9 @@
       "closeAgent": "Închide un agent ajutător.",
       "runCommand": "Rulează o comandă shell în folderul proiectului, cu o limită de două minute.",
       "computerUse": "Deschide o pagină web în fereastra de browser a asistentului.",
-      "toggleTheme": "Comută între tema deschisă și cea întunecată."
+      "toggleTheme": "Comută între tema deschisă și cea întunecată.",
+      "listOverleafProjects": "Listează proiectele tale Overleaf și se autentifică mai întâi, dacă e nevoie.",
+      "importOverleafProjects": "Importă proiecte Overleaf în biblioteca ta, cu compilatorul și fișierul principal."
     },
     "disableAll": "Dezactivează tot",
     "emptyContext": "Niciun instrument nu este disponibil în acest context.",

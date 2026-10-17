@@ -783,7 +783,7 @@ function CanvasInner({
             aria-label={t("preview.showLabel")}
             onClick={onShowPreview}
             className={cn(
-              "mr-0.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors",
+              "mr-0.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] transition-colors",
               chromeHover,
             )}
           >
@@ -907,7 +907,7 @@ function CanvasInner({
 
         <div
           style={chromeStyle}
-          className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border px-4 py-1.5 text-[11px] shadow-md backdrop-blur-sm transition-all duration-300"
+          className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border px-4 py-1.5 text-[0.6875rem] shadow-md backdrop-blur-sm transition-all duration-300"
         >
           <span
             key={canvasHint}

@@ -28,6 +28,7 @@ export {
   focusEditor,
   editorFind,
   revealEditorRange,
+  scrollEditorPositionLocally,
   waitForEditorDocument,
 } from "@oleafly/editor";
 

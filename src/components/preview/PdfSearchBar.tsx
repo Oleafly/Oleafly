@@ -57,7 +57,7 @@ export function PdfSearchBar({
         className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none"
       />
       <span
-        className="min-w-14 text-center text-[11px] tabular-nums text-muted-foreground"
+        className="min-w-14 text-center text-[0.6875rem] tabular-nums text-muted-foreground"
         aria-live="polite"
       >
         {pdfSearchCounterLabel(state, query)}

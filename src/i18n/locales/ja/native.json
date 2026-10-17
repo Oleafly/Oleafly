@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "Oleafly について",
     "checkUpdates": "アップデートを確認…",
+    "settings": "設定…",
     "reloadViews": "ビューを再読み込み",
     "restartApp": "アプリケーションを再起動",
     "quit": "Oleafly を終了",
@@ -30,7 +31,8 @@
     "newTab": "新規タブ",
     "openLocation": "場所を開く…",
     "closeTab": "タブを閉じる",
-    "reloadPage": "ページを再読み込み"
+    "reloadPage": "ページを再読み込み",
+    "zenMode": "Zen モード"
   },
   "window": {
     "browser": "Oleafly ブラウザ",
@@ -42,6 +44,11 @@
       "title": "フルアクセスを有効にしますか？",
       "message": "フルアクセスを有効にすると、アシスタントは毎回の承認なしに shell コマンドの実行やファイルの編集ができるようになります。フルアクセスを有効にしますか？",
       "confirm": "フルアクセスを有効にする"
+    },
+    "sharedShellEscape": {
+      "title": "この共有プロジェクトで外部コマンドを許可しますか？",
+      "message": "許可すると、このプロジェクトを編集できる人なら誰でも、あなたがコンパイルするときにこのコンピュータでプログラムを実行できるようになります。プロジェクトの全員を信頼できる場合にのみ許可してください。",
+      "confirm": "このコンピュータで許可"
     },
     "cookieImport": {
       "title": "Cookie の読み込みの確認",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "Oleafly で開く",
     "openWithOleafly": "Oleafly で開く"
+  },
+  "collab": {
+    "localCopy": "{{name}}（ローカルコピー）"
+  },
+  "approvals": {
+    "helperRefused": "approvals.toml の {{tool}} のルールにより拒否されました",
+    "unknownTool": "{{name}} という名前のツールはないため、このルールは何もしません。",
+    "unknownToolSuggestion": "{{name}} という名前のツールはないため、このルールは何もしません。{{suggestion}} のことですか？"
+  },
+  "cloud": {
+    "connectedPage": "接続しました。このタブを閉じて Oleafly に戻ってください。",
+    "failedPage": "サインインは完了しませんでした。このタブを閉じて Oleafly に戻ってください。"
   }
 }

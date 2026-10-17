@@ -123,6 +123,19 @@ describe("Library bookmark filters", () => {
     expect(screen.getByTestId("project-grid")).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    render(<Library />);
+    const list = screen.getByTestId("project-grid").closest(".overflow-auto") as HTMLElement;
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Search projects" }), {
+      target: { value: "research" },
+    });
+
+    expect(screen.getByTestId("project-grid")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("keeps bookmark filtering in the advanced filter panel", async () => {
     render(<Library />);
 

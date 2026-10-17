@@ -22,6 +22,10 @@ ignore = [
   "RUSTSEC-2025-0081",
   "RUSTSEC-2025-0098",
   "RUSTSEC-2025-0100",
+  { id = "RUSTSEC-2023-0089", reason = "atomic-polyfill is unmaintained, reached only through loro via postcard and heapless; no vulnerability and no upgrade in that chain" },
+  { id = "RUSTSEC-2026-0247", reason = "bitmaps is unmaintained, reached only through loro via im; no vulnerability and no upgrade in that chain" },
+  { id = "RUSTSEC-2026-0248", reason = "im is unmaintained, used by loro-internal for persistent maps; no vulnerability and no upgrade in that chain" },
+  { id = "RUSTSEC-2026-0251", reason = "sized-chunks is unmaintained, reached only through loro via im; no vulnerability and no upgrade in that chain" },
 ]
 
 [licenses]
@@ -45,8 +49,11 @@ exceptions = [
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-agent" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-cli" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-collab" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-collab-protocol" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-core" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-history" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-server" },
 ]
 
 [bans]

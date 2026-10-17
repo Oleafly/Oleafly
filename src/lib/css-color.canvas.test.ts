@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cssColorToHex, readCssVariable } from "./css-color";
+import { cssColorToHex, paintedColorToHex, readCssVariable } from "./css-color";
 
 const NAMED: Record<string, string> = {
   red: "#ff0000",
@@ -58,5 +58,26 @@ describe("readCssVariable", () => {
     document.documentElement.style.setProperty("--accent", "  #123456 ");
     expect(readCssVariable("--accent")).toBe("#123456");
     expect(readCssVariable("--missing")).toBe("");
+  });
+});
+
+describe("paintedColorToHex", () => {
+  it("reads back the painted pixel for colors the canvas cannot name in RGB", () => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => {
+      let style = "#000000";
+      return {
+        get fillStyle() {
+          return style;
+        },
+        set fillStyle(value: string) {
+          if (value === "#010203" || value === "oklch(0.7 0.1 30)") style = value;
+        },
+        fillRect: () => {},
+        getImageData: () => ({ data: Uint8ClampedArray.from([200, 120, 100, 255]) }),
+      };
+    }) as unknown as HTMLCanvasElement["getContext"]);
+    expect(paintedColorToHex("#ABCDEF")).toBe("#abcdef");
+    expect(paintedColorToHex("oklch(0.7 0.1 30)")).toBe("#c87864");
+    expect(paintedColorToHex("bogus")).toBeNull();
   });
 });

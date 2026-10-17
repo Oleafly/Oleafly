@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render } from "@testing-library/react";
-import { EditorState } from "@codemirror/state";
+import { EditorState, type Extension, Facet } from "@codemirror/state";
+import { LocalDocumentSession } from "@oleafly/editor/document-session";
 import { EditorView, type KeyBinding } from "@codemirror/view";
 import type { EditorHost, VisualPorts } from "@oleafly/editor/CodeMirrorEditor";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,6 +18,7 @@ interface SpellHostShape {
 
 interface CoreProps {
   host: EditorHost;
+  extraExtensions: Extension[];
   extraExtensionsForPath: (path: string | null) => unknown[];
   extraKeymap: KeyBinding[];
 }
@@ -94,6 +96,8 @@ vi.mock("./visual-figure-edit", () => ({ openVisualFigureEditor: mocks.openVisua
 vi.mock("./visual-reference-kind", () => ({ referenceKindIn: mocks.referenceKindIn }));
 
 import { useDictionary } from "@/lib/dictionary";
+import { installCollabEditorPort } from "@/lib/collab-live-bridge";
+import { setCollabEditorExtension } from "./cm/collab-slot";
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { useFilesStore } from "@/store/files";
 import { useInlineEditStore } from "@/store/inlineEdit";
@@ -307,6 +311,28 @@ describe("the editor host", () => {
     expect(useSettingsStore.getState().editorMathPreview).toBe(false);
     setMathPreview(true);
     expect(useSettingsStore.getState().editorMathPreview).toBe(true);
+  });
+
+  it("has no document session unless live collaboration offers one", () => {
+    const { host } = mountProps();
+    expect(host.documentSession?.("main.tex")).toBeNull();
+    const session = new LocalDocumentSession("main.tex", "shared");
+    const uninstall = installCollabEditorPort({
+      documentSession: (path) => (path === "main.tex" ? session : null),
+      flush: async () => {},
+    });
+    expect(host.documentSession?.("main.tex")).toBe(session);
+    expect(host.documentSession?.("other.tex")).toBeNull();
+    uninstall();
+    expect(host.documentSession?.("main.tex")).toBeNull();
+  });
+
+  it("gives every editor a slot that live collaboration can fill", () => {
+    const marker = Facet.define<string>();
+    const release = setCollabEditorExtension(marker.of("live"));
+    const { extraExtensions } = mountProps();
+    expect(EditorState.create({ extensions: extraExtensions }).facet(marker)).toEqual(["live"]);
+    release();
   });
 
   it("adds language extensions only to source files", () => {

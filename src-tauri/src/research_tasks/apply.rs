@@ -11,8 +11,9 @@ use sha2::{Digest, Sha256};
 #[cfg(test)]
 use super::isolation::hash_file;
 use super::isolation::normalized_relative;
-use super::model::{ResearchTask, TaskFileChange, TaskFileChangeKind};
+use super::model::{ResearchTask, TaskFileChange, TaskFileChangeKind, TaskIsolation};
 use super::store::TaskStore;
+use crate::collab::live::write::{SharedDocument, SharedText};
 use crate::folder_write::{Folder, WriteFailure};
 use crate::project_location::ProjectKind;
 
@@ -27,6 +28,8 @@ struct ApplyPlan {
     phase: ApplyPhase,
     applied_count: usize,
     changes: Vec<TaskFileChange>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    shared_paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -34,6 +37,7 @@ struct ApplyPlan {
 enum ApplyPhase {
     Preparing,
     Applying,
+    Sharing,
     Applied,
 }
 
@@ -42,6 +46,8 @@ enum ApplyFault {
     None,
     #[cfg(test)]
     InterruptAfterFirst,
+    #[cfg(test)]
+    InterruptAfterSharing,
 }
 
 pub(crate) fn apply_review(
@@ -50,7 +56,15 @@ pub(crate) fn apply_review(
     project_root: &Path,
     selected_paths: &[String],
 ) -> Result<bool, String> {
-    apply_review_with_fault(store, task, project_root, selected_paths, ApplyFault::None)
+    let document = SharedDocument::of(&task.project_id);
+    apply_review_with_fault(
+        store,
+        task,
+        project_root,
+        selected_paths,
+        document.as_ref(),
+        ApplyFault::None,
+    )
 }
 
 fn apply_review_with_fault(
@@ -58,6 +72,7 @@ fn apply_review_with_fault(
     task: &ResearchTask,
     project_root: &Path,
     selected_paths: &[String],
+    document: Option<&SharedDocument>,
     fault: ApplyFault,
 ) -> Result<bool, String> {
     #[cfg(not(test))]
@@ -79,15 +94,23 @@ fn apply_review_with_fault(
     validate_real_directory(&execution_root, "task workspace")?;
     let project_files = RootFiles::open(project_root)?;
     let execution_files = RootFiles::open(&execution_root)?;
-    validate_base(&project_files, &selected)?;
-    validate_outputs(&execution_files, &selected)?;
+    let (on_disk, shared) = route_changes(document, isolation, &execution_files, selected);
+    validate_base(&project_files, &on_disk)?;
+    let disk_count = on_disk.len();
+    let mut changes = on_disk;
+    changes.extend(shared.iter().map(|shared| shared.change.clone()));
+    validate_outputs(&execution_files, &changes)?;
     let mut plan = ApplyPlan {
         task_id: task.id.clone(),
         project_id: task.project_id.clone(),
         execution_generation: task.execution_generation,
         phase: ApplyPhase::Preparing,
         applied_count: 0,
-        changes: selected,
+        changes,
+        shared_paths: shared
+            .iter()
+            .map(|shared| shared.change.path.clone())
+            .collect(),
     };
     let mut largest_plan = plan.clone();
     largest_plan.phase = ApplyPhase::Applied;
@@ -101,7 +124,7 @@ fn apply_review_with_fault(
         return Err(error);
     }
     let backups = journal.join("backups");
-    if let Err(error) = prepare_backups(&project_files, &backups, &plan.changes) {
+    if let Err(error) = prepare_backups(&project_files, &backups, &plan.changes[..disk_count]) {
         let cleanup = retire_journal(&journal, "unused");
         return Err(match cleanup {
             Ok(()) => error,
@@ -112,7 +135,7 @@ fn apply_review_with_fault(
     }
     plan.phase = ApplyPhase::Applying;
     write_plan(&journal, &plan)?;
-    for index in 0..plan.changes.len() {
+    for index in 0..disk_count {
         plan.applied_count = index + 1;
         write_plan(&journal, &plan)?;
         if let Err(error) = apply_one(
@@ -121,7 +144,7 @@ fn apply_review_with_fault(
             &journal,
             &plan.changes[index],
         ) {
-            let rollback = rollback(project_root, &journal, &plan);
+            let rollback = roll_back(project_root, &journal, &plan, document);
             return Err(match rollback {
                 Ok(()) => refused(task, project_root, &plan.changes[index].path, error),
                 Err(rollback_error) => {
@@ -129,15 +152,153 @@ fn apply_review_with_fault(
                 }
             });
         }
+        if let Some(document) = document {
+            document.wrote_on_disk(&plan.changes[index].path);
+        }
         #[cfg(test)]
         if fault == ApplyFault::InterruptAfterFirst && index == 0 {
             return Err("injected interrupted task apply".into());
         }
     }
+    if let Some(document) = document.filter(|_| !shared.is_empty()) {
+        plan.phase = ApplyPhase::Sharing;
+        write_plan(&journal, &plan)?;
+        let texts: Vec<SharedText<'_>> = shared
+            .iter()
+            .map(|shared| SharedText {
+                path: &shared.change.path,
+                before: shared.before.as_deref(),
+                text: &shared.after,
+            })
+            .collect();
+        let error = match document.write(&texts) {
+            Ok(None) => None,
+            Ok(Some(path)) => Some(changed_after_start(&path)),
+            Err(error) => Some(format!(
+                "Could not save the changes to the shared project, so nothing was applied. Try again. Details: {error}"
+            )),
+        };
+        #[cfg(test)]
+        if error.is_none() && fault == ApplyFault::InterruptAfterSharing {
+            return Err("injected interrupted task apply".into());
+        }
+        if let Some(error) = error {
+            plan.phase = ApplyPhase::Applying;
+            let rollback = write_plan(&journal, &plan)
+                .and_then(|()| roll_back(project_root, &journal, &plan, Some(document)));
+            return Err(match rollback {
+                Ok(()) => error,
+                Err(rollback_error) => {
+                    format!("{error} The apply rollback also stopped: {rollback_error}")
+                }
+            });
+        }
+    }
     plan.phase = ApplyPhase::Applied;
     write_plan(&journal, &plan)?;
-    retire_journal(&journal, "completed")?;
+    if plan.shared_paths.is_empty() {
+        retire_journal(&journal, "completed")?;
+    }
+    if let Some(document) = document {
+        document.import_now(
+            plan.changes[..disk_count]
+                .iter()
+                .map(|change| change.path.clone())
+                .collect(),
+        );
+    }
     Ok(true)
+}
+
+fn roll_back(
+    project_root: &Path,
+    journal: &Path,
+    plan: &ApplyPlan,
+    document: Option<&SharedDocument>,
+) -> Result<(), String> {
+    let rolled_back = rollback(project_root, journal, plan);
+    if let Some(document) = document {
+        for change in &plan.changes[..plan.applied_count] {
+            document.wrote_on_disk(&change.path);
+        }
+    }
+    rolled_back
+}
+
+struct SharedChange {
+    change: TaskFileChange,
+    before: Option<String>,
+    after: String,
+}
+
+fn route_changes(
+    document: Option<&SharedDocument>,
+    isolation: &TaskIsolation,
+    execution_files: &RootFiles,
+    selected: Vec<TaskFileChange>,
+) -> (Vec<TaskFileChange>, Vec<SharedChange>) {
+    let Some(document) = document else {
+        return (selected, Vec::new());
+    };
+    let baseline = RootFiles::open(Path::new(&isolation.baseline_root)).ok();
+    let mut on_disk = Vec::new();
+    let mut shared = Vec::new();
+    for change in selected {
+        match shared_texts(document, baseline.as_ref(), execution_files, &change) {
+            Some((before, after)) => shared.push(SharedChange {
+                change,
+                before,
+                after,
+            }),
+            None => on_disk.push(change),
+        }
+    }
+    (on_disk, shared)
+}
+
+pub(super) fn merges_with_shared(
+    document: Option<&SharedDocument>,
+    isolation: &TaskIsolation,
+    change: &TaskFileChange,
+) -> bool {
+    let Some(document) = document.filter(|document| document.can_edit()) else {
+        return false;
+    };
+    if change.kind != TaskFileChangeKind::Modified {
+        return false;
+    }
+    let Ok(execution_files) = RootFiles::open(Path::new(&isolation.execution_root)) else {
+        return false;
+    };
+    let baseline = RootFiles::open(Path::new(&isolation.baseline_root)).ok();
+    shared_texts(document, baseline.as_ref(), &execution_files, change).is_some()
+}
+
+fn shared_texts(
+    document: &SharedDocument,
+    baseline: Option<&RootFiles>,
+    execution_files: &RootFiles,
+    change: &TaskFileChange,
+) -> Option<(Option<String>, String)> {
+    let relative = normalized_relative(&change.path).ok()?;
+    let before = match change.kind {
+        TaskFileChangeKind::Deleted => return None,
+        TaskFileChangeKind::Added => None,
+        TaskFileChangeKind::Modified => {
+            Some(baseline?.read_text(&relative, change.before_sha256.as_deref()?)?)
+        }
+    };
+    let after = execution_files.read_text(&relative, change.after_sha256.as_deref()?)?;
+    document
+        .holds(&change.path, before.is_none())
+        .then_some((before, after))
+}
+
+pub(crate) fn release_completed_journal(store: &TaskStore, task: &ResearchTask) {
+    let journal = journal_dir(store, task);
+    if read_plan(&journal).is_ok_and(|plan| plan.phase == ApplyPhase::Applied) {
+        let _ = retire_journal(&journal, "completed");
+    }
 }
 
 pub(crate) fn has_recovery_journal(store: &TaskStore, task: &ResearchTask) -> Result<bool, String> {
@@ -193,6 +354,15 @@ pub(crate) fn recover_pending_apply(
     {
         return Err("The task apply journal does not match this task.".into());
     }
+    if !plan.shared_paths.is_empty()
+        && matches!(plan.phase, ApplyPhase::Sharing | ApplyPhase::Applied)
+    {
+        if !disk_changes_applied(project_root, &plan)? {
+            return Err("A completed task apply changed before recovery could record it.".into());
+        }
+        retire_journal(&journal, "completed")?;
+        return Ok(true);
+    }
     if plan.phase == ApplyPhase::Applied {
         if !selection_is_fully_applied(task, project_root, selected_paths)? {
             return Err("A completed task apply changed before recovery could record it.".into());
@@ -206,6 +376,19 @@ pub(crate) fn recover_pending_apply(
     }
     rollback(project_root, &journal, &plan)?;
     Ok(false)
+}
+
+fn disk_changes_applied(project_root: &Path, plan: &ApplyPlan) -> Result<bool, String> {
+    let project_files = RootFiles::open(project_root)?;
+    for change in &plan.changes {
+        if plan.shared_paths.contains(&change.path) {
+            continue;
+        }
+        if project_files.hash(&normalized_relative(&change.path)?)? != change.after_sha256 {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn selection_is_fully_applied(
@@ -271,13 +454,16 @@ fn validate_base(project_files: &RootFiles, changes: &[TaskFileChange]) -> Resul
     for change in changes {
         let current = project_files.hash(&normalized_relative(&change.path)?)?;
         if current != change.before_sha256 {
-            return Err(format!(
-                "{} changed after this task started. The task result is still available; review it against the current file before applying again.",
-                change.path
-            ));
+            return Err(changed_after_start(&change.path));
         }
     }
     Ok(())
+}
+
+fn changed_after_start(path: &str) -> String {
+    format!(
+        "{path} changed after this task started. The task result is still available; review it against the current file before applying again."
+    )
 }
 
 fn validate_outputs(execution_files: &RootFiles, changes: &[TaskFileChange]) -> Result<(), String> {
@@ -462,6 +648,24 @@ impl RootFiles {
             hasher.update(&buffer[..read]);
         }
         Ok(Some(format!("{:x}", hasher.finalize())))
+    }
+
+    fn read_text(&self, path: &Path, expected: &str) -> Option<String> {
+        let (directory, name) = self.parent(path, false).ok()??;
+        let mut options = OpenOptions::new();
+        options.read(true).follow(FollowSymlinks::No).nonblock(true);
+        let file = directory.open_with(&name, &options).ok()?;
+        let metadata = file.metadata().ok()?;
+        let limit = crate::collab::disk::MAX_TEXT_BYTES as u64;
+        if !metadata.is_file() || metadata.len() > limit {
+            return None;
+        }
+        let mut bytes = Vec::new();
+        file.take(limit + 1).read_to_end(&mut bytes).ok()?;
+        if format!("{:x}", Sha256::digest(&bytes)) != expected {
+            return None;
+        }
+        crate::collab::disk::as_text(&bytes)
     }
 
     fn copy_to(
@@ -663,6 +867,10 @@ fn retire_journal(journal: &Path, reason: &str) -> Result<(), String> {
 }
 
 #[cfg(test)]
+#[path = "tests/live_apply.rs"]
+mod live_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::research_tasks::model::{
@@ -860,6 +1068,7 @@ mod tests {
             &task,
             &project,
             &["main.tex".into()],
+            None,
             ApplyFault::InterruptAfterFirst,
         )
         .unwrap_err();
@@ -942,6 +1151,7 @@ mod tests {
             execution_generation: 1,
             phase: ApplyPhase::Preparing,
             applied_count: 0,
+            shared_paths: Vec::new(),
             changes: vec![TaskFileChange {
                 path: "x".repeat(MAX_APPLY_PLAN_BYTES),
                 kind: TaskFileChangeKind::Added,

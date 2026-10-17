@@ -36,7 +36,12 @@
     "not_removable": "Doar folderele deschise în locația lor pot fi eliminate din Oleafly.",
     "trash_unavailable": "Oleafly nu a putut muta {{path}} în Coș sau în Coșul de reciclare. Probabil unitatea nu are unul.",
     "linked_replace_folder": "{{path}} este un folder, așa că Oleafly nu îl înlocuiește. Mută-l sau redenumește-l mai întâi.",
-    "folder_read_only": "Oleafly nu poate face această modificare, deoarece {{name}} sau folderul în care se află este doar în citire. Copiază în bibliotecă folderul pe care l-ai deschis și editează-l acolo."
+    "folder_read_only": "Oleafly nu poate face această modificare, deoarece {{name}} sau folderul în care se află este doar în citire. Copiază în bibliotecă folderul pe care l-ai deschis și editează-l acolo.",
+    "shared_settings_viewer": "Cititorii nu pot modifica setările unui proiect partajat."
+  },
+  "template": {
+    "name_required": "Dă un nume șablonului.",
+    "folder_holds_templates": "Acest folder conține șabloanele incluse în Oleafly. Alege în schimb folderul șablonului."
   },
   "settings": {
     "locale_unsupported": "Limba {{locale}} nu este disponibilă."
@@ -56,7 +61,11 @@
     "unreachable": "Oleafly nu a putut contacta Zotero. Verifică conexiunea la internet, apoi încearcă din nou.",
     "http_error": "Zotero a returnat o eroare (HTTP {{status}}). Încearcă din nou mai târziu.",
     "invalid_response": "Zotero a trimis un răspuns pe care Oleafly nu l-a putut citi. Încearcă din nou mai târziu.",
-    "too_large": "Biblioteca ta Zotero este prea mare ca să fie importată dintr-odată. Exportă în schimb o colecție din Zotero ca fișier RDF și importă-l pe acela."
+    "too_large": "Biblioteca ta Zotero este prea mare ca să fie importată dintr-odată. Exportă în schimb o colecție din Zotero ca fișier RDF și importă-l pe acela.",
+    "local_not_running": "Zotero nu rulează pe acest computer. Deschide Zotero sau conectează-ți contul zotero.org.",
+    "local_api_disabled": "În Zotero, deschide Setări > Avansate și activează „Allow other applications on this computer to communicate with Zotero”.",
+    "local_unsupported": "Această versiune de Zotero nu își poate partaja biblioteca cu Oleafly. Actualizează la Zotero 7 sau la o versiune mai nouă.",
+    "offline": "Oleafly este în modul offline, așa că nu poate accesa zotero.org."
   },
   "tex": {
     "no_host_binary": "TinyTeX nu are un binar {{name}} compatibil cu acest sistem.",
@@ -65,7 +74,8 @@
     "latexmk_network_folder": "latexmk nu poate compila un folder aflat pe o partajare de rețea. Comută acest proiect pe Tectonic sau copiază folderul pe acest computer.",
     "shell_escape_denied_minted": "minted trebuie să ruleze alt program pentru a evidenția codul, iar acest proiect blochează asta. Ca să permiți asta, dă clic pe „{{setting}}” în bannerul de deasupra editorului. Fă asta doar dacă ai încredere în fiecare fișier din proiect. LaTeX va putea apoi rula orice program cu permisiunile tale, iar un program pornit de el poate continua să ruleze după ce oprești compilarea.",
     "shell_escape_denied_pythontex": "PythonTeX trebuie să ruleze Python, iar acest proiect blochează asta. Ca să permiți asta, dă clic pe „{{setting}}” în bannerul de deasupra editorului. Fă asta doar dacă ai încredere în fiecare fișier din proiect. LaTeX va putea apoi rula orice program cu permisiunile tale, iar un program pornit de el poate continua să ruleze după ce oprești compilarea.",
-    "shell_escape_denied_command": "Acest document rulează o comandă shell, iar acest proiect blochează asta. Ca să permiți asta, dă clic pe „{{setting}}” în bannerul de deasupra editorului. Fă asta doar dacă ai încredere în fiecare fișier din proiect. LaTeX va putea apoi rula orice program cu permisiunile tale, iar un program pornit de el poate continua să ruleze după ce oprești compilarea."
+    "shell_escape_denied_command": "Acest document rulează o comandă shell, iar acest proiect blochează asta. Ca să permiți asta, dă clic pe „{{setting}}” în bannerul de deasupra editorului. Fă asta doar dacă ai încredere în fiecare fișier din proiect. LaTeX va putea apoi rula orice program cu permisiunile tale, iar un program pornit de el poate continua să ruleze după ce oprești compilarea.",
+    "japanese_compiler_missing": "{{compiler}} nu este instalat în distribuția ta TeX. Rulează tlmgr install collection-langjapanese ca să-l adaugi în TeX Live sau TinyTeX, sau alege alt compilator."
   },
   "export": {
     "bibliography_unreadable": "Oleafly nu a putut citi bibliografia {{name}}. Verifică dacă are o intrare defectă, apoi exportă din nou."
@@ -181,5 +191,39 @@
     "failed": "Typst nu a putut exporta documentul.",
     "unsupported": "Această versiune Typst nu poate exporta cu aceste setări.",
     "invalid_ppi": "Alege o rezoluție între 1 și {{max}} PPI."
+  },
+  "overleaf": {
+    "signed_out": "Autentifică-te mai întâi în Overleaf.",
+    "session_expired": "Autentificarea în Overleaf a expirat. Autentifică-te din nou ca să continui.",
+    "sign_in_cancelled": "Fereastra de autentificare Overleaf a fost închisă înainte de final.",
+    "sign_in_failed": "Oleafly nu a putut confirma autentificarea ta în Overleaf. Încearcă să te autentifici din nou.",
+    "invalid_server": "„{{server}}” nu este o adresă de server pe care Oleafly o poate folosi.",
+    "unreachable": "Oleafly nu a putut accesa {{server}}.",
+    "unrecognized": "Pagina de proiecte Overleaf arată altfel decât se așteaptă Oleafly. Descarcă proiectul ca .zip din Overleaf și importă acel fișier.",
+    "project_unavailable": "Acest proiect nu a putut fi descărcat. Este posibil să nu mai ai acces la el.",
+    "not_an_archive": "Overleaf a trimis altceva decât o arhivă de proiect.",
+    "too_large": "Acest proiect depășește limita de import de 2 GB.",
+    "rate_limited": "Overleaf i-a cerut lui Oleafly să încetinească. Așteaptă un minut și încearcă din nou.",
+    "sync_busy": "O sincronizare cu Overleaf rulează deja pentru acest proiect.",
+    "sync_not_linked": "Acest proiect nu este asociat cu Overleaf.",
+    "sync_needs_relink": "Copia de sincronizare a acestui proiect lipsește. Oprește sincronizarea, apoi asociază din nou proiectul.",
+    "sync_already_linked": "Acest proiect este deja asociat cu alt proiect Overleaf. Oprește mai întâi sincronizarea.",
+    "sync_offline": "Oleafly nu a putut accesa Overleaf. Modificările tale sunt în siguranță aici și se vor sincroniza data viitoare.",
+    "sync_failed": "Sincronizarea cu Overleaf nu s-a încheiat. Fișierele tale de aici nu s-au schimbat.",
+    "sync_kept_changing": "Proiectul s-a tot schimbat în Overleaf în timpul sincronizării. Încearcă din nou peste câteva momente.",
+    "sync_case_clash": "Overleaf are fișiere ale căror nume diferă doar prin majuscule ({{files}}). Redenumește unul dintre ele în Overleaf, apoi sincronizează din nou.",
+    "sync_invalid_names": "Unele nume de fișiere din Overleaf nu pot fi salvate pe acest computer ({{files}}). Redenumește-le în Overleaf, apoi sincronizează din nou.",
+    "sync_file_too_large": "{{file}} depășește cei 50 MB pe care Overleaf îi permite pentru un fișier.",
+    "sync_too_large": "Acest proiect este prea mare pentru sincronizare. Limita este de 5.000 de fișiere sau 2 GB.",
+    "sync_path_blocked": "{{file}} nu poate fi scris aici, pentru că un folder cu același nume îi ocupă locul.",
+    "git_token_missing": "Adaugă tokenul tău Git pentru Overleaf ca să sincronizezi acest proiect.",
+    "git_token_invalid": "Acesta nu pare un token Git pentru Overleaf. Copiază tot tokenul și încearcă din nou.",
+    "git_token_rejected": "Overleaf nu a acceptat tokenul Git. Poate a expirat. Creează unul nou în setările contului tău Overleaf.",
+    "git_unavailable": "Integrarea Git din Overleaf nu este disponibilă pentru acest proiect. Proprietarul proiectului are nevoie de un plan plătit sau universitar.",
+    "template_link_invalid": "Acest link nu duce la o pagină de șablon Overleaf. Copiază adresa unei pagini de pe overleaf.com/latex/templates și încearcă din nou.",
+    "template_unavailable": "Oleafly nu a putut deschide acest șablon. Poate a fost eliminat din galeria Overleaf."
+  },
+  "collab": {
+    "turned_off": "Colaborarea în timp real este dezactivată. Activeaz-o din Setări, la Experimente."
   }
 }

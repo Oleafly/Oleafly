@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} fichiers ont changé dans votre projet après le démarrage de cette tâche. Leurs comparaisons portent sur les anciennes versions, ils ne peuvent donc pas être appliqués.",
       "applyAria": "Appliquer {{path}}",
       "changedSince": "Modifié depuis",
+      "mergesOnApply": "Ce fichier a été modifié après le démarrage de la tâche. L'application conserve ces modifications et ajoute celles de la tâche.",
       "loading": "Chargement...",
       "refreshPreview": "Actualiser l'aperçu",
       "preview": "Aperçu",
@@ -1370,7 +1371,6 @@
     "captionAria": "Légende du tableau",
     "preview": "Aperçu",
     "output": "Sortie LaTeX",
-    "copiedSource": "Source LaTeX copié",
     "booktabsHint": "Nécessite <code>\\usepackage{booktabs}</code> dans votre préambule."
   },
   "review": {

@@ -198,6 +198,27 @@ function textFor(current: readonly string[], text: string): string {
   return current.reduce((out, home) => homeRelativeText(out, home), text);
 }
 
+export type DisplayTextRange = readonly [from: number, to: number];
+
+function rangesFor(current: readonly string[], text: string): DisplayTextRange[] {
+  if (typeof text !== "string" || text.length === 0) return [];
+  const ranges: DisplayTextRange[] = [];
+  for (const home of current) {
+    const pattern = textPattern(home);
+    if (!pattern) continue;
+    for (const match of text.matchAll(pattern)) {
+      const from = match.index + match[1].length;
+      const to = match.index + match[0].length;
+      if (ranges.every(([start, end]) => to <= start || from >= end)) ranges.push([from, to]);
+    }
+  }
+  return ranges.sort((left, right) => left[0] - right[0]);
+}
+
+export function displayTextRanges(text: string): DisplayTextRange[] {
+  return rangesFor(homes, text);
+}
+
 /** A path from the backend, ready to show. */
 export function displayPath(path: string): string {
   return pathFor(homes, path);
@@ -286,4 +307,9 @@ export function useDisplayPath(): (path: string) => string {
 export function useDisplayText(): (text: string) => string {
   const current = useDisplayHomes();
   return useCallback((text: string) => textFor(current, text), [current]);
+}
+
+export function useDisplayTextRanges(): (text: string) => DisplayTextRange[] {
+  const current = useDisplayHomes();
+  return useCallback((text: string) => rangesFor(current, text), [current]);
 }

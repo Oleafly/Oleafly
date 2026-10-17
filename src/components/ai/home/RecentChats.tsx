@@ -35,15 +35,16 @@ export function RecentChats({
       defaultOpen={defaultOpen}
       className="w-full border-border/60 bg-card/40"
       title={
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <span className="text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {t(($) => $.ai.home.recentChats)}
         </span>
       }
       trailing={
         <Badge
-          variant="quiet"
+          variant="primaryGhost"
+          size="sm"
           data-testid="recent-chats-count"
-          className="min-w-[1.25rem] border-transparent bg-muted-foreground/10 px-1.5 py-0 text-[10px] tabular-nums text-muted-foreground"
+          className="min-w-[1.25rem] tabular-nums"
         >
           {chats.length}
         </Badge>
@@ -76,10 +77,10 @@ export function RecentChats({
                     className="size-1.5 shrink-0 rounded-full bg-amber-500"
                   />
                 ) : null}
-                <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                <span className="shrink-0 text-[0.6875rem] tabular-nums text-muted-foreground">
                   {formatter.format(new Date(chat.updatedAt))}
                 </span>
-                <span className="w-12 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground/80">
+                <span className="w-12 shrink-0 text-right text-[0.6875rem] tabular-nums text-muted-foreground/80">
                   {t(($) => $.ai.home.recentMessages, { count })}
                 </span>
               </button>

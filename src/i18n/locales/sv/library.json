@@ -137,7 +137,8 @@
       "document": "dokument",
       "image": "bild",
       "diagram": "diagram",
-      "external": "extern"
+      "external": "extern",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF-förhandsvisning: {{name}}",
@@ -181,12 +182,24 @@
       "failed": "Det gick inte att förgrena projektet."
     },
     "deleteDialog": {
-      "title": "Vill du flytta ”{{name}}” till papperskorgen?",
+      "title": "Vill du flytta ”<name>{{name}}</name>” till papperskorgen?",
       "fallbackName": "projektet",
       "description": "Projektet lämnar ditt bibliotek men finns kvar i Datalagring tills du återställer det eller raderar det permanent.",
       "confirm": "Flytta till papperskorgen",
       "moved": "Flyttade \"{{name}}\" till papperskorgen.",
       "failed": "Det gick inte att radera \"{{name}}\"."
+    },
+    "bulkDelete": {
+      "button_one": "Radera {{count}} markerat projekt",
+      "button_other": "Radera {{count}} markerade projekt",
+      "title_one": "Vill du flytta {{count}} projekt till papperskorgen?",
+      "title_other": "Vill du flytta {{count}} projekt till papperskorgen?",
+      "description": "De lämnar ditt bibliotek men finns kvar i Datalagring tills du återställer dem eller raderar dem permanent.",
+      "folderNote": "Mappar som öppnats på plats lämnar bara Oleafly. Deras filer ligger kvar där de är.",
+      "done_one": "Tog bort {{count}} projekt från biblioteket.",
+      "done_other": "Tog bort {{count}} projekt från biblioteket.",
+      "failed_one": "Det gick inte att radera {{count}} projekt.",
+      "failed_other": "Det gick inte att radera {{count}} projekt."
     }
   },
   "newProject": {
@@ -293,6 +306,64 @@
       "connect": "Anslut GitHub i Inställningar",
       "repositoriesFailed": "Det gick inte att läsa in repositorierna.",
       "repositoriesRetry": "Det gick inte att läsa in repositorierna. Försök igen"
+    },
+    "overleaf": {
+      "cardDescription": "Välj projekt från ditt Overleaf-konto",
+      "title": "Importera från Overleaf",
+      "description": "Välj vilka projekt du vill flytta över. Varje projekt behåller sina filer, sin kompilator och sin huvudfil.",
+      "checking": "Kontrollerar din Overleaf-inloggning",
+      "loading": "Läser in dina Overleaf-projekt",
+      "loadFailed": "Oleafly kunde inte läsa in dina Overleaf-projekt.",
+      "signInPrompt": "Logga in på Overleaf för att se dina projekt. Ett inloggningsfönster öppnas och stängs av sig självt när du är inloggad.",
+      "signingIn": "Slutför inloggningen på Overleaf i fönstret som öppnades.",
+      "passkeyHint": "Om din nyckel inte fungerar i inloggningsfönstret väljer du ett annat alternativ där, till exempel ditt lösenord eller en uppmaning i telefonen.",
+      "expired": "Din Overleaf-inloggning har gått ut. Logga in igen för att se dina projekt.",
+      "signIn": "Logga in på Overleaf",
+      "signInWindowTitle": "Logga in på Overleaf",
+      "server": "Server: {{server}}",
+      "serverLabel": "Adress till Overleaf-servern",
+      "useDifferentServer": "Använd en annan server",
+      "useDefaultServer": "Använd overleaf.com",
+      "saveServer": "Använd den här servern",
+      "signedInAs": "Inloggad som {{email}}",
+      "signedIn": "Inloggad på Overleaf",
+      "signOut": "Logga ut",
+      "searchLabel": "Sök bland Overleaf-projekt",
+      "searchPlaceholder_one": "Sök bland {{count}} projekt",
+      "searchPlaceholder_other": "Sök bland {{count}} projekt",
+      "filterLabel": "Visa projekt",
+      "filter": {
+        "all": "Alla",
+        "owned": "Dina",
+        "shared": "Delade med dig"
+      },
+      "empty": "Det finns inga projekt på det här Overleaf-kontot än.",
+      "noMatches": "Inga projekt matchar din sökning.",
+      "selectAll": "Markera alla",
+      "clearSelection": "Avmarkera alla",
+      "selectProject": "Markera {{name}}",
+      "selected_one": "{{count}} projekt markerat",
+      "selected_other": "{{count}} projekt markerade",
+      "import_one": "Importera {{count}} projekt",
+      "import_other": "Importera {{count}} projekt",
+      "imported": "Importerat",
+      "open": "Öppna",
+      "ownedByYou": "Ditt",
+      "owner": "Ägs av {{name}}",
+      "archived": "Arkiverat",
+      "notCarried": "Kommentarer, spårade ändringar, chatt och historik stannar på Overleaf.",
+      "importingProjects": "Importerar dina projekt",
+      "done": "Klar",
+      "doneSummary_one": "Importerade {{count}} projekt.",
+      "doneSummary_other": "Importerade {{count}} projekt.",
+      "failedSummary_one": "{{count}} projekt kunde inte importeras.",
+      "failedSummary_other": "{{count}} projekt kunde inte importeras.",
+      "progress": {
+        "queued": "Väntar",
+        "downloading": "Laddar ner {{percent}} %",
+        "downloadingUnknown": "Laddar ner",
+        "importing": "Förbereder"
+      }
     }
   },
   "pdfImport": {
@@ -537,7 +608,7 @@
       "remove": "Ta bort från Oleafly"
     },
     "remove": {
-      "title": "Vill du ta bort ”{{name}}” från Oleafly?",
+      "title": "Vill du ta bort ”<name>{{name}}</name>” från Oleafly?",
       "description": "Dina filer ligger kvar där de är. Oleafly raderar sina byggfiler för mappen och återställer dess förtroende, godkännanden och länkade mappar. Öppna mappen igen inom 30 dagar för att få tillbaka dess chattar och historik. Resten behöver du ställa in igen.",
       "confirm": "Ta bort från Oleafly",
       "done": "”{{name}}” har tagits bort från Oleafly. Filerna finns kvar i mappen.",
@@ -580,6 +651,55 @@
       "done": "”{{name}}” finns nu i ditt bibliotek.",
       "doneLeftOut": "”{{name}}” finns nu i ditt bibliotek. Länkar till filer på andra ställen och mappar som ligger för djupt kopierades inte.",
       "failed": "Det gick inte att kopiera ”{{name}}” till ditt bibliotek."
+    }
+  },
+  "customTemplates": {
+    "saveAsTemplate": "Spara som mall",
+    "saveTitle": "Spara som mall",
+    "saveDescription": "En kopia av <name>{{name}}</name> hamnar bland dina mallar under ”Egna”. Projektet förblir som det är.",
+    "nameLabel": "Mallnamn",
+    "save": "Spara",
+    "saving": "Sparar…",
+    "saveFailed": "Oleafly kunde inte spara mallen.",
+    "saved": "Sparade ”{{name}}” bland dina mallar",
+    "useTemplate": "Använd mallen",
+    "alsoSaveAsTemplate": "Spara även som mall",
+    "alsoSaveHint": "En kopia hamnar bland dina mallar, under ”Egna”.",
+    "import": {
+      "title": "Importera mall",
+      "description": "Lägg till en mall som du redan har. Den visas under ”Egna” i mallgalleriet.",
+      "zipTitle": "ZIP-fil",
+      "zipDescription": "En malls källfiler i en .zip",
+      "folderTitle": "Mapp",
+      "folderDescription": "En mapp med mallens filer",
+      "linkTitle": "Länk till en Overleaf-mall",
+      "linkDescription": "En sida från Overleafs mallgalleri",
+      "accountTitle": "Dina Overleaf-projekt",
+      "accountDescription": "Använd ett av dina projekt som mall",
+      "pickerZipTitle": "Välj en ZIP-fil med en mall",
+      "pickerZipFilter": "ZIP-arkiv",
+      "pickerFolderTitle": "Välj en mallmapp",
+      "from": "Från {{source}}",
+      "saveTemplate": "Spara mall",
+      "back": "Tillbaka",
+      "linkLabel": "Länk till mallsidan",
+      "linkPlaceholder": "https://www.overleaf.com/latex/templates/...",
+      "lookUp": "Slå upp",
+      "lookingUp": "Slår upp mallen…",
+      "by": "Av {{author}}",
+      "previewAlt": "Första sidan av {{name}}",
+      "noPreview": "Ingen förhandsvisning",
+      "copyNote": "Precis som ”Open as Template” på Overleaf lägger det här till en kopia av mallen bland dina Overleaf-projekt.",
+      "importAction": "Importera",
+      "signInNeeded": "Overleaf lämnar bara ut mallfiler till inloggade konton. Logga in en gång så fortsätter importen.",
+      "signIn": "Logga in på Overleaf",
+      "signingIn": "Slutför inloggningen på Overleaf i fönstret som öppnades.",
+      "accountSearch": "Sök bland dina projekt",
+      "accountLoading": "Läser in dina Overleaf-projekt…",
+      "accountEmpty": "Inga projekt matchar din sökning.",
+      "accountFailed": "Oleafly kunde inte läsa in dina Overleaf-projekt.",
+      "tryAgain": "Försök igen",
+      "failed": "Oleafly kunde inte importera mallen."
     }
   }
 }

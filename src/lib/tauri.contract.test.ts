@@ -18,6 +18,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ setFocus: mocks.setFocus }) }));
 
 import * as tauri from "./tauri";
+import * as tauriCollab from "./tauri-collab";
 
 beforeEach(() => {
   mocks.invoke.mockReset().mockResolvedValue(undefined);
@@ -45,6 +46,7 @@ describe("IPC command contract", () => {
     ["ragRetrieve", () => tauri.ragRetrieve("p", { query: "q" } as never), "rag_retrieve", { projectId: "p", request: { query: "q" } }],
     ["pickTableImportFile", () => tauri.pickTableImportFile(), "pick_table_import_file", undefined],
     ["setProjectEngineCmd keeps auto-detection", () => tauri.setProjectEngineCmd("p", "latexmk"), "set_project_engine", { projectId: "p", engine: "latexmk", flavor: null }],
+    ["setDefaultLatexEngineCmd", () => tauri.setDefaultLatexEngineCmd("latexmk"), "set_default_latex_engine", { engine: "latexmk" }],
     ["setProjectDictionaryLocaleCmd", () => tauri.setProjectDictionaryLocaleCmd("p", null), "set_project_dictionary_locale", { projectId: "p", locale: null }],
     ["openDevtools", () => tauri.openDevtools(), "open_devtools", undefined],
     ["listProjects", () => tauri.listProjects(), "list_projects", undefined],
@@ -61,6 +63,18 @@ describe("IPC command contract", () => {
     ["getOrCreateScratchProject", () => tauri.getOrCreateScratchProject(), "get_or_create_scratch_project", undefined],
     ["saveCustomTemplate", () => tauri.saveCustomTemplate("s", "{}", []), "save_custom_template", { slug: "s", manifestJson: "{}", files: [] }],
     ["listTemplates", () => tauri.listTemplates(), "list_templates", undefined],
+    ["importTemplateFromPath", () => tauri.importTemplateFromPath("/t.zip", "Lab"), "import_template_from_path", { path: "/t.zip", name: "Lab" }],
+    ["saveProjectAsTemplate without a preview", () => tauri.saveProjectAsTemplate("p", "Lab"), "save_project_as_template", { projectId: "p", name: "Lab", previewPngBase64: null }],
+    ["saveProjectAsTemplate with a preview", () => tauri.saveProjectAsTemplate("p", "Lab", "QUJD"), "save_project_as_template", { projectId: "p", name: "Lab", previewPngBase64: "QUJD" }],
+    ["listTemplatePacks", () => tauri.listTemplatePacks(), "list_template_packs", undefined],
+    ["refreshPackCatalog uses the cache when it is fresh", () => tauri.refreshPackCatalog(), "refresh_pack_catalog", { force: false }],
+    ["refreshPackCatalog forced", () => tauri.refreshPackCatalog(true), "refresh_pack_catalog", { force: true }],
+    ["packIndex", () => tauri.packIndex("open-letter"), "pack_index", { packId: "open-letter", force: false }],
+    ["packIndex forced", () => tauri.packIndex("open-letter", true), "pack_index", { packId: "open-letter", force: true }],
+    ["installTemplatePack", () => tauri.installTemplatePack("open-letter"), "install_template_pack", { id: "open-letter" }],
+    ["installPackTemplate", () => tauri.installPackTemplate("open-letter", "tpl"), "install_pack_template", { packId: "open-letter", templateId: "tpl" }],
+    ["removeTemplatePack", () => tauri.removeTemplatePack("open-letter"), "remove_template_pack", { id: "open-letter" }],
+    ["templateLinkReady", () => tauri.templateLinkReady(), "template_link_ready", undefined],
     ["createProjectFromTemplate", () => tauri.createProjectFromTemplate("N", "t", "#fff"), "create_project_from_template", { name: "N", templateId: "t", color: "#fff" }],
     ["downloadAllFonts", () => tauri.downloadAllFonts(), "download_all_fonts", undefined],
     ["readDeadlines", () => tauri.readDeadlines(), "read_deadlines", undefined],
@@ -211,6 +225,43 @@ describe("IPC helpers with client-side logic", () => {
     await expect(tauri.copyLinkedIntoLibrary("p", "op", onProgress)).rejects.toThrow("disk full");
     mocks.channels[0].onmessage({ phase: "copying" });
     expect(onProgress).not.toHaveBeenCalled();
+  });
+
+  it("opens a live document over a message channel", async () => {
+    const onMessage = vi.fn();
+    mocks.invoke.mockResolvedValue(null);
+    await expect(tauriCollab.collabDocOpen("p", "main.tex", onMessage)).resolves.toBeNull();
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_open", {
+      projectId: "p",
+      path: "main.tex",
+      channel: mocks.channels[0],
+    });
+    mocks.channels[0].onmessage({ kind: "text" });
+    expect(onMessage).toHaveBeenCalledWith({ kind: "text" });
+  });
+
+  it("sends a live document change and closes the channel with the token it opened", async () => {
+    await tauriCollab.collabDocChange("p", "file-1", 4, [3, "x"]);
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_change", { projectId: "p", fileId: "file-1", rev: 4, op: [3, "x"] });
+    await tauriCollab.collabDocClose("p", "file-1", 7);
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_doc_close", { projectId: "p", fileId: "file-1", session: 7 });
+  });
+
+  it.each([
+    ["without a setup code", undefined, null],
+    ["with a setup code", "K7QX-2MPL", "K7QX-2MPL"],
+  ])("signs in to a server with a code %s", async (_label, setupCode, sent) => {
+    const onCode = vi.fn();
+    const server = { server_id: "s" };
+    mocks.invoke.mockResolvedValue(server);
+    await expect(tauriCollab.collabServerCodeSignIn("https://uni.edu", setupCode, onCode)).resolves.toBe(server);
+    expect(mocks.invoke).toHaveBeenCalledWith("collab_server_code_sign_in", {
+      url: "https://uni.edu",
+      setupCode: sent,
+      onCode: mocks.channels[0],
+    });
+    mocks.channels[0].onmessage({ code: "ABCD" });
+    expect(onCode).toHaveBeenCalledWith({ code: "ABCD" });
   });
 });
 

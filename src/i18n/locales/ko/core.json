@@ -69,7 +69,10 @@
       "localNotFound": "로컬 패키지 {{spec}}이(가) 설치되어 있지 않습니다. Oleafly의 Typst 패키지 폴더나 프로젝트의 typst-packages 폴더에 넣으세요.",
       "versionMissing": "이 패키지에는 {{version}} 버전이 없습니다. 최신 버전은 {{latest}}입니다.",
       "versionMissingNoLatest": "이 패키지에는 {{version}} 버전이 없습니다. import 문의 버전을 확인하세요."
-    }
+    },
+    "saveFailed": "{{path}}을(를) 저장하지 못해 Oleafly가 컴파일하지 않았습니다. 그 파일을 확인한 다음 다시 컴파일하세요.",
+    "saveFailedSeveral": "{{path}} 및 다른 파일을 저장하지 못해 Oleafly가 컴파일하지 않았습니다. 그 파일들을 확인한 다음 다시 컴파일하세요.",
+    "saveFailedOther": "문서를 저장하지 못해 Oleafly가 컴파일하지 않았습니다. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -281,7 +284,9 @@
     "yearRangeInvalid": "시작 연도가 종료 연도보다 늦을 수 없습니다."
   },
   "mcp": {
+    "deniedByRules": "approvals.toml의 거부 규칙에 따라 거부됨",
     "openProjectSummary": "프로젝트 {{id}} 열기",
+    "rulesUnreadable": "approvals.toml을 읽을 수 없어 거부됨",
     "useToolSummary": "{{server}} MCP 서버의 {{tool}} 사용"
   },
   "mcpConfig": {
@@ -350,7 +355,8 @@
     "referencesFor": "{{name}} 참조",
     "renameFailed": "\"{{name}}\"(으)로 이름을 바꾸지 못했습니다.",
     "renamePartial": "전체 {{total}}개 파일 중 {{edited}}개에서 \"{{name}}\"(으)로 이름을 바꿨습니다. {{files}}에는 쓰지 못했습니다.",
-    "renamed": "\"{{name}}\"(으)로 이름을 바꿨습니다($t(core:navigation.files, {\"count\": {{files}} })에서 $t(core:navigation.edits, {\"count\": {{edits}} }))"
+    "renamed": "\"{{name}}\"(으)로 이름을 바꿨습니다($t(core:navigation.files, {\"count\": {{files}} })에서 $t(core:navigation.edits, {\"count\": {{edits}} }))",
+    "pathNotInProject": "\"{{path}}\"과(와) 일치하는 파일이 이 프로젝트에 없습니다."
   },
   "pandoc": {
     "downloadFailed": "pandoc을 내려받지 못했습니다. 직접 설치한 뒤 다시 시도하세요.",

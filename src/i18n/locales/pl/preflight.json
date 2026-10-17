@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Treść tabeli może nie zostać rozpoznana jako pola CV",
-      "detailTable": "Narzędzia ATS często spłaszczają treść tabelaryczną w nieprzewidywalny sposób. Nie używaj tabeli do ustawiania tekstu CV obok siebie; prawdziwe tabele z danymi badawczymi są oceniane osobno w kontroli dostępności.",
+      "detailTable": "Narzędzia ATS często spłaszczają treść tabelaryczną w nieprzewidywalny sposób. Nie używaj tabeli do ustawiania tekstu CV obok siebie. Prawdziwe tabele z danymi badawczymi są sprawdzane osobno w kontroli dostępności.",
       "titleTikz": "Treść TikZ wymaga alternatywy semantycznej",
       "detailTikz": "TikZ rysuje treść wizualną, nie udostępniając jej znaczenia jako zwykłego tekstu. Dodaj dostępny opis do wyniku publikacyjnego i unikaj tego w treści CV kierowanej do ATS."
     },
@@ -276,7 +276,7 @@
       "title_many": "{{count}} pozycji bibliografii ma niepełne metadane",
       "title_other": "{{count}} pozycji bibliografii ma niepełne metadane",
       "detail": "Niepełne rekordy mogą dawać zepsute albo niejednoznaczne odwołania w stylach wydawniczych. {{examples}}.",
-      "detailTruncated": "Niepełne rekordy mogą dawać zepsute albo niejednoznaczne odwołania w stylach wydawniczych. {{examples}}; …"
+      "detailTruncated": "Niepełne rekordy mogą dawać zepsute albo niejednoznaczne odwołania w stylach wydawniczych. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} wartość DOI wygląda na nieprawidłową",
@@ -348,6 +348,12 @@
     "refs-duplicate-bib": {
       "title": "Zduplikowane pozycje bibliografii: {{keys}}",
       "detail": "Te pozycje mają wspólny DOI {{doi}}, więc są tym samym odwołaniem pod różnymi kluczami. Zostaw jedną i ją cytuj, bo inaczej bibliografia wypisze ją dwa razy."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "Klucz cytowania \"{{key}}\" jest zdefiniowany więcej niż raz",
+      "detail": "Zdefiniowany w {{places}}. BibTeX używa tylko pierwszej pozycji z tym kluczem i przy porównywaniu kluczy nie rozróżnia wielkich i małych liter. Zostaw jedną pozycję albo nadaj pozostałym nowe klucze i zaktualizuj cytowania, które ich używają.",
+      "detailBiber": "Zdefiniowany w {{places}}. Gdy biber tworzy bibliografię, używa tylko pierwszej pozycji z tym kluczem. Zostaw jedną pozycję albo nadaj pozostałym nowe klucze i zaktualizuj cytowania, które ich używają.",
+      "detailTypst": "Zdefiniowany w {{places}}. Typst przerywa kompilację, gdy dwie pozycje bibliografii mają ten sam klucz. Zostaw jedną pozycję albo nadaj pozostałym nowe klucze i zaktualizuj cytowania, które ich używają."
     },
     "submission-path-case": {
       "title": "Wielkość liter w nazwie pliku się nie zgadza: {{target}}",
@@ -642,7 +648,7 @@
     "title": "Kontrola wstępna",
     "readerDisabled": "Najpierw skompiluj i uruchom kontrolę wyniku",
     "readerEnabled": "Otwórz tekst wyodrębniony z pliku PDF",
-    "readerButton": "Pokaż, co widzi czytnik",
+    "readerButton": "Czytnik ekranu",
     "aboutLabel": "O kontroli wstępnej",
     "aboutTitle": "Co sprawdza kontrola wstępna",
     "aboutIntro": "Kontrola wstępna czyta źródła projektu, dziennik kompilatora i bieżący plik PDF. Włącz tylko te kontrole, które pasują do tego dokumentu.",

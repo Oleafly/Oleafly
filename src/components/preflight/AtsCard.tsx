@@ -21,7 +21,7 @@ export const AtsCard = memo(function AtsCard({ parse }: { parse: AtsParse }) {
 
   return (
     <div className="mx-3 mb-3 rounded-md border border-sidebar-border bg-black/[0.03] p-3 dark:bg-background">
-      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
         {t(($) => $.preflight.atsCard.title)}
       </p>
       <div className="flex flex-col gap-1.5">

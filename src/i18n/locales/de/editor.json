@@ -188,7 +188,8 @@
     "quote": "Zitat",
     "addLabel": "Label hinzufügen",
     "convertLatexMath": "LaTeX-Formeln in Typst umwandeln",
-    "noLatexMath": "Wählen Sie zuerst LaTeX-Formeln aus."
+    "noLatexMath": "Wählen Sie zuerst LaTeX-Formeln aus.",
+    "renameFile": "Datei umbenennen…"
   },
   "shell": {
     "noFileOpenTab": "Keine Datei geöffnet",
@@ -244,7 +245,7 @@
     "issues": "Probleme",
     "spelling": "Rechtschreibung",
     "grammarAndStyle": "Grammatik & Stil",
-    "findingsTruncated": "Die Liste der Funde ist gekürzt; die Zahl darüber ist vollständig.",
+    "findingsTruncated": "Die Liste der Funde ist gekürzt. Die Zahl darüber ist vollständig.",
     "spellLanguage": "Sprache der Rechtschreibprüfung",
     "spellLanguageAppSetting": "Einstellung der App verwenden",
     "spellLanguageAriaLabel": "Sprache der Rechtschreibprüfung für dieses Projekt",
@@ -364,7 +365,11 @@
     "summaryWarnings_one": "{{count}} Warnung",
     "summaryWarnings_other": "{{count}} Warnungen",
     "summaryReferences_one": "{{count}} nicht aufgelöster Verweis",
-    "summaryReferences_other": "{{count}} nicht aufgelöste Verweise"
+    "summaryReferences_other": "{{count}} nicht aufgelöste Verweise",
+    "fontPack": "{{family}} ist im kostenlosen Schriftpaket {{pack}} enthalten.",
+    "fontPackAction": "Herunterladen und kompilieren",
+    "fontPackDownloading": "Wird heruntergeladen…",
+    "fontPackFailed": "Das Schriftpaket konnte nicht heruntergeladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
   },
   "history": {
     "untitledCommit": "Commit ohne Titel",
@@ -392,7 +397,9 @@
     "unifiedView": "Zusammengeführte Ansicht",
     "loading": "Vergleich wird geladen…",
     "previewTooLarge": "Die Datei ist zu groß für eine Vergleichsvorschau.",
-    "diskHeading": "Auf dem Datenträger ↔ Ihre Änderungen"
+    "diskHeading": "Auf dem Datenträger ↔ Ihre Änderungen",
+    "sharedReadOnly": "In einem geteilten Projekt ist dieser Vergleich schreibgeschützt. Bearbeiten Sie die Datei im Editor.",
+    "viewerReadOnly": "Sie können dieses geteilte Projekt ansehen, aber nicht bearbeiten."
   },
   "hotkeys": {
     "title": "Tastenkürzel",
@@ -426,7 +433,7 @@
       "indentOrAccept": "Einrücken / Autovervollständigung übernehmen",
       "goToDefinition": "Zur Definition springen",
       "findReferences": "Referenzen suchen",
-      "renameSymbol": "Symbol umbenennen (im ganzen Projekt)",
+      "renameSymbol": "Symbol oder Datei umbenennen (im ganzen Projekt)",
       "formatDocument": "Typst-Dokument formatieren",
       "commandPalette": "Befehlspalette",
       "searchAllDocuments": "Alle Dokumente durchsuchen",
@@ -454,7 +461,8 @@
     "noEntries": "In diesem Projekt gibt es noch keine Einträge im Literaturverzeichnis.",
     "addNew": "Eine neue Zitation finden und hinzufügen…",
     "duplicate": "doppelt {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Aus Ihrer Zotero-Bibliothek"
   },
   "inlineAi": {
     "promptPlaceholder": "Beschreiben Sie die Änderung…  (Shift+Enter für eine neue Zeile)",
@@ -468,6 +476,7 @@
     "openInAgent": "Im KI-Assistenten mit allen Projektwerkzeugen fortfahren",
     "generateFailed": "Die Änderung konnte nicht erzeugt werden. {{message}}",
     "dismiss": "Schließen",
+    "withdrawn": "Jemand anderes hat diesen Text bearbeitet, daher kann der Vorschlag nicht übernommen werden.",
     "setUpProvider": "Einen KI-Anbieter einrichten",
     "setUpProviderHint": "Fügen Sie einen API-Schlüssel hinzu (oder nutzen Sie lokales Ollama), um Änderungen mit KI im Text zu verwenden.",
     "openAiSettings": "Einstellungen → KI öffnen"
@@ -649,6 +658,7 @@
     "endOfDocument": "Ende des Dokuments",
     "hidePreamble": "Präambel des Dokuments ausblenden",
     "showPreamble": "Präambel des Dokuments anzeigen",
+    "sharedReadOnly": "In einem geteilten Projekt zeigt der visuelle Modus die Datei nur an. Wechseln Sie zur Quelltextansicht, um sie zu bearbeiten.",
     "findingLabel": "{{message}}. Korrekturvorschläge öffnen.",
     "rawBlockFindings_one": "{{count}} Korrekturhinweis in diesem Rohblock. {{message}}. Vorschläge öffnen.",
     "rawBlockFindings_other": "{{count}} Korrekturhinweise in diesem Rohblock. {{message}}. Vorschläge öffnen."
@@ -1460,7 +1470,8 @@
     "sources": {
       "project": "Projekt",
       "system": "System",
-      "embedded": "Eingebaut"
+      "embedded": "Eingebaut",
+      "pack": "Schriftpaket"
     },
     "fontsFolder": "Um eine Schrift in diesem Projekt zu nutzen, legen Sie ihre Datei in den Ordner fonts des Projekts."
   },
@@ -1487,5 +1498,6 @@
     "keyInvalid": "Wertnamen dürfen nicht leer sein und kein Gleichheitszeichen enthalten.",
     "keyTaken": "Eine Variante kann denselben Namen nicht zweimal setzen.",
     "saveFailed": "Die Varianten konnten nicht gespeichert werden."
-  }
+  },
+  "sharedSettingsViewer": "Betrachter können das in einem geteilten Projekt nicht ändern."
 }

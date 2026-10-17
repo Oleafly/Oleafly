@@ -106,7 +106,7 @@ export function RelativeTime({
 }
 
 const VERSION_TAG =
-  "inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px font-mono text-[11px] font-medium leading-4";
+  "inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px font-mono text-[0.6875rem] font-medium leading-4";
 
 export function VersionTag({ version, emphasis }: Readonly<{ version: string; emphasis?: boolean }>) {
   return (
@@ -308,7 +308,7 @@ function TimelineItem({
       className="relative pb-5 pl-6 last:pb-1"
     >
       <TimelineNode emphasis={installed} />
-      <div className="mb-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+      <div className="mb-1.5 flex items-center gap-2 text-[0.6875rem] text-muted-foreground">
         <VersionTag version={entry.version} emphasis={installed} />
         <RelativeTime value={entry.publishedAt} locale={locale} now={now} />
         {installed && (
@@ -445,7 +445,7 @@ export function ReleaseTimeline({
       {history?.status === "done" && endLabel && (
         <li data-testid="release-history-end" className="relative pl-6">
           <TimelineNode hollow />
-          <p className="text-[11px] text-muted-foreground">{endLabel}</p>
+          <p className="text-[0.6875rem] text-muted-foreground">{endLabel}</p>
         </li>
       )}
     </ol>

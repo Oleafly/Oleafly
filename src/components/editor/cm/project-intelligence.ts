@@ -11,6 +11,7 @@ import {
   completionRequestIsCurrent,
   createCompletionRequestGuard,
   environmentSnippet,
+  gateCompletionSource,
   getEditorDocumentPath,
   latexReferenceCitationCompletions,
   shouldRunCompletionSource,
@@ -33,6 +34,7 @@ import {
   warmAtSuggestions,
 } from "./at-suggestions";
 import { clearProjectHoverIntel, kindNoun } from "./hover-intel";
+import { zoteroCitationSource } from "./zotero-completion";
 import {
   fileTargetAccepts,
   keyvalKeysForCommand,
@@ -72,6 +74,15 @@ import type {
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+import { useZoteroLibraryStore, zoteroHasKey } from "@/store/zotero-library";
+import {
+  addCitedKeyFromZotero,
+  missingKeysInZotero,
+  openMissingCitations,
+  staleEntryFor,
+  updateEntryFromZotero,
+  useZoteroStaleStore,
+} from "@/features/zotero-actions";
 
 const SUPPORTED_SOURCE_RE = /\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i;
 // This cap is applied only after the current query has filtered the complete
@@ -1441,6 +1452,64 @@ export const projectIntelligenceCompletion: CompletionSource = (
   return null;
 };
 
+function zoteroCitationActions(
+  diagnostic: ProjectDiagnostic,
+  missingCount: () => number,
+): Action[] {
+  if (diagnostic.code !== "unresolved-citation") return [];
+  const name = diagnostic.message.params?.name;
+  if (typeof name !== "string" || !zoteroHasKey(name)) return [];
+  const actions: Action[] = [
+    {
+      name: i18n.t(($) => $.references.zotero.actions.addFromZotero),
+      apply: () => {
+        void addCitedKeyFromZotero(name);
+      },
+    },
+  ];
+  const count = missingCount();
+  if (count > 1) {
+    actions.push({
+      name: i18n.t(($) => $.references.zotero.actions.addAllMissing, { count }),
+      apply: openMissingCitations,
+    });
+  }
+  return actions;
+}
+
+function staleBibliographyDiagnostics(
+  snapshot: ProjectIntelligenceSnapshot,
+  path: string,
+  length: number,
+): Diagnostic[] {
+  if (!/\.bib$/i.test(path)) return [];
+  const diagnostics: Diagnostic[] = [];
+  for (const entry of snapshot.bibliography.entries) {
+    if (entry.file !== path) continue;
+    const stale = staleEntryFor(path, entry.key);
+    if (!stale) continue;
+    const from = Math.min(Math.max(0, entry.keyRange.from), length);
+    diagnostics.push({
+      from,
+      to: Math.min(Math.max(from, entry.keyRange.to), length),
+      severity: "info",
+      message: stale.handEdited
+        ? i18n.t(($) => $.references.zotero.actions.changedEdited)
+        : i18n.t(($) => $.references.zotero.actions.changed),
+      source: "zotero",
+      actions: [
+        {
+          name: i18n.t(($) => $.references.zotero.actions.update),
+          apply: () => {
+            void updateEntryFromZotero(entry.key);
+          },
+        },
+      ],
+    });
+  }
+  return diagnostics;
+}
+
 function relatedActions(
   related: ProjectIntelligenceSnapshot["diagnostics"][number]["related"],
 ): Action[] {
@@ -1656,13 +1725,18 @@ export function projectIntelligenceExtensions(): Extension[] {
       }
       const partial = current.snapshot.status === "partial";
       const length = view.state.doc.length;
+      let missing: number | null = null;
+      const missingCount = () => {
+        missing ??= missingKeysInZotero().length;
+        return missing;
+      };
       return current.snapshot.diagnostics
         .filter(
           (diagnostic) =>
             diagnostic.location.file === current.path &&
             !ownedByBibtexLinter(current.path, diagnostic.code),
         )
-        .map((diagnostic) => {
+        .map((diagnostic): Diagnostic => {
           const from = Math.min(
             Math.max(0, diagnostic.location.range.from),
             length,
@@ -1681,9 +1755,13 @@ export function projectIntelligenceExtensions(): Extension[] {
             source: partial
               ? "project intelligence · partial"
               : "project intelligence",
-            actions: relatedActions(diagnostic.related),
+            actions: [
+              ...zoteroCitationActions(diagnostic, missingCount),
+              ...relatedActions(diagnostic.related),
+            ],
           };
-        });
+        })
+        .concat(staleBibliographyDiagnostics(current.snapshot, current.path, length));
     },
     {
       delay: 0,
@@ -1732,6 +1810,14 @@ export function projectIntelligenceExtensions(): Extension[] {
       snapshot = nextSnapshot;
       refresh(store.intelligenceState.identity?.requestGeneration ?? 0);
     });
+    const currentGeneration = () =>
+      useIndexStore.getState().intelligenceState.identity?.requestGeneration ?? 0;
+    const unsubscribeKeys = useZoteroLibraryStore.subscribe((store, previous) => {
+      if (store.keysGeneration !== previous.keysGeneration) refresh(currentGeneration());
+    });
+    const unsubscribeStale = useZoteroStaleStore.subscribe((store, previous) => {
+      if (store.revision !== previous.revision) refresh(currentGeneration());
+    });
     return {
       update(update: ViewUpdate) {
         if (update.docChanged) {
@@ -1745,6 +1831,8 @@ export function projectIntelligenceExtensions(): Extension[] {
         disposed = true;
         if (debounceTimer !== null) clearTimeout(debounceTimer);
         unsubscribe();
+        unsubscribeKeys();
+        unsubscribeStale();
       },
     };
   });
@@ -1845,12 +1933,38 @@ export function typstCompletionWithLanguageService(
   return source;
 }
 
+const MARKDOWN_SOURCE_RE = /\.(?:md|markdown)$/i;
+const latexCitationSource = zoteroCitationSource(
+  "latex",
+  gateCompletionSource(projectIntelligenceCompletion, "latex"),
+);
+const markdownCitationSource = zoteroCitationSource(
+  "markdown",
+  gateCompletionSource(projectIntelligenceCompletion, "markdown"),
+);
+const typstCitationSources = new WeakMap<CompletionSource, CompletionSource>();
+
+function typstCitationSource(languageService: CompletionSource): CompletionSource {
+  const cached = typstCitationSources.get(languageService);
+  if (cached) return cached;
+  const source = zoteroCitationSource("typst", typstCompletionWithLanguageService(languageService));
+  typstCitationSources.set(languageService, source);
+  return source;
+}
+
 export function editorCompletionSourcesForPath(
   path: string | null,
   languageService: CompletionSource,
 ): CompletionSource[] {
   if (path && TYPST_SOURCE_RE.test(path)) {
-    return [typstCompletionWithLanguageService(languageService)];
+    return [typstCitationSource(languageService)];
+  }
+  if (path && LATEX_SOURCE_RE.test(path)) {
+    warmAtSuggestions();
+    return [languageService, latexCitationSource, atSuggestionCompletion];
+  }
+  if (path && MARKDOWN_SOURCE_RE.test(path)) {
+    return [languageService, markdownCitationSource];
   }
   return [languageService, ...projectCompletionSourcesForPath(path)];
 }

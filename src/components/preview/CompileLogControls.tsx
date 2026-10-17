@@ -67,7 +67,7 @@ export function CompileLogControls({ active, onToggle, status, errors, compileTi
           {errors.length > 0 && (
             <span
               className={cn(
-                "rounded-full px-1.5 text-[10px] font-semibold text-white",
+                "rounded-full px-1.5 text-[0.625rem] font-semibold text-white",
                 severity === "error" ? "bg-red-500" : "bg-amber-500"
               )}
             >
@@ -79,7 +79,7 @@ export function CompileLogControls({ active, onToggle, status, errors, compileTi
         {!compiling && status !== "idle" && (
           <span
             className={cn(
-              "flex items-center gap-1 text-[10px] font-medium tabular-nums",
+              "flex items-center gap-1 text-[0.625rem] font-medium tabular-nums",
               severityToneClass()
             )}
             title={severityTitle()}

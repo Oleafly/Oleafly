@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Der Freigabemodus Eigene Regeln liest diese Datei. Sie liegt unter ~/.oleafly/approvals.toml und gilt für jedes Projekt auf diesem Gerät.",
+        "description": "Die Datei liegt unter ~/.oleafly/approvals.toml und gilt für jedes Projekt auf diesem Gerät. Deny-Regeln sperren ein Werkzeug in jedem Freigabemodus. Allow-Regeln greifen nur im Modus Eigene Regeln.",
         "discard": "Änderungen verwerfen",
         "emptyFile": "Die Datei ist bislang leer.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "Die erste Tabelle, <modesTable>[\"$approval_modes\"]</modesTable>, legt den Freigabemodus je Projekt fest: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> oder <custom>\"custom\"</custom>. Ein nicht aufgeführtes Projekt nutzt Für mich freigeben.",
           "openProject": "Das geöffnete Projekt, {{name}}, hat die ID <projectId>{{id}}</projectId>.",
           "projectIds": "Projekt-IDs sind die Ordnernamen unter ~/.oleafly/projects.",
-          "rules": "Danach folgt eine Tabelle je Projekt-ID mit einer Regel pro Werkzeug: <allow>\"allow\"</allow> führt das Werkzeug ohne Nachfrage aus, <deny>\"deny\"</deny> verweigert es. Deny-Regeln gelten in jedem Modus; Allow-Regeln greifen im Modus Eigene Regeln, und bei run_command überspringen sie die Nachfrage auch in den anderen Modi.",
+          "rules": "Danach folgt eine Tabelle je Projekt-ID mit einer Regel pro Werkzeug: <allow>\"allow\"</allow> führt das Werkzeug ohne Nachfrage aus, <deny>\"deny\"</deny> verweigert es. Deny-Regeln gelten in jedem Modus, auch bei Vollzugriff. Allow-Regeln greifen nur im Modus Eigene Regeln.",
           "toolNames": "Werkzeugnamen, die Sie verwenden können: <names>{{names}}</names> sowie jedes MCP-Werkzeug unter seinem vollen Namen aus der Liste Werkzeuge."
         },
         "helpToggle": "Wie die Datei funktioniert",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Immer erlaubt",
         "denied": "Immer verweigert",
-        "description": "Gespeicherte Regeln für {{name}}. Sie gelten, wenn der Freigabemodus Eigene Regeln ist. Entfernen Sie eine Regel, um für dieses Werkzeug wieder die übliche Risikobewertung zu nutzen.",
+        "description": "Gespeicherte Regeln für {{name}}. Verweigerte Werkzeuge bleiben in jedem Freigabemodus gesperrt. Erlaubte Werkzeuge überspringen die Nachfrage nur im Modus Eigene Regeln. Entfernen Sie eine Regel, um für dieses Werkzeug wieder die übliche Risikobewertung zu nutzen.",
         "empty": "Noch keine gespeicherten Regeln. Nutzen Sie „Immer in diesem Projekt“ auf einer Freigabeanfrage, um eine anzulegen.",
         "removeRule": "Regel für {{tool}} entfernen",
         "thisProject": "dieses Projekt",
@@ -533,12 +533,17 @@
         "right": "Rechts"
       },
       "font": {
-        "description": "Nutzt die Systemschrift, wenn eine Schrift nicht installiert ist.",
+        "description": "Wählen Sie für Menüs, Bereiche und Dialoge eine beliebige auf Ihrem Computer installierte Schrift.",
         "label": "Schrift der App"
       },
       "fontSize": {
         "description": "Skaliert den Text in Menüs, Bereichen und Schaltflächen.",
         "label": "Schriftgröße der App"
+      },
+      "zoom": {
+        "description": "Macht alles in Oleafly größer oder kleiner, auch Editor und PDF.",
+        "label": "Zoom",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "System folgt dem Betriebssystem und wechselt mit ihm.",
@@ -584,7 +589,7 @@
         "label": "Eckenradius"
       },
       "resetAll": "Alles zurücksetzen",
-      "resetMode": "Diesen Modus zurücksetzen",
+      "resetMode": "Zurücksetzen",
       "title": "Designanpassung",
       "tokenInputDark": "Token {{token}} für den dunklen Modus",
       "tokenInputLight": "Token {{token}} für den hellen Modus",
@@ -633,28 +638,72 @@
         "label": "Autovervollständigung"
       },
       "font": {
-        "description": "Wählen Sie die Monospace-Schrift für Quelldateien.",
-        "label": "Schrift des Editors"
+        "description": "Wählen Sie für Quelldateien eine beliebige auf Ihrem Computer installierte Schrift.",
+        "label": "Schrift des Editors",
+        "monospace": "Monospace"
+      },
+      "useAppFont": {
+        "description": "Der Editor übernimmt Schrift und Schriftgröße der App.",
+        "disabledHint": "Schalten Sie Schrift der App verwenden aus, um dies zu ändern.",
+        "label": "Schrift der App verwenden"
       },
       "fontSize": {
         "description": "Legen Sie die Textgröße im Quelltexteditor fest.",
-        "label": "Schriftgröße des Editors"
+        "label": "Schriftgröße des Editors",
+        "custom": "Benutzerdefiniert",
+        "customLabel": "Benutzerdefinierte Schriftgröße des Editors in Pixeln"
       },
       "ghostCompletion": {
         "description": "Die wahrscheinliche Vervollständigung hinter dem Cursor anzeigen. Mit Tab übernehmen Sie sie.",
         "label": "Vorschlag im Text"
-      },
-      "nonBlinkingCursor": {
-        "description": "Den Cursor im Editor durchgehend anzeigen.",
-        "label": "Cursor ohne Blinken"
       },
       "stickyScroll": {
         "description": "Die aktuellen Abschnitte, Überschriften und Umgebungen beim Scrollen oben halten.",
         "label": "Haftende Kopfzeile"
       },
       "theme": {
-        "description": "Die Syntaxfarben des Quelltextes getrennt vom App-Design festlegen.",
-        "label": "Design des Editors"
+        "dark": {
+          "description": "Das Editor-Design, solange die App dunkel ist.",
+          "label": "Design im dunklen Modus"
+        },
+        "light": {
+          "description": "Das Editor-Design, solange die App hell ist.",
+          "label": "Design im hellen Modus"
+        }
+      },
+      "colors": {
+        "description": "Ändern Sie jede Farbe eines Editor-Designs. Änderungen bleiben für jedes Design einzeln erhalten.",
+        "editing": "{{theme}} wird bearbeitet",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Dunkler Modus",
+          "light": "Heller Modus"
+        },
+        "modeAriaLabel": "Anzupassendes Design",
+        "names": {
+          "background": "Hintergrund",
+          "command": "Befehle",
+          "comment": "Kommentare",
+          "environment": "Umgebungen",
+          "formatting": "Formatierung",
+          "heading": "Überschriften",
+          "lineNumbers": "Zeilennummern",
+          "link": "Links",
+          "math": "Formeln",
+          "name": "Namen und Schlüssel",
+          "reference": "Zitationen und Verweise",
+          "selection": "Auswahl",
+          "structure": "Präambel und Importe",
+          "symbol": "Klammern und Symbole",
+          "text": "Text",
+          "value": "Werte und Zeichenketten"
+        },
+        "pick": "Farbe für {{color}} wählen",
+        "previewAriaLabel": "Sprache der Vorschau",
+        "reset": "Zurücksetzen",
+        "syntaxGroup": "Syntax",
+        "title": "Farben des Editors",
+        "useThemeColor": "Farbe des Designs für {{color}} verwenden"
       },
       "keymap": {
         "description": "Wählen Sie den Satz an Tastenbelegungen für den Quelltexteditor.",
@@ -671,12 +720,61 @@
         "options": {
           "compact": "Kompakt",
           "normal": "Normal",
-          "wide": "Weit"
+          "wide": "Weit",
+          "custom": "Benutzerdefiniert"
+        },
+        "customLabel": "Benutzerdefinierte Zeilenhöhe"
+      },
+      "letterSpacing": {
+        "customLabel": "Benutzerdefinierter Zeichenabstand in Pixeln",
+        "description": "Fügt im Quelltext-Editor Abstand zwischen den Zeichen ein. Dadurch bleibt auch mehr Platz um den Cursor.",
+        "label": "Zeichenabstand",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Benutzerdefiniert"
         }
+      },
+      "cursorWidth": {
+        "label": "Cursorbreite",
+        "description": "Legen Sie fest, wie dick der Cursor im Editor ist.",
+        "option": "{{width}} px"
+      },
+      "cursorHeight": {
+        "label": "Cursorhöhe",
+        "description": "Die Höhe des Cursors im Editor festlegen. Mit Zeile ist er so hoch wie die ganze Zeile.",
+        "options": {
+          "text": "Text",
+          "line": "Zeile"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Cursor-Blinken",
+        "description": "Festlegen, wie der Cursor im Editor blinkt. Mit Aus bleibt er durchgehend sichtbar.",
+        "options": {
+          "blink": "Blinken",
+          "smooth": "Weich",
+          "phase": "Phase",
+          "expand": "Strecken",
+          "off": "Aus"
+        }
+      },
+      "cursorColor": {
+        "label": "Cursorfarbe",
+        "description": "Helle und dunkle Editor-Designs haben jeweils eine eigene Cursorfarbe. Bis Sie eine wählen, wird die Farbe des Designs verwendet.",
+        "light": "Hell",
+        "dark": "Dunkel",
+        "pickLight": "Cursorfarbe für helle Editor-Designs wählen",
+        "pickDark": "Cursorfarbe für dunkle Editor-Designs wählen",
+        "useTheme": "Farben des Designs verwenden"
       },
       "lineWrap": {
         "description": "Lange Zeilen umbrechen statt seitwärts zu scrollen.",
         "label": "Lange Zeilen umbrechen"
+      },
+      "highlightCurrentLine": {
+        "label": "Aktuelle Zeile hervorheben",
+        "description": "Die Zeile, in der der Cursor steht, farbig hinterlegen."
       },
       "tabSize": {
         "description": "Leerzeichen je Einrückungsebene und die Breite, mit der ein Tabulator dargestellt wird.",
@@ -708,6 +806,15 @@
           "description": "Prüft Typst-Dateien beim Speichern auf wahrscheinliche Fehler. Das Ein- oder Ausschalten startet den Typst-Sprachserver neu.",
           "label": "Typst-Lint-Prüfungen"
         }
+      },
+      "fileMove": {
+        "label": "Wenn eine Datei verschoben wird",
+        "description": "Pfade zu einer umbenannten oder verschobenen Datei in LaTeX-, Typst- und Markdown-Quellen aktualisieren.",
+        "options": {
+          "ask": "Nachfragen",
+          "always": "Immer aktualisieren",
+          "never": "Nie aktualisieren"
+        }
       }
     },
     "files": {
@@ -735,6 +842,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} ist nicht installiert, daher wird stattdessen die Standardschrift verwendet.",
     "preview": {
       "darkMode": {
         "description": "PDF-Farben standardmäßig umkehren. Sie können die Farben weiterhin über die Werkzeugleiste der Vorschau umschalten.",
@@ -743,10 +851,6 @@
       "hoverPreview": {
         "description": "Die zuletzt kompilierte Seite anzeigen, wenn Sie in der Bibliothek über ein Projekt fahren.",
         "label": "PDF beim Überfahren anzeigen"
-      },
-      "zoomShortcuts": {
-        "description": "Mit Cmd/Ctrl +, - und 0 das PDF statt des App-Fensters zoomen.",
-        "label": "Zoom-Kürzel für PDFs"
       }
     },
     "sectionName": "Darstellung",
@@ -810,6 +914,17 @@
         "description": "Die shell beim Öffnen eines Projekts starten statt erst beim ersten Anzeigen des Terminals.",
         "label": "shell mit dem Projekt starten"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Füllt im Zen-Modus den Bildschirm und stellt beim Verlassen das Fenster wieder her.",
+        "label": "Vollbild verwenden"
+      },
+      "showPdf": {
+        "description": "Ist das PDF im Zen-Modus ausgeblendet, wird es beim Kompilieren neben dem Editor geöffnet.",
+        "label": "PDF beim Kompilieren anzeigen"
+      },
+      "title": "Zen-Modus"
     }
   },
   "checkpoints": {
@@ -880,7 +995,6 @@
   },
   "cite": {
     "apa": "Dieselbe Literaturangabe in APA steht hinter Cite this repository auf GitHub",
-    "copyBibtex": "BibTeX kopieren",
     "description": "Oleafly ist kostenlos und quelloffen, und das bleibt es, wenn Menschen davon wissen. Wenn es einem Aufsatz geholfen hat, zeigt ein Eintrag in Ihrem Literaturverzeichnis der nächsten Forscherin, woher das Werkzeug kam. Kopieren Sie ihn, fügen Sie ihn in Ihre .bib-Datei ein und zitieren Sie den Schlüssel <citeKey>oleafly</citeKey>.",
     "title": "Oleafly in Ihrem Aufsatz zitieren"
   },
@@ -890,13 +1004,15 @@
       "download": "Herunterladen",
       "downloadAll": "Alle herunterladen"
     },
-    "aiTemplates": {
-      "deleteDescription": "„{{name}}“ aus Ihrer Bibliothek löschen? Projekte, die daraus entstanden sind, behalten ihre eigene Kopie und bleiben unberührt.",
-      "deleteTitle": "Mit KI erzeugte Vorlage löschen",
-      "deleted": "„{{name}}“ aus Ihrer Bibliothek gelöscht",
-      "empty": "Noch keine mit KI erzeugten Vorlagen. Erzeugen Sie eine in der Vorlagengalerie.",
-      "fallbackDescription": "Mit KI erzeugte Vorlage",
-      "toggle": "Mit KI erzeugte Vorlagen verwalten",
+    "yourTemplates": {
+      "toggle": "Ihre Vorlagen verwalten",
+      "import": "Vorlage importieren",
+      "empty": "Noch keine eigenen Vorlagen. Importieren Sie hier eine, speichern Sie ein Projekt über sein Menü als Vorlage oder erzeugen Sie eine in der Vorlagengalerie.",
+      "aiDescription": "Mit KI erzeugte Vorlage",
+      "customDescription": "Ihre Vorlage",
+      "deleteTitle": "Vorlage löschen",
+      "deleteDescription": "„{{name}}“ aus Ihren Vorlagen löschen? Projekte, die Sie bereits daraus erstellt haben, behalten ihre eigene Kopie.",
+      "deleted": "„{{name}}“ aus Ihren Vorlagen gelöscht",
       "deleteFailed": "„{{name}}“ konnte nicht gelöscht werden."
     },
     "fontPacks": {
@@ -911,6 +1027,26 @@
       "ptserif": {
         "description": "Eine feine Übergangsantiqua, die gut zu wissenschaftlichen und geschäftlichen Dokumenten passt.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans und Serif CJK, Fandol und LXGW WenKai. Sie ersetzen auch SimSun, SimHei und KaiTi.",
+        "label": "Chinesisch, Japanisch und Koreanisch"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 und 7 Free sowie Noto Color Emoji.",
+        "label": "Symbole und Emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code und Source Code Pro.",
+        "label": "Code"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans und IBM Plex.",
+        "label": "Moderne Sans- und Serifenschriften"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus sowie New Computer Modern Sans und Mono.",
+        "label": "Klassische Textschriften"
       }
     },
     "fonts": {
@@ -947,7 +1083,57 @@
       "fontRemoveFailed": "Die Schrift konnte nicht entfernt werden.",
       "packDownloadFailed": "Das Vorlagenpaket konnte nicht heruntergeladen werden.",
       "packsDownloadFailed": "Die Vorlagenpakete konnten nicht heruntergeladen werden.",
-      "packRemoveFailed": "Das Vorlagenpaket konnte nicht entfernt werden."
+      "packRemoveFailed": "Das Vorlagenpaket konnte nicht entfernt werden.",
+      "templateDownloadFailed": "Die Vorlage konnte nicht heruntergeladen werden.",
+      "packsRefreshFailed": "Es konnte nicht nach neuen Paketen gesucht werden."
+    },
+    "typstFonts": {
+      "heading": "Schriften für Typst",
+      "tooltip": "Kostenlose Schriften, die viele Typst-Vorlagen verlangen. Nach dem Herunterladen kann jedes Typst-Projekt sie nutzen, außer einem Projekt, das Systemschriften abschaltet."
+    },
+    "packs": {
+      "browse": "Durchsuchen",
+      "back": "Zurück zu den Paketen",
+      "count_one": "{{count}} Vorlage",
+      "count_other": "{{count}} Vorlagen",
+      "installedCount": "{{installed}} von {{total}} installiert",
+      "downloadPack": "Paket herunterladen",
+      "refresh": "Nach neuen Paketen suchen",
+      "searchPacks": "Pakete durchsuchen",
+      "searchTemplates": "Vorlagen durchsuchen",
+      "noPacks": "Keine passenden Pakete",
+      "noTemplates": "Keine passenden Vorlagen",
+      "loading": "Vorlagen werden geladen",
+      "loadFailed": "Dieses Paket konnte nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "installed": "Installiert",
+      "engineFilter": "Engine",
+      "kindFilter": "Art",
+      "languageFilter": "Sprache",
+      "allEngines": "Alle Engines",
+      "allKinds": "Alle Arten",
+      "allLanguages": "Alle Sprachen",
+      "groups": {
+        "curated": "Kuratiert",
+        "community": "Community",
+        "typst": "Typst",
+        "university": "Universitäten"
+      },
+      "preview": {
+        "image": "Erste Seite von {{name}}",
+        "previous": "Vorherige Vorlage",
+        "next": "Nächste Vorlage",
+        "engine": "Engine",
+        "license": "Lizenz",
+        "kind": "Art",
+        "languages": "Sprachen",
+        "country": "Land",
+        "institution": "Einrichtung",
+        "originalSource": "Originalquelle",
+        "getTemplate": "Diese Vorlage holen",
+        "useTemplate": "Diese Vorlage verwenden",
+        "getAndCreate": "Holen und Projekt erstellen"
+      }
     }
   },
   "engine": {
@@ -982,7 +1168,7 @@
       "status": {
         "checking": "Es wird nach pandoc gesucht…",
         "installing": "Eine fixierte pandoc-Version wird geholt. Beim ersten Mal dauert das einen Moment.",
-        "missing": "Nicht gefunden. Oleafly kann ein passendes pandoc (2.19 oder neuer) in seinen eigenen Ordner laden; sonst ändert sich nichts an Ihrem System.",
+        "missing": "Nicht gefunden. Oleafly kann ein passendes pandoc (2.19 oder neuer) in seinen eigenen Ordner laden. Sonst ändert sich nichts an Ihrem System.",
         "ready": "Gefunden. Markdown-Projekte werden mit pandoc nach LaTeX umgewandelt und dann mit dem mitgelieferten Tectonic kompiliert."
       },
       "tectonicDetail": "Setzt das LaTeX, das pandoc erzeugt. Liegt Oleafly bei, es gibt nichts einzurichten.",
@@ -1192,11 +1378,68 @@
       "apiKeyLabel": "API-Schlüssel für Zotero",
       "connected": "Mit Ihrer Zotero-Bibliothek verbunden.",
       "connectedAs": "Verbunden als {{username}}.",
-      "description": "Zitationen und Literaturangaben aus Ihrer Zotero-Bibliothek importieren.",
       "disconnectFailed": "Oleafly konnte den gespeicherten Zotero-Schlüssel nicht entfernen. Versuchen Sie es erneut.",
-      "importHint": "Zum Importieren öffnen Sie in einem Projekt den Bereich Referenzen und wählen Literaturbibliothek importieren.",
       "userIdLabel": "Benutzer-ID bei Zotero",
-      "userIdPlaceholder": "Benutzer-ID"
+      "userIdPlaceholder": "Benutzer-ID",
+      "citeDescription": "Durchsuchen Sie beim Schreiben Ihre gesamte Zotero-Bibliothek und fügen Sie nur hinzu, was Sie zitieren. Oleafly liest Ihre Bibliothek und ändert sie nie.",
+      "local": {
+        "heading": "Zotero auf diesem Computer",
+        "ready": "Mit Zotero {{version}} verbunden.",
+        "readyNoVersion": "Mit Zotero verbunden.",
+        "bbtFound": "Better BibTeX {{version}} ist installiert, daher kommen die Zitierschlüssel von Better BibTeX.",
+        "bbtMissing": "Better BibTeX ist nicht installiert, daher kommen die Zitierschlüssel von Zotero.",
+        "notRunning": "Zotero läuft nicht. Öffnen Sie Zotero, um Ihre Bibliothek zu durchsuchen, oder verbinden Sie unten Ihr Konto bei zotero.org.",
+        "apiDisabled": "Öffnen Sie in Zotero Einstellungen > Erweitert und aktivieren Sie „Anderen Anwendungen auf diesem Computer erlauben, mit Zotero zu kommunizieren“.",
+        "unsupported": "Diese Zotero-Version kann ihre Bibliothek nicht freigeben. Aktualisieren Sie auf Zotero 7 oder neuer.",
+        "unknown": "Oleafly hat noch nicht nach Zotero gesucht."
+      },
+      "test": "Verbindung testen",
+      "syncNow": "Jetzt synchronisieren",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX nicht gefunden",
+        "local": "Aus Zotero auf diesem Computer gelesen",
+        "web": "Von zotero.org gelesen",
+        "library_one": "{{name}}: {{formatted}} Eintrag",
+        "library_other": "{{name}}: {{formatted}} Einträge"
+      },
+      "library": {
+        "heading": "Zu durchsuchende Bibliotheken",
+        "myLibrary": "Meine Bibliothek",
+        "toggle": "{{name}} durchsuchen",
+        "items_one": "{{formatted}} Eintrag",
+        "items_other": "{{formatted}} Einträge"
+      },
+      "sync": {
+        "never": "Noch nicht synchronisiert.",
+        "syncing": "Ihre Zotero-Bibliothek wird synchronisiert…",
+        "progress": "{{done}} von {{total}} Einträgen werden synchronisiert…",
+        "status_one": "{{formatted}} Eintrag zum Zitieren bereit, synchronisiert {{time}}.",
+        "status_other": "{{formatted}} Einträge zum Zitieren bereit, synchronisiert {{time}}.",
+        "fromCache": "Zotero ist geschlossen, daher nutzt die Suche mit @ die Kopie aus der letzten Synchronisierung.",
+        "rateLimited": "zotero.org hat Oleafly gebeten zu warten. Oleafly versucht es nach {{time}} erneut."
+      },
+      "account": {
+        "heading": "Konto bei zotero.org",
+        "description": "Nutzen Sie Ihr Konto, wenn Zotero auf diesem Computer nicht geöffnet ist. Gruppenbibliotheken sind ebenfalls dabei."
+      }
+    },
+    "overleaf": {
+      "description": "Übernehmen Sie Projekte aus Ihrem Overleaf-Konto oder vom Overleaf-Server Ihrer Hochschule und halten Sie sie synchron. Oleafly speichert die Anmeldung und das Git-Token verschlüsselt auf diesem Computer.",
+      "signedInAs": "Angemeldet als {{email}} auf {{server}}",
+      "signedIn": "Angemeldet auf {{server}}",
+      "signOut": "Abmelden",
+      "signOutFailed": "Oleafly konnte sich nicht von Overleaf abmelden.",
+      "gitTitle": "Git-Token für die Synchronisierung",
+      "gitSaved": "Ein Git-Token ist gespeichert. Verknüpfte Projekte bleiben mit Overleaf synchron.",
+      "gitMissing": "Noch kein Git-Token. Erstellen Sie eines in Ihren Overleaf-Kontoeinstellungen unter Git-Integration, um Projekte zu synchronisieren.",
+      "gitOpenSettings": "Overleaf-Kontoeinstellungen öffnen",
+      "gitPlanNote": "Die Git-Integration setzt beim Eigentümer des Projekts einen kostenpflichtigen Overleaf-Tarif oder einen Hochschultarif voraus.",
+      "gitLabel": "Overleaf-Git-Token",
+      "gitSave": "Speichern",
+      "gitRemove": "Entfernen",
+      "gitFailed": "Oleafly konnte das Git-Token nicht speichern. Prüfen Sie, ob Sie das ganze Token eingefügt haben."
     }
   },
   "language": {
@@ -1561,6 +1804,10 @@
         "description": "Die Seitenleiste des Projekts ein- oder ausblenden.",
         "label": "Seitenleiste ein- oder ausblenden"
       },
+      "togglePreview": {
+        "label": "PDF-Vorschau ein- oder ausblenden",
+        "description": "Blendet das PDF neben dem Editor ein oder aus, auch im Zen-Modus."
+      },
       "toggleTerminal": {
         "description": "Das Terminal des Projekts ein- oder ausblenden.",
         "label": "Terminal ein- oder ausblenden"
@@ -1568,6 +1815,26 @@
       "openFolder": {
         "label": "Ordner öffnen",
         "description": "Einen Ordner von Ihrem Computer als Projekt öffnen."
+      },
+      "toggleZenMode": {
+        "description": "Alles außer dem Text ausblenden oder wieder einblenden.",
+        "label": "Zen-Modus ein- oder ausschalten"
+      },
+      "openSettings": {
+        "label": "Einstellungen öffnen",
+        "description": "Die Einstellungen von Oleafly öffnen."
+      },
+      "zoomIn": {
+        "description": "Vergrößert die ganze App.",
+        "label": "Vergrößern"
+      },
+      "zoomOut": {
+        "description": "Verkleinert die ganze App.",
+        "label": "Verkleinern"
+      },
+      "resetZoom": {
+        "description": "Setzt die App auf 100 % zurück.",
+        "label": "Zoom zurücksetzen"
       }
     },
     "application": {
@@ -1590,7 +1857,7 @@
         "italic": "Kursiv",
         "jumpToSourceFromPdf": "Vom PDF zum Quelltext springen",
         "redo": "Wiederholen",
-        "renameSymbol": "Symbol im ganzen Projekt umbenennen",
+        "renameSymbol": "Symbol oder Datei im ganzen Projekt umbenennen",
         "slashCommandMenu": "Einfügemenü der Schrägstrich-Befehle",
         "triggerAutocomplete": "Autovervollständigung auslösen",
         "undo": "Rückgängig"

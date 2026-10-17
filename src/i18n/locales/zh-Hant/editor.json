@@ -188,7 +188,8 @@
     "quote": "引文",
     "addLabel": "加入標籤",
     "convertLatexMath": "將 LaTeX 數學式轉換為 Typst",
-    "noLatexMath": "請先選取一些 LaTeX 數學式。"
+    "noLatexMath": "請先選取一些 LaTeX 數學式。",
+    "renameFile": "重新命名檔案…"
   },
   "shell": {
     "noFileOpenTab": "未開啟檔案",
@@ -241,7 +242,7 @@
     "issues": "問題",
     "spelling": "拼字",
     "grammarAndStyle": "文法與風格",
-    "findingsTruncated": "檢查結果清單已截斷；上方的數量才是完整的。",
+    "findingsTruncated": "檢查結果清單已截斷，但上方的數量是完整的。",
     "spellLanguage": "拼字檢查語言",
     "spellLanguageAppSetting": "使用應用程式設定",
     "spellLanguageAriaLabel": "此專案的拼字檢查語言",
@@ -357,7 +358,11 @@
     "sourceExcerpt": "原始碼第 {{line}} 行",
     "summaryErrors_other": "{{count}} 個錯誤",
     "summaryWarnings_other": "{{count}} 個警告",
-    "summaryReferences_other": "{{count}} 個未解析的參照"
+    "summaryReferences_other": "{{count}} 個未解析的參照",
+    "fontPack": "{{family}} 在免費字型套件「{{pack}}」中。",
+    "fontPackAction": "下載並編譯",
+    "fontPackDownloading": "正在下載…",
+    "fontPackFailed": "無法下載字型套件。請檢查網路連線後再試一次。"
   },
   "history": {
     "untitledCommit": "未命名的提交",
@@ -385,7 +390,9 @@
     "unifiedView": "單欄檢視",
     "loading": "載入差異中…",
     "previewTooLarge": "檔案太大，無法預覽差異。",
-    "diskHeading": "磁碟上 ↔ 你的編輯"
+    "diskHeading": "磁碟上 ↔ 你的編輯",
+    "sharedReadOnly": "在分享的專案中，此差異為唯讀。請在編輯器中編輯檔案。",
+    "viewerReadOnly": "你可以檢視這個分享的專案，但不能編輯。"
   },
   "hotkeys": {
     "title": "鍵盤快捷鍵",
@@ -419,7 +426,7 @@
       "indentOrAccept": "縮排 / 接受自動完成",
       "goToDefinition": "前往定義",
       "findReferences": "尋找參考",
-      "renameSymbol": "重新命名符號（整個專案）",
+      "renameSymbol": "重新命名符號或檔案（整個專案）",
       "formatDocument": "格式化 Typst 文件",
       "commandPalette": "指令面板",
       "searchAllDocuments": "搜尋所有文件",
@@ -447,7 +454,8 @@
     "noEntries": "這個專案還沒有參考文獻條目。",
     "addNew": "尋找並新增引用…",
     "duplicate": "重複 {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "來自你的 Zotero 文獻庫"
   },
   "inlineAi": {
     "promptPlaceholder": "描述要做的修改…（Shift+Enter 換行）",
@@ -461,6 +469,7 @@
     "openInAgent": "在 AI 助理中繼續，並使用完整的專案工具",
     "generateFailed": "無法產生這項修改。{{message}}",
     "dismiss": "關閉",
+    "withdrawn": "其他人編輯了這段文字，因此這項建議無法套用。",
     "setUpProvider": "設定 AI 供應商",
     "setUpProviderHint": "加入 API 金鑰（或本機 Ollama）即可使用行內 AI 編輯。",
     "openAiSettings": "開啟設定 → AI"
@@ -639,6 +648,7 @@
     "endOfDocument": "文件結尾",
     "hidePreamble": "隱藏文件序言區",
     "showPreamble": "顯示文件序言區",
+    "sharedReadOnly": "在分享的專案中，視覺化模式只會顯示檔案。若要編輯，請切換到原始碼檢視。",
     "findingLabel": "{{message}}。開啟校對建議。",
     "rawBlockFindings_other": "此原始區塊中有 {{count}} 則校對結果。{{message}}。開啟建議。"
   },
@@ -1439,7 +1449,8 @@
     "sources": {
       "project": "專案",
       "system": "系統",
-      "embedded": "內建"
+      "embedded": "內建",
+      "pack": "字型套件"
     },
     "fontsFolder": "若要在此專案中使用某個字型，請將它的檔案加入專案的 fonts 資料夾。"
   },
@@ -1466,5 +1477,6 @@
     "keyInvalid": "值名稱不可空白，也不可包含等號。",
     "keyTaken": "同一個變體不能設定同一個名稱兩次。",
     "saveFailed": "無法儲存變體。"
-  }
+  },
+  "sharedSettingsViewer": "在共享專案中，檢視者無法變更此項目。"
 }

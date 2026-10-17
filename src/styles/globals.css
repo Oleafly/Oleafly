@@ -136,6 +136,7 @@
  * surface desaturates toward grey, which is what made the selection band read
  * as a washed-out smudge; mixing keeps the hue's chroma while staying dark. */
 [data-editor-theme="linear"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-dark);
   --cm-editor-bg: #08090a;
   --cm-editor-fg: #d0d6e0;
   --cm-gutter-fg: #52565f;
@@ -154,6 +155,7 @@
 }
 
 [data-editor-theme="github-dark"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-dark);
   --cm-editor-bg: #0d1117;
   --cm-editor-fg: #c9d1d9;
   --cm-gutter-fg: #6e7681;
@@ -172,6 +174,7 @@
 }
 
 [data-editor-theme="dracula"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-dark);
   --cm-editor-bg: #282a36;
   --cm-editor-fg: #f8f8f2;
   --cm-gutter-fg: #6272a4;
@@ -190,6 +193,7 @@
 }
 
 [data-editor-theme="nord"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-dark);
   --cm-editor-bg: #2e3440;
   --cm-editor-fg: #d8dee9;
   --cm-gutter-fg: #4c566a;
@@ -208,6 +212,7 @@
 }
 
 [data-editor-theme="tokyo-night"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-dark);
   --cm-editor-bg: #1a1b26;
   --cm-editor-fg: #a9b1d6;
   --cm-gutter-fg: #3b4261;
@@ -226,6 +231,7 @@
 }
 
 [data-editor-theme="rose-pine"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-dark);
   --cm-editor-bg: #191724;
   --cm-editor-fg: #e0def4;
   --cm-gutter-fg: #6e6a86;
@@ -244,6 +250,7 @@
 }
 
 [data-editor-theme="catppuccin"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-dark);
   --cm-editor-bg: #1e1e2e;
   --cm-editor-fg: #cdd6f4;
   --cm-gutter-fg: #6c7086;
@@ -262,6 +269,7 @@
 }
 
 [data-editor-theme="one-dark"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-dark);
   --cm-editor-bg: #282c34;
   --cm-editor-fg: #abb2bf;
   --cm-gutter-fg: #636d83;
@@ -277,6 +285,47 @@
   --cm-meta: #e5c07b;
   --cm-tag: #e06c75;
   --cm-operator: #56b6c2;
+}
+
+[data-editor-theme="paper"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-light);
+  --cm-editor-bg: #faf6ec;
+  --cm-editor-fg: #2f2a23;
+  --cm-gutter-fg: #a3967f;
+  --cm-active-line: rgba(120, 92, 50, 0.06);
+  --cm-selection: #ebe0c7;
+  --cm-cursor: #8c5a2b;
+  --cm-comment: #857a6b;
+  --cm-keyword: #9a3e36;
+  --cm-number: #996515;
+  --cm-string: #2b5f80;
+  --cm-bracket: #7a6a52;
+  --cm-variable: #8a4b14;
+  --cm-meta: #6a3a1c;
+  --cm-tag: #7d4f2a;
+  --cm-operator: #7a6a52;
+  --cm-theme-formatting: #49693a;
+  --cm-theme-environment: #5d6b2d;
+  --cm-theme-reference: #74467a;
+}
+
+[data-editor-theme="one-light"] {
+  --cm-cursor-custom: var(--cm-cursor-custom-light);
+  --cm-editor-bg: #fafafa;
+  --cm-editor-fg: #383a42;
+  --cm-gutter-fg: #9d9d9f;
+  --cm-active-line: rgba(0, 0, 0, 0.035);
+  --cm-selection: #e5e5e6;
+  --cm-cursor: #526fff;
+  --cm-comment: #a0a1a7;
+  --cm-keyword: #a626a4;
+  --cm-number: #986801;
+  --cm-string: #50a14f;
+  --cm-bracket: #383a42;
+  --cm-variable: #e45649;
+  --cm-meta: #c18401;
+  --cm-tag: #e45649;
+  --cm-operator: #0184bc;
 }
 
 .ai-prompt-surface {
@@ -328,6 +377,7 @@
   font-size: 0.9375rem;
   line-height: 1.7;
   color: var(--foreground);
+  caret-color: var(--cm-cursor-custom, auto);
 }
 /* Tables and images inserted from the Markdown toolbar in Visual mode. */
 .wysiwyg-content .ProseMirror table {
@@ -509,6 +559,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+  -webkit-user-select: text;
   user-select: text;
   background: transparent;
   color: inherit;
@@ -659,7 +710,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--app-font, "Geist"), "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
 }
 
@@ -675,21 +726,26 @@
   :root {
     --app-surface: color-mix(in srgb, var(--background) 32%, transparent);
     --rail: color-mix(in srgb, var(--muted) 30%, var(--background));
+    --font-sans-default: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --cm-cursor-custom: var(--cm-cursor-custom-light);
+  }
+  .dark {
+    --cm-cursor-custom: var(--cm-cursor-custom-dark);
   }
   html:lang(zh-Hans) {
-    --font-sans: "Geist", "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    --font-sans: var(--app-font, "Geist"), "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
       "Noto Sans CJK SC", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
   }
   html:lang(zh-Hant) {
-    --font-sans: "Geist", "Inter", "PingFang TC", "Hiragino Sans TC", "Microsoft JhengHei",
+    --font-sans: var(--app-font, "Geist"), "Inter", "PingFang TC", "Hiragino Sans TC", "Microsoft JhengHei",
       "Noto Sans CJK TC", "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
   }
   html:lang(ja) {
-    --font-sans: "Geist", "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+    --font-sans: var(--app-font, "Geist"), "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
       "Meiryo", "Noto Sans CJK JP", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
   }
   html:lang(ko) {
-    --font-sans: "Geist", "Inter", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR",
+    --font-sans: var(--app-font, "Geist"), "Inter", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR",
       "Noto Sans KR", ui-sans-serif, system-ui, sans-serif;
   }
   body {
@@ -700,12 +756,18 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overflow: hidden;
+    cursor: default;
   }
   html[data-window-surface="solid"] #root {
     background-color: var(--background);
   }
   html[data-window-corners="round"] body {
     clip-path: inset(0 round 10px);
+  }
+  .select-text,
+  .select-all,
+  .cm-editor .cm-content[contenteditable="false"] {
+    cursor: auto;
   }
   /* Cursors: every interactive control gets an appropriate pointer. */
   button,
@@ -775,6 +837,25 @@
 
 :where(body, body *):hover::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--muted-foreground) 62%, transparent);
+}
+
+.ofl-native-scrollbar-hidden {
+  scrollbar-width: none;
+}
+
+.ofl-native-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.ofl-row-more-icon {
+  display: block;
+  width: 0.875rem;
+  height: 0.875rem;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='1'/%3E%3Ccircle cx='19' cy='12' r='1'/%3E%3Ccircle cx='5' cy='12' r='1'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='1'/%3E%3Ccircle cx='19' cy='12' r='1'/%3E%3Ccircle cx='5' cy='12' r='1'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 /* Thin (0.5px) borders app-wide. Unlayered so they override Tailwind's
@@ -917,6 +998,10 @@ select:focus-visible {
 
 .compile-shimmer-icon {
   animation: compile-icon-shimmer 1.6s ease-in-out infinite;
+}
+
+svg.animate-spin {
+  will-change: transform;
 }
 
 [data-panel],
@@ -1572,6 +1657,11 @@ body[data-tour-active] [data-tour-hide] {
   --cm-gutter-min-width: 2em;
 }
 
+.home-grid-fade {
+  -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 0%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 0%, #000 30%, transparent 100%);
+}
+
 /* Scrollable, but with no visible bar. The tab strip needs to scroll
    horizontally without a track sitting under the tabs. */
 .no-scrollbar {
@@ -1773,6 +1863,7 @@ body[data-tour-active] [data-tour-hide] {
   gap: 0.4rem;
   margin-bottom: 0.25rem;
   font-family: var(--font-sans);
+  -webkit-user-select: none;
   user-select: none;
 }
 .wysiwyg-content .ProseMirror .theorem-name {
@@ -1955,6 +2046,51 @@ body[data-tour-active] [data-tour-hide] {
   padding: 0 0.15em;
 }
 /* ---- end visual editor native LaTeX nodes ---- */
+
+html,
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable]:not([contenteditable="false"]),
+.cm-editor .cm-content {
+  -webkit-user-select: text;
+  user-select: text;
+}
+:root[data-overleaf-import-transition]::view-transition-group(*),
+:root[data-overleaf-import-transition]::view-transition-old(*),
+:root[data-overleaf-import-transition]::view-transition-new(*) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root[data-cloud-attention] [aria-describedby~="cloud-attention"] {
+  position: relative;
+}
+:root[data-cloud-attention] [aria-describedby~="cloud-attention"]::after {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background-color: var(--color-amber-500);
+  pointer-events: none;
+  forced-color-adjust: none;
+}
+@media (forced-colors: active) {
+  :root[data-cloud-attention] [aria-describedby~="cloud-attention"]::after {
+    background-color: CanvasText;
+  }
+}
+
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 *,
 *::before,

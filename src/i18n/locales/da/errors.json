@@ -36,7 +36,12 @@
     "not_removable": "Kun mapper, der er åbnet, hvor de ligger, kan fjernes fra Oleafly.",
     "trash_unavailable": "Oleafly kunne ikke flytte {{path}} til papirkurven. Drevet har måske ingen papirkurv.",
     "linked_replace_folder": "{{path}} er en mappe, så Oleafly erstatter den ikke. Flyt eller omdøb den først.",
-    "folder_read_only": "Oleafly kan ikke foretage denne ændring, fordi {{name}} eller mappen, den ligger i, er skrivebeskyttet. Kopiér den mappe, du åbnede, til biblioteket, og rediger den der."
+    "folder_read_only": "Oleafly kan ikke foretage denne ændring, fordi {{name}} eller mappen, den ligger i, er skrivebeskyttet. Kopiér den mappe, du åbnede, til biblioteket, og rediger den der.",
+    "shared_settings_viewer": "Læsere kan ikke ændre indstillingerne for et delt projekt."
+  },
+  "template": {
+    "name_required": "Giv skabelonen et navn.",
+    "folder_holds_templates": "I denne mappe gemmer Oleafly sine egne skabeloner. Vælg skabelonens mappe i stedet."
   },
   "settings": {
     "locale_unsupported": "Sproget {{locale}} er ikke tilgængeligt."
@@ -56,7 +61,11 @@
     "unreachable": "Oleafly kunne ikke få forbindelse til Zotero. Tjek din internetforbindelse, og prøv igen.",
     "http_error": "Zotero returnerede en fejl (HTTP {{status}}). Prøv igen senere.",
     "invalid_response": "Zotero sendte et svar, som Oleafly ikke kunne læse. Prøv igen senere.",
-    "too_large": "Dit Zotero-bibliotek er for stort til at blive importeret på én gang. Eksporter i stedet en samling fra Zotero som en RDF-fil, og importer den."
+    "too_large": "Dit Zotero-bibliotek er for stort til at blive importeret på én gang. Eksporter i stedet en samling fra Zotero som en RDF-fil, og importer den.",
+    "local_not_running": "Zotero kører ikke på denne computer. Åbn Zotero, eller forbind din zotero.org-konto.",
+    "local_api_disabled": "Åbn Indstillinger > Avanceret i Zotero, og slå »Allow other applications on this computer to communicate with Zotero« til.",
+    "local_unsupported": "Denne version af Zotero kan ikke dele sit bibliotek med Oleafly. Opdater til Zotero 7 eller nyere.",
+    "offline": "Oleafly er i offlinetilstand og kan derfor ikke få forbindelse til zotero.org."
   },
   "tex": {
     "no_host_binary": "TinyTeX har ingen {{name}}-binærfil, der passer til denne vært.",
@@ -65,7 +74,8 @@
     "latexmk_network_folder": "latexmk kan ikke kompilere en mappe på et netværksdrev. Skift projektet til Tectonic, eller kopiér mappen til denne computer.",
     "shell_escape_denied_minted": "minted skal køre et andet program for at fremhæve kode, og dette projekt blokerer det. Hvis du vil tillade det, skal du klikke på \"{{setting}}\" i banneret over editoren. Gør det kun, hvis du stoler på alle filer i projektet. LaTeX kan derefter køre ethvert program med dine rettigheder, og et program, det starter, kan blive ved med at køre, efter du har stoppet kompileringen.",
     "shell_escape_denied_pythontex": "PythonTeX skal køre Python, og dette projekt blokerer det. Hvis du vil tillade det, skal du klikke på \"{{setting}}\" i banneret over editoren. Gør det kun, hvis du stoler på alle filer i projektet. LaTeX kan derefter køre ethvert program med dine rettigheder, og et program, det starter, kan blive ved med at køre, efter du har stoppet kompileringen.",
-    "shell_escape_denied_command": "Dette dokument kører en shell-kommando, og dette projekt blokerer det. Hvis du vil tillade det, skal du klikke på \"{{setting}}\" i banneret over editoren. Gør det kun, hvis du stoler på alle filer i projektet. LaTeX kan derefter køre ethvert program med dine rettigheder, og et program, det starter, kan blive ved med at køre, efter du har stoppet kompileringen."
+    "shell_escape_denied_command": "Dette dokument kører en shell-kommando, og dette projekt blokerer det. Hvis du vil tillade det, skal du klikke på \"{{setting}}\" i banneret over editoren. Gør det kun, hvis du stoler på alle filer i projektet. LaTeX kan derefter køre ethvert program med dine rettigheder, og et program, det starter, kan blive ved med at køre, efter du har stoppet kompileringen.",
+    "japanese_compiler_missing": "{{compiler}} er ikke installeret i din TeX-distribution. Kør tlmgr install collection-langjapanese for at tilføje det i TeX Live eller TinyTeX, eller vælg en anden kompilator."
   },
   "export": {
     "bibliography_unreadable": "Oleafly kunne ikke læse litteraturlistefilen {{name}}. Tjek, om den har en defekt post, og eksporter så igen."
@@ -181,5 +191,39 @@
     "failed": "Typst kunne ikke eksportere dokumentet.",
     "unsupported": "Denne Typst-version kan ikke eksportere med disse indstillinger.",
     "invalid_ppi": "Vælg en opløsning fra 1 til {{max}} PPI."
+  },
+  "overleaf": {
+    "signed_out": "Log ind på Overleaf først.",
+    "session_expired": "Dit Overleaf-login er udløbet. Log ind igen for at fortsætte.",
+    "sign_in_cancelled": "Overleaf-login blev lukket, før det var færdigt.",
+    "sign_in_failed": "Oleafly kunne ikke bekræfte dit Overleaf-login. Prøv at logge ind igen.",
+    "invalid_server": "»{{server}}« er ikke en serveradresse, som Oleafly kan bruge.",
+    "unreachable": "Oleafly kunne ikke få forbindelse til {{server}}.",
+    "unrecognized": "Overleafs projektside ser anderledes ud, end Oleafly forventer. Download projektet som .zip fra Overleaf, og importer den fil i stedet.",
+    "project_unavailable": "Projektet kunne ikke downloades. Du har måske ikke længere adgang til det.",
+    "not_an_archive": "Overleaf sendte noget andet end et projektarkiv.",
+    "too_large": "Projektet er større end importgrænsen på 2 GB.",
+    "rate_limited": "Overleaf bad Oleafly om at sætte tempoet ned. Vent et minut, og prøv igen.",
+    "sync_busy": "Der kører allerede en synkronisering med Overleaf for dette projekt.",
+    "sync_not_linked": "Dette projekt er ikke koblet til Overleaf.",
+    "sync_needs_relink": "Synkroniseringskopien til dette projekt mangler. Stop synkroniseringen, og kobl derefter projektet til igen.",
+    "sync_already_linked": "Dette projekt er allerede koblet til et andet Overleaf-projekt. Stop synkroniseringen først.",
+    "sync_offline": "Oleafly kunne ikke få forbindelse til Overleaf. Dine ændringer er sikre her og bliver synkroniseret næste gang.",
+    "sync_failed": "Synkroniseringen med Overleaf blev ikke fuldført. Dine filer her er uændrede.",
+    "sync_kept_changing": "Projektet blev ved med at ændre sig på Overleaf under synkroniseringen. Prøv igen om lidt.",
+    "sync_case_clash": "Overleaf har filer, hvis navne kun adskiller sig ved store og små bogstaver ({{files}}). Omdøb en af dem på Overleaf, og synkroniser derefter igen.",
+    "sync_invalid_names": "Nogle filnavne på Overleaf kan ikke gemmes på denne computer ({{files}}). Omdøb filerne på Overleaf, og synkroniser derefter igen.",
+    "sync_file_too_large": "{{file}} er større end de 50 MB, Overleaf tillader for én fil.",
+    "sync_too_large": "Projektet er for stort til at blive synkroniseret. Grænsen er 5.000 filer eller 2 GB.",
+    "sync_path_blocked": "{{file}} kan ikke skrives her, fordi en mappe med samme navn er i vejen.",
+    "git_token_missing": "Tilføj dit Git-token fra Overleaf for at synkronisere dette projekt.",
+    "git_token_invalid": "Det ligner ikke et Git-token fra Overleaf. Kopiér hele tokenet, og prøv igen.",
+    "git_token_rejected": "Overleaf accepterede ikke Git-tokenet. Det er måske udløbet. Opret et nyt i dine kontoindstillinger på Overleaf.",
+    "git_unavailable": "Overleafs Git-integration er ikke tilgængelig for dette projekt. Projektets ejer skal have et betalt abonnement eller et universitetsabonnement.",
+    "template_link_invalid": "Det link er ikke en skabelonside på Overleaf. Kopiér adressen på en side fra overleaf.com/latex/templates, og prøv igen.",
+    "template_unavailable": "Oleafly kunne ikke åbne denne skabelon. Den er måske blevet fjernet fra Overleafs skabelongalleri."
+  },
+  "collab": {
+    "turned_off": "Samarbejde i realtid er slået fra. Slå det til i Indstillinger under Eksperimenter."
   }
 }

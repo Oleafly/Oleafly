@@ -1,6 +1,6 @@
 import { availableMonitors } from "@tauri-apps/api/window";
 import { usePreviewDetachedStore, setPreviewDetached, wantsDetachedPreview } from "@/store/preview-detached";
-import { readPreviewGeometry } from "@/lib/preview-geometry";
+import { geometryOnScreen, readPreviewGeometry } from "@/lib/preview-geometry";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { i18n } from "@/i18n";
 import { isTauri } from "@tauri-apps/api/core";
@@ -197,12 +197,7 @@ export async function openPreviewWindow(
   // Restore only positions that still intersect a connected monitor.
   const monitors = geometry ? await availableMonitors().catch(() => []) : [];
   if (generation !== projectGeneration) return;
-  const onScreen = geometry && monitors.some((monitor) => {
-    const x = monitor.position.x / monitor.scaleFactor;
-    const y = monitor.position.y / monitor.scaleFactor;
-    return geometry.x + geometry.width > x + 80 && geometry.x < x + monitor.size.width / monitor.scaleFactor - 80 &&
-      geometry.y >= y && geometry.y < y + monitor.size.height / monitor.scaleFactor - 80;
-  });
+  const onScreen = geometry && geometryOnScreen(geometry, monitors);
   const preview = new WebviewWindow(PREVIEW_WINDOW_LABEL, {
     url: `index.html?${query.toString()}`,
     title: i18n.t(($) => $.shell.windows.preview, { title: title || "Oleafly" }),

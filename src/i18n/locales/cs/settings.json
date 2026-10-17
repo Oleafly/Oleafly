@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Vlastní režim schvalování čte tento soubor. Leží v ~/.oleafly/approvals.toml a platí pro každý projekt v tomto zařízení.",
+        "description": "Soubor leží v ~/.oleafly/approvals.toml a platí pro každý projekt v tomto zařízení. Pravidla deny blokují nástroj ve všech režimech schvalování. Pravidla allow se uplatní jen ve vlastním režimu.",
         "discard": "Zahodit změny",
         "emptyFile": "Soubor je zatím prázdný.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "První tabulka, <modesTable>[\"$approval_modes\"]</modesTable>, nastavuje režim schvalování pro každý projekt: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> nebo <custom>\"custom\"</custom>. Projekt, který není uveden, používá Schvalovat za mě.",
           "openProject": "Otevřený projekt, {{name}}, má id <projectId>{{id}}</projectId>.",
           "projectIds": "Id projektů jsou názvy složek v ~/.oleafly/projects.",
-          "rules": "Pak jedna tabulka na id projektu, s jedním pravidlem pro každý nástroj: <allow>\"allow\"</allow> nástroj spustí bez dotazu a <deny>\"deny\"</deny> jej odmítne. Pravidla deny platí ve všech režimech, pravidla allow se uplatní ve vlastním režimu a u run_command přeskočí dotaz i v ostatních režimech.",
+          "rules": "Pak jedna tabulka na id projektu, s jedním pravidlem pro každý nástroj: <allow>\"allow\"</allow> nástroj spustí bez dotazu a <deny>\"deny\"</deny> jej odmítne. Pravidla deny platí ve všech režimech včetně režimu Úplný přístup. Pravidla allow se uplatní jen ve vlastním režimu.",
           "toolNames": "Názvy nástrojů, které můžete použít: <names>{{names}}</names> a jakýkoli nástroj MCP pod jeho úplným názvem ze seznamu Nástroje."
         },
         "helpToggle": "Jak soubor funguje",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Vždy povoleno",
         "denied": "Vždy zamítnuto",
-        "description": "Uložená pravidla pro {{name}}. Platí, když je režim schvalování Vlastní. Odebráním pravidla se u daného nástroje vrátí standardní politika rizika.",
+        "description": "Uložená pravidla pro {{name}}. Zakázané nástroje zůstanou blokované ve všech režimech schvalování. Povolené nástroje přeskočí dotaz jen v režimu Vlastní. Odebráním pravidla se u daného nástroje vrátí standardní politika rizika.",
         "empty": "Zatím žádná uložená pravidla. Přidejte je volbou „Vždy v tomto projektu“ v dotazu na schválení.",
         "removeRule": "Odebrat pravidlo pro {{tool}}",
         "thisProject": "tento projekt",
@@ -539,12 +539,17 @@
         "right": "Vpravo"
       },
       "font": {
-        "description": "Pokud písmo není nainstalované, použije se systémová náhrada.",
+        "description": "Zvolte pro nabídky, panely a dialogy libovolné písmo nainstalované v počítači.",
         "label": "Písmo aplikace"
       },
       "fontSize": {
         "description": "Zvětšete nebo zmenšete text v nabídkách, panelech a tlačítkách.",
         "label": "Velikost písma aplikace"
+      },
+      "zoom": {
+        "description": "Zvětší nebo zmenší celý Oleafly včetně editoru a PDF.",
+        "label": "Přiblížení",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "Systémový se řídí operačním systémem a mění se spolu s ním.",
@@ -594,7 +599,7 @@
         "label": "Zaoblení rohů"
       },
       "resetAll": "Obnovit vše",
-      "resetMode": "Obnovit tento režim",
+      "resetMode": "Obnovit",
       "title": "Přizpůsobení motivu",
       "tokenInputDark": "Token {{token}} pro tmavý režim",
       "tokenInputLight": "Token {{token}} pro světlý režim",
@@ -643,28 +648,72 @@
         "label": "Automatické doplňování"
       },
       "font": {
-        "description": "Zvolte neproporcionální písmo používané pro zdrojové soubory.",
-        "label": "Písmo editoru"
+        "description": "Zvolte pro zdrojové soubory libovolné písmo nainstalované v počítači.",
+        "label": "Písmo editoru",
+        "monospace": "Neproporcionální"
+      },
+      "useAppFont": {
+        "description": "Editor používá písmo a velikost písma aplikace.",
+        "disabledHint": "Pro změnu vypněte Použít písmo aplikace.",
+        "label": "Použít písmo aplikace"
       },
       "fontSize": {
         "description": "Nastavte velikost textu ve zdrojovém editoru.",
-        "label": "Velikost písma editoru"
+        "label": "Velikost písma editoru",
+        "custom": "Vlastní",
+        "customLabel": "Vlastní velikost písma editoru v pixelech"
       },
       "ghostCompletion": {
         "description": "Zobrazovat pravděpodobné doplnění za kurzorem. Přijmete jej klávesou Tab.",
         "label": "Návrh přímo v textu"
-      },
-      "nonBlinkingCursor": {
-        "description": "Nechat kurzor editoru svítit stále.",
-        "label": "Neblikající kurzor"
       },
       "stickyScroll": {
         "description": "Při posouvání držet aktuální sekce, nadpisy a prostředí nahoře.",
         "label": "Přilepený posuv"
       },
       "theme": {
-        "description": "Nastavit barvy syntaxe zdroje nezávisle na motivu aplikace.",
-        "label": "Motiv editoru"
+        "dark": {
+          "description": "Motiv editoru, když je aplikace tmavá.",
+          "label": "Motiv v tmavém režimu"
+        },
+        "light": {
+          "description": "Motiv editoru, když je aplikace světlá.",
+          "label": "Motiv ve světlém režimu"
+        }
+      },
+      "colors": {
+        "description": "Změňte libovolnou barvu motivu editoru. Změny se uchovávají pro každý motiv zvlášť.",
+        "editing": "Úprava motivu {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Tmavý režim",
+          "light": "Světlý režim"
+        },
+        "modeAriaLabel": "Motiv k přizpůsobení",
+        "names": {
+          "background": "Pozadí",
+          "command": "Příkazy",
+          "comment": "Komentáře",
+          "environment": "Prostředí",
+          "formatting": "Formátování",
+          "heading": "Nadpisy",
+          "lineNumbers": "Čísla řádků",
+          "link": "Odkazy",
+          "math": "Matematika",
+          "name": "Názvy a klíče",
+          "reference": "Citace a křížové odkazy",
+          "selection": "Výběr",
+          "structure": "Preambule a importy",
+          "symbol": "Závorky a symboly",
+          "text": "Text",
+          "value": "Hodnoty a řetězce"
+        },
+        "pick": "Vybrat barvu: {{color}}",
+        "previewAriaLabel": "Jazyk náhledu",
+        "reset": "Obnovit",
+        "syntaxGroup": "Syntaxe",
+        "title": "Barvy editoru",
+        "useThemeColor": "Použít barvu motivu: {{color}}"
       },
       "keymap": {
         "description": "Zvolte sadu klávesových zkratek, kterou zdrojový editor používá.",
@@ -681,12 +730,61 @@
         "options": {
           "compact": "Kompaktní",
           "normal": "Normální",
-          "wide": "Široká"
+          "wide": "Široká",
+          "custom": "Vlastní"
+        },
+        "customLabel": "Vlastní výška řádku"
+      },
+      "letterSpacing": {
+        "customLabel": "Vlastní proklad písma v pixelech",
+        "description": "Přidá mezeru mezi znaky ve zdrojovém editoru. Kolem kurzoru tak zůstane víc místa.",
+        "label": "Proklad písma",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normální",
+          "custom": "Vlastní"
         }
+      },
+      "cursorWidth": {
+        "label": "Šířka kurzoru",
+        "description": "Nastavte, jak silný má být kurzor editoru.",
+        "option": "{{width}} px"
+      },
+      "cursorHeight": {
+        "label": "Výška kurzoru",
+        "description": "Nastavte, jak vysoký má být kurzor editoru. Řádek ho natáhne na výšku celého řádku.",
+        "options": {
+          "text": "Text",
+          "line": "Řádek"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Blikání kurzoru",
+        "description": "Vyberte, jak má kurzor editoru blikat. Vypnuto ho nechá stále viditelný.",
+        "options": {
+          "blink": "Blikat",
+          "smooth": "Plynule",
+          "phase": "Fáze",
+          "expand": "Roztáhnout",
+          "off": "Vypnuto"
+        }
+      },
+      "cursorColor": {
+        "label": "Barva kurzoru",
+        "description": "Světlé a tmavé motivy editoru mají každý vlastní barvu kurzoru. Dokud žádnou nevyberete, použije se barva motivu.",
+        "light": "Světlý",
+        "dark": "Tmavý",
+        "pickLight": "Vybrat barvu kurzoru pro světlé motivy editoru",
+        "pickDark": "Vybrat barvu kurzoru pro tmavé motivy editoru",
+        "useTheme": "Použít barvy motivu"
       },
       "lineWrap": {
         "description": "Zalamovat dlouhé řádky místo vodorovného posouvání.",
         "label": "Zalamovat dlouhé řádky"
+      },
+      "highlightCurrentLine": {
+        "label": "Zvýraznit aktuální řádek",
+        "description": "Podbarvit řádek, na kterém je kurzor."
       },
       "tabSize": {
         "description": "Počet mezer vložených na jednu úroveň odsazení a šířka, na kterou se vykreslí tabulátor.",
@@ -718,6 +816,15 @@
           "description": "Kontroluje soubory Typst na pravděpodobné chyby při každém uložení. Zapnutí nebo vypnutí restartuje jazykový server Typst.",
           "label": "Kontroly lint pro Typst"
         }
+      },
+      "fileMove": {
+        "label": "Když se soubor přesune",
+        "description": "Aktualizovat cesty k přejmenovanému nebo přesunutému souboru ve zdrojích LaTeX, Typst a Markdown.",
+        "options": {
+          "ask": "Zeptat se",
+          "always": "Vždy aktualizovat",
+          "never": "Nikdy neaktualizovat"
+        }
       }
     },
     "files": {
@@ -745,6 +852,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "Písmo {{font}} není nainstalované, proto se používá výchozí písmo.",
     "preview": {
       "darkMode": {
         "description": "Ve výchozím stavu invertovat barvy PDF. Barvy můžete stále přepnout v panelu nástrojů náhledu.",
@@ -753,10 +861,6 @@
       "hoverPreview": {
         "description": "Zobrazit poslední zkompilovanou stránku, když v knihovně najedete na projekt.",
         "label": "Náhled PDF při najetí"
-      },
-      "zoomShortcuts": {
-        "description": "Používat Cmd/Ctrl +, - a 0 k přiblížení PDF místo okna aplikace.",
-        "label": "Zkratky přiblížení PDF"
       }
     },
     "sectionName": "Vzhled",
@@ -820,6 +924,17 @@
         "description": "Spustit prostředí shell už při otevření projektu, ne až když terminál poprvé zobrazíte.",
         "label": "Spouštět shell s projektem"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "V režimu Zen vyplní obrazovku a při odchodu obnoví okno.",
+        "label": "Přejít na celou obrazovku"
+      },
+      "showPdf": {
+        "description": "Pokud je PDF v režimu Zen skryté, otevře ho při kompilaci vedle editoru.",
+        "label": "Zobrazit PDF při kompilaci"
+      },
+      "title": "Režim Zen"
     }
   },
   "checkpoints": {
@@ -890,7 +1005,6 @@
   },
   "cite": {
     "apa": "Tutéž referenci ve stylu APA najdete pod Cite this repository na GitHubu",
-    "copyBibtex": "Kopírovat BibTeX",
     "description": "Oleafly je zdarma a s otevřeným zdrojovým kódem a takový zůstane, když se o něm bude vědět. Pokud vám pomohl s článkem, jediný záznam ve vaší bibliografii poví dalšímu badateli, odkud ten nástroj je. Zkopírujte jej, vložte do svého souboru .bib a citujte klíč <citeKey>oleafly</citeKey>.",
     "title": "Citujte Oleafly ve svém článku"
   },
@@ -900,13 +1014,15 @@
       "download": "Stáhnout",
       "downloadAll": "Stáhnout vše"
     },
-    "aiTemplates": {
-      "deleteDescription": "Smazat „{{name}}“ z vaší knihovny? Projekty už z ní vytvořené si nechávají vlastní kopii a nic se jich nedotkne.",
-      "deleteTitle": "Smazání šablony vytvořené pomocí AI",
-      "deleted": "„{{name}}“ bylo smazáno z vaší knihovny",
-      "empty": "Zatím žádné šablony vytvořené pomocí AI. Vytvořte jednu v galerii šablon.",
-      "fallbackDescription": "Šablona vytvořená pomocí AI",
-      "toggle": "Spravovat šablony vytvořené pomocí AI",
+    "yourTemplates": {
+      "toggle": "Spravovat své šablony",
+      "import": "Importovat šablonu",
+      "empty": "Zatím nemáte žádné vlastní šablony. Importujte nějakou tady, uložte projekt jako šablonu z jeho nabídky nebo si šablonu vytvořte v galerii šablon.",
+      "aiDescription": "Šablona vytvořená pomocí AI",
+      "customDescription": "Vaše šablona",
+      "deleteTitle": "Smazat šablonu",
+      "deleteDescription": "Smazat „{{name}}“ z vašich šablon? Projekty, které jste z ní už vytvořili, si ponechají vlastní kopii.",
+      "deleted": "„{{name}}“ bylo smazáno z vašich šablon",
       "deleteFailed": "„{{name}}“ se nepodařilo smazat."
     },
     "fontPacks": {
@@ -921,6 +1037,26 @@
       "ptserif": {
         "description": "Vytříbené přechodové patkové písmo, dobrá volba pro akademické a manažerské dokumenty.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans a Serif CJK, Fandol a LXGW WenKai. Zastoupí také SimSun, SimHei a KaiTi.",
+        "label": "Čínština, japonština a korejština"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 a 7 Free a Noto Color Emoji.",
+        "label": "Ikony a emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code a Source Code Pro.",
+        "label": "Kód"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans a IBM Plex.",
+        "label": "Moderní bezpatková a patková písma"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus a New Computer Modern Sans a Mono.",
+        "label": "Klasická textová písma"
       }
     },
     "fonts": {
@@ -957,7 +1093,59 @@
       "fontRemoveFailed": "Písmo se nepodařilo odebrat.",
       "packDownloadFailed": "Balíček šablon se nepodařilo stáhnout.",
       "packsDownloadFailed": "Balíčky šablon se nepodařilo stáhnout.",
-      "packRemoveFailed": "Balíček šablon se nepodařilo odebrat."
+      "packRemoveFailed": "Balíček šablon se nepodařilo odebrat.",
+      "templateDownloadFailed": "Šablonu se nepodařilo stáhnout.",
+      "packsRefreshFailed": "Nové balíčky se nepodařilo zkontrolovat."
+    },
+    "typstFonts": {
+      "heading": "Písma pro Typst",
+      "tooltip": "Bezplatná písma, která vyžaduje mnoho šablon Typst. Po stažení je může použít každý projekt Typst, kromě projektu, který vypíná systémová písma."
+    },
+    "packs": {
+      "browse": "Procházet",
+      "back": "Zpět na balíčky",
+      "count_one": "{{count}} šablona",
+      "count_few": "{{count}} šablony",
+      "count_many": "{{count}} šablony",
+      "count_other": "{{count}} šablon",
+      "installedCount": "Nainstalováno {{installed}} z {{total}}",
+      "downloadPack": "Stáhnout balíček",
+      "refresh": "Zkontrolovat nové balíčky",
+      "searchPacks": "Hledat balíčky",
+      "searchTemplates": "Hledat šablony",
+      "noPacks": "Žádné balíčky neodpovídají",
+      "noTemplates": "Žádné šablony neodpovídají",
+      "loading": "Načítání šablon",
+      "loadFailed": "Tento balíček se nepodařilo načíst.",
+      "retry": "Zkusit znovu",
+      "installed": "Nainstalováno",
+      "engineFilter": "Engine",
+      "kindFilter": "Druh",
+      "languageFilter": "Jazyk",
+      "allEngines": "Všechny enginy",
+      "allKinds": "Všechny druhy",
+      "allLanguages": "Všechny jazyky",
+      "groups": {
+        "curated": "Vybrané",
+        "community": "Komunita",
+        "typst": "Typst",
+        "university": "Univerzity"
+      },
+      "preview": {
+        "image": "První strana šablony {{name}}",
+        "previous": "Předchozí šablona",
+        "next": "Další šablona",
+        "engine": "Engine",
+        "license": "Licence",
+        "kind": "Druh",
+        "languages": "Jazyky",
+        "country": "Země",
+        "institution": "Instituce",
+        "originalSource": "Původní zdroj",
+        "getTemplate": "Získat šablonu",
+        "useTemplate": "Použít šablonu",
+        "getAndCreate": "Získat a vytvořit projekt"
+      }
     }
   },
   "engine": {
@@ -992,7 +1180,7 @@
       "status": {
         "checking": "Kontroluje se pandoc…",
         "installing": "Stahuje se připnuté vydání pandocu. Při prvním použití to chvíli trvá.",
-        "missing": "Nenalezeno. Oleafly může stáhnout kompatibilní pandoc (2.19 nebo novější) do vlastní složky; na vašem systému se nic jiného nemění.",
+        "missing": "Nenalezeno. Oleafly může stáhnout kompatibilní pandoc (2.19 nebo novější) do vlastní složky. Na vašem systému se nic jiného nemění.",
         "ready": "Nalezeno. Projekty v Markdownu se pomocí pandocu převedou do LaTeXu a pak se zkompilují vestavěným Tectonicem."
       },
       "tectonicDetail": "Vysází LaTeX, který pandoc vytvoří. Dodává se s Oleafly, není co nastavovat.",
@@ -1216,11 +1404,74 @@
       "apiKeyLabel": "Klíč API pro Zotero",
       "connected": "Připojeno k vaší knihovně Zotero.",
       "connectedAs": "Připojeno jako {{username}}.",
-      "description": "Importujte citace a reference ze své knihovny Zotero.",
       "disconnectFailed": "Oleafly nemohl odebrat uložený klíč Zotero. Zkuste to znovu.",
-      "importHint": "Pro import otevřete v projektu panel Reference a zvolte Import knihovny referencí.",
       "userIdLabel": "ID uživatele Zotero",
-      "userIdPlaceholder": "ID uživatele"
+      "userIdPlaceholder": "ID uživatele",
+      "citeDescription": "Při psaní prohledávejte celou knihovnu Zotero a přidávejte jen to, co citujete. Oleafly vaši knihovnu jen čte a nikdy ji nemění.",
+      "local": {
+        "heading": "Zotero v tomto počítači",
+        "ready": "Připojeno k aplikaci Zotero {{version}}.",
+        "readyNoVersion": "Připojeno k aplikaci Zotero.",
+        "bbtFound": "Better BibTeX {{version}} je nainstalovaný, takže klíče citací pocházejí z Better BibTeX.",
+        "bbtMissing": "Better BibTeX není nainstalovaný, takže klíče citací pocházejí z aplikace Zotero.",
+        "notRunning": "Zotero neběží. Otevřete Zotero a prohledávejte svou knihovnu, nebo níže připojte svůj účet zotero.org.",
+        "apiDisabled": "V aplikaci Zotero otevřete Nastavení > Pokročilé a zapněte „Povolit ostatním aplikacím v tomto počítači komunikovat s Zotero“.",
+        "unsupported": "Tato verze aplikace Zotero neumí sdílet svou knihovnu. Aktualizujte na Zotero 7 nebo novější.",
+        "unknown": "Oleafly zatím aplikaci Zotero nehledal."
+      },
+      "test": "Otestovat připojení",
+      "syncNow": "Synchronizovat teď",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX nebyl nalezen",
+        "local": "Načteno z aplikace Zotero v tomto počítači",
+        "web": "Načteno ze zotero.org",
+        "library_one": "{{name}}: {{formatted}} položka",
+        "library_few": "{{name}}: {{formatted}} položky",
+        "library_many": "{{name}}: {{formatted}} položky",
+        "library_other": "{{name}}: {{formatted}} položek"
+      },
+      "library": {
+        "heading": "Knihovny k prohledávání",
+        "myLibrary": "Moje knihovna",
+        "toggle": "Prohledávat {{name}}",
+        "items_one": "{{formatted}} položka",
+        "items_few": "{{formatted}} položky",
+        "items_many": "{{formatted}} položky",
+        "items_other": "{{formatted}} položek"
+      },
+      "sync": {
+        "never": "Zatím nesynchronizováno.",
+        "syncing": "Synchronizuje se vaše knihovna Zotero…",
+        "progress": "Synchronizuje se {{done}} z {{total}} položek…",
+        "status_one": "{{formatted}} položka připravená k citování, synchronizováno {{time}}.",
+        "status_few": "{{formatted}} položky připravené k citování, synchronizováno {{time}}.",
+        "status_many": "{{formatted}} položky připravené k citování, synchronizováno {{time}}.",
+        "status_other": "{{formatted}} položek připravených k citování, synchronizováno {{time}}.",
+        "fromCache": "Aplikace Zotero je zavřená, takže vyhledávání přes @ používá kopii z poslední synchronizace.",
+        "rateLimited": "Server zotero.org požádal Oleafly, aby počkal. Další pokus proběhne po {{time}}."
+      },
+      "account": {
+        "heading": "Účet zotero.org",
+        "description": "Účet použijte, když v tomto počítači neběží Zotero. Načtou se i skupinové knihovny."
+      }
+    },
+    "overleaf": {
+      "description": "Přeneste projekty ze svého účtu Overleaf nebo ze serveru Overleaf vaší univerzity a udržujte je synchronizované. Oleafly uchovává přihlášení i token Git v tomto počítači zašifrované.",
+      "signedInAs": "Přihlášeno jako {{email}} na {{server}}",
+      "signedIn": "Přihlášeno na {{server}}",
+      "signOut": "Odhlásit se",
+      "signOutFailed": "Oleafly se nemohl odhlásit z Overleafu.",
+      "gitTitle": "Token Git pro synchronizaci",
+      "gitSaved": "Token Git je uložený. Propojené projekty zůstávají synchronizované s Overleafem.",
+      "gitMissing": "Zatím žádný token Git. Pro synchronizaci projektů ho vytvořte v nastavení svého účtu Overleaf v části Integrace Git.",
+      "gitOpenSettings": "Otevřít nastavení účtu Overleaf",
+      "gitPlanNote": "Integrace Git vyžaduje, aby vlastník projektu měl placený nebo univerzitní tarif Overleaf.",
+      "gitLabel": "Token Git z Overleafu",
+      "gitSave": "Uložit",
+      "gitRemove": "Odebrat",
+      "gitFailed": "Oleafly nemohl uložit token Git. Zkontrolujte, že jste vložili celý token."
     }
   },
   "language": {
@@ -1597,6 +1848,10 @@
         "description": "Zobrazit nebo skrýt postranní panel projektu.",
         "label": "Přepnout postranní panel"
       },
+      "togglePreview": {
+        "label": "Přepnout náhled PDF",
+        "description": "Zobrazí nebo skryje PDF vedle editoru, i v režimu Zen."
+      },
       "toggleTerminal": {
         "description": "Zobrazit nebo skrýt terminál projektu.",
         "label": "Přepnout terminál"
@@ -1604,6 +1859,26 @@
       "openFolder": {
         "label": "Otevřít složku",
         "description": "Otevřít složku z počítače jako projekt."
+      },
+      "toggleZenMode": {
+        "description": "Skryje vše kromě textu, nebo vše vrátí zpět.",
+        "label": "Přepnout režim Zen"
+      },
+      "openSettings": {
+        "label": "Otevřít nastavení",
+        "description": "Otevřít nastavení aplikace Oleafly."
+      },
+      "zoomIn": {
+        "description": "Zvětší celou aplikaci.",
+        "label": "Přiblížit"
+      },
+      "zoomOut": {
+        "description": "Zmenší celou aplikaci.",
+        "label": "Oddálit"
+      },
+      "resetZoom": {
+        "description": "Vrátí aplikaci na 100 %.",
+        "label": "Obnovit přiblížení"
       }
     },
     "application": {
@@ -1626,7 +1901,7 @@
         "italic": "Kurzíva",
         "jumpToSourceFromPdf": "Skok z PDF do zdroje",
         "redo": "Znovu",
-        "renameSymbol": "Přejmenovat symbol v celém projektu",
+        "renameSymbol": "Přejmenovat symbol nebo soubor v celém projektu",
         "slashCommandMenu": "Nabídka vkládání přes lomítko",
         "triggerAutocomplete": "Vyvolat automatické doplňování",
         "undo": "Zpět"

@@ -10,6 +10,7 @@ import {
   readCompiledPdfBase64,
   readProjectBase64,
   setEditorContent,
+  revealLibraryProject,
 } from "../helpers";
 
 const OPEN_OVERFLOW = `(() => {
@@ -164,9 +165,7 @@ test.beforeEach(async ({ tauriPage }) => {
   await expect(
     tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
   ).toBeVisible({ timeout: 30_000 });
-  const hasBaseline = await tauriPage.evaluate<boolean>(
-    `!!document.querySelector('button[aria-label="Open E2E Doc"]')`,
-  );
+  const hasBaseline = await revealLibraryProject(tauriPage, "E2E Doc");
   if (hasBaseline) {
     await openProject(tauriPage, "E2E Doc");
   } else {

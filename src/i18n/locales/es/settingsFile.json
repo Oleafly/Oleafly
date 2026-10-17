@@ -1,0 +1,64 @@
+{
+  "title": "Ajustes de la aplicación",
+  "description": "Guarda tus ajustes en un archivo JSON o carga uno que alguien haya compartido contigo. Las claves de API, las cuentas, las integraciones y los agentes nunca se incluyen.",
+  "export": "Exportar",
+  "import": "Importar",
+  "view": {
+    "label": "Ver el JSON de los ajustes",
+    "summary": "Vista previa de solo lectura del archivo que se guarda al exportar.",
+    "loading": "Leyendo tus ajustes",
+    "failed": "No se pudieron leer tus ajustes."
+  },
+  "dialog": {
+    "pickTitle": "Importar ajustes",
+    "filterName": "Ajustes de Oleafly"
+  },
+  "toast": {
+    "exported": "{{name}} exportado al disco",
+    "exportFailed": "No se pudo guardar el archivo de ajustes.",
+    "readFailed": "No se pudo abrir ese archivo.",
+    "imported": "Ajustes importados.",
+    "unchanged": "Tus ajustes ya coinciden con {{name}}.",
+    "applyFailed": "Algunos ajustes no se pudieron guardar. Vuelve a intentar la importación.",
+    "cloudEmpty": "Tu Dropbox aún no tiene ajustes de Oleafly. Activa primero la sincronización en la nube en otro ordenador.",
+    "cloudLoadFailed": "No se pudieron cargar los ajustes de tu Dropbox.",
+    "cloudUnreadable": "No se pudieron leer los ajustes de tu Dropbox."
+  },
+  "confirm": {
+    "title": "¿Reemplazar tus ajustes?",
+    "description": "Los ajustes de {{name}} reemplazarán los tuyos. Lo que el archivo no incluya se queda como está.",
+    "changes": "Ajustes que cambiarán: {{count}}",
+    "ignored": "No se reconocen, así que se omitirán:",
+    "action": "Importar",
+    "cloudDescription": "Los ajustes de tu Dropbox reemplazarán los tuyos. Lo que no incluyan se queda como está."
+  },
+  "error": {
+    "title": "No se importó {{name}}",
+    "notJson": "El archivo no es JSON válido.",
+    "notSettings": "Este no es un archivo de ajustes de Oleafly.",
+    "invalid": "La configuración de ajustes que intentaste importar no es válida. Corrige estos errores y vuelve a importarla:",
+    "more": "+{{count}} más"
+  },
+  "valueErrors": {
+    "boolean": "debe ser true o false",
+    "oneOf": "debe ser uno de estos valores: {{values}}",
+    "range": "debe ser un número de {{min}} a {{max}}",
+    "wholeRange": "debe ser un número entero de {{min}} a {{max}}",
+    "wholeRangeStep": "debe ser un número entero de {{min}} a {{max}}, en pasos de {{step}}",
+    "hexColor": "debe ser un color como #2563eb",
+    "hexColorOrEmpty": "debe ser un color como #2563eb, o \"\" para usar el color del tema",
+    "text": "debe ser un texto de {{max}} caracteres como máximo",
+    "webAddress": "debe ser una dirección web que empiece por http:// o https://",
+    "list": "debe ser una lista de {{max}} elementos como máximo",
+    "listItem": "no es un elemento permitido",
+    "duplicate": "aparece dos veces",
+    "object": "debe ser un grupo de ajustes entre llaves",
+    "unknownKey": "no es un ajuste que Oleafly conozca",
+    "dictionaryLocale": "debe ser un código de diccionario como en_US",
+    "shortcut": "debe ser un atajo como Mod-Shift-k, o \"default\"",
+    "editorKey": "debe ser una tecla como Mod-d, \"\" para ninguna, o \"default\""
+  },
+  "importFromLocal": "Importar desde este dispositivo",
+  "importFromCloud": "Importar desde la nube",
+  "cloudSource": "tu Dropbox"
+}

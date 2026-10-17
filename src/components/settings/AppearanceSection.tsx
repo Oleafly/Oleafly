@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Plus } from "lucide-react";
+import { Check, ChevronRight, Plus, RotateCcw } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { Button } from "@/components/ui/button";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -13,36 +14,66 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip } from "@/components/ui/tooltip";
 import { i18n } from "@/i18n";
-import { useTheme } from "@/lib/theme";
+import { cursorThemeFor, editorThemeCursorColor } from "@/lib/editor-cursor-color";
+import { formatNumber } from "@/lib/intl";
+import { isEditorThemeId, type EditorThemeId } from "@/lib/editor-themes";
+import { applyTheme, currentTheme, useTheme, type Theme } from "@/lib/theme";
+import {
+  THEME_CUSTOMIZATION_CHANGED_EVENT,
+  hasThemeCustomization,
+  resetThemeCustomization,
+} from "@/lib/theme-customization";
 import { cn } from "@/lib/utils";
 import {
   ACCENTS,
-  APP_FONTS,
+  APP_ZOOM_LEVELS,
   BROWSER_SEARCH_ENGINES,
-  EDITOR_FONTS,
+  EDITOR_CURSOR_BLINKING,
+  EDITOR_CURSOR_HEIGHTS,
+  EDITOR_CURSOR_WIDTHS,
+  EDITOR_SURFACES,
+  EDITOR_CUSTOM_LETTER_SPACING,
+  EDITOR_CUSTOM_LINE_HEIGHT,
+  EDITOR_FONT_SIZE_RANGE,
+  EDITOR_FONT_SIZES,
+  EDITOR_LETTER_SPACING_OPTIONS,
+  EDITOR_LETTER_SPACINGS,
   EDITOR_KEYMAP_MODES,
   EDITOR_LINE_HEIGHT_OPTIONS,
   EDITOR_TAB_SIZES,
+  FILE_MOVE_REFERENCE_OPTIONS,
+  type EditorCursorBlinking,
+  type EditorCursorHeight,
+  type FileMoveReferences,
   EDITOR_THEMES,
   TERMINAL_COLOR_THEMES,
   TERMINAL_FONTS,
   TYPST_FORMATTER_INDENT_SIZES,
   TYPST_FORMATTER_LINE_WIDTHS,
+  clampEditorFontSize,
+  clampEditorLetterSpacing,
+  clampEditorLineHeight,
   sectionDiffersFromDefaults,
   type BrowserSearchEngineId,
+  type EditorLetterSpacing,
+  type EditorSurface,
   type TerminalColorThemeId,
   type TerminalCursorStyle,
   useSettingsStore,
 } from "@/store/settings";
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
+import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
+import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
+import { EditorColors } from "@/components/settings/EditorColors";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 const APPEARANCE_TABS = [
@@ -56,6 +87,40 @@ const APPEARANCE_TABS = [
 
 type AppearanceTabId = (typeof APPEARANCE_TABS)[number]["id"];
 
+function ZenModeSettings() {
+  const { t } = useTranslation(["settings"]);
+  const fullScreen = useSettingsStore((state) => state.zenFullScreen);
+  const setFullScreen = useSettingsStore((state) => state.setZenFullScreen);
+  const showPdf = useSettingsStore((state) => state.zenShowPdfOnCompile);
+  const setShowPdf = useSettingsStore((state) => state.setZenShowPdfOnCompile);
+
+  return (
+    <section
+      className="space-y-3 pt-3"
+      aria-labelledby="settings-appearance-zen-heading"
+      data-testid="settings-appearance-zen"
+    >
+      <SectionHeading id="settings-appearance-zen-heading">
+        {t(($) => $.settings.appearance.zen.title)}
+      </SectionHeading>
+      <SettingsToggleRow
+        testId="settings-row-zen-full-screen"
+        label={t(($) => $.settings.appearance.zen.fullScreen.label)}
+        description={t(($) => $.settings.appearance.zen.fullScreen.description)}
+        checked={fullScreen}
+        onChange={setFullScreen}
+      />
+      <SettingsToggleRow
+        testId="settings-row-zen-show-pdf"
+        label={t(($) => $.settings.appearance.zen.showPdf.label)}
+        description={t(($) => $.settings.appearance.zen.showPdf.description)}
+        checked={showPdf}
+        onChange={setShowPdf}
+      />
+    </section>
+  );
+}
+
 function AppAppearanceTab() {
   const { t } = useTranslation(["common", "settings"]);
   const { preference, setPreference } = useTheme();
@@ -67,6 +132,8 @@ function AppAppearanceTab() {
   const setAccentColor = useSettingsStore((state) => state.setAccentColor);
   const appFontSize = useSettingsStore((state) => state.appFontSize);
   const setAppFontSize = useSettingsStore((state) => state.setAppFontSize);
+  const appZoom = useSettingsStore((state) => state.appZoom);
+  const setAppZoom = useSettingsStore((state) => state.setAppZoom);
   const appFontFamily = useSettingsStore((state) => state.appFontFamily);
   const setAppFontFamily = useSettingsStore((state) => state.setAppFontFamily);
 
@@ -152,7 +219,7 @@ function AppAppearanceTab() {
                   {option.id === "dots" ? (
                     <DotPattern width={10} height={10} radius={0.75} />
                   ) : null}
-                  {option.id === "grid" ? <GridPattern width={10} height={10} /> : null}
+                  {option.id === "grid" ? <GridPattern width={16} height={16} className="home-grid-fade" /> : null}
                 </div>
                 {option.label}
               </button>
@@ -161,40 +228,40 @@ function AppAppearanceTab() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">
-          {t(($) => $.settings.appearance.app.accent.label)}
-        </div>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.accent.description)}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {ACCENTS.map((accent) => {
-            const active = accentColor === accent.color;
-            return (
-              <button
-                type="button"
-                key={accent.id}
-                title={accent.name}
-                aria-label={t(($) => $.settings.appearance.app.accent.swatchAriaLabel, {
-                  name: accent.name,
-                })}
-                aria-pressed={active}
-                onClick={() => setAccentColor(accent.color)}
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
-                  active
-                    ? "border-foreground"
-                    : "border-border",
-                )}
-                style={{ backgroundColor: accent.color }}
-              >
-                {active ? <Check className="size-3.5 text-white drop-shadow" /> : null}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <SettingsRow
+        testId="settings-row-accent"
+        className="flex-wrap gap-y-2"
+        label={t(($) => $.settings.appearance.app.accent.label)}
+        description={t(($) => $.settings.appearance.app.accent.description)}
+        control={
+          <div className="flex flex-wrap items-center gap-2">
+            {ACCENTS.map((accent) => {
+              const active = accentColor === accent.color;
+              return (
+                <button
+                  type="button"
+                  key={accent.id}
+                  title={accent.name}
+                  aria-label={t(($) => $.settings.appearance.app.accent.swatchAriaLabel, {
+                    name: accent.name,
+                  })}
+                  aria-pressed={active}
+                  onClick={() => setAccentColor(accent.color)}
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
+                    active
+                      ? "border-foreground"
+                      : "border-border",
+                  )}
+                  style={{ backgroundColor: accent.color }}
+                >
+                  {active ? <Check className="size-3.5 text-white drop-shadow" /> : null}
+                </button>
+              );
+            })}
+          </div>
+        }
+      />
 
       <div
         data-testid="settings-row-appearance"
@@ -226,7 +293,7 @@ function AppAppearanceTab() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="z-[100]">
-              {[13, 14, 15, 16, 17, 18, 20].map((size) => (
+              {APP_FONT_SIZES.map((size) => (
                 <SelectItem key={size} value={String(size)}>
                   {t(($) => $.settings.appearance.fontSizeOption, { size })}
                 </SelectItem>
@@ -237,33 +304,274 @@ function AppAppearanceTab() {
       />
 
       <SettingsRow
-        testId="settings-row-app-font"
-        label={t(($) => $.settings.appearance.app.font.label)}
-        description={t(($) => $.settings.appearance.app.font.description)}
+        testId="settings-row-app-zoom"
+        label={t(($) => $.settings.appearance.app.zoom.label)}
+        description={t(($) => $.settings.appearance.app.zoom.description)}
         control={
-          <Select
-            value={appFontFamily || "__default__"}
-            onValueChange={(value) =>
-              setAppFontFamily(value === "__default__" ? "" : value)
-            }
-          >
-            <SelectTrigger className="w-[168px]">
+          <Select value={String(appZoom)} onValueChange={(value) => setAppZoom(Number(value))}>
+            <SelectTrigger className="w-[96px]" data-testid="settings-app-zoom-trigger">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="z-[100]">
-              {APP_FONTS.map((font) => (
-                <SelectItem
-                  key={font.name}
-                  value={font.value || "__default__"}
-                >
-                  {font.name}
+              {APP_ZOOM_LEVELS.map((level) => (
+                <SelectItem key={level} value={String(level)}>
+                  {t(($) => $.settings.appearance.app.zoom.option, { value: level })}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         }
       />
+
+      <SystemFontSettingsRow
+        testId="settings-row-app-font"
+        id="settings-app-font"
+        use="app"
+        label={t(($) => $.settings.appearance.app.font.label)}
+        description={t(($) => $.settings.appearance.app.font.description)}
+        value={appFontFamily}
+        onChange={setAppFontFamily}
+      />
       <ThemeCustomization />
+    </div>
+  );
+}
+
+const THEME_MODES: readonly Theme[] = ["light", "dark"];
+
+function useThemeCustomized(): boolean {
+  const [customized, setCustomized] = useState(() => hasThemeCustomization());
+  useEffect(() => {
+    const update = () => setCustomized(hasThemeCustomization());
+    window.addEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, update);
+    return () => window.removeEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, update);
+  }, []);
+  return customized;
+}
+
+function EditorCursorColorRow() {
+  const { t } = useTranslation(["settings"]);
+  const editorThemeLight = useSettingsStore((state) => state.editorThemeLight);
+  const editorThemeDark = useSettingsStore((state) => state.editorThemeDark);
+  const accentColor = useSettingsStore((state) => state.accentColor);
+  const light = useSettingsStore((state) => state.editorCursorColorLight);
+  const dark = useSettingsStore((state) => state.editorCursorColorDark);
+  const setEditorCursorColor = useSettingsStore((state) => state.setEditorCursorColor);
+  const { theme } = useTheme();
+  const colors: Readonly<Record<EditorSurface, string>> = { light, dark };
+  const themeColors = useMemo(() => {
+    const themes = { light: editorThemeLight, dark: editorThemeDark };
+    return {
+      light: editorThemeCursorColor("light", cursorThemeFor("light", themes), { theme, accentColor }),
+      dark: editorThemeCursorColor("dark", cursorThemeFor("dark", themes), { theme, accentColor }),
+    };
+  }, [editorThemeLight, editorThemeDark, theme, accentColor]);
+  const surfaceLabels: Readonly<Record<EditorSurface, string>> = {
+    light: t(($) => $.settings.appearance.editor.cursorColor.light),
+    dark: t(($) => $.settings.appearance.editor.cursorColor.dark),
+  };
+  const pickLabels: Readonly<Record<EditorSurface, string>> = {
+    light: t(($) => $.settings.appearance.editor.cursorColor.pickLight),
+    dark: t(($) => $.settings.appearance.editor.cursorColor.pickDark),
+  };
+
+  return (
+    <SettingsRow
+      testId="settings-row-editor-cursor-color"
+      label={t(($) => $.settings.appearance.editor.cursorColor.label)}
+      description={t(($) => $.settings.appearance.editor.cursorColor.description)}
+      control={
+        <div className="flex shrink-0 items-center gap-3">
+          {light || dark ? (
+            <Button
+              type="button"
+              size="xs"
+              variant="ghost"
+              onClick={() => {
+                for (const surface of EDITOR_SURFACES) setEditorCursorColor(surface, "");
+              }}
+            >
+              <RotateCcw aria-hidden />
+              {t(($) => $.settings.appearance.editor.cursorColor.useTheme)}
+            </Button>
+          ) : null}
+          {EDITOR_SURFACES.map((surface) => (
+            <div
+              key={surface}
+              data-testid={`settings-editor-cursor-color-${surface}`}
+              data-custom={colors[surface] ? "true" : "false"}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground"
+            >
+              <span aria-hidden>{surfaceLabels[surface]}</span>
+              <ColorPicker
+                ariaLabel={pickLabels[surface]}
+                value={colors[surface] || themeColors[surface]}
+                onChange={(color) => setEditorCursorColor(surface, color)}
+              />
+            </div>
+          ))}
+        </div>
+      }
+    />
+  );
+}
+
+function CustomNumberInput({
+  value,
+  onCommit,
+  range,
+  clamp,
+  ariaLabel,
+  testId,
+  disabled = false,
+}: Readonly<{
+  value: number;
+  onCommit: (value: number) => void;
+  range: Readonly<{ min: number; max: number; step: number }>;
+  clamp: (value: number) => number;
+  ariaLabel: string;
+  testId: string;
+  disabled?: boolean;
+}>) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft((current) => (Number(current) === value ? current : String(value)));
+  }, [value]);
+
+  const commit = () => {
+    const typed = Number(draft);
+    const next = draft.trim() === "" || !Number.isFinite(typed) ? value : clamp(typed);
+    onCommit(next);
+    setDraft(String(next));
+  };
+
+  return (
+    <Input
+      type="number"
+      inputMode="decimal"
+      min={range.min}
+      max={range.max}
+      step={range.step}
+      aria-label={ariaLabel}
+      data-testid={testId}
+      disabled={disabled}
+      className="h-9 w-[76px]"
+      value={draft}
+      onChange={(event) => {
+        setDraft(event.target.value);
+        const typed = Number(event.target.value);
+        if (event.target.value.trim() !== "" && Number.isFinite(typed) && typed >= range.min && typed <= range.max) {
+          onCommit(typed);
+        }
+      }}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        commit();
+      }}
+    />
+  );
+}
+
+function DisabledHint({
+  disabled,
+  hint,
+  children,
+}: Readonly<{ disabled: boolean; hint: string; children: ReactNode }>) {
+  if (!disabled) return <>{children}</>;
+  return (
+    <Tooltip label={hint} side="top" wide>
+      <span className="inline-flex cursor-not-allowed">
+        <span className="pointer-events-none inline-flex">{children}</span>
+      </span>
+    </Tooltip>
+  );
+}
+
+function EditorFontSizeControl({ disabled }: Readonly<{ disabled: boolean }>) {
+  const { t } = useTranslation(["settings"]);
+  const size = useSettingsStore((state) => state.editorFontSize);
+  const setSize = useSettingsStore((state) => state.setEditorFontSize);
+  const [customChosen, setCustomChosen] = useState(false);
+  const choice = customChosen || !EDITOR_FONT_SIZES.includes(size) ? "custom" : String(size);
+
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <Select
+        disabled={disabled}
+        value={choice}
+        onValueChange={(value) => {
+          setCustomChosen(value === "custom");
+          if (value !== "custom") setSize(Number(value));
+        }}
+      >
+        <SelectTrigger className="w-[112px]" data-testid="settings-editor-font-size-trigger">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="z-[100]">
+          {EDITOR_FONT_SIZES.map((option) => (
+            <SelectItem key={option} value={String(option)}>
+              {t(($) => $.settings.appearance.fontSizeOption, { size: option })}
+            </SelectItem>
+          ))}
+          <SelectItem value="custom">{t(($) => $.settings.appearance.editor.fontSize.custom)}</SelectItem>
+        </SelectContent>
+      </Select>
+      {choice === "custom" ? (
+        <CustomNumberInput
+          value={size}
+          onCommit={setSize}
+          range={EDITOR_FONT_SIZE_RANGE}
+          clamp={clampEditorFontSize}
+          ariaLabel={t(($) => $.settings.appearance.editor.fontSize.customLabel)}
+          testId="settings-editor-font-size-custom"
+          disabled={disabled}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function EditorLetterSpacingControl() {
+  const { t } = useTranslation(["settings"]);
+  const letterSpacing = useSettingsStore((state) => state.editorLetterSpacing);
+  const setLetterSpacing = useSettingsStore((state) => state.setEditorLetterSpacing);
+  const custom = useSettingsStore((state) => state.editorCustomLetterSpacing);
+  const setCustom = useSettingsStore((state) => state.setEditorCustomLetterSpacing);
+  const optionLabel = (option: EditorLetterSpacing) => {
+    if (option === "normal") return t(($) => $.settings.appearance.editor.letterSpacing.options.normal);
+    if (option === "custom") return t(($) => $.settings.appearance.editor.letterSpacing.options.custom);
+    return t(($) => $.settings.appearance.editor.letterSpacing.option, {
+      value: formatNumber(EDITOR_LETTER_SPACINGS[option]),
+    });
+  };
+
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <Select value={letterSpacing} onValueChange={(value) => setLetterSpacing(value as EditorLetterSpacing)}>
+        <SelectTrigger className="w-[168px]" data-testid="settings-editor-letter-spacing-trigger">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="z-[100]">
+          {EDITOR_LETTER_SPACING_OPTIONS.map((option) => (
+            <SelectItem key={option} value={option}>
+              {optionLabel(option)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {letterSpacing === "custom" ? (
+        <CustomNumberInput
+          value={custom}
+          onCommit={setCustom}
+          range={EDITOR_CUSTOM_LETTER_SPACING}
+          clamp={clampEditorLetterSpacing}
+          ariaLabel={t(($) => $.settings.appearance.editor.letterSpacing.customLabel)}
+          testId="settings-editor-letter-spacing-custom"
+        />
+      ) : null}
     </div>
   );
 }
@@ -304,12 +612,8 @@ function EditorAppearanceTab() {
   const setEditorGhostCompletion = useSettingsStore(
     (state) => state.setEditorGhostCompletion,
   );
-  const editorNonBlinkingCursor = useSettingsStore(
-    (state) => state.editorNonBlinkingCursor,
-  );
-  const setEditorNonBlinkingCursor = useSettingsStore(
-    (state) => state.setEditorNonBlinkingCursor,
-  );
+  const editorCursorBlinking = useSettingsStore((state) => state.editorCursorBlinking);
+  const setEditorCursorBlinking = useSettingsStore((state) => state.setEditorCursorBlinking);
   const editorMathPreview = useSettingsStore((state) => state.editorMathPreview);
   const setEditorMathPreview = useSettingsStore(
     (state) => state.setEditorMathPreview,
@@ -318,91 +622,96 @@ function EditorAppearanceTab() {
   const setEditorStickyScroll = useSettingsStore(
     (state) => state.setEditorStickyScroll,
   );
-  const editorFontSize = useSettingsStore((state) => state.editorFontSize);
-  const setEditorFontSize = useSettingsStore((state) => state.setEditorFontSize);
+  const editorUsesAppFont = useSettingsStore((state) => state.editorUsesAppFont);
+  const setEditorUsesAppFont = useSettingsStore((state) => state.setEditorUsesAppFont);
+  const followsAppFont = t(($) => $.settings.appearance.editor.useAppFont.disabledHint);
+  const editorCustomLineHeight = useSettingsStore((state) => state.editorCustomLineHeight);
+  const setEditorCustomLineHeight = useSettingsStore((state) => state.setEditorCustomLineHeight);
   const editorFontFamily = useSettingsStore((state) => state.editorFontFamily);
   const setEditorFontFamily = useSettingsStore((state) => state.setEditorFontFamily);
-  const editorTheme = useSettingsStore((state) => state.editorTheme);
+  const editorCursorWidth = useSettingsStore((state) => state.editorCursorWidth);
+  const setEditorCursorWidth = useSettingsStore((state) => state.setEditorCursorWidth);
+  const editorCursorHeight = useSettingsStore((state) => state.editorCursorHeight);
+  const setEditorCursorHeight = useSettingsStore((state) => state.setEditorCursorHeight);
+  const editorHighlightCurrentLine = useSettingsStore((state) => state.editorHighlightCurrentLine);
+  const setEditorHighlightCurrentLine = useSettingsStore(
+    (state) => state.setEditorHighlightCurrentLine,
+  );
+  const editorThemeLight = useSettingsStore((state) => state.editorThemeLight);
+  const editorThemeDark = useSettingsStore((state) => state.editorThemeDark);
   const setEditorTheme = useSettingsStore((state) => state.setEditorTheme);
+  const editorThemes: Readonly<Record<Theme, EditorThemeId>> = {
+    light: editorThemeLight,
+    dark: editorThemeDark,
+  };
+  const fileMoveReferences = useSettingsStore((state) => state.fileMoveReferences);
+  const setFileMoveReferences = useSettingsStore((state) => state.setFileMoveReferences);
 
   return (
     <div className="space-y-3">
+      <SettingsToggleRow
+        testId="settings-row-editor-use-app-font"
+        label={t(($) => $.settings.appearance.editor.useAppFont.label)}
+        description={t(($) => $.settings.appearance.editor.useAppFont.description)}
+        checked={editorUsesAppFont}
+        onChange={setEditorUsesAppFont}
+      />
+
       <SettingsRow
         testId="settings-row-editor-font-size"
         label={t(($) => $.settings.appearance.editor.fontSize.label)}
         description={t(($) => $.settings.appearance.editor.fontSize.description)}
         control={
-          <Select
-            value={String(editorFontSize)}
-            onValueChange={(value) => setEditorFontSize(Number(value))}
-          >
-            <SelectTrigger className="w-[88px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {[11, 12, 13, 14, 15, 16, 18, 20].map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {t(($) => $.settings.appearance.fontSizeOption, { size })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <DisabledHint disabled={editorUsesAppFont} hint={followsAppFont}>
+            <EditorFontSizeControl disabled={editorUsesAppFont} />
+          </DisabledHint>
         }
       />
 
-      <SettingsRow
+      <SystemFontSettingsRow
         testId="settings-row-editor-font"
+        id="settings-editor-font"
+        use="editor"
         label={t(($) => $.settings.appearance.editor.font.label)}
         description={t(($) => $.settings.appearance.editor.font.description)}
-        control={
-          <Select
-            value={editorFontFamily || "__default__"}
-            onValueChange={(value) =>
-              setEditorFontFamily(value === "__default__" ? "" : value)
-            }
-          >
-            <SelectTrigger className="w-[168px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {EDITOR_FONTS.map((font) => (
-                <SelectItem
-                  key={font.name}
-                  value={font.value || "__default__"}
-                >
-                  {font.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
+        value={editorFontFamily}
+        onChange={setEditorFontFamily}
+        disabled={editorUsesAppFont}
+        disabledHint={followsAppFont}
       />
 
-      <SettingsRow
-        testId="settings-row-editor-theme"
-        label={t(($) => $.settings.appearance.editor.theme.label)}
-        description={t(($) => $.settings.appearance.editor.theme.description)}
-        control={
-          <Select
-            value={editorTheme}
-            onValueChange={(value) => setEditorTheme(value as typeof editorTheme)}
-          >
-            <SelectTrigger className="w-[168px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {EDITOR_THEMES.map((editorThemeOption) => (
-                <SelectItem
-                  key={editorThemeOption.id}
-                  value={editorThemeOption.id}
-                >
-                  {editorThemeOption.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
-      />
+      {THEME_MODES.map((mode) => (
+        <SettingsRow
+          key={mode}
+          testId={`settings-row-editor-theme-${mode}`}
+          label={t(($) => $.settings.appearance.editor.theme[mode].label)}
+          description={t(($) => $.settings.appearance.editor.theme[mode].description)}
+          control={
+            <Select
+              value={editorThemes[mode]}
+              onValueChange={(value) => {
+                if (isEditorThemeId(value)) setEditorTheme(mode, value);
+              }}
+            >
+              <SelectTrigger className="w-[168px]" data-testid={`settings-editor-theme-${mode}-trigger`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                {EDITOR_THEMES.map((editorThemeOption) => (
+                  <SelectItem
+                    key={editorThemeOption.id}
+                    value={editorThemeOption.id}
+                  >
+                    {editorThemeOption.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
+      ))}
+
+      <EditorColors />
 
       <SettingsRow
         testId="settings-row-editor-keymap"
@@ -455,17 +764,59 @@ function EditorAppearanceTab() {
         label={t(($) => $.settings.appearance.editor.lineHeight.label)}
         description={t(($) => $.settings.appearance.editor.lineHeight.description)}
         control={
+          <div className="flex shrink-0 items-center gap-2">
+            <Select
+              value={editorLineHeight}
+              onValueChange={(value) => setEditorLineHeight(value as typeof editorLineHeight)}
+            >
+              <SelectTrigger className="w-[168px]" data-testid="settings-editor-line-height-trigger">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                {EDITOR_LINE_HEIGHT_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {t(($) => $.settings.appearance.editor.lineHeight.options[option])}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {editorLineHeight === "custom" ? (
+              <CustomNumberInput
+                value={editorCustomLineHeight}
+                onCommit={setEditorCustomLineHeight}
+                range={EDITOR_CUSTOM_LINE_HEIGHT}
+                clamp={clampEditorLineHeight}
+                ariaLabel={t(($) => $.settings.appearance.editor.lineHeight.customLabel)}
+                testId="settings-editor-line-height-custom"
+              />
+            ) : null}
+          </div>
+        }
+      />
+
+      <SettingsRow
+        testId="settings-row-editor-letter-spacing"
+        label={t(($) => $.settings.appearance.editor.letterSpacing.label)}
+        description={t(($) => $.settings.appearance.editor.letterSpacing.description)}
+        control={<EditorLetterSpacingControl />}
+      />
+
+      <SettingsRow
+        testId="settings-row-editor-cursor-width"
+        label={t(($) => $.settings.appearance.editor.cursorWidth.label)}
+        description={t(($) => $.settings.appearance.editor.cursorWidth.description)}
+        control={
           <Select
-            value={editorLineHeight}
-            onValueChange={(value) => setEditorLineHeight(value as typeof editorLineHeight)}
+            value={String(editorCursorWidth)}
+            onValueChange={(value) => setEditorCursorWidth(Number(value))}
           >
-            <SelectTrigger className="w-[168px]" data-testid="settings-editor-line-height-trigger">
+            <SelectTrigger className="w-[88px]" data-testid="settings-editor-cursor-width-trigger">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="z-[100]">
-              {EDITOR_LINE_HEIGHT_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {t(($) => $.settings.appearance.editor.lineHeight.options[option])}
+              {EDITOR_CURSOR_WIDTHS.map((width) => (
+                <SelectItem key={width} value={String(width)}>
+                  {t(($) => $.settings.appearance.editor.cursorWidth.option, { width })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -473,11 +824,65 @@ function EditorAppearanceTab() {
         }
       />
 
+      <SettingsRow
+        testId="settings-row-editor-cursor-height"
+        label={t(($) => $.settings.appearance.editor.cursorHeight.label)}
+        description={t(($) => $.settings.appearance.editor.cursorHeight.description)}
+        control={
+          <Select
+            value={editorCursorHeight}
+            onValueChange={(value) => setEditorCursorHeight(value as EditorCursorHeight)}
+          >
+            <SelectTrigger className="w-[112px]" data-testid="settings-editor-cursor-height-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {EDITOR_CURSOR_HEIGHTS.map((height) => (
+                <SelectItem key={height} value={height}>
+                  {t(($) => $.settings.appearance.editor.cursorHeight.options[height])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+
+      <SettingsRow
+        testId="settings-row-editor-cursor-blinking"
+        label={t(($) => $.settings.appearance.editor.cursorBlinking.label)}
+        description={t(($) => $.settings.appearance.editor.cursorBlinking.description)}
+        control={
+          <Select
+            value={editorCursorBlinking}
+            onValueChange={(value) => setEditorCursorBlinking(value as EditorCursorBlinking)}
+          >
+            <SelectTrigger className="w-[168px]" data-testid="settings-editor-cursor-blinking-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {EDITOR_CURSOR_BLINKING.map((style) => (
+                <SelectItem key={style} value={style}>
+                  {t(($) => $.settings.appearance.editor.cursorBlinking.options[style])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+
+      <EditorCursorColorRow />
+
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.lineWrap.label)}
         description={t(($) => $.settings.appearance.editor.lineWrap.description)}
         checked={editorLineWrap}
         onChange={setEditorLineWrap}
+      />
+      <SettingsToggleRow
+        label={t(($) => $.settings.appearance.editor.highlightCurrentLine.label)}
+        description={t(($) => $.settings.appearance.editor.highlightCurrentLine.description)}
+        checked={editorHighlightCurrentLine}
+        onChange={setEditorHighlightCurrentLine}
       />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.autocomplete.label)}
@@ -510,12 +915,6 @@ function EditorAppearanceTab() {
         onChange={setEditorGhostCompletion}
       />
       <SettingsToggleRow
-        label={t(($) => $.settings.appearance.editor.nonBlinkingCursor.label)}
-        description={t(($) => $.settings.appearance.editor.nonBlinkingCursor.description)}
-        checked={editorNonBlinkingCursor}
-        onChange={setEditorNonBlinkingCursor}
-      />
-      <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.stickyScroll.label)}
         description={t(($) => $.settings.appearance.editor.stickyScroll.description)}
         checked={editorStickyScroll}
@@ -526,6 +925,28 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.mathPreview.description)}
         checked={editorMathPreview}
         onChange={setEditorMathPreview}
+      />
+      <SettingsRow
+        testId="settings-row-file-move-references"
+        label={t(($) => $.settings.appearance.editor.fileMove.label)}
+        description={t(($) => $.settings.appearance.editor.fileMove.description)}
+        control={
+          <Select
+            value={fileMoveReferences}
+            onValueChange={(value) => setFileMoveReferences(value as FileMoveReferences)}
+          >
+            <SelectTrigger className="w-[168px]" data-testid="settings-file-move-references-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {FILE_MOVE_REFERENCE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {t(($) => $.settings.appearance.editor.fileMove.options[option])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
       />
       <TypstEditorSettings />
     </div>
@@ -878,44 +1299,45 @@ function TerminalAppearanceTab() {
             ? t(($) => $.settings.appearance.terminal.colors.followingAppTheme)
             : t(($) => $.settings.appearance.terminal.colors.description)}
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>{t(($) => $.settings.appearance.terminal.colors.background)}</span>
-            <input
-              type="color"
-              aria-label={t(
-                ($) => $.settings.appearance.terminal.colors.backgroundAriaLabel,
-              )}
-              disabled={followsAppTheme}
-              value={terminalBackground}
-              onChange={(event) => setTerminalBackground(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-            />
-          </label>
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>{t(($) => $.settings.appearance.terminal.colors.foreground)}</span>
-            <input
-              type="color"
-              aria-label={t(
-                ($) => $.settings.appearance.terminal.colors.foregroundAriaLabel,
-              )}
-              disabled={followsAppTheme}
-              value={terminalForeground}
-              onChange={(event) => setTerminalForeground(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-            />
-          </label>
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>{t(($) => $.settings.appearance.terminal.colors.cursor)}</span>
-            <input
-              type="color"
-              aria-label={t(($) => $.settings.appearance.terminal.colors.cursorAriaLabel)}
-              disabled={followsAppTheme}
-              value={terminalCursorColor}
-              onChange={(event) => setTerminalCursorColor(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-            />
-          </label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            {
+              id: "background",
+              label: t(($) => $.settings.appearance.terminal.colors.background),
+              ariaLabel: t(($) => $.settings.appearance.terminal.colors.backgroundAriaLabel),
+              value: terminalBackground,
+              onChange: setTerminalBackground,
+            },
+            {
+              id: "foreground",
+              label: t(($) => $.settings.appearance.terminal.colors.foreground),
+              ariaLabel: t(($) => $.settings.appearance.terminal.colors.foregroundAriaLabel),
+              value: terminalForeground,
+              onChange: setTerminalForeground,
+            },
+            {
+              id: "cursor",
+              label: t(($) => $.settings.appearance.terminal.colors.cursor),
+              ariaLabel: t(($) => $.settings.appearance.terminal.colors.cursorAriaLabel),
+              value: terminalCursorColor,
+              onChange: setTerminalCursorColor,
+            },
+          ].map((field) => (
+            <div key={field.id} className="flex items-center gap-2 text-xs">
+              <DisabledHint
+                disabled={followsAppTheme}
+                hint={t(($) => $.settings.appearance.terminal.colors.followingAppTheme)}
+              >
+                <ColorPicker
+                  ariaLabel={field.ariaLabel}
+                  disabled={followsAppTheme}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </DisabledHint>
+              <span>{field.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -1016,10 +1438,6 @@ function PdfPreviewTab() {
   const { t } = useTranslation(["common", "settings"]);
   const pdfDarkMode = useSettingsStore((state) => state.pdfDarkMode);
   const setPdfDarkMode = useSettingsStore((state) => state.setPdfDarkMode);
-  const pdfZoomShortcuts = useSettingsStore((state) => state.pdfZoomShortcuts);
-  const setPdfZoomShortcuts = useSettingsStore(
-    (state) => state.setPdfZoomShortcuts,
-  );
   const hoverPreview = useSettingsStore((state) => state.hoverPreview);
   const setHoverPreview = useSettingsStore((state) => state.setHoverPreview);
 
@@ -1030,12 +1448,6 @@ function PdfPreviewTab() {
         description={t(($) => $.settings.appearance.preview.darkMode.description)}
         checked={pdfDarkMode}
         onChange={setPdfDarkMode}
-      />
-      <SettingsToggleRow
-        label={t(($) => $.settings.appearance.preview.zoomShortcuts.label)}
-        description={t(($) => $.settings.appearance.preview.zoomShortcuts.description)}
-        checked={pdfZoomShortcuts}
-        onChange={setPdfZoomShortcuts}
       />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.preview.hoverPreview.label)}
@@ -1065,6 +1477,7 @@ function FileManagementTab() {
     (state) => state.removeHiddenFilePattern,
   );
   const [pattern, setPattern] = useState("");
+  const [hiddenFilesOpen, setHiddenFilesOpen] = useState(false);
 
   const submitPattern = (event: FormEvent) => {
     event.preventDefault();
@@ -1135,15 +1548,37 @@ function FileManagementTab() {
         onChange={setOpenInTree}
       />
 
-      <section className="rounded-lg border bg-card p-4" aria-labelledby="hidden-files-heading">
-        <h3 id="hidden-files-heading" className="text-sm font-medium">
-          {t(($) => $.settings.appearance.files.hidden.title)}
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.files.hidden.description)}
-        </p>
+      <ZenModeSettings />
 
-        <form onSubmit={submitPattern} className="mt-4 flex gap-2">
+      <section className="overflow-hidden rounded-lg border bg-card" aria-labelledby="hidden-files-heading">
+        <button
+          type="button"
+          aria-expanded={hiddenFilesOpen}
+          aria-controls={hiddenFilesOpen ? "hidden-files-panel" : undefined}
+          data-testid="hidden-files-toggle"
+          onClick={() => setHiddenFilesOpen((open) => !open)}
+          className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-accent/40 focus-visible:bg-accent/60"
+        >
+          <span className="min-w-0 flex-1">
+            <span id="hidden-files-heading" className="block text-sm font-medium">
+              {t(($) => $.settings.appearance.files.hidden.title)}
+            </span>
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {t(($) => $.settings.appearance.files.hidden.description)}
+            </span>
+          </span>
+          <ChevronRight
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
+              hiddenFilesOpen && "rotate-90",
+            )}
+          />
+        </button>
+
+        {hiddenFilesOpen && (
+        <div id="hidden-files-panel" className="border-t p-4">
+        <form onSubmit={submitPattern} className="flex gap-2">
           <Input
             value={pattern}
             onChange={(event) => setPattern(event.target.value)}
@@ -1187,6 +1622,8 @@ function FileManagementTab() {
             </div>
           ))}
         </div>
+        </div>
+        )}
       </section>
     </div>
   );
@@ -1215,6 +1652,7 @@ export function AppearanceSection() {
     sectionDiffersFromDefaults("appearance", state),
   );
   const { preference, setPreference } = useTheme();
+  const themeCustomized = useThemeCustomized();
   return (
     <div className="space-y-4">
       <Tabs
@@ -1256,9 +1694,11 @@ export function AppearanceSection() {
         sectionName={t(($) => $.settings.appearance.sectionName)}
         onReset={() => {
           resetAppearancePreferences();
+          resetThemeCustomization();
+          applyTheme(currentTheme());
           setPreference("system");
         }}
-        changed={appearanceChanged || preference !== "system"}
+        changed={appearanceChanged || preference !== "system" || themeCustomized}
       />
     </div>
   );

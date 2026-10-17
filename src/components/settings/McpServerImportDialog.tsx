@@ -224,7 +224,7 @@ export function McpServerImportDialog({
             <p
               key={source}
               role="alert"
-              className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              className="select-text rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
             >
               {t(($) => $.settings.mcp.import.sourceError, {
                 source: SOURCE_LABELS[source],
@@ -353,7 +353,7 @@ export function McpServerImportDialog({
         {importError ? (
           <p
             role="alert"
-            className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            className="select-text rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             {importError}
           </p>

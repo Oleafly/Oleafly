@@ -12,7 +12,7 @@ const STATE_TEXT: Record<StateSize, { title: string; description: string; body: 
   },
   compact: {
     title: "text-xs font-medium",
-    description: "mt-1 text-[11px] text-muted-foreground",
+    description: "mt-1 text-[0.6875rem] text-muted-foreground",
     body: "text-xs",
   },
 };
@@ -90,7 +90,7 @@ export function ErrorState({
 }>) {
   return (
     <div role="alert" className={cn("flex flex-col items-start gap-3", className)}>
-      <p className={cn("text-destructive", STATE_TEXT[size].body)}>{message}</p>
+      <p className={cn("select-text text-destructive", STATE_TEXT[size].body)}>{message}</p>
       {children}
     </div>
   );

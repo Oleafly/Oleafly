@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,9 @@ export function SettingsToggleRow({
   onChange,
   ariaLabel,
   testId,
+  adornment,
+  icon,
+  disabled = false,
 }: Readonly<{
   label: string;
   description?: string;
@@ -34,24 +38,36 @@ export function SettingsToggleRow({
   onChange: (value: boolean) => void;
   ariaLabel?: string;
   testId?: string;
+  adornment?: ReactNode;
+  icon?: ReactNode;
+  disabled?: boolean;
 }>) {
   return (
     <SettingsRow
       role="switch"
       aria-checked={checked}
+      aria-disabled={disabled || undefined}
       aria-label={ariaLabel ?? label}
-      tabIndex={0}
+      tabIndex={disabled ? -1 : 0}
       testId={testId}
-      onClick={() => onChange(!checked)}
+      onClick={disabled ? undefined : () => onChange(!checked)}
       onKeyDown={(event) => {
+        if (disabled) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onChange(!checked);
         }
       }}
-      className="cursor-pointer transition-colors hover:bg-accent focus-visible:border-ring focus-visible:bg-accent"
+      className={cn(
+        "transition-colors",
+        disabled
+          ? "cursor-not-allowed opacity-60"
+          : "cursor-pointer hover:bg-accent focus-visible:border-ring focus-visible:bg-accent",
+      )}
       label={label}
       description={description}
+      adornment={adornment}
+      icon={icon}
       control={<SettingsSwitchIndicator checked={checked} />}
     />
   );

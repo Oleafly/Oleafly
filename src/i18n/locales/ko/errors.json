@@ -36,7 +36,12 @@
     "not_removable": "원래 위치에서 연 폴더만 Oleafly에서 제거할 수 있습니다.",
     "trash_unavailable": "Oleafly가 {{path}}을(를) 휴지통으로 이동하지 못했습니다. 이 드라이브에 휴지통이 없을 수 있습니다.",
     "linked_replace_folder": "{{path}}은(는) 폴더이므로 Oleafly가 대체하지 않습니다. 먼저 옮기거나 이름을 바꾸세요.",
-    "folder_read_only": "{{name}} 또는 해당 폴더가 읽기 전용이라 Oleafly가 이 변경을 적용할 수 없습니다. 열어 둔 폴더를 라이브러리로 복사해 그곳에서 편집하세요."
+    "folder_read_only": "{{name}} 또는 해당 폴더가 읽기 전용이라 Oleafly가 이 변경을 적용할 수 없습니다. 열어 둔 폴더를 라이브러리로 복사해 그곳에서 편집하세요.",
+    "shared_settings_viewer": "뷰어는 공유 프로젝트의 설정을 변경할 수 없습니다."
+  },
+  "template": {
+    "name_required": "템플릿 이름을 입력하세요.",
+    "folder_holds_templates": "이 폴더에는 Oleafly 자체 템플릿이 들어 있습니다. 대신 템플릿 폴더를 선택하세요."
   },
   "settings": {
     "locale_unsupported": "{{locale}} 언어는 사용할 수 없습니다."
@@ -56,7 +61,11 @@
     "unreachable": "Oleafly가 Zotero에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요.",
     "http_error": "Zotero가 오류를 반환했습니다(HTTP {{status}}). 나중에 다시 시도하세요.",
     "invalid_response": "Zotero가 Oleafly가 읽을 수 없는 응답을 보냈습니다. 나중에 다시 시도하세요.",
-    "too_large": "Zotero 라이브러리가 너무 커서 한 번에 가져올 수 없습니다. 대신 Zotero에서 컬렉션을 RDF 파일로 내보낸 뒤 그 파일을 가져오세요."
+    "too_large": "Zotero 라이브러리가 너무 커서 한 번에 가져올 수 없습니다. 대신 Zotero에서 컬렉션을 RDF 파일로 내보낸 뒤 그 파일을 가져오세요.",
+    "local_not_running": "이 컴퓨터에서 Zotero가 실행 중이 아닙니다. Zotero를 열거나 zotero.org 계정을 연결하세요.",
+    "local_api_disabled": "Zotero에서 설정 > 고급을 열고 \"Allow other applications on this computer to communicate with Zotero\"를 켜세요.",
+    "local_unsupported": "이 버전의 Zotero는 Oleafly와 라이브러리를 공유할 수 없습니다. Zotero 7 이상으로 업데이트하세요.",
+    "offline": "Oleafly가 오프라인 모드라서 zotero.org에 연결할 수 없습니다."
   },
   "tex": {
     "no_host_binary": "TinyTeX에 이 호스트와 호환되는 {{name}} 실행 파일이 없습니다.",
@@ -65,7 +74,8 @@
     "latexmk_network_folder": "latexmk는 네트워크 공유에 있는 폴더를 컴파일할 수 없습니다. 이 프로젝트를 Tectonic으로 전환하거나 폴더를 이 컴퓨터로 복사하세요.",
     "shell_escape_denied_minted": "minted가 코드를 강조 표시하려면 다른 프로그램을 실행해야 하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다.",
     "shell_escape_denied_pythontex": "PythonTeX가 Python을 실행해야 하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다.",
-    "shell_escape_denied_command": "이 문서는 shell 명령을 실행하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다."
+    "shell_escape_denied_command": "이 문서는 shell 명령을 실행하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다.",
+    "japanese_compiler_missing": "이 TeX 배포판에는 {{compiler}} 컴파일러가 설치되어 있지 않습니다. TeX Live나 TinyTeX에서는 tlmgr install collection-langjapanese로 추가할 수 있습니다. 다른 컴파일러를 선택해도 됩니다."
   },
   "export": {
     "bibliography_unreadable": "Oleafly에서 참고문헌 {{name}} 파일을 읽지 못했습니다. 깨진 항목이 있는지 확인한 뒤 다시 내보내세요."
@@ -181,5 +191,39 @@
     "failed": "Typst가 문서를 내보내지 못했습니다.",
     "unsupported": "이 Typst 버전으로는 이 설정으로 내보낼 수 없습니다.",
     "invalid_ppi": "1에서 {{max}} PPI 사이의 해상도를 고르세요."
+  },
+  "overleaf": {
+    "signed_out": "먼저 Overleaf에 로그인하세요.",
+    "session_expired": "Overleaf 로그인이 만료되었습니다. 계속하려면 다시 로그인하세요.",
+    "sign_in_cancelled": "Overleaf 로그인이 끝나기 전에 창이 닫혔습니다.",
+    "sign_in_failed": "Oleafly가 Overleaf 로그인을 확인하지 못했습니다. 다시 로그인해 보세요.",
+    "invalid_server": "\"{{server}}\"은(는) Oleafly가 사용할 수 있는 서버 주소가 아닙니다.",
+    "unreachable": "Oleafly가 {{server}}에 연결하지 못했습니다.",
+    "unrecognized": "Overleaf 프로젝트 페이지가 Oleafly가 예상한 모습과 다릅니다. Overleaf에서 프로젝트를 .zip으로 내려받은 뒤 대신 그 파일을 가져오세요.",
+    "project_unavailable": "이 프로젝트를 내려받지 못했습니다. 더 이상 접근 권한이 없을 수 있습니다.",
+    "not_an_archive": "Overleaf가 프로젝트 압축 파일이 아닌 다른 것을 보냈습니다.",
+    "too_large": "이 프로젝트는 가져오기 한도인 2 GB보다 큽니다.",
+    "rate_limited": "Overleaf가 Oleafly에 속도를 줄여 달라고 요청했습니다. 1분 기다린 뒤 다시 시도하세요.",
+    "sync_busy": "이 프로젝트는 이미 Overleaf와 동기화하는 중입니다.",
+    "sync_not_linked": "이 프로젝트는 Overleaf에 연결되어 있지 않습니다.",
+    "sync_needs_relink": "이 프로젝트의 동기화 사본이 없습니다. 동기화를 중지한 뒤 프로젝트를 다시 연결하세요.",
+    "sync_already_linked": "이 프로젝트는 이미 다른 Overleaf 프로젝트에 연결되어 있습니다. 먼저 동기화를 중지하세요.",
+    "sync_offline": "Oleafly가 Overleaf에 연결하지 못했습니다. 변경 내용은 여기에 안전하게 남아 있으며 다음에 동기화됩니다.",
+    "sync_failed": "Overleaf와의 동기화가 끝나지 않았습니다. 여기 있는 파일은 바뀌지 않았습니다.",
+    "sync_kept_changing": "동기화하는 동안 Overleaf에서 프로젝트가 계속 바뀌었습니다. 잠시 후 다시 시도하세요.",
+    "sync_case_clash": "Overleaf에 이름이 대소문자만 다른 파일이 있습니다({{files}}). Overleaf에서 그중 하나의 이름을 바꾼 뒤 다시 동기화하세요.",
+    "sync_invalid_names": "Overleaf의 일부 파일 이름은 이 컴퓨터에 저장할 수 없습니다({{files}}). Overleaf에서 이름을 바꾼 뒤 다시 동기화하세요.",
+    "sync_file_too_large": "{{file}}은(는) Overleaf가 파일 하나에 허용하는 50 MB보다 큽니다.",
+    "sync_too_large": "이 프로젝트는 너무 커서 동기화할 수 없습니다. 한도는 파일 5,000개 또는 2 GB입니다.",
+    "sync_path_blocked": "같은 이름의 폴더가 있어 {{file}}을(를) 여기에 쓸 수 없습니다.",
+    "git_token_missing": "이 프로젝트를 동기화하려면 Overleaf Git 토큰을 추가하세요.",
+    "git_token_invalid": "Overleaf Git 토큰이 아닌 것 같습니다. 토큰 전체를 복사한 뒤 다시 시도하세요.",
+    "git_token_rejected": "Overleaf가 Git 토큰을 받아들이지 않았습니다. 만료되었을 수 있습니다. Overleaf 계정 설정에서 새 토큰을 만드세요.",
+    "git_unavailable": "이 프로젝트에서는 Overleaf의 Git 연동을 사용할 수 없습니다. 프로젝트 소유자에게 유료 요금제나 대학 요금제가 필요합니다.",
+    "template_link_invalid": "이 링크는 Overleaf 템플릿 페이지가 아닙니다. overleaf.com/latex/templates에 있는 페이지의 주소를 복사한 뒤 다시 시도하세요.",
+    "template_unavailable": "Oleafly가 이 템플릿을 열지 못했습니다. Overleaf 갤러리에서 삭제되었을 수 있습니다."
+  },
+  "collab": {
+    "turned_off": "실시간 공동 작업이 꺼져 있습니다. 설정의 실험 기능에서 켜세요."
   }
 }

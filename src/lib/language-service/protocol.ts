@@ -36,8 +36,10 @@ export interface TextDocumentPositionParams {
   position: Position;
 }
 
+export type CompletionTriggerKind = 1 | 2 | 3;
+
 export interface CompletionContext {
-  triggerKind: 1 | 2 | 3;
+  triggerKind: CompletionTriggerKind;
   triggerCharacter?: string;
 }
 
@@ -167,6 +169,15 @@ export interface DidCloseTextDocumentParams {
 export interface DidSaveTextDocumentParams {
   textDocument: TextDocumentIdentifier;
   text?: string;
+}
+
+export interface FileEvent {
+  uri: DocumentUri;
+  type: 1 | 2 | 3;
+}
+
+export interface DidChangeWatchedFilesParams {
+  changes: FileEvent[];
 }
 
 export interface Diagnostic {

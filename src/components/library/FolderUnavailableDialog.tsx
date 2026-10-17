@@ -28,7 +28,7 @@ type FolderCopy = { title: string; body: ReactNode };
 const PATH_BADGE = {
   components: {
     path: (
-      <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground break-all box-decoration-clone" />
+      <span className="select-text rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground break-all box-decoration-clone" />
     ),
   },
   tOptions: { interpolation: { escapeValue: true } },

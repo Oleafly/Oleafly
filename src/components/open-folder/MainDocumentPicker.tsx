@@ -85,7 +85,7 @@ function CandidateRow({
               {badge}
             </Badge>
           ) : null}
-          <span className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          <span className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[0.625rem] text-muted-foreground">
             {documentKindLabel(candidate.kind)}
           </span>
         </span>
@@ -93,7 +93,7 @@ function CandidateRow({
           <span className="block truncate text-xs text-foreground/80">{candidate.title}</span>
         ) : null}
         {reason ? (
-          <span className="block truncate text-[11px] text-muted-foreground">{reason}</span>
+          <span className="block truncate text-[0.6875rem] text-muted-foreground">{reason}</span>
         ) : null}
       </span>
     </label>
@@ -268,7 +268,7 @@ export function MainDocumentPicker() {
         </DialogHeader>
         {renderBody()}
         {detection?.truncated ? (
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
             {t(($) => $.shell.openedFolder.picker.truncated)}
           </p>
         ) : null}

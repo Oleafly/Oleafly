@@ -1,10 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   Download,
   FileText,
+  FileUp,
   FolderInput,
   Hash,
   Search,
@@ -35,6 +47,7 @@ const CATEGORY_ORDER = [
 const CATEGORY_KEYS: Record<string, { label: TemplatesMessageKey; full?: TemplatesMessageKey }> = {
   All: { label: "category.all" },
   "AI Generated": { label: "category.aiGenerated" },
+  Custom: { label: "category.custom" },
   Blank: { label: "category.blank" },
   "Diagrams & Figures": { label: "category.diagrams", full: "category.diagramsFull" },
   "CVs & Resumes": { label: "category.resume", full: "category.resumeFull" },
@@ -102,30 +115,44 @@ function nameHint(template: TemplateInfo | null, t: TemplatesTranslator): string
   return key ? t(key) : t("nameHint.default");
 }
 
-// "All" first, then AI Generated, then the curated order, then anything new
-// alphabetically so an unrecognised category still lands somewhere sensible.
+// The person's own templates lead: the ones they made, then AI-generated ones.
+const PERSONAL_CATEGORIES = ["Custom", "AI Generated"];
+
+// "All" first, then the person's own categories, then the curated order, then
+// anything new alphabetically so an unrecognised category still lands
+// somewhere sensible.
 export function orderedCategories(
   templates: readonly Pick<TemplateInfo, "category">[],
 ): string[] {
   const present = new Set(templates.map((t) => t.category || "Other"));
   const ordered = CATEGORY_ORDER.filter(
-    (c) => present.has(c) && c !== "AI Generated",
+    (c) => present.has(c) && !PERSONAL_CATEGORIES.includes(c),
   );
   const rest = [...present]
-    .filter((c) => !CATEGORY_ORDER.includes(c) && c !== "AI Generated")
+    .filter((c) => !CATEGORY_ORDER.includes(c) && !PERSONAL_CATEGORIES.includes(c))
     .sort((a, b) => a.localeCompare(b));
   return [
     "All",
-    ...(present.has("AI Generated") ? ["AI Generated"] : []),
+    ...PERSONAL_CATEGORIES.filter((c) => present.has(c)),
     ...ordered,
     ...rest,
   ];
 }
 
+const TEX_FLAVOR_LABELS: Record<string, string> = {
+  pdflatex: "pdfLaTeX",
+  xelatex: "XeLaTeX",
+  lualatex: "LuaLaTeX",
+  uplatex: "upLaTeX",
+  platex: "pLaTeX",
+};
+
 export function compilerLabel(template: TemplateInfo, t: TemplatesTranslator): string {
   if (template.document_engine === "unknown") return t("compiler.unknown");
   if (template.document_engine === "typst") return "Typst";
   if (template.document_engine === "markdown") return "Pandoc";
+  const pinned = template.tex_flavor ? TEX_FLAVOR_LABELS[template.tex_flavor] : undefined;
+  if (pinned) return pinned;
   return template.engine === "luatex" ? "LuaLaTeX" : "Tectonic";
 }
 export function wrappedModalFocus(
@@ -139,31 +166,81 @@ export function wrappedModalFocus(
   return null;
 }
 
-// Cache preview data URIs so switching steps or categories doesn't refetch.
+export const PREVIEW_CACHE_LIMIT = 200;
 const previewCache = new Map<string, string | null>();
+
+export function rememberPreview(id: string, uri: string | null): void {
+  previewCache.delete(id);
+  previewCache.set(id, uri);
+  while (previewCache.size > PREVIEW_CACHE_LIMIT) {
+    const oldest = previewCache.keys().next().value;
+    if (oldest === undefined) break;
+    previewCache.delete(oldest);
+  }
+}
+
+export function cachedPreview(id: string): string | null | undefined {
+  if (!previewCache.has(id)) return undefined;
+  const uri = previewCache.get(id) ?? null;
+  rememberPreview(id, uri);
+  return uri;
+}
+
+export function previewCacheSize(): number {
+  return previewCache.size;
+}
+
+export function clearPreviewCache(): void {
+  previewCache.clear();
+}
+
 function useTemplatePreview(t: TemplateInfo, host: TemplatesHost): string | null {
-  const [uri, setUri] = useState<string | null>(() => previewCache.get(t.id) ?? null);
+  const [uri, setUri] = useState<string | null>(() => (t.has_preview ? cachedPreview(t.id) ?? null : null));
   useEffect(() => {
     if (!t.has_preview) return;
-    if (previewCache.has(t.id)) {
-      setUri(previewCache.get(t.id) ?? null);
+    const cached = cachedPreview(t.id);
+    if (cached !== undefined) {
+      setUri(cached);
       return;
     }
     let alive = true;
     void host
       .loadPreview(t.id)
       .then((u) => {
-        previewCache.set(t.id, u);
+        rememberPreview(t.id, u);
         if (alive) setUri(u);
       })
       .catch(() => {
-        previewCache.set(t.id, null);
+        rememberPreview(t.id, null);
       });
     return () => {
       alive = false;
     };
   }, [t.id, t.has_preview, host]);
   return uri;
+}
+
+const WIDE_GRID_QUERY = "(min-width: 40rem)";
+const GRID_OVERSCAN_ROWS = 2;
+const GRID_UNMEASURED_ROWS = 4;
+
+function wideGridList(): MediaQueryList | null {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null;
+  return window.matchMedia(WIDE_GRID_QUERY);
+}
+
+function subscribeGridColumns(listener: () => void): () => void {
+  const list = wideGridList();
+  list?.addEventListener?.("change", listener);
+  return () => list?.removeEventListener?.("change", listener);
+}
+
+function gridColumnCount(): number {
+  return wideGridList()?.matches ? 4 : 3;
+}
+
+function useGridColumns(): number {
+  return useSyncExternalStore(subscribeGridColumns, gridColumnCount, () => 3);
 }
 
 interface TemplateFilters {
@@ -181,7 +258,7 @@ function matchesTemplateFilters(t: TemplateInfo, filters: TemplateFilters): bool
   if (filters.engine !== "all" && t.document_engine !== filters.engine) return false;
   if (
     filters.q &&
-    !`${t.name} ${t.description} ${t.category}`.toLowerCase().includes(filters.q)
+    !`${t.id} ${t.name} ${t.description} ${t.category}`.toLowerCase().includes(filters.q)
   ) {
     return false;
   }
@@ -226,6 +303,8 @@ function Preview({
       <img
         src={uri}
         alt={t("dialog.previewAlt", { name: template.name })}
+        loading="lazy"
+        decoding="async"
         className={cn(
           "h-full w-full bg-white",
           isFigure ? "object-contain p-3" : "object-cover object-top",
@@ -256,12 +335,12 @@ function Preview({
         <Icon className="size-6" />
       </div>
       <span
-        className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+        className="rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold uppercase tracking-wide"
         style={{ color: tint ?? "#737373", backgroundColor: tint ? `${tint}14` : "#f5f5f5" }}
       >
         {compilerLabel(template, t)}
       </span>
-      <span className="line-clamp-2 px-3 text-center text-[10px] font-medium text-neutral-500">
+      <span className="line-clamp-2 px-3 text-center text-[0.625rem] font-medium text-neutral-500">
         {template.name}
       </span>
     </div>
@@ -277,17 +356,114 @@ function AtsBadge({
 }>) {
   if (profile === "friendly")
     return (
-      <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+      <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[0.625rem] font-medium text-emerald-600 dark:text-emerald-400">
         {t("dialog.atsFriendly")}
       </span>
     );
   if (profile === "design-forward")
     return (
-      <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-500">
+      <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[0.625rem] font-medium text-amber-600 dark:text-amber-500">
         {t("dialog.designForward")}
       </span>
     );
   return null;
+}
+
+const TemplateCard = memo(function TemplateCard({
+  entry,
+  host,
+  t,
+  onChoose,
+}: Readonly<{
+  entry: TemplateInfo;
+  host: TemplatesHost;
+  t: TemplatesTranslator;
+  onChoose: (template: TemplateInfo) => void;
+}>) {
+  return (
+    <button
+      type="button"
+      data-row-window-item=""
+      data-tour="project-template-card"
+      data-testid={`template-card-${entry.id}`}
+      onClick={() => onChoose(entry)}
+      title={entry.description}
+      className="group flex flex-col pb-5 text-left"
+    >
+      <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:shadow-md group-focus-visible:border-primary">
+        <Preview template={entry} host={host} t={t} />
+        {(entry.category || "") === "AI Generated" && (
+          <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.5625rem] font-semibold text-white shadow-md">
+            <Sparkles className="size-2.5" /> {t("dialog.aiBadge")}
+          </span>
+        )}
+        {!entry.assets_ready && (
+          <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[0.5625rem] font-medium text-white backdrop-blur-sm">
+            <Download className="size-2.5" /> {t("dialog.setupBadge")}
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 px-0.5">
+        <span className="truncate text-xs font-medium leading-tight text-foreground">
+          {entry.name}
+        </span>
+        {entry.ats_profile === "friendly" && (
+          <span
+            className="size-1.5 shrink-0 rounded-full bg-emerald-500"
+            title={t("dialog.atsFriendly")}
+          />
+        )}
+      </div>
+      <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
+        <span className="text-[0.5625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
+          {compilerLabel(entry, t)}
+        </span>
+        {!entry.assets_ready && (
+          <span className="text-[0.5625rem] font-medium text-amber-600 dark:text-amber-400">
+            {t("dialog.needsSetup")}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+});
+
+function TemplateGrid({
+  templates,
+  scrollRef,
+  host,
+  kit,
+  onChoose,
+}: Readonly<{
+  templates: readonly TemplateInfo[];
+  scrollRef: RefObject<HTMLElement | null>;
+  host: TemplatesHost;
+  kit: TemplatesKit;
+  onChoose: (template: TemplateInfo) => void;
+}>) {
+  const { useRowWindow, t } = kit;
+  const listRef = useRef<HTMLDivElement>(null);
+  const columns = useGridColumns();
+  const rows = useRowWindow({
+    count: Math.ceil(templates.length / columns),
+    listRef,
+    scrollRef,
+    overscan: GRID_OVERSCAN_ROWS,
+    unmeasuredCount: GRID_UNMEASURED_ROWS,
+  });
+  const first = rows.start * columns;
+  return (
+    <div
+      ref={listRef}
+      data-testid="template-grid"
+      className="grid grid-cols-3 gap-x-4 sm:grid-cols-4"
+      style={{ paddingTop: rows.paddingTop, paddingBottom: rows.paddingBottom }}
+    >
+      {templates.slice(first, rows.end * columns).map((entry) => (
+        <TemplateCard key={entry.id} entry={entry} host={host} t={t} onChoose={onChoose} />
+      ))}
+    </div>
+  );
 }
 
 export function NewProjectDialog({
@@ -297,6 +473,7 @@ export function NewProjectDialog({
   onClose,
   onCreate,
   onGenerateWithAi,
+  onImportTemplate,
   importControl,
   onImportProject,
   onOpenTemplateDownloads,
@@ -307,6 +484,7 @@ export function NewProjectDialog({
   pickColor,
   allowEnterSubmit = true,
   allowClose = true,
+  initialTemplateId = null,
 }: Readonly<{
   open: boolean;
   templates: TemplateInfo[];
@@ -314,6 +492,8 @@ export function NewProjectDialog({
   onClose: () => void;
   onCreate: (name: string, templateId: string, color: string) => void | Promise<void>;
   onGenerateWithAi?: () => void;
+  /** Add a template of the person's own (a ZIP, a folder or a link). */
+  onImportTemplate?: () => void;
   /** App-owned import menu, used when multiple import sources are available. */
   importControl?: ReactNode;
   /** Backward-compatible single import action. */
@@ -326,6 +506,7 @@ export function NewProjectDialog({
   pickColor?: () => string;
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
+  initialTemplateId?: string | null;
 }>) {
   const { Button, Input, Tooltip, Select, t } = kit;
   const [step, setStep] = useState<1 | 2>(1);
@@ -382,6 +563,7 @@ export function NewProjectDialog({
   });
   const nameRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const modalIdRef = useRef(Symbol("new-project-dialog"));
@@ -404,6 +586,21 @@ export function NewProjectDialog({
       setSetup({ active: false, label: "" });
     }
   }, [open]);
+
+  const consumedInitialRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      consumedInitialRef.current = null;
+      return;
+    }
+    if (!initialTemplateId || consumedInitialRef.current === initialTemplateId) return;
+    const match = templates.find((candidate) => candidate.id === initialTemplateId);
+    if (!match) return;
+    consumedInitialRef.current = initialTemplateId;
+    setSelectedId(match.id);
+    setColor(swatchFor(match.default_color));
+    setStep(2);
+  }, [open, initialTemplateId, templates, swatchFor]);
 
   useEffect(() => {
     if (!open) return;
@@ -463,22 +660,32 @@ export function NewProjectDialog({
       matchesTemplateFilters(t, { category, atsOnly, offlineOnly, engine, q }),
     );
   }, [templates, search, category, atsOnly, offlineOnly, engine]);
+  const filterKey = JSON.stringify([search, category, atsOnly, offlineOnly, engine]);
+  const shownFilterKey = useRef(filterKey);
+  useLayoutEffect(() => {
+    if (shownFilterKey.current === filterKey) return;
+    shownFilterKey.current = filterKey;
+    if (gridRef.current) gridRef.current.scrollTop = 0;
+  }, [filterKey]);
 
   const selected = useMemo(
     () => templates.find((t) => t.id === selectedId) ?? null,
     [templates, selectedId],
   );
 
+  const choose = useCallback(
+    (template: TemplateInfo) => {
+      setSelectedId(template.id);
+      setColor(swatchFor(template.default_color));
+      setStep(2);
+    },
+    [swatchFor],
+  );
+
   if (!open) {
     createChordRef.current.enabled = false;
     return null;
   }
-
-  const choose = (t: TemplateInfo) => {
-    setSelectedId(t.id);
-    setColor(swatchFor(t.default_color));
-    setStep(2);
-  };
 
   const submit = async () => {
     if (!selected || setup.active) return;
@@ -529,7 +736,7 @@ export function NewProjectDialog({
             </span>
             <span
               className={cn(
-                "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                "shrink-0 rounded-full px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums",
                 category === c
                   ? "bg-accent-foreground/15 text-accent-foreground"
                   : "bg-muted text-muted-foreground",
@@ -559,6 +766,7 @@ export function NewProjectDialog({
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={searchRef}
+              data-testid="template-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("dialog.searchPlaceholder")}
@@ -610,6 +818,7 @@ export function NewProjectDialog({
         </div>
 
         <div
+          ref={gridRef}
           className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
           data-tour="project-template-list"
         >
@@ -636,54 +845,13 @@ export function NewProjectDialog({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4">
-              {filtered.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  data-tour="project-template-card"
-                  data-testid={`template-card-${entry.id}`}
-                  onClick={() => choose(entry)}
-                  title={entry.description}
-                  className="group flex flex-col text-left"
-                >
-                  <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:shadow-md group-focus-visible:border-primary">
-                    <Preview template={entry} host={host} t={t} />
-                    {(entry.category || "") === "AI Generated" && (
-                      <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
-                        <Sparkles className="size-2.5" /> {t("dialog.aiBadge")}
-                      </span>
-                    )}
-                    {!entry.assets_ready && (
-                      <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
-                        <Download className="size-2.5" /> {t("dialog.setupBadge")}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 flex items-center gap-1.5 px-0.5">
-                    <span className="truncate text-xs font-medium leading-tight text-foreground">
-                      {entry.name}
-                    </span>
-                    {entry.ats_profile === "friendly" && (
-                      <span
-                        className="size-1.5 shrink-0 rounded-full bg-emerald-500"
-                        title={t("dialog.atsFriendly")}
-                      />
-                    )}
-                  </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
-                    <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/70">
-                      {compilerLabel(entry, t)}
-                    </span>
-                    {!entry.assets_ready && (
-                      <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400">
-                        {t("dialog.needsSetup")}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
+            <TemplateGrid
+              templates={filtered}
+              scrollRef={gridRef}
+              host={host}
+              kit={kit}
+              onChoose={choose}
+            />
           )}
         </div>
       </div>
@@ -703,12 +871,12 @@ export function NewProjectDialog({
           </div>
           <div className="flex flex-wrap items-center gap-1">
             <AtsBadge profile={selected.ats_profile} t={t} />
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[0.625rem] font-medium text-muted-foreground">
               {compilerLabel(selected, t)}
             </span>
           </div>
           {selected.license && (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
               {selected.license.spdx}
               {selected.license.author ? ` · ${selected.license.author}` : ""}
             </p>
@@ -797,10 +965,10 @@ export function NewProjectDialog({
               {!working && <ArrowRight className="size-4" />}
               {!working && (
                 <span className="inline-flex items-center gap-1">
-                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[0.625rem] font-medium text-white">
                     {/Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl"}
                   </kbd>
-                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[0.625rem] font-medium text-white">
                     {"\u21B5"}
                   </kbd>
                 </span>
@@ -855,6 +1023,17 @@ export function NewProjectDialog({
                 onClick={onImportProject}
               >
                 <FolderInput className="size-3.5" /> {t("dialog.import")}
+              </Button>
+            )}
+            {step === 1 && onImportTemplate && (
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="import-template"
+                data-tour-hide
+                onClick={onImportTemplate}
+              >
+                <FileUp className="size-3.5" /> {t("dialog.importTemplate")}
               </Button>
             )}
             {step === 1 && onGenerateWithAi && (

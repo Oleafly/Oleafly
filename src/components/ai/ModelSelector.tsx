@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronDown, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { Tooltip } from "@/components/ui/tooltip";
 import { modelCapabilityChips } from "@/lib/ai-model-state";
 import type { ModelMetadata, ModelTrust } from "@/lib/tauri";
@@ -56,7 +57,7 @@ export function ModelTrustBadge({
   if (!trust) return null;
   const reachable = focusable && trust === "blocked";
   const shell = cn(
-    "inline-flex shrink-0 items-center rounded-full border px-1.5 py-px text-[10px] font-medium leading-none",
+    "inline-flex shrink-0 items-center rounded-full border px-1.5 py-px text-[0.625rem] font-medium leading-none",
     reachable && "focus-visible:border-ring",
     TRUST_CLASS[trust],
     className,
@@ -106,7 +107,7 @@ export function ModelCapabilityChips({
           data-testid={`ai-model-chip-${chip.id}`}
           title={chip.title}
           className={cn(
-            "inline-flex shrink-0 items-center rounded px-1 py-px text-[10px] leading-none",
+            "inline-flex shrink-0 items-center rounded px-1 py-px text-[0.625rem] leading-none",
             chip.id === "deprecated"
               ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
               : "bg-muted text-muted-foreground",
@@ -147,6 +148,7 @@ export function ModelSelector({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const [query, setQuery] = useState("");
+  const listRef = useScrollTopOnChange(query);
 
   const setOpen = (nextOpen: boolean) => {
     if (controlledOpen === undefined) setInternalOpen(nextOpen);
@@ -207,7 +209,7 @@ export function ModelSelector({
             className={cn(
               "ai-model-selector-trigger flex h-9 w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-ring",
               compact
-                ? "h-6 max-w-44 border-0 bg-transparent px-1.5 py-0 text-[10px] leading-none text-muted-foreground shadow-none hover:bg-accent hover:text-foreground"
+                ? "h-6 max-w-44 border-0 bg-transparent px-1.5 py-0 text-[0.625rem] leading-none text-muted-foreground shadow-none hover:bg-accent hover:text-foreground"
                 : "w-48",
               open && "bg-accent text-foreground",
               className,
@@ -254,11 +256,11 @@ export function ModelSelector({
               />
             </div>
 
-            <Command.List className="max-h-[min(50vh,20rem)] overflow-y-auto p-1.5">
+            <Command.List ref={listRef} className="max-h-[min(50vh,20rem)] overflow-y-auto p-1.5">
               {visibleGroups.length === 0 && (
                 <div className="px-4 py-8 text-center">
                   <p className="text-xs font-medium">{t(($) => $.ai.models.emptyTitle)}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p className="mt-1 text-[0.6875rem] text-muted-foreground">
                     {t(($) => $.ai.models.emptyHint)}
                   </p>
                 </div>
@@ -268,7 +270,7 @@ export function ModelSelector({
                 <Command.Group
                   key={group.id}
                   heading={group.name}
-                  className="px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+                  className="px-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
                 >
                   {group.models.map((model) => {
                     const selected =

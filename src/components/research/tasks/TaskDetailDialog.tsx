@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ExternalLink,
   FileDiff,
+  GitMerge,
   Paperclip,
   Trash2,
 } from "lucide-react";
@@ -75,6 +76,14 @@ function timestamp(value: number): string {
   return Number.isNaN(date.getTime()) ? "" : formatDateTime(date);
 }
 
+function changedSinceStart(preview: TaskFilePreview | undefined): boolean {
+  return preview?.baseIsCurrent === false;
+}
+
+function blocksApply(preview: TaskFilePreview | undefined): boolean {
+  return changedSinceStart(preview) && preview?.mergesWithShared !== true;
+}
+
 function isErrorMilestone(text: string, error: string | null): boolean {
   const value = text.trim();
   if (!value) return false;
@@ -97,7 +106,7 @@ function ReasoningRow({ text }: Readonly<{ text: string }>) {
         {t(($) => $.researchTools.tasks.detail.reasoning)}
       </button>
       {open ? (
-        <p className="mb-1 whitespace-pre-wrap break-words leading-relaxed">{text}</p>
+        <p className="mb-1 select-text whitespace-pre-wrap break-words leading-relaxed">{text}</p>
       ) : null}
     </div>
   );
@@ -235,7 +244,7 @@ export function TaskDetailDialog({
       const preview = await previewResearchTaskFile(task.id, path);
       if (activeTaskRun.current !== requestRunKey) return;
       setFilePreviews((current) => ({ ...current, [previewKey]: preview }));
-      if (preview.baseIsCurrent === false) {
+      if (blocksApply(preview)) {
         setSelectedPaths((current) => current.filter((candidate) => candidate !== path));
       }
     } catch (error_) {
@@ -272,7 +281,7 @@ export function TaskDetailDialog({
   const blocked = dependencies.some((dependency) => dependency.status !== "completed");
   const driftedPaths = changedFiles
     .map((change) => change.path)
-    .filter((path) => filePreviews[`${taskRunKey}:${path}`]?.baseIsCurrent === false);
+    .filter((path) => blocksApply(filePreviews[`${taskRunKey}:${path}`]));
   const usage = {
     inputTokens: timeline.usage.inputTokens ?? task.result?.inputTokens ?? null,
     outputTokens: timeline.usage.outputTokens ?? task.result?.outputTokens ?? null,
@@ -394,7 +403,7 @@ export function TaskDetailDialog({
     <>
   {task.sourceRevision ? (
     <section className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
-      <p className="break-all">
+      <p className="select-text break-all">
         <Trans
           ns="researchTools"
           i18nKey={($) => $.researchTools.tasks.detail.sourceRevision}
@@ -464,7 +473,8 @@ export function TaskDetailDialog({
       <div className="divide-y rounded-md border">
         {changedFiles.map((change) => {
           const preview = filePreviews[`${taskRunKey}:${change.path}`];
-          const drifted = preview?.baseIsCurrent === false;
+          const drifted = blocksApply(preview);
+          const merging = changedSinceStart(preview) && !drifted;
           return (
             <div key={change.path} className="p-3">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
@@ -504,6 +514,14 @@ export function TaskDetailDialog({
                   {previewButtonLabel(change.path, Boolean(preview))}
                 </Button>
               </div>
+              {merging ? (
+                <p className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+                  <GitMerge aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+                  <span className="min-w-0 break-words">
+                    {t(($) => $.researchTools.tasks.detail.mergesOnApply)}
+                  </span>
+                </p>
+              ) : null}
               {preview ? (
                 <div className="mt-3 overflow-hidden rounded-md border">
                   {preview.before.text !== null || preview.after.text !== null ? (
@@ -537,7 +555,7 @@ export function TaskDetailDialog({
         })}
       </div>
       {previewError ? (
-        <p role="alert" className="break-words text-xs text-destructive">
+        <p role="alert" className="select-text break-words text-xs text-destructive">
           {previewError}
         </p>
       ) : null}
@@ -626,7 +644,7 @@ export function TaskDetailDialog({
                 {artifactPreview.artifact.label}
               </p>
               {artifactPreview.content.text !== null ? (
-                <pre className="mt-2 max-h-80 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all text-xs">
+                <pre data-select-all-scope className="mt-2 max-h-80 select-text overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all text-xs">
                   {artifactPreview.content.text}
                 </pre>
               ) : (
@@ -635,7 +653,7 @@ export function TaskDetailDialog({
             </div>
           ) : null}
           {previewError ? (
-            <p role="alert" className="break-words text-xs text-destructive">
+            <p role="alert" className="select-text break-words text-xs text-destructive">
               {previewError}
             </p>
           ) : null}
@@ -666,7 +684,7 @@ export function TaskDetailDialog({
                 <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
                   <TaskStatusBadge status={task.status} />
                   <TaskAgentChip task={task} agentName={agentName} showAgent className="max-w-[22rem]" />
-                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                  <span className="text-[0.6875rem] tabular-nums text-muted-foreground">
                     {relativeTime(task.updatedAt)}
                   </span>
                 </div>
@@ -684,7 +702,7 @@ export function TaskDetailDialog({
                 <p className="text-sm font-medium text-destructive">
                   {t(($) => $.researchTools.tasks.detail.needsAttention)}
                 </p>
-                <p className="mt-1 break-words text-sm text-foreground">{describeError(task.error)}</p>
+                <p className="mt-1 select-text break-words text-sm text-foreground">{describeError(task.error)}</p>
               </div>
             ) : null}
             {error ? (
@@ -694,7 +712,7 @@ export function TaskDetailDialog({
               >
                 <div className="flex min-w-0 items-start gap-2 text-sm">
                   <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
-                  <p className="min-w-0 break-words">{error}</p>
+                  <p className="min-w-0 select-text break-words">{error}</p>
                 </div>
                 {onDismissError ? (
                   <Button size="xs" variant="ghost" onClick={onDismissError}>
@@ -853,7 +871,7 @@ export function TaskDetailDialog({
           </Tabs>
 
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-5 py-2.5">
-            <p className="text-[11px] tabular-nums text-muted-foreground">
+            <p className="text-[0.6875rem] tabular-nums text-muted-foreground">
               {usage.inputTokens === null && usage.outputTokens === null
                 ? t(($) => $.researchTools.tasks.detail.noTokenUsage)
                 : t(($) => $.researchTools.tasks.detail.tokenUsage, {

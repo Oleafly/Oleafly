@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ChevronLeft, ExternalLink, Github, Lock } from "lucide-react";
@@ -6,6 +6,9 @@ import { ChoiceCard } from "@/components/library/ChoiceCard";
 import { CHOICE_ART } from "@/components/library/choice-art";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { announceSavedTemplate, saveProjectTemplate } from "@/features/custom-templates";
+import { i18n } from "@/i18n";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +37,23 @@ import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { basename } from "@/lib/path-utils";
 import { Spinner } from "@/components/ui/spinner";
+import { useFilesStore } from "@/store/files";
+
+const OverleafImportView = lazy(() =>
+  import("@/components/library/overleaf/OverleafImportView").then((module) => ({
+    default: module.OverleafImportView,
+  })),
+);
+
+type ImportView = "sources" | "github" | "target" | "arxiv" | "overleaf";
+
+const VIEW_WIDTH: Record<ImportView, string> = {
+  sources: "max-w-3xl",
+  overleaf: "h-[min(48rem,calc(100dvh-2rem))] max-w-5xl",
+  github: "max-w-xl",
+  target: "max-w-xl",
+  arxiv: "max-w-xl",
+};
 
 const SOURCE_ART: Record<ProjectImportFileKind, string> = {
   project: CHOICE_ART.importArchive,
@@ -42,6 +62,26 @@ const SOURCE_ART: Record<ProjectImportFileKind, string> = {
   html: CHOICE_ART.importHtml,
   typst: CHOICE_ART.importTypst,
 };
+
+/**
+ * Save the project an import just opened as a custom template too. It runs
+ * after the dialog closes and reports through a toast, like the import.
+ */
+async function keepImportAsTemplate(previousProjectId: string | null): Promise<void> {
+  const { projectId, projectName } = useFilesStore.getState();
+  if (!projectId || projectId === previousProjectId) return;
+  const name = projectName.trim() || basename(projectId);
+  try {
+    const templateId = await saveProjectTemplate(projectId, name);
+    announceSavedTemplate(templateId, name);
+  } catch (error) {
+    notifyError(
+      "save the import as a template",
+      error,
+      i18n.t(($) => $.library.customTemplates.saveFailed),
+    );
+  }
+}
 
 export function ProjectImportDialog({
   open,
@@ -52,7 +92,7 @@ export function ProjectImportDialog({
   open: boolean;
   onClose: () => void;
   onImported?: () => void;
-  initialView?: "sources" | "arxiv";
+  initialView?: "sources" | "arxiv" | "overleaf";
 }>) {
   const { t } = useTranslation(["library"]);
   const sourceCopy: Record<ProjectImportFileKind, { title: string; description: string }> = {
@@ -79,7 +119,7 @@ export function ProjectImportDialog({
   };
   const githubStatus = useGithubStore((state) => state.status);
   const refreshGithub = useGithubStore((state) => state.refresh);
-  const [view, setView] = useState<"sources" | "github" | "target" | "arxiv">(
+  const [view, setView] = useState<ImportView>(
     initialView,
   );
   const [pendingPath, setPendingPath] = useState<string | null>(null);
@@ -90,6 +130,9 @@ export function ProjectImportDialog({
   const busyRef = useRef(false);
   const sessionRef = useRef(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Off every time the dialog opens: keeping an import as a template is rare.
+  const [alsoTemplate, setAlsoTemplate] = useState(false);
+  const alsoTemplateId = useId();
   const [repositoryAttempt, setRepositoryAttempt] = useState(0);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
@@ -100,6 +143,7 @@ export function ProjectImportDialog({
     setView(initialView);
     setPendingPath(null);
     setErrorMessage(null);
+    setAlsoTemplate(false);
     if (!open) setArxivId("");
     return () => { sessionRef.current += 1; };
   }, [open, initialView]);
@@ -142,6 +186,8 @@ export function ProjectImportDialog({
     busyRef.current = true;
     setBusy(true);
     setErrorMessage(null);
+    const keepAsTemplate = alsoTemplate;
+    const before = useFilesStore.getState().projectId;
     try {
       const imported = await work();
       if (imported === false) {
@@ -149,6 +195,7 @@ export function ProjectImportDialog({
       } else {
         onImported?.();
         onClose();
+        if (keepAsTemplate) void keepImportAsTemplate(before);
       }
     } catch (error) {
       reportError(error);
@@ -305,64 +352,45 @@ export function ProjectImportDialog({
     );
   };
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !busyRef.current) onClose();
-      }}
-    >
-      <DialogContent
-        data-testid="project-import-dialog"
-        className={cn(
-          // A flex column capped at the window height: when the window is too
-          // short for every card (the smallest is 900x600), the body below the
-          // header scrolls and the title and close button stay in view.
-          "flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden",
-          // The source cards use the chooser's width so the two dialogs line
-          // up; the single-purpose steps keep their narrower layout.
-          view === "sources" ? "max-w-3xl" : "max-w-xl",
-        )}
-      >
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            {view !== "sources" ? (
-              <button
-                type="button"
-                aria-label={t(($) => $.library.import.back)}
-                data-testid="project-import-back"
-                disabled={busy}
-                onClick={() => { setView("sources"); setErrorMessage(null); setPendingPath(null); }}
-                className="rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
-              >
-                <ChevronLeft aria-hidden="true" className="size-4" />
-              </button>
-            ) : null}
-            {view === "github"
-              ? t(($) => $.library.import.githubTitle)
-              : view === "arxiv"
-                ? t(($) => $.library.import.arxivTitle)
-                : view === "target"
-                  ? t(($) => $.library.import.targetTitle)
-                  : t(($) => $.library.import.title)}
-          </DialogTitle>
-          <DialogDescription>
-            {view === "github"
-              ? t(($) => $.library.import.githubDescription)
-              : view === "arxiv"
-                ? t(($) => $.library.import.arxivDescription)
-                : view === "target"
-                  ? t(($) => $.library.import.targetDescription)
-                  : t(($) => $.library.import.description)}
-          </DialogDescription>
-        </DialogHeader>
+  const viewTitles: Record<ImportView, string> = {
+    sources: t(($) => $.library.import.title),
+    github: t(($) => $.library.import.githubTitle),
+    target: t(($) => $.library.import.targetTitle),
+    arxiv: t(($) => $.library.import.arxivTitle),
+    overleaf: t(($) => $.library.import.overleaf.title),
+  };
+  const viewDescriptions: Record<ImportView, string> = {
+    sources: t(($) => $.library.import.description),
+    github: t(($) => $.library.import.githubDescription),
+    target: t(($) => $.library.import.targetDescription),
+    arxiv: t(($) => $.library.import.arxivDescription),
+    overleaf: t(($) => $.library.import.overleaf.description),
+  };
 
-        {errorMessage && <p role="alert" className="shrink-0 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
-        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>}
-        <div className="-mx-6 -mb-6 min-h-0 overflow-y-auto px-6 pb-6">
-          {view === "target" ? (
+  const renderBody = () => {
+    if (view === "overleaf") {
+      return (
+            <Suspense
+              fallback={
+                <output className="flex flex-1 items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                  <Spinner />
+                </output>
+              }
+            >
+              <OverleafImportView
+                onDone={onClose}
+                onOpenProject={(projectId) => {
+                  onClose();
+                  void useFilesStore.getState().openProject(projectId);
+                }}
+              />
+            </Suspense>
+      );
+    }
+    if (view === "target") {
+      return (
             <div className="grid gap-2">
-              <p className="break-all text-xs text-muted-foreground">{pendingPath && basename(pendingPath)}</p>
+              <p className="select-text break-all text-xs text-muted-foreground">{pendingPath && basename(pendingPath)}</p>
               {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
                 (target) => (
                   <button
@@ -390,7 +418,10 @@ export function ProjectImportDialog({
                 ),
               )}
             </div>
-          ) : view === "arxiv" ? (
+      );
+    }
+    if (view === "arxiv") {
+      return (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Input
@@ -420,10 +451,13 @@ export function ProjectImportDialog({
                 {t(($) => $.library.import.arxivHint)}
               </p>
             </div>
-          ) : view === "sources" ? (
+      );
+    }
+    if (view === "sources") {
+      return (
             <div className="space-y-5">
               <section className="space-y-2">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.library.import.localHeading)}
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -444,7 +478,7 @@ export function ProjectImportDialog({
               </section>
 
               <section className="space-y-2">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.library.import.cloudHeading)}
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -470,14 +504,95 @@ export function ProjectImportDialog({
                     disabled={busy}
                     onClick={() => setView("github")}
                   />
+                  <ChoiceCard
+                    image={CHOICE_ART.importOverleaf}
+                    title={"Overleaf"}
+                    description={t(($) => $.library.import.overleaf.cardDescription)}
+                    testId="project-import-overleaf"
+                    compact
+                    disabled={busy}
+                    onClick={() => setView("overleaf")}
+                  />
                 </div>
               </section>
+
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  id={alsoTemplateId}
+                  data-testid="project-import-also-template"
+                  checked={alsoTemplate}
+                  disabled={busy}
+                  onCheckedChange={(checked) => setAlsoTemplate(checked === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor={alsoTemplateId} className="min-w-0 cursor-pointer">
+                  <span className="block text-sm font-medium text-foreground">
+                    {t(($) => $.library.customTemplates.alsoSaveAsTemplate)}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t(($) => $.library.customTemplates.alsoSaveHint)}
+                  </span>
+                </label>
+              </div>
             </div>
-          ) : (
+      );
+    }
+    return (
             <div className="max-h-80 space-y-1 overflow-y-auto">
               {renderRepositoryList()}
             </div>
+    );
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next && !busyRef.current) onClose();
+      }}
+    >
+      <DialogContent
+        data-testid="project-import-dialog"
+        className={cn(
+          // A flex column capped at the window height: when the window is too
+          // short for every card (the smallest is 900x600), the body below the
+          // header scrolls and the title and close button stay in view.
+          "flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden",
+          // The source cards use the chooser's width so the two dialogs line
+          // up; the single-purpose steps keep their narrower layout.
+          VIEW_WIDTH[view],
+        )}
+      >
+        <DialogHeader className="shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            {view !== "sources" ? (
+              <button
+                type="button"
+                aria-label={t(($) => $.library.import.back)}
+                data-testid="project-import-back"
+                disabled={busy}
+                onClick={() => { setView("sources"); setErrorMessage(null); setPendingPath(null); }}
+                className="rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
+              >
+                <ChevronLeft aria-hidden="true" className="size-4" />
+              </button>
+            ) : null}
+            {viewTitles[view]}
+          </DialogTitle>
+          <DialogDescription>
+            {viewDescriptions[view]}
+          </DialogDescription>
+        </DialogHeader>
+
+        {errorMessage && <p role="alert" className="shrink-0 select-text rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
+        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>}
+        <div
+          className={cn(
+            "-mx-6 -mb-6 min-h-0 px-6 pb-6",
+            view === "overleaf" ? "flex flex-1 flex-col overflow-hidden" : "overflow-y-auto",
           )}
+        >
+          {renderBody()}
         </div>
       </DialogContent>
     </Dialog>

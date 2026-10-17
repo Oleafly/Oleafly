@@ -69,7 +69,10 @@
       "localNotFound": "Místní balíček {{spec}} není nainstalován. Vložte jej do složky balíčků Typst v Oleafly nebo do složky typst-packages v projektu.",
       "versionMissing": "Tento balíček nemá verzi {{version}}. Nejnovější verze je {{latest}}.",
       "versionMissingNoLatest": "Tento balíček nemá verzi {{version}}. Zkontrolujte verzi v importu."
-    }
+    },
+    "saveFailed": "Soubor {{path}} se nepodařilo uložit, a proto Oleafly nekompilovalo. Zkontrolujte ho a potom kompilujte znovu.",
+    "saveFailedSeveral": "Soubor {{path}} a další soubory se nepodařilo uložit, a proto Oleafly nekompilovalo. Zkontrolujte je a potom kompilujte znovu.",
+    "saveFailedOther": "Dokument se nepodařilo uložit, a proto Oleafly nekompilovalo. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -290,7 +293,9 @@
     "yearRangeInvalid": "Počáteční rok nemůže být pozdější než koncový."
   },
   "mcp": {
+    "deniedByRules": "Odmítnuto pravidlem deny v approvals.toml",
     "openProjectSummary": "Otevřít projekt {{id}}",
+    "rulesUnreadable": "Odmítnuto, protože soubor approvals.toml nešlo přečíst",
     "useToolSummary": "Použít {{tool}} ze serveru MCP {{server}}"
   },
   "mcpConfig": {
@@ -374,7 +379,8 @@
     "referencesFor": "Reference na {{name}}",
     "renameFailed": "Nepodařilo se přejmenovat na „{{name}}“.",
     "renamePartial": "Přejmenováno na „{{name}}“ v {{edited}} z {{total}} souborů. Nepodařilo se zapsat {{files}}.",
-    "renamed": "Přejmenováno na „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) · $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Přejmenováno na „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) · $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "„{{path}}“ neodpovídá žádnému souboru v tomto projektu."
   },
   "pandoc": {
     "downloadFailed": "Pandoc se nepodařilo stáhnout. Nainstalujte jej ručně a zkuste to znovu.",

@@ -208,6 +208,34 @@ describe("PublishToGitHubDialog", () => {
     expect(search.parentElement).toHaveClass("border", "focus-within:border-ring");
   });
 
+  it("shows a new search's results from the top of the list", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([
+      createdRepo,
+      { ...createdRepo, id: 2, name: "thesis", full_name: "prajwal/thesis" },
+    ]);
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    const list = (await screen.findByText("prajwal/thesis")).closest(".overflow-auto") as HTMLElement;
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Search repositories" }), {
+      target: { value: "thesis" },
+    });
+
+    expect(screen.queryByText("prajwal/research-notes")).not.toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("prepares Git only after the user chooses Create and push", async () => {
     const user = userEvent.setup();
     render(

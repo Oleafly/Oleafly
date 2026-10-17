@@ -43,7 +43,9 @@
     "privacyNote": "Bara identifieraren eller titeln skickas, till doi.org, arXiv eller Crossref.",
     "title": "Lägg till citering",
     "bibliography": "Bibliografi",
-    "bibliographyHint": "Projektet har mer än en bibliografi. Posten hamnar i den fil du väljer här."
+    "bibliographyHint": "Projektet har mer än en bibliografi. Posten hamnar i den fil du väljer här.",
+    "zoteroMatches": "Från ditt Zotero-bibliotek",
+    "zoteroPlaceholder": "Sök i ditt Zotero-bibliotek, eller klistra in en DOI, ett arXiv-id eller en titel"
   },
   "backendProtocol": {
     "mismatch": "Det här fönstret och dess bakänd byggdes för olika Oleafly-versioner, så vissa funktioner kanske inte fungerar. Installera om appen för att lösa det."
@@ -326,6 +328,38 @@
     "presentWithPresenter": {
       "label": "Presentera bilder med presentatörsvy",
       "keywords": "presentera bilder presentatörsvy talaranteckningar timer nästa bild"
+    },
+    "zenMode": {
+      "keywords": "störningsfri fokus helskärm dölj gränssnitt minimal skriva",
+      "label": "Växla Zen-läge"
+    },
+    "togglePreview": {
+      "keywords": "pdf förhandsvisning visa dölj delad bara redigerare",
+      "label": "Visa eller dölj PDF-förhandsvisning"
+    },
+    "zoomIn": {
+      "keywords": "större förstora",
+      "label": "Zooma in"
+    },
+    "zoomOut": {
+      "keywords": "mindre förminska",
+      "label": "Zooma ut"
+    },
+    "resetZoom": {
+      "keywords": "verklig storlek 100",
+      "label": "Återställ zoom"
+    },
+    "zoteroAddMissing": {
+      "label": "Lägg till saknade citeringar från Zotero",
+      "keywords": "zotero saknade citeringar odefinierade nycklar bibliografi reparera"
+    },
+    "zoteroUpdate": {
+      "label": "Uppdatera .bib-poster från Zotero",
+      "keywords": "zotero uppdatera bibliografi poster ändrade"
+    },
+    "zoteroSync": {
+      "label": "Synka Zotero-biblioteket",
+      "keywords": "zotero synka uppdatera bibliotek"
     }
   },
   "community": {
@@ -348,11 +382,13 @@
     "compile": "Kompilera",
     "compiler": {
       "auto": "Auto <note>[systemets TeX]</note>",
-      "help": "Tectonic är inbyggt och kräver ingen konfiguration. De andra valen kör systemets TeX, som kan läsa lokala filer som ditt konto kommer åt och bara bör användas med projekt du litar på. Auto väljer kompilator utifrån källkoden. pdfLaTeX passar de flesta tidskriftsmallar. XeLaTeX och LuaLaTeX lägger till systemtypsnitt och Unicode.",
+      "help": "Tectonic är inbyggt och kräver ingen konfiguration. De andra valen kör systemets TeX, som kan läsa lokala filer som ditt konto kommer åt och bara bör användas med projekt du litar på. Auto väljer kompilator utifrån källkoden. pdfLaTeX passar de flesta tidskriftsmallar. XeLaTeX och LuaLaTeX lägger till systemtypsnitt och Unicode. upLaTeX och pLaTeX kompilerar japanska dokument.",
       "lualatex": "LuaLaTeX <note>[systemets TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[systemets TeX]</note>",
+      "platex": "pLaTeX <note>[systemets TeX]</note>",
       "tectonic": "Tectonic <note>[inbyggd]</note>",
       "title": "Kompilator (det här projektet)",
+      "uplatex": "upLaTeX <note>[systemets TeX]</note>",
       "xelatex": "XeLaTeX <note>[systemets TeX]</note>"
     },
     "errors": {
@@ -409,7 +445,8 @@
       "title": "Variant (det här projektet)",
       "help": "En variant skickar egna värden till sys.inputs, till exempel för ett utkast eller en tryckfärdig version. Den valda varianten stannar på den här datorn. Lägg till eller redigera varianter under Dokumentinställningar.",
       "none": "Ingen variant"
-    }
+    },
+    "sharedViewer": "Läsare kan inte ändra de här inställningarna i ett delat projekt."
   },
   "datePicker": {
     "placeholder": "Välj ett datum"
@@ -716,11 +753,6 @@
   "settings": {
     "close": "Stäng inställningarna",
     "data": {
-      "cloud": {
-        "comingSoon": "Kommer snart",
-        "description": "Håll projekt synkroniserade mellan dina enheter utan att konfigurera en Git-fjärransluten. Varje överföring blir totalsträckskrypterad, så ditt arbete förblir privat under transporten. Dina lokala projektmappar förblir den sanna källan.",
-        "title": "Molnsynkronisering"
-      },
       "danger": {
         "confirmDeleteAllAction": "Radera alla projekt",
         "confirmDeleteAllDescription": "Alla aktuella projekt flyttas till papperskorgen, inklusive deras filer och Git-historik. Du kan återställa projekt ett och ett efteråt.",
@@ -808,6 +840,10 @@
         "description": "Visa galleriet Oleafly Tools och de enskilda verktygen (PDF-import, ekvationer, tabeller, BibTeX, labb- och litteratursökning, deadlines) plus deras snedstreckskommandon. Av som standard medan det fortfarande är i beta.",
         "label": "LaTeX-verktyg"
       },
+      "liveCollaboration": {
+        "description": "Redigera projekt tillsammans med andra via en samarbetsserver som du eller din grupp driver. Lägger till avsnittet Samarbete i Inställningar. Av som standard medan det är i beta.",
+        "label": "Samarbete i realtid"
+      },
       "warning": "De här funktionerna är experimentella och fortfarande i beta. De är inte fullt testade än och kan ändras, sluta fungera eller tas bort i en framtida version. Slå bara på dem om du vill prova pågående arbete.",
       "webBrowser": {
         "description": "Visa den inbyggda webbläsaren (dess knapp i dockan och dess kortkommando) och låt AI:n styra den med datoranvändning. Av som standard medan det fortfarande är i beta. När det är av finns ingen webbläsarknapp och AI:n har inget webbläsarverktyg.",
@@ -887,6 +923,7 @@
     "nav": {
       "ai": "AI-assistent",
       "appearance": "Utseende",
+      "collaboration": "Samarbete",
       "data": "Datalagring",
       "dictionary": "Ordlista",
       "downloads": "Nedladdningar",
@@ -902,6 +939,7 @@
       "keywords": {
         "ai": "assistent, chatt, modeller, leverantörer, API-nycklar, agenter, prompter, budget, MCP-servrar",
         "appearance": "tema, mörkt läge, ljust läge, färg, typsnitt, textstorlek, zoom, layout",
+        "collaboration": "servrar, logga in, enheter, medlemmar, underhållare, delning, team, labb, liveredigering, realtid, säkerhetslogg",
         "data": "säkerhetskopia, biblioteksmapp, projektmapp, lagring, diskutrymme, papperskorg, radera projekt, kontrollpunkter",
         "dictionary": "stavning, egna ord, ignorerade ord, korrekturläsning, grammatikregler",
         "downloads": "paket, typsnitt, ordlistor, offlinefiler",
@@ -1121,7 +1159,8 @@
       "editorPreview": "Redigerare + förhandsvisning",
       "editorPreviewAi": "Redigerare + förhandsvisning + AI",
       "previewAi": "Förhandsvisning + AI",
-      "previewOnly": "Endast förhandsvisning"
+      "previewOnly": "Endast förhandsvisning",
+      "zenMode": "Zen-läge"
     },
     "newProjectName": "Namn på det nya projektet",
     "projectName": "Projektnamn",
@@ -1352,5 +1391,80 @@
     "location": "{{file}}, rad {{line}}",
     "error": "Fel",
     "warning": "Varning"
+  },
+  "fileRenameDialog": {
+    "title": "Byt namn på fil",
+    "titleFolder": "Byt namn på mapp",
+    "newPath": "Ny sökväg",
+    "hint": "Mappar som saknas skapas.",
+    "invalid": "Använd en sökväg i det här projektet.",
+    "exists": "{{path}} finns redan."
+  },
+  "zen": {
+    "compileFailed": "Kompileringen misslyckades",
+    "compiling": "Kompilerar",
+    "hideLog": "Dölj kompileringsloggen",
+    "showLog": "Visa kompileringsloggen"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} fil har ändrats utanför Oleafly. Vill du skicka ändringen till alla eller behålla den lokalt?",
+    "paused_other": "{{count}} filer har ändrats utanför Oleafly. Vill du skicka ändringarna till alla eller behålla dem lokalt?",
+    "send": "Skicka",
+    "keepLocal": "Behåll lokalt",
+    "unavailable": "Projektmappen är inte tillgänglig, så synkroniseringen är pausad. Den startar igen när mappen är tillbaka."
+  },
+  "overleafSync": {
+    "button": "Overleaf-synkning",
+    "title": "Synka med Overleaf",
+    "cancel": "Avbryt",
+    "more_one": "och {{count}} fil till",
+    "more_other": "och {{count}} filer till",
+    "status": {
+      "notLinked": "Inte synkat med Overleaf än.",
+      "linking": "Länkar till Overleaf",
+      "syncing": "Synkar med Overleaf",
+      "needsToken": "Lägg till din Git-token från Overleaf för att synka.",
+      "never": "Inte synkat än.",
+      "justNow": "nyss",
+      "synced": "Synkat {{time}}.",
+      "conflicts_one": "{{count}} fil har ändrats på båda ställena. Välj vilken version du vill behålla.",
+      "conflicts_other": "{{count}} filer har ändrats på båda ställena. Välj vilka versioner du vill behålla."
+    },
+    "actions": {
+      "keepInSync": "Håll synkat med Overleaf",
+      "syncNow": "Synka nu",
+      "auto": "Synka automatiskt",
+      "resolve": "Välj versioner",
+      "unlink": "Sluta synka",
+      "addToken": "Lägg till Git-token",
+      "changeToken": "Byt Git-token"
+    },
+    "token": {
+      "title": "Lägg till din Git-token från Overleaf",
+      "description": "Oleafly synkar via Overleafs Git-integration. Skapa en token under Git-integration i dina kontoinställningar på Overleaf och klistra in den här. Den förblir krypterad på den här datorn.",
+      "openSettings": "Öppna kontoinställningarna på Overleaf",
+      "label": "Git-token",
+      "note": "Git-integration kräver att projektets ägare har ett betalt abonnemang eller ett universitetsabonnemang hos Overleaf.",
+      "save": "Spara och synka"
+    },
+    "choice": {
+      "title": "Vilken version ska gälla?",
+      "description": "De här filerna skiljer sig här och på Overleaf. Filer som bara finns på ena sidan behålls på båda, så inget tas bort.",
+      "mine": "Använd mina versioner",
+      "theirs": "Använd Overleafs versioner"
+    },
+    "conflicts": {
+      "title": "Välj versioner",
+      "description": "De här filerna har ändrats både här och på Overleaf sedan den senaste synkningen. Välj vilken version du vill behålla för varje fil. Inget ändras förrän du tillämpar valet.",
+      "mine": "Min",
+      "theirs": "Overleafs",
+      "allMine": "Behåll alla mina",
+      "allTheirs": "Använd alla Overleafs",
+      "apply": "Tillämpa och synka"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly läste in det här fönstret igen eftersom det inte svarade på 30 sekunder. Ändringar du gjorde precis innan kanske inte sparades.",
+    "reloadedAgain": "Oleafly läste in det här fönstret igen eftersom det slutade svara en gång till. Ditt projekt öppnades inte igen, ifall något i det orsakade problemet."
   }
 }

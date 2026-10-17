@@ -10,6 +10,3 @@ Keywords=LaTeX;TeX;Typst;Markdown;PDF;BibTeX;Citation;Paper;Thesis;Research;
 Name={{name}}
 Terminal=false
 Type=Application
-{{#if mime_type}}
-MimeType={{mime_type}}
-{{/if}}

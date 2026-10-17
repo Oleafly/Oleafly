@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Palette, RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,11 +7,14 @@ import { ColorPicker } from "@/components/ui/color-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { i18n } from "@/i18n";
-import { cssColorToHex, readCssVariable } from "@/lib/css-color";
+import { cssColorToHex, readClassVariables, readCssVariable } from "@/lib/css-color";
 import { useTheme, type Theme } from "@/lib/theme";
+import { useSettingsStore } from "@/store/settings";
 import {
   MAX_THEME_IMPORT_BYTES,
+  THEME_CUSTOMIZATION_CHANGED_EVENT,
   THEME_TOKEN_NAMES,
+  accentTokenDefaults,
   applyThemeCustomization,
   parseThemeCustomizationImport,
   readThemeCustomization,
@@ -61,7 +64,9 @@ const TOKEN_LABELS: Record<ThemeTokenName, () => string> = {
 };
 
 function downloadTheme(customization: ThemeCustomizationState) {
-  const blob = new Blob([serializeThemeCustomization(customization)], { type: "application/json" });
+  const { editorThemeLight, editorThemeDark, editorColors } = useSettingsStore.getState();
+  const editor = { themes: { light: editorThemeLight, dark: editorThemeDark }, colors: editorColors };
+  const blob = new Blob([serializeThemeCustomization(customization, editor)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -73,6 +78,7 @@ function downloadTheme(customization: ThemeCustomizationState) {
 export function ThemeCustomization() {
   const { t } = useTranslation(["common", "settings"]);
   const { theme } = useTheme();
+  const accentColor = useSettingsStore((state) => state.accentColor);
   const [customization, setCustomization] = useState<ThemeCustomizationState>(() => readThemeCustomization());
   const [editMode, setEditMode] = useState<Theme>(theme);
   const [tokenDrafts, setTokenDrafts] = useState<Record<Theme, Partial<Record<ThemeTokenName, string>>>>({ light: {}, dark: {} });
@@ -81,6 +87,18 @@ export function ThemeCustomization() {
   const [message, setMessage] = useState<string | null>(null);
   const importInput = useRef<HTMLInputElement>(null);
   const tokens = customization[editMode];
+
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      if (!(event instanceof CustomEvent) || event.detail?.reset !== true) return;
+      setCustomization(readThemeCustomization());
+      setTokenDrafts({ light: {}, dark: {} });
+      setRadiusDraft(null);
+      setCustomCssDraft(null);
+    };
+    window.addEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, onChange);
+  }, []);
 
   const save = (next: ThemeCustomizationState, notice?: string) => {
     const saved = writeThemeCustomization(next);
@@ -128,7 +146,8 @@ export function ThemeCustomization() {
       return;
     }
     try {
-      const { customization: imported, skippedTokens } = parseThemeCustomizationImport(await file.text());
+      const { customization: imported, skippedTokens, editor } = parseThemeCustomizationImport(await file.text());
+      if (editor) useSettingsStore.getState().importEditorThemes(editor);
       const shownTokens = skippedTokens.slice(0, 6).join(", ");
       const skippedNotice =
         skippedTokens.length > 6
@@ -155,10 +174,21 @@ export function ThemeCustomization() {
     }
   };
 
+  const otherModeDefaults = useMemo(
+    () =>
+      editMode === theme
+        ? {}
+        : {
+            ...readClassVariables(editMode, THEME_TOKEN_NAMES.map((token) => `--${token}`)),
+            ...accentTokenDefaults(editMode, accentColor),
+          },
+    [editMode, theme, accentColor],
+  );
+
   const effectiveColor = (token: ThemeTokenName): string => {
     const override = (tokenDrafts[editMode][token] ?? tokens[token] ?? "").trim();
     if (override) return override;
-    return editMode === theme ? readCssVariable(`--${token}`) : "";
+    return editMode === theme ? readCssVariable(`--${token}`) : (otherModeDefaults[`--${token}`] ?? "");
   };
 
   return (
@@ -229,7 +259,7 @@ export function ThemeCustomization() {
                 onChange={(event) => updateToken(token, event.target.value)}
                 onBlur={(event) => updateToken(token, event.target.value, true)}
                 placeholder={t(($) => $.common.state.default)}
-                className="h-8 font-mono text-[11px]"
+                className="h-8 font-mono text-[0.6875rem]"
               />
             </div>
           );
@@ -263,7 +293,7 @@ export function ThemeCustomization() {
             }
           }}
           placeholder={"0.625rem"}
-          className="h-8 max-w-44 font-mono text-[11px]"
+          className="h-8 max-w-44 font-mono text-[0.6875rem]"
         />
       </div>
 
@@ -294,7 +324,7 @@ export function ThemeCustomization() {
             }
           }}
           placeholder={"color: #202020; --oleafly-note: #f6d365"}
-          className="min-h-20 font-mono text-[11px]"
+          className="min-h-20 font-mono text-[0.6875rem]"
         />
       </div>
 

@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "Über Oleafly",
     "checkUpdates": "Nach Updates suchen…",
+    "settings": "Einstellungen…",
     "reloadViews": "Ansichten neu laden",
     "restartApp": "Programm neu starten",
     "quit": "Oleafly beenden",
@@ -30,7 +31,8 @@
     "newTab": "Neuer Tab",
     "openLocation": "Adresse öffnen…",
     "closeTab": "Tab schließen",
-    "reloadPage": "Seite neu laden"
+    "reloadPage": "Seite neu laden",
+    "zenMode": "Zen-Modus"
   },
   "window": {
     "browser": "Oleafly Browser",
@@ -42,6 +44,11 @@
       "title": "Vollzugriff aktivieren?",
       "message": "Mit Vollzugriff darf der Assistent shell-Befehle ausführen und Dateien bearbeiten, ohne jedes Mal nachzufragen. Vollzugriff aktivieren?",
       "confirm": "Vollzugriff aktivieren"
+    },
+    "sharedShellEscape": {
+      "title": "Externe Befehle in diesem geteilten Projekt erlauben?",
+      "message": "Dann kann jede Person, die dieses Projekt bearbeiten darf, Programme auf diesem Computer ausführen, wenn Sie kompilieren. Erlauben Sie das nur, wenn Sie allen im Projekt vertrauen.",
+      "confirm": "Auf diesem Computer erlauben"
     },
     "cookieImport": {
       "title": "Cookie-Import bestätigen",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "In Oleafly öffnen",
     "openWithOleafly": "Mit Oleafly öffnen"
+  },
+  "collab": {
+    "localCopy": "{{name}} (lokale Kopie)"
+  },
+  "approvals": {
+    "helperRefused": "Von der Regel für {{tool}} in approvals.toml abgelehnt",
+    "unknownTool": "Kein Werkzeug heißt {{name}}, daher bewirkt die Regel nichts.",
+    "unknownToolSuggestion": "Kein Werkzeug heißt {{name}}, daher bewirkt die Regel nichts. Meinten Sie {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Sie sind verbunden. Sie können diesen Tab schließen und zu Oleafly zurückkehren.",
+    "failedPage": "Die Anmeldung wurde nicht abgeschlossen. Sie können diesen Tab schließen und zu Oleafly zurückkehren."
   }
 }

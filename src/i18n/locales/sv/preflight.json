@@ -256,7 +256,7 @@
       "title_one": "{{count}} bibliografipost har ofullständiga metadata",
       "title_other": "{{count}} bibliografiposter har ofullständiga metadata",
       "detail": "Ofullständiga poster kan ge trasiga eller tvetydiga referenser i förlagens stilar. {{examples}}.",
-      "detailTruncated": "Ofullständiga poster kan ge trasiga eller tvetydiga referenser i förlagens stilar. {{examples}}; …"
+      "detailTruncated": "Ofullständiga poster kan ge trasiga eller tvetydiga referenser i förlagens stilar. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-värde ser felformat ut",
@@ -318,6 +318,12 @@
     "refs-duplicate-bib": {
       "title": "Dubblerade bibliografiposter: {{keys}}",
       "detail": "De här posterna delar DOI {{doi}}, så de är samma referens under olika nycklar. Behåll en och citera den, annars listar din bibliografi den två gånger."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "Citeringsnyckeln \"{{key}}\" är definierad mer än en gång",
+      "detail": "Definierad i {{places}}. BibTeX använder bara den första posten med den här nyckeln och skiljer inte på stora och små bokstäver när den jämför nycklar. Behåll en post, eller ge de andra nya nycklar och uppdatera citeringarna som använder dem.",
+      "detailBiber": "Definierad i {{places}}. När biber bygger litteraturlistan använder den bara den första posten med den här nyckeln. Behåll en post, eller ge de andra nya nycklar och uppdatera citeringarna som använder dem.",
+      "detailTypst": "Definierad i {{places}}. Typst avbryter kompileringen när två poster i bibliografin har samma nyckel. Behåll en post, eller ge de andra nya nycklar och uppdatera citeringarna som använder dem."
     },
     "submission-path-case": {
       "title": "Filnamnets versaler matchar inte: {{target}}",
@@ -604,7 +610,7 @@
     "title": "Förkontroll",
     "readerDisabled": "Kompilera och kör en kontroll av utdatan först",
     "readerEnabled": "Öppna texten som extraherats ur PDF:en",
-    "readerButton": "Visa vad läsaren ser",
+    "readerButton": "Skärmläsare",
     "aboutLabel": "Om förkontrollen",
     "aboutTitle": "Vad förkontrollen granskar",
     "aboutIntro": "Förkontrollen läser projektets källkod, kompilatorloggen och den aktuella PDF:en. Slå bara på de kontroller som passar det här dokumentet.",

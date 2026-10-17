@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} fișiere s-au schimbat în proiectul tău după ce a pornit această sarcină. Comparațiile lor sunt față de versiunile vechi, așa că nu pot fi aplicate.",
       "applyAria": "Aplică {{path}}",
       "changedSince": "Schimbat între timp",
+      "mergesOnApply": "Acest fișier a fost editat după ce a pornit sarcina. Aplicarea păstrează acele editări și adaugă modificările sarcinii.",
       "loading": "Se încarcă...",
       "refreshPreview": "Reîmprospătează previzualizarea",
       "preview": "Previzualizează",
@@ -1370,7 +1371,6 @@
     "captionAria": "Legenda tabelului",
     "preview": "Previzualizare",
     "output": "Rezultat LaTeX",
-    "copiedSource": "Sursa LaTeX a fost copiată",
     "booktabsHint": "Necesită <code>\\usepackage{booktabs}</code> în preambulul tău."
   },
   "review": {

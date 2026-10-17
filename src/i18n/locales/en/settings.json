@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "The Custom approval mode reads this file. It lives at ~/.oleafly/approvals.toml and applies to every project on this device.",
+        "description": "The file lives at ~/.oleafly/approvals.toml and covers every project on this device. Deny rules block a tool in every approval mode. Allow rules only take effect in Custom mode.",
         "discard": "Discard changes",
         "emptyFile": "The file is empty so far.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "The first table, <modesTable>[\"$approval_modes\"]</modesTable>, sets the approval mode per project: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> or <custom>\"custom\"</custom>. A project that is not listed uses Approve for me.",
           "openProject": "The open project, {{name}}, has the id <projectId>{{id}}</projectId>.",
           "projectIds": "Project ids are the folder names under ~/.oleafly/projects.",
-          "rules": "Then one table per project id, holding a rule per tool: <allow>\"allow\"</allow> runs the tool without asking, and <deny>\"deny\"</deny> refuses it. Deny rules are honoured in every mode; allow rules take effect in Custom mode, and for run_command they also skip the prompt in the other modes.",
+          "rules": "Then one table per project id, holding a rule per tool: <allow>\"allow\"</allow> runs the tool without asking, and <deny>\"deny\"</deny> refuses it. Deny rules apply in every mode, Full access included. Allow rules only take effect in Custom mode.",
           "toolNames": "Tool names you can use: <names>{{names}}</names> and any MCP tool by its full name from the Tools list."
         },
         "helpToggle": "How the file works",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Always allowed",
         "denied": "Always denied",
-        "description": "Saved rules for {{name}}. They apply when the approval mode is Custom. Remove a rule to use the standard risk policy for that tool.",
+        "description": "Saved rules for {{name}}. Denied tools stay blocked in every approval mode. Allowed tools skip the prompt only in Custom mode. Remove a rule to use the standard risk policy for that tool.",
         "empty": "No saved rules yet. Use \"Always in this project\" on an approval prompt to add one.",
         "removeRule": "Remove rule for {{tool}}",
         "thisProject": "this project",
@@ -533,12 +533,17 @@
         "right": "Right"
       },
       "font": {
-        "description": "Uses the system fallback when a font is not installed.",
+        "description": "Choose any font installed on your computer for menus, panels and dialogs.",
         "label": "App font"
       },
       "fontSize": {
         "description": "Scale text across menus, panels, and buttons.",
         "label": "App font size"
+      },
+      "zoom": {
+        "description": "Make everything in Oleafly bigger or smaller, the editor and PDF included.",
+        "label": "Zoom",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "System follows the operating system and changes when it does.",
@@ -584,7 +589,7 @@
         "label": "Corner radius"
       },
       "resetAll": "Reset all",
-      "resetMode": "Reset this mode",
+      "resetMode": "Reset",
       "title": "Theme customization",
       "tokenInputDark": "{{token}} token for dark mode",
       "tokenInputLight": "{{token}} token for light mode",
@@ -633,28 +638,72 @@
         "label": "Auto-complete"
       },
       "font": {
-        "description": "Choose the monospace font used for source files.",
-        "label": "Editor font"
+        "description": "Choose any font installed on your computer for source files.",
+        "label": "Editor font",
+        "monospace": "Monospaced"
+      },
+      "useAppFont": {
+        "description": "The editor follows the App font and App font size.",
+        "disabledHint": "Turn off Use the app font to change this.",
+        "label": "Use the app font"
       },
       "fontSize": {
         "description": "Set the source editor's text size.",
-        "label": "Editor font size"
+        "label": "Editor font size",
+        "custom": "Custom",
+        "customLabel": "Custom editor font size in pixels"
       },
       "ghostCompletion": {
         "description": "Show the likely completion after the cursor. Press Tab to accept it.",
         "label": "Inline suggestion"
-      },
-      "nonBlinkingCursor": {
-        "description": "Keep the editor cursor solid.",
-        "label": "Non-blinking cursor"
       },
       "stickyScroll": {
         "description": "Keep the current sections, headings and environments at the top while you scroll.",
         "label": "Sticky scroll"
       },
       "theme": {
-        "description": "Set source syntax colors separately from the app theme.",
-        "label": "Editor theme"
+        "dark": {
+          "description": "The editor theme while the app is dark.",
+          "label": "Theme in dark mode"
+        },
+        "light": {
+          "description": "The editor theme while the app is light.",
+          "label": "Theme in light mode"
+        }
+      },
+      "colors": {
+        "description": "Change any color of an editor theme. Changes are kept for each theme.",
+        "editing": "Editing {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Dark mode",
+          "light": "Light mode"
+        },
+        "modeAriaLabel": "Theme to customize",
+        "names": {
+          "background": "Background",
+          "command": "Commands",
+          "comment": "Comments",
+          "environment": "Environments",
+          "formatting": "Formatting",
+          "heading": "Headings",
+          "lineNumbers": "Line numbers",
+          "link": "Links",
+          "math": "Math",
+          "name": "Names and keys",
+          "reference": "Citations and references",
+          "selection": "Selection",
+          "structure": "Preamble and imports",
+          "symbol": "Brackets and symbols",
+          "text": "Text",
+          "value": "Values and strings"
+        },
+        "pick": "Pick a color for {{color}}",
+        "previewAriaLabel": "Preview language",
+        "reset": "Reset",
+        "syntaxGroup": "Syntax",
+        "title": "Editor colors",
+        "useThemeColor": "Use the theme color for {{color}}"
       },
       "keymap": {
         "description": "Choose the keybinding set the source editor uses.",
@@ -671,12 +720,61 @@
         "options": {
           "compact": "Compact",
           "normal": "Normal",
-          "wide": "Wide"
+          "wide": "Wide",
+          "custom": "Custom"
+        },
+        "customLabel": "Custom line height"
+      },
+      "letterSpacing": {
+        "customLabel": "Custom letter spacing in pixels",
+        "description": "Add space between the characters in the source editor. It also leaves more room around the cursor.",
+        "label": "Letter spacing",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Custom"
         }
+      },
+      "cursorWidth": {
+        "label": "Cursor width",
+        "description": "Set how thick the editor cursor is.",
+        "option": "{{width}}px"
+      },
+      "cursorHeight": {
+        "label": "Cursor height",
+        "description": "Set how tall the editor cursor is. Line makes it as tall as the whole line.",
+        "options": {
+          "text": "Text",
+          "line": "Line"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Cursor blinking",
+        "description": "Choose how the editor cursor blinks. Off keeps it solid.",
+        "options": {
+          "blink": "Blink",
+          "smooth": "Smooth",
+          "phase": "Phase",
+          "expand": "Expand",
+          "off": "Off"
+        }
+      },
+      "cursorColor": {
+        "label": "Cursor color",
+        "description": "Light and dark editor themes each have their own cursor color. Until you pick one, the theme's color is used.",
+        "light": "Light",
+        "dark": "Dark",
+        "pickLight": "Pick the cursor color for light editor themes",
+        "pickDark": "Pick the cursor color for dark editor themes",
+        "useTheme": "Use theme colors"
       },
       "lineWrap": {
         "description": "Wrap long lines instead of scrolling sideways.",
         "label": "Wrap long lines"
+      },
+      "highlightCurrentLine": {
+        "label": "Highlight current line",
+        "description": "Tint the line the cursor is on."
       },
       "tabSize": {
         "description": "Spaces inserted per indentation level, and the width a tab renders at.",
@@ -708,6 +806,15 @@
           "description": "Check Typst files for likely mistakes whenever they're saved. Turning this on or off restarts the Typst language server.",
           "label": "Typst lint checks"
         }
+      },
+      "fileMove": {
+        "label": "When a file moves",
+        "description": "Update paths that point to a renamed or moved file in LaTeX, Typst and Markdown sources.",
+        "options": {
+          "ask": "Ask",
+          "always": "Always update",
+          "never": "Never update"
+        }
       }
     },
     "files": {
@@ -735,6 +842,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} isn't installed, so the default font is used instead.",
     "preview": {
       "darkMode": {
         "description": "Invert PDF colors by default. You can still switch colors from the preview toolbar.",
@@ -743,10 +851,6 @@
       "hoverPreview": {
         "description": "Show the last compiled page when you hover over a project in the library.",
         "label": "Preview PDF on hover"
-      },
-      "zoomShortcuts": {
-        "description": "Use Cmd/Ctrl +, -, and 0 to zoom the PDF instead of the app window.",
-        "label": "PDF zoom shortcuts"
       }
     },
     "sectionName": "Appearance",
@@ -810,6 +914,17 @@
         "description": "Start the shell when a project opens rather than the first time you show the terminal.",
         "label": "Start shell with project"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Fill the screen in Zen mode and restore the window when you leave.",
+        "label": "Go full screen"
+      },
+      "showPdf": {
+        "description": "If the PDF is hidden in Zen mode, open it beside the editor when you compile.",
+        "label": "Show the PDF when you compile"
+      },
+      "title": "Zen mode"
     }
   },
   "checkpoints": {
@@ -880,7 +995,6 @@
   },
   "cite": {
     "apa": "The same reference in APA is behind Cite this repository on GitHub",
-    "copyBibtex": "Copy BibTeX",
     "description": "Oleafly is free and open source, and it stays that way when people know it exists. If it helped a paper along, one entry in your bibliography tells the next researcher where the tool came from. Copy it, paste it into your .bib file, and cite the key <citeKey>oleafly</citeKey>.",
     "title": "Cite Oleafly in your paper"
   },
@@ -890,13 +1004,15 @@
       "download": "Download",
       "downloadAll": "Download all"
     },
-    "aiTemplates": {
-      "deleteDescription": "Delete \"{{name}}\" from your library? Projects already created from it keep their own copy and are not affected.",
-      "deleteTitle": "Delete AI generated template",
-      "deleted": "Deleted \"{{name}}\" from your library",
-      "empty": "No AI generated templates yet. Create one from the template gallery.",
-      "fallbackDescription": "AI generated template",
-      "toggle": "Manage AI generated templates",
+    "yourTemplates": {
+      "toggle": "Manage your templates",
+      "import": "Import template",
+      "empty": "No templates of your own yet. Import one here, save a project as a template from its menu, or generate one in the template gallery.",
+      "aiDescription": "AI generated template",
+      "customDescription": "Your template",
+      "deleteTitle": "Delete template",
+      "deleteDescription": "Delete \"{{name}}\" from your templates? Projects you already made from it keep their own copy.",
+      "deleted": "Deleted \"{{name}}\" from your templates",
       "deleteFailed": "Couldn't delete \"{{name}}\"."
     },
     "fontPacks": {
@@ -911,6 +1027,26 @@
       "ptserif": {
         "description": "A refined transitional serif, a good match for academic and executive documents.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans and Serif CJK, Fandol and LXGW WenKai. They also stand in for SimSun, SimHei and KaiTi.",
+        "label": "Chinese, Japanese and Korean"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 and 7 Free, and Noto Color Emoji.",
+        "label": "Icons and emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code and Source Code Pro.",
+        "label": "Code"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans and IBM Plex.",
+        "label": "Modern sans and serif"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus and New Computer Modern Sans and Mono.",
+        "label": "Classic text"
       }
     },
     "fonts": {
@@ -947,7 +1083,57 @@
       "fontRemoveFailed": "Couldn't remove the font.",
       "packDownloadFailed": "Couldn't download the template pack.",
       "packsDownloadFailed": "Couldn't download the template packs.",
-      "packRemoveFailed": "Couldn't remove the template pack."
+      "packRemoveFailed": "Couldn't remove the template pack.",
+      "templateDownloadFailed": "Couldn't download the template.",
+      "packsRefreshFailed": "Couldn't check for new packs."
+    },
+    "typstFonts": {
+      "heading": "Fonts for Typst",
+      "tooltip": "Free fonts that many Typst templates ask for. Once downloaded, every Typst project can use them, except a project that turns system fonts off."
+    },
+    "packs": {
+      "browse": "Browse",
+      "back": "Back to packs",
+      "count_one": "{{count}} template",
+      "count_other": "{{count}} templates",
+      "installedCount": "{{installed}} of {{total}} installed",
+      "downloadPack": "Download pack",
+      "refresh": "Check for new packs",
+      "searchPacks": "Search packs",
+      "searchTemplates": "Search templates",
+      "noPacks": "No packs match",
+      "noTemplates": "No templates match",
+      "loading": "Loading templates",
+      "loadFailed": "Couldn't load this pack.",
+      "retry": "Try again",
+      "installed": "Installed",
+      "engineFilter": "Engine",
+      "kindFilter": "Kind",
+      "languageFilter": "Language",
+      "allEngines": "All engines",
+      "allKinds": "All kinds",
+      "allLanguages": "All languages",
+      "groups": {
+        "curated": "Curated",
+        "community": "Community",
+        "typst": "Typst",
+        "university": "University"
+      },
+      "preview": {
+        "image": "First page of {{name}}",
+        "previous": "Previous template",
+        "next": "Next template",
+        "engine": "Engine",
+        "license": "License",
+        "kind": "Kind",
+        "languages": "Languages",
+        "country": "Country",
+        "institution": "Institution",
+        "originalSource": "Original source",
+        "getTemplate": "Get this template",
+        "useTemplate": "Use this template",
+        "getAndCreate": "Get and create project"
+      }
     }
   },
   "engine": {
@@ -982,10 +1168,10 @@
       "status": {
         "checking": "Checking for pandoc…",
         "installing": "Fetching a pinned pandoc release. This takes a moment on first use.",
-        "missing": "Not found. Oleafly can download a compatible pandoc (2.19 or newer) into its own folder; nothing else on your system changes.",
+        "missing": "Not found. Oleafly can download a compatible pandoc (2.19 or newer) into its own folder. Nothing else on your system changes.",
         "ready": "Detected. Markdown projects convert to LaTeX with pandoc, then compile with the bundled Tectonic."
       },
-      "tectonicDetail": "Typesets the LaTeX that pandoc produces. Ships with Oleafly; nothing to configure.",
+      "tectonicDetail": "Typesets the LaTeX that pandoc produces. It ships with Oleafly and needs no setup.",
       "tooltip": "Markdown projects are converted with pandoc (Pandoc Markdown: tables, footnotes, citations, math) into LaTeX, then typeset to PDF by the bundled Tectonic. Pandoc ships with Oleafly."
     },
     "packages": {
@@ -1192,11 +1378,68 @@
       "apiKeyLabel": "Zotero API key",
       "connected": "Connected to your Zotero library.",
       "connectedAs": "Connected as {{username}}.",
-      "description": "Import citations and references from your Zotero library.",
       "disconnectFailed": "Oleafly couldn't remove the saved Zotero key. Try again.",
-      "importHint": "To import, open a project's References panel and choose Import reference library.",
       "userIdLabel": "Zotero user ID",
-      "userIdPlaceholder": "User ID"
+      "userIdPlaceholder": "User ID",
+      "citeDescription": "Search your whole Zotero library while you write and add only what you cite. Oleafly reads your library and never changes it.",
+      "local": {
+        "heading": "Zotero on this computer",
+        "ready": "Connected to Zotero {{version}}.",
+        "readyNoVersion": "Connected to Zotero.",
+        "bbtFound": "Better BibTeX {{version}} is installed, so citation keys come from Better BibTeX.",
+        "bbtMissing": "Better BibTeX isn't installed, so citation keys come from Zotero.",
+        "notRunning": "Zotero isn't running. Open Zotero to search your library, or connect your zotero.org account below.",
+        "apiDisabled": "In Zotero, open Settings > Advanced and turn on \"Allow other applications on this computer to communicate with Zotero\".",
+        "unsupported": "This version of Zotero can't share its library. Update to Zotero 7 or newer.",
+        "unknown": "Oleafly hasn't looked for Zotero yet."
+      },
+      "test": "Test connection",
+      "syncNow": "Sync now",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX not found",
+        "local": "Read from Zotero on this computer",
+        "web": "Read from zotero.org",
+        "library_one": "{{name}}: {{formatted}} item",
+        "library_other": "{{name}}: {{formatted}} items"
+      },
+      "library": {
+        "heading": "Libraries to search",
+        "myLibrary": "My Library",
+        "toggle": "Search {{name}}",
+        "items_one": "{{formatted}} item",
+        "items_other": "{{formatted}} items"
+      },
+      "sync": {
+        "never": "Not synced yet.",
+        "syncing": "Syncing your Zotero library…",
+        "progress": "Syncing {{done}} of {{total}} items…",
+        "status_one": "{{formatted}} item ready to cite, synced {{time}}.",
+        "status_other": "{{formatted}} items ready to cite, synced {{time}}.",
+        "fromCache": "Zotero is closed, so @ search uses the copy from the last sync.",
+        "rateLimited": "zotero.org asked Oleafly to wait. It will try again after {{time}}."
+      },
+      "account": {
+        "heading": "zotero.org account",
+        "description": "Use your account when Zotero isn't open on this computer. Group libraries come along too."
+      }
+    },
+    "overleaf": {
+      "description": "Bring projects over from your Overleaf account or your university's Overleaf server, and keep them in sync. Oleafly keeps the sign-in and the Git token encrypted on this computer.",
+      "signedInAs": "Signed in as {{email}} on {{server}}",
+      "signedIn": "Signed in on {{server}}",
+      "signOut": "Sign out",
+      "signOutFailed": "Oleafly could not sign out of Overleaf.",
+      "gitTitle": "Git token for sync",
+      "gitSaved": "A Git token is saved. Projects you link stay in sync with Overleaf.",
+      "gitMissing": "No Git token yet. Create one under Git integration in your Overleaf account settings to sync projects.",
+      "gitOpenSettings": "Open Overleaf account settings",
+      "gitPlanNote": "Git integration needs a paid or university Overleaf plan for the project's owner.",
+      "gitLabel": "Overleaf Git token",
+      "gitSave": "Save",
+      "gitRemove": "Remove",
+      "gitFailed": "Oleafly could not save the Git token. Check that you pasted the whole token."
     }
   },
   "language": {
@@ -1561,6 +1804,10 @@
         "description": "Show or hide the project sidebar.",
         "label": "Toggle sidebar"
       },
+      "togglePreview": {
+        "label": "Toggle PDF preview",
+        "description": "Show or hide the PDF beside the editor, in Zen mode too."
+      },
       "toggleTerminal": {
         "description": "Show or hide the project terminal.",
         "label": "Toggle terminal"
@@ -1568,6 +1815,26 @@
       "openFolder": {
         "label": "Open folder",
         "description": "Open a folder from your computer as a project."
+      },
+      "toggleZenMode": {
+        "description": "Hide everything except your writing, or bring it back.",
+        "label": "Toggle Zen mode"
+      },
+      "openSettings": {
+        "label": "Open settings",
+        "description": "Open Oleafly's settings."
+      },
+      "zoomIn": {
+        "description": "Make the whole app bigger.",
+        "label": "Zoom in"
+      },
+      "zoomOut": {
+        "description": "Make the whole app smaller.",
+        "label": "Zoom out"
+      },
+      "resetZoom": {
+        "description": "Set the app back to 100%.",
+        "label": "Reset zoom"
       }
     },
     "application": {
@@ -1590,7 +1857,7 @@
         "italic": "Italic",
         "jumpToSourceFromPdf": "Jump to source from PDF",
         "redo": "Redo",
-        "renameSymbol": "Rename symbol project-wide",
+        "renameSymbol": "Rename symbol or file project-wide",
         "slashCommandMenu": "Slash-command insert menu",
         "triggerAutocomplete": "Trigger autocomplete",
         "undo": "Undo"

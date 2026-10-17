@@ -52,6 +52,7 @@ import { i18n } from "@/i18n";
 import { base64ToBytes, bytesToBase64, textToBase64 } from "@/lib/base64";
 import { basename } from "@/lib/path-utils";
 import { Spinner } from "@/components/ui/spinner";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 type InputMode = "text" | "file";
 
@@ -203,7 +204,7 @@ function ConversionNote({ note, details }: Readonly<{ note: string; details: rea
     <div className="space-y-1.5 text-xs text-muted-foreground">
       <p>{note}</p>
       {details.length > 0 && (
-        <ul data-testid="converter-details" className="max-h-32 space-y-0.5 overflow-auto font-mono text-[11px] leading-relaxed">
+        <ul data-testid="converter-details" className="max-h-32 select-text space-y-0.5 overflow-auto font-mono text-[0.6875rem] leading-relaxed">
           {[...new Set(details)].map((detail) => (
             <li key={detail} className="break-words">{detail}</li>
           ))}
@@ -228,7 +229,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const definition = AD_HOC_CONVERTERS[id];
   const labels = converterCopy(id);
   const catalogTool = toolById(id);
-  const editorTheme = useSettingsStore((state) => state.editorTheme);
+  const editorTheme = useEditorThemeId();
   const initialMode: InputMode = definition.inputKind === "file" ? "file" : "text";
   const [mode, setMode] = useState<InputMode>(initialMode);
   const [text, setText] = useState(definition.example ?? "");
@@ -562,7 +563,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                   <FileText className="size-5" />
                 </div>
                 <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.needsAttention)}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{error.message}</p>
+                <p className="mt-2 select-text text-sm leading-relaxed text-muted-foreground">{error.message}</p>
                 {error.localModel && (
                   <Button variant="outline" size="sm" className="mt-4" onClick={openLocalModelSettings}>
                     <Settings /> {t(($) => $.researchTools.converter.openAiSettings)}

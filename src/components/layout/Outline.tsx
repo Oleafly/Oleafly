@@ -2,6 +2,10 @@ import { useTranslation } from "react-i18next";
 import { CopyMinus, CopyPlus, Info, ListTree } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useScrollMemory } from "@/hooks/use-scroll-memory";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
+import { readSidebarView } from "@/store/sidebar-view-state";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   IntelligenceFilter,
@@ -19,9 +23,13 @@ import {
   projectIntelligenceFailureText,
   projectIntelligenceReasonText,
 } from "@/lib/project-intelligence/reason";
-import type { ProjectIntelligenceState } from "@/lib/project-intelligence/types";
+import type {
+  ProjectIntelligenceSnapshot,
+  ProjectIntelligenceState,
+} from "@/lib/project-intelligence/types";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 
 function countNodes(nodes: readonly IntelligenceTreeNode[]): number {
   let count = 0;
@@ -36,15 +44,19 @@ function countNodes(nodes: readonly IntelligenceTreeNode[]): number {
 }
 
 function StructureUnavailable({
-  state,
   projectId,
-  activePath,
 }: Readonly<{
-  state: ProjectIntelligenceState;
   projectId: string | null;
-  activePath: string | null;
 }>) {
   const { t } = useTranslation(["workspace"]);
+  const activePath = useFilesStore((state) => state.activePath);
+  const status = useIndexStore((state) => state.intelligenceState.status);
+  const reasonText = useIndexStore((state) =>
+    projectIntelligenceReasonText(state.intelligenceState.reason),
+  );
+  const failureText = useIndexStore((state) =>
+    projectIntelligenceFailureText(state.intelligenceState),
+  );
   if (!projectId) {
     return (
       <PanelState
@@ -64,7 +76,7 @@ function StructureUnavailable({
     );
   }
 
-  switch (state.status) {
+  switch (status) {
     case "running":
     case "not_run":
       return (
@@ -79,10 +91,7 @@ function StructureUnavailable({
         <PanelState
           state="unsupported"
           title={t(($) => $.workspace.structure.unavailable.unsupported.title)}
-          detail={
-            projectIntelligenceReasonText(state.reason) ??
-            t(($) => $.workspace.structure.unavailable.unsupported.detail)
-          }
+          detail={reasonText ?? t(($) => $.workspace.structure.unavailable.unsupported.detail)}
         />
       );
     case "unavailable":
@@ -90,10 +99,7 @@ function StructureUnavailable({
         <PanelState
           state="error"
           title={t(($) => $.workspace.structure.unavailable.offline.title)}
-          detail={
-            projectIntelligenceReasonText(state.reason) ??
-            t(($) => $.workspace.structure.unavailable.offline.detail)
-          }
+          detail={reasonText ?? t(($) => $.workspace.structure.unavailable.offline.detail)}
         />
       );
     case "error":
@@ -101,10 +107,7 @@ function StructureUnavailable({
         <PanelState
           state="error"
           title={t(($) => $.workspace.structure.unavailable.failed.title)}
-          detail={
-            projectIntelligenceFailureText(state) ??
-            t(($) => $.workspace.structure.unavailable.failed.detail)
-          }
+          detail={failureText ?? t(($) => $.workspace.structure.unavailable.failed.detail)}
         />
       );
     default:
@@ -118,12 +121,27 @@ function StructureUnavailable({
   }
 }
 
-function useStatusNotice(state: ProjectIntelligenceState): string | null {
+function analysisPartial(state: ProjectIntelligenceState): boolean {
+  return state.status === "partial" || state.data?.status === "partial";
+}
+
+function refreshingSnapshot(
+  state: ProjectIntelligenceState,
+  projectId: string | null,
+): ProjectIntelligenceSnapshot | null {
+  const refreshing = state.status === "running" ||
+    state.status === "not_run" || (state.stale &&
+    (state.status === "success" || state.status === "partial"));
+  return refreshing && projectId &&
+    state.identity?.projectId === projectId &&
+    state.data?.identity.projectId === projectId
+      ? state.data : null;
+}
+
+function useStatusNotice(): string | null {
   const { t } = useTranslation(["workspace"]);
-  if (state.status === "partial" || state.data?.status === "partial") {
-    return t(($) => $.workspace.structure.notice.partial);
-  }
-  return null;
+  const partial = useIndexStore((state) => analysisPartial(state.intelligenceState));
+  return partial ? t(($) => $.workspace.structure.notice.partial) : null;
 }
 
 export function Outline({
@@ -139,9 +157,16 @@ export function Outline({
   readonly onCollapsedChange?: (next: boolean) => void;
 }> = {}) {
   const { t } = useTranslation(["workspace"]);
-  const intelligenceState = useIndexStore((state) => state.intelligenceState);
-  const activePath = useFilesStore((state) => state.activePath);
   const projectId = useFilesStore((state) => state.projectId);
+  const currentSnapshot = useIndexStore((state) =>
+    acceptedProjectSnapshot(state.intelligenceState, projectId),
+  );
+  const retainedSnapshot = useIndexStore((state) =>
+    refreshingSnapshot(state.intelligenceState, projectId),
+  );
+  const analysisRunning = useIndexStore(
+    (state) => state.intelligenceState.status === "running",
+  );
   const [uncontrolledCollapsed, setUncontrolledCollapsed] =
     useState(defaultCollapsed);
   const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
@@ -150,7 +175,15 @@ export function Outline({
     setUncontrolledCollapsed(next);
     onCollapsedChange?.(next);
   };
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState(
+    () => readSidebarView(projectId, "structure")?.filter ?? "",
+  );
+  useSidebarViewMemory(projectId, "structure", { filter });
+  const [filterEdits, setFilterEdits] = useState(0);
+  const editFilter = (value: string) => {
+    setFilter(value);
+    setFilterEdits((count) => count + 1);
+  };
   const [expansionCommand, setExpansionCommand] =
     useState<IntelligenceTreeExpansionCommand | null>(null);
   const [treeExpansionState, setTreeExpansionState] =
@@ -160,22 +193,11 @@ export function Outline({
   useEffect(() => {
     if (previousProjectId.current === projectId) return;
     previousProjectId.current = projectId;
-    setFilter("");
+    setFilter(readSidebarView(projectId, "structure")?.filter ?? "");
     setExpansionCommand(null);
     setTreeExpansionState("none");
   }, [projectId]);
 
-  const currentSnapshot = acceptedProjectSnapshot(
-    intelligenceState,
-    projectId,
-  );
-  const refreshing = intelligenceState.status === "running" ||
-    intelligenceState.status === "not_run" || (intelligenceState.stale &&
-    (intelligenceState.status === "success" || intelligenceState.status === "partial"));
-  const retainedSnapshot = refreshing && projectId &&
-    intelligenceState.identity?.projectId === projectId &&
-    intelligenceState.data?.identity.projectId === projectId
-      ? intelligenceState.data : null;
   const snapshot = currentSnapshot ?? retainedSnapshot;
 
   const nodes = useMemo(
@@ -183,7 +205,15 @@ export function Outline({
     [snapshot],
   );
   const nodeCount = useMemo(() => countNodes(nodes), [nodes]);
-  const statusNotice = useStatusNotice(intelligenceState);
+  const treeScrollRef = useScrollTopOnChange(filterEdits);
+  useOverlayScrollbar(treeScrollRef);
+  const scrollMemory = useScrollMemory({
+    scrollRef: treeScrollRef,
+    projectId,
+    slot: "structure",
+    ready: currentSnapshot !== null || nodeCount > 0,
+  });
+  const statusNotice = useStatusNotice();
   const notice = currentSnapshot ? statusNotice : null;
   const modelKey = snapshot?.identity.projectId;
   const expansionCommandKey = snapshot
@@ -224,7 +254,7 @@ export function Outline({
       title={t(($) => $.workspace.structure.title)}
       icon={<ListTree aria-hidden className="size-3.5" />}
       ariaLabel={t(($) => $.workspace.structure.ariaLabel)}
-      ariaBusy={intelligenceState.status === "running"}
+      ariaBusy={analysisRunning}
       count={snapshot ? nodeCount : undefined}
       countLabel={
         snapshot
@@ -281,7 +311,7 @@ export function Outline({
       <div className="shrink-0 border-b border-sidebar-border/65 px-2 py-1.5">
             <IntelligenceFilter
               value={filter}
-              onChange={setFilter}
+              onChange={editFilter}
               label={t(($) => $.workspace.structure.filterLabel)}
               placeholder={t(($) => $.workspace.structure.filterPlaceholder)}
             />
@@ -289,9 +319,15 @@ export function Outline({
 
       {notice ? <output className="sr-only">{notice}</output> : null}
 
-      <div className="min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]">
+      <div
+        ref={treeScrollRef}
+        className="isolate min-h-0 flex-1 overflow-auto px-1 [scrollbar-width:thin]"
+      >
             {currentSnapshot || nodeCount > 0 ? (
               <IntelligenceTree
+                memoryProjectId={projectId}
+                memorySlot="structure"
+                scrollMemory={scrollMemory}
                 label={t(($) => $.workspace.structure.treeLabel)}
                 nodes={nodes}
                 query={filter}
@@ -307,11 +343,7 @@ export function Outline({
                 }
               />
             ) : (
-              <StructureUnavailable
-                state={intelligenceState}
-                projectId={projectId}
-                activePath={activePath}
-              />
+              <StructureUnavailable projectId={projectId} />
             )}
       </div>
     </SidebarSection>

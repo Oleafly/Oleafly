@@ -8,7 +8,7 @@
 # Tauri's `bundle.externalBin` expects them.
 set -euo pipefail
 
-VERSION="0.16.9"
+VERSION="0.17.0"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_DIR="$ROOT/src-tauri/binaries"
 CACHE_DIR="${OLEAFLY_SIDECAR_CACHE_DIR:-$ROOT/src-tauri/target/e2e-sidecars}"
@@ -29,10 +29,10 @@ trap cleanup_fetch EXIT INT TERM
 # runners use /bin/bash 3.2, which has no `declare -A`).
 asset_for() {
   case "$1" in
-    aarch64-apple-darwin)     echo "tectonic-$VERSION-aarch64-apple-darwin.tar.gz:tar:edb67c61aba768289f6da441c9e6f523cfaff4f8b2a5708523ef29c543f8e88e" ;;
-    aarch64-unknown-linux-gnu) echo "tectonic-$VERSION-aarch64-unknown-linux-musl.tar.gz:tar:f9aa39017dbd51f111fdb93dda222178cbe51c8193508fc567b523cc74fff9c1" ;;
-    x86_64-pc-windows-msvc)   echo "tectonic-$VERSION-x86_64-pc-windows-msvc.zip:zip:131a24604785a9600989a3d91225f597df52ac06f00aeffe86fd529f99ee5cdd" ;;
-    x86_64-unknown-linux-gnu) echo "tectonic-$VERSION-x86_64-unknown-linux-musl.tar.gz:tar:60b13a0826ae7ad9ce34b4a2df06bff2cfcfa6dda8a915477c0cbb84e1a4a902" ;;
+    aarch64-apple-darwin)     echo "tectonic-$VERSION-aarch64-apple-darwin.tar.gz:tar:a3f1cac7c5678f01661a92212f58480ae3b0634115d880dbc59e2953ded45667" ;;
+    aarch64-unknown-linux-gnu) echo "tectonic-$VERSION-aarch64-unknown-linux-musl.tar.gz:tar:b10954a95404f3ab2328d2fa59a5ebab8e657f893fab096f98be8db7c0c979b8" ;;
+    x86_64-pc-windows-msvc)   echo "tectonic-$VERSION-x86_64-pc-windows-msvc.zip:zip:f61ce51f0b0ade1015b7de7ef368541c5424e9756ecbd0d7af97d6d48030845f" ;;
+    x86_64-unknown-linux-gnu) echo "tectonic-$VERSION-x86_64-unknown-linux-musl.tar.gz:tar:8533d07f9ccbd7a65824b9e0459041bca34af1eb33daba48f59215593753a3b7" ;;
     *)                        echo "" ;;
   esac
 }

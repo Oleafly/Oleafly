@@ -1,7 +1,8 @@
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { Check, ChevronRight, Circle } from "lucide-react";
+import { ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -125,7 +126,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   >
     <span className="absolute left-2 flex size-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="size-4" />
+        <CheckBadge />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     {children}

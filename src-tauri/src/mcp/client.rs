@@ -3834,6 +3834,107 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn full_access_refuses_a_denied_agent_tool_without_confirmation() {
+        let (_directory, repository) = disk_repository();
+        persist_server(&repository, stdio_server("search-server"));
+        let root = tempfile::tempdir().unwrap();
+        crate::approvals::set_mode(
+            root.path(),
+            "project-1",
+            crate::approvals::ApprovalMode::FullAccess,
+        )
+        .unwrap();
+        let callable = agent_tool_name("local-search", "search");
+        crate::approvals::set_decision(
+            root.path(),
+            "project-1",
+            &callable,
+            Some(crate::approvals::ToolDecision::Deny),
+        )
+        .unwrap();
+        let state = McpClientState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let generation = register_agent_run(&agent_state, "run-full-deny", "project-1", [callable]);
+        let arguments = serde_json::json!({"query": "rust"});
+
+        let denied = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "project-1",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &arguments,
+                run_id: "run-full-deny",
+            },
+            |_| async { panic!("denied tools must not open a confirmation") },
+        )
+        .await
+        .unwrap_err();
+        let policy = agent_tool_policy(root.path(), "project-1", "local-search", "search").unwrap();
+
+        crate::agent::finish_active_request_for_test(&agent_state, "run-full-deny", generation);
+        assert_eq!(denied, "This MCP tool is denied for this project.");
+        assert_eq!(policy.decision, Some(crate::approvals::ToolDecision::Deny));
+        assert!(state.agent_approvals.lock().unwrap().approvals.is_empty());
+    }
+
+    #[tokio::test]
+    async fn allow_rules_outside_custom_still_confirm_agent_tools() {
+        let (_directory, repository) = disk_repository();
+        persist_server(&repository, stdio_server("search-server"));
+        let root = tempfile::tempdir().unwrap();
+        crate::approvals::set_mode(
+            root.path(),
+            "project-1",
+            crate::approvals::ApprovalMode::ApproveForMe,
+        )
+        .unwrap();
+        let callable = agent_tool_name("local-search", "search");
+        crate::approvals::set_decision(
+            root.path(),
+            "project-1",
+            &callable,
+            Some(crate::approvals::ToolDecision::Allow),
+        )
+        .unwrap();
+        let state = McpClientState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let generation =
+            register_agent_run(&agent_state, "run-allow-outside", "project-1", [callable]);
+        let arguments = serde_json::json!({"query": "rust"});
+        let asked = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counter = asked.clone();
+
+        let declined = authorize_agent_tool_after_confirmation(
+            &state,
+            &agent_state,
+            &repository,
+            root.path(),
+            McpAgentToolRequest {
+                project_id: "project-1",
+                server: "local-search",
+                tool_handle: "search",
+                arguments: &arguments,
+                run_id: "run-allow-outside",
+            },
+            move |_| {
+                counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                async { Ok(false) }
+            },
+        )
+        .await
+        .unwrap_err();
+
+        crate::agent::finish_active_request_for_test(&agent_state, "run-allow-outside", generation);
+        assert_eq!(declined, "MCP tool approval was declined.");
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert!(state.agent_approvals.lock().unwrap().approvals.is_empty());
+    }
+
+    #[tokio::test]
     async fn agent_tool_approval_is_bound_and_consumed_once_at_the_late_boundary() {
         let (_directory, repository) = disk_repository();
         let server = stdio_server("search-server");

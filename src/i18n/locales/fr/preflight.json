@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Le contenu du tableau risque de ne pas être reconnu comme des champs de CV",
-      "detailTable": "Les outils ATS aplatissent souvent le contenu tabulaire de façon imprévisible. Évitez d'utiliser un tableau pour disposer le texte d'un CV côte à côte ; les vrais tableaux de données de recherche sont évalués à part dans Accessibilité.",
+      "detailTable": "Les outils ATS aplatissent souvent le contenu tabulaire de façon imprévisible. Évitez d'utiliser un tableau pour disposer le texte d'un CV côte à côte. Les vrais tableaux de données de recherche sont vérifiés à part dans Accessibilité.",
       "titleTikz": "Le contenu TikZ a besoin d'une alternative sémantique",
       "detailTikz": "TikZ dessine un contenu visuel sans en exposer le sens comme du texte ordinaire. Fournissez une description accessible pour une sortie de publication et évitez-le pour un CV destiné à un ATS."
     },
@@ -266,7 +266,7 @@
       "title_many": "{{count}} entrées bibliographiques ont des métadonnées incomplètes",
       "title_other": "{{count}} entrées bibliographiques ont des métadonnées incomplètes",
       "detail": "Des fiches incomplètes peuvent produire des références cassées ou ambiguës dans les styles d'éditeur. {{examples}}.",
-      "detailTruncated": "Des fiches incomplètes peuvent produire des références cassées ou ambiguës dans les styles d'éditeur. {{examples}} ; …"
+      "detailTruncated": "Des fiches incomplètes peuvent produire des références cassées ou ambiguës dans les styles d'éditeur. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} valeur de DOI semble mal formée",
@@ -333,6 +333,12 @@
     "refs-duplicate-bib": {
       "title": "Entrées bibliographiques en double : {{keys}}",
       "detail": "Ces entrées partagent le DOI {{doi}} : c'est donc la même référence sous des clés différentes. N'en gardez qu'une et citez-la, sinon votre bibliographie la listera deux fois."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "La clé de citation « {{key}} » est définie plusieurs fois",
+      "detail": "Définie dans {{places}}. BibTeX n'utilise que la première entrée portant cette clé, et il ignore les majuscules quand il compare les clés. Gardez une seule entrée, ou donnez une nouvelle clé aux autres et mettez à jour les citations qui les utilisent.",
+      "detailBiber": "Définie dans {{places}}. Quand biber construit la bibliographie, il n'utilise que la première entrée portant cette clé. Gardez une seule entrée, ou donnez une nouvelle clé aux autres et mettez à jour les citations qui les utilisent.",
+      "detailTypst": "Définie dans {{places}}. Typst arrête la compilation quand deux entrées bibliographiques partagent une clé. Gardez une seule entrée, ou donnez une nouvelle clé aux autres et mettez à jour les citations qui les utilisent."
     },
     "submission-path-case": {
       "title": "La casse du nom de fichier ne correspond pas : {{target}}",
@@ -623,7 +629,7 @@
     "title": "Prévérification",
     "readerDisabled": "Compilez et lancez d'abord une vérification de la sortie",
     "readerEnabled": "Ouvrir le texte extrait du PDF",
-    "readerButton": "Afficher ce que voit le lecteur",
+    "readerButton": "Lecteur d'écran",
     "aboutLabel": "À propos de la prévérification",
     "aboutTitle": "Ce que vérifie la prévérification",
     "aboutIntro": "La prévérification lit le source du projet, le journal du compilateur et le PDF actuel. N'activez que les vérifications adaptées à ce document.",

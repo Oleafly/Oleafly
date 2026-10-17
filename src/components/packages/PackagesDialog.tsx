@@ -8,6 +8,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/empty";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { describeError } from "@/lib/app-error";
 import { formatDate } from "@/lib/intl";
 import { cn } from "@/lib/utils";
@@ -17,7 +18,7 @@ const MAX_ROWS = 100;
 const NO_PACKAGES: readonly never[] = [];
 
 const CHIP =
-  "rounded-full border px-2.5 py-0.5 text-[11px] transition-colors hover:bg-accent focus-visible:bg-accent";
+  "rounded-full border px-2.5 py-0.5 text-[0.6875rem] transition-colors hover:bg-accent focus-visible:bg-accent";
 const CHIP_ACTIVE = "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 focus-visible:bg-primary/20";
 
 export interface PackageList<P> {
@@ -82,6 +83,7 @@ export function PackagesDialog<P, C>({
   const [listState, setListState] = useState<ListState<P>>({ status: "loading" });
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
+  const listRef = useScrollTopOnChange(JSON.stringify([query, category]));
   const request = useRef(0);
   const context = provider.useRowContext(open, onClose);
   const { labels } = provider;
@@ -175,7 +177,7 @@ export function PackagesDialog<P, C>({
         )}
       </div>
       {providerNotice && <div className="flex flex-col gap-1.5 border-b px-3 py-2">{providerNotice}</div>}
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div ref={listRef} className="min-h-0 flex-1 overflow-auto">
         {listState.status === "loading" && <LoadingState className="p-3" label={labels.loading()} />}
         {listState.status === "error" && (
           <ErrorState className="p-3" message={listState.message}>
@@ -188,7 +190,7 @@ export function PackagesDialog<P, C>({
           <>
             <div className="flex flex-col gap-0.5 px-3 pt-2.5 pb-1.5">
               <p className="text-xs text-muted-foreground">{summary}</p>
-              {notice && <p className="text-[11px] text-muted-foreground">{notice}</p>}
+              {notice && <p className="text-[0.6875rem] text-muted-foreground">{notice}</p>}
             </div>
             {results.length === 0 ? (
               <p className="px-3 pb-3 text-xs text-muted-foreground">{labels.empty()}</p>

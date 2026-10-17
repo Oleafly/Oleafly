@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Copy, Minus, Square, X } from "lucide-react";
-import { isLinux, isWindows } from "@/lib/utils";
+import { cn, isLinux, isWindows } from "@/lib/utils";
 
 const drawsWindowControls = isWindows || isLinux;
 
-export function WindowControls() {
+export function WindowControls({ compact = false }: Readonly<{ compact?: boolean }>) {
   const { t } = useTranslation(["common", "shell"]);
   const [maximized, setMaximized] = useState(false);
 
@@ -37,7 +37,7 @@ export function WindowControls() {
 
   return (
     <fieldset
-      className="m-0 flex h-12 shrink-0 border-0 p-0"
+      className={cn("m-0 flex shrink-0 border-0 p-0", compact ? "h-7" : "h-12")}
       aria-label={t(($) => $.shell.windowControls.group)}
     >
       <div className="mx-1 h-5 w-px shrink-0 self-center bg-border" />

@@ -5,7 +5,7 @@ import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { TOAST_DURATION_MS, TOAST_LIMIT, useToastStore, type Toast } from "@/store/toast";
 import { displayText } from "@/lib/display-path";
 
-const TOASTER_STYLE = { "--width": "400px" } as CSSProperties;
+const TOASTER_STYLE = { "--width": "400px", fontFamily: "var(--font-sans)" } as CSSProperties;
 
 function sonnerFor(kind: Toast["kind"]) {
   if (kind === "error") return sonnerToast.error;
@@ -101,7 +101,8 @@ export function Toaster() {
           // colour change on the toast and a dimmed action instead.
           toast:
             "group toast group-[.toaster]:bg-popover group-[.toaster]:text-popover-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg group-[.toaster]:focus-visible:!border-ring group-[.toaster]:focus-visible:!shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
+          title: "select-text",
+          description: "select-text group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:!bg-transparent group-[.toast]:!text-primary group-[.toast]:!p-0 group-[.toast]:font-medium group-[.toast]:underline group-[.toast]:underline-offset-4 group-[.toast]:hover:opacity-80 group-[.toast]:focus-visible:!shadow-none group-[.toast]:focus-visible:opacity-80",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",

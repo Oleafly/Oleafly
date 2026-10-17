@@ -210,5 +210,20 @@
     "clearFilter": "Clear filter",
     "filterPlaceholder": "Filter…",
     "noProject": "No project"
+  },
+  "fileReferences": {
+    "title": "Update references to {{name}}?",
+    "files_one": "{{count}} file",
+    "files_other": "{{count}} files",
+    "summary_one": "{{count}} reference in $t(workspace:fileReferences.files, { \"count\": {{files}} }) still uses the old path, {{path}}.",
+    "summary_other": "{{count}} references in $t(workspace:fileReferences.files, { \"count\": {{files}} }) still use the old path, {{path}}.",
+    "fileCount_one": "{{count}} reference",
+    "fileCount_other": "{{count}} references",
+    "dontAsk": "Don't ask again",
+    "update": "Update references",
+    "skip": "Don't update",
+    "failed_one": "{{count}} file changed after the move or couldn't be saved. It still uses the old path.",
+    "failed_other": "{{count}} files changed after the move or couldn't be saved. They still use the old path.",
+    "close": "Close without updating references"
   }
 }

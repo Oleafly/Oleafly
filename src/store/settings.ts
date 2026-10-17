@@ -1,6 +1,24 @@
 import { create } from "zustand";
+import type { EditorColorId } from "@oleafly/editor/color-roles";
+import { EDITOR_CURSOR_BLINKING, type EditorCursorBlinking } from "@oleafly/editor/cursor-blink";
+import { EDITOR_CURSOR_HEIGHTS, type EditorCursorHeight } from "@oleafly/editor/cursor-height";
+import {
+  isEditorThemeId,
+  validateEditorColors,
+  normalizeEditorColor,
+  type EditorColorKey,
+  type EditorColorSettings,
+  type EditorThemeExport,
+  type EditorThemeId,
+} from "@/lib/editor-themes";
+import type { Theme } from "@/lib/theme";
 import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
 import { forgetRuleSuppressedHere } from "@/lib/proofreading/ignored";
+import {
+  fontFamilyName,
+  primaryFontFamily,
+  withoutControlCharacters,
+} from "@/lib/font-families";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -11,6 +29,7 @@ const SETTINGS_SECTIONS = new Set([
   "engine",
   "downloads",
   "integrations",
+  "collaboration",
   "shortcuts",
   "experimentation",
   "help",
@@ -55,6 +74,8 @@ export type RailTab =
   | "preflight"
   | "refs"
   | "research"
+  | "collab"
+  | "comments"
   | "mcp";
 
 export type DockPlacement = "left" | "right" | "bottom";
@@ -78,16 +99,7 @@ export function readDictionaryLocale(raw: string): string {
     ? normalized
     : DEFAULT_DICTIONARY_LOCALE;
 }
-export type EditorThemeId =
-  | "system"
-  | "linear"
-  | "github-dark"
-  | "dracula"
-  | "nord"
-  | "tokyo-night"
-  | "rose-pine"
-  | "catppuccin"
-  | "one-dark";
+export type { EditorThemeId } from "@/lib/editor-themes";
 export type TerminalCursorStyle = "block" | "underline" | "bar";
 export type TerminalColorThemeId =
   | "system"
@@ -472,7 +484,7 @@ function ls(k: string, fb: string): string {
   }
 }
 
-const LAYOUT_PRESETS: LayoutPreset[] = [
+export const LAYOUT_PRESETS: readonly LayoutPreset[] = [
   "editor-preview-ai",
   "editor-preview",
   "editor-ai",
@@ -488,11 +500,23 @@ const LEGACY_VIEW_MODE_TO_PRESET: Record<string, LayoutPreset> = {
 };
 
 function readDefaultView(raw: string): LayoutPreset {
-  if ((LAYOUT_PRESETS as string[]).includes(raw)) return raw as LayoutPreset;
+  if ((LAYOUT_PRESETS as readonly string[]).includes(raw)) return raw as LayoutPreset;
   return LEGACY_VIEW_MODE_TO_PRESET[raw] ?? "editor-only";
 }
 function readEditorTheme(raw: string): EditorThemeId {
-  return EDITOR_THEMES.some((t) => t.id === raw) ? (raw as EditorThemeId) : "system";
+  return isEditorThemeId(raw) ? raw : "system";
+}
+
+function readEditorColors(raw: string): EditorColorSettings {
+  try {
+    return validateEditorColors(JSON.parse(raw));
+  } catch {
+    return {};
+  }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function readNumberInRange(
   raw: string | number,
@@ -511,7 +535,7 @@ function readTerminalCursorStyle(raw: string): TerminalCursorStyle {
 function readTerminalColorTheme(raw: string): TerminalColorThemeId {
   return raw in TERMINAL_COLOR_THEMES ? (raw as TerminalColorThemeId) : "system";
 }
-function readTerminalColor(raw: string, fallback: string): string {
+function readHexColor(raw: string, fallback: string): string {
   return /^#[\da-f]{6}$/iu.test(raw) ? raw.toLowerCase() : fallback;
 }
 function readBrowserSearchEngine(raw: string): BrowserSearchEngineId {
@@ -610,6 +634,8 @@ export const EDITOR_THEMES: { id: EditorThemeId; name: string }[] = [
   { id: "rose-pine", name: "Rosé Pine" },
   { id: "catppuccin", name: "Catppuccin" },
   { id: "one-dark", name: "One Dark" },
+  { id: "paper", name: "Paper" },
+  { id: "one-light", name: "One Light" },
 ];
 
 export const ACCENTS: { id: string; name: string; color: string }[] = [
@@ -695,19 +721,35 @@ function filePatternRegex(pattern: string): RegExp {
   return new RegExp(`^${escaped.replaceAll("*", ".*").replaceAll("?", ".")}$`, "u");
 }
 
+interface CompiledFilePattern {
+  wholePath: boolean;
+  expression: RegExp;
+}
+
+const compiledFilePatterns = new WeakMap<readonly string[], CompiledFilePattern[]>();
+
+function compileFilePatterns(patterns: readonly string[]): CompiledFilePattern[] {
+  const known = compiledFilePatterns.get(patterns);
+  if (known) return known;
+  const compiled: CompiledFilePattern[] = [];
+  for (const rawPattern of patterns) {
+    const pattern = rawPattern.trim().replaceAll("\\", "/");
+    if (!pattern) continue;
+    compiled.push({ wholePath: pattern.includes("/"), expression: filePatternRegex(pattern) });
+  }
+  compiledFilePatterns.set(patterns, compiled);
+  return compiled;
+}
+
 export function fileTreePathIsHidden(
   path: string,
   patterns: readonly string[],
 ): boolean {
   const normalized = path.replaceAll("\\", "/").replace(/^\.\//u, "");
   const segments = normalized.split("/").filter(Boolean);
-  return patterns.some((rawPattern) => {
-    const pattern = rawPattern.trim().replaceAll("\\", "/");
-    if (!pattern) return false;
-    const candidates = pattern.includes("/") ? [normalized] : segments;
-    const expression = filePatternRegex(pattern);
-    return candidates.some((candidate) => expression.test(candidate));
-  });
+  return compileFilePatterns(patterns).some(({ wholePath, expression }) =>
+    (wholePath ? [normalized] : segments).some((candidate) => expression.test(candidate)),
+  );
 }
 
 export const GRAMMAR_DIALECTS: {
@@ -729,9 +771,11 @@ export const EDITOR_KEYMAP_MODES: readonly EditorKeymapMode[] = [
   "emacs",
 ];
 
-export type EditorLineHeight = "compact" | "normal" | "wide";
+export type EditorLineHeightPreset = "compact" | "normal" | "wide";
 
-export const EDITOR_LINE_HEIGHTS: Readonly<Record<EditorLineHeight, number>> = {
+export type EditorLineHeight = EditorLineHeightPreset | "custom";
+
+export const EDITOR_LINE_HEIGHTS: Readonly<Record<EditorLineHeightPreset, number>> = {
   compact: 1.4,
   normal: 1.7,
   wide: 2,
@@ -741,9 +785,86 @@ export const EDITOR_LINE_HEIGHT_OPTIONS: readonly EditorLineHeight[] = [
   "compact",
   "normal",
   "wide",
+  "custom",
 ];
 
+export const EDITOR_CUSTOM_LINE_HEIGHT = { min: 1, max: 3, step: 0.05 } as const;
+
+export function clampEditorLineHeight(value: number): number {
+  if (!Number.isFinite(value)) return EDITOR_LINE_HEIGHTS.normal;
+  const { min, max } = EDITOR_CUSTOM_LINE_HEIGHT;
+  return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100;
+}
+
+export function editorLineHeightValue(choice: EditorLineHeight, custom: number): number {
+  return choice === "custom" ? clampEditorLineHeight(custom) : EDITOR_LINE_HEIGHTS[choice];
+}
+
+export type EditorLetterSpacingPreset = "normal" | "slight" | "wide" | "wider";
+
+export type EditorLetterSpacing = EditorLetterSpacingPreset | "custom";
+
+export const EDITOR_LETTER_SPACINGS: Readonly<Record<EditorLetterSpacingPreset, number>> = {
+  normal: 0,
+  slight: 0.5,
+  wide: 1,
+  wider: 1.5,
+};
+
+export const EDITOR_LETTER_SPACING_OPTIONS: readonly EditorLetterSpacing[] = [
+  "normal",
+  "slight",
+  "wide",
+  "wider",
+  "custom",
+];
+
+export const EDITOR_CUSTOM_LETTER_SPACING = { min: 0, max: 4, step: 0.1 } as const;
+
+export function clampEditorLetterSpacing(value: number): number {
+  if (!Number.isFinite(value)) return EDITOR_LETTER_SPACINGS.normal;
+  const { min, max } = EDITOR_CUSTOM_LETTER_SPACING;
+  return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100;
+}
+
+export function editorLetterSpacingValue(choice: EditorLetterSpacing, custom: number): number {
+  return choice === "custom" ? clampEditorLetterSpacing(custom) : EDITOR_LETTER_SPACINGS[choice];
+}
+
+export const APP_ZOOM_LEVELS: readonly number[] = [80, 90, 100, 110, 125, 150, 175, 200];
+
+export function appZoomLevel(value: unknown): number {
+  const level = Number(value);
+  return APP_ZOOM_LEVELS.includes(level) ? level : 100;
+}
+
+export const EDITOR_FONT_SIZES: readonly number[] = [11, 12, 13, 14, 15, 16, 18, 20, 24];
+
+export const EDITOR_FONT_SIZE_RANGE = { min: 6, max: 100, step: 1 } as const;
+
+export function clampEditorFontSize(value: number): number {
+  if (!Number.isFinite(value)) return 13;
+  const { min, max } = EDITOR_FONT_SIZE_RANGE;
+  return Math.round(Math.min(max, Math.max(min, value)) * 10) / 10;
+}
+
+export const EDITOR_CURSOR_WIDTHS: readonly number[] = [1, 2, 3];
+
+export { EDITOR_CURSOR_BLINKING, EDITOR_CURSOR_HEIGHTS, type EditorCursorBlinking, type EditorCursorHeight };
+
+export type EditorSurface = "light" | "dark";
+
+export const EDITOR_SURFACES: readonly EditorSurface[] = ["light", "dark"];
+
 export const EDITOR_TAB_SIZES: readonly number[] = [2, 4, 8];
+
+export type FileMoveReferences = "ask" | "always" | "never";
+
+export const FILE_MOVE_REFERENCE_OPTIONS: readonly FileMoveReferences[] = [
+  "ask",
+  "always",
+  "never",
+];
 
 export const TYPST_FORMATTER_LINE_WIDTHS: readonly number[] = [60, 80, 100, 120, 160];
 
@@ -760,6 +881,19 @@ interface SettingsState {
   setEditorLineWrap: (v: boolean) => void;
   editorLineHeight: EditorLineHeight;
   setEditorLineHeight: (v: EditorLineHeight) => void;
+  editorCustomLineHeight: number;
+  setEditorCustomLineHeight: (v: number) => void;
+  editorLetterSpacing: EditorLetterSpacing;
+  setEditorLetterSpacing: (v: EditorLetterSpacing) => void;
+  editorCustomLetterSpacing: number;
+  setEditorCustomLetterSpacing: (v: number) => void;
+  editorCursorWidth: number;
+  setEditorCursorWidth: (v: number) => void;
+  editorCursorHeight: EditorCursorHeight;
+  setEditorCursorHeight: (v: EditorCursorHeight) => void;
+  editorCursorColorLight: string;
+  editorCursorColorDark: string;
+  setEditorCursorColor: (surface: EditorSurface, v: string) => void;
   /** Completion popups while typing (Ctrl+Space always works). */
   editorAutocomplete: boolean;
   setEditorAutocomplete: (v: boolean) => void;
@@ -773,15 +907,22 @@ interface SettingsState {
   /** Dim inline preview of the most likely completion, accepted with Tab. */
   editorGhostCompletion: boolean;
   setEditorGhostCompletion: (v: boolean) => void;
-  /** Keep the cursor solid instead of blinking. */
-  editorNonBlinkingCursor: boolean;
-  setEditorNonBlinkingCursor: (v: boolean) => void;
+  editorCursorBlinking: EditorCursorBlinking;
+  setEditorCursorBlinking: (v: EditorCursorBlinking) => void;
+  editorHighlightCurrentLine: boolean;
+  setEditorHighlightCurrentLine: (v: boolean) => void;
   /** Pin the enclosing sections and environments to the top while scrolling. */
   editorStickyScroll: boolean;
   setEditorStickyScroll: (v: boolean) => void;
   /** Show the rendered result of the equation the cursor is in. */
   editorMathPreview: boolean;
   setEditorMathPreview: (v: boolean) => void;
+  fileMoveReferences: FileMoveReferences;
+  setFileMoveReferences: (v: FileMoveReferences) => void;
+  zenFullScreen: boolean;
+  setZenFullScreen: (v: boolean) => void;
+  zenShowPdfOnCompile: boolean;
+  setZenShowPdfOnCompile: (v: boolean) => void;
   typstFormatOnSave: boolean;
   setTypstFormatOnSave: (v: boolean) => void;
   typstFormatterLineWidth: number;
@@ -897,16 +1038,23 @@ interface SettingsState {
   setEditorFontSize: (v: number) => void;
   appFontSize: number;
   setAppFontSize: (v: number) => void;
+  appZoom: number;
+  setAppZoom: (v: number) => void;
   appFontFamily: string;
   setAppFontFamily: (v: string) => void;
   editorFontFamily: string;
   setEditorFontFamily: (v: string) => void;
-  editorTheme: EditorThemeId;
-  setEditorTheme: (v: EditorThemeId) => void;
+  editorUsesAppFont: boolean;
+  setEditorUsesAppFont: (v: boolean) => void;
+  editorThemeLight: EditorThemeId;
+  editorThemeDark: EditorThemeId;
+  setEditorTheme: (mode: Theme, v: EditorThemeId) => void;
+  editorColors: EditorColorSettings;
+  setEditorColor: (key: EditorColorKey, id: EditorColorId, color: string) => void;
+  resetEditorColors: (key: EditorColorKey) => void;
+  importEditorThemes: (exported: EditorThemeExport) => void;
   pdfDarkMode: boolean;
   setPdfDarkMode: (v: boolean) => void;
-  pdfZoomShortcuts: boolean;
-  setPdfZoomShortcuts: (v: boolean) => void;
   hiddenFilePatterns: readonly string[];
   addHiddenFilePattern: (pattern: string) => void;
   removeHiddenFilePattern: (pattern: string) => void;
@@ -933,6 +1081,8 @@ interface SettingsState {
   // entry point is gated on this.
   webBrowser: boolean;
   setWebBrowser: (v: boolean) => void;
+  liveCollaboration: boolean;
+  setLiveCollaboration: (v: boolean) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
   // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
   // their own pin in project.json.
@@ -975,6 +1125,52 @@ function readEditorLineHeight(): EditorLineHeight {
     : "normal";
 }
 
+function readEditorLetterSpacing(): EditorLetterSpacing {
+  const stored = ls("oleafly.editor.letterSpacing", "");
+  return EDITOR_LETTER_SPACING_OPTIONS.includes(stored as EditorLetterSpacing)
+    ? (stored as EditorLetterSpacing)
+    : "normal";
+}
+
+function readEditorCustomLetterSpacing(): number {
+  const stored = ls("oleafly.editor.letterSpacingCustom", "");
+  return stored === "" ? EDITOR_LETTER_SPACINGS.normal : clampEditorLetterSpacing(Number(stored));
+}
+
+function readEditorCustomLineHeight(): number {
+  const stored = ls("oleafly.editor.lineHeightCustom", "");
+  return stored === ""
+    ? EDITOR_LINE_HEIGHTS.normal
+    : clampEditorLineHeight(Number(stored));
+}
+
+function readFontFamilySetting(key: string): string {
+  const stored = ls(key, "");
+  if (!stored.includes(",")) return fontFamilyName(stored);
+  const family = primaryFontFamily(stored);
+  saveLs(key, family);
+  return family;
+}
+
+function readFileMoveReferences(): FileMoveReferences {
+  const stored = ls("oleafly.editor.fileMoveReferences", "");
+  return FILE_MOVE_REFERENCE_OPTIONS.includes(stored as FileMoveReferences)
+    ? (stored as FileMoveReferences)
+    : "ask";
+}
+
+function readEditorCursorBlinking(): EditorCursorBlinking {
+  const stored = ls("oleafly.editor.cursorBlinking", "");
+  const blinking = EDITOR_CURSOR_BLINKING.find((style) => style === stored);
+  if (blinking) return blinking;
+  return ls("oleafly.editor.solidCursor", "0") === "1" ? "off" : PREF_DEFAULTS.editorCursorBlinking;
+}
+
+function readEditorCursorHeight(): EditorCursorHeight {
+  const stored = ls("oleafly.editor.cursorHeight", "");
+  return EDITOR_CURSOR_HEIGHTS.find((height) => height === stored) ?? PREF_DEFAULTS.editorCursorHeight;
+}
+
 function readChoice(key: string, choices: readonly number[], fallback: number): number {
   const stored = Number(ls(key, ""));
   return choices.includes(stored) ? stored : fallback;
@@ -988,14 +1184,25 @@ const PREF_DEFAULTS = {
   editorTabSize: 4,
   editorLineWrap: true,
   editorLineHeight: "normal" as EditorLineHeight,
+  editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
+  editorLetterSpacing: "normal" as EditorLetterSpacing,
+  editorCustomLetterSpacing: EDITOR_LETTER_SPACINGS.normal,
+  editorCursorWidth: 1,
+  editorCursorHeight: "text" as EditorCursorHeight,
+  editorCursorColorLight: "",
+  editorCursorColorDark: "",
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
   editorAutoCloseMath: true,
   editorAutoCloseEnvironments: true,
   editorGhostCompletion: true,
-  editorNonBlinkingCursor: false,
+  editorCursorBlinking: "blink" as EditorCursorBlinking,
+  editorHighlightCurrentLine: true,
   editorStickyScroll: true,
   editorMathPreview: true,
+  fileMoveReferences: "ask" as FileMoveReferences,
+  zenFullScreen: true,
+  zenShowPdfOnCompile: true,
   typstFormatOnSave: false,
   typstFormatterLineWidth: 120,
   typstFormatterIndent: 2,
@@ -1013,11 +1220,14 @@ const PREF_DEFAULTS = {
   offline: false,
   editorFontSize: 13,
   appFontSize: 16,
+  appZoom: 100,
   appFontFamily: "",
   editorFontFamily: "",
-  editorTheme: "system" as EditorThemeId,
+  editorUsesAppFont: false,
+  editorThemeLight: "system" as EditorThemeId,
+  editorThemeDark: "system" as EditorThemeId,
+  editorColors: {} as EditorColorSettings,
   pdfDarkMode: false,
-  pdfZoomShortcuts: true,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-only" as LayoutPreset,
   openInTree: true,
@@ -1043,15 +1253,24 @@ const PREF_DEFAULTS = {
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
   webBrowser: false,
+  liveCollaboration: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
 type PrefKey = keyof typeof PREF_DEFAULTS;
 
+export type PreferenceKey = Exclude<PrefKey, "vim" | "offline">;
+
+export type PreferenceValues = { [K in PreferenceKey]: SettingsState[K] };
+
+// Where the Live collaboration switch is kept. Other windows, such as the
+// admin console, follow it through the storage event.
+export const LIVE_COLLABORATION_KEY = "oleafly.liveCollaboration";
+
 // What each Settings section's Reset button restores, mapped to the storage key
 // that persists it (null: kept for the session only). The reset and
 // sectionDiffersFromDefaults both read this map, so they cannot drift apart.
-const SECTION_SETTINGS = {
+export const SECTION_SETTINGS = {
   general: {
     uiLocalePreference: "oleafly.locale",
     spellcheck: "oleafly.spellcheck",
@@ -1070,14 +1289,25 @@ const SECTION_SETTINGS = {
     editorTabSize: "oleafly.editor.tabSize",
     editorLineWrap: "oleafly.editor.lineWrap",
     editorLineHeight: "oleafly.editor.lineHeight",
+    editorCustomLineHeight: "oleafly.editor.lineHeightCustom",
+    editorLetterSpacing: "oleafly.editor.letterSpacing",
+    editorCustomLetterSpacing: "oleafly.editor.letterSpacingCustom",
+    editorCursorWidth: "oleafly.editor.cursorWidth",
+    editorCursorHeight: "oleafly.editor.cursorHeight",
+    editorCursorColorLight: "oleafly.editor.cursorColor.light",
+    editorCursorColorDark: "oleafly.editor.cursorColor.dark",
     editorAutocomplete: "oleafly.editor.autocomplete",
     editorAutoCloseBrackets: "oleafly.editor.closeBrackets",
     editorAutoCloseMath: "oleafly.editor.closeMath",
     editorAutoCloseEnvironments: "oleafly.editor.closeEnvironments",
     editorGhostCompletion: "oleafly.editor.ghostCompletion",
-    editorNonBlinkingCursor: "oleafly.editor.solidCursor",
+    editorCursorBlinking: "oleafly.editor.cursorBlinking",
+    editorHighlightCurrentLine: "oleafly.editor.highlightCurrentLine",
     editorStickyScroll: "oleafly.editor.stickyScroll",
     editorMathPreview: "oleafly.editor.mathPreview",
+    fileMoveReferences: "oleafly.editor.fileMoveReferences",
+    zenFullScreen: "oleafly.zen.fullScreen",
+    zenShowPdfOnCompile: "oleafly.zen.showPdfOnCompile",
     typstFormatOnSave: "oleafly.typst.formatOnSave",
     typstFormatterLineWidth: "oleafly.typst.formatterLineWidth",
     typstFormatterIndent: "oleafly.typst.formatterIndent",
@@ -1098,11 +1328,14 @@ const SECTION_SETTINGS = {
     browserHomePage: "oleafly.browser.homePage",
     editorFontSize: "oleafly.fontSize",
     appFontSize: "oleafly.appFontSize",
+    appZoom: "oleafly.appZoom",
     appFontFamily: "oleafly.appFont",
     editorFontFamily: "oleafly.editorFont",
-    editorTheme: "oleafly.editorTheme",
+    editorUsesAppFont: "oleafly.editor.useAppFont",
+    editorThemeLight: "oleafly.editorTheme.light",
+    editorThemeDark: "oleafly.editorTheme.dark",
+    editorColors: "oleafly.editor.colors",
     pdfDarkMode: "oleafly.pdf.darkMode",
-    pdfZoomShortcuts: "oleafly.pdf.zoomShortcuts",
     hiddenFilePatterns: "oleafly.fileTree.hiddenPatterns",
     defaultView: "oleafly.defaultView",
     openInTree: "oleafly.openInTree",
@@ -1115,6 +1348,7 @@ const SECTION_SETTINGS = {
   experimentation: {
     latexTools: "oleafly.latexTools",
     webBrowser: "oleafly.webBrowser",
+    liveCollaboration: LIVE_COLLABORATION_KEY,
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -1128,7 +1362,7 @@ function sectionEntries(section: SettingsSection): [PrefKey, string | null][] {
 }
 
 // Same encoding the individual setters write: flags as "1"/"0", lists as JSON.
-function storedDefault(value: unknown): string {
+export function storedDefault(value: unknown): string {
   if (typeof value === "boolean") return value ? "1" : "0";
   return typeof value === "string" ? value : JSON.stringify(value);
 }
@@ -1140,7 +1374,8 @@ function restoreSection(section: SettingsSection): Partial<SettingsState> {
   for (const [key, storageKey] of sectionEntries(section)) {
     const value = PREF_DEFAULTS[key];
     if (storageKey) saveLs(storageKey, storedDefault(value));
-    restored[key] = Array.isArray(value) ? [...value] : value;
+    if (Array.isArray(value)) restored[key] = [...value];
+    else restored[key] = isPlainObject(value) ? { ...value } : value;
   }
   return restored as Partial<SettingsState>;
 }
@@ -1158,6 +1393,9 @@ export function sectionDiffersFromDefaults(
         value.length !== current.length ||
         value.some((item) => !current.includes(item))
       );
+    }
+    if (isPlainObject(value) && isPlainObject(current)) {
+      return JSON.stringify(current) !== JSON.stringify(value);
     }
     return !Object.is(current, value);
   });
@@ -1185,8 +1423,64 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   editorLineHeight: readEditorLineHeight(),
   setEditorLineHeight: (v) => {
-    saveLs("oleafly.editor.lineHeight", v);
-    set({ editorLineHeight: v });
+    const choice = EDITOR_LINE_HEIGHT_OPTIONS.includes(v) ? v : PREF_DEFAULTS.editorLineHeight;
+    const previous = get().editorLineHeight;
+    saveLs("oleafly.editor.lineHeight", choice);
+    if (choice === "custom" && previous !== "custom" && ls("oleafly.editor.lineHeightCustom", "") === "") {
+      const seeded = EDITOR_LINE_HEIGHTS[previous];
+      saveLs("oleafly.editor.lineHeightCustom", String(seeded));
+      set({ editorLineHeight: choice, editorCustomLineHeight: seeded });
+      return;
+    }
+    set({ editorLineHeight: choice });
+  },
+  editorCustomLineHeight: readEditorCustomLineHeight(),
+  setEditorCustomLineHeight: (v) => {
+    const value = clampEditorLineHeight(v);
+    saveLs("oleafly.editor.lineHeightCustom", String(value));
+    set({ editorCustomLineHeight: value });
+  },
+  editorLetterSpacing: readEditorLetterSpacing(),
+  setEditorLetterSpacing: (v) => {
+    const choice = EDITOR_LETTER_SPACING_OPTIONS.includes(v) ? v : PREF_DEFAULTS.editorLetterSpacing;
+    const previous = get().editorLetterSpacing;
+    saveLs("oleafly.editor.letterSpacing", choice);
+    if (choice === "custom" && previous !== "custom" && ls("oleafly.editor.letterSpacingCustom", "") === "") {
+      const seeded = EDITOR_LETTER_SPACINGS[previous];
+      saveLs("oleafly.editor.letterSpacingCustom", String(seeded));
+      set({ editorLetterSpacing: choice, editorCustomLetterSpacing: seeded });
+      return;
+    }
+    set({ editorLetterSpacing: choice });
+  },
+  editorCustomLetterSpacing: readEditorCustomLetterSpacing(),
+  setEditorCustomLetterSpacing: (v) => {
+    const value = clampEditorLetterSpacing(v);
+    saveLs("oleafly.editor.letterSpacingCustom", String(value));
+    set({ editorCustomLetterSpacing: value });
+  },
+  editorCursorWidth: readChoice(
+    "oleafly.editor.cursorWidth",
+    EDITOR_CURSOR_WIDTHS,
+    PREF_DEFAULTS.editorCursorWidth,
+  ),
+  setEditorCursorWidth: (v) => {
+    const width = EDITOR_CURSOR_WIDTHS.includes(v) ? v : PREF_DEFAULTS.editorCursorWidth;
+    saveLs("oleafly.editor.cursorWidth", String(width));
+    set({ editorCursorWidth: width });
+  },
+  editorCursorHeight: readEditorCursorHeight(),
+  setEditorCursorHeight: (v) => {
+    const height = EDITOR_CURSOR_HEIGHTS.includes(v) ? v : PREF_DEFAULTS.editorCursorHeight;
+    saveLs("oleafly.editor.cursorHeight", height);
+    set({ editorCursorHeight: height });
+  },
+  editorCursorColorLight: readHexColor(ls("oleafly.editor.cursorColor.light", ""), ""),
+  editorCursorColorDark: readHexColor(ls("oleafly.editor.cursorColor.dark", ""), ""),
+  setEditorCursorColor: (surface, v) => {
+    const color = readHexColor(v, "");
+    saveLs(`oleafly.editor.cursorColor.${surface}`, color);
+    set(surface === "light" ? { editorCursorColorLight: color } : { editorCursorColorDark: color });
   },
   editorAutocomplete: ls("oleafly.editor.autocomplete", "1") !== "0",
   setEditorAutocomplete: (v) => {
@@ -1214,20 +1508,41 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editor.ghostCompletion", v ? "1" : "0");
     set({ editorGhostCompletion: v });
   },
+  zenFullScreen: ls("oleafly.zen.fullScreen", "1") !== "0",
+  setZenFullScreen: (v) => {
+    saveLs("oleafly.zen.fullScreen", v ? "1" : "0");
+    set({ zenFullScreen: v });
+  },
+  zenShowPdfOnCompile: ls("oleafly.zen.showPdfOnCompile", "1") !== "0",
+  setZenShowPdfOnCompile: (v) => {
+    saveLs("oleafly.zen.showPdfOnCompile", v ? "1" : "0");
+    set({ zenShowPdfOnCompile: v });
+  },
   editorStickyScroll: ls("oleafly.editor.stickyScroll", "1") !== "0",
   setEditorStickyScroll: (v) => {
     saveLs("oleafly.editor.stickyScroll", v ? "1" : "0");
     set({ editorStickyScroll: v });
   },
-  editorNonBlinkingCursor: ls("oleafly.editor.solidCursor", "0") === "1",
-  setEditorNonBlinkingCursor: (v) => {
-    saveLs("oleafly.editor.solidCursor", v ? "1" : "0");
-    set({ editorNonBlinkingCursor: v });
+  editorCursorBlinking: readEditorCursorBlinking(),
+  setEditorCursorBlinking: (v) => {
+    const blinking = EDITOR_CURSOR_BLINKING.includes(v) ? v : PREF_DEFAULTS.editorCursorBlinking;
+    saveLs("oleafly.editor.cursorBlinking", blinking);
+    set({ editorCursorBlinking: blinking });
+  },
+  editorHighlightCurrentLine: ls("oleafly.editor.highlightCurrentLine", "1") !== "0",
+  setEditorHighlightCurrentLine: (v) => {
+    saveLs("oleafly.editor.highlightCurrentLine", v ? "1" : "0");
+    set({ editorHighlightCurrentLine: v });
   },
   editorMathPreview: ls("oleafly.editor.mathPreview", "1") !== "0",
   setEditorMathPreview: (v) => {
     saveLs("oleafly.editor.mathPreview", v ? "1" : "0");
     set({ editorMathPreview: v });
+  },
+  fileMoveReferences: readFileMoveReferences(),
+  setFileMoveReferences: (v) => {
+    saveLs("oleafly.editor.fileMoveReferences", v);
+    set({ fileMoveReferences: v });
   },
   typstFormatOnSave: ls("oleafly.typst.formatOnSave", "0") === "1",
   setTypstFormatOnSave: (v) => {
@@ -1517,10 +1832,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.background;
-    return readTerminalColor(ls("oleafly.terminal.background", fallback), fallback);
+    return readHexColor(ls("oleafly.terminal.background", fallback), fallback);
   })(),
   setTerminalBackground: (v) => {
-    const value = readTerminalColor(v, get().terminalBackground);
+    const value = readHexColor(v, get().terminalBackground);
     saveLs("oleafly.terminal.background", value);
     set({ terminalBackground: value });
   },
@@ -1529,10 +1844,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.foreground;
-    return readTerminalColor(ls("oleafly.terminal.foreground", fallback), fallback);
+    return readHexColor(ls("oleafly.terminal.foreground", fallback), fallback);
   })(),
   setTerminalForeground: (v) => {
-    const value = readTerminalColor(v, get().terminalForeground);
+    const value = readHexColor(v, get().terminalForeground);
     saveLs("oleafly.terminal.foreground", value);
     set({ terminalForeground: value });
   },
@@ -1541,10 +1856,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.cursor;
-    return readTerminalColor(ls("oleafly.terminal.cursorColor", fallback), fallback);
+    return readHexColor(ls("oleafly.terminal.cursorColor", fallback), fallback);
   })(),
   setTerminalCursorColor: (v) => {
-    const value = readTerminalColor(v, get().terminalCursorColor);
+    const value = readHexColor(v, get().terminalCursorColor);
     saveLs("oleafly.terminal.cursorColor", value);
     set({ terminalCursorColor: value });
   },
@@ -1569,40 +1884,79 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.openInTree", v ? "1" : "0");
     set({ openInTree: v });
   },
-  editorFontSize: Number(ls("oleafly.fontSize", "13")) || 13,
+  editorFontSize: clampEditorFontSize(Number(ls("oleafly.fontSize", "13")) || 13),
   setEditorFontSize: (v) => {
-    saveLs("oleafly.fontSize", String(v));
-    set({ editorFontSize: v });
+    const size = clampEditorFontSize(v);
+    saveLs("oleafly.fontSize", String(size));
+    set({ editorFontSize: size });
   },
   appFontSize: Number(ls("oleafly.appFontSize", "16")) || 16,
   setAppFontSize: (v) => {
     saveLs("oleafly.appFontSize", String(v));
     set({ appFontSize: v });
   },
-  appFontFamily: ls("oleafly.appFont", ""),
+  appZoom: appZoomLevel(ls("oleafly.appZoom", "100")),
+  setAppZoom: (v) => {
+    const level = appZoomLevel(v);
+    saveLs("oleafly.appZoom", String(level));
+    set({ appZoom: level });
+  },
+  editorUsesAppFont: ls("oleafly.editor.useAppFont", "0") === "1",
+  setEditorUsesAppFont: (v) => {
+    saveLs("oleafly.editor.useAppFont", v ? "1" : "0");
+    set({ editorUsesAppFont: v });
+  },
+  appFontFamily: readFontFamilySetting("oleafly.appFont"),
   setAppFontFamily: (v) => {
-    saveLs("oleafly.appFont", v);
-    set({ appFontFamily: v });
+    const family = withoutControlCharacters(v);
+    saveLs("oleafly.appFont", family);
+    set({ appFontFamily: family });
   },
-  editorFontFamily: ls("oleafly.editorFont", ""),
+  editorFontFamily: readFontFamilySetting("oleafly.editorFont"),
   setEditorFontFamily: (v) => {
-    saveLs("oleafly.editorFont", v);
-    set({ editorFontFamily: v });
+    const family = withoutControlCharacters(v);
+    saveLs("oleafly.editorFont", family);
+    set({ editorFontFamily: family });
   },
-  editorTheme: readEditorTheme(ls("oleafly.editorTheme", "system")),
-  setEditorTheme: (v) => {
-    saveLs("oleafly.editorTheme", v);
-    set({ editorTheme: v });
+  editorThemeLight: readEditorTheme(ls("oleafly.editorTheme.light", ls("oleafly.editorTheme", "system"))),
+  editorThemeDark: readEditorTheme(ls("oleafly.editorTheme.dark", ls("oleafly.editorTheme", "system"))),
+  setEditorTheme: (mode, v) => {
+    const theme = readEditorTheme(v);
+    if (mode === "light") {
+      saveLs("oleafly.editorTheme.light", theme);
+      set({ editorThemeLight: theme });
+    } else {
+      saveLs("oleafly.editorTheme.dark", theme);
+      set({ editorThemeDark: theme });
+    }
+  },
+  editorColors: readEditorColors(ls("oleafly.editor.colors", "{}")),
+  setEditorColor: (key, id, color) => {
+    const overrides = { ...get().editorColors[key] };
+    const normalized = normalizeEditorColor(color);
+    if (normalized) overrides[id] = normalized;
+    else delete overrides[id];
+    const editorColors = validateEditorColors({ ...get().editorColors, [key]: overrides });
+    saveLs("oleafly.editor.colors", JSON.stringify(editorColors));
+    set({ editorColors });
+  },
+  resetEditorColors: (key) => {
+    const editorColors = { ...get().editorColors };
+    delete editorColors[key];
+    saveLs("oleafly.editor.colors", JSON.stringify(editorColors));
+    set({ editorColors });
+  },
+  importEditorThemes: (exported) => {
+    get().setEditorTheme("light", exported.themes.light);
+    get().setEditorTheme("dark", exported.themes.dark);
+    const editorColors = validateEditorColors({ ...get().editorColors, ...exported.colors });
+    saveLs("oleafly.editor.colors", JSON.stringify(editorColors));
+    set({ editorColors });
   },
   pdfDarkMode: ls("oleafly.pdf.darkMode", "0") === "1",
   setPdfDarkMode: (v) => {
     saveLs("oleafly.pdf.darkMode", v ? "1" : "0");
     set({ pdfDarkMode: v });
-  },
-  pdfZoomShortcuts: ls("oleafly.pdf.zoomShortcuts", "1") !== "0",
-  setPdfZoomShortcuts: (v) => {
-    saveLs("oleafly.pdf.zoomShortcuts", v ? "1" : "0");
-    set({ pdfZoomShortcuts: v });
   },
   hiddenFilePatterns: readHiddenFilePatterns(
     ls("oleafly.fileTree.hiddenPatterns", JSON.stringify(DEFAULT_HIDDEN_FILE_PATTERNS)),
@@ -1657,6 +2011,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.webBrowser", v ? "1" : "0");
     // Turning the browser off must also close any open browser dock.
     set(v ? { webBrowser: true } : { webBrowser: false, browserOpen: false });
+  },
+  liveCollaboration: ls(LIVE_COLLABORATION_KEY, "0") === "1",
+  setLiveCollaboration: (v) => {
+    saveLs(LIVE_COLLABORATION_KEY, v ? "1" : "0");
+    set({ liveCollaboration: v });
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),

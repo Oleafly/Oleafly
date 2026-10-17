@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   waitForEditorDocument: vi.fn(),
   gotoLine: vi.fn(),
   revealEditorRange: vi.fn(),
+  scrollEditorPositionLocally: vi.fn(),
   editorView: null as { contentDOM: HTMLElement } | null,
 }));
 
@@ -39,6 +40,7 @@ vi.mock("@/components/editor/cm/controller", () => ({
   waitForEditorDocument: mocks.waitForEditorDocument,
   gotoLine: mocks.gotoLine,
   revealEditorRange: mocks.revealEditorRange,
+  scrollEditorPositionLocally: mocks.scrollEditorPositionLocally,
   getEditorView: () => mocks.editorView,
 }));
 
@@ -119,6 +121,27 @@ describe("openProjectLocation", () => {
     expect(await openProjectLocation({ path: "main.tex", range: { from: 30, to: 99 } })).toBe(true);
     expect(mocks.revealEditorRange).toHaveBeenCalledExactlyOnceWith(view, 30, 40);
     expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("centres a range without moving the cursor or the focus when asked to keep the selection", async () => {
+    const button = document.createElement("button");
+    document.body.append(button);
+    button.focus();
+    expect(
+      await openProjectLocation({ path: "main.tex", range: { from: 30, to: 99 } }, { keepSelection: true }),
+    ).toBe(true);
+    expect(mocks.scrollEditorPositionLocally).toHaveBeenCalledExactlyOnceWith(view, 30);
+    expect(mocks.revealEditorRange).not.toHaveBeenCalled();
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it("opens the file and leaves the scroll alone when keeping the selection with no place to show", async () => {
+    expect(await openProjectLocation({ path: "main.tex" }, { keepSelection: true })).toBe(true);
+    expect(openFile).toHaveBeenCalledWith("main.tex");
+    expect(mocks.scrollEditorPositionLocally).not.toHaveBeenCalled();
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+    expect(mocks.revealEditorRange).not.toHaveBeenCalled();
   });
 
   it("lets a newer call cancel an older one", async () => {

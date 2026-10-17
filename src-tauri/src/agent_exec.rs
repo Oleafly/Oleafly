@@ -1181,6 +1181,58 @@ mod tests {
     }
 
     #[tokio::test(flavor = "current_thread")]
+    async fn a_deny_rule_refuses_run_command_under_full_access() {
+        let root = test_root("full-access-deny");
+        crate::approvals::set_mode(&root, "proj", crate::approvals::ApprovalMode::FullAccess)
+            .unwrap();
+        crate::approvals::set_decision(
+            &root,
+            "proj",
+            "run_command",
+            Some(crate::approvals::ToolDecision::Deny),
+        )
+        .unwrap();
+        let cwd = root.join("projects/proj");
+        let state = AgentExecState::default();
+        let agent_state = crate::agent::AgentState::default();
+        let run_id = "external:00000000-0000-4000-8000-00000000000c";
+        state.register_external_owner(run_id).unwrap();
+        let command = if cfg!(windows) {
+            "type nul > full-access-denied-marker"
+        } else {
+            "touch full-access-denied-marker"
+        };
+
+        let minted = authorize_approved(
+            &state,
+            &agent_state,
+            exec_request(&root, &cwd, command, run_id),
+        );
+        let approvals_are_empty = state.registry.lock().unwrap().approvals.is_empty();
+        let token = state.authorize("proj", command, run_id).unwrap();
+        let ran = execute_command_for_owner(
+            &agent_state,
+            &state,
+            exec_request(&root, &cwd, command, run_id),
+            &token,
+        )
+        .await;
+        let marker_exists = cwd.join("full-access-denied-marker").exists();
+
+        std::fs::remove_dir_all(&root).ok();
+        assert_eq!(
+            minted.err().as_deref(),
+            Some("run_command is denied for this project")
+        );
+        assert!(approvals_are_empty);
+        assert_eq!(
+            ran.err().as_deref(),
+            Some("run_command is denied for this project")
+        );
+        assert!(!marker_exists);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
     async fn custom_allow_mints_a_token() {
         let root = test_root("custom-allow-token");
         crate::approvals::set_decision(
@@ -1508,15 +1560,49 @@ mod tests {
     }
 
     #[cfg(unix)]
+    fn command_with_a_background_child() -> String {
+        format!(
+            "sleep {} & printf '%s' \"$!\" > child.pid; wait",
+            (2 * test_wait::CHILD_PATIENCE).as_secs()
+        )
+    }
+
+    #[cfg(unix)]
+    async fn background_child(cwd: &Path) -> i32 {
+        test_wait::read_until(
+            &cwd.join("child.pid"),
+            test_wait::CHILD_PATIENCE,
+            test_wait::pid,
+        )
+        .await
+        .expect("the command must record its background child's process id")
+    }
+
+    #[cfg(unix)]
+    async fn stopped_or_killed(pid: i32) -> bool {
+        let stopped = tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
+            while unsafe { libc::kill(pid, 0) } == 0 {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .is_ok();
+        if !stopped {
+            unsafe {
+                libc::kill(pid, libc::SIGKILL);
+            }
+        }
+        stopped
+    }
+
+    #[cfg(unix)]
     #[tokio::test(flavor = "current_thread")]
     async fn cancelling_a_run_kills_its_command_process_group() {
         let root = test_root("cancel-process-group");
         let cwd = root.join("projects/proj");
-        let started = cwd.join("started-marker");
-        let completed = cwd.join("completed-marker");
         let state = std::sync::Arc::new(AgentExecState::default());
-        let command = "touch started-marker; (sleep 0.4; touch completed-marker) & wait";
-        let token = state.authorize("proj", command, "run-cancel").unwrap();
+        let command = command_with_a_background_child();
+        let token = state.authorize("proj", &command, "run-cancel").unwrap();
         let task_state = std::sync::Arc::clone(&state);
         let task_root = root.clone();
         let task_cwd = cwd.clone();
@@ -1526,28 +1612,26 @@ mod tests {
                 &task_root,
                 "proj",
                 &task_cwd,
-                command.into(),
+                command,
                 "run-cancel",
                 &token,
             )
             .await
         });
 
-        let deadline = tokio::time::Instant::now() + test_wait::CHILD_PATIENCE;
-        while !started.exists() && tokio::time::Instant::now() < deadline {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
+        let child = background_child(&cwd).await;
         cancel_run(state.as_ref(), "run-cancel");
-        let _ = tokio::time::timeout(Duration::from_secs(2), task)
+        let finished = tokio::time::timeout(test_wait::CHILD_PATIENCE, task)
             .await
-            .expect("cancelled command did not stop");
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        let started_exists = started.exists();
-        let completed_exists = completed.exists();
+            .is_ok();
+        let stopped = stopped_or_killed(child).await;
 
         std::fs::remove_dir_all(&root).ok();
-        assert!(started_exists);
-        assert!(!completed_exists);
+        assert!(finished, "cancelled command did not stop");
+        assert!(
+            stopped,
+            "the command's background child outlived the cancel"
+        );
     }
 
     #[cfg(windows)]
@@ -1668,11 +1752,9 @@ mod tests {
     async fn cancelling_all_runs_kills_active_commands() {
         let root = test_root("cancel-all-processes");
         let cwd = root.join("projects/proj");
-        let started = cwd.join("started-all-marker");
-        let completed = cwd.join("completed-all-marker");
         let state = std::sync::Arc::new(AgentExecState::default());
-        let command = "touch started-all-marker; (sleep 0.4; touch completed-all-marker) & wait";
-        let token = state.authorize("proj", command, "run-all").unwrap();
+        let command = command_with_a_background_child();
+        let token = state.authorize("proj", &command, "run-all").unwrap();
         let task_state = std::sync::Arc::clone(&state);
         let task_root = root.clone();
         let task_cwd = cwd.clone();
@@ -1682,28 +1764,26 @@ mod tests {
                 &task_root,
                 "proj",
                 &task_cwd,
-                command.into(),
+                command,
                 "run-all",
                 &token,
             )
             .await
         });
 
-        let deadline = tokio::time::Instant::now() + test_wait::CHILD_PATIENCE;
-        while !started.exists() && tokio::time::Instant::now() < deadline {
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
+        let child = background_child(&cwd).await;
         cancel_all(state.as_ref());
-        let _ = tokio::time::timeout(Duration::from_secs(2), task)
+        let finished = tokio::time::timeout(test_wait::CHILD_PATIENCE, task)
             .await
-            .expect("cancelled command did not stop");
-        tokio::time::sleep(Duration::from_millis(500)).await;
-        let started_exists = started.exists();
-        let completed_exists = completed.exists();
+            .is_ok();
+        let stopped = stopped_or_killed(child).await;
 
         std::fs::remove_dir_all(&root).ok();
-        assert!(started_exists);
-        assert!(!completed_exists);
+        assert!(finished, "cancelled command did not stop");
+        assert!(
+            stopped,
+            "the command's background child outlived the cancel"
+        );
     }
 
     #[cfg(unix)]

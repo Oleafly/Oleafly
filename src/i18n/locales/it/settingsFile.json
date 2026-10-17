@@ -1,0 +1,64 @@
+{
+  "title": "Impostazioni dell'applicazione",
+  "description": "Salva le impostazioni in un file JSON o carica un file che qualcuno ha condiviso con te. Chiavi API, account, integrazioni e agenti non sono mai inclusi.",
+  "export": "Esporta",
+  "import": "Importa",
+  "view": {
+    "label": "Mostra il JSON delle impostazioni",
+    "summary": "Anteprima in sola lettura del file salvato dall'esportazione.",
+    "loading": "Lettura delle impostazioni",
+    "failed": "Non è stato possibile leggere le impostazioni."
+  },
+  "dialog": {
+    "pickTitle": "Importa le impostazioni",
+    "filterName": "Impostazioni di Oleafly"
+  },
+  "toast": {
+    "exported": "{{name}} esportato su disco",
+    "exportFailed": "Non è stato possibile salvare il file delle impostazioni.",
+    "readFailed": "Non è stato possibile aprire quel file.",
+    "imported": "Impostazioni importate.",
+    "unchanged": "Le tue impostazioni corrispondono già a {{name}}.",
+    "applyFailed": "Non è stato possibile salvare alcune impostazioni. Riprova l'importazione.",
+    "cloudEmpty": "Il tuo Dropbox non contiene ancora impostazioni di Oleafly. Attiva prima la sincronizzazione cloud su un altro computer.",
+    "cloudLoadFailed": "Impossibile caricare le impostazioni dal tuo Dropbox.",
+    "cloudUnreadable": "Non è stato possibile leggere le impostazioni nel tuo Dropbox."
+  },
+  "confirm": {
+    "title": "Vuoi sostituire le tue impostazioni?",
+    "description": "Le impostazioni del file {{name}} sostituiranno le tue. Tutto ciò che il file non include resta com'è.",
+    "changes": "Impostazioni che cambieranno: {{count}}",
+    "ignored": "Non riconosciute, quindi verranno saltate:",
+    "action": "Importa",
+    "cloudDescription": "Le impostazioni del tuo Dropbox sostituiranno le tue. Tutto ciò che non includono resta com'è."
+  },
+  "error": {
+    "title": "{{name}} non è stato importato",
+    "notJson": "Il file non è JSON valido.",
+    "notSettings": "Questo non è un file di impostazioni di Oleafly.",
+    "invalid": "La configurazione delle impostazioni che hai provato a importare non è valida. Correggi questi errori e riprova l'importazione:",
+    "more": "+{{count}} in più"
+  },
+  "valueErrors": {
+    "boolean": "deve essere true o false",
+    "oneOf": "deve essere uno di questi valori: {{values}}",
+    "range": "deve essere un numero da {{min}} a {{max}}",
+    "wholeRange": "deve essere un numero intero da {{min}} a {{max}}",
+    "wholeRangeStep": "deve essere un numero intero da {{min}} a {{max}}, a intervalli di {{step}}",
+    "hexColor": "deve essere un colore come #2563eb",
+    "hexColorOrEmpty": "deve essere un colore come #2563eb, oppure \"\" per usare il colore del tema",
+    "text": "deve essere un testo di massimo {{max}} caratteri",
+    "webAddress": "deve essere un indirizzo web che inizia con http:// o https://",
+    "list": "deve essere un elenco di massimo {{max}} voci",
+    "listItem": "non è una voce consentita",
+    "duplicate": "compare due volte",
+    "object": "deve essere un gruppo di impostazioni tra parentesi graffe",
+    "unknownKey": "non è un'impostazione che Oleafly conosce",
+    "dictionaryLocale": "deve essere un codice di dizionario come en_US",
+    "shortcut": "deve essere una scorciatoia come Mod-Shift-k, oppure \"default\"",
+    "editorKey": "deve essere un tasto come Mod-d, \"\" per nessuno, oppure \"default\""
+  },
+  "importFromLocal": "Importa da questo dispositivo",
+  "importFromCloud": "Importa dal cloud",
+  "cloudSource": "Dropbox"
+}

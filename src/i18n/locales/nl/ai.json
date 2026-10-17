@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Volledige toegang",
-        "description": "Voert tool-acties uit zonder om goedkeuring te vragen."
+        "description": "Voert tool-acties uit zonder te vragen, behalve tools die een deny-regel blokkeert."
       },
       "custom": {
         "label": "Aangepast (approvals.toml)",
@@ -319,7 +319,9 @@
       "closeAgent": "Sluit een hulpagent.",
       "runCommand": "Voert een shell-opdracht uit in de projectmap, met een limiet van twee minuten.",
       "computerUse": "Opent een webpagina in het browservenster van de assistent.",
-      "toggleTheme": "Wisselt tussen de lichte en de donkere modus."
+      "toggleTheme": "Wisselt tussen de lichte en de donkere modus.",
+      "listOverleafProjects": "Toont je Overleaf-projecten en meldt zich eerst aan als dat nodig is.",
+      "importOverleafProjects": "Importeert Overleaf-projecten in je bibliotheek, met hun compiler en hoofdbestand."
     },
     "disableAll": "Alles uitschakelen",
     "emptyContext": "In deze context zijn geen tools beschikbaar.",

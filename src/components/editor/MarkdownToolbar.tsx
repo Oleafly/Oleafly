@@ -97,7 +97,7 @@ function MarkdownHeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu"
         )
       }
     >
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+      <div className="px-2 py-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
         {t(($) => $.editor.toolbar.heading)}
       </div>
       {MARKDOWN_HEADING_LEVELS.map((level) => (
@@ -105,7 +105,7 @@ function MarkdownHeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu"
           key={level.hLabel}
           onClick={() => insertMarkdownHeading(level)}
         >
-          <span className="w-6 shrink-0 text-[10px] font-medium text-muted-foreground">
+          <span className="w-6 shrink-0 text-[0.625rem] font-medium text-muted-foreground">
             {level.hLabel}
           </span>
           <span className={level.className}>{level.label()}</span>

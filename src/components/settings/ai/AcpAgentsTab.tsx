@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
-  ChevronDown,
   ChevronRight,
   Copy,
   Download,
@@ -32,7 +31,9 @@ import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ReadinessBadge } from "@/components/ai/acp/AgentReadiness";
 import { bridgeSourceLabel, readinessDetail } from "@/components/ai/acp/agent-copy";
 import { SettingsPath, SettingsPathText } from "@/components/settings/SettingsPath";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useDisplayText } from "@/lib/display-path";
+import { cn } from "@/lib/utils";
 import {
   acpError,
   acpInstall,
@@ -51,6 +52,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
+import { CodeBlock } from "@/components/ui/code-block";
 
 const example = JSON.stringify(
   {
@@ -97,45 +99,6 @@ function CopyValue({ value, label }: Readonly<{ value: string; label: string }>)
   );
 }
 
-function Section({
-  id,
-  title,
-  description,
-  icon: Icon,
-  children,
-}: Readonly<{
-  id: string;
-  title: string;
-  description: string;
-  icon: typeof Search;
-  children: React.ReactNode;
-}>) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="rounded-lg border bg-card">
-      <button
-        type="button"
-        data-testid={`acp-section-${id}`}
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-2 p-3 text-left"
-      >
-        {open ? (
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        )}
-        <Icon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium leading-snug">{title}</span>
-          <span className="block text-xs leading-snug text-muted-foreground">{description}</span>
-        </span>
-      </button>
-      {open && <div className="space-y-2 px-3 pb-3">{children}</div>}
-    </div>
-  );
-}
-
 function RegistryResult({
   entry,
   registered,
@@ -159,7 +122,7 @@ function RegistryResult({
       <h4 className="text-sm font-medium">
         {entry.name} <span className="font-normal text-muted-foreground">{entry.version}</span>
         {builtIn && (
-          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 align-middle text-[10px] font-medium text-muted-foreground">
+          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 align-middle text-[0.625rem] font-medium text-muted-foreground">
             {t(($) => $.ai.acp.setup.builtIn)}
           </span>
         )}
@@ -201,9 +164,10 @@ function RegistryResult({
         )}
       </div>
       {shown && entry.definition && (
-        <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/50 p-2 text-[11px]">
-          {JSON.stringify(entry.definition.distribution, null, 2)}
-        </pre>
+        <CodeBlock
+          code={JSON.stringify(entry.definition.distribution, null, 2)}
+          preClassName="max-h-40 whitespace-pre-wrap break-all border-0 bg-muted/50 p-2 pr-10"
+        />
       )}
     </article>
   );
@@ -302,19 +266,14 @@ function AgentCard({
       data-testid={`acp-agent-card-${id}`}
       className="scroll-mt-2 rounded-lg border bg-card transition-colors"
     >
-      <div className="flex items-start gap-2 p-3">
+      <div className="relative flex items-start gap-2 p-3">
         <button
           ref={toggleRef}
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
-          className="flex min-w-0 flex-1 items-start gap-2 text-left"
+          className="flex min-w-0 flex-1 items-start gap-2 rounded-md text-left after:absolute after:inset-0 after:content-[''] focus-visible:bg-accent/60"
         >
-          {open ? (
-            <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          )}
           <span className="min-w-0 flex-1">
             <span className="inline-flex items-center gap-1.5 font-medium">
               <AgentLogo agentId={id} size={18} />
@@ -328,6 +287,13 @@ function AgentCard({
         <div className="mt-0.5 shrink-0">
           <ReadinessBadge readiness={readiness} />
         </div>
+        <ChevronRight
+          aria-hidden
+          className={cn(
+            "pointer-events-none mt-1 size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
+            open && "rotate-90",
+          )}
+        />
       </div>
       {open && (
         <div className="space-y-4 border-t border-border/70 px-4 py-4">
@@ -341,7 +307,7 @@ function AgentCard({
                 <div className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   {programField("main")}
                   <dl className="min-w-24">
-                    <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                       {t(($) => $.settings.ai.agents.versionLabel)}
                     </dt>
                     <dd className="mt-1 text-xs tabular-nums text-foreground">
@@ -352,17 +318,17 @@ function AgentCard({
               ) : (
                 <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <div className="min-w-0">
-                    <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                       {t(($) => $.settings.ai.agents.cliPathLabel)}
                     </dt>
-                    <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
+                    <dd className="mt-1 break-all font-mono text-[0.6875rem] leading-relaxed text-foreground">
                       {cli.path
                         ? <SettingsPath path={cli.path} />
                         : t(($) => $.settings.ai.agents.program.notFound)}
                     </dd>
                   </div>
                   <div className="min-w-24">
-                    <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                       {t(($) => $.settings.ai.agents.versionLabel)}
                     </dt>
                     <dd className="mt-1 text-xs tabular-nums text-foreground">
@@ -372,7 +338,7 @@ function AgentCard({
                 </dl>
               )}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.signInCommandLabel)}
                 </p>
                 <div
@@ -398,17 +364,17 @@ function AgentCard({
           >
             <dl className="grid grid-cols-3 gap-x-4 gap-y-3">
               <div className="col-span-3 min-w-0">
-                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.bridgePathLabel)}
                 </dt>
-                <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
+                <dd className="mt-1 break-all font-mono text-[0.6875rem] leading-relaxed text-foreground">
                   {agent.executable
                     ? <SettingsPath path={agent.executable} />
                     : t(($) => $.settings.ai.agents.bridgeUnresolved)}
                 </dd>
               </div>
               <div className="min-w-0">
-                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.versionLabel)}
                 </dt>
                 <dd className="mt-1 text-xs tabular-nums text-foreground">
@@ -416,7 +382,7 @@ function AgentCard({
                 </dd>
               </div>
               <div className="min-w-0">
-                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.platformLabel)}
                 </dt>
                 <dd className="mt-1 break-all text-xs text-foreground">
@@ -424,7 +390,7 @@ function AgentCard({
                 </dd>
               </div>
               <div className="min-w-0">
-                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.bridgeSourceLabel)}
                 </dt>
                 <dd className="mt-1 text-xs text-foreground">
@@ -443,7 +409,7 @@ function AgentCard({
             >
               <h5
                 id={nextStepTitleId}
-                className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground"
               >
                 {t(($) => $.settings.ai.agents.nextStepTitle)}
               </h5>
@@ -490,12 +456,12 @@ function AgentCard({
                 )}
               </div>
               {installBlocked && installBlocked !== nextStep && (
-                <p id={installReasonId} className="text-[11px] leading-relaxed text-muted-foreground">
+                <p id={installReasonId} className="text-[0.6875rem] leading-relaxed text-muted-foreground">
                   <SettingsPathText text={displayText(installBlocked)} />
                 </p>
               )}
               {agent.taskUnavailableReason && (
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
                   {t(($) => $.ai.acp.setup.backgroundTasks, { reason: agent.taskUnavailableReason })}
                 </p>
               )}
@@ -561,7 +527,7 @@ function AgentCatalogEmptyState({
             {t(($) => $.settings.ai.agents.checkFailedTitle)}
           </EmptyTitle>
           <div role="alert">
-            <EmptyDescription className="text-xs leading-relaxed text-destructive">
+            <EmptyDescription className="select-text text-xs leading-relaxed text-destructive">
               {error}
             </EmptyDescription>
           </div>
@@ -628,6 +594,7 @@ export function AcpAgentsTab({
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AcpRegistryEntry[]>([]);
+  const resultsRef = useScrollTopOnChange(results);
   const [definition, setDefinition] = useState("");
   const [review, setReview] = useState<AcpDefinition | null>(null);
   // Every review mounts a fresh dialog. Reopened while the last one is still
@@ -860,8 +827,9 @@ export function AcpAgentsTab({
         )}
       </div>
 
-      <Section
-        id="registry"
+      <CollapsibleSection
+        id="acp-section-registry"
+        headingLevel="h4"
         title={t(($) => $.settings.ai.agents.registry.title)}
         description={t(($) => $.settings.ai.agents.registry.description)}
         icon={Search}
@@ -896,7 +864,7 @@ export function AcpAgentsTab({
           </p>
         </form>
         {results.length > 0 && (
-          <div className="max-h-80 space-y-2 overflow-y-auto">
+          <div ref={resultsRef} className="max-h-80 space-y-2 overflow-y-auto">
             {results.map((entry) => (
               <RegistryResult
                 key={entry.id}
@@ -915,10 +883,11 @@ export function AcpAgentsTab({
             ))}
           </div>
         )}
-      </Section>
+      </CollapsibleSection>
 
-      <Section
-        id="custom"
+      <CollapsibleSection
+        id="acp-section-custom"
+        headingLevel="h4"
         title={t(($) => $.settings.ai.agents.custom.title)}
         description={t(($) => $.settings.ai.agents.custom.description)}
         icon={Plus}
@@ -958,7 +927,7 @@ export function AcpAgentsTab({
             </Button>
           </div>
         </form>
-      </Section>
+      </CollapsibleSection>
 
       <Dialog open={reviewing} onOpenChange={(open) => { if (!open && !busy) setReview(null); }}>
         <DialogContent
@@ -986,13 +955,13 @@ export function AcpAgentsTab({
               <dt className="w-24 shrink-0 text-muted-foreground">
                 {t(($) => $.settings.ai.agents.install.packageLabel)}
               </dt>
-              <dd className="min-w-0 break-all font-mono text-[11px]">{packageName}</dd>
+              <dd className="min-w-0 break-all font-mono text-[0.6875rem]">{packageName}</dd>
             </div>
             <div className="flex gap-2">
               <dt className="w-24 shrink-0 text-muted-foreground">
                 {t(($) => $.settings.ai.agents.install.locationLabel)}
               </dt>
-              <dd className="min-w-0 break-all font-mono text-[11px]">
+              <dd className="min-w-0 break-all font-mono text-[0.6875rem]">
                 {t(($) => $.settings.ai.agents.install.location, {
                   id: review?.id ?? "",
                   version: review?.version ?? "",
@@ -1004,7 +973,7 @@ export function AcpAgentsTab({
             <div className="space-y-2">
               <p
                 role="alert"
-                className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-destructive/40 p-2 text-xs text-destructive"
+                className="max-h-48 select-text overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-destructive/40 p-2 text-xs text-destructive"
               >
                 {error}
               </p>

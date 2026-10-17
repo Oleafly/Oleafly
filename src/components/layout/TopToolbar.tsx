@@ -1,6 +1,6 @@
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { reattachPreviewWindow } from "@/lib/preview-window";
-import { type ComponentType, type SVGProps, useEffect, useRef, useState } from "react";
+import { type ComponentType, lazy, Suspense, type SVGProps, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
@@ -10,14 +10,13 @@ import {
   ChevronRight,
   Download,
   FileText,
-  FileArchive,
-  FileType,
+  Focus,
   GitFork,
   History,
   Presentation,
   LayoutGrid,
+  LayoutTemplate,
   ImageDown,
-  ImagePlay,
   SquarePen,
   X,
 } from "lucide-react";
@@ -36,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
@@ -47,12 +47,16 @@ import {
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
+import { CollabShareSlot, CollabToolbarSlot, ShareDialogHost } from "@/components/collab/CollabSlots";
 import "./top-toolbar.css";
 import { engineErrorMessage, useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
+import { useSaveAsTemplateStore } from "@/store/save-as-template";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
+import { shortcutLabel, shortcutParts, useShortcutStore } from "@/store/shortcuts";
+import { enterZenMode } from "@/lib/zen-mode";
 import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng, type DocumentExportFormat } from "@/features/export";
 import { openTypstExport } from "@/components/typst-export/open";
 import { exportRoutesFor } from "@oleafly/conversion-registry";
@@ -70,6 +74,13 @@ import { TOOLBAR_OVERFLOW, useToolbarLayout } from "@/lib/use-toolbar-layout";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
+import { FileTypeIcon, fileTypeIconKind } from "@/components/icons/FileTypeIcon";
+
+const OverleafSyncButton = lazy(() =>
+  import("@/components/layout/overleaf-sync/OverleafSyncButton").then((module) => ({
+    default: module.OverleafSyncButton,
+  })),
+);
 
 type DocFormat = DocumentExportFormat;
 
@@ -195,6 +206,26 @@ function activeLayoutPreset(
   return null;
 }
 
+function ZenModeMenuItem() {
+  const { t } = useTranslation(["shell"]);
+  const binding = useShortcutStore((s) => s.bindings.toggleZenMode);
+  return (
+    <DropdownMenuItem
+      data-testid="layout-zen-mode"
+      aria-keyshortcuts={shortcutLabel(binding)}
+      onSelect={() => enterZenMode()}
+    >
+      <Focus className="size-4 text-muted-foreground" />
+      <span className="flex-1">{t(($) => $.shell.toolbar.layouts.zenMode)}</span>
+      <KbdGroup aria-hidden data-testid="layout-zen-mode-keys" className="ml-auto pl-3">
+        {shortcutParts(binding).map((part) => (
+          <Kbd key={part}>{part}</Kbd>
+        ))}
+      </KbdGroup>
+    </DropdownMenuItem>
+  );
+}
+
 export function ProjectHistoryActions() {
   const { t } = useTranslation(["shell"]);
   const openVersioning = useSettingsStore((state) => state.openVersioning);
@@ -250,7 +281,7 @@ function ViewModeSwitch({
 }
 
 export function TopToolbar() {
-  const { t } = useTranslation(["common", "shell"]);
+  const { t } = useTranslation(["common", "shell", "library"]);
   const projectName = useFilesStore((s) => s.projectName);
   const projectId = useFilesStore((s) => s.projectId);
   const detached = usePreviewDetachedStore((s) => s.projectId === projectId && projectId !== null);
@@ -385,14 +416,20 @@ export function TopToolbar() {
 
   useEffect(() => { if (hideExport) setDlOpen(false); }, [hideExport]);
 
-  const layoutMenuItems = LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => (
-    <DropdownMenuItem key={preset} onSelect={() => setLayoutPreset(preset)}>
-      <Icon className="size-4 text-muted-foreground" />
-      <span className="flex-1">{label}</span>
-      {activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset &&
-        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
-    </DropdownMenuItem>
-  ));
+  const layoutMenuItems = (
+    <>
+      {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => (
+        <DropdownMenuItem key={preset} onSelect={() => setLayoutPreset(preset)}>
+          <Icon className="size-4 text-muted-foreground" />
+          <span className="flex-1">{label}</span>
+          {activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset &&
+            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+        </DropdownMenuItem>
+      ))}
+      <DropdownMenuSeparator />
+      <ZenModeMenuItem />
+    </>
+  );
 
   const layoutControl = (
     <ToolbarAction name="layout" order={TOOLBAR_OVERFLOW.layout} hidden={hideLayout}>
@@ -415,24 +452,35 @@ export function TopToolbar() {
 
   const exportMenuItems = <>
     <DropdownMenuItem onSelect={() => void doDownloadZip()}>
-      <FileArchive className="size-4 text-muted-foreground" />
+      <FileTypeIcon kind="zip" className="size-4 text-muted-foreground" />
       {t(($) => $.shell.toolbar.exportSourceZip)}
     </DropdownMenuItem>
+    <DropdownMenuItem
+      data-testid="export-save-as-template"
+      disabled={!projectId}
+      onSelect={() => {
+        setDlOpen(false);
+        if (projectId) useSaveAsTemplateStore.getState().openFor(projectId, projectName || "");
+      }}
+    >
+      <LayoutTemplate className="size-4 text-muted-foreground" />
+      {t(($) => $.library.customTemplates.saveAsTemplate)}
+    </DropdownMenuItem>
     {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes}>
-      <FileText className="size-4 text-muted-foreground" />
+      <FileTypeIcon kind="pdf" className="size-4 text-muted-foreground" />
       {isSingleFigureProject
         ? t(($) => $.shell.toolbar.exportPdfVector)
         : t(($) => $.shell.toolbar.exportPdf)}
     </DropdownMenuItem>}
     {isSingleFigureProject && (
       <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
-        <ImagePlay className="size-4 text-muted-foreground" />
+        <FileTypeIcon kind="png" className="size-4 text-muted-foreground" />
         {t(($) => $.shell.toolbar.exportPngRaster)}
       </DropdownMenuItem>
     )}
     {!isSingleFigureProject && engine.capabilities.produces_pdf && (
       <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
-        <ImagePlay className="size-4 text-muted-foreground" />
+        <FileTypeIcon kind="png" className="size-4 text-muted-foreground" />
         {t(($) => $.shell.toolbar.exportPagePng)}
       </DropdownMenuItem>
     )}
@@ -449,7 +497,7 @@ export function TopToolbar() {
       </DropdownMenuItem>
     )}
     {!pdfBytes && (
-      <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
+      <p className="px-2 py-1 pl-8 text-[0.625rem] text-muted-foreground">
         {isSingleFigureProject
           ? t(($) => $.shell.toolbar.compileFigureFirst)
           : t(($) => $.shell.toolbar.compilePdfFirst)}
@@ -466,12 +514,12 @@ export function TopToolbar() {
               data-testid={`export-route-${route.id}`}
               onSelect={() => void doExportFormat(formatForTarget(route.target))}
             >
-              <FileType className="size-4 text-muted-foreground" />
+              <FileTypeIcon kind={fileTypeIconKind(route.target)} className="size-4 text-muted-foreground" />
               {t(($) => $.shell.toolbar.exportAs, { format: route.label })}
             </DropdownMenuItem>
           ))}
         {engine.capabilities.conversion_exports.includes("txt") && <DropdownMenuItem onSelect={() => void doExportFormat("txt")}>
-          <FileType className="size-4 text-muted-foreground" />
+          <FileTypeIcon kind="txt" className="size-4 text-muted-foreground" />
           {t(($) => $.shell.toolbar.exportTxt)}
         </DropdownMenuItem>}
       </>
@@ -495,7 +543,7 @@ export function TopToolbar() {
       </>
     )}
     {exporting && (
-      <p className="px-2 py-1 text-[10px] text-muted-foreground">
+      <p className="px-2 py-1 text-[0.625rem] text-muted-foreground">
         {t(($) => $.shell.toolbar.exporting, { format: exporting })}
       </p>
     )}
@@ -606,9 +654,15 @@ export function TopToolbar() {
         className={cn(toolbarLayout.stacked ? "contents" : "col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-1", isMac && "pr-3")}>
       <div data-toolbar-part="actions" data-tauri-drag-region
         className={cn("flex w-max shrink-0 items-center gap-1", toolbarLayout.stacked && "col-span-3 row-start-2 justify-self-end px-2")}>
+        <CollabToolbarSlot />
         <div data-toolbar-item="compile" className="flex w-max shrink-0 items-center gap-1">
           <CompileControls iconOnly={toolbarLayout.iconOnly} />
         </div>
+        {projectId ? (
+          <Suspense fallback={null}>
+            <OverleafSyncButton />
+          </Suspense>
+        ) : null}
         {engineError && <Tooltip label={engineErrorMessage(engineError)}>
           <span data-toolbar-item="engine-error" className="flex size-7 shrink-0 items-center justify-center text-destructive">
             <AlertTriangle className="size-4" /><span className="sr-only">{engineErrorMessage(engineError)}</span>
@@ -644,6 +698,7 @@ export function TopToolbar() {
         <ToolbarAction name="history" order={TOOLBAR_OVERFLOW.history} hidden={hideHistory}>
           <ProjectHistoryActions />
         </ToolbarAction>
+        <CollabShareSlot />
         {workspaceHidden && <ToolbarAction name="sidebar"><SidebarCollapseToggle /></ToolbarAction>}
         <WorkspaceDockControls overflow={toolbarLayout.overflow} onFork={showForkDialog} layoutControl={layoutControl}>
           {hideExport && <DropdownMenuSub onOpenChange={(open) => { if (open) prepareExportMenu(); }}>
@@ -664,6 +719,7 @@ export function TopToolbar() {
       </div>
       </div>
     </header>
+    <ShareDialogHost />
 
     <ModalShell
       open={forkOpen}

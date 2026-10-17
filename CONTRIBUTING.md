@@ -61,6 +61,10 @@ Installers land in `src-tauri/target/release/bundle/`.
 crates/oleafly-core/  shared Rust project, path, and build-directory policy
 crates/oleafly-cli/   oleaflyc commands and native compiler adapter
 crates/oleafly-agent/ provider-neutral agent runtime
+crates/oleafly-history/ content-addressed compile checkpoints
+crates/oleafly-collab-protocol/ messages shared by the app and the collaboration server
+crates/oleafly-collab/ live collaboration client: shared project document, sync and comments
+crates/oleafly-server/ the collaboration server (Axum and SQLite)
 src/                 React + TypeScript frontend
   components/         UI (editor, pdf, ai, layout, files, …)
   lib/               framework-agnostic helpers (ai-providers, github, …)

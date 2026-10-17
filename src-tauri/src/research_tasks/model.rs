@@ -289,6 +289,7 @@ pub struct TaskFilePreview {
     pub after: TaskPreviewContent,
     pub project_sha256: Option<String>,
     pub base_is_current: bool,
+    pub merges_with_shared: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

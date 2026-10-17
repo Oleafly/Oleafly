@@ -136,7 +136,8 @@
       "document": "文件",
       "image": "圖片",
       "diagram": "圖表",
-      "external": "外部"
+      "external": "外部",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF 預覽：{{name}}",
@@ -180,12 +181,20 @@
       "failed": "無法為專案建立分支。"
     },
     "deleteDialog": {
-      "title": "要將「{{name}}」移至資源回收筒嗎？",
+      "title": "要將「<name>{{name}}</name>」移至資源回收筒嗎？",
       "fallbackName": "專案",
       "description": "專案會離開你的專案庫，但在你還原或永久刪除前，都還保留在「資料儲存」中。",
       "confirm": "移至資源回收筒",
       "moved": "已將「{{name}}」移至資源回收筒。",
       "failed": "無法刪除「{{name}}」。"
+    },
+    "bulkDelete": {
+      "button_other": "刪除選取的 {{count}} 個專案",
+      "title_other": "要將 {{count}} 個專案移至資源回收筒嗎？",
+      "description": "這些專案會離開你的專案庫，但在你還原或永久刪除前，都還保留在「資料儲存」中。",
+      "folderNote": "就地開啟的資料夾只會離開 Oleafly，檔案會留在原處。",
+      "done_other": "已從專案庫移除 {{count}} 個專案。",
+      "failed_other": "有 {{count}} 個專案無法刪除。"
     }
   },
   "newProject": {
@@ -292,6 +301,59 @@
       "connect": "在設定中連結 GitHub",
       "repositoriesFailed": "無法載入儲存庫。",
       "repositoriesRetry": "無法載入儲存庫。請再試一次"
+    },
+    "overleaf": {
+      "cardDescription": "從你的 Overleaf 帳號中選擇專案",
+      "title": "從 Overleaf 匯入",
+      "description": "選擇要匯入的專案。每個專案都會保留檔案、編譯器和主要檔案。",
+      "checking": "正在檢查你的 Overleaf 登入狀態",
+      "loading": "正在載入你的 Overleaf 專案",
+      "loadFailed": "Oleafly 無法載入你的 Overleaf 專案。",
+      "signInPrompt": "登入 Overleaf 即可查看你的專案。系統會開啟登入視窗，登入完成後會自動關閉。",
+      "signingIn": "請在開啟的視窗中完成 Overleaf 登入。",
+      "passkeyHint": "如果密碼金鑰在登入視窗中無法使用，請在該頁面選擇其他方式，例如密碼或手機上的確認提示。",
+      "expired": "你的 Overleaf 登入已過期。請重新登入以查看你的專案。",
+      "signIn": "登入 Overleaf",
+      "signInWindowTitle": "登入 Overleaf",
+      "server": "伺服器：{{server}}",
+      "serverLabel": "Overleaf 伺服器位址",
+      "useDifferentServer": "使用其他伺服器",
+      "useDefaultServer": "使用 overleaf.com",
+      "saveServer": "使用這個伺服器",
+      "signedInAs": "已以 {{email}} 的身分登入",
+      "signedIn": "已登入 Overleaf",
+      "signOut": "登出",
+      "searchLabel": "搜尋 Overleaf 專案",
+      "searchPlaceholder_other": "搜尋 {{count}} 個專案",
+      "filterLabel": "顯示專案",
+      "filter": {
+        "all": "全部",
+        "owned": "我的",
+        "shared": "與我共用"
+      },
+      "empty": "這個 Overleaf 帳號中還沒有專案。",
+      "noMatches": "沒有符合搜尋條件的專案。",
+      "selectAll": "全選",
+      "clearSelection": "清除選取",
+      "selectProject": "選取 {{name}}",
+      "selected_other": "已選取 {{count}} 個專案",
+      "import_other": "匯入 {{count}} 個專案",
+      "imported": "已匯入",
+      "open": "開啟",
+      "ownedByYou": "我的",
+      "owner": "擁有者：{{name}}",
+      "archived": "已封存",
+      "notCarried": "留言、追蹤修訂、聊天和歷史記錄會保留在 Overleaf 上。",
+      "importingProjects": "正在匯入專案",
+      "done": "完成",
+      "doneSummary_other": "已匯入 {{count}} 個專案。",
+      "failedSummary_other": "有 {{count}} 個專案無法匯入。",
+      "progress": {
+        "queued": "等待中",
+        "downloading": "正在下載 {{percent}}%",
+        "downloadingUnknown": "正在下載",
+        "importing": "正在設定"
+      }
     }
   },
   "pdfImport": {
@@ -525,7 +587,7 @@
       "remove": "從 Oleafly 移除"
     },
     "remove": {
-      "title": "要從 Oleafly 移除「{{name}}」嗎？",
+      "title": "要從 Oleafly 移除「<name>{{name}}</name>」嗎？",
       "description": "你的檔案會留在原處。Oleafly 會刪除它為這個資料夾產生的建置檔案，並重設它的信任、核准與已連結資料夾。在 30 天內再次開啟這個資料夾，就能找回它的聊天與歷史記錄。其餘項目需要重新設定。",
       "confirm": "從 Oleafly 移除",
       "done": "已從 Oleafly 移除「{{name}}」。檔案仍在資料夾中。",
@@ -568,6 +630,55 @@
       "done": "「{{name}}」現在已在你的專案庫中。",
       "doneLeftOut": "「{{name}}」現在已在你的專案庫中。指向其他位置檔案的連結，以及層級過深的資料夾都沒有複製。",
       "failed": "無法將「{{name}}」複製到你的專案庫。"
+    }
+  },
+  "customTemplates": {
+    "saveAsTemplate": "儲存為範本",
+    "saveTitle": "儲存為範本",
+    "saveDescription": "<name>{{name}}</name> 的副本會存進你的範本，放在「自訂」分類下。專案本身維持不變。",
+    "nameLabel": "範本名稱",
+    "save": "儲存",
+    "saving": "正在儲存…",
+    "saveFailed": "Oleafly 無法儲存範本。",
+    "saved": "已將「{{name}}」存進你的範本",
+    "useTemplate": "使用範本",
+    "alsoSaveAsTemplate": "同時儲存為範本",
+    "alsoSaveHint": "副本會存進你的範本，放在「自訂」分類下。",
+    "import": {
+      "title": "匯入範本",
+      "description": "加入你已有的範本。它會出現在範本庫的「自訂」分類中。",
+      "zipTitle": "ZIP 檔案",
+      "zipDescription": "含有範本原始檔的 .zip 壓縮檔",
+      "folderTitle": "資料夾",
+      "folderDescription": "含有範本檔案的資料夾",
+      "linkTitle": "Overleaf 範本連結",
+      "linkDescription": "Overleaf 範本庫中的頁面",
+      "accountTitle": "你的 Overleaf 專案",
+      "accountDescription": "把你的某個專案當作範本使用",
+      "pickerZipTitle": "選擇範本 ZIP 檔",
+      "pickerZipFilter": "ZIP 壓縮檔",
+      "pickerFolderTitle": "選擇範本資料夾",
+      "from": "來源：{{source}}",
+      "saveTemplate": "儲存範本",
+      "back": "返回",
+      "linkLabel": "範本頁面連結",
+      "linkPlaceholder": "https://www.overleaf.com/latex/templates/...",
+      "lookUp": "查詢",
+      "lookingUp": "正在查詢範本…",
+      "by": "作者：{{author}}",
+      "previewAlt": "{{name}} 的第一頁",
+      "noPreview": "沒有預覽",
+      "copyNote": "就像 Overleaf 上的「作為範本開啟」，這會把範本的副本加入你的 Overleaf 專案。",
+      "importAction": "匯入",
+      "signInNeeded": "Overleaf 只提供範本檔案給已登入的帳號。登入一次後，匯入就會繼續。",
+      "signIn": "登入 Overleaf",
+      "signingIn": "請在開啟的視窗中完成 Overleaf 登入。",
+      "accountSearch": "搜尋你的專案",
+      "accountLoading": "正在載入你的 Overleaf 專案…",
+      "accountEmpty": "沒有符合搜尋條件的專案。",
+      "accountFailed": "Oleafly 無法載入你的 Overleaf 專案。",
+      "tryAgain": "再試一次",
+      "failed": "Oleafly 無法匯入範本。"
     }
   }
 }

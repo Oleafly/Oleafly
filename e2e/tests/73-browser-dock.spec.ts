@@ -34,8 +34,11 @@ async function pickOption(
   triggerSelector: string,
   optionText: string,
 ): Promise<void> {
+  // A list that just closed fades out before it leaves the page; picking from
+  // it does nothing. Wait for it to go, and only use the open list.
+  await page.waitForFunction(`!document.querySelector('[role="listbox"][data-state="closed"]')`, 5_000);
   await page.click(triggerSelector);
-  const optionSelector = `[role="option"][data-label=${JSON.stringify(optionText)}]`;
+  const optionSelector = `[role="listbox"][data-state="open"] [role="option"][data-label=${JSON.stringify(optionText)}]`;
   await page.waitForFunction(
     `!!document.querySelector(${JSON.stringify(optionSelector)})`,
     5_000,

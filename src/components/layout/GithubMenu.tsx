@@ -4,6 +4,7 @@ import { ExternalLink, Github, Link as LinkIcon, Settings } from "lucide-react";
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -47,13 +48,11 @@ export function GithubMenu({
               aria-label={t(($) => $.shell.githubMenu.accountAriaLabel, { login })}
               className="flex h-9 items-center gap-1.5 rounded-md pl-1 pr-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt="" className="size-5 rounded-full object-cover" />
-              ) : (
-                <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
-                  <Github className="size-3" />
-                </span>
-              )}
+              <Avatar
+                person={{ id: login, name: login, imageUrl: user?.avatar_url }}
+                size="sm"
+                fallbackIcon={<Github />}
+              />
               <span className="max-w-[110px] truncate">{login}</span>
             </button>
           </DropdownMenuTrigger>
@@ -83,7 +82,7 @@ export function GithubMenu({
           <span className="truncate">{t(($) => $.shell.githubMenu.copyRepositoryLink)}</span>
         </DropdownMenuItem>
         {!githubUrl && (
-          <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
+          <p className="px-2 py-1 pl-8 text-[0.625rem] text-muted-foreground">
             {t(($) => $.shell.githubMenu.pushHint)}
           </p>
         )}

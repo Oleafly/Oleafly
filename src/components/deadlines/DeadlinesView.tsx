@@ -42,6 +42,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import {
   countdown,
   deadlineInstant,
@@ -310,7 +311,7 @@ function CountdownUnit({
       <div className="font-mono text-xl font-semibold tabular-nums">
         {pad(value)}
       </div>
-      <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] opacity-70">
+      <div className="mt-0.5 text-[0.5625rem] font-semibold uppercase tracking-[0.12em] opacity-70">
         {label}
       </div>
     </div>
@@ -345,12 +346,12 @@ function DeadlineCountdown({ venue, now }: Readonly<{ venue: Venue; now: Date }>
   return (
     <div className={cn("rounded-lg border p-3.5", style.panel)}>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {t(($) => $.library.deadlines.nextDeadline, { kind: formatDeadlineKind(next.kind) })}
         </p>
         <span
           className={cn(
-            "rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+            "rounded-full border px-2 py-0.5 text-[0.5625rem] font-semibold uppercase tracking-wide",
             style.panel,
             style.text,
           )}
@@ -383,7 +384,7 @@ function DeadlineCountdown({ venue, now }: Readonly<{ venue: Venue; now: Date }>
       <Tooltip
         label={t(($) => $.library.deadlines.timezoneTooltip, { timezone: venue.timezone })}
       >
-        <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <p className="mt-3 flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground">
           <Clock3 className="size-3.5" />
           {formatDeadlineMoment(venue, next.when)}
         </p>
@@ -425,14 +426,14 @@ function DeadlineCard({ venue, now }: Readonly<{ venue: Venue; now: Date }>) {
                     : t(($) => $.library.deadlines.rankCore)
                 }
               >
-                <span className="rounded border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                <span className="rounded border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[0.625rem] font-semibold text-primary">
                   {venue.rank}
                 </span>
               </Tooltip>
             )}
             {venue.estimated && (
               <Tooltip label={t(($) => $.library.deadlines.estimatedTooltip)}>
-                <span className="rounded border border-dashed px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-muted-foreground">
+                <span className="rounded border border-dashed px-1.5 py-0.5 text-[0.5625rem] font-semibold tracking-wide text-muted-foreground">
                   {t(($) => $.library.deadlines.estimatedBadge)}
                 </span>
               </Tooltip>
@@ -538,7 +539,7 @@ function DeadlineStat({
   return (
     <div className={cn("rounded-lg border px-3.5 py-3", toneClass)}>
       <p className="text-xl font-semibold tabular-nums">{value}</p>
-      <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] opacity-75">
+      <p className="mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.12em] opacity-75">
         {label}
       </p>
     </div>
@@ -559,6 +560,7 @@ export function DeadlinesView() {
   const [query, setQuery] = useState("");
   const [showPassed, setShowPassed] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("deadline");
+  const listRef = useScrollTopOnChange(JSON.stringify([query, sub, showPassed, sortKey]));
   const [helpOpen, setHelpOpen] = useState(false);
   const active = activePage === "deadlines";
 
@@ -720,7 +722,7 @@ export function DeadlinesView() {
                   {t(($) => $.library.deadlines.title)}
                 </p>
                 <span className="h-4 w-px bg-border" />
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[0.6875rem] text-muted-foreground">
                   {t(($) => $.library.deadlines.eyebrow)}
                 </span>
               </div>
@@ -870,7 +872,7 @@ export function DeadlinesView() {
             </div>
           </section>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6">
               <div className="mb-4 flex items-center justify-between border-b pb-4">
                 <p className="text-sm font-medium">

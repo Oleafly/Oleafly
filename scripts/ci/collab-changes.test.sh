@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+CHECK="$ROOT/scripts/ci/collab-changes.sh"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/oleafly-collab-changes.XXXXXX")"
+trap 'rm -rf "$WORK"' EXIT
+
+failures=0
+
+git_in() {
+  local repo="$1"
+  shift
+  git -C "$repo" -c user.name=ci -c user.email=ci@example.invalid -c commit.gpgsign=false "$@"
+}
+
+origin="$WORK/origin"
+mkdir -p "$origin/src" "$origin/crates/oleafly-collab/src"
+git init --quiet "$origin"
+git_in "$origin" config uploadpack.allowAnySHA1InWant true
+printf 'x\n' >"$origin/src/app.ts"
+printf 'x\n' >"$origin/crates/oleafly-collab/src/lib.rs"
+git_in "$origin" add -- src crates
+git_in "$origin" commit --quiet -m base
+base="$(git_in "$origin" rev-parse HEAD)"
+
+commit_change() {
+  local path="$1"
+  git_in "$origin" checkout --quiet "$base"
+  mkdir -p "$origin/$(dirname "$path")"
+  printf '%s\n' "$RANDOM" >>"$origin/$path"
+  git_in "$origin" add -- "$path"
+  git_in "$origin" commit --quiet -m "change $path"
+  git_in "$origin" rev-parse HEAD
+}
+
+expect() {
+  local name="$1" want="$2" dir="$3"
+  shift 3
+  local got
+  got="$(cd "$dir" && bash "$CHECK" "$@" 2>"$WORK/$name.err")" || got="exit $?"
+  if [[ "$got" == "run=$want" ]]; then
+    echo "ok   $name -> $got"
+  else
+    echo "FAIL $name: expected run=$want, got '$got'" >&2
+    sed 's/^/     /' "$WORK/$name.err" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+shallow() {
+  local name="$1" head="$2"
+  local dir="$WORK/$name"
+  git clone --quiet --no-local --depth=1 "file://$origin" "$dir" 2>/dev/null
+  git_in "$dir" fetch --quiet --depth=1 origin "$head"
+  git_in "$dir" checkout --quiet "$head"
+  echo "$dir"
+}
+
+for path in \
+  crates/oleafly-collab/src/sync.rs \
+  crates/oleafly-collab/examples/e2e_peer.rs \
+  crates/oleafly-collab-protocol/src/frames.rs \
+  crates/oleafly-server/src/routes/ws.rs \
+  crates/oleafly-server/Cargo.toml \
+  src-tauri/src/collab/live.rs \
+  src/features/collab/sharing/ShareDialog.tsx \
+  src/components/collab/CollabSlots.tsx \
+  src/lib/collab-live-bridge.ts \
+  src/lib/tauri.ts \
+  src/lib/tauri-collab.ts \
+  packages/editor/src/collaboration.ts \
+  packages/editor/src/document-session.ts \
+  src/components/editor/cm/collab-slot.ts \
+  src/components/layout/CollabLiveKeeper.tsx \
+  src/components/layout/CollabLinkKeeper.tsx \
+  e2e/tests/109-live-collaboration-peer.spec.ts \
+  scripts/e2e-collab-browser.sh \
+  scripts/ci/collab-changes.sh \
+  .github/workflows/ci.yml; do
+  head="$(commit_change "$path")"
+  name="pr-$(printf '%s' "$path" | tr '/.' '--')"
+  dir="$(shallow "$name" "$head")"
+  expect "$name" true "$dir" pull_request "$base" "$head"
+done
+
+for path in \
+  src/app.ts \
+  src/lib/collaborator.ts \
+  src/lib/tauri.test.ts \
+  packages/editor/src/view.ts \
+  src/components/layout/TopToolbar.tsx \
+  src-tauri/src/project.rs \
+  src-tauri/src/collaboration.rs \
+  crates/oleafly-core/src/lib.rs \
+  e2e/tests/21-library.spec.ts \
+  e2e/helpers.ts \
+  scripts/e2e.sh \
+  package.json \
+  README.md; do
+  head="$(commit_change "$path")"
+  name="pr-other-$(printf '%s' "$path" | tr '/.' '--')"
+  dir="$(shallow "$name" "$head")"
+  expect "$name" false "$dir" pull_request "$base" "$head"
+  expect "push-other-$name" false "$dir" push "$base" "$head"
+done
+
+dir="$WORK/pr-other-src-app-ts"
+expect schedule true "$dir" schedule "" HEAD
+expect workflow-dispatch true "$dir" workflow_dispatch "" HEAD
+expect empty-event true "$dir" "" "" HEAD
+expect missing-base true "$dir" pull_request "" HEAD
+expect new-branch-push true "$dir" push 0000000000000000000000000000000000000000 HEAD
+expect unknown-base true "$dir" pull_request 1234567890123456789012345678901234567890 HEAD
+expect not-a-repo true "$WORK" pull_request "$base" HEAD
+
+if ((failures > 0)); then
+  echo "$failures collaboration change check(s) failed" >&2
+  exit 1
+fi
+echo "all collaboration change checks passed"

@@ -23,6 +23,8 @@
 /// Windows that hold one webview filling the whole window.
 const FILLING_WINDOWS: [&str; 5] = ["main", "preview", "update", "presentation", "presenter"];
 
+const ADMIN_CONSOLE_PREFIX: &str = "admin-console-";
+
 /// How far (in points) an edge may sit from where it belongs before the
 /// frame counts as wrong. Frames are floating point, so a fraction of a
 /// point is rounding, not a stale size.
@@ -41,6 +43,9 @@ pub(crate) struct Frame {
 /// Whether the window with this label is one whose webview must fill it.
 pub(crate) fn fills_window(label: &str) -> bool {
     FILLING_WINDOWS.contains(&label)
+        || label
+            .strip_prefix(ADMIN_CONSOLE_PREFIX)
+            .is_some_and(|server| !server.is_empty())
 }
 
 /// The frame the webview needs to fill `container` (its superview's bounds),
@@ -412,7 +417,14 @@ mod tests {
 
     #[test]
     fn only_oleafly_single_webview_windows_are_filled() {
-        for label in ["main", "preview", "update", "presentation", "presenter"] {
+        for label in [
+            "main",
+            "preview",
+            "update",
+            "presentation",
+            "presenter",
+            "admin-console-0192f0c4-7c00-7000-8000-000000000000",
+        ] {
             assert!(fills_window(label), "{label}");
         }
         for label in [
@@ -420,6 +432,7 @@ mod tests {
             "oleafly-browser-chrome-1",
             "oleafly-browser-pane-1",
             "Main",
+            "admin-console",
             "",
         ] {
             assert!(!fills_window(label), "{label}");

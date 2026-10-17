@@ -504,7 +504,18 @@ function toolSummary(context: {
   return undefined;
 }
 
+const projections = new WeakMap<ToolActivityEntry, { locale: string; view: ResearchToolView }>();
+
 export function projectToolEntry(entry: ToolActivityEntry): ResearchToolView {
+  const locale = i18n.language;
+  const cached = projections.get(entry);
+  if (cached && cached.locale === locale) return cached.view;
+  const view = buildToolView(entry);
+  projections.set(entry, { locale, view });
+  return view;
+}
+
+function buildToolView(entry: ToolActivityEntry): ResearchToolView {
   const value = parseOutput(entry.output);
   const data = record(value);
   const status = explicitStatus(entry, value);

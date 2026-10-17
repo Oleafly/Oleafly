@@ -206,5 +206,16 @@
     "clearFilter": "清除篩選",
     "filterPlaceholder": "篩選…",
     "noProject": "沒有專案"
+  },
+  "fileReferences": {
+    "title": "要更新對 {{name}} 的參照嗎？",
+    "files_other": "{{count}} 個檔案",
+    "summary_other": "$t(workspace:fileReferences.files, { \"count\": {{files}} })中有 {{count}} 處參照仍在使用舊路徑 {{path}}。",
+    "fileCount_other": "{{count}} 處參照",
+    "dontAsk": "不再詢問",
+    "update": "更新參照",
+    "skip": "不要更新",
+    "failed_other": "{{count}} 個檔案在移動後被修改或無法儲存，仍在使用舊路徑。",
+    "close": "關閉且不更新參照"
   }
 }

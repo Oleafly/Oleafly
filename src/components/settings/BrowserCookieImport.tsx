@@ -252,7 +252,7 @@ export function BrowserCookieImport() {
 
           {detectionError ? (
             <div className="space-y-3 rounded-md border border-destructive/40 p-3">
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="select-text text-sm text-destructive">
                 {detectionError}
               </p>
               <Button
@@ -363,7 +363,7 @@ export function BrowserCookieImport() {
             <p
               id="browser-cookie-review-error"
               role="alert"
-              className="text-sm text-destructive"
+              className="select-text text-sm text-destructive"
             >
               {reviewErrorLabel(reviewError)}
             </p>
@@ -419,7 +419,7 @@ export function BrowserCookieImport() {
           </DialogHeader>
 
           {importError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="select-text text-sm text-destructive">
               {importError}
             </p>
           ) : null}

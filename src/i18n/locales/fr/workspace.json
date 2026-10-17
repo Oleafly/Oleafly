@@ -214,5 +214,24 @@
     "clearFilter": "Effacer le filtre",
     "filterPlaceholder": "Filtrer…",
     "noProject": "Aucun projet"
+  },
+  "fileReferences": {
+    "title": "Mettre à jour les références à {{name}} ?",
+    "files_one": "{{count}} fichier",
+    "files_many": "{{count}} fichiers",
+    "files_other": "{{count}} fichiers",
+    "summary_one": "{{count}} référence dans $t(workspace:fileReferences.files, { \"count\": {{files}} }) utilise encore l'ancien chemin, {{path}}.",
+    "summary_many": "{{count}} références dans $t(workspace:fileReferences.files, { \"count\": {{files}} }) utilisent encore l'ancien chemin, {{path}}.",
+    "summary_other": "{{count}} références dans $t(workspace:fileReferences.files, { \"count\": {{files}} }) utilisent encore l'ancien chemin, {{path}}.",
+    "fileCount_one": "{{count}} référence",
+    "fileCount_many": "{{count}} références",
+    "fileCount_other": "{{count}} références",
+    "dontAsk": "Ne plus demander",
+    "update": "Mettre à jour les références",
+    "skip": "Ne pas mettre à jour",
+    "failed_one": "{{count}} fichier a été modifié après le déplacement ou n'a pas pu être enregistré. Il utilise encore l'ancien chemin.",
+    "failed_many": "{{count}} fichiers ont été modifiés après le déplacement ou n'ont pas pu être enregistrés. Ils utilisent encore l'ancien chemin.",
+    "failed_other": "{{count}} fichiers ont été modifiés après le déplacement ou n'ont pas pu être enregistrés. Ils utilisent encore l'ancien chemin.",
+    "close": "Fermer sans mettre à jour les références"
   }
 }

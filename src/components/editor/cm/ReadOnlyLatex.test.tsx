@@ -12,15 +12,15 @@ function viewIn(host: HTMLElement): EditorView {
   return view;
 }
 
-const originalTheme = useSettingsStore.getState().editorTheme;
+const { editorThemeLight, editorThemeDark } = useSettingsStore.getState();
 
 afterEach(() => {
-  useSettingsStore.setState({ editorTheme: originalTheme });
+  useSettingsStore.setState({ editorThemeLight, editorThemeDark });
 });
 
 describe("ReadOnlyLatex", () => {
   it("shows LaTeX source that cannot be edited", () => {
-    useSettingsStore.setState({ editorTheme: "dracula" as never });
+    useSettingsStore.setState({ editorThemeLight: "dracula", editorThemeDark: "dracula" });
     render(<ReadOnlyLatex source={"\\section{Intro}"} testId="snippet" className="rounded" />);
     const host = screen.getByTestId("snippet");
     expect(host).toHaveClass("rounded");

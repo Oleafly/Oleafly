@@ -1,8 +1,9 @@
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Check, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
@@ -125,13 +126,13 @@ const SelectItem = React.forwardRef<
     {indicator === "left" ? (
       <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <Check className="h-4 w-4" />
+          <CheckBadge />
         </SelectPrimitive.ItemIndicator>
       </span>
     ) : (
       <span className="absolute right-2 flex h-4 w-4 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          <CheckBadge />
         </SelectPrimitive.ItemIndicator>
       </span>
     )}

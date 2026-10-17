@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { shortcutParts, useShortcutStore, type ShortcutBinding } from "@/store/shortcuts";
 import {
   EDITOR_KEY_DEFINITIONS,
   editorKeyTokens,
@@ -276,13 +278,18 @@ const SHORTCUTS: ShortcutRow[] = [
     keys: "Toolbar → Git icon",
     desc: () => i18n.t(($) => $.editor.hotkeys.actions.commitAndPush),
   },
-  {
+];
+
+function openSettingsRow(binding: ShortcutBinding): ShortcutRow {
+  const tokens = shortcutParts(binding).map((part) => (part === "⇧" ? "Shift" : part));
+  return {
     id: "open-settings",
     category: () => i18n.t(($) => $.editor.hotkeys.categories.settings),
-    keys: "Toolbar → ⚙",
+    keys: tokens.join(" "),
     desc: () => i18n.t(($) => $.editor.hotkeys.actions.openSettings),
-  },
-];
+    tokens,
+  };
+}
 
 export function HotkeysModal() {
   const { t } = useTranslation(["common", "editor"]);
@@ -291,8 +298,10 @@ export function HotkeysModal() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const [q, setQ] = useState("");
+  const listRef = useScrollTopOnChange(q);
   const editorKeys = useEditorKeymapStore((s) => s.keys);
-  const activePath = useFilesStore((s) => s.activePath);
+  const settingsBinding = useShortcutStore((s) => s.bindings.openSettings);
+  const activePath = useFilesStore((s) => (open ? s.activePath : null));
 
   const rows = useMemo(() => {
     const language = sourceLanguageForPath(activePath);
@@ -302,8 +311,8 @@ export function HotkeysModal() {
         activePath === null ||
         (language !== null && row.languages.includes(language)),
     );
-    return [...shown, ...editorKeyRows(editorKeys)];
-  }, [activePath, editorKeys]);
+    return [...shown, openSettingsRow(settingsBinding), ...editorKeyRows(editorKeys)];
+  }, [activePath, editorKeys, settingsBinding]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: t re-runs the filter when the interface language changes.
   const filtered = useMemo(
@@ -377,7 +386,7 @@ export function HotkeysModal() {
           />
         </div>
       </div>
-      <div className="flex-1 overflow-auto p-4">
+      <div ref={listRef} className="flex-1 overflow-auto p-4">
         {categories.map((cat, ci) => (
           <div key={cat} className={ci > 0 ? "mb-4 border-t border-sidebar-border pt-4" : "mb-4"}>
             <SectionHeading as="div" className="mb-1.5">

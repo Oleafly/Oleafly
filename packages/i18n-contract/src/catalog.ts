@@ -53,6 +53,7 @@ export interface ValidateOptions {
 }
 
 const EM_DASH = /[—–]/;
+const SEMICOLON = /[;；]/;
 const HALF_WIDTH_NEXT_TO_CJK = /(\p{Script=Han}[,;:?!])|([,;:?!]\p{Script=Han})/u;
 const CORNER_BRACKETS = /[「」『』]/;
 const FULL_WIDTH_PUNCTUATION = /[，。：？！（）；、]/;
@@ -77,6 +78,7 @@ function checkCommon(issues: CatalogIssue[], locale: string, namespace: string, 
   if (value.trim() === "") pushIssue(issues, "error", locale, namespace, key, "value is empty");
   if (value !== value.trim()) pushIssue(issues, "error", locale, namespace, key, "value has leading or trailing whitespace");
   if (EM_DASH.test(value)) pushIssue(issues, "error", locale, namespace, key, "value contains an em dash or en dash");
+  if (SEMICOLON.test(value)) pushIssue(issues, "error", locale, namespace, key, "value contains a semicolon");
   const suffix = pluralSuffix(key);
   if (suffix && !pluralCategories(locale).includes(suffix)) {
     pushIssue(issues, "error", locale, namespace, key, `plural category "${suffix}" does not exist for ${locale}`);

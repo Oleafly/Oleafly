@@ -19,7 +19,13 @@ const MAX_NESTED_SCAN_DEPTH: usize = 5;
 const MAX_GIT_CONFIG_BYTES: u64 = 256 * 1024;
 const RUN_COMMAND_REFUSAL: &str =
     "Commands are turned off in this folder until the user trusts it in Oleafly.";
-const NETWORK_TOOLS: &[&str] = &["literature_search", "verify_citation", "computer_use"];
+const NETWORK_TOOLS: &[&str] = &[
+    "literature_search",
+    "verify_citation",
+    "computer_use",
+    "list_overleaf_projects",
+    "import_overleaf_projects",
+];
 const DOCUMENT_EXTENSIONS: &[&str] = &[
     "bbl", "bbx", "bib", "bst", "cbx", "cfg", "cls", "csv", "dat", "def", "dtx", "eps", "gif",
     "ins", "ist", "jpeg", "jpg", "json", "latex", "lbx", "ltx", "markdown", "md", "pdf", "pgf",
@@ -537,6 +543,12 @@ pub fn restrict_compile_meta(
     project_id: &str,
     mut meta: ProjectMeta,
 ) -> Result<ProjectMeta, String> {
+    if meta.allow_shell_escape
+        && crate::collab::registry::is_shared(project_id)
+        && !crate::project::shared_shell_escape::confirmed_here(project_id)
+    {
+        meta.allow_shell_escape = false;
+    }
     if project_trust(project_id)?.is_trusted() {
         return Ok(meta);
     }
@@ -1241,6 +1253,26 @@ pub(crate) mod testing {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn a_shared_project_ignores_shell_escape_this_computer_never_confirmed() {
+        let library = crate::collab::testing::TempLibrary::new();
+        library.project("shared-escape", &[("main.tex", "x")]);
+        let mut meta: crate::project::ProjectMeta = serde_json::from_str("{}").unwrap();
+        meta.allow_shell_escape = true;
+        assert!(
+            restrict_compile_meta("shared-escape", meta.clone())
+                .unwrap()
+                .allow_shell_escape
+        );
+        let _shared = crate::collab::testing::share("shared-escape");
+        assert!(
+            !restrict_compile_meta("shared-escape", meta)
+                .unwrap()
+                .allow_shell_escape
+        );
+    }
+
     use super::*;
     use crate::known_folders::broad_folder_among;
 

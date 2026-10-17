@@ -18,7 +18,7 @@ import {
 import { toast } from "@/lib/toast";
 import { useDisplayPath } from "@/lib/display-path";
 import { decodeAppError, describeError } from "@/lib/app-error";
-import { applyShellEscape } from "@/lib/latex-compile-actions";
+import { applyShellEscape, shellEscapeDeclined } from "@/lib/latex-compile-actions";
 import { recompileWithPreview } from "@/lib/compile-preview";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
@@ -83,6 +83,16 @@ export function EnginePickerModal() {
     );
   };
 
+  const allowShellEscape = async () => {
+    try {
+      await setShellEscape(true);
+      return true;
+    } catch (error) {
+      if (shellEscapeDeclined(error)) return false;
+      throw error;
+    }
+  };
+
   const pinLatexmk = async (afterInstall: boolean) => {
     setSwitching(true);
     let engineSwitched = false;
@@ -91,7 +101,7 @@ export function EnginePickerModal() {
       const selected = useFilesStore.getState();
       if (selected.projectId !== projectId || selected.engine.id !== "latexmk") return;
       engineSwitched = true;
-      if (needsShellEscape) await setShellEscape(true);
+      const allowed = !needsShellEscape || (await allowShellEscape());
       if (useFilesStore.getState().projectId !== projectId) return;
       const engineName = needsPdflatex
         ? t(($) => $.shell.enginePicker.engineNames.pdflatexViaLatexmk)
@@ -105,7 +115,7 @@ export function EnginePickerModal() {
         toast.success(t(($) => $.shell.enginePicker.switched, { engine: engineName }));
       }
       close();
-      if (source === "compile-failure") void recompileWithPreview();
+      if (source === "compile-failure" && allowed) void recompileWithPreview();
     } catch (error) {
       if (engineSwitched) {
         reportSwitchFailure(
@@ -193,7 +203,7 @@ export function EnginePickerModal() {
   };
 
   const shellEscapeNote = needsShellEscape && (
-    <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
+    <p className="mt-2 flex items-start gap-1.5 text-[0.6875rem] leading-relaxed text-muted-foreground">
       <ShieldAlert aria-hidden className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
       {t(($) => $.shell.enginePicker.shellEscape.included)}
     </p>
@@ -219,7 +229,7 @@ export function EnginePickerModal() {
           </Badge>
         )}
       </div>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
         {hasSystemTex
           ? t(($) => $.shell.enginePicker.systemTex.found)
           : t(($) => $.shell.enginePicker.systemTex.missing)}
@@ -230,7 +240,7 @@ export function EnginePickerModal() {
         className="mt-2"
       />
       {info?.latexmk && (
-        <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
+        <p className="mt-1 select-text truncate font-mono text-[0.625rem] text-muted-foreground/70">
           {displayPath(info.latexmk)}
         </p>
       )}
@@ -287,7 +297,7 @@ export function EnginePickerModal() {
               />
               <div className="min-w-0">
                 <span className="font-medium">{finding.title}</span>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
                   {finding.detail}
                 </p>
               </div>
@@ -309,7 +319,7 @@ export function EnginePickerModal() {
                 {t(($) => $.shell.enginePicker.tinytex.title)}
               </span>
             </div>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
               {t(($) => $.shell.enginePicker.tinytex.description)}
             </p>
             {shellEscapeNote}
@@ -335,7 +345,7 @@ export function EnginePickerModal() {
               {t(($) => $.shell.enginePicker.tectonic.title)}
             </span>
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
             {fixable.length > 0
               ? t(($) => $.shell.enginePicker.tectonic.withFailures, {
                   count: fixable.length,

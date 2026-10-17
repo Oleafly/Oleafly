@@ -1,0 +1,6 @@
+#!/bin/sh
+printf 'ss %s\n' "$*" >>/stub/log
+echo 'State  Recv-Q Send-Q Local Address:Port Peer Address:Port Process'
+if [ -f /stub/state/listening ]; then
+	cat /stub/state/listening
+fi

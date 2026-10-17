@@ -42,7 +42,9 @@
     "privacyNote": "식별자나 제목만 doi.org, arXiv 또는 Crossref로 전송됩니다.",
     "title": "인용 추가",
     "bibliography": "참고문헌",
-    "bibliographyHint": "이 프로젝트에는 참고문헌이 여러 개 있습니다. 항목은 여기에서 고른 파일에 들어갑니다."
+    "bibliographyHint": "이 프로젝트에는 참고문헌이 여러 개 있습니다. 항목은 여기에서 고른 파일에 들어갑니다.",
+    "zoteroMatches": "내 Zotero 라이브러리에서",
+    "zoteroPlaceholder": "Zotero 라이브러리를 검색하거나 DOI, arXiv 아이디 또는 제목을 붙여 넣기"
   },
   "backendProtocol": {
     "mismatch": "이 창과 백엔드가 서로 다른 Oleafly 버전으로 빌드되어 일부 기능이 동작하지 않을 수 있습니다. 앱을 다시 설치하면 해결됩니다."
@@ -324,6 +326,38 @@
     "presentWithPresenter": {
       "label": "발표자 보기로 슬라이드 발표",
       "keywords": "발표 슬라이드 발표자 보기 발표자 노트 타이머 다음 슬라이드"
+    },
+    "zenMode": {
+      "keywords": "집중 방해 없음 전체 화면 인터페이스 숨기기 미니멀 글쓰기",
+      "label": "Zen 모드 전환"
+    },
+    "togglePreview": {
+      "keywords": "pdf 미리보기 보이기 숨기기 분할 편집기만",
+      "label": "PDF 미리보기 전환"
+    },
+    "zoomIn": {
+      "keywords": "확대 크게",
+      "label": "확대"
+    },
+    "zoomOut": {
+      "keywords": "축소 작게",
+      "label": "축소"
+    },
+    "resetZoom": {
+      "keywords": "실제 크기 100",
+      "label": "확대/축소 초기화"
+    },
+    "zoteroAddMissing": {
+      "label": "Zotero에서 누락된 인용 추가",
+      "keywords": "zotero 누락 인용 정의되지 않은 키 참고문헌 복구"
+    },
+    "zoteroUpdate": {
+      "label": "Zotero에서 .bib 항목 업데이트",
+      "keywords": "zotero 업데이트 새로 고침 참고문헌 항목 변경"
+    },
+    "zoteroSync": {
+      "label": "Zotero 라이브러리 동기화",
+      "keywords": "zotero 동기화 새로 고침 라이브러리"
     }
   },
   "community": {
@@ -346,11 +380,13 @@
     "compile": "컴파일",
     "compiler": {
       "auto": "자동 <note>[시스템 TeX]</note>",
-      "help": "Tectonic은 기본 내장되어 있어 설정이 필요 없습니다. 나머지 선택지는 시스템 TeX를 실행하는데, 계정이 접근할 수 있는 로컬 파일을 읽을 수 있으므로 신뢰하는 프로젝트에만 쓰세요. 자동은 소스를 보고 컴파일러를 고릅니다. pdfLaTeX는 대부분의 저널 템플릿에 맞습니다. XeLaTeX와 LuaLaTeX는 시스템 글꼴과 유니코드를 더해 줍니다.",
+      "help": "Tectonic은 기본 내장되어 있어 설정이 필요 없습니다. 나머지 선택지는 시스템 TeX를 실행하는데, 계정이 접근할 수 있는 로컬 파일을 읽을 수 있으므로 신뢰하는 프로젝트에만 쓰세요. 자동은 소스를 보고 컴파일러를 고릅니다. pdfLaTeX는 대부분의 저널 템플릿에 맞습니다. XeLaTeX와 LuaLaTeX는 시스템 글꼴과 유니코드를 더해 줍니다. upLaTeX와 pLaTeX는 일본어 문서를 컴파일합니다.",
       "lualatex": "LuaLaTeX <note>[시스템 TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[시스템 TeX]</note>",
+      "platex": "pLaTeX <note>[시스템 TeX]</note>",
       "tectonic": "Tectonic <note>[내장]</note>",
       "title": "컴파일러(이 프로젝트)",
+      "uplatex": "upLaTeX <note>[시스템 TeX]</note>",
       "xelatex": "XeLaTeX <note>[시스템 TeX]</note>"
     },
     "errors": {
@@ -407,7 +443,8 @@
       "title": "변형(이 프로젝트)",
       "help": "변형은 초안이나 최종본 빌드처럼 자체 값을 sys.inputs에 넘깁니다. 고른 변형은 이 컴퓨터에만 저장됩니다. 변형은 문서 설정에서 추가하거나 편집하세요.",
       "none": "변형 없음"
-    }
+    },
+    "sharedViewer": "공유 프로젝트에서 뷰어는 이 설정을 변경할 수 없습니다."
   },
   "datePicker": {
     "placeholder": "날짜 선택"
@@ -710,11 +747,6 @@
   "settings": {
     "close": "설정 닫기",
     "data": {
-      "cloud": {
-        "comingSoon": "준비 중",
-        "description": "Git 원격 저장소를 설정하지 않고도 여러 기기에서 프로젝트를 동기화하세요. 모든 전송은 종단 간 암호화되어 전송 중에도 작업물이 안전합니다. 로컬 프로젝트 폴더가 계속 기준이 됩니다.",
-        "title": "클라우드 동기화"
-      },
       "danger": {
         "confirmDeleteAllAction": "모든 프로젝트 삭제",
         "confirmDeleteAllDescription": "현재 모든 프로젝트가 파일과 Git 이력을 포함해 휴지통으로 이동합니다. 나중에 프로젝트를 하나씩 복원할 수 있습니다.",
@@ -793,6 +825,10 @@
         "description": "Oleafly 도구 갤러리와 개별 도구(PDF 가져오기, 수식, 표, BibTeX, 연구실 및 문헌 검색, 마감일)와 슬래시 명령을 표시합니다. 아직 베타라서 기본은 꺼짐입니다.",
         "label": "LaTeX 도구"
       },
+      "liveCollaboration": {
+        "description": "직접 또는 소속 그룹이 운영하는 공동 작업 서버를 통해 다른 사람과 프로젝트를 함께 편집합니다. 설정에 공동 작업 섹션이 추가됩니다. 아직 베타라서 기본은 꺼짐입니다.",
+        "label": "실시간 공동 작업"
+      },
       "warning": "이 기능들은 실험 단계이며 아직 베타입니다. 충분히 검증되지 않았고 앞으로 바뀌거나 동작하지 않거나 사라질 수 있습니다. 진행 중인 작업을 써 보고 싶을 때만 켜세요.",
       "webBrowser": {
         "description": "앱 내장 웹 브라우저(독 전환과 단축키)를 표시하고 AI가 컴퓨터 사용 기능으로 브라우저를 다룰 수 있게 합니다. 아직 베타라서 기본은 꺼짐이며, 꺼져 있으면 브라우저 버튼도 AI의 브라우저 도구도 없습니다.",
@@ -870,6 +906,7 @@
     "nav": {
       "ai": "AI 어시스턴트",
       "appearance": "모양",
+      "collaboration": "공동 작업",
       "data": "데이터 저장",
       "dictionary": "사전",
       "downloads": "다운로드",
@@ -885,6 +922,7 @@
       "keywords": {
         "ai": "어시스턴트, 채팅, 모델, 제공자, API 키, 에이전트, 프롬프트, 예산, MCP 서버",
         "appearance": "테마, 다크 모드, 라이트 모드, 어두운 모드, 밝은 모드, 색상, 글꼴, 폰트, 글자 크기, 확대, 레이아웃",
+        "collaboration": "서버, 로그인, 기기, 멤버, 유지 관리자, 공유, 팀, 연구실, 실시간 편집, 동시 편집, 협업, 보안 로그",
         "data": "백업, 라이브러리 폴더, 프로젝트 폴더, 저장 공간, 디스크 공간, 휴지통, 프로젝트 삭제, 체크포인트",
         "dictionary": "맞춤법, 사용자 단어, 무시할 단어, 교정, 문법 규칙",
         "downloads": "패키지, 글꼴, 사전, 오프라인 파일",
@@ -1100,7 +1138,8 @@
       "editorPreview": "편집기 + 미리보기",
       "editorPreviewAi": "편집기 + 미리보기 + AI",
       "previewAi": "미리보기 + AI",
-      "previewOnly": "미리보기만"
+      "previewOnly": "미리보기만",
+      "zenMode": "Zen 모드"
     },
     "newProjectName": "새 프로젝트 이름",
     "projectName": "프로젝트 이름",
@@ -1319,5 +1358,77 @@
     "location": "{{file}}, {{line}}번째 줄",
     "error": "오류",
     "warning": "경고"
+  },
+  "fileRenameDialog": {
+    "title": "파일 이름 바꾸기",
+    "titleFolder": "폴더 이름 바꾸기",
+    "newPath": "새 경로",
+    "hint": "없는 폴더는 새로 만듭니다.",
+    "invalid": "이 프로젝트 안의 경로를 사용하세요.",
+    "exists": "{{path}}이(가) 이미 있습니다."
+  },
+  "zen": {
+    "compileFailed": "컴파일 실패",
+    "compiling": "컴파일 중",
+    "hideLog": "컴파일 로그 숨기기",
+    "showLog": "컴파일 로그 표시"
+  },
+  "collabSync": {
+    "paused_other": "Oleafly 밖에서 파일 {{count}}개가 변경되었습니다. 변경 사항을 모두에게 보낼까요, 아니면 로컬에만 둘까요?",
+    "send": "보내기",
+    "keepLocal": "로컬에 두기",
+    "unavailable": "프로젝트 폴더를 사용할 수 없어 동기화가 일시 중지되었습니다. 폴더가 돌아오면 다시 시작됩니다."
+  },
+  "overleafSync": {
+    "button": "Overleaf 동기화",
+    "title": "Overleaf와 동기화",
+    "cancel": "취소",
+    "more_other": "외 파일 {{count}}개",
+    "status": {
+      "notLinked": "아직 Overleaf와 동기화하지 않았습니다.",
+      "linking": "Overleaf에 연결하는 중",
+      "syncing": "Overleaf와 동기화하는 중",
+      "needsToken": "동기화하려면 Overleaf Git 토큰을 추가하세요.",
+      "never": "아직 동기화하지 않았습니다.",
+      "justNow": "방금",
+      "synced": "마지막 동기화: {{time}}.",
+      "conflicts_other": "파일 {{count}}개가 양쪽에서 바뀌었습니다. 남길 버전을 고르세요."
+    },
+    "actions": {
+      "keepInSync": "Overleaf와 계속 동기화",
+      "syncNow": "지금 동기화",
+      "auto": "자동으로 동기화",
+      "resolve": "버전 고르기",
+      "unlink": "동기화 중지",
+      "addToken": "Git 토큰 추가",
+      "changeToken": "Git 토큰 변경"
+    },
+    "token": {
+      "title": "Overleaf Git 토큰 추가",
+      "description": "Oleafly는 Overleaf의 Git 연동으로 동기화합니다. Overleaf 계정 설정의 Git 연동 항목에서 토큰을 만든 뒤 여기에 붙여 넣으세요. 토큰은 이 컴퓨터에 암호화되어 보관됩니다.",
+      "openSettings": "Overleaf 계정 설정 열기",
+      "label": "Git 토큰",
+      "note": "Git 연동을 쓰려면 프로젝트 소유자에게 Overleaf 유료 요금제나 대학 요금제가 필요합니다.",
+      "save": "저장하고 동기화"
+    },
+    "choice": {
+      "title": "어느 버전을 남길까요?",
+      "description": "이 파일들은 여기와 Overleaf에서 내용이 다릅니다. 한쪽에만 있는 파일은 양쪽에 모두 남으므로 아무것도 삭제되지 않습니다.",
+      "mine": "내 버전 사용",
+      "theirs": "Overleaf 버전 사용"
+    },
+    "conflicts": {
+      "title": "버전 고르기",
+      "description": "이 파일들은 마지막 동기화 이후 여기와 Overleaf 양쪽에서 바뀌었습니다. 파일마다 남길 버전을 고르세요. 적용하기 전에는 아무것도 바뀌지 않습니다.",
+      "mine": "내 버전",
+      "theirs": "Overleaf 버전",
+      "allMine": "모두 내 버전 유지",
+      "allTheirs": "모두 Overleaf 버전 사용",
+      "apply": "적용하고 동기화"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "이 창이 30초 동안 응답하지 않아 Oleafly가 다시 불러왔습니다. 직전에 한 변경 사항은 저장되지 않았을 수 있습니다.",
+    "reloadedAgain": "이 창이 다시 응답하지 않아 Oleafly가 한 번 더 다시 불러왔습니다. 프로젝트 안의 무언가가 원인일 수 있어 이번에는 프로젝트를 다시 열지 않았습니다."
   }
 }

@@ -13,6 +13,8 @@ use crate::sandbox::{atomic_write, guard_export_dest, resolve, AtomicFile};
 /// `crate::project::resolve_in_project`.
 pub use crate::sandbox::resolve_in_project;
 
+pub(crate) mod shared_shell_escape;
+
 const DEFAULT_MAIN_TEX: &str = "\\documentclass[11pt]{article}\n\
 \\usepackage[T1]{fontenc}\n\
 \\usepackage{hyperref}\n\
@@ -81,9 +83,9 @@ pub struct ProjectMeta {
     /// Present on latexmk projects once an engine spec has been recorded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex: Option<TexSpec>,
-    /// Explicit latexmk compiler ("pdflatex" | "xelatex" | "lualatex"), the
-    /// Overleaf-style per-project choice. Absent means auto-detect from the
-    /// source, which stays the default.
+    /// Explicit latexmk compiler ("pdflatex" | "xelatex" | "lualatex" |
+    /// "uplatex" | "platex"), the Overleaf-style per-project choice. Absent
+    /// means auto-detect from the source, which stays the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -267,7 +269,12 @@ struct ShellEscapeTrustRecord {
     version: u8,
     project_id: String,
     project_identity: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    shared_project: Option<String>,
 }
+
+const SHELL_ESCAPE_NEEDS_LATEXMK: &str =
+    "shell escape can only be enabled for the system TeX (latexmk) engine";
 
 fn shell_escape_trust_path(project_id: &str) -> Result<PathBuf, String> {
     paths::validate_project_id(project_id)?;
@@ -362,36 +369,54 @@ fn trust_record_is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
 }
 
-pub(crate) fn shell_escape_trusted(project_id: &str) -> Result<bool, String> {
+fn shell_escape_trust_record(project_id: &str) -> Result<Option<ShellEscapeTrustRecord>, String> {
     let expected_identity = shell_escape_project_identity(project_id)?;
     let path = shell_escape_trust_path(project_id)?;
     let metadata = match std::fs::symlink_metadata(&path) {
         Ok(metadata) => metadata,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(format!("failed to inspect local shell trust: {error}")),
     };
     if !metadata.is_file()
         || metadata.file_type().is_symlink()
         || trust_record_is_reparse_point(&metadata)
     {
-        return Ok(false);
+        return Ok(None);
     }
     let raw = std::fs::read_to_string(&path)
         .map_err(|e| format!("failed to read local shell trust: {e}"))?;
     let record: ShellEscapeTrustRecord = match serde_json::from_str(&raw) {
         Ok(record) => record,
-        Err(_) => return Ok(false),
+        Err(_) => return Ok(None),
     };
-    Ok(record.version == SHELL_ESCAPE_TRUST_VERSION
+    let valid = record.version == SHELL_ESCAPE_TRUST_VERSION
         && record.project_id == project_id
-        && record.project_identity == expected_identity)
+        && record.project_identity == expected_identity;
+    Ok(valid.then_some(record))
 }
 
+pub(crate) fn shell_escape_trusted(project_id: &str) -> Result<bool, String> {
+    Ok(shell_escape_trust_record(project_id)?.is_some())
+}
+
+pub(crate) fn shell_escape_shared_project(project_id: &str) -> Result<Option<String>, String> {
+    Ok(shell_escape_trust_record(project_id)?.and_then(|record| record.shared_project))
+}
+
+#[cfg(test)]
 pub(crate) fn write_shell_escape_trust(project_id: &str) -> Result<(), String> {
+    write_shell_escape_trust_for(project_id, None)
+}
+
+fn write_shell_escape_trust_for(
+    project_id: &str,
+    shared_project: Option<&str>,
+) -> Result<(), String> {
     let record = ShellEscapeTrustRecord {
         version: SHELL_ESCAPE_TRUST_VERSION,
         project_id: project_id.to_string(),
         project_identity: shell_escape_project_identity(project_id)?,
+        shared_project: shared_project.map(str::to_owned),
     };
     let path = shell_escape_trust_path(project_id)?;
     if let Ok(metadata) = std::fs::symlink_metadata(&path) {
@@ -666,6 +691,18 @@ pub struct ProjectInfo {
     pub recovery_pending: bool,
     pub location: crate::project_availability::ProjectLocationInfo,
     pub last_opened_at: f64,
+    pub shared: Option<crate::collab::share::ProjectSharing>,
+    pub imported_from: Option<String>,
+}
+
+fn imported_service(extra: &HashMap<String, serde_json::Value>) -> Option<String> {
+    let service = extra.get("importedFrom")?.get("service")?.as_str()?;
+    let known = !service.is_empty()
+        && service.len() <= 32
+        && service
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-');
+    known.then(|| service.to_string())
 }
 
 pub fn read_meta(project_id: &str) -> Result<ProjectMeta, String> {
@@ -689,7 +726,7 @@ fn missing_project_meta(project_id: &str, location: &ProjectLocation) -> Project
         dictionary_locale: None,
         name,
         main_doc: default_main_doc(),
-        engine: default_engine(),
+        engine: engine_for_new_project(&default_main_doc()).unwrap_or_else(|_| default_engine()),
         color: String::new(),
         kind: String::new(),
         exports: Vec::new(),
@@ -748,7 +785,7 @@ fn merge_folder_fields(
         .engine
         .clone()
         .filter(|engine| crate::document_engine::engine_for(engine, &meta.main_doc).is_ok())
-        .or_else(|| engine_for_untrusted_project(&meta.main_doc).ok())
+        .or_else(|| engine_for_new_project(&meta.main_doc).ok())
         .unwrap_or_else(default_engine);
     meta.tex_flavor = validate_tex_flavor(&meta.engine, folder.tex_flavor.as_deref())
         .ok()
@@ -802,6 +839,32 @@ enum MetaWrite<'a> {
 const MAIN_DOCUMENT_FIELDS: &[&str] = &["main_doc", "engine"];
 const ENGINE_FIELDS: &[&str] = &["engine", "tex_flavor", "typst"];
 const DICTIONARY_FIELDS: &[&str] = &["dictionary_locale"];
+const SHARED_SETTING_FIELDS: &[&str] = &[
+    "main_doc",
+    "engine",
+    "tex_flavor",
+    "typst",
+    "dictionary_locale",
+];
+
+pub(crate) fn follow_shared_settings<T>(
+    project_id: &str,
+    follow: impl FnOnce(&mut ProjectMeta) -> Result<(T, bool), String>,
+) -> Result<(T, Option<ProjectMeta>), String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        let before = meta.engine.clone();
+        let (outcome, changed) = follow(&mut meta)?;
+        if !changed {
+            return Ok((outcome, None));
+        }
+        if before == "latexmk" && meta.engine != "latexmk" {
+            revoke_shell_escape_trust(project_id)?;
+        }
+        write_chosen_meta(project_id, &meta, SHARED_SETTING_FIELDS)?;
+        Ok((outcome, Some(read_meta(project_id)?)))
+    })
+}
 
 pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
     write_chosen_meta(project_id, meta, &[])
@@ -1472,6 +1535,42 @@ fn read_utf8_limited(path: &Path, max_bytes: usize) -> Result<String, String> {
 }
 
 #[cfg(test)]
+mod imported_service_tests {
+    use super::imported_service;
+    use std::collections::HashMap;
+
+    fn extra(value: serde_json::Value) -> HashMap<String, serde_json::Value> {
+        HashMap::from([("importedFrom".to_string(), value)])
+    }
+
+    #[test]
+    fn names_the_service_a_project_was_imported_from() {
+        let origin = serde_json::json!({ "service": "overleaf", "server": "https://www.overleaf.com", "projectId": "abc" });
+        assert_eq!(
+            imported_service(&extra(origin)).as_deref(),
+            Some("overleaf")
+        );
+        assert_eq!(imported_service(&HashMap::new()), None);
+        assert_eq!(
+            imported_service(&extra(serde_json::json!({ "service": 3 }))),
+            None
+        );
+        assert_eq!(
+            imported_service(&extra(serde_json::json!({ "service": "" }))),
+            None
+        );
+        assert_eq!(
+            imported_service(&extra(serde_json::json!({ "service": "Over leaf" }))),
+            None
+        );
+        assert_eq!(
+            imported_service(&extra(serde_json::json!({ "service": "x".repeat(33) }))),
+            None
+        );
+    }
+}
+
+#[cfg(test)]
 mod bounded_read_tests {
     use super::read_utf8_limited;
 
@@ -1751,10 +1850,21 @@ fn with_project_metadata<T>(
     with_project_metadata_lock_held(project_id, operation)
 }
 
+pub(crate) fn read_project_worktree<T>(
+    project_id: &str,
+    operation: impl FnOnce(&Path) -> Result<T, String>,
+) -> Result<T, String> {
+    paths::validate_project_id(project_id)?;
+    with_project_metadata(project_id, || {
+        let root = paths::project_dir(project_id)?;
+        operation(&root)
+    })
+}
+
 /// Metadata serialization for a caller whose `MutationAdmission` already owns
 /// the cross-process worktree lock. Keeping this separate prevents recursive
 /// acquisition of the same OS lock during restore, rename, and recycle.
-fn with_project_metadata_lock_held<T>(
+pub(crate) fn with_project_metadata_lock_held<T>(
     project_id: &str,
     operation: impl FnOnce() -> Result<T, String>,
 ) -> Result<T, String> {
@@ -2238,7 +2348,13 @@ pub(crate) fn write_project_bytes(
     }
     if location.kind == ProjectKind::Library {
         atomic_write(target, bytes).map_err(failed)?;
+        if crate::collab::registry::is_shared(project_id) {
+            crate::folder_watch::note_own_write(target);
+        }
         crate::agent_turns::note_app_write(project_id, path);
+        if crate::collab::registry::is_shared(project_id) {
+            crate::collab::live::app_wrote(project_id, path);
+        }
         return Ok(true);
     }
     let backups = location.private_state_dir().join("save-backups");
@@ -2318,7 +2434,7 @@ impl ProjectFileWrite {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_file(
     project_id: String,
     path: String,
@@ -2341,7 +2457,7 @@ pub fn create_file(
     Ok(result.with_generation(generation))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn delete_file(
     project_id: String,
     path: String,
@@ -2379,38 +2495,42 @@ pub fn delete_file(
                         return Err(crate::folder_write::read_only(&path));
                     }
                 }
-                return crate::os_trash::move_to_trash(&p).map_err(|error| {
-                    if folder.is_some_and(|folder| folder.refuses_trash(&p)) {
-                        return crate::folder_write::read_only(&path);
-                    }
-                    crate::app_error::AppError::new("project.trash_unavailable")
-                        .param("path", &path)
-                        .detail(error)
-                        .into()
+                return crate::collab::live::deleting(&project_id, &deleted_rel, || {
+                    crate::os_trash::move_to_trash(&p).map_err(|error| {
+                        if folder.is_some_and(|folder| folder.refuses_trash(&p)) {
+                            return crate::folder_write::read_only(&path);
+                        }
+                        crate::app_error::AppError::new("project.trash_unavailable")
+                            .param("path", &path)
+                            .detail(error)
+                            .into()
+                    })
                 });
             }
-            if p.is_dir() {
-                std::fs::remove_dir_all(&p)
-            } else {
-                std::fs::remove_file(&p)
-            }
-            .map_err(|error| {
-                let fallback = |failure| format!("failed to delete {path}: {failure}");
-                let (Some(root), Some(folder)) = (root.as_deref(), folder) else {
-                    return fallback(crate::folder_write::WriteFailure::from(error));
-                };
-                folder.describe_with(
-                    error,
-                    |folder| {
-                        let entry = folder.refused_removal(&p)?;
-                        Some(if entry == p {
-                            path.clone()
-                        } else {
-                            rel_slash(root, &entry)
-                        })
-                    },
-                    fallback,
-                )
+            crate::collab::live::deleting(&project_id, &deleted_rel, || {
+                if p.is_dir() {
+                    std::fs::remove_dir_all(&p)
+                } else {
+                    std::fs::remove_file(&p)
+                }
+                .map_err(|error| {
+                    let fallback = |failure| format!("failed to delete {path}: {failure}");
+                    let (Some(root), Some(folder)) = (root.as_deref(), folder) else {
+                        return fallback(crate::folder_write::WriteFailure::from(error));
+                    };
+                    folder.describe_with(
+                        error,
+                        |folder| {
+                            let entry = folder.refused_removal(&p)?;
+                            Some(if entry == p {
+                                path.clone()
+                            } else {
+                                rel_slash(root, &entry)
+                            })
+                        },
+                        fallback,
+                    )
+                })
             })
         })
     })?;
@@ -2487,7 +2607,10 @@ pub(crate) fn rename_file_blocking(
     let destination_scope = MutationScope::subtree(mutation_parent_path(&destination_rel));
     let admission = admit_mutation(
         &project_id,
-        vec![MutationScope::subtree(source_rel), destination_scope],
+        vec![
+            MutationScope::subtree(source_rel.clone()),
+            destination_scope,
+        ],
         expected_generation,
     )?;
     let strategy = conflict_strategy.unwrap_or_default();
@@ -2497,14 +2620,24 @@ pub(crate) fn rename_file_blocking(
             let meta = read_meta(&project_id)?;
             let src = resolve(&project_id, &from)?;
             let dst = resolve(&project_id, &to)?;
-            let result = rename_path_and_update_meta(
-                Some(&project_id),
-                &location,
-                &src,
-                &dst,
-                &destination_rel,
-                strategy,
-                meta,
+            let result = crate::collab::live::renaming(
+                &project_id,
+                &source_rel,
+                || {
+                    rename_path_and_update_meta(
+                        Some(&project_id),
+                        &location,
+                        &src,
+                        &dst,
+                        &destination_rel,
+                        strategy,
+                        meta,
+                    )
+                },
+                |result| match result {
+                    RenameFileResult::Renamed { path, .. } => Some(path.clone()),
+                    RenameFileResult::Conflict { .. } => None,
+                },
             )?;
             let changed = matches!(result, RenameFileResult::Renamed { .. });
             Ok((result, changed))
@@ -3471,7 +3604,7 @@ fn read_picked_file_bytes(path: &Path, max_bytes: usize) -> Result<Vec<u8>, Stri
 /// Append a line to the global app log at `~/.oleafly/app.log` (append-only,
 /// created if missing). Used by the frontend to record caught errors so users
 /// can share the file for debugging.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn append_app_log(message: String) -> Result<(), String> {
     use std::io::Write;
     let log_path = paths::oleafly_root()?.join("app.log");
@@ -3489,7 +3622,7 @@ pub fn append_app_log(message: String) -> Result<(), String> {
 
 /// Read the tail (up to `max_bytes`) of the app log, for crash reports. Returns
 /// an empty string if the log doesn't exist yet.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn read_app_log(max_bytes: usize) -> Result<String, String> {
     let log_path = paths::oleafly_root()?.join("app.log");
     if !log_path.exists() {
@@ -3525,6 +3658,7 @@ pub async fn set_main_doc(
     project_id: String,
     main_doc: String,
 ) -> Result<ProjectMeta, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
     let meta = set_main_doc_synchronized(&state, project_id.clone(), main_doc).await?;
     let _ = publish_project_state_changed(
         &app,
@@ -3535,6 +3669,7 @@ pub async fn set_main_doc(
         false,
         project_mutation_generation(project_id.clone()).ok(),
     );
+    crate::collab::settings::local_changed(&project_id);
     Ok(meta)
 }
 
@@ -3664,6 +3799,7 @@ pub async fn set_project_engine(
     engine: String,
     flavor: Option<String>,
 ) -> Result<ProjectMeta, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
     let _guard = state.compile_lock.lock().await;
     let meta = set_project_engine_unlocked(&project_id, &engine, flavor.as_deref())?;
     let _ = publish_project_state_changed(
@@ -3675,6 +3811,7 @@ pub async fn set_project_engine(
         false,
         project_mutation_generation(project_id.clone()).ok(),
     );
+    crate::collab::settings::local_changed(&project_id);
     Ok(meta)
 }
 
@@ -3765,6 +3902,7 @@ pub async fn set_project_dictionary_locale(
     project_id: String,
     locale: Option<String>,
 ) -> Result<ProjectMeta, String> {
+    crate::collab::settings::refuse_viewer(&project_id)?;
     let locale = validate_dictionary_locale(&app, locale.as_deref())?;
     store_dictionary_locale(
         &app,
@@ -3782,6 +3920,9 @@ pub async fn reset_project_dictionary_locale_on_device(
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
 ) -> Result<ProjectMeta, String> {
+    if crate::collab::registry::is_shared(&project_id) {
+        return read_meta(&project_id);
+    }
     store_dictionary_locale(&app, &state, project_id, None, MetaWrite::Device).await
 }
 
@@ -3807,6 +3948,7 @@ async fn store_dictionary_locale(
         false,
         project_mutation_generation(project_id.clone()).ok(),
     );
+    crate::collab::settings::local_changed(&project_id);
     Ok(meta)
 }
 
@@ -3847,8 +3989,13 @@ pub async fn set_project_shell_escape(
     project_id: String,
     allow_shell_escape: bool,
 ) -> Result<ProjectMeta, String> {
-    let _guard = state.compile_lock.lock().await;
-    let meta = set_project_shell_escape_unlocked(&project_id, allow_shell_escape)?;
+    let meta = shared_shell_escape::change(
+        &project_id,
+        allow_shell_escape,
+        shared_shell_escape::ask(app.clone()),
+        &state.compile_lock,
+    )
+    .await?;
     let _ = publish_project_state_changed(
         &app,
         &state,
@@ -3864,6 +4011,7 @@ pub async fn set_project_shell_escape(
 fn set_project_shell_escape_unlocked(
     project_id: &str,
     allow_shell_escape: bool,
+    shared_project: Option<&str>,
 ) -> Result<ProjectMeta, String> {
     if allow_shell_escape {
         crate::trust::require_trusted(project_id, crate::trust::Capability::ShellEscape)?;
@@ -3871,12 +4019,10 @@ fn set_project_shell_escape_unlocked(
     with_project_metadata(project_id, || {
         let mut meta = read_meta(project_id)?;
         if allow_shell_escape && meta.engine != "latexmk" {
-            return Err(
-                "shell escape can only be enabled for the system TeX (latexmk) engine".into(),
-            );
+            return Err(SHELL_ESCAPE_NEEDS_LATEXMK.into());
         }
         if allow_shell_escape {
-            write_shell_escape_trust(project_id)?;
+            write_shell_escape_trust_for(project_id, shared_project)?;
         } else {
             revoke_shell_escape_trust(project_id)?;
         }
@@ -3888,10 +4034,13 @@ fn set_project_shell_escape_unlocked(
 /// Normalize the per-project compiler choice. "auto" and empty mean
 /// auto-detect; an explicit compiler is only meaningful on latexmk, and
 /// switching to any other engine always clears it.
-fn validate_tex_flavor(engine: &str, flavor: Option<&str>) -> Result<Option<String>, String> {
+pub(crate) fn validate_tex_flavor(
+    engine: &str,
+    flavor: Option<&str>,
+) -> Result<Option<String>, String> {
     match flavor.map(str::trim) {
         None | Some("") | Some("auto") => Ok(None),
-        Some(value @ ("pdflatex" | "xelatex" | "lualatex")) => {
+        Some(value) if crate::document_engine::LatexmkFlavor::parse(value).is_some() => {
             if engine == "latexmk" {
                 Ok(Some(value.to_string()))
             } else {
@@ -3933,6 +4082,29 @@ async fn collect_tex_spec() -> Result<Option<TexSpec>, String> {
 #[tauri::command]
 pub async fn record_project_tex_spec(
     state: tauri::State<'_, crate::state::AppState>,
+    project_id: String,
+) -> Result<Option<TexSpec>, String> {
+    record_tex_spec(&state, project_id).await
+}
+
+pub(crate) fn record_tex_spec_for_new_project<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    project_id: &str,
+) -> Option<tauri::async_runtime::JoinHandle<()>> {
+    use tauri::Manager as _;
+    if !read_meta(project_id).is_ok_and(|meta| meta.engine == crate::config::LATEXMK_ENGINE) {
+        return None;
+    }
+    let app = app.clone();
+    let project_id = project_id.to_owned();
+    Some(tauri::async_runtime::spawn(async move {
+        let state = app.state::<crate::state::AppState>();
+        let _ = record_tex_spec(&state, project_id).await;
+    }))
+}
+
+async fn record_tex_spec(
+    state: &crate::state::AppState,
     project_id: String,
 ) -> Result<Option<TexSpec>, String> {
     let spec = collect_tex_spec().await?;
@@ -4068,7 +4240,10 @@ fn prune_build_metadata(dir: &Path, keep: usize) {
     }
 }
 
-fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<String, String> {
+pub(crate) fn engine_for_main_document(
+    current_engine: &str,
+    main_doc: &str,
+) -> Result<String, String> {
     let current_is_typst = matches!(
         current_engine.trim().to_ascii_lowercase().as_str(),
         "typst" | "typ"
@@ -4093,6 +4268,47 @@ fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<Stri
 
 pub(crate) fn engine_for_untrusted_project(main_doc: &str) -> Result<String, String> {
     engine_for_main_document(&default_engine(), main_doc)
+}
+
+pub(crate) fn engine_for_new_project(main_doc: &str) -> Result<String, String> {
+    let engine = engine_for_untrusted_project(main_doc)?;
+    if engine != default_engine() || crate::config::latex_default_engine_choice().is_none() {
+        return Ok(engine);
+    }
+    let latexmk = crate::config::LATEXMK_ENGINE.to_owned();
+    crate::document_engine::engine_for(&latexmk, main_doc)?;
+    Ok(latexmk)
+}
+
+/// The engine for a project made from a template. A template made for one
+/// LaTeX compiler (pdfLaTeX, XeLaTeX, ...) gets latexmk with that compiler,
+/// as an imported online project does; any other template follows the
+/// default engine for its main document.
+pub(crate) fn template_engine(
+    main_doc: &str,
+    tex_flavor: Option<&str>,
+) -> Result<(String, Option<String>), String> {
+    let engine = engine_for_new_project(main_doc)?;
+    let pinned = tex_flavor
+        .and_then(crate::document_engine::LatexmkFlavor::parse)
+        .filter(|_| {
+            oleafly_core::SourceFamily::of(main_doc) == Some(oleafly_core::SourceFamily::Latex)
+        })
+        .filter(|_| {
+            crate::document_engine::engine_for(crate::config::LATEXMK_ENGINE, main_doc).is_ok()
+        });
+    Ok(match pinned {
+        Some(flavor) => (
+            crate::config::LATEXMK_ENGINE.to_string(),
+            Some(flavor.as_str().to_string()),
+        ),
+        None => (engine, None),
+    })
+}
+
+#[tauri::command(async)]
+pub fn set_default_latex_engine(engine: String) -> Result<(), String> {
+    crate::config::set_latex_default_engine_choice(&engine)
 }
 
 fn project_main_file_is_usable(project_id: &str, main_doc: &str) -> bool {
@@ -4201,7 +4417,10 @@ pub async fn rename_project(project_id: String, name: String) -> Result<ProjectM
         .map_err(|error| format!("project rename task failed: {error}"))?
 }
 
-fn rename_project_blocking(project_id: String, name: String) -> Result<ProjectMeta, String> {
+pub(crate) fn rename_project_blocking(
+    project_id: String,
+    name: String,
+) -> Result<ProjectMeta, String> {
     if crate::project_location::kind_of(&project_id)? == ProjectKind::Linked {
         return rename_linked_project(&project_id, name.trim());
     }
@@ -4487,6 +4706,8 @@ fn recovery_pending_project_info(
         recovery_pending: true,
         location,
         last_opened_at: 0.0,
+        shared: None,
+        imported_from: None,
         id: project_id,
     }
 }
@@ -4639,6 +4860,8 @@ fn linked_project_info(
         recovery_pending: false,
         location,
         last_opened_at: record.last_opened_at as f64 / 1000.0,
+        shared: None,
+        imported_from: meta.as_ref().and_then(|meta| imported_service(&meta.extra)),
     })
 }
 
@@ -4731,6 +4954,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
                 .flatten()
                 .is_some_and(|path| path.is_file());
         let exports = project_export_infos(&meta.exports);
+        let imported_from = imported_service(&meta.extra);
         out.push(ProjectInfo {
             name: if meta.name.is_empty() {
                 id.clone()
@@ -4756,6 +4980,8 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
             recovery_pending: false,
             location: crate::project_availability::ProjectLocationInfo::Library,
             last_opened_at: opened.get(&id).map_or(0.0, |at| *at as f64 / 1000.0),
+            shared: crate::collab::share::sharing_of(&id),
+            imported_from,
             id,
             updated_at,
         });
@@ -4783,7 +5009,17 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
 }
 
 #[tauri::command(async)]
-pub fn create_project(name: String) -> Result<String, String> {
+pub fn create_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    name: String,
+) -> Result<String, String> {
+    let project_id = create_blank_project(name)?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
+}
+
+pub(crate) fn create_blank_project(name: String) -> Result<String, String> {
+    let engine = engine_for_new_project(&default_main_doc())?;
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let dir = reservation.path().to_path_buf();
@@ -4795,7 +5031,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
-                engine: default_engine(),
+                engine,
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
@@ -4896,12 +5132,16 @@ fn safe_ad_hoc_project_path(path: &str) -> Result<PathBuf, String> {
 /// supplies `text` and media under assets/. A source bundle supplies
 /// `mainFile` plus every file, as produced by the bounded arXiv extractor.
 #[tauri::command]
-pub async fn create_project_from_ad_hoc(
+pub async fn create_project_from_ad_hoc<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     request: CreateAdHocProjectRequest,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || create_project_from_ad_hoc_blocking(request))
-        .await
-        .map_err(|error| error.to_string())?
+    let project_id =
+        tauri::async_runtime::spawn_blocking(move || create_project_from_ad_hoc_blocking(request))
+            .await
+            .map_err(|error| error.to_string())??;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 fn create_project_from_ad_hoc_blocking(
@@ -4918,7 +5158,7 @@ fn create_project_from_ad_hoc_blocking(
         project_name
     };
     let (default_main, engine, expected_extension) = match request.target.as_str() {
-        "latex" => ("main.tex", default_engine(), "tex"),
+        "latex" => ("main.tex", engine_for_new_project("main.tex")?, "tex"),
         "markdown" => ("main.md", "markdown".into(), "md"),
         "typst" => ("main.typ", "typst".into(), "typ"),
         _ => return Err("Choose a LaTeX, Markdown, or Typst project.".into()),
@@ -5039,16 +5279,19 @@ fn create_project_from_ad_hoc_blocking(
 /// a project containing only `main.tex` (or only some figures): every payload
 /// is validated and staged in a sibling directory before the final rename.
 #[tauri::command]
-pub async fn create_project_from_pdf_conversion(
+pub async fn create_project_from_pdf_conversion<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     name: String,
     tex: String,
     figures: Vec<PdfConversionFigure>,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    let project_id = tauri::async_runtime::spawn_blocking(move || {
         create_project_from_pdf_conversion_blocking(name, tex, figures)
     })
     .await
-    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())??;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 fn create_project_from_pdf_conversion_blocking(
@@ -5063,6 +5306,7 @@ fn create_project_from_pdf_conversion_blocking(
         .get_or_init(|| Mutex::new(()))
         .lock()
         .map_err(|_| "PDF import project lock is unavailable".to_string())?;
+    let engine = engine_for_new_project(&default_main_doc())?;
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let staging = create_unique_temporary_directory(&root, ".oleafly-pdf-import")?;
@@ -5107,7 +5351,7 @@ fn create_project_from_pdf_conversion_blocking(
                 dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
-                engine: default_engine(),
+                engine,
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
@@ -5194,14 +5438,27 @@ fn import_skip(rel: &str) -> bool {
 
 /// Import an Overleaf export (ZIP) or a plain folder as a new project.
 #[tauri::command]
-pub async fn import_overleaf_project(name: Option<String>, path: String) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || import_overleaf_project_blocking(name, &path))
-        .await
-        .map_err(|e| e.to_string())?
+pub async fn import_overleaf_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    name: Option<String>,
+    path: String,
+) -> Result<String, String> {
+    let project_id =
+        tauri::async_runtime::spawn_blocking(move || import_overleaf_project_blocking(name, &path))
+            .await
+            .map_err(|e| e.to_string())??;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<String, String> {
-    import_overleaf_project_blocking_with(name, path, |_| None, |_| Ok(()))
+    let path = Path::new(path);
+    let source = if path.is_dir() {
+        ImportSource::Folder(path)
+    } else {
+        ImportSource::Archive(path)
+    };
+    import_overleaf_project_blocking_with(name, source, |_| None, |_| Ok(()))
 }
 
 /// Import an already-unpacked directory tree as a new project (shared by the
@@ -5211,24 +5468,49 @@ pub(crate) fn import_project_directory_blocking(
     dir: &str,
     fallback_main: fn(&Path) -> Option<String>,
 ) -> Result<String, String> {
-    import_overleaf_project_blocking_with(name, dir, fallback_main, |_| Ok(()))
+    import_overleaf_project_blocking_with(
+        name,
+        ImportSource::Folder(Path::new(dir)),
+        fallback_main,
+        |_| Ok(()),
+    )
+}
+
+#[derive(Clone, Copy)]
+enum ImportSource<'a> {
+    /// A ZIP archive. A single wrapping folder is unwrapped.
+    Archive(&'a Path),
+    /// A project archive downloaded from an online account. Its layout is
+    /// kept exactly, so the main file path the server gave stays valid and
+    /// paths written from the project root still resolve.
+    OnlineProject(&'a Path),
+    /// A folder. A single wrapping folder is unwrapped.
+    Folder(&'a Path),
+}
+
+impl<'a> ImportSource<'a> {
+    fn path(self) -> &'a Path {
+        match self {
+            Self::Archive(path) | Self::OnlineProject(path) | Self::Folder(path) => path,
+        }
+    }
 }
 
 fn import_overleaf_project_blocking_with(
     name: Option<String>,
-    path: &str,
+    source: ImportSource<'_>,
     fallback_main: fn(&Path) -> Option<String>,
     finalize: impl FnOnce(&str) -> Result<(), String>,
 ) -> Result<String, String> {
-    let source = PathBuf::from(path);
-    if !source.exists() {
-        return Err(format!("import source not found: {path}"));
+    let path = source.path();
+    if !path.exists() {
+        return Err(format!("import source not found: {}", path.display()));
     }
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let project_id = reservation.project_id().to_string();
     let dir = reservation.path().to_path_buf();
-    let fallback_name = source
+    let fallback_name = path
         .file_stem()
         .map(|stem| stem.to_string_lossy().into_owned())
         .filter(|stem| !stem.trim().is_empty())
@@ -5237,12 +5519,17 @@ fn import_overleaf_project_blocking_with(
         .filter(|candidate| !candidate.trim().is_empty())
         .unwrap_or(fallback_name);
     create_project_transaction(reservation, || {
-        if source.is_dir() {
-            copy_tree_for_import(&source, &dir, 0, &mut 0, &mut 0)?;
-        } else {
-            extract_zip_for_import(&source, &dir)?;
+        match source {
+            ImportSource::Archive(archive) => {
+                extract_zip_for_import(archive, &dir)?;
+                flatten_single_root_folder(&dir)?;
+            }
+            ImportSource::OnlineProject(archive) => extract_zip_for_import(archive, &dir)?,
+            ImportSource::Folder(folder) => {
+                copy_tree_for_import(folder, &dir, 0, &mut 0, &mut 0)?;
+                flatten_single_root_folder(&dir)?;
+            }
         }
-        flatten_single_root_folder(&dir)?;
         let existing = read_import_meta(&dir);
         let mut meta = match existing {
             Some(mut meta) if dir.join(&meta.main_doc).is_file() => {
@@ -5265,9 +5552,15 @@ fn import_overleaf_project_blocking_with(
                 }
             }
         };
-        meta.engine =
-            engine_for_untrusted_project(&meta.main_doc).unwrap_or_else(|_| default_engine());
-        meta.tex_flavor = None;
+        let imported_flavor = if meta.engine == crate::config::LATEXMK_ENGINE {
+            meta.tex_flavor.take()
+        } else {
+            None
+        };
+        meta.engine = engine_for_new_project(&meta.main_doc).unwrap_or_else(|_| default_engine());
+        meta.tex_flavor = validate_tex_flavor(&meta.engine, imported_flavor.as_deref())
+            .ok()
+            .flatten();
         meta.allow_shell_escape = false;
         pin_typst_if_unpinned(&mut meta);
         write_meta_at(&dir.join("project.json"), &meta)?;
@@ -5293,7 +5586,7 @@ pub(crate) fn import_project_zip_bytes_with(
         .map_err(|error| format!("could not stage the repository archive: {error}"))?;
     let result = import_overleaf_project_blocking_with(
         Some(name),
-        &archive.to_string_lossy(),
+        ImportSource::Archive(&archive),
         |_| None,
         finalize,
     );
@@ -5301,12 +5594,51 @@ pub(crate) fn import_project_zip_bytes_with(
     result
 }
 
+/// Import a project archive downloaded from an online account, keeping its
+/// folders exactly as they are online.
+pub(crate) fn import_online_project_archive_with(
+    name: String,
+    archive: &Path,
+    finalize: impl FnOnce(&str) -> Result<(), String>,
+) -> Result<String, String> {
+    import_overleaf_project_blocking_with(
+        Some(name),
+        ImportSource::OnlineProject(archive),
+        |_| None,
+        finalize,
+    )
+}
+
+pub(crate) fn apply_imported_settings(
+    project_id: &str,
+    main_doc: Option<&str>,
+    flavor: Option<&str>,
+    origin: serde_json::Value,
+) -> Result<(), String> {
+    let dir = paths::projects_root()?.join(project_id);
+    let mut meta =
+        read_import_meta(&dir).ok_or_else(|| "the imported project has no metadata".to_string())?;
+    if let Some(main) = main_doc.map(str::trim).filter(|main| !main.is_empty()) {
+        if dir.join(main).is_file() && engine_for_untrusted_project(main).is_ok() {
+            meta.main_doc = main.to_string();
+        }
+    }
+    if meta.main_doc.to_ascii_lowercase().ends_with(".tex")
+        && crate::document_engine::engine_for(crate::config::LATEXMK_ENGINE, &meta.main_doc).is_ok()
+    {
+        meta.engine = crate::config::LATEXMK_ENGINE.to_string();
+        meta.tex_flavor = validate_tex_flavor(&meta.engine, flavor).ok().flatten();
+    }
+    meta.extra.insert("importedFrom".to_string(), origin);
+    write_meta_at(&dir.join("project.json"), &meta)
+}
+
 fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {
     let raw = std::fs::read_to_string(dir.join("project.json")).ok()?;
     serde_json::from_str::<ProjectMeta>(&raw).ok()
 }
 
-fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), String> {
+pub(crate) fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), String> {
     let file = std::fs::File::open(archive).map_err(|e| format!("failed to open archive: {e}"))?;
     let mut zip = zip::ZipArchive::new(file).map_err(|e| format!("not a readable ZIP: {e}"))?;
     if zip.len() > IMPORT_MAX_ENTRIES {
@@ -5343,7 +5675,7 @@ fn extract_zip_for_import(archive: &Path, dest: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn copy_tree_for_import(
+pub(crate) fn copy_tree_for_import(
     source: &Path,
     dest: &Path,
     depth: usize,
@@ -5388,7 +5720,7 @@ fn copy_tree_for_import(
 
 /// Zipping a folder usually wraps everything in one top-level directory.
 /// Unwrap it so the project root holds the actual files.
-fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
+pub(crate) fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
     let entries: Vec<_> = std::fs::read_dir(dir)
         .map_err(|e| e.to_string())?
         .flatten()
@@ -5412,7 +5744,7 @@ fn flatten_single_root_folder(dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn infer_main_document(dir: &Path) -> Result<String, String> {
+pub(crate) fn infer_main_document(dir: &Path) -> Result<String, String> {
     let detection =
         oleafly_core::detect_main_document(dir, &oleafly_core::DetectOptions::default())
             .map_err(|error| error.to_string())?;
@@ -5462,7 +5794,7 @@ where
     F: FnOnce() -> Result<(), String>,
 {
     initialize()?;
-    Ok(reservation.commit())
+    reservation.commit()
 }
 
 fn git_auto_init_enabled() -> bool {
@@ -5568,13 +5900,16 @@ fn schedule_git_initialization(project_id: String) -> tauri::async_runtime::Join
 /// (`source`). Used by "Save as project" in the diagram composer so a figure,
 /// its TikZ, and its embedded editor model all persist as a reusable project.
 #[tauri::command(async)]
-pub fn create_image_project(
+pub fn create_image_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     name: String,
     source: String,
     color: Option<String>,
 ) -> Result<String, String> {
     let root = paths::projects_root()?;
-    create_image_project_in(&root, name, source, color, true)
+    let project_id = create_image_project_in(&root, name, source, color, true)?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 fn create_image_project_in(
@@ -5584,6 +5919,7 @@ fn create_image_project_in(
     color: Option<String>,
     coordinate_worktree: bool,
 ) -> Result<String, String> {
+    let engine = engine_for_new_project(&default_main_doc())?;
     let reservation = reserve_unique_project_directory(root, coordinate_worktree)?;
     let dir = reservation.path().to_path_buf();
     let project_id = create_project_transaction(reservation, || {
@@ -5594,7 +5930,7 @@ fn create_image_project_in(
                 dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
-                engine: default_engine(),
+                engine,
                 color: color.unwrap_or_default(),
                 kind: "image".into(),
                 exports: Vec::new(),
@@ -5648,7 +5984,7 @@ fn diagram_document(language: Option<&str>, source: String) -> Result<DiagramDoc
     match language.unwrap_or("tikz") {
         "tikz" => Ok(DiagramDocument {
             main_doc: "main.tex",
-            engine: default_engine(),
+            engine: engine_for_new_project("main.tex")?,
             typst: None,
             source: ensure_diagram_document(source),
         }),
@@ -5673,7 +6009,18 @@ fn diagram_document(language: Option<&str>, source: String) -> Result<DiagramDoc
 }
 
 #[tauri::command(async)]
-pub fn create_diagram_project(
+pub fn create_diagram_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    name: String,
+    source: String,
+    language: Option<String>,
+) -> Result<String, String> {
+    let project_id = create_diagram_project_from(name, source, language)?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
+}
+
+pub(crate) fn create_diagram_project_from(
     name: String,
     source: String,
     language: Option<String>,
@@ -5756,7 +6103,7 @@ pub struct FigureCacheResult {
     pub already_cached: bool,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn save_figure_to_cache(
     name: String,
     png_base64: String,
@@ -5816,26 +6163,37 @@ fn pick<'a>(list: &'a [&'a str], seed: &mut u64) -> &'a str {
     list[((*seed >> 33) as usize) % list.len()]
 }
 
-struct ProjectDirectoryReservation {
+pub(crate) struct ProjectDirectoryReservation {
     project_id: String,
     path: PathBuf,
+    identity_store: Option<PathBuf>,
     identity: Option<same_file::Handle>,
     _worktree: Option<crate::worktree_lock::ProjectWorktreeLock>,
     committed: bool,
 }
 
 impl ProjectDirectoryReservation {
-    fn project_id(&self) -> &str {
+    pub(crate) fn project_id(&self) -> &str {
         &self.project_id
     }
 
-    fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.path
     }
 
-    fn commit(mut self) -> String {
+    pub(crate) fn commit(mut self) -> Result<String, String> {
+        if let Some(store) = &self.identity_store {
+            if let Err(error) =
+                crate::project_ids::finalize_origin_at(store, &self.project_id, &self.path)
+            {
+                let _ = append_app_log(format!(
+                    "could not record the origin of project {}: {error}",
+                    self.project_id
+                ));
+            }
+        }
         self.committed = true;
-        self.project_id.clone()
+        Ok(self.project_id.clone())
     }
 
     fn publish_staged(self, staged: &Path) -> Result<String, String> {
@@ -5858,12 +6216,25 @@ impl ProjectDirectoryReservation {
         // other Oleafly processes, so the staged rename can reuse this path.
         drop(current);
         drop(self.identity.take());
+        if let Some(store) = &self.identity_store {
+            if let Err(error) =
+                crate::project_ids::finalize_origin_at(store, &self.project_id, staged)
+            {
+                let _ = append_app_log(format!(
+                    "could not record the origin of project {}: {error}",
+                    self.project_id
+                ));
+            }
+        }
         std::fs::remove_dir(&self.path)
             .map_err(|error| format!("failed to release project reservation: {error}"))?;
         // The reservation inode no longer exists. From this point onward Drop
         // must not remove whatever another actor may place at the destination.
         self.committed = true;
         if let Err(error) = publish(staged, &self.path) {
+            if let Some(store) = &self.identity_store {
+                let _ = crate::project_ids::forget_at(store, &self.project_id);
+            }
             let cleanup = std::fs::remove_dir_all(staged);
             return Err(match cleanup {
                 Ok(()) => format!("could not publish the imported project: {error}"),
@@ -5892,6 +6263,9 @@ impl Drop for ProjectDirectoryReservation {
         drop(current);
         drop(self.identity.take());
         let _ = std::fs::remove_dir_all(&self.path);
+        if let Some(store) = &self.identity_store {
+            let _ = crate::project_ids::forget_at(store, &self.project_id);
+        }
     }
 }
 
@@ -5899,6 +6273,15 @@ fn try_reserve_project_directory(
     root: &Path,
     project_id: &str,
     coordinate_worktree: bool,
+) -> Result<Option<ProjectDirectoryReservation>, String> {
+    try_reserve_project_directory_adopting(root, project_id, coordinate_worktree, None)
+}
+
+fn try_reserve_project_directory_adopting(
+    root: &Path,
+    project_id: &str,
+    coordinate_worktree: bool,
+    adopted: Option<oleafly_core::ids::ProjectId>,
 ) -> Result<Option<ProjectDirectoryReservation>, String> {
     paths::validate_project_id(project_id)?;
     let worktree = coordinate_worktree
@@ -5923,9 +6306,33 @@ fn try_reserve_project_directory(
             ));
         }
     }
+    let identity_store = if coordinate_worktree {
+        match crate::project_ids::store_path().and_then(|store| {
+            crate::project_ids::mint_in(&store, project_id, adopted).map(|_| store)
+        }) {
+            Ok(store) => Some(store),
+            Err(error) if adopted.is_none() => {
+                let _ = append_app_log(format!(
+                    "project {project_id} was created without a sync identity; it will get one when it first syncs: {error}"
+                ));
+                None
+            }
+            Err(error) => {
+                let _ = std::fs::remove_dir(&path);
+                return Err(format!(
+                    "failed to bind project identity {project_id}: {error}"
+                ));
+            }
+        }
+    } else {
+        None
+    };
     let identity = match same_file::Handle::from_path(&path) {
         Ok(identity) => identity,
         Err(error) => {
+            if let Some(store) = &identity_store {
+                let _ = crate::project_ids::forget_at(store, project_id);
+            }
             // The directory is still empty and the worktree lock is held. Do
             // not strand an unbound reservation that every later allocator
             // would treat as an existing project.
@@ -5938,6 +6345,7 @@ fn try_reserve_project_directory(
     Ok(Some(ProjectDirectoryReservation {
         project_id: project_id.to_string(),
         path,
+        identity_store,
         identity: Some(identity),
         _worktree: worktree,
         committed: false,
@@ -5972,6 +6380,37 @@ fn reserve_unique_project_directory(
         let candidate = format!("project-{:032x}", rand::random::<u128>());
         if let Some(reservation) =
             try_reserve_project_directory(root, &candidate, coordinate_worktree)?
+        {
+            return Ok(reservation);
+        }
+    }
+    Err("could not allocate a unique project identity".into())
+}
+
+pub(crate) fn reserve_unique_project_directory_adopting(
+    root: &Path,
+    adopted: oleafly_core::ids::ProjectId,
+) -> Result<ProjectDirectoryReservation, String> {
+    for _ in 0..32 {
+        let mut seed = rand::random::<u64>();
+        pick(ADJECTIVES, &mut seed);
+        pick(COLORS, &mut seed);
+        let candidate = format!(
+            "{}-{}-{}",
+            pick(ADJECTIVES, &mut seed),
+            pick(COLORS, &mut seed),
+            pick(ANIMALS, &mut seed)
+        );
+        if let Some(reservation) =
+            try_reserve_project_directory_adopting(root, &candidate, true, Some(adopted))?
+        {
+            return Ok(reservation);
+        }
+    }
+    for _ in 0..32 {
+        let candidate = format!("project-{:032x}", rand::random::<u128>());
+        if let Some(reservation) =
+            try_reserve_project_directory_adopting(root, &candidate, true, Some(adopted))?
         {
             return Ok(reservation);
         }
@@ -6535,7 +6974,11 @@ async fn create_project_from_pandoc_source(
 ) -> Result<String, String> {
     let source_name = plan.source_name.to_string();
     let main_doc = plan.main_doc.to_string();
-    let engine = plan.engine.to_string();
+    let engine = if plan.engine == default_engine() {
+        engine_for_new_project(&main_doc)?
+    } else {
+        plan.engine.to_string()
+    };
     let args = plan.args;
     let dropped_bibliography = args
         .iter()
@@ -6651,11 +7094,18 @@ fn apply_typst_fixup(path: &Path) -> Result<(), String> {
 /// Create a LaTeX project from an uploaded .docx. The bytes are written inside
 /// the new project dir and pandoc runs there, so no external path is read.
 #[tauri::command]
-pub async fn create_project_from_docx(name: String, data_base64: String) -> Result<String, String> {
+pub async fn create_project_from_docx<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    name: String,
+    data_base64: String,
+) -> Result<String, String> {
     let bytes = decode_docx_base64(&data_base64)?;
     let plan =
         crate::conversion::import_plan("docx", "latex").expect("docx -> latex route is registered");
-    create_project_from_pandoc_source(name, plan, bytes, Default::default()).await
+    let project_id =
+        create_project_from_pandoc_source(name, plan, bytes, Default::default()).await?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 /// Import a user-selected Word, Markdown, HTML, or Typst file as a new
@@ -6663,7 +7113,20 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
 /// kind written ("latex", "markdown", or "typst"); both paths publish
 /// atomically.
 #[tauri::command]
-pub async fn import_document(path: String, target: Option<String>) -> Result<String, String> {
+pub async fn import_document<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    path: String,
+    target: Option<String>,
+) -> Result<String, String> {
+    let project_id = import_document_file(path, target).await?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
+}
+
+pub(crate) async fn import_document_file(
+    path: String,
+    target: Option<String>,
+) -> Result<String, String> {
     let source = PathBuf::from(&path);
     if !source.is_file() {
         return Err(format!("import source not found: {path}"));
@@ -6982,7 +7445,8 @@ pub fn create_project_from_template(
     let dir = reservation.path().to_path_buf();
     let project_id = create_project_transaction(reservation, || {
         let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
-        let engine = engine_for_untrusted_project(&manifest.main_doc)?;
+        let (engine, tex_flavor) =
+            template_engine(&manifest.main_doc, manifest.tex_flavor.as_deref())?;
         crate::document_engine::engine_for(&engine, &manifest.main_doc)?;
         crate::assets::stage_template_fonts(&app, &manifest, &dir)?;
         let color = color
@@ -7003,7 +7467,7 @@ pub fn create_project_from_template(
                 hidden: false,
                 forked_from: None,
                 tex: None,
-                tex_flavor: None,
+                tex_flavor,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
@@ -7011,6 +7475,7 @@ pub fn create_project_from_template(
         )
     })?;
     initialize_git_for_new_project(&project_id);
+    record_tex_spec_for_new_project(&app, &project_id);
     Ok(project_id)
 }
 
@@ -7610,7 +8075,17 @@ pub async fn duplicate_project(project_id: String, new_name: String) -> Result<S
             write_meta(&new_id, &meta)
         })();
         duplicated?;
-        let created = reservation.commit();
+        match crate::project_ids::mint(&project_id, None)
+            .and_then(|source| crate::project_ids::set_duplicated_from(&new_id, source.project))
+        {
+            Ok(()) => {}
+            Err(error) => {
+                let _ = append_app_log(format!(
+                    "could not record that {new_id} was duplicated from {project_id}: {error}"
+                ));
+            }
+        }
+        let created = reservation.commit()?;
         initialize_git_for_new_project(&created);
         Ok(created)
     })
@@ -7952,10 +8427,26 @@ fn clear_build_cache_blocking(project_id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn recycle_project(
+    app: tauri::AppHandle,
     project_id: String,
     state: tauri::State<'_, crate::state::AppState>,
+    collab: tauri::State<'_, crate::collab::state::CollabState>,
 ) -> Result<(), String> {
-    recycle_project_synchronized(&state, project_id).await
+    let (recycled, restarted) = crate::collab::live::resumed_if_failed(
+        collab.inner(),
+        crate::collab::live::app_host(app.clone()),
+        &project_id,
+        recycle_project_synchronized(&state, project_id.clone()),
+    )
+    .await;
+    if restarted {
+        if crate::collab::switch::enabled() {
+            crate::collab::live::commands::settle_started(app, project_id).await;
+        } else {
+            crate::collab::live::stop(&project_id).await;
+        }
+    }
+    recycled
 }
 
 fn recyclable_project_exists(dir: &Path) -> Result<bool, String> {
@@ -7975,7 +8466,7 @@ fn recyclable_project_exists(dir: &Path) -> Result<bool, String> {
     }
 }
 
-async fn recycle_project_synchronized(
+pub(crate) async fn recycle_project_synchronized(
     state: &crate::state::AppState,
     project_id: String,
 ) -> Result<(), String> {
@@ -7993,6 +8484,8 @@ async fn recycle_project_synchronized(
     )?;
     let _compile = state.compile_lock.lock().await;
     let _figure_compile = state.figure_compile_lock.lock().await;
+    crate::collab::live::stop(&project_id).await;
+    let recycled_id = project_id.clone();
     tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
         let ((), _) = admission.run_with_change_status(|| {
             with_project_metadata_lock_held(&project_id, || {
@@ -8015,25 +8508,28 @@ async fn recycle_project_synchronized(
         Ok(())
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())??;
+    crate::collab::share::forget_local_keeping_origin(&recycled_id).await;
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         allow_table_import_path, assert_table_import_allowed, canonical_table_import_path,
-        copy_path_in_project, create_diagram_project, create_image_project_in,
-        create_markdown_project_in, create_path_in_project, create_project_from_ad_hoc_blocking,
-        create_project_from_pdf_conversion_blocking, create_project_transaction,
-        create_typst_project_in, download_project_zip, duplicate_project, engine_for_main_document,
-        export_would_write_inside_project, extract_pandoc, flatten_single_root_folder,
-        get_or_create_scratch_project_blocking, import_paths_transactional,
-        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
-        import_skip, infer_main_document, is_table_import_extension, normalize_loaded_tex_flavor,
-        normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta,
-        read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
-        safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
-        try_reserve_project_directory, validate_conversion_export, validate_tex_flavor,
+        copy_path_in_project, create_blank_project, create_diagram_project_from,
+        create_image_project_in, create_markdown_project_in, create_path_in_project,
+        create_project_from_ad_hoc_blocking, create_project_from_pdf_conversion_blocking,
+        create_project_transaction, create_typst_project_in, download_project_zip,
+        duplicate_project, engine_for_main_document, export_would_write_inside_project,
+        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project_blocking,
+        import_paths_transactional, import_paths_transactional_with, import_project_zip_bytes,
+        import_project_zip_bytes_with, import_skip, infer_main_document, is_table_import_extension,
+        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
+        pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash, rename_exclusive,
+        rename_path_in_project, safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized,
+        set_main_doc_unlocked, try_reserve_project_directory,
+        try_reserve_project_directory_adopting, validate_conversion_export, validate_tex_flavor,
         write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest, CreateFileResult,
         FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta, RenameFileResult,
         SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
@@ -8111,6 +8607,48 @@ mod tests {
         );
         std::fs::remove_dir_all(sources).unwrap();
         std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_shared_library_projects_own_write_never_reaches_the_watcher() {
+        use notify::event::{DataChange, ModifyKind};
+        use notify::{Event, EventKind};
+        let library = crate::collab::testing::TempLibrary::new();
+        let shared = library.project("own-write-shared", &[]);
+        let solo = library.project("own-write-solo", &[]);
+        let _shared = crate::collab::testing::share("own-write-shared");
+        let observe = |project_id: &str, root: &Path| {
+            let target = root.join("main.tex");
+            let written = super::write_project_bytes(
+                project_id,
+                &target,
+                "main.tex",
+                b"\\documentclass{article}",
+            )
+            .unwrap();
+            let mut batch = crate::folder_watch::Batch::default();
+            batch.absorb(
+                root,
+                &Event::new(EventKind::Modify(ModifyKind::Data(DataChange::Content)))
+                    .add_path(target),
+                std::time::Instant::now(),
+            );
+            let change = batch.take(project_id, &|relative| {
+                crate::folder_watch::is_own_write(&root.join(relative))
+            });
+            (written, change)
+        };
+
+        let (shared_written, shared_change) = observe("own-write-shared", &shared);
+        let (solo_written, solo_change) = observe("own-write-solo", &solo);
+
+        assert!(shared_written);
+        assert!(solo_written);
+        assert_eq!(shared_change, None);
+        assert_eq!(
+            solo_change.map(|change| change.paths),
+            Some(vec!["main.tex".to_string()])
+        );
     }
 
     #[test]
@@ -9361,7 +9899,7 @@ mod tests {
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .send(change);
         });
-        let watched = crate::folder_watch::watch_linked_project(
+        let watched = crate::folder_watch::watch_project(
             &id,
             sink,
             Some(crate::folder_watch::WatchMode::Poll(
@@ -9467,6 +10005,36 @@ mod tests {
             &folder.join("figures")
         ));
         assert!(folder.join("main.tex").is_file());
+    }
+
+    #[test]
+    fn deleting_in_a_linked_shared_project_moves_the_file_to_recently_deleted_for_everyone() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let folders = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let (id, folder) = linked_fixture(folders.path());
+        let rig = crate::collab::live::write::rig::LiveRig::start(
+            &id,
+            &folder,
+            &[
+                ("main.tex", "\\documentclass{article}"),
+                ("notes.tex", "notes"),
+            ],
+        );
+        let live = rig.go_live();
+
+        let deleted = super::delete_file(id, "notes.tex".into(), None, None);
+        drop(live);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        deleted.unwrap();
+        assert!(!folder.join("notes.tex").exists());
+        assert!(crate::os_trash::test_support::trashed(
+            &folder.join("notes.tex")
+        ));
+        assert_eq!(rig.paths(), vec!["main.tex".to_owned()]);
+        assert_eq!(rig.trashed(), vec!["notes.tex".to_owned()]);
     }
 
     #[test]
@@ -10648,6 +11216,11 @@ mod tests {
         let owner =
             std::fs::read_to_string(projects.join("shared-project").join("owner.txt")).unwrap();
         assert!(owner == "first" || owner == "second");
+        let binding = crate::project_ids::binding("shared-project")
+            .unwrap()
+            .unwrap();
+        assert!(binding.origin_digest.is_some());
+        assert!(binding.duplicated_from.is_none());
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
@@ -10762,7 +11335,7 @@ mod tests {
         let bytes = std::fs::read(&archive).unwrap();
         let tex = "\\documentclass{article}\\begin{document}Ready\\end{document}".to_string();
 
-        let latex = super::create_project("Paper".into()).unwrap();
+        let latex = super::create_blank_project("Paper".into()).unwrap();
         let converted =
             create_project_from_pdf_conversion_blocking("Converted".into(), tex.clone(), vec![])
                 .unwrap();
@@ -10770,7 +11343,7 @@ mod tests {
         let markdown = super::create_markdown_project("Notes".into()).unwrap();
         let typst = super::create_typst_project("Typst".into()).unwrap();
         let diagram =
-            create_diagram_project("Figure".into(), "\\draw (0,0);".into(), None).unwrap();
+            create_diagram_project_from("Figure".into(), "\\draw (0,0);".into(), None).unwrap();
 
         for project_id in [&latex, &converted, &imported, &markdown, &typst, &diagram] {
             let root = crate::paths::project_dir(project_id).unwrap();
@@ -10795,7 +11368,7 @@ mod tests {
         }
 
         write_git_auto_init(false);
-        let plain = super::create_project("Plain".into()).unwrap();
+        let plain = super::create_blank_project("Plain".into()).unwrap();
         let plain_converted =
             create_project_from_pdf_conversion_blocking("Plain converted".into(), tex, vec![])
                 .unwrap();
@@ -10886,7 +11459,7 @@ mod tests {
             },
         )
         .unwrap();
-        super::set_project_shell_escape_unlocked(project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(project_id, true, None).unwrap();
         let trusted = super::read_compile_meta(project_id, "main.tex").unwrap();
         assert_eq!(trusted.engine, "latexmk");
         assert!(trusted.allow_shell_escape);
@@ -10900,11 +11473,11 @@ mod tests {
             .err()
             .unwrap();
         assert!(engine.contains("\"code\":\"trust.system_tex\""), "{engine}");
-        let shell = super::set_project_shell_escape_unlocked(project_id, true)
+        let shell = super::set_project_shell_escape_unlocked(project_id, true, None)
             .err()
             .unwrap();
         assert!(shell.contains("\"code\":\"trust.shell_escape\""), "{shell}");
-        assert!(super::set_project_shell_escape_unlocked(project_id, false).is_ok());
+        assert!(super::set_project_shell_escape_unlocked(project_id, false, None).is_ok());
         drop(restricted);
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
@@ -10921,7 +11494,7 @@ mod tests {
             .join(if cfg!(windows) { "git.exe" } else { "git" });
         let git = crate::git::testing::use_git_program(missing);
 
-        let project_id = super::create_project("No Git".into()).unwrap();
+        let project_id = super::create_blank_project("No Git".into()).unwrap();
 
         drop(git);
         let root = crate::paths::project_dir(&project_id).unwrap();
@@ -10944,7 +11517,7 @@ mod tests {
         let linked = crate::linked_registry::register_folder_for_test(&folder);
         assert!(!super::initialize_git_for_project(&linked.id).unwrap());
         assert!(!folder.join(".git").exists());
-        let library = super::create_project("Restricted copy".into()).unwrap();
+        let library = super::create_blank_project("Restricted copy".into()).unwrap();
         std::fs::remove_dir_all(git_dir_of(&library)).unwrap();
         let restricted = crate::trust::testing::restrict(&library);
         assert!(!super::initialize_git_for_project(&library).unwrap());
@@ -10981,7 +11554,7 @@ mod tests {
         };
 
         write_git_auto_init(false);
-        let project_id = super::create_project("Existing".into()).unwrap();
+        let project_id = super::create_blank_project("Existing".into()).unwrap();
         assert!(!git_dir_of(&project_id).exists());
         assert_eq!(open(&project_id).unwrap().name, "Existing");
         assert!(!git_dir_of(&project_id).exists());
@@ -11030,11 +11603,11 @@ mod tests {
             .unwrap();
         let handle = app.handle().clone();
         let state = app.state::<crate::state::AppState>();
-        let library = super::create_project("Paper".into()).unwrap();
+        let library = super::create_blank_project("Paper".into()).unwrap();
         let folder = test_dir("last-opened-folder");
         std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
         let linked = crate::linked_registry::register_folder_for_test(&folder);
-        let never = super::create_project("Never opened".into()).unwrap();
+        let never = super::create_blank_project("Never opened".into()).unwrap();
         let library_dir = crate::paths::project_dir(&library).unwrap();
         let library_before = crate::linked_registry::folder_snapshot_for_test(&library_dir);
         let folder_before = crate::linked_registry::folder_snapshot_for_test(&folder);
@@ -11983,7 +12556,7 @@ mod tests {
         )
         .unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         let trust_path = super::shell_escape_trust_path(&project_id).unwrap();
         assert!(trust_path.is_file());
 
@@ -12596,7 +13169,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("create-command-roundtrip");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Create Command".into()).unwrap();
+        let project_id = super::create_blank_project("Create Command".into()).unwrap();
 
         let created =
             super::create_file(project_id.clone(), "notes.tex".into(), false, None, None).unwrap();
@@ -13466,7 +14039,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("checkpoint-policy-malformed-read");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Malformed policy".into()).unwrap();
+        let project_id = super::create_blank_project("Malformed policy".into()).unwrap();
         let metadata_path = crate::paths::project_dir(&project_id)
             .unwrap()
             .join("project.json");
@@ -14475,7 +15048,7 @@ mod tests {
     ) -> (tempfile::TempDir, std::path::PathBuf) {
         let data = tempfile::tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", data.path());
-        let id = tauri::async_runtime::block_on(super::import_document(
+        let id = tauri::async_runtime::block_on(super::import_document_file(
             source.to_string_lossy().into_owned(),
             Some(target.into()),
         ))
@@ -15184,7 +15757,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("diagram-project");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let id = create_diagram_project(
+        let id = create_diagram_project_from(
             "My Diagram".to_string(),
             "\\documentclass{standalone}".to_string(),
             None,
@@ -15203,7 +15776,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("diagram-project-bare-body");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let id = create_diagram_project(
+        let id = create_diagram_project_from(
             "Bare Body".to_string(),
             "\\definecolor{c000000}{HTML}{000000}\n\\begin{tikzpicture}\n\\end{tikzpicture}"
                 .to_string(),
@@ -15226,8 +15799,9 @@ mod tests {
         let root = test_dir("diagram-project-already-wrapped");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let source = "\\documentclass[tikz,border=4pt]{standalone}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}\n\\end{tikzpicture}\n\\end{document}\n";
-        let id = create_diagram_project("Already Wrapped".to_string(), source.to_string(), None)
-            .unwrap();
+        let id =
+            create_diagram_project_from("Already Wrapped".to_string(), source.to_string(), None)
+                .unwrap();
         let dir = crate::paths::project_dir(&id).unwrap();
         let main_tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
         assert_eq!(main_tex, source);
@@ -15241,9 +15815,12 @@ mod tests {
         let root = test_dir("diagram-project-tikz");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         for language in [None, Some("tikz".to_string())] {
-            let id =
-                create_diagram_project("TikZ".to_string(), "\\draw (0,0);".to_string(), language)
-                    .unwrap();
+            let id = create_diagram_project_from(
+                "TikZ".to_string(),
+                "\\draw (0,0);".to_string(),
+                language,
+            )
+            .unwrap();
             let dir = crate::paths::project_dir(&id).unwrap();
             let main_tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
             assert!(main_tex.contains("\\begin{document}"));
@@ -15265,8 +15842,9 @@ mod tests {
         let root = test_dir("diagram-project-typst");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let body = "#import \"@preview/fletcher:0.5.8\" as fletcher: diagram, node, edge\n#diagram(node((0, 0), [A]), edge(\"->\"), node((1, 0), [B]))\n";
-        let id = create_diagram_project("Flow".to_string(), body.to_string(), Some("typst".into()))
-            .unwrap();
+        let id =
+            create_diagram_project_from("Flow".to_string(), body.to_string(), Some("typst".into()))
+                .unwrap();
         let dir = crate::paths::project_dir(&id).unwrap();
         assert_eq!(
             std::fs::read_to_string(dir.join("main.typ")).unwrap(),
@@ -15285,9 +15863,12 @@ mod tests {
         assert!(crate::document_engine::engine_for(&meta.engine, &meta.main_doc).is_ok());
 
         let paged = "#set page(width: 120pt, height: 80pt)\n#rect()\n";
-        let id =
-            create_diagram_project("Paged".to_string(), paged.to_string(), Some("typst".into()))
-                .unwrap();
+        let id = create_diagram_project_from(
+            "Paged".to_string(),
+            paged.to_string(),
+            Some("typst".into()),
+        )
+        .unwrap();
         let dir = crate::paths::project_dir(&id).unwrap();
         assert_eq!(
             std::fs::read_to_string(dir.join("main.typ")).unwrap(),
@@ -15303,7 +15884,7 @@ mod tests {
         let root = test_dir("diagram-project-mermaid");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let source = "```mermaid\nflowchart TD\n    A --> B\n```\n";
-        let id = create_diagram_project(
+        let id = create_diagram_project_from(
             "Chart".to_string(),
             source.to_string(),
             Some("mermaid".into()),
@@ -15337,7 +15918,7 @@ mod tests {
                 .unwrap_or(0)
         };
         let before = count();
-        let error = create_diagram_project(
+        let error = create_diagram_project_from(
             "Graph".to_string(),
             "digraph { a -> b }".to_string(),
             Some("graphviz".into()),
@@ -15402,7 +15983,7 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         std::fs::create_dir_all(&root).unwrap();
 
-        let project_id = super::create_project("Configured".to_string()).unwrap();
+        let project_id = super::create_blank_project("Configured".to_string()).unwrap();
         let policy = read_meta(&project_id).unwrap().checkpoints;
         assert_eq!(policy, oleafly_core::CheckpointPolicy::default());
         assert_eq!(policy.mode.as_str(), "engine_dependencies");
@@ -15415,6 +15996,42 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn abandoned_reservations_forget_their_identity_and_adoption_never_clones() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let projects = crate::paths::projects_root().unwrap();
+        let adopted = oleafly_core::ids::ProjectId::new();
+        let first =
+            try_reserve_project_directory_adopting(&projects, "adopted-one", true, Some(adopted))
+                .unwrap()
+                .unwrap();
+        assert_eq!(
+            crate::project_ids::binding("adopted-one")
+                .unwrap()
+                .unwrap()
+                .project,
+            adopted
+        );
+        assert!(try_reserve_project_directory_adopting(
+            &projects,
+            "adopted-two",
+            true,
+            Some(adopted)
+        )
+        .is_err());
+        assert!(!projects.join("adopted-two").exists());
+        drop(first);
+        assert!(crate::project_ids::binding("adopted-one")
+            .unwrap()
+            .is_none());
+        assert!(!projects.join("adopted-one").exists());
+        let scratch = super::get_or_create_scratch_project_blocking().unwrap();
+        assert!(crate::project_ids::binding(&scratch).unwrap().is_none());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
     // Held across the await deliberately: it serializes access to the shared
     // OLEAFLY_DATA_DIR env var against other tests, single-threaded runtime.
     #[allow(clippy::await_holding_lock)]
@@ -15423,9 +16040,9 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("duplicate-project-fork");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let source_id = super::create_project("Original Paper".to_string()).unwrap();
+        let source_id = super::create_blank_project("Original Paper".to_string()).unwrap();
         super::set_project_engine_unlocked(&source_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&source_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&source_id, true, None).unwrap();
         let source_policy: oleafly_core::CheckpointPolicy =
             serde_json::from_value(serde_json::json!({
                 "mode": "engine_dependencies",
@@ -15442,9 +16059,15 @@ mod tests {
         assert!(read_meta(&source_id).unwrap().allow_shell_escape);
         let source_checkpoint_store = crate::paths::checkpoint_store_dir(&source_id).unwrap();
         oleafly_history::Store::open(&source_checkpoint_store).unwrap();
+        let source_binding = crate::project_ids::binding(&source_id).unwrap().unwrap();
         let fork_id = duplicate_project(source_id, "Original Paper (copy)".to_string())
             .await
             .unwrap();
+        let fork_binding = crate::project_ids::binding(&fork_id).unwrap().unwrap();
+        assert_ne!(fork_binding.project, source_binding.project);
+        assert_eq!(fork_binding.duplicated_from, Some(source_binding.project));
+        assert!(fork_binding.origin_digest.is_some());
+        assert!(source_binding.origin_digest.is_some());
         let meta = read_meta(&fork_id).unwrap();
         assert_eq!(meta.name, "Original Paper (copy)");
         assert_eq!(meta.forked_from.as_deref(), Some("Original Paper"));
@@ -15471,7 +16094,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("shell-trust-local");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Untrusted Paper".into()).unwrap();
+        let project_id = super::create_blank_project("Untrusted Paper".into()).unwrap();
         let project = crate::paths::project_dir(&project_id).unwrap();
 
         std::fs::write(
@@ -15486,7 +16109,7 @@ mod tests {
         .unwrap();
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
 
-        let trusted = super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        let trusted = super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         assert!(trusted.allow_shell_escape);
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
@@ -15506,8 +16129,8 @@ mod tests {
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
-        assert!(super::set_project_shell_escape_unlocked(&project_id, true).is_ok());
-        assert!(super::set_project_shell_escape_unlocked(&project_id, false).is_ok());
+        assert!(super::set_project_shell_escape_unlocked(&project_id, true, None).is_ok());
+        assert!(super::set_project_shell_escape_unlocked(&project_id, false, None).is_ok());
         assert!(!read_meta(&project_id).unwrap().allow_shell_escape);
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
@@ -15520,7 +16143,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("reserved-project-metadata");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Reserved Metadata".into()).unwrap();
+        let project_id = super::create_blank_project("Reserved Metadata".into()).unwrap();
 
         let write_error = super::write_project_file(
             project_id.clone(),
@@ -15600,9 +16223,9 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("external-worktree-trust");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Git Trust".into()).unwrap();
+        let project_id = super::create_blank_project("Git Trust".into()).unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         let state = Arc::new(crate::state::AppState::default());
 
         let compile_guard = state.compile_lock.lock().await;
@@ -15651,7 +16274,7 @@ mod tests {
         assert!(!changed_back.project.allow_shell_escape);
 
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         let before_failure = super::project_mutation_generation(project_id.clone()).unwrap();
         let failed = super::mutate_project_worktree(
             &state,
@@ -15712,7 +16335,7 @@ mod tests {
         let state = crate::state::AppState::default();
 
         for corrupt_journal in [false, true] {
-            let project_id = super::create_project(format!(
+            let project_id = super::create_blank_project(format!(
                 "Unreconciled {} journal",
                 if corrupt_journal {
                     "corrupt"
@@ -15722,7 +16345,7 @@ mod tests {
             ))
             .unwrap();
             super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-            super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+            super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
             let project = crate::paths::project_dir(&project_id).unwrap();
             let manifest = br#"{"name":"Unreconciled","main_doc":"main.tex","engine":"latexmk"}"#;
             std::fs::write(project.join("project.json"), manifest).unwrap();
@@ -15796,7 +16419,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("recover-marker-remains");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Pending restore".into()).unwrap();
+        let project_id = super::create_blank_project("Pending restore".into()).unwrap();
         let project = crate::paths::project_dir(&project_id).unwrap();
         let manifest = br#"{"name":"Pending restore","main_doc":"main.tex","engine":"xetex"}"#;
         std::fs::write(project.join("project.json"), manifest).unwrap();
@@ -15845,9 +16468,9 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("shell-trust-main-rename");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Rename Trust".into()).unwrap();
+        let project_id = super::create_blank_project("Rename Trust".into()).unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
         super::rename_file_blocking(
@@ -15925,9 +16548,9 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("shell-trust-identity");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Original".into()).unwrap();
+        let project_id = super::create_blank_project("Original".into()).unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
-        super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
+        super::set_project_shell_escape_unlocked(&project_id, true, None).unwrap();
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
 
         let projects = crate::paths::projects_root().unwrap();
@@ -16182,6 +16805,29 @@ mod tests {
         assert!(dir.join("main.tex").is_file());
         assert!(dir.join("refs.bib").is_file());
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn importing_a_zip_or_a_folder_unwraps_its_single_wrapping_folder() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = test_dir("import-unwraps-wrapper");
+        std::env::set_var("OLEAFLY_DATA_DIR", &data);
+        let document = "\\documentclass{article}\\begin{document}x\\end{document}";
+        let archive = data.join("paper.zip");
+        zip_with_member(&archive, "paper/main.tex", document.as_bytes());
+        let folder = data.join("picked");
+        std::fs::create_dir_all(folder.join("paper")).unwrap();
+        std::fs::write(folder.join("paper/main.tex"), document).unwrap();
+        let mains = [archive, folder].map(|source| {
+            super::import_overleaf_project_blocking(None, &source.to_string_lossy())
+                .and_then(|project_id| read_meta(&project_id).map(|meta| meta.main_doc))
+        });
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(&data).unwrap();
+        assert_eq!(
+            mains,
+            [Ok("main.tex".to_string()), Ok("main.tex".to_string())]
+        );
     }
 
     #[test]
@@ -16585,6 +17231,209 @@ mod tests {
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn new_latex_projects_follow_the_latexmk_default() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("latex-default-engine");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let projects = crate::paths::projects_root().unwrap();
+        let engine = |id: &str| read_meta(id).unwrap().engine;
+
+        assert_eq!(
+            engine(&create_blank_project("Before".into()).unwrap()),
+            "xetex"
+        );
+        crate::config::set_latex_default_engine_choice("latexmk").unwrap();
+
+        assert_eq!(
+            engine(&create_blank_project("Blank".into()).unwrap()),
+            "latexmk"
+        );
+        let typst = create_typst_project_in(&projects, "Slides".into(), false).unwrap();
+        assert_eq!(engine(&typst), "typst");
+        let notes = create_markdown_project_in(&projects, "Notes".into(), false).unwrap();
+        assert_eq!(engine(&notes), "markdown");
+        let image = create_image_project_in(
+            &projects,
+            "Image".into(),
+            "\\documentclass{standalone}".into(),
+            None,
+            false,
+        )
+        .unwrap();
+        assert_eq!(engine(&image), "latexmk");
+        let figure =
+            create_diagram_project_from("Figure".into(), "\\draw (0,0);".into(), None).unwrap();
+        assert_eq!(engine(&figure), "latexmk");
+        for (target, source, expected) in [
+            ("latex", "\\documentclass{article}", "latexmk"),
+            ("typst", "= Converted", "typst"),
+            ("markdown", "# Converted", "markdown"),
+        ] {
+            let id = create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
+                name: "Converted".into(),
+                target: target.into(),
+                text: Some(source.into()),
+                main_file: None,
+                files: Vec::new(),
+            })
+            .unwrap();
+            assert_eq!(engine(&id), expected, "{target}");
+        }
+
+        let plain = root.join("plain-tex-folder");
+        std::fs::create_dir_all(&plain).unwrap();
+        std::fs::write(plain.join("main.tex"), "\\documentclass{article}").unwrap();
+        let imported =
+            super::import_overleaf_project_blocking(None, &plain.to_string_lossy()).unwrap();
+        assert_eq!(engine(&imported), "latexmk");
+
+        let pinned = root.join("pinned-lualatex-folder");
+        std::fs::create_dir_all(&pinned).unwrap();
+        std::fs::write(pinned.join("main.tex"), "\\documentclass{article}").unwrap();
+        write_meta_at(
+            &pinned.join("project.json"),
+            &ProjectMeta {
+                name: "Pinned".into(),
+                main_doc: "main.tex".into(),
+                engine: "latexmk".into(),
+                tex_flavor: Some("lualatex".into()),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        let import_pinned = || {
+            read_meta(
+                &super::import_overleaf_project_blocking(None, &pinned.to_string_lossy()).unwrap(),
+            )
+            .unwrap()
+        };
+        let kept = import_pinned();
+        assert_eq!(
+            (
+                kept.engine.as_str(),
+                kept.tex_flavor.as_deref(),
+                kept.allow_shell_escape
+            ),
+            ("latexmk", Some("lualatex"), false)
+        );
+
+        crate::config::set_latex_default_engine_choice("tectonic").unwrap();
+        let reset = import_pinned();
+        assert_eq!(
+            (reset.engine.as_str(), reset.tex_flavor.as_deref()),
+            ("xetex", None)
+        );
+        assert_eq!(
+            engine(&create_blank_project("After".into()).unwrap()),
+            "xetex"
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn creation_commands_record_the_tex_spec_only_for_latexmk_projects() {
+        use tauri::Manager as _;
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("creation-commands");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let app = tauri::test::mock_app();
+        app.manage(crate::state::AppState::default());
+        let handle = app.handle().clone();
+        let folder = root.join("plain-tex-folder");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+
+        let created = [
+            super::create_project(handle.clone(), "Blank".into()).unwrap(),
+            super::create_image_project(
+                handle.clone(),
+                "Image".into(),
+                "\\documentclass{standalone}".into(),
+                None,
+            )
+            .unwrap(),
+            super::create_diagram_project(
+                handle.clone(),
+                "Figure".into(),
+                "\\draw (0,0);".into(),
+                None,
+            )
+            .unwrap(),
+            tauri::async_runtime::block_on(super::create_project_from_ad_hoc(
+                handle.clone(),
+                CreateAdHocProjectRequest {
+                    name: "Converted".into(),
+                    target: "latex".into(),
+                    text: Some("\\documentclass{article}".into()),
+                    main_file: None,
+                    files: Vec::new(),
+                },
+            ))
+            .unwrap(),
+            tauri::async_runtime::block_on(super::create_project_from_pdf_conversion(
+                handle.clone(),
+                "Scanned".into(),
+                "\\documentclass{article}".into(),
+                Vec::new(),
+            ))
+            .unwrap(),
+            tauri::async_runtime::block_on(super::import_overleaf_project(
+                handle.clone(),
+                None,
+                folder.to_string_lossy().into_owned(),
+            ))
+            .unwrap(),
+        ];
+        for id in &created {
+            assert_eq!(read_meta(id).unwrap().engine, "xetex", "{id}");
+            assert!(super::record_tex_spec_for_new_project(&handle, id).is_none());
+        }
+
+        super::set_default_latex_engine("latexmk".into()).unwrap();
+        assert!(super::set_default_latex_engine("pdflatex".into()).is_err());
+        let latexmk = create_blank_project("On latexmk".into()).unwrap();
+        let task = super::record_tex_spec_for_new_project(&handle, &latexmk)
+            .expect("a latexmk project records its TeX spec");
+        tauri::async_runtime::block_on(task).unwrap();
+        let recorded = read_meta(&latexmk).unwrap().tex;
+        let has_system_tex = crate::tex_distro::active_latexmk_distribution().is_some();
+        assert_eq!(recorded.is_some(), has_system_tex);
+        let again = tauri::async_runtime::block_on(super::record_project_tex_spec(
+            app.state::<crate::state::AppState>(),
+            latexmk.clone(),
+        ))
+        .unwrap();
+        assert_eq!(again.is_some(), has_system_tex);
+
+        super::set_default_latex_engine("tectonic".into()).unwrap();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn an_opened_latex_folder_without_its_own_engine_follows_the_default_once_trusted() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("latex-paper");
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        crate::config::set_latex_default_engine_choice("latexmk").unwrap();
+
+        let meta = read_meta(&project_id).unwrap();
+        assert_eq!(meta.engine, "latexmk");
+        let restricted = super::project_state_engine(&project_id, &meta).unwrap();
+        assert_eq!(restricted.id.as_str(), "latex");
+        let compile = super::read_compile_meta(&project_id, "main.tex").unwrap();
+        assert_eq!(compile.engine, "xetex");
+
+        fixture.trust(&project_id, crate::trust::TrustScope::Folder);
+        let trusted = read_meta(&project_id).unwrap();
+        let descriptor = super::project_state_engine(&project_id, &trusted).unwrap();
+        assert_eq!(descriptor.id.as_str(), "latexmk");
+        assert!(!folder.join("project.json").exists());
     }
 
     #[test]

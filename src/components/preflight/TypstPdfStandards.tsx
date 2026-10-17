@@ -20,13 +20,13 @@ export function TypstPdfStandards({
       data-testid="typst-pdf-standards"
       className="mx-3 mb-4 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 dark:bg-background"
     >
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
         {t(($) => $.preflight.typstStandards.title)}
       </p>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
         {t(($) => $.preflight.typstStandards.intro)}
       </p>
-      <p className="mt-2 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-2 flex items-start gap-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
         <Info className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
         <span>
           {typstTagsPdfByDefault(version)
@@ -62,12 +62,12 @@ export function TypstPdfStandards({
           </button>
         </div>
       ) : (
-        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-[0.6875rem] leading-relaxed text-muted-foreground">
           {t(($) => $.preflight.typstStandards.none, { version: label })}
         </p>
       )}
       {standard === "ua-1" && (
-        <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-muted-foreground">
           {t(($) => $.preflight.typstStandards.uaNote)}
         </p>
       )}

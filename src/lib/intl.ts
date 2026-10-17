@@ -1,24 +1,38 @@
 import { currentLocale } from "@/i18n";
 
+const MAX_CACHED_DATE_FORMATS = 64;
+const dateFormats = new Map<string, Intl.DateTimeFormat>();
+
+function dateTimeFormat(options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const locale = currentLocale();
+  const key = `${locale}\u0000${JSON.stringify(options)}`;
+  const cached = dateFormats.get(key);
+  if (cached) return cached;
+  const created = new Intl.DateTimeFormat(locale, options);
+  if (dateFormats.size >= MAX_CACHED_DATE_FORMATS) dateFormats.clear();
+  dateFormats.set(key, created);
+  return created;
+}
+
 export function formatDate(
   value: Date | number,
   options: Intl.DateTimeFormatOptions = { dateStyle: "medium" },
 ): string {
-  return new Intl.DateTimeFormat(currentLocale(), options).format(value);
+  return dateTimeFormat(options).format(value);
 }
 
 export function formatTime(
   value: Date | number,
   options: Intl.DateTimeFormatOptions = { timeStyle: "short" },
 ): string {
-  return new Intl.DateTimeFormat(currentLocale(), options).format(value);
+  return dateTimeFormat(options).format(value);
 }
 
 export function formatDateTime(
   value: Date | number,
   options: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" },
 ): string {
-  return new Intl.DateTimeFormat(currentLocale(), options).format(value);
+  return dateTimeFormat(options).format(value);
 }
 
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {

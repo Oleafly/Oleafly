@@ -274,36 +274,25 @@ export function useSteadyPanelWidth({
   panelRef,
   active,
   groupWidth,
-  minSize,
-  maxSize,
   defaultSize,
   applyDefault,
 }: Readonly<{
   panelRef: RefObject<PanelImperativeHandle | null>;
   active: boolean;
   groupWidth: number;
-  minSize: number;
-  maxSize: number;
   defaultSize: number;
   applyDefault: boolean;
 }>): void {
-  const lastWidthRef = useRef(0);
+  const knownWidthRef = useRef(0);
   useEffect(() => {
-    const previousWidth = lastWidthRef.current;
-    lastWidthRef.current = groupWidth;
-    if (!active || groupWidth <= 0) return;
+    const knownWidth = knownWidthRef.current;
+    knownWidthRef.current = groupWidth;
+    if (!active || groupWidth <= 0 || knownWidth > 0 || !applyDefault) return;
     return afterPanelLayout(
       () => panelRef.current,
-      (panel, size) => {
-        if (previousWidth <= 0) {
-          if (applyDefault) panel.resize(percent(defaultSize));
-          return;
-        }
-        const pixels = (size / 100) * previousWidth;
-        panel.resize(percent(Math.min(maxSize, Math.max(minSize, (pixels / groupWidth) * 100))));
-      },
+      (panel) => panel.resize(percent(defaultSize)),
     );
-  }, [active, groupWidth, minSize, maxSize, defaultSize, applyDefault, panelRef]);
+  }, [active, groupWidth, defaultSize, applyDefault, panelRef]);
 }
 
 export type CollapseWatch = Readonly<{

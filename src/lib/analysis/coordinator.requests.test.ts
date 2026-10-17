@@ -701,7 +701,20 @@ describe("ProjectAnalysisCoordinator client events", () => {
       acknowledged: true,
     });
     expect(store.getState().snapshot.features.diagnostics).toMatchObject({
-      data: [{ message: "current" }],
+      status: "success",
+      data: [],
+    });
+
+    client.emit({
+      type: "diagnostics",
+      params: { uri: URI, diagnostics: [diagnostic("wrong epoch")] },
+      diagnostics: [diagnostic("wrong epoch")],
+      identity,
+      diagnosticEpoch: 1,
+      acknowledged: true,
+    });
+    expect(store.getState().snapshot.features.diagnostics).toMatchObject({
+      data: [],
     });
   });
 

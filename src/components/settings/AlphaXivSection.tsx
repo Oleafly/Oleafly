@@ -75,7 +75,7 @@ export function AlphaXivSection() {
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={t(($) => $.settings.integrations.alphaxiv.apiKeyLabel)}
             aria-label={t(($) => $.settings.integrations.alphaxiv.apiKeyLabel)}
-            className="max-w-xs"
+            className="min-w-0 flex-1"
           />
           <Button type="submit" size="sm" disabled={loading || !apiKey.trim()}>
             {loading && <Spinner />}

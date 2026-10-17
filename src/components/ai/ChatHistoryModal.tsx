@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { MessageSquareQuote, Search, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { StoredChat } from "@/store/chats";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { i18n } from "@/i18n";
 import { formatUsd } from "@/lib/ai-pricing";
 import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
@@ -54,6 +55,7 @@ export function ChatHistoryModal({
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const trimmed = query.trim();
+  const listRef = useScrollTopOnChange(trimmed);
   // Titles filter locally; message content matches come from the library.db
   // session index ("find the chat where…").
   const contentHits = useQuery({
@@ -112,7 +114,7 @@ export function ChatHistoryModal({
                   </Badge>
                 )}
               </div>
-              <div className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
+              <div className="mt-0.5 pl-5 text-[0.6875rem] text-muted-foreground">
                 {relativeTime(chat.updatedAt)} ·{" "}
                 {t(($) => $.ai.history.messages, { count: chat.messages.length })}
                 {chat.usage &&
@@ -134,14 +136,14 @@ export function ChatHistoryModal({
                     onDelete(chat.id);
                     setConfirmId(null);
                   }}
-                  className="rounded bg-destructive px-1.5 py-0.5 text-[11px] font-medium text-destructive-foreground hover:opacity-90"
+                  className="rounded bg-destructive px-1.5 py-0.5 text-[0.6875rem] font-medium text-destructive-foreground hover:opacity-90"
                 >
                   {t(($) => $.common.actions.delete)}
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmId(null)}
-                  className="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+                  className="rounded px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground hover:bg-accent"
                 >
                   {t(($) => $.common.actions.cancel)}
                 </button>
@@ -207,7 +209,7 @@ export function ChatHistoryModal({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-2">
+      <div ref={listRef} className="min-h-0 flex-1 overflow-auto p-2">
         {chats.length === 0 ? (
           <p className="px-3 py-10 text-center text-sm text-muted-foreground">
             {t(($) => $.ai.history.emptyProject)}

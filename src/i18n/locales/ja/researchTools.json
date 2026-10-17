@@ -249,6 +249,7 @@
       "driftedMany": "このタスクの開始後に、プロジェクト内の {{fileCount}} 件のファイルが変更されました。差分は古い版に対するものなので、適用できません。",
       "applyAria": "{{path}} を適用",
       "changedSince": "その後に変更あり",
+      "mergesOnApply": "このファイルはタスクの開始後に編集されました。適用すると、その編集を残したままタスクの変更を加えます。",
       "loading": "読み込み中...",
       "refreshPreview": "プレビューを更新",
       "preview": "プレビュー",
@@ -1348,7 +1349,6 @@
     "captionAria": "表のキャプション",
     "preview": "プレビュー",
     "output": "LaTeX の出力",
-    "copiedSource": "LaTeX のソースをコピーしました",
     "booktabsHint": "プリアンブルに <code>\\usepackage{booktabs}</code> が必要です。"
   },
   "review": {

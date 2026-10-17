@@ -292,7 +292,10 @@ describe("ModelManager refresh", () => {
     expect(mockList).toHaveBeenCalledTimes(1);
 
     const button = screen.getByTestId("ai-refresh-models-openai");
-    await waitFor(() => expect(button.querySelector(".animate-spin")).toBeNull());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+    expect(button.querySelector(".animate-spin")).toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(30_000);
@@ -302,7 +305,10 @@ describe("ModelManager refresh", () => {
 
     fireEvent.click(button);
     await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(button.querySelector(".animate-spin")).toBeNull());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+    expect(button.querySelector(".animate-spin")).toBeNull();
   });
 
   it("shows when the list was last updated", () => {

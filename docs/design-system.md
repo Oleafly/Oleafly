@@ -69,12 +69,31 @@ Tab strips are a `TabsList` from `ui/tabs.tsx`. Pass `scrollable` when the
 triggers can grow wider than the strip, so it scrolls instead of clipping, and
 `fill` when the triggers should split the full width.
 
+A list of sections down the side of a window, like the one in Settings or in
+the server admin console, is made of `NavItem`s from `ui/nav-item.tsx`. The
+current item gets `aria-current="page"` and a border. The others tint on hover
+and on keyboard focus.
+
+A row of figures, like the storage summary in Settings or the numbers on the
+admin console overview, is a `StatGrid` from `ui/stat-grid.tsx`. Each figure
+has a label, a value and, if it needs one, a short detail line.
+
 A search box that takes qualifiers such as `engine:typst` is a `QuerySearch`
 from `ui/query-search.tsx`. Give it a schema from `@oleafly/search-query` and
 the analysed query; it brings the highlighting, the suggestion dropdown, the
 keyboard handling and the warnings. Highlighted words inside a text field,
 like the skill and mention chips in the assistant composer, take the classes
 in `ui/inline-token.ts`.
+
+Code, config, commands and any other text a reader may want to copy go in a
+`CodeBlock` from `ui/code-block.tsx`. It brings the copy button, which sits in
+the top right corner of the block and shows when the pointer is over the
+block or keyboard focus is inside it, and stays visible on touch screens.
+`code` is the text that gets copied, children (when given) are what the block
+shows, such as highlighted tokens, and `preClassName` adjusts the block's
+size and colors. A block that isn't a `<pre>`, like a rendered diagram, wraps
+its content in `CopyableBlock` from `ui/copyable-block.tsx`. Logs, error output and
+plain text previews stay as a plain `<pre>`.
 
 Hover help is a `Tooltip` from `ui/tooltip.tsx`, never the native `title`
 attribute. It renders into the body and stays inside the window.
@@ -122,12 +141,13 @@ The guards read the source files and fail when a known copy shows up.
 `src/styles/no-outline-utilities.test.ts` fails on any ring or outline
 utility in `src/` or `packages/`.
 
-`src/styles/design-system.test.ts` fails on three things: a `Loader2` or
+`src/styles/design-system.test.ts` fails on four things: a `Loader2` or
 `LoaderCircle` with `animate-spin` outside `Spinner`, the settings row class
-cluster outside `SettingsRow`, and a hand-written pill (a borderless
-`rounded-full` with small text and a tint) outside the kit. A pill that no
-`Badge` variant can express goes in that file's allowlist, with the reason
-next to it.
+cluster outside `SettingsRow`, a hand-written pill (a borderless
+`rounded-full` with small text and a tint) outside the kit, and a `<pre>` in
+a file that doesn't use `CodeBlock`. A pill that no `Badge` variant can
+express, or a `<pre>` that shows logs or plain text rather than code, goes in
+that file's allowlist, with the reason next to it.
 
 `src/components/layout/SidebarSection.test.tsx` checks that every panel
 registered in `src/contributions/tabs.tsx` renders `SidebarPanelHeader`, and

@@ -1,0 +1,64 @@
+{
+  "title": "Programinställningar",
+  "description": "Spara dina inställningar i en JSON-fil, eller läs in en fil som någon har delat med dig. API-nycklar, konton, integrationer och agenter tas aldrig med.",
+  "export": "Exportera",
+  "import": "Importera",
+  "view": {
+    "label": "Visa inställningarnas JSON",
+    "summary": "Skrivskyddad förhandsvisning av filen som exporten sparar.",
+    "loading": "Läser dina inställningar",
+    "failed": "Det gick inte att läsa dina inställningar."
+  },
+  "dialog": {
+    "pickTitle": "Importera inställningar",
+    "filterName": "Oleafly-inställningar"
+  },
+  "toast": {
+    "exported": "{{name}} har exporterats till disken",
+    "exportFailed": "Det gick inte att spara inställningsfilen.",
+    "readFailed": "Det gick inte att öppna filen.",
+    "imported": "Inställningarna har importerats.",
+    "unchanged": "Dina inställningar stämmer redan med {{name}}.",
+    "applyFailed": "Vissa inställningar kunde inte sparas. Försök importera igen.",
+    "cloudEmpty": "Din Dropbox har inga Oleafly-inställningar än. Aktivera molnsynkronisering på en annan dator först.",
+    "cloudLoadFailed": "Det gick inte att läsa in inställningarna från din Dropbox.",
+    "cloudUnreadable": "Inställningarna i din Dropbox kunde inte läsas."
+  },
+  "confirm": {
+    "title": "Vill du ersätta dina inställningar?",
+    "description": "Inställningarna från {{name}} ersätter dina. Allt som filen inte tar upp förblir som det är.",
+    "changes": "Inställningar som ändras: {{count}}",
+    "ignored": "Känns inte igen och hoppas därför över:",
+    "action": "Importera",
+    "cloudDescription": "Inställningarna från din Dropbox ersätter dina. Allt som de inte tar upp förblir som det är."
+  },
+  "error": {
+    "title": "{{name}} importerades inte",
+    "notJson": "Filen är inte giltig JSON.",
+    "notSettings": "Det här är inte en inställningsfil från Oleafly.",
+    "invalid": "Inställningskonfigurationen som du försökte importera är ogiltig. Rätta de här felen och försök importera igen:",
+    "more": "+{{count}} till"
+  },
+  "valueErrors": {
+    "boolean": "måste vara true eller false",
+    "oneOf": "måste vara ett av följande värden: {{values}}",
+    "range": "måste vara ett tal från {{min}} till {{max}}",
+    "wholeRange": "måste vara ett heltal från {{min}} till {{max}}",
+    "wholeRangeStep": "måste vara ett heltal från {{min}} till {{max}}, i steg om {{step}}",
+    "hexColor": "måste vara en färg som #2563eb",
+    "hexColorOrEmpty": "måste vara en färg som #2563eb, eller \"\" för att använda temats färg",
+    "text": "måste vara text med högst {{max}} tecken",
+    "webAddress": "måste vara en webbadress som börjar med http:// eller https://",
+    "list": "måste vara en lista med högst {{max}} poster",
+    "listItem": "är inte en tillåten post",
+    "duplicate": "finns med två gånger",
+    "object": "måste vara en grupp inställningar inom klammerparenteser",
+    "unknownKey": "är inte en inställning som Oleafly känner till",
+    "dictionaryLocale": "måste vara en ordlistekod som en_US",
+    "shortcut": "måste vara ett kortkommando som Mod-Shift-k, eller \"default\"",
+    "editorKey": "måste vara en tangent som Mod-d, \"\" för ingen, eller \"default\""
+  },
+  "importFromLocal": "Importera från den här enheten",
+  "importFromCloud": "Importera från molnet",
+  "cloudSource": "din Dropbox"
+}

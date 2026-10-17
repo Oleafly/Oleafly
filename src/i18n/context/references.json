@@ -18,5 +18,31 @@
   "trees": {
     "citations": "Accessible name of the citation tree",
     "symbols": "Accessible name of the symbol tree"
+  },
+  "zotero": {
+    "completion": {
+      "library": "Shown at the end of an autocomplete row for a paper from the user's own Zotero library (not a group library).",
+      "authorsTwo": "Author names in a citation autocomplete row, for a paper with exactly two authors. Names are family names, kept as written.",
+      "authorsMany": "Author names in a citation autocomplete row, for a paper with three or more authors. Use the usual short form for 'and others' in citations.",
+      "noYear": "Abbreviation for 'no date', shown where a citation's year would be. Use the usual citation-style abbreviation.",
+      "keySource": {
+        "bbt": "Says where the citation key of this paper comes from: the Better BibTeX plugin. Keep 'Better BibTeX' verbatim.",
+        "extra": "The 'Extra' field is a named field in Zotero's item editor. Use Zotero's own name for it in this language."
+      }
+    },
+    "hint": {
+      "apiDisabled": "The quoted text is the exact label of a checkbox in Zotero's Settings > Advanced pane. Use Zotero's own wording for that label in this language if Zotero is translated, otherwise keep the English label.",
+      "closedCached": "{{time}} is a relative time such as '5 minutes ago'."
+    },
+    "actions": {
+      "update": "Button on a bibliography entry that replaces the entry with the current version from Zotero."
+    },
+    "handList": {
+      "description": "Shown the first time the user cites a Zotero paper in a LaTeX document whose reference list is typed into the document itself instead of coming from a .bib file. {{path}} is the .bib file the list moves into, such as references.bib. After the move, both sets of references are numbered together in one list.",
+      "confirm": "Button that moves the hand-typed reference list into the .bib file and then adds the citation."
+    },
+    "missing": {
+      "duplicateRow": "{{key}} is the citation key used in the document; {{existing}} is the key of the same paper already in the .bib file."
+    }
   }
 }

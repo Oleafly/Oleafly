@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { applyLocale } from "@/i18n";
+import { applyLocale, loadNamespace } from "@/i18n";
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import { APP_ERROR_PREFIX, decodeAppError, describeError } from "./app-error";
 
@@ -24,6 +24,12 @@ describe("app errors", () => {
     const error = decodeAppError(encoded({ code: "project.name_empty", params: {}, detail: null }));
     expect(error?.code).toBe("project.name_empty");
     expect(describeError(error)).toBe("Project name cannot be empty.");
+  });
+
+  it("finds codes of a lazily loaded namespace once that namespace is loaded", async () => {
+    const value = encoded({ code: "cloud.revoked", params: {}, detail: null });
+    await loadNamespace("cloud");
+    expect(describeError(value)).toBe("Dropbox access was revoked. Connect again.");
   });
 
   it("interpolates params", () => {

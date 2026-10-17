@@ -36,7 +36,12 @@
     "not_removable": "Oleafly'den yalnızca bulundukları yerde açılan klasörler kaldırılabilir.",
     "trash_unavailable": "Oleafly, {{path}} öğesini Çöp Sepeti'ne veya Geri Dönüşüm Kutusu'na taşıyamadı. Sürücüde bunlardan biri olmayabilir.",
     "linked_replace_folder": "{{path}} bir klasör olduğu için Oleafly onu değiştirmez. Önce taşıyın veya yeniden adlandırın.",
-    "folder_read_only": "{{name}} veya bulunduğu klasör salt okunur olduğu için Oleafly bu değişikliği yapamıyor. Açtığınız klasörü kitaplığa kopyalayın ve orada düzenleyin."
+    "folder_read_only": "{{name}} veya bulunduğu klasör salt okunur olduğu için Oleafly bu değişikliği yapamıyor. Açtığınız klasörü kitaplığa kopyalayın ve orada düzenleyin.",
+    "shared_settings_viewer": "Görüntüleyenler paylaşılan bir projenin ayarlarını değiştiremez."
+  },
+  "template": {
+    "name_required": "Şablona bir ad verin.",
+    "folder_holds_templates": "Bu klasör Oleafly'nin kendi şablonlarını içeriyor. Bunun yerine şablonun klasörünü seçin."
   },
   "settings": {
     "locale_unsupported": "{{locale}} dili kullanılamıyor."
@@ -56,7 +61,11 @@
     "unreachable": "Oleafly Zotero'ya ulaşamadı. İnternet bağlantınızı kontrol edip yeniden deneyin.",
     "http_error": "Zotero bir hata döndürdü (HTTP {{status}}). Daha sonra yeniden deneyin.",
     "invalid_response": "Zotero, Oleafly'ın okuyamadığı bir yanıt gönderdi. Daha sonra yeniden deneyin.",
-    "too_large": "Zotero kitaplığınız tek seferde içe aktarılamayacak kadar büyük. Bunun yerine Zotero'dan bir koleksiyonu RDF dosyası olarak dışa aktarıp onu içe aktarın."
+    "too_large": "Zotero kitaplığınız tek seferde içe aktarılamayacak kadar büyük. Bunun yerine Zotero'dan bir koleksiyonu RDF dosyası olarak dışa aktarıp onu içe aktarın.",
+    "local_not_running": "Zotero bu bilgisayarda çalışmıyor. Zotero'yu açın veya zotero.org hesabınızı bağlayın.",
+    "local_api_disabled": "Zotero'da Ayarlar > Gelişmiş bölümünü açın ve “Bu bilgisayardaki diğer uygulamaların Zotero ile iletişim kurmasına izin ver” seçeneğini etkinleştirin.",
+    "local_unsupported": "Zotero'nun bu sürümü kitaplığını Oleafly ile paylaşamıyor. Zotero 7 veya daha yeni bir sürüme güncelleyin.",
+    "offline": "Oleafly çevrimdışı kipte olduğu için zotero.org'a ulaşamıyor."
   },
   "tex": {
     "no_host_binary": "TinyTeX bu sistemle uyumlu bir {{name}} ikili dosyası içermiyor.",
@@ -65,7 +74,8 @@
     "latexmk_network_folder": "latexmk ağ paylaşımındaki bir klasörü derleyemez. Bu projeyi Tectonic'e geçirin veya klasörü bu bilgisayara kopyalayın.",
     "shell_escape_denied_minted": "minted'in kodu vurgulamak için başka bir program çalıştırması gerekiyor ve bu proje bunu engelliyor. İzin vermek için düzenleyicinin üstündeki şeritte \"{{setting}}\" düğmesine tıklayın. Bunu yalnızca projedeki her dosyaya güveniyorsanız yapın. LaTeX bundan sonra izinlerinizle herhangi bir programı çalıştırabilir ve başlattığı bir program, derlemeyi durdurduktan sonra da çalışmaya devam edebilir.",
     "shell_escape_denied_pythontex": "PythonTeX'in Python çalıştırması gerekiyor ve bu proje bunu engelliyor. İzin vermek için düzenleyicinin üstündeki şeritte \"{{setting}}\" düğmesine tıklayın. Bunu yalnızca projedeki her dosyaya güveniyorsanız yapın. LaTeX bundan sonra izinlerinizle herhangi bir programı çalıştırabilir ve başlattığı bir program, derlemeyi durdurduktan sonra da çalışmaya devam edebilir.",
-    "shell_escape_denied_command": "Bu belge bir shell komutu çalıştırıyor ve bu proje bunu engelliyor. İzin vermek için düzenleyicinin üstündeki şeritte \"{{setting}}\" düğmesine tıklayın. Bunu yalnızca projedeki her dosyaya güveniyorsanız yapın. LaTeX bundan sonra izinlerinizle herhangi bir programı çalıştırabilir ve başlattığı bir program, derlemeyi durdurduktan sonra da çalışmaya devam edebilir."
+    "shell_escape_denied_command": "Bu belge bir shell komutu çalıştırıyor ve bu proje bunu engelliyor. İzin vermek için düzenleyicinin üstündeki şeritte \"{{setting}}\" düğmesine tıklayın. Bunu yalnızca projedeki her dosyaya güveniyorsanız yapın. LaTeX bundan sonra izinlerinizle herhangi bir programı çalıştırabilir ve başlattığı bir program, derlemeyi durdurduktan sonra da çalışmaya devam edebilir.",
+    "japanese_compiler_missing": "{{compiler}} TeX dağıtımınızda kurulu değil. TeX Live veya TinyTeX'e eklemek için tlmgr install collection-langjapanese komutunu çalıştırın ya da başka bir derleyici seçin."
   },
   "export": {
     "bibliography_unreadable": "Oleafly {{name}} kaynakçasını okuyamadı. Bozuk bir girdi olup olmadığını denetleyin, ardından yeniden dışa aktarın."
@@ -181,5 +191,39 @@
     "failed": "Typst belgeyi dışa aktaramadı.",
     "unsupported": "Bu Typst sürümü bu ayarlarla dışa aktaramaz.",
     "invalid_ppi": "1 ile {{max}} PPI arasında bir çözünürlük seçin."
+  },
+  "overleaf": {
+    "signed_out": "Önce Overleaf'te oturum açın.",
+    "session_expired": "Overleaf oturumunuzun süresi doldu. Devam etmek için yeniden oturum açın.",
+    "sign_in_cancelled": "Overleaf oturum açma penceresi işlem bitmeden kapatıldı.",
+    "sign_in_failed": "Oleafly Overleaf oturumunuzu doğrulayamadı. Yeniden oturum açmayı deneyin.",
+    "invalid_server": "“{{server}}” Oleafly'nin kullanabileceği bir sunucu adresi değil.",
+    "unreachable": "Oleafly {{server}} adresine ulaşamadı.",
+    "unrecognized": "Overleaf'in proje sayfası Oleafly'nin beklediğinden farklı görünüyor. Projeyi Overleaf'ten .zip olarak indirin ve bunun yerine o dosyayı içe aktarın.",
+    "project_unavailable": "Bu proje indirilemedi. Artık bu projeye erişiminiz olmayabilir.",
+    "not_an_archive": "Overleaf proje arşivi dışında bir şey gönderdi.",
+    "too_large": "Bu proje 2 GB içe aktarma sınırından büyük.",
+    "rate_limited": "Overleaf, Oleafly'den yavaşlamasını istedi. Bir dakika bekleyip yeniden deneyin.",
+    "sync_busy": "Bu proje için Overleaf ile bir eşitleme zaten sürüyor.",
+    "sync_not_linked": "Bu proje Overleaf'e bağlı değil.",
+    "sync_needs_relink": "Bu projenin eşitleme kopyası eksik. Eşitlemeyi durdurun, ardından projeyi yeniden bağlayın.",
+    "sync_already_linked": "Bu proje zaten başka bir Overleaf projesine bağlı. Önce eşitlemeyi durdurun.",
+    "sync_offline": "Oleafly Overleaf'e ulaşamadı. Değişiklikleriniz burada güvende ve bir dahaki sefere eşitlenecek.",
+    "sync_failed": "Overleaf ile eşitleme tamamlanmadı. Buradaki dosyalarınız değişmedi.",
+    "sync_kept_changing": "Eşitleme sırasında proje Overleaf'te değişmeye devam etti. Biraz sonra yeniden deneyin.",
+    "sync_case_clash": "Overleaf'te adları yalnızca büyük/küçük harf bakımından farklı olan dosyalar var ({{files}}). Bunlardan birini Overleaf'te yeniden adlandırın, ardından yeniden eşitleyin.",
+    "sync_invalid_names": "Overleaf'teki bazı dosya adları bu bilgisayara kaydedilemiyor ({{files}}). Bu dosyaları Overleaf'te yeniden adlandırın, ardından yeniden eşitleyin.",
+    "sync_file_too_large": "{{file}}, Overleaf'in tek bir dosya için izin verdiği 50 MB sınırından büyük.",
+    "sync_too_large": "Bu proje eşitlenemeyecek kadar büyük. Sınır 5.000 dosya veya 2 GB.",
+    "sync_path_blocked": "{{file}} buraya yazılamıyor, çünkü aynı adda bir klasör yolu kapatıyor.",
+    "git_token_missing": "Bu projeyi eşitlemek için Overleaf Git belirtecinizi ekleyin.",
+    "git_token_invalid": "Bu bir Overleaf Git belirtecine benzemiyor. Belirtecin tamamını kopyalayıp yeniden deneyin.",
+    "git_token_rejected": "Overleaf Git belirtecini kabul etmedi. Süresi dolmuş olabilir. Overleaf hesap ayarlarınızda yeni bir belirteç oluşturun.",
+    "git_unavailable": "Overleaf'in Git entegrasyonu bu proje için kullanılamıyor. Projenin sahibinin ücretli ya da üniversite planına sahip olması gerekir.",
+    "template_link_invalid": "Bu bağlantı bir Overleaf şablon sayfası değil. overleaf.com/latex/templates altındaki bir sayfanın adresini kopyalayıp yeniden deneyin.",
+    "template_unavailable": "Oleafly bu şablonu açamadı. Overleaf'in galerisinden kaldırılmış olabilir."
+  },
+  "collab": {
+    "turned_off": "Canlı iş birliği kapalı. Ayarlar'daki Deneysel Özellikler bölümünden açın."
   }
 }

@@ -136,7 +136,8 @@
       "document": "문서",
       "image": "이미지",
       "diagram": "다이어그램",
-      "external": "외부"
+      "external": "외부",
+      "overleaf": "Overleaf"
     },
     "preview": {
       "title": "PDF 미리보기: {{name}}",
@@ -180,12 +181,20 @@
       "failed": "프로젝트를 포크하지 못했습니다."
     },
     "deleteDialog": {
-      "title": "“{{name}}”을(를) 휴지통으로 옮길까요?",
+      "title": "“<name>{{name}}</name>”을(를) 휴지통으로 옮길까요?",
       "fallbackName": "프로젝트",
       "description": "프로젝트가 라이브러리에서 사라지지만, 복원하거나 완전히 삭제할 때까지 데이터 저장에 남아 있습니다.",
       "confirm": "휴지통으로 이동",
       "moved": "\"{{name}}\"을(를) 휴지통으로 옮겼습니다.",
       "failed": "\"{{name}}\"을(를) 삭제하지 못했습니다."
+    },
+    "bulkDelete": {
+      "button_other": "선택한 프로젝트 {{count}}개 삭제",
+      "title_other": "프로젝트 {{count}}개를 휴지통으로 옮길까요?",
+      "description": "프로젝트가 라이브러리에서 사라지지만, 복원하거나 완전히 삭제할 때까지 데이터 저장에 남아 있습니다.",
+      "folderNote": "제자리에서 연 폴더는 Oleafly에서만 빠집니다. 파일은 그대로 남습니다.",
+      "done_other": "라이브러리에서 프로젝트 {{count}}개를 제거했습니다.",
+      "failed_other": "프로젝트 {{count}}개를 삭제하지 못했습니다."
     }
   },
   "newProject": {
@@ -292,6 +301,59 @@
       "connect": "설정에서 GitHub 연결",
       "repositoriesFailed": "저장소를 불러오지 못했습니다.",
       "repositoriesRetry": "저장소를 불러오지 못했습니다. 다시 시도하세요"
+    },
+    "overleaf": {
+      "cardDescription": "Overleaf 계정에서 프로젝트를 고릅니다",
+      "title": "Overleaf에서 가져오기",
+      "description": "가져올 프로젝트를 고르세요. 각 프로젝트의 파일, 컴파일러, 주 파일이 그대로 유지됩니다.",
+      "checking": "Overleaf 로그인 상태를 확인하는 중",
+      "loading": "Overleaf 프로젝트를 불러오는 중",
+      "loadFailed": "Oleafly가 Overleaf 프로젝트를 불러오지 못했습니다.",
+      "signInPrompt": "프로젝트를 보려면 Overleaf에 로그인하세요. 로그인 창이 열리고, 로그인이 끝나면 저절로 닫힙니다.",
+      "signingIn": "열린 창에서 Overleaf 로그인을 마치세요.",
+      "passkeyHint": "로그인 창에서 패스키가 작동하지 않으면 비밀번호나 휴대폰 확인 같은 다른 방법을 선택하세요.",
+      "expired": "Overleaf 로그인이 만료되었습니다. 프로젝트를 보려면 다시 로그인하세요.",
+      "signIn": "Overleaf에 로그인",
+      "signInWindowTitle": "Overleaf에 로그인",
+      "server": "서버: {{server}}",
+      "serverLabel": "Overleaf 서버 주소",
+      "useDifferentServer": "다른 서버 사용",
+      "useDefaultServer": "overleaf.com 사용",
+      "saveServer": "이 서버 사용",
+      "signedInAs": "{{email}}(으)로 로그인됨",
+      "signedIn": "Overleaf에 로그인됨",
+      "signOut": "로그아웃",
+      "searchLabel": "Overleaf 프로젝트 검색",
+      "searchPlaceholder_other": "프로젝트 {{count}}개 검색",
+      "filterLabel": "프로젝트 표시",
+      "filter": {
+        "all": "전체",
+        "owned": "내 프로젝트",
+        "shared": "공유받은 프로젝트"
+      },
+      "empty": "이 Overleaf 계정에는 아직 프로젝트가 없습니다.",
+      "noMatches": "검색과 일치하는 프로젝트가 없습니다.",
+      "selectAll": "모두 선택",
+      "clearSelection": "선택 해제",
+      "selectProject": "{{name}} 선택",
+      "selected_other": "프로젝트 {{count}}개 선택됨",
+      "import_other": "프로젝트 {{count}}개 가져오기",
+      "imported": "가져옴",
+      "open": "열기",
+      "ownedByYou": "내 프로젝트",
+      "owner": "소유자: {{name}}",
+      "archived": "보관됨",
+      "notCarried": "댓글, 변경 내용 추적, 채팅, 기록은 Overleaf에 남습니다.",
+      "importingProjects": "프로젝트를 가져오는 중",
+      "done": "완료",
+      "doneSummary_other": "프로젝트 {{count}}개를 가져왔습니다.",
+      "failedSummary_other": "프로젝트 {{count}}개를 가져오지 못했습니다.",
+      "progress": {
+        "queued": "대기 중",
+        "downloading": "내려받는 중 {{percent}}%",
+        "downloadingUnknown": "내려받는 중",
+        "importing": "준비 중"
+      }
     }
   },
   "pdfImport": {
@@ -525,7 +587,7 @@
       "remove": "Oleafly에서 제거"
     },
     "remove": {
-      "title": "“{{name}}”을(를) Oleafly에서 제거할까요?",
+      "title": "“<name>{{name}}</name>”을(를) Oleafly에서 제거할까요?",
       "description": "파일은 그대로 남습니다. Oleafly는 이 폴더를 위해 만든 빌드 파일을 지우고 신뢰, 승인, 연결된 폴더를 초기화합니다. 30일 안에 폴더를 다시 열면 채팅과 기록을 되찾을 수 있습니다. 나머지는 다시 설정해야 합니다.",
       "confirm": "Oleafly에서 제거",
       "done": "“{{name}}”을(를) Oleafly에서 제거했습니다. 파일은 폴더에 그대로 있습니다.",
@@ -568,6 +630,55 @@
       "done": "“{{name}}”이(가) 이제 라이브러리에 있습니다.",
       "doneLeftOut": "“{{name}}”이(가) 이제 라이브러리에 있습니다. 다른 곳의 파일을 가리키는 링크와 너무 깊이 중첩된 폴더는 복사하지 않았습니다.",
       "failed": "“{{name}}”을(를) 라이브러리로 복사하지 못했습니다."
+    }
+  },
+  "customTemplates": {
+    "saveAsTemplate": "템플릿으로 저장",
+    "saveTitle": "템플릿으로 저장",
+    "saveDescription": "<name>{{name}}</name>의 사본을 내 템플릿의 사용자 지정에 추가합니다. 프로젝트는 그대로 둡니다.",
+    "nameLabel": "템플릿 이름",
+    "save": "저장",
+    "saving": "저장하는 중...",
+    "saveFailed": "Oleafly가 템플릿을 저장하지 못했습니다.",
+    "saved": "\"{{name}}\"을(를) 내 템플릿에 저장했습니다",
+    "useTemplate": "템플릿 사용",
+    "alsoSaveAsTemplate": "템플릿으로도 저장",
+    "alsoSaveHint": "사본을 내 템플릿의 사용자 지정에 추가합니다.",
+    "import": {
+      "title": "템플릿 가져오기",
+      "description": "이미 가지고 있는 템플릿을 추가합니다. 템플릿 갤러리의 사용자 지정에 표시됩니다.",
+      "zipTitle": "ZIP 파일",
+      "zipDescription": "템플릿 소스 파일을 담은 .zip",
+      "folderTitle": "폴더",
+      "folderDescription": "템플릿 파일이 들어 있는 폴더",
+      "linkTitle": "Overleaf 템플릿 링크",
+      "linkDescription": "Overleaf 템플릿 갤러리의 페이지",
+      "accountTitle": "내 Overleaf 프로젝트",
+      "accountDescription": "내 프로젝트 하나를 템플릿으로 사용합니다",
+      "pickerZipTitle": "템플릿 ZIP 선택",
+      "pickerZipFilter": "ZIP 압축 파일",
+      "pickerFolderTitle": "템플릿 폴더 선택",
+      "from": "출처: {{source}}",
+      "saveTemplate": "템플릿 저장",
+      "back": "뒤로",
+      "linkLabel": "템플릿 페이지 링크",
+      "linkPlaceholder": "https://www.overleaf.com/latex/templates/...",
+      "lookUp": "조회",
+      "lookingUp": "템플릿을 조회하는 중...",
+      "by": "작성자: {{author}}",
+      "previewAlt": "{{name}} 첫 페이지",
+      "noPreview": "미리보기 없음",
+      "copyNote": "Overleaf의 템플릿으로 열기 기능처럼 템플릿 사본을 내 Overleaf 프로젝트에 추가합니다.",
+      "importAction": "가져오기",
+      "signInNeeded": "Overleaf는 로그인한 계정에만 템플릿 파일을 제공합니다. 한 번 로그인하면 가져오기가 이어서 진행됩니다.",
+      "signIn": "Overleaf에 로그인",
+      "signingIn": "열린 창에서 Overleaf 로그인을 마치세요.",
+      "accountSearch": "내 프로젝트 검색",
+      "accountLoading": "Overleaf 프로젝트를 불러오는 중...",
+      "accountEmpty": "검색과 일치하는 프로젝트가 없습니다.",
+      "accountFailed": "Oleafly가 Overleaf 프로젝트를 불러오지 못했습니다.",
+      "tryAgain": "다시 시도",
+      "failed": "Oleafly가 템플릿을 가져오지 못했습니다."
     }
   }
 }

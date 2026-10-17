@@ -188,7 +188,8 @@
     "quote": "Citazione a blocco",
     "addLabel": "Aggiungi etichetta",
     "convertLatexMath": "Converti la matematica LaTeX in Typst",
-    "noLatexMath": "Seleziona prima della matematica LaTeX."
+    "noLatexMath": "Seleziona prima della matematica LaTeX.",
+    "renameFile": "Rinomina file…"
   },
   "shell": {
     "noFileOpenTab": "Nessun file aperto",
@@ -247,7 +248,7 @@
     "issues": "Problemi",
     "spelling": "Ortografia",
     "grammarAndStyle": "Grammatica e stile",
-    "findingsTruncated": "L'elenco delle segnalazioni è troncato; il conteggio qui sopra è completo.",
+    "findingsTruncated": "L'elenco delle segnalazioni è troncato. Il conteggio qui sopra è completo.",
     "spellLanguage": "Lingua del controllo ortografico",
     "spellLanguageAppSetting": "Usa l'impostazione dell'app",
     "spellLanguageAriaLabel": "Lingua del controllo ortografico per questo progetto",
@@ -371,7 +372,11 @@
     "summaryWarnings_other": "{{count}} avvisi",
     "summaryReferences_one": "{{count}} riferimento non risolto",
     "summaryReferences_many": "{{count}} riferimenti non risolti",
-    "summaryReferences_other": "{{count}} riferimenti non risolti"
+    "summaryReferences_other": "{{count}} riferimenti non risolti",
+    "fontPack": "{{family}} è nel pacchetto di font gratuito {{pack}}.",
+    "fontPackAction": "Scarica e compila",
+    "fontPackDownloading": "Download in corso…",
+    "fontPackFailed": "Non è stato possibile scaricare il pacchetto di font. Controlla la connessione e riprova."
   },
   "history": {
     "untitledCommit": "Commit senza titolo",
@@ -399,7 +404,9 @@
     "unifiedView": "Vista unificata",
     "loading": "Caricamento del diff…",
     "previewTooLarge": "File troppo grande per l'anteprima di un diff.",
-    "diskHeading": "Su disco ↔ Le tue modifiche"
+    "diskHeading": "Su disco ↔ Le tue modifiche",
+    "sharedReadOnly": "In un progetto condiviso questo diff è di sola lettura. Modifica il file nell'editor.",
+    "viewerReadOnly": "Puoi vedere questo progetto condiviso, ma non modificarlo."
   },
   "hotkeys": {
     "title": "Scorciatoie da tastiera",
@@ -433,7 +440,7 @@
       "indentOrAccept": "Rientro / accetta il completamento",
       "goToDefinition": "Vai alla definizione",
       "findReferences": "Trova i riferimenti",
-      "renameSymbol": "Rinomina il simbolo (in tutto il progetto)",
+      "renameSymbol": "Rinomina il simbolo o il file (in tutto il progetto)",
       "formatDocument": "Formatta il documento Typst",
       "commandPalette": "Riquadro comandi",
       "searchAllDocuments": "Cerca in tutti i documenti",
@@ -461,7 +468,8 @@
     "noEntries": "Ancora nessuna voce bibliografica in questo progetto.",
     "addNew": "Trova e aggiungi una nuova citazione…",
     "duplicate": "duplicato {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Dalla tua libreria Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Descrivi la modifica…  (Shift+Enter per andare a capo)",
@@ -475,6 +483,7 @@
     "openInAgent": "Continua nell'assistente AI con tutti gli strumenti del progetto",
     "generateFailed": "Non è stato possibile generare la modifica. {{message}}",
     "dismiss": "Ignora",
+    "withdrawn": "Qualcun altro ha modificato questo testo, quindi il suggerimento non si può più applicare.",
     "setUpProvider": "Configura un provider AI",
     "setUpProviderHint": "Aggiungi una chiave API (o Ollama in locale) per usare le modifiche AI in linea.",
     "openAiSettings": "Apri Impostazioni → AI"
@@ -659,6 +668,7 @@
     "endOfDocument": "Fine del documento",
     "hidePreamble": "Nascondi il preambolo del documento",
     "showPreamble": "Mostra il preambolo del documento",
+    "sharedReadOnly": "In un progetto condiviso, la modalità visuale mostra soltanto il file. Passa alla vista sorgente per modificarlo.",
     "findingLabel": "{{message}}. Apri i suggerimenti di correzione.",
     "rawBlockFindings_one": "{{count}} segnalazione di correzione in questo blocco grezzo. {{message}}. Apri i suggerimenti.",
     "rawBlockFindings_many": "{{count}} segnalazioni di correzione in questo blocco grezzo. {{message}}. Apri i suggerimenti.",
@@ -1481,7 +1491,8 @@
     "sources": {
       "project": "Progetto",
       "system": "Sistema",
-      "embedded": "Integrato"
+      "embedded": "Integrato",
+      "pack": "Pacchetto di font"
     },
     "fontsFolder": "Per usare un font in questo progetto, aggiungi il suo file alla cartella fonts del progetto."
   },
@@ -1508,5 +1519,6 @@
     "keyInvalid": "I nomi dei valori non possono essere vuoti né contenere un segno di uguale.",
     "keyTaken": "Una variante non può impostare lo stesso nome due volte.",
     "saveFailed": "Impossibile salvare le varianti."
-  }
+  },
+  "sharedSettingsViewer": "I visualizzatori non possono modificare questa impostazione in un progetto condiviso."
 }

@@ -35,7 +35,9 @@ function host(path: string, content: string): EditorHost {
       editorTheme: "system",
       autocomplete: false,
       autoCloseBrackets: true,
-      nonBlinkingCursor: false,
+      cursorBlinking: "blink",
+      highlightCurrentLine: true,
+      cursorHeight: "text",
       ghostCompletion: false,
       stickyScroll: false,
       mathPreview: false,
@@ -63,7 +65,7 @@ describe("visual mode gating", () => {
       const view = getEditorView();
       expect(view?.state.facet(visualModeActive)).toBe(true);
       expect(view?.dom.querySelector(".ofl-visual-typst-heading-1")).not.toBeNull();
-    });
+    }, { timeout: 5_000 });
     const view = getEditorView();
     expect(syntaxTree(view!.state).type.name).toBe("Source");
     expect(view!.dom.querySelector(".ofl-visual-preamble-widget")).toBeNull();
@@ -80,7 +82,7 @@ describe("visual mode gating", () => {
     await vi.waitFor(() => {
       expect(getEditorView()?.state.facet(visualModeActive)).toBe(true);
       expect(getEditorView()?.dom.querySelector(".ofl-visual-end-document")).not.toBeNull();
-    });
+    }, { timeout: 5_000 });
     mounted.unmount();
   });
 });

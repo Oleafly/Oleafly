@@ -202,6 +202,16 @@ fn folder_status(project_id: &str) -> Result<Option<FolderStatus>, String> {
     }))
 }
 
+pub fn library_sync_service() -> Option<SyncService> {
+    library_sync_service_in(&SyncRoots::current())
+}
+
+fn library_sync_service_in(roots: &SyncRoots) -> Option<SyncService> {
+    let mut places = crate::paths::app_data_roots().ok()?;
+    places.extend(crate::paths::collab_root().ok());
+    places.iter().find_map(|place| roots.service_of(place))
+}
+
 #[tauri::command]
 pub async fn project_folder_status(project_id: String) -> Result<Option<FolderStatus>, String> {
     tauri::async_runtime::spawn_blocking(move || folder_status(&project_id))
@@ -363,5 +373,128 @@ mod tests {
         )
         .unwrap();
         assert_eq!(folder_status("paper-1").unwrap(), None);
+    }
+
+    fn service_with_data_dir(data: &Path, roots: &SyncRoots) -> Option<SyncService> {
+        let _env = crate::paths::data_dir_env_lock();
+        std::env::set_var("OLEAFLY_DATA_DIR", data);
+        let service = library_sync_service_in(roots);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        service
+    }
+
+    fn synced_home() -> tempfile::TempDir {
+        let home = tempfile::tempdir().unwrap();
+        for folder in [
+            "Dropbox",
+            "Library/Mobile Documents/com~apple~CloudDocs",
+            "Library/CloudStorage/OneDrive-Personal",
+            "Code",
+        ] {
+            std::fs::create_dir_all(home.path().join(folder)).unwrap();
+        }
+        home
+    }
+
+    fn injected(home: &Path) -> SyncRoots {
+        SyncRoots {
+            roots: vec![
+                (
+                    home.join("Library/Mobile Documents"),
+                    SyncService::IcloudDrive,
+                ),
+                (home.join("Dropbox"), SyncService::Dropbox),
+            ],
+            cloud_storage: Some(home.join("Library/CloudStorage")),
+        }
+    }
+
+    #[test]
+    fn a_library_outside_every_sync_root_is_not_synced() {
+        let home = synced_home();
+        let data = home.path().join("Code/oleafly");
+        std::fs::create_dir_all(data.join("projects")).unwrap();
+        assert_eq!(service_with_data_dir(&data, &injected(home.path())), None);
+    }
+
+    #[test]
+    fn a_data_directory_inside_dropbox_is_synced() {
+        let home = synced_home();
+        let data = home.path().join("Dropbox/oleafly");
+        std::fs::create_dir_all(&data).unwrap();
+        assert_eq!(
+            service_with_data_dir(&data, &injected(home.path())),
+            Some(SyncService::Dropbox)
+        );
+    }
+
+    #[test]
+    fn a_library_that_does_not_exist_yet_is_not_synced() {
+        let home = synced_home();
+        assert_eq!(
+            service_with_data_dir(
+                &home.path().join("Dropbox/never-created"),
+                &injected(home.path())
+            ),
+            None
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_data_directory_reached_through_a_link_into_cloud_storage_is_synced() {
+        let home = synced_home();
+        let target = home
+            .path()
+            .join("Library/CloudStorage/OneDrive-Personal/oleafly");
+        std::fs::create_dir_all(&target).unwrap();
+        let link = home.path().join("Code/.oleafly");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        assert_eq!(
+            service_with_data_dir(&link, &injected(home.path())),
+            Some(SyncService::OneDrive)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_projects_folder_linked_into_icloud_drive_is_synced() {
+        let home = synced_home();
+        let data = home.path().join("Code/oleafly");
+        std::fs::create_dir_all(&data).unwrap();
+        let target = home
+            .path()
+            .join("Library/Mobile Documents/com~apple~CloudDocs/projects");
+        std::fs::create_dir_all(&target).unwrap();
+        std::os::unix::fs::symlink(&target, data.join("projects")).unwrap();
+        assert_eq!(
+            service_with_data_dir(&data, &injected(home.path())),
+            Some(SyncService::IcloudDrive)
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_collaboration_folder_linked_into_dropbox_is_synced() {
+        let home = synced_home();
+        let data = home.path().join("Code/oleafly");
+        std::fs::create_dir_all(&data).unwrap();
+        let target = home.path().join("Dropbox/oleafly-collab");
+        std::fs::create_dir_all(&target).unwrap();
+        std::os::unix::fs::symlink(&target, data.join("collab")).unwrap();
+        assert_eq!(
+            service_with_data_dir(&data, &injected(home.path())),
+            Some(SyncService::Dropbox)
+        );
+    }
+
+    #[test]
+    fn the_live_roots_do_not_flag_a_scratch_library() {
+        let data = tempfile::tempdir().unwrap();
+        let _env = crate::paths::data_dir_env_lock();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let service = library_sync_service();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        assert_eq!(service, None);
     }
 }

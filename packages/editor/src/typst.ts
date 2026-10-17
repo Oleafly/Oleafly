@@ -17,6 +17,7 @@ import {
   type TreeFragment,
 } from "@lezer/common";
 import { tags as t } from "@lezer/highlight";
+import { editorColor } from "./color-roles";
 
 export const typstLanguageData = defineLanguageFacet({
   commentTokens: { line: "//", block: { open: "/*", close: "*/" } },
@@ -97,7 +98,7 @@ const typstMarkupStyle = syntaxHighlighting(
     [
       { tag: t.strong, fontWeight: "600" },
       { tag: t.emphasis, fontStyle: "italic" },
-      { tag: [t.list, t.processingInstruction], color: "var(--cm-meta)" },
+      { tag: [t.list, t.processingInstruction], color: editorColor("symbol") },
     ],
     { scope: typstLanguageDefinition },
   ),

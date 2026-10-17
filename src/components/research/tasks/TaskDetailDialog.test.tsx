@@ -148,6 +148,7 @@ function preview(after: string): TaskFilePreview {
     after: content(after),
     projectSha256: "before",
     baseIsCurrent: true,
+    mergesWithShared: false,
   };
 }
 
@@ -501,6 +502,27 @@ describe("TaskDetailDialog", () => {
     expect(page().getByRole("button", { name: "Apply 0 selected" })).toBeDisabled();
   });
 
+  it("keeps a changed file selected when applying merges it through the shared project", async () => {
+    const current = task("merging");
+    previewMocks.file.mockResolvedValue({
+      ...preview("after"),
+      projectSha256: "a-collaborator-edited-it",
+      baseIsCurrent: false,
+      mergesWithShared: true,
+    });
+    render(<TaskDetailDialog {...props(current)} />);
+    fireEvent.click(page().getByRole("button", { name: "Preview" }));
+    await page().findByRole("button", { name: enResearchTools.tasks.detail.refreshPreview });
+
+    const checkbox = page().getByRole("checkbox", { name: "Apply main.tex" });
+    expect(checkbox).toBeChecked();
+    expect(checkbox).toBeEnabled();
+    expect(page().queryByRole("alert")).not.toBeInTheDocument();
+    expect(page().queryByText(enResearchTools.tasks.detail.changedSince)).not.toBeInTheDocument();
+    expect(page().getByText(enResearchTools.tasks.detail.mergesOnApply)).toBeInTheDocument();
+    expect(page().getByRole("button", { name: "Apply 1 selected" })).toBeEnabled();
+  });
+
   it("keeps loaded previews and the reviewer's selection when the same run is refreshed", async () => {
     const current = task("refresh");
     previewMocks.file.mockResolvedValue(preview("after"));
@@ -541,6 +563,7 @@ describe("TaskDetailDialog", () => {
         after: side(after, 20),
         projectSha256: "10",
         baseIsCurrent: true,
+        mergesWithShared: false,
       };
     }
 
@@ -585,6 +608,32 @@ describe("TaskDetailDialog", () => {
       await waitFor(() =>
         expect(page().getByRole("alert")).toHaveTextContent(detail.driftedMany.replace("{{fileCount}}", "2")),
       );
+    });
+
+    it("selects files that merge through the shared project but not blocked ones with Select all", async () => {
+      const current = withFiles({ path: "a.tex", kind: "modified" }, { path: "b.tex", kind: "modified" });
+      previewMocks.file.mockImplementation(async (_id: string, path: string) => ({
+        ...preview("after"),
+        path,
+        baseIsCurrent: false,
+        mergesWithShared: path === "a.tex",
+      }));
+      render(<TaskDetailDialog {...props(current)} />);
+      for (const button of page().getAllByRole("button", { name: "Preview" })) fireEvent.click(button);
+      await waitFor(() =>
+        expect(page().getAllByRole("button", { name: detail.refreshPreview })).toHaveLength(2),
+      );
+      const merging = page().getByRole("checkbox", { name: "Apply a.tex" });
+      const blocked = page().getByRole("checkbox", { name: "Apply b.tex" });
+
+      fireEvent.click(merging);
+      expect(merging).not.toBeChecked();
+      fireEvent.click(page().getByRole("button", { name: detail.selectAll }));
+
+      expect(merging).toBeChecked();
+      expect(blocked).not.toBeChecked();
+      expect(blocked).toBeDisabled();
+      expect(page().getByRole("alert")).toHaveTextContent(detail.driftedOne.replace("{{path}}", "b.tex"));
     });
 
     it("shows why a file preview failed", async () => {

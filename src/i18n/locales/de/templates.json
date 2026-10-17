@@ -5,6 +5,7 @@
       "nameProject": "Projekt benennen",
       "import": "Importieren",
       "generateWithAi": "Vorlage erzeugen",
+      "importTemplate": "Vorlage importieren",
       "close": "Schließen",
       "getMoreTemplates": "Weitere Vorlagen holen",
       "searchPlaceholder": "Vorlagen durchsuchen",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Alle",
       "aiGenerated": "KI-generiert",
+      "custom": "Eigene",
       "blank": "Leer",
       "diagrams": "Diagramme",
       "diagramsFull": "Diagramme & Abbildungen",

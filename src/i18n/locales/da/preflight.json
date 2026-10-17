@@ -256,7 +256,7 @@
       "title_one": "{{count}} post i litteraturlisten har ufuldstændige metadata",
       "title_other": "{{count}} poster i litteraturlisten har ufuldstændige metadata",
       "detail": "Ufuldstændige poster kan give ødelagte eller flertydige referencer i forlagenes stile. {{examples}}.",
-      "detailTruncated": "Ufuldstændige poster kan give ødelagte eller flertydige referencer i forlagenes stile. {{examples}}; …"
+      "detailTruncated": "Ufuldstændige poster kan give ødelagte eller flertydige referencer i forlagenes stile. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-værdi ser forkert ud",
@@ -318,6 +318,12 @@
     "refs-duplicate-bib": {
       "title": "Dublerede poster i litteraturlisten: {{keys}}",
       "detail": "Disse poster deler DOI'en {{doi}}, så de er den samme reference under forskellige nøgler. Behold én, og citer den, ellers står den to gange i din litteraturliste."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "Citationsnøglen \"{{key}}\" er defineret mere end én gang",
+      "detail": "Defineret i {{places}}. BibTeX bruger kun den første post med denne nøgle og skelner ikke mellem store og små bogstaver, når den sammenligner nøgler. Behold én post, eller giv de andre nye nøgler, og ret de citationer, der bruger dem.",
+      "detailBiber": "Defineret i {{places}}. Når biber laver litteraturlisten, bruger den kun den første post med denne nøgle. Behold én post, eller giv de andre nye nøgler, og ret de citationer, der bruger dem.",
+      "detailTypst": "Defineret i {{places}}. Typst stopper kompileringen, når to litteraturposter har samme nøgle. Behold én post, eller giv de andre nye nøgler, og ret de citationer, der bruger dem."
     },
     "submission-path-case": {
       "title": "Store og små bogstaver i filnavnet passer ikke: {{target}}",
@@ -604,7 +610,7 @@
     "title": "Preflight",
     "readerDisabled": "Kompiler, og kør først et tjek af resultatet",
     "readerEnabled": "Åbn den tekst, der er udtrukket fra PDF'en",
-    "readerButton": "Vis, hvad læseren ser",
+    "readerButton": "Skærmlæser",
     "aboutLabel": "Om Preflight",
     "aboutTitle": "Det tjekker Preflight",
     "aboutIntro": "Preflight læser projektets kilde, kompilatorloggen og den aktuelle PDF. Slå kun de tjek til, der passer til dette dokument.",

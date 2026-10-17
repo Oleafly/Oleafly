@@ -48,6 +48,9 @@ pub(crate) fn parse_argv(
     cwd: Option<&Path>,
     rules: ParseRules,
 ) -> Vec<LaunchTarget> {
+    if carries_link(argv) {
+        return Vec::new();
+    }
     let mut targets = Vec::new();
     let mut options = true;
     let mut args = argv.iter().skip(1);
@@ -73,6 +76,12 @@ pub(crate) fn parse_argv(
         }
     }
     targets
+}
+
+fn carries_link(argv: &[OsString]) -> bool {
+    argv.iter()
+        .skip(1)
+        .any(|arg| arg.to_str().is_some_and(crate::deep_link::is_deep_link_arg))
 }
 
 pub(crate) fn parse_targets(
@@ -101,7 +110,7 @@ fn os_target(arg: &OsStr, cwd: Option<&Path>, rules: ParseRules) -> Option<Launc
 }
 
 fn text_target(raw: &str, cwd: Option<&Path>, rules: ParseRules) -> Option<LaunchTarget> {
-    if raw.is_empty() {
+    if raw.is_empty() || crate::collab::links::is_link(raw) {
         return None;
     }
     let text = if rules.windows_paths {

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
+import { resolvedEditorColor } from "@oleafly/editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { buildLatexTable, resizeTable, type TableAlign } from "@/lib/latex-tools";
-import { notifyError, toast } from "@/lib/toast";
-import { useSettingsStore } from "@/store/settings";
+import { notifyError } from "@/lib/toast";
+import { CodeBlock } from "@/components/ui/code-block";
 import { ToolSplitView } from "@/components/tools/ToolWorkspace";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 function alignToCss(align: TableAlign | undefined): "left" | "center" | "right" {
   if (align === "l") return "left";
@@ -16,7 +17,7 @@ function alignToCss(align: TableAlign | undefined): "left" | "center" | "right" 
 
 export function TableGeneratorPanel() {
   const { t } = useTranslation(["common", "researchTools"]);
-  const editorTheme = useSettingsStore((s) => s.editorTheme);
+  const editorTheme = useEditorThemeId();
   const [rows, setRows] = useState(3);
   const [cols, setCols] = useState(3);
   const [cells, setCells] = useState<string[][]>(() =>
@@ -54,15 +55,6 @@ export function TableGeneratorPanel() {
   );
 
   const previewHeader = cells[0] ?? [];
-
-  const copySource = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      toast.success(t(($) => $.researchTools.table.copiedSource));
-    } catch (error) {
-      notifyError("table copy latex", error, t(($) => $.researchTools.equation.copyLatexFailed));
-    }
-  };
 
   return (
     <ToolSplitView storageId="latex-table-generator">
@@ -211,26 +203,21 @@ export function TableGeneratorPanel() {
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between border-y px-4 py-2 text-xs font-medium text-muted-foreground">
-          <span>{t(($) => $.researchTools.table.output)}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void copySource()}
-          >
-            {t(($) => $.common.actions.copy)}
-          </Button>
+        <div className="border-y px-4 py-2 text-xs font-medium text-muted-foreground">
+          {t(($) => $.researchTools.table.output)}
         </div>
-        <pre
+        <CodeBlock
+          code={code}
+          onCopyError={(error) =>
+            notifyError("table copy latex", error, t(($) => $.researchTools.equation.copyLatexFailed))
+          }
           data-editor-theme={editorTheme}
-          className="overflow-auto p-4 font-mono text-xs"
+          preClassName="rounded-none border-0 p-4 pr-10 text-xs leading-normal"
           style={{
-            backgroundColor: "var(--cm-editor-bg, var(--background))",
-            color: "var(--cm-editor-fg, var(--foreground))",
+            backgroundColor: resolvedEditorColor("background"),
+            color: resolvedEditorColor("text"),
           }}
-        >
-          {code}
-        </pre>
+        />
         {booktabs && (
           <p className="border-t px-4 py-2 text-xs text-muted-foreground">
             <Trans

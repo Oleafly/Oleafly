@@ -36,7 +36,12 @@
     "not_removable": "Solo las carpetas abiertas en su ubicación se pueden quitar de Oleafly.",
     "trash_unavailable": "Oleafly no pudo mover {{path}} a la Papelera. Puede que esta unidad no tenga una.",
     "linked_replace_folder": "{{path}} es una carpeta, así que Oleafly no la sustituirá. Muévela o cámbiale el nombre primero.",
-    "folder_read_only": "Oleafly no puede hacer este cambio porque {{name}} o su carpeta es de solo lectura. Copia a la biblioteca la carpeta que abriste y edítala allí."
+    "folder_read_only": "Oleafly no puede hacer este cambio porque {{name}} o su carpeta es de solo lectura. Copia a la biblioteca la carpeta que abriste y edítala allí.",
+    "shared_settings_viewer": "Los lectores no pueden cambiar los ajustes de un proyecto compartido."
+  },
+  "template": {
+    "name_required": "Ponle un nombre a la plantilla.",
+    "folder_holds_templates": "Esta carpeta contiene las plantillas propias de Oleafly. Elige en su lugar la carpeta de la plantilla."
   },
   "settings": {
     "locale_unsupported": "El idioma {{locale}} no está disponible."
@@ -56,7 +61,11 @@
     "unreachable": "Oleafly no pudo conectar con Zotero. Comprueba tu conexión a internet y vuelve a intentarlo.",
     "http_error": "Zotero devolvió un error (HTTP {{status}}). Vuelve a intentarlo más tarde.",
     "invalid_response": "Zotero envió una respuesta que Oleafly no pudo leer. Vuelve a intentarlo más tarde.",
-    "too_large": "Tu biblioteca de Zotero es demasiado grande para importarla de una vez. Exporta una colección de Zotero como archivo RDF e impórtala en su lugar."
+    "too_large": "Tu biblioteca de Zotero es demasiado grande para importarla de una vez. Exporta una colección de Zotero como archivo RDF e impórtala en su lugar.",
+    "local_not_running": "Zotero no se está ejecutando en este equipo. Abre Zotero o conecta tu cuenta de zotero.org.",
+    "local_api_disabled": "En Zotero, abre Ajustes > Avanzadas y activa “Permitir que otras aplicaciones de este equipo se comuniquen con Zotero”.",
+    "local_unsupported": "Esta versión de Zotero no puede compartir su biblioteca con Oleafly. Actualiza a Zotero 7 o posterior.",
+    "offline": "Oleafly está en modo sin conexión, así que no puede conectar con zotero.org."
   },
   "tex": {
     "no_host_binary": "TinyTeX no tiene un binario {{name}} compatible con este sistema.",
@@ -65,7 +74,8 @@
     "latexmk_network_folder": "latexmk no puede compilar una carpeta en un recurso compartido de red. Cambia este proyecto a Tectonic o copia la carpeta a este equipo.",
     "shell_escape_denied_minted": "minted necesita ejecutar otro programa para resaltar el código, y este proyecto lo bloquea. Para permitirlo, haz clic en \"{{setting}}\" en el aviso que hay sobre el editor. Hazlo solo si confías en todos los archivos del proyecto. LaTeX podrá ejecutar cualquier programa con tus permisos, y un programa que inicie puede seguir ejecutándose después de que detengas la compilación.",
     "shell_escape_denied_pythontex": "PythonTeX necesita ejecutar Python, y este proyecto lo bloquea. Para permitirlo, haz clic en \"{{setting}}\" en el aviso que hay sobre el editor. Hazlo solo si confías en todos los archivos del proyecto. LaTeX podrá ejecutar cualquier programa con tus permisos, y un programa que inicie puede seguir ejecutándose después de que detengas la compilación.",
-    "shell_escape_denied_command": "Este documento ejecuta un comando de shell, y este proyecto lo bloquea. Para permitirlo, haz clic en \"{{setting}}\" en el aviso que hay sobre el editor. Hazlo solo si confías en todos los archivos del proyecto. LaTeX podrá ejecutar cualquier programa con tus permisos, y un programa que inicie puede seguir ejecutándose después de que detengas la compilación."
+    "shell_escape_denied_command": "Este documento ejecuta un comando de shell, y este proyecto lo bloquea. Para permitirlo, haz clic en \"{{setting}}\" en el aviso que hay sobre el editor. Hazlo solo si confías en todos los archivos del proyecto. LaTeX podrá ejecutar cualquier programa con tus permisos, y un programa que inicie puede seguir ejecutándose después de que detengas la compilación.",
+    "japanese_compiler_missing": "{{compiler}} no está instalado en tu distribución de TeX. Ejecuta tlmgr install collection-langjapanese para añadirlo en TeX Live o TinyTeX, o elige otro compilador."
   },
   "export": {
     "bibliography_unreadable": "Oleafly no pudo leer el archivo de bibliografía {{name}}. Revisa si tiene alguna entrada dañada y vuelve a exportar."
@@ -181,5 +191,39 @@
     "failed": "Typst no pudo exportar el documento.",
     "unsupported": "Esta versión de Typst no puede exportar con estos ajustes.",
     "invalid_ppi": "Elige una resolución de 1 a {{max}} PPI."
+  },
+  "overleaf": {
+    "signed_out": "Primero inicia sesión en Overleaf.",
+    "session_expired": "Tu sesión de Overleaf caducó. Vuelve a iniciar sesión para continuar.",
+    "sign_in_cancelled": "El inicio de sesión en Overleaf se cerró antes de terminar.",
+    "sign_in_failed": "Oleafly no pudo confirmar tu sesión de Overleaf. Vuelve a iniciar sesión.",
+    "invalid_server": "“{{server}}” no es una dirección de servidor que Oleafly pueda usar.",
+    "unreachable": "Oleafly no pudo conectar con {{server}}.",
+    "unrecognized": "La página de proyectos de Overleaf no tiene el aspecto que Oleafly espera. Descarga el proyecto como .zip desde Overleaf e importa ese archivo.",
+    "project_unavailable": "No se pudo descargar este proyecto. Puede que ya no tengas acceso a él.",
+    "not_an_archive": "Overleaf envió algo distinto de un archivo comprimido de proyecto.",
+    "too_large": "Este proyecto supera el límite de importación de 2 GB.",
+    "rate_limited": "Overleaf pidió a Oleafly que fuera más despacio. Espera un minuto y vuelve a intentarlo.",
+    "sync_busy": "Ya hay una sincronización con Overleaf en curso para este proyecto.",
+    "sync_not_linked": "Este proyecto no está vinculado a Overleaf.",
+    "sync_needs_relink": "Falta la copia de sincronización de este proyecto. Deja de sincronizar y vuelve a vincular el proyecto.",
+    "sync_already_linked": "Este proyecto ya está vinculado a otro proyecto de Overleaf. Primero deja de sincronizar.",
+    "sync_offline": "Oleafly no pudo conectar con Overleaf. Tus cambios están a salvo aquí y se sincronizarán la próxima vez.",
+    "sync_failed": "La sincronización con Overleaf no terminó. Tus archivos aquí no han cambiado.",
+    "sync_kept_changing": "El proyecto siguió cambiando en Overleaf durante la sincronización. Vuelve a intentarlo en un momento.",
+    "sync_case_clash": "Overleaf tiene archivos cuyos nombres solo se diferencian en mayúsculas y minúsculas ({{files}}). Cambia el nombre de uno de ellos en Overleaf y vuelve a sincronizar.",
+    "sync_invalid_names": "Algunos nombres de archivo de Overleaf no se pueden guardar en este equipo ({{files}}). Cámbialos de nombre en Overleaf y vuelve a sincronizar.",
+    "sync_file_too_large": "{{file}} supera los 50 MB que Overleaf permite por archivo.",
+    "sync_too_large": "Este proyecto es demasiado grande para sincronizarlo. El límite es de 5000 archivos o 2 GB.",
+    "sync_path_blocked": "{{file}} no se puede escribir aquí porque ya hay una carpeta con ese nombre.",
+    "git_token_missing": "Añade tu token de Git de Overleaf para sincronizar este proyecto.",
+    "git_token_invalid": "Eso no parece un token de Git de Overleaf. Copia el token completo y vuelve a intentarlo.",
+    "git_token_rejected": "Overleaf no aceptó el token de Git. Puede que haya caducado. Crea uno nuevo en la configuración de tu cuenta de Overleaf.",
+    "git_unavailable": "La integración con Git de Overleaf no está disponible para este proyecto. El propietario del proyecto necesita un plan de pago o universitario.",
+    "template_link_invalid": "Ese enlace no es una página de plantilla de Overleaf. Copia la dirección de una página de overleaf.com/latex/templates y vuelve a intentarlo.",
+    "template_unavailable": "Oleafly no pudo abrir esta plantilla. Puede que se haya retirado de la galería de Overleaf."
+  },
+  "collab": {
+    "turned_off": "La colaboración en tiempo real está desactivada. Actívala en Ajustes, en Experimentación."
   }
 }

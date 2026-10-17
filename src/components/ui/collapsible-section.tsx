@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function CollapsibleSection({
@@ -7,6 +7,7 @@ export function CollapsibleSection({
   title,
   description,
   icon: Icon,
+  leading,
   trailing,
   defaultOpen = false,
   open: controlledOpen,
@@ -19,6 +20,8 @@ export function CollapsibleSection({
   title: React.ReactNode;
   description?: React.ReactNode;
   icon?: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  // Drawn before the title in place of `icon`, for a picture such as a logo.
+  leading?: React.ReactNode;
   trailing?: React.ReactNode;
   defaultOpen?: boolean;
   open?: boolean;
@@ -43,21 +46,16 @@ export function CollapsibleSection({
       data-state={open ? "open" : "closed"}
       className={cn("overflow-hidden rounded-lg border bg-card", className)}
     >
-      <div className="flex items-center gap-2 p-3">
+      <div className="relative flex items-center gap-2 p-3">
         <button
           type="button"
           data-testid={`${id}-toggle`}
           aria-expanded={open}
           aria-controls={contentId}
           onClick={toggle}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left focus-visible:bg-accent/60"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left after:absolute after:inset-0 after:content-[''] focus-visible:bg-accent/60"
         >
-          {open ? (
-            <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-          )}
-          {Icon ? <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" /> : null}
+          {leading ?? (Icon ? <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" /> : null)}
           <span className="min-w-0 flex-1">
             <Heading id={titleId} className="text-sm font-medium leading-snug">
               {title}
@@ -67,7 +65,15 @@ export function CollapsibleSection({
             ) : null}
           </span>
         </button>
-        {trailing ? <div className="flex shrink-0 items-center gap-2">{trailing}</div> : null}
+        {trailing ? <div className="relative flex shrink-0 items-center gap-2">{trailing}</div> : null}
+        <ChevronRight
+          aria-hidden
+          data-slot="collapsible-chevron"
+          className={cn(
+            "pointer-events-none size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
+            open && "rotate-90",
+          )}
+        />
       </div>
       <div id={contentId} hidden={!open} className="space-y-3 px-3 pb-3">
         {open ? children : null}

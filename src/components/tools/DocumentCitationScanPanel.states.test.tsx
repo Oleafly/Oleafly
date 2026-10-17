@@ -15,7 +15,7 @@ const scanDocumentForCitations = vi.fn(
     totalParagraphs: 0,
   }),
 );
-const addCitation = vi.fn(async (_bibtex?: string) => ({ key: "vaswani2017" }));
+const addCitation = vi.fn(async (_bibtex?: string) => ({ key: "vaswani2017", cite: "\\cite{vaswani2017}" as string | null }));
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 const toastErrorUnique = vi.fn();
@@ -179,7 +179,7 @@ beforeEach(() => {
     totalParagraphs: 0,
   });
   addCitation.mockReset();
-  addCitation.mockResolvedValue({ key: "vaswani2017" });
+  addCitation.mockResolvedValue({ key: "vaswani2017", cite: "\\cite{vaswani2017}" });
   toastSuccess.mockReset();
   toastError.mockReset();
   toastErrorUnique.mockReset();
@@ -441,36 +441,36 @@ describe("DocumentCitationScanPanel suggestion actions", () => {
     expect(toastSuccess).not.toHaveBeenCalled();
   });
 
-  it("writes the citation markup of a Typst project", async () => {
-    const engine = useFilesStore.getState().engine;
-    useFilesStore.setState({
-      engine: {
-        ...engine,
-        capabilities: { ...engine.capabilities, formatting_profile: "typst" },
-      },
-    });
-    try {
-      await scanYielding(paragraph());
-      await screen.findByText(RICH_RECORD.title);
-      fireEvent.click(screen.getByTestId("document-citation-add-bib"));
-      await waitFor(() =>
-        expect(toastSuccessUnique).toHaveBeenCalledWith(
-          "citation-scan-add-bib",
-          enResearchTools.citationScan.citeAdded.replace(
-            "{{citation}}",
-            "@vaswani2017",
-          ),
-        ),
-      );
-    } finally {
-      useFilesStore.setState({ engine });
-    }
+  it("names just the key when it joined a citation already in the text", async () => {
+    addCitation.mockResolvedValue({ key: "vaswani2017", cite: "vaswani2017" });
+    await scanYielding(paragraph());
+    await screen.findByText(RICH_RECORD.title);
+    fireEvent.click(screen.getByTestId("document-citation-add-bib"));
+    await waitFor(() =>
+      expect(toastSuccessUnique).toHaveBeenCalledWith(
+        "citation-scan-add-bib",
+        enResearchTools.citationScan.citeAdded.replace("{{citation}}", "vaswani2017"),
+      ),
+    );
+  });
+
+  it("names the new key when nothing was written into the editor", async () => {
+    addCitation.mockResolvedValue({ key: "vaswani2017", cite: null });
+    await scanYielding(paragraph());
+    await screen.findByText(RICH_RECORD.title);
+    fireEvent.click(screen.getByTestId("document-citation-add-bib"));
+    await waitFor(() =>
+      expect(toastSuccessUnique).toHaveBeenCalledWith(
+        "citation-scan-add-bib",
+        enResearchTools.citationScan.citeAdded.replace("{{citation}}", "vaswani2017"),
+      ),
+    );
   });
 
   it("surfaces a rejected bibliography write in the same slot", async () => {
     addCitation.mockResolvedValue({
       error: "No bibliography file",
-    } as unknown as { key: string });
+    } as unknown as { key: string; cite: string | null });
     await scanYielding(paragraph());
     await screen.findByText(RICH_RECORD.title);
     fireEvent.click(screen.getByTestId("document-citation-add-bib"));

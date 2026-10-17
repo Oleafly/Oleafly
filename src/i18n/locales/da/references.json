@@ -159,5 +159,84 @@
     "label": "Citationsstil",
     "ariaLabel": "Citationsstil for litteraturlisten i {{path}}",
     "failed": "Oleafly kunne ikke ændre citationsstilen."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} m.fl.",
+      "noYear": "u.å.",
+      "keySource": {
+        "bbt": "Nøgle fra Better BibTeX",
+        "native": "Nøgle fra Zotero",
+        "extra": "Nøgle fra feltet Ekstra i Zotero",
+        "generated": "Nøgle oprettet af Oleafly"
+      },
+      "addFailed": "Oleafly kunne ikke føje {{key}} til litteraturlisten. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Åbn Indstillinger > Avanceret i Zotero, og slå »Allow other applications on this computer to communicate with Zotero« til.",
+      "unsupported": "Opdater Zotero til version 7 eller nyere for at søge i dit bibliotek fra Oleafly.",
+      "keyRejected": "Zotero accepterer ikke længere din API-nøgle. Forbind din konto igen i Zotero-indstillingerne.",
+      "closed": "Åbn Zotero for at søge i dit bibliotek her, eller forbind din zotero.org-konto.",
+      "closedCached": "Zotero er lukket. Resultaterne er fra den seneste synkronisering, {{time}}.",
+      "bbtMissing": "Better BibTeX svarer ikke, så nye nøgler kommer fra Zotero. Tjek, at det er installeret og slået til.",
+      "action": "Zotero-indstillinger"
+    },
+    "actions": {
+      "addFromZotero": "Tilføj fra Zotero",
+      "addAllMissing_one": "Tilføj {{count}} manglende citation fra Zotero",
+      "addAllMissing_other": "Tilføj alle {{count}} manglende citationer fra Zotero",
+      "notInLibrary": "{{key}} findes ikke i dit Zotero-bibliotek.",
+      "changed": "Denne post er ændret i Zotero, siden du tilføjede den.",
+      "changedEdited": "Denne post er ændret i Zotero, og du har også redigeret den her.",
+      "update": "Opdater fra Zotero",
+      "updated": "Opdaterede {{key}} fra Zotero.",
+      "updateFailed": "Oleafly kunne ikke opdatere {{key}} fra Zotero. Prøv igen."
+    },
+    "chooseBibliography": {
+      "title": "Hvor skal nye referencer placeres?",
+      "description": "Dette projekt har mere end én litteraturfil. Oleafly føjer nye referencer til den, du vælger, og husker den for dette projekt.",
+      "confirm": "Brug denne fil"
+    },
+    "handEdits": {
+      "title": "Erstat dine ændringer?",
+      "description": "Du har redigeret {{key}} manuelt. Hvis du erstatter den med versionen fra Zotero, forsvinder disse ændringer.",
+      "confirm": "Brug Zotero-versionen",
+      "cancel": "Behold min"
+    },
+    "handList": {
+      "title": "Flyt din referenceliste?",
+      "description": "Dette dokument angiver sine referencer manuelt. Flyt dem til {{path}}, så de står i én nummereret liste sammen med de artikler, du citerer fra Zotero.",
+      "confirm": "Flyt listen"
+    },
+    "missing": {
+      "title": "Tilføj manglende citationer fra Zotero",
+      "loading": "Tjekker dit Zotero-bibliotek…",
+      "none": "Alle citerede nøgler findes allerede i din litteraturliste.",
+      "found_one": "{{count}} citeret nøgle findes i Zotero",
+      "found_other": "{{count}} citerede nøgler findes i Zotero",
+      "duplicates_one": "{{count}} nøgle citerer en artikel, der allerede er i din litteraturliste",
+      "duplicates_other": "{{count}} nøgler citerer artikler, der allerede er i din litteraturliste",
+      "duplicateRow": "{{key}} er den samme artikel som {{existing}}",
+      "notFound_one": "{{count}} citeret nøgle findes ikke i Zotero",
+      "notFound_other": "{{count}} citerede nøgler findes ikke i Zotero",
+      "confirm_one": "Tilføj {{count}} post",
+      "confirm_other": "Tilføj {{count}} poster",
+      "done_one": "{{count}} post er nu i {{path}}.",
+      "done_other": "{{count}} poster er nu i {{path}}.",
+      "failed": "Oleafly kunne ikke tilføje posterne. {{detail}}"
+    },
+    "update": {
+      "title": "Opdater .bib-poster fra Zotero",
+      "loading": "Tjekker Zotero for ændringer…",
+      "none": "Din litteraturliste stemmer overens med Zotero.",
+      "handEdited": "Redigeret manuelt",
+      "handEditedNote": "Poster, du har redigeret manuelt, er ikke valgt. Vælg en for at erstatte den med versionen fra Zotero.",
+      "confirm_one": "Opdater {{count}} post",
+      "confirm_other": "Opdater {{count}} poster",
+      "done_one": "Opdaterede {{count}} post.",
+      "done_other": "Opdaterede {{count}} poster."
+    }
   }
 }

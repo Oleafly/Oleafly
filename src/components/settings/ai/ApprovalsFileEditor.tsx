@@ -14,7 +14,7 @@ import { describeError } from "@/lib/app-error";
 import { approvalsReadRaw, approvalsWriteRaw } from "@/lib/tauri";
 import { useApprovalModeStore } from "@/store/approval-mode";
 import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 const TOOL_NAMES = [
   "write_file",
@@ -43,7 +43,7 @@ export function ApprovalsFileEditor() {
   const { t } = useTranslation(["common", "settings"]);
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
-  const editorThemeId = useSettingsStore((s) => s.editorTheme);
+  const editorThemeId = useEditorThemeId();
   const client = useQueryClient();
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -51,6 +51,8 @@ export function ApprovalsFileEditor() {
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  // What the backend noticed about a file it saved anyway.
+  const [warnings, setWarnings] = useState<readonly string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -59,6 +61,7 @@ export function ApprovalsFileEditor() {
       const text = await approvalsReadRaw();
       setLoaded(text);
       setMessage(null);
+      setWarnings([]);
       const view = viewRef.current;
       if (view) {
         const current = view.state.doc.toString();
@@ -106,15 +109,17 @@ export function ApprovalsFileEditor() {
     const text = view.state.doc.toString();
     setBusy(true);
     try {
-      await approvalsWriteRaw(text);
+      const noticed = await approvalsWriteRaw(text);
       setLoaded(text);
       setDirty(false);
       setMessage({ ok: true, text: t(($) => $.settings.ai.approvals.file.saved) });
+      setWarnings(Array.isArray(noticed) ? noticed : []);
       await client.invalidateQueries({ queryKey: ["project-approvals"] });
       const store = useApprovalModeStore.getState();
       if (projectId) await store.load(projectId);
     } catch (error) {
       setMessage({ ok: false, text: describeError(error) });
+      setWarnings([]);
     } finally {
       setBusy(false);
     }
@@ -250,6 +255,18 @@ export function ApprovalsFileEditor() {
           </span>
         )}
       </div>
+      {warnings.length > 0 ? (
+        <ul data-testid="approvals-file-warnings" className="mt-2 space-y-1">
+          {warnings.map((warning) => (
+            <li
+              key={warning}
+              className="select-text rounded-md bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-300"
+            >
+              {warning}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

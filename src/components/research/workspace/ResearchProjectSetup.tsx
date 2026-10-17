@@ -34,6 +34,7 @@ import {
   type ResearchStarter,
 } from "@/lib/research-workspace";
 import { Spinner } from "@/components/ui/spinner";
+import { CodeBlock } from "@/components/ui/code-block";
 
 const ENGINES: { value: ResearchDocumentEngine; label: string }[] = [
   { value: "latex", label: "LaTeX" },
@@ -113,7 +114,7 @@ function previewPanel({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[0.6875rem] text-muted-foreground">
             {preview
               ? i18n.t(($) => $.researchTools.setup.mainDocument, { path: preview.mainDocument })
               : "\u00a0"}
@@ -303,18 +304,18 @@ export function ResearchProjectSetup({
     }
   };
 
-  const previewPane = () =>
-    preview && selectedPreviewPath ? (
-      <pre className="whitespace-pre-wrap break-words px-4 py-3 text-xs leading-relaxed">
-        <HighlightedCode
-          language={previewLanguage(selectedPreviewPath)}
-          source={
-            preview.files.find((file) => file.path === selectedPreviewPath)
-              ?.content ?? ""
-          }
-        />
-      </pre>
-    ) : null;
+  const previewPane = () => {
+    if (!preview || !selectedPreviewPath) return null;
+    const source = preview.files.find((file) => file.path === selectedPreviewPath)?.content ?? "";
+    return (
+      <CodeBlock
+        code={source}
+        preClassName="overflow-visible whitespace-pre-wrap break-words rounded-none border-0 bg-transparent px-4 py-3 pr-10 font-sans text-xs"
+      >
+        <HighlightedCode language={previewLanguage(selectedPreviewPath)} source={source} />
+      </CodeBlock>
+    );
+  };
 
   const previewTree = () =>
     !preview ? (
@@ -458,7 +459,7 @@ export function ResearchProjectSetup({
           </div>
           {previewPanel({ preview, previewing, selectedPreviewPath, previewTree, previewPane })}
         </div>
-        {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+        {error && <p className="select-text text-sm text-destructive" role="alert">{error}</p>}
         <DialogFooter>
           <Button variant="outline" disabled={creating} onClick={onClose}>
             {t(($) => $.common.actions.cancel)}

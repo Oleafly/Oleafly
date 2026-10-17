@@ -5,6 +5,7 @@
       "nameProject": "プロジェクトに名前を付ける",
       "import": "読み込む",
       "generateWithAi": "テンプレートを生成",
+      "importTemplate": "テンプレートを読み込む",
       "close": "閉じる",
       "getMoreTemplates": "テンプレートを追加",
       "searchPlaceholder": "テンプレートを検索",
@@ -41,6 +42,7 @@
     "category": {
       "all": "すべて",
       "aiGenerated": "AI 生成",
+      "custom": "カスタム",
       "blank": "白紙",
       "diagrams": "ダイアグラム",
       "diagramsFull": "図とダイアグラム",

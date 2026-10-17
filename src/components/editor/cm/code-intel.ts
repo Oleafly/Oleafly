@@ -1,12 +1,13 @@
 import { EditorView, keymap } from "@codemirror/view";
-import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
+import { goToDefinition, findReferences } from "@/lib/index/nav";
+import { renameAtCursor } from "@/lib/file-references/rename-trigger";
 
 export function codeIntel() {
   return [
     keymap.of([
       { key: "F12", run: (v) => goToDefinition(v) },
       { key: "Shift-F12", run: (v) => findReferences(v) },
-      { key: "F2", run: (v) => startRename(v) },
+      { key: "F2", run: (v) => renameAtCursor(v) },
     ]),
     EditorView.domEventHandlers({
       mousedown(event, view) {

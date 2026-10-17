@@ -67,9 +67,10 @@ describe("IntegrationCard", () => {
 
     const heading = screen.getByRole("heading", { level: 4, name: TITLE });
     const card = heading.closest("section");
-    expect(card).toHaveClass("rounded-lg", "border", "bg-background", "p-4");
+    expect(card).toHaveClass("rounded-lg", "border", "p-4");
+    expect(card).not.toHaveClass("bg-background");
     expect(screen.getByTestId("brand-icon").nextElementSibling).toBe(heading);
-    expect(screen.getByText(CONNECTED)).toHaveClass("bg-emerald-500/10", "text-[10px]");
+    expect(screen.getByText(CONNECTED)).toHaveClass("bg-emerald-500/10", "text-[0.625rem]");
     expect(screen.getByText(DESCRIPTION)).toHaveClass("mt-2", "leading-relaxed");
     const docs = screen.getByRole("link", { name: DOCS });
     expect(docs).toHaveAttribute("href", "https://example.org/docs");

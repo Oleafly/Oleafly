@@ -10,6 +10,7 @@ import {
   parseThemeCustomizationJson,
   readThemeCustomization,
   resetThemeCustomization,
+  serializeThemeCustomization,
   validateCustomCss,
   validateThemeCustomization,
   writeThemeCustomization,
@@ -45,6 +46,25 @@ describe("theme customization schema", () => {
     expect(imported.dark.background).toBe("oklch(0.2 0 0)");
     expect(imported.radius).toBe("8px");
     expect(imported.customCss).toBe("color: #111111");
+  });
+
+  it("carries the editor theme pair and its colors through export and import", () => {
+    const exported = serializeThemeCustomization(emptyThemeCustomization(), {
+      themes: { light: "paper", dark: "nord" },
+      colors: { paper: { heading: "#AA0000" }, "system-dark": { comment: "#00aa00" } },
+    });
+    expect(JSON.parse(exported).oleafly.editor).toEqual({
+      themes: { light: "paper", dark: "nord" },
+      colors: { paper: { heading: "#aa0000" }, "system-dark": { comment: "#00aa00" } },
+    });
+
+    const imported = parseThemeCustomizationImport(exported);
+    expect(imported.editor).toEqual({
+      themes: { light: "paper", dark: "nord" },
+      colors: { paper: { heading: "#aa0000" }, "system-dark": { comment: "#00aa00" } },
+    });
+    expect(JSON.parse(serializeThemeCustomization(emptyThemeCustomization())).oleafly.editor).toBeUndefined();
+    expect(parseThemeCustomizationImport(JSON.stringify({ version: 1, light: {}, dark: {} })).editor).toBeNull();
   });
 
   it("skips tokens Oleafly does not use when importing a shadcn theme and reports them", () => {

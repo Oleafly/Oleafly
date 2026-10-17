@@ -18,6 +18,7 @@ import { useIndexStore } from "@/store/project-index";
 // after a load sees the full data.
 
 const CLOSURE_CAP = 64;
+const RETAINED_CAP = CLOSURE_CAP * 2;
 
 let core: CoreCatalog | null = null;
 let packageNames: NameList | null = null;
@@ -54,25 +55,73 @@ export function corpusClassNames(): NameList | null {
 }
 
 const loadedCatalogs = new Map<string, PackageCatalog>();
-const requested = new Set<string>();
+const requested = new Map<string, symbol>();
+let cappedRequest: string | null = null;
 
-function requestCatalog(name: string, expandDeps: boolean): void {
-  if (requested.has(name) || requested.size >= CLOSURE_CAP) return;
-  requested.add(name);
+function touchRequested(name: string): boolean {
+  const token = requested.get(name);
+  if (token === undefined) return false;
+  requested.delete(name);
+  requested.set(name, token);
+  return true;
+}
+
+function evictLeastRecent(): void {
+  while (requested.size > RETAINED_CAP) {
+    const oldest = requested.keys().next().value;
+    if (oldest === undefined) return;
+    requested.delete(oldest);
+    loadedCatalogs.delete(oldest);
+  }
+}
+
+function requestCatalog(
+  name: string,
+  onCatalog?: (catalog: PackageCatalog) => void,
+): void {
+  if (touchRequested(name)) {
+    const catalog = loadedCatalogs.get(name);
+    if (catalog) onCatalog?.(catalog);
+    return;
+  }
+  const token = Symbol(name);
+  requested.set(name, token);
+  evictLeastRecent();
   void loadPackageCatalog(name).then((catalog) => {
-    if (!catalog) return;
+    if (!catalog || requested.get(name) !== token) return;
     loadedCatalogs.set(name, catalog);
-    if (!expandDeps) return;
-    for (const dep of catalog.deps) {
-      requestCatalog(dep, false);
-    }
+    onCatalog?.(catalog);
+  });
+}
+
+function claim(closure: Set<string>, name: string): boolean {
+  if (closure.has(name) || closure.size >= CLOSURE_CAP) return false;
+  closure.add(name);
+  return true;
+}
+
+function noteCapped(names: readonly string[]): void {
+  const key = names.join("\n");
+  if (key === cappedRequest) return;
+  cappedRequest = key;
+  console.debug("[latex-corpus] package catalogs capped", {
+    cap: CLOSURE_CAP,
+    packages: names.length,
   });
 }
 
 /** Kick off background loads for the given package/class catalog names. */
 export function requestPackageCatalogs(names: readonly string[]): void {
-  for (const name of names) {
-    requestCatalog(name, true);
+  const closure = new Set<string>();
+  const roots = names.filter((name) => claim(closure, name));
+  if (roots.length < new Set(names).size) noteCapped(names);
+  const expandDependencies = (catalog: PackageCatalog) => {
+    for (const dep of catalog.deps) {
+      if (claim(closure, dep)) requestCatalog(dep);
+    }
+  };
+  for (const name of roots) {
+    requestCatalog(name, expandDependencies);
   }
 }
 

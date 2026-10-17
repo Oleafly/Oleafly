@@ -38,6 +38,7 @@ const harness = vi.hoisted(() => ({
   textLayerGate: null as Gate | null,
   textLayerErrorPages: new Set<number>(),
   textLayerCancelled: 0,
+  textLayerRenders: [] as number[],
   structTreeError: null as unknown,
   structTreeGate: null as Gate | null,
   noViewportConversion: false,
@@ -67,6 +68,7 @@ const harness = vi.hoisted(() => ({
     this.textLayerGate = null;
     this.textLayerErrorPages = new Set();
     this.textLayerCancelled = 0;
+    this.textLayerRenders = [];
     this.structTreeError = null;
     this.structTreeGate = null;
     this.noViewportConversion = false;
@@ -213,7 +215,7 @@ vi.mock("pdfjs-dist", () => {
       readonly textDivs: HTMLElement[] = [];
       constructor(
         private readonly options: {
-          textContentSource: { items: Item[] };
+          textContentSource: ReadableStream<{ items: Item[] }>;
           container: HTMLElement;
         },
       ) {}
@@ -221,9 +223,11 @@ vi.mock("pdfjs-dist", () => {
         const pageNumber = Number(
           this.options.container.closest<HTMLElement>("[data-page]")?.dataset.page,
         );
+        harness.textLayerRenders.push(pageNumber);
         if (harness.textLayerErrorPages.has(pageNumber)) throw new Error("text layer failed");
         if (harness.textLayerGate) await harness.textLayerGate.promise;
-        for (const item of this.options.textContentSource.items) {
+        const { readTextContentItems } = await import("./test-text-content");
+        for (const item of await readTextContentItems(this.options.textContentSource)) {
           if (!("str" in item)) continue;
           const span = document.createElement("span");
           span.textContent = item.str;
@@ -1254,7 +1258,7 @@ describe("PdfViewer render lifecycle", () => {
     harness.textLayerGate = harness.gate();
 
     intersect([2], true);
-    await waitFor(() => expect(pageWrap(2).querySelector(".textLayer")).not.toBeNull());
+    await waitFor(() => expect(harness.textLayerRenders).toContain(2));
     intersect([2], false);
     act(() => harness.textLayerGate?.resolve());
 
@@ -1360,7 +1364,9 @@ describe("PdfViewer geometry", () => {
       await pageTextRendered(1);
 
       expect(pageWrap(1).querySelector("canvas")).toHaveAttribute("width", "612");
-      expect(pageWrap(2)).toHaveStyle({ width: "612px", height: "792px" });
+      await waitFor(() =>
+        expect(pageWrap(2)).toHaveStyle({ width: "612px", height: "792px" }),
+      );
 
       view.rerender({ scale: 2 });
       await waitFor(() => expect(pageWrap(2)).toHaveStyle({ width: "1224px" }));

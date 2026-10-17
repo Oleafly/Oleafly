@@ -69,7 +69,10 @@
       "localNotFound": "El paquete local {{spec}} no está instalado. Ponlo en la carpeta de paquetes de Typst de Oleafly o en la carpeta typst-packages del proyecto.",
       "versionMissing": "Este paquete no tiene la versión {{version}}. La más reciente es {{latest}}.",
       "versionMissingNoLatest": "Este paquete no tiene la versión {{version}}. Revisa la versión en la importación."
-    }
+    },
+    "saveFailed": "No se pudo guardar {{path}}, así que Oleafly no compiló. Revisa ese archivo y vuelve a compilar.",
+    "saveFailedSeveral": "No se pudieron guardar {{path}} y otros archivos, así que Oleafly no compiló. Revisa esos archivos y vuelve a compilar.",
+    "saveFailedOther": "No se pudo guardar el documento, así que Oleafly no compiló. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -287,7 +290,9 @@
     "yearRangeInvalid": "El año inicial no puede ser posterior al año final."
   },
   "mcp": {
+    "deniedByRules": "Rechazado por una regla deny en approvals.toml",
     "openProjectSummary": "Abrir el proyecto {{id}}",
+    "rulesUnreadable": "Rechazado porque no se pudo leer approvals.toml",
     "useToolSummary": "Usar {{tool}} del servidor MCP {{server}}"
   },
   "mcpConfig": {
@@ -366,7 +371,8 @@
     "referencesFor": "Referencias a {{name}}",
     "renameFailed": "No se pudo cambiar el nombre a \"{{name}}\".",
     "renamePartial": "Se renombró a \"{{name}}\" en {{edited}} de {{total}} archivos. No se pudo escribir en {{files}}.",
-    "renamed": "Se renombró a \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) en $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Se renombró a \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) en $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" no corresponde a ningún archivo de este proyecto."
   },
   "pandoc": {
     "downloadFailed": "No se pudo descargar pandoc. Instálalo a mano y vuelve a intentarlo.",

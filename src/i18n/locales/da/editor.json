@@ -188,7 +188,8 @@
     "quote": "Citat",
     "addLabel": "Tilføj etiket",
     "convertLatexMath": "Konverter LaTeX-matematik til Typst",
-    "noLatexMath": "Marker noget LaTeX-matematik først."
+    "noLatexMath": "Marker noget LaTeX-matematik først.",
+    "renameFile": "Omdøb fil…"
   },
   "shell": {
     "noFileOpenTab": "Ingen fil er åben",
@@ -364,7 +365,11 @@
     "summaryWarnings_one": "{{count}} advarsel",
     "summaryWarnings_other": "{{count}} advarsler",
     "summaryReferences_one": "{{count}} uløst reference",
-    "summaryReferences_other": "{{count}} uløste referencer"
+    "summaryReferences_other": "{{count}} uløste referencer",
+    "fontPack": "{{family}} findes i den gratis skrifttypepakke {{pack}}.",
+    "fontPackAction": "Hent og kompilér",
+    "fontPackDownloading": "Henter…",
+    "fontPackFailed": "Skrifttypepakken kunne ikke hentes. Tjek din forbindelse, og prøv igen."
   },
   "history": {
     "untitledCommit": "Commit uden titel",
@@ -392,7 +397,9 @@
     "unifiedView": "Samlet visning",
     "loading": "Indlæser forskellen…",
     "previewTooLarge": "Filen er for stor til at forhåndsvise en forskel.",
-    "diskHeading": "På disken ↔ Dine ændringer"
+    "diskHeading": "På disken ↔ Dine ændringer",
+    "sharedReadOnly": "I et delt projekt er forskellen skrivebeskyttet. Rediger filen i editoren.",
+    "viewerReadOnly": "Du kan se dette delte projekt, men ikke redigere det."
   },
   "hotkeys": {
     "title": "Tastaturgenveje",
@@ -426,7 +433,7 @@
       "indentOrAccept": "Indryk / accepter fuldførelsen",
       "goToDefinition": "Gå til definitionen",
       "findReferences": "Find referencer",
-      "renameSymbol": "Omdøb symbolet (i hele projektet)",
+      "renameSymbol": "Omdøb symbol eller fil (i hele projektet)",
       "formatDocument": "Formater Typst-dokumentet",
       "commandPalette": "Kommandopalet",
       "searchAllDocuments": "Søg i alle dokumenter",
@@ -454,7 +461,8 @@
     "noEntries": "Der er endnu ingen poster i litteraturlisten i dette projekt.",
     "addNew": "Find og tilføj en ny citation…",
     "duplicate": "dublet {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Fra dit Zotero-bibliotek"
   },
   "inlineAi": {
     "promptPlaceholder": "Beskriv ændringen…  (Shift+Enter for ny linje)",
@@ -468,6 +476,7 @@
     "openInAgent": "Fortsæt i AI-assistenten med alle projektets værktøjer",
     "generateFailed": "Kunne ikke generere ændringen. {{message}}",
     "dismiss": "Luk",
+    "withdrawn": "En anden har redigeret teksten, så forslaget kan ikke længere bruges.",
     "setUpProvider": "Sæt en AI-udbyder op",
     "setUpProviderHint": "Tilføj en API-nøgle (eller lokal Ollama) for at bruge AI-rettelser direkte i teksten.",
     "openAiSettings": "Åbn Indstillinger → AI"
@@ -649,6 +658,7 @@
     "endOfDocument": "Dokumentets slutning",
     "hidePreamble": "Skjul dokumentets præambel",
     "showPreamble": "Vis dokumentets præambel",
+    "sharedReadOnly": "I et delt projekt viser den visuelle tilstand kun filen. Skift til kildevisning for at redigere den.",
     "findingLabel": "{{message}}. Åbn korrekturforslag.",
     "rawBlockFindings_one": "{{count}} korrekturfund i denne rå blok. {{message}}. Åbn forslag.",
     "rawBlockFindings_other": "{{count}} korrekturfund i denne rå blok. {{message}}. Åbn forslag."
@@ -1460,7 +1470,8 @@
     "sources": {
       "project": "Projekt",
       "system": "System",
-      "embedded": "Indbygget"
+      "embedded": "Indbygget",
+      "pack": "Skrifttypepakke"
     },
     "fontsFolder": "Læg skrifttypens fil i projektets fonts-mappe for at bruge den i projektet."
   },
@@ -1487,5 +1498,6 @@
     "keyInvalid": "Navne på værdier må ikke være tomme eller indeholde et lighedstegn.",
     "keyTaken": "En variant kan ikke angive det samme navn to gange.",
     "saveFailed": "Varianterne kunne ikke gemmes."
-  }
+  },
+  "sharedSettingsViewer": "Læsere kan ikke ændre dette i et delt projekt."
 }

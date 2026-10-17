@@ -29,7 +29,7 @@ async function openMigratedProject(report: MigrationReport, problem?: MigrationC
 function Section({ title, children }: Readonly<{ title: string; children: ReactNode }>) {
   return (
     <section className="mt-4">
-      <h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{title}</h3>
+      <h3 className="mb-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">{title}</h3>
       {children}
     </section>
   );
@@ -58,7 +58,7 @@ function NoteText({ note }: Readonly<{ note: MigrationNote }>) {
     case "equationLabel":
       return <>{t(($) => $.shell.typstMigration.notes.equationLabel, { detail })}</>;
     case "pandoc":
-      return <span className="font-mono text-[11px]">{detail}</span>;
+      return <span className="font-mono text-[0.6875rem]">{detail}</span>;
   }
 }
 
@@ -87,7 +87,7 @@ function ConvertedSummary({ report }: Readonly<{ report: MigrationReport }>) {
           </li>
         ))}
       </ul>
-      <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+      <ul className="mt-2 space-y-0.5 text-[0.6875rem] text-muted-foreground">
         {converted.sources.map((source) => (
           <li key={source.target} className="truncate font-mono">
             {t(($) => $.shell.typstMigration.report.mapping, { source: source.source, target: source.target })}
@@ -113,7 +113,7 @@ function AttentionList({ notes }: Readonly<{ notes: readonly MigrationNote[] }>)
               <NoteText note={note} />
             </div>
             {note.source && (
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-[0.6875rem] text-muted-foreground">
                 {t(($) => $.shell.typstMigration.report.location, {
                   file: note.source.file,
                   line: note.source.line,
@@ -162,7 +162,7 @@ function ProblemList({ report, onOpen }: Readonly<{ report: MigrationReport; onO
                 />
                 <span className="min-w-0">
                   <span className="block break-words">{problem.message}</span>
-                  <span className={linkable ? "block text-[11px] text-primary" : "block text-[11px] text-muted-foreground"}>
+                  <span className={linkable ? "block text-[0.6875rem] text-primary" : "block text-[0.6875rem] text-muted-foreground"}>
                     {label}
                   </span>
                 </span>
@@ -295,7 +295,7 @@ export function TypstMigrationDialog() {
         />
         {!latex && <p className="mt-2 text-xs text-destructive">{t(($) => $.shell.typstMigration.notLatex)}</p>}
         {phase.kind === "failed" && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+          <div className="mt-3 flex select-text items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
             <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
             <span>{failureMessage(phase.code, phase.message)}</span>
           </div>

@@ -1,13 +1,10 @@
 use crate::project_location::{ProjectKind, ProjectLocation};
-use oleafly_history::{
-    CaptureInput, CheckpointFile, ContentHash, HistoryError, DETACHED_MANIFEST_PATH,
-};
+use oleafly_history::{CaptureInput, CheckpointFile, ContentHash, DETACHED_MANIFEST_PATH};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
-
-const EXCLUDED_EXACT: [&str; 3] = [".git", ".oleafly", "node_modules"];
-const EXCLUDED_PREFIX: [&str; 2] = ["_minted-", "pythontex-files-"];
+use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
+use std::time::{Duration, SystemTime};
 
 #[derive(Clone, Debug)]
 pub struct CapturedFile {
@@ -46,17 +43,7 @@ impl ProjectWalk {
 }
 
 pub fn is_excluded_component(component: &str) -> bool {
-    if EXCLUDED_EXACT
-        .iter()
-        .any(|name| component.eq_ignore_ascii_case(name))
-    {
-        return true;
-    }
-    EXCLUDED_PREFIX.iter().any(|prefix| {
-        let component = component.as_bytes();
-        let prefix = prefix.as_bytes();
-        component.len() > prefix.len() && component[..prefix.len()].eq_ignore_ascii_case(prefix)
-    })
+    oleafly_core::exclude::is_capture_excluded_component(component)
 }
 
 fn portable_relative(relative: &Path) -> Option<String> {
@@ -140,7 +127,7 @@ fn walk_project_once(
             if !metadata.is_file() {
                 return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, format!("{portable} is not a regular file. Checkpoints cannot capture symbolic links or special files.")));
             }
-            let content_hash = capture_hash(&path, &portable)?;
+            let content_hash = cached_capture_hash(&path, &portable, &metadata)?;
             walk.captured.push(CapturedFile {
                 relative_path: portable,
                 content_hash,
@@ -152,13 +139,122 @@ fn walk_project_once(
     Ok(walk)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct FileStamp {
+    len: u64,
+    modified: Option<SystemTime>,
+    changed: Option<(i64, i64)>,
+    identity: Option<(u64, u64)>,
+}
+
+impl FileStamp {
+    #[cfg(unix)]
+    pub(crate) fn of(metadata: &std::fs::Metadata) -> Self {
+        use std::os::unix::fs::MetadataExt;
+        Self {
+            len: metadata.len(),
+            modified: metadata.modified().ok(),
+            changed: Some((metadata.ctime(), metadata.ctime_nsec())),
+            identity: Some((metadata.dev(), metadata.ino())),
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub(crate) fn of(metadata: &std::fs::Metadata) -> Self {
+        Self {
+            len: metadata.len(),
+            modified: metadata.modified().ok(),
+            changed: None,
+            identity: None,
+        }
+    }
+
+    pub(crate) fn signature(&self) -> Option<String> {
+        let modified = self
+            .modified?
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_nanos();
+        let changed = self
+            .changed
+            .map_or_else(String::new, |(seconds, nanos)| format!("{seconds}.{nanos}"));
+        let identity = self
+            .identity
+            .map_or_else(String::new, |(device, inode)| format!("{device}.{inode}"));
+        Some(format!("{}:{modified}:{changed}:{identity}", self.len))
+    }
+
+    pub(crate) fn settled_signature(&self, now: SystemTime) -> Option<String> {
+        let settled = self.modified?.checked_add(RACY_HASH_WINDOW)? <= now;
+        settled.then(|| self.signature()).flatten()
+    }
+}
+
+struct CachedHash {
+    stamp: FileStamp,
+    hash: ContentHash,
+    hashed_at: SystemTime,
+}
+
+const HASH_CACHE_LIMIT: usize = 200_000;
+const RACY_HASH_WINDOW: Duration = Duration::from_secs(2);
+
+fn hash_cache() -> &'static Mutex<HashMap<PathBuf, CachedHash>> {
+    static CACHE: OnceLock<Mutex<HashMap<PathBuf, CachedHash>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn locked_hash_cache() -> MutexGuard<'static, HashMap<PathBuf, CachedHash>> {
+    hash_cache().lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+fn reusable_hash(path: &Path, stamp: &FileStamp) -> Option<ContentHash> {
+    let modified = stamp.modified?;
+    let cache = locked_hash_cache();
+    let entry = cache.get(path)?;
+    let settled = modified
+        .checked_add(RACY_HASH_WINDOW)
+        .is_some_and(|settled| settled <= entry.hashed_at);
+    (entry.stamp == *stamp && settled).then_some(entry.hash)
+}
+
+fn remember_hash(path: &Path, stamp: FileStamp, hash: ContentHash, hashed_at: SystemTime) {
+    let mut cache = locked_hash_cache();
+    if cache.len() >= HASH_CACHE_LIMIT && !cache.contains_key(path) {
+        let dropped = cache.len();
+        cache.clear();
+        let _ = crate::project::append_app_log(format!(
+            "checkpoint hash cache reached {HASH_CACHE_LIMIT} files; dropped {dropped} entries and will re-hash them on the next walk"
+        ));
+    }
+    cache.insert(
+        path.to_path_buf(),
+        CachedHash {
+            stamp,
+            hash,
+            hashed_at,
+        },
+    );
+}
+
+pub(crate) fn cached_capture_hash(
+    path: &Path,
+    relative: &str,
+    metadata: &std::fs::Metadata,
+) -> std::io::Result<ContentHash> {
+    let stamp = FileStamp::of(metadata);
+    if let Some(hash) = reusable_hash(path, &stamp) {
+        return Ok(hash);
+    }
+    let hashed_at = SystemTime::now();
+    let hash = capture_hash(path, relative)?;
+    remember_hash(path, stamp, hash, hashed_at);
+    Ok(hash)
+}
+
 fn capture_hash(path: &Path, relative: &str) -> std::io::Result<ContentHash> {
     ContentHash::digest_file(path).map_err(|error| {
-        let kind = match &error {
-            oleafly_history::HistoryError::Io(error) => error.kind(),
-            _ => std::io::ErrorKind::Other,
-        };
-        std::io::Error::new(kind, format!("Could not read {relative}: {error}"))
+        std::io::Error::new(error.kind(), format!("Could not read {relative}: {error}"))
     })
 }
 
@@ -168,20 +264,6 @@ pub(crate) const LINKED_LARGE_FILE_BYTES: u64 = 25 * 1024 * 1024;
 pub(crate) const CAPTURE_NOTICE_FILE: &str = "checkpoint-capture.json";
 const MAX_RECORDER_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_NOTICE_BYTES: u64 = 64 * 1024;
-const LINKED_SKIPPED_DIRECTORIES: [&str; 5] =
-    ["node_modules", "target", "build", "out", "__MACOSX"];
-const LINKED_SKIPPED_DIRECTORY_PREFIXES: [&str; 2] = ["_minted", "pythontex-files-"];
-const OS_METADATA_FILES: [&str; 5] = [
-    ".DS_Store",
-    "Thumbs.db",
-    "ehthumbs.db",
-    "desktop.ini",
-    "Icon\r",
-];
-#[cfg(any(target_os = "macos", test))]
-const MACOS_DATALESS_FLAG: u32 = 0x4000_0000;
-#[cfg(any(windows, test))]
-const WINDOWS_PLACEHOLDER_ATTRIBUTES: u32 = 0x0000_1000 | 0x0004_0000 | 0x0040_0000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum EntryProbe {
@@ -306,67 +388,22 @@ enum EntryDecision {
     Capture(LinkedEntry),
 }
 
-fn starts_with_ignoring_case(name: &str, prefix: &str) -> bool {
-    name.as_bytes()
-        .get(..prefix.len())
-        .is_some_and(|head| head.eq_ignore_ascii_case(prefix.as_bytes()))
-}
-
 pub(crate) fn is_oleafly_owned(name: &str) -> bool {
-    starts_with_ignoring_case(name, ".oleafly")
-        || (name.starts_with('.') && name.ends_with(".tmp") && name.contains(".oleafly-"))
-}
-
-fn is_os_metadata(name: &str) -> bool {
-    name.starts_with("._")
-        || OS_METADATA_FILES
-            .iter()
-            .any(|junk| name.eq_ignore_ascii_case(junk))
+    oleafly_core::exclude::is_oleafly_owned_name(name)
 }
 
 fn is_left_out_quietly(name: &str) -> bool {
-    is_oleafly_owned(name) || is_os_metadata(name) || name.eq_ignore_ascii_case(".git")
+    is_oleafly_owned(name)
+        || oleafly_core::exclude::is_os_metadata_name(name)
+        || name.eq_ignore_ascii_case(".git")
 }
 
 fn is_skipped_directory(name: &str) -> bool {
-    name.starts_with('.')
-        || LINKED_SKIPPED_DIRECTORIES
-            .iter()
-            .any(|skipped| name.eq_ignore_ascii_case(skipped))
-        || LINKED_SKIPPED_DIRECTORY_PREFIXES
-            .iter()
-            .any(|prefix| starts_with_ignoring_case(name, prefix))
-}
-
-#[cfg(any(target_os = "macos", test))]
-fn dataless_flag(flags: u32) -> bool {
-    flags & MACOS_DATALESS_FLAG != 0
-}
-
-#[cfg(any(windows, test))]
-fn windows_placeholder_attributes(attributes: u32) -> bool {
-    attributes & WINDOWS_PLACEHOLDER_ATTRIBUTES != 0
-}
-
-#[cfg(target_os = "macos")]
-fn is_cloud_placeholder(metadata: &std::fs::Metadata) -> bool {
-    use std::os::macos::fs::MetadataExt as _;
-    dataless_flag(metadata.st_flags())
-}
-
-#[cfg(windows)]
-fn is_cloud_placeholder(metadata: &std::fs::Metadata) -> bool {
-    use std::os::windows::fs::MetadataExt as _;
-    windows_placeholder_attributes(metadata.file_attributes())
-}
-
-#[cfg(not(any(target_os = "macos", windows)))]
-fn is_cloud_placeholder(_metadata: &std::fs::Metadata) -> bool {
-    false
+    oleafly_core::exclude::is_linked_skipped_directory(name)
 }
 
 fn probe_entry(_path: &Path, metadata: &std::fs::Metadata) -> EntryProbe {
-    if is_cloud_placeholder(metadata) {
+    if oleafly_core::is_cloud_placeholder(metadata) {
         EntryProbe::Placeholder
     } else {
         EntryProbe::Local
@@ -598,7 +635,7 @@ fn walk_linked_folder_with(
                 relative_path: entry.relative,
                 content_hash,
             }),
-            Err(HistoryError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(_) => notice.skipped.record(SkipKind::Other),
         }
     }
@@ -1029,27 +1066,14 @@ mod tests {
 
     #[test]
     fn placeholder_flags_match_the_platform_constants() {
-        assert!(dataless_flag(0x4000_0000));
-        assert!(!dataless_flag(0x0000_0020));
-        assert!(windows_placeholder_attributes(0x0040_0000));
-        assert!(windows_placeholder_attributes(0x0004_0000));
-        assert!(windows_placeholder_attributes(0x0000_1000));
-        assert!(!windows_placeholder_attributes(0x0000_0020 | 0x0000_0400));
-    }
-
-    #[cfg(windows)]
-    #[test]
-    fn windows_placeholder_bits_match_windows_sys() {
-        use windows_sys::Win32::Storage::FileSystem::{
-            FILE_ATTRIBUTE_OFFLINE, FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS,
-            FILE_ATTRIBUTE_RECALL_ON_OPEN,
-        };
-        assert_eq!(
-            WINDOWS_PLACEHOLDER_ATTRIBUTES,
-            FILE_ATTRIBUTE_OFFLINE
-                | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS
-                | FILE_ATTRIBUTE_RECALL_ON_OPEN
-        );
+        assert!(oleafly_core::is_dataless_flags(0x4000_0000));
+        assert!(!oleafly_core::is_dataless_flags(0x0000_0020));
+        assert!(oleafly_core::is_placeholder_attributes(0x0040_0000));
+        assert!(oleafly_core::is_placeholder_attributes(0x0004_0000));
+        assert!(oleafly_core::is_placeholder_attributes(0x0000_1000));
+        assert!(!oleafly_core::is_placeholder_attributes(
+            0x0000_0020 | 0x0000_0400
+        ));
     }
 
     #[test]
@@ -1369,5 +1393,60 @@ mod tests {
         std::fs::remove_file(root.join("CON.tex")).unwrap();
         std::os::unix::fs::symlink("main.tex", root.join("linked.tex")).unwrap();
         assert!(walk_project(root).unwrap_err().contains("linked.tex"));
+    }
+
+    #[test]
+    fn a_settled_file_with_an_unchanged_stamp_reuses_its_cached_hash() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("figure.pdf");
+        std::fs::write(&path, b"figure").unwrap();
+        let metadata = std::fs::metadata(&path).unwrap();
+        let stamp = FileStamp::of(&metadata);
+        let remembered = ContentHash::digest(b"remembered");
+        let hashed_at = stamp.modified.unwrap() + Duration::from_secs(60);
+        remember_hash(&path, stamp, remembered, hashed_at);
+
+        let hash = cached_capture_hash(&path, "figure.pdf", &metadata).unwrap();
+
+        assert_eq!(hash, remembered);
+    }
+
+    #[test]
+    fn a_file_hashed_within_the_racy_window_is_read_again() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("main.tex");
+        std::fs::write(&path, b"current").unwrap();
+        let metadata = std::fs::metadata(&path).unwrap();
+        let stamp = FileStamp::of(&metadata);
+        remember_hash(
+            &path,
+            stamp,
+            ContentHash::digest(b"stale"),
+            stamp.modified.unwrap(),
+        );
+
+        let hash = cached_capture_hash(&path, "main.tex", &metadata).unwrap();
+
+        assert_eq!(hash, ContentHash::digest(b"current"));
+    }
+
+    #[test]
+    fn a_rewritten_file_is_read_again_and_its_new_hash_is_remembered() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        write(root, "main.tex", b"first draft");
+        let first = walk_project(root).unwrap();
+        write(root, "main.tex", b"second draft, longer");
+
+        let second = walk_project(root).unwrap();
+
+        assert_eq!(
+            first.captured[0].content_hash,
+            ContentHash::digest(b"first draft")
+        );
+        assert_eq!(
+            second.captured[0].content_hash,
+            ContentHash::digest(b"second draft, longer")
+        );
     }
 }

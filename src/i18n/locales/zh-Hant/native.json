@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "關於 Oleafly",
     "checkUpdates": "檢查更新…",
+    "settings": "設定…",
     "reloadViews": "重新載入檢視",
     "restartApp": "重新啟動應用程式",
     "quit": "結束 Oleafly",
@@ -30,7 +31,8 @@
     "newTab": "新增分頁",
     "openLocation": "開啟位置…",
     "closeTab": "關閉分頁",
-    "reloadPage": "重新載入頁面"
+    "reloadPage": "重新載入頁面",
+    "zenMode": "禪模式"
   },
   "window": {
     "browser": "Oleafly 瀏覽器",
@@ -42,6 +44,11 @@
       "title": "要啟用完整存取權嗎？",
       "message": "完整存取權可讓助理執行 shell 指令並編輯檔案，不必每次徵求核准。要啟用完整存取權嗎？",
       "confirm": "啟用完整存取權"
+    },
+    "sharedShellEscape": {
+      "title": "要在這個分享專案中允許外部命令嗎？",
+      "message": "允許後，任何能編輯這個專案的人都可以在你編譯時，在這台電腦上執行程式。只有在你信任專案中的每個人時才允許。",
+      "confirm": "在這台電腦上允許"
     },
     "cookieImport": {
       "title": "確認匯入 Cookie",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "在 Oleafly 中開啟",
     "openWithOleafly": "以 Oleafly 開啟"
+  },
+  "collab": {
+    "localCopy": "{{name}}（本機副本）"
+  },
+  "approvals": {
+    "helperRefused": "已被 approvals.toml 中的 {{tool}} 規則拒絕。",
+    "unknownTool": "沒有名為 {{name}} 的工具，因此這條規則不起作用。",
+    "unknownToolSuggestion": "沒有名為 {{name}} 的工具，因此這條規則不起作用。你是不是想寫 {{suggestion}}？"
+  },
+  "cloud": {
+    "connectedPage": "已連接。你可以關閉此分頁並返回 Oleafly。",
+    "failedPage": "登入未完成。你可以關閉此分頁並返回 Oleafly。"
   }
 }

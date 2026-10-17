@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Conținutul din tabel s-ar putea să nu fie citit ca date de CV",
-      "detailTable": "Programele ATS aplatizează adesea conținutul tabelar în mod imprevizibil. Nu folosi un tabel ca să așezi textul CV-ului pe coloane alăturate; tabelele reale cu date de cercetare sunt evaluate separat în secțiunea Accesibilitate.",
+      "detailTable": "Programele ATS aplatizează adesea conținutul tabelar în mod imprevizibil. Nu folosi un tabel ca să așezi textul CV-ului pe coloane alăturate. Tabelele reale cu date de cercetare sunt verificate separat în secțiunea Accesibilitate.",
       "titleTikz": "Conținutul TikZ are nevoie de o alternativă semantică",
       "detailTikz": "TikZ desenează conținut vizual fără să îi expună sensul ca text obișnuit. Oferă o descriere accesibilă pentru documentele publicate și evită-l în CV-urile destinate sistemelor ATS."
     },
@@ -266,7 +266,7 @@
       "title_few": "{{count}} intrări bibliografice au metadate incomplete",
       "title_other": "{{count}} de intrări bibliografice au metadate incomplete",
       "detail": "Înregistrările incomplete pot produce referințe stricate sau ambigue în stilurile editurilor. {{examples}}.",
-      "detailTruncated": "Înregistrările incomplete pot produce referințe stricate sau ambigue în stilurile editurilor. {{examples}}; …"
+      "detailTruncated": "Înregistrările incomplete pot produce referințe stricate sau ambigue în stilurile editurilor. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} valoare DOI pare greșit formatată",
@@ -333,6 +333,12 @@
     "refs-duplicate-bib": {
       "title": "Intrări bibliografice duplicate: {{keys}}",
       "detail": "Aceste intrări au același DOI, {{doi}}, deci sunt aceeași referință sub chei diferite. Păstreaz-o pe una și citeaz-o, altfel bibliografia o va lista de două ori."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "Cheia de citare „{{key}}” este definită de mai multe ori",
+      "detail": "Definită în {{places}}. BibTeX folosește doar prima intrare cu această cheie și nu face diferența între majuscule și minuscule când compară cheile. Păstrează o singură intrare sau dă-le celorlalte chei noi și actualizează citările care le folosesc.",
+      "detailBiber": "Definită în {{places}}. Când biber construiește bibliografia, folosește doar prima intrare cu această cheie. Păstrează o singură intrare sau dă-le celorlalte chei noi și actualizează citările care le folosesc.",
+      "detailTypst": "Definită în {{places}}. Typst oprește compilarea când două intrări din bibliografie au aceeași cheie. Păstrează o singură intrare sau dă-le celorlalte chei noi și actualizează citările care le folosesc."
     },
     "submission-path-case": {
       "title": "Scrierea cu majuscule din numele fișierului nu corespunde: {{target}}",
@@ -623,7 +629,7 @@
     "title": "Preverificare",
     "readerDisabled": "Compilează și rulează întâi o verificare a rezultatului",
     "readerEnabled": "Deschide textul extras din PDF",
-    "readerButton": "Arată ce vede cititorul",
+    "readerButton": "Cititor de ecran",
     "aboutLabel": "Despre Preverificare",
     "aboutTitle": "Ce verifică Preverificarea",
     "aboutIntro": "Preverificarea citește sursa proiectului, jurnalul de compilare și PDF-ul curent. Activează doar verificările potrivite pentru acest document.",

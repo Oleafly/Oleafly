@@ -15,6 +15,10 @@ const pdfStub = vi.hoisted(() => ({
   scales: [] as number[],
 }));
 
+vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useAvailableWidth: () => ({ containerRef: () => {}, availableWidth: Number.POSITIVE_INFINITY }),
+}));
 vi.mock("@/components/pdf/PdfViewer", async () => {
   const react = await import("react");
   interface StubProps {
@@ -143,7 +147,7 @@ describe("PreviewPane empty state", () => {
     expect(detail.closest("li")).toHaveAttribute("aria-current", "step");
   });
 
-  it("never mounts unverified bytes from an older project revision", () => {
+  it("shows output from an older project revision as stale instead of hiding it", () => {
     useCompileStore.setState({
       status: "success",
       pdfBytes: new Uint8Array([1, 2, 3]),
@@ -162,9 +166,30 @@ describe("PreviewPane empty state", () => {
     });
 
     render(<PreviewPane />);
-    expect(
-      screen.queryByTestId("mock-pdf-viewer"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("mock-pdf-viewer")).toBeInTheDocument();
+    expect(screen.getByTestId("preview-stale-badge")).toBeInTheDocument();
+  });
+
+  it("never mounts output that belongs to another main document", () => {
+    useCompileStore.setState({
+      status: "success",
+      pdfBytes: new Uint8Array([1, 2, 3]),
+      lastCompileCheckpoint: {
+        version: 1,
+        projectId: "preview-empty-fixture",
+        mainDocument: "chapter.tex",
+        projectRevision: 2,
+        requestGeneration: 1,
+        outputKind: "standard",
+        producerId: "test",
+        outputRevision: 1,
+        outputId: "pdf-v1:3:0000000000000000",
+        completedAt: 1,
+      },
+    });
+
+    render(<PreviewPane />);
+    expect(screen.queryByTestId("mock-pdf-viewer")).not.toBeInTheDocument();
   });
 });
 
@@ -236,10 +261,7 @@ describe("PreviewPane zoom", () => {
     render(<PreviewPane />);
     await waitFor(() => expect(lastScale()).toBe(1.75));
 
-    fireEvent.keyDown(screen.getByTestId("preview-pane"), {
-      key: "=",
-      metaKey: true,
-    });
+    fireEvent.click(await screen.findByRole("button", { name: enPreview.zoom.in }));
     await waitFor(() => expect(lastScale()).toBeCloseTo(1.95));
 
     await act(async () => {
@@ -252,10 +274,7 @@ describe("PreviewPane zoom", () => {
     openProject("zoom-a", 2, 1);
     render(<PreviewPane />);
     await waitFor(() => expect(lastScale()).toBe(1.75));
-    fireEvent.keyDown(screen.getByTestId("preview-pane"), {
-      key: "=",
-      metaKey: true,
-    });
+    fireEvent.click(await screen.findByRole("button", { name: enPreview.zoom.in }));
     await waitFor(() => expect(lastScale()).toBeCloseTo(1.95));
 
     act(() => openProject("zoom-b", 3, 2));
@@ -269,10 +288,7 @@ describe("PreviewPane zoom", () => {
     openProject("zoom-remount", 2, 1);
     const first = render(<PreviewPane />);
     await waitFor(() => expect(lastScale()).toBe(1.75));
-    fireEvent.keyDown(screen.getByTestId("preview-pane"), {
-      key: "=",
-      metaKey: true,
-    });
+    fireEvent.click(await screen.findByRole("button", { name: enPreview.zoom.in }));
     await waitFor(() => expect(lastScale()).toBeCloseTo(1.95));
 
     first.unmount();

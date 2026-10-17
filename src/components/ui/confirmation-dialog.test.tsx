@@ -32,6 +32,27 @@ describe("ConfirmationDialog", () => {
     expect(props.onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  it("shows details under the description, before the buttons", () => {
+    const label = "Affected files";
+    const file = "chapter.tex";
+    dialog({
+      children: (
+        <ul aria-label={label}>
+          <li>{file}</li>
+        </ul>
+      ),
+    });
+
+    const details = screen.getByRole("list", { name: label });
+    expect(details).toHaveTextContent(file);
+    expect(screen.getByText("Your edits will be lost.").compareDocumentPosition(details)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(details.compareDocumentPosition(screen.getByRole("button", { name: /Discard/ }))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
   it("confirms with Enter when the action is not destructive", () => {
     const props = dialog();
 

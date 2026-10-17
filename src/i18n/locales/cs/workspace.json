@@ -218,5 +218,28 @@
     "clearFilter": "Vymazat filtr",
     "filterPlaceholder": "Filtrovat…",
     "noProject": "Žádný projekt"
+  },
+  "fileReferences": {
+    "title": "Aktualizovat odkazy na {{name}}?",
+    "files_one": "{{count}} souboru",
+    "files_few": "{{count}} souborech",
+    "files_many": "{{count}} souboru",
+    "files_other": "{{count}} souborech",
+    "summary_one": "{{count}} odkaz v $t(workspace:fileReferences.files, { \"count\": {{files}} }) stále používá starou cestu {{path}}.",
+    "summary_few": "{{count}} odkazy v $t(workspace:fileReferences.files, { \"count\": {{files}} }) stále používají starou cestu {{path}}.",
+    "summary_many": "{{count}} odkazu v $t(workspace:fileReferences.files, { \"count\": {{files}} }) stále používá starou cestu {{path}}.",
+    "summary_other": "{{count}} odkazů v $t(workspace:fileReferences.files, { \"count\": {{files}} }) stále používá starou cestu {{path}}.",
+    "fileCount_one": "{{count}} odkaz",
+    "fileCount_few": "{{count}} odkazy",
+    "fileCount_many": "{{count}} odkazu",
+    "fileCount_other": "{{count}} odkazů",
+    "dontAsk": "Už se neptat",
+    "update": "Aktualizovat odkazy",
+    "skip": "Neaktualizovat",
+    "failed_one": "{{count}} soubor se po přesunu změnil nebo ho nešlo uložit. Stále používá starou cestu.",
+    "failed_few": "{{count}} soubory se po přesunu změnily nebo je nešlo uložit. Stále používají starou cestu.",
+    "failed_many": "{{count}} souboru se po přesunu změnilo nebo je nešlo uložit. Stále používají starou cestu.",
+    "failed_other": "{{count}} souborů se po přesunu změnilo nebo je nešlo uložit. Stále používají starou cestu.",
+    "close": "Zavřít bez aktualizace odkazů"
   }
 }

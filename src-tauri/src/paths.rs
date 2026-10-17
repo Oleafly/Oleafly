@@ -15,14 +15,38 @@ pub fn home_dir() -> Result<PathBuf, String> {
 
 /// The Oleafly library root: `~/.oleafly/`, or `$OLEAFLY_DATA_DIR` when
 /// set and non-empty (e2e tests point this at a throwaway directory so runs
-/// are hermetic and never touch the user's real projects).
+/// are hermetic and never touch the user's real projects). Unit tests never
+/// fall back to `~/.oleafly`; see `default_data_dir`.
 pub fn oleafly_root() -> Result<PathBuf, String> {
     if let Some(dir) = std::env::var_os("OLEAFLY_DATA_DIR") {
         if !dir.is_empty() {
             return Ok(PathBuf::from(dir));
         }
     }
+    default_data_dir()
+}
+
+#[cfg(not(test))]
+fn default_data_dir() -> Result<PathBuf, String> {
     Ok(home_dir()?.join(".oleafly"))
+}
+
+// A unit test without a data folder of its own still logs, takes runtime
+// locks and touches caches in passing. Those writes go to one temporary
+// folder shared by the test process instead of the developer's real app log
+// and data. Tests that check what lands in the data folder still need their
+// own (see `TempLibrary`).
+#[cfg(test)]
+fn default_data_dir() -> Result<PathBuf, String> {
+    static DIR: std::sync::OnceLock<Result<PathBuf, String>> = std::sync::OnceLock::new();
+    DIR.get_or_init(|| {
+        tempfile::Builder::new()
+            .prefix("oleafly-test-data-")
+            .tempdir()
+            .map(tempfile::TempDir::keep)
+            .map_err(|e| format!("failed to create the test data folder: {e}"))
+    })
+    .clone()
 }
 
 /// The downloadable-assets cache: `~/.oleafly/assets/` (created if missing).
@@ -259,6 +283,10 @@ pub fn shell_escape_trust_root() -> Result<PathBuf, String> {
         return Err("LaTeX shell trust directory escapes the device trust root".into());
     }
     Ok(shell)
+}
+
+pub fn collab_root() -> Result<PathBuf, String> {
+    Ok(oleafly_root()?.join("collab"))
 }
 
 /// Validate a project id. Ids are a single path segment of safe characters, so
@@ -669,6 +697,22 @@ pub(crate) fn data_dir_env_lock() -> std::sync::MutexGuard<'static, ()> {
         .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
+// A test that writes project files must use a temporary data folder of its
+// own (see `TempLibrary`), never the developer's real one.
+#[cfg(test)]
+fn temporary_data_dir(configured: Option<&std::ffi::OsStr>) -> bool {
+    configured.is_some_and(|dir| !dir.is_empty())
+}
+
+#[cfg(test)]
+pub(crate) fn assert_test_data_dir() {
+    assert!(
+        temporary_data_dir(std::env::var_os("OLEAFLY_DATA_DIR").as_deref()),
+        "a test reached the Oleafly data folder without a temporary data folder of its own; \
+         hold a TempLibrary while it runs"
+    );
+}
+
 #[cfg(test)]
 pub(crate) fn symlink_creation_is_permitted() -> bool {
     let Ok(probe) = tempfile::tempdir() else {
@@ -716,6 +760,39 @@ pub(crate) fn relative_tree_for_test(root: &Path) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_a_data_folder_set_for_the_test_counts_as_temporary() {
+        assert!(!temporary_data_dir(None));
+        assert!(!temporary_data_dir(Some(std::ffi::OsStr::new(""))));
+        assert!(temporary_data_dir(Some(std::ffi::OsStr::new(
+            "/tmp/oleafly-test"
+        ))));
+    }
+
+    #[test]
+    fn tests_without_a_data_folder_never_reach_the_real_one() {
+        let _env_guard = data_dir_env_lock();
+        let configured = std::env::var_os("OLEAFLY_DATA_DIR");
+        let real = home_dir().unwrap().join(".oleafly");
+        let mut roots = Vec::new();
+        for unset in [None, Some("")] {
+            match unset {
+                None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+                Some(empty) => std::env::set_var("OLEAFLY_DATA_DIR", empty),
+            }
+            roots.push(oleafly_root().unwrap());
+        }
+        match configured {
+            Some(dir) => std::env::set_var("OLEAFLY_DATA_DIR", dir),
+            None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+        }
+
+        assert_eq!(roots[0], roots[1]);
+        assert!(!roots[0].starts_with(&real), "{:?}", roots[0]);
+        assert!(roots[0].starts_with(std::env::temp_dir()), "{:?}", roots[0]);
+        assert!(roots[0].is_dir());
+    }
 
     #[test]
     fn library_state_paths_and_data_footprint_are_pinned() {
@@ -1085,5 +1162,16 @@ mod tests {
         assert!(status.success());
         assert_eq!(reparse_class(&link).unwrap(), ReparseClass::NameSurrogate);
         assert!(is_reparse_point(&std::fs::symlink_metadata(&link).unwrap()));
+    }
+
+    #[test]
+    fn collab_root_sits_under_the_data_root_and_is_not_created() {
+        let _env_guard = data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let root = collab_root();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        assert_eq!(root, Ok(directory.path().join("collab")));
+        assert!(!directory.path().join("collab").exists());
     }
 }

@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => ({
   refreshPreviewWindow: vi.fn(),
   notifyCompileSucceeded: vi.fn(),
   logError: vi.fn(),
-  saveActive: vi.fn(async () => {}),
+  saveAllDirty: vi.fn(async () => {}),
   files: {
     projectId: "project" as string | null,
     activePath: "main.typ" as string | null,
@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
     loading: false,
     tree: [{ path: "main.typ", is_dir: false }],
     files: { "main.typ": { content: "= Hello", dirty: false } } as Record<string, { content: string; dirty: boolean }>,
-    saveActive: vi.fn(async () => {}),
+    saveAllDirty: vi.fn(async () => {}),
   },
 }));
 
@@ -128,7 +128,7 @@ beforeEach(() => {
   mocks.files.engine = TYPST_ENGINE;
   mocks.files.engineLoaded = true;
   mocks.files.mainDoc = "main.typ";
-  mocks.files.saveActive = mocks.saveActive;
+  mocks.files.saveAllDirty = mocks.saveAllDirty;
   mocks.compileProject.mockReset();
   mocks.compileLive.mockReset();
   mocks.readCompiledPdf.mockReset();

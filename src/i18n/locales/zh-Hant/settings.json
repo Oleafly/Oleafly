@@ -121,15 +121,15 @@
     },
     "approvals": {
       "file": {
-        "description": "自訂核准模式會讀取這個檔案。它位於 ~/.oleafly/approvals.toml，並套用到這台裝置上的每個專案。",
+        "description": "這個檔案位於 ~/.oleafly/approvals.toml，並套用到這台裝置上的每個專案。拒絕規則在所有核准模式下都會封鎖該工具。允許規則只在自訂模式下生效。",
         "discard": "捨棄變更",
         "emptyFile": "這個檔案目前是空的。",
         "help": {
-          "comments": "在這裡儲存時，以 # 開頭的註解會保留；但在核准卡片上選擇「在此專案中一律套用」時，重寫檔案會把註解移除。",
+          "comments": "在這裡儲存時，以 # 開頭的註解會保留，但在核准卡片上選擇「在此專案中一律套用」時，重寫檔案會把註解移除。",
           "modes": "第一個表格 <modesTable>[\"$approval_modes\"]</modesTable> 會為每個專案設定核准模式：<ask>\"ask-for-approval\"</ask>、<approve>\"approve-for-me\"</approve>、<full>\"full-access\"</full> 或 <custom>\"custom\"</custom>。未列出的專案會使用「代我核准」。",
           "openProject": "目前開啟的專案 {{name}} 的 id 是 <projectId>{{id}}</projectId>。",
           "projectIds": "專案 id 就是 ~/.oleafly/projects 底下的資料夾名稱。",
-          "rules": "接著每個專案 id 各有一個表格，為每個工具存放一條規則：<allow>\"allow\"</allow> 會直接執行工具而不詢問，<deny>\"deny\"</deny> 則會拒絕執行。拒絕規則在所有模式下都有效；允許規則只在自訂模式下生效，而 run_command 在其他模式下也會略過提示。",
+          "rules": "接著每個專案 id 各有一個表格，為每個工具存放一條規則：<allow>\"allow\"</allow> 會直接執行工具而不詢問，<deny>\"deny\"</deny> 則會拒絕執行。拒絕規則在所有模式下都有效，包括「完整存取權」。允許規則只在自訂模式下生效。",
           "toolNames": "可使用的工具名稱：<names>{{names}}</names>，以及「工具」清單中任一 MCP 工具的完整名稱。"
         },
         "helpToggle": "這個檔案如何運作",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "一律允許",
         "denied": "一律拒絕",
-        "description": "{{name}} 的已儲存規則。核准模式為「自訂」時才會套用。移除規則後，該工具會改用標準風險政策。",
+        "description": "{{name}} 的已儲存規則。被拒絕的工具在所有核准模式下都會維持封鎖。被允許的工具只在「自訂」模式下略過提示。移除規則後，該工具會改用標準風險政策。",
         "empty": "目前沒有已儲存的規則。在核准提示上選擇「在此專案中一律套用」即可新增一條。",
         "removeRule": "移除 {{tool}} 的規則",
         "thisProject": "此專案",
@@ -530,12 +530,17 @@
         "right": "右側"
       },
       "font": {
-        "description": "字型未安裝時會改用系統備用字型。",
+        "description": "為選單、面板和對話框選擇電腦上已安裝的任何字型。",
         "label": "應用程式字型"
       },
       "fontSize": {
         "description": "縮放選單、面板與按鈕中的文字。",
         "label": "應用程式字型大小"
+      },
+      "zoom": {
+        "description": "放大或縮小整個 Oleafly，包括編輯器和 PDF。",
+        "label": "縮放",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "「系統」會跟隨作業系統，並隨它一起變更。",
@@ -579,7 +584,7 @@
         "label": "圓角半徑"
       },
       "resetAll": "全部重設",
-      "resetMode": "重設此模式",
+      "resetMode": "重設",
       "title": "主題自訂",
       "tokenInputDark": "深色模式的 {{token}} 色彩變數",
       "tokenInputLight": "淺色模式的 {{token}} 色彩變數",
@@ -628,28 +633,72 @@
         "label": "自動完成"
       },
       "font": {
-        "description": "選擇原始檔案使用的等寬字型。",
-        "label": "編輯器字型"
+        "description": "為原始檔案選擇電腦上已安裝的任何字型。",
+        "label": "編輯器字型",
+        "monospace": "等寬"
+      },
+      "useAppFont": {
+        "description": "編輯器使用應用程式的字型和字型大小。",
+        "disabledHint": "關閉「使用應用程式字型」後才能變更此項。",
+        "label": "使用應用程式字型"
       },
       "fontSize": {
         "description": "設定原始碼編輯器的文字大小。",
-        "label": "編輯器字型大小"
+        "label": "編輯器字型大小",
+        "custom": "自訂",
+        "customLabel": "自訂編輯器字型大小（像素）"
       },
       "ghostCompletion": {
         "description": "在游標後顯示可能的補完內容。按 Tab 即可接受。",
         "label": "行內建議"
-      },
-      "nonBlinkingCursor": {
-        "description": "讓編輯器游標保持恆亮。",
-        "label": "游標不閃爍"
       },
       "stickyScroll": {
         "description": "捲動時把目前的章節、標題與環境固定在頂端。",
         "label": "固定捲動"
       },
       "theme": {
-        "description": "與應用程式主題分開設定原始碼的語法顏色。",
-        "label": "編輯器主題"
+        "dark": {
+          "description": "應用程式為深色時使用的編輯器主題。",
+          "label": "深色模式主題"
+        },
+        "light": {
+          "description": "應用程式為淺色時使用的編輯器主題。",
+          "label": "淺色模式主題"
+        }
+      },
+      "colors": {
+        "description": "可變更編輯器主題中的任何顏色。變更會依主題分別保存。",
+        "editing": "正在編輯 {{theme}}",
+        "editorGroup": "編輯器",
+        "mode": {
+          "dark": "深色模式",
+          "light": "淺色模式"
+        },
+        "modeAriaLabel": "要自訂的主題",
+        "names": {
+          "background": "背景",
+          "command": "指令",
+          "comment": "註解",
+          "environment": "環境",
+          "formatting": "格式",
+          "heading": "標題",
+          "lineNumbers": "行號",
+          "link": "連結",
+          "math": "公式",
+          "name": "名稱和鍵名",
+          "reference": "引用和交互參照",
+          "selection": "選取範圍",
+          "structure": "導言區和匯入",
+          "symbol": "括號和符號",
+          "text": "文字",
+          "value": "值和字串"
+        },
+        "pick": "為 {{color}} 選擇顏色",
+        "previewAriaLabel": "預覽語言",
+        "reset": "重設",
+        "syntaxGroup": "語法",
+        "title": "編輯器顏色",
+        "useThemeColor": "為 {{color}} 使用主題顏色"
       },
       "keymap": {
         "description": "選擇原始碼編輯器使用的按鍵組合。",
@@ -666,12 +715,61 @@
         "options": {
           "compact": "緊密",
           "normal": "標準",
-          "wide": "寬鬆"
+          "wide": "寬鬆",
+          "custom": "自訂"
+        },
+        "customLabel": "自訂行高"
+      },
+      "letterSpacing": {
+        "customLabel": "自訂字元間距（像素）",
+        "description": "在原始碼編輯器的字元之間增加間距，游標周圍也會更寬鬆。",
+        "label": "字元間距",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "標準",
+          "custom": "自訂"
         }
+      },
+      "cursorWidth": {
+        "label": "游標寬度",
+        "description": "設定編輯器游標的粗細。",
+        "option": "{{width}}px"
+      },
+      "cursorHeight": {
+        "label": "游標高度",
+        "description": "設定編輯器游標的高度。選擇「整行」時，游標與整行同高。",
+        "options": {
+          "text": "文字",
+          "line": "整行"
+        }
+      },
+      "cursorBlinking": {
+        "label": "游標閃爍",
+        "description": "選擇編輯器游標的閃爍方式。選擇「關閉」時游標不閃爍。",
+        "options": {
+          "blink": "閃爍",
+          "smooth": "平滑",
+          "phase": "相位",
+          "expand": "伸縮",
+          "off": "關閉"
+        }
+      },
+      "cursorColor": {
+        "label": "游標顏色",
+        "description": "淺色和深色編輯器主題各有自己的游標顏色。選擇之前使用主題的顏色。",
+        "light": "淺色",
+        "dark": "深色",
+        "pickLight": "選擇淺色編輯器主題的游標顏色",
+        "pickDark": "選擇深色編輯器主題的游標顏色",
+        "useTheme": "使用主題顏色"
       },
       "lineWrap": {
         "description": "讓長行自動換行，不必左右捲動。",
         "label": "長行自動換行"
+      },
+      "highlightCurrentLine": {
+        "label": "標示目前所在行",
+        "description": "為游標所在行加上背景色。"
       },
       "tabSize": {
         "description": "每一層縮排插入的空格數，也是 Tab 的顯示寬度。",
@@ -703,6 +801,15 @@
           "description": "每次儲存 Typst 檔案時，檢查可能的錯誤。開啟或關閉此項會重新啟動 Typst 語言伺服器。",
           "label": "Typst lint 檢查"
         }
+      },
+      "fileMove": {
+        "label": "移動檔案時",
+        "description": "在 LaTeX、Typst 和 Markdown 原始檔中，更新指向已重新命名或已移動檔案的路徑。",
+        "options": {
+          "ask": "詢問",
+          "always": "一律更新",
+          "never": "永不更新"
+        }
       }
     },
     "files": {
@@ -730,6 +837,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "未安裝 {{font}}，因此使用預設字型。",
     "preview": {
       "darkMode": {
         "description": "預設反轉 PDF 的顏色。你仍可從預覽工具列切換顏色。",
@@ -738,10 +846,6 @@
       "hoverPreview": {
         "description": "在專案庫中把滑鼠停在專案上時，顯示上次編譯的頁面。",
         "label": "滑鼠停留時預覽 PDF"
-      },
-      "zoomShortcuts": {
-        "description": "使用 Cmd/Ctrl +、- 和 0 縮放 PDF，而不是縮放應用程式視窗。",
-        "label": "PDF 縮放快捷鍵"
       }
     },
     "sectionName": "外觀",
@@ -805,6 +909,17 @@
         "description": "在專案開啟時就啟動 shell，而不是等到第一次顯示終端機。",
         "label": "隨專案啟動 shell"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "在禪模式中填滿螢幕，離開時還原視窗。",
+        "label": "進入全螢幕"
+      },
+      "showPdf": {
+        "description": "如果禪模式中 PDF 是隱藏的，會在編譯時於編輯器旁開啟。",
+        "label": "編譯時顯示 PDF"
+      },
+      "title": "禪模式"
     }
   },
   "checkpoints": {
@@ -875,7 +990,6 @@
   },
   "cite": {
     "apa": "同一筆參考文獻的 APA 格式，放在 GitHub 的 Cite this repository 裡",
-    "copyBibtex": "複製 BibTeX",
     "description": "Oleafly 是免費且開放原始碼的，而它能一直如此，靠的是有人知道它的存在。如果它幫上了一篇論文，參考文獻裡的一則條目就能讓下一位研究者知道這個工具從何而來。複製它，貼進你的 .bib 檔案，並引用 <citeKey>oleafly</citeKey> 這個鍵。",
     "title": "在論文中引用 Oleafly"
   },
@@ -885,13 +999,15 @@
       "download": "下載",
       "downloadAll": "全部下載"
     },
-    "aiTemplates": {
-      "deleteDescription": "要從你的範本中刪除「{{name}}」嗎？已經用它建立的專案會保留自己的副本，不受影響。",
-      "deleteTitle": "刪除 AI 產生的範本",
+    "yourTemplates": {
+      "toggle": "管理你的範本",
+      "import": "匯入範本",
+      "empty": "你還沒有自己的範本。可以在這裡匯入，從專案選單把專案儲存為範本，或在範本庫中生成一份。",
+      "aiDescription": "AI 產生的範本",
+      "customDescription": "你的範本",
+      "deleteTitle": "刪除範本",
+      "deleteDescription": "要從你的範本中刪除「{{name}}」嗎？已經用它建立的專案會保留自己的副本。",
       "deleted": "已從你的範本中刪除「{{name}}」",
-      "empty": "還沒有 AI 產生的範本。請從範本庫建立一個。",
-      "fallbackDescription": "AI 產生的範本",
-      "toggle": "管理 AI 產生的範本",
       "deleteFailed": "無法刪除「{{name}}」。"
     },
     "fontPacks": {
@@ -906,6 +1022,26 @@
       "ptserif": {
         "description": "精緻的過渡式襯線字型，很適合學術與商務文件。",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans 與 Serif CJK、Fandol 及霞鶩文楷。它們也能代替宋體、黑體和楷體。",
+        "label": "中文、日文和韓文"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 與 7 Free，以及 Noto Color Emoji。",
+        "label": "圖示與表情符號"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono、IBM Plex Mono、Inconsolata、Fira Mono、Cascadia Code 和 Source Code Pro。",
+        "label": "程式碼"
+      },
+      "typst-sans": {
+        "description": "Source Sans、Source Serif、Noto、Fira、Roboto、Inter、Open Sans 和 IBM Plex。",
+        "label": "現代無襯線與襯線"
+      },
+      "typst-text": {
+        "description": "TeX Gyre、Latin Modern、CMU、Liberation、DejaVu、Libertine、Libertinus 以及 New Computer Modern Sans 與 Mono。",
+        "label": "經典內文"
       }
     },
     "fonts": {
@@ -942,7 +1078,56 @@
       "fontRemoveFailed": "無法移除字型。",
       "packDownloadFailed": "無法下載範本包。",
       "packsDownloadFailed": "無法下載這些範本包。",
-      "packRemoveFailed": "無法移除範本包。"
+      "packRemoveFailed": "無法移除範本包。",
+      "templateDownloadFailed": "無法下載範本。",
+      "packsRefreshFailed": "無法檢查新的範本包。"
+    },
+    "typstFonts": {
+      "heading": "Typst 字型",
+      "tooltip": "許多 Typst 範本需要的免費字型。下載後，除了關閉系統字型的專案以外，所有 Typst 專案都能使用。"
+    },
+    "packs": {
+      "browse": "瀏覽",
+      "back": "返回範本包",
+      "count_other": "{{count}} 個範本",
+      "installedCount": "已安裝 {{installed}}/{{total}}",
+      "downloadPack": "下載範本包",
+      "refresh": "檢查新的範本包",
+      "searchPacks": "搜尋範本包",
+      "searchTemplates": "搜尋範本",
+      "noPacks": "沒有相符的範本包",
+      "noTemplates": "沒有相符的範本",
+      "loading": "正在載入範本",
+      "loadFailed": "無法載入此範本包。",
+      "retry": "重試",
+      "installed": "已安裝",
+      "engineFilter": "引擎",
+      "kindFilter": "類型",
+      "languageFilter": "語言",
+      "allEngines": "所有引擎",
+      "allKinds": "所有類型",
+      "allLanguages": "所有語言",
+      "groups": {
+        "curated": "精選",
+        "community": "社群",
+        "typst": "Typst",
+        "university": "大學"
+      },
+      "preview": {
+        "image": "{{name}} 的第一頁",
+        "previous": "上一個範本",
+        "next": "下一個範本",
+        "engine": "引擎",
+        "license": "授權",
+        "kind": "類型",
+        "languages": "語言",
+        "country": "國家或地區",
+        "institution": "機構",
+        "originalSource": "原始來源",
+        "getTemplate": "取得此範本",
+        "useTemplate": "使用此範本",
+        "getAndCreate": "取得並建立專案"
+      }
     }
   },
   "engine": {
@@ -977,7 +1162,7 @@
       "status": {
         "checking": "正在檢查 pandoc…",
         "installing": "正在取得鎖定版本的 pandoc。第一次使用時需要一點時間。",
-        "missing": "找不到。Oleafly 可以把相容的 pandoc（2.19 以上）下載到自己的資料夾；系統上的其他部分都不會變動。",
+        "missing": "找不到。Oleafly 可以把相容的 pandoc（2.19 以上）下載到自己的資料夾。系統上的其他部分都不會變動。",
         "ready": "已偵測到。Markdown 專案會先用 pandoc 轉換成 LaTeX，再以內建的 Tectonic 編譯。"
       },
       "tectonicDetail": "為 pandoc 產生的 LaTeX 排版。隨 Oleafly 提供，不需要設定。",
@@ -1180,11 +1365,65 @@
       "apiKeyLabel": "Zotero API 金鑰",
       "connected": "已連線到你的 Zotero 文獻庫。",
       "connectedAs": "已以 {{username}} 的身分連線。",
-      "description": "從你的 Zotero 文獻庫匯入引用與參考文獻。",
       "disconnectFailed": "Oleafly 無法移除已儲存的 Zotero 金鑰。請再試一次。",
-      "importHint": "若要匯入，請在專案中開啟「參考文獻」面板，然後選擇「匯入參考文獻庫」。",
       "userIdLabel": "Zotero 使用者 ID",
-      "userIdPlaceholder": "使用者 ID"
+      "userIdPlaceholder": "使用者 ID",
+      "citeDescription": "寫作時搜尋你的整個 Zotero 文獻庫，只加入你引用的內容。Oleafly 只會讀取你的文獻庫，絕不會變更它。",
+      "local": {
+        "heading": "這台電腦上的 Zotero",
+        "ready": "已連線到 Zotero {{version}}。",
+        "readyNoVersion": "已連線到 Zotero。",
+        "bbtFound": "已安裝 Better BibTeX {{version}}，因此引用鍵來自 Better BibTeX。",
+        "bbtMissing": "未安裝 Better BibTeX，因此引用鍵來自 Zotero。",
+        "notRunning": "Zotero 未在執行。開啟 Zotero 即可搜尋你的文獻庫，或在下方連接你的 zotero.org 帳號。",
+        "apiDisabled": "在 Zotero 中開啟「設定 > 進階」，然後勾選「允許此電腦上的其他應用程式與 Zotero 通訊」。",
+        "unsupported": "這個版本的 Zotero 無法分享它的文獻庫。請更新至 Zotero 7 或以上版本。",
+        "unknown": "Oleafly 尚未尋找 Zotero。"
+      },
+      "test": "測試連線",
+      "syncNow": "立即同步",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "找不到 Better BibTeX",
+        "local": "從這台電腦上的 Zotero 讀取",
+        "web": "從 zotero.org 讀取",
+        "library_other": "{{name}}：{{formatted}} 個項目"
+      },
+      "library": {
+        "heading": "要搜尋的文獻庫",
+        "myLibrary": "我的文獻庫",
+        "toggle": "搜尋 {{name}}",
+        "items_other": "{{formatted}} 個項目"
+      },
+      "sync": {
+        "never": "尚未同步。",
+        "syncing": "正在同步你的 Zotero 文獻庫…",
+        "progress": "正在同步 {{done}}/{{total}} 個項目…",
+        "status_other": "{{formatted}} 個項目可供引用，上次同步：{{time}}。",
+        "fromCache": "Zotero 已關閉，因此 @ 搜尋會使用上次同步的副本。",
+        "rateLimited": "zotero.org 要求 Oleafly 稍候。將於 {{time}} 後再試一次。"
+      },
+      "account": {
+        "heading": "zotero.org 帳號",
+        "description": "當這台電腦上沒有開啟 Zotero 時，就使用你的帳號。群組文獻庫也會一併納入。"
+      }
+    },
+    "overleaf": {
+      "description": "從你的 Overleaf 帳號或學校的 Overleaf 伺服器匯入專案，並保持同步。Oleafly 會在這台電腦上加密保存登入資訊和 Git 權杖。",
+      "signedInAs": "已在 {{server}} 上以 {{email}} 的身分登入",
+      "signedIn": "已在 {{server}} 上登入",
+      "signOut": "登出",
+      "signOutFailed": "Oleafly 無法登出 Overleaf。",
+      "gitTitle": "用於同步的 Git 權杖",
+      "gitSaved": "已儲存 Git 權杖。你連結的專案會與 Overleaf 保持同步。",
+      "gitMissing": "尚未設定 Git 權杖。請在 Overleaf 帳號設定的「Git 整合」中建立一個，以便同步專案。",
+      "gitOpenSettings": "開啟 Overleaf 帳號設定",
+      "gitPlanNote": "使用 Git 整合需要專案擁有者訂閱 Overleaf 付費方案或學校方案。",
+      "gitLabel": "Overleaf Git 權杖",
+      "gitSave": "儲存",
+      "gitRemove": "移除",
+      "gitFailed": "Oleafly 無法儲存 Git 權杖。請檢查是否貼上了完整的權杖。"
     }
   },
   "language": {
@@ -1543,6 +1782,10 @@
         "description": "顯示或隱藏專案側邊欄。",
         "label": "切換側邊欄"
       },
+      "togglePreview": {
+        "label": "切換 PDF 預覽",
+        "description": "在編輯器旁顯示或隱藏 PDF，禪模式下也可用。"
+      },
       "toggleTerminal": {
         "description": "顯示或隱藏專案終端機。",
         "label": "切換終端機"
@@ -1550,6 +1793,26 @@
       "openFolder": {
         "label": "開啟資料夾",
         "description": "將電腦上的資料夾作為專案開啟。"
+      },
+      "toggleZenMode": {
+        "description": "隱藏寫作內容以外的一切，或將其還原。",
+        "label": "切換禪模式"
+      },
+      "openSettings": {
+        "label": "開啟設定",
+        "description": "開啟 Oleafly 設定。"
+      },
+      "zoomIn": {
+        "description": "放大整個應用程式。",
+        "label": "放大"
+      },
+      "zoomOut": {
+        "description": "縮小整個應用程式。",
+        "label": "縮小"
+      },
+      "resetZoom": {
+        "description": "將應用程式恢復為 100%。",
+        "label": "重設縮放"
       }
     },
     "application": {
@@ -1572,7 +1835,7 @@
         "italic": "斜體",
         "jumpToSourceFromPdf": "從 PDF 跳到原始碼",
         "redo": "重做",
-        "renameSymbol": "在整個專案中重新命名符號",
+        "renameSymbol": "在整個專案中重新命名符號或檔案",
         "slashCommandMenu": "斜線指令插入選單",
         "triggerAutocomplete": "觸發自動完成",
         "undo": "復原"

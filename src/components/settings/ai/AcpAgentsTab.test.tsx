@@ -65,7 +65,7 @@ afterAll(restore);
 type Ui = ReturnType<typeof render>;
 
 function openSection(ui: Ui, id: string) {
-  fireEvent.click(ui.getByTestId(`acp-section-${id}`));
+  fireEvent.click(ui.getByTestId(`acp-section-${id}-toggle`));
 }
 
 async function expandAgent(ui: Ui, id = "fixture") {
@@ -298,6 +298,28 @@ describe("ACP agent setup acceptance", () => {
     expect(acpRegistrySearch).toHaveBeenCalledExactlyOnceWith("research");
     expect(acpRegister).toHaveBeenCalledExactlyOnceWith(JSON.stringify(definition));
     expect(acpInstall).not.toHaveBeenCalled();
+  });
+
+  it("shows a new search's results from the top of the list", async () => {
+    vi.mocked(acpRegistrySearch)
+      .mockResolvedValueOnce([
+        { id: "first", name: "First agent", description: "One", version: "1", definition: null, reason: "Unverified binary" },
+      ])
+      .mockResolvedValueOnce([
+        { id: "second", name: "Second agent", description: "Two", version: "1", definition: null, reason: "Unverified binary" },
+      ]);
+    const ui = render(<AcpAgentsTab />);
+    openSection(ui, "registry");
+    fill(ui.getByLabelText(copy.registry.searchLabel), "first");
+    fireEvent.click(ui.getByRole("button", { name: copy.registry.search }));
+    const list = (await ui.findByText("First agent")).closest(".overflow-y-auto") as HTMLElement;
+    list.scrollTop = 240;
+
+    fill(ui.getByLabelText(copy.registry.searchLabel), "second");
+    fireEvent.click(ui.getByRole("button", { name: copy.registry.search }));
+
+    expect(await ui.findByText("Second agent")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
   });
 
   it("surfaces removal errors and removes only the definition after retry", async () => {

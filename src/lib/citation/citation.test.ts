@@ -165,6 +165,22 @@ describe("parseCrossrefSearch", () => {
   it("returns [] for empty/garbage", () => {
     expect(parseCrossrefSearch("{}")).toEqual([]);
   });
+  it("shows rich-text titles and venues as plain text", () => {
+    const rich = JSON.stringify({
+      message: {
+        items: [
+          {
+            title: ["The ASA Statement on <i>p</i> -Values &amp; CO<sub>2</sub>"],
+            "container-title": ["<i>The American Statistician</i>"],
+          },
+        ],
+      },
+    });
+    expect(parseCrossrefSearch(rich)[0]).toMatchObject({
+      title: "The ASA Statement on p -Values & CO2",
+      venue: "The American Statistician",
+    });
+  });
 });
 
 describe("arxivXmlToBibtex", () => {

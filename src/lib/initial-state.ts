@@ -1,4 +1,5 @@
 import type { AppConfig } from "@oleafly/backend-port";
+import { primeConfigCache } from "@/lib/config-cache";
 import { appQueryClient } from "@/lib/query";
 import { projectsKey } from "@/lib/queries/projects";
 import { logError } from "@/lib/log";
@@ -35,6 +36,7 @@ export async function hydrateFromSnapshot(): Promise<void> {
         void logError("starter persona seed", error);
       }
     }
+    if (snapshotConfig) primeConfigCache(snapshotConfig);
   } catch (error) {
     void logError("initial-state hydration", error);
   }

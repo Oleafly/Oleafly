@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Check, Palette, Pencil, Plus, Settings2, X } from "lucide-react";
+import { Palette, Pencil, Plus, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -32,6 +32,7 @@ import {
 import { TerminalPane } from "./TerminalPane";
 import { RestrictedTerminalBadge } from "@/components/open-folder/TrustRequiredNotice";
 import { useFolderAccessStore } from "@/store/folder-access";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 let mountedDocks = 0;
 
@@ -232,14 +233,14 @@ function TerminalTabItem({
                   style={{ backgroundColor: swatch.hex }}
                 />
                 {colorLabels[swatch.name] ?? swatch.name}
-                {tab.color === swatch.key && <Check className="ml-auto size-3.5" aria-hidden />}
+                {tab.color === swatch.key && <CheckBadge className="ml-auto" />}
               </ContextMenuItem>
             ))}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onColor(null)}>
               <span aria-hidden className={cn(swatchClass, "mr-2 size-3.5 bg-transparent")} />
               {t(($) => $.common.state.none)}
-              {!tab.color && <Check className="ml-auto size-3.5" aria-hidden />}
+              {!tab.color && <CheckBadge className="ml-auto" />}
             </ContextMenuItem>
           </ContextMenuSubContent>
         </ContextMenuSub>

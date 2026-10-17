@@ -188,7 +188,8 @@
     "quote": "Cita en bloque",
     "addLabel": "Añadir etiqueta",
     "convertLatexMath": "Convertir fórmulas de LaTeX a Typst",
-    "noLatexMath": "Selecciona antes alguna fórmula de LaTeX."
+    "noLatexMath": "Selecciona antes alguna fórmula de LaTeX.",
+    "renameFile": "Renombrar archivo…"
   },
   "shell": {
     "noFileOpenTab": "Ningún archivo abierto",
@@ -247,7 +248,7 @@
     "issues": "Problemas",
     "spelling": "Ortografía",
     "grammarAndStyle": "Gramática y estilo",
-    "findingsTruncated": "La lista de hallazgos está recortada; el recuento de arriba está completo.",
+    "findingsTruncated": "La lista de hallazgos está recortada. El recuento de arriba está completo.",
     "spellLanguage": "Idioma de la revisión ortográfica",
     "spellLanguageAppSetting": "Usar el ajuste de la aplicación",
     "spellLanguageAriaLabel": "Idioma de la revisión ortográfica de este proyecto",
@@ -371,7 +372,11 @@
     "summaryWarnings_other": "{{count}} advertencias",
     "summaryReferences_one": "{{count}} referencia sin resolver",
     "summaryReferences_many": "{{count}} referencias sin resolver",
-    "summaryReferences_other": "{{count}} referencias sin resolver"
+    "summaryReferences_other": "{{count}} referencias sin resolver",
+    "fontPack": "{{family}} está en el paquete de fuentes gratuito {{pack}}.",
+    "fontPackAction": "Descargar y compilar",
+    "fontPackDownloading": "Descargando…",
+    "fontPackFailed": "No se pudo descargar el paquete de fuentes. Revisa tu conexión y vuelve a intentarlo."
   },
   "history": {
     "untitledCommit": "Commit sin título",
@@ -399,7 +404,9 @@
     "unifiedView": "Vista unificada",
     "loading": "Cargando la comparación…",
     "previewTooLarge": "El archivo es demasiado grande para ver una comparación.",
-    "diskHeading": "En disco ↔ Tus cambios"
+    "diskHeading": "En disco ↔ Tus cambios",
+    "sharedReadOnly": "En un proyecto compartido, esta comparación es de solo lectura. Edita el archivo en el editor.",
+    "viewerReadOnly": "Puedes ver este proyecto compartido, pero no editarlo."
   },
   "hotkeys": {
     "title": "Atajos de teclado",
@@ -433,7 +440,7 @@
       "indentOrAccept": "Sangrar o aceptar el autocompletado",
       "goToDefinition": "Ir a la definición",
       "findReferences": "Buscar referencias",
-      "renameSymbol": "Renombrar el símbolo (en todo el proyecto)",
+      "renameSymbol": "Renombrar el símbolo o el archivo (en todo el proyecto)",
       "formatDocument": "Formatear el documento Typst",
       "commandPalette": "Paleta de comandos",
       "searchAllDocuments": "Buscar en todos los documentos",
@@ -461,7 +468,8 @@
     "noEntries": "Todavía no hay entradas de bibliografía en este proyecto.",
     "addNew": "Buscar y añadir una cita nueva…",
     "duplicate": "duplicado {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "De tu biblioteca de Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Describe el cambio…  (Shift+Enter para una línea nueva)",
@@ -475,6 +483,7 @@
     "openInAgent": "Continuar en el asistente de IA con todas las herramientas del proyecto",
     "generateFailed": "No se pudo generar la edición. {{message}}",
     "dismiss": "Cerrar",
+    "withdrawn": "Otra persona editó este texto, así que la sugerencia ya no se puede aplicar.",
     "setUpProvider": "Configurar un proveedor de IA",
     "setUpProviderHint": "Añade una clave de API (u Ollama en local) para usar las ediciones con IA en línea.",
     "openAiSettings": "Abrir Ajustes → IA"
@@ -659,6 +668,7 @@
     "endOfDocument": "Fin del documento",
     "hidePreamble": "Ocultar el preámbulo del documento",
     "showPreamble": "Mostrar el preámbulo del documento",
+    "sharedReadOnly": "En un proyecto compartido, el modo visual solo muestra el archivo. Cambia a la vista de código para editarlo.",
     "findingLabel": "{{message}}. Abrir sugerencias de corrección.",
     "rawBlockFindings_one": "{{count}} hallazgo de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias.",
     "rawBlockFindings_many": "{{count}} hallazgos de corrección en este bloque sin procesar. {{message}}. Abrir sugerencias.",
@@ -1481,7 +1491,8 @@
     "sources": {
       "project": "Proyecto",
       "system": "Sistema",
-      "embedded": "Incluida"
+      "embedded": "Incluida",
+      "pack": "Paquete de fuentes"
     },
     "fontsFolder": "Para usar una tipografía en este proyecto, añade su archivo a la carpeta fonts del proyecto."
   },
@@ -1508,5 +1519,6 @@
     "keyInvalid": "Los nombres de valor no pueden estar vacíos ni contener un signo igual.",
     "keyTaken": "Una variante no puede definir el mismo nombre dos veces.",
     "saveFailed": "No se pudieron guardar las variantes."
-  }
+  },
+  "sharedSettingsViewer": "Los lectores no pueden cambiar esto en un proyecto compartido."
 }

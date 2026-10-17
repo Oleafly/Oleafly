@@ -10,7 +10,10 @@ oleafly-desktop/
 │   ├── oleafly-core/       shared Rust project, path, and build-directory policy
 │   ├── oleafly-cli/        oleafly commands and native compiler adapter
 │   ├── oleafly-agent/      provider-neutral agent runtime
-│   └── oleafly-history/    content-addressed compile checkpoints
+│   ├── oleafly-history/    content-addressed compile checkpoints
+│   ├── oleafly-collab-protocol/  messages shared by the app and the collaboration server
+│   ├── oleafly-collab/     live collaboration client: shared project document, sync and comments
+│   └── oleafly-server/     the collaboration server (Axum and SQLite)
 ├── src/                    React app shell (stores, Tauri client, UI kit, port adapters)
 │   ├── components/         ui (shadcn-style), layout, editor glue, preview panes, ai
 │   ├── contributions/      registers rail tabs / commands / AI toolsets into the registry
@@ -225,7 +228,7 @@ Tectonic beside the application executable, matching Tauri's desktop bundle
 layout. Unit tests cover macOS app-bundle and Cargo debug/release candidates,
 while the release workflow checks every staged sidecar on every target.
 
-Tectonic 0.16.9 release archives are checksum-pinned from the official GitHub
+Tectonic 0.17.0 release archives are checksum-pinned from the official GitHub
 Releases API `digest` fields. `scripts/fetch-tectonic.sh` verifies SHA256 before
 extracting exactly the root `tectonic`/`tectonic.exe` regular-file member. The
 same script is used by CI and every release target, including Windows.
@@ -283,6 +286,105 @@ intentionally omitted from public documentation.
 
 OAuth device flow runs server-side in Rust (`src-tauri/src/github.rs`) because the OAuth endpoints aren't CORS-enabled. Authenticated API calls (api.github.com) also run in Rust, so the token never reaches the webview.
 
+## Live collaboration load tests
+
+The crowd tests in `crates/oleafly-collab/tests/crowd` run scripted typists
+against a real Oleafly Server. `ten_people_typing_at_once_end_with_identical_documents`
+runs with the normal test suite. The `stress_` tests are ignored by default and
+need a release build:
+
+```bash
+cargo test --release -p oleafly-collab --test crowd -- --ignored --nocapture stress_
+```
+
+### The soak test
+
+`soak_twenty_people_over_fifty_files` starts the server binary as its own
+process, so its memory and CPU are measured apart from the clients. Twenty
+scripted people type into a project of 50 files. Four of them reach the server
+through a proxy that refuses WebSockets, so they stay on the long-poll fallback
+for the whole run. Every two minutes one person loses the network for a few
+seconds, and every minute someone adds a 64 KB figure.
+
+It prints a progress line every minute. The summary at the end has:
+
+- how long an edit takes to reach the others over a socket and over long-poll
+  (p50, p95 and p99, counted while both people are online),
+- how long the server takes to acknowledge an edit,
+- reconnects, and how long people took to come back after a cut,
+- the server's memory and CPU,
+- how fast the database, snapshots and files grow,
+- whether every copy of the project ended identical.
+
+Build the server first. The test looks for `oleafly-server` next to its own
+build output, so use the same profile and target folder:
+
+```bash
+cargo build --release -p oleafly-server
+CROWD_SOAK_MINUTES=10 cargo test --release -p oleafly-collab --test crowd soak -- --ignored --nocapture
+```
+
+Every setting is optional:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `CROWD_SOAK_MINUTES` | `10` | How long people type. Decimals work. |
+| `CROWD_SOAK_PEOPLE` | `20` | People in the project, the owner included. |
+| `CROWD_SOAK_FILES` | `50` | Text files in the project. |
+| `CROWD_SOAK_LONG_POLL` | `4` | People behind the proxy that refuses WebSockets. |
+| `CROWD_SOAK_PAUSE_MS` | `150,900` | Shortest and longest pause between keystrokes. |
+| `CROWD_SOAK_REPORT_SECONDS` | `60` | Time between progress lines. |
+| `CROWD_SOAK_CUT_SECONDS` | `120` | Time between network cuts. `0` turns cuts off. |
+| `CROWD_SOAK_CUT_FOR_MS` | `3000,12000` | Shortest and longest cut. |
+| `CROWD_SOAK_FIGURE_SECONDS` | `60` | Time between added figures. `0` turns figures off. |
+| `CROWD_SOAK_FIGURE_KB` | `64` | Size of each figure. |
+| `CROWD_SOAK_MAX_CHARS` | `30000` | A file longer than this gets deletes instead of inserts, so documents stop growing. |
+| `CROWD_SOAK_DATA` | a temporary folder | Keeps the server's data folder and `server.log` here. |
+| `CROWD_SERVER_BIN` | next to the test | Path to another server binary. |
+| `CROWD_SEED` | fixed | Seed for the typists. |
+
+### Running the 30-day soak
+
+A month-long run needs a machine that stays awake and a slower pace, so the
+documents and the update log grow at the rate of real writing rather than the
+burst rate of the short run. On macOS:
+
+```bash
+cargo build --release -p oleafly-server
+mkdir -p "$HOME/oleafly-soak"
+CROWD_SOAK_MINUTES=43200 \
+CROWD_SOAK_PAUSE_MS=1500,9000 \
+CROWD_SOAK_REPORT_SECONDS=900 \
+CROWD_SOAK_CUT_SECONDS=1800 \
+CROWD_SOAK_FIGURE_SECONDS=1800 \
+CROWD_SOAK_DATA="$HOME/oleafly-soak/data" \
+caffeinate -dimsu cargo test --release -p oleafly-collab --test crowd soak -- --ignored --nocapture \
+  > "$HOME/oleafly-soak/soak.log" 2>&1 &
+```
+
+On Linux, leave out `caffeinate -dimsu` and start it with `nohup` or inside
+tmux.
+
+Read `soak.log` once a day:
+
+- The server's RSS should level off after the first hour. A trend that keeps
+  rising is a leak.
+- The database should level off too. Every 1,000 changes a client asks the
+  server to build a snapshot, and the server builds it itself from the
+  previous one. It keeps at least the last 2,000 updates, so the update log
+  stays a few thousand rows long. The blob store holds a few snapshots per
+  project under `blobs/snapshots/` (or the bucket's `snapshots/` prefix).
+- Files grow by the figures added and nothing else.
+- p95 and p99 should stay where they were on the first day.
+- Reconnects should match the number of network cuts, and the problems count
+  should stay at 0.
+
+When the run ends, the summary and the test result are at the end of the log.
+If it fails, read `server.log` in the data folder.
+
+The test process holds every person's copy of the project, so its own memory
+grows with the documents. `CROWD_SOAK_MAX_CHARS` keeps that bounded.
+
 ## Coding style
 
 - TypeScript: follow what's already there. No comments unless asked. Respect `noUnusedLocals`/`noUnusedParameters`.
@@ -301,3 +403,83 @@ place of Biber, because upstream publishes no 2.17 build for it. A tag produces
 a complete draft. Publishing is a separate manual workflow run, and it refuses
 to publish unless every platform's artifacts are present. See
 [Auto-updates](updates.md) for required secrets, signing, and publication.
+
+### Releasing Oleafly Server
+
+Server releases have their own tags, `server-v<version>`, and their own
+workflow, `.github/workflows/release-server.yml`. The installer and
+`https://oleafly.com/server/install.sh` download releases from
+[Oleafly/oleafly-server](https://github.com/Oleafly/oleafly-server), not from
+this repository, so a release reaches people only once it is copied there.
+
+Once, before the first release, add the `OLEAFLY_SERVER_SYNC_TOKEN` secret to
+this repository under **Settings › Secrets and variables › Actions**. Make it a
+fine-grained personal access token owned by the Oleafly organization, with
+access to Oleafly/oleafly-server only and the Actions permission set to read
+and write. Without it, publishing a release fails at the copy, and the
+installer keeps offering the previous release.
+
+Do the steps in this order:
+
+1. Set `version` in `crates/oleafly-server/Cargo.toml` and merge. Push the tag
+   on the merge commit, such as
+   `git tag server-v0.1.0 <merge commit> && git push origin server-v0.1.0`.
+   The workflow refuses a tag that doesn't match the crate.
+2. Wait for **Release server**. It pushes
+   `ghcr.io/oleafly/oleafly-server:<version>`, checks that anyone can pull it,
+   and creates a draft release here with the installer files.
+3. On the first release, the **Draft release** job stops with "can't be pulled
+   without signing in", because new packages on GitHub's registry start
+   private. Make the `oleafly-server` package public in the organization's
+   package settings, re-run the job, and check with
+   `docker logout ghcr.io && docker pull ghcr.io/oleafly/oleafly-server:<version>`.
+4. Try the draft on a fresh Linux machine with a domain pointing at it:
+
+   ```sh
+   gh release download server-v0.1.0 --repo Oleafly/Oleafly --dir rel
+   sudo OLEAFLY_RELEASE_URL="file://$PWD/rel" sh rel/install.sh
+   ```
+
+5. Publish the draft with **Set as the latest release** unticked, or run
+   `gh release edit server-v<version> --repo Oleafly/Oleafly --draft=false --latest=false`.
+   Desktop and server releases share this repository. The desktop app's
+   updater and the download links read its latest release, so the latest
+   release has to stay a desktop one with `latest.json`. If the label lands on
+   the server release anyway, the workflow moves it back to the newest desktop
+   release.
+   The workflow then moves the image's minor tag, such as
+   `:0.1`, and `:latest`, which Coolify, Render and Railway follow. It also
+   starts `sync-release.yml` in Oleafly/oleafly-server, which copies the
+   release there, and waits until the copy answers. That needs the
+   `OLEAFLY_SERVER_SYNC_TOKEN` secret: a fine-grained token with read and write
+   access to Actions on Oleafly/oleafly-server and nothing else.
+6. On the first release only, point the website at it. Until then,
+   `https://oleafly.com/server/install.sh` serves a placeholder that says
+   where the release will appear and exits 1, and two pages say the release
+   is on its way. In Oleafly/oleafly-web, delete `public/server/install.sh`,
+   remove the `# ` in front of the `/server/install.sh` line in
+   `public/_redirects`, delete the "The first release is on its way" note in
+   `src/content/docs/docs/collaboration/server.mdx`, and set
+   `firstServerReleasePublished` to `true` in
+   `src/lib/__tests__/server-install.test.ts`, which checks all of it. In
+   Oleafly/oleafly-server, delete the "first release is on its way" line in
+   `README.md`.
+7. When the copy has passed, and on the first release the website is
+   deployed, check that
+   `curl -fsSL https://oleafly.com/server/install.sh | grep '^installer_version='`
+   prints the new version. Then run the one-command install on a fresh machine.
+
+If the copy fails, run it by hand with
+`gh workflow run sync-release.yml --repo Oleafly/oleafly-server -f tag=server-v0.1.0`.
+Oleafly/oleafly-server also copies new releases once a day, but GitHub turns
+that schedule off after 60 days without activity in the repository, so don't
+count on it.
+
+Pull requests that change the server or `deploy/server` also run
+`deploy/server/tests/e2e.sh` against the amd64 image the job built. It starts a
+privileged ubuntu:24.04 container that installs Docker with Docker's script,
+then installs, updates and uninstalls the server with the real installer, with
+the release served from a local registry. Caddy uses its own test certificate
+authority, so nothing reaches Let's Encrypt. To run it yourself, use a Linux
+x86-64 machine with Docker that can start privileged containers:
+`sh deploy/server/tests/e2e.sh oleafly-server:ci-amd64`.

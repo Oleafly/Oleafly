@@ -14,7 +14,7 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { aiAgentsTarget } from "@/components/settings/ai-settings-navigation";
 import { acpDisconnect, acpError, acpUsable } from "@/lib/acp";
-import { isDelegatedSession, useAcpSessionsStore } from "@/store/acp-sessions";
+import { isDelegatedSession, useAcpSessionView, useAcpSessionsStore } from "@/store/acp-sessions";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { toast } from "@/lib/toast";
@@ -36,17 +36,19 @@ export function openCliAgentSettings(agentId?: string) {
 
 const ACTION_CLASS = "size-7 text-muted-foreground hover:text-foreground";
 
-function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
+function SavedConversationItems({
+  projectId,
+  activeId,
+  agentName,
+  onOpen,
+}: Readonly<{
+  projectId: string;
+  activeId: string | null;
+  agentName: (id: string) => string;
+  onOpen: (id: string) => void;
+}>) {
   const { t } = useTranslation(["common", "ai"]);
-  const catalog = useAcpSessionsStore((state) => state.catalog);
   const allSessions = useAcpSessionsStore((state) => state.sessions);
-  const activeId = useAcpSessionsStore((state) => state.activeByProject[projectId] ?? null);
-  const agentId = useAcpSessionsStore((state) => state.composers[projectId]?.agentId ?? null);
-  const setError = useAcpSessionsStore((state) => state.setError);
-  const [busy, setBusy] = useState(false);
-  const session = activeId ? allSessions[activeId] : undefined;
-  const running = session?.status === "running" || session?.status === "cancelling";
-  const installed = catalog.some((agent) => agent.definition.id === agentId && acpUsable(agent));
   const sessions = useMemo(
     () =>
       Object.values(allSessions)
@@ -54,6 +56,33 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
         .sort((a, b) => b.updatedAt - a.updatedAt),
     [allSessions, projectId],
   );
+  return sessions.map((value) => (
+    <DropdownMenuItem
+      key={value.id}
+      data-value={value.id}
+      data-current={value.id === activeId ? "true" : undefined}
+      onSelect={() => onOpen(value.id)}
+    >
+      <span className="min-w-0 flex-1 truncate">
+        {value.title || t(($) => $.ai.acp.untitledConversation)} · {agentName(value.agentId)}
+      </span>
+    </DropdownMenuItem>
+  ));
+}
+
+function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
+  const { t } = useTranslation(["common", "ai"]);
+  const catalog = useAcpSessionsStore((state) => state.catalog);
+  const activeId = useAcpSessionsStore((state) => state.activeByProject[projectId] ?? null);
+  const agentId = useAcpSessionsStore((state) => state.composers[projectId]?.agentId ?? null);
+  const setError = useAcpSessionsStore((state) => state.setError);
+  const hasSaved = useAcpSessionsStore((state) =>
+    Object.values(state.sessions).some((value) => value.projectId === projectId && !isDelegatedSession(value)),
+  );
+  const [busy, setBusy] = useState(false);
+  const session = useAcpSessionView(activeId);
+  const running = session?.status === "running" || session?.status === "cancelling";
+  const installed = catalog.some((agent) => agent.definition.id === agentId && acpUsable(agent));
 
   const perform = async (action: () => Promise<void>) => {
     setError(projectId, null);
@@ -79,7 +108,7 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
     void perform(async () => {
       const saved = await exportConversation({
         projectId,
-        session,
+        session: useAcpSessionsStore.getState().sessions[session.id] ?? session,
         projectName: useFilesStore.getState().projectName || null,
         agentName: agentName(session.agentId),
       });
@@ -121,7 +150,7 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
               aria-label={t(($) => $.ai.acp.savedConversations)}
               data-testid="acp-history-picker"
               className={ACTION_CLASS}
-              disabled={busy || running || sessions.length === 0}
+              disabled={busy || running || !hasSaved}
             >
               <History className="size-4" />
             </Button>
@@ -138,18 +167,12 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
             </>
           ) : null}
           <DropdownMenuLabel>{t(($) => $.ai.acp.savedConversations)}</DropdownMenuLabel>
-          {sessions.map((value) => (
-            <DropdownMenuItem
-              key={value.id}
-              data-value={value.id}
-              data-current={value.id === activeId ? "true" : undefined}
-              onSelect={() => openSaved(value.id)}
-            >
-              <span className="min-w-0 flex-1 truncate">
-                {value.title || t(($) => $.ai.acp.untitledConversation)} · {agentName(value.agentId)}
-              </span>
-            </DropdownMenuItem>
-          ))}
+          <SavedConversationItems
+            projectId={projectId}
+            activeId={activeId}
+            agentName={agentName}
+            onOpen={openSaved}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
     </>

@@ -12,6 +12,7 @@ import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
+import { SharedReadOnlyError, sharedBaseOption, sharedViewOnly, sharedWriteRefusal } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 
 export type CiteOleaflyOutcome =
@@ -19,23 +20,33 @@ export type CiteOleaflyOutcome =
   | { kind: "present"; path: string }
   | { kind: "read-only"; path: string }
   | { kind: "read-only-folder" }
+  | { kind: "refused"; message: string }
   | { kind: "no-bibliography" }
   | { kind: "no-project" };
 
 let pendingRun: Promise<void> | null = null;
 
 function linkedBibliographyMessage(path: string): string {
+  const projectId = useFilesStore.getState().projectId;
+  if (sharedViewOnly(projectId)) return new SharedReadOnlyError().message;
   return i18n.t(($) => $.core.citation.linkedBibliography, { path });
 }
 
-async function writeBibliography(projectId: string, path: string, content: string): Promise<void> {
+async function writeBibliography(projectId: string, path: string, content: string, base: string): Promise<void> {
+  // A viewer's change, or one while the project goes live, stops here with
+  // one message. The files store would refuse it as well and say so in a
+  // toast of its own.
+  const refusal = sharedWriteRefusal(projectId);
+  if (refusal) throw refusal;
   const files = useFilesStore.getState();
   if (files.projectId === projectId && files.files[path] !== undefined) {
-    if (!files.setContent(path, content)) throw new Error(linkedBibliographyMessage(path));
+    if (!files.setContent(path, content, { bumpVersion: files.activePath === path })) {
+      throw new Error(linkedBibliographyMessage(path));
+    }
     await useFilesStore.getState().saveFile(path);
     return;
   }
-  await files.writeProjectFile(projectId, path, content);
+  await files.writeProjectFile(projectId, path, content, ...sharedBaseOption(projectId, base));
 }
 
 function hasOleaflyEntry(path: string, content: string): boolean {
@@ -80,15 +91,17 @@ export async function citeOleafly(options: { path?: string } = {}): Promise<Cite
   if (hasOleaflyEntry(path, content)) return { kind: "present", path };
   if (projectFolderIsReadOnly(projectId)) return { kind: "read-only-folder" };
   if (readOnly) return { kind: "read-only", path };
+  const refusal = sharedWriteRefusal(projectId);
+  if (refusal) return { kind: "refused", message: refusal.message };
   const version = await appVersion().catch(() => "");
   const next = withOleaflyEntry(path, content, version);
-  await writeBibliography(projectId, path, next);
+  await writeBibliography(projectId, path, next, content);
   return {
     kind: "added",
     path,
     undo: async () => {
       if (useFilesStore.getState().projectId !== projectId) return;
-      await writeBibliography(projectId, path, content);
+      await writeBibliography(projectId, path, content, next);
     },
   };
 }
@@ -129,6 +142,9 @@ async function reportCiteOleafly(options: { path?: string }): Promise<void> {
         return;
       case "read-only-folder":
         toast.error(readOnlyFolderMessage());
+        return;
+      case "refused":
+        toast.error(outcome.message);
         return;
       case "no-bibliography":
       case "no-project":

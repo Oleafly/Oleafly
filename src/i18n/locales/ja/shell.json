@@ -42,7 +42,9 @@
     "privacyNote": "送信されるのは識別子またはタイトルだけで、送信先は doi.org、arXiv、Crossref です。",
     "title": "引用を追加",
     "bibliography": "参考文献",
-    "bibliographyHint": "このプロジェクトには参考文献が複数あります。項目はここで選んだファイルに追加されます。"
+    "bibliographyHint": "このプロジェクトには参考文献が複数あります。項目はここで選んだファイルに追加されます。",
+    "zoteroMatches": "Zotero ライブラリから",
+    "zoteroPlaceholder": "Zotero ライブラリを検索、または DOI、arXiv の ID、タイトルを貼り付け"
   },
   "backendProtocol": {
     "mismatch": "このウィンドウとバックエンドは異なるバージョンの Oleafly 向けにビルドされているため、一部の機能が動かないことがあります。アプリを再インストールすると解決します。"
@@ -324,6 +326,38 @@
     "presentWithPresenter": {
       "label": "発表者ビューでスライドを発表",
       "keywords": "発表 スライド 発表者ビュー 発表者ノート タイマー 次のスライド"
+    },
+    "zenMode": {
+      "keywords": "集中 気が散らない 全画面 インターフェースを隠す ミニマル 執筆",
+      "label": "Zen モードを切り替え"
+    },
+    "togglePreview": {
+      "keywords": "pdf プレビュー 表示 非表示 分割 エディタのみ",
+      "label": "PDF プレビューの表示を切り替え"
+    },
+    "zoomIn": {
+      "keywords": "拡大 大きく",
+      "label": "拡大"
+    },
+    "zoomOut": {
+      "keywords": "縮小 小さく",
+      "label": "縮小"
+    },
+    "resetZoom": {
+      "keywords": "実際のサイズ 100",
+      "label": "ズームをリセット"
+    },
+    "zoteroAddMissing": {
+      "label": "不足している引用を Zotero から追加",
+      "keywords": "zotero 不足 引用 未定義 キー 参考文献 修復"
+    },
+    "zoteroUpdate": {
+      "label": "Zotero から .bib の項目を更新",
+      "keywords": "zotero 更新 再読み込み 参考文献 項目 変更"
+    },
+    "zoteroSync": {
+      "label": "Zotero ライブラリを同期",
+      "keywords": "zotero 同期 更新 ライブラリ"
     }
   },
   "community": {
@@ -346,11 +380,13 @@
     "compile": "コンパイル",
     "compiler": {
       "auto": "自動 <note>[システム TeX]</note>",
-      "help": "Tectonic は組み込みで、設定は不要です。ほかの選択肢はシステム TeX を使います。システム TeX はあなたのアカウントで読めるローカルファイルにアクセスできるため、信頼できるプロジェクトでのみ使ってください。「自動」はソースからコンパイラを判断します。pdfLaTeX はほとんどの論文誌テンプレートに合います。XeLaTeX と LuaLaTeX はシステムフォントと Unicode を扱えます。",
+      "help": "Tectonic は組み込みで、設定は不要です。ほかの選択肢はシステム TeX を使います。システム TeX はあなたのアカウントで読めるローカルファイルにアクセスできるため、信頼できるプロジェクトでのみ使ってください。「自動」はソースからコンパイラを判断します。pdfLaTeX はほとんどの論文誌テンプレートに合います。XeLaTeX と LuaLaTeX はシステムフォントと Unicode を扱えます。upLaTeX と pLaTeX は日本語の文書をコンパイルします。",
       "lualatex": "LuaLaTeX <note>[システム TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[システム TeX]</note>",
+      "platex": "pLaTeX <note>[システム TeX]</note>",
       "tectonic": "Tectonic <note>[組み込み]</note>",
       "title": "コンパイラ（このプロジェクト）",
+      "uplatex": "upLaTeX <note>[システム TeX]</note>",
       "xelatex": "XeLaTeX <note>[システム TeX]</note>"
     },
     "errors": {
@@ -407,7 +443,8 @@
       "title": "バリアント（このプロジェクト）",
       "help": "バリアントは、下書き用や最終版用のビルドなど、独自の値を sys.inputs に渡します。選んだバリアントはこのコンピュータに保存されます。バリアントの追加や編集は「文書の設定」で行えます。",
       "none": "バリアントなし"
-    }
+    },
+    "sharedViewer": "共有プロジェクトでは、閲覧者はこれらの設定を変更できません。"
   },
   "datePicker": {
     "placeholder": "日付を選択"
@@ -710,11 +747,6 @@
   "settings": {
     "close": "設定を閉じる",
     "data": {
-      "cloud": {
-        "comingSoon": "近日対応",
-        "description": "Git のリモートを設定しなくても、複数の端末でプロジェクトを同期できるようになります。通信はすべて端末間で暗号化されるため、転送中も内容は守られます。正となるのは、これまでどおりローカルのプロジェクトフォルダです。",
-        "title": "クラウド同期"
-      },
       "danger": {
         "confirmDeleteAllAction": "すべてのプロジェクトを削除",
         "confirmDeleteAllDescription": "現在のプロジェクトはすべて、ファイルと Git の履歴ごとごみ箱に移動します。あとから 1 件ずつ復元できます。",
@@ -793,6 +825,10 @@
         "description": "Oleafly ツールのギャラリーと個々のツール（PDF の読み込み、数式、表、BibTeX、研究室と文献の検索、締め切り）、およびそのスラッシュコマンドを表示します。ベータ版のため、既定ではオフです。",
         "label": "LaTeX ツール"
       },
+      "liveCollaboration": {
+        "description": "あなたやグループが運用する共同編集サーバーを通じて、ほかの人とプロジェクトを編集します。設定に「共同編集」セクションを追加します。ベータ版のため、既定ではオフです。",
+        "label": "リアルタイム共同編集"
+      },
       "warning": "これらの機能は実験的で、まだベータ版です。十分にテストされておらず、今後のリリースで変更、不具合、削除の可能性があります。開発中のものを試したい場合にのみ有効にしてください。",
       "webBrowser": {
         "description": "アプリ内のウェブブラウザ（ドックの切り替えとショートカット）を表示し、AI がコンピュータ操作で動かせるようにします。ベータ版のため既定ではオフで、オフのときはブラウザのボタンも AI のブラウザツールもありません。",
@@ -870,6 +906,7 @@
     "nav": {
       "ai": "AI アシスタント",
       "appearance": "外観",
+      "collaboration": "共同編集",
       "data": "データの保存",
       "dictionary": "辞書",
       "downloads": "ダウンロード",
@@ -885,6 +922,7 @@
       "keywords": {
         "ai": "アシスタント、チャット、モデル、プロバイダ、API キー、エージェント、プロンプト、予算、MCP サーバー",
         "appearance": "テーマ、ダークモード、ライトモード、色、カラー、フォント、文字サイズ、ズーム、レイアウト",
+        "collaboration": "サーバー、サインイン、端末、デバイス、メンバー、メンテナー、共有、チーム、研究室、ラボ、リアルタイム編集、リアルタイム、セキュリティログ",
         "data": "バックアップ、ライブラリフォルダ、プロジェクトフォルダ、保存先、ストレージ、ディスク容量、ごみ箱、プロジェクトの削除、チェックポイント",
         "dictionary": "スペル、ユーザー辞書、登録した単語、無視する単語、校正、文法ルール",
         "downloads": "パッケージ、フォント、辞書、オフライン用ファイル",
@@ -1100,7 +1138,8 @@
       "editorPreview": "エディタ + プレビュー",
       "editorPreviewAi": "エディタ + プレビュー + AI",
       "previewAi": "プレビュー + AI",
-      "previewOnly": "プレビューのみ"
+      "previewOnly": "プレビューのみ",
+      "zenMode": "Zen モード"
     },
     "newProjectName": "新しいプロジェクト名",
     "projectName": "プロジェクト名",
@@ -1319,5 +1358,77 @@
     "location": "{{file}}、{{line}} 行目",
     "error": "エラー",
     "warning": "警告"
+  },
+  "fileRenameDialog": {
+    "title": "ファイル名を変更",
+    "titleFolder": "フォルダ名を変更",
+    "newPath": "新しいパス",
+    "hint": "存在しないフォルダは作成されます。",
+    "invalid": "このプロジェクト内のパスを指定してください。",
+    "exists": "{{path}} はすでに存在します。"
+  },
+  "zen": {
+    "compileFailed": "コンパイルに失敗しました",
+    "compiling": "コンパイル中",
+    "hideLog": "コンパイルログを隠す",
+    "showLog": "コンパイルログを表示"
+  },
+  "collabSync": {
+    "paused_other": "Oleafly の外で {{count}} 個のファイルが変更されました。この変更を全員に送信しますか？それともローカルに残しますか？",
+    "send": "送信",
+    "keepLocal": "ローカルに残す",
+    "unavailable": "プロジェクトフォルダを使用できないため、同期を一時停止しています。フォルダが戻ると再開します。"
+  },
+  "overleafSync": {
+    "button": "Overleaf 同期",
+    "title": "Overleaf と同期",
+    "cancel": "キャンセル",
+    "more_other": "ほか {{count}} 件のファイル",
+    "status": {
+      "notLinked": "まだ Overleaf と同期していません。",
+      "linking": "Overleaf とリンクしています",
+      "syncing": "Overleaf と同期しています",
+      "needsToken": "同期するには Overleaf の Git トークンを追加してください。",
+      "never": "まだ同期していません。",
+      "justNow": "たった今",
+      "synced": "最終同期: {{time}}。",
+      "conflicts_other": "{{count}} 件のファイルが両方で変更されています。残す版を選んでください。"
+    },
+    "actions": {
+      "keepInSync": "Overleaf と同期し続ける",
+      "syncNow": "今すぐ同期",
+      "auto": "自動で同期",
+      "resolve": "版を選ぶ",
+      "unlink": "同期を停止",
+      "addToken": "Git トークンを追加",
+      "changeToken": "Git トークンを変更"
+    },
+    "token": {
+      "title": "Overleaf の Git トークンを追加",
+      "description": "Oleafly は Overleaf の Git 連携を使って同期します。Overleaf のアカウント設定の「Git 連携」でトークンを作成し、ここに貼り付けてください。トークンはこのコンピュータに暗号化して保存されます。",
+      "openSettings": "Overleaf のアカウント設定を開く",
+      "label": "Git トークン",
+      "note": "Git 連携を使うには、プロジェクトのオーナーが Overleaf の有料プランか大学のプランに加入している必要があります。",
+      "save": "保存して同期"
+    },
+    "choice": {
+      "title": "どちらの版を優先しますか？",
+      "description": "これらのファイルは、ここと Overleaf で内容が異なります。片方にしかないファイルは両方に残るため、何も削除されません。",
+      "mine": "自分の版を使う",
+      "theirs": "Overleaf の版を使う"
+    },
+    "conflicts": {
+      "title": "版を選ぶ",
+      "description": "これらのファイルは、前回の同期以降にここと Overleaf の両方で変更されました。ファイルごとに残す版を選んでください。適用するまで何も変わりません。",
+      "mine": "自分の版",
+      "theirs": "Overleaf の版",
+      "allMine": "すべて自分の版にする",
+      "allTheirs": "すべて Overleaf の版にする",
+      "apply": "適用して同期"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "このウィンドウが30秒間応答しなかったため、Oleafly が再読み込みしました。直前の変更は保存されていない可能性があります。",
+    "reloadedAgain": "このウィンドウが再び応答しなくなったため、Oleafly がもう一度再読み込みしました。プロジェクト内の何かが原因の可能性があるため、今回はプロジェクトを開き直していません。"
   }
 }

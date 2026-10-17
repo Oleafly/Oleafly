@@ -69,7 +69,10 @@
       "localNotFound": "Den lokale pakken {{spec}} er ikke installert. Legg den i Typst-pakkemappen til Oleafly eller i typst-packages-mappen i prosjektet.",
       "versionMissing": "Denne pakken har ingen versjon {{version}}. Den nyeste versjonen er {{latest}}.",
       "versionMissingNoLatest": "Denne pakken har ingen versjon {{version}}. Sjekk versjonen i importen."
-    }
+    },
+    "saveFailed": "{{path}} kunne ikke lagres, så Oleafly kompilerte ikke. Sjekk filen, og kompiler på nytt.",
+    "saveFailedSeveral": "{{path}} og andre filer kunne ikke lagres, så Oleafly kompilerte ikke. Sjekk filene, og kompiler på nytt.",
+    "saveFailedOther": "Dokumentet kunne ikke lagres, så Oleafly kompilerte ikke. {{reason}}"
   },
   "developer": {
     "actions": {
@@ -284,7 +287,9 @@
     "yearRangeInvalid": "Startåret kan ikke være senere enn sluttåret."
   },
   "mcp": {
+    "deniedByRules": "Avvist av en deny-regel i approvals.toml",
     "openProjectSummary": "Åpne prosjektet {{id}}",
+    "rulesUnreadable": "Avvist fordi approvals.toml ikke kunne leses",
     "useToolSummary": "Bruk {{tool}} fra MCP-serveren {{server}}"
   },
   "mcpConfig": {
@@ -358,7 +363,8 @@
     "referencesFor": "Referanser til {{name}}",
     "renameFailed": "Kunne ikke endre navnet til \"{{name}}\".",
     "renamePartial": "Fikk navnet \"{{name}}\" i {{edited}} av {{total}} filer. Kunne ikke skrive {{files}}.",
-    "renamed": "Fikk navnet \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Fikk navnet \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" samsvarer ikke med noen fil i dette prosjektet."
   },
   "pandoc": {
     "downloadFailed": "Kunne ikke laste ned pandoc. Installer den manuelt, og prøv igjen.",

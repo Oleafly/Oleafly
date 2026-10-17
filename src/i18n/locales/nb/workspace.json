@@ -210,5 +210,20 @@
     "clearFilter": "Tøm filteret",
     "filterPlaceholder": "Filtrer…",
     "noProject": "Ingen prosjekter"
+  },
+  "fileReferences": {
+    "title": "Oppdatere henvisninger til {{name}}?",
+    "files_one": "{{count}} fil",
+    "files_other": "{{count}} filer",
+    "summary_one": "{{count}} henvisning i $t(workspace:fileReferences.files, { \"count\": {{files}} }) bruker fortsatt den gamle stien, {{path}}.",
+    "summary_other": "{{count}} henvisninger i $t(workspace:fileReferences.files, { \"count\": {{files}} }) bruker fortsatt den gamle stien, {{path}}.",
+    "fileCount_one": "{{count}} henvisning",
+    "fileCount_other": "{{count}} henvisninger",
+    "dontAsk": "Ikke spør igjen",
+    "update": "Oppdater henvisninger",
+    "skip": "Ikke oppdater",
+    "failed_one": "{{count}} fil ble endret etter flyttingen eller kunne ikke lagres. Den bruker fortsatt den gamle stien.",
+    "failed_other": "{{count}} filer ble endret etter flyttingen eller kunne ikke lagres. De bruker fortsatt den gamle stien.",
+    "close": "Lukk uten å oppdatere henvisninger"
   }
 }

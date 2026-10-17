@@ -1,3 +1,4 @@
+import { insideLatexDefinition, scanLatexDefinitions } from "@oleafly/latex";
 import { dirname } from "@/lib/path-utils";
 import type { FileSymbols, Sym, SymKind } from "./types";
 import { parseTypstFile } from "./parse-typst";
@@ -153,8 +154,10 @@ function collectBibEntries(sink: SymSink): void {
 // nested braces (e.g. `\section{Intro to \texttt{x}}`) are captured whole.
 function collectSections(sink: SymSink): void {
   const { text } = sink;
+  const { spans } = scanLatexDefinitions(text);
   const sec = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*\{/g;
   for (let m = sec.exec(text); m; m = sec.exec(text)) {
+    if (insideLatexDefinition(spans, m.index)) continue;
     const open = m.index + m[0].length - 1;
     const close = matchBrace(text, open);
     if (close < 0) continue;

@@ -78,5 +78,9 @@
       "invalidNumber": "{{value}} er ikke et tall",
       "sortNegated": "{{key}} kan ikke utelates"
     }
+  },
+  "avatar": {
+    "more_one": "{{count}} person til",
+    "more_other": "{{count}} personer til"
   }
 }

@@ -188,7 +188,8 @@
     "quote": "Citation en bloc",
     "addLabel": "Ajouter une étiquette",
     "convertLatexMath": "Convertir les maths LaTeX en Typst",
-    "noLatexMath": "Sélectionnez d'abord des maths LaTeX."
+    "noLatexMath": "Sélectionnez d'abord des maths LaTeX.",
+    "renameFile": "Renommer le fichier…"
   },
   "shell": {
     "noFileOpenTab": "Aucun fichier ouvert",
@@ -247,7 +248,7 @@
     "issues": "Problèmes",
     "spelling": "Orthographe",
     "grammarAndStyle": "Grammaire et style",
-    "findingsTruncated": "La liste des observations est tronquée ; le décompte ci-dessus est complet.",
+    "findingsTruncated": "La liste des observations est tronquée. Le décompte ci-dessus est complet.",
     "spellLanguage": "Langue de correction orthographique",
     "spellLanguageAppSetting": "Utiliser le réglage de l'application",
     "spellLanguageAriaLabel": "Langue de correction orthographique pour ce projet",
@@ -371,7 +372,11 @@
     "summaryWarnings_other": "{{count}} avertissements",
     "summaryReferences_one": "{{count}} référence non résolue",
     "summaryReferences_many": "{{count}} références non résolues",
-    "summaryReferences_other": "{{count}} références non résolues"
+    "summaryReferences_other": "{{count}} références non résolues",
+    "fontPack": "{{family}} fait partie du pack de polices gratuit {{pack}}.",
+    "fontPackAction": "Télécharger et compiler",
+    "fontPackDownloading": "Téléchargement…",
+    "fontPackFailed": "Le pack de polices n'a pas pu être téléchargé. Vérifiez votre connexion et réessayez."
   },
   "history": {
     "untitledCommit": "Commit sans titre",
@@ -399,7 +404,9 @@
     "unifiedView": "Vue unifiée",
     "loading": "Chargement de la comparaison…",
     "previewTooLarge": "Fichier trop volumineux pour prévisualiser une comparaison.",
-    "diskHeading": "Sur le disque ↔ Vos modifications"
+    "diskHeading": "Sur le disque ↔ Vos modifications",
+    "sharedReadOnly": "Dans un projet partagé, cette comparaison est en lecture seule. Modifiez le fichier dans l'éditeur.",
+    "viewerReadOnly": "Vous pouvez consulter ce projet partagé, mais pas le modifier."
   },
   "hotkeys": {
     "title": "Raccourcis clavier",
@@ -433,7 +440,7 @@
       "indentOrAccept": "Indenter / accepter l'autocomplétion",
       "goToDefinition": "Aller à la définition",
       "findReferences": "Rechercher les références",
-      "renameSymbol": "Renommer le symbole (dans tout le projet)",
+      "renameSymbol": "Renommer le symbole ou le fichier (dans tout le projet)",
       "formatDocument": "Formater le document Typst",
       "commandPalette": "Palette de commandes",
       "searchAllDocuments": "Rechercher dans tous les documents",
@@ -461,7 +468,8 @@
     "noEntries": "Aucune entrée bibliographique dans ce projet pour l'instant.",
     "addNew": "Trouver et ajouter une nouvelle citation…",
     "duplicate": "doublon {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "De votre bibliothèque Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Décrivez la modification…  (Shift+Enter pour un saut de ligne)",
@@ -475,6 +483,7 @@
     "openInAgent": "Continuer dans l'assistant IA avec tous les outils du projet",
     "generateFailed": "Impossible de générer la modification. {{message}}",
     "dismiss": "Fermer",
+    "withdrawn": "Quelqu'un d'autre a modifié ce texte, la suggestion ne peut donc plus être appliquée.",
     "setUpProvider": "Configurer un fournisseur d'IA",
     "setUpProviderHint": "Ajoutez une clé API (ou un Ollama local) pour utiliser les modifications IA en ligne.",
     "openAiSettings": "Ouvrir Paramètres → IA"
@@ -659,6 +668,7 @@
     "endOfDocument": "Fin du document",
     "hidePreamble": "Masquer le préambule du document",
     "showPreamble": "Afficher le préambule du document",
+    "sharedReadOnly": "Dans un projet partagé, le mode visuel affiche seulement le fichier. Basculez en vue source pour le modifier.",
     "findingLabel": "{{message}}. Ouvrir les suggestions de correction.",
     "rawBlockFindings_one": "{{count}} remarque de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions.",
     "rawBlockFindings_many": "{{count}} remarques de correction dans ce bloc brut. {{message}}. Ouvrir les suggestions.",
@@ -1481,7 +1491,8 @@
     "sources": {
       "project": "Projet",
       "system": "Système",
-      "embedded": "Intégrée"
+      "embedded": "Intégrée",
+      "pack": "Pack de polices"
     },
     "fontsFolder": "Pour utiliser une police dans ce projet, ajoutez son fichier au dossier fonts du projet."
   },
@@ -1508,5 +1519,6 @@
     "keyInvalid": "Les noms de valeur ne peuvent pas être vides ni contenir de signe égal.",
     "keyTaken": "Une variante ne peut pas définir deux fois le même nom.",
     "saveFailed": "Impossible d'enregistrer les variantes."
-  }
+  },
+  "sharedSettingsViewer": "Les lecteurs ne peuvent pas modifier ceci dans un projet partagé."
 }

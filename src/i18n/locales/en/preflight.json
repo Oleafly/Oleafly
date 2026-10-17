@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Table content may not parse as resume fields",
-      "detailTable": "ATS tools often flatten tabular content unpredictably. Avoid using a table to position resume text side by side; real research data tables are evaluated separately in Accessibility.",
+      "detailTable": "ATS tools often flatten tabular content unpredictably. Avoid using a table to place resume text side by side. Real research data tables are checked separately in Accessibility.",
       "titleTikz": "TikZ content needs a semantic alternative",
       "detailTikz": "TikZ draws visual content without exposing its meaning as normal text. Provide an accessible description for publication output and avoid it for ATS-facing resume content."
     },
@@ -256,7 +256,7 @@
       "title_one": "{{count}} bibliography entry has incomplete metadata",
       "title_other": "{{count}} bibliography entries have incomplete metadata",
       "detail": "Incomplete records can produce broken or ambiguous references in publisher styles. {{examples}}.",
-      "detailTruncated": "Incomplete records can produce broken or ambiguous references in publisher styles. {{examples}}; …"
+      "detailTruncated": "Incomplete records can produce broken or ambiguous references in publisher styles. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI value looks malformed",
@@ -318,6 +318,12 @@
     "refs-duplicate-bib": {
       "title": "Duplicate bibliography entries: {{keys}}",
       "detail": "These entries share the DOI {{doi}}, so they are the same reference under different keys. Keep one and cite it, or your bibliography will list it twice."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "Citation key \"{{key}}\" is defined more than once",
+      "detail": "Defined at {{places}}. BibTeX uses only the first entry with this key, and it ignores capital letters when it compares keys. Keep one entry, or give the others new keys and update the citations that use them.",
+      "detailBiber": "Defined at {{places}}. When biber builds the bibliography, it uses only the first entry with this key. Keep one entry, or give the others new keys and update the citations that use them.",
+      "detailTypst": "Defined at {{places}}. Typst stops the compile when two bibliography entries share a key. Keep one entry, or give the others new keys and update the citations that use them."
     },
     "submission-path-case": {
       "title": "Filename case does not match: {{target}}",
@@ -604,7 +610,7 @@
     "title": "Preflight",
     "readerDisabled": "Compile and run an output check first",
     "readerEnabled": "Open the text extracted from the PDF",
-    "readerButton": "Show what the reader sees",
+    "readerButton": "Screen Reader",
     "aboutLabel": "About Preflight",
     "aboutTitle": "What Preflight checks",
     "aboutIntro": "Preflight reads the project source, compiler log, and current PDF. Turn on only the checks that fit this document.",

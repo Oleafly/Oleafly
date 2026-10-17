@@ -206,5 +206,16 @@
     "clearFilter": "絞り込みを解除",
     "filterPlaceholder": "絞り込み…",
     "noProject": "プロジェクトなし"
+  },
+  "fileReferences": {
+    "title": "{{name}} への参照を更新しますか？",
+    "files_other": "{{count}} 件のファイル",
+    "summary_other": "$t(workspace:fileReferences.files, { \"count\": {{files}} })にある {{count}} 件の参照が、まだ古いパス {{path}} を使っています。",
+    "fileCount_other": "{{count}} 件の参照",
+    "dontAsk": "今後は確認しない",
+    "update": "参照を更新",
+    "skip": "更新しない",
+    "failed_other": "{{count}} 件のファイルは移動後に変更されたか、保存できませんでした。古いパスのままです。",
+    "close": "参照を更新せずに閉じる"
   }
 }

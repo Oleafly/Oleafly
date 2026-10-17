@@ -1,0 +1,1876 @@
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, PoisonError};
+
+use loro::event::{Diff, DiffBatch};
+use loro::{
+    ContainerID, EncodedBlobMode, ExportMode, LoroDoc, LoroMap, LoroText, LoroTree, LoroValue,
+    TextDelta, TreeID, TreeParentId, UpdateOptions, ValueOrContainer, VersionVector, ID,
+};
+use oleafly_collab_protocol::ids::FileId;
+use ring::rand::{SecureRandom, SystemRandom};
+use serde::{Deserialize, Serialize};
+
+use crate::ot::{Component, TextOperation};
+use crate::CollabError;
+
+mod tree;
+
+pub use tree::{LostRename, Trashed};
+
+const TREE: &str = "tree";
+const META: &str = "meta";
+const TEXT_PREFIX: &str = "text:";
+pub const TRASH_ID: &str = "~trash";
+const UPDATE_TIMEOUT_MS: f64 = 2_000.0;
+const LINE_ENDING: &str = "eol";
+const CRLF: &str = "crlf";
+const BLOB_WAS: &str = "blob_was";
+const BLOB_BY: &str = "blob_by:";
+const STAGED_IMPORT_BYTES: usize = 64 * 1024;
+const STAGE_ATOMS: i32 = 16_384;
+
+pub(crate) fn engine_failed() -> CollabError {
+    CollabError::Corrupt("a change made the document engine fail".to_owned())
+}
+
+// Not the change's fault: the engine failed too often in this run of the
+// app to try more changes in a scratch copy.
+pub(crate) fn engine_spent() -> CollabError {
+    CollabError::Corrupt(
+        "the document engine failed too often since the app started, so it takes no more \
+         changes until the app restarts"
+            .to_owned(),
+    )
+}
+
+pub(crate) enum Meta {
+    Read(loro::ImportBlobMetadata),
+    Malformed,
+    Panicked,
+}
+
+// Loro decodes a whole change to read its metadata, so a malformed change
+// can make it panic here as well. The decode reads only these bytes and no
+// document, so a panic there only means the change can't be read.
+pub(crate) fn blob_meta(bytes: &[u8], check_checksum: bool) -> Meta {
+    let read = std::panic::catch_unwind(|| {
+        #[cfg(test)]
+        failpoint::hit(bytes, failpoint::At::Decode);
+        LoroDoc::decode_import_blob_meta(bytes, check_checksum)
+    });
+    match read {
+        Ok(Ok(meta)) => Meta::Read(meta),
+        Ok(Err(_)) => Meta::Malformed,
+        Err(_) => Meta::Panicked,
+    }
+}
+
+// A document Loro panicked in is left in memory, never dropped, because
+// dropping it can panic again while the first panic unwinds, which aborts
+// the app. So the number of such documents is capped for the whole app:
+// once it is reached, a large change is no longer tried in a scratch copy,
+// and live projects stop taking in changes until the app restarts. The
+// changes turned away for that reason are not blamed for it.
+pub(crate) const MOST_LEFT_DOCUMENTS: usize = 8;
+
+// A scratch copy left in memory per change that made Loro panic in it. At
+// this many for one open project it takes no more large changes, and the
+// live session ends, which bounds what a member's changes can cost every
+// other member.
+pub(crate) const MOST_SCRATCH_FAILURES: usize = 3;
+
+#[cfg(not(test))]
+static LEFT_DOCUMENTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+// Each test counts on its own thread, so tests that make Loro panic don't
+// spend the budget of the others.
+#[cfg(test)]
+thread_local! {
+    static LEFT_DOCUMENTS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+pub(crate) fn leave_in_memory<T>(broken: T) {
+    #[cfg(not(test))]
+    LEFT_DOCUMENTS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    #[cfg(test)]
+    LEFT_DOCUMENTS.with(|left| left.set(left.get() + 1));
+    let _ = std::mem::ManuallyDrop::new(broken);
+}
+
+pub(crate) fn engine_budget_spent() -> bool {
+    left_documents() >= MOST_LEFT_DOCUMENTS
+}
+
+pub(crate) fn left_documents() -> usize {
+    #[cfg(not(test))]
+    let left = LEFT_DOCUMENTS.load(std::sync::atomic::Ordering::Relaxed);
+    #[cfg(test)]
+    let left = LEFT_DOCUMENTS.with(std::cell::Cell::get);
+    left
+}
+
+// Fills a fresh Loro document with what may make Loro panic: bytes from
+// another computer, or a copy of the project. The document is made here,
+// outside the panic guard, and only lent to `fill`, so a panic never drops
+// it while unwinding: Loro's lock is poisoned then, and the drop would panic
+// again, which aborts the app. A document Loro panicked in is left in
+// memory. `fill` hands out clones of it where it needs one of its own.
+pub(crate) fn filled<T>(
+    fill: impl FnOnce(&LoroDoc) -> Result<T, CollabError>,
+) -> Result<(LoroDoc, T), CollabError> {
+    let doc = LoroDoc::new();
+    #[cfg(test)]
+    failpoint::poison_if_asked(&doc);
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| fill(&doc))) {
+        Ok(Ok(value)) => Ok((doc, value)),
+        Ok(Err(error)) => Err(error),
+        Err(_) => {
+            leave_in_memory(doc);
+            Err(engine_failed())
+        }
+    }
+}
+
+// Tests mark a payload so that taking it in panics, the way a malformed
+// change can make Loro panic: while its metadata is decoded, in the
+// document, or in the scratch copy a large change is tried in first.
+#[cfg(test)]
+pub(crate) mod failpoint {
+    use std::sync::{Mutex, PoisonError};
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum At {
+        Decode,
+        Document,
+        Scratch,
+        ScratchExport,
+        Applied,
+        Local,
+    }
+
+    static ARMED: Mutex<Vec<(Vec<u8>, At)>> = Mutex::new(Vec::new());
+
+    pub(crate) fn panic_on(payload: &[u8], at: At) {
+        ARMED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push((payload.to_vec(), at));
+    }
+
+    thread_local! {
+        static FORKS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    pub(crate) fn forked() {
+        FORKS.with(|forks| forks.set(forks.get() + 1));
+    }
+
+    pub(crate) fn forks() -> usize {
+        FORKS.with(std::cell::Cell::get)
+    }
+
+    thread_local! {
+        static POISON: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    }
+
+    // The next fresh document panics inside Loro while Loro holds its lock,
+    // the way a real engine panic leaves it: the lock is poisoned, and
+    // dropping the document would panic again.
+    pub(crate) fn poison_next() {
+        POISON.with(|poison| poison.set(true));
+    }
+
+    pub(crate) fn poison_if_asked(doc: &loro::LoroDoc) {
+        if POISON.with(|poison| poison.replace(false)) {
+            doc.subscribe_root(std::sync::Arc::new(|_| {
+                panic!("a test made Loro panic while it held its lock")
+            }))
+            .detach();
+        }
+    }
+
+    static SLOWED: Mutex<Vec<(Vec<u8>, At, std::time::Duration)>> = Mutex::new(Vec::new());
+
+    // Taking in this change keeps the thread busy this long, the way a large
+    // change does on a slow computer.
+    pub(crate) fn slow_on(payload: &[u8], at: At, busy: std::time::Duration) {
+        SLOWED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push((payload.to_vec(), at, busy));
+    }
+
+    pub(crate) fn hit(payload: &[u8], at: At) {
+        let busy = SLOWED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .find(|(marked, place, _)| marked == payload && *place == at)
+            .map(|(.., busy)| *busy);
+        if let Some(busy) = busy {
+            std::thread::sleep(busy);
+        }
+        let armed = ARMED
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .any(|(marked, place)| marked == payload && *place == at);
+        if armed {
+            panic!("a test made taking in this change panic");
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Source {
+    Arriving,
+    Saved,
+}
+
+struct Staged {
+    pieces: Vec<Vec<u8>>,
+    target: VersionVector,
+    arrived: Vec<(u64, i32)>,
+}
+
+fn export_spans(
+    doc: &LoroDoc,
+    spans: &std::collections::BTreeMap<u64, (i32, i32)>,
+) -> Option<Vec<u8>> {
+    let spans: Vec<loro::IdSpan> = spans
+        .iter()
+        .map(|(peer, (from, to))| loro::IdSpan::new(*peer, *from, *to))
+        .collect();
+    doc.export(ExportMode::UpdatesInRange {
+        spans: std::borrow::Cow::Owned(spans),
+    })
+    .ok()
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NodeKind {
+    Dir,
+    Text,
+    Blob,
+}
+
+impl NodeKind {
+    fn as_str(self) -> &'static str {
+        match self {
+            NodeKind::Dir => "dir",
+            NodeKind::Text => "text",
+            NodeKind::Blob => "blob",
+        }
+    }
+
+    fn parse(value: &str) -> Option<NodeKind> {
+        match value {
+            "dir" => Some(NodeKind::Dir),
+            "text" => Some(NodeKind::Text),
+            "blob" => Some(NodeKind::Blob),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum NodeParent {
+    Root,
+    Trash,
+    Node(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileNode {
+    pub id: String,
+    pub parent: NodeParent,
+    pub name: String,
+    pub kind: NodeKind,
+    pub blob: Option<String>,
+    pub position: String,
+    pub author_name: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct DocChanges {
+    pub texts: Vec<(String, Vec<TextDelta>)>,
+    pub tree: bool,
+    pub comments: crate::comments::CommentEvents,
+}
+
+impl DocChanges {
+    pub fn is_empty(&self) -> bool {
+        self.texts.is_empty() && !self.tree && self.comments.is_empty()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Imported {
+    pub changes: DocChanges,
+    pub arrived: Vec<(u64, i32)>,
+    pub pending: bool,
+    pub waiting: Vec<(u64, i32)>,
+}
+
+#[derive(Debug)]
+pub(crate) struct ImportFailure {
+    pub(crate) kept: Imported,
+    pub(crate) error: CollabError,
+    // The change that made Loro panic in its scratch copy, which is not
+    // tried again.
+    pub(crate) panicked: Option<usize>,
+}
+
+fn arrived_in(status: &loro::ImportStatus) -> Vec<(u64, i32)> {
+    status
+        .success
+        .iter()
+        .map(|(peer, (_, end))| (*peer, *end))
+        .collect()
+}
+
+type Spans = Vec<(u64, i32)>;
+
+fn waiting_in(status: &loro::ImportStatus) -> Spans {
+    status
+        .pending
+        .iter()
+        .flat_map(|range| range.iter().map(|(peer, (_, end))| (*peer, *end)))
+        .collect()
+}
+
+fn grown(before: &VersionVector, after: &VersionVector) -> Vec<(u64, i32)> {
+    after
+        .iter()
+        .filter(|(peer, end)| before.get(peer).copied().unwrap_or(0) < **end)
+        .map(|(peer, end)| (*peer, *end))
+        .collect()
+}
+
+impl Imported {
+    pub(crate) fn absorb(&mut self, later: Imported) {
+        self.changes.texts.extend(later.changes.texts);
+        self.changes.tree |= later.changes.tree;
+        self.changes.comments.extend(later.changes.comments);
+        self.arrived.extend(later.arrived);
+        self.pending |= later.pending;
+        self.waiting.extend(later.waiting);
+    }
+}
+
+#[derive(Default)]
+struct Recorder {
+    on: bool,
+    changes: DocChanges,
+}
+
+type SharedRecorder = Arc<Mutex<Recorder>>;
+
+fn recorder(doc: &LoroDoc) -> (SharedRecorder, loro::Subscription) {
+    let shared: SharedRecorder = Arc::new(Mutex::new(Recorder::default()));
+    let sink = Arc::clone(&shared);
+    let subscription = doc.subscribe_root(Arc::new(move |event| {
+        let mut recorder = sink.lock().unwrap_or_else(PoisonError::into_inner);
+        if !recorder.on {
+            return;
+        }
+        for change in &event.events {
+            if crate::comments::record(&mut recorder.changes.comments, change) {
+                continue;
+            }
+            match (change.target, &change.diff) {
+                (ContainerID::Root { name, .. }, Diff::Text(deltas)) => {
+                    if let Some(id) = name.as_str().strip_prefix(TEXT_PREFIX) {
+                        recorder.changes.texts.push((id.to_owned(), deltas.clone()));
+                    }
+                }
+                (_, Diff::Text(_)) => {}
+                _ => recorder.changes.tree = true,
+            }
+        }
+    }));
+    (shared, subscription)
+}
+
+pub struct ProjectDoc {
+    doc: LoroDoc,
+    tree: LoroTree,
+    ids: HashMap<String, TreeID>,
+    trash: Option<TreeID>,
+    log: tree::TreeLog,
+    authors: crate::comments::Authorship,
+    anchors: Mutex<crate::comments::Anchors>,
+    recorded: SharedRecorder,
+    compacted_with: VersionVector,
+    scratch_failures: usize,
+    frozen: bool,
+    _events: loro::Subscription,
+}
+
+fn doc_error<T: std::fmt::Debug>(error: T) -> CollabError {
+    CollabError::Corrupt(format!("{error:?}"))
+}
+
+fn fresh_peer() -> Result<u64, CollabError> {
+    let mut bytes = [0u8; 8];
+    SystemRandom::new()
+        .fill(&mut bytes)
+        .map_err(|_| CollabError::Crypto("could not draw a random peer id".to_owned()))?;
+    Ok(u64::from_le_bytes(bytes) >> 1)
+}
+
+fn meta_string(meta: &LoroMap, key: &str) -> Option<String> {
+    match meta.get(key) {
+        Some(ValueOrContainer::Value(LoroValue::String(value))) => Some(value.as_str().to_owned()),
+        _ => None,
+    }
+}
+
+fn text_name(id: &str) -> String {
+    format!("{TEXT_PREFIX}{id}")
+}
+
+pub fn delta_to_operation(old: &str, deltas: &[TextDelta]) -> Result<TextOperation, CollabError> {
+    let mut characters = old.chars();
+    let mut take = |count: usize| -> Result<usize, CollabError> {
+        let mut units = 0;
+        for _ in 0..count {
+            units += characters
+                .next()
+                .ok_or_else(|| {
+                    CollabError::Corrupt("a change runs past the end of its file".to_owned())
+                })?
+                .len_utf16();
+        }
+        Ok(units)
+    };
+    let mut operation = TextOperation::new();
+    for delta in deltas {
+        match delta {
+            TextDelta::Retain { retain, .. } => {
+                operation.retain(take(*retain)?);
+            }
+            TextDelta::Insert { insert, .. } => {
+                operation.insert(insert);
+            }
+            TextDelta::Delete { delete } => {
+                operation.delete(take(*delete)?);
+            }
+        }
+    }
+    let rest: usize = characters.map(char::len_utf16).sum();
+    operation.retain(rest);
+    Ok(operation)
+}
+
+impl ProjectDoc {
+    pub fn create() -> Result<ProjectDoc, CollabError> {
+        let doc = LoroDoc::new();
+        doc.set_peer_id(fresh_peer()?).map_err(doc_error)?;
+        let tree = doc.get_tree(TREE);
+        tree.enable_fractional_index(0);
+        let trash = tree.create(TreeParentId::Root).map_err(doc_error)?;
+        let meta = tree.get_meta(trash).map_err(doc_error)?;
+        meta.insert("id", TRASH_ID).map_err(doc_error)?;
+        meta.insert("name", TRASH_ID).map_err(doc_error)?;
+        meta.insert("kind", NodeKind::Dir.as_str())
+            .map_err(doc_error)?;
+        doc.commit();
+        let (recorded, events) = recorder(&doc);
+        Ok(ProjectDoc {
+            doc,
+            tree,
+            ids: HashMap::new(),
+            trash: Some(trash),
+            log: tree::TreeLog::default(),
+            authors: crate::comments::Authorship::default(),
+            anchors: Mutex::default(),
+            recorded,
+            compacted_with: VersionVector::new(),
+            scratch_failures: 0,
+            frozen: false,
+            _events: events,
+        })
+    }
+
+    // A project without a trash folder still opens: any editor's change can
+    // delete or rename it, so the app makes a new one when it next needs it.
+    pub fn load(bytes: &[u8]) -> Result<ProjectDoc, CollabError> {
+        let doc = LoroDoc::new();
+        doc.set_peer_id(fresh_peer()?).map_err(doc_error)?;
+        doc.import(bytes).map_err(doc_error)?;
+        ProjectDoc::wrap(doc)
+    }
+
+    // For bytes from elsewhere, such as the server's snapshot a joiner
+    // starts from. A panic in Loro is contained (see `filled`) and reads as
+    // the engine failing on them.
+    pub fn load_contained(bytes: &[u8]) -> Result<ProjectDoc, CollabError> {
+        if engine_budget_spent() {
+            return Err(engine_spent());
+        }
+        let peer = fresh_peer()?;
+        let (_, loaded) = filled(|doc| {
+            doc.set_peer_id(peer).map_err(doc_error)?;
+            doc.import(bytes).map_err(doc_error)?;
+            ProjectDoc::wrap(doc.clone())
+        })?;
+        Ok(loaded)
+    }
+
+    // A copy of the project as it was at `frontiers`, made the way
+    // `LoroDoc::fork_at` makes one but contained (see `filled`).
+    fn copy_at(
+        &self,
+        frontiers: &loro::Frontiers,
+        then: impl FnOnce(&LoroDoc) -> Result<(), CollabError>,
+    ) -> Result<ProjectDoc, CollabError> {
+        let bytes = self
+            .doc
+            .export(ExportMode::SnapshotAt {
+                version: std::borrow::Cow::Borrowed(frontiers),
+            })
+            .map_err(doc_error)?;
+        let (_, copy) = filled(|copy| {
+            copy.import(&bytes).map_err(doc_error)?;
+            then(copy)?;
+            ProjectDoc::wrap(copy.clone())
+        })?;
+        Ok(copy)
+    }
+
+    fn wrap(doc: LoroDoc) -> Result<ProjectDoc, CollabError> {
+        let tree = doc.get_tree(TREE);
+        tree.enable_fractional_index(0);
+        let (recorded, events) = recorder(&doc);
+        let mut wrapped = ProjectDoc {
+            doc,
+            tree,
+            ids: HashMap::new(),
+            trash: None,
+            log: tree::TreeLog::default(),
+            authors: crate::comments::Authorship::default(),
+            anchors: Mutex::default(),
+            recorded,
+            compacted_with: VersionVector::new(),
+            scratch_failures: 0,
+            frozen: false,
+            _events: events,
+        };
+        wrapped.reindex()?;
+        Ok(wrapped)
+    }
+
+    pub fn at_version(&self, version: &VersionVector) -> Result<ProjectDoc, CollabError> {
+        if !self.doc.oplog_vv().includes_vv(version) {
+            return Err(CollabError::Corrupt(
+                "the shared project never had this version".to_owned(),
+            ));
+        }
+        let frontiers = self.doc.vv_to_frontiers(version);
+        self.copy_at(&frontiers, |_| Ok(()))
+    }
+
+    pub fn without_comment_changes_after(
+        &mut self,
+        base: &VersionVector,
+    ) -> Result<Option<Vec<crate::comments::UnsentComment>>, CollabError> {
+        if !self.doc.oplog_vv().includes_vv(base) {
+            return Err(CollabError::Corrupt(
+                "the shared project never had this version".to_owned(),
+            ));
+        }
+        if !changes_comments_after(&self.doc, base) {
+            return Ok(None);
+        }
+        let from = self.doc.vv_to_frontiers(base);
+        let to = self.doc.oplog_frontiers();
+        let mut kept = DiffBatch::default();
+        for (container, change) in self.doc.diff(&from, &to).map_err(doc_error)?.iter() {
+            if crate::comments::in_comments(&self.doc, container) {
+                continue;
+            }
+            kept.push(container.clone(), change.clone())
+                .map_err(|_| CollabError::Corrupt("a change was listed twice".to_owned()))?;
+        }
+        let peer = fresh_peer()?;
+        let mut rebuilt = self.copy_at(&from, |copy| {
+            copy.set_peer_id(peer).map_err(doc_error)?;
+            copy.apply_diff(kept).map_err(doc_error)?;
+            copy.commit();
+            Ok(())
+        })?;
+        if !self.same_files_as(&rebuilt)? {
+            return Err(CollabError::Corrupt(
+                "the project changed while comments were taken out of it".to_owned(),
+            ));
+        }
+        let unsent = crate::comments::unsent_comments(self, &rebuilt);
+        rebuilt.log = std::mem::take(&mut self.log);
+        rebuilt.authors = std::mem::take(&mut self.authors);
+        *self = rebuilt;
+        Ok(Some(unsent))
+    }
+
+    fn same_files_as(&self, other: &ProjectDoc) -> Result<bool, CollabError> {
+        let sorted = |doc: &ProjectDoc| -> Result<Vec<FileNode>, CollabError> {
+            let mut nodes = doc.nodes()?;
+            nodes.sort_by(|left, right| left.id.cmp(&right.id));
+            Ok(nodes)
+        };
+        let nodes = sorted(self)?;
+        if nodes != sorted(other)? {
+            return Ok(false);
+        }
+        for node in nodes.iter().filter(|node| node.kind == NodeKind::Text) {
+            if self.text(&node.id)? != other.text(&node.id)? {
+                return Ok(false);
+            }
+        }
+        Ok(self.doc.get_map(META).get_deep_value() == other.doc.get_map(META).get_deep_value())
+    }
+
+    fn reindex(&mut self) -> Result<(), CollabError> {
+        let mut ids = HashMap::new();
+        let mut trash: Option<TreeID> = None;
+        for node in self.tree.get_nodes(false) {
+            let meta = self.tree.get_meta(node.id).map_err(doc_error)?;
+            match meta_string(&meta, "id") {
+                Some(id) if id == TRASH_ID => {
+                    trash = Some(trash.map_or(node.id, |current| current.min(node.id)));
+                }
+                Some(id) => {
+                    ids.insert(id, node.id);
+                }
+                None => {}
+            }
+        }
+        self.ids = ids;
+        self.trash = trash;
+        Ok(())
+    }
+
+    fn tree_id(&self, id: &str) -> Result<TreeID, CollabError> {
+        self.ids
+            .get(id)
+            .copied()
+            .ok_or_else(|| CollabError::Corrupt(format!("the shared project has no file {id}")))
+    }
+
+    fn parent_of(&self, parent: Option<&str>) -> Result<TreeParentId, CollabError> {
+        let Some(id) = parent else {
+            return Ok(TreeParentId::Root);
+        };
+        let node = self.tree_id(id)?;
+        let kind = self
+            .tree
+            .get_meta(node)
+            .ok()
+            .and_then(|meta| meta_string(&meta, "kind"))
+            .and_then(|kind| NodeKind::parse(&kind));
+        if kind != Some(NodeKind::Dir) {
+            return Err(CollabError::InvalidPath(format!(
+                "{id} is a file, so nothing can go inside it"
+            )));
+        }
+        Ok(TreeParentId::Node(node))
+    }
+
+    pub(crate) fn loro(&self) -> &LoroDoc {
+        &self.doc
+    }
+
+    pub(crate) fn authors(&self) -> &crate::comments::Authorship {
+        &self.authors
+    }
+
+    pub(crate) fn authors_mut(&mut self) -> &mut crate::comments::Authorship {
+        &mut self.authors
+    }
+
+    pub(crate) fn anchors(&self) -> std::sync::MutexGuard<'_, crate::comments::Anchors> {
+        self.anchors.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    pub(crate) fn text_of(&self, id: &str) -> Result<LoroText, CollabError> {
+        self.tree_id(id)?;
+        Ok(self.doc.get_text(text_name(id)))
+    }
+
+    pub fn contains(&self, id: &str) -> bool {
+        self.ids.contains_key(id)
+    }
+
+    pub fn add_node(
+        &mut self,
+        parent: Option<&str>,
+        name: &str,
+        kind: NodeKind,
+        blob: Option<&str>,
+        text: &str,
+    ) -> Result<String, CollabError> {
+        let id = FileId::new_v7().to_string();
+        let parent = self.parent_of(parent)?;
+        let created = self.tree.create(parent).map_err(doc_error)?;
+        let meta = self.tree.get_meta(created).map_err(doc_error)?;
+        meta.insert("id", id.as_str()).map_err(doc_error)?;
+        meta.insert("name", name).map_err(doc_error)?;
+        meta.insert("kind", kind.as_str()).map_err(doc_error)?;
+        self.log.created(&meta)?;
+        if let Some(hash) = blob {
+            meta.insert("blob", hash).map_err(doc_error)?;
+        }
+        if kind == NodeKind::Text && !text.is_empty() {
+            self.doc
+                .get_text(text_name(&id))
+                .insert_utf16(0, text)
+                .map_err(doc_error)?;
+        }
+        self.doc.commit();
+        self.ids.insert(id.clone(), created);
+        Ok(id)
+    }
+
+    pub fn rename(&mut self, id: &str, name: &str) -> Result<(), CollabError> {
+        let node = self.tree_id(id)?;
+        let meta = self.tree.get_meta(node).map_err(doc_error)?;
+        self.log.renaming(id, &meta, name)?;
+        meta.insert("name", name).map_err(doc_error)?;
+        self.doc.commit();
+        Ok(())
+    }
+
+    pub fn set_blob(&mut self, id: &str, hash: &str) -> Result<(), CollabError> {
+        let node = self.tree_id(id)?;
+        let seen = meta_string(&self.tree.get_meta(node).map_err(doc_error)?, "blob");
+        self.put_blob(id, hash, seen)
+    }
+
+    pub fn replace_blob(&mut self, id: &str, seen: &str, hash: &str) -> Result<(), CollabError> {
+        self.put_blob(id, hash, Some(seen.to_owned()))
+    }
+
+    fn put_blob(&mut self, id: &str, hash: &str, was: Option<String>) -> Result<(), CollabError> {
+        let node = self.tree_id(id)?;
+        let meta = self.tree.get_meta(node).map_err(doc_error)?;
+        let unseen = meta_string(&meta, "blob")
+            .filter(|current| Some(current) != was.as_ref())
+            .map(|current| format!("{BLOB_BY}{current}"));
+        let setters: Vec<String> = meta
+            .keys()
+            .filter(|key| key.starts_with(BLOB_BY) && Some(key.as_str()) != unseen.as_deref())
+            .map(|key| key.to_string())
+            .collect();
+        for key in setters {
+            meta.delete(&key).map_err(doc_error)?;
+        }
+        meta.insert("blob", hash).map_err(doc_error)?;
+        match was {
+            Some(was) => meta.insert(BLOB_WAS, was).map_err(doc_error)?,
+            None if meta.get(BLOB_WAS).is_some() => meta.delete(BLOB_WAS).map_err(doc_error)?,
+            None => {}
+        }
+        if let Some(account) = self.author_key() {
+            meta.insert(&format!("{BLOB_BY}{hash}"), account)
+                .map_err(doc_error)?;
+        }
+        self.doc.commit();
+        Ok(())
+    }
+
+    pub fn blob_was(&self, id: &str) -> Option<String> {
+        let meta = self.tree.get_meta(self.tree_id(id).ok()?).ok()?;
+        meta_string(&meta, BLOB_WAS)
+    }
+
+    pub fn blob_setter(&self, id: &str, hash: &str) -> Option<String> {
+        let meta = self.tree.get_meta(self.tree_id(id).ok()?).ok()?;
+        meta_string(&meta, &format!("{BLOB_BY}{hash}"))
+    }
+
+    pub fn author_of(&self, id: &str) -> Option<String> {
+        let meta = self.tree.get_meta(self.tree_id(id).ok()?).ok()?;
+        meta_string(&meta, "author")
+    }
+
+    pub fn crlf(&self, id: &str) -> bool {
+        self.tree_id(id)
+            .ok()
+            .and_then(|node| self.tree.get_meta(node).ok())
+            .and_then(|meta| meta_string(&meta, LINE_ENDING))
+            .is_some_and(|value| value == CRLF)
+    }
+
+    pub fn set_crlf(&mut self, id: &str, crlf: bool) -> Result<bool, CollabError> {
+        if self.crlf(id) == crlf {
+            return Ok(false);
+        }
+        let meta = self.tree.get_meta(self.tree_id(id)?).map_err(doc_error)?;
+        if crlf {
+            meta.insert(LINE_ENDING, CRLF).map_err(doc_error)?;
+        } else {
+            meta.delete(LINE_ENDING).map_err(doc_error)?;
+        }
+        self.doc.commit();
+        Ok(true)
+    }
+
+    pub fn move_to(&mut self, id: &str, parent: Option<&str>) -> Result<(), CollabError> {
+        let node = self.tree_id(id)?;
+        let parent = self.parent_of(parent)?;
+        self.tree.mov(node, parent).map_err(doc_error)?;
+        self.moved_out_of_trash(node, parent)?;
+        self.doc.commit();
+        Ok(())
+    }
+
+    pub fn trash(&mut self, id: &str) -> Result<(), CollabError> {
+        let node = self.tree_id(id)?;
+        let trash = match self.trash {
+            Some(trash) => trash,
+            None => self.recreate_trash()?,
+        };
+        self.stamp_trashed(node)?;
+        self.tree
+            .mov(node, TreeParentId::Node(trash))
+            .map_err(doc_error)?;
+        self.doc.commit();
+        Ok(())
+    }
+
+    // Two members who do this at once make two trash folders; every member
+    // then uses the one with the smallest id, and files in the other still
+    // count as deleted.
+    fn recreate_trash(&mut self) -> Result<TreeID, CollabError> {
+        let trash = self.tree.create(TreeParentId::Root).map_err(doc_error)?;
+        let meta = self.tree.get_meta(trash).map_err(doc_error)?;
+        meta.insert("id", TRASH_ID).map_err(doc_error)?;
+        meta.insert("name", TRASH_ID).map_err(doc_error)?;
+        meta.insert("kind", NodeKind::Dir.as_str())
+            .map_err(doc_error)?;
+        self.trash = Some(trash);
+        Ok(trash)
+    }
+
+    pub fn text(&self, id: &str) -> Result<String, CollabError> {
+        Ok(self.text_of(id)?.to_string())
+    }
+
+    pub fn apply_operation(
+        &mut self,
+        id: &str,
+        operation: &TextOperation,
+    ) -> Result<(), CollabError> {
+        let text = self.text_of(id)?;
+        if text.len_utf16() != operation.base_len() {
+            return Err(CollabError::Corrupt(format!(
+                "a change for {id} does not fit its text"
+            )));
+        }
+        let mut position = 0;
+        for component in operation.components() {
+            match component {
+                Component::Retain(count) => position += count,
+                Component::Insert(inserted) => {
+                    text.insert_utf16(position, inserted).map_err(doc_error)?;
+                    position += crate::ot::utf16_len(inserted);
+                }
+                Component::Delete(count) => {
+                    text.delete_utf16(position, *count).map_err(doc_error)?;
+                }
+            }
+        }
+        self.doc.commit();
+        Ok(())
+    }
+
+    pub fn set_text(&mut self, id: &str, content: &str) -> Result<DocChanges, CollabError> {
+        let text = self.text_of(id)?;
+        let options = UpdateOptions {
+            timeout_ms: Some(UPDATE_TIMEOUT_MS),
+            use_refined_diff: true,
+        };
+        let (done, changes) = self.recording(|doc| {
+            if text.update(content, options).is_err() {
+                let length = text.len_utf16();
+                text.splice_utf16(0, length, content).map_err(doc_error)?;
+            }
+            doc.commit();
+            Ok(())
+        });
+        done?;
+        Ok(changes)
+    }
+
+    // The changes are kept even when the work fails, because a batch import
+    // applies every update it can before it reports the one that failed.
+    fn recording<T>(
+        &self,
+        work: impl FnOnce(&LoroDoc) -> Result<T, CollabError>,
+    ) -> (Result<T, CollabError>, DocChanges) {
+        self.doc.commit();
+        {
+            let mut recorder = self.recorded.lock().unwrap_or_else(PoisonError::into_inner);
+            recorder.on = true;
+            recorder.changes = DocChanges::default();
+        }
+        let outcome = work(&self.doc);
+        let mut recorder = self.recorded.lock().unwrap_or_else(PoisonError::into_inner);
+        recorder.on = false;
+        let changes = std::mem::take(&mut recorder.changes);
+        (outcome, changes)
+    }
+
+    pub fn nodes(&self) -> Result<Vec<FileNode>, CollabError> {
+        let by_tree: HashMap<TreeID, &str> = self
+            .ids
+            .iter()
+            .map(|(id, node)| (*node, id.as_str()))
+            .collect();
+        let mut views = Vec::new();
+        for node in self.tree.get_nodes(false) {
+            let Some(id) = by_tree.get(&node.id) else {
+                continue;
+            };
+            let parent = match node.parent {
+                TreeParentId::Root => NodeParent::Root,
+                TreeParentId::Node(parent) if Some(parent) == self.trash => NodeParent::Trash,
+                TreeParentId::Node(parent) => match by_tree.get(&parent) {
+                    Some(parent_id) => NodeParent::Node((*parent_id).to_owned()),
+                    None => NodeParent::Trash,
+                },
+                _ => continue,
+            };
+            let meta = self.tree.get_meta(node.id).map_err(doc_error)?;
+            // A deleted file is stamped when it goes to the trash, so it
+            // stays deleted even if an edit turns the trash folder into an
+            // ordinary one.
+            let parent = if meta.get("trashed_at").is_some() {
+                NodeParent::Trash
+            } else {
+                parent
+            };
+            views.push(FileNode {
+                id: (*id).to_owned(),
+                parent,
+                name: meta_string(&meta, "name").unwrap_or_default(),
+                kind: meta_string(&meta, "kind")
+                    .and_then(|kind| NodeKind::parse(&kind))
+                    .unwrap_or(NodeKind::Text),
+                blob: meta_string(&meta, "blob"),
+                position: node.fractional_index.to_string(),
+                author_name: meta_string(&meta, "author_name"),
+            });
+        }
+        Ok(views)
+    }
+
+    pub fn set_meta(&mut self, key: &str, value: &str) -> Result<(), CollabError> {
+        self.doc
+            .get_map(META)
+            .insert(key, value)
+            .map_err(doc_error)?;
+        self.doc.commit();
+        Ok(())
+    }
+
+    pub fn meta(&self, key: &str) -> Option<String> {
+        meta_string(&self.doc.get_map(META), key)
+    }
+
+    pub fn pending_since(&self, version: &VersionVector) -> u64 {
+        self.doc
+            .oplog_vv()
+            .iter()
+            .map(|(peer, end)| {
+                let confirmed = version.get(peer).copied().unwrap_or(0);
+                u64::try_from(end - confirmed).unwrap_or(0)
+            })
+            .sum()
+    }
+
+    pub fn version(&self) -> VersionVector {
+        self.doc.oplog_vv()
+    }
+
+    pub fn has_changes_since(&self, version: &VersionVector) -> bool {
+        !version.includes_vv(&self.doc.oplog_vv())
+    }
+
+    pub fn export_since(&self, version: &VersionVector) -> Result<Vec<u8>, CollabError> {
+        self.doc
+            .export(ExportMode::updates(version))
+            .map_err(doc_error)
+    }
+
+    pub fn snapshot(&self) -> Result<Vec<u8>, CollabError> {
+        self.doc.export(ExportMode::Snapshot).map_err(doc_error)
+    }
+
+    pub fn peer_id(&self) -> u64 {
+        self.doc.peer_id()
+    }
+
+    pub(crate) fn scratch_failures(&self) -> usize {
+        self.scratch_failures
+    }
+
+    // A document standing in for one the engine broke: comment edits made
+    // on it would never be saved or sent, so they are refused.
+    pub(crate) fn freeze(&mut self) {
+        self.frozen = true;
+    }
+
+    pub(crate) fn writable(&self) -> Result<(), CollabError> {
+        if self.frozen {
+            return Err(CollabError::Corrupt(
+                "this project stopped syncing after an error, so it takes no changes until it \
+                 is opened again"
+                    .to_owned(),
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn introduced_peers(&self, payload: &[u8]) -> Result<Vec<u64>, CollabError> {
+        let Meta::Read(meta) = blob_meta(payload, true) else {
+            return Err(CollabError::Corrupt("a change can't be read".to_owned()));
+        };
+        if meta.mode != EncodedBlobMode::Updates {
+            return Err(CollabError::Corrupt(
+                "a change arrived as something other than an update".to_owned(),
+            ));
+        }
+        let known = self.doc.oplog_vv();
+        Ok(meta
+            .partial_end_vv
+            .iter()
+            .filter(|(peer, end)| known.get(peer).copied().unwrap_or(0) < **end)
+            .map(|(peer, _)| *peer)
+            .collect())
+    }
+
+    pub fn import(&mut self, bytes: &[u8]) -> Result<Imported, CollabError> {
+        self.import_all(&[bytes])
+    }
+
+    pub fn texts_changed_in(&self, spans: &[(u64, i32, i32)]) -> Vec<String> {
+        let mut texts: Vec<String> = spans
+            .iter()
+            .filter(|(_, from, to)| from < to)
+            .flat_map(|(peer, from, to)| {
+                self.doc.get_changed_containers_in(
+                    ID::new(*peer, *from),
+                    usize::try_from(to - from).unwrap_or(0),
+                )
+            })
+            .filter_map(|container| match container {
+                ContainerID::Root { name, .. } => name.strip_prefix(TEXT_PREFIX).map(str::to_owned),
+                _ => None,
+            })
+            .collect();
+        texts.sort_unstable();
+        texts.dedup();
+        texts
+    }
+
+    pub fn import_all(&mut self, payloads: &[&[u8]]) -> Result<Imported, CollabError> {
+        self.import_keeping(payloads)
+            .map_err(|failure| failure.error)
+    }
+
+    // Records from this computer's own change log went into the document
+    // once already, so their scratch copies don't count against the caps.
+    // Turning them away would read as a damaged log, and the next save
+    // would write the document without them.
+    pub(crate) fn import_saved(&mut self, records: &[&[u8]]) -> Result<Imported, CollabError> {
+        self.import_from(records, Source::Saved)
+            .map_err(|failure| failure.error)
+    }
+
+    pub(crate) fn import_keeping(
+        &mut self,
+        payloads: &[&[u8]],
+    ) -> Result<Imported, Box<ImportFailure>> {
+        self.import_from(payloads, Source::Arriving)
+    }
+
+    fn import_from(
+        &mut self,
+        payloads: &[&[u8]],
+        source: Source,
+    ) -> Result<Imported, Box<ImportFailure>> {
+        let mut imported = Imported::default();
+        let mut together: Vec<Vec<u8>> = Vec::new();
+        let mut failed = None;
+        let mut panicked = None;
+        for (index, payload) in payloads.iter().enumerate() {
+            if payload.len() < STAGED_IMPORT_BYTES {
+                together.push(payload.to_vec());
+                continue;
+            }
+            let earlier = std::mem::take(&mut together);
+            if let Err(error) = self.import_together(earlier, &mut imported) {
+                failed = Some(error);
+                break;
+            }
+            if let Err(error) = self.import_one(payload, &mut imported, source) {
+                if error == engine_failed() {
+                    panicked = Some(index);
+                }
+                failed = Some(error);
+                break;
+            }
+        }
+        if failed.is_none() {
+            failed = self.import_together(together, &mut imported).err();
+        }
+        let compacted = self.compact_for_new_writers();
+        match failed.map_or(compacted, Err) {
+            Ok(()) => Ok(imported),
+            Err(error) => Err(Box::new(ImportFailure {
+                kept: imported,
+                error,
+                panicked,
+            })),
+        }
+    }
+
+    fn import_together(
+        &mut self,
+        payloads: Vec<Vec<u8>>,
+        imported: &mut Imported,
+    ) -> Result<(), CollabError> {
+        if payloads.is_empty() {
+            return Ok(());
+        }
+        let before = self.doc.oplog_vv();
+        let (status, changes) = self.recording(|doc| {
+            #[cfg(test)]
+            for payload in &payloads {
+                failpoint::hit(payload, failpoint::At::Document);
+            }
+            doc.import_batch(&payloads).map_err(doc_error)
+        });
+        let status = status.map(|status| (arrived_in(&status), waiting_in(&status)));
+        self.keep(imported, &before, status, changes)
+    }
+
+    fn keep(
+        &mut self,
+        imported: &mut Imported,
+        before: &VersionVector,
+        status: Result<(Spans, Spans), CollabError>,
+        changes: DocChanges,
+    ) -> Result<(), CollabError> {
+        let tree = changes.tree;
+        let (arrived, waiting, failed) = match status {
+            Ok((arrived, waiting)) => (arrived, waiting, None),
+            Err(error) => (grown(before, &self.doc.oplog_vv()), Vec::new(), Some(error)),
+        };
+        imported.absorb(Imported {
+            changes,
+            arrived,
+            pending: !waiting.is_empty(),
+            waiting,
+        });
+        if tree {
+            self.reindex()?;
+            self.log.tree_changed();
+        }
+        failed.map_or(Ok(()), Err)
+    }
+
+    fn compact_for_new_writers(&mut self) -> Result<(), CollabError> {
+        let now = self.doc.oplog_vv();
+        if now
+            .iter()
+            .all(|(peer, _)| self.compacted_with.get(peer).is_some())
+        {
+            return Ok(());
+        }
+        self.doc.export(ExportMode::Snapshot).map_err(doc_error)?;
+        self.compacted_with = now;
+        Ok(())
+    }
+
+    fn import_one(
+        &mut self,
+        bytes: &[u8],
+        imported: &mut Imported,
+        source: Source,
+    ) -> Result<(), CollabError> {
+        let before = self.doc.oplog_vv();
+        let (status, changes) = match self.staged(bytes, source)? {
+            Some(staged) => {
+                let (done, changes) = self.recording(|doc| {
+                    #[cfg(test)]
+                    failpoint::hit(bytes, failpoint::At::Document);
+                    for piece in &staged.pieces {
+                        doc.import(piece).map_err(doc_error)?;
+                    }
+                    if !doc.oplog_vv().includes_vv(&staged.target) {
+                        doc.import(bytes).map_err(doc_error)?;
+                    }
+                    Ok(())
+                });
+                (done.map(|()| (staged.arrived, Vec::new())), changes)
+            }
+            None => {
+                let (status, changes) = self.recording(|doc| {
+                    #[cfg(test)]
+                    failpoint::hit(bytes, failpoint::At::Document);
+                    doc.import(bytes).map_err(doc_error)
+                });
+                let status = status.map(|status| (arrived_in(&status), waiting_in(&status)));
+                (status, changes)
+            }
+        };
+        self.keep(imported, &before, status, changes)
+    }
+
+    // A change the document already holds in full needs no scratch copy:
+    // taking it in again changes nothing.
+    fn holds_all_of(&self, bytes: &[u8]) -> bool {
+        matches!(
+            blob_meta(bytes, false),
+            Meta::Read(meta) if self.doc.oplog_vv().includes_vv(&meta.partial_end_vv)
+        )
+    }
+
+    // One writer carrying on from the document's only head, say someone
+    // pasting while the others are idle, has nothing concurrent to merge, so
+    // a plain import is as fast as it gets and the fork is skipped.
+    fn continues_its_own_head(&self, bytes: &[u8]) -> bool {
+        let Meta::Read(meta) = blob_meta(bytes, false) else {
+            return false;
+        };
+        let heads: Vec<ID> = self.doc.oplog_frontiers().iter().collect();
+        let deps: Vec<ID> = meta.start_frontiers.iter().collect();
+        let starts: Vec<(u64, i32)> = meta
+            .partial_start_vv
+            .iter()
+            .map(|(peer, counter)| (*peer, *counter))
+            .collect();
+        let ends: Vec<u64> = meta.partial_end_vv.keys().copied().collect();
+        match (
+            heads.as_slice(),
+            deps.as_slice(),
+            starts.as_slice(),
+            ends.as_slice(),
+        ) {
+            ([head], [dep], [(peer, start)], [writer]) => {
+                head == dep && head.peer == *peer && *writer == *peer && *start == head.counter + 1
+            }
+            _ => false,
+        }
+    }
+
+    // A large change is tried in a scratch copy first. If Loro panics there,
+    // while it takes the change in or while the pieces are read back out,
+    // the copy is left in memory (see `filled`) and the change counts as
+    // unreadable: the document itself never sees it. The copy is made from
+    // the project's own snapshot, so a panic while that is written is the
+    // document's, not the change's, and unwinds to the guard around it.
+    fn staged(&mut self, bytes: &[u8], source: Source) -> Result<Option<Staged>, CollabError> {
+        if self.doc.oplog_vv().is_empty()
+            || self.continues_its_own_head(bytes)
+            || self.holds_all_of(bytes)
+        {
+            return Ok(None);
+        }
+        if source == Source::Arriving
+            && (engine_budget_spent() || self.scratch_failures >= MOST_SCRATCH_FAILURES)
+        {
+            return Err(engine_spent());
+        }
+        #[cfg(test)]
+        failpoint::forked();
+        let snapshot = self.doc.export(ExportMode::Snapshot).map_err(doc_error)?;
+        let known = self.doc.oplog_vv();
+        let tried = filled(|scratch| {
+            if scratch.import(&snapshot).is_err() {
+                return Ok(None);
+            }
+            scratch.detach();
+            #[cfg(test)]
+            failpoint::hit(bytes, failpoint::At::Scratch);
+            let status = scratch.import(bytes).ok();
+            #[cfg(test)]
+            failpoint::hit(bytes, failpoint::At::ScratchExport);
+            Ok(Self::staged_from(&known, scratch, status))
+        });
+        match tried {
+            Ok((_, staged)) => Ok(staged),
+            Err(error) => {
+                if error == engine_failed() {
+                    self.scratch_failures += 1;
+                }
+                Err(error)
+            }
+        }
+    }
+
+    fn staged_from(
+        known: &VersionVector,
+        scratch: &LoroDoc,
+        status: Option<loro::ImportStatus>,
+    ) -> Option<Staged> {
+        let status = status?;
+        if status.pending.is_some() {
+            return None;
+        }
+        let target = scratch.oplog_vv();
+        let mut chunks: Vec<(u32, u64, i32, i32)> = Vec::new();
+        for (peer, end) in target.iter() {
+            let mut counter = known.get(peer).copied().unwrap_or(0);
+            while counter < *end {
+                let change = scratch.get_change(ID::new(*peer, counter))?;
+                let start = change.id.counter;
+                let change_end = start
+                    .saturating_add(i32::try_from(change.len).unwrap_or(i32::MAX))
+                    .min(*end);
+                if change_end <= counter {
+                    return None;
+                }
+                while counter < change_end {
+                    let to = counter.saturating_add(STAGE_ATOMS).min(change_end);
+                    let lamport = change
+                        .lamport
+                        .saturating_add(u32::try_from(counter - start).unwrap_or(0));
+                    chunks.push((lamport, *peer, counter, to));
+                    counter = to;
+                }
+            }
+        }
+        chunks.sort_unstable();
+        let mut pieces = Vec::new();
+        let mut spans: std::collections::BTreeMap<u64, (i32, i32)> =
+            std::collections::BTreeMap::new();
+        let mut atoms = 0;
+        for (_, peer, from, to) in chunks {
+            let span = spans.entry(peer).or_insert((from, from));
+            span.1 = to;
+            atoms += to - from;
+            if atoms >= STAGE_ATOMS {
+                pieces.push(export_spans(scratch, &std::mem::take(&mut spans))?);
+                atoms = 0;
+            }
+        }
+        if !spans.is_empty() {
+            pieces.push(export_spans(scratch, &spans)?);
+        }
+        let arrived = status
+            .success
+            .iter()
+            .map(|(peer, (_, end))| (*peer, *end))
+            .collect();
+        Some(Staged {
+            pieces,
+            target,
+            arrived,
+        })
+    }
+}
+
+pub(crate) fn changes_comments_after(doc: &LoroDoc, base: &VersionVector) -> bool {
+    doc.oplog_vv().iter().any(|(peer, end)| {
+        let start = base.get(peer).copied().unwrap_or(0);
+        start < *end
+            && doc
+                .get_changed_containers_in(
+                    ID::new(*peer, start),
+                    usize::try_from(end - start).unwrap_or(0),
+                )
+                .iter()
+                .any(|container| crate::comments::in_comments(doc, container))
+    })
+}
+
+pub fn advance(version: &mut VersionVector, arrived: &[(u64, i32)]) {
+    for (peer, end) in arrived {
+        if version.get(peer).is_none_or(|current| current < end) {
+            version.set_end(ID::new(*peer, *end));
+        }
+    }
+}
+
+pub fn encode_version(version: &VersionVector) -> Vec<u8> {
+    version.encode()
+}
+
+pub fn decode_version(bytes: &[u8]) -> Result<VersionVector, CollabError> {
+    if bytes.is_empty() {
+        return Ok(VersionVector::new());
+    }
+    VersionVector::decode(bytes).map_err(doc_error)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn shared_pair() -> (ProjectDoc, ProjectDoc, String) {
+        let mut owner = ProjectDoc::create().unwrap();
+        let main = owner
+            .add_node(None, "main.tex", NodeKind::Text, None, "Hello world\n")
+            .unwrap();
+        let joiner = ProjectDoc::load(&owner.snapshot().unwrap()).unwrap();
+        (owner, joiner, main)
+    }
+
+    fn next(seed: &mut u64) -> u64 {
+        *seed = seed
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        *seed >> 33
+    }
+
+    fn applied(text: &str, operation: &TextOperation) -> String {
+        let units: Vec<u16> = text.encode_utf16().collect();
+        let mut out: Vec<u16> = Vec::new();
+        let mut at = 0;
+        for component in operation.components() {
+            match component {
+                Component::Retain(count) => {
+                    out.extend_from_slice(&units[at..at + count]);
+                    at += count;
+                }
+                Component::Insert(inserted) => out.extend(inserted.encode_utf16()),
+                Component::Delete(count) => at += count,
+            }
+        }
+        out.extend_from_slice(&units[at..]);
+        String::from_utf16(&out).unwrap()
+    }
+
+    #[test]
+    fn a_file_marked_as_crlf_keeps_the_mark_in_every_copy_until_it_is_cleared() {
+        let (mut owner, mut joiner, main) = shared_pair();
+        assert!(!owner.crlf(&main));
+        assert!(owner.set_crlf(&main, true).unwrap());
+        assert!(!owner.set_crlf(&main, true).unwrap());
+        joiner
+            .import(&owner.export_since(&joiner.version()).unwrap())
+            .unwrap();
+        assert!(joiner.crlf(&main));
+        assert!(joiner.set_crlf(&main, false).unwrap());
+        owner
+            .import(&joiner.export_since(&owner.version()).unwrap())
+            .unwrap();
+        assert!(!owner.crlf(&main));
+        assert!(!owner.crlf("no-such-file"));
+        assert_eq!(owner.text(&main).unwrap(), "Hello world\n");
+    }
+
+    #[test]
+    fn an_import_reports_exactly_the_text_and_tree_changes_it_made() {
+        let mut seed = 11u64;
+        let mut writer = ProjectDoc::create().unwrap();
+        let main = writer
+            .add_node(None, "main.tex", NodeKind::Text, None, "Hello world\n")
+            .unwrap();
+        let notes = writer
+            .add_node(None, "notes.md", NodeKind::Text, None, "日本語 notes 🪸\n")
+            .unwrap();
+        let mut reader = ProjectDoc::load(&writer.snapshot().unwrap()).unwrap();
+        let pieces = ["a", "é", "🪸", "line\n", "コーラル", " "];
+        for round in 0..300 {
+            let before = writer.version();
+            for _ in 0..1 + next(&mut seed) % 4 {
+                let id = if next(&mut seed).is_multiple_of(2) {
+                    &main
+                } else {
+                    &notes
+                };
+                let text = writer.text(id).unwrap();
+                let chars: Vec<char> = text.chars().collect();
+                let at = (next(&mut seed) as usize) % (chars.len() + 1);
+                let prefix: String = chars[..at].iter().collect();
+                let rest: String = chars[at..].iter().collect();
+                let mut operation = TextOperation::default();
+                operation.retain(prefix.encode_utf16().count());
+                if next(&mut seed).is_multiple_of(3) && !rest.is_empty() {
+                    let gone: String = rest
+                        .chars()
+                        .take(1 + next(&mut seed) as usize % 3)
+                        .collect();
+                    operation.delete(gone.encode_utf16().count());
+                    operation.retain(rest.encode_utf16().count() - gone.encode_utf16().count());
+                } else {
+                    operation.insert(pieces[next(&mut seed) as usize % pieces.len()]);
+                    operation.retain(rest.encode_utf16().count());
+                }
+                writer.apply_operation(id, &operation).unwrap();
+            }
+            let renamed = round % 50 == 49;
+            if renamed {
+                writer.rename(&notes, &format!("notes-{round}.md")).unwrap();
+            }
+            let update = writer.export_since(&before).unwrap();
+            let main_before = reader.text(&main).unwrap();
+            let notes_before = reader.text(&notes).unwrap();
+            let imported = reader.import(&update).unwrap();
+            let mut main_after = main_before.clone();
+            let mut notes_after = notes_before.clone();
+            for (id, deltas) in &imported.changes.texts {
+                let target = if id == &main {
+                    &mut main_after
+                } else {
+                    &mut notes_after
+                };
+                let operation = delta_to_operation(target, deltas).unwrap();
+                *target = applied(target, &operation);
+            }
+            assert_eq!(main_after, reader.text(&main).unwrap(), "round {round}");
+            assert_eq!(notes_after, reader.text(&notes).unwrap(), "round {round}");
+            assert_eq!(imported.changes.tree, renamed, "round {round}");
+        }
+        assert_eq!(reader.text(&main).unwrap(), writer.text(&main).unwrap());
+        assert_eq!(reader.nodes().unwrap(), writer.nodes().unwrap());
+    }
+
+    #[test]
+    fn a_large_update_from_two_people_reports_changes_that_rebuild_every_text() {
+        let (mut alice, mut bob, main) = shared_pair();
+        let mut carol = ProjectDoc::load(&alice.snapshot().unwrap()).unwrap();
+        let since = bob.version();
+        bob.apply_operation(&main, &{
+            let mut operation = TextOperation::default();
+            operation.insert("Bob: ").retain(12);
+            operation
+        })
+        .unwrap();
+        let big: String = (0..3_000)
+            .map(|line| format!("Ligne {line} — 日本語 🪸 data\n"))
+            .collect();
+        let refs = alice
+            .add_node(None, "refs.bib", NodeKind::Text, None, &big)
+            .unwrap();
+        alice
+            .apply_operation(&main, &{
+                let mut operation = TextOperation::default();
+                operation.retain(6).insert("Alice ").retain(6);
+                operation
+            })
+            .unwrap();
+        let paste: String = "carol pasted this line\n".repeat(2_000);
+        carol
+            .apply_operation(&main, &{
+                let mut operation = TextOperation::default();
+                operation.retain(12).insert(&paste);
+                operation
+            })
+            .unwrap();
+        alice
+            .import(&carol.export_since(&alice.version()).unwrap())
+            .unwrap();
+        let payload = alice.export_since(&since).unwrap();
+        assert!(payload.len() >= STAGED_IMPORT_BYTES);
+        let main_before = bob.text(&main).unwrap();
+        let imported = bob.import(&payload).unwrap();
+        let mut main_after = main_before.clone();
+        let mut refs_after = String::new();
+        for (id, deltas) in &imported.changes.texts {
+            let target = if id == &main {
+                &mut main_after
+            } else {
+                assert_eq!(id, &refs);
+                &mut refs_after
+            };
+            let operation = delta_to_operation(target, deltas).unwrap();
+            *target = applied(target, &operation);
+        }
+        assert_eq!(main_after, bob.text(&main).unwrap());
+        assert_eq!(refs_after, big);
+        assert!(imported.changes.tree);
+        assert!(!imported.pending);
+        let mut confirmed = since.clone();
+        advance(&mut confirmed, &imported.arrived);
+        assert!(confirmed.includes_vv(&alice.version()));
+        alice
+            .import(&bob.export_since(&alice.version()).unwrap())
+            .unwrap();
+        assert_eq!(bob.text(&main).unwrap(), alice.text(&main).unwrap());
+        assert_eq!(bob.text(&refs).unwrap(), big);
+        assert_eq!(bob.nodes().unwrap(), alice.nodes().unwrap());
+        assert!(bob
+            .text(&main)
+            .unwrap()
+            .starts_with("Bob: Hello Alice world"));
+    }
+
+    #[test]
+    fn a_loaded_snapshot_has_the_same_files_and_text() {
+        let (owner, joiner, main) = shared_pair();
+        assert_eq!(joiner.text(&main).unwrap(), "Hello world\n");
+        assert_eq!(joiner.nodes().unwrap(), owner.nodes().unwrap());
+        assert_ne!(owner.doc.peer_id(), joiner.doc.peer_id());
+    }
+
+    #[test]
+    fn imported_text_changes_become_utf16_operations() {
+        let (mut owner, mut joiner, main) = shared_pair();
+        let since = joiner.version();
+        let mut typed = TextOperation::new();
+        typed.retain(6).insert("😀 big ").retain(6);
+        owner.apply_operation(&main, &typed).unwrap();
+        let before = joiner.text(&main).unwrap();
+        let imported = joiner.import(&owner.export_since(&since).unwrap()).unwrap();
+        assert!(!imported.pending);
+        assert!(!imported.changes.tree);
+        let (id, deltas) = &imported.changes.texts[0];
+        assert_eq!(id, &main);
+        let operation = delta_to_operation(&before, deltas).unwrap();
+        assert_eq!(operation, typed);
+        assert_eq!(joiner.text(&main).unwrap(), "Hello 😀 big world\n");
+    }
+
+    #[test]
+    fn concurrent_edits_converge_after_both_sides_import() {
+        let (mut owner, mut joiner, main) = shared_pair();
+        let owner_base = owner.version();
+        let joiner_base = joiner.version();
+        let mut left = TextOperation::new();
+        left.insert("A").retain(12);
+        owner.apply_operation(&main, &left).unwrap();
+        let mut right = TextOperation::new();
+        right.retain(11).insert("B").retain(1);
+        joiner.apply_operation(&main, &right).unwrap();
+        let from_owner = owner.export_since(&owner_base).unwrap();
+        let from_joiner = joiner.export_since(&joiner_base).unwrap();
+        owner.import(&from_joiner).unwrap();
+        joiner.import(&from_owner).unwrap();
+        assert_eq!(owner.text(&main).unwrap(), "AHello worldB\n");
+        assert_eq!(joiner.text(&main).unwrap(), owner.text(&main).unwrap());
+    }
+
+    #[test]
+    fn tree_changes_are_flagged_and_files_can_move_to_the_trash() {
+        let (mut owner, mut joiner, main) = shared_pair();
+        let since = joiner.version();
+        let chapters = owner
+            .add_node(None, "chapters", NodeKind::Dir, None, "")
+            .unwrap();
+        let intro = owner
+            .add_node(Some(&chapters), "intro.tex", NodeKind::Text, None, "Intro")
+            .unwrap();
+        owner.rename(&main, "thesis.tex").unwrap();
+        owner.trash(&intro).unwrap();
+        let imported = joiner.import(&owner.export_since(&since).unwrap()).unwrap();
+        assert!(imported.changes.tree);
+        let nodes = joiner.nodes().unwrap();
+        let renamed = nodes.iter().find(|node| node.id == main).unwrap();
+        assert_eq!(renamed.name, "thesis.tex");
+        let trashed = nodes.iter().find(|node| node.id == intro).unwrap();
+        assert_eq!(trashed.parent, NodeParent::Trash);
+    }
+
+    #[test]
+    fn setting_text_from_disk_reports_a_minimal_change() {
+        let (mut owner, _joiner, main) = shared_pair();
+        let changes = owner.set_text(&main, "Hello brave world\n").unwrap();
+        let (id, deltas) = &changes.texts[0];
+        assert_eq!(id, &main);
+        let operation = delta_to_operation("Hello world\n", deltas).unwrap();
+        assert_eq!(
+            operation.apply("Hello world\n").unwrap(),
+            "Hello brave world\n"
+        );
+        assert!(operation.components().len() <= 3);
+        assert!(owner
+            .set_text(&main, "Hello brave world\n")
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn the_version_advances_only_for_peers_whose_changes_arrived() {
+        let (mut owner, mut joiner, main) = shared_pair();
+        let mut confirmed = joiner.version();
+        let mut local = TextOperation::new();
+        local.insert("x").retain(12);
+        joiner.apply_operation(&main, &local).unwrap();
+        assert!(joiner.has_changes_since(&confirmed));
+        let since = owner.version();
+        let mut remote = TextOperation::new();
+        remote.retain(12).insert("y");
+        owner.apply_operation(&main, &remote).unwrap();
+        let imported = joiner.import(&owner.export_since(&since).unwrap()).unwrap();
+        advance(&mut confirmed, &imported.arrived);
+        assert!(joiner.has_changes_since(&confirmed));
+        let pending = joiner.export_since(&confirmed).unwrap();
+        let mut check = ProjectDoc::load(&owner.snapshot().unwrap()).unwrap();
+        check.import(&pending).unwrap();
+        assert_eq!(check.text(&main).unwrap(), joiner.text(&main).unwrap());
+        let round_trip = decode_version(&encode_version(&confirmed)).unwrap();
+        assert_eq!(round_trip, confirmed);
+    }
+
+    #[test]
+    fn settings_travel_with_the_document_and_pending_work_is_counted() {
+        let (mut owner, _joiner, main) = shared_pair();
+        owner.set_meta("main_doc", "thesis.tex").unwrap();
+        let confirmed = owner.version();
+        let loaded = ProjectDoc::load(&owner.snapshot().unwrap()).unwrap();
+        assert_eq!(loaded.meta("main_doc").as_deref(), Some("thesis.tex"));
+        assert_eq!(loaded.meta("engine"), None);
+        assert_eq!(owner.pending_since(&confirmed), 0);
+        let mut typed = TextOperation::new();
+        typed.insert("abc").retain(12);
+        owner.apply_operation(&main, &typed).unwrap();
+        assert_eq!(owner.pending_since(&confirmed), 3);
+    }
+
+    fn trash_folder(doc: &ProjectDoc) -> TreeID {
+        doc.tree
+            .get_nodes(false)
+            .into_iter()
+            .find(|node| {
+                doc.tree
+                    .get_meta(node.id)
+                    .ok()
+                    .and_then(|meta| meta_string(&meta, "id"))
+                    .is_some_and(|id| id == TRASH_ID)
+            })
+            .unwrap()
+            .id
+    }
+
+    #[test]
+    fn a_project_whose_trash_folder_was_removed_still_opens_and_can_delete_files() {
+        let attacks: [fn(&ProjectDoc); 3] = [
+            |mallory| mallory.tree.delete(trash_folder(mallory)).unwrap(),
+            |mallory| {
+                let meta = mallory.tree.get_meta(trash_folder(mallory)).unwrap();
+                meta.insert("id", "not-the-trash").unwrap();
+            },
+            |mallory| {
+                let holder = mallory.tree.create(TreeParentId::Root).unwrap();
+                mallory
+                    .tree
+                    .mov(trash_folder(mallory), TreeParentId::Node(holder))
+                    .unwrap();
+                mallory.tree.delete(holder).unwrap();
+            },
+        ];
+        for (round, attack) in attacks.into_iter().enumerate() {
+            let (mut alice, mut mallory, main) = shared_pair();
+            let notes = alice
+                .add_node(None, "notes.tex", NodeKind::Text, None, "x")
+                .unwrap();
+            alice.trash(&notes).unwrap();
+            mallory
+                .import(&alice.export_since(&VersionVector::new()).unwrap())
+                .unwrap();
+            let before = mallory.version();
+            attack(&mallory);
+            mallory.doc.commit();
+            alice
+                .import(&mallory.export_since(&before).unwrap())
+                .unwrap();
+            assert!(alice.trash.is_none(), "round {round}");
+            let mut reopened = ProjectDoc::load(&alice.snapshot().unwrap()).unwrap();
+            let placed = crate::materialize::layout(&alice.nodes().unwrap());
+            assert!(!placed.contains_key(&notes), "round {round}");
+            assert!(placed.values().all(|placed| !placed.path.contains("notes")));
+            reopened.trash(&main).unwrap();
+            assert!(reopened.trash.is_some(), "round {round}");
+            let trashed = reopened.trashed().unwrap();
+            assert!(trashed.iter().any(|item| item.id == main), "round {round}");
+            reopened.restore(&main).unwrap();
+            let main_node = reopened.nodes().unwrap();
+            let main_node = main_node.iter().find(|node| node.id == main).unwrap();
+            assert_eq!(main_node.parent, NodeParent::Root, "round {round}");
+            alice.trash(&main).unwrap();
+            assert_eq!(
+                alice
+                    .nodes()
+                    .unwrap()
+                    .iter()
+                    .find(|node| node.id == main)
+                    .unwrap()
+                    .parent,
+                NodeParent::Trash,
+                "round {round}"
+            );
+        }
+    }
+
+    #[test]
+    fn files_deleted_into_either_of_two_remade_trash_folders_stay_deleted() {
+        let (mut alice, mut bob, main) = shared_pair();
+        let notes = alice
+            .add_node(None, "notes.tex", NodeKind::Text, None, "x")
+            .unwrap();
+        bob.import(&alice.export_since(&VersionVector::new()).unwrap())
+            .unwrap();
+        for doc in [&mut alice, &mut bob] {
+            doc.tree.delete(trash_folder(doc)).unwrap();
+            doc.doc.commit();
+            doc.reindex().unwrap();
+            assert!(doc.trash.is_none());
+        }
+        let (alice_start, bob_start) = (alice.version(), bob.version());
+        alice.trash(&main).unwrap();
+        bob.trash(&notes).unwrap();
+        alice
+            .import(&bob.export_since(&alice_start).unwrap())
+            .unwrap();
+        bob.import(&alice.export_since(&bob_start).unwrap())
+            .unwrap();
+        for doc in [&mut alice, &mut bob] {
+            let trashed: Vec<String> = doc
+                .trashed()
+                .unwrap()
+                .into_iter()
+                .map(|item| item.id)
+                .collect();
+            assert!(
+                trashed.contains(&main) && trashed.contains(&notes),
+                "{trashed:?}"
+            );
+            for id in [&main, &notes] {
+                doc.restore(id).unwrap();
+                let nodes = doc.nodes().unwrap();
+                assert_eq!(
+                    nodes.iter().find(|node| node.id == *id).unwrap().parent,
+                    NodeParent::Root
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn nothing_can_be_added_or_moved_inside_a_file() {
+        let (mut owner, _joiner, main) = shared_pair();
+        let chapters = owner
+            .add_node(None, "chapters", NodeKind::Dir, None, "")
+            .unwrap();
+        let intro = owner
+            .add_node(Some(&chapters), "intro.tex", NodeKind::Text, None, "Intro")
+            .unwrap();
+        assert!(matches!(
+            owner.add_node(Some(&main), "child.tex", NodeKind::Text, None, "x"),
+            Err(CollabError::InvalidPath(_))
+        ));
+        assert!(matches!(
+            owner.move_to(&intro, Some(&main)),
+            Err(CollabError::InvalidPath(_))
+        ));
+        owner.move_to(&intro, None).unwrap();
+        owner.move_to(&intro, Some(&chapters)).unwrap();
+        let placed = crate::materialize::layout(&owner.nodes().unwrap());
+        assert_eq!(placed[&intro].path, "chapters/intro.tex");
+    }
+
+    #[test]
+    fn a_change_that_does_not_fit_is_refused() {
+        let (mut owner, _joiner, main) = shared_pair();
+        let mut wrong = TextOperation::new();
+        wrong.retain(3);
+        assert!(owner.apply_operation(&main, &wrong).is_err());
+        assert!(ProjectDoc::load(b"not a document").is_err());
+    }
+}

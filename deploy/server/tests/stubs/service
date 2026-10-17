@@ -1,0 +1,6 @@
+#!/bin/sh
+printf 'service %s\n' "$*" >>/stub/log
+if [ -f /stub/state/docker-start-fails ]; then
+	exit 1
+fi
+touch /stub/state/docker-running

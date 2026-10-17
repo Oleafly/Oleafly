@@ -7,6 +7,295 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Thanks
+
+Many thanks to the people who tested early builds, told us what broke and
+checked our fixes.
+
+- Saran Bodda ([@ssbodda-powern](https://github.com/ssbodda-powern), thanos on
+  Discord): live collaboration testing, import and sync for online LaTeX
+  accounts, settings export (#278), search scrolling (#270) and figure
+  warnings (#269).
+- Wahid Mounir ([@wahidmounir](https://github.com/wahidmounir)): the original
+  request for real-time collaboration (#98).
+- [@Fxde42](https://github.com/Fxde42): templates of your own (#285).
+- Stentor Coeruleus on Discord: parser loading during release testing.
+- [@Fravoj3](https://github.com/Fravoj3): typing performance on large projects
+  (#248) and drag and drop on Linux (#247).
+- [@wangtao11987](https://github.com/wangtao11987): PDF jump accuracy (#234).
+- [@multics](https://github.com/multics): IEEE template author groups (#170),
+  the first code contribution from outside the project.
+
+<details>
+<summary>Details</summary>
+
+- Saran Bodda tested live collaboration before release and asked for the
+  online account import and sync that ship in this release. Their report of a
+  sync error in the release candidate traced it to the service's Git bridge
+  using `main` instead of `master` for many projects. Saran also reported the
+  issues behind settings export and import (#278), centered search matches
+  (#270) and the figure and alt text warnings (#269). In 0.4.6, their reports
+  led to Zen mode (#255), the Mac Settings shortcut (#256), editor fonts and
+  line height (#257), sharper PDFs on high-resolution screens (#258) and a
+  working default compiler setting (#259).
+- Wahid Mounir asked for local-first real-time collaboration in August (#98),
+  which ships in this release as an experiment. Wahid also contributed the
+  Arabic README (#93), asked for pluggable research agents (#84) and automatic
+  AI model lists (#82), suggested SwiftLaTeX for Visual mode (#97) and a
+  layout with saved workspace preferences (#177), and reported issues with
+  undo after compiling (#101), the diagram composer (#108) and Gemini (#81).
+- Fxde42 asked to import templates from a computer or an online account
+  (#285), now available as Templates of your own.
+- Stentor Coeruleus reported a parser loading problem on Discord on October 16
+  and answered our follow-up questions.
+- Fravoj3 verified the 0.4.5 typing performance fix (#248) on a 249,623-word
+  project and found that hiding the PDF preview removed the lag that remained
+  at that size. Fravoj3 also verified the Linux drag and drop fix (#247) and
+  asked for paths to update when files move, added in 0.4.6 (#254).
+- wangtao11987 reported PDF jump positions (#234), fixed in 0.4.4.
+- multics fixed the author groups in the IEEE Research Paper template (#170)
+  in 0.4.4.
+
+</details>
+
+### Added
+
+- Live collaboration, as an experiment. Turn it on under
+  Settings > Experimentation, share a project to an Oleafly Server, and edit
+  it with your coauthors in real time. You see each person's cursor and
+  selection and who's online. The People and Activity pane shows what changed
+  while you were away, and clicking someone's avatar jumps to the line they're
+  on. Edits made offline merge when you reconnect, and if they overlap with
+  someone else's, Oleafly shows you both and asks before it applies anything.
+  AI edits, citations, Zotero, renames, deletes (with Restore), figures and
+  changes made outside Oleafly all travel. When two people replace the same
+  figure at once, both versions are kept. The main file, compiler, spelling
+  language and Typst options are shared, so everyone compiles the same way.
+  External commands (shell escape) never travel. Each person can turn them on
+  for their own computer after a warning. Sign in with GitHub, any OpenID
+  Connect provider, an email link, or a code when the browser can't get back
+  to the app. Guests invited by email see only the projects they were invited
+  to.
+
+  ![Oleafly with a LaTeX research paper open: the file tree, outline and structure on the left, the source with five coauthors' cursors and highlighted comments, and the compiled PDF](https://cdn.oleafly.com/images/changelog/0.4.7/live-collaboration.png)
+
+- Comments on shared projects. Select text in a LaTeX, Typst or Markdown file
+  and comment on it, then reply, mention someone, resolve or reopen. A
+  coauthor you mention gets one email about a minute later and can turn those
+  emails off.
+
+  ![The Comments pane in Oleafly with threads, mentions and replies on a LaTeX file, next to the source and the compiled PDF](https://cdn.oleafly.com/images/changelog/0.4.7/comments.png)
+
+- Oleafly Server, which your lab runs itself. It's a single Rust binary that
+  uses SQLite, keeps files on disk or in any S3-compatible store, and sends
+  email over SMTP if you set that up. People sign in with GitHub or any OpenID
+  Connect provider, so a university's single sign-on works. Admins get a
+  console window in Oleafly for people, access rules, projects, settings,
+  email, the security log and connection checks. Every device signs its
+  changes, and the server builds each snapshot from that signed history
+  instead of trusting uploads. Sign-in by email only appears once the server
+  has reached its mail server, and an admin can't turn it on before that. The
+  [server guide](https://github.com/Oleafly/oleafly-server) covers setup and
+  backups.
+
+  ![Oleafly Server admin console showing people, access rules and the security log](https://cdn.oleafly.com/images/changelog/0.4.7/server-admin-console.png)
+
+- Cloud sync with Dropbox. Connect your Dropbox under Settings > Data
+  storage > Cloud sync to back up your Library projects and app settings and
+  use them on your other computers. Each project has its own switch, and there
+  are Download all and Sync now buttons. Every download is checked against its
+  record before it replaces a file, and a file you have open with unsaved
+  changes is never overwritten. When two computers edit the same file, both
+  versions are kept, each named after the computer that wrote it. Deleting
+  most of a project at once puts it on hold until you confirm, and files
+  deleted on another computer go to the Trash here. On a new computer, Oleafly
+  asks once whether to keep this computer's settings or the synced ones. AI
+  chats, passwords and keys stay on your computer, and Git history and
+  checkpoints don't sync yet. Projects opened from a folder outside the
+  Library aren't synced.
+
+  ![Oleafly Cloud sync settings with the Dropbox card and a list of what syncs](https://cdn.oleafly.com/images/changelog/0.4.7/cloud-sync.png)
+
+- Preflight warns when a citation key is defined more than once.
+- Templates of your own. Import template, in the New Project gallery and in
+  Settings > Downloads > Templates, adds one from a ZIP, a folder, a page in
+  an online LaTeX template gallery, or one of the projects in your online
+  LaTeX account. Save as template, in a library project's menu and in the
+  toolbar's Export menu, keeps a project's files as a template, and the
+  import dialog has a checkbox to keep an imported project as a template too.
+  They all show up under Custom in the gallery. Every file comes along as it
+  was, licence, class files, fonts and images included, nothing is rewritten,
+  and each project you make from a template is its own copy. A template made
+  for one LaTeX compiler, such as pdfLaTeX, starts new projects with that
+  compiler. A gallery page keeps its author and licence and uses its first
+  page as the preview. Importing one needs your online account's sign-in,
+  and like the gallery's own button it leaves a copy in that account's
+  projects. Settings > Downloads > Templates lists your templates, AI
+  generated ones included, and deletes them. Projects made from a deleted
+  template keep their files.
+- Template packs can be browsed before you download them. Settings >
+  Downloads > Templates now shows each pack with a few page previews, and
+  opening a pack shows every template in it with a preview of its first
+  page, its engine and its licence. Open any template for a larger preview
+  and its details, then download the whole pack or just that template, and
+  start a new project from it straight away. Long packs load only the
+  previews on screen, and the New Project gallery does the same, so a pack
+  with hundreds of templates opens and scrolls quickly. When templates in a
+  pack ship the same font or other large file, it downloads once and they
+  share it.
+
+  ![Settings > Downloads > Templates with the Conference preprint styles pack open and a preview of each template's first page](https://cdn.oleafly.com/images/changelog/0.4.7/template-packs.png)
+
+- Open in Oleafly links. The Open in Oleafly button on oleafly.com/templates
+  opens that template in the app, whether Oleafly is running or not: you land
+  on its preview in Settings > Downloads > Templates, and Get and create
+  project downloads it and starts a new project from it. A link never
+  downloads anything by itself. Only `oleafly://template/<pack>/<template>`
+  links are accepted, and the rest are ignored.
+- Import projects straight from your online LaTeX account. Import a project
+  has a new card for it: sign in once in the window that opens, and it closes
+  by itself when you're in. Your projects then appear as books or a list, with
+  search and a filter for yours and shared ones. Pick one or many and they
+  come over with their files, compiler and main file, ready to compile here.
+  Import moves your picks into their own view that shows each project's
+  progress, and Done closes it. Projects you already imported can't be
+  picked again.
+  A university's own server works too. The sign-in is kept encrypted on your
+  computer, and Settings > Integrations shows it and signs you out. The
+  assistant can list and import these projects for you as well.
+
+  ![Oleafly Import a project dialog with options for local files, arXiv, GitHub and an online LaTeX account](https://cdn.oleafly.com/images/changelog/0.4.7/import-online-account.png)
+
+- Keep an imported project in sync with its online copy. With a Git token
+  from your online account, the sync button in the toolbar sends your changes
+  up and brings your co-authors' changes down, on its own every few minutes
+  or when you click Sync now. Edits to different places merge by themselves.
+  When the same lines changed on both sides, nothing changes until you pick
+  which version to keep for each file. Linking never deletes a file, and
+  Oleafly's own project files are never uploaded.
+- Select several projects in the library at once. Command-click (Ctrl-click
+  on Windows and Linux) selects a project instead of opening it, and dragging
+  across empty space selects every project the box touches. A trash button
+  next to Import then moves the selection to the Recycle Bin once you
+  confirm. Folders you opened in place only leave Oleafly, and their files
+  stay where they are. Esc or a click on empty space clears the selection.
+- Export your settings to a file and import them on another computer, or hand
+  one file to a whole class so everyone's Oleafly looks and works the same.
+  Settings > General has an Application Settings card under Terminal command.
+  Export saves a readable JSON file laid out like the Settings window, from
+  General through each Appearance tab to Shortcuts, and View settings JSON
+  shows that file, read-only, as you change things. Font sizes, themes,
+  colors, shortcuts, custom words, AI instructions and personas all come
+  along. API keys, accounts, integrations and agents never do. Import checks
+  every value first: a switch has to be true or false (1 and 0, or "on" and
+  "off", work too), a size has to fall in the range the setting allows, and a
+  color has to look like #2563eb. If anything is off, nothing changes and the
+  card lists what to fix. A good file replaces only the settings it lists, all
+  at once. Shortcuts you never changed are saved as "default", so a file made
+  on a Mac works on Windows and Linux.
+- Typst font packs. Settings > Downloads has five free packs for Typst:
+  Chinese, Japanese and Korean, classic text, modern sans and serif, code, and
+  icons and emoji. Once a pack is downloaded, every Typst project can use its
+  fonts, unless the project turns system fonts off. When a compile warns about
+  a missing font that a pack has, the warning offers to download it and compile
+  again. Every file is checked against its published checksum. Tested against
+  all 838 templates on Typst Universe: 238 of the 505 that were missing fonts
+  now have none missing. Chinese text in templates that ask for fonts that
+  can't be shared, such as SimSun, now falls back to the pack's CJK fonts.
+- Settings > Appearance > Editor has a Cursor height option. Text keeps the
+  cursor as tall as the letters, and Line stretches it to the full height of
+  the line.
+- upLaTeX and pLaTeX for Japanese documents. Pick them under Compiler in the
+  compile menu, or leave it on Auto: `jsarticle`, `jsbook` and `jsreport`
+  compile with pLaTeX, or with upLaTeX when they pass the `uplatex` option,
+  and `jlreq` and the `uj` classes compile with upLaTeX. Both run on a system
+  TeX with the Japanese packages, and if those are missing the compile says
+  how to add them. The `oleaflyc` command line tool picks the same compiler.
+- Cursor blinking replaces the Non-blinking cursor switch. Blink turns the
+  cursor on and off, Smooth and Phase fade it in and out, Expand shrinks and
+  grows it, and Off keeps it solid. Smooth, Phase and Expand come to rest,
+  visible, after about ten seconds without typing. A solid cursor you chose
+  before becomes Off.
+- Highlight current line, in the same place, turns off the tint on the line
+  the cursor is in. A long paragraph is one line in the source, so with
+  wrapping on, the tint could cover most of the editor.
+
+### Changed
+
+- AI deny rules in `~/.oleafly/approvals.toml` now refuse their tool in every
+  approval mode, Full access included. That covers app tools, MCP tools, the
+  command gate and helper agents. Allow rules still apply only in Custom mode.
+- Oleafly saves every open file before it compiles.
+- The README now leads with live collaboration, cloud sync, importing from an
+  online LaTeX account and AI agents, and has new screenshots. Its new hero
+  image is the live collaboration screenshot above.
+- On Auto, Chinese documents that use the `ctex` classes, the `ctex` package
+  or `xeCJK` compile with XeLaTeX instead of pdfLaTeX, and documents that use
+  LuaTeX-ja (the `ltjs` classes or `luatexja`) compile with LuaLaTeX.
+- Code blocks have a copy button in their top right corner that shows when
+  you point at the block. That covers the assistant's answers, release notes,
+  the MCP setup snippets, the citation for Oleafly, the add-citation preview,
+  the table generator, template sources and agent definitions. The separate
+  Copy buttons next to some of them are gone.
+- Appearance > Files keeps Hide files from file tree folded until you open it,
+  and the Zen mode settings now come before it.
+- The Finder Quick Action and the file manager menus repair themselves once
+  when Settings finds them out of date or pointing to a copy of Oleafly that
+  moved. If that doesn't work, the row shows the same message and Repair
+  button as before. A menu that opens another installed copy is left for you
+  to decide.
+
+### Fixed
+
+- Searching jumps to a match that is off screen and puts it in the middle of
+  the editor, so the next match no longer lands at the bottom edge (#270). A
+  match that is already in view stays where it is.
+- A figure found through `\graphicspath` no longer shows "asset target ...
+  could not be resolved" (#269), and neither does an `\includesvg` file found
+  through `\svgpath`. A figure in a chapter is also looked up from the main
+  document's folder, where LaTeX runs.
+- The editor asks for alt text on `\includegraphics` only when the document
+  turns on PDF tagging (#269), through `\DocumentMetadata` with
+  `tagging=on`, a test phase or a PDF/UA standard. Without tagging, LaTeX
+  does nothing with alt text. The Accessibility check in Preflight still
+  lists images without it.
+- Clicking in the editor while it was not focused could select everything
+  between the old cursor and the click. It happened when the cursor had
+  scrolled out of view and you came back from a toolbar menu, the AI panel,
+  the PDF or the file tree: the editor jumped to the old cursor as it took
+  focus, after it had already noted where you clicked. It now takes focus
+  without moving, and the click just places the cursor.
+- A latexmk project in a folder with a colon in its name compiled without its
+  bibliography. macOS stores a slash typed in Finder as a colon, so a folder
+  named "Thesis 2024/25" was enough. BibTeX stopped with "I couldn't open
+  database file" and every citation stayed undefined. It now finds the `.bib`
+  and `.bst` files, and so does the `oleaflyc` command line tool.
+- The built-in engine no longer crashes on documents that use
+  `fontawesome5`, a common package in CVs and slides, or anything else that
+  asks XeTeX for a glyph name. Tectonic 0.16.9 freed memory it did not own
+  there, and the process was killed partway through the compile. The
+  built-in engine is now Tectonic 0.17.0, which fixes it and still compiles
+  offline from the files earlier versions downloaded. If any compiler
+  crashes again, the compile log now ends with a line that says so,
+  instead of stopping mid-line with no reason.
+- Citation changes to the file open in the editor are no longer lost.
+  Adding a citation, importing references or citing Oleafly while the `.bib`
+  file was open saved the new entries, but the editor kept the old text, and
+  the next keystroke wrote it back over them. In a Typst or Markdown project,
+  adding a citation while the main document was open also dropped the
+  bibliography line it added there. The editor now shows these changes as
+  they happen.
+- Apply to document under Accessible export in Preflight, and Citation style
+  in References for a Typst project, changed the file open in the editor
+  without updating the editor, so the next keystroke undid the change. The
+  editor now shows the new text right away.
+- On macOS, the PDF viewer could freeze its window when WebKit started a
+  garbage collection at the wrong moment. It no longer does, and a window that
+  stops answering for 30 seconds while idle now reloads and reopens its
+  project and file.
+- On macOS and Linux, a placeholder long enough to wrap is no longer cut off
+  in the assistant's message box.
+
 ### Security
 
 - In the engine dialog, "Download and use TinyTeX" turns on external commands
@@ -18,6 +307,232 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   press of Enter switched the engine and turned them on. For those projects
   the dialog now opens with no button focused, and Enter does nothing until
   you pick one.
+
+## [0.4.6] - 2026-10-09
+
+### Added
+
+- Settings > Appearance > Editor now has Theme in light mode and Theme in
+  dark mode, and the editor switches with the app. A theme you picked before
+  is used for both. Two light themes are new: Paper, a warm off-white, and
+  One Light.
+- Settings > Appearance > Editor > Editor colors changes any color of an
+  editor theme, with a live preview in LaTeX, Typst and Markdown. Colors are
+  grouped by role (headings, commands, citations and references, math,
+  comments and more), and a role means the same thing in all three
+  languages. Changes are kept for each theme, and theme export and import
+  carry them.
+- Zen mode hides the toolbar, sidebar, assistant, terminal and the editor's
+  tabs and formatting bar so only your writing is left, with the editor at
+  full width. Turn it on with Ctrl+Cmd+Shift+F (Shift+F11 on Windows and
+  Linux), from the layout menu or the command palette, or on macOS from the
+  View menu. Leave it with the same shortcut or by pressing Escape twice. It
+  can go full screen, and it can open the PDF beside the editor when you
+  compile. Those two options are under Settings > Appearance > Project, and
+  the shortcut can be changed in Settings > Keyboard Shortcuts. The Compile
+  button and a small status pill sit in the top right corner, over the PDF
+  when it's open, and the button shows when the pointer comes near. When a
+  compile fails, the pill reads Compile failed, and clicking it shows or
+  hides the log.
+- Cite straight from your Zotero library while you write. With Zotero 7 or
+  newer open on the same computer, and "Allow other applications on this
+  computer to communicate with Zotero" turned on in Zotero's Advanced
+  settings, type `@` and part of an author, a title word, a year or a key.
+  Your whole library shows up next to the project's own references. Picking a
+  paper inserts the citation the way the document already cites, and adds
+  only that entry to the project's `.bib`, along with the bibliography line
+  if the project has none. This works in LaTeX, Typst and Markdown, and Add
+  citation lists your Zotero library first. Keys come from Better BibTeX when
+  it's installed, otherwise from Zotero's Citation Key field or the Extra
+  field, and Oleafly makes one when an item has none. A cited key
+  that's missing from the `.bib` offers Add from Zotero, and an entry that
+  changed in Zotero offers Update from Zotero. An entry you edited by hand is
+  only replaced when you tick it. Search keeps working from the last sync
+  while Zotero is closed, and `.bib` entries never include the paths of the
+  PDFs on your computer. Settings > Integrations > Zotero tests the
+  connection and picks which libraries to search.
+- Zotero doesn't have to be open if you connect your zotero.org account in
+  Settings > Integrations > Zotero. Group libraries come along too. The
+  command palette has Add missing citations from Zotero, Update .bib entries
+  from Zotero and Sync Zotero library. Add missing citations checks every
+  cited key that isn't in the `.bib`, adds the ones Zotero has, and points
+  out keys that cite a paper already in your bibliography. In a project with
+  more than one `.bib` file, Oleafly asks once which file gets new
+  references and remembers it.
+- The first time you cite from Zotero in a paper that lists its references
+  by hand, Oleafly offers to move that list into the `.bib`, so every
+  reference shares one numbered list. The Academic Article, Elsevier Article
+  and Thesis / Report templates now start with a `references.bib`.
+- Renaming or moving a file now updates the paths that point to it (#254):
+  `\input`, `\include`, `\includegraphics`, `\bibliography` and similar
+  commands in LaTeX, `#include`, `image()` and `bibliography()` in Typst, and
+  links and images in Markdown. With the cursor on a path, press F2 or
+  choose Rename file from the editor's right-click menu. You can also use
+  Rename in the file tree, or drag the file to a new folder. The Rename file
+  dialog takes a full path, so it can move the file too, and it creates
+  folders that don't exist yet. Settings > Appearance > Editor sets whether
+  Oleafly asks first, always updates the paths or leaves them alone.
+- Cmd+= and Cmd+- zoom the whole app, the editor and PDF included, and
+  Cmd+0 sets it back to 100% (Ctrl on Windows and Linux). The level goes
+  from 80 to 200%, and the command palette has Zoom In, Zoom Out and Reset
+  Zoom. Every Oleafly window follows the same level, which is remembered and
+  can also be picked in Settings > Appearance > App. The keys can be
+  changed in Settings > Keyboard Shortcuts. Inside the PDF they zoom the app
+  too, so the PDF itself zooms with its toolbar, a pinch or Ctrl+scroll, and
+  the PDF zoom shortcuts setting is gone.
+- Settings > Appearance > Editor has a Use the app font switch. With it on,
+  the editor uses the App font and App font size.
+- Cmd+Option+P (Ctrl+Alt+P on Windows and Linux) shows or hides the PDF
+  beside the editor, the way Cmd+B does for the sidebar. It works in Zen mode
+  too, so a PDF opened by compiling can be put away without leaving Zen. It's
+  in the command palette, and the key can be changed in Settings > Keyboard
+  Shortcuts.
+- Cmd+, opens Settings on macOS, and Ctrl+, does the same on Windows and
+  Linux, including from the detached PDF window. On macOS the Oleafly menu
+  also has a Settings item. You can change the shortcut in Settings >
+  Keyboard Shortcuts. The Settings button's tooltip, the command palette and
+  the shortcut list (Cmd+/) show the current one (#256).
+- The editor font and the app font can be any font installed on your
+  computer. Each name in the list is drawn in its own font, the editor's list
+  puts monospaced fonts first, and you can type to search either list or to
+  use a name it doesn't show. Symbol fonts such as Wingdings are left out,
+  since they would turn every letter into a picture, and a saved font that
+  isn't installed gets a note under the setting. Line height has a Custom
+  choice for an exact value from 1 to 3. New Cursor width and Cursor color
+  settings make the editor cursor 1, 2 or 3 pixels wide and give it your own
+  color, one for light editor themes and one for dark ones. Letter spacing
+  adds room between characters, and the editor font size takes any value
+  from 6 to 100 pixels instead of stopping at 20 (#257).
+
+### Changed
+
+- The Settings window is wider, and it narrows with the app window down to a
+  minimum. The accent colors sit beside their label when there's room.
+  Color pickers are smaller, the size of a switch's knob, and the terminal
+  colors use the same picker. Selected items in menus, lists and settings
+  show a filled check in the accent color. Radio choices keep their dot.
+  Things that are installed, downloaded or connected get a green check
+  instead, and status labels such as Ready and Connected drop their check
+  icon.
+- Expandable cards, such as the agents and AI providers in Settings, the
+  tour guides, and Recent chats in the assistant, keep their icon on the
+  left and put the arrow on the right.
+- In Preflight, the Show what the reader sees button is now called Screen
+  Reader.
+- The counts beside the sidebar section titles and Recent chats now use the
+  accent color.
+- The Export menu shows a different icon for each file type: ZIP, PDF, PNG,
+  Word, HTML, Markdown, Typst, LaTeX and plain text.
+- Syntax colors now follow the roles in Editor colors, so a few things look
+  different. In
+  LaTeX, section commands and their titles use the heading color, citation
+  keys and environment names take the color of their command, and math is
+  one color. Markdown citations such as `[@key]` and `@key` are highlighted,
+  and bracketed citations no longer look like links.
+- The home screen's Grid background has wider squares that fade out toward
+  the edges.
+- Every sidebar view now remembers its scroll position, expanded folders and
+  open sections for each project.
+- Dragging a scrollbar quickly through a long document, the file tree, the
+  outline or the Source Control list no longer flashes blank or
+  unhighlighted areas on macOS and Linux. These views draw their own thin
+  scrollbar, so the content and the scroll position always move together,
+  and long lists react faster to hovering and right-clicking.
+- Only content you'd want to copy can be selected now: your documents, the
+  PDF, logs, chat messages and the text in Settings and dialogs. Toolbars,
+  icons, labels, placeholders and the list of settings on the left no longer
+  highlight when you drag across them. Cmd+A (Ctrl+A on Windows and Linux)
+  selects the content of the view you're in, such as the whole PDF or
+  the whole log, instead of the whole window, and clicking anywhere else
+  clears the selection.
+- Large compile logs open right away and scroll without blank areas. A log
+  of 100,000 lines opens in about a tenth of a second instead of more than
+  two, and Select All followed by Copy copies the whole log.
+- The PDF preview keeps your place when a recompile replaces the PDF, stays
+  filled while you zoom, and redraws far fewer pages while you drag the
+  divider next to it. The detached preview window now behaves the same way.
+  Going from the editor alone back to a layout with the PDF shows it right
+  away, at the same spot, instead of loading it again.
+- The home page, the project list and the command palette open faster. A
+  streaming reply, from the built-in assistant or from an agent such as
+  Claude Code or Codex, now redraws only the message that's coming in.
+  Visual mode, Checkpoints history and the sidebar also do less work while
+  you type.
+- Closing a project now frees the memory its spell checking and document
+  analysis were using, so memory no longer climbs each time you open and
+  close a project. Opening a project reads its files in one batch instead of
+  one at a time.
+
+### Fixed
+
+- Pressing Compile or Cmd+Enter right after opening a project could do
+  nothing if you had already edited the document. The compile that runs
+  when a project opens gave up because of the edit, and it took your
+  request with it. Your compile now always runs.
+- Searching a long list, such as the model picker, now shows the results
+  from the top. Before, the list kept its old scroll position, so the best
+  match could be out of view. Each Settings section also opens at the top
+  instead of where you left the previous one.
+- Reset to defaults in Settings > Appearance now also clears Theme
+  customization, so a primary color set there no longer survives the reset.
+- With a zotero.org account connected, Settings no longer shows the steps for
+  finding an API key.
+- The default compile engine in Settings > Engines never applied (#259).
+  Projects from the New project dialog, imports (ZIP, folder, arXiv and
+  GitHub) and converted documents all started on the built-in Tectonic
+  engine, which downloads packages the first time it needs them. New,
+  imported and converted projects now start on the engine you picked, and
+  an opened folder without an engine of its own
+  follows it once you trust the folder. An imported project that pins
+  pdfLaTeX, XeLaTeX or LuaLaTeX keeps that compiler on latexmk.
+- After a click on the PDF, its keyboard shortcuts worked once and then
+  stopped: re-rendering a page removed the text that had focus. Clicking
+  the page margins or the gray background didn't give the PDF focus at
+  all. The preview now takes focus from a click anywhere in it and keeps it
+  through re-renders.
+- App font size now scales every piece of interface text. Section titles in
+  the sidebar, count badges and other small labels used to stay the same
+  size whatever it was set to.
+- The search field in the sidebar no longer draws a bright border when it has
+  focus. A light background tint shows it instead.
+- Project cards keep the engine and the Updated date on one line each, cut
+  short with an ellipsis instead of wrapping. They use the full width and
+  only make room for the info button while it shows.
+- The file tree no longer gets wider every time you resize the window or the
+  PDF preview leaves full screen. It keeps the width you gave it.
+- The App font setting in Appearance now changes the font of the whole
+  interface, including toasts and the PDF, presentation, browser and update
+  windows. Before, it had no visible effect.
+- Theme customization shows the default colors of the light palette while
+  the app is dark, and of the dark palette while it is light. The swatches
+  of the mode you weren't using were blank.
+- On Macs with a Safari version older than 26.2, the PDF preview drew the
+  text of most documents in a stand-in font instead of the fonts embedded in
+  the PDF. Letters came out widely spaced, ligatures such as "ffi" broke
+  apart, and fonts like Libre Caslon or Playfair Display looked like Times.
+  The preview uses newer JavaScript features that those versions lack, and it
+  now brings its own copies of them, so the preview matches the PDF again.
+- The PDF preview looked soft at high zoom and when fitted to the width of
+  a wide window, because pages were drawn at no more than about five
+  megapixels (#258). The part of the page you're looking at is now drawn
+  again at full sharpness, and the preview redraws when the window moves to
+  a screen with a different pixel density.
+- The math preview in visual mode stayed on top of dialogs that opened over
+  the editor.
+- On macOS, a shortcut recorded with Option, such as Ctrl+Option+T, was
+  saved as the character Option types and couldn't be used for a menu item.
+  Shortcuts with Option now record and match the key you press.
+- The outline showed raw LaTeX in some section titles, such as colour
+  commands, font switches and `\nameref`, listed headings found inside macro
+  definitions, and left out headings made with your own macros that wrap
+  `\section`.
+- Citations to an entry added to the `.bib` while that file wasn't open in
+  the editor, for example by the assistant or from Zotero, stayed flagged as
+  undefined until you typed in the document.
+- After you had worked with about 64 different LaTeX packages in one
+  session, across all the projects you opened, completions and hover help
+  for any package you used after that never appeared until you restarted
+  Oleafly. They now load for every project.
 
 ## [0.4.5] - 2026-10-05
 
@@ -3018,7 +3533,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.5...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/Oleafly/Oleafly/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/Oleafly/Oleafly/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/Oleafly/Oleafly/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/Oleafly/Oleafly/compare/v0.4.2...v0.4.3

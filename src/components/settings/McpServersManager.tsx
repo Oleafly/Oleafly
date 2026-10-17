@@ -505,7 +505,7 @@ function ServerEditor({
               value={argsText}
               onChange={(event) => setArgsText(event.target.value)}
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.settings.mcp.servers.editor.argsHint)}
             </p>
           </div>
@@ -612,7 +612,7 @@ function ServerEditor({
                   setJsonError(null);
                 }}
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[0.6875rem] text-muted-foreground">
                 {t(($) => $.settings.mcp.servers.editor.jsonHint)}
               </p>
             </div>
@@ -621,7 +621,7 @@ function ServerEditor({
           )}
 
           {jsonError ?? error ? (
-            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <p role="alert" className="select-text rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {jsonError ?? error}
             </p>
           ) : null}
@@ -955,7 +955,7 @@ export function McpServersManager() {
       ) : null}
 
       {loadError ? (
-        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <p role="alert" className="select-text rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {loadError}
         </p>
       ) : null}
@@ -996,7 +996,7 @@ export function McpServersManager() {
                     <h4 className="text-sm font-medium">{name}</h4>
                     <StatusBadge record={record} />
                   </div>
-                  <p className="truncate font-mono text-[11px] text-muted-foreground" title={endpoint}>
+                  <p className="truncate font-mono text-[0.6875rem] text-muted-foreground" title={endpoint}>
                     <SettingsPathText text={endpoint} />
                   </p>
                 </div>
@@ -1009,7 +1009,7 @@ export function McpServersManager() {
               </div>
 
               {record.validation.error ? (
-                <p role="alert" className="rounded-md bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+                <p role="alert" className="select-text rounded-md bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
                   <SettingsPathText text={displayText(record.validation.error)} />
                 </p>
               ) : null}
@@ -1020,7 +1020,7 @@ export function McpServersManager() {
 
               {record.validation.tools.length > 0 ? (
                 <div className="space-y-1.5">
-                  <p className="text-[11px] font-medium text-muted-foreground">
+                  <p className="text-[0.6875rem] font-medium text-muted-foreground">
                     {t(($) => $.settings.mcp.servers.card.toolCount, {
                       count: record.validation.tool_count,
                     })}
@@ -1041,7 +1041,7 @@ export function McpServersManager() {
               ) : null}
               {record.validation.tools.length === 0 &&
               record.validation.status === "connected" ? (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[0.6875rem] text-muted-foreground">
                   {t(($) => $.settings.mcp.servers.card.noTools)}
                 </p>
               ) : null}

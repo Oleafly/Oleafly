@@ -1,0 +1,64 @@
+{
+  "title": "Sovelluksen asetukset",
+  "description": "Tallenna asetuksesi JSON-tiedostoon tai lataa tiedosto, jonka joku on jakanut kanssasi. API-avaimet, tilit, integraatiot ja agentit eivät koskaan tule mukaan.",
+  "export": "Vie",
+  "import": "Tuo",
+  "view": {
+    "label": "Näytä asetusten JSON",
+    "summary": "Vain luku -esikatselu tiedostosta, jonka vienti tallentaa.",
+    "loading": "Luetaan asetuksiasi",
+    "failed": "Asetuksiasi ei voitu lukea."
+  },
+  "dialog": {
+    "pickTitle": "Tuo asetukset",
+    "filterName": "Oleafly-asetukset"
+  },
+  "toast": {
+    "exported": "{{name}} vietiin levylle",
+    "exportFailed": "Asetustiedostoa ei voitu tallentaa.",
+    "readFailed": "Tiedostoa ei voitu avata.",
+    "imported": "Asetukset tuotiin.",
+    "unchanged": "Asetuksesi vastaavat jo tiedostoa {{name}}.",
+    "applyFailed": "Joitakin asetuksia ei voitu tallentaa. Yritä tuontia uudelleen.",
+    "cloudEmpty": "Dropboxissasi ei ole vielä Oleafly-asetuksia. Ota pilvisynkronointi ensin käyttöön toisella tietokoneella.",
+    "cloudLoadFailed": "Asetuksia ei voitu ladata Dropboxistasi.",
+    "cloudUnreadable": "Dropboxisi asetuksia ei voitu lukea."
+  },
+  "confirm": {
+    "title": "Korvataanko asetuksesi?",
+    "description": "Tiedoston {{name}} asetukset korvaavat omasi. Kaikki, mitä tiedostossa ei ole, pysyy ennallaan.",
+    "changes": "Muuttuvia asetuksia: {{count}}",
+    "ignored": "Näitä ei tunnistettu, joten ne ohitetaan:",
+    "action": "Tuo",
+    "cloudDescription": "Dropboxisi asetukset korvaavat omasi. Kaikki, mitä niissä ei ole, pysyy ennallaan."
+  },
+  "error": {
+    "title": "Tiedostoa {{name}} ei tuotu",
+    "notJson": "Tiedosto ei ole kelvollista JSONia.",
+    "notSettings": "Tämä ei ole Oleafly-asetustiedosto.",
+    "invalid": "Asetusmääritys, jota yritit tuoda, on virheellinen. Korjaa nämä virheet ja yritä tuontia uudelleen:",
+    "more": "+{{count}} lisää"
+  },
+  "valueErrors": {
+    "boolean": "saa olla vain true tai false",
+    "oneOf": "saa olla vain jokin näistä: {{values}}",
+    "range": "saa olla vain luku, joka on vähintään {{min}} ja enintään {{max}}",
+    "wholeRange": "saa olla vain kokonaisluku, joka on vähintään {{min}} ja enintään {{max}}",
+    "wholeRangeStep": "saa olla vain kokonaisluku, joka on vähintään {{min}} ja enintään {{max}}, {{step}}:n välein",
+    "hexColor": "saa olla vain väri, esimerkiksi #2563eb",
+    "hexColorOrEmpty": "saa olla vain väri, esimerkiksi #2563eb, tai \"\", jolloin käytetään teeman väriä",
+    "text": "saa olla vain tekstiä, enintään {{max}} merkkiä",
+    "webAddress": "saa olla vain verkko-osoite, jonka alussa on http:// tai https://",
+    "list": "saa olla vain luettelo, jossa on enintään {{max}} kohdetta",
+    "listItem": "ei ole sallittu kohde",
+    "duplicate": "on luettelossa kahdesti",
+    "object": "saa olla vain aaltosulkeissa oleva asetusryhmä",
+    "unknownKey": "ei ole asetus, jonka Oleafly tuntee",
+    "dictionaryLocale": "saa olla vain sanakirjan koodi, esimerkiksi en_US",
+    "shortcut": "saa olla vain pikanäppäin, esimerkiksi Mod-Shift-k, tai \"default\"",
+    "editorKey": "saa olla vain näppäin, esimerkiksi Mod-d, \"\", jos näppäintä ei käytetä, tai \"default\""
+  },
+  "importFromLocal": "Tuo tältä laitteelta",
+  "importFromCloud": "Tuo pilvestä",
+  "cloudSource": "Dropboxissasi"
+}

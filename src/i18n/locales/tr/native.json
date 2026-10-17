@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "Oleafly Hakkında",
     "checkUpdates": "Güncellemeleri Denetle…",
+    "settings": "Ayarlar…",
     "reloadViews": "Görünümleri Yeniden Yükle",
     "restartApp": "Uygulamayı Yeniden Başlat",
     "quit": "Oleafly'den Çık",
@@ -30,7 +31,8 @@
     "newTab": "Yeni Sekme",
     "openLocation": "Adres Aç…",
     "closeTab": "Sekmeyi Kapat",
-    "reloadPage": "Sayfayı Yeniden Yükle"
+    "reloadPage": "Sayfayı Yeniden Yükle",
+    "zenMode": "Zen Kipi"
   },
   "window": {
     "browser": "Oleafly Tarayıcı",
@@ -42,6 +44,11 @@
       "title": "Tam erişim etkinleştirilsin mi?",
       "message": "Tam erişim, asistanın her seferinde onay istemeden shell komutları çalıştırmasına ve dosyaları düzenlemesine izin verir. Tam erişim etkinleştirilsin mi?",
       "confirm": "Tam erişimi etkinleştir"
+    },
+    "sharedShellEscape": {
+      "title": "Bu paylaşılan projede dış komutlara izin verilsin mi?",
+      "message": "Bu projeyi düzenleyebilen herkes, siz derleme yaptığınızda bu bilgisayarda program çalıştırabilir. Buna yalnızca projedeki herkese güveniyorsanız izin verin.",
+      "confirm": "Bu bilgisayarda izin ver"
     },
     "cookieImport": {
       "title": "Cookie içe aktarmayı onaylayın",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "Oleafly'de aç",
     "openWithOleafly": "Oleafly ile aç"
+  },
+  "collab": {
+    "localCopy": "{{name}} (yerel kopya)"
+  },
+  "approvals": {
+    "helperRefused": "approvals.toml içindeki {{tool}} kuralı nedeniyle reddedildi",
+    "unknownTool": "{{name}} adında bir araç yok, bu yüzden kural hiçbir şey yapmıyor.",
+    "unknownToolSuggestion": "{{name}} adında bir araç yok, bu yüzden kural hiçbir şey yapmıyor. {{suggestion}} mi demek istediniz?"
+  },
+  "cloud": {
+    "connectedPage": "Bağlandınız. Bu sekmeyi kapatıp Oleafly'ye dönebilirsiniz.",
+    "failedPage": "Oturum açma tamamlanmadı. Bu sekmeyi kapatıp Oleafly'ye dönebilirsiniz."
   }
 }

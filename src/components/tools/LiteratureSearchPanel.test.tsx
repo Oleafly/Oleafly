@@ -224,6 +224,22 @@ describe("LiteratureSearchPanel search mode", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", async () => {
+    await runQuery("transformers");
+    await screen.findByText(FULL_RECORD.title);
+    const list = screen.getByRole("tabpanel");
+    list.scrollTop = 240;
+    searchLiterature.mockResolvedValueOnce(
+      response({ results: [{ ...SPARSE_RECORD, id: "crossref:paper-3", title: "Attention notes" }] }),
+    );
+
+    fireEvent.change(queryField(), { target: { value: "attention" } });
+    fireEvent.click(searchButton());
+
+    expect(await screen.findByText("Attention notes")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("saves a result into the citation library and lists it under My citations", async () => {
     await runQuery("transformers");
     await screen.findByText(FULL_RECORD.title);

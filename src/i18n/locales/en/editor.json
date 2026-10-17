@@ -188,7 +188,8 @@
     "quote": "Quote",
     "addLabel": "Add label",
     "convertLatexMath": "Convert LaTeX math to Typst",
-    "noLatexMath": "Select some LaTeX math first."
+    "noLatexMath": "Select some LaTeX math first.",
+    "renameFile": "Rename file…"
   },
   "shell": {
     "noFileOpenTab": "No file open",
@@ -244,7 +245,7 @@
     "issues": "Issues",
     "spelling": "Spelling",
     "grammarAndStyle": "Grammar & style",
-    "findingsTruncated": "The findings list is truncated; the count above is complete.",
+    "findingsTruncated": "The findings list is truncated. The count above is complete.",
     "spellLanguage": "Spell-check language",
     "spellLanguageAppSetting": "Use the app setting",
     "spellLanguageAriaLabel": "Spell-check language for this project",
@@ -364,7 +365,11 @@
     "summaryWarnings_one": "{{count}} warning",
     "summaryWarnings_other": "{{count}} warnings",
     "summaryReferences_one": "{{count}} unresolved reference",
-    "summaryReferences_other": "{{count}} unresolved references"
+    "summaryReferences_other": "{{count}} unresolved references",
+    "fontPack": "{{family}} is in the free {{pack}} font pack.",
+    "fontPackAction": "Download and compile",
+    "fontPackDownloading": "Downloading…",
+    "fontPackFailed": "The font pack couldn't be downloaded. Check your connection and try again."
   },
   "history": {
     "untitledCommit": "Untitled commit",
@@ -392,7 +397,9 @@
     "unifiedView": "Unified view",
     "loading": "Loading diff…",
     "previewTooLarge": "File too large to preview a diff.",
-    "diskHeading": "On disk ↔ Your edits"
+    "diskHeading": "On disk ↔ Your edits",
+    "sharedReadOnly": "This diff is read-only in a shared project. Edit the file in the editor.",
+    "viewerReadOnly": "You can view this shared project but not edit it."
   },
   "hotkeys": {
     "title": "Keyboard Shortcuts",
@@ -426,7 +433,7 @@
       "indentOrAccept": "Indent / accept autocomplete",
       "goToDefinition": "Go to definition",
       "findReferences": "Find references",
-      "renameSymbol": "Rename symbol (project-wide)",
+      "renameSymbol": "Rename symbol or file (project-wide)",
       "formatDocument": "Format Typst document",
       "commandPalette": "Command palette",
       "searchAllDocuments": "Search all documents",
@@ -454,7 +461,8 @@
     "noEntries": "No bibliography entries in this project yet.",
     "addNew": "Find and add a new citation…",
     "duplicate": "duplicate {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "From your Zotero library"
   },
   "inlineAi": {
     "promptPlaceholder": "Describe the change…  (Shift+Enter for a new line)",
@@ -468,6 +476,7 @@
     "openInAgent": "Continue in the AI assistant with full project tools",
     "generateFailed": "Couldn't generate the edit. {{message}}",
     "dismiss": "Dismiss",
+    "withdrawn": "Someone else edited this text, so this suggestion can't be applied.",
     "setUpProvider": "Set up an AI provider",
     "setUpProviderHint": "Add an API key (or local Ollama) to use inline AI edits.",
     "openAiSettings": "Open Settings → AI"
@@ -649,6 +658,7 @@
     "endOfDocument": "End of document",
     "hidePreamble": "Hide document preamble",
     "showPreamble": "Show document preamble",
+    "sharedReadOnly": "In a shared project, visual mode only shows the file. Switch to the source view to edit it.",
     "findingLabel": "{{message}}. Open proofreading suggestions.",
     "rawBlockFindings_one": "{{count}} proofreading finding in this raw block. {{message}}. Open suggestions.",
     "rawBlockFindings_other": "{{count}} proofreading findings in this raw block. {{message}}. Open suggestions."
@@ -1460,7 +1470,8 @@
     "sources": {
       "project": "Project",
       "system": "System",
-      "embedded": "Built in"
+      "embedded": "Built in",
+      "pack": "Font pack"
     },
     "fontsFolder": "To use a font in this project, add its file to the project's fonts folder."
   },
@@ -1487,5 +1498,6 @@
     "keyInvalid": "Value names can't be empty or contain an equals sign.",
     "keyTaken": "A variant can't set the same name twice.",
     "saveFailed": "Could not save the variants."
-  }
+  },
+  "sharedSettingsViewer": "Viewers can't change this in a shared project."
 }

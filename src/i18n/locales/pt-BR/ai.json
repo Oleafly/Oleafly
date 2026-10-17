@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Acesso total",
-        "description": "Executar as ações das ferramentas sem pedir aprovação."
+        "description": "Executar as ações das ferramentas sem perguntar, exceto as bloqueadas por uma regra deny."
       },
       "custom": {
         "label": "Personalizado (approvals.toml)",
@@ -326,7 +326,9 @@
       "closeAgent": "Encerrar um agente auxiliar.",
       "runCommand": "Executar um comando shell na pasta do projeto, com limite de dois minutos.",
       "computerUse": "Abrir uma página da web na janela do navegador do assistente.",
-      "toggleTheme": "Alternar entre o modo claro e o escuro."
+      "toggleTheme": "Alternar entre o modo claro e o escuro.",
+      "listOverleafProjects": "Listar seus projetos do Overleaf, fazendo login antes quando necessário.",
+      "importOverleafProjects": "Importar projetos do Overleaf para a sua biblioteca, com o compilador e o arquivo principal."
     },
     "disableAll": "Desativar todas",
     "emptyContext": "Nenhuma ferramenta está disponível neste contexto.",

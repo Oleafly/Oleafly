@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Tabelleninhalt wird womöglich nicht als Lebenslauffeld erkannt",
-      "detailTable": "ATS-Werkzeuge verflachen tabellarische Inhalte oft unvorhersehbar. Nutzen Sie keine Tabelle, um Lebenslauftext nebeneinander zu setzen; echte Datentabellen aus der Forschung werden unter Barrierefreiheit gesondert bewertet.",
+      "detailTable": "ATS-Werkzeuge verflachen tabellarische Inhalte oft unvorhersehbar. Nutzen Sie keine Tabelle, um Lebenslauftext nebeneinander zu setzen. Echte Datentabellen aus der Forschung werden unter Barrierefreiheit gesondert geprüft.",
       "titleTikz": "TikZ-Inhalt braucht eine inhaltliche Alternative",
       "detailTikz": "TikZ zeichnet sichtbare Inhalte, ohne ihre Bedeutung als normalen Text bereitzustellen. Geben Sie für Publikationsausgaben eine barrierefreie Beschreibung an und vermeiden Sie es bei Lebenslaufinhalten, die an ein ATS gehen."
     },
@@ -256,7 +256,7 @@
       "title_one": "{{count}} Literatureintrag hat unvollständige Metadaten",
       "title_other": "{{count}} Literatureinträge haben unvollständige Metadaten",
       "detail": "Unvollständige Datensätze können in Verlagsstilen fehlerhafte oder mehrdeutige Literaturangaben erzeugen. {{examples}}.",
-      "detailTruncated": "Unvollständige Datensätze können in Verlagsstilen fehlerhafte oder mehrdeutige Literaturangaben erzeugen. {{examples}}; …"
+      "detailTruncated": "Unvollständige Datensätze können in Verlagsstilen fehlerhafte oder mehrdeutige Literaturangaben erzeugen. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-Wert wirkt fehlerhaft",
@@ -318,6 +318,12 @@
     "refs-duplicate-bib": {
       "title": "Doppelte Literatureinträge: {{keys}}",
       "detail": "Diese Einträge teilen sich die DOI {{doi}}, sie sind also dieselbe Literaturangabe unter verschiedenen Schlüsseln. Behalten Sie einen und zitieren Sie ihn, sonst führt Ihr Literaturverzeichnis ihn zweimal auf."
+    },
+    "refs-duplicate-bib-key": {
+      "title": "Der Zitierschlüssel „{{key}}“ ist mehrfach definiert",
+      "detail": "Definiert in {{places}}. BibTeX verwendet nur den ersten Eintrag mit diesem Schlüssel und unterscheidet beim Vergleich von Schlüsseln nicht zwischen Groß- und Kleinschreibung. Behalten Sie einen Eintrag, oder geben Sie den anderen neue Schlüssel und passen Sie die Zitationen an, die sie verwenden.",
+      "detailBiber": "Definiert in {{places}}. Wenn biber das Literaturverzeichnis erstellt, verwendet es nur den ersten Eintrag mit diesem Schlüssel. Behalten Sie einen Eintrag, oder geben Sie den anderen neue Schlüssel und passen Sie die Zitationen an, die sie verwenden.",
+      "detailTypst": "Definiert in {{places}}. Typst bricht das Kompilieren ab, wenn zwei Literatureinträge denselben Schlüssel haben. Behalten Sie einen Eintrag, oder geben Sie den anderen neue Schlüssel und passen Sie die Zitationen an, die sie verwenden."
     },
     "submission-path-case": {
       "title": "Die Groß- und Kleinschreibung des Dateinamens passt nicht: {{target}}",
@@ -604,7 +610,7 @@
     "title": "Preflight",
     "readerDisabled": "Kompilieren Sie zuerst und führen Sie eine Prüfung der Ausgabe aus",
     "readerEnabled": "Den aus dem PDF extrahierten Text öffnen",
-    "readerButton": "Zeigen, was der Betrachter sieht",
+    "readerButton": "Screenreader",
     "aboutLabel": "Über Preflight",
     "aboutTitle": "Was Preflight prüft",
     "aboutIntro": "Preflight liest den Projektquelltext, das Compilerprotokoll und das aktuelle PDF. Schalten Sie nur die Prüfungen ein, die zu diesem Dokument passen.",

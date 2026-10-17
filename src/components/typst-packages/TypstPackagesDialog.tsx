@@ -5,6 +5,7 @@ import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 import { Spinner } from "@/components/ui/spinner";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
@@ -58,7 +59,7 @@ function PackageRow({
       </div>
       {pkg.description && <p className="line-clamp-2 text-xs text-muted-foreground">{pkg.description}</p>}
       {tooNew && pkg.compiler && typstVersion && (
-        <p className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+        <p className="flex items-center gap-1.5 text-[0.6875rem] text-amber-700 dark:text-amber-300">
           <AlertTriangle aria-hidden="true" className="size-3 shrink-0" />
           {t(($) => $.editor.typstPackages.needsTypst, { version: pkg.compiler, current: typstVersion })}
         </p>
@@ -86,7 +87,7 @@ function PackageRow({
           {copied ? t(($) => $.common.actions.copied) : t(($) => $.editor.typstPackages.copy)}
         </Button>
         {!canInsert && (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[0.6875rem] text-muted-foreground">
             {t(($) => $.editor.typstPackages.insertNeedsFile)}
           </span>
         )}
@@ -153,6 +154,7 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
   };
 
   const count = settings?.vendored.length ?? 0;
+  const sharedViewer = useCollabSettingsLocked(projectId);
   return (
     <section aria-labelledby="typst-packages-vendor" className="flex flex-col gap-2 border-t p-3">
       <SectionHeading id="typst-packages-vendor">{t(($) => $.editor.typstPackages.vendor.heading)}</SectionHeading>
@@ -160,7 +162,7 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
         <Switch
           id="typst-packages-vendor-toggle"
           checked={settings?.vendorPackages ?? false}
-          disabled={settings === null || busy !== null}
+          disabled={settings === null || busy !== null || sharedViewer}
           onCheckedChange={(checked) => void toggle(checked)}
           aria-label={t(($) => $.editor.typstPackages.vendor.toggle)}
         />
@@ -168,11 +170,14 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
           <label htmlFor="typst-packages-vendor-toggle" className="text-sm">
             {t(($) => $.editor.typstPackages.vendor.toggle)}
           </label>
-          <p className="text-[11px] text-muted-foreground">{t(($) => $.editor.typstPackages.vendor.detail)}</p>
+          <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.editor.typstPackages.vendor.detail)}</p>
+          {sharedViewer && (
+            <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.editor.sharedSettingsViewer)}</p>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" size="sm" variant="outline" disabled={busy !== null} onClick={() => void vendor()}>
+        <Button type="button" size="sm" variant="outline" disabled={busy !== null || sharedViewer} onClick={() => void vendor()}>
           {busy === "vendor" && <Spinner size="sm" />}
           {t(($) => $.editor.typstPackages.vendor.action)}
         </Button>
@@ -190,7 +195,7 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
       </div>
       {notice && <output className="block text-xs text-muted-foreground">{notice}</output>}
       {error && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="select-text text-xs text-destructive">
           {error}
         </p>
       )}

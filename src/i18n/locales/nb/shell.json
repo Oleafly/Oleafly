@@ -43,7 +43,9 @@
     "privacyNote": "Bare identifikatoren eller tittelen sendes, til doi.org, arXiv eller Crossref.",
     "title": "Legg til sitering",
     "bibliography": "Litteraturliste",
-    "bibliographyHint": "Dette prosjektet har mer enn én litteraturliste. Oppføringen havner i filen du velger her."
+    "bibliographyHint": "Dette prosjektet har mer enn én litteraturliste. Oppføringen havner i filen du velger her.",
+    "zoteroMatches": "Fra Zotero-biblioteket ditt",
+    "zoteroPlaceholder": "Søk i Zotero-biblioteket ditt, eller lim inn en DOI, en arXiv-id eller en tittel"
   },
   "backendProtocol": {
     "mismatch": "Dette vinduet og bakgrunnstjenesten er bygget for ulike versjoner av Oleafly, så noen funksjoner virker kanskje ikke. Installer appen på nytt for å rette det."
@@ -326,6 +328,38 @@
     "presentWithPresenter": {
       "label": "Presenter lysbilder med foredragsholdervisning",
       "keywords": "presenter lysbilder foredragsholdervisning talernotater tidtaker neste lysbilde present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "uten distraksjoner fokus fullskjerm skjul grensesnitt minimal skriving",
+      "label": "Slå Zen-modus av eller på"
+    },
+    "togglePreview": {
+      "keywords": "pdf forhåndsvisning vis skjul delt bare editor",
+      "label": "Vis eller skjul PDF-forhåndsvisning"
+    },
+    "zoomIn": {
+      "keywords": "større forstørr",
+      "label": "Zoom inn"
+    },
+    "zoomOut": {
+      "keywords": "mindre forminsk",
+      "label": "Zoom ut"
+    },
+    "resetZoom": {
+      "keywords": "faktisk størrelse 100",
+      "label": "Tilbakestill zoom"
+    },
+    "zoteroAddMissing": {
+      "label": "Legg til manglende siteringer fra Zotero",
+      "keywords": "zotero manglende siteringer udefinerte nøkler litteraturliste reparer missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": "Oppdater .bib-oppføringer fra Zotero",
+      "keywords": "zotero oppdater litteraturliste oppføringer endret update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Synkroniser Zotero-biblioteket",
+      "keywords": "zotero synkroniser oppdater bibliotek sync refresh library"
     }
   },
   "community": {
@@ -348,11 +382,13 @@
     "compile": "Kompiler",
     "compiler": {
       "auto": "Automatisk <note>[system-TeX]</note>",
-      "help": "Tectonic følger med og trenger ikke oppsett. De andre valgene kjører system-TeX, som kan lese lokale filer kontoen din har tilgang til, og bør bare brukes med prosjekter du stoler på. Automatisk velger kompilator ut fra kildekoden. pdfLaTeX passer de fleste tidsskriftmaler. XeLaTeX og LuaLaTeX gir systemskrifter og Unicode.",
+      "help": "Tectonic følger med og trenger ikke oppsett. De andre valgene kjører system-TeX, som kan lese lokale filer kontoen din har tilgang til, og bør bare brukes med prosjekter du stoler på. Automatisk velger kompilator ut fra kildekoden. pdfLaTeX passer de fleste tidsskriftmaler. XeLaTeX og LuaLaTeX gir systemskrifter og Unicode. upLaTeX og pLaTeX kompilerer japanske dokumenter.",
       "lualatex": "LuaLaTeX <note>[system-TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[system-TeX]</note>",
+      "platex": "pLaTeX <note>[system-TeX]</note>",
       "tectonic": "Tectonic <note>[følger med]</note>",
       "title": "Kompilator (dette prosjektet)",
+      "uplatex": "upLaTeX <note>[system-TeX]</note>",
       "xelatex": "XeLaTeX <note>[system-TeX]</note>"
     },
     "errors": {
@@ -409,7 +445,8 @@
       "title": "Variant (dette prosjektet)",
       "help": "En variant sender sine egne verdier til sys.inputs, for eksempel for et utkast eller en trykklar versjon. Varianten du velger, blir værende på denne datamaskinen. Legg til eller rediger varianter i Dokumentinnstillinger.",
       "none": "Ingen variant"
-    }
+    },
+    "sharedViewer": "Lesere kan ikke endre disse innstillingene i et delt prosjekt."
   },
   "datePicker": {
     "placeholder": "Velg en dato"
@@ -716,11 +753,6 @@
   "settings": {
     "close": "Lukk innstillingene",
     "data": {
-      "cloud": {
-        "comingSoon": "Kommer snart",
-        "description": "Hold prosjektene synkronisert mellom enhetene dine uten å sette opp en Git-remote. All overføring blir ende-til-ende-kryptert, så arbeidet ditt holdes privat underveis. De lokale prosjektmappene dine er fortsatt fasiten.",
-        "title": "Skysynkronisering"
-      },
       "danger": {
         "confirmDeleteAllAction": "Slett alle prosjekter",
         "confirmDeleteAllDescription": "Alle prosjektene dine flyttes til papirkurven, med filer og Git-historikk. Du kan gjenopprette prosjekter enkeltvis etterpå.",
@@ -808,6 +840,10 @@
         "description": "Vis galleriet Oleafly Tools og de enkelte verktøyene (PDF-import, ligninger, tabeller, BibTeX, søk etter forskningsgrupper og litteratur, frister) med skråstrekkommandoene sine. Av som standard mens det fortsatt er i beta.",
         "label": "LaTeX-verktøy"
       },
+      "liveCollaboration": {
+        "description": "Rediger prosjekter sammen med andre via en samarbeidsserver som du eller gruppen din drifter. Legger til seksjonen Samarbeid i Innstillinger. Av som standard mens det fortsatt er i beta.",
+        "label": "Samarbeid i sanntid"
+      },
       "warning": "Disse funksjonene er eksperimentelle og fortsatt i beta. De er ikke ferdig testet og kan endre seg, slutte å virke eller bli fjernet i en senere utgave. Slå dem på bare hvis du vil prøve arbeid som pågår.",
       "webBrowser": {
         "description": "Vis nettleseren i appen (bryteren i panelet og hurtigtasten), og la AI-en styre den med datamaskinbruk. Av som standard mens det fortsatt er i beta. Når den er av, finnes det ingen nettleserknapp, og AI-en har ikke noe nettleserverktøy.",
@@ -887,6 +923,7 @@
     "nav": {
       "ai": "AI-assistent",
       "appearance": "Utseende",
+      "collaboration": "Samarbeid",
       "data": "Datalagring",
       "dictionary": "Ordliste",
       "downloads": "Nedlastinger",
@@ -902,6 +939,7 @@
       "keywords": {
         "ai": "assistent, chat, modeller, leverandører, API-nøkler, agenter, ledetekster, prompter, budsjett, MCP-servere",
         "appearance": "tema, mørk modus, lys modus, farge, skrift, skrifttyper, tekststørrelse, zoom, oppsett",
+        "collaboration": "servere, logge inn, innlogging, enheter, medlemmer, vedlikeholdere, deling, team, lab, redigering i sanntid, sanntid, sikkerhetslogg",
         "data": "sikkerhetskopi, bibliotekmappe, prosjektmappe, lagring, lagringsplass, diskplass, papirkurv, slette prosjekter, sjekkpunkter",
         "dictionary": "stavemåte, rettskriving, egne ord, ignorerte ord, korrektur, grammatikkregler",
         "downloads": "pakker, skrifter, ordlister, ordbøker, frakoblede filer",
@@ -1121,7 +1159,8 @@
       "editorPreview": "Editor + forhåndsvisning",
       "editorPreviewAi": "Editor + forhåndsvisning + AI",
       "previewAi": "Forhåndsvisning + AI",
-      "previewOnly": "Bare forhåndsvisning"
+      "previewOnly": "Bare forhåndsvisning",
+      "zenMode": "Zen-modus"
     },
     "newProjectName": "Navn på nytt prosjekt",
     "projectName": "Prosjektnavn",
@@ -1352,5 +1391,80 @@
     "location": "{{file}}, linje {{line}}",
     "error": "Feil",
     "warning": "Advarsel"
+  },
+  "fileRenameDialog": {
+    "title": "Gi filen nytt navn",
+    "titleFolder": "Gi mappen nytt navn",
+    "newPath": "Ny sti",
+    "hint": "Mapper som mangler, opprettes.",
+    "invalid": "Bruk en sti inne i dette prosjektet.",
+    "exists": "{{path}} finnes allerede."
+  },
+  "zen": {
+    "compileFailed": "Kompileringen mislyktes",
+    "compiling": "Kompilerer",
+    "hideLog": "Skjul kompileringsloggen",
+    "showLog": "Vis kompileringsloggen"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} fil er endret utenfor Oleafly. Vil du sende endringen til alle eller beholde den lokalt?",
+    "paused_other": "{{count}} filer er endret utenfor Oleafly. Vil du sende endringene til alle eller beholde dem lokalt?",
+    "send": "Send",
+    "keepLocal": "Behold lokalt",
+    "unavailable": "Prosjektmappen er ikke tilgjengelig, så synkroniseringen er satt på pause. Den starter igjen når mappen er tilbake."
+  },
+  "overleafSync": {
+    "button": "Overleaf-synkronisering",
+    "title": "Synkroniser med Overleaf",
+    "cancel": "Avbryt",
+    "more_one": "og {{count}} fil til",
+    "more_other": "og {{count}} filer til",
+    "status": {
+      "notLinked": "Ikke synkronisert med Overleaf ennå.",
+      "linking": "Kobler til Overleaf",
+      "syncing": "Synkroniserer med Overleaf",
+      "needsToken": "Legg til Git-tokenet ditt fra Overleaf for å synkronisere.",
+      "never": "Ikke synkronisert ennå.",
+      "justNow": "nå nettopp",
+      "synced": "Synkronisert {{time}}.",
+      "conflicts_one": "{{count}} fil er endret begge steder. Velg hvilken versjon du vil beholde.",
+      "conflicts_other": "{{count}} filer er endret begge steder. Velg hvilke versjoner du vil beholde."
+    },
+    "actions": {
+      "keepInSync": "Hold synkronisert med Overleaf",
+      "syncNow": "Synkroniser nå",
+      "auto": "Synkroniser automatisk",
+      "resolve": "Velg versjoner",
+      "unlink": "Slutt å synkronisere",
+      "addToken": "Legg til Git-token",
+      "changeToken": "Bytt Git-token"
+    },
+    "token": {
+      "title": "Legg til Git-tokenet ditt fra Overleaf",
+      "description": "Oleafly synkroniserer via Git-integrasjonen i Overleaf. Opprett et token under Git-integrasjon i kontoinnstillingene dine på Overleaf, og lim det inn her. Det forblir kryptert på denne datamaskinen.",
+      "openSettings": "Åpne kontoinnstillingene på Overleaf",
+      "label": "Git-token",
+      "note": "Git-integrasjon krever at eieren av prosjektet har et betalt abonnement eller et universitetsabonnement hos Overleaf.",
+      "save": "Lagre og synkroniser"
+    },
+    "choice": {
+      "title": "Hvilken versjon skal gjelde?",
+      "description": "Disse filene er forskjellige her og på Overleaf. Filer som bare finnes på én side, beholdes på begge, så ingenting blir slettet.",
+      "mine": "Bruk mine versjoner",
+      "theirs": "Bruk versjonene fra Overleaf"
+    },
+    "conflicts": {
+      "title": "Velg versjoner",
+      "description": "Disse filene er endret både her og på Overleaf siden forrige synkronisering. Velg hvilken versjon du vil beholde for hver fil. Ingenting endres før du bruker valget.",
+      "mine": "Min",
+      "theirs": "Overleafs",
+      "allMine": "Behold alle mine",
+      "allTheirs": "Bruk alle fra Overleaf",
+      "apply": "Bruk og synkroniser"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "Oleafly lastet inn dette vinduet på nytt fordi det ikke svarte på 30 sekunder. Endringer du gjorde rett før, er kanskje ikke lagret.",
+    "reloadedAgain": "Oleafly lastet inn dette vinduet på nytt igjen fordi det sluttet å svare. Prosjektet ditt ble ikke åpnet igjen, i tilfelle noe i det var årsaken."
   }
 }

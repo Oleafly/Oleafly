@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "Tietoja Oleaflystä",
     "checkUpdates": "Etsi päivityksiä…",
+    "settings": "Asetukset…",
     "reloadViews": "Lataa näkymät uudelleen",
     "restartApp": "Käynnistä sovellus uudelleen",
     "quit": "Lopeta Oleafly",
@@ -30,7 +31,8 @@
     "newTab": "Uusi välilehti",
     "openLocation": "Avaa osoite…",
     "closeTab": "Sulje välilehti",
-    "reloadPage": "Lataa sivu uudelleen"
+    "reloadPage": "Lataa sivu uudelleen",
+    "zenMode": "Zen-tila"
   },
   "window": {
     "browser": "Oleafly-selain",
@@ -42,6 +44,11 @@
       "title": "Otetaanko täysi käyttöoikeus käyttöön?",
       "message": "Täydellä käyttöoikeudella avustaja voi ajaa shell-komentoja ja muokata tiedostoja pyytämättä lupaa joka kerta erikseen. Otetaanko täysi käyttöoikeus käyttöön?",
       "confirm": "Ota täysi käyttöoikeus käyttöön"
+    },
+    "sharedShellEscape": {
+      "title": "Sallitaanko ulkoiset komennot tässä jaetussa projektissa?",
+      "message": "Silloin kuka tahansa, joka voi muokata projektia, voi suorittaa ohjelmia tällä koneella, kun käännät sen. Salli tämä vain, jos luotat kaikkiin projektin jäseniin.",
+      "confirm": "Salli tällä koneella"
     },
     "cookieImport": {
       "title": "Vahvista cookieiden tuonti",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "Avaa sovelluksessa Oleafly",
     "openWithOleafly": "Avaa sovelluksella Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (paikallinen kopio)"
+  },
+  "approvals": {
+    "helperRefused": "Hylätty approvals.toml-tiedoston {{tool}}-säännön vuoksi",
+    "unknownTool": "Mikään työkalu ei ole nimeltään {{name}}, joten sääntö ei tee mitään.",
+    "unknownToolSuggestion": "Mikään työkalu ei ole nimeltään {{name}}, joten sääntö ei tee mitään. Tarkoititko {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Olet yhteydessä. Voit sulkea tämän välilehden ja palata Oleaflysovellukseen.",
+    "failedPage": "Kirjautuminen ei valmistunut. Voit sulkea tämän välilehden ja palata Oleaflysovellukseen."
   }
 }

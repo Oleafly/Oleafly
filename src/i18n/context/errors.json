@@ -10,5 +10,8 @@
     "library_not_readable": "Shown when a Zotero API key is valid but has no access to the user's personal library. \"Allow library access\" is the checkbox label on the key's page at zotero.org. Keep it in English, because zotero.org shows it in English.",
     "user_mismatch": "Shown when the Zotero user ID typed in Settings differs from the account the API key belongs to. {{keyUserId}} is the key's numeric user ID and {{userId}} is the number the user typed.",
     "too_large": "Shown when the Zotero library is bigger than one import allows. The RDF export is Zotero's File, Export Collection, Zotero RDF option."
+  },
+  "collab": {
+    "turned_off": "Shown when something asks for live collaboration while its switch is off. \"Live collaboration\" is the switch label and \"Experimentation\" is the Settings section that holds it. Use the same words as those two labels."
   }
 }

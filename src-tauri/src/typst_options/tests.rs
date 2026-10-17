@@ -199,7 +199,7 @@ fn update_requests_read_camel_case() {
 #[test]
 fn the_descriptor_reports_options_and_version_capabilities() {
     let (_directory, root) = project_with_fonts();
-    let described = options_descriptor(Some(&spec()), Some(&root), capabilities_for("0.13.1"));
+    let described = options_descriptor(Some(&spec()), Some(&root), capabilities_for("0.13.1"), &[]);
     assert!(!described.system_fonts);
     assert!(!described.reproducible);
     assert_eq!(described.variants, ["final"]);
@@ -210,7 +210,7 @@ fn the_descriptor_reports_options_and_version_capabilities() {
     let json = serde_json::to_value(&described).unwrap();
     assert_eq!(json["system_fonts"], false);
     assert!(json.get("pdf_standards").is_some());
-    let unset = options_descriptor(None, None, capabilities_for("0.11.1"));
+    let unset = options_descriptor(None, None, capabilities_for("0.11.1"), &[]);
     assert!(unset.system_fonts);
     assert!(unset.font_dirs.is_empty());
 }
@@ -236,7 +236,7 @@ fn font_sources_are_sorted_into_project_system_and_embedded() {
             sources: Vec::new(),
         },
     ];
-    let entries = font_entries(families, &root, &[root.join("fonts")]);
+    let entries = font_entries(families, &root, &[root.join("fonts")], None);
     assert_eq!(
         entries[0].sources,
         [
@@ -258,6 +258,85 @@ fn font_sources_are_sorted_into_project_system_and_embedded() {
         }]
     );
     assert!(entries[2].sources.is_empty());
+}
+
+#[test]
+fn the_language_server_gets_installed_pack_folders_unless_system_fonts_are_off() {
+    let (_directory, root) = project_with_fonts();
+    let shared = [PathBuf::from("/packs/typst-text")];
+    let open = options_descriptor(None, Some(&root), capabilities_for("0.15.1"), &shared);
+    assert!(open.font_dirs.iter().any(|dir| dir.ends_with("typst-text")));
+    let sealed = TypstSpec {
+        system_fonts: false,
+        ..TypstSpec::default()
+    };
+    let closed = options_descriptor(
+        Some(&sealed),
+        Some(&root),
+        capabilities_for("0.15.1"),
+        &shared,
+    );
+    assert!(closed
+        .font_dirs
+        .iter()
+        .all(|dir| !dir.ends_with("typst-text")));
+}
+
+#[test]
+fn fonts_from_installed_packs_are_listed_by_pack() {
+    let (_directory, root) = project_with_fonts();
+    let packs = tempfile::tempdir().unwrap();
+    let pack = packs.path().join("typst-text");
+    std::fs::create_dir_all(&pack).unwrap();
+    std::fs::write(pack.join("LiberationSans-Regular.ttf"), b"font").unwrap();
+    let families = vec![TypstFontFamily {
+        name: "Liberation Sans".into(),
+        sources: vec![pack
+            .join("LiberationSans-Regular.ttf")
+            .to_string_lossy()
+            .into_owned()],
+    }];
+    let entries = font_entries(
+        families,
+        &root,
+        &[root.join("fonts"), pack.clone()],
+        Some(&packs.path().canonicalize().unwrap()),
+    );
+    assert_eq!(
+        entries[0].sources,
+        [TypstFontSource {
+            kind: "pack",
+            path: Some("typst-text".into())
+        }]
+    );
+}
+
+#[test]
+fn shared_pack_folders_join_compiles_unless_system_fonts_are_off() {
+    let (_directory, root) = project_with_fonts();
+    let shared = vec![
+        PathBuf::from("/packs/typst-cjk"),
+        PathBuf::from("/packs/typst-text"),
+    ];
+    let open = TypstCompileSettings::resolve(None, &root, None, |_| None)
+        .with_shared_font_dirs(shared.clone());
+    assert!(open.font_dirs.ends_with(&shared));
+    let sealed = TypstSpec {
+        system_fonts: false,
+        ..TypstSpec::default()
+    };
+    let closed = TypstCompileSettings::resolve(Some(&sealed), &root, None, |_| None)
+        .with_shared_font_dirs(shared.clone());
+    assert!(closed.font_dirs.iter().all(|dir| !shared.contains(dir)));
+    let twice = open.with_shared_font_dirs(shared.clone());
+    assert_eq!(
+        twice
+            .font_dirs
+            .iter()
+            .filter(|dir| shared.contains(dir))
+            .count(),
+        shared.len()
+    );
 }
 
 #[test]

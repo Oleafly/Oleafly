@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ -f /stub/state/local-ips ]; then
+	cat /stub/state/local-ips
+else
+	echo '10.0.0.5 '
+fi

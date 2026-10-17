@@ -214,5 +214,24 @@
     "clearFilter": "Cancella il filtro",
     "filterPlaceholder": "Filtra…",
     "noProject": "Nessun progetto"
+  },
+  "fileReferences": {
+    "title": "Aggiornare i riferimenti a {{name}}?",
+    "files_one": "{{count}} file",
+    "files_many": "{{count}} file",
+    "files_other": "{{count}} file",
+    "summary_one": "{{count}} riferimento in $t(workspace:fileReferences.files, { \"count\": {{files}} }) usa ancora il vecchio percorso, {{path}}.",
+    "summary_many": "{{count}} riferimenti in $t(workspace:fileReferences.files, { \"count\": {{files}} }) usano ancora il vecchio percorso, {{path}}.",
+    "summary_other": "{{count}} riferimenti in $t(workspace:fileReferences.files, { \"count\": {{files}} }) usano ancora il vecchio percorso, {{path}}.",
+    "fileCount_one": "{{count}} riferimento",
+    "fileCount_many": "{{count}} riferimenti",
+    "fileCount_other": "{{count}} riferimenti",
+    "dontAsk": "Non chiedere più",
+    "update": "Aggiorna i riferimenti",
+    "skip": "Non aggiornare",
+    "failed_one": "{{count}} file è cambiato dopo lo spostamento o non è stato possibile salvarlo. Usa ancora il vecchio percorso.",
+    "failed_many": "{{count}} file sono cambiati dopo lo spostamento o non è stato possibile salvarli. Usano ancora il vecchio percorso.",
+    "failed_other": "{{count}} file sono cambiati dopo lo spostamento o non è stato possibile salvarli. Usano ancora il vecchio percorso.",
+    "close": "Chiudi senza aggiornare i riferimenti"
   }
 }

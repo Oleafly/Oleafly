@@ -496,7 +496,11 @@ pub async fn extract_arxiv_source(
 /// Download an arXiv e-print and unpack it into a new project, inferring the
 /// main document the same way Overleaf ZIP imports do.
 #[tauri::command]
-pub async fn import_arxiv_eprint(name: Option<String>, arxiv_id: String) -> Result<String, String> {
+pub async fn import_arxiv_eprint(
+    app: tauri::AppHandle,
+    name: Option<String>,
+    arxiv_id: String,
+) -> Result<String, String> {
     let id = arxiv_id
         .trim()
         .trim_start_matches("arXiv:")
@@ -508,9 +512,13 @@ pub async fn import_arxiv_eprint(name: Option<String>, arxiv_id: String) -> Resu
         .filter(|candidate| !candidate.trim().is_empty())
         .unwrap_or(fallback_name);
     let bytes = download_eprint(&id).await?;
-    tauri::async_runtime::spawn_blocking(move || import_eprint_bytes(project_name, &id, &bytes))
-        .await
-        .map_err(|e| e.to_string())?
+    let project_id = tauri::async_runtime::spawn_blocking(move || {
+        import_eprint_bytes(project_name, &id, &bytes)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    crate::project::record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 fn import_eprint_bytes(project_name: String, id: &str, bytes: &[u8]) -> Result<String, String> {

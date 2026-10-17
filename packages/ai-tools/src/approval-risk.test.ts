@@ -115,11 +115,49 @@ describe("decideToolApproval", () => {
     ).toBe("auto-approve");
   });
 
-  it("uses explicit project rules only in Custom mode", () => {
-    const projectRules = { write_file: "allow" as const };
+  it.each([
+    ["ask-for-approval", "prompt"],
+    ["approve-for-me", "prompt"],
+    ["full-access", "auto-approve"],
+    ["custom", "auto-approve"],
+  ] as const)("applies an allow rule only in Custom mode (%s)", (mode, expected) => {
     expect(
       decideToolApproval({
-        mode: "custom",
+        mode,
+        toolCall: { name: "write_file" },
+        risk: "write",
+        projectRules: { write_file: "allow" },
+      }),
+    ).toBe(expected);
+  });
+
+  it.each(["ask-for-approval", "approve-for-me", "full-access", "custom"] as const)(
+    "returns deny-per-rules for an explicit denial in %s mode",
+    (mode) => {
+      for (const [name, risk] of [
+        ["read_file", "read"],
+        ["write_file", "write"],
+        ["run_command", "shell"],
+        ["literature_search", "network"],
+      ] as const) {
+        expect(
+          decideToolApproval({
+            mode,
+            toolCall: { name },
+            risk,
+            projectRules: { [name]: "deny" },
+          }),
+          name,
+        ).toBe("deny-per-rules");
+      }
+    },
+  );
+
+  it("leaves tools without a rule on the mode's risk policy", () => {
+    const projectRules = { run_command: "deny" as const };
+    expect(
+      decideToolApproval({
+        mode: "full-access",
         toolCall: { name: "write_file" },
         risk: "write",
         projectRules,
@@ -127,23 +165,12 @@ describe("decideToolApproval", () => {
     ).toBe("auto-approve");
     expect(
       decideToolApproval({
-        mode: "ask-for-approval",
+        mode: "approve-for-me",
         toolCall: { name: "write_file" },
         risk: "write",
         projectRules,
       }),
     ).toBe("prompt");
-  });
-
-  it("returns deny-per-rules for an explicit Custom denial", () => {
-    expect(
-      decideToolApproval({
-        mode: "custom",
-        toolCall: { name: "read_file" },
-        risk: "read",
-        projectRules: { read_file: "deny" },
-      }),
-    ).toBe("deny-per-rules");
   });
 });
 

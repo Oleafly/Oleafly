@@ -64,15 +64,35 @@ export const englishResources: Record<string, Catalog> = {
   workspace,
 };
 
-export const NAMESPACES: readonly string[] = Object.keys(englishResources).sort(compareCodePoints);
+const lazyEnglishCatalogs: Readonly<Record<string, () => Promise<Catalog>>> = {
+  cloud: () => import("./locales/en/cloud.json").then((module) => module.default),
+  collab: () => import("./locales/en/collab.json").then((module) => module.default),
+  settingsFile: () => import("./locales/en/settingsFile.json").then((module) => module.default),
+};
+
+export const LAZY_NAMESPACES: readonly string[] = Object.keys(lazyEnglishCatalogs).sort(compareCodePoints);
+
+export const NAMESPACES: readonly string[] = [...Object.keys(englishResources), ...LAZY_NAMESPACES].sort(
+  compareCodePoints,
+);
+
+export function loadEnglishCatalog(namespace: string): Promise<Catalog> | null {
+  return Object.hasOwn(lazyEnglishCatalogs, namespace) ? lazyEnglishCatalogs[namespace]() : null;
+}
 
 export async function loadLocaleResources(locale: SupportedLocale): Promise<Record<string, Catalog>> {
   if (locale === "en") return englishResources;
   const prefix = `./locales/${locale}/`;
   const entries = await Promise.all(
     Object.entries(lazyCatalogs)
-      .filter(([path]) => path.startsWith(prefix))
+      .filter(([path]) => path.startsWith(prefix) && !LAZY_NAMESPACES.includes(namespaceOf(path)))
       .map(async ([path, load]) => [namespaceOf(path), await load()] as const),
   );
   return Object.fromEntries(entries);
+}
+
+export async function loadLocaleCatalog(locale: SupportedLocale, namespace: string): Promise<Catalog | null> {
+  const path = `./locales/${locale}/${namespace}.json`;
+  if (locale === "en" || !LAZY_NAMESPACES.includes(namespace) || !Object.hasOwn(lazyCatalogs, path)) return null;
+  return lazyCatalogs[path]();
 }

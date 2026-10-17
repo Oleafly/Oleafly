@@ -105,7 +105,7 @@ describe("TableGeneratorPanel", () => {
     expect(screen.getByText(/\\begin\{tabular\}\{lrc\}/)).toBeInTheDocument();
   });
 
-  it("copies the generated source and toasts once the clipboard accepted it", async () => {
+  it("copies the generated source from the code block and marks it copied", async () => {
     render(<TableGeneratorPanel />);
     fireEvent.click(
       screen.getByRole("button", { name: enCommon.actions.copy }),
@@ -113,11 +113,10 @@ describe("TableGeneratorPanel", () => {
     expect(writeText).toHaveBeenCalledWith(
       expect.stringContaining("\\begin{table}"),
     );
-    await vi.waitFor(() =>
-      expect(toastSuccess).toHaveBeenCalledWith(
-        enResearchTools.table.copiedSource,
-      ),
-    );
+    expect(
+      await screen.findByRole("button", { name: enCommon.actions.copied }),
+    ).toBeInTheDocument();
+    expect(toastSuccess).not.toHaveBeenCalled();
     expect(notifyError).not.toHaveBeenCalled();
   });
 

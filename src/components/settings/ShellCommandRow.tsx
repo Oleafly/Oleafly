@@ -180,7 +180,7 @@ function PathHint({
         />
       </p>
       <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 overflow-x-auto whitespace-pre rounded border bg-background px-2 py-1 font-mono text-[11px]">
+        <code className="min-w-0 flex-1 overflow-x-auto whitespace-pre rounded border bg-background px-2 py-1 font-mono text-[0.6875rem]">
           <SettingsPathText text={hint.line} />
         </code>
         <Button
@@ -340,7 +340,7 @@ export function ShellCommandRow() {
               <Trans
                 ns="settings"
                 i18nKey={($) => $.settings.shellCommand.description}
-                components={{ code: <code className="rounded bg-muted px-1 font-mono text-[11px]" /> }}
+                components={{ code: <code className="rounded bg-muted px-1 font-mono text-[0.6875rem]" /> }}
               />
             </div>
             <StateSummary

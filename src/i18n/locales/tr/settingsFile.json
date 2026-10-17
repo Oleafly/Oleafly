@@ -1,0 +1,64 @@
+{
+  "title": "Uygulama ayarları",
+  "description": "Ayarlarınızı bir JSON dosyasına kaydedin veya birinin sizinle paylaştığı bir dosyayı yükleyin. API anahtarları, hesaplar, tümleştirmeler ve ajanlar hiçbir zaman dahil edilmez.",
+  "export": "Dışa aktar",
+  "import": "İçe aktar",
+  "view": {
+    "label": "Ayarların JSON'unu görüntüle",
+    "summary": "Dışa aktarmanın kaydettiği dosyanın salt okunur önizlemesi.",
+    "loading": "Ayarlarınız okunuyor",
+    "failed": "Ayarlarınız okunamadı."
+  },
+  "dialog": {
+    "pickTitle": "Ayarları içe aktar",
+    "filterName": "Oleafly ayarları"
+  },
+  "toast": {
+    "exported": "{{name}} diske aktarıldı",
+    "exportFailed": "Ayar dosyası kaydedilemedi.",
+    "readFailed": "Bu dosya açılamadı.",
+    "imported": "Ayarlar içe aktarıldı.",
+    "unchanged": "Ayarlarınız zaten {{name}} dosyasıyla aynı.",
+    "applyFailed": "Bazı ayarlar kaydedilemedi. İçe aktarmayı yeniden deneyin.",
+    "cloudEmpty": "Dropbox'ınızda henüz Oleafly ayarı yok. Önce başka bir bilgisayarda bulut eşitlemeyi açın.",
+    "cloudLoadFailed": "Ayarlar Dropbox'ınızdan yüklenemedi.",
+    "cloudUnreadable": "Dropbox'ınızdaki ayarlar okunamadı."
+  },
+  "confirm": {
+    "title": "Ayarlarınız değiştirilsin mi?",
+    "description": "{{name}} dosyasındaki ayarlar sizinkilerin yerini alacak. Dosyada olmayan her şey olduğu gibi kalır.",
+    "changes": "Değişecek ayar sayısı: {{count}}",
+    "ignored": "Tanınmadığı için atlanacak:",
+    "action": "İçe aktar",
+    "cloudDescription": "Dropbox'ınızdaki ayarlar sizinkilerin yerini alacak. Bu ayarlarda olmayan her şey olduğu gibi kalır."
+  },
+  "error": {
+    "title": "{{name}} içe aktarılmadı",
+    "notJson": "Dosya geçerli JSON değil.",
+    "notSettings": "Bu bir Oleafly ayar dosyası değil.",
+    "invalid": "İçe aktarmaya çalıştığınız ayar yapılandırması geçersiz. Lütfen bu hataları düzeltip yeniden içe aktarmayı deneyin:",
+    "more": "+{{count}} tane daha"
+  },
+  "valueErrors": {
+    "boolean": "true veya false olmalıdır",
+    "oneOf": "şunlardan biri olmalıdır: {{values}}",
+    "range": "{{min}} ile {{max}} arasında bir sayı olmalıdır",
+    "wholeRange": "{{min}} ile {{max}} arasında bir tam sayı olmalıdır",
+    "wholeRangeStep": "{{min}} ile {{max}} arasında bir tam sayı olmalıdır (adım: {{step}})",
+    "hexColor": "#2563eb gibi bir renk olmalıdır",
+    "hexColorOrEmpty": "#2563eb gibi bir renk ya da temanın rengini kullanmak için \"\" olmalıdır",
+    "text": "en fazla {{max}} karakterlik bir metin olmalıdır",
+    "webAddress": "http:// veya https:// ile başlayan bir web adresi olmalıdır",
+    "list": "en fazla {{max}} öğe içeren bir liste olmalıdır",
+    "listItem": "izin verilen bir öğe değil",
+    "duplicate": "iki kez listelenmiş",
+    "object": "süslü parantez içinde bir ayar grubu olmalıdır",
+    "unknownKey": "Oleafly'nin tanıdığı bir ayar değil",
+    "dictionaryLocale": "en_US gibi bir sözlük kodu olmalıdır",
+    "shortcut": "Mod-Shift-k gibi bir kısayol ya da \"default\" olmalıdır",
+    "editorKey": "Mod-d gibi bir tuş, tuş olmaması için \"\" ya da \"default\" olmalıdır"
+  },
+  "importFromLocal": "Bu cihazdan içe aktar",
+  "importFromCloud": "Buluttan içe aktar",
+  "cloudSource": "Dropbox"
+}

@@ -23,6 +23,27 @@ describe("Book project metadata", () => {
     expect(screen.getByText("Open to recover")).toBeInTheDocument();
   });
 
+  it("keeps the engine and date on one line each, cut with an ellipsis beside the menu", () => {
+    render(
+      <Book
+        title={"Paper"}
+        engine="Markdown"
+        kind="document"
+        date="Updated yesterday"
+        menu={<button type="button">{"Info"}</button>}
+      />,
+    );
+
+    const date = screen.getByTestId("project-card-date");
+    expect(date).toHaveClass("truncate");
+    expect(date).toHaveAttribute("title", "Updated yesterday");
+    expect(screen.getByTestId("project-card-engine")).toHaveClass("truncate");
+    const caption = screen.getByTestId("project-card-caption");
+    expect(caption).not.toHaveClass("pr-7");
+    expect(caption).toHaveClass("group-hover:pr-7", "has-[[data-state=open]]:pr-7");
+    expect(screen.getByRole("button", { name: "Info" }).parentElement).toHaveClass("absolute");
+  });
+
   it("shows the engine without an icon for a regular project", () => {
     const { container } = render(
       <Book title={"Paper"} engine="Tectonic" kind="document" />,

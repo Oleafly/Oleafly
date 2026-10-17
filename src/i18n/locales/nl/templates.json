@@ -5,6 +5,7 @@
       "nameProject": "Geef je project een naam",
       "import": "Importeren",
       "generateWithAi": "Een sjabloon maken",
+      "importTemplate": "Sjabloon importeren",
       "close": "Sluiten",
       "getMoreTemplates": "Meer sjablonen ophalen",
       "searchPlaceholder": "Sjablonen zoeken",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Alles",
       "aiGenerated": "Door AI gemaakt",
+      "custom": "Eigen",
       "blank": "Leeg",
       "diagrams": "Diagrammen",
       "diagramsFull": "Diagrammen en figuren",

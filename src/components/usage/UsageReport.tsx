@@ -5,6 +5,7 @@ import { BarChart3, Download, RefreshCw } from "lucide-react";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DailyAreaChart, formatUtcDay, type DailyAreaPoint } from "@/components/ui/daily-area-chart";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
@@ -36,16 +37,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { StatCard } from "@/components/ui/stat-card";
 import { Tooltip } from "@/components/ui/tooltip";
+import { WeekHourHeatmap, type HeatmapCell } from "@/components/ui/week-hour-heatmap";
 import { i18n } from "@/i18n";
 import { getProvider } from "@/lib/ai-providers";
-import {
-  formatCompactNumber,
-  formatDate,
-  formatDateTime,
-  formatList,
-  formatNumber,
-} from "@/lib/intl";
+import { formatCompactNumber, formatDateTime, formatList, formatNumber } from "@/lib/intl";
 import { notifyError, toast } from "@/lib/toast";
 import {
   activeQuickRange,
@@ -105,8 +102,6 @@ const ALL = "__all__";
 const EMPTY_PROJECT_NAMES = new Map<string, string>();
 const PAGE_SIZES = [10, 25, 50, 100];
 const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
-const TICK_STEPS = [1, 2, 3, 7, 14, 30, 60, 90];
 const ACP_AGENT_NAMES: Record<string, string> = {
   claude: "Claude Code",
   codex: "Codex",
@@ -162,16 +157,6 @@ function formatCost(value: number): string {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: value < 1 ? 4 : 2,
-  });
-}
-
-function formatUtcDay(value: number | string, withYear = false): string {
-  const date = typeof value === "string" ? new Date(`${value}T00:00:00.000Z`) : new Date(value);
-  return formatDate(date, {
-    timeZone: "UTC",
-    month: "short",
-    day: "numeric",
-    ...(withYear ? { year: "numeric" } : {}),
   });
 }
 
@@ -371,93 +356,23 @@ function Truncated({ value, label, className }: Readonly<{ value: string; label?
   );
 }
 
-function Metric({
-  label,
-  value,
-  detail,
-  exact,
-}: Readonly<{
-  label: string;
-  value: string;
-  detail: ReactNode;
-  exact?: string;
-}>) {
-  return (
-    <div className="rounded-lg border bg-card p-3">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-xl font-semibold tabular-nums" title={exact}>
-        {value}
-      </dd>
-      <dd className="mt-1 text-[11px] text-muted-foreground">{detail}</dd>
-    </div>
-  );
-}
-
-function tickStep(length: number): number {
-  return TICK_STEPS.find((step) => Math.ceil(length / step) <= 7) ?? TICK_STEPS.at(-1) ?? 90;
-}
-
-function tickTransform(position: number, x: number): string {
-  if (position === 0) return "none";
-  if (x > 92) return "translateX(-100%)";
-  return "translateX(-50%)";
-}
-
-function heatmapCellTone(cell: UsageReportData["heatmap"][number] | undefined): string {
-  if (cell === undefined) return "bg-muted";
-  if (cell.tokenTotal === null) return "bg-muted-foreground/30";
-  return "bg-primary";
-}
-
 function UsageTrend({ report }: Readonly<{ report: UsageReportData }>) {
   const { t } = useTranslation(["usage"]);
   const series = useMemo(() => fillDailySeries(report), [report]);
-  const [hover, setHover] = useState<number | null>(null);
-  const chart = useMemo(() => {
-    const totals = series.map((point) =>
-      point.inputTotal === null || point.outputTotal === null
-        ? null
-        : point.inputTotal + point.outputTotal,
-    );
-    const max = Math.max(1, ...totals.map((total) => total ?? 0));
-    const count = series.length;
-    const x = (index: number) => (count === 1 ? 50 : (index / (count - 1)) * 100);
-    const y = (total: number) => 37 - (total / max) * 33;
-    const points = totals.map((total, index) =>
-      total === null ? null : { x: x(index), y: y(total) },
-    );
-    const segments: Array<{ line: string; area: string }> = [];
-    let current: Array<{ x: number; y: number }> = [];
-    const flush = () => {
-      if (current.length > 0) {
-        const points = current.map((point) => `${point.x},${point.y}`);
-        const line = points.join(" ");
-        const first = current[0];
-        const last = current.at(-1) ?? first;
-        segments.push({
-          line,
-          area: `M${first.x},37 L${points.join(" L")} L${last.x},37 Z`,
-        });
-      }
-      current = [];
-    };
-    for (const point of points) {
-      if (point === null) flush();
-      else current.push(point);
-    }
-    flush();
-    const step = tickStep(count);
-    const ticks: Array<{ index: number; x: number }> = [];
-    for (let index = 0; index < count; index += step) ticks.push({ index, x: x(index) });
-    return {
-      totals,
-      points,
-      segments,
-      ticks,
-      x,
-      hasUnknown: totals.includes(null),
-    };
-  }, [series]);
+  const points = useMemo(
+    () =>
+      series.map(
+        (point): DailyAreaPoint => ({
+          day: point.day,
+          value:
+            point.inputTotal === null || point.outputTotal === null
+              ? null
+              : point.inputTotal + point.outputTotal,
+          marked: point.recordCount > 0,
+        }),
+      ),
+    [series],
+  );
 
   if (series.length === 0) {
     return (
@@ -467,121 +382,32 @@ function UsageTrend({ report }: Readonly<{ report: UsageReportData }>) {
     );
   }
 
-  const hovered = hover === null ? null : series[hover];
-  const hoveredPoint = hover === null ? null : chart.points[hover];
-
   return (
     <div>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: hover only reveals a reading; the table below carries the data */}
-      <div
-        className="relative"
-        onMouseMove={(event) => {
-          const rect = event.currentTarget.getBoundingClientRect();
-          if (rect.width <= 0) return;
-          const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-          setHover(Math.round(ratio * (series.length - 1)));
+      <DailyAreaChart
+        points={points}
+        label={t(($) => $.usage.trend.chartLabel)}
+        title={t(($) => $.usage.trend.chartTitle)}
+        renderReading={(index) => {
+          const day = series[index];
+          return (
+            <>
+              {points[index].value === null ? (
+                <span className="block text-muted-foreground">{t(($) => $.usage.trend.tokensUnavailable)}</span>
+              ) : (
+                <span className="block tabular-nums text-muted-foreground">
+                  {t(($) => $.usage.trend.inOut, {
+                    input: formatExact(day.inputTotal ?? 0),
+                    output: formatExact(day.outputTotal ?? 0),
+                  })}
+                </span>
+              )}
+              <span className="block text-muted-foreground">{records(day.recordCount)}</span>
+            </>
+          );
         }}
-        onMouseLeave={() => setHover(null)}
-      >
-        <svg
-          viewBox="0 0 100 40"
-          preserveAspectRatio="none"
-          className="h-40 w-full overflow-visible"
-          role="img"
-          aria-label={t(($) => $.usage.trend.chartLabel)}
-        >
-          <title>{t(($) => $.usage.trend.chartTitle)}</title>
-          {[0.25, 0.5, 0.75].map((fraction) => (
-            <line
-              key={fraction}
-              x1="0"
-              y1={37 - fraction * 33}
-              x2="100"
-              y2={37 - fraction * 33}
-              className="stroke-border/60"
-              strokeDasharray="1 1"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-          <line x1="0" y1="37" x2="100" y2="37" className="stroke-border" vectorEffect="non-scaling-stroke" />
-          {chart.segments.map((segment) => (
-            <path key={segment.area} d={segment.area} className="fill-primary/15" />
-          ))}
-          {chart.segments.map((segment) => (
-            <polyline
-              key={segment.line}
-              points={segment.line}
-              fill="none"
-              vectorEffect="non-scaling-stroke"
-              className="stroke-primary"
-              strokeWidth="1.75"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-          ))}
-          {chart.points.map((point, index) =>
-            point === null || series[index].recordCount === 0 ? null : (
-              <circle
-                key={series[index].day}
-                cx={point.x}
-                cy={point.y}
-                r="1.6"
-                vectorEffect="non-scaling-stroke"
-                className="fill-primary stroke-card"
-                strokeWidth="1"
-              />
-            ),
-          )}
-          {hover !== null && (
-            <line
-              x1={chart.x(hover)}
-              y1="2"
-              x2={chart.x(hover)}
-              y2="37"
-              className="stroke-foreground/40"
-              vectorEffect="non-scaling-stroke"
-            />
-          )}
-        </svg>
-        {hovered && (
-          <div
-            role="status"
-            className="pointer-events-none absolute top-0 z-10 rounded-md border bg-popover px-2 py-1 text-[11px] text-popover-foreground shadow-md motion-safe:transition-opacity"
-            style={{
-              left: `${chart.x(hover ?? 0)}%`,
-              transform: `translateX(${(hover ?? 0) > series.length / 2 ? "calc(-100% - 8px)" : "8px"})`,
-            }}
-          >
-            <p className="font-medium">{formatUtcDay(hovered.day, true)}</p>
-            {hoveredPoint === null ? (
-              <p className="text-muted-foreground">{t(($) => $.usage.trend.tokensUnavailable)}</p>
-            ) : (
-              <p className="tabular-nums text-muted-foreground">
-                {t(($) => $.usage.trend.inOut, {
-                  input: formatExact(hovered.inputTotal ?? 0),
-                  output: formatExact(hovered.outputTotal ?? 0),
-                })}
-              </p>
-            )}
-            <p className="text-muted-foreground">{records(hovered.recordCount)}</p>
-          </div>
-        )}
-      </div>
-      <div className="relative mt-1 h-4 text-[10px] text-muted-foreground">
-        {chart.ticks.map((tick, position) => (
-          <span
-            key={tick.index}
-            className="absolute top-0 whitespace-nowrap"
-            style={{
-              left: `${tick.x}%`,
-              transform: tickTransform(position, tick.x),
-            }}
-          >
-            {formatUtcDay(series[tick.index].day)}
-          </span>
-        ))}
-      </div>
-      {chart.hasUnknown && (
+      />
+      {points.some((point) => point.value === null) && (
         <p className="mt-2 text-xs text-muted-foreground">
           {t(($) => $.usage.trend.incompleteDays)}
         </p>
@@ -620,97 +446,26 @@ function UsageHeatmap({ report }: Readonly<{ report: UsageReportData }>) {
     fri: t(($) => $.usage.heatmap.weekdays.fri),
     sat: t(($) => $.usage.heatmap.weekdays.sat),
   };
-  const cells = new Map(report.heatmap.map((cell) => [`${cell.weekday}:${cell.hour}`, cell]));
-  const maximum = Math.max(1, ...report.heatmap.map((cell) => cell.tokenTotal ?? 0));
+  const cells = report.heatmap.map(
+    (cell): HeatmapCell => ({ weekday: cell.weekday, hour: cell.hour, value: cell.tokenTotal }),
+  );
+  const detail = (cell: HeatmapCell | undefined) => {
+    if (cell === undefined) return t(($) => $.usage.heatmap.noActivity);
+    if (cell.value === null) return t(($) => $.usage.heatmap.tokenUnavailable);
+    return t(($) => $.usage.counts.tokens, { count: cell.value, total: formatNumber(cell.value) });
+  };
   return (
-    <div>
-      <div
-        className="grid gap-1"
-        style={{ gridTemplateColumns: "2.25rem repeat(24, minmax(0, 1fr))" }}
-        role="img"
-        aria-label={t(($) => $.usage.heatmap.label)}
-      >
-        <span />
-        {HOURS.map((hour) => (
-          <span key={`hour-${hour}`} className="text-center text-[9px] text-muted-foreground">
-            {hour % 6 === 0 ? hour : ""}
-          </span>
-        ))}
-        {WEEKDAY_KEYS.flatMap((weekdayKey, weekdayIndex) => {
-          const weekday = weekdays[weekdayKey];
-          const row: ReactNode[] = [
-            <span key={weekdayKey} className="text-[10px] leading-4 text-muted-foreground">
-              {weekday}
-            </span>,
-          ];
-          for (const hour of HOURS) {
-            const cell = cells.get(`${weekdayIndex}:${hour}`);
-            const intensity =
-              cell === undefined || cell.tokenTotal === null
-                ? 0
-                : 0.15 + (cell.tokenTotal / maximum) * 0.85;
-            let tokenLabel: string;
-            if (cell === undefined) {
-              tokenLabel = t(($) => $.usage.heatmap.noActivity);
-            } else if (cell.tokenTotal === null) {
-              tokenLabel = t(($) => $.usage.heatmap.tokenUnavailable);
-            } else {
-              tokenLabel = t(($) => $.usage.counts.tokens, {
-                count: cell.tokenTotal,
-                total: formatNumber(cell.tokenTotal),
-              });
-            }
-            row.push(
-              <span
-                key={`${weekdayKey}:${hour}`}
-                className={cn(
-                  "aspect-square rounded-[2px]",
-                  heatmapCellTone(cell),
-                )}
-                style={intensity > 0 ? { opacity: intensity } : undefined}
-                title={t(($) => $.usage.heatmap.cell, {
-                  weekday,
-                  hour,
-                  detail: tokenLabel,
-                })}
-              />,
-            );
-          }
-          return row;
-        })}
-      </div>
-      <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-        <span>{t(($) => $.usage.heatmap.hoursInUtc)}</span>
-        <span className="flex items-center gap-1">
-          {t(($) => $.usage.heatmap.less)}
-          {[0.15, 0.36, 0.57, 0.78, 1].map((opacity) => (
-            <span
-              key={opacity}
-              className="inline-block size-2.5 rounded-[2px] bg-primary"
-              style={{ opacity }}
-            />
-          ))}
-          {t(($) => $.usage.heatmap.more)}
-        </span>
-      </div>
-      <ul className="sr-only">
-        {report.heatmap.map((cell) => (
-          <li key={`${cell.weekday}:${cell.hour}`}>
-            {t(($) => $.usage.heatmap.cell, {
-              weekday: weekdays[WEEKDAY_KEYS[cell.weekday]],
-              hour: cell.hour,
-              detail:
-                cell.tokenTotal === null
-                  ? t(($) => $.usage.heatmap.tokenUnavailable)
-                  : t(($) => $.usage.counts.tokens, {
-                      count: cell.tokenTotal,
-                      total: formatNumber(cell.tokenTotal),
-                    }),
-            })}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <WeekHourHeatmap
+      cells={cells}
+      weekdays={WEEKDAY_KEYS.map((key) => weekdays[key])}
+      label={t(($) => $.usage.heatmap.label)}
+      describe={(weekday, hour, cell) => t(($) => $.usage.heatmap.cell, { weekday, hour, detail: detail(cell) })}
+      legend={{
+        note: t(($) => $.usage.heatmap.hoursInUtc),
+        less: t(($) => $.usage.heatmap.less),
+        more: t(($) => $.usage.heatmap.more),
+      }}
+    />
   );
 }
 
@@ -831,7 +586,7 @@ function SessionsTable({
               <Truncated value={session.sessionId} label={shortIdentifier(session.sessionId)} className="max-w-[10rem] font-medium" />
             )}
             {scope && (
-              <Badge variant="quiet" className="text-[10px]">
+              <Badge variant="quiet" className="text-[0.625rem]">
                 {scope}
               </Badge>
             )}
@@ -881,12 +636,12 @@ function SessionsTable({
           </Tooltip>
         </TableCell>
         <TableCell>
-          <Badge variant="quiet" className="text-[10px]">
+          <Badge variant="quiet" className="text-[0.625rem]">
             {billingLabel(session.billingMode)}
           </Badge>
         </TableCell>
         <TableCell>
-          <Badge variant="outline" className={cn("text-[10px]", statusClass(session.status))}>
+          <Badge variant="outline" className={cn("text-[0.625rem]", statusClass(session.status))}>
             {statusLabel(session.status)}
           </Badge>
         </TableCell>
@@ -899,7 +654,7 @@ function SessionsTable({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
         <div>
           <h3 className="text-sm font-medium">{t(($) => $.usage.sessions.title)}</h3>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             {t(($) => $.usage.sessions.subtitle)}
           </p>
         </div>
@@ -1066,7 +821,7 @@ export function UsageReport({
       </div>
 
       <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric
+        <StatCard
           label={t(($) => $.usage.report.inputTokens)}
           value={
             totals.inputKnownRecords > 0
@@ -1082,7 +837,7 @@ export function UsageReport({
               : t(($) => $.usage.report.inputIncludesCache)
           }
         />
-        <Metric
+        <StatCard
           label={t(($) => $.usage.report.outputTokens)}
           value={
             totals.outputKnownRecords > 0
@@ -1098,7 +853,7 @@ export function UsageReport({
               : t(($) => $.usage.report.outputIncludesReasoning)
           }
         />
-        <Metric
+        <StatCard
           label={t(($) => $.usage.report.cacheReads)}
           value={
             totals.cacheKnownRecords > 0
@@ -1107,7 +862,7 @@ export function UsageReport({
           }
           detail={cacheDetail}
         />
-        <Metric
+        <StatCard
           label={t(($) => $.usage.report.costEstimate)}
           value={cost.text}
           detail={
@@ -1116,7 +871,7 @@ export function UsageReport({
               : t(($) => $.usage.report.allRecordsPriced)
           }
         />
-        <Metric
+        <StatCard
           label={t(($) => $.usage.report.sessions)}
           value={formatExact(totals.sessionCount)}
           detail={joinNotes([
@@ -1220,7 +975,7 @@ function FilterSelect({
 }>) {
   return (
     <div className="min-w-0 space-y-1">
-      <span className="block text-[11px] leading-4 text-muted-foreground">{label}</span>
+      <span className="block text-[0.6875rem] leading-4 text-muted-foreground">{label}</span>
       <Select value={value || ALL} onValueChange={(next) => onChange(next === ALL ? "" : next)}>
         <SelectTrigger className="h-8 text-xs" aria-label={label}>
           <SelectValue />
@@ -1368,7 +1123,7 @@ export function UsageReportDialog({
         >
           <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
             <div className="space-y-1">
-              <span className="block text-[11px] leading-4 text-muted-foreground">
+              <span className="block text-[0.6875rem] leading-4 text-muted-foreground">
                 {t(($) => $.usage.dialog.from)}
               </span>
               <DatePicker
@@ -1380,7 +1135,7 @@ export function UsageReportDialog({
               />
             </div>
             <div className="space-y-1">
-              <span className="block text-[11px] leading-4 text-muted-foreground">
+              <span className="block text-[0.6875rem] leading-4 text-muted-foreground">
                 {t(($) => $.usage.dialog.through)}
               </span>
               <DatePicker
@@ -1402,7 +1157,7 @@ export function UsageReportDialog({
                   variant="ghost"
                   aria-pressed={quickRange === range.id}
                   className={cn(
-                    "h-6.5 rounded-[5px] px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground",
+                    "h-6.5 rounded-[5px] px-2.5 text-[0.6875rem] font-medium text-muted-foreground hover:text-foreground",
                     quickRange === range.id && "bg-secondary text-foreground shadow-sm hover:bg-secondary",
                   )}
                   onClick={() => applyQuickRange(range.id)}
@@ -1411,7 +1166,7 @@ export function UsageReportDialog({
                 </Button>
               ))}
             </fieldset>
-            <span className="flex h-8 items-center text-[11px] text-muted-foreground">
+            <span className="flex h-8 items-center text-[0.6875rem] text-muted-foreground">
               {t(($) => $.usage.dialog.utcNote)}
             </span>
             <div className="ml-auto flex h-8 items-center gap-2">
@@ -1481,7 +1236,7 @@ export function UsageReportDialog({
             <div role="alert" className="grid min-h-56 place-items-center text-center">
               <div>
                 <p className="font-medium">{t(($) => $.usage.dialog.loadFailed)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 select-text text-sm text-muted-foreground">
                   {reportQuery.error instanceof Error
                     ? reportQuery.error.message
                     : t(($) => $.usage.dialog.loadFailedHint)}

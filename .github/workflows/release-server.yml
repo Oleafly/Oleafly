@@ -1,0 +1,697 @@
+name: Release server
+
+on:
+  push:
+    tags:
+      - "server-v*.*.*"
+  pull_request:
+    paths:
+      - "crates/oleafly-server/**"
+      - "crates/oleafly-collab-protocol/**"
+      - "deploy/server/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/release-server.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Server tag to build, push and attach to a draft release (e.g. server-v0.1.0)"
+        required: true
+        type: string
+  # Publishing the draft moves the image's minor and latest tags, and copies the
+  # release to Oleafly/oleafly-server, where the installer downloads it from.
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-server-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOCKERFILE: crates/oleafly-server/Dockerfile
+  PLATFORMS: linux/amd64,linux/arm64
+  DOCKER_BUILD_RECORD_UPLOAD: "false"
+
+jobs:
+  # Pull requests run this job only, with a read-only token. The jobs that can
+  # push images or write releases run for server tags and manual runs.
+  build:
+    name: Image and static binaries
+    if: github.event_name != 'release'
+    runs-on: ubuntu-24.04
+    # The end-to-end installer test adds about ten minutes on pull requests.
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.version.outputs.publish }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      image: ${{ steps.version.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - name: Test the installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd deploy/server && shellcheck --shell=sh install.sh tests/*.sh tests/stubs/*)
+          docker run --rm --platform linux/amd64 -v "$PWD/deploy/server:/src:ro" ubuntu:24.04 sh /src/tests/installer-test.sh
+          docker run --rm --platform linux/amd64 -v "$PWD/deploy/server:/src:ro" -e INSTALLER_SHELL=bash ubuntu:24.04 sh /src/tests/installer-test.sh
+          docker run --rm --platform linux/amd64 -v "$PWD:/repo:ro" ubuntu:24.04 sh /repo/deploy/server/tests/release-workflow-test.sh
+          docker run --rm --platform linux/amd64 -v "$PWD/deploy/server:/src:ro" ubuntu:24.04 sh /src/tests/e2e-cleanup-test.sh
+
+      - name: Work out the version and image tags
+        id: version
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.event.inputs.tag || github.ref_name }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          cargo_version="$(awk -F'"' '/^version[[:space:]]*=/ { print $2; exit }' crates/oleafly-server/Cargo.toml)"
+          toolchain="$(awk -F'"' '/^[[:space:]]*channel[[:space:]]*=/ { print $2; exit }' rust-toolchain.toml)"
+          docker_rust="$(awk -F= '/^ARG RUST_VERSION=/ { print $2; exit }' "$DOCKERFILE")"
+          if [ -z "$cargo_version" ]; then
+            echo "::error file=crates/oleafly-server/Cargo.toml::could not read the package version"
+            exit 1
+          fi
+          if [ "$docker_rust" != "$toolchain" ]; then
+            echo "::error file=$DOCKERFILE::ARG RUST_VERSION is '${docker_rust}' but rust-toolchain.toml pins '${toolchain}'. Change both together."
+            exit 1
+          fi
+          case "$EVENT" in
+            push | workflow_dispatch)
+              if [[ ! "$REF" =~ ^server-v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+                echo "::error::'${REF}' is not a server tag such as server-v0.1.0"
+                exit 1
+              fi
+              version="${REF#server-v}"
+              if [ "$version" != "$cargo_version" ]; then
+                echo "::error file=crates/oleafly-server/Cargo.toml::the tag ${REF} says ${version} but crates/oleafly-server/Cargo.toml says ${cargo_version}"
+                exit 1
+              fi
+              publish=true
+              ;;
+            *)
+              version="$cargo_version"
+              publish=false
+              ;;
+          esac
+          image="ghcr.io/${OWNER,,}/oleafly-server"
+          # Only the exact version is pushed here. The minor and latest tags move
+          # when the release is published, so nothing that follows them gets a
+          # build nobody has published yet.
+          {
+            echo "version=${version}"
+            echo "publish=${publish}"
+            echo "tag=${REF}"
+            echo "image=${image}"
+          } >> "$GITHUB_OUTPUT"
+          echo "version=${version} publish=${publish} image=${image}"
+          echo "${image}:${version}"
+
+      - name: Set up QEMU to run the arm64 image
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the amd64 image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: linux/amd64
+          load: true
+          push: false
+          provenance: false
+          sbom: false
+          tags: oleafly-server:ci-amd64
+          # Tag and manual runs keep the layers for the publish job, which
+          # builds the same image again. Pull requests don't write the cache,
+          # and a cache that can't be written doesn't fail the build.
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=gha,mode=max,scope=release-server-amd64,ignore-error=true' || '' }}
+
+      - name: Build the arm64 image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: linux/arm64
+          load: true
+          push: false
+          provenance: false
+          sbom: false
+          tags: oleafly-server:ci-arm64
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=gha,mode=max,scope=release-server-arm64,ignore-error=true' || '' }}
+
+      - name: Smoke-test both images
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash deploy/server/smoke-test.sh oleafly-server:ci-amd64
+          bash deploy/server/smoke-test.sh oleafly-server:ci-arm64
+
+      # A privileged ubuntu:24.04 machine runs the real installer: it installs
+      # Docker with Docker's script, installs this build from a local
+      # registry, updates it and uninstalls it. Caddy uses its own test
+      # certificate authority, so nothing reaches Let's Encrypt.
+      - name: Run the installer end to end
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sh deploy/server/tests/e2e.sh oleafly-server:ci-amd64
+
+      - name: Build the static binaries
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: ${{ env.PLATFORMS }}
+          target: binary
+          outputs: type=local,dest=dist/binaries
+          provenance: false
+          sbom: false
+
+      - name: Check and package the static binaries
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/release
+          for platform in linux_amd64 linux_arm64; do
+            case "$platform" in
+              linux_amd64) triple=x86_64-unknown-linux-musl ;;
+              linux_arm64) triple=aarch64-unknown-linux-musl ;;
+            esac
+            binary="dist/binaries/$platform/oleafly-server"
+            if [ ! -f "$binary" ]; then
+              echo "::error::missing $binary"
+              find dist/binaries -maxdepth 3 -print
+              exit 1
+            fi
+            chmod 0755 "$binary"
+            description="$(file -b "$binary")"
+            echo "$platform: $description"
+            if [[ "$description" != *"statically linked"* && "$description" != *"static-pie linked"* ]]; then
+              echo "::error::$binary is not statically linked: $description"
+              exit 1
+            fi
+            reported="$("$binary" --version)"
+            if [ "$reported" != "oleafly-server $VERSION" ]; then
+              echo "::error::$binary reports '$reported', expected 'oleafly-server $VERSION'"
+              exit 1
+            fi
+            stem="oleafly-server-$VERSION-$triple"
+            mkdir -p "dist/stage/$stem"
+            cp "$binary" "dist/stage/$stem/oleafly-server"
+            cp LICENSE deploy/server/oleafly-server.service "dist/stage/$stem/"
+            tar -czf "dist/release/$stem.tar.gz" -C dist/stage "$stem"
+          done
+
+      - name: Stamp the installer and Compose files
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          IMAGE: ${{ steps.version.outputs.image }}
+        run: |
+          set -euo pipefail
+          source=deploy/server
+          out=dist/release
+          mkdir -p "$out"
+          for file in install.sh docker-compose.yml Caddyfile .env.example litestream.yml; do
+            if [ ! -s "$source/$file" ]; then
+              echo "::error file=$source/$file::missing or empty"
+              exit 1
+            fi
+          done
+          stamped="installer_version=${VERSION}"
+          sed "s/^installer_version=unreleased\$/${stamped}/" "$source/install.sh" > "$out/install.sh"
+          if [ "$(grep -cxF "$stamped" "$out/install.sh" || true)" != 1 ]; then
+            echo "::error file=$source/install.sh::expected exactly one line 'installer_version=unreleased' to stamp with ${VERSION}"
+            exit 1
+          fi
+          sed -E "s#^([[:space:]]*image:[[:space:]]*)ghcr\.io/oleafly/oleafly-server:[^[:space:]]+[[:space:]]*\$#\1${IMAGE}:${VERSION}#" "$source/docker-compose.yml" > "$out/docker-compose.yml"
+          images="$(awk '$1 == "image:" && $2 ~ /\/oleafly-server:/ { print $2 }' "$out/docker-compose.yml")"
+          if [ "$images" != "${IMAGE}:${VERSION}" ]; then
+            echo "::error file=$source/docker-compose.yml::expected one oleafly-server image line to become ${IMAGE}:${VERSION}, got '${images}'"
+            exit 1
+          fi
+          cp "$source/Caddyfile" "$out/Caddyfile"
+          cp "$source/.env.example" "$out/env.example"
+          cp "$source/litestream.yml" "$out/litestream.yml"
+          chmod 0755 "$out/install.sh"
+          chmod 0644 "$out/docker-compose.yml" "$out/Caddyfile" "$out/env.example" "$out/litestream.yml"
+          sh -n "$out/install.sh"
+          check="$(mktemp -d)"
+          cp "$out/docker-compose.yml" "$out/Caddyfile" "$out/litestream.yml" "$check/"
+          cp "$out/env.example" "$check/.env"
+          (cd "$check" && docker compose config --quiet)
+          rm -rf "$check"
+          echo "install.sh: ${stamped}"
+          echo "docker-compose.yml: ${images}"
+
+      - name: Write SHA256SUMS
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist/release
+          sha256sum -- *.tar.gz install.sh docker-compose.yml Caddyfile env.example litestream.yml > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload the release archives
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: oleafly-server-release
+          path: dist/release/
+          retention-days: 7
+
+      - name: Summarize
+        if: always()
+        shell: bash
+        env:
+          PUBLISH: ${{ steps.version.outputs.publish }}
+          IMAGE: ${{ steps.version.outputs.image }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          {
+            echo "### Oleafly Server"
+            if [ "$PUBLISH" = "true" ]; then
+              echo "Built and checked. The next job pushes \`${IMAGE}:${VERSION}\`."
+            else
+              echo "Dry run. Nothing was pushed. A server tag would push \`${IMAGE}:${VERSION}\`."
+            fi
+            if [ -f dist/release/SHA256SUMS ]; then
+              echo '```'
+              cat dist/release/SHA256SUMS
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+
+  publish:
+    name: Push the image
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - name: Set up QEMU to run the arm64 image
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the multi-arch image with an SBOM and provenance
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          sbom: true
+          provenance: mode=max
+          tags: ${{ needs.build.outputs.image }}:${{ needs.build.outputs.version }}
+          # The build job of this run left both platforms' layers here.
+          cache-from: |
+            type=gha,scope=release-server-amd64
+            type=gha,scope=release-server-arm64
+          labels: |
+            org.opencontainers.image.version=${{ needs.build.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Attest the image provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ needs.build.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Smoke-test the pushed image on both platforms
+        shell: bash
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          for platform in linux/amd64 linux/arm64; do
+            docker pull --platform "$platform" "$IMAGE@$DIGEST"
+            PLATFORM="$platform" bash deploy/server/smoke-test.sh "$IMAGE@$DIGEST"
+            docker image rm "$IMAGE@$DIGEST" || true
+          done
+
+      - name: Download the release archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: oleafly-server-release
+          path: dist/release
+
+      - name: Attest the release archives
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            dist/release/*.tar.gz
+            dist/release/install.sh
+            dist/release/docker-compose.yml
+            dist/release/Caddyfile
+            dist/release/env.example
+            dist/release/litestream.yml
+
+      - name: Summarize
+        if: always()
+        shell: bash
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          VERSION: ${{ needs.build.outputs.version }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          {
+            echo "### Oleafly Server image"
+            echo "Pushed \`${DIGEST:-unknown digest}\` as \`${IMAGE}:${VERSION}\`."
+          } >> "$GITHUB_STEP_SUMMARY" || true
+
+  draft:
+    name: Draft release
+    needs: [build, publish]
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      # A new package on GitHub's registry starts private, whatever the
+      # repository's visibility, and every check above pulls with this run's
+      # token. Check the way the installer pulls: without signing in.
+      - name: Check that the image can be pulled without signing in
+        shell: bash
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          docker logout ghcr.io >/dev/null 2>&1 || true
+          errors="$(mktemp)"
+          for attempt in 1 2 3; do
+            if docker buildx imagetools inspect "$IMAGE:$VERSION" >/dev/null 2>"$errors"; then
+              echo "$IMAGE:$VERSION can be pulled without signing in."
+              exit 0
+            fi
+            echo "Try ${attempt} of 3 couldn't read the image. Docker said:"
+            cat "$errors"
+            if [ "$attempt" -lt 3 ]; then
+              sleep 10
+            fi
+          done
+          if grep -Eqi 'unauthori[sz]ed|denied|forbidden|(^|[^0-9])40[13]([^0-9]|$)' "$errors"; then
+            echo "::error::$IMAGE:$VERSION can't be pulled without signing in, so the installer, Render, Railway and Coolify can't use it. A new package on GitHub's registry starts private. Make it public in the organization's Packages settings (Package settings, Change visibility), then re-run this job."
+          else
+            echo "::error::$IMAGE:$VERSION couldn't be read from the registry without signing in. Docker's message is above. Re-run this job once the registry answers."
+          fi
+          exit 1
+
+      - name: Download the release archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: oleafly-server-release
+          path: archives
+
+      - name: Verify the checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd archives
+          ls -l
+          sha256sum -c SHA256SUMS
+
+      - name: Create or update the draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            notes="$(mktemp)"
+            {
+              echo "Draft. Oleafly Server $VERSION."
+              echo
+              echo "To install it on a Linux machine with Docker, run:"
+              echo
+              echo '```sh'
+              echo "curl -fsSL https://oleafly.com/server/install.sh | sudo sh"
+              echo '```'
+              echo
+              echo "The installer and its files are attached: install.sh, docker-compose.yml, Caddyfile, env.example and litestream.yml. So is the server as a single static program for x86-64 and ARM Linux. SHA256SUMS checks every download."
+              echo
+              echo "The container image is ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/oleafly-server:$VERSION. Setup steps: https://oleafly.com/docs/collaboration/server/"
+            } > "$notes"
+            # No --latest=false: GitHub doesn't let a draft be set as latest,
+            # and documents no way for a draft to carry make_latest to its
+            # publishing. The desktop-latest job checks the label afterwards.
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+              --title "Oleafly Server $VERSION" \
+              --notes-file "$notes"
+          fi
+          gh release upload "$TAG" archives/* --repo "$GITHUB_REPOSITORY" --clobber
+          echo "Draft release ready. Publishing it starts the copy to Oleafly/oleafly-server. The installer offers the release only once that copy is done."
+
+      - name: Write the release checklist
+        shell: bash
+        env:
+          IMAGE: ${{ needs.build.outputs.image }}
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          {
+            echo "### Release checklist for Oleafly Server ${VERSION}"
+            echo
+            echo "1. [x] \`${IMAGE}:${VERSION}\` is pushed, checked on both platforms, and anyone can pull it."
+            echo "2. [ ] Try the draft on a fresh Linux machine that has a domain pointing at it:"
+            echo
+            echo '   ```sh'
+            echo "   gh release download ${TAG} --repo ${GITHUB_REPOSITORY} --dir rel"
+            echo '   sudo OLEAFLY_RELEASE_URL="file://$PWD/rel" sh rel/install.sh'
+            echo '   ```'
+            echo
+            echo "3. [ ] Publish the draft with \"Set as the latest release\" unticked. The desktop app's updater and the download links read this repository's latest release, and a server release has no latest.json. To publish from a terminal instead:"
+            echo
+            echo '   ```sh'
+            echo "   gh release edit ${TAG} --repo ${GITHUB_REPOSITORY} --draft=false --latest=false"
+            echo '   ```'
+            echo
+            echo "   Publishing moves the image's minor and latest tags and copies the release to Oleafly/oleafly-server. If the latest label ends up on ${TAG} anyway, the same run moves it back to the newest desktop release."
+            echo "4. [ ] Check that the Release server run for the published release passed. Then check that this prints \`installer_version=${VERSION}\`:"
+            echo
+            echo '   ```sh'
+            echo "   curl -fsSL https://oleafly.com/server/install.sh | grep '^installer_version='"
+            echo '   ```'
+          } >> "$GITHUB_STEP_SUMMARY" || true
+
+  promote:
+    name: Move the image's minor and latest tags
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'server-v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Releases published close together move the tags one at a time. Each run
+    # reads the published releases when it starts, so the older one can't put
+    # :latest back on its version after the newer one moved it.
+    concurrency:
+      group: release-server-promote
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Point the minor and latest tags at this release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          version="${TAG#server-v}"
+          image="ghcr.io/${OWNER,,}/oleafly-server"
+          if [ "$PRERELEASE" = "true" ] || [[ "$version" == *-* ]]; then
+            echo "${TAG} is a prerelease, so the minor and latest tags stay where they are."
+            exit 0
+          fi
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'${TAG}' is not a server tag such as server-v0.1.0"
+            exit 1
+          fi
+          minor="${version%.*}"
+          published="$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases --limit 1000 --json tagName --jq '.[].tagName' \
+            | sed -n 's/^server-v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$/\1/p')"
+          newest="$({ echo "$version"; echo "$published"; } | sed '/^$/d' | sort -V | tail -n 1)"
+          newest_minor="$({ echo "$version"; echo "$published"; } | awk -F. -v minor="$minor" '$1 "." $2 == minor' | sort -V | tail -n 1)"
+          moves=()
+          if [ "$newest_minor" = "$version" ]; then
+            moves+=(-t "${image}:${minor}")
+          else
+            echo "${image}:${minor} stays on ${newest_minor}, which is newer than ${version}."
+          fi
+          if [ "$newest" = "$version" ]; then
+            moves+=(-t "${image}:latest")
+          else
+            echo "${image}:latest stays on ${newest}, which is newer than ${version}."
+          fi
+          if [ "${#moves[@]}" -eq 0 ]; then
+            exit 0
+          fi
+          digest="$(docker buildx imagetools inspect "${image}:${version}" --format '{{.Manifest.Digest}}')"
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::couldn't read the digest of ${image}:${version}, got '${digest}'"
+            exit 1
+          fi
+          docker buildx imagetools create "${moves[@]}" "${image}@${digest}"
+          echo "Moved ${moves[*]} to ${image}@${digest}"
+
+  # The desktop app's updater (releases/latest/download/latest.json) and the
+  # download links read this repository's latest release, and only desktop
+  # releases have latest.json. A server release published with "Set as the
+  # latest release" ticked, which the web form does by default, takes that
+  # label, and every installed app stops seeing updates. Give it back.
+  desktop-latest:
+    name: Keep the latest release a desktop release
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'server-v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    concurrency:
+      group: release-server-desktop-latest
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - name: Give the latest label back to the newest desktop release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          latest="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)"
+          if [[ "$latest" != server-v* ]]; then
+            echo "The latest release is ${latest}, so the desktop app's updater still finds latest.json."
+            exit 0
+          fi
+          # Published, not a prerelease, carries latest.json, and is tagged
+          # v<major>.<minor>.<patch>. A suffix ranks below the same version
+          # without one, so v0.4.7 beats v0.4.7-beta.
+          desktop="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" | jq -rs '
+            add // []
+            | map(select(.draft == false and .prerelease == false and any(.assets[]?; .name == "latest.json"))
+                | .tag_name as $tag
+                | ($tag | capture("^v(?<major>[0-9]+)[.](?<minor>[0-9]+)[.](?<patch>[0-9]+)(-(?<pre>.+))?$")) as $v
+                | {tag: $tag, key: [($v.major | tonumber), ($v.minor | tonumber), ($v.patch | tonumber), (if $v.pre == null then 1 else 0 end), ($v.pre // "")]})
+            | sort_by(.key)
+            | last
+            | .tag // empty')"
+          if [ -z "$desktop" ]; then
+            echo "::error::${latest} is the latest release, and no published desktop release has a latest.json to take the label back. Installed desktop apps see no updates until one does."
+            exit 1
+          fi
+          by_hand="gh release edit ${desktop} --repo ${GITHUB_REPOSITORY} --latest"
+          if ! gh release edit "$desktop" --repo "$GITHUB_REPOSITORY" --latest; then
+            echo "::error::Couldn't mark ${desktop} as the latest release, so installed desktop apps see no updates. Run: ${by_hand}"
+            exit 1
+          fi
+          now=
+          for attempt in 1 2 3; do
+            now="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name || true)"
+            if [ "$now" = "$desktop" ]; then
+              echo "${latest} had taken the latest label. It is back on ${desktop}, so installed desktop apps find latest.json again."
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep 5
+            fi
+          done
+          echo "::error::Marked ${desktop} as the latest release, but GitHub still reports '${now}'. Run: ${by_hand}"
+          exit 1
+
+  sync:
+    name: Copy the release to Oleafly/oleafly-server
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'server-v') && github.repository == 'Oleafly/Oleafly'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions: {}
+    steps:
+      # The installer and https://oleafly.com/server/install.sh download from
+      # Oleafly/oleafly-server's releases. Its daily copy stays as a fallback.
+      # The token needs Actions read and write on Oleafly/oleafly-server only.
+      - name: Start the copy and wait for the installer to see it
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.OLEAFLY_SERVER_SYNC_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          server_repo=Oleafly/oleafly-server
+          by_hand="gh workflow run sync-release.yml --repo ${server_repo} -f tag=${TAG}"
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::The OLEAFLY_SERVER_SYNC_TOKEN secret isn't set, so ${TAG} wasn't copied to ${server_repo}. Until it is, the installer keeps offering the previous release. Copy it by hand with: ${by_hand}"
+            exit 1
+          fi
+          if ! gh workflow run sync-release.yml --repo "$server_repo" -f tag="$TAG"; then
+            echo "::error::Couldn't start sync-release.yml in ${server_repo}, so ${TAG} wasn't copied. Check that OLEAFLY_SERVER_SYNC_TOKEN can run workflows there, then copy the release by hand with: ${by_hand}"
+            exit 1
+          fi
+          url="https://github.com/${server_repo}/releases/download/${TAG}/SHA256SUMS"
+          tries=0
+          until curl -fsSL --retry 2 -o /dev/null "$url"; do
+            tries=$((tries + 1))
+            if [ "$tries" -ge 60 ]; then
+              echo "::error::${url} didn't answer within 10 minutes. Check the sync-release run in ${server_repo}, then run it again with: ${by_hand}"
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "${TAG} is on ${server_repo}, where the installer downloads it from."
+          latest="$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/${server_repo}/releases/latest" || true)"
+          case "$latest" in
+            */tag/"$TAG") echo "It is the latest release there, so the one-command install and update get it." ;;
+            *) echo "::notice::The latest release on ${server_repo} is ${latest##*/}, not ${TAG}, so the one-command install and update keep using that one." ;;
+          esac

@@ -1,3 +1,4 @@
+import "@/lib/polyfills";
 import { trimToWordCharacters, withoutSoftHyphens } from "./word-edges";
 import type {
   LocalLinter,

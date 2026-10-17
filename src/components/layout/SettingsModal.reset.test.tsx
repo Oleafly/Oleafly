@@ -49,7 +49,8 @@ function restoreTestDefaults() {
   settings.setShowWordChoice(true);
   settings.setOffline(false);
   settings.setAccentColor("#2563eb");
-  settings.setEditorTheme("system");
+  settings.setEditorTheme("light", "system");
+  settings.setEditorTheme("dark", "system");
   settings.setLatexTools(false);
   settings.setDefaultLatexEngine("tectonic");
   settings.setSettingsOpen(true);
@@ -77,7 +78,7 @@ describe("Settings section resets", () => {
     settings.setOffline(true);
 
     settings.setAccentColor("#db2777");
-    settings.setEditorTheme("dracula");
+    settings.setEditorTheme("dark", "dracula");
     settings.setLatexTools(true);
     settings.setDefaultLatexEngine("latexmk");
 
@@ -125,7 +126,7 @@ describe("Settings section resets", () => {
       showWordChoice: true,
       offline: false,
       accentColor: "#db2777",
-      editorTheme: "dracula",
+      editorThemeDark: "dracula",
       latexTools: true,
       defaultLatexEngine: "latexmk",
     });
@@ -136,7 +137,7 @@ describe("Settings section resets", () => {
     expect(localStorage.getItem("oleafly.harper.regionalism")).toBe("1");
     expect(localStorage.getItem("oleafly.harper.wordchoice")).toBe("1");
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
-    expect(localStorage.getItem("oleafly.editorTheme")).toBe("dracula");
+    expect(localStorage.getItem("oleafly.editorTheme.dark")).toBe("dracula");
     expect(localStorage.getItem("oleafly.latexTools")).toBe("1");
     expect(localStorage.getItem("oleafly.defaultLatexEngine")).toBe("latexmk");
     expect(useTourStore.getState().enabled).toBe(tourEnabled);
@@ -158,7 +159,7 @@ describe("Settings section resets", () => {
 
     settings.setGrammarDialect("british");
     settings.setAccentColor("#db2777");
-    settings.setEditorTheme("dracula");
+    settings.setEditorTheme("dark", "dracula");
     settings.setDefaultLatexEngine("latexmk");
     settings.setSettingsInitialSection("experimentation");
 
@@ -192,7 +193,7 @@ describe("Settings section resets", () => {
       latexTools: false,
       grammarDialect: "british",
       accentColor: "#db2777",
-      editorTheme: "dracula",
+      editorThemeDark: "dracula",
       defaultLatexEngine: "latexmk",
     });
     expect(localStorage.getItem("oleafly.latexTools")).toBe("0");
@@ -200,7 +201,7 @@ describe("Settings section resets", () => {
     expect(getWysiwygMode("visual-project")).toBe(true);
     expect(localStorage.getItem("oleafly.harper.dialect")).toBe("british");
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
-    expect(localStorage.getItem("oleafly.editorTheme")).toBe("dracula");
+    expect(localStorage.getItem("oleafly.editorTheme.dark")).toBe("dracula");
     expect(localStorage.getItem("oleafly.defaultLatexEngine")).toBe("latexmk");
     expect(mocks.setPreference).not.toHaveBeenCalled();
     await waitFor(() =>

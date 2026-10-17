@@ -249,6 +249,7 @@
       "driftedMany": "{{fileCount}} bestanden zijn in je project gewijzigd nadat deze taak begon. Hun diffs gaan over de oudere versies en kunnen daarom niet worden toegepast.",
       "applyAria": "{{path}} toepassen",
       "changedSince": "Sindsdien gewijzigd",
+      "mergesOnApply": "Dit bestand is bewerkt nadat de taak begon. Toepassen behoudt die bewerkingen en voegt de wijzigingen van de taak toe.",
       "loading": "Laden...",
       "refreshPreview": "Voorbeeld vernieuwen",
       "preview": "Voorbeeld",
@@ -1359,7 +1360,6 @@
     "captionAria": "Tabelbijschrift",
     "preview": "Voorbeeld",
     "output": "LaTeX-uitvoer",
-    "copiedSource": "LaTeX-broncode gekopieerd",
     "booktabsHint": "Vereist <code>\\usepackage{booktabs}</code> in je preambule."
   },
   "review": {

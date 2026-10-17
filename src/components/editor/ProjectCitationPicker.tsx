@@ -14,7 +14,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { insertAtCursor } from "@/components/editor/cm/controller";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { currentProjectIntelligence } from "@/lib/project-intelligence/current";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import type { CitationCompletion } from "@/lib/project-intelligence/types";
@@ -30,10 +30,13 @@ import { projectIntelligenceFailureText } from "@/lib/project-intelligence/reaso
 import { LoadingState } from "@/components/ui/empty";
 import { insertTypstCitation } from "@/components/editor/typst-commands";
 import { formattingProfileForPath } from "@/lib/document-engine";
-
-function citationSource(key: string, format: string): string {
-  return format === "markdown" ? `[@${key}]` : String.raw`\cite{${key}}`;
-}
+import { ZoteroHintBanner } from "@/components/zotero/ZoteroHintBanner";
+import { useZoteroSearch } from "@/components/zotero/use-zotero-search";
+import { insertCitationKey } from "@/features/cite-insert";
+import { insertZoteroCitation } from "@/features/zotero-actions";
+import { existingKeyForHit, projectBibliography } from "@/features/zotero-cite";
+import { hitByline, hitTitle, libraryLabel, truncated } from "@/lib/zotero/format";
+import { useZoteroLibraryStore } from "@/store/zotero-library";
 
 function CitationRow({
   completion,
@@ -53,14 +56,14 @@ function CitationRow({
           {completion.key}
         </span>
         {completion.duplicate && (
-          <span className="text-[9px] font-medium text-amber-700 dark:text-amber-300">
+          <span className="text-[0.5625rem] font-medium text-amber-700 dark:text-amber-300">
             {t(($) => $.editor.citations.duplicate, {
               index: completion.duplicateIndex + 1,
               total: completion.duplicateCount,
             })}
           </span>
         )}
-        <span className="col-span-2 truncate text-[10px] text-muted-foreground">
+        <span className="col-span-2 truncate text-[0.625rem] text-muted-foreground">
           {t(($) => $.editor.citations.entryLocation, {
             detail: completion.detail,
             file: completion.location.file,
@@ -79,7 +82,43 @@ export function ProjectCitationPicker({
 }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [query, setQuery] = useState("");
+
+  return (
+    <Popover
+      ariaLabel={t(($) => $.editor.citations.trigger)}
+      closeOnClick={false}
+      className="w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden p-0"
+      triggerClassName={
+        variant === "menu"
+          ? "w-full justify-start gap-2 px-2 font-normal"
+          : undefined
+      }
+      trigger={
+        variant === "bar" ? (
+          <AtSign className="size-4" />
+        ) : (
+          <>
+            <AtSign className="size-4" />
+            <span className="flex-1 text-left">{t(($) => $.editor.citations.trigger)}</span>
+          </>
+        )
+      }
+    >
+      <CitationPickerContent query={query} onQueryChange={setQuery} />
+    </Popover>
+  );
+}
+
+function CitationPickerContent({
+  query,
+  onQueryChange,
+}: Readonly<{
+  query: string;
+  onQueryChange: (query: string) => void;
+}>) {
+  const { t } = useTranslation(["common", "editor"]);
   const deferredQuery = useDeferredValue(query);
+  const listRef = useScrollTopOnChange(deferredQuery);
   const activePath = useFilesStore((state) => state.activePath);
   const activeContent = useFilesStore((state) =>
     state.activePath
@@ -121,6 +160,17 @@ export function ProjectCitationPicker({
     [current, deferredQuery],
   );
 
+  const zoteroStatus = useZoteroLibraryStore((state) => state.status);
+  const { hits: zoteroMatches } = useZoteroSearch(deferredQuery, 20);
+  const zoteroHits = useMemo(() => {
+    if (zoteroMatches.length === 0) return zoteroMatches;
+    const project = projectBibliography();
+    const listed = new Set(completions.map((completion) => completion.key));
+    return zoteroMatches.filter(
+      (hit) => !listed.has(hit.citationKey) && !project.keys.has(hit.citationKey) && !existingKeyForHit(hit, project),
+    );
+  }, [completions, zoteroMatches]);
+
   const insert = (completion: CitationCompletion) => {
     if (isWysiwygActive() && !getWysiwygProjectIntelligenceCurrent()) return;
     const files = useFilesStore.getState();
@@ -137,7 +187,7 @@ export function ProjectCitationPicker({
       void insertTypstCitation(completion.key, completion.location.file);
       return;
     }
-    insertAtCursor(citationSource(completion.key, formattingProfile));
+    insertCitationKey(completion.key);
   };
 
   let status: "pending" | "error" | "ready";
@@ -157,31 +207,12 @@ export function ProjectCitationPicker({
   }
 
   return (
-    <Popover
-      ariaLabel={t(($) => $.editor.citations.trigger)}
-      closeOnClick={false}
-      className="w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden p-0"
-      triggerClassName={
-        variant === "menu"
-          ? "w-full justify-start gap-2 px-2 font-normal"
-          : undefined
-      }
-      trigger={
-        variant === "bar" ? (
-          <AtSign className="size-4" />
-        ) : (
-          <>
-            <AtSign className="size-4" />
-            <span className="flex-1 text-left">{t(($) => $.editor.citations.trigger)}</span>
-          </>
-        )
-      }
-    >
+    <>
       <div className="flex items-center gap-2 border-b px-2.5 py-2">
         <Search className="size-3.5 shrink-0 text-muted-foreground" />
         <Input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => onQueryChange(event.target.value)}
           placeholder={t(($) => $.editor.citations.filterPlaceholder)}
           aria-label={t(($) => $.editor.citations.filterLabel)}
           className="h-7 border-0 bg-transparent px-0 text-xs shadow-none"
@@ -190,12 +221,14 @@ export function ProjectCitationPicker({
 
       {intelligenceState.status === "partial" ||
       current?.snapshot.status === "partial" ? (
-        <output className="block border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] text-amber-800 dark:text-amber-200">
+        <output className="block border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[0.625rem] text-amber-800 dark:text-amber-200">
           {t(($) => $.editor.citations.partialCatalog)}
         </output>
       ) : null}
 
-      <div className="max-h-72 overflow-y-auto p-1">
+      <ZoteroHintBanner />
+
+      <div ref={listRef} className="max-h-72 overflow-y-auto p-1">
         {status === "pending" && (
           <LoadingState
             size="compact"
@@ -206,7 +239,7 @@ export function ProjectCitationPicker({
         {status === "error" && (
           <div
             role="alert"
-            className="flex items-start gap-2 px-2 py-4 text-xs text-destructive"
+            className="flex select-text items-start gap-2 px-2 py-4 text-xs text-destructive"
           >
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
             <span>
@@ -215,7 +248,7 @@ export function ProjectCitationPicker({
             </span>
           </div>
         )}
-        {status === "ready" && completions.length === 0 && (
+        {status === "ready" && completions.length === 0 && zoteroHits.length === 0 && (
           <div className="px-2 py-4 text-center text-xs text-muted-foreground">
             {deferredQuery
               ? t(($) => $.editor.citations.noMatches)
@@ -230,6 +263,26 @@ export function ProjectCitationPicker({
               onInsert={() => insert(completion)}
             />
           ))}
+        {zoteroHits.length > 0 && (
+          <div data-testid="citation-picker-zotero">
+            <p className="px-2 pb-0.5 pt-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
+              {t(($) => $.editor.citations.zoteroHeading)}
+            </p>
+            {zoteroHits.map((hit) => (
+              <PopoverItem key={`${hit.library}:${hit.itemKey}`} onClick={() => insertZoteroCitation(hit)}>
+                <span
+                  className="grid min-w-0 flex-1 gap-y-0.5 py-0.5"
+                  style={{ contentVisibility: "auto", containIntrinsicSize: "36px" }}
+                >
+                  <span className="truncate font-mono text-xs">{hit.citationKey}</span>
+                  <span className="truncate text-[0.625rem] text-muted-foreground">
+                    {[hitByline(hit), truncated(hitTitle(hit)), libraryLabel(hit, zoteroStatus)].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </PopoverItem>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="border-t p-1">
@@ -244,6 +297,6 @@ export function ProjectCitationPicker({
           <span>{t(($) => $.editor.citations.addNew)}</span>
         </PopoverItem>
       </div>
-    </Popover>
+    </>
   );
 }

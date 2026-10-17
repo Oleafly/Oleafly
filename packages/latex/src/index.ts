@@ -14,3 +14,4 @@ export * from "./bibliography-resolve";
 export * from "./bibtex-entry-types";
 export * from "./html-to-latex";
 export * from "./latex-color";
+export * from "./latex-definitions";

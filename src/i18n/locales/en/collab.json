@@ -1,0 +1,1094 @@
+{
+  "section": {
+    "intro": "Edit projects with other people in real time. Projects sync through a collaboration server that you or your group runs, and that server decides who can join.",
+    "servers": {
+      "title": "Servers",
+      "add": "Add server",
+      "loading": "Loading your servers…",
+      "loadFailed": "Oleafly couldn't load your servers.",
+      "empty": {
+        "title": "No servers yet",
+        "description": "Ask the person who runs your group's server for its address, then add it here."
+      }
+    },
+    "server": {
+      "signedIn": "Signed in",
+      "signedOut": "Signed out",
+      "signedOutHint": "This computer isn't signed in to this server.",
+      "suspended": "Suspended",
+      "noAccess": "No access",
+      "suspendedHint": "An admin suspended your account on {{server}}. Your changes stay on this computer. You can sign in again once an admin reactivates it.",
+      "endedHint": "You no longer have access to {{server}}. Your copies stay on this computer as ordinary projects. If an admin adds you back, sign in again.",
+      "endedGuestHint": "You no longer have access to {{server}} because you're not in any of its shared projects. Your copies stay on this computer as ordinary projects. If you're invited again, sign in again.",
+      "role": "Your role: {{role}}",
+      "signIn": "Sign In",
+      "signOut": "Sign Out",
+      "remove": "Remove",
+      "manage": "Manage Server",
+      "adminConsole": "Admin Console",
+      "manageHint": "Manage Server shows People, Allowed people, Domains, Server settings, Email and Security log here. The Admin Console opens in its own window and also has an overview, projects and connection checks.",
+      "test": "Test connection",
+      "testShort": "Test",
+      "removeConfirm": {
+        "title": "Remove {{name}}?",
+        "description": "Oleafly signs out of {{name}} and forgets it. Shared projects from {{name}} stop syncing and stay on this computer as ordinary projects, each renamed as a local copy.",
+        "confirm": "Remove server"
+      },
+      "detached": "These shared projects from {{server}} stopped syncing. They stay on this computer as ordinary projects.",
+      "unsent": {
+        "title": "Some changes haven't been sent",
+        "description": "These shared projects have changes the server doesn't have yet. If you keep a local copy, each one stops syncing and stays on this computer under the name shown below. Or stay signed in and try again later.",
+        "removeDescription": "These shared projects have changes the server doesn't have yet. If you keep a local copy, each one stops syncing and stays on this computer under the name shown below. Or keep the server and try again later.",
+        "changes": "Unsent changes: {{changes}}",
+        "staysAs": "Stays as {{name}}",
+        "keep": "Keep a local copy",
+        "stay": "Stay signed in",
+        "keepServer": "Keep the server"
+      },
+      "emails": {
+        "label": "Email me when someone shares a project",
+        "description": "The email names the project and has a link to open it.",
+        "mentionsLabel": "Email me when someone mentions me in a comment",
+        "mentionsDescription": "The email quotes the comment and has a link to open it.",
+        "noMail": "This server doesn't send email. Projects shared with you still show up in your library under Shared with you.",
+        "paused": "The server's admin has turned off email for everyone.",
+        "loadFailed": "Oleafly couldn't load your email settings."
+      }
+    },
+    "devices": {
+      "title": "Your devices",
+      "description": "Computers signed in to this server with your account. Sign out any you no longer use.",
+      "loading": "Loading your devices…",
+      "loadFailed": "Oleafly couldn't load your devices.",
+      "current": "This computer",
+      "added": "Added {{date}}",
+      "lastSeen": "Last seen {{date}}",
+      "neverSeen": "Not seen yet",
+      "empty": "No devices are signed in.",
+      "signOut": "Sign out",
+      "signOutNamed": "Sign out {{name}}",
+      "signOutConfirm": {
+        "title": "Sign out {{name}}?",
+        "description": "That computer stops syncing with this server until someone signs in on it again.",
+        "confirm": "Sign out device"
+      }
+    },
+    "checks": {
+      "title": "Connection test",
+      "running": "Testing the connection…",
+      "clockSkew": "Time difference in seconds: {{seconds}}",
+      "status": {
+        "pass": "Passed",
+        "fail": "Failed",
+        "info": "Note",
+        "skipped": "Skipped"
+      },
+      "items": {
+        "reachable": {
+          "label": "Address",
+          "pass": "The server answered.",
+          "fail": "Oleafly couldn't reach this address. Check the address and your network.",
+          "info": "The server answered, but slowly.",
+          "skipped": "Not checked."
+        },
+        "https": {
+          "label": "Secure connection",
+          "pass": "The connection is encrypted and the certificate is valid.",
+          "fail": "The server's certificate isn't valid, or the address doesn't use https.",
+          "info": "This is a test server on this computer, so it runs without https.",
+          "skipped": "Not checked because the address didn't answer."
+        },
+        "protocol": {
+          "label": "Version",
+          "pass": "This version of Oleafly works with the server.",
+          "fail": "Oleafly and the server need different versions. One of them needs an update.",
+          "info": "The server is newer than this version of Oleafly but still works with it.",
+          "skipped": "Not checked because an earlier check failed."
+        },
+        "webSocket": {
+          "label": "Live connection",
+          "pass": "Live edits can get through.",
+          "fail": "Something between you and the server blocks live edits. A firewall or proxy may need a change.",
+          "info": "Live edits take a slower route because this network blocks the usual one. They still arrive.",
+          "skipped": "Not checked because an earlier check failed."
+        },
+        "signInProviders": {
+          "label": "Sign-in options",
+          "pass": "The server has at least one way to sign in.",
+          "fail": "The server has no way to sign in yet. Ask its admin.",
+          "info": "The server has a way to sign in, but some options are turned off.",
+          "skipped": "Not checked because an earlier check failed."
+        },
+        "email": {
+          "label": "Email",
+          "pass": "The server can send email.",
+          "fail": "The server's email settings don't work.",
+          "info": "Email isn't set up on this server. People are added without an email.",
+          "skipped": "Not checked because an earlier check failed."
+        },
+        "clock": {
+          "label": "Clock",
+          "pass": "Your clock and the server's clock agree.",
+          "fail": "Your clock and the server's clock are far apart. Check the date and time on this computer.",
+          "info": "Your clock is a little off from the server's.",
+          "skipped": "Not checked because an earlier check failed."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Add a collaboration server",
+    "description": "Enter the address your group gave you. Oleafly checks the server before you sign in.",
+    "addressLabel": "Server address",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Continue",
+    "checking": "Checking the server…",
+    "notAServer": "No Oleafly server answered at this address. Check the address with whoever runs the server. On hotel or campus Wi-Fi, open any web page first in case the network wants you to sign in.",
+    "moved": "This address sends you to {{target}}. Try that address.",
+    "useMoved": "Use that address",
+    "version": "Version {{version}}",
+    "serverTitle": "Sign in to {{server}}",
+    "serverDescription": "This server decides who can join. Choose a way to sign in.",
+    "setupTitle": "Set up {{server}}",
+    "setupDescription": "Nobody has set up this server yet. If you installed it, enter the setup code the installer showed you. It's also in the server's log. The first person to sign in with the code becomes the server's admin. If you didn't install it, ask the person who runs it to finish setup first.",
+    "setupCodeLabel": "Setup code",
+    "signInDescription": "Your browser opens so you can sign in there. Oleafly never sees your password.",
+    "continueWith": "Continue with {{provider}}",
+    "noProviders": "This server has no way to sign in yet. Ask its admin to set one up.",
+    "signingInTitle": "Finish signing in",
+    "waitingTitle": "Waiting for your browser",
+    "waitingDescription": "Sign in with {{provider}} in the browser window that opened, then come back here.",
+    "waitingEmailDescription": "Enter your email address in the browser, then open the link we send you on this computer.",
+    "cancel": "Cancel",
+    "back": "Back",
+    "doneTitle": "Connected to {{server}}",
+    "doneDescription": "You're signed in as {{name}}. You can now share projects and open the ones shared with you.",
+    "doneManageDescription": "You're signed in as {{name}}. You can now share projects and open the ones shared with you. You can also manage the server from the admin console.",
+    "doneGuestDescription": "You're signed in as {{name}}. As a guest, you can open the projects you're invited to.",
+    "done": "Done",
+    "codeSignIn": "Use a code instead",
+    "codeTitle": "Sign in with a code",
+    "codeRequesting": "Getting a code…",
+    "codeSteps": "On any phone or computer, open this address and enter the code.",
+    "codeAddressLabel": "Address",
+    "codeLabel": "Code",
+    "codeExpires": "The code stops working at {{time}}.",
+    "codeWaiting": "Waiting for you to sign in",
+    "codeOpen": "Open in browser",
+    "codeOffer": "Browser didn't come back to Oleafly?",
+    "codeHint": "If your browser couldn't reach Oleafly, sign in with a code instead."
+  },
+  "errors": {
+    "unreachable": "Oleafly couldn't reach the server. Check the address and your connection, then try again.",
+    "not_https": "This address doesn't use a secure connection. Collaboration servers need an address that starts with https.",
+    "client_too_old": "This server needs a newer version of Oleafly. Update Oleafly, then try again.",
+    "server_too_old": "This server needs an update before it works with this version of Oleafly. Ask its admin.",
+    "not_admitted": "This server hasn't let you in yet. Ask its admin to add you.",
+    "sign_in_cancelled": "Sign-in was cancelled.",
+    "sign_in_timed_out": "Sign-in took too long. Try again.",
+    "unauthorized": "You're signed out of this server. Sign in again.",
+    "forbidden": "Your role on this server doesn't allow that.",
+    "not_found": "The server couldn't find that. It may already be gone.",
+    "conflict": "That clashes with a change someone else made. Reload and try again.",
+    "rate_limited": "The server is busy. Wait a minute, then try again.",
+    "setup_code_invalid": "That setup code doesn't match. Check the server's log for the right code.",
+    "server": "The server ran into a problem. Try again later, or ask its admin.",
+    "internal": "Something went wrong in Oleafly. Try again.",
+    "server_changed": "This address now belongs to a different server, so Oleafly didn't send it anything. If you trust the new server, remove this one and add it again.",
+    "duplicate_server": "This server is already in your list under another address. If it moved, remove the old entry first, then add it again.",
+    "device_in_use": "Someone else already signed in to this server from this computer account. Each person needs their own account on the computer to sign in.",
+    "server_unknown": "This link is for a server you haven't added yet. Add it in Collaboration settings, then open the link again.",
+    "too_large": "Some files are bigger than this server allows. Make them smaller or remove them, then try again.",
+    "invalid": "The server didn't accept that. Check what you entered, then try again.",
+    "invalid_domain": "That isn't a domain name. Use a form like cs.example.edu.",
+    "invalid_email": "That email address doesn't look right. Check it, then try again.",
+    "invalid_login": "That sign-in name doesn't look right. Check it, then try again.",
+    "guests_off": "This server doesn't allow guests. Ask its admin to turn guests on.",
+    "link_sharing_off": "This server doesn't allow link sharing. Ask its admin to turn it on.",
+    "access_log_off": "This server doesn't allow access logs. Ask its admin to turn them on.",
+    "last_admin": "This server needs at least one admin. Make someone else an admin first.",
+    "duplicate_entry": "That entry already exists.",
+    "already_member": "That person already has an account. Change their role under People.",
+    "project_not_shared": "This project isn't shared yet. Share it first, then invite people.",
+    "project_full": "This project already has as many people as the server allows. Remove someone first, or ask the server's admin.",
+    "owner_away": "The project's owner is suspended or removed on this server, so the project can't take new people until their account is active again.",
+    "wrong_server": "This server sent its sign-in page from a different address, so Oleafly stopped. Check the server address, or ask the person who runs it.",
+    "not_a_link": "That isn't a link to a shared project. Copy the whole link, then try again.",
+    "signed_out": "You're signed out of this server. Sign in again to sync this project.",
+    "server_removed": "This project's server isn't in your list any more. Keep the project as a local copy, or add the server again.",
+    "share_in_progress": "This project is already being shared. Wait for that to finish.",
+    "cancelled": "Opening the shared project was cancelled.",
+    "cloud_synced": "Your Oleafly library is in a folder that a cloud service syncs. Move it out of Dropbox, OneDrive or iCloud Drive to share or join projects."
+  },
+  "roles": {
+    "admin": "Admin",
+    "maintainer": "Maintainer",
+    "member": "Member",
+    "guest": "Guest",
+    "unknown": "Unknown role"
+  },
+  "admin": {
+    "title": "Manage {{name}}",
+    "back": "Back to servers",
+    "loadFailed": "Oleafly couldn't load this from the server.",
+    "added": "Added {{date}}",
+    "tabs": {
+      "members": "People",
+      "allowlist": "Allowed people",
+      "domains": "Domains",
+      "settings": "Server settings",
+      "log": "Security log",
+      "email": "Email"
+    },
+    "members": {
+      "description": "Everyone who has signed in to this server.",
+      "addPeople": "Add people",
+      "addHint": "To let someone new in, add them under Allowed people.",
+      "loading": "Loading people…",
+      "empty": "Nobody has signed in yet.",
+      "you": "You",
+      "active": "Active",
+      "suspended": "Suspended",
+      "removed": "Removed",
+      "roleLabel": "Role for {{name}}",
+      "suspend": "Suspend",
+      "reactivate": "Reactivate",
+      "remove": "Remove",
+      "devices": "Devices",
+      "devicesTitle": "Devices for {{name}}",
+      "devicesDescription": "Sign out a device that is lost or no longer used.",
+      "devicesLoading": "Loading devices…",
+      "devicesLoadFailed": "Oleafly couldn't load these devices.",
+      "lastAdmin": "This server needs at least one admin. Make someone else an admin first.",
+      "owned": {
+        "suspendOne": "{{name}} owns a shared project. Nobody else can manage it while {{name}} is suspended.",
+        "suspendMany": "Shared projects {{name}} owns: {{number}}. Nobody else can manage them while {{name}} is suspended.",
+        "removeOne": "{{name}} owns a shared project. Once {{name}} is removed, nobody else can manage it.",
+        "removeMany": "Shared projects {{name}} owns: {{number}}. Once {{name}} is removed, nobody else can manage them."
+      },
+      "removeConfirm": {
+        "title": "Remove {{name}} from this server?",
+        "description": "Their devices are signed out right away. Projects they own stay on the server, and you can add them back later.",
+        "confirm": "Remove from server"
+      },
+      "suspendConfirm": {
+        "title": "Suspend {{name}}?",
+        "description": "{{name}} can't sign in or sync until an admin reactivates the account.",
+        "confirm": "Suspend account"
+      },
+      "selfRoleConfirm": {
+        "title": "Change your own role to {{role}}?",
+        "description": "You'll lose your admin rights on this server, and only another admin can give them back.",
+        "confirm": "Change my role"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Sign out {{name}}?",
+        "description": "That device stops syncing with this server until its owner signs in on it again.",
+        "confirm": "Sign out device"
+      }
+    },
+    "allowlist": {
+      "description": "People added here can sign in to the server with the role you pick.",
+      "matchLabel": "Match by",
+      "match": {
+        "email": "Email address",
+        "login": "Sign-in name"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Sign-in option",
+      "roleLabel": "Role",
+      "add": "Add",
+      "loading": "Loading allowed people…",
+      "empty": "Nobody has been added yet.",
+      "loginEntry": "{{login}} on {{provider}}",
+      "bound": "Has signed in",
+      "unbound": "Hasn't signed in yet",
+      "remove": "Remove",
+      "removeNamed": "Remove {{entry}}",
+      "duplicate": "That person is already allowed in."
+    },
+    "domains": {
+      "description": "Anyone with a verified email address at these domains can sign in with the role you pick.",
+      "domainLabel": "Domain",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Role",
+      "add": "Add",
+      "loading": "Loading domain rules…",
+      "empty": "No domain rules yet.",
+      "remove": "Remove",
+      "removeNamed": "Remove {{domain}}",
+      "duplicate": "That domain already has a rule."
+    },
+    "settings": {
+      "description": "These settings apply to everyone on this server.",
+      "adminOnly": "Only admins can change these settings.",
+      "loading": "Loading settings…",
+      "guestsEnabled": {
+        "label": "Allow guests",
+        "description": "Members can invite people from outside the server to projects they own."
+      },
+      "guestApprovalRequired": {
+        "label": "Approve guests first",
+        "description": "A maintainer or admin approves each guest invitation before it works."
+      },
+      "directoryVisible": {
+        "label": "Member directory",
+        "description": "Members can look each other up by name when they share a project."
+      },
+      "directoryShowsEmail": {
+        "label": "Show email addresses in the directory",
+        "description": "Members see each other's email addresses when they look someone up."
+      },
+      "linkSharingAllowed": {
+        "label": "Allow link sharing",
+        "description": "Project owners can let any member open a project from its link."
+      },
+      "accessLogsAllowed": {
+        "label": "Allow project access logs",
+        "description": "Project owners can keep a log of who opened their project."
+      },
+      "commentsAllowed": {
+        "label": "Allow comments",
+        "description": "People in shared projects can comment on text and reply. Turning this off hides comments everywhere and keeps them stored."
+      },
+      "emailNotifications": {
+        "label": "Email notifications",
+        "description": "Send these emails. Turn this off to stop them for everyone on the server."
+      },
+      "emailLinkSignIn": {
+        "label": "Sign in by email",
+        "description": "People can sign in with a link sent to their email address. This needs the server's email settings. Your access rules still decide who gets in."
+      }
+    },
+    "log": {
+      "description": "Sign-ins, device changes and admin actions on this server.",
+      "loading": "Loading the log…",
+      "empty": "Nothing has happened yet.",
+      "loadMore": "Show older entries",
+      "server": "Server",
+      "unknownAccount": "Unknown account",
+      "target": "On {{target}}",
+      "ip": "From {{ip}}",
+      "kinds": {
+        "setupCompleted": "Finished setting up the server",
+        "signIn": "Signed in",
+        "signInRefused": "Was refused at sign-in",
+        "deviceAdded": "Added a device",
+        "deviceSignedOut": "Signed out a device",
+        "refreshReuseDetected": "Reused an old sign-in, so the device was signed out",
+        "memberAdded": "Added a member",
+        "memberRemoved": "Removed a member",
+        "memberSuspended": "Suspended a member",
+        "memberReactivated": "Reactivated a member",
+        "roleChanged": "Changed a role",
+        "allowlistAdded": "Added someone to Allowed people",
+        "allowlistRemoved": "Removed someone from Allowed people",
+        "domainRuleAdded": "Added a domain rule",
+        "domainRuleRemoved": "Removed a domain rule",
+        "settingsChanged": "Changed server settings",
+        "projectShared": "Shared a project",
+        "projectAccessGranted": "Gave someone access to a project",
+        "projectAccessChanged": "Changed someone's access to a project",
+        "projectAccessRemoved": "Removed someone from a project",
+        "projectLeft": "Left a project",
+        "projectLinkSharingOn": "Turned on link sharing for a project",
+        "projectLinkSharingOff": "Turned off link sharing for a project",
+        "projectLinkRoleChanged": "Changed what a project's link lets people do",
+        "projectArchived": "Archived a project",
+        "projectUnarchived": "Restored an archived project",
+        "projectSettingsChanged": "Changed a project's settings",
+        "projectAccessLogOn": "Turned on a project's access log",
+        "projectAccessLogOff": "Turned off a project's access log",
+        "projectCommentsOn": "Turned on comments in a project",
+        "projectCommentsOff": "Turned off comments in a project",
+        "projectRejoinRefused": "Tried to rejoin a project they were removed from",
+        "commentsChangedWhileOff": "Changed comments while they were off",
+        "guestInvited": "Invited a guest",
+        "guestInvitationApproved": "Approved a guest invitation",
+        "guestInvitationDeclined": "Declined a guest invitation",
+        "guestInvitationRevoked": "Withdrew a guest invitation",
+        "guestAdmissionEnded": "Ended a guest's access to the server",
+        "unknown": "Other server event"
+      },
+      "details": {
+        "project": "Project: {{title}}",
+        "provider": "With {{provider}}",
+        "providerEmailLink": "With an email link",
+        "signInCode": "Used a sign-in code",
+        "via": {
+          "allowlist": "Let in as an allowed person",
+          "domain": "Let in by a domain rule",
+          "setup": "Used the setup code",
+          "guest": "Let in as a guest",
+          "link": "Through the project link",
+          "invitation": "Through a guest invitation"
+        },
+        "newAccount": "New account",
+        "reactivated": "Account reactivated",
+        "reasons": {
+          "suspended": "The account is suspended",
+          "notAdmitted": "No access rule lets them in",
+          "setupCodeInvalid": "Wrong setup code",
+          "guestInvitationUnusable": "Their guest invitation no longer works",
+          "lockedOutIp": "Too many tries from one network address",
+          "lockedOutAddress": "Too many sign-in emails to one address",
+          "stoppedByPerson": "Stopped on the sign-in page",
+          "otherBrowser": "Finished in a different browser than it started in",
+          "inactiveAccountAddress": "Their email belongs to a removed or suspended account",
+          "noProjectsLeft": "No projects left"
+        },
+        "role": "Role: {{role}}",
+        "roleChange": "From {{from}} to {{to}}",
+        "device": "Device: {{name}}",
+        "byAdmin": "From the admin console",
+        "settingOn": "{{setting}}: on",
+        "settingOff": "{{setting}}: off"
+      }
+    },
+    "email": {
+      "description": "The server emails people when you add them, when someone shares a project with them, and when their account signs in on a new device.",
+      "loading": "Loading email settings…",
+      "on": {
+        "title": "Email is on",
+        "from": "Emails come from {{from}}."
+      },
+      "off": {
+        "title": "Email is off",
+        "description": "This server has no mail settings. To turn email on, set OLEAFLY_SMTP_URL and OLEAFLY_MAIL_FROM on the server, then restart it.",
+        "copyPath": "Until then, send new people this link yourself. It adds the server to Oleafly.",
+        "address": "They can also enter this address under Add server:"
+      },
+      "broken": {
+        "title": "Email isn't working",
+        "description": "The server has mail settings, but its emails aren't getting through. Check the settings, then send a test email."
+      },
+      "needsSettings": "Turn email on for the server first.",
+      "needsWorking": "Send a test email that gets through, then turn this on.",
+      "lastFailure": "The last email that failed was on {{date}}. The mail server said:",
+      "test": {
+        "title": "Test email",
+        "description": "Send a test email to {{address}} to check that the settings work.",
+        "send": "Send test email",
+        "sending": "Sending…",
+        "sent": "Sent to {{address}}. If it isn't in the inbox, look in the spam folder.",
+        "failed": "The mail server didn't accept the test email.",
+        "noAddress": "Your account has no verified email address, so there's nowhere to send a test.",
+        "adminOnly": "Only admins can send a test email."
+      }
+    }
+  },
+  "projectRoles": {
+    "owner": "Owner",
+    "editor": "Editor",
+    "viewer": "Viewer",
+    "unknown": "Unknown role"
+  },
+  "share": {
+    "button": "Share",
+    "copyAndShare": "Copy into Oleafly and share",
+    "title": "Share {{name}}",
+    "description": "Work on this project with other people through a collaboration server.",
+    "loading": "Loading…",
+    "linked": "This project is a folder outside Oleafly. Oleafly copies it into your library and shares that copy. The original folder isn't touched.",
+    "editCopy": "This is the shared copy. Edit this one from now on, not the original folder.",
+    "serverLabel": "Server",
+    "noServers": "Sign in to a collaboration server first, then come back to share.",
+    "openSettings": "Open Collaboration settings",
+    "checking": "Checking the project…",
+    "checkFailed": "Oleafly couldn't check this project.",
+    "files": "Files",
+    "size": "Size",
+    "disclosure": "{{server}} can read this project's files.",
+    "cloudSynced": "Your Oleafly library is in a folder that iCloud, Dropbox or a similar service syncs. Two sync services would fight over the same files, so Oleafly can't share from there. Move the library out of that folder first.",
+    "tooLarge": "These files are over the server's limit of {{size}} MB. Make them smaller or remove them before you share.",
+    "renamed": "Some names don't work on every computer. Other people get these files under a slightly different name.",
+    "excluded": "Not shared: build output, Oleafly settings and Git history.",
+    "start": "Share",
+    "preparing": "Getting the project ready…",
+    "uploading": "Uploading figures and other files: {{done}} of {{total}}",
+    "saving": "Saving the project on the server…",
+    "failed": "Sharing didn't finish, so nothing was shared.",
+    "trustAgain": "Anyone you add to this project can change its files, so Oleafly asks you to trust it again on this computer before it runs agents, terminal commands or shell escape for it."
+  },
+  "manage": {
+    "sharedOn": "Shared on {{server}}",
+    "yourRole": "Your role: {{role}}",
+    "loading": "Loading who has access…",
+    "loadFailed": "Oleafly couldn't load who has access.",
+    "people": "People with access",
+    "you": "You",
+    "inactive": "Removed or suspended",
+    "ownerInactive": "Owner removed or suspended",
+    "roleLabel": "Role for {{name}}",
+    "remove": "Remove",
+    "removeNamed": "Remove {{name}}",
+    "removeConfirm": {
+      "title": "Remove {{name}} from this project?",
+      "description": "Their copy stops syncing and stays on their computer as an ordinary project.",
+      "confirm": "Remove"
+    },
+    "add": {
+      "label": "Add people",
+      "placeholder": "Name, sign-in name or email",
+      "roleLabel": "Role for people you add",
+      "searching": "Searching…",
+      "noResultsTryEmail": "Nobody on {{server}} matches. Try their full email address.",
+      "alreadyMember": "{{name}} already has access.",
+      "allMembers": "Everyone who matches already has access.",
+      "noAccountNoGuests": "Nobody on {{server}} uses {{email}} yet. Ask an admin of {{server}} to let them in, then add them here after they sign in once.",
+      "guestCheckFailed": "Oleafly couldn't check whether {{server}} allows guests.",
+      "add": "Add",
+      "addNamed": "Add {{name}}"
+    },
+    "link": {
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "copyFailed": "Couldn't copy the link",
+      "sharing": "Link sharing",
+      "sharingDescription": "Anyone signed in to {{server}} who has the link can open this project.",
+      "roleLabel": "Role for people who open the link"
+    },
+    "comments": {
+      "label": "Comments",
+      "description": "Anyone who can edit can comment on text in this project. Turning this off hides comments but doesn't delete them.",
+      "serverOff": "Comments are turned off on {{server}}. Ask its admin to turn them on."
+    },
+    "stop": "Stop sharing",
+    "stopConfirm": {
+      "title": "Stop sharing {{name}}?",
+      "description": "Everyone's copy stops syncing and becomes an ordinary project. The server keeps the shared copy for a while, then deletes it.",
+      "confirm": "Stop sharing"
+    },
+    "leave": "Leave project",
+    "leaveConfirm": {
+      "title": "Leave {{name}}?",
+      "description": "Your copy stops syncing and stays on this computer as an ordinary project.",
+      "confirm": "Leave"
+    },
+    "accessLog": {
+      "label": "Access log",
+      "description": "The server notes who opens this project, joins it or downloads a copy, and from which device and when. Only you can see this list, in the Live collaboration pane."
+    }
+  },
+  "sync": {
+    "upToDate": "Up to date",
+    "syncing": "Syncing",
+    "offline": "Offline. Changes waiting: {{number}}",
+    "reconnecting": "Reconnecting",
+    "signedOut": "Signed out",
+    "suspended": "Account suspended",
+    "accessEnded": "No access",
+    "removed": "Access removed",
+    "archived": "Sharing stopped",
+    "paused": "Paused",
+    "serverRemoved": "Server removed",
+    "clientTooOld": "Oleafly needs an update",
+    "serverTooOld": "Server needs an update",
+    "serverChanged": "New server at this address",
+    "failed": "Stopped after an error",
+    "engineSpent": "Restart needed"
+  },
+  "toolbar": {
+    "noFile": "No file open",
+    "unknownPerson": "Someone",
+    "viewing": "Viewing {{path}}",
+    "editing": "Editing {{path}}",
+    "goTo": "Go to {{name}}",
+    "nowhere": "Not in a file, so there is nowhere to go"
+  },
+  "tree": {
+    "here": "{{name}} has this file open",
+    "clash": "{{other}} also has the name {{name}}, so this file got a new name on disk."
+  },
+  "library": {
+    "kind": "shared",
+    "location": "Shared projects",
+    "locationNotShared": "In Oleafly, not shared",
+    "flag": "Shared",
+    "sharedWithYou": {
+      "title": "Shared with you",
+      "loadFailed": "Oleafly couldn't check for projects shared with you.",
+      "from": "{{owner}} on {{server}}",
+      "open": "Open",
+      "openNamed": "Open {{name}}"
+    },
+    "openLink": {
+      "menu": "Open shared project link…",
+      "title": "Open a shared project",
+      "description": "Paste the link someone sent you.",
+      "label": "Project link",
+      "placeholder": "https://collab.example.edu/p/1234",
+      "open": "Open",
+      "noAccess": "You don't have access to this project. Ask its owner."
+    }
+  },
+  "pane": {
+    "title": "Live collaboration",
+    "titleUnread": "Live collaboration, new activity",
+    "manage": "Manage sharing",
+    "people": "People",
+    "activity": "Activity",
+    "empty": "Nothing has happened yet.",
+    "here": "Here now",
+    "hereIn": "Here now in {{path}}",
+    "away": "Not here right now",
+    "deleted": "Recently deleted",
+    "deletedEmpty": "Nothing deleted recently.",
+    "deletedLoadFailed": "Oleafly couldn't load the recently deleted files.",
+    "unwritten": {
+      "title": "Some files couldn't be written to this computer",
+      "hint": "Oleafly keeps trying. The shared project has the latest text in the meantime.",
+      "reasons": {
+        "locked": "Can't write {{path}}: another program has it open.",
+        "read_only": "Can't write {{path}}: the file or its folder is read-only.",
+        "no_space": "Can't write {{path}}: the disk is full.",
+        "not_downloaded": "{{path}} couldn't be downloaded from the server yet. Oleafly keeps trying.",
+        "other": "Can't write {{path}}."
+      }
+    },
+    "accessLog": "Access log",
+    "status": "Sync status",
+    "waiting": "Changes waiting: {{number}}"
+  },
+  "deleted": {
+    "restore": "Restore",
+    "restoreLabel": "Restore {{name}}",
+    "inFolder": "Was in {{folder}}",
+    "inProject": "Was in the project folder",
+    "byYou": "Deleted by you",
+    "by": "Deleted by {{name}}"
+  },
+  "removed": {
+    "deletedBy": "{{name}} deleted {{file}}.",
+    "yoursDeleted": "Your changes to {{file}} are in Recently deleted because {{name}} deleted it.",
+    "dismiss": "Dismiss"
+  },
+  "activity": {
+    "welcomeEdit": "Shared by {{owner}} on {{server}}. You can edit.",
+    "welcomeView": "Shared by {{owner}} on {{server}}. You can view.",
+    "joined": "{{name}} opened the project",
+    "left": "{{name}} closed the project",
+    "rejoined": "{{name}} opened the project again",
+    "visited": "{{name}} opened and closed the project",
+    "online": "Back online",
+    "merged": "Merged changes from others while you were away: {{number}}",
+    "mergedFile": "{{path}}: {{number}}",
+    "showFiles": "Show files",
+    "hideFiles": "Hide files",
+    "role": "Your role is now {{role}}",
+    "removed": "You no longer have access to this shared project. Your copy stays here as an ordinary project.",
+    "removedBy": "{{name}} removed you from this shared project. Your copy stays here as an ordinary project.",
+    "archived": "The owner stopped sharing this project. Your copy stays here as an ordinary project.",
+    "signedOut": "You're signed out of {{server}}, so this project isn't syncing. Your changes stay on this computer.",
+    "suspended": "An admin suspended your account on {{server}}. Your changes stay on this computer. You can sign in again once an admin reactivates it.",
+    "clientTooOld": "Update Oleafly to keep working on {{server}}. Your changes stay on this computer.",
+    "serverTooOld": "{{server}} needs an update before it works with this version of Oleafly. Ask the person who runs it. Your changes stay on this computer.",
+    "serverChanged": "The address of {{server}} now points at a different server. Remove it in Collaboration settings and add it again. Your changes stay on this computer.",
+    "failed": "Syncing this project stopped after an error. Go live again to continue.",
+    "goLiveAgain": "Go live again",
+    "engineSpent": "Restart Oleafly to keep syncing this project.",
+    "restartApp": "Restart Oleafly",
+    "accessEnded": "You no longer have access to {{server}}. Your copy stays on this computer as an ordinary project.",
+    "accessEndedGuest": "You no longer have access to {{server}} because you're not in any of its shared projects. Your copy stays on this computer as an ordinary project.",
+    "signIn": "Sign in",
+    "memberAdded": "{{by}} added {{name}}",
+    "memberAddedByYou": "You added {{name}}",
+    "memberJoined": "{{name}} joined with the project link",
+    "memberRemoved": "{{by}} removed {{name}}",
+    "memberRemovedByYou": "You removed {{name}}",
+    "memberLeft": "{{name}} left this shared project",
+    "newDevice": "{{name}} signed in on a new device",
+    "review": "Review",
+    "renamed": "{{name}} renamed {{before}} to {{theirs}} after you named it {{ours}}",
+    "renamedPortable": "{{before}} was renamed to {{theirs}} so it works on every computer.",
+    "skipped": "A change from {{name}} couldn't be read and was skipped.",
+    "skippedUnknown": "A change from someone couldn't be read and was skipped.",
+    "mentioned": "{{name}} mentioned you in a comment on {{path}}",
+    "mentionedHere": "{{name}} mentioned you in a comment",
+    "showComment": "Show comment",
+    "settings": {
+      "mainDocument": "{{name}} made {{path}} the main document",
+      "mainDocumentNow": "{{path}} is the main document now",
+      "compiler": "{{name}} set the compiler to {{compiler}}",
+      "spellingLanguage": "{{name}} set the spelling language to {{language}}",
+      "spellingCleared": "{{name}} cleared the project's spelling language",
+      "typstVersion": "{{name}} set the Typst version to {{version}}",
+      "typstDefault": "{{name}} set the Typst version back to the default",
+      "typstOptions": "{{name}} changed the Typst options",
+      "compilers": {
+        "tectonic": "Tectonic",
+        "auto": "Auto",
+        "pdflatex": "pdfLaTeX",
+        "xelatex": "XeLaTeX",
+        "lualatex": "LuaLaTeX",
+        "uplatex": "upLaTeX",
+        "platex": "pLaTeX",
+        "typst": "Typst",
+        "pandoc": "Pandoc"
+      }
+    }
+  },
+  "mergeReview": {
+    "title": "Changes merged while you were away",
+    "description": "What others changed while you were offline. This view is read-only.",
+    "people": "By person",
+    "person": "{{name}}: {{number}}",
+    "files": "By file",
+    "loading": "Loading changes",
+    "failed": "Couldn't load the changes. Try again later.",
+    "noText": "No text changed, so there's nothing to compare.",
+    "newFile": "New file",
+    "removedFile": "Removed",
+    "closedOldest": "Only {{number}} files stay open at a time, so {{path}} closed.",
+    "diffLabel": "Changes in {{path}}"
+  },
+  "console": {
+    "open": "Open admin console",
+    "windowTitle": "Oleafly Server Admin Console",
+    "title": "Admin console",
+    "sectionsLabel": "Admin console sections",
+    "pendingGuestsBadge": "Waiting for approval: {{number}}",
+    "sections": {
+      "overview": "Overview",
+      "people": "People",
+      "access": "Access rules",
+      "projects": "Projects",
+      "settings": "Server settings",
+      "email": "Email",
+      "log": "Security log",
+      "checks": "Connection checks"
+    },
+    "health": {
+      "label": "Server health: {{status}}",
+      "checking": "Checking",
+      "ok": "Healthy",
+      "warning": "Needs attention",
+      "unreachable": "Unreachable"
+    },
+    "states": {
+      "loading": "Opening the admin console…",
+      "loadFailed": "Oleafly couldn't open the admin console.",
+      "unknownTitle": "This server isn't in your list",
+      "unknownDescription": "Add the server again in Settings, then open the admin console from its card.",
+      "signedOutTitle": "You're signed out of this server",
+      "signedOutDescription": "Sign in again in Settings, then open the admin console from the server's card.",
+      "refusedTitle": "The admin console is for admins and maintainers",
+      "refusedDescription": "Your role on this server is {{role}}. Ask an admin if you need to manage it.",
+      "turnedOffTitle": "Live collaboration is turned off",
+      "turnedOffDescription": "Turn it on again in Settings, under Experimentation, to manage this server here."
+    },
+    "overview": {
+      "loading": "Loading the overview…",
+      "health": {
+        "title": "Health",
+        "okLabel": "Everything is working",
+        "okDescription": "People can sign in and the server can save files.",
+        "problem": "Signing in with {{provider}} has been failing since {{time}}",
+        "commentChange": "{{project}}, changed by {{name}} on {{time}}",
+        "commentChangeUnknown": "{{project}}, changed on {{time}}",
+        "issues": {
+          "noSignInProvider": {
+            "label": "Nobody can sign in",
+            "description": "Set up GitHub or OpenID sign-in on the server and restart it. If the server sends email, you can turn on Sign in by email in Settings instead."
+          },
+          "storageNotWritable": {
+            "label": "The server can't save files",
+            "description": "Check that its data folder exists and that the server can write to it."
+          },
+          "signInFailing": {
+            "label": "Sign-in is failing",
+            "description": "People can't sign in with one of the server's sign-in options. The list below says which one and since when."
+          },
+          "signInEmailsPaused": {
+            "label": "Sign-in emails are paused",
+            "description": "The server has sent as many sign-in emails as it allows this hour. They start again when the hour is over."
+          },
+          "commentsChangedWhileOff": {
+            "label": "Comments changed while they were off",
+            "description": "The server found changes to comments that it stored before it could check them, while comments were off. The projects are listed below, and the security log has each change."
+          },
+          "unknown": {
+            "label": "The server reported a problem",
+            "description": "Update Oleafly to see what it is."
+          }
+        }
+      },
+      "glance": {
+        "title": "At a glance",
+        "people": "People",
+        "suspended": "Suspended: {{number}}",
+        "devices": "Devices",
+        "projects": "Shared projects",
+        "projectsDetail": "Archived: {{archived}}, uploading: {{pending}}",
+        "online": "Online now",
+        "onlineDetail": "Open projects: {{number}}",
+        "started": "Started",
+        "version": "Version",
+        "protocol": "Protocol {{protocol}}",
+        "pendingGuests": "Guest invitations waiting for approval: {{number}}",
+        "reviewGuests": "Review in People"
+      },
+      "activity": {
+        "title": "Activity",
+        "description": "Sign-ins over the last 30 days, in UTC. Oleafly keeps people signed in, so this counts each new sign-in, not every visit.",
+        "none": "Nobody signed in during the last 30 days.",
+        "daily": "Sign-ins per day",
+        "dailyLabel": "Sign-ins per UTC day over the last 30 days",
+        "total": "{{number}} in 30 days",
+        "hourly": "Sign-ins by hour",
+        "hourlyLabel": "Sign-ins by UTC weekday and hour",
+        "day": "Day",
+        "signInsColumn": "Sign-ins",
+        "peopleColumn": "People",
+        "signIns": "Sign-ins: {{number}}",
+        "people": "People: {{number}}",
+        "cell": "{{weekday}} {{hour}}:00 UTC, sign-ins: {{number}}",
+        "hoursInUtc": "Hours in UTC",
+        "less": "Less",
+        "more": "More"
+      },
+      "storage": {
+        "title": "Storage",
+        "adminOnly": "Only admins can see how much storage the server uses.",
+        "database": "Database",
+        "databaseDetail": "Accounts, settings and the log",
+        "snapshots": "Project snapshots",
+        "snapshotsDetail": "Saved copies of each project",
+        "files": "Files",
+        "location": {
+          "disk": "On the server's disk",
+          "s3": "In S3 storage",
+          "unknown": "In other storage"
+        }
+      },
+      "services": {
+        "title": "Email and sign-in",
+        "email": "Email",
+        "emailOn": "Set up",
+        "emailOff": "Not set up",
+        "emailOnDescription": "The server can send email.",
+        "emailOffDescription": "The server can't send email yet, so nobody gets notified by email.",
+        "openEmail": "Email settings",
+        "signIn": "Sign-in options",
+        "signInNone": "None yet. Nobody can sign in until one is set up.",
+        "emailLinkOption": "Email link"
+      },
+      "settings": {
+        "title": "Server settings",
+        "on": "On",
+        "off": "Off",
+        "change": "Change settings"
+      },
+      "limits": "Limits: {{project}} per project, {{file}} per file, {{people}} people per project."
+    },
+    "projects": {
+      "description": "Every project shared on this server.",
+      "searchLabel": "Search projects",
+      "searchPlaceholder": "Search by title or owner",
+      "filterLabel": "Show projects",
+      "filter": {
+        "all": "All",
+        "active": "Shared",
+        "archived": "Archived",
+        "pending": "Uploading"
+      },
+      "columns": {
+        "title": "Project",
+        "owner": "Owner",
+        "members": "People",
+        "size": "Size",
+        "activity": "Last activity",
+        "actions": "Actions"
+      },
+      "sortBy": "Sort by {{column}}",
+      "status": {
+        "archived": "Archived",
+        "pending": "Uploading",
+        "unknown": "Unknown"
+      },
+      "loading": "Loading projects…",
+      "empty": "No projects are shared on this server yet.",
+      "noMatches": "No projects match your search.",
+      "count": "Showing {{shown}} of {{total}}",
+      "loadMore": "Show more",
+      "archive": "Archive",
+      "archiveNamed": "Archive {{title}}",
+      "restore": "Restore",
+      "restoreNamed": "Restore {{title}}",
+      "archiveConfirm": {
+        "title": "Archive {{title}}?",
+        "description": "Everyone stops syncing it and keeps their own copy. The server deletes the project after {{days}} days unless you restore it.",
+        "descriptionLater": "Everyone stops syncing it and keeps their own copy. The server deletes archived projects after a while unless you restore them.",
+        "confirm": "Archive project"
+      },
+      "adminOnly": "Only admins can archive or restore projects."
+    },
+    "checks": {
+      "description": "Check the connection from this computer to the server."
+    }
+  },
+  "links": {
+    "turnedOff": "Live collaboration is off. Turn it on in Settings under Experimentation, then open the link again.",
+    "openSettings": "Open Settings",
+    "malformed": "Oleafly can't open this link. Ask the person who sent it for a new one.",
+    "opening": "Opening the shared project…",
+    "downloading": "Downloading files: {{done}} of {{total}}",
+    "cancelNamed": "Cancel opening {{name}}",
+    "cancelling": "Cancelling…",
+    "confirm": {
+      "title": "Join this shared project?",
+      "body": "Joining adds you to the project and copies its files to this computer. Only join if you know who sent you the link.",
+      "project": "Project",
+      "owner": "Owner",
+      "server": "Server",
+      "role": "Your role",
+      "join": "Join"
+    }
+  },
+  "comments": {
+    "title": "Comments",
+    "titleUnread": "Comments, new activity",
+    "add": "Add comment",
+    "showResolved": "Show resolved comments",
+    "hideResolved": "Hide resolved comments",
+    "empty": "No comments yet.",
+    "emptyCanWrite": "No comments yet. Select some text and choose Add comment to start one.",
+    "allResolved": "All comments are resolved.",
+    "loadFailed": "Couldn't load the comments for this file.",
+    "detached": "Detached",
+    "detachedHint": "The text these comments were on was deleted.",
+    "resolvedBy": "Resolved by {{name}}",
+    "edited": "Edited",
+    "deleted": "This comment was deleted.",
+    "newLabel": "New comment",
+    "newPlaceholder": "Add a comment. Type @ to mention someone.",
+    "replyLabel": "Reply",
+    "replyPlaceholder": "Write a reply. Type @ to mention someone.",
+    "editLabel": "Edit comment",
+    "post": "Comment",
+    "reply": "Reply",
+    "resolve": "Resolve",
+    "reopen": "Reopen",
+    "deleteThread": "Delete thread",
+    "deleteThreadConfirm": {
+      "title": "Delete this thread?",
+      "description": "The comment and its replies are deleted for everyone in this project. This can't be undone."
+    },
+    "deleteMessageConfirm": {
+      "title": "Delete this comment?",
+      "description": "It's deleted for everyone in this project. This can't be undone."
+    },
+    "messageActions": "More actions for this comment",
+    "threadActions": "More actions for this thread",
+    "showInEditor": "Show in the editor",
+    "thread": "Comment from {{name}}",
+    "mentionList": "People to mention",
+    "marker": "Show the comments on this line",
+    "unverifiedAuthor": "Couldn't verify who wrote this",
+    "unverifiedThread": "Comment from someone Oleafly couldn't verify",
+    "resolvedUnverified": "Resolved by someone Oleafly couldn't verify",
+    "notSent": {
+      "written": "Comments are turned off for this project, so the comments you wrote weren't sent.",
+      "changed": "Comments are turned off for this project, so your comment changes weren't sent.",
+      "show": "Show what you wrote",
+      "hide": "Hide what you wrote",
+      "copy": "Copy text",
+      "copyFailed": "Couldn't copy",
+      "list": "Comments that weren't sent"
+    },
+    "refusals": {
+      "notLive": "This project isn't connected right now. Try again once it reconnects.",
+      "notYours": "Only the person who wrote this comment can change it.",
+      "offServer": "Comments are turned off on this server.",
+      "offProject": "Comments are turned off for this project. Ask the owner to turn them back on.",
+      "viewer": "You can read comments here but not write them. Ask the owner for edit access.",
+      "someoneReplied": "Someone else replied, so this thread stays. You can resolve it instead.",
+      "messageDeleted": "This comment was deleted, so you can't edit it.",
+      "selectionChanged": "The text you selected has changed. Select it again and add your comment.",
+      "tooLong": "This comment is too long. Shorten it and try again.",
+      "empty": "Write something before you post."
+    }
+  },
+  "accessLog": {
+    "opened": "{{name}} opened the project",
+    "joinedLink": "{{name}} joined with the link",
+    "joinedShare": "{{name}} joined after you shared it",
+    "downloaded": "{{name}} downloaded a copy",
+    "unknown": "{{name}} used the project",
+    "unknownDevice": "Unknown device",
+    "span": "{{from}} to {{to}}",
+    "more": "Show older",
+    "loading": "Loading the access log…",
+    "loadFailed": "Oleafly couldn't load the access log.",
+    "empty": "Nothing recorded yet."
+  },
+  "guests": {
+    "badge": "Guest",
+    "invite": {
+      "noAccount": "Nobody on {{server}} uses {{email}}. Invite them as a guest and they see only the projects they're invited to.",
+      "button": "Invite as guest",
+      "buttonNamed": "Invite {{email}} as a guest",
+      "duplicate": "That address already has an invitation to this project.",
+      "tooMany": "You've sent a lot of invitations in the last hour. Try again later."
+    },
+    "sent": {
+      "emailed": "Invitation emailed to {{email}}.",
+      "emailedAfterApproval": "An admin needs to approve this invitation. {{email}} gets an email once it's approved.",
+      "added": "{{email}} already has an account on {{server}}, so they have access now.",
+      "sendLink": "{{server}} doesn't send email, so send {{email}} this link yourself. They add the server with it and sign in with that address.",
+      "sendLinkAfterApproval": "An admin needs to approve this invitation first. {{server}} doesn't send email, so send {{email}} this link yourself. It works once the invitation is approved.",
+      "linkLabel": "Link to add {{server}}"
+    },
+    "list": {
+      "title": "Invitations",
+      "status": {
+        "awaiting_approval": "Waiting for approval",
+        "invited": "Invited",
+        "declined": "Declined"
+      },
+      "expires": "Expires {{date}}",
+      "withdraw": "Withdraw",
+      "withdrawNamed": "Withdraw the invitation for {{email}}"
+    },
+    "pending": {
+      "title": "Pending guests",
+      "description": "Project owners invited these people as guests. A guest sees only the projects they're invited to and can't share them.",
+      "loadFailed": "Oleafly couldn't load the guest invitations waiting for approval.",
+      "invitedBy": "{{inviter}} invited them to {{project}}",
+      "approve": "Approve",
+      "approveNamed": "Approve {{email}}",
+      "decline": "Decline",
+      "declineNamed": "Decline {{email}}"
+    }
+  },
+  "access": {
+    "viewerBy": "{{name}} made you a viewer. You can read this project but not edit it.",
+    "viewer": "You're now a viewer. You can read this project but not edit it.",
+    "viewOnly": "You can view this shared project but not edit it.",
+    "connecting": "This shared project is still connecting, so it can't be changed yet. Try again in a moment.",
+    "unsentReadOnly": "Your last changes to {{path}} weren't sent because you can only view this project now.",
+    "unsentRefused": "Oleafly couldn't send your last changes to {{path}}, so they were dropped.",
+    "removedBy": "{{name}} removed you from this project. Your copy stays on this computer and is no longer shared.",
+    "removed": "You were removed from this project. Your copy stays on this computer and is no longer shared."
+  },
+  "files": {
+    "waiting": "Waiting to be shared: {{files}}",
+    "failed": "Couldn't be shared: {{files}}",
+    "uploading": "Uploading {{file}}: {{done}} of {{total}}",
+    "tooLarge": "{{file}} is {{size}}, larger than this server allows ({{limit}}). It stays on this computer only.",
+    "tooLargeUnknown": "{{file}} is larger than this server allows. It stays on this computer only.",
+    "projectTooLarge": "{{file}} stays on this computer because this project reached the server's size limit of {{limit}}. Ask the person who runs the server to raise it.",
+    "projectTooLargeUnknown": "{{file}} stays on this computer because this project reached the server's size limit. Ask the person who runs the server to raise it.",
+    "projectFull": "This project reached the server's size limit, so your changes stay on this computer for now. Ask the person who runs the server to raise it.",
+    "replaced": "{{name}} replaced {{file}} at the same time as you. Your version is kept as {{copy}}.",
+    "added": "{{file}} is now {{copy}} because {{name}} added a file with the same name.",
+    "beside": "{{name}} also has a file named {{file}}. Theirs is kept as {{copy}}.",
+    "localCopy": "You changed {{files}} in {{name}} while you had no access to this project.",
+    "bringIn": "Bring changes in",
+    "keepSeparate": "Keep separate",
+    "broughtIn": "Your changes from {{name}} are in this project now.",
+    "retry": "Retry",
+    "dismiss": "Dismiss"
+  }
+}

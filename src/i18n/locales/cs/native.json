@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "O aplikaci Oleafly",
     "checkUpdates": "Zkontrolovat aktualizace…",
+    "settings": "Nastavení…",
     "reloadViews": "Znovu načíst zobrazení",
     "restartApp": "Restartovat aplikaci",
     "quit": "Ukončit Oleafly",
@@ -30,7 +31,8 @@
     "newTab": "Nový panel",
     "openLocation": "Otevřít adresu…",
     "closeTab": "Zavřít panel",
-    "reloadPage": "Znovu načíst stránku"
+    "reloadPage": "Znovu načíst stránku",
+    "zenMode": "Režim Zen"
   },
   "window": {
     "browser": "Prohlížeč Oleafly",
@@ -42,6 +44,11 @@
       "title": "Povolit úplný přístup?",
       "message": "Úplný přístup dovolí asistentovi spouštět příkazy shell a upravovat soubory, aniž by pokaždé žádal o schválení. Povolit úplný přístup?",
       "confirm": "Povolit úplný přístup"
+    },
+    "sharedShellEscape": {
+      "title": "Povolit externí příkazy v tomto sdíleném projektu?",
+      "message": "Kdokoli, kdo může tento projekt upravovat, pak bude moci při vaší kompilaci spouštět programy v tomto počítači. Povolte to jen tehdy, pokud důvěřujete všem v projektu.",
+      "confirm": "Povolit v tomto počítači"
     },
     "cookieImport": {
       "title": "Potvrdit import cookies",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "Otevřít v Oleafly",
     "openWithOleafly": "Otevřít v aplikaci Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (místní kopie)"
+  },
+  "approvals": {
+    "helperRefused": "Odmítnuto pravidlem {{tool}} v approvals.toml",
+    "unknownTool": "Žádný nástroj se nejmenuje {{name}}, takže jeho pravidlo nic nedělá.",
+    "unknownToolSuggestion": "Žádný nástroj se nejmenuje {{name}}, takže jeho pravidlo nic nedělá. Měli jste na mysli {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Jste připojeni. Tuto kartu můžete zavřít a vrátit se do Oleafly.",
+    "failedPage": "Přihlášení se nedokončilo. Tuto kartu můžete zavřít a vrátit se do Oleafly."
   }
 }

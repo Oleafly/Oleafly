@@ -536,6 +536,26 @@ describe("FileTree keyboard", () => {
 });
 
 describe("FileTree context menus", () => {
+  it("serves every row from one tree menu that switches between row and empty-area actions", async () => {
+    render(<FileTree />);
+    expect(tree()).toHaveAttribute("data-state", "closed");
+    for (const treeitem of screen.getAllByRole("treeitem")) {
+      expect(treeitem).not.toHaveAttribute("data-state");
+    }
+
+    fireEvent.contextMenu(row("main.tex"));
+    let menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: enCommon.actions.rename })).toBeInTheDocument();
+    expect(within(menu).queryByRole("menuitem", { name: files.importFolder })).not.toBeInTheDocument();
+    fireEvent.keyDown(menu, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+
+    fireEvent.contextMenu(tree());
+    menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: files.importFolder })).toBeInTheDocument();
+    expect(within(menu).queryByRole("menuitem", { name: enCommon.actions.rename })).not.toBeInTheDocument();
+  });
+
   it.each([
     ["file", "the empty area", files.newFile, files.newEntry.filePlaceholder, "draft.tex"],
     ["dir", "the empty area", files.newFolder, files.newEntry.folderPlaceholder, "figures"],

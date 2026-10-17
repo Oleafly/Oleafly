@@ -1,0 +1,142 @@
+#!/bin/sh
+state=/stub/state
+printf 'docker %s\n' "$*" >>/stub/log
+if [ ! -f "$state/docker-running" ]; then
+	echo 'Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?' >&2
+	exit 1
+fi
+container_state() {
+	if [ -s "$state/container-states" ]; then
+		head -n 1 "$state/container-states"
+		if [ "$(wc -l <"$state/container-states")" -gt 1 ]; then
+			sed -i 1d "$state/container-states"
+		fi
+	elif [ -f "$state/container-state" ]; then
+		cat "$state/container-state"
+	else
+		echo 'running healthy 0'
+	fi
+}
+case $1 in
+	info) exit 0 ;;
+	version) cat "$state/docker-version" 2>/dev/null || echo 27.3.1 ;;
+	inspect)
+		case $3 in
+			'{{.RestartCount}}') container_state | awk '{ print $3 }' ;;
+			*RestartCount*) container_state ;;
+			*) container_state | awk '{ print $1 " " $2 }' ;;
+		esac
+		;;
+	volume)
+		case $2 in
+			inspect)
+				[ ! -f "$state/data-volume-removed" ] || exit 1
+				echo /var/lib/docker/volumes/oleafly-server_oleafly-data/_data
+				;;
+			rm) touch "$state/data-volume-removed" ;;
+		esac
+		;;
+	run)
+		if [ -f "$state/backup-fails" ]; then
+			echo 'tar: write error: No space left on device' >&2
+			exit 1
+		fi
+		backup_dir=
+		target=
+		while [ $# -gt 0 ]; do
+			case $1 in
+				-v)
+					case $2 in
+						*:/backup) backup_dir=${2%:/backup} ;;
+					esac
+					shift
+					;;
+				-czf)
+					target=$2
+					shift
+					;;
+			esac
+			shift
+		done
+		if [ -n "$backup_dir" ] && [ -n "$target" ]; then
+			echo backup >"$backup_dir/${target#/backup/}"
+		fi
+		;;
+	compose)
+		shift
+		if [ -f "$state/compose-missing" ]; then
+			echo "docker: 'compose' is not a docker command." >&2
+			exit 1
+		fi
+		files=
+		while [ $# -gt 0 ]; do
+			case $1 in
+				-f)
+					files="$files $2"
+					shift 2
+					;;
+				--project-directory) shift 2 ;;
+				*) break ;;
+			esac
+		done
+		case $1 in
+			version) echo 2.29.7 ;;
+			pull)
+				if [ -f "$state/pull-fails" ]; then
+					message=$(cat "$state/pull-fails")
+					echo "${message:-Error response from daemon: pull access denied}" >&2
+					exit 1
+				fi
+				pwd >"$state/compose-dir"
+				for file in ${files:-docker-compose.yml}; do
+					sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$file" >>"$state/pulled"
+				done
+				;;
+			up)
+				if [ -f "$state/up-fails" ]; then
+					cat "$state/up-fails" >&2
+					exit 1
+				fi
+				pwd >"$state/compose-dir"
+				env >"$state/compose-env"
+				id -u >"$state/compose-uid"
+				sed -n 's/^[[:space:]]*image:[[:space:]]*\(.*oleafly-server.*\)$/\1/p' docker-compose.yml >"$state/running-image"
+				touch "$state/up"
+				;;
+			stop) rm -f "$state/up" ;;
+			start)
+				if [ -f "$state/start-fails" ]; then
+					echo 'Error response from daemon: failed to start containers: oleafly-server' >&2
+					exit 1
+				fi
+				touch "$state/up"
+				;;
+			ps)
+				case $2 in
+					-q) [ -f "$state/up" ] && printf 'c%s\n' "$(cksum <"$state/running-image" | cut -d ' ' -f 1)" ;;
+					*)
+						if [ -f "$state/up" ]; then
+							echo 'caddy: Up 2 minutes'
+							echo 'oleafly-server: Up 2 minutes (healthy)'
+						fi
+						;;
+				esac
+				;;
+			logs)
+				if [ -f "$state/server-log" ]; then
+					cat "$state/server-log"
+				else
+					echo '2026-10-13T17:00:00.000000Z  INFO Setup code: ABCD-EFGH-JKMN-PQRS. This server has no admin yet. Enter the code in Oleafly when you add the server. It works once.'
+				fi
+				;;
+			exec) echo '-----BEGIN CERTIFICATE-----' ;;
+			down)
+				rm -f "$state/up"
+				case "$*" in
+					*--volumes*) touch "$state/volumes-removed" ;;
+				esac
+				touch "$state/down"
+				;;
+		esac
+		;;
+esac

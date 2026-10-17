@@ -3,7 +3,7 @@
 // detail line, the agent's full transcript from its rollout thread, and a
 // Stop-all affordance that interrupts the children without stopping the run.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bot,
   CheckCircle2,
@@ -25,6 +25,7 @@ import { MessageItem } from "@/components/ai/chat-parts";
 import type { RenderedMessage } from "@/components/ai/MessageList";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
+import { Avatar } from "@/components/ui/avatar";
 
 const EMPTY_RECORDS: TurnRecord[] = [];
 
@@ -59,13 +60,24 @@ function isRunning(status: AgentDisplayStatus): boolean {
   return status === "active" || status === "awaiting";
 }
 
+type SubagentItem = Extract<TurnRecord["items"][number]["item"], { type: "subAgentActivity" }>;
+
+const subagentItemsByRecord = new WeakMap<TurnRecord, SubagentItem[]>();
+
+function subagentItems(record: TurnRecord): SubagentItem[] {
+  let items = subagentItemsByRecord.get(record);
+  if (!items) {
+    items = record.items.flatMap(({ item }) => (item.type === "subAgentActivity" ? [item] : []));
+    subagentItemsByRecord.set(record, items);
+  }
+  return items;
+}
+
 /** Latest state per agent across the chat's turn records. */
 function collectAgents(records: TurnRecord[]): AgentState[] {
   const byId = new Map<string, AgentState>();
   for (const record of records) {
-    for (const recorded of record.items) {
-      if (recorded.item.type !== "subAgentActivity") continue;
-      const item = recorded.item;
+    for (const item of subagentItems(record)) {
       const existing = byId.get(item.agentId);
       byId.set(item.agentId, {
         id: item.agentId,
@@ -84,13 +96,16 @@ function collectAgents(records: TurnRecord[]): AgentState[] {
   return [...byId.values()];
 }
 
-/** Deterministic hue from the agent id: the chip color is stable per agent. */
-function avatarHue(id: string): number {
-  let hash = 0;
-  for (const char of id) {
-    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 360;
-  }
-  return hash;
+const NO_AGENTS: AgentState[] = [];
+const AGENT_FIELDS = [
+  "id", "label", "kind", "detail", "events", "runtime", "sessionId", "providerId", "modelId", "runtimeAgentId",
+] as const satisfies readonly (keyof AgentState)[];
+
+function sameAgents(shown: readonly AgentState[], next: readonly AgentState[]): boolean {
+  return (
+    shown.length === next.length &&
+    shown.every((agent, index) => AGENT_FIELDS.every((field) => agent[field] === next[index][field]))
+  );
 }
 
 function StatusIcon({ status }: Readonly<{ status: AgentDisplayStatus }>) {
@@ -156,10 +171,13 @@ export function SubagentActivity({
   projectId?: string | null;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
-  // A stable empty array keeps the selector's output referentially equal
-  // for chats without records (a fresh [] would re-render on every touch).
-  const records = useAgentTurnsStore((state) => state.recordsByChat[chatId] ?? EMPTY_RECORDS);
-  const agents = useMemo(() => collectAgents(records), [records]);
+  const shownAgents = useRef<AgentState[]>(NO_AGENTS);
+  const agents = useAgentTurnsStore((state) => {
+    const next = collectAgents(state.recordsByChat[chatId] ?? EMPTY_RECORDS);
+    if (sameAgents(shownAgents.current, next)) return shownAgents.current;
+    shownAgents.current = next;
+    return next;
+  });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const transcriptRequestRef = useRef(0);
@@ -290,7 +308,7 @@ export function SubagentActivity({
               data-subagent-status={status}
               aria-expanded={open}
               className={cn(
-                "flex items-center gap-1.5 rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] transition-colors hover:bg-accent",
+                "flex items-center gap-1.5 rounded-full border border-border/70 bg-background px-2 py-0.5 text-[0.6875rem] transition-colors hover:bg-accent",
                 open && "bg-accent",
               )}
               onClick={() => {
@@ -299,13 +317,7 @@ export function SubagentActivity({
                 if (!open) void openTranscript(agent);
               }}
             >
-              <span
-                aria-hidden
-                className="flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                style={{ backgroundColor: `hsl(${avatarHue(agent.id)} 55% 45%)` }}
-              >
-                {agent.label.slice(0, 1).toUpperCase()}
-              </span>
+              <Avatar person={{ id: agent.id, name: agent.label }} size="xs" />
               <span className="max-w-40 truncate">{agent.label}</span>
               <StatusIcon status={status} />
               <span
@@ -321,7 +333,7 @@ export function SubagentActivity({
         })}
       </div>
       {expanded && (
-        <div className="rounded-md border border-border/60 bg-background px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
+        <div className="rounded-md border border-border/60 bg-background px-2.5 py-2 text-[0.6875rem] leading-snug text-muted-foreground">
           <div className="mb-1 flex items-center gap-2">
             <span className="font-medium text-foreground">
               {agents.find((agent) => agent.id === expanded)?.label}
@@ -332,11 +344,11 @@ export function SubagentActivity({
               })}
             </span>
           </div>
-          <div>
+          <div className="select-text">
             {transcript?.agent === expanded && transcript.type === "acp" ? (
               <div className="max-h-80 space-y-2 overflow-y-auto">
                 {transcript.truncated && (
-                  <p className="text-[10px]">{t(($) => $.ai.subagents.transcriptTruncated)}</p>
+                  <p className="text-[0.625rem]">{t(($) => $.ai.subagents.transcriptTruncated)}</p>
                 )}
                 {transcript.rows.length > 0 ? transcript.rows.slice(-80).map((row) => (
                   <MessageItem
@@ -368,7 +380,7 @@ export function SubagentActivity({
                       <p
                         key={notice}
                         data-testid="agent-notice"
-                        className="mt-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[10px] leading-snug"
+                        className="mt-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[0.625rem] leading-snug"
                       >
                         {notice}
                       </p>
@@ -382,7 +394,7 @@ export function SubagentActivity({
             const agent = agents.find((value) => value.id === expanded);
             const details = [agent?.runtimeAgentId, agent?.providerId, agent?.modelId].filter(Boolean);
             return details.length > 0 ? (
-              <p className="mt-2 text-[10px] text-muted-foreground">{details.join(" · ")}</p>
+              <p className="mt-2 text-[0.625rem] text-muted-foreground">{details.join(" · ")}</p>
             ) : null;
           })()}
           {onOpenSession && (
@@ -400,13 +412,13 @@ export function SubagentActivity({
         </div>
       )}
       {anyAwaiting && (
-        <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-1.5 text-[0.6875rem] text-amber-600 dark:text-amber-400">
           <ShieldAlert className="size-3" />
           {t(($) => $.ai.subagents.awaitingPermission)}
         </div>
       )}
       {agents.some((agent) => agentStatus(agent.kind) === "failed") && (
-        <div className="flex items-center gap-1.5 text-[11px] text-destructive">
+        <div className="flex items-center gap-1.5 text-[0.6875rem] text-destructive">
           <XCircle className="size-3" />
           {t(($) => $.ai.subagents.taskFailed)}
         </div>

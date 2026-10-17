@@ -188,7 +188,8 @@
     "quote": "引文",
     "addLabel": "添加标签",
     "convertLatexMath": "将 LaTeX 公式转换为 Typst",
-    "noLatexMath": "请先选择一些 LaTeX 公式。"
+    "noLatexMath": "请先选择一些 LaTeX 公式。",
+    "renameFile": "重命名文件…"
   },
   "shell": {
     "noFileOpenTab": "未打开文件",
@@ -241,7 +242,7 @@
     "issues": "问题",
     "spelling": "拼写",
     "grammarAndStyle": "语法与风格",
-    "findingsTruncated": "问题列表已截断；上方的计数是完整的。",
+    "findingsTruncated": "问题列表已截断，但上方的计数是完整的。",
     "spellLanguage": "拼写检查语言",
     "spellLanguageAppSetting": "使用应用设置",
     "spellLanguageAriaLabel": "本项目的拼写检查语言",
@@ -357,7 +358,11 @@
     "sourceExcerpt": "源码第 {{line}} 行",
     "summaryErrors_other": "{{count}} 个错误",
     "summaryWarnings_other": "{{count}} 个警告",
-    "summaryReferences_other": "{{count}} 个未解析的引用"
+    "summaryReferences_other": "{{count}} 个未解析的引用",
+    "fontPack": "{{family}} 在免费字体包“{{pack}}”中。",
+    "fontPackAction": "下载并编译",
+    "fontPackDownloading": "正在下载…",
+    "fontPackFailed": "无法下载字体包。请检查网络连接后重试。"
   },
   "history": {
     "untitledCommit": "未命名提交",
@@ -385,7 +390,9 @@
     "unifiedView": "统一视图",
     "loading": "正在加载差异…",
     "previewTooLarge": "文件过大，无法预览差异。",
-    "diskHeading": "磁盘上 ↔ 你的编辑"
+    "diskHeading": "磁盘上 ↔ 你的编辑",
+    "sharedReadOnly": "在共享项目中，此差异为只读。请在编辑器中编辑文件。",
+    "viewerReadOnly": "你可以查看这个共享项目，但不能编辑。"
   },
   "hotkeys": {
     "title": "键盘快捷键",
@@ -419,7 +426,7 @@
       "indentOrAccept": "缩进 / 接受自动补全。",
       "goToDefinition": "转到定义",
       "findReferences": "查找引用",
-      "renameSymbol": "重命名符号（全项目）",
+      "renameSymbol": "重命名符号或文件（全项目）",
       "formatDocument": "格式化 Typst 文档",
       "commandPalette": "命令面板",
       "searchAllDocuments": "搜索所有文档",
@@ -447,7 +454,8 @@
     "noEntries": "此项目中还没有参考文献条目。",
     "addNew": "查找并添加新引用…",
     "duplicate": "重复 {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "来自你的 Zotero 库"
   },
   "inlineAi": {
     "promptPlaceholder": "描述修改内容…（Shift+Enter 换行）",
@@ -461,6 +469,7 @@
     "openInAgent": "在 AI 助手中继续，并可使用完整的项目工具。",
     "generateFailed": "无法生成修改。{{message}}",
     "dismiss": "忽略",
+    "withdrawn": "其他人编辑了这段文字，此建议已无法应用。",
     "setUpProvider": "设置 AI 提供商。",
     "setUpProviderHint": "添加 API 密钥（或本地 Ollama）即可使用内联 AI 编辑。",
     "openAiSettings": "打开设置 → AI。"
@@ -639,6 +648,7 @@
     "endOfDocument": "文档结尾",
     "hidePreamble": "隐藏文档导言区",
     "showPreamble": "显示文档导言区",
+    "sharedReadOnly": "在共享项目中，可视化模式只显示文件。要编辑，请切换到源码视图。",
     "findingLabel": "{{message}}。打开校对建议。",
     "rawBlockFindings_other": "此原始块中有 {{count}} 条校对发现。{{message}}。打开建议。"
   },
@@ -1439,7 +1449,8 @@
     "sources": {
       "project": "项目",
       "system": "系统",
-      "embedded": "内置"
+      "embedded": "内置",
+      "pack": "字体包"
     },
     "fontsFolder": "要在此项目中使用某种字体，请将其文件添加到项目的 fonts 文件夹。"
   },
@@ -1466,5 +1477,6 @@
     "keyInvalid": "值名称不能为空，也不能包含等号。",
     "keyTaken": "同一变体不能两次设置同一名称。",
     "saveFailed": "无法保存变体。"
-  }
+  },
+  "sharedSettingsViewer": "在共享项目中，查看者无法更改此项。"
 }

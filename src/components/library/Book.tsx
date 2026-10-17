@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Bookmark, BookmarkCheck, GitFork } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -88,7 +88,10 @@ export function Book({
   menu,
   preview,
   onPreviewRequest,
+  onPreviewCancel,
   dimmed = false,
+  pressed,
+  badge,
 }: Readonly<{
   title: string;
   color?: string;
@@ -100,14 +103,17 @@ export function Book({
   kind?: string;
   variant?: Variant;
   width?: number;
-  onClick?: () => void;
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   openLabel?: string;
   starred?: boolean;
   onStarToggle?: () => void;
   menu?: ReactNode;
   preview?: string | null;
   onPreviewRequest?: () => void;
+  onPreviewCancel?: () => void;
   dimmed?: boolean;
+  pressed?: boolean;
+  badge?: ReactNode;
 }>) {
   const { t } = useTranslation(["library"]);
   const coverColor = color ?? DEFAULT_BOOK_COLOR;
@@ -139,9 +145,12 @@ export function Book({
         type="button"
         tabIndex={0}
         aria-label={openLabel ?? t(($) => $.library.projects.open, { name: title })}
+        aria-pressed={pressed}
         onClick={onClick}
-        onMouseOver={onPreviewRequest}
+        onMouseEnter={onPreviewRequest}
+        onMouseLeave={onPreviewCancel}
         onFocus={onPreviewRequest}
+        onBlur={onPreviewCancel}
         className="block w-full cursor-pointer rounded-md border border-transparent text-left focus-visible:border-ring"
       >
         <div
@@ -184,14 +193,14 @@ export function Book({
               {kind && (
                 <span
                   data-testid="project-card-kind"
-                  className="mb-1 text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
+                  className="mb-1 text-[0.5625rem] font-semibold uppercase leading-none tracking-wide opacity-55"
                   style={{ color: ink }}
                 >
                   {kind}
                 </span>
               )}
               <span
-                className="line-clamp-3 text-[13px] font-semibold leading-snug [overflow-wrap:anywhere]"
+                className="line-clamp-3 text-[0.8125rem] font-semibold leading-snug [overflow-wrap:anywhere]"
                 style={{ color: ink }}
               >
                 {title}
@@ -209,6 +218,8 @@ export function Book({
               </div>
             )}
 
+            {badge ? <div className="pointer-events-none absolute right-1.5 top-1.5 z-20 flex">{badge}</div> : null}
+
             <div className="pointer-events-none absolute inset-0 rounded-md border border-black/10" />
           </div>
         </div>
@@ -216,7 +227,7 @@ export function Book({
       </button>
       {onStarToggle && (
         <div
-          className="absolute right-2 top-2 z-20 flex items-center gap-0.5"
+          className={cn("absolute top-2 z-20 flex items-center gap-0.5", badge ? "right-7" : "right-2")}
           style={{ color: ink }}
         >
           {(
@@ -243,11 +254,17 @@ export function Book({
           )}
         </div>
       )}
-      <div className="mt-2.5 flex items-end justify-between gap-2 px-0.5">
+      <div
+        data-testid="project-card-caption"
+        className={cn(
+          "relative mt-2.5 px-0.5",
+          menu && "group-hover:pr-7 has-[:focus-visible]:pr-7 has-[[data-state=open]]:pr-7",
+        )}
+      >
         <div className="min-w-0">
         {engine && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span data-testid="project-card-engine">{engine}</span>
+          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+            <span data-testid="project-card-engine" className="truncate">{engine}</span>
             {forkedFrom ? (
               <>
                 <span aria-hidden>•</span>
@@ -268,12 +285,16 @@ export function Book({
           </div>
         )}
         {date && (
-          <div data-testid="project-card-date" className="mt-0.5 text-xs text-muted-foreground">
+          <div
+            data-testid="project-card-date"
+            title={typeof date === "string" ? date : undefined}
+            className="mt-0.5 truncate text-xs text-muted-foreground"
+          >
             {date}
           </div>
         )}
         </div>
-        {menu}
+        {menu ? <div className="absolute bottom-0 right-0.5">{menu}</div> : null}
       </div>
     </div>
   );

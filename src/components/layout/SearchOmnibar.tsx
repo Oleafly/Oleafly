@@ -29,6 +29,7 @@ import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useTheme } from "@/lib/theme";
 import type { ProjectInfo, SearchHit } from "@/lib/tauri";
 import { useDocSearch } from "@/hooks/use-doc-search";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { i18n } from "@/i18n";
 import { gotoLine } from "@/components/editor/cm/controller";
@@ -104,9 +105,30 @@ function projectSearchFields(project: ProjectInfo, bookmarked: boolean) {
   };
 }
 
-export function projectMatches(project: ProjectInfo, query: string, bookmarked: boolean) {
+type ProjectSearchText = Readonly<{
+  fields: ReturnType<typeof projectSearchFields>;
+  all: string;
+}>;
+
+const projectSearchTexts = new WeakMap<ProjectInfo, [ProjectSearchText | null, ProjectSearchText | null]>();
+
+function projectSearchText(project: ProjectInfo, bookmarked: boolean): ProjectSearchText {
+  let slots = projectSearchTexts.get(project);
+  if (!slots) {
+    slots = [null, null];
+    projectSearchTexts.set(project, slots);
+  }
+  const slot = bookmarked ? 1 : 0;
+  const cached = slots[slot];
+  if (cached) return cached;
   const fields = projectSearchFields(project, bookmarked);
-  const all = Object.values(fields).join(" ").toLowerCase();
+  const text = { fields, all: Object.values(fields).join(" ").toLowerCase() };
+  slots[slot] = text;
+  return text;
+}
+
+export function projectMatches(project: ProjectInfo, query: string, bookmarked: boolean) {
+  const { fields, all } = projectSearchText(project, bookmarked);
   return query
     .toLowerCase()
     .split(/\s+/)
@@ -259,6 +281,7 @@ export function SearchOmnibar() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation(["common", "shell"]);
   const [query, setQuery] = useState("");
+  const listRef = useScrollTopOnChange(query);
 
   const ctx = useMemo<AppContext>(
     () => ({ projectId, projectKind, theme, latexToolsEnabled: latexTools }),
@@ -402,7 +425,7 @@ export function SearchOmnibar() {
           </span>
         </div>
 
-        <Command.List className="max-h-[min(60vh,440px)] overflow-auto p-1.5">
+        <Command.List ref={listRef} className="max-h-[min(60vh,440px)] overflow-auto p-1.5">
           {mode === "create" && (
             <Group heading={t(($) => $.shell.omnibar.groups.action)}>
               <Row
@@ -586,7 +609,7 @@ export function SearchOmnibar() {
             )}
         </Command.List>
 
-        <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[0.6875rem] text-muted-foreground">
           <span className="flex items-center gap-1">
             <Kbd className="border bg-background text-foreground">{t(($) => $.shell.keys.enter)}</Kbd>
             <span>{t(($) => $.common.actions.open)}</span>

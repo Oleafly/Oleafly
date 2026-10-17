@@ -5,6 +5,7 @@ import {
   createBlankProject,
   expectDesktopShellAnchored,
   openProject,
+  revealLibraryProject,
 } from "../helpers";
 
 interface GeometryFixture {
@@ -45,6 +46,49 @@ function expectCssSubpixel(
     delta,
     `${context}: expected ${expected}, received ${actual}, delta ${delta}`,
   ).toBeLessThanOrEqual(0.125);
+}
+
+const PDF_SCALE_FRACTIONS: Readonly<Record<number, readonly [number, number]>> = {
+  1: [1, 1],
+  1.25: [5, 4],
+  2: [2, 1],
+};
+
+function pdfScaleFraction(ratio: number): readonly [number, number] {
+  const fraction = PDF_SCALE_FRACTIONS[ratio];
+  if (!fraction) throw new Error(`No pdf.js output scale fraction for device pixel ratio ${ratio}`);
+  return fraction;
+}
+
+function pdfCssLength(length: number, ratio: number): number {
+  const [, denominator] = pdfScaleFraction(ratio);
+  return length - (length % denominator);
+}
+
+function pdfCanvasLength(length: number, ratio: number): number {
+  const [numerator] = pdfScaleFraction(ratio);
+  const pixels = length * ratio;
+  return pixels - (pixels % numerator);
+}
+
+const PDF_CANVAS_PIXEL_BUDGET = 5_242_880;
+
+function expectSettledCanvas(
+  page: { canvasWidth: number; canvasHeight: number },
+  width: number,
+  height: number,
+  ratio: number,
+): void {
+  const fullWidth = pdfCanvasLength(width, ratio);
+  const fullHeight = pdfCanvasLength(height, ratio);
+  if (fullWidth * fullHeight <= PDF_CANVAS_PIXEL_BUDGET) {
+    expect(page.canvasWidth).toBe(fullWidth);
+    expect(page.canvasHeight).toBe(fullHeight);
+    return;
+  }
+  expect(page.canvasWidth).toBeLessThan(fullWidth);
+  expect(page.canvasWidth * page.canvasHeight).toBeLessThanOrEqual(PDF_CANVAS_PIXEL_BUDGET);
+  expect(Math.abs(page.canvasWidth / page.canvasHeight - width / height)).toBeLessThan(0.01);
 }
 
 
@@ -256,9 +300,7 @@ async function openOrCreateE2eDoc(page: Parameters<typeof openProject>[0]): Prom
   await expect(
     page.locator('[data-testid="library"][data-projects-loaded="true"]'),
   ).toBeVisible({ timeout: 30_000 });
-  const projectExists = await page.evaluate<boolean>(
-    `!!document.querySelector('button[aria-label="Open E2E Doc"]')`,
-  );
+  const projectExists = await revealLibraryProject(page, "E2E Doc");
   if (projectExists) {
     await openProject(page, "E2E Doc");
   } else {
@@ -543,6 +585,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     markerWidth: number;
     markerHeight: number;
     rasterScale: string;
+    devicePixelRatio: number;
     rotation: string;
     userUnit: string;
     roundX: string;
@@ -586,6 +629,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
         markerWidth: spanRect.width,
         markerHeight: spanRect.height,
         rasterScale: page.dataset.pdfRasterScale || '',
+        devicePixelRatio: Number(page.dataset.pdfDevicePixelRatio || 0),
         rotation: page.dataset.pdfRotation || '',
         userUnit: page.dataset.pdfUserUnit || '',
         roundX: getComputedStyle(page).getPropertyValue('--scale-round-x').trim(),
@@ -601,16 +645,28 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
       inspect(2, 'ROTATED USER UNIT PAGE'),
     ];
   })()`;
+  const renderedRatio = () =>
+    tauriPage.evaluate<number>(
+      `Number(document.querySelector('[data-page="1"]')?.dataset.pdfDevicePixelRatio || 0)`,
+    );
+  const rasterWidths = () =>
+    tauriPage.evaluate<number[]>(
+      `[1, 2].map((pageNumber) => document.querySelector('[data-page="' + pageNumber + '"] .pdf-canvas')?.width ?? 0)`,
+    );
+  const ratio = await renderedRatio();
+  expect(ratio).toBeGreaterThan(0);
+  await expect.poll(rasterWidths, { timeout: 15_000 }).toEqual([pdfCanvasLength(612, ratio), pdfCanvasLength(900, ratio)]);
   const baseline = await tauriPage.evaluate<PageGeometry[]>(inspectPages);
 
   expectCssSubpixel(baseline[0].width, 612);
   expectCssSubpixel(baseline[0].height, 792);
-  expect(baseline[0].canvasWidth).toBe(765);
-  expect(baseline[0].canvasHeight).toBe(990);
-  expectCssSubpixel(baseline[1].width, 900);
-  expectCssSubpixel(baseline[1].height, 628);
-  expect(baseline[1].canvasWidth).toBe(1_125);
-  expect(baseline[1].canvasHeight).toBe(785);
+  expect(baseline[0].devicePixelRatio).toBe(ratio);
+  expect(baseline[0].canvasWidth).toBe(pdfCanvasLength(612, ratio));
+  expect(baseline[0].canvasHeight).toBe(pdfCanvasLength(792, ratio));
+  expectCssSubpixel(baseline[1].width, pdfCssLength(900, ratio));
+  expectCssSubpixel(baseline[1].height, pdfCssLength(630, ratio));
+  expect(baseline[1].canvasWidth).toBe(pdfCanvasLength(900, ratio));
+  expect(baseline[1].canvasHeight).toBe(pdfCanvasLength(630, ratio));
   expect(baseline[1].rotation).toBe("90");
   expect(baseline[1].userUnit).toBe("1.5");
   // These expectations come from pdf.js' PDF viewport multiplied by the text
@@ -646,8 +702,8 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   );
   // pdf.js intentionally rounds the CSS page down to the DPR denominator.
   // TextLayer emits percentage positions, so transform-space coordinates on
-  // the rotated axis scale by the independently asserted 628/630 page ratio.
-  const rotatedBaselineScaleY = 628 / rotatedExpected.viewportHeight;
+  // the rotated axis scale by the independently asserted rounded/exact page ratio.
+  const rotatedBaselineScaleY = pdfCssLength(630, ratio) / rotatedExpected.viewportHeight;
   expectCssSubpixel(
     baseline[1].markerTop,
     rotatedExpected.baselineY * rotatedBaselineScaleY,
@@ -666,8 +722,8 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   expectCssSubpixel(baseline[1].markerHeight, rotatedExpectedRect.height);
   for (const page of baseline) {
     expect(page.layerEdgeError).toBeLessThanOrEqual(0.05);
-    expect(page.roundX).toBe("4px");
-    expect(page.roundY).toBe("4px");
+    expect(page.roundX).toBe(`${pdfScaleFraction(ratio)[1]}px`);
+    expect(page.roundY).toBe(`${pdfScaleFraction(ratio)[1]}px`);
   }
 
   // A DOM hit test is only meaningful while the glyph is inside the viewport.
@@ -750,7 +806,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   expectCssSubpixel(transient[0].width, 1_224);
   expectCssSubpixel(transient[0].height, 1_584);
   expectCssSubpixel(transient[1].width, 1_800);
-  expectCssSubpixel(transient[1].height, 1_260);
+  expectCssSubpixel(transient[1].height, pdfCssLength(1_260, ratio));
   for (let index = 0; index < transient.length; index++) {
     expect(transient[index].layerEdgeError).toBeLessThanOrEqual(0.05);
   }
@@ -772,7 +828,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
   expectCssSubpixel(transient[0].markerTop, firstTransientRect.top);
   expectCssSubpixel(transient[0].markerWidth, firstTransientRect.width);
   expectCssSubpixel(transient[0].markerHeight, firstTransientRect.height);
-  const rotatedTransientScaleY = 1_260 / rotatedExpected.viewportHeight;
+  const rotatedTransientScaleY = pdfCssLength(1_260, ratio) / rotatedExpected.viewportHeight;
   expectCssSubpixel(
     transient[1].markerTop,
     rotatedExpected.baselineY * rotatedTransientScaleY,
@@ -800,11 +856,22 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
      document.querySelector('[data-page="2"]')?.dataset.pdfRasterScale === "2"`,
     30_000,
   );
+  await expect
+    .poll(
+      async () => {
+        const [first, second] = await rasterWidths();
+        return first > pdfCanvasLength(612, ratio) && second > pdfCanvasLength(900, ratio);
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  await tauriPage.waitForFunction(`
+    document.querySelector('[data-page="1"] .textLayer')?.textContent?.includes('GEOMETRY PAGE ONE') &&
+    document.querySelector('[data-page="2"] .textLayer')?.textContent?.includes('ROTATED USER UNIT PAGE')
+  `, 15_000);
   const crisp = await tauriPage.evaluate<PageGeometry[]>(inspectPages);
-  expect(crisp[0].canvasWidth).toBe(1_530);
-  expect(crisp[0].canvasHeight).toBe(1_980);
-  expect(crisp[1].canvasWidth).toBe(2_250);
-  expect(crisp[1].canvasHeight).toBe(1_575);
+  expectSettledCanvas(crisp[0], 1_224, 1_584, ratio);
+  expectSettledCanvas(crisp[1], 1_800, pdfCssLength(1_260, ratio), ratio);
   for (let index = 0; index < crisp.length; index++) {
     expectCssSubpixel(crisp[index].markerLeft, transient[index].markerLeft);
     expectCssSubpixel(crisp[index].markerTop, transient[index].markerTop);

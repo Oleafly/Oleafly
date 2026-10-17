@@ -107,6 +107,63 @@ describe("LaTeX symbol recovery", () => {
     });
   });
 
+  it("never reads a definition, or a heading or label inside one, as a section", () => {
+    const lines = [
+      String.raw`\renewcommand\section{\clearpageforsection\oldsection}`,
+      String.raw`\newcommand{\nsubsection}[1]{\subsection{\MakeUppercase{#1}}\label{sec:#1}}`,
+      String.raw`  \section{Real}`,
+    ];
+    const inner = lines[1].indexOf(String.raw`\subsection`);
+    const label = lines[1].indexOf(String.raw`\label`);
+    const result = contribute({ "main.tex": lines.join("\n") }, [
+      { name: String.raw`define \clearpageforsection\oldsection`, kind: 12, line: 0, from: 0, to: lines[0].length },
+      { name: String.raw`\MakeUppercase{#1}`, kind: 5, line: 1, from: inner, to: label },
+      { name: "sec:#1", kind: 7, line: 1, from: label, to: lines[1].length - 1 },
+      { name: "Real", kind: 5, line: 2, from: 0, to: lines[2].length },
+    ]);
+    expect(summary(result)).toEqual([
+      ["macro", "section", null],
+      ["section", "Real", 1],
+    ]);
+  });
+
+  it("reads only a whole definition command name as a definition head", () => {
+    const heads = [
+      "def",
+      "gdef",
+      "edef",
+      "xdef",
+      "newcommand",
+      "renewcommand",
+      "providecommand",
+      "DeclareRobustCommand",
+      "newenvironment",
+      "renewenvironment",
+      "provideenvironment",
+      "NewDocumentCommand",
+      "RenewDocumentCommand",
+      "ProvideDocumentCommand",
+      "DeclareDocumentCommand",
+      "NewDocumentEnvironment",
+      "RenewDocumentEnvironment",
+      "ProvideDocumentEnvironment",
+      "DeclareDocumentEnvironment",
+    ];
+    const kinds = (text: string) =>
+      contribute({ "main.tex": text }, [{ name: "Entry", kind: 2, line: 0, from: 0, to: text.length }]).definitions.map(
+        (definition) => definition.kind,
+      );
+    for (const head of heads) {
+      expect(kinds(` \\${head}{x}`)).not.toContain("section");
+      expect(kinds(`\\${head}* {x}`)).not.toContain("section");
+      expect(kinds(`\\${head}x{y}`)).toEqual(["section"]);
+      expect(kinds(`\\${head}@{y}`)).toEqual(["section"]);
+      expect(kinds(`\\${head}é{y}`)).toEqual(["section"]);
+      expect(kinds(`x\\${head}{y}`)).toEqual(["section"]);
+    }
+    expect(kinds(String.raw`\label{a}`)).toEqual(["section"]);
+  });
+
   it("clamps a range whose end precedes its start", () => {
     const result = contribute({ "main.tex": source }, [{ name: "fig:x", kind: 7, line: 2, from: 13, to: 0 }]);
     expect(result.definitions).toEqual([]);

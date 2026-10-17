@@ -188,7 +188,8 @@
     "quote": "Lainaus",
     "addLabel": "Lisää nimike",
     "convertLatexMath": "Muunna LaTeX-matematiikka Typst-muotoon",
-    "noLatexMath": "Valitse ensin LaTeX-matematiikkaa."
+    "noLatexMath": "Valitse ensin LaTeX-matematiikkaa.",
+    "renameFile": "Nimeä tiedosto uudelleen…"
   },
   "shell": {
     "noFileOpenTab": "Ei avointa tiedostoa",
@@ -364,7 +365,11 @@
     "summaryWarnings_one": "{{count}} varoitus",
     "summaryWarnings_other": "{{count}} varoitusta",
     "summaryReferences_one": "{{count}} ratkaisematon viittaus",
-    "summaryReferences_other": "{{count}} ratkaisematonta viittausta"
+    "summaryReferences_other": "{{count}} ratkaisematonta viittausta",
+    "fontPack": "{{family}} kuuluu ilmaiseen fonttipakettiin {{pack}}.",
+    "fontPackAction": "Lataa ja käännä",
+    "fontPackDownloading": "Ladataan…",
+    "fontPackFailed": "Fonttipakettia ei voitu ladata. Tarkista yhteys ja yritä uudelleen."
   },
   "history": {
     "untitledCommit": "Nimetön commit",
@@ -392,7 +397,9 @@
     "unifiedView": "Yhdistetty näkymä",
     "loading": "Ladataan vertailua…",
     "previewTooLarge": "Tiedosto on liian suuri vertailun esikatseluun.",
-    "diskHeading": "Levyllä ↔ Omat muutoksesi"
+    "diskHeading": "Levyllä ↔ Omat muutoksesi",
+    "sharedReadOnly": "Jaetussa projektissa tämä vertailu on vain luettavissa. Muokkaa tiedostoa editorissa.",
+    "viewerReadOnly": "Voit katsoa tätä jaettua projektia, mutta et muokata sitä."
   },
   "hotkeys": {
     "title": "Pikanäppäimet",
@@ -426,7 +433,7 @@
       "indentOrAccept": "Sisennä tai hyväksy täydennys",
       "goToDefinition": "Siirry määritelmään",
       "findReferences": "Etsi viitteet",
-      "renameSymbol": "Nimeä symboli uudelleen (koko projektissa)",
+      "renameSymbol": "Nimeä symboli tai tiedosto uudelleen (koko projektissa)",
       "formatDocument": "Muotoile Typst-dokumentti",
       "commandPalette": "Komentopaletti",
       "searchAllDocuments": "Hae kaikista dokumenteista",
@@ -454,7 +461,8 @@
     "noEntries": "Tässä projektissa ei ole vielä lähdeviitteitä.",
     "addNew": "Etsi ja lisää uusi viittaus…",
     "duplicate": "kahteen kertaan {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Zotero-kirjastostasi"
   },
   "inlineAi": {
     "promptPlaceholder": "Kuvaile muutos…  (Shift+Enter lisää rivinvaihdon)",
@@ -468,6 +476,7 @@
     "openInAgent": "Jatka tekoälyavustajassa, jossa on käytössä kaikki projektityökalut",
     "generateFailed": "Muokkausta ei voitu luoda. {{message}}",
     "dismiss": "Sulje",
+    "withdrawn": "Joku muu muokkasi tätä tekstiä, joten ehdotusta ei voi enää käyttää.",
     "setUpProvider": "Ota tekoälypalvelu käyttöön",
     "setUpProviderHint": "Lisää API-avain (tai paikallinen Ollama), niin tekstin sisäiset tekoälymuokkaukset toimivat.",
     "openAiSettings": "Avaa Asetukset → Tekoäly"
@@ -649,6 +658,7 @@
     "endOfDocument": "Dokumentin loppu",
     "hidePreamble": "Piilota dokumentin esittelyosa",
     "showPreamble": "Näytä dokumentin esittelyosa",
+    "sharedReadOnly": "Jaetussa projektissa visuaalinen tila vain näyttää tiedoston. Vaihda lähdekoodinäkymään, jos haluat muokata sitä.",
     "findingLabel": "{{message}}. Avaa oikolukuehdotukset.",
     "rawBlockFindings_one": "{{count}} oikolukuhavainto tässä raakalohkossa. {{message}}. Avaa ehdotukset.",
     "rawBlockFindings_other": "{{count}} oikolukuhavaintoa tässä raakalohkossa. {{message}}. Avaa ehdotukset."
@@ -1460,7 +1470,8 @@
     "sources": {
       "project": "Projekti",
       "system": "Järjestelmä",
-      "embedded": "Sisäänrakennettu"
+      "embedded": "Sisäänrakennettu",
+      "pack": "Fonttipaketti"
     },
     "fontsFolder": "Jos haluat käyttää fonttia tässä projektissa, lisää sen tiedosto projektin fonts-kansioon."
   },
@@ -1487,5 +1498,6 @@
     "keyInvalid": "Arvon nimi ei voi olla tyhjä eikä sisältää yhtäsuuruusmerkkiä.",
     "keyTaken": "Muunnelma ei voi asettaa samaa nimeä kahdesti.",
     "saveFailed": "Muunnelmia ei voitu tallentaa."
-  }
+  },
+  "sharedSettingsViewer": "Katselijat eivät voi muuttaa tätä jaetussa projektissa."
 }

@@ -18,12 +18,14 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: vi.fn() }));
 vi.mock("@/lib/tauri", () => ({
+  COLLAB_LIVE_WRITTEN_EVENT: "collab-live-written",
   watchProjectFolder: mocks.watchProjectFolder,
   unwatchProjectFolder: mocks.unwatchProjectFolder,
 }));
 vi.mock("@/lib/external-file-changes", () => ({ applyFolderChange: mocks.applyFolderChange }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
+import { diskHash } from "@/lib/disk-hash";
 import { useFilesStore } from "@/store/files";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import { FolderWatchKeeper } from "./FolderWatchKeeper";
@@ -41,6 +43,41 @@ afterEach(() => {
   useProjectAvailabilityStore.getState().reset(null);
 });
 
+describe("FolderWatchKeeper and the files a stopped live session wrote", () => {
+  function written(text: string) {
+    act(() =>
+      mocks.events.get("collab-live-written")?.({
+        payload: {
+          projectId: "linked-a",
+          files: [{ path: "main.tex", hash: diskHash(text), crlf: false, length: text.length }],
+        },
+      }),
+    );
+  }
+
+  it("takes what the disk holds when the window has that text, with or without a live session", async () => {
+    useFilesStore.setState({ files: { "main.tex": { content: "a\nremote\n", dirty: false } } });
+    const view = render(<FolderWatchKeeper />);
+    await waitFor(() => expect(mocks.events.has("collab-live-written")).toBe(true));
+    written("a\nremote\n");
+    expect(mocks.applyFolderChange).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
+  it("checks a file like any outside change when the disk holds text the window doesn't have", async () => {
+    useFilesStore.setState({ files: { "main.tex": { content: "a\n", dirty: false } } });
+    const view = render(<FolderWatchKeeper />);
+    await waitFor(() => expect(mocks.events.has("collab-live-written")).toBe(true));
+    written("a\ncollaborator\n");
+    expect(mocks.applyFolderChange).toHaveBeenCalledExactlyOnceWith({
+      projectId: "linked-a",
+      paths: ["main.tex"],
+      rescan: false,
+    });
+    view.unmount();
+  });
+});
+
 describe("FolderWatchKeeper", () => {
   it("watches an opened folder and stops when the project closes", async () => {
     const view = render(<FolderWatchKeeper />);
@@ -51,11 +88,25 @@ describe("FolderWatchKeeper", () => {
     view.unmount();
   });
 
-  it("never watches a library project", async () => {
+  it("asks Rust about a library project and leaves it alone when Rust declines", async () => {
+    mocks.watchProjectFolder.mockResolvedValueOnce(null);
+    useFilesStore.setState({ projectId: "paper", manifestHome: "library" });
+    const view = render(<FolderWatchKeeper />);
+    await waitFor(() => expect(mocks.watchProjectFolder).toHaveBeenCalledWith("paper"));
+
+    view.unmount();
+    await act(() => Promise.resolve());
+    expect(mocks.unwatchProjectFolder).not.toHaveBeenCalled();
+  });
+
+  it("watches a shared library project and stops when the project closes", async () => {
+    mocks.watchProjectFolder.mockResolvedValueOnce(9);
     useFilesStore.setState({ projectId: "paper", manifestHome: "library" });
     render(<FolderWatchKeeper />);
-    await act(() => Promise.resolve());
-    expect(mocks.watchProjectFolder).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.watchProjectFolder).toHaveBeenCalledWith("paper"));
+
+    act(() => useFilesStore.setState({ projectId: null }));
+    await waitFor(() => expect(mocks.unwatchProjectFolder).toHaveBeenCalledWith("paper", 9));
   });
 
   it("stops while the folder is unavailable and starts again when it returns", async () => {

@@ -96,10 +96,16 @@ vi.mock("@/store/compile", () => ({
 }));
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { EnginePickerModal } from "./EnginePickerModal";
 
 const copy = enShell.enginePicker;
 const MINTED = { id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" };
+const declined = `${APP_ERROR_PREFIX}${JSON.stringify({
+  code: "project.shell_escape_declined",
+  params: {},
+  detail: null,
+})}`;
 
 beforeEach(() => {
   for (const value of Object.values(mocks)) {
@@ -283,6 +289,38 @@ describe("EnginePickerModal states", () => {
     expect(mocks.setEngine).toHaveBeenCalledWith("latexmk", null);
     expect(mocks.close).not.toHaveBeenCalled();
     expect(mocks.success).not.toHaveBeenCalled();
+  });
+
+  it("keeps the switch but skips the compile when the person cancels the shared project warning", async () => {
+    mocks.setShellEscape.mockRejectedValue(declined);
+    mocks.picker.source = "compile-failure";
+    mocks.picker.findings = [{ id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" }];
+    render(<EnginePickerModal />);
+    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
+    await waitFor(() => expect(mocks.close).toHaveBeenCalled());
+    expect(mocks.setEngine).toHaveBeenCalledWith("latexmk", null);
+    expect(mocks.setShellEscape).toHaveBeenCalledExactlyOnceWith(true);
+    expect(mocks.success).toHaveBeenCalledExactlyOnceWith(
+      copy.switched.replace("{{engine}}", copy.engineNames.latexmk),
+    );
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.logError).not.toHaveBeenCalled();
+    expect(mocks.recompile).not.toHaveBeenCalled();
+  });
+
+  it("stays open without an error when the person cancels the warning before a recompile", async () => {
+    mocks.files.engine = { id: "latexmk", allow_shell_escape: false };
+    mocks.picker.source = "compile-failure";
+    mocks.picker.findings = [{ id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" }];
+    mocks.setShellEscape.mockRejectedValue(declined);
+    render(<EnginePickerModal />);
+    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
+    await waitFor(() => expect(mocks.setShellEscape).toHaveBeenCalledExactlyOnceWith(true));
+    await waitFor(() => expect(screen.getByTestId("engine-picker-use-system")).toBeEnabled());
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.logError).not.toHaveBeenCalled();
+    expect(mocks.close).not.toHaveBeenCalled();
+    expect(mocks.recompile).not.toHaveBeenCalled();
   });
 
   it("allows external commands before recompiling a latexmk project that needs them", async () => {

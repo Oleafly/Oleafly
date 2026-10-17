@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "사용자 지정 승인 모드는 이 파일을 읽습니다. 파일은 ~/.oleafly/approvals.toml에 있으며 이 기기의 모든 프로젝트에 적용됩니다.",
+        "description": "파일은 ~/.oleafly/approvals.toml에 있으며 이 기기의 모든 프로젝트에 적용됩니다. 거부 규칙은 모든 승인 모드에서 도구를 막습니다. 허용 규칙은 사용자 지정 모드에서만 적용됩니다.",
         "discard": "변경 사항 버리기",
         "emptyFile": "아직 파일이 비어 있습니다.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "첫 번째 테이블인 <modesTable>[\"$approval_modes\"]</modesTable>은 프로젝트별 승인 모드를 정합니다. <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> 또는 <custom>\"custom\"</custom>을 쓸 수 있습니다. 목록에 없는 프로젝트는 알아서 승인을 씁니다.",
           "openProject": "열려 있는 프로젝트 {{name}}의 아이디는 <projectId>{{id}}</projectId>입니다.",
           "projectIds": "프로젝트 아이디는 ~/.oleafly/projects 아래의 폴더 이름입니다.",
-          "rules": "그다음에는 프로젝트 아이디마다 테이블이 하나씩 있고, 도구별 규칙을 담습니다. <allow>\"allow\"</allow>는 묻지 않고 도구를 실행하고 <deny>\"deny\"</deny>는 거부합니다. 거부 규칙은 모든 모드에서 적용되고, 허용 규칙은 사용자 지정 모드에서 적용되며 run_command의 경우 다른 모드에서도 확인 창을 건너뜁니다.",
+          "rules": "그다음에는 프로젝트 아이디마다 테이블이 하나씩 있고, 도구별 규칙을 담습니다. <allow>\"allow\"</allow>는 묻지 않고 도구를 실행하고 <deny>\"deny\"</deny>는 거부합니다. 거부 규칙은 전체 접근 권한을 포함한 모든 모드에서 적용됩니다. 허용 규칙은 사용자 지정 모드에서만 적용됩니다.",
           "toolNames": "쓸 수 있는 도구 이름: <names>{{names}}</names>과(와) 도구 목록에 있는 모든 MCP 도구의 전체 이름."
         },
         "helpToggle": "이 파일의 동작 방식",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "항상 허용",
         "denied": "항상 거부",
-        "description": "{{name}}에 저장된 규칙입니다. 승인 모드가 사용자 지정일 때 적용됩니다. 규칙을 제거하면 해당 도구에 기본 위험 정책을 씁니다.",
+        "description": "{{name}}에 저장된 규칙입니다. 거부한 도구는 모든 승인 모드에서 계속 막힙니다. 허용한 도구는 사용자 지정 모드에서만 확인 없이 실행됩니다. 규칙을 제거하면 해당 도구에 기본 위험 정책을 씁니다.",
         "empty": "아직 저장된 규칙이 없습니다. 승인 창에서 \"이 프로젝트에서는 항상\"을 눌러 규칙을 추가하세요.",
         "removeRule": "{{tool}}의 규칙 제거",
         "thisProject": "이 프로젝트",
@@ -530,12 +530,17 @@
         "right": "오른쪽"
       },
       "font": {
-        "description": "글꼴이 설치되어 있지 않으면 시스템 대체 글꼴을 씁니다.",
+        "description": "메뉴, 패널, 대화 상자에 쓸 글꼴을 컴퓨터에 설치된 글꼴 중에서 고르세요.",
         "label": "앱 글꼴"
       },
       "fontSize": {
         "description": "메뉴, 패널, 버튼의 글자 크기를 조절합니다.",
         "label": "앱 글꼴 크기"
+      },
+      "zoom": {
+        "description": "편집기와 PDF를 포함해 Oleafly 전체를 크게 또는 작게 합니다.",
+        "label": "확대/축소",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "시스템을 고르면 운영체제 설정을 따르고 그에 맞춰 바뀝니다.",
@@ -579,7 +584,7 @@
         "label": "모서리 반경"
       },
       "resetAll": "모두 초기화",
-      "resetMode": "이 모드 초기화",
+      "resetMode": "초기화",
       "title": "테마 사용자 지정",
       "tokenInputDark": "어두운 모드의 {{token}} 토큰",
       "tokenInputLight": "밝은 모드의 {{token}} 토큰",
@@ -628,28 +633,72 @@
         "label": "자동 완성"
       },
       "font": {
-        "description": "소스 파일에 쓸 고정폭 글꼴을 고르세요.",
-        "label": "편집기 글꼴"
+        "description": "소스 파일에 쓸 글꼴을 컴퓨터에 설치된 글꼴 중에서 고르세요.",
+        "label": "편집기 글꼴",
+        "monospace": "고정폭"
+      },
+      "useAppFont": {
+        "description": "편집기가 앱 글꼴과 앱 글꼴 크기를 따릅니다.",
+        "disabledHint": "바꾸려면 앱 글꼴 사용을 끄세요.",
+        "label": "앱 글꼴 사용"
       },
       "fontSize": {
         "description": "소스 편집기의 글자 크기를 정합니다.",
-        "label": "편집기 글꼴 크기"
+        "label": "편집기 글꼴 크기",
+        "custom": "사용자 지정",
+        "customLabel": "사용자 지정 편집기 글꼴 크기(픽셀)"
       },
       "ghostCompletion": {
         "description": "커서 뒤에 예상되는 완성을 표시합니다. Tab을 누르면 적용됩니다.",
         "label": "인라인 제안"
-      },
-      "nonBlinkingCursor": {
-        "description": "편집기 커서를 깜박이지 않게 합니다.",
-        "label": "깜박이지 않는 커서"
       },
       "stickyScroll": {
         "description": "스크롤하는 동안 현재 절, 제목, 환경을 위쪽에 고정합니다.",
         "label": "고정 스크롤"
       },
       "theme": {
-        "description": "앱 테마와 별개로 소스 구문 색상을 정합니다.",
-        "label": "편집기 테마"
+        "dark": {
+          "description": "앱이 어두운 모드일 때의 편집기 테마입니다.",
+          "label": "어두운 모드 테마"
+        },
+        "light": {
+          "description": "앱이 밝은 모드일 때의 편집기 테마입니다.",
+          "label": "밝은 모드 테마"
+        }
+      },
+      "colors": {
+        "description": "편집기 테마의 색상을 원하는 대로 바꾸세요. 변경 사항은 테마마다 따로 저장됩니다.",
+        "editing": "{{theme}} 편집 중",
+        "editorGroup": "편집기",
+        "mode": {
+          "dark": "어두운 모드",
+          "light": "밝은 모드"
+        },
+        "modeAriaLabel": "사용자 지정할 테마",
+        "names": {
+          "background": "배경",
+          "command": "명령",
+          "comment": "주석",
+          "environment": "환경",
+          "formatting": "서식",
+          "heading": "제목",
+          "lineNumbers": "줄 번호",
+          "link": "링크",
+          "math": "수식",
+          "name": "이름과 키",
+          "reference": "인용과 참조",
+          "selection": "선택 영역",
+          "structure": "프리앰블과 가져오기",
+          "symbol": "괄호와 기호",
+          "text": "텍스트",
+          "value": "값과 문자열"
+        },
+        "pick": "{{color}} 색상 고르기",
+        "previewAriaLabel": "미리보기 언어",
+        "reset": "초기화",
+        "syntaxGroup": "구문",
+        "title": "편집기 색상",
+        "useThemeColor": "{{color}}에 테마 색상 사용"
       },
       "keymap": {
         "description": "소스 편집기가 쓸 키 바인딩 모음을 고르세요.",
@@ -666,12 +715,61 @@
         "options": {
           "compact": "좁게",
           "normal": "보통",
-          "wide": "넓게"
+          "wide": "넓게",
+          "custom": "사용자 지정"
+        },
+        "customLabel": "사용자 지정 줄 높이"
+      },
+      "letterSpacing": {
+        "customLabel": "사용자 지정 자간(픽셀)",
+        "description": "소스 편집기의 글자 사이에 간격을 더합니다. 커서 주변에도 여유가 생깁니다.",
+        "label": "자간",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "보통",
+          "custom": "사용자 지정"
         }
+      },
+      "cursorWidth": {
+        "label": "커서 너비",
+        "description": "편집기 커서의 굵기를 정합니다.",
+        "option": "{{width}}px"
+      },
+      "cursorHeight": {
+        "label": "커서 높이",
+        "description": "편집기 커서의 높이를 설정합니다. '줄'을 선택하면 줄 전체 높이가 됩니다.",
+        "options": {
+          "text": "텍스트",
+          "line": "줄"
+        }
+      },
+      "cursorBlinking": {
+        "label": "커서 깜박임",
+        "description": "편집기 커서가 깜박이는 방식을 고릅니다. '끔'을 선택하면 깜박이지 않습니다.",
+        "options": {
+          "blink": "깜박임",
+          "smooth": "부드럽게",
+          "phase": "페이즈",
+          "expand": "늘이기",
+          "off": "끔"
+        }
+      },
+      "cursorColor": {
+        "label": "커서 색상",
+        "description": "밝은 편집기 테마와 어두운 편집기 테마는 각각 커서 색상을 따로 가집니다. 직접 고르기 전까지는 테마의 색상을 씁니다.",
+        "light": "밝게",
+        "dark": "어둡게",
+        "pickLight": "밝은 편집기 테마의 커서 색상 고르기",
+        "pickDark": "어두운 편집기 테마의 커서 색상 고르기",
+        "useTheme": "테마 색상 사용"
       },
       "lineWrap": {
         "description": "가로로 스크롤하는 대신 긴 줄을 접어서 표시합니다.",
         "label": "긴 줄 접기"
+      },
+      "highlightCurrentLine": {
+        "label": "현재 줄 강조",
+        "description": "커서가 있는 줄의 배경에 색을 입힙니다."
       },
       "tabSize": {
         "description": "들여쓰기 한 단계에 넣는 공백 수이자 탭이 표시되는 너비입니다.",
@@ -703,6 +801,15 @@
           "description": "Typst 파일을 저장할 때마다 실수일 만한 부분을 검사합니다. 이 설정을 켜거나 끄면 Typst 언어 서버가 다시 시작됩니다.",
           "label": "Typst 린트 검사"
         }
+      },
+      "fileMove": {
+        "label": "파일을 옮길 때",
+        "description": "LaTeX, Typst, Markdown 소스에서 이름이 바뀌거나 옮겨진 파일을 가리키는 경로를 업데이트합니다.",
+        "options": {
+          "ask": "묻기",
+          "always": "항상 업데이트",
+          "never": "업데이트 안 함"
+        }
       }
     },
     "files": {
@@ -730,6 +837,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} 글꼴이 설치되어 있지 않아 기본 글꼴을 씁니다.",
     "preview": {
       "darkMode": {
         "description": "기본적으로 PDF 색상을 반전합니다. 미리보기 도구 모음에서 색상을 바꿀 수 있습니다.",
@@ -738,10 +846,6 @@
       "hoverPreview": {
         "description": "라이브러리에서 프로젝트 위에 마우스를 올리면 마지막으로 컴파일한 페이지를 보여 줍니다.",
         "label": "마우스를 올리면 PDF 미리보기"
-      },
-      "zoomShortcuts": {
-        "description": "Cmd/Ctrl +, -, 0으로 앱 창 대신 PDF를 확대하거나 축소합니다.",
-        "label": "PDF 확대 단축키"
       }
     },
     "sectionName": "모양",
@@ -805,6 +909,17 @@
         "description": "터미널을 처음 열 때가 아니라 프로젝트를 열 때 shell을 시작합니다.",
         "label": "프로젝트와 함께 shell 시작"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Zen 모드에서 화면을 가득 채우고, 나갈 때 창을 원래대로 되돌립니다.",
+        "label": "전체 화면으로 전환"
+      },
+      "showPdf": {
+        "description": "Zen 모드에서 PDF가 숨겨져 있으면 컴파일할 때 편집기 옆에 엽니다.",
+        "label": "컴파일할 때 PDF 표시"
+      },
+      "title": "Zen 모드"
     }
   },
   "checkpoints": {
@@ -875,7 +990,6 @@
   },
   "cite": {
     "apa": "같은 참고문헌의 APA 형식은 GitHub의 Cite this repository에 있습니다",
-    "copyBibtex": "BibTeX 복사",
     "description": "Oleafly는 무료 오픈소스이고, 사람들이 존재를 알아야 그 상태를 이어 갈 수 있습니다. 논문에 도움이 되었다면 참고문헌 한 줄이 다음 연구자에게 이 도구의 출처를 알려 줍니다. 항목을 복사해 .bib 파일에 붙여 넣고 <citeKey>oleafly</citeKey> 키로 인용하세요.",
     "title": "논문에서 Oleafly 인용하기"
   },
@@ -885,13 +999,15 @@
       "download": "다운로드",
       "downloadAll": "모두 다운로드"
     },
-    "aiTemplates": {
-      "deleteDescription": "라이브러리에서 \"{{name}}\"을(를) 삭제할까요? 이미 이 템플릿으로 만든 프로젝트는 자체 사본을 갖고 있어 영향을 받지 않습니다.",
-      "deleteTitle": "AI 생성 템플릿 삭제",
-      "deleted": "라이브러리에서 \"{{name}}\"을(를) 삭제했습니다",
-      "empty": "아직 AI 생성 템플릿이 없습니다. 템플릿 갤러리에서 만들어 보세요.",
-      "fallbackDescription": "AI 생성 템플릿",
-      "toggle": "AI 생성 템플릿 관리",
+    "yourTemplates": {
+      "toggle": "내 템플릿 관리",
+      "import": "템플릿 가져오기",
+      "empty": "아직 내 템플릿이 없습니다. 여기에서 가져오거나, 프로젝트 메뉴에서 템플릿으로 저장하거나, 템플릿 갤러리에서 생성해 보세요.",
+      "aiDescription": "AI 생성 템플릿",
+      "customDescription": "내 템플릿",
+      "deleteTitle": "템플릿 삭제",
+      "deleteDescription": "내 템플릿에서 \"{{name}}\"을(를) 삭제할까요? 이 템플릿으로 이미 만든 프로젝트는 자체 사본을 그대로 유지합니다.",
+      "deleted": "내 템플릿에서 \"{{name}}\"을(를) 삭제했습니다",
       "deleteFailed": "\"{{name}}\"을(를) 삭제하지 못했습니다."
     },
     "fontPacks": {
@@ -906,6 +1022,26 @@
       "ptserif": {
         "description": "학술 문서와 공식 문서에 잘 어울리는 정제된 트랜지셔널 세리프입니다.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans·Serif CJK, Fandol, LXGW WenKai. SimSun, SimHei, KaiTi 대신 쓰이기도 합니다.",
+        "label": "중국어, 일본어, 한국어"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6·7 Free, Noto Color Emoji.",
+        "label": "아이콘과 이모지"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code, Source Code Pro.",
+        "label": "코드"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans, IBM Plex.",
+        "label": "모던 산세리프와 세리프"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus, New Computer Modern Sans·Mono.",
+        "label": "클래식 본문"
       }
     },
     "fonts": {
@@ -942,7 +1078,56 @@
       "fontRemoveFailed": "글꼴을 제거하지 못했습니다.",
       "packDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
       "packsDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
-      "packRemoveFailed": "템플릿 팩을 제거하지 못했습니다."
+      "packRemoveFailed": "템플릿 팩을 제거하지 못했습니다.",
+      "templateDownloadFailed": "템플릿을 내려받지 못했습니다.",
+      "packsRefreshFailed": "새 팩을 확인하지 못했습니다."
+    },
+    "typstFonts": {
+      "heading": "Typst용 글꼴",
+      "tooltip": "여러 Typst 템플릿이 요구하는 무료 글꼴입니다. 내려받으면 시스템 글꼴을 끈 프로젝트를 빼고 모든 Typst 프로젝트에서 쓸 수 있습니다."
+    },
+    "packs": {
+      "browse": "둘러보기",
+      "back": "팩 목록으로",
+      "count_other": "템플릿 {{count}}개",
+      "installedCount": "{{total}}개 중 {{installed}}개 설치됨",
+      "downloadPack": "팩 다운로드",
+      "refresh": "새 팩 확인",
+      "searchPacks": "팩 검색",
+      "searchTemplates": "템플릿 검색",
+      "noPacks": "일치하는 팩이 없습니다",
+      "noTemplates": "일치하는 템플릿이 없습니다",
+      "loading": "템플릿을 불러오는 중",
+      "loadFailed": "이 팩을 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "installed": "설치됨",
+      "engineFilter": "엔진",
+      "kindFilter": "종류",
+      "languageFilter": "언어",
+      "allEngines": "모든 엔진",
+      "allKinds": "모든 종류",
+      "allLanguages": "모든 언어",
+      "groups": {
+        "curated": "엄선",
+        "community": "커뮤니티",
+        "typst": "Typst",
+        "university": "대학"
+      },
+      "preview": {
+        "image": "{{name}} 첫 페이지",
+        "previous": "이전 템플릿",
+        "next": "다음 템플릿",
+        "engine": "엔진",
+        "license": "라이선스",
+        "kind": "종류",
+        "languages": "언어",
+        "country": "국가",
+        "institution": "기관",
+        "originalSource": "원본 출처",
+        "getTemplate": "이 템플릿 받기",
+        "useTemplate": "이 템플릿 사용",
+        "getAndCreate": "받고 프로젝트 만들기"
+      }
     }
   },
   "engine": {
@@ -1180,11 +1365,65 @@
       "apiKeyLabel": "Zotero API 키",
       "connected": "Zotero 라이브러리에 연결되었습니다.",
       "connectedAs": "{{username}}(으)로 연결되었습니다.",
-      "description": "Zotero 라이브러리에서 인용과 참고문헌을 가져옵니다.",
       "disconnectFailed": "Oleafly가 저장된 Zotero 키를 삭제하지 못했습니다. 다시 시도하세요.",
-      "importHint": "가져오려면 프로젝트의 참고문헌 패널을 열고 참고문헌 라이브러리 가져오기를 선택하세요.",
       "userIdLabel": "Zotero 사용자 ID",
-      "userIdPlaceholder": "사용자 ID"
+      "userIdPlaceholder": "사용자 ID",
+      "citeDescription": "글을 쓰는 동안 Zotero 라이브러리 전체를 검색하고, 인용한 것만 추가하세요. Oleafly는 라이브러리를 읽기만 하고 절대 바꾸지 않습니다.",
+      "local": {
+        "heading": "이 컴퓨터의 Zotero",
+        "ready": "Zotero {{version}}에 연결되었습니다.",
+        "readyNoVersion": "Zotero에 연결되었습니다.",
+        "bbtFound": "Better BibTeX {{version}}이(가) 설치되어 있어 인용 키를 Better BibTeX에서 가져옵니다.",
+        "bbtMissing": "Better BibTeX가 설치되어 있지 않아 인용 키를 Zotero에서 가져옵니다.",
+        "notRunning": "Zotero가 실행 중이 아닙니다. 라이브러리를 검색하려면 Zotero를 열거나, 아래에서 zotero.org 계정을 연결하세요.",
+        "apiDisabled": "Zotero에서 설정 > 고급을 열고 \"Allow other applications on this computer to communicate with Zotero\"를 켜세요.",
+        "unsupported": "이 버전의 Zotero는 라이브러리를 공유할 수 없습니다. Zotero 7 이상으로 업데이트하세요.",
+        "unknown": "Oleafly가 아직 Zotero를 찾아보지 않았습니다."
+      },
+      "test": "연결 테스트",
+      "syncNow": "지금 동기화",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX를 찾을 수 없음",
+        "local": "이 컴퓨터의 Zotero에서 읽음",
+        "web": "zotero.org에서 읽음",
+        "library_other": "{{name}}: 항목 {{formatted}}개"
+      },
+      "library": {
+        "heading": "검색할 라이브러리",
+        "myLibrary": "내 라이브러리",
+        "toggle": "{{name}} 검색",
+        "items_other": "항목 {{formatted}}개"
+      },
+      "sync": {
+        "never": "아직 동기화하지 않았습니다.",
+        "syncing": "Zotero 라이브러리를 동기화하는 중…",
+        "progress": "항목 {{total}}개 중 {{done}}개를 동기화하는 중…",
+        "status_other": "항목 {{formatted}}개를 인용할 수 있습니다. 마지막 동기화: {{time}}.",
+        "fromCache": "Zotero가 닫혀 있어 @ 검색은 마지막 동기화 때의 사본을 사용합니다.",
+        "rateLimited": "zotero.org가 Oleafly에 잠시 기다려 달라고 요청했습니다. {{time}} 이후에 다시 시도합니다."
+      },
+      "account": {
+        "heading": "zotero.org 계정",
+        "description": "이 컴퓨터에서 Zotero가 열려 있지 않을 때 계정을 사용합니다. 그룹 라이브러리도 함께 포함됩니다."
+      }
+    },
+    "overleaf": {
+      "description": "Overleaf 계정이나 대학의 Overleaf 서버에서 프로젝트를 가져오고 계속 동기화합니다. Oleafly는 로그인 정보와 Git 토큰을 이 컴퓨터에 암호화해 보관합니다.",
+      "signedInAs": "{{server}}에 {{email}}(으)로 로그인됨",
+      "signedIn": "{{server}}에 로그인됨",
+      "signOut": "로그아웃",
+      "signOutFailed": "Oleafly가 Overleaf에서 로그아웃하지 못했습니다.",
+      "gitTitle": "동기화용 Git 토큰",
+      "gitSaved": "Git 토큰이 저장되어 있습니다. 연결한 프로젝트는 Overleaf와 동기화된 상태로 유지됩니다.",
+      "gitMissing": "아직 Git 토큰이 없습니다. 프로젝트를 동기화하려면 Overleaf 계정 설정의 Git 연동 항목에서 토큰을 만드세요.",
+      "gitOpenSettings": "Overleaf 계정 설정 열기",
+      "gitPlanNote": "Git 연동을 쓰려면 프로젝트 소유자에게 Overleaf 유료 요금제나 대학 요금제가 필요합니다.",
+      "gitLabel": "Overleaf Git 토큰",
+      "gitSave": "저장",
+      "gitRemove": "제거",
+      "gitFailed": "Oleafly가 Git 토큰을 저장하지 못했습니다. 토큰 전체를 붙여 넣었는지 확인하세요."
     }
   },
   "language": {
@@ -1543,6 +1782,10 @@
         "description": "프로젝트 사이드바를 표시하거나 숨깁니다.",
         "label": "사이드바 전환"
       },
+      "togglePreview": {
+        "label": "PDF 미리보기 전환",
+        "description": "편집기 옆의 PDF를 보이거나 숨깁니다. Zen 모드에서도 됩니다."
+      },
       "toggleTerminal": {
         "description": "프로젝트 터미널을 표시하거나 숨깁니다.",
         "label": "터미널 전환"
@@ -1550,6 +1793,26 @@
       "openFolder": {
         "label": "폴더 열기",
         "description": "컴퓨터의 폴더를 프로젝트로 엽니다."
+      },
+      "toggleZenMode": {
+        "description": "글쓰기 영역 외의 모든 것을 숨기거나 다시 표시합니다.",
+        "label": "Zen 모드 전환"
+      },
+      "openSettings": {
+        "label": "설정 열기",
+        "description": "Oleafly 설정을 엽니다."
+      },
+      "zoomIn": {
+        "description": "앱 전체를 크게 합니다.",
+        "label": "확대"
+      },
+      "zoomOut": {
+        "description": "앱 전체를 작게 합니다.",
+        "label": "축소"
+      },
+      "resetZoom": {
+        "description": "앱을 100%로 되돌립니다.",
+        "label": "확대/축소 초기화"
       }
     },
     "application": {
@@ -1572,7 +1835,7 @@
         "italic": "기울임",
         "jumpToSourceFromPdf": "PDF에서 소스로 이동",
         "redo": "다시 실행",
-        "renameSymbol": "프로젝트 전체에서 심볼 이름 바꾸기",
+        "renameSymbol": "프로젝트 전체에서 심볼 또는 파일 이름 바꾸기",
         "slashCommandMenu": "슬래시 명령 삽입 메뉴",
         "triggerAutocomplete": "자동 완성 실행",
         "undo": "실행 취소"

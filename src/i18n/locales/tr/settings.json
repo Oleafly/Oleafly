@@ -36,7 +36,7 @@
       },
       "installBridge": "Köprüyü kur",
       "installBridgeNextStep": "ACP köprüsünü kurun, sonra komut satırı aracından oturum açın.",
-      "intro": "Yerel bir ajanı ACP üzerinden bağlayın. Her ajan kendi modellerini, araçlarını ve oturum açma işlemini yönetir; API sağlayıcı ayarları ayrı kalır. Oturum açmak için resmi CLI hesabını kullanın: Oleafly hesap belirteçlerini içe aktarmaz ve abonelik kotalarını kestirmez.",
+      "intro": "Yerel bir ajanı ACP üzerinden bağlayın. Her ajan kendi modellerini, araçlarını ve oturum açma işlemini yönetir, API sağlayıcı ayarları ise ayrı kalır. Oturum açmak için resmi CLI hesabını kullanın: Oleafly hesap belirteçlerini içe aktarmaz ve abonelik kotalarını kestirmez.",
       "nextStepTitle": "Sonraki adım",
       "notReported": "Bildirilmedi",
       "notice": {
@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "Özel onay kipi bu dosyayı okur. Dosya ~/.oleafly/approvals.toml konumunda durur ve bu cihazdaki her projeye uygulanır.",
+        "description": "Dosya ~/.oleafly/approvals.toml konumunda durur ve bu cihazdaki her projeye uygulanır. Deny kuralları bir aracı her onay kipinde engeller. Allow kuralları yalnızca Özel kipte etkilidir.",
         "discard": "Değişiklikleri at",
         "emptyFile": "Dosya şu ana kadar boş.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "İlk tablo, <modesTable>[\"$approval_modes\"]</modesTable>, proje başına onay kipini belirler: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> veya <custom>\"custom\"</custom>. Listelenmeyen bir proje Benim için onayla kipini kullanır.",
           "openProject": "Açık proje, {{name}}, şu kimliğe sahip: <projectId>{{id}}</projectId>.",
           "projectIds": "Proje kimlikleri, ~/.oleafly/projects altındaki klasör adlarıdır.",
-          "rules": "Sonra proje kimliği başına bir tablo gelir ve her araç için bir kural tutar: <allow>\"allow\"</allow> aracı sormadan çalıştırır, <deny>\"deny\"</deny> ise reddeder. Deny kuralları her kipte geçerlidir; allow kuralları Özel kipte etkilidir ve run_command için diğer kiplerde de sormayı atlar.",
+          "rules": "Sonra proje kimliği başına bir tablo gelir ve her araç için bir kural tutar: <allow>\"allow\"</allow> aracı sormadan çalıştırır, <deny>\"deny\"</deny> ise reddeder. Deny kuralları Tam erişim dahil her kipte geçerlidir. Allow kuralları yalnızca Özel kipte etkilidir.",
           "toolNames": "Kullanabileceğiniz araç adları: <names>{{names}}</names> ve Araçlar listesindeki tam adıyla her MCP aracı."
         },
         "helpToggle": "Dosya nasıl çalışır",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Her zaman izinli",
         "denied": "Her zaman reddedilir",
-        "description": "{{name}} için kayıtlı kurallar. Onay kipi Özel olduğunda geçerlidir. O araç için standart risk ilkesini kullanmak istiyorsanız kuralı kaldırın.",
+        "description": "{{name}} için kayıtlı kurallar. Reddedilen araçlar her onay kipinde engelli kalır. İzin verilen araçlar soruyu yalnızca Özel kipte atlar. O araç için standart risk ilkesini kullanmak istiyorsanız kuralı kaldırın.",
         "empty": "Henüz kayıtlı kural yok. Bir tane eklemek için onay isteminde \"Bu projede her zaman\" seçeneğini kullanın.",
         "removeRule": "{{tool}} kuralını kaldır",
         "thisProject": "bu proje",
@@ -170,7 +170,7 @@
         "addFailed": "Bu sağlayıcı eklenemedi.",
         "baseUrlHost": "URL'de ana makine adı eksik.",
         "baseUrlInvalid": "Tam bir URL girin, örneğin https://api.example.com/v1 veya http://localhost:1234/v1.",
-        "baseUrlProtocol": "https:// kullanın; yerel bir sunucu içinse http://.",
+        "baseUrlProtocol": "https:// kullanın, yerel bir sunucu içinse http://.",
         "baseUrlRequired": "Temel URL zorunludur.",
         "idFormat": "Yalnızca küçük harf, rakam ve kısa çizgi kullanın, örneğin acme.",
         "idRequired": "Kimlik zorunludur.",
@@ -359,7 +359,7 @@
         "providerUpdatedWithoutModels": "{{provider}} güncellendi. Model listesi yenilenemedi."
       },
       "reset": {
-        "confirmWithProject": "Yapay zeka asistanı tercihlerini; model kullanılabilirliği, etkin beceriler ve bu projenin bütçesi dahil olmak üzere varsayılanlarına döndürür. Etkin sağlayıcı ve model, sağlayıcı anahtarları, personalar, onay kuralları, kullanım geçmişi ve MCP sunucuları değişmeden kalır.",
+        "confirmWithProject": "Model kullanılabilirliği, etkin beceriler ve bu projenin bütçesi dahil olmak üzere yapay zeka asistanı tercihlerini varsayılanlarına döndürür. Etkin sağlayıcı ve model, sağlayıcı anahtarları, personalar, onay kuralları, kullanım geçmişi ve MCP sunucuları değişmeden kalır.",
         "confirmWithoutProject": "Yapay zeka asistanı tercihlerini, model kullanılabilirliği ve etkin beceriler dahil olmak üzere varsayılanlarına döndürür. Etkin sağlayıcı ve model, sağlayıcı anahtarları, personalar, onay kuralları, kullanım geçmişi ve MCP sunucuları değişmeden kalır.",
         "sectionName": "Yapay Zeka Asistanı"
       },
@@ -411,7 +411,7 @@
       },
       "changedForProject": "Bu proje için değiştirildi",
       "createSkill": "Beceri oluştur",
-      "description": "Asistan, bir becerinin tüm yönergelerini yalnızca ihtiyaç duyduğunda yükler; sohbete /beceri-kimliği yazarsanız hemen yükler. Burada açtığınız bir beceri her projede açık olur. Yalnızca açık olan projede değiştirmek için Bu proje seçeneğine geçin.",
+      "description": "Asistan, bir becerinin tüm yönergelerini yalnızca ihtiyaç duyduğunda yükler. Sohbete /beceri-kimliği yazarsanız hemen yükler. Burada açtığınız bir beceri her projede açık olur. Yalnızca açık olan projede değiştirmek için Bu proje seçeneğine geçin.",
       "editAria": "{{name}} becerisini düzenle",
       "editor": {
         "createDescription": "Oleafly beceriler klasörünüzde bir SKILL.md taslağı oluşturun.",
@@ -473,7 +473,7 @@
         "placeholder": "Becerilerde ara"
       },
       "share": {
-        "description": "Becerilerinizi, bu bilgisayardaki diğer kodlama ajanlarının zaten okuduğu klasörlere bağlayın; böylece bir beceriyi bir kez yazın ve her ajan kullanabilsin.",
+        "description": "Becerilerinizi, bu bilgisayardaki diğer kodlama ajanlarının zaten okuduğu klasörlere bağlayın, böylece bir beceriyi bir kez yazarsınız ve her ajan onu kullanabilir.",
         "emptyBody": "Bu bilgisayarda başka ajan klasörü bulunamadı.",
         "status": {
           "linked": "{{total}} tanesinden {{linked}} tanesi bağlı",
@@ -533,12 +533,17 @@
         "right": "Sağ"
       },
       "font": {
-        "description": "Bir yazı tipi kurulu değilse sistem yedeğini kullanır.",
+        "description": "Menüler, paneller ve iletişim kutuları için bilgisayarınızda yüklü herhangi bir yazı tipini seçin.",
         "label": "Uygulama yazı tipi"
       },
       "fontSize": {
         "description": "Menülerdeki, panellerdeki ve düğmelerdeki metni ölçekler.",
         "label": "Uygulama yazı tipi boyutu"
+      },
+      "zoom": {
+        "description": "Düzenleyici ve PDF dahil Oleafly'ın tamamını büyütür veya küçültür.",
+        "label": "Yakınlaştırma",
+        "option": "%{{value}}"
       },
       "theme": {
         "description": "Sistem, işletim sistemini izler ve o değiştiğinde değişir.",
@@ -584,7 +589,7 @@
         "label": "Köşe yarıçapı"
       },
       "resetAll": "Tümünü sıfırla",
-      "resetMode": "Bu kipi sıfırla",
+      "resetMode": "Sıfırla",
       "title": "Tema özelleştirme",
       "tokenInputDark": "Koyu kip için {{token}} belirteci",
       "tokenInputLight": "Açık kip için {{token}} belirteci",
@@ -633,28 +638,72 @@
         "label": "Otomatik tamamlama"
       },
       "font": {
-        "description": "Kaynak dosyalar için kullanılan eş aralıklı yazı tipini seçin.",
-        "label": "Düzenleyici yazı tipi"
+        "description": "Kaynak dosyalar için bilgisayarınızda yüklü herhangi bir yazı tipini seçin.",
+        "label": "Düzenleyici yazı tipi",
+        "monospace": "Eş aralıklı"
+      },
+      "useAppFont": {
+        "description": "Düzenleyici, uygulamanın yazı tipini ve boyutunu kullanır.",
+        "disabledHint": "Bunu değiştirmek için Uygulama yazı tipini kullan'ı kapatın.",
+        "label": "Uygulama yazı tipini kullan"
       },
       "fontSize": {
         "description": "Kaynak düzenleyicinin metin boyutunu belirleyin.",
-        "label": "Düzenleyici yazı tipi boyutu"
+        "label": "Düzenleyici yazı tipi boyutu",
+        "custom": "Özel",
+        "customLabel": "Piksel cinsinden özel düzenleyici yazı tipi boyutu"
       },
       "ghostCompletion": {
         "description": "Olası tamamlamayı imlecin ardında gösterir. Kabul etmek için Tab tuşuna basın.",
         "label": "Satır içi öneri"
-      },
-      "nonBlinkingCursor": {
-        "description": "Düzenleyici imlecini sabit tutar.",
-        "label": "Yanıp sönmeyen imleç"
       },
       "stickyScroll": {
         "description": "Siz kaydırırken geçerli bölümleri, başlıkları ve ortamları üstte tutar.",
         "label": "Yapışkan kaydırma"
       },
       "theme": {
-        "description": "Kaynak sözdizimi renklerini uygulama temasından ayrı belirleyin.",
-        "label": "Düzenleyici teması"
+        "dark": {
+          "description": "Uygulama koyu kipteyken kullanılan düzenleyici teması.",
+          "label": "Koyu kipte tema"
+        },
+        "light": {
+          "description": "Uygulama açık kipteyken kullanılan düzenleyici teması.",
+          "label": "Açık kipte tema"
+        }
+      },
+      "colors": {
+        "description": "Bir düzenleyici temasının herhangi bir rengini değiştirin. Değişiklikler her tema için ayrı saklanır.",
+        "editing": "Düzenlenen: {{theme}}",
+        "editorGroup": "Düzenleyici",
+        "mode": {
+          "dark": "Koyu kip",
+          "light": "Açık kip"
+        },
+        "modeAriaLabel": "Özelleştirilecek tema",
+        "names": {
+          "background": "Arka plan",
+          "command": "Komutlar",
+          "comment": "Yorumlar",
+          "environment": "Ortamlar",
+          "formatting": "Biçimlendirme",
+          "heading": "Başlıklar",
+          "lineNumbers": "Satır numaraları",
+          "link": "Bağlantılar",
+          "math": "Matematik",
+          "name": "Adlar ve anahtarlar",
+          "reference": "Atıflar ve başvurular",
+          "selection": "Seçim",
+          "structure": "Önbölüm ve içe aktarmalar",
+          "symbol": "Ayraçlar ve semboller",
+          "text": "Metin",
+          "value": "Değerler ve dizeler"
+        },
+        "pick": "{{color}} için renk seç",
+        "previewAriaLabel": "Önizleme dili",
+        "reset": "Sıfırla",
+        "syntaxGroup": "Sözdizimi",
+        "title": "Düzenleyici renkleri",
+        "useThemeColor": "{{color}} için tema rengini kullan"
       },
       "keymap": {
         "description": "Kaynak düzenleyicinin kullanacağı tuş atama kümesini seçin.",
@@ -671,12 +720,61 @@
         "options": {
           "compact": "Sıkışık",
           "normal": "Normal",
-          "wide": "Geniş"
+          "wide": "Geniş",
+          "custom": "Özel"
+        },
+        "customLabel": "Özel satır yüksekliği"
+      },
+      "letterSpacing": {
+        "customLabel": "Piksel cinsinden özel harf aralığı",
+        "description": "Kaynak düzenleyicide karakterlerin arasına boşluk ekler. İmlecin çevresinde de daha çok yer kalır.",
+        "label": "Harf aralığı",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Özel"
         }
+      },
+      "cursorWidth": {
+        "label": "İmleç genişliği",
+        "description": "Düzenleyici imlecinin kalınlığını ayarlar.",
+        "option": "{{width}}px"
+      },
+      "cursorHeight": {
+        "label": "İmleç yüksekliği",
+        "description": "Düzenleyici imlecinin yüksekliğini ayarlar. Satır, imleci satır yüksekliğinde yapar.",
+        "options": {
+          "text": "Metin",
+          "line": "Satır"
+        }
+      },
+      "cursorBlinking": {
+        "label": "İmleç yanıp sönmesi",
+        "description": "Düzenleyici imlecinin nasıl yanıp söneceğini ayarlar. Kapalı, imleci sabit tutar.",
+        "options": {
+          "blink": "Yanıp sön",
+          "smooth": "Yumuşak",
+          "phase": "Faz",
+          "expand": "Genişlet",
+          "off": "Kapalı"
+        }
+      },
+      "cursorColor": {
+        "label": "İmleç rengi",
+        "description": "Açık ve koyu düzenleyici temalarının her birinin kendi imleç rengi vardır. Siz seçene kadar temanın rengi kullanılır.",
+        "light": "Açık",
+        "dark": "Koyu",
+        "pickLight": "Açık düzenleyici temaları için imleç rengini seçin",
+        "pickDark": "Koyu düzenleyici temaları için imleç rengini seçin",
+        "useTheme": "Tema renklerini kullan"
       },
       "lineWrap": {
         "description": "Uzun satırları yana kaydırmak yerine alt satıra taşır.",
         "label": "Uzun satırları kaydır"
+      },
+      "highlightCurrentLine": {
+        "label": "Geçerli satırı vurgula",
+        "description": "İmlecin bulunduğu satırın arka planını renklendirir."
       },
       "tabSize": {
         "description": "Her girinti düzeyi için eklenen boşluk sayısı ve bir sekmenin gösterildiği genişlik.",
@@ -708,6 +806,15 @@
           "description": "Typst dosyalarını her kaydedildiğinde olası hatalara karşı denetler. Bunu açıp kapatmak Typst dil sunucusunu yeniden başlatır.",
           "label": "Typst lint denetimleri"
         }
+      },
+      "fileMove": {
+        "label": "Bir dosya taşındığında",
+        "description": "LaTeX, Typst ve Markdown kaynaklarında yeniden adlandırılan veya taşınan dosyayı gösteren yolları güncelle.",
+        "options": {
+          "ask": "Sor",
+          "always": "Her zaman güncelle",
+          "never": "Hiçbir zaman güncelleme"
+        }
       }
     },
     "files": {
@@ -735,6 +842,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} yüklü değil, bu yüzden varsayılan yazı tipi kullanılıyor.",
     "preview": {
       "darkMode": {
         "description": "PDF renklerini varsayılan olarak tersine çevirir. Renkleri yine de önizleme araç çubuğundan değiştirebilirsiniz.",
@@ -743,10 +851,6 @@
       "hoverPreview": {
         "description": "Kitaplıkta bir projenin üzerine geldiğinizde en son derlenen sayfayı gösterir.",
         "label": "Üzerine gelince PDF'i önizle"
-      },
-      "zoomShortcuts": {
-        "description": "Uygulama penceresi yerine PDF'i yakınlaştırmak için Cmd/Ctrl +, - ve 0 tuşlarını kullanır.",
-        "label": "PDF yakınlaştırma kısayolları"
       }
     },
     "sectionName": "Görünüm",
@@ -810,6 +914,17 @@
         "description": "shell'i, terminali ilk gösterdiğinizde değil, bir proje açıldığında başlatır.",
         "label": "shell'i projeyle birlikte başlat"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Zen kipinde ekranı doldurur, çıkınca pencereyi eski haline getirir.",
+        "label": "Tam ekrana geç"
+      },
+      "showPdf": {
+        "description": "Zen kipinde PDF gizliyse, derlediğinizde onu düzenleyicinin yanında açar.",
+        "label": "Derlerken PDF'yi göster"
+      },
+      "title": "Zen kipi"
     }
   },
   "checkpoints": {
@@ -823,7 +938,7 @@
     },
     "description": "Bir kontrol noktası, başarılı bir derlemenin kullandığı kaynak dosyaları kaydeder.",
     "notifyOnFailure": {
-      "description": "Bir kontrol noktası kaydedilemediğinde Oleafly size bunu bildirir; depolama sorunları ve yakalayamadığı dosyalar dahil.",
+      "description": "Bir kontrol noktası kaydedilemediğinde Oleafly size bunu bildirir. Buna depolama sorunları ve yakalayamadığı dosyalar da dahildir.",
       "label": "Bir kontrol noktası kaydedilemediğinde bildirim göster"
     },
     "title": "Kontrol noktaları"
@@ -880,7 +995,6 @@
   },
   "cite": {
     "apa": "Aynı kaynağın APA biçimi GitHub'daki Cite this repository bölümünde",
-    "copyBibtex": "BibTeX'i kopyala",
     "description": "Oleafly ücretsiz ve açık kaynaklıdır ve insanlar varlığından haberdar oldukça öyle kalır. Bir makalenize yardımı dokunduysa kaynakçanızdaki tek bir kayıt, bir sonraki araştırmacıya bu aracın nereden geldiğini anlatır. Kopyalayın, .bib dosyanıza yapıştırın ve <citeKey>oleafly</citeKey> anahtarıyla atıf verin.",
     "title": "Makalenizde Oleafly'ye atıf verin"
   },
@@ -890,13 +1004,15 @@
       "download": "İndir",
       "downloadAll": "Tümünü indir"
     },
-    "aiTemplates": {
-      "deleteDescription": "\"{{name}}\" kitaplığınızdan silinsin mi? Ondan oluşturulmuş projeler kendi kopyalarını korur ve etkilenmez.",
-      "deleteTitle": "Yapay zeka ile oluşturulan şablonu sil",
-      "deleted": "\"{{name}}\" kitaplığınızdan silindi",
-      "empty": "Henüz yapay zeka ile oluşturulmuş şablon yok. Şablon galerisinden bir tane oluşturun.",
-      "fallbackDescription": "Yapay zeka ile oluşturulan şablon",
-      "toggle": "Yapay zeka ile oluşturulan şablonları yönet",
+    "yourTemplates": {
+      "toggle": "Şablonlarınızı yönet",
+      "import": "Şablon içe aktar",
+      "empty": "Henüz kendi şablonunuz yok. Buradan bir şablon içe aktarın, bir projeyi menüsünden şablon olarak kaydedin ya da şablon galerisinde yeni bir şablon oluşturun.",
+      "aiDescription": "Yapay zeka ile oluşturulan şablon",
+      "customDescription": "Şablonunuz",
+      "deleteTitle": "Şablonu sil",
+      "deleteDescription": "\"{{name}}\" şablonlarınızdan silinsin mi? Ondan daha önce oluşturduğunuz projeler kendi kopyalarını korur.",
+      "deleted": "\"{{name}}\" şablonlarınızdan silindi",
       "deleteFailed": "\"{{name}}\" silinemedi."
     },
     "fontPacks": {
@@ -911,13 +1027,33 @@
       "ptserif": {
         "description": "Akademik ve kurumsal belgelere yakışan, zarif bir geçiş dönemi serif yazı tipi.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans ve Serif CJK, Fandol ve LXGW WenKai. SimSun, SimHei ve KaiTi yerine de kullanılırlar.",
+        "label": "Çince, Japonca ve Korece"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 ve 7 Free ile Noto Color Emoji.",
+        "label": "Simgeler ve emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code ve Source Code Pro.",
+        "label": "Kod"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans ve IBM Plex.",
+        "label": "Modern sans ve serif"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus ile New Computer Modern Sans ve Mono.",
+        "label": "Klasik metin"
       }
     },
     "fonts": {
       "empty": "İndirilebilir yazı tipi yok.",
       "engineNote": "LuaLaTeX motoru (etiketli, erişilebilir PDF'ler için) LaTeX Motoru bölümünden yönetilir.",
       "heading": "Yazı tipleri",
-      "tooltip": "Bazı şablonlar premium açık kaynaklı yazı tipleri kullanır. Oleafly küçük kalsın diye bu yazı tipleri istendiğinde indirilir: böyle bir şablon oluşturduğunuzda yazı tipleri getirilir ve projeye kopyalanır; böylece proje kendi kendine yeter ve çevrimdışı derlenir. Onları buradan önceden de indirebilir ya da yer açmak için kaldırabilirsiniz."
+      "tooltip": "Bazı şablonlar premium açık kaynaklı yazı tipleri kullanır. Oleafly küçük kalsın diye bu yazı tipleri istendiğinde indirilir: böyle bir şablon oluşturduğunuzda yazı tipleri getirilir ve projeye kopyalanır, böylece proje kendi kendine yeter ve çevrimdışı derlenir. Onları buradan önceden de indirebilir ya da yer açmak için kaldırabilirsiniz."
     },
     "packProgress": "{{total}} içinden {{index}}",
     "progress": "{{label}} ({{total}} içinden {{index}})",
@@ -947,7 +1083,57 @@
       "fontRemoveFailed": "Yazı tipi kaldırılamadı.",
       "packDownloadFailed": "Şablon paketi indirilemedi.",
       "packsDownloadFailed": "Şablon paketleri indirilemedi.",
-      "packRemoveFailed": "Şablon paketi kaldırılamadı."
+      "packRemoveFailed": "Şablon paketi kaldırılamadı.",
+      "templateDownloadFailed": "Şablon indirilemedi.",
+      "packsRefreshFailed": "Yeni paketler denetlenemedi."
+    },
+    "typstFonts": {
+      "heading": "Typst için yazı tipleri",
+      "tooltip": "Birçok Typst şablonunun istediği ücretsiz yazı tipleri. İndirildikten sonra sistem yazı tiplerini kapatan bir proje dışında her Typst projesi bunları kullanabilir."
+    },
+    "packs": {
+      "browse": "Göz at",
+      "back": "Paketlere dön",
+      "count_one": "{{count}} şablon",
+      "count_other": "{{count}} şablon",
+      "installedCount": "{{total}} şablondan {{installed}} tanesi yüklü",
+      "downloadPack": "Paketi indir",
+      "refresh": "Yeni paketleri denetle",
+      "searchPacks": "Paketlerde ara",
+      "searchTemplates": "Şablonlarda ara",
+      "noPacks": "Eşleşen paket yok",
+      "noTemplates": "Eşleşen şablon yok",
+      "loading": "Şablonlar yükleniyor",
+      "loadFailed": "Bu paket yüklenemedi.",
+      "retry": "Yeniden dene",
+      "installed": "Yüklü",
+      "engineFilter": "Motor",
+      "kindFilter": "Tür",
+      "languageFilter": "Dil",
+      "allEngines": "Tüm motorlar",
+      "allKinds": "Tüm türler",
+      "allLanguages": "Tüm diller",
+      "groups": {
+        "curated": "Seçkin",
+        "community": "Topluluk",
+        "typst": "Typst",
+        "university": "Üniversiteler"
+      },
+      "preview": {
+        "image": "{{name}} ilk sayfası",
+        "previous": "Önceki şablon",
+        "next": "Sonraki şablon",
+        "engine": "Motor",
+        "license": "Lisans",
+        "kind": "Tür",
+        "languages": "Diller",
+        "country": "Ülke",
+        "institution": "Kurum",
+        "originalSource": "Özgün kaynak",
+        "getTemplate": "Bu şablonu al",
+        "useTemplate": "Bu şablonu kullan",
+        "getAndCreate": "Al ve proje oluştur"
+      }
     }
   },
   "engine": {
@@ -963,7 +1149,7 @@
     },
     "defaultEngine": {
       "heading": "Varsayılan derleme motoru",
-      "tooltip": "Yeni projeler için geçerlidir. Her proje kendi motorunu project.json içinde sabitler; böylece aynı projeyi açan iş arkadaşlarınız bu ayardan bağımsız olarak onu aynı şekilde derler."
+      "tooltip": "Yeni projeler için geçerlidir. Her proje kendi motorunu project.json içinde sabitler, böylece aynı projeyi açan iş arkadaşlarınız bu ayardan bağımsız olarak onu aynı şekilde derler."
     },
     "distributions": {
       "empty": "Bu makinede TeX dağıtımı algılanmadı.",
@@ -982,10 +1168,10 @@
       "status": {
         "checking": "pandoc aranıyor…",
         "installing": "Sabitlenmiş bir pandoc sürümü getiriliyor. İlk kullanımda bu biraz sürer.",
-        "missing": "Bulunamadı. Oleafly uyumlu bir pandoc (2.19 veya daha yenisi) kendi klasörüne indirebilir; sisteminizde başka hiçbir şey değişmez.",
+        "missing": "Bulunamadı. Oleafly uyumlu bir pandoc (2.19 veya daha yenisi) kendi klasörüne indirebilir. Sisteminizde başka hiçbir şey değişmez.",
         "ready": "Algılandı. Markdown projeleri pandoc ile LaTeX'e dönüştürülür, sonra paketlenmiş Tectonic ile derlenir."
       },
-      "tectonicDetail": "pandoc'un ürettiği LaTeX'i dizer. Oleafly ile birlikte gelir; yapılandırılacak bir şey yoktur.",
+      "tectonicDetail": "pandoc'un ürettiği LaTeX'i dizer. Oleafly ile birlikte gelir ve kurulum gerektirmez.",
       "tooltip": "Markdown projeleri pandoc ile (Pandoc Markdown: tablolar, dipnotlar, atıflar, matematik) LaTeX'e dönüştürülür, sonra paketlenmiş Tectonic ile PDF'e dizilir. Pandoc, Oleafly ile birlikte gelir."
     },
     "packages": {
@@ -1192,11 +1378,68 @@
       "apiKeyLabel": "Zotero API anahtarı",
       "connected": "Zotero kitaplığınıza bağlandı.",
       "connectedAs": "{{username}} olarak bağlandı.",
-      "description": "Zotero kitaplığınızdan atıfları ve kaynakları içe aktarın.",
       "disconnectFailed": "Oleafly kayıtlı Zotero anahtarını kaldıramadı. Yeniden deneyin.",
-      "importHint": "İçe aktarmak için bir projede Kaynaklar panelini açıp Kaynak kitaplığını içe aktar seçeneğini seçin.",
       "userIdLabel": "Zotero kullanıcı kimliği",
-      "userIdPlaceholder": "Kullanıcı kimliği"
+      "userIdPlaceholder": "Kullanıcı kimliği",
+      "citeDescription": "Yazarken tüm Zotero kitaplığınızda arama yapın ve yalnızca atıf yaptıklarınızı ekleyin. Oleafly kitaplığınızı okur ve asla değiştirmez.",
+      "local": {
+        "heading": "Bu bilgisayardaki Zotero",
+        "ready": "Zotero {{version}} uygulamasına bağlandı.",
+        "readyNoVersion": "Zotero'ya bağlandı.",
+        "bbtFound": "Better BibTeX {{version}} yüklü, bu yüzden atıf anahtarları Better BibTeX'ten geliyor.",
+        "bbtMissing": "Better BibTeX yüklü değil, bu yüzden atıf anahtarları Zotero'dan geliyor.",
+        "notRunning": "Zotero çalışmıyor. Kitaplığınızda arama yapmak için Zotero'yu açın veya aşağıdan zotero.org hesabınızı bağlayın.",
+        "apiDisabled": "Zotero'da Ayarlar > Gelişmiş bölümünü açın ve “Bu bilgisayardaki diğer uygulamaların Zotero ile iletişim kurmasına izin ver” seçeneğini etkinleştirin.",
+        "unsupported": "Zotero'nun bu sürümü kitaplığını paylaşamıyor. Zotero 7 veya daha yeni bir sürüme güncelleyin.",
+        "unknown": "Oleafly henüz Zotero'yu aramadı."
+      },
+      "test": "Bağlantıyı test et",
+      "syncNow": "Şimdi eşitle",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX bulunamadı",
+        "local": "Bu bilgisayardaki Zotero'dan okundu",
+        "web": "zotero.org'dan okundu",
+        "library_one": "{{name}}: {{formatted}} öğe",
+        "library_other": "{{name}}: {{formatted}} öğe"
+      },
+      "library": {
+        "heading": "Aranacak kitaplıklar",
+        "myLibrary": "Kitaplığım",
+        "toggle": "{{name}} içinde ara",
+        "items_one": "{{formatted}} öğe",
+        "items_other": "{{formatted}} öğe"
+      },
+      "sync": {
+        "never": "Henüz eşitlenmedi.",
+        "syncing": "Zotero kitaplığınız eşitleniyor…",
+        "progress": "{{total}} öğeden {{done}} tanesi eşitleniyor…",
+        "status_one": "Atıf için {{formatted}} öğe hazır, {{time}} eşitlendi.",
+        "status_other": "Atıf için {{formatted}} öğe hazır, {{time}} eşitlendi.",
+        "fromCache": "Zotero kapalı, bu yüzden @ araması son eşitlemedeki kopyayı kullanıyor.",
+        "rateLimited": "zotero.org, Oleafly'den beklemesini istedi. {{time}} sonrasında yeniden denenecek."
+      },
+      "account": {
+        "heading": "zotero.org hesabı",
+        "description": "Zotero bu bilgisayarda açık değilken hesabınızı kullanın. Grup kitaplıkları da dahil edilir."
+      }
+    },
+    "overleaf": {
+      "description": "Overleaf hesabınızdan veya üniversitenizin Overleaf sunucusundan proje aktarın ve bunları eşitlenmiş tutun. Oleafly oturum bilgisini ve Git belirtecini bu bilgisayarda şifreli olarak saklar.",
+      "signedInAs": "{{server}} üzerinde {{email}} olarak oturum açıldı",
+      "signedIn": "{{server}} üzerinde oturum açıldı",
+      "signOut": "Oturumu kapat",
+      "signOutFailed": "Oleafly Overleaf oturumunu kapatamadı.",
+      "gitTitle": "Eşitleme için Git belirteci",
+      "gitSaved": "Bir Git belirteci kayıtlı. Bağladığınız projeler Overleaf ile eşitlenmiş kalır.",
+      "gitMissing": "Henüz Git belirteci yok. Projeleri eşitlemek için Overleaf hesap ayarlarınızdaki Git entegrasyonu bölümünde bir belirteç oluşturun.",
+      "gitOpenSettings": "Overleaf hesap ayarlarını aç",
+      "gitPlanNote": "Git entegrasyonu için projenin sahibinin ücretli ya da üniversite Overleaf planına sahip olması gerekir.",
+      "gitLabel": "Overleaf Git belirteci",
+      "gitSave": "Kaydet",
+      "gitRemove": "Kaldır",
+      "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun."
     }
   },
   "language": {
@@ -1259,7 +1502,7 @@
       "clients": {
         "title": "Uygulamalarınızı bağlayın"
       },
-      "description": "Claude Desktop, Claude Code, Cursor ve diğer MCP istemcileri açık projeyi okuyabilir, düzenleyebilir ve derleyebilir; her değişiklik için sizin onayınızla.",
+      "description": "Claude Desktop, Claude Code, Cursor ve diğer MCP istemcileri, her değişiklik için sizin onayınızla açık projeyi okuyabilir, düzenleyebilir ve derleyebilir.",
       "enable": {
         "ariaLabel": "MCP sunucusunu aç",
         "description": "Yalnızca Oleafly açıkken bu bilgisayarda dinler.",
@@ -1426,7 +1669,7 @@
     "profileRules": {
       "description": "Makalelerin önüne geçtikleri için varsayılan olarak kapalıdırlar. İstediklerinizi açın.",
       "example": "Örnek: {{example}}",
-      "help": "Harper, sohbet ve e-posta için ayarlanmıştır. Bu kurallar ya makalelerin izlemediği bir üslubu dayatır, örneğin kB ve min birimlerini açık yazmak, ya da LaTeX işaretlemesinin yerine geçen yer tutuculara takılır; bu yüzden Oleafly onları kapalı tutar. Her biri neyi işaretleyeceğini gösterir. O bulguları istiyorsanız açın.",
+      "help": "Harper, sohbet ve e-posta için ayarlanmıştır. Bu kurallar ya makalelerin izlemediği bir üslubu dayatır, örneğin kB ve min birimlerini açık yazmak, ya da LaTeX işaretlemesinin yerine geçen yer tutuculara takılır. Bu yüzden Oleafly onları kapalı tutar. Her biri neyi işaretleyeceğini gösterir. O bulguları istiyorsanız açın.",
       "reasons": {
         "AvoidContractions": "Her kısaltılmış biçimi açık yazmanızı ister.",
         "CompoundNouns": "İki sözcük olarak yazılmış bir birleşik adı birleştirir.",
@@ -1451,9 +1694,9 @@
         "NumericRangeEnDash": "Bir sayı aralığının uçları arasına kısa çizgi yerine uzun çizgi ister.",
         "OxfordComma": "Dizi virgülünü zorunlu kılar.",
         "SentenceCapitalization": "Cümlenin ilk sözcüğünü büyük harfle başlatır, maskelenmiş işaretlemeden sonra başlayanlar dahil.",
-        "Spaces": "Yinelenen boşlukları birleştirir; metin maskesi, işaretlemenin silindiği her yerde bunları bırakır.",
+        "Spaces": "Yinelenen boşlukları birleştirir. Metin maskesi, işaretlemenin silindiği her yerde bunları bırakır.",
         "SplitWords": "İki sözcük olması gereken bir sözcüğü ayırır, örneğin alot.",
-        "TransposedSpace": "Noktalamanın yanlış tarafında kalan boşluğu taşır; maskeleme bunu sık üretir."
+        "TransposedSpace": "Noktalamanın yanlış tarafında kalan boşluğu taşır. Maskeleme bunu sık üretir."
       },
       "title": "Akademik profilin kapalı tuttuğu kurallar",
       "toggleAriaLabel": "{{rule}} kuralını aç"
@@ -1478,7 +1721,7 @@
     },
     "turnedOff": {
       "description": "Bu projede kapattığınız kurallar ve yok saydığınız bulgular.",
-      "help": "Düzenleyicide altı çizili bir sözcüğün veya cümlenin üzerine gelin; küçük bir kart Harper'ın ne bulduğunu, düzeltme ve yok sayma eylemleriyle birlikte gösterir. O karttan kapattığınız kurallar ve bu projede yok saydığınız bulgular burada listelenir, böylece istediğinizi geri getirebilirsiniz.",
+      "help": "Düzenleyicide altı çizili bir sözcüğün veya cümlenin üzerine gelin. Küçük bir kart Harper'ın ne bulduğunu, düzeltme ve yok sayma eylemleriyle birlikte gösterir. O karttan kapattığınız kurallar ve bu projede yok saydığınız bulgular burada listelenir, böylece istediğinizi geri getirebilirsiniz.",
       "listAriaLabel": "Kapatılan dil bilgisi kuralları",
       "none": "Hiçbir kuralı kapatmadınız.",
       "restoreAriaLabel": "{{rule}} kuralını yeniden aç",
@@ -1561,6 +1804,10 @@
         "description": "Proje kenar çubuğunu gösterin veya gizleyin.",
         "label": "Kenar çubuğunu aç/kapat"
       },
+      "togglePreview": {
+        "label": "PDF önizlemesini aç/kapat",
+        "description": "Düzenleyicinin yanındaki PDF'i gösterir veya gizler. Zen kipinde de çalışır."
+      },
       "toggleTerminal": {
         "description": "Proje terminalini gösterin veya gizleyin.",
         "label": "Terminali aç/kapat"
@@ -1568,6 +1815,26 @@
       "openFolder": {
         "label": "Klasör aç",
         "description": "Bilgisayarınızdaki bir klasörü proje olarak açın."
+      },
+      "toggleZenMode": {
+        "description": "Yazınız dışındaki her şeyi gizleyin veya geri getirin.",
+        "label": "Zen kipini aç/kapat"
+      },
+      "openSettings": {
+        "label": "Ayarları aç",
+        "description": "Oleafly ayarlarını açar."
+      },
+      "zoomIn": {
+        "description": "Uygulamanın tamamını büyütür.",
+        "label": "Yakınlaştır"
+      },
+      "zoomOut": {
+        "description": "Uygulamanın tamamını küçültür.",
+        "label": "Uzaklaştır"
+      },
+      "resetZoom": {
+        "description": "Uygulamayı %100'e döndürür.",
+        "label": "Yakınlaştırmayı sıfırla"
       }
     },
     "application": {
@@ -1590,7 +1857,7 @@
         "italic": "İtalik",
         "jumpToSourceFromPdf": "PDF'ten kaynağa atla",
         "redo": "Yinele",
-        "renameSymbol": "Sembolü proje genelinde yeniden adlandır",
+        "renameSymbol": "Sembolü veya dosyayı proje genelinde yeniden adlandır",
         "slashCommandMenu": "Eğik çizgi komutu ekleme menüsü",
         "triggerAutocomplete": "Otomatik tamamlamayı başlat",
         "undo": "Geri al"

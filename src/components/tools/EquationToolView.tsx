@@ -25,7 +25,6 @@ import {
 import { latexMathToTypst } from "@oleafly/editor/latex-to-typst-math";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { useHomeViewStore } from "@/store/home-view";
-import { useSettingsStore } from "@/store/settings";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
 import { downloadBlob, downloadBytes } from "@/lib/download-blob";
 import { useFullscreen } from "@/lib/use-fullscreen";
@@ -50,6 +49,7 @@ import {
 import { toolName } from "@/lib/tool-catalog";
 import { bytesToBase64 } from "@/lib/base64";
 import { Spinner } from "@/components/ui/spinner";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 function pngFileName(value: string): string | null {
   const name = value.trim().replace(/\.png$/i, "");
@@ -120,7 +120,7 @@ export function EquationToolView() {
   const { t } = useTranslation(["common", "researchTools"]);
   const activePage = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
-  const editorTheme = useSettingsStore((s) => s.editorTheme);
+  const editorTheme = useEditorThemeId();
   const fullscreen = useFullscreen();
   const [input, setInput] = useState(EQUATION_EXAMPLES[0].latex);
   const [language, setLanguage] = useState<EquationLanguage>("latex");

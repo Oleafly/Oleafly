@@ -43,7 +43,9 @@
     "privacyNote": "Yalnızca tanımlayıcı veya başlık doi.org, arXiv ya da Crossref'e gönderilir.",
     "title": "Atıf ekle",
     "bibliography": "Kaynakça",
-    "bibliographyHint": "Bu projede birden fazla kaynakça var. Kayıt, burada seçtiğiniz dosyaya eklenir."
+    "bibliographyHint": "Bu projede birden fazla kaynakça var. Kayıt, burada seçtiğiniz dosyaya eklenir.",
+    "zoteroMatches": "Zotero kitaplığınızdan",
+    "zoteroPlaceholder": "Zotero kitaplığınızda arayın veya bir DOI, arXiv kimliği ya da başlık yapıştırın"
   },
   "backendProtocol": {
     "mismatch": "Bu pencere ve arka ucu farklı Oleafly sürümleri için derlendi, bu yüzden bazı özellikler çalışmayabilir. Uygulamayı yeniden kurmak bunu düzeltir."
@@ -326,6 +328,38 @@
     "presentWithPresenter": {
       "label": "Slaytları sunucu görünümüyle sun",
       "keywords": "sun slaytlar sunucu görünümü konuşmacı notları zamanlayıcı sonraki slayt present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "dikkat dağıtmayan odak tam ekran arayüzü gizle sade yazı",
+      "label": "Zen Kipini Aç/Kapat"
+    },
+    "togglePreview": {
+      "keywords": "pdf önizleme göster gizle böl yalnızca düzenleyici",
+      "label": "PDF önizlemesini aç/kapat"
+    },
+    "zoomIn": {
+      "keywords": "büyüt büyük",
+      "label": "Yakınlaştır"
+    },
+    "zoomOut": {
+      "keywords": "küçült küçük",
+      "label": "Uzaklaştır"
+    },
+    "resetZoom": {
+      "keywords": "gerçek boyut 100",
+      "label": "Yakınlaştırmayı sıfırla"
+    },
+    "zoteroAddMissing": {
+      "label": "Eksik atıfları Zotero'dan ekle",
+      "keywords": "zotero eksik atıflar tanımsız anahtarlar kaynakça onar missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": ".bib kayıtlarını Zotero'dan güncelle",
+      "keywords": "zotero güncelle yenile kaynakça kayıtlar değişen update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Zotero kitaplığını eşitle",
+      "keywords": "zotero eşitle yenile kitaplık sync refresh library"
     }
   },
   "community": {
@@ -348,11 +382,13 @@
     "compile": "Derle",
     "compiler": {
       "auto": "Otomatik <note>[sistem TeX]</note>",
-      "help": "Tectonic yerleşiktir ve kurulum gerektirmez. Diğer seçenekler, hesabınızın erişebildiği yerel dosyaları okuyabilen sistem TeX'ini çalıştırır; bu yüzden yalnızca güvendiğiniz projelerde kullanın. Otomatik, derleyiciyi kaynaktan seçer. pdfLaTeX çoğu dergi şablonuyla uyumludur. XeLaTeX ve LuaLaTeX sistem yazı tipleri ve Unicode desteği ekler.",
+      "help": "Tectonic yerleşiktir ve kurulum gerektirmez. Diğer seçenekler, hesabınızın erişebildiği yerel dosyaları okuyabilen sistem TeX'ini çalıştırır. Bu yüzden onları yalnızca güvendiğiniz projelerde kullanın. Otomatik, derleyiciyi kaynaktan seçer. pdfLaTeX çoğu dergi şablonuyla uyumludur. XeLaTeX ve LuaLaTeX sistem yazı tipleri ve Unicode desteği ekler. upLaTeX ve pLaTeX Japonca belgeleri derler.",
       "lualatex": "LuaLaTeX <note>[sistem TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[sistem TeX]</note>",
+      "platex": "pLaTeX <note>[sistem TeX]</note>",
       "tectonic": "Tectonic <note>[yerleşik]</note>",
       "title": "Derleyici (bu proje)",
+      "uplatex": "upLaTeX <note>[sistem TeX]</note>",
       "xelatex": "XeLaTeX <note>[sistem TeX]</note>"
     },
     "errors": {
@@ -409,7 +445,8 @@
       "title": "Varyant (bu proje)",
       "help": "Bir varyant, taslak veya baskıya hazır derleme gibi kendi değerlerini sys.inputs içine aktarır. Seçtiğiniz varyant bu bilgisayarda kalır. Varyantları Belge ayarlarında ekleyin veya düzenleyin.",
       "none": "Varyant yok"
-    }
+    },
+    "sharedViewer": "Paylaşılan bir projede görüntüleyenler bu ayarları değiştiremez."
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"
@@ -453,7 +490,7 @@
     "switched": "Bu proje artık {{engine}} ile derleniyor.",
     "switchedAfterInstall": "TinyTeX kuruldu. Bu proje artık {{engine}} ile derleniyor.",
     "systemTex": {
-      "found": "Bu makinede bir TeX dağıtımı bulundu. Sistem TeX'i, hesabınızın erişebildiği yerel dosyaları okuyabilir; bu yüzden yalnızca güvendiğiniz projelerde kullanın. TeX Live, EPS dönüştürme gibi kendi izin listesindeki yardımcıları yine de çalıştırır.",
+      "found": "Bu makinede bir TeX dağıtımı bulundu. Sistem TeX'i, hesabınızın erişebildiği yerel dosyaları okuyabilir, bu yüzden onu yalnızca güvendiğiniz projelerde kullanın. TeX Live, EPS dönüştürme gibi kendi izin listesindeki yardımcıları yine de çalıştırır.",
       "missing": "Bu makinede bir TeX dağıtımı (MacTeX, TeX Live, MiKTeX, TinyTeX) bulunamadı.",
       "switchPdflatex": "pdfLaTeX'e geç ve yeniden derle",
       "title": "Sistemimdeki LaTeX'i kullan (latexmk)",
@@ -716,11 +753,6 @@
   "settings": {
     "close": "Ayarları kapat",
     "data": {
-      "cloud": {
-        "comingSoon": "Yakında",
-        "description": "Bir Git uzak deposu yapılandırmadan projelerinizi cihazlarınız arasında eşitleyin. Her aktarım uçtan uca şifrelenecek, böylece çalışmanız yolda gizli kalacak. Yerel proje klasörleriniz doğruluk kaynağı olmayı sürdürecek.",
-        "title": "Bulut eşitleme"
-      },
       "danger": {
         "confirmDeleteAllAction": "Tüm projeleri sil",
         "confirmDeleteAllDescription": "Geçerli her proje, dosyaları ve Git geçmişiyle birlikte Geri Dönüşüm Kutusu'na taşınacak. Sonrasında projeleri tek tek geri yükleyebilirsiniz.",
@@ -808,9 +840,13 @@
         "description": "Oleafly Tools galerisini ve tek tek araçları (PDF içe aktarma, denklemler, tablolar, BibTeX, laboratuvar ve literatür arama, son tarihler) ve bunların eğik çizgi komutlarını gösterir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
         "label": "LaTeX araçları"
       },
-      "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır; değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın.",
+      "liveCollaboration": {
+        "description": "Projeleri, sizin veya grubunuzun çalıştırdığı bir iş birliği sunucusu üzerinden başkalarıyla birlikte düzenleyin. Ayarlar'a bir İş Birliği bölümü ekler. Beta aşamasında olduğu için varsayılan olarak kapalıdır.",
+        "label": "Canlı iş birliği"
+      },
+      "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır ve değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın.",
       "webBrowser": {
-        "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır; kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
+        "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Beta aşamasında olduğu için varsayılan olarak kapalıdır. Kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
         "label": "Web tarayıcısı"
       }
     },
@@ -844,7 +880,7 @@
         "description": "--only-cached ile derler ve paketleri ağ üzerinden hiç indirmez.",
         "label": "Çevrimdışı kip"
       },
-      "proofreadingNote": "Redaksiyon yerel olarak bir arka plan çalışanında yürür. Harper seçili İngilizce lehçesini izler; yazım denetimi her zaman tam olarak seçili Hunspell paketini kullanır. Matematik, kod, açıklamalar, atıf sözdizimi, üst veriler ve URL'ler dışarıda bırakılır.",
+      "proofreadingNote": "Redaksiyon yerel olarak bir arka plan çalışanında yürür. Harper seçili İngilizce lehçesini izler ve yazım denetimi her zaman tam olarak seçili Hunspell paketini kullanır. Matematik, kod, açıklamalar, atıf sözdizimi, üst veriler ve URL'ler dışarıda bırakılır.",
       "regionalism": {
         "description": "Seçili İngilizce lehçesine uymayan terimleri işaretler. Bu tür terimleri ürün veya kod adı olarak kullanıyorsanız kapatın.",
         "label": "Bölgesel kullanım önerileri"
@@ -887,6 +923,7 @@
     "nav": {
       "ai": "Yapay Zeka Asistanı",
       "appearance": "Görünüm",
+      "collaboration": "İş Birliği",
       "data": "Veri Depolama",
       "dictionary": "Sözlük",
       "downloads": "İndirilenler",
@@ -902,6 +939,7 @@
       "keywords": {
         "ai": "asistan, sohbet, modeller, sağlayıcılar, API anahtarları, ajanlar, istemler, bütçe, MCP sunucuları",
         "appearance": "tema, koyu kip, karanlık mod, açık kip, aydınlık mod, renk, yazı tipleri, metin boyutu, yakınlaştırma, düzen",
+        "collaboration": "sunucular, oturum açma, cihazlar, üyeler, sorumlular, paylaşım, ekipler, laboratuvarlar, canlı düzenleme, gerçek zamanlı, güvenlik günlüğü",
         "data": "yedekleme, kitaplık klasörü, projeler klasörü, depolama, disk alanı, çöp kutusu, geri dönüşüm kutusu, projeleri sil, kontrol noktaları",
         "dictionary": "yazım, özel sözcükler, yok sayılan sözcükler, redaksiyon, dil bilgisi kuralları",
         "downloads": "paketler, yazı tipleri, sözlükler, çevrimdışı dosyalar",
@@ -1121,7 +1159,8 @@
       "editorPreview": "Düzenleyici + Önizleme",
       "editorPreviewAi": "Düzenleyici + Önizleme + Yapay Zeka",
       "previewAi": "Önizleme + Yapay Zeka",
-      "previewOnly": "Yalnızca Önizleme"
+      "previewOnly": "Yalnızca Önizleme",
+      "zenMode": "Zen Kipi"
     },
     "newProjectName": "Yeni proje adı",
     "projectName": "Proje adı",
@@ -1352,5 +1391,80 @@
     "location": "{{file}}, satır {{line}}",
     "error": "Hata",
     "warning": "Uyarı"
+  },
+  "fileRenameDialog": {
+    "title": "Dosyayı yeniden adlandır",
+    "titleFolder": "Klasörü yeniden adlandır",
+    "newPath": "Yeni yol",
+    "hint": "Eksik klasörler oluşturulur.",
+    "invalid": "Bu projenin içinde bir yol kullanın.",
+    "exists": "{{path}} zaten var."
+  },
+  "zen": {
+    "compileFailed": "Derleme başarısız",
+    "compiling": "Derleniyor",
+    "hideLog": "Derleme günlüğünü gizle",
+    "showLog": "Derleme günlüğünü göster"
+  },
+  "collabSync": {
+    "paused_one": "{{count}} dosya Oleafly dışında değişti. Bu değişiklik herkese gönderilsin mi, yoksa yerelde mi kalsın?",
+    "paused_other": "{{count}} dosya Oleafly dışında değişti. Bu değişiklikler herkese gönderilsin mi, yoksa yerelde mi kalsın?",
+    "send": "Gönder",
+    "keepLocal": "Yerelde tut",
+    "unavailable": "Proje klasörü kullanılamıyor, bu yüzden eşitleme duraklatıldı. Klasör geri geldiğinde yeniden başlar."
+  },
+  "overleafSync": {
+    "button": "Overleaf eşitlemesi",
+    "title": "Overleaf ile eşitle",
+    "cancel": "İptal",
+    "more_one": "ve {{count}} dosya daha",
+    "more_other": "ve {{count}} dosya daha",
+    "status": {
+      "notLinked": "Henüz Overleaf ile eşitlenmedi.",
+      "linking": "Overleaf'e bağlanıyor",
+      "syncing": "Overleaf ile eşitleniyor",
+      "needsToken": "Eşitlemek için Overleaf Git belirtecinizi ekleyin.",
+      "never": "Henüz eşitlenmedi.",
+      "justNow": "az önce",
+      "synced": "Son eşitleme: {{time}}.",
+      "conflicts_one": "{{count}} dosya iki tarafta da değişti. Hangi sürümün kalacağını seçin.",
+      "conflicts_other": "{{count}} dosya iki tarafta da değişti. Hangi sürümlerin kalacağını seçin."
+    },
+    "actions": {
+      "keepInSync": "Overleaf ile eşitlenmiş tut",
+      "syncNow": "Şimdi eşitle",
+      "auto": "Otomatik eşitle",
+      "resolve": "Sürümleri seç",
+      "unlink": "Eşitlemeyi durdur",
+      "addToken": "Git belirteci ekle",
+      "changeToken": "Git belirtecini değiştir"
+    },
+    "token": {
+      "title": "Overleaf Git belirtecinizi ekleyin",
+      "description": "Oleafly, Overleaf'in Git entegrasyonu üzerinden eşitler. Overleaf hesap ayarlarınızdaki Git entegrasyonu bölümünde bir belirteç oluşturun, ardından buraya yapıştırın. Belirteç bu bilgisayarda şifreli olarak kalır.",
+      "openSettings": "Overleaf hesap ayarlarını aç",
+      "label": "Git belirteci",
+      "note": "Git entegrasyonu için projenin sahibinin ücretli ya da üniversite Overleaf planına sahip olması gerekir.",
+      "save": "Kaydet ve eşitle"
+    },
+    "choice": {
+      "title": "Hangi sürüm geçerli olsun?",
+      "description": "Bu dosyalar burada ve Overleaf'te farklı. Yalnızca bir tarafta bulunan dosyalar iki tarafta da tutulur, yani hiçbir şey silinmez.",
+      "mine": "Benim sürümlerimi kullan",
+      "theirs": "Overleaf'teki sürümleri kullan"
+    },
+    "conflicts": {
+      "title": "Sürümleri seç",
+      "description": "Bu dosyalar son eşitlemeden bu yana hem burada hem Overleaf'te değişti. Her biri için tutulacak sürümü seçin. Seçiminizi uygulayana kadar hiçbir şey değişmez.",
+      "mine": "Benimki",
+      "theirs": "Overleaf'teki",
+      "allMine": "Tümünde benimkini tut",
+      "allTheirs": "Tümünde Overleaf'tekini kullan",
+      "apply": "Uygula ve eşitle"
+    }
+  },
+  "stuckWindow": {
+    "reloaded": "Bu pencere 30 saniye yanıt vermediği için Oleafly onu yeniden yükledi. Hemen öncesinde yaptığınız değişiklikler kaydedilmemiş olabilir.",
+    "reloadedAgain": "Bu pencere yine yanıt vermeyi bıraktığı için Oleafly onu tekrar yeniden yükledi. Sorunun nedeni projedeki bir şey olabileceğinden projeniz yeniden açılmadı."
   }
 }

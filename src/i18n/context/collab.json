@@ -1,0 +1,427 @@
+{
+  "section": {
+    "server": {
+      "signOut": "Button that ends this computer's session on the collaboration server. It does not quit the app.",
+      "remove": "Button that removes the server from this computer's list. Nothing is deleted on the server.",
+      "emails": {
+        "label": "Switch on a server card. Turns on or off this person's own emails about projects other people share with them.",
+        "noMail": "Shared with you is a section of the library. Use the same words as that section."
+      },
+      "suspended": "Badge on a server card when an admin has suspended this person's account. Short, like Signed out.",
+      "noAccess": "Badge on a server card when this person's account was removed from the server. Short, like Signed out.",
+      "suspendedHint": "Under the server name when an admin suspended this account. {{server}} is the server's name. A Sign in button follows.",
+      "endedHint": "Under the server name when this person was removed from the server. {{server}} is the server's name. There is no Sign in button.",
+      "endedGuestHint": "Same message for a guest whose access ended because no shared project on the server includes them any more.",
+      "testShort": "Short button on a collaboration server's card that checks the app can reach the server. Keep it to one word if the language allows.",
+      "adminConsole": "Short button on a collaboration server's card that opens the separate admin console window. A name, not a sentence."
+    },
+    "devices": {
+      "current": "Badge on the row for the computer the person is using right now"
+    },
+    "checks": {
+      "status": {
+        "info": "Status word for a check that neither passed nor failed but has something worth knowing"
+      },
+      "items": {
+        "webSocket": {
+          "label": "Name of the check for the always-open connection that carries live edits. Avoid technical words such as WebSocket.",
+          "info": "Note shown when this network blocks the usual live connection, for example a proxy that refuses WebSockets, so live edits fall back to a slower route that still works. Avoid technical words such as WebSocket or long polling."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "addressPlaceholder": "Example server address shown in an empty field. Keep it exactly as written.",
+    "serverTitle": "Dialog title once the server answers and the person picks how to sign in. {{server}} is the server's name, such as Smith Lab",
+    "serverDescription": "Under the dialog title while the person picks a sign-in option. The people who run the server control who gets in",
+    "setupTitle": "Dialog title for a new server that has no admin yet. {{server}} is the server's name, such as Smith Lab",
+    "setupDescription": "The setup code is a one-time code the server prints in its log the first time it starts",
+    "continueWith": "{{provider}} is the name of a sign-in service, such as GitHub or University login",
+    "signingInTitle": "Dialog title while Oleafly waits for the person to finish signing in in their web browser",
+    "waitingDescription": "{{provider}} is the name of a sign-in service, such as GitHub or University login",
+    "doneTitle": "Dialog title once sign-in worked. {{server}} is the server's name, such as Smith Lab",
+    "doneDescription": "{{name}} is the person's display name on the server",
+    "doneManageDescription": "Shown to server admins and maintainers. {{name}} is the person's display name on the server",
+    "doneGuestDescription": "Shown to guests, who can only open projects they were invited to. {{name}} is the person's display name on the server",
+    "codeTitle": "Dialog title while the person signs in by typing a short code on another phone or computer",
+    "codeExpires": "{{time}} is a clock time, such as 14:30 or 2:30 PM",
+    "codeLabel": "Label above the short sign-in code Oleafly shows, such as BCDF-GHJK",
+    "codeAddressLabel": "Label above the web address of the page where people type the code",
+    "codeOffer": "Shown while Oleafly waits for the browser to send the person back after signing in"
+  },
+  "errors": {
+    "not_admitted": "Shown when the server's admin has not allowed this person to sign in. Keep it short and calm.",
+    "server_changed": "Shown when the saved server address now belongs to a different server. Oleafly refused to talk to it. Keep the advice to remove and re-add only if trusted.",
+    "duplicate_server": "Shown when an address the person adds answers as a server that is already in their list under a different address.",
+    "device_in_use": "\"Computer account\" means the person's user account on the operating system, not their account on the server. Oleafly's device key belongs to that operating-system account, so two people sharing it cannot both sign in."
+  },
+  "roles": {
+    "admin": "Server role with full control of the server",
+    "maintainer": "Server role that can manage members but cannot change server settings",
+    "member": "Server role for a regular person on the server",
+    "guest": "Server role for someone from outside who can only open projects shared with them",
+    "unknown": "Shown in place of a server role that a newer server uses and this version of the app doesn't know. The person gets no rights from it."
+  },
+  "admin": {
+    "tabs": {
+      "allowlist": "Tab with the list of people allowed to sign in, by email address or sign-in name",
+      "email": "Tab in Manage server about the email the server sends"
+    },
+    "members": {
+      "devices": "Button on a member's row that shows the computers signed in with that person's account"
+    },
+    "allowlist": {
+      "match": {
+        "login": "A user name on a sign-in service, such as a GitHub username"
+      },
+      "emailPlaceholder": "Example email address shown in an empty field. Keep example.edu.",
+      "loginPlaceholder": "Example GitHub username shown in an empty field. Keep it exactly as written."
+    },
+    "domains": {
+      "domainPlaceholder": "Example domain shown in an empty field. Keep it exactly as written."
+    },
+    "log": {
+      "server": "Shown in place of a person's name when the server itself did something",
+      "kinds": {
+        "signIn": "Security log entry. The person named just before it signed in.",
+        "signInRefused": "Security log entry. The person named just before it tried to sign in and the server said no.",
+        "refreshReuseDetected": "Security log entry. A session token was used twice, which can mean it was stolen, so the server signed that device out.",
+        "unknown": "Security log entry of a kind this version of the app does not know yet. Keep it neutral.",
+        "projectShared": "Security log entry. The person named just before it shared a project on the server.",
+        "projectAccessGranted": "Security log entry. The person named just before it gave someone access to a project.",
+        "projectAccessChanged": "Security log entry. The person named just before it changed someone's role in a project.",
+        "projectAccessRemoved": "Security log entry. The person named just before it removed someone from a project.",
+        "projectLeft": "Security log entry. The person named just before it left a project by themselves.",
+        "projectLinkSharingOn": "Security log entry. The owner turned on the setting that lets members open the project from its link.",
+        "projectLinkSharingOff": "Security log entry. The owner turned off link sharing for the project.",
+        "projectLinkRoleChanged": "Security log entry. The owner changed the role people get when they join through the project's link.",
+        "projectArchived": "Security log entry. The person stopped sharing the project. The server keeps it read only for a while, then deletes it.",
+        "projectUnarchived": "Security log entry. An admin made an archived project shared again.",
+        "projectSettingsChanged": "Security log entry. The person changed a project setting this version of the app cannot name.",
+        "projectAccessLogOn": "Security log entry. The owner turned on the log of who opened the project.",
+        "projectAccessLogOff": "Security log entry. The owner turned off the log of who opened the project.",
+        "projectCommentsOn": "Security log entry. The owner allowed comments in the project.",
+        "projectCommentsOff": "Security log entry. The owner turned off comments in the project.",
+        "projectRejoinRefused": "Security log entry. Someone who was removed from a project tried to join it again through its link, and the server said no.",
+        "guestInvited": "Security log entry. A project owner invited a person from outside the server as a guest.",
+        "guestInvitationApproved": "Security log entry. An admin or maintainer approved a guest invitation so it works.",
+        "guestInvitationDeclined": "Security log entry. An admin or maintainer declined a guest invitation.",
+        "guestInvitationRevoked": "Security log entry. Someone withdrew a guest invitation before it was used.",
+        "guestAdmissionEnded": "Security log entry. A guest lost their last project, so the server removed their account and signed out their devices."
+      },
+      "details": {
+        "project": "Short fact under a security log entry. {{title}} is the project's name.",
+        "provider": "Short fact under a sign-in entry. {{provider}} is the sign-in service, such as GitHub or University login.",
+        "providerEmailLink": "Short fact under a sign-in entry. The person signed in with a link the server emailed to them.",
+        "signInCode": "Short fact under a sign-in entry. The person signed in by typing a short code from the app into a browser.",
+        "via": {
+          "allowlist": "Short fact under a sign-in entry. The list of allowed people let this person in. Use the same words as the Allowed people tab.",
+          "domain": "Short fact under a sign-in entry. A rule for an email domain let this person in.",
+          "setup": "Short fact under a sign-in entry. The person used the one-time setup code and became the first admin.",
+          "guest": "Short fact under a sign-in entry. A guest invitation let this person in.",
+          "link": "Short fact under a project entry. The person joined, or tried to join, through the project's link.",
+          "invitation": "Short fact under a project entry. The person got access by accepting a guest invitation."
+        },
+        "newAccount": "Short fact under a sign-in entry. This was the person's first sign-in, so the server made their account.",
+        "reactivated": "Short fact under a sign-in entry. The account had been removed before and is active again.",
+        "reasons": {
+          "suspended": "Short reason under a refused sign-in. An admin suspended this account.",
+          "notAdmitted": "Short reason under a refused sign-in. The person is not on the allowed list, and no domain rule or guest invitation covers them.",
+          "setupCodeInvalid": "Short reason under a refused sign-in. The one-time setup code the person typed was wrong.",
+          "guestInvitationUnusable": "Short reason under a refused sign-in. The person's guest invitation expired or was withdrawn, or guests are turned off.",
+          "lockedOutIp": "Short reason under a refused sign-in. Too many attempts came from the same IP address, so the server paused them for a while.",
+          "lockedOutAddress": "Short reason under a refused sign-in. Too many sign-in emails were asked for one email address, so the server paused them for a while.",
+          "stoppedByPerson": "Short reason under a refused sign-in. Someone pressed the button on the browser page that stops a sign-in with a code.",
+          "otherBrowser": "Short reason under a refused sign-in. A sign-in with a code was finished in a different browser from the one that started it, so the server stopped it.",
+          "inactiveAccountAddress": "Short reason under a refused sign-in. A domain rule or guest invitation would have let the person in, but their verified email belongs only to accounts an admin removed or suspended. Adding the address to the allowed list lets them back in.",
+          "noProjectsLeft": "Short reason under an entry where a guest lost access. The guest has no projects left on the server."
+        },
+        "role": "Short fact under a project entry. {{role}} is a project role such as Editor or Viewer.",
+        "roleChange": "Short fact under a role change. {{from}} and {{to}} are server roles such as Member or Maintainer.",
+        "device": "Short fact under a device entry. {{name}} is the computer's name.",
+        "byAdmin": "Short fact under a project entry. An admin did this from the admin console, not the project's owner.",
+        "settingOn": "Short fact under a server settings change. {{setting}} is the name of a setting that is now turned on.",
+        "settingOff": "Short fact under a server settings change. {{setting}} is the name of a setting that is now turned off."
+      }
+    },
+    "email": {
+      "on": {
+        "from": "{{from}} is the sender name and address from the server settings, such as Smith Lab <lab@uni.edu>"
+      },
+      "off": {
+        "description": "OLEAFLY_SMTP_URL and OLEAFLY_MAIL_FROM are setting names. Keep them exactly as written.",
+        "copyPath": "Shown when the server can't send email. The link shown below it adds the server in the app.",
+        "address": "Add server is the button in the collaboration settings. Use the same words as that button."
+      },
+      "lastFailure": "{{date}} is a date and time. The mail server's own message follows on the next line, in English.",
+      "test": {
+        "description": "{{address}} is one or more email addresses separated by commas",
+        "sent": "{{address}} is one or more email addresses separated by commas"
+      },
+      "broken": {
+        "title": "Status heading on a collaboration server's Email page when mail settings exist but emails fail to send",
+        "description": "Explains that emails are failing and what the admin should do"
+      },
+      "needsWorking": "Note under the email notifications switch while it can't be turned on because email is failing"
+    },
+    "settings": {
+      "emailLinkSignIn": {
+        "label": "Name of a server setting that lets people sign in with a link sent by email"
+      },
+      "commentsAllowed": {
+        "label": "Name of a server-wide setting. When off, comment threads are hidden in every shared project on this server but not deleted."
+      }
+    }
+  },
+  "projectRoles": {
+    "editor": "Role on one shared project: can change files. Different from the server roles under roles.",
+    "viewer": "Role on one shared project: can open and read it but not change it.",
+    "unknown": "Shown in place of a project role that a newer server uses and this version of the app doesn't know. The person can only read the project."
+  },
+  "share": {
+    "copyAndShare": "Button on a project that is a folder outside Oleafly. It copies the folder into the library, then shares the copy.",
+    "renamed": "Some characters in file names are refused on some systems, so those files get a slightly different name on other people's computers."
+  },
+  "manage": {
+    "link": {
+      "sharing": "Name of a switch. When it is on, anyone signed in to the server who has the project link can open the project."
+    },
+    "comments": {
+      "label": "Name of a switch in the share dialog that only the project owner sees. When it is on, people who can edit the project can leave comments on its text.",
+      "description": "Explains the Comments switch. Turning it off hides comments for everyone but keeps them stored.",
+      "serverOff": "Shown under the Comments switch, which is locked off, when the admin of the server has turned comments off for the whole server. {{server}} is the server's name."
+    },
+    "accessLog": {
+      "label": "Name of the owner's on/off switch in the share dialog that starts or stops recording who uses the project",
+      "description": "Explains the owner's access log switch. Names the live collaboration side pane by its own title"
+    }
+  },
+  "sync": {
+    "offline": "Status text. The number of local changes that have not reached the server yet comes after the colon, so no plural form is needed.",
+    "suspended": "Short status of a shared project when an admin suspended this person's account.",
+    "accessEnded": "Short status of a shared project when this person no longer has access to the server."
+  },
+  "tree": {
+    "clash": "Tooltip on a small badge in the file tree. Two files in a shared project had the same name, so this one was saved on disk under a different name. {{other}} is the path of the file that kept the name, {{name}} is the shared name."
+  },
+  "library": {
+    "kind": "Small label on a project card, shown in capitals. Match the existing project kind labels in library.json.",
+    "openLink": {
+      "placeholder": "Example link shown in an empty field. Keep it exactly as written."
+    }
+  },
+  "pane": {
+    "title": "Name of a side panel that shows who has the shared project open and what happened to it recently.",
+    "titleUnread": "Name of the same side panel tab while it has activity the person has not seen yet.",
+    "hereIn": "{{path}} is the file the person has open, for example main.tex.",
+    "deleted": "Title of a collapsible section in the Live collaboration side panel listing files and folders that were deleted from the shared project and can be restored.",
+    "deletedEmpty": "One quiet line shown in that section when nothing is in the shared project's trash.",
+    "accessLog": "Title of a collapsible section in the live collaboration side pane, shown only to the project's owner. Lists who opened, joined or downloaded the project"
+  },
+  "deleted": {
+    "restore": "Button on a deleted file or folder that puts it back into the shared project for everyone.",
+    "restoreLabel": "Accessible label of the Restore button. {{name}} is the file or folder name, for example intro.tex.",
+    "inFolder": "Shows where a deleted file used to be. {{folder}} is a folder path inside the project, for example chapters.",
+    "inProject": "Shows that a deleted file used to be at the top level of the project folder, not inside a subfolder.",
+    "byYou": "Shows that the person reading deleted this file.",
+    "by": "Shows who deleted the file. {{name}} is a person's display name."
+  },
+  "activity": {
+    "mergedFile": "One file and the number of changes merged into it.",
+    "newDevice": "Quiet entry in a shared project's activity list when a collaborator, or this person, starts using another computer with the same account. {{name}} is the person's display name.",
+    "review": "Button on a merged changes entry. It opens a read-only window showing who changed which file while this person was offline.",
+    "renamed": "Activity entry when two people renamed the same file at nearly the same time and the other person's name was kept. {{name}} is that person, {{before}} the earlier file name, {{theirs}} the name that was kept, {{ours}} the name the reader chose.",
+    "mentioned": "Entry in the Activity list. {{name}} is a person, {{path}} is a file in the project, for example chapters/intro.tex.",
+    "mentionedHere": "Same entry when the file is not known.",
+    "showComment": "Button on that entry that opens the comment where the person was mentioned.",
+    "rejoined": "Entry for a person who closed the project and then opened it again. {{name}} is the person.",
+    "visited": "Entry for a person who opened the project and then closed it, folded into one line. {{name}} is the person.",
+    "removedBy": "Entry when someone removed this person from the shared project. {{name}} is the person who did it.",
+    "suspended": "Entry when an admin suspended this person's account. {{server}} is the server's name. A Sign in button follows.",
+    "accessEnded": "Entry when this person was removed from the whole server. {{server}} is the server's name.",
+    "accessEndedGuest": "Same entry for a guest whose access ended because no shared project on the server includes them any more.",
+    "memberAdded": "Entry when one person added another to the project. {{by}} did it, {{name}} was added.",
+    "memberAddedByYou": "Entry when the reader added {{name}} to the project.",
+    "memberJoined": "Entry when {{name}} joined on their own by opening the project's link.",
+    "memberRemoved": "Entry when one person removed another from the project. {{by}} did it, {{name}} was removed.",
+    "memberRemovedByYou": "Entry when the reader removed {{name}} from the project.",
+    "memberLeft": "Entry when {{name}} left the shared project on their own."
+  },
+  "mergeReview": {
+    "title": "Title of the read-only window listing changes from others that arrived while this person was offline",
+    "person": "One person and the number of their changes that were merged. The count comes after the colon so no plural form is needed.",
+    "removedFile": "Small tag next to a file that someone else removed while this person was offline",
+    "diffLabel": "Accessible name of the scrollable before and after comparison for one file"
+  },
+  "console": {
+    "open": "Button that opens a separate window where admins manage a collaboration server",
+    "windowTitle": "Title of the admin console window. Oleafly Server is the product name and stays in English.",
+    "sections": {
+      "access": "Section with the list of allowed people and email domain rules that decide who may sign in",
+      "checks": "Section that tests whether this computer can reach the server"
+    },
+    "health": {
+      "label": "Spoken label for the health badge in the window header. {{status}} is one of the health words below",
+      "warning": "Short health status shown in a small badge when something on the server needs fixing",
+      "unreachable": "Short health status shown in a small badge when the app cannot reach the server"
+    },
+    "overview": {
+      "glance": {
+        "started": "Label above a relative time such as 3 days ago that says when the server program last started",
+        "projectsDetail": "Counts under the number of shared projects. Uploading means the owner is still sending the project for the first time"
+      },
+      "activity": {
+        "title": "Heading of the admin console overview part with charts of when people signed in to the server",
+        "description": "Explains the activity charts. Oleafly is the app name. The app stays signed in, so one person working every day may sign in only once",
+        "none": "Shown above the charts when the server recorded no sign-ins in the last 30 days",
+        "daily": "Title of an area chart with one point per day showing how many sign-ins the server recorded",
+        "dailyLabel": "Screen reader name of the daily sign-ins chart. UTC is the time zone",
+        "total": "Shown beside the daily chart title. {{number}} is how many sign-ins the server recorded in the last 30 days, such as 42",
+        "hourly": "Title of a grid that shows sign-ins by weekday (rows) and hour of the day (columns)",
+        "hourlyLabel": "Screen reader name of the weekday and hour grid. UTC is the time zone",
+        "day": "Column heading in a screen reader table of the daily chart. Each row is one date",
+        "signInsColumn": "Column heading in a screen reader table: how many sign-ins happened that day",
+        "peopleColumn": "Column heading in a screen reader table: how many different people signed in that day",
+        "signIns": "Line in the chart tooltip for one day. {{number}} is how many sign-ins happened that day",
+        "people": "Line in the chart tooltip for one day. {{number}} is how many different people signed in that day",
+        "cell": "Hover text of one square in the weekday and hour grid. {{weekday}} is a short weekday such as Mon, {{hour}} is 0 to 23 and {{number}} is a count",
+        "hoursInUtc": "Note under the weekday and hour grid saying its hours are in the UTC time zone",
+        "less": "Start of a colour legend that runs from light squares (few sign-ins) to dark squares (many)",
+        "more": "End of a colour legend that runs from light squares (few sign-ins) to dark squares (many)"
+      },
+      "storage": {
+        "snapshots": "Whole saved copies of each project that the server keeps so new people can download it"
+      },
+      "limits": "{{project}} and {{file}} are sizes such as 200 MB. {{people}} is a number",
+      "services": {
+        "emailLinkOption": "Name of a sign-in option in a list of options such as GitHub. People get a sign-in link by email. Keep it short."
+      },
+      "health": {
+        "issues": {
+          "noSignInProvider": {
+            "description": "Advice under the warning that nobody can sign in. Sign in by email is the name of a server setting and Settings is a section of the admin console. Use the same words as those."
+          }
+        }
+      }
+    },
+    "projects": {
+      "filter": {
+        "active": "Filter choice for projects that are shared and in use",
+        "pending": "Filter choice for projects whose owner is still uploading them for the first time"
+      },
+      "status": {
+        "pending": "Badge on a project whose owner is still uploading it for the first time"
+      },
+      "count": "{{shown}} and {{total}} are numbers of projects in the list"
+    }
+  },
+  "links": {
+    "turnedOff": "Shown when someone clicks an Oleafly link while the Live collaboration setting is off. Settings and Experimentation are the window and section names, so use the same words as the Settings navigation in shell.json.",
+    "openSettings": "Button that opens the Settings window at the Experimentation section.",
+    "malformed": "Shown when an Oleafly link someone clicked in an email or web page cannot be read.",
+    "opening": "Short status line next to a spinner while a shared project downloads and opens.",
+    "confirm": {
+      "title": "Heading of the dialog shown when someone opens an Oleafly link to a shared project they are not part of yet. Joining makes them a member of that project.",
+      "body": "Says what joining does (adds you to the project and downloads its files) and tells the person to join only when they know who sent the link.",
+      "project": "Label next to the shared project's title in the join dialog.",
+      "owner": "Label next to the name of the person who owns the shared project, in the join dialog. Use the same word as projectRoles.owner.",
+      "server": "Label next to the collaboration server's name and address, in the join dialog.",
+      "role": "Label next to the role the person gets by joining (one of the projectRoles words, such as Editor).",
+      "join": "Button that joins the shared project and opens it."
+    }
+  },
+  "accessLog": {
+    "opened": "One line in the access log. {{name}} is a person's display name. They opened the shared project in the app so it syncs live",
+    "joinedLink": "One line in the access log. {{name}} became a member by opening the project's link",
+    "joinedShare": "One line in the access log. {{name}} became a member after the owner (the reader) added them, the first time their app fetched the project",
+    "downloaded": "One line in the access log. {{name}}'s app downloaded a full copy of the project from the server",
+    "unknown": "Fallback line in the access log for an event this version of the app does not know yet",
+    "unknownDevice": "Shown in place of a device name the server no longer knows",
+    "span": "Tooltip on a time when one log line covers several visits from the same device. {{from}} and {{to}} are dates with times",
+    "more": "Button under the access log that loads the next, older entries"
+  },
+  "comments": {
+    "title": "Name of a side panel tab that lists the comment threads of a shared project, grouped by file.",
+    "titleUnread": "Name of the same tab while it has comments from other people that the person has not seen yet.",
+    "add": "Menu item in the editor's right-click menu and a small button over selected text. Starts a new comment on the selected text. Not a code comment.",
+    "showResolved": "Tooltip of a toggle button that also lists comment threads already marked as resolved.",
+    "empty": "Shown in the Comments tab when no file in the shared project has comments, to a person who can only read them.",
+    "emptyCanWrite": "Shown in the Comments tab when no file in the shared project has comments. 'Add comment' is the name of the menu item that starts a comment.",
+    "allResolved": "Shown in the Comments tab when the shared project has comments but every thread is marked as resolved and resolved threads are hidden. The Show resolved comments button in the tab's header lists them.",
+    "detached": "Title of a section listing comment threads whose text was deleted from the file, so they are no longer attached to any text.",
+    "resolvedBy": "{{name}} is the person who marked the comment thread as resolved.",
+    "edited": "Small label next to a comment that was changed after it was posted.",
+    "newPlaceholder": "Placeholder in an empty comment box. Keep @ as typed: typing @ lists people to mention.",
+    "replyPlaceholder": "Placeholder in the reply box under a comment thread. Keep @ as typed.",
+    "post": "Button that posts a new comment. A verb.",
+    "reply": "Button that posts a reply to a comment thread. A verb.",
+    "resolve": "Button that marks a comment thread as done. Resolved threads are hidden until the person shows them.",
+    "reopen": "Button that turns a resolved comment thread back into an open one.",
+    "thread": "Name read by screen readers for one comment thread. {{name}} is the person who started it.",
+    "mentionList": "Name read by screen readers for the list of people that pops up after typing @.",
+    "marker": "Tooltip of a small icon in the editor margin next to a line that has comments.",
+    "unverifiedAuthor": "Shown instead of a person's name on a comment when Oleafly could not confirm that the named person really wrote it. Another device may have posted it under their name. Short label, no final period.",
+    "unverifiedThread": "Name read by screen readers for a comment thread when Oleafly could not confirm who started it.",
+    "resolvedUnverified": "Small note on a resolved comment thread when Oleafly could not confirm who marked it as resolved. Pairs with the 'Resolved by {{name}}' note.",
+    "refusals": {
+      "notLive": "Error under a comment action. The shared project has no live connection right now, so the comment was not saved.",
+      "notYours": "Error under a comment action. Only the comment's author may edit or delete it.",
+      "offServer": "Error under a comment action. The collaboration server's admin turned comments off for the whole server.",
+      "offProject": "Error under a comment action. Comments are switched off for this shared project. 'Owner' is the project role.",
+      "viewer": "Error under a comment action. The person has the Viewer role, which allows reading but not writing. 'Owner' is the project role.",
+      "someoneReplied": "Error after trying to delete a comment thread. A thread with replies from other people cannot be deleted, only marked as resolved.",
+      "messageDeleted": "Error after trying to edit a comment that was deleted in the meantime.",
+      "selectionChanged": "Error under a new comment box. The text the comment is attached to changed while the comment was being written.",
+      "tooLong": "Error under a comment box when the comment is over the length limit.",
+      "empty": "Error under a comment box when the person tries to post an empty comment."
+    }
+  },
+  "guests": {
+    "badge": "Small badge next to a person's name wherever people are listed. The person is a guest: an outside person invited by email to specific shared projects only",
+    "invite": {
+      "noAccount": "Hint in the project share dialog when the owner typed an email address that matches nobody on the collaboration server. {{server}} is the server's name, {{email}} the typed address",
+      "button": "Button in the share dialog that invites the typed email address as a guest of this one project",
+      "buttonNamed": "Accessible label of the invite button. {{email}} is the address being invited",
+      "duplicate": "Error when the owner invites an address that already has an open invitation to the same project",
+      "tooMany": "Error when the owner hit the server's hourly limit on guest invitations"
+    },
+    "sent": {
+      "emailed": "Confirmation after inviting a guest. The server emailed the invitation to {{email}}",
+      "emailedAfterApproval": "Confirmation after inviting a guest on a server where a server admin or maintainer must approve each guest first. The email goes out after approval",
+      "added": "Confirmation when the invited address already belongs to an account on the server, so that person got access to the project right away",
+      "sendLink": "Shown after inviting a guest when the server cannot send email. The owner copies the link below and sends it to the guest. The link adds the server in the Oleafly app, then the guest signs in with the invited address",
+      "sendLinkAfterApproval": "Same as the copy link message, on a server where a server admin must approve the invitation before the guest can sign in",
+      "linkLabel": "Accessible label of the read-only field that holds the add server link. {{server}} is the server's name"
+    },
+    "list": {
+      "title": "Heading of the list of open guest invitations in the project share dialog. Only the owner sees it",
+      "status": {
+        "awaiting_approval": "Status badge of a guest invitation that a server admin has not approved yet",
+        "invited": "Status badge of a guest invitation that is active and waiting for the guest to sign in",
+        "declined": "Status badge of a guest invitation that a server admin declined"
+      },
+      "expires": "Shown under an invitation. {{date}} is the date it stops working, already formatted for the reader's language",
+      "withdraw": "Button that cancels an invitation that was not used yet",
+      "withdrawNamed": "Accessible label of the withdraw button. {{email}} is the invited address"
+    },
+    "pending": {
+      "title": "Heading in the server admin screen, under People, for guest invitations that wait for an admin or maintainer",
+      "description": "Explains the pending guests list to server admins",
+      "invitedBy": "Detail line for one pending guest. {{inviter}} is the project owner's name, {{project}} the project title",
+      "approve": "Button that lets the invited guest sign in",
+      "approveNamed": "Accessible label of the approve button. {{email}} is the invited address",
+      "decline": "Button that refuses the guest invitation",
+      "declineNamed": "Accessible label of the decline button. {{email}} is the invited address"
+    }
+  },
+  "files": {
+    "waiting": "Banner in a shared project. {{files}} is a list of file names, for example plot.png and map.png, that could not be sent yet because the connection is down or the server did not answer. They are sent automatically later.",
+    "failed": "Banner in a shared project. {{files}} is a list of file names that the app stopped trying to send after several failed tries. A Retry button follows.",
+    "tooLarge": "Banner. {{file}} is a file name, {{size}} its size and {{limit}} the largest file the server accepts, both like 60 MB. The file is not shared with anyone.",
+    "tooLargeUnknown": "Same as tooLarge when the server's limit is not known.",
+    "replaced": "Banner. {{name}} is another person, {{file}} a figure both of you replaced at the same moment, {{copy}} the new file name that keeps this person's version, like plot (from Bob Smith).png.",
+    "added": "Banner. Two people added a file with the same name. {{file}} is the name, {{copy}} the new name this file got on this computer, {{name}} the other person.",
+    "retry": "Button that tries again to send the files listed in the banner",
+    "dismiss": "Accessible label of the close button on one banner row"
+  }
+}

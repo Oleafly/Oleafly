@@ -173,14 +173,33 @@ describe("Settings Help & About support callout", () => {
     expect(screen.getByTestId("settings-section-engine")).toBeInTheDocument();
   });
 
-  it("uses the responsive Settings layout with a height floor", () => {
+  it("uses the responsive Settings layout with a width and height floor", () => {
     render(<SettingsModal />);
 
     expect(screen.getByRole("dialog", { name: "Settings" })).toHaveClass(
-      "w-[min(880px,94vw)]",
+      "w-[min(1040px,94vw)]",
+      "min-w-[min(640px,94vw)]",
       "h-[min(900px,88vh)]",
       "min-h-[min(540px,88vh)]",
     );
+  });
+
+  it("opens each section at the top instead of the previous section's scroll position", () => {
+    render(<SettingsModal />);
+    const body = screen.getByTestId("settings-body");
+    let scrollTop = 0;
+    Object.defineProperty(body, "scrollTop", {
+      configurable: true,
+      get: () => scrollTop,
+      set: (value: number) => {
+        scrollTop = value;
+      },
+    });
+    body.scrollTop = 640;
+
+    fireEvent.click(screen.getByTestId("settings-section-dictionary"));
+
+    expect(body.scrollTop).toBe(0);
   });
 
   it("does not list MCP as a top-level settings section", () => {

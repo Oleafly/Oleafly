@@ -32,6 +32,7 @@ import {
   type ParsedTemplate,
 } from "@/features/template-generate";
 import { Spinner } from "@/components/ui/spinner";
+import { CodeBlock } from "@/components/ui/code-block";
 
 type Phase = "prompt" | "loading" | "result";
 type View = "preview" | "code";
@@ -365,10 +366,10 @@ export function TemplateGenerateModal({
                   <Wand2 className="size-4" />
                   {t(($) => $.library.generate.run)}
                   <span className="inline-flex items-center gap-1">
-                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[10px] text-primary-foreground">
+                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[0.625rem] text-primary-foreground">
                       {modKey}
                     </Kbd>
-                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[10px] text-primary-foreground">
+                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[0.625rem] text-primary-foreground">
                       {"\u21B5"}
                     </Kbd>
                   </span>
@@ -500,9 +501,11 @@ export function TemplateGenerateModal({
                 </div>
                 <div className="min-h-0 flex-1 overflow-hidden">
                   {view === "code" ? (
-                    <pre className="h-full overflow-auto whitespace-pre-wrap rounded-xl border bg-background p-4 font-mono text-xs leading-relaxed text-muted-foreground">
-                      {parsed.source}
-                    </pre>
+                    <CodeBlock
+                      code={parsed.source}
+                      className="h-full"
+                      preClassName="h-full whitespace-pre-wrap rounded-xl bg-background p-4 pr-10 text-xs text-muted-foreground"
+                    />
                   ) : null}
                   {view !== "code" && (previewPng ? (
                     <div className="flex h-full items-start justify-center overflow-auto rounded-xl bg-zinc-200 p-6">

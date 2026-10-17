@@ -82,7 +82,7 @@ export function SkillShareCard() {
       description={t(($) => $.settings.ai.skills.share.description)}
       trailing={
         <>
-          <span data-testid="skills-share-summary" className="hidden text-[11px] text-muted-foreground sm:inline">
+          <span data-testid="skills-share-summary" className="hidden text-[0.6875rem] text-muted-foreground sm:inline">
             {summary}
           </span>
           {loading ? (

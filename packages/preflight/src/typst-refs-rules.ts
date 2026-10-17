@@ -1,5 +1,11 @@
 import { message } from "./messages";
-import { bibliographyQuality, duplicateDoiFindings, projectLabelQuality, type RefsContext } from "./refs-rules";
+import {
+  bibliographyQuality,
+  duplicateBibKeyFindings,
+  duplicateDoiFindings,
+  projectLabelQuality,
+  type RefsContext,
+} from "./refs-rules";
 import {
   type TypstNameUse,
   type TypstPathReference,
@@ -54,6 +60,25 @@ function bibliographyState(sources: readonly ScannedSource[], files: readonly st
     }
   }
   return { declared, loaded: declared && missing.size === 0, missing };
+}
+
+// The .bib files the document loads. Conflict copies, backups and samples
+// next to them must not count as repeated keys. Nothing declared keeps every
+// file, the same as before a bibliography is added.
+function definitionsInDeclaredFiles(sources: readonly ScannedSource[], ctx: RefsContext): RefsContext {
+  const declared = new Set<string>();
+  for (const source of sources) {
+    for (const reference of typstPathReferences(source.scan)) {
+      if (reference.kind !== "bibliography") continue;
+      const resolved = resolveTypstPath(source.path, reference.raw);
+      if (resolved !== null) declared.add(resolved.toLowerCase());
+    }
+  }
+  if (declared.size === 0 || !ctx.bibKeyDefinitions) return ctx;
+  return {
+    ...ctx,
+    bibKeyDefinitions: ctx.bibKeyDefinitions.filter((definition) => declared.has(definition.file.toLowerCase())),
+  };
 }
 
 function citationsCheckable(bibliography: BibliographyState, bibKeys: ReadonlySet<string>): boolean {
@@ -243,9 +268,10 @@ export function runTypstRefsRules(sources: readonly TypstSourceFile[], ctx: Refs
     });
   }
   project.push(
-    ...duplicateDoiFindings(ctx),
+    ...duplicateDoiFindings(ctx, "typst"),
     ...bibliographyQuality({ ...ctx, allCitedKeys: [...tally.cited] }),
     ...projectLabelQuality(ctx),
+    ...duplicateBibKeyFindings(definitionsInDeclaredFiles(scanned, ctx), "typst"),
   );
   return [...perFile, ...project];
 }

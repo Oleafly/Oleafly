@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "전체 접근 권한",
-        "description": "승인을 묻지 않고 도구 작업을 실행합니다."
+        "description": "승인을 묻지 않고 도구 작업을 실행합니다. 거부 규칙으로 막은 도구는 제외합니다."
       },
       "custom": {
         "label": "사용자 지정(approvals.toml)",
@@ -312,7 +312,9 @@
       "closeAgent": "도우미 에이전트를 닫습니다.",
       "runCommand": "프로젝트 폴더에서 shell 명령을 2분 제한으로 실행합니다.",
       "computerUse": "어시스턴트의 브라우저 창에서 웹 페이지를 엽니다.",
-      "toggleTheme": "밝은 모드와 어두운 모드를 전환합니다."
+      "toggleTheme": "밝은 모드와 어두운 모드를 전환합니다.",
+      "listOverleafProjects": "Overleaf 프로젝트 목록을 보여 주며, 필요하면 먼저 로그인합니다.",
+      "importOverleafProjects": "Overleaf 프로젝트를 컴파일러와 주 파일 설정과 함께 라이브러리로 가져옵니다."
     },
     "disableAll": "모두 끄기",
     "emptyContext": "이 맥락에서 쓸 수 있는 도구가 없습니다.",

@@ -7,6 +7,7 @@ import {
   assertNoProductionDevHookTokens,
   assertNoTauriStyleNonceTriggers,
 } from "./scripts/production-hook-audit.mjs";
+import { tailwindPropertiesFallbackPlugin } from "./src/build/tailwind-properties-fallback";
 
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
 const host = process.env.TAURI_DEV_HOST;
@@ -30,6 +31,14 @@ const staticE2eClient = (): Plugin => ({
 // receives the comment body without `/*`/`//`, so a leading `!` covers `/*!`.
 export const LEGAL_COMMENT_PATTERN =
   /^!|@preserve|@license|@cc_on/i;
+
+const LAZY_LOCALE_NAMESPACES = new Set(["cloud", "collab", "settingsFile"]);
+
+export function localeChunk(id: string): string | undefined {
+  const match = /\/src\/i18n\/locales\/([^/]+)\/([^/?]*?)(?:\.json)?(?:\?|$)/.exec(id);
+  if (!match || match[1] === "en") return undefined;
+  return LAZY_LOCALE_NAMESPACES.has(match[2]) ? `locale-${match[1]}-${match[2]}` : `locale-${match[1]}`;
+}
 
 const preserveWorkerExports = (): Plugin => ({
   name: "preserve-worker-exports",
@@ -78,7 +87,7 @@ export const rejectProductionDevHooks = (): Plugin => ({
 });
 
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss(), rejectProductionDevHooks(), staticE2eClient()],
+  plugins: [react(), tailwindcss(), tailwindPropertiesFallbackPlugin(), rejectProductionDevHooks(), staticE2eClient()],
   optimizeDeps: {
     exclude: ["harper.js"],
     include: [
@@ -127,9 +136,7 @@ export default defineConfig(async () => ({
           if (/pdf\.worker\.ts\?worker/.test(id)) {
             return "pdf-worker-url";
           }
-          const locale = /\/src\/i18n\/locales\/([^/]+)\//.exec(id);
-          if (locale && locale[1] !== "en") return `locale-${locale[1]}`;
-          return undefined;
+          return localeChunk(id);
         },
       },
     },
@@ -186,7 +193,7 @@ export default defineConfig(async () => ({
       : undefined,
     watch: {
       // Don't watch the Rust source; handled by tauri.
-      ignored: ["**/src-tauri/**"],
+      ignored: ["**/src-tauri/**", "**/crates/**", "**/*.test.ts", "**/*.test.tsx"],
     },
   },
 }));

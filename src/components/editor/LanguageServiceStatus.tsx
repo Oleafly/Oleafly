@@ -50,24 +50,22 @@ export const LANGUAGE_SERVICE_RETRY_POLICY: SilentRetryPolicy = {
 
 export function LanguageServiceStatus() {
   const projectId = useFilesStore((state) => state.projectId);
-  const activePath = useFilesStore((state) => state.activePath);
   const kind = useProjectAnalysisStore(
     (state) => state.snapshot.languageService.kind,
   );
   const readiness = useProjectAnalysisStore(
     (state) => state.snapshot.languageService.readiness,
   );
-  const reason = useProjectAnalysisStore(
-    (state) => state.snapshot.languageService.reason,
+  const failureDetail = useProjectAnalysisStore((state) => {
+    const service = state.snapshot.languageService;
+    return (
+      service.failure?.message ??
+      analysisReasonEnglishText(service.failure?.reason ?? service.reason ?? START_FAILED)
+    );
+  });
+  const bibtexActive = useFilesStore(
+    (state) => state.activePath !== null && BIBTEX_DOCUMENT.test(state.activePath),
   );
-  const failureMessage = useProjectAnalysisStore(
-    (state) => state.snapshot.languageService.failure?.message,
-  );
-  const failureReason = useProjectAnalysisStore(
-    (state) => state.snapshot.languageService.failure?.reason,
-  );
-  const bibtexActive =
-    activePath !== null && BIBTEX_DOCUMENT.test(activePath);
   const setupRequired =
     projectId !== null && readiness === "setup_required";
 
@@ -77,9 +75,7 @@ export function LanguageServiceStatus() {
     retry: retryActiveLanguageService,
     policy: LANGUAGE_SERVICE_RETRY_POLICY,
     scope: "language service unavailable",
-    detail:
-      failureMessage ??
-      analysisReasonEnglishText(failureReason ?? reason ?? START_FAILED),
+    detail: failureDetail,
     resetKey: projectId,
   });
   const offered = useSetupAvailable({ kind, setupRequired, bibtexActive });
@@ -268,7 +264,7 @@ function LanguageServiceSetupDialog({
                 <dt className="font-medium text-foreground">
                   {t(($) => $.intelligence.languageService.destination)}
                 </dt>
-                <dd className="break-all font-mono text-xs text-muted-foreground">
+                <dd className="select-text break-all font-mono text-xs text-muted-foreground">
                   {disclosure.destination}
                 </dd>
               </div>

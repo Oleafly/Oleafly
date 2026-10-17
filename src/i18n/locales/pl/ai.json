@@ -30,7 +30,7 @@
       },
       "fullAccess": {
         "label": "Pełny dostęp",
-        "description": "Wykonuj działania narzędzi bez pytania o zgodę."
+        "description": "Wykonuj działania narzędzi bez pytania, z wyjątkiem narzędzi zablokowanych regułą deny."
       },
       "custom": {
         "label": "Własny (approvals.toml)",
@@ -333,7 +333,9 @@
       "closeAgent": "Zamyka agenta pomocniczego.",
       "runCommand": "Uruchamia polecenie shell w folderze projektu, z limitem dwóch minut.",
       "computerUse": "Otwiera stronę internetową w oknie przeglądarki asystenta.",
-      "toggleTheme": "Przełącza między trybem jasnym a ciemnym."
+      "toggleTheme": "Przełącza między trybem jasnym a ciemnym.",
+      "listOverleafProjects": "Wyświetla listę projektów Overleaf i w razie potrzeby najpierw loguje.",
+      "importOverleafProjects": "Importuje projekty Overleaf do biblioteki razem z kompilatorem i plikiem głównym."
     },
     "disableAll": "Wyłącz wszystkie",
     "emptyContext": "W tym kontekście nie ma dostępnych narzędzi.",

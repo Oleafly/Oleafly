@@ -28,6 +28,7 @@ import { useSettingsStore } from "@/store/settings";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { ProjectImportDialog } from "./ProjectImportDialog";
+import { OpenLinkDialogSlot, useCollabLibraryKit } from "@/components/collab/CollabSlots";
 import { Spinner } from "@/components/ui/spinner";
 
 export function ProjectImportMenu({
@@ -61,6 +62,9 @@ export function ProjectImportMenu({
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [arxivOpen, setArxivOpen] = useState(false);
+  const [sharedLinkOpen, setSharedLinkOpen] = useState(false);
+  const collab = useCollabLibraryKit();
+  const [overleafOpen, setOverleafOpen] = useState(false);
   const [repositoryAttempt, setRepositoryAttempt] = useState(0);
   const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
@@ -292,6 +296,12 @@ export function ProjectImportMenu({
         })}
         <DropdownMenuLabel>{t(($) => $.library.import.menu.cloud)}</DropdownMenuLabel>
         <DropdownMenuItem data-testid="import-arxiv" onSelect={() => setArxivOpen(true)}>{t(($) => $.library.import.arxivPaper)}</DropdownMenuItem>
+        <DropdownMenuItem data-testid="import-overleaf" onSelect={() => setOverleafOpen(true)}>{"Overleaf"}</DropdownMenuItem>
+        {collab ? (
+          <DropdownMenuItem data-testid="import-shared-link" onSelect={() => setSharedLinkOpen(true)}>
+            {collab.openLink}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuSub open={githubOpen} onOpenChange={setGithubOpen}>
           <DropdownMenuSubTrigger>GitHub</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="max-h-72 min-w-64 overflow-y-auto">
@@ -301,6 +311,8 @@ export function ProjectImportMenu({
       </DropdownMenuContent>
     </DropdownMenu>
     <ProjectImportDialog open={arxivOpen} initialView="arxiv" onClose={() => setArxivOpen(false)} onImported={onImportSelected} />
+    <ProjectImportDialog open={overleafOpen} initialView="overleaf" onClose={() => setOverleafOpen(false)} onImported={onImportSelected} />
+    <OpenLinkDialogSlot open={sharedLinkOpen} onClose={() => setSharedLinkOpen(false)} />
     </>
   );
 }

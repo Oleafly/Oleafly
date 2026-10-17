@@ -30,7 +30,7 @@ export function ExternalToolApprovals() {
         <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
           <p className="text-xs font-medium text-foreground">{t(($) => $.ai.approval.external.title)}</p>
           {queue.length > 1 && (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.ai.approval.external.moreWaiting, { count: queue.length - 1 })}
             </span>
           )}

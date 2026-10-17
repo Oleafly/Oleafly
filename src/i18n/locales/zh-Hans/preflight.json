@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "表格内容可能无法解析为简历字段。",
-      "detailTable": "ATS 工具常常以不可预测的方式展平表格内容。请避免用表格来并排摆放简历文本；真正的研究数据表格会在无障碍检查中单独评估。",
+      "detailTable": "ATS 工具常常以不可预测的方式展平表格内容。请避免用表格来并排摆放简历文本。真正的研究数据表格会在无障碍检查中单独评估。",
       "titleTikz": "TikZ 内容需要语义替代方案。",
       "detailTikz": "TikZ 绘制的是视觉内容，不会以普通文本的形式表达其含义。请为出版输出提供无障碍描述，并避免在面向 ATS 的简历内容中使用 TikZ。"
     },
@@ -246,7 +246,7 @@
     "refs-incomplete-metadata": {
       "title_other": "{{count}} 条参考文献条目的元数据不完整。",
       "detail": "不完整的记录可能在出版商样式下生成残缺或指代不明的参考文献。{{examples}}。",
-      "detailTruncated": "不完整的记录可能在出版商样式下生成残缺或指代不明的参考文献。{{examples}}；…"
+      "detailTruncated": "不完整的记录可能在出版商样式下生成残缺或指代不明的参考文献。{{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_other": "{{count}} 个 DOI 值疑似格式有误。",
@@ -303,6 +303,12 @@
     "refs-duplicate-bib": {
       "title": "重复的参考文献条目：{{keys}}",
       "detail": "这些条目的 DOI 均为 {{doi}}，实为同一文献的不同键。请保留一条并引用它，否则参考文献会将其列出两次。"
+    },
+    "refs-duplicate-bib-key": {
+      "title": "引用键“{{key}}”被定义了多次",
+      "detail": "定义位置：{{places}}。BibTeX 只使用带有此键的第一个条目，并且比较键时不区分大小写。请只保留一个条目，或为其他条目设置新键，并更新使用它们的引用。",
+      "detailBiber": "定义位置：{{places}}。biber 生成参考文献时只使用带有此键的第一个条目。请只保留一个条目，或为其他条目设置新键，并更新使用它们的引用。",
+      "detailTypst": "定义位置：{{places}}。当两个参考文献条目使用同一个键时，Typst 会停止编译。请只保留一个条目，或为其他条目设置新键，并更新使用它们的引用。"
     },
     "submission-path-case": {
       "title": "文件名大小写不匹配：{{target}}",
@@ -585,7 +591,7 @@
     "title": "预检",
     "readerDisabled": "请先编译并运行输出检查。",
     "readerEnabled": "打开从 PDF 中提取的文本。",
-    "readerButton": "显示读者看到的内容",
+    "readerButton": "屏幕阅读器",
     "aboutLabel": "关于预检",
     "aboutTitle": "预检检查的内容",
     "aboutIntro": "预检会读取项目源码、编译器日志和当前 PDF。请只开启适合本文档的检查。",

@@ -1,0 +1,64 @@
+{
+  "title": "Setările aplicației",
+  "description": "Salvează setările într-un fișier JSON sau încarcă un fișier pe care ți l-a trimis cineva. Cheile API, conturile, integrările și agenții nu sunt incluse niciodată.",
+  "export": "Exportă",
+  "import": "Importă",
+  "view": {
+    "label": "Vezi JSON-ul setărilor",
+    "summary": "Previzualizare doar pentru citire a fișierului salvat de export.",
+    "loading": "Se citesc setările",
+    "failed": "Setările nu au putut fi citite."
+  },
+  "dialog": {
+    "pickTitle": "Importă setări",
+    "filterName": "Setări Oleafly"
+  },
+  "toast": {
+    "exported": "{{name}} a fost exportat pe disc",
+    "exportFailed": "Fișierul de setări nu a putut fi salvat.",
+    "readFailed": "Fișierul nu a putut fi deschis.",
+    "imported": "Setările au fost importate.",
+    "unchanged": "Setările tale se potrivesc deja cu {{name}}.",
+    "applyFailed": "Unele setări nu au putut fi salvate. Încearcă din nou importul.",
+    "cloudEmpty": "Încă nu există setări Oleafly în Dropbox. Activează mai întâi sincronizarea în cloud pe alt computer.",
+    "cloudLoadFailed": "Setările din Dropbox nu au putut fi încărcate.",
+    "cloudUnreadable": "Setările din Dropbox nu au putut fi citite."
+  },
+  "confirm": {
+    "title": "Înlocuiești setările?",
+    "description": "Setările din {{name}} le vor înlocui pe ale tale. Tot ce lipsește din fișier rămâne neschimbat.",
+    "changes": "Setări care se vor schimba: {{count}}",
+    "ignored": "Nu sunt recunoscute, așa că vor fi omise:",
+    "action": "Importă",
+    "cloudDescription": "Setările din Dropbox le vor înlocui pe ale tale. Tot ce lipsește din ele rămâne neschimbat."
+  },
+  "error": {
+    "title": "{{name}} nu a fost importat",
+    "notJson": "Fișierul nu este JSON valid.",
+    "notSettings": "Acesta nu este un fișier de setări Oleafly.",
+    "invalid": "Configurația setărilor pe care ai încercat să o imporți nu este validă. Corectează aceste erori și încearcă din nou importul:",
+    "more": "+{{count}} în plus"
+  },
+  "valueErrors": {
+    "boolean": "trebuie să fie true sau false",
+    "oneOf": "trebuie să fie una dintre valorile: {{values}}",
+    "range": "trebuie să fie un număr între {{min}} și {{max}}",
+    "wholeRange": "trebuie să fie un număr întreg între {{min}} și {{max}}",
+    "wholeRangeStep": "trebuie să fie un număr întreg între {{min}} și {{max}}, cu pasul {{step}}",
+    "hexColor": "trebuie să fie o culoare, de exemplu #2563eb",
+    "hexColorOrEmpty": "trebuie să fie o culoare, de exemplu #2563eb, sau \"\" pentru culoarea temei",
+    "text": "trebuie să fie text (lungime maximă: {{max}})",
+    "webAddress": "trebuie să fie o adresă web care începe cu http:// sau https://",
+    "list": "trebuie să fie o listă (număr maxim de elemente: {{max}})",
+    "listItem": "nu este un element permis",
+    "duplicate": "apare de două ori",
+    "object": "trebuie să fie un grup de setări între acolade",
+    "unknownKey": "nu este o setare cunoscută de Oleafly",
+    "dictionaryLocale": "trebuie să fie un cod de dicționar, de exemplu en_US",
+    "shortcut": "trebuie să fie o scurtătură, de exemplu Mod-Shift-k, sau \"default\"",
+    "editorKey": "trebuie să fie o tastă, de exemplu Mod-d, \"\" pentru niciuna, sau \"default\""
+  },
+  "importFromLocal": "Importă de pe acest dispozitiv",
+  "importFromCloud": "Importă din cloud",
+  "cloudSource": "Dropboxul tău"
+}

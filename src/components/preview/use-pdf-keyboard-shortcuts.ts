@@ -1,34 +1,16 @@
 import { useEffect, type Dispatch, type RefObject, type SetStateAction } from "react";
 import type { PdfRotation } from "@/components/pdf/PdfViewer";
-import { MAX_PREVIEW_SCALE, MIN_PREVIEW_SCALE } from "./preview-zoom";
-
-export function zoomKeyAction(
-  key: string,
-  setScale: Dispatch<SetStateAction<number>>,
-): (() => void) | null {
-  if (key === "+" || key === "=") {
-    return () => setScale((current) => Math.min(MAX_PREVIEW_SCALE, current + 0.2));
-  }
-  if (key === "-") {
-    return () => setScale((current) => Math.max(MIN_PREVIEW_SCALE, current - 0.2));
-  }
-  if (key === "0") return () => setScale(1);
-  return null;
-}
 
 export interface PdfKeyboardShortcutOptions {
   rootRef: RefObject<HTMLElement | null>;
   enabled?: boolean;
   searchOpen: boolean;
   outlineOpen: boolean;
-  zoomShortcuts: boolean;
   searchInputRef: RefObject<HTMLInputElement | null>;
   setSearchOpen: (open: boolean) => void;
   setSearchInput: (value: string) => void;
   setOutlineOpen: (open: boolean) => void;
-  setScale: Dispatch<SetStateAction<number>>;
   setRotation: Dispatch<SetStateAction<PdfRotation>>;
-  userZoom: (mutate: () => void) => void;
 }
 
 export function usePdfKeyboardShortcuts({
@@ -36,14 +18,11 @@ export function usePdfKeyboardShortcuts({
   enabled = true,
   searchOpen,
   outlineOpen,
-  zoomShortcuts,
   searchInputRef,
   setSearchOpen,
   setSearchInput,
   setOutlineOpen,
-  setScale,
   setRotation,
-  userZoom,
 }: PdfKeyboardShortcutOptions): void {
   useEffect(() => {
     const root = rootRef.current;
@@ -74,21 +53,36 @@ export function usePdfKeyboardShortcuts({
       ) {
         return;
       }
-      const zoom = zoomKeyAction(event.key, setScale);
-      if (zoomShortcuts && modifier && zoom) {
-        event.preventDefault();
-        userZoom(zoom);
-      } else if (
-        modifier &&
-        event.shiftKey &&
-        event.key.toLowerCase() === "r"
-      ) {
+      if (modifier && event.shiftKey && event.key.toLowerCase() === "r") {
         event.preventDefault();
         setRotation((current) => ((current + 90) % 360) as PdfRotation);
       }
     };
+    let focusedInside = root.contains(document.activeElement);
+    const onFocusIn = () => {
+      focusedInside = true;
+    };
+    const onFocusOut = (event: FocusEvent) => {
+      if (event.relatedTarget instanceof Node && !root.contains(event.relatedTarget)) focusedInside = false;
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node) || !root.contains(event.target)) focusedInside = false;
+    };
+    const restoreFocus = new MutationObserver(() => {
+      if (focusedInside && document.activeElement === document.body) root.focus({ preventScroll: true });
+    });
+    restoreFocus.observe(root, { childList: true, subtree: true });
     root.addEventListener("keydown", onKeyDown);
-    return () => root.removeEventListener("keydown", onKeyDown);
+    root.addEventListener("focusin", onFocusIn);
+    root.addEventListener("focusout", onFocusOut);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      restoreFocus.disconnect();
+      root.removeEventListener("keydown", onKeyDown);
+      root.removeEventListener("focusin", onFocusIn);
+      root.removeEventListener("focusout", onFocusOut);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
   }, [
     enabled,
     outlineOpen,
@@ -97,10 +91,7 @@ export function usePdfKeyboardShortcuts({
     searchOpen,
     setOutlineOpen,
     setRotation,
-    setScale,
     setSearchInput,
     setSearchOpen,
-    userZoom,
-    zoomShortcuts,
   ]);
 }

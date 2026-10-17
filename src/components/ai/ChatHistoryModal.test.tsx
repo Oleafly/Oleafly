@@ -54,6 +54,19 @@ describe("ChatHistoryModal search", () => {
     expect(screen.queryByText("Figure drawing")).not.toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    renderModal();
+    const list = screen.getByText("Figure drawing").closest(".overflow-auto") as HTMLElement;
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByLabelText("Search chats"), {
+      target: { value: "figure" },
+    });
+
+    expect(screen.getByText("Figure drawing")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("keeps chats whose message content matches via the session index", async () => {
     mockSearch.mockResolvedValue([
       { project_id: "p", chat_id: "c2", title: "Figure drawing", snippet: "tikz" },

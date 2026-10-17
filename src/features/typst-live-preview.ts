@@ -10,7 +10,6 @@ import {
   applyTypstLiveResult,
   compileProjectRevision,
   reportCompileSaveFailure,
-  saveActiveForCompile,
   typstLivePreviewWanted,
   useCompileStore,
   type LivePreviewStatus,
@@ -136,12 +135,23 @@ function clearSaveTimer(): void {
   saveTimer = null;
 }
 
+const MUTATION_CONFLICT = "mutation conflict at generation";
+
+async function saveActiveForLive(): Promise<void> {
+  try {
+    await useFilesStore.getState().saveActive();
+  } catch (error) {
+    if (!String(error).includes(MUTATION_CONFLICT)) throw error;
+    await useFilesStore.getState().saveActive();
+  }
+}
+
 async function saveForLive(): Promise<void> {
   const files = useFilesStore.getState();
   if (!session || files.projectId !== session.projectId || !activeDirty(files)) return;
   const revision = compileProjectRevision(session.projectId);
   try {
-    await saveActiveForCompile(files);
+    await saveActiveForLive();
     savedRevision = revision;
     if (session && !session.alive) {
       session.paused = false;

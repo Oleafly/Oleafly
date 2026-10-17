@@ -59,7 +59,7 @@ export function ReaderViewDialog({
                 <FileText className="size-4 shrink-0 text-muted-foreground" />
                 <span>{t(($) => $.preflight.reader.page, { page: page + 1 })}</span>
                 {!text.trim() && (
-                  <span className="ml-auto text-[10px] text-muted-foreground">
+                  <span className="ml-auto text-[0.625rem] text-muted-foreground">
                     {t(($) => $.preflight.reader.empty)}
                   </span>
                 )}
@@ -74,7 +74,7 @@ export function ReaderViewDialog({
             <div className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {t(($) => $.preflight.reader.pageOf, { page: activePage + 1, total: pages.length })}
             </div>
-            <pre className="whitespace-pre-wrap break-words font-mono text-sm leading-6 text-foreground/90">
+            <pre data-select-all-scope className="select-text whitespace-pre-wrap break-words font-mono text-sm leading-6 text-foreground/90">
               {pages[activePage]?.trim() ? pages[activePage] : t(($) => $.preflight.reader.noText)}
             </pre>
           </section>

@@ -13,6 +13,8 @@ const source = "Original line\nAdded line\n";
 const files = {
   projectId: "diff-project",
   files: { "main.tex": { content: source } },
+  manifestHome: "library",
+  tree: [{ path: "main.tex", is_dir: false }],
   setContent: vi.fn(),
 };
 

@@ -121,7 +121,7 @@
     },
     "approvals": {
       "file": {
-        "description": "De modus Aangepast leest dit bestand. Het staat in ~/.oleafly/approvals.toml en geldt voor elk project op dit apparaat.",
+        "description": "Het bestand staat in ~/.oleafly/approvals.toml en geldt voor elk project op dit apparaat. Deny-regels blokkeren een tool in elke goedkeuringsmodus. Allow-regels werken alleen in de modus Aangepast.",
         "discard": "Wijzigingen weggooien",
         "emptyFile": "Het bestand is nog leeg.",
         "help": {
@@ -129,7 +129,7 @@
           "modes": "De eerste tabel, <modesTable>[\"$approval_modes\"]</modesTable>, stelt de goedkeuringsmodus per project in: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> of <custom>\"custom\"</custom>. Een project dat er niet in staat gebruikt Voor mij goedkeuren.",
           "openProject": "Het geopende project, {{name}}, heeft het id <projectId>{{id}}</projectId>.",
           "projectIds": "Project-id's zijn de mapnamen onder ~/.oleafly/projects.",
-          "rules": "Daarna één tabel per project-id, met een regel per tool: <allow>\"allow\"</allow> voert de tool uit zonder te vragen en <deny>\"deny\"</deny> weigert hem. Deny-regels gelden in elke modus. Allow-regels werken in de modus Aangepast, en bij run_command slaan ze ook in de andere modi de vraag over.",
+          "rules": "Daarna één tabel per project-id, met een regel per tool: <allow>\"allow\"</allow> voert de tool uit zonder te vragen en <deny>\"deny\"</deny> weigert hem. Deny-regels gelden in elke modus, ook bij Volledige toegang. Allow-regels werken alleen in de modus Aangepast.",
           "toolNames": "Toolnamen die je kunt gebruiken: <names>{{names}}</names> en elke MCP-tool onder zijn volledige naam uit de lijst Tools."
         },
         "helpToggle": "Hoe het bestand werkt",
@@ -142,7 +142,7 @@
       "project": {
         "allowed": "Altijd toegestaan",
         "denied": "Altijd geweigerd",
-        "description": "Bewaarde regels voor {{name}}. Ze gelden wanneer de goedkeuringsmodus Aangepast is. Haal een regel weg om voor die tool het gewone risicobeleid te gebruiken.",
+        "description": "Bewaarde regels voor {{name}}. Geweigerde tools blijven in elke goedkeuringsmodus geblokkeerd. Toegestane tools slaan de vraag alleen in de modus Aangepast over. Haal een regel weg om voor die tool het gewone risicobeleid te gebruiken.",
         "empty": "Nog geen bewaarde regels. Gebruik \"Altijd in dit project\" op een goedkeuringsvraag om er een toe te voegen.",
         "removeRule": "Regel voor {{tool}} weghalen",
         "thisProject": "dit project",
@@ -533,12 +533,17 @@
         "right": "Rechts"
       },
       "font": {
-        "description": "Gebruikt het systeemlettertype als een lettertype niet is geïnstalleerd.",
+        "description": "Kies voor menu's, panelen en dialoogvensters een lettertype dat op je computer is geïnstalleerd.",
         "label": "Lettertype van de app"
       },
       "fontSize": {
         "description": "Schaal de tekst in menu's, panelen en knoppen.",
         "label": "Tekstgrootte van de app"
+      },
+      "zoom": {
+        "description": "Maakt alles in Oleafly groter of kleiner, ook de editor en de PDF.",
+        "label": "Zoom",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "Systeem volgt het besturingssysteem en verandert mee.",
@@ -584,7 +589,7 @@
         "label": "Hoekradius"
       },
       "resetAll": "Alles resetten",
-      "resetMode": "Deze modus resetten",
+      "resetMode": "Resetten",
       "title": "Thema aanpassen",
       "tokenInputDark": "Token {{token}} voor de donkere modus",
       "tokenInputLight": "Token {{token}} voor de lichte modus",
@@ -633,28 +638,72 @@
         "label": "Automatisch aanvullen"
       },
       "font": {
-        "description": "Kies het lettertype met vaste breedte voor bronbestanden.",
-        "label": "Lettertype van de editor"
+        "description": "Kies voor bronbestanden een lettertype dat op je computer is geïnstalleerd.",
+        "label": "Lettertype van de editor",
+        "monospace": "Vaste breedte"
+      },
+      "useAppFont": {
+        "description": "De editor volgt het lettertype en de tekstgrootte van de app.",
+        "disabledHint": "Zet Lettertype van de app gebruiken uit om dit te wijzigen.",
+        "label": "Lettertype van de app gebruiken"
       },
       "fontSize": {
         "description": "Stel de tekstgrootte van de broncode-editor in.",
-        "label": "Tekstgrootte van de editor"
+        "label": "Tekstgrootte van de editor",
+        "custom": "Aangepast",
+        "customLabel": "Aangepaste tekstgrootte van de editor in pixels"
       },
       "ghostCompletion": {
         "description": "Toon de waarschijnlijke aanvulling achter de cursor. Druk op Tab om die over te nemen.",
         "label": "Suggestie in de tekst"
-      },
-      "nonBlinkingCursor": {
-        "description": "Houd de cursor in de editor onafgebroken zichtbaar.",
-        "label": "Niet-knipperende cursor"
       },
       "stickyScroll": {
         "description": "Houd de huidige secties, koppen en omgevingen bovenaan terwijl je scrolt.",
         "label": "Vastgezette scrollkoppen"
       },
       "theme": {
-        "description": "Stel de syntaxiskleuren los van het app-thema in.",
-        "label": "Thema van de editor"
+        "dark": {
+          "description": "Het editorthema terwijl de app donker is.",
+          "label": "Thema in donkere modus"
+        },
+        "light": {
+          "description": "Het editorthema terwijl de app licht is.",
+          "label": "Thema in lichte modus"
+        }
+      },
+      "colors": {
+        "description": "Wijzig elke kleur van een editorthema. Wijzigingen blijven per thema bewaard.",
+        "editing": "{{theme}} wordt bewerkt",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Donkere modus",
+          "light": "Lichte modus"
+        },
+        "modeAriaLabel": "Thema om aan te passen",
+        "names": {
+          "background": "Achtergrond",
+          "command": "Commando's",
+          "comment": "Commentaar",
+          "environment": "Omgevingen",
+          "formatting": "Opmaak",
+          "heading": "Koppen",
+          "lineNumbers": "Regelnummers",
+          "link": "Links",
+          "math": "Wiskunde",
+          "name": "Namen en sleutels",
+          "reference": "Citaties en verwijzingen",
+          "selection": "Selectie",
+          "structure": "Preambule en imports",
+          "symbol": "Haakjes en symbolen",
+          "text": "Tekst",
+          "value": "Waarden en tekenreeksen"
+        },
+        "pick": "Kies een kleur voor {{color}}",
+        "previewAriaLabel": "Taal van het voorbeeld",
+        "reset": "Resetten",
+        "syntaxGroup": "Syntaxis",
+        "title": "Editorkleuren",
+        "useThemeColor": "Themakleur gebruiken voor {{color}}"
       },
       "keymap": {
         "description": "Kies de set toetsenbindingen die de broncode-editor gebruikt.",
@@ -671,12 +720,61 @@
         "options": {
           "compact": "Compact",
           "normal": "Normaal",
-          "wide": "Ruim"
+          "wide": "Ruim",
+          "custom": "Aangepast"
+        },
+        "customLabel": "Aangepaste regelhoogte"
+      },
+      "letterSpacing": {
+        "customLabel": "Aangepaste letterafstand in pixels",
+        "description": "Voegt ruimte toe tussen de tekens in de broneditor. Zo blijft er ook meer ruimte rond de cursor.",
+        "label": "Letterafstand",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normaal",
+          "custom": "Aangepast"
         }
+      },
+      "cursorWidth": {
+        "label": "Cursorbreedte",
+        "description": "Stel in hoe dik de cursor in de editor is.",
+        "option": "{{width}}px"
+      },
+      "cursorHeight": {
+        "label": "Cursorhoogte",
+        "description": "Stel in hoe hoog de cursor in de editor is. Regel maakt hem zo hoog als de hele regel.",
+        "options": {
+          "text": "Tekst",
+          "line": "Regel"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Knipperen van de cursor",
+        "description": "Kies hoe de cursor in de editor knippert. Uit houdt hem vast.",
+        "options": {
+          "blink": "Knipperen",
+          "smooth": "Vloeiend",
+          "phase": "Fase",
+          "expand": "Uitrekken",
+          "off": "Uit"
+        }
+      },
+      "cursorColor": {
+        "label": "Cursorkleur",
+        "description": "Lichte en donkere editorthema's hebben elk een eigen cursorkleur. Zolang je er geen kiest, wordt de kleur van het thema gebruikt.",
+        "light": "Licht",
+        "dark": "Donker",
+        "pickLight": "Kies de cursorkleur voor lichte editorthema's",
+        "pickDark": "Kies de cursorkleur voor donkere editorthema's",
+        "useTheme": "Themakleuren gebruiken"
       },
       "lineWrap": {
         "description": "Breek lange regels af in plaats van zijwaarts te scrollen.",
         "label": "Lange regels afbreken"
+      },
+      "highlightCurrentLine": {
+        "label": "Huidige regel markeren",
+        "description": "Kleur de achtergrond van de regel waarop de cursor staat."
       },
       "tabSize": {
         "description": "Het aantal spaties per inspringniveau, en de breedte waarop een tab wordt getoond.",
@@ -708,6 +806,15 @@
           "description": "Controleert Typst-bestanden op waarschijnlijke fouten zodra ze worden opgeslagen. Aan- of uitzetten start de Typst-taalserver opnieuw.",
           "label": "Typst-lintcontroles"
         }
+      },
+      "fileMove": {
+        "label": "Als een bestand wordt verplaatst",
+        "description": "Paden naar een hernoemd of verplaatst bestand bijwerken in LaTeX-, Typst- en Markdown-bronnen.",
+        "options": {
+          "ask": "Vragen",
+          "always": "Altijd bijwerken",
+          "never": "Nooit bijwerken"
+        }
       }
     },
     "files": {
@@ -735,6 +842,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} is niet geïnstalleerd, dus het standaardlettertype wordt gebruikt.",
     "preview": {
       "darkMode": {
         "description": "Keer de PDF-kleuren standaard om. Je kunt de kleuren nog altijd wisselen via de werkbalk van het voorbeeld.",
@@ -743,10 +851,6 @@
       "hoverPreview": {
         "description": "Toon de laatst gecompileerde pagina als je in de bibliotheek over een project beweegt.",
         "label": "PDF tonen bij aanwijzen"
-      },
-      "zoomShortcuts": {
-        "description": "Gebruik Cmd/Ctrl +, - en 0 om in de PDF te zoomen in plaats van in het appvenster.",
-        "label": "Zoomsneltoetsen voor de PDF"
       }
     },
     "sectionName": "Weergave",
@@ -810,6 +914,17 @@
         "description": "Start de shell zodra een project opent in plaats van bij de eerste keer dat je de terminal toont.",
         "label": "De shell starten met het project"
       }
+    },
+    "zen": {
+      "fullScreen": {
+        "description": "Vult het scherm in de zenmodus en zet het venster terug als je afsluit.",
+        "label": "Schermvullend gaan"
+      },
+      "showPdf": {
+        "description": "Als de PDF verborgen is in de zenmodus, wordt die bij het compileren naast de editor geopend.",
+        "label": "PDF tonen bij het compileren"
+      },
+      "title": "Zenmodus"
     }
   },
   "checkpoints": {
@@ -880,7 +995,6 @@
   },
   "cite": {
     "apa": "Dezelfde referentie in APA staat achter Cite this repository op GitHub",
-    "copyBibtex": "BibTeX kopiëren",
     "description": "Oleafly is gratis en opensource, en dat blijft zo zolang mensen weten dat het bestaat. Heeft het je artikel geholpen, dan wijst één item in je bibliografie de volgende onderzoeker de weg naar deze tool. Kopieer het, plak het in je .bib-bestand en citeer de sleutel <citeKey>oleafly</citeKey>.",
     "title": "Oleafly citeren in je artikel"
   },
@@ -890,14 +1004,16 @@
       "download": "Downloaden",
       "downloadAll": "Alles downloaden"
     },
-    "aiTemplates": {
-      "deleteDescription": "\"{{name}}\" uit je bibliotheek verwijderen? Projecten die er al mee zijn gemaakt houden hun eigen kopie en veranderen niet.",
-      "deleteTitle": "Door AI gemaakt sjabloon verwijderen",
-      "deleted": "\"{{name}}\" uit je bibliotheek verwijderd",
-      "empty": "Nog geen sjablonen die met AI zijn gemaakt. Maak er een via de sjabloongalerij.",
-      "fallbackDescription": "Door AI gemaakt sjabloon",
-      "toggle": "Door AI gemaakte sjablonen beheren",
-      "deleteFailed": "Kon \"{{name}}\" niet verwijderen."
+    "yourTemplates": {
+      "toggle": "Je sjablonen beheren",
+      "import": "Sjabloon importeren",
+      "empty": "Je hebt nog geen eigen sjablonen. Importeer er hier een, sla een project op als sjabloon via het menu van dat project, of maak er een in de sjabloongalerij.",
+      "aiDescription": "Door AI gemaakt sjabloon",
+      "customDescription": "Eigen sjabloon",
+      "deleteTitle": "Sjabloon verwijderen",
+      "deleteDescription": "“{{name}}” uit je sjablonen verwijderen? Projecten die je er al mee hebt gemaakt, houden hun eigen kopie.",
+      "deleted": "“{{name}}” uit je sjablonen verwijderd",
+      "deleteFailed": "Kon “{{name}}” niet verwijderen."
     },
     "fontPacks": {
       "lato": {
@@ -911,6 +1027,26 @@
       "ptserif": {
         "description": "Een verfijnde transitionele schreefletter, een goede keuze voor academische en zakelijke documenten.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans en Serif CJK, Fandol en LXGW WenKai. Ze vervangen ook SimSun, SimHei en KaiTi.",
+        "label": "Chinees, Japans en Koreaans"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 en 7 Free, en Noto Color Emoji.",
+        "label": "Pictogrammen en emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code en Source Code Pro.",
+        "label": "Code"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans en IBM Plex.",
+        "label": "Moderne schreefloze en schreefletters"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus en New Computer Modern Sans en Mono.",
+        "label": "Klassieke tekst"
       }
     },
     "fonts": {
@@ -947,7 +1083,57 @@
       "fontRemoveFailed": "Kon het lettertype niet verwijderen.",
       "packDownloadFailed": "Kon het sjabloonpakket niet downloaden.",
       "packsDownloadFailed": "Kon de sjabloonpakketten niet downloaden.",
-      "packRemoveFailed": "Kon het sjabloonpakket niet verwijderen."
+      "packRemoveFailed": "Kon het sjabloonpakket niet verwijderen.",
+      "templateDownloadFailed": "Kon het sjabloon niet downloaden.",
+      "packsRefreshFailed": "Kon niet zoeken naar nieuwe pakketten."
+    },
+    "typstFonts": {
+      "heading": "Lettertypen voor Typst",
+      "tooltip": "Gratis lettertypen waar veel Typst-sjablonen om vragen. Na het downloaden kan elk Typst-project ze gebruiken, behalve een project dat systeemlettertypen uitzet."
+    },
+    "packs": {
+      "browse": "Bekijken",
+      "back": "Terug naar pakketten",
+      "count_one": "{{count}} sjabloon",
+      "count_other": "{{count}} sjablonen",
+      "installedCount": "{{installed}} van {{total}} geïnstalleerd",
+      "downloadPack": "Pakket downloaden",
+      "refresh": "Zoeken naar nieuwe pakketten",
+      "searchPacks": "Pakketten zoeken",
+      "searchTemplates": "Sjablonen zoeken",
+      "noPacks": "Geen pakketten gevonden",
+      "noTemplates": "Geen sjablonen gevonden",
+      "loading": "Sjablonen laden",
+      "loadFailed": "Kon dit pakket niet laden.",
+      "retry": "Opnieuw proberen",
+      "installed": "Geïnstalleerd",
+      "engineFilter": "Engine",
+      "kindFilter": "Soort",
+      "languageFilter": "Taal",
+      "allEngines": "Alle engines",
+      "allKinds": "Alle soorten",
+      "allLanguages": "Alle talen",
+      "groups": {
+        "curated": "Geselecteerd",
+        "community": "Community",
+        "typst": "Typst",
+        "university": "Universiteiten"
+      },
+      "preview": {
+        "image": "Eerste pagina van {{name}}",
+        "previous": "Vorig sjabloon",
+        "next": "Volgend sjabloon",
+        "engine": "Engine",
+        "license": "Licentie",
+        "kind": "Soort",
+        "languages": "Talen",
+        "country": "Land",
+        "institution": "Instelling",
+        "originalSource": "Oorspronkelijke bron",
+        "getTemplate": "Dit sjabloon ophalen",
+        "useTemplate": "Dit sjabloon gebruiken",
+        "getAndCreate": "Ophalen en project aanmaken"
+      }
     }
   },
   "engine": {
@@ -982,7 +1168,7 @@
       "status": {
         "checking": "Controleren op pandoc…",
         "installing": "Een vastgezette pandoc-release ophalen. De eerste keer duurt dat even.",
-        "missing": "Niet gevonden. Oleafly kan een geschikte pandoc (2.19 of nieuwer) naar zijn eigen map downloaden; verder verandert er niets aan je systeem.",
+        "missing": "Niet gevonden. Oleafly kan een geschikte pandoc (2.19 of nieuwer) naar zijn eigen map downloaden. Verder verandert er niets aan je systeem.",
         "ready": "Gevonden. Markdown-projecten worden met pandoc naar LaTeX omgezet en daarna met de meegeleverde Tectonic gecompileerd."
       },
       "tectonicDetail": "Zet de LaTeX die pandoc maakt om in drukwerk. Komt met Oleafly mee, er valt niets in te stellen.",
@@ -1192,11 +1378,68 @@
       "apiKeyLabel": "Zotero API-sleutel",
       "connected": "Verbonden met je Zotero-bibliotheek.",
       "connectedAs": "Verbonden als {{username}}.",
-      "description": "Importeer citaties en referenties uit je Zotero-bibliotheek.",
       "disconnectFailed": "Oleafly kon de opgeslagen Zotero-sleutel niet verwijderen. Probeer het opnieuw.",
-      "importHint": "Om te importeren open je het paneel Referenties in een project en kies je Referentiebibliotheek importeren.",
       "userIdLabel": "Zotero-gebruikers-ID",
-      "userIdPlaceholder": "Gebruikers-ID"
+      "userIdPlaceholder": "Gebruikers-ID",
+      "citeDescription": "Doorzoek je hele Zotero-bibliotheek terwijl je schrijft en voeg alleen toe wat je citeert. Oleafly leest je bibliotheek en wijzigt die nooit.",
+      "local": {
+        "heading": "Zotero op deze computer",
+        "ready": "Verbonden met Zotero {{version}}.",
+        "readyNoVersion": "Verbonden met Zotero.",
+        "bbtFound": "Better BibTeX {{version}} is geïnstalleerd, dus citatiesleutels komen uit Better BibTeX.",
+        "bbtMissing": "Better BibTeX is niet geïnstalleerd, dus citatiesleutels komen uit Zotero.",
+        "notRunning": "Zotero is niet actief. Open Zotero om in je bibliotheek te zoeken, of verbind hieronder je zotero.org-account.",
+        "apiDisabled": "Open in Zotero Instellingen > Geavanceerd en zet “Allow other applications on this computer to communicate with Zotero” aan.",
+        "unsupported": "Deze versie van Zotero kan de bibliotheek niet delen. Werk bij naar Zotero 7 of nieuwer.",
+        "unknown": "Oleafly heeft nog niet naar Zotero gezocht."
+      },
+      "test": "Verbinding testen",
+      "syncNow": "Nu synchroniseren",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX niet gevonden",
+        "local": "Gelezen uit Zotero op deze computer",
+        "web": "Gelezen van zotero.org",
+        "library_one": "{{name}}: {{formatted}} item",
+        "library_other": "{{name}}: {{formatted}} items"
+      },
+      "library": {
+        "heading": "Bibliotheken om te doorzoeken",
+        "myLibrary": "Mijn bibliotheek",
+        "toggle": "{{name}} doorzoeken",
+        "items_one": "{{formatted}} item",
+        "items_other": "{{formatted}} items"
+      },
+      "sync": {
+        "never": "Nog niet gesynchroniseerd.",
+        "syncing": "Je Zotero-bibliotheek synchroniseren…",
+        "progress": "{{done}} van {{total}} items synchroniseren…",
+        "status_one": "{{formatted}} item klaar om te citeren, gesynchroniseerd {{time}}.",
+        "status_other": "{{formatted}} items klaar om te citeren, gesynchroniseerd {{time}}.",
+        "fromCache": "Zotero is gesloten, dus zoeken met @ gebruikt de kopie van de laatste synchronisatie.",
+        "rateLimited": "zotero.org heeft Oleafly gevraagd te wachten. Oleafly probeert het na {{time}} opnieuw."
+      },
+      "account": {
+        "heading": "zotero.org-account",
+        "description": "Gebruik je account als Zotero niet open is op deze computer. Groepsbibliotheken komen ook mee."
+      }
+    },
+    "overleaf": {
+      "description": "Haal projecten over uit je Overleaf-account of van de Overleaf-server van je universiteit en houd ze gesynchroniseerd. Oleafly bewaart de aanmelding en het Git-token versleuteld op deze computer.",
+      "signedInAs": "Aangemeld als {{email}} op {{server}}",
+      "signedIn": "Aangemeld op {{server}}",
+      "signOut": "Afmelden",
+      "signOutFailed": "Oleafly kon zich niet afmelden bij Overleaf.",
+      "gitTitle": "Git-token voor synchronisatie",
+      "gitSaved": "Er is een Git-token opgeslagen. Projecten die je koppelt, blijven gesynchroniseerd met Overleaf.",
+      "gitMissing": "Nog geen Git-token. Maak er een aan onder Git-integratie in je Overleaf-accountinstellingen om projecten te synchroniseren.",
+      "gitOpenSettings": "Overleaf-accountinstellingen openen",
+      "gitPlanNote": "Voor Git-integratie heeft de eigenaar van het project een betaald Overleaf-abonnement of een universiteitsabonnement nodig.",
+      "gitLabel": "Git-token van Overleaf",
+      "gitSave": "Opslaan",
+      "gitRemove": "Weghalen",
+      "gitFailed": "Oleafly kon het Git-token niet opslaan. Controleer of je het hele token hebt geplakt."
     }
   },
   "language": {
@@ -1561,6 +1804,10 @@
         "description": "Toon of verberg de projectzijbalk.",
         "label": "Zijbalk tonen of verbergen"
       },
+      "togglePreview": {
+        "label": "PDF-voorbeeld tonen of verbergen",
+        "description": "Toont of verbergt de PDF naast de editor, ook in zenmodus."
+      },
       "toggleTerminal": {
         "description": "Toon of verberg de projectterminal.",
         "label": "Terminal tonen of verbergen"
@@ -1568,6 +1815,26 @@
       "openFolder": {
         "label": "Map openen",
         "description": "Open een map van je computer als project."
+      },
+      "toggleZenMode": {
+        "description": "Verberg alles behalve je tekst, of breng alles terug.",
+        "label": "Zenmodus aan- of uitzetten"
+      },
+      "openSettings": {
+        "label": "Instellingen openen",
+        "description": "Open de instellingen van Oleafly."
+      },
+      "zoomIn": {
+        "description": "Maakt de hele app groter.",
+        "label": "Inzoomen"
+      },
+      "zoomOut": {
+        "description": "Maakt de hele app kleiner.",
+        "label": "Uitzoomen"
+      },
+      "resetZoom": {
+        "description": "Zet de app terug op 100%.",
+        "label": "Zoom herstellen"
       }
     },
     "application": {
@@ -1590,7 +1857,7 @@
         "italic": "Cursief",
         "jumpToSourceFromPdf": "Vanuit de PDF naar de broncode springen",
         "redo": "Opnieuw",
-        "renameSymbol": "Symbool in het hele project hernoemen",
+        "renameSymbol": "Symbool of bestand in het hele project hernoemen",
         "slashCommandMenu": "Invoegmenu met slash-opdrachten",
         "triggerAutocomplete": "Automatisch aanvullen oproepen",
         "undo": "Ongedaan maken"

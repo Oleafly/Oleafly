@@ -236,7 +236,7 @@ function LinkFolderDialog({
         </div>
 
         {error ? (
-          <p className="text-sm text-destructive" role="alert">
+          <p className="select-text text-sm text-destructive" role="alert">
             {error}
           </p>
         ) : null}
@@ -291,8 +291,8 @@ function RootCard({
       </p>
     ) : (
       <>
-        <p className="mb-2 truncate text-xs font-medium">{file.relativePath}</p>
-        <pre className="whitespace-pre-wrap break-words text-xs">{file.content}</pre>
+        <p className="mb-2 select-text truncate text-xs font-medium">{file.relativePath}</p>
+        <pre data-select-all-scope className="select-text whitespace-pre-wrap break-words text-xs">{file.content}</pre>
         {file.truncated && (
           <p className="mt-2 text-xs text-muted-foreground">
             {t(($) => $.researchTools.roots.card.previewTruncated)}
@@ -439,7 +439,7 @@ function RootCard({
         </div>
       )}
       {error && (
-        <p className="mt-2 text-xs text-destructive" role="alert">
+        <p className="mt-2 select-text text-xs text-destructive" role="alert">
           {error}
         </p>
       )}
@@ -577,7 +577,7 @@ export function ResearchRootsPanel({ projectId }: Readonly<{ projectId: string }
       </div>
 
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="select-text text-sm text-destructive" role="alert">
           {error}
         </p>
       )}

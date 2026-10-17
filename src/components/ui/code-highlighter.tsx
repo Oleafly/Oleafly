@@ -181,7 +181,7 @@ export const HighlightedCode = memo(function HighlightedCode({
 
   return (
     <code className={cn("font-mono", className)} data-language={language}>
-      {nodes ?? source}
+      {nodes ? <span>{nodes}</span> : source}
     </code>
   );
 });

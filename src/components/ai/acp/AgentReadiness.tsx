@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Download, Settings2, TriangleAlert } from "lucide-react";
+import { Download, Settings2, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,7 @@ export function ReadinessBadge({ readiness }: Readonly<{ readiness: AcpReadiness
   const label = acpReadinessLabel(readiness);
   if (readiness === "ready") {
     return (
-      <Badge variant="success" className="gap-1">
-        <Check className="size-3 shrink-0" aria-hidden /> {label}
-      </Badge>
+      <Badge variant="success">{label}</Badge>
     );
   }
   if (readiness === "unavailable") {
@@ -135,7 +133,7 @@ export function BridgeInstallCard({
         </Button>
       )}
       {readiness === "bridge-missing" && hint && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
           {displayText(hint)}
         </p>
       )}

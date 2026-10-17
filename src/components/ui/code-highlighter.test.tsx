@@ -27,6 +27,43 @@ describe("HighlightedCode", () => {
     clearHighlightCache();
   });
 
+  it("swaps in a highlighted block as one insertion instead of one per token", async () => {
+    highlightCode.mockImplementation(
+      (
+        source: string,
+        _tree: unknown,
+        _highlighter: unknown,
+        emit: (text: string, classes: string) => void,
+        lineBreak: () => void,
+      ) => {
+        for (const line of source.split("\n")) {
+          emit(line, "tok-keyword");
+          lineBreak();
+        }
+      },
+    );
+    const source = Array.from({ length: 400 }, (_, index) => `const line${index} = ${index};`).join("\n");
+    const { container } = render(
+      <pre>
+        <HighlightedCode language="javascript" source={source} />
+      </pre>,
+    );
+    const pre = container.querySelector("pre") as HTMLElement;
+    const records: MutationRecord[] = [];
+    const observer = new MutationObserver((batch) => records.push(...batch));
+    observer.observe(pre, { childList: true, subtree: true });
+
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 20));
+    });
+    records.push(...observer.takeRecords());
+    observer.disconnect();
+
+    expect(pre.querySelectorAll(".tok-keyword")).toHaveLength(400);
+    expect(pre.querySelector("code")?.textContent).toBe(`${source}\n`);
+    expect(records.length).toBeLessThanOrEqual(2);
+  });
+
   it("leaves very large code blocks raw", async () => {
     const source = `const ${"x".repeat(50_000)}`;
     const { container } = render(

@@ -36,6 +36,7 @@ import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { mainDocumentMissing } from "@/lib/main-document";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
+import { useCollabSettingsLocked } from "@/lib/collab-live-bridge";
 import type { DocumentEngineDescriptor, TexFlavor, TypstToolchainStatus } from "@/lib/tauri";
 import type { TypstOptionsDescriptor } from "@oleafly/backend-port";
 import { typstSupports, type TypstOptionsUpdate } from "@/lib/typst-options";
@@ -166,6 +167,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
   const systemTexLocked = useFolderAccessStore((s) => folderIsRestricted(s, projectId));
   const grantTrust = useFolderAccessStore((s) => s.grant);
   const setTypstVersion = useFilesStore((s) => s.setTypstVersion);
+  const sharedSettingsLocked = useCollabSettingsLocked(projectId);
   const typstToolchain = useTypstToolchainFor(engine);
   const typstSelections = useTypstVariantStore((s) => s.selections);
   const refreshTypstToolchain = useTypstToolchainStore((s) => s.refresh);
@@ -178,6 +180,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
       iconOnly={iconOnly}
       blockedReason={noMainDocument ? t(($) => $.shell.openedFolder.noMain) : null}
       systemTexLocked={systemTexLocked}
+      sharedSettingsLocked={sharedSettingsLocked}
       onTrustForSystemTex={() => void grantTrust("folder")}
       engine={engine}
       engineLoaded={engineLoaded}
@@ -220,6 +223,7 @@ export type CompileControlsViewProps = Pick<FileState, "engine" | "engineLoaded"
       iconOnly?: boolean;
       blockedReason?: string | null;
       systemTexLocked?: boolean;
+      sharedSettingsLocked?: boolean;
       onTrustForSystemTex?: () => void;
       recompile: (options?: { fromScratch?: boolean }) => unknown;
       typstToolchain?: TypstToolchainStatus | null;
@@ -248,6 +252,11 @@ function MenuGroupLabel({ title, help }: Readonly<{ title: string; help?: string
       </Tooltip>
     </DropdownMenuLabel>
   );
+}
+
+function SharedViewerNote() {
+  const { t } = useTranslation(["shell"]);
+  return <p className="px-2 py-1.5 text-xs text-muted-foreground">{t(($) => $.shell.compile.sharedViewer)}</p>;
 }
 
 function UnsupportedNote() {
@@ -296,7 +305,7 @@ function AutoCompileMenuGroup({
           data-testid="typst-live-preview-note"
           title={livePreview.status === "failed" ? (livePreview.message ?? undefined) : undefined}
           className={cn(
-            "px-2 pb-1 text-[11px] whitespace-normal",
+            "px-2 pb-1 text-[0.6875rem] whitespace-normal",
             livePreview.status === "failed" ? "text-destructive" : "text-muted-foreground",
           )}
         >
@@ -310,9 +319,11 @@ function AutoCompileMenuGroup({
 function TypstFontsMenuGroup({
   options,
   setTypstOptions,
+  locked,
 }: Readonly<{
   options: TypstOptionsDescriptor;
   setTypstOptions: (update: TypstOptionsUpdate) => Promise<unknown>;
+  locked: boolean;
 }>) {
   const { t } = useTranslation(["shell"]);
   const canIgnoreSystemFonts = typstSupports(options, "--ignore-system-fonts");
@@ -328,17 +339,17 @@ function TypstFontsMenuGroup({
       <DropdownMenuRadioGroup
         value={current}
         onValueChange={(value) => {
-          if (value !== current) void setTypstOptions({ systemFonts: value === SYSTEM_FONTS });
+          if (!locked && value !== current) void setTypstOptions({ systemFonts: value === SYSTEM_FONTS });
         }}
       >
         <DropdownMenuRadioItem
           value={SYSTEM_FONTS}
           data-testid="typst-system-fonts"
-          disabled={canIgnoreSystemFonts && options.reproducible}
+          disabled={locked || (canIgnoreSystemFonts && options.reproducible)}
         >
           {t(($) => $.shell.compile.typstFonts.systemFonts)}
         </DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value={PROJECT_FONTS} data-testid="typst-project-fonts" disabled={!canIgnoreSystemFonts}>
+        <DropdownMenuRadioItem value={PROJECT_FONTS} data-testid="typst-project-fonts" disabled={locked || !canIgnoreSystemFonts}>
           {t(($) => $.shell.compile.typstFonts.projectOnly)}
           {!canIgnoreSystemFonts && <UnsupportedNote />}
         </DropdownMenuRadioItem>
@@ -350,9 +361,11 @@ function TypstFontsMenuGroup({
 function TypstBuildMenuGroup({
   options,
   setTypstOptions,
+  locked,
 }: Readonly<{
   options: TypstOptionsDescriptor;
   setTypstOptions: (update: TypstOptionsUpdate) => Promise<unknown>;
+  locked: boolean;
 }>) {
   const { t } = useTranslation(["shell"]);
   const canFixTimestamp = typstSupports(options, "--creation-timestamp");
@@ -367,13 +380,13 @@ function TypstBuildMenuGroup({
       <DropdownMenuRadioGroup
         value={current}
         onValueChange={(value) => {
-          if (value !== current) void setTypstOptions({ reproducible: value === REPRODUCIBLE_BUILD });
+          if (!locked && value !== current) void setTypstOptions({ reproducible: value === REPRODUCIBLE_BUILD });
         }}
       >
-        <DropdownMenuRadioItem value={STANDARD_BUILD} data-testid="typst-standard-build">
+        <DropdownMenuRadioItem value={STANDARD_BUILD} data-testid="typst-standard-build" disabled={locked}>
           {t(($) => $.shell.compile.typstBuild.standard)}
         </DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value={REPRODUCIBLE_BUILD} data-testid="typst-reproducible" disabled={!canFixTimestamp}>
+        <DropdownMenuRadioItem value={REPRODUCIBLE_BUILD} data-testid="typst-reproducible" disabled={locked || !canFixTimestamp}>
           {t(($) => $.shell.compile.typstBuild.reproducible)}
           {!canFixTimestamp && <UnsupportedNote />}
         </DropdownMenuRadioItem>
@@ -449,10 +462,12 @@ function TypstVersionMenuGroup({
   engine,
   toolchain,
   setTypstVersion,
+  locked,
 }: Readonly<{
   engine: DocumentEngineDescriptor;
   toolchain: TypstToolchainStatus | null | undefined;
   setTypstVersion: (version: string | null) => Promise<unknown>;
+  locked: boolean;
 }>) {
   const { t } = useTranslation(["shell"]);
   const current = engine.typst_version ?? TYPST_DEFAULT_CHOICE;
@@ -472,7 +487,7 @@ function TypstVersionMenuGroup({
       <DropdownMenuRadioGroup
         value={current}
         onValueChange={(value) => {
-          if (value === current) return;
+          if (locked || value === current) return;
           const switched = setTypstVersion(value === TYPST_DEFAULT_CHOICE ? null : value);
           void switched.catch((error: unknown) => {
             void logError("switch Typst version", error);
@@ -487,7 +502,7 @@ function TypstVersionMenuGroup({
           });
         }}
       >
-        <DropdownMenuRadioItem value={TYPST_DEFAULT_CHOICE} data-testid="typst-version-default">
+        <DropdownMenuRadioItem value={TYPST_DEFAULT_CHOICE} data-testid="typst-version-default" disabled={locked}>
           {toolchain
             ? t(($) => $.shell.compile.typstVersion.default, { version: toolchain.defaultVersion })
             : t(($) => $.shell.compile.typstVersion.defaultPlain)}
@@ -499,7 +514,7 @@ function TypstVersionMenuGroup({
               key={choice.version}
               value={choice.version}
               data-testid={`typst-version-${choice.version}`}
-              disabled={choice.note === "missing"}
+              disabled={locked || choice.note === "missing"}
             >
               {choice.version}
               {note && <span className="ml-1 text-muted-foreground">{note}</span>}
@@ -513,7 +528,7 @@ function TypstVersionMenuGroup({
 
 export function CompileControlsView({
   engine, engineLoaded, setEngine, recompile, stopCompile, autoCompile, setAutoCompile, compileMode, setCompileMode, checkSyntaxBeforeCompile, setCheckSyntaxBeforeCompile, stopOnFirstError, setStopOnFirstError, status, compileRevision, iconOnly = false,
-  blockedReason = null, systemTexLocked = false, onTrustForSystemTex,
+  blockedReason = null, systemTexLocked = false, sharedSettingsLocked = false, onTrustForSystemTex,
   typstToolchain = null, setTypstVersion, onOptionsOpen,
   typstVariant = null, setTypstVariant, setTypstOptions, livePreview,
 }: Readonly<CompileControlsViewProps>) {
@@ -672,7 +687,7 @@ export function CompileControlsView({
                   engine.id === "latexmk"
                     ? (engine.tex_flavor ?? "auto")
                     : "tectonic";
-                if (value === current) return;
+                if (sharedSettingsLocked || value === current) return;
                 // "xetex" is the stored default for the bundled Tectonic
                 // engine. Everything else runs through latexmk on a system
                 // TeX: "auto" picks the compiler from the source, an explicit
@@ -695,42 +710,57 @@ export function CompileControlsView({
                 });
               }}
             >
-              <DropdownMenuRadioItem value="tectonic" data-testid="compiler-tectonic">
+              <DropdownMenuRadioItem value="tectonic" data-testid="compiler-tectonic" disabled={sharedSettingsLocked}>
                 <Trans
                   ns="shell"
                   i18nKey={($) => $.shell.compile.compiler.tectonic}
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="auto" data-testid="compiler-auto" disabled={systemTexLocked}>
+              <DropdownMenuRadioItem value="auto" data-testid="compiler-auto" disabled={systemTexLocked || sharedSettingsLocked}>
                 <Trans
                   ns="shell"
                   i18nKey={($) => $.shell.compile.compiler.auto}
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="pdflatex" data-testid="compiler-pdflatex" disabled={systemTexLocked}>
+              <DropdownMenuRadioItem value="pdflatex" data-testid="compiler-pdflatex" disabled={systemTexLocked || sharedSettingsLocked}>
                 <Trans
                   ns="shell"
                   i18nKey={($) => $.shell.compile.compiler.pdflatex}
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="xelatex" data-testid="compiler-xelatex" disabled={systemTexLocked}>
+              <DropdownMenuRadioItem value="xelatex" data-testid="compiler-xelatex" disabled={systemTexLocked || sharedSettingsLocked}>
                 <Trans
                   ns="shell"
                   i18nKey={($) => $.shell.compile.compiler.xelatex}
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="lualatex" data-testid="compiler-lualatex" disabled={systemTexLocked}>
+              <DropdownMenuRadioItem value="lualatex" data-testid="compiler-lualatex" disabled={systemTexLocked || sharedSettingsLocked}>
                 <Trans
                   ns="shell"
                   i18nKey={($) => $.shell.compile.compiler.lualatex}
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="uplatex" data-testid="compiler-uplatex" disabled={systemTexLocked || sharedSettingsLocked}>
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.compiler.uplatex}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="platex" data-testid="compiler-platex" disabled={systemTexLocked || sharedSettingsLocked}>
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.compiler.platex}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
+              </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
+            {sharedSettingsLocked && <SharedViewerNote />}
             {systemTexLocked && (
               <DropdownMenuItem
                 data-testid="compiler-trust"
@@ -745,15 +775,30 @@ export function CompileControlsView({
         )}
 
         {typst && setTypstVersion && (
-          <TypstVersionMenuGroup engine={engine} toolchain={typstToolchain} setTypstVersion={setTypstVersion} />
+          <TypstVersionMenuGroup
+            engine={engine}
+            toolchain={typstToolchain}
+            setTypstVersion={setTypstVersion}
+            locked={sharedSettingsLocked}
+          />
         )}
 
         {typst && engine.typst_options && setTypstOptions && (
           <>
-            <TypstFontsMenuGroup options={engine.typst_options} setTypstOptions={setTypstOptions} />
-            <TypstBuildMenuGroup options={engine.typst_options} setTypstOptions={setTypstOptions} />
+            <TypstFontsMenuGroup
+              options={engine.typst_options}
+              setTypstOptions={setTypstOptions}
+              locked={sharedSettingsLocked}
+            />
+            <TypstBuildMenuGroup
+              options={engine.typst_options}
+              setTypstOptions={setTypstOptions}
+              locked={sharedSettingsLocked}
+            />
           </>
         )}
+
+        {typst && sharedSettingsLocked && <SharedViewerNote />}
 
         {typst && engine.typst_options && setTypstVariant && (
           <TypstVariantMenuGroup

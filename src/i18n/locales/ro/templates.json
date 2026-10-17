@@ -5,6 +5,7 @@
       "nameProject": "Dă un nume proiectului",
       "import": "Importă",
       "generateWithAi": "Generează un șablon",
+      "importTemplate": "Importă un șablon",
       "close": "Închide",
       "getMoreTemplates": "Descarcă mai multe șabloane",
       "searchPlaceholder": "Caută șabloane",
@@ -41,6 +42,7 @@
     "category": {
       "all": "Toate",
       "aiGenerated": "Generate cu AI",
+      "custom": "Personalizate",
       "blank": "Gol",
       "diagrams": "Diagrame",
       "diagramsFull": "Diagrame și figuri",

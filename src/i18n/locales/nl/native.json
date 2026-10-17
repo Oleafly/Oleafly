@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "Over Oleafly",
     "checkUpdates": "Controleren op updates…",
+    "settings": "Instellingen…",
     "reloadViews": "Weergaven opnieuw laden",
     "restartApp": "Applicatie opnieuw starten",
     "quit": "Oleafly afsluiten",
@@ -30,7 +31,8 @@
     "newTab": "Nieuw tabblad",
     "openLocation": "Locatie openen…",
     "closeTab": "Tabblad sluiten",
-    "reloadPage": "Pagina opnieuw laden"
+    "reloadPage": "Pagina opnieuw laden",
+    "zenMode": "Zenmodus"
   },
   "window": {
     "browser": "Oleafly Browser",
@@ -42,6 +44,11 @@
       "title": "Volledige toegang inschakelen?",
       "message": "Met volledige toegang kan de assistent shell-opdrachten uitvoeren en bestanden bewerken zonder telkens om goedkeuring te vragen. Volledige toegang inschakelen?",
       "confirm": "Volledige toegang inschakelen"
+    },
+    "sharedShellEscape": {
+      "title": "Externe opdrachten toestaan in dit gedeelde project?",
+      "message": "Iedereen die dit project kan bewerken, kan dan programma's op deze computer uitvoeren wanneer je compileert. Sta dit alleen toe als je iedereen in het project vertrouwt.",
+      "confirm": "Toestaan op deze computer"
     },
     "cookieImport": {
       "title": "Cookie-import bevestigen",
@@ -109,5 +116,17 @@
   "systemIntegration": {
     "openInOleafly": "Openen in Oleafly",
     "openWithOleafly": "Openen met Oleafly"
+  },
+  "collab": {
+    "localCopy": "{{name}} (lokale kopie)"
+  },
+  "approvals": {
+    "helperRefused": "Geweigerd door de regel voor {{tool}} in approvals.toml",
+    "unknownTool": "Er is geen tool met de naam {{name}}, dus de regel doet niets.",
+    "unknownToolSuggestion": "Er is geen tool met de naam {{name}}, dus de regel doet niets. Bedoelde je {{suggestion}}?"
+  },
+  "cloud": {
+    "connectedPage": "Je bent verbonden. Je kunt dit tabblad sluiten en teruggaan naar Oleafly.",
+    "failedPage": "Het inloggen is niet voltooid. Je kunt dit tabblad sluiten en teruggaan naar Oleafly."
   }
 }

@@ -58,6 +58,25 @@ describe("parseFile: definitions", () => {
     expect(def("\\subsection{Background}", "section", "Background")?.level).toBe(3);
   });
 
+  it("ignores sectioning commands inside macro and environment definitions", () => {
+    const t = String.raw`\newcommand{\nsubsection}[1]{\subsection{\MakeUppercase{#1}}}
+\newcommand{\clearpageforsection}{\clearpage}
+\let\oldsection\section
+\renewcommand\section{\clearpageforsection\oldsection}
+\def\mysec#1{\section*{#1}}
+\long\def\other{\subsection{Hidden}}
+\newenvironment{panel}[1][x]{\begin{center}\subsection{Start}}{\subsection{End}\end{center}}
+\NewDocumentCommand{\topic}{m}{\section{#1}}
+\NewDocumentEnvironment{wrap}{o}{\chapter{Open}}{\chapter{Close}}
+\section{Real}
+\nsubsection{Not a heading}
+\subsection*{{\color{oiB}Kept}}`;
+    const sections = parseFile("main.tex", t)
+      .defs.filter((d) => d.kind === "section")
+      .map((d) => d.name);
+    expect(sections).toEqual(["Real", String.raw`{\color{oiB}Kept}`]);
+  });
+
   it("captures a section title with nested braces whole (exact name span)", () => {
     const t = "\\section{Intro to \\texttt{foo}} body";
     const d = required(def(t, "section", "Intro to \\texttt{foo}"));

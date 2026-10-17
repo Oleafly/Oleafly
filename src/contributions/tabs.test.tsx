@@ -26,4 +26,12 @@ describe("rail tab labels", () => {
     expect(labelOf("preflight")).toBe(enShell.rail.preflight);
     expect(labelOf("refs")).toBe(enShell.rail.references);
   });
+
+  it("puts live collaboration left of research tasks", () => {
+    registry.railTabs.length = 0;
+    registerRailTabs();
+    const ids = registry.railTabs.map((tab) => tab.id);
+
+    expect(ids.indexOf("collab")).toBeLessThan(ids.indexOf("research"));
+  });
 });

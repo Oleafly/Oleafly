@@ -137,12 +137,12 @@ export function DictionaryDownloads() {
                     {dictionaryLabel(entry, uiLocale)}
                   </span>
                   {entry.bytes > 0 && (
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[0.6875rem] text-muted-foreground">
                       {formatDownloadSize(entry.bytes)}
                     </span>
                   )}
                 </div>
-                <p className="truncate text-[11px] text-muted-foreground">
+                <p className="truncate text-[0.6875rem] text-muted-foreground">
                   {entry.id}
                   {entry.license.id ? ` · ${entry.license.id}` : ""}
                 </p>
@@ -161,7 +161,7 @@ export function DictionaryDownloads() {
         )}
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
         {t(($) => $.settings.downloads.dictionaries.note)}
       </p>
     </div>

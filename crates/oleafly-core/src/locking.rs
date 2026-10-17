@@ -6,6 +6,7 @@ use std::sync::{Mutex, MutexGuard, TryLockError};
 use std::time::{Duration, Instant};
 
 pub const STORAGE_LOCK_TIMEOUT: Duration = Duration::from_secs(30);
+const MAX_RETRY_DELAY: Duration = Duration::from_millis(10);
 
 fn retry<T>(budget: Duration, mut attempt: impl FnMut() -> io::Result<Option<T>>) -> io::Result<T> {
     let started = Instant::now();
@@ -22,7 +23,7 @@ fn retry<T>(budget: Duration, mut attempt: impl FnMut() -> io::Result<Option<T>>
             ));
         }
         std::thread::sleep(delay.min(remaining));
-        delay = (delay * 2).min(Duration::from_millis(100));
+        delay = (delay * 2).min(MAX_RETRY_DELAY);
     }
 }
 

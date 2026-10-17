@@ -3,9 +3,10 @@ import { useFilesStore } from "@/store/files";
 import {
   beginCompileRequestIdentity,
   captureCompileSourceSnapshot,
+  compileSaveFailureReason,
   isCompileOutputStillWanted,
   reportCompileSaveFailure,
-  saveActiveForCompile,
+  saveAllForCompile,
   useCompileStore,
 } from "@/store/compile";
 import { usePreflightStore } from "@/store/preflight";
@@ -171,19 +172,20 @@ function applyTaggedMissingPdfOutcome(args: TaggedOutcomeArgs): boolean {
 function markTaggedCompileFailed(
   requestIdentity: TaggedCompileIdentity,
   e: unknown,
+  reason = `Tagged compile failed: ${String(e)}`,
 ): boolean {
   if (!isCompileOutputStillWanted(requestIdentity)) return false;
   useCompileStore.setState({
     status: "error",
     phase: "idle",
-    failureReason: `Tagged compile failed: ${String(e)}`,
+    failureReason: reason,
     lastAttemptIdentity: requestIdentity,
   });
   refreshPreviewWindow({
     identity: requestIdentity,
     status: "error",
     checkpoint: null,
-    message: `Tagged compile failed: ${String(e)}`,
+    message: reason,
   });
   return true;
 }
@@ -242,9 +244,11 @@ export async function compileTaggedAndVerify(): Promise<void> {
   };
 
   try {
-    await saveActiveForCompile(files);
+    await saveAllForCompile();
   } catch (e) {
-    markTaggedCompileFailed(requestIdentity, e);
+    // The same reason as the main compile: it names the file that couldn't
+    // be saved, in the app's language.
+    markTaggedCompileFailed(requestIdentity, e, compileSaveFailureReason(e));
     reportCompileSaveFailure("save before tagged compile", files, e, true);
     return;
   }

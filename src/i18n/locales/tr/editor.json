@@ -188,7 +188,8 @@
     "quote": "Alıntı",
     "addLabel": "Etiket ekle",
     "convertLatexMath": "LaTeX matematiğini Typst'e dönüştür",
-    "noLatexMath": "Önce bir LaTeX matematik ifadesi seçin."
+    "noLatexMath": "Önce bir LaTeX matematik ifadesi seçin.",
+    "renameFile": "Dosyayı yeniden adlandır…"
   },
   "shell": {
     "noFileOpenTab": "Açık dosya yok",
@@ -244,7 +245,7 @@
     "issues": "Sorunlar",
     "spelling": "Yazım",
     "grammarAndStyle": "Dil bilgisi ve üslup",
-    "findingsTruncated": "Bulgu listesi kısaltıldı; yukarıdaki sayı eksiksizdir.",
+    "findingsTruncated": "Bulgu listesi kısaltıldı. Yukarıdaki sayı eksiksizdir.",
     "spellLanguage": "Yazım denetimi dili",
     "spellLanguageAppSetting": "Uygulama ayarını kullan",
     "spellLanguageAriaLabel": "Bu proje için yazım denetimi dili",
@@ -364,7 +365,11 @@
     "summaryWarnings_one": "{{count}} uyarı",
     "summaryWarnings_other": "{{count}} uyarı",
     "summaryReferences_one": "{{count}} çözümlenmemiş başvuru",
-    "summaryReferences_other": "{{count}} çözümlenmemiş başvuru"
+    "summaryReferences_other": "{{count}} çözümlenmemiş başvuru",
+    "fontPack": "{{family}}, ücretsiz {{pack}} yazı tipi paketinde var.",
+    "fontPackAction": "İndir ve derle",
+    "fontPackDownloading": "İndiriliyor…",
+    "fontPackFailed": "Yazı tipi paketi indirilemedi. Bağlantını kontrol edip yeniden dene."
   },
   "history": {
     "untitledCommit": "Adsız işleme",
@@ -392,7 +397,9 @@
     "unifiedView": "Birleşik görünüm",
     "loading": "Fark yükleniyor…",
     "previewTooLarge": "Dosya, fark önizlenemeyecek kadar büyük.",
-    "diskHeading": "Diskte ↔ Düzenlemeleriniz"
+    "diskHeading": "Diskte ↔ Düzenlemeleriniz",
+    "sharedReadOnly": "Paylaşılan bir projede bu fark salt okunurdur. Dosyayı düzenleyicide düzenleyin.",
+    "viewerReadOnly": "Bu paylaşılan projeyi görüntüleyebilirsiniz ama düzenleyemezsiniz."
   },
   "hotkeys": {
     "title": "Klavye kısayolları",
@@ -426,7 +433,7 @@
       "indentOrAccept": "Girinti ver / otomatik tamamlamayı kabul et",
       "goToDefinition": "Tanıma git",
       "findReferences": "Kaynakları bul",
-      "renameSymbol": "Sembolü yeniden adlandır (proje genelinde)",
+      "renameSymbol": "Sembolü veya dosyayı yeniden adlandır (proje genelinde)",
       "formatDocument": "Typst belgesini biçimlendir",
       "commandPalette": "Komut paleti",
       "searchAllDocuments": "Tüm belgelerde ara",
@@ -454,7 +461,8 @@
     "noEntries": "Bu projede henüz kaynakça kaydı yok.",
     "addNew": "Yeni bir atıf bul ve ekle…",
     "duplicate": "yinelenen {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Zotero kitaplığınızdan"
   },
   "inlineAi": {
     "promptPlaceholder": "Değişikliği anlatın…  (yeni satır için Shift+Enter)",
@@ -468,6 +476,7 @@
     "openInAgent": "Tüm proje araçlarıyla yapay zeka asistanında sürdür",
     "generateFailed": "Düzenleme üretilemedi. {{message}}",
     "dismiss": "Kapat",
+    "withdrawn": "Bu metni başka biri düzenledi, bu yüzden öneri artık uygulanamaz.",
     "setUpProvider": "Bir yapay zeka sağlayıcısı kur",
     "setUpProviderHint": "Satır içi yapay zeka düzenlemelerini kullanmak için bir API anahtarı (veya yerel Ollama) ekleyin.",
     "openAiSettings": "Ayarlar → Yapay zeka bölümünü aç"
@@ -649,6 +658,7 @@
     "endOfDocument": "Belgenin sonu",
     "hidePreamble": "Belge ön bölümünü gizle",
     "showPreamble": "Belge ön bölümünü göster",
+    "sharedReadOnly": "Paylaşılan bir projede görsel mod dosyayı yalnızca gösterir. Düzenlemek için kaynak görünümüne geçin.",
     "findingLabel": "{{message}}. Düzeltme önerilerini aç.",
     "rawBlockFindings_one": "Bu ham blokta {{count}} düzeltme bulgusu var. {{message}}. Önerileri aç.",
     "rawBlockFindings_other": "Bu ham blokta {{count}} düzeltme bulgusu var. {{message}}. Önerileri aç."
@@ -1460,7 +1470,8 @@
     "sources": {
       "project": "Proje",
       "system": "Sistem",
-      "embedded": "Yerleşik"
+      "embedded": "Yerleşik",
+      "pack": "Yazı tipi paketi"
     },
     "fontsFolder": "Bu projede bir yazı tipi kullanmak için dosyasını projenin fonts klasörüne ekleyin."
   },
@@ -1487,5 +1498,6 @@
     "keyInvalid": "Değer adları boş olamaz veya eşittir işareti içeremez.",
     "keyTaken": "Bir varyant aynı adı iki kez ayarlayamaz.",
     "saveFailed": "Varyantlar kaydedilemedi."
-  }
+  },
+  "sharedSettingsViewer": "Paylaşılan bir projede görüntüleyenler bunu değiştiremez."
 }

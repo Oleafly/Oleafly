@@ -168,7 +168,7 @@ function ImageGrid({
           )}
         >
           <Thumbnail path={path} />
-          <span className="truncate text-[11px] text-foreground">{path}</span>
+          <span className="truncate text-[0.6875rem] text-foreground">{path}</span>
         </button>
       ))}
     </div>
@@ -522,7 +522,7 @@ export function FigureDialog() {
             </div>
             <ImageGrid images={images} selected={selected} onChoose={choose} />
             {error && (
-              <p role="alert" className="mt-2 text-xs text-destructive">
+              <p role="alert" className="mt-2 select-text text-xs text-destructive">
                 {error}
               </p>
             )}

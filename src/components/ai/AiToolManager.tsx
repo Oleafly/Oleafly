@@ -78,7 +78,7 @@ export function AiToolManager({
               <p
                 aria-atomic="true"
                 aria-live="polite"
-                className="text-[11px] text-muted-foreground"
+                className="text-[0.6875rem] text-muted-foreground"
               >
                 {t(($) => $.ai.tools.enabledCount, {
                   enabled: enabledCount,
@@ -120,7 +120,7 @@ export function AiToolManager({
                   <section key={group.id} aria-label={heading} className="border-b last:border-b-0">
                     <h3
                       aria-label={heading}
-                      className="flex items-baseline gap-1.5 bg-muted/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                      className="flex items-baseline gap-1.5 bg-muted/40 px-3 py-1.5 text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground"
                     >
                       <span>{groupLabel(group)}</span>
                       {group.server && (
@@ -140,11 +140,11 @@ export function AiToolManager({
                             <div className="min-w-0">
                               <code
                                 title={tool.name}
-                                className="block break-all font-mono text-[11px] font-medium text-foreground"
+                                className="block break-all font-mono text-[0.6875rem] font-medium text-foreground"
                               >
                                 {tool.name}
                               </code>
-                              <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+                              <p className="mt-0.5 line-clamp-2 text-[0.6875rem] leading-relaxed text-muted-foreground">
                                 {toolDescription(group, tool.name, tool.description)}
                               </p>
                             </div>

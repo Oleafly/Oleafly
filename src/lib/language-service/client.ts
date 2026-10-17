@@ -24,6 +24,7 @@ import {
   type DefinitionParams,
   type Diagnostic,
   type DidChangeTextDocumentParams,
+  type DidChangeWatchedFilesParams,
   type DidCloseTextDocumentParams,
   type DidOpenTextDocumentParams,
   type DidSaveTextDocumentParams,
@@ -239,6 +240,7 @@ interface DiagnosticEpoch {
   barrierAcknowledged: boolean;
   candidate: DiagnosticCandidate | null;
   quietTimer: ReturnType<typeof setTimeout> | null;
+  latest: PublishDiagnosticsParams | null;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -941,6 +943,13 @@ export class LanguageServiceClient {
     await this.didSave({ textDocument: { uri } });
   }
 
+  async didChangeWatchedFiles(
+    params: DidChangeWatchedFilesParams,
+  ): Promise<void> {
+    this.ensureReady();
+    await this.sendNotification("workspace/didChangeWatchedFiles", params);
+  }
+
   acknowledgeDocumentRevision(
     uri: string,
     projectRevision = this.projectRevisionValue,
@@ -953,6 +962,10 @@ export class LanguageServiceClient {
     }
     this.setProjectRevision(projectRevision);
     const epoch = this.beginDiagnosticEpoch(uri);
+    const document = this.documents.get(uri);
+    if (epoch.latest && document) {
+      this.emitAcknowledgedDiagnostics(epoch.latest, document, epoch);
+    }
     this.startDiagnosticBarrier(uri, epoch);
   }
 
@@ -1604,6 +1617,10 @@ export class LanguageServiceClient {
     }
     const previous = this.diagnosticEpochs.get(uri);
     if (previous?.quietTimer) clearTimeout(previous.quietTimer);
+    const unchanged =
+      previous?.session === session.session &&
+      previous.generation === session.generation &&
+      previous.documentVersion === document.version;
     const epoch: DiagnosticEpoch = {
       epoch: (previous?.epoch ?? 0) + 1,
       session: session.session,
@@ -1613,6 +1630,7 @@ export class LanguageServiceClient {
       barrierAcknowledged: false,
       candidate: null,
       quietTimer: null,
+      latest: unchanged ? previous.latest : null,
     };
     this.diagnosticEpochs.set(uri, epoch);
     this.emit({
@@ -1676,6 +1694,7 @@ export class LanguageServiceClient {
     uri: string,
     epoch: DiagnosticEpoch,
   ): void {
+    if (epoch.candidate) epoch.latest = epoch.candidate.params;
     if (epoch.quietTimer) clearTimeout(epoch.quietTimer);
     epoch.quietTimer = setTimeout(() => {
       epoch.quietTimer = null;
@@ -1700,6 +1719,7 @@ export class LanguageServiceClient {
     epoch: DiagnosticEpoch,
   ): void {
     if (!this.diagnosticEpochIsCurrent(params.uri, epoch)) return;
+    epoch.latest = params;
     this.emit({
       type: "diagnostics",
       params,

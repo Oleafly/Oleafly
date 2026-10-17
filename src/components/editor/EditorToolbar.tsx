@@ -263,12 +263,12 @@ function HeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
         )
       }
     >
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+      <div className="px-2 py-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
         {t(($) => $.editor.toolbar.heading)}
       </div>
       {HEADING_LEVELS.map((level) => (
         <PopoverItem key={level.hLabel} onClick={() => insertHeading(level)}>
-          <span className="w-6 shrink-0 text-[10px] font-medium text-muted-foreground">{level.hLabel}</span>
+          <span className="w-6 shrink-0 text-[0.625rem] font-medium text-muted-foreground">{level.hLabel}</span>
           <span className={level.className}>{level.label()}</span>
         </PopoverItem>
       ))}
@@ -324,20 +324,20 @@ function CodeIntelDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
         )
       }
     >
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+      <div className="px-2 py-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
         {t(($) => $.editor.toolbar.code)}
       </div>
       <PopoverItem onClick={() => withProjectSymbol(goToDefinition)}>
         <ArrowRightToLine className="size-4" /> {t(($) => $.editor.toolbar.goToDefinition)}
-        <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("F12")}</span>
+        <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut("F12")}</span>
       </PopoverItem>
       <PopoverItem onClick={() => withProjectSymbol(findReferences)}>
         <SearchCode className="size-4" /> {t(($) => $.editor.toolbar.findReferences)}
-        <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("⇧F12")}</span>
+        <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut("⇧F12")}</span>
       </PopoverItem>
       <PopoverItem onClick={() => withProjectSymbol(startRename)}>
         <Pencil className="size-4" /> {t(($) => $.editor.toolbar.renameSymbol)}
-        <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("F2")}</span>
+        <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut("F2")}</span>
       </PopoverItem>
     </Popover>
   );

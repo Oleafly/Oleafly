@@ -1,4 +1,5 @@
 import {
+  memo,
   useMemo,
   useRef,
   type KeyboardEvent,
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/context-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useFilesStore } from "@/store/files";
-import { useDiffStore, type DiffSide } from "@/store/diff";
+import { useDiffStore, type DiffSide, type OpenDiff } from "@/store/diff";
 import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
 import { FileTabStatus } from "./FileTabStatus";
@@ -61,13 +62,29 @@ interface ScopeItem {
   disabled: boolean;
 }
 
-function EditorTabMenu({
-  tab,
-  position,
-  total,
-}: Readonly<{ tab: EditorTab; position: number; total: number }>) {
+function useEditorTabPlacement(tab: EditorTab): { position: number; total: number } {
+  const openTabs = useFilesStore((s) => s.openTabs);
+  const tabOrder = useFilesStore((s) => s.tabOrder);
+  const diffs = useDiffStore((s) => s.diffs);
+  return useMemo(() => {
+    const tabs = editorTabs(openTabs, tabOrder, diffs);
+    const key = editorTabKey(tab);
+    return { position: tabs.findIndex((entry) => editorTabKey(entry) === key), total: tabs.length };
+  }, [diffs, openTabs, tab, tabOrder]);
+}
+
+function EditorTabMenu({ tab }: Readonly<{ tab: EditorTab }>) {
+  return (
+    <ContextMenuContent className="w-60" data-testid="editor-tab-menu">
+      <EditorTabMenuItems tab={tab} />
+    </ContextMenuContent>
+  );
+}
+
+function EditorTabMenuItems({ tab }: Readonly<{ tab: EditorTab }>) {
   const { t } = useTranslation(["common", "editor"]);
   const assistantCount = useFilesStore((s) => s.assistantTabs.length);
+  const { position, total } = useEditorTabPlacement(tab);
   const items: ScopeItem[] = [
     { scope: "others", label: t(($) => $.editor.shell.closeOthers), disabled: total < 2 },
     { scope: "left", label: t(($) => $.editor.shell.closeLeft), disabled: position === 0 },
@@ -75,7 +92,7 @@ function EditorTabMenu({
     { scope: "all", label: t(($) => $.editor.shell.closeAll), disabled: false },
   ];
   return (
-    <ContextMenuContent className="w-60" data-testid="editor-tab-menu">
+    <>
       <ContextMenuItem data-testid="editor-tab-menu-close" onClick={() => closeEditorTab(tab)}>
         {t(($) => $.common.actions.close)}
       </ContextMenuItem>
@@ -97,22 +114,18 @@ function EditorTabMenu({
       >
         {t(($) => $.editor.shell.closeAssistantTabs)}
       </ContextMenuItem>
-    </ContextMenuContent>
+    </>
   );
 }
 
 function EditorTabItem({
   tab,
-  position,
-  total,
   active,
   closeLabel,
   onActivate,
   children,
 }: Readonly<{
   tab: EditorTab;
-  position: number;
-  total: number;
   active: boolean;
   closeLabel: string;
   onActivate: () => void;
@@ -163,7 +176,7 @@ function EditorTabItem({
           </button>
         </div>
       </ContextMenuTrigger>
-      <EditorTabMenu tab={tab} position={position} total={total} />
+      <EditorTabMenu tab={tab} />
     </ContextMenu>
   );
 }
@@ -179,16 +192,72 @@ function AssistantTabMark() {
   );
 }
 
+const FileTab = memo(function FileTab({
+  path,
+  order,
+  active,
+  assistant,
+  closeLabel,
+}: Readonly<{
+  path: string;
+  order: number;
+  active: boolean;
+  assistant: boolean;
+  closeLabel: string;
+}>) {
+  const tab = useMemo<EditorTab>(() => ({ kind: "file", id: path, order }), [path, order]);
+  return (
+    <EditorTabItem
+      tab={tab}
+      active={active}
+      closeLabel={closeLabel}
+      onActivate={() => useFilesStore.getState().setActive(path)}
+    >
+      {basename(path)}
+      {assistant ? <AssistantTabMark /> : null}
+      <FileTabStatus path={path} />
+    </EditorTabItem>
+  );
+});
+
+const DiffTab = memo(function DiffTab({
+  id,
+  diff,
+  active,
+  closeLabel,
+  sideLabel,
+}: Readonly<{
+  id: string;
+  diff: OpenDiff;
+  active: boolean;
+  closeLabel: string;
+  sideLabel: string;
+}>) {
+  const tab = useMemo<EditorTab>(
+    () => ({ kind: "diff", id, d: diff, order: diff.order }),
+    [id, diff],
+  );
+  return (
+    <EditorTabItem
+      tab={tab}
+      active={active}
+      closeLabel={closeLabel}
+      onActivate={() => useDiffStore.getState().setActiveDiff(id)}
+    >
+      {basename(diff.path)}
+      <span className="text-muted-foreground">{sideLabel}</span>
+    </EditorTabItem>
+  );
+});
+
 export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   const openTabs = useFilesStore((s) => s.openTabs);
   const tabOrder = useFilesStore((s) => s.tabOrder);
   const activePath = useFilesStore((s) => s.activePath);
   const assistantTabs = useFilesStore((s) => s.assistantTabs);
-  const setActive = useFilesStore((s) => s.setActive);
   const diffs = useDiffStore((s) => s.diffs);
   const activeKey = useDiffStore((s) => s.activeKey);
-  const setActiveDiff = useDiffStore((s) => s.setActiveDiff);
   const tabs = useMemo(() => editorTabs(openTabs, tabOrder, diffs), [openTabs, tabOrder, diffs]);
 
   return (
@@ -198,36 +267,25 @@ export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean 
           {t(($) => $.editor.shell.noFileOpenTab)}
         </span>
       )}
-      {tabs.map((tab, position) =>
+      {tabs.map((tab) =>
         tab.kind === "file" ? (
-          <EditorTabItem
+          <FileTab
             key={`f:${tab.id}`}
-            tab={tab}
-            position={position}
-            total={tabs.length}
+            path={tab.id}
+            order={tab.order}
             active={tab.id === activePath && !diffFocused}
+            assistant={assistantTabs.includes(tab.id)}
             closeLabel={t(($) => $.editor.shell.closeFile, { name: basename(tab.id) })}
-            onActivate={() => setActive(tab.id)}
-          >
-            {basename(tab.id)}
-            {assistantTabs.includes(tab.id) ? <AssistantTabMark /> : null}
-            <FileTabStatus path={tab.id} />
-          </EditorTabItem>
+          />
         ) : (
-          <EditorTabItem
+          <DiffTab
             key={`d:${tab.id}`}
-            tab={tab}
-            position={position}
-            total={tabs.length}
+            id={tab.id}
+            diff={tab.d}
             active={activeKey === tab.id}
             closeLabel={t(($) => $.editor.shell.closeDiffTab, { name: basename(tab.d.path) })}
-            onActivate={() => setActiveDiff(tab.id)}
-          >
-            {basename(tab.d.path)}
-            <span className="text-muted-foreground">
-              {t(($) => $.editor.shell[DIFF_TAB_SIDE_LABEL[tab.d.side]])}
-            </span>
-          </EditorTabItem>
+            sideLabel={t(($) => $.editor.shell[DIFF_TAB_SIDE_LABEL[tab.d.side]])}
+          />
         )
       )}
     </div>

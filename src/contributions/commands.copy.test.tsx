@@ -16,6 +16,7 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { TOOL_DEFINITIONS, toolName } from "@/lib/tool-catalog";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 
 const mocks = vi.hoisted(() => ({
   files: {
@@ -250,6 +251,15 @@ describe("command contributions copy", () => {
     }
   });
 
+  it("lists Settings in the command palette with its shortcut", () => {
+    const command = registry.commands.find((entry) => entry.id === "omnibar.settings");
+    if (!command) throw new Error("missing omnibar.settings");
+    expect(command.surfaces).toEqual(["omnibar", "palette"]);
+    const resolved = resolveAll(command, baseContext);
+    expect(resolved.group).toBe(enShell.commandGroups.settings);
+    expect(resolved.hint).toBe(shortcutLabel(useShortcutStore.getState().bindings.openSettings));
+  });
+
   it("flips the label of every stateful toggle", () => {
     const labelOf = (id: string) => {
       const command = registry.commands.find((entry) => entry.id === id);
@@ -285,6 +295,15 @@ describe("command contributions copy", () => {
     expect(commandsFor("palette", baseContext).map((entry) => entry.id)).not.toContain("palette.synctex");
     mocks.files.activePath = "main.typ";
     expect(commandsFor("palette", baseContext).map((entry) => entry.id)).toContain("palette.synctex");
+  });
+
+  it("keeps the Zotero bibliography commands while a .bib file is open", () => {
+    const ids = () => commandsFor("palette", baseContext).map((entry) => entry.id);
+    mocks.files.activePath = "references.bib";
+    expect(ids()).toEqual(expect.arrayContaining(["palette.zotero-add-missing", "palette.zotero-update"]));
+    expect(ids()).not.toContain("palette.add-citation");
+    mocks.files.engineLoaded = false;
+    expect(ids()).not.toContain("palette.zotero-update");
   });
 
   it("follows the theme of the context for the theme commands", () => {

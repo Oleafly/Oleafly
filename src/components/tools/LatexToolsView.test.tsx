@@ -14,9 +14,20 @@ import {
   type ToolCategory,
 } from "@/lib/tool-catalog";
 
-const mocks = vi.hoisted(() => ({ openTool: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  openTool: vi.fn(),
+  withoutArt: new Set<string>(),
+}));
 
 vi.mock("@/features/open-tool", () => ({ openTool: mocks.openTool }));
+vi.mock("./tool-art", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./tool-art")>();
+  return {
+    ...actual,
+    toolArt: (id: Parameters<typeof actual.toolArt>[0]) =>
+      mocks.withoutArt.has(id) ? undefined : actual.toolArt(id),
+  };
+});
 vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
 vi.mock("@/components/layout/WindowControls", () => ({ WindowControls: () => null }));
 vi.mock("@/components/layout/ThemeControls", () => ({ ThemeMenu: () => null }));
@@ -31,6 +42,7 @@ function searchBox() {
 
 beforeEach(() => {
   mocks.openTool.mockClear();
+  mocks.withoutArt.clear();
   useFilesStore.setState({ projectId: null });
   useHomeViewStore.setState({ page: "tools", activeConverter: null });
 });
@@ -138,6 +150,47 @@ describe("LatexToolsView", () => {
     expect(
       screen.getByText(enResearchTools.tools.noMatches),
     ).toBeInTheDocument();
+  });
+
+  it("tops every card with a decorative picture instead of the icon", () => {
+    render(<LatexToolsView />);
+    for (const tool of TOOL_DEFINITIONS) {
+      const card = screen.getByTestId(`latex-tool-card-${tool.id}`);
+      const picture = card.querySelector("img");
+      expect(picture, tool.id).not.toBeNull();
+      expect(picture).toHaveAttribute("src", `/tool-art/${tool.id}.webp`);
+      expect(picture).toHaveAttribute("alt", "");
+      expect(picture).toHaveAttribute("aria-hidden", "true");
+      expect(picture).toHaveAttribute("loading", "lazy");
+      expect(picture).toHaveAttribute("decoding", "async");
+      expect(card.querySelector("svg"), tool.id).toBeNull();
+      expect(card).toHaveTextContent(toolName(tool.id));
+      expect(card).toHaveTextContent(`/${tool.slash[0]}`);
+      expect(card).toHaveTextContent(toolDescription(tool.id));
+      for (const tag of toolTags(tool.id)) expect(card).toHaveTextContent(tag);
+    }
+    // The picture is decorative, so the card's name is its text alone.
+    expect(
+      screen.getByRole("button", { name: new RegExp(`^${toolName("bibtex")}`) }),
+    ).toBe(screen.getByTestId("latex-tool-card-bibtex"));
+  });
+
+  it("falls back to the tool's icon when it has no picture", () => {
+    mocks.withoutArt.add("bibtex");
+    render(<LatexToolsView />);
+    const card = screen.getByTestId("latex-tool-card-bibtex");
+    expect(card.querySelector("img")).toBeNull();
+    expect(card.querySelector("svg")).not.toBeNull();
+    expect(screen.getByTestId("latex-tool-card-doi-to-bibtex").querySelector("img")).not.toBeNull();
+  });
+
+  it("keeps each card a focusable native button, so Enter and Space open it", () => {
+    render(<LatexToolsView />);
+    const card = screen.getByTestId("latex-tool-card-stats");
+    expect(card.tagName).toBe("BUTTON");
+    expect(card).toHaveAttribute("type", "button");
+    card.focus();
+    expect(card).toHaveFocus();
   });
 
   it("opens the selected registry definition", () => {

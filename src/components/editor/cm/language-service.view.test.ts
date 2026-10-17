@@ -145,7 +145,7 @@ describe("language service hover", () => {
     activate(text);
     client.requestHover.mockResolvedValue({ contents: "First block\n\nSecond block" });
     const dom = await hoverDom(editor(text, []), 2);
-    expect(dom?.className).toBe("cm-language-service-hover");
+    expect(dom?.className).toBe("cm-language-service-hover select-text");
     expect([...(dom?.querySelectorAll("p") ?? [])].map((node) => node.textContent)).toEqual([
       "First block",
       "Second block",

@@ -69,7 +69,10 @@
       "localNotFound": "ローカルパッケージ {{spec}} がインストールされていません。Oleafly の Typst パッケージフォルダか、プロジェクトの typst-packages フォルダに置いてください。",
       "versionMissing": "このパッケージにバージョン {{version}} はありません。最新のバージョンは {{latest}} です。",
       "versionMissingNoLatest": "このパッケージにバージョン {{version}} はありません。import 文のバージョンを確認してください。"
-    }
+    },
+    "saveFailed": "{{path}} を保存できなかったため、Oleafly はコンパイルしませんでした。そのファイルを確認してから、もう一度コンパイルしてください。",
+    "saveFailedSeveral": "{{path}} とほかのファイルを保存できなかったため、Oleafly はコンパイルしませんでした。それらのファイルを確認してから、もう一度コンパイルしてください。",
+    "saveFailedOther": "文書を保存できなかったため、Oleafly はコンパイルしませんでした。{{reason}}"
   },
   "developer": {
     "actions": {
@@ -281,7 +284,9 @@
     "yearRangeInvalid": "開始年を終了年より後にはできません。"
   },
   "mcp": {
+    "deniedByRules": "approvals.toml の deny ルールにより拒否されました",
     "openProjectSummary": "プロジェクト {{id}} を開く",
+    "rulesUnreadable": "approvals.toml を読み込めなかったため拒否されました",
     "useToolSummary": "{{server}} の MCP サーバーの {{tool}} を使う"
   },
   "mcpConfig": {
@@ -350,7 +355,8 @@
     "referencesFor": "{{name}} への参照",
     "renameFailed": "「{{name}}」に名前を変更できませんでした。",
     "renamePartial": "{{total}} 件中 {{edited}} 件のファイルで「{{name}}」に変更しました。{{files}} には書き込めませんでした。",
-    "renamed": "「{{name}}」に変更しました（$t(core:navigation.files, {\"count\": {{files}} }) で $t(core:navigation.edits, {\"count\": {{edits}} })）"
+    "renamed": "「{{name}}」に変更しました（$t(core:navigation.files, {\"count\": {{files}} }) で $t(core:navigation.edits, {\"count\": {{edits}} })）",
+    "pathNotInProject": "「{{path}}」に一致するファイルはこのプロジェクトにありません。"
   },
   "pandoc": {
     "downloadFailed": "pandoc をダウンロードできませんでした。手動でインストールしてから、もう一度お試しください。",

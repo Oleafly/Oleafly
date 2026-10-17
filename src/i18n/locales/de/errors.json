@@ -36,7 +36,12 @@
     "not_removable": "Nur direkt am Speicherort geöffnete Ordner können aus Oleafly entfernt werden.",
     "trash_unavailable": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben. Das Laufwerk hat möglicherweise keinen.",
     "linked_replace_folder": "{{path}} ist ein Ordner, daher ersetzt Oleafly ihn nicht. Verschieben oder benennen Sie ihn zuerst um.",
-    "folder_read_only": "Oleafly kann diese Änderung nicht vornehmen, weil {{name}} oder der übergeordnete Ordner schreibgeschützt ist. Kopieren Sie den geöffneten Ordner in die Bibliothek und bearbeiten Sie ihn dort."
+    "folder_read_only": "Oleafly kann diese Änderung nicht vornehmen, weil {{name}} oder der übergeordnete Ordner schreibgeschützt ist. Kopieren Sie den geöffneten Ordner in die Bibliothek und bearbeiten Sie ihn dort.",
+    "shared_settings_viewer": "Betrachter können die Einstellungen eines geteilten Projekts nicht ändern."
+  },
+  "template": {
+    "name_required": "Geben Sie der Vorlage einen Namen.",
+    "folder_holds_templates": "Dieser Ordner enthält die Vorlagen von Oleafly selbst. Wählen Sie stattdessen den Ordner der Vorlage."
   },
   "settings": {
     "locale_unsupported": "Die Sprache {{locale}} ist nicht verfügbar."
@@ -56,7 +61,11 @@
     "unreachable": "Oleafly konnte Zotero nicht erreichen. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
     "http_error": "Zotero hat einen Fehler gemeldet (HTTP {{status}}). Versuchen Sie es später erneut.",
     "invalid_response": "Zotero hat eine Antwort gesendet, die Oleafly nicht lesen konnte. Versuchen Sie es später erneut.",
-    "too_large": "Ihre Zotero-Bibliothek ist zu groß, um sie auf einmal zu importieren. Exportieren Sie stattdessen eine Sammlung aus Zotero als RDF-Datei und importieren Sie diese."
+    "too_large": "Ihre Zotero-Bibliothek ist zu groß, um sie auf einmal zu importieren. Exportieren Sie stattdessen eine Sammlung aus Zotero als RDF-Datei und importieren Sie diese.",
+    "local_not_running": "Zotero läuft nicht auf diesem Computer. Öffnen Sie Zotero oder verbinden Sie Ihr Konto bei zotero.org.",
+    "local_api_disabled": "Öffnen Sie in Zotero Einstellungen > Erweitert und aktivieren Sie „Anderen Anwendungen auf diesem Computer erlauben, mit Zotero zu kommunizieren“.",
+    "local_unsupported": "Diese Zotero-Version kann ihre Bibliothek nicht für Oleafly freigeben. Aktualisieren Sie auf Zotero 7 oder neuer.",
+    "offline": "Oleafly ist im Offline-Modus und kann zotero.org daher nicht erreichen."
   },
   "tex": {
     "no_host_binary": "TinyTeX enthält keine zum System passende {{name}}-Binärdatei.",
@@ -65,7 +74,8 @@
     "latexmk_network_folder": "latexmk kann keinen Ordner auf einer Netzwerkfreigabe kompilieren. Stellen Sie dieses Projekt auf Tectonic um oder kopieren Sie den Ordner auf diesen Computer.",
     "shell_escape_denied_minted": "minted muss ein anderes Programm ausführen, um Code hervorzuheben, und dieses Projekt blockiert das. Um es zu erlauben, klicken Sie im Banner über dem Editor auf „{{setting}}“. Tun Sie das nur, wenn Sie jeder Datei im Projekt vertrauen. LaTeX kann dann jedes Programm mit Ihren Berechtigungen ausführen, und ein gestartetes Programm kann weiterlaufen, nachdem Sie das Kompilieren gestoppt haben.",
     "shell_escape_denied_pythontex": "PythonTeX muss Python ausführen, und dieses Projekt blockiert das. Um es zu erlauben, klicken Sie im Banner über dem Editor auf „{{setting}}“. Tun Sie das nur, wenn Sie jeder Datei im Projekt vertrauen. LaTeX kann dann jedes Programm mit Ihren Berechtigungen ausführen, und ein gestartetes Programm kann weiterlaufen, nachdem Sie das Kompilieren gestoppt haben.",
-    "shell_escape_denied_command": "Dieses Dokument führt einen shell-Befehl aus, und dieses Projekt blockiert das. Um es zu erlauben, klicken Sie im Banner über dem Editor auf „{{setting}}“. Tun Sie das nur, wenn Sie jeder Datei im Projekt vertrauen. LaTeX kann dann jedes Programm mit Ihren Berechtigungen ausführen, und ein gestartetes Programm kann weiterlaufen, nachdem Sie das Kompilieren gestoppt haben."
+    "shell_escape_denied_command": "Dieses Dokument führt einen shell-Befehl aus, und dieses Projekt blockiert das. Um es zu erlauben, klicken Sie im Banner über dem Editor auf „{{setting}}“. Tun Sie das nur, wenn Sie jeder Datei im Projekt vertrauen. LaTeX kann dann jedes Programm mit Ihren Berechtigungen ausführen, und ein gestartetes Programm kann weiterlaufen, nachdem Sie das Kompilieren gestoppt haben.",
+    "japanese_compiler_missing": "{{compiler}} ist in Ihrer TeX-Distribution nicht installiert. Fügen Sie es in TeX Live oder TinyTeX mit tlmgr install collection-langjapanese hinzu, oder wählen Sie einen anderen Compiler."
   },
   "export": {
     "bibliography_unreadable": "Oleafly konnte die Bibliografiedatei {{name}} nicht lesen. Prüfen Sie sie auf einen fehlerhaften Eintrag und exportieren Sie dann erneut."
@@ -181,5 +191,39 @@
     "failed": "Typst konnte das Dokument nicht exportieren.",
     "unsupported": "Diese Typst-Version kann mit diesen Einstellungen nicht exportieren.",
     "invalid_ppi": "Wählen Sie eine Auflösung von 1 bis {{max}} PPI."
+  },
+  "overleaf": {
+    "signed_out": "Melden Sie sich zuerst bei Overleaf an.",
+    "session_expired": "Ihre Overleaf-Anmeldung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
+    "sign_in_cancelled": "Die Overleaf-Anmeldung wurde geschlossen, bevor sie abgeschlossen war.",
+    "sign_in_failed": "Oleafly konnte Ihre Overleaf-Anmeldung nicht bestätigen. Melden Sie sich erneut an.",
+    "invalid_server": "„{{server}}“ ist keine Serveradresse, die Oleafly verwenden kann.",
+    "unreachable": "Oleafly konnte {{server}} nicht erreichen.",
+    "unrecognized": "Die Projektseite von Overleaf sieht anders aus, als Oleafly erwartet. Laden Sie das Projekt in Overleaf als .zip herunter und importieren Sie stattdessen diese Datei.",
+    "project_unavailable": "Dieses Projekt konnte nicht heruntergeladen werden. Möglicherweise haben Sie keinen Zugriff mehr darauf.",
+    "not_an_archive": "Overleaf hat etwas anderes als ein Projektarchiv gesendet.",
+    "too_large": "Dieses Projekt ist größer als das Importlimit von 2 GB.",
+    "rate_limited": "Overleaf hat Oleafly gebeten, langsamer zu machen. Warten Sie eine Minute und versuchen Sie es erneut.",
+    "sync_busy": "Für dieses Projekt läuft bereits eine Synchronisierung mit Overleaf.",
+    "sync_not_linked": "Dieses Projekt ist nicht mit Overleaf verknüpft.",
+    "sync_needs_relink": "Die Synchronisierungskopie dieses Projekts fehlt. Beenden Sie die Synchronisierung und verknüpfen Sie das Projekt dann erneut.",
+    "sync_already_linked": "Dieses Projekt ist bereits mit einem anderen Overleaf-Projekt verknüpft. Beenden Sie zuerst die Synchronisierung.",
+    "sync_offline": "Oleafly konnte Overleaf nicht erreichen. Ihre Änderungen sind hier sicher und werden beim nächsten Mal synchronisiert.",
+    "sync_failed": "Die Synchronisierung mit Overleaf wurde nicht abgeschlossen. Ihre Dateien hier sind unverändert.",
+    "sync_kept_changing": "Das Projekt hat sich während der Synchronisierung in Overleaf ständig geändert. Versuchen Sie es gleich noch einmal.",
+    "sync_case_clash": "Overleaf enthält Dateien, deren Namen sich nur in der Groß- und Kleinschreibung unterscheiden ({{files}}). Benennen Sie eine davon in Overleaf um und synchronisieren Sie dann erneut.",
+    "sync_invalid_names": "Einige Dateinamen aus Overleaf können auf diesem Computer nicht gespeichert werden ({{files}}). Benennen Sie die Dateien in Overleaf um und synchronisieren Sie dann erneut.",
+    "sync_file_too_large": "{{file}} ist größer als die 50 MB, die Overleaf für eine einzelne Datei erlaubt.",
+    "sync_too_large": "Dieses Projekt ist zu groß für die Synchronisierung. Das Limit liegt bei 5.000 Dateien oder 2 GB.",
+    "sync_path_blocked": "{{file}} kann hier nicht geschrieben werden, weil ein Ordner mit diesem Namen im Weg ist.",
+    "git_token_missing": "Fügen Sie Ihr Overleaf-Git-Token hinzu, um dieses Projekt zu synchronisieren.",
+    "git_token_invalid": "Das sieht nicht wie ein Overleaf-Git-Token aus. Kopieren Sie das ganze Token und versuchen Sie es erneut.",
+    "git_token_rejected": "Overleaf hat das Git-Token nicht akzeptiert. Möglicherweise ist es abgelaufen. Erstellen Sie in Ihren Overleaf-Kontoeinstellungen ein neues.",
+    "git_unavailable": "Die Git-Integration von Overleaf ist für dieses Projekt nicht verfügbar. Dafür braucht der Eigentümer des Projekts einen kostenpflichtigen Tarif oder einen Hochschultarif.",
+    "template_link_invalid": "Dieser Link führt nicht zu einer Vorlagenseite von Overleaf. Kopieren Sie die Adresse einer Seite unter overleaf.com/latex/templates und versuchen Sie es erneut.",
+    "template_unavailable": "Oleafly konnte diese Vorlage nicht öffnen. Möglicherweise wurde sie aus der Vorlagengalerie von Overleaf entfernt."
+  },
+  "collab": {
+    "turned_off": "Live-Zusammenarbeit ist ausgeschaltet. Schalten Sie sie in den Einstellungen unter Experimente ein."
   }
 }

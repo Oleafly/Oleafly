@@ -10,6 +10,21 @@
 export * from "./controller";
 export * from "./messages";
 export { editorTheme } from "./theme";
+export { EDITOR_CURSOR_BLINKING, type EditorCursorBlinking } from "./cursor-blink";
+export { EDITOR_CURSOR_HEIGHTS, type EditorCursorHeight } from "./cursor-height";
+export {
+  EDITOR_COLOR_IDS,
+  SURFACE_COLORS,
+  SYNTAX_ROLES,
+  editorColor,
+  editorColorVariable,
+  resolvedEditorColor,
+  themeColorValue,
+  type EditorColorId,
+  type SurfaceColor,
+  type SyntaxRole,
+} from "./color-roles";
+export { syntaxTags } from "./syntax-colors";
 export { languageForPath } from "./languages";
 export {
   createCompletionRequestGuard,
@@ -50,6 +65,7 @@ export {
   type LatexPairOptions,
 } from "./latex-pairs";
 export {
+  gateCompletionSource,
   shouldRunCompletionSource,
   type CompletionSyntax,
 } from "./completion-trigger";

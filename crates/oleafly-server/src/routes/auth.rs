@@ -1,0 +1,991 @@
+use axum::extract::rejection::JsonRejection;
+use axum::extract::{Path, Query, State};
+use axum::http::{header, HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use oleafly_collab_protocol::admin::{MemberStatus, SecurityEventKind};
+use oleafly_collab_protocol::auth::{
+    AuthErrorCode, AuthStartQuery, ChallengePurpose, ChallengeResponse, RefreshRequest,
+    SessionTokens, SetupClaimRequest, SetupClaimResponse, TokenRequest,
+};
+use oleafly_collab_protocol::capabilities::ProviderKind;
+use oleafly_collab_protocol::crypto::{b64url_decode, pkce_s256};
+use oleafly_collab_protocol::ids::{DeviceId, ServerId};
+use rusqlite::Connection;
+use serde::Deserialize;
+use serde_json::json;
+use url::Url;
+
+use crate::auth::admission::{self, Applied, Via};
+use crate::auth::pending::{self, PendingSignIn, PENDING_TTL_MS};
+use crate::auth::refresh::{self, RefreshOutcome};
+use crate::auth::{
+    browser_binding, clean_label, db_error, device_code, devices, email_link, error_code, nonce,
+    noting_failure, plain, setup, short, ExternalIdentity,
+};
+use crate::config::ServerConfig;
+use crate::error::ServerError;
+use crate::i18n::{Key, Locale, PageLocale};
+use crate::mail::notify;
+use crate::members;
+use crate::rate_limit::client_key;
+use crate::routes::sign_in_pages::{self, Tone};
+use crate::routes::{code_sign_in, email_sign_in, json_body, Authenticated, ClientIp};
+use crate::security_log::{self, NewSecurityEvent};
+use crate::settings;
+use crate::state::{setup_code_hash, AppState};
+use crate::tokens::random_token;
+
+const INCOMPLETE: &str = "This sign-in request is incomplete. Start again in Oleafly.";
+
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/auth/start", get(start))
+        .route("/auth/setup-claim", post(setup_claim))
+        .route("/auth/callback/{provider}", get(callback))
+        .route("/auth/challenge", post(challenge))
+        .route("/auth/token", post(token))
+        .route("/auth/refresh", post(refresh_session))
+        .route("/auth/sign-out", post(sign_out))
+}
+
+pub fn loopback_redirect(raw: &str) -> Option<Url> {
+    let url = Url::parse(raw).ok()?;
+    let loopback = match url.host() {
+        Some(url::Host::Ipv4(address)) => address == std::net::Ipv4Addr::LOCALHOST,
+        Some(url::Host::Ipv6(address)) => address == std::net::Ipv6Addr::LOCALHOST,
+        _ => false,
+    };
+    let valid = url.scheme() == "http"
+        && loopback
+        && url.port().is_some_and(|port| port != 0)
+        && url.path() == "/callback"
+        && url.query().is_none()
+        && url.fragment().is_none()
+        && url.username().is_empty()
+        && url.password().is_none();
+    valid.then_some(url)
+}
+
+pub fn error_param(code: AuthErrorCode) -> &'static str {
+    match code {
+        AuthErrorCode::NotAdmitted => "not_admitted",
+        AuthErrorCode::InvalidCode => "invalid_code",
+        AuthErrorCode::InvalidSignature => "invalid_signature",
+        AuthErrorCode::ExpiredNonce => "expired_nonce",
+        AuthErrorCode::InvalidRedirect => "invalid_redirect",
+        AuthErrorCode::UnknownProvider => "unknown_provider",
+        AuthErrorCode::ProviderFailed => "provider_failed",
+        AuthErrorCode::RefreshReused => "refresh_reused",
+        AuthErrorCode::Revoked => "revoked",
+        AuthErrorCode::SetupCodeInvalid => "setup_code_invalid",
+        AuthErrorCode::SignInCancelled => "sign_in_cancelled",
+    }
+}
+
+pub(crate) fn found(location: &str) -> Response {
+    (
+        StatusCode::FOUND,
+        [
+            (header::LOCATION, location.to_owned()),
+            (header::CACHE_CONTROL, "no-store".to_owned()),
+        ],
+    )
+        .into_response()
+}
+
+pub(crate) fn issuer(config: &ServerConfig) -> String {
+    config.public_url.as_str().trim_end_matches('/').to_owned()
+}
+
+fn from_another_site(headers: &HeaderMap) -> bool {
+    headers
+        .get("sec-fetch-site")
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|site| {
+            site.eq_ignore_ascii_case("cross-site") || site.eq_ignore_ascii_case("same-site")
+        })
+}
+
+pub(crate) fn back_to_app(
+    config: &ServerConfig,
+    redirect: &Url,
+    client_state: &str,
+    outcome: Result<&str, AuthErrorCode>,
+) -> Response {
+    back_to_app_naming(config, redirect, client_state, outcome, None)
+}
+
+fn back_to_app_naming(
+    config: &ServerConfig,
+    redirect: &Url,
+    client_state: &str,
+    outcome: Result<&str, AuthErrorCode>,
+    account: Option<&str>,
+) -> Response {
+    let mut target = redirect.clone();
+    {
+        let mut pairs = target.query_pairs_mut();
+        match outcome {
+            Ok(code) => pairs.append_pair("code", code),
+            Err(error) => {
+                if let (AuthErrorCode::NotAdmitted, Some(account)) = (&error, account) {
+                    pairs.append_pair("account", account);
+                }
+                pairs.append_pair("error", error_param(error))
+            }
+        };
+        pairs.append_pair("state", client_state);
+        pairs.append_pair("iss", &issuer(config));
+    }
+    found(target.as_str())
+}
+
+pub(crate) fn account_label(identity: &ExternalIdentity) -> String {
+    identity
+        .login
+        .as_deref()
+        .filter(|login| !login.is_empty())
+        .map(|login| format!("@{login}"))
+        .or_else(|| identity.verified_emails.first().cloned())
+        .unwrap_or_else(|| identity.display_name.clone())
+}
+
+fn callback_url(state: &AppState, provider: &str) -> Url {
+    state.config.endpoint(&format!("/auth/callback/{provider}"))
+}
+
+fn well_formed(query: &AuthStartQuery) -> bool {
+    let challenge = a_pkce_challenge(&query.code_challenge);
+    let key = b64url_decode(&query.device_public_key).is_ok_and(|bytes| bytes.len() == 32);
+    let client_state = !query.state.is_empty() && query.state.len() <= 512;
+    let name =
+        !clean_label(&query.device_name).is_empty() && query.device_name.chars().count() <= 100;
+    let platform = !clean_label(&query.platform).is_empty() && query.platform.chars().count() <= 40;
+    challenge && key && client_state && name && platform
+}
+
+pub(crate) async fn checked_setup_code(
+    state: &AppState,
+    code: Option<&str>,
+) -> Result<Result<Option<String>, AuthErrorCode>, ServerError> {
+    let Some(code) = code.filter(|code| !code.trim().is_empty()) else {
+        return Ok(Ok(None));
+    };
+    let hash = setup_code_hash(code);
+    let candidate = hash.clone();
+    let matches = state
+        .db
+        .call(move |conn| setup::matches(conn, &candidate))
+        .await?;
+    Ok(if matches {
+        Ok(Some(hash))
+    } else {
+        Err(AuthErrorCode::SetupCodeInvalid)
+    })
+}
+
+// Offered only while email is known to work, so nobody waits for a link
+// that a misconfigured or unreachable mail server will never send.
+pub(crate) async fn email_link_available(state: &AppState) -> Result<bool, ServerError> {
+    if !state.mailer.is_working() {
+        return Ok(false);
+    }
+    let runtime = state.db.call(|conn| settings::load(conn)).await?;
+    Ok(email_link::available(true, &runtime))
+}
+
+fn a_pkce_challenge(text: &str) -> bool {
+    b64url_decode(text).is_ok_and(|bytes| bytes.len() == 32)
+}
+
+async fn setup_claim(
+    State(state): State<AppState>,
+    body: Result<Json<SetupClaimRequest>, JsonRejection>,
+) -> Result<Json<SetupClaimResponse>, ServerError> {
+    let request = json_body(body)?;
+    if !a_pkce_challenge(&request.code_challenge) {
+        return Err(ServerError::BadRequest(INCOMPLETE.to_owned()));
+    }
+    if checked_setup_code(&state, Some(&request.setup_code))
+        .await?
+        .map_err(ServerError::Auth)?
+        .is_none()
+    {
+        return Err(ServerError::Auth(AuthErrorCode::SetupCodeInvalid));
+    }
+    let now = state.clock.now_ms();
+    let challenge = request.code_challenge;
+    let claim = state
+        .db
+        .call(move |conn| setup::issue_claim(conn, &challenge, now))
+        .await?;
+    Ok(Json(SetupClaimResponse { claim }))
+}
+
+async fn claimed_setup(
+    state: &AppState,
+    query: &AuthStartQuery,
+    now: i64,
+) -> Result<Result<Option<String>, AuthErrorCode>, ServerError> {
+    if query
+        .setup_code
+        .as_deref()
+        .is_some_and(|code| !code.trim().is_empty())
+    {
+        return Ok(Err(AuthErrorCode::SetupCodeInvalid));
+    }
+    let Some(claim) = query
+        .setup_claim
+        .clone()
+        .filter(|claim| !claim.trim().is_empty())
+    else {
+        return Ok(Ok(None));
+    };
+    let challenge = query.code_challenge.clone();
+    let redeemed = state
+        .db
+        .call(move |conn| setup::redeem_claim(conn, &claim, &challenge, now))
+        .await?;
+    Ok(redeemed.map(Some).ok_or(AuthErrorCode::SetupCodeInvalid))
+}
+
+async fn start(
+    State(state): State<AppState>,
+    PageLocale(locale): PageLocale,
+    headers: HeaderMap,
+    Query(query): Query<AuthStartQuery>,
+) -> Result<Response, ServerError> {
+    if from_another_site(&headers) {
+        return Err(ServerError::BadRequest(INCOMPLETE.to_owned()));
+    }
+    let Some(redirect) = loopback_redirect(&query.redirect_uri) else {
+        return Ok(sign_in_pages::notice(
+            locale,
+            StatusCode::BAD_REQUEST,
+            Tone::Problem,
+            Key::BadLinkTitle,
+            Key::BadLinkBody,
+        ));
+    };
+    if !well_formed(&query) {
+        return Err(ServerError::BadRequest(INCOMPLETE.to_owned()));
+    }
+    let provider = state.providers.get(&query.provider);
+    let offered = match provider {
+        Some(_) => true,
+        None => query.provider == email_link::PROVIDER_ID && email_link_available(&state).await?,
+    };
+    if !offered {
+        return Ok(back_to_app(
+            &state.config,
+            &redirect,
+            &query.state,
+            Err(AuthErrorCode::UnknownProvider),
+        ));
+    }
+    let now = state.clock.now_ms();
+    let setup_code_hash = match claimed_setup(&state, &query, now).await? {
+        Ok(hash) => hash,
+        Err(code) => {
+            return Ok(back_to_app(
+                &state.config,
+                &redirect,
+                &query.state,
+                Err(code),
+            ))
+        }
+    };
+    let pending = PendingSignIn {
+        id: random_token(),
+        provider_id: query.provider.clone(),
+        client_state: query.state.clone(),
+        redirect_uri: redirect.to_string(),
+        code_challenge: query.code_challenge.clone(),
+        device_public_key: query.device_public_key.clone(),
+        device_name: clean_label(&query.device_name),
+        platform: clean_label(&query.platform),
+        setup_code_hash,
+        provider_verifier: random_token(),
+        provider_nonce: random_token(),
+        expires_at: now + PENDING_TTL_MS,
+        device_authorization: None,
+    };
+    let Some(provider) = provider else {
+        return email_sign_in::ask_for_address(locale, &state, &headers, pending, now).await;
+    };
+    let callback = callback_url(&state, &pending.provider_id);
+    let (authorize, detail) = noting_failure(provider.authorize_url(
+        &pending.id,
+        &callback,
+        &pkce_s256(&pending.provider_verifier),
+        &pending.provider_nonce,
+    ))
+    .await;
+    let Ok(authorize) = authorize else {
+        note_provider_problem(&state, &pending.provider_id, detail, now);
+        return Ok(back_to_app(
+            &state.config,
+            &redirect,
+            &query.state,
+            Err(AuthErrorCode::ProviderFailed),
+        ));
+    };
+    state
+        .db
+        .call(move |conn| pending::insert(conn, &pending, now))
+        .await?;
+    Ok(found(authorize.as_str()))
+}
+
+#[derive(Debug, Deserialize)]
+struct CallbackQuery {
+    code: Option<String>,
+    state: Option<String>,
+    error: Option<String>,
+    error_description: Option<String>,
+}
+
+pub(crate) fn note_provider_problem(
+    state: &AppState,
+    provider: &str,
+    detail: Option<String>,
+    now: i64,
+) -> String {
+    let reason = detail.unwrap_or_else(|| "the provider's answer could not be used".to_string());
+    state.providers.note_problem(provider, now, &reason);
+    reason
+}
+
+fn cancelled_by_the_person(
+    state: &AppState,
+    provider: &str,
+    error: &str,
+    description: &str,
+) -> bool {
+    error == "access_denied"
+        && (description.is_empty() || state.providers.kind(provider) == Some(ProviderKind::Github))
+}
+
+async fn record_provider_refusal(
+    state: &AppState,
+    pending: &PendingSignIn,
+    ip: Option<String>,
+    detail: serde_json::Value,
+    now: i64,
+) -> Result<(), ServerError> {
+    let event = NewSecurityEvent {
+        actor: None,
+        kind: SecurityEventKind::SignInRefused,
+        target: Some(pending.device_name.clone()),
+        ip,
+        detail,
+    };
+    state
+        .db
+        .call(move |conn| security_log::record(conn, now, event).map(|_| ()))
+        .await
+}
+
+async fn refuse_other_browser(
+    locale: Locale,
+    state: &AppState,
+    pending: &PendingSignIn,
+    ip: Option<String>,
+    now: i64,
+) -> Result<Response, ServerError> {
+    let event = NewSecurityEvent {
+        actor: None,
+        kind: SecurityEventKind::SignInRefused,
+        target: Some(pending.device_name.clone()),
+        ip,
+        detail: json!({
+            "provider": pending.provider_id,
+            "flow": "device_code",
+            "reason": "other_browser",
+            "platform": pending.platform
+        }),
+    };
+    state
+        .db
+        .call(move |conn| security_log::record(conn, now, event).map(|_| ()))
+        .await?;
+    conclude(locale, state, pending, Err(AuthErrorCode::InvalidCode))
+}
+
+async fn callback(
+    State(state): State<AppState>,
+    Path(provider_id): Path<String>,
+    ClientIp(ip): ClientIp,
+    PageLocale(locale): PageLocale,
+    headers: HeaderMap,
+    Query(query): Query<CallbackQuery>,
+) -> Result<Response, ServerError> {
+    let now = state.clock.now_ms();
+    let Some(pending_id) = query.state else {
+        return Ok(sign_in_already_over(locale));
+    };
+    let Some(pending) = state
+        .db
+        .call(move |conn| pending::take(conn, &pending_id, now))
+        .await?
+        .filter(|pending| pending.provider_id == provider_id)
+    else {
+        return Ok(sign_in_already_over(locale));
+    };
+    if pending.device_authorization.is_some()
+        && !browser_binding::holds(&headers, &state.config, &pending.code_challenge)
+    {
+        return refuse_other_browser(locale, &state, &pending, ip, now).await;
+    }
+    let Some(provider) = state.providers.get(&provider_id) else {
+        return conclude(
+            locale,
+            &state,
+            &pending,
+            Err(AuthErrorCode::UnknownProvider),
+        );
+    };
+    let code = match (query.code, query.error.as_deref()) {
+        (Some(code), None) => code,
+        (_, error) => {
+            let error = error.unwrap_or("no_code");
+            let code = error_code(error);
+            let description = query
+                .error_description
+                .as_deref()
+                .map(short)
+                .unwrap_or_default();
+            if cancelled_by_the_person(&state, &provider_id, code.unwrap_or_default(), &description)
+            {
+                return conclude(
+                    locale,
+                    &state,
+                    &pending,
+                    Err(AuthErrorCode::SignInCancelled),
+                );
+            }
+            tracing::warn!(
+                provider = %provider_id,
+                error = code.unwrap_or("not_an_error_code"),
+                "the sign-in came back with a provider error, described in the security log"
+            );
+            state
+                .providers
+                .note_reported_error(&provider_id, now, error);
+            let detail = json!({
+                "provider": provider_id,
+                "reason": "provider_error",
+                "error": code.map_or_else(|| short(error), str::to_owned),
+                "description": description,
+                "device_code": pending.device_authorization.is_some()
+            });
+            record_provider_refusal(&state, &pending, ip, detail, now).await?;
+            return conclude(locale, &state, &pending, Err(AuthErrorCode::ProviderFailed));
+        }
+    };
+    let callback = callback_url(&state, &provider_id);
+    let (exchanged, failure) = noting_failure(provider.exchange(
+        &code,
+        &callback,
+        &pending.provider_verifier,
+        &pending.provider_nonce,
+    ))
+    .await;
+    let Ok(identity) = exchanged else {
+        let reason = note_provider_problem(&state, &provider_id, failure, now);
+        let detail = json!({
+            "provider": provider_id,
+            "reason": "provider_failed",
+            "description": reason,
+            "device_code": pending.device_authorization.is_some()
+        });
+        record_provider_refusal(&state, &pending, ip, detail, now).await?;
+        return conclude(locale, &state, &pending, Err(AuthErrorCode::ProviderFailed));
+    };
+    state.providers.clear_problem(&provider_id);
+    let account = account_label(&identity);
+    let finishing = pending.clone();
+    let max_members = state.config.limits.max_members_per_project;
+    let outcome = state
+        .db
+        .call(move |conn| complete_sign_in(conn, &identity, &finishing, ip, max_members, now))
+        .await?;
+    conclude_naming(locale, &state, &pending, outcome, Some(&account))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Finish {
+    Code(String),
+    DeviceApproved,
+    DeviceGone,
+}
+
+fn sign_in_already_over(locale: Locale) -> Response {
+    sign_in_pages::notice(
+        locale,
+        StatusCode::BAD_REQUEST,
+        Tone::Notice,
+        Key::OverTitle,
+        Key::OverBody,
+    )
+}
+
+pub(crate) fn conclude(
+    locale: Locale,
+    state: &AppState,
+    pending: &PendingSignIn,
+    outcome: Result<Finish, AuthErrorCode>,
+) -> Result<Response, ServerError> {
+    conclude_naming(locale, state, pending, outcome, None)
+}
+
+pub(crate) fn conclude_naming(
+    locale: Locale,
+    state: &AppState,
+    pending: &PendingSignIn,
+    outcome: Result<Finish, AuthErrorCode>,
+    account: Option<&str>,
+) -> Result<Response, ServerError> {
+    if pending.device_authorization.is_some() {
+        return Ok(code_sign_in::finished_naming(
+            locale, state, pending, outcome, account,
+        ));
+    }
+    let redirect = Url::parse(&pending.redirect_uri)
+        .map_err(|error| ServerError::Internal(error.to_string()))?;
+    let client_state = &pending.client_state;
+    Ok(match outcome {
+        Ok(Finish::Code(code)) => back_to_app(&state.config, &redirect, client_state, Ok(&code)),
+        Ok(Finish::DeviceApproved | Finish::DeviceGone) => back_to_app(
+            &state.config,
+            &redirect,
+            client_state,
+            Err(AuthErrorCode::InvalidCode),
+        ),
+        Err(error) => {
+            back_to_app_naming(&state.config, &redirect, client_state, Err(error), account)
+        }
+    })
+}
+
+pub(crate) fn complete_sign_in(
+    conn: &mut Connection,
+    identity: &ExternalIdentity,
+    pending: &PendingSignIn,
+    ip: Option<String>,
+    max_members: u32,
+    now: i64,
+) -> Result<Result<Finish, AuthErrorCode>, ServerError> {
+    let tx = conn.transaction().map_err(db_error)?;
+    if let Some(id) = &pending.device_authorization {
+        if device_code::find_pending(&tx, id, now)?.is_none() {
+            return Ok(Ok(Finish::DeviceGone));
+        }
+    }
+    let decision = admission::decide(&tx, identity, pending.setup_code_hash.as_deref())?;
+    let result = match admission::apply(&tx, identity, decision, max_members, ip.as_deref(), now)? {
+        Applied::Admitted(admitted) => {
+            if admitted.via == Via::Setup {
+                security_log::record(
+                    &tx,
+                    now,
+                    NewSecurityEvent {
+                        actor: Some(admitted.account_id),
+                        kind: SecurityEventKind::SetupCompleted,
+                        target: Some(admitted.account_id.to_string()),
+                        ip: ip.clone(),
+                        detail: json!({ "provider": identity.provider_id }),
+                    },
+                )?;
+            }
+            security_log::record(
+                &tx,
+                now,
+                NewSecurityEvent {
+                    actor: Some(admitted.account_id),
+                    kind: SecurityEventKind::SignIn,
+                    target: Some(admitted.account_id.to_string()),
+                    ip,
+                    detail: json!({
+                        "provider": identity.provider_id,
+                        "via": admitted.via.as_str(),
+                        "new_account": admitted.new_account,
+                        "reactivated": admitted.reactivated,
+                        "left_out_of": admitted
+                            .left_out_of
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>(),
+                        "device_code": pending.device_authorization.is_some()
+                    }),
+                },
+            )?;
+            match &pending.device_authorization {
+                None => Ok(Finish::Code(pending::issue_code(
+                    &tx,
+                    pending,
+                    admitted.account_id,
+                    now,
+                )?)),
+                Some(id) => {
+                    device_code::approve(&tx, id, admitted.account_id, now)?;
+                    Ok(Finish::DeviceApproved)
+                }
+            }
+        }
+        Applied::Refused { code, reason } => {
+            security_log::record(
+                &tx,
+                now,
+                NewSecurityEvent {
+                    actor: None,
+                    kind: SecurityEventKind::SignInRefused,
+                    target: Some(plain(
+                        identity.login.as_deref().unwrap_or(&identity.subject),
+                    )),
+                    ip,
+                    detail: json!({
+                        "provider": identity.provider_id,
+                        "issuer": plain(&identity.issuer),
+                        "subject": plain(&identity.subject),
+                        "reason": reason,
+                        "device_code": pending.device_authorization.is_some()
+                    }),
+                },
+            )?;
+            if let Some(id) = &pending.device_authorization {
+                device_code::refuse(&tx, id)?;
+            }
+            Err(code)
+        }
+    };
+    tx.commit().map_err(db_error)?;
+    Ok(result)
+}
+
+async fn challenge(State(state): State<AppState>) -> Result<Json<ChallengeResponse>, ServerError> {
+    let now = state.clock.now_ms();
+    Ok(Json(
+        state.db.call(move |conn| nonce::issue(conn, now)).await?,
+    ))
+}
+
+fn redeem_code(
+    conn: &mut Connection,
+    request: &TokenRequest,
+    server_id: ServerId,
+    ip: Option<String>,
+    now: i64,
+) -> Result<(SessionTokens, Option<(String, String)>), ServerError> {
+    if !nonce::consume(conn, &request.nonce, now)? {
+        return Err(ServerError::Auth(AuthErrorCode::ExpiredNonce));
+    }
+    let tx = conn.transaction().map_err(db_error)?;
+    let code = pending::find_code(&tx, &request.code, now)?
+        .ok_or(ServerError::Auth(AuthErrorCode::InvalidCode))?;
+    if pkce_s256(&request.code_verifier) != code.code_challenge {
+        return Err(ServerError::Auth(AuthErrorCode::InvalidCode));
+    }
+    let signed = request.device_public_key == code.device_public_key
+        && devices::signature_valid(
+            &request.device_public_key,
+            ChallengePurpose::Token,
+            server_id,
+            &request.nonce,
+            &request.signature,
+        );
+    if !signed {
+        return Err(ServerError::Auth(AuthErrorCode::InvalidSignature));
+    }
+    if !matches!(
+        members::account_status(&tx, code.account_id)?,
+        Some(MemberStatus::Active)
+    ) {
+        return Err(ServerError::Auth(AuthErrorCode::NotAdmitted));
+    }
+    if !pending::mark_code_used(&tx, &request.code, now)? {
+        return Err(ServerError::Auth(AuthErrorCode::InvalidCode));
+    }
+    let registered = devices::register(
+        &tx,
+        code.account_id,
+        &code.device_public_key,
+        &code.device_name,
+        &code.platform,
+        now,
+    )?;
+    if registered.added {
+        security_log::record(
+            &tx,
+            now,
+            NewSecurityEvent {
+                actor: Some(code.account_id),
+                kind: SecurityEventKind::DeviceAdded,
+                target: Some(registered.device_id.to_string()),
+                ip,
+                detail: json!({ "name": code.device_name, "platform": code.platform }),
+            },
+        )?;
+    }
+    let tokens = refresh::issue_session(&tx, code.account_id, registered.device_id, now)?;
+    tx.commit().map_err(db_error)?;
+    let added = registered
+        .added
+        .then(|| (code.device_name.clone(), code.platform.clone()));
+    Ok((tokens, added))
+}
+
+async fn token(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+    Json(request): Json<TokenRequest>,
+) -> Result<Json<SessionTokens>, ServerError> {
+    let now = state.clock.now_ms();
+    let server_id = state.server_id;
+    let (tokens, added) = state
+        .db
+        .call(move |conn| redeem_code(conn, &request, server_id, ip, now))
+        .await?;
+    if let Some((name, platform)) = added {
+        notify::new_sign_in(
+            &state,
+            tokens.account_id,
+            tokens.device_id,
+            name,
+            platform,
+            now,
+        );
+    }
+    Ok(Json(tokens))
+}
+
+enum RefreshResult {
+    Tokens(SessionTokens),
+    Reused,
+    Invalid,
+}
+
+fn rotate_session(
+    conn: &mut Connection,
+    request: &RefreshRequest,
+    server_id: ServerId,
+    ip: Option<String>,
+    now: i64,
+) -> Result<RefreshResult, ServerError> {
+    if !nonce::consume(conn, &request.nonce, now)? {
+        return Err(ServerError::Auth(AuthErrorCode::ExpiredNonce));
+    }
+    let tx = conn.transaction().map_err(db_error)?;
+    let Some(device) = devices::find(&tx, request.device_id)? else {
+        return Ok(RefreshResult::Invalid);
+    };
+    let signed = devices::signature_valid(
+        &device.public_key,
+        ChallengePurpose::Refresh,
+        server_id,
+        &request.nonce,
+        &request.signature,
+    );
+    if !signed && device.revoked {
+        return Ok(RefreshResult::Invalid);
+    }
+    if !signed {
+        return Err(ServerError::Auth(AuthErrorCode::InvalidSignature));
+    }
+    if let Some(reason) = members::session_end_reason(&tx, device.account_id)? {
+        return Err(ServerError::SessionEnded(reason));
+    }
+    if device.revoked {
+        return Ok(RefreshResult::Invalid);
+    }
+    let result = match refresh::rotate(&tx, &request.refresh_token, request.device_id, now)? {
+        RefreshOutcome::Rotated(tokens) | RefreshOutcome::Replayed(tokens) => {
+            devices::touch(&tx, request.device_id, now)?;
+            RefreshResult::Tokens(tokens)
+        }
+        RefreshOutcome::Reused { family_id } => {
+            refresh::revoke_family(&tx, &family_id, now)?;
+            security_log::record(
+                &tx,
+                now,
+                NewSecurityEvent {
+                    actor: Some(device.account_id),
+                    kind: SecurityEventKind::RefreshReuseDetected,
+                    target: Some(request.device_id.to_string()),
+                    ip,
+                    detail: json!({ "family": family_id }),
+                },
+            )?;
+            RefreshResult::Reused
+        }
+        RefreshOutcome::Invalid => RefreshResult::Invalid,
+    };
+    tx.commit().map_err(db_error)?;
+    Ok(result)
+}
+
+fn refund_a_proven_refresh(state: &AppState, ip: Option<&str>, device: DeviceId, now: i64) {
+    if state.connects.refreshed(device, now) {
+        let address = client_key(ip.unwrap_or("unknown"));
+        state.rate_limiter.refund(&address, now);
+        state.rate_limiter.refund(&address, now);
+    }
+}
+
+async fn refresh_session(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+    Json(request): Json<RefreshRequest>,
+) -> Result<Json<SessionTokens>, ServerError> {
+    let now = state.clock.now_ms();
+    let server_id = state.server_id;
+    let device_id = request.device_id;
+    let address = ip.clone();
+    let result = state
+        .db
+        .call(move |conn| rotate_session(conn, &request, server_id, ip, now))
+        .await?;
+    match result {
+        RefreshResult::Tokens(tokens) => {
+            refund_a_proven_refresh(&state, address.as_deref(), device_id, now);
+            Ok(Json(tokens))
+        }
+        RefreshResult::Reused => {
+            state.revoke_device(device_id).await?;
+            Err(ServerError::Auth(AuthErrorCode::RefreshReused))
+        }
+        RefreshResult::Invalid => Err(ServerError::Auth(AuthErrorCode::Revoked)),
+    }
+}
+
+async fn sign_out(
+    State(state): State<AppState>,
+    ClientIp(ip): ClientIp,
+    auth: Authenticated,
+) -> Result<StatusCode, ServerError> {
+    let now = state.clock.now_ms();
+    let account = auth.account_id;
+    let device = auth.device_id;
+    state
+        .db
+        .call(move |conn| {
+            security_log::record(
+                conn,
+                now,
+                NewSecurityEvent {
+                    actor: Some(account),
+                    kind: SecurityEventKind::DeviceSignedOut,
+                    target: Some(device.to_string()),
+                    ip,
+                    detail: json!({ "by": "self" }),
+                },
+            )?;
+            Ok(())
+        })
+        .await?;
+    state.revoke_device(device).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn loopback_callbacks_are_accepted() {
+        assert!(loopback_redirect("http://127.0.0.1:53111/callback").is_some());
+        assert!(loopback_redirect("http://[::1]:53111/callback").is_some());
+    }
+
+    #[test]
+    fn every_other_redirect_is_refused() {
+        for raw in [
+            "https://127.0.0.1:53111/callback",
+            "http://localhost:53111/callback",
+            "http://127.0.0.2:53111/callback",
+            "http://127.0.0.1/callback",
+            "http://127.0.0.1:53111/callback/",
+            "http://127.0.0.1:53111/other",
+            "http://127.0.0.1:53111/callback?next=x",
+            "http://127.0.0.1:53111/callback#x",
+            "http://user@127.0.0.1:53111/callback",
+            "http://127.0.0.1.evil.example:53111/callback",
+            "not a url",
+        ] {
+            assert!(loopback_redirect(raw).is_none(), "{raw} was accepted");
+        }
+    }
+
+    fn returned_to(response: &Response) -> Vec<(String, String)> {
+        let location = response.headers()[header::LOCATION]
+            .to_str()
+            .expect("a location");
+        Url::parse(location)
+            .expect("a loopback url")
+            .query_pairs()
+            .into_owned()
+            .collect()
+    }
+
+    #[test]
+    fn every_return_to_the_app_names_this_server_without_a_trailing_slash() {
+        let mut config = crate::test_support::test_config();
+        let redirect = loopback_redirect("http://127.0.0.1:53111/callback").expect("loopback");
+        let done = back_to_app(&config, &redirect, "s1", Ok("code-1"));
+        assert_eq!(
+            returned_to(&done),
+            [
+                ("code".to_owned(), "code-1".to_owned()),
+                ("state".to_owned(), "s1".to_owned()),
+                ("iss".to_owned(), "https://collab.test".to_owned()),
+            ]
+        );
+        config.public_url = Url::parse("https://uni.edu/oleafly").expect("prefixed url");
+        let refused = back_to_app_naming(
+            &config,
+            &redirect,
+            "s2",
+            Err(AuthErrorCode::NotAdmitted),
+            Some("@ada"),
+        );
+        assert_eq!(
+            returned_to(&refused),
+            [
+                ("account".to_owned(), "@ada".to_owned()),
+                ("error".to_owned(), "not_admitted".to_owned()),
+                ("state".to_owned(), "s2".to_owned()),
+                ("iss".to_owned(), "https://uni.edu/oleafly".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn only_a_start_from_another_site_counts_as_one() {
+        let with = |value: &str| {
+            let mut headers = HeaderMap::new();
+            headers.insert("sec-fetch-site", value.parse().expect("header value"));
+            headers
+        };
+        assert!(from_another_site(&with("cross-site")));
+        assert!(from_another_site(&with("same-site")));
+        assert!(from_another_site(&with("SAME-SITE")));
+        assert!(!from_another_site(&with("none")));
+        assert!(!from_another_site(&with("same-origin")));
+        assert!(!from_another_site(&HeaderMap::new()));
+    }
+
+    #[test]
+    fn error_params_are_snake_case() {
+        assert_eq!(error_param(AuthErrorCode::NotAdmitted), "not_admitted");
+        assert_eq!(
+            error_param(AuthErrorCode::SetupCodeInvalid),
+            "setup_code_invalid"
+        );
+        assert_eq!(
+            error_param(AuthErrorCode::SignInCancelled),
+            "sign_in_cancelled"
+        );
+    }
+}

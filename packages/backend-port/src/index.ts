@@ -14,13 +14,14 @@
  * src-tauri/src/protocol.rs mirrors both constants; the vitest conformance
  * test (src/lib/backend-port-protocol.test.ts) fails on drift.
  */
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 /** Feature areas the shell requires from its backend. Keep sorted. */
 export const BACKEND_CAPABILITIES = [
     "agent-server",
     "agent-stream",
     "chats",
     "checkpoints",
+    "collab",
     "compile",
     "git",
     "initial-state",
@@ -197,7 +198,7 @@ export interface TypstSpec {
     inputs?: Record<string, string>;
     variants?: Record<string, { inputs?: Record<string, string> }>;
 }
-export type TexFlavor = "pdflatex" | "xelatex" | "lualatex";
+export type TexFlavor = "pdflatex" | "xelatex" | "lualatex" | "uplatex" | "platex";
 export type DocumentEngineId = "latex" | "latexmk" | "typst" | "markdown" | "unknown";
 export interface ValidatedCompileFingerprint {
     main_document: string;
@@ -435,6 +436,8 @@ export interface ProjectInfo {
     recovery_pending: boolean;
     location?: ProjectLocationInfo;
     last_opened_at?: number;
+    shared?: ProjectSharing | null;
+    imported_from?: string | null;
 }
 export interface LibraryStorageSummary {
     total_bytes: number;
@@ -527,6 +530,8 @@ export interface TemplateInfo {
     assets_ready: boolean;
     order: number;
     source: string;
+    /** The LaTeX compiler a template was made for, when it names one. */
+    tex_flavor?: TexFlavor | null;
 }
 export interface ComponentInfo {
     id: string;
@@ -536,6 +541,7 @@ export interface ComponentInfo {
     license: TemplateLicense | null;
     installed: boolean;
     kind: string;
+    families?: string[];
 }
 export interface Prerequisite {
     id: string;
@@ -573,15 +579,51 @@ export interface DictionaryBytes {
     aff: Uint8Array;
     dic: Uint8Array;
 }
+export type PackGroup = "curated" | "community" | "typst" | "university";
 export interface PackInfo {
     id: string;
     label: string;
     description: string;
     category: string;
+    group: PackGroup;
     approx_bytes: number;
     count: number;
     license_summary: string;
+    covers: string[];
     installed: boolean;
+    installed_count: number;
+    version: 1 | 2;
+}
+export interface PackTemplateLicense {
+    spdx: string | null;
+    label: string;
+}
+export interface PackTemplateCredit {
+    url: string;
+    author: string | null;
+}
+export interface PackTemplateInfo {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    engine: string;
+    license: PackTemplateLicense;
+    credit: PackTemplateCredit | null;
+    thumb_url: string | null;
+    preview_url: string | null;
+    kind: string | null;
+    languages: string[];
+    country: string | null;
+    institution: string | null;
+    bytes: number;
+    file_count: number;
+    installed: boolean;
+}
+export interface PackIndexInfo {
+    pack_id: string;
+    version: 1 | 2;
+    templates: PackTemplateInfo[];
 }
 export interface GitCommit {
     oid: string;
@@ -632,6 +674,92 @@ export interface ZoteroLibraryExport {
     bibtex: string;
     count: number;
     total: number;
+}
+export type ZoteroKeySource = "bbt" | "native" | "extra" | "generated";
+export type ZoteroLocalState = "unknown" | "notRunning" | "apiDisabled" | "unsupported" | "ready";
+export type ZoteroWebState = "notConnected" | "ready" | "keyRejected" | "unreachable" | "rateLimited" | "offline";
+export interface ZoteroLocalProbe {
+    state: ZoteroLocalState;
+    zoteroVersion?: string;
+    bbtVersion?: string;
+    installed?: boolean;
+}
+export interface ZoteroLibraryInfo {
+    id: string;
+    name: string;
+    kind: "user" | "group";
+    itemCount: number;
+    enabled: boolean;
+}
+export interface ZoteroLibraryStatus {
+    local: ZoteroLocalProbe;
+    web: ZoteroWebState;
+    libraries: ZoteroLibraryInfo[];
+    itemCount: number;
+    source?: "local" | "web";
+    lastSync?: number;
+    syncing: boolean;
+    progress?: { done: number; total: number };
+    error?: string;
+    generation: number;
+    bbtSeen: boolean;
+    retryAt?: number;
+    loaded: boolean;
+}
+export interface ZoteroHit {
+    library: string;
+    itemKey: string;
+    citationKey: string;
+    keySource: ZoteroKeySource;
+    title: string;
+    authors: string[];
+    authorCount: number;
+    year?: string;
+    doi?: string;
+    itemType: string;
+    dateModified: string;
+    score: number;
+    aliases?: string[];
+}
+export interface ZoteroSearchReply {
+    generation: number;
+    total: number;
+    hits: ZoteroHit[];
+}
+export interface ZoteroKeysReply {
+    generation: number;
+    keys: string[];
+}
+export interface ZoteroItemRef {
+    library: string;
+    itemKey: string;
+}
+export type ZoteroExportStyle = "biblatex" | "bibtex";
+export interface ZoteroExportedEntry {
+    library: string;
+    itemKey: string;
+    citationKey: string;
+    keySource: ZoteroKeySource;
+    entry: string;
+    origin: "betterBibtex" | "zotero" | "cache";
+    dateModified: string;
+    version: number;
+    doi?: string;
+}
+export interface ZoteroConnectionReport {
+    local: ZoteroLocalProbe;
+    web: ZoteroWebState;
+    source?: "local" | "web";
+    libraries: { id: string; name: string; kind: "user" | "group"; itemCount?: number }[];
+    error?: string;
+}
+export interface ZoteroProjectLink {
+    library: string;
+    itemKey: string;
+    dateModified: string;
+    version: number;
+    hash: string;
+    bib: string;
 }
 export type ModelTrust = "verified" | "untested" | "blocked";
 export type ModelStatus = "active" | "deprecated" | "alpha" | "beta";
@@ -853,6 +981,352 @@ export interface SynctexHit {
     column: number;
 }
 
+// "unknown" is a role from a later server: no rights at all.
+export type CollabServerRole = "admin" | "maintainer" | "member" | "guest" | "unknown";
+export type CollabProviderKind = "github" | "oidc" | "email_link" | "unknown";
+export interface CollabProvider {
+    id: string;
+    kind: CollabProviderKind;
+    label: string;
+}
+export type CollabEncryptionSupport = "none" | "allowed" | "required" | "unknown";
+export interface CollabCapabilities {
+    server_id: string;
+    name: string;
+    icon_url: string | null;
+    version: string;
+    protocol: { min: number; max: number };
+    needs_setup: boolean;
+    providers: CollabProvider[];
+    features: {
+        email: boolean;
+        guests: boolean;
+        link_sharing: boolean;
+        access_logs: boolean;
+        comments: boolean;
+        encryption: CollabEncryptionSupport;
+    };
+    limits: {
+        max_project_mb: number;
+        max_file_mb: number;
+        max_members_per_project: number;
+    };
+}
+export interface CollabAccount {
+    account_id: string;
+    display_name: string;
+    avatar_url: string | null;
+    server_role: CollabServerRole;
+    emails: string[];
+    logins: string[];
+}
+export interface CollabServer {
+    server_id: string;
+    url: string;
+    name: string;
+    icon_url: string | null;
+    account: CollabAccount | null;
+    added_at: number;
+    signed_in: boolean;
+}
+export interface CollabDevice {
+    device_id: string;
+    name: string;
+    platform: string;
+    created_at: number;
+    last_seen_at: number | null;
+    current: boolean;
+}
+export type CollabMemberStatus = "active" | "suspended" | "removed";
+export interface CollabMember {
+    account: CollabAccount;
+    status: CollabMemberStatus;
+    created_at: number;
+    // Shared projects this person owns. Older servers leave it out.
+    owned_projects?: number;
+}
+export interface CollabMemberPatch {
+    role?: CollabServerRole | null;
+    status?: CollabMemberStatus | null;
+}
+export type CollabAllowlistMatcher =
+    | { kind: "email"; email: string }
+    | { kind: "provider_login"; provider: string; login: string };
+export interface CollabAllowlistEntry {
+    id: string;
+    matcher: CollabAllowlistMatcher;
+    role: CollabServerRole;
+    created_at: number;
+    bound_account: string | null;
+}
+export interface CollabNewAllowlistEntry {
+    matcher: CollabAllowlistMatcher;
+    role: CollabServerRole;
+}
+export interface CollabDomainRule {
+    id: string;
+    domain: string;
+    role: CollabServerRole;
+    created_at: number;
+}
+export interface CollabNewDomainRule {
+    domain: string;
+    role: CollabServerRole;
+}
+export interface CollabRuntimeSettings {
+    guests_enabled: boolean;
+    guest_approval_required: boolean;
+    directory_visible: boolean;
+    directory_shows_email: boolean;
+    link_sharing_allowed: boolean;
+    access_logs_allowed: boolean;
+    email_notifications: boolean;
+    comments_allowed: boolean;
+}
+export type CollabRuntimeSettingsPatch = {
+    [K in keyof CollabRuntimeSettings]?: boolean | null;
+};
+export type CollabSecurityEventKind =
+    | "setup_completed"
+    | "sign_in"
+    | "sign_in_refused"
+    | "device_added"
+    | "device_signed_out"
+    | "refresh_reuse_detected"
+    | "member_added"
+    | "member_removed"
+    | "member_suspended"
+    | "member_reactivated"
+    | "role_changed"
+    | "allowlist_added"
+    | "allowlist_removed"
+    | "domain_rule_added"
+    | "domain_rule_removed"
+    | "settings_changed"
+    // A change stored while comments were off in its project that turned out
+    // to change comments once the server could check it. The actor made it,
+    // and `detail` is `{ project, seq, device }`.
+    | "comments_changed_while_off"
+    | "unknown";
+export interface CollabSecurityEvent {
+    id: number;
+    at: number;
+    actor: string | null;
+    kind: CollabSecurityEventKind;
+    target: string | null;
+    ip: string | null;
+    detail: unknown;
+}
+export interface CollabPage<T> {
+    items: T[];
+    next_cursor: string | null;
+}
+export type CollabCheckId =
+    | "reachable"
+    | "https"
+    | "protocol"
+    | "websocket"
+    | "sign_in_providers"
+    | "email"
+    | "clock";
+export type CollabCheckStatus = "pass" | "fail" | "info" | "skipped";
+export interface CollabConnectionCheck {
+    id: CollabCheckId;
+    status: CollabCheckStatus;
+    detail: string | null;
+}
+export type CollabErrorCode =
+    | "unreachable"
+    | "not_https"
+    | "client_too_old"
+    | "server_too_old"
+    | "not_admitted"
+    | "sign_in_cancelled"
+    | "sign_in_timed_out"
+    | "unauthorized"
+    | "forbidden"
+    | "not_found"
+    | "conflict"
+    | "rate_limited"
+    | "setup_code_invalid"
+    | "server"
+    | "internal"
+    | "server_changed"
+    | "duplicate_server"
+    | "device_in_use"
+    | "server_unknown"
+    | "too_large"
+    | "invalid"
+    | "invalid_domain"
+    | "invalid_email"
+    | "invalid_login"
+    | "guests_off"
+    | "link_sharing_off"
+    | "access_log_off"
+    | "last_admin"
+    | "duplicate_entry"
+    | "already_member"
+    | "project_not_shared"
+    | "project_full"
+    | "not_a_link"
+    | "signed_out"
+    | "server_removed"
+    | "share_in_progress"
+    | "cancelled"
+    | "turned_off"
+    | "cloud_synced"
+    | "owner_away"
+    | "wrong_server";
+export interface CollabCommandError {
+    code: CollabErrorCode;
+    message: string;
+}
+export interface CollabServerChanged {
+    serverId: string;
+}
+// "unknown" is a role from a later server: read-only, like a viewer.
+export type CollabProjectRole = "owner" | "editor" | "viewer" | "unknown";
+export type CollabProjectStatus = "pending" | "active" | "archived" | "unknown";
+export interface CollabPerson {
+    account_id: string;
+    display_name: string;
+    avatar_url: string | null;
+    email: string | null;
+    login: string | null;
+}
+export interface CollabProjectSummary {
+    project_id: string;
+    title: string;
+    owner: CollabPerson;
+    role: CollabProjectRole;
+    status: CollabProjectStatus;
+    created_at: number;
+    link_sharing: boolean;
+    link_role: CollabProjectRole;
+    head_seq: number;
+}
+export interface CollabProjectMember {
+    person: CollabPerson;
+    role: CollabProjectRole;
+    granted_at: number;
+}
+export interface CollabShareInfo {
+    project_id: string;
+    server_id: string;
+    server_name: string;
+    server_url: string;
+    shared_project_id: string;
+    role: CollabProjectRole;
+    link: string;
+    account_id: string | null;
+}
+export interface CollabSharedWithMe {
+    server_id: string;
+    server_name: string;
+    project: CollabProjectSummary;
+    local_project_id: string | null;
+}
+export interface CollabShareProgress {
+    projectId: string;
+    done: number;
+    total: number;
+}
+// Downloading a shared project: `total` files to fetch, `done` fetched so far.
+export interface CollabJoinProgress {
+    serverId: string;
+    sharedProjectId: string;
+    done: number;
+    total: number;
+}
+export type CollabLiveEndReason =
+    | "removed"
+    | "archived"
+    | "signed_out"
+    | "stopped"
+    | "client_too_old"
+    | "server_too_old"
+    | "server_changed"
+    // The document engine hit an error on a change. The next start skips
+    // that change, so going live again continues.
+    | "failed"
+    // Too many shared documents broke in this run of the app, so a new start
+    // would fail too. Restarting the app clears it.
+    | "engine_spent";
+export type CollabLiveState =
+    | { state: "connecting" }
+    | { state: "online" }
+    | { state: "offline"; retry_in_ms: number }
+    | { state: "ended"; reason: CollabLiveEndReason | CollabSessionEnd };
+export interface CollabLiveStatus {
+    projectId: string;
+    status: CollabLiveState;
+    pending: number;
+}
+export interface CollabLiveMerged {
+    projectId: string;
+    files: { path: string; changes: number }[];
+    authors: { accountId: string; files: { path: string; changes: number }[] }[];
+    review: { before: string; after: string };
+}
+export interface CollabLiveNewDevice {
+    projectId: string;
+    accountId: string;
+    deviceId: string;
+}
+export interface CollabMergeReviewFile {
+    path: string;
+    before: string | null;
+    after: string | null;
+}
+export interface CollabShareCheck {
+    server_name: string;
+    file_count: number;
+    total_bytes: number;
+    excluded: string[];
+    too_large: string[];
+    renamed: string[];
+    max_file_mb: number;
+    cloud_synced: boolean;
+}
+export interface CollabLiveRole {
+    projectId: string;
+    role: CollabProjectRole;
+}
+export interface CollabPresence {
+    projectId: string;
+    deviceId: string;
+    accountId: string;
+    path: string | null;
+    cursor: number | null;
+    anchor: number | null;
+}
+export interface CollabPresenceLeft {
+    projectId: string;
+    deviceId: string;
+}
+export interface CollabLiveInfo {
+    role: CollabProjectRole;
+    account_id: string;
+    device_id: string;
+}
+export type CollabTextOperation = (number | string)[];
+export type CollabDocMessage =
+    | { kind: "ack"; rev: number; length: number }
+    | { kind: "remote"; rev: number; op: CollabTextOperation; length: number }
+    | { kind: "reset"; rev: number; text: string };
+export interface CollabDocOpened {
+    file_id: string;
+    rev: number;
+    text: string;
+    // Identifies the channel this open registered. Closing passes it back so
+    // a late close can't shut a channel the same file opened since.
+    session: number;
+}
+export interface ProjectSharing {
+    server_name: string;
+    role: CollabProjectRole;
+}
+
 /**
  * The structured destination-collision failure surfaced by rename and
  * create. Implementations throw their own Error subclass carrying these
@@ -963,6 +1437,10 @@ export interface BackendPort {
     content_base64?: string;
 }[]) => Promise<void>;
   deleteCustomTemplate: (slug: string) => Promise<void>;
+  /** Import a ZIP or a folder as a custom template; resolves to its id. */
+  importTemplateFromPath: (path: string, name: string) => Promise<string>;
+  /** Save a project's files as a custom template; resolves to its id. */
+  saveProjectAsTemplate: (projectId: string, name: string, previewPngBase64?: string | null) => Promise<string>;
   listTemplates: () => Promise<TemplateInfo[]>;
   templatePreview: (templateId: string) => Promise<string | null>;
   createProjectFromTemplate: (name: string, templateId: string, color?: string) => Promise<string>;
@@ -983,8 +1461,10 @@ export interface BackendPort {
   templatePrerequisites: (templateId: string) => Promise<Prerequisite[]>;
   ensureTemplateAssets: (templateId: string) => Promise<void>;
   listTemplatePacks: () => Promise<PackInfo[]>;
-  refreshPackCatalog: () => Promise<void>;
+  refreshPackCatalog: (force?: boolean) => Promise<boolean>;
+  packIndex: (packId: string, force?: boolean) => Promise<PackIndexInfo>;
   installTemplatePack: (id: string) => Promise<void>;
+  installPackTemplate: (packId: string, templateId: string) => Promise<void>;
   removeTemplatePack: (id: string) => Promise<void>;
   readDeadlines: () => Promise<string>;
   refreshDeadlines: () => Promise<void>;
@@ -1031,6 +1511,27 @@ export interface BackendPort {
   setConnectorKey: (connectorId: string, value: string) => Promise<void>;
   zoteroVerify: (userId: string, apiKey: string) => Promise<ZoteroAccount>;
   zoteroLibraryBibtex: () => Promise<ZoteroLibraryExport>;
+  zoteroLibraryStatus: () => Promise<ZoteroLibraryStatus>;
+  zoteroLibrarySync: (offline: boolean, force: boolean) => Promise<ZoteroLibraryStatus>;
+  zoteroLibraryTest: (offline: boolean) => Promise<ZoteroConnectionReport>;
+  zoteroLibrarySearch: (query: string, limit: number) => Promise<ZoteroSearchReply>;
+  zoteroLibraryLookup: (keys: string[]) => Promise<(ZoteroHit | null)[]>;
+  zoteroLibraryKeys: () => Promise<ZoteroKeysReply>;
+  zoteroLibraryItems: (refs: ZoteroItemRef[]) => Promise<(ZoteroHit | null)[]>;
+  zoteroLibraryExport: (
+    refs: ZoteroItemRef[],
+    style: ZoteroExportStyle,
+    offline: boolean,
+  ) => Promise<ZoteroExportedEntry[]>;
+  zoteroLibrarySetEnabled: (libraryId: string, enabled: boolean) => Promise<ZoteroLibraryStatus>;
+  zoteroWebAccount: () => Promise<ZoteroAccount | null>;
+  zoteroWebConnect: (userId: string, apiKey: string) => Promise<ZoteroAccount>;
+  zoteroWebDisconnect: () => Promise<void>;
+  zoteroProjectLinks: (projectId: string) => Promise<Record<string, ZoteroProjectLink>>;
+  zoteroUpdateProjectLinks: (
+    projectId: string,
+    changes: Record<string, ZoteroProjectLink | null>,
+  ) => Promise<Record<string, ZoteroProjectLink>>;
   searchDocs: (query: string) => Promise<SearchHit[]>;
   searchProject: (projectId: string, query: string) => Promise<SearchHit[]>;
   getConfig: () => Promise<AppConfig>;
@@ -1100,6 +1601,57 @@ export interface BackendPort {
   ghCreateRepo: (name: string, isPrivate: boolean) => Promise<GitHubRepo>;
   ghPublicRepoStats: (fullName: string) => Promise<GitHubRepoStats>;
   discordCommunityStats: () => Promise<DiscordCommunityStats>;
+  collabServersList: () => Promise<CollabServer[]>;
+  collabServerProbe: (url: string) => Promise<CollabCapabilities>;
+  collabServerSignIn: (url: string, providerId: string, setupCode?: string) => Promise<CollabServer>;
+  collabServerSignInCancel: () => Promise<void>;
+  collabServerSignOut: (serverId: string, keepLocalCopy?: boolean) => Promise<CollabSignOut>;
+  collabServerRemove: (serverId: string, keepLocalCopy?: boolean) => Promise<CollabSignOut>;
+  collabServerDevices: (serverId: string) => Promise<CollabDevice[]>;
+  collabServerSignOutDevice: (serverId: string, deviceId: string) => Promise<void>;
+  collabServerTest: (url: string) => Promise<CollabConnectionCheck[]>;
+  collabServerRefresh: (serverId: string) => Promise<CollabServer>;
+  collabAdminMembers: (serverId: string) => Promise<CollabMember[]>;
+  collabAdminMemberDevices: (serverId: string, accountId: string) => Promise<CollabDevice[]>;
+  collabAdminPatchMember: (serverId: string, accountId: string, patch: CollabMemberPatch) => Promise<CollabMember>;
+  collabAdminRemoveMember: (serverId: string, accountId: string) => Promise<void>;
+  collabAdminSignOutDevice: (serverId: string, deviceId: string) => Promise<void>;
+  collabAdminAllowlist: (serverId: string) => Promise<CollabAllowlistEntry[]>;
+  collabAdminAddAllowlist: (serverId: string, entry: CollabNewAllowlistEntry) => Promise<CollabAllowlistEntry>;
+  collabAdminRemoveAllowlist: (serverId: string, entryId: string) => Promise<void>;
+  collabAdminDomainRules: (serverId: string) => Promise<CollabDomainRule[]>;
+  collabAdminAddDomainRule: (serverId: string, rule: CollabNewDomainRule) => Promise<CollabDomainRule>;
+  collabAdminRemoveDomainRule: (serverId: string, ruleId: string) => Promise<void>;
+  collabAdminSettings: (serverId: string) => Promise<CollabRuntimeSettings>;
+  collabAdminPatchSettings: (serverId: string, patch: CollabRuntimeSettingsPatch) => Promise<CollabRuntimeSettings>;
+  collabAdminSecurityLog: (serverId: string, cursor?: string) => Promise<CollabPage<CollabSecurityEvent>>;
+  collabShareInfo: (projectId: string) => Promise<CollabShareInfo | null>;
+  collabShareCheck: (projectId: string, serverId: string) => Promise<CollabShareCheck>;
+  collabShareProject: (projectId: string, serverId: string) => Promise<CollabShareInfo>;
+  collabProjectSummary: (projectId: string) => Promise<CollabProjectSummary>;
+  collabMembersList: (projectId: string) => Promise<CollabProjectMember[]>;
+  collabMemberSet: (projectId: string, accountId: string, role: CollabProjectRole) => Promise<CollabProjectMember>;
+  collabMemberRemove: (projectId: string, accountId: string) => Promise<void>;
+  collabPeopleSearch: (projectId: string, query: string) => Promise<CollabPerson[]>;
+  collabLinkSharingSet: (projectId: string, enabled: boolean, role: CollabProjectRole) => Promise<CollabProjectSummary>;
+  collabStopSharing: (projectId: string) => Promise<void>;
+  collabLeaveProject: (projectId: string) => Promise<void>;
+  collabSharedWithMe: () => Promise<CollabSharedWithMe[]>;
+  collabJoinProject: (serverId: string, sharedProjectId: string) => Promise<string>;
+  collabJoinCancel: (serverId: string, sharedProjectId: string) => Promise<void>;
+  collabOpenLink: (link: string) => Promise<string>;
+  collabPendingLinks: () => Promise<string[]>;
+  collabLiveStart: (projectId: string) => Promise<CollabLiveInfo>;
+  collabLiveStop: (projectId: string) => Promise<void>;
+  collabLiveFlush: (projectId: string, options?: { waitForFigures?: boolean }) => Promise<void>;
+  collabLiveReconnectNow: () => Promise<void>;
+  collabDocOpen: (projectId: string, path: string, onMessage: (message: CollabDocMessage) => void) => Promise<CollabDocOpened | null>;
+  collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
+  collabDocClose: (projectId: string, fileId: string, session: number) => Promise<void>;
+  collabPresenceSet: (projectId: string, path: string | null, cursor: number | null, anchor: number | null) => Promise<void>;
+  collabPresenceLeave: (projectId: string) => Promise<void>;
+  collabMergeReview: (projectId: string, before: string, after: string) => Promise<CollabMergeReviewFile[]>;
+  collabWriteText: (projectId: string, path: string, base: string | null, text: string) => Promise<CollabWriteOutcome>;
   gitSetRemote: (projectId: string, url: string, options?: { replace?: boolean }) => Promise<void>;
   gitRemoveRemote: (projectId: string) => Promise<void>;
   gitGetRemote: (projectId: string) => Promise<string | null>;
@@ -1146,4 +1698,568 @@ export interface BackendPort {
   synctexForward: (projectId: string, mainDoc: string, file: string, line: number) => Promise<SynctexRect | null>;
   synctexInverse: (projectId: string, mainDoc: string, page: number, x: number, y: number) => Promise<SynctexHit | null>;
   synctexMapLine: (compiledSource: string, currentSource: string, line: number, currentToCompiled: boolean) => Promise<number | null>;
+  collabTrashList: (projectId: string) => Promise<CollabTrashEntry[]>;
+  collabTrashRestore: (projectId: string, id: string) => Promise<void>;
+  collabTreeClashes: (projectId: string) => Promise<CollabTreeClash[]>;
+  collabLiveRemovedList: (projectId: string) => Promise<CollabLiveRemovedFile[]>;
+  collabLiveRemovedDismiss: (projectId: string, id: string) => Promise<void>;
+  collabUploadList: (projectId: string) => Promise<CollabUploadFile[]>;
+  collabUploadRetry: (projectId: string) => Promise<void>;
+  collabUploadDismiss: (projectId: string, path: string) => Promise<void>;
+}
+
+export interface CollabTrashEntry {
+  id: string;
+  name: string;
+  kind: "dir" | "text" | "blob";
+  folder: string | null;
+  deletedBy: string | null;
+  deletedAt: number | null;
+}
+export interface CollabTreeClash {
+  path: string;
+  name: string;
+  other: string;
+}
+export interface CollabLiveRenamed {
+  projectId: string;
+  accountId: string | null;
+  before: string;
+  ours: string;
+  theirs: string;
+}
+// A change the app couldn't import, even on its own, so it was skipped and
+// syncing went on. `deviceId` names the device that made it when known.
+export interface CollabChangeSkipped {
+  projectId: string;
+  seq: number;
+  deviceId: string | null;
+}
+// Why a file of a live project couldn't be written to this computer.
+export type CollabUnwrittenReason = "locked" | "read_only" | "no_space" | "not_downloaded" | "other";
+// Files that still couldn't be written after a second try. An empty list
+// means every file is written again.
+export interface CollabLiveUnwritten {
+  projectId: string;
+  files: { path: string; reason: CollabUnwrittenReason }[];
+}
+export type CollabSettingNotice =
+  | { kind: "mainDocument"; path: string }
+  | { kind: "compiler"; engine: string; flavor: string | null }
+  | { kind: "spellingLanguage"; locale: string | null }
+  | { kind: "typstVersion"; version: string | null }
+  | { kind: "typstOptions" };
+export interface CollabLiveSettings {
+  projectId: string;
+  accountId: string | null;
+  changes: CollabSettingNotice[];
+}
+export interface CollabUnsentProject {
+  project_id: string;
+  name: string;
+  changes: number;
+}
+// `handled` is false when the shared document didn't take the write.
+// `reason` says why when it was refused rather than not shared: "read_only"
+// when this person can only view the project.
+export interface CollabWriteOutcome {
+  handled: boolean;
+  reason?: string;
+}
+export interface CollabDetachedProject {
+  project_id: string;
+  name: string;
+}
+export interface CollabSignOut {
+  signed_out: boolean;
+  unsent: CollabUnsentProject[];
+  // Projects that stopped syncing because their server was removed. They stay
+  // on this computer as ordinary projects. Always empty after a sign-out.
+  detached: CollabDetachedProject[];
+}
+export interface CollabLiveRemovedFile {
+  path: string;
+  id: string;
+  kind: "dir" | "text" | "blob";
+  by: string | null;
+  yours: boolean;
+}
+export interface CollabLiveRemoved {
+  projectId: string;
+  files: CollabLiveRemovedFile[];
+  restored: string[];
+}
+// "project_too_large": the project as a whole reached the server's size
+// limit, so the file waits until the limit is raised.
+export type CollabUploadState = "waiting" | "failed" | "too_large" | "project_too_large";
+export interface CollabUploadFile {
+  path: string;
+  state: CollabUploadState;
+  size: number;
+  limit: number | null;
+}
+// The server refused a change because the project's change log reached its
+// size limit. Sent at the first refusal after each connect.
+export interface CollabLiveProjectFull {
+  projectId: string;
+}
+// Sent when a live session stops or the server ends it: the files it wrote
+// while editors had them open, each with the disk snapshot of what it holds
+// now (the window's own hash, whether it has CRLF line ends, and its length in
+// UTF-16 units). Files changed outside Oleafly since are left out, so their
+// change still shows.
+export interface CollabLiveWritten {
+  projectId: string;
+  files: { path: string; hash: string; crlf: boolean; length: number }[];
+}
+// How far the upload of one figure got, in bytes. Sent a few times a second
+// at most while it goes up.
+export interface CollabUploadProgress {
+  projectId: string;
+  path: string;
+  done: number;
+  total: number;
+}
+export interface CollabLiveUploads {
+  projectId: string;
+  files: CollabUploadFile[];
+}
+export interface CollabLiveKeptFile {
+  id: string;
+  path: string;
+  copy: string;
+  kind: "replaced" | "added" | "beside";
+  by: string | null;
+}
+export interface CollabLiveKept {
+  projectId: string;
+  files: CollabLiveKeptFile[];
+}
+export interface CollabLocalCopyOffer {
+  copyId: string;
+  name: string;
+  files: string[];
+}
+
+export type CollabHealthStatus = "ok" | "warning" | "unknown";
+export type CollabHealthIssue =
+    | "no_sign_in_provider"
+    | "storage_not_writable"
+    | "sign_in_failing"
+    | "sign_in_emails_paused"
+    | "comments_changed_while_off"
+    | "unknown";
+// A sign-in option that keeps failing: its provider id, when it started and
+// the provider's own message.
+export interface CollabSignInProblem {
+    provider: string;
+    at: number;
+    reason: string;
+}
+// One change the server stored while comments were off in its project and
+// later found had changed comments.
+export interface CollabCommentChangeWhileOff {
+    project_id: string;
+    project_title?: string | null;
+    account_id?: string | null;
+    at: number;
+}
+export type CollabFilesLocation = "disk" | "s3" | "unknown";
+export interface CollabServerCounts {
+    people: number;
+    suspended_people: number;
+    devices: number;
+    projects: number;
+    archived_projects: number;
+    pending_projects: number;
+    open_rooms: number;
+    people_online: number;
+    // Guest invitations an admin or maintainer still has to approve.
+    pending_guest_approvals: number;
+}
+export interface CollabStorageUsage {
+    database_bytes: number;
+    snapshot_bytes: number;
+    file_bytes: number;
+    files_location: CollabFilesLocation;
+}
+// Sign-ins on one UTC day, starting at `day` (midnight UTC, in ms): how many,
+// and how many different people.
+export interface CollabDailyActivity {
+    day: number;
+    sign_ins: number;
+    people: number;
+}
+// Sign-ins in one UTC hour of one weekday over the whole range. Weekday 0 is
+// Sunday.
+export interface CollabHourlyActivity {
+    weekday: number;
+    hour: number;
+    sign_ins: number;
+}
+// The security log's sign-ins over `days` UTC days from `since`. Only days
+// and hours with a sign-in are listed.
+export interface CollabServerActivity {
+    since: number;
+    days: number;
+    daily: CollabDailyActivity[];
+    by_hour: CollabHourlyActivity[];
+}
+export interface CollabAdminOverview {
+    server_name: string;
+    version: string;
+    protocol: { min: number; max: number };
+    started_at: number;
+    now: number;
+    health: { status: CollabHealthStatus; issues: CollabHealthIssue[] };
+    counts: CollabServerCounts;
+    storage: CollabStorageUsage | null;
+    email_configured: boolean;
+    providers: CollabProvider[];
+    settings: CollabRuntimeSettings;
+    limits: CollabCapabilities["limits"];
+    archive_days: number;
+    sign_in_problems?: CollabSignInProblem[];
+    // Newest first, at most 20 from the last 30 days. Left out when empty.
+    comments_changed_while_off?: CollabCommentChangeWhileOff[];
+    // Left out by servers older than the activity charts.
+    activity?: CollabServerActivity;
+}
+export type CollabAdminProjectSort = "title" | "owner" | "members" | "size" | "activity" | "created";
+export type CollabSortOrder = "asc" | "desc";
+export interface CollabAdminProjectsQuery {
+    q?: string | null;
+    status?: CollabProjectStatus | null;
+    sort?: CollabAdminProjectSort | null;
+    order?: CollabSortOrder | null;
+    cursor?: string | null;
+    limit?: number | null;
+}
+export interface CollabAdminProject {
+    project_id: string;
+    title: string;
+    owner: CollabPerson;
+    status: CollabProjectStatus;
+    member_count: number;
+    size_bytes: number | null;
+    created_at: number;
+    last_activity_at: number;
+    archived_at: number | null;
+}
+export interface CollabAdminProjectsPage {
+    items: CollabAdminProject[];
+    next_cursor: string | null;
+    total: number;
+}
+export interface BackendPort {
+  collabAdminOverview: (serverId: string) => Promise<CollabAdminOverview>;
+  collabAdminProjects: (serverId: string, query: CollabAdminProjectsQuery) => Promise<CollabAdminProjectsPage>;
+  collabAdminArchiveProject: (serverId: string, projectId: string) => Promise<CollabAdminProject>;
+  collabAdminUnarchiveProject: (serverId: string, projectId: string) => Promise<CollabAdminProject>;
+}
+
+export interface CollabEmailFailure {
+    at: number;
+    message: string;
+}
+export interface CollabEmailStatus {
+    configured: boolean;
+    from: string | null;
+    notifications: boolean;
+    last_failure: CollabEmailFailure | null;
+    // Whether email is known to get through. An older server leaves it out.
+    working?: boolean | null;
+}
+export interface CollabEmailTestResult {
+    sent_to: string[];
+    delivered: boolean;
+    error: string | null;
+}
+export interface CollabEmailPreferences {
+    shared_with_you: boolean;
+    mentions?: boolean | null;
+    mail_configured: boolean;
+    notifications: boolean;
+}
+export interface CollabEmailPreferencesPatch {
+    shared_with_you?: boolean | null;
+    mentions?: boolean | null;
+}
+export interface BackendPort {
+  collabAdminEmailStatus: (serverId: string) => Promise<CollabEmailStatus>;
+  collabAdminEmailTest: (serverId: string) => Promise<CollabEmailTestResult>;
+  collabEmailPreferences: (serverId: string) => Promise<CollabEmailPreferences>;
+  collabSetEmailPreferences: (serverId: string, patch: CollabEmailPreferencesPatch) => Promise<CollabEmailPreferences>;
+}
+export type CollabSyncDecision = "send" | "keep_local";
+export interface CollabSyncPaused {
+    projectId: string;
+    changed: number;
+    total: number;
+    reason: "mass_change" | "root_unavailable";
+}
+export interface CollabSyncResumed {
+    projectId: string;
+}
+export interface BackendPort {
+  collabSyncDecide: (projectId: string, decision: CollabSyncDecision) => Promise<void>;
+}
+
+export interface CollabProjectSummary {
+    comments_enabled?: boolean;
+}
+export interface CollabCommentRange {
+    from: number;
+    to: number;
+}
+export interface CollabCommentAnchor {
+    quote: string;
+    range: CollabCommentRange | null;
+}
+export interface CollabCommentResolution {
+    by: string;
+    at: number;
+}
+export interface CollabCommentMessage {
+    id: string;
+    author: string;
+    at: number;
+    body: string;
+    editedAt: number | null;
+    deleted: boolean;
+    mentions: string[];
+}
+export interface CollabCommentThread {
+    id: string;
+    fileId: string;
+    anchor: CollabCommentAnchor;
+    createdBy: string;
+    createdAt: number;
+    resolved: CollabCommentResolution | null;
+    messages: CollabCommentMessage[];
+}
+export interface CollabCommentMember {
+    accountId: string;
+    displayName: string;
+    login?: string | null;
+}
+export interface CollabCommentsStatus {
+    serverAllowed: boolean;
+    projectEnabled: boolean;
+    canComment: boolean;
+}
+export interface CollabCommentsStatusChanged {
+    projectId: string;
+    status: CollabCommentsStatus;
+}
+export interface CollabCommentNotSent {
+    fileId: string;
+    path: string | null;
+    threadId: string;
+    quote: string;
+    body: string;
+}
+export interface CollabCommentsNotSent {
+    projectId: string;
+    comments: CollabCommentNotSent[];
+}
+export interface CollabCommentMentioned {
+    fileId: string;
+    path: string | null;
+    threadId: string;
+    messageId: string;
+    author: string;
+}
+export interface CollabCommentsChanged {
+    projectId: string;
+    fileIds: string[];
+    paths: string[];
+    mentioned: CollabCommentMentioned[];
+}
+export interface BackendPort {
+  collabCommentsStatus: (projectId: string) => Promise<CollabCommentsStatus>;
+  collabCommentsSetEnabled: (projectId: string, enabled: boolean) => Promise<CollabProjectSummary>;
+  collabCommentReply: (projectId: string, fileId: string, threadId: string, body: string, members: CollabCommentMember[]) => Promise<CollabCommentMessage>;
+  collabCommentEdit: (projectId: string, fileId: string, threadId: string, messageId: string, body: string, members: CollabCommentMember[]) => Promise<CollabCommentMessage>;
+  collabCommentDelete: (projectId: string, fileId: string, threadId: string, messageId: string) => Promise<void>;
+  collabCommentResolve: (projectId: string, fileId: string, threadId: string) => Promise<CollabCommentThread>;
+  collabCommentReopen: (projectId: string, fileId: string, threadId: string) => Promise<CollabCommentThread>;
+  collabCommentThreadDelete: (projectId: string, fileId: string, threadId: string) => Promise<void>;
+}
+
+export interface CollabProjectSummary {
+    access_log?: boolean;
+}
+export type CollabAccessKind = "opened" | "joined" | "downloaded" | "unknown";
+export type CollabJoinedVia = "link" | "share" | "unknown";
+export interface CollabAccessEntry {
+    id: number;
+    kind: CollabAccessKind;
+    via: CollabJoinedVia | null;
+    person: CollabPerson;
+    device_name: string;
+    at: number;
+    last_at: number;
+    times: number;
+}
+export type CollabAccessLogPage = CollabPage<CollabAccessEntry>;
+export interface CollabAccessLogStatus {
+    serverAllowed: boolean;
+    enabled: boolean;
+}
+export interface BackendPort {
+  collabAccessLogStatus: (projectId: string) => Promise<CollabAccessLogStatus>;
+  collabAccessLogSetEnabled: (projectId: string, enabled: boolean) => Promise<CollabProjectSummary>;
+  collabAccessLogPage: (projectId: string, cursor: string | null) => Promise<CollabAccessLogPage>;
+}
+
+export interface CollabPerson {
+    guest?: boolean;
+    // False for someone removed from or suspended on this server. Older
+    // servers never send it, and everyone they list is active.
+    active?: boolean;
+}
+export type CollabGuestInvitationStatus =
+    | "awaiting_approval"
+    | "invited"
+    | "accepted"
+    | "declined"
+    | "revoked"
+    | "expired"
+    | "unknown";
+export interface CollabGuestInvitation {
+    id: string;
+    project_id: string;
+    project_title: string;
+    email: string;
+    role: CollabProjectRole;
+    status: CollabGuestInvitationStatus;
+    invited_by: CollabPerson;
+    created_at: number;
+    expires_at: number;
+}
+export interface CollabProjectGuestInvitations {
+    guests_enabled: boolean;
+    approval_required: boolean;
+    sends_email: boolean;
+    add_link: string;
+    invitations: CollabGuestInvitation[];
+}
+export interface CollabGuestInviteResult {
+    invitation: CollabGuestInvitation;
+    emailed: boolean;
+    add_link: string;
+}
+export interface BackendPort {
+  collabGuestInvitations: (projectId: string) => Promise<CollabProjectGuestInvitations>;
+  collabGuestInvite: (projectId: string, email: string, role: CollabProjectRole) => Promise<CollabGuestInviteResult>;
+  collabGuestInvitationRevoke: (projectId: string, invitationId: string) => Promise<void>;
+  collabAdminGuestInvitations: (serverId: string) => Promise<CollabGuestInvitation[]>;
+  collabAdminGuestApprove: (serverId: string, invitationId: string) => Promise<CollabGuestInvitation>;
+  collabAdminGuestDecline: (serverId: string, invitationId: string) => Promise<CollabGuestInvitation>;
+  collabAdminGuestRevoke: (serverId: string, invitationId: string) => Promise<void>;
+}
+
+export interface CollabSignInCode {
+    userCode: string;
+    verificationUri: string;
+    verificationUriComplete: string;
+    expiresAt: number;
+}
+export interface CollabRuntimeSettings {
+    email_link_sign_in?: boolean;
+}
+export interface BackendPort {
+  collabServerCodeSignIn: (
+    url: string,
+    setupCode: string | undefined,
+    onCode: (code: CollabSignInCode) => void,
+  ) => Promise<CollabServer>;
+}
+
+export interface CollabCommentMessage {
+    verified: boolean;
+}
+export interface CollabCommentThread {
+    verified: boolean;
+}
+export interface CollabCommentResolution {
+    verified: boolean;
+}
+export interface CollabCommentsChanged {
+    local: boolean;
+}
+export interface CollabCommentThreadList {
+    rev: number | null;
+    threads: CollabCommentThread[];
+}
+export interface CollabCommentCount {
+    path: string;
+    open: number;
+    resolved: number;
+}
+export type CollabCommentErrorCode =
+    | "comment_not_live"
+    | "comment_not_yours"
+    | "comment_off_server"
+    | "comment_off_project"
+    | "comment_viewer"
+    | "comment_someone_replied"
+    | "comment_message_deleted"
+    | "comment_selection_changed"
+    | "comment_too_long"
+    | "comment_empty";
+export interface CollabCommentError {
+    code: CollabCommentErrorCode;
+    message: string;
+}
+export interface BackendPort {
+  collabCommentThreadList: (projectId: string, path: string) => Promise<CollabCommentThreadList>;
+  collabCommentCounts: (projectId: string) => Promise<CollabCommentCount[]>;
+  collabCommentFilePath: (projectId: string, fileId: string) => Promise<string | null>;
+  collabCommentCreate: (projectId: string, path: string, from: number, to: number, rev: number | null, body: string, members: CollabCommentMember[]) => Promise<CollabCommentThread>;
+}
+
+export type CollabSecurityLogKind =
+    | CollabSecurityEventKind
+    | "project_shared"
+    | "project_access_granted"
+    | "project_access_changed"
+    | "project_access_removed"
+    | "project_archived"
+    | "project_unarchived"
+    | "project_settings_changed"
+    | "guest_invited"
+    | "guest_invitation_approved"
+    | "guest_invitation_declined"
+    | "guest_invitation_revoked"
+    | "guest_admission_ended"
+    | "project_rejoin_refused";
+export interface CollabSecurityEvent {
+    project_title?: string | null;
+}
+
+export interface BackendPort {
+  collabLinkPreview: (serverId: string, sharedProjectId: string) => Promise<CollabProjectSummary>;
+}
+
+export type CollabSessionEnd = "account_suspended" | "access_ended";
+// `server_removed` never arrives in a status event: the app shows it when a
+// live start is refused because the project's server is no longer listed.
+export type CollabLiveEndedReason = CollabLiveEndReason | CollabSessionEnd | "server_removed";
+export type CollabLiveSyncState =
+    | Exclude<CollabLiveState, { state: "ended" }>
+    | { state: "ended"; reason: CollabLiveEndedReason };
+export interface CollabServer {
+    ended?: CollabSessionEnd | null;
+}
+export interface CollabSecurityEvent {
+    device_name?: string | null;
+}
+export type CollabMemberChangeKind = "added" | "removed" | "role_changed" | "unknown";
+export interface CollabLiveMembers {
+    projectId: string;
+    accountId: string;
+    by: string;
+    kind: CollabMemberChangeKind;
 }

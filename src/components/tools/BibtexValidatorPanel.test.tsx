@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { EditorView } from "@codemirror/view";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { BibtexValidatorPanel } from "@/components/tools/BibtexValidatorPanel";
@@ -89,6 +90,53 @@ describe("BibtexValidatorPanel", () => {
     expect(
       screen.getByText(enResearchTools.bibtex.empty),
     ).toBeInTheDocument();
+  });
+});
+
+function bibliography(count: number, withoutYearAt = -1) {
+  return Array.from(
+    { length: count },
+    (_, index) =>
+      `@article{key${index},\n  author  = {Lovelace, Ada},\n  title   = {Study ${index} ${"of attention ".repeat(40)}},\n  journal = {Notes}${index === withoutYearAt ? "" : ",\n  year    = {2001}"}\n}`,
+  ).join("\n\n");
+}
+
+function replaceInput(text: string) {
+  const editor = screen.getByTestId("bibtex-code-field").querySelector(".cm-editor");
+  const view = editor instanceof HTMLElement ? EditorView.findFromDOM(editor) : null;
+  if (!view) throw new Error("no CodeMirror view");
+  act(() => {
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+  });
+}
+
+describe("BibtexValidatorPanel with a long bibliography", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("waits for a pause in typing before validating it again", () => {
+    vi.useFakeTimers();
+    render(<BibtexValidatorPanel />);
+    replaceInput(bibliography(60));
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(screen.getAllByText(enResearchTools.bibtex.looksGood)).toHaveLength(60);
+
+    replaceInput(bibliography(60, 59));
+    expect(screen.getAllByText(enResearchTools.bibtex.looksGood)).toHaveLength(60);
+
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(screen.getAllByText(enResearchTools.bibtex.looksGood)).toHaveLength(59);
+  });
+
+  it("validates a short bibliography on every change", () => {
+    render(<BibtexValidatorPanel />);
+    replaceInput(bibliography(2));
+    expect(screen.getAllByText(enResearchTools.bibtex.looksGood)).toHaveLength(2);
   });
 });
 

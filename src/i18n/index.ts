@@ -9,7 +9,15 @@ import {
   type LocalePreference,
   type SupportedLocale,
 } from "@oleafly/i18n-contract";
-import { englishResources, loadLocaleResources, NAMESPACES, type Catalog } from "./resources";
+import {
+  englishResources,
+  LAZY_NAMESPACES,
+  loadEnglishCatalog,
+  loadLocaleCatalog,
+  loadLocaleResources,
+  NAMESPACES,
+  type Catalog,
+} from "./resources";
 import { createEmitter } from "@/lib/emitter";
 
 export const LOCALE_STORAGE_KEY = "oleafly.locale";
@@ -21,6 +29,8 @@ export const i18n = createInstance();
 i18n.use(initReactI18next);
 
 let current: SupportedLocale = DEFAULT_LOCALE;
+let target: SupportedLocale = DEFAULT_LOCALE;
+const requestedNamespaces = new Set<string>();
 const localeApplied = createEmitter<[locale: SupportedLocale]>();
 const warned = new Set<string>();
 
@@ -94,6 +104,7 @@ function initOptions(
 export async function initializeI18n(options: InitializeOptions): Promise<SupportedLocale> {
   const systemTag = options.preference === "system" ? await options.systemLocale() : null;
   const locale = resolvePreference(options.preference, systemTag);
+  target = locale;
   const resources: Record<string, Record<string, Catalog>> = { en: englishResources };
   if (locale !== "en") resources[locale] = await loadLocaleResources(locale);
   await i18n.init(initOptions(locale, resources, options.missingKeyMode));
@@ -109,15 +120,41 @@ if (buildMode === "test" || buildMode === undefined) {
   setDocumentLocale(DEFAULT_LOCALE);
 }
 
+function translatedCatalog(locale: SupportedLocale, namespace: string): Promise<Catalog | null> | null {
+  return locale === "en" || i18n.hasResourceBundle(locale, namespace) ? null : loadLocaleCatalog(locale, namespace);
+}
+
+function addCatalog(locale: SupportedLocale, namespace: string, catalog: Catalog | null): void {
+  if (catalog) i18n.addResourceBundle(locale, namespace, catalog, true, true);
+}
+
 export async function applyLocale(locale: SupportedLocale): Promise<void> {
+  target = locale;
   if (!i18n.hasResourceBundle(locale, "common")) {
     const resources = await loadLocaleResources(locale);
     for (const [namespace, catalog] of Object.entries(resources)) {
       i18n.addResourceBundle(locale, namespace, catalog, true, true);
     }
   }
+  await Promise.all(
+    [...requestedNamespaces].map(async (namespace) =>
+      addCatalog(locale, namespace, await translatedCatalog(locale, namespace)),
+    ),
+  );
   await i18n.changeLanguage(locale);
   current = locale;
   setDocumentLocale(locale);
   localeApplied.emit(locale);
+}
+
+export async function loadNamespace(namespace: string): Promise<void> {
+  if (!LAZY_NAMESPACES.includes(namespace)) return;
+  requestedNamespaces.add(namespace);
+  const locale = target;
+  const [english, translated] = await Promise.all([
+    i18n.hasResourceBundle("en", namespace) ? null : loadEnglishCatalog(namespace),
+    translatedCatalog(locale, namespace),
+  ]);
+  addCatalog(locale, namespace, translated);
+  addCatalog("en", namespace, english);
 }

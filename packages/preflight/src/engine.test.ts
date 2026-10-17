@@ -126,6 +126,29 @@ describe("runPreflight", () => {
     }));
   });
 
+  it("reports two entries sharing a DOI once, however many source files the project has", () => {
+    const main = "\\documentclass{article}\\input{intro}";
+    const report = runPreflight({
+      source: main,
+      project: {
+        mainFile: "main.tex",
+        files: [
+          { path: "main.tex", content: main },
+          { path: "intro.tex", content: "Intro." },
+          { path: "results.tex", content: "Results." },
+        ],
+      },
+      refs: {
+        definedLabels: [],
+        bibKeys: ["smith21", "smithdup"],
+        bibLoaded: true,
+        projectFiles: ["main.tex", "intro.tex", "results.tex", "refs.bib"],
+        duplicateDois: [{ doi: "10.1/x", keys: ["smith21", "smithdup"] }],
+      },
+    });
+    expect(report.findings.filter((finding) => finding.id === "refs-duplicate-bib")).toHaveLength(1);
+  });
+
   it("flags only the file whose bibliography declaration does not resolve, when two files share a name", () => {
     const report = runPreflight({
       source: "\\documentclass{article}",

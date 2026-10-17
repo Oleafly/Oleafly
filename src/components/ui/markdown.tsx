@@ -34,7 +34,7 @@ export function Markdown({
   return (
     <Suspense
       fallback={
-        <div className={cn("min-w-0 whitespace-pre-wrap break-words", className)}>
+        <div className={cn("min-w-0 select-text whitespace-pre-wrap break-words", className)}>
           {children}
         </div>
       }

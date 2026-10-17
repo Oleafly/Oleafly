@@ -188,7 +188,8 @@
     "quote": "Sitat",
     "addLabel": "Legg til etikett",
     "convertLatexMath": "Gjør om LaTeX-matematikk til Typst",
-    "noLatexMath": "Merk litt LaTeX-matematikk først."
+    "noLatexMath": "Merk litt LaTeX-matematikk først.",
+    "renameFile": "Gi filen nytt navn…"
   },
   "shell": {
     "noFileOpenTab": "Ingen filer er åpne",
@@ -364,7 +365,11 @@
     "summaryWarnings_one": "{{count}} advarsel",
     "summaryWarnings_other": "{{count}} advarsler",
     "summaryReferences_one": "{{count}} uløst referanse",
-    "summaryReferences_other": "{{count}} uløste referanser"
+    "summaryReferences_other": "{{count}} uløste referanser",
+    "fontPack": "{{family}} finnes i den gratis skriftpakken {{pack}}.",
+    "fontPackAction": "Last ned og kompiler",
+    "fontPackDownloading": "Laster ned…",
+    "fontPackFailed": "Skriftpakken kunne ikke lastes ned. Sjekk tilkoblingen og prøv igjen."
   },
   "history": {
     "untitledCommit": "Commit uten tittel",
@@ -392,7 +397,9 @@
     "unifiedView": "Samlet visning",
     "loading": "Laster diffen…",
     "previewTooLarge": "Filen er for stor til å forhåndsvise en diff.",
-    "diskHeading": "På disken ↔ Dine endringer"
+    "diskHeading": "På disken ↔ Dine endringer",
+    "sharedReadOnly": "I et delt prosjekt er diffen skrivebeskyttet. Rediger filen i editoren.",
+    "viewerReadOnly": "Du kan se dette delte prosjektet, men ikke redigere det."
   },
   "hotkeys": {
     "title": "Hurtigtaster",
@@ -426,7 +433,7 @@
       "indentOrAccept": "Rykk inn / godta autofullføring",
       "goToDefinition": "Gå til definisjonen",
       "findReferences": "Finn referanser",
-      "renameSymbol": "Gi symbolet nytt navn (i hele prosjektet)",
+      "renameSymbol": "Gi symbolet eller filen nytt navn (i hele prosjektet)",
       "formatDocument": "Formater Typst-dokumentet",
       "commandPalette": "Kommandopalett",
       "searchAllDocuments": "Søk i alle dokumenter",
@@ -454,7 +461,8 @@
     "noEntries": "Ingen oppføringer i litteraturlisten i dette prosjektet ennå.",
     "addNew": "Finn og legg til en ny sitering…",
     "duplicate": "duplikat {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Fra Zotero-biblioteket ditt"
   },
   "inlineAi": {
     "promptPlaceholder": "Beskriv endringen…  (Shift+Enter for ny linje)",
@@ -468,6 +476,7 @@
     "openInAgent": "Fortsett i AI-assistenten med alle prosjektverktøyene",
     "generateFailed": "Kunne ikke lage endringen. {{message}}",
     "dismiss": "Lukk",
+    "withdrawn": "Noen andre har redigert denne teksten, så forslaget kan ikke lenger brukes.",
     "setUpProvider": "Sett opp en AI-leverandør",
     "setUpProviderHint": "Legg inn en API-nøkkel (eller lokal Ollama) for å bruke AI-endringer i linjen.",
     "openAiSettings": "Åpne Innstillinger → AI"
@@ -649,6 +658,7 @@
     "endOfDocument": "Slutten av dokumentet",
     "hidePreamble": "Skjul innledningen i dokumentet",
     "showPreamble": "Vis innledningen i dokumentet",
+    "sharedReadOnly": "I et delt prosjekt viser visuell modus bare filen. Bytt til kildevisning for å redigere den.",
     "findingLabel": "{{message}}. Åpne korrekturforslag.",
     "rawBlockFindings_one": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag.",
     "rawBlockFindings_other": "{{count}} korrekturfunn i denne råblokken. {{message}}. Åpne forslag."
@@ -1460,7 +1470,8 @@
     "sources": {
       "project": "Prosjekt",
       "system": "System",
-      "embedded": "Innebygd"
+      "embedded": "Innebygd",
+      "pack": "Skriftpakke"
     },
     "fontsFolder": "For å bruke en skrift i dette prosjektet legger du skriftfilen i fonts-mappen i prosjektet."
   },
@@ -1487,5 +1498,6 @@
     "keyInvalid": "Verdinavn kan ikke være tomme eller inneholde likhetstegn.",
     "keyTaken": "En variant kan ikke sette samme navn to ganger.",
     "saveFailed": "Kunne ikke lagre variantene."
-  }
+  },
+  "sharedSettingsViewer": "Lesere kan ikke endre dette i et delt prosjekt."
 }

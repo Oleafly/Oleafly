@@ -25,6 +25,7 @@ dist-ssr
 # Tauri / Rust
 src-tauri/target
 src-tauri/gen
+tools/collab-bakeoff/target/
 
 # Oleafly local data (never commit a real TeX bundle)
 src-tauri/resources/*.ttb
@@ -35,6 +36,10 @@ src-tauri/resources/licenses/pandoc-3.9.0.2-COPYING.md
 !src-tauri/binaries/.gitkeep
 
 .private/
+
+deploy/server/.env
+deploy/server/docker-compose.override.yml
+deploy/server/secrets/
 
 # Playwright e2e artifacts
 test-results/

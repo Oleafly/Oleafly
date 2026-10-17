@@ -1,0 +1,64 @@
+{
+  "title": "アプリケーション設定",
+  "description": "設定を JSON ファイルに保存したり、共有された設定ファイルを読み込んだりできます。API キー、アカウント、連携、エージェントは含まれません。",
+  "export": "書き出す",
+  "import": "読み込む",
+  "view": {
+    "label": "設定の JSON を表示",
+    "summary": "書き出しで保存されるファイルの読み取り専用プレビューです。",
+    "loading": "設定を読み取っています",
+    "failed": "設定を読み取れませんでした。"
+  },
+  "dialog": {
+    "pickTitle": "設定を読み込む",
+    "filterName": "Oleafly の設定"
+  },
+  "toast": {
+    "exported": "{{name}} をディスクに書き出しました",
+    "exportFailed": "設定ファイルを保存できませんでした。",
+    "readFailed": "そのファイルを開けませんでした。",
+    "imported": "設定を読み込みました。",
+    "unchanged": "設定はすでに {{name}} と同じです。",
+    "applyFailed": "一部の設定を保存できませんでした。もう一度読み込んでください。",
+    "cloudEmpty": "Dropbox にはまだ Oleafly の設定がありません。先に別のコンピューターでクラウド同期をオンにしてください。",
+    "cloudLoadFailed": "Dropbox から設定を読み込めませんでした。",
+    "cloudUnreadable": "Dropbox にある設定を読み取れませんでした。"
+  },
+  "confirm": {
+    "title": "設定を置き換えますか？",
+    "description": "{{name}} の設定で現在の設定を置き換えます。ファイルに含まれていない項目はそのままです。",
+    "changes": "変更される設定: {{count}} 件",
+    "ignored": "認識できないため、次の項目はスキップします:",
+    "action": "読み込む",
+    "cloudDescription": "Dropbox の設定で現在の設定を置き換えます。含まれていない項目はそのままです。"
+  },
+  "error": {
+    "title": "{{name}} は読み込まれませんでした",
+    "notJson": "ファイルが正しい JSON ではありません。",
+    "notSettings": "これは Oleafly の設定ファイルではありません。",
+    "invalid": "読み込もうとした設定の構成が正しくありません。次のエラーを修正してから、もう一度読み込んでください:",
+    "more": "ほか {{count}} 件"
+  },
+  "valueErrors": {
+    "boolean": "は true または false である必要があります",
+    "oneOf": "は次のいずれかである必要があります: {{values}}",
+    "range": "は {{min}} から {{max}} までの数値である必要があります",
+    "wholeRange": "は {{min}} から {{max}} までの整数である必要があります",
+    "wholeRangeStep": "は {{min}} から {{max}} までの {{step}} 刻みの整数である必要があります",
+    "hexColor": "は #2563eb のような色である必要があります",
+    "hexColorOrEmpty": "は #2563eb のような色か、テーマの色を使う場合は \"\" である必要があります",
+    "text": "は {{max}} 文字以内のテキストである必要があります",
+    "webAddress": "は http:// または https:// で始まるウェブアドレスである必要があります",
+    "list": "は {{max}} 件以内のリストである必要があります",
+    "listItem": "は許可されていない項目です",
+    "duplicate": "が 2 回含まれています",
+    "object": "は波かっこで囲んだ設定のグループである必要があります",
+    "unknownKey": "は Oleafly が認識できない設定です",
+    "dictionaryLocale": "は en_US のような辞書コードである必要があります",
+    "shortcut": "は Mod-Shift-k のようなショートカットか \"default\" である必要があります",
+    "editorKey": "は Mod-d のようなキー、キーなしの場合は \"\"、または \"default\" である必要があります"
+  },
+  "importFromLocal": "このデバイスからインポート",
+  "importFromCloud": "クラウドからインポート",
+  "cloudSource": "Dropbox"
+}

@@ -52,6 +52,8 @@ and [model-specific context settings](https://docs.ollama.com/api/openai-compati
   approval asks before file edits, internet access, and commands. Approve for
   me, the default, asks only before risky actions such as edits and commands.
   Full access never asks. Custom (approvals.toml) follows the project's rules.
+  A deny rule in approvals.toml still refuses its tool in every mode, Full
+  access included. An allow rule only takes effect in Custom.
 - Except in Full access, a file change shows its diff on an approval card
   before it is applied. In Custom mode the card also has Always in this
   project, which saves an allow rule for that tool.

@@ -1,5 +1,5 @@
 import { Trans, useTranslation } from "react-i18next";
-import { Check, Copy, ExternalLink, Quote } from "lucide-react";
+import { ExternalLink, Quote } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import {
   OLEAFLY_REPOSITORY_URL,
@@ -7,7 +7,7 @@ import {
   oleaflyBibtexTokens,
   type BibtexTokenKind,
 } from "@/lib/cite-oleafly";
-import { useCopyStatus } from "@/components/ui/use-copy-status";
+import { CodeBlock } from "@/components/ui/code-block";
 import { cn } from "@/lib/utils";
 
 const TOKEN_CLASS: Record<BibtexTokenKind, string> = {
@@ -20,7 +20,6 @@ const TOKEN_CLASS: Record<BibtexTokenKind, string> = {
 
 export function CiteOleaflyCard({ version }: { readonly version: string }) {
   const { t } = useTranslation(["common", "settings"]);
-  const { copied, copy } = useCopyStatus();
   const bibtex = oleaflyBibtex(version);
   return (
     <section
@@ -43,10 +42,7 @@ export function CiteOleaflyCard({ version }: { readonly version: string }) {
           </p>
         </div>
       </div>
-      <pre
-        data-testid="cite-oleafly-bibtex"
-        className="overflow-x-auto rounded-md border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed"
-      >
+      <CodeBlock code={bibtex} data-testid="cite-oleafly-bibtex" preClassName="overflow-x-auto">
         {oleaflyBibtexTokens(version).map((line, lineIndex, lines) => (
           <span key={line.map((token) => token.text).join("")}>
             {line.map((token) => (
@@ -57,18 +53,8 @@ export function CiteOleaflyCard({ version }: { readonly version: string }) {
             {lineIndex < lines.length - 1 ? "\n" : ""}
           </span>
         ))}
-      </pre>
+      </CodeBlock>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <button
-          type="button"
-          onClick={() => void copy(bibtex)}
-          className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-accent"
-        >
-          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-          {copied
-            ? t(($) => $.common.actions.copied)
-            : t(($) => $.settings.cite.copyBibtex)}
-        </button>
         <button
           type="button"
           onClick={() => void openExternal(OLEAFLY_REPOSITORY_URL)}
