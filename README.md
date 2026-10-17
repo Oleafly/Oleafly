@@ -376,7 +376,7 @@ Join the [Oleafly community on Discord](https://oleafly.com/discord) to ask ques
 
 Oleafly is built by [Prajwal Murthy](https://github.com/prajwal-svm) and contributors. Contributions to code, templates, documentation, and feedback are welcome. Read the [contributing guide](CONTRIBUTING.md) to take part.
 
-If you use Oleafly, a [GitHub star](https://github.com/Oleafly/Oleafly) helps other researchers find it.
+⭐ Help us reach more researchers and developers and grow the Oleafly community. [Star this repo](https://github.com/Oleafly/Oleafly)!
 
 ## Cite Oleafly
 
