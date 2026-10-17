@@ -40,26 +40,23 @@ struct World {
     server: String,
     project: PathBuf,
     repo: PathBuf,
+    branch: &'static str,
 }
 
 impl World {
     fn new(files: &[(&str, &[u8])]) -> Self {
+        Self::on_branch("master", files)
+    }
+
+    fn on_branch(branch: &'static str, files: &[(&str, &[u8])]) -> Self {
         let temp = tempfile::tempdir().unwrap();
         let remotes = temp.path().join("remotes");
         let seed = temp.path().join("seed");
         std::fs::create_dir_all(&remotes).unwrap();
         std::fs::create_dir_all(&seed).unwrap();
-        run(
-            &remotes,
-            &[
-                "init",
-                "--quiet",
-                "--bare",
-                "--initial-branch=master",
-                PROJECT,
-            ],
-        );
-        run(&seed, &["init", "--quiet", "--initial-branch=master"]);
+        let initial = format!("--initial-branch={branch}");
+        run(&remotes, &["init", "--quiet", "--bare", &initial, PROJECT]);
+        run(&seed, &["init", "--quiet", &initial]);
         for (path, body) in files {
             let target = seed.join(path);
             std::fs::create_dir_all(target.parent().unwrap()).unwrap();
@@ -68,9 +65,10 @@ impl World {
         run(&seed, &["add", "-A"]);
         run(&seed, &["commit", "--quiet", "-m", "Initial"]);
         let bare = remotes.join(PROJECT);
+        let refspec = format!("{branch}:{branch}");
         run(
             &seed,
-            &["push", "--quiet", bare.to_str().unwrap(), "master:master"],
+            &["push", "--quiet", bare.to_str().unwrap(), &refspec],
         );
         let project = temp.path().join("project");
         std::fs::create_dir_all(&project).unwrap();
@@ -90,6 +88,7 @@ impl World {
             server,
             project,
             repo,
+            branch,
         }
     }
 
@@ -129,7 +128,8 @@ impl World {
         }
         run(&clone, &["add", "-A"]);
         run(&clone, &["commit", "--quiet", "-m", "Co-author edit"]);
-        run(&clone, &["push", "--quiet", "origin", "HEAD:master"]);
+        let refspec = format!("HEAD:{}", self.branch);
+        run(&clone, &["push", "--quiet", "origin", &refspec]);
     }
 
     fn coauthor_git(&self, commands: &[&[&str]]) {
@@ -150,7 +150,8 @@ impl World {
             run(&clone, command);
         }
         run(&clone, &["commit", "--quiet", "-m", "Co-author rename"]);
-        run(&clone, &["push", "--quiet", "origin", "HEAD:master"]);
+        let refspec = format!("HEAD:{}", self.branch);
+        run(&clone, &["push", "--quiet", "origin", &refspec]);
     }
 
     fn remote_file(&self, path: &str) -> Option<String> {
@@ -159,13 +160,23 @@ impl World {
         let output = command
             .arg("--git-dir")
             .arg(self.bare())
-            .args(["show", &format!("master:{path}")])
+            .args(["show", &format!("{}:{path}", self.branch)])
             .output()
             .unwrap();
         output
             .status
             .success()
             .then(|| String::from_utf8_lossy(&output.stdout).into_owned())
+    }
+
+    fn remote_branches(&self) -> Vec<String> {
+        run(
+            &self.bare(),
+            &["for-each-ref", "--format=%(refname)", "refs/heads/"],
+        )
+        .lines()
+        .map(str::to_string)
+        .collect()
     }
 
     fn local(&self, path: &str) -> Option<String> {
@@ -213,16 +224,18 @@ impl World {
     }
 }
 
+const SEEDED: &[(&str, &[u8])] = &[
+    (
+        "main.tex",
+        b"\\documentclass{article}\n\\begin{document}\nHello.\n\\end{document}\n",
+    ),
+    ("refs.bib", b"@book{a, title={A}}\n"),
+    ("notes.tex", b"Notes\n"),
+    ("img/fig.png", &[0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 255]),
+];
+
 fn seeded() -> World {
-    World::new(&[
-        (
-            "main.tex",
-            b"\\documentclass{article}\n\\begin{document}\nHello.\n\\end{document}\n",
-        ),
-        ("refs.bib", b"@book{a, title={A}}\n"),
-        ("notes.tex", b"Notes\n"),
-        ("img/fig.png", &[0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 255]),
-    ])
+    World::new(SEEDED)
 }
 
 #[test]
@@ -255,6 +268,49 @@ fn linking_identical_trees_then_local_edits_push_without_app_files() {
     assert_eq!(world.remote_file(".oleafly/build/main.pdf"), None);
     assert_eq!(world.remote_file(".DS_Store"), None);
     assert_eq!(world.sync(), Integration::UpToDate);
+}
+
+#[test]
+fn a_project_on_main_links_pulls_and_pushes_without_a_new_branch() {
+    let world = World::on_branch("main", SEEDED);
+    assert_eq!(
+        world.link(None),
+        LinkOutcome::Linked {
+            written: Vec::new()
+        }
+    );
+    world.coauthor(&[("refs.bib", Some("@book{m, title={M}}\n"))]);
+    world.write("notes.tex", "Notes from here\n");
+    assert!(matches!(
+        world.sync(),
+        Integration::Merged { push: true, .. }
+    ));
+    assert_eq!(
+        world.local("refs.bib").as_deref(),
+        Some("@book{m, title={M}}\n")
+    );
+    assert_eq!(
+        world.remote_file("notes.tex").as_deref(),
+        Some("Notes from here\n")
+    );
+    assert_eq!(world.remote_branches(), vec!["refs/heads/main".to_string()]);
+}
+
+#[test]
+fn a_renamed_remote_branch_is_followed() {
+    let world = seeded();
+    world.link(None);
+    run(&world.bare(), &["branch", "-m", "master", "main"]);
+    world.write("notes.tex", "After the rename\n");
+    assert!(matches!(
+        world.sync(),
+        Integration::Merged { push: true, .. }
+    ));
+    assert_eq!(
+        run(&world.bare(), &["show", "main:notes.tex"]),
+        "After the rename"
+    );
+    assert_eq!(world.remote_branches(), vec!["refs/heads/main".to_string()]);
 }
 
 #[test]
