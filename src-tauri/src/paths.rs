@@ -15,14 +15,38 @@ pub fn home_dir() -> Result<PathBuf, String> {
 
 /// The Oleafly library root: `~/.oleafly/`, or `$OLEAFLY_DATA_DIR` when
 /// set and non-empty (e2e tests point this at a throwaway directory so runs
-/// are hermetic and never touch the user's real projects).
+/// are hermetic and never touch the user's real projects). Unit tests never
+/// fall back to `~/.oleafly`; see `default_data_dir`.
 pub fn oleafly_root() -> Result<PathBuf, String> {
     if let Some(dir) = std::env::var_os("OLEAFLY_DATA_DIR") {
         if !dir.is_empty() {
             return Ok(PathBuf::from(dir));
         }
     }
+    default_data_dir()
+}
+
+#[cfg(not(test))]
+fn default_data_dir() -> Result<PathBuf, String> {
     Ok(home_dir()?.join(".oleafly"))
+}
+
+// A unit test without a data folder of its own still logs, takes runtime
+// locks and touches caches in passing. Those writes go to one temporary
+// folder shared by the test process instead of the developer's real app log
+// and data. Tests that check what lands in the data folder still need their
+// own (see `TempLibrary`).
+#[cfg(test)]
+fn default_data_dir() -> Result<PathBuf, String> {
+    static DIR: std::sync::OnceLock<Result<PathBuf, String>> = std::sync::OnceLock::new();
+    DIR.get_or_init(|| {
+        tempfile::Builder::new()
+            .prefix("oleafly-test-data-")
+            .tempdir()
+            .map(tempfile::TempDir::keep)
+            .map_err(|e| format!("failed to create the test data folder: {e}"))
+    })
+    .clone()
 }
 
 /// The downloadable-assets cache: `~/.oleafly/assets/` (created if missing).
@@ -744,6 +768,30 @@ mod tests {
         assert!(temporary_data_dir(Some(std::ffi::OsStr::new(
             "/tmp/oleafly-test"
         ))));
+    }
+
+    #[test]
+    fn tests_without_a_data_folder_never_reach_the_real_one() {
+        let _env_guard = data_dir_env_lock();
+        let configured = std::env::var_os("OLEAFLY_DATA_DIR");
+        let real = home_dir().unwrap().join(".oleafly");
+        let mut roots = Vec::new();
+        for unset in [None, Some("")] {
+            match unset {
+                None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+                Some(empty) => std::env::set_var("OLEAFLY_DATA_DIR", empty),
+            }
+            roots.push(oleafly_root().unwrap());
+        }
+        match configured {
+            Some(dir) => std::env::set_var("OLEAFLY_DATA_DIR", dir),
+            None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+        }
+
+        assert_eq!(roots[0], roots[1]);
+        assert!(!roots[0].starts_with(&real), "{:?}", roots[0]);
+        assert!(roots[0].starts_with(std::env::temp_dir()), "{:?}", roots[0]);
+        assert!(roots[0].is_dir());
     }
 
     #[test]
