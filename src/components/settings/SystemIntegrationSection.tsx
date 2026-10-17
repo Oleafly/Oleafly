@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SettingsRow } from "@/components/settings/SettingsRow";
@@ -267,7 +267,7 @@ export function SystemIntegrationSection({
 
   const awaitingQuickActions = status?.items.some(showsQuickActionsHint) ?? false;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!awaitingQuickActions) return;
     const onFocus = () => void load();
     const onVisible = () => {
