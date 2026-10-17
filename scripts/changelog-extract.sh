@@ -16,13 +16,23 @@ set -euo pipefail
 VERSION="${1:?usage: changelog-extract.sh <version>}"
 VERSION="${VERSION#v}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CHANGELOG="$ROOT/CHANGELOG.md"
+CHANGELOG="${OLEAFLY_CHANGELOG:-$ROOT/CHANGELOG.md}"
 
 section="$(
   awk -v ver="$VERSION" '
     $0 ~ ("^## \\[" ver "\\]") { cap = 1; next }
     cap && /^## / { exit }
-    cap { print }
+    cap && /^[[:space:]]*<\/?details([[:space:]][^>]*)?>[[:space:]]*$/ { dropped = 1; next }
+    cap && dropped && /^[[:space:]]*$/ { dropped = 0; next }
+    cap && /^[[:space:]]*<summary>.*<\/summary>[[:space:]]*$/ {
+      line = $0
+      sub(/^[[:space:]]*<summary>[[:space:]]*/, "", line)
+      sub(/[[:space:]]*<\/summary>[[:space:]]*$/, "", line)
+      print "**" line "**"
+      dropped = 0
+      next
+    }
+    cap { dropped = 0; print }
   ' "$CHANGELOG"
 )"
 
