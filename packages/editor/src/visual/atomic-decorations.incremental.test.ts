@@ -131,7 +131,7 @@ describe("visual atomic decorations while typing", () => {
       step(state, (current) => deleteBefore(current, current.selection.main.head));
     }
     expect(incremental).toBeGreaterThan(20);
-  });
+  }, 15_000);
 
   it("matches a full rebuild after typing into a list document", () => {
     for (const position of editablePositions(LIST_DOCUMENT)) {

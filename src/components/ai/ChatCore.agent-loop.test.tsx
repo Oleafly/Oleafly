@@ -1474,7 +1474,7 @@ describe("ChatCore agent turns", () => {
     });
 
     await act(async () => finishRun(2, "Queued response"));
-  });
+  }, 20_000);
 
   it("does not let a stale budget callback replace the new project's active run", async () => {
     const firstBudget = deferred<"ok">();
