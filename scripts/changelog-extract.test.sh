@@ -6,7 +6,8 @@ SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/oleafly-changelog-extract-test.XXXXXX")"
 trap 'rm -rf "$SCRATCH"' EXIT
 
 fail() {
-  printf 'changelog-extract.test.sh: %s\n' "$1" >&2
+  local message="$1"
+  printf 'changelog-extract.test.sh: %s\n' "$message" >&2
   exit 1
 }
 
@@ -47,7 +48,8 @@ as is
 EOF
 
 extract() {
-  OLEAFLY_CHANGELOG="$SCRATCH/CHANGELOG.md" bash "$ROOT/scripts/changelog-extract.sh" "$1"
+  local version="$1"
+  OLEAFLY_CHANGELOG="$SCRATCH/CHANGELOG.md" bash "$ROOT/scripts/changelog-extract.sh" "$version"
 }
 
 expected="$(cat <<'EOF'
