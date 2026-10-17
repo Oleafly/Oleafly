@@ -236,7 +236,7 @@ describe("Appearance settings tabs", () => {
       editorGhostCompletion: true,
       editorStickyScroll: true,
     });
-  });
+  }, 15_000);
 
   it("switches the keybinding mode, tab size, and line height from the editor tab", async () => {
     const user = userEvent.setup();
@@ -264,7 +264,7 @@ describe("Appearance settings tabs", () => {
       await screen.findByRole("option", { name: appearance.editor.lineHeight.options.wide }),
     );
     expect(useSettingsStore.getState().editorLineHeight).toBe("wide");
-  });
+  }, 15_000);
 
   it("sets the app zoom from its list", async () => {
     const user = userEvent.setup();

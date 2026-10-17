@@ -301,20 +301,20 @@ describe("TaskComposer draft ownership", () => {
   it("keeps an unsaved draft when the dialog is dismissed and discards it on cancel", async () => {
     const input = props();
     const first = render(<TaskComposer {...input} />);
-    await fill(enResearchTools.tasks.composer.titleLabel, "Interrupted draft");
-    await fill(enResearchTools.tasks.composer.promptLabel, "Half written instructions");
+    await fill(enResearchTools.tasks.composer.titleLabel, "Draft");
+    await fill(enResearchTools.tasks.composer.promptLabel, "Notes");
     fireEvent.keyDown(page().getByRole("dialog"), { key: "Escape" });
     expect(input.onDismiss).toHaveBeenCalledOnce();
     expect(input.onCancel).not.toHaveBeenCalled();
     expect(useResearchTasksStore.getState().composerDrafts[composerDraftKey("paper", null)]).toMatchObject({
-      title: "Interrupted draft",
-      prompt: "Half written instructions",
+      title: "Draft",
+      prompt: "Notes",
     });
     first.unmount();
 
     const second = render(<TaskComposer {...input} />);
-    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("Interrupted draft");
-    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("Half written instructions");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("Draft");
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("Notes");
     fireEvent.click(page().getByRole("button", { name: enCommon.actions.cancel }));
     expect(useResearchTasksStore.getState().composerDrafts[composerDraftKey("paper", null)]).toBeUndefined();
     second.unmount();

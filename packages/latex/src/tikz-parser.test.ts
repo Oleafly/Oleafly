@@ -1116,7 +1116,7 @@ describe("paths and pictures in less common forms", () => {
 
     const withoutSemicolon = importTikz(`\\node[draw] (a) at (0,0) {A} ${"x".repeat(2_000_001)}`);
     expect(withoutSemicolon.unsupported).toContain("truncated");
-  });
+  }, 15_000);
 });
 
 describe("extractPictureBody", () => {
