@@ -356,7 +356,7 @@ fn e2e_boot_seed_script(
 ) -> String {
     let launch = serde_json::Value::String(launch.to_owned());
     format!(
-        "window.__OLEAFLY_E2E_BOOT__ = true; (() => {{ const apply = (seed) => {{ for (const [key, value] of Object.entries(seed)) {{ if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }} }}; apply({every_load}); if (localStorage.getItem(\"oleafly.e2e.launch\") !== {launch}) {{ apply({once_per_launch}); localStorage.setItem(\"oleafly.e2e.launch\", {launch}); }} }})();"
+        "window.__OLEAFLY_E2E_BOOT__ = true; (() => {{ const apply = (seed) => {{ for (const [key, value] of Object.entries(seed)) {{ if (key.endsWith(\"*\")) {{ const prefix = key.slice(0, -1); for (let index = localStorage.length - 1; index >= 0; index -= 1) {{ const stored = localStorage.key(index); if (stored !== null && stored.startsWith(prefix)) localStorage.removeItem(stored); }} }} else if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); }} }}; apply({every_load}); if (localStorage.getItem(\"oleafly.e2e.launch\") !== {launch}) {{ apply({once_per_launch}); localStorage.setItem(\"oleafly.e2e.launch\", {launch}); }} }})();"
     )
 }
 

@@ -12,6 +12,6 @@ e2e_launch_seed_for() {
   if e2e_needs_collab_peer "${1:-}"; then
     live="1"
   fi
-  printf '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.liveCollaboration":"%s"}' "$live"
+  printf '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.liveCollaboration":"%s","oleafly.preview.detached.*":null}' "$live"
   return "$?"
 }
