@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use crate::app_error::AppError;
 
 pub(crate) const BASE_REF: &str = "refs/heads/oleafly-base";
-pub(crate) const REMOTE_REF: &str = "refs/remotes/overleaf/master";
-const REMOTE_BRANCH: &str = "refs/heads/master";
+const REMOTE_PREFIX: &str = "refs/remotes/overleaf/";
+const REMOTE_BRANCHES: &str = "+refs/heads/*:refs/remotes/overleaf/*";
 const MAX_FILES: usize = 5_000;
 const MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const MAX_FILE_BYTES: u64 = 50 * 1024 * 1024;
@@ -273,9 +273,25 @@ fn first_line(text: &str) -> String {
         .collect()
 }
 
+fn remote_branch(repo: &Path) -> Option<String> {
+    let names = git_ok(
+        repo,
+        &["for-each-ref", "--format=%(refname)", REMOTE_PREFIX],
+    )
+    .ok()?;
+    let mut branches = names
+        .lines()
+        .filter_map(|name| name.strip_prefix(REMOTE_PREFIX));
+    let branch = branches.next()?;
+    branches.next().is_none().then(|| branch.to_string())
+}
+
+pub(crate) fn remote_tip(repo: &Path) -> Option<String> {
+    rev(repo, &format!("{REMOTE_PREFIX}{}", remote_branch(repo)?))
+}
+
 pub(crate) fn fetch(repo: &Path, url: &str, token: &str) -> Result<String, String> {
     ensure_repo(repo)?;
-    let refspec = format!("+{REMOTE_BRANCH}:{REMOTE_REF}");
     let origin = credential_origin(url);
     let output = crate::git::run_mirror_git_remote(
         repo,
@@ -284,10 +300,11 @@ pub(crate) fn fetch(repo: &Path, url: &str, token: &str) -> Result<String, Strin
         &[
             "fetch",
             "--progress",
+            "--prune",
             "--no-tags",
             "--no-recurse-submodules",
             url,
-            &refspec,
+            REMOTE_BRANCHES,
         ],
     )?;
     if !output.status.success() {
@@ -295,7 +312,7 @@ pub(crate) fn fetch(repo: &Path, url: &str, token: &str) -> Result<String, Strin
             &output,
         )));
     }
-    rev(repo, REMOTE_REF).ok_or_else(|| AppError::new("overleaf.git_unavailable").into())
+    remote_tip(repo).ok_or_else(|| AppError::new("overleaf.git_unavailable").into())
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -310,7 +327,9 @@ pub(crate) fn push(
     token: &str,
     commit: &str,
 ) -> Result<PushResult, String> {
-    let refspec = format!("{commit}:{REMOTE_BRANCH}");
+    let branch = remote_branch(repo)
+        .ok_or_else(|| String::from(AppError::new("overleaf.git_unavailable")))?;
+    let refspec = format!("{commit}:refs/heads/{branch}");
     let origin = credential_origin(url);
     let output = crate::git::run_mirror_git_remote(
         repo,
