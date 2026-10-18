@@ -29,9 +29,9 @@ ignore = [
   { id = "RUSTSEC-2026-0367", reason = "zip extract() keeps SUID/SGID bits on Unix; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract()" },
   { id = "RUSTSEC-2026-0368", reason = "zip extract() writes symlinks that point outside the target; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract()" },
   { id = "RUSTSEC-2026-0369", reason = "zip extract() sets Unix permissions through symlinks; tauri-plugin-updater pins zip ^4 through 2.14 and 3.0 alpha and extracts only signature-checked update zips on Windows, and our own zip code never calls extract()" },
-  { id = "RUSTSEC-2026-0370", reason = "zvariant is unmaintained since it moved into zbus 6, reached only through zbus 5 in the vendored tauri-plugin-single-instance (Linux D-Bus); no vulnerability, and upstream 2.5.4 still uses zbus ^5.9" },
-  { id = "RUSTSEC-2026-0371", reason = "zbus_names is unmaintained since it moved into zbus 6, reached only through zbus 5 in the vendored tauri-plugin-single-instance (Linux D-Bus); no vulnerability, and upstream 2.5.4 still uses zbus ^5.9" },
-  { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is unmaintained since it moved into zbus 6, reached only through zbus 5 in the vendored tauri-plugin-single-instance (Linux D-Bus); no vulnerability, and upstream 2.5.4 still uses zbus ^5.9" },
+  { id = "RUSTSEC-2026-0370", reason = "zvariant is no longer released on its own (it moved into zbus 6); reached only through tauri-plugin-single-instance, which pins zbus ^5.9 through 2.5.4 and 3.0 alpha; no vulnerability" },
+  { id = "RUSTSEC-2026-0371", reason = "zbus_names is no longer released on its own (it moved into zbus 6); reached only through tauri-plugin-single-instance, which pins zbus ^5.9 through 2.5.4 and 3.0 alpha; no vulnerability" },
+  { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is no longer released on its own (its macros moved into zbus 6); reached only through tauri-plugin-single-instance, which pins zbus ^5.9 through 2.5.4 and 3.0 alpha; no vulnerability" },
 ]
 
 [licenses]

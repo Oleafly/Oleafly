@@ -7,7 +7,9 @@
 // method is missing and PDF rendering throws
 // "getOrInsertComputed is not a function". Define them if absent.
 //
-// Imported first in `main.tsx` so it runs before pdf.js loads.
+// Imported first in `main.tsx` so it runs before pdf.js loads. Production
+// builds keep this file in a chunk of its own (`polyfillsChunk` in
+// vite.config.ts): inside the entry chunk it would run after the pdf.js chunk.
 
 import { isWebKit } from "./worker-decompression";
 
@@ -49,6 +51,32 @@ export function installGetOrInsert(ctor: Ctor | undefined) {
 
 installGetOrInsert(typeof Map !== "undefined" ? (Map as unknown as Ctor) : undefined);
 installGetOrInsert(typeof WeakMap !== "undefined" ? (WeakMap as unknown as Ctor) : undefined);
+
+// pdf.js 6 adds `Iterator.prototype.join` while its module loads, and reads
+// the global `Iterator` without checking that it exists. WebKit only defines
+// that global from Safari 18.4. Older engines have the iterator prototype
+// itself, so expose it under the same name. Like the native constructor,
+// this one throws when called or constructed directly; subclasses construct.
+export function installIteratorConstructor(
+  global: { Iterator?: unknown } | undefined,
+  prototype: object | undefined,
+) {
+  if (!global || !prototype || typeof global.Iterator === "function") return;
+  function AbstractIterator(this: unknown) {
+    if (new.target === undefined || new.target === AbstractIterator) {
+      throw new TypeError("Iterator cannot be constructed directly");
+    }
+  }
+  Object.defineProperty(AbstractIterator, "prototype", { value: prototype, writable: false });
+  Object.defineProperty(global, "Iterator", { value: AbstractIterator, writable: true, configurable: true });
+}
+
+installIteratorConstructor(
+  typeof globalThis !== "undefined" ? (globalThis as { Iterator?: unknown }) : undefined,
+  typeof Symbol === "function"
+    ? (Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())) as object)
+    : undefined,
+);
 
 type IteratorPrototype = { find?: unknown };
 

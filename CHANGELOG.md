@@ -246,6 +246,11 @@ checked our fixes. 💚
 
 ### Fixed
 
+- On a Mac with Safari 16.4 through 18.3, Oleafly stayed on "Loading Oleafly
+  Parsers" and never opened. The PDF preview uses pdf.js, which needs a
+  JavaScript feature that WebKit only added in Safari 18.4. On older versions
+  pdf.js failed before the app had even started. Oleafly now fills in that
+  feature itself before any other code runs.
 - Searching jumps to a match that is off screen and puts it in the middle of
   the editor, so the next match no longer lands at the bottom edge (#270). A
   match that is already in view stays where it is.
