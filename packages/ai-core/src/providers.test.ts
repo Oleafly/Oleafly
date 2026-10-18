@@ -51,6 +51,16 @@ describe("pickActiveProvider", () => {
     });
   });
 
+  it("defaults Anthropic to Claude Opus 5.5 and keeps a saved older Claude model", () => {
+    expect(defaultModel("anthropic")).toBe("claude-opus-5-5");
+    const r = pickActiveProvider({
+      ai_provider: "anthropic",
+      ai_model: "claude-opus-5",
+      ai_keys: { anthropic: "sk-ant" },
+    });
+    expect(r.modelId).toBe("claude-opus-5");
+  });
+
   it("falls back to the first configured provider (default model) when the saved one has no key", () => {
     const r = pickActiveProvider({
       ai_provider: "openai",

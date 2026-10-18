@@ -471,6 +471,55 @@ fn anthropic_always_declares_a_token_ceiling() {
 }
 
 #[test]
+fn anthropic_sends_temperature_only_to_claude_models_that_accept_it() {
+    let req = CompletionRequest {
+        temperature: Some(0.4),
+        ..CompletionRequest::prompt("s", "u")
+    };
+    let body_for = |model: &str| {
+        let claude = Resolved {
+            model_id: model.into(),
+            ..resolved(Wire::Anthropic {
+                base_url: ANTHROPIC_BASE.into(),
+            })
+        };
+        anthropic_body(&claude, &req).unwrap()
+    };
+
+    for model in [
+        "claude-opus-5-5",
+        "claude-sonnet-5-5",
+        "claude-haiku-5-5",
+        "claude-fable-5-1",
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "claude-opus-4-8",
+        "claude-opus-4-7",
+    ] {
+        assert!(
+            body_for(model).get("temperature").is_none(),
+            "{model} answers a temperature with a 400"
+        );
+    }
+    for model in [
+        "claude-haiku-4-5",
+        "claude-haiku-4-5-20251001",
+        "claude-sonnet-4-6",
+        "claude-opus-4-6",
+        "claude-sonnet-4-20250514",
+        "claude-opus-4-1-20250805",
+        "claude-3-5-haiku-20241022",
+        "m-1",
+    ] {
+        assert_eq!(
+            body_for(model)["temperature"],
+            json!(0.4_f32),
+            "{model} still takes a temperature"
+        );
+    }
+}
+
+#[test]
 fn google_renames_the_assistant_turn() {
     let req = CompletionRequest {
         messages: vec![

@@ -256,13 +256,35 @@ pub(crate) fn anthropic_body(resolved: &Resolved, req: &CompletionRequest) -> Re
     if let Some(system) = req.system.as_ref().filter(|s| !s.is_empty()) {
         body["system"] = json!(system);
     }
-    if let Some(t) = req.temperature {
+    if let Some(t) = req
+        .temperature
+        .filter(|_| anthropic_accepts_temperature(&resolved.model_id))
+    {
         body["temperature"] = json!(t);
     }
     if !req.tools.is_empty() {
         body["tools"] = anthropic_tools(&req.tools);
     }
     Ok(body)
+}
+
+/// Claude models from Opus 4.7 on answer a `temperature` with a 400 (Sonnet
+/// 5.5 and Haiku 5.5 accept only the default), so it goes only to the older
+/// models that still honour it. An id that is not a Claude model keeps it.
+fn anthropic_accepts_temperature(model_id: &str) -> bool {
+    let id = model_id.to_ascii_lowercase();
+    let Some(at) = id.find("claude-") else {
+        return true;
+    };
+    let rest = &id[at + "claude-".len()..];
+    if rest.starts_with('2') || rest.starts_with('3') || rest.starts_with("instant") {
+        return true;
+    }
+    // "sonnet-4", "sonnet-4-20250514", "opus-4-1-20250805", "haiku-4-5"
+    let mut version = rest.split('-').skip(1);
+    let major = version.next();
+    let minor = version.next().unwrap_or("0");
+    major == Some("4") && (minor.len() == 8 || minor.parse::<u32>().is_ok_and(|minor| minor <= 6))
 }
 
 fn google_part(part: &ContentPart) -> Result<Value> {

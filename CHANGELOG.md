@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- With an Anthropic key, the default model is now Claude Opus 5.5, and the
+  model list has Claude Sonnet 5.5, Claude Haiku 5.5 and Claude Fable 5.1.
+  Opus 5.5 costs $4 per million input tokens and $20 per million output
+  tokens. Opus 5 costs $5 and $25. If you already picked a model, Claude
+  Opus 5 included, it stays selected.
+- Usage and budget estimates price the new Claude models. Context size,
+  image support and prices in the model list come from a fresh copy of the
+  models.dev data.
+
+### Fixed
+
+- Paper review stopped with an error on Claude Opus 5 and the newer Claude
+  models, because they reject the temperature setting it sent. Citation
+  suggestions on those models fell back to keyword scores for the same
+  reason, without saying so. Oleafly now leaves the setting out for models
+  that reject it.
+- Oleafly treated Claude Opus 5, Sonnet 5, Fable 5 and the new 5.5 and 5.1
+  models as text-only. The assistant never got the rendered PDF pages and
+  figure previews it asks for to check its work, and Refine with AI and Image
+  to LaTeX were unavailable. These models all accept images, and Oleafly now
+  sends them.
+
 ## [0.4.7] - 2026-10-18
 
 ### Thanks

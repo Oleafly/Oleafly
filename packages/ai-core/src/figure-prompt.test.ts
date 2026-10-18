@@ -21,6 +21,28 @@ describe("vision capability", () => {
     expect(modelSupportsVision("openrouter", "qwen/qwen2-vl-7b")).toBe(true);
   });
 
+  it("recognises every current and saved Claude model as a vision model", () => {
+    for (const id of [
+      "claude-opus-5-5",
+      "claude-sonnet-5-5",
+      "claude-haiku-5-5",
+      "claude-fable-5-1",
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-fable-5",
+      "claude-haiku-4-5",
+      "claude-3-5-haiku-20241022",
+      "anthropic/claude-opus-5.5",
+    ]) {
+      expect(modelSupportsVision("anthropic", id), `${id} accepts images`).toBe(true);
+    }
+  });
+
+  it("does not claim vision for Claude 2 or Instant", () => {
+    expect(modelSupportsVision("anthropic", "claude-2.1")).toBe(false);
+    expect(modelSupportsVision("anthropic", "claude-instant-1.2")).toBe(false);
+  });
+
   it("recognises common local Ollama vision model ids", () => {
     for (const id of ["qwen2.5vl:7b", "qwen3-vl:8b", "gemma3:12b"]) {
       expect(modelSupportsVision("ollama", id), `${id} is a vision model`).toBe(true);

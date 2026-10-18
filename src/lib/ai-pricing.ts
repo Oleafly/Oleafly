@@ -5,6 +5,8 @@ import { formatNumber } from "@/lib/intl";
 export interface ModelPrice {
   inputPerMTok: number;
   outputPerMTok: number;
+  // A second rate card for prompts longer than `aboveInputTokens`.
+  longPrompt?: { aboveInputTokens: number; inputPerMTok: number; outputPerMTok: number };
   note?: string;
 }
 
@@ -20,6 +22,14 @@ const PRICES: Record<string, ModelPrice> = {
   "gpt-4.1-mini": { inputPerMTok: 0.4, outputPerMTok: 1.6 },
   "o3-mini": { inputPerMTok: 1.1, outputPerMTok: 4.4 },
   // Anthropic
+  "claude-fable-5-1": { inputPerMTok: 10, outputPerMTok: 50 },
+  "claude-opus-5-5": { inputPerMTok: 4, outputPerMTok: 20 },
+  "claude-sonnet-5-5": { inputPerMTok: 2, outputPerMTok: 10 },
+  "claude-haiku-5-5": {
+    inputPerMTok: 0.1,
+    outputPerMTok: 0.5,
+    longPrompt: { aboveInputTokens: 100_000, inputPerMTok: 0.5, outputPerMTok: 2.5 },
+  },
   "claude-fable-5": { inputPerMTok: 10, outputPerMTok: 50 },
   "claude-opus-5": { inputPerMTok: 5, outputPerMTok: 25 },
   "claude-sonnet-5": { inputPerMTok: 2, outputPerMTok: 10 },
@@ -99,9 +109,11 @@ export function estimateUsd(
   outputTokens: number,
 ): { usd: number; price: ModelPrice } {
   const price = lookupPrice(modelId);
+  const rates =
+    price.longPrompt && inputTokens > price.longPrompt.aboveInputTokens ? price.longPrompt : price;
   const usd =
-    (Math.max(0, inputTokens) / 1_000_000) * price.inputPerMTok +
-    (Math.max(0, outputTokens) / 1_000_000) * price.outputPerMTok;
+    (Math.max(0, inputTokens) / 1_000_000) * rates.inputPerMTok +
+    (Math.max(0, outputTokens) / 1_000_000) * rates.outputPerMTok;
   return { usd, price };
 }
 

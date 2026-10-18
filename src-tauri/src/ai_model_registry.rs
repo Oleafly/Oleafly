@@ -455,6 +455,27 @@ mod tests {
     }
 
     #[test]
+    fn bundled_catalog_verifies_the_anthropic_default_and_the_models_it_replaced() {
+        let registry = parse_registry(BUNDLED_REGISTRY).unwrap();
+        for id in [
+            oleafly_agent::provider::default_model("anthropic"),
+            "claude-sonnet-5-5",
+            "claude-haiku-5-5",
+            "claude-fable-5-1",
+            "claude-opus-5",
+            "claude-sonnet-5",
+            "claude-haiku-4-5",
+            "claude-fable-5",
+        ] {
+            assert_eq!(
+                registry.catalog_trust("anthropic", id),
+                CatalogTrust::Verified,
+                "{id}"
+            );
+        }
+    }
+
+    #[test]
     fn bundled_catalog_verifies_the_supported_local_ollama_tags() {
         let registry = parse_registry(BUNDLED_REGISTRY).unwrap();
         let available = vec![

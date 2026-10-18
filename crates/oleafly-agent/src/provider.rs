@@ -52,7 +52,7 @@ pub const CATALOG: &[CatalogEntry] = &[
     CatalogEntry {
         id: "anthropic",
         base_url: None,
-        default_model: "claude-opus-5",
+        default_model: "claude-opus-5-5",
         is_host: false,
     },
     CatalogEntry {
