@@ -17,6 +17,9 @@ const MAC_WKWEBVIEW =
 const ITERATOR = Object.getPrototypeOf(Object.getPrototypeOf([][Symbol.iterator]())) as object;
 
 const RECENT_FEATURES: readonly (readonly [object, string])[] = [
+  // Only the constructor is new (Safari 18.4); older engines still have the
+  // iterator prototype it exposes. pdf.js reads it as its modules load.
+  [globalThis, "Iterator"],
   [Math, "sumPrecise"],
   [Promise, "try"],
   [Promise, "withResolvers"],
@@ -69,6 +72,7 @@ const RECENT_BUILT_INS: readonly (readonly [string, RegExp, "polyfilled" | "dete
   ["RegExp.escape", /RegExp\.escape\(/u, "polyfilled"],
   ["Set methods", /\.(?:union|intersection|difference|symmetricDifference|isSubsetOf|isSupersetOf|isDisjointFrom)\(/u, "polyfilled"],
   ["ArrayBuffer transfer", /\.transfer(?:ToFixedLength)?\(/u, "polyfilled"],
+  ["Iterator constructor", /\bIterator\.prototype\b/u, "polyfilled"],
   ["Iterator helpers", /\.(?:keys|values|entries)\(\)\.(?:map|filter|take|drop|flatMap|reduce|toArray|forEach|some|every|find)\(|\.toArray\(\)/u, "polyfilled"],
   ["Iterator.from, concat and zip", /Iterator\.(?:from|concat|zip)\(/u, "missing"],
   ["URL.parse", /URL\.parse\(/u, "polyfilled"],
