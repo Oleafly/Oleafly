@@ -639,18 +639,27 @@ done
     async fn an_idle_watcher_stops_itself() {
         let fixture = Fixture::new("watch-h", "h\n");
         let host = TestHost::new();
+        let idle = Duration::from_secs(1);
         let registry = Registry::new(WatchConfig {
-            idle: Duration::from_secs(1),
+            idle,
             ..fast_config()
         });
+        let before_start = Instant::now();
         let (session, started) = registry.ensure(host.clone(), fixture.target.clone()).await;
-        session.compile(false, started).await.unwrap();
+        // The idle clock starts with the watcher process. On a loaded machine the fake
+        // watcher can take longer than this short idle period to print its first cycle,
+        // and then the session stops before that cycle and the compile says why. Either
+        // way the session has to stop itself, and never sooner than the idle period.
+        if let Err(error) = session.compile(false, started).await {
+            assert_eq!(error, "the live preview stopped after a long idle period");
+        }
         eventually(
             "the idle session stopping",
             || session.state() == WatchState::Idle,
             || format!("{:?} {}", session.state(), host.log()),
         )
         .await;
+        assert!(before_start.elapsed() >= idle);
         assert!(host.statuses().contains(&WatchState::Idle));
     }
 }
