@@ -531,6 +531,23 @@ mod tests {
     }
 
     #[test]
+    fn the_bundled_snapshot_prices_every_cloud_providers_default_model() {
+        let snapshot = parse_snapshot(BUNDLED_METADATA).unwrap();
+        for entry in oleafly_agent::provider::CATALOG
+            .iter()
+            .filter(|p| !p.is_host)
+        {
+            let metadata = snapshot.lookup(entry.id, entry.default_model);
+            assert!(
+                metadata.and_then(|m| m.cost.as_ref()).is_some(),
+                "{} {} has no price in the bundled snapshot",
+                entry.id,
+                entry.default_model
+            );
+        }
+    }
+
+    #[test]
     fn the_bundled_snapshot_prices_claude_opus_5_5() {
         let snapshot = parse_snapshot(BUNDLED_METADATA).unwrap();
         let opus = snapshot.lookup("anthropic", "claude-opus-5-5").unwrap();

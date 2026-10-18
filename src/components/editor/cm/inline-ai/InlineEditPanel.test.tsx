@@ -441,7 +441,7 @@ describe("InlineEditPanel", () => {
       expect(ollama.listOllamaModels).toHaveBeenCalledWith("http://localhost:11434");
       expect(screen.getByTestId("active-model")).toHaveTextContent("openai:my-finetune");
       expect(screen.getByText("openai/my-finetune")).toBeInTheDocument();
-      expect(screen.getByText("openai/gpt-4o-mini")).toBeInTheDocument();
+      expect(screen.getByText("openai/gpt-6-luna")).toBeInTheDocument();
       expect(screen.queryByText(/^google\//)).not.toBeInTheDocument();
     });
 
@@ -467,14 +467,14 @@ describe("InlineEditPanel", () => {
       await renderPanel();
       const announced = vi.fn();
       window.addEventListener("oleafly:ai-config-changed", announced);
-      fireEvent.click(screen.getByText("openai/gpt-5.6-sol"));
+      fireEvent.click(screen.getByText("openai/gpt-6-astra"));
       await waitFor(() => expect(tauri.setConfig).toHaveBeenCalled());
       window.removeEventListener("oleafly:ai-config-changed", announced);
       expect(tauri.setConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ ai_provider: "openai", ai_model: "gpt-5.6-sol" }),
+        expect.objectContaining({ ai_provider: "openai", ai_model: "gpt-6-astra" }),
       );
       await waitFor(() => expect(announced).toHaveBeenCalledOnce());
-      expect(screen.getByTestId("active-model")).toHaveTextContent("openai:gpt-5.6-sol");
+      expect(screen.getByTestId("active-model")).toHaveTextContent("openai:gpt-6-astra");
     });
 
     it("reloads the config when another surface changes it", async () => {

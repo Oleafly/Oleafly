@@ -14,7 +14,8 @@ export async function imageToLatexAvailable(): Promise<boolean> {
     const cfg = await getConfigCached();
     if (!hasConfiguredProvider(cfg)) return false;
     const { providerId, modelId } = pickActiveProvider(cfg);
-    return modelSupportsVision(providerId, modelId);
+    const stored = cfg.ai_provider_models?.[providerId]?.find((model) => model.id === modelId);
+    return modelSupportsVision(providerId, modelId, stored?.metadata?.inputModalities);
   } catch {
     return false;
   }

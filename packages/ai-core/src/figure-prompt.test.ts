@@ -38,6 +38,24 @@ describe("vision capability", () => {
     }
   });
 
+  it("recognises the current GPT-6 and Grok 4 models without metadata", () => {
+    for (const id of ["gpt-6.1-sol", "gpt-6-luna", "gpt-6-astra", "openai/gpt-6-luna"]) {
+      expect(modelSupportsVision("openai", id), `${id} accepts images`).toBe(true);
+    }
+    for (const id of ["grok-4.7", "grok-4.3"]) {
+      expect(modelSupportsVision("xai", id), `${id} accepts images`).toBe(true);
+    }
+    expect(modelSupportsVision("groq", "openai/gpt-oss-120b")).toBe(false);
+  });
+
+  it("trusts catalog metadata that lists image input for ids no pattern knows", () => {
+    expect(modelSupportsVision("deepseek", "deepseek-flash")).toBe(false);
+    expect(modelSupportsVision("deepseek", "deepseek-flash", ["text", "image"])).toBe(true);
+    expect(modelSupportsVision("mistral", "mistral-large-latest", ["text", "image"])).toBe(true);
+    expect(modelSupportsVision("deepseek", "deepseek-v4-pro", ["text"])).toBe(false);
+    expect(modelSupportsVision("anthropic", "claude-opus-5-5", [])).toBe(true);
+  });
+
   it("does not claim vision for Claude 2 or Instant", () => {
     expect(modelSupportsVision("anthropic", "claude-2.1")).toBe(false);
     expect(modelSupportsVision("anthropic", "claude-instant-1.2")).toBe(false);

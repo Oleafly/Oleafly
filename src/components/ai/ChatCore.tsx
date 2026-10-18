@@ -2697,7 +2697,7 @@ ${sandboxedCustom}`;
         takePendingImages: () =>
           drainPendingImages(
             runPendingImages,
-            modelSupportsVision(provider, model),
+            modelSupportsVision(provider, model, runStoredModel?.metadata?.inputModalities),
           ),
         imageInstruction:
           "Here are rendered image(s) from the last tool call: compiled PDF pages, a figure preview, or an image you loaded. Check for overflow, cut-off text, empty regions, overlapping labels, cramped spacing, and legibility. Fix the source if needed, then compile or preview again and re-check.",

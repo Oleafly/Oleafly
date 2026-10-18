@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PROVIDERS } from "@/lib/ai-providers";
 import { estimateUsd, formatUsd, lookupPrice } from "./ai-pricing";
 
 describe("lookupPrice", () => {
@@ -39,6 +40,14 @@ describe("lookupPrice", () => {
     expect(lookupPrice("claude-sonnet-5-5")).toMatchObject({ inputPerMTok: 2, outputPerMTok: 10 });
     expect(lookupPrice("claude-haiku-5-5")).toMatchObject({ inputPerMTok: 0.1, outputPerMTok: 0.5 });
     expect(lookupPrice("claude-fable-5-1")).toMatchObject({ inputPerMTok: 10, outputPerMTok: 50 });
+  });
+
+  it("has a real price row for every built-in model", () => {
+    for (const provider of PROVIDERS) {
+      for (const model of provider.models) {
+        expect(lookupPrice(model.id).note, `${provider.id} ${model.id}`).not.toBe("estimate");
+      }
+    }
   });
 
   it("keeps pricing the older Claude ids people may have saved", () => {

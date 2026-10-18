@@ -520,6 +520,103 @@ fn anthropic_sends_temperature_only_to_claude_models_that_accept_it() {
 }
 
 #[test]
+fn openai_reasoning_models_get_no_temperature() {
+    let req = CompletionRequest {
+        temperature: Some(0.4),
+        ..CompletionRequest::prompt("s", "u")
+    };
+    let body_for = |model: &str| {
+        let openai = Resolved {
+            model_id: model.into(),
+            ..openai_responses()
+        };
+        openai_responses_body(&openai, &req).unwrap()
+    };
+
+    for model in [
+        "gpt-6.1-sol",
+        "gpt-6-luna",
+        "gpt-5.6-terra",
+        "gpt-5",
+        "o3",
+        "o4-mini",
+    ] {
+        assert!(
+            body_for(model).get("temperature").is_none(),
+            "{model} refuses a temperature"
+        );
+    }
+    for model in ["gpt-4o", "gpt-4o-mini", "gpt-4.1-mini", "chatgpt-4o-latest"] {
+        assert_eq!(
+            body_for(model)["temperature"],
+            json!(0.4_f32),
+            "{model} still takes a temperature"
+        );
+    }
+}
+
+#[test]
+fn gemini_3_and_later_get_no_temperature_and_gemini_4_gets_a_thinking_level() {
+    let req = CompletionRequest {
+        temperature: Some(0.4),
+        ..CompletionRequest::prompt("s", "u")
+    };
+    let config_for = |model: &str| {
+        let gemini = Resolved {
+            model_id: model.into(),
+            ..google()
+        };
+        google_body(&gemini, &req).unwrap()["generationConfig"].clone()
+    };
+
+    for model in ["gemini-3.8-flash", "gemini-4-argon", "gemini-flash-latest"] {
+        assert!(
+            config_for(model).get("temperature").is_none(),
+            "{model} gets no temperature"
+        );
+    }
+    for model in ["gemini-2.5-flash", "gemma-3-27b-it"] {
+        assert_eq!(config_for(model)["temperature"], json!(0.4_f32), "{model}");
+    }
+
+    assert_eq!(
+        config_for("gemini-4-argon")["thinkingConfig"],
+        json!({ "includeThoughts": true, "thinkingLevel": "medium" })
+    );
+    assert_eq!(
+        config_for("gemini-3.8-flash")["thinkingConfig"],
+        json!({ "includeThoughts": true })
+    );
+}
+
+#[test]
+fn deepseek_turns_thinking_off_only_for_requests_with_tools() {
+    let deepseek = Resolved {
+        provider_id: "deepseek".into(),
+        model_id: "deepseek-flash".into(),
+        ..openai()
+    };
+    assert_eq!(
+        openai_body(&deepseek, &tool_turn()).unwrap()["thinking"],
+        json!({ "type": "disabled" })
+    );
+    assert!(openai_body(&deepseek, &CompletionRequest::prompt("s", "u"))
+        .unwrap()
+        .get("thinking")
+        .is_none());
+
+    let zai = Resolved {
+        provider_id: "zai".into(),
+        model_id: "glm-5.3".into(),
+        ..openai()
+    };
+    assert!(openai_body(&zai, &tool_turn())
+        .unwrap()
+        .get("thinking")
+        .is_none());
+}
+
+#[test]
 fn google_renames_the_assistant_turn() {
     let req = CompletionRequest {
         messages: vec![

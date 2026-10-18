@@ -29,11 +29,19 @@ function isQwenVisionModel(model: string): boolean {
   return false;
 }
 
-export function modelSupportsVision(provider: string, model: string): boolean {
+// `inputModalities` comes from the model's catalog metadata when the app has
+// it. A model listed with image input counts even when its id matches none of
+// the patterns below.
+export function modelSupportsVision(
+  provider: string,
+  model: string,
+  inputModalities?: readonly string[],
+): boolean {
+  if (inputModalities?.includes("image")) return true;
   const m = model.toLowerCase();
   // OpenRouter ids embed the origin (e.g. "google/gemini-...", "openai/gpt-4o").
   if (/gemini/.test(m)) return true;
-  if (/gpt-4o|gpt-4\.1|gpt-4-turbo|chatgpt-4o|gpt-5|o4/.test(m)) return true;
+  if (/gpt-4o|gpt-4\.1|gpt-4-turbo|chatgpt-4o|gpt-[5-9]|o4/.test(m)) return true;
   // Every Claude model from Claude 3 on accepts images ("claude-3-5-sonnet",
   // "claude-opus-5-5", "anthropic/claude-fable-5.1").
   if (/claude-(?:3|[a-z]{1,20}-(?:[4-9]|[1-9]\d))/.test(m)) return true;
@@ -43,6 +51,6 @@ export function modelSupportsVision(provider: string, model: string): boolean {
   // Gemma 3's 4B, 12B, and 27B variants accept images. The compact 1B model does not.
   if (/gemma3(?!(?::|[-_])?1b\b)/.test(m)) return true;
   if (/^glm-[\d.]+v\b/.test(m)) return true;
-  if (provider === "xai" && /vision/.test(m)) return true;
+  if (provider === "xai" && /vision|grok-[4-9]/.test(m)) return true;
   return false;
 }
