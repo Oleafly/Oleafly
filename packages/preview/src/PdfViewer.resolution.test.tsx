@@ -152,6 +152,8 @@ vi.mock("pdfjs-dist", () => {
 
 import { PdfViewer } from "./PdfViewer";
 
+const jsdomBoundingClientRect = Element.prototype.getBoundingClientRect;
+
 function domRect(left: number, top: number, width: number, height: number): DOMRect {
   return {
     x: left,
@@ -207,6 +209,7 @@ beforeEach(() => {
 
 afterEach(() => {
   Reflect.deleteProperty(window, "matchMedia");
+  vi.restoreAllMocks();
 });
 
 interface Scene {
@@ -226,15 +229,23 @@ async function openPage(scale: number, viewport: [number, number]): Promise<Scen
   const data = new Uint8Array([1]);
   const view = render(<PdfViewer data={data} scale={scale} expectText={false} />);
   const renderer = view.getByTestId("pdf-renderer");
-  await waitFor(() => expect(renderer.dataset.pdfState).toBe("ready"));
   const scrollParent = renderer.parentElement as HTMLElement;
+  // The geometry has to be in place before the first paint. The detail pass
+  // runs on the frame after the base raster lands, and if it measures jsdom's
+  // empty boxes it skips the detail canvas with nothing to ask for it again.
+  let pagePosition: [number, number] = [0, 0];
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    if (this === scrollParent) return domRect(0, 0, viewport[0], viewport[1]);
+    if (this instanceof HTMLElement && this === view.container.querySelector("[data-page='1']")) {
+      return domRect(...pagePosition, Number.parseFloat(this.style.width), Number.parseFloat(this.style.height));
+    }
+    return jsdomBoundingClientRect.call(this);
+  });
+  await waitFor(() => expect(renderer.dataset.pdfState).toBe("ready"));
   const wrap = view.container.querySelector<HTMLElement>("[data-page='1']")!;
   const place = (pageLeft: number, pageTop: number) => {
-    scrollParent.getBoundingClientRect = () => domRect(0, 0, viewport[0], viewport[1]);
-    wrap.getBoundingClientRect = () =>
-      domRect(pageLeft, pageTop, Number.parseFloat(wrap.style.width), Number.parseFloat(wrap.style.height));
+    pagePosition = [pageLeft, pageTop];
   };
-  place(0, 0);
   await waitFor(() => expect(wrap.dataset.pdfRasterScale).toBe(String(scale)));
   return {
     wrap,

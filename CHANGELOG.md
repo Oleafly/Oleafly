@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-10-18
+
 ### Thanks
 
 Many thanks to the people who tested early builds, told us what broke and
@@ -3523,7 +3525,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/Oleafly/Oleafly/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/Oleafly/Oleafly/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/Oleafly/Oleafly/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/Oleafly/Oleafly/compare/v0.4.3...v0.4.4

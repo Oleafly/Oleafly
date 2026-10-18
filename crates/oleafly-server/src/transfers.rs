@@ -1,5 +1,7 @@
 use std::collections::HashMap;
+use std::future::Future;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::task::{Context, Poll, Waker};
 use std::time::Duration;
@@ -92,6 +94,8 @@ pub struct Transfers {
     gate: Arc<Mutex<Gate>>,
     wait: Arc<Mutex<Duration>>,
     accounts: Accounts,
+    // Large transfers in line for room in the budget.
+    in_line: Arc<AtomicUsize>,
 }
 
 impl Default for Transfers {
@@ -118,6 +122,23 @@ impl Drop for AccountTurn {
                 accounts.remove(&self.account);
             }
         }
+    }
+}
+
+// A large transfer's place in line, from the first time it finds no room
+// until it gets room or stops waiting.
+struct InLine<'a>(&'a AtomicUsize);
+
+impl<'a> InLine<'a> {
+    fn join(in_line: &'a AtomicUsize) -> InLine<'a> {
+        in_line.fetch_add(1, Ordering::SeqCst);
+        InLine(in_line)
+    }
+}
+
+impl Drop for InLine<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
     }
 }
 
@@ -311,6 +332,7 @@ impl Transfers {
             gate: Arc::new(Mutex::new(Gate::for_bytes(bytes))),
             wait: Arc::new(Mutex::new(TRANSFER_WAIT)),
             accounts: Arc::new(Mutex::new(HashMap::new())),
+            in_line: Arc::new(AtomicUsize::new(0)),
         }
     }
 
@@ -359,15 +381,53 @@ impl Transfers {
             .turn_for(account, wanted, total)
             .ok_or(ServerError::RateLimited)?;
         let wait = *self.wait.lock().unwrap_or_else(PoisonError::into_inner);
-        let permit = tokio::time::timeout(wait, permits.acquire_many_owned(wanted))
-            .await
-            .map_err(|_| busy())?
-            .ok();
+        let permit =
+            tokio::time::timeout(wait, self.wait_in_line(permits.acquire_many_owned(wanted)))
+                .await
+                .map_err(|_| busy())?
+                .ok();
         Ok(TransferPermit(Some(Held {
             _budget: permit,
             _account: turn,
             deadline: self.timing().limit_for(bytes),
         })))
+    }
+
+    // Waits for room. A transfer joins the line only once the budget has
+    // queued it, so one that finds room at once is never counted.
+    async fn wait_in_line<T>(&self, room: impl Future<Output = T>) -> T {
+        let mut room = std::pin::pin!(room);
+        let mut place = None;
+        std::future::poll_fn(|context| {
+            let polled = room.as_mut().poll(context);
+            if polled.is_pending() && place.is_none() {
+                place = Some(InLine::join(&self.in_line));
+            }
+            polled
+        })
+        .await
+    }
+
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn waiting_for_room(&self) -> usize {
+        self.in_line.load(Ordering::SeqCst)
+    }
+
+    // Room no transfer holds or has been promised.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn room_left(&self) -> u64 {
+        let gate = self.gate.lock().unwrap_or_else(PoisonError::into_inner);
+        gate.permits.available_permits() as u64 * KIB
+    }
+
+    // The size of the large transfers an account has under way, counted
+    // until each one's room goes back.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn under_way(&self, account: AccountId) -> u64 {
+        let accounts = self.accounts.lock().unwrap_or_else(PoisonError::into_inner);
+        accounts
+            .get(&account)
+            .map_or(0, |under_way| u64::from(under_way.kib) * KIB)
     }
 
     pub fn set_timing(&self, timing: UploadTiming) {
@@ -449,6 +509,40 @@ mod tests {
         .expect("a transfer larger than the budget takes all of it rather than waiting forever")
         .expect("room");
         assert!(larger_than_the_budget.0.is_some());
+    }
+
+    #[tokio::test]
+    async fn only_a_transfer_that_finds_no_room_waits_in_line() {
+        let transfers = Transfers::with_budget(2 * SMALL_TRANSFER);
+        let first = transfers
+            .hold(AccountId::new_v7(), 2 * SMALL_TRANSFER)
+            .await
+            .expect("room");
+        assert_eq!(transfers.waiting_for_room(), 0);
+        assert_eq!(transfers.room_left(), 0);
+        let waiting = transfers.hold(AccountId::new_v7(), 2 * SMALL_TRANSFER);
+        tokio::pin!(waiting);
+        assert!(futures_util::poll!(&mut waiting).is_pending());
+        assert_eq!(transfers.waiting_for_room(), 1);
+        drop(first);
+        let second = waiting.await.expect("room");
+        assert_eq!(transfers.waiting_for_room(), 0);
+        drop(second);
+        assert_eq!(transfers.room_left(), 2 * SMALL_TRANSFER);
+        transfers.set_wait(Duration::from_millis(10));
+        let _spent = transfers
+            .hold(AccountId::new_v7(), 2 * SMALL_TRANSFER)
+            .await
+            .expect("room");
+        assert!(transfers
+            .hold(AccountId::new_v7(), 2 * SMALL_TRANSFER)
+            .await
+            .is_err());
+        assert_eq!(
+            transfers.waiting_for_room(),
+            0,
+            "a transfer that gives up leaves the line"
+        );
     }
 
     #[tokio::test]

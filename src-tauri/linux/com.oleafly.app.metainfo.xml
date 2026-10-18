@@ -72,6 +72,9 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.4.7" date="2026-10-18">
+      <url type="details">https://github.com/Oleafly/Oleafly/releases/tag/v0.4.7</url>
+    </release>
     <release version="0.4.7-rc" date="2026-10-16" type="development">
       <url type="details">https://github.com/Oleafly/Oleafly/releases/tag/v0.4.7-rc</url>
     </release>

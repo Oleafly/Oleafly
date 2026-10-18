@@ -1,6 +1,6 @@
 [package]
 name = "oleafly-server"
-version = "0.1.1-rc"
+version = "0.1.1"
 description = "Self-hosted collaboration server for Oleafly"
 license = "AGPL-3.0-or-later"
 publish = false
