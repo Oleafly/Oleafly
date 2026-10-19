@@ -339,6 +339,18 @@ checked our fixes. 💚
 - On macOS and Linux, a placeholder long enough to wrap is no longer cut off
   in the assistant's message box.
 
+### Security
+
+- In the engine dialog, "Download and use TinyTeX" turns on external commands
+  when the project needs them, the same as "Use system LaTeX", but its card
+  didn't say so. It now shows the same warning.
+- The engine dialog can open by itself when you open a project. It put the
+  keyboard focus on "Use system LaTeX", or on "Download and use TinyTeX" when
+  no TeX was installed, so for a project that needs external commands one
+  press of Enter switched the engine and turned them on. For those projects
+  the dialog now opens with no button focused, and Enter does nothing until
+  you pick one.
+
 ## [0.4.6] - 2026-10-09
 
 ### Added
