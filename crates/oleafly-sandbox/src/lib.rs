@@ -549,6 +549,9 @@ pub(crate) struct PlatformRequest<'a> {
     pub temp: &'a Path,
     pub network: bool,
     pub gpu: bool,
+    // Seatbelt denies posix_spawn unless this is set. bubblewrap never
+    // stops a program from starting helpers, so Linux has nothing to read.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     pub child_processes: bool,
     pub readable: &'a [PathBuf],
     pub protected: &'a [PathBuf],

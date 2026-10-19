@@ -365,18 +365,19 @@ jobs:
       - name: Check the shared crates against the Rust 1.87 MSRV
         run: >-
           cargo +1.87.0 check --all-targets
-          -p oleafly-core -p oleafly-secrets -p oleafly-online -p oleafly-doctools
+          -p oleafly-core -p oleafly-secrets -p oleafly-doctools
           -p oleafly-downloads -p oleafly-preflight
           -p oleafly-sandbox -p oleafly-research -p oleafly-forge
 
-      # The CLI links the collaboration client, which needs Rust 1.89.
+      # The CLI links the collaboration client, and online import decrypts
+      # browser cookies with aes 0.9. Both need Rust 1.89.
       - name: Install the CLI's minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
           toolchain: 1.89.0
 
-      - name: Check the CLI against its Rust 1.89 MSRV
-        run: cargo +1.89.0 check -p oleafly-cli --all-targets
+      - name: Check the CLI and online import against their Rust 1.89 MSRV
+        run: cargo +1.89.0 check -p oleafly-cli -p oleafly-online --all-targets
 
   rust-windows:
     name: Rust checks (Windows)

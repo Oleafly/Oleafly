@@ -1118,7 +1118,7 @@ mod tests {
         ));
     }
 
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[cfg(target_os = "macos")]
     fn context(root: &Path) -> TaskRunContext {
         TaskRunContext {
             task_id: "task".into(),

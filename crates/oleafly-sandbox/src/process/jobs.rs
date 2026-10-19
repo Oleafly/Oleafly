@@ -9,7 +9,7 @@ pub fn process_name(pid: i32) -> Option<String> {
         return None;
     }
     let name = std::fs::read_to_string(format!("/proc/{pid}/comm")).ok()?;
-    let name = name.trim_end_matches(|c| c == '\n' || c == '\r');
+    let name = name.trim_end_matches(['\n', '\r']);
     (!name.is_empty()).then(|| name.to_string())
 }
 
