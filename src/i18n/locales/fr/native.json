@@ -19,7 +19,6 @@
     "selectAll": "Tout sélectionner",
     "view": "Affichage",
     "toggleTerminal": "Afficher ou masquer le terminal",
-    "toggleBrowser": "Afficher ou masquer le navigateur",
     "file": "Fichier",
     "openFolder": "Ouvrir un dossier…",
     "openRecent": "Ouvrir l'élément récent",
@@ -28,15 +27,7 @@
     "minimize": "Réduire",
     "fullscreen": "Activer ou désactiver le plein écran",
     "bringAllToFront": "Tout ramener au premier plan",
-    "newTab": "Nouvel onglet",
-    "openLocation": "Ouvrir une adresse…",
-    "closeTab": "Fermer l'onglet",
-    "reloadPage": "Recharger la page",
     "zenMode": "Mode Zen"
-  },
-  "window": {
-    "browser": "Navigateur Oleafly",
-    "browserTitled": "{{title}} - Navigateur Oleafly"
   },
   "dialog": {
     "cancel": "Annuler",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Confirmer l'importation des cookies",
-      "messageHost": "Importer les cookies de {{hostname}} depuis le profil {{browser}} « {{profile}} » vers le navigateur intégré d'Oleafly ? Les cookies importés peuvent vous connecter à des sites web.",
-      "messageAll": "Importer tous les cookies du profil {{browser}} « {{profile}} » vers le navigateur intégré d'Oleafly ? Les cookies importés peuvent vous connecter à des sites web.",
-      "confirm": "Importer les cookies"
+      "copyHost": "Copier dans Oleafly les cookies de {{hostname}} du profil « {{profile}} » de {{browser}} ? Ils peuvent vous connecter à {{hostname}}.",
+      "copyAll": "Copier dans Oleafly tous les cookies du profil « {{profile}} » de {{browser}} ? Ils peuvent vous connecter à des sites web.",
+      "copyConfirm": "Copier les cookies"
     },
     "mcpApprove": {
       "title": "Autoriser l'outil MCP",
@@ -103,6 +94,46 @@
       "confirm": "Utiliser le programme",
       "pickTitle": "Choisissez le programme pour {{name}}",
       "filter": "Programmes"
+    },
+    "desktopApps": {
+      "title": "Applications de bureau",
+      "action": "{{agent}} veut {{action}}.",
+      "steps": "{{agent}} veut effectuer ces étapes dans une application de bureau :",
+      "moreSteps": "Étapes non affichées : {{count}}",
+      "text": "Texte : « {{text}} »",
+      "address": "Adresse : {{url}}",
+      "allowOnce": "Autoriser une fois",
+      "allowChat": "Autoriser pour cette discussion",
+      "allowSession": "Autoriser pour cette session",
+      "allowTask": "Autoriser pour cette tâche",
+      "deny": "Ne pas autoriser",
+      "actions": {
+        "launchApp": "ouvrir une application",
+        "click": "cliquer dans une application",
+        "doubleClick": "double-cliquer dans une application",
+        "rightClick": "faire un clic droit dans une application",
+        "typeText": "saisir du texte dans une application",
+        "pressKey": "appuyer sur une touche dans une application",
+        "hotkey": "utiliser un raccourci clavier dans une application",
+        "scroll": "faire défiler une application",
+        "setValue": "modifier un champ dans une application",
+        "browserPrepare": "ouvrir un navigateur pour un site web",
+        "browserNavigate": "aller sur une page web",
+        "browserClick": "cliquer sur une page web",
+        "browserType": "saisir du texte sur une page web",
+        "browserSelect": "choisir une option sur une page web",
+        "runScript": "exécuter un script Cua"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Autoriser le contrôle du bureau ?",
+      "message": "Les agents pourront utiliser les éléments suivants, et ils demanderont toujours avant chaque action :",
+      "confirm": "Autoriser",
+      "enabled": "Applications de bureau",
+      "app": "Application : {{name}}",
+      "site": "Site web : {{origin}}",
+      "signedIn": "Votre navigateur connecté sur {{origin}}",
+      "scripted": "Scripts Cua"
     }
   },
   "errors": {
@@ -128,5 +159,35 @@
   "cloud": {
     "connectedPage": "Vous êtes connecté. Vous pouvez fermer cet onglet et retourner à Oleafly.",
     "failedPage": "La connexion ne s'est pas terminée. Vous pouvez fermer cet onglet et retourner à Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Tâche prête à être relue",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plan prêt à être approuvé",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Une tâche attend votre approbation",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Tâche arrêtée",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Budget de la tâche épuisé",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly continue de travailler",
+      "body": "Les tâches de recherche que vous avez choisi de poursuivre continuent en arrière-plan. Ouvrez Oleafly pour voir leur progression."
+    }
   }
 }

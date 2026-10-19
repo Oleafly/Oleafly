@@ -3,7 +3,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useFilesStore } from "@/store/files";
-import { useGithubStore } from "@/store/github";
+import { useForgeAccountsStore } from "@/store/forge-accounts";
 import { useSettingsStore } from "@/store/settings";
 
 const mocks = vi.hoisted(() => ({
@@ -116,7 +116,7 @@ describe("Settings Data Storage recycle bin", () => {
       refreshProjects: mocks.refreshProjects,
       closeProject: mocks.closeProject,
     });
-    useGithubStore.setState({ status: "disconnected", user: null });
+    useForgeAccountsStore.setState({ status: "ready", accounts: [], checks: {}, error: null });
     useSettingsStore.setState({
       settingsOpen: true,
       settingsInitialSection: "data",
@@ -131,7 +131,7 @@ describe("Settings Data Storage recycle bin", () => {
     ).toBeInTheDocument();
     expect(await screen.findByText("Research paper")).toBeInTheDocument();
     expect(screen.getByText(/no automatic cleanup/i)).toBeInTheDocument();
-    expect(screen.getByText("Set up GitHub →")).toBeInTheDocument();
+    expect(screen.getByText("Set up Git hosting →")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Restore" }));
 
@@ -196,21 +196,25 @@ describe("Settings Data Storage recycle bin", () => {
     });
   });
 
-  it("hides GitHub setup guidance after GitHub is connected", async () => {
-    useGithubStore.setState({
-      status: "connected",
-      user: {
-        login: "researcher",
-        name: "Researcher",
-        avatar_url: "",
-        html_url: "https://github.com/researcher",
-      },
+  it("hides Git hosting setup guidance once an account is connected", async () => {
+    useForgeAccountsStore.setState({
+      status: "ready",
+      accounts: [
+        {
+          base: "https://gitlab.com",
+          kind: "gitlab",
+          login: "researcher",
+          name: "Researcher",
+          auth: "token",
+          addedAt: 1,
+        },
+      ],
     });
 
     render(<SettingsModal />);
     await screen.findByRole("heading", { name: "Recycle Bin" });
 
-    expect(screen.queryByText("Set up GitHub →")).not.toBeInTheDocument();
+    expect(screen.queryByText("Set up Git hosting →")).not.toBeInTheDocument();
   });
 
   it("confirms before moving every project to the Recycle Bin", async () => {

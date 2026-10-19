@@ -247,7 +247,111 @@ There is no slash command in the CLI agent composer. Typing `/some-skill`
 there sends those characters to the agent as text. Pick the skill, ask for it
 by name, or leave the agent to find it through `list_skills`.
 
-## Skills in research tasks
+## Research tasks
+
+A research task is an agent that works on its own in a copy of the project,
+within limits you set, and leaves its changes for you to review. Start one
+from the Research tab.
+
+### The brief
+
+Every task has a brief: the goal, the success criteria, the scope and
+constraints, an optional main metric with the direction that counts as
+better, and the budget. The budget covers active time, an optional cost
+limit and an optional run limit, and how long a single run may take. Time
+spent waiting for your approval does not count.
+
+The brief also sets what the task may do with commands: run them, ask you
+before each one, or not run them at all. Network access for commands is off
+unless you turn it on. Settings, Research sets the defaults for new tasks.
+
+### Plan first
+
+With "Review the plan first" on, the task writes `plan.md` and stops at
+Plan ready. Read the plan in the task's Review tab, edit it if you want, and
+approve it. The task then carries it out in the same workspace.
+
+### The research record
+
+Each task keeps a record in `research/<task>/` inside its workspace:
+`brief.md`, `plan.md`, `ledger.tsv` (one row per result), `hypotheses.md`,
+`sources.md`, `handoff.md` and `report.md`. Retrying a task with Resume
+continues from `handoff.md` in the same workspace. Start over begins from the
+current project and brings the record along.
+
+### Runs
+
+Long work, such as training or a batch analysis, goes into runs. A run keeps
+going after the agent's turn ends, its output is saved to a log, and numbers
+it prints (`loss=0.25`, or JSON) become metrics. When a run finishes, the task
+wakes up with the result. The Progress tab shows runs in progress, their
+logs, the ledger, the best value of the main metric and the budget used.
+
+Runs continue if you close Oleafly; the task picks them up when it starts
+again.
+
+### Where runs happen
+
+Settings, Research, Compute lists the places a run can go, and each task
+picks one in its brief.
+
+- This computer. Runs use the task command sandbox: Seatbelt on macOS,
+  bubblewrap on Linux (install `bwrap` if it is missing), and on Windows the
+  Windows sandbox, a beta that stays off until you turn it on. Runs here can
+  read your Python, R and Julia installs and the folders linked to the
+  project, and they write only to the task's copy.
+- An SSH host. Oleafly connects with your SSH keys or agent and never asks
+  for or stores a password. The first connection asks you to compare the
+  host key's fingerprints with the ones your administrator gave you. Hosts
+  can come from your SSH config, and setup commands such as
+  `module load python` run before each command.
+- A Slurm cluster, reached over SSH, with the partition, account, QOS, time
+  limit, GPUs, CPUs and memory you set.
+- A Cua Space, either a named one or a new one for each task. A Space runs on
+  a real computer, so runs there are not isolated.
+
+Test on a target checks the connection, a command, free space, Python, the
+GPU and the tools that target needs. Files a run creates come back to
+`runs/<run>/outputs` in the task's copy.
+
+The brief also picks a run profile. Analysis uses your Python and R
+environments with read-only data folders and no GPU, and a run stops after
+30 minutes unless the brief allows more, up to 2 hours. Training adds GPU
+access and longer runs: 4 hours by default, 12 at most.
+
+GPU access in the Windows sandbox isn't verified yet, and Python
+multiprocessing and Node.js programs that start other programs don't work in
+it yet. Use an SSH or Slurm target for that work.
+
+### Keep working after you quit
+
+Mark a task "Keep running when Oleafly is closed" in its brief. When you
+quit, a small background helper takes those tasks over and their runs keep
+going. A step that needs your approval pauses the task and sends a
+notification. When you open Oleafly again it takes the tasks back, and the
+task's activity shows what happened while it was away.
+
+Settings, Research, Background tasks turns this off, can start the helper
+when you sign in to the computer, and shows, stops and logs it.
+`oleafly daemon status` shows the same from a terminal. Tasks that run on a
+schedule or after Oleafly closes can't use desktop apps, because approving a
+click needs you at the computer.
+
+### Approvals and notifications
+
+When a task's commands are set to ask first, each request waits in the
+Research tab and in the task until you approve or deny it, for up to a day.
+Oleafly can keep the computer awake while tasks run and tell you when a task
+needs you. Both are in Settings, Research.
+
+### Evidence checks
+
+When a task finishes, Oleafly checks its result: the project builds, new
+bibliography entries resolve to real records, numbers marked with a run
+(`% run: r004`) match that run's metrics, and new figures exist and are
+used. The checks only warn. They never stop you from applying the result.
+
+### Skills in research tasks
 
 A research task carries whichever skills were picked for it, and it checks
 them when it starts. Each one has to be available in the project, which means
@@ -260,10 +364,9 @@ command for every bundled script, the list of supporting files, and the full
 instructions. The folders are mounted read-only in the task command sandbox
 too, so a script runs where it lives, by absolute path, and the task cannot
 write back into it. Supporting files come through the bridge's
-`read_skill_file`, the same as anywhere else. Task commands run only on macOS
-and Linux. On Windows, a research task run by the Oleafly Assistant can read
-and write files but cannot run commands, so a skill's scripts do not run
-there.
+`read_skill_file`, the same as anywhere else. Task commands run on macOS and
+Linux, and on Windows once the Windows sandbox is on (Settings, Research,
+Compute).
 
 ## Where skills live on disk
 

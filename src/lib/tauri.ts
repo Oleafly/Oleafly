@@ -74,9 +74,15 @@ import type {
   GitWorktreeOperationResult,
   GitFileChange,
   GitWorkspaceSnapshot,
-  GitHubRepo,
+  ForgeAccount,
+  ForgeAccountCheck,
+  ForgeDevicePoll,
+  ForgeDeviceStart,
+  ForgeKind,
+  ForgeRepo,
+  ForgeRepoPage,
+  ForgeServerInfo,
   GitHubRepoStats,
-  GitHubUser,
   GitPullResult,
   GitPublishPreflight,
   GitPublishPrepared,
@@ -120,6 +126,7 @@ import type {
   TexStatus,
   TinytexInstallState,
   ToolDecision,
+  ToolsModelChoice,
   TypstSource,
   UsageTotals,
   ValidatedCompileFingerprint,
@@ -364,6 +371,25 @@ export const loadProjectChats = (projectId: string) =>
 export const saveProjectChats = (projectId: string, json: string) =>
   invoke<void>("save_project_chats", { projectId, json });
 
+/** A project's chats, newest first; chats past the load budget come as stubs. */
+export interface ChatsLoadResult {
+  json: string;
+  skipped: number;
+}
+
+export const chatsLoad = (projectId: string) =>
+  invoke<ChatsLoadResult>("chats_load", { projectId });
+
+export const chatRead = (projectId: string, chatId: string) =>
+  invoke<string>("chat_read", { projectId, chatId });
+
+/** Saves one chat; `index: false` skips the search index (streaming saves). */
+export const chatSave = (projectId: string, chatId: string, json: string, index?: boolean) =>
+  invoke<void>("chat_save", { projectId, chatId, json, index: index ?? true });
+
+export const chatDelete = (projectId: string, chatId: string) =>
+  invoke<void>("chat_delete", { projectId, chatId });
+
 export const listFiles = (projectId: string) =>
   invoke<FileEntry[]>("list_files", { projectId });
 
@@ -544,7 +570,8 @@ export interface AdHocArtifact {
 }
 
 export interface AdHocConversionRequest {
-  source: "latex" | "markdown" | "typst" | "html" | "docx" | "equation";
+  /** `ocr-markdown` / `ocr-fragment`: Markdown an OCR model or Mathpix wrote. */
+  source: "latex" | "markdown" | "typst" | "html" | "docx" | "equation" | "ocr-markdown" | "ocr-fragment";
   target: "latex" | "markdown" | "typst" | "html" | "docx";
   text?: string;
   dataBase64?: string;
@@ -1418,6 +1445,9 @@ export const searchProject = (projectId: string, query: string) =>
 export const getConfig = () => invoke<AppConfig>("get_config");
 export const setConfig = (config: AppConfig) =>
   invoke<void>("set_config", { config });
+/** The model the Tools converters use; null = automatic local (Ollama). */
+export const setAiToolsModel = (choice: ToolsModelChoice | null) =>
+  invoke<void>("set_ai_tools_model", { choice });
 export const seedStarterPersonas = (starters: Persona[]) =>
   invoke<AppConfig>("seed_starter_personas", { starters });
 
@@ -1572,21 +1602,47 @@ export const mcpToolResult = (
   rendererSession: number,
 ) => invoke<void>("mcp_tool_result", { callId, result, rendererSession });
 
-// --- GitHub (token stays in the Rust core; these never take/return it) ---
-
-export const ghCurrentUser = () => invoke<GitHubUser>("gh_current_user");
-export const ghSetToken = (token: string) =>
-  invoke<GitHubUser>("gh_set_token", { token });
-export const ghClearToken = () => invoke<void>("gh_clear_token");
-export const ghListRepos = () => invoke<GitHubRepo[]>("gh_list_repos");
-export const ghCreateRepo = (name: string, isPrivate: boolean) =>
-  invoke<GitHubRepo>("gh_create_repo", { name, private: isPrivate });
 export const ghPublicRepoStats = (fullName: string) =>
   invoke<GitHubRepoStats>("gh_public_repo_stats", { fullName });
 export const discordCommunityStats = () =>
   invoke<DiscordCommunityStats>("discord_community_stats");
-export const ghImportRepo = (fullName: string) =>
-  invoke<string>("gh_import_repo", { fullName });
+
+// --- Git hosting accounts. Tokens stay in the Rust core: a pasted token is
+// sent once to sign in, and nothing here ever returns one. ---
+
+export const FORGE_ACCOUNTS_CHANGED_EVENT = "forge-accounts-changed";
+
+export const forgeAccountsList = () => invoke<ForgeAccount[]>("forge_accounts_list");
+export const forgeDetect = (base: string, caFile?: string | null) =>
+  invoke<ForgeServerInfo>("forge_detect", { base, caFile: caFile ?? null });
+export const forgeSignInToken = (
+  base: string,
+  kind: ForgeKind,
+  token: string,
+  caFile?: string | null,
+) => invoke<ForgeAccount>("forge_sign_in_token", { base, kind, token, caFile: caFile ?? null });
+export const forgeDeviceStart = (base: string) =>
+  invoke<ForgeDeviceStart>("forge_device_start", { base });
+export const forgeDevicePoll = (flowId: string) =>
+  invoke<ForgeDevicePoll>("forge_device_poll", { flowId });
+export const forgeDeviceCancel = (flowId: string) =>
+  invoke<void>("forge_device_cancel", { flowId });
+export const forgeSignOut = (base: string) => invoke<void>("forge_sign_out", { base });
+export const forgeSetCaFile = (base: string, caFile: string | null) =>
+  invoke<ForgeAccount>("forge_set_ca_file", { base, caFile });
+export const forgeValidate = (base: string) =>
+  invoke<ForgeAccountCheck>("forge_validate", { base });
+export const forgeListRepos = (base: string, page: number, query?: string | null) =>
+  invoke<ForgeRepoPage>("forge_list_repos", { base, page, query: query ?? null });
+export const forgeCreateRepo = (base: string, name: string, isPrivate: boolean) =>
+  invoke<ForgeRepo>("forge_create_repo", { base, name, private: isPrivate });
+export const forgeImportRepo = (base: string, fullName: string) =>
+  invoke<string>("forge_import_repo", { base, fullName });
+export const gitCloneProject = (url: string) => invoke<string>("git_clone_project", { url });
+
+export function onForgeAccountsChanged(handler: () => void): Promise<UnlistenFn> {
+  return listen<null>(FORGE_ACCOUNTS_CHANGED_EVENT, () => handler());
+}
 
 export const COLLAB_OPEN_LINK_EVENT = "collab-open-link";
 

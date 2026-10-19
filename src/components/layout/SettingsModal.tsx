@@ -78,7 +78,7 @@ import {
   type GrammarDialect,
 } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
-import { useGithubStore } from "@/store/github";
+import { useForgeAccountsStore } from "@/store/forge-accounts";
 import { useCloudStore } from "@/store/cloud";
 import { useTemplateLinkStore } from "@/store/template-link";
 import {
@@ -139,7 +139,7 @@ import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMa
 import {
   githubGetPublicRepoStats,
   type GitHubRepoStats,
-} from "@/lib/github";
+} from "@/lib/forge";
 import { Badge } from "@/components/ui/badge";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 
@@ -158,6 +158,13 @@ const CloudTab = lazy(() =>
 );
 const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
+);
+
+const ResearchSettingsSection = lazy(() =>
+  Promise.all([
+    import("@/components/settings/research/ResearchSettingsSection"),
+    loadNamespace("researchTools"),
+  ]).then(([module]) => ({ default: module.ResearchSettingsSection })),
 );
 
 const CollaborationSection = lazy(() =>
@@ -215,6 +222,13 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
       return i18n.t(($) => $.shell.settings.nav.ai);
     },
     icon: Sparkles,
+  },
+  {
+    id: "research",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.research);
+    },
+    icon: FlaskConical,
   },
   {
     id: "engine",
@@ -313,8 +327,6 @@ export function SettingsModal() {
   const offline = useSettingsStore((s) => s.offline);
   const setOffline = useSettingsStore((s) => s.setOffline);
   const latexTools = useSettingsStore((s) => s.latexTools);
-  const webBrowser = useSettingsStore((s) => s.webBrowser);
-  const setWebBrowser = useSettingsStore((s) => s.setWebBrowser);
   const liveCollaboration = useSettingsStore((s) => s.liveCollaboration);
   const setLiveCollaboration = useSettingsStore((s) => s.setLiveCollaboration);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
@@ -324,7 +336,8 @@ export function SettingsModal() {
   const libraryProjects = projects.filter(isLibraryProject);
   const closeProject = useFilesStore((s) => s.closeProject);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
-  const githubStatus = useGithubStore((s) => s.status);
+  const forgeStatus = useForgeAccountsStore((s) => s.status);
+  const forgeAccountCount = useForgeAccountsStore((s) => s.accounts.length);
 
   const [section, setSection] = useState<Section>("general");
   const [dataTab, setDataTab] = useState("local");
@@ -446,6 +459,11 @@ export function SettingsModal() {
   useEffect(() => {
     if (!liveCollaboration && section === "collaboration") setSection("general");
   }, [liveCollaboration, section]);
+
+  // The data section suggests Git hosting while no account is connected.
+  useEffect(() => {
+    if (open && section === "data") void useForgeAccountsStore.getState().ensureLoaded();
+  }, [open, section]);
 
   useEffect(() => {
     if (!open || section !== "data" || !isTauri()) return;
@@ -778,12 +796,6 @@ export function SettingsModal() {
           onChange={setLatexTools}
         />
         <SettingsToggleRow
-          label={t(($) => $.shell.settings.experimentation.webBrowser.label)}
-          description={t(($) => $.shell.settings.experimentation.webBrowser.description)}
-          checked={webBrowser}
-          onChange={setWebBrowser}
-        />
-        <SettingsToggleRow
           testId="settings-live-collaboration"
           label={t(($) => $.shell.settings.experimentation.liveCollaboration.label)}
           description={t(($) => $.shell.settings.experimentation.liveCollaboration.description)}
@@ -820,6 +832,11 @@ export function SettingsModal() {
       {renderDataSection()}
 
       {section === "ai" && <AISection />}
+      {section === "research" && (
+        <Suspense fallback={null}>
+          <ResearchSettingsSection />
+        </Suspense>
+      )}
 
       {section === "engine" && <EngineSection />}
       {section === "downloads" && <DownloadsSection />}
@@ -986,20 +1003,23 @@ export function SettingsModal() {
           </div>
           {renderRecycleBin()}
         </section>
-        {githubStatus === "disconnected" ? (
+        {forgeStatus === "ready" && forgeAccountCount === 0 ? (
         <div className="flex items-start gap-2 rounded-lg border border-dashed bg-card p-3 text-xs text-muted-foreground">
-          <Github className="mt-0.5 size-4 shrink-0" />
+          <GitFork className="mt-0.5 size-4 shrink-0" />
           <span>
             <Trans
               ns="shell"
-              i18nKey={($) => $.shell.settings.data.githubHint}
+              i18nKey={($) => $.shell.settings.data.gitHostingHint}
               components={{
                 push: <strong className="font-medium text-foreground" />,
                 pull: <strong className="font-medium text-foreground" />,
                 setup: (
                   <button
                     type="button"
-                    onClick={() => setSection("integrations")}
+                    onClick={() => {
+                      useSettingsStore.getState().setSettingsScrollTarget("git-hosting");
+                      setSection("integrations");
+                    }}
                     className="font-medium text-primary hover:underline"
                   />
                 ),

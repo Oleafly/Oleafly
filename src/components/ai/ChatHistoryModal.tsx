@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MessageSquareQuote, Search, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { StoredChat } from "@/store/chats";
+import { chatMessageCount, type StoredChat } from "@/store/chats";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { i18n } from "@/i18n";
 import { formatUsd } from "@/lib/ai-pricing";
@@ -42,6 +42,7 @@ export function ChatHistoryModal({
   onClose,
   onOpen,
   onDelete,
+  skipped = 0,
 }: Readonly<{
   open: boolean;
   chats: StoredChat[];
@@ -50,6 +51,8 @@ export function ChatHistoryModal({
   onClose: () => void;
   onOpen: (chat: StoredChat) => void;
   onDelete: (chatId: string) => void;
+  /** Chat files the last load could not read. */
+  skipped?: number;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -116,7 +119,7 @@ export function ChatHistoryModal({
               </div>
               <div className="mt-0.5 pl-5 text-[0.6875rem] text-muted-foreground">
                 {relativeTime(chat.updatedAt)} ·{" "}
-                {t(($) => $.ai.history.messages, { count: chat.messages.length })}
+                {t(($) => $.ai.history.messages, { count: chatMessageCount(chat) })}
                 {chat.usage &&
                 chat.usage.inputTokens + chat.usage.outputTokens > 0
                   ? ` · ${t(($) => $.ai.history.tokens, {
@@ -209,6 +212,15 @@ export function ChatHistoryModal({
         </div>
       </div>
 
+      {skipped > 0 && (
+        <p
+          data-testid="chat-history-skipped"
+          role="status"
+          className="shrink-0 px-4 pb-2 text-xs text-muted-foreground"
+        >
+          {t(($) => $.ai.history.skipped, { count: skipped })}
+        </p>
+      )}
       <div ref={listRef} className="min-h-0 flex-1 overflow-auto p-2">
         {chats.length === 0 ? (
           <p className="px-3 py-10 text-center text-sm text-muted-foreground">

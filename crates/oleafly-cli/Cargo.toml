@@ -5,24 +5,47 @@ description = "Command-line interface for Oleafly projects"
 license = "AGPL-3.0-or-later"
 publish = false
 edition = "2021"
-rust-version = "1.87"
+rust-version = "1.89"
 
 [[bin]]
 name = "oleaflyc"
 path = "src/main.rs"
 
+[features]
+default = []
+# Spelling and grammar in `oleafly lint` (harper-core, a large dependency).
+# The default build leaves it out; release archives and the app-bundled CLI
+# turn it on.
+proofread = ["oleafly-lint/proofread"]
+
 [dependencies]
+anstream = "1"
+anstyle = "1"
 clap = { version = "4.6", features = ["derive"] }
 clap_complete = "4.6"
 clap_mangen = "0.3"
 dunce = "1.0"
+fs4 = "1.1"
+futures-util = "0.3"
 notify = "8.2"
 oleafly-core = { path = "../oleafly-core" }
+oleafly-doctools = { path = "../oleafly-doctools" }
+oleafly-downloads = { path = "../oleafly-downloads" }
+oleafly-history = { path = "../oleafly-history" }
+oleafly-lint = { path = "../oleafly-lint", default-features = false }
+oleafly-preflight = { path = "../oleafly-preflight" }
+oleafly-research = { path = "../oleafly-research" }
+oleafly-secrets = { path = "../oleafly-secrets" }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
+similar = "2"
+tempfile = { workspace = true }
+toml_edit = "0.25"
 tokio = { version = "1", features = [
   "fs",
+  "io-std",
   "io-util",
   "macros",
   "process",
@@ -31,6 +54,29 @@ tokio = { version = "1", features = [
   "sync",
   "time",
 ] }
+zeroize = "=1.9.0"
+# 0.4.8 F2: accounts, the online LaTeX service and collaboration servers
+# (`oleafly auth`, `oleafly remote`, `oleafly server`).
+oleafly-collab = { path = "../oleafly-collab" }
+oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
+oleafly-online = { path = "../oleafly-online" }
+open = "5"
+rpassword = "7"
+url = "2.5"
+# 0.4.8 F2 end
+# 0.4.8 L: the headless agent (`oleafly agent run`, `oleafly ask`) and the
+# background helper (`oleafly daemon`).
+aho-corasick = "1"
+async-trait = "0.1"
+cap-fs-ext = "=4.0.3"
+cap-std = "=4.0.3"
+notify-rust = { version = "4.18", default-features = false, features = ["z-with-tokio"] }
+oleafly-acp = { path = "../oleafly-acp" }
+oleafly-agent = { path = "../oleafly-agent" }
+oleafly-sandbox = { path = "../oleafly-sandbox" }
+rand = "0.8"
+regex = "1"
+# 0.4.8 L end
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -42,7 +88,16 @@ windows-sys = { version = "0.61", features = [
   "Win32_System_JobObjects",
   "Win32_System_Registry",
   "Win32_System_Threading",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
+[build-dependencies]
+serde_json = "1"
+
 [dev-dependencies]
+oleafly-core = { path = "../oleafly-core" }
+# 0.4.8 F2: the online service's fixture server and cookie-store builder.
+oleafly-online = { path = "../oleafly-online", features = ["test-support"] }
+# The helper's tests hand tasks between owners (`TaskStore::set_owner`).
+oleafly-research = { path = "../oleafly-research", features = ["test-support"] }
 tempfile = { workspace = true }

@@ -1,0 +1,95 @@
+// @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import type { InstalledApp } from "@/lib/desktop-apps";
+
+const mocks = vi.hoisted(() => ({
+  installed: vi.fn(),
+  pick: vi.fn(),
+}));
+
+vi.mock("@/lib/desktop-apps", () => ({
+  cuaDriverInstalledApps: mocks.installed,
+  cuaDriverStatus: vi.fn(),
+  cuaDriverPickApp: mocks.pick,
+}));
+
+import AppPickerDialog from "./AppPickerDialog";
+import { filterApps, MAX_PICKER_ROWS } from "./desktop-apps-queries";
+
+const copy = enSettings.integrations.desktopApps.apps;
+
+function renderPicker(onPick = vi.fn(), existing: InstalledApp[] = []) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <AppPickerDialog open onOpenChange={vi.fn()} existing={existing} onPick={onPick} />
+    </QueryClientProvider>,
+  );
+  return onPick;
+}
+
+beforeEach(() => {
+  mocks.installed.mockReset();
+  mocks.pick.mockReset();
+  Element.prototype.hasPointerCapture = vi.fn(() => false);
+  Element.prototype.scrollIntoView = vi.fn();
+});
+
+describe("AppPickerDialog", () => {
+  it("lists apps with blocked ones disabled and explained", async () => {
+    mocks.installed.mockResolvedValue([
+      { name: "Terminal", bundleId: "com.apple.Terminal", blocked: "terminal" },
+      { name: "Zotero", bundleId: "org.zotero.zotero" },
+    ]);
+    const user = userEvent.setup();
+    const onPick = renderPicker();
+    const terminal = await screen.findByRole("button", { name: /^Terminal/ });
+    expect(terminal).toBeDisabled();
+    expect(screen.getByText(copy.blocked.terminal)).toBeVisible();
+    expect(screen.getByText("Terminals run commands without Oleafly's command approval.")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: /^Zotero/ }));
+    await user.click(screen.getByRole("button", { name: copy.dialog.add }));
+    expect(onPick).toHaveBeenCalledWith({ name: "Zotero", bundleId: "org.zotero.zotero" });
+  });
+
+  it("filters thousands of apps and shows at most 200", async () => {
+    const apps: InstalledApp[] = Array.from({ length: 3000 }, (_, index) => ({
+      name: `App ${index}`,
+      executable: `/opt/app${index}/run`,
+    }));
+    mocks.installed.mockResolvedValue(apps);
+    const user = userEvent.setup();
+    renderPicker();
+    const list = await screen.findByTestId("desktop-apps-picker-list");
+    expect(within(list).getAllByRole("button")).toHaveLength(MAX_PICKER_ROWS);
+    await user.type(screen.getByRole("searchbox", { name: copy.dialog.search }), "app 12");
+    await waitFor(() => {
+      const rows = within(screen.getByTestId("desktop-apps-picker-list")).getAllByRole("button");
+      expect(rows.length).toBeLessThanOrEqual(MAX_PICKER_ROWS);
+      expect(rows.every((row) => row.textContent?.toLowerCase().includes("app 12"))).toBe(true);
+    });
+    expect(filterApps(apps, "app 12").length).toBe(111);
+    expect(filterApps(apps, "").length).toBe(MAX_PICKER_ROWS);
+  });
+
+  it("marks apps that are already allowed", async () => {
+    mocks.installed.mockResolvedValue([{ name: "Zotero", bundleId: "org.zotero.zotero" }]);
+    renderPicker(vi.fn(), [{ name: "Zotero", bundleId: "ORG.zotero.zotero" }]);
+    expect(await screen.findByRole("button", { name: /^Zotero/ })).toBeDisabled();
+  });
+
+  it("explains a blocked app chosen in the file dialog", async () => {
+    mocks.installed.mockResolvedValue([]);
+    mocks.pick.mockResolvedValue({ name: "Bash", executable: "/bin/bash", blocked: "terminal" });
+    const user = userEvent.setup();
+    const onPick = renderPicker();
+    await user.click(await screen.findByRole("button", { name: copy.dialog.choose }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.blocked.terminal);
+    expect(onPick).not.toHaveBeenCalled();
+  });
+});

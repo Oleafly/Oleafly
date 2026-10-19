@@ -1,35 +1,22 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use futures_util::{stream, StreamExt};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::Value;
+
+pub use oleafly_online::projects::RemoteProject;
 
 use super::client::{self, Http};
+use super::errors::app_error;
 use super::session::{self, Session};
 use super::socket;
 use crate::app_error::AppError;
 
 const CONCURRENT_IMPORTS: usize = 2;
-const SERVICE: &str = "overleaf";
 
 static STAGING: AtomicU64 = AtomicU64::new(0);
-
-#[derive(Serialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoteProject {
-    pub id: String,
-    pub name: String,
-    pub owner_name: Option<String>,
-    pub owned: bool,
-    pub access: String,
-    pub last_updated: Option<String>,
-    pub last_updated_by: Option<String>,
-    pub archived: bool,
-    pub imported_as: Option<String>,
-}
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(tag = "phase", rename_all = "camelCase")]
@@ -61,152 +48,32 @@ pub struct ImportOutcome {
     pub error: Option<String>,
 }
 
-fn person_name(value: &Value) -> Option<String> {
-    let text = |key: &str| {
-        value
-            .get(key)
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .unwrap_or_default()
-    };
-    let full = format!("{} {}", text("firstName"), text("lastName"))
-        .trim()
-        .to_string();
-    if !full.is_empty() {
-        return Some(full);
-    }
-    Some(text("email").to_string()).filter(|email| !email.is_empty())
-}
-
-pub(crate) fn remote_project(value: &Value, user_id: &str) -> Option<RemoteProject> {
-    let id = value
-        .get("id")
-        .or_else(|| value.get("_id"))
-        .and_then(Value::as_str)?
-        .to_string();
-    if !client::valid_project_id(&id) || value.get("trashed").and_then(Value::as_bool) == Some(true)
-    {
-        return None;
-    }
-    let name = value
-        .get("name")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-        .unwrap_or("Untitled project")
-        .to_string();
-    let owner = value.get("owner");
-    let owner_id = owner
-        .and_then(|owner| owner.get("id").or_else(|| owner.get("_id")))
-        .and_then(Value::as_str);
-    let access = value
-        .get("accessLevel")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string();
-    Some(RemoteProject {
-        owned: access == "owner" || owner_id == Some(user_id),
-        owner_name: owner.and_then(person_name),
-        access,
-        last_updated: value
-            .get("lastUpdated")
-            .and_then(Value::as_str)
-            .map(str::to_string),
-        last_updated_by: value.get("lastUpdatedBy").and_then(person_name),
-        archived: value
-            .get("archived")
-            .and_then(Value::as_bool)
-            .unwrap_or(false),
-        imported_as: None,
-        name,
-        id,
-    })
-}
-
+/// Remote project id -> library project id, for projects imported from
+/// `base`.
 pub(crate) fn imported_projects(base: &str) -> HashMap<String, String> {
     let Ok(root) = crate::paths::projects_root() else {
         return HashMap::new();
     };
-    let Ok(entries) = std::fs::read_dir(&root) else {
-        return HashMap::new();
-    };
-    let mut found = HashMap::new();
-    for entry in entries.flatten() {
-        let Ok(raw) = std::fs::read_to_string(entry.path().join("project.json")) else {
-            continue;
-        };
-        let Ok(meta) = serde_json::from_str::<Value>(&raw) else {
-            continue;
-        };
-        let Some(origin) = meta.get("importedFrom") else {
-            continue;
-        };
-        let text = |key: &str| origin.get(key).and_then(Value::as_str);
-        if text("service") == Some(SERVICE) && text("server") == Some(base) {
-            if let (Some(remote), Some(local)) = (text("projectId"), entry.file_name().to_str()) {
-                found.insert(remote.to_string(), local.to_string());
-            }
-        }
-    }
-    found
+    oleafly_online::projects::imported_projects(&root, base)
 }
 
+/// The account's projects, newest first, each marked with the library
+/// project it was imported as. An expired session is forgotten.
 pub(crate) async fn list(base: &str) -> Result<(Session, Vec<RemoteProject>), String> {
-    let stored =
-        session::load(base)?.ok_or_else(|| String::from(AppError::new("overleaf.signed_out")))?;
     let http = Http::new(base)?;
-    let dashboard = match http.dashboard(&stored.cookie).await {
-        Ok(dashboard) => dashboard,
-        Err(error) => {
-            if client::is_expired(&error) {
-                let _ = session::forget(base);
-            }
-            return Err(error);
-        }
-    };
-    let cookie = session::merge_set_cookies(
-        &stored.cookie,
-        dashboard.set_cookies.iter().map(String::as_str),
-    );
-    let _ = session::refresh_cookie(base, &stored, &cookie);
-    let mut raw = dashboard.projects.clone();
-    if client::needs_api(&dashboard) {
-        if let Some(csrf) = dashboard.csrf.as_deref() {
-            if let Ok(list) = http
-                .api_projects(&cookie, csrf, client::api_size(&dashboard))
-                .await
-            {
-                if raw.as_ref().is_none_or(|known| list.len() >= known.len()) {
-                    raw = Some(list);
-                }
-            }
-        }
-    }
-    let raw = raw.ok_or_else(|| String::from(AppError::new("overleaf.unrecognized")))?;
+    let store = crate::secrets::store()?;
+    let (session, mut projects) = oleafly_online::projects::list_projects(http.online(), &store)
+        .await
+        .map_err(app_error)?;
     let imported = tauri::async_runtime::spawn_blocking({
         let base = base.to_string();
         move || imported_projects(&base)
     })
     .await
     .unwrap_or_default();
-    let mut projects: Vec<RemoteProject> = raw
-        .iter()
-        .filter_map(|value| remote_project(value, &dashboard.user_id))
-        .map(|mut project| {
-            project.imported_as = imported.get(&project.id).cloned();
-            project
-        })
-        .collect();
-    projects.sort_by(|left, right| right.last_updated.cmp(&left.last_updated));
-    let session = Session {
-        cookie,
-        user_id: dashboard.user_id,
-        email: if dashboard.email.is_empty() {
-            stored.email
-        } else {
-            dashboard.email
-        },
-    };
+    for project in &mut projects {
+        project.imported_as = imported.get(&project.id).cloned();
+    }
     Ok((session, projects))
 }
 
@@ -218,13 +85,6 @@ fn staging_path() -> Result<PathBuf, String> {
         std::process::id(),
         STAGING.fetch_add(1, Ordering::SeqCst)
     )))
-}
-
-fn epoch_seconds() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|elapsed| elapsed.as_secs())
-        .unwrap_or_default()
 }
 
 struct Staged(PathBuf);
@@ -240,15 +100,12 @@ pub(crate) fn origin_record(
     remote: &RemoteProject,
     settings: &socket::ProjectSettings,
 ) -> Value {
-    json!({
-        "service": SERVICE,
-        "server": base,
-        "projectId": remote.id,
-        "name": remote.name,
-        "importedAt": epoch_seconds(),
-        "compiler": settings.compiler,
-        "texLive": settings.tex_live,
-    })
+    oleafly_online::projects::origin_record(
+        base,
+        remote,
+        settings,
+        oleafly_online::sync::now_seconds(),
+    )
 }
 
 pub(crate) fn import_archive(

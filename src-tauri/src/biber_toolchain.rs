@@ -14,42 +14,17 @@ pub fn find_tectonic_biber() -> Option<PathBuf> {
         .find(|path| path.is_file())
 }
 
-pub const UNPACK_ENV: &str = "PAR_GLOBAL_TMPDIR";
-
-const FINGERPRINT_SAMPLE_BYTES: u64 = 1024 * 1024;
-
-const LAST_USED_MARKER: &str = ".last-used";
+// The unpack folder, fingerprints and the compile PATH are shared with the
+// CLI through `oleafly_core::biber_env`.
+pub(crate) use oleafly_core::biber_env::unpack_dir_for;
+#[cfg(test)]
+use oleafly_core::biber_env::{binary_fingerprint, stamp_last_use, FINGERPRINT_SAMPLE_BYTES};
+use oleafly_core::biber_env::{fingerprint, push_unique, LAST_USED_MARKER};
+pub use oleafly_core::biber_env::{prepare_unpack_dir, unpack_root, UNPACK_ENV};
 
 const UNUSED_GRACE: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 60 * 60);
 
 const TOMBSTONE_MARK: &str = ".deleting-";
-
-pub fn unpack_root(data_root: &Path) -> PathBuf {
-    data_root.join("assets").join("biber")
-}
-
-pub(crate) fn unpack_dir_for(data_root: &Path, biber: &Path) -> Option<PathBuf> {
-    fingerprint(biber).map(|fingerprint| unpack_root(data_root).join(fingerprint))
-}
-
-pub fn prepare_unpack_dir(data_root: &Path, biber: &Path) -> Option<PathBuf> {
-    let dir = unpack_dir_for(data_root, biber)?;
-    std::fs::create_dir_all(&dir).ok()?;
-    if !dir.is_dir() {
-        return None;
-    }
-    let _ = stamp_last_use(&dir, std::time::SystemTime::now());
-    Some(dir)
-}
-
-fn stamp_last_use(dir: &Path, when: std::time::SystemTime) -> std::io::Result<()> {
-    std::fs::OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .write(true)
-        .open(dir.join(LAST_USED_MARKER))?
-        .set_modified(when)
-}
 
 pub fn biber_for_child(program: &Path, path_env: &std::ffi::OsStr) -> Option<PathBuf> {
     choose_child_biber(program, path_env, find_tectonic_biber)
@@ -350,61 +325,6 @@ pub(crate) fn bibers_for_programs(programs: &[PathBuf]) -> Vec<PathBuf> {
     bibers
 }
 
-type FingerprintCache =
-    std::collections::HashMap<PathBuf, (u64, Option<std::time::SystemTime>, String)>;
-
-fn fingerprint(path: &Path) -> Option<String> {
-    static CACHE: std::sync::OnceLock<std::sync::Mutex<FingerprintCache>> =
-        std::sync::OnceLock::new();
-    let metadata = std::fs::metadata(path).ok()?;
-    let stamp = (metadata.len(), metadata.modified().ok());
-    let cache = CACHE.get_or_init(Default::default);
-    let lock = || {
-        cache
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-    };
-    if let Some((len, modified, fingerprint)) = lock().get(path) {
-        if (*len, *modified) == stamp {
-            return Some(fingerprint.clone());
-        }
-    }
-    let fingerprint = binary_fingerprint(path).ok()?;
-    lock().insert(path.to_path_buf(), (stamp.0, stamp.1, fingerprint.clone()));
-    Some(fingerprint)
-}
-
-fn binary_fingerprint(path: &Path) -> std::io::Result<String> {
-    use sha2::Digest;
-    let mut file = std::fs::File::open(path)?;
-    let len = file.metadata()?.len();
-    let mut hasher = sha2::Sha256::new();
-    hasher.update(len.to_le_bytes());
-    let head = len.min(FINGERPRINT_SAMPLE_BYTES);
-    hash_file_range(&mut file, 0, head, &mut hasher)?;
-    let tail_start = len.saturating_sub(FINGERPRINT_SAMPLE_BYTES).max(head);
-    hash_file_range(&mut file, tail_start, len - tail_start, &mut hasher)?;
-    Ok(hasher.finalize()[..4]
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect())
-}
-
-fn hash_file_range(
-    file: &mut std::fs::File,
-    start: u64,
-    len: u64,
-    hasher: &mut sha2::Sha256,
-) -> std::io::Result<()> {
-    use std::io::{Read, Seek};
-    file.seek(std::io::SeekFrom::Start(start))?;
-    let copied = std::io::copy(&mut file.by_ref().take(len), hasher)?;
-    if copied != len {
-        return Err(std::io::ErrorKind::UnexpectedEof.into());
-    }
-    Ok(())
-}
-
 pub fn prune_stale_unpacks() {
     let Ok(data_root) = crate::paths::oleafly_root() else {
         return;
@@ -664,32 +584,12 @@ fn compile_path_env_with_inherited(
     preferred_dir: Option<&Path>,
     excluded_root: Option<&Path>,
 ) -> std::ffi::OsString {
-    let mut dirs = Vec::new();
-    let mut add = |dir: PathBuf| {
-        if dir.is_absolute() && !excluded_root.is_some_and(|root| path_is_within(&dir, root)) {
-            push_unique(&mut dirs, dir);
-        }
-    };
-    if let Some(preferred) = preferred_dir {
-        add(preferred.to_path_buf());
-    }
-    for dir in compile_path_dirs() {
-        add(dir);
-    }
-    if let Some(inherited) = inherited {
-        for dir in std::env::split_paths(inherited) {
-            if dir.is_absolute() {
-                add(dir);
-            }
-        }
-    }
-    std::env::join_paths(dirs).unwrap_or_default()
-}
-
-fn path_is_within(path: &Path, root: &Path) -> bool {
-    let resolved_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let resolved_root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    resolved_path == resolved_root || resolved_path.starts_with(&resolved_root)
+    oleafly_core::biber_env::compile_path_env(
+        preferred_dir,
+        &compile_path_dirs(),
+        inherited,
+        excluded_root,
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -860,12 +760,6 @@ fn tex_bin_search_dirs() -> Vec<PathBuf> {
     // Shared discovery (MacTeX, TeX Live by year, MiKTeX, TinyTeX variants) so
     // PATH injection and the latexmk engine agree on where TeX tools live.
     crate::tex_distro::tex_bin_dirs()
-}
-
-fn push_unique(dirs: &mut Vec<PathBuf>, dir: PathBuf) {
-    if !dirs.iter().any(|existing| existing == &dir) {
-        dirs.push(dir);
-    }
 }
 
 #[cfg(test)]

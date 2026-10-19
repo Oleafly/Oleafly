@@ -5,18 +5,24 @@ const fileMocks = vi.hoisted(() => ({
   runExternalProjectMutation: vi.fn(),
 }));
 
-vi.mock("@/lib/research-tasks", () => ({
+vi.mock("@/lib/research-tasks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/research-tasks")>()),
   acceptResearchTaskResult: vi.fn(),
   applyResearchTask: vi.fn(),
+  approveResearchTaskPlan: vi.fn(),
   cancelResearchTask: vi.fn(),
   createResearchTask: vi.fn(),
+  deleteResearchTask: vi.fn(),
   editResearchTask: vi.fn(),
   listResearchTasks: vi.fn(),
-  listenForResearchTaskChanges: vi.fn(),
-  listenForResearchTaskEvents: vi.fn(),
+  listenForResearchTaskChanges: vi.fn(async () => () => {}),
+  listenForResearchTaskDeltas: vi.fn(async () => () => {}),
+  listenForResearchTaskEvents: vi.fn(async () => () => {}),
   loadResearchTaskEvents: vi.fn(),
   retryResearchTask: vi.fn(),
   startResearchTask: vi.fn(),
+  // Selecting a task tells the backend which task this window shows.
+  watchResearchTask: vi.fn(async () => {}),
 }));
 
 vi.mock("@/store/files", () => ({
@@ -56,6 +62,21 @@ function task(id: string, projectId: string, createdAt = 1): ResearchTask {
     updatedAt: createdAt,
     startedAt: createdAt,
     finishedAt: createdAt,
+    brief: api.defaultBrief(`Complete ${id}`),
+    recordSlug: "",
+    recordDir: "",
+    runAfter: null,
+    keepRunningAfterQuit: false,
+    owner: "app",
+    phase: null,
+    planApproved: false,
+    stopReason: null,
+    evidence: null,
+    pendingApprovals: 0,
+    activeMs: 0,
+    todos: [],
+    reclaimRequested: false,
+    resumedFrom: null,
   };
 }
 

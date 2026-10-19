@@ -356,6 +356,30 @@ function readCommonFont(
   return { name, embedded };
 }
 
+function fontResolved(page: PdfPage, fontId: string): boolean {
+  try {
+    page.commonObjs.get(fontId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** pdf.js hands a font to `commonObjs` only while it builds a page's
+ * operator list, so text alone leaves fonts as ids such as `g_d0_f1`. A page
+ * that brings a font not seen yet is read once more for it. */
+async function resolvePageFonts(page: PdfPage, items: PdfTextItems, scan: PageScan): Promise<void> {
+  const unresolved = items.some(
+    (item) => "str" in item && !scan.inspectedFontIds.has(item.fontName) && !fontResolved(page, item.fontName),
+  );
+  if (!unresolved) return;
+  try {
+    await page.getOperatorList();
+  } catch {
+    // The fonts keep their ids and an unknown embedding, as before.
+  }
+}
+
 function collectFontFacts(page: PdfPage, items: PdfTextItems, scan: PageScan): void {
   for (const item of items) {
     if (!("str" in item) || scan.inspectedFontIds.has(item.fontName)) continue;
@@ -382,6 +406,7 @@ async function scanPage(page: PdfPage, pageNumber: number, scan: PageScan): Prom
   scan.pageFacts.push({ width: viewport.width, height: viewport.height, rotation: viewport.rotation });
   collectAnnotationFacts(annotations, scan);
   const reconstructed = reconstructPdfPageText(tc.items);
+  await resolvePageFonts(page, tc.items, scan);
   collectFontFacts(page, tc.items, scan);
   scan.pages.push(reconstructed.items);
   scan.pageText.push(reconstructed.text);
@@ -485,7 +510,11 @@ async function readOutlineCount(doc: PdfDocument): Promise<number> {
 
 async function readAttachmentCount(doc: PdfDocument): Promise<number> {
   try {
-    return Object.keys((await doc.getAttachments()) ?? {}).length;
+    const attachments: unknown = await doc.getAttachments();
+    if (!attachments) return 0;
+    // pdf.js 6 answers with a Map; Object.keys counted it as empty.
+    if (attachments instanceof Map) return attachments.size;
+    return Object.keys(attachments).length;
   } catch {
     return 0;
   }

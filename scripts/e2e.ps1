@@ -183,7 +183,6 @@ function Start-App([string]$label) {
       "oleafly.locale" = $script:uiLocale
       "oleafly.shortcuts" = $null
       "oleafly.latexTools" = "1"
-      "oleafly.webBrowser" = "1"
       "oleafly.openInTree" = "0"
       "oleafly:compile:mode" = "normal"
       "oleafly.appFontSize" = "16"

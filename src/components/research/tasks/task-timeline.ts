@@ -7,6 +7,7 @@ import type {
   TaskTranscriptEvent,
 } from "@/lib/research-tasks";
 import type { ToolEntry } from "@/store/chats";
+import { approvalStatusLabel, phaseLabel, runStateLabel } from "./task-status";
 
 export interface TaskTimelineTool extends ToolEntry {
   id: string;
@@ -180,6 +181,37 @@ function appendEntry(
       break;
     case "tool":
       applyToolEvent(state, base, event);
+      break;
+    case "run":
+      state.items.push({
+        ...base,
+        kind: "milestone",
+        text:
+          event.state === "starting" || event.state === "running"
+            ? i18n.t(($) => $.researchTools.tasks.timeline.runStarted, { name: event.name })
+            : i18n.t(($) => $.researchTools.tasks.timeline.runFinished, {
+                name: event.name,
+                status: runStateLabel(event.state),
+              }),
+      });
+      break;
+    case "approval":
+      state.items.push({
+        ...base,
+        kind: "milestone",
+        text:
+          event.status === "pending"
+            ? i18n.t(($) => $.researchTools.tasks.timeline.approvalRequested, { summary: event.summary })
+            : i18n.t(($) => $.researchTools.tasks.timeline.approvalDecided, {
+                status: approvalStatusLabel(event.status),
+              }),
+      });
+      break;
+    case "phase":
+      // The header shows the current phase; the timeline marks the waits.
+      if (event.phase !== "working" && event.phase !== "preparing") {
+        state.items.push({ ...base, kind: "milestone", text: phaseLabel(event.phase) });
+      }
       break;
   }
 }

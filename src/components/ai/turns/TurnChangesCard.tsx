@@ -1,7 +1,9 @@
-import { useEffect, useId } from "react";
-import { ChevronRight, FileDiff } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { ChevronRight, FileDiff, GitCommitHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { i18n } from "@/i18n";
 import type { TurnChange, TurnFileState, TurnUnavailable } from "@/lib/agent-turns";
 import { cn } from "@/lib/utils";
@@ -437,6 +439,80 @@ function TurnOutcomeMessages({ status, failed }: Readonly<{ status: string; fail
   );
 }
 
+/** The inline "Commit this turn" form: message and the files to commit. */
+function CommitTurnForm({
+  files,
+  defaultMessage,
+  onCommit,
+  onClose,
+}: Readonly<{
+  files: readonly string[];
+  defaultMessage: string;
+  onCommit(paths: string[], message: string): Promise<void>;
+  onClose(): void;
+}>) {
+  const { t } = useTranslation(["common", "ai"]);
+  const [message, setMessage] = useState(defaultMessage);
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(files));
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const fieldId = useId();
+  const trimmed = message.trim();
+  const valid = trimmed.length > 0 && trimmed.length <= 2000 && chosen.size > 0;
+  return (
+    <form
+      data-testid="turn-changes-commit-form"
+      aria-label={t(($) => $.ai.acp.commit.title)}
+      className="mt-2 space-y-2 border-t pt-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!valid || saving) return;
+        setSaving(true);
+        setError(null);
+        void onCommit(files.filter((path) => chosen.has(path)), trimmed)
+          .then(onClose)
+          .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
+          .finally(() => setSaving(false));
+      }}
+    >
+      <label htmlFor={`${fieldId}-message`} className="block space-y-1">
+        <span className="font-medium text-foreground">{t(($) => $.ai.acp.commit.message)}</span>
+        <Textarea
+          id={`${fieldId}-message`}
+          value={message}
+          maxLength={2000}
+          rows={2}
+          className="min-h-0 text-xs"
+          onChange={(event) => setMessage(event.target.value)}
+        />
+      </label>
+      <fieldset className="space-y-1">
+        <legend className="font-medium text-foreground">{t(($) => $.ai.acp.commit.files)}</legend>
+        {files.map((path, index) => (
+          <label key={path} htmlFor={`${fieldId}-file-${index}`} className="flex items-center gap-2">
+            <Checkbox
+              id={`${fieldId}-file-${index}`}
+              checked={chosen.has(path)}
+              onCheckedChange={(checked) => setChosen((current) => {
+                const next = new Set(current);
+                if (checked === true) next.add(path);
+                else next.delete(path);
+                return next;
+              })}
+            />
+            <span className="min-w-0 truncate font-mono">{path}</span>
+          </label>
+        ))}
+      </fieldset>
+      {error ? <p role="alert" className="text-destructive">{error}</p> : null}
+      <div className="flex gap-2">
+        <Button type="submit" size="xs" disabled={!valid || saving}>{t(($) => $.ai.acp.commit.submit)}</Button>
+        <Button type="button" size="xs" variant="ghost" onClick={onClose}>{t(($) => $.ai.acp.commit.cancel)}</Button>
+      </div>
+    </form>
+  );
+}
+
 /**
  * "Changed N files · Review · Undo all" under the turn that changed them, for
  * both the built-in assistant and CLI agents. Every Undo or Redo goes through
@@ -448,12 +524,17 @@ export function TurnChangesCard({
   changes,
   showUnavailable = false,
   className,
+  onCommit,
+  commitDefaultMessage = "",
 }: Readonly<{
   projectId: string;
   changes: ChatTurnChanges;
   /** Show the "Undo isn't available" line (hosts pass it once per session). */
   showUnavailable?: boolean;
   className?: string;
+  /** "Commit this turn" (CLI agents in Git projects only). */
+  onCommit?: (paths: string[], message: string) => Promise<void>;
+  commitDefaultMessage?: string;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
   const snapshotId = changes.snapshotId;
@@ -469,6 +550,7 @@ export function TurnChangesCard({
   const buildId = useId();
   const hasFiles = changes.files.length + changes.moreFiles > 0;
   const undoable = !!snapshotId && !changes.unavailable && !review.expired;
+  const [committing, setCommitting] = useState(false);
 
   useEffect(() => {
     if (hasFiles && snapshotId && !changes.unavailable) void loadStatus(projectId, snapshotId);
@@ -490,6 +572,12 @@ export function TurnChangesCard({
   const status = outcomeText(review.outcome);
   const failed = review.outcome?.failed ? review.outcome.action : null;
   const pendingAll = review.pending === "all";
+  // Files of this turn that can still be committed: not committed, not undone.
+  const committable = onCommit
+    ? source
+        .filter((file) => !changes.committed?.[file.path] && (review.states[file.index] ?? "applied") !== "undone")
+        .map((file) => file.path)
+    : [];
 
   return (
     <fieldset
@@ -531,8 +619,29 @@ export function TurnChangesCard({
               }}
             />
           ) : null}
+          {committable.length > 0 && !committing ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              data-testid="turn-changes-commit"
+              disabled={busy}
+              onClick={() => setCommitting(true)}
+            >
+              <GitCommitHorizontal className="size-3" />
+              {t(($) => $.ai.acp.commit.button)}
+            </Button>
+          ) : null}
         </span>
       </div>
+      {committing && onCommit && committable.length > 0 ? (
+        <CommitTurnForm
+          files={committable}
+          defaultMessage={commitDefaultMessage}
+          onCommit={onCommit}
+          onClose={() => setCommitting(false)}
+        />
+      ) : null}
       <TurnNotes changes={changes} showUnavailable={showUnavailable} expired={review.expired} undoable={undoable} />
       {review.expanded ? (
         <TurnFileList

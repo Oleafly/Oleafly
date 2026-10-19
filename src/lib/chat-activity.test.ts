@@ -73,6 +73,157 @@ describe("research chat activity", () => {
     expect(view.verified).toBeUndefined();
   });
 
+  it("projects the records of a merged search, with the venue as the source", () => {
+    const view = projectToolEntry({
+      id: "search-2",
+      name: "literature_search",
+      status: "done",
+      output: JSON.stringify({
+        records: [
+          {
+            id: "openalex:W1",
+            title: "Diffusion in porous media",
+            authors: ["R. Chen", "A. Okafor"],
+            year: 2024,
+            venue: "Physical Review E",
+            doi: "10.1103/example",
+            arxivId: "2401.00001",
+            url: "https://doi.org/10.1103/example",
+            pdfUrl: null,
+            abstract: "We measure diffusion.",
+            citationCount: 12,
+            openAccess: true,
+            sources: ["openalex", "crossref"],
+            sourceIds: { openalex: "W1" },
+          },
+          { id: "arxiv:2402.1", title: "A preprint without a venue", authors: [], year: null, venue: null },
+        ],
+        failures: [],
+        cached: ["openalex"],
+      }),
+    });
+
+    expect(view).toMatchObject({ kind: "literature", status: "completed", summary: "2 papers" });
+    expect(view.diagnostics).toBeUndefined();
+    expect(view.results).toEqual([
+      {
+        id: "openalex:W1",
+        title: "Diffusion in porous media",
+        authors: ["R. Chen", "A. Okafor"],
+        year: 2024,
+        doi: "10.1103/example",
+        url: "https://doi.org/10.1103/example",
+        source: "Physical Review E",
+        abstract: "We measure diffusion.",
+      },
+      {
+        id: "arxiv:2402.1",
+        title: "A preprint without a venue",
+        authors: [],
+        year: undefined,
+        doi: undefined,
+        url: undefined,
+        source: undefined,
+        abstract: undefined,
+      },
+    ]);
+  });
+
+  it("reads the works list that older saved chats hold", () => {
+    const view = projectToolEntry({
+      name: "literature_search",
+      status: "done",
+      output: JSON.stringify({ works: [{ display_name: "An older work", publication_year: 2019 }] }),
+    });
+
+    expect(view.results).toEqual([expect.objectContaining({ title: "An older work", year: 2019 })]);
+    expect(view.summary).toBe("1 paper");
+  });
+
+  it("shows a search that no index answered as failed, with each reason", () => {
+    const view = projectToolEntry({
+      name: "literature_search",
+      status: "done",
+      output: JSON.stringify({
+        records: [],
+        failures: [
+          { source: "openalex", message: "openalex took longer than 25 seconds." },
+          { source: "crossref", message: "error decoding response body" },
+          { source: "alphaxiv" },
+          { source: "uspto", message: "Searches are paused." },
+          { message: "The index sent an empty page." },
+          {},
+        ],
+        cached: [],
+      }),
+    });
+
+    expect(view.status).toBe("failed");
+    expect(view.statusLabel).toBe("Failed");
+    expect(view.summary).toBe("5 sources failed");
+    expect(view.results).toBeUndefined();
+    expect(view.diagnostics).toEqual([
+      "openalex took longer than 25 seconds.",
+      "Crossref: error decoding response body",
+      "alphaXiv failed.",
+      "uspto: Searches are paused.",
+      "The index sent an empty page.",
+    ]);
+  });
+
+  it("keeps a search that found papers complete and lists the index that failed", () => {
+    const view = projectToolEntry({
+      name: "literature_search",
+      status: "done",
+      output: JSON.stringify({
+        records: [{ id: "crossref:1", title: "One paper", authors: ["Ada"] }],
+        failures: [{ source: "pubmed", message: "PubMed is rate-limiting this search." }],
+        cached: [],
+      }),
+    });
+
+    expect(view.status).toBe("completed");
+    expect(view.summary).toBe("1 paper");
+    expect(view.diagnostics).toEqual(["PubMed is rate-limiting this search."]);
+  });
+
+  it("calls a search with no papers and no failures complete", () => {
+    const view = projectToolEntry({
+      name: "literature_search",
+      status: "done",
+      output: JSON.stringify({ records: [], failures: [], cached: [] }),
+    });
+
+    expect(view.status).toBe("completed");
+    expect(view.summary).toBe("0 papers");
+    expect(
+      projectToolEntry({ name: "literature_search", status: "done", output: JSON.stringify({ records: [] }) }).status,
+    ).toBe("completed");
+  });
+
+  it("names no failed index when the search itself failed", () => {
+    const view = projectToolEntry({
+      name: "literature_search",
+      status: "done",
+      output: JSON.stringify({ error: "query must not be empty" }),
+    });
+
+    expect(view.status).toBe("failed");
+    expect(view.summary).toBeUndefined();
+    expect(view.output).toBe("query must not be empty");
+  });
+
+  it("reads failures only from literature searches", () => {
+    const view = projectToolEntry({
+      name: "custom_tool",
+      status: "done",
+      output: JSON.stringify({ failures: [{ source: "openalex", message: "Not a search." }] }),
+    });
+
+    expect(view.diagnostics).toBeUndefined();
+    expect(view.status).toBe("completed");
+  });
+
   it("shows citation verification only when the tool reports it", () => {
     const verified = projectToolEntry({
       name: "verify_citation",

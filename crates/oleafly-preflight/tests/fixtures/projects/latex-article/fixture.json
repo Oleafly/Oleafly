@@ -1,0 +1,40 @@
+{
+  "mainDocument": "main.tex",
+  "cases": [
+    {
+      "name": "generic-detected",
+      "sourceProfile": "latex",
+      "engine": "bundled",
+      "profile": null,
+      "anonymousReview": false
+    },
+    {
+      "name": "arxiv",
+      "sourceProfile": "latex",
+      "engine": "bundled",
+      "profile": "arxiv",
+      "anonymousReview": false
+    },
+    {
+      "name": "ieee",
+      "sourceProfile": "latex",
+      "engine": "bundled",
+      "profile": "ieee",
+      "anonymousReview": false
+    },
+    {
+      "name": "acm-pdflatex",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": "acm",
+      "anonymousReview": false
+    },
+    {
+      "name": "journal-anonymous",
+      "sourceProfile": "latex",
+      "engine": "lualatex",
+      "profile": "journal",
+      "anonymousReview": true
+    }
+  ]
+}

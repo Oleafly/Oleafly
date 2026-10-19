@@ -9,6 +9,15 @@ const CREATE_SUSPENDED: u32 = 0x0000_0004;
 #[cfg(windows)]
 const DETACHED_PROCESS: u32 = 0x0000_0008;
 
+/// Drops the Git variables a calling Git exports (a hook sets `GIT_DIR` and
+/// `GIT_INDEX_FILE`, for example), so `git` acts on the folder it runs in
+/// and not on the caller's repository.
+pub(crate) fn clear_inherited_git_env(command: &mut std::process::Command) {
+    for name in oleafly_research::host::GIT_REPOSITORY_ENV {
+        command.env_remove(name);
+    }
+}
+
 pub(crate) fn detach(command: &mut std::process::Command) {
     #[cfg(unix)]
     unsafe {
@@ -231,5 +240,33 @@ fn resume_thread(thread_id: u32) -> io::Result<()> {
         let error = (previous_suspend_count == u32::MAX).then(io::Error::last_os_error);
         CloseHandle(thread);
         error.map_or(Ok(()), Err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsStr;
+
+    #[test]
+    fn git_runs_without_the_callers_repository_variables() {
+        let mut command = std::process::Command::new("git");
+        super::clear_inherited_git_env(&mut command);
+        let removed: Vec<&OsStr> = command
+            .get_envs()
+            .filter(|(_, value)| value.is_none())
+            .map(|(name, _)| name)
+            .collect();
+        for name in [
+            "GIT_DIR",
+            "GIT_WORK_TREE",
+            "GIT_INDEX_FILE",
+            "GIT_COMMON_DIR",
+            "GIT_PREFIX",
+        ] {
+            assert!(
+                removed.contains(&OsStr::new(name)),
+                "{name} is still passed on"
+            );
+        }
     }
 }

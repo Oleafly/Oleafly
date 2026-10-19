@@ -80,17 +80,47 @@
   "export": {
     "bibliography_unreadable": "Oleafly couldn't read the bibliography {{name}}. Check it for a broken entry, then export again."
   },
-  "github": {
-    "sign_in_expired": "The sign-in code expired. Try again.",
-    "sign_in_cancelled": "GitHub authorization was cancelled.",
-    "sign_in_failed": "GitHub sign-in failed.",
-    "repositories_unavailable": "Could not load repositories.",
-    "create_repo_failed": "Could not create the repository ({{status}})."
-  },
   "git": {
-    "remote_exists": "This project is already linked to {{remote}}.",
+    "access_denied": "{{host}} refused access to this repository. Check that your account can use it. If the organization uses single sign-on, authorize your sign-in for it first.",
+    "account_missing": "There is no Git hosting account for {{host}}. Add one in Settings.",
+    "archive_too_large": "The repository files are larger than {{limit}} MB, so Oleafly can't import them. Clone the repository yourself and open its folder instead.",
+    "auth_rejected": "{{host}} turned down your saved sign-in. Sign in to {{host}} again in Settings.",
+    "credentials_missing": "{{host}} asked for a user name and password. Sign in to {{host}} in Settings, or set up an SSH key or a Git credential helper.",
+    "credentials_rejected": "{{host}} turned down the user name and password Git offered. Sign in to {{host}} in Settings, or update the credentials your Git uses.",
+    "device_flow_unavailable": "Browser sign-in isn't available for {{host}} in this build. Use an access token instead.",
+    "forge_bad_response": "{{host}} sent a reply Oleafly couldn't read.",
+    "forge_ca_file_invalid": "Oleafly couldn't read a certificate from this file. Choose a PEM or DER certificate file under 1 MB.",
+    "forge_forbidden": "{{host}} refused this. The token may be missing the {{scopes}} scopes.",
+    "forge_https_required": "Use an https:// address. Plain http only works for servers on your own network.",
+    "forge_invalid_repository": "That isn't a repository path Oleafly can use.",
+    "forge_invalid_repository_name": "Use only letters, digits, dots, dashes and underscores in the repository name.",
+    "forge_invalid_server": "{{server}} isn't a server address Oleafly can use.",
+    "forge_missing_scopes": "This token can't push to {{host}}. Create a token with the {{scopes}} scopes.",
+    "forge_not_found": "{{host}} couldn't find that repository.",
+    "forge_rate_limited": "{{host}} is limiting requests right now. Try again in a minute.",
+    "forge_redirect_refused": "{{host}} tried to send Oleafly to {{target}}, so Oleafly stopped to keep your sign-in safe.",
+    "forge_repository_exists": "A repository with this name already exists on {{host}}.",
+    "forge_server_error": "{{host}} returned an error ({{status}}).",
+    "forge_signed_out": "Your sign-in for {{host}} expired or was revoked. Sign in again in Settings.",
+    "forge_store": "Oleafly couldn't read or save your Git hosting accounts.",
+    "forge_token_invalid": "This doesn't look like an access token. Paste the whole token.",
+    "forge_token_rejected": "{{host}} didn't accept this token. Check that you copied the whole token and that it hasn't expired.",
+    "forge_unknown_server": "Oleafly couldn't tell what kind of server {{host}} is. Choose the server type.",
+    "host_key_unknown": "SSH doesn't know {{host}} yet. Connect to it once from a terminal to accept its host key, then try again.",
+    "host_unreachable": "Oleafly couldn't reach {{host}}. Check the address and your connection.",
+    "invalid_remote_url": "Enter the HTTPS or SSH address of a Git repository.",
     "nested_repository": "This project is inside another Git repository, so Oleafly won't create a separate one here.",
     "not_installed": "Git isn't installed on this computer. Install Git, then try again.",
+    "push_rejected": "The remote branch has commits this project doesn't have yet. Pull first, then push again.",
+    "remote_exists": "This project is already linked to {{remote}}.",
+    "remote_has_password": "Take the password out of the address. Oleafly signs in with your Git hosting account or your own Git credentials instead.",
+    "repository_empty": "This repository has no commits yet, so there is nothing to import.",
+    "repository_not_found": "{{host}} has no repository at this address, or your account can't see it.",
+    "sign_in_cancelled": "Sign-in was cancelled in the browser.",
+    "sign_in_expired": "The sign-in code expired. Try again.",
+    "sign_in_failed": "Sign-in failed.",
+    "ssh_key_rejected": "{{host}} refused your SSH key. Add your public key to your account on {{host}}, or load the key into your SSH agent.",
+    "tls_failed": "Oleafly couldn't verify the certificate of {{host}}. If your organization runs its own certificate authority, add its certificate file to the account in Settings.",
     "tracked_secret_files": "Publishing stopped because files in this project's Git history may hold keys or passwords: {{files}}"
   },
   "approvals": {
@@ -134,6 +164,8 @@
     "changed": "{{path}} changed after Oleafly installed it, so it was left as it is.",
     "failed": "Oleafly couldn't install the terminal command.",
     "remove_failed": "Oleafly couldn't remove the terminal command.",
+    "path_failed": "Oleafly installed the command but couldn't add {{directory}} to your PATH.",
+    "in_use": "{{path}} is in use. Close the terminals running oleafly, then try again.",
     "unsupported": "The terminal command isn't available on this system yet."
   },
   "research": {
@@ -221,9 +253,50 @@
     "git_token_rejected": "Overleaf didn't accept the Git token. It may have expired. Create a new one in your Overleaf account settings.",
     "git_unavailable": "Overleaf's Git integration isn't available for this project. It needs a paid or university plan for the project's owner.",
     "template_link_invalid": "That link isn't an Overleaf template page. Copy the address of a page from overleaf.com/latex/templates and try again.",
-    "template_unavailable": "Oleafly couldn't open this template. It may have been removed from Overleaf's gallery."
+    "template_unavailable": "Oleafly couldn't open this template. It may have been removed from Overleaf's gallery.",
+    "browser_sign_in_missing": "Oleafly found no sign-in for {{server}} in that browser profile. Sign in instead.",
+    "browser_sign_in_failed": "The sign-in from your browser didn't work. It may have expired. Sign in instead."
   },
   "collab": {
     "turned_off": "Live collaboration is turned off. Turn it on in Settings, under Experimentation."
+  },
+  "attachments": {
+    "too_large": "This file is larger than {{max}} MB. Attach a smaller file.",
+    "invalid_request": "Oleafly could not read this attachment.",
+    "not_found": "This attachment is no longer stored on this computer.",
+    "storage_failed": "Oleafly could not save this attachment."
+  },
+  "provider_credit": {
+    "failed": "Oleafly could not check your {{provider}} balance."
+  },
+  "mathpix": {
+    "keys_missing": "Add your Mathpix app ID and key in Settings, AI, Tools first.",
+    "invalid_keys": "That app ID or key has characters Mathpix keys never contain. Copy them again from the Mathpix console.",
+    "key_rejected": "Mathpix didn't accept these keys. Check the app ID and key in the Mathpix console.",
+    "rate_limited": "Mathpix is limiting requests right now. Wait a minute, then try again.",
+    "unreachable": "Oleafly couldn't reach Mathpix. Check your internet connection, then try again.",
+    "http_error": "Mathpix returned an error (HTTP {{status}}). Try again later.",
+    "invalid_response": "Mathpix sent a reply Oleafly couldn't read. Try again later.",
+    "rejected": "Mathpix couldn't read this file: {{reason}}",
+    "image_too_large": "This image is too large for Mathpix. Crop it and try again.",
+    "pdf_too_large": "This PDF is larger than the 256 MB limit for Mathpix.",
+    "timed_out": "Mathpix didn't finish this PDF within 30 minutes. Try fewer pages.",
+    "cancelled": "The Mathpix conversion was stopped.",
+    "wrong_window": "Mathpix can only be used from the main Oleafly window."
+  },
+  "desktop_apps": {
+    "not_installed": "Cua Driver isn't installed. Install it in Settings → Integrations → Desktop apps.",
+    "too_old": "Cua Driver {{version}} is too old. Update it to {{minimum}} or newer.",
+    "no_app_bundle": "Install Cua Driver with the official installer so it can hold the macOS permissions.",
+    "change_declined": "You kept your previous Desktop apps settings.",
+    "app_blocked": "Agents can't use {{name}}.",
+    "app_invalid": "Oleafly can't use {{name}} as an app.",
+    "site_invalid": "\"{{site}}\" isn't a website address Oleafly can use. Use https://, or http:// for this computer.",
+    "too_many_apps": "You can allow up to {{limit}} apps.",
+    "too_many_sites": "You can allow up to {{limit}} websites.",
+    "start_failed": "Cua Driver couldn't start: {{detail}}",
+    "not_bounded": "Cua Driver didn't start with Oleafly's limits, so Oleafly stopped it.",
+    "task_unattended": "Tasks that run on a schedule or after Oleafly closes can't use desktop apps.",
+    "main_window": "Change Desktop apps from the main window."
   }
 }

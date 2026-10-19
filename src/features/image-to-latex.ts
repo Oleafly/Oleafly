@@ -1,7 +1,10 @@
-import { completeViaBackend } from "@/lib/agent-backend";
+// The editor toolbar's Image to LaTeX and Image to Typst. They use the Tools
+// model (Settings, AI, Tools), the same one the converters use: local Ollama
+// unless the user picked another. With nothing picked and no local model that
+// can run, they use the assistant's model when it reads images, as before
+// 0.4.8. A hosted model says where the image goes while it works.
 import { insertAtCursor } from "@/components/editor/cm/controller";
-import { modelSupportsVision } from "@/lib/ai-figure";
-import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
+import { toolsImageReady } from "@/features/tools-ai/tools-choice";
 import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { getConfigCached } from "@/lib/config-cache";
@@ -9,43 +12,28 @@ import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { i18n } from "@/i18n";
 
+/** Whether the toolbar shows the button: with the automatic choice, any AI
+ * set up; with a picked model, that model can run. */
 export async function imageToLatexAvailable(): Promise<boolean> {
   try {
-    const cfg = await getConfigCached();
-    if (!hasConfiguredProvider(cfg)) return false;
-    const { providerId, modelId } = pickActiveProvider(cfg);
-    const stored = cfg.ai_provider_models?.[providerId]?.find((model) => model.id === modelId);
-    return modelSupportsVision(providerId, modelId, stored?.metadata?.inputModalities);
+    return toolsImageReady(await getConfigCached());
   } catch {
     return false;
   }
 }
 
-const TRANSCRIBE_SYSTEM =
-  "You transcribe images into LaTeX. Return ONLY a LaTeX snippet: an equation environment, a tabular, or plain text matching the image. No preamble, no documentclass, no markdown fences, no explanation. Transcribe exactly what is visible, never invent content. Never use em dashes.";
-
-const TRANSCRIBE_PROMPT = "Transcribe this image to LaTeX.";
-
-const TYPST_TRANSCRIBE_SYSTEM =
-  "You transcribe images into Typst markup. Return ONLY a Typst snippet: a math equation in $ $, a #table or #figure, or plain markup matching the image. No #set or #import lines, no markdown fences, no explanation. Transcribe exactly what is visible, never invent content. Never use em dashes.";
-
-const TYPST_TRANSCRIBE_PROMPT = "Transcribe this image to Typst.";
-
 interface TranscriptionTarget {
-  readonly system: string;
-  readonly prompt: string;
+  readonly kind: "LaTeX" | "Typst";
   readonly failed: (detail: string) => string;
 }
 
 const LATEX_TARGET: TranscriptionTarget = {
-  system: TRANSCRIBE_SYSTEM,
-  prompt: TRANSCRIBE_PROMPT,
+  kind: "LaTeX",
   failed: (detail) => i18n.t(($) => $.core.imageToLatex.failed, { detail }),
 };
 
 const TYPST_TARGET: TranscriptionTarget = {
-  system: TYPST_TRANSCRIBE_SYSTEM,
-  prompt: TYPST_TRANSCRIBE_PROMPT,
+  kind: "Typst",
   failed: (detail) => i18n.t(($) => $.core.imageToTypst.failed, { detail }),
 };
 
@@ -53,18 +41,14 @@ const IMAGE_TO_LATEX_TOAST_KEY = "image-to-latex";
 
 let latestRun = 0;
 
-function readImage(file: File): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(typeof r.result === "string" ? r.result : "");
-    r.onerror = () => reject(new Error(i18n.t(($) => $.ai.acp.imageReadFailed)));
-    r.readAsDataURL(file);
-  });
-}
-
 function editorTarget(): string {
   const { projectId, activePath } = useFilesStore.getState();
   return JSON.stringify([projectId, activePath]);
+}
+
+function typstVersion(): string | null {
+  const engine = useFilesStore.getState().engine;
+  return engine?.id === "typst" ? (engine.typst_resolved?.version ?? null) : null;
 }
 
 export function imageToLatex(file: File): Promise<void> {
@@ -85,23 +69,21 @@ async function transcribeImage(file: File, target: TranscriptionTarget): Promise
     true,
   );
   try {
-    const dataUrl = await readImage(file);
-    const { text } = await completeViaBackend({
-      system: target.system,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: target.prompt },
-            { type: "image", image: dataUrl },
-          ],
-        },
-      ],
+    const { transcribeEditorImage, modelInfo } = await import("@/features/tools-ai/transcribe");
+    const text = await transcribeEditorImage(file, target.kind, {
+      typstVersion: target.kind === "Typst" ? typstVersion() : null,
+      onModel: (model) => {
+        const sentTo = modelInfo(model).sentTo;
+        if (!sentTo) return;
+        toast.infoUnique(
+          IMAGE_TO_LATEX_TOAST_KEY,
+          i18n.t(($) => $.researchTools.converterModel.transcribingHosted, { provider: sentTo }),
+          undefined,
+          true,
+        );
+      },
     });
-    const snippet = text
-      .replace(/^```[a-zA-Z]*\n?/gm, "")
-      .replace(/```$/gm, "")
-      .trim();
+    const snippet = text.trim();
     if (!snippet) throw new Error(i18n.t(($) => $.ai.conversation.noOutput));
     if (editorTarget() === editor) {
       insertAtCursor(snippet);

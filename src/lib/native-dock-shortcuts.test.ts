@@ -5,9 +5,6 @@ import { useTourStore } from "@/store/tours";
 
 const originalNavigator = globalThis.navigator;
 
-const toggleBrowser = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/browser-window", () => ({ toggleBrowser }));
-
 const toggleZenMode = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/zen-mode", () => ({ toggleZenMode }));
 
@@ -57,7 +54,7 @@ describe("native dock shortcuts", () => {
     native.listeners.clear();
     native.projectId = "project-1";
     native.unlisteners = [];
-    useSettingsStore.setState({ terminalOpen: false, browserOpen: false, webBrowser: true });
+    useSettingsStore.setState({ terminalOpen: false });
     useShortcutStore.getState().resetAll();
   });
 
@@ -155,14 +152,13 @@ describe("native dock shortcuts", () => {
       "set_dock_shortcut_accelerators",
       {
         terminalAccelerator: "Ctrl+`",
-        browserAccelerator: "Ctrl+Shift+B",
         openFolderAccelerator: "Cmd+Shift+O",
         zenModeAccelerator: "Cmd+Ctrl+Shift+F",
         settingsAccelerator: "Cmd+,",
       },
     );
 
-    useShortcutStore.getState().setBinding("toggleBrowser", {
+    useShortcutStore.getState().setBinding("toggleTerminal", {
       key: "e",
       ctrl: true,
       shift: true,
@@ -172,8 +168,7 @@ describe("native dock shortcuts", () => {
       expect(native.invoke).toHaveBeenLastCalledWith(
         "set_dock_shortcut_accelerators",
         {
-          terminalAccelerator: "Ctrl+`",
-          browserAccelerator: "Ctrl+Shift+E",
+          terminalAccelerator: "Ctrl+Shift+E",
           openFolderAccelerator: "Cmd+Shift+O",
           zenModeAccelerator: "Cmd+Ctrl+Shift+F",
           settingsAccelerator: "Cmd+,",
@@ -187,8 +182,7 @@ describe("native dock shortcuts", () => {
       expect(native.invoke).toHaveBeenLastCalledWith(
         "set_dock_shortcut_accelerators",
         {
-          terminalAccelerator: "Ctrl+`",
-          browserAccelerator: "Ctrl+Shift+E",
+          terminalAccelerator: "Ctrl+Shift+E",
           openFolderAccelerator: "Cmd+Alt+K",
           zenModeAccelerator: "Cmd+Ctrl+Shift+F",
           settingsAccelerator: "Cmd+,",
@@ -202,8 +196,7 @@ describe("native dock shortcuts", () => {
       expect(native.invoke).toHaveBeenLastCalledWith(
         "set_dock_shortcut_accelerators",
         {
-          terminalAccelerator: "Ctrl+`",
-          browserAccelerator: "Ctrl+Shift+E",
+          terminalAccelerator: "Ctrl+Shift+E",
           openFolderAccelerator: "Cmd+Alt+K",
           zenModeAccelerator: "Cmd+Alt+Z",
           settingsAccelerator: "Cmd+,",
@@ -217,8 +210,7 @@ describe("native dock shortcuts", () => {
       expect(native.invoke).toHaveBeenLastCalledWith(
         "set_dock_shortcut_accelerators",
         {
-          terminalAccelerator: "Ctrl+`",
-          browserAccelerator: "Ctrl+Shift+E",
+          terminalAccelerator: "Ctrl+Shift+E",
           openFolderAccelerator: "Cmd+Alt+K",
           zenModeAccelerator: "Cmd+Alt+Z",
           settingsAccelerator: "Cmd+Alt+.",
@@ -255,39 +247,33 @@ describe("native dock shortcuts", () => {
     native.listeners.get("menu://toggle-zen-mode")?.({ payload: null });
     expect(toggleZenMode).toHaveBeenCalledTimes(1);
     stop();
-    expect(native.unlisteners).toHaveLength(3);
+    expect(native.unlisteners).toHaveLength(2);
     expect(native.unlisteners.every((unlisten) => unlisten.mock.calls.length === 1)).toBe(true);
   });
 
-  it("toggles docks from native menu events only while a project is open", async () => {
+  it("toggles the terminal from native menu events only while a project is open", async () => {
     const stop = await startNativeDockShortcutBridge();
+    expect(native.listeners.has("menu://toggle-browser")).toBe(false);
 
     native.listeners.get("menu://toggle-terminal")?.({ payload: null });
-    native.listeners.get("menu://toggle-browser")?.({ payload: null });
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
-    expect(toggleBrowser).toHaveBeenCalledTimes(1);
 
     native.projectId = null;
     native.listeners.get("menu://toggle-terminal")?.({ payload: null });
-    native.listeners.get("menu://toggle-browser")?.({ payload: null });
-    // With no project open, neither dock nor the browser responds.
+    // With no project open, the dock does not respond.
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
-    expect(toggleBrowser).toHaveBeenCalledTimes(1);
 
     stop();
-    expect(native.unlisteners).toHaveLength(3);
+    expect(native.unlisteners).toHaveLength(2);
     expect(native.unlisteners.every((unlisten) => unlisten.mock.calls.length === 1)).toBe(true);
   });
 
   it("ignores native dock shortcuts while a tour is running", async () => {
     const stop = await startNativeDockShortcutBridge();
-    const browserToggles = toggleBrowser.mock.calls.length;
     useTourStore.setState({ activeTourId: "welcome" } as never);
     try {
       native.listeners.get("menu://toggle-terminal")?.({ payload: null });
-      native.listeners.get("menu://toggle-browser")?.({ payload: null });
       expect(useSettingsStore.getState().terminalOpen).toBe(false);
-      expect(toggleBrowser).toHaveBeenCalledTimes(browserToggles);
     } finally {
       useTourStore.setState({ activeTourId: null } as never);
       stop();

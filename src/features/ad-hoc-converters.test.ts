@@ -7,7 +7,10 @@ const mocks = vi.hoisted(() => ({
   completeViaBackend: vi.fn(),
   convertPages: vi.fn(),
   getConfig: vi.fn(),
-  listOllamaModels: vi.fn(),
+  setConfig: vi.fn(),
+  listOllamaModelDetails: vi.fn(),
+  mathpixKeyStatus: vi.fn(),
+  downscaleImage: vi.fn(),
   extractArxivSource: vi.fn(),
   extractPagesForConvert: vi.fn(),
   emitTable: vi.fn(),
@@ -23,13 +26,20 @@ vi.mock("@/lib/tauri", () => ({
   convertAdHoc: mocks.convertAdHoc,
   extractArxivSource: mocks.extractArxivSource,
   getConfig: mocks.getConfig,
+  setConfig: mocks.setConfig,
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@/lib/agent-backend", () => ({ completeViaBackend: mocks.completeViaBackend }));
 vi.mock("@/lib/ollama", () => ({
   DEFAULT_OLLAMA_HOST: "http://127.0.0.1:11434",
-  listOllamaModels: mocks.listOllamaModels,
+  listOllamaModelDetails: mocks.listOllamaModelDetails,
 }));
+vi.mock("@/lib/mathpix", () => ({
+  mathpixKeyStatus: mocks.mathpixKeyStatus,
+  mathpixText: vi.fn(),
+  mathpixPdf: vi.fn(),
+}));
+vi.mock("./tools-ai/image-downscale", () => ({ downscaleImage: mocks.downscaleImage }));
 vi.mock("@/features/table-import", () => ({
   emitTable: mocks.emitTable,
   readTableRowsFromBytes: mocks.readTableRowsFromBytes,
@@ -54,6 +64,7 @@ import {
   converterCopy,
   projectReadySource,
   runAdHocConverter,
+  ScanConfirmationNeeded,
   transcribePdfPages,
 } from "./ad-hoc-converters";
 import researchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
@@ -100,7 +111,12 @@ beforeEach(() => {
     ai_provider: "ollama",
     ai_model: "qwen2.5vl:7b",
   });
-  mocks.listOllamaModels.mockResolvedValue(["qwen2.5vl:7b"]);
+  mocks.listOllamaModelDetails.mockResolvedValue([
+    { name: "qwen2.5vl:7b", capabilities: ["completion", "vision"] },
+  ]);
+  mocks.setConfig.mockResolvedValue(undefined);
+  mocks.mathpixKeyStatus.mockResolvedValue({ configured: false, appId: null });
+  mocks.downscaleImage.mockImplementation(async (input: unknown) => input);
   mocks.completeViaBackend.mockResolvedValue({ text: "x^2" });
   mocks.convertPages.mockReturnValue({
     tex: "\\documentclass{article}\\begin{document}PDF text\\end{document}",
@@ -326,7 +342,7 @@ describe("ad-hoc converter registry", () => {
     mocks.completeViaBackend.mockResolvedValue({ text: "```text\ntranscribed\n```" });
     const result = await runAdHocConverter(id, { text: "", file: jpeg }, progress);
     expect(result.text).toBe("transcribed");
-    expect(progress).toHaveBeenCalledWith({ step: "visionModel" });
+    expect(progress).toHaveBeenCalledWith({ step: "visionModel", model: "qwen2.5vl:7b" });
     expect(mocks.completeViaBackend).toHaveBeenCalledWith(
       expect.objectContaining({
         system: expect.stringContaining(`Return only ${target} source`),
@@ -369,23 +385,37 @@ describe("ad-hoc converter registry", () => {
       [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
       "notes.png",
     );
-    mocks.listOllamaModels.mockRejectedValueOnce(new Error("offline"));
+    mocks.getConfig.mockResolvedValue({
+      ai_keys: { ollama: "http://127.0.0.1:11434", anthropic: "__stored__" },
+      ai_provider: "anthropic",
+      ai_model: "claude-opus-5-5",
+    });
+    mocks.listOllamaModelDetails.mockRejectedValueOnce(new Error("offline"));
     await expect(
       runAdHocConverter("image-to-latex", { text: "", file: image }),
-    ).rejects.toThrow("Start Ollama in Settings");
+    ).rejects.toThrow("Start Ollama");
 
-    mocks.listOllamaModels.mockResolvedValueOnce(["llama3.2:3b"]);
-    await expect(
-      runAdHocConverter("image-to-latex", { text: "", file: image }),
-    ).rejects.toThrow("Install a vision model in Ollama");
-
-    mocks.listOllamaModels.mockResolvedValueOnce([]);
+    mocks.listOllamaModelDetails.mockResolvedValueOnce([]);
     await expect(
       runAdHocConverter("equation-to-latex", {
         text: "the square root of x",
         file: null,
       }),
-    ).rejects.toThrow("Install a local Ollama model");
+    ).rejects.toThrow("Pull a model in Ollama");
+    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
+  });
+
+  it("tells the user to pull glm-ocr or pick another model when Ollama has no vision model", async () => {
+    const image = new File(
+      [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+      "notes.png",
+    );
+    mocks.listOllamaModelDetails.mockResolvedValueOnce([
+      { name: "llama3.2:3b", capabilities: ["completion", "tools"] },
+    ]);
+    const missing = runAdHocConverter("image-to-latex", { text: "", file: image });
+    await expect(missing).rejects.toThrow("glm-ocr");
+    await expect(missing).rejects.toThrow(researchTools.converterErrors.visionModelMissing);
     expect(mocks.completeViaBackend).not.toHaveBeenCalled();
   });
 
@@ -395,13 +425,16 @@ describe("ad-hoc converter registry", () => {
       ai_provider: "openai",
       ai_model: "cloud-model",
     });
-    mocks.listOllamaModels.mockResolvedValue(["qwen2.5vl:7b", "llava:7b"]);
+    mocks.listOllamaModelDetails.mockResolvedValue([
+      { name: "qwen2.5vl:7b", capabilities: ["completion", "vision"] },
+      { name: "llava:7b", capabilities: null },
+    ]);
     const image = new File(
       [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
       "notes.png",
     );
     await runAdHocConverter("image-to-latex", { text: "", file: image });
-    expect(mocks.listOllamaModels).toHaveBeenCalledWith("http://127.0.0.1:11434");
+    expect(mocks.listOllamaModelDetails).toHaveBeenCalledWith("http://127.0.0.1:11434");
     expect(mocks.completeViaBackend).toHaveBeenCalledWith(
       expect.any(Object),
       undefined,
@@ -426,7 +459,7 @@ describe("ad-hoc converter registry", () => {
     );
     const progress = vi.fn();
     await runAdHocConverter("equation-to-latex", { text: "", file: image }, progress);
-    expect(progress).toHaveBeenCalledWith({ step: "readingEquation" });
+    expect(progress).toHaveBeenCalledWith({ step: "readingEquation", model: "qwen2.5vl:7b" });
     expect(mocks.completeViaBackend).toHaveBeenLastCalledWith(
       expect.objectContaining({ system: expect.stringContaining("one LaTeX math expression") }),
       undefined,
@@ -438,36 +471,42 @@ describe("ad-hoc converter registry", () => {
       { text: "the square root of x", file: null },
       progress,
     );
-    expect(progress).toHaveBeenCalledWith({ step: "convertingEquation" });
+    expect(progress).toHaveBeenCalledWith({ step: "convertingEquation", model: "qwen2.5vl:7b" });
   });
 
   it("transcribes bounded scanned PDFs and inserts target-specific page breaks", async () => {
-    await expect(transcribePdfPages(new Uint8Array(), 0, "LaTeX")).rejects.toThrow(
+    await expect(transcribePdfPages(new Uint8Array(), [], "LaTeX")).rejects.toThrow(
       "does not contain any pages",
     );
-    await expect(transcribePdfPages(new Uint8Array(), 51, "LaTeX")).rejects.toThrow(
+    const tooMany = Array.from({ length: 51 }, (_, index) => index + 1);
+    await expect(transcribePdfPages(new Uint8Array(), tooMany, "LaTeX")).rejects.toThrow(
       "limited to 50 pages",
     );
 
     const progress = vi.fn();
     const bytes = new Uint8Array([1, 2, 3]);
-    const markdown = await transcribePdfPages(bytes, 2, "Markdown", progress);
-    expect(markdown).toBe("x^2\n\n---\n\nx^2");
-    expect(progress).toHaveBeenLastCalledWith({ step: "transcribingPage", page: 2, total: 2 });
+    const markdown = await transcribePdfPages(bytes, [1, 2], "Markdown", progress);
+    expect(markdown).toEqual({ text: "x^2\n\n---\n\nx^2", model: { label: "qwen2.5vl:7b", sentTo: null } });
+    expect(progress).toHaveBeenLastCalledWith({
+      step: "transcribingPage",
+      page: 2,
+      total: 2,
+      model: "qwen2.5vl:7b",
+    });
     expect(mocks.pdfPageToPng).toHaveBeenCalledWith(bytes, 2, 1.6, "#ffffff");
 
-    const typst = await transcribePdfPages(bytes, 2, "Typst");
-    expect(typst).toContain("#pagebreak()");
-    const latex = await transcribePdfPages(bytes, 2, "LaTeX");
-    expect(latex).toContain("\\documentclass{article}");
-    expect(latex).toContain("\\newpage");
+    const typst = await transcribePdfPages(bytes, [1, 2], "Typst");
+    expect(typst.text).toContain("#pagebreak()");
+    const latex = await transcribePdfPages(bytes, [1, 2], "LaTeX");
+    expect(latex.text).toContain("\\documentclass{article}");
+    expect(latex.text).toContain("\\newpage");
   });
 
   it("stops scanned-PDF transcription promptly when cancelled", async () => {
     const controller = new AbortController();
     controller.abort();
     await expect(
-      transcribePdfPages(new Uint8Array([1]), 1, "Markdown", undefined, controller.signal),
+      transcribePdfPages(new Uint8Array([1]), [1], "Markdown", undefined, controller.signal),
     ).rejects.toMatchObject({ name: "AbortError" });
     expect(mocks.pdfPageToPng).not.toHaveBeenCalled();
   });
@@ -495,6 +534,62 @@ describe("ad-hoc converter registry", () => {
     expect(progress.mock.calls.flat()).toEqual(
       expect.arrayContaining([{ step: "readingPages" }, { step: "documentStructure" }]),
     );
+  });
+
+  it("asks before transcribing a scanned PDF of five pages or more", async () => {
+    mocks.convertPages.mockReturnValue({
+      tex: "",
+      report: { pages: 5, figures: 0, likelyScanned: true },
+    });
+    mocks.extractPagesForConvert.mockResolvedValue({
+      pages: Array.from({ length: 5 }, () => ({ width: 612, height: 792, items: [], figureNames: [] })),
+      figures: [],
+    });
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
+    const asked = runAdHocConverter("pdf-to-markdown", { text: "", file: pdf });
+    await expect(asked).rejects.toBeInstanceOf(ScanConfirmationNeeded);
+    await expect(asked).rejects.toMatchObject({
+      sizes: Array.from({ length: 5 }, () => ({ width: 612, height: 792 })),
+    });
+    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
+    expect(mocks.listOllamaModelDetails).not.toHaveBeenCalled();
+
+    const result = await runAdHocConverter("pdf-to-markdown", { text: "", file: pdf, scanConfirmed: true });
+    expect(result.note).toBe(
+      "Transcribed 5 scanned pages with qwen2.5vl:7b. Review equations and tables before using the result.",
+    );
+    expect(mocks.completeViaBackend).toHaveBeenCalledTimes(5);
+  });
+
+  it("transcribes short scans straight away", async () => {
+    mocks.convertPages.mockReturnValue({
+      tex: "",
+      report: { pages: 2, figures: 0, likelyScanned: true },
+    });
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
+    const result = await runAdHocConverter("pdf-to-typst", { text: "", file: pdf });
+    expect(result.text).toBe("x^2\n\n#pagebreak()\n\nx^2");
+    expect(mocks.completeViaBackend).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses a hosted Tools model for images when one is chosen", async () => {
+    mocks.getConfig.mockResolvedValue({
+      ai_keys: { anthropic: "__stored__" },
+      ai_provider: "ollama",
+      ai_model: "qwen2.5vl:7b",
+      ai_tools_model: { provider: "anthropic", model: "claude-opus-5-5" },
+    });
+    const progress = vi.fn();
+    const image = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "notes.png");
+    await runAdHocConverter("image-to-latex", { text: "", file: image }, progress);
+    expect(mocks.completeViaBackend).toHaveBeenCalledWith(
+      expect.objectContaining({ max_tokens: 8192 }),
+      undefined,
+      { provider_id: "anthropic", model_id: "claude-opus-5-5" },
+    );
+    expect(progress).toHaveBeenCalledWith({ step: "visionModel", model: "claude-opus-5-5" });
+    expect(mocks.listOllamaModelDetails).not.toHaveBeenCalled();
+    expect(mocks.downscaleImage).toHaveBeenCalledOnce();
   });
 
   it("uses local OCR for a scanned PDF and preserves cancellation identity", async () => {
@@ -654,7 +749,7 @@ describe("Typst converters", () => {
     const image = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "eq.png");
     const progress = vi.fn();
     const result = await runAdHocConverter("equation-to-typst", { text: "", file: image }, progress);
-    expect(progress).toHaveBeenCalledWith({ step: "readingEquation" });
+    expect(progress).toHaveBeenCalledWith({ step: "readingEquation", model: "qwen2.5vl:7b" });
     expect(mocks.completeViaBackend).toHaveBeenCalledWith(
       expect.objectContaining({ system: expect.stringContaining("one LaTeX math expression") }),
       undefined,

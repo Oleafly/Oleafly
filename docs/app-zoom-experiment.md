@@ -15,8 +15,8 @@ the original proposal, kept for its acceptance checks.
 The "App font size" setting is not app-level zoom. It changes the root font
 size in the main React application, with choices from 13 to 20 pixels. The
 editor has its own font-size variable, and the terminal and PDF viewer have
-separate controls. The detached preview, browser chrome, and update window do
-not mount the main `App` component, so they keep their own scale.
+separate controls. The detached preview and update window do not mount the
+main `App` component, so they keep their own scale.
 
 The relevant code is in
 [`AppearanceSection.tsx`](../src/components/settings/AppearanceSection.tsx),
@@ -39,12 +39,11 @@ When the experiment is enabled:
   webview.
 - The selected level persists across restarts. A newly opened Oleafly window
   starts at that level without a visible jump from 100 percent.
-- Zoom applies to Oleafly-owned webviews: the main window, detached preview,
-  update window, and the browser's local chrome. It also scales the editor and
-  terminal because they live inside the main webview.
-- External pages in `oleafly-browser-pane-*` webviews remain at their own page
-  scale. A future app-owned webview must opt in explicitly; the default is not
-  to zoom it.
+- Zoom applies to Oleafly-owned webviews: the main window, detached preview
+  and update window. It also scales the editor and terminal because they live
+  inside the main webview.
+- A future app-owned webview must opt in explicitly; the default is not to
+  zoom it.
 
 Do not enable Tauri's automatic zoom hotkeys. The PDF viewer already uses the
 same shortcuts. While this experiment is on, app zoom owns Cmd/Ctrl `+`, `-`,
@@ -68,8 +67,8 @@ Rust setter:
    out-of-range, and unknown values instead of rounding them.
 3. Accept setting changes only from the main app webview or a native menu
    event. Enumerate registered Oleafly-owned webviews and call
-   `set_zoom(percent as f64 / 100.0)` on each one. Never include an external
-   browser pane in that registry.
+   `set_zoom(percent as f64 / 100.0)` on each one. Never include a webview that
+   shows an external page in that registry.
 4. Persist the new level only after every eligible webview accepts it. If one
    fails, restore the previous level on webviews that already changed and keep
    the previous stored value. Return a usable error to the settings UI.
@@ -79,22 +78,6 @@ Rust setter:
 
 The frontend setting reads the Rust snapshot and sends a requested level back
 through this narrow command. The Rust snapshot remains the source of truth.
-
-### Browser chrome geometry
-
-The browser window places an external page below an 88-logical-pixel local
-chrome strip. Zooming only the chrome without moving the page would make the
-two surfaces overlap. Keep the current constant as its 100-percent base, then
-reserve:
-
-```text
-chrome physical height = 88 * OS scale factor * app zoom percentage / 100
-```
-
-Store the active app zoom with the browser window state. Re-run
-`apply_layout` after a zoom change and use the same value for later resize and
-tab-open events. Unit tests should cover fractional display scale, 200 percent,
-and a window shorter than the scaled chrome.
 
 ### Supported macOS versions
 
@@ -112,7 +95,7 @@ The experiment is ready for wider use only when all of these are recorded for
 the same commit:
 
 - Rust tests cover the allowed levels, caller checks, default-deny webview
-  registration, rollback after a failed apply, and browser geometry.
+  registration and rollback after a failed apply.
 - Browser tests exercise the menu commands and Cmd/Ctrl shortcuts at 80, 100,
   and 200 percent. They verify restart persistence, reset to Actual Size, and
   inheritance by windows opened after the change.
@@ -120,9 +103,8 @@ the same commit:
   scrolling at both the 900 by 600 minimum window and the 1280 by 800 default.
   Text, menus, dialogs, popovers, focus indicators, and error messages must not
   be clipped, hidden behind fixed regions, or made impossible to operate.
-- Main, preview, update, and browser-chrome windows each have an automated
-  geometry assertion and a visual capture at 100 and 200 percent. The external
-  browser page stays unzoomed and begins below the scaled chrome.
+- Main, preview and update windows each have an automated geometry assertion
+  and a visual capture at 100 and 200 percent.
 - With the PDF preview focused, each app-zoom shortcut changes the app level
   once and leaves the PDF viewer's own percentage unchanged. Its toolbar zoom
   still works.

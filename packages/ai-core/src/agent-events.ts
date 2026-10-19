@@ -5,6 +5,12 @@ import type { AgentUsage } from "./usage";
 // (src/lib/agent-backend.ts) re-exports this; the package owns the shape so
 // folds stay framework-free.
 
+/** Things the user should know about a run that are not errors. */
+export type AgentNoticeCode =
+  | "attachment_sent_as_text"
+  | "attachment_skipped"
+  | "web_search_unavailable";
+
 export type AgentEvent =
   | { kind: "stepStart"; step: number }
   | { kind: "retry"; attempt: number; max: number }
@@ -15,7 +21,14 @@ export type AgentEvent =
   | { kind: "toolCallStart"; id: string; name: string }
   | { kind: "toolCallArgsDelta"; id: string; json: string }
   | { kind: "toolCallEnd"; id: string; arguments: string }
-  | { kind: "usage"; usage: AgentUsage }
+  | {
+      kind: "usage";
+      usage: AgentUsage;
+      /** The latest step alone: the context the model just saw. */
+      lastStep?: AgentUsage | null;
+      contextWindow?: number | null;
+    }
+  | { kind: "notice"; code: AgentNoticeCode | (string & {}); detail: string | null }
   | {
       kind: "subagentUpdate";
       runtime?: "built-in" | "acp" | null;

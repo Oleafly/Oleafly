@@ -1,0 +1,154 @@
+[
+  {
+    "name": "complete-article",
+    "text": "@article{knuth84,\n  author = {Knuth, Donald},\n  title = {Literate Programming},\n  journal = {The Computer Journal},\n  year = {1984},\n}"
+  },
+  {
+    "name": "missing-year",
+    "text": "@article{a,\n  author = {A},\n  title = {T},\n  journal = {J},\n}"
+  },
+  {
+    "name": "missing-fields-mark-the-key",
+    "text": "@article{a,\n  title = {T},\n}"
+  },
+  {
+    "name": "biblatex-alternatives",
+    "text": "@article{a,\n  author = {A},\n  title = {T},\n  journaltitle = {J},\n  date = {2026-01-01},\n}"
+  },
+  {
+    "name": "misc-requires-nothing",
+    "text": "@misc{m,\n  note = {n},\n}"
+  },
+  {
+    "name": "entry-still-being-typed",
+    "text": "@article{a,\n  author = {A},"
+  },
+  {
+    "name": "directives-are-skipped",
+    "text": "@string{cj = \"The Computer Journal\"}\n@preamble{ \"\\newcommand{\\x}{y}\" }\n@comment{anything at all}"
+  },
+  {
+    "name": "unknown-entry-type",
+    "text": "@nope{k,\n  title = {T},\n}"
+  },
+  {
+    "name": "repeated-field",
+    "text": "@misc{m,\n  title = {T},\n  title = {U},\n}"
+  },
+  {
+    "name": "year-with-letter-inside",
+    "text": "@misc{m,\n  year = {19x9},\n}"
+  },
+  {
+    "name": "year-with-suffix",
+    "text": "@misc{m,\n  year = {2026a},\n}"
+  },
+  {
+    "name": "bare-year",
+    "text": "@misc{m,\n  year = 2026,\n}"
+  },
+  {
+    "name": "quoted-and-parenthesised",
+    "text": "@article(a,\n  author = \"A\",\n  title = \"T\",\n  journal = \"J\",\n  year = \"1999\"\n)"
+  },
+  {
+    "name": "damaged-entry-recovers",
+    "text": "@article{broken,\n  title = {T},\n@article{knuth84,\n  author = {Knuth, Donald},\n  title = {Literate Programming},\n  journal = {The Computer Journal},\n  year = {1984},\n}\n@article{second,\n  title = {T},\n}"
+  },
+  {
+    "name": "nested-braces-in-value",
+    "text": "@misc{m,\n  title = {A {Nested} Title},\n  note = {n},\n}"
+  },
+  {
+    "name": "novalidate-baseline",
+    "text": "@article{a,\n  title = {T},\n}"
+  },
+  {
+    "name": "novalidate-file-first-line",
+    "text": "%%novalidate\n@article{a,\n  title = {T},\n}"
+  },
+  {
+    "name": "novalidate-file-last-line",
+    "text": "@article{a,\n  title = {T},\n}\n%%novalidate\n"
+  },
+  {
+    "name": "novalidate-file-spaced",
+    "text": "  %% novalidate  \n@article{a,\n  title = {T},\n}"
+  },
+  {
+    "name": "novalidate-region",
+    "text": "%%begin novalidate\n@article{a,\n  title = {T},\n}\n%%end novalidate\n@article{b,\n  title = {T},\n}"
+  },
+  {
+    "name": "novalidate-region-unclosed",
+    "text": "%%begin novalidate\n@article{a,\n  title = {T},\n}\n@article{b,\n  title = {T},\n}"
+  },
+  {
+    "name": "ordinary-comment",
+    "text": "%% novalidate entries below\n@article{a,\n  title = {T},\n}"
+  },
+  {
+    "name": "parenthesised-one-line",
+    "text": "@article(key, author = {A}, title = {T})"
+  },
+  {
+    "name": "escaped-brace-in-value",
+    "text": "@misc{m,\n  note = {x \\} y},\n  year = {20x},\n}"
+  },
+  {
+    "name": "closing-brace-in-quoted-value",
+    "text": "@misc{m,\n  note = \"a } b\",\n  year = {20x},\n}"
+  },
+  {
+    "name": "unterminated-before-book",
+    "text": "@article{a,\n  title = {T},\n@book{b,\n  author = {A},\n  title = {B},\n  publisher = {P},\n  year = {2020},\n}"
+  },
+  {
+    "name": "year-2020a",
+    "text": "@misc{m, year = {2020a}}"
+  },
+  {
+    "name": "year-20xx",
+    "text": "@misc{m, year = {20xx}}"
+  },
+  {
+    "name": "year-double-braced",
+    "text": "@misc{m, year = {{2020}}}"
+  },
+  {
+    "name": "year-quoted",
+    "text": "@misc{m, year = \"2020\"}"
+  },
+  {
+    "name": "emoji-before-key",
+    "text": "Notes 😀\n@article{k😀,\n  title = {T},\n}"
+  },
+  {
+    "name": "crlf-line-endings",
+    "text": "@misc{m,\r\n  year = {19x9},\r\n}\r\n"
+  },
+  {
+    "name": "empty-key",
+    "text": "@article{,\n  title = {T},\n}"
+  },
+  {
+    "name": "field-without-equals",
+    "text": "@misc{m,\n  junk,\n  year = {20x},\n}"
+  },
+  {
+    "name": "type-longer-than-lookahead",
+    "text": "@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa{k,}\n@misc{m, year={1x}}"
+  },
+  {
+    "name": "text-before-entries",
+    "text": "Some text @ not an entry\n@misc{m, note={n}, year={x}}"
+  },
+  {
+    "name": "uppercase-type-and-fields",
+    "text": "@ARTICLE{K,\n  AUTHOR = {A},\n  TITLE = {T},\n  JOURNAL = {J},\n  YEAR = {2020},\n}"
+  },
+  {
+    "name": "indented-entry",
+    "text": "  @book{b,\n    title = {T},\n  }"
+  }
+]

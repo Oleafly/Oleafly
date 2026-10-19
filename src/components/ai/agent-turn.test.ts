@@ -87,6 +87,27 @@ describe("message conversion", () => {
     expect(toAgentMessages(messages)).toEqual([]);
   });
 
+  it("turns attachment parts into backend attachment references", () => {
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "see" },
+          { type: "attachment", sha256: "abc", name: "plot.png", mime: "image/png" },
+        ],
+      },
+    ];
+    expect(toAgentMessages(messages)).toEqual([
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "see" },
+          { type: "attachment", sha256: "abc", name: "plot.png", mime: "image/png" },
+        ],
+      },
+    ]);
+  });
+
   it("keeps image parts so a vision turn survives the round trip", () => {
     const messages = [
       {
@@ -447,6 +468,44 @@ describe("harness", () => {
     expect(h.handlers.onThinking).toHaveBeenCalledWith("Continuing…");
   });
 
+  it("sends effort and web only when they are set", async () => {
+    const plain = harness([{ kind: "done", stopReason: null }]);
+    await plain.run();
+    const first = mocks.invoke.mock.calls.find((c) => c[0] === "agent_run")?.[1].request;
+    expect(first).not.toHaveProperty("effort");
+    expect(first).not.toHaveProperty("web");
+    mocks.invoke.mockReset();
+    const set = harness([{ kind: "done", stopReason: null }], {}, {
+      effort: "high",
+      web: { search: true, fetch: false },
+    });
+    await set.run();
+    const second = mocks.invoke.mock.calls.find((c) => c[0] === "agent_run")?.[1].request;
+    expect(second.effort).toBe("high");
+    expect(second.web).toEqual({ search: true, fetch: false });
+  });
+
+  it("passes the last step and the context window along with usage", async () => {
+    const h = harness([
+      {
+        kind: "usage",
+        usage: { input: 10, output: 2 },
+        lastStep: { input: 160_000, output: 0 },
+        contextWindow: 200_000,
+      },
+      { kind: "notice", code: "attachment_sent_as_text", detail: "paper.pdf" },
+      { kind: "done", stopReason: null },
+    ]);
+    const onNotice = vi.fn();
+    Object.assign(h.handlers, { onNotice });
+    await h.run();
+    expect(h.handlers.onUsage).toHaveBeenCalledWith(
+      { input: 10, output: 2 },
+      { lastStep: { input: 160_000, output: 0 }, contextWindow: 200_000 },
+    );
+    expect(onNotice).toHaveBeenCalledWith("attachment_sent_as_text", "paper.pdf");
+  });
+
   it("sends the system prompt and tool schemas to the backend", async () => {
     const h = harness([{ kind: "done", stopReason: null }], {
       read_file: { description: "d", inputSchema: { jsonSchema: { type: "object" } } },
@@ -674,7 +733,11 @@ describe("harness progress events", () => {
     ]);
     await h.run();
 
-    expect(h.handlers.onUsage).toHaveBeenCalledWith({ input: 10, output: 2 });
+    // Since 0.4.8 the last step's usage and the context window come along, here unreported.
+    expect(h.handlers.onUsage).toHaveBeenCalledWith(
+      { input: 10, output: 2 },
+      { lastStep: undefined, contextWindow: undefined },
+    );
     expect(h.handlers.onSubagentUpdate).toHaveBeenCalledWith(update);
     expect(h.handlers.onThinking).toHaveBeenCalledWith("Summarizing earlier conversation…");
   });

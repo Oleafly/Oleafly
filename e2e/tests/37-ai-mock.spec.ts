@@ -92,3 +92,74 @@ test("agent handoff delivers the prompt into the live composer", async ({ tauriP
     )
     .toContain(marker);
 });
+
+async function sendAndWait(page: Page, text: string, marker: string) {
+  server.setReply(marker);
+  server.setToolCall(null);
+  await fillTextarea(page, TA, text);
+  await page.press(TA, "Enter");
+  await waitLong(
+    page,
+    `document.body.innerText.includes(${JSON.stringify(marker)}) && !document.querySelector('[aria-label="Stop"]')`,
+    30_000,
+  );
+}
+
+test("Up recalls the last prompt in an empty message box", async ({ tauriPage }) => {
+  test.setTimeout(60_000);
+  await connectAndOpenChat(tauriPage);
+  await sendAndWait(tauriPage, "first prompt", "RECALL1");
+  await tauriPage.locator(TA).focus();
+  await tauriPage.keyboard.press("ArrowUp");
+  await expect(tauriPage.locator(TA)).toHaveValue("first prompt");
+});
+
+test("the message box keeps the height the user gives it", async ({ tauriPage }) => {
+  test.setTimeout(60_000);
+  await connectAndOpenChat(tauriPage);
+  const handle = tauriPage.getByRole("separator", { name: "Resize the message box" });
+  await handle.focus();
+  for (let step = 0; step < 3; step += 1) await tauriPage.keyboard.press("ArrowUp");
+  const grown = await tauriPage.locator(TA).evaluate((element) => element.getBoundingClientRect().height);
+  expect(grown).toBeGreaterThanOrEqual(116);
+  await openRailTab(tauriPage, "Explorer");
+  await openRailTab(tauriPage, "Research Assistant");
+  await expect(tauriPage.locator(TA)).toBeVisible();
+  const kept = await tauriPage.locator(TA).evaluate((element) => element.getBoundingClientRect().height);
+  expect(kept).toBeGreaterThanOrEqual(116);
+});
+
+test("a dropped text file reaches the model as text", async ({ tauriPage }) => {
+  test.setTimeout(60_000);
+  await connectAndOpenChat(tauriPage);
+  await tauriPage.evaluate(() => {
+    const target = document.querySelector("[data-chat-composer]");
+    if (!target) throw new Error("composer missing");
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["E2EATTACH77"], "notes.txt", { type: "text/plain" }));
+    for (const type of ["dragenter", "dragover", "drop"]) {
+      target.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    }
+  });
+  await expect(tauriPage.locator('[data-status="ready"]')).toBeVisible({ timeout: 15_000 });
+  server.resetRequests();
+  await sendAndWait(tauriPage, "Summarize the attached notes.", "ATTACHDONE");
+  expect(server.requestBodies().some((body) => body.includes("E2EATTACH77"))).toBe(true);
+});
+
+test("Regenerate sends the last prompt again", async ({ tauriPage }) => {
+  test.setTimeout(90_000);
+  await connectAndOpenChat(tauriPage);
+  await sendAndWait(tauriPage, "Say the regenerate marker.", "REGEN1");
+  const before = server.requestCount();
+  await tauriPage.getByText("REGEN1").hover();
+  server.setReply("REGEN2");
+  await tauriPage.getByRole("button", { name: "Regenerate reply" }).last().click();
+  await waitLong(
+    tauriPage,
+    `document.body.innerText.includes('REGEN2') && !document.querySelector('[aria-label="Stop"]')`,
+    30_000,
+  );
+  expect(server.requestCount()).toBeGreaterThan(before);
+  expect(server.requestBodies().at(-1)).toContain("Say the regenerate marker.");
+});

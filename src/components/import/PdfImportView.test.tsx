@@ -51,6 +51,22 @@ vi.mock("@/lib/toast", () => ({
   },
 }));
 
+vi.mock("@/components/tools/ScanTranscribeBanner", () => ({
+  ScanTranscribeBanner: ({
+    pages,
+    range,
+  }: {
+    pages: readonly { width: number; height: number }[];
+    range?: readonly [number, number];
+  }) => (
+    <div
+      data-testid="scan-transcribe-banner"
+      data-pages={JSON.stringify(pages)}
+      data-range={JSON.stringify(range ?? null)}
+    />
+  ),
+}));
+
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     isFullscreen: () => Promise.resolve(false),
@@ -138,6 +154,8 @@ beforeEach(() => {
     error: null,
     view: "split",
     options: {},
+    scanTranscribed: false,
+    scanModel: null,
   });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
@@ -337,11 +355,66 @@ describe("PdfImportView converted document", () => {
       result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
     });
     render(<PdfImportView />);
+    // The text the lazy Tools banner replaces once it loads.
     expect(
       screen.getByText(
-        "This PDF looks scanned. Transcribe it with a local vision model to recover editable text.",
+        "This PDF looks scanned. Transcribe it with a vision model to recover editable text.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("shows the Tools banner for a scanned PDF", async () => {
+    seedConverted({
+      view: "source",
+      pages: [
+        { width: 612, height: 792, items: [], figureNames: [] },
+        { width: 500, height: 700, items: [], figureNames: [] },
+      ],
+      options: { pageRange: [2, 2] },
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+    });
+    render(<PdfImportView />);
+    const banner = await screen.findByTestId("scan-transcribe-banner");
+    expect(JSON.parse(banner.getAttribute("data-pages") ?? "[]")).toEqual([
+      { width: 612, height: 792 },
+      { width: 500, height: 700 },
+    ]);
+    expect(JSON.parse(banner.getAttribute("data-range") ?? "null")).toEqual([2, 2]);
+  });
+
+  it("labels the transcribe button without promising local", () => {
+    seedConverted({
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      scanTranscribed: false,
+    });
+    render(<PdfImportView />);
+    expect(screen.getByTestId("import-transcribe-scan")).toHaveTextContent("Transcribe scan");
+    expect(screen.getByTestId("import-destination")).toHaveTextContent(enLibrary.pdfImport.local);
+  });
+
+  it("after a hosted transcription the header names where the scan went and the footer names the model", () => {
+    seedConverted({
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      scanTranscribed: true,
+      scanModel: { label: "Claude Opus 5.5", sentTo: "Anthropic" },
+    });
+    render(<PdfImportView />);
+    expect(screen.getByTestId("import-destination")).toHaveTextContent("Sent to Anthropic");
+    expect(
+      screen.getByText("Transcribed with Claude Opus 5.5. Review equations and tables."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("scan-transcribe-banner")).not.toBeInTheDocument();
+  });
+
+  it("names a local model in the footer and keeps the Local badge", () => {
+    seedConverted({
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      scanTranscribed: true,
+      scanModel: { label: "glm-ocr", sentTo: null },
+    });
+    render(<PdfImportView />);
+    expect(screen.getByTestId("import-destination")).toHaveTextContent(enLibrary.pdfImport.local);
+    expect(screen.getByText("Transcribed with glm-ocr. Review equations and tables.")).toBeInTheDocument();
   });
 
   it("re-runs the conversion with a page range and a column count", async () => {

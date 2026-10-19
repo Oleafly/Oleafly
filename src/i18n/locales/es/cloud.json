@@ -78,11 +78,11 @@
     "linkedNote_other": "{{count}} proyectos abiertos desde una carpeta no se sincronizan. Solo se hace copia de seguridad de los proyectos de tu biblioteca."
   },
   "transfer": {
-    "uploading_many": "Subiendo {{done}} de {{total}} archivos",
     "uploading_one": "Subiendo {{done}} de {{total}} archivo",
+    "uploading_many": "Subiendo {{done}} de {{total}} archivos",
     "uploading_other": "Subiendo {{done}} de {{total}} archivos",
-    "downloading_many": "Descargando {{done}} de {{total}} archivos",
     "downloading_one": "Descargando {{done}} de {{total}} archivo",
+    "downloading_many": "Descargando {{done}} de {{total}} archivos",
     "downloading_other": "Descargando {{done}} de {{total}} archivos",
     "fetching": "Descargando {{done}} de {{total}}"
   },

@@ -73,7 +73,29 @@
     }
   },
   "attachments": {
-    "remove": "{{name}} ekini kaldır"
+    "remove": "{{name}} ekini kaldır",
+    "processing": "{{name}} hazırlanıyor…",
+    "failed": "{{name}} eklenemedi.",
+    "pages_one": "{{count}} sayfa",
+    "pages_other": "{{count}} sayfa",
+    "pagesLimited": "{{count}} sayfanın yalnızca ilk {{limit}} sayfası kullanılır.",
+    "tooMany": "Bir iletiye en fazla {{max}} dosya ekleyebilirsiniz.",
+    "tooLarge": "{{name}} dosyası {{limit}} sınırını aşıyor.",
+    "unsupported": "{{name}} eklenemez. Görsel, PDF veya metin dosyası ekleyin.",
+    "unreadableImage": "Oleafly, {{name}} dosyasının görsel biçimini okuyamıyor. Dosyayı PNG veya JPEG olarak kaydedip yeniden ekleyin.",
+    "unreadablePdf": "{{name}} PDF olarak açılamadı.",
+    "storeFailed": "{{name}} bu sohbet için kaydedilemedi.",
+    "visionUnsupported": "{{model}} görselleri okuyamadığı için bu iletideki görseller gönderilmeyecek.",
+    "scannedPdf": "{{name}} dosyasında metin katmanı yok ve {{model}} görselleri okuyamıyor.",
+    "dropFiles": "Eklemek için dosyaları bırakın",
+    "dropProjectFile": "Bu dosyadan bahsetmek için bırakın",
+    "open": "{{name}} dosyasını aç",
+    "saveCopy": "{{name}} dosyasının bir kopyasını kaydet",
+    "saved": "{{name}} dosyasının bir kopyası kaydedildi.",
+    "saveFailed": "{{name}} kaydedilemedi.",
+    "missing": "{{name}} artık kullanılamıyor.",
+    "sentAsText": "Bu model {{name}} dosyasını dosya olarak okuyamadığı için metin olarak gönderildi.",
+    "skipped": "{{name}} gönderilmedi."
   },
   "chat": {
     "pill": {
@@ -182,7 +204,9 @@
     "stop": "Durdur",
     "stopTitle": "Üretmeyi durdur",
     "send": "Gönder",
-    "checkAgain": "Yeniden denetle"
+    "checkAgain": "Yeniden denetle",
+    "resizeHandle": "İleti kutusunu yeniden boyutlandır",
+    "resizeHint": "Yeniden boyutlandırmak için sürükleyin. Sıfırlamak için çift tıklayın."
   },
   "commands": {
     "groups": {
@@ -220,10 +244,6 @@
     "files": {
       "label": "Dosyalar",
       "description": "Bir sonraki iletinize dosya ekler"
-    },
-    "browser": {
-      "label": "Tarayıcı ekle",
-      "description": "Tarayıcıyı belgenizin yanında açar"
     }
   },
   "models": {
@@ -272,7 +292,10 @@
       "minutes": "{{count}} dk önce",
       "hours": "{{count}} sa önce",
       "days": "{{count}} gün önce"
-    }
+    },
+    "skipped_one": "{{count}} sohbet yüklenemedi. Sohbet diskte duruyor.",
+    "skipped_other": "{{count}} sohbet yüklenemedi. Sohbetler diskte duruyor.",
+    "openFailed": "Bu sohbet açılamadı."
   },
   "tools": {
     "approval": {
@@ -318,7 +341,6 @@
       "listAgents": "Yardımcı ajanları ve durumlarını listeler.",
       "closeAgent": "Bir yardımcı ajanı kapatır.",
       "runCommand": "Proje klasöründe iki dakikalık sınırla bir shell komutu çalıştırır.",
-      "computerUse": "Asistanın tarayıcı penceresinde bir web sayfası açar.",
       "toggleTheme": "Açık ve koyu kip arasında geçiş yapar.",
       "listOverleafProjects": "Overleaf projelerinizi listeler, gerekirse önce oturum açar.",
       "importOverleafProjects": "Overleaf projelerini derleyicileri ve ana dosyalarıyla birlikte kitaplığınıza aktarır."
@@ -347,8 +369,7 @@
       "latexOnly": "Yalnızca LaTeX projeleri",
       "latexAndTypstOnly": "Yalnızca LaTeX ve Typst projeleri",
       "pdfCaptureSetting": "PDF sayfa yakalama ayarı gerekir",
-      "chatApproval": "Sohbette, her seferinde tek komut olarak onaylanır",
-      "browserSetting": "Web tarayıcısı ayarı gerekir"
+      "chatApproval": "Sohbette, her seferinde tek komut olarak onaylanır"
     },
     "sourceGroups": {
       "figure": "Şekil",
@@ -471,18 +492,20 @@
     "resumeTask": "Bu çalışmayı sürdürmek için araştırma görevini açın.",
     "delegatedConversation": "Bu konuşma, devredilmiş bir ajan çalıştırmasına ait.",
     "noResume": "Bu ajan kayıtlı konuşmaları sürdüremez. Hazır olduğunuzda yeni bir konuşma başlatın.",
-    "imageTooLarge": "480 KiB'den küçük bir görsel seçin. En fazla dört görsel ekleyebilirsiniz.",
     "imageReadFailed": "Görsel okunamadı.",
-    "removeImage": "{{name}} görselini kaldır",
     "composerAriaLabel": "CLI ajanına ileti yaz",
     "composerPlaceholderReady": "Ajandan bu proje üzerinde çalışmasını isteyin",
     "composerPlaceholderIdle": "İleti göndermek için bir konuşma başlatın veya yeniden bağlanın",
-    "attachImage": "Görsel ekle",
     "startConversation": "{{agent}} ile bir konuşma başlat",
     "startConversationFallback": "bir ajan",
     "agentModel": "Ajan modeli",
     "modelManaged": "Model ajan tarafından yönetiliyor",
     "stop": "Durdur",
+    "stopReason": {
+      "refusal": "Ajan bu isteğe devam etmeyi reddetti.",
+      "maxTokens": "Ajan çıktı sınırına ulaştı ve durdu.",
+      "maxTurnRequests": "Ajan bu turdaki istek sınırına ulaştı ve durdu."
+    },
     "stopTitle": "Ajanı durdur",
     "send": "Gönder",
     "connecting": "Bağlanıyor",
@@ -500,8 +523,7 @@
     "roster": {
       "bridgeMissing": "köprüyü Ajan kurulumu bölümünden kurun",
       "cliMissing": "CLI bu bilgisayarda bulunamadı",
-      "unavailable": "bu bilgisayarda kullanılamıyor",
-      "comingSoon": "yakında"
+      "unavailable": "bu bilgisayarda kullanılamıyor"
     },
     "messageTooLarge": "Bu ileti ve görselleri çok büyük. İletiyi kısaltın veya bir görseli kaldırın.",
     "terminalCommand": "Ajan bir terminal komutu çalıştırıyor.",
@@ -549,7 +571,122 @@
       "tool": "Araç: {{name}}",
       "changedFiles": "Değişen dosyalar",
       "moreFiles_one": "ve {{count}} dosya daha",
-      "moreFiles_other": "ve {{count}} dosya daha"
+      "moreFiles_other": "ve {{count}} dosya daha",
+      "mode": "Mod",
+      "effort": "Çaba",
+      "permissionProfile": "Onay modu",
+      "commits": "İşlemeler"
+    },
+    "composerPlaceholderStart": "Konuşma başlatmak için {{agent}} ajanına yazın",
+    "composerPlaceholderConnecting": "Şimdi yazabilirsiniz. İleti, ajan hazır olunca gönderilir.",
+    "composerPlaceholderRunning": "Sonraki iletinizi yazın. Ajan işini bitirince gönderilir.",
+    "attachFile": "Dosya ekle",
+    "composer": {
+      "tooManyAttachments": "Bir iletiye en fazla 10 dosya ekleyin.",
+      "imagesUnsupported": "Bu ajan görsel kabul etmiyor. Görselleri kaldırıp yeniden deneyin.",
+      "attachmentsNotReady": "Eklerin hazırlanmasının bitmesini bekleyin.",
+      "removeSelection": "{{label}} alıntısını kaldır"
+    },
+    "queue": {
+      "queued": "Sırada: ajan işini bitirince gönderilir",
+      "remove": "Sıradaki iletiyi kaldır",
+      "sendNow": "Şimdi gönder",
+      "sendFailed": "Bu ileti gönderilmedi. Yeniden gönderin veya kaldırın."
+    },
+    "slash": {
+      "commands": "Ajan komutları",
+      "skills": "Beceriler"
+    },
+    "controls": {
+      "effort": "Çaba",
+      "mode": "Mod",
+      "more": "Diğer ajan seçenekleri",
+      "blockedMode": "Oleafly içinde kapalı",
+      "blockedModeHint": "Oleafly izin denetimlerini her zaman açık tutar, bu yüzden bu mod kullanılamaz."
+    },
+    "usage": {
+      "ariaLabel": "Ajan kullanımını görüntüle",
+      "tooltip": "Bu konuşmanın kullanımı",
+      "contextShare": "Bağlam penceresinin %{{percent}} kadarı kullanıldı",
+      "window": {
+        "fiveHour": "5 saatlik oturum",
+        "weekly": "Haftalık, tüm modeller",
+        "weeklyOpus": "Haftalık, Opus",
+        "weeklySonnet": "Haftalık, Sonnet",
+        "overage": "Ek kullanım",
+        "other": "Kullanım sınırı {{id}}"
+      },
+      "costIn": "Ajan {{amount}} {{currency}} maliyet bildirdi.",
+      "modelTokens": "{{model}}: {{tokens}} token"
+    },
+    "compaction": {
+      "running": "Önceki bağlam özetleniyor",
+      "done": "Önceki bağlam özetlendi",
+      "failed": "Önceki bağlam özetlenemedi"
+    },
+    "signIn": {
+      "inTerminal": "Terminalde {{name}}",
+      "afterTerminal": "Terminalde oturum açmayı tamamlayın, sonra yeniden bağlanın.",
+      "apiKeyLabel": "{{provider}} için API anahtarı",
+      "apiKeyPlaceholder": "API anahtarınızı yapıştırın",
+      "geminiGoogle": "Bireysel planlarda Google ile oturum açma artık çalışmıyor. Bir Gemini API anahtarı veya Vertex AI kullanın.",
+      "noProject": "Terminalden oturum açmak için bir proje açın.",
+      "signOut": "Oturumu kapat"
+    },
+    "elicitation": {
+      "ariaLabel": "Ajan isteği",
+      "from": "{{agent}} soruyor:",
+      "submit": "Gönder",
+      "decline": "Reddet",
+      "cancel": "İptal",
+      "required": "Zorunlu",
+      "invalid": "Bu alanı denetleyin.",
+      "openUrl": "Tarayıcıda aç",
+      "confirmTitle": "{{host}} açılsın mı?",
+      "confirmDescription": "Ajan, bu sitede bir adımı tamamlamanızı istedi. Site tarayıcınızda açılır.",
+      "waiting": "Sitenin tamamlanması bekleniyor."
+    },
+    "remote": {
+      "banner": "Hermes, SSH üzerinden {{host}} makinesinde çalışıyor. Yaptığı değişiklikler o makinede kalır."
+    },
+    "history": {
+      "all": "Tüm konuşmalar",
+      "title": "Konuşmalar",
+      "search": "Konuşmalarda ara",
+      "empty": "Eşleşen konuşma yok.",
+      "loadMore": "Daha fazla yükle",
+      "open": "Aç",
+      "rename": "Yeniden adlandır",
+      "renameLabel": "Konuşma adı",
+      "delete": "Sil",
+      "deleteTitle": "Bu konuşma silinsin mi?",
+      "deleteDescription": "Oleafly, konuşmanın dökümünü ve eklerini bu projeden kaldırır.",
+      "deleteFromAgent": "{{agent}} içinden de sil",
+      "deleteAgentFailed": "Oleafly içinde silindi. {{agent}} kendi kopyasını silemedi: {{error}}",
+      "deleteRunning": "Bu konuşmayı silmeden önce ajanı durdurun.",
+      "importFind": "Bu proje için {{agent}} konuşmalarını bul",
+      "imported": "Zaten Oleafly içinde",
+      "importSelected": "Seçilenleri içe aktar",
+      "importEmpty": "{{agent}} bu proje için başka konuşmaya sahip değil."
+    },
+    "header": {
+      "startedAt": "Başlangıç: {{revision}}",
+      "startedDirty": "Başlangıç: {{revision}}, işlenmemiş değişikliklerle",
+      "menu": "Konuşma işlemleri",
+      "fork": "Konuşmayı çatalla",
+      "forkUnsupported": "Bu ajan konuşmaları çatallayamaz.",
+      "forkBusy": "Çatallamadan önce ajanın işini bitirmesini bekleyin.",
+      "v2": "ACP v2 taslağı",
+      "remote": "Uzak"
+    },
+    "commit": {
+      "button": "İşle",
+      "title": "Bu turu işle",
+      "message": "İşleme iletisi",
+      "files": "İşlenecek dosyalar",
+      "defaultMessage": "{{agent}} tarafından yapılan değişiklikler",
+      "submit": "Dosyaları işle",
+      "cancel": "İptal"
     }
   },
   "agents": {
@@ -721,8 +858,6 @@
     "restoreFailed": "Geri yüklenemedi: {{error}}",
     "steerFailed": "Çalışan tur yönlendirilemedi.",
     "approvalRuleSaveFailed": "Proje onay kuralı kaydedilemedi.",
-    "attachmentTooLarge": "{{name}} çok büyük (en fazla 10 MB).",
-    "attachmentReadFailed": "{{name}} okunamadı.",
     "tooManyTools": "{{enabled}} araç açık, ancak bir çalıştırma en fazla {{max}} aracı destekler. Araçlar bölümünden en az {{excess}} tanesini kapatıp yeniden deneyin."
   },
   "header": {
@@ -749,7 +884,29 @@
     "summaryRunNoTokens_one": "Son çalıştırma: {{count}} adım, token toplamı yok",
     "summaryRunNoTokens_other": "Son çalıştırma: {{count}} adım, token toplamı yok",
     "summaryChat": "Bu sohbet: {{steps}} adım, {{tokens}} token",
-    "summaryFallback": "Yapay zeka kullanımı"
+    "summaryFallback": "Yapay zeka kullanımı",
+    "context": "Bağlam",
+    "contextUsed": "{{size}} token içinden {{used}}",
+    "contextShare": "Bağlam penceresinin {{percent}} kadarı kullanıldı",
+    "contextUnknown": "Bu modelin bağlam penceresi bilinmiyor.",
+    "reasoning": "Akıl yürütme",
+    "cacheRead": "Önbellek okumaları",
+    "cacheWrite": "Önbellek yazmaları",
+    "cost": "Tahmini maliyet",
+    "budget": "Proje bütçesi",
+    "budgetUsed": "{{limit}} içinden {{spent}}",
+    "credit": "Kalan kredi",
+    "creditOf": "{{limit}} içinden {{remaining}}",
+    "planLimits": "Plan sınırları",
+    "resetsAt": "Sıfırlanma: {{time}}",
+    "windowWarning": "Sınıra yakın",
+    "windowBlocked": "Sınıra ulaşıldı",
+    "refreshPlan": "Plan kullanımını yenile",
+    "refreshing": "Yenileniyor…",
+    "historyTrimmed_one": "Modele bu sohbetin yalnızca son {{count}} turu gönderildi.",
+    "historyTrimmed_other": "Modele bu sohbetin yalnızca son {{count}} turu gönderildi.",
+    "empty": "Bu sohbette henüz kullanım yok.",
+    "loading": "Kullanım yükleniyor…"
   },
   "provider": {
     "connectTitle": "Devam etmek için bir yapay zeka sağlayıcısı bağlayın",
@@ -769,7 +926,21 @@
     "projectSubtitle": "\"{{project}}\" üzerinde çalışılıyor",
     "noOutput": "Model hiçbir çıktı döndürmedi. Ayarlar → Yapay zeka asistanı bölümüne bakın.",
     "planMissing": "Henüz onaylanacak bir plan yok. Asistandan bir plan isteyin veya Plan'ı kapatın.",
-    "planUnchanged": "Plan değişmedi."
+    "planUnchanged": "Plan değişmedi.",
+    "stillWorking": "Hâlâ çalışıyor ({{seconds}} sn). Akıl yürütme modelleri ve yerel modeller yavaş olabilir. İptal etmek için Durdur'a tıklayın.",
+    "retrying": "Bağlantı sorunu. Yeniden deneniyor ({{max}} denemeden {{attempt}}.)…",
+    "stopped": "Durduruldu.",
+    "stepLimit": "Adım sınırına ulaşıldı. Devam etmek için bir ileti daha gönderin.",
+    "outputLimit": "Yanıt, modelin çıktı sınırına ulaştı. Devam etmek için bir ileti daha gönderin.",
+    "tooLargeToSave": "Bu sohbet kaydedilemeyecek kadar uzun. Yeni iletiler Oleafly'yi kapatana kadar tutulur. Bir kopya saklamak için sohbeti dışa aktarın.",
+    "exportChat": "Sohbeti dışa aktar",
+    "exported": "Sohbet dışa aktarıldı.",
+    "exportFailed": "Sohbet dışa aktarılamadı.",
+    "saveFailed": "Bu sohbetteki yeni iletiler kaydedilemedi. Diskte boş alan olup olmadığını denetleyin.",
+    "exportYou": "Siz",
+    "exportAssistant": "Asistan",
+    "exportAttachments": "Ekler",
+    "exportTools": "Kullanılan araçlar"
   },
   "followUps": {
     "steered": "Çalışan tura yönlendirildi: {{summary}}",
@@ -856,6 +1027,46 @@
     "figureAudit": "Şekil denetimi",
     "gitReview": "Git incelemesi",
     "referenceCleanup": "Kaynakça temizliği",
-    "removeSkill": "{{name}} becerisini kaldır"
+    "removeSkill": "{{name}} becerisini kaldır",
+    "compilationRepair": "Derleme onarımı",
+    "submissionPrep": "Gönderim hazırlığı",
+    "reviewerResponse": "Hakem yanıtı"
+  },
+  "effort": {
+    "label": "Çaba",
+    "tooltip": "Modelin yanıt vermeden önce ne kadar akıl yürüttüğü",
+    "ariaLabel": "Akıl yürütme çabası: {{level}}",
+    "auto": "Otomatik",
+    "autoDescription": "Modelin varsayılanını kullan",
+    "levels": {
+      "none": "Yok",
+      "minimal": "En az",
+      "low": "Düşük",
+      "medium": "Orta",
+      "high": "Yüksek",
+      "xhigh": "Çok yüksek",
+      "max": "En yüksek"
+    }
+  },
+  "web": {
+    "label": "Web",
+    "on": "Bu sohbette web araması ve sayfa okuma açık",
+    "off": "Bu sohbette web aramasını ve sayfa okumayı aç",
+    "ariaLabel": "Web erişimi",
+    "searchUnavailable": "Bu model web'de arama yapamıyor. Açmak için Ayarlar'da bir arama anahtarı ekleyin."
+  },
+  "messageActions": {
+    "edit": "İletiyi düzenle",
+    "regenerate": "Yanıtı yeniden oluştur",
+    "retry": "Yeniden dene",
+    "editingLatest": "Son iletinizi düzenliyorsunuz. Gönderdiğinizde yanıtın yerine geçer.",
+    "editingEarlier": "Daha önceki bir iletiyi düzenliyorsunuz. Gönderdiğinizde oradan yeni bir sohbet başlar ve bu sohbet Geçmiş'te kalır.",
+    "cancelEdit": "Düzenlemeyi iptal et",
+    "replaceTitle": "Bu yanıt değiştirilsin mi?",
+    "replaceDescription_one": "Yanıt {{count}} dosyayı değiştirdi. Değişiklik projenizde kalır, ancak geri alma kartı yanıtla birlikte kaybolur.",
+    "replaceDescription_other": "Yanıt {{count}} dosyayı değiştirdi. Değişiklikler projenizde kalır, ancak geri alma kartları yanıtla birlikte kaybolur.",
+    "replaceConfirm": "Yanıtı değiştir",
+    "forked": "Düzenlenen iletiden yeni bir sohbet başlatıldı.",
+    "failed": "İleti yeniden gönderilemedi."
   }
 }

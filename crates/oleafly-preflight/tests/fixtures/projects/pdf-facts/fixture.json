@@ -1,0 +1,29 @@
+{
+  "mainDocument": "main.tex",
+  "cases": [
+    {
+      "name": "ieee-two-sizes",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": "ieee",
+      "anonymousReview": false,
+      "pdfFacts": "two-sizes-links-outline.pdf"
+    },
+    {
+      "name": "anonymous-author",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": "generic",
+      "anonymousReview": true,
+      "pdfFacts": "two-sizes-links-outline.pdf"
+    },
+    {
+      "name": "generic-rotated",
+      "sourceProfile": "latex",
+      "engine": "pdflatex",
+      "profile": "generic",
+      "anonymousReview": false,
+      "pdfFacts": "rotated-attachment.pdf"
+    }
+  ]
+}

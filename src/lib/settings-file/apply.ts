@@ -96,7 +96,6 @@ export function applyPreferences(patch: Partial<PreferenceValues>): void {
   const changed = storeChanges(patch, settings);
   const disabledRules = changedDisabledRules(patch, settings);
   if (Object.keys(changed).length > 0) {
-    if (changed.webBrowser === false) changed.browserOpen = false;
     useSettingsStore.setState(changed as Partial<SettingsState>);
     if (!disabledRules && PROOFREADING_PREFERENCES.some((key) => key in changed)) {
       announceProofreadingChange(useSettingsStore.getState());

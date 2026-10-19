@@ -2,6 +2,7 @@
   "workspace": {
     "title": "研究工作区",
     "configureAgents": "配置研究代理",
+    "openSettings": "研究设置",
     "configError": "无法加载助手设置。",
     "tabTasks": "任务",
     "tabFolders": "已链接文件夹",
@@ -135,7 +136,8 @@
       "awaitingReview": "待审核",
       "completed": "已完成",
       "failed": "失败",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "planReady": "计划待批准"
     },
     "relative": {
       "justNow": "刚刚",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "会话已连接",
-      "toolCall": "工具调用"
+      "toolCall": "工具调用",
+      "runStarted": "已启动运行 {{name}}",
+      "runFinished": "运行 {{name}}：{{status}}",
+      "approvalRequested": "请求批准：{{summary}}",
+      "approvalDecided": "批准结果：{{status}}"
     },
     "panel": {
       "noProjectTitle": "打开项目以使用研究任务",
@@ -172,7 +178,8 @@
       "viewTask": "查看任务",
       "deleteTitle": "删除此任务？",
       "deleteDescription": "“{{title}}”及其独立工作区将被删除。已应用到项目中的文件会保留。",
-      "deleteConfirm": "删除任务"
+      "deleteConfirm": "删除任务",
+      "pendingApprovals_other": "{{count}} 个请求待处理"
     },
     "composer": {
       "editTitle": "编辑任务",
@@ -215,6 +222,10 @@
       "reviewerResponse": {
         "label": "审稿人回复",
         "title": "起草审稿人回复"
+      },
+      "experimentLoop": {
+        "label": "运行实验",
+        "title": "围绕目标运行实验"
       }
     },
     "detail": {
@@ -274,7 +285,99 @@
       "loadMore": "加载更多活动记录",
       "changeAdded": "新增",
       "changeModified": "修改",
-      "changeDeleted": "删除"
+      "changeDeleted": "删除",
+      "tabProgress": "进度",
+      "resume": "继续",
+      "resumeHint": "在同一工作区中从保存的交接记录继续。",
+      "startOver": "重新开始",
+      "startOverHint": "从当前项目开始。研究记录会一并带上。",
+      "stopReason": {
+        "budgetTime": "时间预算用完后已停止。",
+        "budgetCost": "已在费用上限处停止。",
+        "budgetRuns": "已在运行次数上限处停止。"
+      },
+      "startsAt": "开始时间：{{time}}"
+    },
+    "plan": {
+      "title": "计划",
+      "description": "阅读计划，如有需要可以编辑。批准后任务才会继续。",
+      "approve": "批准计划",
+      "approveEdited": "批准编辑后的计划",
+      "discard": "放弃任务",
+      "loading": "正在加载计划…",
+      "missing": "计划文件丢失。请重试任务。"
+    },
+    "approvals": {
+      "title": "等待你的批准",
+      "approve": "批准",
+      "deny": "拒绝",
+      "kindCommand": "运行命令",
+      "kindRun": "启动运行",
+      "kindMcp": "使用工具",
+      "expires": "等待至 {{time}}",
+      "status": {
+        "approved": "已批准",
+        "denied": "已拒绝",
+        "expired": "已过期",
+        "withdrawn": "已撤回"
+      }
+    },
+    "phase": {
+      "preparing": "正在准备工作区",
+      "planning": "正在编写计划",
+      "working": "正在工作",
+      "waitingRuns": "正在等待运行",
+      "waitingApproval": "正在等待批准",
+      "wrappingUp": "正在收尾",
+      "checkingEvidence": "正在检查证据"
+    },
+    "progress": {
+      "loading": "正在加载进度…",
+      "plan": "计划",
+      "noPlan": "还没有计划。",
+      "ledger": "结果记录",
+      "noLedger": "还没有记录结果。",
+      "best": "最佳 {{metric}}",
+      "bestValue": "运行 {{run}} 中为 {{value}}",
+      "runsInFlight": "进行中的运行",
+      "noRuns": "没有进行中的运行。",
+      "budget": "预算",
+      "timeUsed": "{{used}} / {{total}}",
+      "costUsed": "${{used}} / ${{limit}}",
+      "costSpent": "已花费 ${{used}}",
+      "costUnknown": "此模型的费用未知。",
+      "runsUsed": "{{used}} / {{limit}} 次运行",
+      "runsUsedNoLimit": "{{used}} 次运行",
+      "stopRun": "停止运行",
+      "viewLog": "查看日志",
+      "columns": {
+        "run": "运行",
+        "time": "时间",
+        "hypothesis": "假设",
+        "change": "改动",
+        "metrics": "指标",
+        "verdict": "结论"
+      },
+      "verdict": {
+        "keep": "保留",
+        "discard": "已舍弃",
+        "crash": "已崩溃"
+      }
+    },
+    "settings": {
+      "title": "研究任务",
+      "keepAwake": "任务运行时保持计算机唤醒",
+      "keepAwakeHint": "屏幕仍可能关闭。",
+      "notifications": "任务需要处理时通知我",
+      "notificationsHint": "在 Oleafly 处于后台时显示。",
+      "notificationsBlocked": "Oleafly 的通知已在系统设置中关闭。",
+      "allowNotifications": "允许通知",
+      "network": "默认允许任务命令访问网络",
+      "timeBudget": "默认时间预算",
+      "mcpServers": "任务可以使用的 MCP 服务器",
+      "mcpServersHint": "任务会按照各自的命令规则调用这些工具。",
+      "noMcpServers": "尚未设置 MCP 服务器。",
+      "saveFailed": "无法保存你的研究设置。请重试。"
     }
   },
   "tools": {
@@ -353,7 +456,7 @@
       "name": "图片转 LaTeX",
       "description": "将笔记、公式或表格的图片转换为可编辑的 LaTeX。",
       "tag1": "图片",
-      "tag2": "设备端模型",
+      "tag2": "本地或托管模型",
       "tag3": "无需项目"
     },
     "visualTypstEditor": {
@@ -375,7 +478,7 @@
       "description": "将输入的公式或公式图片转换为整洁的 LaTeX 数学代码。",
       "tag1": "文本或图片",
       "tag2": "数学公式",
-      "tag3": "设备端模型"
+      "tag3": "本地或托管模型"
     },
     "excelToLatex": {
       "name": "Excel 转 LaTeX",
@@ -395,7 +498,7 @@
       "name": "图片转 Typst",
       "description": "将笔记、公式或表格的图片转换为可编辑的 Typst。",
       "tag1": "图片",
-      "tag2": "设备端模型",
+      "tag2": "本地或托管模型",
       "tag3": "无需项目"
     },
     "latexToHtml": {
@@ -741,13 +844,13 @@
     "progressNeedsAttention": "需要处理",
     "progressCancelled": "已取消",
     "progressReadingPages": "正在读取页面",
-    "progressTranscribingPage": "正在转录第 {{page}} 页，共 {{total}} 页",
+    "progressTranscribingPage": "正在使用 {{model}} 转录第 {{page}} 页，共 {{total}} 页",
     "progressDocumentStructure": "正在转换文档结构",
     "progressMermaid": "正在渲染 Mermaid 图表",
     "progressFirstSheet": "正在读取第一个工作表",
-    "progressVisionModel": "正在运行本地视觉模型",
-    "progressReadingEquation": "正在使用本地视觉模型读取公式",
-    "progressConvertingEquation": "正在使用本地模型转换公式",
+    "progressVisionModel": "正在使用 {{model}} 读取图片",
+    "progressReadingEquation": "正在使用 {{model}} 读取公式",
+    "progressConvertingEquation": "正在使用 {{model}} 转换公式",
     "progressUnpackingSource": "正在解压已保存的源码",
     "progressDownloadingSource": "正在下载电子预印本源码",
     "copied": "已复制{{label}}",
@@ -787,9 +890,9 @@
   "converters": {
     "imageToLatex": {
       "title": "图片转 LaTeX",
-      "subtitle": "使用设备端视觉模型转录笔记、公式或表格",
+      "subtitle": "使用视觉模型转录笔记、公式或表格",
       "inputLabel": "图片",
-      "inputHint": "支持 PNG、JPEG 或 WebP。图片不会离开此设备。",
+      "inputHint": "PNG、JPEG 或 WebP，最大 20 MB。",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -822,9 +925,9 @@
     },
     "imageToTypst": {
       "title": "图片转 Typst",
-      "subtitle": "使用设备端视觉模型转录笔记、公式或表格",
+      "subtitle": "使用视觉模型转录笔记、公式或表格",
       "inputLabel": "图片",
-      "inputHint": "支持 PNG、JPEG 或 WebP。图片不会离开此设备。",
+      "inputHint": "PNG、JPEG 或 WebP，最大 20 MB。",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -880,14 +983,14 @@
       "title": "PDF 转 Markdown",
       "subtitle": "在本地提取文本、公式和图片",
       "inputLabel": "PDF",
-      "inputHint": "含文本层的 PDF 使用确定性提取，扫描件使用本地视觉模型。",
+      "inputHint": "文本型 PDF 使用确定性提取。扫描件使用你选择的模型。",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF 转 Typst",
       "subtitle": "在本地提取文本、公式和图片",
       "inputLabel": "PDF",
-      "inputHint": "含文本层的 PDF 使用确定性提取，扫描件使用本地视觉模型。",
+      "inputHint": "文本型 PDF 使用确定性提取。扫描件使用你选择的模型。",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -978,10 +1081,10 @@
   "converterErrors": {
     "chooseSmallerImage": "请选择小于 20 MB 的图片。",
     "imageFormat": "请选择 PNG、JPEG 或 WebP 格式的图片。",
-    "ollamaUnavailable": "请在设置中启动 Ollama，然后为此转换安装一个本地模型。",
-    "visionModelMissing": "请在 Ollama 中安装一个视觉模型，例如 Llama 3.2 Vision，然后重试。",
-    "localModelMissing": "请安装一个本地 Ollama 模型，然后重试。",
-    "emptyTranscription": "本地模型返回了空的转录结果。",
+    "ollamaUnavailable": "请启动 Ollama，或为工具选择其他模型。",
+    "visionModelMissing": "请在 Ollama 中拉取视觉模型（例如 glm-ocr），或为工具选择其他模型。",
+    "localModelMissing": "请在 Ollama 中拉取模型，或为工具选择其他模型。",
+    "emptyTranscription": "模型返回了空的转录结果。",
     "pdfNoPages": "此 PDF 不包含任何可转录的页面。",
     "pdfPageLimit": "扫描版 PDF 每次最多转录 50 页。",
     "pandocNotReady": "Pandoc 尚未就绪。",
@@ -992,7 +1095,7 @@
     "equationToTypst": "Pandoc 无法将此公式转换为 Typst。请检查 LaTeX 公式后重试。"
   },
   "converterNotes": {
-    "scannedPages": "已使用本地模型转录 {{pages}} 个扫描页面。使用结果前请检查公式和表格。",
+    "scannedPages": "已使用 {{model}} 转录 {{pages}} 页扫描页。使用结果前请检查公式和表格。",
     "extracted": "已在本地提取 {{pages}} 页和 {{figures}} 张图片。",
     "mermaidTikz": "已将此流程图转换为可编辑的 TikZ。",
     "mermaidRendered": "此图表的 Mermaid 语法无法干净地映射为可编辑的 TikZ，因此已在本地渲染。",
@@ -1005,6 +1108,38 @@
     "typstCheckFailed_other": "Typst 发现 {{count}} 个错误。",
     "notConverted_other": "{{count}} 项未能转换。",
     "checkLine": "第 {{line}} 行：{{message}}"
+  },
+  "converterModel": {
+    "label": "工具所用模型",
+    "automatic": "自动（最佳本地模型）",
+    "localGroup": "本地（Ollama）",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "图片会发送到 {{provider}}",
+    "sentToHost": "图片会发送到 {{host}} 上的 Ollama",
+    "scansSentTo": "扫描页会发送到 {{provider}}",
+    "scansSentToHost": "扫描页会发送到 {{host}} 上的 Ollama",
+    "pdfSentToMathpix": "整个 PDF 会发送到 Mathpix",
+    "transcribingHosted": "正在将图片发送到 {{provider}}…",
+    "progressUploading": "正在将 PDF 发送到 Mathpix",
+    "progressFormatting": "正在使用 Pandoc 转换转录结果",
+    "scannedTitle": "此 PDF 看起来是扫描件",
+    "estimateOllama_other": "共 {{count}} 页。Ollama 会逐页读取，可能需要一段时间。",
+    "estimateCost_other": "共 {{count}} 页。使用 {{model}} 约 {{cost}}。",
+    "estimateUnknown_other": "共 {{count}} 页。{{provider}} 按用量计费。",
+    "transcribePages_other": "转录 {{count}} 页",
+    "transcribedWith": "已使用 {{model}} 转录。请检查公式和表格。",
+    "sentBadge": "已发送到 {{provider}}",
+    "openToolsSettings": "工具设置",
+    "errors": {
+      "offline": "Oleafly 处于离线模式。请选择本地模型，或关闭离线模式。",
+      "providerNotConfigured": "{{provider}} 没有 API 密钥。请在设置中添加，或选择其他模型。",
+      "modelDisabled": "{{model}} 已在设置中关闭。请将其开启，或选择其他模型。",
+      "cannotSeeImages": "{{model}} 无法读取图片。请选择视觉模型。",
+      "localModelGone": "{{model}} 已不在 Ollama 中。请重新拉取，或选择其他模型。",
+      "imagesOnly": "{{model}} 只能读取图片。请选择语言模型来转换输入的公式。",
+      "mathpixNotSetUp": "请在“设置 > AI > 工具”中添加 Mathpix 密钥，或选择其他模型。",
+      "imageTooLarge": "缩小后图片仍然太大。请裁剪后重试。"
+    }
   },
   "mermaidErrors": {
     "tooLarge": "此 Mermaid 图表超过了 50,000 个字符的上限。",
@@ -1541,5 +1676,251 @@
     "citeAdded": "已添加 {{citation}}",
     "addFailed": "无法添加引用。",
     "toastCopyFailed": "无法复制 BibTeX。"
+  },
+  "brief": {
+    "title": "任务说明",
+    "goalLabel": "目标",
+    "goalPlaceholder": "这个任务应该查明或产出什么？",
+    "criteriaLabel": "成功标准",
+    "criteriaHint": "每行一条。每条都应是你可以检查的内容。",
+    "scopeLabel": "范围",
+    "constraintsLabel": "约束",
+    "metricLabel": "主要指标",
+    "metricPlaceholder": "例如 val_loss",
+    "metricMaximize": "越高越好",
+    "metricMinimize": "越低越好",
+    "reviewPlan": "先审阅计划",
+    "reviewPlanHint": "代理会编写 plan.md，并在开始前等待你的批准。",
+    "commandsLabel": "命令",
+    "commandsAllow": "直接运行，无需询问",
+    "commandsAsk": "运行前询问",
+    "commandsOff": "不运行命令",
+    "network": "允许命令访问网络",
+    "networkHint": "安装软件包或下载数据时需要。",
+    "budgetLabel": "预算",
+    "timeLabel": "时间",
+    "minutes_other": "{{count}} 分钟",
+    "hours_other": "{{count}} 小时",
+    "costLabel": "费用上限（USD）",
+    "noLimit": "无上限",
+    "runsLabel": "运行次数上限",
+    "runTimeoutLabel": "每次运行的停止时间",
+    "profileLabel": "运行配置",
+    "profileAnalysis": "分析",
+    "profileAnalysisHint": "你的 Python 和 R 环境，只读数据文件夹，无 GPU。",
+    "profileTraining": "训练",
+    "profileTrainingHint": "增加 GPU 访问和更长的运行时间。",
+    "computeLabel": "运行位置",
+    "computeLocal": "这台计算机",
+    "startAtLabel": "开始时间",
+    "startNow": "在我启动时",
+    "keepRunning": "Oleafly 关闭后继续运行",
+    "keepRunningHint": "请先在“设置 > 研究”中开启后台工作。",
+    "invalidMetric": "请使用字母、数字、点、短横线或下划线。",
+    "invalidCost": "请输入大于零的金额。",
+    "invalidRuns": "请输入 1 到 1,000 之间的整数。"
+  },
+  "runs": {
+    "status": {
+      "starting": "正在启动",
+      "running": "正在运行",
+      "succeeded": "已完成",
+      "failed": "失败",
+      "timedOut": "已超时",
+      "cancelled": "已停止",
+      "lost": "已丢失"
+    }
+  },
+  "record": {
+    "title": "研究记录",
+    "openHandoff": "打开交接记录",
+    "openReport": "打开报告"
+  },
+  "evidence": {
+    "title": "证据检查",
+    "hint": "这些检查只会发出警告，不会阻止应用结果。",
+    "running": "正在检查…",
+    "refresh": "重新检查",
+    "status": {
+      "pass": "已通过",
+      "warn": "请检查",
+      "skipped": "未检查"
+    },
+    "checks": {
+      "build": "项目可以构建",
+      "references": "没有新的未解析引用或文献引用",
+      "bibliography": "新的参考文献条目已验证",
+      "numbers": "数字与对应运行一致",
+      "figures": "新图片存在且已被使用"
+    },
+    "items": {
+      "buildFailed": "构建失败，出现 {{errors}} 个错误。",
+      "buildSkipped": "未检查构建：{{reason}}",
+      "referencesUnresolved": "{{key}} 无法解析。",
+      "referencesNotChecked": "此版本暂不检查引用。",
+      "bibUnverified": "无法验证 {{key}}。",
+      "bibTitleMismatch": "{{key}} 指向了不同的标题：{{found}}",
+      "bibLookupFailed": "无法查询 {{key}}。请稍后重试。",
+      "numbersMismatch": "{{value}} 与运行 {{run}} 不一致（{{recorded}}）。",
+      "numbersUnknownRun": "运行 {{run}} 不存在。",
+      "numbersNoLedgerRow": "运行 {{run}} 没有结果记录行。",
+      "figuresMissing": "{{path}} 被引用但缺失。",
+      "figuresUnused": "文档中未使用 {{path}}。"
+    }
+  },
+  "compute": {
+    "title": "计算资源",
+    "description": "选择实验运行在哪里执行。每个任务在其任务说明中选择一个目标。",
+    "targets": {
+      "heading": "运行目标",
+      "local": "这台计算机",
+      "localDescription": "运行会使用这台计算机上的沙盒。",
+      "add": "添加目标",
+      "addSsh": "SSH 主机",
+      "addSlurm": "Slurm 集群",
+      "addCua": "Cua Space",
+      "import": "从 SSH 配置导入",
+      "test": "测试",
+      "testing": "正在测试…",
+      "more": "{{label}} 的更多操作",
+      "edit": "编辑",
+      "remove": "移除",
+      "removeTitle": "移除 {{label}}？",
+      "removeConfirm": "已在那里启动的运行会继续进行。",
+      "forgetHostKey": "忘记主机密钥",
+      "notTested": "未测试",
+      "tested": "上次测试：{{time}}",
+      "testFailed": "测试失败",
+      "perTaskSpace": "每个任务使用新的 Space",
+      "saveFailed": "无法保存目标：{{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly 使用你的 SSH 密钥或 SSH 代理连接，从不索取或存储密码和密钥。",
+      "windowsRsync": "Windows 没有 rsync，因此 Oleafly 会通过 SSH 使用 tar 复制文件。",
+      "sshMissingWindows": "未安装 OpenSSH 客户端。请在 Windows 设置的“系统 > 可选功能”中添加。",
+      "sshMissing": "未安装 OpenSSH。请使用你的软件包管理器安装。",
+      "cuaMissing": "未安装 Cua。请从 cua.ai 安装，然后重新测试。",
+      "relay": "此 Space 运行在一台真实的计算机上。在那里的运行不是隔离的。",
+      "outputs": "运行生成的文件会返回到任务副本中的 runs/<run>/outputs。"
+    },
+    "form": {
+      "addTitle": "添加 {{kind}}",
+      "editTitle": "编辑 {{label}}",
+      "label": "名称",
+      "host": "主机",
+      "hostHint": "SSH 配置中的主机或主机名",
+      "user": "用户",
+      "userHint": "留空则使用你的 SSH 配置。",
+      "port": "端口",
+      "remoteRoot": "远程文件夹",
+      "remoteRootHint": "除非你选择其他文件夹，运行都会放在主文件夹中的 .oleafly-runs 里。",
+      "prelude": "设置命令",
+      "preludeHint": "在每个命令之前运行，例如 module load python。",
+      "partition": "分区",
+      "account": "账户",
+      "qos": "QOS",
+      "time": "时间限制",
+      "timeHint": "例如 2:00:00 或 1-00:00:00",
+      "gpus": "GPU 数量",
+      "cpus": "CPU 数量",
+      "mem": "内存（GB）",
+      "memHint": "例如 16",
+      "gpuFlag": "GPU 选项",
+      "spaceMode": "Space",
+      "spaceNamed": "使用已命名的 Space",
+      "spacePerTask": "为每个任务创建新的 Space",
+      "space": "Space 名称",
+      "image": "镜像",
+      "save": "保存",
+      "cancel": "取消",
+      "errors": {
+        "label": "请输入不超过 80 个字符的名称。",
+        "host": "请输入不含空格的主机名。",
+        "user": "请使用字母、数字、点、短横线或下划线。",
+        "port": "请使用 1 到 65535 之间的端口。",
+        "remoteRoot": "请使用不含空格、引号或“..”的文件夹路径。",
+        "time": "请使用 Slurm 时间格式，例如 2:00:00。",
+        "name": "请使用字母、数字、点、逗号、短横线或下划线。",
+        "mem": "请使用以 GB 为单位的整数，例如 16。",
+        "count": "请使用允许范围内的整数。"
+      }
+    },
+    "test": {
+      "connect": "连接",
+      "echo": "运行命令",
+      "disk": "可用空间",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "已通过",
+      "warn": "请检查",
+      "fail": "失败",
+      "skipped": "未检查"
+    },
+    "hostKey": {
+      "title": "信任此主机？",
+      "body": "Oleafly 之前从未连接过 {{host}}。请将这些指纹与管理员提供的指纹进行比较。",
+      "trust": "信任并连接",
+      "changedTitle": "主机密钥已更改",
+      "changed": "{{host}} 的主机密钥已更改。可能有人正在拦截连接。如果是管理员更换了密钥，请忘记旧密钥后重新测试。"
+    },
+    "import": {
+      "title": "导入 SSH 主机",
+      "body": "选择要添加的主机。Oleafly 会读取你的 SSH 配置，但从不更改它。",
+      "none": "在你的 SSH 配置中找不到主机。",
+      "added": "已添加",
+      "add_other": "添加 {{count}} 个主机"
+    },
+    "sandbox": {
+      "heading": "这台计算机上的沙盒",
+      "description": "这台计算机上的运行可以读取你的解释器和关联的文件夹，但只会写入任务副本。",
+      "ready": "就绪",
+      "unavailable": "不可用",
+      "macos": "使用 macOS 沙盒。",
+      "linux": "使用 bubblewrap。",
+      "linuxMissing": "请安装 bubblewrap（bwrap）以运行任务命令。",
+      "windowsLabel": "在 Windows 沙盒中运行任务命令",
+      "windowsDescription": "命令在 Windows AppContainer 中运行，只能访问任务的文件和下方的文件夹。测试期间默认关闭。",
+      "gpuWindows": "Windows 沙盒中的 GPU 访问尚未验证。GPU 工作请使用 SSH 或 Slurm 目标。",
+      "limitsWindows": "在 Windows 沙盒中，Python 多进程和会启动其他程序的 Node.js 程序暂时无法使用。",
+      "check": "检查沙盒",
+      "checking": "正在检查…",
+      "checkPassed": "沙盒工作正常。",
+      "checkFailed": "沙盒检查失败：{{reason}}",
+      "runtimes": "解释器",
+      "runtimesEmpty": "未找到 Python、R 或 Julia。",
+      "refresh": "刷新",
+      "access": "沙盒可以读取的文件夹",
+      "accessNote": "为了让任务读取这些文件夹，Oleafly 会给每个文件夹添加一条权限条目。",
+      "removeAccess": "移除访问权限",
+      "removeAccessTitle": "移除沙盒访问权限？",
+      "removeAccessConfirm": "要移除沙盒对这些文件夹的访问权限吗？下次有任务需要时，Oleafly 会重新添加。"
+    },
+    "brief": {
+      "runsOn": "在 {{target}} 上运行",
+      "runsLocal": "在这台计算机上运行。",
+      "missing": "此任务使用的目标已被移除。请选择其他目标。",
+      "windowsOff": "请在设置中开启 Windows 沙盒，才能在这台计算机上运行命令。",
+      "openSettings": "打开设置",
+      "resources": "Slurm 资源"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "在后台",
+      "backgroundHint": "Oleafly 的后台辅助程序正在运行此任务。当前步骤完成后，它会回到这里。",
+      "movingBack": "正在移回",
+      "movingBackHint": "当前步骤结束后，此任务会回到 Oleafly。"
+    },
+    "earlierActivity": "显示较早的活动",
+    "keepRunningFailed": "无法更改此设置。请重试。"
   }
 }

@@ -1,0 +1,52 @@
+{
+  "files": [
+    "chapter.typ",
+    "main.typ",
+    "refs.bib"
+  ],
+  "sections": [
+    {
+      "title": "Chapter",
+      "level": 0,
+      "file": "chapter.typ",
+      "line": 1
+    },
+    {
+      "title": "Introduction",
+      "level": 0,
+      "file": "main.typ",
+      "line": 4
+    },
+    {
+      "title": "Method",
+      "level": 1,
+      "file": "main.typ",
+      "line": 8
+    }
+  ],
+  "labels": [
+    "sec:intro",
+    "fig:a"
+  ],
+  "bibKeys": [
+    "knuth",
+    "lamport",
+    "unusedtypst"
+  ],
+  "macros": [
+    "accent"
+  ],
+  "theorems": [],
+  "glossary": [],
+  "inputGraph": [
+    {
+      "from": "main.typ",
+      "to": "chapter.typ"
+    }
+  ],
+  "unresolvedRefs": [
+    "ghost"
+  ],
+  "unresolvedCites": [],
+  "ambiguousTypstAtUses": []
+}

@@ -133,3 +133,6 @@ available. Source-only results are marked partial until a current PDF exists.
 - `packages/preflight/src/tagging-status.ts`: the vendored compatibility data.
 - `packages/preflight/src/accessible-prep.ts`: tagged-export preparation.
 - `src/components/preflight/`: product surface.
+- `crates/oleafly-preflight/`: the same source rules in Rust, for `oleafly check`
+  and research tasks. Golden fixtures generated from `packages/preflight`
+  keep the two in step.

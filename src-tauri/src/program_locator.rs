@@ -21,6 +21,11 @@ use std::time::{Duration, Instant};
 #[path = "program_locator/windows.rs"]
 mod windows;
 
+// 0.4.8 F1: `oleafly` on the PATH of every child the app starts.
+#[path = "program_locator/cli.rs"]
+mod cli;
+pub(crate) use cli::refresh_cli_shim;
+
 #[cfg(test)]
 #[path = "program_locator/tests.rs"]
 mod tests;

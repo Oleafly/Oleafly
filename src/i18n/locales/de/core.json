@@ -583,7 +583,9 @@
       "diagnostics_one": "{{count}} Diagnose",
       "diagnostics_other": "{{count}} Diagnosen",
       "papers_one": "{{count}} Aufsatz",
-      "papers_other": "{{count}} Aufsätze"
+      "papers_other": "{{count}} Aufsätze",
+      "sourcesFailed_one": "{{count}} Quelle fehlgeschlagen",
+      "sourcesFailed_other": "{{count}} Quellen fehlgeschlagen"
     }
   },
   "ui": {

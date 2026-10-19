@@ -4,6 +4,7 @@ import { registerRailTab } from "@oleafly/registry";
 import { i18n } from "@/i18n";
 import { useGitStatusStore } from "@/store/git-status";
 import { useMcpActivityStore } from "@/store/mcp-activity";
+import { useResearchAttentionBadge } from "@/store/research-attention";
 import {
   CollabPanel,
   CollabRailIcon,
@@ -38,6 +39,8 @@ export function registerRailTabs() {
     order: 60,
     beta: true,
     panel: ResearchWorkspacePanel,
+    // Tasks waiting for a review, a plan approval or a command approval.
+    useBadge: () => useResearchAttentionBadge(),
   });
   registerRailTab({
     id: "collab",

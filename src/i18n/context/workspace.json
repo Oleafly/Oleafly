@@ -17,6 +17,34 @@
     "title": "Panel heading listing the files and symbols of the whole project"
   },
   "terminal": {
+    "activity": "Screen-reader text for the dot on a terminal tab or the toolbar's terminal button after a program rang the terminal bell while it was hidden",
+    "clipboard": {
+      "blocked": "Toast when a program in the terminal asked to copy text and the system needs a click first; the button copies it"
+    },
+    "find": {
+      "count": "Find bar position, for example \"3 of 12\"",
+      "label": "Accessible name and placeholder of the search box that finds text in the terminal's output"
+    },
+    "launch": {
+      "invalid": "Shown when another feature asked to run a command in the terminal and the command or its settings were not allowed",
+      "noProject": "Shown when a terminal was requested while no project is open; terminals always run inside a project folder",
+      "run": "Confirm button of the dialog shown before Oleafly types a prepared command into a new terminal tab",
+      "title": "Asked before Oleafly types a command another feature prepared, such as an installer or a sign-in command, into a new terminal tab"
+    },
+    "openInTerminal": "Menu item on a folder in the file tree that opens a terminal tab starting in that folder",
+    "stop": {
+      "closeMany": "Confirm button of the dialog shown before stopping programs that run in the terminal",
+      "closeOne": "Confirm button of the dialog shown before stopping a program that runs in the terminal",
+      "closeProject": "Confirm button of the dialog shown before stopping programs that run in the terminal, when the user closes the project",
+      "dontAsk": "Checkbox in the dialog shown before stopping programs that run in the terminal; it turns the question off",
+      "many_one": "{{count}} is the number of terminal tabs that still run a program",
+      "many_other": "{{count}} is the number of terminal tabs that still run a program",
+      "named": "{{process}} is a program name such as python or node; {{title}} is a terminal tab name such as \"Terminal 2\"",
+      "quit": "Confirm button of the dialog shown before stopping programs that run in the terminal, when the user quits the app",
+      "restart": "Confirm button of the dialog shown before stopping programs that run in the terminal, when the app restarts to install an update",
+      "switchProject": "Confirm button of the dialog shown before stopping programs that run in the terminal, when the user opens another project",
+      "unnamed": "{{title}} is a terminal tab name such as \"Terminal 2\"; the program's name is unknown"
+    },
     "color": "Submenu that tints a terminal tab",
     "links": {
       "openFile": "Hint under a file location in the terminal tooltip. {{modifier}} is the key symbol or name: ⌘ on macOS, Ctrl elsewhere",

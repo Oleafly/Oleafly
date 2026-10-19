@@ -19,7 +19,6 @@
     "selectAll": "Tümünü Seç",
     "view": "Görünüm",
     "toggleTerminal": "Terminali Aç/Kapat",
-    "toggleBrowser": "Tarayıcıyı Aç/Kapat",
     "file": "Dosya",
     "openFolder": "Klasör Aç…",
     "openRecent": "Son Kullanılanlar",
@@ -28,15 +27,7 @@
     "minimize": "Küçült",
     "fullscreen": "Tam Ekranı Aç/Kapat",
     "bringAllToFront": "Tümünü Öne Getir",
-    "newTab": "Yeni Sekme",
-    "openLocation": "Adres Aç…",
-    "closeTab": "Sekmeyi Kapat",
-    "reloadPage": "Sayfayı Yeniden Yükle",
     "zenMode": "Zen Kipi"
-  },
-  "window": {
-    "browser": "Oleafly Tarayıcı",
-    "browserTitled": "{{title}} - Oleafly Tarayıcı"
   },
   "dialog": {
     "cancel": "İptal",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Cookie içe aktarmayı onaylayın",
-      "messageHost": "{{hostname}} için cookie'ler, {{browser}} tarayıcısının \"{{profile}}\" profilinden Oleafly'nin uygulama içi tarayıcısına aktarılsın mı? Aktarılan cookie'ler sizi web sitelerinde oturum açmış duruma getirebilir.",
-      "messageAll": "{{browser}} tarayıcısının \"{{profile}}\" profilindeki tüm cookie'ler Oleafly'nin uygulama içi tarayıcısına aktarılsın mı? Aktarılan cookie'ler sizi web sitelerinde oturum açmış duruma getirebilir.",
-      "confirm": "Cookie'leri içe aktar"
+      "copyHost": "{{hostname}} için çerezler {{browser}} tarayıcısının \"{{profile}}\" profilinden Oleafly'ye kopyalansın mı? Bu çerezlerle {{hostname}} hizmetinde oturum açılabilir.",
+      "copyAll": "{{browser}} tarayıcısının \"{{profile}}\" profilindeki tüm çerezler Oleafly'ye kopyalansın mı? Bu çerezlerle web sitelerinde oturum açılabilir.",
+      "copyConfirm": "Çerezleri kopyala"
     },
     "mcpApprove": {
       "title": "MCP aracını onaylayın",
@@ -103,6 +94,46 @@
       "confirm": "Programı kullan",
       "pickTitle": "{{name}} için programı seçin",
       "filter": "Programlar"
+    },
+    "desktopApps": {
+      "title": "Masaüstü uygulamaları",
+      "action": "{{agent}} şunu yapmak istiyor: {{action}}.",
+      "steps": "{{agent}} bir masaüstü uygulamasında şu adımları çalıştırmak istiyor:",
+      "moreSteps": "Gösterilmeyen adımlar: {{count}}",
+      "text": "Metin: \"{{text}}\"",
+      "address": "Adres: {{url}}",
+      "allowOnce": "Bir kez izin ver",
+      "allowChat": "Bu sohbet için izin ver",
+      "allowSession": "Bu oturum için izin ver",
+      "allowTask": "Bu görev için izin ver",
+      "deny": "İzin verme",
+      "actions": {
+        "launchApp": "bir uygulama açmak",
+        "click": "bir uygulamada tıklamak",
+        "doubleClick": "bir uygulamada çift tıklamak",
+        "rightClick": "bir uygulamada sağ tıklamak",
+        "typeText": "bir uygulamada yazmak",
+        "pressKey": "bir uygulamada bir tuşa basmak",
+        "hotkey": "bir uygulamada klavye kısayoluna basmak",
+        "scroll": "bir uygulamada kaydırmak",
+        "setValue": "bir uygulamada bir alanı değiştirmek",
+        "browserPrepare": "bir web sitesi için tarayıcı açmak",
+        "browserNavigate": "bir web sayfasına gitmek",
+        "browserClick": "bir web sayfasında tıklamak",
+        "browserType": "bir web sayfasında yazmak",
+        "browserSelect": "bir web sayfasında bir seçenek seçmek",
+        "runScript": "bir Cua betiği çalıştırmak"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Masaüstü denetimine izin verilsin mi?",
+      "message": "Ajanlar bunları kullanabilecek ve her işlemden önce yine soracak:",
+      "confirm": "İzin ver",
+      "enabled": "Masaüstü uygulamaları",
+      "app": "Uygulama: {{name}}",
+      "site": "Web sitesi: {{origin}}",
+      "signedIn": "{{origin}} üzerinde oturum açılmış tarayıcınız",
+      "scripted": "Cua betikleri"
     }
   },
   "errors": {
@@ -128,5 +159,35 @@
   "cloud": {
     "connectedPage": "Bağlandınız. Bu sekmeyi kapatıp Oleafly'ye dönebilirsiniz.",
     "failedPage": "Oturum açma tamamlanmadı. Bu sekmeyi kapatıp Oleafly'ye dönebilirsiniz."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Görev incelemeye hazır",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plan onaya hazır",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Bir görev onayınızı bekliyor",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Görev durdu",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Görev bütçesi tükendi",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly çalışmaya devam ediyor",
+      "body": "Çalışmaya devam etmesi için işaretlediğiniz araştırma görevleri arka planda sürüyor. İlerlemelerini görmek için Oleafly'yi açın."
+    }
   }
 }

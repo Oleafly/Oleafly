@@ -75,7 +75,31 @@
     }
   },
   "attachments": {
-    "remove": "Odebrat {{name}}"
+    "remove": "Odebrat {{name}}",
+    "processing": "Připravuje se {{name}}…",
+    "failed": "{{name}} se nepodařilo připojit.",
+    "pages_one": "{{count}} stránka",
+    "pages_few": "{{count}} stránky",
+    "pages_many": "{{count}} stránky",
+    "pages_other": "{{count}} stránek",
+    "pagesLimited": "Použije se jen prvních {{limit}} z {{count}} stránek.",
+    "tooMany": "K jedné zprávě můžete připojit nejvýše {{max}} souborů.",
+    "tooLarge": "{{name}} je větší než {{limit}}.",
+    "unsupported": "{{name}} nelze připojit. Připojte obrázky, soubory PDF nebo textové soubory.",
+    "unreadableImage": "Oleafly nedokáže přečíst formát obrázku {{name}}. Uložte jej jako PNG nebo JPEG a připojte znovu.",
+    "unreadablePdf": "{{name}} se nepodařilo otevřít jako PDF.",
+    "storeFailed": "{{name}} se pro tento chat nepodařilo uložit.",
+    "visionUnsupported": "{{model}} neumí číst obrázky, proto se obrázky z této zprávy neodešlou.",
+    "scannedPdf": "{{name}} nemá textovou vrstvu a {{model}} neumí číst obrázky.",
+    "dropFiles": "Přetáhněte soubory a připojte je",
+    "dropProjectFile": "Přetáhněte a zmíníte tento soubor",
+    "open": "Otevřít {{name}}",
+    "saveCopy": "Uložit kopii {{name}}",
+    "saved": "Kopie {{name}} byla uložena.",
+    "saveFailed": "{{name}} se nepodařilo uložit.",
+    "missing": "{{name}} už není k dispozici.",
+    "sentAsText": "{{name}} se odeslal jako text, protože tento model jej neumí přečíst jako soubor.",
+    "skipped": "{{name}} se neodeslal."
   },
   "chat": {
     "pill": {
@@ -194,7 +218,9 @@
     "stop": "Zastavit",
     "stopTitle": "Zastavit generování",
     "send": "Odeslat",
-    "checkAgain": "Zkontrolovat znovu"
+    "checkAgain": "Zkontrolovat znovu",
+    "resizeHandle": "Změnit velikost pole zprávy",
+    "resizeHint": "Přetažením změníte velikost. Dvojitým kliknutím ji obnovíte."
   },
   "commands": {
     "groups": {
@@ -232,10 +258,6 @@
     "files": {
       "label": "Soubory",
       "description": "Připojit soubory k příští zprávě"
-    },
-    "browser": {
-      "label": "Připojit prohlížeč",
-      "description": "Otevřít prohlížeč vedle dokumentu"
     }
   },
   "models": {
@@ -286,7 +308,12 @@
       "minutes": "před {{count}} min",
       "hours": "před {{count}} h",
       "days": "před {{count}} dny"
-    }
+    },
+    "skipped_one": "{{count}} chat se nepodařilo načíst. Je stále na disku.",
+    "skipped_few": "{{count}} chaty se nepodařilo načíst. Jsou stále na disku.",
+    "skipped_many": "{{count}} chatu se nepodařilo načíst. Jsou stále na disku.",
+    "skipped_other": "{{count}} chatů se nepodařilo načíst. Jsou stále na disku.",
+    "openFailed": "Tento chat se nepodařilo otevřít."
   },
   "tools": {
     "approval": {
@@ -332,7 +359,6 @@
       "listAgents": "Vypsat pomocné agenty a jejich stav.",
       "closeAgent": "Zavřít pomocného agenta.",
       "runCommand": "Spustit příkaz shell ve složce projektu s dvouminutovým limitem.",
-      "computerUse": "Otevřít webovou stránku v okně prohlížeče asistenta.",
       "toggleTheme": "Přepnout mezi světlým a tmavým režimem.",
       "listOverleafProjects": "Vypsat vaše projekty z Overleafu, v případě potřeby se nejdřív přihlásit.",
       "importOverleafProjects": "Importovat projekty z Overleafu do knihovny i s překladačem a hlavním souborem."
@@ -361,8 +387,7 @@
       "latexOnly": "Jen projekty LaTeX",
       "latexAndTypstOnly": "Jen projekty LaTeX a Typst",
       "pdfCaptureSetting": "Vyžaduje nastavení snímání stránek PDF",
-      "chatApproval": "Schvaluje se v chatu, vždy jeden příkaz",
-      "browserSetting": "Vyžaduje nastavení webového prohlížeče"
+      "chatApproval": "Schvaluje se v chatu, vždy jeden příkaz"
     },
     "sourceGroups": {
       "figure": "Obrázek",
@@ -485,18 +510,20 @@
     "resumeTask": "Otevřete výzkumnou úlohu a v práci pokračujte.",
     "delegatedConversation": "Tato konverzace patří k běhu delegovaného agenta.",
     "noResume": "Tento agent neumí navázat na uložené konverzace. Až budete připraveni, začněte novou konverzaci.",
-    "imageTooLarge": "Vyberte obrázek menší než 480 KiB. Připojit můžete až čtyři obrázky.",
     "imageReadFailed": "Obrázek se nepodařilo přečíst.",
-    "removeImage": "Odebrat {{name}}",
     "composerAriaLabel": "Zpráva agentovi CLI",
     "composerPlaceholderReady": "Požádejte agenta, ať na tomto projektu zapracuje",
     "composerPlaceholderIdle": "Zprávu odešlete po zahájení nebo obnovení konverzace",
-    "attachImage": "Připojit obrázek",
     "startConversation": "Zahájit konverzaci s agentem {{agent}}",
     "startConversationFallback": "agentem",
     "agentModel": "Model agenta",
     "modelManaged": "Model spravuje agent",
     "stop": "Zastavit",
+    "stopReason": {
+      "refusal": "Agent odmítl v tomto požadavku pokračovat.",
+      "maxTokens": "Agent dosáhl limitu výstupu a zastavil se.",
+      "maxTurnRequests": "Agent dosáhl limitu požadavků v tomto tahu a zastavil se."
+    },
     "stopTitle": "Zastavit agenta",
     "send": "Odeslat",
     "connecting": "Připojuje se",
@@ -514,8 +541,7 @@
     "roster": {
       "bridgeMissing": "nainstalujte most v Nastavení agenta",
       "cliMissing": "CLI nebylo v tomto počítači nalezeno",
-      "unavailable": "v tomto počítači není k dispozici",
-      "comingSoon": "již brzy"
+      "unavailable": "v tomto počítači není k dispozici"
     },
     "messageTooLarge": "Tato zpráva i s obrázky je příliš velká. Zkraťte zprávu nebo odeberte obrázek.",
     "terminalCommand": "Agent spouští příkaz v terminálu.",
@@ -565,7 +591,122 @@
       "moreFiles_one": "a {{count}} další soubor",
       "moreFiles_few": "a {{count}} další soubory",
       "moreFiles_many": "a {{count}} dalšího souboru",
-      "moreFiles_other": "a {{count}} dalších souborů"
+      "moreFiles_other": "a {{count}} dalších souborů",
+      "mode": "Režim",
+      "effort": "Úsilí",
+      "permissionProfile": "Režim schvalování",
+      "commits": "Commity"
+    },
+    "composerPlaceholderStart": "Napište agentovi {{agent}} a zahajte konverzaci",
+    "composerPlaceholderConnecting": "Můžete psát hned. Zpráva se odešle, až bude agent připravený.",
+    "composerPlaceholderRunning": "Napište další zprávu. Odešle se, až agent skončí.",
+    "attachFile": "Připojit soubory",
+    "composer": {
+      "tooManyAttachments": "K jedné zprávě připojte nejvýše 10 souborů.",
+      "imagesUnsupported": "Tento agent nepřijímá obrázky. Odeberte je a zkuste to znovu.",
+      "attachmentsNotReady": "Počkejte, až budou přílohy připravené.",
+      "removeSelection": "Odebrat citaci {{label}}"
+    },
+    "queue": {
+      "queued": "Ve frontě: odešle se, až agent skončí",
+      "remove": "Odebrat zprávu z fronty",
+      "sendNow": "Odeslat hned",
+      "sendFailed": "Tato zpráva se neodeslala. Odešlete ji znovu nebo ji odeberte."
+    },
+    "slash": {
+      "commands": "Příkazy agenta",
+      "skills": "Dovednosti"
+    },
+    "controls": {
+      "effort": "Úsilí",
+      "mode": "Režim",
+      "more": "Další možnosti agenta",
+      "blockedMode": "V Oleafly vypnuto",
+      "blockedModeHint": "Oleafly ponechává kontrolu oprávnění zapnutou, proto tento režim není k dispozici."
+    },
+    "usage": {
+      "ariaLabel": "Zobrazit využití agenta",
+      "tooltip": "Využití v této konverzaci",
+      "contextShare": "Využito {{percent}} % kontextového okna",
+      "window": {
+        "fiveHour": "Pětihodinová relace",
+        "weekly": "Týdně, všechny modely",
+        "weeklyOpus": "Týdně, Opus",
+        "weeklySonnet": "Týdně, Sonnet",
+        "overage": "Využití navíc",
+        "other": "Limit využití {{id}}"
+      },
+      "costIn": "Agent nahlásil náklady {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} tokenů"
+    },
+    "compaction": {
+      "running": "Shrnuje se dřívější kontext",
+      "done": "Dřívější kontext byl shrnut",
+      "failed": "Dřívější kontext se nepodařilo shrnout"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} v terminálu",
+      "afterTerminal": "Dokončete přihlášení v terminálu a pak se znovu připojte.",
+      "apiKeyLabel": "Klíč API pro {{provider}}",
+      "apiKeyPlaceholder": "Vložte svůj klíč API",
+      "geminiGoogle": "Přihlášení přes Google už pro osobní tarify nefunguje. Použijte klíč API Gemini nebo Vertex AI.",
+      "noProject": "Chcete-li se přihlásit z terminálu, otevřete projekt.",
+      "signOut": "Odhlásit se"
+    },
+    "elicitation": {
+      "ariaLabel": "Požadavek agenta",
+      "from": "{{agent}} se ptá:",
+      "submit": "Odeslat",
+      "decline": "Odmítnout",
+      "cancel": "Zrušit",
+      "required": "Povinné",
+      "invalid": "Zkontrolujte toto pole.",
+      "openUrl": "Otevřít v prohlížeči",
+      "confirmTitle": "Otevřít {{host}}?",
+      "confirmDescription": "Agent vás žádá, abyste na tomto webu dokončili jeden krok. Web se otevře ve vašem prohlížeči.",
+      "waiting": "Čeká se, až web krok dokončí."
+    },
+    "remote": {
+      "banner": "Hermes běží na {{host}} přes SSH. Jeho změny zůstávají na tom počítači."
+    },
+    "history": {
+      "all": "Všechny konverzace",
+      "title": "Konverzace",
+      "search": "Hledat v konverzacích",
+      "empty": "Žádná konverzace neodpovídá.",
+      "loadMore": "Načíst další",
+      "open": "Otevřít",
+      "rename": "Přejmenovat",
+      "renameLabel": "Název konverzace",
+      "delete": "Smazat",
+      "deleteTitle": "Smazat tuto konverzaci?",
+      "deleteDescription": "Oleafly z tohoto projektu odstraní její záznam a přílohy.",
+      "deleteFromAgent": "Smazat ji také z {{agent}}",
+      "deleteAgentFailed": "Smazáno v Oleafly. {{agent}} se nepodařilo smazat svou kopii: {{error}}",
+      "deleteRunning": "Než tuto konverzaci smažete, zastavte agenta.",
+      "importFind": "Najít konverzace {{agent}} pro tento projekt",
+      "imported": "Už v Oleafly",
+      "importSelected": "Importovat vybrané",
+      "importEmpty": "{{agent}} nemá pro tento projekt žádné další konverzace."
+    },
+    "header": {
+      "startedAt": "Zahájeno na {{revision}}",
+      "startedDirty": "Zahájeno na {{revision}} s necommitnutými změnami",
+      "menu": "Akce konverzace",
+      "fork": "Rozvětvit konverzaci",
+      "forkUnsupported": "Tento agent neumí rozvětvovat konverzace.",
+      "forkBusy": "Než konverzaci rozvětvíte, počkejte, až agent skončí.",
+      "v2": "Koncept ACP v2",
+      "remote": "Vzdáleně"
+    },
+    "commit": {
+      "button": "Commitnout",
+      "title": "Commitnout tento tah",
+      "message": "Zpráva commitu",
+      "files": "Soubory ke commitu",
+      "defaultMessage": "Změny od {{agent}}",
+      "submit": "Commitnout soubory",
+      "cancel": "Zrušit"
     }
   },
   "agents": {
@@ -739,8 +880,6 @@
     "restoreFailed": "Obnovení se nezdařilo: {{error}}",
     "steerFailed": "Probíhající tah se nepodařilo nasměrovat.",
     "approvalRuleSaveFailed": "Pravidlo schvalování pro projekt se nepodařilo uložit.",
-    "attachmentTooLarge": "{{name}} je příliš velký (max. 10 MB).",
-    "attachmentReadFailed": "Soubor {{name}} se nepodařilo přečíst.",
     "tooManyTools": "Zapnuto je {{enabled}} nástrojů, ale jeden běh jich zvládne nejvýše {{max}}. Vypněte v Nástrojích alespoň {{excess}} a zkuste to znovu."
   },
   "header": {
@@ -771,7 +910,31 @@
     "summaryRunNoTokens_many": "Poslední běh: {{count}} kroku, celkový počet tokenů není k dispozici",
     "summaryRunNoTokens_other": "Poslední běh: {{count}} kroků, celkový počet tokenů není k dispozici",
     "summaryChat": "Tento chat: {{steps}} kroků, {{tokens}} tokenů",
-    "summaryFallback": "Využití AI"
+    "summaryFallback": "Využití AI",
+    "context": "Kontext",
+    "contextUsed": "{{used}} z {{size}} tokenů",
+    "contextShare": "Využito {{percent}} kontextového okna",
+    "contextUnknown": "Velikost kontextového okna tohoto modelu není známá.",
+    "reasoning": "Uvažování",
+    "cacheRead": "Čtení z mezipaměti",
+    "cacheWrite": "Zápisy do mezipaměti",
+    "cost": "Odhadované náklady",
+    "budget": "Rozpočet projektu",
+    "budgetUsed": "{{spent}} z {{limit}}",
+    "credit": "Zbývající kredit",
+    "creditOf": "{{remaining}} z {{limit}}",
+    "planLimits": "Limity tarifu",
+    "resetsAt": "Obnoví se {{time}}",
+    "windowWarning": "Blízko limitu",
+    "windowBlocked": "Limit dosažen",
+    "refreshPlan": "Obnovit využití tarifu",
+    "refreshing": "Obnovuje se…",
+    "historyTrimmed_one": "Modelu se odeslal jen poslední {{count}} tah tohoto chatu.",
+    "historyTrimmed_few": "Modelu se odeslaly jen poslední {{count}} tahy tohoto chatu.",
+    "historyTrimmed_many": "Modelu se odeslalo jen posledních {{count}} tahu tohoto chatu.",
+    "historyTrimmed_other": "Modelu se odeslalo jen posledních {{count}} tahů tohoto chatu.",
+    "empty": "V tomto chatu zatím není žádné využití.",
+    "loading": "Načítá se využití…"
   },
   "provider": {
     "connectTitle": "Pokračujte připojením poskytovatele AI",
@@ -791,7 +954,21 @@
     "projectSubtitle": "Pracuje se na projektu „{{project}}“",
     "noOutput": "Model nevrátil žádný výstup. Zkontrolujte Nastavení → Asistent AI.",
     "planMissing": "Zatím není žádný plán ke schválení. Požádejte o něj asistenta, nebo vypněte režim plánu.",
-    "planUnchanged": "Plán se nezměnil."
+    "planUnchanged": "Plán se nezměnil.",
+    "stillWorking": "Stále se pracuje ({{seconds}} s). Modely s uvažováním a místní modely mohou být pomalé. Zrušíte to tlačítkem Zastavit.",
+    "retrying": "Problém s připojením. Zkouší se znovu ({{attempt}} z {{max}})…",
+    "stopped": "Zastaveno.",
+    "stepLimit": "Byl dosažen limit kroků. Pokračujte odesláním další zprávy.",
+    "outputLimit": "Odpověď dosáhla limitu výstupu modelu. Pokračujte odesláním další zprávy.",
+    "tooLargeToSave": "Tento chat je příliš dlouhý na uložení. Nové zprávy se uchovají, dokud nezavřete Oleafly. Chcete-li si ponechat kopii, chat exportujte.",
+    "exportChat": "Exportovat chat",
+    "exported": "Chat byl exportován.",
+    "exportFailed": "Chat se nepodařilo exportovat.",
+    "saveFailed": "Nové zprávy v tomto chatu se nepodařilo uložit. Zkontrolujte, zda je na disku volné místo.",
+    "exportYou": "Vy",
+    "exportAssistant": "Asistent",
+    "exportAttachments": "Přílohy",
+    "exportTools": "Použité nástroje"
   },
   "followUps": {
     "steered": "Nasměrováno do probíhajícího tahu: {{summary}}",
@@ -888,6 +1065,48 @@
     "figureAudit": "Prověrka obrázků",
     "gitReview": "Revize změn v Gitu",
     "referenceCleanup": "Úklid referencí",
-    "removeSkill": "Odebrat dovednost {{name}}"
+    "removeSkill": "Odebrat dovednost {{name}}",
+    "compilationRepair": "Oprava kompilace",
+    "submissionPrep": "Příprava k odeslání",
+    "reviewerResponse": "Odpověď recenzentům"
+  },
+  "effort": {
+    "label": "Úsilí",
+    "tooltip": "Jak moc model uvažuje, než odpoví",
+    "ariaLabel": "Úsilí uvažování: {{level}}",
+    "auto": "Automaticky",
+    "autoDescription": "Použít výchozí nastavení modelu",
+    "levels": {
+      "none": "Žádné",
+      "minimal": "Minimální",
+      "low": "Nízké",
+      "medium": "Střední",
+      "high": "Vysoké",
+      "xhigh": "Velmi vysoké",
+      "max": "Maximální"
+    }
+  },
+  "web": {
+    "label": "Web",
+    "on": "Vyhledávání na webu a čtení stránek jsou pro tento chat zapnuté",
+    "off": "Zapnout pro tento chat vyhledávání na webu a čtení stránek",
+    "ariaLabel": "Přístup na web",
+    "searchUnavailable": "Tento model neumí vyhledávat na webu. Chcete-li to zapnout, přidejte v Nastavení klíč pro vyhledávání."
+  },
+  "messageActions": {
+    "edit": "Upravit zprávu",
+    "regenerate": "Znovu vygenerovat odpověď",
+    "retry": "Zkusit znovu",
+    "editingLatest": "Upravujete svou poslední zprávu. Po odeslání nahradí odpověď.",
+    "editingEarlier": "Upravujete dřívější zprávu. Po odeslání od ní začne nový chat a tento zůstane v Historii.",
+    "cancelEdit": "Zrušit úpravu",
+    "replaceTitle": "Nahradit tuto odpověď?",
+    "replaceDescription_one": "Odpověď změnila {{count}} soubor. Změna zůstane ve vašem projektu, ale její karta pro vrácení zmizí spolu s odpovědí.",
+    "replaceDescription_few": "Odpověď změnila {{count}} soubory. Změny zůstanou ve vašem projektu, ale jejich karta pro vrácení zmizí spolu s odpovědí.",
+    "replaceDescription_many": "Odpověď změnila {{count}} souboru. Změny zůstanou ve vašem projektu, ale jejich karta pro vrácení zmizí spolu s odpovědí.",
+    "replaceDescription_other": "Odpověď změnila {{count}} souborů. Změny zůstanou ve vašem projektu, ale jejich karta pro vrácení zmizí spolu s odpovědí.",
+    "replaceConfirm": "Nahradit odpověď",
+    "forked": "Z upravené zprávy začal nový chat.",
+    "failed": "Zprávu se nepodařilo odeslat znovu."
   }
 }

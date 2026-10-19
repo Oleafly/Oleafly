@@ -12,7 +12,13 @@ use crate::usage_report::{record_usage_observation, UsageEventInput};
 struct ReplayState {
     sequence: u64,
     turn: Option<TurnUsage>,
+    /// The agent's cumulative cost as last reported in this session.
+    #[serde(default)]
+    last_cost: Option<f64>,
 }
+
+/// The price label of costs the agent reported itself.
+const AGENT_REPORTED: &str = "acp-agent-reported";
 
 #[derive(Serialize, Deserialize)]
 struct TurnUsage {
@@ -26,10 +32,35 @@ struct TurnUsage {
     status: String,
     measured: bool,
     duration_ms: i64,
+    /// The cumulative cost before this turn, and the latest during it.
+    #[serde(default)]
+    cost_at_start: Option<f64>,
+    #[serde(default)]
+    cost_latest: Option<f64>,
+    #[serde(default)]
+    cost_currency: Option<String>,
+}
+
+/// How the session pays: through an API key (Oleafly's or the agent's) or
+/// a subscription account.
+fn billing(session: &SessionRecord) -> &'static str {
+    if session.routed_provider.is_some() {
+        return "api";
+    }
+    match session
+        .usage
+        .as_ref()
+        .and_then(|usage| usage.auth.as_ref())
+        .map(|auth| auth.kind.as_str())
+    {
+        Some("api_key" | "gateway") => "api",
+        Some("account") => "subscription",
+        _ => "unknown",
+    }
 }
 
 impl TurnUsage {
-    fn new(event: &AcpEvent, turn_id: String) -> Self {
+    fn new(event: &AcpEvent, turn_id: String, cost_at_start: Option<f64>) -> Self {
         Self {
             turn_id,
             started_at_ms: event.timestamp,
@@ -41,10 +72,25 @@ impl TurnUsage {
             status: "in_progress".into(),
             measured: false,
             duration_ms: 0,
+            cost_at_start,
+            cost_latest: None,
+            cost_currency: None,
         }
     }
 
+    /// The turn's cost from the agent's cumulative figures, for API billing
+    /// in US dollars only.
+    fn estimated_cost(&self, billing: &str) -> Option<f64> {
+        let latest = self.cost_latest?;
+        if billing != "api" || self.cost_currency.as_deref().unwrap_or("USD") != "USD" {
+            return None;
+        }
+        Some((latest - self.cost_at_start.unwrap_or(0.0)).max(0.0))
+    }
+
     fn observation(&self, event: &AcpEvent, session: &SessionRecord) -> UsageEventInput {
+        let billing = billing(session);
+        let estimated_cost_usd = self.estimated_cost(billing);
         UsageEventInput {
             event_id: format!("{}:{}", event.session_id, event.sequence),
             source_id: format!("acp:{}", event.session_id),
@@ -55,7 +101,10 @@ impl TurnUsage {
             parent_session_id: session.parent_session_id.clone(),
             parent_record_key: None,
             runtime_id: acp_runtime_id(&event.agent_id),
-            provider_id: acp_provider_id(&event.agent_id),
+            provider_id: session
+                .routed_provider
+                .clone()
+                .or_else(|| acp_provider_id(&event.agent_id)),
             model_id: self.model_id.clone(),
             occurred_at_ms: signed(self.started_at_ms),
             observation_sequence: Some(signed(event.sequence.saturating_mul(2))),
@@ -71,9 +120,9 @@ impl TurnUsage {
                 "unavailable"
             }
             .into(),
-            billing_mode: "unknown".into(),
-            estimated_cost_usd: None,
-            price_version: None,
+            billing_mode: billing.into(),
+            estimated_cost_usd,
+            price_version: estimated_cost_usd.map(|_| AGENT_REPORTED.to_string()),
             duration_ms: Some(self.duration_ms),
             status: self.status.clone(),
             aggregation_scope: "self".into(),
@@ -118,13 +167,25 @@ fn consume(
         .as_ref()
         .is_none_or(|turn| &turn.turn_id != turn_id)
     {
-        state.turn = Some(TurnUsage::new(event, turn_id.clone()));
+        state.turn = Some(TurnUsage::new(event, turn_id.clone(), state.last_cost));
+    }
+    let reported_cost = (event.kind == "usage" && event.data["source"] == "acp_context")
+        .then(|| event.data["costAmount"].as_f64())
+        .flatten()
+        .filter(|cost| cost.is_finite() && *cost >= 0.0);
+    if let Some(cost) = reported_cost {
+        state.last_cost = Some(cost);
     }
     let turn = state.turn.as_mut()?;
     turn.model_id = event.model_id.clone().or_else(|| turn.model_id.clone());
     let mut changed = false;
     match event.kind.as_str() {
         "user_message" => changed = true,
+        "usage" if reported_cost.is_some() => {
+            turn.cost_latest = reported_cost;
+            turn.cost_currency = event.data["costCurrency"].as_str().map(str::to_owned);
+            changed = true;
+        }
         "usage" if event.data["source"] == "acp_prompt" => {
             merge_counter(&mut turn.input_tokens, &event.data, "inputTokens");
             merge_counter(&mut turn.output_tokens, &event.data, "outputTokens");
@@ -236,6 +297,7 @@ fn replay_session(
                 timestamp: session.updated_at,
                 kind: "status".into(),
                 data: serde_json::Value::Null,
+                owner: None,
             };
             let mut observation = turn.observation(&event, session);
             observation.observation_sequence = observation
@@ -327,22 +389,14 @@ mod tests {
             project_id: "project".into(),
             project_path: "/project".into(),
             agent_id: "codex".into(),
-            agent_version: None,
-            native_session_id: None,
             parent_session_id: Some("parent".into()),
             task_id: Some("task".into()),
-            title: String::new(),
             status: SessionStatus::Ready,
             created_at: 1000,
             updated_at: 3000,
             turn_id: Some("turn".into()),
-            capabilities: Default::default(),
-            controls: Default::default(),
-            auth_methods: Vec::new(),
-            error: None,
             last_sequence: 3,
-            start_revision: None,
-            start_dirty: None,
+            ..SessionRecord::default()
         }
     }
 
@@ -358,6 +412,7 @@ mod tests {
             timestamp: sequence * 1000,
             kind: kind.into(),
             data,
+            owner: None,
         }
     }
 
@@ -430,7 +485,7 @@ mod tests {
         let session = session();
         let db = rusqlite::Connection::open(acp_root.join("sessions.sqlite")).unwrap();
         db.execute(
-            "INSERT INTO sessions VALUES (?1,?2,?3,?4)",
+            "INSERT INTO sessions (id, project_id, updated_at, record) VALUES (?1,?2,?3,?4)",
             params![
                 session.id,
                 session.project_id,
@@ -471,6 +526,84 @@ mod tests {
             |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?)),
         ).unwrap();
         assert_eq!(row, (1, 100, None, "completed".into(), "acp:codex".into()));
+    }
+
+    fn cost_event(sequence: u64, turn: &str, amount: f64) -> AcpEvent {
+        let mut event = event(
+            sequence,
+            "usage",
+            serde_json::json!({"source": "acp_context", "costAmount": amount, "costCurrency": "USD"}),
+        );
+        event.turn_id = Some(turn.into());
+        event
+    }
+
+    fn api_session() -> SessionRecord {
+        let mut session = session();
+        session.usage = Some(crate::acp::SessionUsage {
+            auth: Some(oleafly_acp::usage::AuthStatus {
+                kind: "api_key".into(),
+                label: "API key".into(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        session
+    }
+
+    #[test]
+    fn acp_turn_cost_comes_from_the_agent_cumulative_cost() {
+        let session = api_session();
+        let mut state = ReplayState::default();
+        let first = consume(&mut state, &cost_event(1, "t1", 0.10), &session).unwrap();
+        assert_eq!(first.estimated_cost_usd, Some(0.10));
+        let second = consume(&mut state, &cost_event(2, "t2", 0.25), &session).unwrap();
+        assert!((second.estimated_cost_usd.unwrap() - 0.15).abs() < 1e-9);
+        assert_eq!(second.price_version.as_deref(), Some("acp-agent-reported"));
+        assert_eq!(second.billing_mode, "api");
+    }
+
+    #[test]
+    fn subscription_sessions_record_no_cost() {
+        let mut session = api_session();
+        session.usage.as_mut().unwrap().auth.as_mut().unwrap().kind = "account".into();
+        let mut state = ReplayState::default();
+        let observed = consume(&mut state, &cost_event(1, "t1", 0.30), &session).unwrap();
+        assert_eq!(observed.billing_mode, "subscription");
+        assert_eq!(observed.estimated_cost_usd, None);
+    }
+
+    #[test]
+    fn plan_probe_usage_never_reaches_the_ledger() {
+        let session = api_session();
+        let mut state = ReplayState::default();
+        let mut probe = event(
+            1,
+            "usage",
+            serde_json::json!({"source": "acp_plan", "costAmount": 9.0}),
+        );
+        probe.turn_id = Some("t1".into());
+        assert!(consume(&mut state, &probe, &session).is_none());
+        assert_eq!(state.last_cost, None);
+    }
+
+    #[test]
+    fn routed_sessions_record_api_billing_in_the_ledger() {
+        let mut session = session();
+        session.routed_provider = Some("anthropic".into());
+        let mut state = ReplayState::default();
+        let observed = consume(
+            &mut state,
+            &event(
+                1,
+                "usage",
+                serde_json::json!({"source": "acp_prompt", "inputTokens": 5}),
+            ),
+            &session,
+        )
+        .unwrap();
+        assert_eq!(observed.billing_mode, "api");
+        assert_eq!(observed.provider_id.as_deref(), Some("anthropic"));
     }
 
     #[test]

@@ -5,10 +5,82 @@ use super::{
 };
 use serde_json::{json, Value};
 use std::{
+    collections::BTreeMap,
     io::Write,
     path::{Path, PathBuf},
 };
 use zeroize::Zeroizing;
+
+/// Variables a sandboxed agent keeps from its launch: the CLI hand-offs the
+/// bridges read, Windows search hardening and the Claude v2 switch.
+const TASK_ENV: [&str; 6] = [
+    "PI_ACP_PI_COMMAND",
+    "CLAUDE_CODE_EXECUTABLE",
+    "CODEX_PATH",
+    "NoDefaultCurrentDirectoryInExePath",
+    "LC_ALL",
+    "CLAUDE_AGENT_ACP_EXPERIMENTAL_V2",
+];
+
+/// The environment a sandboxed agent starts with on top of the sandbox's
+/// fixed one: [`TASK_ENV`] from the launch and the project's Git hardening.
+/// Never a reserved variable (`PATH`, `HOME`, …).
+pub(super) fn task_env(
+    launch: &Launch,
+    project_id: &str,
+    root: &Path,
+) -> Result<BTreeMap<String, String>, String> {
+    let mut env = BTreeMap::new();
+    for (name, value) in &launch.env {
+        if !TASK_ENV.iter().any(|kept| kept.eq_ignore_ascii_case(name)) {
+            continue;
+        }
+        if let Some(value) = value.to_str() {
+            env.insert(name.clone(), value.to_owned());
+        }
+    }
+    if let Some(hardening) = crate::trust::git_restriction(project_id, root)? {
+        for (name, value) in hardening {
+            if let Some(value) = value.to_str() {
+                env.insert(name, value.to_owned());
+            }
+        }
+    }
+    env.retain(|name, _| {
+        !oleafly_sandbox::RESERVED_ENV
+            .iter()
+            .any(|reserved| reserved.eq_ignore_ascii_case(name))
+    });
+    Ok(env)
+}
+
+/// The root of the Python virtual environment `executable` runs from: its
+/// `bin` (`Scripts` on Windows) folder sits next to `pyvenv.cfg`.
+fn python_venv_root(executable: &Path) -> Option<PathBuf> {
+    let folder = executable.parent()?;
+    let name = folder.file_name()?.to_str()?;
+    if !(name == "bin" || name.eq_ignore_ascii_case("Scripts")) {
+        return None;
+    }
+    let root = folder.parent()?;
+    root.join("pyvenv.cfg")
+        .is_file()
+        .then(|| root.to_path_buf())
+}
+
+/// The package folder of the Pi CLI a bridge is handed: the nearest
+/// ancestor with a `package.json`, else the CLI's own folder.
+fn pi_package_root(command: &Path) -> Option<PathBuf> {
+    let real = command
+        .canonicalize()
+        .unwrap_or_else(|_| command.to_path_buf());
+    real.ancestors()
+        .skip(1)
+        .take(6)
+        .find(|folder| folder.join("package.json").is_file())
+        .map(Path::to_path_buf)
+        .or_else(|| real.parent().map(Path::to_path_buf))
+}
 
 pub fn runtime_reads(root: &Path, definition: &AgentDefinition, launch: &Launch) -> Vec<PathBuf> {
     let mut paths = vec![launch.executable.clone()];
@@ -69,6 +141,14 @@ pub fn runtime_reads(root: &Path, definition: &AgentDefinition, launch: &Launch)
             }
         }
     }
+    paths.extend(python_venv_root(&launch.executable));
+    if let Some((_, pi)) = launch
+        .env
+        .iter()
+        .find(|(name, _)| name == "PI_ACP_PI_COMMAND")
+    {
+        paths.extend(pi_package_root(Path::new(pi)));
+    }
     paths.sort();
     paths.dedup();
     paths.retain(|path| path.exists());
@@ -94,6 +174,11 @@ pub fn prepare_credentials(
         "claude" => &[".claude/.credentials.json"],
         "codex" => &[".codex/auth.json"],
         "gemini" => &[".gemini/oauth_creds.json", ".gemini/google_accounts.json"],
+        "pi" => &[
+            ".pi/agent/auth.json",
+            ".pi/agent/settings.json",
+            ".pi/agent/models.json",
+        ],
         _ => &[],
     };
     let mut secrets = Vec::new();
@@ -156,4 +241,114 @@ fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
         .map_err(|_| "The private CLI credential file could not be created.")?;
     file.write_all(bytes)
         .map_err(|_| "The private CLI credential file could not be written.".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::OsString;
+
+    fn launch(executable: &Path, env: Vec<(&str, &str)>) -> Launch {
+        Launch {
+            executable: executable.to_path_buf(),
+            args: Vec::new(),
+            version: None,
+            managed: false,
+            batch: false,
+            entry: None,
+            needs_local_folder: false,
+            env: env
+                .into_iter()
+                .map(|(name, value)| (name.to_string(), OsString::from(value)))
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn task_env_keeps_only_the_hand_off_variables() {
+        let temp = tempfile::tempdir().unwrap();
+        let env = task_env(
+            &launch(
+                Path::new("/bin/agent"),
+                vec![
+                    ("PI_ACP_PI_COMMAND", "/outside/pi"),
+                    ("HOME", "/home/a"),
+                    ("PATH", "/usr/bin"),
+                    ("LANG", "C"),
+                    ("OPENAI_API_KEY", "sk-secret-123456789"),
+                ],
+            ),
+            "project",
+            temp.path(),
+        )
+        .unwrap();
+        assert_eq!(
+            env.get("PI_ACP_PI_COMMAND").map(String::as_str),
+            Some("/outside/pi")
+        );
+        for dropped in ["HOME", "PATH", "LANG", "OPENAI_API_KEY"] {
+            assert!(!env.contains_key(dropped), "{dropped}");
+        }
+    }
+
+    #[test]
+    fn runtime_reads_include_a_python_venv_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let venv = temp.path().join("venv");
+        let folder = venv.join(if cfg!(windows) { "Scripts" } else { "bin" });
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(venv.join("pyvenv.cfg"), "home = /usr").unwrap();
+        let python = folder.join(if cfg!(windows) {
+            "python.exe"
+        } else {
+            "python"
+        });
+        std::fs::write(&python, "").unwrap();
+        let definition = crate::acp::catalog::builtins().remove(0);
+        let reads = runtime_reads(temp.path(), &definition, &launch(&python, Vec::new()));
+        assert!(reads.contains(&venv));
+    }
+
+    #[test]
+    fn runtime_reads_include_the_pi_package_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let package = temp.path().join("pi-cli");
+        std::fs::create_dir_all(package.join("dist")).unwrap();
+        std::fs::write(package.join("package.json"), "{}").unwrap();
+        let cli = package.join("dist").join("cli.js");
+        std::fs::write(&cli, "").unwrap();
+        let definition = crate::acp::catalog::builtins().remove(0);
+        let reads = runtime_reads(
+            temp.path(),
+            &definition,
+            &launch(
+                Path::new("/bin/sh"),
+                vec![("PI_ACP_PI_COMMAND", cli.to_str().unwrap())],
+            ),
+        );
+        let package = package.canonicalize().unwrap();
+        assert!(reads.iter().any(|path| path == &package));
+    }
+
+    #[test]
+    fn pi_credentials_are_copied_into_the_task_home() {
+        let home = tempfile::tempdir().unwrap();
+        let task = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(home.path().join(".pi/agent")).unwrap();
+        std::fs::write(
+            home.path().join(".pi/agent/auth.json"),
+            r#"{"token":"pi-token-1234567"}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            home.path().join(".pi/agent/settings.json"),
+            r#"{"model":"x"}"#,
+        )
+        .unwrap();
+        let redactor = prepare_credentials(home.path(), task.path(), "pi", &[]).unwrap();
+        assert!(task.path().join(".pi/agent/auth.json").is_file());
+        assert!(task.path().join(".pi/agent/settings.json").is_file());
+        assert!(!task.path().join(".pi/agent/models.json").exists());
+        assert_eq!(redactor.text("pi-token-1234567"), "[credential omitted]");
+    }
 }

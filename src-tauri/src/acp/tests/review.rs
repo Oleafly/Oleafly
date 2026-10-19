@@ -331,10 +331,11 @@ async fn child_sessions_take_no_before_turn_copy() {
 
 #[test]
 fn only_interactive_top_level_sessions_take_a_copy() {
-    assert!(review::takes_turn_copy(false, None));
-    assert!(!review::takes_turn_copy(true, None));
-    assert!(!review::takes_turn_copy(false, Some("parent")));
-    assert!(!review::takes_turn_copy(true, Some("parent")));
+    assert!(review::takes_turn_copy(false, None, false));
+    assert!(!review::takes_turn_copy(true, None, false));
+    assert!(!review::takes_turn_copy(false, Some("parent"), false));
+    assert!(!review::takes_turn_copy(true, Some("parent"), false));
+    assert!(!review::takes_turn_copy(false, None, true));
 }
 
 #[tokio::test]
@@ -825,10 +826,12 @@ async fn a_picked_skill_follows_the_message_as_its_own_text_block() {
     };
     harness
         .runtime
-        .prompt_with_skill(
+        .prompt_input(
             &harness.id(),
-            "Hello".into(),
-            Vec::new(),
+            crate::acp::attachments::PromptInput {
+                text: "Hello".into(),
+                ..Default::default()
+            },
             Some(skill.clone()),
         )
         .await
@@ -868,10 +871,17 @@ async fn the_skill_block_counts_toward_the_message_limit() {
     };
     let error = harness
         .runtime
-        .prompt_with_skill(&harness.id(), "Hello".into(), Vec::new(), Some(skill))
+        .prompt_input(
+            &harness.id(),
+            crate::acp::attachments::PromptInput {
+                text: "Hello".into(),
+                ..Default::default()
+            },
+            Some(skill),
+        )
         .await
         .unwrap_err();
-    assert!(error.contains("frame limit"));
+    assert!(error.contains("too large"), "{error}");
     assert!(!kinds(&harness.events()).contains(&"user_message"));
     harness.runtime.close(&harness.id()).await.unwrap();
 }

@@ -62,6 +62,7 @@ import {
 } from "./ai-settings-navigation";
 
 const AcpAgentsTab = lazy(() => import("./ai/AcpAgentsTab").then((module) => ({ default: module.AcpAgentsTab })));
+const ToolsTab = lazy(() => import("./ai/ToolsTab").then((module) => ({ default: module.ToolsTab })));
 
 type DiscoveryResult =
   | { ok: true; models: ProviderModel[] }
@@ -733,6 +734,9 @@ export function AISection() {
           >
             {t(($) => $.settings.ai.section.tabs.mcp)}
           </TabsTrigger>
+          <TabsTrigger value="tools" data-testid="ai-settings-tab-tools">
+            {t(($) => $.settings.ai.tools.tabLabel)}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="providers">
@@ -815,6 +819,18 @@ export function AISection() {
             <McpServersManager />
           </TabsContent>
         ) : null}
+
+        <TabsContent value="tools">
+          <Suspense
+            fallback={
+              <p className="text-sm text-muted-foreground">
+                {t(($) => $.settings.ai.tools.loading)}
+              </p>
+            }
+          >
+            <ToolsTab />
+          </Suspense>
+        </TabsContent>
       </Tabs>
 
       <AddCustomProviderDialog

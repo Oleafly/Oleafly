@@ -19,7 +19,6 @@
     "selectAll": "Alles selecteren",
     "view": "Beeld",
     "toggleTerminal": "Terminal tonen of verbergen",
-    "toggleBrowser": "Browser tonen of verbergen",
     "file": "Archief",
     "openFolder": "Map openen…",
     "openRecent": "Open recent",
@@ -28,15 +27,7 @@
     "minimize": "Minimaliseer",
     "fullscreen": "Schermvullend aan of uit",
     "bringAllToFront": "Breng alles naar voren",
-    "newTab": "Nieuw tabblad",
-    "openLocation": "Locatie openen…",
-    "closeTab": "Tabblad sluiten",
-    "reloadPage": "Pagina opnieuw laden",
     "zenMode": "Zenmodus"
-  },
-  "window": {
-    "browser": "Oleafly Browser",
-    "browserTitled": "{{title}} - Oleafly Browser"
   },
   "dialog": {
     "cancel": "Annuleren",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Cookie-import bevestigen",
-      "messageHost": "Cookies voor {{hostname}} importeren uit het {{browser}}-profiel \"{{profile}}\" naar de ingebouwde browser van Oleafly? Met geïmporteerde cookies kun je op websites aangemeld raken.",
-      "messageAll": "Alle cookies importeren uit het {{browser}}-profiel \"{{profile}}\" naar de ingebouwde browser van Oleafly? Met geïmporteerde cookies kun je op websites aangemeld raken.",
-      "confirm": "Cookies importeren"
+      "copyHost": "De cookies voor {{hostname}} uit het {{browser}}-profiel '{{profile}}' naar Oleafly kopiëren? Daarmee kun je je aanmelden bij {{hostname}}.",
+      "copyAll": "Alle cookies uit het {{browser}}-profiel '{{profile}}' naar Oleafly kopiëren? Daarmee kun je je aanmelden bij websites.",
+      "copyConfirm": "Cookies kopiëren"
     },
     "mcpApprove": {
       "title": "MCP-tool goedkeuren",
@@ -103,6 +94,46 @@
       "confirm": "Programma gebruiken",
       "pickTitle": "Kies het programma voor {{name}}",
       "filter": "Programma's"
+    },
+    "desktopApps": {
+      "title": "Desktop-apps",
+      "action": "{{agent}} wil {{action}}.",
+      "steps": "{{agent}} wil deze stappen uitvoeren in een desktop-app:",
+      "moreSteps": "Stappen die niet getoond worden: {{count}}",
+      "text": "Tekst: '{{text}}'",
+      "address": "Adres: {{url}}",
+      "allowOnce": "Eén keer toestaan",
+      "allowChat": "Toestaan voor deze chat",
+      "allowSession": "Toestaan voor deze sessie",
+      "allowTask": "Toestaan voor deze taak",
+      "deny": "Niet toestaan",
+      "actions": {
+        "launchApp": "een app openen",
+        "click": "in een app klikken",
+        "doubleClick": "in een app dubbelklikken",
+        "rightClick": "in een app rechtsklikken",
+        "typeText": "in een app typen",
+        "pressKey": "in een app een toets indrukken",
+        "hotkey": "in een app een sneltoets gebruiken",
+        "scroll": "in een app scrollen",
+        "setValue": "in een app een veld wijzigen",
+        "browserPrepare": "een browser openen voor een website",
+        "browserNavigate": "naar een webpagina gaan",
+        "browserClick": "op een webpagina klikken",
+        "browserType": "op een webpagina typen",
+        "browserSelect": "op een webpagina een optie kiezen",
+        "runScript": "een Cua-script uitvoeren"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Bediening van de desktop toestaan?",
+      "message": "Agents kunnen het volgende gebruiken en vragen nog steeds voor elke actie:",
+      "confirm": "Toestaan",
+      "enabled": "Desktop-apps",
+      "app": "App: {{name}}",
+      "site": "Website: {{origin}}",
+      "signedIn": "Je aangemelde browser op {{origin}}",
+      "scripted": "Cua-scripts"
     }
   },
   "errors": {
@@ -128,5 +159,35 @@
   "cloud": {
     "connectedPage": "Je bent verbonden. Je kunt dit tabblad sluiten en teruggaan naar Oleafly.",
     "failedPage": "Het inloggen is niet voltooid. Je kunt dit tabblad sluiten en teruggaan naar Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Taak klaar om te bekijken",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plan klaar om goed te keuren",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Een taak wacht op je goedkeuring",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Taak gestopt",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Budget van de taak op",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly werkt door",
+      "body": "Onderzoekstaken die je wilde laten doorlopen, gaan op de achtergrond verder. Open Oleafly om de voortgang te zien."
+    }
   }
 }

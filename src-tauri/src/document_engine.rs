@@ -338,27 +338,28 @@ impl DocumentEngine for LatexEngine {
         let input = match target {
             CompileTarget::Main { main_document } => EngineInput::Generated {
                 path: out_dir.join(crate::paths::ENTRY_TEX),
-                content: {
-                    validate_latex_main_document(main_document)?;
-                    format!(
-                    "\\ifdefined\\pdfglyphtounicode\\else\\def\\pdfglyphtounicode#1#2{{}}\\fi\n\
-                     \\ifdefined\\pdfgentounicode\\else\\newcount\\pdfgentounicode\\fi\n\
-                     \\input{{\\detokenize{{{main_document}}}}}\n"
-                    )
-                },
+                content: oleafly_core::engine_spec::latex_entry_source(main_document)
+                    .map_err(|error| error.to_string())?,
             },
             CompileTarget::Isolated { source_path, .. } => {
                 EngineInput::Direct(source_path.to_owned())
             }
         };
         let artifacts = self.artifacts(out_dir, target);
-        let out = out_dir.to_string_lossy();
-        let search_path = format!("search-path={}", project_dir.to_string_lossy());
-        let entry = input.path().to_string_lossy();
         let environment = EngineEnvironment::inherited(options.source_date_epoch);
+        let args = oleafly_core::engine_spec::tectonic_args(
+            out_dir,
+            &[project_dir],
+            input.path(),
+            Some(&tex_bundle_url()),
+            engine_flags(&options),
+        )
+        .into_iter()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
         Ok(EngineCompileSpec {
             executable: EngineExecutable::BundledSidecar("tectonic"),
-            args: tectonic_args(&out, &search_path, &entry, options),
+            args,
             input,
             artifacts,
             working_dir: project_dir.to_owned(),
@@ -602,69 +603,6 @@ fn pythontex_args(
     ])
 }
 
-fn validate_latexmk_path_characters(path: &str) -> Result<(), String> {
-    let safe = path.chars().all(|character| {
-        if !character.is_ascii() {
-            return !character.is_control();
-        }
-        character.is_ascii_alphanumeric()
-            || matches!(
-                character,
-                '/' | '.' | '-' | '_' | ' ' | '(' | ')' | '[' | ']' | ',' | '+' | '=' | '@'
-            )
-    });
-    if safe {
-        Ok(())
-    } else {
-        Err(
-            "latexmk paths may contain letters, numbers, spaces, and portable filename punctuation only"
-                .into(),
-        )
-    }
-}
-
-fn latexmk_relative_path_arg(path: &Path) -> Result<String, String> {
-    if path.as_os_str().is_empty()
-        || path.is_absolute()
-        || path.components().any(|component| {
-            matches!(
-                component,
-                std::path::Component::ParentDir
-                    | std::path::Component::RootDir
-                    | std::path::Component::Prefix(_)
-            )
-        })
-    {
-        return Err("latexmk paths must stay project-relative".into());
-    }
-    let value = path.to_string_lossy().replace('\\', "/");
-    validate_latexmk_path_characters(&value)?;
-    Ok(format!("./{value}"))
-}
-
-fn latexmk_absolute_path_text(path: &Path, windows: bool) -> Option<String> {
-    path.to_str()?;
-    let plain = crate::project_availability::without_verbatim_prefix(path);
-    let text = plain.to_str()?;
-    let text = if windows {
-        text.replace('\\', "/")
-    } else {
-        text.to_owned()
-    };
-    let rooted = if windows {
-        let bytes = text.as_bytes();
-        bytes.len() > 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && bytes[2] == b'/'
-    } else {
-        text.starts_with('/')
-    };
-    let shell_safe = !text.chars().any(|character| {
-        character.is_control()
-            || matches!(character, '"' | '`' | '$' | '\\')
-            || (windows && matches!(character, '%' | '!'))
-    });
-    (rooted && shell_safe && !text.split('/').any(|part| part == "..")).then_some(text)
-}
-
 fn latexmk_absolute_path_arg(path: &Path) -> Result<String, String> {
     latexmk_absolute_path_text(path, cfg!(windows))
         .ok_or_else(|| crate::app_error::AppError::new("tex.latexmk_build_path").into())
@@ -692,14 +630,6 @@ fn latexmk_path_arg(
         _ => Err(format!(
             "latexmk {role} must stay inside the project directory"
         )),
-    }
-}
-
-fn shell_escape_arg(allow: bool, distribution_kind: &str) -> &'static str {
-    match (allow, distribution_kind) {
-        (true, _) => "-shell-escape",
-        (false, "miktex") => "-no-shell-escape",
-        (false, _) => "-shell-restricted",
     }
 }
 
@@ -732,32 +662,34 @@ fn latexmk_args_from(
     options: CompileOptions,
     distribution_kind: &str,
 ) -> Vec<String> {
-    let mut args: Vec<String> = vec![
-        "-norc".into(),
-        shell_escape_arg(options.allow_shell_escape, distribution_kind).into(),
-    ];
-    args.extend(flavor.latexmk_args());
-    args.extend([
-        "-interaction=nonstopmode".into(),
-        "-synctex=1".into(),
-        format!("-outdir={out_dir}"),
-        format!("-jobname={stem}"),
-    ]);
-    if options.halt_on_error {
-        args.push("-halt-on-error".into());
-    } else {
-        // Push on to a best-effort PDF after TeX errors (Tectonic
-        // continue-on-errors parity).
-        args.push("-f".into());
-    }
-    if flavor == LatexmkFlavor::Lualatex && !options.allow_shell_escape {
-        args.push("-latexoption=--nosocket".into());
-    }
-    // `options.fast` is intentionally ignored: deciding how many passes to run
-    // is latexmk's whole job, and `-outdir` reuse already makes warm runs fast.
-    args.push(entry);
-    args
+    oleafly_core::engine_spec::latexmk_args(
+        &out_dir,
+        &entry,
+        stem,
+        flavor,
+        engine_flags(&options),
+        options.allow_shell_escape,
+        distribution_kind,
+    )
 }
+
+/// The engine flags the shared argument builders take.
+fn engine_flags(options: &CompileOptions) -> oleafly_core::engine_spec::EngineFlags {
+    oleafly_core::engine_spec::EngineFlags {
+        offline: options.offline,
+        fast: options.fast,
+        halt_on_error: options.halt_on_error,
+    }
+}
+
+/// `./<path>` for latexmk (see `oleafly_core::engine_spec`).
+fn latexmk_relative_path_arg(path: &Path) -> Result<String, String> {
+    oleafly_core::engine_spec::latexmk_relative_path_arg(path).map_err(|error| error.to_string())
+}
+
+use oleafly_core::engine_spec::latexmk_absolute_path_text;
+#[cfg(test)]
+use oleafly_core::engine_spec::shell_escape_arg;
 
 fn latexmk_invocation(
     project_dir: &Path,
@@ -938,75 +870,20 @@ impl DocumentEngine for LatexmkEngine {
 }
 
 fn require_dvi_toolchain(flavor: LatexmkFlavor, latexmk: &Path) -> Result<(), String> {
-    if !flavor.goes_through_dvi() {
-        return Ok(());
-    }
-    let resolved = latexmk
-        .canonicalize()
-        .unwrap_or_else(|_| latexmk.to_path_buf());
-    let available = |tool: &str| {
-        [latexmk.parent(), resolved.parent()]
-            .into_iter()
-            .flatten()
-            .any(|dir| crate::tex_distro::find_tool_in_dir(dir, tool).is_some())
-    };
-    let compiler = match flavor {
-        LatexmkFlavor::Platex => "pLaTeX",
-        _ => "upLaTeX",
-    };
-    if available(flavor.as_str()) && available("dvipdfmx") {
-        Ok(())
-    } else {
-        Err(
+    match oleafly_core::engine_spec::dvi_toolchain_missing(flavor, latexmk) {
+        None => Ok(()),
+        Some(compiler) => Err(
             crate::app_error::AppError::new("tex.japanese_compiler_missing")
                 .param("compiler", compiler)
                 .into(),
-        )
+        ),
     }
 }
 
-fn latexmk_binary_changed(out_dir: &Path, latexmk: &Path) -> bool {
-    const MAX_MARKER_BYTES: u64 = 64 * 1024;
-    let marker = out_dir.join(".oleafly-latexmk");
-    let resolved = std::fs::canonicalize(latexmk).unwrap_or_else(|_| latexmk.to_owned());
-    let current = resolved.to_string_lossy();
-    let previous = std::fs::symlink_metadata(&marker)
-        .ok()
-        .filter(|metadata| {
-            metadata.is_file()
-                && !metadata.file_type().is_symlink()
-                && metadata.len() <= MAX_MARKER_BYTES
-        })
-        .and_then(|_| std::fs::read_to_string(&marker).ok())
-        .unwrap_or_default();
-    previous.trim() != current
-}
-
-fn record_latexmk_binary(out_dir: &Path, latexmk: &Path) {
-    let resolved = std::fs::canonicalize(latexmk).unwrap_or_else(|_| latexmk.to_owned());
-    if std::fs::create_dir_all(out_dir).is_ok() {
-        let _ = crate::sandbox::atomic_write(
-            &out_dir.join(".oleafly-latexmk"),
-            resolved.to_string_lossy().as_bytes(),
-        );
-    }
-}
+use oleafly_core::engine_spec::{latexmk_binary_changed, record_latexmk_binary};
 
 fn validate_latex_main_document(path: &str) -> Result<(), String> {
-    if path.is_empty()
-        || path.chars().any(|character| {
-            character.is_control()
-                || matches!(
-                    character,
-                    '{' | '}' | '\\' | '%' | '#' | '$' | '&' | '^' | '~'
-                )
-        })
-    {
-        return Err(
-            "LaTeX main document contains characters unsafe for the generated wrapper".into(),
-        );
-    }
-    Ok(())
+    oleafly_core::engine_spec::validate_latex_main_document(path).map_err(|error| error.to_string())
 }
 
 impl DocumentEngine for TypstEngine {
@@ -1321,8 +1198,7 @@ fn pandoc_scratch_error(error: std::io::Error) -> String {
     format!("Oleafly could not create a temporary folder for Pandoc: {error}")
 }
 
-const MERMAID_FIGURES_FILTER_NAME: &str = "oleafly-mermaid-figures.lua";
-const MERMAID_FIGURES_FILTER: &str = include_str!("../resources/pandoc/mermaid-figures.lua");
+use oleafly_core::engine_spec::{MERMAID_FIGURES_FILTER, MERMAID_FIGURES_FILTER_NAME};
 
 struct MarkdownTools {
     pandoc: PathBuf,
@@ -1351,7 +1227,6 @@ fn markdown_compile_spec(
         .as_ref()
         .ok_or_else(|| "Markdown PDF artifact was not declared".to_string())?;
     let project = oleafly_core::plain_path(project_dir);
-    let project_text = project.to_string_lossy();
     let resources = scratch
         .pandoc_resource_path(&project)
         .map_err(pandoc_scratch_error)?;
@@ -1360,32 +1235,26 @@ fn markdown_compile_spec(
         MERMAID_FIGURES_FILTER,
     )
     .map_err(|error| format!("Oleafly could not prepare the Mermaid figure filter: {error}"))?;
-    let mut args = vec![
-        resources.argument.to_string_lossy().into_owned(),
-        "--from=markdown".into(),
-        "--standalone".into(),
-        format!("--pdf-engine={}", tectonic.to_string_lossy()),
-        "--pdf-engine-opt=--bundle".into(),
-        format!("--pdf-engine-opt={}", tex_bundle_url()),
-        format!("--pdf-engine-opt=-Zsearch-path={project_text}"),
-        format!(
-            "--output={}",
-            oleafly_core::plain_path(output).to_string_lossy()
-        ),
-        "--sandbox".into(),
-        format!("--lua-filter={MERMAID_FIGURES_FILTER_NAME}"),
-        "--citeproc".into(),
-    ];
-    let bibliographies = discover_bibliographies(project_dir)?;
-    args.extend(
-        bibliographies
-            .into_iter()
-            .map(|path| format!("--bibliography={}", project.join(path).to_string_lossy())),
-    );
-    args.extend([
-        "--".into(),
-        project.join(main_document).to_string_lossy().into_owned(),
-    ]);
+    let bibliographies: Vec<PathBuf> = discover_bibliographies(project_dir)?
+        .into_iter()
+        .map(PathBuf::from)
+        .collect();
+    let plain_output = oleafly_core::plain_path(output);
+    let main = project.join(main_document);
+    let bundle_url = tex_bundle_url();
+    let args =
+        oleafly_core::engine_spec::markdown_pdf_args(&oleafly_core::engine_spec::MarkdownPdfArgs {
+            resource_argument: &resources.argument,
+            tectonic: &tectonic,
+            project: &project,
+            output: &plain_output,
+            main: &main,
+            bibliographies: &bibliographies,
+            bundle_url: Some(&bundle_url),
+        })
+        .into_iter()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect();
     let mut environment = EngineEnvironment::inherited(options.source_date_epoch);
     if let Some((name, value)) = resources.variable {
         environment = environment.with_variable(name, value.to_string_lossy().into_owned());
@@ -1401,81 +1270,11 @@ fn markdown_compile_spec(
 }
 
 pub(crate) fn discover_bibliographies(project_dir: &Path) -> Result<Vec<String>, String> {
-    if !project_dir.is_dir() {
-        return Ok(Vec::new());
-    }
-    fn walk(root: &Path, dir: &Path, depth: usize, output: &mut Vec<String>) -> Result<(), String> {
-        if depth > 16 {
-            return Err("bibliography search exceeded maximum depth".into());
-        }
-        for entry in std::fs::read_dir(dir).map_err(|error| error.to_string())? {
-            let entry = entry.map_err(|error| error.to_string())?;
-            let file_type = entry.file_type().map_err(|error| error.to_string())?;
-            if file_type.is_symlink() {
-                continue;
-            }
-            let path = entry.path();
-            if file_type.is_dir() {
-                if entry.file_name() != ".oleafly" {
-                    walk(root, &path, depth + 1, output)?;
-                }
-            } else if file_type.is_file()
-                && path
-                    .extension()
-                    .is_some_and(|extension| extension.eq_ignore_ascii_case("bib"))
-                && !crate::cloud_files::path_is_placeholder(&path)
-            {
-                let relative = path
-                    .strip_prefix(root)
-                    .map_err(|_| "bibliography escaped project root")?;
-                output.push(
-                    relative
-                        .components()
-                        .map(|component| component.as_os_str().to_string_lossy())
-                        .collect::<Vec<_>>()
-                        .join("/"),
-                );
-            }
-        }
-        Ok(())
-    }
-    let mut output = Vec::new();
-    walk(project_dir, project_dir, 0, &mut output)?;
-    output.sort();
-    Ok(output)
-}
-
-fn parse_pandoc_diagnostics(log: &str) -> Vec<CompileError> {
-    log.lines()
-        .filter_map(|line| {
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                return None;
-            }
-            let lower = trimmed.to_ascii_lowercase();
-            // Tectonic on Windows can emit this Fontconfig initialization
-            // message and still successfully resolve bundled fonts and write
-            // the PDF. Pandoc forwards it verbatim. Keep it visible without
-            // rejecting valid output; a nonzero exit still fails compilation.
-            let kind = if lower.contains("warning")
-                || lower.starts_with("fontconfig error: cannot load default config file:")
-            {
-                "warning"
-            } else if lower.contains("error") || lower.starts_with("pandoc:") {
-                "error"
-            } else {
-                return None;
-            };
-            Some(CompileError {
-                line: None,
-                file: None,
-                message: trimmed.to_owned(),
-                kind: kind.to_owned(),
-                explanation: None,
-                ..Default::default()
-            })
-        })
-        .collect()
+    let mut found = oleafly_core::engine_spec::discover_bibliographies(project_dir)
+        .map_err(|error| error.to_string())?;
+    // The app's placeholder check, which tests can also mark files for.
+    found.retain(|relative| !crate::cloud_files::path_is_placeholder(&project_dir.join(relative)));
+    Ok(found)
 }
 
 pub fn descriptor_for(
@@ -1513,25 +1312,11 @@ pub fn descriptor_for(
     })
 }
 
-#[derive(Serialize, Clone, Debug, Default, PartialEq, Eq)]
-pub struct CompileError {
-    pub line: Option<u32>,
-    pub file: Option<String>,
-    pub message: String,
-    pub kind: String,
-    /// Deterministic plain-English explanation for common errors, when known.
-    pub explanation: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub column: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub end_column: Option<u32>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub hints: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub source_line: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub code: Option<String>,
-}
+pub use oleafly_core::tex_errors::CompileError;
+use oleafly_core::tex_errors::{
+    parse_pandoc_diagnostics, parse_tex_log_errors, rebase_log_files, resolve_extensionless_inputs,
+    ENGINE_OUTPUT_MARKER,
+};
 
 #[derive(Serialize, Default)]
 pub struct CompileResult {
@@ -2198,81 +1983,6 @@ async fn parse_log_diagnostics(
     .map_err(|error| format!("failed to parse the compile log: {error}"))
 }
 
-fn with_tex_extension(project_dir: &Path, file: &str) -> Option<String> {
-    let relative = file.strip_prefix("./").unwrap_or(file);
-    let path = Path::new(relative);
-    if relative.is_empty() || path.is_absolute() || path.extension().is_some() {
-        return None;
-    }
-    project_dir
-        .join(format!("{relative}.tex"))
-        .is_file()
-        .then(|| format!("{file}.tex"))
-}
-
-fn rebase_log_files(
-    project_dir: &Path,
-    log_dir: &Path,
-    root_file: Option<&str>,
-    errors: &mut [CompileError],
-    diagnostics: &mut [oleafly_core::LogDiagnostic],
-) {
-    let Some(base) = log_dir
-        .strip_prefix(project_dir)
-        .ok()
-        .map(|relative| relative.to_string_lossy().replace('\\', "/"))
-        .filter(|base| !base.is_empty())
-    else {
-        return;
-    };
-    let rebase = |file: &mut Option<String>| {
-        let Some(name) = file.as_deref() else {
-            return;
-        };
-        if Some(name) == root_file || Path::new(name).is_absolute() {
-            return;
-        }
-        let mut relative = name;
-        while let Some(rest) = relative.strip_prefix("./") {
-            relative = rest;
-        }
-        *file = Some(format!("{base}/{relative}"));
-    };
-    for error in errors.iter_mut() {
-        rebase(&mut error.file);
-    }
-    for diagnostic in diagnostics.iter_mut() {
-        rebase(&mut diagnostic.file);
-    }
-}
-
-fn resolve_extensionless_inputs(
-    project_dir: &Path,
-    errors: &mut [CompileError],
-    diagnostics: &mut [oleafly_core::LogDiagnostic],
-) {
-    let mut resolved: std::collections::HashMap<String, Option<String>> =
-        std::collections::HashMap::new();
-    let mut resolve = |file: &mut Option<String>| {
-        let Some(name) = file.as_deref() else {
-            return;
-        };
-        let replacement = resolved
-            .entry(name.to_string())
-            .or_insert_with(|| with_tex_extension(project_dir, name))
-            .clone();
-        if replacement.is_some() {
-            *file = replacement;
-        }
-    };
-    for error in errors.iter_mut() {
-        resolve(&mut error.file);
-    }
-    for diagnostic in diagnostics.iter_mut() {
-        resolve(&mut diagnostic.file);
-    }
-}
-
 fn compile_succeeded(
     request: &CompileRequest<'_>,
     spec: &EngineCompileSpec,
@@ -2556,7 +2266,7 @@ async fn execute_compile_spec(
                 let mut combined = String::new();
                 append_bounded(
                     &mut combined,
-                    b"[Oleafly] The TeX package mirror was unreachable; retried with the upstream bundle.\n",
+                    oleafly_core::engine_spec::BUNDLE_FALLBACK_NOTE.as_bytes(),
                 );
                 append_bounded(&mut combined, retry_output.as_bytes());
                 return Ok((combined, retry_code));
@@ -2597,7 +2307,7 @@ async fn execute_compile_spec(
                 append_bounded(&mut combined, output.as_bytes());
                 append_bounded(
                     &mut combined,
-                    b"[Oleafly] The TeX package mirror was unreachable; retried with the upstream bundle.\n",
+                    oleafly_core::engine_spec::BUNDLE_FALLBACK_NOTE.as_bytes(),
                 );
                 append_bounded(&mut combined, retry_output.as_bytes());
                 return Ok((combined, retry_code));
@@ -2607,11 +2317,55 @@ async fn execute_compile_spec(
     }
 }
 
+/// One build of a project's main document at a time, shared with the CLI
+/// (`oleafly build`) through the lock file beside the build folder. A folder
+/// the lock file can't be created in builds without it.
+async fn acquire_build_lock(
+    request: &CompileRequest<'_>,
+    spec: &EngineCompileSpec,
+) -> Result<Option<oleafly_core::build_output::BuildLock>, String> {
+    if !matches!(request.target, CompileTarget::Main { .. }) {
+        return Ok(None);
+    }
+    let build_dir = spec.artifacts.output_dir.clone();
+    let deadline = std::time::Instant::now() + COMPILE_TIMEOUT;
+    let mut announced = false;
+    loop {
+        let dir = build_dir.clone();
+        let attempt = tauri::async_runtime::spawn_blocking(move || {
+            std::fs::create_dir_all(&dir)?;
+            oleafly_core::build_output::BuildLock::try_acquire(&dir)
+        })
+        .await
+        .map_err(|error| error.to_string())?;
+        match attempt {
+            Ok(Some(lock)) => return Ok(Some(lock)),
+            Ok(None) => {}
+            Err(_) => return Ok(None),
+        }
+        if !announced {
+            announced = true;
+            let _ = request.app.emit(
+                request.log_event,
+                "[Oleafly] Waiting for another build of this project to finish…\n",
+            );
+        }
+        if std::time::Instant::now() >= deadline {
+            return Err(
+                "Another build of this project is still running. Try again when it finishes."
+                    .into(),
+            );
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+}
+
 pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, String> {
     let cancel_scope = CompileCancelScope::new(request.cancel);
     let capabilities = request.engine.capabilities();
     validate_compile_capabilities(&request, capabilities)?;
     let spec = resolve_compile_spec(&request).await?;
+    let _build_lock = acquire_build_lock(&request, &spec).await?;
     let _tex_runtime = if request.engine.id() == DocumentEngineId::Latexmk {
         Some(crate::latex_engine::acquire_tex_runtime_read()?)
     } else {
@@ -2753,25 +2507,16 @@ pub(crate) fn resolve_bundled_sidecar(name: &str) -> Result<PathBuf, String> {
     if name.is_empty() || Path::new(name).components().count() != 1 {
         return Err("invalid bundled sidecar name".into());
     }
-    let executable = std::env::current_exe()
-        .map_err(|error| format!("failed to locate application executable: {error}"))?;
-    let executable_dir = executable
-        .parent()
-        .ok_or("application executable has no parent")?;
-    let base_dir = if executable_dir.ends_with("deps") {
-        executable_dir.parent().unwrap_or(executable_dir)
-    } else {
-        executable_dir
-    };
-    #[cfg(not(windows))]
-    let path = base_dir.join(name);
-    #[cfg(windows)]
-    let mut path = base_dir.join(name);
-    #[cfg(windows)]
-    path.as_mut_os_string().push(".exe");
-    path.is_file()
-        .then_some(path.clone())
-        .ok_or_else(|| format!("bundled sidecar not found: {}", path.display()))
+    let base_dir = oleafly_core::sidecar::executable_dir()
+        .ok_or("failed to locate the application executable")?;
+    oleafly_core::sidecar::sidecar_in(&base_dir, name).ok_or_else(|| {
+        format!(
+            "bundled sidecar not found: {}",
+            base_dir
+                .join(oleafly_core::sidecar::exe_name(name))
+                .display()
+        )
+    })
 }
 
 fn emit_and_collect_compiler_text(
@@ -3183,32 +2928,7 @@ async fn run_supervised_process_with_environment(
     Ok((log, status.code()))
 }
 
-#[cfg(unix)]
-fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> {
-    use std::os::unix::process::ExitStatusExt;
-    let name = match status.signal()? {
-        libc::SIGABRT => "SIGABRT",
-        libc::SIGSEGV => "SIGSEGV",
-        libc::SIGBUS => "SIGBUS",
-        libc::SIGILL => "SIGILL",
-        libc::SIGFPE => "SIGFPE",
-        libc::SIGTRAP => "SIGTRAP",
-        _ => return None,
-    };
-    Some(format!(
-        "\nerror: the compiler crashed ({name}) before it finished, so this log ends early"
-    ))
-}
-
-#[cfg(windows)]
-fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> {
-    let code = status.code()? as u32;
-    (code & 0xF000_0000 == 0xC000_0000).then(|| {
-        format!(
-            "\nerror: the compiler crashed (exception 0x{code:08X}) before it finished, so this log ends early"
-        )
-    })
-}
+use oleafly_core::engine_spec::compiler_crash_note;
 
 #[derive(Clone, PartialEq, Eq)]
 struct ArtifactIdentity {
@@ -3318,87 +3038,11 @@ fn artifact_is_fresh(path: &Path, retained: &[RetainedArtifact]) -> bool {
     artifact_is_fresh_with(path, retained, Path::exists, artifact_identity)
 }
 
-/// Oleafly's mirror of the Tectonic TeX package bundle. Upstream's relay
-/// rate-limits (HTTP 429) and is a single point of failure for every first
-/// compile; the mirror serves the same tar (same content digest) from
-/// Cloudflare, so Tectonic's content-addressed cache is shared across origins.
-const TEX_BUNDLE_MIRROR_URL: &str = "https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar";
-
 pub(crate) fn tex_bundle_url() -> String {
-    std::env::var("OLEAFLY_TEX_BUNDLE_URL")
-        .ok()
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| TEX_BUNDLE_MIRROR_URL.into())
+    oleafly_core::engine_spec::tex_bundle_url()
 }
 
-/// True when a failed Tectonic run died acquiring bundle resources rather
-/// than on a TeX error — the only case where retrying against the upstream
-/// bundle can help.
-fn is_bundle_fetch_failure(log: &str) -> bool {
-    [
-        "couldn't get it from the internet",
-        "this bundle isn't cached",
-        "unexpected HTTP response code",
-        "failed to download",
-        "error connecting to",
-    ]
-    .iter()
-    .any(|marker| log.contains(marker))
-}
-
-fn args_without_bundle(args: &[String]) -> Vec<String> {
-    let mut out = Vec::with_capacity(args.len());
-    let mut skip_next = false;
-    for arg in args {
-        if skip_next {
-            skip_next = false;
-            continue;
-        }
-        if arg == "--bundle" || arg == "--pdf-engine-opt=--bundle" {
-            skip_next = true;
-            continue;
-        }
-        out.push(arg.clone());
-    }
-    out
-}
-
-fn tectonic_args(
-    out_dir: &str,
-    search_path: &str,
-    entry: &str,
-    options: CompileOptions,
-) -> Vec<String> {
-    let mut args: Vec<String> = vec!["-X".into(), "compile".into()];
-    // Pinned in offline mode too: a cache populated from either origin
-    // satisfies --only-cached, and the upstream fallback below covers a cache
-    // whose URL mapping predates the mirror.
-    args.extend(["--bundle".into(), tex_bundle_url()]);
-    if options.offline {
-        args.push("--only-cached".into());
-    }
-    args.extend([
-        "--synctex".into(),
-        "--keep-logs".into(),
-        // Write .aux/.toc to the build dir: reference numbering reads
-        // \newlabel entries from the last compile's aux files.
-        "--keep-intermediates".into(),
-        "--print".into(),
-        "--outdir".into(),
-        out_dir.into(),
-    ]);
-    if options.fast {
-        // One typesetting pass instead of reruns until the document stabilizes.
-        // Cross-references, citations, and the table of contents can lag a run
-        // behind; that is the trade the draft mode is asking for.
-        args.extend(["--reruns".into(), "0".into()]);
-    }
-    if !options.halt_on_error {
-        args.extend(["-Z".into(), "continue-on-errors".into()]);
-    }
-    args.extend(["-Z".into(), search_path.into(), entry.into()]);
-    args
-}
+use oleafly_core::engine_spec::{args_without_bundle, is_bundle_fetch_failure};
 
 pub(crate) fn place_in_compile_directory(
     engine: DocumentEngineId,
@@ -3463,253 +3107,6 @@ pub(crate) fn search_compile_directory_first(
     spec
 }
 
-// A TeX log token after `(` looks like an input file if it carries a path
-// separator or a file extension. Font/date/version parens ("(Font)", "(2021/01/01)")
-// do not, so they never masquerade as the source file for an error.
-fn looks_like_tex_path(token: &str) -> bool {
-    token.starts_with('/')
-        || token.starts_with("./")
-        || (token.contains('.') && token.contains('/'))
-        || is_bare_relative_path(token)
-        || token.rsplit('.').next().is_some_and(|ext| {
-            matches!(
-                ext,
-                "tex" | "sty" | "cls" | "def" | "ldf" | "bbl" | "bib" | "clo" | "fd" | "cfg"
-            )
-        })
-}
-
-fn is_bare_relative_path(token: &str) -> bool {
-    let Some((head, tail)) = token.split_once('/') else {
-        return false;
-    };
-    head.chars()
-        .find(|c| !c.is_numeric() && *c != '-')
-        .is_some_and(|first| first.is_alphabetic() || first == '_')
-        && !head.contains(':')
-        && !token.contains(char::is_whitespace)
-        && !tail.is_empty()
-        && !tail.ends_with('/')
-}
-
-fn tex_path_token_end(bytes: &[u8], start: usize) -> usize {
-    let quoted = bytes.get(start) == Some(&b'"');
-    let spaced = quoted || bytes[start..].starts_with(b"./") || bytes.get(start) == Some(&b'/');
-    let mut end = start + usize::from(quoted);
-    while end < bytes.len() {
-        let stop = match bytes[end] {
-            b'(' | b')' | b'[' | b']' => true,
-            b'"' | b'{' | b'}' | b'<' | b'>' => spaced,
-            b' ' | b'\t' => !spaced,
-            _ => false,
-        };
-        if stop {
-            break;
-        }
-        end += 1;
-    }
-    end
-}
-
-fn has_file_extension(path: &str) -> bool {
-    path.rsplit('/')
-        .next()
-        .and_then(|name| name.rsplit_once('.'))
-        .is_some_and(|(stem, extension)| {
-            !stem.is_empty()
-                && !extension.is_empty()
-                && extension.chars().all(|c| c.is_ascii_alphanumeric())
-        })
-}
-
-fn path_before_trailing_text(token: &str) -> &str {
-    if !token.contains([' ', '\t']) || has_file_extension(token) {
-        return token;
-    }
-    token
-        .match_indices([' ', '\t'])
-        .rev()
-        .map(|(index, _)| &token[..index])
-        .find(|prefix| has_file_extension(prefix))
-        .unwrap_or_else(|| token.split([' ', '\t']).next().unwrap_or(token))
-}
-
-// TeX marks the file it is reading with balanced parens: `(path` on open, `)` on
-// close. Track the nesting so an error can be attributed to the right file in a
-// multi-file (\input/\include) project. Every `(` pushes and every `)` pops to
-// keep the stack balanced; the current file is the innermost path-like entry.
-fn update_tex_file_stack(line: &str, stack: &mut Vec<String>) {
-    let bytes = line.as_bytes();
-    let mut idx = 0;
-    while idx < bytes.len() {
-        match bytes[idx] {
-            b'(' => {
-                let start = idx + 1;
-                let end = tex_path_token_end(bytes, start);
-                let token = line[start..end].trim_start_matches('"').trim_end();
-                let token = if bytes.get(start) == Some(&b'"') {
-                    token
-                } else {
-                    path_before_trailing_text(token)
-                };
-                stack.push(token.trim_start_matches("./").to_owned());
-                idx = end;
-            }
-            b')' => {
-                stack.pop();
-                idx += 1;
-            }
-            _ => idx += 1,
-        }
-    }
-}
-
-fn current_tex_file(stack: &[String]) -> Option<String> {
-    stack
-        .iter()
-        .rev()
-        .find(|token| looks_like_tex_path(token))
-        .cloned()
-}
-
-// Deterministic plain-English explanations for high-frequency TeX errors. This is
-// intentionally a small, curated set (Humanized Errors Milestone 1), not an
-// exhaustive catalog. Returns None for anything not recognized.
-fn humanize_tex_error(message: &str) -> Option<&'static str> {
-    let m = message.trim();
-    if m.starts_with("Undefined control sequence") {
-        return Some("LaTeX does not recognize this command. Check for a typo, or load the package that defines it.");
-    }
-    if m.starts_with("Missing $ inserted") {
-        return Some("A math-only symbol (such as _, ^, or a Greek letter) was used outside math mode. Wrap it in $...$.");
-    }
-    if m.starts_with("Missing } inserted") || m.starts_with("Missing { inserted") {
-        return Some("Unbalanced braces. Make sure every { has a matching }.");
-    }
-    if m.starts_with("Runaway argument") {
-        return Some("A command argument was never closed, usually a missing } or \\end{...} above this point.");
-    }
-    if m.starts_with("Double superscript") {
-        return Some("Two ^ in a row. Group them, for example x^{a}^{b} becomes x^{ab}.");
-    }
-    if m.starts_with("Double subscript") {
-        return Some("Two _ in a row. Group them, for example x_{a}_{b} becomes x_{ab}.");
-    }
-    if m.starts_with("Extra alignment tab") {
-        return Some("A table row has more & separators than the column specification allows.");
-    }
-    if m.starts_with("Misplaced alignment tab character &") {
-        return Some(
-            "An & appeared outside a table or alignment. Write \\& for a literal ampersand.",
-        );
-    }
-    if m.starts_with("There's no line here to end") {
-        return Some("\\\\ was used where LaTeX did not expect a line break, for example in ordinary paragraph text.");
-    }
-    if let Some(rest) = m.strip_prefix("LaTeX Error: ") {
-        if rest.starts_with("Too many unprocessed floats") {
-            return Some("LaTeX ran out of room to place figures/tables. Add a \\clearpage before continuing, shrink the floats, or use [htbp] placement so they can move.");
-        }
-        if rest.contains("not found") {
-            return Some("A file or package could not be found. Check the name and path, or install the missing package.");
-        }
-        if rest.starts_with("Environment ") && rest.contains("undefined") {
-            return Some("This environment is not defined. Check the spelling, or load the package that provides it.");
-        }
-        if rest.starts_with("\\begin{") && rest.contains("ended by") {
-            return Some(
-                "Environment mismatch: a \\begin{...} was closed by a different \\end{...}.",
-            );
-        }
-        if rest.contains("missing \\item") {
-            return Some(
-                "A list (itemize/enumerate/description) has content before its first \\item.",
-            );
-        }
-    }
-    if m.starts_with("Package ") && m.contains(" Error:") {
-        return Some(
-            "A LaTeX package reported an error. The package name and detail follow in the log.",
-        );
-    }
-    None
-}
-
-// Deterministic float placement warnings surfaced from the log (Float Advisor
-// Milestone 1). These are LaTeX Warnings, not `!` errors, so they are matched
-// separately and always carry an explanation.
-fn float_warning(line: &str) -> Option<&'static str> {
-    let l = line.trim();
-    if l.contains("float specifier changed to") {
-        return Some("LaTeX could not place this float where you asked and moved it. Use [htbp] to give it more placement options.");
-    }
-    if l.starts_with("LaTeX Warning: Float too large for page") {
-        return Some("A figure or table is taller than the text area, so LaTeX cannot place it. Scale it down (for example width=\\linewidth) or make it a full-page float.");
-    }
-    None
-}
-
-const ENGINE_OUTPUT_MARKER: &str = "[Oleafly] Engine output:";
-
-fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
-    let mut out = Vec::new();
-    let lines: Vec<&str> = log.lines().collect();
-    let mut stack: Vec<String> = Vec::new();
-    let mut in_engine_output = false;
-    for i in 0..lines.len() {
-        if lines[i].trim_end() == ENGINE_OUTPUT_MARKER {
-            in_engine_output = true;
-            continue;
-        }
-        if in_engine_output {
-            if !lines[i].starts_with("[Oleafly]") {
-                continue;
-            }
-            in_engine_output = false;
-        }
-        update_tex_file_stack(lines[i], &mut stack);
-        if let Some(explanation) = float_warning(lines[i]) {
-            out.push(CompileError {
-                line: None,
-                file: current_tex_file(&stack),
-                message: lines[i].trim().to_owned(),
-                kind: "warning".to_owned(),
-                explanation: Some(explanation.to_owned()),
-                ..Default::default()
-            });
-            continue;
-        }
-        if let Some(message) = lines[i].strip_prefix("! ") {
-            let mut line_no = None;
-            for following in lines
-                .iter()
-                .skip(i + 1)
-                .take(20.min(lines.len().saturating_sub(i + 1)))
-            {
-                if following.starts_with('!') {
-                    break;
-                }
-                if let Some(rest) = following.strip_prefix("l.") {
-                    let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
-                    if let Ok(number) = digits.parse::<u32>() {
-                        line_no = Some(number);
-                        break;
-                    }
-                }
-            }
-            out.push(CompileError {
-                line: line_no,
-                file: current_tex_file(&stack),
-                message: message.to_owned(),
-                kind: "error".to_owned(),
-                explanation: humanize_tex_error(message).map(str::to_owned),
-                ..Default::default()
-            });
-        }
-    }
-    out
-}
-
 pub fn existing_compiled_pdf_path(
     project_id: &str,
     metadata_name: &str,
@@ -3734,6 +3131,18 @@ pub fn existing_compiled_pdf_path(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn entry_names_match_core() {
+        assert_eq!(
+            crate::paths::ENTRY_STEM,
+            oleafly_core::engine_spec::ENTRY_STEM
+        );
+        assert_eq!(
+            crate::paths::ENTRY_TEX,
+            oleafly_core::engine_spec::ENTRY_TEX
+        );
+    }
     #[cfg(unix)]
     use crate::test_wait;
 
@@ -3908,142 +3317,6 @@ mod tests {
     }
 
     #[test]
-    fn tex_errors_get_plain_english_explanations() {
-        let log = "! Undefined control sequence.\nl.42 \\foo\n";
-        let errors = parse_tex_log_errors(log);
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].line, Some(42));
-        assert_eq!(errors[0].kind, "error");
-        assert!(errors[0]
-            .explanation
-            .as_deref()
-            .unwrap()
-            .contains("does not recognize"));
-    }
-
-    #[test]
-    fn tex_errors_find_line_number_past_tectonic_v2_cli_preamble() {
-        // Real tectonic -X compile --print output interleaves several lines
-        // (including a duplicated "error: file:line:" summary from the V2
-        // CLI itself) between the "! " trigger and the "l.NN" reference,
-        // well past a short lookahead window.
-        let log = concat!(
-            "! LaTeX Error: Environment align undefined.\n",
-            "\n",
-            "See the LaTeX manual or LaTeX Companion for explanation.\n",
-            "Type  H <return>  for immediate help.\n",
-            " ...                                              \n",
-            "                                                  \n",
-            "l.5 \\begin{align}\n",
-            "                 \n",
-            "No pages of output.\n",
-        );
-        let errors = parse_tex_log_errors(log);
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].line, Some(5));
-    }
-
-    #[test]
-    fn tex_errors_without_a_known_pattern_have_no_explanation() {
-        let log = "! Some novel engine failure.\nl.3 x\n";
-        let errors = parse_tex_log_errors(log);
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].explanation, None);
-    }
-
-    #[test]
-    fn tex_errors_attribute_to_the_innermost_open_file() {
-        // main opens chapter, the error occurs inside chapter, then chapter closes.
-        let log = "(./main.tex (./chapters/intro.tex\n! Missing $ inserted.\nl.7 x_1\n))\n";
-        let errors = parse_tex_log_errors(log);
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].file.as_deref(), Some("chapters/intro.tex"));
-        assert_eq!(errors[0].line, Some(7));
-        assert!(errors[0].explanation.as_deref().unwrap().contains("math"));
-    }
-
-    #[test]
-    fn tex_file_stack_ignores_non_path_parens() {
-        // Font/version parens must not be mistaken for the source file.
-        let log = "(./main.tex (Font) (2021/01/01)\n! Undefined control sequence.\nl.9 \\bad\n)\n";
-        let errors = parse_tex_log_errors(log);
-        assert_eq!(errors[0].file.as_deref(), Some("main.tex"));
-    }
-
-    #[test]
-    fn tex_errors_attribute_to_tectonic_extensionless_inputs() {
-        let log = "(_oleafly_entry.tex (main.tex (article.cls\n) (2021/01/01)\n(kapitoly/\u{fa}vod\n! Undefined control sequence.\nl.2 \\bad\n) (chapters/intro\n! Missing $ inserted.\nl.5 x_1\n)\n! Emergency stop.\n";
-        let files: Vec<_> = parse_tex_log_errors(log)
-            .into_iter()
-            .map(|error| (error.file, error.line))
-            .collect();
-        assert_eq!(
-            files,
-            [
-                (Some("kapitoly/\u{fa}vod".to_string()), Some(2)),
-                (Some("chapters/intro".to_string()), Some(5)),
-                (Some("main.tex".to_string()), None),
-            ]
-        );
-    }
-
-    #[test]
-    fn tex_errors_keep_input_paths_with_spaces_or_quotes() {
-        for log in [
-            "(./main.tex (./kapitoly/\u{fa}vod pr\u{e1}ce.tex\n! Undefined control sequence.\nl.2 \\bad\n))\n",
-            "(./main.tex (\"./kapitoly/\u{fa}vod pr\u{e1}ce.tex\"\n! Undefined control sequence.\nl.2 \\bad\n))\n",
-        ] {
-            let errors = parse_tex_log_errors(log);
-            assert_eq!(
-                errors[0].file.as_deref(),
-                Some("kapitoly/\u{fa}vod pr\u{e1}ce.tex")
-            );
-        }
-    }
-
-    #[test]
-    fn tex_errors_ignore_text_printed_after_an_input_path() {
-        for (log, file) in [
-            (
-                "(./main.tex (./sec.tex Chapter 1.\n! Undefined control sequence.\nl.2 \\bad\n))\n",
-                "sec.tex",
-            ),
-            (
-                "(./main.tex (./kapitoly/\u{fa}vod pr\u{e1}ce.tex ABD: EveryShipout\n! Undefined control sequence.\nl.2 \\bad\n))\n",
-                "kapitoly/\u{fa}vod pr\u{e1}ce.tex",
-            ),
-            (
-                "(_oleafly_entry.tex (main.tex (01-uvod/text\n! Undefined control sequence.\nl.2 \\bad\n)))\n",
-                "01-uvod/text",
-            ),
-        ] {
-            let errors = parse_tex_log_errors(log);
-            assert_eq!(errors[0].file.as_deref(), Some(file), "{log}");
-        }
-        let dated = parse_tex_log_errors(
-            "(main.tex (2021-01/01)\n! Undefined control sequence.\nl.2 \\bad\n)\n",
-        );
-        assert_eq!(dated[0].file.as_deref(), Some("main.tex"));
-    }
-
-    #[test]
-    fn tex_errors_skip_the_engine_output_tail() {
-        let log = concat!(
-            "(main.tex\n! Undefined control sequence.\nl.2 \\bad\n)\n",
-            "\n[Oleafly] Engine output:\n",
-            "(main.tex\nerror: main.tex:2: Undefined control sequence\n",
-            "! Undefined control sequence.\nl.2 \\bad\n)\n",
-            "[Oleafly] Running pinned Biber on _oleafly_entry...\n",
-            "! Undefined control sequence.\nl.7 \\later\n",
-        );
-        let lines: Vec<_> = parse_tex_log_errors(log)
-            .into_iter()
-            .map(|error| error.line)
-            .collect();
-        assert_eq!(lines, [Some(2), Some(7)]);
-    }
-
-    #[test]
     fn extensionless_inputs_resolve_to_tex_files_in_the_project() {
         let project = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(project.path().join("kapitoly")).unwrap();
@@ -4161,107 +3434,6 @@ mod tests {
     }
 
     #[test]
-    fn float_placement_warnings_are_surfaced_and_explained() {
-        let log = "(./main.tex\nLaTeX Warning: `h' float specifier changed to `ht'.\n)\n";
-        let errors = parse_tex_log_errors(log);
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].kind, "warning");
-        assert_eq!(errors[0].file.as_deref(), Some("main.tex"));
-        assert!(errors[0].explanation.as_deref().unwrap().contains("htbp"));
-    }
-
-    #[test]
-    fn too_many_floats_error_is_explained() {
-        let log = "! LaTeX Error: Too many unprocessed floats.\nl.120 \\end{figure}\n";
-        let errors = parse_tex_log_errors(log);
-        assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].kind, "error");
-        assert!(errors[0]
-            .explanation
-            .as_deref()
-            .unwrap()
-            .contains("clearpage"));
-    }
-
-    #[test]
-    fn tectonic_args_pin_the_bundle_to_the_oleafly_mirror() {
-        let args = tectonic_args(
-            "out",
-            "-Zsearch-path=src",
-            "main.tex",
-            CompileOptions::default(),
-        );
-        let position = args
-            .iter()
-            .position(|arg| arg == "--bundle")
-            .expect("--bundle flag present");
-        assert_eq!(args[position + 1], tex_bundle_url());
-        assert!(tex_bundle_url().starts_with("https://mirrors.oleafly.com/"));
-    }
-
-    #[test]
-    fn offline_compiles_keep_the_bundle_pin_alongside_only_cached() {
-        // The mirror tar shares upstream's content digest, so Tectonic's
-        // content-addressed cache satisfies --only-cached for either origin.
-        let options = CompileOptions {
-            offline: true,
-            ..Default::default()
-        };
-        let args = tectonic_args("out", "-Zsearch-path=src", "main.tex", options);
-        assert!(args.iter().any(|arg| arg == "--only-cached"));
-        assert!(args.iter().any(|arg| arg == "--bundle"));
-    }
-
-    #[test]
-    fn bundle_fetch_failures_are_distinguished_from_tex_errors() {
-        for log in [
-            "error: this bundle isn't cached, and we couldn't get it from the internet",
-            "caused by: unexpected HTTP response code 429 Too Many Requests for URL https://mirrors.oleafly.com/tex-bundles/tlextras-2022.0r0.tar",
-            "note: failed to download \"msbm10.tfm\"",
-        ] {
-            assert!(is_bundle_fetch_failure(log), "{log}");
-        }
-        for log in [
-            "! Undefined control sequence.\nl.19 \\oops",
-            "main.tex:4: Package fontspec Error: The font \"Nope\" cannot be found.",
-            "",
-        ] {
-            assert!(!is_bundle_fetch_failure(log), "{log:?}");
-        }
-    }
-
-    #[test]
-    fn stripping_the_bundle_flag_removes_the_flag_and_its_url() {
-        let args: Vec<String> = [
-            "-X",
-            "compile",
-            "--bundle",
-            "https://example.test/b.tar",
-            "main.tex",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
-        let stripped = args_without_bundle(&args);
-        assert_eq!(stripped, vec!["-X", "compile", "main.tex"]);
-        assert_eq!(args_without_bundle(&stripped), stripped);
-
-        let pandoc: Vec<String> = [
-            "--standalone",
-            "--pdf-engine-opt=--bundle",
-            "--pdf-engine-opt=https://example.test/b.tar",
-            "main.md",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
-        assert_eq!(
-            args_without_bundle(&pandoc),
-            vec!["--standalone", "main.md"]
-        );
-    }
-
-    #[test]
     fn legacy_latex_names_dispatch_to_canonical_engine() {
         for name in ["", "latex", "tex", "tectonic", "xetex", "XeTeX", "luatex"] {
             let engine = engine_for(name, "chapters/main.tex").unwrap();
@@ -4274,19 +3446,6 @@ mod tests {
         for document in ["main.tex", "main.ltx", "main.latex", "MAIN.TEX"] {
             assert!(engine_for("latex", document).is_ok(), "{document}");
         }
-    }
-
-    #[test]
-    fn latex_wrapper_rejects_tex_interpolation_characters() {
-        for path in [
-            "main}.tex",
-            "main%comment.tex",
-            "main\\evil.tex",
-            "main\n.tex",
-        ] {
-            assert!(validate_latex_main_document(path).is_err(), "{path:?}");
-        }
-        assert!(validate_latex_main_document("chapters/my paper-1.tex").is_ok());
     }
 
     #[test]
@@ -7441,59 +6600,6 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         );
     }
 
-    #[test]
-    fn latexmk_absolute_paths_refuse_what_latexmk_would_hand_to_a_shell() {
-        for safe in [
-            "/Users/ada/.oleafly/linked/linked-x/build",
-            "/Users/O'Brien/Jürgen Müller/論文/a#b%c~d&e{f}^g;h(i)[j],k:l!m",
-        ] {
-            assert_eq!(
-                latexmk_absolute_path_text(Path::new(safe), false).as_deref(),
-                Some(safe)
-            );
-        }
-        for unsafe_path in [
-            "/Users/a\"b/build",
-            "/Users/a`b/build",
-            "/Users/a$b/build",
-            "/Users/a\\b/build",
-            "/Users/a\nb/build",
-            "relative/build",
-            "/Users/ada/../build",
-        ] {
-            assert_eq!(
-                latexmk_absolute_path_text(Path::new(unsafe_path), false),
-                None,
-                "{unsafe_path:?}"
-            );
-        }
-        assert_eq!(
-            latexmk_absolute_path_text(
-                Path::new(r"\\?\C:\Users\ada\.oleafly\linked\x\build"),
-                true
-            )
-            .as_deref(),
-            Some("C:/Users/ada/.oleafly/linked/x/build")
-        );
-        for refused in [
-            r"\\?\UNC\server\share\build",
-            r"\\server\share\build",
-            r"C:\Users\100%\build",
-            r"C:\Users\a!b\build",
-        ] {
-            assert_eq!(
-                latexmk_absolute_path_text(Path::new(refused), true),
-                None,
-                "{refused}"
-            );
-        }
-        assert!(windows_network_path(Path::new(
-            r"\\?\UNC\server\share\thesis"
-        )));
-        assert!(windows_network_path(Path::new(r"\\server\share\thesis")));
-        assert!(!windows_network_path(Path::new(r"\\?\C:\thesis")));
-    }
-
     #[cfg(unix)]
     fn write_real_tex_fixture(project: &Path, biber: bool) {
         std::fs::create_dir_all(project.join("sections")).unwrap();
@@ -8178,22 +7284,12 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
                 .unwrap_or_default(),
         );
         let path = std::env::join_paths(path_entries).unwrap();
-        let args = tectonic_args(
-            build.to_str().unwrap(),
-            &format!("search-path={}", root.display()),
-            entry.to_str().unwrap(),
-            CompileOptions {
-                offline: false,
-                fast: false,
-                halt_on_error: false,
-                latex_flavor: None,
-                allow_shell_escape: false,
-                source_date_epoch: None,
-                external_build: false,
-                typst: None,
-                typst_packages: None,
-                typst_settings: None,
-            },
+        let args = oleafly_core::engine_spec::tectonic_args(
+            &build,
+            &[root],
+            &entry,
+            Some(&tex_bundle_url()),
+            oleafly_core::engine_spec::EngineFlags::default(),
         );
         let before = crate::biber_toolchain::bbl_stamp(&build, stem);
         let output = std::process::Command::new(&tectonic)

@@ -7,7 +7,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
-use crate::config;
 use crate::paths;
 use crate::proc::{NoConsole, OutputBounds};
 
@@ -378,12 +377,6 @@ pub(crate) mod testing {
             PROGRAM.with(|slot| *slot.borrow_mut() = previous);
         }
     }
-}
-
-/// Reach a remote without a token: public clones and pulls still transfer over
-/// the same uplink, so they get the same silence-based bound.
-fn run_git_remote(root: &PathBuf, args: &[&str]) -> Result<std::process::Output, String> {
-    run_configured_git_bounded(root, args, true, remote_bounds(), |_| {})
 }
 
 pub(crate) fn ensure_repository(project_dir: &Path) -> Result<bool, String> {
@@ -1039,7 +1032,7 @@ pub struct GitPublishPreflight {
     pub tracked_secret_files: Vec<String>,
 }
 
-/// Prepare the project for the explicit Publish to GitHub action. This is the
+/// Prepare the project for the explicit Publish action. This is the
 /// sole convenience that initializes and commits all files in one operation;
 /// background save, compile, and assistant flows never call it.
 #[tauri::command]
@@ -1057,7 +1050,7 @@ pub async fn git_prepare_publish(
     .map_err(|e| e.to_string())?
 }
 
-/// Stage and commit everything for Publish to GitHub, creating the repository
+/// Stage and commit everything for Publish, creating the repository
 /// when the project has none. Files that [`looks_like_secret`] are never
 /// staged and come back in `left_out`. When the history already holds such
 /// files, pushing the branch would upload them, so nothing changes unless the
@@ -1117,8 +1110,8 @@ fn git_publish_preflight_sync(project_id: &str) -> Result<GitPublishPreflight, S
     publish_preflight_at(&root)
 }
 
-/// What Publish to GitHub must ask about before it creates a repository on
-/// GitHub: a project inside another repository is refused, and files in the
+/// What Publish must ask about before it creates a repository on a Git
+/// hosting server: a project inside another repository is refused, and files in the
 /// branch history that look like secrets are listed for the user to approve.
 fn publish_preflight_at(root: &PathBuf) -> Result<GitPublishPreflight, String> {
     if !root.join(".git").exists() {
@@ -1390,8 +1383,9 @@ fn git_clean_remote_credentials_sync(project_id: String) -> Result<bool, String>
 /// Whether a remote URL uses a transport we're willing to configure. Blocks
 /// git's `ext::`/`fd::` "transport helper" syntax, which can execute arbitrary
 /// commands on fetch/push. Allows the normal network transports and scp-style
-/// `git@host:path` shorthand.
-fn is_allowed_remote_url(url: &str) -> bool {
+/// `user@host:path` shorthand, but never a Windows path such as
+/// `C:/Users/a@b/repo` or `\\srv\share@x:y`.
+pub(crate) fn is_allowed_remote_url(url: &str) -> bool {
     let u = url.trim();
     if u.is_empty() {
         return false;
@@ -1408,39 +1402,290 @@ fn is_allowed_remote_url(url: &str) -> bool {
         let scheme = u[..scheme_end].to_ascii_lowercase();
         return matches!(scheme.as_str(), "https" | "http" | "ssh" | "git");
     }
-    // scp-like shorthand: `user@host:path` (no scheme). Require an `@` and a `:`.
-    u.contains('@') && u.contains(':')
+    // scp-like shorthand: `user@host:path`. Everything before the first `:`
+    // is the user and the host, so it holds an `@` and no path separator,
+    // and the host is longer than a drive letter.
+    let Some(colon) = u.find(':') else {
+        return false;
+    };
+    let before = &u[..colon];
+    if before.contains('/') || before.contains('\\') {
+        return false;
+    }
+    before
+        .rfind('@')
+        .is_some_and(|at| before[at + 1..].chars().count() > 1)
 }
 
-const GITHUB_TOKEN_CONFIG: [&str; 6] = [
-    "-c",
-    "credential.https://github.com.helper=",
-    "-c",
-    "credential.https://github.com.helper=!f() { test \"$1\" = get && printf 'username=x-access-token\\npassword=%s\\n' \"$OLEAFLY_GH_TOKEN\"; }; f",
-    "-c",
-    "credential.https://github.com.useHttpPath=false",
-];
-
-fn github_authed_args<'a>(args: &[&'a str]) -> Vec<&'a str> {
-    let mut full: Vec<&'a str> = GITHUB_TOKEN_CONFIG.to_vec();
-    full.extend_from_slice(args);
-    full
+/// Whether an `http(s)` remote address carries a password. Oleafly never
+/// saves one in `.git/config`.
+pub(crate) fn has_remote_password(url: &str) -> bool {
+    let u = url.trim();
+    let Some(scheme_end) = u.find("://") else {
+        return false;
+    };
+    if !matches!(
+        u[..scheme_end].to_ascii_lowercase().as_str(),
+        "http" | "https"
+    ) {
+        return false;
+    }
+    let rest = &u[scheme_end + 3..];
+    let authority = &rest[..rest.find(['/', '?', '#']).unwrap_or(rest.len())];
+    authority
+        .rfind('@')
+        .is_some_and(|at| authority[..at].contains(':'))
 }
 
-fn run_git_authed(
-    root: &PathBuf,
-    token: &str,
+/// How a command that talks to a remote signs in: with the user's own Git
+/// setup (credential helper, SSH agent), or with one Git hosting account's
+/// token, offered only for that account's base URL.
+pub(crate) enum RemoteAuth {
+    User,
+    Account(AccountCredential),
+}
+
+pub(crate) struct AccountCredential {
+    /// The account's base URL; Git offers the token only below it.
+    pub credential_url: String,
+    pub username: String,
+    pub token: String,
+    pub ca_file: Option<PathBuf>,
+}
+
+impl std::fmt::Debug for AccountCredential {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AccountCredential")
+            .field("credential_url", &self.credential_url)
+            .field("username", &self.username)
+            .field("token", &"***")
+            .field("ca_file", &self.ca_file)
+            .finish()
+    }
+}
+
+const FORGE_USERNAME_ENV: &str = "OLEAFLY_FORGE_USERNAME";
+const FORGE_TOKEN_ENV: &str = "OLEAFLY_FORGE_TOKEN";
+
+/// `-c` settings that offer one account's token for its base URL only. The
+/// empty helper first drops the user's own helpers for that URL, so they
+/// never receive an Oleafly token to `store`. The token itself reaches Git
+/// only through [`FORGE_TOKEN_ENV`], never an argument.
+fn account_credential_args(credential: &AccountCredential) -> Vec<String> {
+    let url = &credential.credential_url;
+    let mut args = vec![
+        "-c".to_string(),
+        format!("credential.{url}.helper="),
+        "-c".to_string(),
+        format!(
+            "credential.{url}.helper=!f() {{ test \"$1\" = get && printf 'username=%s\\npassword=%s\\n' \"$OLEAFLY_FORGE_USERNAME\" \"$OLEAFLY_FORGE_TOKEN\"; }}; f"
+        ),
+        "-c".to_string(),
+        format!("credential.{url}.useHttpPath=false"),
+    ];
+    if let Some(ca_file) = &credential.ca_file {
+        let path = oleafly_forge::git::git_config_path(ca_file);
+        args.extend([
+            "-c".to_string(),
+            format!("http.{url}.sslCAInfo={path}"),
+            "-c".to_string(),
+            format!("http.{url}.schannelUseSSLCAInfo=true"),
+        ]);
+    }
+    args
+}
+
+/// Run a Git command that talks to a remote. Git never prompts in a
+/// terminal (a hidden prompt would hang until the idle bound), and an
+/// account's token reaches it only through the environment.
+fn run_git_for_remote(
+    root: &Path,
+    auth: &RemoteAuth,
     args: &[&str],
 ) -> Result<std::process::Output, String> {
+    run_git_for_remote_with(root, auth, args, &[])
+}
+
+/// [`run_git_for_remote`] with `trailing` arguments after `args`: paths
+/// that may not be UTF-8, each passed as one argument.
+fn run_git_for_remote_with(
+    root: &Path,
+    auth: &RemoteAuth,
+    args: &[&str],
+    trailing: &[&OsStr],
+) -> Result<std::process::Output, String> {
+    let credential_args = match auth {
+        RemoteAuth::Account(credential) => account_credential_args(credential),
+        RemoteAuth::User => Vec::new(),
+    };
+    let mut full: Vec<&str> = credential_args.iter().map(String::as_str).collect();
+    full.extend_from_slice(args);
     run_configured_git_bounded(
-        root,
-        &github_authed_args(args),
+        &root.to_path_buf(),
+        &full,
         true,
         remote_bounds(),
         |command| {
-            command.env("OLEAFLY_GH_TOKEN", token);
+            command.args(trailing);
+            command.env("GIT_TERMINAL_PROMPT", "0");
+            if let RemoteAuth::Account(credential) = auth {
+                command
+                    .env(FORGE_USERNAME_ENV, &credential.username)
+                    .env(FORGE_TOKEN_ENV, &credential.token);
+            }
         },
     )
+}
+
+/// The message for a failed remote command: a localizable reason when the
+/// output names one, else Git's own words without any user name or password.
+fn remote_failure(out: &std::process::Output, remote_url: &str, auth: &RemoteAuth) -> String {
+    let mut text = out_to_string(out);
+    if let RemoteAuth::Account(credential) = auth {
+        if !credential.token.is_empty() {
+            text = text.replace(&credential.token, "***");
+        }
+    }
+    match classify_remote_failure(&text, remote_url, matches!(auth, RemoteAuth::Account(_))) {
+        Some(error) => error.into(),
+        None => redact_userinfo(&text),
+    }
+}
+
+fn classify_remote_failure(
+    text: &str,
+    remote_url: &str,
+    uses_account: bool,
+) -> Option<crate::app_error::AppError> {
+    let has = |needles: &[&str]| needles.iter().any(|needle| text.contains(needle));
+    let repository_named_missing = text
+        .lines()
+        .any(|line| line.contains("repository '") && line.trim_end().ends_with("' not found"));
+    // The sign-in worked but the account may not use this repository: no
+    // write access, or an organization that wants single sign-on approval.
+    let access_denied = has(&["returned error: 403", "SAML SSO"])
+        || text
+            .lines()
+            .any(|line| line.contains("Permission to ") && line.contains(" denied"));
+    let mut with_reason = true;
+    let code = if has(&[
+        "could not read Username",
+        "could not read Password",
+        "terminal prompts disabled",
+    ]) {
+        with_reason = false;
+        if uses_account {
+            "git.auth_rejected"
+        } else {
+            "git.credentials_missing"
+        }
+    } else if has(&[
+        "Authentication failed for",
+        "HTTP Basic: Access denied",
+        "returned error: 401",
+    ]) {
+        if uses_account {
+            "git.auth_rejected"
+        } else {
+            "git.credentials_rejected"
+        }
+    } else if access_denied {
+        "git.access_denied"
+    } else if has(&["Host key verification failed"]) {
+        with_reason = false;
+        "git.host_key_unknown"
+    } else if has(&["Permission denied (publickey"]) {
+        "git.ssh_key_rejected"
+    } else if has(&[
+        "Could not resolve host",
+        "Could not resolve hostname",
+        "Connection refused",
+        "Connection timed out",
+    ]) {
+        "git.host_unreachable"
+    } else if has(&[
+        "SSL certificate problem",
+        "server certificate verification failed",
+        "certificate verify failed",
+    ]) {
+        "git.tls_failed"
+    } else if has(&["Repository not found", "could not be found"]) || repository_named_missing {
+        "git.repository_not_found"
+    } else if text.contains("[rejected]") && has(&["fetch first", "non-fast-forward"]) {
+        "git.push_rejected"
+    } else {
+        return None;
+    };
+    let error = crate::app_error::AppError::new(code)
+        .param("host", oleafly_forge::kind::host_label(remote_url));
+    // Only refusals keep Git's words: the reason (an expired token, no write
+    // access, single sign-on) is in them and differs from case to case.
+    let refused = matches!(
+        code,
+        "git.auth_rejected" | "git.credentials_rejected" | "git.access_denied"
+    );
+    Some(if refused && with_reason {
+        error.detail(git_reason(text))
+    } else {
+        error
+    })
+}
+
+/// Git's output on one line, without any user name or password, cut to a
+/// length that fits an error message.
+fn git_reason(text: &str) -> String {
+    let joined = redact_userinfo(text)
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    match joined.char_indices().nth(400) {
+        Some((cut, _)) => format!("{}…", &joined[..cut]),
+        None => joined,
+    }
+}
+
+/// Remove `user[:password]@` from every URL in Git's output.
+fn redact_userinfo(text: &str) -> String {
+    let mut clean = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(index) = rest.find("://") {
+        let (before, after) = rest.split_at(index + 3);
+        clean.push_str(before);
+        let end = after
+            .find(|character: char| {
+                matches!(character, '/' | '\'' | '"' | '<' | '>') || character.is_whitespace()
+            })
+            .unwrap_or(after.len());
+        let authority = &after[..end];
+        match authority.rfind('@') {
+            Some(at) => clean.push_str(&authority[at + 1..]),
+            None => clean.push_str(authority),
+        }
+        rest = &after[end..];
+    }
+    clean.push_str(rest);
+    clean
+}
+
+/// How the project's `origin` signs in. Only the shared worktree lock is
+/// taken, so pushing never waits for a reader.
+async fn remote_auth_for_project(project_id: &str) -> Result<RemoteAuth, String> {
+    let id = project_id.to_string();
+    let url = tauri::async_runtime::spawn_blocking(move || -> Result<Option<String>, String> {
+        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&id)?;
+        match initialized_repo(&id)? {
+            Some(root) => origin_url(&root),
+            None => Ok(None),
+        }
+    })
+    .await
+    .map_err(|error| error.to_string())??;
+    match url {
+        Some(url) => crate::forge::remote_auth::remote_auth_for_url(&url).await,
+        None => Ok(RemoteAuth::User),
+    }
 }
 
 fn mirror_settings() -> Vec<String> {
@@ -1534,36 +1779,72 @@ pub(crate) fn git_failure_text(out: &std::process::Output) -> String {
     out_to_string(out)
 }
 
-/// Attach the authenticated repository history to content imported through the
-/// guarded archive path. Resetting only the index keeps the archive import's
-/// path and symlink protections intact while placing the worktree on top of the
-/// real remote history. The caller must hold the imported project's exclusive
-/// worktree lock for the full archive-import transaction.
+/// Where an imported project's history comes from: the remote itself, with
+/// the account's sign-in, or a local clone made a moment before.
+pub(crate) enum HistorySource<'a> {
+    Remote(&'a RemoteAuth),
+    Local(&'a Path),
+}
+
+/// Attach the repository history to content imported through the guarded
+/// archive path. Resetting only the index keeps the archive import's path and
+/// symlink protections intact while placing the worktree on top of the real
+/// remote history. `commit` pins the history to the commit the archive was
+/// made from, so a branch that moved in between cannot mix two versions. The
+/// caller must hold the imported project's exclusive worktree lock for the
+/// full archive-import transaction.
 pub(crate) fn attach_imported_repository_history_lock_held(
     project_id: &str,
     remote_url: &str,
     default_branch: &str,
-    token: &str,
+    commit: Option<&str>,
+    source: HistorySource<'_>,
 ) -> Result<(), String> {
     if !is_allowed_remote_url(remote_url) {
-        return Err("GitHub returned an unsupported repository URL.".into());
+        return Err(crate::app_error::AppError::new("git.invalid_remote_url").into());
     }
     let root = crate::project_location::LibraryProjectDir::resolve(project_id)?
         .path()
         .to_path_buf();
-    attach_imported_repository_history_at(&root, remote_url, default_branch, |root, refspec| {
-        ok_or_err(run_git_authed(
-            root,
-            token,
-            &["fetch", "--no-tags", "--progress", "origin", refspec],
-        )?)
-    })
+    attach_imported_repository_history_at(
+        &root,
+        remote_url,
+        default_branch,
+        commit,
+        |root, refspec| {
+            let (output, auth) = match source {
+                HistorySource::Remote(auth) => (
+                    run_git_for_remote(
+                        root,
+                        auth,
+                        &["fetch", "--no-tags", "--progress", "origin", refspec],
+                    )?,
+                    auth,
+                ),
+                HistorySource::Local(path) => (
+                    run_git_for_remote_with(
+                        root,
+                        &RemoteAuth::User,
+                        &["fetch", "--no-tags", "--progress"],
+                        &[path.as_os_str(), OsStr::new(refspec)],
+                    )?,
+                    &RemoteAuth::User,
+                ),
+            };
+            if output.status.success() {
+                Ok(())
+            } else {
+                Err(remote_failure(&output, remote_url, auth))
+            }
+        },
+    )
 }
 
 fn attach_imported_repository_history_at<F>(
     root: &PathBuf,
     remote_url: &str,
     default_branch: &str,
+    commit: Option<&str>,
     fetch: F,
 ) -> Result<(), String>
 where
@@ -1573,6 +1854,9 @@ where
         return Err("The imported project already has repository history.".into());
     }
     refuse_nested_repository(root)?;
+    if let Some(commit) = commit {
+        validate_git_oid(commit)?;
+    }
 
     let local_ref = format!("refs/heads/{default_branch}");
     let remote_ref = format!("refs/remotes/origin/{default_branch}");
@@ -1581,7 +1865,7 @@ where
         .status
         .success()
     {
-        return Err("GitHub returned an invalid default branch.".into());
+        return Err("The server returned an invalid default branch.".into());
     }
 
     ok_or_err(run_git(root, &["init", "--quiet"])?)?;
@@ -1590,21 +1874,24 @@ where
         ok_or_err(run_git(root, &["remote", "add", "origin", remote_url])?)?;
         fetch(root, &refspec)?;
         ok_or_err(run_git(root, &["symbolic-ref", "HEAD", &local_ref])?)?;
-        ok_or_err(run_git(root, &["reset", "--mixed", &remote_ref, "--"])?)?;
+        let base = commit.unwrap_or(&remote_ref);
+        ok_or_err(run_git(root, &["reset", "--mixed", base, "--"])?)?;
         let upstream = format!("--set-upstream-to={remote_ref}");
         ok_or_err(run_git(root, &["branch", &upstream, "--", default_branch])?)?;
 
         ensure_private_exclude(root, Excludes::NewRepository)?;
+        // A server's archive leaves out `export-ignore` files. They are still
+        // tracked, so bring them back instead of committing their deletion.
+        restore_missing_tracked_files(root)?;
 
         // project.json and any archive-safety normalization become one local
         // commit above the imported branch, leaving future pulls mergeable.
+        // `--ignore-removal` never stages a deletion, so a file the archive
+        // could not carry is never deleted upstream by a later push.
         let status = run_git(root, &["status", "--porcelain"])?;
         if !status.stdout.is_empty() {
-            ok_or_err(run_git(root, &["add", "-A"])?)?;
-            ok_or_err(run_git(
-                root,
-                &["commit", "--quiet", "-m", "Prepare project for Oleafly"],
-            )?)?;
+            ok_or_err(run_git(root, &["add", "--ignore-removal", "--", "."])?)?;
+            commit_index(root, "Prepare project for Oleafly")?;
         }
         Ok(())
     })();
@@ -1613,6 +1900,171 @@ where
         let _ = std::fs::remove_dir_all(root.join(".git"));
     }
     result
+}
+
+/// Names never written back from an imported history: Git's and Oleafly's
+/// own folders and operating-system clutter the importer drops on purpose.
+const NEVER_RESTORED: [&str; 5] = [".git", ".oleafly", "__MACOSX", ".DS_Store", "Thumbs.db"];
+
+/// Check out tracked files the imported archive left out, from the index.
+/// Best effort: a path this platform cannot hold stays missing, and the
+/// Prepare commit never records it as deleted.
+fn restore_missing_tracked_files(root: &PathBuf) -> Result<(), String> {
+    let Ok(listing) = run_git_read_only(root, &["ls-files", "-z", "--deleted"]) else {
+        return Ok(());
+    };
+    let Ok(missing) = git_listing(listing) else {
+        return Ok(());
+    };
+    let paths: Vec<Vec<u8>> = missing
+        .into_iter()
+        .filter(|path| {
+            !path.split(|byte| *byte == b'/').any(|segment| {
+                NEVER_RESTORED
+                    .iter()
+                    .any(|name| segment.eq_ignore_ascii_case(name.as_bytes()))
+            })
+        })
+        .collect();
+    if paths.is_empty() {
+        return Ok(());
+    }
+    let _ = run_git_with_pathspecs(
+        root,
+        &[
+            "--literal-pathspecs",
+            "-c",
+            "core.symlinks=false",
+            "checkout",
+        ],
+        &paths,
+    );
+    Ok(())
+}
+
+/// Clones larger than this, as an archive of the checked-out files, are
+/// refused.
+const CLONE_ARCHIVE_MAX_BYTES: u64 = 256 * 1024 * 1024;
+
+/// The address as typed, when Oleafly may clone it.
+fn checked_clone_url(url: &str) -> Result<String, String> {
+    let url = url.trim();
+    if has_remote_password(url) {
+        return Err(crate::app_error::AppError::new("git.remote_has_password").into());
+    }
+    if !is_allowed_remote_url(url) {
+        return Err(crate::app_error::AppError::new("git.invalid_remote_url").into());
+    }
+    Ok(url.to_string())
+}
+
+/// Clone a repository by its address into a new library project, signing in
+/// with a matching Git hosting account or the user's own Git setup.
+#[tauri::command]
+pub async fn git_clone_project(app: tauri::AppHandle, url: String) -> Result<String, String> {
+    let url = checked_clone_url(&url)?;
+    let auth = crate::forge::remote_auth::remote_auth_for_url(&url).await?;
+    let project_id = tauri::async_runtime::spawn_blocking(move || {
+        clone_into_library(&url, &url, &auth, &std::env::temp_dir())
+    })
+    .await
+    .map_err(|error| error.to_string())??;
+    crate::project::record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
+}
+
+/// Clone `source` in a staging folder, archive its files at the checked-out
+/// commit and import them through the guarded archive path, then attach the
+/// clone's history with `origin` set to `origin_url`. The archive keeps
+/// files that `export-ignore` would drop, and its fixed wrapper folder means
+/// nothing from the address reaches a path inside the archive.
+fn clone_into_library(
+    source: &str,
+    origin_url: &str,
+    auth: &RemoteAuth,
+    staging_parent: &Path,
+) -> Result<String, String> {
+    std::fs::create_dir_all(staging_parent)
+        .map_err(|error| format!("could not prepare a folder for the clone: {error}"))?;
+    let staging = tempfile::Builder::new()
+        .prefix("oleafly-clone-")
+        .tempdir_in(staging_parent)
+        .map_err(|error| format!("could not prepare a folder for the clone: {error}"))?;
+    let repository = staging.path().join("repository");
+    let cloned = run_git_for_remote_with(
+        staging.path(),
+        auth,
+        &["clone", "--no-checkout", "--progress", "--"],
+        &[OsStr::new(source), repository.as_os_str()],
+    )?;
+    if !cloned.status.success() {
+        return Err(remote_failure(&cloned, origin_url, auth));
+    }
+    let has_commit = run_git_read_only(
+        &repository,
+        &["rev-parse", "--verify", "--quiet", "HEAD^{commit}"],
+    )?
+    .status
+    .success();
+    if !has_commit {
+        return Err(crate::app_error::AppError::new("git.repository_empty")
+            .param("host", oleafly_forge::kind::host_label(origin_url))
+            .into());
+    }
+    let branch = current_branch(&repository)?;
+    let head = run_git_read_only(&repository, &["rev-parse", "HEAD"])?;
+    let commit = String::from_utf8_lossy(&head.stdout).trim().to_string();
+    ok_or_err(head)?;
+    validate_git_oid(&commit)?;
+
+    let info = repository.join(".git").join("info");
+    std::fs::create_dir_all(&info).map_err(|error| error.to_string())?;
+    std::fs::write(info.join("attributes"), "* -export-ignore -export-subst\n")
+        .map_err(|error| error.to_string())?;
+    let archive = staging.path().join("archive.zip");
+    let mut output = OsString::from("--output=");
+    output.push(&archive);
+    ok_or_err(run_configured_git_bounded(
+        &repository,
+        &["archive", "--format=zip", "--prefix=repository/"],
+        true,
+        OutputBounds::total(WORKTREE_SCALE_DEADLINE),
+        |command| {
+            command.arg(&output).arg(&commit);
+        },
+    )?)?;
+    let size = std::fs::metadata(&archive)
+        .map_err(|error| error.to_string())?
+        .len();
+    if size > CLONE_ARCHIVE_MAX_BYTES {
+        return Err(crate::app_error::AppError::new("git.archive_too_large")
+            .param("limit", CLONE_ARCHIVE_MAX_BYTES / (1024 * 1024))
+            .into());
+    }
+    let bytes = std::fs::read(&archive).map_err(|error| error.to_string())?;
+    crate::project::import_project_zip_bytes_with(clone_project_name(origin_url), &bytes, |id| {
+        attach_imported_repository_history_lock_held(
+            id,
+            origin_url,
+            &branch,
+            Some(&commit),
+            HistorySource::Local(&repository),
+        )
+    })
+}
+
+/// A new project's name: the repository's last path segment.
+fn clone_project_name(url: &str) -> String {
+    let path = oleafly_forge::address::parse_remote(url)
+        .map(|remote| remote.path)
+        .unwrap_or_else(|| url.trim().trim_end_matches(['/', '\\']).to_string());
+    let last = path.rsplit(['/', '\\']).next().unwrap_or_default().trim();
+    let last = last.strip_suffix(".git").unwrap_or(last);
+    if last.is_empty() {
+        "Imported repository".to_string()
+    } else {
+        last.to_string()
+    }
 }
 
 #[tauri::command]
@@ -1629,8 +2081,12 @@ pub async fn git_set_remote(
 }
 
 fn git_set_remote_sync(project_id: String, url: String, replace: bool) -> Result<(), String> {
+    let url = url.trim().to_string();
+    if has_remote_password(&url) {
+        return Err(crate::app_error::AppError::new("git.remote_has_password").into());
+    }
     if !is_allowed_remote_url(&url) {
-        return Err(format!("unsupported remote URL: {url}"));
+        return Err(crate::app_error::AppError::new("git.invalid_remote_url").into());
     }
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::exclusive(&project_id)?;
     let root = existing_repo(&project_id)?;
@@ -1649,7 +2105,7 @@ fn set_origin(root: &PathBuf, url: &str, replace: bool) -> Result<(), String> {
     }
 }
 
-/// Remove the `origin` remote (unlink a project from GitHub).
+/// Remove the `origin` remote (unlink a project from its Git server).
 #[tauri::command]
 pub async fn git_remove_remote(project_id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || git_remove_remote_sync(project_id))
@@ -1776,57 +2232,50 @@ fn ahead_behind_at(root: &PathBuf) -> Result<AheadBehind, String> {
     })
 }
 
+/// Push the current branch to `origin` with a matching Git hosting account,
+/// or with the user's own Git sign-in or SSH key when no account matches.
 #[tauri::command]
 pub async fn git_push(project_id: String) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || git_push_sync(project_id))
+    let auth = remote_auth_for_project(&project_id).await?;
+    tauri::async_runtime::spawn_blocking(move || git_push_sync(project_id, auth))
         .await
         .map_err(|error| error.to_string())?
 }
 
-fn git_push_sync(project_id: String) -> Result<String, String> {
+fn git_push_sync(project_id: String, auth: RemoteAuth) -> Result<String, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
     let root = existing_repo(&project_id)?;
-    let cfg = config::read_config()?;
-    if cfg.github_token.is_empty() {
-        return Err("No GitHub token set. Add one in Settings → GitHub.".into());
-    }
-    let remote_out = run_git(&root, &["remote", "get-url", "origin"])?;
-    let remote = String::from_utf8_lossy(&remote_out.stdout)
-        .trim()
-        .to_string();
-    if remote.is_empty() {
+    let Some(remote) = origin_url(&root)? else {
         return Err("No remote 'origin' set for this project.".into());
-    }
+    };
     let branch = current_branch(&root)?;
-    // Push to the named `origin` remote (credentials come from the env-backed
-    // helper), so git updates the `origin/<branch>` tracking ref itself.
-    let out = run_git_authed(
+    // Push to the named `origin` remote so git updates the `origin/<branch>`
+    // tracking ref itself.
+    let out = run_git_for_remote(
         &root,
-        &cfg.github_token,
+        &auth,
         &["push", "--progress", "-u", "origin", &branch],
     )?;
     if !out.status.success() {
-        return Err(out_to_string(&out));
+        return Err(remote_failure(&out, &remote, &auth));
     }
     Ok(format!("Pushed to origin/{branch}"))
 }
 
 #[tauri::command]
 pub async fn git_fetch(project_id: String) -> Result<String, String> {
+    let auth = remote_auth_for_project(&project_id).await?;
     tauri::async_runtime::spawn_blocking(move || {
         let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
         let root = existing_repo(&project_id)?;
-        let remote = run_git_read_only(&root, &["remote", "get-url", "origin"])?;
-        if !remote.status.success() || String::from_utf8_lossy(&remote.stdout).trim().is_empty() {
+        let Some(remote) = origin_url(&root)? else {
             return Err("No remote 'origin' set for this project.".into());
-        }
-        let token = config::read_config()?.github_token;
-        let output = if token.is_empty() {
-            run_git_remote(&root, &["fetch", "--prune", "--progress", "origin"])?
-        } else {
-            run_git_authed(&root, &token, &["fetch", "--prune", "--progress", "origin"])?
         };
-        ok_or_err(output)?;
+        let output =
+            run_git_for_remote(&root, &auth, &["fetch", "--prune", "--progress", "origin"])?;
+        if !output.status.success() {
+            return Err(remote_failure(&output, &remote, &auth));
+        }
         Ok("Fetched origin".to_string())
     })
     .await
@@ -1849,8 +2298,7 @@ async fn git_pull_with_runtime<R: tauri::Runtime>(
     project_id: String,
     expected_generation: Option<u64>,
 ) -> Result<GitPullResult, String> {
-    let cfg = config::read_config()?;
-    let token = cfg.github_token;
+    let auth = remote_auth_for_project(&project_id).await?;
     let operation_id = project_id.clone();
     let mutation = crate::project::mutate_project_worktree(
         &state,
@@ -1858,7 +2306,7 @@ async fn git_pull_with_runtime<R: tauri::Runtime>(
         expected_generation,
         move |_| {
             let root = existing_repo(&operation_id)?;
-            pull_origin(&root, &token)
+            pull_origin(&root, &auth)
         },
     )
     .await?;
@@ -1887,17 +2335,13 @@ struct GitMutationOutcome {
     changed: bool,
 }
 
-fn pull_origin(root: &PathBuf, token: &str) -> Result<(GitMutationOutcome, bool), String> {
+fn pull_origin(root: &PathBuf, auth: &RemoteAuth) -> Result<(GitMutationOutcome, bool), String> {
     if merge_in_progress(root)? {
         return Err("Resolve or abort the current merge before pulling again.".into());
     }
-    let remote_out = run_git(root, &["remote", "get-url", "origin"])?;
-    if String::from_utf8_lossy(&remote_out.stdout)
-        .trim()
-        .is_empty()
-    {
+    let Some(remote) = origin_url(root)? else {
         return Err("No remote 'origin' set for this project.".into());
-    }
+    };
     let branch = current_branch(root)?;
     let pull_args = [
         "pull",
@@ -1906,11 +2350,7 @@ fn pull_origin(root: &PathBuf, token: &str) -> Result<(GitMutationOutcome, bool)
         "origin",
         branch.as_str(),
     ];
-    let output = if token.is_empty() {
-        run_git_remote(root, &pull_args)?
-    } else {
-        run_git_authed(root, token, &pull_args)?
-    };
+    let output = run_git_for_remote(root, auth, &pull_args)?;
     if output.status.success() {
         return Ok((
             GitMutationOutcome {
@@ -1934,7 +2374,7 @@ fn pull_origin(root: &PathBuf, token: &str) -> Result<(GitMutationOutcome, bool)
             true,
         ));
     }
-    Err(out_to_string(&output))
+    Err(remote_failure(&output, &remote, auth))
 }
 
 #[derive(Serialize)]
@@ -2685,6 +3125,43 @@ fn has_staged_changes(root: &PathBuf) -> bool {
     }
 }
 
+// 0.4.8 D: "Commit this turn" commits only the files one agent turn changed.
+/// Stages `paths` (additions and deletions) and commits exactly those
+/// paths; anything else already staged stays staged and uncommitted.
+/// Returns the new HEAD.
+pub(crate) fn commit_paths_sync(
+    project_id: &str,
+    paths: &[String],
+    message: &str,
+) -> Result<String, String> {
+    let _lock = crate::worktree_lock::ProjectWorktreeLock::exclusive(project_id)?;
+    let root = existing_repo(project_id)?;
+    validate_repo_relative_paths(paths)?;
+    stage_paths(&root, paths)?;
+    let mut args = vec![
+        "--literal-pathspecs",
+        "commit",
+        "--quiet",
+        "-m",
+        message,
+        "--",
+    ];
+    args.extend(paths.iter().map(String::as_str));
+    let out = run_git(&root, &args)?;
+    if !out.status.success() {
+        let text = out_to_string(&out);
+        let lower = text.to_ascii_lowercase();
+        if lower.contains("nothing to commit") || lower.contains("no changes added") {
+            return Err("Nothing to commit for this turn.".into());
+        }
+        return Err(text);
+    }
+    let head = run_git_read_only(&root, &["rev-parse", "HEAD"])?;
+    let oid = String::from_utf8_lossy(&head.stdout).trim().to_string();
+    ok_or_err(head)?;
+    Ok(oid)
+}
+
 fn ok_or_err(out: std::process::Output) -> Result<(), String> {
     if out.status.success() {
         Ok(())
@@ -2757,7 +3234,7 @@ fn stage_all(root: &PathBuf) -> Result<(), String> {
     ok_or_err(run_git(root, &["add", "-A"])?)
 }
 
-/// Stage every change for Publish to GitHub except files that
+/// Stage every change for Publish except files that
 /// [`looks_like_secret`], and return those files as project-relative paths.
 /// They are left out through exclude pathspecs for this one `git add`, so no
 /// project file or exclude rule changes, their content is never hashed, and
@@ -3420,7 +3897,8 @@ mod tests {
             &linked.id,
             "https://github.com/octo/paper.git",
             "main",
-            "token",
+            None,
+            super::HistorySource::Remote(&super::RemoteAuth::User),
         )
         .unwrap_err();
 
@@ -4876,9 +5354,13 @@ mod tests {
         write(&imported, "main.tex", "remote content\n");
         write(&imported, "project.json", "{}\n");
         let remote_url = remote.to_string_lossy().into_owned();
-        attach_imported_repository_history_at(&imported, &remote_url, "main", |root, refspec| {
-            ok_or_err(run_git(root, &["fetch", "--no-tags", "origin", refspec])?)
-        })
+        attach_imported_repository_history_at(
+            &imported,
+            &remote_url,
+            "main",
+            None,
+            |root, refspec| ok_or_err(run_git(root, &["fetch", "--no-tags", "origin", refspec])?),
+        )
         .unwrap();
 
         let messages = run_git(&imported, &["log", "--reverse", "--format=%s"]).unwrap();
@@ -4960,9 +5442,13 @@ mod tests {
         let imported = temp_dir("excludes-import");
         write(&imported, "main.tex", "remote\n");
         let remote_url = remote.to_string_lossy().into_owned();
-        attach_imported_repository_history_at(&imported, &remote_url, "main", |root, refspec| {
-            ok_or_err(run_git(root, &["fetch", "--no-tags", "origin", refspec])?)
-        })
+        attach_imported_repository_history_at(
+            &imported,
+            &remote_url,
+            "main",
+            None,
+            |root, refspec| ok_or_err(run_git(root, &["fetch", "--no-tags", "origin", refspec])?),
+        )
         .unwrap();
 
         for root in [&created, &initialized, &imported] {
@@ -5829,33 +6315,41 @@ mod tests {
         );
     }
 
+    fn account_credential(ca_file: Option<PathBuf>) -> super::AccountCredential {
+        super::AccountCredential {
+            credential_url: "https://example.org/gitlab".into(),
+            username: "oauth2".into(),
+            token: "glpat-test-1234".into(),
+            ca_file,
+        }
+    }
+
     #[test]
-    fn the_github_token_helper_is_configured_only_for_github_com() {
+    fn an_account_token_is_offered_only_under_its_base_url() {
         let root = temp_repo();
+        let args = super::account_credential_args(&account_credential(None));
         let helper_for = |url: &str| {
-            let output = super::run_git_authed(
-                &root,
-                "gh-test-token",
-                &["config", "--get-urlmatch", "credential.helper", url],
-            )
-            .unwrap();
+            let mut full: Vec<&str> = args.iter().map(String::as_str).collect();
+            full.extend(["config", "--get-urlmatch", "credential.helper", url]);
+            let output = run_git(&root, &full).unwrap();
             String::from_utf8_lossy(&output.stdout).trim().to_string()
         };
-        assert!(helper_for("https://github.com/owner/paper.git").contains("OLEAFLY_GH_TOKEN"));
+        assert!(helper_for("https://example.org/gitlab/g/p.git").contains("OLEAFLY_FORGE_TOKEN"));
         for url in [
-            "https://gitlab.com/owner/paper.git",
-            "https://github.com.example.org/owner/paper.git",
-            "https://api.github.com/owner/paper.git",
+            "https://example.org/gitlab-old/g/p.git",
+            "https://example.org/g/p.git",
+            "http://example.org/gitlab/g/p.git",
+            "https://example.org.evil.test/gitlab/g/p.git",
         ] {
             assert!(
-                !helper_for(url).contains("OLEAFLY_GH_TOKEN"),
-                "{url} would receive the GitHub token"
+                !helper_for(url).contains("OLEAFLY_FORGE_TOKEN"),
+                "{url} would receive the account's token"
             );
         }
     }
 
     #[test]
-    fn github_com_gets_only_the_token_and_other_hosts_keep_their_own_helper() {
+    fn the_account_helper_answers_with_the_kind_username_and_other_hosts_keep_their_helper() {
         use std::io::Write as _;
         let root = temp_repo();
         let home = temp_dir("credential-home");
@@ -5875,18 +6369,22 @@ mod tests {
             .unwrap(),
         )
         .unwrap();
-        let fill = |host: &str| -> String {
+        let credential = account_credential(None);
+        let args = super::account_credential_args(&credential);
+        let fill = |host: &str, path: &str| -> String {
             let mut command = Command::new("git");
             super::clear_inherited_git_env(&mut command);
             let mut child = command
-                .args(super::github_authed_args(&["credential", "fill"]))
+                .args(&args)
+                .args(["credential", "fill"])
                 .current_dir(&root)
                 .env("HOME", &home)
                 .env("XDG_CONFIG_HOME", &home)
                 .env("GIT_CONFIG_GLOBAL", &global)
                 .env("GIT_CONFIG_NOSYSTEM", "1")
                 .env("GIT_TERMINAL_PROMPT", "0")
-                .env("OLEAFLY_GH_TOKEN", "gh-test-token")
+                .env("OLEAFLY_FORGE_USERNAME", &credential.username)
+                .env("OLEAFLY_FORGE_TOKEN", &credential.token)
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())
@@ -5896,18 +6394,586 @@ mod tests {
                 .stdin
                 .take()
                 .unwrap()
-                .write_all(
-                    format!("protocol=https\nhost={host}\npath=owner/paper.git\n\n").as_bytes(),
-                )
+                .write_all(format!("protocol=https\nhost={host}\npath={path}\n\n").as_bytes())
                 .unwrap();
             String::from_utf8_lossy(&child.wait_with_output().unwrap().stdout).into_owned()
         };
-        let github = fill("github.com");
-        assert!(github.contains("password=gh-test-token"), "{github}");
-        assert!(!github.contains("own-secret"), "{github}");
-        let gitlab = fill("gitlab.com");
-        assert!(gitlab.contains("password=own-secret"), "{gitlab}");
-        assert!(!gitlab.contains("gh-test-token"), "{gitlab}");
+        let account = fill("example.org", "gitlab/g/p.git");
+        assert!(account.contains("username=oauth2"), "{account}");
+        assert!(account.contains("password=glpat-test-1234"), "{account}");
+        assert!(!account.contains("own-secret"), "{account}");
+        let other = fill("gitlab.com", "g/p.git");
+        assert!(other.contains("password=own-secret"), "{other}");
+        assert!(!other.contains("glpat-test-1234"), "{other}");
+    }
+
+    #[test]
+    fn the_token_never_appears_in_git_arguments() {
+        let with_ca = account_credential(Some(PathBuf::from("/certs/corp ca.pem")));
+        let args = super::account_credential_args(&with_ca);
+        assert!(!args.join(" ").contains("glpat-test-1234"), "{args:?}");
+        assert!(!format!("{with_ca:?}").contains("glpat-test-1234"));
+    }
+
+    #[test]
+    fn account_ca_files_are_scoped_to_the_base_url() {
+        let ca = std::env::temp_dir().join("Zoë Q").join("corp ca.pem");
+        let args = super::account_credential_args(&account_credential(Some(ca.clone())));
+        let path = oleafly_forge::git::git_config_path(&ca);
+        assert!(
+            args.contains(&format!("http.https://example.org/gitlab.sslCAInfo={path}")),
+            "{args:?}"
+        );
+        assert!(
+            args.contains(&"http.https://example.org/gitlab.schannelUseSSLCAInfo=true".to_string())
+        );
+        if cfg!(windows) {
+            assert!(!path.contains('\\'), "{path}");
+        }
+        assert_eq!(
+            oleafly_forge::git::git_config_path_for(r"C:\Users\Zoë Q\certs\corp ca.pem", true),
+            "C:/Users/Zoë Q/certs/corp ca.pem"
+        );
+        assert!(!super::account_credential_args(&account_credential(None))
+            .iter()
+            .any(|arg| arg.contains("sslCAInfo")));
+    }
+
+    #[test]
+    fn remote_commands_never_prompt_in_a_terminal() {
+        let root = temp_repo();
+        let probe = [
+            "-c",
+            "alias.envcheck=!printf %s \"$GIT_TERMINAL_PROMPT:${OLEAFLY_FORGE_TOKEN-unset}\"",
+            "envcheck",
+        ];
+        let user = super::run_git_for_remote(&root, &super::RemoteAuth::User, &probe).unwrap();
+        assert_eq!(String::from_utf8_lossy(&user.stdout), "0:unset");
+        let account = super::run_git_for_remote(
+            &root,
+            &super::RemoteAuth::Account(account_credential(None)),
+            &probe,
+        )
+        .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&account.stdout),
+            "0:glpat-test-1234"
+        );
+    }
+
+    #[test]
+    fn remote_failures_name_the_problem() {
+        let url = "https://gitlab.example.org/g/p.git";
+        let code = |text: &str, account: bool| {
+            super::classify_remote_failure(text, url, account).map(|error| error.code)
+        };
+        for (text, with_account, without_account) in [
+            (
+                "fatal: could not read Username for 'https://gitlab.example.org': terminal prompts disabled",
+                "git.auth_rejected",
+                "git.credentials_missing",
+            ),
+            (
+                "remote: HTTP Basic: Access denied\nfatal: Authentication failed for 'https://gitlab.example.org/g/p.git/'",
+                "git.auth_rejected",
+                "git.credentials_rejected",
+            ),
+            (
+                "fatal: unable to access 'https://gitlab.example.org/g/p.git/': The requested URL returned error: 401",
+                "git.auth_rejected",
+                "git.credentials_rejected",
+            ),
+            (
+                "fatal: unable to access 'https://gitlab.example.org/g/p.git/': The requested URL returned error: 403",
+                "git.access_denied",
+                "git.access_denied",
+            ),
+            (
+                "remote: Permission to g/p.git denied to someone.",
+                "git.access_denied",
+                "git.access_denied",
+            ),
+            (
+                "remote: The 'g' organization has enabled or enforced SAML SSO.",
+                "git.access_denied",
+                "git.access_denied",
+            ),
+            (
+                "Host key verification failed.\nfatal: Could not read from remote repository.",
+                "git.host_key_unknown",
+                "git.host_key_unknown",
+            ),
+            (
+                "git@gitlab.example.org: Permission denied (publickey).",
+                "git.ssh_key_rejected",
+                "git.ssh_key_rejected",
+            ),
+            (
+                "fatal: unable to access 'https://gitlab.example.org/g/p.git/': Could not resolve host: gitlab.example.org",
+                "git.host_unreachable",
+                "git.host_unreachable",
+            ),
+            (
+                "ssh: Could not resolve hostname gitlab.example.org: Name or service not known",
+                "git.host_unreachable",
+                "git.host_unreachable",
+            ),
+            (
+                "fatal: unable to access 'https://gitlab.example.org/g/p.git/': SSL certificate problem: unable to get local issuer certificate",
+                "git.tls_failed",
+                "git.tls_failed",
+            ),
+            (
+                "remote: Repository not found.\nfatal: repository 'https://gitlab.example.org/g/p.git/' not found",
+                "git.repository_not_found",
+                "git.repository_not_found",
+            ),
+            (
+                "ERROR: The project you were looking for could not be found or you don't have permission to view it.",
+                "git.repository_not_found",
+                "git.repository_not_found",
+            ),
+            (
+                " ! [rejected]        main -> main (fetch first)\nerror: failed to push some refs",
+                "git.push_rejected",
+                "git.push_rejected",
+            ),
+            (
+                " ! [rejected]        main -> main (non-fast-forward)",
+                "git.push_rejected",
+                "git.push_rejected",
+            ),
+        ] {
+            assert_eq!(code(text, true), Some(with_account), "{text}");
+            assert_eq!(code(text, false), Some(without_account), "{text}");
+        }
+        assert_eq!(code("error: something else went wrong", false), None);
+        let host = super::classify_remote_failure("Connection refused", url, false).unwrap();
+        assert_eq!(host.params["host"], "gitlab.example.org");
+        let named = super::classify_remote_failure(
+            "Permission denied (publickey).",
+            "git@gitlab.com:g/p.git",
+            false,
+        )
+        .unwrap();
+        assert_eq!(named.params["host"], "GitLab");
+    }
+
+    #[test]
+    fn refused_remotes_keep_gits_reason_without_the_password() {
+        let denied = super::classify_remote_failure(
+            "remote: Permission to o/r.git denied to me.\nfatal: unable to access 'https://me:pw@github.com/o/r.git/': The requested URL returned error: 403",
+            "https://github.com/o/r.git",
+            true,
+        )
+        .unwrap();
+        assert_eq!(denied.code, "git.access_denied");
+        let detail = denied.detail.unwrap();
+        assert!(
+            detail.starts_with("remote: Permission to o/r.git denied to me. fatal:"),
+            "{detail}"
+        );
+        assert!(!detail.contains("pw"), "{detail}");
+        let unreachable =
+            super::classify_remote_failure("Connection refused", "https://h.org/x", true).unwrap();
+        assert_eq!(unreachable.detail, None);
+        let long = super::git_reason(&"é".repeat(500));
+        assert_eq!(long.chars().count(), 401);
+    }
+
+    #[test]
+    fn git_output_never_shows_userinfo() {
+        assert_eq!(
+            super::redact_userinfo("fatal: unable to access 'https://u:p@h.org/x/': 403"),
+            "fatal: unable to access 'https://h.org/x/': 403"
+        );
+        assert_eq!(
+            super::redact_userinfo(
+                "To https://x-access-token:secret@github.com/o/r.git\n ! [rejected]"
+            ),
+            "To https://github.com/o/r.git\n ! [rejected]"
+        );
+        assert_eq!(
+            super::redact_userinfo("no addresses here"),
+            "no addresses here"
+        );
+    }
+
+    #[test]
+    fn remote_failures_never_repeat_the_token_or_a_password() {
+        #[cfg(unix)]
+        use std::os::unix::process::ExitStatusExt;
+        #[cfg(windows)]
+        use std::os::windows::process::ExitStatusExt;
+
+        let out = std::process::Output {
+            status: std::process::ExitStatus::from_raw(1),
+            stdout: Vec::new(),
+            stderr: b"error: the helper sent glpat-test-1234 to https://u:pw@h.org/x".to_vec(),
+        };
+        let text = super::remote_failure(
+            &out,
+            "https://h.org/x",
+            &super::RemoteAuth::Account(account_credential(None)),
+        );
+        assert!(!text.contains("glpat-test-1234"), "{text}");
+        assert!(!text.contains("pw@"), "{text}");
+    }
+
+    #[test]
+    fn scp_remotes_need_a_user_and_windows_paths_are_refused() {
+        for allowed in [
+            "git@github.com:o/r.git",
+            "ssh://git@host:22/o/r.git",
+            "https://host.org/o/r.git",
+            "me@nas:paper",
+        ] {
+            assert!(is_allowed_remote_url(allowed), "{allowed}");
+        }
+        for refused in [
+            "C:/Users/a@b/repo",
+            r"C:\Users\a@b\repo",
+            r"\\srv\share@x:y",
+            "ext::sh -c x",
+            "fd::17",
+            "file:///etc/passwd",
+            "host.org:o/r.git",
+            "git@h:o/r",
+        ] {
+            assert!(!is_allowed_remote_url(refused), "{refused}");
+        }
+    }
+
+    #[test]
+    fn link_addresses_with_a_password_are_refused() {
+        let refused = super::git_set_remote_sync(
+            "no-such-project".into(),
+            "https://u:pw@host.org/x.git".into(),
+            false,
+        )
+        .unwrap_err();
+        assert!(refused.contains("git.remote_has_password"), "{refused}");
+        let user_only = super::git_set_remote_sync(
+            "no-such-project".into(),
+            "https://u@host.org/x.git".into(),
+            false,
+        )
+        .unwrap_err();
+        assert!(
+            !user_only.contains("git.remote_has_password"),
+            "{user_only}"
+        );
+        let windows =
+            super::git_set_remote_sync("no-such-project".into(), "C:/Users/a@b/repo".into(), false)
+                .unwrap_err();
+        assert!(windows.contains("git.invalid_remote_url"), "{windows}");
+        assert!(super::has_remote_password("https://u:pw@h.org/x.git"));
+        assert!(!super::has_remote_password("https://u@h.org/x.git"));
+        assert!(!super::has_remote_password("git@h.org:o/r.git"));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    #[allow(clippy::await_holding_lock)]
+    async fn pushing_needs_no_hosting_account() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_dir("push-without-account");
+        let _data_dir = TestDataDirOverride::set(&data);
+        let project_id = "push-without-account";
+        let project = data.join("projects").join(project_id);
+        std::fs::create_dir_all(&project).unwrap();
+        write(&project, "main.tex", "pushed\n");
+        crate::project::write_meta(
+            project_id,
+            &crate::project::ProjectMeta {
+                name: "Push without an account".into(),
+                main_doc: "main.tex".into(),
+                engine: "tectonic".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let branch = super::git_initialize(project_id.into()).await.unwrap();
+        ok_or_err(run_git(&project, &["config", "core.autocrlf", "false"]).unwrap()).unwrap();
+        ok_or_err(run_git(&project, &["config", "user.email", "push@example.test"]).unwrap())
+            .unwrap();
+        ok_or_err(run_git(&project, &["config", "user.name", "Push"]).unwrap()).unwrap();
+        super::git_stage_all(project_id.into()).await.unwrap();
+        assert!(super::git_commit(project_id.into(), "Push me".into())
+            .await
+            .unwrap());
+        let remote = data.join("origin.git");
+        std::fs::create_dir(&remote).unwrap();
+        ok_or_err(run_git(&remote, &["init", "--bare", "--quiet"]).unwrap()).unwrap();
+        let remote_path = remote.to_string_lossy().into_owned();
+        ok_or_err(run_git(&project, &["remote", "add", "origin", &remote_path]).unwrap()).unwrap();
+
+        let pushed = super::git_push(project_id.into()).await.unwrap();
+
+        assert_eq!(pushed, format!("Pushed to origin/{branch}"));
+        assert_eq!(
+            git_text(&remote, &["rev-parse", &format!("refs/heads/{branch}")]),
+            git_text(&project, &["rev-parse", "HEAD"])
+        );
+        assert!(
+            !data.join(oleafly_forge::store::ACCOUNTS_FILE).exists(),
+            "pushing needs no Git hosting account"
+        );
+    }
+
+    /// Commit every file, ignored ones too, with plain Git.
+    fn commit_all_with_ignored(root: &PathBuf, message: &str) -> String {
+        ok_or_err(run_git(root, &["add", "-A", "-f", "--", "."]).unwrap()).unwrap();
+        ok_or_err(run_git(root, &["commit", "--quiet", "-m", message]).unwrap()).unwrap();
+        git_text(root, &["rev-parse", "HEAD"])
+    }
+
+    fn write_nested(root: &Path, name: &str, content: &str) {
+        let path = root.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, content).unwrap();
+    }
+
+    fn attach_from_local(imported: &PathBuf, remote: &Path, commit: Option<&str>) {
+        let remote_url = remote.to_string_lossy().into_owned();
+        attach_imported_repository_history_at(
+            imported,
+            &remote_url,
+            "main",
+            commit,
+            |root, refspec| ok_or_err(run_git(root, &["fetch", "--no-tags", "origin", refspec])?),
+        )
+        .unwrap();
+    }
+
+    fn deleted_in_history(root: &Path) -> String {
+        git_text(
+            root,
+            &["log", "--diff-filter=D", "--name-only", "--format="],
+        )
+    }
+
+    #[test]
+    fn imported_history_is_pinned_to_the_archived_commit() {
+        let remote = temp_repo();
+        write(&remote, "main.tex", "version A\n");
+        let a = commit_all_with_ignored(&remote, "A");
+        write(&remote, "main.tex", "version B\n");
+        let b = commit_all_with_ignored(&remote, "B");
+        let imported = temp_dir("history-pinned");
+        write(&imported, "main.tex", "version A\n");
+        write(&imported, "project.json", "{}\n");
+
+        attach_from_local(&imported, &remote, Some(&a));
+
+        assert_eq!(git_text(&imported, &["rev-parse", "HEAD~1"]), a);
+        assert_eq!(git_text(&imported, &["rev-parse", "origin/main"]), b);
+        assert_eq!(
+            git_text(
+                &imported,
+                &["rev-list", "--left-right", "--count", "origin/main...main"]
+            ),
+            "1\t1"
+        );
+        assert_eq!(
+            std::fs::read_to_string(imported.join("main.tex")).unwrap(),
+            "version A\n"
+        );
+        assert!(status(&imported).is_empty());
+    }
+
+    #[test]
+    fn files_left_out_of_an_archive_are_restored_not_deleted() {
+        let remote = temp_repo();
+        write(&remote, "main.tex", "paper\n");
+        write(&remote, "notes.md", "private notes\n");
+        write(&remote, ".gitattributes", "notes.md export-ignore\n");
+        commit_all_with_ignored(&remote, "Remote base");
+        let imported = temp_dir("history-export-ignore");
+        write(&imported, "main.tex", "paper\n");
+        write(&imported, ".gitattributes", "notes.md export-ignore\n");
+        write(&imported, "project.json", "{}\n");
+
+        attach_from_local(&imported, &remote, None);
+
+        assert_eq!(
+            std::fs::read_to_string(imported.join("notes.md")).unwrap(),
+            "private notes\n"
+        );
+        assert_eq!(deleted_in_history(&imported), "");
+        assert!(status(&imported).is_empty());
+    }
+
+    #[test]
+    fn reserved_names_are_never_restored_from_history() {
+        let remote = temp_repo();
+        write(&remote, "main.tex", "paper\n");
+        write_nested(&remote, ".oleafly/state.json", "{}\n");
+        write_nested(&remote, "__MACOSX/x", "junk\n");
+        commit_all_with_ignored(&remote, "Remote base");
+        let imported = temp_dir("history-reserved");
+        write(&imported, "main.tex", "paper\n");
+        write(&imported, "project.json", "{}\n");
+
+        attach_from_local(&imported, &remote, None);
+
+        assert!(!imported.join(".oleafly").join("state.json").exists());
+        assert!(!imported.join("__MACOSX").exists());
+        assert_eq!(deleted_in_history(&imported), "");
+    }
+
+    #[test]
+    fn a_prepare_commit_is_skipped_when_only_deletions_remain() {
+        let remote = temp_repo();
+        write(&remote, "main.tex", "paper\n");
+        write_nested(&remote, "__MACOSX/x", "junk\n");
+        commit_all_with_ignored(&remote, "Remote base");
+        let imported = temp_dir("history-only-deletions");
+        write(&imported, "main.tex", "paper\n");
+
+        attach_from_local(&imported, &remote, None);
+
+        let messages = run_git(&imported, &["log", "--format=%s"]).unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&messages.stdout)
+                .lines()
+                .collect::<Vec<_>>(),
+            ["Remote base"]
+        );
+    }
+
+    /// A bare repository holding one commit of `files`.
+    fn bare_remote(parent: &Path, files: &[(&str, &str)]) -> PathBuf {
+        let work = temp_repo();
+        for (name, content) in files {
+            write_nested(&work, name, content);
+        }
+        commit_all_with_ignored(&work, "Remote base");
+        let bare = parent.join("remote.git");
+        let work_path = work.to_string_lossy().into_owned();
+        let bare_path = bare.to_string_lossy().into_owned();
+        ok_or_err(
+            run_git(
+                &work,
+                &["clone", "--bare", "--quiet", &work_path, &bare_path],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        bare
+    }
+
+    const MAIN_TEX: &str = "\\documentclass{article}\n\\begin{document}\nHi\n\\end{document}\n";
+
+    fn clone_with_data_folder(files: &[(&str, &str)], staging_parent: &Path) -> (PathBuf, PathBuf) {
+        let data = temp_dir("clone-data");
+        std::fs::create_dir_all(data.join("projects")).unwrap();
+        let _data_dir = TestDataDirOverride::set(&data);
+        let bare = bare_remote(&data, files);
+        let project_id = super::clone_into_library(
+            &bare.to_string_lossy(),
+            "https://example.org/lab/paper.git",
+            &super::RemoteAuth::User,
+            staging_parent,
+        )
+        .unwrap();
+        (data.clone(), data.join("projects").join(project_id))
+    }
+
+    #[test]
+    fn a_clone_from_a_local_path_becomes_a_library_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let staging = temp_dir("clone-staging");
+        let (_data, project) = clone_with_data_folder(&[("main.tex", MAIN_TEX)], &staging);
+
+        assert!(project.join("main.tex").is_file());
+        assert_eq!(
+            git_text(&project, &["remote", "get-url", "origin"]),
+            "https://example.org/lab/paper.git"
+        );
+        assert_eq!(
+            git_text(
+                &project,
+                &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]
+            ),
+            "origin/main"
+        );
+        assert!(status(&project).is_empty());
+        let config = std::fs::read_to_string(project.join(".git").join("config")).unwrap();
+        assert!(!config.contains("OLEAFLY"), "{config}");
+        assert_eq!(
+            std::fs::read_dir(&staging).unwrap().count(),
+            0,
+            "the staging clone is removed"
+        );
+    }
+
+    #[test]
+    fn a_clone_keeps_files_export_ignore_would_drop() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let staging = temp_dir("clone-export-ignore");
+        let (_data, project) = clone_with_data_folder(
+            &[
+                ("main.tex", MAIN_TEX),
+                ("notes.md", "kept\n"),
+                (".gitattributes", "notes.md export-ignore\n"),
+            ],
+            &staging,
+        );
+        assert_eq!(
+            std::fs::read_to_string(project.join("notes.md")).unwrap(),
+            "kept\n"
+        );
+        assert_eq!(deleted_in_history(&project), "");
+    }
+
+    #[test]
+    fn cloning_an_empty_repository_is_refused() {
+        let parent = temp_dir("clone-empty");
+        let bare = parent.join("empty.git");
+        std::fs::create_dir_all(&bare).unwrap();
+        ok_or_err(run_git(&bare, &["init", "--bare", "--quiet"]).unwrap()).unwrap();
+        let error = super::clone_into_library(
+            &bare.to_string_lossy(),
+            "https://example.org/lab/empty.git",
+            &super::RemoteAuth::User,
+            &parent.join("staging"),
+        )
+        .unwrap_err();
+        assert!(error.contains("git.repository_empty"), "{error}");
+    }
+
+    #[test]
+    fn clone_staging_paths_with_spaces_and_non_ascii_work() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let staging = temp_dir("clone-unicode").join("oleafly clone é");
+        let (_data, project) = clone_with_data_folder(&[("main.tex", MAIN_TEX)], &staging);
+        assert!(project.join("main.tex").is_file());
+    }
+
+    #[test]
+    fn clone_names_come_from_the_last_path_segment() {
+        assert_eq!(
+            super::clone_project_name("https://gitlab.com/g/sub/My-Paper.git"),
+            "My-Paper"
+        );
+        assert_eq!(super::clone_project_name("git@host.org:o/r"), "r");
+        assert_eq!(
+            super::clone_project_name("https://host.org/"),
+            "Imported repository"
+        );
+    }
+
+    #[test]
+    fn clone_addresses_are_checked_before_any_spawn() {
+        let _missing = missing_git();
+        let helper = super::checked_clone_url("ext::sh -c x").unwrap_err();
+        assert!(helper.contains("git.invalid_remote_url"), "{helper}");
+        let password = super::checked_clone_url("https://u:p@h.org/x.git").unwrap_err();
+        assert!(password.contains("git.remote_has_password"), "{password}");
+        assert_eq!(
+            super::checked_clone_url("  https://h.org/x.git  ").unwrap(),
+            "https://h.org/x.git"
+        );
     }
 
     #[test]
@@ -6523,6 +7589,7 @@ mod tests {
             &root,
             "https://github.com/owner/paper.git",
             "main",
+            None,
             |_, _| {
                 fetched = true;
                 Ok(())

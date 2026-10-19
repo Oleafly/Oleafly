@@ -136,6 +136,23 @@ describe("ShellCommandRow", () => {
     expect(screen.queryByRole("button", { name: enCommon.actions.copy })).toBeNull();
   });
 
+  it("says to open a new terminal after installing on Windows", async () => {
+    mocks.shellCommandStatus.mockResolvedValue({
+      state: "installed",
+      path: "C:\\Users\\Ada Lovelace\\AppData\\Local\\Oleafly\\bin\\oleafly.exe",
+      directory: "C:\\Users\\Ada Lovelace\\AppData\\Local\\Oleafly\\bin",
+      method: "copy",
+      on_path: true,
+      after_sign_in: false,
+      after_new_terminal: true,
+      hint: null,
+    });
+    render(<ShellCommandRow />);
+    expect((await screen.findByTestId("shell-command-new-terminal")).textContent).toBe(copy.newTerminal);
+    expect(screen.queryByTestId("shell-command-hint")).toBeNull();
+    expect(screen.queryByTestId("shell-command-sign-in")).toBeNull();
+  });
+
   it("gives fish users a command to run instead of a file to edit", async () => {
     mocks.shellCommandStatus.mockResolvedValue({
       ...offPath,

@@ -84,7 +84,7 @@ export function ResearchWorkspacePanel() {
   }, [projectId]);
   const openSettings = () => {
     const settings = useSettingsStore.getState();
-    settings.setSettingsInitialSection("ai");
+    settings.setSettingsInitialSection("research");
     settings.setSettingsOpen(true);
   };
   return (
@@ -98,7 +98,7 @@ export function ResearchWorkspacePanel() {
           variant="ghost"
           size="icon"
           className="size-6"
-          aria-label={t(($) => $.researchTools.workspace.configureAgents)}
+          aria-label={t(($) => $.researchTools.workspace.openSettings)}
           onClick={openSettings}
         >
           <Settings2 className="size-3.5" />

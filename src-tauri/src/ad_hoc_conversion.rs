@@ -339,6 +339,7 @@ fn stage_conversion_workspace(
     input: Vec<u8>,
     source_name: &'static str,
     references_filter: bool,
+    ocr_filter: bool,
     support: &[(PathBuf, Vec<u8>)],
 ) -> Result<(tempfile::TempDir, PathBuf), String> {
     let temporary = tempfile::tempdir()
@@ -349,6 +350,9 @@ fn stage_conversion_workspace(
         .map_err(|error| format!("Could not stage the source document: {error}"))?;
     if references_filter {
         crate::pandoc_citations::stage_filter(&root)?;
+    }
+    if ocr_filter {
+        crate::conversion::stage_ocr_filter(&root)?;
     }
     Ok((temporary, root))
 }
@@ -464,8 +468,9 @@ pub async fn convert_ad_hoc(
 
     let source_name = plan.source_name;
     let references_filter = plan.references_filter;
+    let ocr_filter = plan.ocr_filter;
     let (temporary, root) = tauri::async_runtime::spawn_blocking(move || {
-        stage_conversion_workspace(input, source_name, references_filter, &support)
+        stage_conversion_workspace(input, source_name, references_filter, ocr_filter, &support)
     })
     .await
     .map_err(|error| error.to_string())??;
@@ -698,6 +703,87 @@ mod tests {
             .text
             .as_deref()
             .is_some_and(|text| text.contains("compact example")));
+    }
+
+    // 0.4.8 H: OCR model Markdown through the bundled Pandoc and the filter.
+    #[tokio::test]
+    async fn native_pandoc_keeps_ocr_tables_math_and_sections() {
+        if crate::project::find_pandoc().is_none() {
+            eprintln!("Pandoc sidecar is not staged; skipping executable conversion check");
+            return;
+        }
+        let source = "Intro \\(a+b\\).\n\n<table><tr><th>k</th><th>v</th></tr><tr><td>$x^2$</td><td>2</td></tr></table>\n\n\\section*{Results}\n\n- one\n- two\n";
+        let convert = |source_kind: &'static str, target: &'static str| {
+            convert_ad_hoc(AdHocConversionRequest {
+                source: source_kind.into(),
+                target: target.into(),
+                text: Some(source.into()),
+                data_base64: None,
+                ..Default::default()
+            })
+        };
+
+        let fragment = convert("ocr-fragment", "latex")
+            .await
+            .unwrap()
+            .text
+            .unwrap();
+        assert!(fragment.contains("\\begin{tabular}{ll}"), "{fragment}");
+        // Pandoc keeps the math as written, inline as \(…\).
+        assert!(fragment.contains("\\(x^2\\)"), "{fragment}");
+        assert!(fragment.contains("\\section*{Results}"), "{fragment}");
+        assert!(!fragment.contains("longtable"), "{fragment}");
+        assert!(!fragment.contains("\\tightlist"), "{fragment}");
+        assert!(!fragment.contains("\\documentclass"), "{fragment}");
+
+        let document = convert("ocr-markdown", "latex")
+            .await
+            .unwrap()
+            .text
+            .unwrap();
+        assert!(document.contains("\\documentclass"), "{document}");
+        assert!(document.contains("longtable"), "{document}");
+
+        let typst = convert("ocr-fragment", "typst")
+            .await
+            .unwrap()
+            .text
+            .unwrap();
+        assert!(typst.contains("#table("), "{typst}");
+        assert!(typst.contains("$x^2$"), "{typst}");
+        // An unnumbered heading (\section*): `= Results` from older Pandoc,
+        // `#heading(level: 1, numbering: none)[Results]` from 3.x.
+        assert!(
+            typst.contains("= Results")
+                || typst.contains("#heading(level: 1, numbering: none)[Results]"),
+            "{typst}"
+        );
+
+        let markdown = convert("ocr-markdown", "markdown")
+            .await
+            .unwrap()
+            .text
+            .unwrap();
+        assert!(
+            markdown.contains("$a + b$") || markdown.contains("$a+b$"),
+            "{markdown}"
+        );
+        assert!(markdown.contains("$x^2$"), "{markdown}");
+        assert!(!markdown.contains("<table"), "{markdown}");
+
+        // CRLF from a Windows-made reply converts the same way.
+        let crlf = convert_ad_hoc(AdHocConversionRequest {
+            source: "ocr-fragment".into(),
+            target: "latex".into(),
+            text: Some(source.replace('\n', "\r\n")),
+            data_base64: None,
+            ..Default::default()
+        })
+        .await
+        .unwrap()
+        .text
+        .unwrap();
+        assert!(crlf.contains("\\begin{tabular}{ll}"), "{crlf}");
     }
 
     #[tokio::test]

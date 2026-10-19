@@ -186,6 +186,10 @@
     "terminal": "Carregando o terminal"
   },
   "terminal": {
+    "activity": "Nova atividade",
+    "clipboard": {
+      "blocked": "Um programa no terminal quer copiar texto."
+    },
     "closeCurrent": "Fechar o atual",
     "closeLeft": "Fechar todos à esquerda",
     "closeOthers": "Fechar os outros",
@@ -197,6 +201,19 @@
       "resize": "Não foi possível redimensionar o terminal",
       "start": "O shell não conseguiu iniciar"
     },
+    "find": {
+      "count": "{{current}} de {{total}}",
+      "label": "Buscar no terminal",
+      "next": "Próxima ocorrência",
+      "none": "Nenhuma ocorrência",
+      "previous": "Ocorrência anterior"
+    },
+    "launch": {
+      "invalid": "Este comando não pode rodar no terminal.",
+      "noProject": "Abra um projeto para usar o terminal.",
+      "run": "Executar",
+      "title": "Executar este comando no terminal?"
+    },
     "limitReached": "Feche um terminal para abrir outro",
     "links": {
       "openFile": "{{modifier}}+clique para abrir",
@@ -204,8 +221,25 @@
       "openUrlFailed": "Não foi possível abrir o link."
     },
     "newTerminal": "Novo terminal",
+    "openInTerminal": "Abrir no terminal",
     "settings": "Configurações do terminal",
     "starting": "Iniciando o shell do projeto…",
+    "stop": {
+      "closeMany": "Fechar os terminais",
+      "closeOne": "Fechar o terminal",
+      "closeProject": "Fechar o projeto",
+      "dontAsk": "Não perguntar de novo",
+      "many_one": "Um programa ainda está rodando em {{count}} terminal.",
+      "many_many": "Ainda há programas rodando em {{count}} terminais.",
+      "many_other": "Ainda há programas rodando em {{count}} terminais.",
+      "named": "{{process}} ainda está rodando em {{title}}.",
+      "quit": "Sair",
+      "restart": "Reiniciar",
+      "switchProject": "Trocar de projeto",
+      "titleMany": "Parar os programas em execução?",
+      "titleOne": "Parar o programa em execução?",
+      "unnamed": "Um programa ainda está rodando em {{title}}."
+    },
     "tabs": "Terminais",
     "titleInput": "Título do terminal"
   },

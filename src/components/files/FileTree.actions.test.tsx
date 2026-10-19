@@ -8,6 +8,21 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   logError: vi.fn(),
   pickOpenPath: vi.fn(),
+  openTerminalWith: vi.fn(),
+}));
+
+const launch = vi.hoisted(() => {
+  class TerminalLaunchError extends Error {
+    constructor(readonly reason: string) {
+      super(`terminal launch: ${reason}`);
+    }
+  }
+  return { TerminalLaunchError };
+});
+
+vi.mock("@/lib/terminal-launch", () => ({
+  openTerminalWith: mocks.openTerminalWith,
+  TerminalLaunchError: launch.TerminalLaunchError,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -45,6 +60,7 @@ import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { toast } from "@/lib/toast";
 import { FileTree } from "./FileTree";
 
 const files = enWorkspace.files;
@@ -1090,6 +1106,51 @@ describe("FileTree row actions", () => {
     fireEvent.click(within(menu).getByText(files.importFolder));
 
     await waitFor(() => expect(mocks.pickOpenPath).toHaveBeenCalled());
+  });
+
+  it("opens a terminal in a folder from its menu and at the project root", async () => {
+    mocks.openTerminalWith.mockReset().mockResolvedValue({ terminalId: "terminal-2" });
+    useFilesStore.setState({ projectName: "Thesis" });
+    render(<FileTree />);
+
+    openRowMenu("chapters");
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(enWorkspace.terminal.openInTerminal));
+    await waitFor(() =>
+      expect(mocks.openTerminalWith).toHaveBeenCalledWith({ title: "chapters", cwd: "chapters" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+
+    fireEvent.contextMenu(screen.getByRole("tree", { name: files.treeAriaLabel }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: enWorkspace.terminal.openInTerminal }));
+    await waitFor(() =>
+      expect(mocks.openTerminalWith).toHaveBeenLastCalledWith({ title: "Thesis", cwd: "" }),
+    );
+    expect(mocks.openTerminalWith).toHaveBeenCalledTimes(2);
+  });
+
+  it("says why a terminal did not open, and nothing for a full tab bar", async () => {
+    mocks.openTerminalWith.mockReset();
+    vi.mocked(toast.info).mockClear();
+    render(<FileTree />);
+    const openFromRoot = async () => {
+      fireEvent.contextMenu(screen.getByRole("tree", { name: files.treeAriaLabel }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: enWorkspace.terminal.openInTerminal }));
+      await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    };
+
+    mocks.openTerminalWith.mockRejectedValueOnce(new launch.TerminalLaunchError("no-project"));
+    await openFromRoot();
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith("terminal launch: no-project"));
+
+    mocks.openTerminalWith.mockRejectedValueOnce(new launch.TerminalLaunchError("tab-limit"));
+    await openFromRoot();
+    await waitFor(() => expect(mocks.openTerminalWith).toHaveBeenCalledTimes(2));
+
+    mocks.openTerminalWith.mockRejectedValueOnce(new Error("pty gone"));
+    await openFromRoot();
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledWith("open in terminal", expect.any(Error)));
+    expect(toast.info).toHaveBeenCalledTimes(1);
+    expect(mocks.toastError).not.toHaveBeenCalled();
   });
 });
 

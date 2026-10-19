@@ -1522,3 +1522,44 @@ describe("formatError", () => {
     expect(formatError("plain string")).toContain("plain string");
   });
 });
+
+describe("message actions", () => {
+  const user = { id: "u1", role: "user" as const, content: "Fix the table" };
+  const reply = { id: "a1", role: "assistant" as const, content: "Started.\n\n_Stopped._" };
+
+  it("offers Edit on a user message and Regenerate on the latest reply", () => {
+    const onMessageAction = vi.fn();
+    const { unmount } = render(<MessageItem msg={user} editable onMessageAction={onMessageAction} />);
+    fireEvent.click(screen.getByRole("button", { name: enAi.messageActions.edit }));
+    expect(onMessageAction).toHaveBeenCalledWith("edit", "u1");
+    unmount();
+    render(<MessageItem msg={reply} regenerateKind="regenerate" onMessageAction={onMessageAction} />);
+    fireEvent.click(screen.getByRole("button", { name: enAi.messageActions.regenerate }));
+    expect(onMessageAction).toHaveBeenCalledWith("regenerate", "a1");
+  });
+
+  it("labels a failed reply's action Retry and keeps it visible", () => {
+    render(<MessageItem msg={{ ...reply, failed: true }} regenerateKind="retry" onMessageAction={vi.fn()} />);
+    const retry = screen.getByRole("button", { name: enAi.messageActions.retry });
+    expect(retry.className).toContain("opacity-100");
+    expect(retry.className).not.toContain("group-hover:opacity-100");
+  });
+
+  it("shows the actions of a reply that has no text", () => {
+    render(
+      <MessageItem
+        msg={{ id: "a2", role: "assistant", content: "" }}
+        regenerateKind="retry"
+        onMessageAction={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: enAi.messageActions.retry })).toBeInTheDocument();
+  });
+
+  it("shows a stopped reply in the reader's language and copies what is shown", async () => {
+    render(<MessageItem msg={reply} />);
+    expect(await screen.findByText(/Started\./)).toBeInTheDocument();
+    expect(screen.queryByText("_Stopped._")).not.toBeInTheDocument();
+  });
+});
+

@@ -19,7 +19,7 @@ class ResizeObserverMock {
   disconnect = vi.fn();
 }
 
-function InputHarness() {
+function InputHarness({ minHeight }: { minHeight?: number }) {
   const shellRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useAutoSizeTextarea(
@@ -27,6 +27,8 @@ function InputHarness() {
     shellRef,
     "",
     "Ask AI to help with your document…",
+    undefined,
+    minHeight,
   );
 
   return (
@@ -91,5 +93,10 @@ describe("useAutoSizeTextarea", () => {
     const textarea = screen.getByTestId("reply") as HTMLTextAreaElement;
     expect(textarea).toHaveStyle({ height: "42px" });
     expect(textarea.value).toBe("");
+  });
+
+  it("never sizes the box below its resting height", () => {
+    render(<InputHarness minHeight={56} />);
+    expect(screen.getByTestId("assistant-input")).toHaveStyle({ height: "56px" });
   });
 });

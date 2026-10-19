@@ -1,13 +1,19 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
+  ApprovalRecord,
+  EvidenceReport,
   ResearchTask,
   TaskArtifactPreview,
   TaskFilePreview,
+  TaskIsolationSummary,
+  TaskProgress,
   TaskRuntimeEvent,
 } from "@/lib/research-tasks";
+import { formatDateTime } from "@/lib/intl";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
+import { taskFieldsSince047 } from "./tests/task-fixtures";
 
 let TaskDetailDialog: typeof import("./TaskDetailDialog").TaskDetailDialog;
 let act: typeof import("@testing-library/react").act;
@@ -20,11 +26,33 @@ let within: typeof import("@testing-library/react").within;
 const previewMocks = vi.hoisted(() => ({
   file: vi.fn(),
   artifact: vi.fn(),
+  events: vi.fn(),
+  keepRunning: vi.fn(),
+  config: vi.fn(),
+  plan: vi.fn(),
+  progress: vi.fn(),
+  runLog: vi.fn(),
+  cancelRun: vi.fn(),
+  approvals: vi.fn(),
+  decide: vi.fn(),
 }));
 
 vi.mock("@/lib/research-tasks", () => ({
   previewResearchTaskFile: previewMocks.file,
   previewResearchTaskArtifact: previewMocks.artifact,
+  loadResearchTaskEvents: previewMocks.events,
+  setResearchTaskKeepRunning: previewMocks.keepRunning,
+  loadResearchTaskPlan: previewMocks.plan,
+  progressResearchTask: previewMocks.progress,
+  researchTaskRunLog: previewMocks.runLog,
+  cancelResearchTaskRun: previewMocks.cancelRun,
+  listResearchTaskApprovals: previewMocks.approvals,
+  decideResearchTaskApproval: previewMocks.decide,
+}));
+
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  getConfig: previewMocks.config,
 }));
 
 vi.mock("@/components/editor/diff/InlineDiffPreview", () => ({
@@ -127,6 +155,7 @@ function task(id: string): ResearchTask {
     updatedAt: 1,
     startedAt: 1,
     finishedAt: 1,
+    ...taskFieldsSince047(),
   };
 }
 
@@ -177,9 +206,83 @@ describe("TaskDetailDialog", () => {
   beforeEach(() => {
     previewMocks.file.mockReset();
     previewMocks.artifact.mockReset();
+    previewMocks.events.mockReset();
+    previewMocks.keepRunning.mockReset();
+    previewMocks.config.mockReset().mockResolvedValue({ research_background_enabled: true });
+    previewMocks.plan.mockReset().mockResolvedValue("- [ ] Measure the baseline");
+    previewMocks.progress.mockReset();
+    previewMocks.runLog.mockReset();
+    previewMocks.cancelRun.mockReset();
+    previewMocks.approvals.mockReset().mockResolvedValue([]);
+    previewMocks.decide.mockReset();
   });
 
   afterEach(() => cleanup());
+
+  // 0.4.8 L: the background helper.
+
+  it("the detail dialog toggles keep running and loads earlier activity", async () => {
+    previewMocks.keepRunning.mockResolvedValue(undefined);
+    previewMocks.events.mockImplementation(async (taskId: string, generation: number) => ({
+      events: [
+        {
+          taskId,
+          executionGeneration: generation,
+          sequence: 1,
+          event: { kind: "status", message: `Generation ${generation} notes` },
+          createdAt: 1,
+        },
+      ],
+      nextSequence: null,
+    }));
+    const current: ResearchTask = {
+      ...task("resumed"),
+      status: "running",
+      executionGeneration: 3,
+      resumedFrom: 2,
+      keepRunningAfterQuit: false,
+    };
+    render(<TaskDetailDialog {...props(current)} />);
+
+    const keep = page().getByRole("checkbox", { name: enResearchTools.brief.keepRunning });
+    expect(keep).toBeEnabled();
+    fireEvent.click(keep);
+    await waitFor(() => expect(previewMocks.keepRunning).toHaveBeenCalledWith("resumed", true));
+
+    const earlier = enResearchTools.backgroundHelper.earlierActivity;
+    fireEvent.click(page().getByRole("button", { name: earlier }));
+    expect(await page().findByText("Generation 2 notes")).toBeInTheDocument();
+    expect(previewMocks.events).toHaveBeenCalledWith("resumed", 2, undefined, 200);
+    // Repeatable down the chain, to the first generation.
+    fireEvent.click(page().getByRole("button", { name: earlier }));
+    expect(await page().findByText("Generation 1 notes")).toBeInTheDocument();
+    expect(page().queryByRole("button", { name: earlier })).not.toBeInTheDocument();
+  });
+
+  it("keeps the keep-running choice fixed for finished tasks and while background tasks are off", async () => {
+    const finished = render(<TaskDetailDialog {...props(task("finished"))} />);
+    expect(page().getByRole("checkbox", { name: enResearchTools.brief.keepRunning })).toBeDisabled();
+    finished.unmount();
+
+    previewMocks.config.mockResolvedValue({ research_background_enabled: false });
+    render(<TaskDetailDialog {...props({ ...task("waiting"), status: "queued" })} />);
+    expect(await page().findByText(enResearchTools.brief.keepRunningHint)).toBeInTheDocument();
+    expect(
+      page().getByRole("checkbox", { name: new RegExp(enResearchTools.brief.keepRunning) }),
+    ).toBeDisabled();
+    expect(page().queryByRole("button", { name: enResearchTools.backgroundHelper.earlierActivity })).toBeNull();
+  });
+
+  it("shows where a helper task runs beside its status", () => {
+    const current: ResearchTask = {
+      ...task("helper"),
+      status: "running",
+      owner: "daemon",
+      reclaimRequested: true,
+    };
+    render(<TaskDetailDialog {...props(current)} />);
+    expect(page().getByText(enResearchTools.backgroundHelper.badge.movingBack)).toBeInTheDocument();
+  });
 
   it("renders the task body inside the dialog the review specs scope on", () => {
     const current = task("scoped");
@@ -695,6 +798,267 @@ describe("TaskDetailDialog", () => {
       render(<TaskDetailDialog {...props({ ...task("bare"), status: "failed", result: null })} />);
 
       expect(page().getByRole("tab", { name: detail.tabActivity })).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("autoresearch", () => {
+    const detail = enResearchTools.tasks.detail;
+    const plan = enResearchTools.tasks.plan;
+    const squash = (value: string) => value.replace(/\s+/g, " ").trim();
+    const workspace: TaskIsolationSummary = {
+      kind: "staged_project",
+      executionRoot: "/tasks/workspaces/failed/1",
+      sourceRevision: "snapshot:base",
+      baselineHash: "baseline",
+      fileCount: 3,
+      createdAt: 1,
+    };
+
+    function progressFixture(): TaskProgress {
+      return {
+        phase: "working",
+        plan: [{ text: "Measure the baseline", done: false }],
+        todos: [],
+        ledger: [],
+        best: null,
+        runsInFlight: [],
+        recentRuns: [],
+        budget: { activeMinutes: 3, limitMinutes: 120, spentUsd: null, usdCap: null, runsStarted: 0, maxRuns: null },
+        evidence: null,
+        recordDir: "research/task-1a2b",
+      };
+    }
+
+    function approvalRecord(id: string, taskId: string): ApprovalRecord {
+      return {
+        id,
+        taskId,
+        executionGeneration: 1,
+        kind: "command",
+        summary: `Install the packages for ${taskId}`,
+        detail: "pip install -r requirements.txt",
+        status: "pending",
+        createdAt: 1,
+        expiresAt: Date.UTC(2026, 9, 20, 9, 30),
+        decidedAt: null,
+      };
+    }
+
+    it("shows the phase of a running task and when a queued task starts", () => {
+      const running: ResearchTask = { ...task("live"), status: "running", phase: "waiting_runs", result: null };
+      const view = render(<TaskDetailDialog {...props(running)} />);
+      expect(page().getByTestId("research-task-phase")).toHaveTextContent("Waiting for runs");
+
+      view.rerender(<TaskDetailDialog {...props({ ...running, phase: null })} />);
+      expect(page().queryByTestId("research-task-phase")).toBeNull();
+
+      const runAfter = Date.UTC(2026, 9, 20, 9, 30);
+      view.rerender(<TaskDetailDialog {...props({ ...running, status: "queued", runAfter })} />);
+      expect(page().queryByTestId("research-task-phase")).toBeNull();
+      expect(
+        page().getByText(squash(detail.startsAt.replace("{{time}}", formatDateTime(new Date(runAfter))))),
+      ).toBeInTheDocument();
+
+      view.rerender(<TaskDetailDialog {...props({ ...running, status: "queued", runAfter: null })} />);
+      expect(page().queryByText(/^Starts /)).toBeNull();
+    });
+
+    it("says why a task stopped at its budget once it is no longer running", () => {
+      const stopped: ResearchTask = { ...task("budget"), stopReason: "budget_time" };
+      const view = render(<TaskDetailDialog {...props(stopped)} />);
+      expect(page().getByTestId("research-task-stop-reason")).toHaveTextContent(detail.stopReason.budgetTime);
+
+      view.rerender(<TaskDetailDialog {...props({ ...stopped, stopReason: "budget_cost" })} />);
+      expect(page().getByTestId("research-task-stop-reason")).toHaveTextContent(detail.stopReason.budgetCost);
+
+      view.rerender(<TaskDetailDialog {...props({ ...stopped, stopReason: "budget_runs" })} />);
+      expect(page().getByTestId("research-task-stop-reason")).toHaveTextContent(detail.stopReason.budgetRuns);
+
+      view.rerender(<TaskDetailDialog {...props({ ...stopped, status: "running", result: null })} />);
+      expect(page().queryByTestId("research-task-stop-reason")).toBeNull();
+    });
+
+    it("offers Resume and Start over for a failed task with a workspace", () => {
+      const failed: ResearchTask = {
+        ...task("failed"),
+        status: "failed",
+        isolation: workspace,
+        result: null,
+        error: "The agent disconnected",
+      };
+      const input = props(failed);
+      const view = render(<TaskDetailDialog {...input} />);
+
+      expect(page().queryByRole("button", { name: enCommon.actions.retry })).toBeNull();
+      fireEvent.click(page().getByRole("button", { name: detail.resume }));
+      fireEvent.click(page().getByRole("button", { name: detail.startOver }));
+      expect(input.onRetry.mock.calls).toEqual([["resume"], ["fresh"]]);
+
+      view.rerender(<TaskDetailDialog {...input} busy task={{ ...failed, status: "cancelled" }} />);
+      expect(page().getByRole("button", { name: detail.resume })).toBeDisabled();
+      expect(page().getByRole("button", { name: detail.startOver })).toBeDisabled();
+
+      view.rerender(<TaskDetailDialog {...input} task={{ ...failed, isolation: null }} />);
+      expect(page().queryByRole("button", { name: detail.resume })).toBeNull();
+      fireEvent.click(page().getByRole("button", { name: enCommon.actions.retry }));
+      expect(input.onRetry).toHaveBeenLastCalledWith("fresh");
+    });
+
+    it("ignores a rejected retry", async () => {
+      const failed: ResearchTask = { ...task("rejected"), status: "failed", isolation: workspace, result: null };
+      const input = {
+        ...props(failed),
+        onRetry: vi.fn(async () => {
+          throw new Error("The saved workspace is gone. Start over instead.");
+        }),
+      };
+      render(<TaskDetailDialog {...input} />);
+      fireEvent.click(page().getByRole("button", { name: detail.resume }));
+      fireEvent.click(page().getByRole("button", { name: detail.startOver }));
+      await waitFor(() => expect(input.onRetry).toHaveBeenCalledTimes(2));
+      expect(page().getByRole("button", { name: detail.resume })).toBeEnabled();
+    });
+
+    it("the Progress tab loads the task's progress", async () => {
+      previewMocks.progress.mockResolvedValue(progressFixture());
+      const running: ResearchTask = { ...task("progress"), status: "running", result: null };
+      render(<TaskDetailDialog {...props(running)} />);
+      expect(previewMocks.progress).not.toHaveBeenCalled();
+
+      openTab(detail.tabProgress);
+
+      const board = await page().findByTestId("research-task-progress");
+      expect(within(board).getByText("Measure the baseline")).toBeInTheDocument();
+      expect(previewMocks.progress).toHaveBeenCalledWith("progress");
+    });
+
+    it("stops polling progress when the dialog closes", async () => {
+      const polls: Array<() => void> = [];
+      const cleared: number[] = [];
+      const realSet = window.setInterval.bind(window);
+      const realClear = window.clearInterval.bind(window);
+      const setSpy = vi.spyOn(window, "setInterval").mockImplementation(((
+        handler: TimerHandler,
+        timeout?: number,
+        ...rest: unknown[]
+      ) => {
+        if (timeout === 3_000 && typeof handler === "function") {
+          polls.push(handler as () => void);
+          return 4_242;
+        }
+        return realSet(handler, timeout, ...rest);
+      }) as typeof window.setInterval);
+      const clearSpy = vi.spyOn(window, "clearInterval").mockImplementation(((handle?: number) => {
+        if (handle === 4_242) cleared.push(handle);
+        else realClear(handle);
+      }) as typeof window.clearInterval);
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+      try {
+        previewMocks.progress.mockResolvedValue(progressFixture());
+        const running: ResearchTask = { ...task("polled"), status: "running", result: null };
+        const view = render(<TaskDetailDialog {...props(running)} initialTab="progress" />);
+        await page().findByTestId("research-task-progress");
+        expect(polls).toHaveLength(1);
+        await act(async () => polls[0]());
+        expect(previewMocks.progress).toHaveBeenCalledTimes(2);
+
+        view.rerender(<TaskDetailDialog {...props(running)} initialTab="progress" open={false} />);
+
+        await waitFor(() => expect(cleared).toEqual([4_242]));
+        expect(page().queryByTestId("research-task-progress")).toBeNull();
+        expect(polls).toHaveLength(1);
+        expect(previewMocks.progress).toHaveBeenCalledTimes(2);
+      } finally {
+        setSpy.mockRestore();
+        clearSpy.mockRestore();
+        Reflect.deleteProperty(document, "visibilityState");
+      }
+    });
+
+    it("shows the plan with Approve and Approve edited plan on a plan-ready task", async () => {
+      const ready: ResearchTask = { ...task("plan"), status: "plan_ready", result: null };
+      const input = { ...props(ready), onApprovePlan: vi.fn(async (_edited?: string) => {}) };
+      render(<TaskDetailDialog {...input} />);
+      expect(page().getByRole("tab", { name: detail.tabReview })).toHaveAttribute("aria-selected", "true");
+
+      const editor = await page().findByRole("textbox", { name: plan.title });
+      expect(editor).toHaveValue("- [ ] Measure the baseline");
+      expect(previewMocks.plan).toHaveBeenCalledWith("plan");
+      fireEvent.click(page().getByRole("button", { name: plan.approve }));
+      expect(input.onApprovePlan).toHaveBeenLastCalledWith(undefined);
+
+      fireEvent.change(editor, { target: { value: "- [ ] edited" } });
+      fireEvent.click(page().getByRole("button", { name: plan.approveEdited }));
+      expect(input.onApprovePlan).toHaveBeenLastCalledWith("- [ ] edited");
+
+      fireEvent.click(page().getByRole("button", { name: plan.discard }));
+      expect(input.onCancel).toHaveBeenCalledOnce();
+      // A plan waiting for approval has not finished, so it can still be kept running.
+      expect(page().getByRole("checkbox", { name: enResearchTools.brief.keepRunning })).toBeEnabled();
+    });
+
+    it("keeps the usual review when the plan cannot be approved from here", () => {
+      const ready: ResearchTask = { ...task("plan-readonly"), status: "plan_ready", result: null };
+      render(<TaskDetailDialog {...props(ready)} />);
+
+      expect(page().queryByTestId("research-task-plan")).toBeNull();
+      expect(page().getByText(detail.nothingToReview)).toBeInTheDocument();
+      expect(previewMocks.plan).not.toHaveBeenCalled();
+    });
+
+    it("shows evidence checks on the Review tab and checks again on request", async () => {
+      const evidence: EvidenceReport = {
+        checkedAt: 1,
+        checks: [
+          { id: "build", status: "pass", items: [] },
+          {
+            id: "numbers",
+            status: "warn",
+            items: [{ code: "numbers.unknownRun", file: "results.tex", line: 4, params: { run: "r009" } }],
+          },
+        ],
+      };
+      const onRefreshEvidence = vi.fn(async () => {});
+      render(<TaskDetailDialog {...props({ ...task("evidence"), evidence })} onRefreshEvidence={onRefreshEvidence} />);
+
+      const checklist = await page().findByTestId("research-evidence");
+      expect(checklist).toHaveTextContent(enResearchTools.evidence.checks.build);
+      expect(checklist).toHaveTextContent("Run r009 doesn't exist.");
+      expect(checklist).toHaveTextContent("results.tex:4");
+      expect(page().getByRole("button", { name: "Apply 1 selected" })).toBeInTheDocument();
+      fireEvent.click(within(checklist).getByRole("button", { name: enResearchTools.evidence.refresh }));
+      await waitFor(() => expect(onRefreshEvidence).toHaveBeenCalledOnce());
+    });
+
+    it("shows the evidence checks while they run and leaves them out when there is nothing to show", async () => {
+      const onRefreshEvidence = vi.fn(async () => {});
+      const checking: ResearchTask = { ...task("checking"), status: "completed", phase: "checking_evidence" };
+      const view = render(<TaskDetailDialog {...props(checking)} initialTab="review" onRefreshEvidence={onRefreshEvidence} />);
+      const checklist = await page().findByTestId("research-evidence");
+      expect(within(checklist).getByRole("button", { name: enResearchTools.evidence.running })).toBeDisabled();
+
+      view.rerender(
+        <TaskDetailDialog {...props({ ...checking, phase: null })} initialTab="review" onRefreshEvidence={onRefreshEvidence} />,
+      );
+      expect(page().queryByTestId("research-evidence")).toBeNull();
+
+      view.rerender(<TaskDetailDialog {...props(task("no-handler"))} initialTab="review" />);
+      expect(page().queryByTestId("research-evidence")).toBeNull();
+    });
+
+    it("shows the task's own pending approvals in a banner", async () => {
+      previewMocks.approvals.mockResolvedValue([approvalRecord("a1", "banner"), approvalRecord("a2", "elsewhere")]);
+      const waiting: ResearchTask = { ...task("banner"), status: "running", pendingApprovals: 1, result: null };
+      const view = render(<TaskDetailDialog {...props(waiting)} />);
+
+      const banner = await page().findByTestId("research-pending-approvals");
+      expect(previewMocks.approvals).toHaveBeenCalledWith("paper");
+      const rows = within(banner).getAllByRole("listitem");
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toHaveTextContent("Install the packages for banner");
+
+      view.rerender(<TaskDetailDialog {...props({ ...waiting, pendingApprovals: 0 })} />);
+      expect(page().queryByTestId("research-pending-approvals")).toBeNull();
     });
   });
 });

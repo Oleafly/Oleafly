@@ -1,0 +1,27 @@
+{
+  "missing_files": [],
+  "packages": [
+    {
+      "file": "main.tex",
+      "line": 2,
+      "name": "amsmath"
+    },
+    {
+      "file": "main.tex",
+      "line": 2,
+      "name": "amsthm"
+    },
+    {
+      "file": "main.tex",
+      "line": 3,
+      "name": "glossaries"
+    }
+  ],
+  "roles": {
+    "main.tex": "main"
+  },
+  "unused_cites": [],
+  "unused_labels": [
+    "sec:notation"
+  ]
+}

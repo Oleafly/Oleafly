@@ -1,0 +1,27 @@
+[package]
+name = "oleafly-lint"
+version = "0.1.0"
+description = "LaTeX, BibTeX, spelling and grammar checks for the Oleafly CLI"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.88"
+
+[features]
+default = ["proofread"]
+# Spelling and grammar through harper-core. harper-core needs Rust 1.88, so
+# builds that must stay on the 1.87 MSRV turn this off.
+proofread = ["dep:harper-core"]
+
+[dependencies]
+# `thesaurus` only feeds the BoringWords rule, which stays off, and
+# `concurrent` is off in the app's harper.js build too.
+harper-core = { version = "=2.10.0", default-features = false, optional = true }
+icu_properties = "2.2"
+oleafly-preflight = { path = "../oleafly-preflight", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+pretty_assertions = "1.4"

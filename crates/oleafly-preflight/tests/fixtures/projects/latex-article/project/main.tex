@@ -1,0 +1,54 @@
+% TODO internal: check the venue page limit before submitting
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{draftwatermark}
+% \usepackage{multicol}
+\author{Ana Example}
+\begin{document}
+\title{Résumé of 😀 results}
+\maketitle
+\begin{abstract}
+We study things.
+\end{abstract}
+\input{sections/intro}
+\input{sections/method}
+\input{sections/missing}
+\section{Results}
+\subsubsection{Details}
+See \cite{smith2020,unknown} and \ref{fig:plot} and \ref{sec:nope}.
+\begin{equation}\label{eq:one}
+E = mc^2
+\end{equation}
+\begin{equation}\label{eq:one}
+F = ma
+\end{equation}
+\textcolor{red}{Important} and an inline $x$ term.
+\begin{figure}
+\label{fig:early}
+\includegraphics{figures/plot}
+\caption{A plot}
+\end{figure}
+\begin{figure}
+\includegraphics{figures/diagram}
+\end{figure}
+\begin{table}
+\begin{tabular}{ll}
+Name & Score \\
+\hline
+Ada & 1 \\
+\end{tabular}
+\caption{Scores}\label{tab:results}
+\end{table}
+\href{https://example.com}{click here}
+\includegraphics{/Users/ana/figs/x.png}
+\immediate\write18{echo hi}
+Results TBD and ?? remain.
+\begin{verbatim}
+\label{fake}
+\end{verbatim}
+\section*{Acknowledgments}
+We thank the reviewers.
+\bibliographystyle{plain}
+\bibliography{refs,missing}
+\end{document}

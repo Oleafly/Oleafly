@@ -73,7 +73,29 @@
     }
   },
   "attachments": {
-    "remove": "{{name}} entfernen"
+    "remove": "{{name}} entfernen",
+    "processing": "{{name}} wird vorbereitet…",
+    "failed": "{{name}} konnte nicht angehängt werden.",
+    "pages_one": "{{count}} Seite",
+    "pages_other": "{{count}} Seiten",
+    "pagesLimited": "Nur die ersten {{limit}} von {{count}} Seiten werden verwendet.",
+    "tooMany": "Sie können bis zu {{max}} Dateien an eine Nachricht anhängen.",
+    "tooLarge": "{{name}} ist größer als {{limit}}.",
+    "unsupported": "{{name}} kann nicht angehängt werden. Hängen Sie Bilder, PDFs oder Textdateien an.",
+    "unreadableImage": "Oleafly kann das Bildformat von {{name}} nicht lesen. Speichern Sie es als PNG oder JPEG und hängen Sie es erneut an.",
+    "unreadablePdf": "{{name}} konnte nicht als PDF geöffnet werden.",
+    "storeFailed": "{{name}} konnte für diesen Chat nicht gespeichert werden.",
+    "visionUnsupported": "{{model}} kann keine Bilder lesen, daher werden die Bilder in dieser Nachricht nicht gesendet.",
+    "scannedPdf": "{{name}} hat keine Textebene, und {{model}} kann keine Bilder lesen.",
+    "dropFiles": "Dateien hier ablegen, um sie anzuhängen",
+    "dropProjectFile": "Ablegen, um diese Datei zu erwähnen",
+    "open": "{{name}} öffnen",
+    "saveCopy": "Kopie von {{name}} speichern",
+    "saved": "Kopie von {{name}} gespeichert.",
+    "saveFailed": "{{name}} konnte nicht gespeichert werden.",
+    "missing": "{{name}} ist nicht mehr verfügbar.",
+    "sentAsText": "{{name}} wurde als Text gesendet, weil dieses Modell die Datei nicht lesen kann.",
+    "skipped": "{{name}} wurde nicht gesendet."
   },
   "chat": {
     "pill": {
@@ -182,7 +204,9 @@
     "stop": "Stoppen",
     "stopTitle": "Erzeugen stoppen",
     "send": "Senden",
-    "checkAgain": "Erneut prüfen"
+    "checkAgain": "Erneut prüfen",
+    "resizeHandle": "Größe des Nachrichtenfelds ändern",
+    "resizeHint": "Ziehen, um die Größe zu ändern. Doppelklicken zum Zurücksetzen."
   },
   "commands": {
     "groups": {
@@ -220,10 +244,6 @@
     "files": {
       "label": "Dateien",
       "description": "Ihrer nächsten Nachricht Dateien anhängen"
-    },
-    "browser": {
-      "label": "Browser anhängen",
-      "description": "Den Browser neben Ihrem Dokument öffnen"
     }
   },
   "models": {
@@ -272,7 +292,10 @@
       "minutes": "vor {{count}} Min.",
       "hours": "vor {{count}} Std.",
       "days": "vor {{count}} T."
-    }
+    },
+    "skipped_one": "{{count}} Chat konnte nicht geladen werden. Er ist noch auf der Festplatte.",
+    "skipped_other": "{{count}} Chats konnten nicht geladen werden. Sie sind noch auf der Festplatte.",
+    "openFailed": "Dieser Chat konnte nicht geöffnet werden."
   },
   "tools": {
     "approval": {
@@ -318,7 +341,6 @@
       "listAgents": "Listet die Hilfsagenten und ihren Zustand auf.",
       "closeAgent": "Schließt einen Hilfsagenten.",
       "runCommand": "Führt einen shell-Befehl im Projektordner aus, mit einem Limit von zwei Minuten.",
-      "computerUse": "Öffnet eine Webseite im Browserfenster des Assistenten.",
       "toggleTheme": "Wechselt zwischen hellem und dunklem Modus.",
       "listOverleafProjects": "Listet Ihre Overleaf-Projekte auf und meldet sich bei Bedarf zuerst an.",
       "importOverleafProjects": "Importiert Overleaf-Projekte mit Compiler und Hauptdatei in Ihre Bibliothek."
@@ -347,8 +369,7 @@
       "latexOnly": "Nur für LaTeX-Projekte",
       "latexAndTypstOnly": "Nur für LaTeX- und Typst-Projekte",
       "pdfCaptureSetting": "Braucht die Einstellung zum Erfassen von PDF-Seiten",
-      "chatApproval": "Im Chat freigegeben, ein Befehl nach dem anderen",
-      "browserSetting": "Braucht die Einstellung für den Webbrowser"
+      "chatApproval": "Im Chat freigegeben, ein Befehl nach dem anderen"
     },
     "sourceGroups": {
       "figure": "Abbildung",
@@ -471,18 +492,20 @@
     "resumeTask": "Öffnen Sie die Forschungsaufgabe, um hier weiterzuarbeiten.",
     "delegatedConversation": "Dieses Gespräch gehört zum Lauf eines beauftragten Agenten.",
     "noResume": "Dieser Agent kann gespeicherte Gespräche nicht fortsetzen. Beginnen Sie ein neues Gespräch, wenn Sie so weit sind.",
-    "imageTooLarge": "Wählen Sie ein Bild kleiner als 480 KiB. Sie können bis zu vier Bilder anhängen.",
     "imageReadFailed": "Das Bild konnte nicht gelesen werden.",
-    "removeImage": "{{name}} entfernen",
     "composerAriaLabel": "Nachricht an den CLI-Agenten",
     "composerPlaceholderReady": "Bitten Sie den Agenten, an diesem Projekt zu arbeiten",
     "composerPlaceholderIdle": "Starten Sie ein Gespräch oder verbinden Sie erneut, um eine Nachricht zu senden",
-    "attachImage": "Bild anhängen",
     "startConversation": "Ein Gespräch mit {{agent}} beginnen",
     "startConversationFallback": "einem Agenten",
     "agentModel": "Modell des Agenten",
     "modelManaged": "Modell wird vom Agenten verwaltet",
     "stop": "Stoppen",
+    "stopReason": {
+      "refusal": "Der Agent hat abgelehnt, diese Anfrage fortzusetzen.",
+      "maxTokens": "Der Agent hat sein Ausgabelimit erreicht und angehalten.",
+      "maxTurnRequests": "Der Agent hat sein Anfragelimit für diesen Durchgang erreicht und angehalten."
+    },
     "stopTitle": "Den Agenten stoppen",
     "send": "Senden",
     "connecting": "Verbindet",
@@ -500,8 +523,7 @@
     "roster": {
       "bridgeMissing": "Bridge unter Einrichtung des Agenten installieren",
       "cliMissing": "CLI auf diesem Computer nicht gefunden",
-      "unavailable": "auf diesem Computer nicht verfügbar",
-      "comingSoon": "in Kürze"
+      "unavailable": "auf diesem Computer nicht verfügbar"
     },
     "messageTooLarge": "Diese Nachricht ist mit ihren Bildern zu groß. Kürzen Sie die Nachricht oder entfernen Sie ein Bild.",
     "terminalCommand": "Der Agent führt einen Befehl im Terminal aus.",
@@ -549,7 +571,122 @@
       "tool": "Werkzeug: {{name}}",
       "changedFiles": "Geänderte Dateien",
       "moreFiles_one": "und {{count}} weitere Datei",
-      "moreFiles_other": "und {{count}} weitere Dateien"
+      "moreFiles_other": "und {{count}} weitere Dateien",
+      "mode": "Modus",
+      "effort": "Aufwand",
+      "permissionProfile": "Genehmigungsmodus",
+      "commits": "Commits"
+    },
+    "composerPlaceholderStart": "Schreiben Sie {{agent}}, um ein Gespräch zu beginnen",
+    "composerPlaceholderConnecting": "Tippen Sie schon los. Gesendet wird, sobald der Agent bereit ist.",
+    "composerPlaceholderRunning": "Tippen Sie Ihre nächste Nachricht. Gesendet wird, sobald der Agent fertig ist.",
+    "attachFile": "Dateien anhängen",
+    "composer": {
+      "tooManyAttachments": "Hängen Sie höchstens 10 Dateien an eine Nachricht an.",
+      "imagesUnsupported": "Dieser Agent nimmt keine Bilder an. Entfernen Sie sie und versuchen Sie es erneut.",
+      "attachmentsNotReady": "Warten Sie, bis die Anhänge vorbereitet sind.",
+      "removeSelection": "Zitat {{label}} entfernen"
+    },
+    "queue": {
+      "queued": "In der Warteschlange: wird gesendet, wenn der Agent fertig ist",
+      "remove": "Nachricht aus der Warteschlange entfernen",
+      "sendNow": "Jetzt senden",
+      "sendFailed": "Diese Nachricht wurde nicht gesendet. Senden Sie sie erneut oder entfernen Sie sie."
+    },
+    "slash": {
+      "commands": "Agentenbefehle",
+      "skills": "Skills"
+    },
+    "controls": {
+      "effort": "Aufwand",
+      "mode": "Modus",
+      "more": "Weitere Agentenoptionen",
+      "blockedMode": "In Oleafly aus",
+      "blockedModeHint": "Oleafly lässt die Berechtigungsprüfungen eingeschaltet, daher ist dieser Modus nicht verfügbar."
+    },
+    "usage": {
+      "ariaLabel": "Agentennutzung anzeigen",
+      "tooltip": "Nutzung für dieses Gespräch",
+      "contextShare": "{{percent}} % des Kontextfensters belegt",
+      "window": {
+        "fiveHour": "5-Stunden-Sitzung",
+        "weekly": "Wöchentlich, alle Modelle",
+        "weeklyOpus": "Wöchentlich, Opus",
+        "weeklySonnet": "Wöchentlich, Sonnet",
+        "overage": "Zusätzliche Nutzung",
+        "other": "Nutzungslimit {{id}}"
+      },
+      "costIn": "Der Agent hat Kosten von {{amount}} {{currency}} gemeldet.",
+      "modelTokens": "{{model}}: {{tokens}} Tokens"
+    },
+    "compaction": {
+      "running": "Früherer Kontext wird zusammengefasst",
+      "done": "Früherer Kontext zusammengefasst",
+      "failed": "Früherer Kontext konnte nicht zusammengefasst werden"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} im Terminal",
+      "afterTerminal": "Schließen Sie die Anmeldung im Terminal ab und verbinden Sie sich dann erneut.",
+      "apiKeyLabel": "API-Schlüssel für {{provider}}",
+      "apiKeyPlaceholder": "API-Schlüssel einfügen",
+      "geminiGoogle": "Die Anmeldung mit Google funktioniert für Einzeltarife nicht mehr. Verwenden Sie einen Gemini-API-Schlüssel oder Vertex AI.",
+      "noProject": "Öffnen Sie ein Projekt, um sich im Terminal anzumelden.",
+      "signOut": "Abmelden"
+    },
+    "elicitation": {
+      "ariaLabel": "Anfrage des Agenten",
+      "from": "{{agent}} fragt:",
+      "submit": "Senden",
+      "decline": "Ablehnen",
+      "cancel": "Abbrechen",
+      "required": "Erforderlich",
+      "invalid": "Prüfen Sie dieses Feld.",
+      "openUrl": "Im Browser öffnen",
+      "confirmTitle": "{{host}} öffnen?",
+      "confirmDescription": "Der Agent bittet Sie, auf dieser Website einen Schritt abzuschließen. Sie öffnet sich in Ihrem Browser.",
+      "waiting": "Warten, bis die Website fertig ist."
+    },
+    "remote": {
+      "banner": "Hermes läuft über SSH auf {{host}}. Seine Änderungen bleiben auf diesem Rechner."
+    },
+    "history": {
+      "all": "Alle Gespräche",
+      "title": "Gespräche",
+      "search": "Gespräche durchsuchen",
+      "empty": "Keine passenden Gespräche.",
+      "loadMore": "Mehr laden",
+      "open": "Öffnen",
+      "rename": "Umbenennen",
+      "renameLabel": "Name des Gesprächs",
+      "delete": "Löschen",
+      "deleteTitle": "Dieses Gespräch löschen?",
+      "deleteDescription": "Oleafly entfernt das Protokoll und die Anhänge aus diesem Projekt.",
+      "deleteFromAgent": "Auch bei {{agent}} löschen",
+      "deleteAgentFailed": "In Oleafly gelöscht. {{agent}} konnte seine Kopie nicht löschen: {{error}}",
+      "deleteRunning": "Stoppen Sie den Agenten, bevor Sie dieses Gespräch löschen.",
+      "importFind": "Gespräche von {{agent}} zu diesem Projekt suchen",
+      "imported": "Bereits in Oleafly",
+      "importSelected": "Auswahl importieren",
+      "importEmpty": "{{agent}} hat keine weiteren Gespräche zu diesem Projekt."
+    },
+    "header": {
+      "startedAt": "Begonnen bei {{revision}}",
+      "startedDirty": "Begonnen bei {{revision}} mit nicht committeten Änderungen",
+      "menu": "Aktionen für das Gespräch",
+      "fork": "Gespräch abzweigen",
+      "forkUnsupported": "Dieser Agent kann keine Gespräche abzweigen.",
+      "forkBusy": "Warten Sie, bis der Agent fertig ist, bevor Sie abzweigen.",
+      "v2": "ACP v2 (Entwurf)",
+      "remote": "Entfernt"
+    },
+    "commit": {
+      "button": "Commit",
+      "title": "Diesen Durchgang committen",
+      "message": "Commit-Nachricht",
+      "files": "Zu committende Dateien",
+      "defaultMessage": "Änderungen von {{agent}}",
+      "submit": "Dateien committen",
+      "cancel": "Abbrechen"
     }
   },
   "agents": {
@@ -721,8 +858,6 @@
     "restoreFailed": "Wiederherstellen nicht möglich: {{error}}",
     "steerFailed": "Der laufende Beitrag konnte nicht gelenkt werden.",
     "approvalRuleSaveFailed": "Die Freigaberegel des Projekts konnte nicht gespeichert werden.",
-    "attachmentTooLarge": "{{name}} ist zu groß (höchstens 10 MB).",
-    "attachmentReadFailed": "{{name}} konnte nicht gelesen werden.",
     "tooManyTools": "{{enabled}} Werkzeuge sind aktiv, ein Lauf unterstützt aber höchstens {{max}}. Deaktivieren Sie mindestens {{excess}} unter Werkzeuge und versuchen Sie es erneut."
   },
   "header": {
@@ -749,7 +884,29 @@
     "summaryRunNoTokens_one": "Letzter Lauf: {{count}} Schritt, Token-Summe nicht verfügbar",
     "summaryRunNoTokens_other": "Letzter Lauf: {{count}} Schritte, Token-Summe nicht verfügbar",
     "summaryChat": "Dieser Chat: {{steps}} Schritte, {{tokens}} Token",
-    "summaryFallback": "KI-Nutzung"
+    "summaryFallback": "KI-Nutzung",
+    "context": "Kontext",
+    "contextUsed": "{{used}} von {{size}} Tokens",
+    "contextShare": "{{percent}} des Kontextfensters belegt",
+    "contextUnknown": "Das Kontextfenster dieses Modells ist unbekannt.",
+    "reasoning": "Denken",
+    "cacheRead": "Cache-Lesezugriffe",
+    "cacheWrite": "Cache-Schreibzugriffe",
+    "cost": "Geschätzte Kosten",
+    "budget": "Projektbudget",
+    "budgetUsed": "{{spent}} von {{limit}}",
+    "credit": "Restguthaben",
+    "creditOf": "{{remaining}} von {{limit}}",
+    "planLimits": "Tariflimits",
+    "resetsAt": "Wird {{time}} zurückgesetzt",
+    "windowWarning": "Kurz vor dem Limit",
+    "windowBlocked": "Limit erreicht",
+    "refreshPlan": "Tarifnutzung aktualisieren",
+    "refreshing": "Wird aktualisiert…",
+    "historyTrimmed_one": "Nur der letzte {{count}} Durchgang dieses Chats wurde an das Modell gesendet.",
+    "historyTrimmed_other": "Nur die letzten {{count}} Durchgänge dieses Chats wurden an das Modell gesendet.",
+    "empty": "In diesem Chat gibt es noch keine Nutzung.",
+    "loading": "Nutzung wird geladen…"
   },
   "provider": {
     "connectTitle": "Verbinden Sie einen KI-Anbieter, um fortzufahren",
@@ -769,7 +926,21 @@
     "projectSubtitle": "Arbeitet an „{{project}}“",
     "noOutput": "Das Modell hat keine Ausgabe geliefert. Prüfen Sie Einstellungen → KI-Assistent.",
     "planMissing": "Noch kein Plan zum Freigeben. Bitten Sie den Assistenten um einen oder schalten Sie Plan aus.",
-    "planUnchanged": "Der Plan ist unverändert."
+    "planUnchanged": "Der Plan ist unverändert.",
+    "stillWorking": "Arbeitet noch ({{seconds}} s). Denkende und lokale Modelle können langsam sein. Klicken Sie auf „Stopp“, um abzubrechen.",
+    "retrying": "Verbindungsproblem. Neuer Versuch ({{attempt}} von {{max}})…",
+    "stopped": "Gestoppt.",
+    "stepLimit": "Schrittlimit erreicht. Senden Sie eine weitere Nachricht, um fortzufahren.",
+    "outputLimit": "Die Antwort hat das Ausgabelimit des Modells erreicht. Senden Sie eine weitere Nachricht, um fortzufahren.",
+    "tooLargeToSave": "Dieser Chat ist zu lang zum Speichern. Neue Nachrichten bleiben erhalten, bis Sie Oleafly schließen. Exportieren Sie den Chat, um eine Kopie zu behalten.",
+    "exportChat": "Chat exportieren",
+    "exported": "Chat exportiert.",
+    "exportFailed": "Der Chat konnte nicht exportiert werden.",
+    "saveFailed": "Neue Nachrichten in diesem Chat konnten nicht gespeichert werden. Prüfen Sie, ob auf dem Datenträger genug Platz frei ist.",
+    "exportYou": "Sie",
+    "exportAssistant": "Assistent",
+    "exportAttachments": "Anhänge",
+    "exportTools": "Verwendete Werkzeuge"
   },
   "followUps": {
     "steered": "In den laufenden Beitrag eingelenkt: {{summary}}",
@@ -856,6 +1027,46 @@
     "figureAudit": "Abbildungsprüfung",
     "gitReview": "Git-Prüfung",
     "referenceCleanup": "Bereinigung der Referenzen",
-    "removeSkill": "Skill {{name}} entfernen"
+    "removeSkill": "Skill {{name}} entfernen",
+    "compilationRepair": "Kompilierung reparieren",
+    "submissionPrep": "Einreichung vorbereiten",
+    "reviewerResponse": "Antwort an Gutachter"
+  },
+  "effort": {
+    "label": "Aufwand",
+    "tooltip": "Wie viel das Modell nachdenkt, bevor es antwortet",
+    "ariaLabel": "Denkaufwand: {{level}}",
+    "auto": "Automatisch",
+    "autoDescription": "Standard des Modells verwenden",
+    "levels": {
+      "none": "Keiner",
+      "minimal": "Minimal",
+      "low": "Niedrig",
+      "medium": "Mittel",
+      "high": "Hoch",
+      "xhigh": "Sehr hoch",
+      "max": "Maximal"
+    }
+  },
+  "web": {
+    "label": "Web",
+    "on": "Websuche und Seitenlesen sind für diesen Chat an",
+    "off": "Websuche und Seitenlesen für diesen Chat einschalten",
+    "ariaLabel": "Webzugriff",
+    "searchUnavailable": "Dieses Modell kann nicht im Web suchen. Fügen Sie in den Einstellungen einen Suchschlüssel hinzu, um es einzuschalten."
+  },
+  "messageActions": {
+    "edit": "Nachricht bearbeiten",
+    "regenerate": "Antwort neu erzeugen",
+    "retry": "Erneut versuchen",
+    "editingLatest": "Sie bearbeiten Ihre letzte Nachricht. Beim Senden wird die Antwort ersetzt.",
+    "editingEarlier": "Sie bearbeiten eine frühere Nachricht. Beim Senden beginnt ab dort ein neuer Chat, und dieser Chat bleibt im Verlauf.",
+    "cancelEdit": "Bearbeitung abbrechen",
+    "replaceTitle": "Diese Antwort ersetzen?",
+    "replaceDescription_one": "Die Antwort hat {{count}} Datei geändert. Die Änderung bleibt in Ihrem Projekt, aber ihre Rückgängig-Karte verschwindet mit der Antwort.",
+    "replaceDescription_other": "Die Antwort hat {{count}} Dateien geändert. Die Änderungen bleiben in Ihrem Projekt, aber ihre Rückgängig-Karte verschwindet mit der Antwort.",
+    "replaceConfirm": "Antwort ersetzen",
+    "forked": "Ein neuer Chat wurde ab der bearbeiteten Nachricht begonnen.",
+    "failed": "Die Nachricht konnte nicht erneut gesendet werden."
   }
 }

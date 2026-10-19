@@ -7,6 +7,7 @@ import { writeBytesFile } from "@/lib/tauri";
 import type { ChatMessage, ChatTurnChanges } from "@/store/chats";
 import { projectAcpEvents } from "./projection";
 import { textToBase64 } from "@/lib/base64";
+import { currentName, groupControls } from "./acp-controls";
 
 export interface ConversationExportInput {
   session: AcpSession;
@@ -28,6 +29,28 @@ function modelLabel(session: AcpSession): string {
   return models.find((model) => model.modelId === modelId)?.name ?? modelId;
 }
 
+function approvalLabel(profile: string): string {
+  switch (profile) {
+    case "ask-for-approval":
+      return i18n.t(($) => $.ai.approval.modes.askForApproval.label);
+    case "approve-for-me":
+      return i18n.t(($) => $.ai.approval.modes.approveForMe.label);
+    case "full-access":
+      return i18n.t(($) => $.ai.approval.modes.fullAccess.label);
+    case "custom":
+      return i18n.t(($) => $.ai.approval.modes.custom.label);
+    default:
+      return profile;
+  }
+}
+
+function modeLabel(session: AcpSession): string | null {
+  const mode = groupControls(session.controls).mode;
+  if (!mode) return null;
+  if (mode.kind === "config") return currentName(mode.option);
+  return mode.modes.find((entry) => entry.id === mode.current)?.name ?? mode.current;
+}
+
 function header(input: ConversationExportInput): string[] {
   const { session, projectName, agentName } = input;
   const lines = [`# ${session.title.trim() || i18n.t(($) => $.ai.acp.export.untitled)}`, ""];
@@ -35,6 +58,14 @@ function header(input: ConversationExportInput): string[] {
   if (projectName) field(i18n.t(($) => $.ai.acp.export.project), projectName);
   field(i18n.t(($) => $.ai.acp.export.agent), [agentName, session.agentVersion].filter(Boolean).join(" "));
   field(i18n.t(($) => $.ai.acp.export.model), modelLabel(session));
+  const mode = modeLabel(session);
+  if (mode) field(i18n.t(($) => $.ai.acp.export.mode), mode);
+  const effort = groupControls(session.controls).effort;
+  const effortName = effort ? currentName(effort) : null;
+  if (effortName) field(i18n.t(($) => $.ai.acp.export.effort), effortName);
+  if (session.permissionProfile) {
+    field(i18n.t(($) => $.ai.acp.export.permissionProfile), approvalLabel(session.permissionProfile));
+  }
   if (session.startRevision) {
     const revision = session.startRevision.slice(0, 7);
     field(
@@ -45,6 +76,14 @@ function header(input: ConversationExportInput): string[] {
   field(i18n.t(($) => $.ai.acp.export.started), formatDateTime(session.createdAt));
   field(i18n.t(($) => $.ai.acp.export.updated), formatDateTime(session.updatedAt));
   lines.push("");
+  const commits = session.commits ?? [];
+  if (commits.length > 0) {
+    lines.push(`**${i18n.t(($) => $.ai.acp.export.commits)}**`, "");
+    for (const commit of commits) {
+      lines.push(`- ${commit.commit.slice(0, 7)}${commit.message ? ` ${commit.message.split("\n")[0]}` : ""}`);
+    }
+    lines.push("");
+  }
   return lines;
 }
 

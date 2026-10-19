@@ -1,0 +1,26 @@
+[package]
+name = "oleafly-preflight"
+version = "0.1.0"
+description = "Preflight checks shared by the Oleafly CLI"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.87"
+
+[features]
+default = ["pdf"]
+# PDF facts (page sizes, fonts, links, outlines, attachments) read with lopdf.
+pdf = ["dep:lopdf"]
+
+[dependencies]
+fancy-regex = "0.19"
+icu_properties = "2.2"
+lopdf = { version = "0.42", default-features = false, optional = true }
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+unicode-normalization = "0.1"
+
+[dev-dependencies]
+pretty_assertions = "1.4"
+tempfile = { workspace = true }

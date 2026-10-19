@@ -19,7 +19,6 @@
     "selectAll": "Vælg alt",
     "view": "Vis",
     "toggleTerminal": "Vis eller skjul terminalen",
-    "toggleBrowser": "Vis eller skjul browseren",
     "file": "Arkiv",
     "openFolder": "Åbn mappe…",
     "openRecent": "Åbn seneste",
@@ -28,15 +27,7 @@
     "minimize": "Minimer",
     "fullscreen": "Slå fuld skærm til eller fra",
     "bringAllToFront": "Anbring alle forrest",
-    "newTab": "Ny fane",
-    "openLocation": "Åbn adresse…",
-    "closeTab": "Luk fane",
-    "reloadPage": "Genindlæs side",
     "zenMode": "Zen-tilstand"
-  },
-  "window": {
-    "browser": "Oleafly-browser",
-    "browserTitled": "{{title}} - Oleafly-browser"
   },
   "dialog": {
     "cancel": "Annuller",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Bekræft import af cookies",
-      "messageHost": "Vil du importere cookies for {{hostname}} fra {{browser}}-profilen \"{{profile}}\" til Oleaflys indbyggede browser? Importerede cookies kan logge dig ind på websteder.",
-      "messageAll": "Vil du importere alle cookies fra {{browser}}-profilen \"{{profile}}\" til Oleaflys indbyggede browser? Importerede cookies kan logge dig ind på websteder.",
-      "confirm": "Importer cookies"
+      "copyHost": "Vil du kopiere cookies til {{hostname}} fra {{browser}}-profilen »{{profile}}« til Oleafly? De kan logge dig ind på {{hostname}}.",
+      "copyAll": "Vil du kopiere alle cookies fra {{browser}}-profilen »{{profile}}« til Oleafly? De kan logge dig ind på hjemmesider.",
+      "copyConfirm": "Kopiér cookies"
     },
     "mcpApprove": {
       "title": "Godkend MCP-værktøj",
@@ -103,6 +94,46 @@
       "confirm": "Brug programmet",
       "pickTitle": "Vælg programmet til {{name}}",
       "filter": "Programmer"
+    },
+    "desktopApps": {
+      "title": "Skrivebordsapps",
+      "action": "{{agent}} vil {{action}}.",
+      "steps": "{{agent}} vil køre disse trin i en skrivebordsapp:",
+      "moreSteps": "Trin, der ikke vises: {{count}}",
+      "text": "Tekst: »{{text}}«",
+      "address": "Adresse: {{url}}",
+      "allowOnce": "Tillad én gang",
+      "allowChat": "Tillad for denne chat",
+      "allowSession": "Tillad for denne session",
+      "allowTask": "Tillad for denne opgave",
+      "deny": "Tillad ikke",
+      "actions": {
+        "launchApp": "åbne en app",
+        "click": "klikke i en app",
+        "doubleClick": "dobbeltklikke i en app",
+        "rightClick": "højreklikke i en app",
+        "typeText": "skrive i en app",
+        "pressKey": "trykke på en tast i en app",
+        "hotkey": "bruge en tastaturgenvej i en app",
+        "scroll": "rulle i en app",
+        "setValue": "ændre et felt i en app",
+        "browserPrepare": "åbne en browser til en hjemmeside",
+        "browserNavigate": "gå til en webside",
+        "browserClick": "klikke på en webside",
+        "browserType": "skrive på en webside",
+        "browserSelect": "vælge en mulighed på en webside",
+        "runScript": "køre et Cua-script"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Vil du tillade styring af skrivebordet?",
+      "message": "Agenter vil kunne bruge følgende, og de spørger stadig før hver handling:",
+      "confirm": "Tillad",
+      "enabled": "Skrivebordsapps",
+      "app": "App: {{name}}",
+      "site": "Hjemmeside: {{origin}}",
+      "signedIn": "Din browser med login på {{origin}}",
+      "scripted": "Cua-scripts"
     }
   },
   "errors": {
@@ -128,5 +159,35 @@
   "cloud": {
     "connectedPage": "Du er tilsluttet. Du kan lukke denne fane og gå tilbage til Oleafly.",
     "failedPage": "Log ind blev ikke fuldført. Du kan lukke denne fane og gå tilbage til Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Opgaven er klar til gennemgang",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Planen er klar til godkendelse",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "En opgave har brug for din godkendelse",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Opgaven stoppede",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Opgavens budget er brugt op",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly arbejder videre",
+      "body": "Forskningsopgaver, som du har markeret til at blive ved med at køre, fortsætter i baggrunden. Åbn Oleafly for at se, hvordan det går."
+    }
   }
 }

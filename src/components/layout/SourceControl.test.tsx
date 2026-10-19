@@ -10,6 +10,7 @@ import { GitMissingGuide, SourceControl } from "./SourceControl";
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useFolderAccessStore } from "@/store/folder-access";
+import type { ForgeAccount } from "@/lib/tauri";
 
 const mocks = vi.hoisted(() => ({
   gitWorkspaceSnapshot: vi.fn(),
@@ -37,6 +38,20 @@ const mocks = vi.hoisted(() => ({
   clearActiveDiff: vi.fn(),
   publishDialog: vi.fn(),
 }));
+
+const forgeState = vi.hoisted(() => ({
+  status: "ready",
+  accounts: [] as unknown[],
+  ensureLoaded: async () => [] as unknown[],
+}));
+
+const gitlabAccount: ForgeAccount = {
+  base: "https://gitlab.example.org",
+  kind: "gitlab",
+  login: "zoe",
+  auth: "token",
+  addedAt: 1,
+};
 
 const projectState = { generation: 1, changed_paths: [], deleted_paths: [] };
 const fileState = {
@@ -113,23 +128,42 @@ vi.mock("@/store/git-status", () => ({
   },
 }));
 
-vi.mock("@/components/integrations/PublishToGitHubDialog", () => ({
-  PublishToGitHubDialog: (props: unknown) => {
+vi.mock("@/components/integrations/PublishDialog", () => ({
+  PublishDialog: (props: unknown) => {
     mocks.publishDialog(props);
     return null;
   },
 }));
 
-vi.mock("@/components/layout/GithubMenu", () => ({
-  GithubMenu: ({ onCopyLink, onOpenInGithub }: { onCopyLink: () => void; onOpenInGithub: () => void }) => (
+vi.mock("@/components/layout/RemoteMenu", () => ({
+  RemoteMenu: ({
+    onCopyLink,
+    onOpen,
+    host,
+    account,
+  }: {
+    onCopyLink: () => void;
+    onOpen: () => void;
+    host: string;
+    account: { login: string } | null;
+  }) => (
     <>
       <button type="button" onClick={onCopyLink}>
-        {"github-menu-copy"}
+        {"remote-menu-copy"}
       </button>
-      <button type="button" onClick={onOpenInGithub}>
-        {"github-menu-open"}
+      <button type="button" onClick={onOpen}>
+        {"remote-menu-open"}
       </button>
+      <span data-testid="remote-menu-host">{host}</span>
+      {account ? <span data-testid="remote-menu-account">{account.login}</span> : null}
     </>
+  ),
+}));
+
+vi.mock("@/store/forge-accounts", () => ({
+  useForgeAccountsStore: Object.assign(
+    (selector: (state: typeof forgeState) => unknown) => selector(forgeState),
+    { getState: () => forgeState },
   ),
 }));
 
@@ -158,6 +192,7 @@ vi.mock("@/lib/tauri", () => ({
 }));
 
 beforeEach(() => {
+  forgeState.accounts = [];
   fileState.projectId = "project-1";
   fileState.projectName = "Research notes";
   fileState.refreshTree.mockReset().mockResolvedValue(undefined);
@@ -407,7 +442,7 @@ describe("SourceControl", () => {
     );
   });
 
-  it("uses compact icons and a GitHub mark in the repository menu", async () => {
+  it("uses compact icons in the repository menu", async () => {
     const user = userEvent.setup();
     render(<SourceControl />);
 
@@ -428,7 +463,7 @@ describe("SourceControl", () => {
     expect(
       within(menu)
         .getByRole("menuitem", { name: "Change repo" })
-        .querySelector("svg.lucide-github"),
+        .querySelector("svg.lucide-git-branch"),
     ).toBeInTheDocument();
   });
 
@@ -717,8 +752,9 @@ describe("SourceControl", () => {
     );
     await user.click(screen.getByRole("menuitem", { name: "Commit & Push" }));
 
+    // Since 0.4.8 the reason is the error's message, without the "Error: " prefix.
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Committed locally, but push failed: Error: Remote is unavailable.",
+      "Committed locally, but push failed: Remote is unavailable.",
     );
     expect(input).toHaveValue("");
     expect(fileState.refreshTree).toHaveBeenCalled();
@@ -1045,7 +1081,7 @@ describe("SourceControl", () => {
         "true",
       );
     }
-    expect(within(menu).getByRole("menuitem", { name: "Publish to GitHub" })).not.toHaveAttribute(
+    expect(within(menu).getByTestId("source-control-publish")).not.toHaveAttribute(
       "aria-disabled",
     );
     expect(within(menu).queryByRole("menuitem", { name: "Unlink" })).not.toBeInTheDocument();
@@ -1291,9 +1327,7 @@ describe("SourceControl", () => {
     await user.click(
       await screen.findByRole("button", { name: "More Source Control actions" }),
     );
-    await user.click(
-      screen.getByRole("menuitem", { name: "Publish to GitHub" }),
-    );
+    await user.click(screen.getByTestId("source-control-publish"));
     await waitFor(() =>
       expect(mocks.publishDialog).toHaveBeenLastCalledWith(
         expect.objectContaining({ open: true, projectId: "project-1" }),
@@ -1312,12 +1346,18 @@ describe("SourceControl", () => {
   });
 
   it("tells the publish dialog which repository the project already pushes to", async () => {
+    const user = userEvent.setup();
     render(<SourceControl />);
 
     await screen.findByText("library.bib");
+    expect(mocks.publishDialog).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "More Source Control actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Change repo" }));
 
-    expect(mocks.publishDialog).toHaveBeenLastCalledWith(
-      expect.objectContaining({ currentRemote: "https://github.com/oleafly/research.git" }),
+    await waitFor(() =>
+      expect(mocks.publishDialog).toHaveBeenLastCalledWith(
+        expect.objectContaining({ open: true, currentRemote: "https://github.com/oleafly/research.git" }),
+      ),
     );
   });
 
@@ -1350,7 +1390,7 @@ describe("SourceControl", () => {
       expect(mocks.gitRemoveRemote).toHaveBeenCalledWith("project-1"),
     );
     expect(screen.getByTestId("source-control-status")).toHaveTextContent(
-      "Unlinked from GitHub.",
+      enShell.sourceControl.unlinkedFrom.replace("{{host}}", "GitHub"),
     );
   });
 });
@@ -1368,9 +1408,7 @@ describe("SourceControl when Git is not installed", () => {
     expect(
       screen.queryByRole("button", { name: enShell.sourceControl.initialize }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: enShell.sourceControl.publish }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("source-control-publish")).not.toBeInTheDocument();
   });
 
   it("shows the same guidance for a project that already has a repository", async () => {
@@ -1521,21 +1559,22 @@ describe("SourceControl commit, sync and publish flows", () => {
     await waitFor(() => expect(mocks.gitDiscardPaths).toHaveBeenCalledWith("project-1", ["paper/main.tex"], 1));
   });
 
-  it("copies the GitHub link and reports a clipboard failure", async () => {
+  it("copies the repository link and reports a clipboard failure", async () => {
     const user = userEvent.setup();
     const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("denied"));
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     render(<SourceControl />);
 
-    await user.click(await screen.findByRole("button", { name: "github-menu-copy" }));
-    expect(await screen.findByText(sourceControl.linkCopied)).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "remote-menu-copy" }));
+    expect(await screen.findByText(sourceControl.repositoryLinkCopied)).toBeInTheDocument();
     expect(writeText).toHaveBeenCalledWith("https://github.com/oleafly/research");
 
-    await user.click(screen.getByRole("button", { name: "github-menu-copy" }));
+    await user.click(screen.getByRole("button", { name: "remote-menu-copy" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("denied");
 
-    await user.click(screen.getByRole("button", { name: "github-menu-open" }));
+    await user.click(screen.getByRole("button", { name: "remote-menu-open" }));
     expect(open).toHaveBeenCalledWith("https://github.com/oleafly/research");
+    expect(screen.getByTestId("remote-menu-host")).toHaveTextContent("GitHub");
   });
 
   it("publishes a project without a repository and refreshes after publishing", async () => {
@@ -1543,7 +1582,7 @@ describe("SourceControl commit, sync and publish flows", () => {
     mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ initialized: false }));
     render(<SourceControl />);
 
-    await user.click(await screen.findByRole("button", { name: sourceControl.publish }));
+    await user.click(await screen.findByTestId("source-control-publish"));
     const props = () => mocks.publishDialog.mock.calls.at(-1)?.[0] as { open: boolean; onClose: () => void; onPublished: () => void };
     await waitFor(() => expect(props().open).toBe(true));
 
@@ -1553,6 +1592,88 @@ describe("SourceControl commit, sync and publish flows", () => {
 
     act(() => props().onClose());
     await waitFor(() => expect(props().open).toBe(false));
+  });
+
+  it("names the one connected host on the publish action", async () => {
+    const user = userEvent.setup();
+    forgeState.accounts = [{ ...gitlabAccount, base: "https://gitlab.com" }];
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ remote: null }));
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "More Source Control actions" }));
+    expect(screen.getByTestId("source-control-publish")).toHaveTextContent(
+      sourceControl.publishTo.replace("{{host}}", "GitLab"),
+    );
+  });
+
+  it("offers a neutral publish action with no account", async () => {
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ initialized: false }));
+    render(<SourceControl />);
+
+    expect(await screen.findByTestId("source-control-publish")).toHaveTextContent(
+      sourceControl.publishRepository,
+    );
+  });
+
+  it("pushes to a non-GitHub remote without any account", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ remote: "git@gitlab.example.org:lab/paper.git" }));
+    mocks.gitPush.mockResolvedValue("Pushed to origin/main");
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "More Source Control actions" }));
+    await user.click(screen.getByRole("menuitem", { name: sourceControl.pushShort }));
+
+    await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
+    expect(await screen.findByText("Pushed to origin/main")).toBeInTheDocument();
+    expect(screen.getByTestId("remote-menu-host")).toHaveTextContent("gitlab.example.org");
+  });
+
+  it("shows the account that matches the remote", async () => {
+    forgeState.accounts = [gitlabAccount];
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({ remote: "https://gitlab.example.org/lab/paper.git" }),
+    );
+    render(<SourceControl />);
+
+    expect(await screen.findByTestId("remote-menu-account")).toHaveTextContent("zoe");
+  });
+
+  it("shows a translated reason when a commit's push fails", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({ remote: "https://gitlab.example.org/lab/paper.git" }),
+    );
+    mocks.gitPush.mockRejectedValue(
+      '@oleafly/error:{"code":"git.credentials_missing","params":{"host":"gitlab.example.org"}}',
+    );
+    render(<SourceControl />);
+
+    await user.type(await screen.findByTestId("commit-title"), "Results");
+    await user.click(screen.getByRole("button", { name: sourceControl.commitActions }));
+    await user.click(screen.getByRole("menuitem", { name: sourceControl.commitAndPush }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      enErrors.git.credentials_missing.replaceAll("{{host}}", "gitlab.example.org"),
+    );
+    expect(alert).not.toHaveTextContent("@oleafly/error");
+  });
+
+  it("names the host it unlinked from", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(
+      snapshot({ remote: "https://gitlab.example.org/lab/paper.git" }),
+    );
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "More Source Control actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Unlink" }));
+
+    await waitFor(() => expect(mocks.gitRemoveRemote).toHaveBeenCalledWith("project-1"));
+    expect(screen.getByTestId("source-control-status")).toHaveTextContent(
+      sourceControl.unlinkedFrom.replace("{{host}}", "gitlab.example.org"),
+    );
   });
 
   it("completes a merge once its conflicts are resolved", async () => {

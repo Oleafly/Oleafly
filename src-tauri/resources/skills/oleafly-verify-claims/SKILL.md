@@ -5,7 +5,7 @@ license: MIT
 compatibility: Reads and reports only. Needs network approval for verify_citation. The optional scientific-writing audit script needs Python 3.11 or newer on the login shell PATH.
 allowed-tools: read_file search_project project_map project_library_search verify_citation write_file create_file compile get_pdf_text update_todos load_skill read_skill_file run_command
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   skill-author: "Oleafly"
   oleafly:
     tier: native
@@ -186,3 +186,14 @@ If you added nothing and edited no source, `compile` is not required. If the use
 - `references/support-levels.md` defines the three levels with worked examples and the judgement calls between them.
 - `assets/claims.md` is the audit table template.
 - `assets/audit-report.md` is the report template.
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `project_map` | `oleafly context --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |
+| `verify_citation` | `oleafly bib check --json`, or `oleafly cite <doi> --json` for one entry |

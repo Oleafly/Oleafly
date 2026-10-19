@@ -8,7 +8,10 @@ import { TerminalDock, TERMINAL_SWATCHES } from "./TerminalDock";
 import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import { TERMINAL_LIMIT, useTerminalsStore } from "@/store/terminals";
 import { useFolderAccessStore } from "@/store/folder-access";
+import { projectLeaveAllowed } from "@/lib/project-leave-guards";
+import { resetTerminalLifecycleForTest } from "@/lib/terminal-lifecycle";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
   panes: [] as Array<Record<string, unknown>>,
@@ -16,10 +19,19 @@ const mocks = vi.hoisted(() => ({
   settings: {
     openSettingsAt: vi.fn(),
     setTerminalOpen: vi.fn(),
+    setTerminalConfirmClose: vi.fn(),
     terminalBackground: "#1e1e1e",
     terminalStartWithProject: true,
+    terminalConfirmClose: false,
   },
 }));
+
+const sessions = vi.hoisted(() => ({
+  terminalJobs: vi.fn(async (_projectId: string, _tabIds?: readonly string[]) =>
+    [] as Array<{ tabId: string; process: string | null }>,
+  ),
+}));
+vi.mock("@/lib/terminal-sessions", () => sessions);
 
 vi.mock("@/store/settings", () => ({
   useSettingsStore: Object.assign(
@@ -32,11 +44,17 @@ vi.mock("@/store/settings", () => ({
 vi.mock("./TerminalPane", () => ({
   TerminalPane: (props: {
     projectId: string;
+    tabId?: string;
     visible?: boolean;
     active?: boolean;
     autoStart?: boolean;
+    cwd?: string;
+    env?: Record<string, string>;
+    launch?: { command: string; args: readonly string[] };
     onExit?: () => void;
     onStarted?: () => void;
+    onBell?: () => void;
+    onTitle?: (title: string) => void;
   }) => {
     mocks.panes.push(props);
     return (
@@ -89,6 +107,9 @@ describe("TerminalDock", () => {
     mocks.settings.setTerminalOpen.mockReset();
     mocks.settings.setTerminalOpen.mockImplementation((open: boolean) => mocks.setOpen?.(open));
     mocks.settings.terminalStartWithProject = true;
+    mocks.settings.terminalConfirmClose = false;
+    sessions.terminalJobs.mockReset().mockResolvedValue([]);
+    resetTerminalLifecycleForTest();
     useTerminalsStore.setState({ projectId: null, tabs: [], activeId: null, counters: {} });
   });
 
@@ -421,6 +442,130 @@ describe("TerminalDock", () => {
     fireEvent.keyDown(tabs()[0], { key: "ContextMenu" });
     expect(await screen.findByTestId("dock-terminal-tab-menu")).toBeInTheDocument();
   });
+
+  it("passes each tab's id, folder, env and launch to its pane", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    act(() => {
+      useTerminalsStore.getState().addTerminal({
+        title: "Sign in",
+        cwd: "tools",
+        env: { A: "1" },
+        launch: { command: "pi", args: ["login"] },
+      });
+    });
+
+    const activeId = useTerminalsStore.getState().activeId;
+    const pane = [...mocks.panes].reverse().find((props) => props.tabId === activeId);
+    expect(pane).toMatchObject({
+      tabId: activeId,
+      cwd: "tools",
+      env: { A: "1" },
+      launch: { command: "pi", args: ["login"] },
+      visible: true,
+    });
+    expect(tabs()[1]).toHaveTextContent("Sign in");
+  });
+
+  it("shows a dot on a tab that rang while hidden and clears it when the tab is shown", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    const first = useTerminalsStore.getState().tabs[0];
+    const pane = [...mocks.panes].reverse().find((props) => props.tabId === first.id) as
+      | { onBell?: () => void }
+      | undefined;
+
+    act(() => pane?.onBell?.());
+    expect(screen.getByTestId("dock-terminal-tab-bell")).toHaveAccessibleName(enWorkspace.terminal.activity);
+
+    fireEvent.click(tabs()[0]);
+    expect(screen.queryByTestId("dock-terminal-tab-bell")).toBeNull();
+  });
+
+  it("uses the program's title as the tab's tooltip", async () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    const first = useTerminalsStore.getState().tabs[0];
+    const pane = [...mocks.panes].reverse().find((props) => props.tabId === first.id) as
+      | { onTitle?: (title: string) => void }
+      | undefined;
+    act(() => pane?.onTitle?.("vim main.tex"));
+
+    const user = userEvent.setup();
+    await user.hover(tabs()[0]);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("vim main.tex");
+    expect(tabs()[0]).toHaveTextContent("Terminal 1");
+  });
+
+  it("asks before closing a busy tab and keeps it on cancel", async () => {
+    mocks.settings.terminalConfirmClose = true;
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    const second = useTerminalsStore.getState().tabs[1];
+    sessions.terminalJobs.mockResolvedValue([{ tabId: second.id, process: "python" }]);
+
+    fireEvent.click(screen.getByLabelText("Close Terminal 2"));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("python is still running in Terminal 2.");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Cancel/ }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(tabs()).toHaveLength(2);
+
+    fireEvent.click(screen.getByLabelText("Close Terminal 2"));
+    const again = await screen.findByRole("alertdialog");
+    fireEvent.click(within(again).getByRole("button", { name: enWorkspace.terminal.stop.closeOne }));
+    await waitFor(() => expect(tabs()).toHaveLength(1));
+    expect(sessions.terminalJobs).toHaveBeenCalledWith("project-1", [second.id]);
+  });
+
+  it("closes a tab whose shell exited without asking", () => {
+    mocks.settings.terminalConfirmClose = true;
+    sessions.terminalJobs.mockResolvedValue([{ tabId: "anything", process: "node" }]);
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+
+    exitActivePane();
+
+    expect(tabs()).toHaveLength(1);
+    expect(sessions.terminalJobs).not.toHaveBeenCalled();
+  });
+
+  it("moves focus back outside the dock when it hides", () => {
+    const editor = document.createElement("div");
+    editor.tabIndex = 0;
+    document.body.append(editor);
+    render(<DockHarness projectId="project-1" />);
+    editor.focus();
+    screen.getByRole("button", { name: "Terminal settings" }).focus();
+
+    act(() => mocks.setOpen?.(false));
+
+    expect(document.activeElement).toBe(editor);
+    editor.remove();
+  });
+
+  it("marks its root for keyboard routing and stacks panes in a clipping container", () => {
+    const { container } = render(<TerminalDock projectId="project-1" visible />);
+    expect(container.querySelector("[data-terminal-dock]")).not.toBeNull();
+    const panes = screen.getByTestId("dock-terminal").parentElement;
+    expect(panes?.className).toContain("relative");
+    expect(panes?.className).toContain("overflow-hidden");
+  });
+
+  it("registers a project leave guard while mounted", async () => {
+    mocks.settings.terminalConfirmClose = true;
+    const view = render(<TerminalDock projectId="project-1" visible />);
+    const first = useTerminalsStore.getState().tabs[0];
+    sessions.terminalJobs.mockResolvedValue([{ tabId: first.id, process: "node" }]);
+
+    const leaving = projectLeaveAllowed({ projectId: "project-1", reason: "close", targetProjectId: null });
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByRole("button", { name: enWorkspace.terminal.stop.closeProject })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Cancel/ }));
+    expect(await leaving).toBe(false);
+
+    expect(await projectLeaveAllowed({ projectId: "other", reason: "switch", targetProjectId: "x" })).toBe(true);
+    view.unmount();
+    expect(await projectLeaveAllowed({ projectId: "project-1", reason: "close", targetProjectId: null })).toBe(true);
+  });
 });
 
 describe("TerminalDock in a folder that is not trusted yet", () => {
@@ -430,6 +575,7 @@ describe("TerminalDock in a folder that is not trusted yet", () => {
 
   beforeEach(() => {
     mocks.panes.length = 0;
+    mocks.settings.terminalConfirmClose = false;
     useFolderAccessStore.getState().reset("linked-a");
     useFolderAccessStore.setState({ loaded: true, trust: untrusted as never });
   });

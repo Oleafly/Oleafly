@@ -63,6 +63,9 @@ vi.mock("./ai/AcpAgentsTab", () => ({
     return <div>{"Agent settings"}</div>;
   },
 }));
+vi.mock("./ai/ToolsTab", () => ({
+  ToolsTab: () => <div>{"Tools model settings"}</div>,
+}));
 vi.mock("./ai/AddCustomProviderDialog", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ai/AddCustomProviderDialog")>()),
   AddCustomProviderDialog: (props: AddCustomProviderDialogProps) => {
@@ -330,10 +333,12 @@ describe("AISection", () => {
     expect(tabList).not.toHaveClass("w-full");
 
     const mcpTab = screen.getByRole("tab", { name: enSettings.ai.section.tabs.mcp });
-    expect(within(tabList).getAllByRole("tab")).toHaveLength(6);
+    // 0.4.8 added the Tools tab.
+    expect(within(tabList).getAllByRole("tab")).toHaveLength(7);
     expect(
       within(tabList).getByRole("tab", { name: enSettings.ai.section.tabs.agents }),
     ).toBeInTheDocument();
+    expect(within(tabList).getByRole("tab", { name: enSettings.ai.tools.tabLabel })).toBeInTheDocument();
     await user.click(mcpTab);
 
     expect(
@@ -349,6 +354,23 @@ describe("AISection", () => {
     expect(
       mockInvoke.mock.calls.filter(([command]) => command === "mcp_servers_list"),
     ).toHaveLength(1);
+  });
+
+  it("lazily shows the Tools tab", async () => {
+    const user = userEvent.setup();
+    renderSection();
+    expect(screen.queryByText("Tools model settings")).not.toBeInTheDocument();
+    await user.click(screen.getByTestId("ai-settings-tab-tools"));
+    expect(await screen.findByText("Tools model settings")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-settings-tab-tools")).toHaveTextContent(enSettings.ai.tools.tabLabel);
+  });
+
+  it("opens the Tools tab from its settings target", async () => {
+    useSettingsStore.setState({ settingsScrollTarget: "ai-tools" });
+    renderSection();
+    expect(await screen.findByText("Tools model settings")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-settings-tab-tools")).toHaveAttribute("aria-selected", "true");
+    expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
   });
 
   it("opens the MCP tab from its one-shot settings target", async () => {

@@ -80,17 +80,47 @@
   "export": {
     "bibliography_unreadable": "Oleafly 无法读取参考文献 {{name}}。请检查其中是否有损坏的条目，然后重新导出。"
   },
-  "github": {
-    "sign_in_expired": "登录代码已过期，请重试。",
-    "sign_in_cancelled": "GitHub 授权已取消。",
-    "sign_in_failed": "GitHub 登录失败。",
-    "repositories_unavailable": "无法加载仓库。",
-    "create_repo_failed": "无法创建仓库（{{status}}）。"
-  },
   "git": {
-    "remote_exists": "此项目已关联到 {{remote}}。",
+    "access_denied": "{{host}} 拒绝访问此仓库。请检查你的账户是否有权访问它。如果该组织使用单点登录 (SSO)，请先为该组织授权你的登录。",
+    "account_missing": "没有 {{host}} 的 Git 托管账户。请在设置中添加。",
+    "archive_too_large": "仓库文件超过 {{limit}} MB，Oleafly 无法导入。请自行克隆仓库并打开其文件夹。",
+    "auth_rejected": "{{host}} 拒绝了你保存的登录信息。请在设置中重新登录 {{host}}。",
+    "credentials_missing": "{{host}} 要求提供用户名和密码。请在设置中登录 {{host}}，或设置 SSH 密钥或 Git 凭据助手。",
+    "credentials_rejected": "{{host}} 拒绝了 Git 提供的用户名和密码。请在设置中登录 {{host}}，或更新 Git 使用的凭据。",
+    "device_flow_unavailable": "此版本无法通过浏览器登录 {{host}}。请改用访问令牌。",
+    "forge_bad_response": "{{host}} 发送了 Oleafly 无法读取的回复。",
+    "forge_ca_file_invalid": "Oleafly 无法从此文件读取证书。请选择小于 1 MB 的 PEM 或 DER 证书文件。",
+    "forge_forbidden": "{{host}} 拒绝了此操作。该令牌可能缺少 {{scopes}} 权限范围。",
+    "forge_https_required": "请使用 https:// 地址。普通 http 只适用于你自己网络中的服务器。",
+    "forge_invalid_repository": "这不是 Oleafly 可以使用的仓库路径。",
+    "forge_invalid_repository_name": "仓库名称只能使用字母、数字、点、短横线和下划线。",
+    "forge_invalid_server": "{{server}} 不是 Oleafly 可以使用的服务器地址。",
+    "forge_missing_scopes": "此令牌无法推送到 {{host}}。请创建具有 {{scopes}} 权限范围的令牌。",
+    "forge_not_found": "{{host}} 找不到该仓库。",
+    "forge_rate_limited": "{{host}} 当前正在限制请求。请一分钟后重试。",
+    "forge_redirect_refused": "{{host}} 试图将 Oleafly 重定向到 {{target}}，为保护你的登录信息，Oleafly 已停止。",
+    "forge_repository_exists": "{{host}} 上已存在同名仓库。",
+    "forge_server_error": "{{host}} 返回了错误（{{status}}）。",
+    "forge_signed_out": "你在 {{host}} 的登录已过期或被撤销。请在设置中重新登录。",
+    "forge_store": "Oleafly 无法读取或保存你的 Git 托管账户。",
+    "forge_token_invalid": "这看起来不像访问令牌。请粘贴完整的令牌。",
+    "forge_token_rejected": "{{host}} 未接受此令牌。请检查你是否复制了完整的令牌，以及它是否已过期。",
+    "forge_unknown_server": "Oleafly 无法判断 {{host}} 是哪种服务器。请选择服务器类型。",
+    "host_key_unknown": "SSH 还不认识 {{host}}。请先从终端连接一次以接受其主机密钥，然后重试。",
+    "host_unreachable": "Oleafly 无法连接到 {{host}}。请检查地址和网络连接。",
+    "invalid_remote_url": "请输入 Git 仓库的 HTTPS 或 SSH 地址。",
     "nested_repository": "此项目位于另一个 Git 仓库中，因此 Oleafly 不会在这里另建仓库。",
     "not_installed": "这台电脑上未安装 Git。请安装 Git 后重试。",
+    "push_rejected": "远程分支包含此项目尚未拥有的提交。请先拉取，然后重新推送。",
+    "remote_exists": "此项目已关联到 {{remote}}。",
+    "remote_has_password": "请从地址中删除密码。Oleafly 会改用你的 Git 托管账户或你自己的 Git 凭据登录。",
+    "repository_empty": "此仓库还没有提交，没有可导入的内容。",
+    "repository_not_found": "{{host}} 在此地址上没有仓库，或者你的账户无法查看它。",
+    "sign_in_cancelled": "已在浏览器中取消登录。",
+    "sign_in_expired": "登录代码已过期。请重试。",
+    "sign_in_failed": "登录失败。",
+    "ssh_key_rejected": "{{host}} 拒绝了你的 SSH 密钥。请将你的公钥添加到 {{host}} 上的账户，或将密钥加载到 SSH 代理中。",
+    "tls_failed": "Oleafly 无法验证 {{host}} 的证书。如果你的组织运行自己的证书颁发机构，请在设置中将其证书文件添加到该账户。",
     "tracked_secret_files": "此项目的 Git 历史中有文件可能包含密钥或密码，发布已停止：{{files}}"
   },
   "approvals": {
@@ -134,6 +164,8 @@
     "changed": "{{path}} 在 Oleafly 安装后被更改过，因此已保持原样。",
     "failed": "Oleafly 无法安装终端命令。",
     "remove_failed": "Oleafly 无法移除终端命令。",
+    "path_failed": "Oleafly 已安装该命令，但无法将 {{directory}} 添加到你的 PATH。",
+    "in_use": "{{path}} 正在使用中。请关闭正在运行 oleafly 的终端，然后重试。",
     "unsupported": "此系统暂不支持终端命令。"
   },
   "research": {
@@ -221,9 +253,50 @@
     "git_token_rejected": "Overleaf 未接受此 Git 令牌，它可能已过期。请在 Overleaf 账户设置中创建新的令牌。",
     "git_unavailable": "此项目无法使用 Overleaf 的 Git 集成。项目所有者需要付费方案或大学方案。",
     "template_link_invalid": "该链接不是 Overleaf 模板页面。请复制 overleaf.com/latex/templates 中某个页面的地址，然后重试。",
-    "template_unavailable": "Oleafly 无法打开此模板。它可能已从 Overleaf 的模板库中移除。"
+    "template_unavailable": "Oleafly 无法打开此模板。它可能已从 Overleaf 的模板库中移除。",
+    "browser_sign_in_missing": "Oleafly 在该浏览器配置文件中找不到 {{server}} 的登录信息。请直接登录。",
+    "browser_sign_in_failed": "来自浏览器的登录信息无效，可能已经过期。请直接登录。"
   },
   "collab": {
     "turned_off": "实时协作已关闭。请在设置的“实验功能”中开启。"
+  },
+  "attachments": {
+    "too_large": "此文件超过 {{max}} MB。请附加较小的文件。",
+    "invalid_request": "Oleafly 无法读取此附件。",
+    "not_found": "此附件已不再保存在这台计算机上。",
+    "storage_failed": "Oleafly 无法保存此附件。"
+  },
+  "provider_credit": {
+    "failed": "Oleafly 无法查询你的 {{provider}} 余额。"
+  },
+  "mathpix": {
+    "keys_missing": "请先在“设置 > AI > 工具”中添加你的 Mathpix 应用 ID 和密钥。",
+    "invalid_keys": "该应用 ID 或密钥包含 Mathpix 密钥中不会出现的字符。请从 Mathpix 控制台重新复制。",
+    "key_rejected": "Mathpix 不接受这些密钥。请在 Mathpix 控制台中检查应用 ID 和密钥。",
+    "rate_limited": "Mathpix 当前正在限制请求。请等待一分钟后重试。",
+    "unreachable": "Oleafly 无法连接到 Mathpix。请检查网络连接，然后重试。",
+    "http_error": "Mathpix 返回了错误（HTTP {{status}}）。请稍后重试。",
+    "invalid_response": "Mathpix 发送了 Oleafly 无法读取的回复。请稍后重试。",
+    "rejected": "Mathpix 无法读取此文件：{{reason}}",
+    "image_too_large": "此图片对 Mathpix 来说太大。请裁剪后重试。",
+    "pdf_too_large": "此 PDF 超过了 Mathpix 的 256 MB 限制。",
+    "timed_out": "Mathpix 未能在 30 分钟内处理完此 PDF。请减少页数后重试。",
+    "cancelled": "Mathpix 转换已停止。",
+    "wrong_window": "只能在 Oleafly 主窗口中使用 Mathpix。"
+  },
+  "desktop_apps": {
+    "not_installed": "尚未安装 Cua Driver。请在“设置 → 集成 → 桌面应用”中安装。",
+    "too_old": "Cua Driver {{version}} 版本过旧。请更新到 {{minimum}} 或更高版本。",
+    "no_app_bundle": "请使用官方安装程序安装 Cua Driver，以便它能获得 macOS 权限。",
+    "change_declined": "已保留你之前的桌面应用设置。",
+    "app_blocked": "代理无法使用 {{name}}。",
+    "app_invalid": "Oleafly 无法将 {{name}} 作为应用使用。",
+    "site_invalid": "“{{site}}”不是 Oleafly 可以使用的网站地址。请使用 https://，本机地址可使用 http://。",
+    "too_many_apps": "最多可以允许 {{limit}} 个应用。",
+    "too_many_sites": "最多可以允许 {{limit}} 个网站。",
+    "start_failed": "Cua Driver 无法启动：{{detail}}",
+    "not_bounded": "Cua Driver 没有按 Oleafly 的限制启动，因此 Oleafly 已将其停止。",
+    "task_unattended": "按计划运行或在 Oleafly 关闭后运行的任务无法使用桌面应用。",
+    "main_window": "请在主窗口中更改桌面应用设置。"
   }
 }

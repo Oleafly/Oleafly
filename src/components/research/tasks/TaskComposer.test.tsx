@@ -4,10 +4,13 @@ import type { ResearchTask } from "@/lib/research-tasks";
 import type { ResearchTaskAgentOption } from "./ResearchTasksPanel";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
+import { briefFixture, taskFieldsSince047 } from "./tests/task-fixtures";
 
 let TaskComposer: typeof import("./TaskComposer").TaskComposer;
 let composerDraftKey: typeof import("./TaskComposer").composerDraftKey;
+let RESEARCH_TASK_STARTERS: typeof import("./TaskComposer").RESEARCH_TASK_STARTERS;
 let useResearchTasksStore: typeof import("@/store/research-tasks").useResearchTasksStore;
+let act: typeof import("@testing-library/react").act;
 let cleanup: typeof import("@testing-library/react").cleanup;
 let fireEvent: typeof import("@testing-library/react").fireEvent;
 let render: typeof import("@testing-library/react").render;
@@ -15,13 +18,46 @@ let within: typeof import("@testing-library/react").within;
 let waitFor: typeof import("@testing-library/react").waitFor;
 let userEvent: typeof import("@testing-library/user-event").default;
 
-vi.mock("@/lib/research-tasks", () => ({
+const appConfig = vi.hoisted(() => ({ get: vi.fn() }));
+
+vi.mock("@/lib/research-tasks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/research-tasks")>()),
   acceptResearchTaskResult: vi.fn(), applyResearchTask: vi.fn(), cancelResearchTask: vi.fn(),
   createResearchTask: vi.fn(), deleteResearchTask: vi.fn(), editResearchTask: vi.fn(),
   listResearchTasks: vi.fn(), listenForResearchTaskChanges: vi.fn(),
   listenForResearchTaskEvents: vi.fn(), loadResearchTaskEvents: vi.fn(),
   retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
+}));
+
+// The composer reads the research defaults (time budget, network, background work) from the app config.
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  getConfig: appConfig.get,
+}));
+
+// The real "Where runs happen" control loads compute targets over IPC; it has its own tests.
+vi.mock("@/components/settings/research/ComputeBriefFields", () => ({
+  ComputeBriefFields: ({
+    id,
+    value,
+    disabled,
+    onChange,
+  }: {
+    id: string;
+    value: { target: string | null };
+    disabled?: boolean;
+    onChange: (next: { executor: string; target: string | null; resources: null }) => void;
+  }) => (
+    <button
+      id={id}
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange({ executor: "slurm", target: "t-s", resources: null })}
+    >
+      {`Runs on ${value.target ?? "this computer"}`}
+    </button>
+  ),
 }));
 
 vi.mock("@/store/files", () => ({
@@ -55,14 +91,16 @@ beforeAll(async () => {
     releasePointerCapture: { configurable: true, value: () => {} },
     scrollIntoView: { configurable: true, value: vi.fn() },
   });
-  ({ cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
+  ({ act, cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
   ({ default: userEvent } = await import("@testing-library/user-event"));
   ({ useResearchTasksStore } = await import("@/store/research-tasks"));
-  ({ TaskComposer, composerDraftKey } = await import("./TaskComposer"));
+  ({ TaskComposer, composerDraftKey, RESEARCH_TASK_STARTERS } = await import("./TaskComposer"));
 });
 
 beforeEach(() => {
   useResearchTasksStore.setState({ composerDrafts: {} });
+  // Outside the app the config is unavailable, as it was for these tests before 0.4.8.
+  appConfig.get.mockReset().mockRejectedValue(new Error("The app config is not available."));
 });
 
 afterEach(() => cleanup());
@@ -98,6 +136,7 @@ function task(id: string): ResearchTask {
     updatedAt: 1,
     startedAt: null,
     finishedAt: null,
+    ...taskFieldsSince047(),
   };
 }
 
@@ -158,6 +197,9 @@ describe("TaskComposer draft ownership", () => {
       modelId: "second",
       skillIds: ["statistical-analysis"],
       dependencyIds: ["dependency"],
+      brief: briefFixture(),
+      runAfter: null,
+      keepRunningAfterQuit: false,
     });
   });
 
@@ -321,5 +363,333 @@ describe("TaskComposer draft ownership", () => {
 
     render(<TaskComposer {...input} />);
     expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("");
+  });
+});
+
+describe("TaskComposer brief", () => {
+  const brief = enResearchTools.brief;
+
+  interface SentDraft {
+    brief: ResearchTask["brief"];
+    runAfter: number | null;
+    keepRunningAfterQuit: boolean;
+  }
+
+  /** The first argument of a mock's first call. */
+  function sent(mock: { mock: { calls: unknown[][] } }): SentDraft {
+    return mock.mock.calls[0][0] as SentDraft;
+  }
+
+  function openBrief() {
+    fireEvent.click(page().getByTestId("research-brief-more"));
+  }
+
+  async function backgroundWorkLoaded() {
+    await waitFor(() =>
+      expect(page().getByRole("checkbox", { name: new RegExp(brief.keepRunning) })).toBeEnabled(),
+    );
+  }
+
+  async function named(title = "Ablation", prompt = "Measure each change") {
+    await fill(enResearchTools.tasks.composer.titleLabel, title);
+    await fill(enResearchTools.tasks.composer.promptLabel, prompt);
+  }
+
+  function create() {
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
+  }
+
+  it("sends the brief with the task and validates the metric name", async () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await named();
+    fireEvent.change(page().getByLabelText(brief.goalLabel), { target: { value: "Lower the validation loss" } });
+    fireEvent.change(page().getByLabelText(brief.criteriaLabel), { target: { value: "val_loss below 0.4\nNo new warnings" } });
+    openBrief();
+    const metric = page().getByRole("textbox", { name: brief.metricLabel });
+
+    fireEvent.change(metric, { target: { value: "a b" } });
+    expect(page().getByText(brief.invalidMetric)).toBeInTheDocument();
+    const createButton = page().getByRole("button", { name: enResearchTools.tasks.composer.createTask });
+    expect(createButton).toBeDisabled();
+    create();
+    expect(input.onCreate).not.toHaveBeenCalled();
+
+    fireEvent.change(metric, { target: { value: "val_loss" } });
+    expect(page().queryByText(brief.invalidMetric)).toBeNull();
+    expect(createButton).toBeEnabled();
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    const draft = sent(input.onCreate);
+    expect(draft.brief).toEqual(
+      briefFixture({
+        goal: "Lower the validation loss",
+        successCriteria: ["val_loss below 0.4", "No new warnings"],
+        primaryMetric: { name: "val_loss", goal: "minimize" },
+      }),
+    );
+  });
+
+  it("refuses a cost limit that is not above zero", async () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await named();
+    openBrief();
+    fireEvent.change(page().getByLabelText(brief.costLabel), { target: { value: "0" } });
+
+    expect(page().getByText(brief.invalidCost)).toBeInTheDocument();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeDisabled();
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
+    expect(input.onCreate).not.toHaveBeenCalled();
+  });
+
+  it("prefills the time budget and network from research settings", async () => {
+    appConfig.get.mockResolvedValue({ research_time_budget_minutes: 240, research_command_network: true });
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await waitFor(() => expect(appConfig.get).toHaveBeenCalled());
+    await named();
+    openBrief();
+    await waitFor(() =>
+      expect(page().getByRole("combobox", { name: brief.timeLabel })).toHaveTextContent("4 hours"),
+    );
+    expect(page().getByRole("checkbox", { name: new RegExp(brief.network) })).toBeChecked();
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    expect(input.onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        brief: expect.objectContaining({
+          budget: expect.objectContaining({ wallClockMinutes: 240 }),
+          permissions: expect.objectContaining({ network: true }),
+        }),
+      }),
+    );
+  });
+
+  it("keeps the brief defaults when the settings leave them unset", async () => {
+    appConfig.get.mockResolvedValue({});
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await waitFor(() => expect(appConfig.get).toHaveBeenCalled());
+    await named();
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    expect(input.onCreate).toHaveBeenCalledWith(expect.objectContaining({ brief: briefFixture() }));
+  });
+
+  it("does not overwrite a brief the user already changed with the settings", async () => {
+    let answer!: (config: unknown) => void;
+    appConfig.get.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await named();
+    openBrief();
+    fireEvent.click(page().getByRole("checkbox", { name: new RegExp(brief.reviewPlan) }));
+    await act(async () => answer({ research_time_budget_minutes: 480, research_command_network: true }));
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    expect(input.onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ brief: briefFixture({ reviewPlanFirst: true }) }),
+    );
+  });
+
+  it("ignores settings that arrive after the composer closed", async () => {
+    let answer!: (config: unknown) => void;
+    appConfig.get.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const view = render(<TaskComposer {...props()} />);
+    view.unmount();
+    await act(async () => answer({ research_time_budget_minutes: 480, research_background_enabled: true }));
+    expect(page().queryByRole("dialog")).toBeNull();
+  });
+
+  it("schedules a start time", async () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await named();
+    openBrief();
+    fireEvent.change(page().getByLabelText(brief.startAtLabel), { target: { value: "2026-10-20T09:30" } });
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    expect(input.onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ runAfter: new Date("2026-10-20T09:30").getTime(), keepRunningAfterQuit: false }),
+    );
+  });
+
+  it("keeps running after Oleafly closes only when background work is on", async () => {
+    appConfig.get.mockResolvedValue({ research_background_enabled: true });
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await named();
+    openBrief();
+    const keep = page().getByRole("checkbox", { name: new RegExp(brief.keepRunning) });
+    await waitFor(() => expect(keep).toBeEnabled());
+    expect(page().queryByText(brief.keepRunningHint)).toBeNull();
+    fireEvent.click(keep);
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    expect(input.onCreate).toHaveBeenCalledWith(expect.objectContaining({ keepRunningAfterQuit: true }));
+  });
+
+  it("does not keep a task running when background work is off", async () => {
+    const input = props();
+    useResearchTasksStore.setState({
+      composerDrafts: {
+        [composerDraftKey("paper", null)]: {
+          starterId: "blank",
+          title: "Overnight",
+          prompt: "Keep going",
+          agentKey: "",
+          skillIds: [],
+          dependencyIds: [],
+          keepRunning: true,
+        },
+      },
+    });
+    render(<TaskComposer {...input} />);
+    openBrief();
+    const keep = page().getByRole("checkbox", { name: new RegExp(brief.keepRunning) });
+    expect(keep).toBeDisabled();
+    expect(keep).not.toBeChecked();
+    expect(page().getByText(brief.keepRunningHint)).toBeInTheDocument();
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    expect(input.onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Overnight", keepRunningAfterQuit: false, brief: briefFixture() }),
+    );
+  });
+
+  it("the reviewer response starter uses the response letter skill", () => {
+    const starter = (id: string) => RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === id);
+    expect(starter("reviewer-response")?.skillIds).toEqual(["oleafly-response-letter"]);
+    expect(starter("experiment-loop")).toMatchObject({
+      skillIds: ["oleafly-experiment-loop"],
+      brief: { reviewPlanFirst: true },
+    });
+  });
+
+  it("starts an experiment loop with plan review turned on", async () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.starter.experimentLoop.label);
+
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue(
+      enResearchTools.tasks.starter.experimentLoop.title,
+    );
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue(
+      "Improve the main metric with a series of small, recorded experiments. Measure a baseline first, change one thing per run, and keep only changes that help.",
+    );
+    openBrief();
+    expect(page().getByRole("checkbox", { name: new RegExp(brief.reviewPlan) })).toBeChecked();
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    expect(input.onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skillIds: ["oleafly-experiment-loop"],
+        brief: briefFixture({ reviewPlanFirst: true }),
+      }),
+    );
+  });
+
+  it("sends the compute target picked in the brief", async () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await named();
+    openBrief();
+    fireEvent.click(await page().findByText("Runs on this computer"));
+    expect(await page().findByText("Runs on t-s")).toBeInTheDocument();
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    expect(input.onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        brief: expect.objectContaining({ compute: { executor: "slurm", target: "t-s", resources: null } }),
+      }),
+    );
+  });
+
+  it("keeps the brief, start time and keep-running choice in a dismissed draft", async () => {
+    appConfig.get.mockResolvedValue({ research_background_enabled: true, research_time_budget_minutes: 30 });
+    const input = props();
+    const first = render(<TaskComposer {...input} />);
+    await named("Draft", "Notes");
+    openBrief();
+    await backgroundWorkLoaded();
+    expect(page().getByRole("combobox", { name: brief.timeLabel })).toHaveTextContent("30 minutes");
+    fireEvent.click(page().getByRole("checkbox", { name: new RegExp(brief.reviewPlan) }));
+    fireEvent.change(page().getByLabelText(brief.startAtLabel), { target: { value: "2026-10-21T08:00" } });
+    fireEvent.click(page().getByRole("checkbox", { name: new RegExp(brief.keepRunning) }));
+    fireEvent.keyDown(page().getByRole("dialog"), { key: "Escape" });
+
+    expect(input.onDismiss).toHaveBeenCalledOnce();
+    const saved = useResearchTasksStore.getState().composerDrafts[composerDraftKey("paper", null)];
+    expect(saved).toMatchObject({
+      title: "Draft",
+      prompt: "Notes",
+      runAfter: new Date("2026-10-21T08:00").getTime(),
+      keepRunning: true,
+      brief: { reviewPlanFirst: true, budget: { wallClockMinutes: 30 } },
+    });
+    first.unmount();
+
+    // The restored brief is the user's, so newer settings do not replace it.
+    appConfig.get.mockResolvedValue({ research_background_enabled: true, research_time_budget_minutes: 720 });
+    render(<TaskComposer {...input} />);
+    openBrief();
+    await backgroundWorkLoaded();
+    expect(page().getByRole("checkbox", { name: new RegExp(brief.keepRunning) })).toBeChecked();
+    create();
+
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    const draft = sent(input.onCreate);
+    expect(draft.brief.reviewPlanFirst).toBe(true);
+    expect(draft.brief.budget.wallClockMinutes).toBe(30);
+    expect(draft.runAfter).toBe(new Date("2026-10-21T08:00").getTime());
+    expect(draft.keepRunningAfterQuit).toBe(true);
+  });
+
+  it("edits a task's brief, start time and keep-running choice", async () => {
+    appConfig.get.mockResolvedValue({ research_background_enabled: true, research_time_budget_minutes: 720 });
+    const editing: ResearchTask = {
+      ...task("planned"),
+      brief: briefFixture({ goal: "Old goal", reviewPlanFirst: true }),
+      runAfter: new Date("2026-10-22T07:15").getTime(),
+      keepRunningAfterQuit: true,
+    };
+    const input = props(editing);
+    render(<TaskComposer {...input} />);
+    expect(page().getByLabelText(brief.goalLabel)).toHaveValue("Old goal");
+    openBrief();
+    await backgroundWorkLoaded();
+    expect(page().getByRole("checkbox", { name: new RegExp(brief.keepRunning) })).toBeChecked();
+    expect(page().getByLabelText(brief.startAtLabel)).toHaveValue("2026-10-22T07:15");
+    expect(page().getByRole("combobox", { name: brief.timeLabel })).toHaveTextContent("2 hours");
+    fireEvent.change(page().getByLabelText(brief.goalLabel), { target: { value: "New goal" } });
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask }));
+
+    await waitFor(() => expect(input.onSave).toHaveBeenCalledOnce());
+    expect(input.onSave).toHaveBeenCalledWith(
+      "planned",
+      expect.objectContaining({
+        brief: briefFixture({ goal: "New goal", reviewPlanFirst: true }),
+        runAfter: new Date("2026-10-22T07:15").getTime(),
+        keepRunningAfterQuit: true,
+      }),
+    );
   });
 });

@@ -43,6 +43,11 @@ pub struct RunContext {
     /// The root run's canonical task path.
     pub task_path: String,
     pub multi_agent: MultiAgentConfig,
+    /// What the run and its subagents cost, summed as each one settles.
+    pub cost_tally: Arc<super::usage::CostTally>,
+    /// The run's web context when the chat turned web on; its runner is
+    /// already inside `tool_runner`.
+    pub web: Option<Arc<oleafly_agent::tools::web::WebToolContext>>,
 }
 
 impl RunContext {
@@ -285,16 +290,23 @@ fn new_exec_owner() -> String {
 }
 
 /// Tag a child's run_command calls with its exec owner so the frontend runs
-/// them under that owner and the manager can cancel them independently. Other
-/// tools pass through untouched; a malformed argument object is left as-is.
+/// them under that owner and the manager can cancel them independently. Its
+/// desktop_apps calls get the same owner as their Cua session (0.4.8 I), so
+/// the child's session ends with the child. Other tools pass through
+/// untouched; a malformed argument object is left as-is.
 fn exec_owner_tagging_runner(owner: String, inner: ToolRunner) -> ToolRunner {
     Arc::new(move |mut call| {
         let inner = inner.clone();
         let owner = owner.clone();
         Box::pin(async move {
-            if call.name == "run_command" {
+            let tag = match call.name.as_str() {
+                "run_command" => Some("__execOwner"),
+                crate::cua_driver::DESKTOP_APPS_TOOL => Some(crate::cua_driver::SESSION_TAG),
+                _ => None,
+            };
+            if let Some(tag) = tag {
                 if let Ok(Value::Object(mut map)) = serde_json::from_str::<Value>(&call.arguments) {
-                    map.insert("__execOwner".to_string(), Value::String(owner.clone()));
+                    map.insert(tag.to_string(), Value::String(owner.clone()));
                     if let Ok(serialized) = serde_json::to_string(&Value::Object(map)) {
                         call.arguments = serialized;
                     }
@@ -382,7 +394,8 @@ impl RuntimeSelection {
                         provider_id,
                         model_id,
                     }),
-                    !ctx.request_template.tools.is_empty(),
+                    !ctx.request_template.tools.is_empty()
+                        || ctx.request_template.web.is_some_and(|web| web.any()),
                 )
                 .await?;
                 Ok(ChildSelection::BuiltIn(resolved))
@@ -817,6 +830,16 @@ impl SubagentManager {
         if child_depth >= ctx.multi_agent.max_agent_depth {
             strip_delegation_tools(&mut request);
         }
+        // A child on another model gets the local web tools its provider
+        // does not run itself; the run's web runner answers them.
+        if let ChildSelection::BuiltIn(resolved) = &selection {
+            let same_model = resolved.provider_id == ctx.resolved.provider_id
+                && resolved.model_id == ctx.resolved.model_id;
+            if !same_model {
+                let has_search = ctx.web.as_ref().is_some_and(|web| web.has_search());
+                super::web::add_local_web_tools(&mut request, resolved, has_search);
+            }
+        }
 
         let token = ctx.parent_token.child();
         let (steer, steer_rx) = SteerHandle::channel();
@@ -1008,6 +1031,8 @@ fn spawn_child_run(
     manager: Arc<SubagentManager>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
+        // 0.4.8 I: the child's Cua session ends with the child, however it ends.
+        let _cua_turn = crate::cua_driver::TurnEndGuard::new(exec_owner.clone());
         let turn_id = format!("{id}-turn-{}", next_agent_id());
         let initial_user_message = request
             .messages
@@ -1042,11 +1067,14 @@ fn spawn_child_run(
                         parent_session_id: ctx.parent_session_id.clone(),
                     },
                     resolved,
-                );
+                )
+                .with_tally(ctx.cost_tally.clone());
                 let pipeline = oleafly_agent::ToolPipeline {
                     registry: ctx.registry.clone(),
                     gate: ctx.gate.clone(),
                     token: token.clone(),
+                    // 0.4.8 L: subagents never suspend for a handoff.
+                    ..Default::default()
                 };
                 let runner =
                     multi_agent_tool_runner(ctx.clone(), manager.clone(), ctx.tool_runner.clone());
@@ -1514,6 +1542,7 @@ mod tests {
                     base_url: format!("http://{address}/v1"),
                     reasoning_content: false,
                 },
+                caps: oleafly_agent::ModelCaps::default(),
             },
             request_template: CompletionRequest::prompt("system", "parent"),
             config: RunConfig::default(),
@@ -1526,6 +1555,8 @@ mod tests {
             depth: 0,
             task_path: "/root".into(),
             multi_agent: MultiAgentConfig::default(),
+            cost_tally: Arc::default(),
+            web: None,
         };
         let manager = Arc::new(SubagentManager::default());
         let id = manager
@@ -1744,6 +1775,40 @@ mod tests {
         });
         lock(&manager.agents).insert("agent-1".into(), entry);
         assert_eq!(manager.interrupt_all(), 1);
+    }
+
+    // 0.4.8 I: a child's desktop apps calls carry its own Cua session.
+    #[tokio::test]
+    async fn child_desktop_calls_carry_the_child_session() {
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let observed = seen.clone();
+        let inner: ToolRunner = Arc::new(move |call: ToolCall| {
+            let observed = observed.clone();
+            Box::pin(async move {
+                observed.lock().unwrap().push(call.arguments.clone());
+                ToolOutput::text("ok")
+            })
+        });
+        let runner = exec_owner_tagging_runner("external:x".into(), inner);
+        runner(ToolCall {
+            id: "call-1".into(),
+            name: "desktop_apps".into(),
+            arguments: r#"{"tool":"click","__cuaSession":"model-made"}"#.into(),
+            ..Default::default()
+        })
+        .await;
+        runner(ToolCall {
+            id: "call-2".into(),
+            name: "read_file".into(),
+            arguments: r#"{"path":"a.tex"}"#.into(),
+            ..Default::default()
+        })
+        .await;
+        let seen = seen.lock().unwrap().clone();
+        let tagged: Value = serde_json::from_str(&seen[0]).unwrap();
+        assert_eq!(tagged["__cuaSession"], "external:x");
+        assert_eq!(tagged["tool"], "click");
+        assert_eq!(seen[1], r#"{"path":"a.tex"}"#);
     }
 
     #[test]

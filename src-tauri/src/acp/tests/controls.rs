@@ -1,0 +1,173 @@
+//! Agent options: effort, mode, fast; remembered choices; legacy modes.
+use super::super::preferences::RememberedChoice;
+use super::super::types::*;
+use super::{fixture_definition, fixture_temp, runtime};
+use crate::acp::AcpRuntime;
+use oleafly_acp::controls::{ConfigKind, ConfigValue};
+
+fn current(snapshot: &SessionSnapshot, id: &str) -> Option<String> {
+    match &snapshot.session.controls.by_id(id)?.kind {
+        ConfigKind::Select { current_value, .. } => current_value.clone(),
+        ConfigKind::Boolean { current_value } => Some(current_value.to_string()),
+        ConfigKind::Unsupported { .. } => None,
+    }
+}
+
+#[tokio::test]
+async fn setting_effort_by_category_updates_controls_and_is_remembered() {
+    let (_temp, runtime, session) = runtime(vec!["--claude-options".into()]).await;
+    let id = session.session.id.clone();
+    let snapshot = runtime
+        .set_config_option(&id, "effort", ConfigValue::Id("high".into()))
+        .await
+        .unwrap();
+    assert_eq!(current(&snapshot, "effort").as_deref(), Some("high"));
+    let remembered = runtime
+        .agent_preferences("fixture-agent")
+        .unwrap()
+        .effort
+        .unwrap();
+    assert_eq!(
+        remembered,
+        RememberedChoice {
+            value: "high".into(),
+            name: "High".into()
+        }
+    );
+    let fast = runtime
+        .set_config_option(&id, "fast", ConfigValue::boolean(true))
+        .await
+        .unwrap();
+    assert_eq!(current(&fast, "fast").as_deref(), Some("true"));
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_new_session_gets_the_remembered_effort_and_mode() {
+    let temp = fixture_temp();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(
+            &serde_json::to_string(&fixture_definition(
+                vec!["--claude-options".into(), "--record-requests".into()],
+                temp.path(),
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+    runtime
+        .set_agent_preferences(
+            "fixture-agent",
+            AgentPreferences {
+                effort: Some(RememberedChoice {
+                    value: "high".into(),
+                    name: "High".into(),
+                }),
+                mode: Some(RememberedChoice {
+                    value: "plan".into(),
+                    name: "Plan".into(),
+                }),
+                provider: None,
+            },
+        )
+        .await
+        .unwrap();
+    let snapshot = runtime
+        .start(StartSession {
+            project_id: "test-project".into(),
+            project_path: project,
+            agent_id: "fixture-agent".into(),
+            owner: Some("fixture-window".into()),
+            ..StartSession::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(current(&snapshot, "effort").as_deref(), Some("high"));
+    assert_eq!(current(&snapshot, "mode").as_deref(), Some("plan"));
+    let requests = std::fs::read_to_string(temp.path().join("requests.jsonl")).unwrap();
+    let sets = requests
+        .lines()
+        .filter(|line| line.contains("session/set_config_option"))
+        .count();
+    assert_eq!(sets, 2);
+    runtime.close(&snapshot.session.id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_blocked_mode_is_refused_without_a_request() {
+    let (temp, runtime, session) =
+        runtime(vec!["--claude-options".into(), "--record-requests".into()]).await;
+    let id = session.session.id.clone();
+    let error = runtime
+        .set_config_option(&id, "mode", ConfigValue::Id("bypassPermissions".into()))
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        "Oleafly keeps permission checks on, so this mode is not available."
+    );
+    let requests = std::fs::read_to_string(temp.path().join("requests.jsonl")).unwrap();
+    assert!(!requests.contains("bypassPermissions"));
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn legacy_set_mode_is_used_when_the_agent_has_only_modes() {
+    let (temp, runtime, session) =
+        runtime(vec!["--legacy-modes".into(), "--record-requests".into()]).await;
+    let id = session.session.id.clone();
+    assert!(runtime.set_mode(&id, "yolo").await.is_err());
+    let snapshot = runtime.set_mode(&id, "plan").await.unwrap();
+    assert_eq!(snapshot.session.controls.mode_id.as_deref(), Some("plan"));
+    let requests = std::fs::read_to_string(temp.path().join("requests.jsonl")).unwrap();
+    assert!(requests.contains("session/set_mode"));
+    let remembered = runtime
+        .agent_preferences("fixture-agent")
+        .unwrap()
+        .mode
+        .unwrap();
+    assert_eq!(remembered.value, "plan");
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_task_model_the_agent_lacks_is_reported_not_fatal() {
+    let (_temp, runtime, session) = runtime(Vec::new()).await;
+    let id = session.session.id.clone();
+    assert_eq!(
+        runtime.select_model_if_offered(&id, "").await.unwrap(),
+        crate::acp::ModelChoice::Kept
+    );
+    assert_eq!(
+        runtime
+            .select_model_if_offered(&id, "ghost-model")
+            .await
+            .unwrap(),
+        crate::acp::ModelChoice::NotOffered
+    );
+    assert_eq!(
+        runtime
+            .select_model_if_offered(&id, "fixture-second")
+            .await
+            .unwrap(),
+        crate::acp::ModelChoice::Selected
+    );
+    runtime.close(&id).await.unwrap();
+}
+
+#[test]
+fn permission_delegate_has_no_auto_allow() {
+    // Compile-level: every delegate is handled here.
+    for delegate in [
+        PermissionDelegateCheck::None,
+        PermissionDelegateCheck::ParentChat,
+    ] {
+        match delegate {
+            PermissionDelegateCheck::None | PermissionDelegateCheck::ParentChat => {}
+        }
+    }
+}
+
+use crate::acp::PermissionDelegate as PermissionDelegateCheck;

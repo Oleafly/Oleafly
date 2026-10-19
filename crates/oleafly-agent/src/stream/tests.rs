@@ -170,6 +170,7 @@ fn openai_usage_is_reported_when_the_provider_sends_it() {
             cache_read: Some(3),
             cache_write: Some(0),
             input_semantics: crate::complete::InputTokenSemantics::Inclusive,
+            reasoning: None,
         }
     );
 }
@@ -199,6 +200,7 @@ fn responses_text_reasoning_and_usage_stream_through_the_common_events() {
             cache_read: Some(5),
             cache_write: Some(0),
             input_semantics: crate::complete::InputTokenSemantics::Inclusive,
+            reasoning: None,
         }
     );
     assert_eq!(translator.stop_reason().as_deref(), Some("completed"));
@@ -435,6 +437,7 @@ fn anthropic_text_and_thinking_split_by_delta_type() {
             cache_read: Some(4),
             cache_write: Some(2),
             input_semantics: crate::complete::InputTokenSemantics::Exclusive,
+            reasoning: None,
         }
     );
     assert_eq!(translator.stop_reason().as_deref(), Some("end_turn"));
@@ -537,6 +540,7 @@ fn google_parts_stream_as_text() {
             cache_read: Some(1),
             cache_write: Some(0),
             input_semantics: crate::complete::InputTokenSemantics::Inclusive,
+            reasoning: None,
         }
     );
 }
@@ -668,6 +672,7 @@ fn stream_bodies_ask_for_streaming_and_usage_only_where_supported() {
             base_url: "https://api.groq.com/openai/v1".into(),
             reasoning_content: false,
         },
+        caps: crate::caps::ModelCaps::default(),
     };
     let body = stream_body(&catalog, &req).unwrap();
     assert_eq!(body["stream"], true);
@@ -689,6 +694,7 @@ fn stream_bodies_ask_for_streaming_and_usage_only_where_supported() {
         wire: Wire::OpenAiResponses {
             base_url: crate::provider::OPENAI_BASE.into(),
         },
+        caps: crate::caps::ModelCaps::default(),
     };
     let body = stream_body(&responses, &req).unwrap();
     assert_eq!(body["stream"], true);
@@ -707,6 +713,7 @@ fn google_stream_body_carries_no_stream_flag() {
         wire: Wire::Google {
             base_url: crate::provider::GOOGLE_BASE.into(),
         },
+        caps: crate::caps::ModelCaps::default(),
     };
     let body = stream_body(&resolved, &req).unwrap();
     assert!(body.get("stream").is_none());
@@ -724,6 +731,7 @@ fn endpoint_locality_controls_the_default_idle_timeout_independently_of_auth() {
             base_url: "http://127.0.0.1:11434/v1".into(),
             reasoning_content: false,
         },
+        caps: crate::caps::ModelCaps::default(),
     };
     let cloud = Resolved {
         provider_id: "remote-keyless-server".into(),
@@ -780,12 +788,13 @@ fn google_streams_count_thinking_tokens_as_output_and_default_absent_cache_to_ze
             cache_read: Some(0),
             cache_write: Some(0),
             input_semantics: crate::complete::InputTokenSemantics::Inclusive,
+            reasoning: Some(7),
         }
     );
     let usage_events: Vec<Usage> = events
         .iter()
         .filter_map(|event| match event {
-            AgentEvent::Usage { usage } => Some(*usage),
+            AgentEvent::Usage { usage, .. } => Some(*usage),
             _ => None,
         })
         .collect();
@@ -805,4 +814,274 @@ fn openai_compatible_streams_leave_unreported_cache_reads_unknown() {
         "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":11,\"completion_tokens\":4,\"prompt_cache_hit_tokens\":6}}\n\ndata: [DONE]\n\n",
     );
     assert_eq!(deepseek.usage().cache_read, Some(6));
+}
+
+// --- 0.4.8: block recorder, server tools, usage details --------------------
+
+fn sse(events: &[&str]) -> String {
+    events
+        .iter()
+        .map(|event| format!("data: {event}\n\n"))
+        .collect()
+}
+
+fn outcome_from(kind: WireKind, raw: &str) -> (Vec<AgentEvent>, StreamOutcome) {
+    let (events, mut translator) = run(kind, raw);
+    let mut outcome = StreamOutcome::default();
+    for event in &events {
+        accumulate(&mut outcome, event);
+    }
+    outcome.usage = translator.usage();
+    outcome.tool_calls = translator.tool_calls();
+    outcome.response_items = translator.response_items();
+    outcome.stop_reason = translator.stop_reason();
+    outcome.blocks = translator.take_blocks();
+    outcome.container = translator.container();
+    outcome.input_transformations = translator.input_transformations();
+    outcome.refusal_category = translator.refusal_category();
+    (events, outcome)
+}
+
+fn five_block_stream() -> String {
+    sse(&[
+        r#"{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}"#,
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"plan"}}"#,
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"s1"}}"#,
+        r#"{"type":"content_block_stop","index":0}"#,
+        r#"{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}"#,
+        r#"{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Reading."}}"#,
+        r#"{"type":"content_block_stop","index":1}"#,
+        r#"{"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"t1","name":"read_file","input":{}}}"#,
+        r#"{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"a\"}"}}"#,
+        r#"{"type":"content_block_stop","index":2}"#,
+        r#"{"type":"content_block_start","index":3,"content_block":{"type":"thinking","thinking":""}}"#,
+        r#"{"type":"content_block_delta","index":3,"delta":{"type":"signature_delta","signature":"s2"}}"#,
+        r#"{"type":"content_block_stop","index":3}"#,
+        r#"{"type":"content_block_start","index":4,"content_block":{"type":"tool_use","id":"t2","name":"read_file","input":{}}}"#,
+        r#"{"type":"content_block_delta","index":4,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"b\"}"}}"#,
+        r#"{"type":"content_block_stop","index":4}"#,
+        r#"{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":20}}"#,
+        r#"{"type":"message_stop"}"#,
+    ])
+}
+
+fn web_search_stream() -> String {
+    sse(&[
+        r#"{"type":"content_block_start","index":0,"content_block":{"type":"server_tool_use","id":"srvtoolu_1","name":"web_search","input":{}}}"#,
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"query\":\"claude shannon\"}"}}"#,
+        r#"{"type":"content_block_stop","index":0}"#,
+        r#"{"type":"content_block_start","index":1,"content_block":{"type":"web_search_tool_result","tool_use_id":"srvtoolu_1","content":[{"type":"web_search_result","url":"https://en.wikipedia.org/wiki/Claude_Shannon","title":"Claude Shannon - Wikipedia","encrypted_content":"opaque","page_age":"April 30, 2025"}]}}"#,
+        r#"{"type":"content_block_stop","index":1}"#,
+        r#"{"type":"content_block_start","index":2,"content_block":{"type":"text","text":""}}"#,
+        r#"{"type":"content_block_delta","index":2,"delta":{"type":"text_delta","text":"Found it."}}"#,
+        r#"{"type":"content_block_stop","index":2}"#,
+        r#"{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":9}}"#,
+        r#"{"type":"message_stop"}"#,
+    ])
+}
+
+fn web_search_error_stream(code: &str) -> String {
+    let result = format!(
+        r#"{{"type":"content_block_start","index":1,"content_block":{{"type":"web_search_tool_result","tool_use_id":"srvtoolu_1","content":{{"type":"web_search_tool_result_error","error_code":"{code}"}}}}}}"#
+    );
+    sse(&[
+        r#"{"type":"content_block_start","index":0,"content_block":{"type":"server_tool_use","id":"srvtoolu_1","name":"web_search","input":{"query":"q"}}}"#,
+        r#"{"type":"content_block_stop","index":0}"#,
+        &result,
+        r#"{"type":"content_block_stop","index":1}"#,
+        r#"{"type":"message_stop"}"#,
+    ])
+}
+
+fn cited_text_stream() -> String {
+    sse(&[
+        r#"{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}"#,
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Shannon was born in 1916."}}"#,
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"citations_delta","citation":{"type":"web_search_result_location","url":"https://en.wikipedia.org/wiki/Claude_Shannon","title":"Claude Shannon - Wikipedia","encrypted_index":"i","cited_text":"born April 30, 1916"}}}"#,
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"citations_delta","citation":{"type":"web_search_result_location","url":"https://en.wikipedia.org/wiki/Claude_Shannon","title":"Claude Shannon - Wikipedia","encrypted_index":"j","cited_text":"1916"}}}"#,
+        r#"{"type":"content_block_stop","index":0}"#,
+        r#"{"type":"message_stop"}"#,
+    ])
+}
+
+#[test]
+fn anthropic_thinking_signatures_are_captured_with_empty_text() {
+    let raw = sse(&[
+        r#"{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}}"#,
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"sig"}}"#,
+        r#"{"type":"content_block_stop","index":0}"#,
+        r#"{"type":"message_stop"}"#,
+    ]);
+    let (_, outcome) = outcome_from(WireKind::Anthropic, &raw);
+    assert_eq!(
+        outcome.blocks,
+        vec![AssistantBlock::Thinking {
+            thinking: String::new(),
+            signature: "sig".into()
+        }]
+    );
+}
+
+#[test]
+fn anthropic_blocks_keep_their_stream_order() {
+    let (_, outcome) = outcome_from(WireKind::Anthropic, &five_block_stream());
+    assert!(matches!(
+        outcome.blocks.as_slice(),
+        [
+            AssistantBlock::Thinking { .. },
+            AssistantBlock::Text(_),
+            AssistantBlock::ToolUse { .. },
+            AssistantBlock::Thinking { .. },
+            AssistantBlock::ToolUse { .. }
+        ]
+    ));
+    assert_eq!(outcome.tool_calls.len(), 2);
+}
+
+#[test]
+fn redacted_thinking_is_kept_verbatim() {
+    let raw = sse(&[
+        r#"{"type":"content_block_start","index":0,"content_block":{"type":"redacted_thinking","data":"opaque"}}"#,
+        r#"{"type":"content_block_stop","index":0}"#,
+        r#"{"type":"message_stop"}"#,
+    ]);
+    let (_, outcome) = outcome_from(WireKind::Anthropic, &raw);
+    assert_eq!(
+        outcome.blocks,
+        vec![AssistantBlock::RedactedThinking("opaque".into())]
+    );
+}
+
+#[test]
+fn server_tool_use_is_announced_but_never_executed() {
+    let (events, outcome) = outcome_from(WireKind::Anthropic, &web_search_stream());
+    assert!(events.iter().any(
+        |event| matches!(event, AgentEvent::ToolCallStart { name, .. } if name == "web_search")
+    ));
+    assert!(events.iter().any(
+        |event| matches!(event, AgentEvent::ToolCallEnd { arguments, .. } if arguments.contains("\"query\""))
+    ));
+    assert!(outcome.tool_calls.is_empty());
+    assert!(outcome.blocks.iter().any(|block| matches!(
+        block,
+        AssistantBlock::Native(value)
+            if value["type"] == "server_tool_use" && value["input"]["query"] == "claude shannon"
+    )));
+}
+
+#[test]
+fn web_search_results_become_a_tool_outcome_summary() {
+    let (events, _) = outcome_from(WireKind::Anthropic, &web_search_stream());
+    let output = events
+        .iter()
+        .find_map(|event| match event {
+            AgentEvent::ToolOutcome { output, .. } => Some(output.clone()),
+            _ => None,
+        })
+        .unwrap();
+    assert!(output.contains("https://en.wikipedia.org/wiki/Claude_Shannon"));
+    assert!(!output.contains("encrypted_content") && !output.contains("opaque"));
+    let (errors, _) = outcome_from(
+        WireKind::Anthropic,
+        &web_search_error_stream("max_uses_exceeded"),
+    );
+    assert!(errors.iter().any(|event| matches!(
+        event,
+        AgentEvent::ToolOutcome { output, .. } if output == r#"{"error":"max_uses_exceeded"}"#
+    )));
+}
+
+#[test]
+fn cited_text_gets_markdown_source_links() {
+    let (events, outcome) = outcome_from(WireKind::Anthropic, &cited_text_stream());
+    assert!(text_of(&events).ends_with(
+        " ([Claude Shannon - Wikipedia](https://en.wikipedia.org/wiki/Claude_Shannon))"
+    ));
+    assert_eq!(
+        text_of(&events).matches("https://en.wikipedia.org").count(),
+        1,
+        "one link per distinct source"
+    );
+    assert!(outcome.blocks.iter().any(|block| matches!(
+        block,
+        AssistantBlock::Cited(value) if value["citations"][0]["cited_text"].is_string()
+            && value["text"] == "Shannon was born in 1916."
+    )));
+}
+
+#[test]
+fn message_delta_usage_updates_input_and_cache_counts() {
+    let raw = sse(&[
+        r#"{"type":"message_start","message":{"usage":{"input_tokens":3}}}"#,
+        r#"{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":50,"cache_read_input_tokens":7,"output_tokens":9}}"#,
+        r#"{"type":"message_stop"}"#,
+    ]);
+    let (_, outcome) = outcome_from(WireKind::Anthropic, &raw);
+    assert_eq!(outcome.usage.input, 50);
+    assert_eq!(outcome.usage.cache_read, Some(7));
+    assert_eq!(outcome.usage.output, 9);
+}
+
+#[test]
+fn input_transformations_container_and_refusals_are_recorded() {
+    let raw = sse(&[
+        r#"{"type":"message_start","message":{"usage":{"input_tokens":3},"input_transformations":[{"type":"truncation"}],"container":{"id":"cntr_1"}}}"#,
+        r#"{"type":"message_delta","delta":{"stop_reason":"refusal","stop_details":{"category":"bio"},"container":{"id":"cntr_2"}},"usage":{"output_tokens":0}}"#,
+        r#"{"type":"message_stop"}"#,
+    ]);
+    let (_, outcome) = outcome_from(WireKind::Anthropic, &raw);
+    assert_eq!(outcome.input_transformations.len(), 1);
+    assert_eq!(outcome.container.as_deref(), Some("cntr_2"));
+    assert_eq!(outcome.refusal_category.as_deref(), Some("bio"));
+    assert_eq!(outcome.stop_reason.as_deref(), Some("refusal"));
+}
+
+#[test]
+fn responses_web_search_calls_render_as_tool_events_without_execution() {
+    let raw = concat!(
+        "event: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"web_search_call\",\"id\":\"ws_1\",\"status\":\"in_progress\"}}\n\n",
+        "event: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"web_search_call\",\"id\":\"ws_1\",\"status\":\"completed\",\"action\":{\"type\":\"search\",\"query\":\"shannon\",\"sources\":[{\"type\":\"url\",\"url\":\"https://e.org\",\"title\":\"E\"}]}}}\n\n",
+        "event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"output\":[],\"usage\":{\"input_tokens\":5,\"output_tokens\":7,\"output_tokens_details\":{\"reasoning_tokens\":4}}}}\n\n"
+    );
+    let (events, outcome) = outcome_from(WireKind::OpenAiResponses, raw);
+    assert!(events.iter().any(
+        |event| matches!(event, AgentEvent::ToolCallStart { id, name } if id == "ws_1" && name == "web_search")
+    ));
+    assert!(events.iter().any(
+        |event| matches!(event, AgentEvent::ToolCallEnd { arguments, .. } if arguments.contains("shannon"))
+    ));
+    assert!(events.iter().any(
+        |event| matches!(event, AgentEvent::ToolOutcome { output, .. } if output.contains("https://e.org"))
+    ));
+    assert!(outcome.tool_calls.is_empty());
+    assert_eq!(outcome.response_items.len(), 1);
+    assert_eq!(outcome.usage.reasoning, Some(4));
+}
+
+#[test]
+fn reasoning_token_counts_are_read_from_each_wire() {
+    let (_, chat) = run(
+        WireKind::OpenAi,
+        "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":20,\"completion_tokens_details\":{\"reasoning_tokens\":12}}}\n\ndata: [DONE]\n\n",
+    );
+    assert_eq!(chat.usage().reasoning, Some(12));
+    let (_, google) = run(
+        WireKind::Google,
+        "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"a\"}]}}],\"usageMetadata\":{\"promptTokenCount\":1,\"candidatesTokenCount\":1,\"thoughtsTokenCount\":30}}\n\n",
+    );
+    assert_eq!(google.usage().reasoning, Some(30));
+}
+
+#[test]
+fn output_limit_and_refusal_stops_are_recognised_on_every_wire() {
+    for reason in ["length", "max_tokens", "max_output_tokens", "MAX_TOKENS"] {
+        assert!(is_output_limit_stop(Some(reason)), "{reason}");
+    }
+    for reason in ["stop", "tool_calls", "end_turn", "completed", "STOP"] {
+        assert!(!is_output_limit_stop(Some(reason)), "{reason}");
+    }
+    for reason in ["refusal", "content_filter", "SAFETY"] {
+        assert!(is_refusal_stop(Some(reason)), "{reason}");
+    }
+    assert!(!is_refusal_stop(None));
 }

@@ -1,9 +1,9 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { TauriPage } from "@srsholmes/tauri-playwright";
-import type { AcpDefinition, AcpEventPage, AcpSession, AcpSnapshot } from "../../src/lib/acp";
+import type { AcpAgentPreferences, AcpDefinition, AcpEventPage, AcpSession, AcpSnapshot } from "../../src/lib/acp";
 import type { UsageReport } from "../../src/lib/usage-report";
 import { test, expect, reloadNativePage } from "../fixtures";
 import { createBlankProject, fillTextarea, openProject, openRailTab, type Page } from "../helpers";
@@ -11,6 +11,7 @@ import { scriptValue } from "../script-value";
 
 const assistantSelector = 'section[aria-label="CLI agent assistant"]';
 const composerSelector = 'textarea[aria-label="Message CLI agent"]';
+const sendSelector = '[data-testid="acp-composer-controls"] button[aria-label="Send"]';
 const fixturePath = fileURLToPath(new URL("../fixtures/acp-agent.mjs", import.meta.url));
 
 type AgentFixture = {
@@ -75,15 +76,28 @@ async function selectAppOption(page: Page, testId: string, label: string) {
   await pickOverlayEntry(page, "option", "listbox", label);
 }
 
-async function selectAppMenuItemByValue(page: Page, testId: string, value: string) {
-  await openAppOverlay(page, testId, value);
-  const selector = `[role="menuitem"][data-value=${JSON.stringify(value)}]`;
+async function chooseMenuItem(page: Page, testId: string, selector: string) {
+  await openAppOverlay(page, testId, selector);
   await page.waitForFunction(`!!document.querySelector(${scriptValue(selector)})`, 20_000);
   await page.evaluate(`(() => {
     document.querySelector(${scriptValue(selector)}).dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
     return true;
   })()`);
   await page.waitForFunction(`!document.querySelector('[role="menu"]')`, 20_000);
+}
+
+async function selectAppMenuItemByValue(page: Page, testId: string, value: string) {
+  await chooseMenuItem(page, testId, `[role="menuitem"][data-value=${JSON.stringify(value)}]`);
+}
+
+/** Clicks the button with this exact text inside the first element matching `scope`. */
+async function clickButtonText(page: Page, scope: string, text: string) {
+  const match = `[...(document.querySelector(${scriptValue(scope)})?.querySelectorAll("button") ?? [])].find((button) => (button.textContent ?? "").trim().startsWith(${scriptValue(text)}))`;
+  await page.waitForFunction(`!!(${match})`, 20_000);
+  await page.evaluate(`(() => {
+    (${match}).click();
+    return true;
+  })()`);
 }
 
 async function clickHeaderAction(page: Page, label: string) {
@@ -228,7 +242,10 @@ test("a custom ACP agent signs in, selects its model, and resolves a native perm
     const assistant = tauriPage.locator(assistantSelector);
     const session = await onlySession(tauriPage, fixture);
     expect(session.status).toBe("auth_required");
-    await expect(tauriPage.locator(composerSelector)).toBeDisabled();
+    // The composer keeps taking text while the agent waits for a sign-in; only Send waits.
+    await expect(tauriPage.locator(composerSelector)).toBeEnabled();
+    await fillTextarea(tauriPage, composerSelector, `draft ${fixture.run}`);
+    await expect(tauriPage.locator(sendSelector)).toBeDisabled();
     await assistant.getByText("Sign in to E2E agent", { exact: true }).click();
     await expect(tauriPage.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
     await selectAppOption(tauriPage, "acp-model-picker", "E2E model B");
@@ -343,7 +360,8 @@ test("Stop ends the turn and leaves a compliant agent connected", async ({ tauri
     await expect(assistant).toContainText("ACP fixture waiting for cancellation.", { timeout: 20_000 });
     await waitHost(() => fixturePids(fixture.pidFile).length === 2, "the fixture did not start its child process");
     await tauriPage.click('button[aria-label="Stop"]');
-    await expect(assistant).toContainText(`E2E ACP ${fixture.run} · ready`, { timeout: 30_000 });
+    await expect(tauriPage.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready", { timeout: 30_000 });
+    await expect(tauriPage.getByTestId("acp-session-status")).toContainText(`E2E ACP ${fixture.run}`);
     await expect(tauriPage.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
     await expect(assistant.getByText("Reconnect to conversation", { exact: true })).toHaveCount(0);
     const stopped = await tauriPage.evaluate<AcpSnapshot>(acpCall("acpSnapshot", fixture.projectId, session.id));
@@ -405,5 +423,87 @@ test("a long agent name never pushes the assistant panel sideways", async ({ tau
       return found;
     })()`);
     expect(overflow).toEqual([]);
+  });
+});
+
+function fixtureState(fixture: AgentFixture): { deleted?: string[] } {
+  try {
+    return JSON.parse(readFileSync(join(dirname(fixture.pidFile), "state.json"), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+test("a message typed during a turn is sent after it", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await withAgent(tauriPage, false, async (fixture) => {
+    const assistant = tauriPage.locator(assistantSelector);
+    const session = await onlySession(tauriPage, fixture);
+    await sendPrompt(tauriPage, `slow ${fixture.run}`);
+    await tauriPage.waitForFunction(`${acpCall("acpSnapshot", fixture.projectId, session.id)}.then((snapshot) => snapshot.session.status === "running")`, 20_000);
+    await fillTextarea(tauriPage, composerSelector, `queued ${fixture.run}`);
+    await tauriPage.press(composerSelector, "Enter");
+    await expect(assistant.locator('[data-testid="acp-queued"]')).toContainText(`queued ${fixture.run}`, { timeout: 10_000 });
+    await expect(assistant).toContainText(`ACP fixture answer: slow ${fixture.run}`, { timeout: 20_000 });
+    await expect(assistant).toContainText(`ACP fixture answer: queued ${fixture.run}`, { timeout: 20_000 });
+    await expect(assistant.locator('[data-testid="acp-queued"]')).toHaveCount(0);
+    const { events } = await tauriPage.evaluate<AcpEventPage>(acpCall("acpEvents", fixture.projectId, session.id));
+    expect(events.filter((event) => event.kind === "user_message")).toHaveLength(2);
+  });
+});
+
+test("the effort picker changes the agent's effort", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await withAgent(tauriPage, false, async (fixture) => {
+    const session = await onlySession(tauriPage, fixture);
+    await selectAppOption(tauriPage, "acp-effort-picker", "High");
+    await tauriPage.waitForFunction(`${acpCall("acpSnapshot", fixture.projectId, session.id)}.then((snapshot) => (snapshot.session.controls.options ?? []).some((option) => option.category === "thought_level" && option.kind.currentValue === "high"))`, 20_000);
+    const preferences = await tauriPage.evaluate<AcpAgentPreferences>(acpCall("acpAgentPreferences", fixture.agentId));
+    expect(preferences.effort).toEqual({ value: "high", name: "High" });
+  });
+});
+
+test("the slash menu lists the agent's commands", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await withAgent(tauriPage, false, async (fixture) => {
+    const session = await onlySession(tauriPage, fixture);
+    await tauriPage.waitForFunction(`${acpCall("acpSnapshot", fixture.projectId, session.id)}.then((snapshot) => (snapshot.session.availableCommands ?? []).length === 2)`, 20_000);
+    await fillTextarea(tauriPage, composerSelector, "/");
+    const menu = tauriPage.locator("#ai-slash-command-menu");
+    await expect(menu).toContainText("Agent commands", { timeout: 10_000 });
+    await expect(menu).toContainText("/plan");
+    await expect(menu).toContainText("/review");
+    await tauriPage.click('[id="ai-slash-command-command:plan"]');
+    await tauriPage.waitForFunction(`document.querySelector(${scriptValue(composerSelector)})?.value === "/plan "`, 10_000);
+  });
+});
+
+test("all conversations: rename and delete", async ({ tauriPage }) => {
+  test.setTimeout(150_000);
+  await withAgent(tauriPage, false, async (fixture) => {
+    const session = await onlySession(tauriPage, fixture);
+    await sendPrompt(tauriPage, `hello ${fixture.run}`);
+    await expect(tauriPage.locator(assistantSelector)).toContainText(`ACP fixture answer: hello ${fixture.run}`, { timeout: 20_000 });
+    await chooseMenuItem(tauriPage, "acp-history-picker", '[data-testid="acp-history-all"]');
+    const dialog = '[data-testid="acp-history-dialog"]';
+    await expect(tauriPage.locator(`${dialog} [data-testid="acp-history-row"]`)).toHaveCount(1, { timeout: 20_000 });
+
+    const title = `Renamed ${fixture.run}`;
+    await tauriPage.click(`${dialog} button[aria-label="Rename"]`);
+    await tauriPage.fill(`${dialog} input[aria-label="Conversation name"]`, title);
+    await tauriPage.press(`${dialog} input[aria-label="Conversation name"]`, "Enter");
+    await expect(tauriPage.locator(`${dialog} [data-testid="acp-history-row"]`)).toContainText(title, { timeout: 20_000 });
+    const renamed = await onlySession(tauriPage, fixture);
+    expect(renamed.title).toBe(title);
+    expect(renamed.titleLocked).toBe(true);
+
+    await tauriPage.click(`${dialog} button[aria-label="Delete"]`);
+    await tauriPage.click('[role="alertdialog"] [role="checkbox"]');
+    await clickButtonText(tauriPage, '[role="alertdialog"]', "Delete");
+    await expect(tauriPage.locator(`${dialog} [data-testid="acp-history-row"]`)).toHaveCount(0, { timeout: 30_000 });
+    const left = await tauriPage.evaluate<AcpSession[]>(acpCall("acpSessions", fixture.projectId));
+    expect(left.some((value) => value.id === session.id)).toBe(false);
+    await waitHost(() => (fixtureState(fixture).deleted ?? []).includes(session.nativeSessionId ?? ""), "the agent was not asked to delete its copy");
+    await tauriPage.press("body", "Escape");
   });
 });

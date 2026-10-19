@@ -583,7 +583,9 @@
       "diagnostics_one": "{{count}} tanılama",
       "diagnostics_other": "{{count}} tanılama",
       "papers_one": "{{count}} makale",
-      "papers_other": "{{count}} makale"
+      "papers_other": "{{count}} makale",
+      "sourcesFailed_one": "{{count}} kaynak başarısız oldu",
+      "sourcesFailed_other": "{{count}} kaynak başarısız oldu"
     }
   },
   "ui": {

@@ -1,24 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ResearchTask, TaskTranscriptEvent } from "@/lib/research-tasks";
+import type { ResearchTask, TaskTranscriptDelta, TaskTranscriptEvent } from "@/lib/research-tasks";
 
 const fileMocks = vi.hoisted(() => ({
   runExternalProjectMutation: vi.fn(),
 }));
 
-vi.mock("@/lib/research-tasks", () => ({
+vi.mock("@/lib/research-tasks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/research-tasks")>()),
   acceptResearchTaskResult: vi.fn(),
   applyResearchTask: vi.fn(),
+  approveResearchTaskPlan: vi.fn(),
   cancelResearchTask: vi.fn(),
   createResearchTask: vi.fn(),
   deleteResearchTask: vi.fn(),
   editResearchTask: vi.fn(),
   listResearchTasks: vi.fn(),
-  listenForResearchTaskChanges: vi.fn(),
-  listenForResearchTaskEvents: vi.fn(),
+  listenForResearchTaskChanges: vi.fn(async () => () => {}),
+  listenForResearchTaskDeltas: vi.fn(async () => () => {}),
+  listenForResearchTaskEvents: vi.fn(async () => () => {}),
   loadResearchTaskEvents: vi.fn(),
   retryResearchTask: vi.fn(),
   startResearchTask: vi.fn(),
+  // Selecting a task tells the backend which task this window shows.
+  watchResearchTask: vi.fn(async () => {}),
 }));
+
+// The subscriptions also answer PDF text requests; that bridge has its own tests.
+vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: vi.fn(async () => () => {}) }));
 
 vi.mock("@/store/files", () => ({
   useFilesStore: {
@@ -58,6 +66,21 @@ function task(id: string, overrides: Partial<ResearchTask> = {}): ResearchTask {
     updatedAt: 1,
     startedAt: 1,
     finishedAt: 1,
+    brief: api.defaultBrief(`Complete ${id}`),
+    recordSlug: "",
+    recordDir: "",
+    runAfter: null,
+    keepRunningAfterQuit: false,
+    owner: "app",
+    phase: null,
+    planApproved: false,
+    stopReason: null,
+    evidence: null,
+    pendingApprovals: 0,
+    activeMs: 0,
+    todos: [],
+    reclaimRequested: false,
+    resumedFrom: null,
     ...overrides,
   };
 }
@@ -350,6 +373,7 @@ describe("research task actions", () => {
     ["cancelTask", api.cancelResearchTask],
     ["retryTask", api.retryResearchTask],
     ["acceptTask", api.acceptResearchTaskResult],
+    ["approvePlan", api.approveResearchTaskPlan],
   ] as const)("%s stores the updated task", async (action, call) => {
     useResearchTasksStore.setState({ tasks: [task("a")] });
     vi.mocked(call).mockResolvedValue(task("a", { status: "running", updatedAt: 2 }));
@@ -366,6 +390,7 @@ describe("research task actions", () => {
     ["cancelTask", api.cancelResearchTask],
     ["retryTask", api.retryResearchTask],
     ["acceptTask", api.acceptResearchTaskResult],
+    ["approvePlan", api.approveResearchTaskPlan],
   ] as const)("%s shows and rethrows a failure", async (action, call) => {
     vi.mocked(call).mockRejectedValue(new Error(`${action} failed`));
 
@@ -379,6 +404,7 @@ describe("research task actions", () => {
     ["cancelTask", api.cancelResearchTask],
     ["retryTask", api.retryResearchTask],
     ["acceptTask", api.acceptResearchTaskResult],
+    ["approvePlan", api.approveResearchTaskPlan],
   ] as const)("%s returns a late result without storing it after the project changed", async (action, call) => {
     let finish: (value: ResearchTask) => void = () => {};
     vi.mocked(call).mockReturnValue(new Promise((done) => (finish = done)));
@@ -397,6 +423,7 @@ describe("research task actions", () => {
     ["cancelTask", api.cancelResearchTask],
     ["retryTask", api.retryResearchTask],
     ["acceptTask", api.acceptResearchTaskResult],
+    ["approvePlan", api.approveResearchTaskPlan],
   ] as const)("%s keeps quiet about a failure after the project changed", async (action, call) => {
     let fail: (error: Error) => void = () => {};
     vi.mocked(call).mockReturnValue(new Promise((_resolve, reject) => (fail = reject)));
@@ -464,7 +491,31 @@ describe("research task subscriptions", () => {
     expect(useResearchTasksStore.getState().events).toHaveLength(1);
 
     unmount();
+    // The last unmount stops the listeners once their start has settled.
+    await Promise.resolve();
     expect(unlistenTasks).toHaveBeenCalledTimes(1);
     expect(unlistenEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes live text deltas into the selected task's transcript", async () => {
+    let onDelta: (value: TaskTranscriptDelta) => void = () => {};
+    const unlistenDeltas = vi.fn();
+    vi.mocked(api.listenForResearchTaskDeltas).mockImplementation(async (handler) => {
+      onDelta = handler;
+      return unlistenDeltas;
+    });
+    useResearchTasksStore.setState({
+      tasks: [task("a")],
+      selectedTaskId: "a",
+      events: [{ taskId: "a", executionGeneration: 1, sequence: 1, event: { kind: "text", text: "Read" }, createdAt: 1 }],
+    });
+
+    const unmount = await mountResearchTaskSubscriptions();
+    onDelta({ taskId: "a", executionGeneration: 1, sequence: 1, kind: "text", append: "ing", createdAt: 2 });
+
+    expect(useResearchTasksStore.getState().events.map((e) => e.event)).toEqual([{ kind: "text", text: "Reading" }]);
+    unmount();
+    await Promise.resolve();
+    expect(unlistenDeltas).toHaveBeenCalledTimes(1);
   });
 });

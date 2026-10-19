@@ -113,10 +113,69 @@
           "startFailed": "Nie udało się uruchomić {{name}}.",
           "timeout": "{{name}} uruchomił się, ale nie odpowiedział na czas.",
           "exited": "{{name}} zatrzymał się, zanim odpowiedział.",
-          "notAcp": "{{name}} uruchomił się, ale Oleafly nie rozumie jego odpowiedzi."
+          "notAcp": "{{name}} uruchomił się, ale Oleafly nie rozumie jego odpowiedzi.",
+          "needsSignIn": "{{name}} działa. Zaloguj się, zanim zaczniesz rozmowę.",
+          "sessionFailed": "{{name}} się uruchomił, ale nie mógł otworzyć rozmowy."
         },
         "getNode": "Pobierz Node.js",
-        "copyDetails": "Kopiuj szczegóły"
+        "copyDetails": "Kopiuj szczegóły",
+        "signIn": "Zaloguj się",
+        "afterSignIn": "Dokończ logowanie w terminalu, a potem przetestuj program ponownie."
+      },
+      "experimental": {
+        "title": "Funkcje eksperymentalne",
+        "description": "Te opcje korzystają z roboczych części Agent Client Protocol. Mogą się zmienić lub przestać działać.",
+        "v2": "Używaj ACP v2, gdy jest dostępny",
+        "v2Description": "Agenci obsługujący roboczą wersję 2 korzystają z niej. Pozostali zostają przy wersji 1.",
+        "providers": "Pozwól agentom używać moich kluczy API Oleafly",
+        "providersDescription": "Agent, który potrafi przekierowywać wywołania modelu, używa klucza wybranego na jego karcie. Klucz trafia tylko do procesu tego agenta."
+      },
+      "inactivity": {
+        "label": "Zatrzymaj milczącego agenta po",
+        "description": "Gdy agent nic nie wysyła przez tyle czasu, Oleafly go zatrzymuje. Możesz połączyć się ponownie.",
+        "minutes": "{{count}} min"
+      },
+      "protocolLabel": "Protokół",
+      "remembered": {
+        "title": "Zapamiętane wybory",
+        "effort": "Wysiłek: {{name}}",
+        "mode": "Tryb: {{name}}",
+        "forget": "Zapomnij",
+        "none": "Nowe rozmowy używają domyślnych ustawień agenta."
+      },
+      "providers": {
+        "label": "Użyj mojego klucza API Oleafly",
+        "off": "Wyłączone (agent loguje się sam)",
+        "note": "Oleafly wysyła klucz temu agentowi na początku rozmowy i nie umieszcza go w zapisach rozmów.",
+        "unavailable": "Dodaj klucz API w sekcji Ustawienia, AI, aby go tu użyć."
+      },
+      "hermes": {
+        "title": "Profil Hermes dla tego projektu",
+        "default": "Profil domyślny (wspólny)",
+        "project": "Profil projektu",
+        "remote": "Zdalnie przez SSH",
+        "profileName": "Profil {{name}}",
+        "memory": "Pamięć projektu",
+        "memoryDescription": "Hermes zapamiętuje informacje między rozmowami w tym projekcie.",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "Korzystaj z hostowanych narzędzi wyszukiwania w sieci, obrazów, mowy i przeglądarki z Twojej subskrypcji Nous.",
+        "status": {
+          "ready": "Brama działa",
+          "starting": "Brama się uruchamia",
+          "stopped": "Brama zatrzymana",
+          "unknown": "Stan bramy nieznany"
+        },
+        "refresh": "Sprawdź ponownie",
+        "keepsRunning": "Rozłączenie Oleafly nigdy nie zatrzymuje bramy.",
+        "host": "Host",
+        "port": "Port",
+        "folder": "Folder projektu na tamtej maszynie",
+        "command": "Polecenie Hermes",
+        "remoteProfile": "Profil (opcjonalnie)",
+        "test": "Testuj połączenie",
+        "testOk": "Połączono: {{version}}",
+        "save": "Zapisz",
+        "sshNote": "Oleafly loguje się tylko Twoimi kluczami SSH."
       }
     },
     "approvals": {
@@ -195,6 +254,8 @@
       "defaultModelTitle": "Domyślny model czatu",
       "pdfCaptureDescription": "Pozwala agentowi rasteryzować skompilowane strony (verify_pdf_pages) do kontroli układu przez model wizyjny. Wyłącz, jeśli wolisz nie wysyłać obrazów stron do swojego dostawcy.",
       "pdfCaptureLabel": "Zezwalaj AI na przechwytywanie stron PDF",
+      "reasoningSummariesDescription": "Modele, które myślą przed odpowiedzią, wysyłają krótkie podsumowanie swojego rozumowania. Dotyczy modeli Anthropic i OpenAI.",
+      "reasoningSummariesLabel": "Pokazuj podsumowania rozumowania",
       "save": "Zapisz instrukcje",
       "saved": "Zapisano",
       "toolsHint": "Poproś go o rzeczy w rodzaju \"popraw błędy LaTeX\", \"dodaj sekcję Publikacje\" albo \"skompiluj ponownie i sprawdź PDF\".",
@@ -515,7 +576,32 @@
       },
       "useInAllProjectsAria": "Używaj {{name}} we wszystkich projektach",
       "useInProjectAria": "Używaj {{name}} w tym projekcie",
-      "validateAria": "Sprawdź {{name}}"
+      "validateAria": "Sprawdź {{name}}",
+      "shadowNote": "Dostępna jest nowsza wersja tej umiejętności od Oleafly.",
+      "replaceAction": "Użyj wersji Oleafly",
+      "replaceTitle": "Zastąpić Twoją kopię {{name}}?",
+      "replaceBody": "Twoja kopia zostanie przeniesiona do folderu kopii zapasowych. Nic nie zostanie usunięte.",
+      "replaced": "Twoja kopia jest w {{path}}."
+    },
+    "tools": {
+      "tabLabel": "Narzędzia",
+      "loading": "Wczytywanie ustawień Narzędzi…",
+      "modelTitle": "Model dla Narzędzi",
+      "modelDescription": "Konwersja obrazu na LaTeX, obrazy równań i zeskanowane pliki PDF używają tego modelu. Wybór automatyczny korzysta z Ollama, więc obrazy zostają na tym komputerze. Jeśli Ollama nie działa albo nie ma modelu, który czyta obrazy, konwersje obrazu na LaTeX i na Typst w edytorze wysyłają obraz do modelu asystenta.",
+      "ocrHint": "Aby uzyskać najlepsze wyniki lokalnie, pobierz w Ollama model OCR:",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "Opcjonalnie. Mathpix odczytuje równania, tabele i zeskanowane pliki PDF, a za każdy obraz i stronę obciąża Twoje własne konto Mathpix.",
+        "docs": "Uzyskaj klucze Mathpix",
+        "appIdLabel": "Identyfikator aplikacji",
+        "appKeyLabel": "Klucz aplikacji",
+        "save": "Zapisz klucze",
+        "remove": "Usuń klucze",
+        "connected": "Połączono jako {{appId}}",
+        "saved": "Zapisano klucze Mathpix.",
+        "removed": "Usunięto klucze Mathpix.",
+        "privacy": "Oleafly prosi Mathpix, aby nie przechowywał Twoich obrazów, i po odczytaniu wyniku usuwa każdy plik PDF z Mathpix."
+      }
     }
   },
   "appearance": {
@@ -554,17 +640,6 @@
       "theme": {
         "description": "Opcja systemowa podąża za systemem operacyjnym i zmienia się razem z nim.",
         "label": "Wygląd"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "Strona główna przeglądarki",
-        "description": "Wybierz stronę otwieraną razem z dokiem przeglądarki.",
-        "label": "Strona główna"
-      },
-      "searchEngine": {
-        "description": "Wybierz wyszukiwarkę używaną do wyszukiwania tekstu.",
-        "label": "Domyślna wyszukiwarka"
       }
     },
     "customTheme": {
@@ -866,7 +941,6 @@
     "sectionName": "Wygląd",
     "tabs": {
       "app": "Aplikacja",
-      "browser": "Przeglądarka",
       "editor": "Edytor",
       "files": "Projekt",
       "pdf": "Podgląd PDF",
@@ -890,6 +964,14 @@
         "foreground": "Tekst",
         "foregroundAriaLabel": "Kolor tekstu terminala",
         "label": "Kolory terminala"
+      },
+      "confirmClose": {
+        "description": "Pytaj najpierw, gdy w zamykanym terminalu nadal działa program, także przy zamykaniu projektu lub wychodzeniu.",
+        "label": "Pytaj przed zamknięciem zajętego terminala"
+      },
+      "copyOnSelect": {
+        "description": "Kopiuj tekst terminala od razu po zaznaczeniu.",
+        "label": "Kopiuj po zaznaczeniu"
       },
       "cursorBlink": {
         "description": "Spraw, aby kursor terminala migał.",
@@ -919,6 +1001,46 @@
       "fontWeightBold": {
         "description": "Ustal grubość pogrubionego tekstu terminala.",
         "label": "Grubość pisma pogrubionego"
+      },
+      "optionIsMeta": {
+        "description": "Wysyłaj kombinacje z klawiszem Option do shell jako Meta. Option nie będzie już wpisywać znaków specjalnych.",
+        "label": "Używaj Option jako Meta"
+      },
+      "scrollback": {
+        "ariaLabel": "Bufor przewijania terminala",
+        "description": "Ile wierszy przechowuje każdy terminal. Więcej wierszy zajmuje więcej pamięci.",
+        "label": "Bufor przewijania",
+        "lines_one": "{{value}} wiersz",
+        "lines_few": "{{value}} wiersze",
+        "lines_many": "{{value}} wierszy",
+        "lines_other": "{{value}} wiersza"
+      },
+      "shell": {
+        "ariaLabel": "Powłoka terminala (shell)",
+        "description": "Nowe terminale uruchamiają ten shell. Otwarte terminale zachowują swój.",
+        "label": "Shell",
+        "options": {
+          "auto": "Domyślny ({{name}})",
+          "cmd": "Wiersz polecenia",
+          "custom": "Własna ścieżka",
+          "defaultShell": "Domyślny shell",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "Własna ścieżka do shell",
+          "description": "Program uruchamiany przez nowe terminale.",
+          "label": "Ścieżka do shell"
+        }
+      },
+      "shiftEnter": {
+        "ariaLabel": "Shift+Enter w terminalu",
+        "description": "Co Shift+Enter wysyła do programu w terminalu.",
+        "enter": "Enter",
+        "label": "Shift+Enter",
+        "newline": "Nowy wiersz"
       },
       "startWithProject": {
         "description": "Uruchamiaj powłokę shell przy otwarciu projektu, a nie przy pierwszym pokazaniu terminala.",
@@ -962,6 +1084,15 @@
       "saveEmail": "Zapisz adres e-mail",
       "saveKey": "Zapisz klucz"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "Opcjonalnie. Pozwala asystentowi szukać w sieci, gdy jego dostawca nie ma własnego wyszukiwania.",
+      "keyLabel": "Klucz Brave Search API",
+      "keyRemoveFailed": "Nie udało się usunąć klucza Brave Search API.",
+      "keyRemoved": "Usunięto klucz Brave Search API",
+      "keySaveFailed": "Nie udało się zapisać klucza Brave Search API.",
+      "keySaved": "Zapisano klucz Brave Search API"
+    },
     "connected": "Połączono",
     "description": "Zarządzaj poświadczeniami używanymi przez naukowe źródła wyszukiwania.",
     "keyFree": {
@@ -1001,7 +1132,17 @@
       "keySaveFailed": "Nie udało się zapisać klucza API Serper.",
       "keySaved": "Zapisano klucz API Serper"
     },
-    "title": "Wyszukiwanie cytowań"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "Opcjonalnie. Pozwala asystentowi szukać w sieci, gdy jego dostawca nie ma własnego wyszukiwania.",
+      "keyLabel": "Klucz Tavily API",
+      "keyRemoveFailed": "Nie udało się usunąć klucza Tavily API.",
+      "keyRemoved": "Usunięto klucz Tavily API",
+      "keySaveFailed": "Nie udało się zapisać klucza Tavily API.",
+      "keySaved": "Zapisano klucz Tavily API"
+    },
+    "title": "Wyszukiwanie cytowań",
+    "webSearchOrder": "Do wyszukiwania w sieci asystent używa najpierw Brave, potem Tavily, a potem Serper."
   },
   "cite": {
     "apa": "To samo odwołanie w stylu APA znajdziesz pod Cite this repository w GitHub",
@@ -1303,17 +1444,62 @@
       }
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "Połączone",
-      "disconnect": "Rozłącz",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{login}} na {{host}}",
+      "caAdd": "Dodaj plik certyfikatu",
+      "caChange": "Zmień plik certyfikatu",
+      "caFile": "Plik certyfikatu: {{file}}",
+      "checking": "Sprawdzanie…",
+      "signInAgain": "Zaloguj się ponownie",
+      "signOut": "Wyloguj się",
+      "signedInAs": "Zalogowano jako {{login}}",
+      "signedOut": "Wylogowano",
+      "unreachable": "Brak połączenia z serwerem"
     },
-    "advanced": {
+    "add": {
+      "browserHint": "Logowanie jednorazowym kodem w przeglądarce.",
+      "caChoose": "Wybierz plik…",
+      "caFilter": "Pliki certyfikatów",
+      "caHint": "Potrzebne tylko wtedy, gdy certyfikat serwera pochodzi z własnego urzędu certyfikacji Twojej organizacji.",
+      "caLabel": "Plik urzędu certyfikacji",
+      "caPickerTitle": "Wybierz plik certyfikatu",
+      "caRemove": "Usuń",
+      "chooseKind": "Typ serwera",
       "connect": "Połącz",
-      "toggle": "Zaawansowane: użyj osobistego tokenu dostępu",
-      "tokenPlaceholder": "ghp_…"
+      "continue": "Dalej",
+      "createToken": "Utwórz token w {{host}}",
+      "detecting": "Sprawdzanie serwera…",
+      "found": "To serwer {{kind}}.",
+      "kindGitea": "Gitea lub Forgejo",
+      "otherServer": "Inny serwer",
+      "scopesGitea": "Nadaj mu uprawnienia do odczytu i zapisu dla repository i user.",
+      "scopesGithub": "Nadaj mu zakresy repo i read:user.",
+      "scopesGitlab": "Nadaj mu zakresy api i write_repository.",
+      "serverLabel": "Adres serwera",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "Zaloguj się przez {{host}}",
+      "title": "Dodaj konto hostingu Git",
+      "tokenLabel": "Token dostępu",
+      "useToken": "Użyj tokenu dostępu"
     },
+    "addAccount": "Dodaj konto",
+    "description": "Zaloguj się, aby wypychać i pobierać zmiany, publikować projekty i importować repozytoria. Działa z GitHub, GitLab, Gitea, Forgejo i Codeberg, a także z serwerami, które prowadzisz samodzielnie.",
+    "device": {
+      "open": "Otwórz {{host}}",
+      "opened": "Oleafly otworzył <verificationLink>{{url}}</verificationLink> w Twojej przeglądarce. Wpisz tam kod, aby dokończyć logowanie.",
+      "timedOut": "Czas na zalogowanie minął. Spróbuj ponownie.",
+      "title": "Wpisz ten kod w {{host}}",
+      "waiting": "Czekamy, aż skończysz w przeglądarce…"
+    },
+    "empty": "Nie ma jeszcze kont. Projekty powiązane po adresie nadal wypychają i pobierają zmiany przy użyciu Twojego własnego logowania do Git lub klucza SSH.",
+    "notice": {
+      "signedIn": "Zalogowano do {{host}} jako {{login}}.",
+      "signedOut": "Wylogowano z {{host}}."
+    },
+    "title": "Hosting Git"
+  },
+  "github": {
     "autoInit": {
       "description": "Nowe i otwierane projekty dostają repozytorium Git, aby panel Git mógł śledzić zmiany. Nowy projekt zwykle zaczyna się od jednego commita z jego plikami. Potem Oleafly zatwierdza zmiany tylko na Twoją prośbę.",
       "label": "Inicjuj Git dla każdego projektu"
@@ -1321,23 +1507,6 @@
     "config": {
       "loadFailed": "Nie udało się wczytać ustawień Git.",
       "saveFailed": "Nie udało się zapisać ustawień Git."
-    },
-    "connect": "Połącz GitHub",
-    "description": "Twórz kopie zapasowe projektów, synchronizuj je między urządzeniami oraz wypychaj i pobieraj zmiany z panelu Git.",
-    "device": {
-      "openGithub": "Otwórz GitHub",
-      "opened": "Otworzyliśmy <verificationLink>{{url}}</verificationLink> w Twojej przeglądarce. Wklej tam kod, aby autoryzować Oleafly.",
-      "timedOut": "Logowanie do GitHub przekroczyło limit czasu. Spróbuj ponownie.",
-      "title": "Wpisz ten kod w GitHub",
-      "waiting": "Oczekiwanie na autoryzację…"
-    },
-    "hint": {
-      "oauth": "Loguje Cię jednorazowym kodem w przeglądarce.",
-      "token": "Logowanie OAuth nie jest jeszcze skonfigurowane w tej kompilacji, więc wklej zamiast tego token."
-    },
-    "notice": {
-      "connected": "Połączono jako @{{login}}",
-      "disconnected": "Rozłączono."
     }
   },
   "integrations": {
@@ -1354,39 +1523,14 @@
       "disconnectFailed": "Nie udało się rozłączyć alphaXiv. Spróbuj ponownie."
     },
     "cookies": {
-      "action": "Importuj pliki cookie",
-      "confirmAllDomains": "Za chwilę zaimportujesz pliki cookie z profilu {{profile}} w przeglądarce {{browser}} dla wszystkich domen. Cookie zostaną zapisane we wbudowanej przeglądarce i wysyłane tylko do pasujących witryn. Oleafly poprosi jeszcze raz o potwierdzenie w natywnym oknie przed odczytaniem profilu.",
-      "confirmDomain": "Za chwilę zaimportujesz pliki cookie z profilu {{profile}} w przeglądarce {{browser}} dla domeny {{domain}}. Cookie zostaną zapisane we wbudowanej przeglądarce i wysyłane tylko do pasujących witryn. Oleafly poprosi jeszcze raz o potwierdzenie w natywnym oknie przed odczytaniem profilu.",
       "confirmTitle": "Potwierdź import plików cookie",
-      "description": "Korzystaj z istniejącego logowania w przeglądarce wewnątrz wbudowanej przeglądarki Oleafly.",
       "detecting": "Szukanie zainstalowanych profili przeglądarek...",
       "dialogDescription": "Wybierz jeden zainstalowany profil przeglądarki. Oleafly odczyta go dopiero po Twoim przejrzeniu i potwierdzeniu importu. Pliki cookie Chromium są odblokowywane lokalnie przez Pęk kluczy macOS. Oleafly nie wysyła wartości plików cookie do żadnej usługi Oleafly.",
       "dialogTitle": "Importuj pliki cookie z przeglądarki",
       "empty": "Nie znaleziono obsługiwanych profili przeglądarek.",
       "errors": {
-        "chooseProfile": "Wybierz dostępny profil przeglądarki.",
-        "hostname": "Podaj nazwę hosta, na przykład example.com."
+        "chooseProfile": "Wybierz dostępny profil przeglądarki."
       },
-      "hostnameHint": "Podaj nazwę hosta witryny, aby zaimportować tylko pliki cookie, z których ta witryna może korzystać. Zostaw puste, aby zaimportować każdy kwalifikujący się plik cookie z tego profilu.",
-      "hostnameLabel": "Docelowa nazwa hosta (opcjonalnie)",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_one": "Zaimportowano {{count}} plik cookie z przeglądarki {{browser}} dla domeny {{domain}}.",
-      "importedDomain_few": "Zaimportowano {{count}} pliki cookie z przeglądarki {{browser}} dla domeny {{domain}}.",
-      "importedDomain_many": "Zaimportowano {{count}} plików cookie z przeglądarki {{browser}} dla domeny {{domain}}.",
-      "importedDomain_other": "Zaimportowano {{count}} pliku cookie z przeglądarki {{browser}} dla domeny {{domain}}.",
-      "importedProfileDomain_one": "Zaimportowano {{count}} plik cookie z przeglądarki {{browser}}, profil {{profile}}, dla domeny {{domain}}.",
-      "importedProfileDomain_few": "Zaimportowano {{count}} pliki cookie z przeglądarki {{browser}}, profil {{profile}}, dla domeny {{domain}}.",
-      "importedProfileDomain_many": "Zaimportowano {{count}} plików cookie z przeglądarki {{browser}}, profil {{profile}}, dla domeny {{domain}}.",
-      "importedProfileDomain_other": "Zaimportowano {{count}} pliku cookie z przeglądarki {{browser}}, profil {{profile}}, dla domeny {{domain}}.",
-      "importedProfile_one": "Zaimportowano {{count}} plik cookie z przeglądarki {{browser}}, profil {{profile}}.",
-      "importedProfile_few": "Zaimportowano {{count}} pliki cookie z przeglądarki {{browser}}, profil {{profile}}.",
-      "importedProfile_many": "Zaimportowano {{count}} plików cookie z przeglądarki {{browser}}, profil {{profile}}.",
-      "importedProfile_other": "Zaimportowano {{count}} pliku cookie z przeglądarki {{browser}}, profil {{profile}}.",
-      "imported_one": "Zaimportowano {{count}} plik cookie z przeglądarki {{browser}}.",
-      "imported_few": "Zaimportowano {{count}} pliki cookie z przeglądarki {{browser}}.",
-      "imported_many": "Zaimportowano {{count}} plików cookie z przeglądarki {{browser}}.",
-      "imported_other": "Zaimportowano {{count}} pliku cookie z przeglądarki {{browser}}.",
-      "importing": "Importowanie plików cookie...",
       "profileGroupLabel": "Profile przeglądarek",
       "profileLegend": "Profil przeglądarki",
       "review": "Przejrzyj import",
@@ -1396,8 +1540,18 @@
         "noCookieStore": "Brak magazynu plików cookie",
         "notInstalled": "Niezainstalowana"
       },
-      "title": "Importuj pliki cookie",
-      "tryAgain": "Spróbuj ponownie"
+      "tryAgain": "Spróbuj ponownie",
+      "label": "Logowanie z przeglądarki",
+      "useBrowserSignIn": "Użyj logowania z mojej przeglądarki",
+      "signInDescription": "Skopiuj swoje logowanie do {{server}} z przeglądarki na tym komputerze, aby nie logować się ponownie.",
+      "site": "Strona: {{domain}}",
+      "confirmCopy": "Oleafly odczyta pliki cookie dla {{domain}} z profilu {{profile}} w {{browser}}. Zostaną w Oleafly i będą wysyłane tylko do {{domain}}. Potwierdzisz to jeszcze raz w oknie systemowym.",
+      "copyAction": "Skopiuj logowanie",
+      "copying": "Kopiowanie...",
+      "notSignedIn_one": "Skopiowano {{count}} plik cookie z {{browser}}, ale nie zalogował Cię. Zaloguj się bezpośrednio.",
+      "notSignedIn_few": "Skopiowano {{count}} pliki cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
+      "notSignedIn_many": "Skopiowano {{count}} plików cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio.",
+      "notSignedIn_other": "Skopiowano {{count}} pliku cookie z {{browser}}, ale nie zalogowały Cię. Zaloguj się bezpośrednio."
     },
     "zotero": {
       "apiKeyHint": "Aby zdobyć klucz: zaloguj się w <siteLink>zotero.org</siteLink>, otwórz swoją <keyLink>stronę klucza API</keyLink>, aby utworzyć klucz, i skopiuj z tej samej strony swój liczbowy identyfikator użytkownika.",
@@ -1472,6 +1626,124 @@
       "gitSave": "Zapisz",
       "gitRemove": "Usuń",
       "gitFailed": "Oleafly nie mógł zapisać tokenu Git. Sprawdź, czy wklejony został cały token."
+    },
+    "desktopApps": {
+      "tab": "Aplikacje na komputerze",
+      "title": "Aplikacje na komputerze",
+      "description": "Pozwól agentom używać aplikacji i stron na tym komputerze za pomocą Cua Driver. Oleafly pyta przed każdym kliknięciem i naciśnięciem klawisza.",
+      "docsLink": "Dokumentacja Cua Driver",
+      "status": {
+        "installed": "Cua Driver {{version}} jest zainstalowany.",
+        "installedNoVersion": "Cua Driver jest zainstalowany.",
+        "notInstalled": "Cua Driver nie jest zainstalowany.",
+        "tooOld": "Cua Driver {{version}} jest za stary. Oleafly potrzebuje wersji {{minimum}} lub nowszej.",
+        "noAppBundle": "Zainstaluj Cua Driver oficjalnym instalatorem, aby mógł przechowywać uprawnienia macOS.",
+        "path": "Znaleziono w {{path}}"
+      },
+      "install": {
+        "heading": "Zainstaluj Cua Driver",
+        "hint": "Uruchom to polecenie w terminalu. Oleafly nigdy nie instaluje Cua Driver za Ciebie.",
+        "run": "Uruchom w terminalu",
+        "needsProject": "Otwórz projekt, aby uruchomić to w terminalu Oleafly, albo skopiuj polecenie.",
+        "confirm": "To polecenie pobierze instalator Cua Driver z cua.ai i uruchomi go w Twoim terminalu. Kontynuować?",
+        "terminalTitle": "Instalacja Cua Driver",
+        "checkAgain": "Sprawdź ponownie"
+      },
+      "permissions": {
+        "heading": "Uprawnienia macOS",
+        "granted": "Cua Driver może korzystać z dostępności i nagrywania ekranu.",
+        "needed": "Cua Driver potrzebuje uprawnień do dostępności i nagrywania ekranu. Uruchom krok nadawania uprawnień i postępuj zgodnie z instrukcjami.",
+        "unknown": "Oleafly nie mógł odczytać uprawnień Cua Driver.",
+        "grant": "Nadaj uprawnienia",
+        "terminalTitle": "Uprawnienia Cua Driver"
+      },
+      "gnome": {
+        "heading": "Pomocnik GNOME",
+        "needed": "W GNOME uruchom raz pomocnika okien Cua, a potem wyloguj się i zaloguj ponownie.",
+        "active": "Pomocnik okien GNOME jest włączony."
+      },
+      "enable": {
+        "label": "Pozwól agentom używać aplikacji na komputerze",
+        "description": "Agenci widzą poniższe aplikacje i strony. Przed kliknięciami, pisaniem i zmianami stron najpierw Cię pytają."
+      },
+      "apps": {
+        "heading": "Dozwolone aplikacje",
+        "empty": "Nie ma jeszcze aplikacji. Agenci mogą używać tylko aplikacji dodanych tutaj.",
+        "add": "Dodaj aplikację",
+        "remove": "Usuń {{name}}",
+        "dialog": {
+          "title": "Dodaj aplikację",
+          "description": "Wybierz aplikację, której mogą używać agenci. Po Twoim zatwierdzeniu mogą ją otwierać, czytać jej okna i w niej działać.",
+          "search": "Szukaj aplikacji",
+          "loading": "Wyszukiwanie aplikacji...",
+          "none": "Brak pasujących aplikacji.",
+          "choose": "Wybierz inną aplikację...",
+          "add": "Dodaj"
+        },
+        "blocked": {
+          "oleafly": "Oleafly nie może sterować sam sobą.",
+          "driver": "Cua Driver nie może sterować sam sobą.",
+          "terminal": "Terminale uruchamiają polecenia z pominięciem zatwierdzania poleceń w Oleafly.",
+          "system_settings": "Ustawienia systemowe mogą zmieniać uprawnienia.",
+          "passwords": "Menedżery haseł są wyłączone z użycia.",
+          "scripting": "Programy uruchamiające skrypty mogą zrobić na tym komputerze wszystko.",
+          "wrapper": "Ten wpis uruchamia inny program. Wybierz zamiast niego tamten program.",
+          "sandboxed": "Aplikacje Flatpak i Snap nie są jeszcze obsługiwane."
+        }
+      },
+      "sites": {
+        "heading": "Dozwolone strony",
+        "empty": "Nie ma jeszcze stron.",
+        "add": "Dodaj stronę",
+        "placeholder": "https://www.example.org",
+        "remove": "Usuń {{origin}}",
+        "signedIn": {
+          "label": "Użyj mojej zalogowanej przeglądarki",
+          "description": "Na tej stronie agenci pracują w Twoim własnym Chrome lub Edge. Zostaw wyłączone, aby używać osobnego profilu przeglądarki."
+        }
+      },
+      "scripted": {
+        "label": "Sterowanie skryptami",
+        "description": "Pozwól agentom uruchamiać skrypty Cua, które wykonują wiele kroków naraz. Oleafly pyta przed każdym skryptem."
+      },
+      "test": {
+        "action": "Testuj połączenie",
+        "running": "Testowanie...",
+        "ok": "Cua Driver działa z Twoimi limitami.",
+        "failed": "Test nie powiódł się: {{detail}}"
+      },
+      "tool": {
+        "description": "Używaj aplikacji na komputerze i stron dozwolonych w Ustawieniach.",
+        "note": "Oglądanie działa od razu. Kliknięcia, pisanie i zmiany stron wymagają najpierw pytania."
+      },
+      "task": {
+        "label": "Aplikacje na komputerze",
+        "description": "Pozwól temu zadaniu używać dozwolonych aplikacji na komputerze. Musisz być przy komputerze, aby zatwierdzać czynności.",
+        "off": "Najpierw włącz aplikacje na komputerze w Ustawieniach.",
+        "unattended": "Zadania uruchamiane według harmonogramu lub po zamknięciu Oleafly nie mogą używać aplikacji na komputerze."
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "Połącz odizolowane pulpity i kontenery z Cua Spaces jako serwer MCP. Funkcja eksperymentalna.",
+        "notInstalled": "Polecenie cua nie jest zainstalowane.",
+        "connect": {
+          "label": "Połącz Cua Spaces",
+          "description": "Agenci mogą wyświetlać Twoje Spaces i sprawdzać działających w nich agentów."
+        },
+        "fullAccess": {
+          "label": "Zezwól na zmiany",
+          "description": "Agenci mogą też tworzyć i usuwać Spaces oraz uruchamiać w nich polecenia."
+        },
+        "credentials": {
+          "label": "Udostępnij logowanie moich agentów",
+          "description": "Pozwól agentom uruchomionym w Space używać Twojego logowania do Claude Code lub Codex."
+        },
+        "failed": "Oleafly nie mógł zaktualizować połączenia z Cua Spaces.",
+        "install": {
+          "terminalTitle": "Instalacja Cua",
+          "confirm": "To polecenie pobierze instalator Cua z cua.ai i uruchomi go w Twoim terminalu. Kontynuować?"
+        }
+      }
     }
   },
   "language": {
@@ -1816,7 +2088,8 @@
       "unavailable": "Ta kopia Oleafly nie zawiera polecenia."
     },
     "title": "Polecenie terminala",
-    "update": "Zaktualizuj"
+    "update": "Zaktualizuj",
+    "newTerminal": "Otwórz nowy terminal, aby używać oleafly. Już otwarte terminale nie widzą tej zmiany."
   },
   "shortcuts": {
     "actions": {
@@ -1840,10 +2113,6 @@
         "description": "Otwórz spis skrótów projektu.",
         "label": "Spis skrótów"
       },
-      "toggleBrowser": {
-        "description": "Pokaż albo ukryj przeglądarkę projektu.",
-        "label": "Przełącz przeglądarkę"
-      },
       "toggleSidebar": {
         "description": "Pokaż albo ukryj panel boczny projektu.",
         "label": "Przełącz panel boczny"
@@ -1855,6 +2124,22 @@
       "toggleTerminal": {
         "description": "Pokaż albo ukryj terminal projektu.",
         "label": "Przełącz terminal"
+      },
+      "newTerminal": {
+        "description": "Otwórz kolejną kartę terminala.",
+        "label": "Nowy terminal"
+      },
+      "closeTerminal": {
+        "description": "Zamknij kartę terminala, w której piszesz.",
+        "label": "Zamknij terminal"
+      },
+      "nextTerminal": {
+        "description": "Przejdź do następnej karty terminala.",
+        "label": "Następny terminal"
+      },
+      "previousTerminal": {
+        "description": "Przejdź do poprzedniej karty terminala.",
+        "label": "Poprzedni terminal"
       },
       "openFolder": {
         "label": "Otwórz folder",
@@ -2009,6 +2294,36 @@
       "elsewhere": "Menu otwiera inną kopię Oleafly. Napraw je, aby używać tej.",
       "moved": "Wskazuje kopię Oleafly, która została przeniesiona. Napraw, aby używać tej.",
       "noDefaultFileManager": "System nie ma domyślnego menedżera plików dla folderów, więc ten wpis mógłby otwierać każdy folder w Oleafly. Usuń go."
+    }
+  },
+  "research": {
+    "background": {
+      "title": "Zadania w tle",
+      "enabled": {
+        "label": "Kontynuuj zadania po zamknięciu Oleafly",
+        "description": "Przy wyjściu zadania oznaczone do dalszego działania przechodzą do małego procesu pomocniczego w tle. Oleafly przejmuje je z powrotem, gdy go otworzysz."
+      },
+      "atLogin": {
+        "label": "Uruchamiaj proces pomocniczy przy logowaniu",
+        "description": "Wznawia zadania w tle po ponownym uruchomieniu komputera. Proces pomocniczy kończy działanie, gdy nie ma nic do zrobienia.",
+        "moveApp": "Najpierw przenieś Oleafly do folderu Aplikacje.",
+        "needsBackground": "Najpierw włącz zadania w tle."
+      },
+      "status": {
+        "label": "Proces pomocniczy w tle",
+        "running": "Działa",
+        "stopped": "Nie działa",
+        "notResponding": "Nie odpowiada",
+        "tasks_one": "Zadania w toku: {{count}}",
+        "tasks_few": "Zadania w toku: {{count}}",
+        "tasks_many": "Zadania w toku: {{count}}",
+        "tasks_other": "Zadania w toku: {{count}}"
+      },
+      "stop": "Zatrzymaj proces pomocniczy",
+      "stopHint": "Jego zadania czekają wstrzymane, dopóki ponownie nie otworzysz Oleafly.",
+      "stopFailed": "Proces pomocniczy się nie zatrzymał. Spróbuj ponownie.",
+      "openLog": "Pokaż dziennik",
+      "toggleFailed": "Nie udało się zmienić tego ustawienia. Spróbuj ponownie."
     }
   }
 }

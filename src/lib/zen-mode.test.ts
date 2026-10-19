@@ -79,7 +79,7 @@ beforeEach(() => {
   useFilesStore.setState({ projectId: "p1" });
   useTourStore.setState({ activeTourId: null });
   usePreviewDetachedStore.setState({ projectId: null });
-  useSettingsStore.setState({ ...FULL_LAYOUT, browserOpen: false });
+  useSettingsStore.setState({ ...FULL_LAYOUT });
   useZenStore.getState().end();
 });
 
@@ -148,14 +148,6 @@ describe("entering Zen mode", () => {
     expect(enterZenMode()).toBe(true);
     expect(useZenStore.getState().snapshot?.showTree).toBe(true);
     expect(useSettingsStore.getState().showTree).toBe(true);
-  });
-
-  it("leaves the separate browser window alone", () => {
-    useSettingsStore.setState({ webBrowser: true, browserOpen: true });
-    enterZenMode();
-    expect(useSettingsStore.getState().browserOpen).toBe(true);
-    exitZenMode();
-    expect(useSettingsStore.getState().browserOpen).toBe(true);
   });
 });
 

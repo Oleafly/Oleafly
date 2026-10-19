@@ -4,13 +4,20 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ResearchTask } from "@/lib/research-tasks";
 
-vi.mock("@/lib/research-tasks", () => ({
+vi.mock("@/lib/research-tasks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/research-tasks")>()),
   acceptResearchTaskResult: vi.fn(), applyResearchTask: vi.fn(), cancelResearchTask: vi.fn(),
   createResearchTask: vi.fn(), deleteResearchTask: vi.fn(), editResearchTask: vi.fn(), listResearchTasks: vi.fn(),
   listenForResearchTaskChanges: vi.fn(), listenForResearchTaskEvents: vi.fn(),
   loadResearchTaskEvents: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
+  // 0.4.8: the store also listens for live text and tells the backend which task it shows.
+  listenForResearchTaskDeltas: vi.fn(async () => () => {}),
+  watchResearchTask: vi.fn(async () => {}),
+  listResearchTaskApprovals: vi.fn(async () => []),
 }));
+
+vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: vi.fn(async () => () => {}) }));
 
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ runExternalProjectMutation: vi.fn() }) },
@@ -28,6 +35,7 @@ import * as api from "@/lib/research-tasks";
 import { installScrollGeometry, type ScrollGeometry } from "@/lib/test-scroll-geometry";
 import { useResearchTasksStore } from "@/store/research-tasks";
 import { ResearchTasksPanel } from "./ResearchTasksPanel";
+import { taskFieldsSince047 } from "./tests/task-fixtures";
 
 function task(id: string, projectId: string, status: ResearchTask["status"]): ResearchTask {
   return {
@@ -37,6 +45,7 @@ function task(id: string, projectId: string, status: ResearchTask["status"]): Re
     sourceRevision: "snapshot:base", isolation: null, error: null, result: null,
     review: null, startRequested: false, cancelRequested: false,
     createdAt: 1, updatedAt: 1, startedAt: 1, finishedAt: 1,
+    ...taskFieldsSince047(),
   };
 }
 

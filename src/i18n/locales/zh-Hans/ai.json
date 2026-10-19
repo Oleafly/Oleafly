@@ -72,7 +72,28 @@
     }
   },
   "attachments": {
-    "remove": "移除 {{name}}"
+    "remove": "移除 {{name}}",
+    "processing": "正在准备 {{name}}…",
+    "failed": "无法附加 {{name}}。",
+    "pages_other": "{{count}} 页",
+    "pagesLimited": "只使用了 {{count}} 页中的前 {{limit}} 页。",
+    "tooMany": "每条消息最多可附加 {{max}} 个文件。",
+    "tooLarge": "{{name}} 超过了 {{limit}}。",
+    "unsupported": "无法附加 {{name}}。请附加图片、PDF 或文本文件。",
+    "unreadableImage": "Oleafly 无法读取 {{name}} 的图片格式。请将其另存为 PNG 或 JPEG 后重新附加。",
+    "unreadablePdf": "无法将 {{name}} 作为 PDF 打开。",
+    "storeFailed": "无法为此聊天保存 {{name}}。",
+    "visionUnsupported": "{{model}} 无法读取图片，因此不会发送此消息中的图片。",
+    "scannedPdf": "{{name}} 没有文本层，而 {{model}} 无法读取图片。",
+    "dropFiles": "拖放文件以附加",
+    "dropProjectFile": "拖放以提及此文件",
+    "open": "打开 {{name}}",
+    "saveCopy": "保存 {{name}} 的副本",
+    "saved": "已保存 {{name}} 的副本。",
+    "saveFailed": "无法保存 {{name}}。",
+    "missing": "{{name}} 已不可用。",
+    "sentAsText": "由于此模型无法将 {{name}} 作为文件读取，已将其作为文本发送。",
+    "skipped": "未发送 {{name}}。"
   },
   "chat": {
     "pill": {
@@ -176,7 +197,9 @@
     "stop": "停止",
     "stopTitle": "停止生成",
     "send": "发送",
-    "checkAgain": "重新检查"
+    "checkAgain": "重新检查",
+    "resizeHandle": "调整消息框大小",
+    "resizeHint": "拖动以调整大小，双击可还原。"
   },
   "commands": {
     "groups": {
@@ -214,10 +237,6 @@
     "files": {
       "label": "文件",
       "description": "将文件附加到你的下一条消息。"
-    },
-    "browser": {
-      "label": "附加浏览器",
-      "description": "在文档旁打开浏览器。"
     }
   },
   "models": {
@@ -265,7 +284,9 @@
       "minutes": "{{count}} 分钟前",
       "hours": "{{count}} 小时前",
       "days": "{{count}} 天前"
-    }
+    },
+    "skipped_other": "有 {{count}} 个聊天无法加载。它们仍保存在磁盘上。",
+    "openFailed": "无法打开此聊天。"
   },
   "tools": {
     "approval": {
@@ -311,7 +332,6 @@
       "listAgents": "列出辅助代理及其状态。",
       "closeAgent": "关闭辅助代理。",
       "runCommand": "在项目文件夹中运行 shell 命令，限时两分钟。",
-      "computerUse": "在助手的浏览器窗口中打开网页。",
       "toggleTheme": "在浅色和深色模式之间切换。",
       "listOverleafProjects": "列出你的 Overleaf 项目，必要时先登录。",
       "importOverleafProjects": "将 Overleaf 项目连同其编译器和主文件设置导入你的库。"
@@ -340,8 +360,7 @@
       "latexOnly": "仅限 LaTeX 项目",
       "latexAndTypstOnly": "仅限 LaTeX 和 Typst 项目",
       "pdfCaptureSetting": "需要启用 PDF 页面截图设置。",
-      "chatApproval": "在聊天中逐条批准命令。",
-      "browserSetting": "需要启用浏览器设置。"
+      "chatApproval": "在聊天中逐条批准命令。"
     },
     "sourceGroups": {
       "figure": "图片",
@@ -464,18 +483,20 @@
     "resumeTask": "打开研究任务以继续这项工作。",
     "delegatedConversation": "此对话属于委派代理的一次运行。",
     "noResume": "该代理无法恢复已保存的对话。准备好后即可开始新对话。",
-    "imageTooLarge": "请选择小于 480 KiB 的图片。最多可附加 4 张图片。",
     "imageReadFailed": "无法读取该图片。",
-    "removeImage": "移除 {{name}}",
     "composerAriaLabel": "向 CLI 代理发送消息",
     "composerPlaceholderReady": "让代理处理此项目。",
     "composerPlaceholderIdle": "请先开始或重新连接对话，再发送消息。",
-    "attachImage": "附加图片",
     "startConversation": "与 {{agent}} 开始对话。",
     "startConversationFallback": "某个代理",
     "agentModel": "代理模型",
     "modelManaged": "模型由代理管理。",
     "stop": "停止",
+    "stopReason": {
+      "refusal": "代理拒绝继续此请求。",
+      "maxTokens": "代理已达到输出上限并停止。",
+      "maxTurnRequests": "代理已达到本轮的请求上限并停止。"
+    },
     "stopTitle": "停止代理",
     "send": "发送",
     "connecting": "正在连接",
@@ -493,8 +514,7 @@
     "roster": {
       "bridgeMissing": "请在代理设置中安装桥接组件。",
       "cliMissing": "未在此计算机上找到 CLI。",
-      "unavailable": "在此计算机上不可用。",
-      "comingSoon": "即将推出"
+      "unavailable": "在此计算机上不可用。"
     },
     "messageTooLarge": "此消息及其图片过大。请缩短消息或删除一张图片。",
     "terminalCommand": "代理正在运行终端命令。",
@@ -541,7 +561,122 @@
       "skill": "技能：{{name}}",
       "tool": "工具：{{name}}",
       "changedFiles": "已更改的文件",
-      "moreFiles_other": "以及另外 {{count}} 个文件"
+      "moreFiles_other": "以及另外 {{count}} 个文件",
+      "mode": "模式",
+      "effort": "推理强度",
+      "permissionProfile": "审批模式",
+      "commits": "提交"
+    },
+    "composerPlaceholderStart": "向 {{agent}} 发送消息以开始对话",
+    "composerPlaceholderConnecting": "现在就可以输入，代理就绪后会发送。",
+    "composerPlaceholderRunning": "输入下一条消息，代理完成后会发送。",
+    "attachFile": "附加文件",
+    "composer": {
+      "tooManyAttachments": "每条消息最多附加 10 个文件。",
+      "imagesUnsupported": "此代理不接受图片。请移除图片后重试。",
+      "attachmentsNotReady": "请等待附件准备完成。",
+      "removeSelection": "移除引用 {{label}}"
+    },
+    "queue": {
+      "queued": "已排队：代理完成后发送",
+      "remove": "移除排队的消息",
+      "sendNow": "立即发送",
+      "sendFailed": "此消息未发送。请重新发送或将其移除。"
+    },
+    "slash": {
+      "commands": "代理命令",
+      "skills": "技能"
+    },
+    "controls": {
+      "effort": "推理强度",
+      "mode": "模式",
+      "more": "更多代理选项",
+      "blockedMode": "在 Oleafly 中已关闭",
+      "blockedModeHint": "Oleafly 会保持权限检查开启，因此无法使用此模式。"
+    },
+    "usage": {
+      "ariaLabel": "查看代理用量",
+      "tooltip": "此对话的用量",
+      "contextShare": "已使用上下文窗口的 {{percent}}%",
+      "window": {
+        "fiveHour": "5 小时会话",
+        "weekly": "每周，所有模型",
+        "weeklyOpus": "每周，Opus",
+        "weeklySonnet": "每周，Sonnet",
+        "overage": "额外用量",
+        "other": "用量限制 {{id}}"
+      },
+      "costIn": "代理报告的费用为 {{amount}} {{currency}}。",
+      "modelTokens": "{{model}}：{{tokens}} 个 token"
+    },
+    "compaction": {
+      "running": "正在总结较早的上下文",
+      "done": "已总结较早的上下文",
+      "failed": "无法总结较早的上下文"
+    },
+    "signIn": {
+      "inTerminal": "在终端中使用 {{name}}",
+      "afterTerminal": "请在终端中完成登录，然后重新连接。",
+      "apiKeyLabel": "{{provider}} 的 API 密钥",
+      "apiKeyPlaceholder": "粘贴你的 API 密钥",
+      "geminiGoogle": "个人方案已无法使用 Google 登录。请使用 Gemini API 密钥或 Vertex AI。",
+      "noProject": "打开项目后才能从终端登录。",
+      "signOut": "退出登录"
+    },
+    "elicitation": {
+      "ariaLabel": "代理请求",
+      "from": "{{agent}} 询问：",
+      "submit": "发送",
+      "decline": "拒绝",
+      "cancel": "取消",
+      "required": "必填",
+      "invalid": "请检查此字段。",
+      "openUrl": "在浏览器中打开",
+      "confirmTitle": "打开 {{host}}？",
+      "confirmDescription": "代理请你在此网站上完成一个步骤。它会在你的浏览器中打开。",
+      "waiting": "正在等待网站完成。"
+    },
+    "remote": {
+      "banner": "Hermes 通过 SSH 在 {{host}} 上运行。它的更改保留在那台机器上。"
+    },
+    "history": {
+      "all": "所有对话",
+      "title": "对话",
+      "search": "搜索对话",
+      "empty": "没有匹配的对话。",
+      "loadMore": "加载更多",
+      "open": "打开",
+      "rename": "重命名",
+      "renameLabel": "对话名称",
+      "delete": "删除",
+      "deleteTitle": "删除此对话？",
+      "deleteDescription": "Oleafly 会从此项目中移除它的记录和附件。",
+      "deleteFromAgent": "同时从 {{agent}} 中删除",
+      "deleteAgentFailed": "已在 Oleafly 中删除。{{agent}} 无法删除它的副本：{{error}}",
+      "deleteRunning": "删除此对话前，请先停止代理。",
+      "importFind": "查找此项目的 {{agent}} 对话",
+      "imported": "已在 Oleafly 中",
+      "importSelected": "导入所选项",
+      "importEmpty": "{{agent}} 没有此项目的其他对话。"
+    },
+    "header": {
+      "startedAt": "开始于 {{revision}}",
+      "startedDirty": "开始于 {{revision}}，包含未提交的更改",
+      "menu": "对话操作",
+      "fork": "分叉对话",
+      "forkUnsupported": "此代理无法分叉对话。",
+      "forkBusy": "请等代理完成后再分叉。",
+      "v2": "ACP v2 草案",
+      "remote": "远程"
+    },
+    "commit": {
+      "button": "提交",
+      "title": "提交本轮更改",
+      "message": "提交信息",
+      "files": "要提交的文件",
+      "defaultMessage": "来自 {{agent}} 的更改",
+      "submit": "提交文件",
+      "cancel": "取消"
     }
   },
   "agents": {
@@ -712,8 +847,6 @@
     "restoreFailed": "无法恢复：{{error}}",
     "steerFailed": "无法调整正在运行的轮次。",
     "approvalRuleSaveFailed": "无法保存项目审批规则。",
-    "attachmentTooLarge": "{{name}} 过大（最大 10 MB）。",
-    "attachmentReadFailed": "无法读取 {{name}}。",
     "tooManyTools": "已启用 {{enabled}} 个工具，但单次运行最多支持 {{max}} 个。请在“工具”中至少禁用 {{excess}} 个后重试。"
   },
   "header": {
@@ -738,7 +871,28 @@
     "summaryRunWithTokens_other": "上次运行：{{count}} 个步骤，已报告 {{tokens}} 个 Token。",
     "summaryRunNoTokens_other": "上次运行：{{count}} 个步骤，Token 总数不可用。",
     "summaryChat": "本对话：{{steps}} 个步骤，{{tokens}} 个 Token。",
-    "summaryFallback": "AI 用量"
+    "summaryFallback": "AI 用量",
+    "context": "上下文",
+    "contextUsed": "{{used}} / {{size}} 个 token",
+    "contextShare": "已使用上下文窗口的 {{percent}}",
+    "contextUnknown": "此模型的上下文窗口未知。",
+    "reasoning": "推理",
+    "cacheRead": "缓存读取",
+    "cacheWrite": "缓存写入",
+    "cost": "预估费用",
+    "budget": "项目预算",
+    "budgetUsed": "{{spent}} / {{limit}}",
+    "credit": "剩余额度",
+    "creditOf": "{{remaining}} / {{limit}}",
+    "planLimits": "方案限制",
+    "resetsAt": "{{time}}重置",
+    "windowWarning": "即将达到限制",
+    "windowBlocked": "已达到限制",
+    "refreshPlan": "刷新方案用量",
+    "refreshing": "正在刷新…",
+    "historyTrimmed_other": "只有此聊天的最后 {{count}} 轮发送给了模型。",
+    "empty": "此聊天还没有用量。",
+    "loading": "正在加载用量…"
   },
   "provider": {
     "connectTitle": "连接 AI 提供商以继续",
@@ -758,7 +912,21 @@
     "projectSubtitle": "正在处理“{{project}}”",
     "noOutput": "模型未返回任何输出。请检查设置 → AI 助手。",
     "planMissing": "还没有可批准的计划。请让助手先提出一个计划，或关闭“计划”。",
-    "planUnchanged": "计划没有变化。"
+    "planUnchanged": "计划没有变化。",
+    "stillWorking": "仍在处理（{{seconds}} 秒）。推理模型和本地模型可能较慢。点击“停止”可取消。",
+    "retrying": "连接出现问题。正在重试（第 {{attempt}} 次，共 {{max}} 次）…",
+    "stopped": "已停止。",
+    "stepLimit": "已达到步数上限。发送另一条消息即可继续。",
+    "outputLimit": "回复已达到模型的输出上限。发送另一条消息即可继续。",
+    "tooLargeToSave": "此聊天太长，无法保存。新消息会保留到你关闭 Oleafly 为止。导出聊天可保留一份副本。",
+    "exportChat": "导出聊天",
+    "exported": "聊天已导出。",
+    "exportFailed": "无法导出聊天。",
+    "saveFailed": "无法保存此聊天中的新消息。请检查磁盘是否有剩余空间。",
+    "exportYou": "你",
+    "exportAssistant": "助手",
+    "exportAttachments": "附件",
+    "exportTools": "使用的工具"
   },
   "followUps": {
     "steered": "已插入正在进行的轮次：{{summary}}。",
@@ -840,6 +1008,45 @@
     "figureAudit": "图片核查",
     "gitReview": "Git 审阅",
     "referenceCleanup": "参考文献整理",
-    "removeSkill": "移除技能 {{name}}"
+    "removeSkill": "移除技能 {{name}}",
+    "compilationRepair": "修复编译",
+    "submissionPrep": "投稿准备",
+    "reviewerResponse": "审稿回复"
+  },
+  "effort": {
+    "label": "推理强度",
+    "tooltip": "模型在回答前推理的程度",
+    "ariaLabel": "推理强度：{{level}}",
+    "auto": "自动",
+    "autoDescription": "使用模型的默认设置",
+    "levels": {
+      "none": "无",
+      "minimal": "最低",
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "xhigh": "很高",
+      "max": "最高"
+    }
+  },
+  "web": {
+    "label": "网络",
+    "on": "此聊天已开启网页搜索和网页读取",
+    "off": "为此聊天开启网页搜索和网页读取",
+    "ariaLabel": "网络访问",
+    "searchUnavailable": "此模型无法搜索网页。在设置中添加搜索密钥即可开启。"
+  },
+  "messageActions": {
+    "edit": "编辑消息",
+    "regenerate": "重新生成回复",
+    "retry": "重试",
+    "editingLatest": "正在编辑你的最后一条消息。发送后将替换回复。",
+    "editingEarlier": "正在编辑较早的消息。发送后会从那里开始一个新聊天，此聊天会保留在历史记录中。",
+    "cancelEdit": "取消编辑",
+    "replaceTitle": "替换此回复？",
+    "replaceDescription_other": "此回复更改了 {{count}} 个文件。这些更改会保留在你的项目中，但它们的撤销卡片会随回复一起消失。",
+    "replaceConfirm": "替换回复",
+    "forked": "已从编辑后的消息开始新聊天。",
+    "failed": "无法重新发送消息。"
   }
 }

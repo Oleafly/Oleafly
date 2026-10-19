@@ -48,7 +48,6 @@
     "hexColor": "必須是 #2563eb 這類的顏色",
     "hexColorOrEmpty": "必須是 #2563eb 這類的顏色，或為 \"\" 以使用主題的顏色",
     "text": "必須是文字，最多 {{max}} 個字元",
-    "webAddress": "必須是以 http:// 或 https:// 開頭的網址",
     "list": "必須是最多包含 {{max}} 個項目的清單",
     "listItem": "不是允許的項目",
     "duplicate": "出現了兩次",

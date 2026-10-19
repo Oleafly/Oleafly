@@ -190,6 +190,16 @@ export interface ToolActivityEntry {
   interrupted?: boolean;
 }
 
+/** A literature search that found nothing because indexes did not answer. */
+function searchFailed(data: Record<string, unknown> | null): boolean {
+  return (
+    Array.isArray(data?.records) &&
+    data.records.length === 0 &&
+    Array.isArray(data?.failures) &&
+    data.failures.length > 0
+  );
+}
+
 function explicitStatus(entry: ToolActivityEntry, value: unknown): ResearchToolStatus {
   if (entry.approval === "rejected") return "declined";
   if (entry.interrupted === true) return "interrupted";
@@ -215,7 +225,8 @@ function explicitStatus(entry: ToolActivityEntry, value: unknown): ResearchToolS
     data?.success === false ||
     data?.timed_out === true ||
     rawStatus === "failed" ||
-    rawStatus === "error"
+    rawStatus === "error" ||
+    searchFailed(data)
   ) {
     return "failed";
   }
@@ -304,9 +315,45 @@ function literatureResult(value: unknown): LiteratureResultView | null {
     year: numberValue(data?.publication_year) ?? numberValue(data?.year),
     doi,
     url: landingUrl ?? safeWebUrl(stringValue(data?.url)) ?? safeWebUrl(id),
-    source: stringValue(source?.display_name) ?? stringValue(data?.source),
+    source: stringValue(source?.display_name) ?? stringValue(data?.venue) ?? stringValue(data?.source),
     abstract: stringValue(data?.abstract) ?? abstractFromIndex(data?.abstract_inverted_index),
   };
+}
+
+/** The papers a search returned: `records` from the merged search, or the
+ * `results` and `works` that chats saved before it still hold. */
+function literatureHits(data: Record<string, unknown> | null): unknown[] {
+  if (Array.isArray(data?.records)) return data.records;
+  if (Array.isArray(data?.results)) return data.results;
+  return Array.isArray(data?.works) ? data.works : [];
+}
+
+const LITERATURE_SOURCE_NAMES: Record<string, string> = {
+  openalex: "OpenAlex",
+  "semantic-scholar": "Semantic Scholar",
+  crossref: "Crossref",
+  pubmed: "PubMed",
+  arxiv: "arXiv",
+  "google-scholar": "Google Scholar",
+  alphaxiv: "alphaXiv",
+};
+
+/** Why each index of a merged search did not answer, naming the index once. */
+function sourceFailures(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const failure = record(item);
+      const id = stringValue(failure?.source);
+      const message = stringValue(failure?.message);
+      if (!id) return message;
+      const label = LITERATURE_SOURCE_NAMES[id] ?? id;
+      if (!message) return i18n.t(($) => $.researchTools.literature.sourceFailed, { label });
+      return message.toLowerCase().startsWith(label.toLowerCase())
+        ? message
+        : i18n.t(($) => $.researchTools.literature.sourceMessage, { label, message });
+    })
+    .filter((message): message is string => Boolean(message));
 }
 
 export function safeWebUrl(value: string | undefined): string | undefined {
@@ -478,6 +525,7 @@ function toolSummary(context: {
   status: ResearchToolStatus;
   reason: string | undefined;
   resultCount: number;
+  failedSources: number;
   verified: boolean | undefined;
   diagnostics: readonly string[];
   path: string | undefined;
@@ -486,6 +534,11 @@ function toolSummary(context: {
   if (kind === "literature" && status === "completed") {
     return i18n.t(($) => $.core.toolActivity.summary.papers, {
       count: context.resultCount,
+    });
+  }
+  if (kind === "literature" && status === "failed" && context.failedSources > 0) {
+    return i18n.t(($) => $.core.toolActivity.summary.sourcesFailed, {
+      count: context.failedSources,
     });
   }
   if (kind === "citation" && verified === true) {
@@ -521,11 +574,10 @@ function buildToolView(entry: ToolActivityEntry): ResearchToolView {
   const status = explicitStatus(entry, value);
   const name = normalizedToolName(entry.name);
   const kind = kindFor(name);
-  const fallbackResults = Array.isArray(data?.works) ? data.works : [];
-  const rawResults = Array.isArray(data?.results) ? data.results : fallbackResults;
-  const results = rawResults
+  const results = literatureHits(data)
     .map(literatureResult)
     .filter((result): result is LiteratureResultView => result !== null);
+  const failures = kind === "literature" ? sourceFailures(data?.failures) : [];
   const path = stringValue(data?.path) ?? stringValue(data?.file) ??
     stringValue(data?.relativePath) ?? stringValue(data?.relative_path);
   const line = numberValue(data?.line) ?? numberValue(data?.offset);
@@ -535,12 +587,13 @@ function buildToolView(entry: ToolActivityEntry): ResearchToolView {
   const url = safeWebUrl(stringValue(data?.url) ?? stringValue(data?.source_url));
   const verified = typeof data?.verified === "boolean" ? data.verified : undefined;
   const errors = diagnosticMessages(data?.errors);
-  const diagnostics = [...errors, ...diagnosticMessages(data?.diagnostics)];
+  const diagnostics = [...errors, ...diagnosticMessages(data?.diagnostics), ...failures];
   const summary = toolSummary({
     kind,
     status,
     reason: stringValue(data?.reason),
     resultCount: results.length,
+    failedSources: failures.length,
     verified,
     diagnostics,
     path,

@@ -6521,101 +6521,28 @@ pub(crate) fn record_pdf_export(project_id: String, dest: String) -> Result<(), 
     Ok(())
 }
 
-// `--embed-resources` requires pandoc 2.19+.
+// `--embed-resources` requires pandoc 2.19+; the search order and the gate
+// live in `oleafly_core::pandoc`, shared with the CLI.
+#[cfg(test)]
 fn pandoc_version_supported(version_stdout: &[u8]) -> bool {
-    let Some(first_line) = String::from_utf8_lossy(version_stdout)
-        .lines()
-        .next()
-        .map(str::to_string)
-    else {
-        return false;
-    };
-    let Some(version) = first_line.split_whitespace().nth(1) else {
-        return false;
-    };
-    let mut parts = version.split('.').filter_map(|p| p.parse::<u32>().ok());
-    let major = parts.next().unwrap_or(0);
-    let minor = parts.next().unwrap_or(0);
-    major > 2 || (major == 2 && minor >= 19)
+    oleafly_core::pandoc::pandoc_version_supported(version_stdout)
 }
 
-/// Locate a usable `pandoc` binary. macOS/Linux GUI apps launch with a minimal
-/// PATH that usually excludes Homebrew and conda, so if it isn't on PATH we also
-/// probe common install locations before giving up.
-fn canonical_supported_pandoc(candidate: &Path) -> Option<PathBuf> {
-    use std::process::Command;
-
-    let candidate = candidate.canonicalize().ok()?;
-    if !candidate.is_file() {
-        return None;
-    }
-    let mut command = Command::new(&candidate);
-    command.arg("--version");
-    let output =
-        crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(5))
-            .ok()?;
-    (output.status.success() && pandoc_version_supported(&output.stdout)).then_some(candidate)
-}
-
-fn find_pandoc_on_path(path: Option<&std::ffi::OsStr>) -> Option<PathBuf> {
-    let path = path?;
-    let executable = if cfg!(windows) {
-        "pandoc.exe"
-    } else {
-        "pandoc"
-    };
-    std::env::split_paths(path)
-        .map(|directory| directory.join(executable))
-        .find_map(|candidate| canonical_supported_pandoc(&candidate))
-}
-
+/// Locate a usable `pandoc` binary: the bundled sidecar, the managed copy,
+/// `PATH`, then the usual install folders (GUI apps start with a minimal
+/// PATH that misses Homebrew and conda).
 pub(crate) fn find_pandoc() -> Option<String> {
-    // Release builds carry Pandoc beside the app as a checksum-pinned Tauri
-    // sidecar, so every document conversion works without a first-run download.
-    if let Ok(bundled) = crate::document_engine::resolve_bundled_sidecar("pandoc") {
-        if let Some(bundled) = canonical_supported_pandoc(&bundled) {
-            return bundled.into_os_string().into_string().ok();
-        }
-    }
-    let mut candidates: Vec<PathBuf> = Vec::new();
-    // Keep the managed cache as a fallback for older installations and
-    // developer builds that do not stage the bundled sidecar.
-    if let Ok(root) = paths::oleafly_root() {
-        candidates.push(root.join("bin").join(if cfg!(windows) {
-            "pandoc.exe"
-        } else {
-            "pandoc"
-        }));
-    }
-    if let Some(cached) = candidates.pop() {
-        if let Some(cached) = canonical_supported_pandoc(&cached) {
-            return cached.into_os_string().into_string().ok();
-        }
-    }
-    if let Some(pandoc) = find_pandoc_on_path(std::env::var_os("PATH").as_deref()) {
-        return pandoc.into_os_string().into_string().ok();
-    }
-    candidates.extend([
-        PathBuf::from("/opt/homebrew/bin/pandoc"),
-        PathBuf::from("/usr/local/bin/pandoc"),
-        PathBuf::from("/usr/bin/pandoc"),
-        PathBuf::from("/opt/homebrew/anaconda3/bin/pandoc"),
-    ]);
-    if let Ok(home) = std::env::var("HOME") {
-        for sub in [
-            "anaconda3/bin/pandoc",
-            "miniconda3/bin/pandoc",
-            ".local/bin/pandoc",
-            "homebrew/bin/pandoc",
-            "bin/pandoc",
-        ] {
-            candidates.push(PathBuf::from(&home).join(sub));
-        }
-    }
-    candidates
-        .into_iter()
-        .find_map(|candidate| canonical_supported_pandoc(&candidate))
-        .and_then(|candidate| candidate.into_os_string().into_string().ok())
+    let search = oleafly_core::pandoc::PandocSearch {
+        bundled_dirs: oleafly_core::sidecar::executable_dir()
+            .into_iter()
+            .collect(),
+        data_root: paths::oleafly_root().ok(),
+        home: paths::home_dir().ok(),
+        path: std::env::var_os("PATH"),
+    };
+    oleafly_core::pandoc::find_pandoc(&search, std::time::Duration::from_secs(5))
+        .path
+        .and_then(|path| path.into_os_string().into_string().ok())
 }
 
 /// Convert the main document to another format via `pandoc`. Pandoc infers the
@@ -6742,140 +6669,61 @@ fn export_staging_dir(location: &crate::project_location::ProjectLocation) -> Op
     paths::state_subdirectory(location, crate::pandoc_citations::STAGING_DIR).ok()
 }
 
-/// The folders an export reads from, as the compile searches them: the main
-/// document's folder first, then the project root. Returns pandoc's
-/// `--resource-path` and the matching `TEXINPUTS` for `\input`.
-///
-/// The two lists are parsed differently. Pandoc splits `--resource-path`
-/// with the platform's separator (';' on Windows), so it holds absolute
-/// folders. Its LaTeX reader splits `TEXINPUTS` on ':' on every platform,
-/// which would cut a Windows drive letter off, so that value holds folders
-/// relative to the project root, where pandoc runs: "paper:." for
-/// paper/main.tex and "." for a main document at the root.
-///
-/// Project roots are canonical, so on Windows they start with `\\?\`.
-/// Windows does not read a '/' in such a path as a separator, and pandoc
-/// and the citation filter join names like 'bib/refs.bib' onto these
-/// folders, so they are passed without the prefix.
+/// Runs supervised compile children for the shared document tools.
+pub(crate) struct AppToolRunner;
+
+impl oleafly_doctools::ToolRunner for AppToolRunner {
+    fn run<'a>(
+        &'a self,
+        program: &'a Path,
+        args: &'a [String],
+        working_dir: &'a Path,
+        variables: &'a [(String, String)],
+    ) -> oleafly_doctools::RunFuture<'a> {
+        Box::pin(
+            crate::document_engine::run_supervised_external_with_variables(
+                program,
+                args,
+                working_dir,
+                variables,
+            ),
+        )
+    }
+}
+
+#[cfg(test)]
 fn export_search_path(root: &Path, main_doc: &str) -> (String, String) {
-    let root = crate::project_availability::without_verbatim_prefix(root);
-    let main_dir = root
-        .join(main_doc)
-        .parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| root.clone());
-    let mut dirs = vec![main_dir.clone()];
-    if main_dir != root {
-        dirs.push(root.clone());
-    }
-    // A folder name holding the separator cannot be listed; read from the
-    // project root as before.
-    let resource_path = std::env::join_paths(&dirs)
-        .map(|joined| joined.to_string_lossy().into_owned())
-        .unwrap_or_else(|_| ".".into());
-    let relative = main_dir.strip_prefix(&root).ok().and_then(|relative| {
-        relative
-            .components()
-            .map(|component| match component {
-                std::path::Component::Normal(part) => part.to_str(),
-                _ => None,
-            })
-            .collect::<Option<Vec<_>>>()
-    });
-    let texinputs = match relative {
-        Some(parts) if !parts.is_empty() && parts.iter().all(|part| !part.contains(':')) => {
-            format!("{}:.", parts.join("/"))
-        }
-        _ => ".".into(),
-    };
-    (resource_path, texinputs)
+    oleafly_doctools::export::export_search_path(root, main_doc)
 }
 
-fn is_markdown_document(main_doc: &str) -> bool {
-    Path::new(main_doc)
-        .extension()
-        .and_then(std::ffi::OsStr::to_str)
-        .is_some_and(|extension| {
-            extension.eq_ignore_ascii_case("md") || extension.eq_ignore_ascii_case("markdown")
-        })
-}
-
-/// Runs pandoc for one export. Split from the command so tests can drive it
-/// with a real pandoc and a project folder on disk.
+/// Runs pandoc for one export (see `oleafly_doctools::export`).
 async fn run_export_pandoc(pandoc: &Path, job: ExportJob<'_>) -> Result<(), String> {
-    let (resource_path, texinputs) = export_search_path(job.root, job.main_doc);
-    let source = crate::conversion::ExportSource {
-        file_name: job.main_doc.to_string(),
-        resource_path,
+    let shared = oleafly_doctools::export::ExportJob {
+        root: job.root,
+        build_dir: job.build_dir,
+        main_doc: job.main_doc,
+        format: job.format,
+        output: job.output,
+        staging_dir: job.staging_dir,
+        temp_dir: job.temp_dir,
     };
-    let renders = crate::conversion::export_renders_citations(job.format);
-    // The staged filter must outlive the pandoc process.
-    let (filter, bibliographies) = {
-        let root = job.root.to_path_buf();
-        let main_doc = job.main_doc.to_string();
-        let build_dir = job.build_dir.clone();
-        let staging_dir = job.staging_dir.clone();
-        let format = job.format.to_string();
-        let temp_dir = job
-            .temp_dir
-            .map_or_else(std::env::temp_dir, Path::to_path_buf);
-        tauri::async_runtime::spawn_blocking(move || -> Result<_, String> {
-            let filter = renders
-                .then(|| {
-                    crate::pandoc_citations::prepare_export_filter(
-                        &root,
-                        &main_doc,
-                        build_dir.as_deref(),
-                        staging_dir.as_deref(),
-                        &temp_dir,
-                    )
-                })
-                .transpose()?;
-            // The Markdown compile passes every project .bib; so does its
-            // export. A .tex export names them from the project root.
-            let bibliographies: Vec<PathBuf> = if is_markdown_document(&main_doc) {
-                crate::document_engine::discover_bibliographies(&root)?
-                    .into_iter()
-                    .map(|relative| {
-                        if format == "tex" {
-                            PathBuf::from(relative)
-                        } else {
-                            root.join(relative)
-                        }
-                    })
-                    .collect()
-            } else {
-                Vec::new()
-            };
-            Ok((filter, bibliographies))
-        })
+    oleafly_doctools::export::run_export_pandoc(&AppToolRunner, pandoc, shared)
         .await
-        .map_err(|error| error.to_string())??
-    };
-    let citations = crate::conversion::ExportCitations {
-        filter: filter
-            .as_ref()
-            .map(crate::pandoc_citations::ExportFilter::argument),
-        bibliographies: &bibliographies,
-    };
-    let args = crate::conversion::export_args(job.format, &source, job.output, Some(&citations))
-        .ok_or_else(|| format!("unsupported export format: {}", job.format))?;
-    // Set even for a root main document, so a TEXINPUTS the app inherited
-    // from the user's shell does not change what the export reads.
-    let variables = vec![("TEXINPUTS".to_string(), texinputs)];
-    let outcome = crate::document_engine::run_supervised_external_with_variables(
-        pandoc, &args, job.root, &variables,
-    )
-    .await;
-    drop(filter);
-    let (log, code) = outcome?;
-    if code != Some(0) {
-        return Err(crate::pandoc_citations::export_failure(&log, job.root));
-    }
-    if job.format == "typst" {
-        apply_typst_fixup(Path::new(job.output))?;
-    }
-    Ok(())
+        .map_err(|error| {
+            if error.code == "export.bibliography_unreadable" {
+                let mut app = crate::app_error::AppError::new(error.code);
+                for (key, value) in &error.params {
+                    app = if *key == "detail" {
+                        app.detail(value)
+                    } else {
+                        app.param(key, value)
+                    };
+                }
+                app.into()
+            } else {
+                error.message
+            }
+        })
 }
 
 fn export_would_write_inside_project(project_root: &Path, destination: &str) -> bool {
@@ -14649,16 +14497,24 @@ mod tests {
         // Project roots are canonical, so on Windows they start with `\\?\`.
         // Windows does not read a '/' that pandoc or the citation filter
         // appends to such a folder as a separator, so the file is not found.
-        let mut roots = vec![(
-            Path::new(r"\\?\UNC\server\share\proj").to_path_buf(),
-            Path::new(r"\\server\share\proj").to_path_buf(),
-        )];
-        if cfg!(windows) {
-            roots.push((
-                Path::new(r"\\?\C:\Users\x\proj").to_path_buf(),
-                Path::new(r"C:\Users\x\proj").to_path_buf(),
-            ));
-        }
+        // Other systems never spell a path that way, and leave it as it is.
+        let roots = if cfg!(windows) {
+            vec![
+                (
+                    Path::new(r"\\?\UNC\server\share\proj").to_path_buf(),
+                    Path::new(r"\\server\share\proj").to_path_buf(),
+                ),
+                (
+                    Path::new(r"\\?\C:\Users\x\proj").to_path_buf(),
+                    Path::new(r"C:\Users\x\proj").to_path_buf(),
+                ),
+            ]
+        } else {
+            vec![(
+                Path::new("/Users/x/proj").to_path_buf(),
+                Path::new("/Users/x/proj").to_path_buf(),
+            )]
+        };
         for (root, plain) in roots {
             let (resource_path, texinputs) = super::export_search_path(&root, "paper/main.tex");
             let folders: Vec<_> = std::env::split_paths(&resource_path).collect();
@@ -15938,42 +15794,6 @@ mod tests {
         assert!(!pandoc_version_supported(b"pandoc 1.19.2.1\nfeatures: ..."));
         assert!(!pandoc_version_supported(b""));
         assert!(!pandoc_version_supported(b"not pandoc output"));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn pandoc_path_resolution_returns_canonical_supported_executable() {
-        use super::find_pandoc_on_path;
-        use crate::test_wait;
-        use std::os::unix::fs::PermissionsExt as _;
-
-        let directory = tempfile::tempdir().unwrap();
-        let bin = directory.path().join("bin");
-        std::fs::create_dir(&bin).unwrap();
-        let executable = bin.join("pandoc");
-        std::fs::write(&executable, "#!/bin/sh\nprintf 'pandoc 3.9.0.2\\n'\n").unwrap();
-        let mut permissions = executable.metadata().unwrap().permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(&executable, permissions).unwrap();
-        let path = std::env::join_paths([&bin]).unwrap();
-
-        // The probe runs the script under a fixed 5 s timeout, and on Linux
-        // exec can fail with ETXTBSY while another test's fork still holds
-        // the write fd. Either reads as None, so retry until it is accepted.
-        let deadline = std::time::Instant::now() + test_wait::CHILD_PATIENCE;
-        let found = loop {
-            if let Some(found) = find_pandoc_on_path(Some(&path)) {
-                break found;
-            }
-            assert!(
-                std::time::Instant::now() < deadline,
-                "the fake pandoc was never accepted"
-            );
-            std::thread::sleep(std::time::Duration::from_millis(50));
-        };
-
-        assert!(found.is_absolute());
-        assert_eq!(found, executable.canonicalize().unwrap());
     }
 
     #[test]

@@ -583,7 +583,9 @@
       "diagnostics_one": "{{count}} huomio",
       "diagnostics_other": "{{count}} huomiota",
       "papers_one": "{{count}} artikkeli",
-      "papers_other": "{{count}} artikkelia"
+      "papers_other": "{{count}} artikkelia",
+      "sourcesFailed_one": "{{count}} lähde epäonnistui",
+      "sourcesFailed_other": "{{count}} lähdettä epäonnistui"
     }
   },
   "ui": {

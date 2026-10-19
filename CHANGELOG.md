@@ -7,6 +7,111 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Thanks
+
+- Saran Bodda ([@ssbodda-powern](https://github.com/ssbodda-powern)): a
+  composer that grows with your message (#304), files and PDFs in the
+  assistant (#305) and any AI provider in Tools (#306).
+- [@domiden](https://github.com/domiden): Git hosting beyond GitHub (#296).
+- Wahid Mounir ([@wahidmounir](https://github.com/wahidmounir)): pluggable
+  research agents (#84), with saved agent sessions (#142), Hermes (#140),
+  scheduled and resumable tasks (#141) and a Windows sandbox for tasks, in
+  beta (#143).
+
+### Added
+
+- The `oleafly` command. It builds, checks and inspects your projects from a
+  terminal with the same compilers, settings and folders as the app, and
+  every command can print one JSON result with stable error and exit codes
+  for scripts and coding agents. Commands cover builds and watching, the
+  project's map (`oleafly context`), word counts, exports and conversions,
+  citations and bibliography cleanup, Typst versions, templates, the app's
+  checkpoints and settings. Turn it on under Settings > General > Terminal
+  command. On Windows, Install copies it into your user folder and adds it to
+  your PATH. Oleafly's own terminal and the agents it starts always have it.
+- `oleafly mcp`, an MCP server for Claude Code, Claude Desktop, Codex, Cursor
+  and Gemini CLI. It needs no URL, token or Node.js. With the app open it
+  passes calls to the app, with your approval rules; on its own it offers
+  read tools and compiling. `oleafly mcp config --client NAME` prints or
+  writes the setup. The bundled `oleafly-cli` skill teaches agents the
+  commands.
+- `oleafly check` runs Preflight from a terminal or CI, and `oleafly lint`
+  runs the LaTeX, BibTeX, spelling and grammar checks. Both print people's
+  text, JSON or SARIF for code scanning, and `--exit-code` fails a CI job on
+  findings.
+- `oleafly auth`, `oleafly remote` and `oleafly server`. Sign in to an
+  online LaTeX service, download projects, and keep a folder in two-way sync
+  through the service's Git bridge, with the same merge as the app and a
+  marked-up latexdiff PDF of your changes. Sign the command line in to an
+  Oleafly server as its own device to manage sharing and members and to read
+  and write comments. Sign-ins live in the encrypted store the app uses.
+- `oleafly ask` and `oleafly agent run` run the Oleafly agent on a project
+  without opening the app. The agent can always read; `--allow` adds writing,
+  commands or network access. Changes go to a review folder first, and
+  `oleafly agent apply` writes them into the project.
+- Research tasks that keep going after you quit. Mark a task Keep running
+  when Oleafly is closed, and a small helper takes it over when you quit,
+  experiment runs included. Approvals wait for you with a notification, and
+  the app takes the task back when you open it. Settings > Research >
+  Background tasks turns this off, can start the helper when you sign in,
+  and shows, stops and logs it. Task details show In background or Moving
+  back, and Show earlier activity loads what a task did before it moved.
+  `oleafly daemon run`, `status` and `stop` work with the helper from a
+  terminal.
+- Research task briefs: a goal, success criteria, scope, a main metric and a
+  budget for time, cost and runs. With Review the plan first, the agent
+  writes `plan.md` and waits for your approval. Each task keeps a research
+  record (plan, ledger, sources, hand-off and report), long jobs run as runs
+  with logs and metrics, and the Progress tab shows runs, the ledger and the
+  budget. When a task finishes, Oleafly checks that the project builds, new
+  references resolve, cited numbers match their runs and new figures are
+  used. Tasks can start at a set time, and Resume continues where a task
+  stopped.
+- Remote compute for research tasks. Add SSH machines and Slurm clusters, or
+  Cua Spaces, under Settings > Research > Compute, and send a task's runs
+  there. Oleafly checks host keys, reads your SSH config without changing it
+  and never stores passwords or keys. Runs choose a profile: Analysis by
+  default, or Training with GPUs and longer time limits.
+- A Windows sandbox for research tasks, in beta and off by default. Commands
+  run in an AppContainer that reaches only the task's files and the folders
+  you allow. With it on, CLI agents can run as tasks on Windows too.
+- Desktop apps. Agents can use the desktop programs and websites you allow,
+  such as a journal's submission form or a statistics package, through Cua
+  Driver, which you install yourself. Oleafly asks before every click or
+  keystroke. Set it up under Settings > Integrations > Desktop apps.
+- Web search and page reading in the assistant. Turn on Web in the composer.
+  Recent Claude and OpenAI models use their provider's search; other models
+  search with a Brave, Tavily or Serper key you add in Settings.
+- Effort for the built-in assistant and CLI agents, from no reasoning to the
+  model's maximum, and a usage meter that shows the context used, tokens and
+  cost of the conversation, with your provider's remaining credit where it
+  reports one.
+- Files, PDFs and images in the assistant, by attaching them, pasting or
+  dragging them into the composer (#305). PDFs send their text (up to 100
+  pages) and page images where the model reads images.
+- CLI agents: saved conversations with dates, search, rename and delete,
+  exported as Markdown or JSON (#142); Hermes (#140), also on a remote
+  machine; routing an agent's model calls through a key you pick; sign-in
+  from Oleafly's terminal; the shared composer with attachments, effort and
+  usage; text you select in the editor goes with your next message as a
+  quote; and version 2 of the Agent Client Protocol, as an experiment.
+- Git hosting beyond GitHub (#296). Sign in to GitLab, Gitea, Forgejo,
+  Codeberg and servers you run yourself, with an access token or, on
+  github.com, a code in your browser. Publish to any connected account, link
+  a project to any repository by its address, import from an account or clone
+  by address, and use your organization's certificate authority. Push and
+  pull explain SSH and credential problems in plain words.
+- A model for Tools (#306). Image to LaTeX, equation images and scanned PDFs
+  can use any model you've set up, a local Ollama model by default, or
+  Mathpix with your own keys. A hosted choice says where your files go, and
+  long scans show the page count and estimated cost before they start.
+- Terminal settings: the shell (PowerShell 7, Windows PowerShell, Command
+  Prompt, Git Bash, WSL or a custom path on Windows), scrollback, copy on
+  select, what Shift+Enter sends and Option as Meta on macOS. Find in the
+  terminal, activity dots on busy tabs, tab titles from programs, Open in
+  terminal from the file tree, dragging files in to type their paths, and
+  shortcuts for new, close, next and previous terminal.
+
 ### Changed
 
 - With an Anthropic key, the default model is now Claude Opus 5.5, and the
@@ -27,6 +132,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   support and prices in the model list come from a fresh copy of the
   models.dev data.
 
+- The assistant's composer grows with your message and keeps a draft per
+  chat, with your earlier messages a key press away (#304). Editing an
+  earlier message starts a new chat from there and keeps the old one in
+  History.
+- Oleafly's terminal sends keys to the shell. Ctrl+C, Ctrl+R, Ctrl+W and
+  the other shell keys reach the program running in it, while Toggle
+  terminal, the command palette, Settings and the terminal tab shortcuts
+  still work. Closing a busy terminal, the project or the app asks first.
+- Terminals pace large output, so a long compile log keeps the window
+  responsive, and tabs you aren't looking at keep all of their output.
+- Research tasks ask before each command when you set them to, and the
+  requests wait in the Research tab for up to a day.
+- Tools no longer depend on the assistant's provider, and the editor
+  toolbar's image button uses the model for Tools. If you haven't picked one
+  and no local model can read the image, it still uses the assistant's model,
+  as before.
+- Updates and the Windows installer stop the background helper before they
+  replace Oleafly.
+- A few `oleafly` changes that scripts may notice. Lines that started with
+  `note:` now start with `warning:`, and each warning in `--json` output has
+  a code. A failed build now keeps the last good PDF instead of deleting it,
+  so check the exit code or `ok`. Markdown builds need Pandoc 2.19 or later; the
+  copy that comes with Oleafly is newer. A main document with `&`, `%`, `#` or `$` in its name is
+  refused, as the app refuses it. In `--json` output, `build.log` holds the
+  last 16 KiB of the log unless you pass `--log full`. In a folder the app
+  opened in place, builds go to the app's build folder for it
+  (`~/.oleafly/linked/<id>/build`) instead of `.oleafly/build` inside the
+  folder, and `oleafly project info` shows that folder.
+- Forks that use their own GitHub OAuth app set its client ID with
+  `OLEAFLY_DESKTOP_GITHUB_CLIENT_ID` at build time. The old
+  `VITE_GITHUB_CLIENT_ID` still works.
+
+### Removed
+
+- The in-app browser and its settings. Desktop apps lets agents use the
+  websites you allow in your own browser, the assistant can search and read
+  pages, and links open in your default browser. Cookie copy for online LaTeX
+  sign-in stays.
+
 ### Fixed
 
 - Paper review stopped with an error on Claude Opus 5 and the newer Claude
@@ -39,12 +183,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   call. DeepSeek's thinking mode expects the reasoning from every earlier turn
   to be sent back, and Oleafly doesn't keep it. Assistant runs on DeepSeek now
   switch thinking off.
+- Long assistant chats and research tasks stopped with "agent message count
+  exceeded its safety limit" after 128 messages. At that point Oleafly should
+  summarize the older messages and carry on, but the request for the summary
+  contained all of them and hit the same limit. The summary now covers the
+  newest messages that fit.
 - Oleafly treated many models that read images as text-only, among them
   Claude Opus 5 and every newer Claude, GPT-6, Grok 4, Mistral Large and
   DeepSeek Flash. The assistant never got the rendered PDF pages and figure
   previews it asks for to check its work, and Refine with AI and Image to
   LaTeX were unavailable. Oleafly now also checks the model details from the
   provider's list, so any model listed with image input gets images.
+- PDF to LaTeX transcribed the wrong pages of a scanned PDF when you picked
+  a page range.
+- Preflight's checks for fonts that aren't embedded in the PDF and for files
+  attached to it never found anything. Both work now, in the app and in
+  `oleafly check`.
+- Importing a Git repository left out the files it marks `export-ignore`,
+  and the next commit deleted them from the repository. A repository that
+  changed during an import could also get its files from one commit and its
+  history from another.
+- Copying your sign-in from a browser didn't sign you in to an online LaTeX
+  service. It now does, without opening a window.
 
 ## [0.4.7] - 2026-10-18
 

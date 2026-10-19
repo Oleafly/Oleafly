@@ -2,25 +2,31 @@ import { create } from "zustand";
 import {
   acceptResearchTaskResult,
   applyResearchTask,
+  approveResearchTaskPlan,
   cancelResearchTask,
   createResearchTask,
   deleteResearchTask,
   editResearchTask,
   listResearchTasks,
   listenForResearchTaskChanges,
+  listenForResearchTaskDeltas,
   listenForResearchTaskEvents,
   loadResearchTaskEvents,
   retryResearchTask,
   startResearchTask,
+  watchResearchTask,
+  type ResearchBrief,
   type ResearchTask,
   type ResearchTaskDraft,
   type ResearchTaskEdit,
+  type RetryMode,
+  type TaskTranscriptDelta,
   type TaskTranscriptEvent,
 } from "@/lib/research-tasks";
 import { useFilesStore } from "@/store/files";
 import { decodeAppError, describeError } from "@/lib/app-error";
 
-export type ResearchTaskDetailTab = "activity" | "review" | "output";
+export type ResearchTaskDetailTab = "activity" | "progress" | "review" | "output";
 
 export interface ResearchTaskComposerDraft {
   starterId: string;
@@ -29,6 +35,9 @@ export interface ResearchTaskComposerDraft {
   agentKey: string;
   skillIds: string[];
   dependencyIds: string[];
+  brief?: ResearchBrief;
+  runAfter?: number | null;
+  keepRunning?: boolean;
 }
 
 interface ResearchTasksState {
@@ -58,11 +67,13 @@ interface ResearchTasksState {
   editTask: (taskId: string, edit: ResearchTaskEdit) => Promise<ResearchTask>;
   startTask: (taskId: string) => Promise<ResearchTask>;
   cancelTask: (taskId: string) => Promise<ResearchTask>;
-  retryTask: (taskId: string) => Promise<ResearchTask>;
+  retryTask: (taskId: string, mode?: RetryMode) => Promise<ResearchTask>;
+  approvePlan: (taskId: string, editedPlan?: string) => Promise<ResearchTask>;
   applyTask: (taskId: string, selectedPaths: string[]) => Promise<ResearchTask>;
   acceptTask: (taskId: string) => Promise<ResearchTask>;
   receiveTask: (task: ResearchTask) => void;
   receiveEvent: (event: TaskTranscriptEvent) => void;
+  receiveDelta: (delta: TaskTranscriptDelta) => void;
   clearError: () => void;
 }
 
@@ -86,11 +97,88 @@ function sorted(tasks: ResearchTask[]): ResearchTask[] {
   return [...tasks].sort((left, right) => right.createdAt - left.createdAt);
 }
 
+/** Puts `task` in a list kept newest first, without sorting the list again. */
+function upserted(tasks: ResearchTask[], task: ResearchTask): ResearchTask[] {
+  const existing = tasks.findIndex((candidate) => candidate.id === task.id);
+  const next = tasks.slice();
+  if (existing >= 0 && tasks[existing].createdAt === task.createdAt) {
+    next[existing] = task;
+    return next;
+  }
+  if (existing >= 0) next.splice(existing, 1);
+  let low = 0;
+  let high = next.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (next[middle].createdAt >= task.createdAt) low = middle + 1;
+    else high = middle;
+  }
+  next.splice(low, 0, task);
+  return next;
+}
+
+/** The index of `sequence` in events sorted by sequence, or where it goes. */
+function sequenceSlot(events: TaskTranscriptEvent[], sequence: number): { index: number; found: boolean } {
+  const last = events.length - 1;
+  if (last < 0 || events[last].sequence < sequence) return { index: events.length, found: false };
+  if (events[last].sequence === sequence) return { index: last, found: true };
+  let low = 0;
+  let high = last;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (events[middle].sequence < sequence) low = middle + 1;
+    else high = middle;
+  }
+  return { index: low, found: events[low]?.sequence === sequence };
+}
+
+let watchedTask: string | null = null;
+
+/** Tells the backend which task this window shows (its live text). */
+function watch(taskId: string | null): void {
+  if (watchedTask === taskId) return;
+  watchedTask = taskId;
+  void watchResearchTask(taskId).catch(() => {
+    // An older backend has no watch command and sends every event.
+  });
+}
+
+type TextRow = TaskTranscriptEvent & { event: { kind: "text" | "reasoning"; text: string } };
+
+function isTextRow(row: TaskTranscriptEvent): row is TextRow {
+  return row.event.kind === "text" || row.event.kind === "reasoning";
+}
+
+/**
+ * Joins two copies of one text row, such as a saved row and the live text
+ * that arrived while it loaded. Each covers part of the row's text from its
+ * `textStart`; the result covers both without repeating any text.
+ */
+function joinTextRows(saved: TextRow, live: TextRow): TextRow {
+  const [head, tail] = (live.textStart ?? 0) < (saved.textStart ?? 0) ? [live, saved] : [saved, live];
+  const headStart = head.textStart ?? 0;
+  const headEnd = headStart + head.event.text.length;
+  const tailStart = tail.textStart ?? 0;
+  if (tailStart + tail.event.text.length <= headEnd) return head;
+  // Text between the two (lost live text) can't be recovered; the tail follows on.
+  const added = tailStart <= headEnd ? tail.event.text.slice(headEnd - tailStart) : tail.event.text;
+  return { ...head, event: { ...head.event, text: head.event.text + added } };
+}
+
+/** The row to keep when `incoming` arrives for a sequence `current` holds. */
+function joinedRow(current: TaskTranscriptEvent, incoming: TaskTranscriptEvent): TaskTranscriptEvent {
+  if (isTextRow(current) && isTextRow(incoming) && current.event.kind === incoming.event.kind) {
+    return joinTextRows(current, incoming);
+  }
+  return incoming;
+}
+
 function mergedEvents(events: TaskTranscriptEvent[], task: ResearchTask): TaskTranscriptEvent[] {
   const unique = new Map<number, TaskTranscriptEvent>();
   for (const event of events) {
     if (event.taskId === task.id && event.executionGeneration === task.executionGeneration) {
-      unique.set(event.sequence, event);
+      const current = unique.get(event.sequence);
+      unique.set(event.sequence, current ? joinedRow(current, event) : event);
     }
   }
   return [...unique.values()].sort((left, right) => left.sequence - right.sequence);
@@ -238,6 +326,7 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
       eventsNextSequence: null,
       eventsLoading: Boolean(taskId),
     });
+    watch(taskId);
     if (!taskId) return;
     const task = get().tasks.find((candidate) => candidate.id === taskId);
     if (!task || task.executionGeneration === 0) {
@@ -343,11 +432,26 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
     }
   },
 
-  retryTask: async (taskId) => {
+  retryTask: async (taskId, mode) => {
     const isCurrent = beginTaskAction();
     set({ action: taskId, error: null });
     try {
-      const task = await retryResearchTask(taskId);
+      const task = await retryResearchTask(taskId, mode);
+      if (!isCurrent()) return task;
+      get().receiveTask(task);
+      set({ action: null });
+      return task;
+    } catch (error) {
+      if (isCurrent()) set({ action: null, error: message(error) });
+      throw error;
+    }
+  },
+
+  approvePlan: async (taskId, editedPlan) => {
+    const isCurrent = beginTaskAction();
+    set({ action: taskId, error: null });
+    try {
+      const task = await approveResearchTaskPlan(taskId, editedPlan);
       if (!isCurrent()) return task;
       get().receiveTask(task);
       set({ action: null });
@@ -402,16 +506,10 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
     const runChanged = get().selectedTaskId === task.id &&
       previous?.executionGeneration !== task.executionGeneration;
     if (runChanged) eventRequest += 1;
-    set((state) => {
-      const existing = state.tasks.findIndex((candidate) => candidate.id === task.id);
-      const tasks = [...state.tasks];
-      if (existing >= 0) tasks[existing] = task;
-      else tasks.push(task);
-      return {
-        tasks: sorted(tasks),
-        ...(runChanged ? { events: [], eventsNextSequence: null, eventsLoading: false } : {}),
-      };
-    });
+    set((state) => ({
+      tasks: upserted(state.tasks, task),
+      ...(runChanged ? { events: [], eventsNextSequence: null, eventsLoading: false } : {}),
+    }));
     if (runChanged) void get().selectTask(task.id);
   },
 
@@ -426,33 +524,100 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
       return;
     }
     set((state) => {
-      const index = state.events.findIndex(
-        (candidate) =>
-          candidate.executionGeneration === event.executionGeneration && candidate.sequence === event.sequence,
-      );
-      if (index >= 0) {
-        const events = state.events.slice();
-        events[index] = event;
-        return { events };
+      const slot = sequenceSlot(state.events, event.sequence);
+      const events = state.events.slice();
+      if (slot.found) events[slot.index] = joinedRow(events[slot.index], event);
+      else events.splice(slot.index, 0, event);
+      return { events };
+    });
+  },
+
+  receiveDelta: (delta) => {
+    const { selectedTaskId, tasks } = get();
+    if (selectedTaskId !== delta.taskId) return;
+    const task = tasks.find((candidate) => candidate.id === delta.taskId);
+    if (!task || task.executionGeneration !== delta.executionGeneration) return;
+    // Where the append starts in its row, when the backend says.
+    const start = delta.textLength === undefined ? undefined : Math.max(0, delta.textLength - delta.append.length);
+    const live: TextRow = {
+      taskId: delta.taskId,
+      executionGeneration: delta.executionGeneration,
+      sequence: delta.sequence,
+      event: { kind: delta.kind, text: delta.append },
+      createdAt: delta.createdAt,
+      ...(start ? { textStart: start } : {}),
+    };
+    set((state) => {
+      const slot = sequenceSlot(state.events, delta.sequence);
+      const events = state.events.slice();
+      const existing = slot.found ? events[slot.index] : undefined;
+      if (existing && isTextRow(existing)) {
+        if (start === undefined) {
+          events[slot.index] = {
+            ...existing,
+            event: { ...existing.event, text: existing.event.text + delta.append },
+          };
+        } else {
+          // Text this window already has (from a saved row) is not added again.
+          const joined = existing.event.kind === delta.kind ? joinTextRows(existing, live) : existing;
+          if (joined === existing) return state;
+          events[slot.index] = joined;
+        }
+      } else if (!existing) {
+        events.splice(slot.index, 0, live);
+      } else {
+        return state;
       }
-      return { events: [...state.events, event].sort((a, b) => a.sequence - b.sequence) };
+      return { events };
     });
   },
 
   clearError: () => set({ error: null }),
 }));
 
-export async function mountResearchTaskSubscriptions(): Promise<() => void> {
-  const [unlistenTasks, unlistenEvents] = await Promise.all([
-    listenForResearchTaskChanges((task) =>
-      useResearchTasksStore.getState().receiveTask(task),
-    ),
-    listenForResearchTaskEvents((event) =>
-      useResearchTasksStore.getState().receiveEvent(event),
-    ),
+let subscribers = 0;
+let listening: Promise<() => void> | null = null;
+
+async function listenOnce(): Promise<() => void> {
+  const started = await Promise.allSettled([
+    listenForResearchTaskChanges((task) => useResearchTasksStore.getState().receiveTask(task)),
+    listenForResearchTaskEvents((event) => useResearchTasksStore.getState().receiveEvent(event)),
+    listenForResearchTaskDeltas((delta) => useResearchTasksStore.getState().receiveDelta(delta)),
+    // Tasks ask this window for PDF text through pdf.js (loaded on demand).
+    import("@/lib/research-pdf-bridge").then((bridge) => bridge.mountResearchPdfBridge()),
   ]);
+  const unlisten = started.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+  const failed = started.find((result): result is PromiseRejectedResult => result.status === "rejected");
+  if (failed) {
+    // Stop the ones that started, so a retry doesn't listen twice.
+    for (const stop of unlisten) stop();
+    throw failed.reason;
+  }
   return () => {
-    unlistenTasks();
-    unlistenEvents();
+    for (const stop of unlisten) stop();
+  };
+}
+
+/** One set of listeners however many views mount it; the last unmount stops them. */
+export async function mountResearchTaskSubscriptions(): Promise<() => void> {
+  subscribers += 1;
+  listening ??= listenOnce();
+  const current = listening;
+  try {
+    await current;
+  } catch (error) {
+    subscribers -= 1;
+    if (subscribers === 0 && listening === current) listening = null;
+    throw error;
+  }
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    subscribers -= 1;
+    if (subscribers > 0 || listening !== current) return;
+    listening = null;
+    void current.then((stop) => stop());
+    watch(null);
   };
 }

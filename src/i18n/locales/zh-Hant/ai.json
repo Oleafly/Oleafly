@@ -72,7 +72,28 @@
     }
   },
   "attachments": {
-    "remove": "移除 {{name}}"
+    "remove": "移除 {{name}}",
+    "processing": "正在準備 {{name}}…",
+    "failed": "無法附加 {{name}}。",
+    "pages_other": "{{count}} 頁",
+    "pagesLimited": "只使用了 {{count}} 頁中的前 {{limit}} 頁。",
+    "tooMany": "每則訊息最多可附加 {{max}} 個檔案。",
+    "tooLarge": "{{name}} 超過 {{limit}}。",
+    "unsupported": "無法附加 {{name}}。請附加影像、PDF 或文字檔。",
+    "unreadableImage": "Oleafly 無法讀取 {{name}} 的影像格式。請另存為 PNG 或 JPEG 後重新附加。",
+    "unreadablePdf": "無法以 PDF 開啟 {{name}}。",
+    "storeFailed": "無法為這個聊天儲存 {{name}}。",
+    "visionUnsupported": "{{model}} 無法讀取影像，因此不會傳送這則訊息中的影像。",
+    "scannedPdf": "{{name}} 沒有文字圖層，而 {{model}} 無法讀取影像。",
+    "dropFiles": "拖放檔案即可附加",
+    "dropProjectFile": "拖放即可提及這個檔案",
+    "open": "開啟 {{name}}",
+    "saveCopy": "儲存 {{name}} 的副本",
+    "saved": "已儲存 {{name}} 的副本。",
+    "saveFailed": "無法儲存 {{name}}。",
+    "missing": "{{name}} 已無法使用。",
+    "sentAsText": "這個模型無法以檔案形式讀取 {{name}}，因此改以文字傳送。",
+    "skipped": "未傳送 {{name}}。"
   },
   "chat": {
     "pill": {
@@ -176,7 +197,9 @@
     "stop": "停止",
     "stopTitle": "停止生成",
     "send": "傳送",
-    "checkAgain": "重新檢查"
+    "checkAgain": "重新檢查",
+    "resizeHandle": "調整訊息方塊大小",
+    "resizeHint": "拖曳即可調整大小，按兩下可還原。"
   },
   "commands": {
     "groups": {
@@ -214,10 +237,6 @@
     "files": {
       "label": "檔案",
       "description": "把檔案附加到你的下一則訊息"
-    },
-    "browser": {
-      "label": "附加瀏覽器",
-      "description": "在文件旁開啟瀏覽器"
     }
   },
   "models": {
@@ -265,7 +284,9 @@
       "minutes": "{{count}} 分鐘前",
       "hours": "{{count}} 小時前",
       "days": "{{count}} 天前"
-    }
+    },
+    "skipped_other": "有 {{count}} 個聊天無法載入。它們仍保存在磁碟上。",
+    "openFailed": "無法開啟這個聊天。"
   },
   "tools": {
     "approval": {
@@ -311,7 +332,6 @@
       "listAgents": "列出輔助代理程式與它們的狀態。",
       "closeAgent": "關閉輔助代理程式。",
       "runCommand": "在專案資料夾中執行 shell 指令，限時兩分鐘。",
-      "computerUse": "在助理的瀏覽器視窗中開啟網頁。",
       "toggleTheme": "在淺色與深色模式之間切換。",
       "listOverleafProjects": "列出你的 Overleaf 專案，必要時先登入。",
       "importOverleafProjects": "將 Overleaf 專案連同編譯器和主要檔案設定匯入你的專案庫。"
@@ -340,8 +360,7 @@
       "latexOnly": "僅限 LaTeX 專案",
       "latexAndTypstOnly": "僅限 LaTeX 與 Typst 專案",
       "pdfCaptureSetting": "需要啟用 PDF 頁面擷取設定",
-      "chatApproval": "在聊天中逐一核准指令",
-      "browserSetting": "需要啟用網頁瀏覽器設定"
+      "chatApproval": "在聊天中逐一核准指令"
     },
     "sourceGroups": {
       "figure": "圖片",
@@ -464,18 +483,20 @@
     "resumeTask": "開啟研究任務以繼續這項工作。",
     "delegatedConversation": "這個對話屬於一次委派的代理程式執行。",
     "noResume": "這個代理程式無法接續已儲存的對話。準備好之後再開始新的對話。",
-    "imageTooLarge": "請選擇小於 480 KiB 的影像。最多可附加四張影像。",
     "imageReadFailed": "無法讀取這個影像。",
-    "removeImage": "移除 {{name}}",
     "composerAriaLabel": "傳送訊息給 CLI 代理程式",
     "composerPlaceholderReady": "請代理程式處理這個專案",
     "composerPlaceholderIdle": "先開始或重新連線對話，才能傳送訊息",
-    "attachImage": "附加影像",
     "startConversation": "與 {{agent}} 開始對話",
     "startConversationFallback": "某個代理程式",
     "agentModel": "代理程式模型",
     "modelManaged": "模型由代理程式管理",
     "stop": "停止",
+    "stopReason": {
+      "refusal": "代理程式拒絕繼續這項要求。",
+      "maxTokens": "代理程式已達輸出上限並停止。",
+      "maxTurnRequests": "代理程式已達本輪的要求上限並停止。"
+    },
     "stopTitle": "停止代理程式",
     "send": "傳送",
     "connecting": "連線中",
@@ -493,8 +514,7 @@
     "roster": {
       "bridgeMissing": "請在代理程式設定中安裝橋接程式",
       "cliMissing": "在這台電腦上找不到 CLI",
-      "unavailable": "在這台電腦上無法使用",
-      "comingSoon": "即將推出"
+      "unavailable": "在這台電腦上無法使用"
     },
     "messageTooLarge": "這則訊息連同影像太大了。請縮短訊息或移除一張影像。",
     "terminalCommand": "代理程式正在執行終端機指令。",
@@ -541,7 +561,122 @@
       "skill": "技能：{{name}}",
       "tool": "工具：{{name}}",
       "changedFiles": "已變更的檔案",
-      "moreFiles_other": "以及另外 {{count}} 個檔案"
+      "moreFiles_other": "以及另外 {{count}} 個檔案",
+      "mode": "模式",
+      "effort": "推理強度",
+      "permissionProfile": "核准模式",
+      "commits": "提交"
+    },
+    "composerPlaceholderStart": "傳送訊息給 {{agent}} 以開始對話",
+    "composerPlaceholderConnecting": "現在就可以輸入，代理程式就緒後會傳送。",
+    "composerPlaceholderRunning": "輸入下一則訊息，代理程式完成後會傳送。",
+    "attachFile": "附加檔案",
+    "composer": {
+      "tooManyAttachments": "每則訊息最多可附加 10 個檔案。",
+      "imagesUnsupported": "這個代理程式不接受影像。請移除影像後再試一次。",
+      "attachmentsNotReady": "請等候附件準備完成。",
+      "removeSelection": "移除引用 {{label}}"
+    },
+    "queue": {
+      "queued": "已排入佇列：代理程式完成後傳送",
+      "remove": "移除佇列中的訊息",
+      "sendNow": "立即傳送",
+      "sendFailed": "這則訊息未傳送。請重新傳送或將它移除。"
+    },
+    "slash": {
+      "commands": "代理程式指令",
+      "skills": "技能"
+    },
+    "controls": {
+      "effort": "推理強度",
+      "mode": "模式",
+      "more": "更多代理程式選項",
+      "blockedMode": "在 Oleafly 中已關閉",
+      "blockedModeHint": "Oleafly 會讓權限檢查保持開啟，因此無法使用這個模式。"
+    },
+    "usage": {
+      "ariaLabel": "檢視代理程式用量",
+      "tooltip": "這段對話的用量",
+      "contextShare": "已使用上下文視窗的 {{percent}}%",
+      "window": {
+        "fiveHour": "5 小時工作階段",
+        "weekly": "每週，所有模型",
+        "weeklyOpus": "每週，Opus",
+        "weeklySonnet": "每週，Sonnet",
+        "overage": "額外用量",
+        "other": "用量限制 {{id}}"
+      },
+      "costIn": "代理程式回報的費用為 {{amount}} {{currency}}。",
+      "modelTokens": "{{model}}：{{tokens}} 個 token"
+    },
+    "compaction": {
+      "running": "正在摘要較早的上下文",
+      "done": "已摘要較早的上下文",
+      "failed": "無法摘要較早的上下文"
+    },
+    "signIn": {
+      "inTerminal": "在終端機中使用 {{name}}",
+      "afterTerminal": "請在終端機中完成登入，然後重新連線。",
+      "apiKeyLabel": "{{provider}} 的 API 金鑰",
+      "apiKeyPlaceholder": "貼上你的 API 金鑰",
+      "geminiGoogle": "個人方案已無法使用 Google 登入。請使用 Gemini API 金鑰或 Vertex AI。",
+      "noProject": "開啟專案後才能從終端機登入。",
+      "signOut": "登出"
+    },
+    "elicitation": {
+      "ariaLabel": "代理程式要求",
+      "from": "{{agent}} 詢問：",
+      "submit": "傳送",
+      "decline": "拒絕",
+      "cancel": "取消",
+      "required": "必填",
+      "invalid": "請檢查這個欄位。",
+      "openUrl": "在瀏覽器中開啟",
+      "confirmTitle": "要開啟 {{host}} 嗎？",
+      "confirmDescription": "代理程式請你在這個網站上完成一個步驟。網站會在你的瀏覽器中開啟。",
+      "waiting": "正在等候網站完成。"
+    },
+    "remote": {
+      "banner": "Hermes 透過 SSH 在 {{host}} 上執行。它所做的變更會留在那台機器上。"
+    },
+    "history": {
+      "all": "所有對話",
+      "title": "對話",
+      "search": "搜尋對話",
+      "empty": "沒有符合的對話。",
+      "loadMore": "載入更多",
+      "open": "開啟",
+      "rename": "重新命名",
+      "renameLabel": "對話名稱",
+      "delete": "刪除",
+      "deleteTitle": "要刪除這段對話嗎？",
+      "deleteDescription": "Oleafly 會從這個專案中移除它的記錄與附件。",
+      "deleteFromAgent": "同時從 {{agent}} 中刪除",
+      "deleteAgentFailed": "已在 Oleafly 中刪除。{{agent}} 無法刪除它的副本：{{error}}",
+      "deleteRunning": "刪除這段對話前，請先停止代理程式。",
+      "importFind": "尋找這個專案的 {{agent}} 對話",
+      "imported": "已在 Oleafly 中",
+      "importSelected": "匯入所選項目",
+      "importEmpty": "{{agent}} 沒有這個專案的其他對話。"
+    },
+    "header": {
+      "startedAt": "起始於 {{revision}}",
+      "startedDirty": "起始於 {{revision}}，含未提交的變更",
+      "menu": "對話動作",
+      "fork": "分支對話",
+      "forkUnsupported": "這個代理程式無法分支對話。",
+      "forkBusy": "請等代理程式完成後再分支。",
+      "v2": "ACP v2 草案",
+      "remote": "遠端"
+    },
+    "commit": {
+      "button": "提交",
+      "title": "提交本輪的變更",
+      "message": "提交訊息",
+      "files": "要提交的檔案",
+      "defaultMessage": "來自 {{agent}} 的變更",
+      "submit": "提交檔案",
+      "cancel": "取消"
     }
   },
   "agents": {
@@ -712,8 +847,6 @@
     "restoreFailed": "無法還原：{{error}}",
     "steerFailed": "無法介入正在執行的輪次。",
     "approvalRuleSaveFailed": "無法儲存專案的核准規則。",
-    "attachmentTooLarge": "{{name}} 太大（上限 10 MB）。",
-    "attachmentReadFailed": "無法讀取 {{name}}。",
     "tooManyTools": "已啟用 {{enabled}} 個工具，但單次執行最多支援 {{max}} 個。請在「工具」中至少停用 {{excess}} 個後再試一次。"
   },
   "header": {
@@ -738,7 +871,28 @@
     "summaryRunWithTokens_other": "上次執行：{{count}} 個步驟，回報 {{tokens}} 個 token",
     "summaryRunNoTokens_other": "上次執行：{{count}} 個步驟，無法取得 token 總數",
     "summaryChat": "這個聊天：{{steps}} 個步驟，{{tokens}} 個 token",
-    "summaryFallback": "AI 用量"
+    "summaryFallback": "AI 用量",
+    "context": "上下文",
+    "contextUsed": "{{used}} / {{size}} 個 token",
+    "contextShare": "已使用上下文視窗的 {{percent}}",
+    "contextUnknown": "這個模型的上下文視窗未知。",
+    "reasoning": "推理",
+    "cacheRead": "快取讀取",
+    "cacheWrite": "快取寫入",
+    "cost": "預估費用",
+    "budget": "專案預算",
+    "budgetUsed": "{{spent}} / {{limit}}",
+    "credit": "剩餘額度",
+    "creditOf": "{{remaining}} / {{limit}}",
+    "planLimits": "方案限制",
+    "resetsAt": "{{time}}重設",
+    "windowWarning": "即將達到限制",
+    "windowBlocked": "已達到限制",
+    "refreshPlan": "重新整理方案用量",
+    "refreshing": "正在重新整理…",
+    "historyTrimmed_other": "只有這個聊天的最後 {{count}} 輪傳送給了模型。",
+    "empty": "這個聊天還沒有用量。",
+    "loading": "正在載入用量…"
   },
   "provider": {
     "connectTitle": "連接 AI 供應商以繼續",
@@ -758,7 +912,21 @@
     "projectSubtitle": "正在處理「{{project}}」",
     "noOutput": "模型沒有傳回任何輸出。請檢查設定 → AI 助理。",
     "planMissing": "還沒有可核准的計畫。請讓助理先提出一個計畫，或關閉「計畫」。",
-    "planUnchanged": "計畫沒有變更。"
+    "planUnchanged": "計畫沒有變更。",
+    "stillWorking": "仍在處理（{{seconds}} 秒）。推理模型和本機模型可能較慢。按一下「停止」即可取消。",
+    "retrying": "連線發生問題。正在重試（第 {{attempt}} 次，共 {{max}} 次）…",
+    "stopped": "已停止。",
+    "stepLimit": "已達步驟上限。傳送另一則訊息即可繼續。",
+    "outputLimit": "回覆已達模型的輸出上限。傳送另一則訊息即可繼續。",
+    "tooLargeToSave": "這個聊天太長，無法儲存。新訊息會保留到你關閉 Oleafly 為止。匯出聊天即可保留一份副本。",
+    "exportChat": "匯出聊天",
+    "exported": "聊天已匯出。",
+    "exportFailed": "無法匯出聊天。",
+    "saveFailed": "無法儲存這個聊天中的新訊息。請檢查磁碟是否還有空間。",
+    "exportYou": "你",
+    "exportAssistant": "助理",
+    "exportAttachments": "附件",
+    "exportTools": "使用的工具"
   },
   "followUps": {
     "steered": "已介入正在執行的輪次：{{summary}}",
@@ -840,6 +1008,45 @@
     "figureAudit": "圖片查核",
     "gitReview": "Git 審閱",
     "referenceCleanup": "參考文獻整理",
-    "removeSkill": "移除技能 {{name}}"
+    "removeSkill": "移除技能 {{name}}",
+    "compilationRepair": "修復編譯",
+    "submissionPrep": "投稿準備",
+    "reviewerResponse": "審稿回覆"
+  },
+  "effort": {
+    "label": "推理強度",
+    "tooltip": "模型在回答前推理的程度",
+    "ariaLabel": "推理強度：{{level}}",
+    "auto": "自動",
+    "autoDescription": "使用模型的預設值",
+    "levels": {
+      "none": "無",
+      "minimal": "最低",
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "xhigh": "很高",
+      "max": "最高"
+    }
+  },
+  "web": {
+    "label": "網路",
+    "on": "這個聊天已開啟網頁搜尋與網頁讀取",
+    "off": "為這個聊天開啟網頁搜尋與網頁讀取",
+    "ariaLabel": "網路存取",
+    "searchUnavailable": "這個模型無法搜尋網頁。在設定中新增搜尋金鑰即可開啟。"
+  },
+  "messageActions": {
+    "edit": "編輯訊息",
+    "regenerate": "重新產生回覆",
+    "retry": "重試",
+    "editingLatest": "正在編輯你的最後一則訊息。傳送後會取代回覆。",
+    "editingEarlier": "正在編輯較早的訊息。傳送後會從那裡開始新的聊天，這個聊天會保留在歷史記錄中。",
+    "cancelEdit": "取消編輯",
+    "replaceTitle": "要取代這則回覆嗎？",
+    "replaceDescription_other": "這則回覆變更了 {{count}} 個檔案。這些變更會留在你的專案中，但它們的復原卡片會隨回覆一起消失。",
+    "replaceConfirm": "取代回覆",
+    "forked": "已從編輯後的訊息開始新的聊天。",
+    "failed": "無法重新傳送訊息。"
   }
 }

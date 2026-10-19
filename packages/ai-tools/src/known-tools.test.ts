@@ -22,9 +22,8 @@ function knownTools(): Set<string> {
 describe("the approval rules' list of tools", () => {
   it("names every tool the in-app chat can register", () => {
     const tools = {
-      // The optional tools, computer_use and run_command, need their options.
+      // The optional run_command tool needs its options.
       ...createOleaflyTools(stubHost(), {
-        cuaSurface: () => null,
         resolveExecCwd: async () => "",
         authorizeExec: async () => ({ approvalToken: "", runId: "" }),
         execCommand: async (_projectId, command) => ({
@@ -43,7 +42,7 @@ describe("the approval rules' list of tools", () => {
     const known = knownTools();
 
     expect(Object.keys(tools)).toContain("run_command");
-    expect(Object.keys(tools)).toContain("computer_use");
+    expect(Object.keys(tools)).not.toContain("computer_use");
     expect(known.size).toBeGreaterThan(0);
     expect(Object.keys(tools).filter((name) => !known.has(name))).toEqual([]);
   });

@@ -20,16 +20,22 @@ function textContentToPageText(items: readonly unknown[]): string {
   return line.join("").replace(/(?<![ \t])[ \t]+\n/g, "\n").trim();
 }
 
+/**
+ * The text of each page, up to `maxPages` (all pages by default).
+ * `numPages` is always the document's real page count.
+ */
 export async function extractPdfText(
-  bytes: Uint8Array
+  bytes: Uint8Array,
+  opts?: { maxPages?: number },
 ): Promise<{ pages: string[]; numPages: number }> {
   const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
   try {
     const doc = await loadingTask.promise;
     const numPages = doc.numPages;
+    const lastPage = Math.min(numPages, opts?.maxPages ?? numPages);
     const pages: string[] = [];
 
-    for (let p = 1; p <= numPages; p++) {
+    for (let p = 1; p <= lastPage; p++) {
       const page = await doc.getPage(p);
       try {
         const tc = await page.getTextContent();

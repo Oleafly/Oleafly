@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use crate::caps::ModelCaps;
 use crate::error::{AgentError, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -152,6 +153,9 @@ pub struct Resolved {
     pub credential: String,
     pub auth: Option<String>,
     pub wire: Wire,
+    /// What the model can do, from model metadata. Resolution leaves it
+    /// unknown; the host fills it before a run.
+    pub caps: ModelCaps,
 }
 
 impl Resolved {
@@ -430,6 +434,7 @@ fn build_resolved(
         credential,
         auth,
         wire,
+        caps: ModelCaps::default(),
     })
 }
 
@@ -964,5 +969,11 @@ mod tests {
             Wire::Anthropic { .. }
         ));
         assert!(matches!(wire_for("google", "k", None), Wire::Google { .. }));
+    }
+
+    #[test]
+    fn resolution_leaves_caps_unknown_until_the_host_fills_them() {
+        let cfg = cfg_with(&[("openai", "sk")]);
+        assert_eq!(resolve(&cfg).unwrap().caps, ModelCaps::default());
     }
 }

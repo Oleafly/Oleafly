@@ -291,7 +291,65 @@ pub fn index_project_chats(root: &Path, project_id: &str, json: &str) -> Result<
         .map_err(|e| format!("library commit failed: {e}"))
 }
 
-/// First-run (or recovery) indexing of every chats/<project>.json on disk.
+/// Replaces one chat's rows in the store and the session index.
+pub fn index_chat(root: &Path, project_id: &str, chat: &serde_json::Value) -> Result<(), String> {
+    let (chat_id, title, content) = chat_text(chat);
+    if chat_id.is_empty() {
+        return Err("chat has no id".into());
+    }
+    let mut conn = open(root)?;
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("library tx failed: {e}"))?;
+    tx.execute(
+        "DELETE FROM chats WHERE project_id = ?1 AND chat_id = ?2",
+        [project_id, chat_id.as_str()],
+    )
+    .map_err(|e| format!("library chats delete failed: {e}"))?;
+    tx.execute(
+        "DELETE FROM session_index WHERE project_id = ?1 AND chat_id = ?2",
+        [project_id, chat_id.as_str()],
+    )
+    .map_err(|e| format!("library index delete failed: {e}"))?;
+    tx.execute(
+        "INSERT INTO chats (project_id, chat_id, title, json, updated_at_ms)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params![project_id, chat_id, title, chat.to_string(), now_ms()],
+    )
+    .map_err(|e| format!("library chat insert failed: {e}"))?;
+    tx.execute(
+        "INSERT INTO session_index (project_id, chat_id, title, content)
+         VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![project_id, chat_id, title, content],
+    )
+    .map_err(|e| format!("library index insert failed: {e}"))?;
+    tx.commit()
+        .map_err(|e| format!("library commit failed: {e}"))
+}
+
+/// Removes one chat's rows from the store and the session index.
+pub fn drop_chat(root: &Path, project_id: &str, chat_id: &str) -> Result<(), String> {
+    let mut conn = open(root)?;
+    let tx = conn
+        .transaction()
+        .map_err(|e| format!("library tx failed: {e}"))?;
+    tx.execute(
+        "DELETE FROM chats WHERE project_id = ?1 AND chat_id = ?2",
+        [project_id, chat_id],
+    )
+    .map_err(|e| format!("library chats delete failed: {e}"))?;
+    tx.execute(
+        "DELETE FROM session_index WHERE project_id = ?1 AND chat_id = ?2",
+        [project_id, chat_id],
+    )
+    .map_err(|e| format!("library index delete failed: {e}"))?;
+    tx.commit()
+        .map_err(|e| format!("library commit failed: {e}"))
+}
+
+/// First-run (or recovery) indexing of every chat on disk: the per-chat
+/// folders `chats/<project>/<chat>.json` (full bodies, so search covers chats
+/// the webview loads as stubs) and legacy `chats/<project>.json` files.
 pub fn reindex_all(root: &Path) -> Result<usize, String> {
     let chats_dir = root.join("chats");
     let Ok(entries) = std::fs::read_dir(&chats_dir) else {
@@ -300,6 +358,38 @@ pub fn reindex_all(root: &Path) -> Result<usize, String> {
     let mut indexed = 0;
     for entry in entries.flatten() {
         let path = entry.path();
+        if path.is_dir() {
+            let Some(project_id) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
+                continue;
+            };
+            if crate::paths::validate_project_id(project_id).is_err() {
+                continue;
+            }
+            let Ok(chats) = std::fs::read_dir(&path) else {
+                continue;
+            };
+            for chat in chats.flatten() {
+                let chat_path = chat.path();
+                let hidden = chat_path
+                    .file_name()
+                    .and_then(std::ffi::OsStr::to_str)
+                    .is_none_or(|name| name.starts_with('.'));
+                if hidden || chat_path.extension().and_then(std::ffi::OsStr::to_str) != Some("json")
+                {
+                    continue;
+                }
+                let Some(value) = std::fs::read_to_string(&chat_path)
+                    .ok()
+                    .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
+                else {
+                    continue;
+                };
+                if index_chat(root, project_id, &value).is_ok() {
+                    indexed += 1;
+                }
+            }
+            continue;
+        }
         if path.extension().and_then(std::ffi::OsStr::to_str) != Some("json") {
             continue;
         }
@@ -445,6 +535,26 @@ pub fn usage_totals(root: &Path, project_id: &str) -> Result<UsageTotals, String
         },
     )
     .map_err(|e| format!("usage totals failed: {e}"))
+}
+
+/// What a research task's model calls cost so far, with the same parent
+/// dedupe as [`usage_totals`]; `None` when no record carries a cost.
+pub fn task_usage_cost(root: &Path, task_id: &str) -> Result<Option<f64>, String> {
+    let conn = open(root)?;
+    conn.query_row(
+        "SELECT SUM(estimated_cost_usd)
+         FROM usage_records u
+         WHERE task_id = ?1
+           AND estimated_cost_usd IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM usage_records parent
+               WHERE parent.record_key = u.parent_record_key
+                 AND parent.aggregation_scope = 'includes_children'
+           )",
+        [task_id],
+        |row| row.get::<_, Option<f64>>(0),
+    )
+    .map_err(|e| format!("task usage failed: {e}"))
 }
 
 pub fn budget_get(root: &Path, project_id: &str) -> Result<Option<f64>, String> {
@@ -816,6 +926,47 @@ mod tests {
     }
 
     #[test]
+    fn index_chat_replaces_only_that_chats_rows() {
+        let root = tempfile::tempdir().unwrap();
+        index_project_chats(root.path(), "proj", CHATS).unwrap();
+        index_chat(
+            root.path(),
+            "proj",
+            &serde_json::json!({"id":"chat-1","title":"Bib fixes","messages":[
+                {"role":"user","content":"natbib question"}]}),
+        )
+        .unwrap();
+        assert!(search_chats(root.path(), "bibfile", 10).unwrap().is_empty());
+        assert_eq!(search_chats(root.path(), "natbib", 10).unwrap().len(), 1);
+        assert_eq!(search_chats(root.path(), "tikz", 10).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn drop_chat_removes_its_rows() {
+        let root = tempfile::tempdir().unwrap();
+        index_project_chats(root.path(), "proj", CHATS).unwrap();
+        drop_chat(root.path(), "proj", "chat-2").unwrap();
+        assert!(search_chats(root.path(), "tikz", 10).unwrap().is_empty());
+        assert_eq!(search_chats(root.path(), "bibfile", 10).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn reindex_all_reads_per_chat_folders() {
+        let root = tempfile::tempdir().unwrap();
+        let folder = root.path().join("chats").join("proj-a");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(
+            folder.join("chat-1.json"),
+            r#"{"id":"chat-1","title":"Bib","messages":[{"role":"user","content":"fix my bibfile"}]}"#,
+        )
+        .unwrap();
+        std::fs::write(folder.join(".chat-1.json.1.1.tmp"), "{}").unwrap();
+        std::fs::write(folder.join("broken.json"), "{oops").unwrap();
+        assert_eq!(reindex_all(root.path()).unwrap(), 1);
+        assert_eq!(search_chats(root.path(), "bibfile", 10).unwrap().len(), 1);
+    }
+
+    #[test]
     fn usage_ledger_accumulates_per_project() {
         let root = temp_root("usage");
         record_usage(&root, "proj", "chat-1", "openai", "gpt", 100, 50, 0.012).unwrap();
@@ -863,13 +1014,11 @@ mod tests {
         use oleafly_agent::event::AgentEvent;
         let mut recorder = oleafly_agent::items::TurnRecorder::new(turn_id);
         recorder.record(&AgentEvent::TextDelta { text: text.into() });
-        recorder.record(&AgentEvent::Usage {
-            usage: oleafly_agent::Usage {
-                input,
-                output,
-                ..oleafly_agent::Usage::default()
-            },
-        });
+        recorder.record(&AgentEvent::usage(oleafly_agent::Usage {
+            input,
+            output,
+            ..oleafly_agent::Usage::default()
+        }));
         recorder.finish(false);
         recorder.into_record()
     }

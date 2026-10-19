@@ -1,16 +1,41 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ResearchTask, TaskFilePreview, TaskTranscriptEvent } from "@/lib/research-tasks";
+import type {
+  ApprovalRecord,
+  EvidenceReport,
+  ResearchTask,
+  TaskFilePreview,
+  TaskIsolationSummary,
+  TaskTranscriptEvent,
+} from "@/lib/research-tasks";
+import { formatDateTime } from "@/lib/intl";
+import { taskFieldsSince047 } from "./tests/task-fixtures";
 
 const fileMocks = vi.hoisted(() => ({ transaction: vi.fn() }));
 
-vi.mock("@/lib/research-tasks", () => ({
+vi.mock("@/lib/research-tasks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/research-tasks")>()),
   acceptResearchTaskResult: vi.fn(), applyResearchTask: vi.fn(), cancelResearchTask: vi.fn(),
   createResearchTask: vi.fn(), deleteResearchTask: vi.fn(), editResearchTask: vi.fn(), listResearchTasks: vi.fn(),
   listenForResearchTaskChanges: vi.fn(), listenForResearchTaskEvents: vi.fn(),
   loadResearchTaskEvents: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
+  // 0.4.8: live text, watching, plans, approvals, progress, evidence and keep running.
+  listenForResearchTaskDeltas: vi.fn(async () => () => {}),
+  watchResearchTask: vi.fn(async () => {}),
+  approveResearchTaskPlan: vi.fn(),
+  loadResearchTaskPlan: vi.fn(async () => ""),
+  listResearchTaskApprovals: vi.fn(async () => []),
+  decideResearchTaskApproval: vi.fn(),
+  progressResearchTask: vi.fn(),
+  cancelResearchTaskRun: vi.fn(),
+  researchTaskRunLog: vi.fn(),
+  refreshResearchTaskEvidence: vi.fn(),
+  setResearchTaskKeepRunning: vi.fn(),
 }));
+
+// The task subscriptions also answer PDF text requests; that bridge has its own tests.
+vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: vi.fn(async () => () => {}) }));
 
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ runExternalProjectMutation: fileMocks.transaction }) },
@@ -112,6 +137,7 @@ function task(id: string, projectId = "paper", status: ResearchTask["status"] = 
     },
     review: null, startRequested: false, cancelRequested: false,
     createdAt: 1, updatedAt: 1, startedAt: 1, finishedAt: 1,
+    ...taskFieldsSince047(),
   };
 }
 
@@ -221,7 +247,8 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(page().queryByText(`Result ${current.id}`)).not.toBeInTheDocument();
     expect(page().queryByText("before -> main.tex")).not.toBeInTheDocument();
     expect(api.cancelResearchTask).toHaveBeenCalledWith(current.id);
-    expect(api.retryResearchTask).toHaveBeenCalledWith(current.id);
+    // A task without a saved workspace can only start over.
+    expect(api.retryResearchTask).toHaveBeenCalledWith(current.id, "fresh");
     expect(api.startResearchTask).toHaveBeenCalledWith(current.id);
   });
 
@@ -243,7 +270,8 @@ describe("ResearchTasksPanel lifecycle", () => {
     act(() => changedTask?.({ ...running, cancelRequested: true }));
     expect(page().getByRole("button", { name: enResearchTools.tasks.detail.stopping })).toBeDisabled();
     view.unmount();
-    expect(unlistenTasks).toHaveBeenCalledOnce();
+    // The shared listeners stop once the last view unmounts (asynchronously since 0.4.8).
+    await waitFor(() => expect(unlistenTasks).toHaveBeenCalledOnce());
     expect(unlistenEvents).toHaveBeenCalledOnce();
   });
 
@@ -549,6 +577,30 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(page().getAllByRole("listitem")).toHaveLength(3);
   });
 
+  it("marks tasks the background helper runs or is giving back", async () => {
+    const helper = {
+      ...task("helper", "paper", "running"),
+      result: null,
+      owner: "daemon" as const,
+      reclaimRequested: false,
+    };
+    const returning = {
+      ...task("returning", "paper", "running"),
+      result: null,
+      owner: "daemon" as const,
+      reclaimRequested: true,
+      createdAt: 0,
+    };
+    const local = { ...task("local", "paper", "running"), result: null, owner: "app" as const, createdAt: -1 };
+    vi.mocked(api.listResearchTasks).mockResolvedValue([helper, returning, local]);
+    render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+    await page().findByRole("button", { name: /Task helper/ });
+
+    expect(page().getAllByText(enResearchTools.backgroundHelper.badge.background)).toHaveLength(1);
+    expect(page().getAllByText(enResearchTools.backgroundHelper.badge.movingBack)).toHaveLength(1);
+    expect(page().getAllByTestId("task-owner-badge")).toHaveLength(2);
+  });
+
   it("deletes a task only after the confirmation is accepted", async () => {
     const first = task("first");
     const second = { ...task("second"), createdAt: 0 };
@@ -584,5 +636,160 @@ describe("ResearchTasksPanel lifecycle", () => {
     fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: enResearchTools.tasks.panel.deleteConfirm }));
     expect(await page().findByRole("alert")).toHaveTextContent("Another task waits for this one");
     expect(card(current.title)).toBeInTheDocument();
+  });
+
+  describe("autoresearch", () => {
+    const squash = (value: string) => value.replace(/\s+/g, " ").trim();
+    const workspace: TaskIsolationSummary = {
+      kind: "staged_project",
+      executionRoot: "/tasks/workspaces/failed/1",
+      sourceRevision: "snapshot:base",
+      baselineHash: "baseline",
+      fileCount: 2,
+      createdAt: 1,
+    };
+
+    function approval(id: string, taskId: string): ApprovalRecord {
+      return {
+        id,
+        taskId,
+        executionGeneration: 1,
+        kind: "run",
+        summary: "Train the larger model",
+        detail: "python train.py --width 2048",
+        status: "pending",
+        createdAt: 1,
+        expiresAt: Date.UTC(2026, 9, 20, 9, 30),
+        decidedAt: null,
+      };
+    }
+
+    function report(unused: boolean): EvidenceReport {
+      return {
+        checkedAt: 1,
+        checks: [
+          {
+            id: "figures",
+            status: unused ? "warn" : "pass",
+            items: unused ? [{ code: "figures.unused", file: null, line: null, params: { path: "figures/new.png" } }] : [],
+          },
+        ],
+      };
+    }
+
+    it("shows the phase, start time and waiting requests on task cards and the requests above the list", async () => {
+      const runAfter = Date.UTC(2026, 9, 20, 9, 30);
+      const working: ResearchTask = {
+        ...task("working", "paper", "running"),
+        result: null,
+        phase: "waiting_runs",
+        pendingApprovals: 2,
+        createdAt: 3,
+      };
+      const scheduled: ResearchTask = {
+        ...task("scheduled", "paper", "queued"),
+        result: null,
+        executionGeneration: 0,
+        runAfter,
+        phase: "waiting_runs",
+        createdAt: 2,
+      };
+      vi.mocked(api.listResearchTasks).mockResolvedValue([working, scheduled]);
+      vi.mocked(api.listResearchTaskApprovals).mockResolvedValue([approval("a1", "working")]);
+      vi.mocked(api.decideResearchTaskApproval).mockResolvedValue({ ...approval("a1", "working"), status: "approved" });
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task working/ });
+
+      const workingCard = card("Task working").closest("li") as HTMLElement;
+      expect(workingCard).toHaveTextContent(enResearchTools.tasks.phase.waitingRuns);
+      expect(workingCard).toHaveTextContent("2 requests waiting");
+      const scheduledCard = card("Task scheduled").closest("li") as HTMLElement;
+      expect(scheduledCard).toHaveTextContent(
+        squash(enResearchTools.tasks.detail.startsAt.replace("{{time}}", formatDateTime(new Date(runAfter)))),
+      );
+      expect(scheduledCard).not.toHaveTextContent(enResearchTools.tasks.phase.waitingRuns);
+      expect(scheduledCard).not.toHaveTextContent("requests waiting");
+
+      const list = within(page().getByRole("navigation", { name: enResearchTools.tasks.panel.listLabel }));
+      const banner = await list.findByTestId("research-pending-approvals");
+      expect(api.listResearchTaskApprovals).toHaveBeenCalledWith("paper");
+      expect(banner).toHaveTextContent("Task working");
+      expect(banner).toHaveTextContent("python train.py --width 2048");
+      fireEvent.click(within(banner).getByRole("button", { name: enResearchTools.tasks.approvals.approve }));
+      await waitFor(() => expect(api.decideResearchTaskApproval).toHaveBeenCalledWith("a1", true));
+    });
+
+    it("leaves the requests banner out while no task waits for an answer", async () => {
+      vi.mocked(api.listResearchTasks).mockResolvedValue([task("quiet")]);
+      vi.mocked(api.listResearchTaskApprovals).mockResolvedValue([approval("stale", "quiet")]);
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task quiet/ });
+
+      expect(page().queryByTestId("research-pending-approvals")).toBeNull();
+      expect(api.listResearchTaskApprovals).not.toHaveBeenCalled();
+    });
+
+    it("approves an edited plan from the task's review tab", async () => {
+      const ready: ResearchTask = { ...task("plan", "paper", "plan_ready"), result: null };
+      const approved: ResearchTask = { ...ready, status: "queued", planApproved: true, startRequested: true, updatedAt: 2 };
+      vi.mocked(api.listResearchTasks).mockResolvedValue([ready]);
+      vi.mocked(api.loadResearchTaskPlan).mockResolvedValue("- [ ] Measure the baseline");
+      vi.mocked(api.approveResearchTaskPlan).mockResolvedValue(approved);
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task plan/ });
+      openTask(ready.title);
+
+      const editor = await page().findByRole("textbox", { name: enResearchTools.tasks.plan.title });
+      expect(api.loadResearchTaskPlan).toHaveBeenCalledWith(ready.id);
+      fireEvent.change(editor, { target: { value: "- [ ] Measure the baseline twice" } });
+      fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.plan.approveEdited }));
+
+      await waitFor(() =>
+        expect(api.approveResearchTaskPlan).toHaveBeenCalledWith(ready.id, "- [ ] Measure the baseline twice"),
+      );
+      await waitFor(() => expect(useResearchTasksStore.getState().tasks[0]).toMatchObject({ status: "queued", planApproved: true }));
+    });
+
+    it("resumes a failed task in its workspace or starts another one over", async () => {
+      const first: ResearchTask = { ...task("first", "paper", "failed"), result: null, isolation: workspace, createdAt: 2 };
+      const second: ResearchTask = { ...task("second", "paper", "failed"), result: null, isolation: workspace, createdAt: 1 };
+      vi.mocked(api.listResearchTasks).mockResolvedValue([first, second]);
+      vi.mocked(api.retryResearchTask).mockImplementation(async (id) => ({
+        ...(id === first.id ? first : second),
+        status: "queued",
+        updatedAt: 2,
+      }));
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task first/ });
+
+      openTask(first.title);
+      fireEvent.click(await page().findByRole("button", { name: enResearchTools.tasks.detail.resume }));
+      await waitFor(() => expect(api.retryResearchTask).toHaveBeenCalledWith(first.id, "resume"));
+      closeDetail();
+
+      openTask(second.title);
+      fireEvent.click(await page().findByRole("button", { name: enResearchTools.tasks.detail.startOver }));
+      await waitFor(() => expect(api.retryResearchTask).toHaveBeenLastCalledWith(second.id, "fresh"));
+      await waitFor(() =>
+        expect(useResearchTasksStore.getState().tasks.map((entry) => entry.status)).toEqual(["queued", "queued"]),
+      );
+    });
+
+    it("checks the evidence again and shows the new report", async () => {
+      const current: ResearchTask = { ...task("evidence"), evidence: report(true) };
+      vi.mocked(api.listResearchTasks).mockResolvedValue([current]);
+      vi.mocked(api.refreshResearchTaskEvidence).mockResolvedValue({ ...current, evidence: report(false), updatedAt: 2 });
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task evidence/ });
+      openTask(current.title);
+
+      const checklist = await page().findByTestId("research-evidence");
+      expect(checklist).toHaveTextContent("figures/new.png isn't used in the document.");
+      fireEvent.click(within(checklist).getByRole("button", { name: enResearchTools.evidence.refresh }));
+
+      await waitFor(() => expect(api.refreshResearchTaskEvidence).toHaveBeenCalledWith(current.id));
+      await waitFor(() => expect(page().getByTestId("research-evidence")).not.toHaveTextContent("figures/new.png"));
+      expect(page().getByTestId("research-evidence")).toHaveTextContent(enResearchTools.evidence.status.pass);
+    });
   });
 });

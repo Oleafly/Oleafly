@@ -39,7 +39,20 @@ if (process.argv.includes("--child")) {
         { value: "e2e-model-a", name: "E2E model A" },
         { value: "e2e-model-b", name: "E2E model B" },
       ],
+    }, {
+      id: "e2e-effort", name: "Effort", type: "select", category: "thought_level",
+      currentValue: state.effort ?? "low",
+      options: [
+        { value: "low", name: "Low" },
+        { value: "high", name: "High" },
+      ],
     }],
+  });
+  const commands = () => update("available_commands_update", {
+    availableCommands: [
+      { name: "plan", description: "Plan the next steps" },
+      { name: "review", description: "Review the changes", input: { hint: "what to review" } },
+    ],
   });
   const finish = (request, reply, known = true) => {
     text(reply);
@@ -59,7 +72,11 @@ if (process.argv.includes("--child")) {
         result(request, {
           protocolVersion: 1,
           agentInfo: { name: "Oleafly E2E agent", version: "1.0.0" },
-          agentCapabilities: { loadSession: true, mcpCapabilities: { http: true } },
+          agentCapabilities: {
+            loadSession: true,
+            mcpCapabilities: { http: true },
+            sessionCapabilities: { list: {}, delete: {} },
+          },
           authMethods: [{ id: "e2e-login", name: "Sign in to E2E agent" }],
         });
         break;
@@ -80,11 +97,21 @@ if (process.argv.includes("--child")) {
           text("ACP replay sentinel");
         }
         result(request, { sessionId: nativeId, ...controls() });
+        commands();
         break;
       case "session/set_config_option":
-        state = { ...state, modelId: params.value };
+        state = params.configId === "e2e-effort" ? { ...state, effort: params.value } : { ...state, modelId: params.value };
         saveState();
         result(request, controls());
+        break;
+      case "session/list":
+        result(request, { sessions: [{ sessionId: nativeId, cwd: projectRoot, title: "E2E conversation" }] });
+        break;
+      case "session/delete":
+        // A separate process deletes, so the record goes through the state file.
+        state = { ...state, deleted: [...(state.deleted ?? []), params.sessionId] };
+        saveState();
+        result(request, {});
         break;
       case "session/prompt": {
         const prompt = params.prompt.filter((block) => block.type === "text").map((block) => block.text).join("\n");
@@ -118,6 +145,8 @@ if (process.argv.includes("--child")) {
           update("tool_call", { toolCallId: editId, title: `Edit ${relative}`, kind: "edit", status: "in_progress", locations: [{ path: target }] });
           update("tool_call_update", { toolCallId: editId, status: "completed", content: [{ type: "diff", path: target, oldText: before, newText: after }] });
           finish(request, `ACP fixture edited ${relative}`);
+        } else if (prompt.startsWith("slow ")) {
+          setTimeout(() => finish(request, `ACP fixture answer: ${prompt}`), 2_000);
         } else if (prompt.startsWith("wait ") || prompt.startsWith("wait-ignore-cancel ")) {
           const child = spawn(process.execPath, [process.argv[1], "--child"], { stdio: "ignore" });
           child.once("spawn", () => {

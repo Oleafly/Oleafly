@@ -1,0 +1,14 @@
+{
+  "missing_files": [],
+  "packages": [],
+  "roles": {
+    "chapters/background.tex": "source",
+    "chapters/intro.tex": "source",
+    "chapters/methods.tex": "source",
+    "main.tex": "main"
+  },
+  "unused_cites": [],
+  "unused_labels": [
+    "sec:methods"
+  ]
+}

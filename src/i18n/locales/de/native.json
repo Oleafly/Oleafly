@@ -19,7 +19,6 @@
     "selectAll": "Alles auswählen",
     "view": "Ansicht",
     "toggleTerminal": "Terminal ein- oder ausblenden",
-    "toggleBrowser": "Browser ein- oder ausblenden",
     "file": "Datei",
     "openFolder": "Ordner öffnen…",
     "openRecent": "Zuletzt geöffnet",
@@ -28,15 +27,7 @@
     "minimize": "Im Dock ablegen",
     "fullscreen": "Vollbild ein- oder ausschalten",
     "bringAllToFront": "Alle nach vorne bringen",
-    "newTab": "Neuer Tab",
-    "openLocation": "Adresse öffnen…",
-    "closeTab": "Tab schließen",
-    "reloadPage": "Seite neu laden",
     "zenMode": "Zen-Modus"
-  },
-  "window": {
-    "browser": "Oleafly Browser",
-    "browserTitled": "{{title}} - Oleafly Browser"
   },
   "dialog": {
     "cancel": "Abbrechen",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Cookie-Import bestätigen",
-      "messageHost": "Cookies für {{hostname}} aus dem {{browser}}-Profil „{{profile}}“ in den integrierten Browser von Oleafly importieren? Importierte Cookies können Sie bei Websites angemeldet halten.",
-      "messageAll": "Alle Cookies aus dem {{browser}}-Profil „{{profile}}“ in den integrierten Browser von Oleafly importieren? Importierte Cookies können Sie bei Websites angemeldet halten.",
-      "confirm": "Cookies importieren"
+      "copyHost": "Die Cookies für {{hostname}} aus dem {{browser}}-Profil „{{profile}}“ in Oleafly kopieren? Damit können Sie bei {{hostname}} angemeldet werden.",
+      "copyAll": "Alle Cookies aus dem {{browser}}-Profil „{{profile}}“ in Oleafly kopieren? Damit können Sie bei Websites angemeldet werden.",
+      "copyConfirm": "Cookies kopieren"
     },
     "mcpApprove": {
       "title": "MCP-Werkzeug freigeben",
@@ -103,6 +94,46 @@
       "confirm": "Programm verwenden",
       "pickTitle": "Programm für {{name}} auswählen",
       "filter": "Programme"
+    },
+    "desktopApps": {
+      "title": "Desktop-Apps",
+      "action": "{{agent}} möchte {{action}}.",
+      "steps": "{{agent}} möchte diese Schritte in einer Desktop-App ausführen:",
+      "moreSteps": "Nicht angezeigte Schritte: {{count}}",
+      "text": "Text: „{{text}}“",
+      "address": "Adresse: {{url}}",
+      "allowOnce": "Einmal erlauben",
+      "allowChat": "Für diesen Chat erlauben",
+      "allowSession": "Für diese Sitzung erlauben",
+      "allowTask": "Für diese Aufgabe erlauben",
+      "deny": "Nicht erlauben",
+      "actions": {
+        "launchApp": "eine App öffnen",
+        "click": "in einer App klicken",
+        "doubleClick": "in einer App doppelklicken",
+        "rightClick": "in einer App rechtsklicken",
+        "typeText": "in einer App tippen",
+        "pressKey": "in einer App eine Taste drücken",
+        "hotkey": "in einer App ein Tastenkürzel drücken",
+        "scroll": "in einer App scrollen",
+        "setValue": "in einer App ein Feld ändern",
+        "browserPrepare": "einen Browser für eine Website öffnen",
+        "browserNavigate": "eine Webseite aufrufen",
+        "browserClick": "auf einer Webseite klicken",
+        "browserType": "auf einer Webseite tippen",
+        "browserSelect": "auf einer Webseite eine Option wählen",
+        "runScript": "ein Cua-Skript ausführen"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Desktop-Steuerung erlauben?",
+      "message": "Agenten können dann Folgendes verwenden und fragen trotzdem vor jeder Aktion:",
+      "confirm": "Erlauben",
+      "enabled": "Desktop-Apps",
+      "app": "App: {{name}}",
+      "site": "Website: {{origin}}",
+      "signedIn": "Ihr angemeldeter Browser auf {{origin}}",
+      "scripted": "Cua-Skripte"
     }
   },
   "errors": {
@@ -128,5 +159,35 @@
   "cloud": {
     "connectedPage": "Sie sind verbunden. Sie können diesen Tab schließen und zu Oleafly zurückkehren.",
     "failedPage": "Die Anmeldung wurde nicht abgeschlossen. Sie können diesen Tab schließen und zu Oleafly zurückkehren."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Aufgabe bereit zur Prüfung",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plan bereit zur Freigabe",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Eine Aufgabe braucht Ihre Freigabe",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Aufgabe angehalten",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Budget der Aufgabe aufgebraucht",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly arbeitet weiter",
+      "body": "Forschungsaufgaben, die weiterlaufen sollen, laufen im Hintergrund weiter. Öffnen Sie Oleafly, um ihren Fortschritt zu sehen."
+    }
   }
 }

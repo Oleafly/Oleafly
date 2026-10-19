@@ -110,4 +110,17 @@ describe("extractPdfText", () => {
     expect(failing.cleanup).toHaveBeenCalledOnce();
     expect(mocks.destroy).toHaveBeenCalledOnce();
   });
+
+  it("stops at 100 pages but reports the real page count", async () => {
+    const getPage = vi.fn(async (n: number) => page([{ str: `p${n}`, transform: [1, 0, 0, 1, 0, 5] }]));
+    mocks.getDocument.mockReturnValue({
+      promise: Promise.resolve({ numPages: 5, getPage }),
+      destroy: mocks.destroy,
+    });
+
+    const result = await extractPdfText(new Uint8Array([1]), { maxPages: 2 });
+
+    expect(result).toEqual({ numPages: 5, pages: ["p1", "p2"] });
+    expect(getPage).toHaveBeenCalledTimes(2);
+  });
 });

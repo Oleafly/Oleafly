@@ -53,19 +53,6 @@
   "branding": {
     "assistantMascot": "Mascotte van de Oleafly AI-assistent"
   },
-  "browser": {
-    "address": "Zoek of voer een URL in",
-    "back": "Terug",
-    "closeTab": "Tabblad sluiten",
-    "copyUrl": "URL kopiëren",
-    "forward": "Vooruit",
-    "moreOptions": "Meer opties",
-    "newTab": "Nieuw tabblad",
-    "openExternal": "In je eigen browser openen",
-    "openTabs": "Geopende tabbladen",
-    "reload": "Opnieuw laden",
-    "setHomePage": "Instellen als startpagina"
-  },
   "changelog": {
     "installed": "Je hebt deze versie",
     "sectionItems_one": "{{count}} wijziging",
@@ -460,10 +447,6 @@
       "hide": "AI-assistent verbergen",
       "show": "AI-assistent tonen"
     },
-    "browser": {
-      "close": "Browser sluiten ({{shortcut}})",
-      "open": "Browser openen ({{shortcut}})"
-    },
     "settings": "Instellingen",
     "sidebar": {
       "hide": "Zijbalk verbergen ({{shortcut}})",
@@ -566,17 +549,6 @@
     "saveCopy": "Kopie opslaan",
     "tryAgain": "Opnieuw proberen",
     "savedCopy": "Je geopende bestanden zijn opgeslagen in {{folder}}."
-  },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "GitHub-acties",
-    "connect": "GitHub verbinden…",
-    "connectedAs": "Verbonden als @{{login}}",
-    "copyRepositoryLink": "Repositorylink kopiëren",
-    "openInGithub": "Openen in GitHub",
-    "pushHint": "Push naar GitHub om deze beschikbaar te maken",
-    "settings": "GitHub-instellingen",
-    "tooltip": "GitHub"
   },
   "home": {
     "ariaLabel": "Start",
@@ -722,6 +694,14 @@
     "sourceControl": "Versiebeheer",
     "withShortcut": "{{label}} ({{shortcut}})"
   },
+  "remoteMenu": {
+    "accountLabel": "{{login}} op {{host}}",
+    "actions": "Acties voor de repository",
+    "copyRepositoryLink": "Link naar de repository kopiëren",
+    "openOnHost": "Openen op {{host}}",
+    "settings": "Instellingen voor Git-hosting",
+    "signedInAs": "Aangemeld bij {{host}} als {{login}}"
+  },
   "renameDialog": {
     "close": "Venster voor hernoemen sluiten",
     "collision": "Er bestaat al een {{kind}} met de naam \"{{name}}\".",
@@ -769,9 +749,9 @@
         "movedCount_other": "{{count}} projecten naar de Prullenbak verplaatst.",
         "title": "Gevarenzone"
       },
-      "githubHint": "Maak een back-up van een project of synchroniseer het tussen apparaten: verbind GitHub en gebruik daarna <push>Push</push> / <pull>Pull</pull> in Versiebeheer. <setup>GitHub instellen →</setup>",
+      "gitHostingHint": "Maak een back-up van een project of synchroniseer het tussen apparaten: koppel het aan een Git-repository en gebruik daarna <push>Push</push> / <pull>Pull</pull> in Versiebeheer. <setup>Git-hosting instellen →</setup>",
       "localFirst": "Oleafly is local-first. Alle projecten staan op je eigen schijf:",
-      "plainFolders": "Elk project is een gewone map. Git-geschiedenis is optioneel en er verlaat niets je computer tenzij je naar GitHub pusht.",
+      "plainFolders": "Elk project is een gewone map. Git-geschiedenis is optioneel, en er verlaat niets je computer tenzij je het naar een Git-server pusht.",
       "recycleBin": {
         "clearAll": "Alles wissen",
         "clearFailed": "Kon de Prullenbak niet legen.",
@@ -844,11 +824,7 @@
         "description": "Bewerk projecten samen met anderen via een samenwerkingsserver die jij of je groep beheert. Voegt de sectie Samenwerking toe aan Instellingen. Staat standaard uit zolang dit in bèta is.",
         "label": "Live samenwerken"
       },
-      "warning": "Deze functies zijn experimenteel en nog in bèta. Ze zijn nog niet volledig getest en kunnen veranderen, stukgaan of in een volgende versie verdwijnen. Zet ze alleen aan als je werk in uitvoering wilt proberen.",
-      "webBrowser": {
-        "description": "Toon de ingebouwde webbrowser (de dockknop en de sneltoets) en laat de AI hem besturen met computergebruik. Staat standaard uit zolang dit in bèta is. Als het uitstaat, is er geen browserknop en heeft de AI geen browsertool.",
-        "label": "Webbrowser"
-      }
+      "warning": "Deze functies zijn experimenteel en nog in bèta. Ze zijn nog niet volledig getest en kunnen veranderen, stukgaan of in een volgende versie verdwijnen. Zet ze alleen aan als je werk in uitvoering wilt proberen."
     },
     "footer": {
       "followOnX": "Volgen op X",
@@ -932,7 +908,8 @@
       "general": "Algemeen",
       "help": "Help en Over",
       "integrations": "Integraties",
-      "shortcuts": "Sneltoetsen"
+      "shortcuts": "Sneltoetsen",
+      "research": "Onderzoek"
     },
     "search": {
       "empty": "Geen instellingen gevonden",
@@ -948,7 +925,8 @@
         "general": "voorkeuren, taal, regio, spellingcontrole, spelling, typfouten, offline, rondleidingen, terminalopdracht",
         "help": "over, versie, updates, wijzigingen, releaseopmerkingen, wat is er nieuw, documentatie, ondersteuning, community, Discord, licentie, crashrapport",
         "integrations": "Zotero, GitHub, MCP, citaties, bronvermeldingen, accounts, koppelingen, verbindingen",
-        "shortcuts": "sneltoetsen, toetscombinaties, toetsen, toetsenbord"
+        "shortcuts": "sneltoetsen, toetscombinaties, toetsen, toetsenbord",
+        "research": "onderzoek taken budget meldingen wakker houden experimenten runs research tasks"
       },
       "label": "Instellingen doorzoeken",
       "results_one": "{{count}} sectie komt overeen",
@@ -1030,7 +1008,6 @@
     "commitCount_other": "{{count}} commits",
     "initialize": "Repository initialiseren",
     "initialized": "Git geïnitialiseerd op {{branch}}.",
-    "linkCopied": "GitHub-link gekopieerd",
     "markResolved": "Markeren als opgelost",
     "mergeNeedsAttention": "Los mergeconflicten op",
     "moreActions": "Meer acties voor versiebeheer",
@@ -1044,18 +1021,19 @@
     "openFile": "Bestand openen",
     "openFileFor": "{{path}} openen",
     "popStash": "Nieuwste stash toepassen",
-    "publish": "Publiceren op GitHub",
+    "publishRepository": "Publiceren…",
+    "publishTo": "Publiceren op {{host}}",
     "published": "Gepubliceerd naar {{url}}",
     "pull": "Pull vanaf origin",
     "pullShort": "Pull",
     "push": "Commit en push naar origin",
     "pushShort": "Push",
     "pushSkippedNoRemote": "⚠ Push overgeslagen - hieronder is geen remote origin ingesteld.",
-    "pushSkippedNoToken": "⚠ Push overgeslagen - geen GitHub-token (Instellingen → GitHub).",
     "refresh": "Vernieuwen",
     "remote": "Remote",
     "remoteHint": "Maak een nieuwe repo aan of koppel een bestaande als remote van dit project en push daarna.",
     "removeCredential": "Opgeslagen inloggegevens verwijderen",
+    "repositoryLinkCopied": "Link naar de repository gekopieerd",
     "restoreCommit": "Versie terugzetten",
     "restoreCommitDescription": "Dit vervangt elk gevolgd projectbestand door deze versie en verwijdert bestanden die later zijn toegevoegd. Je branch blijft op de huidige commit staan.",
     "restoreCommitTitle": "Deze versie terugzetten?",
@@ -1085,7 +1063,7 @@
     "titleRequired": "Een committitel is verplicht.",
     "titleRequiredStatus": "Vul een committitel in voordat je commit.",
     "unlink": "Ontkoppelen",
-    "unlinked": "Ontkoppeld van GitHub.",
+    "unlinkedFrom": "Ontkoppeld van {{host}}.",
     "unstage": "Uit de commit halen",
     "unstageFor": "{{path}} uit de commit halen",
     "unstageAll": "Alles uit de commit halen",

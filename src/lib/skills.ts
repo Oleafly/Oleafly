@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useQuery } from "@tanstack/react-query";
 import type { ToolSet } from "@/lib/chat-types";
+import { toolAliasNote, type ResearchToolAlias } from "@/lib/research-tool-aliases";
 
 export type SkillSource = "bundled" | "catalog" | "user";
 
@@ -58,6 +59,8 @@ export interface SkillEntry {
   enabled: boolean;
   removable: boolean;
   validation: SkillValidation;
+  /** Your own copy uses a built-in skill's id, so the built-in version never installs. */
+  shadowsBundled?: boolean;
 }
 
 export type SkillProjectOverride = boolean | null;
@@ -143,6 +146,11 @@ export function readSkillFile(id: string, path: string): Promise<SkillFileConten
 
 export function updateBuiltinSkill(id: string): Promise<SkillEntry> {
   return invoke<SkillEntry>("skills_update_builtin", { id });
+}
+
+/** Moves your copy to a backup folder and installs the built-in version. */
+export function replaceSkillWithBuiltin(id: string): Promise<{ record: SkillEntry; backupPath: string }> {
+  return invoke<{ record: SkillEntry; backupPath: string }>("skills_replace_with_builtin", { id });
 }
 
 export async function resetSkillPreferences(
@@ -372,7 +380,10 @@ export function skillScriptCommands(skill: SkillEntry): SkillScriptCommand[] {
     });
 }
 
-export function skillPayload(skill: SkillEntry): string {
+export function skillPayload(
+  skill: SkillEntry,
+  aliases?: Record<ResearchToolAlias, string | null>,
+): string {
   const header = `<skill id=${JSON.stringify(skill.id)}${skillAttribute("dir", skill.dir)}${skillAttribute(
     "license",
     skill.license,
@@ -401,11 +412,12 @@ ${scripts.map((script) => `${script.path}: ${script.command}`).join("\n")}
 - Every path in the instructions is relative to ${dir}.
 `
     : "";
+  const aliasNote = aliases ? toolAliasNote(skill.instructions, aliases) : "";
   return `${header}
 Name: ${skill.name}
 Description: ${skill.description}
 ${files}${scriptBlock}<instructions>
-${skill.instructions}
+${skill.instructions}${aliasNote}
 </instructions>
 ${usage}</skill>`;
 }
@@ -436,6 +448,7 @@ export function runSkillsFor(
 export function createLoadSkillTools(
   skills: readonly SkillEntry[],
   requestedIds: readonly string[] = [],
+  aliases?: Record<ResearchToolAlias, string | null>,
 ): ToolSet {
   const available = runSkillsFor(skills, requestedIds);
   if (available.length === 0) return {};
@@ -466,7 +479,7 @@ export function createLoadSkillTools(
         if (!skill) {
           return { error: `Skill "${id}" is not enabled for this run.` };
         }
-        return skillPayload(skill);
+        return skillPayload(skill, aliases);
       },
     },
     read_skill_file: {

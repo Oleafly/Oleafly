@@ -75,10 +75,25 @@ vi.mock("@/lib/toast", () => ({
   toast: { error: mocks.toastError, success: mocks.toastSuccess },
 }));
 vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
+vi.mock("@/components/tools/ToolsModelBar", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/tools/ToolsModelBar")>()),
+  ToolsModelPicker: () => <div data-testid="tools-model-picker" />,
+  ToolsModelNotice: ({ scope }: { scope: string }) => (
+    <span data-testid="tools-model-notice" data-scope={scope} />
+  ),
+  ScanEstimateText: ({ sizes }: { sizes: readonly unknown[] }) => (
+    <p data-testid="scan-estimate" data-pages={sizes.length} />
+  ),
+}));
 vi.mock("@/components/layout/WindowControls", () => ({ WindowControls: () => null }));
 vi.mock("@/components/layout/ThemeControls", () => ({ ThemeMenu: () => null }));
 
 import { ConverterToolView } from "./ConverterToolView";
+import {
+  LocalModelError,
+  ScanConfirmationNeeded,
+  ToolsModelError,
+} from "@/features/ad-hoc-converters";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -575,17 +590,27 @@ describe("ConverterToolView progress and files", () => {
     [{ step: "documentStructure" }, converter.progressDocumentStructure],
     [{ step: "mermaid" }, converter.progressMermaid],
     [{ step: "firstSheet" }, converter.progressFirstSheet],
-    [{ step: "visionModel" }, converter.progressVisionModel],
-    [{ step: "readingEquation" }, converter.progressReadingEquation],
-    [{ step: "convertingEquation" }, converter.progressConvertingEquation],
+    [{ step: "visionModel", model: "glm-ocr" }, converter.progressVisionModel.replace("{{model}}", "glm-ocr")],
+    [
+      { step: "readingEquation", model: "llava" },
+      converter.progressReadingEquation.replace("{{model}}", "llava"),
+    ],
+    [
+      { step: "convertingEquation", model: "Claude Opus 5.5" },
+      converter.progressConvertingEquation.replace("{{model}}", "Claude Opus 5.5"),
+    ],
+    [{ step: "uploadingPdf", model: "Mathpix" }, researchTools.converterModel.progressUploading],
+    [{ step: "formattingTranscription", model: "glm-ocr" }, researchTools.converterModel.progressFormatting],
     [{ step: "unpackingSource" }, converter.progressUnpackingSource],
     [{ step: "downloadingSource" }, converter.progressDownloadingSource],
     [{ step: "convertingSource" }, converter.progressConvertingSource],
     [
-      { step: "transcribingPage", page: 2, total: 5 },
-      converter.progressTranscribingPage.replace("{{page}}", "2").replace("{{total}}", "5"),
+      { step: "transcribingPage", page: 2, total: 5, model: "glm-ocr" },
+      converter.progressTranscribingPage
+        .replace("{{page}}", "2")
+        .replace("{{total}}", "5")
+        .replace("{{model}}", "glm-ocr"),
     ],
-    [{ step: "transcribingPage" }, converter.progressTranscribingPage.replace("{{page}}", "0").replace("{{total}}", "0")],
   ])("announces the %o step", async (progress, label) => {
     mocks.runAdHocConverter.mockImplementation(
       (_id: string, _input: unknown, onProgress: (status: unknown) => void) => {
@@ -642,5 +667,134 @@ describe("ConverterToolView progress and files", () => {
     fireEvent.click(screen.getByTestId("converter-file-drop"));
 
     expect(click).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ConverterToolView and the Tools model", () => {
+  const image = () => new File(["image"], "notes.png", { type: "image/png" });
+
+  it("shows the model picker and notice on AI converters only", () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "image-to-latex" });
+    const view = render(<ConverterToolView />);
+    expect(screen.getByTestId("tools-model-picker")).toBeInTheDocument();
+    expect(screen.getByTestId("tools-model-notice")).toHaveAttribute("data-scope", "images");
+    view.unmount();
+
+    useHomeViewStore.setState({ page: "converter", activeConverter: "pdf-to-markdown" });
+    const pdf = render(<ConverterToolView />);
+    expect(screen.getByTestId("tools-model-notice")).toHaveAttribute("data-scope", "scans");
+    pdf.unmount();
+
+    useHomeViewStore.setState({ page: "converter", activeConverter: "latex-to-html" });
+    render(<ConverterToolView />);
+    expect(screen.queryByTestId("tools-model-picker")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("tools-model-notice")).not.toBeInTheDocument();
+    expect(screen.getByText(researchTools.converter.runsOnDevice)).toBeInTheDocument();
+  });
+
+  it("asks before a long scan and runs again with the confirmation", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "pdf-to-markdown" });
+    const sizes = Array.from({ length: 5 }, () => ({ width: 612, height: 792 }));
+    mocks.runAdHocConverter
+      .mockRejectedValueOnce(new ScanConfirmationNeeded(sizes))
+      .mockResolvedValueOnce({
+        kind: "text",
+        text: "# Scanned",
+        dataBase64: null,
+        fileName: "converted.md",
+        mediaType: "text/markdown",
+        files: [],
+      });
+    render(<ConverterToolView />);
+    const pdf = new File(["%PDF"], "scan.pdf", { type: "application/pdf" });
+    fireEvent.change(screen.getByTestId("converter-file-input"), { target: { files: [pdf] } });
+    fireEvent.click(screen.getByTestId("converter-run"));
+
+    const confirm = await screen.findByTestId("converter-scan-confirm");
+    expect(confirm).toHaveTextContent(researchTools.converterModel.scannedTitle);
+    expect(screen.getByTestId("scan-estimate")).toHaveAttribute("data-pages", "5");
+    expect(screen.queryByText(researchTools.converter.needsAttention)).not.toBeInTheDocument();
+    expect(mocks.logError).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent(researchTools.converter.progressReady);
+
+    fireEvent.click(screen.getByTestId("converter-scan-confirm-run"));
+    await waitFor(() => expect(mocks.runAdHocConverter).toHaveBeenCalledTimes(2));
+    expect(mocks.runAdHocConverter.mock.calls[0][1]).not.toHaveProperty("scanConfirmed");
+    expect(mocks.runAdHocConverter.mock.calls[1][1]).toMatchObject({ file: pdf, scanConfirmed: true });
+    expect(((await screen.findByTestId("converter-output")) as HTMLTextAreaElement).value).toBe("# Scanned");
+  });
+
+  it("cancels a waiting scan confirmation", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "pdf-to-typst" });
+    mocks.runAdHocConverter.mockRejectedValueOnce(
+      new ScanConfirmationNeeded(Array.from({ length: 6 }, () => ({ width: 1, height: 1 }))),
+    );
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), {
+      target: { files: [new File(["%PDF"], "scan.pdf")] },
+    });
+    fireEvent.click(screen.getByTestId("converter-run"));
+    await screen.findByTestId("converter-scan-confirm");
+    fireEvent.click(screen.getByRole("button", { name: researchTools.converter.cancel }));
+    expect(screen.queryByTestId("converter-scan-confirm")).not.toBeInTheDocument();
+    expect(mocks.runAdHocConverter).toHaveBeenCalledOnce();
+  });
+
+  it("offers Tools settings for a Tools model error", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "image-to-latex" });
+    useSettingsStore.setState({ settingsScrollTarget: null });
+    mocks.runAdHocConverter.mockRejectedValue(new ToolsModelError("x", "ai-tools"));
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), { target: { files: [image()] } });
+    fireEvent.click(screen.getByTestId("converter-run"));
+    fireEvent.click(
+      await screen.findByRole("button", { name: researchTools.converterModel.openToolsSettings }),
+    );
+    expect(useSettingsStore.getState().settingsScrollTarget).toBe("ai-tools");
+    expect(useSettingsStore.getState().settingsInitialSection).toBe("ai");
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+  });
+
+  it("keeps Open AI settings for Ollama errors", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "image-to-latex" });
+    useSettingsStore.setState({ settingsScrollTarget: null });
+    mocks.runAdHocConverter.mockRejectedValue(
+      new LocalModelError(researchTools.converterErrors.ollamaUnavailable),
+    );
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), { target: { files: [image()] } });
+    fireEvent.click(screen.getByTestId("converter-run"));
+    expect(await screen.findByText(researchTools.converterErrors.ollamaUnavailable)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: researchTools.converter.openAiSettings }));
+    expect(useSettingsStore.getState().settingsInitialSection).toBe("ai");
+    expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
+  });
+
+  it("shows a Mathpix backend error in words and points to Tools settings", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "image-to-latex" });
+    mocks.runAdHocConverter.mockRejectedValue('@oleafly/error:{"code":"mathpix.key_rejected","params":{}}');
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), { target: { files: [image()] } });
+    fireEvent.click(screen.getByTestId("converter-run"));
+    expect(
+      await screen.findByText("Mathpix didn't accept these keys. Check the app ID and key in the Mathpix console."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: researchTools.converterModel.openToolsSettings }),
+    ).toBeInTheDocument();
+  });
+
+  it("names the model in progress", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "image-to-latex" });
+    mocks.runAdHocConverter.mockImplementation(
+      (_id: string, _input: unknown, onProgress: (status: unknown) => void) => {
+        onProgress({ step: "visionModel", model: "glm-ocr" });
+        return new Promise(() => {});
+      },
+    );
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), { target: { files: [image()] } });
+    fireEvent.click(screen.getByTestId("converter-run"));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Reading the image with glm-ocr"));
   });
 });

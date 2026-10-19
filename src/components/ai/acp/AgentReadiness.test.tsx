@@ -154,12 +154,15 @@ describe("terminal sign-in", () => {
     expect(signInCommandLine("D:\\O'Brien\\pi.exe", true)).toBe("& 'D:\\O''Brien\\pi.exe'");
   });
 
-  it("opens a project terminal that runs the CLI and shows the dock", () => {
-    expect(openAgentSignInTerminal("paper", "/usr/local/bin/pi")).toBe(true);
+  it("opens a project terminal that runs the CLI and shows the dock", async () => {
+    expect(await openAgentSignInTerminal("paper", "/usr/local/bin/pi")).toBe(true);
     const terminals = useTerminalsStore.getState();
     expect(terminals.projectId).toBe("paper");
     const tab = terminals.tabs.find((value) => value.id === terminals.activeId);
-    expect(tab?.initialInput).toMatch(/pi'\r$/);
+    // Since 0.4.8 the tab gets the command to start, and the terminal types it
+    // quoted for the shell that started, instead of a pre-quoted line.
+    expect(tab?.launch).toEqual({ command: "/usr/local/bin/pi", args: [] });
+    expect(tab?.title).toBe("pi");
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
   });
 });

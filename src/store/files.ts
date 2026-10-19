@@ -76,6 +76,7 @@ import {
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
 import { collabHandBack } from "@/lib/collab-live-bridge";
+import { projectLeaveAllowed } from "@/lib/project-leave-guards";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
 import { readProjectSourcesBatch } from "@/lib/project-sources";
@@ -1325,6 +1326,13 @@ async function prepareProjectSwitch(
 ): Promise<{ previousProjectId: string | null } | null> {
   if (!shouldContinue()) return null;
   const previousProjectId = get().projectId;
+  if (
+    previousProjectId &&
+    previousProjectId !== targetProjectId &&
+    !(await projectLeaveAllowed({ projectId: previousProjectId, reason: "switch", targetProjectId }))
+  ) {
+    return null;
+  }
   if (previousProjectId) {
     set({ loading: true });
     try {
@@ -1822,6 +1830,9 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   closeProject: () => enqueueProjectTransition(async () => {
     const projectId = get().projectId;
+    if (projectId && !(await projectLeaveAllowed({ projectId, reason: "close", targetProjectId: null }))) {
+      return;
+    }
     if (projectId) {
       set({ loading: true });
       try {

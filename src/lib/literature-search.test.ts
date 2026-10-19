@@ -86,6 +86,12 @@ describe("literature source parsers", () => {
     });
   });
 
+  it("reads the abstract Oleafly rebuilt from OpenAlex's index", () => {
+    const raw = JSON.stringify({ results: [{ id: "https://openalex.org/W9", title: "Graphs", abstract: "Graph networks work." }] });
+    expect(parseOpenAlexLiterature(raw).records[0].abstract).toBe("Graph networks work.");
+    expect(parseOpenAlexLiterature(OPENALEX_FIXTURE).records[0].abstract).toBeNull();
+  });
+
   it("normalizes Semantic Scholar external identifiers", () => {
     const parsed = parseSemanticScholarLiterature(
       JSON.stringify({

@@ -567,7 +567,8 @@
       "compileFailed": "编译失败",
       "compileSucceeded": "编译成功",
       "diagnostics_other": "{{count}} 条诊断信息",
-      "papers_other": "{{count}} 篇论文"
+      "papers_other": "{{count}} 篇论文",
+      "sourcesFailed_other": "{{count}} 个来源失败"
     }
   },
   "ui": {

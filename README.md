@@ -38,12 +38,13 @@ Everything here is free, including what other editors keep for paid plans: real-
 - An editor made for long documents: completion for labels, citations and commands, live error checking, an outline of the whole project, Vim and Emacs keys, a visual mode and a searchable palette of 236 LaTeX symbols.
 - Compile on your own computer. Tectonic, Typst and Pandoc are built in, and TeX Live, MacTeX, MiKTeX or TinyTeX take over when a project needs a full distribution.
 - Click in the PDF to jump to the source and back, and the last good PDF stays on screen while you fix an error.
-- Every project is a Git repository you can push to GitHub, and checkpoints save a snapshot after each successful compile.
+- Every project is a Git repository you can push to GitHub, GitLab, Gitea, Forgejo, Codeberg or your own Git server, and checkpoints save a snapshot after each successful compile.
 - Cite from your Zotero library as you type, and search arXiv, Semantic Scholar, Crossref, PubMed and OpenAlex without leaving the editor.
 - Spelling and grammar checks tuned for academic writing run on your computer.
 - Preflight catches broken references, missing figures, fonts that didn't embed, accessibility gaps and anything that would unblind a review, before you submit.
 - Draw figures that stay as TikZ, Typst or Mermaid code, and start from more than 1,700 templates for papers, theses, slides, posters and CVs.
-- Import from Word, a PDF, an arXiv source, a GitHub repository or an online LaTeX account.
+- Import from Word, a PDF, an arXiv source, a Git repository or an online LaTeX account.
+- The `oleafly` command builds, checks and syncs your projects from any terminal or CI job, with the same compilers and settings as the app.
 - Cloud sync keeps your projects on every computer you use, and you can keep writing offline.
 - Claude Code, Codex and 12 more agents work inside your project, or connect any model, local ones included. AI is optional, and each change it makes is a diff you can review and undo.
 - Research tasks run a literature review, an evidence audit or a revision pass in a separate copy of the project while you keep writing, and you pick which changed files to keep.
@@ -143,8 +144,9 @@ Prefer a chat assistant? Connect a hosted provider, any OpenAI-compatible endpoi
 - Every file change is a diff. Approve each one, let the assistant work on its own, or set rules per tool, and undo a single file or a whole turn.
 - Plan mode maps the project before anything gets written.
 - A literature review or a revision pass can run in its own Git worktree while you keep writing. You choose which changed files to keep.
-- 36 research skills ship with the app, including literature sweeps, related work, claim checks and response letters.
+- 39 research skills ship with the app, including literature sweeps, related work, claim checks and response letters.
 - A local MCP server lets an outside AI client use the same project tools. It listens on 127.0.0.1 only.
+- `oleafly mcp` gives Claude Code, Codex, Cursor and Gemini CLI the project tools over stdio, with the app open or closed.
 
 AI is optional. The editor, compiler, PDF, citations, proofreading and checks all work with it off.
 
@@ -194,13 +196,15 @@ Tectonic, Typst and Pandoc ship with the app, so a new project compiles without 
 
 ## Git, history and a terminal
 
-Every project is an ordinary folder with an ordinary Git repository. Stage, diff, commit, push, pull and publish to GitHub from the Source Control panel, or use your own terminal, since nothing is hidden from it. Checkpoints save a local snapshot after each successful compile, so you can roll back without making a commit.
+Every project is an ordinary folder with an ordinary Git repository. Stage, diff, commit, push, pull and publish to GitHub, GitLab, Gitea, Forgejo, Codeberg or your own server from the Source Control panel, or use your own terminal, since nothing is hidden from it. Checkpoints save a local snapshot after each successful compile, so you can roll back without making a commit.
 
 <p align="center">
   <img src="docs/assets/readme/git-history.png" alt="Oleafly Source Control panel with a diff, a branch graph and commit controls" width="100%" />
 </p>
 
 A terminal dock sits under the editor with up to ten tabs per project. Cmd-click (Ctrl-click) a file path in its output to open it at that line.
+
+The `oleafly` command works on the same projects from any terminal: build, watch, check before you submit, sync with an online LaTeX service, or run the Oleafly agent without opening the app. Every command can print JSON with stable exit codes for scripts and CI. See the [command-line guide](docs/cli.md).
 
 ## And a lot more
 
@@ -274,21 +278,21 @@ The Tools gallery is in beta and off by default. Turn it on in Settings > Experi
 </details>
 
 <details>
-<summary>The 36 research skills that ship with Oleafly</summary>
+<summary>The 39 research skills that ship with Oleafly</summary>
 
 Skills are ordinary `SKILL.md` folders that follow the Agent Skills shape. Run one with a slash command, add your own, or share them with compatible CLI agents on the same computer.
 
-The bundled `research-core` pack ships 36 skills. The names below are the IDs used by the catalog and in project settings.
+The bundled `research-core` pack ships 39 skills. The names below are the IDs used by the catalog and in project settings.
 
 | Category | Skills |
 | --- | --- |
-| Research and literature | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
+| Research and literature | `citation-management`, `exploratory-data-analysis`, `hypothesis-generation`, `literature-review`, `oleafly-experiment-loop`, `oleafly-literature-sweep`, `oleafly-research-loop`, `openresearch`, `paper-lookup`, `research-lookup`, `scientific-brainstorming`, `scientific-critical-thinking` |
 | Manuscript authoring and analysis | `experimental-design`, `oleafly-data-analysis`, `oleafly-manuscript-scaffold`, `oleafly-related-work`, `scientific-writing`, `statistical-analysis`, `statistical-power`, `venue-templates` |
 | Figures and visualization | `oleafly-figure-prep`, `scientific-schematics`, `scientific-visualization` |
 | Review and evidence | `oleafly-response-letter`, `oleafly-review-manuscript`, `oleafly-verify-claims`, `peer-review`, `scholar-evaluation` |
 | Submission | `oleafly-pre-submission` |
 | Communication | `oleafly-slides-and-posters`, `pptx-posters`, `research-grants`, `scientific-slides` |
-| Import and build tooling | `import-refine`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
+| Tooling and automation | `desktop-apps`, `import-refine`, `oleafly-cli`, `oleafly-latex-build`, `pdf-to-latex`, `template-generate` |
 
 </details>
 
@@ -367,6 +371,7 @@ Yes, that's the idea. Oleafly Server runs on your own machine or cloud account, 
 - [AI Copilot](docs/AICopilot.md)
 - [Skills](docs/Skills.md)
 - [MCP integration](docs/mcp.md)
+- [Command-line tool](docs/cli.md)
 - [Development setup](docs/development.md)
 - [Changelog](CHANGELOG.md)
 

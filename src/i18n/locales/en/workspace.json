@@ -182,6 +182,10 @@
     "terminal": "Loading terminal"
   },
   "terminal": {
+    "activity": "New activity",
+    "clipboard": {
+      "blocked": "A program in the terminal wants to copy text."
+    },
     "closeCurrent": "Close current",
     "closeLeft": "Close all to the left",
     "closeOthers": "Close others",
@@ -193,6 +197,19 @@
       "resize": "The terminal could not resize",
       "start": "The shell could not start"
     },
+    "find": {
+      "count": "{{current}} of {{total}}",
+      "label": "Find in terminal",
+      "next": "Next match",
+      "none": "No matches",
+      "previous": "Previous match"
+    },
+    "launch": {
+      "invalid": "This command can't run in the terminal.",
+      "noProject": "Open a project to use the terminal.",
+      "run": "Run",
+      "title": "Run this command in the terminal?"
+    },
     "limitReached": "Close a terminal to open another",
     "links": {
       "openFile": "{{modifier}}-click to open",
@@ -200,8 +217,24 @@
       "openUrlFailed": "Couldn't open the link."
     },
     "newTerminal": "New terminal",
+    "openInTerminal": "Open in terminal",
     "settings": "Terminal settings",
     "starting": "Starting the project shell…",
+    "stop": {
+      "closeMany": "Close terminals",
+      "closeOne": "Close terminal",
+      "closeProject": "Close project",
+      "dontAsk": "Don't ask again",
+      "many_one": "A program is still running in {{count}} terminal.",
+      "many_other": "Programs are still running in {{count}} terminals.",
+      "named": "{{process}} is still running in {{title}}.",
+      "quit": "Quit",
+      "restart": "Restart",
+      "switchProject": "Switch project",
+      "titleMany": "Stop the running programs?",
+      "titleOne": "Stop the running program?",
+      "unnamed": "A program is still running in {{title}}."
+    },
     "tabs": "Terminals",
     "titleInput": "Terminal title"
   },

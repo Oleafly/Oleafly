@@ -73,7 +73,29 @@
     }
   },
   "attachments": {
-    "remove": "Fjern {{name}}"
+    "remove": "Fjern {{name}}",
+    "processing": "Forbereder {{name}}…",
+    "failed": "{{name}} kunne ikke vedhæftes.",
+    "pages_one": "{{count}} side",
+    "pages_other": "{{count}} sider",
+    "pagesLimited": "Kun de første {{limit}} af {{count}} sider bruges.",
+    "tooMany": "Du kan vedhæfte op til {{max}} filer til én besked.",
+    "tooLarge": "{{name}} er større end {{limit}}.",
+    "unsupported": "{{name}} kan ikke vedhæftes. Vedhæft billeder, PDF-filer eller tekstfiler.",
+    "unreadableImage": "Oleafly kan ikke læse billedformatet i {{name}}. Gem billedet som PNG eller JPEG, og vedhæft det igen.",
+    "unreadablePdf": "{{name}} kunne ikke åbnes som PDF.",
+    "storeFailed": "{{name}} kunne ikke gemmes til denne chat.",
+    "visionUnsupported": "{{model}} kan ikke læse billeder, så billederne i denne besked bliver ikke sendt.",
+    "scannedPdf": "{{name}} har intet tekstlag, og {{model}} kan ikke læse billeder.",
+    "dropFiles": "Slip filer for at vedhæfte dem",
+    "dropProjectFile": "Slip for at nævne denne fil",
+    "open": "Åbn {{name}}",
+    "saveCopy": "Gem en kopi af {{name}}",
+    "saved": "Gemte en kopi af {{name}}.",
+    "saveFailed": "Kunne ikke gemme {{name}}.",
+    "missing": "{{name}} er ikke længere tilgængelig.",
+    "sentAsText": "{{name}} blev sendt som tekst, fordi denne model ikke kan læse den som fil.",
+    "skipped": "{{name}} blev ikke sendt."
   },
   "chat": {
     "pill": {
@@ -182,7 +204,9 @@
     "stop": "Stop",
     "stopTitle": "Stop genereringen",
     "send": "Send",
-    "checkAgain": "Tjek igen"
+    "checkAgain": "Tjek igen",
+    "resizeHandle": "Tilpas størrelsen på beskedfeltet",
+    "resizeHint": "Træk for at ændre størrelsen. Dobbeltklik for at nulstille."
   },
   "commands": {
     "groups": {
@@ -220,10 +244,6 @@
     "files": {
       "label": "Filer",
       "description": "Vedhæft filer til din næste besked"
-    },
-    "browser": {
-      "label": "Vedhæft browseren",
-      "description": "Åbn browseren ved siden af dit dokument"
     }
   },
   "models": {
@@ -272,7 +292,10 @@
       "minutes": "for {{count}} min siden",
       "hours": "for {{count}} t siden",
       "days": "for {{count}} d siden"
-    }
+    },
+    "skipped_one": "{{count}} chat kunne ikke indlæses. Den ligger stadig på disken.",
+    "skipped_other": "{{count}} chats kunne ikke indlæses. De ligger stadig på disken.",
+    "openFailed": "Kunne ikke åbne denne chat."
   },
   "tools": {
     "approval": {
@@ -318,7 +341,6 @@
       "listAgents": "Vis hjælpeagenterne og deres tilstand.",
       "closeAgent": "Luk en hjælpeagent.",
       "runCommand": "Kør en shell-kommando i projektmappen med en grænse på to minutter.",
-      "computerUse": "Åbn en webside i assistentens browservindue.",
       "toggleTheme": "Skift mellem lyst og mørkt tema.",
       "listOverleafProjects": "Vis dine Overleaf-projekter, og log ind først, hvis det er nødvendigt.",
       "importOverleafProjects": "Importer Overleaf-projekter til dit bibliotek med deres kompilator og hovedfil."
@@ -347,8 +369,7 @@
       "latexOnly": "Kun i LaTeX-projekter",
       "latexAndTypstOnly": "Kun i LaTeX- og Typst-projekter",
       "pdfCaptureSetting": "Kræver indstillingen for optagelse af PDF-sider",
-      "chatApproval": "Godkendes i chatten, én kommando ad gangen",
-      "browserSetting": "Kræver indstillingen for webbrowseren"
+      "chatApproval": "Godkendes i chatten, én kommando ad gangen"
     },
     "sourceGroups": {
       "figure": "Figur",
@@ -471,18 +492,20 @@
     "resumeTask": "Åbn forskningsopgaven for at fortsætte arbejdet.",
     "delegatedConversation": "Denne samtale hører til en uddelegeret agentkørsel.",
     "noResume": "Denne agent kan ikke genoptage gemte samtaler. Start en ny samtale, når du er klar.",
-    "imageTooLarge": "Vælg et billede, der fylder mindre end 480 KiB. Du kan vedhæfte op til fire billeder.",
     "imageReadFailed": "Billedet kunne ikke læses.",
-    "removeImage": "Fjern {{name}}",
     "composerAriaLabel": "Skriv til CLI-agenten",
     "composerPlaceholderReady": "Bed agenten om at arbejde på dette projekt",
     "composerPlaceholderIdle": "Start eller genopret en samtale for at sende en besked",
-    "attachImage": "Vedhæft billede",
     "startConversation": "Start en samtale med {{agent}}",
     "startConversationFallback": "en agent",
     "agentModel": "Agentens model",
     "modelManaged": "Modellen styres af agenten",
     "stop": "Stop",
+    "stopReason": {
+      "refusal": "Agenten afviste at fortsætte med denne forespørgsel.",
+      "maxTokens": "Agenten nåede sin grænse for output og stoppede.",
+      "maxTurnRequests": "Agenten nåede sin grænse for forespørgsler i denne tur og stoppede."
+    },
     "stopTitle": "Stop agenten",
     "send": "Send",
     "connecting": "Opretter forbindelse",
@@ -500,8 +523,7 @@
     "roster": {
       "bridgeMissing": "installer broen under Opsætning af agenten",
       "cliMissing": "CLI blev ikke fundet på denne computer",
-      "unavailable": "ikke tilgængelig på denne computer",
-      "comingSoon": "på vej"
+      "unavailable": "ikke tilgængelig på denne computer"
     },
     "messageTooLarge": "Beskeden og dens billeder fylder for meget. Gør beskeden kortere, eller fjern et billede.",
     "terminalCommand": "Agenten kører en kommando i terminalen.",
@@ -549,7 +571,122 @@
       "tool": "Værktøj: {{name}}",
       "changedFiles": "Ændrede filer",
       "moreFiles_one": "og {{count}} fil mere",
-      "moreFiles_other": "og {{count}} filer mere"
+      "moreFiles_other": "og {{count}} filer mere",
+      "mode": "Tilstand",
+      "effort": "Indsats",
+      "permissionProfile": "Godkendelsestilstand",
+      "commits": "Commits"
+    },
+    "composerPlaceholderStart": "Skriv til {{agent}} for at starte en samtale",
+    "composerPlaceholderConnecting": "Skriv nu. Beskeden sendes, når agenten er klar.",
+    "composerPlaceholderRunning": "Skriv din næste besked. Den sendes, når agenten er færdig.",
+    "attachFile": "Vedhæft filer",
+    "composer": {
+      "tooManyAttachments": "Vedhæft op til 10 filer til én besked.",
+      "imagesUnsupported": "Denne agent tager ikke imod billeder. Fjern dem, og prøv igen.",
+      "attachmentsNotReady": "Vent, til de vedhæftede filer er klar.",
+      "removeSelection": "Fjern citatet {{label}}"
+    },
+    "queue": {
+      "queued": "I kø: sendes, når agenten er færdig",
+      "remove": "Fjern beskeden fra køen",
+      "sendNow": "Send nu",
+      "sendFailed": "Beskeden blev ikke sendt. Send den igen, eller fjern den."
+    },
+    "slash": {
+      "commands": "Agentkommandoer",
+      "skills": "Færdigheder"
+    },
+    "controls": {
+      "effort": "Indsats",
+      "mode": "Tilstand",
+      "more": "Flere agentindstillinger",
+      "blockedMode": "Slået fra i Oleafly",
+      "blockedModeHint": "Oleafly holder tjek af tilladelser slået til, så denne tilstand er ikke tilgængelig."
+    },
+    "usage": {
+      "ariaLabel": "Se agentens forbrug",
+      "tooltip": "Forbrug for denne samtale",
+      "contextShare": "{{percent}} % af kontekstvinduet er brugt",
+      "window": {
+        "fiveHour": "5-timerssession",
+        "weekly": "Ugentlig, alle modeller",
+        "weeklyOpus": "Ugentlig, Opus",
+        "weeklySonnet": "Ugentlig, Sonnet",
+        "overage": "Ekstra forbrug",
+        "other": "Forbrugsgrænse {{id}}"
+      },
+      "costIn": "Agenten oplyste en pris på {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} tokens"
+    },
+    "compaction": {
+      "running": "Opsummerer tidligere kontekst",
+      "done": "Tidligere kontekst er opsummeret",
+      "failed": "Kunne ikke opsummere tidligere kontekst"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} i terminalen",
+      "afterTerminal": "Gør login færdigt i terminalen, og opret så forbindelse igen.",
+      "apiKeyLabel": "API-nøgle til {{provider}}",
+      "apiKeyPlaceholder": "Indsæt din API-nøgle",
+      "geminiGoogle": "Login med Google virker ikke længere for individuelle abonnementer. Brug en API-nøgle til Gemini eller Vertex AI.",
+      "noProject": "Åbn et projekt for at logge ind fra terminalen.",
+      "signOut": "Log ud"
+    },
+    "elicitation": {
+      "ariaLabel": "Forespørgsel fra agenten",
+      "from": "{{agent}} spørger:",
+      "submit": "Send",
+      "decline": "Afvis",
+      "cancel": "Annuller",
+      "required": "Påkrævet",
+      "invalid": "Tjek dette felt.",
+      "openUrl": "Åbn i browseren",
+      "confirmTitle": "Vil du åbne {{host}}?",
+      "confirmDescription": "Agenten bad dig om at gøre et trin færdigt på denne hjemmeside. Den åbnes i din browser.",
+      "waiting": "Venter på, at hjemmesiden bliver færdig."
+    },
+    "remote": {
+      "banner": "Hermes kører på {{host}} via SSH. Dens ændringer bliver på den maskine."
+    },
+    "history": {
+      "all": "Alle samtaler",
+      "title": "Samtaler",
+      "search": "Søg i samtaler",
+      "empty": "Ingen samtaler passer.",
+      "loadMore": "Indlæs flere",
+      "open": "Åbn",
+      "rename": "Omdøb",
+      "renameLabel": "Samtalens navn",
+      "delete": "Slet",
+      "deleteTitle": "Vil du slette denne samtale?",
+      "deleteDescription": "Oleafly fjerner dens transskription og vedhæftede filer fra dette projekt.",
+      "deleteFromAgent": "Slet den også fra {{agent}}",
+      "deleteAgentFailed": "Slettet i Oleafly. {{agent}} kunne ikke slette sin kopi: {{error}}",
+      "deleteRunning": "Stop agenten, før du sletter denne samtale.",
+      "importFind": "Find samtaler fra {{agent}} til dette projekt",
+      "imported": "Allerede i Oleafly",
+      "importSelected": "Importer valgte",
+      "importEmpty": "{{agent}} har ingen andre samtaler til dette projekt."
+    },
+    "header": {
+      "startedAt": "Startet ved {{revision}}",
+      "startedDirty": "Startet ved {{revision}} med ændringer, der ikke er committet",
+      "menu": "Handlinger for samtalen",
+      "fork": "Forgren samtalen",
+      "forkUnsupported": "Denne agent kan ikke forgrene samtaler.",
+      "forkBusy": "Vent, til agenten er færdig, før du forgrener.",
+      "v2": "Udkast til ACP v2",
+      "remote": "Ekstern"
+    },
+    "commit": {
+      "button": "Commit",
+      "title": "Commit denne tur",
+      "message": "Commit-besked",
+      "files": "Filer, der skal committes",
+      "defaultMessage": "Ændringer fra {{agent}}",
+      "submit": "Commit filerne",
+      "cancel": "Annuller"
     }
   },
   "agents": {
@@ -721,8 +858,6 @@
     "restoreFailed": "Kunne ikke gendanne: {{error}}",
     "steerFailed": "Den igangværende tur kunne ikke styres.",
     "approvalRuleSaveFailed": "Kunne ikke gemme projektets godkendelsesregel.",
-    "attachmentTooLarge": "{{name}} er for stor (højst 10 MB).",
-    "attachmentReadFailed": "Kunne ikke læse {{name}}.",
     "tooManyTools": "{{enabled}} værktøjer er slået til, men en kørsel understøtter op til {{max}}. Slå mindst {{excess}} fra under Værktøjer, og prøv igen."
   },
   "header": {
@@ -749,7 +884,29 @@
     "summaryRunNoTokens_one": "Seneste kørsel: {{count}} trin, samlet tokental er ikke tilgængeligt",
     "summaryRunNoTokens_other": "Seneste kørsel: {{count}} trin, samlet tokental er ikke tilgængeligt",
     "summaryChat": "Denne chat: {{steps}} trin, {{tokens}} tokens",
-    "summaryFallback": "AI-forbrug"
+    "summaryFallback": "AI-forbrug",
+    "context": "Kontekst",
+    "contextUsed": "{{used}} af {{size}} tokens",
+    "contextShare": "{{percent}} af kontekstvinduet er brugt",
+    "contextUnknown": "Denne models kontekstvindue er ukendt.",
+    "reasoning": "Ræsonnement",
+    "cacheRead": "Cachelæsninger",
+    "cacheWrite": "Cacheskrivninger",
+    "cost": "Anslået pris",
+    "budget": "Projektbudget",
+    "budgetUsed": "{{spent}} af {{limit}}",
+    "credit": "Resterende kredit",
+    "creditOf": "{{remaining}} af {{limit}}",
+    "planLimits": "Abonnementsgrænser",
+    "resetsAt": "Nulstilles {{time}}",
+    "windowWarning": "Tæt på grænsen",
+    "windowBlocked": "Grænsen er nået",
+    "refreshPlan": "Opdater abonnementsforbruget",
+    "refreshing": "Opdaterer…",
+    "historyTrimmed_one": "Kun den seneste {{count}} tur i denne chat blev sendt til modellen.",
+    "historyTrimmed_other": "Kun de seneste {{count}} ture i denne chat blev sendt til modellen.",
+    "empty": "Intet forbrug i denne chat endnu.",
+    "loading": "Indlæser forbrug…"
   },
   "provider": {
     "connectTitle": "Forbind en AI-udbyder for at fortsætte",
@@ -769,7 +926,21 @@
     "projectSubtitle": "Arbejder på \"{{project}}\"",
     "noOutput": "Modellen gav intet resultat. Se Indstillinger → AI-assistent.",
     "planMissing": "Der er ingen plan at godkende endnu. Bed assistenten om en, eller slå Plan fra.",
-    "planUnchanged": "Planen er uændret."
+    "planUnchanged": "Planen er uændret.",
+    "stillWorking": "Arbejder stadig ({{seconds}} s). Ræsonnerende modeller og lokale modeller kan være langsomme. Klik på Stop for at annullere.",
+    "retrying": "Forbindelsesproblem. Prøver igen ({{attempt}} af {{max}})…",
+    "stopped": "Stoppet.",
+    "stepLimit": "Grænsen for antal trin er nået. Send en ny besked for at fortsætte.",
+    "outputLimit": "Svaret nåede modellens grænse for output. Send en ny besked for at fortsætte.",
+    "tooLargeToSave": "Denne chat er for lang til at blive gemt. Nye beskeder bevares, indtil du lukker Oleafly. Eksporter chatten for at beholde en kopi.",
+    "exportChat": "Eksporter chatten",
+    "exported": "Chatten er eksporteret.",
+    "exportFailed": "Kunne ikke eksportere chatten.",
+    "saveFailed": "Nye beskeder i denne chat kunne ikke gemmes. Tjek, at der er ledig plads på disken.",
+    "exportYou": "Dig",
+    "exportAssistant": "Assistent",
+    "exportAttachments": "Vedhæftede filer",
+    "exportTools": "Brugte værktøjer"
   },
   "followUps": {
     "steered": "Styret ind i den igangværende tur: {{summary}}",
@@ -856,6 +1027,46 @@
     "figureAudit": "Tjek af figurer",
     "gitReview": "Git-gennemgang",
     "referenceCleanup": "Oprydning i referencer",
-    "removeSkill": "Fjern færdigheden {{name}}"
+    "removeSkill": "Fjern færdigheden {{name}}",
+    "compilationRepair": "Ret kompileringen",
+    "submissionPrep": "Forbered indsendelsen",
+    "reviewerResponse": "Svar til bedømmerne"
+  },
+  "effort": {
+    "label": "Indsats",
+    "tooltip": "Hvor meget modellen ræsonnerer, før den svarer",
+    "ariaLabel": "Indsats for ræsonnement: {{level}}",
+    "auto": "Auto",
+    "autoDescription": "Brug modellens standard",
+    "levels": {
+      "none": "Ingen",
+      "minimal": "Minimal",
+      "low": "Lav",
+      "medium": "Mellem",
+      "high": "Høj",
+      "xhigh": "Ekstra høj",
+      "max": "Maks"
+    }
+  },
+  "web": {
+    "label": "Web",
+    "on": "Websøgning og læsning af sider er slået til for denne chat",
+    "off": "Slå websøgning og læsning af sider til for denne chat",
+    "ariaLabel": "Webadgang",
+    "searchUnavailable": "Denne model kan ikke søge på nettet. Tilføj en søgenøgle under Indstillinger for at slå det til."
+  },
+  "messageActions": {
+    "edit": "Rediger beskeden",
+    "regenerate": "Generer svaret igen",
+    "retry": "Prøv igen",
+    "editingLatest": "Du redigerer din seneste besked. Når du sender den, erstattes svaret.",
+    "editingEarlier": "Du redigerer en tidligere besked. Når du sender den, starter en ny chat derfra, og denne chat bliver i Historik.",
+    "cancelEdit": "Annuller redigeringen",
+    "replaceTitle": "Vil du erstatte dette svar?",
+    "replaceDescription_one": "Svaret ændrede {{count}} fil. Ændringen bliver i dit projekt, men dens fortryd-kort forsvinder sammen med svaret.",
+    "replaceDescription_other": "Svaret ændrede {{count}} filer. Ændringerne bliver i dit projekt, men deres fortryd-kort forsvinder sammen med svaret.",
+    "replaceConfirm": "Erstat svaret",
+    "forked": "Startede en ny chat fra den redigerede besked.",
+    "failed": "Kunne ikke sende beskeden igen."
   }
 }

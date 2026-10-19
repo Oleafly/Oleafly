@@ -19,9 +19,12 @@ import {
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { i18n } from "@/i18n";
 import { composerDraftKey, TaskComposer } from "./TaskComposer";
-import { relativeTime } from "./task-status";
-import { TaskAgentChip, TaskStatusBadge } from "./TaskChips";
+import { phaseLabel, relativeTime } from "./task-status";
+import { TaskAgentChip, TaskOwnerBadge, TaskStatusBadge } from "./TaskChips";
 import { TaskDetailDialog } from "./TaskDetailDialog";
+import { PendingApprovals } from "./PendingApprovals";
+import { refreshResearchTaskEvidence } from "@/lib/research-tasks";
+import { formatDateTime } from "@/lib/intl";
 import { LoadingState } from "@/components/ui/empty";
 
 export interface ResearchTaskAgentOption {
@@ -93,6 +96,7 @@ const TaskRow = memo(function TaskRow({
         </button>
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5">
           <TaskStatusBadge status={task.status} />
+          <TaskOwnerBadge task={task} />
           <TaskAgentChip
             task={task}
             agentName={agentName}
@@ -112,6 +116,21 @@ const TaskRow = memo(function TaskRow({
             <span className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.researchTools.tasks.panel.waiting)}
             </span>
+          ) : null}
+          {task.status === "running" && task.phase ? (
+            <span className="text-[0.6875rem] text-muted-foreground">{phaseLabel(task.phase)}</span>
+          ) : null}
+          {task.status === "queued" && task.runAfter ? (
+            <span className="text-[0.6875rem] text-muted-foreground">
+              {t(($) => $.researchTools.tasks.detail.startsAt, {
+                time: formatDateTime(new Date(task.runAfter)),
+              })}
+            </span>
+          ) : null}
+          {task.pendingApprovals > 0 ? (
+            <Badge variant="outline" className="border-amber-500/50 text-[0.6875rem]">
+              {t(($) => $.researchTools.tasks.panel.pendingApprovals, { count: task.pendingApprovals })}
+            </Badge>
           ) : null}
           <Button
             size="xs"
@@ -186,6 +205,7 @@ export function ResearchTasksPanel({
   const startTask = useResearchTasksStore((state) => state.startTask);
   const cancelTask = useResearchTasksStore((state) => state.cancelTask);
   const retryTask = useResearchTasksStore((state) => state.retryTask);
+  const approvePlan = useResearchTasksStore((state) => state.approvePlan);
   const applyTask = useResearchTasksStore((state) => state.applyTask);
   const acceptTask = useResearchTasksStore((state) => state.acceptTask);
   const deleteTask = useResearchTasksStore((state) => state.deleteTask);
@@ -385,6 +405,11 @@ export function ResearchTasksPanel({
             </TabsList>
           </Tabs>
         </div>
+        {projectId && tasks.some((task) => task.pendingApprovals > 0) ? (
+          <div className="shrink-0 px-3 pt-3">
+            <PendingApprovals projectId={projectId} tasks={tasks} />
+          </div>
+        ) : null}
         <ul
           ref={listRef}
           className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3"
@@ -513,8 +538,15 @@ export function ResearchTasksPanel({
           onCancel={async () => {
             await cancelTask(selectedTask.id);
           }}
-          onRetry={async () => {
-            await retryTask(selectedTask.id);
+          onRetry={async (mode) => {
+            await retryTask(selectedTask.id, mode);
+          }}
+          onApprovePlan={async (editedPlan) => {
+            await approvePlan(selectedTask.id, editedPlan);
+          }}
+          onRefreshEvidence={async () => {
+            const task = await refreshResearchTaskEvidence(selectedTask.id);
+            useResearchTasksStore.getState().receiveTask(task);
           }}
           onApply={async (paths) => {
             const task = await applyTask(selectedTask.id, paths);

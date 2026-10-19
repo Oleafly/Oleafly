@@ -113,10 +113,69 @@
           "startFailed": "无法启动 {{name}}。",
           "timeout": "{{name}} 已启动，但未能及时响应。",
           "exited": "{{name}} 在响应前就已停止。",
-          "notAcp": "{{name}} 已启动，但 Oleafly 无法理解它的回复。"
+          "notAcp": "{{name}} 已启动，但 Oleafly 无法理解它的回复。",
+          "needsSignIn": "{{name}} 可以正常工作。开始对话前请先登录。",
+          "sessionFailed": "{{name}} 已启动，但无法打开对话。"
         },
         "getNode": "获取 Node.js",
-        "copyDetails": "复制详细信息"
+        "copyDetails": "复制详细信息",
+        "signIn": "登录",
+        "afterSignIn": "请在终端中完成登录，然后重新测试程序。"
+      },
+      "experimental": {
+        "title": "实验性",
+        "description": "这些功能使用 Agent Client Protocol 的草案部分，可能会更改或停止工作。",
+        "v2": "可用时使用 ACP v2",
+        "v2Description": "支持第 2 版草案的代理会使用它。其他代理继续使用第 1 版。",
+        "providers": "允许代理使用我的 Oleafly API 密钥",
+        "providersDescription": "能够转发模型调用的代理会使用你在其卡片上选择的密钥。该密钥只会发送给该代理的进程。"
+      },
+      "inactivity": {
+        "label": "代理无响应多久后停止",
+        "description": "代理在这段时间内没有发送任何内容时，Oleafly 会停止它。你可以重新连接。",
+        "minutes": "{{count}} 分钟"
+      },
+      "protocolLabel": "协议",
+      "remembered": {
+        "title": "记住的选择",
+        "effort": "推理强度：{{name}}",
+        "mode": "模式：{{name}}",
+        "forget": "忘记",
+        "none": "新对话会使用代理的默认设置。"
+      },
+      "providers": {
+        "label": "使用我的 Oleafly API 密钥",
+        "off": "关闭（代理自行登录）",
+        "note": "对话开始时，Oleafly 会把密钥发送给此代理，并且不会将其写入记录。",
+        "unavailable": "请在“设置 > AI”中添加 API 密钥，才能在这里使用。"
+      },
+      "hermes": {
+        "title": "此项目的 Hermes 配置文件",
+        "default": "默认配置文件（共享）",
+        "project": "项目配置文件",
+        "remote": "通过 SSH 远程运行",
+        "profileName": "配置文件 {{name}}",
+        "memory": "项目记忆",
+        "memoryDescription": "Hermes 会在此项目的不同对话之间记住信息。",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "使用你的 Nous 订阅中托管的网页搜索、图像、语音和浏览器工具。",
+        "status": {
+          "ready": "网关正在运行",
+          "starting": "网关正在启动",
+          "stopped": "网关已停止",
+          "unknown": "网关状态未知"
+        },
+        "refresh": "重新检查",
+        "keepsRunning": "断开 Oleafly 的连接永远不会停止网关。",
+        "host": "主机",
+        "port": "端口",
+        "folder": "那台机器上的项目文件夹",
+        "command": "Hermes 命令",
+        "remoteProfile": "配置文件（可选）",
+        "test": "测试连接",
+        "testOk": "已连接：{{version}}",
+        "save": "保存",
+        "sshNote": "Oleafly 只使用你的 SSH 密钥登录。"
       }
     },
     "approvals": {
@@ -195,6 +254,8 @@
       "defaultModelTitle": "默认聊天模型",
       "pdfCaptureDescription": "允许代理栅格化编译后的页面（verify_pdf_pages）以进行视觉版式检查。如果你不希望向提供商发送页面图像，请关闭此选项。",
       "pdfCaptureLabel": "允许 AI 捕获 PDF 页面",
+      "reasoningSummariesDescription": "先思考再回答的模型会发送其推理过程的简短摘要。适用于 Anthropic 和 OpenAI 模型。",
+      "reasoningSummariesLabel": "显示推理摘要",
       "save": "保存指令",
       "saved": "已保存",
       "toolsHint": "例如，你可以让它“修复 LaTeX 错误”、“添加 Publications 章节”或“重新编译并检查 PDF”。",
@@ -506,7 +567,32 @@
       },
       "useInAllProjectsAria": "在所有项目中使用 {{name}}",
       "useInProjectAria": "在此项目中使用 {{name}}",
-      "validateAria": "验证 {{name}}"
+      "validateAria": "验证 {{name}}",
+      "shadowNote": "此技能有更新的 Oleafly 版本可用。",
+      "replaceAction": "使用 Oleafly 版本",
+      "replaceTitle": "替换你的 {{name}} 副本？",
+      "replaceBody": "你的副本会移到备份文件夹，不会删除任何内容。",
+      "replaced": "你的副本位于 {{path}}。"
+    },
+    "tools": {
+      "tabLabel": "工具",
+      "loading": "正在加载工具设置…",
+      "modelTitle": "工具所用模型",
+      "modelDescription": "图片转 LaTeX、公式图片和扫描 PDF 会使用此模型。自动选择会使用 Ollama，因此图片会留在这台计算机上。如果 Ollama 未运行，或没有能读取图片的模型，编辑器中的图片转 LaTeX 和图片转 Typst 会改为把图片发送给助手的模型。",
+      "ocrHint": "要获得最佳本地效果，请在 Ollama 中拉取 OCR 模型：",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "可选。Mathpix 可读取公式、表格和扫描 PDF，并按图片和页数向你自己的 Mathpix 账户计费。",
+        "docs": "获取 Mathpix 密钥",
+        "appIdLabel": "应用 ID",
+        "appKeyLabel": "应用密钥",
+        "save": "保存密钥",
+        "remove": "移除密钥",
+        "connected": "已连接为 {{appId}}",
+        "saved": "Mathpix 密钥已保存。",
+        "removed": "Mathpix 密钥已移除。",
+        "privacy": "Oleafly 会要求 Mathpix 不保留你的图片，并在读取结果后从 Mathpix 删除每个 PDF。"
+      }
     }
   },
   "appearance": {
@@ -545,17 +631,6 @@
       "theme": {
         "description": "“跟随系统”会随操作系统外观的变化自动切换。",
         "label": "外观"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "浏览器主页",
-        "description": "选择打开浏览器坞时显示的页面。",
-        "label": "主页"
-      },
-      "searchEngine": {
-        "description": "选择用于文字搜索的搜索引擎。",
-        "label": "默认搜索引擎"
       }
     },
     "customTheme": {
@@ -851,7 +926,6 @@
     "sectionName": "外观",
     "tabs": {
       "app": "应用",
-      "browser": "浏览器",
       "editor": "编辑器",
       "files": "项目",
       "pdf": "PDF 预览",
@@ -875,6 +949,14 @@
         "foreground": "文字色",
         "foregroundAriaLabel": "终端前景色",
         "label": "终端颜色"
+      },
+      "confirmClose": {
+        "description": "关闭仍在运行程序的终端时先询问，包括关闭项目或退出时。",
+        "label": "关闭忙碌的终端前询问"
+      },
+      "copyOnSelect": {
+        "description": "选中终端文本后立即复制。",
+        "label": "选中即复制"
       },
       "cursorBlink": {
         "description": "让终端光标闪烁。",
@@ -904,6 +986,43 @@
       "fontWeightBold": {
         "description": "设置粗体终端文字的字重。",
         "label": "粗体字重"
+      },
+      "optionIsMeta": {
+        "description": "将 Option 组合键作为 Meta 发送到 shell。Option 将不再输入特殊字符。",
+        "label": "将 Option 用作 Meta"
+      },
+      "scrollback": {
+        "ariaLabel": "终端回滚行数",
+        "description": "每个终端保留的行数。行数越多，占用的内存越多。",
+        "label": "回滚行数",
+        "lines_other": "{{value}} 行"
+      },
+      "shell": {
+        "ariaLabel": "终端 shell",
+        "description": "新终端会启动此 shell。已打开的终端保留各自的 shell。",
+        "label": "Shell",
+        "options": {
+          "auto": "默认（{{name}}）",
+          "cmd": "命令提示符",
+          "custom": "自定义路径",
+          "defaultShell": "默认 shell",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "自定义 shell 路径",
+          "description": "新终端运行的程序。",
+          "label": "Shell 路径"
+        }
+      },
+      "shiftEnter": {
+        "ariaLabel": "终端中的 Shift+Enter",
+        "description": "Shift+Enter 向终端中的程序发送的内容。",
+        "enter": "Enter",
+        "label": "Shift+Enter",
+        "newline": "换行"
       },
       "startWithProject": {
         "description": "在项目打开时启动 shell，而不是在首次显示终端时才启动。",
@@ -947,6 +1066,15 @@
       "saveEmail": "保存邮箱",
       "saveKey": "保存密钥"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "可选。当助手的提供商没有自己的搜索功能时，让助手搜索网页。",
+      "keyLabel": "Brave Search API 密钥",
+      "keyRemoveFailed": "无法移除 Brave Search API 密钥。",
+      "keyRemoved": "Brave Search API 密钥已移除",
+      "keySaveFailed": "无法保存 Brave Search API 密钥。",
+      "keySaved": "Brave Search API 密钥已保存"
+    },
     "connected": "已连接",
     "description": "管理学术搜索源使用的凭据。",
     "keyFree": {
@@ -986,7 +1114,17 @@
       "keySaveFailed": "无法保存 Serper API 密钥。",
       "keySaved": "已保存 Serper API 密钥。"
     },
-    "title": "引用搜索"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "可选。当助手的提供商没有自己的搜索功能时，让助手搜索网页。",
+      "keyLabel": "Tavily API 密钥",
+      "keyRemoveFailed": "无法移除 Tavily API 密钥。",
+      "keyRemoved": "Tavily API 密钥已移除",
+      "keySaveFailed": "无法保存 Tavily API 密钥。",
+      "keySaved": "Tavily API 密钥已保存"
+    },
+    "title": "引用搜索",
+    "webSearchOrder": "进行网页搜索时，助手会依次使用 Brave、Tavily 和 Serper。"
   },
   "cite": {
     "apa": "同一文献的 APA 格式可在 GitHub 的“Cite this repository”中找到。",
@@ -1276,17 +1414,62 @@
       }
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "已连接",
-      "disconnect": "断开连接",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{host}} 上的 {{login}}",
+      "caAdd": "添加证书文件",
+      "caChange": "更改证书文件",
+      "caFile": "证书文件：{{file}}",
+      "checking": "正在检查…",
+      "signInAgain": "重新登录",
+      "signOut": "退出登录",
+      "signedInAs": "已登录为 {{login}}",
+      "signedOut": "已退出登录",
+      "unreachable": "无法连接到服务器"
     },
-    "advanced": {
+    "add": {
+      "browserHint": "在浏览器中使用一次性代码登录。",
+      "caChoose": "选择文件…",
+      "caFilter": "证书文件",
+      "caHint": "仅当服务器的证书来自你所在组织自己的证书颁发机构时才需要。",
+      "caLabel": "证书颁发机构文件",
+      "caPickerTitle": "选择证书文件",
+      "caRemove": "移除",
+      "chooseKind": "服务器类型",
       "connect": "连接",
-      "toggle": "高级：使用个人访问令牌。",
-      "tokenPlaceholder": "ghp_…"
+      "continue": "继续",
+      "createToken": "在 {{host}} 上创建令牌",
+      "detecting": "正在检查服务器…",
+      "found": "这是一台 {{kind}} 服务器。",
+      "kindGitea": "Gitea 或 Forgejo",
+      "otherServer": "其他服务器",
+      "scopesGitea": "为它授予 repository 和 user 的读写权限。",
+      "scopesGithub": "为它授予 repo 和 read:user 权限范围。",
+      "scopesGitlab": "为它授予 api 和 write_repository 权限范围。",
+      "serverLabel": "服务器地址",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "使用 {{host}} 登录",
+      "title": "添加 Git 托管账户",
+      "tokenLabel": "访问令牌",
+      "useToken": "改用访问令牌"
     },
+    "addAccount": "添加账户",
+    "description": "登录后即可推送和拉取、发布项目以及导入仓库。支持 GitHub、GitLab、Gitea、Forgejo 和 Codeberg，以及你自己运行的服务器。",
+    "device": {
+      "open": "打开 {{host}}",
+      "opened": "Oleafly 已在你的浏览器中打开 <verificationLink>{{url}}</verificationLink>。在那里输入代码即可完成登录。",
+      "timedOut": "登录超时。请重试。",
+      "title": "在 {{host}} 上输入此代码",
+      "waiting": "正在等待你在浏览器中完成…"
+    },
+    "empty": "还没有账户。通过地址关联的项目仍会使用你自己的 Git 登录信息或 SSH 密钥推送和拉取。",
+    "notice": {
+      "signedIn": "已以 {{login}} 身份登录 {{host}}。",
+      "signedOut": "已退出 {{host}}。"
+    },
+    "title": "Git 托管"
+  },
+  "github": {
     "autoInit": {
       "description": "新建和打开的项目都会创建 Git 仓库，以便 Git 面板跟踪更改。新项目通常会先有一次包含其文件的提交。此后，Oleafly 只会在你要求时提交。",
       "label": "为每个项目初始化 Git"
@@ -1294,23 +1477,6 @@
     "config": {
       "loadFailed": "无法加载 Git 设置。",
       "saveFailed": "无法保存 Git 设置。"
-    },
-    "connect": "连接 GitHub",
-    "description": "备份项目、跨设备同步，并在 Git 面板中推送/拉取。",
-    "device": {
-      "openGithub": "打开 GitHub",
-      "opened": "我们已在你的浏览器中打开 <verificationLink>{{url}}</verificationLink>。请在该页面粘贴代码以授权 Oleafly。",
-      "timedOut": "GitHub 登录已超时，请重试。",
-      "title": "在 GitHub 上输入此代码",
-      "waiting": "正在等待授权…"
-    },
-    "hint": {
-      "oauth": "在浏览器中通过一次性代码为你登录。",
-      "token": "此版本尚未配置 OAuth 登录，请改为粘贴令牌。"
-    },
-    "notice": {
-      "connected": "已连接为 @{{login}}",
-      "disconnected": "已断开连接"
     }
   },
   "integrations": {
@@ -1327,27 +1493,14 @@
       "disconnectFailed": "无法断开 alphaXiv。请重试。"
     },
     "cookies": {
-      "action": "导入 Cookie",
-      "confirmAllDomains": "你即将从 {{browser}} 的 {{profile}} 配置文件导入所有域名的 Cookie。Cookie 值将存储在内置浏览器中，并且只会发送到与之匹配的网站。Oleafly 在读取该配置文件之前，会再通过原生对话框请你确认一次。",
-      "confirmDomain": "你即将从 {{browser}} 的 {{profile}} 配置文件导入 {{domain}} 的 Cookie。Cookie 值将存储在内置浏览器中，并且只会发送到与之匹配的网站。Oleafly 在读取该配置文件之前，会再通过原生对话框请你确认一次。",
       "confirmTitle": "确认导入 Cookie",
-      "description": "在 Oleafly 的内置浏览器中使用已有的浏览器登录状态。",
       "detecting": "正在查找已安装的浏览器配置文件…",
       "dialogDescription": "选择一个已安装的浏览器配置文件。Oleafly 只会在你查看并确认导入后才读取该文件。Chromium 的 Cookie 在本地通过 macOS 钥匙串解锁。Oleafly 不会将 Cookie 值发送到任何 Oleafly 服务。",
       "dialogTitle": "导入浏览器 Cookie",
       "empty": "未找到支持的浏览器配置文件。",
       "errors": {
-        "chooseProfile": "请选择一个可用的浏览器配置文件。",
-        "hostname": "请输入主机名，例如 example.com。"
+        "chooseProfile": "请选择一个可用的浏览器配置文件。"
       },
-      "hostnameHint": "输入网站主机名，则仅导入该网站可使用的 Cookie。留空则导入此配置文件中所有符合条件的 Cookie。",
-      "hostnameLabel": "目标主机名（可选）",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_other": "已从 {{browser}} 为 {{domain}} 导入 {{count}} 个 Cookie。",
-      "importedProfileDomain_other": "已从 {{browser}}（{{profile}}）为 {{domain}} 导入 {{count}} 个 Cookie。",
-      "importedProfile_other": "已从 {{browser}}（{{profile}}）导入 {{count}} 个 Cookie。",
-      "imported_other": "已从 {{browser}} 导入 {{count}} 个 Cookie。",
-      "importing": "正在导入 Cookie…",
       "profileGroupLabel": "浏览器配置文件",
       "profileLegend": "浏览器配置文件",
       "review": "查看导入内容",
@@ -1357,8 +1510,15 @@
         "noCookieStore": "无 Cookie 存储",
         "notInstalled": "未安装"
       },
-      "title": "导入 Cookie",
-      "tryAgain": "重试"
+      "tryAgain": "重试",
+      "label": "浏览器登录",
+      "useBrowserSignIn": "使用我浏览器中的登录信息",
+      "signInDescription": "从这台计算机上的浏览器复制你在 {{server}} 的登录信息，这样就不必重新登录。",
+      "site": "网站：{{domain}}",
+      "confirmCopy": "Oleafly 会从 {{browser}} 的 {{profile}} 配置文件中读取 {{domain}} 的 Cookie。它们会留在 Oleafly 中，并且只会发送到 {{domain}}。你还需要在系统对话框中再确认一次。",
+      "copyAction": "复制登录信息",
+      "copying": "正在复制...",
+      "notSignedIn_other": "已从 {{browser}} 复制 {{count}} 个 Cookie，但它们没有让你登录。请直接登录。"
     },
     "zotero": {
       "apiKeyHint": "获取密钥的方法：登录 <siteLink>zotero.org</siteLink>，打开 <keyLink>API 密钥页面</keyLink> 创建密钥，并在同一页面复制你的数字用户 ID。",
@@ -1424,6 +1584,124 @@
       "gitSave": "保存",
       "gitRemove": "移除",
       "gitFailed": "Oleafly 无法保存 Git 令牌。请检查是否粘贴了完整的令牌。"
+    },
+    "desktopApps": {
+      "tab": "桌面应用",
+      "title": "桌面应用",
+      "description": "让代理通过 Cua Driver 使用这台计算机上的应用和网站。每次点击或按键前，Oleafly 都会询问。",
+      "docsLink": "Cua Driver 文档",
+      "status": {
+        "installed": "已安装 Cua Driver {{version}}。",
+        "installedNoVersion": "已安装 Cua Driver。",
+        "notInstalled": "尚未安装 Cua Driver。",
+        "tooOld": "Cua Driver {{version}} 版本过旧。Oleafly 需要 {{minimum}} 或更高版本。",
+        "noAppBundle": "请使用官方安装程序安装 Cua Driver，以便它能获得 macOS 权限。",
+        "path": "位于 {{path}}"
+      },
+      "install": {
+        "heading": "安装 Cua Driver",
+        "hint": "在终端中运行此命令。Oleafly 从不替你安装 Cua Driver。",
+        "run": "在终端中运行",
+        "needsProject": "打开一个项目以在 Oleafly 的终端中运行，或者复制该命令。",
+        "confirm": "这会从 cua.ai 下载 Cua Driver 安装程序并在你的终端中运行。要继续吗？",
+        "terminalTitle": "安装 Cua Driver",
+        "checkAgain": "重新检查"
+      },
+      "permissions": {
+        "heading": "macOS 权限",
+        "granted": "Cua Driver 可以使用辅助功能和屏幕录制。",
+        "needed": "Cua Driver 需要辅助功能和屏幕录制权限。请运行授权步骤并按提示操作。",
+        "unknown": "Oleafly 无法读取 Cua Driver 的权限。",
+        "grant": "授予权限",
+        "terminalTitle": "Cua Driver 权限"
+      },
+      "gnome": {
+        "heading": "GNOME 助手",
+        "needed": "在 GNOME 上，请运行一次 Cua 窗口助手，然后注销并重新登录。",
+        "active": "GNOME 窗口助手已开启。"
+      },
+      "enable": {
+        "label": "允许代理使用桌面应用",
+        "description": "代理可以看到下方的应用和网站。点击、输入和页面变更都会先询问你。"
+      },
+      "apps": {
+        "heading": "允许的应用",
+        "empty": "还没有应用。代理只能使用你在这里添加的应用。",
+        "add": "添加应用",
+        "remove": "移除 {{name}}",
+        "dialog": {
+          "title": "添加应用",
+          "description": "选择一个代理可以使用的应用。在你批准后，代理可以打开它、读取它的窗口并在其中操作。",
+          "search": "搜索应用",
+          "loading": "正在查找应用...",
+          "none": "没有匹配的应用。",
+          "choose": "选择其他应用...",
+          "add": "添加"
+        },
+        "blocked": {
+          "oleafly": "Oleafly 无法控制自身。",
+          "driver": "Cua Driver 无法控制自身。",
+          "terminal": "终端会绕过 Oleafly 的命令审批运行命令。",
+          "system_settings": "系统设置可以更改权限。",
+          "passwords": "密码类应用不允许使用。",
+          "scripting": "脚本运行器可以在这台计算机上执行任何操作。",
+          "wrapper": "此条目会启动另一个程序。请改为选择那个程序。",
+          "sandboxed": "暂不支持 Flatpak 和 Snap 应用。"
+        }
+      },
+      "sites": {
+        "heading": "允许的网站",
+        "empty": "还没有网站。",
+        "add": "添加网站",
+        "placeholder": "https://www.example.org",
+        "remove": "移除 {{origin}}",
+        "signedIn": {
+          "label": "使用我已登录的浏览器",
+          "description": "代理会在你自己的 Chrome 或 Edge 中操作此网站。关闭此选项则使用单独的浏览器配置文件。"
+        }
+      },
+      "scripted": {
+        "label": "脚本控制",
+        "description": "允许代理运行一次执行多个步骤的 Cua 脚本。每个脚本运行前，Oleafly 都会询问。"
+      },
+      "test": {
+        "action": "测试连接",
+        "running": "正在测试...",
+        "ok": "Cua Driver 正在按你的限制运行。",
+        "failed": "测试失败：{{detail}}"
+      },
+      "tool": {
+        "description": "使用你在设置中允许的桌面应用和网站。",
+        "note": "查看会立即进行。点击、输入和页面变更会先询问。"
+      },
+      "task": {
+        "label": "桌面应用",
+        "description": "允许此任务使用你允许的桌面应用。你需要在计算机前批准操作。",
+        "off": "请先在设置中开启桌面应用。",
+        "unattended": "按计划运行或在 Oleafly 关闭后运行的任务无法使用桌面应用。"
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "将 Cua Spaces 中隔离的桌面和容器作为 MCP 服务器连接。实验性功能。",
+        "notInstalled": "尚未安装 cua 命令。",
+        "connect": {
+          "label": "连接 Cua Spaces",
+          "description": "代理可以列出你的 Space，并查看在其中运行的代理。"
+        },
+        "fullAccess": {
+          "label": "允许更改",
+          "description": "代理还可以创建和删除 Space，并在其中运行命令。"
+        },
+        "credentials": {
+          "label": "共享我的代理登录信息",
+          "description": "让在 Space 中启动的代理使用你的 Claude Code 或 Codex 登录信息。"
+        },
+        "failed": "Oleafly 无法更新 Cua Spaces 连接。",
+        "install": {
+          "terminalTitle": "安装 Cua",
+          "confirm": "这会从 cua.ai 下载 Cua 安装程序并在你的终端中运行。要继续吗？"
+        }
+      }
     }
   },
   "language": {
@@ -1750,7 +2028,8 @@
       "unavailable": "此 Oleafly 副本不包含该命令。"
     },
     "title": "终端命令",
-    "update": "更新"
+    "update": "更新",
+    "newTerminal": "请打开一个新终端来使用 oleafly。已经打开的终端看不到这项更改。"
   },
   "shortcuts": {
     "actions": {
@@ -1774,10 +2053,6 @@
         "description": "打开项目快捷键参考。",
         "label": "快捷键参考"
       },
-      "toggleBrowser": {
-        "description": "显示或隐藏项目浏览器。",
-        "label": "切换浏览器"
-      },
       "toggleSidebar": {
         "description": "显示或隐藏项目侧边栏。",
         "label": "切换侧边栏"
@@ -1789,6 +2064,22 @@
       "toggleTerminal": {
         "description": "显示或隐藏项目终端。",
         "label": "切换终端"
+      },
+      "newTerminal": {
+        "description": "打开另一个终端标签页。",
+        "label": "新建终端"
+      },
+      "closeTerminal": {
+        "description": "关闭你正在输入的终端标签页。",
+        "label": "关闭终端"
+      },
+      "nextTerminal": {
+        "description": "切换到下一个终端标签页。",
+        "label": "下一个终端"
+      },
+      "previousTerminal": {
+        "description": "切换到上一个终端标签页。",
+        "label": "上一个终端"
       },
       "openFolder": {
         "label": "打开文件夹",
@@ -1943,6 +2234,33 @@
       "elsewhere": "菜单会打开另一份 Oleafly。修复后将使用当前这份。",
       "moved": "它指向一份已移动的 Oleafly。修复后将使用当前这份。",
       "noDefaultFileManager": "系统没有为文件夹设置默认文件管理器，此条目可能会让所有文件夹都用 Oleafly 打开。请移除它。"
+    }
+  },
+  "research": {
+    "background": {
+      "title": "后台任务",
+      "enabled": {
+        "label": "Oleafly 关闭后继续运行任务",
+        "description": "你退出时，标记为继续运行的任务会交给一个小型后台辅助程序。打开 Oleafly 时，它会收回这些任务。"
+      },
+      "atLogin": {
+        "label": "登录时启动辅助程序",
+        "description": "重启后继续运行后台任务。辅助程序无事可做时会自动退出。",
+        "moveApp": "请先将 Oleafly 移到“应用程序”文件夹。",
+        "needsBackground": "请先开启后台任务。"
+      },
+      "status": {
+        "label": "后台辅助程序",
+        "running": "正在运行",
+        "stopped": "未运行",
+        "notResponding": "无响应",
+        "tasks_other": "正在处理 {{count}} 个任务"
+      },
+      "stop": "停止辅助程序",
+      "stopHint": "在你再次打开 Oleafly 之前，它的任务会暂停。",
+      "stopFailed": "辅助程序未能停止。请重试。",
+      "openLog": "显示日志",
+      "toggleFailed": "无法更改此设置。请重试。"
     }
   }
 }

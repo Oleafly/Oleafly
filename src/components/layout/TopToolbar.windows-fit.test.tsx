@@ -48,7 +48,6 @@ beforeEach(() => {
     viewMode: "split",
     assistantOpen: false,
     workspaceHidden: false,
-    webBrowser: true,
   });
 });
 

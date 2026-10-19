@@ -15,7 +15,10 @@ const mocks = vi.hoisted(() => ({
   flushForQuit: vi.fn(async () => {}),
   notifyError: vi.fn(),
   logError: vi.fn(async () => {}),
+  confirmStopTerminals: vi.fn(async (_request: { reason: string }) => true),
 }));
+
+vi.mock("@/lib/terminal-lifecycle", () => ({ confirmStopTerminals: mocks.confirmStopTerminals }));
 
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: mocks.isTauri, invoke: mocks.invoke }));
@@ -58,6 +61,7 @@ beforeEach(() => {
   mocks.flushForQuit.mockReset().mockResolvedValue(undefined);
   mocks.notifyError.mockClear();
   mocks.logError.mockClear();
+  mocks.confirmStopTerminals.mockReset().mockResolvedValue(true);
 });
 
 describe("QuitGuard", () => {
@@ -75,6 +79,37 @@ describe("QuitGuard", () => {
     await fireQuitRequest(true);
 
     await waitFor(() => expect(mocks.confirmQuitFlush).toHaveBeenCalledWith(true));
+  });
+
+  it("asks about running terminals after saving and stays when the user cancels", async () => {
+    mocks.confirmStopTerminals.mockResolvedValue(false);
+    render(<QuitGuard />);
+    await fireQuitRequest(false);
+
+    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
+    expect(mocks.confirmStopTerminals).toHaveBeenCalledWith({ reason: "quit" });
+    expect(mocks.flushForQuit.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.confirmStopTerminals.mock.invocationCallOrder[0],
+    );
+    expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
+    expect(screen.queryByText(/could not be saved/i)).toBeNull();
+  });
+
+  it("passes restart as the reason", async () => {
+    render(<QuitGuard />);
+    await fireQuitRequest(true);
+
+    await waitFor(() => expect(mocks.confirmQuitFlush).toHaveBeenCalledWith(true));
+    expect(mocks.confirmStopTerminals).toHaveBeenCalledWith({ reason: "restart" });
+  });
+
+  it("quits when the terminal check itself fails", async () => {
+    mocks.confirmStopTerminals.mockRejectedValue(new Error("module failed"));
+    render(<QuitGuard />);
+    await fireQuitRequest(false);
+
+    await waitFor(() => expect(mocks.confirmQuitFlush).toHaveBeenCalledWith(false));
+    expect(mocks.logError).toHaveBeenCalledWith("ask about running terminals", expect.any(Error));
   });
 
   it("blocks the quit and lets the user stay when the flush fails", async () => {

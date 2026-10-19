@@ -1,37 +1,41 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createResearchTools, type ResearchToolsHost } from "./research-tools";
+import { createResearchTaskTools, createResearchTools, type ResearchToolsHost } from "./research-tools";
 
-describe("OpenAlex + citation verification tools", () => {
-  const searchOpenAlex = vi.fn();
-  const crossrefSearch = vi.fn();
-  const fetchDoiBibtex = vi.fn();
+describe("literature search and citation verification tools", () => {
+  const searchLiterature = vi.fn();
+  const verifyCitation = vi.fn();
   let host: ResearchToolsHost;
 
   beforeEach(() => {
-    searchOpenAlex.mockReset();
-    crossrefSearch.mockReset();
-    fetchDoiBibtex.mockReset();
+    searchLiterature.mockReset();
+    verifyCitation.mockReset();
     host = {
-      searchOpenAlex,
-      crossrefSearch,
-      fetchDoiBibtex,
+      searchLiterature,
+      verifyCitation,
       retrieveProjectChunks: vi.fn(),
     };
   });
 
-  it("literature_search asks the host's OpenAlex search with a clamped limit", async () => {
-    searchOpenAlex.mockResolvedValue({ results: [{ id: "W123", display_name: "A Work" }] });
+  it("literature_search asks the host's unified search with the clamped limit", async () => {
+    searchLiterature.mockResolvedValue({ records: [{ id: "openalex:W123", title: "A Work" }], failures: [] });
     const tools = createResearchTools(host);
     const res = await tools.literature_search.execute({ query: "graph neural networks", limit: 99 });
-    expect(searchOpenAlex).toHaveBeenCalledWith("graph neural networks", 25);
-    expect(res).toMatchObject({ results: [{ id: "W123" }] });
+    expect(searchLiterature).toHaveBeenCalledWith("graph neural networks", { limit: 25 });
+    expect(res).toMatchObject({ records: [{ id: "openalex:W123" }] });
+  });
+
+  it("literature_search passes known sources only", async () => {
+    searchLiterature.mockResolvedValue({ records: [], failures: [] });
+    const tools = createResearchTools(host);
+    await tools.literature_search.execute({ query: "graph neural networks", sources: ["pubmed", "nowhere"] });
+    expect(searchLiterature).toHaveBeenCalledWith("graph neural networks", { limit: 10, sources: ["pubmed"] });
   });
 
   it("literature_search defaults to ten results", async () => {
-    searchOpenAlex.mockResolvedValue({ results: [] });
+    searchLiterature.mockResolvedValue({ records: [], failures: [] });
     const tools = createResearchTools(host);
     await tools.literature_search.execute({ query: "graph neural networks" });
-    expect(searchOpenAlex).toHaveBeenCalledWith("graph neural networks", 10);
+    expect(searchLiterature).toHaveBeenCalledWith("graph neural networks", { limit: 10 });
   });
 
   it("offers no alphaXiv tools of its own", () => {
@@ -44,7 +48,7 @@ describe("OpenAlex + citation verification tools", () => {
   });
 
   it("does not start an internet request before approval", async () => {
-    searchOpenAlex.mockResolvedValue({ results: [] });
+    searchLiterature.mockResolvedValue({ records: [], failures: [] });
     const confirm = vi.fn().mockResolvedValue(false);
     const tools = createResearchTools(host, { confirm });
 
@@ -52,21 +56,35 @@ describe("OpenAlex + citation verification tools", () => {
 
     expect(confirm).toHaveBeenCalledWith({
       tool: "literature_search",
-      summary: "Search OpenAlex for graph neural networks",
+      summary: "Search scholarly indexes for graph neural networks",
     });
-    expect(searchOpenAlex).not.toHaveBeenCalled();
+    expect(searchLiterature).not.toHaveBeenCalled();
     expect(res).toMatchObject({ declined: true, tool: "literature_search" });
   });
 
-  it("verify_citation resolves a DOI to BibTeX", async () => {
-    fetchDoiBibtex.mockResolvedValue("@article{key, title={A Paper}}");
+  it("verify_citation passes doi and title to the host verifier", async () => {
+    verifyCitation.mockResolvedValue({ verified: true, source: "doi", doi: "10.1000/example", bibtex: "@article{key, title={A Paper}}" });
     const tools = createResearchTools(host);
-    const res = await tools.verify_citation.execute({ doi: "10.1000/example" });
-    expect(fetchDoiBibtex).toHaveBeenCalledWith("10.1000/example");
-    expect(res).toMatchObject({ verified: true, bibtex: expect.stringContaining("A Paper") });
+    await tools.verify_citation.execute({ doi: "10.1000/example", title: "A Paper" });
+    expect(verifyCitation).toHaveBeenCalledWith({ doi: "10.1000/example", title: "A Paper" });
   });
 
-  it("does not contact Crossref before approval", async () => {
+  it("returns the host verdict unchanged", async () => {
+    const verdict = {
+      verified: false,
+      source: "crossref-search",
+      doi: "10.1/a",
+      matchedTitle: "Attention is not all you need",
+      score: 0.86,
+      bibtex: null,
+      reason: "No matching Crossref record found.",
+    };
+    verifyCitation.mockResolvedValue(verdict);
+    const tools = createResearchTools(host);
+    expect(await tools.verify_citation.execute({ title: "Attention Is All You Need" })).toEqual(verdict);
+  });
+
+  it("does not contact the verifier before approval", async () => {
     const confirm = vi.fn().mockResolvedValue(false);
     const tools = createResearchTools(host, { confirm });
 
@@ -76,24 +94,8 @@ describe("OpenAlex + citation verification tools", () => {
       tool: "verify_citation",
       summary: "Verify citation with Crossref",
     });
-    expect(fetchDoiBibtex).not.toHaveBeenCalled();
-    expect(crossrefSearch).not.toHaveBeenCalled();
+    expect(verifyCitation).not.toHaveBeenCalled();
     expect(res).toMatchObject({ declined: true, tool: "verify_citation" });
-  });
-
-  it("verify_citation falls back to a Crossref title search when no DOI is given", async () => {
-    crossrefSearch.mockResolvedValue(JSON.stringify({ items: [{ title: ["A Paper"], DOI: "10.1000/x" }] }));
-    const tools = createResearchTools(host);
-    const res = await tools.verify_citation.execute({ title: "A Paper" });
-    expect(crossrefSearch).toHaveBeenCalledWith("A Paper");
-    expect(res).toMatchObject({ verified: true });
-  });
-
-  it("verify_citation reports unverified when nothing matches", async () => {
-    crossrefSearch.mockResolvedValue(JSON.stringify({ items: [] }));
-    const tools = createResearchTools(host);
-    const res = await tools.verify_citation.execute({ title: "Definitely Not A Real Paper Title Xyz" });
-    expect(res).toMatchObject({ verified: false });
   });
 });
 
@@ -104,9 +106,8 @@ describe("project library search", () => {
   beforeEach(() => {
     retrieveProjectChunks.mockReset();
     host = {
-      searchOpenAlex: vi.fn(),
-      crossrefSearch: vi.fn(),
-      fetchDoiBibtex: vi.fn(),
+      searchLiterature: vi.fn(),
+      verifyCitation: vi.fn(),
       retrieveProjectChunks,
     };
   });
@@ -132,9 +133,8 @@ describe("project library search", () => {
 describe("research tool input and failure handling", () => {
   function hostWith(overrides: Partial<ResearchToolsHost> = {}): ResearchToolsHost {
     return {
-      searchOpenAlex: vi.fn(),
-      crossrefSearch: vi.fn(),
-      fetchDoiBibtex: vi.fn(),
+      searchLiterature: vi.fn(),
+      verifyCitation: vi.fn(),
       retrieveProjectChunks: vi.fn(),
       ...overrides,
     };
@@ -149,28 +149,31 @@ describe("research tool input and failure handling", () => {
     expect(await tools.project_library_search.execute({ query: "" })).toEqual({ error: "query must not be empty" });
     expect(await tools.project_library_search.execute({})).toEqual({ error: "query must not be empty" });
     expect(confirm).not.toHaveBeenCalled();
-    expect(host.searchOpenAlex).not.toHaveBeenCalled();
+    expect(host.searchLiterature).not.toHaveBeenCalled();
     expect(host.retrieveProjectChunks).not.toHaveBeenCalled();
   });
 
   it("clamps the result limit to at least one", async () => {
-    const host = hostWith({ searchOpenAlex: vi.fn().mockResolvedValue({ results: [] }) });
+    const host = hostWith({ searchLiterature: vi.fn().mockResolvedValue({ records: [], failures: [] }) });
     await createResearchTools(host).literature_search.execute({ query: "q", limit: -4 });
-    expect(host.searchOpenAlex).toHaveBeenCalledWith("q", 1);
+    expect(host.searchLiterature).toHaveBeenCalledWith("q", { limit: 1 });
   });
 
   it("runs an approved search", async () => {
     const confirm = vi.fn().mockResolvedValue(true);
-    const host = hostWith({ searchOpenAlex: vi.fn().mockResolvedValue({ results: [{ id: "W1" }] }) });
+    const host = hostWith({
+      searchLiterature: vi.fn().mockResolvedValue({ records: [{ id: "openalex:W1" }], failures: [] }),
+    });
     expect(await createResearchTools(host, { confirm }).literature_search.execute({ query: "q" })).toEqual({
-      results: [{ id: "W1" }],
+      records: [{ id: "openalex:W1" }],
+      failures: [],
     });
   });
 
   it("returns search failures as errors, Error or not", async () => {
     const tools = createResearchTools(
       hostWith({
-        searchOpenAlex: vi.fn().mockRejectedValue(new Error("rate limited")),
+        searchLiterature: vi.fn().mockRejectedValue(new Error("rate limited")),
         retrieveProjectChunks: vi.fn().mockRejectedValue("index missing"),
       }),
     );
@@ -178,11 +181,11 @@ describe("research tool input and failure handling", () => {
     expect(await tools.project_library_search.execute({ query: "q" })).toEqual({ error: "index missing" });
   });
 
-  it("returns non-Error rejections from the OpenAlex and Crossref lookups as text", async () => {
+  it("returns non-Error rejections from the literature and Crossref lookups as text", async () => {
     const tools = createResearchTools(
       hostWith({
-        searchOpenAlex: vi.fn().mockRejectedValue("offline"),
-        fetchDoiBibtex: vi.fn().mockRejectedValue(503),
+        searchLiterature: vi.fn().mockRejectedValue("offline"),
+        verifyCitation: vi.fn().mockRejectedValue(503),
       }),
     );
     expect(await tools.literature_search.execute({ query: "q" })).toEqual({ error: "offline" });
@@ -195,46 +198,74 @@ describe("research tool input and failure handling", () => {
     expect(await tools.verify_citation.execute({ doi: "  ", title: 42 })).toEqual({
       error: "Provide either doi or title.",
     });
-    expect(host.crossrefSearch).not.toHaveBeenCalled();
+    expect(host.verifyCitation).not.toHaveBeenCalled();
   });
 
-  it("falls back to the title when the DOI is blank and tolerates sparse records", async () => {
-    const host = hostWith({ crossrefSearch: vi.fn().mockResolvedValue(JSON.stringify({ items: [{}] })) });
-    expect(
-      await createResearchTools(host).verify_citation.execute({ doi: " ", title: "  Attention  " }),
-    ).toEqual({ verified: true, source: "crossref-search", doi: null, matchedTitle: null });
-    expect(host.crossrefSearch).toHaveBeenCalledWith("Attention");
-    expect(host.fetchDoiBibtex).not.toHaveBeenCalled();
+  it("sends only the title when the DOI is blank", async () => {
+    const host = hostWith({ verifyCitation: vi.fn().mockResolvedValue({ verified: true }) });
+    await createResearchTools(host).verify_citation.execute({ doi: " ", title: "  Attention  " });
+    expect(host.verifyCitation).toHaveBeenCalledWith({ title: "Attention" });
   });
 
-  it("reports a match with its DOI and title", async () => {
-    const host = hostWith({
-      crossrefSearch: vi.fn().mockResolvedValue(JSON.stringify({ items: [{ title: ["Attention"], DOI: "10.1/x" }] })),
-    });
-    expect(await createResearchTools(host).verify_citation.execute({ title: "Attention" })).toEqual({
-      verified: true,
-      source: "crossref-search",
-      doi: "10.1/x",
-      matchedTitle: "Attention",
-    });
-  });
-
-  it("treats a response with no items as unverified", async () => {
-    const host = hostWith({ crossrefSearch: vi.fn().mockResolvedValue("{}") });
-    expect(await createResearchTools(host).verify_citation.execute({ title: "Nothing" })).toEqual({
-      verified: false,
-      reason: "No matching Crossref record found.",
-    });
-  });
-
-  it("returns lookup and parse failures as errors", async () => {
+  it("returns lookup failures as errors", async () => {
     const tools = createResearchTools(
-      hostWith({
-        fetchDoiBibtex: vi.fn().mockRejectedValue(new Error("DOI not found")),
-        crossrefSearch: vi.fn().mockResolvedValue("<html>"),
-      }),
+      hostWith({ verifyCitation: vi.fn().mockRejectedValue(new Error("DOI not found")) }),
     );
     expect(await tools.verify_citation.execute({ doi: "10.1/missing" })).toEqual({ error: "DOI not found" });
-    expect(await tools.verify_citation.execute({ title: "x" })).toMatchObject({ error: expect.stringContaining("JSON") });
+  });
+});
+
+describe("research task tools", () => {
+  const host = () => ({
+    createResearchTask: vi.fn().mockResolvedValue({ id: "t1", title: "Sweep", status: "running" }),
+    researchTaskStatus: vi.fn().mockResolvedValue({ tasks: [] }),
+  });
+
+  it("creates and starts a task only after approval", async () => {
+    const declinedHost = host();
+    const declined = await createResearchTaskTools(declinedHost, { confirm: vi.fn().mockResolvedValue(false) })
+      .research_task_create.execute({ title: "Sweep", prompt: "Find papers." });
+    expect(declined).toMatchObject({ declined: true });
+    expect(declinedHost.createResearchTask).not.toHaveBeenCalled();
+
+    const approvedHost = host();
+    const confirm = vi.fn().mockResolvedValue(true);
+    const created = await createResearchTaskTools(approvedHost, { confirm }).research_task_create.execute({
+      title: "Sweep",
+      prompt: "Find papers.",
+      review_plan_first: true,
+      time_budget_minutes: 90,
+    });
+    expect(confirm).toHaveBeenCalledWith({
+      tool: "research_task_create",
+      summary: 'Create the research task "Sweep" and start it',
+    });
+    expect(approvedHost.createResearchTask).toHaveBeenCalledWith({
+      title: "Sweep",
+      prompt: "Find papers.",
+      skillIds: [],
+      brief: { reviewPlanFirst: true, timeBudgetMinutes: 90 },
+      start: true,
+    });
+    expect(created).toEqual({ id: "t1", title: "Sweep", status: "running" });
+  });
+
+  it("validates title and budget before asking", async () => {
+    const confirm = vi.fn().mockResolvedValue(true);
+    const tools = createResearchTaskTools(host(), { confirm });
+    expect(await tools.research_task_create.execute({ title: "", prompt: "x" })).toMatchObject({ error: expect.any(String) });
+    expect(
+      await tools.research_task_create.execute({ title: "Sweep", prompt: "x", time_budget_minutes: 2 }),
+    ).toMatchObject({ error: "time_budget_minutes must be a whole number from 5 to 1440" });
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("reports status for one task or the latest ten", async () => {
+    const statusHost = host();
+    const tools = createResearchTaskTools(statusHost);
+    await tools.research_task_status.execute({});
+    await tools.research_task_status.execute({ id: "t1" });
+    expect(statusHost.researchTaskStatus).toHaveBeenNthCalledWith(1, undefined);
+    expect(statusHost.researchTaskStatus).toHaveBeenNthCalledWith(2, "t1");
   });
 });

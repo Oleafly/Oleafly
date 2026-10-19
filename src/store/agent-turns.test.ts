@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useAgentTurnsStore } from "./agent-turns";
+import { queuedAttachmentRefs, useAgentTurnsStore } from "./agent-turns";
 
 describe("useAgentTurnsStore", () => {
   beforeEach(() => {
@@ -47,8 +47,12 @@ describe("useAgentTurnsStore", () => {
       {
         id: "figures.pdf-4-1",
         name: "figures.pdf",
-        mediaType: "application/pdf",
-        dataUrl: "data:application/pdf;base64,UEZERg==",
+        mime: "application/pdf",
+        size: 4,
+        status: "ready",
+        kind: "pdf",
+        scope: "p1",
+        sha256: "f".repeat(64),
       },
     ]);
     store.queueFollowUp("chat-1", "then check the tables");
@@ -59,8 +63,12 @@ describe("useAgentTurnsStore", () => {
       {
         id: "figures.pdf-4-1",
         name: "figures.pdf",
-        mediaType: "application/pdf",
-        dataUrl: "data:application/pdf;base64,UEZERg==",
+        mime: "application/pdf",
+        size: 4,
+        status: "ready",
+        kind: "pdf",
+        scope: "p1",
+        sha256: "f".repeat(64),
       },
     ]);
     expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]?.map((item) => item.text)).toEqual([
@@ -350,7 +358,9 @@ describe("useAgentTurnsStore", () => {
     store.queueFollowUp("chat-1", "   ");
     expect(useAgentTurnsStore.getState().queuedByChat).toEqual({});
 
-    store.queueFollowUp("chat-1", "  ", [{ id: "a1", name: "fig.png", mediaType: "image/png", dataUrl: "data:image/png;base64,AAAA" }]);
+    store.queueFollowUp("chat-1", "  ", [
+      { id: "a1", name: "fig.png", mime: "image/png", size: 3, status: "ready", kind: "image", scope: "p1", sha256: "a" },
+    ]);
     expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]).toEqual([
       expect.objectContaining({ text: "", status: "pending", attachments: [expect.objectContaining({ name: "fig.png" })] }),
     ]);
@@ -398,5 +408,25 @@ describe("useAgentTurnsStore", () => {
 
     expect(thread).toMatch(/^thread-/);
   });
-});
 
+  it("lists the attachments queued follow-ups still reference", () => {
+    const store = useAgentTurnsStore.getState();
+    store.queueFollowUp("chat-1", "with files", [
+      {
+        id: "a",
+        name: "scan.pdf",
+        mime: "application/pdf",
+        size: 1,
+        status: "ready",
+        kind: "pdf",
+        scope: "p1",
+        sha256: "pdf",
+        pageImages: [{ sha256: "page", mime: "image/png" }],
+      },
+    ]);
+    store.queueFollowUp("chat-2", "more", [
+      { id: "b", name: "x.png", mime: "image/png", size: 1, status: "ready", kind: "image", scope: "p1", sha256: "img" },
+    ]);
+    expect(queuedAttachmentRefs().sort()).toEqual(["img", "page", "pdf"]);
+  });
+});

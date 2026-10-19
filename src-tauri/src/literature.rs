@@ -1,369 +1,50 @@
-//! Local-first literature search transport.
-//!
-//! The webview invokes one source at a time and fans the calls out in parallel.
-//! This module deliberately exposes a small source enum instead of an arbitrary
-//! URL fetcher: every request goes directly from the desktop app to a reviewed,
-//! fixed scholarly-data host. Normalization, deduplication, caching, and library
-//! persistence stay in TypeScript where they are easy to unit test.
+//! Local-first literature search transport. The source clients live in the
+//! research crate (shared with research tasks and the CLI); these are the
+//! app's commands, which read connector keys from the app's secret store.
 
-use reqwest::RequestBuilder;
+use std::sync::{Arc, OnceLock};
+
+use oleafly_research::host::ConnectorSecrets;
+use oleafly_research::literature::{
+    LiteratureClient, LiteratureError, LiteratureQuery, LiteratureRecord, LiteratureResults,
+    LiteratureSource, LiteratureSourceId,
+};
 use serde_json::{json, Value};
 
-const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; literature search)";
-const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
+/// Connector keys from the app's secret store.
+pub(crate) struct AppSecrets;
 
-/// Trim and validate an OpenAlex polite-pool contact email.
-fn sanitize_openalex_email(raw: &str) -> Option<&str> {
-    let email = raw.trim();
-    if email.is_empty() || !email.contains('@') {
-        None
-    } else {
-        Some(email)
+impl ConnectorSecrets for AppSecrets {
+    fn get(&self, name: &str) -> Option<zeroize::Zeroizing<String>> {
+        crate::secrets::read_connector_secrets()
+            .ok()?
+            .get(name)
+            .map(|value| zeroize::Zeroizing::new(value.to_string()))
     }
 }
 
-/// The configured OpenAlex API key, if any. Keys became mandatory for
-/// meaningful daily volumes in February 2026, so searches work without one
-/// but degrade quickly.
-fn openalex_api_key() -> Option<String> {
-    crate::secrets::read_connector_secrets()
-        .ok()
-        .and_then(|secrets| {
-            secrets
-                .get("openalex-api-key")
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-        })
-}
-
-/// User-Agent for OpenAlex only: appends mailto when a contact email is configured.
-fn literature_user_agent() -> String {
-    let mut ua = UA.to_string();
-    if let Ok(secrets) = crate::secrets::read_connector_secrets() {
-        if let Some(email) = secrets
-            .get("openalex-email")
-            .map(|s| s.as_str())
-            .and_then(sanitize_openalex_email)
-        {
-            // OpenAlex polite pool: contact in User-Agent
-            ua = format!("{UA} (mailto:{email})");
+fn app_error(error: LiteratureError) -> String {
+    match error {
+        LiteratureError::QueryEmpty => {
+            crate::app_error::AppError::new("literature.query_empty").into()
         }
-    }
-    ua
-}
-
-fn client() -> Result<reqwest::Client, String> {
-    reqwest::Client::builder()
-        .user_agent(UA)
-        .timeout(std::time::Duration::from_secs(25))
-        .build()
-        .map_err(|error| error.to_string())
-}
-
-fn request_error(source: &str, error: reqwest::Error) -> String {
-    format!("{source} search failed: {}", error.without_url())
-}
-
-async fn response_text(source: &str, request: RequestBuilder) -> Result<String, String> {
-    let response = request
-        .send()
-        .await
-        .map_err(|error| request_error(source, error))?;
-    let status = response.status();
-    let retry_after = response
-        .headers()
-        .get(reqwest::header::RETRY_AFTER)
-        .and_then(|value| value.to_str().ok())
-        .map(str::to_owned);
-    if response
-        .content_length()
-        .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
-    {
-        return Err(format!("{source} returned more than 2 MB of data."));
-    }
-    let mut body = Vec::new();
-    let mut stream = response.bytes_stream();
-    use futures_util::StreamExt;
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|error| error.without_url().to_string())?;
-        if body.len().saturating_add(chunk.len()) > MAX_RESPONSE_BYTES {
-            return Err(format!("{source} returned more than 2 MB of data."));
+        LiteratureError::QueryTooLong { max } => {
+            crate::app_error::AppError::new("literature.query_too_long")
+                .param("max", max)
+                .into()
         }
-        body.extend_from_slice(&chunk);
-    }
-    let body = String::from_utf8(body).map_err(|_| format!("{source} returned invalid text."))?;
-
-    if status.is_success() {
-        return Ok(body);
-    }
-    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        let wait = retry_after
-            .map(|seconds| format!(" Retry after {seconds} seconds."))
-            .unwrap_or_default();
-        return Err(format!("{source} is rate-limiting this search.{wait}"));
-    }
-    Err(format!("{source} returned HTTP {status}."))
-}
-
-fn year_range(year_from: Option<u16>, year_to: Option<u16>) -> Option<(u16, u16)> {
-    if year_from.is_none() && year_to.is_none() {
-        return None;
-    }
-    let from = year_from.unwrap_or(1900).clamp(1800, 2200);
-    let to = year_to.unwrap_or(2200).clamp(1800, 2200);
-    Some((from.min(to), from.max(to)))
-}
-
-async fn search_openalex(
-    query: &str,
-    limit: u8,
-    years: Option<(u16, u16)>,
-    open_access_only: bool,
-) -> Result<String, String> {
-    let mut params = vec![
-        ("search".to_string(), query.to_string()),
-        ("per-page".to_string(), limit.to_string()),
-        (
-            "select".to_string(),
-            "id,doi,title,publication_year,publication_date,type,authorships,primary_location,cited_by_count,open_access,best_oa_location,ids".to_string(),
-        ),
-    ];
-    let mut filters = Vec::new();
-    if let Some((from, to)) = years {
-        filters.push(format!("publication_year:{from}-{to}"));
-    }
-    if open_access_only {
-        filters.push("is_oa:true".to_string());
-    }
-    if !filters.is_empty() {
-        params.push(("filter".to_string(), filters.join(",")));
-    }
-    let api_key = openalex_api_key();
-    let has_key = api_key.is_some();
-    if let Some(key) = api_key {
-        params.push(("api_key".to_string(), key));
-    }
-    let result = response_text(
-        "OpenAlex",
-        client()?
-            .get("https://api.openalex.org/works")
-            .header("User-Agent", literature_user_agent())
-            .query(&params),
-    )
-    .await;
-    if result.is_err() && !has_key {
-        // Keyless requests share a tiny daily pool; say what to do about it.
-        return result.map_err(|error| {
-            format!("{error} Without an OpenAlex API key this source is heavily limited. Add one in Settings, Integrations.")
-        });
-    }
-    result
-}
-
-async fn search_semantic_scholar(
-    query: &str,
-    limit: u8,
-    years: Option<(u16, u16)>,
-) -> Result<String, String> {
-    let mut params = vec![
-        ("query".to_string(), query.to_string()),
-        ("limit".to_string(), limit.to_string()),
-        (
-            "fields".to_string(),
-            "paperId,title,authors,year,venue,publicationDate,externalIds,url,openAccessPdf,citationCount,publicationTypes,abstract".to_string(),
-        ),
-    ];
-    if let Some((from, to)) = years {
-        params.push(("year".to_string(), format!("{from}-{to}")));
-    }
-    let mut request = client()?
-        .get("https://api.semanticscholar.org/graph/v1/paper/search")
-        .query(&params);
-    if let Some(key) = crate::secrets::read_connector_secrets()?
-        .get("semantic-scholar")
-        .filter(|key| !key.trim().is_empty())
-    {
-        request = request.header("x-api-key", key);
-    }
-    response_text("Semantic Scholar", request).await.map_err(|error| {
-        if error.contains("rate-limiting") {
-            "Semantic Scholar is rate-limiting anonymous searches. Results from other selected sources remain available. Configure an optional API key to increase this limit.".to_string()
-        } else {
-            error
+        LiteratureError::UnknownSource => {
+            crate::app_error::AppError::new("literature.unknown_source").into()
         }
-    })
+        LiteratureError::Message(message) => message,
+    }
 }
 
 /// Look up a single arXiv paper on Semantic Scholar to backfill authors and
 /// venue for sources that return bare titles (e.g. Google Scholar via Serper).
 #[tauri::command]
 pub async fn literature_arxiv_lookup(arxiv_id: String) -> Result<String, String> {
-    let id = arxiv_id.trim();
-    let valid = !id.is_empty()
-        && id.len() <= 32
-        && id
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-'..='/'));
-    if !valid {
-        return Err("invalid arXiv id".to_string());
-    }
-    let mut request = client()?
-        .get(format!(
-            "https://api.semanticscholar.org/graph/v1/paper/arXiv:{id}"
-        ))
-        .query(&[(
-            "fields",
-            "title,authors,year,venue,externalIds,citationCount",
-        )]);
-    if let Some(key) = crate::secrets::read_connector_secrets()?
-        .get("semantic-scholar")
-        .filter(|key| !key.trim().is_empty())
-    {
-        request = request.header("x-api-key", key);
-    }
-    response_text("Semantic Scholar", request).await
-}
-
-async fn search_crossref(
-    query: &str,
-    limit: u8,
-    years: Option<(u16, u16)>,
-) -> Result<String, String> {
-    let mut params = vec![
-        ("query.bibliographic".to_string(), query.to_string()),
-        ("rows".to_string(), limit.to_string()),
-        (
-            "select".to_string(),
-            "DOI,title,author,issued,container-title,type,URL,is-referenced-by-count,abstract"
-                .to_string(),
-        ),
-    ];
-    if let Some((from, to)) = years {
-        params.push((
-            "filter".to_string(),
-            format!("from-pub-date:{from}-01-01,until-pub-date:{to}-12-31"),
-        ));
-    }
-    response_text(
-        "Crossref",
-        client()?
-            .get("https://api.crossref.org/works")
-            .query(&params),
-    )
-    .await
-}
-
-async fn search_pubmed(
-    query: &str,
-    limit: u8,
-    years: Option<(u16, u16)>,
-    open_access_only: bool,
-) -> Result<String, String> {
-    let mut term = query.to_string();
-    if let Some((from, to)) = years {
-        term.push_str(&format!(" AND {from}:{to}[pdat]"));
-    }
-    if open_access_only {
-        term.push_str(" AND free full text[sb]");
-    }
-    let search = response_text(
-        "PubMed",
-        client()?
-            .get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi")
-            .query(&[
-                ("db", "pubmed"),
-                ("term", term.as_str()),
-                ("retmax", &limit.to_string()),
-                ("retmode", "json"),
-                ("sort", "relevance"),
-                ("tool", "oleafly"),
-            ]),
-    )
-    .await?;
-    let search_json: Value = serde_json::from_str(&search)
-        .map_err(|error| format!("PubMed returned invalid JSON: {error}"))?;
-    let total = search_json["esearchresult"]["count"]
-        .as_str()
-        .unwrap_or("0")
-        .to_string();
-    let ids = search_json["esearchresult"]["idlist"]
-        .as_array()
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(Value::as_str)
-                .collect::<Vec<_>>()
-                .join(",")
-        })
-        .unwrap_or_default();
-
-    if ids.is_empty() {
-        return serde_json::to_string(&json!({
-            "total": total,
-            "summary": { "result": { "uids": [] } }
-        }))
-        .map_err(|error| error.to_string());
-    }
-
-    let summary = response_text(
-        "PubMed",
-        client()?
-            .get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi")
-            .query(&[
-                ("db", "pubmed"),
-                ("id", ids.as_str()),
-                ("retmode", "json"),
-                ("version", "2.0"),
-                ("tool", "oleafly"),
-            ]),
-    )
-    .await?;
-    let summary_json: Value = serde_json::from_str(&summary)
-        .map_err(|error| format!("PubMed returned invalid summary JSON: {error}"))?;
-    serde_json::to_string(&json!({ "total": total, "summary": summary_json }))
-        .map_err(|error| error.to_string())
-}
-
-async fn search_arxiv(query: &str, limit: u8, years: Option<(u16, u16)>) -> Result<String, String> {
-    let mut expression = format!("all:{query}");
-    if let Some((from, to)) = years {
-        expression.push_str(&format!(
-            " AND submittedDate:[{from}01010000 TO {to}12312359]"
-        ));
-    }
-    response_text(
-        "arXiv",
-        client()?.get("https://export.arxiv.org/api/query").query(&[
-            ("search_query", expression.as_str()),
-            ("start", "0"),
-            ("max_results", &limit.to_string()),
-            ("sortBy", "relevance"),
-            ("sortOrder", "descending"),
-        ]),
-    )
-    .await
-}
-
-/// Google Scholar via Serper (`google.serper.dev/scholar`). Requires connector secret `serper`.
-async fn search_google_scholar(query: &str, limit: u8) -> Result<String, String> {
-    let key = crate::secrets::read_connector_secrets()?
-        .get("serper")
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| {
-            "Google Scholar via Serper needs an API key. Add it under Settings → Integrations → Citation Search."
-                .to_string()
-        })?;
-    let body = json!({ "q": query, "num": limit });
-    response_text(
-        "Google Scholar",
-        client()?
-            .post("https://google.serper.dev/scholar")
-            .header("X-API-KEY", key)
-            .header("Content-Type", "application/json")
-            .json(&body),
-    )
-    .await
+    oleafly_research::literature::literature_arxiv_lookup(&AppSecrets, &arxiv_id).await
 }
 
 /// Search one reviewed scholarly source. The frontend invokes this once per
@@ -378,47 +59,178 @@ pub async fn literature_search(
     year_to: Option<u16>,
     open_access_only: bool,
 ) -> Result<String, String> {
-    let query = query.trim();
-    if query.is_empty() {
-        return Err(crate::app_error::AppError::new("literature.query_empty").into());
+    oleafly_research::literature::literature_search(
+        &AppSecrets,
+        &source,
+        &query,
+        limit,
+        year_from,
+        year_to,
+        open_access_only,
+    )
+    .await
+    .map_err(app_error)
+}
+
+// 0.4.8 E: one search across the scholarly indexes, shared by chat and
+// research tasks (one cache and one pacing per index).
+
+const ALPHAXIV_MCP_URL: &str = "https://api.alphaxiv.org/mcp";
+
+/// The app's literature client, cached in `<oleafly root>/literature-cache.sqlite3`.
+pub(crate) fn app_literature() -> Arc<LiteratureClient> {
+    static CLIENT: OnceLock<Arc<LiteratureClient>> = OnceLock::new();
+    CLIENT
+        .get_or_init(|| {
+            let cache = crate::paths::oleafly_root()
+                .unwrap_or_else(|_| std::env::temp_dir())
+                .join("literature-cache.sqlite3");
+            LiteratureClient::new(cache)
+        })
+        .clone()
+}
+
+/// alphaXiv, when its MCP server is connected and turned on.
+struct AppAlphaXiv {
+    server: String,
+}
+
+#[async_trait::async_trait]
+impl LiteratureSource for AppAlphaXiv {
+    fn id(&self) -> LiteratureSourceId {
+        LiteratureSourceId::Alphaxiv
     }
-    if query.chars().count() > 500 {
-        return Err(crate::app_error::AppError::new("literature.query_too_long")
-            .param("max", 500)
-            .into());
-    }
-    let limit = limit.clamp(1, 25);
-    let years = year_range(year_from, year_to);
-    match source.as_str() {
-        "openalex" => search_openalex(query, limit, years, open_access_only).await,
-        "semantic-scholar" => search_semantic_scholar(query, limit, years).await,
-        "crossref" => search_crossref(query, limit, years).await,
-        "pubmed" => search_pubmed(query, limit, years, open_access_only).await,
-        "arxiv" => search_arxiv(query, limit, years).await,
-        "google-scholar" => search_google_scholar(query, limit).await,
-        "uspto" => Err(
-            "USPTO has temporarily paused PatentsView search APIs during its Open Data Portal migration."
-                .to_string(),
-        ),
-        _ => Err(crate::app_error::AppError::new("literature.unknown_source").into()),
+
+    async fn search(&self, query: &LiteratureQuery) -> Result<Vec<LiteratureRecord>, String> {
+        let result = crate::mcp::client::call_enabled_server_tool(
+            &self.server,
+            "discover_papers",
+            json!({"query": query.query}),
+        )
+        .await?;
+        if result["isError"].as_bool() == Some(true) {
+            return Err(mcp_text(&result)
+                .chars()
+                .take(300)
+                .collect::<String>()
+                .trim()
+                .to_string());
+        }
+        Ok(parse_alphaxiv(
+            &mcp_text(&result),
+            usize::from(query.limit.max(1)),
+        ))
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{sanitize_openalex_email, year_range};
+fn mcp_text(result: &Value) -> String {
+    result["content"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|block| block["text"].as_str())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
 
-    #[test]
-    fn normalizes_partial_and_reversed_year_ranges() {
-        assert_eq!(year_range(Some(2024), Some(2020)), Some((2020, 2024)));
-        assert_eq!(year_range(Some(2018), None), Some((2018, 2200)));
-        assert_eq!(year_range(None, None), None);
+/// Papers in an alphaXiv answer, which names each one as `[ID=<id>]` on the
+/// line with its title.
+fn parse_alphaxiv(text: &str, limit: usize) -> Vec<LiteratureRecord> {
+    let mut records: Vec<LiteratureRecord> = Vec::new();
+    for line in text.lines() {
+        let Some(start) = line.find("[ID=") else {
+            continue;
+        };
+        let Some(length) = line[start + 4..].find(']') else {
+            continue;
+        };
+        let id = line[start + 4..start + 4 + length].trim().to_string();
+        if id.is_empty()
+            || records
+                .iter()
+                .any(|record| record.source_ids.get("alphaxiv") == Some(&id))
+        {
+            continue;
+        }
+        // The title sits before the id; a line that starts with the id has
+        // it after.
+        let before = clean_title(&line[..start]);
+        let title = if before.is_empty() {
+            clean_title(&line[start + 5 + length..])
+        } else {
+            before
+        };
+        let arxiv = id.split_once('.').is_some_and(|(left, right)| {
+            left.len() == 4
+                && left.chars().all(|character| character.is_ascii_digit())
+                && right
+                    .chars()
+                    .take(4)
+                    .all(|character| character.is_ascii_digit())
+        });
+        records.push(LiteratureRecord {
+            id: format!("alphaxiv:{id}"),
+            title: if title.is_empty() { id.clone() } else { title },
+            arxiv_id: arxiv.then(|| id.clone()),
+            url: Some(format!("https://www.alphaxiv.org/abs/{id}")),
+            sources: vec![LiteratureSourceId::Alphaxiv],
+            source_ids: [("alphaxiv".to_string(), id)].into_iter().collect(),
+            ..LiteratureRecord::default()
+        });
+        if records.len() >= limit {
+            break;
+        }
     }
+    records
+}
+
+fn clean_title(text: &str) -> String {
+    text.trim()
+        .trim_start_matches(|character: char| {
+            character.is_ascii_digit() || matches!(character, '.' | '-' | '*' | ')' | ' ')
+        })
+        .replace("**", "")
+        .trim_matches(|character: char| matches!(character, ' ' | '-' | ':' | '*' | '|'))
+        .to_string()
+}
+
+/// Indexes beyond the built-in ones: alphaXiv when it is connected.
+pub(crate) fn extra_sources() -> Vec<Arc<dyn LiteratureSource>> {
+    crate::mcp::client::enabled_remote_server(ALPHAXIV_MCP_URL)
+        .map(|server| vec![Arc::new(AppAlphaXiv { server }) as Arc<dyn LiteratureSource>])
+        .unwrap_or_default()
+}
+
+/// Searches the selected indexes at once (all default ones when none are
+/// selected) and merges the results.
+#[tauri::command]
+pub async fn literature_search_all(query: LiteratureQuery) -> Result<LiteratureResults, String> {
+    let extra = tauri::async_runtime::spawn_blocking(extra_sources)
+        .await
+        .unwrap_or_default();
+    oleafly_research::literature::search_all(&app_literature(), &AppSecrets, query, &extra)
+        .await
+        .map_err(app_error)
+}
+
+#[cfg(test)]
+mod unified_tests {
+    use super::*;
 
     #[test]
-    fn openalex_email_requires_at_sign() {
-        assert_eq!(sanitize_openalex_email("  a@b.co  "), Some("a@b.co"));
-        assert_eq!(sanitize_openalex_email("not-an-email"), None);
-        assert_eq!(sanitize_openalex_email(""), None);
+    fn alphaxiv_answers_become_records() {
+        let text = "1. **Attention Is All You Need** [ID=1706.03762]\n- Scaling laws [ID=2001.08361]: compute\nno id here\n[ID=1706.03762] duplicate\n[ID=abc-123] Graph networks";
+        let records = parse_alphaxiv(text, 10);
+        assert_eq!(records.len(), 3);
+        assert_eq!(records[0].title, "Attention Is All You Need");
+        assert_eq!(records[0].arxiv_id.as_deref(), Some("1706.03762"));
+        assert_eq!(
+            records[0].url.as_deref(),
+            Some("https://www.alphaxiv.org/abs/1706.03762")
+        );
+        assert_eq!(records[1].title, "Scaling laws");
+        assert_eq!(records[2].title, "Graph networks");
+        assert_eq!(records[2].arxiv_id, None);
+        assert_eq!(parse_alphaxiv(text, 1).len(), 1);
     }
 }

@@ -78,11 +78,11 @@
     "linkedNote_other": "{{count}} projets ouverts depuis un dossier ne sont pas synchronisés. Seuls les projets de votre bibliothèque sont sauvegardés."
   },
   "transfer": {
-    "uploading_many": "Envoi des fichiers : {{done}} sur {{total}}",
     "uploading_one": "Envoi des fichiers : {{done}} sur {{total}}",
+    "uploading_many": "Envoi des fichiers : {{done}} sur {{total}}",
     "uploading_other": "Envoi des fichiers : {{done}} sur {{total}}",
-    "downloading_many": "Téléchargement des fichiers : {{done}} sur {{total}}",
     "downloading_one": "Téléchargement des fichiers : {{done}} sur {{total}}",
+    "downloading_many": "Téléchargement des fichiers : {{done}} sur {{total}}",
     "downloading_other": "Téléchargement des fichiers : {{done}} sur {{total}}",
     "fetching": "Téléchargement : {{done}} sur {{total}}"
   },

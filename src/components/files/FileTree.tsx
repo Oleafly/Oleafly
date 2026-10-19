@@ -26,6 +26,7 @@ import {
   Import,
   Link2,
   Pencil,
+  SquareTerminal,
   Star,
   Trash2,
 } from "lucide-react";
@@ -67,6 +68,8 @@ import {
 } from "@/components/files/gitStatus";
 import { useGitStatusStore } from "@/store/git-status";
 import { NoMainDocumentHint } from "@/components/open-folder/NoMainDocumentHint";
+import { TREE_DRAG_TYPE } from "@/lib/tree-drag";
+import { basename } from "@/lib/path-utils";
 import { ALL_MAIN_EXTENSIONS, isLinkedHome, mainDocumentMissing } from "@/lib/main-document";
 import { chooseMainDocument } from "@/store/main-document";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
@@ -90,6 +93,21 @@ import {
   useTreeClashLabels,
   type PeerMarks,
 } from "@/components/collab/CollabSlots";
+
+/** Opens a project terminal that starts in `dir`, the project root when empty. */
+function openInTerminal(dir: string): void {
+  const title = dir ? basename(dir) : useFilesStore.getState().projectName;
+  void import("@/lib/terminal-launch")
+    .then(({ openTerminalWith, TerminalLaunchError }) =>
+      openTerminalWith({ title, cwd: dir }).catch((error: unknown) => {
+        if (!(error instanceof TerminalLaunchError)) throw error;
+        // The launcher already announced a full tab bar.
+        if (error.reason === "no-project") toast.info(error.message);
+        else if (error.reason === "invalid") toast.error(error.message);
+      }),
+    )
+    .catch((error: unknown) => notifyError("open in terminal", error));
+}
 
 async function pickImportSources(mode: "file" | "dir"): Promise<string[]> {
   const picked = await pickOpenPath(
@@ -185,7 +203,6 @@ function remapTreePath(path: string, from: string, to: string): string {
 }
 
 const ROOT = "__root__";
-const TREE_DRAG_TYPE = "application/x-oleafly-tree-path";
 
 function treeDrag(transfer: DataTransfer): boolean {
   return Array.from(transfer.types ?? []).includes(TREE_DRAG_TYPE);
@@ -284,6 +301,7 @@ interface TreeCtx {
   onImport: (destDir: string, mode: "file" | "dir") => void;
   onDropFiles: (destDir: string, items: DroppedItem[]) => void;
   onDropPaths: (destDir: string) => void;
+  onOpenInTerminal: (dir: string) => void;
   renamePath: string | null;
   renameValue: string;
   onStartRename: (path: string, name: string) => void;
@@ -928,6 +946,7 @@ export function FileTree({
     onImport: (destDir, mode) => void importInto(destDir, mode),
     onDropFiles: (destDir, items) => void importDropped(destDir, items),
     onDropPaths: (destDir) => void importDroppedPaths(destDir),
+    onOpenInTerminal: openInTerminal,
     renamePath,
     renameValue,
     onStartRename: (p, name) => {
@@ -1121,6 +1140,10 @@ export function FileTree({
               </ContextMenuItem>
               <ContextMenuItem onClick={() => ctx.onImport("", "dir")}>
                 <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFolder)}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => rootMenu.afterClose(() => ctx.onOpenInTerminal(""))}>
+                <SquareTerminal className="mr-2 size-4" /> {t(($) => $.workspace.terminal.openInTerminal)}
               </ContextMenuItem>
             </>
           )}
@@ -1417,6 +1440,10 @@ function TreeRowKindMenuItems({
         </ContextMenuItem>
         <ContextMenuItem onClick={() => ctx.onImport(node.path, "dir")}>
           <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFolder)}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => afterClose(() => ctx.onOpenInTerminal(node.path))}>
+          <SquareTerminal className="mr-2 size-4" /> {t(($) => $.workspace.terminal.openInTerminal)}
         </ContextMenuItem>
       </>
     );

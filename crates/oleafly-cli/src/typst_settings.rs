@@ -1,4 +1,4 @@
-use crate::native::{path_tool_candidates, resolve_executable, run_command, CandidateResolution};
+use crate::native::{resolve_executable, run_command, CandidateResolution, Discovery, Launch};
 use oleafly_core::typst_toolchain::{
     typst_project_font_dirs, typst_shared_font_dirs, TypstCapabilities, TypstCompileFlag,
 };
@@ -293,7 +293,12 @@ fn is_repository_marker(candidate: &Path) -> bool {
 }
 
 fn find_git(project_root: &Path) -> Option<PathBuf> {
-    path_tool_candidates("git")
+    let discovery = Discovery {
+        path: std::env::var_os("PATH"),
+        ..Discovery::default()
+    };
+    discovery
+        .path_candidates("git")
         .into_iter()
         .find_map(
             |candidate| match resolve_executable(candidate, project_root) {
@@ -336,17 +341,23 @@ pub(crate) async fn head_commit_time(project_root: &Path) -> Option<u64> {
         ("GIT_DIR", marker.into_os_string()),
         ("GIT_WORK_TREE", project_root.as_os_str().to_owned()),
     ];
+    let arguments = git_arguments();
     let (output, status) = run_command(
-        &git,
-        &git_arguments(),
-        project_root,
-        &environment,
+        &Launch {
+            executable: &git,
+            arguments: &arguments,
+            working_directory: project_root,
+            environment: &environment,
+            unset: &[],
+            variables: &[],
+        },
         GIT_TIMEOUT,
         &crate::native::CompilerLog::default(),
     )
     .await
     .ok()?;
-    (status == Some(0))
+    status
+        .success()
         .then(|| parse_commit_time(&output))
         .flatten()
 }

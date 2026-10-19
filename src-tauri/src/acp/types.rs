@@ -1,6 +1,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
+use std::sync::Arc;
+
+pub use super::preferences::{AcpPreferences, AgentPreferences, AgentRuntimeInfo};
+pub use oleafly_acp::elicitation::ElicitationView;
+pub use oleafly_acp::prompt::ImagePrompt;
+pub use oleafly_acp::usage::SessionUsage;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -78,6 +84,9 @@ pub struct AgentStatus {
     /// The bridge cannot work without the vendor CLI (Pi).
     #[serde(default)]
     pub cli_required: bool,
+    /// What the agent reported the last time it was checked or connected.
+    #[serde(default)]
+    pub runtime: Option<AgentRuntimeInfo>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -112,121 +121,37 @@ pub struct AgentCheck {
     /// "ready" | "not_found" | "is_directory" | "unsupported_script" | "not_executable"
     /// | "gui_program" | "interpreter" | "network_path" | "cli_missing" | "bridge_missing"
     /// | "node_missing" | "node_too_old" | "start_failed" | "timeout" | "exited" | "not_acp"
+    /// | "needs_sign_in" | "session_failed"
     pub code: String,
     pub detail: Option<String>,
     pub program: Option<String>,
     pub version: Option<String>,
     pub agent_name: Option<String>,
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Capabilities {
-    pub load_session: bool,
-    pub resume: bool,
-    pub image: bool,
-    pub audio: bool,
-    pub embedded_context: bool,
-    pub additional_directories: bool,
-    pub mcp_http: bool,
-}
-
-impl Capabilities {
-    pub fn from_initialize(value: &Value) -> Result<Self, String> {
-        if value.get("protocolVersion").and_then(Value::as_u64) != Some(1) {
-            return Err("This agent does not support ACP version 1.".into());
-        }
-        let caps = &value["agentCapabilities"];
-        Ok(Self {
-            load_session: caps["loadSession"].as_bool() == Some(true),
-            resume: caps["sessionCapabilities"]["resume"].is_object(),
-            image: caps["promptCapabilities"]["image"].as_bool() == Some(true),
-            audio: caps["promptCapabilities"]["audio"].as_bool() == Some(true),
-            embedded_context: caps["promptCapabilities"]["embeddedContext"].as_bool() == Some(true),
-            additional_directories: caps["sessionCapabilities"]["additionalDirectories"]
-                .is_object(),
-            mcp_http: caps["mcpCapabilities"]["http"].as_bool() == Some(true),
-        })
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthMethod {
-    pub id: String,
-    pub name: String,
-    pub description: Option<String>,
-    /// The ACP auth method `type` (for example "terminal"), when reported.
+    /// Sign-in methods, when the check found the agent needs a sign-in.
     #[serde(default)]
-    pub kind: Option<String>,
+    pub auth_methods: Vec<AuthMethod>,
+    /// What the agent reported, stored by the runtime (never sent).
+    #[serde(skip)]
+    pub runtime: Option<AgentRuntimeInfo>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ModelOption {
-    pub model_id: String,
-    pub name: String,
+// Capabilities, auth methods and session controls are parsed by the ACP
+// crate; the names stay the same here so records and commands do not change.
+pub use oleafly_acp::capabilities::{AgentCapabilities as Capabilities, AuthMethod};
+pub use oleafly_acp::controls::SessionControls;
+
+/// The capabilities in a v1 `initialize` answer.
+#[cfg(test)]
+pub fn capabilities_from_initialize(value: &Value) -> Result<Capabilities, String> {
+    oleafly_acp::capabilities::parse_initialize(value, oleafly_acp::ProtocolVersion::V1)
+        .map(|negotiated| negotiated.capabilities)
+        .map_err(String::from)
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SessionControls {
-    pub models: Vec<ModelOption>,
-    pub model_id: Option<String>,
-    pub model_config_id: Option<String>,
-}
-
-impl SessionControls {
-    pub fn merge(&mut self, value: &Value) {
-        if let Some(options) = value["configOptions"].as_array() {
-            if let Some(model) = options
-                .iter()
-                .find(|v| v["category"] == "model" && v["type"] == "select")
-            {
-                self.model_config_id = model["id"].as_str().map(str::to_owned);
-                self.model_id = model["currentValue"].as_str().map(str::to_owned);
-                self.models.clear();
-                if let Some(values) = model["options"].as_array() {
-                    for option in values {
-                        let values = option["options"]
-                            .as_array()
-                            .map(Vec::as_slice)
-                            .unwrap_or_else(|| std::slice::from_ref(option));
-                        for value in values {
-                            if let (Some(id), Some(name)) =
-                                (value["value"].as_str(), value["name"].as_str())
-                            {
-                                self.models.push(ModelOption {
-                                    model_id: id.into(),
-                                    name: name.into(),
-                                });
-                            }
-                        }
-                    }
-                }
-                return;
-            }
-        }
-        if value["models"].is_object() {
-            self.model_config_id = None;
-            self.model_id = value["models"]["currentModelId"]
-                .as_str()
-                .map(str::to_owned);
-            self.models = value["models"]["availableModels"]
-                .as_array()
-                .map(|v| {
-                    v.iter()
-                        .filter_map(|v| serde_json::from_value(v.clone()).ok())
-                        .collect()
-                })
-                .unwrap_or_default();
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum SessionStatus {
+    #[default]
     Connecting,
     AuthRequired,
     Ready,
@@ -237,7 +162,7 @@ pub enum SessionStatus {
     Failed,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionRecord {
     pub id: String,
@@ -264,6 +189,106 @@ pub struct SessionRecord {
     /// Whether the working tree had uncommitted changes when the session started.
     #[serde(default)]
     pub start_dirty: Option<bool>,
+    /// Context, cost, plan windows and sign-in status the agent reported.
+    #[serde(default)]
+    pub usage: Option<SessionUsage>,
+    /// The agent's slash commands.
+    #[serde(default)]
+    pub available_commands: Vec<AvailableCommand>,
+    /// The user renamed the conversation: the agent's titles no longer apply.
+    #[serde(default)]
+    pub title_locked: bool,
+    /// Commits made from this conversation with "Commit this turn".
+    #[serde(default)]
+    pub commits: Vec<TurnCommit>,
+    /// The conversation this one was forked from.
+    #[serde(default)]
+    pub forked_from: Option<String>,
+    /// The project's approval mode when the session started.
+    #[serde(default)]
+    pub permission_profile: Option<String>,
+    /// Where a remote (SSH) agent runs.
+    #[serde(default)]
+    pub remote: Option<RemoteTarget>,
+    /// The Oleafly provider whose key the agent was routed through.
+    #[serde(default)]
+    pub routed_provider: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AvailableCommand {
+    pub name: String,
+    pub description: String,
+    pub hint: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TurnCommit {
+    pub turn_id: String,
+    pub commit: String,
+    pub paths: Vec<String>,
+    pub message: String,
+    pub created_at: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteTarget {
+    pub host: String,
+    pub folder: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionPage {
+    pub sessions: Vec<SessionRecord>,
+    pub has_more: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSessionInfo {
+    pub native_session_id: String,
+    pub title: Option<String>,
+    pub updated_at: Option<String>,
+    pub cwd: String,
+    pub imported: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentSessionPage {
+    pub sessions: Vec<AgentSessionInfo>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteOutcome {
+    pub agent_deleted: bool,
+    pub agent_error: Option<String>,
+}
+
+/// A terminal command that signs in to an agent. Maps onto the terminal
+/// launch `{title, command, args, env}`; it opens at the project root.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalSignIn {
+    pub title: String,
+    pub program: String,
+    pub args: Vec<String>,
+    pub env: BTreeMap<String, String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SteerOutcome {
+    /// The message joined the running turn.
+    Injected,
+    /// The agent finished first: send the message as a new turn.
+    PromptRequired,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -304,7 +329,7 @@ pub struct PermissionDiff {
     pub truncated: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageCounters {
     pub input_tokens: Option<u64>,
@@ -315,6 +340,16 @@ pub struct UsageCounters {
     pub context_used: Option<u64>,
     pub context_size: Option<u64>,
     pub source: String,
+    #[serde(default)]
+    pub thought_tokens: Option<u64>,
+    #[serde(default)]
+    pub cost_amount: Option<f64>,
+    #[serde(default)]
+    pub cost_currency: Option<String>,
+    /// The session's usage after this event, so views update without a
+    /// snapshot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session: Option<SessionUsage>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -330,6 +365,9 @@ pub struct AcpEvent {
     pub timestamp: u64,
     pub kind: String,
     pub data: Value,
+    /// The window or task that owns the session. Never stored or sent.
+    #[serde(skip)]
+    pub owner: Option<Arc<str>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -344,6 +382,39 @@ pub struct EventPage {
 pub struct SessionSnapshot {
     pub session: SessionRecord,
     pub permissions: Vec<PermissionRequest>,
+    /// Questions from the agent waiting for an answer.
+    #[serde(default)]
+    pub elicitations: Vec<ElicitationView>,
+}
+
+/// Asks the user, through a research task's approval queue, whether the
+/// agent may run a command.
+pub trait TaskCommandApproval: Send + Sync {
+    /// `Ok(())` when approved; `Err` with the reason when denied, expired or
+    /// cancelled.
+    fn ask(
+        &self,
+        summary: String,
+        detail: String,
+    ) -> futures_util::future::BoxFuture<'static, Result<(), String>>;
+}
+
+/// What a research task lets its agent do with commands.
+#[derive(Clone)]
+pub enum TaskCommands {
+    Allow,
+    Ask(Arc<dyn TaskCommandApproval>),
+    Off,
+}
+
+impl std::fmt::Debug for TaskCommands {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::Allow => "Allow",
+            Self::Ask(_) => "Ask",
+            Self::Off => "Off",
+        })
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -355,13 +426,8 @@ pub struct StartSession {
     pub task_id: Option<String>,
     pub owner: Option<String>,
     pub allowed_paths: Option<Vec<String>>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ImagePrompt {
-    pub mime_type: String,
-    pub data: String,
+    /// The task's command policy; `None` outside research tasks.
+    pub task_commands: Option<TaskCommands>,
 }
 
 pub fn now_ms() -> u64 {

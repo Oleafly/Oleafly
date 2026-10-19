@@ -27,6 +27,19 @@ fn compiler_fixture(directory: &TempDir) -> PathBuf {
 
 struct ChildGuard(Child);
 
+/// Whether this machine has a latexmk that Oleafly finds without PATH (in
+/// the TeX folders it searches since 0.4.8). Tests that need latexmk
+/// missing can't run here.
+fn latexmk_installed_outside_path() -> bool {
+    let mut search = oleafly_core::tex_distro::TexSearch::from_env();
+    search.path = None;
+    let found = oleafly_core::tex_distro::find_tex_tool(&search, "latexmk");
+    if let Some(path) = &found {
+        eprintln!("skipped: {} is found without PATH", path.display());
+    }
+    found.is_some()
+}
+
 impl Drop for ChildGuard {
     fn drop(&mut self) {
         let _ = self.0.kill();
@@ -161,6 +174,9 @@ fn uninitialized_directories_fail_with_a_structured_error() {
 
 #[test]
 fn doctor_and_build_report_a_missing_compiler_consistently() {
+    if latexmk_installed_outside_path() {
+        return;
+    }
     let directory = TempDir::new().unwrap();
     assert!(
         run(&["init", "--engine", "latexmk"], Some(directory.path()))
@@ -186,6 +202,9 @@ fn doctor_and_build_report_a_missing_compiler_consistently() {
 
 #[test]
 fn doctor_explains_when_a_project_local_tool_override_is_refused() {
+    if latexmk_installed_outside_path() {
+        return;
+    }
     let directory = TempDir::new().unwrap();
     assert!(
         run(&["init", "--engine", "latexmk"], Some(directory.path()))
@@ -327,7 +346,7 @@ fn build_notes_each_flag_the_engine_ignores_and_keeps_the_exit_code() {
         );
         let stderr = String::from_utf8_lossy(&flagged.stderr);
         for flag in BUILD_FLAGS {
-            let note = format!("note: {flag} is ignored for {engine} projects");
+            let note = format!("warning: {flag} is ignored for {engine} projects");
             assert_eq!(
                 stderr.matches(&note).count(),
                 usize::from(ignored.contains(&flag)),
@@ -363,6 +382,9 @@ fn json_builds_keep_stderr_empty_when_a_flag_is_ignored() {
 
 #[test]
 fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
+    if latexmk_installed_outside_path() {
+        return;
+    }
     let project = TempDir::new().unwrap();
     let tools = TempDir::new().unwrap();
     assert!(run(&["init", "--engine", "latexmk"], Some(project.path()))
@@ -450,14 +472,16 @@ fn completions_and_the_manual_are_generated_from_the_parser() {
     assert!(page.contains("oleafly"), "the manual must name the command");
 }
 
+// 0.4.8: the --json contract is versioned (`schema_version`), so the help
+// points to it instead of calling the interface unstable before 1.0.
 #[test]
-fn help_states_that_the_interface_is_unstable_before_1_0() {
+fn help_points_to_the_json_contract_and_the_exit_codes() {
     let output = run(&["--help"], None);
     assert!(output.status.success());
     let help = String::from_utf8(output.stdout).unwrap();
     assert!(
-        help.contains("0.x") && help.contains("1.0.0"),
-        "--help must say the interface is unstable before 1.0: {help}"
+        help.contains("oleafly help json") && help.contains("oleafly help exit-codes"),
+        "--help must point to the JSON contract and the exit codes: {help}"
     );
 }
 
@@ -540,6 +564,7 @@ fn build_without_a_project_json_uses_the_detected_main_document() {
     assert!(value["build"]["log"]
         .as_str()
         .is_some_and(|log| mentions(log, "paper/main.tex")));
+    assert_eq!(value["warnings"][0]["code"], "build.detected_main");
     assert!(!project.path().join("project.json").exists());
 
     let human = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
@@ -551,7 +576,7 @@ fn build_without_a_project_json_uses_the_detected_main_document() {
         .unwrap();
     assert!(human.status.success());
     assert!(String::from_utf8_lossy(&human.stderr)
-        .contains("No Oleafly project.json here, so building paper/main.tex"));
+        .contains("No Oleafly project.json here, so Oleafly picked paper/main.tex"));
 
     let ambiguous = TempDir::new().unwrap();
     write_tree(
@@ -956,6 +981,7 @@ fn typst_fixture(directory: &std::path::Path, version: &str) -> PathBuf {
     std::fs::create_dir_all(directory).unwrap();
     let binary = support::rust_fixture(directory, "typst.rs", "typst", None);
     std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
+    warm_up_typst(&binary);
     binary
 }
 
@@ -964,7 +990,20 @@ fn place_typst(fixture: &std::path::Path, directory: &std::path::Path, version: 
     let binary = directory.join(oleafly_cli::executable_name("typst"));
     std::fs::copy(fixture, &binary).unwrap();
     std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
+    warm_up_typst(&binary);
     binary.canonicalize().unwrap()
+}
+
+/// The first start of a new binary can be slow on a busy machine (macOS
+/// checks it), longer than the version probe waits. Start it once here, then
+/// forget the call so the tests count only their own.
+fn warm_up_typst(binary: &std::path::Path) {
+    let output = std::process::Command::new(binary)
+        .arg("--version")
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    std::fs::remove_file(binary.with_file_name("fixture-typst-calls")).unwrap();
 }
 
 fn install_typst(
@@ -1540,7 +1579,7 @@ fn a_variant_for_another_engine_is_noted_and_ignored() {
         &["build", "--variant", "review"],
     );
     assert!(output.status.success(), "{}", stderr(&output));
-    assert!(stderr(&output).contains("note: --variant is ignored for tectonic projects"));
+    assert!(stderr(&output).contains("warning: --variant is ignored for tectonic projects"));
 }
 
 #[test]
@@ -1594,15 +1633,15 @@ fn an_older_typst_gets_only_the_flags_it_knows_and_one_note_per_setting() {
     assert!(human.status.success(), "{}", stderr(&human));
     let notes: Vec<String> = stderr(&human)
         .lines()
-        .filter(|line| line.starts_with("note: "))
+        .filter(|line| line.starts_with("warning: "))
         .map(str::to_string)
         .collect();
     assert_eq!(
         notes,
         [
-            "note: Typst 0.11.1 does not support --ignore-system-fonts, so typst.system_fonts is not applied",
-            "note: Typst 0.11.1 does not support --ignore-system-fonts or --creation-timestamp, so typst.reproducible is not applied",
-            "note: Typst 0.11.1 does not support --package-path, so typst.vendor_packages is not applied",
+            "warning: Typst 0.11.1 does not support --ignore-system-fonts, so typst.system_fonts is not applied",
+            "warning: Typst 0.11.1 does not support --ignore-system-fonts or --creation-timestamp, so typst.reproducible is not applied",
+            "warning: Typst 0.11.1 does not support --package-path, so typst.vendor_packages is not applied",
         ]
     );
     let call = last_compile(&old);
@@ -1648,7 +1687,11 @@ fn an_older_typst_gets_only_the_flags_it_knows_and_one_note_per_setting() {
     set_typst(project.path(), settings("0.15.1"));
     let current = oleafly_typst(project.path(), data.path(), &[], None, &["build"]);
     assert!(current.status.success(), "{}", stderr(&current));
-    assert!(!stderr(&current).contains("note: "), "{}", stderr(&current));
+    assert!(
+        !stderr(&current).contains("warning: "),
+        "{}",
+        stderr(&current)
+    );
     let call = last_compile(&new);
     for expected in [
         "--ignore-system-fonts".to_string(),

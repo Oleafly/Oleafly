@@ -2,6 +2,7 @@
   "workspace": {
     "title": "Araştırma çalışma alanı",
     "configureAgents": "Araştırma ajanlarını yapılandır",
+    "openSettings": "Araştırma ayarları",
     "configError": "Asistan ayarları yüklenemedi.",
     "tabTasks": "Görevler",
     "tabFolders": "Bağlı klasörler",
@@ -135,7 +136,8 @@
       "awaitingReview": "İnceleme gerekli",
       "completed": "Tamamlandı",
       "failed": "Başarısız",
-      "cancelled": "İptal edildi"
+      "cancelled": "İptal edildi",
+      "planReady": "Plan hazır"
     },
     "relative": {
       "justNow": "az önce",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "Oturum bağlandı.",
-      "toolCall": "Araç çağrısı"
+      "toolCall": "Araç çağrısı",
+      "runStarted": "{{name}} çalıştırması başlatıldı",
+      "runFinished": "{{name}} çalıştırması: {{status}}",
+      "approvalRequested": "Onay istendi: {{summary}}",
+      "approvalDecided": "Onay: {{status}}"
     },
     "panel": {
       "noProjectTitle": "Araştırma görevlerini kullanmak için bir proje açın",
@@ -172,7 +178,9 @@
       "viewTask": "Görevi gör",
       "deleteTitle": "Bu görev silinsin mi?",
       "deleteDescription": "\"{{title}}\" ve yalıtılmış çalışma alanı kaldırılır. Projenize zaten uygulanmış dosyalar kalır.",
-      "deleteConfirm": "Görevi sil"
+      "deleteConfirm": "Görevi sil",
+      "pendingApprovals_one": "{{count}} istek bekliyor",
+      "pendingApprovals_other": "{{count}} istek bekliyor"
     },
     "composer": {
       "editTitle": "Görevi düzenle",
@@ -215,6 +223,10 @@
       "reviewerResponse": {
         "label": "Hakemlere yanıt",
         "title": "Hakem yanıtının taslağını yaz"
+      },
+      "experimentLoop": {
+        "label": "Deney çalıştır",
+        "title": "Bir hedefe yönelik deneyler çalıştır"
       }
     },
     "detail": {
@@ -274,7 +286,99 @@
       "loadMore": "Daha fazla etkinlik yükle",
       "changeAdded": "eklendi",
       "changeModified": "değiştirildi",
-      "changeDeleted": "silindi"
+      "changeDeleted": "silindi",
+      "tabProgress": "İlerleme",
+      "resume": "Sürdür",
+      "resumeHint": "Kayıtlı devir notundan aynı çalışma alanında devam edin.",
+      "startOver": "Baştan başla",
+      "startOverHint": "Geçerli projeden başlayın. Araştırma kaydı da gelir.",
+      "stopReason": {
+        "budgetTime": "Zaman bütçesi bitince durdu.",
+        "budgetCost": "Maliyet sınırında durdu.",
+        "budgetRuns": "Çalıştırma sınırında durdu."
+      },
+      "startsAt": "Başlangıç: {{time}}"
+    },
+    "plan": {
+      "title": "Plan",
+      "description": "Planı okuyun ve isterseniz düzenleyin. Görevin devam etmesi için planı onaylayın.",
+      "approve": "Planı onayla",
+      "approveEdited": "Düzenlenen planı onayla",
+      "discard": "Görevi at",
+      "loading": "Plan yükleniyor…",
+      "missing": "Plan dosyası eksik. Görevi yeniden deneyin."
+    },
+    "approvals": {
+      "title": "Onayınızı bekliyor",
+      "approve": "Onayla",
+      "deny": "Reddet",
+      "kindCommand": "Komut çalıştırma",
+      "kindRun": "Çalıştırma başlatma",
+      "kindMcp": "Araç kullanma",
+      "expires": "Şu zamana kadar bekler: {{time}}",
+      "status": {
+        "approved": "Onaylandı",
+        "denied": "Reddedildi",
+        "expired": "Süresi doldu",
+        "withdrawn": "Geri çekildi"
+      }
+    },
+    "phase": {
+      "preparing": "Çalışma alanı hazırlanıyor",
+      "planning": "Plan yazılıyor",
+      "working": "Çalışıyor",
+      "waitingRuns": "Çalıştırmalar bekleniyor",
+      "waitingApproval": "Onay bekleniyor",
+      "wrappingUp": "Toparlanıyor",
+      "checkingEvidence": "Kanıtlar denetleniyor"
+    },
+    "progress": {
+      "loading": "İlerleme yükleniyor…",
+      "plan": "Plan",
+      "noPlan": "Henüz plan yok.",
+      "ledger": "Sonuç kaydı",
+      "noLedger": "Henüz sonuç kaydedilmedi.",
+      "best": "En iyi {{metric}}",
+      "bestValue": "{{run}} çalıştırmasında {{value}}",
+      "runsInFlight": "Süren çalıştırmalar",
+      "noRuns": "Süren çalıştırma yok.",
+      "budget": "Bütçe",
+      "timeUsed": "{{total}} içinden {{used}}",
+      "costUsed": "${{limit}} içinden ${{used}}",
+      "costSpent": "${{used}} harcandı",
+      "costUnknown": "Bu modelin maliyeti bilinmiyor.",
+      "runsUsed": "{{limit}} çalıştırmadan {{used}}",
+      "runsUsedNoLimit": "{{used}} çalıştırma",
+      "stopRun": "Çalıştırmayı durdur",
+      "viewLog": "Günlüğü görüntüle",
+      "columns": {
+        "run": "Çalıştırma",
+        "time": "Zaman",
+        "hypothesis": "Hipotez",
+        "change": "Değişiklik",
+        "metrics": "Ölçümler",
+        "verdict": "Karar"
+      },
+      "verdict": {
+        "keep": "Tutuldu",
+        "discard": "Atıldı",
+        "crash": "Çöktü"
+      }
+    },
+    "settings": {
+      "title": "Araştırma görevleri",
+      "keepAwake": "Görevler çalışırken bilgisayarı uyanık tut",
+      "keepAwakeHint": "Ekranınız yine de kapanabilir.",
+      "notifications": "Bir görev ilgi beklediğinde bana bildir",
+      "notificationsHint": "Oleafly arka plandayken gösterilir.",
+      "notificationsBlocked": "Oleafly bildirimleri sistem ayarlarında kapalı.",
+      "allowNotifications": "Bildirimlere izin ver",
+      "network": "Görev komutlarına varsayılan olarak ağ erişimi ver",
+      "timeBudget": "Varsayılan zaman bütçesi",
+      "mcpServers": "Görevlerin kullanabileceği MCP sunucuları",
+      "mcpServersHint": "Görevler bu araçları her görevin komut kurallarına göre çağırır.",
+      "noMcpServers": "Ayarlanmış MCP sunucusu yok.",
+      "saveFailed": "Araştırma ayarlarınız kaydedilemedi. Yeniden deneyin."
     }
   },
   "tools": {
@@ -354,7 +458,7 @@
       "name": "Görselden LaTeX'e",
       "description": "Not, denklem veya tablo görselini düzenlenebilir LaTeX'e çevirin.",
       "tag1": "Görseller",
-      "tag2": "Cihaz üstü model",
+      "tag2": "Yerel veya barındırılan model",
       "tag3": "Proje gerekmez"
     },
     "visualTypstEditor": {
@@ -376,7 +480,7 @@
       "description": "Yazılmış bir denklemi veya denklem görselini temiz LaTeX matematiğine dönüştürün.",
       "tag1": "Metin veya görsel",
       "tag2": "Matematik",
-      "tag3": "Cihaz üstü model"
+      "tag3": "Yerel veya barındırılan model"
     },
     "excelToLatex": {
       "name": "Excel'den LaTeX'e",
@@ -396,7 +500,7 @@
       "name": "Görselden Typst'e",
       "description": "Not, denklem veya tablo görselini düzenlenebilir Typst'e çevirin.",
       "tag1": "Görseller",
-      "tag2": "Cihaz üstü model",
+      "tag2": "Yerel veya barındırılan model",
       "tag3": "Proje gerekmez"
     },
     "latexToHtml": {
@@ -744,13 +848,13 @@
     "progressNeedsAttention": "İlgi gerekiyor",
     "progressCancelled": "İptal edildi",
     "progressReadingPages": "Sayfalar okunuyor",
-    "progressTranscribingPage": "{{total}} sayfadan {{page}}. sayfa metne dökülüyor",
+    "progressTranscribingPage": "{{model}} ile sayfa {{page}} / {{total}} metne dökülüyor",
     "progressDocumentStructure": "Belge yapısı dönüştürülüyor",
     "progressMermaid": "Mermaid diyagramı işleniyor",
     "progressFirstSheet": "İlk sayfa okunuyor",
-    "progressVisionModel": "Yerel görü modeli çalıştırılıyor",
-    "progressReadingEquation": "Denklem yerel görü modeliyle okunuyor",
-    "progressConvertingEquation": "Denklem yerel modelle dönüştürülüyor",
+    "progressVisionModel": "Görsel {{model}} ile okunuyor",
+    "progressReadingEquation": "Denklem {{model}} ile okunuyor",
+    "progressConvertingEquation": "Denklem {{model}} ile dönüştürülüyor",
     "progressUnpackingSource": "Kayıtlı kaynak açılıyor",
     "progressDownloadingSource": "Ön baskı kaynağı indiriliyor",
     "copied": "{{label}} kopyalandı",
@@ -790,9 +894,9 @@
   "converters": {
     "imageToLatex": {
       "title": "Görselden LaTeX'e",
-      "subtitle": "Notları, denklemleri veya tabloları cihaz üstü bir görü modeliyle metne dökün",
+      "subtitle": "Notları, denklemleri veya tabloları bir görü modeliyle metne dökün",
       "inputLabel": "Görsel",
-      "inputHint": "PNG, JPEG veya WebP. Görsel bu cihazda kalır.",
+      "inputHint": "PNG, JPEG veya WebP, en fazla 20 MB.",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -825,9 +929,9 @@
     },
     "imageToTypst": {
       "title": "Görselden Typst'e",
-      "subtitle": "Notları, denklemleri veya tabloları cihaz üstü bir görü modeliyle metne dökün",
+      "subtitle": "Notları, denklemleri veya tabloları bir görü modeliyle metne dökün",
       "inputLabel": "Görsel",
-      "inputHint": "PNG, JPEG veya WebP. Görsel bu cihazda kalır.",
+      "inputHint": "PNG, JPEG veya WebP, en fazla 20 MB.",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -883,14 +987,14 @@
       "title": "PDF'ten Markdown'a",
       "subtitle": "Metni, denklemleri ve şekilleri yerel olarak çıkarın",
       "inputLabel": "PDF",
-      "inputHint": "Metin içeren PDF'ler belirlenimci çıkarma kullanır. Taramalar yerel bir görü modeli kullanır.",
+      "inputHint": "Metin PDF'leri belirlenimci çıkarma kullanır. Taramalar seçtiğiniz modeli kullanır.",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF'ten Typst'e",
       "subtitle": "Metni, denklemleri ve şekilleri yerel olarak çıkarın",
       "inputLabel": "PDF",
-      "inputHint": "Metin içeren PDF'ler belirlenimci çıkarma kullanır. Taramalar yerel bir görü modeli kullanır.",
+      "inputHint": "Metin PDF'leri belirlenimci çıkarma kullanır. Taramalar seçtiğiniz modeli kullanır.",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -981,10 +1085,10 @@
   "converterErrors": {
     "chooseSmallerImage": "20 MB'tan küçük bir görsel seçin.",
     "imageFormat": "PNG, JPEG veya WebP bir görsel seçin.",
-    "ollamaUnavailable": "Ayarlar'dan Ollama'yı başlatın, sonra bu dönüştürme için yerel bir model kurun.",
-    "visionModelMissing": "Ollama'da Llama 3.2 Vision gibi bir görü modeli kurun, sonra yeniden deneyin.",
-    "localModelMissing": "Yerel bir Ollama modeli kurun, sonra yeniden deneyin.",
-    "emptyTranscription": "Yerel model boş bir metin dökümü döndürdü.",
+    "ollamaUnavailable": "Ollama'yı başlatın veya Araçlar için başka bir model seçin.",
+    "visionModelMissing": "Ollama'ya glm-ocr gibi bir görü modeli indirin veya Araçlar için başka bir model seçin.",
+    "localModelMissing": "Ollama'ya bir model indirin veya Araçlar için başka bir model seçin.",
+    "emptyTranscription": "Model boş bir metin döndürdü.",
     "pdfNoPages": "Bu PDF, metne dökülecek hiç sayfa içermiyor.",
     "pdfPageLimit": "Taranmış PDF metne dökümü tek seferde 50 sayfayla sınırlıdır.",
     "pandocNotReady": "Pandoc henüz hazır değil.",
@@ -995,7 +1099,7 @@
     "equationToTypst": "Pandoc bu denklemi Typst'e dönüştüremedi. LaTeX matematiğini denetleyip yeniden deneyin."
   },
   "converterNotes": {
-    "scannedPages": "{{pages}} taranmış sayfa yerel bir modelle metne döküldü. Sonucu kullanmadan önce denklemleri ve tabloları gözden geçirin.",
+    "scannedPages": "{{model}} ile {{pages}} taranmış sayfa metne döküldü. Sonucu kullanmadan önce denklemleri ve tabloları gözden geçirin.",
     "extracted": "{{pages}} sayfa ve {{figures}} şekil yerel olarak çıkarıldı.",
     "mermaidTikz": "Bu akış şeması düzenlenebilir TikZ koduna dönüştürüldü.",
     "mermaidRendered": "Mermaid sözdizimi düzenlenebilir TikZ koduna düzgün eşlenmediği için bu diyagram yerel olarak işlendi.",
@@ -1010,6 +1114,42 @@
     "notConverted_one": "{{count}} öğe dönüştürülemedi.",
     "notConverted_other": "{{count}} öğe dönüştürülemedi.",
     "checkLine": "Satır {{line}}: {{message}}"
+  },
+  "converterModel": {
+    "label": "Araçlar için model",
+    "automatic": "Otomatik (en iyi yerel model)",
+    "localGroup": "Yerel (Ollama)",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "Görseller {{provider}} hizmetine gönderilir",
+    "sentToHost": "Görseller {{host}} üzerindeki Ollama'ya gönderilir",
+    "scansSentTo": "Taranmış sayfalar {{provider}} hizmetine gönderilir",
+    "scansSentToHost": "Taranmış sayfalar {{host}} üzerindeki Ollama'ya gönderilir",
+    "pdfSentToMathpix": "PDF'in tamamı Mathpix'e gönderilir",
+    "transcribingHosted": "Görsel {{provider}} hizmetine gönderiliyor…",
+    "progressUploading": "PDF Mathpix'e gönderiliyor",
+    "progressFormatting": "Metin Pandoc ile dönüştürülüyor",
+    "scannedTitle": "Bu PDF taranmış görünüyor",
+    "estimateOllama_one": "{{count}} sayfa. Ollama'nın okuması biraz zaman alabilir.",
+    "estimateOllama_other": "{{count}} sayfa. Ollama sayfaları tek tek okur, bu biraz zaman alabilir.",
+    "estimateCost_one": "{{count}} sayfa. {{model}} ile yaklaşık {{cost}}.",
+    "estimateCost_other": "{{count}} sayfa. {{model}} ile yaklaşık {{cost}}.",
+    "estimateUnknown_one": "{{count}} sayfa. {{provider}} bunu kullanıma göre ücretlendirir.",
+    "estimateUnknown_other": "{{count}} sayfa. {{provider}} bunları kullanıma göre ücretlendirir.",
+    "transcribePages_one": "{{count}} sayfayı metne dök",
+    "transcribePages_other": "{{count}} sayfayı metne dök",
+    "transcribedWith": "{{model}} ile metne döküldü. Denklemleri ve tabloları gözden geçirin.",
+    "sentBadge": "{{provider}} hizmetine gönderildi",
+    "openToolsSettings": "Araçlar ayarları",
+    "errors": {
+      "offline": "Oleafly çevrimdışı modda. Yerel bir model seçin veya çevrimdışı modu kapatın.",
+      "providerNotConfigured": "{{provider}} için API anahtarı yok. Ayarlar'dan bir anahtar ekleyin veya başka bir model seçin.",
+      "modelDisabled": "{{model}}, Ayarlar'da kapalı. Açın veya başka bir model seçin.",
+      "cannotSeeImages": "{{model}} görselleri okuyamıyor. Bir görü modeli seçin.",
+      "localModelGone": "{{model}} artık Ollama'da yok. Yeniden indirin veya başka bir model seçin.",
+      "imagesOnly": "{{model}} yalnızca görselleri okur. Yazılmış denklemleri dönüştürmek için bir dil modeli seçin.",
+      "mathpixNotSetUp": "Mathpix anahtarlarınızı Ayarlar, Yapay zeka, Araçlar bölümünden ekleyin veya başka bir model seçin.",
+      "imageTooLarge": "Bu görsel küçültüldükten sonra bile çok büyük. Kırpıp yeniden deneyin."
+    }
   },
   "mermaidErrors": {
     "tooLarge": "Bu Mermaid diyagramı 50.000 karakterlik sınırdan büyük.",
@@ -1557,5 +1697,254 @@
     "citeAdded": "{{citation}} eklendi",
     "addFailed": "Atıf eklenemedi.",
     "toastCopyFailed": "BibTeX kopyalanamadı."
+  },
+  "brief": {
+    "title": "Görev tanımı",
+    "goalLabel": "Hedef",
+    "goalPlaceholder": "Bu görev neyi bulmalı veya üretmeli?",
+    "criteriaLabel": "Başarı ölçütleri",
+    "criteriaHint": "Her satıra bir tane. Her biri denetleyebileceğiniz bir şey olmalı.",
+    "scopeLabel": "Kapsam",
+    "constraintsLabel": "Kısıtlar",
+    "metricLabel": "Ana ölçüm",
+    "metricPlaceholder": "Örneğin val_loss",
+    "metricMaximize": "Yüksek olması daha iyi",
+    "metricMinimize": "Düşük olması daha iyi",
+    "reviewPlan": "Önce planı gözden geçir",
+    "reviewPlanHint": "Ajan plan.md dosyasını yazar ve başlamadan önce onayınızı bekler.",
+    "commandsLabel": "Komutlar",
+    "commandsAllow": "Sormadan çalıştır",
+    "commandsAsk": "Çalıştırmadan önce sor",
+    "commandsOff": "Komut çalıştırma",
+    "network": "Komutlara ağ erişimi ver",
+    "networkHint": "Paket kurmak veya veri indirmek için gerekir.",
+    "budgetLabel": "Bütçe",
+    "timeLabel": "Süre",
+    "minutes_one": "{{count}} dakika",
+    "minutes_other": "{{count}} dakika",
+    "hours_one": "{{count}} saat",
+    "hours_other": "{{count}} saat",
+    "costLabel": "Maliyet sınırı (USD)",
+    "noLimit": "Sınır yok",
+    "runsLabel": "Çalıştırma sınırı",
+    "runTimeoutLabel": "Her çalıştırma şu süreden sonra durur",
+    "profileLabel": "Çalıştırma profili",
+    "profileAnalysis": "Analiz",
+    "profileAnalysisHint": "Python ve R ortamlarınız, salt okunur veri klasörleri, GPU yok.",
+    "profileTraining": "Eğitim",
+    "profileTrainingHint": "GPU erişimi ve daha uzun çalıştırmalar ekler.",
+    "computeLabel": "Çalıştırmaların yapıldığı yer",
+    "computeLocal": "Bu bilgisayar",
+    "startAtLabel": "Başlangıç zamanı",
+    "startNow": "Ben başlattığımda",
+    "keepRunning": "Oleafly kapalıyken çalışmaya devam et",
+    "keepRunningHint": "Önce Ayarlar, Araştırma bölümünden arka plan çalışmasını açın.",
+    "invalidMetric": "Harf, rakam, nokta, kısa çizgi veya alt çizgi kullanın.",
+    "invalidCost": "Sıfırdan büyük bir tutar girin.",
+    "invalidRuns": "1 ile 1.000 arasında bir tam sayı girin."
+  },
+  "runs": {
+    "status": {
+      "starting": "Başlıyor",
+      "running": "Çalışıyor",
+      "succeeded": "Bitti",
+      "failed": "Başarısız",
+      "timedOut": "Zaman aşımı",
+      "cancelled": "Durduruldu",
+      "lost": "Kayboldu"
+    }
+  },
+  "record": {
+    "title": "Araştırma kaydı",
+    "openHandoff": "Devir notunu aç",
+    "openReport": "Raporu aç"
+  },
+  "evidence": {
+    "title": "Kanıt denetimleri",
+    "hint": "Bu denetimler yalnızca uyarır. Uygulamayı engellemez.",
+    "running": "Denetleniyor…",
+    "refresh": "Yeniden denetle",
+    "status": {
+      "pass": "Geçti",
+      "warn": "Bunu denetleyin",
+      "skipped": "Denetlenmedi"
+    },
+    "checks": {
+      "build": "Proje derleniyor",
+      "references": "Yeni çözümlenmemiş başvuru veya alıntı yok",
+      "bibliography": "Yeni kaynakça girdileri doğrulandı",
+      "numbers": "Sayılar kendi çalıştırmalarıyla eşleşiyor",
+      "figures": "Yeni şekiller var ve kullanılıyor"
+    },
+    "items": {
+      "buildFailed": "Derleme {{errors}} hatayla başarısız oldu.",
+      "buildSkipped": "Derleme denetlenmedi: {{reason}}",
+      "referencesUnresolved": "{{key}} çözümlenemiyor.",
+      "referencesNotChecked": "Bu sürümde başvurular henüz denetlenmiyor.",
+      "bibUnverified": "{{key}} doğrulanamadı.",
+      "bibTitleMismatch": "{{key}} farklı bir başlığı gösteriyor: {{found}}",
+      "bibLookupFailed": "{{key}} aranamadı. Daha sonra yeniden deneyin.",
+      "numbersMismatch": "{{value}}, {{run}} çalıştırmasıyla eşleşmiyor ({{recorded}}).",
+      "numbersUnknownRun": "{{run}} çalıştırması yok.",
+      "numbersNoLedgerRow": "{{run}} çalıştırmasının sonuç kaydında satırı yok.",
+      "figuresMissing": "{{path}} başvurulmuş ama eksik.",
+      "figuresUnused": "{{path}} belgede kullanılmıyor."
+    }
+  },
+  "compute": {
+    "title": "Hesaplama",
+    "description": "Deney çalıştırmalarının nerede yürütüleceğini seçin. Her görev kendi tanımında bir hedef seçer.",
+    "targets": {
+      "heading": "Çalıştırma hedefleri",
+      "local": "Bu bilgisayar",
+      "localDescription": "Çalıştırmalar bu bilgisayardaki korumalı alanı kullanır.",
+      "add": "Hedef ekle",
+      "addSsh": "SSH ana bilgisayarı",
+      "addSlurm": "Slurm kümesi",
+      "addCua": "Cua Space",
+      "import": "SSH yapılandırmasından içe aktar",
+      "test": "Test et",
+      "testing": "Test ediliyor…",
+      "more": "{{label}} için diğer işlemler",
+      "edit": "Düzenle",
+      "remove": "Kaldır",
+      "removeTitle": "{{label}} kaldırılsın mı?",
+      "removeConfirm": "Orada başlamış çalıştırmalar sürmeye devam eder.",
+      "forgetHostKey": "Ana bilgisayar anahtarını unut",
+      "notTested": "Test edilmedi",
+      "tested": "Test edildi: {{time}}",
+      "testFailed": "Test başarısız oldu",
+      "perTaskSpace": "Her görev için yeni bir Space",
+      "saveFailed": "Hedef kaydedilemedi: {{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly, SSH anahtarlarınızla veya SSH ajanınızla bağlanır. Parola veya anahtar istemez ve saklamaz.",
+      "windowsRsync": "Windows'ta rsync yok, bu yüzden Oleafly dosyaları SSH üzerinden tar ile kopyalar.",
+      "sshMissingWindows": "OpenSSH İstemcisi kurulu değil. Windows Ayarları'nda Sistem, İsteğe bağlı özellikler bölümünden ekleyin.",
+      "sshMissing": "OpenSSH kurulu değil. Paket yöneticinizle kurun.",
+      "cuaMissing": "Cua kurulu değil. cua.ai adresinden kurun, sonra yeniden test edin.",
+      "relay": "Bu Space gerçek bir bilgisayarda çalışıyor. Oradaki çalıştırmalar yalıtılmış değil.",
+      "outputs": "Bir çalıştırmanın oluşturduğu dosyalar, görevin kopyasındaki runs/<run>/outputs klasörüne geri gelir."
+    },
+    "form": {
+      "addTitle": "{{kind}} ekle",
+      "editTitle": "{{label}} düzenle",
+      "label": "Ad",
+      "host": "Ana bilgisayar",
+      "hostHint": "SSH yapılandırmanızdaki bir ana bilgisayar veya bir ana bilgisayar adı",
+      "user": "Kullanıcı",
+      "userHint": "SSH yapılandırmanızı kullanmak için boş bırakın.",
+      "port": "Bağlantı noktası",
+      "remoteRoot": "Uzak klasör",
+      "remoteRootHint": "Başka bir klasör seçmezseniz çalıştırmalar ana klasörünüzdeki .oleafly-runs içine gider.",
+      "prelude": "Hazırlık komutları",
+      "preludeHint": "Her komuttan önce çalışır, örneğin module load python.",
+      "partition": "Bölüm",
+      "account": "Hesap",
+      "qos": "QOS",
+      "time": "Süre sınırı",
+      "timeHint": "Örneğin 2:00:00 veya 1-00:00:00",
+      "gpus": "GPU sayısı",
+      "cpus": "CPU sayısı",
+      "mem": "Bellek (GB)",
+      "memHint": "Örneğin 16",
+      "gpuFlag": "GPU seçeneği",
+      "spaceMode": "Space",
+      "spaceNamed": "Adlandırılmış bir Space kullan",
+      "spacePerTask": "Her görev için yeni bir Space oluştur",
+      "space": "Space adı",
+      "image": "Görüntü",
+      "save": "Kaydet",
+      "cancel": "İptal",
+      "errors": {
+        "label": "En fazla 80 karakterlik bir ad girin.",
+        "host": "Boşluk içermeyen bir ana bilgisayar adı girin.",
+        "user": "Harf, rakam, nokta, kısa çizgi veya alt çizgi kullanın.",
+        "port": "1 ile 65535 arasında bir bağlantı noktası kullanın.",
+        "remoteRoot": "Boşluk, tırnak veya \"..\" içermeyen bir klasör yolu kullanın.",
+        "time": "2:00:00 gibi bir Slurm süresi kullanın.",
+        "name": "Harf, rakam, nokta, virgül, kısa çizgi veya alt çizgi kullanın.",
+        "mem": "16 gibi tam sayı bir gigabayt değeri kullanın.",
+        "count": "İzin verilen aralıkta bir tam sayı kullanın."
+      }
+    },
+    "test": {
+      "connect": "Bağlanma",
+      "echo": "Komut çalıştırma",
+      "disk": "Boş alan",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "Geçti",
+      "warn": "Bunu denetleyin",
+      "fail": "Başarısız",
+      "skipped": "Denetlenmedi"
+    },
+    "hostKey": {
+      "title": "Bu ana bilgisayara güvenilsin mi?",
+      "body": "Oleafly daha önce {{host}} sunucusuna bağlanmadı. Bu parmak izlerini yöneticinizin verdikleriyle karşılaştırın.",
+      "trust": "Güven ve bağlan",
+      "changedTitle": "Ana bilgisayar anahtarı değişti",
+      "changed": "{{host}} sunucusunun ana bilgisayar anahtarı değişti. Biri bağlantıyı dinliyor olabilir. Anahtarı yöneticiniz değiştirdiyse eski anahtarı unutun ve yeniden test edin."
+    },
+    "import": {
+      "title": "SSH ana bilgisayarlarını içe aktar",
+      "body": "Eklenecek ana bilgisayarları seçin. Oleafly SSH yapılandırmanızı okur ve hiç değiştirmez.",
+      "none": "SSH yapılandırmanızda ana bilgisayar bulunamadı.",
+      "added": "Zaten eklendi",
+      "add_one": "{{count}} ana bilgisayar ekle",
+      "add_other": "{{count}} ana bilgisayar ekle"
+    },
+    "sandbox": {
+      "heading": "Bu bilgisayardaki korumalı alan",
+      "description": "Bu bilgisayardaki çalıştırmalar yorumlayıcılarınızı ve bağlı klasörleri okuyabilir. Yalnızca görevin kopyasına yazar.",
+      "ready": "Hazır",
+      "unavailable": "Kullanılamıyor",
+      "macos": "macOS korumalı alanını kullanır.",
+      "linux": "bubblewrap kullanır.",
+      "linuxMissing": "Görev komutlarını çalıştırmak için bubblewrap (bwrap) kurun.",
+      "windowsLabel": "Görev komutlarını Windows korumalı alanında çalıştır",
+      "windowsDescription": "Komutlar, yalnızca görevin dosyalarına ve aşağıdaki klasörlere erişebilen bir Windows AppContainer içinde çalışır. Beta süresince varsayılan olarak kapalıdır.",
+      "gpuWindows": "Windows korumalı alanında GPU erişimi henüz doğrulanmadı. GPU işleri için bir SSH veya Slurm hedefi kullanın.",
+      "limitsWindows": "Windows korumalı alanında Python çoklu işleme ve başka programlar başlatan Node.js programları henüz çalışmıyor.",
+      "check": "Korumalı alanı denetle",
+      "checking": "Denetleniyor…",
+      "checkPassed": "Korumalı alan çalışıyor.",
+      "checkFailed": "Korumalı alan denetimi başarısız oldu: {{reason}}",
+      "runtimes": "Yorumlayıcılar",
+      "runtimesEmpty": "Python, R veya Julia bulunamadı.",
+      "refresh": "Yenile",
+      "access": "Korumalı alanın okuyabildiği klasörler",
+      "accessNote": "Görevlerin bu klasörleri okuyabilmesi için Oleafly her birine bir izin girdisi ekler.",
+      "removeAccess": "Erişimi kaldır",
+      "removeAccessTitle": "Korumalı alan erişimi kaldırılsın mı?",
+      "removeAccessConfirm": "Korumalı alanın bu klasörlere erişimi kaldırılsın mı? Bir görev bir dahaki sefere buna ihtiyaç duyduğunda Oleafly erişimi yeniden ekler."
+    },
+    "brief": {
+      "runsOn": "Çalıştığı yer: {{target}}",
+      "runsLocal": "Bu bilgisayarda çalışır.",
+      "missing": "Bu görevin kullandığı hedef kaldırıldı. Başka bir hedef seçin.",
+      "windowsOff": "Bu bilgisayarda komut çalıştırmak için Ayarlar'dan Windows korumalı alanını açın.",
+      "openSettings": "Ayarlar'ı aç",
+      "resources": "Slurm kaynakları"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "Arka planda",
+      "backgroundHint": "Bu görevi Oleafly'nin arka plan yardımcısı çalıştırıyor. Geçerli adımından sonra buraya geri döner.",
+      "movingBack": "Geri dönüyor",
+      "movingBackHint": "Bu görev, geçerli adımı bitince Oleafly'ye geri döner."
+    },
+    "earlierActivity": "Önceki etkinliği göster",
+    "keepRunningFailed": "Bu ayar değiştirilemedi. Yeniden deneyin."
   }
 }

@@ -1,19 +1,29 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
   overleafStatus: vi.fn(),
   overleafListProjects: vi.fn(),
   overleafSignIn: vi.fn(),
+  overleafSignInWithAppCookies: vi.fn(),
   overleafSignOut: vi.fn(),
   overleafImportProjects: vi.fn(),
+}));
+const cookies = vi.hoisted(() => ({
+  detectBrowserCookieSources: vi.fn(async () => [] as unknown[]),
+  importBrowserCookies: vi.fn(),
 }));
 const files = vi.hoisted(() => ({ refreshProjects: vi.fn(async () => {}) }));
 
 vi.mock("@/lib/overleaf", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/overleaf")>()),
   ...api,
+}));
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  ...cookies,
 }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}) }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => files } }));
@@ -62,6 +72,8 @@ function resetStore() {
 
 beforeEach(() => {
   for (const mock of Object.values(api)) mock.mockReset();
+  cookies.detectBrowserCookieSources.mockReset().mockResolvedValue([]);
+  cookies.importBrowserCookies.mockReset();
   files.refreshProjects.mockClear();
   localStorage.clear();
   resetStore();
@@ -86,6 +98,38 @@ describe("OverleafImportView", () => {
     expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
     expect(api.overleafSignIn).toHaveBeenCalledWith(SERVER, "Sign in to Overleaf");
     expect(screen.getByText("Signed in as ada@uni.edu")).toBeInTheDocument();
+  });
+
+  it("copies the sign-in from a browser and then lists projects", async () => {
+    const user = userEvent.setup();
+    Element.prototype.hasPointerCapture = vi.fn(() => false);
+    Element.prototype.scrollIntoView = vi.fn();
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
+    cookies.detectBrowserCookieSources.mockResolvedValue([
+      { browser: "chrome", browserName: "Google Chrome", profile: "Default", profileName: "Default", status: "available", detail: "Ready" },
+    ]);
+    cookies.importBrowserCookies.mockResolvedValue({ imported: 2, browserName: "Google Chrome", profileName: "Default", domain: "www.overleaf.com" });
+    api.overleafSignInWithAppCookies.mockResolvedValue(signedIn);
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
+
+    await screen.findByTestId("overleaf-sign-in-panel");
+    await user.click(await screen.findByRole("button", { name: "Use the sign-in from my browser" }));
+    await user.click(await screen.findByLabelText(/Google Chrome/));
+    await user.click(screen.getByRole("button", { name: "Review import" }));
+    await user.click(screen.getByRole("button", { name: "Copy sign-in" }));
+
+    expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
+    expect(cookies.importBrowserCookies).toHaveBeenCalledWith({ browser: "chrome", profile: "Default", domain: "www.overleaf.com" });
+    expect(api.overleafSignIn).not.toHaveBeenCalled();
+    expect(api.overleafListProjects).toHaveBeenCalled();
+  });
+
+  it("offers no browser copy when no browser profile can be read", async () => {
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
+    await screen.findByTestId("overleaf-sign-in-panel");
+    await waitFor(() => expect(cookies.detectBrowserCookieSources).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Use the sign-in from my browser" })).toBeNull();
   });
 
   it("switches to another server and back to overleaf.com", async () => {

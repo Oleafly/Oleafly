@@ -1,4 +1,12 @@
-import { type DragEvent as ReactDragEvent, useEffect, useRef, useState } from "react";
+import {
+  type DragEvent as ReactDragEvent,
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
@@ -44,6 +52,15 @@ import { useImportStore } from "@/store/import";
 import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
 import { SectionHeading } from "@/components/ui/section-heading";
+import type { PageSize } from "@/features/tools-ai/scan-estimate";
+
+// The App shell loads this view eagerly, so the Tools model banner (model
+// list, estimate, Mathpix status) stays out of the entry chunk.
+const ScanTranscribeBanner = lazy(() =>
+  import("@/components/tools/ScanTranscribeBanner").then((module) => ({
+    default: module.ScanTranscribeBanner,
+  })),
+);
 
 const HANDLES = [
   { id: "structure", icon: Heading },
@@ -264,12 +281,24 @@ function SourcePane() {
   const tex = useImportStore((s) => s.result?.tex ?? "");
   const likelyScanned = useImportStore((s) => s.result?.report.likelyScanned ?? false);
   const scanTranscribed = useImportStore((s) => s.scanTranscribed);
+  const storePages = useImportStore((s) => s.pages);
+  const range = useImportStore((s) => s.options.pageRange);
+  const sizes = useMemo<PageSize[]>(
+    () => storePages.map(({ width, height }) => ({ width, height })),
+    [storePages],
+  );
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {likelyScanned && !scanTranscribed && (
-        <div className="border-b px-4 py-2 text-xs text-muted-foreground">
-          {t(($) => $.library.pdfImport.scannedLocal)}
-        </div>
+        <Suspense
+          fallback={
+            <div className="border-b px-4 py-2 text-xs text-muted-foreground">
+              {t(($) => $.library.pdfImport.scannedLocal)}
+            </div>
+          }
+        >
+          <ScanTranscribeBanner pages={sizes} range={range} />
+        </Suspense>
       )}
       <LatexSourceViewer source={tex} />
     </div>
@@ -360,7 +389,7 @@ function FiguresStrip() {
 }
 
 export function PdfImportView() {
-  const { t } = useTranslation(["library"]);
+  const { t } = useTranslation(["library", "researchTools"]);
   const page = useHomeViewStore((s) => s.page);
   const pdfBytes = useImportStore((s) => s.pdfBytes);
   const busy = useImportStore((s) => s.busy);
@@ -371,6 +400,7 @@ export function PdfImportView() {
   const fileName = useImportStore((s) => s.fileName);
   const result = useImportStore((s) => s.result);
   const scanTranscribed = useImportStore((s) => s.scanTranscribed);
+  const scanModel = useImportStore((s) => s.scanModel);
   const transcribeScan = useImportStore((s) => s.transcribeScan);
   const [refineable, setRefineable] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -488,13 +518,21 @@ export function PdfImportView() {
           </div>
         )}
         <div
+          data-testid="import-destination"
           className={cn(
             "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
             !pdfBytes && "ml-auto",
           )}
         >
-          <span className="size-1.5 rounded-full bg-emerald-500" />
-          {t(($) => $.library.pdfImport.local)}
+          <span
+            className={cn(
+              "size-1.5 rounded-full",
+              scanModel?.sentTo ? "bg-amber-500" : "bg-emerald-500",
+            )}
+          />
+          {scanModel?.sentTo
+            ? t(($) => $.researchTools.converterModel.sentBadge, { provider: scanModel.sentTo })
+            : t(($) => $.library.pdfImport.local)}
         </div>
         <WindowControls />
       </div>
@@ -522,7 +560,9 @@ export function PdfImportView() {
             {error && <span className="ml-3 select-text text-xs text-destructive">{error}</span>}
             <span className="ml-auto text-xs text-muted-foreground">
               {scanTranscribed
-                ? "Transcribed on this device. Review equations and tables."
+                ? t(($) => $.researchTools.converterModel.transcribedWith, {
+                    model: scanModel?.label ?? t(($) => $.researchTools.converterModel.automatic),
+                  })
                 : t(($) => $.library.pdfImport.disclaimer)}
             </span>
           </div>

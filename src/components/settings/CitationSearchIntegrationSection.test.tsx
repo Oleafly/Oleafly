@@ -92,11 +92,11 @@ describe("CitationSearchIntegrationSection", () => {
     render(<CitationSearchIntegrationSection />);
 
     await waitFor(() =>
-      expect(screen.getAllByText(citations.connected)).toHaveLength(3),
+      expect(screen.getAllByText(citations.connected)).toHaveLength(5),
     );
     expect(
       screen.getAllByRole("button", { name: citations.actions.removeKey }),
-    ).toHaveLength(2);
+    ).toHaveLength(4);
     expect(
       screen.getByRole("button", { name: citations.actions.removeEmail }),
     ).toBeInTheDocument();
@@ -301,5 +301,49 @@ describe("CitationSearchIntegrationSection", () => {
       await screen.findByLabelText(citations.semanticScholar.keyLabel),
     ).toBeInTheDocument();
     expect(screen.queryByText(citations.connected)).not.toBeInTheDocument();
+  });
+
+  it("saves and removes the Brave Search key", async () => {
+    const user = userEvent.setup();
+    render(<CitationSearchIntegrationSection />);
+
+    await user.type(await screen.findByTestId("brave-search-api-key-input"), "  bk  ");
+    await user.click(screen.getByTestId("brave-search-api-key-save"));
+    await waitFor(() =>
+      expect(mocks.setConnectorKey).toHaveBeenCalledWith("brave-search", "bk"),
+    );
+    await expectAnnounced(citations.braveSearch.keySaved);
+    expect(screen.queryByTestId("brave-search-api-key-input")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: citations.actions.removeKey }));
+    await waitFor(() =>
+      expect(mocks.setConnectorKey).toHaveBeenCalledWith("brave-search", ""),
+    );
+    await expectAnnounced(citations.braveSearch.keyRemoved);
+  });
+
+  it("saves the Tavily key under its connector id", async () => {
+    const user = userEvent.setup();
+    render(<CitationSearchIntegrationSection />);
+
+    await user.type(await screen.findByTestId("tavily-api-key-input"), "tk");
+    await user.click(screen.getByTestId("tavily-api-key-save"));
+    await waitFor(() => expect(mocks.setConnectorKey).toHaveBeenCalledWith("tavily", "tk"));
+    await expectAnnounced(citations.tavily.keySaved);
+  });
+
+  it("explains which web search key the assistant uses first", async () => {
+    render(<CitationSearchIntegrationSection />);
+
+    expect(
+      await screen.findByText(/Brave first, then Tavily, then Serper/),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(citations.braveSearch.hint)).toHaveLength(2);
+    expect(
+      screen.getByRole("link", { name: citations.braveSearch.docsLink }),
+    ).toHaveAttribute("href", "https://brave.com/search/api/");
+    expect(
+      screen.getByRole("link", { name: citations.tavily.docsLink }),
+    ).toHaveAttribute("href", "https://docs.tavily.com/");
   });
 });

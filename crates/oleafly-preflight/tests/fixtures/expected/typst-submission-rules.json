@@ -1,0 +1,945 @@
+{
+  "abstract-and-keywords-markup": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-document-class.detailNoTemplateTypst",
+        "params": {
+          "expected": "clean-acmart or faithful-acmart or approximate-acmsmall"
+        }
+      },
+      "id": "submission-document-class",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-document-class.titleTypst",
+        "params": {
+          "profile": "ACM conference / journal"
+        }
+      }
+    }
+  ],
+  "abstract-none": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-document-class.detailNoTemplateTypst",
+        "params": {
+          "expected": "clean-acmart or faithful-acmart or approximate-acmsmall"
+        }
+      },
+      "id": "submission-document-class",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-document-class.titleTypst",
+        "params": {
+          "profile": "ACM conference / journal"
+        }
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-keywords.detailTypst",
+        "params": {
+          "profile": "ACM conference / journal"
+        }
+      },
+      "id": "submission-no-keywords",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-keywords.title"
+      }
+    }
+  ],
+  "arxiv-nonportable-names": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-nonportable-filename.detail"
+      },
+      "file": "figs/My Plot.png",
+      "id": "submission-nonportable-filename",
+      "lens": "submission",
+      "severity": "error",
+      "title": {
+        "key": "rules.submission-nonportable-filename.title",
+        "params": {
+          "file": "figs/My Plot.png"
+        }
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    }
+  ],
+  "bare-acm": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-document-class.detailNoTemplateTypst",
+        "params": {
+          "expected": "clean-acmart or faithful-acmart or approximate-acmsmall"
+        }
+      },
+      "id": "submission-document-class",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-document-class.titleTypst",
+        "params": {
+          "profile": "ACM conference / journal"
+        }
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-keywords.detailTypst",
+        "params": {
+          "profile": "ACM conference / journal"
+        }
+      },
+      "id": "submission-no-keywords",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-keywords.title"
+      }
+    }
+  ],
+  "bare-arxiv": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    }
+  ],
+  "bare-generic": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    }
+  ],
+  "bare-ieee": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-document-class.detailNoTemplateTypst",
+        "params": {
+          "expected": "charged-ieee or bamdone-ieeeconf or tatras-ieee"
+        }
+      },
+      "id": "submission-document-class",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-document-class.titleTypst",
+        "params": {
+          "profile": "IEEE conference / journal"
+        }
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-keywords.detailTypst",
+        "params": {
+          "profile": "IEEE conference / journal"
+        }
+      },
+      "id": "submission-no-keywords",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-keywords.title"
+      }
+    }
+  ],
+  "bare-journal": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    }
+  ],
+  "bare-thesis": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    }
+  ],
+  "blind-review": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.privacy-blind-author.detailTypst"
+      },
+      "id": "privacy-blind-author",
+      "lens": "privacy",
+      "severity": "error",
+      "title": {
+        "key": "rules.privacy-blind-author.title"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.privacy-blind-email.detail"
+      },
+      "file": "main.typ",
+      "from": 132,
+      "id": "privacy-blind-email",
+      "lens": "privacy",
+      "severity": "error",
+      "title": {
+        "key": "rules.privacy-blind-email.title",
+        "params": {
+          "file": "main.typ"
+        }
+      },
+      "to": 147
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.privacy-blind-acknowledgements.detail"
+      },
+      "id": "privacy-blind-acknowledgements",
+      "lens": "privacy",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-blind-acknowledgements.title"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.privacy-pdf-author.detail",
+        "params": {
+          "author": "Ana"
+        }
+      },
+      "id": "privacy-pdf-author",
+      "lens": "privacy",
+      "severity": "error",
+      "title": {
+        "key": "rules.privacy-pdf-author.title"
+      }
+    }
+  ],
+  "blind-review-anonymous": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    }
+  ],
+  "blind-review-document-author": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.privacy-blind-author.detailTypst"
+      },
+      "id": "privacy-blind-author",
+      "lens": "privacy",
+      "severity": "error",
+      "title": {
+        "key": "rules.privacy-blind-author.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.privacy-blind-acknowledgements.detail"
+      },
+      "id": "privacy-blind-acknowledgements",
+      "lens": "privacy",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-blind-acknowledgements.title"
+      }
+    }
+  ],
+  "captions": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-missing-caption.detail"
+      },
+      "file": "main.typ",
+      "id": "submission-missing-caption",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-missing-caption.titleFigure"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-missing-caption.detail"
+      },
+      "file": "main.typ",
+      "id": "submission-missing-caption",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-missing-caption.titleTable"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-missing-caption.detail"
+      },
+      "file": "main.typ",
+      "id": "submission-missing-caption",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-missing-caption.titleTable"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-missing-caption.detail"
+      },
+      "file": "main.typ",
+      "id": "submission-missing-caption",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-missing-caption.titleFigure"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-missing-caption.detail"
+      },
+      "file": "main.typ",
+      "id": "submission-missing-caption",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-missing-caption.titleTable"
+      }
+    }
+  ],
+  "emoji-and-email": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.privacy-blind-email.detail"
+      },
+      "file": "main.typ",
+      "from": 8,
+      "id": "privacy-blind-email",
+      "lens": "privacy",
+      "severity": "error",
+      "title": {
+        "key": "rules.privacy-blind-email.title",
+        "params": {
+          "file": "main.typ"
+        }
+      },
+      "to": 33
+    }
+  ],
+  "generated-files": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-generated-file.detail"
+      },
+      "file": "main.aux",
+      "id": "submission-generated-file",
+      "lens": "submission",
+      "severity": "info",
+      "title": {
+        "key": "rules.submission-generated-file.title",
+        "params": {
+          "file": "main.aux"
+        }
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-generated-file.detail"
+      },
+      "file": "main.log",
+      "id": "submission-generated-file",
+      "lens": "submission",
+      "severity": "info",
+      "title": {
+        "key": "rules.submission-generated-file.title",
+        "params": {
+          "file": "main.log"
+        }
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    }
+  ],
+  "ieee-other-known-template": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-document-class.detailTypst",
+        "params": {
+          "actual": "clean-acmart",
+          "expected": "charged-ieee or bamdone-ieeeconf or tatras-ieee"
+        }
+      },
+      "id": "submission-document-class",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-document-class.titleTypst",
+        "params": {
+          "profile": "IEEE conference / journal"
+        }
+      }
+    }
+  ],
+  "ieee-template": [],
+  "keywords-call": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-document-class.detailNoTemplateTypst",
+        "params": {
+          "expected": "clean-acmart or faithful-acmart or approximate-acmsmall"
+        }
+      },
+      "id": "submission-document-class",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-document-class.titleTypst",
+        "params": {
+          "profile": "ACM conference / journal"
+        }
+      }
+    }
+  ],
+  "large-images": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-path-case.detailFigure",
+        "params": {
+          "match": "big.png"
+        }
+      },
+      "file": "main.typ",
+      "id": "submission-path-case",
+      "lens": "submission",
+      "severity": "error",
+      "title": {
+        "key": "rules.submission-path-case.title",
+        "params": {
+          "target": "BIG.png"
+        }
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-large-image.detail",
+        "params": {
+          "limit": "5 MB"
+        }
+      },
+      "file": "big.png",
+      "id": "submission-large-image",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-large-image.title",
+        "params": {
+          "file": "big.png"
+        }
+      }
+    }
+  ],
+  "missing-and-case-paths": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-path-case.detailFigure",
+        "params": {
+          "match": "figs/plot.png"
+        }
+      },
+      "file": "main.typ",
+      "id": "submission-path-case",
+      "lens": "submission",
+      "severity": "error",
+      "title": {
+        "key": "rules.submission-path-case.title",
+        "params": {
+          "target": "figs/Plot.png"
+        }
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-missing-project-file.detail",
+        "params": {
+          "file": "main.typ"
+        }
+      },
+      "file": "main.typ",
+      "id": "submission-missing-project-file",
+      "lens": "submission",
+      "severity": "error",
+      "title": {
+        "key": "rules.submission-missing-project-file.titleFigure",
+        "params": {
+          "target": "figs/none.png"
+        }
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-path-case.detailInclude",
+        "params": {
+          "match": "chapters/intro.typ"
+        }
+      },
+      "file": "main.typ",
+      "id": "submission-path-case",
+      "lens": "submission",
+      "severity": "error",
+      "title": {
+        "key": "rules.submission-path-case.title",
+        "params": {
+          "target": "chapters/Intro.typ"
+        }
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-missing-project-file.detail",
+        "params": {
+          "file": "main.typ"
+        }
+      },
+      "file": "main.typ",
+      "id": "submission-missing-project-file",
+      "lens": "submission",
+      "severity": "error",
+      "title": {
+        "key": "rules.submission-missing-project-file.titleFigure",
+        "params": {
+          "target": "../outside.png"
+        }
+      }
+    }
+  ],
+  "non-typst-files-ignored": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    }
+  ],
+  "pdf-facts-ieee": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-keywords.detailTypst",
+        "params": {
+          "profile": "IEEE conference / journal"
+        }
+      },
+      "id": "submission-no-keywords",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-keywords.title"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-pdf-version.detail",
+        "params": {
+          "minimum": "1.4",
+          "profile": "IEEE conference / journal"
+        }
+      },
+      "id": "submission-pdf-version",
+      "lens": "submission",
+      "severity": "error",
+      "title": {
+        "key": "rules.submission-pdf-version.title",
+        "params": {
+          "version": "1.3"
+        }
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-links.detail",
+        "params": {
+          "profile": "IEEE conference / journal"
+        }
+      },
+      "id": "submission-links",
+      "lens": "submission",
+      "severity": "error",
+      "title": {
+        "key": "rules.submission-links.title"
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.submission-unembedded-font.detail",
+        "params": {
+          "fonts": "Times",
+          "profile": "IEEE conference / journal"
+        }
+      },
+      "id": "submission-unembedded-font",
+      "lens": "submission",
+      "severity": "error",
+      "title": {
+        "key": "rules.submission-unembedded-font.title",
+        "params": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "placeholder-lorem": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-placeholder.detailTypst"
+      },
+      "id": "submission-placeholder",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-placeholder.title"
+      }
+    }
+  ],
+  "placeholder-lorem-ipsum-text": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-placeholder.detailTypst"
+      },
+      "id": "submission-placeholder",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-placeholder.title"
+      }
+    }
+  ],
+  "privacy-files": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.privacy-internal-comment.detail"
+      },
+      "file": "main.typ",
+      "id": "privacy-internal-comment",
+      "lens": "privacy",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-internal-comment.title",
+        "params": {
+          "file": "main.typ"
+        }
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.privacy-sensitive-file.detail"
+      },
+      "file": ".env",
+      "id": "privacy-sensitive-file",
+      "lens": "privacy",
+      "severity": "error",
+      "title": {
+        "key": "rules.privacy-sensitive-file.title",
+        "params": {
+          "file": ".env"
+        }
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.privacy-credential.detail"
+      },
+      "file": ".env",
+      "id": "privacy-credential",
+      "lens": "privacy",
+      "severity": "error",
+      "title": {
+        "key": "rules.privacy-credential.title",
+        "params": {
+          "file": ".env"
+        }
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.privacy-internal-comment.detail"
+      },
+      "file": "notes.tex",
+      "id": "privacy-internal-comment",
+      "lens": "privacy",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-internal-comment.title",
+        "params": {
+          "file": "notes.tex"
+        }
+      }
+    }
+  ],
+  "typst-comment-not-whole-line": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.submission-no-abstract.detailTypst"
+      },
+      "id": "submission-no-abstract",
+      "lens": "submission",
+      "severity": "warning",
+      "title": {
+        "key": "rules.submission-no-abstract.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.privacy-internal-comment.detail"
+      },
+      "file": "main.typ",
+      "id": "privacy-internal-comment",
+      "lens": "privacy",
+      "severity": "warning",
+      "title": {
+        "key": "rules.privacy-internal-comment.title",
+        "params": {
+          "file": "main.typ"
+        }
+      }
+    }
+  ]
+}

@@ -48,7 +48,6 @@
     "hexColor": "deve essere un colore come #2563eb",
     "hexColorOrEmpty": "deve essere un colore come #2563eb, oppure \"\" per usare il colore del tema",
     "text": "deve essere un testo di massimo {{max}} caratteri",
-    "webAddress": "deve essere un indirizzo web che inizia con http:// o https://",
     "list": "deve essere un elenco di massimo {{max}} voci",
     "listItem": "non è una voce consentita",
     "duplicate": "compare due volte",

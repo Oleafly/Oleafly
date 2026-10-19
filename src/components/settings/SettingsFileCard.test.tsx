@@ -263,7 +263,7 @@ describe("SettingsFileCard", () => {
     expect(stamp).toBe("18446744073709551615");
     expect(values).toMatchObject({ appearance: { app: { fontSize: 18 } } });
     expect(values).not.toHaveProperty("experimentation.webBrowser");
-    expect(useSettingsStore.getState().webBrowser).toBe(false);
+    expect(useSettingsStore.getState()).not.toHaveProperty("webBrowser");
     expect(useCloudStore.getState().applyingSettings).toBe(false);
     expect(mocks.toast.success).toHaveBeenCalledWith("Settings imported.");
   });

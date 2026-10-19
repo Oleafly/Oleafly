@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { i18n } from "@/i18n";
+import type { TerminalCommand } from "@/lib/terminal-quote";
 
 export const TERMINAL_LIMIT = 10;
 export function terminalLimitMessage(): string {
@@ -37,6 +38,25 @@ export interface TerminalTab {
   autoStart: boolean;
   /** Typed into the shell once, when the tab's first session starts (a sign-in command). */
   initialInput?: string;
+  /** Project-relative folder the tab's shell starts in. */
+  cwd?: string;
+  /** Extra environment for the tab's shell. */
+  env?: Record<string, string>;
+  /** A command typed into the shell once it is ready, quoted for that shell. */
+  launch?: TerminalCommand;
+  /** A program rang the bell while the tab was hidden. */
+  bell: boolean;
+  /** The title the running program set (OSC 0/2), shown as the tab's tooltip. */
+  oscTitle: string | null;
+}
+
+export interface AddTerminalOptions {
+  initialInput?: string;
+  /** Shown on the tab; not saved to the tab's slot. */
+  title?: string;
+  cwd?: string;
+  env?: Record<string, string>;
+  launch?: TerminalCommand;
 }
 
 interface TerminalSlot {
@@ -50,14 +70,19 @@ interface TerminalsState {
   activeId: string | null;
   counters: Record<string, number>;
   setProject: (projectId: string | null) => void;
-  addTerminal: (options?: { initialInput?: string }) => TerminalTab | null;
+  addTerminal: (options?: AddTerminalOptions) => TerminalTab | null;
   closeTerminal: (id: string) => TerminalTab[];
   closeOtherTerminals: (id: string) => TerminalTab[];
   closeTerminalsToTheRight: (id: string) => TerminalTab[];
   closeTerminalsToTheLeft: (id: string) => TerminalTab[];
   activateTerminal: (id: string) => void;
+  /** Activates the next (1) or previous (-1) tab, wrapping around. */
+  activateRelativeTerminal: (step: 1 | -1) => void;
   renameTerminal: (id: string, title: string) => void;
   setTerminalColor: (id: string, color: TerminalColorKey | null) => void;
+  markTerminalBell: (id: string) => void;
+  clearTerminalBell: (id: string) => void;
+  setTerminalOscTitle: (id: string, title: string) => void;
 }
 
 let tabSeq = 0;
@@ -143,7 +168,20 @@ function makeTab(projectId: string, index: number, autoStart: boolean): Terminal
     title: slot?.title ? normalizeTerminalTitle(slot.title, index) : defaultTerminalTitle(index),
     color: slot?.color ?? null,
     autoStart,
+    bell: false,
+    oscTitle: null,
   };
+}
+
+function withLaunch(tab: TerminalTab, options: AddTerminalOptions | undefined): TerminalTab {
+  if (!options) return tab;
+  const next: TerminalTab = { ...tab };
+  if (options.title?.trim()) next.title = normalizeTerminalTitle(options.title, tab.index);
+  if (options.initialInput) next.initialInput = options.initialInput;
+  if (options.cwd !== undefined) next.cwd = options.cwd;
+  if (options.env) next.env = { ...options.env };
+  if (options.launch) next.launch = { command: options.launch.command, args: [...options.launch.args] };
+  return next;
 }
 
 function neighborOf(tabs: TerminalTab[], closedIndex: number): TerminalTab | null {
@@ -195,8 +233,7 @@ export const useTerminalsStore = create<TerminalsState>((set, get) => {
       if (!projectId) return null;
       if (state.tabs.length >= TERMINAL_LIMIT) return null;
       const index = (state.counters[projectId] ?? 0) + 1;
-      const made = makeTab(projectId, index, true);
-      const tab = options?.initialInput ? { ...made, initialInput: options.initialInput } : made;
+      const tab = withLaunch(makeTab(projectId, index, true), options);
       set({
         tabs: [...state.tabs, tab],
         activeId: tab.id,
@@ -221,6 +258,31 @@ export const useTerminalsStore = create<TerminalsState>((set, get) => {
       const state = get();
       if (state.activeId === id || !state.tabs.some((tab) => tab.id === id)) return;
       set({ activeId: id });
+    },
+    activateRelativeTerminal: (step) => {
+      const { tabs, activeId } = get();
+      if (tabs.length < 2) return;
+      const position = Math.max(
+        0,
+        tabs.findIndex((tab) => tab.id === activeId),
+      );
+      const next = tabs[(position + step + tabs.length) % tabs.length];
+      if (next && next.id !== activeId) set({ activeId: next.id });
+    },
+    markTerminalBell: (id) => {
+      const state = get();
+      if (!state.tabs.some((tab) => tab.id === id && !tab.bell)) return;
+      set({ tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, bell: true } : tab)) });
+    },
+    clearTerminalBell: (id) => {
+      const state = get();
+      if (!state.tabs.some((tab) => tab.id === id && tab.bell)) return;
+      set({ tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, bell: false } : tab)) });
+    },
+    setTerminalOscTitle: (id, title) => {
+      const state = get();
+      if (!state.tabs.some((tab) => tab.id === id && tab.oscTitle !== title)) return;
+      set({ tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, oscTitle: title } : tab)) });
     },
     renameTerminal: (id, title) => {
       const state = get();

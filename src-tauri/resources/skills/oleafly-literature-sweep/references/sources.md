@@ -4,13 +4,14 @@
 
 | Tool | Reaches | Key needed | Notes |
 |---|---|---|---|
-| `literature_search` | OpenAlex works index | no | Every discipline, about 250 million works. The default first pass. `limit` caps at 25 |
+| `literature_search` | OpenAlex, Semantic Scholar, Crossref, arXiv and PubMed at once, plus alphaXiv when connected | no | Every discipline. Merges duplicates by DOI, arXiv id and title. `limit` is per index and caps at 25. The default first pass |
+| `read_paper` | An open-access PDF by DOI, arXiv id, address or project path | no | Research tasks only. Saves the PDF and its text with `[p. N]` page anchors under `papers/` |
 | `verify_citation` | doi.org, then Crossref | no | DOI in, publisher BibTeX out. Title in, existence check out |
 | `alphaxiv_search` | alphaXiv preprint index | yes | Returns paper ids, titles, short summaries |
 | `alphaxiv_paper_content` | alphaXiv full text | yes | Takes the id from `alphaxiv_search` |
 | `project_library_search` | The open project's own files | no | Local and instant. Always worth a call before reaching outward |
 
-`literature_search` returns raw OpenAlex JSON. The fields worth reading per work are `title`, `publication_year`, `doi`, `authorships[].author.display_name`, `primary_location.source.display_name` for the venue, `cited_by_count`, and `open_access.oa_url`. Abstracts come back as `abstract_inverted_index`, a word to positions map rather than text; `paper-lookup` ships `scripts/openalex_abstract.py` to reconstruct it.
+`literature_search` returns merged `records` and per-index `failures`. Each record has `title`, `authors`, `year`, `venue`, `doi`, `arxivId`, `url`, `pdfUrl`, `abstractText`, `citationCount`, `openAccess`, and `sources`, the indexes that returned it. Abstracts are plain text already. Results are cached for a day, so repeating a query is cheap.
 
 ## When to reach past OpenAlex
 

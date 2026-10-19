@@ -2,21 +2,27 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Deferred per-call resolvers so tests control when each disk load lands.
 const loadCalls: Array<{ pid: string; resolve: (raw: string) => void }> = [];
-const saveProjectChats = vi.hoisted(() => vi.fn(async (_projectId: string, _json: string) => {}));
+const chatSave = vi.hoisted(() =>
+  vi.fn(async (_projectId: string, _chatId: string, _json: string, _index?: boolean) => {}),
+);
 const agentThreadDelete = vi.hoisted(() =>
   vi.fn(async (_threadId: string) => {}),
 );
 
-vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
+vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: vi.fn() }));
 vi.mock("@/lib/tauri", () => ({
-  loadProjectChats: vi.fn(
+  chatsLoad: vi.fn(
     (pid: string) =>
-      new Promise<string>((resolve) => {
-        loadCalls.push({ pid, resolve });
+      new Promise<{ json: string; skipped: number }>((resolve) => {
+        loadCalls.push({ pid, resolve: (json) => resolve({ json, skipped: 0 }) });
       })
   ),
-  saveProjectChats,
+  chatSave,
+  chatRead: vi.fn(),
+  chatDelete: vi.fn(async () => {}),
 }));
+vi.mock("@/lib/attachments", () => ({ attachmentGc: vi.fn(async () => 0) }));
+vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/agent-backend", () => ({ agentThreadDelete }));
 
 import { useChatsStore, type ChatUsage, type StoredChat } from "./chats";
@@ -28,7 +34,7 @@ const chatJson = (pid: string, id: string) =>
 
 beforeEach(() => {
   loadCalls.length = 0;
-  saveProjectChats.mockClear();
+  chatSave.mockClear();
   agentThreadDelete.mockClear();
   useChatsStore.setState({ projectId: null, chats: [], activeId: null, live: {} });
 });
@@ -173,10 +179,12 @@ describe("chats store addUsage", () => {
     });
     expect(useChatsStore.getState().projectId).toBe("B");
     expect(useChatsStore.getState().chats.map((chat) => chat.id)).toEqual(["b1"]);
-    const persisted = [...saveProjectChats.mock.calls].reverse().find((call) => call[0] === "A");
-    expect(persisted).toBeDefined();
-    const chats = JSON.parse(persisted?.[1] ?? "[]") as Array<{ id: string; usage?: ChatUsage }>;
-    expect(chats.find((chat) => chat.id === "a1")?.usage?.inputTokens).toBe(80);
+    await vi.waitFor(() =>
+      expect(chatSave.mock.calls.some((call) => call[0] === "A" && call[1] === "a1")).toBe(true),
+    );
+    const persisted = [...chatSave.mock.calls].reverse().find((call) => call[0] === "A" && call[1] === "a1");
+    const saved = JSON.parse(persisted?.[2] ?? "{}") as { id: string; usage?: ChatUsage };
+    expect(saved.usage?.inputTokens).toBe(80);
   });
 
   it("serializes message and usage saves so the newest combined state is last", async () => {
@@ -185,20 +193,20 @@ describe("chats store addUsage", () => {
     loadCalls[0].resolve(chatJson(project, "ordered-chat"));
     await load;
     let releaseFirst: (() => void) | undefined;
-    saveProjectChats.mockImplementationOnce(() => new Promise<void>((resolve) => { releaseFirst = resolve; }));
+    chatSave.mockImplementationOnce(() => new Promise<void>((resolve) => { releaseFirst = resolve; }));
     useChatsStore.getState().saveMessages("ordered-chat", [{ role: "user", content: "new text" }]);
     const usage = useChatsStore.getState().addUsageForProject(project, "ordered-chat", {
       inputTokens: 12,
       outputTokens: 3,
       steps: 1,
     });
-    await vi.waitFor(() => expect(saveProjectChats).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(chatSave).toHaveBeenCalledTimes(1));
     releaseFirst?.();
     await usage;
-    expect(saveProjectChats).toHaveBeenCalledTimes(2);
-    const final = JSON.parse(saveProjectChats.mock.calls[1][1]) as StoredChat[];
-    expect(final[0].messages[0]?.content).toBe("new text");
-    expect(final[0].usage?.inputTokens).toBe(12);
+    await vi.waitFor(() => expect(chatSave).toHaveBeenCalledTimes(2));
+    const final = JSON.parse(chatSave.mock.calls[1][2]) as StoredChat;
+    expect(final.messages[0]?.content).toBe("new text");
+    expect(final.usage?.inputTokens).toBe(12);
   });
 
   it("keeps usage when messages save immediately before the usage promise resolves", async () => {
@@ -213,10 +221,10 @@ describe("chats store addUsage", () => {
     });
     useChatsStore.getState().saveMessages("production-order-chat", [{ role: "user", content: "saved immediately" }]);
     await usage;
-    await vi.waitFor(() => expect(saveProjectChats).toHaveBeenCalledTimes(2));
-    const final = JSON.parse(saveProjectChats.mock.calls[1][1]) as StoredChat[];
-    expect(final[0].messages[0]?.content).toBe("saved immediately");
-    expect(final[0].usage?.inputTokens).toBe(21);
+    await vi.waitFor(() => expect(chatSave).toHaveBeenCalledTimes(2));
+    const final = JSON.parse(chatSave.mock.calls[1][2]) as StoredChat;
+    expect(final.messages[0]?.content).toBe("saved immediately");
+    expect(final.usage?.inputTokens).toBe(21);
     expect(useChatsStore.getState().chats[0].messages[0]?.content).toBe("saved immediately");
     expect(useChatsStore.getState().chats[0].usage?.inputTokens).toBe(21);
   });

@@ -15,7 +15,7 @@ import { acpSessionEventsAll, acpSessionExport } from "@/lib/acp";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { writeBytesFile } from "@/lib/tauri";
 import { formatDateTime } from "@/lib/intl";
-import { event, initTestI18n, session } from "./tests/ui-fixtures";
+import { claudeOptions, event, geminiControls, initTestI18n, session } from "./tests/ui-fixtures";
 import { conversationMarkdown, exportConversation } from "./export-conversation";
 
 beforeAll(async () => {
@@ -215,3 +215,46 @@ describe("exportConversation file names", () => {
   });
 });
 
+
+describe("conversationMarkdown header details", () => {
+  const base = (overrides: Parameters<typeof session>[1]) => conversationMarkdown({
+    session: session("saved", { title: "Claim audit", createdAt: started, updatedAt: updated, ...overrides }),
+    events: [],
+    projectName: null,
+    agentName: "Claude Code",
+  });
+
+  it("adds mode, effort, approval mode and commits to the Markdown header", () => {
+    const markdown = base({
+      controls: { models: [], modelId: "opus", modelConfigId: null, options: claudeOptions() },
+      permissionProfile: "approve-for-me",
+      commits: [
+        { turnId: "t1", commit: "abc1234def", paths: ["main.tex"], message: "Fix intro\nLonger body", createdAt: 1 },
+        { turnId: "t2", commit: "9876543210", paths: ["refs.bib"], message: "", createdAt: 2 },
+      ],
+    });
+    expect(markdown).toContain("- Mode: Default\n");
+    expect(markdown).toContain("- Effort: Medium\n");
+    expect(markdown).toContain("- Approval mode: Approve for me\n");
+    expect(markdown).toContain("**Commits**\n\n- abc1234 Fix intro\n- 9876543\n");
+    expect(markdown).not.toContain("Longer body");
+    expect(markdown).not.toContain("- Project:");
+  });
+
+  it("names every approval mode and keeps an unknown one as it is", () => {
+    expect(base({ permissionProfile: "ask-for-approval" })).toContain("- Approval mode: Ask for approval\n");
+    expect(base({ permissionProfile: "full-access" })).toContain("- Approval mode: Full access\n");
+    expect(base({ permissionProfile: "custom" })).toContain("- Approval mode: Custom (approvals.toml)\n");
+    expect(base({ permissionProfile: "lab-policy" })).toContain("- Approval mode: lab-policy\n");
+    expect(base({})).not.toContain("Approval mode");
+  });
+
+  it("writes a legacy mode by name, or by id when the agent did not list it", () => {
+    expect(base({ controls: geminiControls() })).toContain("- Mode: Default\n");
+    expect(base({ controls: { ...geminiControls(), modeId: "auto" } })).toContain("- Mode: auto\n");
+    const noEffort = base({ controls: { models: [], modelId: null, modelConfigId: null, options: [] } });
+    expect(noEffort).not.toContain("- Mode:");
+    expect(noEffort).not.toContain("- Effort:");
+    expect(noEffort).not.toContain("**Commits**");
+  });
+});

@@ -2,6 +2,7 @@
   "workspace": {
     "title": "リサーチワークスペース",
     "configureAgents": "リサーチのエージェントを設定",
+    "openSettings": "研究の設定",
     "configError": "アシスタントの設定を読み込めませんでした。",
     "tabTasks": "タスク",
     "tabFolders": "リンクしたフォルダ",
@@ -135,7 +136,8 @@
       "awaitingReview": "確認が必要",
       "completed": "完了",
       "failed": "失敗",
-      "cancelled": "キャンセル"
+      "cancelled": "キャンセル",
+      "planReady": "プランの承認待ち"
     },
     "relative": {
       "justNow": "たった今",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "セッションに接続しました。",
-      "toolCall": "ツールの呼び出し"
+      "toolCall": "ツールの呼び出し",
+      "runStarted": "実行 {{name}} を開始しました",
+      "runFinished": "実行 {{name}}: {{status}}",
+      "approvalRequested": "承認を求めました: {{summary}}",
+      "approvalDecided": "承認: {{status}}"
     },
     "panel": {
       "noProjectTitle": "調査タスクを使うには、プロジェクトを開いてください",
@@ -172,7 +178,8 @@
       "viewTask": "タスクを見る",
       "deleteTitle": "このタスクを削除しますか？",
       "deleteDescription": "「{{title}}」と、その隔離されたワークスペースを削除します。すでにプロジェクトに適用したファイルは残ります。",
-      "deleteConfirm": "タスクを削除"
+      "deleteConfirm": "タスクを削除",
+      "pendingApprovals_other": "{{count}} 件の要求が待機中"
     },
     "composer": {
       "editTitle": "タスクを編集",
@@ -215,6 +222,10 @@
       "reviewerResponse": {
         "label": "査読者への回答",
         "title": "査読者への回答を下書きする"
+      },
+      "experimentLoop": {
+        "label": "実験を実行",
+        "title": "目標に向けて実験を実行"
       }
     },
     "detail": {
@@ -274,7 +285,99 @@
       "loadMore": "経過をさらに読み込む",
       "changeAdded": "追加",
       "changeModified": "変更",
-      "changeDeleted": "削除"
+      "changeDeleted": "削除",
+      "tabProgress": "進捗",
+      "resume": "再開",
+      "resumeHint": "保存した引き継ぎから、同じ作業領域で続けます。",
+      "startOver": "最初からやり直す",
+      "startOverHint": "現在のプロジェクトから始めます。研究の記録は引き継がれます。",
+      "stopReason": {
+        "budgetTime": "時間の予算を使い切ったため停止しました。",
+        "budgetCost": "費用の上限で停止しました。",
+        "budgetRuns": "実行回数の上限で停止しました。"
+      },
+      "startsAt": "開始: {{time}}"
+    },
+    "plan": {
+      "title": "プラン",
+      "description": "プランを読み、必要なら編集してください。承認するとタスクが続行します。",
+      "approve": "プランを承認",
+      "approveEdited": "編集したプランを承認",
+      "discard": "タスクを破棄",
+      "loading": "プランを読み込んでいます…",
+      "missing": "プランのファイルが見つかりません。タスクを再試行してください。"
+    },
+    "approvals": {
+      "title": "あなたの承認を待っています",
+      "approve": "承認",
+      "deny": "拒否",
+      "kindCommand": "コマンドを実行",
+      "kindRun": "実行を開始",
+      "kindMcp": "ツールを使用",
+      "expires": "{{time}} まで待機",
+      "status": {
+        "approved": "承認済み",
+        "denied": "拒否",
+        "expired": "期限切れ",
+        "withdrawn": "取り下げ"
+      }
+    },
+    "phase": {
+      "preparing": "作業領域を準備しています",
+      "planning": "プランを作成しています",
+      "working": "作業しています",
+      "waitingRuns": "実行を待っています",
+      "waitingApproval": "承認を待っています",
+      "wrappingUp": "まとめています",
+      "checkingEvidence": "根拠を確認しています"
+    },
+    "progress": {
+      "loading": "進捗を読み込んでいます…",
+      "plan": "プラン",
+      "noPlan": "プランはまだありません。",
+      "ledger": "記録表",
+      "noLedger": "まだ結果は記録されていません。",
+      "best": "最良の {{metric}}",
+      "bestValue": "実行 {{run}} で {{value}}",
+      "runsInFlight": "進行中の実行",
+      "noRuns": "進行中の実行はありません。",
+      "budget": "予算",
+      "timeUsed": "{{total}} 中 {{used}}",
+      "costUsed": "${{limit}} 中 ${{used}}",
+      "costSpent": "${{used}} 使用",
+      "costUnknown": "このモデルの費用は不明です。",
+      "runsUsed": "{{limit}} 回中 {{used}} 回実行",
+      "runsUsedNoLimit": "{{used}} 回実行",
+      "stopRun": "実行を停止",
+      "viewLog": "ログを表示",
+      "columns": {
+        "run": "実行",
+        "time": "時刻",
+        "hypothesis": "仮説",
+        "change": "変更",
+        "metrics": "指標",
+        "verdict": "判定"
+      },
+      "verdict": {
+        "keep": "採用",
+        "discard": "不採用",
+        "crash": "クラッシュ"
+      }
+    },
+    "settings": {
+      "title": "研究タスク",
+      "keepAwake": "タスクの実行中はコンピュータをスリープさせない",
+      "keepAwakeHint": "画面は消えることがあります。",
+      "notifications": "タスクに対応が必要なときに通知する",
+      "notificationsHint": "Oleafly がバックグラウンドにあるときに表示されます。",
+      "notificationsBlocked": "システム設定で Oleafly の通知がオフになっています。",
+      "allowNotifications": "通知を許可",
+      "network": "タスクのコマンドに既定でネットワークを許可する",
+      "timeBudget": "既定の時間の予算",
+      "mcpServers": "タスクが使える MCP サーバー",
+      "mcpServersHint": "タスクは、各タスクのコマンドのルールに従ってこれらのツールを呼び出します。",
+      "noMcpServers": "MCP サーバーは設定されていません。",
+      "saveFailed": "研究の設定を保存できませんでした。もう一度お試しください。"
     }
   },
   "tools": {
@@ -353,7 +456,7 @@
       "name": "画像から LaTeX へ",
       "description": "ノート、数式、表の画像を、編集できる LaTeX にします。",
       "tag1": "画像",
-      "tag2": "端末上のモデル",
+      "tag2": "ローカルまたはホスト型のモデル",
       "tag3": "プロジェクト不要"
     },
     "visualTypstEditor": {
@@ -375,7 +478,7 @@
       "description": "入力した数式や数式の画像を、きれいな LaTeX の数式に変換します。",
       "tag1": "テキストまたは画像",
       "tag2": "数式",
-      "tag3": "端末上のモデル"
+      "tag3": "ローカルまたはホスト型のモデル"
     },
     "excelToLatex": {
       "name": "Excel から LaTeX へ",
@@ -395,7 +498,7 @@
       "name": "画像から Typst へ",
       "description": "ノート、数式、表の画像を、編集できる Typst にします。",
       "tag1": "画像",
-      "tag2": "端末上のモデル",
+      "tag2": "ローカルまたはホスト型のモデル",
       "tag3": "プロジェクト不要"
     },
     "latexToHtml": {
@@ -741,13 +844,13 @@
     "progressNeedsAttention": "確認が必要",
     "progressCancelled": "キャンセル",
     "progressReadingPages": "ページを読み込んでいます",
-    "progressTranscribingPage": "{{total}} ページ中 {{page}} ページ目を文字起こししています",
+    "progressTranscribingPage": "{{model}} で {{total}} ページ中 {{page}} ページ目を文字起こししています",
     "progressDocumentStructure": "文書の構造を変換しています",
     "progressMermaid": "Mermaid の図を描画しています",
     "progressFirstSheet": "最初のシートを読み込んでいます",
-    "progressVisionModel": "ローカルの画像認識モデルを実行しています",
-    "progressReadingEquation": "ローカルの画像認識モデルで数式を読み取っています",
-    "progressConvertingEquation": "ローカルのモデルで数式を変換しています",
+    "progressVisionModel": "{{model}} で画像を読み取っています",
+    "progressReadingEquation": "{{model}} で数式を読み取っています",
+    "progressConvertingEquation": "{{model}} で数式を変換しています",
     "progressUnpackingSource": "保存されたソースを展開しています",
     "progressDownloadingSource": "e-print のソースをダウンロードしています",
     "copied": "{{label}}をコピーしました",
@@ -787,9 +890,9 @@
   "converters": {
     "imageToLatex": {
       "title": "画像から LaTeX へ",
-      "subtitle": "端末上の画像認識モデルで、ノート、数式、表を文字起こしします",
+      "subtitle": "画像認識モデルで、ノート、数式、表を文字起こしします",
       "inputLabel": "画像",
-      "inputHint": "PNG、JPEG、WebP に対応しています。画像はこの端末から出ません。",
+      "inputHint": "PNG、JPEG、WebP（20 MB まで）。",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -822,9 +925,9 @@
     },
     "imageToTypst": {
       "title": "画像から Typst へ",
-      "subtitle": "端末上の画像認識モデルで、ノート、数式、表を文字起こしします",
+      "subtitle": "画像認識モデルで、ノート、数式、表を文字起こしします",
       "inputLabel": "画像",
-      "inputHint": "PNG、JPEG、WebP に対応しています。画像はこの端末から出ません。",
+      "inputHint": "PNG、JPEG、WebP（20 MB まで）。",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -880,14 +983,14 @@
       "title": "PDF から Markdown へ",
       "subtitle": "テキスト、数式、図をローカルで取り出します",
       "inputLabel": "PDF",
-      "inputHint": "テキストのある PDF は確定的に抽出します。スキャンにはローカルの画像認識モデルを使います。",
+      "inputHint": "テキストの PDF は決まった手順で抽出します。スキャンは選んだモデルで読み取ります。",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF から Typst へ",
       "subtitle": "テキスト、数式、図をローカルで取り出します",
       "inputLabel": "PDF",
-      "inputHint": "テキストのある PDF は確定的に抽出します。スキャンにはローカルの画像認識モデルを使います。",
+      "inputHint": "テキストの PDF は決まった手順で抽出します。スキャンは選んだモデルで読み取ります。",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -978,10 +1081,10 @@
   "converterErrors": {
     "chooseSmallerImage": "20 MB 未満の画像を選んでください。",
     "imageFormat": "PNG、JPEG、WebP のいずれかの画像を選んでください。",
-    "ollamaUnavailable": "設定で Ollama を起動し、この変換に使うローカルのモデルをインストールしてください。",
-    "visionModelMissing": "Llama 3.2 Vision のような画像認識モデルを Ollama にインストールしてから、もう一度お試しください。",
-    "localModelMissing": "ローカルの Ollama のモデルをインストールしてから、もう一度お試しください。",
-    "emptyTranscription": "ローカルのモデルが空の文字起こしを返しました。",
+    "ollamaUnavailable": "Ollama を起動するか、ツール用に別のモデルを選んでください。",
+    "visionModelMissing": "glm-ocr などの画像認識モデルを Ollama で取得するか、ツール用に別のモデルを選んでください。",
+    "localModelMissing": "Ollama でモデルを取得するか、ツール用に別のモデルを選んでください。",
+    "emptyTranscription": "モデルから空の文字起こしが返されました。",
     "pdfNoPages": "この PDF には文字起こしできるページがありません。",
     "pdfPageLimit": "スキャンした PDF の文字起こしは、一度に 50 ページまでです。",
     "pandocNotReady": "Pandoc の準備がまだできていません。",
@@ -992,7 +1095,7 @@
     "equationToTypst": "Pandoc はこの数式を Typst に変換できませんでした。LaTeX の数式を確認して、もう一度お試しください。"
   },
   "converterNotes": {
-    "scannedPages": "ローカルのモデルで、スキャンされた {{pages}} ページを文字起こししました。使う前に数式と表を確認してください。",
+    "scannedPages": "{{model}} でスキャンした {{pages}} ページを文字起こししました。結果を使う前に、数式と表を確認してください。",
     "extracted": "{{pages}} ページと {{figures}} 件の図をローカルで取り出しました。",
     "mermaidTikz": "このフローチャートを、編集できる TikZ に変換しました。",
     "mermaidRendered": "この図の Mermaid の記法は、編集できる TikZ にきれいに対応づけられないため、ローカルで描画しました。",
@@ -1005,6 +1108,38 @@
     "typstCheckFailed_other": "Typst が {{count}} 件のエラーを見つけました。",
     "notConverted_other": "{{count}} 件の項目を変換できませんでした。",
     "checkLine": "{{line}} 行目: {{message}}"
+  },
+  "converterModel": {
+    "label": "ツール用のモデル",
+    "automatic": "自動（最適なローカルモデル）",
+    "localGroup": "ローカル（Ollama）",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "画像は {{provider}} に送信されます",
+    "sentToHost": "画像は {{host}} の Ollama に送信されます",
+    "scansSentTo": "スキャンしたページは {{provider}} に送信されます",
+    "scansSentToHost": "スキャンしたページは {{host}} の Ollama に送信されます",
+    "pdfSentToMathpix": "PDF 全体が Mathpix に送信されます",
+    "transcribingHosted": "画像を {{provider}} に送信しています…",
+    "progressUploading": "PDF を Mathpix に送信しています",
+    "progressFormatting": "Pandoc で文字起こしの結果を変換しています",
+    "scannedTitle": "この PDF はスキャンのようです",
+    "estimateOllama_other": "{{count}} ページあります。Ollama は 1 ページずつ読み取るため、時間がかかることがあります。",
+    "estimateCost_other": "{{count}} ページあります。{{model}} で約 {{cost}} かかります。",
+    "estimateUnknown_other": "{{count}} ページあります。{{provider}} は使用量に応じて課金します。",
+    "transcribePages_other": "{{count}} ページを文字起こし",
+    "transcribedWith": "{{model}} で文字起こししました。数式と表を確認してください。",
+    "sentBadge": "{{provider}} に送信済み",
+    "openToolsSettings": "ツールの設定",
+    "errors": {
+      "offline": "Oleafly はオフラインモードです。ローカルモデルを選ぶか、オフラインモードをオフにしてください。",
+      "providerNotConfigured": "{{provider}} の API キーがありません。設定で追加するか、別のモデルを選んでください。",
+      "modelDisabled": "{{model}} は設定でオフになっています。オンにするか、別のモデルを選んでください。",
+      "cannotSeeImages": "{{model}} は画像を読み取れません。画像認識モデルを選んでください。",
+      "localModelGone": "{{model}} は Ollama にもうありません。もう一度取得するか、別のモデルを選んでください。",
+      "imagesOnly": "{{model}} は画像しか読み取れません。入力した数式を変換するには、言語モデルを選んでください。",
+      "mathpixNotSetUp": "「設定 → AI → ツール」で Mathpix のキーを追加するか、別のモデルを選んでください。",
+      "imageTooLarge": "縮小しても画像が大きすぎます。トリミングしてから、もう一度お試しください。"
+    }
   },
   "mermaidErrors": {
     "tooLarge": "この Mermaid の図は、上限の 50,000 文字を超えています。",
@@ -1541,5 +1676,251 @@
     "citeAdded": "{{citation}} を追加しました",
     "addFailed": "引用を追加できませんでした。",
     "toastCopyFailed": "BibTeX をコピーできませんでした。"
+  },
+  "brief": {
+    "title": "依頼内容",
+    "goalLabel": "目標",
+    "goalPlaceholder": "このタスクで何を明らかにし、何を作りますか？",
+    "criteriaLabel": "成功の基準",
+    "criteriaHint": "1 行に 1 つ書いてください。どれも確認できる内容にしてください。",
+    "scopeLabel": "範囲",
+    "constraintsLabel": "制約",
+    "metricLabel": "主な指標",
+    "metricPlaceholder": "例: val_loss",
+    "metricMaximize": "高いほどよい",
+    "metricMinimize": "低いほどよい",
+    "reviewPlan": "先にプランを確認する",
+    "reviewPlanHint": "エージェントは plan.md を書き、あなたの承認を待ってから始めます。",
+    "commandsLabel": "コマンド",
+    "commandsAllow": "確認せずに実行",
+    "commandsAsk": "実行の前に確認",
+    "commandsOff": "コマンドを実行しない",
+    "network": "コマンドにネットワークへのアクセスを許可する",
+    "networkHint": "パッケージのインストールやデータのダウンロードに必要です。",
+    "budgetLabel": "予算",
+    "timeLabel": "時間",
+    "minutes_other": "{{count}} 分",
+    "hours_other": "{{count}} 時間",
+    "costLabel": "費用の上限（USD）",
+    "noLimit": "上限なし",
+    "runsLabel": "実行回数の上限",
+    "runTimeoutLabel": "各実行の停止までの時間",
+    "profileLabel": "実行プロファイル",
+    "profileAnalysis": "分析",
+    "profileAnalysisHint": "Python と R の環境、読み取り専用のデータフォルダ、GPU なし。",
+    "profileTraining": "学習",
+    "profileTrainingHint": "GPU へのアクセスと、より長い実行時間が加わります。",
+    "computeLabel": "実行する場所",
+    "computeLocal": "このコンピュータ",
+    "startAtLabel": "開始日時",
+    "startNow": "自分で開始したとき",
+    "keepRunning": "Oleafly を閉じても実行を続ける",
+    "keepRunningHint": "先に「設定 → 研究」でバックグラウンドでの作業をオンにしてください。",
+    "invalidMetric": "英字、数字、ドット、ハイフン、アンダースコアを使ってください。",
+    "invalidCost": "0 より大きい金額を入力してください。",
+    "invalidRuns": "1 から 1,000 までの整数を入力してください。"
+  },
+  "runs": {
+    "status": {
+      "starting": "起動中",
+      "running": "実行中",
+      "succeeded": "完了",
+      "failed": "失敗",
+      "timedOut": "タイムアウト",
+      "cancelled": "停止",
+      "lost": "消失"
+    }
+  },
+  "record": {
+    "title": "研究の記録",
+    "openHandoff": "引き継ぎを開く",
+    "openReport": "レポートを開く"
+  },
+  "evidence": {
+    "title": "根拠の確認",
+    "hint": "これらの確認は警告するだけで、適用は止めません。",
+    "running": "確認しています…",
+    "refresh": "もう一度確認",
+    "status": {
+      "pass": "合格",
+      "warn": "要確認",
+      "skipped": "未確認"
+    },
+    "checks": {
+      "build": "プロジェクトがビルドできる",
+      "references": "解決できない参照や引用が新たに増えていない",
+      "bibliography": "新しい参考文献の項目が検証されている",
+      "numbers": "数値が対応する実行と一致している",
+      "figures": "新しい図が存在し、使われている"
+    },
+    "items": {
+      "buildFailed": "ビルドが失敗し、エラーが {{errors}} 件ありました。",
+      "buildSkipped": "ビルドは確認されていません: {{reason}}",
+      "referencesUnresolved": "{{key}} を解決できません。",
+      "referencesNotChecked": "このビルドでは、まだ参照を確認していません。",
+      "bibUnverified": "{{key}} を検証できませんでした。",
+      "bibTitleMismatch": "{{key}} は別のタイトルを指しています: {{found}}",
+      "bibLookupFailed": "{{key}} を照会できませんでした。しばらくしてからもう一度お試しください。",
+      "numbersMismatch": "{{value}} は実行 {{run}} と一致しません（{{recorded}}）。",
+      "numbersUnknownRun": "実行 {{run}} は存在しません。",
+      "numbersNoLedgerRow": "実行 {{run}} には記録表の行がありません。",
+      "figuresMissing": "{{path}} は参照されていますが、見つかりません。",
+      "figuresUnused": "{{path}} は文書内で使われていません。"
+    }
+  },
+  "compute": {
+    "title": "計算リソース",
+    "description": "実験の実行先を選びます。各タスクは依頼内容で実行先を 1 つ選びます。",
+    "targets": {
+      "heading": "実行先",
+      "local": "このコンピュータ",
+      "localDescription": "実行には、このコンピュータのサンドボックスを使います。",
+      "add": "実行先を追加",
+      "addSsh": "SSH ホスト",
+      "addSlurm": "Slurm クラスター",
+      "addCua": "Cua Space",
+      "import": "SSH の設定から取り込む",
+      "test": "テスト",
+      "testing": "テストしています…",
+      "more": "{{label}} のその他の操作",
+      "edit": "編集",
+      "remove": "削除",
+      "removeTitle": "{{label}} を削除しますか？",
+      "removeConfirm": "そこで開始済みの実行は続きます。",
+      "forgetHostKey": "ホスト鍵を削除",
+      "notTested": "未テスト",
+      "tested": "{{time}}にテスト済み",
+      "testFailed": "テストに失敗しました",
+      "perTaskSpace": "タスクごとに新しい Space",
+      "saveFailed": "実行先を保存できませんでした: {{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly は SSH キーまたは SSH エージェントで接続します。パスワードやキーを求めたり保存したりすることはありません。",
+      "windowsRsync": "Windows には rsync がないため、Oleafly は SSH 経由の tar でファイルをコピーします。",
+      "sshMissingWindows": "OpenSSH クライアントがインストールされていません。Windows の設定の「システム → オプション機能」で追加してください。",
+      "sshMissing": "OpenSSH がインストールされていません。パッケージマネージャーでインストールしてください。",
+      "cuaMissing": "Cua がインストールされていません。cua.ai からインストールしてから、もう一度テストしてください。",
+      "relay": "この Space は実際のコンピュータ上で動いています。そこでの実行は隔離されません。",
+      "outputs": "実行で作られたファイルは、タスクのコピー内の runs/<run>/outputs に戻ります。"
+    },
+    "form": {
+      "addTitle": "{{kind}} を追加",
+      "editTitle": "{{label}} を編集",
+      "label": "名前",
+      "host": "ホスト",
+      "hostHint": "SSH の設定にあるホスト、またはホスト名",
+      "user": "ユーザー",
+      "userHint": "空欄にすると SSH の設定を使います。",
+      "port": "ポート",
+      "remoteRoot": "リモートのフォルダ",
+      "remoteRootHint": "別のフォルダを選ばない限り、実行はホームフォルダの .oleafly-runs に置かれます。",
+      "prelude": "準備用のコマンド",
+      "preludeHint": "各コマンドの前に実行します。例: module load python",
+      "partition": "パーティション",
+      "account": "アカウント",
+      "qos": "QOS",
+      "time": "時間の上限",
+      "timeHint": "例: 2:00:00 または 1-00:00:00",
+      "gpus": "GPU 数",
+      "cpus": "CPU 数",
+      "mem": "メモリ（GB）",
+      "memHint": "例: 16",
+      "gpuFlag": "GPU のオプション",
+      "spaceMode": "Space",
+      "spaceNamed": "名前を付けた Space を使う",
+      "spacePerTask": "タスクごとに新しい Space を作る",
+      "space": "Space の名前",
+      "image": "イメージ",
+      "save": "保存",
+      "cancel": "キャンセル",
+      "errors": {
+        "label": "80 文字以内の名前を入力してください。",
+        "host": "スペースを含まないホスト名を入力してください。",
+        "user": "英字、数字、ドット、ハイフン、アンダースコアを使ってください。",
+        "port": "1 から 65535 までのポートを使ってください。",
+        "remoteRoot": "スペース、引用符、「..」を含まないフォルダのパスを使ってください。",
+        "time": "2:00:00 のような Slurm の時間形式を使ってください。",
+        "name": "英字、数字、ドット、カンマ、ハイフン、アンダースコアを使ってください。",
+        "mem": "16 のように、GB 単位の整数を使ってください。",
+        "count": "許可された範囲の整数を使ってください。"
+      }
+    },
+    "test": {
+      "connect": "接続",
+      "echo": "コマンドの実行",
+      "disk": "空き容量",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "合格",
+      "warn": "要確認",
+      "fail": "失敗",
+      "skipped": "未確認"
+    },
+    "hostKey": {
+      "title": "このホストを信頼しますか？",
+      "body": "Oleafly はまだ {{host}} に接続したことがありません。これらのフィンガープリントを、管理者から伝えられたものと照らし合わせてください。",
+      "trust": "信頼して接続",
+      "changedTitle": "ホスト鍵が変わりました",
+      "changed": "{{host}} のホスト鍵が変わりました。接続が傍受されているおそれがあります。管理者が鍵を差し替えた場合は、古い鍵を削除してからもう一度テストしてください。"
+    },
+    "import": {
+      "title": "SSH ホストを取り込む",
+      "body": "追加するホストを選んでください。Oleafly は SSH の設定を読み取るだけで、変更はしません。",
+      "none": "SSH の設定にホストが見つかりません。",
+      "added": "追加済み",
+      "add_other": "{{count}} 個のホストを追加"
+    },
+    "sandbox": {
+      "heading": "このコンピュータのサンドボックス",
+      "description": "このコンピュータでの実行は、インタープリターとリンクしたフォルダを読み取れます。書き込めるのはタスクのコピーだけです。",
+      "ready": "準備完了",
+      "unavailable": "利用できません",
+      "macos": "macOS のサンドボックスを使います。",
+      "linux": "bubblewrap を使います。",
+      "linuxMissing": "タスクのコマンドを実行するには、bubblewrap（bwrap）をインストールしてください。",
+      "windowsLabel": "タスクのコマンドを Windows のサンドボックスで実行する",
+      "windowsDescription": "コマンドは Windows の AppContainer で実行され、タスクのファイルと下のフォルダにしかアクセスできません。ベータ期間中は既定でオフです。",
+      "gpuWindows": "Windows のサンドボックスでの GPU へのアクセスは、まだ検証されていません。GPU を使う作業には SSH か Slurm の実行先を使ってください。",
+      "limitsWindows": "Windows のサンドボックスでは、Python のマルチプロセスと、ほかのプログラムを起動する Node.js のプログラムはまだ動きません。",
+      "check": "サンドボックスを確認",
+      "checking": "確認しています…",
+      "checkPassed": "サンドボックスは正常に動作しています。",
+      "checkFailed": "サンドボックスの確認に失敗しました: {{reason}}",
+      "runtimes": "インタープリター",
+      "runtimesEmpty": "Python、R、Julia が見つかりません。",
+      "refresh": "更新",
+      "access": "サンドボックスが読み取れるフォルダ",
+      "accessNote": "タスクがこれらのフォルダを読み取れるよう、Oleafly は各フォルダに権限のエントリを追加します。",
+      "removeAccess": "アクセスを削除",
+      "removeAccessTitle": "サンドボックスのアクセスを削除しますか？",
+      "removeAccessConfirm": "これらのフォルダへのサンドボックスのアクセスを削除しますか？次にタスクが必要としたときに、Oleafly がもう一度追加します。"
+    },
+    "brief": {
+      "runsOn": "{{target}} で実行",
+      "runsLocal": "このコンピュータで実行します。",
+      "missing": "このタスクが使っていた実行先は削除されました。別の実行先を選んでください。",
+      "windowsOff": "このコンピュータでコマンドを実行するには、設定で Windows のサンドボックスをオンにしてください。",
+      "openSettings": "設定を開く",
+      "resources": "Slurm のリソース"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "バックグラウンド",
+      "backgroundHint": "Oleafly のバックグラウンドヘルパーがこのタスクを実行しています。現在のステップが終わるとここに戻ります。",
+      "movingBack": "戻り中",
+      "movingBackHint": "このタスクは現在のステップが終わると Oleafly に戻ります。"
+    },
+    "earlierActivity": "以前のアクティビティを表示",
+    "keepRunningFailed": "この設定を変更できませんでした。もう一度お試しください。"
   }
 }

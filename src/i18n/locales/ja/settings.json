@@ -113,10 +113,69 @@
           "startFailed": "{{name}} を起動できませんでした。",
           "timeout": "{{name}} は起動しましたが、時間内に応答しませんでした。",
           "exited": "{{name}} は応答する前に停止しました。",
-          "notAcp": "{{name}} は起動しましたが、Oleafly はその応答を理解できませんでした。"
+          "notAcp": "{{name}} は起動しましたが、Oleafly はその応答を理解できませんでした。",
+          "needsSignIn": "{{name}} は動作しています。会話を始める前にサインインしてください。",
+          "sessionFailed": "{{name}} は起動しましたが、会話を開けませんでした。"
         },
         "getNode": "Node.js を入手",
-        "copyDetails": "詳細をコピー"
+        "copyDetails": "詳細をコピー",
+        "signIn": "サインイン",
+        "afterSignIn": "ターミナルでサインインを終えてから、プログラムをもう一度テストしてください。"
+      },
+      "experimental": {
+        "title": "試験運用",
+        "description": "これらは Agent Client Protocol のドラフト部分を使います。変更されたり、動かなくなったりする可能性があります。",
+        "v2": "使える場合は ACP v2 を使う",
+        "v2Description": "ドラフトのバージョン 2 に対応したエージェントはそれを使います。ほかのエージェントはバージョン 1 のままです。",
+        "providers": "エージェントに Oleafly の API キーの使用を許可する",
+        "providersDescription": "モデルの呼び出し先を切り替えられるエージェントは、そのカードで選んだキーを使います。キーはそのエージェントのプロセスにだけ渡されます。"
+      },
+      "inactivity": {
+        "label": "応答のないエージェントを停止するまでの時間",
+        "description": "エージェントがこの時間何も送ってこない場合、Oleafly が停止します。接続し直すことができます。",
+        "minutes": "{{count}} 分"
+      },
+      "protocolLabel": "プロトコル",
+      "remembered": {
+        "title": "記憶している選択",
+        "effort": "推論レベル: {{name}}",
+        "mode": "モード: {{name}}",
+        "forget": "忘れる",
+        "none": "新しい会話ではエージェントの既定を使います。"
+      },
+      "providers": {
+        "label": "Oleafly の API キーを使う",
+        "off": "オフ（エージェントが自分でサインイン）",
+        "note": "会話の開始時に Oleafly がこのエージェントにキーを渡します。キーは会話の記録には残りません。",
+        "unavailable": "ここで使うには、「設定 → AI」で API キーを追加してください。"
+      },
+      "hermes": {
+        "title": "このプロジェクトの Hermes プロファイル",
+        "default": "既定のプロファイル（共有）",
+        "project": "プロジェクトのプロファイル",
+        "remote": "SSH 経由でリモート実行",
+        "profileName": "プロファイル {{name}}",
+        "memory": "プロジェクトの記憶",
+        "memoryDescription": "Hermes は、このプロジェクトの会話をまたいで内容を記憶します。",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "Nous のサブスクリプションで提供されるウェブ検索、画像、音声、ブラウザのツールを使います。",
+        "status": {
+          "ready": "ゲートウェイは実行中",
+          "starting": "ゲートウェイを起動中",
+          "stopped": "ゲートウェイは停止中",
+          "unknown": "ゲートウェイの状態は不明"
+        },
+        "refresh": "もう一度確認",
+        "keepsRunning": "Oleafly との接続を切っても、ゲートウェイが止まることはありません。",
+        "host": "ホスト",
+        "port": "ポート",
+        "folder": "そのマシン上のプロジェクトフォルダ",
+        "command": "Hermes のコマンド",
+        "remoteProfile": "プロファイル（任意）",
+        "test": "接続をテスト",
+        "testOk": "接続しました: {{version}}",
+        "save": "保存",
+        "sshNote": "Oleafly のサインインには SSH キーだけを使います。"
       }
     },
     "approvals": {
@@ -195,6 +254,8 @@
       "defaultModelTitle": "既定のチャットモデル",
       "pdfCaptureDescription": "コンパイルしたページを画像化（verify_pdf_pages）して、画像認識でレイアウトを確認できるようにします。ページの画像をプロバイダに送りたくない場合は無効にしてください。",
       "pdfCaptureLabel": "AI による PDF ページの取り込みを許可",
+      "reasoningSummariesDescription": "回答の前に考えるモデルは、推論の短い要約を送ります。Anthropic と OpenAI のモデルに適用されます。",
+      "reasoningSummariesLabel": "推論の要約を表示",
       "save": "指示を保存",
       "saved": "保存しました",
       "toolsHint": "「LaTeX のエラーを直して」「Publications のセクションを追加して」「再コンパイルして PDF を確認して」のように頼めます。",
@@ -506,7 +567,32 @@
       },
       "useInAllProjectsAria": "すべてのプロジェクトで {{name}} を使う",
       "useInProjectAria": "このプロジェクトで {{name}} を使う",
-      "validateAria": "{{name}} を検証"
+      "validateAria": "{{name}} を検証",
+      "shadowNote": "このスキルには、より新しい Oleafly 版があります。",
+      "replaceAction": "Oleafly 版を使う",
+      "replaceTitle": "{{name}} のあなたのコピーを置き換えますか？",
+      "replaceBody": "あなたのコピーはバックアップ用のフォルダに移動します。削除されるものはありません。",
+      "replaced": "あなたのコピーは {{path}} にあります。"
+    },
+    "tools": {
+      "tabLabel": "ツール",
+      "loading": "ツールの設定を読み込んでいます…",
+      "modelTitle": "ツール用のモデル",
+      "modelDescription": "画像から LaTeX、数式の画像、スキャンした PDF にはこのモデルを使います。自動を選ぶと Ollama を使うため、画像はこのコンピュータから出ません。Ollama が動いていないか、画像を読めるモデルがない場合、エディタの「画像から LaTeX」と「画像から Typst」は代わりにアシスタントのモデルに画像を送ります。",
+      "ocrHint": "ローカルで最良の結果を得るには、Ollama で OCR モデルを取得してください:",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "任意。Mathpix は数式、表、スキャンした PDF を読み取り、画像やページごとにご自身の Mathpix アカウントに課金します。",
+        "docs": "Mathpix のキーを取得",
+        "appIdLabel": "アプリ ID",
+        "appKeyLabel": "アプリキー",
+        "save": "キーを保存",
+        "remove": "キーを削除",
+        "connected": "{{appId}} として接続済み",
+        "saved": "Mathpix のキーを保存しました。",
+        "removed": "Mathpix のキーを削除しました。",
+        "privacy": "Oleafly は Mathpix に画像を保持しないよう求め、結果を読み取ったあとは各 PDF を Mathpix から削除します。"
+      }
     }
   },
   "appearance": {
@@ -545,17 +631,6 @@
       "theme": {
         "description": "「システム」はオペレーティングシステムに従い、その設定が変わると一緒に変わります。",
         "label": "外観"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "ブラウザのホームページ",
-        "description": "ブラウザのドックと一緒に開くページを選びます。",
-        "label": "ホームページ"
-      },
-      "searchEngine": {
-        "description": "テキスト検索に使う検索エンジンを選びます。",
-        "label": "既定の検索エンジン"
       }
     },
     "customTheme": {
@@ -851,7 +926,6 @@
     "sectionName": "外観",
     "tabs": {
       "app": "アプリ",
-      "browser": "ブラウザ",
       "editor": "エディタ",
       "files": "プロジェクト",
       "pdf": "PDF プレビュー",
@@ -875,6 +949,14 @@
         "foreground": "文字",
         "foregroundAriaLabel": "ターミナルの文字色",
         "label": "ターミナルの色"
+      },
+      "confirmClose": {
+        "description": "プログラムが動いているターミナルを閉じるときに、先に確認します。プロジェクトを閉じるときや終了するときも含みます。",
+        "label": "使用中のターミナルを閉じる前に確認"
+      },
+      "copyOnSelect": {
+        "description": "ターミナルのテキストを選択したらすぐにコピーします。",
+        "label": "選択時にコピー"
       },
       "cursorBlink": {
         "description": "ターミナルのカーソルを点滅させます。",
@@ -904,6 +986,43 @@
       "fontWeightBold": {
         "description": "ターミナルの太字の太さを設定します。",
         "label": "太字の太さ"
+      },
+      "optionIsMeta": {
+        "description": "Option キーの組み合わせを Meta として shell に送ります。Option で特殊文字は入力できなくなります。",
+        "label": "Option を Meta として使う"
+      },
+      "scrollback": {
+        "ariaLabel": "ターミナルのスクロールバック",
+        "description": "各ターミナルが保持する行数です。行数が多いほどメモリを使います。",
+        "label": "スクロールバック",
+        "lines_other": "{{value}} 行"
+      },
+      "shell": {
+        "ariaLabel": "ターミナルの shell",
+        "description": "新しいターミナルではこの shell を起動します。開いているターミナルはそのままです。",
+        "label": "Shell",
+        "options": {
+          "auto": "既定（{{name}}）",
+          "cmd": "コマンド プロンプト",
+          "custom": "カスタムパス",
+          "defaultShell": "既定の shell",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "カスタムの shell のパス",
+          "description": "新しいターミナルで実行するプログラムです。",
+          "label": "Shell のパス"
+        }
+      },
+      "shiftEnter": {
+        "ariaLabel": "ターミナルでの Shift+Enter",
+        "description": "Shift+Enter でターミナル内のプログラムに送る内容です。",
+        "enter": "Enter",
+        "label": "Shift+Enter",
+        "newline": "改行"
       },
       "startWithProject": {
         "description": "ターミナルを初めて表示したときではなく、プロジェクトを開いたときに shell を起動します。",
@@ -947,6 +1066,15 @@
       "saveEmail": "メールアドレスを保存",
       "saveKey": "キーを保存"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "任意。プロバイダーに検索機能がない場合に、アシスタントがウェブを検索できるようにします。",
+      "keyLabel": "Brave Search API キー",
+      "keyRemoveFailed": "Brave Search API キーを削除できませんでした。",
+      "keyRemoved": "Brave Search API キーを削除しました",
+      "keySaveFailed": "Brave Search API キーを保存できませんでした。",
+      "keySaved": "Brave Search API キーを保存しました"
+    },
     "connected": "接続済み",
     "description": "学術検索のソースが使う資格情報を管理します。",
     "keyFree": {
@@ -986,7 +1114,17 @@
       "keySaveFailed": "Serper の API キーを保存できませんでした。",
       "keySaved": "Serper の API キーを保存しました"
     },
-    "title": "引用検索"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "任意。プロバイダーに検索機能がない場合に、アシスタントがウェブを検索できるようにします。",
+      "keyLabel": "Tavily API キー",
+      "keyRemoveFailed": "Tavily API キーを削除できませんでした。",
+      "keyRemoved": "Tavily API キーを削除しました",
+      "keySaveFailed": "Tavily API キーを保存できませんでした。",
+      "keySaved": "Tavily API キーを保存しました"
+    },
+    "title": "引用検索",
+    "webSearchOrder": "ウェブ検索では、アシスタントは Brave、Tavily、Serper の順に使います。"
   },
   "cite": {
     "apa": "同じ文献の APA 形式は、GitHub の「Cite this repository」から確認できます",
@@ -1276,17 +1414,62 @@
       }
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "接続済み",
-      "disconnect": "接続を解除",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{host}} の {{login}}",
+      "caAdd": "証明書ファイルを追加",
+      "caChange": "証明書ファイルを変更",
+      "caFile": "証明書ファイル: {{file}}",
+      "checking": "確認しています…",
+      "signInAgain": "サインインし直す",
+      "signOut": "サインアウト",
+      "signedInAs": "{{login}} としてサインイン中",
+      "signedOut": "サインアウト済み",
+      "unreachable": "サーバーに接続できません"
     },
-    "advanced": {
+    "add": {
+      "browserHint": "ブラウザで 1 回限りのコードを使ってサインインします。",
+      "caChoose": "ファイルを選択…",
+      "caFilter": "証明書ファイル",
+      "caHint": "サーバーの証明書が組織独自の認証局から発行されている場合にだけ必要です。",
+      "caLabel": "認証局のファイル",
+      "caPickerTitle": "証明書ファイルを選択",
+      "caRemove": "削除",
+      "chooseKind": "サーバーの種類",
       "connect": "接続",
-      "toggle": "詳細設定: パーソナルアクセストークンを使う",
-      "tokenPlaceholder": "ghp_…"
+      "continue": "続ける",
+      "createToken": "{{host}} でトークンを作成",
+      "detecting": "サーバーを確認しています…",
+      "found": "これは {{kind}} のサーバーです。",
+      "kindGitea": "Gitea または Forgejo",
+      "otherServer": "別のサーバー",
+      "scopesGitea": "repository と user の読み取りと書き込みの権限を付けてください。",
+      "scopesGithub": "repo と read:user のスコープを付けてください。",
+      "scopesGitlab": "api と write_repository のスコープを付けてください。",
+      "serverLabel": "サーバーのアドレス",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "{{host}} でサインイン",
+      "title": "Git ホスティングのアカウントを追加",
+      "tokenLabel": "アクセストークン",
+      "useToken": "代わりにアクセストークンを使う"
     },
+    "addAccount": "アカウントを追加",
+    "description": "サインインすると、プッシュとプル、プロジェクトの公開、リポジトリの取り込みができます。GitHub、GitLab、Gitea、Forgejo、Codeberg のほか、ご自身で運用しているサーバーにも対応しています。",
+    "device": {
+      "open": "{{host}} を開く",
+      "opened": "Oleafly がブラウザで <verificationLink>{{url}}</verificationLink> を開きました。そこでコードを入力してサインインを完了してください。",
+      "timedOut": "サインインがタイムアウトしました。もう一度お試しください。",
+      "title": "{{host}} でこのコードを入力してください",
+      "waiting": "ブラウザでの操作が終わるのを待っています…"
+    },
+    "empty": "アカウントはまだありません。アドレスでリンクしたプロジェクトは、引き続きご自身の Git のサインイン情報か SSH キーでプッシュとプルを行います。",
+    "notice": {
+      "signedIn": "{{login}} として {{host}} にサインインしました。",
+      "signedOut": "{{host}} からサインアウトしました。"
+    },
+    "title": "Git ホスティング"
+  },
+  "github": {
     "autoInit": {
       "description": "新しく作ったプロジェクトや開いたプロジェクトに Git リポジトリを用意し、Git パネルで変更を追えるようにします。新しいプロジェクトは通常、ファイルをまとめた 1 件のコミットから始まります。その後は、指示したときだけ Oleafly がコミットします。",
       "label": "すべてのプロジェクトで Git を初期化する"
@@ -1294,23 +1477,6 @@
     "config": {
       "loadFailed": "Git の設定を読み込めませんでした。",
       "saveFailed": "Git の設定を保存できませんでした。"
-    },
-    "connect": "GitHub に接続",
-    "description": "プロジェクトをバックアップし、端末間で同期し、Git パネルからプッシュとプルができます。",
-    "device": {
-      "openGithub": "GitHub を開く",
-      "opened": "ブラウザで <verificationLink>{{url}}</verificationLink> を開きました。そこにコードを貼り付けて、Oleafly を認可してください。",
-      "timedOut": "GitHub へのサインインがタイムアウトしました。もう一度お試しください。",
-      "title": "GitHub でこのコードを入力してください",
-      "waiting": "認可を待っています…"
-    },
-    "hint": {
-      "oauth": "ブラウザで使い捨てのコードを入力してサインインします。",
-      "token": "このビルドでは OAuth のサインインがまだ設定されていないため、代わりにトークンを貼り付けてください。"
-    },
-    "notice": {
-      "connected": "@{{login}} として接続しました",
-      "disconnected": "接続を解除しました。"
     }
   },
   "integrations": {
@@ -1327,27 +1493,14 @@
       "disconnectFailed": "alphaXiv の接続を解除できませんでした。もう一度お試しください。"
     },
     "cookies": {
-      "action": "Cookie を読み込む",
-      "confirmAllDomains": "{{browser}} のプロファイル {{profile}} から、すべてのドメインの Cookie を読み込もうとしています。Cookie の値はアプリ内ブラウザに保存され、対応するウェブサイトにのみ送信されます。プロファイルを読む前に、Oleafly がネイティブのダイアログでもう一度確認します。",
-      "confirmDomain": "{{browser}} のプロファイル {{profile}} から、{{domain}} の Cookie を読み込もうとしています。Cookie の値はアプリ内ブラウザに保存され、対応するウェブサイトにのみ送信されます。プロファイルを読む前に、Oleafly がネイティブのダイアログでもう一度確認します。",
       "confirmTitle": "Cookie の読み込みの確認",
-      "description": "既存のブラウザのサインイン状態を、Oleafly のアプリ内ブラウザで使います。",
       "detecting": "インストール済みのブラウザのプロファイルを探しています...",
       "dialogDescription": "インストール済みのブラウザのプロファイルを 1 つ選んでください。Oleafly は、あなたが内容を確認して読み込みを承認したあとにだけ読み取ります。Chromium 系の cookie は macOS のキーチェーンを使ってローカルで復号します。Oleafly が cookie の値を Oleafly のサービスに送ることはありません。",
       "dialogTitle": "ブラウザの cookie を読み込む",
       "empty": "対応しているブラウザのプロファイルは見つかりませんでした。",
       "errors": {
-        "chooseProfile": "利用できるブラウザのプロファイルを選んでください。",
-        "hostname": "example.com のようなホスト名を入力してください。"
+        "chooseProfile": "利用できるブラウザのプロファイルを選んでください。"
       },
-      "hostnameHint": "サイトのホスト名を入力すると、そのサイトが使える cookie だけを読み込みます。空欄にすると、このプロファイルの対象となる cookie をすべて読み込みます。",
-      "hostnameLabel": "対象のホスト名（任意）",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_other": "{{browser}} から {{domain}} の cookie を {{count}} 件読み込みました。",
-      "importedProfileDomain_other": "{{browser}} のプロファイル {{profile}} から、{{domain}} の cookie を {{count}} 件読み込みました。",
-      "importedProfile_other": "{{browser}} のプロファイル {{profile}} から cookie を {{count}} 件読み込みました。",
-      "imported_other": "{{browser}} から cookie を {{count}} 件読み込みました。",
-      "importing": "cookie を読み込んでいます...",
       "profileGroupLabel": "ブラウザのプロファイル",
       "profileLegend": "ブラウザのプロファイル",
       "review": "読み込む内容を確認",
@@ -1357,8 +1510,15 @@
         "noCookieStore": "cookie の保存領域がありません",
         "notInstalled": "未インストール"
       },
-      "title": "cookie を読み込む",
-      "tryAgain": "再試行"
+      "tryAgain": "再試行",
+      "label": "ブラウザのサインイン",
+      "useBrowserSignIn": "ブラウザのサインイン情報を使う",
+      "signInDescription": "このコンピュータのブラウザから {{server}} のサインイン情報をコピーすれば、もう一度サインインする必要はありません。",
+      "site": "サイト: {{domain}}",
+      "confirmCopy": "Oleafly は {{browser}} の {{profile}} プロファイルから {{domain}} の Cookie を読み取ります。Cookie は Oleafly 内に保存され、{{domain}} にだけ送られます。このあとシステムのダイアログでもう一度確認します。",
+      "copyAction": "サインイン情報をコピー",
+      "copying": "コピーしています...",
+      "notSignedIn_other": "{{browser}} から {{count}} 個の Cookie をコピーしましたが、サインインできませんでした。直接サインインしてください。"
     },
     "zotero": {
       "apiKeyHint": "キーの取得方法: <siteLink>zotero.org</siteLink> でサインインし、<keyLink>API キーのページ</keyLink>を開いてキーを作成し、同じページから数字のユーザー ID をコピーします。",
@@ -1424,6 +1584,124 @@
       "gitSave": "保存",
       "gitRemove": "削除",
       "gitFailed": "Oleafly は Git トークンを保存できませんでした。トークン全体を貼り付けたか確認してください。"
+    },
+    "desktopApps": {
+      "tab": "デスクトップアプリ",
+      "title": "デスクトップアプリ",
+      "description": "Cua Driver を通じて、このコンピュータのアプリとウェブサイトをエージェントが使えるようにします。クリックやキー入力のたびに Oleafly が確認します。",
+      "docsLink": "Cua Driver のドキュメント",
+      "status": {
+        "installed": "Cua Driver {{version}} がインストールされています。",
+        "installedNoVersion": "Cua Driver がインストールされています。",
+        "notInstalled": "Cua Driver がインストールされていません。",
+        "tooOld": "Cua Driver {{version}} は古すぎます。Oleafly には {{minimum}} 以降が必要です。",
+        "noAppBundle": "macOS の権限を保持できるよう、公式のインストーラで Cua Driver をインストールしてください。",
+        "path": "場所: {{path}}"
+      },
+      "install": {
+        "heading": "Cua Driver のインストール",
+        "hint": "このコマンドをターミナルで実行してください。Oleafly が代わりに Cua Driver をインストールすることはありません。",
+        "run": "ターミナルで実行",
+        "needsProject": "Oleafly のターミナルで実行するにはプロジェクトを開いてください。コマンドをコピーすることもできます。",
+        "confirm": "cua.ai から Cua Driver のインストーラをダウンロードし、ターミナルで実行します。続けますか？",
+        "terminalTitle": "Cua Driver のインストール",
+        "checkAgain": "もう一度確認"
+      },
+      "permissions": {
+        "heading": "macOS の権限",
+        "granted": "Cua Driver はアクセシビリティと画面収録を使えます。",
+        "needed": "Cua Driver にはアクセシビリティと画面収録の権限が必要です。権限を付与する手順を実行し、表示される案内に従ってください。",
+        "unknown": "Oleafly は Cua Driver の権限を読み取れませんでした。",
+        "grant": "権限を付与",
+        "terminalTitle": "Cua Driver の権限"
+      },
+      "gnome": {
+        "heading": "GNOME ヘルパー",
+        "needed": "GNOME では Cua のウィンドウヘルパーを一度実行し、ログアウトしてからログインし直してください。",
+        "active": "GNOME のウィンドウヘルパーは有効です。"
+      },
+      "enable": {
+        "label": "エージェントにデスクトップアプリの使用を許可する",
+        "description": "エージェントは下のアプリとウェブサイトを見ることができます。クリック、入力、ページの変更は、事前にあなたに確認します。"
+      },
+      "apps": {
+        "heading": "許可したアプリ",
+        "empty": "アプリはまだありません。エージェントが使えるのは、ここに追加したアプリだけです。",
+        "add": "アプリを追加",
+        "remove": "{{name}} を削除",
+        "dialog": {
+          "title": "アプリを追加",
+          "description": "エージェントが使ってよいアプリを選んでください。あなたが承認したあと、エージェントはアプリを開き、ウィンドウを読み取り、その中で操作できます。",
+          "search": "アプリを検索",
+          "loading": "アプリを探しています...",
+          "none": "一致するアプリはありません。",
+          "choose": "ほかのアプリを選ぶ...",
+          "add": "追加"
+        },
+        "blocked": {
+          "oleafly": "Oleafly は自分自身を操作できません。",
+          "driver": "Cua Driver は自分自身を操作できません。",
+          "terminal": "ターミナルは Oleafly のコマンド承認を通さずにコマンドを実行します。",
+          "system_settings": "システム設定では権限を変更できてしまいます。",
+          "passwords": "パスワード管理アプリは対象外です。",
+          "scripting": "スクリプトの実行環境は、このコンピュータで何でもできてしまいます。",
+          "wrapper": "この項目は別のプログラムを起動します。代わりにそのプログラムを選んでください。",
+          "sandboxed": "Flatpak と Snap のアプリにはまだ対応していません。"
+        }
+      },
+      "sites": {
+        "heading": "許可したウェブサイト",
+        "empty": "ウェブサイトはまだありません。",
+        "add": "ウェブサイトを追加",
+        "placeholder": "https://www.example.org",
+        "remove": "{{origin}} を削除",
+        "signedIn": {
+          "label": "サインイン済みのブラウザを使う",
+          "description": "このサイトでは、エージェントはあなたの Chrome または Edge で作業します。オフにすると、別のブラウザのプロファイルを使います。"
+        }
+      },
+      "scripted": {
+        "label": "スクリプトによる操作",
+        "description": "複数の手順をまとめて行う Cua スクリプトを、エージェントが実行できるようにします。スクリプトを実行するたびに Oleafly が確認します。"
+      },
+      "test": {
+        "action": "接続をテスト",
+        "running": "テストしています...",
+        "ok": "Cua Driver はあなたの制限付きで動作しています。",
+        "failed": "テストに失敗しました: {{detail}}"
+      },
+      "tool": {
+        "description": "設定で許可したデスクトップアプリとウェブサイトを使います。",
+        "note": "画面の確認はすぐに行います。クリック、入力、ページの変更は事前に確認します。"
+      },
+      "task": {
+        "label": "デスクトップアプリ",
+        "description": "このタスクに、許可したデスクトップアプリの使用を認めます。操作を承認するには、コンピュータの前にいる必要があります。",
+        "off": "先に設定でデスクトップアプリをオンにしてください。",
+        "unattended": "スケジュールで実行するタスクや、Oleafly を閉じたあとに実行するタスクでは、デスクトップアプリを使えません。"
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "Cua Spaces の隔離されたデスクトップとコンテナを MCP サーバーとして接続します。試験運用中の機能です。",
+        "notInstalled": "cua コマンドがインストールされていません。",
+        "connect": {
+          "label": "Cua Spaces を接続",
+          "description": "エージェントは Space を一覧表示し、そこで動いているエージェントの様子を確認できます。"
+        },
+        "fullAccess": {
+          "label": "変更を許可",
+          "description": "エージェントは Space の作成と削除、Space 内でのコマンドの実行もできるようになります。"
+        },
+        "credentials": {
+          "label": "エージェントのサインイン情報を共有",
+          "description": "Space で起動したエージェントが、あなたの Claude Code または Codex のサインイン情報を使えるようにします。"
+        },
+        "failed": "Oleafly は Cua Spaces との接続を更新できませんでした。",
+        "install": {
+          "terminalTitle": "Cua のインストール",
+          "confirm": "cua.ai から Cua のインストーラをダウンロードし、ターミナルで実行します。続けますか？"
+        }
+      }
     }
   },
   "language": {
@@ -1750,7 +2028,8 @@
       "unavailable": "この Oleafly にはコマンドが含まれていません。"
     },
     "title": "ターミナルコマンド",
-    "update": "更新"
+    "update": "更新",
+    "newTerminal": "oleafly を使うには、新しいターミナルを開いてください。すでに開いているターミナルには変更が反映されません。"
   },
   "shortcuts": {
     "actions": {
@@ -1774,10 +2053,6 @@
         "description": "プロジェクトのショートカット一覧を開きます。",
         "label": "ショートカット一覧"
       },
-      "toggleBrowser": {
-        "description": "プロジェクトのブラウザを表示または非表示にします。",
-        "label": "ブラウザの表示を切り替え"
-      },
       "toggleSidebar": {
         "description": "プロジェクトのサイドバーを表示または非表示にします。",
         "label": "サイドバーの表示を切り替え"
@@ -1789,6 +2064,22 @@
       "toggleTerminal": {
         "description": "プロジェクトのターミナルを表示または非表示にします。",
         "label": "ターミナルの表示を切り替え"
+      },
+      "newTerminal": {
+        "description": "ターミナルのタブをもう 1 つ開きます。",
+        "label": "新しいターミナル"
+      },
+      "closeTerminal": {
+        "description": "入力中のターミナルのタブを閉じます。",
+        "label": "ターミナルを閉じる"
+      },
+      "nextTerminal": {
+        "description": "次のターミナルのタブに切り替えます。",
+        "label": "次のターミナル"
+      },
+      "previousTerminal": {
+        "description": "前のターミナルのタブに切り替えます。",
+        "label": "前のターミナル"
       },
       "openFolder": {
         "label": "フォルダを開く",
@@ -1943,6 +2234,33 @@
       "elsewhere": "メニューが別の Oleafly を開きます。修復するとこのコピーを使います。",
       "moved": "移動した Oleafly を指しています。修復するとこのコピーを使います。",
       "noDefaultFileManager": "フォルダ用の既定のファイルマネージャーが設定されていないため、この項目によってすべてのフォルダが Oleafly で開かれる可能性があります。削除してください。"
+    }
+  },
+  "research": {
+    "background": {
+      "title": "バックグラウンドタスク",
+      "enabled": {
+        "label": "Oleafly を閉じてもタスクの実行を続ける",
+        "description": "実行を続けるよう指定したタスクは、終了時に小さなバックグラウンドヘルパーに移ります。Oleafly を開くと、タスクは Oleafly に戻ります。"
+      },
+      "atLogin": {
+        "label": "サインイン時にヘルパーを起動",
+        "description": "再起動後にバックグラウンドタスクを再開します。ヘルパーはすることがなくなると終了します。",
+        "moveApp": "先に Oleafly を「アプリケーション」フォルダに移動してください。",
+        "needsBackground": "先にバックグラウンドタスクをオンにしてください。"
+      },
+      "status": {
+        "label": "バックグラウンドヘルパー",
+        "running": "実行中",
+        "stopped": "停止中",
+        "notResponding": "応答なし",
+        "tasks_other": "{{count}} 件のタスクを処理中"
+      },
+      "stop": "ヘルパーを停止",
+      "stopHint": "Oleafly をもう一度開くまで、タスクは一時停止します。",
+      "stopFailed": "ヘルパーを停止できませんでした。もう一度お試しください。",
+      "openLog": "ログを表示",
+      "toggleFailed": "この設定を変更できませんでした。もう一度お試しください。"
     }
   }
 }

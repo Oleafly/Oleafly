@@ -186,6 +186,10 @@
     "terminal": "Cargando el terminal"
   },
   "terminal": {
+    "activity": "Actividad nueva",
+    "clipboard": {
+      "blocked": "Un programa del terminal quiere copiar texto."
+    },
     "closeCurrent": "Cerrar el actual",
     "closeLeft": "Cerrar todos los de la izquierda",
     "closeOthers": "Cerrar los demás",
@@ -197,6 +201,19 @@
       "resize": "No se pudo redimensionar el terminal",
       "start": "El shell no pudo iniciarse"
     },
+    "find": {
+      "count": "{{current}} de {{total}}",
+      "label": "Buscar en el terminal",
+      "next": "Siguiente coincidencia",
+      "none": "Sin coincidencias",
+      "previous": "Coincidencia anterior"
+    },
+    "launch": {
+      "invalid": "Este comando no se puede ejecutar en el terminal.",
+      "noProject": "Abre un proyecto para usar el terminal.",
+      "run": "Ejecutar",
+      "title": "¿Ejecutar este comando en el terminal?"
+    },
     "limitReached": "Cierra un terminal para abrir otro",
     "links": {
       "openFile": "{{modifier}}+clic para abrir",
@@ -204,8 +221,25 @@
       "openUrlFailed": "No se pudo abrir el enlace."
     },
     "newTerminal": "Terminal nuevo",
+    "openInTerminal": "Abrir en el terminal",
     "settings": "Ajustes del terminal",
     "starting": "Iniciando el shell del proyecto…",
+    "stop": {
+      "closeMany": "Cerrar los terminales",
+      "closeOne": "Cerrar el terminal",
+      "closeProject": "Cerrar el proyecto",
+      "dontAsk": "No volver a preguntar",
+      "many_one": "Un programa sigue ejecutándose en {{count}} terminal.",
+      "many_many": "Hay programas que siguen ejecutándose en {{count}} terminales.",
+      "many_other": "Hay programas que siguen ejecutándose en {{count}} terminales.",
+      "named": "{{process}} sigue ejecutándose en {{title}}.",
+      "quit": "Salir",
+      "restart": "Reiniciar",
+      "switchProject": "Cambiar de proyecto",
+      "titleMany": "¿Detener los programas en ejecución?",
+      "titleOne": "¿Detener el programa en ejecución?",
+      "unnamed": "Un programa sigue ejecutándose en {{title}}."
+    },
     "tabs": "Terminales",
     "titleInput": "Título del terminal"
   },

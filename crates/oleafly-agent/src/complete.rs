@@ -1,8 +1,10 @@
+use std::borrow::Cow;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::effort::Effort;
 use crate::error::{AgentError, Result};
 use crate::message::Message;
 use crate::provider::{Resolved, Wire};
@@ -40,6 +42,40 @@ pub struct CompletionRequest {
     #[doc(hidden)]
     #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub openai_responses_input: Option<Vec<Value>>,
+    /// How hard the model thinks; `None` is the provider's default. Unknown
+    /// names from a newer renderer read as `None`.
+    #[serde(default, deserialize_with = "crate::effort::lenient_effort")]
+    pub effort: Option<Effort>,
+    /// Web search and fetch for this run.
+    #[serde(default)]
+    pub web: Option<WebTools>,
+    /// Ask the model for readable reasoning summaries.
+    #[serde(default)]
+    pub reasoning_summary: Option<bool>,
+    /// Per-run context sent after the system prompt, so the stable prompt
+    /// before it stays cacheable.
+    #[serde(default)]
+    pub system_suffix: Option<String>,
+    /// The Anthropic code-execution container to keep using. Set by the run
+    /// from the provider's replies only.
+    #[doc(hidden)]
+    #[serde(default, skip_deserializing, skip_serializing_if = "Option::is_none")]
+    pub anthropic_container: Option<String>,
+}
+
+/// The web tools a run may use.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct WebTools {
+    #[serde(default)]
+    pub search: bool,
+    #[serde(default)]
+    pub fetch: bool,
+}
+
+impl WebTools {
+    pub fn any(self) -> bool {
+        self.search || self.fetch
+    }
 }
 
 impl CompletionRequest {
@@ -83,6 +119,10 @@ pub struct Usage {
     pub cache_write: Option<u32>,
     #[serde(default, skip_serializing_if = "is_unknown_input_semantics")]
     pub input_semantics: InputTokenSemantics,
+    /// Tokens spent on reasoning, when the provider reports them. They are
+    /// part of `output` too.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<u32>,
 }
 
 impl Usage {
@@ -128,6 +168,7 @@ impl Usage {
         }
         self.cache_read = next.cache_read.or(self.cache_read);
         self.cache_write = next.cache_write.or(self.cache_write);
+        self.reasoning = next.reasoning.or(self.reasoning);
         if next.input_semantics != InputTokenSemantics::Unknown {
             self.input_semantics = next.input_semantics;
         }
@@ -196,6 +237,9 @@ pub(crate) fn parse_openai(body: &Value) -> Result<(String, Usage)> {
             || as_optional_u32(body.pointer("/usage/completion_tokens")).is_some())
         .then_some(0),
         input_semantics: InputTokenSemantics::Inclusive,
+        reasoning: as_optional_u32(
+            body.pointer("/usage/completion_tokens_details/reasoning_tokens"),
+        ),
     };
     Ok((
         text,
@@ -236,6 +280,7 @@ pub(crate) fn parse_openai_responses(body: &Value) -> Result<(String, Usage)> {
             || as_optional_u32(body.pointer("/usage/output_tokens")).is_some())
         .then_some(0),
         input_semantics: InputTokenSemantics::Inclusive,
+        reasoning: as_optional_u32(body.pointer("/usage/output_tokens_details/reasoning_tokens")),
     };
     Ok((
         text,
@@ -266,6 +311,7 @@ pub(crate) fn parse_anthropic(body: &Value) -> Result<(String, Usage)> {
         cache_read: as_optional_u32(body.pointer("/usage/cache_read_input_tokens")),
         cache_write: as_optional_u32(body.pointer("/usage/cache_creation_input_tokens")),
         input_semantics: InputTokenSemantics::Exclusive,
+        reasoning: None,
     };
     Ok((
         text,
@@ -299,6 +345,7 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
         cache_read: as_optional_u32(meta.get("cachedContentTokenCount")).or(counted.then_some(0)),
         cache_write: counted.then_some(0),
         input_semantics: InputTokenSemantics::Inclusive,
+        reasoning: as_optional_u32(meta.get("thoughtsTokenCount")),
     };
     Ok((
         text,
@@ -417,6 +464,35 @@ pub(crate) async fn read_provider_error(
     )
 }
 
+/// A blocking call gets a modest output ceiling when it sets none: always on
+/// Anthropic (which requires one), and on Google and Groq when the model's
+/// limit is known.
+pub(crate) fn with_blocking_ceiling<'a>(
+    resolved: &Resolved,
+    req: &'a CompletionRequest,
+) -> Cow<'a, CompletionRequest> {
+    if req.max_tokens.is_some() {
+        return Cow::Borrowed(req);
+    }
+    let needs = match &resolved.wire {
+        Wire::Anthropic { .. } => true,
+        Wire::Google { .. } => resolved.caps.output_limit.is_some(),
+        Wire::OpenAiChat { .. } => {
+            resolved.provider_id == "groq" && resolved.caps.output_limit.is_some()
+        }
+        Wire::OpenAiResponses { .. } => false,
+    };
+    if !needs {
+        return Cow::Borrowed(req);
+    }
+    let mut owned = req.clone();
+    owned.max_tokens = Some(crate::wire::reasoning::default_max_tokens(
+        &resolved.caps,
+        crate::wire::reasoning::BLOCKING_MAX_TOKENS_CAP,
+    ));
+    Cow::Owned(owned)
+}
+
 pub async fn complete(
     client: &reqwest::Client,
     resolved: &Resolved,
@@ -424,8 +500,10 @@ pub async fn complete(
 ) -> Result<CompletionResponse> {
     crate::run::validate_completion_request(req)?;
     let timeout = completion_timeout(req);
+    let req = with_blocking_ceiling(resolved, req);
 
-    let builder = request_builder(client, resolved, false).json(&wire_body(resolved, req)?);
+    let body = wire_body(resolved, &req)?;
+    let builder = crate::wire::body_request(client, resolved, false, &body);
 
     let response = builder
         .timeout(timeout)
@@ -546,6 +624,7 @@ mod tests {
                 cache_read: Some(4),
                 cache_write: Some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
+                reasoning: None,
             }
         );
     }
@@ -582,8 +661,78 @@ mod tests {
                 cache_read: Some(6),
                 cache_write: Some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
+                reasoning: None,
             }
         );
+    }
+
+    #[test]
+    fn an_older_request_without_the_new_fields_still_deserializes() {
+        let request: CompletionRequest = serde_json::from_str(r#"{"messages":[]}"#).unwrap();
+        assert_eq!(
+            (
+                request.effort,
+                request.web,
+                request.reasoning_summary,
+                request.system_suffix
+            ),
+            (None, None, None, None)
+        );
+    }
+
+    #[test]
+    fn unknown_effort_strings_mean_auto() {
+        let parse = |raw: &str| {
+            serde_json::from_str::<CompletionRequest>(raw)
+                .unwrap()
+                .effort
+        };
+        assert_eq!(parse(r#"{"messages":[],"effort":"ultra"}"#), None);
+        assert_eq!(
+            parse(r#"{"messages":[],"effort":"xhigh"}"#),
+            Some(Effort::Xhigh)
+        );
+        assert_eq!(parse(r#"{"messages":[],"effort":7}"#), None);
+        assert_eq!(parse(r#"{"messages":[],"effort":null}"#), None);
+    }
+
+    #[test]
+    fn web_tools_default_to_off() {
+        let request: CompletionRequest =
+            serde_json::from_str(r#"{"messages":[],"web":{}}"#).unwrap();
+        assert_eq!(
+            request.web,
+            Some(WebTools {
+                search: false,
+                fetch: false
+            })
+        );
+    }
+
+    #[test]
+    fn the_renderer_cannot_set_the_internal_container() {
+        let request: CompletionRequest =
+            serde_json::from_str(r#"{"messages":[],"anthropic_container":"c1"}"#).unwrap();
+        assert_eq!(request.anthropic_container, None);
+    }
+
+    #[test]
+    fn reasoning_tokens_merge_and_serialize_only_when_known() {
+        let mut usage = Usage::default();
+        usage.merge_snapshot(Usage {
+            reasoning: Some(12),
+            ..Usage::default()
+        });
+        assert_eq!(usage.reasoning, Some(12));
+        assert!(serde_json::to_value(Usage::default())
+            .unwrap()
+            .get("reasoning")
+            .is_none());
+        let body = json!({
+            "choices": [{ "message": { "content": "a" } }],
+            "usage": { "prompt_tokens": 1, "completion_tokens": 20, "completion_tokens_details": { "reasoning_tokens": 12 } }
+        });
+        assert_eq!(parse_openai(&body).unwrap().1.reasoning, Some(12));
     }
 
     #[test]
@@ -664,6 +813,7 @@ mod tests {
                 cache_read: Some(2),
                 cache_write: Some(3),
                 input_semantics: InputTokenSemantics::Exclusive,
+                reasoning: None,
             }
         );
     }
@@ -694,6 +844,7 @@ mod tests {
                 cache_read: Some(4),
                 cache_write: Some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
+                reasoning: None,
             }
         );
     }

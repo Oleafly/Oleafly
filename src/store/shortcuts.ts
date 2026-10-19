@@ -9,7 +9,10 @@ export type ShortcutId =
   | "forwardSync"
   | "shortcutReference"
   | "toggleTerminal"
-  | "toggleBrowser"
+  | "newTerminal"
+  | "closeTerminal"
+  | "nextTerminal"
+  | "previousTerminal"
   | "toggleSidebar"
   | "togglePreview"
   | "toggleZenMode"
@@ -32,20 +35,12 @@ export interface ShortcutDefinition {
   defaultBinding: ShortcutBinding;
 }
 
-const BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, shift: true };
-const LINUX_BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, alt: true };
-
 const ZEN_MAC_BINDING: ShortcutBinding = { key: "f", mod: true, ctrl: true, shift: true };
 const ZEN_BINDING: ShortcutBinding = { key: "F11", shift: true };
 const FUNCTION_KEY = /^F(?:[1-9]|1\d|2[0-4])$/;
 
 function onApplePlatform(): boolean {
   return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-}
-
-function onLinuxDesktop(): boolean {
-  const tauri = Boolean((globalThis as { isTauri?: unknown }).isTauri);
-  return tauri && typeof navigator !== "undefined" && /Linux/.test(navigator.platform);
 }
 
 export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
@@ -73,11 +68,22 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     id: "toggleTerminal",
     defaultBinding: { key: "`", ctrl: true },
   },
+  // Terminal tabs. Ctrl+Shift+` reports "~" as its key on US layouts.
   {
-    id: "toggleBrowser",
-    get defaultBinding() {
-      return onLinuxDesktop() ? LINUX_BROWSER_BINDING : BROWSER_BINDING;
-    },
+    id: "newTerminal",
+    defaultBinding: { key: "~", ctrl: true, shift: true },
+  },
+  {
+    id: "closeTerminal",
+    defaultBinding: { key: "w", ctrl: true, shift: true },
+  },
+  {
+    id: "nextTerminal",
+    defaultBinding: { key: "PageDown", ctrl: true },
+  },
+  {
+    id: "previousTerminal",
+    defaultBinding: { key: "PageUp", ctrl: true },
   },
   {
     id: "toggleSidebar",
@@ -128,10 +134,6 @@ export function shortcutsDifferFromDefaults(bindings: ShortcutBindings): boolean
   return SHORTCUT_DEFINITIONS.some(({ id }) => !sameShortcutBinding(bindings[id], defaults[id]));
 }
 
-function isRetiredDefault(id: ShortcutId, binding: ShortcutBinding): boolean {
-  return id === "toggleBrowser" && onLinuxDesktop() && sameShortcutBinding(binding, BROWSER_BINDING);
-}
-
 export function isValidBinding(value: unknown): value is ShortcutBinding {
   if (!value || typeof value !== "object") return false;
   const { key, mod, ctrl } = value as { key?: unknown; mod?: unknown; ctrl?: unknown };
@@ -149,7 +151,7 @@ function storedBindings(value: unknown): ShortcutBindings {
   const clean: Partial<ShortcutBindings> = {};
   for (const id of Object.keys(defaults) as ShortcutId[]) {
     const binding = parsed[id];
-    if (isValidBinding(binding) && !isRetiredDefault(id, binding)) clean[id] = binding;
+    if (isValidBinding(binding)) clean[id] = binding;
   }
   return { ...defaults, ...clean };
 }

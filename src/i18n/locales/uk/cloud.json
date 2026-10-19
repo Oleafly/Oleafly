@@ -79,13 +79,13 @@
     "linkedNote_other": "{{count}} проєкта, відкритого з теки, не синхронізуються. Резервні копії створюються лише для проєктів із бібліотеки."
   },
   "transfer": {
+    "uploading_one": "Вивантаження файлів: {{done}} з {{total}}",
     "uploading_few": "Вивантаження файлів: {{done}} з {{total}}",
     "uploading_many": "Вивантаження файлів: {{done}} з {{total}}",
-    "uploading_one": "Вивантаження файлів: {{done}} з {{total}}",
     "uploading_other": "Вивантаження файлів: {{done}} з {{total}}",
+    "downloading_one": "Завантаження файлів: {{done}} з {{total}}",
     "downloading_few": "Завантаження файлів: {{done}} з {{total}}",
     "downloading_many": "Завантаження файлів: {{done}} з {{total}}",
-    "downloading_one": "Завантаження файлів: {{done}} з {{total}}",
     "downloading_other": "Завантаження файлів: {{done}} з {{total}}",
     "fetching": "Завантаження: {{done}} з {{total}}"
   },

@@ -178,6 +178,10 @@
     "terminal": "ターミナルを読み込み中"
   },
   "terminal": {
+    "activity": "新しいアクティビティ",
+    "clipboard": {
+      "blocked": "ターミナル内のプログラムがテキストをコピーしようとしています。"
+    },
     "closeCurrent": "現在のタブを閉じる",
     "closeLeft": "左側をすべて閉じる",
     "closeOthers": "ほかを閉じる",
@@ -189,6 +193,19 @@
       "resize": "ターミナルのサイズを変更できませんでした",
       "start": "shell を起動できませんでした"
     },
+    "find": {
+      "count": "{{total}} 件中 {{current}} 件目",
+      "label": "ターミナル内を検索",
+      "next": "次の一致",
+      "none": "一致なし",
+      "previous": "前の一致"
+    },
+    "launch": {
+      "invalid": "このコマンドはターミナルで実行できません。",
+      "noProject": "ターミナルを使うには、プロジェクトを開いてください。",
+      "run": "実行",
+      "title": "このコマンドをターミナルで実行しますか？"
+    },
     "limitReached": "別のターミナルを開くには、どれかを閉じてください",
     "links": {
       "openFile": "{{modifier}}+クリックして開く",
@@ -196,8 +213,23 @@
       "openUrlFailed": "リンクを開けませんでした。"
     },
     "newTerminal": "新規ターミナル",
+    "openInTerminal": "ターミナルで開く",
     "settings": "ターミナルの設定",
     "starting": "プロジェクトの shell を起動しています…",
+    "stop": {
+      "closeMany": "ターミナルを閉じる",
+      "closeOne": "ターミナルを閉じる",
+      "closeProject": "プロジェクトを閉じる",
+      "dontAsk": "今後は確認しない",
+      "many_other": "{{count}} 個のターミナルでプログラムがまだ動いています。",
+      "named": "{{title}} で {{process}} がまだ動いています。",
+      "quit": "終了",
+      "restart": "再起動",
+      "switchProject": "プロジェクトを切り替える",
+      "titleMany": "実行中のプログラムを停止しますか？",
+      "titleOne": "実行中のプログラムを停止しますか？",
+      "unnamed": "{{title}} でプログラムがまだ動いています。"
+    },
     "tabs": "ターミナル",
     "titleInput": "ターミナルのタイトル"
   },

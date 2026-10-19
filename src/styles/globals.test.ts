@@ -80,7 +80,7 @@ describe("assistant composer container queries", () => {
       /\.ai-composer-controls-left,\s*\.ai-composer-controls-right\s*\{\s*gap: 0\.125rem;/u,
     );
     expect(compactRules).toMatch(
-      /\.ai-composer-attach,\s*\.ai-composer-plan,\s*\.ai-composer-figure,\s*\.ai-composer-mic\s*\{[^}]*width: 1\.5rem;/su,
+      /\.ai-composer-attach,\s*\.ai-composer-plan,\s*\.ai-composer-figure,\s*\.ai-composer-mic,\s*\.ai-composer-web,\s*\.ai-composer-effort \.ai-composer-effort-trigger,\s*\.ai-composer-usage\s*\{[^}]*width: 1\.5rem;/su,
     );
     expect(compactRules).toMatch(/\.ai-composer-attach[^}]*width: 1\.5rem;/su);
     expect(compactRules).toMatch(

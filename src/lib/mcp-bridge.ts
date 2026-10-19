@@ -36,6 +36,7 @@ import {
   mcpToolResult,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { createResearchTaskAiTools } from "@/lib/research-tools";
 import { useCompileStore } from "@/store/compile";
 import { supportsFigureTools } from "@/lib/document-engine";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -71,10 +72,10 @@ const MUTATING_TOOLS = new Set([
   "remember_note",
   "forget_note",
   "run_command",
-  "computer_use",
+  "research_task_create",
 ]);
 
-const ALWAYS_PROMPT_TOOLS = new Set(["run_command", "computer_use"]);
+const ALWAYS_PROMPT_TOOLS = new Set(["run_command"]);
 
 const DENIED_BY_RULES = "This tool is denied for this project in approvals.toml.";
 const RULES_UNREADABLE = "Oleafly couldn't read the approval rules in approvals.toml, so it refused this tool.";
@@ -454,7 +455,6 @@ export function buildMcpToolRegistry(opts: {
     ...(createOleaflyTools({
       confirm: opts.confirm,
       mutationAllowed: opts.mutationAllowed,
-      alwaysConfirmComputerUse: true,
     }) as Record<string, McpToolEntry>),
     ...gateFigureTools(
       createFigureTools({
@@ -465,6 +465,7 @@ export function buildMcpToolRegistry(opts: {
     ),
     ...createSkillTools(),
     ...createMcpOnlyTools(opts.confirm, opts.mutationAllowed ?? (() => true)),
+    ...(createResearchTaskAiTools({ confirm: opts.confirm }) as Record<string, McpToolEntry>),
   };
   if (opts.readOnly) {
     for (const name of MUTATING_TOOLS) delete all[name];

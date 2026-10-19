@@ -26,6 +26,7 @@ const SETTINGS_SECTIONS = new Set([
   "dictionary",
   "data",
   "ai",
+  "research",
   "engine",
   "downloads",
   "integrations",
@@ -101,6 +102,22 @@ export function readDictionaryLocale(raw: string): string {
 }
 export type { EditorThemeId } from "@/lib/editor-themes";
 export type TerminalCursorStyle = "block" | "underline" | "bar";
+/** The shell new terminals start. Windows-only ids mean the login shell elsewhere. */
+export type TerminalShellId = "auto" | "pwsh" | "powershell" | "cmd" | "gitBash" | "wsl" | "custom";
+export const TERMINAL_SHELL_IDS: readonly TerminalShellId[] = [
+  "auto",
+  "pwsh",
+  "powershell",
+  "cmd",
+  "gitBash",
+  "wsl",
+  "custom",
+];
+/** What Shift+Enter sends: a newline inside the program's input, or plain Enter. */
+export type TerminalShiftEnter = "newline" | "enter";
+export const TERMINAL_SHIFT_ENTER_OPTIONS: readonly TerminalShiftEnter[] = ["newline", "enter"];
+export const TERMINAL_SCROLLBACK_OPTIONS = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000] as const;
+export const TERMINAL_SHELL_PATH_MAX_LENGTH = 1024;
 export type TerminalColorThemeId =
   | "system"
   | "dark"
@@ -115,15 +132,6 @@ export type TerminalColorThemeId =
   | "github-dark"
   | "solarized-dark"
   | "solarized-light";
-export type BrowserSearchEngineId =
-  | "google"
-  | "bing"
-  | "duckduckgo"
-  | "brave"
-  | "perplexity"
-  | "startpage"
-  | "ecosia";
-
 export interface TerminalThemeColors {
   background: string;
   foreground: string;
@@ -407,40 +415,6 @@ export function resolveTerminalColorTheme(
   return TERMINAL_COLOR_THEMES[id] ?? TERMINAL_COLOR_THEMES[appTheme];
 }
 
-export const BROWSER_SEARCH_ENGINES: {
-  id: BrowserSearchEngineId;
-  name: string;
-  searchUrl: string;
-}[] = [
-  { id: "google", name: "Google", searchUrl: "https://www.google.com/search?q=" },
-  { id: "bing", name: "Bing", searchUrl: "https://www.bing.com/search?q=" },
-  {
-    id: "duckduckgo",
-    name: "DuckDuckGo",
-    searchUrl: "https://duckduckgo.com/?q=",
-  },
-  {
-    id: "brave",
-    name: "Brave",
-    searchUrl: "https://search.brave.com/search?q=",
-  },
-  {
-    id: "perplexity",
-    name: "Perplexity",
-    searchUrl: "https://www.perplexity.ai/search?s=o&q=",
-  },
-  {
-    id: "startpage",
-    name: "Startpage",
-    searchUrl: "https://www.startpage.com/sp/search?query=",
-  },
-  {
-    id: "ecosia",
-    name: "Ecosia",
-    searchUrl: "https://www.ecosia.org/search?q=",
-  },
-];
-
 export const DEFAULT_TERMINAL_FONT_FAMILY =
   'ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace';
 
@@ -535,28 +509,21 @@ function readTerminalCursorStyle(raw: string): TerminalCursorStyle {
 function readTerminalColorTheme(raw: string): TerminalColorThemeId {
   return raw in TERMINAL_COLOR_THEMES ? (raw as TerminalColorThemeId) : "system";
 }
+function readTerminalShell(raw: string): TerminalShellId {
+  return (TERMINAL_SHELL_IDS as readonly string[]).includes(raw) ? (raw as TerminalShellId) : "auto";
+}
+function readTerminalShellPath(raw: string): string {
+  return raw.trim().slice(0, TERMINAL_SHELL_PATH_MAX_LENGTH);
+}
+function readTerminalShiftEnter(raw: string): TerminalShiftEnter {
+  return raw === "enter" ? "enter" : "newline";
+}
+function readTerminalScrollback(raw: string | number): number {
+  const value = Number(raw);
+  return (TERMINAL_SCROLLBACK_OPTIONS as readonly number[]).includes(value) ? value : 5_000;
+}
 function readHexColor(raw: string, fallback: string): string {
   return /^#[\da-f]{6}$/iu.test(raw) ? raw.toLowerCase() : fallback;
-}
-function readBrowserSearchEngine(raw: string): BrowserSearchEngineId {
-  return BROWSER_SEARCH_ENGINES.some(({ id }) => id === raw)
-    ? (raw as BrowserSearchEngineId)
-    : "google";
-}
-function readBrowserHomePage(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) return "https://www.google.com/";
-  const candidate = /^[a-z][a-z\d+.-]*:/iu.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-  try {
-    const url = new URL(candidate);
-    return url.protocol === "http:" || url.protocol === "https:"
-      ? url.toString()
-      : "https://www.google.com/";
-  } catch {
-    return "https://www.google.com/";
-  }
 }
 const GRAMMAR_DIALECT_IDS = new Set<GrammarDialect>([
   "american",
@@ -577,6 +544,21 @@ function saveLs(k: string, v: string) {
     /* ignore */
   }
 }
+
+// 0.4.8 I: the in-app browser is gone. 0.4.7 left these keys behind.
+const RETIRED_BROWSER_KEYS = ["oleafly.webBrowser", "oleafly.browser.homePage", "oleafly.browser.searchEngine"] as const;
+
+function removeRetiredBrowserKeys(): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    for (const key of RETIRED_BROWSER_KEYS) localStorage.removeItem(key);
+  } catch {
+    /* localStorage can refuse access; the keys are harmless if they stay */
+  }
+}
+
+removeRetiredBrowserKeys();
+
 function notifyProofreadingSettingsChanged(
   setting: string,
   settings: { spellcheck: boolean; harper: boolean },
@@ -1001,10 +983,11 @@ interface SettingsState {
   setHoverPreview: (v: boolean) => void;
   chatFloating: boolean;
   setChatFloating: (v: boolean) => void;
+  /** The chat message box's resting height in px, shared by every composer. */
+  aiComposerHeight: number;
+  setAiComposerHeight: (v: number) => void;
   terminalOpen: boolean;
   setTerminalOpen: (v: boolean) => void;
-  browserOpen: boolean;
-  setBrowserOpen: (v: boolean) => void;
   assistantOpen: boolean;
   setAssistantOpen: (v: boolean) => void;
   closeDocks: () => void;
@@ -1030,10 +1013,24 @@ interface SettingsState {
   setTerminalForeground: (v: string) => void;
   terminalCursorColor: string;
   setTerminalCursorColor: (v: string) => void;
-  browserSearchEngine: BrowserSearchEngineId;
-  setBrowserSearchEngine: (v: BrowserSearchEngineId) => void;
-  browserHomePage: string;
-  setBrowserHomePage: (v: string) => void;
+  /** Stays on this computer: never synced through cloud settings. */
+  terminalShell: TerminalShellId;
+  setTerminalShell: (v: TerminalShellId) => void;
+  /** The program a `custom` shell runs; stays on this computer. */
+  terminalShellPath: string;
+  setTerminalShellPath: (v: string) => void;
+  terminalShiftEnter: TerminalShiftEnter;
+  setTerminalShiftEnter: (v: TerminalShiftEnter) => void;
+  terminalCopyOnSelect: boolean;
+  setTerminalCopyOnSelect: (v: boolean) => void;
+  /** macOS only: Option sends Meta (ESC prefixes) instead of typing characters. */
+  terminalOptionIsMeta: boolean;
+  setTerminalOptionIsMeta: (v: boolean) => void;
+  terminalScrollback: number;
+  setTerminalScrollback: (v: number) => void;
+  /** Ask before closing a terminal, the project or the app while a program runs. */
+  terminalConfirmClose: boolean;
+  setTerminalConfirmClose: (v: boolean) => void;
   editorFontSize: number;
   setEditorFontSize: (v: number) => void;
   appFontSize: number;
@@ -1076,11 +1073,6 @@ interface SettingsState {
   setHomeProjectLayout: (v: HomeProjectLayout) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
-  // Experimental in-app web browser (the browser dock, its toggle, the
-  // shortcut, and the AI computer_use tool). Off by default; every browser
-  // entry point is gated on this.
-  webBrowser: boolean;
-  setWebBrowser: (v: boolean) => void;
   liveCollaboration: boolean;
   setLiveCollaboration: (v: boolean) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
@@ -1232,8 +1224,8 @@ const PREF_DEFAULTS = {
   defaultView: "editor-only" as LayoutPreset,
   openInTree: true,
   hoverPreview: true,
+  aiComposerHeight: 56,
   terminalOpen: false,
-  browserOpen: false,
   terminalFontSize: 14,
   terminalFontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
   terminalFontWeight: 500,
@@ -1245,14 +1237,18 @@ const PREF_DEFAULTS = {
   terminalBackground: TERMINAL_COLOR_THEMES.dark.colors.background,
   terminalForeground: TERMINAL_COLOR_THEMES.dark.colors.foreground,
   terminalCursorColor: TERMINAL_COLOR_THEMES.dark.colors.cursor,
-  browserSearchEngine: "google" as BrowserSearchEngineId,
-  browserHomePage: "https://www.google.com/",
+  terminalShell: "auto" as TerminalShellId,
+  terminalShellPath: "",
+  terminalShiftEnter: "newline" as TerminalShiftEnter,
+  terminalCopyOnSelect: false,
+  terminalOptionIsMeta: false,
+  terminalScrollback: 5_000 as number,
+  terminalConfirmClose: true,
   accentColor: "#2563eb",
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
-  webBrowser: false,
   liveCollaboration: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
@@ -1324,8 +1320,13 @@ export const SECTION_SETTINGS = {
     terminalBackground: "oleafly.terminal.background",
     terminalForeground: "oleafly.terminal.foreground",
     terminalCursorColor: "oleafly.terminal.cursorColor",
-    browserSearchEngine: "oleafly.browser.searchEngine",
-    browserHomePage: "oleafly.browser.homePage",
+    terminalShell: "oleafly.terminal.shell",
+    terminalShellPath: "oleafly.terminal.shellPath",
+    terminalShiftEnter: "oleafly.terminal.shiftEnter",
+    terminalCopyOnSelect: "oleafly.terminal.copyOnSelect",
+    terminalOptionIsMeta: "oleafly.terminal.optionIsMeta",
+    terminalScrollback: "oleafly.terminal.scrollback",
+    terminalConfirmClose: "oleafly.terminal.confirmClose",
     editorFontSize: "oleafly.fontSize",
     appFontSize: "oleafly.appFontSize",
     appZoom: "oleafly.appZoom",
@@ -1340,6 +1341,7 @@ export const SECTION_SETTINGS = {
     defaultView: "oleafly.defaultView",
     openInTree: "oleafly.openInTree",
     hoverPreview: "oleafly.hoverPreview",
+    aiComposerHeight: "oleafly.ai.composerHeight",
     accentColor: "oleafly.accent",
     dockPlacement: "oleafly.dockPlacement",
     bgPattern: "oleafly.bgPattern",
@@ -1347,12 +1349,13 @@ export const SECTION_SETTINGS = {
   },
   experimentation: {
     latexTools: "oleafly.latexTools",
-    webBrowser: "oleafly.webBrowser",
     liveCollaboration: LIVE_COLLABORATION_KEY,
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
   },
+  // Research defaults live in the app config, not in browser storage.
+  research: {},
 } satisfies Record<string, Partial<Record<PrefKey, string | null>>>;
 
 export type SettingsSection = keyof typeof SECTION_SETTINGS;
@@ -1730,16 +1733,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.ai.floating", v ? "1" : "0");
     set({ chatFloating: v });
   },
+  aiComposerHeight: readNumberInRange(ls("oleafly.ai.composerHeight", "56"), 56, 56, 2000),
+  setAiComposerHeight: (v) => {
+    const value = Number.isFinite(v) ? Math.round(Math.min(2000, Math.max(56, v))) : 56;
+    saveLs("oleafly.ai.composerHeight", String(value));
+    set({ aiComposerHeight: value });
+  },
   terminalOpen: false,
   setTerminalOpen: (v) => {
     set({ terminalOpen: v });
-  },
-  browserOpen: false,
-  // The single chokepoint for opening the browser: it can only open when the
-  // experimental web-browser flag is on, so the button, the shortcut, the AI
-  // openBrowser hook, and computer-use all respect the flag.
-  setBrowserOpen: (v) => {
-    set({ browserOpen: v && get().webBrowser });
   },
   assistantOpen: false,
   setAssistantOpen: (v) => {
@@ -1748,7 +1750,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set(v ? { assistantOpen: true } : { assistantOpen: false, workspaceHidden: false });
   },
   closeDocks: () => {
-    set({ terminalOpen: false, browserOpen: false });
+    set({ terminalOpen: false });
   },
   terminalFontSize: readNumberInRange(
     ls("oleafly.terminal.fontSize", "14"),
@@ -1863,21 +1865,44 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.terminal.cursorColor", value);
     set({ terminalCursorColor: value });
   },
-  browserSearchEngine: readBrowserSearchEngine(
-    ls("oleafly.browser.searchEngine", "google"),
-  ),
-  setBrowserSearchEngine: (v) => {
-    const value = readBrowserSearchEngine(v);
-    saveLs("oleafly.browser.searchEngine", value);
-    set({ browserSearchEngine: value });
+  terminalShell: readTerminalShell(ls("oleafly.terminal.shell", "auto")),
+  setTerminalShell: (v) => {
+    const value = readTerminalShell(v);
+    saveLs("oleafly.terminal.shell", value);
+    set({ terminalShell: value });
   },
-  browserHomePage: readBrowserHomePage(
-    ls("oleafly.browser.homePage", "https://www.google.com/"),
-  ),
-  setBrowserHomePage: (v) => {
-    const value = readBrowserHomePage(v);
-    saveLs("oleafly.browser.homePage", value);
-    set({ browserHomePage: value });
+  terminalShellPath: readTerminalShellPath(ls("oleafly.terminal.shellPath", "")),
+  setTerminalShellPath: (v) => {
+    const value = readTerminalShellPath(v);
+    saveLs("oleafly.terminal.shellPath", value);
+    set({ terminalShellPath: value });
+  },
+  terminalShiftEnter: readTerminalShiftEnter(ls("oleafly.terminal.shiftEnter", "newline")),
+  setTerminalShiftEnter: (v) => {
+    const value = readTerminalShiftEnter(v);
+    saveLs("oleafly.terminal.shiftEnter", value);
+    set({ terminalShiftEnter: value });
+  },
+  terminalCopyOnSelect: ls("oleafly.terminal.copyOnSelect", "0") === "1",
+  setTerminalCopyOnSelect: (v) => {
+    saveLs("oleafly.terminal.copyOnSelect", v ? "1" : "0");
+    set({ terminalCopyOnSelect: v });
+  },
+  terminalOptionIsMeta: ls("oleafly.terminal.optionIsMeta", "0") === "1",
+  setTerminalOptionIsMeta: (v) => {
+    saveLs("oleafly.terminal.optionIsMeta", v ? "1" : "0");
+    set({ terminalOptionIsMeta: v });
+  },
+  terminalScrollback: readTerminalScrollback(ls("oleafly.terminal.scrollback", "5000")),
+  setTerminalScrollback: (v) => {
+    const value = readTerminalScrollback(v);
+    saveLs("oleafly.terminal.scrollback", String(value));
+    set({ terminalScrollback: value });
+  },
+  terminalConfirmClose: ls("oleafly.terminal.confirmClose", "1") !== "0",
+  setTerminalConfirmClose: (v) => {
+    saveLs("oleafly.terminal.confirmClose", v ? "1" : "0");
+    set({ terminalConfirmClose: v });
   },
   openInTree: ls("oleafly.openInTree", "1") !== "0",
   setOpenInTree: (v) => {
@@ -2006,12 +2031,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.latexTools", v ? "1" : "0");
     set({ latexTools: v });
   },
-  webBrowser: ls("oleafly.webBrowser", "0") === "1",
-  setWebBrowser: (v) => {
-    saveLs("oleafly.webBrowser", v ? "1" : "0");
-    // Turning the browser off must also close any open browser dock.
-    set(v ? { webBrowser: true } : { webBrowser: false, browserOpen: false });
-  },
   liveCollaboration: ls(LIVE_COLLABORATION_KEY, "0") === "1",
   setLiveCollaboration: (v) => {
     saveLs(LIVE_COLLABORATION_KEY, v ? "1" : "0");
@@ -2071,7 +2090,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set(restoreSection("appearance"));
   },
   resetExperimentationPreferences: () => {
-    set({ ...restoreSection("experimentation"), browserOpen: false });
+    set(restoreSection("experimentation"));
   },
   resetEnginePreferences: () => {
     set(restoreSection("engine"));
@@ -2081,6 +2100,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     get().resetAppearancePreferences();
     get().resetExperimentationPreferences();
     get().resetEnginePreferences();
-    set({ terminalOpen: false, browserOpen: false });
+    set({ terminalOpen: false });
   },
 }));

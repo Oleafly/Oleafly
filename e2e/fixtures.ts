@@ -310,7 +310,7 @@ function createNativeTest(dismissTours: boolean) {
         throw error;
       }
       if (firstPage && !productionE2e) {
-        // Enable the experimental LaTeX tools and browser (default off)
+        // Enable the experimental LaTeX tools (default off)
         // so the gated e2e specs run. Wrapped as an IIFE expression, the form
         // this bridge evaluates reliably (bare multi-statement strings time out).
         const locale = localeForSpec(testInfo.file);
@@ -319,7 +319,6 @@ function createNativeTest(dismissTours: boolean) {
           localStorage.removeItem("oleafly.shortcuts");
           localStorage.setItem("oleafly.locale", "${locale}");
           localStorage.setItem("oleafly.latexTools", "1");
-          localStorage.setItem("oleafly.webBrowser", "1");
           localStorage.setItem("oleafly.openInTree", "0");
           localStorage.setItem("oleafly:compile:mode", "normal");
           localStorage.setItem("oleafly.appFontSize", "16");

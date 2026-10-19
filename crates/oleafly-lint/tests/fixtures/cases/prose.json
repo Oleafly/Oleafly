@@ -1,0 +1,117 @@
+[
+  {
+    "name": "latex-citation-and-math",
+    "format": "latex",
+    "text": "We compare $a$ and $b$ in \\cite{x}."
+  },
+  {
+    "name": "latex-inline-math",
+    "format": "latex",
+    "text": "Let $n$ be large."
+  },
+  {
+    "name": "latex-emoji-section",
+    "format": "latex",
+    "text": "\\section{Progress 🙂}\nWe compare the the results in \\cite{smith2020} today."
+  },
+  {
+    "name": "latex-masked-equation",
+    "format": "latex",
+    "text": "We add and \\(c+d\\) and then stop."
+  },
+  {
+    "name": "latex-accents",
+    "format": "latex",
+    "text": "Antonín Dvo\\v{r}\\'ak složil. Schr\\\"odinger und M\\\"uller gr\\\"o\\ss er. Sch{\\\"o}n und {\\ss}."
+  },
+  {
+    "name": "latex-verbatim-and-url",
+    "format": "latex",
+    "text": "Run \\verb|make all| and see https://example.com/page for details.\n\\begin{verbatim}\nraw text\n\\end{verbatim}\nDone."
+  },
+  {
+    "name": "latex-preamble-and-body",
+    "format": "latex",
+    "text": "\\documentclass{article}\n\\title{A Titel}\n\\begin{document}\nThe body has a typpo here.\n\\end{document}\n"
+  },
+  {
+    "name": "latex-index-and-cite-adjacent",
+    "format": "latex",
+    "text": "transformer\\index{transformer} models and word\\cite{k}."
+  },
+  {
+    "name": "latex-german-shorthands",
+    "format": "latex",
+    "text": "\\usepackage[ngerman]{babel}\n\\begin{document}\nGr\"o\"se und \"Ubung.\n\\end{document}"
+  },
+  {
+    "name": "latex-optional-key-values",
+    "format": "latex",
+    "text": "\\custommacro[width=3cm, keepaspectratio]{Visible prose} and \\item[Label] tail."
+  },
+  {
+    "name": "markdown-code-links-math",
+    "format": "markdown",
+    "text": "Keep 50% prose `codeword` [label](https://example.test/path) $x_value$\n```ts\nfencedword\n```\nAfter"
+  },
+  {
+    "name": "markdown-front-matter-and-html",
+    "format": "markdown",
+    "text": "---\ntitle: qqmeta\n---\nBody <!-- qqcomment --> <span class=\"qqclass\">kept</span>\n<script>qqscript()</script>\n"
+  },
+  {
+    "name": "markdown-citations",
+    "format": "markdown",
+    "text": "Ask [contact @ desk, see @smith2024] before filing, as @doe2020 says.\nAsk [the front desk @ noon] before filing."
+  },
+  {
+    "name": "markdown-spacing",
+    "format": "markdown",
+    "text": "  Hello ,  world. We compare the the results."
+  },
+  {
+    "name": "markdown-emails",
+    "format": "markdown",
+    "text": "Napište na пример@почта.рф nebo ředitel@firma.cz a jan@firma.рф dnes."
+  },
+  {
+    "name": "markdown-attributes-and-footnotes",
+    "format": "markdown",
+    "text": "# Heading {#sec:intro}\n\nSee [the span]{.smallcaps} and a note[^1].\n\n[^1]: The footnote text.\n    Continued here.\n\n::: warning\nInside a div.\n:::\n"
+  },
+  {
+    "name": "markdown-emoji-and-currency",
+    "format": "markdown",
+    "text": "Progress 🙂🚀 shows the the pair, costs $20 and $30 today."
+  },
+  {
+    "name": "typst-math-and-references",
+    "format": "typst",
+    "text": "We compare $a$ and $b$ in @smith2020 here."
+  },
+  {
+    "name": "typst-code-and-content",
+    "format": "typst",
+    "text": "#let x = 1\n= Head\n- We compare *the* the _results_ here.\n#figure(rect(), caption: [Visible captoin])\n"
+  },
+  {
+    "name": "typst-unicode-escape",
+    "format": "typst",
+    "text": "Un caf\\u{e9} au lait noir."
+  },
+  {
+    "name": "typst-raw-labels-links",
+    "format": "typst",
+    "text": "Viz https://example.com/a a pak chiba tady. `raw code` <label> and ```\nblock raw\n``` // skryto\n"
+  },
+  {
+    "name": "typst-cite-call-and-emoji",
+    "format": "typst",
+    "text": "See #cite(<knuth>) for details 🙂 and the the end."
+  },
+  {
+    "name": "typst-emails-and-refs",
+    "format": "typst",
+    "text": "Napište na пример@почта.рф nebo ředitel@firma.cz dnes, viz @knuth. Viz @2020dvořák a @obr.1."
+  }
+]

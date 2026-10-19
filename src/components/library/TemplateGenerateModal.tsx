@@ -20,8 +20,7 @@ import { cn, modKey } from "@/lib/utils";
 import { notifyError } from "@/lib/toast";
 import { friendlyHint } from "@/components/ai/chat-parts";
 import { ModelSelector, type ModelSelectorGroup } from "@/components/ai/ModelSelector";
-import { enabledModels } from "@/lib/ai-model-state";
-import { mergeCustomProviders } from "@/lib/ai-providers";
+import { configuredModelGroups } from "@/lib/ai-model-groups";
 import { getConfig, type AppConfig } from "@/lib/tauri";
 import {
   compileGeneratedTemplate,
@@ -133,18 +132,11 @@ export function TemplateGenerateModal({
     clearStepTimers();
     void getConfig()
       .then((cfg: AppConfig) => {
-        const allProviders = mergeCustomProviders(cfg.ai_custom_providers ?? []);
-        const configured = allProviders.filter((p) => {
-          if ((cfg.ai_keys?.[p.id] ?? "").trim().length > 0) return true;
-          return Boolean(cfg.ai_custom_providers?.find((c) => c.id === p.id)?.keyOptional);
+        const groups = configuredModelGroups({
+          keys: cfg.ai_keys ?? {},
+          customProviders: cfg.ai_custom_providers ?? [],
+          providerModels: cfg.ai_provider_models ?? {},
         });
-        const groups: ModelSelectorGroup[] = configured.map((p) => {
-          const stored = cfg.ai_provider_models?.[p.id];
-          const models = stored?.length
-            ? enabledModels(stored).map((m) => ({ id: m.id, name: m.name }))
-            : p.models.map((m) => ({ id: m.id, name: m.name }));
-          return { id: p.id, name: p.name, models };
-        }).filter((g) => g.models.length > 0);
         setModelGroups(groups);
         const active = groups.find((g) => g.id === cfg.ai_provider);
         const provider = active ?? groups[0];

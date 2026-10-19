@@ -1,0 +1,27 @@
+{
+  "files": [
+    "main.tex",
+    "refs.bib"
+  ],
+  "sections": [
+    {
+      "title": "Results",
+      "level": 2,
+      "file": "main.tex",
+      "line": 3
+    }
+  ],
+  "labels": [
+    "sec:results"
+  ],
+  "bibKeys": [
+    "real2020"
+  ],
+  "macros": [],
+  "theorems": [],
+  "glossary": [],
+  "inputGraph": [],
+  "unresolvedRefs": [],
+  "unresolvedCites": [],
+  "ambiguousTypstAtUses": []
+}

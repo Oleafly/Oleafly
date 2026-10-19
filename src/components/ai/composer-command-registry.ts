@@ -4,7 +4,6 @@ import {
   FolderOpen,
   GitFork,
   Lightbulb,
-  PanelRightOpen,
   Sparkles,
   Target,
 } from "lucide-react";
@@ -16,7 +15,6 @@ export interface ComposerCommandActions {
   archiveChat?: () => void;
   attachFiles?: () => void;
   forkChat?: () => void;
-  openBrowser: () => void;
   openGoalEditor?: () => void;
   openMcpSettings: () => void;
   openModelPicker?: () => void;
@@ -132,13 +130,6 @@ export function createAttachCommands(actions: ComposerCommandActions): ComposerC
       action: actions.attachFiles,
     });
   }
-  commands.push({
-    id: "browser",
-    label: i18n.t(($) => $.ai.commands.browser.label),
-    description: i18n.t(($) => $.ai.commands.browser.description),
-    icon: PanelRightOpen,
-    action: actions.openBrowser,
-  });
   if (actions.openGoalEditor) {
     commands.push({
       id: "goal",

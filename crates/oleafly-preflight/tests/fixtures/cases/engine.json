@@ -1,0 +1,265 @@
+[
+  {
+    "name": "latex-source-only",
+    "input": {
+      "source": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}",
+      "sourceProfile": "latex"
+    }
+  },
+  {
+    "name": "latex-with-refs",
+    "input": {
+      "source": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}",
+      "sourceProfile": "latex",
+      "refs": {
+        "definedLabels": [],
+        "bibKeys": [
+          "known"
+        ],
+        "bibLoaded": true,
+        "projectFiles": [
+          "main.tex",
+          "plot.png"
+        ],
+        "duplicateDois": []
+      }
+    }
+  },
+  {
+    "name": "latex-with-project",
+    "input": {
+      "source": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}",
+      "sourceProfile": "latex",
+      "project": {
+        "mainFile": "main.tex",
+        "files": [
+          {
+            "path": "main.tex",
+            "content": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}"
+          },
+          {
+            "path": "plot.png"
+          },
+          {
+            "path": "sections/b.tex",
+            "content": "\\label{fig:x}\\includegraphics{missing}"
+          }
+        ]
+      },
+      "refs": {
+        "definedLabels": [],
+        "bibKeys": [
+          "known"
+        ],
+        "bibLoaded": true,
+        "projectFiles": [
+          "main.tex",
+          "plot.png",
+          "sections/b.tex"
+        ],
+        "duplicateDois": []
+      },
+      "submissionProfile": "arxiv",
+      "engine": "bundled"
+    }
+  },
+  {
+    "name": "latex-with-facts",
+    "input": {
+      "source": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}",
+      "sourceProfile": "latex",
+      "project": {
+        "mainFile": "main.tex",
+        "files": [
+          {
+            "path": "main.tex",
+            "content": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}"
+          }
+        ]
+      },
+      "facts": {
+        "version": "1.7",
+        "pageCount": 2,
+        "pages": [
+          {
+            "width": 612,
+            "height": 792,
+            "rotation": 0
+          },
+          {
+            "width": 612,
+            "height": 792,
+            "rotation": 0
+          }
+        ],
+        "outlineCount": 0,
+        "linkCount": 0,
+        "attachmentCount": 0,
+        "formFieldCount": 0,
+        "restricted": false,
+        "author": "Jane",
+        "creator": "LaTeX",
+        "producer": "pdfTeX",
+        "fonts": [
+          {
+            "name": "CMR10",
+            "embedded": true
+          }
+        ]
+      },
+      "submissionProfile": "ieee"
+    }
+  },
+  {
+    "name": "latex-anonymous-without-facts",
+    "input": {
+      "source": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}",
+      "sourceProfile": "latex",
+      "project": {
+        "mainFile": "main.tex",
+        "files": [
+          {
+            "path": "main.tex",
+            "content": "\\author{Jane}"
+          }
+        ]
+      },
+      "anonymousReview": true
+    }
+  },
+  {
+    "name": "latex-anonymous-with-facts",
+    "input": {
+      "source": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}",
+      "sourceProfile": "latex",
+      "project": {
+        "mainFile": "main.tex",
+        "files": [
+          {
+            "path": "main.tex",
+            "content": "\\author{Jane}"
+          }
+        ]
+      },
+      "anonymousReview": true,
+      "facts": {
+        "version": "1.7",
+        "pageCount": 2,
+        "pages": [
+          {
+            "width": 612,
+            "height": 792,
+            "rotation": 0
+          },
+          {
+            "width": 612,
+            "height": 792,
+            "rotation": 0
+          }
+        ],
+        "outlineCount": 0,
+        "linkCount": 0,
+        "attachmentCount": 0,
+        "formFieldCount": 0,
+        "restricted": false,
+        "author": "Jane Doe",
+        "creator": "LaTeX",
+        "producer": "pdfTeX",
+        "fonts": [
+          {
+            "name": "CMR10",
+            "embedded": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "latex-compile-error",
+    "input": {
+      "source": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}",
+      "sourceProfile": "latex",
+      "compile": {
+        "status": "error",
+        "log": "Overfull \\hbox (11pt too wide)"
+      }
+    }
+  },
+  {
+    "name": "latex-compile-idle",
+    "input": {
+      "source": "\\documentclass{article}\n\\begin{document}\n\\begin{abstract}A\\end{abstract}\n\\cite{known,unknown} \\ref{fig:x}\n\\includegraphics{plot.png}\n\\end{document}",
+      "sourceProfile": "latex",
+      "compile": {
+        "status": "idle",
+        "log": ""
+      }
+    }
+  },
+  {
+    "name": "typst-profile",
+    "input": {
+      "source": "#image(\"a.png\")\n@nope",
+      "sourceProfile": "typst",
+      "typstVersion": "0.13.0",
+      "refs": {
+        "definedLabels": [],
+        "bibKeys": [],
+        "bibLoaded": false,
+        "projectFiles": [
+          "main.typ"
+        ],
+        "duplicateDois": []
+      },
+      "project": {
+        "mainFile": "main.typ",
+        "files": [
+          {
+            "path": "main.typ",
+            "content": "#image(\"a.png\")\n@nope"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "typst-without-project",
+    "input": {
+      "source": "= \nTODO",
+      "sourceProfile": "typst"
+    }
+  },
+  {
+    "name": "none-profile",
+    "input": {
+      "source": "# Notes",
+      "sourceProfile": "none",
+      "refs": {
+        "definedLabels": [],
+        "bibKeys": [],
+        "bibLoaded": true,
+        "projectFiles": [],
+        "duplicateDois": []
+      },
+      "project": {
+        "mainFile": "main.md",
+        "files": [
+          {
+            "path": "main.md",
+            "content": "# Notes"
+          }
+        ]
+      },
+      "compile": {
+        "status": "success",
+        "log": "Rerun to get cross-references right."
+      }
+    }
+  },
+  {
+    "name": "default-profile-is-latex",
+    "input": {
+      "source": "\\documentclass{article}\\includegraphics{a.png}"
+    }
+  }
+]

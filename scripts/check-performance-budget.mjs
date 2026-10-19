@@ -43,11 +43,16 @@ const limits = {
   // 4.82 MB after the collaboration review fixes. Moving
   // the wrappers into a module that only src/features/collab imports would
   // take most of it back out.
-  largestJavaScript: 4_850_000,
+  // +100 KB for 0.4.8's startup surfaces: the shared chat composer (drafts,
+  // attachments, effort, the usage meter and the resize handle), Git hosting
+  // accounts, the Preflight context, the terminal key map and the Tools model
+  // choice, about 105 KB of new modules before minification. The entry
+  // measures 4.93 MB.
+  largestJavaScript: 4_950_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 4_850_000,
+  entryJavaScript: 4_950_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -128,12 +133,15 @@ const limits = {
   // in public/ and not counted here), and the server card and Email page
   // changes. About 1.3 KB of it is English strings in the entry. CI measured
   // 20,405,179 bytes on both Linux and Windows for one tree.
-  totalJavaScript: 20_420_000,
+  // +500 KB for 0.4.8: CLI agent conversations, history and controls, research
+  // tasks and their runs, Desktop apps, Git hosting, the terminal settings and
+  // the entry growth above. The combined graph measures 20.91 MB.
+  totalJavaScript: 21_000_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
-  // 620 KB; keep narrow headroom so a namespace accidentally bundled twice
-  // fails loudly.
-  largestLocaleChunk: 800_000,
+  // 851 KB with 0.4.8's strings; keep narrow headroom so a namespace
+  // accidentally bundled twice fails loudly.
+  largestLocaleChunk: 900_000,
   largestCss: 400_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each

@@ -599,7 +599,10 @@
       "diagnostics_other": "{{count}} de diagnostice",
       "papers_one": "{{count}} lucrare",
       "papers_few": "{{count}} lucrări",
-      "papers_other": "{{count}} de lucrări"
+      "papers_other": "{{count}} de lucrări",
+      "sourcesFailed_one": "{{count}} sursă a eșuat",
+      "sourcesFailed_few": "{{count}} surse au eșuat",
+      "sourcesFailed_other": "{{count}} de surse au eșuat"
     }
   },
   "ui": {

@@ -1,7 +1,7 @@
 # Security Policy
 
-Oleafly is a local-first desktop app: your documents, GitHub token, and AI API
-keys live on your machine. We take the integrity of that boundary seriously.
+Oleafly is a local-first desktop app: your documents, Git hosting tokens, and AI
+API keys live on your machine. We take the integrity of that boundary seriously.
 
 ## Reporting a vulnerability
 
@@ -28,7 +28,7 @@ in reports about:
   traversal). File access is meant to stay within `~/.oleafly/projects/<id>/`.
 - **Command execution** - getting the app to run arbitrary programs or shell
   commands.
-- **Secret exposure** - leaking the stored GitHub token or AI API keys (from
+- **Secret exposure** - leaking stored Git hosting tokens or AI API keys (from
   encrypted local storage, process arguments, logs, or the network).
 - **Webview escapes / XSS** - script injection via rendered AI output, compile
   logs, PDF content, or file contents, bypassing the app's Content Security
@@ -39,7 +39,7 @@ in reports about:
 These are documented trade-offs, not vulnerabilities - though we welcome help
 improving them:
 
-- **Secrets at rest** - AI provider credentials, GitHub tokens, and MCP tokens
+- **Secrets at rest** - AI provider credentials, Git hosting tokens, and MCP tokens
   are stored as AES-256-GCM authenticated ciphertext under `~/.oleafly/`.
   Ciphertext files, the separate encryption key, and the shared lock file are
   restricted to the current OS user. This prevents plaintext disclosure from

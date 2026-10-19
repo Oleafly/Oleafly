@@ -1,5 +1,7 @@
 import {
+  lazy,
   memo,
+  Suspense,
   useCallback,
   useEffect,
   useId,
@@ -20,6 +22,8 @@ import {
   Copy,
   Info,
   Paperclip,
+  Pencil,
+  RotateCcw,
   Sparkles,
   XCircle,
 } from "lucide-react";
@@ -52,7 +56,9 @@ import { describeError } from "@/lib/app-error";
 import { outsideCodeFences, useDisplayText } from "@/lib/display-path";
 import { formatList, formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
+import { localizeMarkers, type MarkerLabels } from "@/lib/chat-markers";
 import { Spinner } from "@/components/ui/spinner";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const USER_SKILL_CHIP_CLASS =
   "rounded bg-blue-300/35 px-1 py-px font-medium text-white";
@@ -1227,10 +1233,76 @@ function messageTimestamp(createdAt: number | undefined): Readonly<{ iso?: strin
   };
 }
 
+const MessageAttachments = lazy(() => import("@/components/ai/MessageAttachments"));
+
+export type MessageAction = "regenerate" | "edit";
+
 // Replies often name files by absolute path; show the home folder as ~.
-// What the user typed and the copy button keep the text as written.
-function bubbleText(msg: ChatMessage, displayText: (text: string) => string): string {
-  return msg.role === "assistant" ? outsideCodeFences(msg.content, displayText) : msg.content;
+// What the user typed and the copy button keep the text as written. Stored
+// English markers ("_Stopped._") show in the reader's language.
+function bubbleText(
+  msg: ChatMessage,
+  displayText: (text: string) => string,
+  labels: MarkerLabels,
+): string {
+  return msg.role === "assistant"
+    ? outsideCodeFences(localizeMarkers(msg.content, labels), displayText)
+    : msg.content;
+}
+
+function MessageActionButton({
+  label,
+  icon: Icon,
+  onClick,
+  visible = false,
+  testId,
+}: Readonly<{
+  label: string;
+  icon: typeof Pencil;
+  onClick: () => void;
+  visible?: boolean;
+  testId: string;
+}>) {
+  return (
+    <Tooltip label={label}>
+      <button
+        type="button"
+        aria-label={label}
+        data-testid={testId}
+        onClick={onClick}
+        className={cn(
+          "shrink-0 self-center rounded-md p-1.5 text-muted-foreground transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100",
+          visible ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+        )}
+      >
+        <Icon className="size-3.5" />
+      </button>
+    </Tooltip>
+  );
+}
+
+function messageFooter({
+  messageTime,
+  messageIso,
+  copyText,
+  actions,
+}: Readonly<{
+  messageTime?: string;
+  messageIso?: string;
+  copyText: string | null;
+  actions: React.ReactNode;
+}>) {
+  return (
+    <div className="flex items-center gap-0.5 text-[0.625rem] text-muted-foreground">
+      {messageTime && (
+        <time dateTime={messageIso} className="tabular-nums">
+          {messageTime}
+        </time>
+      )}
+      {copyText !== null && <CopyMessageButton text={copyText} />}
+      {actions}
+    </div>
+  );
 }
 
 function messageBubble({
@@ -1240,6 +1312,8 @@ function messageBubble({
   messageTime,
   messageIso,
   shown,
+  copyText,
+  actions,
 }: Readonly<{
   msg: ChatMessage;
   live?: boolean;
@@ -1247,6 +1321,8 @@ function messageBubble({
   messageTime?: string;
   messageIso?: string;
   shown: string;
+  copyText: string;
+  actions: React.ReactNode;
 }>) {
   return (
     <div
@@ -1270,14 +1346,7 @@ function messageBubble({
           </Markdown>
         )}
       </div>
-      <div className="flex items-center gap-0.5 text-[0.625rem] text-muted-foreground">
-        {messageTime && (
-          <time dateTime={messageIso} className="tabular-nums">
-            {messageTime}
-          </time>
-        )}
-        <CopyMessageButton text={msg.content} />
-      </div>
+      {messageFooter({ messageTime, messageIso, copyText, actions })}
     </div>
   );
 }
@@ -1287,16 +1356,56 @@ export const MessageItem = memo(function MessageItem({
   live,
   actions,
   expansionScope,
+  regenerateKind,
+  editable,
+  onMessageAction,
 }: Readonly<{
   msg: ChatMessage;
   live?: boolean;
   actions?: ResearchChatActions;
   expansionScope?: string;
+  regenerateKind?: "regenerate" | "retry";
+  editable?: boolean;
+  onMessageAction?: (action: MessageAction, messageId: string) => void;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
   const displayText = useDisplayText();
   const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
-  const shown = bubbleText(msg, displayText);
+  const markerLabels: MarkerLabels = {
+    stopped: t(($) => $.ai.conversation.stopped),
+    stepLimit: t(($) => $.ai.conversation.stepLimit),
+    outputLimit: t(($) => $.ai.conversation.outputLimit),
+  };
+  const shown = bubbleText(msg, displayText, markerLabels);
+  const copyText = msg.role === "assistant" ? localizeMarkers(msg.content, markerLabels) : msg.content;
+  const messageId = msg.id;
+  const actionButtons =
+    !live && messageId && onMessageAction ? (
+      <>
+        {editable && (
+          <MessageActionButton
+            label={t(($) => $.ai.messageActions.edit)}
+            icon={Pencil}
+            testId="message-action-edit"
+            onClick={() => onMessageAction("edit", messageId)}
+          />
+        )}
+        {regenerateKind && (
+          <MessageActionButton
+            label={
+              regenerateKind === "retry"
+                ? t(($) => $.ai.messageActions.retry)
+                : t(($) => $.ai.messageActions.regenerate)
+            }
+            icon={RotateCcw}
+            visible={regenerateKind === "retry"}
+            testId="message-action-regenerate"
+            onClick={() => onMessageAction("regenerate", messageId)}
+          />
+        )}
+      </>
+    ) : null;
+  const hasActionButtons = Boolean(actionButtons && (editable || regenerateKind));
   const tools = msg.toolCalls ?? [];
   const attachmentOccurrences = new Map<string, number>();
   // Fall back to the legacy single-block fields for chats persisted before
@@ -1355,7 +1464,28 @@ export const MessageItem = memo(function MessageItem({
           {t(($) => $.ai.chat.steered)}
         </span>
       )}
-      {msg.attachments && msg.attachments.length > 0 && (
+      {msg.attachments && msg.attachments.some((a) => a.sha256) && (
+        <Suspense
+          fallback={
+            <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+              {msg.attachments.map((a, index) => (
+                <span
+                  key={`${a.sha256 ?? a.name}:${index}`}
+                  className="flex items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
+                >
+                  <Paperclip className="size-3" />
+                  <span className="max-w-[140px] truncate">{a.name}</span>
+                </span>
+              ))}
+            </div>
+          }
+        >
+          <div className="flex max-w-[85%] justify-end">
+            <MessageAttachments attachments={msg.attachments} />
+          </div>
+        </Suspense>
+      )}
+      {msg.attachments && msg.attachments.length > 0 && !msg.attachments.some((a) => a.sha256) && (
         <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
           {msg.attachments.map((a) => {
             const identity = `${a.name}:${a.mediaType}`;
@@ -1399,8 +1529,14 @@ export const MessageItem = memo(function MessageItem({
             messageTime: timestamp.label,
             messageIso: timestamp.iso,
             shown,
+            copyText,
+            actions: actionButtons,
           })
-        : null}
+        : hasActionButtons && (
+            <div className="group flex w-full">
+              {messageFooter({ copyText: null, actions: actionButtons })}
+            </div>
+          )}
     </div>
   );
 });

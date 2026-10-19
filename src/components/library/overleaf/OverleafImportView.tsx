@@ -5,6 +5,7 @@ import { RotateCw, Search } from "lucide-react";
 import { Book, BOOK_SWATCHES } from "@/components/library/Book";
 import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
+import { BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckBadge } from "@/components/ui/check-badge";
@@ -395,6 +396,9 @@ function SignInPanel() {
       <p data-testid="overleaf-passkey-hint" className="max-w-md text-xs text-muted-foreground">
         {t(($) => $.library.import.overleaf.passkeyHint)}
       </p>
+      {signing ? null : (
+        <BrowserSignInCopy server={store.server} variant="button" onSignedIn={() => void store.load()} />
+      )}
       {store.error && !expired && !signing ? (
         <p role="alert" className="max-w-md select-text text-xs text-destructive">
           {describeError(store.error)}

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState, type RefObject } from "react";
 
-export const TOOLBAR_OVERFLOW = { settings: 1, theme: 2, browser: 3, fork: 4, layout: 5, history: 6, export: 7 } as const;
+export const TOOLBAR_OVERFLOW = { settings: 1, theme: 2, fork: 4, layout: 5, history: 6, export: 7 } as const;
 
 interface ToolbarLayout {
   overflow: number;

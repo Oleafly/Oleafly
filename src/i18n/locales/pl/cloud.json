@@ -79,13 +79,13 @@
     "linkedNote_other": "{{count}} projektu otwartego z folderu nie jest synchronizowane. Kopie zapasowe są tworzone tylko dla projektów z Biblioteki."
   },
   "transfer": {
+    "uploading_one": "Przesyłanie plików: {{done}} z {{total}}",
     "uploading_few": "Przesyłanie plików: {{done}} z {{total}}",
     "uploading_many": "Przesyłanie plików: {{done}} z {{total}}",
-    "uploading_one": "Przesyłanie plików: {{done}} z {{total}}",
     "uploading_other": "Przesyłanie plików: {{done}} z {{total}}",
+    "downloading_one": "Pobieranie plików: {{done}} z {{total}}",
     "downloading_few": "Pobieranie plików: {{done}} z {{total}}",
     "downloading_many": "Pobieranie plików: {{done}} z {{total}}",
-    "downloading_one": "Pobieranie plików: {{done}} z {{total}}",
     "downloading_other": "Pobieranie plików: {{done}} z {{total}}",
     "fetching": "Pobieranie: {{done}} z {{total}}"
   },

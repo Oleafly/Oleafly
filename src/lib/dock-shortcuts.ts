@@ -1,9 +1,20 @@
 import { useSettingsStore } from "@/store/settings";
-import { toggleBrowser } from "@/lib/browser-window";
+import { logError } from "@/lib/log";
+import { isInsideTerminalDock } from "@/lib/terminal-keys";
+import { openNewTerminal } from "@/lib/terminal-open";
+import { terminalOwnsKey } from "@/lib/terminal-shortcut-guard";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
+import { useTerminalsStore } from "@/store/terminals";
 import { toggleZenMode } from "@/lib/zen-mode";
 
+function consume(event: KeyboardEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
 export function handleDockShortcut(event: KeyboardEvent): boolean {
+  // A focused terminal keeps the keys it can send (Shift+F11).
+  if (terminalOwnsKey(event)) return false;
   const bindings = useShortcutStore.getState().bindings;
   const settings = useSettingsStore.getState();
   if (matchesShortcut(event, bindings.toggleTerminal)) {
@@ -12,18 +23,46 @@ export function handleDockShortcut(event: KeyboardEvent): boolean {
     settings.setTerminalOpen(!settings.terminalOpen);
     return true;
   }
-  if (matchesShortcut(event, bindings.toggleBrowser)) {
-    const target = event.target as Partial<Pick<Element, "closest">> | null;
-    if (target?.closest?.(".ProseMirror")) return false;
-    event.preventDefault();
-    event.stopPropagation();
-    toggleBrowser();
-    return true;
-  }
   if (matchesShortcut(event, bindings.toggleZenMode)) {
     event.preventDefault();
     event.stopPropagation();
     toggleZenMode();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Terminal tab shortcuts. New terminal works anywhere; next, previous and
+ * close act only while focus is inside the terminal dock.
+ */
+export function handleTerminalTabShortcut(event: KeyboardEvent): boolean {
+  const bindings = useShortcutStore.getState().bindings;
+  if (matchesShortcut(event, bindings.newTerminal)) {
+    consume(event);
+    openNewTerminal();
+    return true;
+  }
+  if (!isInsideTerminalDock(event.target)) return false;
+  if (matchesShortcut(event, bindings.nextTerminal)) {
+    consume(event);
+    useTerminalsStore.getState().activateRelativeTerminal(1);
+    return true;
+  }
+  if (matchesShortcut(event, bindings.previousTerminal)) {
+    consume(event);
+    useTerminalsStore.getState().activateRelativeTerminal(-1);
+    return true;
+  }
+  if (matchesShortcut(event, bindings.closeTerminal)) {
+    const activeId = useTerminalsStore.getState().activeId;
+    if (!activeId) return false;
+    consume(event);
+    void import("@/lib/terminal-lifecycle")
+      .then((lifecycle) =>
+        lifecycle.requestCloseTerminals([activeId], () => lifecycle.closeTerminalTabs([activeId])),
+      )
+      .catch((error: unknown) => logError("close terminal from shortcut", error));
     return true;
   }
   return false;

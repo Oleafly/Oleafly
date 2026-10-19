@@ -39,7 +39,7 @@ describe("syncLiveCollaborationSwitch", () => {
     const stop = syncLiveCollaborationSwitch();
     mocks.invoke.mockClear();
     useSettingsStore.getState().setLiveCollaboration(true);
-    useSettingsStore.getState().setWebBrowser(true);
+    useSettingsStore.getState().setTerminalOpen(true);
     useSettingsStore.getState().setLiveCollaboration(true);
     useSettingsStore.getState().setLiveCollaboration(false);
     expect(mocks.invoke.mock.calls).toEqual([

@@ -20,18 +20,55 @@ struct Link {
     removed_at: Option<u64>,
     #[serde(default)]
     displaced: Option<serde_json::Value>,
+    #[serde(default)]
+    compile_dir: Option<serde_json::Value>,
+    #[serde(default)]
+    display_name: Option<serde_json::Value>,
+    #[serde(default)]
+    last_opened_at: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
 struct Sidecar {
-    main_doc: Option<String>,
+    #[serde(default)]
+    name: Option<serde_json::Value>,
+    #[serde(default)]
+    main_doc: Option<serde_json::Value>,
+    #[serde(default)]
+    engine: Option<serde_json::Value>,
+    #[serde(default)]
+    tex_flavor: Option<serde_json::Value>,
     #[serde(default)]
     typst: Option<serde_json::Value>,
 }
 
+fn text(value: Option<serde_json::Value>) -> Option<String> {
+    match value? {
+        serde_json::Value::String(text) if !text.trim().is_empty() => Some(text),
+        _ => None,
+    }
+}
+
+/// A folder the desktop app opened in place (its record under
+/// `<data>/linked/<id>`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct LinkInfo {
+    pub id: String,
+    /// `<data>/linked/<id>`; the app's build folder for it is `build/` inside.
+    pub state_dir: PathBuf,
+    pub compile_dir: Option<String>,
+    pub display_name: Option<String>,
+    pub last_opened_at: Option<u64>,
+}
+
+/// What the desktop app saved for a folder it opened in place.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct SavedProject {
+    pub link: Option<LinkInfo>,
+    pub name: Option<String>,
     pub main_doc: Option<String>,
+    pub engine: Option<String>,
+    pub tex_flavor: Option<String>,
     pub typst: Option<TypstSpec>,
 }
 
@@ -62,34 +99,81 @@ pub(crate) fn saved_project(folder: &Path) -> SavedProject {
         .unwrap_or_default()
 }
 
+/// The app's current link for this folder, if it opened it in place.
+pub(crate) fn link_for(folder: &Path) -> Option<LinkInfo> {
+    let folder = folder.canonicalize().ok()?;
+    let root = data_root()?;
+    current_links(&root.join("linked"))
+        .into_iter()
+        .find(|(_, path)| path == &folder)
+        .map(|(info, _)| info)
+}
+
+/// Every current link with the folder it points at.
+pub(crate) fn links(data_root: &Path) -> Vec<(LinkInfo, PathBuf)> {
+    current_links(&data_root.join("linked"))
+}
+
 #[cfg(test)]
 fn saved_main_in(linked: &Path, folder: &Path) -> Option<String> {
     saved_project_in(linked, folder)?.main_doc
 }
 
-fn saved_project_in(linked: &Path, folder: &Path) -> Option<SavedProject> {
-    let mut entries: Vec<std::fs::DirEntry> = std::fs::read_dir(linked)
-        .ok()?
-        .filter_map(Result::ok)
-        .collect();
+fn current_links(linked: &Path) -> Vec<(LinkInfo, PathBuf)> {
+    let Ok(entries) = std::fs::read_dir(linked) else {
+        return Vec::new();
+    };
+    let mut entries: Vec<std::fs::DirEntry> = entries.filter_map(Result::ok).collect();
     entries.sort_by_key(std::fs::DirEntry::file_name);
-    entries.into_iter().take(MAX_LINKS).find_map(|entry| {
-        let directory = entry.path();
-        let link: Link = read_json(&directory.join(LINK_FILE), MAX_LINK_BYTES)?;
-        let current = link.removed_at.is_none()
-            && link.displaced.is_none()
-            && entry.file_name().to_str() == Some(link.id.as_str())
-            && Path::new(&link.canonical_path) == folder;
-        if !current {
-            return None;
-        }
-        let sidecar = read_json::<Sidecar>(&directory.join(SIDECAR_FILE), MAX_MANIFEST_BYTES)?;
-        Some(SavedProject {
-            typst: sidecar
-                .typst
-                .and_then(|typst| serde_json::from_value(typst).ok()),
-            main_doc: sidecar.main_doc,
+    entries
+        .into_iter()
+        .take(MAX_LINKS)
+        .filter_map(|entry| {
+            let directory = entry.path();
+            let metadata = std::fs::symlink_metadata(&directory).ok()?;
+            if !metadata.is_dir() {
+                return None;
+            }
+            let link: Link = read_json(&directory.join(LINK_FILE), MAX_LINK_BYTES)?;
+            let current = link.removed_at.is_none()
+                && link.displaced.is_none()
+                && entry.file_name().to_str() == Some(link.id.as_str());
+            if !current {
+                return None;
+            }
+            let info = LinkInfo {
+                id: link.id,
+                state_dir: directory,
+                compile_dir: text(link.compile_dir),
+                display_name: text(link.display_name),
+                last_opened_at: link.last_opened_at.and_then(|value| value.as_u64()),
+            };
+            Some((info, PathBuf::from(link.canonical_path)))
         })
+        .collect()
+}
+
+fn saved_project_in(linked: &Path, folder: &Path) -> Option<SavedProject> {
+    let (info, _) = current_links(linked)
+        .into_iter()
+        .find(|(_, path)| path == folder)?;
+    let Some(sidecar) =
+        read_json::<Sidecar>(&info.state_dir.join(SIDECAR_FILE), MAX_MANIFEST_BYTES)
+    else {
+        return Some(SavedProject {
+            link: Some(info),
+            ..SavedProject::default()
+        });
+    };
+    Some(SavedProject {
+        name: text(sidecar.name),
+        main_doc: text(sidecar.main_doc),
+        engine: text(sidecar.engine),
+        tex_flavor: text(sidecar.tex_flavor),
+        typst: sidecar
+            .typst
+            .and_then(|typst| serde_json::from_value(typst).ok()),
+        link: Some(info),
     })
 }
 
@@ -101,15 +185,7 @@ fn read_json<T: DeserializeOwned>(path: &Path, limit: u64) -> Option<T> {
     serde_json::from_slice(&std::fs::read(path).ok()?).ok()
 }
 
-pub(crate) fn data_root() -> Option<PathBuf> {
-    if let Some(directory) = std::env::var_os("OLEAFLY_DATA_DIR").filter(|value| !value.is_empty())
-    {
-        return Some(PathBuf::from(directory));
-    }
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(|home| PathBuf::from(home).join(".oleafly"))
-}
+pub(crate) use crate::app_paths::data_root;
 
 #[cfg(test)]
 mod tests {
@@ -282,5 +358,40 @@ mod tests {
             saved_main_in(&linked, &large).as_deref(),
             Some("notes/draft.tex")
         );
+    }
+
+    #[test]
+    fn a_0_4_7_sidecar_with_unknown_fields_still_selects_engine_and_compiler() {
+        let data = TempDir::new().unwrap();
+        let folders = TempDir::new().unwrap();
+        let linked = data.path().join("linked");
+        let folder = folders.path().join("thesis");
+        std::fs::create_dir_all(&folder).unwrap();
+        let folder = folder.canonicalize().unwrap();
+        let id = format!("linked-{}", "f".repeat(32));
+        link(
+            &linked,
+            &id,
+            &folder,
+            r#","compile_dir":"paper","identity":{"dev":1}"#,
+            None,
+        );
+        std::fs::write(
+            linked.join(&id).join(SIDECAR_FILE),
+            r#"{"name":"Thesis","main_doc":"main.tex","engine":"latexmk","tex_flavor":"lualatex","color":7,"tex":{"distribution":"mactex"},"future":true}"#,
+        )
+        .unwrap();
+        let saved = saved_project_in(&linked, &folder).unwrap();
+        assert_eq!(saved.engine.as_deref(), Some("latexmk"));
+        assert_eq!(saved.tex_flavor.as_deref(), Some("lualatex"));
+        assert_eq!(saved.name.as_deref(), Some("Thesis"));
+        assert_eq!(saved.link.unwrap().compile_dir.as_deref(), Some("paper"));
+
+        std::fs::write(
+            linked.join(&id).join(SIDECAR_FILE),
+            r#"{"main_doc":"main.tex","engine":7}"#,
+        )
+        .unwrap();
+        assert_eq!(saved_project_in(&linked, &folder).unwrap().engine, None);
     }
 }

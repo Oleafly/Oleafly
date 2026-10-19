@@ -21,12 +21,12 @@ function lookup(path: CatalogPath): unknown {
 
 /** The top-level tab strip of each section whose rows all sit inside it, as Radix tab values. */
 const SECTION_TABS: readonly (readonly [SettingsSearchSection, readonly string[]])[] = [
-  ["appearance", ["app", "editor", "terminal", "pdf", "browser", "files"]],
+  ["appearance", ["app", "editor", "terminal", "pdf", "files"]],
   ["data", ["local", "cloud"]],
-  ["ai", ["providers", "agents", "instructions", "personas", "skills", "mcp"]],
+  ["ai", ["providers", "agents", "instructions", "personas", "skills", "mcp", "tools"]],
   ["engine", ["latex", "typst", "markdown"]],
   ["downloads", ["fonts", "templates", "dictionaries"]],
-  ["integrations", ["github", "alphaxiv", "zotero", "citation-search", "oleafly-mcp"]],
+  ["integrations", ["git-hosting", "overleaf", "alphaxiv", "zotero", "citation-search", "desktop-apps", "oleafly-mcp"]],
   ["shortcuts", ["application", "editor", "codeIntelligence", "pdf"]],
 ];
 
@@ -94,7 +94,7 @@ describe("openSettingsTabFor", () => {
 
   it("opens the PDF tab for PDF preview rows, whose keys say preview", () => {
     const appearance = tabStrip(
-      ["appearance-tab-app", "appearance-tab-editor", "appearance-tab-pdf", "appearance-tab-browser"],
+      ["appearance-tab-app", "appearance-tab-editor", "appearance-tab-pdf", "appearance-tab-files"],
       "appearance-tab-app",
     );
     expect(pressed(appearance, ["appearance", "preview", "darkMode"])).toBe("appearance-tab-pdf");
@@ -176,8 +176,8 @@ describe("openSettingsTabFor", () => {
 
   it("does not guess from the keys when the row's tab is known but not on the page", () => {
     const integrations = tabStrip(
-      ["integrations-tab-github", "integrations-tab-oleafly-mcp"],
-      "integrations-tab-github",
+      ["integrations-tab-git-hosting", "integrations-tab-oleafly-mcp"],
+      "integrations-tab-git-hosting",
     );
     expect(pressed(integrations, ["mcp", "servers"])).toBeNull();
   });

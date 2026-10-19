@@ -125,7 +125,6 @@ vi.mock("@/store/git-status", () => {
   store.getState = () => state;
   return { useGitStatusStore: store };
 });
-vi.mock("@/store/github", () => ({ useGithubStore: { getState: () => ({ refresh: vi.fn(async () => {}) }) } }));
 
 vi.mock("@/lib/theme", () => ({
   ThemeProvider: ({ children }: { children?: unknown }) => children,
@@ -154,11 +153,6 @@ vi.mock("@/lib/preview-window", () => ({ restorePreviewWindow: vi.fn(async () =>
 vi.mock("@/lib/native-dock-shortcuts", () => ({
   startNativeDockShortcutBridge: vi.fn(async () => () => {}),
   usesNativeDockMenu: () => false,
-}));
-vi.mock("@/lib/browser-window", () => ({
-  registerBrowserCuaSurface: () => () => {},
-  toggleBrowser: vi.fn(),
-  launchBrowser: vi.fn(),
 }));
 vi.mock("@/lib/mcp-bridge", () => ({ startMcpBridge: mocks.startMcpBridge }));
 vi.mock("@/lib/ai-tools", () => ({ initAiPdfCaptureFlag: mocks.initAiPdfCaptureFlag }));

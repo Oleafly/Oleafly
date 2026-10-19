@@ -19,7 +19,6 @@
     "selectAll": "Seleccionar todo",
     "view": "Ver",
     "toggleTerminal": "Alternar terminal",
-    "toggleBrowser": "Alternar navegador",
     "file": "Archivo",
     "openFolder": "Abrir carpeta…",
     "openRecent": "Abrir recientes",
@@ -28,15 +27,7 @@
     "minimize": "Minimizar",
     "fullscreen": "Activar o desactivar pantalla completa",
     "bringAllToFront": "Traer todo al frente",
-    "newTab": "Nueva pestaña",
-    "openLocation": "Abrir ubicación…",
-    "closeTab": "Cerrar pestaña",
-    "reloadPage": "Recargar página",
     "zenMode": "Modo Zen"
-  },
-  "window": {
-    "browser": "Navegador de Oleafly",
-    "browserTitled": "{{title}} - Navegador de Oleafly"
   },
   "dialog": {
     "cancel": "Cancelar",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Confirmar la importación de cookies",
-      "messageHost": "¿Importar en el navegador integrado de Oleafly las cookies de {{hostname}} del perfil \"{{profile}}\" de {{browser}}? Las cookies importadas pueden iniciar tu sesión en algunos sitios web.",
-      "messageAll": "¿Importar en el navegador integrado de Oleafly todas las cookies del perfil \"{{profile}}\" de {{browser}}? Las cookies importadas pueden iniciar tu sesión en algunos sitios web.",
-      "confirm": "Importar cookies"
+      "copyHost": "¿Copiar en Oleafly las cookies de {{hostname}} del perfil «{{profile}}» de {{browser}}? Pueden iniciar tu sesión en {{hostname}}.",
+      "copyAll": "¿Copiar en Oleafly todas las cookies del perfil «{{profile}}» de {{browser}}? Pueden iniciar tu sesión en sitios web.",
+      "copyConfirm": "Copiar las cookies"
     },
     "mcpApprove": {
       "title": "Aprobar la herramienta MCP",
@@ -103,6 +94,46 @@
       "confirm": "Usar el programa",
       "pickTitle": "Elige el programa para {{name}}",
       "filter": "Programas"
+    },
+    "desktopApps": {
+      "title": "Aplicaciones de escritorio",
+      "action": "{{agent}} quiere {{action}}.",
+      "steps": "{{agent}} quiere hacer estos pasos en una aplicación de escritorio:",
+      "moreSteps": "Pasos que no se muestran: {{count}}",
+      "text": "Texto: «{{text}}»",
+      "address": "Dirección: {{url}}",
+      "allowOnce": "Permitir una vez",
+      "allowChat": "Permitir en este chat",
+      "allowSession": "Permitir en esta sesión",
+      "allowTask": "Permitir en esta tarea",
+      "deny": "No permitir",
+      "actions": {
+        "launchApp": "abrir una aplicación",
+        "click": "hacer clic en una aplicación",
+        "doubleClick": "hacer doble clic en una aplicación",
+        "rightClick": "hacer clic con el botón derecho en una aplicación",
+        "typeText": "escribir en una aplicación",
+        "pressKey": "pulsar una tecla en una aplicación",
+        "hotkey": "pulsar un atajo de teclado en una aplicación",
+        "scroll": "desplazarse en una aplicación",
+        "setValue": "cambiar un campo en una aplicación",
+        "browserPrepare": "abrir un navegador para un sitio web",
+        "browserNavigate": "ir a una página web",
+        "browserClick": "hacer clic en una página web",
+        "browserType": "escribir en una página web",
+        "browserSelect": "elegir una opción en una página web",
+        "runScript": "ejecutar un script de Cua"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "¿Permitir el control del escritorio?",
+      "message": "Los agentes podrán usar lo siguiente y seguirán preguntando antes de cada acción:",
+      "confirm": "Permitir",
+      "enabled": "Aplicaciones de escritorio",
+      "app": "Aplicación: {{name}}",
+      "site": "Sitio web: {{origin}}",
+      "signedIn": "Tu navegador con la sesión iniciada en {{origin}}",
+      "scripted": "Scripts de Cua"
     }
   },
   "errors": {
@@ -128,5 +159,35 @@
   "cloud": {
     "connectedPage": "Ya estás conectado. Puedes cerrar esta pestaña y volver a Oleafly.",
     "failedPage": "El inicio de sesión no terminó. Puedes cerrar esta pestaña y volver a Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Tarea lista para revisar",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plan listo para aprobar",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Una tarea necesita tu aprobación",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Tarea detenida",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Presupuesto de la tarea agotado",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly sigue trabajando",
+      "body": "Las tareas de investigación que marcaste para seguir ejecutándose continúan en segundo plano. Abre Oleafly para ver su progreso."
+    }
   }
 }

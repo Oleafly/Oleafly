@@ -7,6 +7,7 @@ vi.mock("@/lib/acp", async (original) => ({
   acpDelegatedPermission: vi.fn(),
   onAcpEvent: vi.fn(),
   onAcpResync: vi.fn(),
+  onAcpSession: vi.fn(async () => () => {}), onAcpBufferRequest: vi.fn(async () => () => {}),
 }));
 
 import { acpDelegatedPermission, onAcpEvent, onAcpResync, type AcpPermission } from "@/lib/acp";

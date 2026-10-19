@@ -615,7 +615,11 @@
       "papers_one": "{{count}} artykuł",
       "papers_few": "{{count}} artykuły",
       "papers_many": "{{count}} artykułów",
-      "papers_other": "{{count}} artykułu"
+      "papers_other": "{{count}} artykułu",
+      "sourcesFailed_one": "{{count}} źródło zawiodło",
+      "sourcesFailed_few": "{{count}} źródła zawiodły",
+      "sourcesFailed_many": "{{count}} źródeł zawiodło",
+      "sourcesFailed_other": "{{count}} źródła zawiodło"
     }
   },
   "ui": {

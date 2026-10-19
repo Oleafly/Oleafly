@@ -54,19 +54,6 @@
   "branding": {
     "assistantMascot": "Mascotte dell'assistente AI di Oleafly"
   },
-  "browser": {
-    "address": "Cerca o inserisci un URL",
-    "back": "Indietro",
-    "closeTab": "Chiudi la scheda",
-    "copyUrl": "Copia l'URL",
-    "forward": "Avanti",
-    "moreOptions": "Altre opzioni",
-    "newTab": "Nuova scheda",
-    "openExternal": "Apri nel tuo browser",
-    "openTabs": "Schede aperte",
-    "reload": "Ricarica",
-    "setHomePage": "Imposta come pagina iniziale"
-  },
   "changelog": {
     "installed": "Hai questa versione",
     "sectionItems_one": "{{count}} modifica",
@@ -462,10 +449,6 @@
       "hide": "Nascondi l'assistente AI",
       "show": "Mostra l'assistente AI"
     },
-    "browser": {
-      "close": "Chiudi il browser ({{shortcut}})",
-      "open": "Apri il browser ({{shortcut}})"
-    },
     "settings": "Impostazioni",
     "sidebar": {
       "hide": "Nascondi la barra laterale ({{shortcut}})",
@@ -569,17 +552,6 @@
     "saveCopy": "Salva una copia",
     "tryAgain": "Riprova",
     "savedCopy": "I file aperti sono stati salvati in {{folder}}."
-  },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "Azioni GitHub",
-    "connect": "Collega GitHub…",
-    "connectedAs": "Collegato come @{{login}}",
-    "copyRepositoryLink": "Copia il link del repository",
-    "openInGithub": "Apri in GitHub",
-    "pushHint": "Esegui il push su GitHub per abilitarle",
-    "settings": "Impostazioni GitHub",
-    "tooltip": "GitHub"
   },
   "home": {
     "ariaLabel": "Home",
@@ -726,6 +698,14 @@
     "sourceControl": "Controllo del codice",
     "withShortcut": "{{label}} ({{shortcut}})"
   },
+  "remoteMenu": {
+    "accountLabel": "{{login}} su {{host}}",
+    "actions": "Azioni del repository",
+    "copyRepositoryLink": "Copia il link del repository",
+    "openOnHost": "Apri su {{host}}",
+    "settings": "Impostazioni di hosting Git",
+    "signedInAs": "Accesso effettuato su {{host}} come {{login}}"
+  },
   "renameDialog": {
     "close": "Chiudi la finestra di rinomina",
     "collision": "Esiste già {{kind}} di nome \"{{name}}\".",
@@ -778,9 +758,9 @@
         "movedCount_other": "{{count}} progetti spostati nel cestino.",
         "title": "Zona pericolosa"
       },
-      "githubHint": "Per fare il backup di un progetto o sincronizzarlo tra dispositivi: collega GitHub, poi usa <push>Push</push> / <pull>Pull</pull> in Controllo del codice. <setup>Configura GitHub →</setup>",
+      "gitHostingHint": "Fai il backup di un progetto o sincronizzalo tra dispositivi: collegalo a un repository Git, poi usa <push>Push</push> / <pull>Pull</pull> nel controllo del codice. <setup>Configura l'hosting Git →</setup>",
       "localFirst": "Oleafly è local-first. Tutti i progetti stanno sul tuo disco:",
-      "plainFolders": "Ogni progetto è una semplice cartella. La cronologia Git è facoltativa e niente esce dalla tua macchina finché non fai un push su GitHub.",
+      "plainFolders": "Ogni progetto è una normale cartella. La cronologia Git è facoltativa, e niente lascia la tua macchina a meno che tu non lo invii a un server Git.",
       "recycleBin": {
         "clearAll": "Svuota tutto",
         "clearFailed": "Non è stato possibile svuotare il cestino.",
@@ -859,11 +839,7 @@
         "description": "Modifica i progetti con altre persone tramite un server di collaborazione gestito da te o dal tuo gruppo. Aggiunge la sezione Collaborazione alle Impostazioni. Disattivata per impostazione predefinita finché è in beta.",
         "label": "Collaborazione in tempo reale"
       },
-      "warning": "Queste funzioni sono sperimentali e ancora in beta. Non sono del tutto testate e possono cambiare, smettere di funzionare o essere rimosse in una versione futura. Attivale solo se vuoi provare un lavoro in corso.",
-      "webBrowser": {
-        "description": "Mostra il browser web integrato (il suo pulsante e la scorciatoia) e permette all'AI di guidarlo. Disattivato per impostazione predefinita finché è in beta. Quando è disattivato, non c'è nessun pulsante del browser e l'AI non ha lo strumento del browser.",
-        "label": "Browser web"
-      }
+      "warning": "Queste funzioni sono sperimentali e ancora in beta. Non sono del tutto testate e possono cambiare, smettere di funzionare o essere rimosse in una versione futura. Attivale solo se vuoi provare un lavoro in corso."
     },
     "footer": {
       "followOnX": "Segui su X",
@@ -949,7 +925,8 @@
       "general": "Generali",
       "help": "Aiuto e informazioni",
       "integrations": "Integrazioni",
-      "shortcuts": "Scorciatoie da tastiera"
+      "shortcuts": "Scorciatoie da tastiera",
+      "research": "Ricerca"
     },
     "search": {
       "empty": "Nessuna impostazione corrisponde",
@@ -965,7 +942,8 @@
         "general": "preferenze, lingua, controllo ortografico, ortografia, refusi, offline, tour, comando del terminale",
         "help": "informazioni, versione, aggiornamenti, registro delle modifiche, novità, documentazione, assistenza, supporto, comunità, Discord, licenza, segnalazione di crash",
         "integrations": "Zotero, GitHub, MCP, citazioni, account, connessioni",
-        "shortcuts": "scorciatoie da tastiera, tasti di scelta rapida, tasti, tastiera"
+        "shortcuts": "scorciatoie da tastiera, tasti di scelta rapida, tasti, tastiera",
+        "research": "ricerca attività budget notifiche tieni attivo esperimenti esecuzioni research tasks"
       },
       "label": "Cerca nelle impostazioni",
       "results_one": "{{count}} sezione corrisponde",
@@ -1049,7 +1027,6 @@
     "commitCount_other": "{{count}} commit",
     "initialize": "Inizializza il repository",
     "initialized": "Git inizializzato su {{branch}}.",
-    "linkCopied": "Link GitHub copiato",
     "markResolved": "Segna come risolto",
     "mergeNeedsAttention": "Risolvi i conflitti del merge",
     "moreActions": "Altre azioni di controllo del codice",
@@ -1063,18 +1040,19 @@
     "openFile": "Apri il file",
     "openFileFor": "Apri {{path}}",
     "popStash": "Applica l'ultimo stash",
-    "publish": "Pubblica su GitHub",
+    "publishRepository": "Pubblica…",
+    "publishTo": "Pubblica su {{host}}",
     "published": "Pubblicato su {{url}}",
     "pull": "Esegui il pull da origin",
     "pullShort": "Pull",
     "push": "Esegui commit e push su origin",
     "pushShort": "Push",
     "pushSkippedNoRemote": "⚠ Push saltato: nessun remote origin impostato qui sotto.",
-    "pushSkippedNoToken": "⚠ Push saltato: nessun token GitHub (Impostazioni → GitHub).",
     "refresh": "Aggiorna",
     "remote": "Remote",
     "remoteHint": "Crea un nuovo repository oppure collegane uno esistente come remote di questo progetto, poi esegui il push.",
     "removeCredential": "Rimuovi la credenziale salvata",
+    "repositoryLinkCopied": "Link del repository copiato",
     "restoreCommit": "Ripristina questa versione",
     "restoreCommitDescription": "Questa operazione sostituisce ogni file tracciato del progetto con questa versione e rimuove i file aggiunti in seguito. Il tuo branch resta sul commit attuale.",
     "restoreCommitTitle": "Vuoi ripristinare questa versione?",
@@ -1105,7 +1083,7 @@
     "titleRequired": "Il titolo del commit è obbligatorio.",
     "titleRequiredStatus": "Inserisci un titolo prima di eseguire il commit.",
     "unlink": "Scollega",
-    "unlinked": "Scollegato da GitHub.",
+    "unlinkedFrom": "Scollegato da {{host}}.",
     "unstage": "Togli dal commit",
     "unstageFor": "Togli {{path}} dal commit",
     "unstageAll": "Togli tutto dal commit",

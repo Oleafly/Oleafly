@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,11 +21,24 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
-import type { ResearchTask, ResearchTaskEdit } from "@/lib/research-tasks";
+import {
+  defaultBrief,
+  type ResearchBrief,
+  type ResearchTask,
+  type ResearchTaskEdit,
+} from "@/lib/research-tasks";
+import { getConfig } from "@/lib/tauri";
 import { useResearchTasksStore, type ResearchTaskComposerDraft } from "@/store/research-tasks";
 import { i18n } from "@/i18n";
 import { statusLabel } from "./task-status";
 import type { ResearchTaskAgentOption } from "./ResearchTasksPanel";
+import { BriefFields, briefErrors } from "./brief/BriefFields";
+
+const ComputeBriefFields = lazy(() =>
+  import("@/components/settings/research/ComputeBriefFields").then((module) => ({
+    default: module.ComputeBriefFields,
+  })),
+);
 
 export interface ResearchTaskStarter {
   id: string;
@@ -33,6 +46,8 @@ export interface ResearchTaskStarter {
   title: () => string;
   prompt: string;
   skillIds: string[];
+  /** Brief settings the starter turns on. */
+  brief?: Partial<ResearchBrief>;
 }
 
 export const BLANK_STARTER_ID = "blank";
@@ -76,7 +91,16 @@ export const RESEARCH_TASK_STARTERS: ResearchTaskStarter[] = [
     title: () => i18n.t(($) => $.researchTools.tasks.starter.reviewerResponse.title),
     prompt:
       "Draft a point-by-point response using the reviewer comments and manuscript. Separate proposed manuscript edits from the response letter, and flag requests that need an author decision.",
-    skillIds: ["peer-review"],
+    skillIds: ["oleafly-response-letter"],
+  },
+  {
+    id: "experiment-loop",
+    label: () => i18n.t(($) => $.researchTools.tasks.starter.experimentLoop.label),
+    title: () => i18n.t(($) => $.researchTools.tasks.starter.experimentLoop.title),
+    prompt:
+      "Improve the main metric with a series of small, recorded experiments. Measure a baseline first, change one thing per run, and keep only changes that help.",
+    skillIds: ["oleafly-experiment-loop"],
+    brief: { reviewPlanFirst: true },
   },
 ];
 
@@ -143,7 +167,50 @@ function TaskComposerDraft({
   const [dependencyIds, setDependencyIds] = useState<string[]>(
     restored?.dependencyIds ?? editingTask?.dependencyIds ?? [],
   );
+  const [brief, setBrief] = useState<ResearchBrief>(
+    () => restored?.brief ?? editingTask?.brief ?? defaultBrief(),
+  );
+  const [runAfter, setRunAfter] = useState<number | null>(
+    restored?.runAfter ?? editingTask?.runAfter ?? null,
+  );
+  const [keepRunning, setKeepRunning] = useState(
+    restored?.keepRunning ?? editingTask?.keepRunningAfterQuit ?? false,
+  );
+  const [backgroundEnabled, setBackgroundEnabled] = useState(false);
+  const briefTouched = useRef(Boolean(restored?.brief || editingTask));
   const [error, setError] = useState<string | null>(null);
+
+  // New tasks start with the time budget and network choice from Settings.
+  useEffect(() => {
+    let current = true;
+    void getConfig()
+      .then((config) => {
+        if (!current) return;
+        const settings = config as typeof config & { research_background_enabled?: boolean };
+        setBackgroundEnabled(settings.research_background_enabled === true);
+        if (briefTouched.current) return;
+        setBrief((previous) => ({
+          ...previous,
+          permissions: {
+            ...previous.permissions,
+            network: config.research_command_network ?? previous.permissions.network,
+          },
+          budget: {
+            ...previous.budget,
+            wallClockMinutes: config.research_time_budget_minutes ?? previous.budget.wallClockMinutes,
+          },
+        }));
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  const changeBrief = (next: ResearchBrief) => {
+    briefTouched.current = true;
+    setBrief(next);
+  };
 
   useEffect(() => {
     if (firstAvailable) setAgentKey((current) => current || selectedAgentKey(firstAvailable));
@@ -159,11 +226,13 @@ function TaskComposerDraft({
     setTitle(starter.title());
     setPrompt(starter.prompt);
     setSkillIds(starter.skillIds);
+    if (starter.brief) setBrief((previous) => ({ ...previous, ...starter.brief }));
   };
 
   const submit = async () => {
     const agent = agents.find((candidate) => selectedAgentKey(candidate) === agentKey);
     if (busy || !agent || agent.available === false || !title.trim() || !prompt.trim()) return;
+    if (Object.keys(briefErrors(brief)).length > 0) return;
     const input: ResearchTaskEdit = {
       title: title.trim(),
       prompt: prompt.trim(),
@@ -172,6 +241,9 @@ function TaskComposerDraft({
       modelId: agent.modelId,
       skillIds,
       dependencyIds,
+      brief,
+      runAfter,
+      keepRunningAfterQuit: keepRunning && backgroundEnabled,
     };
     setError(null);
     try {
@@ -185,7 +257,17 @@ function TaskComposerDraft({
 
   const dismiss = () => {
     if (busy) return;
-    saveDraft(draftId, { starterId, title, prompt, agentKey, skillIds, dependencyIds });
+    saveDraft(draftId, {
+      starterId,
+      title,
+      prompt,
+      agentKey,
+      skillIds,
+      dependencyIds,
+      brief,
+      runAfter,
+      keepRunning,
+    });
     (onDismiss ?? onCancel)();
   };
 
@@ -206,6 +288,7 @@ function TaskComposerDraft({
     Boolean(prompt.trim()) &&
     Boolean(chosenAgent) &&
     chosenAgent?.available !== false &&
+    Object.keys(briefErrors(brief)).length === 0 &&
     !busy;
 
   const submitLabel = () => {
@@ -217,7 +300,7 @@ function TaskComposerDraft({
   return (
     <Dialog open onOpenChange={(next) => { if (!next) dismiss(); }}>
       <DialogContent
-        className="max-h-[88vh] max-w-2xl overflow-hidden"
+        className="flex max-h-[88vh] max-w-2xl flex-col overflow-hidden"
         closeDisabled={busy}
         data-testid="research-task-composer"
       >
@@ -287,6 +370,27 @@ function TaskComposerDraft({
               placeholder={t(($) => $.researchTools.tasks.composer.promptPlaceholder)}
             />
           </div>
+
+          <BriefFields
+            brief={brief}
+            onChange={changeBrief}
+            runAfter={runAfter}
+            onRunAfterChange={setRunAfter}
+            keepRunning={keepRunning}
+            onKeepRunningChange={setKeepRunning}
+            backgroundEnabled={backgroundEnabled}
+            disabled={busy}
+            renderCompute={(fieldId) => (
+              <Suspense fallback={null}>
+                <ComputeBriefFields
+                  id={fieldId}
+                  value={brief.compute}
+                  disabled={busy}
+                  onChange={(compute) => changeBrief({ ...brief, compute })}
+                />
+              </Suspense>
+            )}
+          />
 
           <div className="grid gap-1.5">
             <label htmlFor="research-task-agent" className="text-xs font-medium">

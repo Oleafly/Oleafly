@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
-import { cleanup } from "@testing-library/react";
+import { getQueriesForElement, queries, screen } from "@testing-library/dom";
 import { resetSidebarViewState } from "./src/store/sidebar-view-state";
 import { provideTestCatalogs } from "@oleafly/i18n-contract/testing";
 import diagram from "./src/i18n/locales/en/diagram.json" with { type: "json" };
@@ -45,8 +45,25 @@ vi.mock("@lobehub/icons", () => {
   };
 });
 
-afterEach(() => {
-  cleanup();
+// Testing Library and React DOM check for a DOM once, when they load. A test
+// file in the node environment that sets up its own JSDOM (installUiDom, or a
+// JSDOM in beforeAll) does so after this file runs, so:
+// - `screen` would stay bound to no document (jest-dom above loads it). Its
+//   queries look up the current document.body on each call instead.
+// - React DOM loaded without a DOM reads text fields from key events, and
+//   fireEvent.change alone never reaches onChange. So Testing Library, which
+//   loads React DOM, is loaded here only when a DOM already exists (the jsdom
+//   environment). Otherwise the test file loads it once its JSDOM exists.
+const currentBodyScreen = screen as unknown as Record<string, unknown>;
+for (const name of Object.keys(queries)) {
+  currentBodyScreen[name] = (...args: unknown[]) =>
+    (getQueriesForElement(document.body) as unknown as Record<string, (...rest: unknown[]) => unknown>)[name](...args);
+}
+let testingLibrary = typeof document === "undefined" ? undefined : await import("@testing-library/react");
+
+afterEach(async () => {
+  if (!testingLibrary && typeof document !== "undefined") testingLibrary = await import("@testing-library/react");
+  testingLibrary?.cleanup();
   resetSidebarViewState();
 });
 

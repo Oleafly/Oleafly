@@ -1,0 +1,897 @@
+{
+  "argument-count-letter": [
+    {
+      "from": 16,
+      "key": "latex.lint.argumentCountDigit",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 17
+    }
+  ],
+  "argument-count-two-digits": [
+    {
+      "from": 16,
+      "key": "latex.lint.argumentCountDigit",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 18
+    }
+  ],
+  "argument-count-unclosed": [
+    {
+      "from": 15,
+      "key": "latex.lint.unclosedArgumentCount",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 16
+    }
+  ],
+  "argument-specification-missing": [
+    {
+      "from": 22,
+      "key": "latex.lint.bracedArgumentSpecification",
+      "params": {
+        "command": "NewDocumentCommand"
+      },
+      "severity": "error",
+      "to": 23
+    }
+  ],
+  "astral-letter-after-backslash": [
+    {
+      "from": 10,
+      "key": "latex.lint.unclosedOpeningBrace",
+      "params": {},
+      "severity": "error",
+      "to": 11
+    }
+  ],
+  "balanced-dollar": [],
+  "begin-body-missing": [
+    {
+      "from": 17,
+      "key": "latex.lint.bracedBeginBody",
+      "params": {
+        "command": "newenvironment"
+      },
+      "severity": "error",
+      "to": 18
+    }
+  ],
+  "begin-unclosed-argument": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedArgument",
+      "params": {
+        "command": "begin"
+      },
+      "severity": "error",
+      "to": 7
+    }
+  ],
+  "begin-without-brace": [
+    {
+      "from": 0,
+      "key": "latex.lint.requiresBracedArgument",
+      "params": {
+        "command": "begin"
+      },
+      "severity": "error",
+      "to": 6
+    }
+  ],
+  "bracket-display-close-alone": [
+    {
+      "from": 1,
+      "key": "latex.lint.endWithoutBegin",
+      "params": {
+        "begin": "\\[",
+        "end": "\\]"
+      },
+      "severity": "error",
+      "to": 3
+    }
+  ],
+  "bracket-display-closed-by-paren": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedMathDelimiter",
+      "params": {
+        "delimiter": "\\[",
+        "expected": "\\]"
+      },
+      "severity": "error",
+      "to": 2
+    },
+    {
+      "from": 3,
+      "key": "latex.lint.mismatchedMathDelimiter",
+      "params": {
+        "expected": "\\]",
+        "found": "\\)"
+      },
+      "severity": "error",
+      "to": 5
+    }
+  ],
+  "bracket-in-braced-default": [],
+  "bracket-in-environment-default": [],
+  "bracket-math-balanced": [],
+  "bracket-paren-close-alone": [
+    {
+      "from": 1,
+      "key": "latex.lint.endWithoutBegin",
+      "params": {
+        "begin": "\\(",
+        "end": "\\)"
+      },
+      "severity": "error",
+      "to": 3
+    }
+  ],
+  "bracket-paren-closed-by-bracket": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedMathDelimiter",
+      "params": {
+        "delimiter": "\\(",
+        "expected": "\\)"
+      },
+      "severity": "error",
+      "to": 2
+    },
+    {
+      "from": 3,
+      "key": "latex.lint.mismatchedMathDelimiter",
+      "params": {
+        "expected": "\\)",
+        "found": "\\]"
+      },
+      "severity": "error",
+      "to": 5
+    }
+  ],
+  "command-name-missing": [
+    {
+      "from": 10,
+      "key": "latex.lint.bracedCommandName",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 11
+    }
+  ],
+  "command-name-unclosed": [
+    {
+      "from": 11,
+      "key": "latex.lint.unclosedCommandName",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 12
+    },
+    {
+      "from": 11,
+      "key": "latex.lint.unclosedOpeningBrace",
+      "params": {},
+      "severity": "error",
+      "to": 12
+    }
+  ],
+  "comment-hides-math": [],
+  "control-sequence-cut-at-eof": [
+    {
+      "from": 11,
+      "key": "latex.lint.incompleteCommandAtEof",
+      "params": {},
+      "severity": "error",
+      "to": 12
+    },
+    {
+      "from": 11,
+      "key": "latex.lint.incompleteCommandName",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 12
+    }
+  ],
+  "crlf-line-endings": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{itemize}"
+      },
+      "severity": "error",
+      "to": 15
+    },
+    {
+      "from": 24,
+      "key": "latex.lint.endWithoutBegin",
+      "params": {
+        "begin": "\\begin{enumerate}",
+        "end": "\\end{enumerate}"
+      },
+      "severity": "error",
+      "to": 39
+    }
+  ],
+  "default-argument-unclosed": [
+    {
+      "from": 18,
+      "key": "latex.lint.unclosedDefaultArgument",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 19
+    }
+  ],
+  "default-left-open": [
+    {
+      "from": 18,
+      "key": "latex.lint.unclosedDefaultArgument",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 19
+    }
+  ],
+  "distinct-labels": [],
+  "dollar-closes-paren": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedMathDelimiter",
+      "params": {
+        "delimiter": "\\(",
+        "expected": "\\)"
+      },
+      "severity": "error",
+      "to": 2
+    },
+    {
+      "from": 3,
+      "key": "latex.lint.mismatchedMathDelimiter",
+      "params": {
+        "expected": "\\)",
+        "found": "$"
+      },
+      "severity": "error",
+      "to": 4
+    }
+  ],
+  "duplicate-label": [
+    {
+      "from": 24,
+      "key": "latex.lint.duplicateLabel",
+      "params": {
+        "label": "eq:1"
+      },
+      "severity": "warning",
+      "to": 28
+    }
+  ],
+  "emoji-before-unmatched-brace": [
+    {
+      "from": 19,
+      "key": "latex.lint.unmatchedClosingBrace",
+      "params": {},
+      "severity": "error",
+      "to": 20
+    }
+  ],
+  "end-at-eof": [
+    {
+      "from": 5,
+      "key": "latex.lint.requiresBracedArgument",
+      "params": {
+        "command": "end"
+      },
+      "severity": "error",
+      "to": 9
+    }
+  ],
+  "end-empty-argument": [
+    {
+      "from": 4,
+      "key": "latex.lint.emptyArgument",
+      "params": {
+        "command": "end"
+      },
+      "severity": "error",
+      "to": 6
+    }
+  ],
+  "end-without-begin": [
+    {
+      "from": 5,
+      "key": "latex.lint.endWithoutBegin",
+      "params": {
+        "begin": "\\begin{document}",
+        "end": "\\end{document}"
+      },
+      "severity": "error",
+      "to": 19
+    }
+  ],
+  "environment-name-empty": [
+    {
+      "from": 15,
+      "key": "latex.lint.emptyEnvironmentName",
+      "params": {
+        "command": "newenvironment"
+      },
+      "severity": "error",
+      "to": 17
+    }
+  ],
+  "escaped-dollar-and-display": [],
+  "incomplete-documentcommand": [
+    {
+      "from": 30,
+      "key": "latex.lint.bracedReplacementBody",
+      "params": {
+        "command": "NewDocumentCommand"
+      },
+      "severity": "error",
+      "to": 31
+    }
+  ],
+  "incomplete-documentenvironment": [
+    {
+      "from": 38,
+      "key": "latex.lint.bracedEndBody",
+      "params": {
+        "command": "NewDocumentEnvironment"
+      },
+      "severity": "error",
+      "to": 39
+    }
+  ],
+  "incomplete-newcommand": [
+    {
+      "from": 20,
+      "key": "latex.lint.bracedReplacementBody",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 21
+    }
+  ],
+  "incomplete-newenvironment": [
+    {
+      "from": 28,
+      "key": "latex.lint.bracedEndBody",
+      "params": {
+        "command": "newenvironment"
+      },
+      "severity": "error",
+      "to": 29
+    }
+  ],
+  "label-empty-argument": [
+    {
+      "from": 6,
+      "key": "latex.lint.emptyArgument",
+      "params": {
+        "command": "label"
+      },
+      "severity": "error",
+      "to": 8
+    }
+  ],
+  "listings-and-minted-bodies": [],
+  "lone-backslash-at-eof": [
+    {
+      "from": 0,
+      "key": "latex.lint.incompleteCommandAtEof",
+      "params": {},
+      "severity": "error",
+      "to": 1
+    }
+  ],
+  "lone-carriage-returns": [
+    {
+      "from": 3,
+      "key": "latex.lint.unmatchedClosingBrace",
+      "params": {},
+      "severity": "error",
+      "to": 4
+    },
+    {
+      "from": 5,
+      "key": "latex.lint.unclosedMathDelimiter",
+      "params": {
+        "delimiter": "$",
+        "expected": "$"
+      },
+      "severity": "error",
+      "to": 6
+    }
+  ],
+  "lstinline-optional-and-braces": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedCommand",
+      "params": {
+        "command": "lstinline"
+      },
+      "severity": "error",
+      "to": 11
+    }
+  ],
+  "malformed-definition-name": [
+    {
+      "from": 12,
+      "key": "latex.lint.requiresControlSequence",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 18
+    },
+    {
+      "from": 27,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{itemize}"
+      },
+      "severity": "error",
+      "to": 42
+    },
+    {
+      "from": 43,
+      "key": "latex.lint.endWithoutBegin",
+      "params": {
+        "begin": "\\begin{enumerate}",
+        "end": "\\end{enumerate}"
+      },
+      "severity": "error",
+      "to": 58
+    }
+  ],
+  "math-in-label-and-text": [
+    {
+      "from": 16,
+      "key": "latex.lint.unclosedMathDelimiter",
+      "params": {
+        "delimiter": "$",
+        "expected": "$"
+      },
+      "severity": "error",
+      "to": 17
+    }
+  ],
+  "mintinline-pipes": [
+    {
+      "from": 23,
+      "key": "latex.lint.unclosedOpeningBrace",
+      "params": {},
+      "severity": "error",
+      "to": 24
+    }
+  ],
+  "mismatched-end": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{itemize}"
+      },
+      "severity": "error",
+      "to": 15
+    },
+    {
+      "from": 16,
+      "key": "latex.lint.endWithoutBegin",
+      "params": {
+        "begin": "\\begin{enumerate}",
+        "end": "\\end{enumerate}"
+      },
+      "severity": "error",
+      "to": 31
+    }
+  ],
+  "nested-environments": [],
+  "non-ascii-command-names": [
+    {
+      "from": 19,
+      "key": "latex.lint.unmatchedClosingBrace",
+      "params": {},
+      "severity": "error",
+      "to": 20
+    }
+  ],
+  "novalidate-after-text": [
+    {
+      "from": 15,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{itemize}"
+      },
+      "severity": "error",
+      "to": 30
+    }
+  ],
+  "novalidate-baseline": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{itemize}"
+      },
+      "severity": "error",
+      "to": 15
+    }
+  ],
+  "novalidate-begin-without-word": [
+    {
+      "from": 10,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{itemize}"
+      },
+      "severity": "error",
+      "to": 25
+    }
+  ],
+  "novalidate-double-percent": [],
+  "novalidate-escaped-percent": [
+    {
+      "from": 13,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{itemize}"
+      },
+      "severity": "error",
+      "to": 28
+    }
+  ],
+  "novalidate-file-first-line": [],
+  "novalidate-file-last-line": [],
+  "novalidate-file-spaced": [],
+  "novalidate-region": [
+    {
+      "from": 68,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{enumerate}"
+      },
+      "severity": "error",
+      "to": 85
+    }
+  ],
+  "novalidate-region-later": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{itemize}"
+      },
+      "severity": "error",
+      "to": 15
+    }
+  ],
+  "novalidate-region-tokens": [],
+  "novalidate-region-unclosed": [],
+  "novalidate-with-trailing-words": [
+    {
+      "from": 27,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{itemize}"
+      },
+      "severity": "error",
+      "to": 42
+    }
+  ],
+  "odd-dollar": [
+    {
+      "from": 12,
+      "key": "latex.lint.unclosedMathDelimiter",
+      "params": {
+        "delimiter": "$",
+        "expected": "$"
+      },
+      "severity": "error",
+      "to": 13
+    }
+  ],
+  "outer-end-skips-environments": [
+    {
+      "from": 9,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{b}"
+      },
+      "severity": "error",
+      "to": 18
+    },
+    {
+      "from": 18,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{c}"
+      },
+      "severity": "error",
+      "to": 27
+    },
+    {
+      "from": 27,
+      "key": "latex.lint.mismatchedEnvironment",
+      "params": {
+        "expected": "\\end{c}",
+        "found": "\\end{a}"
+      },
+      "severity": "error",
+      "to": 34
+    }
+  ],
+  "package-options-with-braces": [],
+  "replacement-body-missing": [
+    {
+      "from": 12,
+      "key": "latex.lint.bracedReplacementBody",
+      "params": {
+        "command": "newcommand"
+      },
+      "severity": "error",
+      "to": 13
+    }
+  ],
+  "starred-and-spaced-definitions": [],
+  "structural-arguments": [
+    {
+      "from": 0,
+      "key": "latex.lint.requiresBracedArgument",
+      "params": {
+        "command": "documentclass"
+      },
+      "severity": "error",
+      "to": 14
+    },
+    {
+      "from": 34,
+      "key": "latex.lint.emptyArgument",
+      "params": {
+        "command": "usepackage"
+      },
+      "severity": "error",
+      "to": 36
+    },
+    {
+      "from": 52,
+      "key": "latex.lint.unclosedOptionalArgument",
+      "params": {
+        "command": "RequirePackage"
+      },
+      "severity": "error",
+      "to": 53
+    }
+  ],
+  "supported-definitions": [],
+  "trailing-incomplete-command": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{document}"
+      },
+      "severity": "error",
+      "to": 16
+    },
+    {
+      "from": 22,
+      "key": "latex.lint.unmatchedClosingBrace",
+      "params": {},
+      "severity": "error",
+      "to": 23
+    },
+    {
+      "from": 24,
+      "key": "latex.lint.incompleteCommandAtEof",
+      "params": {},
+      "severity": "error",
+      "to": 25
+    }
+  ],
+  "unclosed-environment": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{document}"
+      },
+      "severity": "error",
+      "to": 16
+    }
+  ],
+  "unicode-control-sequences": [],
+  "verb-space-delimiter": [
+    {
+      "from": 0,
+      "key": "latex.lint.invalidVerbatimArgument",
+      "params": {
+        "command": "verb"
+      },
+      "severity": "error",
+      "to": 5
+    }
+  ],
+  "verb-unclosed": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedCommand",
+      "params": {
+        "command": "verb"
+      },
+      "severity": "error",
+      "to": 6
+    }
+  ],
+  "verb-without-delimiter": [
+    {
+      "from": 0,
+      "key": "latex.lint.invalidVerbatimArgument",
+      "params": {
+        "command": "verb"
+      },
+      "severity": "error",
+      "to": 5
+    }
+  ],
+  "verbatim-body-skipped": [],
+  "verbatim-environment-starred": [],
+  "verbatim-unclosed": [
+    {
+      "from": 0,
+      "key": "latex.lint.unclosedEnvironment",
+      "params": {
+        "environment": "\\begin{verbatim}"
+      },
+      "severity": "error",
+      "to": 16
+    }
+  ],
+  "xparse-all-types": [],
+  "xparse-blank": [],
+  "xparse-default-list-unbraced": [
+    {
+      "from": 27,
+      "key": "latex.xparse.bracedDefaultList",
+      "params": {
+        "type": "E"
+      },
+      "severity": "error",
+      "to": 28
+    }
+  ],
+  "xparse-default-unbraced": [
+    {
+      "from": 26,
+      "key": "latex.xparse.bracedDefaultValue",
+      "params": {
+        "type": "R"
+      },
+      "severity": "error",
+      "to": 27
+    }
+  ],
+  "xparse-delimiter-missing": [
+    {
+      "from": 24,
+      "key": "latex.xparse.delimiterTokens",
+      "params": {
+        "type": "r"
+      },
+      "severity": "error",
+      "to": 25
+    }
+  ],
+  "xparse-embellishment-missing": [
+    {
+      "from": 24,
+      "key": "latex.xparse.bracedEmbellishmentList",
+      "params": {
+        "type": "e"
+      },
+      "severity": "error",
+      "to": 25
+    }
+  ],
+  "xparse-environment-spec": [
+    {
+      "from": 29,
+      "key": "latex.xparse.unknownType",
+      "params": {
+        "type": "q"
+      },
+      "severity": "error",
+      "to": 30
+    }
+  ],
+  "xparse-grammar": [],
+  "xparse-incomplete-delimiters": [
+    {
+      "from": 28,
+      "key": "latex.xparse.delimiterTokens",
+      "params": {
+        "type": "r"
+      },
+      "severity": "error",
+      "to": 30
+    }
+  ],
+  "xparse-modifier-without-type": [
+    {
+      "from": 26,
+      "key": "latex.xparse.modifiersNeedType",
+      "params": {},
+      "severity": "error",
+      "to": 27
+    }
+  ],
+  "xparse-processor-unbraced": [
+    {
+      "from": 25,
+      "key": "latex.xparse.bracedProcessor",
+      "params": {
+        "type": ">"
+      },
+      "severity": "error",
+      "to": 26
+    }
+  ],
+  "xparse-trigger-missing": [
+    {
+      "from": 24,
+      "key": "latex.xparse.triggerToken",
+      "params": {},
+      "severity": "error",
+      "to": 25
+    }
+  ],
+  "xparse-unknown-type": [
+    {
+      "from": 28,
+      "key": "latex.xparse.unknownType",
+      "params": {
+        "type": "Z"
+      },
+      "severity": "error",
+      "to": 29
+    }
+  ],
+  "xparse-unknown-types": [
+    {
+      "from": 24,
+      "key": "latex.xparse.unknownType",
+      "params": {
+        "type": "Z"
+      },
+      "severity": "error",
+      "to": 25
+    },
+    {
+      "from": 28,
+      "key": "latex.xparse.unknownType",
+      "params": {
+        "type": "q"
+      },
+      "severity": "error",
+      "to": 29
+    }
+  ]
+}

@@ -209,12 +209,12 @@ paths it expects to change. Trust prompts are answered through
 | Dark-mode toggle in settings | flips the real theme | 32 |
 | Reset to defaults, app-font/accent selects | | — (cosmetic) |
 
-## Git & GitHub
+## Git & Git hosting
 | Surface | Interactions | Spec |
 | --- | --- | --- |
-| Unconnected gate | onboarding panel asserted | 12 |
-| Stage / diff / commit | `E2E_GITHUB_TOKEN` connects via PAT then full flow | 12 🔑 |
-| Publish to GitHub | creates a real repo, pushes, verifies main.tex on the remote over the API, deletes the repo (delete_repo scope) and unlinks | 12 🔑 (`E2E_GIT_PUSH=1`) |
+| No account | local Git works, Publish stays offered | 12 |
+| Stage / diff / commit | `E2E_GITHUB_TOKEN` adds a GitHub account with a token in Settings › Git hosting, then full flow | 12 🔑 |
+| Publish (GitHub account) | creates a real repo, pushes, verifies main.tex on the remote over the API, deletes the repo (delete_repo scope) and unlinks | 12 🔑 (`E2E_GIT_PUSH=1`) |
 | History restore | two real commits, restore back (edit vanishes), roll forward (edit returns), restored doc recompiles clean | 29 🔑 |
 | Device-flow connect, pull, discard | | 🔑 (same gate; extend 12 as needed) |
 | History modal | opens from the palette | 18 |

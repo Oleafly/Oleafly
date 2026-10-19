@@ -21,7 +21,8 @@
     "status": {
       "queued": "A research task that has not started yet",
       "running": "A research task that is executing now",
-      "cancelled": "A research task the user stopped before it finished"
+      "cancelled": "A research task the user stopped before it finished",
+      "planReady": "Task status: the agent wrote its plan and waits for the user to approve it."
     },
     "relative": {
       "justNow": "Timestamp for an event less than a minute old",
@@ -52,6 +53,9 @@
       "unknownTokens": "Shown instead of a token count the runtime did not report",
       "isolationWorktree": "The task ran in a separate Git worktree",
       "isolationStaged": "The task ran in a copied staging folder"
+    },
+    "progress": {
+      "costUsed": "Money spent on the model so far and the task's limit, in US dollars. Keep the $ signs."
     }
   },
   "tools": {
@@ -133,5 +137,66 @@
     "against": "Uppercase heading over the argument against citing a paper",
     "forAgainst": "Toggle that reveals the for and against reasoning",
     "query": "Shows the search query derived from a paragraph"
+  },
+  "evidence": {
+    "items": {
+      "buildFailed": "Shown in the evidence checklist when the task's workspace does not compile. {{errors}} is a number of errors.",
+      "numbersMismatch": "A number in the manuscript differs from the metric recorded for the run it cites. {{value}} is the printed number, {{run}} a run id such as r002, {{recorded}} the recorded value."
+    }
+  },
+  "converterModel": {
+    "automatic": "Model menu entry that lets Oleafly choose the best installed Ollama model",
+    "mathpixModel": "Product name; keep Mathpix untranslated",
+    "sentTo": "Privacy notice: the images go to this AI provider's servers",
+    "scansSentTo": "Privacy notice: the images go to this AI provider's servers",
+    "sentToHost": "Privacy notice: images go to an Ollama server on another computer, named by host and port",
+    "scansSentToHost": "Privacy notice: images go to an Ollama server on another computer, named by host and port",
+    "pdfSentToMathpix": "Privacy notice: Mathpix receives the whole PDF file, even when only some pages are converted",
+    "transcribingHosted": "Progress message while an image is uploaded to an AI provider. {{provider}} is the provider name",
+    "estimateCost_one": "{{cost}} is a formatted US dollar amount such as $0.42. {{model}} is an AI model name",
+    "estimateCost_other": "{{cost}} is a formatted US dollar amount such as $0.42. {{model}} is an AI model name",
+    "estimateUnknown_one": "Shown when the provider's prices are unknown, so no cost is given",
+    "estimateUnknown_other": "Shown when the provider's prices are unknown, so no cost is given",
+    "transcribedWith": "{{model}} is the AI model name that read the scanned pages, such as glm-ocr",
+    "sentBadge": "Header badge after a hosted provider transcribed a scanned PDF"
+  },
+  "compute": {
+    "targets": {
+      "local": "The user's own machine as a place to run experiments",
+      "test": "Button: run the connection checks for one target (verb)",
+      "forgetHostKey": "Removes the key from Oleafly's own list only",
+      "perTaskSpace": "A Cua Space created for each task, deleted with the task"
+    },
+    "kind": {
+      "cuaSpace": "Product name: Cua is a tool, a Space is its sandbox; keep both"
+    },
+    "notes": {
+      "outputs": "Keep runs/<run>/outputs as written; it is a folder path"
+    },
+    "form": {
+      "addTitle": "kind is one of the compute.kind values",
+      "prelude": "Shell commands Oleafly runs on the remote machine before each run",
+      "qos": "Slurm quality of service, keep as is",
+      "gpuFlag": "The choices are literal Slurm flags and are not translated"
+    },
+    "test": {
+      "warn": "Status of one check that passed with a problem worth reading"
+    },
+    "sandbox": {
+      "windowsDescription": "AppContainer is a Windows term; keep it"
+    },
+    "brief": {
+      "runsOn": "target is a user@host:port or a Space name"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "Short badge on a research task. The background helper, a small Oleafly process that keeps tasks running after the app closes, runs this task.",
+      "backgroundHint": "Tooltip on the In background badge. The helper is a separate Oleafly process; the task comes back to the app window after the step it is on.",
+      "movingBack": "Short badge on a research task: Oleafly asked the background helper to return this task to the app.",
+      "movingBackHint": "Tooltip on the Moving back badge."
+    },
+    "earlierActivity": "Link button in a task's activity tab. It loads what the task did in its earlier runs, before it moved between the app and the background helper or resumed.",
+    "keepRunningFailed": "Error toast after the Keep running when Oleafly is closed checkbox could not be changed."
   }
 }

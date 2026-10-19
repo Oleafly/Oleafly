@@ -34,3 +34,12 @@ crates/oleafly-core/tests/fixtures/typst-log/*.log text eol=lf
 # Bundled citation styles ship inside the app, and the performance budget
 # counts their bytes. A CRLF checkout on Windows makes them 13 KB larger.
 src/assets/csl/*.csl text eol=lf
+
+# CLI golden fixtures. The TypeScript generator and the Rust tests compare
+# UTF-16 offsets, so case tables and expected output keep LF everywhere.
+# Project sources keep their committed bytes (one fixture is CRLF on purpose)
+# and the PDFs are binary.
+crates/oleafly-preflight/tests/fixtures/** text eol=lf
+crates/oleafly-preflight/tests/fixtures/projects/*/project/** -text
+crates/oleafly-preflight/tests/fixtures/pdf/** binary
+crates/oleafly-lint/tests/fixtures/** text eol=lf

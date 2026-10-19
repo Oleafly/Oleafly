@@ -80,17 +80,47 @@
   "export": {
     "bibliography_unreadable": "Oleafly non è riuscito a leggere la bibliografia {{name}}. Controlla che non contenga voci danneggiate, poi esporta di nuovo."
   },
-  "github": {
-    "sign_in_expired": "Il codice di accesso è scaduto. Riprova.",
-    "sign_in_cancelled": "L'autorizzazione GitHub è stata annullata.",
-    "sign_in_failed": "Accesso a GitHub non riuscito.",
-    "repositories_unavailable": "Impossibile caricare i repository.",
-    "create_repo_failed": "Impossibile creare il repository ({{status}})."
-  },
   "git": {
-    "remote_exists": "Questo progetto è già collegato a {{remote}}.",
+    "access_denied": "{{host}} ha negato l'accesso a questo repository. Controlla che il tuo account possa accedervi. Se l'organizzazione usa il single sign-on, autorizza prima il tuo accesso per l'organizzazione.",
+    "account_missing": "Non c'è nessun account di hosting Git per {{host}}. Aggiungine uno nelle Impostazioni.",
+    "archive_too_large": "I file del repository superano {{limit}} MB, quindi Oleafly non può importarli. Clona tu il repository e apri la sua cartella.",
+    "auth_rejected": "{{host}} ha rifiutato l'accesso salvato. Accedi di nuovo a {{host}} nelle Impostazioni.",
+    "credentials_missing": "{{host}} ha chiesto nome utente e password. Accedi a {{host}} nelle Impostazioni, oppure configura una chiave SSH o un credential helper di Git.",
+    "credentials_rejected": "{{host}} ha rifiutato il nome utente e la password forniti da Git. Accedi a {{host}} nelle Impostazioni, oppure aggiorna le credenziali usate dal tuo Git.",
+    "device_flow_unavailable": "In questa versione non è possibile accedere a {{host}} dal browser. Usa invece un token di accesso.",
+    "forge_bad_response": "{{host}} ha inviato una risposta che Oleafly non riesce a leggere.",
+    "forge_ca_file_invalid": "Oleafly non è riuscito a leggere un certificato da questo file. Scegli un file di certificato PEM o DER più piccolo di 1 MB.",
+    "forge_forbidden": "{{host}} ha rifiutato l'operazione. Forse al token mancano gli scope {{scopes}}.",
+    "forge_https_required": "Usa un indirizzo https://. Il semplice http funziona solo con i server della tua rete.",
+    "forge_invalid_repository": "Questo non è un percorso di repository che Oleafly possa usare.",
+    "forge_invalid_repository_name": "Nel nome del repository usa solo lettere, cifre, punti, trattini e trattini bassi.",
+    "forge_invalid_server": "{{server}} non è un indirizzo di server che Oleafly possa usare.",
+    "forge_missing_scopes": "Questo token non può eseguire il push su {{host}}. Crea un token con gli scope {{scopes}}.",
+    "forge_not_found": "{{host}} non ha trovato quel repository.",
+    "forge_rate_limited": "{{host}} sta limitando le richieste in questo momento. Riprova tra un minuto.",
+    "forge_redirect_refused": "{{host}} ha cercato di mandare Oleafly a {{target}}, quindi Oleafly si è fermato per proteggere il tuo accesso.",
+    "forge_repository_exists": "Esiste già un repository con questo nome su {{host}}.",
+    "forge_server_error": "{{host}} ha restituito un errore ({{status}}).",
+    "forge_signed_out": "Il tuo accesso a {{host}} è scaduto o è stato revocato. Accedi di nuovo nelle Impostazioni.",
+    "forge_store": "Oleafly non è riuscito a leggere o salvare i tuoi account di hosting Git.",
+    "forge_token_invalid": "Questo non sembra un token di accesso. Incolla il token completo.",
+    "forge_token_rejected": "{{host}} non ha accettato questo token. Controlla di aver copiato il token completo e che non sia scaduto.",
+    "forge_unknown_server": "Oleafly non è riuscito a capire che tipo di server è {{host}}. Scegli il tipo di server.",
+    "host_key_unknown": "SSH non conosce ancora {{host}}. Collegati una volta da un terminale per accettare la sua chiave host, poi riprova.",
+    "host_unreachable": "Oleafly non è riuscito a raggiungere {{host}}. Controlla l'indirizzo e la tua connessione.",
+    "invalid_remote_url": "Inserisci l'indirizzo HTTPS o SSH di un repository Git.",
     "nested_repository": "Questo progetto si trova dentro un altro repository Git, quindi Oleafly non ne crea uno separato qui.",
     "not_installed": "Git non è installato su questo computer. Installa Git, poi riprova.",
+    "push_rejected": "Il branch remoto contiene commit che questo progetto non ha ancora. Esegui prima il pull, poi di nuovo il push.",
+    "remote_exists": "Questo progetto è già collegato a {{remote}}.",
+    "remote_has_password": "Togli la password dall'indirizzo. Oleafly accede invece con il tuo account di hosting Git o con le tue credenziali Git.",
+    "repository_empty": "Questo repository non ha ancora commit, quindi non c'è niente da importare.",
+    "repository_not_found": "{{host}} non ha nessun repository a questo indirizzo, oppure il tuo account non può vederlo.",
+    "sign_in_cancelled": "L'accesso è stato annullato nel browser.",
+    "sign_in_expired": "Il codice di accesso è scaduto. Riprova.",
+    "sign_in_failed": "Accesso non riuscito.",
+    "ssh_key_rejected": "{{host}} ha rifiutato la tua chiave SSH. Aggiungi la tua chiave pubblica al tuo account su {{host}}, oppure carica la chiave nel tuo agente SSH.",
+    "tls_failed": "Oleafly non è riuscito a verificare il certificato di {{host}}. Se la tua organizzazione ha una propria autorità di certificazione, aggiungi il suo file di certificato all'account nelle Impostazioni.",
     "tracked_secret_files": "Pubblicazione interrotta perché alcuni file nella cronologia Git di questo progetto potrebbero contenere chiavi o password: {{files}}"
   },
   "approvals": {
@@ -134,6 +164,8 @@
     "changed": "{{path}} è cambiato dopo che Oleafly lo ha installato, quindi è stato lasciato com'era.",
     "failed": "Oleafly non è riuscito a installare il comando del terminale.",
     "remove_failed": "Oleafly non è riuscito a rimuovere il comando del terminale.",
+    "path_failed": "Oleafly ha installato il comando, ma non è riuscito ad aggiungere {{directory}} al tuo PATH.",
+    "in_use": "{{path}} è in uso. Chiudi i terminali in cui gira oleafly, poi riprova.",
     "unsupported": "Il comando del terminale non è ancora disponibile su questo sistema."
   },
   "research": {
@@ -221,9 +253,50 @@
     "git_token_rejected": "Overleaf non ha accettato il token Git. Potrebbe essere scaduto. Creane uno nuovo nelle impostazioni del tuo account Overleaf.",
     "git_unavailable": "L'integrazione Git di Overleaf non è disponibile per questo progetto. Il proprietario del progetto deve avere un piano a pagamento o universitario.",
     "template_link_invalid": "Questo link non porta a una pagina di modello Overleaf. Copia l'indirizzo di una pagina di overleaf.com/latex/templates e riprova.",
-    "template_unavailable": "Oleafly non è riuscito ad aprire questo modello. Potrebbe essere stato rimosso dalla galleria di Overleaf."
+    "template_unavailable": "Oleafly non è riuscito ad aprire questo modello. Potrebbe essere stato rimosso dalla galleria di Overleaf.",
+    "browser_sign_in_missing": "Oleafly non ha trovato nessun accesso a {{server}} in quel profilo del browser. Accedi direttamente.",
+    "browser_sign_in_failed": "L'accesso preso dal tuo browser non ha funzionato. Potrebbe essere scaduto. Accedi direttamente."
   },
   "collab": {
     "turned_off": "La collaborazione in tempo reale è disattivata. Attivala in Impostazioni, sotto Sperimentazione."
+  },
+  "attachments": {
+    "too_large": "Questo file supera {{max}} MB. Allega un file più piccolo.",
+    "invalid_request": "Oleafly non è riuscito a leggere questo allegato.",
+    "not_found": "Questo allegato non è più salvato su questo computer.",
+    "storage_failed": "Oleafly non è riuscito a salvare questo allegato."
+  },
+  "provider_credit": {
+    "failed": "Oleafly non è riuscito a controllare il tuo saldo {{provider}}."
+  },
+  "mathpix": {
+    "keys_missing": "Prima aggiungi l'ID app e la chiave di Mathpix in Impostazioni, AI, Strumenti.",
+    "invalid_keys": "Quell'ID app o quella chiave contiene caratteri che le chiavi di Mathpix non hanno mai. Copiali di nuovo dalla console di Mathpix.",
+    "key_rejected": "Mathpix non ha accettato queste chiavi. Controlla l'ID app e la chiave nella console di Mathpix.",
+    "rate_limited": "Mathpix sta limitando le richieste in questo momento. Aspetta un minuto, poi riprova.",
+    "unreachable": "Oleafly non è riuscito a raggiungere Mathpix. Controlla la connessione a internet, poi riprova.",
+    "http_error": "Mathpix ha restituito un errore (HTTP {{status}}). Riprova più tardi.",
+    "invalid_response": "Mathpix ha inviato una risposta che Oleafly non riesce a leggere. Riprova più tardi.",
+    "rejected": "Mathpix non è riuscito a leggere questo file: {{reason}}",
+    "image_too_large": "Questa immagine è troppo grande per Mathpix. Ritagliala e riprova.",
+    "pdf_too_large": "Questo PDF supera il limite di 256 MB di Mathpix.",
+    "timed_out": "Mathpix non ha finito questo PDF entro 30 minuti. Prova con meno pagine.",
+    "cancelled": "La conversione con Mathpix è stata interrotta.",
+    "wrong_window": "Mathpix si può usare solo dalla finestra principale di Oleafly."
+  },
+  "desktop_apps": {
+    "not_installed": "Cua Driver non è installato. Installalo in Impostazioni → Integrazioni → App desktop.",
+    "too_old": "Cua Driver {{version}} è troppo vecchio. Aggiornalo alla versione {{minimum}} o successiva.",
+    "no_app_bundle": "Installa Cua Driver con il programma di installazione ufficiale, così può mantenere i permessi di macOS.",
+    "change_declined": "Hai mantenuto le impostazioni precedenti delle app desktop.",
+    "app_blocked": "Gli agenti non possono usare {{name}}.",
+    "app_invalid": "Oleafly non può usare {{name}} come app.",
+    "site_invalid": "\"{{site}}\" non è un indirizzo web che Oleafly possa usare. Usa https://, oppure http:// per questo computer.",
+    "too_many_apps": "Puoi consentire fino a {{limit}} app.",
+    "too_many_sites": "Puoi consentire fino a {{limit}} siti web.",
+    "start_failed": "Cua Driver non è riuscito ad avviarsi: {{detail}}",
+    "not_bounded": "Cua Driver non si è avviato con i limiti di Oleafly, quindi Oleafly lo ha fermato.",
+    "task_unattended": "Le attività che girano in base a una pianificazione o dopo la chiusura di Oleafly non possono usare le app desktop.",
+    "main_window": "Modifica le app desktop dalla finestra principale."
   }
 }

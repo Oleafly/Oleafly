@@ -78,11 +78,11 @@
     "linkedNote_other": "{{count}} projetos abertos a partir de uma pasta não são sincronizados. Só os projetos da sua biblioteca têm backup."
   },
   "transfer": {
-    "uploading_many": "Enviando {{done}} de {{total}} arquivos",
     "uploading_one": "Enviando {{done}} de {{total}} arquivo",
+    "uploading_many": "Enviando {{done}} de {{total}} arquivos",
     "uploading_other": "Enviando {{done}} de {{total}} arquivos",
-    "downloading_many": "Baixando {{done}} de {{total}} arquivos",
     "downloading_one": "Baixando {{done}} de {{total}} arquivo",
+    "downloading_many": "Baixando {{done}} de {{total}} arquivos",
     "downloading_other": "Baixando {{done}} de {{total}} arquivos",
     "fetching": "Baixando {{done}} de {{total}}"
   },

@@ -62,18 +62,19 @@ crates/oleafly-core/  shared Rust project, path, and build-directory policy
 crates/oleafly-cli/   oleaflyc commands and native compiler adapter
 crates/oleafly-agent/ provider-neutral agent runtime
 crates/oleafly-history/ content-addressed compile checkpoints
+crates/oleafly-forge/ Git hosting accounts, sign-in and server APIs
 crates/oleafly-collab-protocol/ messages shared by the app and the collaboration server
 crates/oleafly-collab/ live collaboration client: shared project document, sync and comments
 crates/oleafly-server/ the collaboration server (Axum and SQLite)
 src/                 React + TypeScript frontend
   components/         UI (editor, pdf, ai, layout, files, …)
-  lib/               framework-agnostic helpers (ai-providers, github, …)
+  lib/               framework-agnostic helpers (ai-providers, forge, …)
   store/             Zustand state slices
 src-tauri/src/       Rust backend (Tauri commands)
   commands.rs        compile pipeline (Tectonic sidecar)
   project.rs         project/file CRUD (path-sandboxed - see `resolve`)
   git.rs             git integration
-  github.rs          GitHub OAuth device flow
+  forge/             Git hosting accounts, publish, import and clone
   paths.rs           path helpers + project-id validation
 docs/                public engineering and product documentation
 scripts/             tooling (Tectonic fetch, icon gen)

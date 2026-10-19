@@ -7,7 +7,6 @@ import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
 import { acpError, acpInstall, acpReadiness, acpReadinessLabel, type AcpAgentStatus, type AcpReadiness } from "@/lib/acp";
 import { isWindows } from "@/lib/utils";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
-import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { useDisplayText } from "@/lib/display-path";
 import { AgentLogo } from "./AgentLogo";
@@ -62,15 +61,19 @@ export function signInCommandLine(path: string, windows: boolean = isWindows): s
 
 /**
  * Opens a project terminal that runs the agent's CLI, for agents that sign in
- * interactively. Returns false when no terminal could be added (the tab limit).
+ * interactively. Resolves false when no terminal could be added (the tab
+ * limit; the launcher already said so).
  */
-export function openAgentSignInTerminal(projectId: string, cliPath: string): boolean {
-  const terminals = useTerminalsStore.getState();
-  terminals.setProject(projectId);
-  const tab = useTerminalsStore.getState().addTerminal({ initialInput: `${signInCommandLine(cliPath)}\r` });
-  if (!tab) return false;
-  useSettingsStore.getState().setTerminalOpen(true);
-  return true;
+export async function openAgentSignInTerminal(projectId: string, cliPath: string): Promise<boolean> {
+  useTerminalsStore.getState().setProject(projectId);
+  const { openTerminalWith, TerminalLaunchError } = await import("@/lib/terminal-launch");
+  try {
+    await openTerminalWith({ title: cliPath.split(/[\\/]/).pop() ?? cliPath, command: cliPath });
+    return true;
+  } catch (error) {
+    if (error instanceof TerminalLaunchError) return false;
+    throw error;
+  }
 }
 
 export function BridgeInstallCard({

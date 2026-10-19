@@ -182,6 +182,10 @@
     "terminal": "Terminal laden"
   },
   "terminal": {
+    "activity": "Nieuwe activiteit",
+    "clipboard": {
+      "blocked": "Een programma in de terminal wil tekst kopiëren."
+    },
     "closeCurrent": "Huidige sluiten",
     "closeLeft": "Alles links sluiten",
     "closeOthers": "Andere sluiten",
@@ -193,6 +197,19 @@
       "resize": "De terminal kon niet van formaat veranderen",
       "start": "De shell kon niet starten"
     },
+    "find": {
+      "count": "{{current}} van {{total}}",
+      "label": "Zoeken in terminal",
+      "next": "Volgende overeenkomst",
+      "none": "Geen overeenkomsten",
+      "previous": "Vorige overeenkomst"
+    },
+    "launch": {
+      "invalid": "Deze opdracht kan niet in de terminal worden uitgevoerd.",
+      "noProject": "Open een project om de terminal te gebruiken.",
+      "run": "Uitvoeren",
+      "title": "Deze opdracht in de terminal uitvoeren?"
+    },
     "limitReached": "Sluit een terminal om er nog een te openen",
     "links": {
       "openFile": "{{modifier}}-klik om te openen",
@@ -200,8 +217,24 @@
       "openUrlFailed": "Kon de link niet openen."
     },
     "newTerminal": "Nieuwe terminal",
+    "openInTerminal": "Openen in terminal",
     "settings": "Terminalinstellingen",
     "starting": "De projectshell starten…",
+    "stop": {
+      "closeMany": "Terminals sluiten",
+      "closeOne": "Terminal sluiten",
+      "closeProject": "Project sluiten",
+      "dontAsk": "Niet meer vragen",
+      "many_one": "Er draait nog een programma in {{count}} terminal.",
+      "many_other": "Er draaien nog programma's in {{count}} terminals.",
+      "named": "{{process}} draait nog in {{title}}.",
+      "quit": "Stoppen",
+      "restart": "Opnieuw starten",
+      "switchProject": "Ander project",
+      "titleMany": "De draaiende programma's stoppen?",
+      "titleOne": "Het draaiende programma stoppen?",
+      "unnamed": "Er draait nog een programma in {{title}}."
+    },
     "tabs": "Terminals",
     "titleInput": "Terminaltitel"
   },

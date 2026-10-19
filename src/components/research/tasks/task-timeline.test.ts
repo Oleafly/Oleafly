@@ -323,3 +323,86 @@ describe("buildTaskTimeline edge cases", () => {
     expect(timeline.usage).toEqual({ inputTokens: 10, outputTokens: 4 });
   });
 });
+
+describe("buildTaskTimeline runs, approvals and phases", () => {
+  const timeline = enResearchTools.tasks.timeline;
+
+  it("shows a run starting and finishing with its state", () => {
+    const { items } = buildTaskTimeline(
+      transcript([
+        { kind: "run", runId: "r001", name: "baseline", state: "starting", exitCode: null },
+        { kind: "run", runId: "r001", name: "baseline", state: "running", exitCode: null },
+        { kind: "run", runId: "r001", name: "baseline", state: "failed", exitCode: 3 },
+        { kind: "run", runId: "r002", name: "dropout", state: "timed_out", exitCode: null },
+      ]),
+      false,
+    );
+
+    expect(items.map((item) => item.kind)).toEqual(["milestone", "milestone", "milestone", "milestone"]);
+    expect(items.map((item) => (item.kind === "milestone" ? item.text : ""))).toEqual([
+      timeline.runStarted.replace("{{name}}", "baseline"),
+      timeline.runStarted.replace("{{name}}", "baseline"),
+      "Run baseline: Failed",
+      "Run dropout: Timed out",
+    ]);
+  });
+
+  it("shows an approval request with its summary and the answer it got", () => {
+    const { items } = buildTaskTimeline(
+      transcript([
+        { kind: "approval", approvalId: "a1", approvalKind: "command", status: "pending", summary: "pip install torch" },
+        { kind: "approval", approvalId: "a1", approvalKind: "command", status: "approved", summary: "pip install torch" },
+        { kind: "approval", approvalId: "a2", approvalKind: "run", status: "denied", summary: "train.py" },
+        { kind: "approval", approvalId: "a3", approvalKind: "mcp", status: "expired", summary: "search" },
+        { kind: "approval", approvalId: "a4", approvalKind: "mcp", status: "withdrawn", summary: "search" },
+      ]),
+    );
+
+    expect(items.map((item) => (item.kind === "milestone" ? item.text : item.kind))).toEqual([
+      "Asked for approval: pip install torch",
+      "Approval: Approved",
+      "Approval: Denied",
+      "Approval: Expired",
+      "Approval: Withdrawn",
+    ]);
+  });
+
+  it("marks the waits in the timeline but not working or preparing", () => {
+    const { items } = buildTaskTimeline(
+      transcript([
+        { kind: "phase", phase: "preparing" },
+        { kind: "phase", phase: "planning" },
+        { kind: "phase", phase: "working" },
+        { kind: "phase", phase: "waiting_runs" },
+        { kind: "phase", phase: "waiting_approval" },
+        { kind: "phase", phase: "wrapping_up" },
+        { kind: "phase", phase: "checking_evidence" },
+      ]),
+    );
+
+    expect(items.map((item) => (item.kind === "milestone" ? item.text : item.kind))).toEqual([
+      "Writing the plan",
+      "Waiting for runs",
+      "Waiting for approval",
+      "Wrapping up",
+      "Checking evidence",
+    ]);
+    expect(items.map((item) => item.sequence)).toEqual([2, 4, 5, 6, 7]);
+  });
+
+  it("keeps run rows in sequence between messages and tools", () => {
+    const { items } = buildTaskTimeline(
+      transcript([
+        { kind: "text", text: "Measuring the baseline first." },
+        { kind: "tool", callId: "call_9", name: "start_run", phase: "request", detail: "{}", status: "running" },
+        { kind: "run", runId: "r001", name: "baseline", state: "running", exitCode: null },
+        { kind: "tool", callId: "call_9", name: "", phase: "result", detail: '{"id":"r001"}', status: "done" },
+        { kind: "run", runId: "r001", name: "baseline", state: "succeeded", exitCode: 0 },
+      ]),
+      false,
+    );
+
+    expect(items.map((item) => item.kind)).toEqual(["message", "tool", "milestone", "milestone"]);
+    expect(items.at(-1)).toMatchObject({ kind: "milestone", text: "Run baseline: Finished", sequence: 5 });
+  });
+});

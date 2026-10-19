@@ -17,18 +17,29 @@ const THEME = {
   setPreference: (preference: ThemePreference) => requestThemePreference(preference),
 };
 
-const LOCAL_ONLY_EXPERIMENTS: ReadonlySet<string> = new Set(["webBrowser"]);
+// Settings that only make sense on the computer that chose them: the
+// terminal shell (a Windows shell or path means nothing on a Mac).
+const LOCAL_ONLY_PATHS: readonly (readonly string[])[] = [
+  ["appearance", "terminal", "shell"],
+  ["appearance", "terminal", "shellPath"],
+];
+
+/** `node` without the value at `path`, dropping parents it leaves empty. Never mutates. */
+function withoutPath(node: Record<string, unknown>, path: readonly string[]): Record<string, unknown> {
+  const [head, ...rest] = path;
+  if (head === undefined || !Object.hasOwn(node, head)) return node;
+  if (rest.length > 0) {
+    const child = node[head];
+    if (!isRecord(child)) return node;
+    const next = withoutPath(child, rest);
+    if (next === child) return node;
+    if (Object.keys(next).length > 0) return { ...node, [head]: next };
+  }
+  return Object.fromEntries(Object.entries(node).filter(([key]) => key !== head));
+}
 
 export function withoutLocalOnlySettings(document: Record<string, unknown>): Record<string, unknown> {
-  const experimentation = document.experimentation;
-  if (!isRecord(experimentation) || !Object.keys(experimentation).some((key) => LOCAL_ONLY_EXPERIMENTS.has(key))) {
-    return document;
-  }
-  const kept = Object.fromEntries(
-    Object.entries(experimentation).filter(([key]) => !LOCAL_ONLY_EXPERIMENTS.has(key)),
-  );
-  const copy = Object.fromEntries(Object.entries(document).filter(([key]) => key !== "experimentation"));
-  return Object.keys(kept).length > 0 ? { ...copy, experimentation: kept } : copy;
+  return LOCAL_ONLY_PATHS.reduce((current, path) => withoutPath(current, path), document);
 }
 
 export async function gatherCloudSettings(): Promise<Record<string, unknown>> {

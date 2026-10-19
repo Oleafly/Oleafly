@@ -1,45 +1,24 @@
-mod files;
-mod stdio;
-mod tools;
-mod transport;
-
+//! The app's side of the research MCP bridge. The server, its tools and the
+//! stdio relay live in the research crate; this module admits the project
+//! and supplies the app's skills, linked folders and connector keys.
 use std::path::PathBuf;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::Arc;
 
-use serde_json::Value;
-use tokio::sync::{watch, Mutex, Semaphore};
-use zeroize::Zeroizing;
+use oleafly_research::mcp::{BridgeServices, LinkedRootInfo, LinkedRoots, McpStart, SkillSource};
+use oleafly_research::task_tools::extra::TaskBinding;
+use serde_json::{json, Value};
 
-pub use stdio::{serve_stdio_bridge, stdio_bridge_requested, stdio_server};
-pub use tools::tool_definitions;
-
-pub struct ScopedResearchMcp {
-    context: Arc<Context>,
-    url: String,
-    shutdown: watch::Sender<bool>,
-    server: Mutex<Option<tokio::task::JoinHandle<()>>>,
-}
-
-struct Context {
-    project_id: String,
-    files: files::FileScope,
-    linked_roots: Vec<crate::research_workspace::LinkedResearchRoot>,
-    skills_root: PathBuf,
-    skills_pack: Option<PathBuf>,
-    token: Zeroizing<String>,
-    authority: String,
-    closed: Arc<AtomicBool>,
-    shutdown: watch::Receiver<bool>,
-    slots: Semaphore,
-    requests: Semaphore,
-}
+pub use oleafly_research::mcp::{
+    serve_stdio_bridge, stdio_bridge_requested, stdio_server, ScopedResearchMcp,
+};
 
 pub async fn start(
     app: tauri::AppHandle,
     project_id: String,
     execution_root: Option<PathBuf>,
 ) -> Result<ScopedResearchMcp, String> {
-    start_inner(app, project_id, execution_root, None).await
+    let pack = crate::skills_pack::pack_root(&app);
+    start_inner(pack, project_id, execution_root, None, None).await
 }
 
 pub async fn start_restricted(
@@ -47,8 +26,22 @@ pub async fn start_restricted(
     project_id: String,
     execution_root: PathBuf,
     allowed_paths: Vec<String>,
+    task: Option<TaskBinding>,
 ) -> Result<ScopedResearchMcp, String> {
-    start_inner(app, project_id, Some(execution_root), Some(allowed_paths)).await
+    let pack = crate::skills_pack::pack_root(&app);
+    start_inner(
+        pack,
+        project_id,
+        Some(execution_root),
+        Some(allowed_paths),
+        task,
+    )
+    .await
+}
+
+/// One linked folder's current path, through the research workspace's checks.
+pub(crate) fn linked_root(project_id: &str, root_id: &str) -> Result<PathBuf, String> {
+    AppLinkedRoots.resolve(project_id, root_id)
 }
 
 fn admit(project_id: &str) -> Result<PathBuf, String> {
@@ -62,16 +55,28 @@ fn admit(project_id: &str) -> Result<PathBuf, String> {
 }
 
 async fn start_inner(
-    app: tauri::AppHandle,
+    skills_pack: Option<PathBuf>,
     project_id: String,
     execution_root: Option<PathBuf>,
     allowed_paths: Option<Vec<String>>,
+    task: Option<TaskBinding>,
 ) -> Result<ScopedResearchMcp, String> {
     let project_root = admit(&project_id)?;
     let root = execution_root.unwrap_or(project_root);
-    let files = files::FileScope::open(&root, allowed_paths)?;
     let linked_roots = match crate::research_workspace::get_research_workspace(project_id.clone()) {
-        Ok(workspace) => workspace.roots,
+        Ok(workspace) => workspace
+            .roots
+            .into_iter()
+            .map(|root| LinkedRootInfo {
+                role: serde_json::to_value(root.role)
+                    .ok()
+                    .and_then(|role| role.as_str().map(str::to_string))
+                    .unwrap_or_default(),
+                id: root.id,
+                label: root.label,
+                canonical_path: root.canonical_path,
+            })
+            .collect(),
         Err(error) => {
             let _ = crate::project::append_app_log(format!(
                 "Research session started without linked folders: {error}"
@@ -79,59 +84,88 @@ async fn start_inner(
             Vec::new()
         }
     };
-    transport::serve(
+    oleafly_research::mcp::serve(McpStart {
         project_id,
-        files,
+        root,
+        allowed: allowed_paths,
         linked_roots,
-        crate::paths::oleafly_root()?,
-        crate::skills_pack::pack_root(&app),
-    )
+        services: services(crate::paths::oleafly_root()?, skills_pack),
+        task,
+    })
     .await
 }
 
-impl ScopedResearchMcp {
-    pub fn mcp_server(&self) -> Value {
-        serde_json::json!({
-            "type": "http",
-            "name": "oleafly-research",
-            "url": self.url,
-            "headers": [{
-                "name": "Authorization",
-                "value": format!("Bearer {}", self.context.token.as_str()),
-            }],
-        })
-    }
-
-    pub async fn call_tool(&self, name: &str, arguments: &Value) -> Result<Value, String> {
-        transport::call(&self.context, name, arguments).await
-    }
-
-    pub async fn shutdown(&self) {
-        self.close();
-        if let Some(mut server) = self.server.lock().await.take() {
-            if tokio::time::timeout(std::time::Duration::from_secs(2), &mut server)
-                .await
-                .is_err()
-            {
-                server.abort();
-                let _ = server.await;
-            }
-        }
-    }
-
-    fn close(&self) {
-        self.context
-            .closed
-            .store(true, std::sync::atomic::Ordering::Release);
-        self.context.slots.close();
-        self.context.requests.close();
-        let _ = self.shutdown.send(true);
+fn services(skills_root: PathBuf, skills_pack: Option<PathBuf>) -> BridgeServices {
+    BridgeServices {
+        skills: Arc::new(AppSkills {
+            root: skills_root,
+            pack: skills_pack,
+        }),
+        linked: Arc::new(AppLinkedRoots),
+        secrets: Arc::new(crate::literature::AppSecrets),
     }
 }
 
-impl Drop for ScopedResearchMcp {
-    fn drop(&mut self) {
-        self.close();
+/// Skills from Oleafly's library folder and the bundled pack.
+struct AppSkills {
+    root: PathBuf,
+    pack: Option<PathBuf>,
+}
+
+impl AppSkills {
+    fn records(&self, project_id: &str) -> Result<Vec<crate::skills::SkillRecord>, String> {
+        Ok(
+            crate::skills::list_with(&self.root, self.pack.as_deref(), Some(project_id))?
+                .into_iter()
+                .filter(crate::skills::SkillRecord::is_valid)
+                .collect(),
+        )
+    }
+
+    fn enabled(&self, project_id: &str, id: &str) -> Result<crate::skills::SkillRecord, String> {
+        self.records(project_id)?
+            .into_iter()
+            .find(|skill| skill.id == id && skill.is_available())
+            .ok_or_else(|| {
+                format!("The skill {id} is turned off. Enable it in Settings, AI, Skills.")
+            })
+    }
+}
+
+impl SkillSource for AppSkills {
+    fn list(&self, project_id: &str) -> Result<Vec<Value>, String> {
+        Ok(self
+            .records(project_id)?
+            .iter()
+            .map(crate::skills::skill_tool_summary)
+            .collect())
+    }
+
+    fn load(&self, project_id: &str, id: &str) -> Result<Value, String> {
+        let skill = self.enabled(project_id, id)?;
+        Ok(crate::skills::skill_tool_payload(&skill))
+    }
+
+    fn read_file(&self, project_id: &str, id: &str, path: &str) -> Result<Value, String> {
+        let skill = self.enabled(project_id, id)?;
+        let file = crate::skills::read_skill_file(&self.root, &skill.id, path)?;
+        Ok(json!({"path": file.path, "content": file.content, "truncated": file.truncated}))
+    }
+}
+
+/// Linked folders resolved through the research workspace's checks.
+struct AppLinkedRoots;
+
+impl LinkedRoots for AppLinkedRoots {
+    fn resolve(&self, project_id: &str, root_id: &str) -> Result<PathBuf, String> {
+        crate::research_workspace::roots::resolve_root_path(
+            project_id,
+            root_id,
+            "",
+            crate::research_workspace::ResearchRootOperation::Read,
+            crate::research_workspace::ResearchRootConsumer::Task,
+            false,
+        )
     }
 }
 

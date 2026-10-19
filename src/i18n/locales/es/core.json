@@ -599,7 +599,10 @@
       "diagnostics_other": "{{count}} diagnósticos",
       "papers_one": "{{count}} artículo",
       "papers_many": "{{count}} artículos",
-      "papers_other": "{{count}} artículos"
+      "papers_other": "{{count}} artículos",
+      "sourcesFailed_one": "{{count}} fuente falló",
+      "sourcesFailed_many": "{{count}} fuentes fallaron",
+      "sourcesFailed_other": "{{count}} fuentes fallaron"
     }
   },
   "ui": {

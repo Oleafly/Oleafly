@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertCircle,
@@ -29,21 +29,48 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
 import { ResearchToolCard } from "@/components/ai/activity/ResearchToolCard";
 import {
+  loadResearchTaskEvents,
   previewResearchTaskArtifact,
   previewResearchTaskFile,
+  setResearchTaskKeepRunning,
 } from "@/lib/research-tasks";
+import { getConfig } from "@/lib/tauri";
+import { notifyError } from "@/lib/toast";
 import type {
   ResearchTask,
+  RetryMode,
+  StopReason,
   TaskArtifact,
   TaskArtifactPreview,
   TaskFilePreview,
   TaskTranscriptEvent,
 } from "@/lib/research-tasks";
+import { i18n } from "@/i18n";
 import type { ResearchTaskDetailTab } from "@/store/research-tasks";
-import { relativeTime, statusLabel } from "./task-status";
-import { TaskAgentChip, TaskStatusBadge } from "./TaskChips";
+import { phaseLabel, relativeTime, statusLabel } from "./task-status";
+import { TaskAgentChip, TaskOwnerBadge, TaskStatusBadge } from "./TaskChips";
 import { buildTaskTimeline, type TaskTimelineItem } from "./task-timeline";
 import { LoadingState } from "@/components/ui/empty";
+import { PendingApprovals } from "./PendingApprovals";
+import { PlanReview } from "./PlanReview";
+
+const TaskProgressTab = lazy(() =>
+  import("./progress/TaskProgressTab").then((module) => ({ default: module.TaskProgressTab })),
+);
+const EvidenceChecklist = lazy(() =>
+  import("./evidence/EvidenceChecklist").then((module) => ({ default: module.EvidenceChecklist })),
+);
+
+function stopReasonText(reason: StopReason): string {
+  switch (reason) {
+    case "budget_time":
+      return i18n.t(($) => $.researchTools.tasks.detail.stopReason.budgetTime);
+    case "budget_cost":
+      return i18n.t(($) => $.researchTools.tasks.detail.stopReason.budgetCost);
+    case "budget_runs":
+      return i18n.t(($) => $.researchTools.tasks.detail.stopReason.budgetRuns);
+  }
+}
 
 export interface TaskDetailDialogProps {
   open: boolean;
@@ -58,7 +85,10 @@ export interface TaskDetailDialogProps {
   initialTab?: ResearchTaskDetailTab | null;
   onStart: () => Promise<void>;
   onCancel: () => Promise<void>;
-  onRetry: () => Promise<void>;
+  onRetry: (mode?: RetryMode) => Promise<void>;
+  /** Approves a plan-first task's plan, replacing it when edited. */
+  onApprovePlan?: (editedPlan?: string) => Promise<void>;
+  onRefreshEvidence?: () => Promise<void>;
   onEdit: () => void;
   onApply: (paths: string[]) => Promise<void>;
   onAccept: () => Promise<void>;
@@ -70,6 +100,14 @@ export interface TaskDetailDialogProps {
 }
 
 const EMPTY_CHANGES: NonNullable<ResearchTask["result"]>["changedFiles"] = [];
+
+/** "Show earlier activity" loads at most this many pages of 200 rows. */
+const EARLIER_PAGES = 10;
+
+interface EarlierGeneration {
+  generation: number;
+  events: TaskTranscriptEvent[];
+}
 
 function timestamp(value: number): string {
   const date = new Date(value);
@@ -113,7 +151,7 @@ function ReasoningRow({ text }: Readonly<{ text: string }>) {
 }
 
 function autoTabFor(task: ResearchTask): string {
-  if (task.status === "awaiting_review") return "review";
+  if (task.status === "awaiting_review" || task.status === "plan_ready") return "review";
   if (task.status === "queued" || task.status === "running") return "activity";
   if (task.result) return "output";
   return "activity";
@@ -173,6 +211,8 @@ export function TaskDetailDialog({
   onStart,
   onCancel,
   onRetry,
+  onApprovePlan,
+  onRefreshEvidence,
   onEdit,
   onApply,
   onAccept,
@@ -228,6 +268,83 @@ export function TaskDetailDialog({
     if (!container || !nearBottom.current) return;
     container.scrollTop = container.scrollHeight;
   }, [open, tab, running, timelineCount]);
+
+  // 0.4.8 L: keep running after Oleafly closes, and the generations a
+  // resumed task continues.
+  const [backgroundEnabled, setBackgroundEnabled] = useState(true);
+  const [savingKeepRunning, setSavingKeepRunning] = useState(false);
+  const [earlier, setEarlier] = useState<EarlierGeneration[]>([]);
+  const [earlierLoading, setEarlierLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let current = true;
+    void Promise.resolve()
+      .then(() => getConfig())
+      .then((config) => {
+        if (current) setBackgroundEnabled(config?.research_background_enabled !== false);
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    void taskRunKey;
+    setEarlier([]);
+    setEarlierLoading(false);
+  }, [taskRunKey]);
+
+  const earlierEvents = useMemo(() => earlier.flatMap((entry) => entry.events), [earlier]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the timeline carries translated milestone text, so it is rebuilt on a language switch
+  const earlierTimeline = useMemo(() => buildTaskTimeline(earlierEvents, false), [earlierEvents, language]);
+  const oldestShown = earlier.length > 0 ? earlier[0].generation : null;
+  let nextEarlier: number | null = null;
+  // A task from an older backend has no `resumedFrom` at all.
+  if (task.resumedFrom != null) {
+    nextEarlier = oldestShown === null ? task.resumedFrom : oldestShown - 1;
+  }
+  const canShowEarlier = nextEarlier !== null && nextEarlier >= 1;
+  const unfinished = task.status === "queued" || task.status === "running" || task.status === "plan_ready";
+
+  const toggleKeepRunning = async (keep: boolean) => {
+    setSavingKeepRunning(true);
+    try {
+      await setResearchTaskKeepRunning(task.id, keep);
+    } catch (failure) {
+      notifyError(
+        "research-task-keep-running",
+        failure,
+        t(($) => $.researchTools.backgroundHelper.keepRunningFailed),
+      );
+    } finally {
+      setSavingKeepRunning(false);
+    }
+  };
+
+  const showEarlierActivity = async () => {
+    if (nextEarlier === null) return;
+    const generation = nextEarlier;
+    const requestRunKey = taskRunKey;
+    setEarlierLoading(true);
+    try {
+      const loaded: TaskTranscriptEvent[] = [];
+      let after: number | undefined;
+      for (let page = 0; page < EARLIER_PAGES; page += 1) {
+        const result = await loadResearchTaskEvents(task.id, generation, after, 200);
+        loaded.push(...result.events);
+        if (result.nextSequence === null) break;
+        after = result.nextSequence;
+      }
+      if (activeTaskRun.current !== requestRunKey) return;
+      setEarlier((current) => [{ generation, events: loaded }, ...current]);
+    } catch (failure) {
+      if (activeTaskRun.current === requestRunKey) notifyError("research-task-earlier-activity", failure);
+    } finally {
+      if (activeTaskRun.current === requestRunKey) setEarlierLoading(false);
+    }
+  };
 
   const toggleChangedPath = (path: string, checked: boolean) => {
     setSelectedPaths((current) =>
@@ -372,8 +489,22 @@ export function TaskDetailDialog({
           : t(($) => $.researchTools.tasks.detail.stopTask)}
       </Button>
     ) : null}
-    {task.status === "failed" || task.status === "cancelled" ? (
-      <Button size="sm" disabled={busy} onClick={() => void onRetry().catch(() => {})}>
+    {(task.status === "failed" || task.status === "cancelled") && task.isolation ? (
+      <>
+        <Tooltip label={t(($) => $.researchTools.tasks.detail.resumeHint)}>
+          <Button size="sm" disabled={busy} onClick={() => void onRetry("resume").catch(() => {})}>
+            {t(($) => $.researchTools.tasks.detail.resume)}
+          </Button>
+        </Tooltip>
+        <Tooltip label={t(($) => $.researchTools.tasks.detail.startOverHint)}>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => void onRetry("fresh").catch(() => {})}>
+            {t(($) => $.researchTools.tasks.detail.startOver)}
+          </Button>
+        </Tooltip>
+      </>
+    ) : null}
+    {(task.status === "failed" || task.status === "cancelled") && !task.isolation ? (
+      <Button size="sm" disabled={busy} onClick={() => void onRetry("fresh").catch(() => {})}>
         {t(($) => $.common.actions.retry)}
       </Button>
     ) : null}
@@ -587,12 +718,32 @@ export function TaskDetailDialog({
     </div>
   );
 
-  const reviewTab = () => (
-    <>
-      {sourceRevisionNote()}
-      {changedFiles.length > 0 ? changedFilesSection() : reviewEmptyState()}
-    </>
-  );
+  const showEvidence =
+    Boolean(task.evidence) || task.phase === "checking_evidence" || task.status === "awaiting_review";
+
+  const reviewTab = () =>
+    task.status === "plan_ready" && onApprovePlan ? (
+      <PlanReview
+        task={task}
+        busy={busy}
+        onApprove={onApprovePlan}
+        onDiscard={onCancel}
+      />
+    ) : (
+      <>
+        {sourceRevisionNote()}
+        {changedFiles.length > 0 ? changedFilesSection() : reviewEmptyState()}
+        {showEvidence && onRefreshEvidence ? (
+          <Suspense fallback={null}>
+            <EvidenceChecklist
+              report={task.evidence}
+              checking={task.phase === "checking_evidence"}
+              onRefresh={onRefreshEvidence}
+            />
+          </Suspense>
+        ) : null}
+      </>
+    );
 
   const outputTab = () => (
     <>
@@ -662,6 +813,78 @@ export function TaskDetailDialog({
     </>
   );
 
+  const timelineList = (items: TaskTimelineItem[], live: boolean) => (
+    <div className="relative min-w-0">
+      <span
+        aria-hidden="true"
+        className="absolute bottom-3 left-[0.625rem] top-3 w-px bg-border"
+      />
+      <ol className="relative min-w-0 space-y-3">
+        {items.map((item, index) => {
+          const failing =
+            item.kind === "milestone" && isErrorMilestone(item.text, task.error);
+          return (
+            <li
+              key={item.key}
+              className="relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3"
+            >
+              <TimelineDot
+                item={item}
+                live={live && index === items.length - 1}
+                tall={item.kind === "tool"}
+                failing={failing}
+              />
+              <div className="min-w-0">
+                {item.kind === "milestone" ? (
+                  <p
+                    className={cn(
+                      "break-words text-xs leading-6",
+                      failing ? "text-destructive" : "text-muted-foreground",
+                    )}
+                  >
+                    {item.text}
+                  </p>
+                ) : null}
+                {item.kind === "message" ? (
+                  <Markdown className="min-w-0 break-words text-sm leading-6">
+                    {item.text}
+                  </Markdown>
+                ) : null}
+                {item.kind === "reasoning" ? <ReasoningRow text={item.text} /> : null}
+                {item.kind === "tool" ? (
+                  <div className="min-w-0 [&>div]:max-w-full">
+                    <ResearchToolCard
+                      tc={item.tool}
+                      expansionKey={`research-task:${taskRunKey}:${item.tool.id}`}
+                    />
+                  </div>
+                ) : null}
+                {item.kind === "artifact" ? (
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    className="max-w-full gap-1.5"
+                    disabled={previewingPath === item.artifact.path}
+                    onClick={() => openArtifact(item.artifact)}
+                  >
+                    <Paperclip aria-hidden="true" />
+                    <span className="min-w-0 truncate">
+                      {previewingPath === item.artifact.path
+                        ? t(($) => $.researchTools.tasks.detail.loading)
+                        : t(($) => $.researchTools.tasks.detail.savedArtifact, {
+                            label: item.artifact.label,
+                          })}
+                    </span>
+                  </Button>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -683,17 +906,58 @@ export function TaskDetailDialog({
                 </DialogTitle>
                 <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
                   <TaskStatusBadge status={task.status} />
+                  <TaskOwnerBadge task={task} />
                   <TaskAgentChip task={task} agentName={agentName} showAgent className="max-w-[22rem]" />
                   <span className="text-[0.6875rem] tabular-nums text-muted-foreground">
                     {relativeTime(task.updatedAt)}
                   </span>
                 </div>
+                {running && task.phase ? (
+                  <p className="mt-1.5 text-xs text-muted-foreground" data-testid="research-task-phase">
+                    {phaseLabel(task.phase)}
+                  </p>
+                ) : null}
+                {task.status === "queued" && task.runAfter ? (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {t(($) => $.researchTools.tasks.detail.startsAt, {
+                      time: formatDateTime(new Date(task.runAfter)),
+                    })}
+                  </p>
+                ) : null}
+                {task.stopReason && !running ? (
+                  <p className="mt-1.5 text-xs text-muted-foreground" data-testid="research-task-stop-reason">
+                    {stopReasonText(task.stopReason)}
+                  </p>
+                ) : null}
+                <label
+                  htmlFor={`research-task-keep-running-${task.id}`}
+                  data-testid="research-task-keep-running"
+                  className="mt-2 flex items-start gap-2 text-xs"
+                >
+                  <Checkbox
+                    id={`research-task-keep-running-${task.id}`}
+                    checked={task.keepRunningAfterQuit === true}
+                    disabled={busy || savingKeepRunning || !unfinished || !backgroundEnabled}
+                    onCheckedChange={(next) => void toggleKeepRunning(next === true)}
+                  />
+                  <span>
+                    <span className="font-medium">{t(($) => $.researchTools.brief.keepRunning)}</span>
+                    {!backgroundEnabled ? (
+                      <span className="block text-muted-foreground">
+                        {t(($) => $.researchTools.brief.keepRunningHint)}
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
               </div>
               {headerActions()}
             </div>
             <DialogDescription className="max-h-24 overflow-y-auto whitespace-pre-wrap break-words text-sm text-muted-foreground">
               {task.prompt}
             </DialogDescription>
+            {task.pendingApprovals > 0 ? (
+              <PendingApprovals projectId={task.projectId} tasks={tasks} taskId={task.id} />
+            ) : null}
             {task.error ? (
               <div
                 role="alert"
@@ -731,6 +995,9 @@ export function TaskDetailDialog({
             <TabsList scrollable className="mx-5 mt-3 shrink-0 self-start">
               <TabsTrigger value="activity">
                 {t(($) => $.researchTools.tasks.detail.tabActivity)}
+              </TabsTrigger>
+              <TabsTrigger value="progress">
+                {t(($) => $.researchTools.tasks.detail.tabProgress)}
               </TabsTrigger>
               <TabsTrigger value="review">
                 {t(($) => $.researchTools.tasks.detail.tabReview)}
@@ -774,6 +1041,23 @@ export function TaskDetailDialog({
                 <h4 id="research-task-activity" className="sr-only">
                   {t(($) => $.researchTools.tasks.detail.tabActivity)}
                 </h4>
+                {canShowEarlier ? (
+                  <Button
+                    size="xs"
+                    variant="link"
+                    data-testid="research-task-earlier"
+                    className="mb-2 px-0"
+                    disabled={earlierLoading}
+                    onClick={() => void showEarlierActivity()}
+                  >
+                    {t(($) => $.researchTools.backgroundHelper.earlierActivity)}
+                  </Button>
+                ) : null}
+                {earlierTimeline.items.length > 0 ? (
+                  <div data-testid="research-task-earlier-activity" className="mb-3 border-b pb-3">
+                    {timelineList(earlierTimeline.items, false)}
+                  </div>
+                ) : null}
                 {timeline.items.length === 0 && !eventsLoading ? (
                   <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                     {task.executionGeneration > 0
@@ -781,75 +1065,7 @@ export function TaskDetailDialog({
                       : t(($) => $.researchTools.tasks.detail.startToRecord)}
                   </p>
                 ) : (
-                  <div className="relative min-w-0">
-                    <span
-                      aria-hidden="true"
-                      className="absolute bottom-3 left-[0.625rem] top-3 w-px bg-border"
-                    />
-                    <ol className="relative min-w-0 space-y-3">
-                      {timeline.items.map((item, index) => {
-                        const failing =
-                          item.kind === "milestone" && isErrorMilestone(item.text, task.error);
-                        return (
-                          <li
-                            key={item.key}
-                            className="relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3"
-                          >
-                            <TimelineDot
-                              item={item}
-                              live={running && index === timeline.items.length - 1}
-                              tall={item.kind === "tool"}
-                              failing={failing}
-                            />
-                            <div className="min-w-0">
-                              {item.kind === "milestone" ? (
-                                <p
-                                  className={cn(
-                                    "break-words text-xs leading-6",
-                                    failing ? "text-destructive" : "text-muted-foreground",
-                                  )}
-                                >
-                                  {item.text}
-                                </p>
-                              ) : null}
-                              {item.kind === "message" ? (
-                                <Markdown className="min-w-0 break-words text-sm leading-6">
-                                  {item.text}
-                                </Markdown>
-                              ) : null}
-                              {item.kind === "reasoning" ? <ReasoningRow text={item.text} /> : null}
-                              {item.kind === "tool" ? (
-                                <div className="min-w-0 [&>div]:max-w-full">
-                                  <ResearchToolCard
-                                    tc={item.tool}
-                                    expansionKey={`research-task:${taskRunKey}:${item.tool.id}`}
-                                  />
-                                </div>
-                              ) : null}
-                              {item.kind === "artifact" ? (
-                                <Button
-                                  size="xs"
-                                  variant="outline"
-                                  className="max-w-full gap-1.5"
-                                  disabled={previewingPath === item.artifact.path}
-                                  onClick={() => openArtifact(item.artifact)}
-                                >
-                                  <Paperclip aria-hidden="true" />
-                                  <span className="min-w-0 truncate">
-                                    {previewingPath === item.artifact.path
-                                      ? t(($) => $.researchTools.tasks.detail.loading)
-                                      : t(($) => $.researchTools.tasks.detail.savedArtifact, {
-                                          label: item.artifact.label,
-                                        })}
-                                  </span>
-                                </Button>
-                              ) : null}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </div>
+                  timelineList(timeline.items, running)
                 )}
                 {eventsLoading ? (
                   <LoadingState
@@ -859,6 +1075,16 @@ export function TaskDetailDialog({
                   />
                 ) : null}
               </section>
+            </TabsContent>
+
+            <TabsContent value="progress" className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <Suspense
+                fallback={
+                  <LoadingState size="compact" label={t(($) => $.researchTools.tasks.progress.loading)} />
+                }
+              >
+                <TaskProgressTab task={task} />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="review" className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">

@@ -271,7 +271,7 @@ export function TaskOutputsSection() {
           }
         }}
       >
-        <DialogContent className="max-h-[80vh] max-w-3xl overflow-hidden">
+        <DialogContent className="flex max-h-[80vh] max-w-3xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="truncate">{preview?.label ?? ""}</DialogTitle>
             <DialogDescription>

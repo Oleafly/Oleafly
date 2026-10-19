@@ -190,6 +190,10 @@
     "terminal": "Načítá se terminál"
   },
   "terminal": {
+    "activity": "Nová aktivita",
+    "clipboard": {
+      "blocked": "Program v terminálu chce zkopírovat text."
+    },
     "closeCurrent": "Zavřít aktuální",
     "closeLeft": "Zavřít vše nalevo",
     "closeOthers": "Zavřít ostatní",
@@ -201,6 +205,19 @@
       "resize": "Velikost terminálu se nepodařilo změnit",
       "start": "Prostředí shell se nepodařilo spustit"
     },
+    "find": {
+      "count": "{{current}} z {{total}}",
+      "label": "Najít v terminálu",
+      "next": "Další shoda",
+      "none": "Žádné shody",
+      "previous": "Předchozí shoda"
+    },
+    "launch": {
+      "invalid": "Tento příkaz nelze v terminálu spustit.",
+      "noProject": "Chcete-li používat terminál, otevřete projekt.",
+      "run": "Spustit",
+      "title": "Spustit tento příkaz v terminálu?"
+    },
     "limitReached": "Zavřete některý terminál, abyste mohli otevřít další",
     "links": {
       "openFile": "{{modifier}}+kliknutím otevřete",
@@ -208,8 +225,26 @@
       "openUrlFailed": "Odkaz se nepodařilo otevřít."
     },
     "newTerminal": "Nový terminál",
+    "openInTerminal": "Otevřít v terminálu",
     "settings": "Nastavení terminálu",
     "starting": "Spouští se prostředí shell projektu…",
+    "stop": {
+      "closeMany": "Zavřít terminály",
+      "closeOne": "Zavřít terminál",
+      "closeProject": "Zavřít projekt",
+      "dontAsk": "Už se neptat",
+      "many_one": "V {{count}} terminálu ještě běží program.",
+      "many_few": "Ve {{count}} terminálech ještě běží programy.",
+      "many_many": "V {{count}} terminálu ještě běží programy.",
+      "many_other": "V {{count}} terminálech ještě běží programy.",
+      "named": "{{process}} ještě běží v {{title}}.",
+      "quit": "Ukončit",
+      "restart": "Restartovat",
+      "switchProject": "Přepnout projekt",
+      "titleMany": "Zastavit běžící programy?",
+      "titleOne": "Zastavit běžící program?",
+      "unnamed": "V {{title}} ještě běží program."
+    },
     "tabs": "Terminály",
     "titleInput": "Název terminálu"
   },

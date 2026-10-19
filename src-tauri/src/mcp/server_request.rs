@@ -8,9 +8,9 @@
 #![allow(clippy::result_large_err)]
 
 use super::{
-    acquire_request_slot, admission_is_current, dispatch, json, native_completion_is_reportable,
-    oneshot, register_pending, renderer_session_is_fresh, rpc_error, rpc_result, rpc_tool_error,
-    to_bytes, tool_call_cancelled_payload, AppHandle, Body, Bytes, Duration, Emitter, HeaderMap,
+    acquire_request_slot, admission_is_current, json, native_completion_is_reportable, oneshot,
+    register_pending, renderer_session_is_fresh, rpc_error, rpc_result, rpc_tool_error, to_bytes,
+    tool_call_cancelled_payload, AppHandle, Body, Bytes, Duration, Emitter, HeaderMap,
     IntoResponse, Json, Manager, McpState, Ordering, PendingReply, Request, Response, RpcOutcome,
     State, StatusCode, Value, CALL_TIMEOUT, INSTRUCTIONS, MAX_ACTIVITY_TOOL_NAME_CHARS,
     MAX_REQUEST_BODY_BYTES, REQUEST_BODY_TIMEOUT,
@@ -310,7 +310,18 @@ async fn dispatch_authenticated(
         ));
     }
     let tools = state.registry.lock().await.clone();
-    Ok(dispatch(message, &tools, INSTRUCTIONS))
+    // The app's own version, not the shared protocol crate's.
+    let server = crate::mcp::protocol::ServerInfo {
+        name: "oleafly",
+        title: "Oleafly",
+        version: env!("CARGO_PKG_VERSION"),
+    };
+    Ok(crate::mcp::protocol::dispatch_with(
+        message,
+        &tools,
+        INSTRUCTIONS,
+        &server,
+    ))
 }
 
 pub(super) const DENIED_BY_RULES: &str = "This tool is denied for this project in approvals.toml.";

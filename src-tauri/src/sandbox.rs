@@ -589,33 +589,9 @@ fn replace_recovery(code: Option<i32>) -> ReplaceRecovery {
 }
 
 pub(crate) fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
-    #[cfg(windows)]
-    {
-        // Indexers and compiler processes can hold a non-delete-sharing read
-        // handle for several seconds. Preserve atomic replacement while giving
-        // those transient locks a bounded chance to clear.
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
-        let mut delay = std::time::Duration::from_millis(10);
-        loop {
-            match atomicwrites::replace_atomic(source, destination) {
-                Ok(()) => return Ok(()),
-                Err(error)
-                    if is_retryable_replace_error_code(error.raw_os_error())
-                        && std::time::Instant::now() < deadline =>
-                {
-                    std::thread::sleep(
-                        delay.min(deadline.saturating_duration_since(std::time::Instant::now())),
-                    );
-                    delay = (delay * 2).min(std::time::Duration::from_millis(250));
-                }
-                Err(error) => return Err(error),
-            }
-        }
-    }
-    #[cfg(not(windows))]
-    {
-        atomicwrites::replace_atomic(source, destination)
-    }
+    // Atomic replacement with a bounded retry for transient Windows locks;
+    // shared with the CLI through `oleafly-secrets`.
+    oleafly_secrets::fs::replace_file(source, destination)
 }
 
 #[cfg(any(windows, test))]

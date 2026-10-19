@@ -113,10 +113,69 @@
           "startFailed": "Agenttia {{name}} ei voitu käynnistää.",
           "timeout": "{{name}} käynnistyi, mutta ei vastannut ajoissa.",
           "exited": "{{name}} pysähtyi ennen kuin vastasi.",
-          "notAcp": "{{name}} käynnistyi, mutta Oleafly ei ymmärtänyt sen vastausta."
+          "notAcp": "{{name}} käynnistyi, mutta Oleafly ei ymmärtänyt sen vastausta.",
+          "needsSignIn": "{{name}} toimii. Kirjaudu sisään ennen kuin aloitat keskustelun.",
+          "sessionFailed": "{{name}} käynnistyi, mutta ei voinut avata keskustelua."
         },
         "getNode": "Hanki Node.js",
-        "copyDetails": "Kopioi tiedot"
+        "copyDetails": "Kopioi tiedot",
+        "signIn": "Kirjaudu sisään",
+        "afterSignIn": "Viimeistele kirjautuminen päätteessä ja testaa ohjelma sitten uudelleen."
+      },
+      "experimental": {
+        "title": "Kokeelliset",
+        "description": "Nämä käyttävät Agent Client Protocol -määrityksen luonnosvaiheen osia. Ne voivat muuttua tai lakata toimimasta.",
+        "v2": "Käytä ACP v2 -versiota, kun se on saatavilla",
+        "v2Description": "Version 2 luonnosta tukevat agentit käyttävät sitä. Muut agentit pysyvät versiossa 1.",
+        "providers": "Anna agenttien käyttää Oleaflyn API-avaimiani",
+        "providersDescription": "Agentti, joka voi ohjata mallikutsunsa, käyttää avainta, jonka valitset sen kortista. Avain menee vain kyseisen agentin prosessille."
+      },
+      "inactivity": {
+        "label": "Pysäytä hiljainen agentti, kun on kulunut",
+        "description": "Kun agentti ei lähetä mitään näin pitkään aikaan, Oleafly pysäyttää sen. Voit yhdistää uudelleen.",
+        "minutes": "{{count}} minuuttia"
+      },
+      "protocolLabel": "Protokolla",
+      "remembered": {
+        "title": "Muistetut valinnat",
+        "effort": "Panostus: {{name}}",
+        "mode": "Tila: {{name}}",
+        "forget": "Unohda",
+        "none": "Uudet keskustelut käyttävät agentin oletuksia."
+      },
+      "providers": {
+        "label": "Käytä Oleaflyn API-avaintani",
+        "off": "Ei käytössä (agentti kirjautuu itse)",
+        "note": "Oleafly lähettää avaimen tälle agentille keskustelun alkaessa ja pitää sen poissa keskustelulokeista.",
+        "unavailable": "Lisää API-avain kohdassa Asetukset, Tekoäly, niin voit käyttää sitä tässä."
+      },
+      "hermes": {
+        "title": "Tämän projektin Hermes-profiili",
+        "default": "Oletusprofiili (jaettu)",
+        "project": "Projektiprofiili",
+        "remote": "Etäyhteys SSH:n kautta",
+        "profileName": "Profiili {{name}}",
+        "memory": "Projektin muisti",
+        "memoryDescription": "Hermes muistaa asioita tämän projektin keskustelusta toiseen.",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "Käytä Nous-tilauksesi pilvessä toimivia verkkohaku-, kuva-, puhe- ja selaintyökaluja.",
+        "status": {
+          "ready": "Gateway on käynnissä",
+          "starting": "Gateway käynnistyy",
+          "stopped": "Gateway on pysäytetty",
+          "unknown": "Gatewayn tila on tuntematon"
+        },
+        "refresh": "Tarkista uudelleen",
+        "keepsRunning": "Gateway jää käyntiin, vaikka Oleafly katkaisee yhteyden.",
+        "host": "Isäntä",
+        "port": "Portti",
+        "folder": "Projektikansio kyseisellä koneella",
+        "command": "Hermes-komento",
+        "remoteProfile": "Profiili (valinnainen)",
+        "test": "Testaa yhteys",
+        "testOk": "Yhdistetty: {{version}}",
+        "save": "Tallenna",
+        "sshNote": "Oleafly kirjautuu vain SSH-avaimillasi."
       }
     },
     "approvals": {
@@ -195,6 +254,8 @@
       "defaultModelTitle": "Keskustelun oletusmalli",
       "pdfCaptureDescription": "Sallii agentin rasteroida käännetyt sivut (verify_pdf_pages) konenäöllä tehtäviä taittotarkistuksia varten. Poista käytöstä, jos et halua lähettää sivukuvia palvelullesi.",
       "pdfCaptureLabel": "Salli PDF-sivujen kaappaus tekoälylle",
+      "reasoningSummariesDescription": "Mallit, jotka ajattelevat ennen vastaamista, lähettävät lyhyen yhteenvedon päättelystään. Koskee Anthropic- ja OpenAI-malleja.",
+      "reasoningSummariesLabel": "Näytä päättelyn yhteenvedot",
       "save": "Tallenna ohjeet",
       "saved": "Tallennettu",
       "toolsHint": "Pyydä esimerkiksi \"korjaa LaTeX-virheet\", \"lisää Julkaisut-osio\" tai \"käännä uudelleen ja tarkista PDF\".",
@@ -509,7 +570,32 @@
       },
       "useInAllProjectsAria": "Käytä taitoa {{name}} kaikissa projekteissa",
       "useInProjectAria": "Käytä taitoa {{name}} tässä projektissa",
-      "validateAria": "Tarkista {{name}}"
+      "validateAria": "Tarkista {{name}}",
+      "shadowNote": "Tästä taidosta on saatavilla uudempi Oleafly-versio.",
+      "replaceAction": "Käytä Oleaflyn versiota",
+      "replaceTitle": "Korvataanko oma kopiosi taidosta {{name}}?",
+      "replaceBody": "Kopiosi siirretään varmuuskopiokansioon. Mitään ei poisteta.",
+      "replaced": "Kopiosi on sijainnissa {{path}}."
+    },
+    "tools": {
+      "tabLabel": "Työkalut",
+      "loading": "Ladataan työkalujen asetuksia…",
+      "modelTitle": "Työkalujen malli",
+      "modelDescription": "Kuvasta LaTeXiin -muunnos, kaavojen kuvat ja skannatut PDF-tiedostot käyttävät tätä mallia. Automaattinen valinta käyttää Ollamaa, joten kuvat pysyvät tällä koneella. Jos Ollama ei ole käynnissä tai siinä ei ole kuvia lukevaa mallia, editorin Kuvasta LaTeXiin- ja Kuvasta Typstiin -muunnokset lähettävät kuvan avustajan mallille.",
+      "ocrHint": "Parhaat paikalliset tulokset saat noutamalla Ollamaan OCR-mallin:",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "Valinnainen. Mathpix lukee kaavoja, taulukoita ja skannattuja PDF-tiedostoja ja laskuttaa jokaisesta kuvasta ja sivusta omaa Mathpix-tiliäsi.",
+        "docs": "Hanki Mathpix-avaimet",
+        "appIdLabel": "Sovellustunnus",
+        "appKeyLabel": "Sovellusavain",
+        "save": "Tallenna avaimet",
+        "remove": "Poista avaimet",
+        "connected": "Yhdistetty tunnuksella {{appId}}",
+        "saved": "Mathpix-avaimet tallennettiin.",
+        "removed": "Mathpix-avaimet poistettiin.",
+        "privacy": "Oleafly pyytää Mathpix-palvelua olemaan säilyttämättä kuviasi ja poistaa jokaisen PDF-tiedoston Mathpix-palvelusta tuloksen lukemisen jälkeen."
+      }
     }
   },
   "appearance": {
@@ -548,17 +634,6 @@
       "theme": {
         "description": "Järjestelmä seuraa käyttöjärjestelmää ja muuttuu sen mukana.",
         "label": "Ulkoasu"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "Selaimen aloitussivu",
-        "description": "Valitse sivu, joka avautuu selaintelakan kanssa.",
-        "label": "Aloitussivu"
-      },
-      "searchEngine": {
-        "description": "Valitse hakukone, jota tekstihaut käyttävät.",
-        "label": "Oletushakukone"
       }
     },
     "customTheme": {
@@ -856,7 +931,6 @@
     "sectionName": "Ulkoasu",
     "tabs": {
       "app": "Sovellus",
-      "browser": "Selain",
       "editor": "Editori",
       "files": "Projekti",
       "pdf": "PDF-esikatselu",
@@ -880,6 +954,14 @@
         "foreground": "Teksti",
         "foregroundAriaLabel": "Päätteen tekstin väri",
         "label": "Päätteen värit"
+      },
+      "confirmClose": {
+        "description": "Kysy ensin, kun suljettavassa päätteessä on yhä käynnissä ohjelma, myös kun suljet projektin tai lopetat sovelluksen.",
+        "label": "Kysy ennen varatun päätteen sulkemista"
+      },
+      "copyOnSelect": {
+        "description": "Kopioi päätteen teksti heti, kun valitset sen.",
+        "label": "Kopioi valittaessa"
       },
       "cursorBlink": {
         "description": "Laita päätteen kohdistin vilkkumaan.",
@@ -909,6 +991,44 @@
       "fontWeightBold": {
         "description": "Aseta päätteen lihavoidun tekstin paksuus.",
         "label": "Lihavoidun tekstin paksuus"
+      },
+      "optionIsMeta": {
+        "description": "Lähetä Option-näppäinyhdistelmät shell-ohjelmalle Meta-näppäiminä. Option ei enää kirjoita erikoismerkkejä.",
+        "label": "Käytä Option-näppäintä Meta-näppäimenä"
+      },
+      "scrollback": {
+        "ariaLabel": "Päätteen vierityshistoria",
+        "description": "Kuinka monta riviä kukin pääte säilyttää. Useampi rivi vie enemmän muistia.",
+        "label": "Vierityshistoria",
+        "lines_one": "{{value}} rivi",
+        "lines_other": "{{value}} riviä"
+      },
+      "shell": {
+        "ariaLabel": "Päätteen shell",
+        "description": "Uudet päätteet käynnistävät tämän shellin. Avoimet päätteet pitävät omansa.",
+        "label": "Shell",
+        "options": {
+          "auto": "Oletus ({{name}})",
+          "cmd": "Komentokehote",
+          "custom": "Mukautettu polku",
+          "defaultShell": "Oletus-shell",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "Mukautetun shellin polku",
+          "description": "Ohjelma, jonka uudet päätteet käynnistävät.",
+          "label": "Shellin polku"
+        }
+      },
+      "shiftEnter": {
+        "ariaLabel": "Shift+Enter päätteessä",
+        "description": "Mitä Shift+Enter lähettää päätteessä olevalle ohjelmalle.",
+        "enter": "Enter",
+        "label": "Shift+Enter",
+        "newline": "Uusi rivi"
       },
       "startWithProject": {
         "description": "Käynnistä shell-prosessi projektin avautuessa eikä vasta, kun pääte näytetään ensimmäisen kerran.",
@@ -952,6 +1072,15 @@
       "saveEmail": "Tallenna sähköpostiosoite",
       "saveKey": "Tallenna avain"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "Valinnainen. Antaa avustajan hakea verkosta, kun sen palvelulla ei ole omaa hakua.",
+      "keyLabel": "Brave Search API -avain",
+      "keyRemoveFailed": "Brave Search API -avainta ei voitu poistaa.",
+      "keyRemoved": "Brave Search API -avain poistettiin",
+      "keySaveFailed": "Brave Search API -avainta ei voitu tallentaa.",
+      "keySaved": "Brave Search API -avain tallennettiin"
+    },
     "connected": "Yhdistetty",
     "description": "Hallitse tunnistetietoja, joita tieteelliset hakulähteet käyttävät.",
     "keyFree": {
@@ -991,7 +1120,17 @@
       "keySaveFailed": "Serperin API-avainta ei voitu tallentaa.",
       "keySaved": "Serperin API-avain tallennettiin"
     },
-    "title": "Viitehaku"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "Valinnainen. Antaa avustajan hakea verkosta, kun sen palvelulla ei ole omaa hakua.",
+      "keyLabel": "Tavily API -avain",
+      "keyRemoveFailed": "Tavily API -avainta ei voitu poistaa.",
+      "keyRemoved": "Tavily API -avain poistettiin",
+      "keySaveFailed": "Tavily API -avainta ei voitu tallentaa.",
+      "keySaved": "Tavily API -avain tallennettiin"
+    },
+    "title": "Viitehaku",
+    "webSearchOrder": "Verkkohaussa avustaja käyttää ensin Brave-palvelua, sitten Tavily-palvelua ja sitten Serper-palvelua."
   },
   "cite": {
     "apa": "Sama viite APA-muodossa on GitHubissa kohdan Cite this repository takana",
@@ -1285,17 +1424,62 @@
       }
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "Yhdistetty",
-      "disconnect": "Katkaise yhteys",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{login}} palvelussa {{host}}",
+      "caAdd": "Lisää varmennetiedosto",
+      "caChange": "Vaihda varmennetiedosto",
+      "caFile": "Varmennetiedosto: {{file}}",
+      "checking": "Tarkistetaan…",
+      "signInAgain": "Kirjaudu uudelleen",
+      "signOut": "Kirjaudu ulos",
+      "signedInAs": "Kirjautunut käyttäjänä {{login}}",
+      "signedOut": "Kirjautunut ulos",
+      "unreachable": "Palvelimeen ei saada yhteyttä"
     },
-    "advanced": {
+    "add": {
+      "browserHint": "Kirjaa sinut sisään kertakäyttöisellä koodilla selaimessa.",
+      "caChoose": "Valitse tiedosto…",
+      "caFilter": "Varmennetiedostot",
+      "caHint": "Tarvitaan vain, jos palvelimen varmenne on organisaatiosi oman varmentajan myöntämä.",
+      "caLabel": "Varmentajan tiedosto",
+      "caPickerTitle": "Valitse varmennetiedosto",
+      "caRemove": "Poista",
+      "chooseKind": "Palvelimen tyyppi",
       "connect": "Yhdistä",
-      "toggle": "Lisäasetus: käytä henkilökohtaista käyttöoikeustokenia",
-      "tokenPlaceholder": "ghp_…"
+      "continue": "Jatka",
+      "createToken": "Luo tunnus palvelussa {{host}}",
+      "detecting": "Tarkistetaan palvelinta…",
+      "found": "Tämä on {{kind}}-palvelin.",
+      "kindGitea": "Gitea tai Forgejo",
+      "otherServer": "Muu palvelin",
+      "scopesGitea": "Anna sille luku- ja kirjoitusoikeus kohteisiin repository ja user.",
+      "scopesGithub": "Anna sille oikeudet repo ja read:user.",
+      "scopesGitlab": "Anna sille oikeudet api ja write_repository.",
+      "serverLabel": "Palvelimen osoite",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "Kirjaudu palvelulla {{host}}",
+      "title": "Lisää Git-palvelun tili",
+      "tokenLabel": "Käyttöoikeustunnus",
+      "useToken": "Käytä sen sijaan käyttöoikeustunnusta"
     },
+    "addAccount": "Lisää tili",
+    "description": "Kirjaudu sisään, niin voit työntää ja noutaa muutoksia, julkaista projekteja ja tuoda repositorioita. Toimii palveluissa GitHub, GitLab, Gitea, Forgejo ja Codeberg sekä itse ylläpitämilläsi palvelimilla.",
+    "device": {
+      "open": "Avaa {{host}}",
+      "opened": "Oleafly avasi osoitteen <verificationLink>{{url}}</verificationLink> selaimessasi. Viimeistele kirjautuminen syöttämällä koodi sinne.",
+      "timedOut": "Kirjautuminen aikakatkaistiin. Yritä uudelleen.",
+      "title": "Syötä tämä koodi palvelussa {{host}}",
+      "waiting": "Odotetaan, että viimeistelet kirjautumisen selaimessa…"
+    },
+    "empty": "Ei vielä tilejä. Osoitteella linkitetyt projektit työntävät ja noutavat yhä omalla Git-kirjautumisellasi tai SSH-avaimellasi.",
+    "notice": {
+      "signedIn": "Kirjauduttiin palveluun {{host}} käyttäjänä {{login}}.",
+      "signedOut": "Kirjauduttiin ulos palvelusta {{host}}."
+    },
+    "title": "Git-palvelut"
+  },
+  "github": {
     "autoInit": {
       "description": "Uudet ja avatut projektit saavat Git-repositorion, jotta Git-paneeli voi seurata muutoksia. Uusi projekti alkaa yleensä yhdellä commitilla, jossa ovat sen tiedostot. Sen jälkeen Oleafly tekee commitin vain, kun pyydät.",
       "label": "Alusta Git jokaiselle projektille"
@@ -1303,23 +1487,6 @@
     "config": {
       "loadFailed": "Git-asetuksia ei voitu ladata.",
       "saveFailed": "Git-asetuksia ei voitu tallentaa."
-    },
-    "connect": "Yhdistä GitHub",
-    "description": "Varmuuskopioi projekteja, synkronoi laitteiden välillä ja työnnä tai nouda Git-paneelista.",
-    "device": {
-      "openGithub": "Avaa GitHub",
-      "opened": "Avasimme selaimeesi osoitteen <verificationLink>{{url}}</verificationLink>. Liitä koodi sinne, niin Oleafly saa valtuutuksen.",
-      "timedOut": "GitHub-kirjautuminen aikakatkaistiin. Yritä uudelleen.",
-      "title": "Syötä tämä koodi GitHubissa",
-      "waiting": "Odotetaan valtuutusta…"
-    },
-    "hint": {
-      "oauth": "Kirjaa sinut sisään kertakoodilla selaimessa.",
-      "token": "OAuth-kirjautumista ei ole vielä määritetty tässä versiossa, joten liitä sen sijaan token."
-    },
-    "notice": {
-      "connected": "Yhdistetty tunnuksella @{{login}}",
-      "disconnected": "Yhteys katkaistu."
     }
   },
   "integrations": {
@@ -1336,31 +1503,14 @@
       "disconnectFailed": "Yhteyttä alphaXiviin ei voitu katkaista. Yritä uudelleen."
     },
     "cookies": {
-      "action": "Tuo cookiet",
-      "confirmAllDomains": "Olet tuomassa cookieita selaimen {{browser}} profiilista {{profile}} kaikille verkkotunnuksille. Cookie-arvot tallennetaan sovelluksen sisäiseen selaimeen ja lähetetään vain niitä vastaaville sivustoille. Oleafly pyytää vielä yhden vahvistuksen järjestelmän ikkunassa ennen profiilin lukemista.",
-      "confirmDomain": "Olet tuomassa cookieita selaimen {{browser}} profiilista {{profile}} verkkotunnukselle {{domain}}. Cookie-arvot tallennetaan sovelluksen sisäiseen selaimeen ja lähetetään vain niitä vastaaville sivustoille. Oleafly pyytää vielä yhden vahvistuksen järjestelmän ikkunassa ennen profiilin lukemista.",
       "confirmTitle": "Vahvista cookieiden tuonti",
-      "description": "Käytä olemassa olevaa selainkirjautumista Oleaflyn sisäisessä selaimessa.",
       "detecting": "Etsitään asennettuja selainprofiileja...",
       "dialogDescription": "Valitse yksi asennettu selainprofiili. Oleafly lukee sen vasta, kun olet tarkistanut ja vahvistanut tuonnin. Chromium-cookiet avataan paikallisesti macOS-avainnipun kautta. Oleafly ei lähetä cookie-arvoja Oleaflyn palveluun.",
       "dialogTitle": "Tuo selaimen cookiet",
       "empty": "Tuettuja selainprofiileja ei löytynyt.",
       "errors": {
-        "chooseProfile": "Valitse käytettävissä oleva selainprofiili.",
-        "hostname": "Anna palvelinnimi, esimerkiksi example.com."
+        "chooseProfile": "Valitse käytettävissä oleva selainprofiili."
       },
-      "hostnameHint": "Anna sivuston palvelinnimi, niin tuodaan vain ne cookiet, joita kyseinen sivusto voi käyttää. Jätä tyhjäksi, niin tuodaan kaikki tämän profiilin kelpaavat cookiet.",
-      "hostnameLabel": "Kohdepalvelinnimi (valinnainen)",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_one": "Tuotiin {{count}} cookie selaimesta {{browser}} verkkotunnukselle {{domain}}.",
-      "importedDomain_other": "Tuotiin {{count}} cookieta selaimesta {{browser}} verkkotunnukselle {{domain}}.",
-      "importedProfileDomain_one": "Tuotiin {{count}} cookie selaimesta {{browser}}, profiilista {{profile}} verkkotunnukselle {{domain}}.",
-      "importedProfileDomain_other": "Tuotiin {{count}} cookieta selaimesta {{browser}}, profiilista {{profile}} verkkotunnukselle {{domain}}.",
-      "importedProfile_one": "Tuotiin {{count}} cookie selaimesta {{browser}}, profiilista {{profile}}.",
-      "importedProfile_other": "Tuotiin {{count}} cookieta selaimesta {{browser}}, profiilista {{profile}}.",
-      "imported_one": "Tuotiin {{count}} cookie selaimesta {{browser}}.",
-      "imported_other": "Tuotiin {{count}} cookieta selaimesta {{browser}}.",
-      "importing": "Tuodaan cookieita...",
       "profileGroupLabel": "Selainprofiilit",
       "profileLegend": "Selainprofiili",
       "review": "Tarkista tuonti",
@@ -1370,8 +1520,16 @@
         "noCookieStore": "Ei cookie-varastoa",
         "notInstalled": "Ei asennettu"
       },
-      "title": "Tuo cookiet",
-      "tryAgain": "Yritä uudelleen"
+      "tryAgain": "Yritä uudelleen",
+      "label": "Selaimen kirjautuminen",
+      "useBrowserSignIn": "Käytä selaimeni kirjautumista",
+      "signInDescription": "Kopioi palvelun {{server}} kirjautumisesi tämän koneen selaimesta, niin sinun ei tarvitse kirjautua uudelleen.",
+      "site": "Sivusto: {{domain}}",
+      "confirmCopy": "Oleafly lukee sivuston {{domain}} cookiet selaimen {{browser}} profiilista {{profile}}. Ne pysyvät Oleaflyssä ja menevät vain sivustolle {{domain}}. Vahvistat vielä kerran järjestelmän ikkunassa.",
+      "copyAction": "Kopioi kirjautuminen",
+      "copying": "Kopioidaan...",
+      "notSignedIn_one": "Selaimesta {{browser}} kopioitiin {{count}} cookie, mutta sillä ei voinut kirjautua. Kirjaudu sen sijaan sisään.",
+      "notSignedIn_other": "Selaimesta {{browser}} kopioitiin {{count}} cookieta, mutta niillä ei voinut kirjautua. Kirjaudu sen sijaan sisään."
     },
     "zotero": {
       "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>zotero.org</siteLink>, avaa <keyLink>API-avainsivusi</keyLink> ja luo avain, ja kopioi numeerinen käyttäjätunnuksesi samalta sivulta.",
@@ -1440,6 +1598,124 @@
       "gitSave": "Tallenna",
       "gitRemove": "Poista",
       "gitFailed": "Oleafly ei voinut tallentaa Git-tokenia. Tarkista, että liitit koko tokenin."
+    },
+    "desktopApps": {
+      "tab": "Työpöytäsovellukset",
+      "title": "Työpöytäsovellukset",
+      "description": "Anna agenttien käyttää tämän koneen sovelluksia ja sivustoja Cua Driver -ohjelman kautta. Oleafly kysyy ennen jokaista napsautusta tai näppäilyä.",
+      "docsLink": "Cua Driver -ohjeet",
+      "status": {
+        "installed": "Cua Driver {{version}} on asennettu.",
+        "installedNoVersion": "Cua Driver on asennettu.",
+        "notInstalled": "Cua Driver -ohjelmaa ei ole asennettu.",
+        "tooOld": "Cua Driver {{version}} on liian vanha. Oleafly tarvitsee version {{minimum}} tai uudemman.",
+        "noAppBundle": "Asenna Cua Driver virallisella asennusohjelmalla, jotta se voi saada macOS-käyttöoikeudet.",
+        "path": "Sijainti: {{path}}"
+      },
+      "install": {
+        "heading": "Asenna Cua Driver",
+        "hint": "Suorita tämä komento päätteessä. Oleafly ei koskaan asenna Cua Driver -ohjelmaa puolestasi.",
+        "run": "Suorita päätteessä",
+        "needsProject": "Avaa projekti, niin voit suorittaa tämän Oleaflyn päätteessä, tai kopioi komento.",
+        "confirm": "Tämä lataa Cua Driver -asennusohjelman osoitteesta cua.ai ja suorittaa sen päätteessäsi. Jatketaanko?",
+        "terminalTitle": "Asenna Cua Driver",
+        "checkAgain": "Tarkista uudelleen"
+      },
+      "permissions": {
+        "heading": "macOS-käyttöoikeudet",
+        "granted": "Cua Driver voi käyttää Käyttöapu- ja Näytön tallennus -oikeuksia.",
+        "needed": "Cua Driver tarvitsee Käyttöapu- ja Näytön tallennus -oikeudet. Suorita käyttöoikeuksien myöntövaihe ja seuraa ohjeita.",
+        "unknown": "Oleafly ei voinut lukea Cua Driver -ohjelman käyttöoikeuksia.",
+        "grant": "Myönnä käyttöoikeudet",
+        "terminalTitle": "Cua Driver -käyttöoikeudet"
+      },
+      "gnome": {
+        "heading": "GNOME-apuohjelma",
+        "needed": "Suorita GNOME-ympäristössä Cua-ikkunoiden apuohjelma kerran, kirjaudu sitten ulos ja takaisin sisään.",
+        "active": "GNOME-ikkunoiden apuohjelma on käytössä."
+      },
+      "enable": {
+        "label": "Anna agenttien käyttää työpöytäsovelluksia",
+        "description": "Agentit näkevät alla olevat sovellukset ja sivustot. Napsautukset, kirjoittaminen ja sivunvaihdot kysyvät sinulta ensin."
+      },
+      "apps": {
+        "heading": "Sallitut sovellukset",
+        "empty": "Ei vielä sovelluksia. Agentit voivat käyttää vain tähän lisäämiäsi sovelluksia.",
+        "add": "Lisää sovellus",
+        "remove": "Poista {{name}}",
+        "dialog": {
+          "title": "Lisää sovellus",
+          "description": "Valitse sovellus, jota agentit saavat käyttää. Ne voivat avata sen, lukea sen ikkunoita ja toimia siinä hyväksyntäsi jälkeen.",
+          "search": "Hae sovelluksia",
+          "loading": "Etsitään sovelluksia...",
+          "none": "Yksikään sovellus ei vastaa hakua.",
+          "choose": "Valitse toinen sovellus...",
+          "add": "Lisää"
+        },
+        "blocked": {
+          "oleafly": "Oleafly ei voi ohjata itseään.",
+          "driver": "Cua Driver ei voi ohjata itseään.",
+          "terminal": "Päätteet suorittavat komentoja ilman Oleaflyn komentojen hyväksyntää.",
+          "system_settings": "Järjestelmäasetukset voivat muuttaa käyttöoikeuksia.",
+          "passwords": "Salasanasovellukset eivät ole sallittuja.",
+          "scripting": "Skriptien suorittajat voivat tehdä tällä koneella mitä tahansa.",
+          "wrapper": "Tämä kohde käynnistää toisen ohjelman. Valitse sen sijaan se ohjelma.",
+          "sandboxed": "Flatpak- ja Snap-sovelluksia ei vielä tueta."
+        }
+      },
+      "sites": {
+        "heading": "Sallitut sivustot",
+        "empty": "Ei vielä sivustoja.",
+        "add": "Lisää sivusto",
+        "placeholder": "https://www.example.org",
+        "remove": "Poista {{origin}}",
+        "signedIn": {
+          "label": "Käytä selainta, johon olen kirjautunut",
+          "description": "Agentit toimivat tällä sivustolla omassa Chrome- tai Edge-selaimessasi. Jätä tämä pois käytöstä, jos haluat käyttää erillistä selainprofiilia."
+        }
+      },
+      "scripted": {
+        "label": "Skriptiohjaus",
+        "description": "Anna agenttien suorittaa Cua-skriptejä, jotka tekevät monta vaihetta kerralla. Oleafly kysyy ennen jokaista skriptiä."
+      },
+      "test": {
+        "action": "Testaa yhteys",
+        "running": "Testataan...",
+        "ok": "Cua Driver toimii asettamillasi rajoituksilla.",
+        "failed": "Testi epäonnistui: {{detail}}"
+      },
+      "tool": {
+        "description": "Käytä työpöytäsovelluksia ja sivustoja, jotka olet sallinut asetuksissa.",
+        "note": "Katsominen tapahtuu heti. Napsautukset, kirjoittaminen ja sivunvaihdot kysyvät ensin."
+      },
+      "task": {
+        "label": "Työpöytäsovellukset",
+        "description": "Anna tämän tehtävän käyttää sallittuja työpöytäsovelluksiasi. Sinun täytyy olla koneen ääressä hyväksymässä toiminnot.",
+        "off": "Ota ensin Työpöytäsovellukset käyttöön asetuksissa.",
+        "unattended": "Ajastetut tehtävät ja Oleaflyn sulkemisen jälkeen jatkuvat tehtävät eivät voi käyttää työpöytäsovelluksia."
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "Yhdistä Cua Spaces -palvelun eristetyt työpöydät ja kontit MCP-palvelimena. Kokeellinen.",
+        "notInstalled": "Komentoa cua ei ole asennettu.",
+        "connect": {
+          "label": "Yhdistä Cua Spaces",
+          "description": "Agentit voivat listata Space-ympäristösi ja seurata niissä käynnissä olevia agentteja."
+        },
+        "fullAccess": {
+          "label": "Salli muutokset",
+          "description": "Agentit voivat myös luoda ja poistaa Space-ympäristöjä ja suorittaa niissä komentoja."
+        },
+        "credentials": {
+          "label": "Jaa agenttien kirjautumiseni",
+          "description": "Anna Space-ympäristössä käynnistyvien agenttien käyttää Claude Code- tai Codex-kirjautumistasi."
+        },
+        "failed": "Oleafly ei voinut päivittää Cua Spaces -yhteyttä.",
+        "install": {
+          "terminalTitle": "Asenna Cua",
+          "confirm": "Tämä lataa Cua-asennusohjelman osoitteesta cua.ai ja suorittaa sen päätteessäsi. Jatketaanko?"
+        }
+      }
     }
   },
   "language": {
@@ -1772,7 +2048,8 @@
       "unavailable": "Tässä Oleaflyn kopiossa ei ole komentoa."
     },
     "title": "Päätekomento",
-    "update": "Päivitä"
+    "update": "Päivitä",
+    "newTerminal": "Avaa uusi pääte, niin voit käyttää oleafly-komentoa. Jo avoinna olevat päätteet eivät näe muutosta."
   },
   "shortcuts": {
     "actions": {
@@ -1796,10 +2073,6 @@
         "description": "Avaa projektin pikanäppäinluettelo.",
         "label": "Pikanäppäinluettelo"
       },
-      "toggleBrowser": {
-        "description": "Näytä tai piilota projektin selain.",
-        "label": "Näytä tai piilota selain"
-      },
       "toggleSidebar": {
         "description": "Näytä tai piilota projektin sivupalkki.",
         "label": "Näytä tai piilota sivupalkki"
@@ -1811,6 +2084,22 @@
       "toggleTerminal": {
         "description": "Näytä tai piilota projektin pääte.",
         "label": "Näytä tai piilota pääte"
+      },
+      "newTerminal": {
+        "description": "Avaa uusi päätevälilehti.",
+        "label": "Uusi pääte"
+      },
+      "closeTerminal": {
+        "description": "Sulje päätevälilehti, jossa kirjoitat.",
+        "label": "Sulje pääte"
+      },
+      "nextTerminal": {
+        "description": "Siirry seuraavaan päätevälilehteen.",
+        "label": "Seuraava pääte"
+      },
+      "previousTerminal": {
+        "description": "Siirry edelliseen päätevälilehteen.",
+        "label": "Edellinen pääte"
       },
       "openFolder": {
         "label": "Avaa kansio",
@@ -1965,6 +2254,34 @@
       "elsewhere": "Valikko avaa toisen Oleafly-kopion. Korjaa se käyttääksesi tätä.",
       "moved": "Se osoittaa Oleafly-kopioon, joka on siirretty. Korjaa se käyttääksesi tätä.",
       "noDefaultFileManager": "Järjestelmässäsi ei ole kansioiden oletustiedostonhallintaa, joten tämä merkintä voisi avata jokaisen kansion Oleaflyssä. Poista se."
+    }
+  },
+  "research": {
+    "background": {
+      "title": "Taustatehtävät",
+      "enabled": {
+        "label": "Jatka tehtäviä Oleaflyn sulkemisen jälkeen",
+        "description": "Tehtävät, jotka merkitset jatkumaan, siirtyvät pieneen taustaprosessiin, kun lopetat sovelluksen. Oleafly ottaa ne takaisin, kun avaat sen."
+      },
+      "atLogin": {
+        "label": "Käynnistä taustaprosessi, kun kirjaudut sisään",
+        "description": "Jatkaa taustatehtäviä uudelleenkäynnistyksen jälkeen. Taustaprosessi sulkeutuu, kun sillä ei ole tekemistä.",
+        "moveApp": "Siirrä Oleafly ensin Ohjelmat-kansioon.",
+        "needsBackground": "Ota ensin taustatehtävät käyttöön."
+      },
+      "status": {
+        "label": "Taustaprosessi",
+        "running": "Käynnissä",
+        "stopped": "Ei käynnissä",
+        "notResponding": "Ei vastaa",
+        "tasks_one": "Työn alla {{count}} tehtävä",
+        "tasks_other": "Työn alla {{count}} tehtävää"
+      },
+      "stop": "Pysäytä taustaprosessi",
+      "stopHint": "Sen tehtävät odottavat, kunnes avaat Oleaflyn uudelleen.",
+      "stopFailed": "Taustaprosessi ei pysähtynyt. Yritä uudelleen.",
+      "openLog": "Näytä loki",
+      "toggleFailed": "Asetusta ei voitu muuttaa. Yritä uudelleen."
     }
   }
 }

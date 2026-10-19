@@ -5,7 +5,7 @@ license: MIT
 compatibility: Any Oleafly project. The rendered-page pass needs a successful compile. Line anchoring works on any text source. Checklist depth improves when the peer-review and scholar-evaluation skills are enabled.
 allowed-tools: read_file list_files search_project project_map compile get_log get_pdf_text create_file write_file load_skill read_skill_file show_location update_todos
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   skill-author: "Oleafly"
   oleafly:
     tier: native
@@ -146,3 +146,14 @@ In chat: the three findings that matter most, in one sentence each, and the path
 - Every scoring dimension has a score and a one-line justification.
 - The limits section names what you could not check.
 - No manuscript file was modified.
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `get_log` | `oleafly log --diagnostics --json` |
+| `project_map` | `oleafly context --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |

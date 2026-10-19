@@ -29,6 +29,8 @@ export const PROVIDER_IDS = {
   zai: "zai",
 };
 
+export const EFFORT_VALUES = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
+
 const STATUSES = new Set(["active", "deprecated", "alpha", "beta"]);
 const MODALITIES = new Set(["text", "image", "audio", "video", "pdf"]);
 
@@ -45,6 +47,12 @@ function isRecord(value) {
 function positiveInteger(value) {
   if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
   if (value <= 0) return undefined;
+  return Math.trunc(value);
+}
+
+function nonNegativeInteger(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  if (value < 0) return undefined;
   return Math.trunc(value);
 }
 
@@ -91,6 +99,32 @@ export function normalizeCost(value) {
   return Object.keys(cost).length > 0 ? cost : undefined;
 }
 
+// How a model's reasoning is controlled: effort names, a thinking budget,
+// or a switch. Unknown option types and effort names are dropped.
+export function normalizeReasoningOptions(value) {
+  if (!Array.isArray(value)) return undefined;
+  const options = [];
+  for (const option of value) {
+    if (!isRecord(option)) continue;
+    if (option.type === "effort") {
+      const values = Array.isArray(option.values)
+        ? EFFORT_VALUES.filter((effort) => option.values.includes(effort))
+        : [];
+      if (values.length > 0) options.push({ type: "effort", values });
+    } else if (option.type === "budget_tokens") {
+      const entry = { type: "budget_tokens" };
+      const min = nonNegativeInteger(option.min);
+      if (min !== undefined) entry.min = min;
+      const max = positiveInteger(option.max);
+      if (max !== undefined) entry.max = max;
+      options.push(entry);
+    } else if (option.type === "toggle") {
+      options.push({ type: "toggle" });
+    }
+  }
+  return options.length > 0 ? options : undefined;
+}
+
 export function trimModel(modelId, model) {
   const source = isRecord(model) ? model : {};
   const limit = isRecord(source.limit) ? source.limit : {};
@@ -108,6 +142,8 @@ export function trimModel(modelId, model) {
   entry.outputModalities = normalizeModalities(modalities.output);
   entry.toolCall = source.tool_call === true;
   entry.reasoning = source.reasoning === true;
+  const reasoningOptions = normalizeReasoningOptions(source.reasoning_options);
+  if (reasoningOptions !== undefined) entry.reasoningOptions = reasoningOptions;
   entry.attachment = source.attachment === true;
   entry.structuredOutput = source.structured_output === true;
   entry.status = normalizeStatus(source.status);

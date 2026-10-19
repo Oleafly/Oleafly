@@ -190,6 +190,10 @@
     "terminal": "Wczytywanie terminala"
   },
   "terminal": {
+    "activity": "Nowa aktywność",
+    "clipboard": {
+      "blocked": "Program w terminalu chce skopiować tekst."
+    },
     "closeCurrent": "Zamknij bieżącą",
     "closeLeft": "Zamknij wszystkie po lewej",
     "closeOthers": "Zamknij pozostałe",
@@ -201,6 +205,19 @@
       "resize": "Nie udało się zmienić rozmiaru terminala",
       "start": "Nie udało się uruchomić powłoki shell"
     },
+    "find": {
+      "count": "{{current}} z {{total}}",
+      "label": "Znajdź w terminalu",
+      "next": "Następne dopasowanie",
+      "none": "Brak dopasowań",
+      "previous": "Poprzednie dopasowanie"
+    },
+    "launch": {
+      "invalid": "Tego polecenia nie można uruchomić w terminalu.",
+      "noProject": "Otwórz projekt, aby używać terminala.",
+      "run": "Uruchom",
+      "title": "Uruchomić to polecenie w terminalu?"
+    },
     "limitReached": "Zamknij jeden terminal, aby otworzyć kolejny",
     "links": {
       "openFile": "Kliknij z klawiszem {{modifier}}, aby otworzyć",
@@ -208,8 +225,26 @@
       "openUrlFailed": "Nie udało się otworzyć linku."
     },
     "newTerminal": "Nowy terminal",
+    "openInTerminal": "Otwórz w terminalu",
     "settings": "Ustawienia terminala",
     "starting": "Uruchamianie powłoki shell projektu…",
+    "stop": {
+      "closeMany": "Zamknij terminale",
+      "closeOne": "Zamknij terminal",
+      "closeProject": "Zamknij projekt",
+      "dontAsk": "Nie pytaj ponownie",
+      "many_one": "Program nadal działa w {{count}} terminalu.",
+      "many_few": "Programy nadal działają w {{count}} terminalach.",
+      "many_many": "Programy nadal działają w {{count}} terminalach.",
+      "many_other": "Programy nadal działają w {{count}} terminala.",
+      "named": "{{process}} nadal działa w {{title}}.",
+      "quit": "Zakończ",
+      "restart": "Uruchom ponownie",
+      "switchProject": "Przełącz projekt",
+      "titleMany": "Zatrzymać działające programy?",
+      "titleOne": "Zatrzymać działający program?",
+      "unnamed": "W {{title}} nadal działa program."
+    },
     "tabs": "Terminale",
     "titleInput": "Tytuł terminala"
   },

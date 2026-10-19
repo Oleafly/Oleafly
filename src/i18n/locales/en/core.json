@@ -583,7 +583,9 @@
       "diagnostics_one": "{{count}} diagnostic",
       "diagnostics_other": "{{count}} diagnostics",
       "papers_one": "{{count}} paper",
-      "papers_other": "{{count}} papers"
+      "papers_other": "{{count}} papers",
+      "sourcesFailed_one": "{{count}} source failed",
+      "sourcesFailed_other": "{{count}} sources failed"
     }
   },
   "ui": {

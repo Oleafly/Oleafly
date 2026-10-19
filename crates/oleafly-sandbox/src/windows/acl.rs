@@ -1,0 +1,336 @@
+//! Folder access entries for sandboxed tasks. A DACL write on a folder walks
+//! its whole subtree, so each root gets one inheritable entry, checked first
+//! and skipped when present. Traverse entries on ancestors are written with
+//! `SetFileSecurityW`, which does not walk. Access is never confined with a
+//! deny entry: a protected file gets a protected DACL without the task.
+use std::os::windows::ffi::OsStrExt;
+use std::path::Path;
+
+use windows_sys::Win32::Foundation::{LocalFree, ERROR_SUCCESS};
+use windows_sys::Win32::Security::Authorization::{
+    GetNamedSecurityInfoW, SetEntriesInAclW, SetNamedSecurityInfoW, EXPLICIT_ACCESS_W,
+    GRANT_ACCESS, NO_MULTIPLE_TRUSTEE, REVOKE_ACCESS, SE_FILE_OBJECT, TRUSTEE_IS_SID,
+    TRUSTEE_IS_UNKNOWN, TRUSTEE_W,
+};
+use windows_sys::Win32::Security::{
+    EqualSid, GetAce, InitializeSecurityDescriptor, SetFileSecurityW, SetSecurityDescriptorDacl,
+    ACCESS_ALLOWED_ACE, ACE_FLAGS, ACL, DACL_SECURITY_INFORMATION, INHERIT_ONLY_ACE,
+    NO_INHERITANCE, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
+    SECURITY_DESCRIPTOR, SUB_CONTAINERS_AND_OBJECTS_INHERIT,
+};
+use windows_sys::Win32::Storage::FileSystem::{
+    DELETE, FILE_DELETE_CHILD, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
+    FILE_READ_ATTRIBUTES, FILE_TRAVERSE, SYNCHRONIZE,
+};
+use windows_sys::Win32::System::SystemServices::{
+    ACCESS_ALLOWED_ACE_TYPE, SECURITY_DESCRIPTOR_REVISION,
+};
+
+use super::sid::OwnedSid;
+use crate::SandboxError;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Access {
+    Read,
+    ReadWrite,
+    Traverse,
+}
+
+impl Access {
+    fn mask(self) -> u32 {
+        match self {
+            Self::Read => FILE_GENERIC_READ | FILE_GENERIC_EXECUTE,
+            Self::ReadWrite => {
+                FILE_GENERIC_READ
+                    | FILE_GENERIC_EXECUTE
+                    | FILE_GENERIC_WRITE
+                    | DELETE
+                    | FILE_DELETE_CHILD
+            }
+            Self::Traverse => FILE_TRAVERSE | FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+        }
+    }
+}
+
+/// A path for the security calls: the `\\?\` form at 260 characters or more.
+fn wide_path(path: &Path) -> Vec<u16> {
+    let plain = crate::plain_path(path);
+    let text = plain.as_os_str().to_string_lossy();
+    let long = text.encode_utf16().count() >= 260 && !text.starts_with(r"\\?\");
+    let text = if long {
+        if let Some(share) = text.strip_prefix(r"\\") {
+            format!(r"\\?\UNC\{share}")
+        } else {
+            format!(r"\\?\{text}")
+        }
+    } else {
+        text.into_owned()
+    };
+    std::ffi::OsStr::new(&text)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect()
+}
+
+fn error(step: &str, path: &Path, code: u32) -> SandboxError {
+    SandboxError::Io(format!("Windows error {code} {step} {}.", path.display()))
+}
+
+/// The object's DACL and the descriptor that owns it (freed with LocalFree).
+struct Dacl {
+    dacl: *mut ACL,
+    descriptor: PSECURITY_DESCRIPTOR,
+}
+
+impl Drop for Dacl {
+    fn drop(&mut self) {
+        if !self.descriptor.is_null() {
+            // SAFETY: allocated by GetNamedSecurityInfoW.
+            unsafe {
+                LocalFree(self.descriptor);
+            }
+        }
+    }
+}
+
+fn read_dacl(path: &Path) -> Result<Dacl, SandboxError> {
+    let name = wide_path(path);
+    let mut dacl: *mut ACL = std::ptr::null_mut();
+    let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
+    // SAFETY: `name` is NUL-terminated; the descriptor is freed by `Dacl`.
+    let code = unsafe {
+        GetNamedSecurityInfoW(
+            name.as_ptr(),
+            SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            &mut dacl,
+            std::ptr::null_mut(),
+            &mut descriptor,
+        )
+    };
+    if code != ERROR_SUCCESS {
+        return Err(error("reading the access list of", path, code));
+    }
+    Ok(Dacl { dacl, descriptor })
+}
+
+/// Whether `path` already has an allow entry for `sid` covering `access`.
+pub(crate) fn has_allow(path: &Path, sid: &OwnedSid, access: Access) -> Result<bool, SandboxError> {
+    let dacl = read_dacl(path)?;
+    if dacl.dacl.is_null() {
+        // A missing DACL grants everyone everything.
+        return Ok(true);
+    }
+    let wanted = access.mask();
+    // SAFETY: `dacl.dacl` points to a valid ACL owned by `dacl`.
+    unsafe {
+        let count = (*dacl.dacl).AceCount;
+        for index in 0..u32::from(count) {
+            let mut ace: *mut core::ffi::c_void = std::ptr::null_mut();
+            if GetAce(dacl.dacl, index, &mut ace) == 0 {
+                continue;
+            }
+            let allowed = ace as *const ACCESS_ALLOWED_ACE;
+            if u32::from((*allowed).Header.AceType) != ACCESS_ALLOWED_ACE_TYPE
+                || u32::from((*allowed).Header.AceFlags) & INHERIT_ONLY_ACE != 0
+            {
+                continue;
+            }
+            let ace_sid = std::ptr::addr_of!((*allowed).SidStart) as PSID;
+            if EqualSid(ace_sid, sid.as_psid()) != 0 && (*allowed).Mask & wanted == wanted {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+fn explicit(sid: &OwnedSid, mode: i32, mask: u32, inheritance: ACE_FLAGS) -> EXPLICIT_ACCESS_W {
+    EXPLICIT_ACCESS_W {
+        grfAccessPermissions: mask,
+        grfAccessMode: mode,
+        grfInheritance: inheritance,
+        Trustee: TRUSTEE_W {
+            pMultipleTrustee: std::ptr::null_mut(),
+            MultipleTrusteeOperation: NO_MULTIPLE_TRUSTEE,
+            TrusteeForm: TRUSTEE_IS_SID,
+            TrusteeType: TRUSTEE_IS_UNKNOWN,
+            ptstrName: sid.as_psid() as *mut u16,
+        },
+    }
+}
+
+/// The DACL with `entry` merged in (freed with LocalFree by the caller).
+fn merged(path: &Path, entry: &EXPLICIT_ACCESS_W) -> Result<(*mut ACL, Dacl), SandboxError> {
+    let current = read_dacl(path)?;
+    let mut updated: *mut ACL = std::ptr::null_mut();
+    // SAFETY: the old ACL stays alive in `current` during the call.
+    let code = unsafe { SetEntriesInAclW(1, entry, current.dacl, &mut updated) };
+    if code != ERROR_SUCCESS {
+        return Err(error("updating the access list of", path, code));
+    }
+    Ok((updated, current))
+}
+
+fn write_named(path: &Path, dacl: *mut ACL, extra: u32) -> Result<(), SandboxError> {
+    let name = wide_path(path);
+    // SAFETY: `name` is NUL-terminated and `dacl` a valid ACL.
+    let code = unsafe {
+        SetNamedSecurityInfoW(
+            name.as_ptr(),
+            SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION | extra,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            dacl,
+            std::ptr::null(),
+        )
+    };
+    // SAFETY: allocated by SetEntriesInAclW.
+    unsafe {
+        LocalFree(dacl as *mut core::ffi::c_void);
+    }
+    if code != ERROR_SUCCESS {
+        return Err(error("writing the access list of", path, code));
+    }
+    Ok(())
+}
+
+/// Writes a DACL to this object only (no walk below it).
+fn write_this_only(path: &Path, dacl: *mut ACL) -> Result<(), SandboxError> {
+    let name = wide_path(path);
+    // SAFETY: the descriptor lives on the stack for the call; `dacl` is
+    // freed after it.
+    let result = unsafe {
+        let mut descriptor: SECURITY_DESCRIPTOR = std::mem::zeroed();
+        let descriptor_ptr = &mut descriptor as *mut SECURITY_DESCRIPTOR as PSECURITY_DESCRIPTOR;
+        let ok = InitializeSecurityDescriptor(descriptor_ptr, SECURITY_DESCRIPTOR_REVISION) != 0
+            && SetSecurityDescriptorDacl(descriptor_ptr, 1, dacl, 0) != 0
+            && SetFileSecurityW(name.as_ptr(), DACL_SECURITY_INFORMATION, descriptor_ptr) != 0;
+        let code = windows_sys::Win32::Foundation::GetLastError();
+        LocalFree(dacl as *mut core::ffi::c_void);
+        if ok {
+            Ok(())
+        } else {
+            Err(code)
+        }
+    };
+    result.map_err(|code| error("writing the access list of", path, code))
+}
+
+/// Grants `access` to `sid` on `path` and everything below it.
+pub(crate) fn grant(path: &Path, sid: &OwnedSid, access: Access) -> Result<(), SandboxError> {
+    if has_allow(path, sid, access)? {
+        return Ok(());
+    }
+    let inheritance = if path.is_dir() {
+        SUB_CONTAINERS_AND_OBJECTS_INHERIT
+    } else {
+        NO_INHERITANCE
+    };
+    let entry = explicit(sid, GRANT_ACCESS, access.mask(), inheritance);
+    let (dacl, _current) = merged(path, &entry)?;
+    write_named(path, dacl, 0)
+}
+
+/// Lets `sid` pass through `dir` to a granted folder below it.
+pub(crate) fn grant_traverse(dir: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
+    if has_allow(dir, sid, Access::Traverse)? {
+        return Ok(());
+    }
+    let entry = explicit(sid, GRANT_ACCESS, Access::Traverse.mask(), NO_INHERITANCE);
+    let (dacl, _current) = merged(dir, &entry)?;
+    write_this_only(dir, dacl)
+}
+
+/// Removes `sid`'s entries from `path` and everything below it.
+pub(crate) fn revoke(path: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
+    let entry = explicit(sid, REVOKE_ACCESS, 0, NO_INHERITANCE);
+    let (dacl, _current) = merged(path, &entry)?;
+    write_named(path, dacl, 0)
+}
+
+/// Removes a traverse entry from `dir` only.
+pub(crate) fn revoke_traverse(dir: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
+    let entry = explicit(sid, REVOKE_ACCESS, 0, NO_INHERITANCE);
+    let (dacl, _current) = merged(dir, &entry)?;
+    write_this_only(dir, dacl)
+}
+
+/// Keeps `sid` from writing a protected file inside a writable folder: the
+/// file gets a protected DACL with its current entries minus the task's.
+pub(crate) fn exclude_file(file: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
+    if file.is_dir() {
+        return Err(SandboxError::Invalid(format!(
+            "{} is a folder; only files can be excluded.",
+            file.display()
+        )));
+    }
+    let entry = explicit(sid, REVOKE_ACCESS, 0, NO_INHERITANCE);
+    let (dacl, _current) = merged(file, &entry)?;
+    write_named(file, dacl, PROTECTED_DACL_SECURITY_INFORMATION)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::sid::{capability_sid, RUNTIME_CAPABILITY};
+    use super::*;
+
+    fn ace_count(path: &Path) -> u16 {
+        let dacl = read_dacl(path).unwrap();
+        // SAFETY: the ACL is owned by `dacl`.
+        unsafe { (*dacl.dacl).AceCount }
+    }
+
+    #[test]
+    fn grant_revoke_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let child = dir.path().join("child.txt");
+        std::fs::write(&child, "x").unwrap();
+        let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
+        grant(dir.path(), &sid, Access::Read).unwrap();
+        assert!(has_allow(dir.path(), &sid, Access::Read).unwrap());
+        assert!(has_allow(&child, &sid, Access::Read).unwrap());
+        revoke(dir.path(), &sid).unwrap();
+        assert!(!has_allow(dir.path(), &sid, Access::Read).unwrap());
+    }
+
+    #[test]
+    fn grant_is_skipped_when_present() {
+        let dir = tempfile::tempdir().unwrap();
+        let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
+        grant(dir.path(), &sid, Access::Read).unwrap();
+        let count = ace_count(dir.path());
+        grant(dir.path(), &sid, Access::Read).unwrap();
+        assert_eq!(ace_count(dir.path()), count);
+        revoke(dir.path(), &sid).unwrap();
+    }
+
+    #[test]
+    fn traverse_does_not_propagate() {
+        let dir = tempfile::tempdir().unwrap();
+        let child = dir.path().join("child.txt");
+        std::fs::write(&child, "x").unwrap();
+        let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
+        grant_traverse(dir.path(), &sid).unwrap();
+        assert!(!has_allow(&child, &sid, Access::Traverse).unwrap());
+        revoke_traverse(dir.path(), &sid).unwrap();
+    }
+
+    #[test]
+    fn exclude_file_drops_inherited_allow() {
+        let dir = tempfile::tempdir().unwrap();
+        let protected = dir.path().join(".git");
+        let other = dir.path().join("a.txt");
+        std::fs::write(&protected, "gitdir: x").unwrap();
+        std::fs::write(&other, "x").unwrap();
+        let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
+        grant(dir.path(), &sid, Access::ReadWrite).unwrap();
+        exclude_file(&protected, &sid).unwrap();
+        assert!(!has_allow(&protected, &sid, Access::ReadWrite).unwrap());
+        assert!(has_allow(&other, &sid, Access::ReadWrite).unwrap());
+        revoke(dir.path(), &sid).unwrap();
+    }
+}

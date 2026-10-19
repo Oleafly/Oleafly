@@ -14,7 +14,10 @@ Windows and Linux.
 | Go to PDF (SyncTeX) | Command-Shift-J | Ctrl-Shift-J |
 | Shortcut reference | Command-/ | Ctrl-/ |
 | Toggle terminal | Ctrl-` | Ctrl-` |
-| Toggle browser | Ctrl-Shift-B | Ctrl-Shift-B (Windows), Ctrl-Alt-B (Linux) |
+| New terminal | Ctrl-Shift-` | Ctrl-Shift-` |
+| Close terminal | Ctrl-Shift-W | Ctrl-Shift-W |
+| Next terminal | Ctrl-PageDown | Ctrl-PageDown |
+| Previous terminal | Ctrl-PageUp | Ctrl-PageUp |
 | Toggle sidebar | Command-B | Ctrl-B |
 | Toggle PDF preview | Command-Option-P | Ctrl-Alt-P |
 | Toggle Zen mode | Ctrl-Command-Shift-F | Shift-F11 |
@@ -26,12 +29,13 @@ Windows and Linux.
 | Close LaTeX environment | Command-Option-. | Ctrl-Alt-. |
 | Surround with environment | Command-Option-E | Ctrl-Alt-E |
 
-Toggle browser does nothing until Web browser is on in Settings >
-Experimentation.
+New terminal works anywhere in a project. Close terminal, Next terminal and
+Previous terminal act while focus is in the terminal dock, including inside a
+terminal.
 
 Zen mode hides the toolbar, sidebar, assistant and terminal so only the editor
 (and the PDF, if it was showing) is left. While it is on, the toggle shortcuts
-for the sidebar, terminal and browser, the command palette and search still
+for the sidebar and terminal, the command palette and search still
 work, and Toggle PDF preview shows or hides the PDF, including one a compile
 opened. Press Escape twice within half a second, or use the same shortcut, to
 leave. Command-B and Ctrl-B still mean Bold while the editor has focus, so the
@@ -101,6 +105,41 @@ still add cursors whatever you remap.
 `Mod-/` is also the default for the shortcut reference. Inside the editor the
 comment toggle wins and the reference stays shut; anywhere else the reference
 opens.
+
+## Terminal keys
+
+While a terminal has focus, keys go to the shell. These app shortcuts still
+work from the terminal: Toggle terminal, Command palette, Open settings and the
+four terminal tab shortcuts, with whatever bindings you gave them. On macOS
+every other Command shortcut keeps working too, except Command-F, Command-K,
+Command-Left, Command-Right and Command-Backspace, which the terminal uses, so
+Command-K clears the terminal there instead of opening the command palette. On
+Windows and Linux, Ctrl with a letter, Alt combinations, function keys and keys
+such as Enter, Tab and the arrows go to the shell. Chords a shell has no use
+for, such as Ctrl-Shift-F, Ctrl-= and Ctrl-0, still reach Oleafly. Characters
+typed with an input method or AltGr always reach the shell.
+
+The terminal turns these keys into what shells and command-line programs
+expect:
+
+| Key | macOS | Windows | Linux |
+| --- | --- | --- | --- |
+| Shift-Enter | New line (LF) | ESC CR, LF under WSL | New line (LF) |
+| Option-Left, Option-Right | Word left, word right | | |
+| Alt-Left, Alt-Right | | Word left, word right (as Ctrl-Left, Ctrl-Right) | Word left, word right (as Ctrl-Left, Ctrl-Right) |
+| Alt-Up, Alt-Down (Option on macOS) | Sent as Ctrl-Up, Ctrl-Down | Sent as Ctrl-Up, Ctrl-Down | Sent as Ctrl-Up, Ctrl-Down |
+| Command-Left, Command-Right | Start, end of line | | |
+| Command-Backspace | Delete to line start | | |
+| Command-K | Clear the terminal | | |
+| Ctrl-Backspace | | | Delete word before |
+| Ctrl-Delete | | Delete word after | Delete word after |
+| Ctrl-/ | Undo (0x1F) | Undo (0x1F) | Undo (0x1F) |
+| Ctrl-Shift-C, Ctrl-Shift-V | | Copy, paste | Copy, paste |
+| Ctrl-C with text selected, Ctrl-V | | Copy, paste | |
+| Ctrl-F (Command-F on macOS) | Find | Find | Find |
+
+Shift-Enter sends a plain Enter instead when Settings > Appearance > Terminal
+says so.
 
 ## Configuration model
 

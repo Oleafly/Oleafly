@@ -1,0 +1,362 @@
+[
+  {
+    "name": "nested-environments",
+    "text": "\\begin{a}\\begin{b}x\\end{b}\\end{a}"
+  },
+  {
+    "name": "mismatched-end",
+    "text": "\\begin{itemize}x\\end{enumerate}"
+  },
+  {
+    "name": "unclosed-environment",
+    "text": "\\begin{document}hello"
+  },
+  {
+    "name": "end-without-begin",
+    "text": "hello\\end{document}"
+  },
+  {
+    "name": "duplicate-label",
+    "text": "\\label{eq:1} ... \\label{eq:1}"
+  },
+  {
+    "name": "distinct-labels",
+    "text": "\\label{a}\\label{b}"
+  },
+  {
+    "name": "odd-dollar",
+    "text": "the cost is $x per item"
+  },
+  {
+    "name": "balanced-dollar",
+    "text": "the cost is $x$ per item"
+  },
+  {
+    "name": "escaped-dollar-and-display",
+    "text": "price \\$5 and $$E=mc^2$$"
+  },
+  {
+    "name": "supported-definitions",
+    "text": "\n\\newcommand{\\widget}[2]{#1 + #2}\n\\renewcommand\\widget[1]{#1}\n\\NewDocumentCommand{\\modern}{m O{default}}{#1}\n\\def\\legacy#1{#1}\n\\newenvironment{experiment}{\\begin{quote}}{\\end{quote}}\n\\NewDocumentEnvironment{modernenv}{m}{#1}{}\n"
+  },
+  {
+    "name": "unicode-control-sequences",
+    "text": "\\newcommand{\\výsledek}{42}\n\\newcommand\\αβ{AB}\n\\NewDocumentCommand{\\příklad}{m}{#1}\n\\renewcommand{\\Ärger}[1]{#1}\nVýsledek je \\výsledek{} a \\αβ. Dvo\\v{r}\\'ak \\c{c}."
+  },
+  {
+    "name": "malformed-definition-name",
+    "text": "\\newcommand{widget}[1]{#1}\n\\begin{itemize}\n\\end{enumerate}"
+  },
+  {
+    "name": "incomplete-newcommand",
+    "text": "\\newcommand{\\classic}"
+  },
+  {
+    "name": "incomplete-documentcommand",
+    "text": "\\NewDocumentCommand{\\modern}{m}"
+  },
+  {
+    "name": "incomplete-newenvironment",
+    "text": "\\newenvironment{classicenv}{}"
+  },
+  {
+    "name": "incomplete-documentenvironment",
+    "text": "\\NewDocumentEnvironment{modernenv}{m}{}"
+  },
+  {
+    "name": "listings-and-minted-bodies",
+    "text": "\n\\lstinline[language={[LaTeX]TeX}]!\\begin{oops}{$ { #!\n\\mintinline{latex}|\\end{oops}} $ { \\broken|\n\\mintinline[breaklines]{latex}{\\begin{oops} $ { still code }}\n"
+  },
+  {
+    "name": "xparse-grammar",
+    "text": "\n\\NewDocumentCommand{\\complete}{+m !o O{default} s t+ r() R<>{fallback} d[] D||{fallback} e{^_} E{^_}{{up}{down}}}{}\n\\NewDocumentEnvironment{completeenv}{>{\\TrimSpaces}m +b}{}{}\n"
+  },
+  {
+    "name": "xparse-unknown-type",
+    "text": "\\NewDocumentCommand{\\bad}{m Z}{}"
+  },
+  {
+    "name": "xparse-incomplete-delimiters",
+    "text": "\\NewDocumentCommand{\\bad}{m r(}{}"
+  },
+  {
+    "name": "structural-arguments",
+    "text": "\\documentclass article\n\\usepackage{}\n\\RequirePackage[feature\n\\section{Later source remains editable}"
+  },
+  {
+    "name": "trailing-incomplete-command",
+    "text": "\\begin{document}\nText }\n\\"
+  },
+  {
+    "name": "novalidate-baseline",
+    "text": "\\begin{itemize}\n  \\item one\n"
+  },
+  {
+    "name": "novalidate-file-first-line",
+    "text": "%novalidate\n\\begin{itemize}\n  \\item one\n"
+  },
+  {
+    "name": "novalidate-file-last-line",
+    "text": "\\begin{itemize}\n  \\item one\n%novalidate\n"
+  },
+  {
+    "name": "novalidate-file-spaced",
+    "text": "  % novalidate  \n\\begin{itemize}\n  \\item one\n"
+  },
+  {
+    "name": "novalidate-double-percent",
+    "text": "  %%  novalidate\t\n\\begin{itemize}\n  \\item one\n"
+  },
+  {
+    "name": "novalidate-with-trailing-words",
+    "text": "% novalidate soon, not yet\n\\begin{itemize}\n  \\item one\n"
+  },
+  {
+    "name": "novalidate-after-text",
+    "text": "x % novalidate\n\\begin{itemize}\n  \\item one\n"
+  },
+  {
+    "name": "novalidate-escaped-percent",
+    "text": "\\%novalidate\n\\begin{itemize}\n  \\item one\n"
+  },
+  {
+    "name": "novalidate-begin-without-word",
+    "text": "% begin  \n\\begin{itemize}\n  \\item one\n"
+  },
+  {
+    "name": "novalidate-region",
+    "text": "%begin novalidate\n\\begin{itemize}\n  \\item generated\n%end novalidate\n\\begin{enumerate}"
+  },
+  {
+    "name": "novalidate-region-tokens",
+    "text": "%begin novalidate\n$ \\begin{a} } \\unfinished{\n%end novalidate\nafter"
+  },
+  {
+    "name": "novalidate-region-unclosed",
+    "text": "%begin novalidate\n\\begin{itemize}\n  \\item one\n"
+  },
+  {
+    "name": "novalidate-region-later",
+    "text": "\\begin{itemize}\n%begin novalidate\n\\begin{enumerate}\n%end novalidate"
+  },
+  {
+    "name": "bracket-math-balanced",
+    "text": "\\(a\\) \\[b\\] $\\(c\\)$ \\(\\[d\\]\\)"
+  },
+  {
+    "name": "bracket-paren-closed-by-bracket",
+    "text": "\\(a\\]"
+  },
+  {
+    "name": "bracket-display-closed-by-paren",
+    "text": "\\[a\\)"
+  },
+  {
+    "name": "bracket-paren-close-alone",
+    "text": "a\\)"
+  },
+  {
+    "name": "bracket-display-close-alone",
+    "text": "a\\]"
+  },
+  {
+    "name": "dollar-closes-paren",
+    "text": "\\(a$"
+  },
+  {
+    "name": "verbatim-body-skipped",
+    "text": "\\begin{verbatim}$x{\\end{verbatim}"
+  },
+  {
+    "name": "verbatim-unclosed",
+    "text": "\\begin{verbatim} $x"
+  },
+  {
+    "name": "outer-end-skips-environments",
+    "text": "\\begin{a}\\begin{b}\\begin{c}\\end{a}"
+  },
+  {
+    "name": "begin-without-brace",
+    "text": "\\begin x"
+  },
+  {
+    "name": "begin-unclosed-argument",
+    "text": "\\begin{a"
+  },
+  {
+    "name": "end-empty-argument",
+    "text": "\\end{}"
+  },
+  {
+    "name": "label-empty-argument",
+    "text": "\\label{}"
+  },
+  {
+    "name": "verb-unclosed",
+    "text": "\\verb|a"
+  },
+  {
+    "name": "verb-without-delimiter",
+    "text": "\\verb"
+  },
+  {
+    "name": "verb-space-delimiter",
+    "text": "\\verb x"
+  },
+  {
+    "name": "comment-hides-math",
+    "text": "% $x\n$y$"
+  },
+  {
+    "name": "starred-and-spaced-definitions",
+    "text": "\\newcommand*{\\a}{y}\n\\renewcommand*\\b{a}\n\\newcommand \\c [1] {#1}\n\\newcommand{\\d}  [ 2 ]  [ d ]  {#1}\n\\newcommand{\\e}[2][def]{#1}\n\\newcommand{\\@f}{a}\n\\newenvironment*{g}{a}{b}\n\\newenvironment{h}[1]{a}{b}"
+  },
+  {
+    "name": "bracket-in-braced-default",
+    "text": "\\newcommand{\\x}[2][{a]b}]{#1#2}"
+  },
+  {
+    "name": "bracket-in-environment-default",
+    "text": "\\newenvironment{y}[1][{[}]{#1}{}"
+  },
+  {
+    "name": "default-left-open",
+    "text": "\\newcommand{\\x}[2][{a]b}"
+  },
+  {
+    "name": "argument-count-letter",
+    "text": "\\newcommand{\\x}[a]{}"
+  },
+  {
+    "name": "argument-count-two-digits",
+    "text": "\\newcommand{\\x}[10]{}"
+  },
+  {
+    "name": "argument-count-unclosed",
+    "text": "\\newcommand{\\x}[2"
+  },
+  {
+    "name": "default-argument-unclosed",
+    "text": "\\newcommand{\\x}[2][d"
+  },
+  {
+    "name": "command-name-unclosed",
+    "text": "\\newcommand{"
+  },
+  {
+    "name": "command-name-missing",
+    "text": "\\newcommand"
+  },
+  {
+    "name": "replacement-body-missing",
+    "text": "\\newcommand\\x"
+  },
+  {
+    "name": "argument-specification-missing",
+    "text": "\\NewDocumentCommand{\\x}"
+  },
+  {
+    "name": "begin-body-missing",
+    "text": "\\newenvironment{x}"
+  },
+  {
+    "name": "environment-name-empty",
+    "text": "\\newenvironment{}{a}{b}"
+  },
+  {
+    "name": "package-options-with-braces",
+    "text": "\\usepackage[a={x]y}, b=\\%]{pkg}\n\\usepackage* [opt] {pkg}\n\\usepackage{\\{pkg}\n\\newcommand\\%{percent}"
+  },
+  {
+    "name": "control-sequence-cut-at-eof",
+    "text": "\\newcommand\\"
+  },
+  {
+    "name": "non-ascii-command-names",
+    "text": "\\café{x} and \\Δ{y} }"
+  },
+  {
+    "name": "emoji-before-unmatched-brace",
+    "text": "Progress 😀 report }"
+  },
+  {
+    "name": "astral-letter-after-backslash",
+    "text": "\\𝐀 marks {"
+  },
+  {
+    "name": "crlf-line-endings",
+    "text": "\\begin{itemize}\r\n\\item a\r\n\\end{enumerate}\r\n"
+  },
+  {
+    "name": "lone-carriage-returns",
+    "text": "a\rb}\r$c"
+  },
+  {
+    "name": "lstinline-optional-and-braces",
+    "text": "\\lstinline[x]{y} and $z"
+  },
+  {
+    "name": "mintinline-pipes",
+    "text": "\\mintinline{py}|x| and {"
+  },
+  {
+    "name": "end-at-eof",
+    "text": "text \\end"
+  },
+  {
+    "name": "lone-backslash-at-eof",
+    "text": "\\"
+  },
+  {
+    "name": "verbatim-environment-starred",
+    "text": "\\begin{verbatim*}}{\\end{verbatim*}"
+  },
+  {
+    "name": "math-in-label-and-text",
+    "text": "\\label{a$b} and $c"
+  },
+  {
+    "name": "xparse-all-types",
+    "text": "\\NewDocumentCommand{\\x}{m o +m !o >{\\Trim}m s t* t\\foo t\\@ r() R{<}{>}{d} d<> D\\x\\y{v} e{^_} E{^_}{{a}{b}} O{x} b v}{}"
+  },
+  {
+    "name": "xparse-blank",
+    "text": "\\NewDocumentCommand{\\x}{   }{}"
+  },
+  {
+    "name": "xparse-processor-unbraced",
+    "text": "\\NewDocumentCommand{\\x}{>m}{}"
+  },
+  {
+    "name": "xparse-modifier-without-type",
+    "text": "\\NewDocumentCommand{\\x}{m +}{}"
+  },
+  {
+    "name": "xparse-trigger-missing",
+    "text": "\\NewDocumentCommand{\\x}{t}{}"
+  },
+  {
+    "name": "xparse-delimiter-missing",
+    "text": "\\NewDocumentCommand{\\x}{r}{}"
+  },
+  {
+    "name": "xparse-default-unbraced",
+    "text": "\\NewDocumentCommand{\\x}{R()}{}"
+  },
+  {
+    "name": "xparse-embellishment-missing",
+    "text": "\\NewDocumentCommand{\\x}{e}{}"
+  },
+  {
+    "name": "xparse-default-list-unbraced",
+    "text": "\\NewDocumentCommand{\\x}{E{^}}{}"
+  },
+  {
+    "name": "xparse-unknown-types",
+    "text": "\\NewDocumentCommand{\\x}{Z m q}{}"
+  },
+  {
+    "name": "xparse-environment-spec",
+    "text": "\\NewDocumentEnvironment{e}{m q}{}{}"
+  }
+]
