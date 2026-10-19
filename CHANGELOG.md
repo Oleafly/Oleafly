@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- With an Anthropic key, the default model is now Claude Opus 5.5, and the
+  model list has Claude Sonnet 5.5, Claude Haiku 5.5 and Claude Fable 5.1.
+  Opus 5.5 costs $4 per million input tokens and $20 per million output
+  tokens. Opus 5 costs $5 and $25.
+- The other providers' model lists follow their current lineups too. OpenAI
+  starts on GPT-6.1 Sol, with GPT-6 Astra and GPT-6 Luna. Google starts on
+  Gemini 3.8 Flash and adds Gemini 4 Argon. DeepSeek starts on DeepSeek
+  Flash, xAI on Grok 4.7 and OpenRouter on GPT-6 Luna. Z.AI lists GLM-5.3 and
+  GLM-5.3 Flash, the two models the GLM Coding Plan serves, and Mistral adds
+  Mistral Medium.
+- Models their providers retired are gone from the lists: Magistral on
+  Mistral, the older GLM models, and Llama 3.3 70B on Groq, which Groq shut
+  down for free and developer accounts. A model you already picked stays
+  selected, on any provider.
+- Usage and budget estimates price the new models. Context size, image
+  support and prices in the model list come from a fresh copy of the
+  models.dev data.
+
+### Fixed
+
+- Paper review stopped with an error on Claude Opus 5 and the newer Claude
+  models, because they reject the temperature setting it sent. Citation
+  suggestions on those models fell back to keyword scores for the same
+  reason, without saying so. OpenAI's GPT-5 and GPT-6 models refuse the
+  setting as well. Oleafly now leaves it out for every model that rejects or
+  ignores it, Gemini 3 and later included.
+- On DeepSeek, the assistant could stop with an error after its first tool
+  call. DeepSeek's thinking mode expects the reasoning from every earlier turn
+  to be sent back, and Oleafly doesn't keep it. Assistant runs on DeepSeek now
+  switch thinking off.
+- Oleafly treated many models that read images as text-only, among them
+  Claude Opus 5 and every newer Claude, GPT-6, Grok 4, Mistral Large and
+  DeepSeek Flash. The assistant never got the rendered PDF pages and figure
+  previews it asks for to check its work, and Refine with AI and Image to
+  LaTeX were unavailable. Oleafly now also checks the model details from the
+  provider's list, so any model listed with image input gets images.
+
 ## [0.4.7] - 2026-10-18
 
 ### Thanks

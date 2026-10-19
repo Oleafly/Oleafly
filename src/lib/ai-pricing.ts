@@ -5,11 +5,17 @@ import { formatNumber } from "@/lib/intl";
 export interface ModelPrice {
   inputPerMTok: number;
   outputPerMTok: number;
+  // A second rate card for prompts longer than `aboveInputTokens`.
+  longPrompt?: { aboveInputTokens: number; inputPerMTok: number; outputPerMTok: number };
   note?: string;
 }
 
 const PRICES: Record<string, ModelPrice> = {
   // OpenAI
+  "gpt-6.1-sol": { inputPerMTok: 2, outputPerMTok: 10 },
+  "gpt-6-sol": { inputPerMTok: 2, outputPerMTok: 10 },
+  "gpt-6-astra": { inputPerMTok: 10, outputPerMTok: 50 },
+  "gpt-6-luna": { inputPerMTok: 0.1, outputPerMTok: 0.5 },
   "gpt-5.6-sol": { inputPerMTok: 5, outputPerMTok: 30 },
   "gpt-5.6-terra": { inputPerMTok: 2, outputPerMTok: 12 },
   "gpt-5.6-luna": { inputPerMTok: 0.2, outputPerMTok: 1.2 },
@@ -20,6 +26,14 @@ const PRICES: Record<string, ModelPrice> = {
   "gpt-4.1-mini": { inputPerMTok: 0.4, outputPerMTok: 1.6 },
   "o3-mini": { inputPerMTok: 1.1, outputPerMTok: 4.4 },
   // Anthropic
+  "claude-fable-5-1": { inputPerMTok: 10, outputPerMTok: 50 },
+  "claude-opus-5-5": { inputPerMTok: 4, outputPerMTok: 20 },
+  "claude-sonnet-5-5": { inputPerMTok: 2, outputPerMTok: 10 },
+  "claude-haiku-5-5": {
+    inputPerMTok: 0.1,
+    outputPerMTok: 0.5,
+    longPrompt: { aboveInputTokens: 100_000, inputPerMTok: 0.5, outputPerMTok: 2.5 },
+  },
   "claude-fable-5": { inputPerMTok: 10, outputPerMTok: 50 },
   "claude-opus-5": { inputPerMTok: 5, outputPerMTok: 25 },
   "claude-sonnet-5": { inputPerMTok: 2, outputPerMTok: 10 },
@@ -29,7 +43,10 @@ const PRICES: Record<string, ModelPrice> = {
   "openai/gpt-oss-20b": { inputPerMTok: 0.075, outputPerMTok: 0.3 },
   "llama-3.3-70b-versatile": { inputPerMTok: 0.59, outputPerMTok: 0.79 },
   "llama-3.1-8b-instant": { inputPerMTok: 0.05, outputPerMTok: 0.08 },
-  // Google Gemini
+  // Google Gemini (3.8 Flash rises to $1.50 / $7.50 after 2026-12-31, 4 Argon to
+  // $4 / $20 after 2026-11-30)
+  "gemini-3.8-flash": { inputPerMTok: 0.75, outputPerMTok: 3.75 },
+  "gemini-4-argon": { inputPerMTok: 2, outputPerMTok: 10 },
   "gemini-3.7-flash": { inputPerMTok: 0.75, outputPerMTok: 3.75 },
   "gemini-3.1-pro-preview": { inputPerMTok: 2, outputPerMTok: 12 },
   "gemini-3.5-flash-lite": { inputPerMTok: 0.1, outputPerMTok: 0.4 },
@@ -39,18 +56,23 @@ const PRICES: Record<string, ModelPrice> = {
   // OpenRouter catalog ids
   "openai/gpt-4o-mini": { inputPerMTok: 0.15, outputPerMTok: 0.6 },
   "anthropic/claude-sonnet-5": { inputPerMTok: 2, outputPerMTok: 10 },
+  "google/gemini-3.8-flash": { inputPerMTok: 0.825, outputPerMTok: 4.125 },
+  "qwen/qwen3.8-27b": { inputPerMTok: 0.24, outputPerMTok: 2.2 },
   "google/gemini-2.5-flash": { inputPerMTok: 0.3, outputPerMTok: 2.5 },
   "meta-llama/llama-3.3-70b-instruct": { inputPerMTok: 0.1, outputPerMTok: 0.3 },
   // DeepSeek (peak-hour cache-miss rates; off-peak is half)
+  "deepseek-flash": { inputPerMTok: 0.3, outputPerMTok: 1.2 },
   "deepseek-v4-flash": { inputPerMTok: 0.44, outputPerMTok: 1.32 },
   "deepseek-v4-pro": { inputPerMTok: 1.32, outputPerMTok: 3.96 },
   // Mistral
   "mistral-large-latest": { inputPerMTok: 0.5, outputPerMTok: 1.5 },
+  "mistral-medium-latest": { inputPerMTok: 1.5, outputPerMTok: 7.5 },
   "magistral-medium-latest": { inputPerMTok: 2, outputPerMTok: 5 },
   "magistral-small-latest": { inputPerMTok: 0.5, outputPerMTok: 1.5 },
   "codestral-latest": { inputPerMTok: 0.3, outputPerMTok: 0.9 },
   "mistral-small-latest": { inputPerMTok: 0.15, outputPerMTok: 0.6 },
   // xAI (under 200k prompt tokens)
+  "grok-4.7": { inputPerMTok: 2, outputPerMTok: 6 },
   "grok-4.6": { inputPerMTok: 2, outputPerMTok: 6 },
   "grok-4.5": { inputPerMTok: 2, outputPerMTok: 6 },
   "grok-4.3": { inputPerMTok: 1.25, outputPerMTok: 2.5 },
@@ -67,6 +89,7 @@ const PRICES: Record<string, ModelPrice> = {
   mistral: { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
   gemma2: { inputPerMTok: 0, outputPerMTok: 0, note: "local" },
   "glm-5.3": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
+  "glm-5.3-flash": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
   "glm-5.2": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
   "glm-4.6": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
   "glm-4.5-air": { inputPerMTok: 0, outputPerMTok: 0, note: "plan" },
@@ -99,9 +122,11 @@ export function estimateUsd(
   outputTokens: number,
 ): { usd: number; price: ModelPrice } {
   const price = lookupPrice(modelId);
+  const rates =
+    price.longPrompt && inputTokens > price.longPrompt.aboveInputTokens ? price.longPrompt : price;
   const usd =
-    (Math.max(0, inputTokens) / 1_000_000) * price.inputPerMTok +
-    (Math.max(0, outputTokens) / 1_000_000) * price.outputPerMTok;
+    (Math.max(0, inputTokens) / 1_000_000) * rates.inputPerMTok +
+    (Math.max(0, outputTokens) / 1_000_000) * rates.outputPerMTok;
   return { usd, price };
 }
 

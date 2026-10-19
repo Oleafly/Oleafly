@@ -3,6 +3,10 @@
   "providers": {
     "openai": {
       "verified": [
+        "gpt-6.1-sol",
+        "gpt-6-sol",
+        "gpt-6-astra",
+        "gpt-6-luna",
         "gpt-4o",
         "gpt-4o-2024-05-13",
         "gpt-4o-2024-08-06",
@@ -55,6 +59,10 @@
     },
     "anthropic": {
       "verified": [
+        "claude-opus-5-5",
+        "claude-sonnet-5-5",
+        "claude-haiku-5-5",
+        "claude-fable-5-1",
         "claude-fable-5",
         "claude-opus-5",
         "claude-sonnet-5",
@@ -69,6 +77,7 @@
     },
     "google": {
       "verified": [
+        "gemini-3.8-flash",
         "gemini-3.7-flash",
         "gemini-3.6-flash",
         "gemini-3.5-flash",
@@ -101,6 +110,7 @@
     },
     "zai": {
       "verified": [
+        "glm-5.3-flash",
         "glm-5.3",
         "glm-5.2",
         "glm-4.6",
@@ -122,6 +132,11 @@
     },
     "openrouter": {
       "verified": [
+        "openai/gpt-6-luna",
+        "anthropic/claude-sonnet-5.5",
+        "anthropic/claude-opus-5.5",
+        "google/gemini-3.8-flash",
+        "qwen/qwen3.8-27b",
         "openai/gpt-4o-mini",
         "anthropic/claude-sonnet-5",
         "anthropic/claude-opus-5",
@@ -132,6 +147,7 @@
     },
     "deepseek": {
       "verified": [
+        "deepseek-flash",
         "deepseek-v4-flash",
         "deepseek-v4-pro",
         "deepseek-v4-flash-vision-exp"
@@ -142,8 +158,6 @@
       "verified": [
         "mistral-large-latest",
         "mistral-medium-latest",
-        "magistral-medium-latest",
-        "magistral-small-latest",
         "codestral-latest",
         "mistral-small-latest"
       ],
@@ -151,6 +165,7 @@
     },
     "xai": {
       "verified": [
+        "grok-4.7",
         "grok-4.6",
         "grok-4.5",
         "grok-4.3",

@@ -20,11 +20,9 @@ export const PROVIDERS: AIProvider[] = [
     blurb: "GPT models. The default choice.",
     signupUrl: "https://platform.openai.com/api-keys",
     models: [
-      { id: "gpt-5.6-terra", name: "GPT-5.6 Terra" },
-      { id: "gpt-5.6-sol", name: "GPT-5.6 Sol" },
-      { id: "gpt-5.6-luna", name: "GPT-5.6 Luna" },
-      { id: "gpt-5.3-codex", name: "GPT-5.3 Codex" },
-      { id: "gpt-4o-mini", name: "GPT-4o mini" },
+      { id: "gpt-6.1-sol", name: "GPT-6.1 Sol" },
+      { id: "gpt-6-astra", name: "GPT-6 Astra" },
+      { id: "gpt-6-luna", name: "GPT-6 Luna" },
     ],
   },
   {
@@ -33,10 +31,10 @@ export const PROVIDERS: AIProvider[] = [
     blurb: "Claude models - strong at code and writing.",
     signupUrl: "https://console.anthropic.com/settings/keys",
     models: [
-      { id: "claude-opus-5", name: "Claude Opus 5" },
-      { id: "claude-sonnet-5", name: "Claude Sonnet 5" },
-      { id: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
-      { id: "claude-fable-5", name: "Claude Fable 5" },
+      { id: "claude-opus-5-5", name: "Claude Opus 5.5" },
+      { id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5" },
+      { id: "claude-haiku-5-5", name: "Claude Haiku 5.5" },
+      { id: "claude-fable-5-1", name: "Claude Fable 5.1" },
     ],
   },
   {
@@ -45,8 +43,8 @@ export const PROVIDERS: AIProvider[] = [
     blurb: "Gemini models from Google AI Studio.",
     signupUrl: "https://aistudio.google.com/app/api-keys",
     models: [
-      { id: "gemini-3.7-flash", name: "Gemini 3.7 Flash" },
-      { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro (preview)" },
+      { id: "gemini-3.8-flash", name: "Gemini 3.8 Flash" },
+      { id: "gemini-4-argon", name: "Gemini 4 Argon" },
       { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash-Lite" },
     ],
   },
@@ -59,9 +57,7 @@ export const PROVIDERS: AIProvider[] = [
     baseURL: "https://api.z.ai/api/coding/paas/v4",
     models: [
       { id: "glm-5.3", name: "GLM-5.3" },
-      { id: "glm-5.2", name: "GLM-5.2" },
-      { id: "glm-4.6", name: "GLM-4.6" },
-      { id: "glm-4.5-air", name: "GLM-4.5 Air" },
+      { id: "glm-5.3-flash", name: "GLM-5.3 Flash" },
     ],
   },
   {
@@ -73,7 +69,6 @@ export const PROVIDERS: AIProvider[] = [
     models: [
       { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B" },
       { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B" },
-      { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B" },
     ],
   },
   {
@@ -83,10 +78,10 @@ export const PROVIDERS: AIProvider[] = [
     signupUrl: "https://openrouter.ai/keys",
     baseURL: "https://openrouter.ai/api/v1",
     models: [
-      { id: "openai/gpt-4o-mini", name: "GPT-4o mini" },
-      { id: "anthropic/claude-sonnet-5", name: "Claude Sonnet 5" },
-      { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash" },
-      { id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B" },
+      { id: "openai/gpt-6-luna", name: "GPT-6 Luna" },
+      { id: "anthropic/claude-sonnet-5.5", name: "Claude Sonnet 5.5" },
+      { id: "google/gemini-3.8-flash", name: "Gemini 3.8 Flash" },
+      { id: "qwen/qwen3.8-27b", name: "Qwen3.8 27B" },
     ],
   },
   {
@@ -96,7 +91,7 @@ export const PROVIDERS: AIProvider[] = [
     signupUrl: "https://platform.deepseek.com/api_keys",
     baseURL: "https://api.deepseek.com",
     models: [
-      { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash" },
+      { id: "deepseek-flash", name: "DeepSeek Flash" },
       { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro" },
     ],
   },
@@ -108,9 +103,9 @@ export const PROVIDERS: AIProvider[] = [
     baseURL: "https://api.mistral.ai/v1",
     models: [
       { id: "mistral-large-latest", name: "Mistral Large" },
-      { id: "magistral-medium-latest", name: "Magistral Medium" },
-      { id: "codestral-latest", name: "Codestral" },
+      { id: "mistral-medium-latest", name: "Mistral Medium" },
       { id: "mistral-small-latest", name: "Mistral Small" },
+      { id: "codestral-latest", name: "Codestral" },
     ],
   },
   {
@@ -120,7 +115,7 @@ export const PROVIDERS: AIProvider[] = [
     signupUrl: "https://console.x.ai",
     baseURL: "https://api.x.ai/v1",
     models: [
-      { id: "grok-4.6", name: "Grok 4.6" },
+      { id: "grok-4.7", name: "Grok 4.7" },
       { id: "grok-4.3", name: "Grok 4.3" },
       { id: "grok-build-0.1", name: "Grok Build" },
     ],

@@ -408,6 +408,20 @@ describe("choosing the active model after a key is saved", () => {
   it("clears the selection when discovery leaves no enabled model", () => {
     expect(reconcileActiveModel([stored("disabled", false)], "gone", "disabled")).toBe("");
   });
+
+  it("keeps a saved Claude Opus 5 after the Anthropic default moves to Opus 5.5", () => {
+    const seededBefore: StoredModel[] = [
+      { id: "claude-opus-5", name: "Claude Opus 5", enabled: true, source: "builtin" },
+      { id: "claude-sonnet-5", name: "Claude Sonnet 5", enabled: true, source: "builtin" },
+    ];
+    const listed = mergeFetchedModels(seededBefore, [
+      { id: "claude-opus-5-5", name: "Claude Opus 5.5" },
+      { id: "claude-opus-5", name: "Claude Opus 5" },
+    ]);
+    const anthropicDefault = seedProviderModels("anthropic")[0]?.id ?? "";
+    expect(anthropicDefault).toBe("claude-opus-5-5");
+    expect(reconcileActiveModel(listed, "claude-opus-5", anthropicDefault)).toBe("claude-opus-5");
+  });
 });
 
 describe("model list refresh ledger", () => {

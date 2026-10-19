@@ -32,6 +32,7 @@ vi.mock("@/lib/ai-providers", () => ({
   pickActiveProvider: vi.fn(() => ({ providerId: "openai", modelId: "gpt-4o" })),
 }));
 
+import { pickActiveProvider } from "@/lib/ai-providers";
 import { refineAvailable, refinePrompt, refineWithAi } from "./import-refine";
 
 const TYPST: DocumentEngineDescriptor = {
@@ -121,6 +122,27 @@ describe("refine availability", () => {
 
     mocks.getConfig.mockRejectedValueOnce(new Error("no config"));
     await expect(refineAvailable()).resolves.toBe(false);
+  });
+
+  it("uses the stored model's catalog metadata for ids no pattern knows", async () => {
+    const flash = { providerId: "deepseek", modelId: "deepseek-flash", credential: "k" };
+    vi.mocked(pickActiveProvider).mockReturnValueOnce(flash).mockReturnValueOnce(flash);
+    await expect(refineAvailable()).resolves.toBe(false);
+
+    mocks.getConfig.mockResolvedValueOnce({
+      ai_provider_models: {
+        deepseek: [
+          {
+            id: "deepseek-flash",
+            name: "DeepSeek Flash",
+            enabled: true,
+            source: "fetched",
+            metadata: { inputModalities: ["text", "image"] },
+          },
+        ],
+      },
+    } as never);
+    await expect(refineAvailable()).resolves.toBe(true);
   });
 });
 

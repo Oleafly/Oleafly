@@ -21,6 +21,46 @@ describe("vision capability", () => {
     expect(modelSupportsVision("openrouter", "qwen/qwen2-vl-7b")).toBe(true);
   });
 
+  it("recognises every current and saved Claude model as a vision model", () => {
+    for (const id of [
+      "claude-opus-5-5",
+      "claude-sonnet-5-5",
+      "claude-haiku-5-5",
+      "claude-fable-5-1",
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-fable-5",
+      "claude-haiku-4-5",
+      "claude-3-5-haiku-20241022",
+      "anthropic/claude-opus-5.5",
+    ]) {
+      expect(modelSupportsVision("anthropic", id), `${id} accepts images`).toBe(true);
+    }
+  });
+
+  it("recognises the current GPT-6 and Grok 4 models without metadata", () => {
+    for (const id of ["gpt-6.1-sol", "gpt-6-luna", "gpt-6-astra", "openai/gpt-6-luna"]) {
+      expect(modelSupportsVision("openai", id), `${id} accepts images`).toBe(true);
+    }
+    for (const id of ["grok-4.7", "grok-4.3"]) {
+      expect(modelSupportsVision("xai", id), `${id} accepts images`).toBe(true);
+    }
+    expect(modelSupportsVision("groq", "openai/gpt-oss-120b")).toBe(false);
+  });
+
+  it("trusts catalog metadata that lists image input for ids no pattern knows", () => {
+    expect(modelSupportsVision("deepseek", "deepseek-flash")).toBe(false);
+    expect(modelSupportsVision("deepseek", "deepseek-flash", ["text", "image"])).toBe(true);
+    expect(modelSupportsVision("mistral", "mistral-large-latest", ["text", "image"])).toBe(true);
+    expect(modelSupportsVision("deepseek", "deepseek-v4-pro", ["text"])).toBe(false);
+    expect(modelSupportsVision("anthropic", "claude-opus-5-5", [])).toBe(true);
+  });
+
+  it("does not claim vision for Claude 2 or Instant", () => {
+    expect(modelSupportsVision("anthropic", "claude-2.1")).toBe(false);
+    expect(modelSupportsVision("anthropic", "claude-instant-1.2")).toBe(false);
+  });
+
   it("recognises common local Ollama vision model ids", () => {
     for (const id of ["qwen2.5vl:7b", "qwen3-vl:8b", "gemma3:12b"]) {
       expect(modelSupportsVision("ollama", id), `${id} is a vision model`).toBe(true);

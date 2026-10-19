@@ -46,19 +46,19 @@ pub const CATALOG: &[CatalogEntry] = &[
     CatalogEntry {
         id: "openai",
         base_url: None,
-        default_model: "gpt-5.6-terra",
+        default_model: "gpt-6.1-sol",
         is_host: false,
     },
     CatalogEntry {
         id: "anthropic",
         base_url: None,
-        default_model: "claude-opus-5",
+        default_model: "claude-opus-5-5",
         is_host: false,
     },
     CatalogEntry {
         id: "google",
         base_url: None,
-        default_model: "gemini-3.7-flash",
+        default_model: "gemini-3.8-flash",
         is_host: false,
     },
     CatalogEntry {
@@ -76,13 +76,13 @@ pub const CATALOG: &[CatalogEntry] = &[
     CatalogEntry {
         id: "openrouter",
         base_url: Some("https://openrouter.ai/api/v1"),
-        default_model: "openai/gpt-4o-mini",
+        default_model: "openai/gpt-6-luna",
         is_host: false,
     },
     CatalogEntry {
         id: "deepseek",
         base_url: Some("https://api.deepseek.com"),
-        default_model: "deepseek-v4-flash",
+        default_model: "deepseek-flash",
         is_host: false,
     },
     CatalogEntry {
@@ -94,7 +94,7 @@ pub const CATALOG: &[CatalogEntry] = &[
     CatalogEntry {
         id: "xai",
         base_url: Some("https://api.x.ai/v1"),
-        default_model: "grok-4.6",
+        default_model: "grok-4.7",
         is_host: false,
     },
     CatalogEntry {
@@ -719,7 +719,7 @@ mod tests {
 
         cfg.enabled_models.remove("openai");
         cfg.provider = "anthropic".into();
-        assert_eq!(pick_provider(&cfg).1, "gpt-5.6-terra");
+        assert_eq!(pick_provider(&cfg).1, "gpt-6.1-sol");
     }
 
     #[test]

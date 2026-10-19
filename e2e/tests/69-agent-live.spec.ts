@@ -11,7 +11,7 @@ import {
 
 const TOKEN = process.env.E2E_AI_TOKEN;
 const PROVIDER = process.env.E2E_AI_PROVIDER_ID || "zai";
-const MODEL = process.env.E2E_AI_MODEL || "glm-5.2";
+const MODEL = process.env.E2E_AI_MODEL || "glm-5.3";
 const OPENAI_COMPATIBLE = PROVIDER !== "anthropic" && PROVIDER !== "google";
 const EXPECT_REASONING = process.env.E2E_AI_EXPECT_REASONING === "1" || PROVIDER === "zai";
 

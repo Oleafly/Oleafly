@@ -105,6 +105,12 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
     }
     if !req.tools.is_empty() {
         body["tools"] = openai_tools(&req.tools);
+        // DeepSeek thinks by default and then answers a request that carries
+        // tools with a 400 unless every earlier turn's reasoning_content is
+        // sent back. History here keeps no reasoning, so tool runs go without.
+        if resolved.provider_id == "deepseek" {
+            body["thinking"] = json!({ "type": "disabled" });
+        }
     }
     Ok(body)
 }
@@ -193,7 +199,10 @@ pub(crate) fn openai_responses_body(resolved: &Resolved, req: &CompletionRequest
     if let Some(system) = req.system.as_ref().filter(|system| !system.is_empty()) {
         body["instructions"] = json!(system);
     }
-    if let Some(temperature) = req.temperature {
+    if let Some(temperature) = req
+        .temperature
+        .filter(|_| openai_accepts_temperature(&resolved.model_id))
+    {
         body["temperature"] = json!(temperature);
     }
     if let Some(max_tokens) = req.max_tokens {
@@ -256,13 +265,35 @@ pub(crate) fn anthropic_body(resolved: &Resolved, req: &CompletionRequest) -> Re
     if let Some(system) = req.system.as_ref().filter(|s| !s.is_empty()) {
         body["system"] = json!(system);
     }
-    if let Some(t) = req.temperature {
+    if let Some(t) = req
+        .temperature
+        .filter(|_| anthropic_accepts_temperature(&resolved.model_id))
+    {
         body["temperature"] = json!(t);
     }
     if !req.tools.is_empty() {
         body["tools"] = anthropic_tools(&req.tools);
     }
     Ok(body)
+}
+
+/// Claude models from Opus 4.7 on answer a `temperature` with a 400 (Sonnet
+/// 5.5 and Haiku 5.5 accept only the default), so it goes only to the older
+/// models that still honour it. An id that is not a Claude model keeps it.
+fn anthropic_accepts_temperature(model_id: &str) -> bool {
+    let id = model_id.to_ascii_lowercase();
+    let Some(at) = id.find("claude-") else {
+        return true;
+    };
+    let rest = &id[at + "claude-".len()..];
+    if rest.starts_with('2') || rest.starts_with('3') || rest.starts_with("instant") {
+        return true;
+    }
+    // "sonnet-4", "sonnet-4-20250514", "opus-4-1-20250805", "haiku-4-5"
+    let mut version = rest.split('-').skip(1);
+    let major = version.next();
+    let minor = version.next().unwrap_or("0");
+    major == Some("4") && (minor.len() == 8 || minor.parse::<u32>().is_ok_and(|minor| minor <= 6))
 }
 
 fn google_part(part: &ContentPart) -> Result<Value> {
@@ -300,15 +331,41 @@ fn google_part(part: &ContentPart) -> Result<Value> {
     })
 }
 
+/// OpenAI's reasoning models (GPT-5 on, the o-series) default to a reasoning
+/// effort under which `temperature` is refused. Only the GPT-4 and GPT-3.5
+/// families still take one.
+fn openai_accepts_temperature(model_id: &str) -> bool {
+    let id = model_id.to_ascii_lowercase();
+    id.starts_with("gpt-4") || id.starts_with("gpt-3.5") || id.starts_with("chatgpt-4o")
+}
+
+/// Gemini 3 and later ignore `temperature` or loop below 1.0, and Google says
+/// later generations will refuse it. Gemini 1.x, 2.x and Gemma still use it.
+fn gemini_takes_temperature(model_id: &str) -> bool {
+    match model_id.strip_prefix("gemini-") {
+        Some(rest) => rest.starts_with("1.") || rest.starts_with("2."),
+        None => true,
+    }
+}
+
 fn google_generation_config(resolved: &Resolved, req: &CompletionRequest) -> Option<Value> {
     let mut generation = serde_json::Map::new();
-    if let Some(t) = req.temperature {
+    if let Some(t) = req
+        .temperature
+        .filter(|_| gemini_takes_temperature(&resolved.model_id))
+    {
         generation.insert("temperature".into(), json!(t));
     }
     if let Some(m) = req.max_tokens {
         generation.insert("maxOutputTokens".into(), json!(m));
     }
-    if resolved.model_id.starts_with("gemini-") {
+    if resolved.model_id.starts_with("gemini-4") {
+        // Gemini 4 requires a thinking level; medium is its documented default.
+        generation.insert(
+            "thinkingConfig".into(),
+            json!({ "includeThoughts": true, "thinkingLevel": "medium" }),
+        );
+    } else if resolved.model_id.starts_with("gemini-") {
         generation.insert("thinkingConfig".into(), json!({ "includeThoughts": true }));
     }
     if generation.is_empty() {
