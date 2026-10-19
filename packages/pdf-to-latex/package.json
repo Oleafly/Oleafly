@@ -12,6 +12,6 @@
   },
   "dependencies": {
     "@oleafly/preview": "workspace:*",
-    "pdfjs-dist": "6.3.289"
+    "pdfjs-dist": "6.4.299"
   }
 }
