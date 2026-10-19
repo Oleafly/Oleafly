@@ -73,7 +73,7 @@ tungstenite = { version = "0.30", default-features = false, features = ["handsha
 argon2 = "0.5"
 aes = { version = "0.9", features = ["zeroize"] }
 cbc = { version = "0.2", features = ["zeroize"] }
-zeroize = "=1.9.0"
+zeroize = "=1.9.1"
 libc = "0.2"
 dirs = "6"
 serde_norway = "0.9"
