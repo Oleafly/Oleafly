@@ -76,6 +76,20 @@ async function selectAppOption(page: Page, testId: string, label: string) {
   await pickOverlayEntry(page, "option", "listbox", label);
 }
 
+/** Picks an option from a popover whose trigger button holds the element with this test id. */
+async function selectPopoverOption(page: Page, testId: string, label: string) {
+  const button = `document.querySelector(${scriptValue(`[data-testid=${JSON.stringify(testId)}]`)})?.closest("button")`;
+  await page.waitForFunction(`(() => {
+    const control = ${button};
+    return !!control && !control.disabled;
+  })()`, 20_000);
+  await page.evaluate(`(() => {
+    (${button}).click();
+    return true;
+  })()`);
+  await pickOverlayEntry(page, "option", "listbox", label);
+}
+
 async function chooseMenuItem(page: Page, testId: string, selector: string) {
   await openAppOverlay(page, testId, selector);
   await page.waitForFunction(`!!document.querySelector(${scriptValue(selector)})`, 20_000);
@@ -171,7 +185,6 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
     fixture.projectId = await page.evaluate<string>(`document.querySelector('[data-e2e-project-id]')?.getAttribute('data-e2e-project-id') ?? ''`);
     expect(fixture.projectId).not.toBe("");
     await openAcp(page);
-    const assistant = page.locator(assistantSelector);
     await page.evaluate(acpCall("acpRegister", JSON.stringify(definition)));
     const rosterButton = `[data-testid="agent-picker-${fixture.agentId}"]`;
     await page.waitForFunction(`!!document.querySelector(${scriptValue(rosterButton)})`, 15_000);
@@ -181,7 +194,10 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
       10_000,
     );
     await clickHeaderAction(page, "New conversation");
-    await expect(assistant).toContainText(`E2E ACP ${fixture.run} · ${login ? "auth required" : "ready"}`, { timeout: 30_000 });
+    // A ready agent shows as a green dot and its name; any other status adds its label.
+    const status = page.locator(`${assistantSelector} [data-testid="acp-session-status"]`);
+    await expect(status).toHaveAttribute("data-status", login ? "auth_required" : "ready", { timeout: 30_000 });
+    await expect(status).toContainText(login ? `E2E ACP ${fixture.run} · auth required` : `E2E ACP ${fixture.run}`);
     await work(fixture);
   } finally {
     try {
@@ -216,7 +232,9 @@ async function onlySession(page: Page, fixture: AgentFixture) {
 async function sendPrompt(page: Page, prompt: string) {
   await expect(page.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
   await fillTextarea(page, composerSelector, prompt);
-  await page.click('button[aria-label="Send"]');
+  // The message box takes text in any state; Send waits until the agent can take the message.
+  await expect(page.locator(sendSelector)).toBeEnabled({ timeout: 20_000 });
+  await page.click(sendSelector);
 }
 
 async function usageReport(page: Page, fixture: AgentFixture, sessionId: string, count = 1) {
@@ -248,7 +266,7 @@ test("a custom ACP agent signs in, selects its model, and resolves a native perm
     await expect(tauriPage.locator(sendSelector)).toBeDisabled();
     await assistant.getByText("Sign in to E2E agent", { exact: true }).click();
     await expect(tauriPage.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
-    await selectAppOption(tauriPage, "acp-model-picker", "E2E model B");
+    await selectPopoverOption(tauriPage, "acp-model-picker", "E2E model B");
     await tauriPage.waitForFunction(`${acpCall("acpSnapshot", fixture.projectId, session.id)}.then((snapshot) => snapshot.session.controls.modelId === "e2e-model-b")`, 20_000);
 
     const prompt = `permission ${fixture.run}`;
@@ -311,7 +329,7 @@ test("ACP history survives reload and reconnect without inventing token usage", 
     const assistant = tauriPage.locator(assistantSelector);
     await expect(assistant).toContainText(reply, { timeout: 20_000 });
     await assistant.getByText("Reconnect to conversation", { exact: true }).click();
-    await expect(tauriPage.locator(composerSelector)).toBeEnabled({ timeout: 20_000 });
+    await expect(tauriPage.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready", { timeout: 20_000 });
     const reopened = await tauriPage.evaluate<AcpSnapshot>(acpCall("acpSnapshot", fixture.projectId, session.id));
     expect(reopened.session.nativeSessionId).toBe(session.nativeSessionId);
     const { events } = await tauriPage.evaluate<AcpEventPage>(acpCall("acpEvents", fixture.projectId, session.id));

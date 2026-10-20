@@ -147,5 +147,5 @@ test("the Research tab shows a badge while a task waits for review", async ({ ta
     `import("/src/lib/research-tasks.ts").then(({ startResearchTask }) => startResearchTask(${scriptValue(task.id)}))`,
   );
   await waitForStatus(tauriPage, projectId, task.id, "awaiting_review");
-  await expect(tauriPage.getByLabel(/1 pending/i).first()).toBeVisible({ timeout: 20_000 });
+  await expect(tauriPage.locator('button[data-tour="rail-research"] output[aria-label="1 pending"]')).toBeVisible({ timeout: 20_000 });
 });

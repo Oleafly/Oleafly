@@ -263,7 +263,8 @@ test("applying a task preserves an unsaved editor edit and retains the conflicti
   await expect(detail).toContainText("Cancelled", { timeout: 20_000 });
   expect((await nativeTask(tauriPage, projectId, task.title)).status).toBe("cancelled");
   expect(await readMain(tauriPage, projectId)).toBe(manual);
-  await detail.getByText("Retry", { exact: true }).click();
+  // The task ran in its own copy, so it offers Resume and Start over; Start over is a fresh retry.
+  await detail.getByText("Start over", { exact: true }).click();
   await expect(detail).toContainText("Queued", { timeout: 20_000 });
   expect((await nativeTask(tauriPage, projectId, task.title)).status).toBe("queued");
   expect(await editorSource(tauriPage)).toBe(manual);

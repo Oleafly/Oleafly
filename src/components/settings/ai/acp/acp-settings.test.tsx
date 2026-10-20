@@ -105,6 +105,23 @@ describe("Experimental agent settings", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Disk full.");
     expect(v2).toHaveAttribute("aria-checked", "false");
   });
+
+  it("keeps a newer change when an earlier save fails", async () => {
+    vi.mocked(acpPreferences).mockResolvedValue(prefs());
+    let failFirst: (error: Error) => void = () => {};
+    vi.mocked(acpSetPreferences)
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => { failFirst = reject; }))
+      .mockImplementation(async (value) => value);
+    await openExperimental();
+    fireEvent.click(screen.getByRole("switch", { name: "Use ACP v2 when available" }));
+    await waitFor(() => expect(acpSetPreferences).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("switch", { name: "Let agents use my Oleafly API keys" }));
+    await waitFor(() => expect(acpSetPreferences).toHaveBeenLastCalledWith(prefs({ experimentalV2: true, experimentalProviders: true })));
+    failFirst(new Error("Disk full."));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Disk full.");
+    expect(screen.getByRole("switch", { name: "Use ACP v2 when available" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("switch", { name: "Let agents use my Oleafly API keys" })).toHaveAttribute("aria-checked", "true");
+  });
 });
 
 describe("Remembered agent choices", () => {

@@ -32,7 +32,8 @@ export function AcpExperimentalSection() {
     acpSetPreferences(next)
       .then(setPrefs)
       .catch((error_: unknown) => {
-        setPrefs(previous);
+        // Undo only this change: a save made since keeps its own value.
+        setPrefs((current) => (current === next ? previous : current));
         setError(acpError(error_));
       });
   };

@@ -132,7 +132,7 @@ test("the message box keeps the height the user gives it", async ({ tauriPage })
 test("a dropped text file reaches the model as text", async ({ tauriPage }) => {
   test.setTimeout(60_000);
   await connectAndOpenChat(tauriPage);
-  await tauriPage.evaluate(() => {
+  await tauriPage.evaluate(`(() => {
     const target = document.querySelector("[data-chat-composer]");
     if (!target) throw new Error("composer missing");
     const transfer = new DataTransfer();
@@ -140,7 +140,8 @@ test("a dropped text file reaches the model as text", async ({ tauriPage }) => {
     for (const type of ["dragenter", "dragover", "drop"]) {
       target.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: transfer }));
     }
-  });
+    return true;
+  })()`);
   await expect(tauriPage.locator('[data-status="ready"]')).toBeVisible({ timeout: 15_000 });
   server.resetRequests();
   await sendAndWait(tauriPage, "Summarize the attached notes.", "ATTACHDONE");
@@ -152,9 +153,15 @@ test("Regenerate sends the last prompt again", async ({ tauriPage }) => {
   await connectAndOpenChat(tauriPage);
   await sendAndWait(tauriPage, "Say the regenerate marker.", "REGEN1");
   const before = server.requestCount();
-  await tauriPage.getByText("REGEN1").hover();
   server.setReply("REGEN2");
-  await tauriPage.getByRole("button", { name: "Regenerate reply" }).last().click();
+  // The button shows on hover, which a dispatched event can't trigger, so click it directly.
+  const clicked = await tauriPage.evaluate<boolean>(`(() => {
+    const buttons = [...document.querySelectorAll('[data-testid="message-action-regenerate"][aria-label="Regenerate reply"]')];
+    if (!buttons.length) return false;
+    buttons[buttons.length - 1].click();
+    return true;
+  })()`);
+  expect(clicked).toBe(true);
   await waitLong(
     tauriPage,
     `document.body.innerText.includes('REGEN2') && !document.querySelector('[aria-label="Stop"]')`,
