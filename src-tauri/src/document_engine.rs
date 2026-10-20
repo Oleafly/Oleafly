@@ -5034,7 +5034,7 @@ mod tests {
                 ),
                 format!(
                     "--bibliography={}",
-                    dir.join("sources/refs.bib").to_string_lossy()
+                    dir.join("sources").join("refs.bib").to_string_lossy()
                 ),
             ]
         );

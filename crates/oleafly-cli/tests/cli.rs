@@ -816,20 +816,17 @@ fn clean_and_doctor_accept_a_folder_that_build_detected() {
 
 #[cfg(unix)]
 fn recording_app(directory: &std::path::Path) -> (PathBuf, PathBuf) {
-    use std::os::unix::fs::PermissionsExt;
     let app = directory.join("recording app");
     let record = directory.join("launched.txt");
-    std::fs::write(
+    write_executable(
         &app,
-        format!(
+        &format!(
             "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}.partial'\nmv '{}.partial' '{}'\n",
             record.display(),
             record.display(),
             record.display()
         ),
-    )
-    .unwrap();
-    std::fs::set_permissions(&app, std::fs::Permissions::from_mode(0o755)).unwrap();
+    );
     (app, record)
 }
 
@@ -988,10 +985,53 @@ fn typst_fixture(directory: &std::path::Path, version: &str) -> PathBuf {
 fn place_typst(fixture: &std::path::Path, directory: &std::path::Path, version: &str) -> PathBuf {
     std::fs::create_dir_all(directory).unwrap();
     let binary = directory.join(oleafly_cli::executable_name("typst"));
-    std::fs::copy(fixture, &binary).unwrap();
+    copy_executable(fixture, &binary);
     std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
     warm_up_typst(&binary);
     binary.canonicalize().unwrap()
+}
+
+/// Copies an executable without this test process ever holding it open for
+/// writing. On Linux, exec fails with "Text file busy" while any process has
+/// the file open for writing, and a sibling test that forks during a
+/// `std::fs::copy` keeps the copy's descriptor until its own exec. Here `cp`
+/// holds the only writer, and it has exited before this returns.
+#[cfg(unix)]
+fn copy_executable(from: &std::path::Path, to: &std::path::Path) {
+    let status = Command::new("cp").arg(from).arg(to).status().unwrap();
+    assert!(
+        status.success(),
+        "cp {} {}: {status}",
+        from.display(),
+        to.display()
+    );
+}
+
+/// Windows children inherit only handles marked inheritable, and Rust's files
+/// are not, so a copy that has returned has no writer left.
+#[cfg(not(unix))]
+fn copy_executable(from: &std::path::Path, to: &std::path::Path) {
+    std::fs::copy(from, to).unwrap();
+}
+
+/// Writes a script and makes it executable through `sh`, so this process never
+/// holds it open for writing either (see `copy_executable`).
+#[cfg(unix)]
+fn write_executable(path: &std::path::Path, contents: &str) {
+    use std::io::Write as _;
+    let mut writer = Command::new("sh")
+        .args(["-c", "cat > \"$1\" && chmod 700 \"$1\"", "sh"])
+        .arg(path)
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    writer
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(contents.as_bytes())
+        .unwrap();
+    assert!(writer.wait().unwrap().success());
 }
 
 /// The first start of a new binary can be slow on a busy machine (macOS

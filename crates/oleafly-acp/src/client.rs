@@ -217,6 +217,9 @@ struct Shared {
     route: mpsc::Sender<Routed>,
     stop: watch::Sender<bool>,
     closed: watch::Sender<bool>,
+    /// Set once the agent's process has been reaped (or given up on), always
+    /// after `closed`. True from the start for a client over plain streams.
+    exited: watch::Sender<bool>,
     closed_routed: AtomicBool,
     finished: watch::Sender<bool>,
     stderr: StderrTail,
@@ -372,6 +375,7 @@ impl AcpClient {
                 "The agent disconnected.",
                 &shared.stderr.text(),
             ));
+            shared.exited.send_replace(true);
         });
         Ok(client)
     }
@@ -404,6 +408,7 @@ impl AcpClient {
             route: route_tx.clone(),
             stop: watch::channel(false).0,
             closed: watch::channel(false).0,
+            exited: watch::channel(pid.is_none()).0,
             closed_routed: AtomicBool::new(false),
             finished: watch::channel(false).0,
             stderr: StderrTail::default(),
@@ -998,10 +1003,16 @@ impl AcpClient {
     pub async fn shutdown(&self) {
         let _ = self.shared.stop.send(true);
         let mut closed = self.shared.closed.subscribe();
-        if !*closed.borrow() {
-            let _ = tokio::time::timeout(Duration::from_secs(7), closed.wait_for(|closed| *closed))
-                .await;
-        }
+        let mut exited = self.shared.exited.subscribe();
+        let _ = tokio::time::timeout(Duration::from_secs(7), async {
+            let _ = closed.wait_for(|closed| *closed).await;
+            // The connection closes as soon as it stops, while the agent's
+            // process may still be exiting. Callers often delete the agent's
+            // working folder next, which Windows refuses while a process runs
+            // there, so wait for the process too.
+            let _ = exited.wait_for(|exited| *exited).await;
+        })
+        .await;
     }
 
     pub fn request_stop(&self) {
