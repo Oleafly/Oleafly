@@ -5,11 +5,12 @@ description = "Preflight checks shared by the Oleafly CLI"
 license = "AGPL-3.0-or-later"
 publish = false
 edition = "2021"
-rust-version = "1.87"
+rust-version = "1.88"
 
 [features]
 default = ["pdf"]
 # PDF facts (page sizes, fonts, links, outlines, attachments) read with lopdf.
+# lopdf 0.42 uses let chains, so it needs Rust 1.88 although it declares 1.85.
 pdf = ["dep:lopdf"]
 
 [dependencies]

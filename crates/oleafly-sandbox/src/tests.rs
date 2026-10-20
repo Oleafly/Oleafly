@@ -194,7 +194,7 @@ fn linux_bwrap_arguments_are_unchanged_for_a_fixed_spec() {
     let program = Path::new("/bin/sh").canonicalize().unwrap();
     assert_eq!(
         &args[args.len() - 4..],
-        ["--", &program.to_string_lossy().into_owned(), "-c", "true"]
+        ["--", &program.to_string_lossy(), "-c", "true"]
     );
     assert!(args[8..mount]
         .chunks(3)

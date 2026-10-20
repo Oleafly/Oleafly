@@ -366,8 +366,19 @@ jobs:
         run: >-
           cargo +1.87.0 check --all-targets
           -p oleafly-core -p oleafly-secrets -p oleafly-doctools
-          -p oleafly-downloads -p oleafly-preflight
+          -p oleafly-downloads
           -p oleafly-sandbox -p oleafly-research -p oleafly-forge
+
+      # Preflight reads PDFs with lopdf 0.42, which uses let chains (Rust 1.88)
+      # although it declares 1.85, and lint's spelling checks use harper-core,
+      # which needs 1.88 too.
+      - name: Install the preflight and lint minimum supported Rust toolchain
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        with:
+          toolchain: 1.88.0
+
+      - name: Check preflight and lint against their Rust 1.88 MSRV
+        run: cargo +1.88.0 check -p oleafly-preflight -p oleafly-lint --all-targets
 
       # The CLI links the collaboration client, and online import decrypts
       # browser cookies with aes 0.9. Both need Rust 1.89.

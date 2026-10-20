@@ -747,6 +747,30 @@ fn claim_fails_fast_when_another_process_holds_the_sync_lock() {
 }
 
 #[test]
+fn claim_waits_out_a_lock_that_is_released_a_moment_later() {
+    let project = tempfile::tempdir().unwrap();
+    let paths = SyncPaths::for_folder(project.path());
+    std::fs::create_dir_all(paths.lock.parent().unwrap()).unwrap();
+    let held = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .open(&paths.lock)
+        .unwrap();
+    // Stands in for a process another thread is starting: its copy of the
+    // descriptor keeps the lock until it execs.
+    oleafly_core::locking::lock_file(&held, true, Duration::ZERO).unwrap();
+    let releaser = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(10));
+        drop(held);
+    });
+    // One attempt, no retry: the claim itself has to wait it out.
+    assert!(claim(&paths).is_ok());
+    releaser.join().unwrap();
+}
+
+#[test]
 fn unlink_works_while_another_sync_lock_is_open() {
     let project = tempfile::tempdir().unwrap();
     let paths = SyncPaths::for_folder(project.path());

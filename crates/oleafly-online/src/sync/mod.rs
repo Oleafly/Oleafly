@@ -26,6 +26,12 @@ const MAX_FILE_BYTES: u64 = 50 * 1024 * 1024;
 const MAX_LISTED: usize = 200;
 const IGNORED_NAMES: [&str; 5] = ["__macosx", ".ds_store", "thumbs.db", "desktop.ini", ".git"];
 const MIRROR_ATTRIBUTES: &str = "* -text -filter -ident\n";
+/// How long a claim waits for another holder of the lock file before calling
+/// the project busy. A sync that just ended can leave the lock held for a
+/// moment: a process another thread is starting keeps a copy of the
+/// descriptor until it execs. A sync that is really running holds it far
+/// longer.
+const CLAIM_PATIENCE: Duration = Duration::from_millis(250);
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -187,11 +193,21 @@ pub fn claim(paths: &SyncPaths) -> Result<SyncClaim, OnlineError> {
             )));
         }
     };
-    if oleafly_core::locking::lock_file(&file, true, Duration::ZERO).is_err() {
-        release();
-        return Err(OnlineError::new(OnlineErrorKind::SyncBusy));
+    match oleafly_core::locking::lock_file(&file, true, CLAIM_PATIENCE) {
+        Ok(()) => Ok(SyncClaim { key, _file: file }),
+        Err(error) => {
+            release();
+            // Only a lock someone else keeps holding means busy. A file system
+            // that refuses locks would otherwise say "busy" forever.
+            if error.kind() == std::io::ErrorKind::TimedOut {
+                Err(OnlineError::new(OnlineErrorKind::SyncBusy))
+            } else {
+                Err(OnlineError::io(format!(
+                    "could not take the sync lock: {error}"
+                )))
+            }
+        }
     }
-    Ok(SyncClaim { key, _file: file })
 }
 
 pub fn now_seconds() -> u64 {

@@ -198,12 +198,13 @@ To move to a newer Rust:
 
 The minimum Rust versions are separate promises. The shared crates
 (`oleafly-core`, `oleafly-secrets`, `oleafly-doctools`, `oleafly-downloads`,
-`oleafly-preflight`, `oleafly-sandbox`, `oleafly-research`, `oleafly-forge`)
-build on Rust 1.87. `oleafly-lint` needs 1.88 for its spelling and grammar
-checks. `oleafly-online` needs 1.89 for the `aes` crate that decrypts copied
-browser cookies, and `oleaflyc` needs 1.89 because it links the collaboration
-client. CI checks the 1.87 crates, `oleafly-online` and the CLI with explicit
-`cargo +1.87.0` and `cargo +1.89.0` runs, which take priority over the pin.
+`oleafly-sandbox`, `oleafly-research`, `oleafly-forge`) build on Rust 1.87.
+`oleafly-preflight` needs 1.88 because lopdf 0.42 uses let chains (it declares
+1.85, which is too low), and `oleafly-lint` needs 1.88 for its spelling and
+grammar checks. `oleafly-online` needs 1.89 for the `aes` crate that decrypts
+copied browser cookies, and `oleaflyc` needs 1.89 because it links the
+collaboration client. CI checks each group with explicit `cargo +1.87.0`,
+`cargo +1.88.0` and `cargo +1.89.0` runs, which take priority over the pin.
 
 Spelling and grammar in `oleafly lint` use harper-core behind the CLI's
 `proofread` feature, which release builds turn on. After changing a preflight
