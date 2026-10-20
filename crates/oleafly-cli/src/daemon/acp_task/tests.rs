@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -588,5 +588,5 @@ fn the_default_launcher_rebuilds_the_sandboxed_command() {
         Some(launch.sandbox.home.clone())
     );
     assert!(value("OPENAI_API_KEY").is_none());
-    assert!(Path::new(&launch.sandbox.workspace).is_dir());
+    assert!(std::path::Path::new(&launch.sandbox.workspace).is_dir());
 }

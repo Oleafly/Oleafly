@@ -172,6 +172,7 @@ fn request(fixture: &Fixture, command: &str) -> StartRun {
     }
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn sandbox_ready() -> bool {
     matches!(
         oleafly_sandbox::availability(),

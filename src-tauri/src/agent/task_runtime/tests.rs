@@ -22,6 +22,8 @@ fn context(root: &Path) -> TaskRunContext {
 
 struct LoopbackBridge {
     url: String,
+    // Only the macOS and Linux sandbox tests count the bridge calls.
+    #[cfg_attr(not(any(target_os = "macos", target_os = "linux")), allow(dead_code))]
     calls: Arc<Mutex<Vec<Value>>>,
     cancel: CancellationToken,
     server: Mutex<Option<tokio::task::JoinHandle<()>>>,
@@ -197,6 +199,7 @@ fn task_services(root: &Path) -> TaskServices {
     }
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 async fn fixture_host(_root: &Path, url: String) -> Arc<FixtureHost> {
     Arc::new(FixtureHost {
         provider_url: url,

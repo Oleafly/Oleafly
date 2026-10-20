@@ -8,8 +8,10 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
+#[cfg(unix)]
 use super::settings::{self, ComputeTarget};
 use super::{ComputeHost, McpStdioServer};
+#[cfg(unix)]
 use crate::runs::{RunExecutor, RunHandle, RunSpec, RunStatus};
 
 /// Writes an executable script through a child `sh`, so no thread of the
@@ -64,6 +66,7 @@ impl ComputeHost for FakeCompute {
     }
 }
 
+#[cfg(unix)]
 pub(crate) struct World {
     _dir: tempfile::TempDir,
     root: PathBuf,
@@ -71,6 +74,7 @@ pub(crate) struct World {
     pub target_id: String,
 }
 
+#[cfg(unix)]
 impl World {
     pub fn workspace(&self) -> PathBuf {
         self.root.join("workspace")
@@ -207,6 +211,7 @@ pub(crate) fn ssh_world(rsync: bool) -> World {
 }
 
 /// Polls until the run ends (20 s at most).
+#[cfg(unix)]
 pub(crate) async fn wait_for_end(executor: &dyn RunExecutor, handle: &RunHandle) -> RunStatus {
     let deadline = std::time::Instant::now() + Duration::from_secs(20);
     loop {

@@ -119,8 +119,10 @@ plist = "1"
 
 [target.'cfg(windows)'.dependencies]
 windows-native-keyring-store = "1"
-webview2-com = "0.38"
-windows-core = "0.61"
+# The same versions wry uses: the controller it hands to with_webview has to
+# be the type webview_focus.rs takes.
+webview2-com = "0.39"
+windows-core = "0.62"
 windows-registry = "0.6"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",

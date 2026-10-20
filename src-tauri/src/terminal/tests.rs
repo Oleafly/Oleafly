@@ -3,7 +3,6 @@ use super::*;
 #[cfg(unix)]
 use crate::proc::NoConsole as _;
 use crate::test_wait;
-use std::path::PathBuf;
 
 #[test]
 fn reload_rejects_an_in_flight_terminal_open() {
@@ -1447,7 +1446,10 @@ fn term_open_starts_in_a_project_folder_with_the_launch_env() {
     let place = test_wait::read_until_blocking(
         &chapters.join("where.txt"),
         test_wait::CHILD_PATIENCE,
-        |text| text.ends_with('\n').then(|| PathBuf::from(text.trim())),
+        |text| {
+            text.ends_with('\n')
+                .then(|| std::path::PathBuf::from(text.trim()))
+        },
     );
     assert_eq!(note, Some(()));
     assert_eq!(place, Some(chapters.canonicalize().unwrap()));

@@ -3,10 +3,10 @@ pub(crate) mod unix;
 // 0.4.8 F1: the Windows terminal command.
 #[cfg(windows)]
 mod windows;
+// A glob, so the items #[tauri::command] generates beside each command come
+// along for generate_handler!.
 #[cfg(windows)]
-pub use windows::{
-    refresh_installed_copy, shell_command_install, shell_command_status, shell_command_uninstall,
-};
+pub use windows::*;
 
 #[cfg(not(windows))]
 use crate::app_error::AppError;

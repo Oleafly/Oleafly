@@ -518,16 +518,29 @@ async fn global_checks(
 
 #[cfg(windows)]
 fn command_line_tool_check() -> Option<DoctorCheck> {
-    Some(match crate::install::windows::status() {
-        Ok(status) if status.on_path => {
-            check("command_line_tool", DoctorStatus::Pass, format!("{} is on your PATH", status.bin_dir.display()))
-        }
-        Ok(_) => check(
+    use crate::install::windows;
+    let local_app_data = std::env::var_os("LOCALAPPDATA").filter(|value| !value.is_empty())?;
+    let user_path = windows::RegistryUserPath;
+    let env = windows::InstallEnv {
+        local_app_data: std::path::PathBuf::from(local_app_data),
+        data_root: crate::app_paths::data_root()?,
+        bundled: None,
+        user_path: &user_path,
+        expand: &windows::expand_variables,
+    };
+    let status = windows::status(&env);
+    Some(if status.on_path {
+        check(
+            "command_line_tool",
+            DoctorStatus::Pass,
+            format!("{} is on your PATH", status.directory.unwrap_or_default()),
+        )
+    } else {
+        check(
             "command_line_tool",
             DoctorStatus::Warning,
             "`oleafly` isn't on your PATH. Turn on the terminal command in Oleafly's Settings › General.",
-        ),
-        Err(error) => check("command_line_tool", DoctorStatus::Warning, error.message),
+        )
     })
 }
 
