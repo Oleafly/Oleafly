@@ -259,6 +259,8 @@
       "clearSelection": "Zrušit výběr",
       "selectAll": "Vybrat vše",
       "previewBeforeApply": "Před použitím si každý vybraný soubor prohlédněte v náhledu.",
+      "researchRecord": "Záznam výzkumu",
+      "researchRecordHint": "Vlastní poznámky úlohy. Před použitím je nemusíte prohlížet v náhledu.",
       "driftedOne": "{{path}} se ve vašem projektu po spuštění této úlohy změnil. Jeho rozdíly jsou proti starší verzi, takže je nelze použít.",
       "driftedMany": "Ve vašem projektu se po spuštění této úlohy změnilo {{fileCount}} souborů. Jejich rozdíly jsou proti starším verzím, takže je nelze použít.",
       "applyAria": "Použít {{path}}",

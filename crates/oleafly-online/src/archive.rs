@@ -295,6 +295,11 @@ fn main_doc_of(folder: &Path) -> Option<String> {
     oleafly_core::sniff_oleafly_manifest(&bytes).map(|manifest| manifest.main_doc)
 }
 
+/// Whether anything, even a broken link, is at `path`.
+fn path_exists(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok()
+}
+
 /// Downloads `remote` into the new folder `target` (which must not exist).
 pub async fn import_into_folder(
     http: &Http,
@@ -304,10 +309,9 @@ pub async fn import_into_folder(
     limits: &ImportLimits,
     progress: &(dyn Fn(ImportProgress) + Send + Sync),
 ) -> Result<ImportedFolder, OnlineError> {
-    let exists = |path: &Path| std::fs::symlink_metadata(path).is_ok();
     let folder_exists =
         || OnlineError::new(OnlineErrorKind::FolderExists).param("folder", target.display());
-    if exists(target) {
+    if tokio::fs::symlink_metadata(target).await.is_ok() {
         return Err(folder_exists());
     }
     let parent = target
@@ -315,7 +319,9 @@ pub async fn import_into_folder(
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or(Path::new("."))
         .to_path_buf();
-    std::fs::create_dir_all(&parent).map_err(|error| write_error(&parent, error))?;
+    tokio::fs::create_dir_all(&parent)
+        .await
+        .map_err(|error| write_error(&parent, error))?;
     let name = target
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
@@ -342,7 +348,7 @@ pub async fn import_into_folder(
         let staging = staging;
         let files = extract_project_zip(&staging.archive, &staging.folder, &limits)?;
         let written = write_folder_manifest(&staging.folder, &task_settings, origin)?;
-        if exists(&destination) {
+        if path_exists(&destination) {
             return Err(OnlineError::new(OnlineErrorKind::FolderExists)
                 .param("folder", destination.display()));
         }

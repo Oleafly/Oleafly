@@ -256,6 +256,8 @@
       "clearSelection": "選択を解除",
       "selectAll": "すべて選択",
       "previewBeforeApply": "適用する前に、選択したファイルをすべてプレビューしてください。",
+      "researchRecord": "研究の記録",
+      "researchRecordHint": "タスク自身のメモです。適用する前にプレビューする必要はありません。",
       "driftedOne": "このタスクの開始後に、プロジェクト内の {{path}} が変更されました。差分は古い版に対するものなので、適用できません。",
       "driftedMany": "このタスクの開始後に、プロジェクト内の {{fileCount}} 件のファイルが変更されました。差分は古い版に対するものなので、適用できません。",
       "applyAria": "{{path}} を適用",

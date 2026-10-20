@@ -469,7 +469,7 @@ impl Remote {
         if fetch && !outputs_done(&handle.run_dir) {
             match self.fetch_outputs(dir, workspace, &handle.run_id).await {
                 Ok(summary) => {
-                    let _ = std::fs::write(handle.run_dir.join("outputs.done"), b"");
+                    let _ = tokio::fs::write(handle.run_dir.join("outputs.done"), b"").await;
                     note = summary_note(&summary, &handle.run_id);
                 }
                 Err(error @ (RunError::Network(_) | RunError::Io(_))) => {

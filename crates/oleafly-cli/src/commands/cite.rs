@@ -1369,7 +1369,9 @@ async fn run_bib_clean(ctx: &Context, args: BibCleanArgs) -> Result<Outcome, Cli
                     CliError::internal("The app's folder for this project is missing.")
                 })?;
             let folder = state.join("backups");
-            std::fs::create_dir_all(&folder).map_err(CliError::from)?;
+            tokio::fs::create_dir_all(&folder)
+                .await
+                .map_err(CliError::from)?;
             BackupLocation::External(folder)
         }
         _ => BackupLocation::InProject,

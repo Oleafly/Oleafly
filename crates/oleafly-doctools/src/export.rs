@@ -209,7 +209,10 @@ mod tests {
     fn search_paths_list_the_main_folder_first() {
         let root = Path::new("/p");
         let (resources, texinputs) = export_search_path(root, "paper/main.tex");
-        assert!(resources.starts_with("/p/paper"));
+        // The platform's own list: `;` and backslashes on Windows.
+        let expected = std::env::join_paths([root.join("paper"), root.to_path_buf()]).unwrap();
+        assert_eq!(resources, expected.to_string_lossy());
+        // Pandoc splits TEXINPUTS on ':' on every platform.
         assert_eq!(texinputs, "paper:.");
         assert_eq!(export_search_path(root, "main.tex").1, ".");
     }

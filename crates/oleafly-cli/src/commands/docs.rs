@@ -1226,7 +1226,7 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
             ))
         }
     })?;
-    let metadata = match std::fs::metadata(&args.input) {
+    let metadata = match tokio::fs::metadata(&args.input).await {
         Ok(metadata) if metadata.is_file() => metadata,
         Ok(_) => {
             return Err(CliError::usage(format!(
@@ -1259,7 +1259,7 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
             ),
         ));
     }
-    let input = std::fs::read(&args.input).map_err(CliError::from)?;
+    let input = tokio::fs::read(&args.input).await.map_err(CliError::from)?;
     if from == DocumentKind::Docx && !input.starts_with(b"PK") {
         return Err(CliError::new(
             ErrorKind::InvalidInput,
@@ -1317,7 +1317,9 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
         .tempdir()
         .map_err(CliError::from)?;
     let root = workspace.path().to_path_buf();
-    std::fs::write(root.join(plan.source_name), &input).map_err(CliError::from)?;
+    tokio::fs::write(root.join(plan.source_name), &input)
+        .await
+        .map_err(CliError::from)?;
     if plan.references_filter {
         pandoc_citations::stage_filter(&root)
             .map_err(|message| CliError::new(ErrorKind::Io, "io.failed", message))?;
@@ -1349,8 +1351,12 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
         ));
     }
     if to == DocumentKind::Typst {
-        let text = std::fs::read_to_string(&produced).map_err(CliError::from)?;
-        std::fs::write(&produced, fixup_typst_source(&text)).map_err(CliError::from)?;
+        let text = tokio::fs::read_to_string(&produced)
+            .await
+            .map_err(CliError::from)?;
+        tokio::fs::write(&produced, fixup_typst_source(&text))
+            .await
+            .map_err(CliError::from)?;
     }
     let media = extracted_media(&root)?;
     let media_folder = destination
@@ -1375,7 +1381,9 @@ async fn run_convert(ctx: &Context, args: ConvertArgs) -> Result<Outcome, CliErr
     for relative in &media {
         let target = media_folder.join(relative);
         if let Some(parent) = target.parent() {
-            std::fs::create_dir_all(parent).map_err(CliError::from)?;
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(CliError::from)?;
         }
         publish(&root.join(relative), &target)?;
         written.push(target);

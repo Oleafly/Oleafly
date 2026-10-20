@@ -673,7 +673,9 @@ async fn run_new(ctx: &Context, args: NewArgs) -> Result<Outcome, CliError> {
     )
     .map_err(|message| CliError::new(ErrorKind::InvalidInput, "templates.invalid", message))?;
     let existed = dir.exists();
-    std::fs::create_dir_all(&dir).map_err(CliError::from)?;
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .map_err(CliError::from)?;
     let created = (|| -> Result<Value, CliError> {
         let manifest = instantiate_from(&template_dir, &dir)
             .map_err(|message| CliError::new(ErrorKind::Io, "templates.copy_failed", message))?;
@@ -716,16 +718,16 @@ async fn run_new(ctx: &Context, args: NewArgs) -> Result<Outcome, CliError> {
             // Leave the folder as it was: gone when this command made it,
             // else empty again.
             if !existed {
-                let _ = std::fs::remove_dir_all(&dir);
+                let _ = tokio::fs::remove_dir_all(&dir).await;
                 return Err(error);
             }
-            if let Ok(entries) = std::fs::read_dir(&dir) {
-                for entry in entries.flatten() {
+            if let Ok(mut entries) = tokio::fs::read_dir(&dir).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
                     let path = entry.path();
-                    let _ = if entry.file_type().is_ok_and(|kind| kind.is_dir()) {
-                        std::fs::remove_dir_all(&path)
+                    let _ = if entry.file_type().await.is_ok_and(|kind| kind.is_dir()) {
+                        tokio::fs::remove_dir_all(&path).await
                     } else {
-                        std::fs::remove_file(&path)
+                        tokio::fs::remove_file(&path).await
                     };
                 }
             }

@@ -259,6 +259,8 @@
       "clearSelection": "Wyczyść zaznaczenie",
       "selectAll": "Zaznacz wszystko",
       "previewBeforeApply": "Obejrzyj każdy zaznaczony plik przed zastosowaniem.",
+      "researchRecord": "Zapis badań",
+      "researchRecordHint": "Własne notatki zadania. Nie musisz ich oglądać przed zastosowaniem.",
       "driftedOne": "Plik {{path}} zmienił się w Twoim projekcie po rozpoczęciu tego zadania. Jego porównanie dotyczy starszej wersji, więc nie da się go zastosować.",
       "driftedMany": "Po rozpoczęciu tego zadania w Twoim projekcie zmieniło się {{fileCount}} plików. Ich porównania dotyczą starszych wersji, więc nie da się ich zastosować.",
       "applyAria": "Zastosuj {{path}}",

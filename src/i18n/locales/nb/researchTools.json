@@ -257,6 +257,8 @@
       "clearSelection": "Fjern merkingen",
       "selectAll": "Merk alle",
       "previewBeforeApply": "Forhåndsvis hver merkede fil før du tar den i bruk.",
+      "researchRecord": "Forskningslogg",
+      "researchRecordHint": "Oppgavens egne notater. Du trenger ikke forhåndsvise dem før du tar dem i bruk.",
       "driftedOne": "{{path}} ble endret i prosjektet ditt etter at denne oppgaven startet. Diffen er mot den eldre versjonen, så den kan ikke tas i bruk.",
       "driftedMany": "{{fileCount}} filer ble endret i prosjektet ditt etter at denne oppgaven startet. Diffene er mot de eldre versjonene, så de kan ikke tas i bruk.",
       "applyAria": "Ta i bruk {{path}}",

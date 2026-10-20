@@ -250,7 +250,8 @@ impl RunExecutor for LocalExecutor {
     }
 
     async fn cancel(&self, handle: &RunHandle) -> Result<(), RunError> {
-        std::fs::write(handle.run_dir.join("cancel"), b"")
+        tokio::fs::write(handle.run_dir.join("cancel"), b"")
+            .await
             .map_err(|error| RunError::Io(format!("The run could not be stopped: {error}")))?;
         if !supervisor_alive(handle) {
             if let Some(pid) = read_status(&handle.run_dir).and_then(|status| status.child_pid) {

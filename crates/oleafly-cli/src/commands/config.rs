@@ -990,7 +990,7 @@ mod tests {
     #[test]
     fn skill_paths_take_single_names_only() {
         let data = tempfile::tempdir().unwrap();
-        let skill = data.path().join("skills/a");
+        let skill = data.path().join("skills").join("a");
         std::fs::create_dir_all(&skill).unwrap();
         std::fs::write(skill.join("SKILL.md"), "---\nname: A\n---\n").unwrap();
         let ctx = context(data.path(), data.path());

@@ -258,7 +258,8 @@ impl RunManager {
         }
         let run_id = next_run_id(runs.len());
         let run_dir = self.tasks_root.join("runs").join(&task.id).join(&run_id);
-        std::fs::create_dir_all(&run_dir)
+        tokio::fs::create_dir_all(&run_dir)
+            .await
             .map_err(|error| format!("The run folder could not be created: {error}"))?;
         // One home per task: package installs and caches carry over between runs.
         let home = task_home(&self.tasks_root, &task.id);
@@ -329,12 +330,13 @@ impl RunManager {
         self.runtime.spawn(async move {
             match executor.start(&spec).await {
                 Ok(handle) => {
-                    let saved = serde_json::to_string(&handle)
-                        .map_err(|error| error.to_string())
-                        .and_then(|json| {
-                            let _ = std::fs::write(spec.run_dir.join("handle.json"), &json);
+                    let saved = match serde_json::to_string(&handle) {
+                        Ok(json) => {
+                            let _ = tokio::fs::write(spec.run_dir.join("handle.json"), &json).await;
                             store.set_run_handle(&spec.task_id, &spec.run_id, &json)
-                        });
+                        }
+                        Err(error) => Err(error.to_string()),
+                    };
                     if let Err(error) = saved {
                         append_to_log(
                             &spec.run_dir,
@@ -449,8 +451,8 @@ impl RunManager {
                 }
             }
         }
-        let _ = std::fs::remove_dir_all(self.tasks_root.join("runs").join(task_id));
-        let _ = std::fs::remove_dir_all(self.tasks_root.join("cache").join(task_id));
+        let _ = tokio::fs::remove_dir_all(self.tasks_root.join("runs").join(task_id)).await;
+        let _ = tokio::fs::remove_dir_all(self.tasks_root.join("cache").join(task_id)).await;
         // The task's sandbox profile (Windows) and its home folder go with it.
         let owner = format!("task:{task_id}");
         let home = task_home(&self.tasks_root, task_id);

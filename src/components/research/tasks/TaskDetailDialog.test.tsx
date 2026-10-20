@@ -367,6 +367,45 @@ describe("TaskDetailDialog", () => {
     expect(previewMocks.file.mock.calls).toEqual([[current.id, "main.tex"], [current.id, "references.bib"]]);
   });
 
+  it("lists the research record on its own and needs a preview only of the project's files", async () => {
+    const current = { ...task("record"), recordDir: "research/notes-1a2b" };
+    if (!current.result) throw new Error("Missing review fixture");
+    current.result.changedFiles.push(
+      { ...current.result.changedFiles[0], path: "research/notes-1a2b/ledger.tsv", kind: "added" },
+      { ...current.result.changedFiles[0], path: "research/notes-1a2b/handoff.md", kind: "added" },
+    );
+    previewMocks.file.mockImplementation(async (_id: string, path: string) => ({ ...preview(path), path }));
+    const input = props(current);
+    render(<TaskDetailDialog {...input} />);
+
+    const record = page().getByRole("region", { name: enResearchTools.tasks.detail.researchRecord });
+    expect(within(record).getByText("research/notes-1a2b/ledger.tsv")).toBeInTheDocument();
+    expect(within(record).queryByText("main.tex")).not.toBeInTheDocument();
+    expect(page().getByRole("button", { name: "Apply 3 selected" })).toBeDisabled();
+    fireEvent.click(page().getAllByRole("button", { name: "Preview" })[0]);
+    await page().findByText("before -> main.tex");
+    fireEvent.click(page().getByRole("button", { name: "Apply 3 selected" }));
+    expect(input.onApply).toHaveBeenCalledWith([
+      "main.tex",
+      "research/notes-1a2b/ledger.tsv",
+      "research/notes-1a2b/handoff.md",
+    ]);
+  });
+
+  it("applies a review of only the research record without previews", () => {
+    const current = { ...task("record-only"), recordDir: "research/notes-1a2b" };
+    if (!current.result) throw new Error("Missing review fixture");
+    current.result.changedFiles = [
+      { ...current.result.changedFiles[0], path: "research/notes-1a2b/ledger.tsv", kind: "added" },
+    ];
+    const input = props(current);
+    render(<TaskDetailDialog {...input} />);
+
+    expect(page().queryByText(enResearchTools.tasks.detail.previewBeforeApply)).not.toBeInTheDocument();
+    fireEvent.click(page().getByRole("button", { name: "Apply 1 selected" }));
+    expect(input.onApply).toHaveBeenCalledWith(["research/notes-1a2b/ledger.tsv"]);
+  });
+
   it("keeps applying disabled after a failed preview and recovers on retry", async () => {
     previewMocks.file.mockRejectedValueOnce(new Error("Preview no longer matches the saved task"));
     previewMocks.file.mockResolvedValueOnce(preview("recovered output"));

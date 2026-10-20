@@ -74,13 +74,10 @@ export const useForgeAccountsStore = create<ForgeAccountsState>((set, get) => {
       listening = false;
       void logError("forge accounts listen", error);
     };
-    try {
-      onForgeAccountsChanged(() => {
-        void get().reload();
-      }).catch(failed);
-    } catch (error) {
-      failed(error);
-    }
+    // An async listener: a failure arrives as a rejection.
+    onForgeAccountsChanged(() => {
+      void get().reload();
+    }).catch(failed);
   };
 
   const fetchAccounts = (): Promise<ForgeAccount[]> => {

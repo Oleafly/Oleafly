@@ -1,10 +1,15 @@
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 use std::time::Duration;
 
 use super::*;
-use crate::model::{ResearchTask, RunState};
+use crate::model::ResearchTask;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+use crate::model::RunState;
 use crate::store::TaskStore;
 
 #[test]
@@ -180,6 +185,7 @@ fn sandbox_ready() -> bool {
     )
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 async fn finished(manager: &RunManager, task: &str, run: &str) -> crate::model::RunRecord {
     for _ in 0..200 {
         let record = manager
@@ -378,6 +384,8 @@ async fn wait_returns_at_the_first_completion_and_reports_each_run_once() {
     assert_eq!(third.note.as_deref(), Some("No runs are in flight."));
 }
 
+// A local run has to start, which needs the macOS or Linux sandbox.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 #[tokio::test]
 async fn start_run_never_records_env_values() {
     let fixture = fixture();
@@ -435,14 +443,16 @@ async fn run_limits_and_policies_are_enforced_before_starting() {
     );
 }
 
+// The Windows sandbox is a beta that starts off, so a local run is refused
+// before it starts, with the setting that turns it on.
 #[cfg(windows)]
 #[tokio::test]
 async fn local_runs_say_the_windows_sandbox_is_missing() {
     let fixture = fixture();
     let manager = manager(&fixture);
-    let record = manager.start(request(&fixture, "echo hi")).await.unwrap();
-    let done = finished(&manager, &fixture.task.id, &record.run_id).await;
-    assert_eq!(done.state, RunState::Failed);
-    let log = std::fs::read_to_string(Path::new(&done.run_dir).join("stdout.log")).unwrap();
-    assert!(log.contains(oleafly_sandbox::UNSUPPORTED_MESSAGE));
+    let error = manager
+        .start(request(&fixture, "echo hi"))
+        .await
+        .unwrap_err();
+    assert_eq!(error, super::remote::settings::WINDOWS_SWITCH_MESSAGE);
 }

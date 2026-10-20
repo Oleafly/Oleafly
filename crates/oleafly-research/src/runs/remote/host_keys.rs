@@ -57,7 +57,9 @@ pub async fn probe(
         .oleafly_known_hosts
         .parent()
         .ok_or_else(|| RunError::Io("Oleafly's data folder is missing.".into()))?;
-    std::fs::create_dir_all(folder).map_err(|error| RunError::Io(error.to_string()))?;
+    tokio::fs::create_dir_all(folder)
+        .await
+        .map_err(|error| RunError::Io(error.to_string()))?;
     let scratch = tempfile::Builder::new()
         .prefix("probe-")
         .tempfile_in(folder)
@@ -72,7 +74,9 @@ pub async fn probe(
         cancel,
     )
     .await?;
-    let text = std::fs::read_to_string(scratch.path()).unwrap_or_default();
+    let text = tokio::fs::read_to_string(scratch.path())
+        .await
+        .unwrap_or_default();
     let lines: Vec<String> = text
         .lines()
         .map(str::trim)

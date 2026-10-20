@@ -133,7 +133,9 @@ impl<W: Write> Packer<W> {
                 }
                 let mut header = tar::Header::new_gnu();
                 header.set_entry_type(tar::EntryType::Directory);
-                header.set_mode(0o755);
+                // Owner only: on a shared cluster the uploaded workspace stays
+                // private, and the run is the same user.
+                header.set_mode(0o700);
                 header.set_size(0);
                 header.set_mtime(mtime(&metadata));
                 self.builder
@@ -427,7 +429,13 @@ pub fn unpack_into<R: Read>(
                 #[cfg(unix)]
                 if entry.header().mode().is_ok_and(|mode| mode & 0o111 != 0) {
                     use std::os::unix::fs::PermissionsExt;
-                    let _ = file.set_permissions(std::fs::Permissions::from_mode(0o755));
+                    // An output the run marked executable runs for its owner;
+                    // the rest of its mode stays what this user's umask gave it.
+                    if let Ok(metadata) = file.metadata() {
+                        let mut permissions = metadata.permissions();
+                        permissions.set_mode(permissions.mode() | 0o100);
+                        let _ = file.set_permissions(permissions);
+                    }
                 }
                 summary.files += 1;
                 summary.bytes += written;

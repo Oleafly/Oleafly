@@ -256,6 +256,8 @@
       "clearSelection": "清除选择",
       "selectAll": "全选",
       "previewBeforeApply": "应用前请先预览每个选中的文件。",
+      "researchRecord": "研究记录",
+      "researchRecordHint": "任务自己的笔记，应用前无需预览。",
       "driftedOne": "此任务开始后，{{path}} 在你的项目中已发生更改。其差异对比的是旧版本，因此无法应用。",
       "driftedMany": "此任务开始后，项目中有 {{fileCount}} 个文件已发生更改。它们的差异对比的是旧版本，因此无法应用。",
       "applyAria": "应用 {{path}}",

@@ -256,6 +256,8 @@
       "clearSelection": "선택 해제",
       "selectAll": "모두 선택",
       "previewBeforeApply": "적용하기 전에 선택한 파일을 모두 미리 확인하세요.",
+      "researchRecord": "연구 기록",
+      "researchRecordHint": "작업이 직접 남긴 메모입니다. 적용하기 전에 미리 확인하지 않아도 됩니다.",
       "driftedOne": "이 작업이 시작된 뒤 프로젝트에서 {{path}}이(가) 바뀌었습니다. diff가 이전 버전을 기준으로 하므로 적용할 수 없습니다.",
       "driftedMany": "이 작업이 시작된 뒤 프로젝트에서 파일 {{fileCount}}개가 바뀌었습니다. diff가 이전 버전을 기준으로 하므로 적용할 수 없습니다.",
       "applyAria": "{{path}} 적용",

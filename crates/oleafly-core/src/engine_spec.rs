@@ -340,10 +340,11 @@ pub fn markdown_pdf_args(spec: &MarkdownPdfArgs<'_>) -> Vec<OsString> {
     args.push(format!("--lua-filter={MERMAID_FIGURES_FILTER_NAME}").into());
     args.push("--citeproc".into());
     for bibliography in spec.bibliographies {
-        args.push(joined(
-            "--bibliography=",
-            spec.project.join(bibliography).as_os_str(),
-        ));
+        // Slash-relative even on Windows. Joining it part by part gives the
+        // path one kind of separator there, as 0.4.7 did.
+        let mut path = spec.project.to_path_buf();
+        path.extend(bibliography.components());
+        args.push(joined("--bibliography=", path.as_os_str()));
     }
     args.push("--".into());
     args.push(spec.main.as_os_str().to_owned());

@@ -727,7 +727,7 @@ impl NativeCompiler {
                     format!("{ENTRY_STEM}.pdf"),
                     format!("{ENTRY_STEM}.synctex.gz"),
                 ] {
-                    let _ = std::fs::remove_file(staging.path().join(name));
+                    let _ = tokio::fs::remove_file(staging.path().join(name)).await;
                 }
             }
             staging.promote_all().map_err(output_locked_or)?;

@@ -258,6 +258,8 @@
       "clearSelection": "Effacer la sélection",
       "selectAll": "Tout sélectionner",
       "previewBeforeApply": "Prévisualisez chaque fichier sélectionné avant de l'appliquer.",
+      "researchRecord": "Dossier de recherche",
+      "researchRecordHint": "Les notes de la tâche elle-même. Inutile de les prévisualiser avant de les appliquer.",
       "driftedOne": "{{path}} a changé dans votre projet après le démarrage de cette tâche. Sa comparaison porte sur l'ancienne version, il ne peut donc pas être appliqué.",
       "driftedMany": "{{fileCount}} fichiers ont changé dans votre projet après le démarrage de cette tâche. Leurs comparaisons portent sur les anciennes versions, ils ne peuvent donc pas être appliqués.",
       "applyAria": "Appliquer {{path}}",

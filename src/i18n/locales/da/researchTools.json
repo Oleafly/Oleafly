@@ -257,6 +257,8 @@
       "clearSelection": "Ryd markeringen",
       "selectAll": "Vælg alle",
       "previewBeforeApply": "Se hver valgt fil igennem, før du anvender den.",
+      "researchRecord": "Forskningslog",
+      "researchRecordHint": "Opgavens egne noter. Du behøver ikke se dem igennem, før du anvender dem.",
       "driftedOne": "{{path}} blev ændret i dit projekt, efter at denne opgave startede. Forskellen er mod den ældre version, så den kan ikke anvendes.",
       "driftedMany": "{{fileCount}} filer blev ændret i dit projekt, efter at denne opgave startede. Deres forskelle er mod de ældre versioner, så de kan ikke anvendes.",
       "applyAria": "Anvend {{path}}",

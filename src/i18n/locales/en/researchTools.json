@@ -257,6 +257,8 @@
       "clearSelection": "Clear selection",
       "selectAll": "Select all",
       "previewBeforeApply": "Preview every selected file before applying it.",
+      "researchRecord": "Research record",
+      "researchRecordHint": "The task's own notes. They don't need a preview before you apply them.",
       "driftedOne": "{{path}} changed in your project after this task started. Its diff is against the older version, so it cannot be applied.",
       "driftedMany": "{{fileCount}} files changed in your project after this task started. Their diffs are against the older versions, so they cannot be applied.",
       "applyAria": "Apply {{path}}",

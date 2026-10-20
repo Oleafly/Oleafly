@@ -267,14 +267,16 @@ pub async fn read_paper(
                     if !real.starts_with(base.canonicalize().map_err(|error| error.to_string())?) {
                         return Err("The PDF is not in that data folder.".into());
                     }
-                    if std::fs::metadata(&real)
+                    if tokio::fs::metadata(&real)
+                        .await
                         .map(|metadata| metadata.len())
                         .unwrap_or(0)
                         > MAX_LOCAL_BYTES
                     {
                         return Err(TOO_LARGE_LOCAL.into());
                     }
-                    std::fs::read(real)
+                    tokio::fs::read(real)
+                        .await
                         .map_err(|error| format!("The PDF could not be read: {error}"))?
                 }
                 (Some(_), None) => {
@@ -314,12 +316,14 @@ pub async fn read_paper(
         // A workspace or data-folder file is extracted from a private copy.
         let scratch =
             std::env::temp_dir().join(format!("oleafly-paper-{}.pdf", rand::random::<u64>()));
-        std::fs::write(&scratch, &bytes).map_err(|error| error.to_string())?;
+        tokio::fs::write(&scratch, &bytes)
+            .await
+            .map_err(|error| error.to_string())?;
         scratch
     };
     let pages = extract(&bytes, extract_from.clone(), extractor).await;
     if !stored_pdf {
-        let _ = std::fs::remove_file(&extract_from);
+        let _ = tokio::fs::remove_file(&extract_from).await;
     }
     let pages = pages?;
     let text = anchored_text(&pages);

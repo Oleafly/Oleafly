@@ -257,6 +257,8 @@
       "clearSelection": "Rensa markeringen",
       "selectAll": "Markera alla",
       "previewBeforeApply": "Förhandsvisa varje markerad fil innan du tillämpar den.",
+      "researchRecord": "Forskningsprotokoll",
+      "researchRecordHint": "Uppgiftens egna anteckningar. Du behöver inte förhandsvisa dem innan du tillämpar dem.",
       "driftedOne": "{{path}} ändrades i ditt projekt efter att uppgiften startade. Dess jämförelse gäller den äldre versionen, så den går inte att tillämpa.",
       "driftedMany": "{{fileCount}} filer ändrades i ditt projekt efter att uppgiften startade. Deras jämförelser gäller de äldre versionerna, så de går inte att tillämpa.",
       "applyAria": "Tillämpa {{path}}",

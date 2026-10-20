@@ -6,24 +6,25 @@
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 
-use windows_sys::Win32::Foundation::{LocalFree, ERROR_SUCCESS};
+use windows_sys::Win32::Foundation::{GetLastError, LocalFree, ERROR_SUCCESS};
 use windows_sys::Win32::Security::Authorization::{
     GetNamedSecurityInfoW, SetEntriesInAclW, SetNamedSecurityInfoW, EXPLICIT_ACCESS_W,
     GRANT_ACCESS, NO_MULTIPLE_TRUSTEE, REVOKE_ACCESS, SE_FILE_OBJECT, TRUSTEE_IS_SID,
     TRUSTEE_IS_UNKNOWN, TRUSTEE_W,
 };
 use windows_sys::Win32::Security::{
-    EqualSid, GetAce, InitializeSecurityDescriptor, SetFileSecurityW, SetSecurityDescriptorDacl,
-    ACCESS_ALLOWED_ACE, ACE_FLAGS, ACL, DACL_SECURITY_INFORMATION, INHERIT_ONLY_ACE,
-    NO_INHERITANCE, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
-    SECURITY_DESCRIPTOR, SUB_CONTAINERS_AND_OBJECTS_INHERIT,
+    AddAce, EqualSid, GetAce, InitializeAcl, InitializeSecurityDescriptor, SetFileSecurityW,
+    SetSecurityDescriptorDacl, ACCESS_ALLOWED_ACE, ACE_FLAGS, ACE_HEADER, ACL,
+    DACL_SECURITY_INFORMATION, INHERITED_ACE, INHERIT_ONLY_ACE, NO_INHERITANCE,
+    PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID, SECURITY_DESCRIPTOR,
+    SUB_CONTAINERS_AND_OBJECTS_INHERIT,
 };
 use windows_sys::Win32::Storage::FileSystem::{
     DELETE, FILE_DELETE_CHILD, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
     FILE_READ_ATTRIBUTES, FILE_TRAVERSE, SYNCHRONIZE,
 };
 use windows_sys::Win32::System::SystemServices::{
-    ACCESS_ALLOWED_ACE_TYPE, SECURITY_DESCRIPTOR_REVISION,
+    ACCESS_ALLOWED_ACE_TYPE, ACCESS_DENIED_ACE_TYPE, SECURITY_DESCRIPTOR_REVISION,
 };
 
 use super::sid::OwnedSid;
@@ -261,6 +262,9 @@ pub(crate) fn revoke_traverse(dir: &Path, sid: &OwnedSid) -> Result<(), SandboxE
 
 /// Keeps `sid` from writing a protected file inside a writable folder: the
 /// file gets a protected DACL with its current entries minus the task's.
+/// The folder's grant reaches the file as an inherited entry, which
+/// REVOKE_ACCESS leaves in place and protecting a DACL keeps as an explicit
+/// one, so the entries are copied by hand without the task's.
 pub(crate) fn exclude_file(file: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
     if file.is_dir() {
         return Err(SandboxError::Invalid(format!(
@@ -268,9 +272,78 @@ pub(crate) fn exclude_file(file: &Path, sid: &OwnedSid) -> Result<(), SandboxErr
             file.display()
         )));
     }
-    let entry = explicit(sid, REVOKE_ACCESS, 0, NO_INHERITANCE);
-    let (dacl, _current) = merged(file, &entry)?;
-    write_named(file, dacl, PROTECTED_DACL_SECURITY_INFORMATION)
+    let current = read_dacl(file)?;
+    if current.dacl.is_null() {
+        // No DACL grants everyone everything; an empty protected one would
+        // lock everyone out instead, the user included.
+        return Err(SandboxError::Invalid(format!(
+            "{} has no access list, so the task can't be kept out of it.",
+            file.display()
+        )));
+    }
+    let acl = without_sid(&current, sid)
+        .map_err(|code| error("updating the access list of", file, code))?;
+    let name = wide_path(file);
+    // SAFETY: `name` is NUL-terminated and `acl` holds a valid ACL for the call.
+    let code = unsafe {
+        SetNamedSecurityInfoW(
+            name.as_ptr(),
+            SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            acl.as_ptr().cast::<ACL>(),
+            std::ptr::null(),
+        )
+    };
+    if code != ERROR_SUCCESS {
+        return Err(error("writing the access list of", file, code));
+    }
+    Ok(())
+}
+
+/// A copy of `dacl` without `sid`'s allow and deny entries, every entry
+/// marked explicit for a protected DACL. Held in `u32`s because an ACL and
+/// its entries need 4-byte alignment.
+fn without_sid(dacl: &Dacl, sid: &OwnedSid) -> Result<Vec<u32>, u32> {
+    // SAFETY: `dacl.dacl` is a valid ACL owned by `dacl` (the caller checked
+    // it isn't null); each entry is read within its own AceSize and copied
+    // into an aligned buffer before AddAce reads it.
+    unsafe {
+        let source = &*dacl.dacl;
+        let revision = u32::from(source.AclRevision);
+        let size = u32::from(source.AclSize);
+        let mut buffer = vec![0u32; (size as usize).div_ceil(4)];
+        let acl = buffer.as_mut_ptr().cast::<ACL>();
+        if InitializeAcl(acl, size, revision) == 0 {
+            return Err(GetLastError());
+        }
+        for index in 0..u32::from(source.AceCount) {
+            let mut ace: *mut core::ffi::c_void = std::ptr::null_mut();
+            if GetAce(dacl.dacl, index, &mut ace) == 0 {
+                return Err(GetLastError());
+            }
+            let header = &*ace.cast::<ACE_HEADER>();
+            let kind = u32::from(header.AceType);
+            if kind == ACCESS_ALLOWED_ACE_TYPE || kind == ACCESS_DENIED_ACE_TYPE {
+                // Both entry types put the SID at the same place.
+                let entry = ace.cast::<ACCESS_ALLOWED_ACE>();
+                let ace_sid = std::ptr::addr_of!((*entry).SidStart) as PSID;
+                if EqualSid(ace_sid, sid.as_psid()) != 0 {
+                    continue;
+                }
+            }
+            let length = usize::from(header.AceSize);
+            let mut copy = vec![0u32; length.div_ceil(4)];
+            std::ptr::copy_nonoverlapping(ace.cast::<u8>(), copy.as_mut_ptr().cast::<u8>(), length);
+            let copied = &mut *copy.as_mut_ptr().cast::<ACE_HEADER>();
+            copied.AceFlags &= !(INHERITED_ACE as u8);
+            if AddAce(acl, revision, u32::MAX, copy.as_ptr().cast(), length as u32) == 0 {
+                return Err(GetLastError());
+            }
+        }
+        Ok(buffer)
+    }
 }
 
 #[cfg(test)]

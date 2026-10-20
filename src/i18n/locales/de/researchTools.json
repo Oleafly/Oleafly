@@ -257,6 +257,8 @@
       "clearSelection": "Auswahl aufheben",
       "selectAll": "Alle auswählen",
       "previewBeforeApply": "Sehen Sie sich jede ausgewählte Datei an, bevor Sie sie übernehmen.",
+      "researchRecord": "Forschungsprotokoll",
+      "researchRecordHint": "Die eigenen Notizen der Aufgabe. Sie müssen sie vor dem Übernehmen nicht ansehen.",
       "driftedOne": "{{path}} hat sich in Ihrem Projekt geändert, nachdem diese Aufgabe begann. Der Vergleich bezieht sich auf die ältere Fassung, deshalb lässt sie sich nicht übernehmen.",
       "driftedMany": "{{fileCount}} Dateien haben sich in Ihrem Projekt geändert, nachdem diese Aufgabe begann. Ihre Vergleiche beziehen sich auf die älteren Fassungen, deshalb lassen sie sich nicht übernehmen.",
       "applyAria": "{{path}} übernehmen",

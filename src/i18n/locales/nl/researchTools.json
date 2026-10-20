@@ -257,6 +257,8 @@
       "clearSelection": "Selectie wissen",
       "selectAll": "Alles selecteren",
       "previewBeforeApply": "Bekijk elk geselecteerd bestand voordat je het toepast.",
+      "researchRecord": "Onderzoeksverslag",
+      "researchRecordHint": "De eigen notities van de taak. Je hoeft ze niet te bekijken voordat je ze toepast.",
       "driftedOne": "{{path}} is in je project gewijzigd nadat deze taak begon. De diff gaat over de oudere versie en kan daarom niet worden toegepast.",
       "driftedMany": "{{fileCount}} bestanden zijn in je project gewijzigd nadat deze taak begon. Hun diffs gaan over de oudere versies en kunnen daarom niet worden toegepast.",
       "applyAria": "{{path}} toepassen",

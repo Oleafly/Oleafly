@@ -277,7 +277,9 @@ Each task keeps a record in `research/<task>/` inside its workspace:
 `brief.md`, `plan.md`, `ledger.tsv` (one row per result), `hypotheses.md`,
 `sources.md`, `handoff.md` and `report.md`. Retrying a task with Resume
 continues from `handoff.md` in the same workspace. Start over begins from the
-current project and brings the record along.
+current project and brings the record along. When the task finishes, the
+record comes back with its review under Research record, so applying it keeps
+it in the project. Those files don't need a preview first.
 
 ### Runs
 

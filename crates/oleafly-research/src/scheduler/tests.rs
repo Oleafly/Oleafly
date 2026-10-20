@@ -1639,7 +1639,7 @@ mod handoff {
             .unwrap();
         assert!(row.cancel_requested && row.status == ResearchTaskStatus::Running);
         let _ = helper.kill();
-        let _ = helper.wait();
+        let _ = tokio::task::spawn_blocking(move || helper.wait()).await;
         stop(&app).await;
     }
 

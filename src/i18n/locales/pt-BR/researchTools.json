@@ -258,6 +258,8 @@
       "clearSelection": "Limpar a seleção",
       "selectAll": "Selecionar tudo",
       "previewBeforeApply": "Veja a prévia de cada arquivo selecionado antes de aplicá-lo.",
+      "researchRecord": "Registro de pesquisa",
+      "researchRecordHint": "As anotações da própria tarefa. Não é preciso ver a prévia antes de aplicá-las.",
       "driftedOne": "{{path}} mudou no seu projeto depois que esta tarefa começou. A comparação é com a versão antiga, então não dá para aplicar.",
       "driftedMany": "{{fileCount}} arquivos mudaram no seu projeto depois que esta tarefa começou. As comparações são com as versões antigas, então não dá para aplicá-las.",
       "applyAria": "Aplicar {{path}}",

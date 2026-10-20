@@ -323,7 +323,7 @@ pub async fn create_project_profile(
         .filter(|folder| folder.file_name().is_some_and(|file| file == name.as_str()))
     {
         for file in ["MEMORY.md", "USER.md"] {
-            let _ = std::fs::remove_file(folder.join("memories").join(file));
+            let _ = tokio::fs::remove_file(folder.join("memories").join(file)).await;
         }
     }
     Ok(name)
@@ -553,10 +553,15 @@ mod tests {
 
     #[test]
     fn profile_path_parses_show_output_on_windows_and_unix() {
+        // A home folder as each platform has one: on Windows "/home/a" has
+        // no drive, so it isn't absolute and the parser rightly refuses it.
+        #[cfg(windows)]
+        let home = Path::new(r"C:\Users\a");
+        #[cfg(not(windows))]
         let home = Path::new("/home/a");
         assert_eq!(
             profile_path_from_show("Name: work\nPath:    ~/.hermes/profiles/work\n", home),
-            Some(PathBuf::from("/home/a/.hermes/profiles/work"))
+            Some(home.join(".hermes").join("profiles").join("work"))
         );
         assert!(profile_path_from_show("Path: /tmp/elsewhere/work", home).is_none());
         #[cfg(windows)]

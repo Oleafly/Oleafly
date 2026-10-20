@@ -226,9 +226,14 @@ fn markdown_pdf_args_sandbox_filter_citeproc_and_bundle_pin() {
         project: Path::new("/p"),
         output: Path::new("/b/out.pdf"),
         main: Path::new("/p/main.md"),
-        bibliographies: &[PathBuf::from("refs.bib")],
+        bibliographies: &[PathBuf::from("sources/refs.bib")],
         bundle_url: Some("https://m/x.tar"),
     }));
+    // A slash-relative bibliography comes out with the platform's separator.
+    let bibliography = format!(
+        "--bibliography={}",
+        Path::new("/p").join("sources").join("refs.bib").display()
+    );
     assert_eq!(
         args,
         [
@@ -243,7 +248,7 @@ fn markdown_pdf_args_sandbox_filter_citeproc_and_bundle_pin() {
             "--sandbox",
             "--lua-filter=oleafly-mermaid-figures.lua",
             "--citeproc",
-            "--bibliography=/p/refs.bib",
+            bibliography.as_str(),
             "--",
             "/p/main.md"
         ]

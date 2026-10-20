@@ -1043,13 +1043,25 @@ async fn a_task_woken_two_hundred_times_stops_with_a_retry_message() {
     .await;
     let host = fixture_host(root.path(), provider.url.clone()).await;
     let adapter = BuiltinTaskAdapter::new(host.clone(), services(&tasks));
-    let error = within(adapter.run(
+    // 201 full turns write the task store each time, which Windows runners do
+    // several times slower than macOS and Linux, so this test gets 4x the
+    // usual patience. A timeout says how far it got: slow or stuck.
+    let run = adapter.run(
         task_context(&task, &workspace),
         CancellationToken::new(),
         event_log().1,
-    ))
-    .await
-    .unwrap_err();
+    );
+    let error = match tokio::time::timeout(CHILD_PATIENCE * 4, run).await {
+        Ok(result) => result.unwrap_err(),
+        Err(_) => panic!(
+            "the task did not finish in time: {} of 201 turns",
+            provider
+                .requests()
+                .iter()
+                .filter(|request| request["stream"] == json!(true))
+                .count()
+        ),
+    };
     assert_eq!(error, "The task woke up 200 times. Retry it to continue.");
     let requests = provider.requests();
     let turns = requests

@@ -5167,7 +5167,7 @@ mod tests {
         );
         assert!(safe.args.contains(&format!(
             "--bibliography={}",
-            project.join("sources/refs.bib").to_string_lossy()
+            project.join("sources").join("refs.bib").to_string_lossy()
         )));
         let scratch_text = unsafe_path.to_string_lossy().into_owned();
         assert_eq!(
@@ -5200,7 +5200,7 @@ mod tests {
             format!("--pdf-engine-opt=-Zsearch-path={plain_text}"),
             format!(
                 "--bibliography={}",
-                plain.join("sources/refs.bib").to_string_lossy()
+                plain.join("sources").join("refs.bib").to_string_lossy()
             ),
             format!(
                 "--output={}",

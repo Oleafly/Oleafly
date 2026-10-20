@@ -257,6 +257,8 @@
       "clearSelection": "Seçimi temizle",
       "selectAll": "Tümünü seç",
       "previewBeforeApply": "Uygulamadan önce seçili her dosyayı önizleyin.",
+      "researchRecord": "Araştırma kaydı",
+      "researchRecordHint": "Görevin kendi notları. Uygulamadan önce önizlemeniz gerekmez.",
       "driftedOne": "{{path}}, bu görev başladıktan sonra projenizde değişti. Farkı daha eski sürüme göre olduğu için uygulanamaz.",
       "driftedMany": "{{fileCount}} dosya, bu görev başladıktan sonra projenizde değişti. Farkları daha eski sürümlere göre olduğu için uygulanamazlar.",
       "applyAria": "{{path}} dosyasını uygula",

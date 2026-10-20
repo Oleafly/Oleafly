@@ -544,8 +544,11 @@ impl Launcher for ProcessLauncher {
                     started: None,
                 });
             }
-            let log = std::fs::File::create(&paths.log_file)
-                .map_err(|error| start_failed(&error.to_string()))?;
+            let log = tokio::fs::File::create(&paths.log_file)
+                .await
+                .map_err(|error| start_failed(&error.to_string()))?
+                .into_std()
+                .await;
             crate::fsperm::harden_file(&paths.log_file);
             let log_err = log
                 .try_clone()
@@ -1256,6 +1259,8 @@ mod tests {
         assert_ne!(paths.endpoint, other.endpoint);
     }
 
+    // Unix socket paths, built with this host's separator and temp folder.
+    #[cfg(unix)]
     #[test]
     fn long_unix_socket_paths_fall_back_to_the_temp_dir() {
         let long = format!("/home/{}/.oleafly", "a".repeat(120));

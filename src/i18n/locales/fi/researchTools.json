@@ -257,6 +257,8 @@
       "clearSelection": "Tyhjennä valinta",
       "selectAll": "Valitse kaikki",
       "previewBeforeApply": "Esikatsele jokainen valittu tiedosto ennen käyttöönottoa.",
+      "researchRecord": "Tutkimuspäiväkirja",
+      "researchRecordHint": "Tehtävän omat muistiinpanot. Niitä ei tarvitse esikatsella ennen käyttöönottoa.",
       "driftedOne": "{{path}} muuttui projektissa tämän tehtävän käynnistymisen jälkeen. Sen vertailu on vanhempaa versiota vasten, joten sitä ei voi ottaa käyttöön.",
       "driftedMany": "{{fileCount}} tiedostoa muuttui projektissa tämän tehtävän käynnistymisen jälkeen. Niiden vertailut ovat vanhempia versioita vasten, joten niitä ei voi ottaa käyttöön.",
       "applyAria": "Ota käyttöön {{path}}",

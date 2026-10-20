@@ -268,6 +268,49 @@ impl FakeSpaces {
         json!({"content": [{"type": "text", "text": text}]})
     }
 
+    /// `space_bash`: `sh -c` in the Space's home, with stderr and a failing
+    /// exit code appended the way Cua reports them.
+    #[cfg(not(windows))]
+    async fn bash(home: &Path, command: &str) -> Result<String, String> {
+        let output = tokio::process::Command::new("/bin/sh")
+            .arg("-c")
+            .arg(command)
+            .current_dir(home)
+            .env("HOME", home)
+            .stdin(std::process::Stdio::null())
+            .output()
+            .await
+            .map_err(|error| error.to_string())?;
+        let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.is_empty() {
+            if !text.is_empty() && !text.ends_with('\n') {
+                text.push('\n');
+            }
+            text.push_str("[stderr]\n");
+            text.push_str(&stderr);
+        }
+        if let Some(code) = output.status.code().filter(|code| *code != 0) {
+            if !text.is_empty() && !text.ends_with('\n') {
+                text.push('\n');
+            }
+            text.push_str(&format!("[exit {code}]"));
+        }
+        Ok(text)
+    }
+
+    /// No /bin/sh on Windows: the probe gets the answer a Linux Space gives,
+    /// and anything else fails, which ends a run after its upload.
+    #[cfg(windows)]
+    async fn bash(_home: &Path, command: &str) -> Result<String, String> {
+        Ok(if command.contains("OLEAFLY_PROBE") {
+            "OLEAFLY_PROBE home /root\nOLEAFLY_PROBE os Linux\nOLEAFLY_PROBE setsid 1\nOLEAFLY_PROBE end\n"
+                .into()
+        } else {
+            "[exit 127]".into()
+        })
+    }
+
     async fn call(
         &self,
         _server: &McpStdioServer,
@@ -321,31 +364,7 @@ impl FakeSpaces {
                     .as_str()
                     .unwrap_or_default()
                     .to_string();
-                let output = tokio::process::Command::new("/bin/sh")
-                    .arg("-c")
-                    .arg(&command)
-                    .current_dir(&home)
-                    .env("HOME", &home)
-                    .stdin(std::process::Stdio::null())
-                    .output()
-                    .await
-                    .map_err(|error| error.to_string())?;
-                let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                if !stderr.is_empty() {
-                    if !text.is_empty() && !text.ends_with('\n') {
-                        text.push('\n');
-                    }
-                    text.push_str("[stderr]\n");
-                    text.push_str(&stderr);
-                }
-                if let Some(code) = output.status.code().filter(|code| *code != 0) {
-                    if !text.is_empty() && !text.ends_with('\n') {
-                        text.push('\n');
-                    }
-                    text.push_str(&format!("[exit {code}]"));
-                }
-                Ok(Self::text(text))
+                Ok(Self::text(Self::bash(&home, &command).await?))
             }
             "send_file" => {
                 let path = PathBuf::from(arguments["path"].as_str().unwrap_or_default());
@@ -361,7 +380,9 @@ impl FakeSpaces {
                     .home(&name)
                     .join("Downloads")
                     .join(path.file_name().unwrap());
-                std::fs::copy(&path, dest).map_err(|error| error.to_string())?;
+                tokio::fs::copy(&path, dest)
+                    .await
+                    .map_err(|error| error.to_string())?;
                 Ok(Self::text("sent".into()))
             }
             "download" => {
@@ -380,8 +401,11 @@ impl FakeSpaces {
                     self.home(&name).join(remote)
                 };
                 let dest = PathBuf::from(arguments["dest"].as_str().unwrap_or_default());
-                std::fs::create_dir_all(&dest).map_err(|error| error.to_string())?;
-                std::fs::copy(&source, dest.join(source.file_name().unwrap()))
+                tokio::fs::create_dir_all(&dest)
+                    .await
+                    .map_err(|error| error.to_string())?;
+                tokio::fs::copy(&source, dest.join(source.file_name().unwrap()))
+                    .await
                     .map_err(|error| error.to_string())?;
                 Ok(Self::text("downloaded".into()))
             }

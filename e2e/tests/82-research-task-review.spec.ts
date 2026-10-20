@@ -53,6 +53,11 @@ async function nativeTask(page: Page, projectId: string, title: string) {
   return task;
 }
 
+/** The Apply button for a task's whole review: the edit and its research record. */
+function applyLabel(task: ResearchTask) {
+  return `Apply ${task.result?.changedFiles.length ?? 0} selected`;
+}
+
 function previewMain(page: Page, taskId: string) {
   return page.evaluate<TaskFilePreview>(
     `import("/src/lib/research-tasks.ts").then(({ previewResearchTaskFile }) => previewResearchTaskFile(${scriptValue(taskId)}, "main.tex"))`,
@@ -129,9 +134,13 @@ async function runRevision(page: Page, projectId: string, title: string, propose
   expect(task.agentId).toBe("ollama");
   expect(task.modelId).toBe("llama3.2");
   expect(task.status).toBe("awaiting_review");
-  expect(task.result?.changedFiles.map((change) => ({ path: change.path, kind: change.kind }))).toEqual([
-    { path: "main.tex", kind: "modified" },
-  ]);
+  // 0.4.8: the task's research record comes back through review beside the edit.
+  const changes = task.result?.changedFiles.map((change) => ({ path: change.path, kind: change.kind })) ?? [];
+  const inRecord = (path: string) => path.startsWith(`${task.recordDir}/`);
+  expect(changes.filter((change) => !inRecord(change.path))).toEqual([{ path: "main.tex", kind: "modified" }]);
+  const record = changes.filter((change) => inRecord(change.path));
+  expect(record.length).toBeGreaterThan(0);
+  expect(record.every((change) => change.kind === "added")).toBe(true);
   expect(task.review).toBeNull();
   expect(task.isolation).not.toBeNull();
   expect(readFileSync(join(task.isolation!.executionRoot, "main.tex"), "utf8")).toBe(proposed);
@@ -159,7 +168,7 @@ test("a native task edits its isolated manuscript and applies only after preview
   expect(preview.after.text).toBe(proposed);
 
   const detail = tauriPage.locator(detailSelector);
-  const apply = detail.getByText("Apply 1 selected", { exact: true });
+  const apply = detail.getByText(applyLabel(task), { exact: true });
   await expect(apply).toBeDisabled();
   await detail.getByText("Preview", { exact: true }).click();
   await expect(detail).toContainText(marker, { timeout: 20_000 });
@@ -174,7 +183,7 @@ test("a native task edits its isolated manuscript and applies only after preview
   );
   const applied = await nativeTask(tauriPage, projectId, task.title);
   expect(applied.status).toBe("completed");
-  expect(applied.review?.selectedPaths).toEqual(["main.tex"]);
+  expect(applied.review?.selectedPaths).toEqual(task.result?.changedFiles.map((change) => change.path));
   expect(applied.review?.projectMutationGeneration).toBeGreaterThan(0);
 });
 
@@ -190,7 +199,7 @@ test("applying a task preserves an unsaved editor edit and retains the conflicti
   const detail = tauriPage.locator(detailSelector);
   await detail.getByText("Preview", { exact: true }).click();
   await expect(detail).toContainText(marker, { timeout: 20_000 });
-  await expect(detail.getByText("Apply 1 selected", { exact: true })).toBeEnabled();
+  await expect(detail.getByText(applyLabel(task), { exact: true })).toBeEnabled();
 
   const beforeApply = await tauriPage.evaluate<{
     disk: string;
@@ -206,7 +215,7 @@ test("applying a task preserves an unsaved editor edit and retains the conflicti
     const view = controller.getEditorView();
     const state = files.useFilesStore.getState();
     if (!view || state.projectId !== ${scriptValue(projectId)} || state.activePath !== "main.tex") throw new Error("The manuscript editor is not active");
-    const apply = [...document.querySelectorAll(${scriptValue(`${detailSelector} button`)})].find((button) => button.textContent.trim() === "Apply 1 selected");
+    const apply = [...document.querySelectorAll(${scriptValue(`${detailSelector} button`)})].find((button) => button.textContent.trim() === ${scriptValue(applyLabel(task))});
     if (!apply || apply.disabled) throw new Error("The reviewed task is not ready to apply");
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: ${scriptValue(manual)} } });
     const pending = files.useFilesStore.getState().files["main.tex"];
@@ -237,7 +246,7 @@ test("applying a task preserves an unsaved editor edit and retains the conflicti
     { timeout: 20_000 },
   );
   await expect(detail).toContainText("Review needed");
-  await expect(detail.getByText("Apply 1 selected", { exact: true })).toBeEnabled();
+  await expect(detail.getByText(applyLabel(task), { exact: true })).toBeEnabled();
   expect(await readMain(tauriPage, projectId)).toBe(manual);
   expect(await editorSource(tauriPage)).toBe(manual);
   const retained = await nativeTask(tauriPage, projectId, task.title);

@@ -25,13 +25,14 @@ export function AcpExperimentalSection() {
 
   const save = (patch: Partial<AcpPreferences>) => {
     if (!prefs) return;
-    const next = { ...prefs, ...patch };
+    const previous = prefs;
+    const next = { ...previous, ...patch };
     setPrefs(next);
     setError(null);
     acpSetPreferences(next)
       .then(setPrefs)
       .catch((error_: unknown) => {
-        setPrefs(prefs);
+        setPrefs(previous);
         setError(acpError(error_));
       });
   };

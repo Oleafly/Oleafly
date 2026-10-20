@@ -42,6 +42,7 @@ import type {
   StopReason,
   TaskArtifact,
   TaskArtifactPreview,
+  TaskFileChange,
   TaskFilePreview,
   TaskTranscriptEvent,
 } from "@/lib/research-tasks";
@@ -239,6 +240,12 @@ export function TaskDetailDialog({
   const timeline = useMemo(() => buildTaskTimeline(events, running), [events, running, language]);
   const changedFiles = task.result?.changedFiles ?? EMPTY_CHANGES;
   const changedPathsKey = changedFiles.map((change) => change.path).join("\n");
+  // The task's own record (research/<slug>/) comes back with its review. It is
+  // listed on its own and needs no preview before Apply.
+  const recordPrefix = task.recordDir ? `${task.recordDir}/` : null;
+  const inRecord = (path: string) => recordPrefix !== null && path.startsWith(recordPrefix);
+  const projectChanges = changedFiles.filter((change) => !inRecord(change.path));
+  const recordChanges = changedFiles.filter((change) => inRecord(change.path));
   const [selectedPaths, setSelectedPaths] = useState<string[]>(() =>
     changedFiles.map((change) => change.path),
   );
@@ -556,6 +563,82 @@ export function TaskDetailDialog({
     </>
   );
 
+  const changeRow = (change: TaskFileChange) => {
+    const preview = filePreviews[`${taskRunKey}:${change.path}`];
+    const drifted = blocksApply(preview);
+    const merging = changedSinceStart(preview) && !drifted;
+    return (
+      <div key={change.path} className="p-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          <Checkbox
+            aria-label={t(($) => $.researchTools.tasks.detail.applyAria, {
+              path: change.path,
+            })}
+            checked={selectedPaths.includes(change.path)}
+            disabled={task.status !== "awaiting_review" || busy || drifted}
+            onCheckedChange={(checked) => toggleChangedPath(change.path, checked === true)}
+          />
+          <Tooltip label={change.path} className="min-w-0 flex-1">
+            <span className="min-w-0 flex-1 truncate font-mono text-xs">{change.path}</span>
+          </Tooltip>
+          {drifted ? (
+            <Badge variant="outline" className="shrink-0 gap-1 border-amber-500/50">
+              <AlertTriangle aria-hidden="true" className="size-3" />
+              {t(($) => $.researchTools.tasks.detail.changedSince)}
+            </Badge>
+          ) : null}
+          <span className="text-xs capitalize text-muted-foreground">
+            {changeKindLabel(change.kind)}
+          </span>
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={previewingPath === change.path}
+            onClick={() => void previewFile(change.path)}
+          >
+            {previewButtonLabel(change.path, Boolean(preview))}
+          </Button>
+        </div>
+        {merging ? (
+          <p className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+            <GitMerge aria-hidden="true" className="mt-px size-3.5 shrink-0" />
+            <span className="min-w-0 break-words">
+              {t(($) => $.researchTools.tasks.detail.mergesOnApply)}
+            </span>
+          </p>
+        ) : null}
+        {preview ? (
+          <div className="mt-3 overflow-hidden rounded-md border">
+            {preview.before.text !== null || preview.after.text !== null ? (
+              <InlineDiffPreview
+                path={preview.path}
+                oldText={preview.before.text ?? ""}
+                newText={preview.after.text ?? ""}
+              />
+            ) : (
+              <div className="grid grid-cols-2 divide-x text-xs text-muted-foreground">
+                <div className="p-3">
+                  {preview.before.exists
+                    ? t(($) => $.researchTools.tasks.detail.beforeBytes, {
+                        size: preview.before.size,
+                      })
+                    : t(($) => $.researchTools.tasks.detail.beforeAbsent)}
+                </div>
+                <div className="p-3">
+                  {preview.after.exists
+                    ? t(($) => $.researchTools.tasks.detail.afterBytes, {
+                        size: preview.after.size,
+                      })
+                    : t(($) => $.researchTools.tasks.detail.afterAbsent)}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   const changedFilesSection = () => (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -581,9 +664,11 @@ export function TaskDetailDialog({
             : t(($) => $.researchTools.tasks.detail.selectAll)}
         </button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        {t(($) => $.researchTools.tasks.detail.previewBeforeApply)}
-      </p>
+      {projectChanges.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.researchTools.tasks.detail.previewBeforeApply)}
+        </p>
+      ) : null}
       {driftedPaths.length > 0 ? (
         <p
           role="alert"
@@ -601,90 +686,20 @@ export function TaskDetailDialog({
           </span>
         </p>
       ) : null}
-      <div className="divide-y rounded-md border">
-        {changedFiles.map((change) => {
-          const preview = filePreviews[`${taskRunKey}:${change.path}`];
-          const drifted = blocksApply(preview);
-          const merging = changedSinceStart(preview) && !drifted;
-          return (
-            <div key={change.path} className="p-3">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-                <Checkbox
-                  aria-label={t(($) => $.researchTools.tasks.detail.applyAria, {
-                    path: change.path,
-                  })}
-                  checked={selectedPaths.includes(change.path)}
-                  disabled={task.status !== "awaiting_review" || busy || drifted}
-                  onCheckedChange={(checked) =>
-                    toggleChangedPath(change.path, checked === true)
-                  }
-                />
-                <Tooltip label={change.path} className="min-w-0 flex-1">
-                  <span className="min-w-0 flex-1 truncate font-mono text-xs">
-                    {change.path}
-                  </span>
-                </Tooltip>
-                {drifted ? (
-                  <Badge
-                    variant="outline"
-                    className="shrink-0 gap-1 border-amber-500/50"
-                  >
-                    <AlertTriangle aria-hidden="true" className="size-3" />
-                    {t(($) => $.researchTools.tasks.detail.changedSince)}
-                  </Badge>
-                ) : null}
-                <span className="text-xs capitalize text-muted-foreground">
-                  {changeKindLabel(change.kind)}
-                </span>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  disabled={previewingPath === change.path}
-                  onClick={() => void previewFile(change.path)}
-                >
-                  {previewButtonLabel(change.path, Boolean(preview))}
-                </Button>
-              </div>
-              {merging ? (
-                <p className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
-                  <GitMerge aria-hidden="true" className="mt-px size-3.5 shrink-0" />
-                  <span className="min-w-0 break-words">
-                    {t(($) => $.researchTools.tasks.detail.mergesOnApply)}
-                  </span>
-                </p>
-              ) : null}
-              {preview ? (
-                <div className="mt-3 overflow-hidden rounded-md border">
-                  {preview.before.text !== null || preview.after.text !== null ? (
-                    <InlineDiffPreview
-                      path={preview.path}
-                      oldText={preview.before.text ?? ""}
-                      newText={preview.after.text ?? ""}
-                    />
-                  ) : (
-                    <div className="grid grid-cols-2 divide-x text-xs text-muted-foreground">
-                      <div className="p-3">
-                        {preview.before.exists
-                          ? t(($) => $.researchTools.tasks.detail.beforeBytes, {
-                              size: preview.before.size,
-                            })
-                          : t(($) => $.researchTools.tasks.detail.beforeAbsent)}
-                      </div>
-                      <div className="p-3">
-                        {preview.after.exists
-                          ? t(($) => $.researchTools.tasks.detail.afterBytes, {
-                              size: preview.after.size,
-                            })
-                          : t(($) => $.researchTools.tasks.detail.afterAbsent)}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+      {projectChanges.length > 0 ? (
+        <div className="divide-y rounded-md border">{projectChanges.map(changeRow)}</div>
+      ) : null}
+      {recordChanges.length > 0 ? (
+        <section aria-labelledby="research-task-record-changes" className="space-y-1.5">
+          <h6 id="research-task-record-changes" className="text-xs font-medium">
+            {t(($) => $.researchTools.tasks.detail.researchRecord)}
+          </h6>
+          <p className="text-xs text-muted-foreground">
+            {t(($) => $.researchTools.tasks.detail.researchRecordHint)}
+          </p>
+          <div className="divide-y rounded-md border">{recordChanges.map(changeRow)}</div>
+        </section>
+      ) : null}
       {previewError ? (
         <p role="alert" className="select-text break-words text-xs text-destructive">
           {previewError}
@@ -703,7 +718,9 @@ export function TaskDetailDialog({
             disabled={
               busy ||
               selectedPaths.length === 0 ||
-              selectedPaths.some((path) => !filePreviews[`${taskRunKey}:${path}`])
+              selectedPaths.some(
+                (path) => !inRecord(path) && !filePreviews[`${taskRunKey}:${path}`],
+              )
             }
             onClick={() => void onApply(selectedPaths).catch(() => {})}
           >

@@ -6795,8 +6795,11 @@ mod tests {
 
         attach_from_local(&imported, &remote, None);
 
+        // Git for Windows checks files out with CRLF (core.autocrlf).
         assert_eq!(
-            std::fs::read_to_string(imported.join("notes.md")).unwrap(),
+            std::fs::read_to_string(imported.join("notes.md"))
+                .unwrap()
+                .replace("\r\n", "\n"),
             "private notes\n"
         );
         assert_eq!(deleted_in_history(&imported), "");
@@ -6919,8 +6922,11 @@ mod tests {
             ],
             &staging,
         );
+        // Git for Windows checks files out with CRLF (core.autocrlf).
         assert_eq!(
-            std::fs::read_to_string(project.join("notes.md")).unwrap(),
+            std::fs::read_to_string(project.join("notes.md"))
+                .unwrap()
+                .replace("\r\n", "\n"),
             "kept\n"
         );
         assert_eq!(deleted_in_history(&project), "");

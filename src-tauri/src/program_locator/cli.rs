@@ -99,7 +99,9 @@ fn copy_shim(shim: &Path, bundled: &Path) -> io::Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&temporary, std::fs::Permissions::from_mode(0o755))?;
+        // The command lives in this user's own folder: they run it, and
+        // nobody else needs to.
+        std::fs::set_permissions(&temporary, std::fs::Permissions::from_mode(0o700))?;
     }
     if let Err(error) = std::fs::rename(&temporary, shim) {
         let in_use = shim.exists() && cfg!(windows);

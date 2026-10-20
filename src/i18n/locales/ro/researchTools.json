@@ -258,6 +258,8 @@
       "clearSelection": "Golește selecția",
       "selectAll": "Selectează tot",
       "previewBeforeApply": "Previzualizează fiecare fișier selectat înainte să îl aplici.",
+      "researchRecord": "Registru de cercetare",
+      "researchRecordHint": "Notițele proprii ale sarcinii. Nu trebuie să le previzualizezi înainte să le aplici.",
       "driftedOne": "{{path}} s-a schimbat în proiectul tău după ce a pornit această sarcină. Comparația lui este față de versiunea veche, așa că nu poate fi aplicat.",
       "driftedMany": "{{fileCount}} fișiere s-au schimbat în proiectul tău după ce a pornit această sarcină. Comparațiile lor sunt față de versiunile vechi, așa că nu pot fi aplicate.",
       "applyAria": "Aplică {{path}}",

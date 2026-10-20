@@ -1475,7 +1475,8 @@ impl ResearchTaskState {
         let slug = store.ensure_record_slug(&task.id)?;
         let isolation = match &task.isolation {
             Some(saved) => {
-                let real = std::fs::symlink_metadata(Path::new(&saved.execution_root))
+                let real = tokio::fs::symlink_metadata(Path::new(&saved.execution_root))
+                    .await
                     .is_ok_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink());
                 if !real {
                     return Err(WORKSPACE_GONE.into());

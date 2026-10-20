@@ -303,7 +303,9 @@ impl Space<'_> {
     }
 
     async fn download(&self, remote: &str, dest: &Path) -> Result<PathBuf, RunError> {
-        std::fs::create_dir_all(dest).map_err(|error| RunError::Io(error.to_string()))?;
+        tokio::fs::create_dir_all(dest)
+            .await
+            .map_err(|error| RunError::Io(error.to_string()))?;
         let result = call(
             self.host,
             &self.server,
@@ -469,7 +471,9 @@ impl RunExecutor for CuaSpaceExecutor {
         };
         save_handle(&handle)?;
         let upload = spec.run_dir.join(".upload");
-        std::fs::create_dir_all(&upload).map_err(|error| RunError::Io(error.to_string()))?;
+        tokio::fs::create_dir_all(&upload)
+            .await
+            .map_err(|error| RunError::Io(error.to_string()))?;
         let short: String = spec.task_id.chars().take(8).collect();
         let file_name = format!("oleafly-{short}-{}.tgz", spec.run_id);
         let archive = upload.join(&file_name);
@@ -494,7 +498,7 @@ impl RunExecutor for CuaSpaceExecutor {
             LONG_BASH_TIMEOUT,
         )
         .await;
-        let _ = std::fs::remove_dir_all(&upload);
+        let _ = tokio::fs::remove_dir_all(&upload).await;
         let sent = sent?;
         if let Some(message) = tool_error(&sent) {
             return Err(RunError::Remote(format!(
@@ -654,7 +658,7 @@ impl RunExecutor for CuaSpaceExecutor {
             }
             Err(error) => note = Some(format!("The run's outputs could not be copied: {error}")),
         }
-        let _ = std::fs::remove_dir_all(&downloads);
+        let _ = tokio::fs::remove_dir_all(&downloads).await;
         let end = match (end, note) {
             (
                 RunStatus::Finished {

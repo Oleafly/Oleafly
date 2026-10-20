@@ -520,14 +520,20 @@ fn run_diff(ctx: &Context, prepared: &Prepared, args: &DiffArgs) -> Result<Outco
     Ok(Outcome::success(fields))
 }
 
-/// Files a restore writes keep the checkpoint store's owner-only modes;
-/// a copy for people gets ordinary ones.
+/// Files a restore writes keep the checkpoint store's owner-only modes. A copy
+/// for people gets the modes this user's own new folders and files get (0o777
+/// and 0o666 less their umask), so a strict umask stays strict.
 #[cfg(unix)]
 fn relax_permissions(folder: &Path) {
+    use std::fs::Permissions;
     use std::os::unix::fs::PermissionsExt;
+    let Some(folder_mode) = new_folder_mode(folder) else {
+        return;
+    };
+    let file_mode = folder_mode & 0o666;
     let mut pending = vec![folder.to_path_buf()];
     while let Some(current) = pending.pop() {
-        let _ = std::fs::set_permissions(&current, std::fs::Permissions::from_mode(0o755));
+        let _ = std::fs::set_permissions(&current, Permissions::from_mode(folder_mode));
         let Ok(entries) = std::fs::read_dir(&current) else {
             continue;
         };
@@ -535,15 +541,25 @@ fn relax_permissions(folder: &Path) {
             match entry.file_type() {
                 Ok(kind) if kind.is_dir() => pending.push(entry.path()),
                 Ok(kind) if kind.is_file() => {
-                    let _ = std::fs::set_permissions(
-                        entry.path(),
-                        std::fs::Permissions::from_mode(0o644),
-                    );
+                    let _ =
+                        std::fs::set_permissions(entry.path(), Permissions::from_mode(file_mode));
                 }
                 _ => {}
             }
         }
     }
+}
+
+/// The mode a new folder gets in `folder`, read from a probe: the umask can
+/// only be read by changing it, which every other thread would see.
+#[cfg(unix)]
+fn new_folder_mode(folder: &Path) -> Option<u32> {
+    use std::os::unix::fs::PermissionsExt;
+    let probe = folder.join(format!(".oleafly-mode-probe-{}", std::process::id()));
+    std::fs::create_dir(&probe).ok()?;
+    let mode = std::fs::metadata(&probe).map(|metadata| metadata.permissions().mode() & 0o777);
+    let _ = std::fs::remove_dir(&probe);
+    mode.ok()
 }
 
 #[cfg(not(unix))]
@@ -695,5 +711,37 @@ mod tests {
         );
         let linked = walk_tree(root.path(), true).unwrap();
         assert_eq!(linked.keys().collect::<Vec<_>>(), ["main.tex"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_restored_copy_gets_the_modes_new_files_get() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+        let copy = tempfile::tempdir().unwrap();
+        let folder = copy.path().join("sources");
+        let file = folder.join("main.tex");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(&file, "x").unwrap();
+        // What the checkpoint store leaves behind.
+        std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o700)).unwrap();
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600)).unwrap();
+        // What this user's umask gives a new folder and a new file.
+        let reference = tempfile::tempdir().unwrap();
+        let new_folder = reference.path().join("folder");
+        std::fs::create_dir(&new_folder).unwrap();
+        let new_file = reference.path().join("file");
+        std::fs::write(&new_file, "").unwrap();
+
+        relax_permissions(copy.path());
+
+        assert_eq!(mode(copy.path()), mode(&new_folder));
+        assert_eq!(mode(&folder), mode(&new_folder));
+        assert_eq!(mode(&file), mode(&new_file));
+        let names: Vec<_> = std::fs::read_dir(copy.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(names, ["sources"], "the probe folder is gone");
     }
 }

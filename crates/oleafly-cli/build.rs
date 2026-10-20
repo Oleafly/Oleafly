@@ -50,4 +50,14 @@ fn main() {
     };
     println!("cargo:rustc-env=OLEAFLY_COMMIT={commit}");
     println!("cargo:rustc-env=OLEAFLY_COMMIT_LABEL={label}");
+    // Windows gives a program's main thread 1 MB of stack, Linux and macOS 8 MB.
+    // The command futures `main` blocks on outgrow 1 MB in debug builds
+    // ("thread 'main' has overflowed its stack"), so reserve 8 MB there too.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        match std::env::var("CARGO_CFG_TARGET_ENV").as_deref() {
+            Ok("msvc") => println!("cargo:rustc-link-arg-bins=/STACK:8388608"),
+            Ok("gnu") => println!("cargo:rustc-link-arg-bins=-Wl,--stack,8388608"),
+            _ => {}
+        }
+    }
 }

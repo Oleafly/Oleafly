@@ -256,6 +256,8 @@
       "clearSelection": "清除選取",
       "selectAll": "全選",
       "previewBeforeApply": "套用前請先預覽每個選取的檔案。",
+      "researchRecord": "研究紀錄",
+      "researchRecordHint": "任務自己的筆記，套用前不需預覽。",
       "driftedOne": "這個任務開始後，{{path}} 在你的專案中已變更。它的差異是對照舊版本，因此無法套用。",
       "driftedMany": "這個任務開始後，專案中有 {{fileCount}} 個檔案已變更。它們的差異是對照舊版本，因此無法套用。",
       "applyAria": "套用 {{path}}",

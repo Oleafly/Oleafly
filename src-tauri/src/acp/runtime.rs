@@ -3006,7 +3006,7 @@ impl AcpRuntime {
             oleafly_cli::daemon::acp_task::credential_files(&definition.id).to_vec();
         stale.push(".gemini/settings.json");
         for relative in stale {
-            let _ = std::fs::remove_file(home.join(relative));
+            let _ = tokio::fs::remove_file(home.join(relative)).await;
         }
         drop(super::task_launch::prepare_credentials(
             &crate::paths::home_dir()?,
@@ -3155,7 +3155,7 @@ impl AcpRuntime {
             oleafly_cli::daemon::acp_task::credential_files(&definition.id).to_vec();
         stale.push(".gemini/settings.json");
         for relative in stale {
-            let _ = std::fs::remove_file(home.join(relative));
+            let _ = tokio::fs::remove_file(home.join(relative)).await;
         }
         let time = now_ms();
         let record = SessionRecord {

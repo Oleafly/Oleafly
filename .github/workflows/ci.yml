@@ -658,6 +658,10 @@ jobs:
     needs: [frontend, rust]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
+    env:
+      # The vite build peaks near Node's default ~4GB heap and ran out of it
+      # here (same setting as the frontend jobs and release.yml).
+      NODE_OPTIONS: --max-old-space-size=6144
     outputs:
       collab: ${{ steps.collab-changes.outputs.run }}
     steps:
@@ -1274,6 +1278,10 @@ jobs:
     needs: [frontend, rust]
     runs-on: windows-2022
     timeout-minutes: 45
+    env:
+      # The vite build peaks near Node's default ~4GB heap (the Linux build
+      # ran out of it; same setting as the frontend jobs and release.yml).
+      NODE_OPTIONS: --max-old-space-size=6144
     outputs:
       installers: ${{ steps.installer-changes.outputs.run }}
     steps:

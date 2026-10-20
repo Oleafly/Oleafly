@@ -61,7 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Research task briefs: a goal, success criteria, scope, a main metric and a
   budget for time, cost and runs. With Review the plan first, the agent
   writes `plan.md` and waits for your approval. Each task keeps a research
-  record (plan, ledger, sources, hand-off and report), long jobs run as runs
+  record (plan, ledger, sources, hand-off and report) that comes back with its
+  review and applies without a preview, long jobs run as runs
   with logs and metrics, and the Progress tab shows runs, the ledger and the
   budget. When a task finishes, Oleafly checks that the project builds, new
   references resolve, cited numbers match their runs and new figures are

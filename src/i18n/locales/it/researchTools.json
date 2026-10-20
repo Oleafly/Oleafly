@@ -258,6 +258,8 @@
       "clearSelection": "Annulla la selezione",
       "selectAll": "Seleziona tutto",
       "previewBeforeApply": "Guarda l'anteprima di ogni file selezionato prima di applicarlo.",
+      "researchRecord": "Registro di ricerca",
+      "researchRecordHint": "Le note dell'attività. Non serve guardarne l'anteprima prima di applicarle.",
       "driftedOne": "{{path}} è cambiato nel tuo progetto dopo l'avvio di questa attività. Il suo diff è rispetto alla versione precedente, quindi non può essere applicato.",
       "driftedMany": "{{fileCount}} file sono cambiati nel tuo progetto dopo l'avvio di questa attività. I loro diff sono rispetto alle versioni precedenti, quindi non possono essere applicati.",
       "applyAria": "Applica {{path}}",
