@@ -198,16 +198,18 @@ To move to a newer Rust:
 
 The minimum Rust versions are separate promises. The shared crates
 (`oleafly-core`, `oleafly-secrets`, `oleafly-doctools`, `oleafly-downloads`,
-`oleafly-sandbox`, `oleafly-research`, `oleafly-forge`) build on Rust 1.87.
-`oleafly-preflight` needs 1.88 because lopdf 0.42 uses let chains (it declares
-1.85, which is too low), and `oleafly-lint` needs 1.88 for its spelling and
-grammar checks. `oleafly-online` needs 1.89 for the `aes` crate that decrypts
-copied browser cookies, and `oleaflyc` needs 1.89 because it links the
-collaboration client. CI checks each group with explicit `cargo +1.87.0`,
-`cargo +1.88.0` and `cargo +1.89.0` runs, which take priority over the pin.
+`oleafly-sandbox`, `oleafly-forge`) build on Rust 1.87. `oleafly-preflight` and
+`oleafly-research` need 1.88 because they read PDFs with lopdf 0.42, which uses
+let chains (it declares 1.85, which is too low); research gets it through
+pdf-extract. `oleafly-lint` builds on 1.88 without its `proofread` feature.
+`oleafly-online` needs 1.89 for the `aes` crate that decrypts copied browser
+cookies, and `oleaflyc` needs 1.89 because it links the collaboration client.
+CI checks each group with explicit `cargo +1.87.0`, `cargo +1.88.0` and
+`cargo +1.89.0` runs, which take priority over the pin.
 
 Spelling and grammar in `oleafly lint` use harper-core behind the CLI's
-`proofread` feature, which release builds turn on. After changing a preflight
+`proofread` feature, which release builds and the app turn on. harper-core's
+dependencies need Rust 1.90, so those builds do too. After changing a preflight
 rule, a linter or a prose mask, regenerate the CLI golden files with
 `OLEAFLY_WRITE_GOLDENS=1 pnpm vitest run src/lib/cli-goldens`.
 

@@ -5,7 +5,7 @@ description = "Research tasks for Oleafly: task store, isolation, scheduler, tas
 license = "AGPL-3.0-or-later"
 publish = false
 edition = "2021"
-rust-version = "1.87"
+rust-version = "1.88"
 
 [features]
 # Test helpers other crates use in their own tests (owner overrides, counters).
@@ -33,6 +33,8 @@ zeroize = "=1.9.0"
 unicode-normalization = "0.1"
 async-trait = "0.1"
 biblatex = "0.12.0"
+# Reads PDFs with lopdf 0.42, which uses let chains, so it needs Rust 1.88
+# although it declares 1.85.
 pdf-extract = "0.12"
 roxmltree = "0.20"
 fs4 = "1.1"

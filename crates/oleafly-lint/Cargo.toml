@@ -9,8 +9,9 @@ rust-version = "1.88"
 
 [features]
 default = ["proofread"]
-# Spelling and grammar through harper-core. harper-core needs Rust 1.88, so
-# builds that must stay on the 1.87 MSRV turn this off.
+# Spelling and grammar through harper-core. Its dependencies need Rust 1.90
+# (burn 0.19 needs 1.89, ordered-float 5.5 needs 1.90), so builds that must
+# stay on an older Rust turn this off. Without it the crate builds on 1.88.
 proofread = ["dep:harper-core"]
 
 [dependencies]
