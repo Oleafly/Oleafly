@@ -296,6 +296,15 @@ describe("selecting the word clicked in the PDF", () => {
     return view;
   }
 
+  function wholeWordOffsets(text: string, word: string): number[] {
+    return [...text.matchAll(new RegExp(String.raw`(?<![\p{L}\p{N}])${word}(?![\p{L}\p{N}])`, "gu"))].map((match) => match.index);
+  }
+
+  function contextOf(pdf: string, word: string, occurrence: number) {
+    const start = wholeWordOffsets(pdf, word)[occurrence];
+    return { before: pdf.slice(Math.max(0, start - 200), start), after: pdf.slice(start + word.length, start + word.length + 200) };
+  }
+
   function selected(editor: EditorView) {
     const { from, to } = editor.state.selection.main;
     return [editor.state.sliceDoc(from, to), from - editor.state.doc.line(2).from];
@@ -326,9 +335,112 @@ describe("selecting the word clicked in the PDF", () => {
     expect(selected(editor)).toEqual(["cafe\u0301", filler.length + 8]);
   });
 
+  it("selects the occurrence of a repeated word that was clicked, not the first one", () => {
+    const editor = mount("x\nCats and dogs and birds and fish.\n");
+    const pdf = "1 Introduction Cats and dogs and birds and fish. We find that";
+    for (const [index, start] of [5, 14, 24].entries()) {
+      expect(selectWordNearLine(2, "and", contextOf(pdf, "and", index))).toBe(true);
+      expect(selected(editor)).toEqual(["and", start]);
+    }
+  });
+
+  it("follows the clicked occurrence through LaTeX markup and PDF line breaks", () => {
+    const paragraph = String.raw`Cats and dogs and birds and fish. We find that the \emph{field} of the study of the effect of the change is difficult to define, and the first figure in the field~\cite{knuth} shows the effect of the change in the field of the study, and the conclusion of the study is that the field changes the effect.`;
+    const editor = mount(`\\section{Introduction}\n${paragraph}\n\nA second paragraph mentions the field once more and the effect too.\n`);
+    const pdf =
+      "1 Introduction Cats and dogs and birds and fish. We find that the field of the study of the effect of the change is difficult to define, and the first figure in the field [1] shows the effect of the change in the field of the study, and the conclusion of the study is that the field changes the effect. A second paragraph mentions the field once more and the effect too. References [1] D. Knuth. The TEXbook. 1";
+    const source = paragraph;
+    for (const word of ["and", "the", "of", "field", "effect", "study", "change"]) {
+      const inSource = wholeWordOffsets(source, word);
+      const inPdf = wholeWordOffsets(pdf, word).slice(0, inSource.length);
+      expect(inPdf).toHaveLength(inSource.length);
+      inSource.forEach((start, index) => {
+        expect(selectWordNearLine(2, word, contextOf(pdf, word, index)), `${word} #${index + 1}`).toBe(true);
+        expect(selected(editor), `${word} #${index + 1}`).toEqual([word, start]);
+      });
+    }
+  });
+
+  it("uses source lines on either side when each sentence has its own line", () => {
+    const editor = mount("x\nWe compare and contrast the models and the data.\nResults and discussion follow.\n");
+    const pdf = "We compare and contrast the models and the data. Results and discussion follow.";
+    expect(selectWordNearLine(2, "and", contextOf(pdf, "and", 1))).toBe(true);
+    expect(selected(editor)).toEqual(["and", 35]);
+    expect(selectWordNearLine(2, "the", contextOf(pdf, "the", 1))).toBe(true);
+    expect(selected(editor)).toEqual(["the", 39]);
+  });
+
+  it("keeps the first occurrence when the surrounding text matches none of them better", () => {
+    const editor = mount("x\nand then and then and\n");
+    expect(selectWordNearLine(2, "and", { before: "unrelated words ", after: " elsewhere" })).toBe(true);
+    expect(selected(editor)).toEqual(["and", 0]);
+    expect(selectWordNearLine(2, "and", { before: "", after: "" })).toBe(true);
+    expect(selected(editor)).toEqual(["and", 0]);
+  });
+
+  it("picks the clicked occurrence in a decomposed line", () => {
+    const editor = mount("x\ncafe\u0301 au lait, cafe\u0301 noir\n");
+    expect(selectWordNearLine(2, "caf\u00e9", { before: "caf\u00e9 au lait, ", after: " noir" })).toBe(true);
+    expect(selected(editor)).toEqual(["cafe\u0301", 15]);
+  });
+
   it("treats a neighbouring astral letter as part of the word", () => {
     const editor = mount("x\n𠮷野家 野家\n");
     expect(selectWordNearLine(2, "野家")).toBe(true);
     expect(selected(editor)).toEqual(["野家", 5]);
+  });
+
+  it("selects the whole word when the click lands on half of a hyphenated word", () => {
+    const editor = mount(String.raw`x` + "\n" + String.raw`as in Section~\ref{sec:3}, the section of the model shows the data.` + "\n");
+    const pdf = "as in Section 3, the sec- tion of the model shows the data.";
+    const first = pdf.indexOf("sec-");
+    expect(selectWordNearLine(2, "sec", { before: pdf.slice(0, first), after: pdf.slice(first + 3) })).toBe(true);
+    expect(selected(editor)).toEqual(["section", 31]);
+    const second = pdf.indexOf("tion of");
+    expect(selectWordNearLine(2, "tion", { before: pdf.slice(0, second), after: pdf.slice(second + 4) })).toBe(true);
+    expect(selected(editor)).toEqual(["section", 31]);
+  });
+
+  it("reads accents typed as TeX macros", () => {
+    const editor = mount("x\n" + String.raw`The caf\'e and the na\"ive r\'{e}sum\'{e} of the model.` + "\n");
+    const pdf = "The café and the naïve résumé of the model.";
+    expect(selectWordNearLine(2, "café", contextOf(pdf, "café", 0))).toBe(true);
+    expect(selected(editor)).toEqual([String.raw`caf\'e`, 4]);
+    expect(selectWordNearLine(2, "naïve", contextOf(pdf, "naïve", 0))).toBe(true);
+    expect(selected(editor)).toEqual([String.raw`na\"ive`, 19]);
+    expect(selectWordNearLine(2, "résumé", contextOf(pdf, "résumé", 0))).toBe(true);
+    expect(selected(editor)).toEqual([String.raw`r\'{e}sum\'{e}`, 27]);
+  });
+
+  it("does not take a command name for the clicked word", () => {
+    const editor = mount("x\n" + String.raw`\section{The section of the data}` + "\n");
+    expect(selectWordNearLine(2, "section", { before: "1 The ", after: " of the data" })).toBe(true);
+    expect(selected(editor)).toEqual(["section", 13]);
+  });
+
+  it("stays near SyncTeX's line when the clicked word only appears far away", () => {
+    const lines = ["x", String.raw`\caption{The effect of the change.}`, ...Array.from({ length: 30 }, () => "filler text"), String.raw`As Figure~\ref{fig:a} shows, the model fits.`];
+    const editor = mount(`${lines.join("\n")}\n`);
+    editor.dispatch({ selection: { anchor: 0 } });
+    // "Figure 1:" is typeset by \caption; the only "Figure" in the source is 31 lines away.
+    expect(selectWordNearLine(2, "Figure", { before: "", after: " 1: The effect of the change." })).toBe(false);
+    expect(editor.state.selection.main.from).toBe(0);
+  });
+
+  it("finds \\title text far above \\maketitle when the words around it agree", () => {
+    const lines = ["x", String.raw`\title{A Robust Network for Signal Prediction in Noisy Fields}`, ...Array.from({ length: 20 }, (_, i) => String.raw`\newcommand{\macro` + String.fromCharCode(97 + i) + "}{x}"), String.raw`\begin{document}`, String.raw`\maketitle`];
+    const editor = mount(`${lines.join("\n")}\n`);
+    const pdf = "A Robust Network for Signal Prediction in Noisy Fields Ada Lovelace";
+    expect(selectWordNearLine(24, "Network", contextOf(pdf, "Network", 0))).toBe(true);
+    expect(selected(editor)).toEqual(["Network", 16]);
+  });
+
+  it("keeps a heading's word over the end of the paragraph above that says the same", () => {
+    const editor = mount("x\nThe noise is the value of the study.\n\n" + String.raw`\section{The field of the study}` + "\nThe next paragraph starts here.\n");
+    const pdf = "The noise is the value of the study. 3 The field of the study The next paragraph starts here.";
+    const at = pdf.lastIndexOf("study");
+    expect(selectWordNearLine(4, "study", { before: pdf.slice(0, at), after: pdf.slice(at + 5) })).toBe(true);
+    const { from } = editor.state.selection.main;
+    expect(editor.state.doc.lineAt(from).number).toBe(4);
   });
 });

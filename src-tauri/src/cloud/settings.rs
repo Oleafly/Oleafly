@@ -11,7 +11,12 @@ pub(crate) const SETTINGS_REMOTE: &str = "/settings/settings.json";
 const SETTINGS_VERSION: u32 = 1;
 const MAX_SETTINGS_BYTES: usize = 8 * 1024 * 1024;
 const MAX_FUTURE_SKEW_MS: u64 = 24 * 60 * 60 * 1000;
-const DEVICE_ONLY: [(&str, &str); 1] = [("experimentation", "webBrowser")];
+// The default LaTeX engine is one this computer has: latexmk needs a TeX
+// installation that another computer may not have.
+const DEVICE_ONLY: [(&str, &str); 2] = [
+    ("experimentation", "webBrowser"),
+    ("engine", "defaultLatexEngine"),
+];
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct SettingsBlob {
@@ -40,6 +45,19 @@ pub(crate) enum SettingsOutcome {
         stamp: u64,
         deferred: bool,
     },
+}
+
+/// Words added on two computers can differ only in case, which the dictionary
+/// can't hold twice; the first spelling stays.
+fn without_repeated_words(mut values: Value) -> Value {
+    if let Some(Value::Array(words)) = values.pointer_mut("/dictionary/words") {
+        let mut seen = std::collections::BTreeSet::new();
+        words.retain(|word| {
+            word.as_str()
+                .is_none_or(|word| seen.insert(word.to_lowercase()))
+        });
+    }
+    values
 }
 
 pub(crate) fn strip_device_only(mut values: Value) -> Value {
@@ -264,7 +282,7 @@ async fn sync_once<S: CloudStore>(
             Ok(SettingsOutcome::Pushed)
         }
         (true, true) => {
-            let merged = merge3(Some(&base), local, remote_values);
+            let merged = without_repeated_words(merge3(Some(&base), local, remote_values));
             if merged == *remote_values {
                 state.offered = Some(remote_stamp);
                 return Ok(SettingsOutcome::Apply {
@@ -359,5 +377,32 @@ pub(crate) async fn keep_local<S: CloudStore>(
             Err(RoundError::Store(StoreError::Conflict)) if attempt < 3 => continue,
             Err(error) => return Err(error),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{strip_device_only, without_repeated_words};
+    use serde_json::json;
+
+    #[test]
+    fn words_added_on_two_computers_in_different_case_are_kept_once() {
+        let merged = without_repeated_words(
+            json!({"dictionary": {"words": ["Oleafly", "typst", "oleafly"]}}),
+        );
+        assert_eq!(
+            merged,
+            json!({"dictionary": {"words": ["Oleafly", "typst"]}})
+        );
+    }
+
+    #[test]
+    fn the_default_latex_engine_stays_on_each_computer() {
+        let values =
+            json!({"engine": {"defaultLatexEngine": "latexmk"}, "general": {"language": "de"}});
+        assert_eq!(
+            strip_device_only(values),
+            json!({"general": {"language": "de"}})
+        );
     }
 }

@@ -117,6 +117,10 @@
     "heldMessage_other": "{{count}} av {{total}} filer ble slettet her, så synkroniseringen er satt på pause for å beskytte kopien i Dropboxen din.",
     "putBack": "Legg dem tilbake",
     "deleteToo": "Slett fra Dropbox også",
+    "heldRemoteMessage_one": "{{count}} av {{total}} filer mangler i Dropboxen din, så synkroniseringen er satt på pause for å holde den trygg på denne datamaskinen.",
+    "heldRemoteMessage_other": "{{count}} av {{total}} filer mangler i Dropboxen din, så synkroniseringen er satt på pause for å holde dem trygge på denne datamaskinen.",
+    "putBackInDropbox": "Legg dem tilbake i Dropbox",
+    "deleteHere": "Slett her også",
     "skipReason": {
       "unsupportedName": "Navn som ikke fungerer på alle datamaskiner",
       "duplicateName": "Samme navn som en annen fil bortsett fra store og små bokstaver",
@@ -132,9 +136,9 @@
   },
   "confirm": {
     "removeTitle": "Vil du fjerne {{name}} fra Dropbox?",
-    "removeDescription": "Dette sletter kopien i Dropboxen din for å frigjøre plass. Prosjektet blir værende på denne datamaskinen og slutter å synkronisere her. De andre datamaskinene dine beholder kopiene sine.",
+    "removeDescription": "Dette sletter kopien i Dropboxen din for å frigjøre plass. Prosjektet blir værende på denne datamaskinen og slutter å synkronisere her. De andre datamaskinene dine beholder kopiene sine og slutter også å synkronisere det.",
     "removeAction": "Fjern fra Dropbox",
-    "removeRemoteDescription": "Dette sletter prosjektet fra Dropboxen din for å frigjøre plass. Det er ikke på denne datamaskinen, så du kan ikke laste det ned her etterpå. Datamaskiner som allerede har det, beholder kopiene sine.",
+    "removeRemoteDescription": "Dette sletter prosjektet fra Dropboxen din for å frigjøre plass. Det er ikke på denne datamaskinen, så du kan ikke laste det ned her etterpå. Datamaskiner som allerede har det, beholder kopiene sine og slutter å synkronisere det.",
     "replaceTitle": "Vil du erstatte kopien av {{name}} i Dropbox?",
     "replaceDescription": "Oleafly kan ikke lese kopien i Dropboxen din. Den blir erstattet med kopien på denne datamaskinen, og alt som bare finnes i Dropbox, går tapt.",
     "replaceAction": "Erstatt",
@@ -142,6 +146,10 @@
     "deleteDescription_one": "Filen du slettet fra {{name}} på denne datamaskinen, blir også slettet fra Dropboxen din. Andre datamaskiner som synkroniserer dette prosjektet, mister den også.",
     "deleteDescription_other": "De {{count}} filene du slettet fra {{name}} på denne datamaskinen, blir også slettet fra Dropboxen din. Andre datamaskiner som synkroniserer dette prosjektet, mister dem også.",
     "deleteAction": "Slett fra Dropbox",
+    "deleteHereTitle": "Vil du slette disse filene på denne datamaskinen også?",
+    "deleteHereDescription_one": "Filen som mangler i Dropboxen din, flyttes til papirkurven på denne datamaskinen, så {{name}} samsvarer med de andre datamaskinene dine.",
+    "deleteHereDescription_other": "De {{count}} filene som mangler i Dropboxen din, flyttes til papirkurven på denne datamaskinen, så {{name}} samsvarer med de andre datamaskinene dine.",
+    "deleteHereAction": "Slett her",
     "disconnectTitle": "Vil du koble fra Dropbox?",
     "disconnectDescription": "Synkroniseringen stopper på denne datamaskinen. Prosjektene dine blir værende på denne datamaskinen og i Dropboxen din.",
     "disconnectAction": "Koble fra"
@@ -167,7 +175,10 @@
     "removedRemote": "{{name}} ble fjernet fra Dropboxen din.",
     "replaced": "{{name}} i Dropboxen din samsvarer nå med denne datamaskinen.",
     "filesRestored": "De slettede filene er tilbake i {{name}}.",
-    "filesDeleted": "De slettede filene ble også fjernet fra Dropboxen din."
+    "filesDeleted": "De slettede filene ble også fjernet fra Dropboxen din.",
+    "filesUploadedAgain": "Filene fra {{name}} er tilbake i Dropboxen din.",
+    "filesDeletedHere": "Filene ble flyttet til papirkurven på denne datamaskinen.",
+    "accessNotRevoked": "Koblet fra. Oleafly kunne ikke nå Dropbox for å avslutte tilgangen sin. Hvis du vil avslutte den selv, fjerner du Oleafly under Tilkoblede apper i Dropbox-innstillingene dine."
   },
   "errors": {
     "code_invalid": "Koden virket ikke. Prøv igjen.",
@@ -191,6 +202,7 @@
     "sign_in_cancelled": "Innlogging til Dropbox ble avbrutt.",
     "sign_in_timeout": "Innloggingen tok for lang tid. Prøv igjen.",
     "too_many_files": "Dette prosjektet har mer enn 100 000 filer. Det er for mange til å synkronisere.",
+    "traffic_limit": "Dropboxen din har nådd opplastingsgrensen for denne måneden. Nye endringer blir værende på denne datamaskinen til Dropbox tillater opplastinger igjen.",
     "verify_failed": "En fil fra Dropbox samsvarte ikke med det Oleafly forventet, så den ble ikke rørt. Synkroniseringen prøver igjen."
   }
 }

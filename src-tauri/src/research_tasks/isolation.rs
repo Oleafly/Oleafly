@@ -395,6 +395,7 @@ fn run_git(
     for variable in crate::git::GIT_REPOSITORY_ENV {
         command.env_remove(variable);
     }
+    crate::proc::clear_appimage_env(command.as_std_mut());
     command
         .arg("-c")
         .arg(format!("core.hooksPath={}", crate::git::null_device()))

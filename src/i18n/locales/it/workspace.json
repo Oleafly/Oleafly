@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly non è riuscito a spostare {{path}} nel Cestino. Vuoi eliminarlo definitivamente? L'operazione non può essere annullata.",
     "confirmPermanentDeleteWindows": "Oleafly non è riuscito a spostare {{path}} nel Cestino. Vuoi eliminarlo definitivamente? L'operazione non può essere annullata.",
     "linkedReadOnly": "Rimanda a un file fuori da questa cartella, quindi è in sola lettura.",
-    "partialFolder": "Alcuni elementi di questa cartella non sono elencati."
+    "partialFolder": "Alcuni elementi di questa cartella non sono elencati.",
+    "insertLink": "Inserisci collegamento",
+    "copyLink": "Copia collegamento",
+    "linkCopied": "Collegamento copiato",
+    "copyLinkFailed": "Il collegamento non è stato copiato. Controlla l'accesso agli appunti e riprova."
   },
   "explorer": {
     "resizeSections": "Ridimensiona {{first}} e {{second}}"

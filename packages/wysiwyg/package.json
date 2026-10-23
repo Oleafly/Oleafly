@@ -6,13 +6,17 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./link-destination": "./src/link-destination.ts"
+  },
   "sideEffects": false,
   "dependencies": {
     "@oleafly/i18n-contract": "workspace:*",
     "@oleafly/latex": "workspace:*",
     "@tiptap/core": "*",
     "@tiptap/extension-image": "*",
+    "@tiptap/extension-link": "*",
     "@tiptap/extension-table": "*",
     "@tiptap/starter-kit": "*",
     "@unified-latex/unified-latex-types": "*",

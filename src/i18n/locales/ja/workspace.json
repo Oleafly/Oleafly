@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly は {{path}} をごみ箱に移動できませんでした。代わりに完全に削除しますか？この操作は取り消せません。",
     "confirmPermanentDeleteWindows": "Oleafly は {{path}} をごみ箱に移動できませんでした。代わりに完全に削除しますか？この操作は取り消せません。",
     "linkedReadOnly": "このフォルダ外のファイルへのリンクのため、読み取り専用です。",
-    "partialFolder": "このフォルダの項目の一部は一覧に含まれていません。"
+    "partialFolder": "このフォルダの項目の一部は一覧に含まれていません。",
+    "insertLink": "リンクを挿入",
+    "copyLink": "リンクをコピー",
+    "linkCopied": "リンクをコピーしました",
+    "copyLinkFailed": "リンクはコピーされませんでした。クリップボードへのアクセスを確認してもう一度お試しください。"
   },
   "explorer": {
     "resizeSections": "{{first}} と {{second}} のサイズを変更"

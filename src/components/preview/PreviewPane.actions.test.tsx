@@ -37,7 +37,7 @@ const mocks = vi.hoisted(() => ({
     password?: string;
     onLoadStateChange?: (state: Record<string, unknown>) => void;
     onSearchStateChange?: (state: Record<string, unknown>) => void;
-    onInverse?: (page: number, x: number, y: number, word: string) => void;
+    onInverse?: (page: number, x: number, y: number, word: string, context?: { before: string; after: string }) => void;
   },
   firstLoad: "ready" as string,
   pages: 3,
@@ -390,9 +390,17 @@ describe("PreviewPane viewer states", () => {
     mocks.syncTex.available = true;
     await renderPane();
 
-    act(() => mocks.viewer?.onInverse?.(2, 10, 20, "theorem"));
+    const context = { before: "By the ", after: " above" };
+    act(() => mocks.viewer?.onInverse?.(2, 10, 20, "theorem", context));
 
-    expect(mocks.inverseFromClick).toHaveBeenCalledWith(2, 10, 20, "theorem", expect.objectContaining({ projectId: PROJECT }));
+    expect(mocks.inverseFromClick).toHaveBeenCalledWith(
+      2,
+      10,
+      20,
+      "theorem",
+      expect.objectContaining({ projectId: PROJECT }),
+      context,
+    );
   });
 
   it("announces the current search result to screen readers", async () => {

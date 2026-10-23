@@ -975,6 +975,18 @@ export interface SynctexRect {
     width: number;
     height: number;
 }
+/**
+ * A typeset line holding text from the source line a forward search asked for.
+ * `from`..`to` is the stretch of it where that source line's words sit.
+ */
+export interface SynctexLine extends SynctexRect {
+    from: number;
+    to: number;
+}
+/** A forward search answer: the box to fall back on, and every typeset line of the source line. */
+export interface SynctexForwardHit extends SynctexRect {
+    lines?: SynctexLine[];
+}
 export interface SynctexHit {
     file: string;
     line: number;
@@ -1695,7 +1707,7 @@ export interface BackendPort {
   appVersion: () => Promise<string>;
   base64ToUint8Array(b64: string): Uint8Array;
   uint8ToBase64(bytes: Uint8Array): string;
-  synctexForward: (projectId: string, mainDoc: string, file: string, line: number) => Promise<SynctexRect | null>;
+  synctexForward: (projectId: string, mainDoc: string, file: string, line: number) => Promise<SynctexForwardHit | null>;
   synctexInverse: (projectId: string, mainDoc: string, page: number, x: number, y: number) => Promise<SynctexHit | null>;
   synctexMapLine: (compiledSource: string, currentSource: string, line: number, currentToCompiled: boolean) => Promise<number | null>;
   collabTrashList: (projectId: string) => Promise<CollabTrashEntry[]>;

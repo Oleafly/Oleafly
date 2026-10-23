@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basename, dirname, isSeparator } from "./path-utils";
+import { basename, dirname, isSeparator, relativeFilePath } from "./path-utils";
 
 describe("isSeparator", () => {
   it("accepts either slash and nothing else", () => {
@@ -39,5 +39,20 @@ describe("dirname", () => {
   it("splits Windows paths and mixed separators", () => {
     expect(dirname(String.raw`C:\paper\main.tex`)).toBe(String.raw`C:\paper`);
     expect(dirname(String.raw`a\b/c.tex`)).toBe(String.raw`a\b`);
+  });
+});
+
+describe("relativeFilePath", () => {
+  it("writes a project path relative to the folder of a file", () => {
+    expect(relativeFilePath("notes/a.md", "notes/b.md")).toBe("b.md");
+    expect(relativeFilePath("notes/a.md", "img/x.png")).toBe("../img/x.png");
+    expect(relativeFilePath("main.tex", "chapters/intro.tex")).toBe("chapters/intro.tex");
+    expect(relativeFilePath("a/b/c.typ", "a/d/e.typ")).toBe("../d/e.typ");
+    expect(relativeFilePath("", "notes/b.md")).toBe("notes/b.md");
+  });
+
+  it("keeps the file name when a folder shares the target's name", () => {
+    expect(relativeFilePath("notes/notes.md", "notes")).toBe("../notes");
+    expect(relativeFilePath("notes/a.md", "notes/a.md")).toBe("a.md");
   });
 });

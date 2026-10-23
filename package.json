@@ -109,6 +109,7 @@
     "@tauri-apps/plugin-updater": "~2.11.0",
     "@tiptap/core": "^3.30.4",
     "@tiptap/extension-image": "^3.31.2",
+    "@tiptap/extension-link": "^3.29.2",
     "@tiptap/extension-table": "^3.31.2",
     "@tiptap/pm": "^3.29.0",
     "@tiptap/react": "^3.29.0",

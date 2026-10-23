@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben. Stattdessen endgültig löschen? Das lässt sich nicht rückgängig machen.",
     "confirmPermanentDeleteWindows": "Oleafly konnte {{path}} nicht in den Papierkorb verschieben. Stattdessen endgültig löschen? Das lässt sich nicht rückgängig machen.",
     "linkedReadOnly": "Verweist auf eine Datei außerhalb dieses Ordners und ist daher schreibgeschützt.",
-    "partialFolder": "Einige Einträge in diesem Ordner werden nicht aufgelistet."
+    "partialFolder": "Einige Einträge in diesem Ordner werden nicht aufgelistet.",
+    "insertLink": "Link einfügen",
+    "copyLink": "Link kopieren",
+    "linkCopied": "Link kopiert",
+    "copyLinkFailed": "Der Link wurde nicht kopiert. Prüfen Sie den Zugriff auf die Zwischenablage und versuchen Sie es erneut."
   },
   "explorer": {
     "resizeSections": "{{first}} und {{second}} in der Größe ändern"

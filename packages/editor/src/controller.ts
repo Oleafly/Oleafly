@@ -3,6 +3,26 @@ import { EditorSelection, type Extension, type SelectionRange } from "@codemirro
 import { isolateHistory, undo, redo } from "@codemirror/commands";
 import { openSearchPanel } from "@codemirror/search";
 import { CodeMirror, getCM } from "@replit/codemirror-vim";
+import type { SourceWord } from "./forward-sync";
+import { renderedTex, sourceOffset } from "./tex-text";
+import {
+  contextMatches,
+  contextScores,
+  convincingFarMatch,
+  type WordContext,
+  type WordRange,
+} from "./word-context";
+
+export type { WordContext } from "./word-context";
+export {
+  findWordOnPages,
+  linesFromAnchor,
+  pickForwardLine,
+  type PageRect,
+  type PdfTextRun,
+  type SourceWord,
+  type SyncTexLine,
+} from "./forward-sync";
 
 let view: EditorView | null = null;
 let documentPath: string | null = null;
@@ -223,82 +243,202 @@ function characterAt(text: string, index: number): string | undefined {
   return codePoint === undefined ? undefined : String.fromCodePoint(codePoint);
 }
 
-const COMPOSES_WITH_PREVIOUS = /[\p{M}\u1160-\u11FF\uD7B0-\uD7FF]/u;
+/**
+ * Lines on each side of the reported line searched for the clicked word.
+ * SyncTeX names the right line for almost every word, but table cells come out
+ * a row or two off and `\maketitle` text a few lines below `\title`.
+ */
+const NEAR_LINES = 3;
+/**
+ * Score taken off a candidate per line it is away from the reported line. A
+ * context word right next to the click scores 1, so a neighbouring line has to
+ * match clearly better; with less, a heading that repeats the end of the
+ * paragraph above it lost to that paragraph.
+ */
+const LINE_PENALTY = 1.5;
+/**
+ * A near match whose context scores this much is taken without looking
+ * further. Below it, a match elsewhere in the file can win, but only on the
+ * evidence `convincingFarMatch` asks for: without that a generated word
+ * ("Figure", a section number, a citation label) jumped to whatever spelled
+ * the same anywhere in the file, since "of the" lines up almost everywhere.
+ * This is what finds `\title` text, which SyncTeX puts on the `\maketitle` line.
+ */
+const NEAR_EVIDENCE = 3;
 
-function normalizedSegments(text: string): { text: string; offsets: [number, number][] } {
-  const offsets: [number, number][] = [[0, 0]];
-  let normalized = "";
-  let start = 0;
-  let offset = 0;
-  for (const character of text) {
-    if (offset > start && !COMPOSES_WITH_PREVIOUS.test(character)) {
-      normalized += text.slice(start, offset).normalize("NFC");
-      offsets.push([offset, normalized.length]);
-      start = offset;
+/**
+ * The whole word when the clicked one is half of a word LaTeX hyphenated at a
+ * line end ("sec-" then "tion"), with the other half taken out of the context.
+ */
+function rejoinHyphenated(word: string, context: WordContext | undefined) {
+  if (!context) return null;
+  const next = /^-\s+([\p{L}\p{M}]+)/u.exec(context.after);
+  if (next) return { word: word + next[1], context: { ...context, after: context.after.slice(next[0].length) } };
+  const previous = /([\p{L}\p{M}]+)-\s+$/u.exec(context.before);
+  if (previous) {
+    return { word: previous[1] + word, context: { ...context, before: context.before.slice(0, previous.index) } };
+  }
+  return null;
+}
+
+interface WordCandidate extends WordRange {
+  /** Lines from the reported line. */
+  distance: number;
+  /** Whole word, not part of a longer word or a command name. */
+  standalone: boolean;
+}
+
+function best<T>(items: readonly T[], score: (item: T, index: number) => number): T | undefined {
+  let chosen: T | undefined;
+  let chosenScore = Number.NEGATIVE_INFINITY;
+  items.forEach((item, index) => {
+    const value = score(item, index);
+    if (value > chosenScore + 1e-9) {
+      chosen = item;
+      chosenScore = value;
     }
-    offset += character.length;
-  }
-  normalized += text.slice(start).normalize("NFC");
-  offsets.push([offset, normalized.length]);
-  return { text: normalized, offsets };
+  });
+  return chosen;
 }
 
-function originalOffset(offsets: readonly [number, number][], index: number, roundUp: boolean): number {
-  if (roundUp) {
-    return (offsets.find(([, normalized]) => normalized >= index) ?? (offsets.at(-1) as [number, number]))[0];
-  }
-  let original = 0;
-  for (const [start, normalized] of offsets) {
-    if (normalized > index) break;
-    original = start;
-  }
-  return original;
-}
-
-export function selectWordNearLine(line: number, word: string): boolean {
+export function selectWordNearLine(line: number, word: string, context?: WordContext): boolean {
   const v = getEditorView();
   if (!v) return false;
-  const needle = word.trim().normalize("NFC");
-  if (!needle) return false;
+  const clicked = word.trim().normalize("NFC");
+  if (!clicked) return false;
   const doc = v.state.doc;
   const total = doc.lines;
   const target = Math.min(Math.max(1, line), total);
   const isWordChar = (c: string | undefined) => !!c && WORD_CHARACTER.test(c);
 
-  const findInLine = (ln: number): { from: number; to: number } | null => {
-    if (ln < 1 || ln > total) return null;
+  const findInLine = (needle: string, ln: number): WordCandidate[] => {
     const l = doc.line(ln);
-    const segments = l.text.normalize("NFC") === l.text ? null : normalizedSegments(l.text);
-    const text = segments?.text ?? l.text;
-    let whole = -1;
-    let anySub = -1;
+    const rendered = renderedTex(l.text);
+    const text = rendered.text;
+    const offset = (index: number, roundUp: boolean) => l.from + sourceOffset(rendered, index, roundUp);
+    const found: WordCandidate[] = [];
     for (let i = text.indexOf(needle); i >= 0; i = text.indexOf(needle, i + 1)) {
-      if (anySub < 0) anySub = i;
-      if (!isWordChar(characterBefore(text, i)) && !isWordChar(characterAt(text, i + needle.length))) {
-        whole = i; // prefer a standalone occurrence
-        break;
-      }
+      const before = characterBefore(text, i);
+      const standalone = !isWordChar(before) && before !== "\\" && !isWordChar(characterAt(text, i + needle.length));
+      // Part of a longer word: select that whole word, as the click meant it.
+      let start = i;
+      let end = i + needle.length;
+      while (isWordChar(characterBefore(text, start))) start -= (characterBefore(text, start) as string).length;
+      while (isWordChar(characterAt(text, end))) end += (characterAt(text, end) as string).length;
+      found.push({ from: offset(start, false), to: offset(end, true), distance: Math.abs(ln - target), standalone });
     }
-    const idx = whole >= 0 ? whole : anySub;
-    if (idx < 0) return null;
-    if (!segments) return { from: l.from + idx, to: l.from + idx + needle.length };
-    return {
-      from: l.from + originalOffset(segments.offsets, idx, false),
-      to: l.from + originalOffset(segments.offsets, idx + needle.length, true),
-    };
+    return found;
   };
 
-  const furthestLine = Math.max(target - 1, total - target);
-  for (let d = 0; d <= furthestLine; d++) {
-    for (const ln of d === 0 ? [target] : [target - d, target + d]) {
-      const m = findInLine(ln);
-      if (m) {
-        revealEditorRange(v, m.from, m.to);
-        return true;
+  const find = (needle: string, around: WordContext | undefined): WordCandidate | undefined => {
+    // Nearest lines first, the line above before the one below, so that
+    // without any context the old search order still decides.
+    const near: WordCandidate[] = [];
+    for (let d = 0; d <= NEAR_LINES; d++) {
+      for (const ln of d === 0 ? [target] : [target - d, target + d]) {
+        if (ln >= 1 && ln <= total) near.push(...findInLine(needle, ln));
       }
     }
+    const whole = near.filter((candidate) => candidate.standalone);
+    const pool = whole.length ? whole : near;
+    const scores = contextScores(doc, pool, around);
+    const nearest = best(
+      pool.map((candidate, index) => ({ candidate, score: scores[index] })),
+      (entry) => entry.score - LINE_PENALTY * entry.candidate.distance,
+    );
+    if (nearest && (!around || nearest.score >= NEAR_EVIDENCE)) return nearest.candidate;
+    if (!around) return undefined;
+
+    const far: WordCandidate[] = [];
+    for (let ln = 1; ln <= total; ln++) {
+      if (Math.abs(ln - target) > NEAR_LINES) {
+        far.push(...findInLine(needle, ln).filter((candidate) => candidate.standalone));
+      }
+    }
+    const ranked = contextMatches(doc, far, around)
+      .map((match, index) => ({ candidate: far[index], ...match }))
+      .sort((a, b) => b.score - a.score);
+    const [first, second] = ranked;
+    return convincingFarMatch(first, second) ? first.candidate : nearest?.candidate;
+  };
+
+  const joined = rejoinHyphenated(clicked, context);
+  const chosen = (joined && find(joined.word, joined.context)) || find(clicked, context);
+  if (!chosen) return false;
+  revealEditorRange(v, chosen.from, chosen.to);
+  return true;
+}
+
+/**
+ * Selects the word at a 0-based column of a 1-based line when it is the word
+ * that was clicked, and reports whether it did. Typst's preview server names
+ * the clicked character exactly, but a click on link text can come back
+ * elsewhere in the line.
+ */
+export function selectWordAt(line: number, column: number, word: string): boolean {
+  const v = getEditorView();
+  if (!v || line < 1 || line > v.state.doc.lines) return false;
+  const l = v.state.doc.line(line);
+  const text = l.text;
+  const isWordChar = (c: string | undefined) => !!c && WORD_CHARACTER.test(c);
+  let at = Math.min(Math.max(0, column), text.length);
+  if (!isWordChar(characterAt(text, at)) && isWordChar(characterBefore(text, at))) {
+    at -= (characterBefore(text, at) as string).length;
   }
-  return false;
+  if (!isWordChar(characterAt(text, at))) return false;
+  let start = at;
+  let end = at;
+  while (isWordChar(characterBefore(text, start))) start -= (characterBefore(text, start) as string).length;
+  while (isWordChar(characterAt(text, end))) end += (characterAt(text, end) as string).length;
+  const found = text.slice(start, end).normalize("NFC").toLowerCase();
+  if (found !== word.trim().normalize("NFC").toLowerCase()) return false;
+  revealEditorRange(v, l.from + start, l.from + end);
+  return true;
+}
+
+/** Source text taken on each side of the cursor's word for `wordAtCursor`. */
+const SOURCE_AROUND = 300;
+
+/**
+ * The word the cursor is in, or the one it just left, with the source text on
+ * each side, so the PDF side can find the same spot. Null off a word and on a
+ * command name, which never reaches the PDF.
+ */
+export function wordAtCursor(): SourceWord | null {
+  const v = getEditorView();
+  if (!v) return null;
+  const doc = v.state.doc;
+  const head = v.state.selection.main.head;
+  const line = doc.lineAt(head);
+  // Read the line as the PDF shows it, so a cursor in `caf\'e` looks for "café".
+  const rendered = renderedTex(line.text);
+  const text = rendered.text;
+  const isWordChar = (c: string | undefined) => !!c && WORD_CHARACTER.test(c);
+  let at = head - line.from;
+  if (rendered.offsets) {
+    let mapped = 0;
+    for (const [source, shown] of rendered.offsets) {
+      if (source > at) break;
+      mapped = shown;
+    }
+    at = mapped;
+  }
+  if (!isWordChar(characterAt(text, at)) && isWordChar(characterBefore(text, at))) {
+    at -= (characterBefore(text, at) as string).length;
+  }
+  if (!isWordChar(characterAt(text, at))) return null;
+  let start = at;
+  let end = at;
+  while (isWordChar(characterBefore(text, start))) start -= (characterBefore(text, start) as string).length;
+  while (isWordChar(characterAt(text, end))) end += (characterAt(text, end) as string).length;
+  if (characterBefore(text, start) === "\\") return null;
+  const from = line.from + sourceOffset(rendered, start, false);
+  const to = line.from + sourceOffset(rendered, end, true);
+  return {
+    word: text.slice(start, end),
+    before: doc.sliceString(Math.max(0, from - SOURCE_AROUND), from),
+    after: doc.sliceString(to, Math.min(doc.length, to + SOURCE_AROUND)),
+  };
 }
 
 export function gotoRange(from: number, to: number) {

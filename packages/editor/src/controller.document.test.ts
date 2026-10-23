@@ -25,11 +25,13 @@ import {
   insertText,
   registerBackgroundDocumentEditor,
   replaceRange,
+  selectWordAt,
   selectWordNearLine,
   setEditorDocumentPath,
   setEditorView,
   subscribeEditorDocument,
   waitForEditorDocument,
+  wordAtCursor,
   wrapSelection,
   wrapSelectionOrPlaceholder,
 } from "./controller";
@@ -133,6 +135,7 @@ describe("editor commands without a view", () => {
     setEditorView(null);
     expect(getCurrentLine()).toBeNull();
     expect(selectWordNearLine(1, "word")).toBe(false);
+    expect(selectWordAt(1, 0, "word")).toBe(false);
     expect(editorVimUndo()).toBe(false);
     expect(editorVimRedo()).toBe(false);
     for (const command of [
@@ -233,12 +236,56 @@ describe("editor commands on the shared view", () => {
     expect(selectWordNearLine(1, "gamma")).toBe(false);
   });
 
-  it("searches neighbouring lines and falls back to a match inside a longer word", () => {
+  it("searches neighbouring lines and falls back to the longer word a match sits inside", () => {
     const editor = mount("one\ntwo\nthree\nnetwork\n");
     expect(selectWordNearLine(1, "work")).toBe(true);
     const { from, to } = editor.state.selection.main;
-    expect([editor.state.doc.lineAt(from).number, editor.state.sliceDoc(from, to)]).toEqual([4, "work"]);
+    // A PDF word inside a longer source word is half of a hyphenated word, so
+    // the whole word is what the click meant.
+    expect([editor.state.doc.lineAt(from).number, editor.state.sliceDoc(from, to)]).toEqual([4, "network"]);
     expect(selectWordNearLine(99, "three")).toBe(true);
     expect(editor.state.doc.lineAt(editor.state.selection.main.from).number).toBe(3);
+  });
+
+  it("selects the word at an exact column, or the one the column has just left", () => {
+    const editor = mount("= Intro\nthe model of the data\n");
+    const selected = () => editor.state.sliceDoc(editor.state.selection.main.from, editor.state.selection.main.to);
+    expect(selectWordAt(2, 6, "model")).toBe(true);
+    expect([editor.state.selection.main.from, selected()]).toEqual([12, "model"]);
+    expect(selectWordAt(2, 21, "Data")).toBe(true);
+    expect(selected()).toBe("data");
+  });
+
+  it("refuses a column whose word is not the clicked one", () => {
+    const editor = mount("the  model of\n", 0);
+    expect(selectWordAt(1, 4, "model")).toBe(false);
+    expect(selectWordAt(1, 6, "of")).toBe(false);
+    expect(selectWordAt(9, 0, "the")).toBe(false);
+    expect(editor.state.selection.main.head).toBe(0);
+  });
+});
+
+describe("reading the word at the cursor for a jump to the PDF", () => {
+  it("gives the word the cursor is in with the source on each side", () => {
+    mount("x\nthe model of the data\n", 7);
+    expect(wordAtCursor()).toEqual({ word: "model", before: "x\nthe ", after: " of the data\n" });
+  });
+
+  it("takes the word the cursor has just left", () => {
+    mount("the model of", 9);
+    expect(wordAtCursor()?.word).toBe("model");
+  });
+
+  it("has nothing for a command name or a spot away from any word", () => {
+    mount(String.raw`\section{Introduction}`, 3);
+    expect(wordAtCursor()).toBeNull();
+    mount("a  -  b", 3);
+    expect(wordAtCursor()).toBeNull();
+  });
+
+  it("spells an accent macro the way the PDF shows it", () => {
+    const source = String.raw`The caf\'e noir`;
+    mount(source, source.indexOf("caf") + 2);
+    expect(wordAtCursor()).toEqual({ word: "café", before: "The ", after: " noir" });
   });
 });

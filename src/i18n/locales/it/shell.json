@@ -362,6 +362,10 @@
     "zoteroSync": {
       "label": "Sincronizza la libreria Zotero",
       "keywords": "zotero sincronizza ricarica libreria sync refresh library"
+    },
+    "insertFileLink": {
+      "label": "Inserisci un collegamento a un file",
+      "keywords": "collegamento file percorso nota riferimento"
     }
   },
   "community": {

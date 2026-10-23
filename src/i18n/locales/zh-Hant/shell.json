@@ -358,6 +358,10 @@
     "zoteroSync": {
       "label": "同步 Zotero 文獻庫",
       "keywords": "同步 重新整理 文獻庫 zotero sync refresh library"
+    },
+    "insertFileLink": {
+      "label": "插入檔案連結",
+      "keywords": "連結 檔案 路徑 筆記 參照"
     }
   },
   "community": {

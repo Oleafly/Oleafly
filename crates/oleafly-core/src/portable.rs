@@ -7,8 +7,22 @@ pub enum PortableProblem {
     ProtectedRoot,
 }
 
+/// The key two names share when a case-insensitive file system treats them as
+/// one file. Those compare one character at a time (NTFS through its upcase
+/// table, APFS through simple case folding), so `µ` and `μ`, `ς` and `σ`, or
+/// `ſ` and `s` name the same file: a character folds through its uppercase
+/// form when that is a single character.
 pub fn fold(path: &str) -> String {
-    path.nfc().flat_map(char::to_lowercase).collect()
+    let mut folded = String::with_capacity(path.len());
+    for character in path.nfc() {
+        let mut upper = character.to_uppercase();
+        let single = match (upper.next(), upper.next()) {
+            (Some(single), None) => single,
+            _ => character,
+        };
+        folded.extend(single.to_lowercase());
+    }
+    folded
 }
 
 pub fn is_windows_reserved_component(component: &str) -> bool {
@@ -18,7 +32,23 @@ pub fn is_windows_reserved_component(component: &str) -> bool {
         || upper
             .strip_prefix("COM")
             .or_else(|| upper.strip_prefix("LPT"))
-            .is_some_and(|suffix| suffix.len() == 1 && matches!(suffix.as_bytes()[0], b'1'..=b'9'))
+            .is_some_and(|suffix| {
+                matches!(suffix, "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+                    || matches!(suffix, "\u{b9}" | "\u{b2}" | "\u{b3}")
+            })
+}
+
+/// Whether `folded` is a Windows short name (8.3 alias) of a name starting
+/// with `stem`, such as `git~1` for `.git` or `oleafl~2.tmp` for
+/// `.oleafly-staging.tmp`. Windows opens the long name through it.
+fn is_short_alias(folded: &str, stem: &str) -> bool {
+    folded
+        .strip_prefix(stem)
+        .and_then(|rest| rest.strip_prefix('~'))
+        .map(|rest| rest.split_once('.').map_or(rest, |(number, _)| number))
+        .is_some_and(|number| {
+            !number.is_empty() && number.bytes().all(|byte| byte.is_ascii_digit())
+        })
 }
 
 pub fn is_ignorable_code_point(character: char) -> bool {
@@ -71,9 +101,11 @@ pub fn synced_path_problem(path: &str) -> Option<PortableProblem> {
     let protected = path.split('/').any(|component| {
         let folded = fold(component);
         folded == ".git"
-            || folded == "git~1"
             || folded.starts_with(".oleafly")
             || folded == ".dropbox"
+            || ["git", "oleafl", "dropbo"]
+                .iter()
+                .any(|stem| is_short_alias(&folded, stem))
     });
     protected.then_some(PortableProblem::ProtectedRoot)
 }
@@ -110,6 +142,8 @@ mod tests {
             "CON",
             "aux.tex",
             "lpt9.txt",
+            "COM\u{b9}.tex",
+            "lpt\u{b3}",
         ] {
             assert_eq!(
                 relative_problem(path),
@@ -134,10 +168,22 @@ mod tests {
             "vendor/.git/config",
             "vendor/.GIT/hooks/post-checkout",
             "GIT~1/hooks/pre-commit",
+            "GIT~2/config",
+            "OLEAFL~1/checkpoint-restore-pending",
+            "oleafl~3.tmp/x",
+            "DROPBO~1/cache",
             "sub/.oleafly-staging/x",
             ".g\u{200C}it/config",
         ] {
             assert!(synced_path_problem(path).is_some(), "{path:?}");
+        }
+        for path in [
+            "git~notes.tex",
+            "digit~1.tex",
+            "drafts~1/x.tex",
+            "oleafly.tex",
+        ] {
+            assert_eq!(synced_path_problem(path), None, "{path:?}");
         }
     }
 
@@ -145,5 +191,12 @@ mod tests {
     fn folding_ignores_case_and_normalization_form() {
         assert_eq!(fold("Caf\u{0065}\u{0301}.tex"), fold("café.TEX"));
         assert_ne!(fold("main.tex"), fold("main2.tex"));
+        // Names a case-insensitive disk treats as one file share a key.
+        assert_eq!(fold("\u{b5}m.png"), fold("\u{3bc}m.png"));
+        assert_eq!(fold("\u{3c2}.tex"), fold("\u{3c3}.tex"));
+        assert_eq!(fold("\u{17f}.tex"), fold("s.tex"));
+        assert_eq!(fold("\u{212a}.tex"), fold("k.tex"));
+        // A character whose uppercase form is two letters keeps its own key.
+        assert_ne!(fold("stra\u{df}e.tex"), fold("strasse.tex"));
     }
 }

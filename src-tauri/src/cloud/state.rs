@@ -71,6 +71,23 @@ impl<'de> Deserialize<'de> for PendingDelete {
 pub(crate) struct Failure {
     pub(crate) hash: String,
     pub(crate) at_ms: u64,
+    /// The file downloaded but could not be put in place, for example because
+    /// another program had it open. That clears up sooner than a download.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) applying: bool,
+}
+
+impl Failure {
+    /// Whether sync still waits before trying this file again. A clock set
+    /// back ends the wait instead of stretching it.
+    pub(crate) fn waiting(&self, now: u64) -> bool {
+        let wait = if self.applying {
+            crate::cloud::engine::RETRY_APPLY_MS
+        } else {
+            crate::cloud::engine::RETRY_FAILED_MS
+        };
+        now >= self.at_ms && now - self.at_ms < wait
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -82,7 +99,10 @@ pub(crate) struct SkippedFile {
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub(crate) enum Hold {
+    /// Files deleted on this computer that would be deleted from the cloud.
     MassDelete { count: usize, total: usize },
+    /// Files missing from the cloud that would be deleted on this computer.
+    RemoteDelete { count: usize, total: usize },
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -121,6 +141,9 @@ pub(crate) struct ProjectState {
     pub(crate) failed: BTreeMap<String, Failure>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) remove_pending: bool,
+    /// The sync rules last read from the project's `project.json`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) policy: Option<crate::cloud::engine::OwnedPolicy>,
 }
 
 fn dirty_by_default() -> bool {
@@ -147,6 +170,7 @@ impl Default for ProjectState {
             skipped_files: Vec::new(),
             failed: BTreeMap::new(),
             remove_pending: false,
+            policy: None,
         }
     }
 }
@@ -233,14 +257,32 @@ fn file_stamp(path: &Path) -> Option<(SystemTime, u64)> {
     Some((metadata.modified().ok()?, metadata.len()))
 }
 
+/// Moves a record that can't be read out of the way, kept beside it for a look
+/// later, so sync starts over instead of failing on it every time.
+pub(crate) fn set_aside(path: &Path) {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return;
+    };
+    let aside = path.with_file_name(format!(
+        "{name}.unreadable-{}",
+        crate::cloud::engine::now_ms()
+    ));
+    let _ = std::fs::rename(path, aside);
+}
+
+/// Reads the sync state. One that can't be read is set aside and sync starts
+/// from nothing agreed: every file is compared again, and files that differ
+/// get conflict copies, so nothing is lost.
 pub(crate) fn read_at(path: &Path) -> Result<EngineState, String> {
     match std::fs::read(path) {
         Ok(bytes) => {
-            if bytes.len() > MAX_STATE_BYTES {
-                return Err("cloud sync state is too large".into());
-            }
-            serde_json::from_slice(&bytes)
-                .map_err(|error| format!("cloud sync state is unreadable: {error}"))
+            let parsed = (bytes.len() <= MAX_STATE_BYTES)
+                .then(|| serde_json::from_slice(&bytes).ok())
+                .flatten();
+            Ok(parsed.unwrap_or_else(|| {
+                set_aside(path);
+                EngineState::default()
+            }))
         }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(EngineState::default()),
         Err(error) => Err(error.to_string()),

@@ -117,6 +117,10 @@
     "heldMessage_other": "{{count}} von {{total}} Dateien wurden hier gelöscht, daher ist der Abgleich pausiert, damit die Kopie in Ihrer Dropbox sicher bleibt.",
     "putBack": "Dateien wiederherstellen",
     "deleteToo": "Auch aus Dropbox löschen",
+    "heldRemoteMessage_one": "{{count}} von {{total}} Dateien fehlt in Ihrer Dropbox, daher ist der Abgleich pausiert, damit die Datei auf diesem Computer sicher bleibt.",
+    "heldRemoteMessage_other": "{{count}} von {{total}} Dateien fehlen in Ihrer Dropbox, daher ist der Abgleich pausiert, damit die Dateien auf diesem Computer sicher bleiben.",
+    "putBackInDropbox": "In Dropbox wiederherstellen",
+    "deleteHere": "Auch hier löschen",
     "skipReason": {
       "unsupportedName": "Name, der nicht auf jedem Computer funktioniert",
       "duplicateName": "Gleicher Name wie eine andere Datei, bis auf Groß- und Kleinschreibung",
@@ -132,9 +136,9 @@
   },
   "confirm": {
     "removeTitle": "{{name}} aus Dropbox entfernen?",
-    "removeDescription": "Damit wird die Kopie in Ihrer Dropbox gelöscht, um Platz zu schaffen. Das Projekt bleibt auf diesem Computer und wird hier nicht mehr abgeglichen. Ihre anderen Computer behalten ihre Kopien.",
+    "removeDescription": "Damit wird die Kopie in Ihrer Dropbox gelöscht, um Platz zu schaffen. Das Projekt bleibt auf diesem Computer und wird hier nicht mehr abgeglichen. Ihre anderen Computer behalten ihre Kopien und gleichen das Projekt ebenfalls nicht mehr ab.",
     "removeAction": "Aus Dropbox entfernen",
-    "removeRemoteDescription": "Damit wird das Projekt aus Ihrer Dropbox gelöscht, um Platz zu schaffen. Es ist nicht auf diesem Computer, daher können Sie es hier danach nicht mehr herunterladen. Computer, die es bereits haben, behalten ihre Kopien.",
+    "removeRemoteDescription": "Damit wird das Projekt aus Ihrer Dropbox gelöscht, um Platz zu schaffen. Es ist nicht auf diesem Computer, daher können Sie es hier danach nicht mehr herunterladen. Computer, die es bereits haben, behalten ihre Kopien und gleichen das Projekt nicht mehr ab.",
     "replaceTitle": "Kopie von {{name}} in Dropbox ersetzen?",
     "replaceDescription": "Oleafly kann die Kopie in Ihrer Dropbox nicht lesen. Diese wird durch die Kopie auf diesem Computer ersetzt, und alles, was nur in Dropbox vorhanden ist, geht verloren.",
     "replaceAction": "Ersetzen",
@@ -142,6 +146,10 @@
     "deleteDescription_one": "Die Datei, die Sie auf diesem Computer aus dem Projekt {{name}} gelöscht haben, wird auch aus Ihrer Dropbox gelöscht. Andere Computer, die dieses Projekt abgleichen, verlieren sie ebenfalls.",
     "deleteDescription_other": "Die {{count}} Dateien, die Sie auf diesem Computer aus dem Projekt {{name}} gelöscht haben, werden auch aus Ihrer Dropbox gelöscht. Andere Computer, die dieses Projekt abgleichen, verlieren sie ebenfalls.",
     "deleteAction": "Aus Dropbox löschen",
+    "deleteHereTitle": "Diese Dateien auch auf diesem Computer löschen?",
+    "deleteHereDescription_one": "Die in Ihrer Dropbox fehlende Datei kommt in den Papierkorb dieses Computers, damit {{name}} mit Ihren anderen Computern übereinstimmt.",
+    "deleteHereDescription_other": "Die {{count}} in Ihrer Dropbox fehlenden Dateien kommen in den Papierkorb dieses Computers, damit {{name}} mit Ihren anderen Computern übereinstimmt.",
+    "deleteHereAction": "Hier löschen",
     "disconnectTitle": "Verbindung zu Dropbox trennen?",
     "disconnectDescription": "Der Abgleich auf diesem Computer wird beendet. Ihre Projekte bleiben auf diesem Computer und in Ihrer Dropbox.",
     "disconnectAction": "Verbindung trennen"
@@ -167,7 +175,10 @@
     "removedRemote": "{{name}} wurde aus Ihrer Dropbox entfernt.",
     "replaced": "{{name}} in Ihrer Dropbox stimmt jetzt mit diesem Computer überein.",
     "filesRestored": "Die gelöschten Dateien sind wieder im Projekt {{name}}.",
-    "filesDeleted": "Die gelöschten Dateien wurden auch aus Ihrer Dropbox entfernt."
+    "filesDeleted": "Die gelöschten Dateien wurden auch aus Ihrer Dropbox entfernt.",
+    "filesUploadedAgain": "Die Dateien aus {{name}} sind wieder in Ihrer Dropbox.",
+    "filesDeletedHere": "Die Dateien wurden in den Papierkorb dieses Computers verschoben.",
+    "accessNotRevoked": "Verbindung getrennt. Oleafly konnte Dropbox nicht erreichen, um den Zugriff zu beenden. Um ihn selbst zu beenden, entfernen Sie Oleafly in den Dropbox-Einstellungen unter Verbundene Apps."
   },
   "errors": {
     "code_invalid": "Dieser Code hat nicht funktioniert. Versuchen Sie es erneut.",
@@ -191,6 +202,7 @@
     "sign_in_cancelled": "Die Dropbox-Anmeldung wurde abgebrochen.",
     "sign_in_timeout": "Die Anmeldung hat zu lange gedauert. Versuchen Sie es erneut.",
     "too_many_files": "Dieses Projekt hat mehr als 100.000 Dateien. Das sind zu viele für den Abgleich.",
+    "traffic_limit": "Ihre Dropbox hat das Limit für Uploads in diesem Monat erreicht. Neue Änderungen bleiben auf diesem Computer, bis Dropbox wieder Uploads zulässt.",
     "verify_failed": "Eine Datei aus Dropbox entsprach nicht dem, was Oleafly erwartet hat, und wurde daher nicht angetastet. Der Abgleich versucht es erneut."
   }
 }

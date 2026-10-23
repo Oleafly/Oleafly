@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly가 {{path}}을(를) 휴지통으로 이동하지 못했습니다. 대신 영구적으로 삭제할까요? 되돌릴 수 없습니다.",
     "confirmPermanentDeleteWindows": "Oleafly가 {{path}}을(를) 휴지통으로 이동하지 못했습니다. 대신 영구적으로 삭제할까요? 되돌릴 수 없습니다.",
     "linkedReadOnly": "이 폴더 밖의 파일로 연결되어 있어 읽기 전용입니다.",
-    "partialFolder": "이 폴더의 일부 항목은 목록에 없습니다."
+    "partialFolder": "이 폴더의 일부 항목은 목록에 없습니다.",
+    "insertLink": "링크 삽입",
+    "copyLink": "링크 복사",
+    "linkCopied": "링크를 복사했습니다",
+    "copyLinkFailed": "링크를 복사하지 못했습니다. 클립보드 접근 권한을 확인하고 다시 시도하세요."
   },
   "explorer": {
     "resizeSections": "{{first}}와(과) {{second}} 크기 조절"

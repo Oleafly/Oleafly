@@ -109,6 +109,12 @@
     "heldMessage_other": "这里删除了 {{total}} 个文件中的 {{count}} 个，因此同步已暂停，以保护你 Dropbox 中的副本。",
     "putBack": "放回原处",
     "deleteToo": "也从 Dropbox 中删除",
+    "heldRemoteMessage_other": "你的 Dropbox 中缺少 {{total}} 个文件中的 {{count}} 个，因此同步已暂停，以保护这台电脑上的文件。",
+    "putBackInDropbox": "放回 Dropbox",
+    "deleteHere": "也在这里删除",
+    "heldRemoteMessage_other": "你的 Dropbox 中缺少 {{total}} 个文件中的 {{count}} 个，因此同步已暂停，以保护这台电脑上的文件。",
+    "putBackInDropbox": "放回 Dropbox",
+    "deleteHere": "也在这里删除",
     "skipReason": {
       "unsupportedName": "并非在所有电脑上都可用的名称",
       "duplicateName": "与另一个文件同名，仅大小写不同",
@@ -124,15 +130,21 @@
   },
   "confirm": {
     "removeTitle": "要从 Dropbox 中移除 {{name}} 吗？",
-    "removeDescription": "这会删除你 Dropbox 中的副本以释放空间。项目会保留在这台电脑上，并停止在这里同步。你的其他电脑会保留各自的副本。",
+    "removeDescription": "这会删除你 Dropbox 中的副本以释放空间。项目会保留在这台电脑上，并停止在这里同步。你的其他电脑会保留各自的副本，但也会停止同步该项目。",
     "removeAction": "从 Dropbox 中移除",
-    "removeRemoteDescription": "这会从你的 Dropbox 中删除该项目以释放空间。它不在这台电脑上，因此之后无法下载到这里。已有该项目的电脑会保留各自的副本。",
+    "removeRemoteDescription": "这会从你的 Dropbox 中删除该项目以释放空间。它不在这台电脑上，因此之后无法下载到这里。已有该项目的电脑会保留各自的副本，但会停止同步该项目。",
     "replaceTitle": "要替换 Dropbox 中 {{name}} 的副本吗？",
     "replaceDescription": "Oleafly 无法读取你 Dropbox 中的副本。它将被这台电脑上的副本替换，仅存在于 Dropbox 中的内容都将丢失。",
     "replaceAction": "替换",
     "deleteTitle": "也要从 Dropbox 中删除这些文件吗？",
     "deleteDescription_other": "你在这台电脑上从 {{name}} 中删除的 {{count}} 个文件也会从你的 Dropbox 中删除。同步此项目的其他电脑也会失去这些文件。",
     "deleteAction": "从 Dropbox 中删除",
+    "deleteHereTitle": "也要在这台电脑上删除这些文件吗？",
+    "deleteHereDescription_other": "你的 Dropbox 中缺少的 {{count}} 个文件会移到这台电脑的回收站，使 {{name}} 与你的其他电脑一致。",
+    "deleteHereAction": "在这里删除",
+    "deleteHereTitle": "也要在这台电脑上删除这些文件吗？",
+    "deleteHereDescription_other": "你的 Dropbox 中缺少的 {{count}} 个文件会移到这台电脑的回收站，使 {{name}} 与你的其他电脑一致。",
+    "deleteHereAction": "在这里删除",
     "disconnectTitle": "要断开 Dropbox 吗？",
     "disconnectDescription": "这台电脑将停止同步。你的项目会保留在这台电脑和你的 Dropbox 中。",
     "disconnectAction": "断开连接"
@@ -155,7 +167,13 @@
     "removedRemote": "{{name}} 已从你的 Dropbox 中移除。",
     "replaced": "你 Dropbox 中的 {{name}} 现已与这台电脑一致。",
     "filesRestored": "已删除的文件已放回 {{name}}。",
-    "filesDeleted": "已删除的文件也已从你的 Dropbox 中移除。"
+    "filesDeleted": "已删除的文件也已从你的 Dropbox 中移除。",
+    "filesUploadedAgain": "{{name}} 的文件已放回你的 Dropbox。",
+    "filesDeletedHere": "文件已移到这台电脑的回收站。",
+    "accessNotRevoked": "已断开连接。Oleafly 无法连接到 Dropbox 来结束其访问权限。如要自行结束，请在 Dropbox 设置的“已连接的应用”中移除 Oleafly。",
+    "filesUploadedAgain": "{{name}} 的文件已放回你的 Dropbox。",
+    "filesDeletedHere": "文件已移到这台电脑的回收站。",
+    "accessNotRevoked": "已断开连接。Oleafly 无法连接到 Dropbox 来结束其访问权限。如要自行结束，请在 Dropbox 设置的“已连接的应用”中移除 Oleafly。"
   },
   "errors": {
     "code_invalid": "该代码无效。请重试。",
@@ -179,6 +197,8 @@
     "sign_in_cancelled": "Dropbox 登录已取消。",
     "sign_in_timeout": "登录耗时过长。请重试。",
     "too_many_files": "此项目有超过 100,000 个文件。文件太多，无法同步。",
+    "traffic_limit": "你的 Dropbox 已达到本月的上传上限。在 Dropbox 再次允许上传之前，新的更改会保留在这台电脑上。",
+    "traffic_limit": "你的 Dropbox 已达到本月的上传上限。在 Dropbox 再次允许上传之前，新的更改会保留在这台电脑上。",
     "verify_failed": "来自 Dropbox 的某个文件与 Oleafly 预期的不一致，因此未做改动。稍后会重试同步。"
   }
 }

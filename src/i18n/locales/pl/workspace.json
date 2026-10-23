@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly nie mógł przenieść {{path}} do Kosza. Usunąć trwale? Tej operacji nie można cofnąć.",
     "confirmPermanentDeleteWindows": "Oleafly nie mógł przenieść {{path}} do Kosza. Usunąć trwale? Tej operacji nie można cofnąć.",
     "linkedReadOnly": "Wskazuje plik poza tym folderem, więc jest tylko do odczytu.",
-    "partialFolder": "Nie wszystkie elementy tego folderu są wymienione."
+    "partialFolder": "Nie wszystkie elementy tego folderu są wymienione.",
+    "insertLink": "Wstaw odsyłacz",
+    "copyLink": "Kopiuj odsyłacz",
+    "linkCopied": "Skopiowano odsyłacz",
+    "copyLinkFailed": "Odsyłacz nie został skopiowany. Sprawdź dostęp do schowka i spróbuj ponownie."
   },
   "explorer": {
     "resizeSections": "Zmień rozmiar sekcji {{first}} i {{second}}"

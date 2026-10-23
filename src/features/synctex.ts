@@ -4,12 +4,19 @@ import {
   synctexMapLine,
 } from "@/lib/tauri";
 import {
+  findWordOnPages,
   getCurrentLine,
   getEditorView,
   gotoLine,
+  linesFromAnchor,
+  pickForwardLine,
+  selectWordAt,
   selectWordNearLine,
+  wordAtCursor,
+  type WordContext,
 } from "@/components/editor/cm/controller";
-import { gotoRect } from "@/components/pdf/pdfController";
+import { gotoRect, pdfPageText, type PdfTextRun } from "@/components/pdf/pdfController";
+import type { SynctexForwardHit, SynctexRect } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import {
@@ -162,6 +169,58 @@ export function goToSyncTex() {
   }
 }
 
+/**
+ * The typeset line with the cursor's word in it. SyncTeX maps a source line to
+ * every typeset line it fills, and its first box can be many lines from the
+ * cursor when one source line holds a paragraph. With no SyncTeX line at all
+ * (`\title` text, typeset at `\maketitle`), the word is looked for on the page
+ * SyncTeX fell back to. Keeps SyncTeX's box when the word is not found.
+ */
+async function pageTexts(pages: readonly number[]): Promise<Map<number, PdfTextRun[]> | null> {
+  const runsByPage = new Map<number, PdfTextRun[]>();
+  try {
+    for (const page of pages) {
+      const runs = await pdfPageText(page);
+      if (runs) runsByPage.set(page, runs);
+    }
+  } catch (e) {
+    void logError("synctex forward", e);
+    return null;
+  }
+  return runsByPage;
+}
+
+async function lineWithCursorWord(
+  hit: SynctexForwardHit,
+  spot: ReturnType<typeof wordAtCursor>,
+): Promise<SynctexRect> {
+  if (!spot) return hit;
+  const lines = hit.lines ?? [];
+  const pages = lines.length ? [...new Set(lines.map((line) => line.page))] : [hit.page];
+  const runsByPage = await pageTexts(pages);
+  if (!runsByPage) return hit;
+  const found = lines.length
+    ? pickForwardLine(lines, runsByPage, spot)
+    : findWordOnPages(pages, runsByPage, spot);
+  return found ?? hit;
+}
+
+/**
+ * The typeset line with the cursor's word in it for Typst. Typst's preview
+ * server jumps to the start of the paragraph (or other block) that holds the
+ * cursor, whichever word the cursor is on, so the word is looked for in the
+ * lines around that point. Keeps the server's point when it is not found.
+ */
+async function typstLineWithCursorWord(
+  jump: SynctexRect,
+  spot: ReturnType<typeof wordAtCursor>,
+): Promise<SynctexRect> {
+  if (!spot) return jump;
+  const runsByPage = await pageTexts([jump.page - 1, jump.page, jump.page + 1].filter((page) => page >= 1));
+  if (!runsByPage) return jump;
+  return pickForwardLine(linesFromAnchor(jump, runsByPage), runsByPage, spot) ?? jump;
+}
+
 export async function forwardFromCursor() {
   const files = useFilesStore.getState();
   const { projectId, activePath } = files;
@@ -180,6 +239,8 @@ export async function forwardFromCursor() {
   }
   const typst = files.engine.id === "typst";
   const column = typst ? cursorColumn() : null;
+  // Read before any await, while the cursor is still where the jump began.
+  const spot = wordAtCursor();
   try {
     let compiledPath = activePath;
     let compiledLine = line;
@@ -195,12 +256,10 @@ export async function forwardFromCursor() {
     const rect = typst
       ? await typstForward(projectId, mainDoc, compiledPath, compiledLine, forwardColumn)
       : await synctexForward(projectId, mainDoc, compiledPath, compiledLine);
-    if (
-      !contextStillValid(context) ||
-      (stale && currentSource(stale[1]) !== stale[3])
-    ) {
-      return;
-    }
+    const stillCurrent = () =>
+      contextStillValid(context) &&
+      !(stale && currentSource(stale[1]) !== stale[3]);
+    if (!stillCurrent()) return;
     if (!rect) {
       void logError(
         "synctex forward",
@@ -208,7 +267,8 @@ export async function forwardFromCursor() {
       );
       return;
     }
-    gotoRect(rect);
+    const target = typst ? await typstLineWithCursorWord(rect, spot) : await lineWithCursorWord(rect, spot);
+    if (stillCurrent()) gotoRect(target);
   } catch (e) {
     void logError("synctex forward", e);
   }
@@ -273,6 +333,7 @@ export async function inverseFromClick(
   y: number,
   word?: string,
   expectedCheckpoint: CompileSuccessCheckpoint | null = null,
+  wordContext?: WordContext,
 ) {
   const store = useFilesStore.getState();
   const { projectId } = store;
@@ -282,7 +343,7 @@ export async function inverseFromClick(
   const context = currentSyncTexContext(expectedCheckpoint);
   if (!context) return;
   const currentLine = getCurrentLine();
-  if (word && currentLine != null) selectWordNearLine(currentLine, word);
+  if (word && currentLine != null) selectWordNearLine(currentLine, word, wordContext);
   const typst = store.engine.id === "typst";
   try {
     const hit = typst
@@ -297,13 +358,19 @@ export async function inverseFromClick(
 
     if (!(await focusInverseTarget(store, context, target.path))) return;
     if (typst && !context[1]) {
+      // Typst's preview server names the clicked character, so select the
+      // word there. A click on link text can come back elsewhere in the line;
+      // then the clicked word is looked for around that line instead.
+      if (word && (selectWordAt(targetLine, hit.column, word) || selectWordNearLine(targetLine, word, wordContext))) {
+        return;
+      }
       gotoLine(targetLine, hit.column + 1);
       return;
     }
     // SyncTeX only resolves to a line (its column is coarse and often lands on a
     // `\begin`/`\end`). If we know the word that was clicked, place the cursor on
     // the nearest matching word; otherwise fall back to the line start.
-    if (word && selectWordNearLine(targetLine, word)) return;
+    if (word && selectWordNearLine(targetLine, word, wordContext)) return;
     gotoLine(targetLine);
   } catch (e) {
     void logError("synctex inverse", e);

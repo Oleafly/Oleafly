@@ -1,4 +1,5 @@
 import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   useEffect,
   useId,
@@ -81,6 +82,8 @@ import { formatNumber } from "@/lib/intl";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { carriesFilePaths, carriesFiles } from "@/lib/external-drop-guard";
 import { logError } from "@/lib/log";
+import { isTreeDrag, TREE_DRAG_TYPE } from "@/lib/tree-drag";
+import { linkLanguageFor } from "@/lib/file-links";
 import { importDroppedItems, takeDroppedItems, type DroppedItem } from "@/features/dropped-files";
 import {
   CollabTreeClashSlot,
@@ -185,14 +188,9 @@ function remapTreePath(path: string, from: string, to: string): string {
 }
 
 const ROOT = "__root__";
-const TREE_DRAG_TYPE = "application/x-oleafly-tree-path";
-
-function treeDrag(transfer: DataTransfer): boolean {
-  return Array.from(transfer.types ?? []).includes(TREE_DRAG_TYPE);
-}
 
 function externalDrag(transfer: DataTransfer): boolean {
-  return !treeDrag(transfer) && (carriesFiles(transfer) || carriesFilePaths(transfer));
+  return !isTreeDrag(transfer) && (carriesFiles(transfer) || carriesFilePaths(transfer));
 }
 
 function dropExternal(
@@ -836,7 +834,7 @@ export function FileTree({
 
   const onRootDragOver = (e: ReactDragEvent<HTMLDivElement>) => {
     const external = externalDrag(e.dataTransfer);
-    if (!external && !treeDrag(e.dataTransfer)) return;
+    if (!external && !isTreeDrag(e.dataTransfer)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = external ? "copy" : "move";
     updateDragOver(ROOT);
@@ -1076,7 +1074,7 @@ export function FileTree({
               e.preventDefault();
               updateDragOver(null);
               if (dropExternal(e.dataTransfer, "", ctx)) return;
-              const from = treeDrag(e.dataTransfer) ? e.dataTransfer.getData(TREE_DRAG_TYPE) : "";
+              const from = isTreeDrag(e.dataTransfer) ? e.dataTransfer.getData(TREE_DRAG_TYPE) : "";
               if (from) void move(from, "");
             }}
             onDragLeave={(e) => {
@@ -1436,8 +1434,24 @@ function TreeRowKindMenuItems({
           {t(($) => $.workspace.files.setMain)}
         </ContextMenuItem>
       )}
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        disabled={linkLanguageFor(ctx.activePath) === null}
+        onClick={() => void import("@/features/file-links").then((links) => links.insertFileLink(node.path))}
+      >
+        {t(($) => $.workspace.files.insertLink)}
+      </ContextMenuItem>
+      <ContextMenuItem onClick={() => void copyFileLink(node.path, t)}>
+        {t(($) => $.workspace.files.copyLink)}
+      </ContextMenuItem>
     </>
   );
+}
+
+async function copyFileLink(path: string, t: TFunction<["common", "workspace"]>) {
+  const links = await import("@/features/file-links");
+  if (await links.copyFileLink(path)) toast.success(t(($) => $.workspace.files.linkCopied));
+  else toast.error(t(($) => $.workspace.files.copyLinkFailed));
 }
 
 function TreeRowEditMenuItems({
@@ -1550,7 +1564,7 @@ function TreeRow({
   };
   const onDragOver = (e: ReactDragEvent<HTMLDivElement>) => {
     const external = externalDrag(e.dataTransfer);
-    if (!external && !treeDrag(e.dataTransfer)) return;
+    if (!external && !isTreeDrag(e.dataTransfer)) return;
     if (unreadable && node.isDir) return;
     e.preventDefault();
     e.stopPropagation();
@@ -1562,7 +1576,7 @@ function TreeRow({
     e.stopPropagation();
     ctx.setDragOver(null);
     if (dropExternal(e.dataTransfer, dropDir, ctx)) return;
-    const from = treeDrag(e.dataTransfer) ? e.dataTransfer.getData(TREE_DRAG_TYPE) : "";
+    const from = isTreeDrag(e.dataTransfer) ? e.dataTransfer.getData(TREE_DRAG_TYPE) : "";
     if (from) ctx.onMove(from, dropDir);
   };
 

@@ -360,6 +360,10 @@
     "zoteroSync": {
       "label": "Synka Zotero-biblioteket",
       "keywords": "zotero synka uppdatera bibliotek"
+    },
+    "insertFileLink": {
+      "label": "Infoga länk till fil",
+      "keywords": "länk fil sökväg anteckning referens"
     }
   },
   "community": {

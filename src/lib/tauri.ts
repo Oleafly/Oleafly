@@ -111,7 +111,7 @@ import type {
   RenameFileResult,
   SearchHit,
   SynctexHit,
-  SynctexRect,
+  SynctexForwardHit,
   TaggedCompileResult,
   TemplateInfo,
   TexDistribution,
@@ -1807,7 +1807,7 @@ export const synctexForward = (
   file: string,
   line: number
 ) =>
-  invoke<SynctexRect | null>("synctex_forward", {
+  invoke<SynctexForwardHit | null>("synctex_forward", {
     projectId,
     mainDoc,
     file,

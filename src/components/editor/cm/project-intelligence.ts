@@ -28,7 +28,16 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { auxNumberFor } from "@/lib/aux-numbers";
-import { basename, dirname } from "@/lib/path-utils";
+import {
+  escapeLatexText,
+  escapeLatexUrl,
+  escapeMarkdownLinkText,
+  escapeTypstMarkup,
+  escapeTypstString,
+  fileLinkText,
+} from "@/lib/file-links";
+import { basename, relativeFilePath } from "@/lib/path-utils";
+import { markdownLinkDestination } from "@oleafly/wysiwyg/link-destination";
 import {
   atSuggestionCompletion,
   warmAtSuggestions,
@@ -952,6 +961,7 @@ const TYPST_MODULE_PATH_RE = /(?<![\p{L}\p{N}_.-])(include|import)\s+"([^"\n]*)$
 
 const TYPST_PATH_CALLS: ReadonlySet<string> = new Set([
   "image",
+  "link",
   "read",
   "csv",
   "json",
@@ -965,6 +975,7 @@ const TYPST_PATH_CALLS: ReadonlySet<string> = new Set([
 
 const TYPST_PATH_EXTENSIONS: ReadonlyMap<string, RegExp | null> = new Map([
   ["image", /\.(?:png|jpe?g|gif|svg|webp|pdf)$/iu],
+  ["link", null],
   ["include", /\.typ$/iu],
   ["import", /\.typ$/iu],
   ["read", null],
@@ -1018,20 +1029,6 @@ interface TypstCompletionModel {
   readonly textFor: (file: string) => string | undefined;
 }
 
-function relativeProjectPath(fromFile: string, target: string): string {
-  const base = dirname(fromFile).split("/").filter(Boolean);
-  const parts = target.split("/");
-  let shared = 0;
-  while (
-    shared < base.length &&
-    shared < parts.length - 1 &&
-    base[shared] === parts[shared]
-  ) {
-    shared += 1;
-  }
-  return [...base.slice(shared).map(() => ".."), ...parts.slice(shared)].join("/");
-}
-
 function hiddenProjectPath(path: string): boolean {
   return path.split("/").some((segment) => segment.startsWith("."));
 }
@@ -1072,6 +1069,57 @@ function typstPathArgument(
   return module ? { command: module[1], query: module[2] } : null;
 }
 
+function projectFileLabels(
+  base: string,
+  path: string,
+  query: string,
+  accepts: RegExp | null,
+  rooted: boolean,
+): string[] {
+  const queryKey = completionKey(query);
+  return useFilesStore
+    .getState()
+    .tree.filter(
+      (entry) =>
+        !entry.is_dir &&
+        !entry.placeholder &&
+        entry.path !== path &&
+        !hiddenProjectPath(entry.path) &&
+        (!accepts || accepts.test(entry.path)),
+    )
+    .map((entry) =>
+      rooted ? `/${entry.path}` : relativeFilePath(base, entry.path),
+    )
+    .filter((label) => !queryKey || completionKey(label).includes(queryKey))
+    .sort(prefixFirst(queryKey))
+    .slice(0, FILTERED_COMPLETION_LIMIT);
+}
+
+function linkTargetApply(
+  request: CompletionRequestGuard,
+  insert: string,
+  emptyText: (state: EditorState, from: number, to: number) => number | null,
+  text: string,
+): NonNullable<Completion["apply"]> {
+  return (view, _completion, from, to) => {
+    if (!completionRequestIsCurrent(request, view.state)) {
+      closeCompletion(view);
+      return;
+    }
+    const textAt = emptyText(view.state, from, to);
+    const changes = [{ from, to, insert }, ...(textAt === null ? [] : [{ from: textAt, insert: text }])];
+    let anchor = from + insert.length;
+    if (textAt !== null) {
+      anchor = textAt > to ? textAt + insert.length - (to - from) + text.length + 1 : anchor + text.length;
+    }
+    view.dispatch({ changes, selection: { anchor }, userEvent: "input.complete" });
+  };
+}
+
+function fileOption(label: string, apply: Completion["apply"]): Completion {
+  return { label, type: "variable", detail: kindNoun("file"), apply };
+}
+
 function typstPathCompletion(
   context: CompletionContext,
   path: string,
@@ -1083,31 +1131,75 @@ function typstPathCompletion(
   if (typstContextAt(context.state, context.pos) !== "string") return undefined;
   const { command, query } = argument;
   if (command === "import" && query.startsWith("@")) return null;
+  if (command === "link" && (!context.explicit || URL_SCHEME_RE.test(query))) return undefined;
   const accepts = TYPST_PATH_EXTENSIONS.get(command) ?? null;
-  const rooted = query.startsWith("/");
-  const queryKey = completionKey(query);
-  const options = useFilesStore
-    .getState()
-    .tree.filter(
-      (entry) =>
-        !entry.is_dir &&
-        !entry.placeholder &&
-        entry.path !== path &&
-        !hiddenProjectPath(entry.path) &&
-        (!accepts || accepts.test(entry.path)),
-    )
-    .map((entry) =>
-      rooted ? `/${entry.path}` : relativeProjectPath(path, entry.path),
-    )
-    .filter((label) => !queryKey || completionKey(label).includes(queryKey))
-    .sort(prefixFirst(queryKey))
-    .slice(0, FILTERED_COMPLETION_LIMIT)
-    .map((label) => ({
+  const options = projectFileLabels(path, path, query, accepts, query.startsWith("/")).map((label) =>
+    fileOption(
       label,
-      type: "variable",
-      detail: kindNoun("file"),
-      apply: requestGuardedApply(request, label),
-    } satisfies Completion));
+      command === "link"
+        ? linkTargetApply(
+            request,
+            escapeTypstString(label),
+            (state, _from, to) => (state.sliceDoc(to, to + 4) === '")[]' ? to + 3 : null),
+            escapeTypstMarkup(fileLinkText(label)),
+          )
+        : requestGuardedApply(request, label),
+    ),
+  );
+  return completionResult(context.pos - query.length, options, query);
+}
+
+const URL_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/iu;
+const MARKDOWN_ANGLE_LINK_RE = /\]\(\s*<([^<>\n]*)$/u;
+const MARKDOWN_LINK_RE = /\]\(\s*([^()\s<>#]*)$/u;
+const LATEX_HREF_RE = /\\href\s*(?:\[[^\]]*\]\s*)?\{([^{}]*)$/u;
+
+function markdownPathCompletion(
+  context: CompletionContext,
+  path: string,
+  before: string,
+): CompletionResult | null | undefined {
+  if (!context.explicit) return undefined;
+  const angle = MARKDOWN_ANGLE_LINK_RE.exec(before);
+  const query = angle ? angle[1] : MARKDOWN_LINK_RE.exec(before)?.[1];
+  if (query === undefined || URL_SCHEME_RE.test(query)) return undefined;
+  const request = createCompletionRequestGuard(context);
+  const opener = angle ? "[](<" : "[](";
+  const options = projectFileLabels(path, path, query, null, false).map((label) =>
+    fileOption(
+      label,
+      linkTargetApply(
+        request,
+        angle ? label.replaceAll(/[\\<>]/gu, (character) => `\\${character}`) : markdownLinkDestination(label),
+        (state, from) => (state.sliceDoc(from - opener.length, from) === opener ? from - opener.length + 1 : null),
+        escapeMarkdownLinkText(fileLinkText(label)),
+      ),
+    ),
+  );
+  return completionResult(context.pos - query.length, options, query);
+}
+
+function latexHrefCompletion(
+  context: CompletionContext,
+  path: string,
+  before: string,
+): CompletionResult | null | undefined {
+  if (!context.explicit) return undefined;
+  const query = LATEX_HREF_RE.exec(before)?.[1];
+  if (query === undefined || URL_SCHEME_RE.test(query)) return undefined;
+  const request = createCompletionRequestGuard(context);
+  const mainDoc = useFilesStore.getState().mainDoc || path;
+  const options = projectFileLabels(mainDoc, path, query, null, false).map((label) =>
+    fileOption(
+      label,
+      linkTargetApply(
+        request,
+        escapeLatexUrl(label),
+        (state, _from, to) => (state.sliceDoc(to, to + 3) === "}{}" ? to + 2 : null),
+        escapeLatexText(fileLinkText(label)),
+      ),
+    ),
+  );
   return completionResult(context.pos - query.length, options, query);
 }
 
@@ -1414,6 +1506,16 @@ function bibtexCompletion(
   );
 }
 
+function linkDestinationCompletion(
+  context: CompletionContext,
+  path: string,
+): CompletionResult | null | undefined {
+  const before = context.state.sliceDoc(Math.max(0, context.pos - 1_000), context.pos);
+  if (/\.(?:md|markdown)$/i.test(path)) return markdownPathCompletion(context, path, before);
+  if (/\.(?:tex|latex|ltx)$/i.test(path)) return latexHrefCompletion(context, path, before);
+  return undefined;
+}
+
 export const projectIntelligenceCompletion: CompletionSource = (
   context,
 ): CompletionResult | null => {
@@ -1424,6 +1526,8 @@ export const projectIntelligenceCompletion: CompletionSource = (
   if (TYPST_SOURCE_RE.test(path)) {
     return typstProjectCompletion(context, path, current, text);
   }
+  const link = linkDestinationCompletion(context, path);
+  if (link !== undefined) return link;
   if (!current) {
     return /\.(?:tex|latex|ltx|sty|cls)$/i.test(path)
       ? latexReferenceCitationCompletions(context)

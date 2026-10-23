@@ -11,4 +11,6 @@ export {
   gotoRect,
   gotoPdfPage,
   pageClickToBp,
+  pdfPageText,
+  type PdfTextRun,
 } from "@oleafly/preview/controller";
