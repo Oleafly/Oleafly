@@ -100,6 +100,10 @@
       "action": "{{agent}} haluaa {{action}}.",
       "steps": "{{agent}} haluaa suorittaa nämä vaiheet työpöytäsovelluksessa:",
       "moreSteps": "Näyttämättä jääneet vaiheet: {{count}}",
+      "moreItems": "{{count}} kohdetta ei näytetä",
+      "cut": "(+{{count}} merkkiä ei näytetä)",
+      "signedIn": "Toiminta tapahtuu omassa selaimessasi, johon olet kirjautunut.",
+      "signedInOn": "Toiminta tapahtuu omassa selaimessasi, johon olet kirjautunut, osoitteessa {{origin}}.",
       "text": "Teksti: ”{{text}}”",
       "address": "Osoite: {{url}}",
       "allowOnce": "Salli kerran",
@@ -130,7 +134,8 @@
       "message": "Agentit voivat käyttää seuraavia, ja ne kysyvät silti ennen jokaista toimintoa:",
       "confirm": "Salli",
       "enabled": "Työpöytäsovellukset",
-      "app": "Sovellus: {{name}}",
+      "app": "Sovellus: {{name}} ({{identity}})",
+      "more": "Ja {{count}} lisää",
       "site": "Sivusto: {{origin}}",
       "signedIn": "Selaimesi, jolla olet kirjautunut sivustolle {{origin}}",
       "scripted": "Cua-skriptit"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly jatkaa työskentelyä",
       "body": "Tutkimustehtävät, jotka merkitsit jatkumaan, jatkuvat taustalla. Avaa Oleafly, niin näet niiden etenemisen."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Lupatarkistukset ovat pois päältä ({{mode}})",
+      "description": "Agentti voi muokata tiedostoja ja suorittaa komentoja kysymättä. Oleafly ei voinut vaihtaa sitä toiseen tilaan. Vaihda tila agentin omista asetuksista."
     }
   }
 }

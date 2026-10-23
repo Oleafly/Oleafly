@@ -40,12 +40,17 @@ impl RunScope {
     }
 }
 
-/// The session a call belongs to: a subagent's tag, else the run's own.
-fn session_key_for(run: &RunScope, arguments: &Value) -> String {
+/// The session a call belongs to: a live subagent's tag, else the run's own.
+/// The runner that tags a subagent's calls overwrites whatever the model
+/// wrote; a root call's tag came from the model, so it only counts when it
+/// names a subagent that is running (its guard registered the key).
+fn session_key_for(state: &CuaDriverState, run: &RunScope, arguments: &Value) -> String {
     arguments
         .get(SESSION_TAG)
         .and_then(Value::as_str)
-        .filter(|key| key.starts_with(CHILD_SESSION_PREFIX) && key.len() <= 128)
+        .filter(|key| {
+            key.starts_with(CHILD_SESSION_PREFIX) && key.len() <= 128 && state.is_child(key)
+        })
         .map(str::to_string)
         .unwrap_or_else(|| run.root_session_key.clone())
 }
@@ -59,17 +64,25 @@ pub(crate) struct TurnEndGuard {
 
 impl TurnEndGuard {
     pub(crate) fn new(session_key: String) -> Self {
-        Self {
-            key: session_key,
-            state: global(),
-        }
+        Self::registered(global(), session_key)
     }
 
     #[cfg(test)]
     pub(crate) fn with_state(state: Arc<CuaDriverState>, session_key: String) -> Self {
+        Self::registered(Some(state), session_key)
+    }
+
+    /// A subagent's key (`external:…`) is registered while its guard lives:
+    /// its tagged calls may use it.
+    fn registered(state: Option<Arc<CuaDriverState>>, session_key: String) -> Self {
+        if let Some(state) = &state {
+            if session_key.starts_with(CHILD_SESSION_PREFIX) {
+                state.register_child(&session_key);
+            }
+        }
         Self {
             key: session_key,
-            state: Some(state),
+            state,
         }
     }
 }
@@ -77,6 +90,7 @@ impl TurnEndGuard {
 impl Drop for TurnEndGuard {
     fn drop(&mut self) {
         if let Some(state) = &self.state {
+            state.unregister_child(&self.key);
             turn_ended_in(state, &self.key);
         }
     }
@@ -95,15 +109,15 @@ pub(crate) async fn agent_tool(
     let Ok(arguments) = serde_json::from_str::<Value>(arguments_json) else {
         return tool_error("The tool arguments were not valid JSON.");
     };
+    let Some(state) = global() else {
+        return tool_error("Desktop apps aren't available.");
+    };
     let scope = CuaScope {
         grant_key: run.grant_key.clone(),
-        session_key: session_key_for(run, &arguments),
+        session_key: session_key_for(&state, run, &arguments),
         project_id: project_id.map(str::to_string),
         agent_label: run.agent_label.clone(),
         surface: Surface::Chat,
-    };
-    let Some(state) = global() else {
-        return tool_error("Desktop apps aren't available.");
     };
     let outcome = call_desktop_apps(&state, &scope, arguments).await;
     oleafly_agent::ToolOutput {
@@ -120,19 +134,59 @@ pub(crate) async fn agent_tool(
 mod tests {
     use super::*;
 
+    fn state() -> (Arc<CuaDriverState>, tempfile::TempDir) {
+        let dir = tempfile::tempdir().unwrap();
+        let state = Arc::new(CuaDriverState::for_test(
+            Default::default(),
+            Arc::new(crate::cua_driver::runtime::testing::NoDriver),
+            Arc::new(crate::cua_driver::gate::testing::ScriptedApprover::default()),
+            dir.path().to_path_buf(),
+        ));
+        (state, dir)
+    }
+
     #[test]
     fn root_calls_use_the_run_session_and_children_use_their_tag() {
+        let (state, _dir) = state();
         let run = RunScope::for_chat(Some("thread-1"), "run-1");
-        assert_eq!(session_key_for(&run, &json!({"tool": "click"})), "run-1");
+        let _child = TurnEndGuard::with_state(state.clone(), "external:abc".into());
         assert_eq!(
-            session_key_for(&run, &json!({"tool": "click", SESSION_TAG: "external:abc"})),
+            session_key_for(&state, &run, &json!({"tool": "click"})),
+            "run-1"
+        );
+        assert_eq!(
+            session_key_for(
+                &state,
+                &run,
+                &json!({"tool": "click", SESSION_TAG: "external:abc"})
+            ),
             "external:abc"
         );
         // Only the shape the child tagging uses counts.
         assert_eq!(
-            session_key_for(&run, &json!({"tool": "click", SESSION_TAG: "run-2"})),
+            session_key_for(
+                &state,
+                &run,
+                &json!({"tool": "click", SESSION_TAG: "run-2"})
+            ),
             "run-1"
         );
+    }
+
+    #[test]
+    fn a_tag_the_model_wrote_cannot_name_a_session_that_does_not_exist() {
+        let (state, _dir) = state();
+        let run = RunScope::for_chat(Some("thread-1"), "run-1");
+        let forged = json!({"tool": "click", SESSION_TAG: "external:made-up"});
+        assert_eq!(session_key_for(&state, &run, &forged), "run-1");
+        // A live subagent's key works while it lives, and not after.
+        let child = TurnEndGuard::with_state(state.clone(), "external:made-up".into());
+        assert_eq!(session_key_for(&state, &run, &forged), "external:made-up");
+        drop(child);
+        assert_eq!(session_key_for(&state, &run, &forged), "run-1");
+        // A run's own key is never registered as a subagent's.
+        let _run_guard = TurnEndGuard::with_state(state.clone(), "run-1".into());
+        assert!(!state.is_child("run-1"));
     }
 
     #[test]

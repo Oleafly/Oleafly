@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { acpAgentPreferences, acpError, acpSetAgentPreferences, type AcpAgentPreferences } from "@/lib/acp";
 
 /** The effort and mode an agent's new conversations start with, with "Forget". */
@@ -34,9 +35,7 @@ export function AcpAgentChoices({ agentId }: Readonly<{ agentId: string }>) {
     : [];
   return (
     <section data-testid={`acp-agent-choices-${agentId}`} className="space-y-1.5">
-      <h5 className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
-        {t(($) => $.settings.ai.agents.remembered.title)}
-      </h5>
+      <SectionHeading as="h4">{t(($) => $.settings.ai.agents.remembered.title)}</SectionHeading>
       {rows.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t(($) => $.settings.ai.agents.remembered.none)}</p>
       ) : (

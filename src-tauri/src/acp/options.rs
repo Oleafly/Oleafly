@@ -2,6 +2,7 @@
 //! and remembering effort and mode for the agent's next sessions.
 use oleafly_acp::controls::{ConfigKind, ConfigValue};
 use serde_json::json;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use super::preferences::RememberedChoice;
@@ -9,6 +10,9 @@ use super::runtime::{AcpRuntime, LiveSession};
 use super::types::{SessionControls, SessionSnapshot, SessionStatus};
 
 const BUSY: &str = "Wait for this turn to finish before changing the agent's options.";
+/// How often one session is moved out of a blocked mode: an agent that keeps
+/// going back to it is told to the user instead.
+const MAX_MODE_SWITCHES: u32 = 3;
 
 /// What happened to a task's requested model.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -310,6 +314,64 @@ impl AcpRuntime {
             .map_err(|_| "Wait for this turn to finish before changing the model.")?;
         self.change_model(&session, model_id).await?;
         Ok(ModelChoice::Selected)
+    }
+
+    /// Moves a session out of a mode Oleafly blocks (permission checks off:
+    /// the agent starts in it from its own settings, or goes into it later).
+    /// Oleafly cannot make an agent ask, so when the agent stays in the mode
+    /// the user is told.
+    pub(super) async fn leave_blocked_mode(self: &Arc<Self>, session: &Arc<LiveSession>) {
+        let Ok(record) = self.copy_record(session) else {
+            return;
+        };
+        let remembered = self
+            .store
+            .agent_preferences(&record.agent_id)
+            .ok()
+            .and_then(|prefs| prefs.mode)
+            .map(|choice| choice.value);
+        let Some(blocked) = record.controls.blocked_mode(remembered.as_deref()) else {
+            return;
+        };
+        // Past the limit the user was told already.
+        let attempts = session.mode_switches.fetch_add(1, Ordering::AcqRel);
+        if attempts > MAX_MODE_SWITCHES {
+            return;
+        }
+        let switched = match blocked.switch.filter(|_| attempts < MAX_MODE_SWITCHES) {
+            Some(switch) => {
+                let result = match switch.config_id {
+                    Some(config_id) => {
+                        self.send_config_option(session, &config_id, &ConfigValue::Id(switch.to))
+                            .await
+                    }
+                    None => self.send_legacy_mode(session, &switch.to).await,
+                };
+                result.is_ok()
+            }
+            None => false,
+        };
+        // The agent's answer may still leave it in the mode.
+        let still_blocked = self
+            .copy_record(session)
+            .ok()
+            .is_some_and(|record| record.controls.blocked_mode(None).is_some());
+        if switched && !still_blocked {
+            return;
+        }
+        if let Ok(mut state) = session.state.lock() {
+            let _ = self.emit_locked(
+                session,
+                &mut state,
+                "notice",
+                json!({"severity": "warning",
+                    "title": crate::i18n::t_with(
+                        "acp.blockedMode.title",
+                        &[("mode", &session.redactor.text(&blocked.name))],
+                    ),
+                    "description": crate::i18n::t("acp.blockedMode.description")}),
+            );
+        }
     }
 
     /// A new session starts with the agent's remembered effort and (for

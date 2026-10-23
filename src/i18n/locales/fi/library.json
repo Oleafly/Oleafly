@@ -261,7 +261,9 @@
     "loadingRepositories": "Ladataan repositorioita…",
     "repositoriesFailed": "Repositorioita ei voitu ladata.",
     "noRepositories": "Repositorioita ei löytynyt.",
+    "noMatchLoaded": "Tähän mennessä ladatuista repositorioista ei löytynyt osumaa. Lataa lisää jatkaaksesi hakua.",
     "privateRepository": "Yksityinen repositorio",
+    "openFailed": "Oleafly ei voinut avata palvelua {{host}} selaimessasi.",
     "openOnHost": "Avaa palvelussa {{host}}",
     "openRepositoryOnHost": "Avaa {{name}} palvelussa {{host}}",
     "sources": {

@@ -3,6 +3,7 @@
 use oleafly_acp::{AcpClient, Negotiated, NullHost};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,8 +12,8 @@ use super::runtime::{
     AcpRuntime,
 };
 use super::types::{
-    new_id, now_ms, AgentSessionInfo, AgentSessionPage, DeleteOutcome, SessionPage, SessionRecord,
-    SessionSnapshot, SessionStatus, TurnCommit,
+    new_id, now_ms, AgentSessionInfo, AgentSessionPage, AuthMethod, Capabilities, DeleteOutcome,
+    SessionPage, SessionRecord, SessionSnapshot, SessionStatus, TurnCommit,
 };
 
 const TRANSIENT_TIMEOUT: Duration = Duration::from_secs(30);
@@ -25,10 +26,13 @@ impl AcpRuntime {
         project_id: &str,
         query: Option<&str>,
         before: Option<u64>,
+        before_id: Option<&str>,
         limit: Option<u32>,
     ) -> Result<SessionPage, String> {
         let limit = limit.map_or(50, |limit| limit.clamp(1, 200) as usize);
-        let (sessions, has_more) = self.store.page(project_id, query, before, limit)?;
+        let (sessions, has_more) = self
+            .store
+            .page(project_id, query, before, before_id, limit)?;
         Ok(SessionPage { sessions, has_more })
     }
 
@@ -154,6 +158,8 @@ impl AcpRuntime {
         let command =
             build_agent_command(&self.root, &record, &definition, &launch, &cwd, None, None)?;
         let client = AcpClient::spawn(command, Arc::new(NullHost)).await?;
+        // Listed for orphan cleanup, and stopped with the app, like a session.
+        self.track_transient(&client, &launch.executable).await;
         let cwd_text = cwd.to_string_lossy().into_owned();
         let result = tokio::time::timeout(TRANSIENT_TIMEOUT, async {
             let negotiated = client
@@ -165,6 +171,7 @@ impl AcpRuntime {
         .await
         .unwrap_or_else(|_| Err("The agent did not answer in time.".into()));
         client.shutdown().await;
+        self.untrack_transient(&client).await;
         result
     }
 
@@ -176,9 +183,23 @@ impl AcpRuntime {
         agent_id: &str,
         cursor: Option<String>,
     ) -> Result<AgentSessionPage, String> {
+        Ok(self
+            .list_agent_sessions(project_id, agent_id, cursor)
+            .await?
+            .0)
+    }
+
+    /// [`Self::agent_sessions`] with what the same connection learned about
+    /// the agent, so an import starts one agent, not two.
+    async fn list_agent_sessions(
+        self: &Arc<Self>,
+        project_id: &str,
+        agent_id: &str,
+        cursor: Option<String>,
+    ) -> Result<(AgentSessionPage, Capabilities, Vec<AuthMethod>), String> {
         let root = canonical_root(&crate::paths::project_dir(project_id)?)?;
         let roots = [root.clone(), launch_root_for(&root)];
-        let (listed, next) = self
+        let (listed, next, capabilities, methods) = self
             .with_transient(
                 project_id,
                 &root,
@@ -187,6 +208,8 @@ impl AcpRuntime {
                     let cursor = cursor.clone();
                     let cwd = cwd.to_owned();
                     let can_list = negotiated.capabilities.list;
+                    let capabilities = negotiated.capabilities.clone();
+                    let methods = negotiated.auth_methods.clone();
                     Box::pin(async move {
                         if !can_list {
                             return Err("This agent cannot list its sessions.".to_string());
@@ -198,6 +221,8 @@ impl AcpRuntime {
                         Ok((
                             answer["sessions"].as_array().cloned().unwrap_or_default(),
                             answer["nextCursor"].as_str().map(str::to_owned),
+                            capabilities,
+                            methods,
                         ))
                     })
                 },
@@ -228,10 +253,11 @@ impl AcpRuntime {
                     .is_some(),
             });
         }
-        Ok(AgentSessionPage {
+        let page = AgentSessionPage {
             sessions,
             next_cursor: next.filter(|cursor| cursor.len() <= 2048),
-        })
+        };
+        Ok((page, capabilities, methods))
     }
 
     /// Saves agent sessions as Oleafly conversations (disconnected; they
@@ -247,14 +273,8 @@ impl AcpRuntime {
         }
         let root = canonical_root(&crate::paths::project_dir(project_id)?)?;
         self.definition(agent_id)?;
-        let page = self.agent_sessions(project_id, agent_id, None).await?;
-        let (capabilities, methods) = self
-            .with_transient(project_id, &root, agent_id, |_, negotiated, _| {
-                let capabilities = negotiated.capabilities.clone();
-                let methods = negotiated.auth_methods.clone();
-                Box::pin(async move { Ok((capabilities, methods)) })
-            })
-            .await?;
+        let (page, capabilities, methods) =
+            self.list_agent_sessions(project_id, agent_id, None).await?;
         let redactor = oleafly_acp::redact::Redactor::new(&[]);
         let mut imported = Vec::new();
         for native in native_ids {
@@ -332,25 +352,31 @@ impl AcpRuntime {
                     .clone(),
             ),
         };
-        let answer = {
+        let forked = {
             let _operation = session
                 .operation
                 .try_lock()
                 .map_err(|_| "Wait for this turn to finish before forking.")?;
-            session
+            // The agent's first updates for the new session can reach this
+            // connection right behind the reply, before its id is known
+            // here: they are ignored until it is.
+            session.forking.store(true, Ordering::Release);
+            let _forking = Forking(&session.forking);
+            let answer = session
                 .client
                 .fork_session(&native, &cwd, &servers)
                 .await
-                .map_err(|error| session.redactor.text(&error.to_string()))?
+                .map_err(|error| session.redactor.text(&error.to_string()))?;
+            let forked = answer["sessionId"]
+                .as_str()
+                .filter(|id| !id.is_empty() && id.len() <= 512)
+                .ok_or("The agent did not return the forked session.")?;
+            let forked = session.redactor.opaque_id(forked)?;
+            if let Ok(mut known) = session.known_foreign.lock() {
+                known.insert(forked.clone());
+            }
+            forked
         };
-        let forked = answer["sessionId"]
-            .as_str()
-            .filter(|id| !id.is_empty() && id.len() <= 512)
-            .ok_or("The agent did not return the forked session.")?;
-        let forked = session.redactor.opaque_id(forked)?;
-        if let Ok(mut known) = session.known_foreign.lock() {
-            known.insert(forked.clone());
-        }
         if record.capabilities.close {
             let _ = session.client.close_session(&forked).await;
         }
@@ -373,6 +399,7 @@ impl AcpRuntime {
             last_sequence: 0,
             commits: Vec::new(),
             forked_from: Some(record.id.clone()),
+            fork_sequence: None,
             usage: None,
             ..record
         };
@@ -384,6 +411,9 @@ impl AcpRuntime {
         if copied > 0 {
             let mut saved = copy.clone();
             saved.last_sequence = copied;
+            // The copied events were counted in the conversation they came
+            // from: the usage ledger starts after them.
+            saved.fork_sequence = Some(copied);
             self.store.save(&saved)?;
         }
         self.reconnect_with_mcp(&copy.id, owner, mcp_servers).await
@@ -479,6 +509,16 @@ impl AcpRuntime {
             }
         }
         Ok(files)
+    }
+}
+
+/// Clears the flag that makes a connection ignore updates for sessions it did
+/// not open, when the fork that set it ends, however it ends.
+struct Forking<'a>(&'a AtomicBool);
+
+impl Drop for Forking<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
     }
 }
 

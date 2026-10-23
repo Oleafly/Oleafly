@@ -7,7 +7,7 @@ import {
   relativeTime,
   runStateLabel,
   STATUS_ICONS,
-  statusBadgeClass,
+  statusBadgeVariant,
   statusDotClass,
   statusLabel,
 } from "./task-status";
@@ -63,8 +63,17 @@ describe("task status labels", () => {
 
   it("shows a ready plan with the clipboard icon and the amber review colours", () => {
     expect(STATUS_ICONS.plan_ready).toBe(ClipboardCheck);
-    expect(statusBadgeClass("plan_ready")).toBe(statusBadgeClass("awaiting_review"));
+    expect(statusBadgeVariant("plan_ready")).toBe(statusBadgeVariant("awaiting_review"));
     expect(statusDotClass("plan_ready")).toBe(statusDotClass("awaiting_review"));
+  });
+
+  it("draws every status with a Badge tone from the kit", () => {
+    expect(statusBadgeVariant("queued")).toBe("muted");
+    expect(statusBadgeVariant("running")).toBe("primaryGhost");
+    expect(statusBadgeVariant("awaiting_review")).toBe("warning");
+    expect(statusBadgeVariant("completed")).toBe("success");
+    expect(statusBadgeVariant("failed")).toBe("destructive");
+    expect(statusBadgeVariant("cancelled")).toBe("warning");
   });
 
   it("names every run state", () => {

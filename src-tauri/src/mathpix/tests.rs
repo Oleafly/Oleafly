@@ -553,6 +553,78 @@ fn raw_and_linux_json_bodies_both_carry_the_pdf() {
 }
 
 #[test]
+fn a_json_array_upload_is_refused_above_its_lower_limit_before_conversion() {
+    let json = tauri::ipc::InvokeBody::Json(json!([37, 80, 68, 70]));
+    assert_eq!(&*upload_bytes_within(&json, 4).unwrap(), b"%PDF");
+    let error = upload_bytes_within(&json, 3).unwrap_err();
+    assert_eq!(error_code(&error), "mathpix.pdf_too_large_ipc");
+    // The raw form keeps the full limit.
+    let raw = tauri::ipc::InvokeBody::Raw(b"%PDF".to_vec());
+    assert_eq!(&*upload_bytes_within(&raw, 0).unwrap(), b"%PDF");
+}
+
+#[test]
+fn the_request_id_header_is_optional_but_must_be_valid() {
+    let mut headers = tauri::http::HeaderMap::new();
+    assert_eq!(request_id_header(&headers).unwrap(), None);
+    headers.insert(REQUEST_ID_HEADER, "7f3c-9b".parse().unwrap());
+    assert_eq!(
+        request_id_header(&headers).unwrap().as_deref(),
+        Some("7f3c-9b")
+    );
+    headers.insert(REQUEST_ID_HEADER, "../etc".parse().unwrap());
+    assert!(request_id_header(&headers).is_err());
+}
+
+#[tokio::test]
+async fn cancelling_an_upload_abandons_it_and_creates_no_pdf() {
+    // A server that takes the request and never answers: the upload is still
+    // running when the user cancels.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let holder = std::thread::spawn(move || {
+        let (stream, _) = listener.accept().unwrap();
+        std::thread::sleep(Duration::from_secs(3));
+        drop(stream);
+    });
+    let api = Api::for_tests(&base);
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let stop = Arc::clone(&cancelled);
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(60)).await;
+        stop.store(true, Ordering::SeqCst);
+    });
+    let started = std::time::Instant::now();
+    let error = api
+        .pdf_upload_unless_cancelled(&keys(), b"%PDF", None, &cancelled)
+        .await
+        .unwrap_err();
+    assert_eq!(error_code(&error), "mathpix.cancelled");
+    assert!(started.elapsed() < Duration::from_secs(2));
+    holder.join().unwrap();
+}
+
+#[tokio::test]
+async fn a_cancel_that_arrived_before_the_upload_sends_nothing() {
+    let server = serve(|_| Reply::ok(r#"{"pdf_id":"ID9"}"#)).await;
+    let api = Api::for_tests(&server.base);
+    let cancelled = AtomicBool::new(true);
+    let error = api
+        .pdf_upload_unless_cancelled(&keys(), b"%PDF", None, &cancelled)
+        .await
+        .unwrap_err();
+    assert_eq!(error_code(&error), "mathpix.cancelled");
+    assert!(server.requests("/").is_empty());
+
+    // Not cancelled: the upload goes through as before.
+    let id = api
+        .pdf_upload_unless_cancelled(&keys(), b"%PDF", None, &AtomicBool::new(false))
+        .await
+        .unwrap();
+    assert_eq!(id, "ID9");
+}
+
+#[test]
 fn the_page_range_header_is_optional_but_must_be_valid() {
     let mut headers = tauri::http::HeaderMap::new();
     assert_eq!(page_ranges_header(&headers).unwrap(), None);

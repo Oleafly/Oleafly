@@ -199,25 +199,57 @@ fn is_subcommand(argument: &OsStr) -> bool {
         })
 }
 
-/// Resolves once Ctrl+C is pressed (never, when the handler can't be set).
+/// Resolves when the process is asked to stop: Ctrl+C, and on Unix SIGTERM
+/// and SIGHUP too (never, when the handlers can't be set). A process ended by
+/// a signal runs no destructors, so the compiler a build started would keep
+/// running and the outputs it was holding aside would not go back.
+pub(crate) async fn stop_requested() {
+    daemon::serve::termination().await;
+}
+
 async fn interrupted() -> CliError {
-    if tokio::signal::ctrl_c().await.is_err() {
-        std::future::pending::<()>().await;
-    }
+    stop_requested().await;
     CliError::new(ErrorKind::Interrupted, "interrupted", "Stopped.")
+}
+
+/// What a panic said, as the internal error a command ends with.
+fn panic_error(payload: &(dyn std::any::Any + Send)) -> CliError {
+    let said = payload
+        .downcast_ref::<&str>()
+        .map(|text| (*text).to_string())
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "no reason given".to_string());
+    CliError::internal(format!("Oleafly stopped on a bug: {said}"))
+        .hint("Run the command again with RUST_BACKTRACE=1 and report the output as a bug.")
+}
+
+/// Runs a command; a panic in it becomes an internal error, so `--json` still
+/// gets its one result object and the exit code is the documented one (the
+/// panic itself is still reported on stderr).
+async fn guarded(
+    work: impl std::future::Future<Output = Result<Outcome, CliError>>,
+) -> Result<Outcome, CliError> {
+    use futures_util::FutureExt;
+    match std::panic::AssertUnwindSafe(work).catch_unwind().await {
+        Ok(result) => result,
+        Err(payload) => Err(panic_error(payload.as_ref())),
+    }
 }
 
 pub async fn run(cli: Cli, project_explicit: bool) -> u8 {
     human::init_color(cli.global.color);
     let ctx = Context::from_global(&cli.global, project_explicit, cli.command.name());
-    let result = if cli.command.handles_interrupt() {
-        cli.command.run(&ctx).await
-    } else {
-        tokio::select! {
-            result = cli.command.run(&ctx) => result,
-            error = interrupted() => Err(error),
+    let result = guarded(async {
+        if cli.command.handles_interrupt() {
+            cli.command.run(&ctx).await
+        } else {
+            tokio::select! {
+                result = cli.command.run(&ctx) => result,
+                error = interrupted() => Err(error),
+            }
         }
-    };
+    })
+    .await;
     finish(&ctx, result)
 }
 
@@ -261,6 +293,29 @@ mod tests {
     use commands::build::Commands as BuildCommands;
     use commands::workspace::Commands as WorkspaceCommands;
     use std::path::PathBuf;
+
+    #[tokio::test]
+    async fn a_panic_in_a_command_is_an_internal_error_not_a_crash() {
+        let error = guarded(async { panic!("the index is out of range") })
+            .await
+            .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Internal);
+        assert_eq!(error.exit(), Exit::Internal);
+        assert!(error.message.contains("the index is out of range"));
+        // A formatted message arrives as a String.
+        let reason = String::from("byte index 9 is not a char boundary");
+        let error = guarded(async move { panic!("{reason}") })
+            .await
+            .unwrap_err();
+        assert!(error.message.contains("byte index 9"));
+        assert!(error.hint.is_some());
+        // The envelope --json prints for it is the usual error object.
+        let envelope = contract::error_envelope(Some("check"), &error, &[]);
+        assert_eq!(envelope["ok"], false);
+        assert_eq!(envelope["error"]["code"], "internal");
+        // A command that finishes is left alone.
+        assert!(guarded(async { Ok(Outcome::printed()) }).await.is_ok());
+    }
 
     #[test]
     fn parser_accepts_every_initial_command() {

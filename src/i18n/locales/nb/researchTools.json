@@ -201,7 +201,10 @@
       "unavailable": "Utilgjengelig",
       "saving": "Lagrer...",
       "saveTask": "Lagre oppgaven",
-      "createTask": "Lag oppgaven"
+      "createTask": "Lag oppgaven",
+      "replaceText": "Vil du erstatte tittelen og instruksjonene du skrev, med dette utgangspunktet?",
+      "keepText": "Behold mine",
+      "replaceConfirm": "Erstatt"
     },
     "starter": {
       "literatureReview": {
@@ -245,6 +248,10 @@
       "dependencies": "Avhengigheter",
       "dependencyUnavailable": "Utilgjengelig",
       "noActivity": "Det ble ikke registrert noen aktivitet for denne kjøringen.",
+      "activityGap_one": "{{count}} element imellom vises ikke.",
+      "activityGap_other": "{{count}} elementer imellom vises ikke.",
+      "activityMore": "Mer aktivitet vises ikke ennå.",
+      "keepRunningDesktopApps": "Denne oppgaven bruker skrivebordsapper, som krever at du er ved maskinen.",
       "startToRecord": "Start denne oppgaven for å registrere aktiviteten.",
       "reasoning": "Rapportert resonnering",
       "savedArtifact": "Lagret {{label}}",
@@ -318,6 +325,10 @@
       "kindRun": "Start en kjøring",
       "kindMcp": "Bruk et verktøy",
       "expires": "Venter til {{time}}",
+      "detailCommand": "Hele kommandoen",
+      "detailRun": "Kjøringsdetaljer",
+      "detailMcp": "Verktøyargumenter",
+      "loadFailed": "Forespørslene som venter, kunne ikke lastes.",
       "status": {
         "approved": "Godkjent",
         "denied": "Avvist",
@@ -346,8 +357,9 @@
       "noRuns": "Ingen pågående kjøringer.",
       "budget": "Budsjett",
       "timeUsed": "{{used}} av {{total}}",
-      "costUsed": "${{used}} av ${{limit}}",
-      "costSpent": "${{used}} brukt",
+      "costUsed": "{{used}} av {{limit}}",
+      "costSpent": "{{used}} brukt",
+      "ledgerCapped": "Viser de nyeste {{limit}} resultatene.",
       "costUnknown": "Kostnaden er ukjent for denne modellen.",
       "runsUsed": "{{used}} av {{limit}} kjøringer",
       "runsUsedNoLimit": "{{used}} kjøringer",
@@ -380,6 +392,10 @@
       "mcpServers": "MCP-servere oppgaver kan bruke",
       "mcpServersHint": "Oppgaver kaller disse verktøyene etter kommandoreglene til hver oppgave.",
       "noMcpServers": "Ingen MCP-servere er satt opp.",
+      "networkHint": "Kommandoer i oppgaver kan nå internett. Hver oppgave kan likevel slå det av.",
+      "loadFailed": "Forskningsinnstillingene dine kunne ikke lastes.",
+      "sectionName": "Forskning",
+      "resetConfirm": "Gjenopprett standardene for forskning: hold maskinen våken, varsler, nettverkstilgang, tidsbudsjettet og MCP-serverne oppgaver kan bruke. Regneressurser og bakgrunnsoppgaver blir stående uendret.",
       "saveFailed": "Forskningsinnstillingene dine kunne ikke lagres. Prøv igjen."
     }
   },
@@ -891,7 +907,10 @@
     "fileReady": "{{fileName}} er klar",
     "saveWordHint": "Lagre Word-dokumentet når du er klar.",
     "resultPlaceholder": "Det konverterte resultatet ditt dukker opp her.",
-    "progressConvertingSource": "Konverterer kilden til Typst"
+    "progressConvertingSource": "Konverterer kilden til Typst",
+    "pageRange": "Sider",
+    "pageRangePlaceholder": "Alle sider, eller et område som 1-50",
+    "pageRangeInvalid": "Skriv inn ett sidetall, eller et område som 1-50."
   },
   "converters": {
     "imageToLatex": {
@@ -1098,7 +1117,9 @@
     "fileTooLarge": "Velg en fil som er mindre enn 128 MB.",
     "emptySheet": "Arket du har valgt, er tomt.",
     "arxivInputRequired": "Skriv inn en arXiv-ID, eller velg et kildearkiv.",
-    "equationToTypst": "Pandoc kunne ikke konvertere denne ligningen til Typst. Sjekk LaTeX-matematikken og prøv igjen."
+    "equationToTypst": "Pandoc kunne ikke konvertere denne ligningen til Typst. Sjekk LaTeX-matematikken og prøv igjen.",
+    "pdfTooManyPages": "Denne skanningen har {{pages}} sider, og Oleafly transkriberer opptil {{limit}} om gangen. Skriv inn et sideområde som 1-{{limit}} under filen.",
+    "outputLimit": "Modellen gikk tom for plass før den ble ferdig, så transkripsjonen ville bli ufullstendig. Velg en modell med større utdatagrense i Innstillinger, AI-assistent, Verktøy, eller transkriber en mindre del."
   },
   "converterNotes": {
     "scannedPages": "Transkriberte {{pages}} skannede sider med {{model}}. Gå gjennom ligninger og tabeller før du bruker resultatet.",
@@ -1149,7 +1170,7 @@
       "cannotSeeImages": "{{model}} kan ikke lese bilder. Velg en bildemodell.",
       "localModelGone": "{{model}} finnes ikke lenger i Ollama. Hent den på nytt, eller velg en annen modell.",
       "imagesOnly": "{{model}} leser bare bilder. Velg en språkmodell for å konvertere skrevne ligninger.",
-      "mathpixNotSetUp": "Legg til Mathpix-nøklene dine under Innstillinger, AI, Verktøy, eller velg en annen modell.",
+      "mathpixNotSetUp": "Legg til nøklene dine for Mathpix i Innstillinger, AI-assistent, Verktøy, eller velg en annen modell.",
       "imageTooLarge": "Bildet er fortsatt for stort etter at det er gjort mindre. Beskjær det, og prøv igjen."
     }
   },
@@ -1740,10 +1761,14 @@
     "startAtLabel": "Starttidspunkt",
     "startNow": "Når jeg starter den",
     "keepRunning": "Fortsett å kjøre når Oleafly er lukket",
-    "keepRunningHint": "Slå først på bakgrunnsarbeid under Innstillinger, Forskning.",
+    "keepRunningHint": "Slå først på Bakgrunnsoppgaver under Innstillinger, Forskning.",
     "invalidMetric": "Bruk bokstaver, tall, punktum, bindestreker eller understreker.",
     "invalidCost": "Skriv inn et beløp over null.",
-    "invalidRuns": "Skriv inn et heltall fra 1 til 1 000."
+    "invalidRuns": "Skriv inn et heltall fra 1 til 1 000.",
+    "invalidStart": "Velg et starttidspunkt innen de neste 30 dagene.",
+    "invalidStartFormat": "Bruk formatet {{example}}.",
+    "startAtFormat": "Skriv tidspunktet som {{example}}.",
+    "problemHidden": "Et valg i Oppgavebeskrivelsen må rettes. Åpne Oppgavebeskrivelsen for å se hvilket."
   },
   "runs": {
     "status": {
@@ -1755,11 +1780,6 @@
       "cancelled": "Stoppet",
       "lost": "Mistet"
     }
-  },
-  "record": {
-    "title": "Forskningslogg",
-    "openHandoff": "Åpne overleveringen",
-    "openReport": "Åpne rapporten"
   },
   "evidence": {
     "title": "Sjekk av belegg",
@@ -1811,8 +1831,9 @@
       "edit": "Rediger",
       "remove": "Fjern",
       "removeTitle": "Vil du fjerne {{label}}?",
-      "removeConfirm": "Kjøringer som allerede er startet der, fortsetter.",
+      "removeConfirm": "Kjøringer som allerede er startet der, fortsetter. Oppgaver som venter på å starte der, mislykkes.",
       "forgetHostKey": "Glem vertsnøkkelen",
+      "reviewHostKey": "Sjekk vertsnøkkelen",
       "notTested": "Ikke testet",
       "tested": "Testet {{time}}",
       "testFailed": "Testen mislyktes",
@@ -1903,7 +1924,8 @@
       "none": "Fant ingen verter i SSH-konfigurasjonen din.",
       "added": "Allerede lagt til",
       "add_one": "Legg til {{count}} vert",
-      "add_other": "Legg til {{count}} verter"
+      "add_other": "Legg til {{count}} verter",
+      "skipped": "Ikke lagt til: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Sandkasse på denne maskinen",
@@ -1934,6 +1956,7 @@
       "runsOn": "Kjører på {{target}}",
       "runsLocal": "Kjører på denne maskinen.",
       "missing": "Målet denne oppgaven brukte, er fjernet. Velg et annet.",
+      "loadFailed": "Kjørmålene dine kunne ikke lastes.",
       "windowsOff": "Slå på Windows-sandkassen i Innstillinger for å kjøre kommandoer på denne maskinen.",
       "openSettings": "Åpne Innstillinger",
       "resources": "Slurm-ressurser"
@@ -1947,6 +1970,7 @@
       "movingBackHint": "Denne oppgaven går tilbake til Oleafly når det gjeldende trinnet er ferdig."
     },
     "earlierActivity": "Vis tidligere aktivitet",
+    "earlierTruncated": "Bare de første {{limit}} elementene av denne tidligere kjøringen vises.",
     "keepRunningFailed": "Kunne ikke endre denne innstillingen. Prøv igjen."
   }
 }

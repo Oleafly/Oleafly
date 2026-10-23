@@ -1,6 +1,7 @@
 //! The report for people: one line per finding, sorted by place, then a
 //! summary line.
 use super::report::{Level, ReportRow};
+use crate::human::plain;
 
 fn sort_key(row: &ReportRow) -> (bool, String, u32, u32) {
     let (line, column) = row
@@ -20,23 +21,30 @@ pub fn render_human(rows: &[ReportRow], quiet: bool) -> String {
     sorted.sort_by_key(|row| sort_key(row));
     let mut out = String::new();
     for row in &sorted {
+        // File names, labels and citation keys come from the project, and an
+        // escape sequence in one would reach the terminal as it stands.
         let place = match (&row.file, &row.range) {
             (Some(file), Some(range)) => {
-                format!("{file}:{}:{}", range.start.line, range.start.column)
+                format!(
+                    "{}:{}:{}",
+                    plain(file),
+                    range.start.line,
+                    range.start.column
+                )
             }
-            (Some(file), None) => file.clone(),
+            (Some(file), None) => plain(file).into_owned(),
             (None, _) => "(project)".to_string(),
         };
         out.push_str(&format!(
             "{place}: {} {} [{}]\n",
             row.level.as_str(),
-            row.title,
-            row.rule_id
+            plain(&row.title),
+            plain(&row.rule_id)
         ));
         if !quiet {
             if let Some(detail) = row.detail.as_deref().filter(|detail| !detail.is_empty()) {
                 for line in detail.lines() {
-                    out.push_str(&format!("    {line}\n"));
+                    out.push_str(&format!("    {}\n", plain(line)));
                 }
             }
         }
@@ -85,6 +93,20 @@ mod tests {
             line_text: None,
             json: serde_json::json!({}),
         }
+    }
+
+    #[test]
+    fn project_text_cannot_send_the_terminal_an_escape_sequence() {
+        let mut hostile = row(Some("a\u{1b}[2J.tex"), 3, Level::Warning);
+        hostile.title = "Undefined key \u{1b}]52;c;ZXZpbA==\u{7}".into();
+        hostile.detail = Some("see \u{1b}[31m red\nsecond".into());
+        let text = render_human(&[hostile], false);
+        assert!(
+            !text.chars().any(|c| c.is_control() && c != '\n'),
+            "{text:?}"
+        );
+        assert!(text.contains("a\u{241b}[2J.tex:3:2: warning Undefined key \u{241b}]52"));
+        assert!(text.contains("    see \u{241b}[31m red\n    second\n"));
     }
 
     #[test]

@@ -11,12 +11,12 @@
       "checkingAction": "Kontroluje se",
       "checkingDescription": "Chvíli to potrvá, než Oleafly zkontroluje nástroje příkazové řádky v tomto počítači.",
       "checkingInstalled": "Kontrolují se nainstalovaní agenti",
-      "checkingTitle": "Hledají se agenti pro příkazovou řádku",
+      "checkingTitle": "Hledají se agenti CLI",
       "cliPathLabel": "Nalezeno v",
       "cliTitle": "Nástroj příkazové řádky",
       "copySignInCommand": "Kopírovat přihlašovací příkaz",
-      "emptyDescription": "Nainstalujte podporovaného agenta pro příkazovou řádku a zkontrolujte to znovu.",
-      "emptyTitle": "Nebyli nalezeni žádní agenti pro příkazovou řádku",
+      "emptyDescription": "Nainstalujte podporovaného agenta CLI a pak to zkontrolujte znovu.",
+      "emptyTitle": "Nebyli nalezeni žádní agenti CLI",
       "custom": {
         "description": "Vložte definici agenta a zaregistrujte agenta, kterého Oleafly nedodává.",
         "hint": "Vložte definici agenta s připnutým balíčkem npm nebo uv, ověřeným binárním souborem nebo nainstalovaným spustitelným souborem. Hesla a klíče API do tohoto JSON nedávejte.",
@@ -36,7 +36,7 @@
       },
       "installBridge": "Nainstalovat most",
       "installBridgeNextStep": "Nainstalujte most ACP a pak se přihlaste přes nástroj příkazové řádky.",
-      "intro": "Připojte místního agenta přes ACP. Každý agent si spravuje vlastní modely, nástroje i přihlášení a nastavení poskytovatelů API zůstává oddělené. K přihlášení použijte oficiální účet v CLI: Oleafly neimportuje tokeny účtů ani neodhaduje limity předplatného.",
+      "intro": "Agenti CLI jako Claude Code, Codex a Gemini CLI se připojují přes Agent Client Protocol (ACP). Někteří potřebují most, malý adaptér, který Oleafly nainstaluje, aby s nimi mohl komunikovat. Každý agent si spravuje vlastní modely, nástroje i přihlášení a nastavení poskytovatelů API zůstává oddělené. K přihlášení použijte oficiální účet v CLI: Oleafly neimportuje tokeny účtů ani neodhaduje limity předplatného.",
       "nextStepTitle": "Další krok",
       "notReported": "Nenahlášeno",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Zobrazit distribuci",
         "title": "Najít další agenty"
       },
-      "sectionLabel": "Agenti ACP",
+      "sectionLabel": "Agenti CLI",
       "signInCommandLabel": "Přihlašovací příkaz",
       "versionLabel": "Verze",
       "updateBridge": "Aktualizovat most",
@@ -147,7 +147,7 @@
         "label": "Použít můj klíč API z Oleafly",
         "off": "Vypnuto (agent se přihlašuje sám)",
         "note": "Oleafly pošle klíč tomuto agentovi na začátku konverzace a do záznamů ho nezahrne.",
-        "unavailable": "Chcete-li klíč API použít tady, přidejte ho v části Nastavení, AI."
+        "unavailable": "Chcete-li ho zde použít, přidejte klíč API v Nastavení, Asistent AI, Poskytovatelé a klíče."
       },
       "hermes": {
         "title": "Profil Hermes pro tento projekt",
@@ -175,7 +175,20 @@
         "test": "Otestovat připojení",
         "testOk": "Připojeno: {{version}}",
         "save": "Uložit",
-        "sshNote": "Oleafly se přihlašuje jen vašimi klíči SSH."
+        "sshNote": "Oleafly se přihlašuje jen vašimi klíči SSH.",
+        "folderHint": "Celá cesta na tom počítači, například /home/ada/paper.",
+        "needsValid": "Otestovat připojení a Uložit vyžadují platné hodnoty pro: {{fields}}.",
+        "unsavedEdit": "Zatím neuloženo. Změny se použijí po uložení.",
+        "unsavedMode": "Zatím neuloženo. Dokud neuložíte, tento projekt bude dál používat: {{mode}}.",
+        "errors": {
+          "hostRequired": "Zadejte název hostitele nebo uživatel@hostitel.",
+          "hostInvalid": "Používejte jen písmena, číslice, tečky, pomlčky a @, a nezačínejte pomlčkou.",
+          "port": "Použijte port od 1 do 65535.",
+          "folderRequired": "Zadejte celou cestu ke složce projektu na tom počítači.",
+          "folderInvalid": "Použijte celou cestu začínající /.",
+          "command": "Použijte hermes, nebo celou cestu k němu začínající /.",
+          "profile": "Používejte malá písmena, číslice, pomlčky a podtržítka."
+        }
       }
     },
     "approvals": {
@@ -1019,6 +1032,8 @@
         "ariaLabel": "Shell terminálu (shell)",
         "description": "Nové terminály spouštějí tento shell. Otevřené terminály si ponechají ten svůj.",
         "label": "Shell",
+        "notFound": "{{name}} (nenalezeno)",
+        "notFoundNote": "{{name}} není v tomto počítači k dispozici, proto se nové terminály nedají spustit. Vyberte jiný shell.",
         "options": {
           "auto": "Výchozí ({{name}})",
           "cmd": "Příkazový řádek",
@@ -1033,14 +1048,17 @@
           "ariaLabel": "Vlastní cesta ke shellu (shell)",
           "description": "Program, který nové terminály spouštějí.",
           "label": "Cesta ke shellu (shell)"
-        }
+        },
+        "windowsOnly": "{{name}} (jen Windows)",
+        "windowsOnlyNote": "{{name}} běží jen ve Windows. Nové terminály tady místo něj spouštějí {{fallback}}.",
+        "windowsOnlyNoteDefault": "{{name}} běží jen ve Windows. Nové terminály tady místo něj spouštějí výchozí shell."
       },
       "shiftEnter": {
         "ariaLabel": "Shift+Enter v terminálu",
-        "description": "Co Shift+Enter posílá programu v terminálu.",
-        "enter": "Enter",
+        "description": "Co Shift+Enter posílá programu v terminálu. Nový řádek umožňuje chatovacím nástrojům jako Claude Code přidat řádek do jejich výzvy. Enter odešle stejně jako klávesa Enter.",
+        "enter": "Poslat Enter",
         "label": "Shift+Enter",
-        "newline": "Nový řádek"
+        "newline": "Vložit nový řádek"
       },
       "startWithProject": {
         "description": "Spustit prostředí shell už při otevření projektu, ne až když terminál poprvé zobrazíte.",
@@ -1472,7 +1490,9 @@
       "detecting": "Kontroluje se server…",
       "found": "Toto je server {{kind}}.",
       "kindGitea": "Gitea nebo Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "Jiný server",
+      "replaces": "Přihlášením nahradíte {{login}} na {{host}}.",
       "scopesGitea": "Udělte mu přístup pro čtení a zápis k repository a user.",
       "scopesGithub": "Udělte mu rozsahy repo a read:user.",
       "scopesGitlab": "Udělte mu rozsahy api a write_repository.",
@@ -1547,7 +1567,7 @@
       "site": "Web: {{domain}}",
       "confirmCopy": "Oleafly přečte soubory cookie pro {{domain}} z profilu {{profile}} v prohlížeči {{browser}}. Zůstanou v Oleafly a odesílají se jen na {{domain}}. Ještě jednou to potvrdíte v systémovém dialogu.",
       "copyAction": "Zkopírovat přihlášení",
-      "copying": "Kopíruje se...",
+      "copying": "Kopíruje se…",
       "notSignedIn_one": "Z prohlížeče {{browser}} byl zkopírován {{count}} soubor cookie, ale nepřihlásil vás. Přihlaste se přímo.",
       "notSignedIn_few": "Z prohlížeče {{browser}} byly zkopírovány {{count}} soubory cookie, ale nepřihlásily vás. Přihlaste se přímo.",
       "notSignedIn_many": "Z prohlížeče {{browser}} bylo zkopírováno {{count}} souboru cookie, ale nepřihlásily vás. Přihlaste se přímo.",
@@ -1638,6 +1658,7 @@
         "notInstalled": "Cua Driver není nainstalovaný.",
         "tooOld": "Cua Driver {{version}} je příliš starý. Oleafly potřebuje verzi {{minimum}} nebo novější.",
         "noAppBundle": "Nainstalujte Cua Driver oficiálním instalačním programem, aby mohl držet oprávnění macOS.",
+        "unreadableVersion": "Oleafly nedokázal přečíst verzi Cua Driver. Ověřte, že běží, a pak zkontrolujte znovu.",
         "path": "Nalezeno v {{path}}"
       },
       "install": {
@@ -1671,14 +1692,18 @@
         "empty": "Zatím žádné aplikace. Agenti mohou používat jen aplikace, které sem přidáte.",
         "add": "Přidat aplikaci",
         "remove": "Odebrat {{name}}",
+        "missing": "Tento program nebyl v tomto počítači nalezen. Odeberte ho, nebo aplikaci přeinstalujte.",
         "dialog": {
           "title": "Přidat aplikaci",
           "description": "Vyberte aplikaci, kterou mohou agenti používat. Po vašem schválení ji mohou otevřít, číst její okna a pracovat v ní.",
           "search": "Hledat aplikace",
-          "loading": "Hledají se aplikace...",
+          "loading": "Hledají se aplikace…",
           "none": "Žádná aplikace neodpovídá.",
-          "choose": "Vybrat jinou aplikaci...",
-          "add": "Přidat"
+          "choose": "Vybrat jinou aplikaci…",
+          "add": "Přidat",
+          "added": "Už je přidaná.",
+          "more": "Zobrazuje se {{shown}} z {{total}}. Hledáním seznam zúžíte.",
+          "refresh": "Obnovit"
         },
         "blocked": {
           "oleafly": "Oleafly nemůže ovládat sám sebe.",
@@ -1688,7 +1713,8 @@
           "passwords": "Aplikace pro hesla zůstávají mimo dosah.",
           "scripting": "Programy spouštějící skripty mohou v tomto počítači udělat cokoli.",
           "wrapper": "Tato položka spouští jiný program. Vyberte místo ní ten program.",
-          "sandboxed": "Aplikace Flatpak a Snap zatím nejsou podporované."
+          "sandboxed": "Aplikace Flatpak a Snap zatím nejsou podporované.",
+          "browser": "Weby prohlížeče přidejte místo toho pod Povolené weby."
         }
       },
       "sites": {
@@ -1699,6 +1725,7 @@
         "remove": "Odebrat {{origin}}",
         "signedIn": {
           "label": "Použít můj přihlášený prohlížeč",
+          "labelFor": "Použít můj přihlášený prohlížeč na {{origin}}",
           "description": "Na tomto webu agenti pracují ve vašem vlastním Chrome nebo Edge. Ponechte vypnuté, chcete-li použít samostatný profil prohlížeče."
         }
       },
@@ -1708,8 +1735,9 @@
       },
       "test": {
         "action": "Otestovat připojení",
-        "running": "Testuje se...",
+        "running": "Testuje se…",
         "ok": "Cua Driver běží s vašimi limity.",
+        "problems": "Vlastní kontrola Cua Driver navíc nahlásila:",
         "failed": "Test selhal: {{detail}}"
       },
       "tool": {
@@ -2323,6 +2351,7 @@
       "stopHint": "Jeho úlohy počkají pozastavené, dokud znovu neotevřete Oleafly.",
       "stopFailed": "Proces na pozadí se nezastavil. Zkuste to znovu.",
       "openLog": "Zobrazit protokol",
+      "statusFailed": "Stav procesu na pozadí se nepodařilo přečíst.",
       "toggleFailed": "Toto nastavení se nepodařilo změnit. Zkuste to znovu."
     }
   }

@@ -172,11 +172,23 @@ pub(crate) fn latexdiff_report(
     args: &DiffArgs,
 ) -> Result<Report, CliError> {
     let root = scope.root();
-    let main = main_document(root)?;
+    main_document(root)?;
     let program = locate_latexdiff(root)?;
+    latexdiff_report_with(&program, deps, scope, paths, args)
+}
+
+fn latexdiff_report_with(
+    program: &Path,
+    deps: &RemoteDeps,
+    scope: &RemoteScope,
+    paths: &SyncPaths,
+    args: &DiffArgs,
+) -> Result<Report, CliError> {
+    let root = scope.root();
+    let main = main_document(root)?;
     let mirror = checkout_remote(deps.git.as_ref(), paths).map_err(|error| from_online(&error))?;
     let marked = run_latexdiff(
-        &program,
+        program,
         &mirror.join(&main),
         &root.join(&main),
         LATEXDIFF_TIMEOUT,
@@ -194,8 +206,12 @@ pub(crate) fn latexdiff_report(
                     )),
                 )
             }
-            None => Ok(Report::new(json!({"tex": null, "pdf": null}))
-                .line(String::from_utf8_lossy(&marked).trim_end().to_string())),
+            // The document is the answer, so it is in the data as well as on
+            // screen (`--json` prints no lines).
+            None => {
+                let text = String::from_utf8_lossy(&marked).trim_end().to_string();
+                Ok(Report::new(json!({"tex": null, "pdf": null, "text": text})).line(text))
+            }
         };
     }
     let main_path = Path::new(&main);
@@ -246,6 +262,57 @@ mod tests {
         assert_eq!(args.len(), 3);
         assert_eq!(args[0], "--flatten");
         assert_eq!(args[2], r"C:\Users\Ana Lopez\paper\main.tex");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_marked_up_document_without_an_output_file_is_in_the_json_data() {
+        use std::io::Write as _;
+        let world = super::super::sync::tests::World::linked();
+        std::fs::write(
+            world.project.join("project.json"),
+            r#"{"name":"t","main_doc":"main.tex","engine":"xetex"}"#,
+        )
+        .unwrap();
+        let tools = world.dir.path().join("tools");
+        std::fs::create_dir_all(&tools).unwrap();
+        let fake = tools.join("latexdiff");
+        // A child shell writes the script, so a test running at the same time
+        // can't fork while this process holds the file open for writing
+        // (which makes the exec fail with ETXTBSY).
+        let mut writer = Command::new("sh")
+            .args(["-c", "cat > \"$1\" && chmod 700 \"$1\"", "sh"])
+            .arg(&fake)
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+        writer
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"#!/bin/sh\nprintf '%s\\n' '\\documentclass{article} MARKED'\n")
+            .unwrap();
+        assert!(writer.wait().unwrap().success());
+        let env = &world.env;
+        let scope = super::super::scope::resolve_scope(&world.project, &env.data_root).unwrap();
+        let paths = scope.sync_paths(&env.data_root).unwrap();
+        let report = latexdiff_report_with(
+            &fake,
+            &super::super::sync::tests::deps(),
+            &scope,
+            &paths,
+            &DiffArgs {
+                latexdiff: true,
+                ..DiffArgs::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(report.data["text"], "\\documentclass{article} MARKED");
+        assert_eq!(report.data["tex"], serde_json::Value::Null);
+        assert_eq!(
+            report.lines,
+            vec!["\\documentclass{article} MARKED".to_string()]
+        );
     }
 
     #[test]

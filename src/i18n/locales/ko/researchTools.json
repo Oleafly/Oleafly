@@ -200,7 +200,10 @@
       "unavailable": "쓸 수 없음",
       "saving": "저장하는 중...",
       "saveTask": "작업 저장",
-      "createTask": "작업 만들기"
+      "createTask": "작업 만들기",
+      "replaceText": "입력한 제목과 지시 사항을 이 시작 지점으로 바꿀까요?",
+      "keepText": "내 것 유지",
+      "replaceConfirm": "바꾸기"
     },
     "starter": {
       "literatureReview": {
@@ -244,6 +247,9 @@
       "dependencies": "의존 관계",
       "dependencyUnavailable": "쓸 수 없음",
       "noActivity": "이번 실행에서 기록된 활동이 없습니다.",
+      "activityGap_other": "사이에 있는 항목 {{count}}개는 표시되지 않습니다.",
+      "activityMore": "나머지 활동은 아직 표시되지 않습니다.",
+      "keepRunningDesktopApps": "이 작업은 데스크톱 앱을 사용하므로 컴퓨터 앞에 있어야 합니다.",
       "startToRecord": "활동을 기록하려면 이 작업을 시작하세요.",
       "reasoning": "보고된 추론 과정",
       "savedArtifact": "{{label}}을(를) 저장했습니다",
@@ -317,6 +323,10 @@
       "kindRun": "실행 시작",
       "kindMcp": "도구 사용",
       "expires": "{{time}}까지 대기",
+      "detailCommand": "전체 명령",
+      "detailRun": "실행 세부 정보",
+      "detailMcp": "도구 인자",
+      "loadFailed": "대기 중인 요청을 불러오지 못했습니다.",
       "status": {
         "approved": "승인됨",
         "denied": "거부됨",
@@ -345,8 +355,9 @@
       "noRuns": "진행 중인 실행이 없습니다.",
       "budget": "예산",
       "timeUsed": "{{total}} 중 {{used}}",
-      "costUsed": "${{limit}} 중 ${{used}}",
-      "costSpent": "${{used}} 사용",
+      "costUsed": "{{limit}} 중 {{used}}",
+      "costSpent": "{{used}} 사용",
+      "ledgerCapped": "최근 {{limit}}개 결과만 표시됩니다.",
       "costUnknown": "이 모델의 비용을 알 수 없습니다.",
       "runsUsed": "실행 {{limit}}회 중 {{used}}회",
       "runsUsedNoLimit": "실행 {{used}}회",
@@ -379,6 +390,10 @@
       "mcpServers": "작업이 사용할 수 있는 MCP 서버",
       "mcpServersHint": "작업은 각 작업의 명령 규칙에 따라 이 도구를 호출합니다.",
       "noMcpServers": "설정된 MCP 서버가 없습니다.",
+      "networkHint": "작업의 명령이 인터넷에 접근할 수 있습니다. 각 작업에서 끌 수도 있습니다.",
+      "loadFailed": "연구 설정을 불러오지 못했습니다.",
+      "sectionName": "연구",
+      "resetConfirm": "연구 기본값을 되돌립니다: 컴퓨터 깨어 있게 유지, 알림, 네트워크 접근, 시간 예산, 작업이 사용할 수 있는 MCP 서버. 실행 대상과 백그라운드 작업은 그대로 유지됩니다.",
       "saveFailed": "연구 설정을 저장하지 못했습니다. 다시 시도하세요."
     }
   },
@@ -887,7 +902,10 @@
     "fileReady": "{{fileName}}이(가) 준비되었습니다",
     "saveWordHint": "준비되면 Word 문서를 저장하세요.",
     "resultPlaceholder": "변환 결과가 여기에 나타납니다.",
-    "progressConvertingSource": "소스를 Typst로 변환하는 중"
+    "progressConvertingSource": "소스를 Typst로 변환하는 중",
+    "pageRange": "페이지",
+    "pageRangePlaceholder": "모든 페이지 또는 1-50 같은 범위",
+    "pageRangeInvalid": "페이지 번호 하나 또는 1-50 같은 범위를 입력하세요."
   },
   "converters": {
     "imageToLatex": {
@@ -1094,7 +1112,9 @@
     "fileTooLarge": "128 MB보다 작은 파일을 고르세요.",
     "emptySheet": "선택한 시트가 비어 있습니다.",
     "arxivInputRequired": "arXiv 아이디를 입력하거나 소스 압축 파일을 고르세요.",
-    "equationToTypst": "Pandoc이 이 수식을 Typst로 변환하지 못했습니다. LaTeX 수식을 확인하고 다시 시도하세요."
+    "equationToTypst": "Pandoc이 이 수식을 Typst로 변환하지 못했습니다. LaTeX 수식을 확인하고 다시 시도하세요.",
+    "pdfTooManyPages": "이 스캔 파일은 {{pages}}페이지이고 Oleafly는 한 번에 {{limit}}페이지까지 옮겨 적을 수 있습니다. 파일 아래에 1-{{limit}} 같은 페이지 범위를 입력하세요.",
+    "outputLimit": "모델이 다 끝내기 전에 출력 공간이 부족해 옮겨 적기가 완전하지 않습니다. 설정 → AI → 도구에서 출력 한도가 더 큰 모델을 고르거나, 더 작은 부분만 옮겨 적으세요."
   },
   "converterNotes": {
     "scannedPages": "{{model}}(으)로 스캔한 {{pages}}페이지를 옮겨 적었습니다. 결과를 쓰기 전에 수식과 표를 검토하세요.",
@@ -1720,7 +1740,11 @@
     "keepRunningHint": "먼저 설정 → 연구에서 백그라운드 작업을 켜세요.",
     "invalidMetric": "영문자, 숫자, 점, 하이픈, 밑줄을 사용하세요.",
     "invalidCost": "0보다 큰 금액을 입력하세요.",
-    "invalidRuns": "1에서 1,000 사이의 정수를 입력하세요."
+    "invalidRuns": "1에서 1,000 사이의 정수를 입력하세요.",
+    "invalidStart": "앞으로 30일 이내의 시작 시간을 고르세요.",
+    "invalidStartFormat": "{{example}} 형식을 사용하세요.",
+    "startAtFormat": "{{example}} 형식으로 시간을 입력하세요.",
+    "problemHidden": "작업 개요의 옵션 하나를 수정해야 합니다. 어느 옵션인지 보려면 작업 개요를 여세요."
   },
   "runs": {
     "status": {
@@ -1732,11 +1756,6 @@
       "cancelled": "중지됨",
       "lost": "유실됨"
     }
-  },
-  "record": {
-    "title": "연구 기록",
-    "openHandoff": "인계 내용 열기",
-    "openReport": "보고서 열기"
   },
   "evidence": {
     "title": "근거 확인",
@@ -1788,8 +1807,9 @@
       "edit": "편집",
       "remove": "삭제",
       "removeTitle": "{{label}}을(를) 삭제할까요?",
-      "removeConfirm": "그곳에서 이미 시작된 실행은 계속됩니다.",
+      "removeConfirm": "그곳에서 이미 시작된 실행은 계속됩니다. 시작을 기다리는 작업은 실패합니다.",
       "forgetHostKey": "호스트 키 지우기",
+      "reviewHostKey": "호스트 키 확인",
       "notTested": "테스트 안 함",
       "tested": "{{time}} 테스트함",
       "testFailed": "테스트 실패",
@@ -1879,7 +1899,8 @@
       "body": "추가할 호스트를 고르세요. Oleafly는 SSH 설정을 읽기만 하고 바꾸지 않습니다.",
       "none": "SSH 설정에서 호스트를 찾지 못했습니다.",
       "added": "이미 추가됨",
-      "add_other": "호스트 {{count}}개 추가"
+      "add_other": "호스트 {{count}}개 추가",
+      "skipped": "추가하지 않음: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "이 컴퓨터의 샌드박스",
@@ -1910,6 +1931,7 @@
       "runsOn": "{{target}}에서 실행",
       "runsLocal": "이 컴퓨터에서 실행합니다.",
       "missing": "이 작업이 쓰던 대상이 삭제되었습니다. 다른 대상을 선택하세요.",
+      "loadFailed": "실행 대상을 불러오지 못했습니다.",
       "windowsOff": "이 컴퓨터에서 명령을 실행하려면 설정에서 Windows 샌드박스를 켜세요.",
       "openSettings": "설정 열기",
       "resources": "Slurm 리소스"
@@ -1923,6 +1945,7 @@
       "movingBackHint": "이 작업은 현재 단계가 끝나면 Oleafly로 돌아옵니다."
     },
     "earlierActivity": "이전 활동 보기",
+    "earlierTruncated": "이전 실행에서는 처음 {{limit}}개 항목만 표시됩니다.",
     "keepRunningFailed": "이 설정을 바꾸지 못했습니다. 다시 시도하세요."
   }
 }

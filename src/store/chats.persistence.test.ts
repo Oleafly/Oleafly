@@ -398,7 +398,81 @@ describe("chat persistence on disk", () => {
     expect(mocks.chatDelete).not.toHaveBeenCalled();
   });
 
-  it("drops the cached chats of the least recent of more than 16 projects", async () => {
+  it("keeps a just-updated chat first when a later update does not sort", async () => {
+    putOnDisk(chat("p1", "old", 1), chat("p1", "mid", 2), chat("p1", "new", 3));
+    await store.getState().load("p1");
+
+    store.getState().saveMessages("old", [{ role: "user", content: "hello" }]);
+    store.getState().addUsage("old", { inputTokens: 1, outputTokens: 1, steps: 1 });
+    store.getState().setChatCost("old", 0.5);
+    store.getState().setThreadId("old", "thread-1");
+    await settle();
+
+    expect(store.getState().chats.map((c) => c.id)).toEqual(["old", "new", "mid"]);
+  });
+
+  it("merges the chat files into a chat created before the first load finished", async () => {
+    putOnDisk(chat("p1", "older", 1), chat("p1", "oldest", 0));
+    const created = store.getState().create("p1", null);
+
+    await store.getState().load("p1");
+
+    expect(store.getState().chats.map((c) => c.id).sort()).toEqual([created.id, "older", "oldest"].sort());
+    // The chat a run is using stays the active one.
+    expect(store.getState().activeId).toBe(created.id);
+  });
+
+  it("does not bring back a chat that was deleted while the files were read", async () => {
+    putOnDisk(chat("p1", "a", 1), chat("p1", "b", 2));
+    await store.getState().load("p1");
+    let release!: () => void;
+    mocks.chatDelete.mockImplementationOnce(
+      (pid: string, id: string) =>
+        new Promise<void>((resolve) => {
+          release = () => {
+            mocks.files.get(pid)?.delete(id);
+            resolve();
+          };
+        }),
+    );
+    store.getState().remove("a");
+    await settle();
+
+    await store.getState().load("p1");
+
+    expect(store.getState().chats.map((c) => c.id)).toEqual(["b"]);
+    release();
+  });
+
+  it("does not collect attachments from a list that never met the chat files", async () => {
+    putOnDisk(chat("p1", "hidden", 1, {
+      messages: [{ role: "user", content: "x", attachments: [{ name: "a.png", mediaType: "image/png", sha256: "hidden-file" }] }],
+    }));
+    const created = store.getState().create("p1", null);
+    const other = store.getState().create("p1", null);
+
+    store.getState().remove(other.id);
+    await settle();
+    await settle();
+    expect(mocks.attachmentGc).not.toHaveBeenCalled();
+
+    await store.getState().load("p1");
+    store.getState().remove(created.id);
+    await settle();
+    await settle();
+    const [, keep] = mocks.attachmentGc.mock.calls[0];
+    expect(keep).toContain("hidden-file");
+  });
+
+  it("still writes a chat whose project left the cache before its save ran", async () => {
+    store.getState().create("p0", null);
+    for (let index = 1; index <= 6; index += 1) store.getState().create(`p${index}`, null);
+    await settle();
+
+    expect(mocks.chatSave.mock.calls.some((call) => call[0] === "p0")).toBe(true);
+  });
+
+  it("drops the cached chats of the least recent projects past the cache size", async () => {
     store.getState().create("p0", null);
     for (let index = 1; index <= 16; index += 1) store.getState().create(`p${index}`, null);
     await settle();

@@ -61,8 +61,13 @@ vi.mock("@/components/editor/diff/InlineDiffPreview", () => ({
   ),
 }));
 
+const markdownDraws = vi.hoisted(() => ({ texts: [] as string[] }));
+
 vi.mock("@/components/ui/markdown", () => ({
-  Markdown: ({ children }: { children: string }) => <p>{children}</p>,
+  Markdown: ({ children, streaming }: { children: string; streaming?: boolean }) => {
+    markdownDraws.texts.push(children);
+    return <p data-streaming={streaming ? "true" : undefined}>{children}</p>;
+  },
 }));
 
 beforeAll(async () => {
@@ -1098,6 +1103,239 @@ describe("TaskDetailDialog", () => {
 
       view.rerender(<TaskDetailDialog {...props({ ...waiting, pendingApprovals: 0 })} />);
       expect(page().queryByTestId("research-pending-approvals")).toBeNull();
+    });
+  });
+
+  describe("long activity", () => {
+    const detail = enResearchTools.tasks.detail;
+    const row = (sequence: number, message: string, taskId = "long") => ({
+      taskId,
+      executionGeneration: 1,
+      sequence,
+      event: { kind: "status" as const, message },
+      createdAt: sequence,
+    });
+    const text = (sequence: number, value: string, generation = 1) => ({
+      taskId: "long",
+      executionGeneration: generation,
+      sequence,
+      event: { kind: "text" as const, text: value },
+      createdAt: sequence,
+    });
+    const running = (): ResearchTask => ({ ...task("long"), status: "running", result: null });
+
+    it("marks the gap between the saved rows and the live ones, and loads more from there", () => {
+      const input = {
+        ...props(running()),
+        canLoadMoreEvents: true,
+        eventsLoadedThrough: 2,
+        events: [row(1, "First saved"), row(2, "Second saved"), row(10, "First live"), row(11, "Newest live")],
+      };
+      render(<TaskDetailDialog {...input} />);
+
+      const gap = page().getByTestId("research-task-activity-gap");
+      expect(gap).toHaveTextContent("7 items in between are not shown.");
+      const after = (node: HTMLElement) => node.compareDocumentPosition(gap) & Node.DOCUMENT_POSITION_FOLLOWING;
+      const before = (node: HTMLElement) => gap.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING;
+      expect(after(page().getByText("Second saved"))).toBeTruthy();
+      expect(before(page().getByText("First live"))).toBeTruthy();
+
+      const buttons = page().getAllByRole("button", { name: detail.loadMore });
+      expect(buttons).toHaveLength(1);
+      expect(gap).toContainElement(buttons[0]);
+      fireEvent.click(buttons[0]);
+      expect(input.onLoadMoreEvents).toHaveBeenCalledOnce();
+    });
+
+    it("says one item is missing in the singular", () => {
+      render(
+        <TaskDetailDialog
+          {...props(running())}
+          canLoadMoreEvents
+          eventsLoadedThrough={1}
+          events={[row(1, "Saved"), row(3, "Live")]}
+        />,
+      );
+      expect(page().getByTestId("research-task-activity-gap")).toHaveTextContent("1 item in between is not shown.");
+    });
+
+    it("offers Load more at the end when no live row follows the saved ones", () => {
+      render(
+        <TaskDetailDialog
+          {...props(running())}
+          canLoadMoreEvents
+          eventsLoadedThrough={2}
+          events={[row(1, "Saved one"), row(2, "Saved two")]}
+        />,
+      );
+      expect(page().getByTestId("research-task-activity-gap")).toHaveTextContent(detail.activityMore);
+      expect(page().getByRole("button", { name: detail.loadMore })).toBeInTheDocument();
+    });
+
+    it("keeps Load more out of the footer, so the other tabs don't offer it", () => {
+      render(<TaskDetailDialog {...props(task("long"))} canLoadMoreEvents events={[row(1, "Saved")]} />);
+      openTab(detail.tabReview);
+      expect(page().queryByRole("button", { name: detail.loadMore })).toBeNull();
+    });
+
+    it("shows no gap note when everything is loaded", () => {
+      render(<TaskDetailDialog {...props(running())} events={[row(1, "Saved"), row(2, "Live")]} />);
+      expect(page().queryByTestId("research-task-activity-gap")).toBeNull();
+      expect(page().queryByRole("button", { name: detail.loadMore })).toBeNull();
+    });
+
+    it("streams only the newest message of a running task and redraws only the row that changed", () => {
+      const view = render(
+        <TaskDetailDialog
+          {...props(running())}
+          events={[text(1, "First message"), row(2, "Between"), text(3, "Second")]}
+        />,
+      );
+      expect(page().getByText("First message")).not.toHaveAttribute("data-streaming");
+      expect(page().getByText("Second")).toHaveAttribute("data-streaming", "true");
+
+      markdownDraws.texts.length = 0;
+      view.rerender(
+        <TaskDetailDialog
+          {...props(running())}
+          events={[text(1, "First message"), row(2, "Between"), text(3, "Second message grows")]}
+        />,
+      );
+
+      expect(markdownDraws.texts).toEqual(["Second message grows"]);
+      expect(page().getByText("Second message grows")).toHaveAttribute("data-streaming", "true");
+    });
+
+    it("does not stream the messages of a task that is not running", () => {
+      render(
+        <TaskDetailDialog
+          {...props({ ...task("long"), status: "awaiting_review" })}
+          initialTab="activity"
+          events={[text(1, "Done thinking")]}
+        />,
+      );
+      expect(page().getByText("Done thinking")).not.toHaveAttribute("data-streaming");
+    });
+
+    it("keeps each earlier run in its own timeline and says when a run was only partly loaded", async () => {
+      previewMocks.events.mockImplementation(async (taskId: string, generation: number, after?: number) => ({
+        events: [
+          {
+            taskId,
+            executionGeneration: generation,
+            sequence: (after ?? 0) + 1,
+            event: { kind: "text", text: `Run ${generation} part ${(after ?? 0) + 1}` },
+            createdAt: 1,
+          },
+        ],
+        // Generation 2 never runs out of rows; generation 1 ends after one.
+        nextSequence: generation === 2 ? (after ?? 0) + 1 : null,
+      }));
+      const current: ResearchTask = { ...task("long"), status: "running", result: null, executionGeneration: 3, resumedFrom: 2 };
+      render(<TaskDetailDialog {...props(current)} />);
+      const earlier = enResearchTools.backgroundHelper.earlierActivity;
+
+      fireEvent.click(page().getByRole("button", { name: earlier }));
+      await page().findByTestId("research-task-earlier-activity");
+      await waitFor(() =>
+        expect(page().getByTestId("research-task-earlier-activity")).toHaveTextContent(
+          enResearchTools.backgroundHelper.earlierTruncated.replace("{{limit}}", "2,000"),
+        ),
+      );
+      expect(previewMocks.events.mock.calls.filter(([, generation]) => generation === 2)).toHaveLength(10);
+      expect(previewMocks.events).toHaveBeenCalledWith("long", 2, 1, 200);
+
+      fireEvent.click(page().getByRole("button", { name: earlier }));
+      await page().findByText("Run 1 part 1");
+      // The last text of run 2 and the first of run 1 are not joined into one message.
+      expect(page().getByText("Run 1 part 1").textContent).toBe("Run 1 part 1");
+      expect(page().getByText(/Run 2 part 1/).textContent).not.toContain("Run 1 part 1");
+    });
+  });
+
+  describe("file selection and keep running", () => {
+    const detail = enResearchTools.tasks.detail;
+
+    function withFiles(...paths: string[]) {
+      const current = task("files");
+      if (!current.result) throw new Error("Missing review fixture");
+      current.result.changedFiles = paths.map((path) => ({
+        path, kind: "modified", beforeSha256: null, afterSha256: null, beforeSize: null, afterSize: null,
+      })) as never;
+      return current;
+    }
+
+    it("lets the reviewer clear the selection while one file has changed since the task started", async () => {
+      const current = withFiles("a.tex", "b.tex");
+      previewMocks.file.mockImplementation(async (_id: string, path: string) => ({
+        ...preview("after"),
+        path,
+        baseIsCurrent: path === "a.tex",
+        mergesWithShared: false,
+      }));
+      render(<TaskDetailDialog {...props(current)} />);
+      fireEvent.click(page().getAllByRole("button", { name: "Preview" })[1]);
+      await waitFor(() => expect(page().getByRole("checkbox", { name: "Apply b.tex" })).toBeDisabled());
+      const first = page().getByRole("checkbox", { name: "Apply a.tex" });
+      expect(first).toBeChecked();
+
+      // Every file that can be applied is selected, so the control clears the selection.
+      fireEvent.click(page().getByRole("button", { name: detail.clearSelection }));
+      expect(first).not.toBeChecked();
+      fireEvent.click(page().getByRole("button", { name: detail.selectAll }));
+      expect(first).toBeChecked();
+      expect(page().getByRole("checkbox", { name: "Apply b.tex" })).not.toBeChecked();
+    });
+
+    it("turns Select all off when every file changed since the task started", async () => {
+      const current = withFiles("a.tex");
+      previewMocks.file.mockResolvedValue({ ...preview("after"), path: "a.tex", baseIsCurrent: false, mergesWithShared: false });
+      render(<TaskDetailDialog {...props(current)} />);
+      fireEvent.click(page().getByRole("button", { name: "Preview" }));
+
+      await waitFor(() => expect(page().getByRole("button", { name: detail.selectAll })).toBeDisabled());
+    });
+
+    it("explains why a task that uses desktop apps can't keep running after Oleafly closes", async () => {
+      const apps: ResearchTask = {
+        ...task("apps"),
+        status: "queued",
+        result: null,
+        brief: { ...task("apps").brief, permissions: { ...task("apps").brief.permissions, desktopApps: true } },
+      };
+      render(<TaskDetailDialog {...props(apps)} />);
+
+      const keep = page().getByRole("checkbox", { name: new RegExp(enResearchTools.brief.keepRunning) });
+      await waitFor(() => expect(page().getByText(detail.keepRunningDesktopApps)).toBeInTheDocument());
+      expect(keep).toBeDisabled();
+    });
+
+    it("still lets a task that already keeps running with desktop apps turn it off", async () => {
+      const current = task("apps-on");
+      const apps: ResearchTask = {
+        ...current,
+        status: "queued",
+        result: null,
+        keepRunningAfterQuit: true,
+        brief: { ...current.brief, permissions: { ...current.brief.permissions, desktopApps: true } },
+      };
+      render(<TaskDetailDialog {...props(apps)} />);
+
+      const keep = page().getByRole("checkbox", { name: new RegExp(enResearchTools.brief.keepRunning) });
+      await waitFor(() => expect(keep).toBeEnabled());
+      expect(page().queryByText(detail.keepRunningDesktopApps)).toBeNull();
+    });
+
+    it("shows a coded preview failure as its sentence", async () => {
+      previewMocks.file.mockRejectedValueOnce(
+        `@oleafly/error:${JSON.stringify({ code: "project.folder_read_only", params: { name: "main.tex" }, detail: null })}`,
+      );
+      render(<TaskDetailDialog {...props(task("coded"))} />);
+
+      fireEvent.click(page().getByRole("button", { name: "Preview" }));
+
+      await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("main.tex or its folder is read-only"));
+      expect(page().getByRole("alert")).not.toHaveTextContent("@oleafly/error");
     });
   });
 });

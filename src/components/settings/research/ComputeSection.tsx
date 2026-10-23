@@ -10,13 +10,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ErrorState } from "@/components/ui/empty";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Spinner } from "@/components/ui/spinner";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { describeError } from "@/lib/app-error";
-import { formatRelativeTimeFrom } from "@/lib/intl";
+import { formatList, formatRelativeTimeFrom } from "@/lib/intl";
 import { ComputeSandboxCard } from "./ComputeSandboxCard";
+import { ResearchCard } from "./ResearchCard";
 import {
   announceTargetsChanged,
   computeSettings,
@@ -45,6 +47,11 @@ const ComputeHostKeyDialog = lazy(() =>
 const ComputeSshImportDialog = lazy(() =>
   import("./ComputeSshImportDialog").then((module) => ({ default: module.ComputeSshImportDialog })),
 );
+
+interface HostKeyEntry {
+  target: ComputeTarget;
+  prompt: HostKeyPrompt;
+}
 
 export const STATUS_VARIANT: Record<CheckStatus, BadgeVariant> = {
   pass: "success",
@@ -89,6 +96,7 @@ function TargetRow({
   onEdit,
   onForget,
   onRemove,
+  onReviewHostKey,
 }: Readonly<{
   target: ComputeTarget;
   summary?: TestSummary;
@@ -98,6 +106,7 @@ function TargetRow({
   onEdit: () => void;
   onForget: () => void;
   onRemove: () => void;
+  onReviewHostKey: () => void;
 }>) {
   const { t } = useTranslation(["researchTools"]);
   let status = null;
@@ -139,6 +148,11 @@ function TargetRow({
       details={report ? <TestReportList report={report} /> : null}
       control={
         <div className="flex shrink-0 items-center gap-1">
+          {report?.hostKey && !testing ? (
+            <Button size="xs" variant="outline" onClick={onReviewHostKey} data-testid={`compute-host-key-${target.id}`}>
+              {t(($) => $.researchTools.compute.targets.reviewHostKey)}
+            </Button>
+          ) : null}
           <Button size="xs" variant="outline" disabled={testing} onClick={onTest}>
             {testing ? <Spinner size="xs" aria-hidden /> : null}
             {testing
@@ -175,7 +189,7 @@ function TargetRow({
 
 /** Settings › Research › Compute: run targets and the sandbox on this computer. */
 export function ComputeSection() {
-  const { t } = useTranslation(["researchTools"]);
+  const { t } = useTranslation(["common", "researchTools"]);
   const [view, setView] = useState<ComputeView | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -184,11 +198,12 @@ export function ComputeSection() {
   const [editing, setEditing] = useState<ComputeTarget | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [removing, setRemoving] = useState<ComputeTarget | null>(null);
-  const [hostKey, setHostKey] = useState<{ target: ComputeTarget; prompt: HostKeyPrompt } | null>(null);
+  // Host keys waiting for the user, one dialog at a time; the first is the one shown.
+  const [hostKeys, setHostKeys] = useState<readonly HostKeyEntry[]>([]);
   const mounted = useRef(true);
 
-  useEffect(() => {
-    mounted.current = true;
+  const load = useCallback(() => {
+    setLoadError(null);
     void computeSettings()
       .then((next) => {
         if (mounted.current) setView(next);
@@ -196,10 +211,15 @@ export function ComputeSection() {
       .catch((error: unknown) => {
         if (mounted.current) setLoadError(describeError(error));
       });
+  }, []);
+
+  useEffect(() => {
+    mounted.current = true;
+    load();
     return () => {
       mounted.current = false;
     };
-  }, []);
+  }, [load]);
 
   const refresh = useCallback(async () => {
     try {
@@ -210,6 +230,16 @@ export function ComputeSection() {
     }
   }, []);
 
+  // A prompt never replaces the one on screen: the user is comparing that host's
+  // fingerprints, and the Trust button must trust what they compared.
+  const queueHostKey = useCallback((entry: HostKeyEntry) => {
+    setHostKeys((current) =>
+      current.some((item) => item.target.id === entry.target.id)
+        ? current.map((item) => (item.target.id === entry.target.id ? entry : item))
+        : [...current, entry],
+    );
+  }, []);
+
   const runTest = useCallback(
     async (target: ComputeTarget) => {
       setTesting((current) => new Set(current).add(target.id));
@@ -217,7 +247,7 @@ export function ComputeSection() {
         const report = await testComputeTarget(target.id);
         if (!mounted.current) return;
         setReports((current) => ({ ...current, [target.id]: report }));
-        if (report.hostKey) setHostKey({ target, prompt: report.hostKey });
+        if (report.hostKey) queueHostKey({ target, prompt: report.hostKey });
         await refresh();
       } catch (error) {
         if (!mounted.current) return;
@@ -235,7 +265,7 @@ export function ComputeSection() {
         }
       }
     },
-    [refresh],
+    [refresh, queueHostKey],
   );
 
   const dropReport = (id: string) =>
@@ -262,11 +292,35 @@ export function ComputeSection() {
   const importTargets = async (targets: ComputeTarget[]) => {
     const before = new Set(view?.targets.map((item) => item.id) ?? []);
     let next: ComputeView | null = null;
-    for (const target of targets) next = await saveComputeTarget(target);
-    if (!next || !mounted.current) return;
-    setView(next);
-    announceTargetsChanged();
-    for (const added of next.targets.filter((item) => !before.has(item.id))) void runTest(added);
+    const skipped: { label: string; error: unknown }[] = [];
+    for (const target of targets) {
+      try {
+        next = await saveComputeTarget(target);
+      } catch (error) {
+        // The ones saved before this stay saved, so the list must show them.
+        skipped.push({ label: target.label, error });
+      }
+    }
+    if (next && mounted.current) {
+      setView(next);
+      announceTargetsChanged();
+      const added = next.targets.filter((item) => !before.has(item.id));
+      // One host at a time, so each host-key prompt follows the test that asked for it.
+      void (async () => {
+        for (const target of added) {
+          if (!mounted.current) return;
+          await runTest(target);
+        }
+      })();
+    }
+    if (skipped.length > 0) {
+      throw new Error(
+        t(($) => $.researchTools.compute.import.skipped, {
+          hosts: formatList(skipped.map((item) => item.label)),
+          reason: describeError(skipped[0].error),
+        }),
+      );
+    }
   };
 
   const remove = async (target: ComputeTarget) => {
@@ -295,144 +349,137 @@ export function ComputeSection() {
     }
   };
 
-  /** Trusts the keys the user saw, then shows the new test (errors go back to the dialog). */
-  const trust = async (fingerprints: string[]) => {
-    if (!hostKey) return;
-    const { target } = hostKey;
+  /** Trusts the keys the user saw for `target`, then shows the new test (errors go back to the dialog). */
+  const trust = async (target: ComputeTarget, fingerprints: string[]) => {
     const report = await trustHostKey(target.id, fingerprints);
     if (!mounted.current) return;
     setReports((current) => ({ ...current, [target.id]: report }));
-    setHostKey(report.hostKey ? { target, prompt: report.hostKey } : null);
+    setHostKeys((current) => {
+      const rest = current.filter((item) => item.target.id !== target.id);
+      return report.hostKey ? [{ target, prompt: report.hostKey }, ...rest] : rest;
+    });
     await refresh();
   };
 
+  const closeHostKey = (target: ComputeTarget) =>
+    setHostKeys((current) => current.filter((item) => item.target.id !== target.id));
+
+  /** Brings back the prompt of a host the user did not decide on. */
+  const reviewHostKey = (target: ComputeTarget, prompt: HostKeyPrompt) =>
+    setHostKeys((current) => [{ target, prompt }, ...current.filter((item) => item.target.id !== target.id)]);
+
   const platform = view?.platform;
   const hasCua = view?.targets.some((target) => target.kind === "cuaSpace") ?? false;
+  const shownHostKey = hostKeys[0] ?? null;
 
   return (
     <>
-      <section
-        aria-labelledby="research-compute-title"
-        className="overflow-hidden rounded-xl border bg-card/60"
-        data-testid="research-compute"
+      <ResearchCard
+        id="research-compute-title"
+        icon={Server}
+        title={t(($) => $.researchTools.compute.title)}
+        description={t(($) => $.researchTools.compute.description)}
+        testId="research-compute"
       >
-        <div className="flex items-center gap-3 border-b px-4 py-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Server aria-hidden className="size-4" />
-          </span>
-          <div className="min-w-0">
-            <h3 id="research-compute-title" className="font-medium">
-              {t(($) => $.researchTools.compute.title)}
-            </h3>
-            <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.compute.description)}</p>
-          </div>
-        </div>
-        <div className="space-y-3 px-4 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <SectionHeading as="h4">{t(($) => $.researchTools.compute.targets.heading)}</SectionHeading>
-            <div className="flex items-center gap-2">
-              {view?.sshAvailable ? (
-                <Button size="xs" variant="outline" onClick={() => setImportOpen(true)} data-testid="compute-import">
-                  {t(($) => $.researchTools.compute.targets.import)}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <SectionHeading as="h4">{t(($) => $.researchTools.compute.targets.heading)}</SectionHeading>
+          <div className="flex items-center gap-2">
+            {view?.sshAvailable ? (
+              <Button size="xs" variant="outline" onClick={() => setImportOpen(true)} data-testid="compute-import">
+                {t(($) => $.researchTools.compute.targets.import)}
+              </Button>
+            ) : null}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="xs" variant="outline" disabled={!view} data-testid="compute-add">
+                  <Plus aria-hidden />
+                  {t(($) => $.researchTools.compute.targets.add)}
                 </Button>
-              ) : null}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="xs" variant="outline" disabled={!view} data-testid="compute-add">
-                    <Plus aria-hidden />
-                    {t(($) => $.researchTools.compute.targets.add)}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="z-[100]">
-                  <DropdownMenuItem onSelect={() => setEditing(emptyTarget("ssh"))}>
-                    <Server aria-hidden className="size-4" />
-                    {t(($) => $.researchTools.compute.targets.addSsh)}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setEditing(emptyTarget("slurm"))}>
-                    <Cpu aria-hidden className="size-4" />
-                    {t(($) => $.researchTools.compute.targets.addSlurm)}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setEditing(emptyTarget("cuaSpace"))}>
-                    <Box aria-hidden className="size-4" />
-                    {t(($) => $.researchTools.compute.targets.addCua)}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[100]">
+                <DropdownMenuItem onSelect={() => setEditing(emptyTarget("ssh"))}>
+                  <Server aria-hidden className="size-4" />
+                  {t(($) => $.researchTools.compute.targets.addSsh)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setEditing(emptyTarget("slurm"))}>
+                  <Cpu aria-hidden className="size-4" />
+                  {t(($) => $.researchTools.compute.targets.addSlurm)}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setEditing(emptyTarget("cuaSpace"))}>
+                  <Box aria-hidden className="size-4" />
+                  {t(($) => $.researchTools.compute.targets.addCua)}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          {loadError ? (
-            <p role="alert" className="select-text text-xs text-destructive">
-              {loadError}
-            </p>
-          ) : null}
-          <SettingsRow
-            testId="compute-target-local"
-            icon={<Laptop aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
-            label={t(($) => $.researchTools.compute.targets.local)}
-            description={t(($) => $.researchTools.compute.targets.localDescription)}
+        </div>
+        {loadError ? (
+          <ErrorState size="compact" message={loadError}>
+            <Button size="xs" variant="outline" onClick={load}>
+              {t(($) => $.common.actions.retry)}
+            </Button>
+          </ErrorState>
+        ) : null}
+        <SettingsRow
+          testId="compute-target-local"
+          icon={<Laptop aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />}
+          label={t(($) => $.researchTools.compute.targets.local)}
+          description={t(($) => $.researchTools.compute.targets.localDescription)}
+        />
+        {view?.targets.map((target) => (
+          <TargetRow
+            key={target.id}
+            target={target}
+            summary={view.tested[target.id]}
+            report={reports[target.id]}
+            testing={testing.has(target.id)}
+            onTest={() => void runTest(target)}
+            onEdit={() => setEditing(target)}
+            onForget={() => void forget(target)}
+            onRemove={() => setRemoving(target)}
+            onReviewHostKey={() => {
+              const prompt = reports[target.id]?.hostKey;
+              if (prompt) reviewHostKey(target, prompt);
+            }}
           />
-          {view?.targets.map((target) => (
-            <TargetRow
-              key={target.id}
-              target={target}
-              summary={view.tested[target.id]}
-              report={reports[target.id]}
-              testing={testing.has(target.id)}
-              onTest={() => void runTest(target)}
-              onEdit={() => setEditing(target)}
-              onForget={() => void forget(target)}
-              onRemove={() => setRemoving(target)}
-            />
-          ))}
-          {actionError ? (
-            <p role="alert" className="select-text text-xs text-destructive">
-              {actionError}
-            </p>
-          ) : null}
-          <SettingsNote>{t(($) => $.researchTools.compute.notes.keys)}</SettingsNote>
-          {view && view.targets.length > 0 ? (
-            <SettingsNote>{t(($) => $.researchTools.compute.notes.outputs)}</SettingsNote>
-          ) : null}
-          {platform === "windows" ? (
-            <SettingsNote testId="compute-note-windows-rsync">
-              {t(($) => $.researchTools.compute.notes.windowsRsync)}
-            </SettingsNote>
-          ) : null}
-          {view && !view.sshAvailable ? (
-            <SettingsNote testId="compute-note-ssh-missing">
-              {platform === "windows"
-                ? t(($) => $.researchTools.compute.notes.sshMissingWindows)
-                : t(($) => $.researchTools.compute.notes.sshMissing)}
-            </SettingsNote>
-          ) : null}
-          {hasCua && view && !view.cuaAvailable ? (
-            <SettingsNote testId="compute-note-cua-missing">
-              {t(($) => $.researchTools.compute.notes.cuaMissing)}
-            </SettingsNote>
-          ) : null}
-        </div>
-      </section>
+        ))}
+        {actionError ? (
+          <p role="alert" className="select-text text-xs text-destructive">
+            {actionError}
+          </p>
+        ) : null}
+        <SettingsNote>{t(($) => $.researchTools.compute.notes.keys)}</SettingsNote>
+        {view && view.targets.length > 0 ? (
+          <SettingsNote>{t(($) => $.researchTools.compute.notes.outputs)}</SettingsNote>
+        ) : null}
+        {platform === "windows" ? (
+          <SettingsNote testId="compute-note-windows-rsync">
+            {t(($) => $.researchTools.compute.notes.windowsRsync)}
+          </SettingsNote>
+        ) : null}
+        {view && !view.sshAvailable ? (
+          <SettingsNote testId="compute-note-ssh-missing">
+            {platform === "windows"
+              ? t(($) => $.researchTools.compute.notes.sshMissingWindows)
+              : t(($) => $.researchTools.compute.notes.sshMissing)}
+          </SettingsNote>
+        ) : null}
+        {hasCua && view && !view.cuaAvailable ? (
+          <SettingsNote testId="compute-note-cua-missing">
+            {t(($) => $.researchTools.compute.notes.cuaMissing)}
+          </SettingsNote>
+        ) : null}
+      </ResearchCard>
 
-      <section
-        aria-labelledby="research-sandbox-title"
-        className="overflow-hidden rounded-xl border bg-card/60"
-        data-testid="research-sandbox"
+      <ResearchCard
+        id="research-sandbox-title"
+        icon={ShieldCheck}
+        title={t(($) => $.researchTools.compute.sandbox.heading)}
+        description={t(($) => $.researchTools.compute.sandbox.description)}
+        testId="research-sandbox"
       >
-        <div className="flex items-center gap-3 border-b px-4 py-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <ShieldCheck aria-hidden className="size-4" />
-          </span>
-          <div className="min-w-0">
-            <h3 id="research-sandbox-title" className="font-medium">
-              {t(($) => $.researchTools.compute.sandbox.heading)}
-            </h3>
-            <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.compute.sandbox.description)}</p>
-          </div>
-        </div>
-        <div className="px-4 py-4">
-          <ComputeSandboxCard />
-        </div>
-      </section>
+        <ComputeSandboxCard />
+      </ResearchCard>
 
       {editing ? (
         <Suspense fallback={null}>
@@ -448,9 +495,14 @@ export function ComputeSection() {
           />
         </Suspense>
       ) : null}
-      {hostKey ? (
+      {shownHostKey ? (
         <Suspense fallback={null}>
-          <ComputeHostKeyDialog prompt={hostKey.prompt} onClose={() => setHostKey(null)} onTrust={trust} />
+          <ComputeHostKeyDialog
+            key={shownHostKey.target.id}
+            prompt={shownHostKey.prompt}
+            onClose={() => closeHostKey(shownHostKey.target)}
+            onTrust={(fingerprints) => trust(shownHostKey.target, fingerprints)}
+          />
         </Suspense>
       ) : null}
       <ConfirmationDialog

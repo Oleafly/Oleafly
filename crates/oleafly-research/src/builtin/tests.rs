@@ -1300,14 +1300,21 @@ fn all_events(state: &ResearchTaskState, task_id: &str, generation: u64) -> Vec<
     }
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn a_time_budget_stop_wraps_up_and_goes_to_review() {
-    const WRAP_UP: &str = "The time budget ended";
-    let data = tempfile::tempdir().unwrap();
-    let project = data.path().join("projects").join("paper");
+/// A queued, resumed task whose earlier attempt used all but 1.5 seconds of
+/// its five minute budget, with the queue it runs on.
+struct BudgetedTask {
+    state: ResearchTaskState,
+    store: TaskStore,
+    task: ResearchTask,
+    tasks: PathBuf,
+    limit_ms: u64,
+}
+
+fn budgeted_task(data: &Path, executor: &str) -> BudgetedTask {
+    let project = data.join("projects").join("paper");
     std::fs::create_dir_all(&project).unwrap();
     std::fs::write(project.join("main.tex"), "original manuscript").unwrap();
-    let tasks = data.path().join("tasks");
+    let tasks = data.join("tasks");
     let state = ResearchTaskState::for_test(tasks.clone(), 2);
     state.attach(
         Arc::new(FakeHost::new(
@@ -1319,6 +1326,7 @@ async fn a_time_budget_stop_wraps_up_and_goes_to_review() {
     let limit_ms: u64 = 5 * 60 * 1000;
     let mut brief = ResearchBrief::default();
     brief.budget.wall_clock_minutes = 5;
+    brief.compute.executor = executor.into();
     let task = store
         .create(ResearchTaskDraft {
             project_id: "paper".into(),
@@ -1355,6 +1363,27 @@ async fn a_time_budget_stop_wraps_up_and_goes_to_review() {
         .finish_failure(&task.id, earlier.execution_generation, "Stopped early.")
         .unwrap());
     store.retry_with(&task.id, RetryMode::Resume).unwrap();
+
+    BudgetedTask {
+        state,
+        store,
+        task,
+        tasks,
+        limit_ms,
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_time_budget_stop_wraps_up_and_goes_to_review() {
+    const WRAP_UP: &str = "The time budget ended";
+    let data = tempfile::tempdir().unwrap();
+    let BudgetedTask {
+        state,
+        store,
+        task,
+        tasks,
+        limit_ms,
+    } = budgeted_task(data.path(), "local");
 
     // The agent keeps calling tools. The wrap-up is answered once the queue
     // has counted the whole budget (it saves the active time it counts), so
@@ -1431,4 +1460,172 @@ async fn a_time_budget_stop_wraps_up_and_goes_to_review() {
         phase: TaskPhase::WrappingUp
     }));
     state.shutdown().await;
+}
+
+/// Queues `budgeted` on the built-in runtime against the scripted provider and
+/// waits until it leaves the queue.
+async fn finish_budgeted(
+    data: &Path,
+    budgeted: &BudgetedTask,
+    provider_url: String,
+) -> ResearchTask {
+    let host = fixture_host(data, provider_url).await;
+    budgeted
+        .state
+        .register_runtime(
+            "builtin",
+            Arc::new(BuiltinTaskAdapter::new(
+                host,
+                budgeted.state.services().unwrap(),
+            )),
+        )
+        .unwrap();
+    budgeted.state.request_start(&budgeted.task.id).unwrap();
+    budgeted.state.launch_ready().await.unwrap();
+    within(async {
+        loop {
+            let current = budgeted.store.require(&budgeted.task.id).unwrap();
+            if !matches!(
+                current.status,
+                ResearchTaskStatus::Queued | ResearchTaskStatus::Running
+            ) {
+                return current;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+}
+
+/// A wrap-up script: the agent writes `handoff.md` with a tool call, then
+/// answers once the queue has counted the whole budget.
+fn wrap_up_script(budgeted: &BudgetedTask, marker: &'static str) -> Script {
+    let (root, id, limit_ms) = (
+        budgeted.tasks.clone(),
+        budgeted.task.id.clone(),
+        budgeted.limit_ms,
+    );
+    script_async(move |request, _index| {
+        let (root, id) = (root.clone(), id.clone());
+        async move {
+            let messages = request["messages"].to_string();
+            let store = TaskStore::new(root).unwrap();
+            if !messages.contains(marker) {
+                tokio::time::sleep(Duration::from_millis(25)).await;
+                return tool_delta(vec![("list_files", json!({}))]);
+            }
+            if !messages.contains("write_file") {
+                let record = store.require(&id).unwrap().record_dir();
+                return tool_delta(vec![(
+                    "write_file",
+                    json!({"path": format!("{record}/handoff.md"), "content": "Stopped at the budget."}),
+                )]);
+            }
+            let deadline = Instant::now() + CHILD_PATIENCE;
+            while store.require(&id).map_or(0, |task| task.active_ms) < limit_ms
+                && Instant::now() < deadline
+            {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            text_reply("Wrote the handoff.")
+        }
+    })
+}
+
+/// What the wrap-up's `write_file` call answered and left in the workspace.
+fn assert_handoff_written(finished: &ResearchTask, requests: &[Value]) {
+    let answered = requests
+        .iter()
+        .filter(|request| request["messages"].to_string().contains("write_file"))
+        .flat_map(tool_outputs)
+        .last()
+        .expect("the wrap-up never called write_file");
+    assert!(answered.contains("\"bytes\""), "{answered}");
+    assert!(!answered.contains("cancelled"), "{answered}");
+    let workspace = &finished.isolation.as_ref().unwrap().execution_root;
+    let handoff = Path::new(workspace)
+        .join(finished.record_dir())
+        .join("handoff.md");
+    assert_eq!(
+        std::fs::read_to_string(handoff).unwrap(),
+        "Stopped at the budget."
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_wrap_up_turn_can_use_its_tools() {
+    const WRAP_UP: &str = "The time budget ended";
+    let data = tempfile::tempdir().unwrap();
+    let budgeted = budgeted_task(data.path(), "local");
+    let provider = Scripted::start(wrap_up_script(&budgeted, WRAP_UP)).await;
+    let finished = finish_budgeted(data.path(), &budgeted, provider.url.clone()).await;
+
+    assert_eq!(
+        finished.status,
+        ResearchTaskStatus::AwaitingReview,
+        "{:?}",
+        finished.error
+    );
+    assert_eq!(finished.stop_reason, Some(StopReason::BudgetTime));
+    assert_eq!(
+        finished.result.as_ref().unwrap().summary,
+        "Wrote the handoff."
+    );
+    assert_handoff_written(&finished, &provider.requests());
+    budgeted.state.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_task_that_waits_for_runs_when_its_time_ends_still_wraps_up() {
+    const WRAP_UP: &str = "The time budget ended";
+    let data = tempfile::tempdir().unwrap();
+    let budgeted = budgeted_task(data.path(), "held");
+    // The run never finishes: only the budget ends the wait.
+    budgeted
+        .state
+        .services()
+        .unwrap()
+        .runs
+        .register_executor(Arc::new(HeldRuns {
+            release: Arc::new(AtomicBool::new(false)),
+        }));
+    let wrap_up = wrap_up_script(&budgeted, WRAP_UP);
+    let provider = Scripted::start(script_async(move |request, index| {
+        let messages = request["messages"].to_string();
+        let answer = (!messages.contains(WRAP_UP)).then(|| match index {
+            0 => tool_delta(vec![(
+                "start_run",
+                json!({"name": "baseline", "command": "python train.py"}),
+            )]),
+            _ => text_reply("The baseline is running."),
+        });
+        let wrap_up = wrap_up.clone();
+        async move {
+            match answer {
+                Some(answer) => answer,
+                None => wrap_up(request, index).await,
+            }
+        }
+    }))
+    .await;
+    let finished = finish_budgeted(data.path(), &budgeted, provider.url.clone()).await;
+
+    assert_eq!(
+        finished.status,
+        ResearchTaskStatus::AwaitingReview,
+        "{:?}",
+        finished.error
+    );
+    assert_eq!(finished.stop_reason, Some(StopReason::BudgetTime));
+    assert_eq!(
+        finished.result.as_ref().unwrap().summary,
+        "Wrote the handoff."
+    );
+    assert_handoff_written(&finished, &provider.requests());
+    let events = all_events(&budgeted.state, &finished.id, finished.execution_generation);
+    assert!(events.contains(&TaskRuntimeEvent::Phase {
+        phase: TaskPhase::WrappingUp
+    }));
+    budgeted.state.shutdown().await;
 }

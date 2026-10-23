@@ -70,9 +70,35 @@ describe("AcpSignIn", () => {
     fireEvent.click(screen.getByRole("button", { name: "Claude Code in the terminal" }));
     await waitFor(() => expect(mocks.openTerminalWith).toHaveBeenCalledWith({
       title: "Sign in to Claude Code", command: "/usr/local/bin/claude", args: ["/login"], env: { CLAUDE_CONFIG_DIR: "/cfg" },
+      confirmText: expect.stringContaining("Check it before you agree."),
     }));
     expect(acpSignInCommand).toHaveBeenCalledWith("paper", "fixture", "s", "claude-login");
     expect(await screen.findByText("Finish signing in in the terminal, then reconnect.")).toBeInTheDocument();
+  });
+
+  it("asks the user to agree to the command line before the terminal runs it", async () => {
+    signIn([terminalMethod]);
+    fireEvent.click(screen.getByRole("button", { name: "Claude Code in the terminal" }));
+    await waitFor(() => expect(mocks.openTerminalWith).toHaveBeenCalled());
+    const [launch] = mocks.openTerminalWith.mock.calls[0] as [{ confirmText?: string }];
+    expect(launch.confirmText).toContain("Research CLI");
+  });
+
+  it("says nothing when the user declines the command", async () => {
+    mocks.openTerminalWith.mockRejectedValueOnce(new TerminalLaunchError("cancelled"));
+    signIn([terminalMethod]);
+    fireEvent.click(screen.getByRole("button", { name: "Claude Code in the terminal" }));
+    await waitFor(() => expect(mocks.openTerminalWith).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText("Finish signing in in the terminal, then reconnect.")).toBeNull();
+  });
+
+  it("offers no terminal sign-in for a conversation on another machine", () => {
+    signIn([terminalMethod, oauthMethod], { remote: { host: "lab.example.org", folder: "/srv/paper" } });
+    expect(screen.queryByRole("button", { name: "Claude Code in the terminal" })).toBeNull();
+    expect(screen.getByTestId("acp-sign-in-remote")).toHaveTextContent("This conversation runs on another machine. Sign in to the agent there.");
+    expect(screen.getByRole("button", { name: "Sign in with the browser" })).toBeInTheDocument();
   });
 
   it("names a terminal method without a label by its own name", () => {

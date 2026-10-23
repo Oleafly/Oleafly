@@ -22,6 +22,7 @@ use oleafly_research::mcp::{BridgeServices, LinkedRoots, McpStart};
 use oleafly_research::model::{
     ResearchTask, ResearchTaskStatus, TaskRunContext, TaskTranscriptEvent,
 };
+use oleafly_research::runs::remote::ComputeHost;
 use oleafly_research::runs::supervisor::SUPERVISOR_FLAG;
 use oleafly_research::runs::SupervisorCommand;
 use oleafly_research::scheduler::TaskRuntimeFuture;
@@ -31,6 +32,7 @@ use serde_json::{json, Value};
 
 use super::log::HelperLog;
 use super::notify::Notifier;
+use super::search_dirs;
 use crate::agent::desktop_config::{
     self, search_key_from, secret_values, DesktopConfig, McpServer, Prefs,
 };
@@ -376,6 +378,37 @@ impl ResearchHost for DaemonResearchHost {
     fn workspace_tools(&self) -> Option<Arc<dyn WorkspaceTools>> {
         Some(Arc::new(CliWorkspaceTools))
     }
+
+    /// Remote runs find `ssh` and `sbatch` where the app does. Runs in Cua
+    /// Spaces still need the app open (no MCP client here).
+    fn compute_host(&self) -> Option<Arc<dyn ComputeHost>> {
+        Some(Arc::new(DaemonComputeHost {
+            data_root: self.data_root.clone(),
+        }))
+    }
+}
+
+/// What remote runs need from the helper: program lookup in the app's
+/// search folders.
+struct DaemonComputeHost {
+    data_root: PathBuf,
+}
+
+#[async_trait::async_trait]
+impl ComputeHost for DaemonComputeHost {
+    fn data_root(&self) -> PathBuf {
+        self.data_root.clone()
+    }
+
+    fn locate_program(&self, name: &str) -> Option<PathBuf> {
+        search_dirs::find_program(&search_dirs_of(&self.data_root), name)
+    }
+}
+
+/// The folders the helper looks for programs in: the ones the app wrote,
+/// then its own `PATH`.
+fn search_dirs_of(data_root: &Path) -> Vec<PathBuf> {
+    search_dirs::for_helper(&super::paths::helper_paths(data_root).search_dirs)
 }
 
 /// Linked folders as the grant recorded them; a folder that moved is refused.
@@ -400,10 +433,20 @@ impl LinkedRoots for GrantLinkedRoots {
             .ok_or_else(|| "This linked folder was not granted to the task.".to_string())?;
         let path = PathBuf::from(&root.canonical_path);
         match dunce::canonicalize(&path) {
-            Ok(current) if current == path && current.is_dir() => Ok(current),
+            // The grant's own path is returned: the research bridge compares
+            // it with the path the session was granted, character for character.
+            Ok(current) if same_folder(&current, &path) && current.is_dir() => Ok(path),
             _ => Err(LINKED_MOVED.into()),
         }
     }
+}
+
+/// Whether `current` (from `dunce::canonicalize`) is the folder the grant
+/// recorded. The app records `std::fs::canonicalize` paths, which on Windows
+/// carry the verbatim `\\?\` prefix that dunce drops, so both sides are
+/// compared without it.
+fn same_folder(current: &Path, granted: &Path) -> bool {
+    dunce::simplified(current) == dunce::simplified(granted)
 }
 
 /// Records a task's model use in the usage spool: one event per turn,
@@ -487,15 +530,24 @@ impl SpoolUsage {
 
 impl UsageSink for SpoolUsage {
     fn observe(&self, event: &AgentEvent) {
-        let AgentEvent::Usage { usage, .. } = event else {
-            return;
-        };
         let mut state = lock(&self.state);
         if state.recorded {
             return;
         }
+        let usage = match event {
+            // A turn's first step: the turn before it is over (its totals
+            // restart, and may start above where the last one ended).
+            AgentEvent::StepStart { step: 0 } => {
+                if let Some(latest) = state.latest.take() {
+                    state.finished = add(state.finished, latest);
+                }
+                return;
+            }
+            AgentEvent::Usage { usage, .. } => usage,
+            _ => return,
+        };
         if let Some(latest) = state.latest {
-            // A new turn starts its totals again.
+            // Totals that went down also mean a new turn.
             if usage.input < latest.input || usage.output < latest.output {
                 state.finished = add(state.finished, latest);
             }
@@ -790,6 +842,12 @@ impl TaskHost for DaemonTaskHost {
             .collect()
     }
 
+    /// The app's search folders: a window app's `PATH` is minimal, and the
+    /// helper starts with the same one.
+    fn program_search_dirs(&self) -> Vec<PathBuf> {
+        search_dirs_of(&self.data_root)
+    }
+
     fn project_root(&self, project_id: &str) -> Option<PathBuf> {
         project_grant(&self.tasks_root, project_id)
             .ok()
@@ -812,6 +870,7 @@ impl TaskHost for DaemonTaskHost {
         let brief = context.brief.clone();
         let log = self.log.clone();
         let grant = self.grant(&context.task_id);
+        let search_dirs = self.program_search_dirs();
         Box::pin(async move {
             let config = config?;
             if !grant.is_ok_and(|grant| grant.allows(TRUST_MCP)) {
@@ -832,11 +891,12 @@ impl TaskHost for DaemonTaskHost {
                 question: false,
             };
             let secrets = secret_values(&config);
-            let (hub, warnings) = McpHub::connect(
+            let (hub, warnings) = McpHub::connect_in(
                 &config.mcp_servers,
                 &policy,
                 &McpSelection::Named(names),
                 &secrets,
+                &search_dirs,
                 &oleafly_agent::CancellationToken::new(),
             )
             .await;

@@ -59,6 +59,32 @@ pub(crate) fn analyze_bibtex(file: &str, text: &str) -> FileFacts {
     facts
 }
 
+/// A mapping line split into its key and what follows the colon. A quoted
+/// key ends at its closing quote. A plain key ends at the first colon that
+/// is followed by whitespace, a `{` or the end of the line (YAML's rule), so
+/// a key such as `knuth:1984` keeps its colon.
+fn split_mapping_key(line: &str) -> Option<(&str, &str)> {
+    if let Some(quote) = line
+        .chars()
+        .next()
+        .filter(|first| matches!(first, '"' | '\''))
+    {
+        let close = line[1..].find(quote)? + 1;
+        let rest = line[close + 1..].trim_start().strip_prefix(':')?;
+        return Some((&line[1..close], rest));
+    }
+    let mut from = 0;
+    while let Some(found) = line[from..].find(':') {
+        let colon = from + found;
+        let rest = &line[colon + 1..];
+        if rest.is_empty() || rest.starts_with(char::is_whitespace) || rest.starts_with('{') {
+            return Some((line[..colon].trim_end(), rest));
+        }
+        from = colon + 1;
+    }
+    None
+}
+
 /// Top-level keys of a Hayagriva file (`key:` at the start of a line).
 pub(crate) fn analyze_hayagriva(file: &str, text: &str) -> FileFacts {
     let mut facts = FileFacts::default();
@@ -71,9 +97,9 @@ pub(crate) fn analyze_hayagriva(file: &str, text: &str) -> FileFacts {
         }) && !line.starts_with("---")
             && !line.starts_with("...");
         if top_level {
-            if let Some(colon) = line.find(':') {
-                let key = line[..colon].trim().trim_matches(['"', '\'']);
-                let value = line[colon + 1..].trim();
+            if let Some((key, rest)) = split_mapping_key(line) {
+                let key = key.trim();
+                let value = rest.trim();
                 let value_is_mapping = value.is_empty() || value.starts_with('{');
                 if !key.is_empty() && value_is_mapping {
                     facts.defs.push(Def {
@@ -106,6 +132,25 @@ mod tests {
         let keys: Vec<&str> = facts.defs.iter().map(|def| def.name.as_str()).collect();
         assert_eq!(keys, ["knuth1984", "lamport"]);
         assert_eq!(facts.defs[0].line, 3);
+    }
+
+    #[test]
+    fn hayagriva_keys_may_contain_colons() {
+        let facts = analyze_hayagriva(
+            "refs.yml",
+            "knuth:1984:\n  type: book\nsmith:2020: {type: article}\n\"quoted:key\":\n  type: web\n'single:key': {type: web}\nurl: https://example.org/a:b\nplain:{type: book}\n",
+        );
+        let keys: Vec<&str> = facts.defs.iter().map(|def| def.name.as_str()).collect();
+        assert_eq!(
+            keys,
+            [
+                "knuth:1984",
+                "smith:2020",
+                "quoted:key",
+                "single:key",
+                "plain"
+            ]
+        );
     }
 
     #[test]

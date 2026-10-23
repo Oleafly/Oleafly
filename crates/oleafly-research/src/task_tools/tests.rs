@@ -1293,3 +1293,181 @@ async fn tools_that_need_the_host_say_what_is_missing() {
         );
     }
 }
+
+#[tokio::test]
+async fn runs_wait_for_the_plan_for_every_agent() {
+    let brief = ResearchBrief {
+        review_plan_first: true,
+        ..ResearchBrief::default()
+    };
+    let fixture = tool_task(brief);
+    // A CLI agent reaches `start_run` through the bridge, not through the
+    // built-in agent's own plan check.
+    let refused = fixture
+        .call(
+            "start_run",
+            json!({"name": "baseline", "command": "python train.py"}),
+        )
+        .await;
+    assert_eq!(refused, Err(extra::PLAN_NO_RUNS.to_owned()));
+    assert!(fixture
+        .binding
+        .services
+        .runs
+        .list(&fixture.task.id)
+        .unwrap()
+        .is_empty());
+}
+
+#[tokio::test]
+async fn a_cancelled_task_starts_no_run_after_its_approval() {
+    let fixture = tool_task(ResearchBrief::default());
+    fixture.binding.cancel.cancel();
+    let refused = fixture
+        .call(
+            "start_run",
+            json!({"name": "baseline", "command": "python train.py"}),
+        )
+        .await;
+    assert_eq!(refused, Err("The task was cancelled.".to_owned()));
+    assert!(fixture
+        .binding
+        .services
+        .runs
+        .list(&fixture.task.id)
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
+fn write_grants_cover_folders_not_every_file() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap();
+    for folder in ["src/sub", "analysis"] {
+        std::fs::create_dir_all(root.join(folder)).unwrap();
+    }
+    for file in ["main.tex", "src/a.py", "src/sub/b.py", "analysis/c.py"] {
+        std::fs::write(root.join(file), "x").unwrap();
+    }
+    // The allowed paths of a copied project: every file and every folder
+    // that holds one, with the output folders.
+    let allowed: Vec<String> = [
+        "main.tex",
+        "src",
+        "src/a.py",
+        "src/sub",
+        "src/sub/b.py",
+        "analysis",
+        "analysis/c.py",
+        "results",
+    ]
+    .map(String::from)
+    .to_vec();
+    let writable = task_writable_paths(&root, &allowed).unwrap();
+    // `src` covers `src/a.py` and `src/sub`; `analysis` covers its file.
+    assert_eq!(
+        writable,
+        vec![
+            root.join("analysis"),
+            root.join("main.tex"),
+            root.join("results"),
+            root.join("src"),
+        ]
+    );
+}
+
+#[test]
+fn a_deleted_file_is_not_brought_back_as_a_folder() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap();
+    std::fs::create_dir_all(root.join("data/raw")).unwrap();
+    std::fs::write(root.join("data/raw/a.csv"), "x").unwrap();
+    std::fs::write(root.join("table.csv"), "x").unwrap();
+    let allowed: Vec<String> = ["table.csv", "data/raw", "data/raw/a.csv", "results"]
+        .map(String::from)
+        .to_vec();
+    // The task deleted a file and a whole folder of its copy.
+    std::fs::remove_file(root.join("table.csv")).unwrap();
+    std::fs::remove_dir_all(root.join("data")).unwrap();
+
+    let writable = task_writable_paths(&root, &allowed).unwrap();
+    // The deleted file stays gone; the folders the task writes in return.
+    assert!(!root.join("table.csv").exists());
+    assert!(root.join("data/raw").is_dir());
+    assert!(root.join("results").is_dir());
+    assert!(!root.join("data/raw/a.csv").exists());
+    assert_eq!(writable, vec![root.join("data/raw"), root.join("results")]);
+}
+
+#[tokio::test]
+async fn an_unreadable_ledger_is_never_replaced_by_a_fresh_one() {
+    let fixture = tool_task(ResearchBrief::default());
+    let path = fixture.record_file("ledger.tsv");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    // Not text, as a command could leave it.
+    let damaged: Vec<u8> = [LEDGER_HEADER.as_bytes(), b"\nr001\t\xff\xfe\n"].concat();
+    std::fs::write(&path, &damaged).unwrap();
+
+    let refused = fixture
+        .call(
+            "ledger_append",
+            json!({"hypothesis": "h", "change": "c", "verdict": "keep"}),
+        )
+        .await;
+    assert!(refused.is_err(), "{refused:?}");
+    assert_eq!(std::fs::read(&path).unwrap(), damaged);
+}
+
+#[tokio::test]
+async fn a_ledger_row_keeps_a_short_command_and_a_new_note_follows_the_last_one() {
+    let fixture = tool_task(ResearchBrief::default());
+    let command = format!("python train.py {}", "--flag ".repeat(500));
+    fixture.add_run("r001", &command, RunState::Succeeded, &[("acc", 0.9)]);
+    fixture
+        .call(
+            "ledger_append",
+            json!({"hypothesis": "h", "change": "c", "run_id": "r001", "verdict": "keep"}),
+        )
+        .await
+        .unwrap();
+    let kept = &fixture.ledger()[0].command;
+    assert!(kept.chars().count() <= 401, "{}", kept.chars().count());
+    assert!(kept.starts_with("python train.py --flag") && kept.ends_with('…'));
+
+    // The row read may be only the newest of a long ledger: ids come from the
+    // highest note, not from how many rows were read.
+    let path = fixture.record_file("ledger.tsv");
+    let mut text = std::fs::read_to_string(&path).unwrap();
+    text.push_str("n007\t\t\t\t\t\tdiscard\t\n");
+    std::fs::write(&path, text).unwrap();
+    let note = fixture
+        .call(
+            "ledger_append",
+            json!({"hypothesis": "h", "change": "c", "verdict": "discard"}),
+        )
+        .await
+        .unwrap();
+    assert_eq!(note["id"], "n008");
+}
+
+#[tokio::test]
+async fn a_full_ledger_says_so_instead_of_a_size_error() {
+    let fixture = tool_task(ResearchBrief::default());
+    let path = fixture.record_file("ledger.tsv");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    // Within a few bytes of the 1 MiB a file operation may write.
+    let filler = "x".repeat(1024 * 1024 - LEDGER_HEADER.len() - 32);
+    std::fs::write(
+        &path,
+        format!("{LEDGER_HEADER}\nn001\t\t{filler}\t\t\t\tkeep\t\n"),
+    )
+    .unwrap();
+    let refused = fixture
+        .call(
+            "ledger_append",
+            json!({"hypothesis": "h", "change": "c", "verdict": "keep"}),
+        )
+        .await
+        .unwrap_err();
+    assert!(refused.contains("ledger.tsv is full"), "{refused}");
+}

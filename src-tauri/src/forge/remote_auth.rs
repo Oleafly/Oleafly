@@ -65,6 +65,7 @@ pub(crate) fn credential_for(
     Ok(AccountCredential {
         credential_url: account.base.clone(),
         username: account.kind.git_username(&account.login),
+        login: account.login.clone(),
         token: token.token.clone(),
         ca_file: account.ca_file.as_ref().map(PathBuf::from),
     })

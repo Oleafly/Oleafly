@@ -122,13 +122,18 @@ impl CommandModule for Commands {
             Self::Completions { shell } => {
                 let mut command = crate::Cli::command();
                 let name = command.get_name().to_string();
-                clap_complete::generate(shell, &mut command, name, &mut std::io::stdout());
+                // Into memory first: `generate` panics on a closed pipe.
+                let mut script = Vec::new();
+                clap_complete::generate(shell, &mut command, name, &mut script);
+                crate::human::write_stdout(&script)?;
                 Ok(Outcome::printed())
             }
             Self::Man => {
+                let mut page = Vec::new();
                 clap_mangen::Man::new(crate::Cli::command())
-                    .render(&mut std::io::stdout())
+                    .render(&mut page)
                     .map_err(CliError::from)?;
+                crate::human::write_stdout(&page)?;
                 Ok(Outcome::printed())
             }
             Self::Internal(InternalCommand::RemoveCommandLineTool) => {
@@ -144,7 +149,7 @@ fn run_help(args: HelpArgs) -> Result<Outcome, CliError> {
     let words: Vec<&str> = args.topic.iter().map(String::as_str).collect();
     if let [topic] = words.as_slice() {
         if let Some((_, text)) = TOPICS.iter().find(|(name, _)| name == topic) {
-            print!("{text}");
+            crate::human::write_stdout(text.as_bytes())?;
             return Ok(Outcome::printed());
         }
     }
@@ -162,7 +167,9 @@ fn run_help(args: HelpArgs) -> Result<Outcome, CliError> {
             }
         };
     }
-    current.print_long_help().map_err(CliError::from)?;
+    current
+        .print_long_help()
+        .map_err(crate::human::stdout_failed)?;
     Ok(Outcome::printed())
 }
 

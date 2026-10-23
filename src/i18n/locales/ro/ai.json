@@ -43,13 +43,15 @@
       "command": "Confirmă comanda",
       "externalTool": "Confirmă acțiunea instrumentului extern",
       "internet": "Confirmă accesul la internet",
-      "edit": "Confirmă modificarea făcută de AI"
+      "edit": "Confirmă modificarea făcută de AI",
+      "researchTask": "Confirmă sarcina de cercetare"
     },
     "headline": {
       "command": "Asistentul vrea să ruleze această comandă",
       "externalTool": "Asistentul vrea să folosească un instrument extern",
       "internet": "Asistentul vrea să acceseze internetul",
-      "edit": "Asistentul vrea să îți modifice fișierele"
+      "edit": "Asistentul vrea să îți modifice fișierele",
+      "researchTask": "Asistentul vrea să creeze o sarcină de cercetare"
     },
     "mcpNote": "Aceasta trimite argumentele de mai jos către serverul MCP configurat.",
     "line": "linia {{line}}",
@@ -71,6 +73,23 @@
       "moreWaiting_one": "încă {{count}} în așteptare",
       "moreWaiting_few": "încă {{count}} în așteptare",
       "moreWaiting_other": "încă {{count}} în așteptare"
+    },
+    "researchTask": {
+      "note": "Sarcina lucrează de una singură într-o copie a proiectului. Îi verifici modificările după aceea.",
+      "title": "Titlu",
+      "goal": "Obiectiv",
+      "skills": "Abilități",
+      "prompt": "Prompt",
+      "commands": "Comenzi",
+      "commandsAsk": "Întreabă înainte de fiecare",
+      "network": "Rețea",
+      "timeBudget": "Buget de timp",
+      "timeBudgetDefault": "Implicit",
+      "minutes_one": "{{count}} minut",
+      "minutes_other": "{{count}} de minute",
+      "planFirst": "Planifică mai întâi",
+      "startNow": "Pornește imediat",
+      "minutes_few": "{{count}} minute"
     }
   },
   "attachments": {
@@ -97,7 +116,9 @@
     "saveFailed": "{{name}} nu a putut fi salvat.",
     "missing": "{{name}} nu mai este disponibil.",
     "sentAsText": "{{name}} a fost trimis ca text, fiindcă acest model nu îl poate citi ca fișier.",
-    "skipped": "{{name}} nu a fost trimis."
+    "skipped": "{{name}} nu a fost trimis.",
+    "dropUnreadable": "{{names}} nu au putut fi citite.",
+    "notReplayed": "Fișierele dintr-o versiune mai veche nu pot fi trimise din nou: {{names}}."
   },
   "chat": {
     "pill": {
@@ -601,7 +622,10 @@
       "queued": "În coadă: pleacă după ce agentul termină",
       "remove": "Elimină mesajul din coadă",
       "sendNow": "Trimite acum",
-      "sendFailed": "Acest mesaj nu a fost trimis. Trimite-l din nou sau elimină-l."
+      "sendFailed": "Acest mesaj nu a fost trimis. Trimite-l din nou sau elimină-l.",
+      "queuedConnecting": "În coadă: pleacă când agentul este pregătit",
+      "retry": "Trimite din nou",
+      "edit": "Editează"
     },
     "slash": {
       "commands": "Comenzile agentului",
@@ -641,7 +665,9 @@
       "apiKeyPlaceholder": "Lipește cheia ta API",
       "geminiGoogle": "Autentificarea cu Google nu mai funcționează pentru planurile individuale. Folosește o cheie API Gemini sau Vertex AI.",
       "noProject": "Deschide un proiect ca să te autentifici din terminal.",
-      "signOut": "Deconectează-te"
+      "signOut": "Deconectează-te",
+      "confirmTerminal": "{{agent}} se autentifică prin comanda de mai jos, care rulează într-o filă de terminal. Verific-o înainte să fii de acord.",
+      "remote": "Această conversație rulează pe alt computer. Autentifică-te la agent de acolo."
     },
     "elicitation": {
       "ariaLabel": "Cererea agentului",
@@ -654,7 +680,8 @@
       "openUrl": "Deschide în browser",
       "confirmTitle": "Deschizi {{host}}?",
       "confirmDescription": "Agentul ți-a cerut să termini un pas pe acest site. Site-ul se deschide în browserul tău.",
-      "waiting": "Se așteaptă ca site-ul să termine."
+      "waiting": "Se așteaptă ca site-ul să termine.",
+      "openFailed": "Linkul nu a putut fi deschis în browserul tău."
     },
     "remote": {
       "banner": "Hermes rulează pe {{host}} prin SSH. Modificările lui rămân pe acel computer."
@@ -665,7 +692,6 @@
       "search": "Caută în conversații",
       "empty": "Nicio conversație nu se potrivește.",
       "loadMore": "Încarcă mai multe",
-      "open": "Deschide",
       "rename": "Redenumește",
       "renameLabel": "Numele conversației",
       "delete": "Șterge",
@@ -686,8 +712,11 @@
       "fork": "Ramifică conversația",
       "forkUnsupported": "Acest agent nu poate ramifica conversații.",
       "forkBusy": "Așteaptă ca agentul să termine înainte să ramifici conversația.",
-      "v2": "Ciornă ACP v2",
-      "remote": "La distanță"
+      "v2": "Previzualizare a protocolului",
+      "remote": "La distanță",
+      "signOutTitle": "Te deconectezi de la {{agent}}?",
+      "signOutDescription": "Aceasta încheie chiar autentificarea cu {{agent}}. Un terminal care folosește aceeași autentificare este deconectat și el, iar această conversație se oprește până te autentifici din nou.",
+      "signOutAccount": "Autentificat cu {{account}}"
     },
     "commit": {
       "button": "Comite",

@@ -128,7 +128,7 @@ const TaskRow = memo(function TaskRow({
             </span>
           ) : null}
           {task.pendingApprovals > 0 ? (
-            <Badge variant="outline" className="border-amber-500/50 text-[0.6875rem]">
+            <Badge variant="warning" className="text-[0.6875rem]">
               {t(($) => $.researchTools.tasks.panel.pendingApprovals, { count: task.pendingApprovals })}
             </Badge>
           ) : null}
@@ -150,7 +150,7 @@ const TaskRow = memo(function TaskRow({
 
 type SelectedTaskDialogProps = Omit<
   ComponentProps<typeof TaskDetailDialog>,
-  "events" | "eventsLoading" | "canLoadMoreEvents"
+  "events" | "eventsLoading" | "canLoadMoreEvents" | "eventsLoadedThrough"
 >;
 
 function SelectedTaskDialog(props: Readonly<SelectedTaskDialogProps>) {
@@ -163,6 +163,7 @@ function SelectedTaskDialog(props: Readonly<SelectedTaskDialogProps>) {
       events={events}
       eventsLoading={eventsLoading}
       canLoadMoreEvents={eventsNextSequence !== null}
+      eventsLoadedThrough={eventsNextSequence}
     />
   );
 }
@@ -172,7 +173,7 @@ function matchesFilter(task: ResearchTask, filter: TaskFilter): boolean {
     case "running":
       return task.status === "running" || task.status === "queued";
     case "review":
-      return task.status === "awaiting_review";
+      return task.status === "awaiting_review" || task.status === "plan_ready";
     case "done":
       return task.status === "completed" || task.status === "failed" || task.status === "cancelled";
     default:
@@ -190,7 +191,7 @@ export function ResearchTasksPanel({
   const tasks = useResearchTasksStore((state) => state.tasks);
   const selectedTaskId = useResearchTasksStore((state) => state.selectedTaskId);
   const loading = useResearchTasksStore((state) => state.loading);
-  const action = useResearchTasksStore((state) => state.action);
+  const pendingActions = useResearchTasksStore((state) => state.pendingActions);
   const error = useResearchTasksStore((state) => state.error);
   const detailOpen = useResearchTasksStore((state) => state.detailOpen);
   const detailTab = useResearchTasksStore((state) => state.detailTab);
@@ -249,7 +250,11 @@ export function ResearchTasksPanel({
   }, [projectBinding]);
 
   useEffect(() => {
-    void bindProject(projectId);
+    const state = useResearchTasksStore.getState();
+    // Task outputs in the Files rail may already hold this project and have opened
+    // a task for review; keep that selection and only bring the list up to date.
+    if (projectId && state.projectId === projectId) void state.refresh();
+    else void bindProject(projectId);
   }, [bindProject, projectId]);
 
   useTauriSubscription(mountResearchTaskSubscriptions, "listen for research tasks");
@@ -405,7 +410,7 @@ export function ResearchTasksPanel({
             </TabsList>
           </Tabs>
         </div>
-        {projectId && tasks.some((task) => task.pendingApprovals > 0) ? (
+        {projectId && !detailOpen && tasks.some((task) => task.pendingApprovals > 0) ? (
           <div className="shrink-0 px-3 pt-3">
             <PendingApprovals projectId={projectId} tasks={tasks} />
           </div>
@@ -521,14 +526,14 @@ export function ResearchTasksPanel({
         />
       ) : taskListBody()}
 
-      {selectedTask ? (
+      {selectedTask && (detailOpen || reopenDetail) ? (
         <SelectedTaskDialog
           key={`${selectedTask.id}:${selectedTask.executionGeneration}`}
           open={detailOpen}
           onOpenChange={setDetailOpen}
           task={selectedTask}
           tasks={tasks}
-          busy={action === selectedTask.id}
+          busy={pendingActions.includes(selectedTask.id)}
           agentName={agentNameFor(selectedTask)}
           initialTab={detailTab}
           onEdit={() => openComposer(selectedTask.id)}

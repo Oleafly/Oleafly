@@ -224,6 +224,27 @@ fn rate_window(value: &Value) -> Option<RateLimitWindow> {
 }
 
 impl SessionUsage {
+    /// A copy for a usage event. The plan summary (up to 16 KiB) is left
+    /// out: views keep the one from the event that brought it, and every
+    /// other update would only repeat it in the transcript.
+    pub fn without_plan(&self) -> Self {
+        Self {
+            context_used: self.context_used,
+            context_size: self.context_size,
+            cost_amount: self.cost_amount,
+            cost_currency: self.cost_currency.clone(),
+            last_turn: self.last_turn.clone(),
+            session_tokens: self.session_tokens.clone(),
+            model_usage: self.model_usage.clone(),
+            rate_limits: self.rate_limits.clone(),
+            auth: self.auth.clone(),
+            plan_markdown: None,
+            plan_markdown_at: None,
+            model: self.model.clone(),
+            updated_at: self.updated_at,
+        }
+    }
+
     fn upsert_window(&mut self, window: RateLimitWindow) {
         if let Some(existing) = self.rate_limits.iter_mut().find(|w| w.id == window.id) {
             *existing = window;
@@ -368,6 +389,26 @@ impl SessionUsage {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn an_event_copy_keeps_everything_but_the_plan_summary() {
+        let mut usage = SessionUsage::default();
+        usage.apply_usage_update(&json!({"used": 900, "size": 200000}), 5);
+        usage.set_plan_markdown(&"plan ".repeat(1000), 6);
+        assert!(usage.plan_markdown.is_some());
+        let copy = usage.without_plan();
+        assert_eq!(copy.plan_markdown, None);
+        assert_eq!(copy.plan_markdown_at, None);
+        assert_eq!(
+            SessionUsage {
+                plan_markdown: None,
+                plan_markdown_at: None,
+                ..usage.clone()
+            },
+            copy
+        );
+        assert!(usage.plan_markdown.is_some(), "the session keeps its plan");
+    }
 
     #[test]
     fn usage_update_reads_used_size_and_cost() {

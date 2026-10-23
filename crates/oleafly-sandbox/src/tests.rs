@@ -360,6 +360,7 @@ fn child_processes_drop_only_the_posix_spawn_deny() {
         child_processes,
         readable: &readable,
         protected: &[],
+        hidden: &[],
     };
     let denied = crate::macos::profile(&request(false)).unwrap();
     assert!(denied.contains("SYS_posix_spawn"));
@@ -367,4 +368,66 @@ fn child_processes_drop_only_the_posix_spawn_deny() {
     assert!(!allowed.contains("SYS_posix_spawn"));
     assert!(allowed.contains("(deny default)"));
     assert!(allowed.contains("SYS_setsid SYS_setpgid"));
+}
+
+/// Runs `script` with `/bin/sh -c` in the sandbox of `spec`.
+#[cfg(unix)]
+fn run_sh(spec: &SandboxSpec, script: &str) -> (i32, String) {
+    let args: Vec<OsString> = vec!["-c".into(), script.into()];
+    let output = command(spec, Path::new("/bin/sh"), &args)
+        .unwrap()
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
+    text.push_str(&String::from_utf8_lossy(&output.stderr));
+    (output.status.code().unwrap_or(-1), text)
+}
+
+#[cfg(unix)]
+#[test]
+fn hidden_paths_cannot_be_read_or_changed_by_a_confined_command() {
+    if availability() != Availability::Available {
+        return;
+    }
+    let fixture = Fixture::new();
+    let workspace = fixture.workspace.path().canonicalize().unwrap();
+    std::fs::write(workspace.join("notes.txt"), "visible notes").unwrap();
+    std::fs::write(workspace.join(".env"), "TOKEN=secret-token").unwrap();
+    std::fs::create_dir(workspace.join(".private")).unwrap();
+    std::fs::write(workspace.join(".private/plan.txt"), "secret-plan").unwrap();
+    let mut spec = fixture.spec(false);
+    spec.read_write = vec![workspace.clone()];
+    spec.deny_read = vec![workspace.join(".env"), workspace.join(".private")];
+    let (_, output) = run_sh(
+        &spec,
+        "cat notes.txt; cat .env; cat .private/plan.txt; echo changed > .env; echo changed > .private/new.txt",
+    );
+    assert!(output.contains("visible notes"), "{output}");
+    assert!(!output.contains("secret-token"), "{output}");
+    assert!(!output.contains("secret-plan"), "{output}");
+    assert_eq!(
+        std::fs::read_to_string(workspace.join(".env")).unwrap(),
+        "TOKEN=secret-token"
+    );
+    assert!(!workspace.join(".private/new.txt").exists());
+    // Without the list the same command reads them.
+    spec.deny_read.clear();
+    let (_, output) = run_sh(&spec, "cat .env");
+    assert!(output.contains("secret-token"), "{output}");
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn child_processes_let_programs_that_posix_spawn_start_helpers() {
+    let fixture = Fixture::new();
+    // awk's system() and Rust's Command start their children with posix_spawn.
+    let script = "/usr/bin/awk 'BEGIN { exit system(\"/bin/echo helper\") }'";
+    let (code, _) = run_sh(&fixture.spec(false), script);
+    assert_ne!(code, 0);
+    let mut spec = fixture.spec(false);
+    spec.child_processes = true;
+    let (code, output) = run_sh(&spec, script);
+    assert_eq!(code, 0, "{output}");
+    assert!(output.contains("helper"), "{output}");
 }

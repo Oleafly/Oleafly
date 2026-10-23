@@ -100,6 +100,10 @@
       "action": "{{agent}} vil {{action}}.",
       "steps": "{{agent}} vil køre disse trin i en skrivebordsapp:",
       "moreSteps": "Trin, der ikke vises: {{count}}",
+      "moreItems": "{{count}} flere elementer vises ikke",
+      "cut": "(+{{count}} tegn vises ikke)",
+      "signedIn": "Handlingen sker i din egen browser med dit login.",
+      "signedInOn": "Handlingen sker i din egen browser med dit login, på {{origin}}.",
       "text": "Tekst: »{{text}}«",
       "address": "Adresse: {{url}}",
       "allowOnce": "Tillad én gang",
@@ -130,7 +134,8 @@
       "message": "Agenter vil kunne bruge følgende, og de spørger stadig før hver handling:",
       "confirm": "Tillad",
       "enabled": "Skrivebordsapps",
-      "app": "App: {{name}}",
+      "app": "App: {{name}} ({{identity}})",
+      "more": "Og {{count}} flere",
       "site": "Hjemmeside: {{origin}}",
       "signedIn": "Din browser med login på {{origin}}",
       "scripted": "Cua-scripts"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly arbejder videre",
       "body": "Forskningsopgaver, som du har markeret til at blive ved med at køre, fortsætter i baggrunden. Åbn Oleafly for at se, hvordan det går."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Tjek af tilladelser er slået fra ({{mode}})",
+      "description": "Agenten kan redigere filer og køre kommandoer uden at spørge. Oleafly kunne ikke skifte den til en anden tilstand. Skift tilstanden i agentens egne indstillinger."
     }
   }
 }

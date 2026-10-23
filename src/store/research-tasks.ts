@@ -48,7 +48,10 @@ interface ResearchTasksState {
   eventsNextSequence: number | null;
   loading: boolean;
   eventsLoading: boolean;
+  /** The task (or "create") of the latest action still running. */
   action: string | null;
+  /** Every task (or "create") with an action running; actions on other tasks don't affect each other. */
+  pendingActions: string[];
   error: string | null;
   detailOpen: boolean;
   detailTab: ResearchTaskDetailTab | null;
@@ -81,11 +84,28 @@ let projectRequest = 0;
 let eventRequest = 0;
 let projectBinding = 0;
 let actionRequest = 0;
+/** Pages "catch up" loads after the first one, so about 1,000 rows in all. */
+const CATCH_UP_PAGES = 9;
 
-function beginTaskAction(): () => boolean {
+// One entry per task (or "create") with an action running, so a slow cancel on
+// one task is not cleared by another task's action finishing.
+const runningActions = new Map<string, number>();
+
+function beginTaskAction(key: string): () => boolean {
   const binding = projectBinding;
   const request = ++actionRequest;
-  return () => binding === projectBinding && request === actionRequest;
+  runningActions.set(key, request);
+  return () => binding === projectBinding && runningActions.get(key) === request;
+}
+
+function busyActions(): Pick<ResearchTasksState, "action" | "pendingActions"> {
+  const keys = [...runningActions.keys()];
+  return { action: keys.at(-1) ?? null, pendingActions: keys };
+}
+
+function endTaskAction(key: string): Pick<ResearchTasksState, "action" | "pendingActions"> {
+  runningActions.delete(key);
+  return busyActions();
 }
 
 function message(error: unknown): string {
@@ -133,6 +153,9 @@ function sequenceSlot(events: TaskTranscriptEvent[], sequence: number): { index:
 }
 
 let watchedTask: string | null = null;
+// The dialog closed and the window stopped listening to its task, so the rows
+// this window holds may be behind until it opens again.
+let eventsMissed = false;
 
 /** Tells the backend which task this window shows (its live text). */
 function watch(taskId: string | null): void {
@@ -141,6 +164,40 @@ function watch(taskId: string | null): void {
   void watchResearchTask(taskId).catch(() => {
     // An older backend has no watch command and sends every event.
   });
+}
+
+/**
+ * Gets the dialog's task ready after it opens: listens to it again when the
+ * window stopped, and loads the rows the first page left out.
+ */
+function resumeSelectedTask(): void {
+  const state = useResearchTasksStore.getState();
+  const taskId = state.selectedTaskId;
+  if (!taskId) return;
+  if (eventsMissed) void state.selectTask(taskId);
+  else if (state.eventsNextSequence !== null) void catchUpEvents(taskId, projectBinding);
+}
+
+/**
+ * Loads the pages after the first while the task's dialog is open, so the
+ * saved rows meet the live ones. A very long transcript keeps its rest for
+ * "Load more".
+ */
+async function catchUpEvents(taskId: string, binding: number): Promise<void> {
+  for (let page = 0; page < CATCH_UP_PAGES; page += 1) {
+    const before = useResearchTasksStore.getState();
+    if (
+      binding !== projectBinding ||
+      before.selectedTaskId !== taskId ||
+      before.eventsNextSequence === null ||
+      !before.detailOpen
+    ) {
+      return;
+    }
+    await before.loadMoreEvents();
+    // A page that failed or was dropped leaves the same place to continue from.
+    if (useResearchTasksStore.getState().eventsNextSequence === before.eventsNextSequence) return;
+  }
 }
 
 type TextRow = TaskTranscriptEvent & { event: { kind: "text" | "reasoning"; text: string } };
@@ -198,15 +255,33 @@ function receiveTaskList(incoming: ResearchTask[], baseline: ResearchTask[]): vo
       tasks.set(task.id, task);
     }
   }
+  // A task this window had when the list was asked for, still unchanged, and
+  // missing from the list was deleted elsewhere.
+  const listed = new Set(incoming.map((task) => task.id));
+  for (const [id, current] of tasks) {
+    if (!listed.has(id) && initial.get(id) === current) tasks.delete(id);
+  }
   const previous = state.tasks.find((task) => task.id === state.selectedTaskId);
   const selected = state.selectedTaskId ? tasks.get(state.selectedTaskId) : undefined;
+  const selectionGone = state.selectedTaskId !== null && !selected;
   const runChanged = selected && previous?.executionGeneration !== selected.executionGeneration;
-  if (runChanged) eventRequest += 1;
+  if (runChanged || selectionGone) eventRequest += 1;
   useResearchTasksStore.setState({
     tasks: sorted([...tasks.values()]),
     loading: false,
     ...(runChanged ? { events: [], eventsNextSequence: null, eventsLoading: false } : {}),
+    ...(selectionGone
+      ? {
+          selectedTaskId: null,
+          events: [],
+          eventsNextSequence: null,
+          eventsLoading: false,
+          detailOpen: false,
+          detailTab: null,
+        }
+      : {}),
   });
+  if (selectionGone) watch(null);
   if (runChanged) void state.selectTask(selected.id);
 }
 
@@ -219,17 +294,30 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
   loading: false,
   eventsLoading: false,
   action: null,
+  pendingActions: [],
   error: null,
   detailOpen: false,
   detailTab: null,
   composerDrafts: {},
 
   openTaskDetail: (taskId, tab) => {
-    if (get().selectedTaskId !== taskId) void get().selectTask(taskId);
+    // Open first, so the page selecting the task knows the dialog shows it.
     set({ detailOpen: true, detailTab: tab ?? null });
+    if (get().selectedTaskId !== taskId) void get().selectTask(taskId);
+    else resumeSelectedTask();
   },
 
-  setDetailOpen: (open) => set(open ? { detailOpen: true } : { detailOpen: false, detailTab: null }),
+  setDetailOpen: (open) => {
+    if (open) {
+      set({ detailOpen: true });
+      resumeSelectedTask();
+      return;
+    }
+    set({ detailOpen: false, detailTab: null });
+    // No dialog shows the task's live text, so the backend can stop sending it.
+    if (watchedTask !== null) eventsMissed = true;
+    watch(null);
+  },
 
   setDetailTab: (tab) => set({ detailTab: tab }),
 
@@ -245,15 +333,15 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
     }),
 
   deleteTask: async (taskId) => {
-    const isCurrent = beginTaskAction();
-    set({ action: taskId, error: null });
+    const isCurrent = beginTaskAction(taskId);
+    set({ ...busyActions(), error: null });
     try {
       await deleteResearchTask(taskId);
       if (!isCurrent()) return;
       set((state) => {
         const tasks = state.tasks.filter((task) => task.id !== taskId);
         return {
-          action: null,
+          ...endTaskAction(taskId),
           tasks,
           ...(state.selectedTaskId === taskId
             ? {
@@ -267,8 +355,9 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
             : {}),
         };
       });
+      if (get().selectedTaskId === null) watch(null);
     } catch (error) {
-      if (isCurrent()) set({ action: null, error: message(error) });
+      if (isCurrent()) set({ ...endTaskAction(taskId), error: message(error) });
       throw error;
     }
   },
@@ -277,6 +366,7 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
     projectBinding += 1;
     const request = ++projectRequest;
     eventRequest += 1;
+    runningActions.clear();
     set({
       projectId,
       tasks: [],
@@ -285,11 +375,14 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
       eventsNextSequence: null,
       loading: Boolean(projectId),
       eventsLoading: false,
-      action: null,
+      ...busyActions(),
       error: null,
       detailOpen: false,
       detailTab: null,
     });
+    // The window no longer shows the previous project's task.
+    eventsMissed = false;
+    watch(null);
     if (!projectId) return;
     const baseline = get().tasks;
     try {
@@ -320,6 +413,7 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
 
   selectTask: async (taskId) => {
     const request = ++eventRequest;
+    eventsMissed = false;
     set({
       selectedTaskId: taskId,
       events: [],
@@ -341,6 +435,7 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
         eventsNextSequence: page.nextSequence,
         eventsLoading: false,
       }));
+      if (page.nextSequence !== null && get().detailOpen) void catchUpEvents(taskId, projectBinding);
     } catch (error) {
       if (request !== eventRequest || get().selectedTaskId !== taskId) return;
       set({ eventsLoading: false, error: message(error) });
@@ -373,91 +468,91 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
   },
 
   createTask: async (draft) => {
-    const isCurrent = beginTaskAction();
-    set({ action: "create", error: null });
+    const isCurrent = beginTaskAction("create");
+    set({ ...busyActions(), error: null });
     try {
       const task = await createResearchTask(draft);
       if (!isCurrent()) return task;
       get().receiveTask(task);
-      set({ action: null });
+      set(endTaskAction("create"));
       return task;
     } catch (error) {
-      if (isCurrent()) set({ action: null, error: message(error) });
+      if (isCurrent()) set({ ...endTaskAction("create"), error: message(error) });
       throw error;
     }
   },
 
   editTask: async (taskId, edit) => {
-    const isCurrent = beginTaskAction();
-    set({ action: taskId, error: null });
+    const isCurrent = beginTaskAction(taskId);
+    set({ ...busyActions(), error: null });
     try {
       const task = await editResearchTask(taskId, edit);
       if (!isCurrent()) return task;
       get().receiveTask(task);
-      set({ action: null });
+      set(endTaskAction(taskId));
       return task;
     } catch (error) {
-      if (isCurrent()) set({ action: null, error: message(error) });
+      if (isCurrent()) set({ ...endTaskAction(taskId), error: message(error) });
       throw error;
     }
   },
 
   startTask: async (taskId) => {
-    const isCurrent = beginTaskAction();
-    set({ action: taskId, error: null });
+    const isCurrent = beginTaskAction(taskId);
+    set({ ...busyActions(), error: null });
     try {
       const task = await startResearchTask(taskId);
       if (!isCurrent()) return task;
       get().receiveTask(task);
-      set({ action: null });
+      set(endTaskAction(taskId));
       return task;
     } catch (error) {
-      if (isCurrent()) set({ action: null, error: message(error) });
+      if (isCurrent()) set({ ...endTaskAction(taskId), error: message(error) });
       throw error;
     }
   },
 
   cancelTask: async (taskId) => {
-    const isCurrent = beginTaskAction();
-    set({ action: taskId, error: null });
+    const isCurrent = beginTaskAction(taskId);
+    set({ ...busyActions(), error: null });
     try {
       const task = await cancelResearchTask(taskId);
       if (!isCurrent()) return task;
       get().receiveTask(task);
-      set({ action: null });
+      set(endTaskAction(taskId));
       return task;
     } catch (error) {
-      if (isCurrent()) set({ action: null, error: message(error) });
+      if (isCurrent()) set({ ...endTaskAction(taskId), error: message(error) });
       throw error;
     }
   },
 
   retryTask: async (taskId, mode) => {
-    const isCurrent = beginTaskAction();
-    set({ action: taskId, error: null });
+    const isCurrent = beginTaskAction(taskId);
+    set({ ...busyActions(), error: null });
     try {
       const task = await retryResearchTask(taskId, mode);
       if (!isCurrent()) return task;
       get().receiveTask(task);
-      set({ action: null });
+      set(endTaskAction(taskId));
       return task;
     } catch (error) {
-      if (isCurrent()) set({ action: null, error: message(error) });
+      if (isCurrent()) set({ ...endTaskAction(taskId), error: message(error) });
       throw error;
     }
   },
 
   approvePlan: async (taskId, editedPlan) => {
-    const isCurrent = beginTaskAction();
-    set({ action: taskId, error: null });
+    const isCurrent = beginTaskAction(taskId);
+    set({ ...busyActions(), error: null });
     try {
       const task = await approveResearchTaskPlan(taskId, editedPlan);
       if (!isCurrent()) return task;
       get().receiveTask(task);
-      set({ action: null });
+      set(endTaskAction(taskId));
       return task;
     } catch (error) {
-      if (isCurrent()) set({ action: null, error: message(error) });
+      if (isCurrent()) set({ ...endTaskAction(taskId), error: message(error) });
       throw error;
     }
   },
@@ -465,8 +560,8 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
   applyTask: async (taskId, selectedPaths) => {
     const projectId = get().projectId;
     if (!projectId) throw new Error("Open a project before applying task changes.");
-    const isCurrent = beginTaskAction();
-    set({ action: taskId, error: null });
+    const isCurrent = beginTaskAction(taskId);
+    set({ ...busyActions(), error: null });
     try {
       const result = await useFilesStore
         .getState()
@@ -474,26 +569,26 @@ export const useResearchTasksStore = create<ResearchTasksState>((set, get) => ({
           applyResearchTask(taskId, generation, selectedPaths),
         );
       if (!isCurrent()) return result.task;
-      set({ action: null });
+      set(endTaskAction(taskId));
       get().receiveTask(result.task);
       return result.task;
     } catch (error) {
-      if (isCurrent()) set({ action: null, error: message(error) });
+      if (isCurrent()) set({ ...endTaskAction(taskId), error: message(error) });
       throw error;
     }
   },
 
   acceptTask: async (taskId) => {
-    const isCurrent = beginTaskAction();
-    set({ action: taskId, error: null });
+    const isCurrent = beginTaskAction(taskId);
+    set({ ...busyActions(), error: null });
     try {
       const task = await acceptResearchTaskResult(taskId);
       if (!isCurrent()) return task;
       get().receiveTask(task);
-      set({ action: null });
+      set(endTaskAction(taskId));
       return task;
     } catch (error) {
-      if (isCurrent()) set({ action: null, error: message(error) });
+      if (isCurrent()) set({ ...endTaskAction(taskId), error: message(error) });
       throw error;
     }
   },
@@ -579,12 +674,12 @@ let subscribers = 0;
 let listening: Promise<() => void> | null = null;
 
 async function listenOnce(): Promise<() => void> {
+  // The window answers PDF text requests from the app shell (research-pdf-bridge),
+  // so a task can read papers without a research view open.
   const started = await Promise.allSettled([
     listenForResearchTaskChanges((task) => useResearchTasksStore.getState().receiveTask(task)),
     listenForResearchTaskEvents((event) => useResearchTasksStore.getState().receiveEvent(event)),
     listenForResearchTaskDeltas((delta) => useResearchTasksStore.getState().receiveDelta(delta)),
-    // Tasks ask this window for PDF text through pdf.js (loaded on demand).
-    import("@/lib/research-pdf-bridge").then((bridge) => bridge.mountResearchPdfBridge()),
   ]);
   const unlisten = started.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
   const failed = started.find((result): result is PromiseRejectedResult => result.status === "rejected");
@@ -603,8 +698,9 @@ export async function mountResearchTaskSubscriptions(): Promise<() => void> {
   subscribers += 1;
   listening ??= listenOnce();
   const current = listening;
+  let stopListening: () => void;
   try {
-    await current;
+    stopListening = await current;
   } catch (error) {
     subscribers -= 1;
     if (subscribers === 0 && listening === current) listening = null;
@@ -616,8 +712,15 @@ export async function mountResearchTaskSubscriptions(): Promise<() => void> {
     stopped = true;
     subscribers -= 1;
     if (subscribers > 0 || listening !== current) return;
-    listening = null;
-    void current.then((stop) => stop());
-    watch(null);
+    // A view that replaces this one in the same commit mounts before this
+    // microtask runs; the listeners stay on for it, so no event is missed
+    // while they would start again.
+    queueMicrotask(() => {
+      if (subscribers > 0 || listening !== current) return;
+      listening = null;
+      stopListening();
+      if (watchedTask !== null) eventsMissed = true;
+      watch(null);
+    });
   };
 }

@@ -11,12 +11,12 @@
       "checkingAction": "Kontrollerar",
       "checkingDescription": "Det kan ta en stund medan Oleafly kontrollerar kommandoradsverktygen på den här datorn.",
       "checkingInstalled": "Kontrollerar installerade agenter",
-      "checkingTitle": "Letar efter kommandoradsagenter",
+      "checkingTitle": "Letar efter CLI-agenter",
       "cliPathLabel": "Hittades i",
       "cliTitle": "Kommandoradsverktyg",
       "copySignInCommand": "Kopiera inloggningskommandot",
-      "emptyDescription": "Installera en kommandoradsagent som stöds och kontrollera igen.",
-      "emptyTitle": "Inga kommandoradsagenter hittades",
+      "emptyDescription": "Installera en CLI-agent som stöds och kontrollera sedan igen.",
+      "emptyTitle": "Inga CLI-agenter hittades",
       "custom": {
         "description": "Klistra in en agentdefinition för att registrera en agent som inte följer med Oleafly.",
         "hint": "Klistra in en agentdefinition med ett fastnålat npm- eller uv-paket, en verifierad binär eller en installerad körbar fil. Håll lösenord och API-nycklar utanför den här JSON-koden.",
@@ -36,7 +36,7 @@
       },
       "installBridge": "Installera bryggan",
       "installBridgeNextStep": "Installera ACP-bryggan och logga sedan in via kommandoradsverktyget.",
-      "intro": "Anslut en lokal agent via ACP. Varje agent hanterar sina egna modeller, verktyg och sin egen inloggning, och inställningarna för API-leverantörer hålls separata. Använd det officiella CLI-kontot för inloggning: Oleafly importerar inga kontotokens och uppskattar inga abonnemangskvoter.",
+      "intro": "CLI-agenter som Claude Code, Codex och Gemini CLI ansluter via Agent Client Protocol (ACP). Vissa behöver en brygga, en liten adapter som Oleafly installerar för att kunna prata med dem. Varje agent hanterar sina egna modeller, verktyg och inloggning, och inställningarna för API-leverantörer hålls separata. Använd det officiella CLI-kontot för inloggning: Oleafly importerar inga kontotokens och uppskattar inga abonnemangskvoter.",
       "nextStepTitle": "Nästa steg",
       "notReported": "Inte rapporterad",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Visa distributionen",
         "title": "Hitta fler agenter"
       },
-      "sectionLabel": "ACP-agenter",
+      "sectionLabel": "CLI-agenter",
       "signInCommandLabel": "Inloggningskommando",
       "versionLabel": "Version",
       "updateBridge": "Uppdatera bryggan",
@@ -147,7 +147,7 @@
         "label": "Använd min API-nyckel i Oleafly",
         "off": "Av (agenten loggar in själv)",
         "note": "Oleafly skickar nyckeln till den här agenten när en konversation startar och håller den utanför transkripten.",
-        "unavailable": "Lägg till en API-nyckel under Inställningar, AI för att använda den här."
+        "unavailable": "Lägg till en API-nyckel under Inställningar, AI-assistent, Leverantörer och nycklar för att använda den här."
       },
       "hermes": {
         "title": "Hermes-profil för det här projektet",
@@ -175,7 +175,20 @@
         "test": "Testa anslutningen",
         "testOk": "Ansluten: {{version}}",
         "save": "Spara",
-        "sshNote": "Oleafly loggar bara in med dina SSH-nycklar."
+        "sshNote": "Oleafly loggar bara in med dina SSH-nycklar.",
+        "folderHint": "Den fullständiga sökvägen på den datorn, till exempel /home/ada/paper.",
+        "needsValid": "Testa anslutningen och Spara kräver giltiga värden för: {{fields}}.",
+        "unsavedEdit": "Inte sparat än. Spara för att använda de här ändringarna.",
+        "unsavedMode": "Inte sparat än. Tills du sparar använder det här projektet: {{mode}}.",
+        "errors": {
+          "hostRequired": "Ange värdnamnet eller user@host.",
+          "hostInvalid": "Använd bara bokstäver, siffror, punkter, bindestreck och @, och börja inte med ett bindestreck.",
+          "port": "Använd en port från 1 till 65535.",
+          "folderRequired": "Ange den fullständiga sökvägen till projektmappen på den datorn.",
+          "folderInvalid": "Använd den fullständiga sökvägen, som börjar med /.",
+          "command": "Använd hermes, eller den fullständiga sökvägen till det som börjar med /.",
+          "profile": "Använd små bokstäver, siffror, bindestreck och understreck."
+        }
       }
     },
     "approvals": {
@@ -1007,6 +1020,8 @@
         "ariaLabel": "Terminalens shell",
         "description": "Nya terminaler startar det här shellet. Öppna terminaler behåller sitt.",
         "label": "Shell",
+        "notFound": "{{name}} (hittades inte)",
+        "notFoundNote": "{{name}} är inte tillgängligt på den här datorn, så nya terminaler kan inte starta. Välj ett annat shell.",
         "options": {
           "auto": "Standard ({{name}})",
           "cmd": "Kommandotolken",
@@ -1021,14 +1036,17 @@
           "ariaLabel": "Sökväg till eget shell",
           "description": "Programmet som nya terminaler kör.",
           "label": "Sökväg till shell"
-        }
+        },
+        "windowsOnly": "{{name}} (bara Windows)",
+        "windowsOnlyNote": "{{name}} körs bara på Windows. Nya terminaler här startar {{fallback}} i stället.",
+        "windowsOnlyNoteDefault": "{{name}} körs bara på Windows. Nya terminaler här startar standardshellet i stället."
       },
       "shiftEnter": {
         "ariaLabel": "Shift+Enter i terminalen",
-        "description": "Vad Shift+Enter skickar till programmet i terminalen.",
-        "enter": "Enter",
+        "description": "Vad Shift+Enter skickar till programmet i terminalen. En ny rad låter chattbaserade verktyg som Claude Code lägga till en rad i sin prompt. Enter skickar, precis som Enter-tangenten.",
+        "enter": "Skicka Enter",
         "label": "Shift+Enter",
-        "newline": "Ny rad"
+        "newline": "Infoga en ny rad"
       },
       "startWithProject": {
         "description": "Starta shell när ett projekt öppnas i stället för första gången du visar terminalen.",
@@ -1452,7 +1470,9 @@
       "detecting": "Kontrollerar servern…",
       "found": "Det här är en {{kind}}-server.",
       "kindGitea": "Gitea eller Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "En annan server",
+      "replaces": "Inloggningen ersätter {{login}} på {{host}}.",
       "scopesGitea": "Ge den läs- och skrivåtkomst till repository och user.",
       "scopesGithub": "Ge den behörigheterna repo och read:user.",
       "scopesGitlab": "Ge den behörigheterna api och write_repository.",
@@ -1527,7 +1547,7 @@
       "site": "Webbplats: {{domain}}",
       "confirmCopy": "Oleafly läser cookies för {{domain}} från profilen {{profile}} i {{browser}}. De stannar i Oleafly och skickas bara till {{domain}}. Du bekräftar en gång till i en systemdialog.",
       "copyAction": "Kopiera inloggningen",
-      "copying": "Kopierar...",
+      "copying": "Kopierar…",
       "notSignedIn_one": "Kopierade {{count}} cookie från {{browser}}, men den loggade inte in dig. Logga in i stället.",
       "notSignedIn_other": "Kopierade {{count}} cookies från {{browser}}, men de loggade inte in dig. Logga in i stället."
     },
@@ -1610,6 +1630,7 @@
         "notInstalled": "Cua Driver är inte installerat.",
         "tooOld": "Cua Driver {{version}} är för gammalt. Oleafly behöver {{minimum}} eller senare.",
         "noAppBundle": "Installera Cua Driver med det officiella installationsprogrammet så att det kan få macOS-behörigheterna.",
+        "unreadableVersion": "Oleafly kunde inte läsa Cua Drivers version. Kontrollera att det körs och kontrollera sedan igen.",
         "path": "Hittades i {{path}}"
       },
       "install": {
@@ -1643,14 +1664,18 @@
         "empty": "Inga appar än. Agenter kan bara använda appar som du lägger till här.",
         "add": "Lägg till app",
         "remove": "Ta bort {{name}}",
+        "missing": "Programmet hittades inte på den här datorn. Ta bort det, eller installera om appen.",
         "dialog": {
           "title": "Lägg till en app",
           "description": "Välj en app som agenter får använda. De kan öppna den, läsa dess fönster och utföra åtgärder i den när du har godkänt.",
           "search": "Sök appar",
-          "loading": "Letar efter appar...",
+          "loading": "Letar efter appar…",
           "none": "Inga appar matchar.",
-          "choose": "Välj en annan app...",
-          "add": "Lägg till"
+          "choose": "Välj en annan app…",
+          "add": "Lägg till",
+          "added": "Redan tillagd.",
+          "more": "Visar {{shown}} av {{total}}. Sök för att smalna av listan.",
+          "refresh": "Uppdatera"
         },
         "blocked": {
           "oleafly": "Oleafly kan inte styra sig själv.",
@@ -1660,7 +1685,8 @@
           "passwords": "Lösenordsappar är alltid spärrade.",
           "scripting": "Skriptkörare kan göra vad som helst på den här datorn.",
           "wrapper": "Den här posten startar ett annat program. Välj det programmet i stället.",
-          "sandboxed": "Flatpak- och Snap-appar stöds inte än."
+          "sandboxed": "Flatpak- och Snap-appar stöds inte än.",
+          "browser": "Lägg i stället till en webbläsares webbplatser under Tillåtna webbplatser."
         }
       },
       "sites": {
@@ -1671,6 +1697,7 @@
         "remove": "Ta bort {{origin}}",
         "signedIn": {
           "label": "Använd min inloggade webbläsare",
+          "labelFor": "Använd min inloggade webbläsare på {{origin}}",
           "description": "Agenter arbetar i din egen Chrome eller Edge på den här webbplatsen. Låt det vara av för att använda en separat webbläsarprofil."
         }
       },
@@ -1680,8 +1707,9 @@
       },
       "test": {
         "action": "Testa anslutningen",
-        "running": "Testar...",
+        "running": "Testar…",
         "ok": "Cua Driver körs med dina gränser.",
+        "problems": "Cua Drivers egen kontroll rapporterade också:",
         "failed": "Testet misslyckades: {{detail}}"
       },
       "tool": {
@@ -2281,6 +2309,7 @@
       "stopHint": "Dess uppgifter pausas tills du öppnar Oleafly igen.",
       "stopFailed": "Hjälpprocessen stoppades inte. Försök igen.",
       "openLog": "Visa loggen",
+      "statusFailed": "Statusen för hjälpprocessen kunde inte läsas.",
       "toggleFailed": "Det gick inte att ändra den här inställningen. Försök igen."
     }
   }

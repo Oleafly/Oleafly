@@ -32,7 +32,7 @@ use crate::prompt::{resume_message, task_prompt, wake_up_message, wrap_up_messag
 use crate::runs::{RunSummary, WAIT_MAX};
 use crate::scheduler::{TaskEventSink, TaskRuntimeAdapter, TaskRuntimeFuture, TaskServices};
 use crate::task_tools::extra::{
-    call_task_tool, task_tool_policy, task_tool_schemas, TaskBinding, SPAWN_AGENT,
+    call_task_tool, task_tool_policy, task_tool_schemas, TaskBinding, PLAN_NO_RUNS, SPAWN_AGENT,
 };
 use crate::task_tools::{
     bounded, file_tool_schemas, lock, text_argument, CommandContext, CommandJobs, TaskFiles,
@@ -58,7 +58,6 @@ const CHILDREN_AT_ONCE: usize = 3;
 const WRAP_UP_WATCH: Duration = Duration::from_secs(2);
 #[cfg(test)]
 const WRAP_UP_WATCH: Duration = Duration::from_millis(20);
-const PLAN_NO_RUNS: &str = "Write plan.md first. Runs start after the user approves the plan.";
 
 /// How a wait for a task's runs between turns ended.
 enum Waited {
@@ -364,6 +363,16 @@ impl ToolScope {
     }
 }
 
+/// The runner of one agent turn: its tool calls stop with `token`. Each turn
+/// gets a runner of its own, since a cancelled token refuses every call.
+fn tool_runner(scope: &Arc<ToolScope>, token: &CancellationToken) -> ToolRunner {
+    let (scope, token) = (scope.clone(), token.clone());
+    Arc::new(move |call| {
+        let (scope, token) = (scope.clone(), token.clone());
+        Box::pin(async move { scope.call(call.name, call.arguments, token).await })
+    })
+}
+
 /// A helper agent with read tools and writes confined to the record.
 async fn spawn_child(
     scope: Arc<ToolScope>,
@@ -580,6 +589,8 @@ impl BuiltinTaskAdapter {
                 stop.cancel();
             })
         };
+        // The wait also ends when the time budget does, so the agent can wrap up.
+        let watcher = watch_time(&self.services, &context.task_id, stop.clone());
         let waited = loop {
             if self.time_ran_out(&context.task_id) {
                 break Ok(Waited::Finished(Vec::new()));
@@ -595,10 +606,14 @@ impl BuiltinTaskAdapter {
                 Err(_) if suspend.is_cancelled() && !cancel.is_cancelled() => {
                     break Ok(Waited::Suspended)
                 }
+                Err(_) if self.time_ran_out(&context.task_id) && !cancel.is_cancelled() => {
+                    break Ok(Waited::Finished(Vec::new()))
+                }
                 Err(error) => break Err(error),
             }
         };
         relay.abort();
+        watcher.abort();
         events(TaskRuntimeEvent::Phase {
             phase: TaskPhase::Working,
         });
@@ -798,18 +813,14 @@ impl BuiltinTaskAdapter {
         });
         let observed_usage = Arc::new(Mutex::new(None));
         let mut wake_ups = 0u32;
+        // Set when the time budget ended: the agent gets one more turn.
+        let mut wrap_up = false;
         // `Ok(Some(file))`: suspended, with the conversation saved in `file`.
         let result: Result<Option<String>, String> = loop {
             if !wait_first {
                 let turn = cancel.child();
                 let watcher = watch_time(&self.services, &context.task_id, turn.clone());
-                let runner_scope = scope.clone();
-                let runner_turn = turn.clone();
-                let runner: ToolRunner = Arc::new(move |call| {
-                    let scope = runner_scope.clone();
-                    let token = runner_turn.clone();
-                    Box::pin(async move { scope.call(call.name, call.arguments, token).await })
-                });
+                let runner = tool_runner(&scope, &turn);
                 let mut request = template.clone();
                 request.messages = messages.clone();
                 let outcome = self
@@ -828,7 +839,7 @@ impl BuiltinTaskAdapter {
                         &tool_registry,
                         &turn,
                         Some(&suspend),
-                        runner.clone(),
+                        runner,
                         &events,
                         &usage,
                         &observed_usage,
@@ -849,39 +860,10 @@ impl BuiltinTaskAdapter {
                 }
                 if self.time_ran_out(&context.task_id) {
                     // The time budget ended: one short turn to leave a handoff.
-                    events(TaskRuntimeEvent::Phase {
-                        phase: TaskPhase::WrappingUp,
-                    });
                     if let Ok(outcome) = &outcome {
                         messages = outcome.history.clone();
                     }
-                    messages.push(Message::user(wrap_up_message(&context.record_dir)));
-                    let mut request = template.clone();
-                    request.messages = messages.clone();
-                    let wrap_token = cancel.child();
-                    let wrapped = self
-                        .agent_turn(
-                            &client,
-                            &resolved,
-                            request,
-                            RunConfig {
-                                max_steps: WRAP_UP_STEPS,
-                                allow_long_runs: true,
-                                max_duration_ms: Some(WRAP_UP_LIMIT.as_millis() as u64),
-                                ..RunConfig::default()
-                            },
-                            &tool_registry,
-                            &wrap_token,
-                            None,
-                            runner,
-                            &events,
-                            &usage,
-                            &observed_usage,
-                        )
-                        .await;
-                    if let Ok(outcome) = wrapped {
-                        summary = outcome.text;
-                    }
+                    wrap_up = true;
                     break Ok(None);
                 }
                 let outcome = match outcome {
@@ -910,7 +892,12 @@ impl BuiltinTaskAdapter {
                         .save_conversation(&context, &resolved, messages.clone(), true)
                         .map(Some)
                 }
-                Ok(Waited::Finished(finished)) if finished.is_empty() => break Ok(None),
+                Ok(Waited::Finished(finished)) if finished.is_empty() => {
+                    // The budget ended while the task waited for its runs: the
+                    // agent still gets its turn to leave a handoff.
+                    wrap_up = self.time_ran_out(&context.task_id);
+                    break Ok(None);
+                }
                 Ok(Waited::Finished(finished)) => {
                     if wake_ups >= MAX_WAKE_UPS {
                         break Err("The task woke up 200 times. Retry it to continue.".into());
@@ -921,6 +908,40 @@ impl BuiltinTaskAdapter {
                 Err(error) => break Err(error),
             }
         };
+        if wrap_up && matches!(result, Ok(None)) && !cancel.is_cancelled() {
+            events(TaskRuntimeEvent::Phase {
+                phase: TaskPhase::WrappingUp,
+            });
+            messages.push(Message::user(wrap_up_message(&context.record_dir)));
+            let mut request = template.clone();
+            request.messages = messages.clone();
+            // A turn of its own: the working turn's token is already cancelled
+            // and would refuse every tool call.
+            let wrap_token = cancel.child();
+            let wrapped = self
+                .agent_turn(
+                    &client,
+                    &resolved,
+                    request,
+                    RunConfig {
+                        max_steps: WRAP_UP_STEPS,
+                        allow_long_runs: true,
+                        max_duration_ms: Some(WRAP_UP_LIMIT.as_millis() as u64),
+                        ..RunConfig::default()
+                    },
+                    &tool_registry,
+                    &wrap_token,
+                    None,
+                    tool_runner(&scope, &wrap_token),
+                    &events,
+                    &usage,
+                    &observed_usage,
+                )
+                .await;
+            if let Ok(outcome) = wrapped {
+                summary = outcome.text;
+            }
+        }
         let was_cancelled = cancel.is_cancelled();
         cancel.cancel();
         jobs.finish().await;

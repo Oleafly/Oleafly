@@ -98,7 +98,18 @@ pub fn prompt_blocks(
     caps: &AgentCapabilities,
 ) -> Result<Vec<Value>, PromptError> {
     let has_text = !parts.text.trim().is_empty();
-    let attachments = parts.images.len() + parts.links.len() + parts.texts.len();
+    // A file's embedded text repeats its link: together they are one
+    // attachment, not two.
+    let copies = parts
+        .texts
+        .iter()
+        .filter(|text| {
+            text.uri
+                .as_deref()
+                .is_some_and(|uri| parts.links.iter().any(|link| link.uri == uri))
+        })
+        .count();
+    let attachments = parts.images.len() + parts.links.len() + parts.texts.len() - copies;
     if !has_text && parts.skill_block.is_none() && attachments == 0 {
         return Err(PromptError::Empty);
     }
@@ -341,6 +352,72 @@ mod tests {
         };
         assert_eq!(
             prompt_blocks("s", &parts, &caps(false, false)),
+            Err(PromptError::TooMany)
+        );
+    }
+
+    /// Small text files as the app resolves them for an agent that takes
+    /// embedded context: each has a link and an embedded copy of its text.
+    fn linked_texts(count: usize) -> (Vec<ResourceLink>, Vec<EmbeddedText>) {
+        let links: Vec<_> = (0..count)
+            .map(|index| link(&format!("{index}.tex")))
+            .collect();
+        let texts = links
+            .iter()
+            .map(|link| EmbeddedText {
+                uri: Some(link.uri.clone()),
+                name: link.name.clone(),
+                mime_type: None,
+                text: "\\section{A}".into(),
+            })
+            .collect();
+        (links, texts)
+    }
+
+    #[test]
+    fn a_file_with_a_link_and_an_embedded_copy_counts_once() {
+        let (links, texts) = linked_texts(10);
+        let parts = PromptParts {
+            text: "x",
+            skill_block: None,
+            images: &[],
+            links: &links,
+            texts: &texts,
+        };
+        let blocks = prompt_blocks("s", &parts, &caps(false, true)).unwrap();
+        assert_eq!(blocks.len(), 1 + 10 + 10);
+        let (links, texts) = linked_texts(11);
+        let parts = PromptParts {
+            text: "x",
+            skill_block: None,
+            images: &[],
+            links: &links,
+            texts: &texts,
+        };
+        assert_eq!(
+            prompt_blocks("s", &parts, &caps(false, true)),
+            Err(PromptError::TooMany)
+        );
+    }
+
+    #[test]
+    fn a_selection_is_an_attachment_of_its_own() {
+        let (links, mut texts) = linked_texts(10);
+        texts.push(EmbeddedText {
+            uri: None,
+            name: "Selection".into(),
+            mime_type: Some("text/plain".into()),
+            text: "quoted".into(),
+        });
+        let parts = PromptParts {
+            text: "x",
+            skill_block: None,
+            images: &[],
+            links: &links,
+            texts: &texts,
+        };
+        assert_eq!(
+            prompt_blocks("s", &parts, &caps(false, true)),
             Err(PromptError::TooMany)
         );
     }

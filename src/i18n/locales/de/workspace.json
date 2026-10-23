@@ -225,6 +225,7 @@
       "closeOne": "Terminal schließen",
       "closeProject": "Projekt schließen",
       "dontAsk": "Nicht mehr fragen",
+      "dontAskHint": "Schalten Sie sie unter Einstellungen, Darstellung, Terminal, „Vor dem Schließen eines beschäftigten Terminals fragen“ wieder ein.",
       "many_one": "In {{count}} Terminal läuft noch ein Programm.",
       "many_other": "In {{count}} Terminals laufen noch Programme.",
       "named": "{{process}} läuft noch in {{title}}.",

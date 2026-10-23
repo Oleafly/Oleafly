@@ -276,6 +276,8 @@ pub(crate) fn parse_steps(args: &Value) -> Result<Vec<Step>, String> {
             if !step_args.is_object() {
                 return Err(format!("Step {number} needs its arguments as an object."));
             }
+            // Like the top level: Oleafly sets the session, a step can't.
+            let step_args = without_private_keys(&step_args);
             if !RUN_STEPS_TOOLS.contains(&tool.as_str()) {
                 return Err(format!(
                     "Step {number} uses {tool}, which run_steps can't run. Use one of: {allowed}."
@@ -287,6 +289,47 @@ pub(crate) fn parse_steps(args: &Value) -> Result<Vec<Step>, String> {
             })
         })
         .collect()
+}
+
+/// Keys the model may not set: Oleafly's own (`__…`) and the Cua session.
+pub(crate) fn is_private_key(key: &str) -> bool {
+    key == "session" || key.starts_with("__")
+}
+
+/// An argument object without its private keys; anything else as it is.
+pub(crate) fn without_private_keys(args: &Value) -> Value {
+    match args {
+        Value::Object(map) => Value::Object(
+            map.iter()
+                .filter(|(key, _)| !is_private_key(key))
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect(),
+        ),
+        other => other.clone(),
+    }
+}
+
+/// The `run_steps` arguments Oleafly sends: only the steps it showed, each
+/// in the shape the model used (`{tool, args}` or `{<tool>: args}`), so the
+/// driver runs exactly what the dialog listed. Other options are dropped.
+pub(crate) fn steps_payload(args: &Value, steps: &[Step]) -> Value {
+    let originals = args.get("steps").and_then(Value::as_array);
+    let items: Vec<Value> = steps
+        .iter()
+        .enumerate()
+        .map(|(index, step)| {
+            let keyed = originals
+                .and_then(|items| items.get(index))
+                .and_then(Value::as_object)
+                .is_some_and(|object| object.get("tool").and_then(Value::as_str).is_some());
+            if keyed {
+                json!({"tool": step.tool, "args": step.args})
+            } else {
+                json!({ step.tool.clone(): step.args })
+            }
+        })
+        .collect();
+    json!({ "steps": items })
 }
 
 fn secret_key(name: &str) -> bool {
@@ -308,22 +351,34 @@ fn secret_key(name: &str) -> bool {
         || lower.ends_with("_otp")
 }
 
-fn redacted(value: &Value) -> Value {
+/// Array items a preview lists before it says how many more there are.
+const PREVIEW_ITEMS: usize = 64;
+
+fn redacted(value: &Value, more_items: &dyn Fn(usize) -> String) -> Value {
     match value {
         Value::Object(map) => Value::Object(
             map.iter()
-                .filter(|(key, _)| key.as_str() != "session" && !key.starts_with("__"))
                 .map(|(key, value)| {
                     let shown = if secret_key(key) {
                         Value::String("[redacted]".into())
                     } else {
-                        redacted(value)
+                        redacted(value, more_items)
                     };
                     (key.clone(), shown)
                 })
                 .collect(),
         ),
-        Value::Array(items) => Value::Array(items.iter().take(64).map(redacted).collect()),
+        Value::Array(items) => {
+            let mut shown: Vec<Value> = items
+                .iter()
+                .take(PREVIEW_ITEMS)
+                .map(|item| redacted(item, more_items))
+                .collect();
+            if items.len() > PREVIEW_ITEMS {
+                shown.push(Value::String(more_items(items.len() - PREVIEW_ITEMS)));
+            }
+            Value::Array(shown)
+        }
         other => other.clone(),
     }
 }
@@ -338,15 +393,33 @@ pub(crate) fn bounded(text: &str, max_chars: usize) -> String {
     kept
 }
 
-/// The arguments as the dialog shows them: no session, secrets redacted,
-/// at most `max_chars` characters.
-pub(crate) fn preview_args(args: &Value, max_chars: usize) -> String {
-    let shown = redacted(args);
-    let text = match &shown {
+/// The first `max_chars` characters of `text` and how many were left out.
+pub(crate) fn clipped(text: &str, max_chars: usize) -> (String, usize) {
+    let total = text.chars().count();
+    if total <= max_chars {
+        return (text.to_string(), 0);
+    }
+    (text.chars().take(max_chars).collect(), total - max_chars)
+}
+
+/// The arguments as the dialog shows them: the session and private keys
+/// left out (Oleafly sets those), secrets redacted, and a marker where an
+/// array has more items than are listed. Nothing else is left out.
+pub(crate) fn preview_text(args: &Value, more_items: &dyn Fn(usize) -> String) -> String {
+    let shown = redacted(&without_private_keys(args), more_items);
+    match &shown {
         Value::Object(map) if map.is_empty() => String::new(),
         other => other.to_string(),
-    };
-    bounded(&text, max_chars)
+    }
+}
+
+/// `preview_text` cut to `max_chars`, and how many characters that left out.
+pub(crate) fn preview_clipped(
+    args: &Value,
+    max_chars: usize,
+    more_items: &dyn Fn(usize) -> String,
+) -> (String, usize) {
+    clipped(&preview_text(args, more_items), max_chars)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -395,7 +468,9 @@ fn refusal_parts(structured: &Value) -> Option<(String, String)> {
     None
 }
 
-fn refusal_from_result(result: &Value) -> Option<(String, String)> {
+/// The code and message of a refusal in a result, however the driver
+/// shaped it.
+pub(crate) fn refusal_from_result(result: &Value) -> Option<(String, String)> {
     let structured = result
         .get("structuredContent")
         .or_else(|| result.get("structured_content"));
@@ -683,20 +758,80 @@ mod tests {
         assert!(parse_steps(&json!({})).is_err());
     }
 
+    fn more(count: usize) -> String {
+        format!("[{count} more]")
+    }
+
     #[test]
     fn previews_redact_secrets_drop_the_session_and_bound_length() {
-        let preview = preview_args(
+        let (preview, cut) = preview_clipped(
             &json!({"session":"x","password":"hunter2","text":"a".repeat(1000),"url":"https://a.org","__cuaSession":"y"}),
             600,
+            &more,
         );
         assert!(!preview.contains("hunter2"));
         assert!(preview.contains("[redacted]"));
         assert!(!preview.contains("\"session\""));
         assert!(!preview.contains("__cuaSession"));
         assert!(preview.chars().count() <= 600);
-        let nested = preview_args(&json!({"form":{"apiKey":"k-123","name":"Ada"}}), 600);
+        assert!(cut > 400, "{cut}");
+        let (nested, cut) =
+            preview_clipped(&json!({"form":{"apiKey":"k-123","name":"Ada"}}), 600, &more);
         assert!(!nested.contains("k-123") && nested.contains("Ada"));
-        assert_eq!(preview_args(&json!({"session":"x"}), 600), "");
+        assert_eq!(cut, 0);
+        assert_eq!(preview_text(&json!({"session":"x"}), &more), "");
+    }
+
+    #[test]
+    fn a_preview_shows_nested_keys_and_marks_the_items_it_leaves_out() {
+        // Only the top level is Oleafly's: a nested `session` or `__` key is
+        // sent to the driver as the model wrote it, so the dialog shows it.
+        let nested = preview_text(&json!({"form": {"session": "other", "__x": 1}}), &more);
+        assert!(nested.contains("\"session\":\"other\""), "{nested}");
+        assert!(nested.contains("__x"), "{nested}");
+        let items: Vec<u32> = (0..70).collect();
+        let listed = preview_text(&json!({ "items": items }), &more);
+        assert!(listed.contains("63") && !listed.contains("64,"), "{listed}");
+        assert!(listed.contains("[6 more]"), "{listed}");
+        let exact: Vec<u32> = (0..64).collect();
+        assert!(!preview_text(&json!({ "items": exact }), &more).contains("more"));
+    }
+
+    #[test]
+    fn clipping_says_how_much_was_left_out() {
+        assert_eq!(clipped("héllo", 10), ("héllo".to_string(), 0));
+        assert_eq!(clipped("héllo wörld", 5), ("héllo".to_string(), 6));
+    }
+
+    #[test]
+    fn steps_lose_their_session_and_private_keys() {
+        let steps = parse_steps(&json!({"steps": [
+            {"tool": "click", "args": {"x": 1, "session": "other", "__cuaSession": "y"}},
+            {"type_text": {"text": "hi", "session": "other"}}
+        ]}))
+        .unwrap();
+        assert_eq!(steps[0].args, json!({"x": 1}));
+        assert_eq!(steps[1].args, json!({"text": "hi"}));
+    }
+
+    #[test]
+    fn the_driver_gets_the_steps_that_were_shown_and_nothing_else() {
+        let raw = json!({
+            "steps": [
+                {"tool": "click", "args": {"x": 1}, "also": "ignored"},
+                {"type_text": {"text": "hi", "session": "other"}}
+            ],
+            "stop_on_error": false,
+            "session": "x"
+        });
+        let steps = parse_steps(&raw).unwrap();
+        assert_eq!(
+            steps_payload(&raw, &steps),
+            json!({"steps": [
+                {"tool": "click", "args": {"x": 1}},
+                {"type_text": {"text": "hi"}}
+            ]})
+        );
     }
 
     #[test]

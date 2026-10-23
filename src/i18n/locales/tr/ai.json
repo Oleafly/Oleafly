@@ -43,13 +43,15 @@
       "command": "Komutu onayla",
       "externalTool": "Dış araç eylemini onayla",
       "internet": "İnternet erişimini onayla",
-      "edit": "Yapay zeka düzenlemesini onayla"
+      "edit": "Yapay zeka düzenlemesini onayla",
+      "researchTask": "Araştırma görevini onayla"
     },
     "headline": {
       "command": "Asistan bu komutu çalıştırmak istiyor",
       "externalTool": "Asistan bir dış aracı kullanmak istiyor",
       "internet": "Asistan internete erişmek istiyor",
-      "edit": "Asistan dosyalarınızı değiştirmek istiyor"
+      "edit": "Asistan dosyalarınızı değiştirmek istiyor",
+      "researchTask": "Asistan bir araştırma görevi oluşturmak istiyor"
     },
     "mcpNote": "Bu işlem, aşağıdaki argümanları yapılandırılmış MCP sunucusuna gönderir.",
     "line": "satır {{line}}",
@@ -70,6 +72,22 @@
       "title": "Dış ajan isteği (MCP)",
       "moreWaiting_one": "{{count}} istek daha bekliyor",
       "moreWaiting_other": "{{count}} istek daha bekliyor"
+    },
+    "researchTask": {
+      "note": "Görev, projenin bir kopyasında kendi başına çalışır. Değişikliklerini sonradan siz incelersiniz.",
+      "title": "Başlık",
+      "goal": "Hedef",
+      "skills": "Beceriler",
+      "prompt": "İstem",
+      "commands": "Komutlar",
+      "commandsAsk": "Her birinden önce sor",
+      "network": "Ağ",
+      "timeBudget": "Zaman bütçesi",
+      "timeBudgetDefault": "Varsayılan",
+      "minutes_one": "{{count}} dakika",
+      "minutes_other": "{{count}} dakika",
+      "planFirst": "Önce planla",
+      "startNow": "Hemen başlat"
     }
   },
   "attachments": {
@@ -95,7 +113,9 @@
     "saveFailed": "{{name}} kaydedilemedi.",
     "missing": "{{name}} artık kullanılamıyor.",
     "sentAsText": "Bu model {{name}} dosyasını dosya olarak okuyamadığı için metin olarak gönderildi.",
-    "skipped": "{{name}} gönderilmedi."
+    "skipped": "{{name}} gönderilmedi.",
+    "dropUnreadable": "{{names}} okunamadı.",
+    "notReplayed": "Eski bir sürümün dosyaları yeniden gönderilemez: {{names}}."
   },
   "chat": {
     "pill": {
@@ -591,7 +611,10 @@
       "queued": "Sırada: ajan işini bitirince gönderilir",
       "remove": "Sıradaki iletiyi kaldır",
       "sendNow": "Şimdi gönder",
-      "sendFailed": "Bu ileti gönderilmedi. Yeniden gönderin veya kaldırın."
+      "sendFailed": "Bu ileti gönderilmedi. Yeniden gönderin veya kaldırın.",
+      "queuedConnecting": "Sırada: ajan hazır olunca gönderilir",
+      "retry": "Yeniden gönder",
+      "edit": "Düzenle"
     },
     "slash": {
       "commands": "Ajan komutları",
@@ -631,7 +654,9 @@
       "apiKeyPlaceholder": "API anahtarınızı yapıştırın",
       "geminiGoogle": "Bireysel planlarda Google ile oturum açma artık çalışmıyor. Bir Gemini API anahtarı veya Vertex AI kullanın.",
       "noProject": "Terminalden oturum açmak için bir proje açın.",
-      "signOut": "Oturumu kapat"
+      "signOut": "Oturumu kapat",
+      "confirmTerminal": "{{agent}} aşağıdaki komutla oturum açar ve komut bir terminal sekmesinde çalışır. Onaylamadan önce inceleyin.",
+      "remote": "Bu konuşma başka bir makinede çalışıyor. Ajanla orada oturum açın."
     },
     "elicitation": {
       "ariaLabel": "Ajan isteği",
@@ -644,7 +669,8 @@
       "openUrl": "Tarayıcıda aç",
       "confirmTitle": "{{host}} açılsın mı?",
       "confirmDescription": "Ajan, bu sitede bir adımı tamamlamanızı istedi. Site tarayıcınızda açılır.",
-      "waiting": "Sitenin tamamlanması bekleniyor."
+      "waiting": "Sitenin tamamlanması bekleniyor.",
+      "openFailed": "Bağlantı tarayıcınızda açılamadı."
     },
     "remote": {
       "banner": "Hermes, SSH üzerinden {{host}} makinesinde çalışıyor. Yaptığı değişiklikler o makinede kalır."
@@ -655,7 +681,6 @@
       "search": "Konuşmalarda ara",
       "empty": "Eşleşen konuşma yok.",
       "loadMore": "Daha fazla yükle",
-      "open": "Aç",
       "rename": "Yeniden adlandır",
       "renameLabel": "Konuşma adı",
       "delete": "Sil",
@@ -676,8 +701,11 @@
       "fork": "Konuşmayı çatalla",
       "forkUnsupported": "Bu ajan konuşmaları çatallayamaz.",
       "forkBusy": "Çatallamadan önce ajanın işini bitirmesini bekleyin.",
-      "v2": "ACP v2 taslağı",
-      "remote": "Uzak"
+      "v2": "Protokol önizlemesi",
+      "remote": "Uzak",
+      "signOutTitle": "{{agent}} oturumu kapatılsın mı?",
+      "signOutDescription": "Bu işlem, {{agent}} oturum açma işleminin kendisini sonlandırır. Aynı oturumu kullanan bir terminalin oturumu da kapatılır ve bu konuşma, yeniden oturum açana kadar durur.",
+      "signOutAccount": "{{account}} ile oturum açıldı"
     },
     "commit": {
       "button": "İşle",

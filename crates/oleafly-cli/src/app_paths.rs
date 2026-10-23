@@ -361,6 +361,54 @@ pub fn worktree_lock(
     }
 }
 
+/// Removes the project's shell-escape trust, as the app does whenever
+/// something outside its editor changes a project's files: that trust is a
+/// record kept apart from the files (`<data>/device-trust/latex-shell-escape/
+/// <id>.json`), so it would otherwise carry over to whatever now sits in the
+/// project. Creates nothing; a project with no trust is left as it is.
+pub fn revoke_shell_escape_trust(data_root: &Path, project_id: &str) -> Result<(), CliError> {
+    if !valid_project_id(project_id) {
+        return Err(CliError::new(
+            ErrorKind::InvalidInput,
+            "project.invalid_input",
+            "The project id isn't valid.",
+        ));
+    }
+    let unsafe_trust = |what: &str| {
+        CliError::new(
+            ErrorKind::Io,
+            "io.not_a_folder",
+            format!("Oleafly's {what} isn't a real folder."),
+        )
+    };
+    let mut folder = data_root.to_path_buf();
+    for (name, what) in [
+        ("device-trust", "device trust folder"),
+        ("latex-shell-escape", "shell trust folder"),
+    ] {
+        folder.push(name);
+        match is_real_directory(&folder) {
+            Ok(true) => {}
+            // Nothing was ever trusted on this computer.
+            Ok(false) => return Ok(()),
+            Err(_) => return Err(unsafe_trust(what)),
+        }
+    }
+    let path = folder.join(format!("{project_id}.json"));
+    match std::fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(CliError::from(error)),
+        Ok(metadata) if metadata.is_dir() && !metadata.file_type().is_symlink() => {
+            Err(CliError::new(
+                ErrorKind::Io,
+                "io.not_a_folder",
+                "Oleafly's shell trust record for this project is a folder.",
+            ))
+        }
+        Ok(_) => std::fs::remove_file(&path).map_err(CliError::from),
+    }
+}
+
 const RESTORE_PENDING_FILE: &str = "checkpoint-restore-pending";
 
 /// A checkpoint restore the app hasn't finished recovering.
@@ -483,6 +531,59 @@ mod tests {
             existing_checkpoint_store(data.path(), "../x").unwrap(),
             None
         );
+    }
+
+    #[test]
+    fn shell_trust_is_revoked_for_that_project_only() {
+        let data = tempfile::tempdir().unwrap();
+        // No trust folder: nothing to do, and nothing is created.
+        revoke_shell_escape_trust(data.path(), "p1").unwrap();
+        assert!(!data.path().join("device-trust").exists());
+        let trust = data.path().join("device-trust").join("latex-shell-escape");
+        std::fs::create_dir_all(&trust).unwrap();
+        std::fs::write(trust.join("p1.json"), "{}").unwrap();
+        std::fs::write(trust.join("p2.json"), "{}").unwrap();
+        revoke_shell_escape_trust(data.path(), "p1").unwrap();
+        assert!(!trust.join("p1.json").exists());
+        assert!(trust.join("p2.json").exists());
+        revoke_shell_escape_trust(data.path(), "p1").unwrap();
+        for bad in ["", "../p2", "a/b", "p2.json"] {
+            assert!(
+                revoke_shell_escape_trust(data.path(), bad).is_err(),
+                "{bad}"
+            );
+        }
+        assert!(trust.join("p2.json").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn shell_trust_revocation_does_not_follow_links_out_of_the_data_folder() {
+        let data = tempfile::tempdir().unwrap();
+        let elsewhere = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(elsewhere.path().join("latex-shell-escape")).unwrap();
+        std::fs::write(
+            elsewhere.path().join("latex-shell-escape").join("p1.json"),
+            "{}",
+        )
+        .unwrap();
+        std::os::unix::fs::symlink(elsewhere.path(), data.path().join("device-trust")).unwrap();
+        assert!(revoke_shell_escape_trust(data.path(), "p1").is_err());
+        assert!(elsewhere
+            .path()
+            .join("latex-shell-escape")
+            .join("p1.json")
+            .exists());
+        // A link in the record's place is removed, not its target.
+        let data = tempfile::tempdir().unwrap();
+        let trust = data.path().join("device-trust").join("latex-shell-escape");
+        std::fs::create_dir_all(&trust).unwrap();
+        let target = elsewhere.path().join("keep.txt");
+        std::fs::write(&target, "x").unwrap();
+        std::os::unix::fs::symlink(&target, trust.join("p1.json")).unwrap();
+        revoke_shell_escape_trust(data.path(), "p1").unwrap();
+        assert!(!trust.join("p1.json").exists());
+        assert!(target.exists());
     }
 
     #[test]

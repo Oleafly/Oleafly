@@ -266,7 +266,9 @@
     "loadingRepositories": "Se încarcă depozitele…",
     "repositoriesFailed": "Depozitele nu au putut fi încărcate.",
     "noRepositories": "Nu s-a găsit niciun depozit.",
+    "noMatchLoaded": "Nicio potrivire în depozitele încărcate până acum. Încarcă mai multe ca să continui căutarea.",
     "privateRepository": "Depozit privat",
+    "openFailed": "Oleafly nu a putut deschide {{host}} în browserul tău.",
     "openOnHost": "Deschide pe {{host}}",
     "openRepositoryOnHost": "Deschide {{name}} pe {{host}}",
     "sources": {

@@ -76,11 +76,16 @@ async fn fork_opens_the_new_session_in_a_new_agent_process() {
         .prompt(&id, "hello".into(), Vec::new())
         .await
         .unwrap();
+    let parent_events = runtime.record(&id).unwrap().last_sequence;
     let fork = runtime
         .fork(&id, Some("fixture-window".into()), Vec::new())
         .await
         .unwrap();
     assert_ne!(fork.session.id, id);
+    // The usage ledger starts after the events the fork copied.
+    assert!(parent_events > 0);
+    assert_eq!(fork.session.fork_sequence, Some(parent_events));
+    assert_eq!(runtime.record(&id).unwrap().fork_sequence, None);
     assert_eq!(fork.session.forked_from.as_deref(), Some(id.as_str()));
     assert_eq!(
         fork.session.native_session_id.as_deref(),
@@ -99,6 +104,59 @@ async fn fork_opens_the_new_session_in_a_new_agent_process() {
         .any(|event| event.kind == "user_message"));
     runtime.close(&fork.session.id).await.unwrap();
     runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn updates_for_the_new_session_around_a_forks_reply_do_not_fail_the_parent() {
+    let (_temp, runtime, session) =
+        runtime(vec!["--caps-v126".into(), "--update-around-fork".into()]).await;
+    let id = session.session.id.clone();
+    runtime
+        .prompt(&id, "hello".into(), Vec::new())
+        .await
+        .unwrap();
+    let fork = runtime
+        .fork(&id, Some("fixture-window".into()), Vec::new())
+        .await
+        .unwrap();
+    // Let the late update be read.
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    let parent = runtime.snapshot(&id).await.unwrap();
+    assert_eq!(parent.session.status, SessionStatus::Ready);
+    assert_eq!(parent.session.error, None);
+    runtime
+        .prompt(&id, "still working".into(), Vec::new())
+        .await
+        .unwrap();
+    assert_eq!(fork.session.forked_from.as_deref(), Some(id.as_str()));
+    runtime.close(&fork.session.id).await.unwrap();
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn starting_sessions_count_toward_the_limit_and_free_their_place() {
+    let temp = fixture_temp();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    let mut places = Vec::new();
+    for index in 0..8 {
+        places.push(
+            runtime
+                .reserve_slot(&format!("starting-{index}"), None, None)
+                .await
+                .expect("a place is free"),
+        );
+    }
+    // The ninth is refused, and so is the same session starting twice.
+    let Err(error) = runtime.reserve_slot("starting-8", None, None).await else {
+        panic!("the ninth start is refused");
+    };
+    assert!(error.starts_with("Eight ACP sessions"), "{error}");
+    assert!(runtime
+        .reserve_slot("starting-0", None, None)
+        .await
+        .is_err());
+    places.pop();
+    assert!(runtime.reserve_slot("starting-8", None, None).await.is_ok());
 }
 
 #[tokio::test]

@@ -5,10 +5,28 @@
 const UA: &str = "Oleafly/0.2 (https://github.com/Oleafly/Oleafly; citation lookup)";
 const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
 
+/// Redirects a lookup follows, at most.
+const MAX_REDIRECTS: usize = 3;
+
+/// Whether a lookup follows a redirect to `next` after `previous` hops. A DOI
+/// whose agency cannot answer content negotiation redirects to the
+/// registrant's own address, which can be anything: only a public https host
+/// is followed, never a loopback, private or link-local address.
+fn redirect_allowed(next: &reqwest::Url, previous: usize) -> bool {
+    previous <= MAX_REDIRECTS && oleafly_agent::tools::web::check_public_https_url(next).is_ok()
+}
+
 fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .user_agent(UA)
         .timeout(std::time::Duration::from_secs(15))
+        .redirect(reqwest::redirect::Policy::custom(|attempt| {
+            if redirect_allowed(attempt.url(), attempt.previous().len()) {
+                attempt.follow()
+            } else {
+                attempt.error("redirect to a disallowed address")
+            }
+        }))
         .build()
         .map_err(|e| e.to_string())
 }
@@ -732,6 +750,71 @@ pub async fn fetch_pmid_bibtex(pmid: &str) -> Result<String, String> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    fn url(text: &str) -> reqwest::Url {
+        reqwest::Url::parse(text).unwrap()
+    }
+
+    #[test]
+    fn lookups_follow_redirects_only_to_public_https_hosts() {
+        assert!(redirect_allowed(
+            &url("https://api.crossref.org/works/x"),
+            0
+        ));
+        assert!(redirect_allowed(
+            &url("https://example.org/paper"),
+            MAX_REDIRECTS
+        ));
+        assert!(!redirect_allowed(
+            &url("https://example.org/paper"),
+            MAX_REDIRECTS + 1
+        ));
+        for refused in [
+            "http://example.org/paper",
+            "https://localhost/x",
+            "https://127.0.0.1/x",
+            "https://[::1]/x",
+            "https://10.0.0.5/x",
+            "https://192.168.1.10/x",
+            "https://169.254.169.254/latest/meta-data",
+            "https://printer.local/x",
+            "https://user:pass@example.org/x",
+        ] {
+            assert!(!redirect_allowed(&url(refused), 0), "{refused}");
+        }
+    }
+
+    #[tokio::test]
+    async fn a_redirect_to_a_loopback_address_is_not_followed() {
+        use axum::{
+            http::{header::LOCATION, StatusCode},
+            routing::get,
+            Router,
+        };
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let target = format!("http://{address}/secret");
+        let router = Router::new()
+            .route(
+                "/start",
+                get(move || {
+                    let target = target.clone();
+                    async move { (StatusCode::FOUND, [(LOCATION, target)]) }
+                }),
+            )
+            .route("/secret", get(|| async { "internal data" }));
+        let server = tokio::spawn(async move {
+            let _ = axum::serve(listener, router).await;
+        });
+        let result = client()
+            .unwrap()
+            .get(format!("http://{address}/start"))
+            .send()
+            .await;
+        server.abort();
+        // The redirect is refused, so the answer never arrives.
+        assert!(result.is_err(), "{result:?}");
+    }
 
     #[test]
     fn verification_picks_the_best_crossref_item_not_the_first() {

@@ -39,6 +39,10 @@ export function composerKeyAction(state: {
   canSubmit: boolean;
   empty: boolean;
   recalling: boolean;
+  /** No line break before the selection start. Left out, the caret counts as on the first line. */
+  caretOnFirstLine?: boolean;
+  /** No line break after the selection end. Left out, the caret counts as on the last line. */
+  caretOnLastLine?: boolean;
 }): ComposerKeyAction {
   const modified = Boolean(state.shiftKey || state.altKey || state.ctrlKey || state.metaKey);
   if (state.key === "Enter") {
@@ -46,9 +50,27 @@ export function composerKeyAction(state: {
     if (state.busy) return state.canQueue ? "queue" : "block";
     return state.canSubmit ? "submit" : "block";
   }
-  if (state.key === "ArrowUp" && !modified && (state.empty || state.recalling)) return "historyPrev";
-  if (state.key === "ArrowDown" && !modified && state.recalling) return "historyNext";
+  // In a recalled prompt of several lines the arrows move the caret first, as
+  // in a shell: history steps only from the top line (up) and the bottom line (down).
+  if (state.key === "ArrowUp" && !modified && (state.empty || state.recalling)) {
+    return state.caretOnFirstLine === false ? "default" : "historyPrev";
+  }
+  if (state.key === "ArrowDown" && !modified && state.recalling) {
+    return state.caretOnLastLine === false ? "default" : "historyNext";
+  }
   return "default";
+}
+
+/** Whether the caret (or selection) has a line break before and after it. */
+export function caretLines(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+): { onFirstLine: boolean; onLastLine: boolean } {
+  return {
+    onFirstLine: !value.slice(0, selectionStart).includes("\n"),
+    onLastLine: !value.slice(selectionEnd).includes("\n"),
+  };
 }
 
 /**

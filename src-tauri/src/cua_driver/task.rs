@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use super::bridge::CuaBridge;
 use super::config::ready;
-use super::dispatch::call_desktop_apps;
+use super::dispatch::{call_desktop_apps, project_denied};
 use super::policy::tool_meta;
 use super::{global, CuaDriverState, CuaScope, Surface, DESKTOP_APPS_TOOL};
 use crate::mcp::protocol::ToolMeta;
@@ -45,7 +45,7 @@ impl DesktopAppsTaskBridge {
         generation: u64,
         project_id: &str,
     ) -> Result<Arc<dyn TaskBridge>, String> {
-        if !ready(&state.settings()) {
+        if !ready(&state.settings()) || project_denied(&state, Some(project_id)) {
             return Ok(inner);
         }
         let scope = CuaScope {
@@ -73,7 +73,9 @@ impl TaskBridge for DesktopAppsTaskBridge {
 
     fn tool_definitions(&self) -> Vec<ToolMeta> {
         let mut tools = self.inner.tool_definitions();
-        tools.extend(tool_meta(&self.state.settings()));
+        if !project_denied(&self.state, self.cua.scope().project_id.as_deref()) {
+            tools.extend(tool_meta(&self.state.settings()));
+        }
         tools
     }
 

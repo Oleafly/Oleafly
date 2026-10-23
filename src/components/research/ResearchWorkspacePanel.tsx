@@ -18,6 +18,7 @@ import type { ResearchTask } from "@/lib/research-tasks";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
 import { useFilesStore } from "@/store/files";
+import { useResearchTasksStore } from "@/store/research-tasks";
 import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 
@@ -34,6 +35,11 @@ export function ResearchWorkspacePanel() {
     previousProjectId.current = projectId;
     setTab((current) => readSidebarView(projectId, "researchWorkspace")?.tab ?? current);
   }, [projectId]);
+  // A task opened for review from the Files rail needs the tasks tab, wherever this panel was left.
+  const taskDetailOpen = useResearchTasksStore((state) => state.detailOpen);
+  useEffect(() => {
+    if (taskDetailOpen) setTab("tasks");
+  }, [taskDetailOpen]);
   const foldersRef = useRef<HTMLDivElement>(null);
   useScrollMemory({ scrollRef: foldersRef, projectId, slot: "research.folders" });
   const [config, setConfig] = useState(knownProviderConfig);

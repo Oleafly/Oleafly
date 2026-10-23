@@ -33,6 +33,26 @@ impl std::fmt::Debug for Session {
     }
 }
 
+/// Whether `url` names this computer (`localhost`, `127.0.0.1`, `[::1]`).
+pub fn is_loopback(url: &url::Url) -> bool {
+    match url.host() {
+        Some(url::Host::Domain(domain)) => {
+            let domain = domain.trim_end_matches('.').to_ascii_lowercase();
+            domain == "localhost" || domain.ends_with(".localhost")
+        }
+        Some(url::Host::Ipv4(address)) => address.is_loopback(),
+        Some(url::Host::Ipv6(address)) => address.is_loopback(),
+        None => false,
+    }
+}
+
+/// A server address a session cookie or a Git token may be sent to: https,
+/// or http only for this computer.
+pub fn is_secure_server(server: &str) -> bool {
+    url::Url::parse(server)
+        .is_ok_and(|url| url.scheme() == "https" || (url.scheme() == "http" && is_loopback(&url)))
+}
+
 pub fn normalize_server(input: Option<&str>) -> Result<String, OnlineError> {
     let raw = input
         .map(str::trim)
@@ -50,7 +70,9 @@ pub fn normalize_server(input: Option<&str>) -> Result<String, OnlineError> {
         .filter(|host| !host.is_empty())
         .ok_or_else(invalid)?
         .to_ascii_lowercase();
-    if !matches!(url.scheme(), "https" | "http")
+    // Plain http would send the session cookie and the Git token in the
+    // clear, so it is only for a server on this computer.
+    if !(url.scheme() == "https" || (url.scheme() == "http" && is_loopback(&url)))
         || url.query().is_some()
         || url.fragment().is_some()
         || !url.username().is_empty()

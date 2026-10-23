@@ -1,9 +1,9 @@
 import { Trans, useTranslation } from "react-i18next";
 import { Check, Copy } from "lucide-react";
-import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import type { ForgeDeviceStart } from "@/lib/tauri";
 
 /** The one-time code of a browser sign-in, while Oleafly waits for the user
@@ -21,7 +21,7 @@ export function DeviceCodeCard({
   const { copied, copy } = useCopyStatus();
   const page = start.verificationUriComplete ?? start.verificationUri;
   const openPage = () => {
-    void open(page);
+    void openInSystemBrowser(page);
   };
 
   return (

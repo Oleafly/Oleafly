@@ -68,7 +68,8 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     id: "toggleTerminal",
     defaultBinding: { key: "`", ctrl: true },
   },
-  // Terminal tabs. Ctrl+Shift+` reports "~" as its key on US layouts.
+  // Terminal tabs. Ctrl+Shift+` reports "~" as its key on US layouts; a
+  // binding on ` or ~ follows the physical key (see matchesShortcut).
   {
     id: "newTerminal",
     defaultBinding: { key: "~", ctrl: true, shift: true },
@@ -205,6 +206,13 @@ function optionLevelKey(event: KeyboardEvent, apple: boolean): string | null {
   return physicalKey(event);
 }
 
+// ` and ~ are one physical key, left of 1, and what it types depends on the
+// layout: UK Shift gives ¬ and German and Spanish layouts type a dead key. A
+// binding on either follows the key itself, so Ctrl+Shift+` works everywhere.
+function isBackquoteBinding(key: string): boolean {
+  return key === "`" || key === "~";
+}
+
 export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding): boolean {
   if (isAltGraphCharacter(event)) return false;
   const apple =
@@ -212,13 +220,22 @@ export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding):
   const ctrl = Boolean(binding.ctrl) || (!apple && Boolean(binding.mod));
   const meta = apple && Boolean(binding.mod);
   const key = binding.key.toLowerCase();
+  const physicalBackquote = isBackquoteBinding(key) && event.code === "Backquote";
   return (
-    (event.key.toLowerCase() === key || optionLevelKey(event, apple) === key) &&
+    (event.key.toLowerCase() === key || optionLevelKey(event, apple) === key || physicalBackquote) &&
     event.ctrlKey === ctrl &&
     event.metaKey === meta &&
     event.shiftKey === Boolean(binding.shift) &&
     event.altKey === Boolean(binding.alt)
   );
+}
+
+function bindingKey(event: KeyboardEvent, apple: boolean): string {
+  // The key left of 1 is recorded as ` or ~ whatever the layout types on it.
+  if (event.code === "Backquote") return event.shiftKey ? "~" : "`";
+  const optionLevel = optionLevelKey(event, apple);
+  if (optionLevel) return optionLevel;
+  return event.key.length === 1 ? event.key.toLowerCase() : event.key;
 }
 
 export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
@@ -234,7 +251,7 @@ export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return {
-    key: optionLevelKey(event, apple) ?? (event.key.length === 1 ? event.key.toLowerCase() : event.key),
+    key: bindingKey(event, apple),
     ...(event.metaKey || (event.ctrlKey && !apple) ? { mod: true } : {}),
     ...(event.ctrlKey && apple ? { ctrl: true } : {}),
     shift: event.shiftKey,

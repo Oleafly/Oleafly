@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} a refuzat accesul la acest depozit. Verifică dacă contul tău are acces la el. Dacă organizația folosește autentificare unică (SSO), autorizează mai întâi autentificarea ta pentru ea.",
+    "access_denied_account": "{{host}} a refuzat accesul la acest depozit pentru {{account}}. Verifică dacă acest cont îl poate folosi. Dacă organizația folosește autentificare unică (SSO), autorizează mai întâi autentificarea ta pentru ea.",
     "account_missing": "Nu există niciun cont de găzduire Git pentru {{host}}. Adaugă unul în Setări.",
     "archive_too_large": "Fișierele depozitului depășesc {{limit}} MB, așa că Oleafly nu le poate importa. Clonează tu depozitul și deschide-i folderul.",
-    "auth_rejected": "{{host}} a respins autentificarea ta salvată. Autentifică-te din nou la {{host}} în Setări.",
+    "auth_rejected": "{{host}} a respins autentificarea salvată pentru {{account}}. Autentifică-te din nou la {{host}} în Setări.",
     "credentials_missing": "{{host}} a cerut un nume de utilizator și o parolă. Autentifică-te la {{host}} în Setări sau configurează o cheie SSH ori un asistent de credențiale Git.",
     "credentials_rejected": "{{host}} a respins numele de utilizator și parola oferite de Git. Autentifică-te la {{host}} în Setări sau actualizează credențialele pe care le folosește Git.",
     "device_flow_unavailable": "Autentificarea prin browser nu este disponibilă pentru {{host}} în această versiune. Folosește în schimb un token de acces.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Pe {{host}} există deja un depozit cu acest nume.",
     "forge_server_error": "{{host}} a returnat o eroare ({{status}}).",
     "forge_signed_out": "Autentificarea ta pentru {{host}} a expirat sau a fost revocată. Autentifică-te din nou în Setări.",
+    "forge_sso_required": "{{host}} are nevoie ca această autentificare să fie autorizată pentru autentificarea unică (SSO) a organizației. Autorizeaz-o pe {{host}}, apoi încearcă din nou.",
     "forge_store": "Oleafly nu a putut citi sau salva conturile tale de găzduire Git.",
     "forge_token_invalid": "Acesta nu pare un token de acces. Lipește tokenul întreg.",
     "forge_token_rejected": "{{host}} nu a acceptat acest token. Verifică dacă ai copiat tokenul întreg și dacă nu a expirat.",
     "forge_unknown_server": "Oleafly nu a putut afla ce tip de server este {{host}}. Alege tipul serverului.",
     "host_key_unknown": "SSH nu cunoaște încă {{host}}. Conectează-te o dată la el dintr-un terminal ca să-i accepți cheia de gazdă, apoi încearcă din nou.",
     "host_unreachable": "Oleafly nu a putut ajunge la {{host}}. Verifică adresa și conexiunea.",
+    "import_cancelled": "Importul a fost anulat.",
     "invalid_remote_url": "Introdu adresa HTTPS sau SSH a unui depozit Git.",
     "nested_repository": "Acest proiect se află într-un alt depozit Git, așa că Oleafly nu creează aici un depozit separat.",
     "not_installed": "Git nu este instalat pe acest computer. Instalează Git, apoi încearcă din nou.",
     "push_rejected": "Ramura de la distanță are comiteri pe care acest proiect nu le are încă. Adu mai întâi modificările, apoi trimite din nou.",
     "remote_exists": "Acest proiect este deja legat de {{remote}}.",
-    "remote_has_password": "Scoate parola din adresă. Oleafly se autentifică în schimb cu contul tău de găzduire Git sau cu propriile tale credențiale Git.",
+    "remote_has_password": "Scoate parola sau tokenul de acces din adresă. Oleafly se autentifică în schimb cu contul tău de găzduire Git sau cu propriile tale credențiale Git.",
     "repository_empty": "Acest depozit nu are încă nicio comitere, deci nu ai ce importa.",
     "repository_not_found": "{{host}} nu are niciun depozit la această adresă sau contul tău nu îl poate vedea.",
     "sign_in_cancelled": "Autentificarea a fost anulată în browser.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly nu a putut verifica soldul tău la {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 nu este instalat.",
+    "git_bash_missing": "Git Bash nu este instalat. Instalează Git for Windows sau alege alt shell.",
+    "wsl_missing": "WSL nu este instalat.",
+    "wsl_no_distro": "WSL nu are încă nicio distribuție Linux.",
+    "shell_path_empty": "Introdu o cale de shell în Setări sau alege alt shell.",
+    "shell_path_missing": "Nu există niciun program la {{path}}."
+  },
   "mathpix": {
-    "keys_missing": "Adaugă mai întâi ID-ul aplicației și cheia Mathpix în Setări, AI, Instrumente.",
+    "keys_missing": "Adaugă mai întâi ID-ul aplicației și cheia Mathpix în Setări, Asistentul AI, Instrumente.",
     "invalid_keys": "Acel ID de aplicație sau acea cheie conține caractere pe care cheile Mathpix nu le au niciodată. Copiază-le din nou din consola Mathpix.",
     "key_rejected": "Mathpix nu a acceptat aceste chei. Verifică ID-ul aplicației și cheia în consola Mathpix.",
     "rate_limited": "Mathpix limitează cererile chiar acum. Așteaptă un minut, apoi încearcă din nou.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "Acest PDF depășește limita de 256 MB a Mathpix.",
     "timed_out": "Mathpix nu a terminat acest PDF în 30 de minute. Încearcă cu mai puține pagini.",
     "cancelled": "Conversia Mathpix a fost oprită.",
-    "wrong_window": "Mathpix poate fi folosit doar din fereastra principală Oleafly."
+    "wrong_window": "Mathpix poate fi folosit doar din fereastra principală Oleafly.",
+    "pdf_too_large_ipc": "Acest computer poate trimite la Mathpix PDF-uri de cel mult 16 MB. Împarte PDF-ul și încearcă din nou."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver nu este instalat. Instalează-l din Setări → Integrări → Aplicații desktop.",
+    "not_installed": "Cua Driver nu este instalat. Instalează-l din Setări, Integrări, Aplicații desktop.",
     "too_old": "Cua Driver {{version}} este prea vechi. Actualizează-l la {{minimum}} sau la o versiune mai nouă.",
     "no_app_bundle": "Instalează Cua Driver cu programul de instalare oficial, ca să poată păstra permisiunile macOS.",
     "change_declined": "Ai păstrat setările anterioare pentru aplicațiile desktop.",

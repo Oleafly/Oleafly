@@ -9,12 +9,21 @@ pub struct Redactor {
     secrets: RwLock<Vec<String>>,
 }
 
+/// The values of the environment's secret-looking variables. A variable whose
+/// name or value is not valid Unicode is skipped: `std::env::vars` panics on
+/// one.
+fn environment_secrets(
+    vars: impl Iterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
+) -> Vec<String> {
+    vars.filter_map(|(name, value)| Some((name.into_string().ok()?, value.into_string().ok()?)))
+        .filter(|(name, value)| sensitive_key(name) && value.len() >= 6)
+        .map(|(_, value)| value)
+        .collect()
+}
+
 impl Redactor {
     pub fn new(extra: &[Value]) -> Self {
-        let mut secrets: Vec<String> = std::env::vars()
-            .filter(|(name, value)| sensitive_key(name) && value.len() >= 6)
-            .map(|(_, value)| value)
-            .collect();
+        let mut secrets = environment_secrets(std::env::vars_os());
         for value in extra {
             collect_secrets(value, &mut secrets);
         }
@@ -245,6 +254,51 @@ mod tests {
         assert_eq!(
             redactor.value(&json!({"message": "typed-api-key-123456"})),
             json!({"message": "[credential omitted]"})
+        );
+    }
+
+    #[test]
+    fn environment_variables_that_are_not_unicode_are_skipped() {
+        use std::ffi::OsString;
+        let mut vars = vec![
+            (
+                OsString::from("OLEAFLY_TEST_API_KEY"),
+                OsString::from("secret-value-123456"),
+            ),
+            (
+                OsString::from("OLEAFLY_TEST_NOTE"),
+                OsString::from("not a secret"),
+            ),
+        ];
+        #[cfg(unix)]
+        {
+            use std::os::unix::ffi::OsStringExt;
+            vars.push((
+                OsString::from("OLDPWD"),
+                OsString::from_vec(b"/caf\xe9".to_vec()),
+            ));
+            vars.push((
+                OsString::from_vec(b"BAD\xffNAME".to_vec()),
+                OsString::from("value-of-a-bad-name"),
+            ));
+            vars.push((
+                OsString::from("OLEAFLY_TEST_TOKEN"),
+                OsString::from_vec(b"secret-\xe9-token".to_vec()),
+            ));
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::ffi::OsStringExt;
+            // An unpaired surrogate is not valid Unicode.
+            let lone: Vec<u16> = "secret-".encode_utf16().chain([0xD800]).collect();
+            vars.push((
+                OsString::from("OLEAFLY_TEST_TOKEN"),
+                OsString::from_wide(&lone),
+            ));
+        }
+        assert_eq!(
+            environment_secrets(vars.into_iter()),
+            vec!["secret-value-123456".to_string()]
         );
     }
 

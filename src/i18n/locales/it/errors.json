@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} ha negato l'accesso a questo repository. Controlla che il tuo account possa accedervi. Se l'organizzazione usa il single sign-on, autorizza prima il tuo accesso per l'organizzazione.",
+    "access_denied_account": "{{host}} ha negato a {{account}} l'accesso a questo repository. Controlla che questo account possa accedervi. Se l'organizzazione usa il single sign-on, autorizza prima il tuo accesso per l'organizzazione.",
     "account_missing": "Non c'è nessun account di hosting Git per {{host}}. Aggiungine uno nelle Impostazioni.",
     "archive_too_large": "I file del repository superano {{limit}} MB, quindi Oleafly non può importarli. Clona tu il repository e apri la sua cartella.",
-    "auth_rejected": "{{host}} ha rifiutato l'accesso salvato. Accedi di nuovo a {{host}} nelle Impostazioni.",
+    "auth_rejected": "{{host}} ha rifiutato l'accesso salvato per {{account}}. Accedi di nuovo a {{host}} nelle Impostazioni.",
     "credentials_missing": "{{host}} ha chiesto nome utente e password. Accedi a {{host}} nelle Impostazioni, oppure configura una chiave SSH o un credential helper di Git.",
     "credentials_rejected": "{{host}} ha rifiutato il nome utente e la password forniti da Git. Accedi a {{host}} nelle Impostazioni, oppure aggiorna le credenziali usate dal tuo Git.",
     "device_flow_unavailable": "In questa versione non è possibile accedere a {{host}} dal browser. Usa invece un token di accesso.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Esiste già un repository con questo nome su {{host}}.",
     "forge_server_error": "{{host}} ha restituito un errore ({{status}}).",
     "forge_signed_out": "Il tuo accesso a {{host}} è scaduto o è stato revocato. Accedi di nuovo nelle Impostazioni.",
+    "forge_sso_required": "{{host}} richiede che questo accesso sia autorizzato per il single sign-on dell'organizzazione. Autorizzalo su {{host}}, poi riprova.",
     "forge_store": "Oleafly non è riuscito a leggere o salvare i tuoi account di hosting Git.",
     "forge_token_invalid": "Questo non sembra un token di accesso. Incolla il token completo.",
     "forge_token_rejected": "{{host}} non ha accettato questo token. Controlla di aver copiato il token completo e che non sia scaduto.",
     "forge_unknown_server": "Oleafly non è riuscito a capire che tipo di server è {{host}}. Scegli il tipo di server.",
     "host_key_unknown": "SSH non conosce ancora {{host}}. Collegati una volta da un terminale per accettare la sua chiave host, poi riprova.",
     "host_unreachable": "Oleafly non è riuscito a raggiungere {{host}}. Controlla l'indirizzo e la tua connessione.",
+    "import_cancelled": "L'importazione è stata annullata.",
     "invalid_remote_url": "Inserisci l'indirizzo HTTPS o SSH di un repository Git.",
     "nested_repository": "Questo progetto si trova dentro un altro repository Git, quindi Oleafly non ne crea uno separato qui.",
     "not_installed": "Git non è installato su questo computer. Installa Git, poi riprova.",
     "push_rejected": "Il branch remoto contiene commit che questo progetto non ha ancora. Esegui prima il pull, poi di nuovo il push.",
     "remote_exists": "Questo progetto è già collegato a {{remote}}.",
-    "remote_has_password": "Togli la password dall'indirizzo. Oleafly accede invece con il tuo account di hosting Git o con le tue credenziali Git.",
+    "remote_has_password": "Togli la password o il token di accesso dall'indirizzo. Oleafly accede invece con il tuo account di hosting Git o con le tue credenziali Git.",
     "repository_empty": "Questo repository non ha ancora commit, quindi non c'è niente da importare.",
     "repository_not_found": "{{host}} non ha nessun repository a questo indirizzo, oppure il tuo account non può vederlo.",
     "sign_in_cancelled": "L'accesso è stato annullato nel browser.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly non è riuscito a controllare il tuo saldo {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 non è installato.",
+    "git_bash_missing": "Git Bash non è installato. Installa Git for Windows oppure scegli un'altra shell.",
+    "wsl_missing": "WSL non è installato.",
+    "wsl_no_distro": "WSL non ha ancora nessuna distribuzione Linux.",
+    "shell_path_empty": "Inserisci il percorso della shell nelle Impostazioni, oppure scegli un'altra shell.",
+    "shell_path_missing": "Nessun programma in {{path}}."
+  },
   "mathpix": {
-    "keys_missing": "Prima aggiungi l'ID app e la chiave di Mathpix in Impostazioni, AI, Strumenti.",
+    "keys_missing": "Prima aggiungi l'ID app e la chiave di Mathpix in Impostazioni, Assistente AI, Strumenti.",
     "invalid_keys": "Quell'ID app o quella chiave contiene caratteri che le chiavi di Mathpix non hanno mai. Copiali di nuovo dalla console di Mathpix.",
     "key_rejected": "Mathpix non ha accettato queste chiavi. Controlla l'ID app e la chiave nella console di Mathpix.",
     "rate_limited": "Mathpix sta limitando le richieste in questo momento. Aspetta un minuto, poi riprova.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "Questo PDF supera il limite di 256 MB di Mathpix.",
     "timed_out": "Mathpix non ha finito questo PDF entro 30 minuti. Prova con meno pagine.",
     "cancelled": "La conversione con Mathpix è stata interrotta.",
-    "wrong_window": "Mathpix si può usare solo dalla finestra principale di Oleafly."
+    "wrong_window": "Mathpix si può usare solo dalla finestra principale di Oleafly.",
+    "pdf_too_large_ipc": "Questo computer può inviare a Mathpix PDF fino a 16 MB. Dividi il PDF e riprova."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver non è installato. Installalo in Impostazioni → Integrazioni → App desktop.",
+    "not_installed": "Cua Driver non è installato. Installalo da Impostazioni, Integrazioni, App desktop.",
     "too_old": "Cua Driver {{version}} è troppo vecchio. Aggiornalo alla versione {{minimum}} o successiva.",
     "no_app_bundle": "Installa Cua Driver con il programma di installazione ufficiale, così può mantenere i permessi di macOS.",
     "change_declined": "Hai mantenuto le impostazioni precedenti delle app desktop.",

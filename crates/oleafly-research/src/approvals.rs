@@ -8,7 +8,7 @@ use std::time::Duration;
 use oleafly_agent::CancellationToken;
 use tokio::sync::Notify;
 
-use crate::budget::BudgetClocks;
+use crate::budget::{BudgetClocks, ClockPause};
 use crate::model::{
     now_ms, ApprovalKind, ApprovalRecord, ApprovalStatus, CommandPolicy, TaskPhase,
     TaskRuntimeEvent,
@@ -96,15 +96,8 @@ impl ApprovalQueue {
         task_id: &str,
         cancel: &CancellationToken,
     ) -> Decision {
-        let clock = self.clocks.get(task_id);
-        if let Some(clock) = &clock {
-            clock.pause();
-        }
-        let decision = self.wait_inner(approval_id, cancel).await;
-        if let Some(clock) = &clock {
-            clock.resume();
-        }
-        decision
+        let _pause = ClockPause::new(self.clocks.get(task_id));
+        self.wait_inner(approval_id, cancel).await
     }
 
     /// 0.4.8 L: like [`Self::wait`], but `None` when `withdraw` fires first
@@ -117,19 +110,12 @@ impl ApprovalQueue {
         cancel: &CancellationToken,
         withdraw: &CancellationToken,
     ) -> Option<Decision> {
-        let clock = self.clocks.get(task_id);
-        if let Some(clock) = &clock {
-            clock.pause();
-        }
-        let decision = tokio::select! {
+        let _pause = ClockPause::new(self.clocks.get(task_id));
+        tokio::select! {
             biased;
             decision = self.wait_inner(approval_id, cancel) => Some(decision),
             _ = withdraw.cancelled() => None,
-        };
-        if let Some(clock) = &clock {
-            clock.resume();
         }
-        decision
     }
 
     async fn wait_inner(&self, approval_id: &str, cancel: &CancellationToken) -> Decision {
@@ -190,6 +176,45 @@ fn emit(ctx: &GateContext, event: TaskRuntimeEvent) {
     }
 }
 
+/// A request whose wait is under way. When the wait is dropped before it
+/// ends (a bridge call that timed out, a client that left), the request is
+/// withdrawn and the task goes back to working, so no pending request lingers
+/// that nobody waits on.
+struct OpenRequest {
+    tasks_root: PathBuf,
+    ctx: GateContext,
+    id: String,
+    kind: ApprovalKind,
+    summary: String,
+    waiting: bool,
+}
+
+impl Drop for OpenRequest {
+    fn drop(&mut self) {
+        if !self.waiting {
+            return;
+        }
+        if let Ok(store) = TaskStore::new(self.tasks_root.clone()) {
+            let _ = store.withdraw_approval(&self.id);
+        }
+        emit(
+            &self.ctx,
+            TaskRuntimeEvent::Approval {
+                approval_id: self.id.clone(),
+                approval_kind: self.kind,
+                status: ApprovalStatus::Withdrawn,
+                summary: self.summary.clone(),
+            },
+        );
+        emit(
+            &self.ctx,
+            TaskRuntimeEvent::Phase {
+                phase: TaskPhase::Working,
+            },
+        );
+    }
+}
+
 /// Lets an action through under the task's policy: at once (Allow), never
 /// (Off), or after the user approves it (Ask).
 pub async fn gate(
@@ -219,6 +244,14 @@ pub async fn gate(
         status,
         summary: summary.chars().take(MAX_SUMMARY_CHARS).collect(),
     };
+    let mut open = OpenRequest {
+        tasks_root: services.tasks_root.clone(),
+        ctx: ctx.clone(),
+        id: id.clone(),
+        kind,
+        summary: summary.chars().take(MAX_SUMMARY_CHARS).collect(),
+        waiting: true,
+    };
     emit(ctx, event(ApprovalStatus::Pending));
     emit(
         ctx,
@@ -229,6 +262,7 @@ pub async fn gate(
     let decision = queue
         .wait_or_withdraw(&id, &ctx.task_id, cancel, &withdraw)
         .await;
+    open.waiting = false;
     emit(
         ctx,
         TaskRuntimeEvent::Phase {
@@ -779,6 +813,55 @@ mod tests {
         );
         assert_eq!(request_rows(&fixture), 0);
         assert!(lock(&fixture.events).is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_dropped_wait_withdraws_its_request_and_resumes_the_clock() {
+        let fixture = fixture();
+        let now = Arc::new(Mutex::new(Instant::now()));
+        let source = now.clone();
+        let clock = Arc::new(BudgetClock::with_clock(
+            TaskBudget::default(),
+            0,
+            Arc::new(|| None::<f64>),
+            Box::new(move || *lock(&source)),
+        ));
+        fixture
+            .services
+            .clocks
+            .insert(&fixture.task_id, clock.clone());
+        let asking = ask(&fixture, &CancellationToken::new());
+        let id = waiting_request(&fixture).await;
+        // The tool call around the wait times out and is dropped.
+        asking.abort();
+        let _ = asking.await;
+
+        assert_eq!(
+            fixture.store.approval(&id).unwrap().status,
+            ApprovalStatus::Withdrawn
+        );
+        assert!(fixture
+            .services
+            .approvals
+            .pending("paper")
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            fixture.services.approvals.decide(&id, true).unwrap_err(),
+            NO_LONGER_WAITING
+        );
+        assert_eq!(
+            statuses(&fixture),
+            vec![ApprovalStatus::Pending, ApprovalStatus::Withdrawn]
+        );
+        assert_eq!(
+            lock(&fixture.events).last(),
+            Some(&TaskRuntimeEvent::Phase {
+                phase: TaskPhase::Working
+            })
+        );
+        *lock(&now) += Duration::from_secs(60);
+        assert_eq!(clock.active_ms(), 60 * 1000, "the clock runs again");
     }
 
     #[tokio::test]

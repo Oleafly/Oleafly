@@ -8,6 +8,7 @@ import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { allowRadixSelect, chooseOption } from "@/features/collab/tests/select";
 import type { ForgeAccount, ForgeRepo, ForgeRepoPage } from "@/lib/tauri";
+import { toast } from "@/lib/toast";
 import { useForgeAccountsStore } from "@/store/forge-accounts";
 import { useSettingsStore } from "@/store/settings";
 import { PublishDialog } from "./PublishDialog";
@@ -198,6 +199,63 @@ describe("PublishDialog", () => {
     act(() => vi.advanceTimersByTime(900));
 
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("names the close button", () => {
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+
+    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.close }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a failed push against the repository it already created", async () => {
+    const user = userEvent.setup();
+    mocks.gitPush.mockRejectedValueOnce(new Error("network down")).mockResolvedValue("Pushed");
+    const onPublished = vi.fn();
+    const props = { open: true, onClose: vi.fn(), projectId: "project-1", projectName: "Research notes", onPublished };
+    const view = render(<PublishDialog {...props} currentRemote={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+    expect(await screen.findByText(/network down/)).toBeInTheDocument();
+    // The repository exists and is linked, so Source Control is told even
+    // though the push failed.
+    expect(onPublished).toHaveBeenCalledWith(createdRepo.cloneUrl);
+
+    // Source Control refreshed: the remote is the repository just created.
+    view.rerender(<PublishDialog {...props} currentRemote={createdRepo.cloneUrl} />);
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+    expect(await screen.findByText(/Published to prajwal\/research-notes/)).toBeInTheDocument();
+    expect(mocks.forgeCreateRepo).toHaveBeenCalledTimes(1);
+    expect(mocks.gitPush).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(/Replace that link/)).toBeNull();
+  });
+
+  it("still reports a publish that finishes after the dialog was closed", async () => {
+    const pushed = deferred<string>();
+    mocks.gitPush.mockReturnValueOnce(pushed.promise);
+    const success = vi.spyOn(toast, "success").mockReturnValue(1);
+    const onPublished = vi.fn();
+    const props = { onClose: vi.fn(), projectId: "project-1", projectName: "Research notes", onPublished };
+    try {
+      const view = render(<PublishDialog open {...props} />);
+      fireEvent.click(screen.getByRole("button", { name: "Create and push" }));
+      await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
+
+      view.rerender(<PublishDialog open={false} {...props} />);
+      await act(async () => {
+        pushed.resolve("Pushed");
+        await pushed.promise;
+      });
+
+      await waitFor(() => expect(onPublished).toHaveBeenCalledWith(createdRepo.cloneUrl));
+      expect(success).toHaveBeenCalledWith("Published to prajwal/research-notes.");
+    } finally {
+      success.mockRestore();
+    }
   });
 
   it("right-aligns the create action at the bottom of the form", () => {

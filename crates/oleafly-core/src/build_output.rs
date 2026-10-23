@@ -140,11 +140,18 @@ impl OutputStaging {
 
     /// Renames every staged file over the build folder's file of the same
     /// name and removes the staging folder. Returns the replaced paths.
+    ///
+    /// A rename that hits a sharing violation (a scanner, an indexer, a sync
+    /// client or a viewer holding the file) is retried for a few seconds on
+    /// Windows. The PDF and SyncTeX file go first: a viewer holding the PDF
+    /// is the usual reason a rename fails, and failing before anything is
+    /// replaced leaves the old, matching set of outputs in place rather than
+    /// a new log beside an old PDF.
     pub fn promote_all(mut self) -> io::Result<Vec<PathBuf>> {
         let mut entries: Vec<_> = std::fs::read_dir(&self.dir)?
             .filter_map(Result::ok)
             .collect();
-        entries.sort_by_key(|entry| entry.file_name());
+        entries.sort_by_key(|entry| (!is_viewed_output(&entry.file_name()), entry.file_name()));
         let mut promoted = Vec::new();
         for entry in entries {
             let Ok(file_type) = entry.file_type() else {
@@ -154,13 +161,19 @@ impl OutputStaging {
                 continue;
             }
             let destination = self.build_dir.join(entry.file_name());
-            std::fs::rename(entry.path(), &destination)?;
+            crate::atomic::persist_with_retry(|| std::fs::rename(entry.path(), &destination))?;
             promoted.push(destination);
         }
         self.promoted = true;
         let _ = std::fs::remove_dir_all(&self.dir);
         Ok(promoted)
     }
+}
+
+/// The outputs a viewer or an editor keeps open.
+fn is_viewed_output(name: &std::ffi::OsStr) -> bool {
+    let name = name.to_string_lossy().to_ascii_lowercase();
+    name.ends_with(".pdf") || name.ends_with(".synctex.gz") || name.ends_with(".synctex")
 }
 
 impl Drop for OutputStaging {
@@ -208,7 +221,12 @@ pub fn sweep_stale_staging(build_dir: &Path, older_than: Duration) -> usize {
 fn content_identity(path: &Path) -> Option<(u64, [u8; 32])> {
     use sha2::Digest;
     use std::io::Read;
-    let metadata = std::fs::metadata(path).ok()?;
+    // A link or a special file planted in the build folder is not an output:
+    // following it could hash another file, and opening a FIFO would block.
+    let metadata = std::fs::symlink_metadata(path).ok()?;
+    if !metadata.is_file() {
+        return None;
+    }
     let mut file = File::open(path).ok()?;
     let mut hasher = sha2::Sha256::new();
     let mut buffer = [0_u8; 64 * 1024];
@@ -322,6 +340,61 @@ mod tests {
         assert_eq!(promoted.len(), 2);
     }
 
+    // A directory in the PDF's place fails the rename the same way on every
+    // system, but Windows retries that kind of error for seconds first.
+    #[cfg(unix)]
+    #[test]
+    fn the_pdf_is_promoted_before_the_auxiliary_files() {
+        // A destination that cannot be replaced (a directory stands in for a
+        // PDF a viewer holds) fails the promotion at the first rename. The
+        // PDF goes first, so the log and aux files were not replaced yet.
+        let dir = tempfile::tempdir().unwrap();
+        let build = dir.path().join("build");
+        std::fs::create_dir_all(build.join("main.pdf")).unwrap();
+        std::fs::write(build.join("main.aux"), b"old aux").unwrap();
+        std::fs::write(build.join("main.log"), b"old log").unwrap();
+        let staging = OutputStaging::create(&build).unwrap();
+        for name in ["main.aux", "main.log", "main.pdf", "main.synctex.gz"] {
+            std::fs::write(staging.path().join(name), b"new").unwrap();
+        }
+        assert!(staging.promote_all().is_err());
+        assert_eq!(std::fs::read(build.join("main.aux")).unwrap(), b"old aux");
+        assert_eq!(std::fs::read(build.join("main.log")).unwrap(), b"old log");
+        assert!(!build.join("main.synctex.gz").exists());
+    }
+
+    #[test]
+    fn promotion_orders_viewed_outputs_first_and_the_rest_by_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let build = dir.path().join("build");
+        let staging = OutputStaging::create(&build).unwrap();
+        for name in [
+            "main.aux",
+            "main.log",
+            "main.pdf",
+            "main.synctex.gz",
+            "a.bbl",
+        ] {
+            std::fs::write(staging.path().join(name), b"new").unwrap();
+        }
+        let promoted: Vec<String> = staging
+            .promote_all()
+            .unwrap()
+            .iter()
+            .map(|path| path.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(
+            promoted,
+            [
+                "main.pdf",
+                "main.synctex.gz",
+                "a.bbl",
+                "main.aux",
+                "main.log"
+            ]
+        );
+    }
+
     #[test]
     fn a_dropped_staging_folder_is_removed() {
         let dir = tempfile::tempdir().unwrap();
@@ -360,5 +433,21 @@ mod tests {
         assert!(!snapshot.is_fresh(&new));
         std::fs::write(&new, b"x").unwrap();
         assert!(snapshot.is_fresh(&new));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_planted_link_is_not_hashed_as_an_output() {
+        let dir = tempfile::tempdir().unwrap();
+        let secret = dir.path().join("secret.txt");
+        std::fs::write(&secret, b"private").unwrap();
+        let pdf = dir.path().join("out.pdf");
+        std::os::unix::fs::symlink(&secret, &pdf).unwrap();
+        assert_eq!(content_identity(&pdf), None);
+        let snapshot = ArtifactSnapshot::capture(std::slice::from_ref(&pdf));
+        // Replacing the link with a real output counts as a new build.
+        std::fs::remove_file(&pdf).unwrap();
+        std::fs::write(&pdf, b"private").unwrap();
+        assert!(snapshot.is_fresh(&pdf));
     }
 }

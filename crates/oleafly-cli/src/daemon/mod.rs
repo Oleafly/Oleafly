@@ -11,6 +11,7 @@ pub mod log;
 pub mod login_item;
 pub mod notify;
 pub mod paths;
+pub mod search_dirs;
 pub mod serve;
 pub mod state;
 

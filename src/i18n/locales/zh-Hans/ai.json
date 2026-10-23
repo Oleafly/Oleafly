@@ -43,13 +43,15 @@
       "command": "确认命令",
       "externalTool": "确认外部工具操作。",
       "internet": "确认互联网访问",
-      "edit": "确认 AI 编辑"
+      "edit": "确认 AI 编辑",
+      "researchTask": "确认研究任务"
     },
     "headline": {
       "command": "助手想要运行此命令。",
       "externalTool": "助手想要使用外部工具。",
       "internet": "助手想要访问互联网。",
-      "edit": "助手想要修改你的文件。"
+      "edit": "助手想要修改你的文件。",
+      "researchTask": "助手想要创建研究任务。"
     },
     "mcpNote": "这会将以下参数发送到已配置的 MCP 服务器。",
     "line": "第 {{line}} 行",
@@ -69,6 +71,21 @@
     "external": {
       "title": "外部代理请求（MCP）",
       "moreWaiting_other": "还有 {{count}} 项等待批准"
+    },
+    "researchTask": {
+      "note": "任务会在项目副本中独立工作，之后由你审阅它的更改。",
+      "title": "标题",
+      "goal": "目标",
+      "skills": "技能",
+      "prompt": "指令",
+      "commands": "命令",
+      "commandsAsk": "每条都先询问",
+      "network": "网络",
+      "timeBudget": "时间预算",
+      "timeBudgetDefault": "默认",
+      "minutes_other": "{{count}} 分钟",
+      "planFirst": "先定计划",
+      "startNow": "立即开始"
     }
   },
   "attachments": {
@@ -93,7 +110,9 @@
     "saveFailed": "无法保存 {{name}}。",
     "missing": "{{name}} 已不可用。",
     "sentAsText": "由于此模型无法将 {{name}} 作为文件读取，已将其作为文本发送。",
-    "skipped": "未发送 {{name}}。"
+    "skipped": "未发送 {{name}}。",
+    "dropUnreadable": "无法读取 {{names}}。",
+    "notReplayed": "来自旧版本的文件无法再次发送：{{names}}。"
   },
   "chat": {
     "pill": {
@@ -581,7 +600,10 @@
       "queued": "已排队：代理完成后发送",
       "remove": "移除排队的消息",
       "sendNow": "立即发送",
-      "sendFailed": "此消息未发送。请重新发送或将其移除。"
+      "sendFailed": "此消息未发送。请重新发送或将其移除。",
+      "queuedConnecting": "已排队：代理就绪后发送",
+      "retry": "重新发送",
+      "edit": "编辑"
     },
     "slash": {
       "commands": "代理命令",
@@ -621,7 +643,9 @@
       "apiKeyPlaceholder": "粘贴你的 API 密钥",
       "geminiGoogle": "个人方案已无法使用 Google 登录。请使用 Gemini API 密钥或 Vertex AI。",
       "noProject": "打开项目后才能从终端登录。",
-      "signOut": "退出登录"
+      "signOut": "退出登录",
+      "confirmTerminal": "{{agent}} 会通过下面的命令登录，它将在一个终端标签页中运行。请检查后再同意。",
+      "remote": "此对话在另一台机器上运行。请在那台机器上登录该代理。"
     },
     "elicitation": {
       "ariaLabel": "代理请求",
@@ -634,7 +658,8 @@
       "openUrl": "在浏览器中打开",
       "confirmTitle": "打开 {{host}}？",
       "confirmDescription": "代理请你在此网站上完成一个步骤。它会在你的浏览器中打开。",
-      "waiting": "正在等待网站完成。"
+      "waiting": "正在等待网站完成。",
+      "openFailed": "无法在你的浏览器中打开此链接。"
     },
     "remote": {
       "banner": "Hermes 通过 SSH 在 {{host}} 上运行。它的更改保留在那台机器上。"
@@ -645,7 +670,6 @@
       "search": "搜索对话",
       "empty": "没有匹配的对话。",
       "loadMore": "加载更多",
-      "open": "打开",
       "rename": "重命名",
       "renameLabel": "对话名称",
       "delete": "删除",
@@ -666,8 +690,11 @@
       "fork": "分叉对话",
       "forkUnsupported": "此代理无法分叉对话。",
       "forkBusy": "请等代理完成后再分叉。",
-      "v2": "ACP v2 草案",
-      "remote": "远程"
+      "v2": "协议预览",
+      "remote": "远程",
+      "signOutTitle": "要退出 {{agent}} 的登录吗？",
+      "signOutDescription": "这会结束 {{agent}} 的登录本身。使用同一登录的终端也会退出登录，此对话会停止，直到你重新登录。",
+      "signOutAccount": "已登录为 {{account}}"
     },
     "commit": {
       "button": "提交",

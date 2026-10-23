@@ -229,6 +229,7 @@
       "closeOne": "Închide terminalul",
       "closeProject": "Închide proiectul",
       "dontAsk": "Nu mai întreba",
+      "dontAskHint": "Ca să o activezi din nou, mergi la Setări, Aspect, Terminal, Întreabă înainte să închizi un terminal ocupat.",
       "many_one": "Un program încă rulează în {{count}} terminal.",
       "many_few": "Încă rulează programe în {{count}} terminale.",
       "many_other": "Încă rulează programe în {{count}} de terminale.",

@@ -100,6 +100,10 @@
       "action": "{{agent}} vill {{action}}.",
       "steps": "{{agent}} vill köra de här stegen i en skrivbordsapp:",
       "moreSteps": "Steg som inte visas: {{count}}",
+      "moreItems": "{{count}} objekt till visas inte",
+      "cut": "(+{{count}} tecken visas inte)",
+      "signedIn": "Det här sker i din egen inloggade webbläsare.",
+      "signedInOn": "Det här sker i din egen inloggade webbläsare, på {{origin}}.",
       "text": "Text: \"{{text}}\"",
       "address": "Adress: {{url}}",
       "allowOnce": "Tillåt en gång",
@@ -130,7 +134,8 @@
       "message": "Agenter kommer att kunna använda följande, och de frågar fortfarande före varje åtgärd:",
       "confirm": "Tillåt",
       "enabled": "Skrivbordsappar",
-      "app": "App: {{name}}",
+      "app": "App: {{name}} ({{identity}})",
+      "more": "Och {{count}} till",
       "site": "Webbplats: {{origin}}",
       "signedIn": "Din inloggade webbläsare på {{origin}}",
       "scripted": "Cua-skript"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly fortsätter arbeta",
       "body": "Forskningsuppgifter som du har markerat att fortsätta köras körs vidare i bakgrunden. Öppna Oleafly för att se förloppet."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Behörighetskontrollerna är av ({{mode}})",
+      "description": "Agenten kan ändra filer och köra kommandon utan att fråga. Oleafly kunde inte växla den till ett annat läge. Ändra läget i agentens egna inställningar."
     }
   }
 }

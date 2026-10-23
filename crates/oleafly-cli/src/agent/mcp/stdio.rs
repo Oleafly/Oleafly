@@ -2,6 +2,7 @@
 //! stdin and stdout. Its stderr is kept in a small buffer and never printed
 //! (servers print their configuration there, keys included).
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -147,8 +148,26 @@ impl StdioConnection {
         args: &[String],
         env: &BTreeMap<String, String>,
     ) -> Result<Self, String> {
+        Self::spawn_in(command, args, env, &[]).await
+    }
+
+    /// [`Self::spawn`] looking for the program in `search_dirs` (the
+    /// helper's list, the app's folders first) instead of this process's
+    /// `PATH`; the server gets the same list as its `PATH`, so a launcher
+    /// such as `npx` finds its `node`. No folders: the process `PATH`.
+    pub async fn spawn_in(
+        command: &str,
+        args: &[String],
+        env: &BTreeMap<String, String>,
+        search_dirs: &[PathBuf],
+    ) -> Result<Self, String> {
         let platform = Platform::current();
-        let path = std::env::var_os("PATH");
+        let search_path = if search_dirs.is_empty() {
+            None
+        } else {
+            std::env::join_paths(search_dirs).ok()
+        };
+        let path = search_path.clone().or_else(|| std::env::var_os("PATH"));
         let pathext = std::env::var_os("PATHEXT");
         let program = resolve_program(
             command,
@@ -162,7 +181,11 @@ impl StdioConnection {
         process
             .args(args)
             .env_clear()
-            .envs(command_env(std::env::vars_os()))
+            .envs(command_env(std::env::vars_os()));
+        if let Some(path) = &search_path {
+            process.env("PATH", path);
+        }
+        process
             .envs(env)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

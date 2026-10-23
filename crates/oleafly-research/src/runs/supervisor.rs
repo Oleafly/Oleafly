@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use super::metrics::{parse_metrics_line, MetricsPoint};
 use super::{RunOutcomeKind, RunSpec, MAX_METRIC_LINES, MAX_RUN_LOG_BYTES};
 use crate::model::now_ms;
+use oleafly_sandbox::process::identity::{self, ProcessProbe};
 
 pub const SUPERVISOR_FLAG: &str = "--oleafly-run-supervisor";
 const POLL: Duration = Duration::from_millis(500);
@@ -27,6 +28,9 @@ pub struct StatusFile {
     /// `running` or `finished`.
     pub state: String,
     pub child_pid: Option<u32>,
+    /// When the process `child_pid` names started, so a pid another process
+    /// has reused is never mistaken for it.
+    pub child_started: Option<u64>,
     pub started_at: i64,
     pub finished_at: Option<i64>,
     pub exit_code: Option<i32>,
@@ -92,6 +96,7 @@ fn record_failure(run_dir: &Path, started_at: i64, error: &str) {
         &StatusFile {
             state: "finished".into(),
             child_pid: None,
+            child_started: None,
             started_at,
             finished_at: Some(now_ms()),
             exit_code: None,
@@ -99,22 +104,6 @@ fn record_failure(run_dir: &Path, started_at: i64, error: &str) {
             note: Some(error.to_owned()),
         },
     );
-}
-
-/// The shell a local run's command goes through.
-fn shell(command: &str) -> (PathBuf, Vec<std::ffi::OsString>) {
-    #[cfg(windows)]
-    {
-        let root = std::env::var_os("SystemRoot").unwrap_or_else(|| "C:\\Windows".into());
-        (
-            PathBuf::from(root).join("System32").join("cmd.exe"),
-            vec!["/D".into(), "/S".into(), "/C".into(), command.into()],
-        )
-    }
-    #[cfg(not(windows))]
-    {
-        (PathBuf::from("/bin/sh"), vec!["-c".into(), command.into()])
-    }
 }
 
 fn run_folder(spec: &RunSpec) -> Result<PathBuf, String> {
@@ -187,6 +176,43 @@ impl Recorder {
     }
 }
 
+/// The longest piece of output held in memory at once. A longer line (a
+/// progress bar that only returns the carriage, binary data) is recorded in
+/// pieces of this size instead of being buffered whole.
+const MAX_LINE_BYTES: usize = 64 * 1024;
+
+/// Reads up to the next newline into `buffer`, but at most `max` bytes in
+/// all. Returns how many bytes were read; 0 at the end of the stream.
+fn read_line_capped(
+    reader: &mut impl BufRead,
+    buffer: &mut Vec<u8>,
+    max: usize,
+) -> std::io::Result<usize> {
+    let mut total = 0;
+    while buffer.len() < max {
+        let available = match reader.fill_buf() {
+            Ok(available) => available,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
+        };
+        if available.is_empty() {
+            break;
+        }
+        let window = &available[..available.len().min(max - buffer.len())];
+        let (used, line_end) = match window.iter().position(|byte| *byte == b'\n') {
+            Some(index) => (index + 1, true),
+            None => (window.len(), false),
+        };
+        buffer.extend_from_slice(&window[..used]);
+        reader.consume(used);
+        total += used;
+        if line_end {
+            break;
+        }
+    }
+    Ok(total)
+}
+
 fn drain(
     source: impl std::io::Read + Send + 'static,
     recorder: Arc<Mutex<Recorder>>,
@@ -196,7 +222,7 @@ fn drain(
         let mut buffer = Vec::new();
         loop {
             buffer.clear();
-            match reader.read_until(b'\n', &mut buffer) {
+            match read_line_capped(&mut reader, &mut buffer, MAX_LINE_BYTES) {
                 Ok(0) | Err(_) => break,
                 Ok(_) => {
                     if !buffer.ends_with(b"\n") {
@@ -264,10 +290,15 @@ fn supervise(run_dir: &Path, spec: &RunSpec, started_at: i64) -> Result<(), Stri
         .clone()
         .ok_or_else(|| "This run has no sandbox settings.".to_string())?;
     let folder = run_folder(spec)?;
-    let (program, args) = shell(&spec.command);
-    let mut command = oleafly_sandbox::command(&sandbox, &program, &args).map_err(String::from)?;
+    // The shell line goes through as written: `/bin/sh -c` on macOS and Linux,
+    // and `cmd.exe /D /S /C "<line>"` on Windows, where quoting it like an
+    // argument would turn every `"` of the command into `\"`.
+    let mut command =
+        oleafly_sandbox::shell_command(&sandbox, &spec.command).map_err(String::from)?;
+    // `cmd.exe` refuses a `\\?\` working folder and starts in the Windows
+    // folder instead, so the child gets the plain form of the path.
     command
-        .current_dir(&folder)
+        .current_dir(oleafly_core::plain_path(&folder))
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -298,11 +329,16 @@ fn supervise(run_dir: &Path, spec: &RunSpec, started_at: i64) -> Result<(), Stri
             return Err(format!("The run could not be contained: {error}"));
         }
     };
+    let child_started = match identity::probe(child.id()) {
+        ProcessProbe::Running { started } => started,
+        ProcessProbe::Gone => None,
+    };
     write_status(
         run_dir,
         &StatusFile {
             state: "running".into(),
             child_pid: Some(child.id()),
+            child_started,
             started_at,
             ..StatusFile::default()
         },
@@ -349,6 +385,7 @@ fn supervise(run_dir: &Path, spec: &RunSpec, started_at: i64) -> Result<(), Stri
         &StatusFile {
             state: "finished".into(),
             child_pid: None,
+            child_started: None,
             started_at,
             finished_at: Some(now_ms()),
             exit_code,
@@ -356,4 +393,64 @@ fn supervise(run_dir: &Path, spec: &RunSpec, started_at: i64) -> Result<(), Stri
             note: None,
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn recorder(dir: &Path) -> Arc<Mutex<Recorder>> {
+        let open = |name: &str| std::fs::File::create(dir.join(name)).unwrap();
+        Arc::new(Mutex::new(Recorder {
+            log: open("stdout.log"),
+            metrics: open("metrics.jsonl"),
+            written: 0,
+            capped: false,
+            line: 0,
+            metric_lines: 0,
+        }))
+    }
+
+    #[test]
+    fn output_without_a_newline_is_recorded_in_bounded_pieces() {
+        let dir = tempfile::tempdir().unwrap();
+        let recorder = recorder(dir.path());
+        // A progress bar that never ends its line, then a normal line.
+        let mut output = vec![b'x'; 3 * MAX_LINE_BYTES + 100];
+        output.extend_from_slice(b"\nloss=0.5\n");
+        drain(std::io::Cursor::new(output), recorder.clone())
+            .join()
+            .unwrap();
+
+        let log = std::fs::read(dir.path().join("stdout.log")).unwrap();
+        let lines: Vec<&[u8]> = log.split(|byte| *byte == b'\n').collect();
+        // Three full pieces (each gets the newline it lacked), the 100 byte
+        // rest of the long line, the metric line and the empty tail after the
+        // last newline.
+        assert_eq!(lines.len(), 6, "{}", log.len());
+        assert!(lines[..3].iter().all(|line| line.len() == MAX_LINE_BYTES));
+        assert!(lines[..3]
+            .iter()
+            .flat_map(|line| line.iter())
+            .all(|byte| *byte == b'x'));
+        assert_eq!(lines[4], b"loss=0.5");
+        assert_eq!(recorder.lock().unwrap().line, 5);
+        let metrics = std::fs::read_to_string(dir.path().join("metrics.jsonl")).unwrap();
+        assert!(metrics.contains("\"loss\":0.5"), "{metrics}");
+    }
+
+    #[test]
+    fn a_line_ends_at_its_newline_even_across_reads() {
+        let mut reader =
+            std::io::BufReader::with_capacity(4, std::io::Cursor::new(b"ab\ncdefgh\ni".to_vec()));
+        let mut seen = Vec::new();
+        loop {
+            let mut buffer = Vec::new();
+            if read_line_capped(&mut reader, &mut buffer, 1024).unwrap() == 0 {
+                break;
+            }
+            seen.push(String::from_utf8(buffer).unwrap());
+        }
+        assert_eq!(seen, vec!["ab\n", "cdefgh\n", "i"]);
+    }
 }

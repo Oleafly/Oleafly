@@ -201,7 +201,10 @@
       "unavailable": "Kullanılamıyor",
       "saving": "Kaydediliyor...",
       "saveTask": "Görevi kaydet",
-      "createTask": "Görev oluştur"
+      "createTask": "Görev oluştur",
+      "replaceText": "Yazdığınız başlık ve yönergeler bu hazır görevle değiştirilsin mi?",
+      "keepText": "Benimkini koru",
+      "replaceConfirm": "Değiştir"
     },
     "starter": {
       "literatureReview": {
@@ -245,6 +248,10 @@
       "dependencies": "Bağımlılıklar",
       "dependencyUnavailable": "Kullanılamıyor",
       "noActivity": "Bu çalıştırma için etkinlik kaydedilmedi.",
+      "activityGap_one": "Aradaki {{count}} öğe gösterilmiyor.",
+      "activityGap_other": "Aradaki {{count}} öğe gösterilmiyor.",
+      "activityMore": "Daha fazla etkinlik henüz gösterilmiyor.",
+      "keepRunningDesktopApps": "Bu görev, bilgisayar başında olmanızı gerektiren masaüstü uygulamaları kullanıyor.",
       "startToRecord": "Etkinliğini kaydetmek için bu görevi başlatın.",
       "reasoning": "Bildirilen akıl yürütme",
       "savedArtifact": "{{label}} kaydedildi",
@@ -318,6 +325,10 @@
       "kindRun": "Çalıştırma başlatma",
       "kindMcp": "Araç kullanma",
       "expires": "Şu zamana kadar bekler: {{time}}",
+      "detailCommand": "Tam komut",
+      "detailRun": "Çalıştırma ayrıntıları",
+      "detailMcp": "Araç argümanları",
+      "loadFailed": "Bekleyen istekler yüklenemedi.",
       "status": {
         "approved": "Onaylandı",
         "denied": "Reddedildi",
@@ -346,8 +357,9 @@
       "noRuns": "Süren çalıştırma yok.",
       "budget": "Bütçe",
       "timeUsed": "{{total}} içinden {{used}}",
-      "costUsed": "${{limit}} içinden ${{used}}",
-      "costSpent": "${{used}} harcandı",
+      "costUsed": "{{limit}} içinden {{used}}",
+      "costSpent": "{{used}} harcandı",
+      "ledgerCapped": "En son {{limit}} sonuç gösteriliyor.",
       "costUnknown": "Bu modelin maliyeti bilinmiyor.",
       "runsUsed": "{{limit}} çalıştırmadan {{used}}",
       "runsUsedNoLimit": "{{used}} çalıştırma",
@@ -380,6 +392,10 @@
       "mcpServers": "Görevlerin kullanabileceği MCP sunucuları",
       "mcpServersHint": "Görevler bu araçları her görevin komut kurallarına göre çağırır.",
       "noMcpServers": "Ayarlanmış MCP sunucusu yok.",
+      "networkHint": "Görevlerdeki komutlar internete erişebilir. Her görev bunu yine de kapatabilir.",
+      "loadFailed": "Araştırma ayarlarınız yüklenemedi.",
+      "sectionName": "Araştırma",
+      "resetConfirm": "Araştırma varsayılanlarını geri yükler: uyanık tutma, bildirimler, ağ erişimi, zaman bütçesi ve görevlerin kullanabileceği MCP sunucuları. Çalıştırma hedefleri ve arka plan görevleri değişmeden kalır.",
       "saveFailed": "Araştırma ayarlarınız kaydedilemedi. Yeniden deneyin."
     }
   },
@@ -891,7 +907,10 @@
     "fileReady": "{{fileName}} hazır",
     "saveWordHint": "Hazır olduğunuzda Word belgesini kaydedin.",
     "resultPlaceholder": "Dönüştürülen sonucunuz burada görünecek.",
-    "progressConvertingSource": "Kaynak Typst'e dönüştürülüyor"
+    "progressConvertingSource": "Kaynak Typst'e dönüştürülüyor",
+    "pageRange": "Sayfalar",
+    "pageRangePlaceholder": "Tüm sayfalar ya da 1-50 gibi bir aralık",
+    "pageRangeInvalid": "Tek bir sayfa numarası ya da 1-50 gibi bir aralık girin."
   },
   "converters": {
     "imageToLatex": {
@@ -1098,7 +1117,9 @@
     "fileTooLarge": "128 MB'tan küçük bir dosya seçin.",
     "emptySheet": "Seçili sayfa boş.",
     "arxivInputRequired": "Bir arXiv kimliği girin veya bir kaynak arşivi seçin.",
-    "equationToTypst": "Pandoc bu denklemi Typst'e dönüştüremedi. LaTeX matematiğini denetleyip yeniden deneyin."
+    "equationToTypst": "Pandoc bu denklemi Typst'e dönüştüremedi. LaTeX matematiğini denetleyip yeniden deneyin.",
+    "pdfTooManyPages": "Bu taramada {{pages}} sayfa var, Oleafly bir seferde en fazla {{limit}} sayfayı metne döker. Dosyanın altına 1-{{limit}} gibi bir sayfa aralığı girin.",
+    "outputLimit": "Model, işini bitirmeden önce yazacak yer kalmadı, bu yüzden metne döküm eksik kalırdı. Ayarlar, Yapay zeka asistanı, Araçlar bölümünden çıktı sınırı daha büyük bir model seçin ya da daha küçük bir bölümü metne dökün."
   },
   "converterNotes": {
     "scannedPages": "{{model}} ile {{pages}} taranmış sayfa metne döküldü. Sonucu kullanmadan önce denklemleri ve tabloları gözden geçirin.",
@@ -1149,7 +1170,7 @@
       "cannotSeeImages": "{{model}} görselleri okuyamıyor. Bir görü modeli seçin.",
       "localModelGone": "{{model}} artık Ollama'da yok. Yeniden indirin veya başka bir model seçin.",
       "imagesOnly": "{{model}} yalnızca görselleri okur. Yazılmış denklemleri dönüştürmek için bir dil modeli seçin.",
-      "mathpixNotSetUp": "Mathpix anahtarlarınızı Ayarlar, Yapay zeka, Araçlar bölümünden ekleyin veya başka bir model seçin.",
+      "mathpixNotSetUp": "Mathpix anahtarlarınızı Ayarlar, Yapay zeka asistanı, Araçlar bölümünden ekleyin ya da başka bir model seçin.",
       "imageTooLarge": "Bu görsel küçültüldükten sonra bile çok büyük. Kırpıp yeniden deneyin."
     }
   },
@@ -1740,10 +1761,14 @@
     "startAtLabel": "Başlangıç zamanı",
     "startNow": "Ben başlattığımda",
     "keepRunning": "Oleafly kapalıyken çalışmaya devam et",
-    "keepRunningHint": "Önce Ayarlar, Araştırma bölümünden arka plan çalışmasını açın.",
+    "keepRunningHint": "Önce Ayarlar, Araştırma bölümünden Arka plan görevlerini açın.",
     "invalidMetric": "Harf, rakam, nokta, kısa çizgi veya alt çizgi kullanın.",
     "invalidCost": "Sıfırdan büyük bir tutar girin.",
-    "invalidRuns": "1 ile 1.000 arasında bir tam sayı girin."
+    "invalidRuns": "1 ile 1.000 arasında bir tam sayı girin.",
+    "invalidStart": "Önümüzdeki 30 gün içinde bir başlangıç zamanı seçin.",
+    "invalidStartFormat": "{{example}} biçimini kullanın.",
+    "startAtFormat": "Zamanı {{example}} biçiminde yazın.",
+    "problemHidden": "Görev tanımındaki bir seçenek düzeltilmelidir. Hangisi olduğunu görmek için Görev tanımını açın."
   },
   "runs": {
     "status": {
@@ -1755,11 +1780,6 @@
       "cancelled": "Durduruldu",
       "lost": "Kayboldu"
     }
-  },
-  "record": {
-    "title": "Araştırma kaydı",
-    "openHandoff": "Devir notunu aç",
-    "openReport": "Raporu aç"
   },
   "evidence": {
     "title": "Kanıt denetimleri",
@@ -1811,8 +1831,9 @@
       "edit": "Düzenle",
       "remove": "Kaldır",
       "removeTitle": "{{label}} kaldırılsın mı?",
-      "removeConfirm": "Orada başlamış çalıştırmalar sürmeye devam eder.",
+      "removeConfirm": "Orada başlamış çalıştırmalar sürmeye devam eder. Orada başlamayı bekleyen görevler başarısız olur.",
       "forgetHostKey": "Ana bilgisayar anahtarını unut",
+      "reviewHostKey": "Ana bilgisayar anahtarını denetle",
       "notTested": "Test edilmedi",
       "tested": "Test edildi: {{time}}",
       "testFailed": "Test başarısız oldu",
@@ -1903,7 +1924,8 @@
       "none": "SSH yapılandırmanızda ana bilgisayar bulunamadı.",
       "added": "Zaten eklendi",
       "add_one": "{{count}} ana bilgisayar ekle",
-      "add_other": "{{count}} ana bilgisayar ekle"
+      "add_other": "{{count}} ana bilgisayar ekle",
+      "skipped": "Eklenmedi: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Bu bilgisayardaki korumalı alan",
@@ -1934,6 +1956,7 @@
       "runsOn": "Çalıştığı yer: {{target}}",
       "runsLocal": "Bu bilgisayarda çalışır.",
       "missing": "Bu görevin kullandığı hedef kaldırıldı. Başka bir hedef seçin.",
+      "loadFailed": "Çalıştırma hedefleriniz yüklenemedi.",
       "windowsOff": "Bu bilgisayarda komut çalıştırmak için Ayarlar'dan Windows korumalı alanını açın.",
       "openSettings": "Ayarlar'ı aç",
       "resources": "Slurm kaynakları"
@@ -1947,6 +1970,7 @@
       "movingBackHint": "Bu görev, geçerli adımı bitince Oleafly'ye geri döner."
     },
     "earlierActivity": "Önceki etkinliği göster",
+    "earlierTruncated": "Bu eski çalıştırmanın yalnızca ilk {{limit}} öğesi gösteriliyor.",
     "keepRunningFailed": "Bu ayar değiştirilemedi. Yeniden deneyin."
   }
 }

@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} recusou o acesso a este repositório. Verifique se a sua conta tem acesso a ele. Se a organização usa login único (SSO), autorize primeiro o seu login para ela.",
+    "access_denied_account": "{{host}} recusou o acesso a este repositório para {{account}}. Verifique se esta conta pode usá-lo. Se a organização usa login único (SSO), autorize primeiro o seu login para ela.",
     "account_missing": "Não há conta de hospedagem Git para {{host}}. Adicione uma em Configurações.",
     "archive_too_large": "Os arquivos do repositório passam de {{limit}} MB, então o Oleafly não consegue importá-los. Clone o repositório você mesmo e abra a pasta dele.",
-    "auth_rejected": "{{host}} recusou o seu login salvo. Faça login em {{host}} de novo em Configurações.",
+    "auth_rejected": "{{host}} recusou o login salvo de {{account}}. Faça login em {{host}} de novo em Configurações.",
     "credentials_missing": "{{host}} pediu um nome de usuário e uma senha. Faça login em {{host}} em Configurações, ou configure uma chave SSH ou um auxiliar de credenciais do Git.",
     "credentials_rejected": "{{host}} recusou o nome de usuário e a senha que o Git enviou. Faça login em {{host}} em Configurações, ou atualize as credenciais que o seu Git usa.",
     "device_flow_unavailable": "O login pelo navegador não está disponível para {{host}} nesta versão. Use um token de acesso.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Já existe um repositório com este nome em {{host}}.",
     "forge_server_error": "{{host}} devolveu um erro ({{status}}).",
     "forge_signed_out": "O seu login em {{host}} expirou ou foi revogado. Faça login de novo em Configurações.",
+    "forge_sso_required": "{{host}} precisa que este login esteja autorizado para o login único (SSO) da organização. Autorize-o em {{host}} e tente de novo.",
     "forge_store": "O Oleafly não conseguiu ler nem salvar suas contas de hospedagem Git.",
     "forge_token_invalid": "Isso não parece um token de acesso. Cole o token inteiro.",
     "forge_token_rejected": "{{host}} não aceitou este token. Verifique se você copiou o token inteiro e se ele não expirou.",
     "forge_unknown_server": "O Oleafly não conseguiu identificar que tipo de servidor {{host}} é. Escolha o tipo de servidor.",
     "host_key_unknown": "O SSH ainda não conhece {{host}}. Conecte-se uma vez por um terminal para aceitar a chave de host e tente de novo.",
     "host_unreachable": "O Oleafly não conseguiu acessar {{host}}. Confira o endereço e a sua conexão.",
+    "import_cancelled": "A importação foi cancelada.",
     "invalid_remote_url": "Digite o endereço HTTPS ou SSH de um repositório Git.",
     "nested_repository": "Este projeto está dentro de outro repositório Git, então o Oleafly não vai criar um repositório separado aqui.",
     "not_installed": "O Git não está instalado neste computador. Instale o Git e tente de novo.",
     "push_rejected": "A branch remota tem commits que este projeto ainda não tem. Receba as alterações primeiro e depois envie de novo.",
     "remote_exists": "Este projeto já está vinculado a {{remote}}.",
-    "remote_has_password": "Tire a senha do endereço. O Oleafly faz login com sua conta de hospedagem Git ou com suas próprias credenciais do Git.",
+    "remote_has_password": "Tire a senha ou o token de acesso do endereço. O Oleafly faz login com sua conta de hospedagem Git ou com as suas próprias credenciais do Git.",
     "repository_empty": "Este repositório ainda não tem commits, então não há nada para importar.",
     "repository_not_found": "{{host}} não tem um repositório neste endereço, ou a sua conta não consegue vê-lo.",
     "sign_in_cancelled": "O login foi cancelado no navegador.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "O Oleafly não conseguiu verificar o seu saldo do {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "O PowerShell 7 não está instalado.",
+    "git_bash_missing": "O Git Bash não está instalado. Instale o Git for Windows ou escolha outro shell.",
+    "wsl_missing": "O WSL não está instalado.",
+    "wsl_no_distro": "O WSL ainda não tem nenhuma distribuição Linux.",
+    "shell_path_empty": "Digite um caminho de shell em Configurações, ou escolha outro shell.",
+    "shell_path_missing": "Não há nenhum programa em {{path}}."
+  },
   "mathpix": {
-    "keys_missing": "Primeiro adicione seu ID de aplicativo e sua chave do Mathpix em Configurações, IA, Ferramentas.",
+    "keys_missing": "Primeiro adicione seu ID de aplicativo e sua chave do Mathpix em Configurações, Assistente de IA, Ferramentas.",
     "invalid_keys": "Esse ID de aplicativo ou essa chave têm caracteres que as chaves do Mathpix nunca têm. Copie de novo do console do Mathpix.",
     "key_rejected": "O Mathpix não aceitou essas chaves. Confira o ID de aplicativo e a chave no console do Mathpix.",
     "rate_limited": "O Mathpix está limitando os pedidos agora. Espere um minuto e tente de novo.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "Este PDF passa do limite de 256 MB do Mathpix.",
     "timed_out": "O Mathpix não terminou este PDF em 30 minutos. Tente com menos páginas.",
     "cancelled": "A conversão do Mathpix foi interrompida.",
-    "wrong_window": "O Mathpix só pode ser usado na janela principal do Oleafly."
+    "wrong_window": "O Mathpix só pode ser usado na janela principal do Oleafly.",
+    "pdf_too_large_ipc": "Este computador pode enviar PDFs de até 16 MB ao Mathpix. Divida o PDF e tente de novo."
   },
   "desktop_apps": {
-    "not_installed": "O Cua Driver não está instalado. Instale em Configurações → Integrações → Aplicativos de desktop.",
+    "not_installed": "O Cua Driver não está instalado. Instale em Configurações, Integrações, Aplicativos de desktop.",
     "too_old": "O Cua Driver {{version}} é antigo demais. Atualize para {{minimum}} ou mais recente.",
     "no_app_bundle": "Instale o Cua Driver com o instalador oficial para que ele possa manter as permissões do macOS.",
     "change_declined": "Você manteve suas configurações anteriores de Aplicativos de desktop.",

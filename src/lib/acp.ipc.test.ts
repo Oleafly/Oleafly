@@ -47,14 +47,16 @@ describe("CLI agent IPC", () => {
   it("returns the 200 newest conversations as a list, as 0.4.7 did", async () => {
     mocks.invoke.mockResolvedValueOnce({ sessions: [{ id: "a" }], hasMore: true });
     await expect(acp.acpSessions("p")).resolves.toEqual([{ id: "a" }]);
-    expect(mocks.invoke).toHaveBeenCalledWith("acp_sessions", { projectId: "p", query: null, before: null, limit: 200 });
+    expect(mocks.invoke).toHaveBeenCalledWith("acp_sessions", { projectId: "p", query: null, before: null, beforeId: null, limit: 200 });
   });
 
   it("pages conversations by search and time", async () => {
     await acp.acpSessionPage("p", { query: "chapter", before: 123, limit: 20 });
-    expect(mocks.invoke).toHaveBeenLastCalledWith("acp_sessions", { projectId: "p", query: "chapter", before: 123, limit: 20 });
+    expect(mocks.invoke).toHaveBeenLastCalledWith("acp_sessions", { projectId: "p", query: "chapter", before: 123, beforeId: null, limit: 20 });
+    await acp.acpSessionPage("p", { before: 123, beforeId: "s9", limit: 20 });
+    expect(mocks.invoke).toHaveBeenLastCalledWith("acp_sessions", { projectId: "p", query: null, before: 123, beforeId: "s9", limit: 20 });
     await acp.acpSessionPage("p");
-    expect(mocks.invoke).toHaveBeenLastCalledWith("acp_sessions", { projectId: "p", query: null, before: null, limit: null });
+    expect(mocks.invoke).toHaveBeenLastCalledWith("acp_sessions", { projectId: "p", query: null, before: null, beforeId: null, limit: null });
   });
 
   it("sends a prompt as one input object", async () => {

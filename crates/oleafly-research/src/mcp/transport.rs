@@ -14,6 +14,8 @@ use zeroize::Zeroizing;
 
 use super::protocol::{self, RpcOutcome};
 use super::{files::FileScope, tools, BridgeServices, Context, LinkedRootInfo, ScopedResearchMcp};
+use crate::approvals::APPROVAL_EXPIRY;
+use crate::model::CommandPolicy;
 use crate::task_tools::extra::{call_task_tool, TaskBinding};
 
 const MAX_REQUEST_BYTES: usize = 64 * 1024;
@@ -112,6 +114,17 @@ pub(super) fn authenticate(context: &Context, headers: &HeaderMap) -> Result<(),
     Ok(())
 }
 
+/// How long a task tool may run. A run the user has to approve first waits
+/// for the answer (up to the approval's expiry), which a shorter limit would
+/// cut off with the request still pending.
+pub(super) fn task_call_limit(name: &str, binding: &TaskBinding) -> Duration {
+    if name == "start_run" && binding.brief.permissions.commands == CommandPolicy::Ask {
+        APPROVAL_EXPIRY + TASK_CALL_TIMEOUT
+    } else {
+        TASK_CALL_TIMEOUT
+    }
+}
+
 pub(super) async fn call(
     context: &Arc<Context>,
     name: &str,
@@ -134,7 +147,7 @@ pub(super) async fn call(
         return tokio::select! {
             biased;
             _ = stopped.wait_for(|closed| *closed) => Err("This research session has closed.".into()),
-            result = tokio::time::timeout(TASK_CALL_TIMEOUT, operation) => {
+            result = tokio::time::timeout(task_call_limit(name, binding), operation) => {
                 match result.map_err(|_| "The task tool timed out. Try a shorter wait.".to_string())? {
                     Some(result) => tools::payload(result?),
                     None => Err("This tool is not available in the research session.".into()),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TREE_DRAG_TYPE } from "@/lib/tree-drag";
 import {
+  caretLines,
   clampComposerHeight,
   composerDropKind,
   composerGrowMax,
@@ -30,6 +31,27 @@ describe("composer keys", () => {
 
   it("blocks Enter when there is nothing to send", () => {
     expect(composerKeyAction({ ...idle, key: "Enter", canSubmit: false })).toBe("block");
+  });
+
+  it("moves the caret inside a recalled prompt of several lines before stepping history", () => {
+    const recalled = { ...idle, recalling: true };
+    expect(composerKeyAction({ ...recalled, key: "ArrowUp", caretOnFirstLine: false })).toBe("default");
+    expect(composerKeyAction({ ...recalled, key: "ArrowUp", caretOnFirstLine: true })).toBe("historyPrev");
+    expect(composerKeyAction({ ...recalled, key: "ArrowDown", caretOnLastLine: false })).toBe("default");
+    expect(composerKeyAction({ ...recalled, key: "ArrowDown", caretOnLastLine: true })).toBe("historyNext");
+    // Without the caret's position the keys step history as before.
+    expect(composerKeyAction({ ...recalled, key: "ArrowUp" })).toBe("historyPrev");
+    expect(composerKeyAction({ ...recalled, key: "ArrowDown" })).toBe("historyNext");
+  });
+
+  it("finds out whether the caret is on the first and the last line", () => {
+    const text = "one\ntwo\nthree";
+    expect(caretLines(text, 0, 0)).toEqual({ onFirstLine: true, onLastLine: false });
+    expect(caretLines(text, 5, 5)).toEqual({ onFirstLine: false, onLastLine: false });
+    expect(caretLines(text, text.length, text.length)).toEqual({ onFirstLine: false, onLastLine: true });
+    expect(caretLines("single line", 4, 4)).toEqual({ onFirstLine: true, onLastLine: true });
+    // A selection spanning lines is judged by its two ends.
+    expect(caretLines(text, 1, 6)).toEqual({ onFirstLine: true, onLastLine: false });
   });
 
   it("recalls history with Up only in an empty box or while recalling", () => {

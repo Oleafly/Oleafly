@@ -14,7 +14,8 @@ use super::mirror::{RemoteMirror, MIRROR_CAP};
 use super::scripts::{self, Detach, RemoteRun, RemoteState};
 use super::settings::ComputeTarget;
 use super::ssh::{
-    finished, load_target, outcome_for, running, save_handle, unreachable, SYNC_EVERY_MS,
+    finished, load_target, outcome_for, running, save_handle, summary_note, unreachable,
+    SYNC_EVERY_MS,
 };
 use super::{handle_data, outputs_folder, ComputeHost, McpStdioServer};
 use crate::model::now_ms;
@@ -27,6 +28,12 @@ pub const CUA_PERMISSIONS: &str =
 /// Base64 of this many bytes stays under `space_bash`'s 16,000-character cut.
 pub const CUA_LOG_CHUNK: u64 = 11_000;
 const MAX_CHUNKS_PER_POLL: usize = 4;
+/// The largest outputs archive downloaded: a little over the 512 MiB the
+/// unpacking keeps.
+#[cfg(not(test))]
+const MAX_OUTPUTS_DOWNLOAD: u64 = 640 * 1024 * 1024;
+#[cfg(test)]
+const MAX_OUTPUTS_DOWNLOAD: u64 = 2 * 1024;
 const CALL_SLACK: Duration = Duration::from_secs(30);
 const BASH_TIMEOUT: u64 = 60;
 const LONG_BASH_TIMEOUT: u64 = 300;
@@ -416,6 +423,10 @@ impl RunExecutor for CuaSpaceExecutor {
         "cua-space"
     }
 
+    fn poll_every(&self) -> Duration {
+        super::REMOTE_POLL_EVERY
+    }
+
     async fn start(&self, spec: &RunSpec) -> Result<RunHandle, RunError> {
         let ComputeTarget::CuaSpace {
             id,
@@ -608,11 +619,19 @@ impl RunExecutor for CuaSpaceExecutor {
             )
             .await
         {
-            Ok(_) => {
-                space
-                    .download(&format!("{folder}/outputs.tgz"), &downloads)
-                    .await
-            }
+            // The archive is downloaded whole before any cap applies to what
+            // is in it, so a huge one stays in the Space.
+            Ok(printed) => match scripts::outputs_bytes(&printed) {
+                Some(bytes) if bytes > MAX_OUTPUTS_DOWNLOAD => Err(RunError::Invalid(format!(
+                    "the archive is over {} MiB, so it stayed in the Space.",
+                    MAX_OUTPUTS_DOWNLOAD / (1024 * 1024)
+                ))),
+                _ => {
+                    space
+                        .download(&format!("{folder}/outputs.tgz"), &downloads)
+                        .await
+                }
+            },
             Err(error) => Err(error),
         };
         match outputs {
@@ -643,13 +662,7 @@ impl RunExecutor for CuaSpaceExecutor {
                 .await
                 .map_err(|error| RunError::Io(error.to_string()))?;
                 note = match summary {
-                    Ok(summary) if summary.files > 0 => Some(format!(
-                        "Copied {} output file{} to {}/.",
-                        summary.files,
-                        if summary.files == 1 { "" } else { "s" },
-                        outputs_folder(&handle.run_id)
-                    )),
-                    Ok(_) => None,
+                    Ok(summary) => summary_note(&summary, &handle.run_id),
                     Err(error) => Some(format!("The run's outputs could not be copied: {error}")),
                 };
             }
@@ -698,7 +711,7 @@ impl RunExecutor for CuaSpaceExecutor {
                 }
             }
         }
-        mirror.answer(&query)
+        mirror.answer(&query).await
     }
 
     async fn cancel(&self, handle: &RunHandle) -> Result<(), RunError> {
@@ -727,6 +740,16 @@ impl RunExecutor for CuaSpaceExecutor {
             return Ok(());
         }
         space
+            .script(&scripts::cleanup_script(&data.remote_dir)?, BASH_TIMEOUT)
+            .await
+            .map(|_| ())
+    }
+
+    /// Removes the run's own folder; a per-task Space stays, since the task's
+    /// other runs may be using it.
+    async fn discard(&self, handle: &RunHandle) -> Result<(), RunError> {
+        let data: CuaHandleData = handle_data(handle)?;
+        self.space(&data)?
             .script(&scripts::cleanup_script(&data.remote_dir)?, BASH_TIMEOUT)
             .await
             .map(|_| ())
@@ -930,6 +953,45 @@ mod tests {
                 .unwrap(),
             "ok\n"
         );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_huge_outputs_archive_is_left_in_the_space() {
+        let setup = setup("lab", false, true);
+        setup.spaces.add("local:lab", "lab", "linux");
+        let executor = CuaSpaceExecutor::new(setup.host.clone());
+        let handle = executor
+            .start(&spec(
+                &setup,
+                "mkdir -p results; head -c 16384 /dev/urandom > results/big.bin",
+            ))
+            .await
+            .unwrap();
+        let status = crate::runs::remote::testing::wait_for_end(&executor, &handle).await;
+        match status {
+            RunStatus::Finished {
+                exit_code: Some(0),
+                note: Some(note),
+                ..
+            } => assert!(note.contains("stayed in the Space"), "{note}"),
+            other => panic!("{other:?}"),
+        }
+        // The archive was never downloaded, so none of it reached the workspace.
+        let downloaded: Vec<String> = setup
+            .spaces
+            .calls_to("download")
+            .iter()
+            .filter_map(|call| call["path"].as_str().map(str::to_owned))
+            .collect();
+        assert!(
+            downloaded.iter().all(|path| !path.ends_with("outputs.tgz")),
+            "{downloaded:?}"
+        );
+        assert!(!setup
+            .root
+            .join("workspace/runs/r001/outputs/results/big.bin")
+            .exists());
     }
 
     #[cfg(unix)]

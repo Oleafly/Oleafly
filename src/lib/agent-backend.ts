@@ -57,6 +57,8 @@ export interface AgentCompletionResponse {
   usage: AgentUsage;
   provider_id: string;
   model_id: string;
+  /** Why the model stopped, as the provider named it (`max_tokens`, `length`, ...). */
+  stop_reason?: string | null;
 }
 
 let counter = 0;

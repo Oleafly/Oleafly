@@ -2,6 +2,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import type { RunRecord, TaskProgress } from "@/lib/research-tasks";
 import { researchTaskFixture } from "../tests/task-fixtures";
@@ -356,6 +357,136 @@ describe("TaskProgressTab", () => {
     view.rerender(<TaskProgressTab task={{ ...running(), status: "awaiting_review", updatedAt: 2 }} />);
     await waitFor(() => expect(cleared).toEqual([90_001]));
     expect(polls).toHaveLength(1);
+  });
+});
+
+describe("TaskProgressTab loading", () => {
+  const deferred = <T,>() => {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  };
+
+  beforeEach(() => {
+    api.progressResearchTask.mockReset().mockResolvedValue(progress());
+    api.cancelResearchTaskRun.mockReset().mockResolvedValue(undefined);
+    api.researchTaskRunLog.mockReset().mockResolvedValue("step 10 loss=0.4");
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    Reflect.deleteProperty(document, "visibilityState");
+  });
+
+  it("writes the spend as US dollars through the number format", async () => {
+    api.progressResearchTask.mockResolvedValue(
+      progress({
+        budget: { activeMinutes: 5, limitMinutes: 120, spentUsd: 1.2, usdCap: 5, runsStarted: 1, maxRuns: null },
+      }),
+    );
+    render(<TaskProgressTab task={running()} />);
+    const tab = await shown();
+    expect(within(tab).getByText("$1.20 of $5.00")).toBeInTheDocument();
+  });
+
+  it("offers a retry when the first load fails and shows the board once it works", async () => {
+    api.progressResearchTask.mockRejectedValueOnce(new Error("The task store is busy."));
+    render(<TaskProgressTab task={{ ...running(), status: "awaiting_review" }} />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("The task store is busy.");
+
+    await userEvent.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+
+    await shown();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(api.progressResearchTask).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a coded failure as its sentence", async () => {
+    api.progressResearchTask.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "project.not_found", params: {}, detail: null })}`,
+    );
+    render(<TaskProgressTab task={running()} />);
+    expect(await screen.findByRole("alert")).not.toHaveTextContent("@oleafly/error");
+  });
+
+  it("keeps the newer progress when an older answer arrives late", async () => {
+    const slow = deferred<TaskProgress>();
+    const view = render(<TaskProgressTab task={running()} />);
+    const tab = await shown();
+    expect(within(tab).getByText("3 of 10 runs")).toBeInTheDocument();
+
+    api.progressResearchTask
+      .mockReturnValueOnce(slow.promise)
+      .mockResolvedValueOnce(
+        progress({ budget: { activeMinutes: 1, limitMinutes: 120, spentUsd: 1.5, usdCap: 5, runsStarted: 7, maxRuns: 10 } }),
+      );
+    view.rerender(<TaskProgressTab task={{ ...running(), updatedAt: 2 }} />);
+    view.rerender(<TaskProgressTab task={{ ...running(), updatedAt: 3 }} />);
+    expect(await within(tab).findByText("7 of 10 runs")).toBeInTheDocument();
+
+    await act(async () =>
+      slow.resolve(
+        progress({ budget: { activeMinutes: 1, limitMinutes: 120, spentUsd: 1.5, usdCap: 5, runsStarted: 2, maxRuns: 10 } }),
+      ),
+    );
+
+    expect(within(tab).getByText("7 of 10 runs")).toBeInTheDocument();
+    expect(within(tab).queryByText("2 of 10 runs")).toBeNull();
+  });
+
+  it("does not ask again while a poll is still being answered", async () => {
+    const { polls } = capturePolls();
+    render(<TaskProgressTab task={running()} />);
+    await shown();
+    const slow = deferred<TaskProgress>();
+    api.progressResearchTask.mockReturnValue(slow.promise);
+
+    await act(async () => polls[0]());
+    await act(async () => polls[0]());
+    await act(async () => polls[0]());
+
+    expect(api.progressResearchTask).toHaveBeenCalledTimes(2);
+    await act(async () => slow.resolve(progress()));
+    await act(async () => polls[0]());
+    expect(api.progressResearchTask).toHaveBeenCalledTimes(3);
+  });
+
+  it("reads the open log of a live run again with each refresh, and leaves a finished run's alone", async () => {
+    const { polls } = capturePolls();
+    render(<TaskProgressTab task={running()} />);
+    const tab = await shown();
+    const live = within(tab).getByText("wider model").closest("li") as HTMLElement;
+    await userEvent.click(within(live).getByRole("button", { name: copy.viewLog }));
+    expect(await within(tab).findByLabelText("r003")).toHaveTextContent("step 10 loss=0.4");
+
+    api.researchTaskRunLog.mockResolvedValue("step 10 loss=0.4\nstep 30 loss=0.2");
+    await act(async () => polls[0]());
+    await waitFor(() => expect(within(tab).getByLabelText("r003")).toHaveTextContent("step 30 loss=0.2"));
+
+    const recent = within(tab).getByText("run r001").closest("li") as HTMLElement;
+    await userEvent.click(within(recent).getByRole("button", { name: copy.viewLog }));
+    await within(tab).findByLabelText("r001");
+    api.researchTaskRunLog.mockClear();
+    await act(async () => polls[0]());
+    expect(api.researchTaskRunLog).not.toHaveBeenCalled();
+  });
+
+  it("says when the results table holds only the newest rows", async () => {
+    const rows = Array.from({ length: 50 }, (_, index) => ledgerRow(`n${index}`, "keep", { loss: index }));
+    api.progressResearchTask.mockResolvedValue(progress({ ledger: rows }));
+    render(<TaskProgressTab task={running()} />);
+    const tab = await shown();
+
+    expect(within(tab).getByText("Showing the latest 50 results.")).toBeInTheDocument();
+  });
+
+  it("does not claim rows are missing from a short results table", async () => {
+    render(<TaskProgressTab task={running()} />);
+    const tab = await shown();
+
+    expect(within(tab).queryByText(/Showing the latest/)).toBeNull();
   });
 });
 

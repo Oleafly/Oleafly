@@ -100,6 +100,10 @@
       "action": "{{agent}} vuole {{action}}.",
       "steps": "{{agent}} vuole eseguire questi passaggi in un'app desktop:",
       "moreSteps": "Passaggi non mostrati: {{count}}",
+      "moreItems": "Altri {{count}} elementi non mostrati",
+      "cut": "(+{{count}} caratteri non mostrati)",
+      "signedIn": "Questa azione avviene nel tuo browser con accesso effettuato.",
+      "signedInOn": "Questa azione avviene nel tuo browser con accesso effettuato, su {{origin}}.",
       "text": "Testo: \"{{text}}\"",
       "address": "Indirizzo: {{url}}",
       "allowOnce": "Consenti una volta",
@@ -130,7 +134,8 @@
       "message": "Gli agenti potranno usare quanto segue, e chiederanno comunque prima di ogni azione:",
       "confirm": "Consenti",
       "enabled": "App desktop",
-      "app": "App: {{name}}",
+      "app": "App: {{name}} ({{identity}})",
+      "more": "E altri {{count}}",
       "site": "Sito web: {{origin}}",
       "signedIn": "Il tuo browser con accesso effettuato su {{origin}}",
       "scripted": "Script Cua"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly continua a lavorare",
       "body": "Le attività di ricerca che hai scelto di tenere attive continuano in background. Apri Oleafly per vedere come procedono."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "I controlli dei permessi sono disattivati ({{mode}})",
+      "description": "L'agente può modificare file ed eseguire comandi senza chiedere. Oleafly non è riuscito a passare a un'altra modalità. Cambia la modalità nelle impostazioni dell'agente stesso."
     }
   }
 }

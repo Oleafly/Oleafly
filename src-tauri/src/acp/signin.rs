@@ -28,6 +28,44 @@ fn env_name_ok(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
+/// Names that change how a program or shell starts. An agent's sign-in
+/// method may not set them: the command it asks for would run with them in
+/// the user's terminal.
+fn env_name_blocked(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    upper.starts_with("LD_")
+        || upper.starts_with("DYLD_")
+        || upper.starts_with("GIT_")
+        || matches!(
+            upper.as_str(),
+            "PATH"
+                | "PATHEXT"
+                | "COMSPEC"
+                | "PSMODULEPATH"
+                | "NODE_OPTIONS"
+                | "NODE_PATH"
+                | "PROMPT_COMMAND"
+                | "PS1"
+                | "PS2"
+                | "PS4"
+                | "BASH_ENV"
+                | "ENV"
+                | "SHELLOPTS"
+                | "BASHOPTS"
+                | "IFS"
+                | "ZDOTDIR"
+                | "PYTHONSTARTUP"
+                | "PYTHONPATH"
+                | "PYTHONHOME"
+                | "PERL5OPT"
+                | "PERL5LIB"
+                | "RUBYOPT"
+                | "RUBYLIB"
+                | "JAVA_TOOL_OPTIONS"
+                | "_JAVA_OPTIONS"
+        )
+}
+
 impl AcpRuntime {
     /// Signs in with `method_id`. API-key methods take the key, which is
     /// added to the session's redactor before anything is sent. The request
@@ -122,7 +160,10 @@ impl AcpRuntime {
 
     /// The terminal command that signs in to an agent: the agent's own
     /// sign-in command when it names one, else the agent's launch with the
-    /// method's arguments. Never carries `PATH` or secrets.
+    /// method's arguments. Never carries `PATH` or secrets. What the agent
+    /// wrote (command, arguments, environment) comes from the agent, so a
+    /// conversation on another machine gets none of it: a terminal here
+    /// could not sign in there anyway.
     pub async fn sign_in_command(
         &self,
         agent_id: &str,
@@ -131,10 +172,19 @@ impl AcpRuntime {
     ) -> Result<TerminalSignIn, String> {
         let definition = self.definition(agent_id)?;
         let methods = match session_id {
-            Some(id) => match self.get_live(id).await {
-                Ok(session) => self.copy_record(&session)?.auth_methods,
-                Err(_) => self.store.get(id)?.auth_methods,
-            },
+            Some(id) => {
+                let record = match self.get_live(id).await {
+                    Ok(session) => self.copy_record(&session)?,
+                    Err(_) => self.store.get(id)?,
+                };
+                if record.remote.is_some() {
+                    return Err(
+                        "This conversation runs on another machine. Sign in to the agent there."
+                            .into(),
+                    );
+                }
+                record.auth_methods
+            }
             None => self
                 .store
                 .agent_runtime(agent_id)?
@@ -177,13 +227,20 @@ impl AcpRuntime {
             env.insert(name.clone(), value);
         }
         for (name, value) in &method.env {
+            if name.eq_ignore_ascii_case("PATH") {
+                continue;
+            }
+            if env_name_blocked(name) {
+                return Err(if env_name_ok(name) {
+                    format!("This agent's sign-in sets {name}, which Oleafly does not allow.")
+                } else {
+                    "This agent's sign-in sets a variable that Oleafly does not allow.".into()
+                });
+            }
             env.insert(name.clone(), value.clone());
         }
         env.retain(|name, value| {
-            !name.eq_ignore_ascii_case("PATH")
-                && env_name_ok(name)
-                && !value.contains('\0')
-                && value.len() <= MAX_ENV_VALUE
+            env_name_ok(name) && !value.contains('\0') && value.len() <= MAX_ENV_VALUE
         });
         if env.len() > MAX_ENV {
             return Err("This agent's environment cannot be shown in a terminal.".into());
@@ -409,7 +466,7 @@ impl AcpRuntime {
             super::types::UsageCounters {
                 context_used: usage.context_used,
                 context_size: usage.context_size,
-                session: Some(usage.clone()),
+                session: Some(usage.without_plan()),
                 source: "acp_auth".into(),
                 ..Default::default()
             }
@@ -431,6 +488,8 @@ fn redact_view(view: &mut ElicitationView, redactor: &oleafly_acp::redact::Redac
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::acp::types::{AuthMethod, RemoteTarget, SessionRecord};
+    use oleafly_acp::capabilities::TerminalAuthCommand;
 
     #[test]
     fn environment_names_follow_the_terminal_rules() {
@@ -438,5 +497,146 @@ mod tests {
         assert!(!env_name_ok("1BAD"));
         assert!(!env_name_ok("A-B"));
         assert!(!env_name_ok(&"A".repeat(129)));
+    }
+
+    #[test]
+    fn names_that_change_how_programs_start_are_blocked() {
+        for name in [
+            "LD_PRELOAD",
+            "ld_library_path",
+            "DYLD_INSERT_LIBRARIES",
+            "NODE_OPTIONS",
+            "PROMPT_COMMAND",
+            "PS1",
+            "PS2",
+            "PS4",
+            "BASH_ENV",
+            "ENV",
+            "ZDOTDIR",
+            "PYTHONSTARTUP",
+            "PYTHONPATH",
+            "PERL5OPT",
+            "RUBYOPT",
+            "GIT_SSH_COMMAND",
+            "git_config_count",
+            "PATH",
+            "Path",
+        ] {
+            assert!(env_name_blocked(name), "{name}");
+        }
+        for name in [
+            "CLAUDE_CODE_ENTRYPOINT",
+            "CODEX_HOME",
+            "ANTHROPIC_BASE_URL",
+            "PSEUDO",
+            "LDAP_URI",
+            "ENVIRONMENT",
+        ] {
+            assert!(!env_name_blocked(name), "{name}");
+        }
+    }
+
+    /// A runtime with the fixture agent and one stored conversation whose
+    /// sign-in method came from the agent.
+    fn runtime_with_method(
+        method: AuthMethod,
+        remote: Option<RemoteTarget>,
+    ) -> (tempfile::TempDir, Arc<AcpRuntime>) {
+        let temp = crate::acp::tests::fixture_temp();
+        let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+        let definition = crate::acp::tests::fixture_definition(Vec::new(), temp.path());
+        runtime
+            .register(&serde_json::to_string(&definition).unwrap())
+            .unwrap();
+        runtime
+            .store
+            .save(&SessionRecord {
+                id: "saved".into(),
+                project_id: "project".into(),
+                project_path: temp.path().to_string_lossy().into_owned(),
+                agent_id: definition.id,
+                status: SessionStatus::AuthRequired,
+                auth_methods: vec![method],
+                remote,
+                ..SessionRecord::default()
+            })
+            .unwrap();
+        (temp, runtime)
+    }
+
+    fn agent_method(env: &[(&str, &str)]) -> AuthMethod {
+        AuthMethod {
+            id: "login".into(),
+            name: "Sign in".into(),
+            description: None,
+            kind: Some("terminal".into()),
+            args: vec!["--login".into()],
+            env: env
+                .iter()
+                .map(|(name, value)| (name.to_string(), value.to_string()))
+                .collect(),
+            api_key_provider: None,
+            terminal_command: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn a_local_sign_in_keeps_harmless_environment_and_arguments() {
+        let (_temp, runtime) = runtime_with_method(
+            agent_method(&[("CLAUDE_CODE_ENTRYPOINT", "cli"), ("PATH", "/evil")]),
+            None,
+        );
+        let sign_in = runtime
+            .sign_in_command("fixture-agent", Some("saved"), "login")
+            .await
+            .unwrap();
+        assert_eq!(sign_in.args.last().map(String::as_str), Some("--login"));
+        assert_eq!(sign_in.env["CLAUDE_CODE_ENTRYPOINT"], "cli");
+        assert!(!sign_in
+            .env
+            .keys()
+            .any(|name| name.eq_ignore_ascii_case("PATH")));
+    }
+
+    #[tokio::test]
+    async fn a_sign_in_that_sets_startup_variables_is_refused() {
+        for name in [
+            "LD_PRELOAD",
+            "NODE_OPTIONS",
+            "PROMPT_COMMAND",
+            "GIT_SSH_COMMAND",
+        ] {
+            let (_temp, runtime) = runtime_with_method(agent_method(&[(name, "x")]), None);
+            let error = runtime
+                .sign_in_command("fixture-agent", Some("saved"), "login")
+                .await
+                .unwrap_err();
+            assert!(error.contains(name), "{error}");
+        }
+    }
+
+    #[tokio::test]
+    async fn a_conversation_on_another_machine_gets_no_agent_written_sign_in() {
+        let mut method = agent_method(&[("CLAUDE_CODE_ENTRYPOINT", "cli")]);
+        // A command that exists on this machine: it still must not run.
+        method.terminal_command = Some(TerminalAuthCommand {
+            command: crate::acp::tests::fixture_python()
+                .to_string_lossy()
+                .into_owned(),
+            args: vec!["-c".into(), "print('signed in')".into()],
+            label: Some("Sign in".into()),
+        });
+        let (_temp, runtime) = runtime_with_method(
+            method,
+            Some(RemoteTarget {
+                host: "lab".into(),
+                folder: "/home/me/thesis".into(),
+            }),
+        );
+        let error = runtime
+            .sign_in_command("fixture-agent", Some("saved"), "login")
+            .await
+            .unwrap_err();
+        assert!(error.contains("another machine"), "{error}");
     }
 }

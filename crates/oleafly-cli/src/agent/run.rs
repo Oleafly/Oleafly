@@ -28,6 +28,7 @@ use super::prompt::{system_prompt, PromptContext};
 use super::provider::{
     all_key_variables, effort_from_arg, resolve, ProviderChoice, ResolvedProvider,
 };
+use super::tools::command::OwnerRelease;
 use super::tools::{
     add_local_web_tools, native_tools, runner, skill_prompt, web_user_agent, CliSkills, EventSink,
     SkillAudience, StoreSecrets, ToolContext,
@@ -692,6 +693,14 @@ pub async fn execute(
         run_id: &request.run_id,
     })?;
 
+    // The run's commands run for an owner of their own (on Windows a
+    // profile of their own); it is released when the run ends, however it
+    // ends (an error, Ctrl+C, a finished report).
+    let _sandbox_owner = run_policy
+        .allow
+        .commands
+        .then(|| OwnerRelease::new(&request.run_id));
+
     let config = match data_root.clone() {
         Some(root) => tokio::task::spawn_blocking(move || desktop_config::load(&root))
             .await
@@ -721,16 +730,15 @@ pub async fn execute(
         let cancel = cancel.clone();
         let quiet = ctx.json() || ctx.quiet();
         tokio::spawn(async move {
-            if tokio::signal::ctrl_c().await.is_err() {
-                return;
-            }
+            // Ctrl+C, and on Unix a closed terminal (SIGHUP) or a stop from
+            // a supervisor (SIGTERM): the commands the run started die with it.
+            crate::daemon::serve::termination().await;
             cancel.cancel();
             if !quiet {
                 crate::human::note("Stopping. Press Ctrl+C again to quit at once.");
             }
-            if tokio::signal::ctrl_c().await.is_ok() {
-                std::process::exit(Exit::Interrupted as i32);
-            }
+            crate::daemon::serve::termination().await;
+            std::process::exit(Exit::Interrupted as i32);
         })
     };
     let result = run_with(
@@ -777,7 +785,9 @@ pub async fn execute(
     .await
     .map_err(|_| CliError::internal("The run's changes could not be collected."))??;
     for warning in &set.warnings {
-        let code = if warning.contains("link") {
+        let code = if warning.contains("names a run can't use") {
+            "agent.skipped_names"
+        } else if warning.contains("link") {
             "agent.skipped_links"
         } else if warning.contains("cloud") {
             "agent.skipped_cloud"
@@ -1005,6 +1015,7 @@ async fn run_with(
         main_document,
         mcp_servers: &servers,
         skills: &skill_text,
+        left_out: workspace.left_out(),
     });
     let mut completion = build_request(
         system,

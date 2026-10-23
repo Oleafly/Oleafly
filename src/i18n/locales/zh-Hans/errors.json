@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} 拒绝访问此仓库。请检查你的账户是否有权访问它。如果该组织使用单点登录 (SSO)，请先为该组织授权你的登录。",
+    "access_denied_account": "{{host}} 拒绝了 {{account}} 对此仓库的访问。请检查该账户是否有权使用它。如果该组织使用单点登录 (SSO)，请先为该组织授权你的登录。",
     "account_missing": "没有 {{host}} 的 Git 托管账户。请在设置中添加。",
     "archive_too_large": "仓库文件超过 {{limit}} MB，Oleafly 无法导入。请自行克隆仓库并打开其文件夹。",
-    "auth_rejected": "{{host}} 拒绝了你保存的登录信息。请在设置中重新登录 {{host}}。",
+    "auth_rejected": "{{host}} 拒绝了 {{account}} 已保存的登录信息。请在设置中重新登录 {{host}}。",
     "credentials_missing": "{{host}} 要求提供用户名和密码。请在设置中登录 {{host}}，或设置 SSH 密钥或 Git 凭据助手。",
     "credentials_rejected": "{{host}} 拒绝了 Git 提供的用户名和密码。请在设置中登录 {{host}}，或更新 Git 使用的凭据。",
     "device_flow_unavailable": "此版本无法通过浏览器登录 {{host}}。请改用访问令牌。",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "{{host}} 上已存在同名仓库。",
     "forge_server_error": "{{host}} 返回了错误（{{status}}）。",
     "forge_signed_out": "你在 {{host}} 的登录已过期或被撤销。请在设置中重新登录。",
+    "forge_sso_required": "{{host}} 要求此登录获得组织单点登录 (SSO) 的授权。请先在 {{host}} 上完成授权，然后重试。",
     "forge_store": "Oleafly 无法读取或保存你的 Git 托管账户。",
     "forge_token_invalid": "这看起来不像访问令牌。请粘贴完整的令牌。",
     "forge_token_rejected": "{{host}} 未接受此令牌。请检查你是否复制了完整的令牌，以及它是否已过期。",
     "forge_unknown_server": "Oleafly 无法判断 {{host}} 是哪种服务器。请选择服务器类型。",
     "host_key_unknown": "SSH 还不认识 {{host}}。请先从终端连接一次以接受其主机密钥，然后重试。",
     "host_unreachable": "Oleafly 无法连接到 {{host}}。请检查地址和网络连接。",
+    "import_cancelled": "已取消导入。",
     "invalid_remote_url": "请输入 Git 仓库的 HTTPS 或 SSH 地址。",
     "nested_repository": "此项目位于另一个 Git 仓库中，因此 Oleafly 不会在这里另建仓库。",
     "not_installed": "这台电脑上未安装 Git。请安装 Git 后重试。",
     "push_rejected": "远程分支包含此项目尚未拥有的提交。请先拉取，然后重新推送。",
     "remote_exists": "此项目已关联到 {{remote}}。",
-    "remote_has_password": "请从地址中删除密码。Oleafly 会改用你的 Git 托管账户或你自己的 Git 凭据登录。",
+    "remote_has_password": "请从地址中删除密码或访问令牌。Oleafly 会改用你的 Git 托管账户或你自己的 Git 凭据登录。",
     "repository_empty": "此仓库还没有提交，没有可导入的内容。",
     "repository_not_found": "{{host}} 在此地址上没有仓库，或者你的账户无法查看它。",
     "sign_in_cancelled": "已在浏览器中取消登录。",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly 无法查询你的 {{provider}} 余额。"
   },
+  "terminal": {
+    "pwsh_missing": "尚未安装 PowerShell 7。",
+    "git_bash_missing": "尚未安装 Git Bash。请安装 Git for Windows，或选择其他 shell。",
+    "wsl_missing": "尚未安装 WSL。",
+    "wsl_no_distro": "WSL 中还没有 Linux 发行版。",
+    "shell_path_empty": "请在设置中输入 shell 路径，或选择其他 shell。",
+    "shell_path_missing": "在 {{path}} 找不到程序。"
+  },
   "mathpix": {
-    "keys_missing": "请先在“设置 > AI > 工具”中添加你的 Mathpix 应用 ID 和密钥。",
+    "keys_missing": "请先在“设置 → AI 助手 → 工具”中添加你的 Mathpix 应用 ID 和密钥。",
     "invalid_keys": "该应用 ID 或密钥包含 Mathpix 密钥中不会出现的字符。请从 Mathpix 控制台重新复制。",
     "key_rejected": "Mathpix 不接受这些密钥。请在 Mathpix 控制台中检查应用 ID 和密钥。",
     "rate_limited": "Mathpix 当前正在限制请求。请等待一分钟后重试。",
@@ -282,7 +293,8 @@
     "pdf_too_large": "此 PDF 超过了 Mathpix 的 256 MB 限制。",
     "timed_out": "Mathpix 未能在 30 分钟内处理完此 PDF。请减少页数后重试。",
     "cancelled": "Mathpix 转换已停止。",
-    "wrong_window": "只能在 Oleafly 主窗口中使用 Mathpix。"
+    "wrong_window": "只能在 Oleafly 主窗口中使用 Mathpix。",
+    "pdf_too_large_ipc": "这台电脑最多能向 Mathpix 发送 16 MB 的 PDF。请拆分 PDF 后重试。"
   },
   "desktop_apps": {
     "not_installed": "尚未安装 Cua Driver。请在“设置 → 集成 → 桌面应用”中安装。",

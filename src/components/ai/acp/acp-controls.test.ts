@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AcpSession } from "@/lib/acp";
 import { booleanOption, choice, claudeOptions, codexOptions, geminiControls, selectOption } from "./tests/ui-fixtures";
-import { currentName, groupControls } from "./acp-controls";
+import { currentName, groupControls, listboxFocusTarget } from "./acp-controls";
 
 const controls = (options: AcpSession["controls"]["options"]): AcpSession["controls"] => ({
   models: [],
@@ -73,5 +73,37 @@ describe("agent controls", () => {
     expect(currentName(fast)).toBeNull();
     expect(currentName(booleanOption("fast", "Fast", "model_config", true))).toBe("Fast");
     expect(currentName({ id: "x", name: "X", description: null, category: null, kind: { type: "unsupported", rawType: "x" } })).toBeNull();
+  });
+});
+
+describe("listbox keys", () => {
+  const labels = ["GPT-5.5", null, "GPT-5.5 mini", "Opus"];
+
+  it("moves between the options that can be chosen", () => {
+    expect(listboxFocusTarget(labels, 0, "ArrowDown")).toBe(2);
+    expect(listboxFocusTarget(labels, 2, "ArrowUp")).toBe(0);
+    expect(listboxFocusTarget(labels, 3, "ArrowDown")).toBe(3);
+    expect(listboxFocusTarget(labels, 0, "ArrowUp")).toBe(0);
+    expect(listboxFocusTarget(labels, -1, "ArrowDown")).toBe(0);
+    expect(listboxFocusTarget(labels, -1, "ArrowUp")).toBe(3);
+  });
+
+  it("jumps to the ends", () => {
+    expect(listboxFocusTarget(labels, 2, "Home")).toBe(0);
+    expect(listboxFocusTarget(labels, 0, "End")).toBe(3);
+  });
+
+  it("finds an option by the start of its name, wrapping round", () => {
+    expect(listboxFocusTarget(labels, 3, "g")).toBe(0);
+    expect(listboxFocusTarget(labels, 0, "G")).toBe(2);
+    expect(listboxFocusTarget(labels, 0, "o")).toBe(3);
+    expect(listboxFocusTarget(labels, 0, "z")).toBeNull();
+  });
+
+  it("ignores other keys and a list with nothing to choose", () => {
+    expect(listboxFocusTarget(labels, 0, "Enter")).toBeNull();
+    expect(listboxFocusTarget(labels, 0, " ")).toBeNull();
+    expect(listboxFocusTarget([null, null], 0, "ArrowDown")).toBeNull();
+    expect(listboxFocusTarget([], 0, "Home")).toBeNull();
   });
 });

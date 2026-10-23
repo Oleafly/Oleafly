@@ -9,7 +9,12 @@ import { i18n } from "@/i18n";
 import { bytesToBase64 } from "@/lib/base64";
 import { readImageInput } from "@/features/tools-ai/image-input";
 import { latexMathToTypst, pandocConvert } from "@/features/tools-ai/pandoc-text";
-import { LONG_SCAN_PAGES, ScanConfirmationNeeded, selectedPages } from "@/features/tools-ai/scan-estimate";
+import {
+  LONG_SCAN_PAGES,
+  SCAN_PAGE_LIMIT,
+  ScanConfirmationNeeded,
+  selectedPages,
+} from "@/features/tools-ai/scan-estimate";
 import { resolveToolsModel } from "@/features/tools-ai/tools-model";
 import {
   transcribeEquationText,
@@ -551,6 +556,22 @@ export interface ConverterInput {
   typstVersion?: string | null;
   /** The user confirmed a long scanned-PDF run. */
   scanConfirmed?: boolean;
+  /** The pages of a PDF to read, 1-based and inclusive; every page when absent. */
+  pageRange?: readonly [number, number];
+}
+
+/** A page range as a user types it: nothing (every page), one page such as
+ * `7`, or a range such as `3-12`. `valid` is false for anything else, and
+ * for a range that ends before it starts. */
+export function parsePageRange(text: string): { valid: boolean; range?: [number, number] } {
+  const trimmed = text.trim();
+  if (!trimmed) return { valid: true };
+  const match = /^(\d{1,6})\s*(?:[-\u2013]\s*(\d{1,6}))?$/.exec(trimmed);
+  if (!match) return { valid: false };
+  const first = Number(match[1]);
+  const last = match[2] === undefined ? first : Number(match[2]);
+  if (first < 1 || last < first) return { valid: false };
+  return { valid: true, range: [first, last] };
 }
 
 export interface ConverterOutput {
@@ -642,11 +663,25 @@ async function pdfToText(
   const { extractPagesForConvert } = await import("@oleafly/pdf-to-latex/pdf-adapter");
   const extracted = await extractPagesForConvert(bytes);
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-  const latex = convertPages(extracted.pages, {});
+  const range = input.pageRange;
+  const latex = convertPages(extracted.pages, range ? { pageRange: [range[0], range[1]] } : {});
   if (latex.report.likelyScanned) {
-    const pages = selectedPages(latex.report.pages);
+    const pages = range ? selectedPages(extracted.pages.length, range) : selectedPages(latex.report.pages);
+    // One run transcribes at most SCAN_PAGE_LIMIT pages. Say so before the
+    // cost confirmation, not after the user has confirmed it.
+    if (pages.length > SCAN_PAGE_LIMIT) {
+      throw new Error(
+        i18n.t(($) => $.researchTools.converterErrors.pdfTooManyPages, {
+          pages: pages.length,
+          limit: SCAN_PAGE_LIMIT,
+        }),
+      );
+    }
     if (pages.length >= LONG_SCAN_PAGES && !input.scanConfirmed) {
-      throw new ScanConfirmationNeeded(extracted.pages.map(({ width, height }) => ({ width, height })));
+      const sizes = range
+        ? pages.flatMap((page) => extracted.pages[page - 1] ?? [])
+        : extracted.pages;
+      throw new ScanConfirmationNeeded(sizes.map(({ width, height }) => ({ width, height })));
     }
     const transcribed = await transcribePdfPages(
       bytes,
@@ -668,10 +703,13 @@ async function pdfToText(
 
   onProgress?.({ step: "documentStructure" });
   const converted = await runPandoc({ source: "latex", target, text: latex.tex });
-  const figures = extracted.figures.map((figure) => ({
-    path: `assets/${figure.name}`,
-    dataBase64: dataUrlBase64(figure.pngDataUrl),
-  }));
+  // With a page range, only the figures the chosen pages use.
+  const figures = extracted.figures
+    .filter((figure) => !range || latex.tex.includes(figure.name))
+    .map((figure) => ({
+      path: `assets/${figure.name}`,
+      dataBase64: dataUrlBase64(figure.pngDataUrl),
+    }));
   return {
     ...converted,
     files: [...figures, ...converted.files],

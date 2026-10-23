@@ -211,13 +211,15 @@ impl RemoteMirror {
 
     /// Answers a log query from the local copy (a tail from the kept end
     /// when the copy was capped).
-    pub(crate) fn answer(&self, query: &crate::runs::LogQuery) -> Result<String, RunError> {
+    pub(crate) async fn answer(&self, query: &crate::runs::LogQuery) -> Result<String, RunError> {
         let tail = self.tail_path();
         let path = match query {
             crate::runs::LogQuery::Tail { .. } if tail.is_file() => tail,
             _ => self.log_path(),
         };
-        crate::runs::log::answer(&path, query).map_err(RunError::Io)
+        crate::runs::log::answer_blocking(path, query.clone())
+            .await
+            .map_err(RunError::Io)
     }
 
     /// Replaces the local log with a complete copy (Cua downloads it whole).

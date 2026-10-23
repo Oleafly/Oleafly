@@ -249,6 +249,26 @@ impl AppHelper {
     }
 }
 
+/// Whether a helper has to be started for tasks the app is handing over:
+/// none runs, or the one that runs is on its way out. An exiting helper
+/// has taken its last look at the work, and a stopping one (a stop request,
+/// background tasks turned off, a sign-out) has already listed the tasks it
+/// hands back, so neither would see them. The new helper waits for the
+/// old one's lock.
+fn needs_new_helper(status: &HelperStatus) -> bool {
+    !status.running || matches!(status.phase, Some(Phase::Exiting | Phase::Stopping))
+}
+
+/// The running helper was started by another version of Oleafly (the app
+/// was replaced while it ran). An unknown version counts as the same.
+fn helper_is_stale(status: &HelperStatus) -> bool {
+    status.running
+        && status
+            .app_version
+            .as_deref()
+            .is_some_and(|version| version != oleafly_cli::version::APP_VERSION)
+}
+
 /// The helper wrote its heartbeat recently.
 fn heartbeat_is_fresh(status: &HelperStatus, now: i64) -> bool {
     status
@@ -262,8 +282,16 @@ impl HelperControl for AppHelper {
     }
 
     fn ensure_running(&self) -> Result<bool, String> {
+        // The helper looks for programs where the app does: its own PATH is
+        // minimal, and the app's list comes from the login shell (macOS and
+        // Linux) or the registry (Windows). A helper that already runs
+        // reads the fresh list for its next task.
+        let _ = oleafly_cli::daemon::search_dirs::write(
+            &helper_paths(&self.data_root).search_dirs,
+            &crate::program_locator::search_dirs(),
+        );
         let status = self.status();
-        if status.running && status.phase != Some(Phase::Exiting) {
+        if !needs_new_helper(&status) {
             return Ok(false);
         }
         let exe = std::env::current_exe()
@@ -665,11 +693,18 @@ pub(crate) fn reclaim(tasks: &ResearchTaskState, helper: &dyn HelperControl) -> 
     let Ok(store) = tasks.store() else {
         return summary;
     };
-    let running = helper.status().running;
+    let status = helper.status();
+    let running = status.running;
     if running && helper.terminate_if_hung(HUNG_OBSERVATION) {
         summary.helper_hung = true;
     }
     if running && !summary.helper_hung {
+        if helper_is_stale(&status) {
+            // A helper of an older version may not read this version's
+            // hand-off: it hands every task back and exits, and a fresh one
+            // starts the next time tasks go to the background.
+            let _ = helper.request_stop();
+        }
         summary.requested = store.request_reclaim().unwrap_or(0);
     } else {
         summary.adopted = store.adopt_orphaned_daemon_tasks().unwrap_or_default();
@@ -755,13 +790,13 @@ pub(crate) fn ledger_event(event: &UsageSpoolEvent) -> crate::usage_report::Usag
 /// is not read again) and the events already in the ledger.
 struct SpoolCursor {
     root: PathBuf,
-    file: Option<(u64, Option<SystemTime>)>,
+    file: Option<SpoolSignature>,
     imported: HashSet<String>,
 }
 
 static SPOOL_CURSOR: Mutex<Option<SpoolCursor>> = Mutex::new(None);
 
-fn spool_signature(data_root: &Path) -> Option<(u64, Option<SystemTime>)> {
+fn spool_signature(data_root: &Path) -> Option<SpoolSignature> {
     std::fs::metadata(usage_spool::spool_path(data_root))
         .ok()
         .map(|metadata| (metadata.len(), metadata.modified().ok()))
@@ -815,14 +850,49 @@ pub(crate) fn import_spool_into_ledger(data_root: &Path) -> Result<usize, String
             }
         }
     });
-    // Compaction may have rewritten the file; a failed insert reads it again.
-    cursor.file = if retry {
-        None
-    } else {
-        spool_signature(data_root)
-    };
+    // The signature taken before the import counts as seen. Compaction may
+    // have rewritten the file, and the helper may have appended an event
+    // after the read: the file's new signature is kept only when every
+    // event in it was imported.
+    let after = spool_signature(data_root);
+    let keep = signature_to_keep(file, after, retry, || {
+        spool_fully_imported(data_root, &cursor.imported)
+    });
+    cursor.file = keep;
     *slot = Some(cursor);
     result
+}
+
+type SpoolSignature = (u64, Option<SystemTime>);
+
+/// What the cursor remembers of the spool after an import. `before` was
+/// read before the import's own read of the events, so an event appended
+/// since is not covered by it; `after` is the signature now (compaction
+/// rewrote the file, or the helper appended). A failed insert reads the
+/// spool again.
+fn signature_to_keep(
+    before: SpoolSignature,
+    after: Option<SpoolSignature>,
+    retry: bool,
+    fully_imported: impl FnOnce() -> bool,
+) -> Option<SpoolSignature> {
+    if retry {
+        return None;
+    }
+    if after == Some(before) {
+        return Some(before);
+    }
+    if fully_imported() {
+        after
+    } else {
+        None
+    }
+}
+
+/// Every event now in the spool has been imported (or can never be).
+fn spool_fully_imported(data_root: &Path, imported: &HashSet<String>) -> bool {
+    usage_spool::read_all(data_root)
+        .is_ok_and(|events| events.iter().all(|event| imported.contains(&event.id)))
 }
 
 /// At launch, off the startup path: marks the app open, imports the

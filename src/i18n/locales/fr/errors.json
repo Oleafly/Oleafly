@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} a refusé l'accès à ce dépôt. Vérifiez que votre compte y a accès. Si l'organisation utilise l'authentification unique (SSO), autorisez d'abord votre connexion pour elle.",
+    "access_denied_account": "{{host}} a refusé l'accès à ce dépôt pour {{account}}. Vérifiez que ce compte peut l'utiliser. Si l'organisation utilise l'authentification unique (SSO), autorisez d'abord votre connexion pour elle.",
     "account_missing": "Aucun compte d'hébergement Git pour {{host}}. Ajoutez-en un dans les Paramètres.",
     "archive_too_large": "Les fichiers du dépôt dépassent {{limit}} Mo, Oleafly ne peut donc pas les importer. Clonez vous-même le dépôt et ouvrez son dossier.",
-    "auth_rejected": "{{host}} a refusé votre connexion enregistrée. Reconnectez-vous à {{host}} dans les Paramètres.",
+    "auth_rejected": "{{host}} a refusé la connexion enregistrée pour {{account}}. Reconnectez-vous à {{host}} dans les Paramètres.",
     "credentials_missing": "{{host}} a demandé un nom d'utilisateur et un mot de passe. Connectez-vous à {{host}} dans les Paramètres, ou configurez une clé SSH ou un assistant d'identifiants Git.",
     "credentials_rejected": "{{host}} a refusé le nom d'utilisateur et le mot de passe fournis par Git. Connectez-vous à {{host}} dans les Paramètres, ou mettez à jour les identifiants qu'utilise votre Git.",
     "device_flow_unavailable": "La connexion par navigateur n'est pas disponible pour {{host}} dans cette version. Utilisez plutôt un jeton d'accès.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Un dépôt portant ce nom existe déjà sur {{host}}.",
     "forge_server_error": "{{host}} a renvoyé une erreur ({{status}}).",
     "forge_signed_out": "Votre connexion à {{host}} a expiré ou a été révoquée. Reconnectez-vous dans les Paramètres.",
+    "forge_sso_required": "{{host}} exige que cette connexion soit autorisée pour l'authentification unique de l'organisation. Autorisez-la sur {{host}}, puis réessayez.",
     "forge_store": "Oleafly n'a pas pu lire ni enregistrer vos comptes d'hébergement Git.",
     "forge_token_invalid": "Cela ne ressemble pas à un jeton d'accès. Collez le jeton en entier.",
     "forge_token_rejected": "{{host}} n'a pas accepté ce jeton. Vérifiez que vous avez copié le jeton en entier et qu'il n'a pas expiré.",
     "forge_unknown_server": "Oleafly n'a pas pu déterminer le type de serveur de {{host}}. Choisissez le type de serveur.",
     "host_key_unknown": "SSH ne connaît pas encore {{host}}. Connectez-vous-y une fois depuis un terminal pour accepter sa clé d'hôte, puis réessayez.",
     "host_unreachable": "Oleafly n'a pas pu joindre {{host}}. Vérifiez l'adresse et votre connexion.",
+    "import_cancelled": "L'importation a été annulée.",
     "invalid_remote_url": "Saisissez l'adresse HTTPS ou SSH d'un dépôt Git.",
     "nested_repository": "Ce projet se trouve dans un autre dépôt Git, donc Oleafly n'y crée pas de dépôt distinct.",
     "not_installed": "Git n'est pas installé sur cet ordinateur. Installez Git, puis réessayez.",
     "push_rejected": "La branche distante contient des commits que ce projet n'a pas encore. Tirez d'abord, puis poussez de nouveau.",
     "remote_exists": "Ce projet est déjà lié à {{remote}}.",
-    "remote_has_password": "Retirez le mot de passe de l'adresse. Oleafly se connecte plutôt avec votre compte d'hébergement Git ou vos propres identifiants Git.",
+    "remote_has_password": "Retirez le mot de passe ou le jeton d'accès de l'adresse. Oleafly se connecte plutôt avec votre compte d'hébergement Git ou vos propres identifiants Git.",
     "repository_empty": "Ce dépôt n'a encore aucun commit, il n'y a donc rien à importer.",
     "repository_not_found": "{{host}} n'a aucun dépôt à cette adresse, ou votre compte ne peut pas le voir.",
     "sign_in_cancelled": "La connexion a été annulée dans le navigateur.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly n'a pas pu vérifier votre solde {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 n'est pas installé.",
+    "git_bash_missing": "Git Bash n'est pas installé. Installez Git for Windows ou choisissez un autre shell.",
+    "wsl_missing": "WSL n'est pas installé.",
+    "wsl_no_distro": "WSL n'a encore aucune distribution Linux.",
+    "shell_path_empty": "Saisissez un chemin de shell dans les Paramètres, ou choisissez un autre shell.",
+    "shell_path_missing": "Aucun programme à l'emplacement {{path}}."
+  },
   "mathpix": {
-    "keys_missing": "Ajoutez d'abord votre ID d'application et votre clé Mathpix dans Paramètres, IA, Outils.",
+    "keys_missing": "Ajoutez d'abord votre ID d'application et votre clé Mathpix dans Paramètres, Assistant IA, Outils.",
     "invalid_keys": "Cet ID d'application ou cette clé contient des caractères que les clés Mathpix ne contiennent jamais. Copiez-les de nouveau depuis la console Mathpix.",
     "key_rejected": "Mathpix n'a pas accepté ces clés. Vérifiez l'ID d'application et la clé dans la console Mathpix.",
     "rate_limited": "Mathpix limite les requêtes en ce moment. Attendez une minute, puis réessayez.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "Ce PDF dépasse la limite de 256 Mo de Mathpix.",
     "timed_out": "Mathpix n'a pas terminé ce PDF en 30 minutes. Essayez avec moins de pages.",
     "cancelled": "La conversion Mathpix a été arrêtée.",
-    "wrong_window": "Mathpix ne peut être utilisé que depuis la fenêtre principale d'Oleafly."
+    "wrong_window": "Mathpix ne peut être utilisé que depuis la fenêtre principale d'Oleafly.",
+    "pdf_too_large_ipc": "Cet ordinateur peut envoyer à Mathpix des PDF jusqu'à 16 Mo. Découpez le PDF et réessayez."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver n'est pas installé. Installez-le dans Paramètres → Intégrations → Applications de bureau.",
+    "not_installed": "Cua Driver n'est pas installé. Installez-le dans Paramètres, Intégrations, Applications de bureau.",
     "too_old": "Cua Driver {{version}} est trop ancien. Mettez-le à jour vers {{minimum}} ou une version plus récente.",
     "no_app_bundle": "Installez Cua Driver avec le programme d'installation officiel pour qu'il puisse conserver les autorisations macOS.",
     "change_declined": "Vous avez conservé vos réglages précédents pour les applications de bureau.",

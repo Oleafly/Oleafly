@@ -100,6 +100,10 @@
       "action": "{{agent}} wil {{action}}.",
       "steps": "{{agent}} wil deze stappen uitvoeren in een desktop-app:",
       "moreSteps": "Stappen die niet getoond worden: {{count}}",
+      "moreItems": "Nog {{count}} items niet getoond",
+      "cut": "(+{{count}} tekens niet getoond)",
+      "signedIn": "Dit gebeurt in je eigen aangemelde browser.",
+      "signedInOn": "Dit gebeurt in je eigen aangemelde browser, op {{origin}}.",
       "text": "Tekst: '{{text}}'",
       "address": "Adres: {{url}}",
       "allowOnce": "Eén keer toestaan",
@@ -130,7 +134,8 @@
       "message": "Agents kunnen het volgende gebruiken en vragen nog steeds voor elke actie:",
       "confirm": "Toestaan",
       "enabled": "Desktop-apps",
-      "app": "App: {{name}}",
+      "app": "App: {{name}} ({{identity}})",
+      "more": "En nog {{count}}",
       "site": "Website: {{origin}}",
       "signedIn": "Je aangemelde browser op {{origin}}",
       "scripted": "Cua-scripts"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly werkt door",
       "body": "Onderzoekstaken die je wilde laten doorlopen, gaan op de achtergrond verder. Open Oleafly om de voortgang te zien."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Toestemmingen worden niet gecontroleerd ({{mode}})",
+      "description": "De agent kan bestanden bewerken en opdrachten uitvoeren zonder het te vragen. Oleafly kon hem niet op een andere modus zetten. Wijzig de modus in de instellingen van de agent zelf."
     }
   }
 }

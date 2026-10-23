@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} nægtede adgang til dette repository. Tjek, at din konto har adgang til det. Hvis organisationen bruger single sign-on, skal du først godkende dit login til den.",
+    "access_denied_account": "{{host}} nægtede {{account}} adgang til dette repository. Tjek, at denne konto kan bruge det. Hvis organisationen bruger single sign-on, skal du først godkende dit login til den.",
     "account_missing": "Der er ingen Git-konto til {{host}}. Tilføj en under Indstillinger.",
     "archive_too_large": "Filerne i repositoryet er større end {{limit}} MB, så Oleafly kan ikke importere dem. Klon repositoryet selv, og åbn i stedet dets mappe.",
-    "auth_rejected": "{{host}} afviste dit gemte login. Log ind på {{host}} igen under Indstillinger.",
+    "auth_rejected": "{{host}} afviste det gemte login for {{account}}. Log ind på {{host}} igen under Indstillinger.",
     "credentials_missing": "{{host}} bad om et brugernavn og en adgangskode. Log ind på {{host}} under Indstillinger, eller sæt en SSH-nøgle eller en credential helper til Git op.",
     "credentials_rejected": "{{host}} afviste det brugernavn og den adgangskode, som Git sendte. Log ind på {{host}} under Indstillinger, eller opdater de loginoplysninger, din Git bruger.",
     "device_flow_unavailable": "Login via browseren er ikke tilgængeligt for {{host}} i denne version. Brug et adgangstoken i stedet.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Der findes allerede et repository med dette navn på {{host}}.",
     "forge_server_error": "{{host}} returnerede en fejl ({{status}}).",
     "forge_signed_out": "Dit login til {{host}} er udløbet eller tilbagekaldt. Log ind igen under Indstillinger.",
+    "forge_sso_required": "{{host}} kræver, at dette login er godkendt til organisationens single sign-on. Godkend det på {{host}}, og prøv så igen.",
     "forge_store": "Oleafly kunne ikke læse eller gemme dine Git-konti.",
     "forge_token_invalid": "Det ligner ikke et adgangstoken. Indsæt hele tokenet.",
     "forge_token_rejected": "{{host}} accepterede ikke dette token. Tjek, at du har kopieret hele tokenet, og at det ikke er udløbet.",
     "forge_unknown_server": "Oleafly kunne ikke afgøre, hvilken slags server {{host}} er. Vælg servertypen.",
     "host_key_unknown": "SSH kender ikke {{host}} endnu. Opret forbindelse til serveren én gang fra en terminal for at acceptere dens værtsnøgle, og prøv så igen.",
     "host_unreachable": "Oleafly kunne ikke få forbindelse til {{host}}. Tjek adressen og din forbindelse.",
+    "import_cancelled": "Importen blev annulleret.",
     "invalid_remote_url": "Indtast HTTPS- eller SSH-adressen på et Git-repository.",
     "nested_repository": "Projektet ligger i et andet Git-repository, så Oleafly opretter ikke et separat repository her.",
     "not_installed": "Git er ikke installeret på denne computer. Installer Git, og prøv igen.",
     "push_rejected": "Den eksterne branch har commits, som dette projekt ikke har endnu. Pull først, og push så igen.",
     "remote_exists": "Projektet er allerede tilknyttet {{remote}}.",
-    "remote_has_password": "Fjern adgangskoden fra adressen. Oleafly logger i stedet ind med din Git-konto eller dine egne loginoplysninger til Git.",
+    "remote_has_password": "Fjern adgangskoden eller adgangstokenet fra adressen. Oleafly logger i stedet ind med din Git-hostingkonto eller dine egne Git-loginoplysninger.",
     "repository_empty": "Dette repository har ingen commits endnu, så der er intet at importere.",
     "repository_not_found": "{{host}} har intet repository på denne adresse, eller din konto kan ikke se det.",
     "sign_in_cancelled": "Login blev annulleret i browseren.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly kunne ikke tjekke din saldo hos {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 er ikke installeret.",
+    "git_bash_missing": "Git Bash er ikke installeret. Installer Git for Windows, eller vælg en anden shell.",
+    "wsl_missing": "WSL er ikke installeret.",
+    "wsl_no_distro": "WSL har endnu ingen Linux-distribution.",
+    "shell_path_empty": "Angiv en sti til shell under Indstillinger, eller vælg en anden shell.",
+    "shell_path_missing": "Der er intet program i {{path}}."
+  },
   "mathpix": {
-    "keys_missing": "Tilføj først dit app-id og din nøgle til Mathpix under Indstillinger, AI, Værktøjer.",
+    "keys_missing": "Tilføj først dit app-id og din nøgle til Mathpix under Indstillinger, AI-assistent, Værktøjer.",
     "invalid_keys": "App-id'et eller nøglen indeholder tegn, som Mathpix-nøgler aldrig har. Kopiér dem igen fra Mathpix-konsollen.",
     "key_rejected": "Mathpix accepterede ikke disse nøgler. Tjek app-id'et og nøglen i Mathpix-konsollen.",
     "rate_limited": "Mathpix begrænser forespørgsler lige nu. Vent et minut, og prøv så igen.",
@@ -282,7 +293,8 @@
     "pdf_too_large": "Denne PDF er større end grænsen på 256 MB for Mathpix.",
     "timed_out": "Mathpix blev ikke færdig med denne PDF inden for 30 minutter. Prøv med færre sider.",
     "cancelled": "Mathpix-konverteringen blev stoppet.",
-    "wrong_window": "Mathpix kan kun bruges fra Oleaflys hovedvindue."
+    "wrong_window": "Mathpix kan kun bruges fra Oleaflys hovedvindue.",
+    "pdf_too_large_ipc": "Denne computer kan sende PDF-filer på op til 16 MB til Mathpix. Opdel PDF'en, og prøv igen."
   },
   "desktop_apps": {
     "not_installed": "Cua Driver er ikke installeret. Installer den under Indstillinger → Integrationer → Skrivebordsapps.",

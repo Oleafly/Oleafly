@@ -30,6 +30,7 @@ import {
 } from "@/lib/acp";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
+import { registerTerminalPromptHost, useTerminalPromptStore } from "@/lib/terminal-lifecycle";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -53,6 +54,18 @@ function pi(overrides: Partial<AcpAgentStatus> = {}): AcpAgentStatus {
 }
 
 let snapshots: Record<string, AcpSnapshot>;
+
+/** The terminal dock asks before a sign-in command runs; this one reads the question and agrees. */
+function agreeToTerminalPrompts() {
+  const asked: { description: string; commandLine: string }[] = [];
+  const unregister = registerTerminalPromptHost();
+  const stop = useTerminalPromptStore.subscribe((state) => {
+    if (state.prompt?.kind !== "launch") return;
+    asked.push({ description: state.prompt.description, commandLine: state.prompt.commandLine });
+    state.answer(state.prompt.id, true);
+  });
+  return { asked, done: () => { stop(); unregister(); } };
+}
 
 function activeTerminal() {
   const terminals = useTerminalsStore.getState();
@@ -123,10 +136,17 @@ describe("CLI agent setup in the assistant", () => {
     };
     useAcpSessionsStore.setState({ activeByProject: { paper: "saved" } });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const prompts = agreeToTerminalPrompts();
 
     fireEvent.click(await ui.findByRole("button", { name: "Launch pi in the terminal" }));
 
     await waitFor(() => expect(activeTerminal()?.launch).toEqual({ command: "/usr/local/bin/node", args: login }));
+    prompts.done();
+    // The user saw the whole command line, program and arguments, before it ran.
+    expect(prompts.asked).toHaveLength(1);
+    expect(prompts.asked[0].commandLine).toContain("/usr/local/bin/node");
+    expect(prompts.asked[0].commandLine).toContain("--terminal-login");
+    expect(prompts.asked[0].description).toContain("Pi");
     expect(acpSignInCommand).toHaveBeenCalledExactlyOnceWith("paper", "pi", "saved", "pi_terminal_login");
     expect(useTerminalsStore.getState().projectId).toBe("paper");
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
@@ -167,10 +187,12 @@ describe("CLI agent setup in the assistant", () => {
     };
     useAcpSessionsStore.setState({ activeByProject: { paper: "saved" } });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const prompts = agreeToTerminalPrompts();
 
     fireEvent.click(await ui.findByRole("button", { name: "Sign in in the terminal" }));
 
     await waitFor(() => expect(activeTerminal()?.launch).toEqual({ command: "/tools/pi-acp", args: ["--terminal-login"] }));
+    prompts.done();
     expect(acpSignInCommand).toHaveBeenCalledExactlyOnceWith("paper", "pi", "saved", "browser");
     expect(acpAuthenticate).not.toHaveBeenCalled();
   });

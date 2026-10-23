@@ -724,6 +724,52 @@ describe("ConverterToolView and the Tools model", () => {
     expect(((await screen.findByTestId("converter-output")) as HTMLTextAreaElement).value).toBe("# Scanned");
   });
 
+  it("lets a scanned PDF's pages be chosen, and passes the range on", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "pdf-to-markdown" });
+    mocks.runAdHocConverter.mockResolvedValue({
+      kind: "text",
+      text: "# Part",
+      dataBase64: null,
+      fileName: "converted.md",
+      mediaType: "text/markdown",
+      files: [],
+    });
+    render(<ConverterToolView />);
+    // The field appears with a file, not before.
+    expect(screen.queryByTestId("converter-page-range")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("converter-file-input"), {
+      target: { files: [new File(["%PDF"], "scan.pdf", { type: "application/pdf" })] },
+    });
+    const field = screen.getByTestId("converter-page-range");
+    expect(field).toHaveAttribute("placeholder", researchTools.converter.pageRangePlaceholder);
+
+    // Something that is not a range stops the run and says why.
+    fireEvent.change(field, { target: { value: "five" } });
+    expect(screen.getByRole("alert")).toHaveTextContent(researchTools.converter.pageRangeInvalid);
+    expect(screen.getByTestId("converter-run")).toBeDisabled();
+
+    fireEvent.change(field, { target: { value: "61-70" } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("converter-run"));
+    await waitFor(() => expect(mocks.runAdHocConverter).toHaveBeenCalledOnce());
+    expect(mocks.runAdHocConverter.mock.calls[0][1]).toMatchObject({ pageRange: [61, 70] });
+
+    // Empty again: every page, and the input carries no range.
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.click(screen.getByTestId("converter-run"));
+    await waitFor(() => expect(mocks.runAdHocConverter).toHaveBeenCalledTimes(2));
+    expect(mocks.runAdHocConverter.mock.calls[1][1]).not.toHaveProperty("pageRange");
+  });
+
+  it("offers no page range for converters that read no scans", () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "word-to-latex" });
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), {
+      target: { files: [new File(["x"], "paper.docx")] },
+    });
+    expect(screen.queryByTestId("converter-page-range")).not.toBeInTheDocument();
+  });
+
   it("cancels a waiting scan confirmation", async () => {
     useHomeViewStore.setState({ page: "converter", activeConverter: "pdf-to-typst" });
     mocks.runAdHocConverter.mockRejectedValueOnce(

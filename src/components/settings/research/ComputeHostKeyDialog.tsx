@@ -51,6 +51,8 @@ export function ComputeHostKeyDialog({
       await onTrust(fingerprints);
     } catch (error) {
       setFailure(describeError(error));
+    } finally {
+      // The dialog stays when the new test asks about the host's keys again.
       setTrusting(false);
     }
   };

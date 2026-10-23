@@ -30,7 +30,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::{Component, Path, PathBuf},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU32, Ordering},
         Arc, Mutex, OnceLock, Weak,
     },
     time::{Duration, Instant},
@@ -53,6 +53,9 @@ pub(super) struct PendingPermission {
     pub(super) request: PermissionRequest,
     /// Answers the agent's request (the SDK keeps its JSON-RPC id).
     pub(super) responder: IncomingRequest,
+    /// A research task's approval queue holds the request and keeps its own
+    /// deadline, so the card's 120 s expiry does not apply to it.
+    pub(super) task_queue: bool,
 }
 
 pub(super) struct PendingElicitation {
@@ -129,6 +132,11 @@ pub(super) struct LiveSession {
     pub(super) auth_asked: watch::Sender<bool>,
     /// Agent session ids this connection forked; their updates are ignored.
     pub(super) known_foreign: Mutex<HashSet<String>>,
+    /// A fork is under way: updates for sessions this connection did not
+    /// open are ignored until the new id is known.
+    pub(super) forking: AtomicBool,
+    /// How often the session was moved out of a blocked mode.
+    pub(super) mode_switches: AtomicU32,
     /// The agent provider routed through an Oleafly key, for `providers/disable`.
     pub(super) routed: Mutex<Option<String>>,
     /// The agent's process id, while it is listed for orphan cleanup.
@@ -191,6 +199,22 @@ impl Drop for StartupGuard<'_> {
     }
 }
 
+/// A place among the live sessions held for one whose agent is starting.
+/// Dropping it frees the place (the session is registered by then, or the
+/// start failed).
+pub(super) struct SlotReservation {
+    runtime: Arc<AcpRuntime>,
+    id: String,
+}
+
+impl Drop for SlotReservation {
+    fn drop(&mut self) {
+        if let Ok(mut starting) = self.runtime.starting.lock() {
+            starting.remove(&self.id);
+        }
+    }
+}
+
 /// Status, title and progress of a session, sent to every window so lists
 /// and busy indicators stay current without transcripts.
 #[derive(Clone, Debug, Serialize)]
@@ -216,6 +240,11 @@ pub struct AcpRuntime {
     pub(super) root: PathBuf,
     pub(super) store: Store,
     pub(super) live: AsyncMutex<HashMap<String, Arc<LiveSession>>>,
+    /// Ids of sessions whose agent is starting: they count toward the
+    /// limit without being in `live`, which stays free while they start.
+    starting: Mutex<HashSet<String>>,
+    /// Short-lived agent connections (history, import), stopped with the app.
+    transient: Mutex<Vec<Weak<AcpClient>>>,
     events: broadcast::Sender<AcpEvent>,
     summaries: broadcast::Sender<SessionSummary>,
     summary_throttle: Mutex<HashMap<String, SummaryThrottle>>,
@@ -255,6 +284,8 @@ impl AcpRuntime {
             root,
             store,
             live: AsyncMutex::new(HashMap::new()),
+            starting: Mutex::new(HashSet::new()),
+            transient: Mutex::new(Vec::new()),
             events,
             summaries,
             summary_throttle: Mutex::new(HashMap::new()),
@@ -278,6 +309,8 @@ impl AcpRuntime {
                 let keep = definition.version.clone();
                 catalog::cleanup_old_versions(&cleanup_root, &definition, &keep);
             }
+            // An earlier build kept every install's npm cache in one folder.
+            let _ = std::fs::remove_dir_all(cleanup_root.join("npm-cache"));
         });
         Ok(runtime)
     }
@@ -346,6 +379,11 @@ impl AcpRuntime {
         if let Ok(sessions) = self.live.try_lock() {
             for session in sessions.values() {
                 session.client.request_stop();
+            }
+        }
+        if let Ok(transient) = self.transient.lock() {
+            for client in transient.iter().filter_map(Weak::upgrade) {
+                client.request_stop();
             }
         }
         if let Ok(mut resources) = self.resources.lock() {
@@ -1068,19 +1106,12 @@ impl AcpRuntime {
         task_commands: Option<super::types::TaskCommands>,
         generation: Option<u64>,
     ) -> Result<Arc<LiveSession>, String> {
-        let mut sessions = self.live.lock().await;
-        if sessions.len() >= MAX_LIVE_SESSIONS {
-            return Err(
-                "Eight ACP sessions are already connected. Disconnect one before starting another."
-                    .into(),
-            );
-        }
-        if sessions.contains_key(&record.id) {
-            return Err("This ACP session is already connected.".into());
-        }
-        if !self.owner_is_current(owner.as_deref(), generation) {
-            return Err("The window or task closed while the agent was starting.".into());
-        }
+        // The slot is reserved under the lock, and everything slow (folders,
+        // credentials, the sandbox, the process itself) happens outside it:
+        // cancelling or answering any other session never waits for a start.
+        let reservation = self
+            .reserve_slot(&record.id, owner.as_deref(), generation)
+            .await?;
         let task_temp = if allowed_paths.is_some() {
             // 0.4.8 L: a session adopted from the background helper keeps the
             // agent's home, where the agent stores its own history.
@@ -1095,39 +1126,55 @@ impl AcpRuntime {
         } else {
             None
         };
-        let redactor = if let Some(temporary) = &task_temp {
-            super::task_launch::prepare_credentials(
-                &crate::paths::home_dir()?,
-                &temporary.0,
-                &definition.id,
-                &mcp_servers,
-            )?
-        } else {
-            Redactor::new(&mcp_servers)
+        let (redactor, command, bytes) = {
+            // Credential copies, the sandbox's folder grants and the size of
+            // the saved transcript are all file work.
+            let runtime = self.clone();
+            let record = record.clone();
+            let definition = definition.clone();
+            let launch = launch.clone();
+            let launch_root = launch_root.to_path_buf();
+            let allowed_paths = allowed_paths.clone();
+            let temporary = task_temp.as_ref().map(|temporary| temporary.0.clone());
+            let servers = mcp_servers.clone();
+            tokio::task::spawn_blocking(move || {
+                let redactor = match &temporary {
+                    Some(temporary) => super::task_launch::prepare_credentials(
+                        &crate::paths::home_dir()?,
+                        temporary,
+                        &definition.id,
+                        &servers,
+                    )?,
+                    None => Redactor::new(&servers),
+                };
+                let command = build_agent_command(
+                    &runtime.root,
+                    &record,
+                    &definition,
+                    &launch,
+                    &launch_root,
+                    allowed_paths.as_deref(),
+                    temporary.as_deref(),
+                )?;
+                let bytes = runtime.store.byte_count(&record.id)?;
+                Ok::<_, String>((redactor, command, bytes))
+            })
+            .await
+            .map_err(|_| "The agent could not be prepared.".to_string())??
         };
-        let command = build_agent_command(
-            &self.root,
-            record,
-            definition,
-            launch,
-            launch_root,
-            allowed_paths.as_deref(),
-            task_temp.as_ref().map(|temporary| temporary.0.as_path()),
-        )?;
         let id = record.id.clone();
-        let bytes = self.store.byte_count(&id)?;
         let host = SessionHost::new(self);
         let client = AcpClient::spawn(command, host.clone()).await?;
         let pid = client.pid();
-        if let (Some(registry), Some(pid)) = (self.pids.get(), pid) {
-            let started = match oleafly_sandbox::process::identity::probe(pid) {
-                oleafly_sandbox::process::identity::ProcessProbe::Running { started } => started,
-                oleafly_sandbox::process::identity::ProcessProbe::Gone => None,
-            };
-            let _ = registry.add(pid, started, &launch.executable);
+        self.register_pid(pid, &launch.executable).await;
+        if !self.owner_is_current(owner.as_deref(), generation) {
+            client.shutdown().await;
+            self.unregister_pid(pid).await;
+            return Err("The window or task closed while the agent was starting.".into());
         }
         if let Err(error) = self.store.save(record) {
             client.shutdown().await;
+            self.unregister_pid(pid).await;
             return Err(error);
         }
         let default_title = record.title == default_title(definition);
@@ -1163,14 +1210,104 @@ impl AcpRuntime {
             authenticating: AtomicBool::new(false),
             auth_asked: watch::channel(false).0,
             known_foreign: Mutex::new(HashSet::new()),
+            forking: AtomicBool::new(false),
+            mode_switches: AtomicU32::new(0),
             routed: Mutex::new(None),
             pid,
             keep_home: AtomicBool::new(false),
         });
-        sessions.insert(id, session.clone());
-        drop(sessions);
+        self.live.lock().await.insert(id, session.clone());
+        // Registered: the slot is no longer a reservation.
+        drop(reservation);
         host.bind(&session);
         Ok(session)
+    }
+
+    /// Reserves a place among the live sessions for one that is starting.
+    pub(super) async fn reserve_slot(
+        self: &Arc<Self>,
+        id: &str,
+        owner: Option<&str>,
+        generation: Option<u64>,
+    ) -> Result<SlotReservation, String> {
+        let sessions = self.live.lock().await;
+        let mut starting = self
+            .starting
+            .lock()
+            .map_err(|_| "The ACP runtime is unavailable.")?;
+        if sessions.len() + starting.len() >= MAX_LIVE_SESSIONS {
+            return Err(
+                "Eight ACP sessions are already connected. Disconnect one before starting another."
+                    .into(),
+            );
+        }
+        if sessions.contains_key(id) || starting.contains(id) {
+            return Err("This ACP session is already connected.".into());
+        }
+        if !self.owner_is_current(owner, generation) {
+            return Err("The window or task closed while the agent was starting.".into());
+        }
+        starting.insert(id.to_owned());
+        Ok(SlotReservation {
+            runtime: self.clone(),
+            id: id.to_owned(),
+        })
+    }
+
+    /// Lists an agent's process for orphan cleanup. The registry takes a file
+    /// lock, so this runs off the async workers.
+    pub(super) async fn register_pid(self: &Arc<Self>, pid: Option<u32>, program: &Path) {
+        let Some(pid) = pid.filter(|_| self.pids.get().is_some()) else {
+            return;
+        };
+        let runtime = self.clone();
+        let program = program.to_path_buf();
+        let _ = tokio::task::spawn_blocking(move || {
+            let Some(registry) = runtime.pids.get() else {
+                return;
+            };
+            let started = match oleafly_sandbox::process::identity::probe(pid) {
+                oleafly_sandbox::process::identity::ProcessProbe::Running { started } => started,
+                oleafly_sandbox::process::identity::ProcessProbe::Gone => None,
+            };
+            let _ = registry.add(pid, started, &program);
+        })
+        .await;
+    }
+
+    pub(super) async fn unregister_pid(self: &Arc<Self>, pid: Option<u32>) {
+        let Some(pid) = pid.filter(|_| self.pids.get().is_some()) else {
+            return;
+        };
+        let runtime = self.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            if let Some(registry) = runtime.pids.get() {
+                let _ = registry.remove(pid);
+            }
+        })
+        .await;
+    }
+
+    /// A short-lived agent connection (history, import, deleting a session at
+    /// the agent): listed for orphan cleanup like a session, and stopped with
+    /// the app.
+    pub(super) async fn track_transient(self: &Arc<Self>, client: &Arc<AcpClient>, program: &Path) {
+        if let Ok(mut transient) = self.transient.lock() {
+            transient.retain(|client| client.strong_count() > 0);
+            transient.push(Arc::downgrade(client));
+        }
+        self.register_pid(client.pid(), program).await;
+    }
+
+    pub(super) async fn untrack_transient(self: &Arc<Self>, client: &Arc<AcpClient>) {
+        if let Ok(mut transient) = self.transient.lock() {
+            transient.retain(|other| {
+                other
+                    .upgrade()
+                    .is_some_and(|other| !Arc::ptr_eq(&other, client))
+            });
+        }
+        self.unregister_pid(client.pid()).await;
     }
 
     async fn initialize(
@@ -1360,6 +1497,7 @@ impl AcpRuntime {
                 if !resuming {
                     self.apply_remembered(session).await;
                 }
+                self.leave_blocked_mode(session).await;
                 Ok(())
             }
             Err(error) if error.auth_required() => {
@@ -1586,7 +1724,7 @@ impl AcpRuntime {
                 usage.apply_prompt_response(value, now);
                 usage.redact(&session.redactor);
                 if let Some(mut counters) = prompt_usage(value) {
-                    counters.session = state.record.usage.clone();
+                    counters.session = state.record.usage.as_ref().map(SessionUsage::without_plan);
                     self.emit_locked(
                         session,
                         &mut state,
@@ -2040,7 +2178,15 @@ impl AcpRuntime {
         } else {
             transcript::bound_event(session.redactor.value(&data))
         };
-        let bytes = serde_json::to_vec(&data).map_err(|e| e.to_string())?.len();
+        // Usage updates repeat the session's counters many times a turn:
+        // they never count toward the transcript cap, so a long conversation
+        // is not ended by them.
+        let counted = kind != "usage";
+        let bytes = if counted {
+            serde_json::to_vec(&data).map_err(|e| e.to_string())?.len()
+        } else {
+            0
+        };
         if state.bytes + bytes > MAX_SESSION_BYTES
             && !matches!(
                 kind,
@@ -2103,8 +2249,19 @@ impl AcpRuntime {
         let Ok(mut throttle) = self.summary_throttle.lock() else {
             return;
         };
-        let entry = throttle.entry(record.id.clone()).or_default();
         let now = Instant::now();
+        // A session that sent nothing for a while needs no entry: it is made
+        // again, ready to send at once, with its next summary.
+        if throttle.len() > 64 {
+            throttle.retain(|_, entry| {
+                entry.timer
+                    || entry.pending.is_some()
+                    || entry
+                        .last_sent
+                        .is_some_and(|last| now.duration_since(last) < SUMMARY_INTERVAL)
+            });
+        }
+        let entry = throttle.entry(record.id.clone()).or_default();
         let ready = entry
             .last_sent
             .is_none_or(|last| now.duration_since(last) >= SUMMARY_INTERVAL);
@@ -2312,21 +2469,22 @@ impl AcpRuntime {
         let in_turn = (session.owner.is_some() || session.task_temp.is_some())
             && record.status == SessionStatus::Running
             && params["sessionId"].as_str() == record.native_session_id.as_deref();
+        // The policy judges the paths of the tool call the request refers to
+        // as well as the request's own: adapters often announce a call with
+        // its paths and ask for permission with only its id.
+        let policy = permission_view::policy_view(remembered.as_ref(), &params["toolCall"]);
         // The local path policy cannot judge paths on another machine, so a
         // remote agent's every in-turn request goes to the user.
         let in_project = in_turn
             && (record.remote.is_some()
-                || permission_paths_allowed(Path::new(&record.project_path), &params["toolCall"]));
+                || permission_paths_allowed(Path::new(&record.project_path), &policy));
         // The skill block sends the agent to the skill's own folder, which is
         // never inside the project: reading there is allowed for that turn.
         let skill_read = in_turn
             && !in_project
-            && skill_folder.as_deref().is_some_and(|folder| {
-                let kind = params["toolCall"]["kind"]
-                    .as_str()
-                    .or_else(|| remembered.as_ref().and_then(|call| call.kind.as_deref()));
-                skill_read_allowed(folder, kind, &params["toolCall"])
-            });
+            && skill_folder
+                .as_deref()
+                .is_some_and(|folder| skill_read_allowed(folder, policy["kind"].as_str(), &policy));
         if !in_project && !skill_read {
             return incoming
                 .respond(json!({"outcome":{"outcome":"cancelled"}}))
@@ -2339,7 +2497,7 @@ impl AcpRuntime {
             &params["toolCall"],
             &session.redactor,
         );
-        let request = PermissionRequest {
+        let mut request = PermissionRequest {
             id: new_id(),
             session_id: record.id.clone(),
             turn_id: record.turn_id.ok_or("No ACP turn is active.")?,
@@ -2389,8 +2547,8 @@ impl AcpRuntime {
                 request.kind.as_deref(),
             );
         // The task's command policy: off refuses commands, ask first sends
-        // them to the task's approval queue (no card expiry; the task's
-        // cancel ends the wait).
+        // them to the task's approval queue (the queue's own day-long expiry
+        // replaces the card's; the task's cancel ends the wait).
         let task_command = session.task_temp.is_some()
             && !task_refused
             && request.kind.as_deref() == Some("execute");
@@ -2404,15 +2562,28 @@ impl AcpRuntime {
             )),
             _ => None,
         };
+        let task_queue = ask_first.is_some();
+        if task_queue {
+            request.expires_at =
+                now_ms() + oleafly_research::approvals::APPROVAL_EXPIRY.as_millis() as u64;
+        }
         let reject_once = request
             .options
             .iter()
             .find(|option| option.kind == "reject_once")
             .map(|option| option.option_id.clone());
+        // A task answers file requests itself, so a read or change that names
+        // no path at all is not allowed on a guess.
+        let paths_unknown = session.task_temp.is_some()
+            && matches!(
+                request.kind.as_deref(),
+                Some("read" | "edit" | "delete" | "move")
+            )
+            && !permission_view::names_paths(&policy);
         // A skill read without an "allow once" choice goes to the card.
         let automatic = (session.task_temp.is_some() && ask_first.is_none())
             || (skill_read && allow_once.is_some());
-        let auto_option = if task_refused || commands_off {
+        let auto_option = if task_refused || commands_off || paths_unknown {
             reject_once.clone()
         } else if automatic {
             allow_once.clone()
@@ -2444,6 +2615,7 @@ impl AcpRuntime {
                 PendingPermission {
                     request,
                     responder: incoming,
+                    task_queue,
                 },
             );
             self.update_hold(session, &state);
@@ -2462,9 +2634,18 @@ impl AcpRuntime {
                     } else {
                         reject_once
                     };
-                    let _ = runtime
+                    // An answer that cannot be applied (the turn moved on, the
+                    // option is gone) still answers the agent, as cancelled,
+                    // so it never waits for a reply that will not come.
+                    if runtime
                         .resolve_permission(&session_id, &permission_id, option)
-                        .await;
+                        .await
+                        .is_err()
+                    {
+                        let _ = runtime
+                            .resolve_permission(&session_id, &permission_id, None)
+                            .await;
+                    }
                 }
             });
             return Ok(());
@@ -2510,7 +2691,7 @@ impl AcpRuntime {
                 .permissions
                 .get(permission_id)
                 .ok_or("This permission request has expired.")?;
-            let expired = pending.request.expires_at <= now_ms()
+            let expired = (!pending.task_queue && pending.request.expires_at <= now_ms())
                 || state.record.status != SessionStatus::Running
                 || state.record.turn_id.as_deref() != Some(&pending.request.turn_id);
             if option_id.is_some() && expired {
@@ -2753,7 +2934,11 @@ pub(super) fn build_agent_command(
         let std_command = oleafly_sandbox::command(&spec, &launch.executable, &args)
             .map_err(|error| error.to_string())?;
         let mut command = tokio::process::Command::from(std_command);
-        command.current_dir(&record.project_path);
+        // The project path is stored canonical (`\\?\` on Windows), which
+        // cmd.exe rejects as a working folder.
+        command.current_dir(crate::program_locator::child_path(Path::new(
+            &record.project_path,
+        )));
         command
     } else {
         if launch.batch {

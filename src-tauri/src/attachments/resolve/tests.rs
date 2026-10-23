@@ -369,3 +369,181 @@ fn steered_attachments_share_the_runs_remaining_budget() {
     assert_eq!(images, 1);
     assert_eq!(texts(&steer).len(), 1);
 }
+
+fn store_numbered_pdf(
+    root: &std::path::Path,
+    number: u8,
+    size: usize,
+    pages: Option<u32>,
+    text: Option<&str>,
+) -> String {
+    let mut bytes = vec![number; size];
+    bytes[..4].copy_from_slice(b"%PDF");
+    store_pdf(root, &bytes, pages, text)
+}
+
+fn documents(message: &Message) -> usize {
+    message
+        .content
+        .iter()
+        .filter(|part| matches!(part, ContentPart::Document { .. }))
+        .count()
+}
+
+#[test]
+fn pdf_pages_are_counted_across_the_whole_request() {
+    let root = tempfile::tempdir().unwrap();
+    // Five 30-page papers: each is under Claude's 100-page limit, together
+    // they are 150 pages, so only three go as documents.
+    let parts: Vec<ContentPart> = (0..5u8)
+        .map(|number| {
+            let sha = store_numbered_pdf(root.path(), number, 64, Some(30), Some("text"));
+            attachment(&sha, &format!("paper-{number}.pdf"), "application/pdf")
+        })
+        .collect();
+    let mut req = request(vec![user(parts)]);
+    let events = context(root.path(), &claude(vision()))
+        .resolve_request(&mut req)
+        .unwrap();
+    assert_eq!(documents(&req.messages[0]), 3);
+    let sent_as_text = texts(&req.messages[0])
+        .iter()
+        .filter(|text| text.contains("extracted this text from the PDF"))
+        .count();
+    assert_eq!(sent_as_text, 2);
+    assert_eq!(events.len(), 2);
+}
+
+#[test]
+fn pdf_pages_are_counted_across_messages_newest_first() {
+    let root = tempfile::tempdir().unwrap();
+    let older = store_numbered_pdf(root.path(), 1, 64, Some(60), Some("older text"));
+    let newer = store_numbered_pdf(root.path(), 2, 64, Some(60), Some("newer text"));
+    let mut req = request(vec![
+        user(vec![attachment(&older, "old.pdf", "application/pdf")]),
+        Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::text("ok")],
+        },
+        user(vec![attachment(&newer, "new.pdf", "application/pdf")]),
+    ]);
+    context(root.path(), &claude(vision()))
+        .resolve_request(&mut req)
+        .unwrap();
+    assert_eq!(documents(&req.messages[2]), 1);
+    assert_eq!(documents(&req.messages[0]), 0);
+    assert!(texts(&req.messages[0])[0].contains("older text"));
+}
+
+#[test]
+fn a_pdf_without_a_page_count_still_uses_up_the_page_budget() {
+    let root = tempfile::tempdir().unwrap();
+    // 3 MB each is about 60 pages by the size guess: two of them are over
+    // the limit of 100.
+    let first = store_numbered_pdf(root.path(), 1, 3_000_000, None, None);
+    let second = store_numbered_pdf(root.path(), 2, 3_000_000, None, None);
+    let mut req = request(vec![user(vec![
+        attachment(&first, "a.pdf", "application/pdf"),
+        attachment(&second, "b.pdf", "application/pdf"),
+    ])]);
+    context(root.path(), &claude(vision()))
+        .resolve_request(&mut req)
+        .unwrap();
+    assert_eq!(documents(&req.messages[0]), 1);
+    assert!(texts(&req.messages[0])[0].contains("no text could be extracted"));
+}
+
+#[test]
+fn a_larger_window_allows_more_pages() {
+    let root = tempfile::tempdir().unwrap();
+    let parts: Vec<ContentPart> = (0..5u8)
+        .map(|number| {
+            let sha = store_numbered_pdf(root.path(), number, 64, Some(30), Some("text"));
+            attachment(&sha, &format!("paper-{number}.pdf"), "application/pdf")
+        })
+        .collect();
+    let mut req = request(vec![user(parts)]);
+    let large = ModelCaps {
+        context_window: Some(1_000_000),
+        ..vision()
+    };
+    context(root.path(), &claude(large))
+        .resolve_request(&mut req)
+        .unwrap();
+    assert_eq!(documents(&req.messages[0]), 5);
+}
+
+fn image_model() -> Resolved {
+    resolved(
+        "openai",
+        "gpt-vision",
+        Wire::OpenAiChat {
+            base_url: "https://api.openai.com/v1".into(),
+            reasoning_content: false,
+        },
+        ModelCaps {
+            images: Some(true),
+            pdf: Some(false),
+            ..ModelCaps::default()
+        },
+    )
+}
+
+#[test]
+fn a_scanned_pdf_with_page_images_is_not_reported_as_skipped() {
+    let root = tempfile::tempdir().unwrap();
+    let pdf = store_numbered_pdf(root.path(), 1, 64, Some(12), None);
+    let page = store_bytes(
+        root.path(),
+        "p1",
+        "scan.pdf page 1.png",
+        "image/png",
+        PNG,
+        100,
+    )
+    .unwrap();
+    let mut req = request(vec![user(vec![
+        attachment(&pdf, "scan.pdf", "application/pdf"),
+        attachment(&page.sha256, "scan.pdf page 1.png", "image/png"),
+    ])]);
+    let events = context(root.path(), &image_model())
+        .resolve_request(&mut req)
+        .unwrap();
+    let content = &req.messages[0].content;
+    assert!(content
+        .iter()
+        .any(|part| matches!(part, ContentPart::Image { .. })));
+    let notes = texts(&req.messages[0]);
+    assert_eq!(notes.len(), 1);
+    assert!(notes[0].contains("first pages"), "{}", notes[0]);
+    assert!(!notes[0].contains("was not sent"), "{}", notes[0]);
+    assert!(events.is_empty(), "{events:?}");
+}
+
+#[test]
+fn a_pdf_without_page_images_that_cannot_be_sent_is_still_skipped() {
+    let root = tempfile::tempdir().unwrap();
+    let pdf = store_numbered_pdf(root.path(), 1, 64, Some(12), None);
+    let mut req = request(vec![user(vec![attachment(
+        &pdf,
+        "scan.pdf",
+        "application/pdf",
+    )])]);
+    let events = context(root.path(), &image_model())
+        .resolve_request(&mut req)
+        .unwrap();
+    assert!(texts(&req.messages[0])[0].contains("was not sent"));
+    assert!(matches!(
+        &events[..],
+        [AgentEvent::Notice { code, .. }] if code == "attachment_skipped"
+    ));
+}
+
+#[test]
+fn page_images_are_matched_to_their_pdf_by_name() {
+    assert_eq!(page_image_owner("scan.pdf page 3.png"), Some("scan.pdf"));
+    assert_eq!(page_image_owner("a page 1 page 12.png"), Some("a page 1"));
+    assert_eq!(page_image_owner("scan.pdf page .png"), None);
+    assert_eq!(page_image_owner("scan.pdf page x.png"), None);
+    assert_eq!(page_image_owner("figure.png"), None);
+}

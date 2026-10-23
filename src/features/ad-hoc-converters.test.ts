@@ -62,6 +62,7 @@ vi.mock("@oleafly/diagram/fletcher", () => ({ fletcherVersionFor: mocks.fletcher
 import {
   AD_HOC_CONVERTERS,
   converterCopy,
+  parsePageRange,
   projectReadySource,
   runAdHocConverter,
   ScanConfirmationNeeded,
@@ -559,6 +560,62 @@ describe("ad-hoc converter registry", () => {
       "Transcribed 5 scanned pages with qwen2.5vl:7b. Review equations and tables before using the result.",
     );
     expect(mocks.completeViaBackend).toHaveBeenCalledTimes(5);
+  });
+
+  it("refuses a scan over the page limit before it asks for confirmation", async () => {
+    mocks.convertPages.mockReturnValue({
+      tex: "",
+      report: { pages: 120, figures: 0, likelyScanned: true },
+    });
+    mocks.extractPagesForConvert.mockResolvedValue({
+      pages: Array.from({ length: 120 }, () => ({ width: 612, height: 792, items: [], figureNames: [] })),
+      figures: [],
+    });
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
+    const failed = runAdHocConverter("pdf-to-markdown", { text: "", file: pdf });
+    await expect(failed).rejects.not.toBeInstanceOf(ScanConfirmationNeeded);
+    await expect(failed).rejects.toThrow("This scan has 120 pages");
+    await expect(failed).rejects.toThrow("up to 50 at a time");
+    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
+  });
+
+  it("reads only the chosen pages of a long scan", async () => {
+    const pages = Array.from({ length: 120 }, () => ({ width: 612, height: 792, items: [], figureNames: [] }));
+    mocks.convertPages.mockReturnValue({
+      tex: "",
+      report: { pages: 10, figures: 0, likelyScanned: true },
+    });
+    mocks.extractPagesForConvert.mockResolvedValue({ pages, figures: [] });
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
+    const range = [61, 70] as const;
+    const asked = runAdHocConverter("pdf-to-typst", { text: "", file: pdf, pageRange: range });
+    await expect(asked).rejects.toBeInstanceOf(ScanConfirmationNeeded);
+    await expect(asked).rejects.toMatchObject({
+      sizes: Array.from({ length: 10 }, () => ({ width: 612, height: 792 })),
+    });
+    expect(mocks.convertPages).toHaveBeenCalledWith(pages, { pageRange: [61, 70] });
+
+    const result = await runAdHocConverter("pdf-to-typst", {
+      text: "",
+      file: pdf,
+      pageRange: range,
+      scanConfirmed: true,
+    });
+    expect(mocks.pdfPageToPng.mock.calls.map(([, page]) => page)).toEqual([
+      61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
+    ]);
+    expect(result.note).toContain("Transcribed 10 scanned pages");
+  });
+
+  it("reads page ranges the way a person types them", () => {
+    expect(parsePageRange("")).toEqual({ valid: true });
+    expect(parsePageRange("   ")).toEqual({ valid: true });
+    expect(parsePageRange("7")).toEqual({ valid: true, range: [7, 7] });
+    expect(parsePageRange(" 3 - 12 ")).toEqual({ valid: true, range: [3, 12] });
+    expect(parsePageRange("3\u201312")).toEqual({ valid: true, range: [3, 12] });
+    for (const bad of ["0", "0-3", "5-2", "a", "1-", "-4", "1,3", "1-2-3", "1.5"]) {
+      expect(parsePageRange(bad), bad).toEqual({ valid: false });
+    }
   });
 
   it("transcribes short scans straight away", async () => {

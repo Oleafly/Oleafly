@@ -376,10 +376,11 @@ fn initialize_params() -> Value {
 async fn connect_one(
     server: &McpServer,
     values: Option<&AhoCorasick>,
+    search_dirs: &[PathBuf],
 ) -> Result<(Connection, Vec<Value>), String> {
     let started = match &server.transport {
         McpTransport::Stdio { command, args, env } => {
-            stdio::StdioConnection::spawn(command, args, env)
+            stdio::StdioConnection::spawn_in(command, args, env, search_dirs)
                 .await
                 .map(Connection::Stdio)
         }
@@ -458,6 +459,20 @@ impl McpHub {
         secrets: &[String],
         cancel: &CancellationToken,
     ) -> (McpHub, Vec<String>) {
+        Self::connect_in(servers, policy, selection, secrets, &[], cancel).await
+    }
+
+    /// [`Self::connect`] starting stdio servers with `search_dirs` as their
+    /// program search path (the background helper's; empty: this process's
+    /// `PATH`).
+    pub async fn connect_in(
+        servers: &[McpServer],
+        policy: &RunPolicy,
+        selection: &McpSelection,
+        secrets: &[String],
+        search_dirs: &[PathBuf],
+        cancel: &CancellationToken,
+    ) -> (McpHub, Vec<String>) {
         let mut warnings = Vec::new();
         let mut chosen: Vec<&McpServer> = match selection {
             McpSelection::None => Vec::new(),
@@ -505,7 +520,7 @@ impl McpHub {
         let attempts = chosen.iter().map(|server| {
             let values = matcher(&server_values(server));
             async move {
-                let result = connect_one(server, values.as_ref()).await;
+                let result = connect_one(server, values.as_ref(), search_dirs).await;
                 (server, values, result)
             }
         });

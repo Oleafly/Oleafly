@@ -43,13 +43,15 @@
       "command": "Potvrdit příkaz",
       "externalTool": "Potvrdit akci externího nástroje",
       "internet": "Potvrdit přístup na internet",
-      "edit": "Potvrdit úpravu od AI"
+      "edit": "Potvrdit úpravu od AI",
+      "researchTask": "Potvrdit výzkumnou úlohu"
     },
     "headline": {
       "command": "Asistent chce spustit tento příkaz",
       "externalTool": "Asistent chce použít externí nástroj",
       "internet": "Asistent chce přístup na internet",
-      "edit": "Asistent chce změnit vaše soubory"
+      "edit": "Asistent chce změnit vaše soubory",
+      "researchTask": "Asistent chce vytvořit výzkumnou úlohu"
     },
     "mcpNote": "Tím se níže uvedené argumenty odešlou nastavenému serveru MCP.",
     "line": "řádek {{line}}",
@@ -72,6 +74,24 @@
       "moreWaiting_few": "{{count}} další čekají",
       "moreWaiting_many": "{{count}} dalšího čeká",
       "moreWaiting_other": "{{count}} dalších čeká"
+    },
+    "researchTask": {
+      "note": "Úloha pracuje sama v kopii projektu. Její změny poté posoudíte.",
+      "title": "Název",
+      "goal": "Cíl",
+      "skills": "Dovednosti",
+      "prompt": "Instrukce",
+      "commands": "Příkazy",
+      "commandsAsk": "Ptát se před každým",
+      "network": "Síť",
+      "timeBudget": "Časový rozpočet",
+      "timeBudgetDefault": "Výchozí",
+      "minutes_one": "{{count}} minuta",
+      "minutes_other": "{{count}} minut",
+      "planFirst": "Nejdřív plán",
+      "startNow": "Spustit hned",
+      "minutes_many": "{{count}} minuty",
+      "minutes_few": "{{count}} minuty"
     }
   },
   "attachments": {
@@ -99,7 +119,9 @@
     "saveFailed": "{{name}} se nepodařilo uložit.",
     "missing": "{{name}} už není k dispozici.",
     "sentAsText": "{{name}} se odeslal jako text, protože tento model jej neumí přečíst jako soubor.",
-    "skipped": "{{name}} se neodeslal."
+    "skipped": "{{name}} se neodeslal.",
+    "dropUnreadable": "{{names}} se nepodařilo přečíst.",
+    "notReplayed": "Soubory ze starší verze nelze odeslat znovu: {{names}}."
   },
   "chat": {
     "pill": {
@@ -611,7 +633,10 @@
       "queued": "Ve frontě: odešle se, až agent skončí",
       "remove": "Odebrat zprávu z fronty",
       "sendNow": "Odeslat hned",
-      "sendFailed": "Tato zpráva se neodeslala. Odešlete ji znovu nebo ji odeberte."
+      "sendFailed": "Tato zpráva se neodeslala. Odešlete ji znovu nebo ji odeberte.",
+      "queuedConnecting": "Ve frontě: odešle se, až bude agent připravený",
+      "retry": "Odeslat znovu",
+      "edit": "Upravit"
     },
     "slash": {
       "commands": "Příkazy agenta",
@@ -651,7 +676,9 @@
       "apiKeyPlaceholder": "Vložte svůj klíč API",
       "geminiGoogle": "Přihlášení přes Google už pro osobní tarify nefunguje. Použijte klíč API Gemini nebo Vertex AI.",
       "noProject": "Chcete-li se přihlásit z terminálu, otevřete projekt.",
-      "signOut": "Odhlásit se"
+      "signOut": "Odhlásit se",
+      "confirmTerminal": "{{agent}} se přihlašuje níže uvedeným příkazem, který se spustí v kartě terminálu. Než souhlasíte, zkontrolujte ho.",
+      "remote": "Tato konverzace běží na jiném počítači. Přihlaste se k agentovi tam."
     },
     "elicitation": {
       "ariaLabel": "Požadavek agenta",
@@ -664,7 +691,8 @@
       "openUrl": "Otevřít v prohlížeči",
       "confirmTitle": "Otevřít {{host}}?",
       "confirmDescription": "Agent vás žádá, abyste na tomto webu dokončili jeden krok. Web se otevře ve vašem prohlížeči.",
-      "waiting": "Čeká se, až web krok dokončí."
+      "waiting": "Čeká se, až web krok dokončí.",
+      "openFailed": "Odkaz se nepodařilo otevřít ve vašem prohlížeči."
     },
     "remote": {
       "banner": "Hermes běží na {{host}} přes SSH. Jeho změny zůstávají na tom počítači."
@@ -675,7 +703,6 @@
       "search": "Hledat v konverzacích",
       "empty": "Žádná konverzace neodpovídá.",
       "loadMore": "Načíst další",
-      "open": "Otevřít",
       "rename": "Přejmenovat",
       "renameLabel": "Název konverzace",
       "delete": "Smazat",
@@ -696,8 +723,11 @@
       "fork": "Rozvětvit konverzaci",
       "forkUnsupported": "Tento agent neumí rozvětvovat konverzace.",
       "forkBusy": "Než konverzaci rozvětvíte, počkejte, až agent skončí.",
-      "v2": "Koncept ACP v2",
-      "remote": "Vzdáleně"
+      "v2": "Koncept protokolu",
+      "remote": "Vzdáleně",
+      "signOutTitle": "Odhlásit se z {{agent}}?",
+      "signOutDescription": "Tímto skončí samotné přihlášení k {{agent}}. Také terminál, který používá stejné přihlášení, bude odhlášen a tato konverzace se zastaví, dokud se znovu nepřihlásíte.",
+      "signOutAccount": "Přihlášeno přes {{account}}"
     },
     "commit": {
       "button": "Commitnout",

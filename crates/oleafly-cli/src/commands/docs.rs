@@ -516,7 +516,9 @@ async fn run_forward(ctx: &Context, args: ForwardArgs) -> Result<Outcome, CliErr
     let (doc, roots, workspace) = synctex_doc(ctx).await?;
     ctx.resolve_project_file(&workspace, &args.file)?;
     let line = i32::try_from(args.line).unwrap_or(i32::MAX);
-    let position = synctex::forward(&doc, &args.file, line, &roots);
+    // SyncTeX names files with forward slashes.
+    let file = crate::contract::project_path_arg(&args.file);
+    let position = synctex::forward(&doc, &file, line, &roots);
     if !ctx.json() {
         match &position {
             Some(rect) => ctx.say(format!(
@@ -734,9 +736,22 @@ fn copy_last_pdf(
     let workspace = &opened.workspace;
     let build_dir = workspace.build_dir_path();
     let pdf = build_dir.join(format!("{ENTRY_STEM}.pdf"));
-    if !pdf.is_file() {
-        return Err(CliError::new(ErrorKind::InvalidInput, "export.not_compiled", "This project has no PDF yet.")
-            .hint("Run `oleafly build` first, or `oleafly build -o <file>` to build and copy in one step."));
+    // A link in the build folder (a project can ship one) would copy whatever
+    // it points at under the name of a PDF.
+    match std::fs::symlink_metadata(&pdf) {
+        Ok(metadata) if metadata.is_file() => {}
+        Ok(_) => {
+            return Err(CliError::new(
+                ErrorKind::UnsafePath,
+                "project.unsafe_path",
+                "The PDF in the build folder is a link, not a file a build wrote, so Oleafly won't copy it.",
+            )
+            .hint("Run `oleafly build` to make a new one."));
+        }
+        Err(_) => {
+            return Err(CliError::new(ErrorKind::InvalidInput, "export.not_compiled", "This project has no PDF yet.")
+                .hint("Run `oleafly build` first, or `oleafly build -o <file>` to build and copy in one step."));
+        }
     }
     if let Some(record) = crate::record::read_record(&build_dir) {
         if record.main_document != workspace.manifest().main_doc {

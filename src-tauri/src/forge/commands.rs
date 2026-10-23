@@ -9,7 +9,7 @@ use oleafly_forge::api::{self, ForgeRepo, RepoPage, Session};
 use oleafly_forge::detect;
 use oleafly_forge::http::{ForgeHttp, CA_FILE_MAX_BYTES};
 use oleafly_forge::kind::{ForgeKind, ServerFlavor, GITHUB_COM};
-use oleafly_forge::oauth::{self, DevicePoll};
+use oleafly_forge::oauth::{self, DevicePoll, TokenGrant};
 use oleafly_forge::repo_path::valid_repo_name;
 use oleafly_forge::{ForgeAccount, ForgeError, ForgeStore};
 use serde::Serialize;
@@ -58,6 +58,10 @@ struct PendingFlow {
     device_code: String,
     expires_at: Instant,
     polling: bool,
+    /// The server's grant, kept from the moment it comes until the account
+    /// is saved. The device code is spent by then, so a failure while
+    /// reading the user (a network blip) is retried from the grant.
+    granted: Option<TokenGrant>,
 }
 
 fn pending() -> std::sync::MutexGuard<'static, HashMap<String, PendingFlow>> {
@@ -184,7 +188,9 @@ pub async fn forge_detect(
 }
 
 /// Sign in with a pasted access token. The token is checked with the server
-/// and stored in Rust; the webview gets the account back.
+/// and stored in Rust; the webview gets the account back. `ca_file` is the
+/// certificate authority file of the account after signing in: a path sets
+/// it, an empty string clears it, and none keeps the one the account has.
 #[tauri::command]
 pub async fn forge_sign_in_token(
     app: AppHandle,
@@ -196,16 +202,38 @@ pub async fn forge_sign_in_token(
     let base = normalized_base(&base)?;
     let host = host_label(&base);
     let fail = |error: ForgeError| app_error(&error, &host);
+    let clear_ca = ca_file
+        .as_deref()
+        .is_some_and(|path| path.trim().is_empty());
     let ca_file = checked_ca_file(ca_file).map_err(fail)?;
-    let http = http_for_async(ca_file.clone()).await.map_err(fail)?;
     let store = blocking(store).await?;
+    // The sign-in itself trusts what the account will trust afterwards.
+    let used_ca = match &ca_file {
+        Some(_) => ca_file.clone(),
+        None if clear_ca => None,
+        None => {
+            let (store, lookup) = (store.clone(), base.clone());
+            blocking(move || {
+                Ok(store
+                    .account(&lookup)
+                    .map_err(|error| app_error(&error, &host_label(&lookup)))?
+                    .and_then(|account| account.ca_file))
+            })
+            .await?
+        }
+    };
+    let http = http_for_async(used_ca).await.map_err(fail)?;
     let account = accounts::sign_in_with_token(
         &store,
         &http,
         &base,
         kind,
         &token,
-        ca_file.as_deref(),
+        if clear_ca {
+            Some("")
+        } else {
+            ca_file.as_deref()
+        },
         now_ms(),
     )
     .await
@@ -244,6 +272,7 @@ pub(crate) async fn begin_device_flow(
             // decides when the code expired.
             expires_at: now + Duration::from_secs(started.expires_in.saturating_add(30)),
             polling: false,
+            granted: None,
         },
     );
     Ok(ForgeDeviceStart {
@@ -276,7 +305,7 @@ pub(crate) async fn poll_device_flow(
     flow_id: &str,
     now_ms: u64,
 ) -> Result<(ForgeDevicePoll, Option<String>), ForgeError> {
-    let (base, kind, client_id, device_code) = {
+    let (base, kind, client_id, device_code, granted) = {
         let mut flows = pending();
         let now = Instant::now();
         flows.retain(|_, flow| flow.expires_at > now);
@@ -293,6 +322,7 @@ pub(crate) async fn poll_device_flow(
             flow.kind,
             flow.client_id,
             flow.device_code.clone(),
+            flow.granted.clone(),
         )
     };
     let finish = |remove: bool| {
@@ -303,7 +333,12 @@ pub(crate) async fn poll_device_flow(
             flow.polling = false;
         }
     };
-    match oauth::device_poll(http, kind, &base, client_id, &device_code).await {
+    let polled = match granted {
+        // The server already granted this sign-in; only saving is left.
+        Some(grant) => Ok(DevicePoll::Granted(grant)),
+        None => oauth::device_poll(http, kind, &base, client_id, &device_code).await,
+    };
+    match polled {
         Ok(DevicePoll::Pending) => {
             finish(false);
             Ok((ForgeDevicePoll::Pending, None))
@@ -313,11 +348,21 @@ pub(crate) async fn poll_device_flow(
             Ok((ForgeDevicePoll::SlowDown { interval }, None))
         }
         Ok(DevicePoll::Granted(grant)) => {
-            finish(true);
+            if let Some(flow) = pending().get_mut(flow_id) {
+                flow.granted = Some(grant.clone());
+            }
             let token = grant.access_token.clone();
-            let account =
-                accounts::finish_device_sign_in(store, http, &base, kind, grant, now_ms).await?;
-            Ok((ForgeDevicePoll::Done { account }, Some(token)))
+            match accounts::finish_device_sign_in(store, http, &base, kind, grant, now_ms).await {
+                Ok(account) => {
+                    finish(true);
+                    Ok((ForgeDevicePoll::Done { account }, Some(token)))
+                }
+                Err(error) => {
+                    // The grant stays: the next poll saves from it.
+                    finish(false);
+                    Err(error)
+                }
+            }
         }
         Err(error @ (ForgeError::SignInExpired | ForgeError::SignInDenied)) => {
             finish(true);
@@ -393,15 +438,15 @@ pub async fn forge_set_ca_file(
     let ca_file = checked_ca_file(ca_file).map_err(|error| app_error(&error, &host))?;
     let account = blocking(move || {
         let store = store()?;
-        let fail = |error: ForgeError| app_error(&error, &host);
-        let mut account = store.account(&base).map_err(fail)?.ok_or_else(|| {
-            String::from(
-                crate::app_error::AppError::new("git.account_missing").param("host", &host),
-            )
-        })?;
-        account.ca_file = ca_file;
-        store.update_account(account.clone()).map_err(fail)?;
-        Ok(account)
+        // Only the CA file changes, in the account as it is now.
+        store
+            .set_ca_file(&base, ca_file)
+            .map_err(|error| app_error(&error, &host))?
+            .ok_or_else(|| {
+                String::from(
+                    crate::app_error::AppError::new("git.account_missing").param("host", &host),
+                )
+            })
     })
     .await?;
     notify_changed(&app);
@@ -552,6 +597,51 @@ mod tests {
 
         let again = poll_device_flow(&store, &http, &started.flow_id, 1_000).await;
         assert!(matches!(again, Err(ForgeError::SignInExpired)));
+    }
+
+    #[tokio::test]
+    async fn a_failed_user_read_after_the_grant_is_retried_from_the_kept_grant() {
+        let server = MockServer::start(vec![
+            MockResponse::json(200, START).on("POST", "/oauth/authorize_device"),
+            MockResponse::json(
+                200,
+                r#"{"access_token":"oauth-access-1","refresh_token":"oauth-refresh-1","expires_in":7200}"#,
+            )
+            .on("POST", "/oauth/token"),
+            MockResponse::json(502, r#"{"message":"bad gateway"}"#).on("GET", "/api/v4/user"),
+            MockResponse::json(200, USER).on("GET", "/api/v4/user"),
+        ]);
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let http = ForgeHttp::new(None).unwrap();
+        let started = begin_device_flow(&http, ForgeKind::GitLab, &server.url(), "client")
+            .await
+            .unwrap();
+
+        let first = poll_device_flow(&store, &http, &started.flow_id, 1_000).await;
+        assert!(matches!(first, Err(ForgeError::Server { status: 502, .. })));
+        assert!(store.accounts().unwrap().is_empty());
+        assert!(
+            pending().get(&started.flow_id).is_some(),
+            "the approved sign-in is not lost"
+        );
+
+        let (poll, token) = poll_device_flow(&store, &http, &started.flow_id, 1_000)
+            .await
+            .unwrap();
+        let ForgeDevicePoll::Done { account } = poll else {
+            panic!("the kept grant finishes the sign-in");
+        };
+        assert_eq!(account.login, "octo");
+        assert_eq!(token.as_deref(), Some("oauth-access-1"));
+        assert_eq!(store.accounts().unwrap().len(), 1);
+        let token_requests = server
+            .requests()
+            .iter()
+            .filter(|request| request.path == "/oauth/token")
+            .count();
+        assert_eq!(token_requests, 1, "the spent device code is not used again");
+        assert!(pending().get(&started.flow_id).is_none());
     }
 
     #[tokio::test]

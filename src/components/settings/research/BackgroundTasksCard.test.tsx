@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { BackgroundHelperStatus } from "@/lib/background-helper";
 
@@ -53,6 +54,34 @@ describe("BackgroundTasksCard", () => {
     expect(await screen.findByText("Working on 2 tasks")).toBeTruthy();
     expect(screen.getByTestId("research-background-state").textContent).toBe(strings.status.running);
     expect(screen.getByRole("switch", { name: strings.enabled.label }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("says when the helper's status could not be read, and reads it again on retry", async () => {
+    api.getBackgroundHelperStatus.mockRejectedValueOnce(new Error("The helper socket is busy."));
+    render(<BackgroundTasksCard />);
+
+    expect((await screen.findByRole("alert")).textContent).toContain(strings.statusFailed);
+    expect(screen.getByRole("switch", { name: strings.enabled.label }).getAttribute("aria-disabled")).toBe("true");
+
+    await userEvent.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(screen.getByRole("switch", { name: strings.enabled.label }).getAttribute("aria-disabled")).toBeNull();
+  });
+
+  it("keeps showing the last status when a later refresh fails", async () => {
+    api.getBackgroundHelperStatus.mockResolvedValueOnce(status({ running: true, taskCount: 1 }));
+    render(<BackgroundTasksCard />);
+    await screen.findByText("Working on 1 task");
+
+    api.getBackgroundHelperStatus.mockRejectedValue(new Error("The helper socket is busy."));
+    // The helper reports a change, and the card asks for its status again.
+    const onHelperChange = api.listenForBackgroundHelper.mock.calls[0][0] as () => void;
+    await act(async () => onHelperChange());
+    await waitFor(() => expect(api.getBackgroundHelperStatus).toHaveBeenCalledTimes(2));
+
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("Working on 1 task")).toBeTruthy();
   });
 
   it("shows a helper that stopped answering", async () => {

@@ -25,9 +25,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   watchResearchTask: vi.fn(async () => {}),
 }));
 
-// The subscriptions also answer PDF text requests; that bridge has its own tests.
-vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: vi.fn(async () => () => {}) }));
-
 vi.mock("@/store/files", () => ({
   useFilesStore: {
     getState: () => ({
@@ -517,5 +514,222 @@ describe("research task subscriptions", () => {
     unmount();
     await Promise.resolve();
     expect(unlistenDeltas).toHaveBeenCalledTimes(1);
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
+describe("actions on different tasks", () => {
+  it("keeps a slow cancel busy while another task's action finishes", async () => {
+    const slowCancel = deferred<ResearchTask>();
+    const a = task("a", { status: "running" });
+    const b = task("b", { status: "queued" });
+    vi.mocked(api.cancelResearchTask).mockReturnValue(slowCancel.promise);
+    vi.mocked(api.startResearchTask).mockResolvedValue({ ...b, status: "running", updatedAt: 2 });
+    useResearchTasksStore.setState({ tasks: [a, b], pendingActions: [] });
+
+    const cancelling = useResearchTasksStore.getState().cancelTask("a");
+    await useResearchTasksStore.getState().startTask("b");
+
+    expect(useResearchTasksStore.getState().pendingActions).toEqual(["a"]);
+    expect(useResearchTasksStore.getState().action).toBe("a");
+    expect(useResearchTasksStore.getState().tasks.find((value) => value.id === "b")?.status).toBe("running");
+
+    slowCancel.resolve({ ...a, status: "cancelled", updatedAt: 3 });
+    await cancelling;
+
+    // The first task's answer is no longer dropped when another task acted meanwhile.
+    expect(useResearchTasksStore.getState().tasks.find((value) => value.id === "a")?.status).toBe("cancelled");
+    expect(useResearchTasksStore.getState()).toMatchObject({ action: null, pendingActions: [] });
+  });
+
+  it("lets a newer action on the same task replace the busy state of the older one", async () => {
+    const first = deferred<ResearchTask>();
+    const second = deferred<ResearchTask>();
+    const a = task("a", { status: "failed" });
+    vi.mocked(api.retryResearchTask).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    useResearchTasksStore.setState({ tasks: [a], pendingActions: [] });
+
+    const older = useResearchTasksStore.getState().retryTask("a", "resume");
+    const newer = useResearchTasksStore.getState().retryTask("a", "fresh");
+    first.resolve({ ...a, status: "queued", updatedAt: 2 });
+    await older;
+
+    expect(useResearchTasksStore.getState().pendingActions).toEqual(["a"]);
+    second.resolve({ ...a, status: "running", updatedAt: 3 });
+    await newer;
+    expect(useResearchTasksStore.getState().pendingActions).toEqual([]);
+  });
+
+  it("clears every busy state when another project opens", async () => {
+    const slow = deferred<ResearchTask>();
+    vi.mocked(api.cancelResearchTask).mockReturnValue(slow.promise);
+    vi.mocked(api.listResearchTasks).mockResolvedValue([]);
+    useResearchTasksStore.setState({ tasks: [task("a", { status: "running" })], pendingActions: [] });
+
+    const cancelling = useResearchTasksStore.getState().cancelTask("a");
+    await useResearchTasksStore.getState().bindProject("other");
+
+    expect(useResearchTasksStore.getState()).toMatchObject({ action: null, pendingActions: [] });
+    slow.resolve({ ...task("a"), status: "cancelled" });
+    await cancelling;
+    expect(useResearchTasksStore.getState().tasks).toEqual([]);
+  });
+});
+
+describe("refresh and the open task's dialog", () => {
+  beforeEach(async () => {
+    // Forget the task an earlier test left watched.
+    await useResearchTasksStore.getState().selectTask(null);
+    vi.mocked(api.watchResearchTask).mockClear();
+  });
+
+  it("drops a task that was deleted elsewhere and keeps one that changed while loading", async () => {
+    const kept = task("kept");
+    const gone = task("gone");
+    useResearchTasksStore.setState({ tasks: [kept, gone] });
+    vi.mocked(api.listResearchTasks).mockResolvedValue([kept]);
+
+    await useResearchTasksStore.getState().refresh();
+
+    expect(useResearchTasksStore.getState().tasks.map((value) => value.id)).toEqual(["kept"]);
+  });
+
+  it("keeps a task a live event updated while the list was loading", async () => {
+    const pending = deferred<ResearchTask[]>();
+    const kept = task("kept");
+    const live = { ...task("live", { status: "running" }), updatedAt: 1 };
+    useResearchTasksStore.setState({ tasks: [kept, live] });
+    vi.mocked(api.listResearchTasks).mockReturnValue(pending.promise);
+
+    const loading = useResearchTasksStore.getState().refresh();
+    useResearchTasksStore.getState().receiveTask({ ...live, status: "awaiting_review", updatedAt: 2 });
+    pending.resolve([kept]);
+    await loading;
+
+    expect(useResearchTasksStore.getState().tasks.map((value) => value.id).sort()).toEqual(["kept", "live"]);
+  });
+
+  it("clears the selection and closes the dialog when the selected task vanished", async () => {
+    const kept = task("kept");
+    const gone = task("gone");
+    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [event("gone", 1)], nextSequence: null });
+    useResearchTasksStore.setState({ tasks: [kept, gone] });
+    await useResearchTasksStore.getState().selectTask("gone");
+    useResearchTasksStore.getState().openTaskDetail("gone", "review");
+    expect(useResearchTasksStore.getState().events).toHaveLength(1);
+    vi.mocked(api.listResearchTasks).mockResolvedValue([kept]);
+
+    await useResearchTasksStore.getState().refresh();
+
+    expect(useResearchTasksStore.getState()).toMatchObject({
+      selectedTaskId: null,
+      detailOpen: false,
+      detailTab: null,
+      events: [],
+      eventsNextSequence: null,
+    });
+    expect(api.watchResearchTask).toHaveBeenLastCalledWith(null);
+  });
+
+  it("stops watching when the dialog closes and loads the task again when it opens", async () => {
+    useResearchTasksStore.setState({ tasks: [task("a")] });
+    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [event("a", 1)], nextSequence: null });
+    await useResearchTasksStore.getState().selectTask("a");
+    useResearchTasksStore.getState().setDetailOpen(true);
+    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(1);
+
+    useResearchTasksStore.getState().setDetailOpen(false);
+    expect(api.watchResearchTask).toHaveBeenLastCalledWith(null);
+
+    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({
+      events: [event("a", 1), event("a", 2)],
+      nextSequence: null,
+    });
+    useResearchTasksStore.getState().openTaskDetail("a", "activity");
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(2));
+    expect(api.watchResearchTask).toHaveBeenLastCalledWith("a");
+    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops watching the old project's task when another project opens", async () => {
+    useResearchTasksStore.setState({ tasks: [task("a")] });
+    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+    vi.mocked(api.listResearchTasks).mockResolvedValue([]);
+    await useResearchTasksStore.getState().selectTask("a");
+    expect(api.watchResearchTask).toHaveBeenLastCalledWith("a");
+
+    await useResearchTasksStore.getState().bindProject("other");
+
+    expect(api.watchResearchTask).toHaveBeenLastCalledWith(null);
+  });
+
+  it("loads the pages after the first while the dialog is open, so saved rows meet live ones", async () => {
+    useResearchTasksStore.setState({ tasks: [task("a")] });
+    vi.mocked(api.loadResearchTaskEvents).mockImplementation(async (_id, _generation, after) => {
+      if (after === undefined) return { events: [event("a", 1), event("a", 2)], nextSequence: 2 };
+      if (after === 2) return { events: [event("a", 3), event("a", 4)], nextSequence: 4 };
+      return { events: [event("a", 5)], nextSequence: null };
+    });
+
+    useResearchTasksStore.getState().openTaskDetail("a");
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(5));
+
+    expect(useResearchTasksStore.getState().events.map((row) => row.sequence)).toEqual([1, 2, 3, 4, 5]);
+    expect(useResearchTasksStore.getState().eventsNextSequence).toBeNull();
+    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops catching up after a bounded number of pages and leaves the rest to Load more", async () => {
+    useResearchTasksStore.setState({ tasks: [task("a")] });
+    let next = 0;
+    vi.mocked(api.loadResearchTaskEvents).mockImplementation(async () => {
+      next += 1;
+      return { events: [event("a", next)], nextSequence: next };
+    });
+
+    useResearchTasksStore.getState().openTaskDetail("a");
+    await vi.waitFor(() => expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(10));
+    await Promise.resolve();
+
+    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(10);
+    expect(useResearchTasksStore.getState().eventsNextSequence).toBe(10);
+  });
+
+  it("loads only the first page while the dialog is closed", async () => {
+    useResearchTasksStore.setState({ tasks: [task("a")] });
+    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [event("a", 1)], nextSequence: 1 });
+
+    await useResearchTasksStore.getState().selectTask("a");
+    await Promise.resolve();
+
+    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(1);
+    // Opening the dialog then fills in the rest.
+    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [event("a", 2)], nextSequence: null });
+    useResearchTasksStore.getState().openTaskDetail("a");
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(2));
+    expect(useResearchTasksStore.getState().eventsNextSequence).toBeNull();
+    expect(useResearchTasksStore.getState().events.map((row) => row.sequence)).toEqual([1, 2]);
+  });
+
+  it("stops catching up when the page it asked for fails", async () => {
+    useResearchTasksStore.setState({ tasks: [task("a")] });
+    vi.mocked(api.loadResearchTaskEvents)
+      .mockResolvedValueOnce({ events: [event("a", 1)], nextSequence: 1 })
+      .mockRejectedValue(new Error("page lost"));
+
+    useResearchTasksStore.getState().openTaskDetail("a");
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().error).toBe("page lost"));
+    await Promise.resolve();
+
+    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(2);
   });
 });

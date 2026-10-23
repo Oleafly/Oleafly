@@ -185,6 +185,10 @@ pub struct CompletionResponse {
     pub usage: Usage,
     pub provider_id: String,
     pub model_id: String,
+    /// Why the reply ended, as the provider said it (`stop`, `length`,
+    /// `max_tokens`, `refusal`, ...). `None` when the reply carries none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_reason: Option<String>,
 }
 
 fn as_u32(value: Option<&Value>) -> u32 {
@@ -357,6 +361,29 @@ pub(crate) fn parse_google(body: &Value) -> Result<(String, Usage)> {
     ))
 }
 
+/// Why a blocking reply ended, named the way the streaming path names it, so
+/// `is_output_limit_stop` and `is_refusal_stop` read both.
+pub(crate) fn blocking_stop_reason(wire: &Wire, body: &Value) -> Option<String> {
+    let reason = match wire {
+        Wire::OpenAiChat { .. } => body
+            .pointer("/choices/0/finish_reason")
+            .and_then(Value::as_str),
+        Wire::OpenAiResponses { .. } => match body.get("status").and_then(Value::as_str) {
+            Some("incomplete") => Some(
+                body.pointer("/incomplete_details/reason")
+                    .and_then(Value::as_str)
+                    .unwrap_or("incomplete"),
+            ),
+            status => status,
+        },
+        Wire::Anthropic { .. } => body.get("stop_reason").and_then(Value::as_str),
+        Wire::Google { .. } => body
+            .pointer("/candidates/0/finishReason")
+            .and_then(Value::as_str),
+    };
+    reason.map(str::to_string)
+}
+
 pub(crate) fn request_error(error: reqwest::Error) -> AgentError {
     if error.is_timeout() {
         AgentError::Timeout
@@ -442,14 +469,34 @@ pub(crate) fn error_message(status: u16, raw: &str) -> AgentError {
                 trimmed.to_string()
             }
         });
-    AgentError::Provider { status, message }
+    AgentError::provider(status, message)
 }
 
 fn provider_error_from_read(status: u16, body: Result<Vec<u8>>) -> AgentError {
     match body {
         Ok(raw) => error_message(status, &String::from_utf8_lossy(&raw)),
-        Err(AgentError::Decode(message)) => AgentError::Provider { status, message },
+        Err(AgentError::Decode(message)) => AgentError::provider(status, message),
         Err(error) => error,
+    }
+}
+
+/// The wait a provider asked for: `retry-after-ms` (OpenAI), else
+/// `retry-after` in seconds. An HTTP date in `retry-after` is not read; the
+/// caller's own backoff applies then.
+pub(crate) fn retry_after(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
+    let number = |name: &str| {
+        headers
+            .get(name)?
+            .to_str()
+            .ok()?
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .filter(|value| value.is_finite() && *value >= 0.0)
+    };
+    match number("retry-after-ms") {
+        Some(millis) => Duration::try_from_secs_f64(millis / 1_000.0).ok(),
+        None => number("retry-after").and_then(|seconds| Duration::try_from_secs_f64(seconds).ok()),
     }
 }
 
@@ -458,10 +505,21 @@ pub(crate) async fn read_provider_error(
     status: u16,
     description: &'static str,
 ) -> AgentError {
-    provider_error_from_read(
+    let wait = retry_after(response.headers());
+    let error = provider_error_from_read(
         status,
         read_body_limited(response, MAX_ERROR_BODY_BYTES, description).await,
-    )
+    );
+    match error {
+        AgentError::Provider {
+            status, message, ..
+        } => AgentError::Provider {
+            status,
+            message,
+            retry_after: wait,
+        },
+        other => other,
+    }
 }
 
 /// A blocking call gets a modest output ceiling when it sets none: always on
@@ -536,6 +594,7 @@ pub async fn complete(
         usage,
         provider_id: resolved.provider_id.clone(),
         model_id: resolved.model_id.clone(),
+        stop_reason: blocking_stop_reason(&resolved.wire, &body),
     })
 }
 
@@ -764,6 +823,39 @@ mod tests {
     }
 
     #[test]
+    fn a_retry_after_header_is_read_in_seconds_or_milliseconds() {
+        use reqwest::header::{HeaderMap, HeaderValue};
+        let headers = |pairs: &[(&'static str, &'static str)]| {
+            let mut map = HeaderMap::new();
+            for (name, value) in pairs {
+                map.insert(*name, HeaderValue::from_static(value));
+            }
+            map
+        };
+        assert_eq!(retry_after(&HeaderMap::new()), None);
+        assert_eq!(
+            retry_after(&headers(&[("retry-after", "30")])),
+            Some(Duration::from_secs(30))
+        );
+        assert_eq!(
+            retry_after(&headers(&[("retry-after", " 1.5 ")])),
+            Some(Duration::from_millis(1_500))
+        );
+        // The millisecond header wins where a provider sends both.
+        assert_eq!(
+            retry_after(&headers(&[
+                ("retry-after", "30"),
+                ("retry-after-ms", "250")
+            ])),
+            Some(Duration::from_millis(250))
+        );
+        // A date, a negative number and a word are not waits.
+        for value in ["Wed, 21 Oct 2026 07:28:00 GMT", "-5", "soon", "NaN"] {
+            assert_eq!(retry_after(&headers(&[("retry-after", value)])), None);
+        }
+    }
+
+    #[test]
     fn completion_timeout_honors_shorter_requests_and_caps_longer_ones() {
         let mut request = CompletionRequest::default();
         assert_eq!(completion_timeout(&request), DEFAULT_TIMEOUT);
@@ -916,6 +1008,63 @@ mod tests {
     }
 
     #[test]
+    fn a_blocking_reply_names_why_it_ended_the_way_the_stream_does() {
+        use crate::stream::{is_output_limit_stop, is_refusal_stop};
+        let base = || "https://example.test".to_string();
+        let chat = Wire::OpenAiChat {
+            base_url: base(),
+            reasoning_content: false,
+        };
+        let responses = Wire::OpenAiResponses { base_url: base() };
+        let anthropic = Wire::Anthropic { base_url: base() };
+        let google = Wire::Google { base_url: base() };
+
+        let reason = |wire: &Wire, body: Value| blocking_stop_reason(wire, &body);
+        let cut_chat = reason(
+            &chat,
+            json!({"choices":[{"message":{"content":""},"finish_reason":"length"}]}),
+        );
+        assert!(is_output_limit_stop(cut_chat.as_deref()));
+        assert_eq!(
+            reason(&chat, json!({"choices":[{"message":{"content":"a"}}]})),
+            None
+        );
+        let cut_responses = reason(
+            &responses,
+            json!({"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"},"output":[]}),
+        );
+        assert!(is_output_limit_stop(cut_responses.as_deref()));
+        assert_eq!(
+            reason(&responses, json!({"status":"completed","output":[]})).as_deref(),
+            Some("completed")
+        );
+        let cut_anthropic = reason(&anthropic, json!({"stop_reason":"max_tokens","content":[]}));
+        assert!(is_output_limit_stop(cut_anthropic.as_deref()));
+        let refused = reason(&anthropic, json!({"stop_reason":"refusal","content":[]}));
+        assert!(is_refusal_stop(refused.as_deref()));
+        let cut_google = reason(
+            &google,
+            json!({"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[]}}]}),
+        );
+        assert!(is_output_limit_stop(cut_google.as_deref()));
+    }
+
+    #[test]
+    fn a_completion_response_without_a_stop_reason_stays_wire_compatible() {
+        let response = CompletionResponse {
+            text: "x".into(),
+            usage: Usage::default(),
+            provider_id: "p".into(),
+            model_id: "m".into(),
+            stop_reason: None,
+        };
+        let json = serde_json::to_value(&response).unwrap();
+        assert!(json.get("stop_reason").is_none());
+        let back: CompletionResponse = serde_json::from_value(json).unwrap();
+        assert_eq!(back.stop_reason, None);
+    }
+
+    #[test]
     fn a_shapeless_reply_is_a_decode_error() {
         assert!(parse_openai(&json!({ "choices": [] })).is_err());
         assert!(parse_anthropic(&json!({})).is_err());
@@ -925,13 +1074,7 @@ mod tests {
     #[test]
     fn provider_errors_surface_their_own_sentence() {
         let err = error_message(401, r#"{"error":{"message":"Incorrect API key provided"}}"#);
-        assert_eq!(
-            err,
-            AgentError::Provider {
-                status: 401,
-                message: "Incorrect API key provided".into()
-            }
-        );
+        assert_eq!(err, AgentError::provider(401, "Incorrect API key provided"));
         assert!(!err.retryable());
     }
 

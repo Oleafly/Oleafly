@@ -6,8 +6,13 @@
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, SystemTime};
 
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+/// A staged copy or link older than this belongs to a process that is gone
+/// (a copy takes seconds).
+const STALE_STAGING: Duration = Duration::from_secs(60);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ShimMethod {
@@ -58,18 +63,75 @@ fn staging_name(shim: &Path, label: &str) -> PathBuf {
     ))
 }
 
+/// A file being prepared beside the shim, removed again unless it was
+/// moved into place: a copy that fails halfway (disk full, antivirus) must
+/// not leave a partial binary behind.
+struct Staged {
+    path: PathBuf,
+    in_place: bool,
+}
+
+impl Staged {
+    fn new(path: PathBuf) -> Self {
+        Self {
+            path,
+            in_place: false,
+        }
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// The file is in place; there is nothing to remove.
+    fn keep(&mut self) {
+        self.in_place = true;
+    }
+}
+
+impl Drop for Staged {
+    fn drop(&mut self) {
+        if !self.in_place {
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}
+
+/// Removes staged copies and links that a crashed or killed process left
+/// beside the shim: `.oleafly-copy-*` and `.oleafly-link-*` older than
+/// `older_than` (a copy another process is making right now is younger).
+fn sweep_staging(dir: &Path, older_than: Duration) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if !(name.starts_with(".oleafly-copy-") || name.starts_with(".oleafly-link-")) {
+            continue;
+        }
+        let age = entry
+            .path()
+            .symlink_metadata()
+            .and_then(|metadata| metadata.modified())
+            .ok()
+            .and_then(|modified| SystemTime::now().duration_since(modified).ok());
+        if age.is_some_and(|age| age >= older_than) {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+}
+
 #[cfg(unix)]
 fn link_shim(shim: &Path, bundled: &Path) -> io::Result<()> {
     let target = bundled.canonicalize()?;
     if std::fs::read_link(shim).is_ok_and(|current| current == target) {
         return Ok(());
     }
-    let temporary = staging_name(shim, "link");
-    std::os::unix::fs::symlink(&target, &temporary)?;
-    if let Err(error) = std::fs::rename(&temporary, shim) {
-        let _ = std::fs::remove_file(&temporary);
-        return Err(error);
-    }
+    let mut temporary = Staged::new(staging_name(shim, "link"));
+    std::os::unix::fs::symlink(&target, temporary.path())?;
+    std::fs::rename(temporary.path(), shim)?;
+    temporary.keep();
     Ok(())
 }
 
@@ -94,19 +156,19 @@ fn copy_shim(shim: &Path, bundled: &Path) -> io::Result<()> {
     if same_binary(shim, bundled) {
         return Ok(());
     }
-    let temporary = staging_name(shim, "copy");
-    std::fs::copy(bundled, &temporary)?;
+    // Created before the copy starts, so a copy that fails partway is removed.
+    let mut temporary = Staged::new(staging_name(shim, "copy"));
+    std::fs::copy(bundled, temporary.path())?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         // The command lives in this user's own folder: they run it, and
         // nobody else needs to.
-        std::fs::set_permissions(&temporary, std::fs::Permissions::from_mode(0o700))?;
+        std::fs::set_permissions(temporary.path(), std::fs::Permissions::from_mode(0o700))?;
     }
-    if let Err(error) = std::fs::rename(&temporary, shim) {
+    if let Err(error) = std::fs::rename(temporary.path(), shim) {
         let in_use = shim.exists() && cfg!(windows);
         if !in_use {
-            let _ = std::fs::remove_file(&temporary);
             return Err(error);
         }
         let old = shim.with_file_name(format!(
@@ -116,13 +178,9 @@ fn copy_shim(shim: &Path, bundled: &Path) -> io::Result<()> {
                 .unwrap_or_default(),
             SEQUENCE.fetch_add(1, Ordering::Relaxed)
         ));
-        if let Err(error) =
-            std::fs::rename(shim, &old).and_then(|()| std::fs::rename(&temporary, shim))
-        {
-            let _ = std::fs::remove_file(&temporary);
-            return Err(error);
-        }
+        std::fs::rename(shim, &old).and_then(|()| std::fs::rename(temporary.path(), shim))?;
     }
+    temporary.keep();
     sweep_old_copies(shim);
     Ok(())
 }
@@ -159,6 +217,7 @@ pub(crate) fn ensure_shim_at(
         Err(error) if error.kind() == io::ErrorKind::NotFound => std::fs::create_dir_all(dir)?,
         Err(error) => return Err(error),
     }
+    sweep_staging(dir, STALE_STAGING);
     let shim = dir.join(executable("oleafly"));
     match method {
         // A file system without links still gets a working command.
@@ -186,6 +245,85 @@ mod tests {
         let path = dir.join(executable("oleafly-cli"));
         std::fs::write(&path, bytes).unwrap();
         path
+    }
+
+    fn staged_leftovers(dir: &Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .filter(|name| name.starts_with(".oleafly-"))
+            .collect();
+        names.sort();
+        names
+    }
+
+    #[test]
+    fn a_staged_file_is_removed_unless_it_was_kept() {
+        let dir = tempfile::tempdir().unwrap();
+        let dropped = dir.path().join(".oleafly-copy-1-0");
+        std::fs::write(&dropped, b"partial").unwrap();
+        drop(Staged::new(dropped.clone()));
+        assert!(!dropped.exists());
+        let kept = dir.path().join(".oleafly-copy-1-1");
+        std::fs::write(&kept, b"whole").unwrap();
+        let mut staged = Staged::new(kept.clone());
+        staged.keep();
+        drop(staged);
+        assert!(kept.exists());
+    }
+
+    #[test]
+    fn a_copy_that_fails_leaves_nothing_behind() {
+        let bundle = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
+        let dir = data.path().join("cli").join("bin");
+        // What the copy is made from isn't a file: the copy fails.
+        assert!(ensure_shim_at(&dir, bundle.path(), ShimMethod::Copy).is_err());
+        assert_eq!(staged_leftovers(&dir), Vec::<String>::new());
+    }
+
+    // On Windows a shim in the way is renamed aside, so this fails only
+    // elsewhere.
+    #[cfg(unix)]
+    #[test]
+    fn a_copy_that_cannot_be_moved_into_place_is_removed() {
+        let bundle = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
+        let dir = data.path().join("cli").join("bin");
+        let cli = fake_cli(bundle.path(), b"cli");
+        std::fs::create_dir_all(dir.join(executable("oleafly"))).unwrap();
+        assert!(ensure_shim_at(&dir, &cli, ShimMethod::Copy).is_err());
+        assert_eq!(staged_leftovers(&dir), Vec::<String>::new());
+    }
+
+    #[test]
+    fn old_staged_copies_and_links_are_swept_young_ones_stay() {
+        let dir = tempfile::tempdir().unwrap();
+        let old_copy = dir.path().join(".oleafly-copy-99-0");
+        let old_link = dir.path().join(".oleafly-link-99-1");
+        let young = dir.path().join(".oleafly-copy-100-0");
+        let unrelated = dir.path().join(".oleafly-settings");
+        for path in [&old_copy, &old_link, &young, &unrelated] {
+            std::fs::write(path, b"x").unwrap();
+        }
+        let long_ago = SystemTime::now() - Duration::from_secs(3600);
+        for path in [&old_copy, &old_link] {
+            std::fs::File::options()
+                .write(true)
+                .open(path)
+                .unwrap()
+                .set_modified(long_ago)
+                .unwrap();
+        }
+        sweep_staging(dir.path(), STALE_STAGING);
+        assert_eq!(
+            staged_leftovers(dir.path()),
+            vec![
+                ".oleafly-copy-100-0".to_string(),
+                ".oleafly-settings".to_string()
+            ]
+        );
     }
 
     #[test]

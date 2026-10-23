@@ -40,6 +40,7 @@ import {
   runAdHocConverter,
   ScanConfirmationNeeded,
   ToolsModelError,
+  parsePageRange,
   type ConverterInput,
   type ConverterOutput,
   type ConverterProgress,
@@ -205,11 +206,46 @@ async function saveOutput(output: ConverterOutput): Promise<void> {
   toast.success(i18n.t(($) => $.researchTools.converter.saved, { fileName }));
 }
 
-function converterInput(text: string, file: File | null, scanConfirmed = false): ConverterInput {
+function converterInput(
+  text: string,
+  file: File | null,
+  scanConfirmed = false,
+  pageRange?: readonly [number, number],
+): ConverterInput {
   const { engine } = useFilesStore.getState();
   const typstVersion = engine.id === "typst" ? engine.typst_resolved?.version : undefined;
-  const input: ConverterInput = typstVersion ? { text, file, typstVersion } : { text, file };
+  const base: ConverterInput = typstVersion ? { text, file, typstVersion } : { text, file };
+  const input = pageRange ? { ...base, pageRange } : base;
   return scanConfirmed ? { ...input, scanConfirmed: true } : input;
+}
+
+/** Which pages of a chosen scanned PDF to convert. Empty means every page. */
+function PageRangeField({
+  value,
+  invalid,
+  onChange,
+}: Readonly<{ value: string; invalid: boolean; onChange: (value: string) => void }>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t px-4 py-3">
+      <label htmlFor="converter-page-range" className="text-xs font-medium">
+        {t(($) => $.researchTools.converter.pageRange)}
+      </label>
+      <Input
+        id="converter-page-range"
+        data-testid="converter-page-range"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={t(($) => $.researchTools.converter.pageRangePlaceholder)}
+        className="h-8 w-64 max-w-full text-xs"
+      />
+      {invalid && (
+        <span role="alert" className="text-xs text-destructive">
+          {t(($) => $.researchTools.converter.pageRangeInvalid)}
+        </span>
+      )}
+    </div>
+  );
 }
 
 function ConversionNote({ note, details }: Readonly<{ note: string; details: readonly string[] }>) {
@@ -287,6 +323,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const [mode, setMode] = useState<InputMode>(initialMode);
   const [text, setText] = useState(definition.example ?? "");
   const [file, setFile] = useState<File | null>(null);
+  const [pageRange, setPageRange] = useState("");
   const conversion = useAsyncTask<ConverterOutput, ConverterFailure>((caught) => {
     if (caught instanceof DOMException && caught.name === "AbortError") return null;
     if (caught instanceof ScanConfirmationNeeded) {
@@ -310,7 +347,11 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     () => () => languageForPath(outputSourceName) ?? [],
     [outputSourceName],
   );
-  const canConvert = useFile ? Boolean(file) : Boolean(text.trim());
+  // A scanned PDF is transcribed one page at a time, so its converters let
+  // the user pick the pages: a long scan goes through in parts.
+  const choosesPages = definition.usesModel === "scans" && useFile;
+  const parsedRange = parsePageRange(pageRange);
+  const canConvert = (useFile ? Boolean(file) : Boolean(text.trim())) && (!choosesPages || parsedRange.valid);
   const progressLabel = (() => {
     switch (status.step) {
       case "ready":
@@ -365,6 +406,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     resetConversion();
     setText("");
     setFile(null);
+    setPageRange("");
   };
 
   const convert = async (scanConfirmed = false) => {
@@ -375,7 +417,12 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       try {
         return await runAdHocConverter(
           id,
-          converterInput(useFile ? "" : text, useFile ? file : null, scanConfirmed),
+          converterInput(
+            useFile ? "" : text,
+            useFile ? file : null,
+            scanConfirmed,
+            choosesPages ? parsedRange.range : undefined,
+          ),
           (progress) => setStatus(progress),
           signal,
         );
@@ -545,15 +592,28 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
             </div>
           )}
           {useFile ? (
-            <FileDrop
-              file={file}
-              accept={definition.accept}
-              label={labels.inputLabel}
-              onChange={(next) => {
-                resetConversion();
-                setFile(next);
-              }}
-            />
+            <>
+              <FileDrop
+                file={file}
+                accept={definition.accept}
+                label={labels.inputLabel}
+                onChange={(next) => {
+                  resetConversion();
+                  setFile(next);
+                  setPageRange("");
+                }}
+              />
+              {choosesPages && file && (
+                <PageRangeField
+                  value={pageRange}
+                  invalid={!parsedRange.valid}
+                  onChange={(next) => {
+                    resetConversion();
+                    setPageRange(next);
+                  }}
+                />
+              )}
+            </>
           ) : definition.inputKind === "arxiv" ? (
             <div className="flex min-h-64 flex-1 items-center justify-center p-6">
               <div className="w-full max-w-md space-y-3">

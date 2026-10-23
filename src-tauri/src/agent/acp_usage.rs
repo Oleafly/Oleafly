@@ -239,14 +239,27 @@ fn consume(
     }
 }
 
+fn open_replay_db(root: &Path) -> Result<rusqlite::Connection, String> {
+    let db = crate::library_db::open(root)?;
+    db.execute_batch("CREATE TABLE IF NOT EXISTS native_usage_replay (session_id TEXT PRIMARY KEY, state TEXT NOT NULL)")
+        .map_err(|error| error.to_string())?;
+    Ok(db)
+}
+
 fn replay_session(
     root: &Path,
     runtime: &AcpRuntime,
     session: &SessionRecord,
 ) -> Result<(), String> {
-    let db = crate::library_db::open(root)?;
-    db.execute_batch("CREATE TABLE IF NOT EXISTS native_usage_replay (session_id TEXT PRIMARY KEY, state TEXT NOT NULL)")
-        .map_err(|error| error.to_string())?;
+    replay_session_in(&open_replay_db(root)?, root, runtime, session)
+}
+
+fn replay_session_in(
+    db: &rusqlite::Connection,
+    root: &Path,
+    runtime: &AcpRuntime,
+    session: &SessionRecord,
+) -> Result<(), String> {
     let stored: Option<String> = db
         .query_row(
             "SELECT state FROM native_usage_replay WHERE session_id=?1",
@@ -256,15 +269,21 @@ fn replay_session(
         .optional()
         .map_err(|error| error.to_string())?;
     let mut state: ReplayState = stored
-        .map(|json| serde_json::from_str(&json))
+        .as_deref()
+        .map(serde_json::from_str)
         .transpose()
         .map_err(|error| error.to_string())?
         .unwrap_or_default();
+    // A fork starts with its parent's events. They were counted there: here
+    // they only bring the turn and cost state up to the fork point.
+    let inherited = session.fork_sequence.unwrap_or(0);
     loop {
         let page = runtime.events(&session.id, state.sequence, 500)?;
         for event in page.events {
             if let Some(observation) = consume(&mut state, &event, session) {
-                record_usage_observation(root, &observation)?;
+                if event.sequence > inherited {
+                    record_usage_observation(root, &observation)?;
+                }
             }
             state.sequence = event.sequence;
         }
@@ -303,16 +322,29 @@ fn replay_session(
             observation.observation_sequence = observation
                 .observation_sequence
                 .map(|value| value.saturating_add(1));
-            record_usage_observation(root, &observation)?;
+            if state.sequence > inherited {
+                record_usage_observation(root, &observation)?;
+            }
         }
     }
-    db.execute("INSERT INTO native_usage_replay VALUES (?1,?2) ON CONFLICT(session_id) DO UPDATE SET state=excluded.state",
-        params![session.id, serde_json::to_string(&state).map_err(|error| error.to_string())?])
-        .map_err(|error| error.to_string())?;
+    let state = serde_json::to_string(&state).map_err(|error| error.to_string())?;
+    // Most sessions have not changed since the last pass: no write then.
+    if stored.as_deref() != Some(state.as_str()) {
+        db.execute("INSERT INTO native_usage_replay VALUES (?1,?2) ON CONFLICT(session_id) DO UPDATE SET state=excluded.state",
+            params![session.id, state])
+            .map_err(|error| error.to_string())?;
+    }
     Ok(())
 }
 
+/// Replays every session. One that fails is skipped, so the sessions after
+/// it still get their usage recorded; the first failure is returned at the
+/// end. Replay rows of deleted sessions are dropped once every session was
+/// listed.
 fn replay_all(root: &Path, runtime: &AcpRuntime) -> Result<(), String> {
+    let db = open_replay_db(root)?;
+    let mut seen = std::collections::HashSet::new();
+    let mut failure: Option<String> = None;
     let mut after = None;
     loop {
         let sessions = runtime.sessions_page(after.as_deref(), 200)?;
@@ -320,9 +352,37 @@ fn replay_all(root: &Path, runtime: &AcpRuntime) -> Result<(), String> {
             break;
         }
         for session in &sessions {
-            replay_session(root, runtime, session)?;
+            seen.insert(session.id.clone());
+            if let Err(error) = replay_session_in(&db, root, runtime, session) {
+                failure.get_or_insert(format!("{}: {error}", session.id));
+            }
         }
         after = sessions.last().map(|session| session.id.clone());
+    }
+    forget_deleted_sessions(&db, &seen)?;
+    failure.map_or(Ok(()), Err)
+}
+
+/// Drops the replay rows of sessions that no longer exist.
+fn forget_deleted_sessions(
+    db: &rusqlite::Connection,
+    existing: &std::collections::HashSet<String>,
+) -> Result<(), String> {
+    let mut statement = db
+        .prepare("SELECT session_id FROM native_usage_replay")
+        .map_err(|error| error.to_string())?;
+    let stale = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|error| error.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())?
+        .into_iter()
+        .filter(|id| !existing.contains(id))
+        .collect::<Vec<_>>();
+    drop(statement);
+    for id in stale {
+        db.execute("DELETE FROM native_usage_replay WHERE session_id=?1", [id])
+            .map_err(|error| error.to_string())?;
     }
     Ok(())
 }
@@ -526,6 +586,230 @@ mod tests {
             |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?)),
         ).unwrap();
         assert_eq!(row, (1, 100, None, "completed".into(), "acp:codex".into()));
+    }
+
+    /// A runtime whose store holds `session` and the stored events of it.
+    fn store_session(
+        root: &Path,
+        session: &SessionRecord,
+        events: &[(u64, &str, &str, serde_json::Value)],
+    ) -> Arc<AcpRuntime> {
+        let acp_root = root.join("acp");
+        let runtime = AcpRuntime::new(acp_root.clone()).unwrap();
+        let db = rusqlite::Connection::open(acp_root.join("sessions.sqlite")).unwrap();
+        db.execute(
+            "INSERT INTO sessions (id, project_id, updated_at, record) VALUES (?1,?2,?3,?4)",
+            params![
+                session.id,
+                session.project_id,
+                session.updated_at,
+                serde_json::to_string(session).unwrap()
+            ],
+        )
+        .unwrap();
+        for (sequence, turn, kind, data) in events {
+            let mut event = AcpEvent {
+                session_id: session.id.clone(),
+                ..event(*sequence, kind, data.clone())
+            };
+            event.turn_id = Some((*turn).into());
+            db.execute(
+                "INSERT INTO events VALUES (?1,?2,?3)",
+                params![
+                    event.session_id,
+                    event.sequence,
+                    serde_json::to_string(&event).unwrap()
+                ],
+            )
+            .unwrap();
+        }
+        runtime
+    }
+
+    fn turn_events() -> Vec<(u64, &'static str, &'static str, serde_json::Value)> {
+        vec![
+            (1, "t1", "user_message", serde_json::json!({})),
+            (
+                2,
+                "t1",
+                "turn_complete",
+                serde_json::json!({"stopReason":"end_turn"}),
+            ),
+            (3, "t2", "user_message", serde_json::json!({})),
+            (
+                4,
+                "t2",
+                "turn_complete",
+                serde_json::json!({"stopReason":"end_turn"}),
+            ),
+        ]
+    }
+
+    fn recorded_turns(root: &Path) -> Vec<String> {
+        let library = crate::library_db::open(root).unwrap();
+        let mut statement = library
+            .prepare("SELECT source_turn_id FROM usage_records ORDER BY source_turn_id")
+            .unwrap();
+        statement
+            .query_map([], |row| row.get::<_, String>(0))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+    }
+
+    #[test]
+    fn a_fork_records_only_the_turns_after_the_fork_point() {
+        let root = tempfile::tempdir().unwrap();
+        let mut fork = session();
+        fork.fork_sequence = Some(2);
+        let runtime = store_session(root.path(), &fork, &turn_events());
+        replay_session(root.path(), &runtime, &fork).unwrap();
+        assert_eq!(recorded_turns(root.path()), ["t2"]);
+
+        // A conversation that is not a fork records every turn.
+        let other = tempfile::tempdir().unwrap();
+        let plain = session();
+        let runtime = store_session(other.path(), &plain, &turn_events());
+        replay_session(other.path(), &runtime, &plain).unwrap();
+        assert_eq!(recorded_turns(other.path()), ["t1", "t2"]);
+    }
+
+    #[test]
+    fn a_fork_keeps_the_cost_of_the_turns_it_inherited() {
+        let root = tempfile::tempdir().unwrap();
+        let mut fork = api_session();
+        fork.fork_sequence = Some(2);
+        let events = vec![
+            (
+                1,
+                "t1",
+                "usage",
+                serde_json::json!({"source":"acp_context","costAmount":0.40,"costCurrency":"USD"}),
+            ),
+            (
+                2,
+                "t1",
+                "turn_complete",
+                serde_json::json!({"stopReason":"end_turn"}),
+            ),
+            (
+                3,
+                "t2",
+                "usage",
+                serde_json::json!({"source":"acp_context","costAmount":0.55,"costCurrency":"USD"}),
+            ),
+            (
+                4,
+                "t2",
+                "turn_complete",
+                serde_json::json!({"stopReason":"end_turn"}),
+            ),
+        ];
+        let runtime = store_session(root.path(), &fork, &events);
+        replay_session(root.path(), &runtime, &fork).unwrap();
+        let library = crate::library_db::open(root.path()).unwrap();
+        let cost: f64 = library
+            .query_row(
+                "SELECT SUM(estimated_cost_usd) FROM usage_records",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(
+            (cost - 0.15).abs() < 1e-9,
+            "only the new turn's cost: {cost}"
+        );
+    }
+
+    #[test]
+    fn a_session_that_fails_does_not_stop_the_ones_after_it() {
+        let root = tempfile::tempdir().unwrap();
+        let mut broken = session();
+        broken.id = "a-broken".into();
+        let mut healthy = session();
+        healthy.id = "b-healthy".into();
+        let runtime = store_session(root.path(), &broken, &turn_events());
+        let acp_root = root.path().join("acp");
+        {
+            let db = rusqlite::Connection::open(acp_root.join("sessions.sqlite")).unwrap();
+            // An event this version cannot read, as another version wrote it.
+            db.execute(
+                "UPDATE events SET event='{not json' WHERE session_id='a-broken' AND sequence=2",
+                [],
+            )
+            .unwrap();
+            db.execute(
+                "INSERT INTO sessions (id, project_id, updated_at, record) VALUES (?1,?2,?3,?4)",
+                params![
+                    healthy.id,
+                    healthy.project_id,
+                    healthy.updated_at,
+                    serde_json::to_string(&healthy).unwrap()
+                ],
+            )
+            .unwrap();
+            for (sequence, turn, kind, data) in turn_events() {
+                let mut event = AcpEvent {
+                    session_id: healthy.id.clone(),
+                    ..event(sequence, kind, data)
+                };
+                event.turn_id = Some(turn.into());
+                db.execute(
+                    "INSERT INTO events VALUES (?1,?2,?3)",
+                    params![
+                        event.session_id,
+                        event.sequence,
+                        serde_json::to_string(&event).unwrap()
+                    ],
+                )
+                .unwrap();
+            }
+        }
+        let error = replay_all(root.path(), &runtime).unwrap_err();
+        assert!(error.starts_with("a-broken"), "{error}");
+        let library = crate::library_db::open(root.path()).unwrap();
+        let healthy_rows: i64 = library
+            .query_row(
+                "SELECT COUNT(*) FROM usage_records WHERE session_id='b-healthy'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(healthy_rows, 2);
+    }
+
+    #[test]
+    fn replay_rows_of_deleted_sessions_are_dropped_and_unchanged_ones_are_not_rewritten() {
+        let root = tempfile::tempdir().unwrap();
+        let live = session();
+        let runtime = store_session(root.path(), &live, &turn_events());
+        replay_all(root.path(), &runtime).unwrap();
+        let library = crate::library_db::open(root.path()).unwrap();
+        library
+            .execute(
+                "INSERT INTO native_usage_replay VALUES ('deleted-session', '{\"sequence\":9}')",
+                [],
+            )
+            .unwrap();
+        // A second pass changes nothing for the live session.
+        library
+            .execute(
+                "CREATE TRIGGER no_rewrite BEFORE UPDATE ON native_usage_replay
+                 WHEN OLD.session_id = 'session' BEGIN SELECT RAISE(ABORT, 'rewritten'); END",
+                [],
+            )
+            .unwrap();
+        drop(library);
+        replay_all(root.path(), &runtime).unwrap();
+        let library = crate::library_db::open(root.path()).unwrap();
+        let rows: Vec<String> = library
+            .prepare("SELECT session_id FROM native_usage_replay")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(rows, ["session"]);
     }
 
     fn cost_event(sequence: u64, turn: &str, amount: f64) -> AcpEvent {

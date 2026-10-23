@@ -549,6 +549,233 @@ mod tests {
         }
     }
 
+    /// Serves one canned reply per request, in order, and returns the
+    /// request texts when the run is over.
+    fn serve_canned(
+        replies: Vec<(&'static str, String)>,
+    ) -> (std::net::SocketAddr, std::thread::JoinHandle<Vec<String>>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let mut requests = Vec::new();
+            for (status, body) in replies {
+                let Ok((mut stream, _)) = listener.accept() else {
+                    break;
+                };
+                requests.push(read_request(&mut stream));
+                let content_type = if body.starts_with("data:") {
+                    "text/event-stream"
+                } else {
+                    "application/json"
+                };
+                respond(&mut stream, status, content_type, &body);
+            }
+            requests
+        });
+        (address, server)
+    }
+
+    fn long_history() -> CompletionRequest {
+        let mut request = CompletionRequest::prompt("system", "prompt");
+        request.messages = (0..129).map(|_| Message::user("x".repeat(4000))).collect();
+        request
+    }
+
+    async fn run_over_the_message_cap(
+        address: std::net::SocketAddr,
+        config: RunConfig,
+    ) -> (Result<RunOutcome>, Vec<AgentEvent>) {
+        let mut events = Vec::new();
+        let outcome = tokio::time::timeout(
+            Duration::from_secs(5),
+            run_agent_with_pipeline(
+                &crate::build_client().unwrap(),
+                &local_resolved(address),
+                long_history(),
+                &config,
+                ToolPipeline::default(),
+                None,
+                no_tools(),
+                |event| events.push(event),
+            ),
+        )
+        .await
+        .unwrap();
+        (outcome, events)
+    }
+
+    #[tokio::test]
+    async fn a_retry_waits_for_the_retry_after_the_provider_sent() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut limited, _) = listener.accept().unwrap();
+            read_request(&mut limited);
+            write!(
+                limited,
+                "HTTP/1.1 429 Too Many Requests\r\nContent-Type: application/json\r\nRetry-After-Ms: 400\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}"
+            )
+            .unwrap();
+            limited.flush().unwrap();
+            let (mut answered, _) = listener.accept().unwrap();
+            read_request(&mut answered);
+            respond(
+                &mut answered,
+                "200 OK",
+                "text/event-stream",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n",
+            );
+        });
+        let started = std::time::Instant::now();
+        let outcome = run_agent_with_pipeline(
+            &crate::build_client().unwrap(),
+            &local_resolved(address),
+            CompletionRequest::prompt("system", "hi"),
+            // A backoff of a millisecond: only the provider's ask can make
+            // the second request wait this long.
+            &RunConfig {
+                max_steps: 1,
+                max_retries: 1,
+                retry_base_ms: 1,
+                ..RunConfig::default()
+            },
+            ToolPipeline::default(),
+            None,
+            no_tools(),
+            |_| {},
+        )
+        .await
+        .unwrap();
+        server.join().unwrap();
+        assert_eq!(outcome.text, "ok");
+        assert!(
+            started.elapsed() >= Duration::from_millis(350),
+            "{:?}",
+            started.elapsed()
+        );
+    }
+
+    #[tokio::test]
+    async fn an_unusable_summary_fails_the_compaction_and_keeps_the_history() {
+        for (reply, expected) in [
+            (
+                // A reasoning model that spent its output on thinking.
+                r#"{"choices":[{"message":{"content":""},"finish_reason":"stop"}]}"#,
+                "empty summary",
+            ),
+            (
+                r#"{"choices":[{"message":{"content":"The user wants a pa"},"finish_reason":"length"}]}"#,
+                "cut off",
+            ),
+        ] {
+            let (address, server) = serve_canned(vec![("200 OK", reply.to_string())]);
+            let (outcome, events) = run_over_the_message_cap(
+                address,
+                RunConfig {
+                    max_steps: 1,
+                    max_retries: 0,
+                    ..RunConfig::default()
+                },
+            )
+            .await;
+            let error = outcome.unwrap_err().to_string();
+            assert!(error.contains(expected), "{error}");
+            assert!(error.contains("exceeded its safety limit"), "{error}");
+            assert!(!events
+                .iter()
+                .any(|event| matches!(event, AgentEvent::Compacted { .. })));
+            // The summary call was the only request: nothing was sampled on a
+            // history the empty summary would have replaced.
+            assert_eq!(server.join().unwrap().len(), 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn a_transient_error_on_the_summary_call_is_retried() {
+        let (address, server) = serve_canned(vec![
+            (
+                "503 Service Unavailable",
+                r#"{"error":{"message":"overloaded"}}"#.to_string(),
+            ),
+            (
+                "200 OK",
+                r#"{"choices":[{"message":{"content":"summary"},"finish_reason":"stop"}]}"#
+                    .to_string(),
+            ),
+            (
+                "200 OK",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"answer\"}}]}\n\ndata: [DONE]\n\n"
+                    .to_string(),
+            ),
+        ]);
+        let (outcome, events) = run_over_the_message_cap(
+            address,
+            RunConfig {
+                max_steps: 1,
+                max_retries: 1,
+                retry_base_ms: 1,
+                ..RunConfig::default()
+            },
+        )
+        .await;
+        let outcome = outcome.unwrap();
+        assert_eq!(outcome.text, "answer");
+        assert!(outcome.error.is_none());
+        assert_eq!(server.join().unwrap().len(), 3);
+        assert_eq!(
+            events
+                .iter()
+                .filter(|event| matches!(event, AgentEvent::Retry { .. }))
+                .count(),
+            1
+        );
+        assert_eq!(
+            events
+                .iter()
+                .filter(|event| matches!(event, AgentEvent::Compacted { .. }))
+                .count(),
+            1
+        );
+    }
+
+    #[tokio::test]
+    async fn the_summary_request_is_one_user_message_of_plain_text() {
+        let (address, server) = serve_canned(vec![
+            (
+                "200 OK",
+                r#"{"choices":[{"message":{"content":"summary"},"finish_reason":"stop"}]}"#
+                    .to_string(),
+            ),
+            (
+                "200 OK",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\ndata: [DONE]\n\n"
+                    .to_string(),
+            ),
+        ]);
+        let (outcome, _) = run_over_the_message_cap(
+            address,
+            RunConfig {
+                max_steps: 1,
+                max_retries: 0,
+                ..RunConfig::default()
+            },
+        )
+        .await;
+        outcome.unwrap();
+        let requests = server.join().unwrap();
+        let summary: serde_json::Value =
+            serde_json::from_str(requests[0].split_once("\r\n\r\n").unwrap().1).unwrap();
+        let messages = summary["messages"].as_array().unwrap();
+        // The system prompt, then the whole history as one user message.
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[1]["role"], "user");
+        assert!(messages[1]["content"]
+            .as_str()
+            .unwrap()
+            .starts_with("<transcript>"));
+        assert!(summary.get("tools").is_none());
+    }
+
     #[test]
     fn tool_outputs_are_bounded_before_entering_history() {
         let output = ToolOutput {

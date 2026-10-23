@@ -208,7 +208,20 @@ pub fn terminate(data_root: &Path) -> io::Result<bool> {
     if state.pid == std::process::id() || !recorded_process_is_live(&state) {
         return Ok(false);
     }
-    Ok(kill(state.pid))
+    let ended = kill(state.pid);
+    if ended {
+        remove_state_of(&paths.state, state.pid);
+    }
+    Ok(ended)
+}
+
+/// Removes `state.json` when it still names the process that was just
+/// ended: a killed helper never gets to, and the file would read as a
+/// running helper to anything that only looks for it.
+fn remove_state_of(path: &Path, pid: u32) {
+    if read_state(path).is_some_and(|state| state.pid == pid) {
+        let _ = std::fs::remove_file(path);
+    }
 }
 
 /// How the app starts the helper.
@@ -400,8 +413,32 @@ mod tests {
         assert!(sleeper.try_wait().unwrap().is_none());
         write_state(&paths.state, &state(started)).unwrap();
         assert_eq!(terminate(data.path()).unwrap(), started.is_some());
+        // The file that named the process it ended goes with it.
+        assert_eq!(paths.state.exists(), started.is_none());
         let _ = sleeper.kill();
         let _ = sleeper.wait();
+    }
+
+    #[test]
+    fn a_state_file_naming_another_process_is_left_alone() {
+        let data = tempfile::tempdir().unwrap();
+        let paths = helper_paths(data.path());
+        std::fs::create_dir_all(&paths.dir).unwrap();
+        let state = HelperState {
+            version: STATE_VERSION,
+            pid: 4242,
+            started: None,
+            app_version: "0.4.8".into(),
+            mode: ServeMode::App,
+            phase: Phase::Ready,
+            started_at: 0,
+            heartbeat_at: 0,
+        };
+        write_state(&paths.state, &state).unwrap();
+        remove_state_of(&paths.state, 4343);
+        assert!(paths.state.exists());
+        remove_state_of(&paths.state, 4242);
+        assert!(!paths.state.exists());
     }
 
     #[test]

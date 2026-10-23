@@ -415,6 +415,27 @@ fn provider_tool_calls_are_bounded_during_stream_translation() {
 }
 
 #[test]
+fn a_reply_with_more_calls_than_a_turn_runs_is_still_decoded() {
+    let calls: Vec<Value> = (0..MAX_TOOL_CALLS_PER_TURN + 8)
+        .map(|index| {
+            serde_json::json!({
+                "index": index,
+                "id": format!("call_{index}"),
+                "function": { "name": "read_file", "arguments": "{}" }
+            })
+        })
+        .collect();
+    let raw = format!(
+        "data: {}\n\ndata: [DONE]\n\n",
+        serde_json::json!({ "choices": [{ "delta": { "tool_calls": calls } }] })
+    );
+
+    let (_, translator) = run(WireKind::OpenAi, &raw);
+    assert!(translator.error().is_none());
+    assert_eq!(translator.tool_calls().len(), MAX_TOOL_CALLS_PER_TURN + 8);
+}
+
+#[test]
 fn anthropic_text_and_thinking_split_by_delta_type() {
     let raw = concat!(
             "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":9,\"cache_read_input_tokens\":4,\"cache_creation_input_tokens\":2}}}\n\n",

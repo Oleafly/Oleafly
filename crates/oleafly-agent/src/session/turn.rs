@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::complete::{CompletionRequest, InputTokenSemantics, Usage};
-use crate::error::Result;
+use crate::error::{AgentError, Result};
 use crate::event::AgentEvent;
 use crate::message::{ContentPart, Message, ProviderWire, Role};
 use crate::provider::{Resolved, Wire};
@@ -15,10 +15,20 @@ use crate::session::compact;
 use crate::session::context_window::{is_history_limit, HistoryBudget};
 use crate::stream::{
     is_output_limit_stop, is_refusal_stop, stream_completion, AssistantBlock, StreamOutcome,
-    ToolCall,
+    ToolCall, MAX_TOOL_CALLS_PER_TURN,
 };
 
 const MAX_RETRY_DELAY_MS: u64 = 60_000;
+/// The longest a provider's `Retry-After` is honoured for, so a rate limit
+/// that names a long wait does not hold a run for minutes it did not budget.
+const MAX_RETRY_AFTER: Duration = Duration::from_secs(120);
+/// The same for a long run (a research task), which can afford to wait.
+const MAX_LONG_RUN_RETRY_AFTER: Duration = Duration::from_secs(10 * 60);
+/// Retries a whole run may spend, however many requests it makes. A request
+/// has its own, smaller allowance (`RunConfig::max_retries`); this bounds a
+/// provider that keeps failing once a request has used its own.
+const MAX_RUN_RETRIES: u32 = 32;
+const MAX_LONG_RUN_RETRIES: u32 = 500;
 pub(crate) const MAX_AGENT_STEPS: u32 = 50;
 pub(crate) const MAX_AGENT_RETRIES: u32 = 8;
 pub(crate) const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(5 * 60);
@@ -26,6 +36,7 @@ pub(crate) const MAX_TOOL_EXECUTION_DURATION: Duration = Duration::from_secs(5 *
 pub(crate) const MAX_PAUSE_CONTINUATIONS: u32 = 5;
 
 const OUTPUT_LIMITED_CALL: &str = "This tool call was cut off because the reply reached the output limit, so it did not run. Send it again with shorter arguments, or split the work into smaller steps.";
+const TOO_MANY_CALLS: &str = "This reply sent more tool calls than one turn runs, so this call did not run. Send it again in your next reply.";
 const INVALID_ARGUMENTS: &str = "The tool arguments were not valid JSON, so the tool did not run. Send the call again with valid JSON arguments.";
 
 #[allow(clippy::too_many_arguments)] // Turn plumbing; each arg is load-bearing.
@@ -44,9 +55,12 @@ where
 {
     let mut request = request;
     let mut result = RunOutcome::default();
-    let mut usage = TurnUsage {
-        context_window: resolved.caps.context_window,
-        ..TurnUsage::default()
+    let mut ledger = TurnLedger {
+        usage: TurnUsage {
+            context_window: resolved.caps.context_window,
+            ..TurnUsage::default()
+        },
+        retries: RetryBudget::new(config),
     };
     let mut pauses = 0u32;
     let mut continuing = false;
@@ -56,11 +70,10 @@ where
         &mut request,
         config,
         pipeline,
-        &mut usage,
+        &mut ledger,
         &mut on_event,
     )
     .await?;
-    let mut retries_remaining = config.max_retries.min(MAX_AGENT_RETRIES);
 
     let step_limit = if config.allow_long_runs {
         config.max_steps
@@ -75,7 +88,7 @@ where
             .as_ref()
             .is_some_and(crate::tasks::CancellationToken::is_cancelled)
         {
-            result.usage = usage.total;
+            result.usage = ledger.usage.total;
             result.suspended = true;
             result.history = request.messages;
             return Ok(result);
@@ -87,12 +100,11 @@ where
             &mut request,
             config,
             pipeline,
-            &mut retries_remaining,
-            &mut usage,
+            &mut ledger,
             &mut on_event,
         )
         .await;
-        result.usage = usage.total;
+        result.usage = ledger.usage.total;
         let outcome = match outcome {
             Ok(outcome) => outcome,
             Err(error) => {
@@ -133,7 +145,7 @@ where
                             &mut request,
                             config,
                             pipeline,
-                            &mut usage,
+                            &mut ledger,
                             &mut on_event,
                         )
                         .await?;
@@ -169,29 +181,29 @@ where
             &mut request,
             config,
             pipeline,
-            &mut usage,
+            &mut ledger,
             &mut on_event,
         )
         .await?;
         acknowledge_steers(acknowledgements, &mut on_event);
     }
 
-    result.usage = usage.total;
+    result.usage = ledger.usage.total;
     result.stopped_at_cap = true;
     result.history = request.messages;
     Ok(result)
 }
 
 /// Validate the request against the context window; on a limit error,
-/// compact once and re-validate. Compaction failure surfaces the original
-/// limit error (the hard caps still abort).
+/// compact once and re-validate. When compaction fails, the original limit
+/// error surfaces (the hard caps still abort) with the reason it failed.
 async fn ensure_budget<F>(
     client: &reqwest::Client,
     resolved: &Resolved,
     request: &mut CompletionRequest,
     config: &RunConfig,
     pipeline: &ToolPipeline,
-    usage: &mut TurnUsage,
+    ledger: &mut TurnLedger,
     on_event: &mut F,
 ) -> Result<()>
 where
@@ -201,7 +213,7 @@ where
         Ok(_) => Ok(()),
         Err(error) if config.auto_compact && is_history_limit(&error) => {
             let summary =
-                compact_with_usage(client, resolved, request, &pipeline.token, usage, on_event)
+                compact_with_usage(client, resolved, request, &pipeline.token, ledger, on_event)
                     .await;
             match summary {
                 Ok(summary) => {
@@ -212,10 +224,24 @@ where
                     });
                     HistoryBudget::new(request).map(|_| ())
                 }
-                Err(_) => Err(error),
+                Err(failure) => Err(compaction_failure(error, failure)),
             }
         }
         Err(error) => Err(error),
+    }
+}
+
+/// What a failed compaction reports: an interrupt stays an interrupt, and
+/// anything else is the limit that made compaction necessary, followed by
+/// why the summary could not be made, so the run does not end on a limit
+/// message alone.
+fn compaction_failure(limit: AgentError, failure: AgentError) -> AgentError {
+    match (&limit, failure) {
+        (_, AgentError::Cancelled) => AgentError::Cancelled,
+        (AgentError::Decode(message), failure) => AgentError::Decode(format!(
+            "{message}. Summarizing the conversation to make room failed: {failure}"
+        )),
+        (_, _) => limit,
     }
 }
 
@@ -223,31 +249,20 @@ where
 /// real context window, compact once and retry. This makes compaction fire on
 /// the model's actual limit, not only the local safety caps, and turns a
 /// provider context error into a recovery instead of a terminal failure.
-#[allow(clippy::too_many_arguments)]
 async fn stream_step_with_compaction<F>(
     client: &reqwest::Client,
     resolved: &Resolved,
     request: &mut CompletionRequest,
     config: &RunConfig,
     pipeline: &ToolPipeline,
-    retries_remaining: &mut u32,
-    usage: &mut TurnUsage,
+    ledger: &mut TurnLedger,
     on_event: &mut F,
 ) -> Result<StreamOutcome>
 where
     F: FnMut(AgentEvent) + Send,
 {
-    let first = stream_with_retries(
-        client,
-        resolved,
-        request,
-        config,
-        retries_remaining,
-        &pipeline.token,
-        usage,
-        on_event,
-    )
-    .await;
+    let first =
+        stream_with_retries(client, resolved, request, &pipeline.token, ledger, on_event).await;
     match first {
         Err(error) if config.auto_compact && error.is_context_overflow() => {
             let summary = match compact_with_usage(
@@ -255,12 +270,13 @@ where
                 resolved,
                 request,
                 &pipeline.token,
-                usage,
+                ledger,
                 on_event,
             )
             .await
             {
                 Ok(summary) => summary,
+                Err(AgentError::Cancelled) => return Err(AgentError::Cancelled),
                 Err(_) => return Err(error),
             };
             let dropped = compact::apply_compaction(request, summary);
@@ -268,42 +284,93 @@ where
                 dropped_messages: u32::try_from(dropped).unwrap_or(u32::MAX),
                 reason: "provider_context_overflow".to_string(),
             });
-            stream_with_retries(
-                client,
-                resolved,
-                request,
-                config,
-                retries_remaining,
-                &pipeline.token,
-                usage,
-                on_event,
-            )
-            .await
+            stream_with_retries(client, resolved, request, &pipeline.token, ledger, on_event).await
         }
         other => other,
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+/// The retries a run may spend. Every request starts with the same small
+/// allowance (a transient error does not eat into the next step's), and the
+/// run as a whole has a larger total, so a provider that keeps failing still
+/// ends the run.
+struct RetryBudget {
+    per_request: u32,
+    total: u32,
+    base_ms: u64,
+    long_run: bool,
+}
+
+impl RetryBudget {
+    fn new(config: &RunConfig) -> Self {
+        let asked = config.max_retries;
+        let long_run = config.allow_long_runs;
+        RetryBudget {
+            per_request: if long_run && asked > 0 {
+                MAX_AGENT_RETRIES
+            } else {
+                asked.min(MAX_AGENT_RETRIES)
+            },
+            total: match (asked, long_run) {
+                (0, _) => 0,
+                (_, true) => MAX_LONG_RUN_RETRIES,
+                (_, false) => MAX_RUN_RETRIES,
+            },
+            base_ms: config.retry_base_ms,
+            long_run,
+        }
+    }
+
+    /// The retries one request may use now.
+    fn request_allowance(&self) -> u32 {
+        self.per_request.min(self.total)
+    }
+
+    fn spend(&mut self) {
+        self.total = self.total.saturating_sub(1);
+    }
+
+    /// How long to wait before attempt `attempt + 1` after `error`: the
+    /// backoff, or what the provider asked for when that is longer.
+    fn wait(&self, error: &AgentError, attempt: u32) -> Duration {
+        let backoff = retry_delay(self.base_ms, attempt, retry_jitter_basis_points());
+        retry_wait(error, backoff, self.long_run)
+    }
+}
+
+/// The run's accounting: what it has used and what it may still retry.
+struct TurnLedger {
+    usage: TurnUsage,
+    retries: RetryBudget,
+}
+
+/// Sleep out a retry delay; an interrupt ends the wait.
+async fn wait_to_retry(delay: Duration, token: &crate::tasks::CancellationToken) -> Result<()> {
+    tokio::select! {
+        _ = tokio::time::sleep(delay) => Ok(()),
+        _ = token.cancelled() => Err(AgentError::Cancelled),
+    }
+}
+
 async fn stream_with_retries<F>(
     client: &reqwest::Client,
     resolved: &Resolved,
     request: &CompletionRequest,
-    config: &RunConfig,
-    retries_remaining: &mut u32,
     token: &crate::tasks::CancellationToken,
-    usage: &mut TurnUsage,
+    ledger: &mut TurnLedger,
     on_event: &mut F,
 ) -> Result<StreamOutcome>
 where
     F: FnMut(AgentEvent) + Send,
 {
     let mut attempt = 0;
+    let mut allowance = ledger.retries.request_allowance();
     loop {
         let mut saw_output = false;
         let mut latest_usage = Usage::default();
-        usage.preview(latest_usage, on_event);
+        ledger.usage.preview(latest_usage, on_event);
         let streamed = {
+            let usage = &ledger.usage;
             let forward = &mut |event: AgentEvent| {
                 if matches!(
                     event,
@@ -323,32 +390,31 @@ where
             };
             tokio::select! {
                 response = stream_completion(client, resolved, request, forward) => response,
-                _ = token.cancelled() => Err(crate::error::AgentError::Cancelled),
+                _ = token.cancelled() => Err(AgentError::Cancelled),
             }
         };
 
         match streamed {
             Ok(outcome) => {
-                usage.record_step(outcome.usage, on_event);
+                ledger.usage.record_step(outcome.usage, on_event);
                 return Ok(outcome);
             }
             Err(error) => {
                 if latest_usage.is_observed() {
-                    usage.record_step(latest_usage, on_event);
+                    ledger.usage.record_step(latest_usage, on_event);
                 }
-                if !should_retry(&error, *retries_remaining, saw_output) {
+                // Text already shown to the user cannot be taken back, so a
+                // step that streamed some is not started over.
+                if !should_retry(&error, allowance, saw_output) {
                     return Err(error);
                 }
-                *retries_remaining = retries_remaining.saturating_sub(1);
+                allowance = allowance.saturating_sub(1);
+                ledger.retries.spend();
                 on_event(AgentEvent::Retry {
                     attempt: attempt + 1,
-                    max: config.max_retries.min(MAX_AGENT_RETRIES),
+                    max: ledger.retries.per_request,
                 });
-                let delay = retry_delay(config.retry_base_ms, attempt, retry_jitter_basis_points());
-                tokio::select! {
-                    _ = tokio::time::sleep(delay) => {}
-                    _ = token.cancelled() => return Err(crate::error::AgentError::Cancelled),
-                }
+                wait_to_retry(ledger.retries.wait(&error, attempt), token).await?;
                 attempt = attempt.saturating_add(1);
             }
         }
@@ -380,16 +446,28 @@ where
         run_tool.clone(),
         is_output_limit_stop(outcome.stop_reason.as_deref()),
     );
-    let results = crate::tools::parallel::run_tool_calls(
-        outcome.tool_calls,
+    // A reply with more calls than a turn runs gets the first ones run and
+    // the rest answered, so every call in the history has a result.
+    let mut calls = outcome.tool_calls;
+    let skipped = calls.split_off(calls.len().min(MAX_TOOL_CALLS_PER_TURN));
+    let mut results = crate::tools::parallel::run_tool_calls(
+        calls,
         &pipeline.registry,
         &pipeline.gate,
         &guarded,
         MAX_TOOL_EXECUTION_DURATION,
         pipeline.token.clone(),
-        on_event,
+        &mut *on_event,
     )
     .await?;
+    for call in skipped {
+        let output = ToolOutput::text(serde_json::json!({ "error": TOO_MANY_CALLS }).to_string());
+        on_event(AgentEvent::ToolOutcome {
+            id: call.id.clone(),
+            output: output.output.clone(),
+        });
+        results.push((call, output));
+    }
     let results = results_turn(results);
     if let Some(input) = &mut responses_input {
         input.extend(outcome.response_items);
@@ -556,23 +634,41 @@ impl TurnUsage {
     }
 }
 
+/// Summarize the history, retrying a transient failure of the call the way a
+/// sampling step is retried, and count what the call used. A reply that
+/// cannot stand in for the history (empty, cut off, a refusal) is an error.
 async fn compact_with_usage<F>(
     client: &reqwest::Client,
     resolved: &Resolved,
     request: &CompletionRequest,
     token: &crate::tasks::CancellationToken,
-    usage: &mut TurnUsage,
+    ledger: &mut TurnLedger,
     on_event: &mut F,
 ) -> Result<String>
 where
     F: FnMut(AgentEvent),
 {
-    usage.preview(Usage::default(), on_event);
-    let response = compact::compact_history(client, resolved, request, token).await;
-    if let Ok((_, observed)) = &response {
-        usage.record(*observed, on_event);
-    }
-    response.map(|(summary, _)| summary)
+    ledger.usage.preview(Usage::default(), on_event);
+    let mut attempt = 0;
+    let mut allowance = ledger.retries.request_allowance();
+    let response = loop {
+        match compact::compact_history(client, resolved, request, token).await {
+            Err(error) if should_retry(&error, allowance, false) => {
+                allowance = allowance.saturating_sub(1);
+                ledger.retries.spend();
+                on_event(AgentEvent::Retry {
+                    attempt: attempt + 1,
+                    max: ledger.retries.per_request,
+                });
+                wait_to_retry(ledger.retries.wait(&error, attempt), token).await?;
+                attempt = attempt.saturating_add(1);
+            }
+            other => break other?,
+        }
+    };
+    // The call is billed whether or not its answer is usable.
+    ledger.usage.record(response.usage, on_event);
+    compact::usable_summary(&response)
 }
 
 fn accumulate_usage(total: &mut Usage, addition: Usage, has_previous: bool) {
@@ -593,6 +689,10 @@ fn accumulate_usage(total: &mut Usage, addition: Usage, has_previous: bool) {
     total.cache_write = match (total.cache_write, addition.cache_write) {
         (Some(total), Some(addition)) => Some(total.saturating_add(addition)),
         _ => None,
+    };
+    total.reasoning = match (total.reasoning, addition.reasoning) {
+        (Some(total), Some(addition)) => Some(total.saturating_add(addition)),
+        (total, addition) => total.or(addition),
     };
     if total.input_semantics != addition.input_semantics {
         total.input_semantics = InputTokenSemantics::Unknown;
@@ -617,6 +717,19 @@ fn retry_delay(base_ms: u64, attempt: u32, jitter_basis_points: u16) -> Duration
             .saturating_div(1_000)
             .min(MAX_RETRY_DELAY_MS),
     )
+}
+
+/// The wait before a retry: the backoff, or the provider's `Retry-After`
+/// (capped) when that is longer.
+fn retry_wait(error: &AgentError, backoff: Duration, long_run: bool) -> Duration {
+    let cap = if long_run {
+        MAX_LONG_RUN_RETRY_AFTER
+    } else {
+        MAX_RETRY_AFTER
+    };
+    error
+        .retry_after()
+        .map_or(backoff, |asked| backoff.max(asked.min(cap)))
 }
 
 fn retry_jitter_basis_points() -> u16 {
@@ -929,6 +1042,77 @@ mod tests {
             .any(|event| matches!(event, AgentEvent::ToolOutcome { id, .. } if id == "call_1")));
     }
 
+    #[tokio::test]
+    async fn calls_past_the_turn_limit_are_answered_not_fatal() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let total = MAX_TOOL_CALLS_PER_TURN + 8;
+        let resolved = Resolved {
+            provider_id: "custom".into(),
+            model_id: "test-model".into(),
+            credential: String::new(),
+            auth: None,
+            wire: Wire::OpenAiChat {
+                base_url: "http://127.0.0.1:1/v1".into(),
+                reasoning_content: false,
+            },
+            caps: crate::caps::ModelCaps::default(),
+        };
+        let mut request = CompletionRequest::prompt("system", "read them all");
+        let outcome = StreamOutcome {
+            tool_calls: (0..total)
+                .map(|index| ToolCall {
+                    id: format!("call-{index}"),
+                    name: "read_file".into(),
+                    arguments: "{}".into(),
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        };
+        let ran = Arc::new(AtomicUsize::new(0));
+        let counter = ran.clone();
+        let runner: ToolRunner = Arc::new(move |_| {
+            counter.fetch_add(1, Ordering::SeqCst);
+            Box::pin(async { ToolOutput::text("contents") })
+        });
+        let mut events = Vec::new();
+
+        append_tool_turns(
+            &resolved,
+            &mut request,
+            outcome,
+            &default_pipeline(),
+            &runner,
+            &mut |event| events.push(event),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(ran.load(Ordering::SeqCst), MAX_TOOL_CALLS_PER_TURN);
+        // The assistant message keeps every call and the answer has a result
+        // for each, in order, so the next request is valid.
+        let calls = request.messages[1].content.len();
+        let results = &request.messages[2].content;
+        assert_eq!((calls, results.len()), (total, total));
+        for (index, part) in results.iter().enumerate() {
+            let ContentPart::ToolResult { id, output, .. } = part else {
+                panic!("expected a tool result, got {part:?}");
+            };
+            assert_eq!(id, &format!("call-{index}"));
+            assert_eq!(
+                output.contains("did not run"),
+                index >= MAX_TOOL_CALLS_PER_TURN,
+                "{index}: {output}"
+            );
+        }
+        // Every call the stream showed gets an outcome, so none stays open.
+        let outcomes = events
+            .iter()
+            .filter(|event| matches!(event, AgentEvent::ToolOutcome { .. }))
+            .count();
+        assert_eq!(outcomes, total);
+    }
+
     #[test]
     fn a_tool_only_turn_carries_no_empty_text_part() {
         let outcome = StreamOutcome {
@@ -1148,10 +1332,7 @@ mod tests {
         assert!(!should_retry(&error, 4, true));
         assert!(!should_retry(&error, 0, false));
 
-        let fatal = crate::error::AgentError::Provider {
-            status: 401,
-            message: "bad key".into(),
-        };
+        let fatal = crate::error::AgentError::provider(401, "bad key");
         assert!(!should_retry(&fatal, 4, false));
     }
 
@@ -1440,6 +1621,91 @@ mod tests {
             assert_eq!(outcome.history.len(), 1);
             assert!(script.requests.lock().unwrap().is_empty());
         }
+
+        #[tokio::test]
+        async fn a_transient_error_in_each_step_does_not_use_up_the_next_steps_retries() {
+            let overloaded = || {
+                (
+                    "503 Service Unavailable",
+                    "application/json",
+                    json!({"error":{"message":"overloaded"}}).to_string(),
+                )
+            };
+            let script = serve(vec![
+                overloaded(),
+                ("200 OK", "text/event-stream", tool_call_stream("read_file")),
+                overloaded(),
+                ("200 OK", "text/event-stream", text_stream("finished")),
+            ]);
+            let mut events = Vec::new();
+            let outcome = tokio::time::timeout(
+                Duration::from_secs(10),
+                crate::run::run_agent_with_pipeline(
+                    &crate::build_client().unwrap(),
+                    &resolved(script.address),
+                    CompletionRequest::prompt("system", "read the file"),
+                    // One retry for each request: the old run-wide budget of
+                    // one ended the run at the second step.
+                    &RunConfig {
+                        max_retries: 1,
+                        retry_base_ms: 1,
+                        ..RunConfig::default()
+                    },
+                    ToolPipeline::default(),
+                    None,
+                    quiet_runner(),
+                    |event| events.push(event),
+                ),
+            )
+            .await
+            .expect("the run did not finish")
+            .unwrap();
+            assert_eq!(outcome.error, None);
+            assert_eq!(outcome.text, "finished");
+            assert_eq!(script.requests.lock().unwrap().len(), 4);
+            assert_eq!(
+                events
+                    .iter()
+                    .filter(|event| matches!(event, AgentEvent::Retry { attempt: 1, max: 1 }))
+                    .count(),
+                2
+            );
+        }
+
+        #[tokio::test]
+        async fn a_request_that_uses_its_retries_still_fails_the_run() {
+            let overloaded = || {
+                (
+                    "503 Service Unavailable",
+                    "application/json",
+                    json!({"error":{"message":"overloaded"}}).to_string(),
+                )
+            };
+            let script = serve(vec![overloaded(), overloaded(), overloaded()]);
+            let outcome = tokio::time::timeout(
+                Duration::from_secs(10),
+                crate::run::run_agent_with_pipeline(
+                    &crate::build_client().unwrap(),
+                    &resolved(script.address),
+                    CompletionRequest::prompt("system", "hi"),
+                    &RunConfig {
+                        max_retries: 2,
+                        retry_base_ms: 1,
+                        ..RunConfig::default()
+                    },
+                    ToolPipeline::default(),
+                    None,
+                    quiet_runner(),
+                    |_| {},
+                ),
+            )
+            .await
+            .expect("the run did not finish")
+            .unwrap();
+            assert!(outcome.error.is_some());
+            assert_eq!(outcome.error_kind.as_deref(), Some("provider"));
+            assert_eq!(script.requests.lock().unwrap().len(), 3);
+        }
     }
 
     #[test]
@@ -1473,5 +1739,113 @@ mod tests {
         assert_eq!(usage.output, u32::MAX);
         assert_eq!(usage.cache_read, Some(u32::MAX));
         assert_eq!(usage.cache_write, Some(5));
+    }
+
+    #[test]
+    fn reasoning_tokens_add_up_across_steps() {
+        let step = |reasoning: Option<u32>| Usage {
+            input: 1,
+            output: 10,
+            input_known: Some(true),
+            output_known: Some(true),
+            reasoning,
+            ..Usage::default()
+        };
+        let mut total = step(Some(4));
+        accumulate_usage(&mut total, step(Some(6)), true);
+        assert_eq!(total.reasoning, Some(10));
+        // A step that reports none keeps what the others reported.
+        accumulate_usage(&mut total, step(None), true);
+        assert_eq!(total.reasoning, Some(10));
+        let mut unreported = step(None);
+        accumulate_usage(&mut unreported, step(Some(3)), true);
+        assert_eq!(unreported.reasoning, Some(3));
+        let mut none = step(None);
+        accumulate_usage(&mut none, step(None), true);
+        assert_eq!(none.reasoning, None);
+    }
+
+    #[test]
+    fn a_request_starts_with_its_own_retries_and_the_run_has_a_larger_total() {
+        let config = RunConfig::default();
+        let mut budget = RetryBudget::new(&config);
+        assert_eq!(budget.per_request, 4);
+        assert_eq!(budget.request_allowance(), 4);
+        // Spending on one request does not shrink the next one's allowance.
+        budget.spend();
+        budget.spend();
+        assert_eq!(budget.request_allowance(), 4);
+        // The run's total still bounds a provider that keeps failing.
+        for _ in 0..MAX_RUN_RETRIES {
+            budget.spend();
+        }
+        assert_eq!(budget.request_allowance(), 0);
+
+        let long = RetryBudget::new(&RunConfig {
+            allow_long_runs: true,
+            ..config.clone()
+        });
+        assert_eq!(long.per_request, MAX_AGENT_RETRIES);
+        assert_eq!(long.total, MAX_LONG_RUN_RETRIES);
+
+        let none = RetryBudget::new(&RunConfig {
+            max_retries: 0,
+            allow_long_runs: true,
+            ..config
+        });
+        assert_eq!((none.request_allowance(), none.total), (0, 0));
+    }
+
+    #[test]
+    fn a_retry_after_longer_than_the_backoff_sets_the_wait_up_to_a_cap() {
+        let backoff = Duration::from_millis(800);
+        let asked = |seconds: u64| AgentError::Provider {
+            status: 429,
+            message: String::new(),
+            retry_after: Some(Duration::from_secs(seconds)),
+        };
+        assert_eq!(
+            retry_wait(&asked(30), backoff, false),
+            Duration::from_secs(30)
+        );
+        // A shorter ask never shortens the backoff.
+        let short = AgentError::Provider {
+            status: 429,
+            message: String::new(),
+            retry_after: Some(Duration::from_millis(10)),
+        };
+        assert_eq!(retry_wait(&short, backoff, false), backoff);
+        // No hint: the backoff.
+        assert_eq!(
+            retry_wait(&AgentError::provider(503, ""), backoff, false),
+            backoff
+        );
+        // A very long ask is capped, higher for a long run.
+        assert_eq!(retry_wait(&asked(3_600), backoff, false), MAX_RETRY_AFTER);
+        assert_eq!(
+            retry_wait(&asked(3_600), backoff, true),
+            MAX_LONG_RUN_RETRY_AFTER
+        );
+    }
+
+    #[test]
+    fn a_failed_compaction_keeps_the_limit_and_says_why() {
+        let limit = crate::session::context_window::history_limit_error("agent message count");
+        let reported = compaction_failure(
+            limit.clone(),
+            AgentError::Decode("the model returned an empty summary".into()),
+        );
+        let text = reported.to_string();
+        assert!(
+            text.contains("agent message count exceeded its safety limit"),
+            "{text}"
+        );
+        assert!(text.contains("empty summary"), "{text}");
+        // Still a history limit, so callers that match on it keep working.
+        assert!(is_history_limit(&reported));
+        assert_eq!(
+            compaction_failure(limit, AgentError::Cancelled),
+            AgentError::Cancelled
+        );
     }
 }

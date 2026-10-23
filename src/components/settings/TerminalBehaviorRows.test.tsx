@@ -132,4 +132,81 @@ describe("terminal behavior settings", () => {
     await waitFor(() => expect(invoke).toHaveBeenCalled());
     expect(screen.getByLabelText(labels.shell.ariaLabel)).toHaveTextContent(labels.shell.options.gitBash);
   });
+
+  it("marks a saved shell that is not installed and says new terminals can't start", async () => {
+    useSettingsStore.setState({ terminalShell: "gitBash" });
+    invoke.mockResolvedValue(WINDOWS_SHELLS);
+    render(<TerminalBehaviorRows />);
+    const trigger = screen.getByLabelText(labels.shell.ariaLabel);
+    await waitFor(() => expect(trigger).toHaveTextContent("Git Bash (not found)"));
+    expect(screen.getByTestId("terminal-shell-note")).toHaveTextContent(
+      "Git Bash isn't available on this computer, so new terminals can't start. Pick another shell.",
+    );
+  });
+
+  it("marks nothing while the shell list loads, when it can't load, or for an installed shell", async () => {
+    useSettingsStore.setState({ terminalShell: "gitBash" });
+    invoke.mockReturnValue(new Promise(() => {}));
+    const pending = render(<TerminalBehaviorRows />);
+    expect(screen.getByLabelText(labels.shell.ariaLabel)).toHaveTextContent(/^Git Bash$/);
+    expect(screen.queryByTestId("terminal-shell-note")).toBeNull();
+    pending.unmount();
+
+    invoke.mockReset().mockRejectedValue(new Error("no backend"));
+    const failed = render(<TerminalBehaviorRows />);
+    await waitFor(() => expect(invoke).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(screen.getByLabelText(labels.shell.ariaLabel)).toHaveTextContent(/^Git Bash$/);
+    expect(screen.queryByTestId("terminal-shell-note")).toBeNull();
+    failed.unmount();
+
+    useSettingsStore.setState({ terminalShell: "pwsh" });
+    invoke.mockReset().mockResolvedValue(WINDOWS_SHELLS);
+    render(<TerminalBehaviorRows />);
+    await waitFor(() => expect(invoke).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(screen.getByLabelText(labels.shell.ariaLabel)).toHaveTextContent(/^PowerShell 7$/);
+    expect(screen.queryByTestId("terminal-shell-note")).toBeNull();
+  });
+
+  it("marks a Windows shell carried in by an import and names what starts instead", async () => {
+    platform = "MacIntel";
+    useSettingsStore.setState({ terminalShell: "gitBash" });
+    invoke.mockResolvedValue([
+      { id: "auto", resolved: "auto", name: "zsh", path: "/bin/zsh", available: true },
+      { id: "custom", resolved: "custom", name: null, path: null, available: true },
+    ]);
+    render(<TerminalBehaviorRows />);
+    expect(screen.getByLabelText(labels.shell.ariaLabel)).toHaveTextContent("Git Bash (Windows only)");
+    await waitFor(() =>
+      expect(screen.getByTestId("terminal-shell-note")).toHaveTextContent(
+        "Git Bash only runs on Windows. New terminals here start zsh instead.",
+      ),
+    );
+  });
+
+  it("falls back to the default shell in the note when the login shell has no name", async () => {
+    platform = "Linux x86_64";
+    useSettingsStore.setState({ terminalShell: "wsl" });
+    invoke.mockResolvedValue([
+      { id: "auto", resolved: "auto", name: null, path: null, available: true },
+      { id: "custom", resolved: "custom", name: null, path: null, available: true },
+    ]);
+    render(<TerminalBehaviorRows />);
+    await waitFor(() => expect(invoke).toHaveBeenCalled());
+    expect(screen.getByLabelText(labels.shell.ariaLabel)).toHaveTextContent("WSL (Windows only)");
+    expect(screen.getByTestId("terminal-shell-note")).toHaveTextContent(
+      "WSL only runs on Windows. New terminals here start the default shell instead.",
+    );
+  });
+
+  it("says what each Shift+Enter choice sends", async () => {
+    invoke.mockResolvedValue(WINDOWS_SHELLS);
+    const user = userEvent.setup();
+    render(<TerminalBehaviorRows />);
+    expect(screen.getByText(labels.shiftEnter.description)).toHaveTextContent("A new line lets chat-style tools");
+    await user.click(screen.getByLabelText(labels.shiftEnter.ariaLabel));
+    expect(await screen.findByRole("option", { name: "Insert a new line" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Send Enter" })).toBeInTheDocument();
+  });
 });

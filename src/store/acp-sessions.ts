@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { create } from "zustand";
 import type { DraftAttachment } from "@/components/ai/composer/types";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
+import { registerAttachmentHolder, useComposerDrafts } from "@/store/composer-drafts";
 import {
   acpBufferReply, acpCatalog, acpDisconnect, acpError, acpEvents, acpPrompt, acpSessions, acpSnapshot,
   acpStart, acpSteer, onAcpBufferRequest, onAcpEvent, onAcpResync, onAcpSession,
@@ -30,10 +31,22 @@ export type AcpPromptDraft = Omit<AcpQueuedPrompt, "id" | "sending" | "failed">;
 export const EMPTY_COMPOSER: AcpComposer = { agentId: null };
 /** Transcript events kept in memory for a shown conversation. */
 export const MAX_VISIBLE_EVENTS = 2000;
+/** What a conversation may keep after the reader loaded earlier events: those must not vanish under them. */
+const MAX_PINNED_EVENTS = 3 * MAX_VISIBLE_EVENTS;
+/**
+ * A live transcript may run this far past the cap before its head is cut.
+ * Every cut changes the first event, which makes the projector start over, so
+ * cutting on every batch would rebuild every row about thirty times a second.
+ */
+const TRIM_SLACK = 250;
 
-/** The B composer id of a CLI agent in a project. */
-export function acpComposerId(projectId: string, agentId: string | null): string {
-  return `${projectId}:acp:${agentId ?? "none"}`;
+/**
+ * The composer id of a CLI agent in a project. A conversation has its own
+ * draft; before one starts, the draft belongs to the agent chosen to start it.
+ */
+export function acpComposerId(projectId: string, agentId: string | null, sessionId: string | null = null): string {
+  const base = `${projectId}:acp:${agentId ?? "none"}`;
+  return sessionId ? `${base}:${sessionId}` : base;
 }
 
 interface AcpState {
@@ -49,6 +62,8 @@ interface AcpState {
   watched: Record<string, number>;
   /** Messages on their way to the agent, per conversation. */
   sending: Record<string, number>;
+  /** Earlier events the user loaded into a shown conversation; live events do not trim them away (up to a larger cap). */
+  earlierLoaded: Record<string, number>;
   errors: Record<string, string | null>;
   setError: (projectId: string, message: string | null) => void;
   /** Returns true only when this request supplied the accepted catalog. */
@@ -66,6 +81,10 @@ interface AcpState {
   watch: (sessionId: string) => () => void;
   enqueue: (sessionId: string, draft: AcpPromptDraft) => string;
   removeQueued: (sessionId: string, id: string) => void;
+  /** Sends a message that failed once more. */
+  retryQueued: (projectId: string, sessionId: string, id: string) => Promise<void>;
+  /** Drops everything the store holds for a deleted conversation. */
+  forgetSession: (projectId: string, sessionId: string) => void;
   /** False when the message was not sent (the project error says why). */
   sendPrompt: (projectId: string, sessionId: string, draft: AcpPromptDraft) => Promise<boolean>;
   startWithPrompt: (projectId: string, agentId: string, draft: AcpPromptDraft) => Promise<void>;
@@ -87,7 +106,11 @@ function appendsInOrder(current: readonly AcpEvent[], incoming: readonly AcpEven
   return true;
 }
 
-export function mergeAcpEvents(current: readonly AcpEvent[], incoming: readonly AcpEvent[]): AcpEvent[] {
+export function mergeAcpEvents(
+  current: readonly AcpEvent[],
+  incoming: readonly AcpEvent[],
+  cap: number = MAX_VISIBLE_EVENTS,
+): AcpEvent[] {
   const merged = appendsInOrder(current, incoming)
     ? [...current, ...incoming]
     : (() => {
@@ -95,7 +118,17 @@ export function mergeAcpEvents(current: readonly AcpEvent[], incoming: readonly 
         for (const event of incoming) if (!bySequence.has(event.sequence)) bySequence.set(event.sequence, event);
         return [...bySequence.values()].sort((a, b) => a.sequence - b.sequence);
       })();
-  return merged.length > MAX_VISIBLE_EVENTS ? merged.slice(merged.length - MAX_VISIBLE_EVENTS) : merged;
+  return merged.length > cap + TRIM_SLACK ? merged.slice(merged.length - cap) : merged;
+}
+
+/** The events of a conversation that is no longer kept in memory. */
+function withoutEvents(
+  state: Pick<AcpState, "events" | "earlierLoaded">,
+  sessionId: string,
+): Pick<AcpState, "events" | "earlierLoaded"> {
+  const { [sessionId]: _events, ...events } = state.events;
+  const { [sessionId]: _earlier, ...earlierLoaded } = state.earlierLoaded;
+  return { events, earlierLoaded };
 }
 
 /** Fields an event changes on its session without a snapshot round trip. */
@@ -112,7 +145,15 @@ function applySessionEvent(sessions: Record<string, AcpSession>, event: AcpEvent
   const data = event.data;
   switch (event.kind) {
     case "usage":
-      if (data.session && typeof data.session === "object") next.usage = data.session as AcpSessionUsage;
+      if (data.session && typeof data.session === "object") {
+        // The plan text comes from a slower refresh and is not on every event.
+        const incoming = data.session as AcpSessionUsage;
+        next.usage = {
+          ...incoming,
+          planMarkdown: incoming.planMarkdown ?? session.usage?.planMarkdown,
+          planMarkdownAt: incoming.planMarkdownAt ?? session.usage?.planMarkdownAt,
+        };
+      }
       break;
     case "available_commands":
       if (Array.isArray(data.commands)) next.availableCommands = data.commands as AcpCommand[];
@@ -197,6 +238,28 @@ export function sameSessionView(shown: AcpSession | undefined, next: AcpSession 
   return true;
 }
 
+const QUEUE_FLUSHES_ITSELF: ReadonlySet<string> = new Set(["ready", "connecting", "running", "cancelling"]);
+
+/**
+ * A conversation the user leaves while it cannot take messages (signed out,
+ * disconnected) keeps its queue, which would send whenever it turns ready
+ * again, maybe hours later. Those messages are marked as not sent instead.
+ */
+function leftQueue(
+  state: Pick<AcpState, "queues" | "sessions">,
+  sessionId: string,
+): Partial<Pick<AcpState, "queues">> {
+  const queue = state.queues[sessionId];
+  if (!queue?.some((item) => !item.failed && !item.sending)) return {};
+  if (QUEUE_FLUSHES_ITSELF.has(state.sessions[sessionId]?.status ?? "")) return {};
+  return {
+    queues: {
+      ...state.queues,
+      [sessionId]: queue.map((item) => (item.failed || item.sending ? item : { ...item, failed: true })),
+    },
+  };
+}
+
 /** Conversations whose transcript is kept in memory. */
 function visibleIds(state: Pick<AcpState, "activeByProject" | "watched">): Set<string> {
   const ids = new Set<string>();
@@ -215,7 +278,7 @@ function sentUserMessage(before: number, sessionId: string): boolean {
 
 export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   catalog: [], sessions: {}, activeByProject: {}, events: {}, permissions: {}, elicitations: {}, composers: {},
-  queues: {}, watched: {}, sending: {}, errors: {}, starting: {},
+  queues: {}, watched: {}, sending: {}, earlierLoaded: {}, errors: {}, starting: {},
   setError: (projectId, message) => set((state) => state.errors[projectId] === message ? state : ({ errors: { ...state.errors, [projectId]: message } })),
   refreshCatalog: async (probe = false) => {
     const request = ++catalogRequest;
@@ -243,8 +306,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     const activeByProject = { ...state.activeByProject, [projectId]: id };
     if (!previous || previous === id) return { activeByProject };
     if (visibleIds({ activeByProject, watched: state.watched }).has(previous)) return { activeByProject };
-    const { [previous]: _dropped, ...events } = state.events;
-    return { activeByProject, events };
+    return { activeByProject, ...withoutEvents(state, previous), ...leftQueue(state, previous) };
   }),
   setComposer: (projectId, patch) => set((state) => ({ composers: { ...state.composers, [projectId]: { ...EMPTY_COMPOSER, ...state.composers[projectId], ...patch } } })),
   start: async (projectId, agentId) => {
@@ -287,8 +349,12 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     set((state) => {
       const earlier = page.events.filter((event) => event.sequence < first);
       const all = [...earlier, ...(state.events[id] ?? [])];
-      // Loading earlier history may go past the in-memory cap.
-      return { events: { ...state.events, [id]: all } };
+      // Loading earlier history may go past the in-memory cap, and the next
+      // live batch must not trim away what the reader just asked for.
+      return {
+        events: { ...state.events, [id]: all },
+        earlierLoaded: { ...state.earlierLoaded, [id]: (state.earlierLoaded[id] ?? 0) + earlier.length },
+      };
     });
   },
   resync: async (projectId, id) => {
@@ -318,7 +384,10 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       group.push(event);
       grouped.set(event.sessionId, group);
     }
-    for (const [id, group] of grouped) events[id] = mergeAcpEvents(events[id] ?? [], group);
+    for (const [id, group] of grouped) {
+      const pinned = (state.earlierLoaded[id] ?? 0) > 0;
+      events[id] = mergeAcpEvents(events[id] ?? [], group, pinned ? MAX_PINNED_EVENTS : MAX_VISIBLE_EVENTS);
+    }
     return { events, sessions, permissions, elicitations };
   }),
   watch: (sessionId) => {
@@ -333,8 +402,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
         if (count > 0) watched[sessionId] = count;
         else delete watched[sessionId];
         if (visibleIds({ activeByProject: state.activeByProject, watched }).has(sessionId)) return { watched };
-        const { [sessionId]: _dropped, ...events } = state.events;
-        return { watched, events };
+        return { watched, ...withoutEvents(state, sessionId), ...leftQueue(state, sessionId) };
       });
     };
   },
@@ -348,6 +416,42 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     const next = queue.filter((item) => item.id !== id);
     return next.length === queue.length ? state : { queues: { ...state.queues, [sessionId]: next } };
   }),
+  retryQueued: async (projectId, sessionId, id) => {
+    set((state) => ({
+      queues: {
+        ...state.queues,
+        [sessionId]: (state.queues[sessionId] ?? []).map((item) => (item.id === id ? { ...item, failed: false } : item)),
+      },
+    }));
+    get().setError(projectId, null);
+    await get().dispatchQueued(projectId, sessionId);
+  },
+  forgetSession: (projectId, sessionId) => {
+    const session = get().sessions[sessionId];
+    set((state) => {
+      const drop = <T,>(record: Record<string, T>): Record<string, T> => {
+        const { [sessionId]: _gone, ...rest } = record;
+        return rest;
+      };
+      return {
+        sessions: drop(state.sessions),
+        permissions: drop(state.permissions),
+        elicitations: drop(state.elicitations),
+        queues: drop(state.queues),
+        sending: drop(state.sending),
+        watched: drop(state.watched),
+        ...withoutEvents(state, sessionId),
+        activeByProject: state.activeByProject[projectId] === sessionId
+          ? { ...state.activeByProject, [projectId]: null }
+          : state.activeByProject,
+      };
+    });
+    // The conversation's draft goes with it, so its files can be collected.
+    const composerId = acpComposerId(projectId, session?.agentId ?? null, sessionId);
+    const drafts = useComposerDrafts.getState();
+    drafts.setText(composerId, "");
+    drafts.setAttachments(composerId, []);
+  },
   sendPrompt: async (projectId, sessionId, draft) => {
     const adjust = (delta: number) => set((state) => {
       const count = Math.max(0, (state.sending[sessionId] ?? 0) + delta);
@@ -422,7 +526,14 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     if (item.attachments.length > 0 || item.selections.length > 0 || item.skill) return;
     try {
       const outcome = await acpSteer(projectId, sessionId, item.text);
-      if (outcome === "injected") get().removeQueued(sessionId, id);
+      if (outcome === "injected") {
+        get().removeQueued(sessionId, id);
+      } else {
+        // The turn ended first: the message goes out as a turn of its own as
+        // soon as the conversation is ready.
+        await get().resync(projectId, sessionId).catch(() => {});
+        await get().dispatchQueued(projectId, sessionId);
+      }
     } catch (error) {
       get().setError(projectId, acpError(error));
     }
@@ -444,6 +555,19 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     };
   }),
 }));
+
+registerAttachmentHolder(() => {
+  const refs = new Set<string>();
+  for (const queue of Object.values(useAcpSessionsStore.getState().queues)) {
+    for (const prompt of queue) {
+      for (const attachment of prompt.attachments) {
+        if (attachment.sha256) refs.add(attachment.sha256);
+        for (const page of attachment.pageImages ?? []) refs.add(page.sha256);
+      }
+    }
+  }
+  return refs;
+});
 
 export function useAcpSessionView(sessionId: string | null): AcpSession | undefined {
   const shown = useRef<AcpSession | undefined>(undefined);
@@ -485,50 +609,58 @@ function statusForEvent(
 export async function attachAcpListeners(): Promise<() => void> {
   listenerCount++;
   listenerPromise ??= (async () => {
-    const stopEvent = await onAcpEvent((event) => {
-      queued.push(event);
-      if (flushTimer) return;
-      flushTimer = setTimeout(() => {
-        const batch = queued; queued = []; flushTimer = undefined;
-        const store = useAcpSessionsStore.getState();
-        store.ingest(batch);
-        const refreshed = new Set<string>();
-        for (const event of batch) if (event.kind === "status" || event.kind === "turn_complete") {
-          if (refreshed.has(event.sessionId)) continue;
-          refreshed.add(event.sessionId);
-          void acpSnapshot(event.projectId, event.sessionId).then(useAcpSessionsStore.getState().setSnapshot).catch(() => {});
-        }
-        const ended = new Map<string, string>();
-        for (const event of batch) if (endsTurn(event)) ended.set(event.sessionId, event.projectId);
-        for (const [sessionId, projectId] of ended) {
-          if (store.queues[sessionId]?.length) void useAcpSessionsStore.getState().dispatchQueued(projectId, sessionId);
-        }
-        for (const projectId of new Set(batch.filter(mayHaveChangedFiles).map((event) => event.projectId))) {
-          refreshOpenFilesFromDisk(projectId);
-        }
-      }, 32);
-    });
-    const stopResync = await onAcpResync(() => {
-      const state = useAcpSessionsStore.getState();
-      for (const [project, id] of Object.entries(state.activeByProject)) if (id) void state.resync(project, id).catch(() => {});
-    });
-    const stopSession = await onAcpSession((summary) => useAcpSessionsStore.getState().applySummary(summary));
-    const stopBuffers = await onAcpBufferRequest(({ requestId, projectId, path }) => {
-      void import("@/components/ai/acp/acp-buffers")
-        .then(({ bufferContent }) => acpBufferReply(requestId, bufferContent(projectId, path)))
-        .catch(() => acpBufferReply(requestId, null).catch(() => {}));
-    });
+    // Collected as they register: when a later registration fails, the ones
+    // already made must not stay behind to double every event.
+    const stops: (() => void)[] = [];
+    try {
+      stops.push(await onAcpEvent((event) => {
+        queued.push(event);
+        if (flushTimer) return;
+        flushTimer = setTimeout(() => {
+          const batch = queued; queued = []; flushTimer = undefined;
+          const store = useAcpSessionsStore.getState();
+          store.ingest(batch);
+          const refreshed = new Set<string>();
+          for (const event of batch) if (event.kind === "status" || event.kind === "turn_complete") {
+            if (refreshed.has(event.sessionId)) continue;
+            refreshed.add(event.sessionId);
+            void acpSnapshot(event.projectId, event.sessionId).then(useAcpSessionsStore.getState().setSnapshot).catch(() => {});
+          }
+          const ended = new Map<string, string>();
+          for (const event of batch) if (endsTurn(event)) ended.set(event.sessionId, event.projectId);
+          for (const [sessionId, projectId] of ended) {
+            if (store.queues[sessionId]?.length) void useAcpSessionsStore.getState().dispatchQueued(projectId, sessionId);
+          }
+          for (const projectId of new Set(batch.filter(mayHaveChangedFiles).map((event) => event.projectId))) {
+            refreshOpenFilesFromDisk(projectId);
+          }
+        }, 32);
+      }));
+      stops.push(await onAcpResync(() => {
+        const state = useAcpSessionsStore.getState();
+        for (const [project, id] of Object.entries(state.activeByProject)) if (id) void state.resync(project, id).catch(() => {});
+      }));
+      stops.push(await onAcpSession((summary) => useAcpSessionsStore.getState().applySummary(summary)));
+      stops.push(await onAcpBufferRequest(({ requestId, projectId, path }) => {
+        void import("@/components/ai/acp/acp-buffers")
+          .then(({ bufferContent }) => acpBufferReply(requestId, bufferContent(projectId, path)))
+          .catch(() => acpBufferReply(requestId, null).catch(() => {}));
+      }));
+    } catch (error) {
+      for (const stop of stops) stop();
+      throw error;
+    }
     // A session can turn ready without a turn ending (a reconnect after
     // signing in, a snapshot): a message that waited goes out then, too.
-    const stopReadyWatch = useAcpSessionsStore.subscribe((state, previous) => {
+    stops.push(useAcpSessionsStore.subscribe((state, previous) => {
       for (const [sessionId, session] of Object.entries(state.sessions)) {
         if (session.status !== "ready" || previous.sessions[sessionId]?.status === "ready") continue;
         const head = state.queues[sessionId]?.[0];
         if (!head || head.sending || head.failed) continue;
         queueMicrotask(() => void useAcpSessionsStore.getState().dispatchQueued(session.projectId, sessionId));
       }
-    });
-    stopListeners = () => { stopEvent(); stopResync(); stopSession(); stopBuffers(); stopReadyWatch(); };
+    }));
+    stopListeners = () => { for (const stop of stops) stop(); };
   })().catch((error: unknown) => { listenerPromise = undefined; throw error; });
   try { await listenerPromise; } catch (error) { listenerCount--; throw error; }
   return () => {

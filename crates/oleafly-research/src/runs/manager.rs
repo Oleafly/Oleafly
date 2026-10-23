@@ -1,7 +1,7 @@
 //! Starts runs, watches them until they end, and wakes the tasks that wait.
 //! Every update of a live run row only applies while it is still live, so
 //! the app and the daemon can both watch the same run safely.
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, Weak};
@@ -9,12 +9,13 @@ use std::time::{Duration, Instant};
 
 use oleafly_agent::CancellationToken;
 use serde::Serialize;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Semaphore};
 
 use super::metrics::{summarize_file, summarize_log};
 use super::{
-    next_run_id, validate_cwd_rel, validate_run_env, LogQuery, RunExecutor, RunHandle,
-    RunOutcomeKind, RunSpec, RunStatus, MAX_IN_FLIGHT_RUNS, MAX_RUN_COMMAND_BYTES, WAIT_MAX,
+    next_run_id, validate_cwd_rel, validate_run_env, LogQuery, RunError, RunExecutor, RunHandle,
+    RunOutcomeKind, RunSpec, RunStatus, MAX_IN_FLIGHT_RUNS, MAX_RUN_COMMAND_BYTES, POLL_EVERY,
+    WAIT_MAX,
 };
 use crate::model::{now_ms, CommandPolicy, ResearchTask, RunRecord, RunState, TaskRuntimeEvent};
 use crate::scheduler::{lock, TaskEventSink};
@@ -24,11 +25,12 @@ use oleafly_sandbox::profile::{
     RunInputs,
 };
 
-/// How often live runs are checked.
-#[cfg(not(test))]
-const POLL_EVERY: Duration = Duration::from_secs(2);
-#[cfg(test)]
-const POLL_EVERY: Duration = Duration::from_millis(100);
+/// Checks that may run at once. Each live run is checked in a task of its
+/// own, so a host that answers slowly (or a run that ends and copies its
+/// outputs) holds up only that run.
+const MAX_CONCURRENT_CHECKS: usize = 32;
+/// A run whose checks keep failing is checked up to `2^3` times less often.
+const MAX_BACKOFF_STEPS: u32 = 3;
 /// A run whose start never finished (the app quit while it started) is lost
 /// after this long.
 const START_DEADLINE_MS: i64 = 10 * 60 * 1000;
@@ -87,12 +89,40 @@ pub struct RunCompletion {
     pub run_id: String,
 }
 
+/// A run the monitor checks: when it is due next, and how often in a row its
+/// checks went wrong.
+struct Watch {
+    next_at: Instant,
+    checking: bool,
+    troubles: u32,
+}
+
+/// How a check of one run went.
+enum Checked {
+    /// The run ended (or was lost) and is recorded.
+    Settled,
+    /// Still going.
+    Pending,
+    /// The executor could not reach the run.
+    Trouble,
+}
+
+/// A run's executor state kept for the cleanup of a deleted task.
+pub struct RunCleanup {
+    handle: RunHandle,
+    /// The run had not ended: it is stopped before its folder goes.
+    live: bool,
+}
+
 pub struct RunManager {
     tasks_root: PathBuf,
     runtime: tokio::runtime::Handle,
     executors: Mutex<HashMap<&'static str, Arc<dyn RunExecutor>>>,
     completions: broadcast::Sender<RunCompletion>,
     monitoring: AtomicBool,
+    /// Live runs the monitor checks, by task and run id.
+    watches: Mutex<HashMap<(String, String), Watch>>,
+    checks: Arc<Semaphore>,
     /// Transcript sinks of running generations, by task.
     sinks: Mutex<HashMap<String, (u64, TaskEventSink)>>,
     this: Weak<RunManager>,
@@ -123,6 +153,20 @@ fn append_to_log(run_dir: &std::path::Path, line: &str) {
     }
 }
 
+/// Stops and clears what a start that failed may have left on the other
+/// side: an upload, or a job whose answer was lost. The executors write
+/// `handle.json` before they change anything remotely.
+async fn abandon_start(executor: &Arc<dyn RunExecutor>, run_dir: &std::path::Path) {
+    let Some(handle) = std::fs::read_to_string(run_dir.join("handle.json"))
+        .ok()
+        .and_then(|json| RunHandle::parse(&json).ok())
+    else {
+        return;
+    };
+    let _ = executor.cancel(&handle).await;
+    let _ = executor.discard(&handle).await;
+}
+
 fn bounded_tail(text: String) -> String {
     if text.len() <= MAX_LOG_TAIL_BYTES {
         return text;
@@ -143,6 +187,8 @@ impl RunManager {
             executors: Mutex::new(HashMap::new()),
             completions,
             monitoring: AtomicBool::new(false),
+            watches: Mutex::new(HashMap::new()),
+            checks: Arc::new(Semaphore::new(MAX_CONCURRENT_CHECKS)),
             sinks: Mutex::new(HashMap::new()),
             this: this.clone(),
         })
@@ -278,7 +324,7 @@ impl RunManager {
         });
         let host_env = |name: &str| std::env::var(name).ok();
         let owner = format!("task:{}", task.id);
-        let sandbox = spec_for_run(&RunInputs {
+        let mut sandbox = spec_for_run(&RunInputs {
             profile: brief.profile,
             owner: &owner,
             project: Some(&task.project_id),
@@ -293,6 +339,10 @@ impl RunManager {
             host_env: &host_env,
         })
         .map_err(String::from)?;
+        // Runs start `uv`, `pixi`, `cargo` and the like, which spawn helpers;
+        // Seatbelt refuses that unless the spec allows it. Short task
+        // commands keep the stricter rule.
+        sandbox.child_processes = true;
         let spec = RunSpec {
             task_id: task.id.clone(),
             run_id: run_id.clone(),
@@ -328,45 +378,67 @@ impl RunManager {
         self.emit(&record);
         let manager = self.this.upgrade().ok_or("Runs are shutting down.")?;
         self.runtime.spawn(async move {
-            match executor.start(&spec).await {
-                Ok(handle) => {
-                    let saved = match serde_json::to_string(&handle) {
-                        Ok(json) => {
-                            let _ = tokio::fs::write(spec.run_dir.join("handle.json"), &json).await;
-                            store.set_run_handle(&spec.task_id, &spec.run_id, &json)
-                        }
-                        Err(error) => Err(error.to_string()),
-                    };
-                    if let Err(error) = saved {
-                        append_to_log(
-                            &spec.run_dir,
-                            &format!("[Oleafly lost track of this run: {error}]"),
-                        );
-                    }
-                    manager.ensure_monitor();
-                }
-                Err(error) => {
-                    append_to_log(
-                        &spec.run_dir,
-                        &format!("[Oleafly could not start this run: {error}]"),
-                    );
-                    if store
-                        .finish_run(
-                            &spec.task_id,
-                            &spec.run_id,
-                            RunState::Failed,
-                            None,
-                            now_ms(),
-                            &BTreeMap::new(),
-                        )
-                        .unwrap_or(false)
-                    {
-                        manager.completed(&spec.task_id, &spec.run_id);
-                    }
-                }
-            }
+            let started = executor.start(&spec).await;
+            manager.started(&store, &executor, &spec, started).await;
         });
         Ok(record)
+    }
+
+    /// Records how a run's start went (it ran in the background).
+    async fn started(
+        &self,
+        store: &TaskStore,
+        executor: &Arc<dyn RunExecutor>,
+        spec: &RunSpec,
+        started: Result<RunHandle, RunError>,
+    ) {
+        match started {
+            Ok(handle) => {
+                let saved = match serde_json::to_string(&handle) {
+                    Ok(json) => {
+                        let _ = tokio::fs::write(spec.run_dir.join("handle.json"), &json).await;
+                        store.set_run_handle(&spec.task_id, &spec.run_id, &json)
+                    }
+                    Err(error) => Err(error.to_string()),
+                };
+                if let Err(error) = saved {
+                    append_to_log(
+                        &spec.run_dir,
+                        &format!("[Oleafly lost track of this run: {error}]"),
+                    );
+                }
+                // A cancel that came while the run started had no handle to
+                // stop: stop the run now that it has one.
+                if store
+                    .run(&spec.task_id, &spec.run_id)
+                    .is_ok_and(|run| run.state.is_terminal())
+                {
+                    let _ = executor.cancel(&handle).await;
+                    return;
+                }
+                self.ensure_monitor();
+            }
+            Err(error) => {
+                append_to_log(
+                    &spec.run_dir,
+                    &format!("[Oleafly could not start this run: {error}]"),
+                );
+                if store
+                    .finish_run(
+                        &spec.task_id,
+                        &spec.run_id,
+                        RunState::Failed,
+                        None,
+                        now_ms(),
+                        &BTreeMap::new(),
+                    )
+                    .unwrap_or(false)
+                {
+                    self.completed(&spec.task_id, &spec.run_id);
+                }
+                abandon_start(executor, &spec.run_dir).await;
+            }
+        }
     }
 
     pub fn list(&self, task_id: &str) -> Result<Vec<RunRecord>, String> {
@@ -408,31 +480,63 @@ impl RunManager {
                     .await
                     .map_err(|error| error.to_string()),
                 None => {
-                    super::log::answer(&PathBuf::from(&record.run_dir).join("stdout.log"), &query)
+                    super::log::answer_blocking(
+                        PathBuf::from(&record.run_dir).join("stdout.log"),
+                        query,
+                    )
+                    .await
                 }
             },
             // A run that failed to start still has the log of why.
             Err(_) => {
-                super::log::answer(&PathBuf::from(&record.run_dir).join("stdout.log"), &query)
+                super::log::answer_blocking(
+                    PathBuf::from(&record.run_dir).join("stdout.log"),
+                    query,
+                )
+                .await
             }
         }
     }
 
     pub async fn cancel(&self, task_id: &str, run_id: &str) -> Result<(), String> {
-        let record = self.store()?.run(task_id, run_id)?;
+        let store = self.store()?;
+        let record = store.run(task_id, run_id)?;
         if record.state.is_terminal() {
             return Ok(());
         }
-        let handle = self.handle_of(task_id, run_id)?;
+        let Ok(handle) = self.handle_of(task_id, run_id) else {
+            // The run is still starting (an upload can take minutes), so there
+            // is nothing to stop yet. Record the cancel: the start stops the
+            // run as soon as it has a handle.
+            if store.finish_run(
+                task_id,
+                run_id,
+                RunState::Cancelled,
+                None,
+                now_ms(),
+                &BTreeMap::new(),
+            )? {
+                self.completed(task_id, run_id);
+            }
+            // A start that finished meanwhile has a handle by now.
+            if let Ok(handle) = self.handle_of(task_id, run_id) {
+                self.stop(&handle).await?;
+            }
+            return Ok(());
+        };
+        self.stop(&handle).await?;
+        self.ensure_monitor();
+        Ok(())
+    }
+
+    async fn stop(&self, handle: &RunHandle) -> Result<(), String> {
         let executor = self
             .executor(&handle.executor)
             .ok_or_else(|| format!("The {} compute target isn't available.", handle.executor))?;
         executor
-            .cancel(&handle)
+            .cancel(handle)
             .await
-            .map_err(|error| error.to_string())?;
-        self.ensure_monitor();
-        Ok(())
+            .map_err(|error| error.to_string())
     }
 
     /// Stops every live run of a task (its generation ended).
@@ -442,13 +546,37 @@ impl RunManager {
         }
     }
 
-    /// Removes what a deleted task's runs left behind.
-    pub async fn cleanup_task(&self, task_id: &str) {
-        for run in self.list(task_id).unwrap_or_default() {
-            if let Ok(handle) = self.handle_of(task_id, &run.run_id) {
-                if let Some(executor) = self.executor(&handle.executor) {
-                    let _ = executor.cleanup(&handle).await;
+    /// What a task's runs left on other computers. Read it before the task's
+    /// rows go: deleting the task deletes its run rows with it.
+    pub fn cleanup_handles(&self, task_id: &str) -> Vec<RunCleanup> {
+        let Ok(store) = self.store() else {
+            return Vec::new();
+        };
+        store
+            .runs(task_id)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|run| {
+                let handle =
+                    RunHandle::parse(&store.run_handle(task_id, &run.run_id).ok()??).ok()?;
+                Some(RunCleanup {
+                    handle,
+                    live: !run.state.is_terminal(),
+                })
+            })
+            .collect()
+    }
+
+    /// Removes what a deleted task's runs left behind (`runs` from
+    /// [`Self::cleanup_handles`]): remote folders, per-task Spaces, then the
+    /// local run folders, the cache and the sandbox home.
+    pub async fn cleanup_task(&self, task_id: &str, runs: Vec<RunCleanup>) {
+        for run in runs {
+            if let Some(executor) = self.executor(&run.handle.executor) {
+                if run.live {
+                    let _ = executor.cancel(&run.handle).await;
                 }
+                let _ = executor.cleanup(&run.handle).await;
             }
         }
         let _ = tokio::fs::remove_dir_all(self.tasks_root.join("runs").join(task_id)).await;
@@ -560,8 +688,8 @@ impl RunManager {
         self.runtime.spawn(Self::monitor(self.this.clone()));
     }
 
-    /// Polls the live runs until none are left. It holds the manager only
-    /// while it checks them, so a manager that is dropped (or replaced)
+    /// Watches the live runs until none are left. It holds the manager only
+    /// while it hands them out, so a manager that is dropped (or replaced)
     /// stops watching instead of racing the one that took over its runs.
     async fn monitor(this: Weak<Self>) {
         loop {
@@ -584,17 +712,63 @@ impl RunManager {
                 }
                 continue;
             }
-            for (record, handle) in live {
-                manager.check(record, handle).await;
-            }
+            manager.dispatch(live);
             drop(manager);
             tokio::time::sleep(POLL_EVERY).await;
         }
     }
 
-    async fn check(&self, record: RunRecord, handle: Option<String>) {
+    /// Starts a check, in a task of its own, for every live run that is due
+    /// and not being checked already.
+    fn dispatch(self: &Arc<Self>, live: Vec<(RunRecord, Option<String>)>) {
+        let now = Instant::now();
+        let mut watches = lock(&self.watches);
+        let ids: HashSet<(&str, &str)> = live
+            .iter()
+            .map(|(record, _)| (record.task_id.as_str(), record.run_id.as_str()))
+            .collect();
+        watches.retain(|(task_id, run_id), _| ids.contains(&(task_id.as_str(), run_id.as_str())));
+        for (record, handle) in live {
+            let key = (record.task_id.clone(), record.run_id.clone());
+            let watch = watches.entry(key.clone()).or_insert(Watch {
+                next_at: now,
+                checking: false,
+                troubles: 0,
+            });
+            if watch.checking || watch.next_at > now {
+                continue;
+            }
+            watch.checking = true;
+            let every = self.poll_every(handle.as_deref());
+            let manager = self.clone();
+            self.runtime.spawn(async move {
+                let checked = match manager.checks.clone().acquire_owned().await {
+                    Ok(_slot) => manager.check(record, handle).await,
+                    Err(_) => Checked::Pending,
+                };
+                if let Some(watch) = lock(&manager.watches).get_mut(&key) {
+                    watch.checking = false;
+                    watch.troubles = match checked {
+                        Checked::Trouble => (watch.troubles + 1).min(MAX_BACKOFF_STEPS),
+                        _ => 0,
+                    };
+                    watch.next_at = Instant::now() + every * 2u32.pow(watch.troubles);
+                }
+            });
+        }
+    }
+
+    /// How often the run behind `handle` is checked.
+    fn poll_every(&self, handle: Option<&str>) -> Duration {
+        handle
+            .and_then(|json| RunHandle::parse(json).ok())
+            .and_then(|handle| self.executor(&handle.executor))
+            .map_or(POLL_EVERY, |executor| executor.poll_every())
+    }
+
+    async fn check(&self, record: RunRecord, handle: Option<String>) -> Checked {
         let Ok(store) = self.store() else {
-            return;
+            return Checked::Pending;
         };
         let Some(handle) = handle else {
             if now_ms() - record.started_at > START_DEADLINE_MS
@@ -607,8 +781,9 @@ impl RunManager {
                     "[The run never finished starting.]",
                 );
                 self.completed(&record.task_id, &record.run_id);
+                return Checked::Settled;
             }
-            return;
+            return Checked::Pending;
         };
         let handle = match RunHandle::parse(&handle) {
             Ok(handle) => handle,
@@ -619,17 +794,18 @@ impl RunManager {
                 {
                     append_to_log(&PathBuf::from(&record.run_dir), &format!("[{error}]"));
                     self.completed(&record.task_id, &record.run_id);
+                    return Checked::Settled;
                 }
-                return;
+                return Checked::Pending;
             }
         };
         // Another host may run executors this one does not have.
         let Some(executor) = self.executor(&handle.executor) else {
-            return;
+            return Checked::Pending;
         };
         let status = match executor.poll(&handle).await {
             Ok(status) => status,
-            Err(_) => return,
+            Err(_) => return Checked::Trouble,
         };
         let (state, exit_code, finished_at) = match status {
             RunStatus::Finished {
@@ -647,12 +823,23 @@ impl RunManager {
                 append_to_log(&handle.run_dir, &format!("[{reason}]"));
                 (RunState::Lost, None, now_ms())
             }
-            RunStatus::Starting | RunStatus::Queued { .. } | RunStatus::Running { .. } => return,
+            // A note on a running run says the host could not be reached.
+            RunStatus::Running { note: Some(_), .. } => return Checked::Trouble,
+            RunStatus::Starting | RunStatus::Queued { .. } | RunStatus::Running { .. } => {
+                return Checked::Pending
+            }
         };
-        let mut summary = summarize_file(&handle.run_dir.join("metrics.jsonl"));
-        if summary.points == 0 {
-            summary = summarize_log(&handle.run_dir.join("stdout.log"), LOG_METRICS_WINDOW);
-        }
+        let run_dir = handle.run_dir.clone();
+        let summary = tokio::task::spawn_blocking(move || {
+            let summary = summarize_file(&run_dir.join("metrics.jsonl"));
+            if summary.points == 0 {
+                summarize_log(&run_dir.join("stdout.log"), LOG_METRICS_WINDOW)
+            } else {
+                summary
+            }
+        })
+        .await
+        .unwrap_or_default();
         if store
             .finish_run(
                 &record.task_id,
@@ -666,5 +853,6 @@ impl RunManager {
         {
             self.completed(&record.task_id, &record.run_id);
         }
+        Checked::Settled
     }
 }

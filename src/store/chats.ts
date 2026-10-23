@@ -210,7 +210,10 @@ const legacyKey = (pid: string) => `oleafly.chats.${pid}`;
 
 // The browser build keeps chats in localStorage, capped to fit its quota.
 const MAX_BROWSER_CHATS_PER_PROJECT = 50;
-const MAX_CACHED_PROJECTS = 16;
+// Chat bodies are big, so only the project in use and a few recent ones stay
+// cached; a project that is not cached is read from disk again.
+const MAX_CACHED_PROJECTS = 4;
+const MAX_REMEMBERED_MIGRATIONS = 16;
 const CHAT_TOO_LARGE = "[chat_too_large]";
 const MAX_CHAT_JSON_LENGTH = 8 * 1024 * 1024;
 
@@ -219,7 +222,7 @@ const migratedLegacy = new Set<string>();
 function rememberMigration(projectId: string) {
   migratedLegacy.delete(projectId);
   migratedLegacy.add(projectId);
-  if (migratedLegacy.size > MAX_CACHED_PROJECTS) {
+  if (migratedLegacy.size > MAX_REMEMBERED_MIGRATIONS) {
     const oldest = migratedLegacy.values().next().value;
     if (oldest) migratedLegacy.delete(oldest);
   }
@@ -339,7 +342,9 @@ function queueBrowserPersist(projectId: string, chats: StoredChat[]): Promise<vo
 
 // ---- Desktop persistence (one file per chat) ----
 
-const pendingSaves = new Map<string, { index: boolean }>();
+// The newest chat state of a waiting save: a project evicted from the cache
+// before its save runs is still written.
+const pendingSaves = new Map<string, { index: boolean; chat: StoredChat | undefined }>();
 const runningSaves = new Map<string, Promise<void>>();
 
 function saveKey(projectId: string, chatId: string): string {
@@ -364,7 +369,7 @@ async function drainSaves(projectId: string, chatId: string, key: string): Promi
     if (!job) return;
     pendingSaves.delete(key);
     // The chat is read when the save runs, so the newest state lands last.
-    const chat = memoryByProject.get(projectId)?.find((candidate) => candidate.id === chatId);
+    const chat = memoryByProject.get(projectId)?.find((candidate) => candidate.id === chatId) ?? job.chat;
     if (!chat || chat.stub) continue;
     const json = JSON.stringify(chatForDisk(chat));
     if (json.length > MAX_CHAT_JSON_LENGTH) {
@@ -387,10 +392,10 @@ async function drainSaves(projectId: string, chatId: string, key: string): Promi
 }
 
 /** Saves one chat; rapid saves of the same chat coalesce. */
-function queueChatSave(projectId: string, chatId: string, index = true): void {
+function queueChatSave(projectId: string, chatId: string, index = true, chat?: StoredChat): void {
   const key = saveKey(projectId, chatId);
   const pending = pendingSaves.get(key);
-  pendingSaves.set(key, { index: Boolean(pending?.index) || index });
+  pendingSaves.set(key, { index: Boolean(pending?.index) || index, chat });
   if (runningSaves.has(key)) return;
   const run = drainSaves(projectId, chatId, key).finally(() => {
     runningSaves.delete(key);
@@ -399,11 +404,15 @@ function queueChatSave(projectId: string, chatId: string, index = true): void {
 }
 
 function persistChange(projectId: string, chatId: string, chats: StoredChat[], index = true) {
-  if (isTauri()) queueChatSave(projectId, chatId, index);
+  if (isTauri()) queueChatSave(projectId, chatId, index, chats.find((candidate) => candidate.id === chatId));
   else void queueBrowserPersist(projectId, chats);
 }
 
 async function collectAttachments(projectId: string, remaining: readonly StoredChat[]) {
+  // A list that never met the chat files (a chat created before the first
+  // load finished) holds only some of the chats; the files of the others
+  // would look unused.
+  if (!loadedFromDisk.has(projectId)) return;
   // A stub's attachments are unknown until its body loads.
   if (remaining.some((chat) => chat.stub)) return;
   const keep = new Set([
@@ -418,8 +427,9 @@ async function collectAttachments(projectId: string, remaining: readonly StoredC
   }
 }
 
-async function readAll(pid: string): Promise<{ chats: StoredChat[]; skipped: number }> {
-  if (!isTauri()) return { chats: readLegacyLocal(pid), skipped: 0 };
+/** `fromDisk` is false when the chat files could not be read and the list is whatever else was found. */
+async function readAll(pid: string): Promise<{ chats: StoredChat[]; skipped: number; fromDisk: boolean }> {
+  if (!isTauri()) return { chats: readLegacyLocal(pid), skipped: 0, fromDisk: false };
   try {
     const loaded = await chatsLoad(pid);
     let chats = parseChats(loaded.json);
@@ -437,10 +447,10 @@ async function readAll(pid: string): Promise<{ chats: StoredChat[]; skipped: num
       }
       rememberMigration(pid);
     }
-    return { chats, skipped: loaded.skipped };
+    return { chats, skipped: loaded.skipped, fromDisk: true };
   } catch (error) {
     void logError("load chats", error);
-    return { chats: readLegacyLocal(pid), skipped: 0 };
+    return { chats: readLegacyLocal(pid), skipped: 0, fromDisk: false };
   }
 }
 
@@ -457,13 +467,30 @@ function titleFrom(text: string) {
 // for the active project. Keyed by project id.
 const memoryByProject = new Map<string, StoredChat[]>();
 
+// Projects whose cached list is known to hold every chat file: it came from a
+// successful read of them, not only from chats created since.
+const loadedFromDisk = new Set<string>();
+// Chats deleted whose file may still be there, so a load does not bring them back.
+const removedChats = new Set<string>();
+
 function cacheProjectChats(projectId: string, chats: StoredChat[]) {
   memoryByProject.delete(projectId);
   memoryByProject.set(projectId, chats);
-  if (memoryByProject.size > MAX_CACHED_PROJECTS) {
-    const oldest = memoryByProject.keys().next().value;
-    if (oldest) memoryByProject.delete(oldest);
+  const shown = useChatsStore.getState().projectId;
+  for (const candidate of memoryByProject.keys()) {
+    if (memoryByProject.size <= MAX_CACHED_PROJECTS) break;
+    if (candidate === projectId || candidate === shown) continue;
+    memoryByProject.delete(candidate);
+    loadedFromDisk.delete(candidate);
   }
+}
+
+/** The chats read from disk plus the ones held in memory; memory wins for a chat in both. */
+function mergeLoaded(projectId: string, cached: readonly StoredChat[], disk: readonly StoredChat[]): StoredChat[] {
+  const byId = new Map<string, StoredChat>();
+  for (const chat of disk) if (!removedChats.has(saveKey(projectId, chat.id))) byId.set(chat.id, chat);
+  for (const chat of cached) byId.set(chat.id, chat);
+  return [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 function nonNegative(value: number | undefined): number {
@@ -515,11 +542,12 @@ export const useChatsStore = create<ChatsState>((set, get) => {
     chats: StoredChat[],
     opts?: { index?: boolean; sort?: boolean },
   ) => {
-    cacheProjectChats(projectId, chats);
-    persistChange(projectId, chatId, chats, opts?.index ?? true);
-    if (get().projectId === projectId) {
-      set({ chats: opts?.sort ? [...chats].sort((a, b) => b.updatedAt - a.updatedAt) : chats });
-    }
+    // Sorted once, and the same array goes to the cache and the store, so a
+    // later update that does not sort cannot put the old order back.
+    const next = opts?.sort ? [...chats].sort((a, b) => b.updatedAt - a.updatedAt) : chats;
+    cacheProjectChats(projectId, next);
+    persistChange(projectId, chatId, next, opts?.index ?? true);
+    if (get().projectId === projectId) set({ chats: next });
   };
 
   return {
@@ -535,16 +563,24 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       // switch it still holds A when B's load resolves.
       const my = ++loadSeq;
       const loaded = await readAll(projectId);
-      const chats = memoryByProject.get(projectId) ?? loaded.chats;
+      // A chat created while the files were read is in memory but not in
+      // them, and what a chat gained since is newer than the file: merge.
+      const cached = memoryByProject.get(projectId);
+      const chats = cached ? mergeLoaded(projectId, cached, loaded.chats) : loaded.chats;
       cacheProjectChats(projectId, chats);
+      if (loaded.fromDisk) loadedFromDisk.add(projectId);
       if (my !== loadSeq) return; // a newer load superseded this one
-      set((state) => ({
-        projectId,
-        chats,
-        activeId: null,
-        skippedOnLoad: loaded.skipped,
-        live: state.projectId === projectId ? state.live : {},
-      }));
+      set((state) => {
+        const shown = state.projectId === projectId;
+        return {
+          projectId,
+          chats,
+          // The chat a run is using keeps being the active one.
+          activeId: shown && chats.some((chat) => chat.id === state.activeId) ? state.activeId : null,
+          skippedOnLoad: loaded.skipped,
+          live: shown ? state.live : {},
+        };
+      });
     },
 
     create: (projectId, headOid, settings) => {
@@ -614,12 +650,17 @@ export const useChatsStore = create<ChatsState>((set, get) => {
     },
 
     addUsageForProject: async (projectId, chatId, delta) => {
-      const cached = memoryByProject.get(projectId);
-      const loaded = cached ?? (await readAll(projectId)).chats;
-      const chats = memoryByProject.get(projectId) ?? loaded;
+      let chats = memoryByProject.get(projectId);
+      let read: Awaited<ReturnType<typeof readAll>> | null = null;
+      if (!chats || !loadedFromDisk.has(projectId)) {
+        read = await readAll(projectId);
+        const memory = memoryByProject.get(projectId);
+        chats = memory ? mergeLoaded(projectId, memory, read.chats) : read.chats;
+      }
       const target = chats.find((chat) => chat.id === chatId);
       if (!target || target.stub) return;
       update(projectId, chatId, applyUsage(chats, chatId, delta));
+      if (read?.fromDisk) loadedFromDisk.add(projectId);
     },
 
     setChatSettings: (chatId, patch) => {
@@ -685,12 +726,19 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       if (isTauri()) {
         const key = saveKey(projectId, chatId);
         pendingSaves.delete(key);
+        removedChats.add(key);
         // Delete after a save still in flight, so it cannot bring the file back.
         const inFlight = runningSaves.get(key) ?? Promise.resolve();
         void inFlight
           .then(() => chatDelete(projectId, chatId))
-          .then(() => collectAttachments(projectId, memoryByProject.get(projectId) ?? updated))
-          .catch((error: unknown) => void logError("delete chat", error));
+          .then(() => {
+            removedChats.delete(key);
+            return collectAttachments(projectId, memoryByProject.get(projectId) ?? updated);
+          })
+          .catch((error: unknown) => {
+            removedChats.delete(key);
+            void logError("delete chat", error);
+          });
       } else {
         void queueBrowserPersist(projectId, updated);
       }

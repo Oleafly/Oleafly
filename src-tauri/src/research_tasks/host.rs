@@ -3,7 +3,7 @@
 //! spend, keep-awake and the workspace build tool.
 use std::any::Any;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
@@ -357,9 +357,35 @@ impl WorkspaceTools for AppWorkspaceTools {
         Box::pin(compile_with_cli(root))
     }
 
-    fn project_map(&self, _root: PathBuf) -> TaskRuntimeFuture<Value> {
-        Box::pin(async { Err("Project maps in tasks need a newer build.".to_string()) })
+    fn project_map(&self, root: PathBuf) -> TaskRuntimeFuture<Value> {
+        Box::pin(async move {
+            tokio::task::spawn_blocking(move || project_map_of(&root))
+                .await
+                .map_err(|_| "The project map could not be read.".to_string())?
+        })
     }
+}
+
+/// The task workspace's outline, labels, references and citations, with any
+/// that do not resolve (what the command-line tool's helper answers too).
+pub(crate) fn project_map_of(root: &Path) -> Result<Value, String> {
+    let workspace = match oleafly_core::Workspace::open(root) {
+        Ok(workspace) => workspace,
+        // A copy of a folder without a project.json: the main file is guessed.
+        Err(error) if error.kind() == oleafly_core::ErrorKind::NotInitialized => {
+            oleafly_core::Workspace::detected(root, None)
+                .map_err(|error| error.message().to_string())?
+        }
+        Err(error) => return Err(error.message().to_string()),
+    };
+    let main = workspace.manifest().main_doc.clone();
+    let scan = oleafly_core::context::scan_project(
+        workspace.root(),
+        &main,
+        &oleafly_core::context::ContextLimits::default(),
+    )
+    .map_err(|error| error.message().to_string())?;
+    serde_json::to_value(scan.map).map_err(|error| error.to_string())
 }
 
 pub(crate) fn unavailable_skill(
@@ -427,6 +453,22 @@ mod tests {
         );
         assert_eq!(summary.log_tail, "! Undefined control sequence.");
         assert_eq!(summary.skipped, None);
+    }
+
+    #[test]
+    fn the_project_map_reads_the_task_workspace() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(
+            root.path().join("main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\section{Intro}\\label{sec:intro}\nSee \\ref{sec:missing}.\n\\end{document}\n",
+        )
+        .unwrap();
+        let map = project_map_of(root.path()).unwrap();
+        let text = map.to_string();
+        assert!(text.contains("sec:intro"), "{text}");
+        // What does not resolve is reported, so the evidence check can use it.
+        assert!(text.contains("sec:missing"), "{text}");
+        assert!(project_map_of(&root.path().join("missing")).is_err());
     }
 
     #[test]

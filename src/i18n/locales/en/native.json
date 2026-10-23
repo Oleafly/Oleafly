@@ -100,6 +100,10 @@
       "action": "{{agent}} wants to {{action}}.",
       "steps": "{{agent}} wants to run these steps in a desktop app:",
       "moreSteps": "Steps not shown: {{count}}",
+      "moreItems": "{{count}} more items not shown",
+      "cut": "(+{{count}} characters not shown)",
+      "signedIn": "This acts in your own signed-in browser.",
+      "signedInOn": "This acts in your own signed-in browser, on {{origin}}.",
       "text": "Text: \"{{text}}\"",
       "address": "Address: {{url}}",
       "allowOnce": "Allow once",
@@ -130,7 +134,8 @@
       "message": "Agents will be able to use these, and they'll still ask before each action:",
       "confirm": "Allow",
       "enabled": "Desktop apps",
-      "app": "App: {{name}}",
+      "app": "App: {{name}} ({{identity}})",
+      "more": "And {{count}} more",
       "site": "Website: {{origin}}",
       "signedIn": "Your signed-in browser on {{origin}}",
       "scripted": "Cua scripts"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly keeps working",
       "body": "Research tasks you marked to keep running continue in the background. Open Oleafly to see their progress."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Permission checks are off ({{mode}})",
+      "description": "The agent can edit files and run commands without asking. Oleafly could not switch it to another mode. Change the mode in the agent's own settings."
     }
   }
 }

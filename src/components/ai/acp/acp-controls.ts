@@ -53,3 +53,32 @@ export function currentName(option: AcpConfigOption): string | null {
   if (option.kind.type === "boolean") return option.kind.currentValue ? option.name : null;
   return null;
 }
+
+/**
+ * Which option takes focus after a key in a listbox: the arrows, Home and End,
+ * or typing the start of a name. `labels` has null for an option that cannot
+ * be chosen. Null when the key does nothing here.
+ */
+export function listboxFocusTarget(labels: readonly (string | null)[], active: number, key: string): number | null {
+  const enabled = labels.flatMap((label, index) => (label === null ? [] : [index]));
+  if (enabled.length === 0) return null;
+  const position = enabled.indexOf(active);
+  switch (key) {
+    case "ArrowDown":
+      return enabled[position < 0 ? 0 : Math.min(enabled.length - 1, position + 1)];
+    case "ArrowUp":
+      return enabled[position < 0 ? enabled.length - 1 : Math.max(0, position - 1)];
+    case "Home":
+      return enabled[0];
+    case "End":
+      return enabled[enabled.length - 1];
+  }
+  if (key.length !== 1 || key === " ") return null;
+  const typed = key.toLowerCase();
+  const start = position < 0 ? 0 : position + 1;
+  for (let step = 0; step < enabled.length; step++) {
+    const index = enabled[(start + step) % enabled.length];
+    if (labels[index]?.toLowerCase().startsWith(typed)) return index;
+  }
+  return null;
+}

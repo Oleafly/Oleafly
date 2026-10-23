@@ -17,7 +17,17 @@ vi.mock("@/lib/desktop-apps", () => ({
   cuaDriverInstalledApps: vi.fn(async () => []),
 }));
 
-import { BriefFields, briefErrors, durationLabel, localDateTime, TIME_BUDGET_OPTIONS } from "./BriefFields";
+import {
+  BriefFields,
+  briefErrors,
+  durationLabel,
+  localDateTime,
+  parseLocalDateTime,
+  startError,
+  TIME_BUDGET_OPTIONS,
+  upcomingStart,
+} from "./BriefFields";
+import { useSettingsStore } from "@/store/settings";
 
 const copy = enResearchTools.brief;
 const desktopApps = enSettings.integrations.desktopApps.task;
@@ -31,6 +41,7 @@ interface HarnessProps {
   disabled?: boolean;
   computeTargets?: Props["computeTargets"];
   renderCompute?: Props["renderCompute"];
+  computeProblem?: boolean;
   onBrief?: (brief: ResearchBrief) => void;
   onRunAfter?: (runAfter: number | null) => void;
   onKeepRunning?: (keep: boolean) => void;
@@ -44,6 +55,7 @@ function Harness({
   disabled,
   computeTargets,
   renderCompute,
+  computeProblem,
   onBrief = () => {},
   onRunAfter = () => {},
   onKeepRunning = () => {},
@@ -72,6 +84,7 @@ function Harness({
       disabled={disabled}
       computeTargets={computeTargets}
       renderCompute={renderCompute}
+      computeProblem={computeProblem}
     />
   );
 }
@@ -434,6 +447,85 @@ describe("BriefFields", () => {
     expect(apps).not.toBeChecked();
   });
 
+  it("says a folded option needs fixing, and opens on the problem when the draft already has one", () => {
+    const bad = briefFixture({ budget: { wallClockMinutes: 120, usdCap: Number.NaN, maxRuns: null, runTimeoutMinutes: 60 } });
+    const view = render(<Harness initial={bad} />);
+    // Opens on the bad value, where it can be fixed.
+    expect(screen.getByTestId("research-brief-more")).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(copy.invalidCost)).toBeInTheDocument();
+    expect(screen.queryByTestId("research-brief-problem")).toBeNull();
+
+    openBrief();
+    expect(screen.getByTestId("research-brief-problem")).toHaveTextContent(copy.problemHidden);
+    view.unmount();
+
+    render(<Harness />);
+    expect(screen.queryByTestId("research-brief-problem")).toBeNull();
+    openBrief();
+    fireEvent.change(screen.getByLabelText(copy.costLabel), { target: { value: "abc" } });
+    openBrief();
+    expect(screen.getByTestId("research-brief-problem")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(copy.goalLabel), { target: { value: "Still folded" } });
+    openBrief();
+    fireEvent.change(screen.getByLabelText(copy.costLabel), { target: { value: "5" } });
+    openBrief();
+    expect(screen.queryByTestId("research-brief-problem")).toBeNull();
+  });
+
+  it("says so while folded when the run settings have a problem the composer found", () => {
+    render(<Harness computeProblem />);
+    expect(screen.getByTestId("research-brief-more")).toHaveAttribute("aria-expanded", "true");
+    openBrief();
+    expect(screen.getByTestId("research-brief-problem")).toHaveTextContent(copy.problemHidden);
+  });
+
+  it("limits the start time to the next 30 days and explains one outside them", () => {
+    render(<Harness />);
+    openBrief();
+    const start = screen.getByLabelText(copy.startAtLabel);
+    const now = Date.now();
+    expect(start).toHaveAttribute("min", localDateTime(now));
+    expect(start).toHaveAttribute("max", localDateTime(now + 30 * 24 * 60 * 60 * 1000));
+
+    fireEvent.change(start, { target: { value: localDateTime(now - 5 * 60 * 60 * 1000) } });
+    expect(screen.getByText(copy.invalidStart)).toBeInTheDocument();
+    expect(start).toHaveAttribute("aria-invalid", "true");
+    fireEvent.change(start, { target: { value: localDateTime(now + 40 * 24 * 60 * 60 * 1000) } });
+    expect(screen.getByText(copy.invalidStart)).toBeInTheDocument();
+    fireEvent.change(start, { target: { value: localDateTime(now + 2 * 24 * 60 * 60 * 1000) } });
+    expect(screen.queryByText(copy.invalidStart)).toBeNull();
+    expect(start).toHaveAttribute("aria-invalid", "false");
+  });
+
+  it("keeps a typed start time in the box instead of rewriting it", () => {
+    const onRunAfter = vi.fn();
+    render(<Harness onRunAfter={onRunAfter} />);
+    openBrief();
+    const start = screen.getByLabelText(copy.startAtLabel);
+    const at = localDateTime(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+    fireEvent.change(start, { target: { value: at } });
+
+    expect(start).toHaveValue(at);
+    expect(onRunAfter).toHaveBeenLastCalledWith(new Date(at).getTime());
+  });
+
+  it("offers the Settings link where background work is turned on", () => {
+    useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" });
+    render(<Harness backgroundEnabled={false} />);
+    openBrief();
+
+    fireEvent.click(screen.getByTestId("research-brief-keep-running-settings"));
+
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "research" });
+  });
+
+  it("leaves out the Settings link once background work is on", () => {
+    render(<Harness backgroundEnabled />);
+    openBrief();
+    expect(screen.queryByTestId("research-brief-keep-running-settings")).toBeNull();
+  });
+
   it("locks every field while the task is saved", () => {
     render(<Harness disabled computeTargets={[{ id: "t-s", label: "Lab cluster", executor: "slurm" }]} />);
     expect(screen.getByLabelText(copy.goalLabel)).toBeDisabled();
@@ -485,6 +577,42 @@ describe("brief helpers", () => {
     expect(briefErrors(briefFixture({ budget: { ...budget, usdCap: 10_000, maxRuns: 1_000 } }))).toEqual({});
     expect(briefErrors(briefFixture({ budget: { ...budget, maxRuns: 0 } }))).toEqual({ runs: copy.invalidRuns });
     expect(briefErrors(briefFixture({ budget: { ...budget, maxRuns: 1_001 } }))).toEqual({ runs: copy.invalidRuns });
+  });
+
+  it("reads typed local dates and refuses text that is not one", () => {
+    const at = new Date(2026, 9, 24, 14, 30).getTime();
+    expect(parseLocalDateTime("2026-10-24T14:30")).toBe(at);
+    expect(parseLocalDateTime("  2026-10-24 14:30 ")).toBe(at);
+    expect(parseLocalDateTime("2026-10-24T14:30:45")).toBe(new Date(2026, 9, 24, 14, 30, 45).getTime());
+    expect(parseLocalDateTime("2026-10-2")).toBeNaN();
+    expect(parseLocalDateTime("2026-10-24")).toBeNaN();
+    expect(parseLocalDateTime("tomorrow 9am")).toBeNaN();
+    // A day that rolls over into the next month is not a day.
+    expect(parseLocalDateTime("2026-02-31T10:00")).toBeNaN();
+    expect(parseLocalDateTime("2026-13-01T10:00")).toBeNaN();
+    expect(parseLocalDateTime("2026-10-24T25:00")).toBeNaN();
+  });
+
+  it("explains a start time the backend would refuse", () => {
+    const now = Date.UTC(2026, 9, 23, 12);
+    const day = 24 * 60 * 60 * 1000;
+    expect(startError(null, now)).toBeUndefined();
+    expect(startError(now + day, now)).toBeUndefined();
+    expect(startError(now - 30_000, now)).toBeUndefined();
+    expect(startError(now - 61_000, now)).toBe(copy.invalidStart);
+    expect(startError(now + 31 * day, now)).toBe(copy.invalidStart);
+    expect(startError(Number.NaN, now)).toContain(localDateTime(now + day));
+    expect(startError(Number.NaN, now)).toMatch(/^Use the format \d{4}-\d{2}-\d{2}T\d{2}:\d{2}\.$/);
+  });
+
+  it("counts a start time that already passed as starting now", () => {
+    const now = Date.UTC(2026, 9, 23, 12);
+    expect(upcomingStart(null, now)).toBeNull();
+    expect(upcomingStart(undefined, now)).toBeNull();
+    expect(upcomingStart(now - 1, now)).toBeNull();
+    expect(upcomingStart(now, now)).toBeNull();
+    expect(upcomingStart(Number.NaN, now)).toBeNull();
+    expect(upcomingStart(now + 1, now)).toBe(now + 1);
   });
 
   it("formats a time for a local date and time field", () => {

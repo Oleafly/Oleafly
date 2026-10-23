@@ -6,6 +6,10 @@ use std::time::{Duration, Instant};
 
 const DROP_LIFETIME: Duration = Duration::from_secs(10);
 const READ_LIFETIME: Duration = Duration::from_secs(60);
+/// The largest dropped file read into the webview. Above every importer's
+/// own limit (the converters take 128 MiB), so only a drop that would never
+/// be used is refused, before a multi-gigabyte read runs out of memory.
+const MAX_DROPPED_FILE_BYTES: u64 = 256 * 1024 * 1024;
 
 #[derive(Default)]
 pub struct NativeDropState(Mutex<NativeDrop>);
@@ -91,11 +95,42 @@ pub async fn read_dropped_file(
     if !state.with(|drop| drop.readable(&path, Instant::now())) {
         return Err(format!("{path} was not dropped on Oleafly"));
     }
-    let bytes = tauri::async_runtime::spawn_blocking(move || std::fs::read(&path))
-        .await
-        .map_err(|error| error.to_string())?
-        .map_err(|error| error.to_string())?;
+    let bytes = tauri::async_runtime::spawn_blocking(move || {
+        read_capped(std::path::Path::new(&path), MAX_DROPPED_FILE_BYTES)
+    })
+    .await
+    .map_err(|error| error.to_string())??;
     Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// A dropped file's bytes: a regular file of at most `cap` bytes, read no
+/// further than the cap even if it grows meanwhile.
+fn read_capped(path: &std::path::Path, cap: u64) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    let metadata = std::fs::metadata(path).map_err(|error| error.to_string())?;
+    if !metadata.is_file() {
+        return Err(format!("{} is not a file", path.display()));
+    }
+    let too_large = || {
+        format!(
+            "{} is larger than {} MiB",
+            path.display(),
+            cap / (1024 * 1024)
+        )
+    };
+    if metadata.len() > cap {
+        return Err(too_large());
+    }
+    let mut bytes = Vec::with_capacity(metadata.len() as usize);
+    std::fs::File::open(path)
+        .map_err(|error| error.to_string())?
+        .take(cap + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    if bytes.len() as u64 > cap {
+        return Err(too_large());
+    }
+    Ok(bytes)
 }
 
 #[cfg(target_os = "linux")]
@@ -111,6 +146,18 @@ fn local_paths<'a>(uris: impl Iterator<Item = &'a str>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_dropped_folder_or_an_oversized_file_is_not_read() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(read_capped(dir.path(), 16)
+            .unwrap_err()
+            .contains("not a file"));
+        let file = dir.path().join("big.bin");
+        std::fs::write(&file, vec![7u8; 32]).unwrap();
+        assert!(read_capped(&file, 16).unwrap_err().contains("larger than"));
+        assert_eq!(read_capped(&file, 32).unwrap(), vec![7u8; 32]);
+    }
 
     fn paths(names: &[&str]) -> Vec<String> {
         names.iter().map(|name| (*name).to_owned()).collect()

@@ -204,6 +204,14 @@ pub(super) async fn execute(
     }
 }
 
+/// Whether `current` is the folder a session was granted (`saved`). On
+/// Windows one of them can be the verbatim form (`\\?\C:\data`, what
+/// `canonicalize` returns) and the other the plain one (`C:\data`, what a
+/// helper that simplifies paths returns): both are compared in plain form.
+fn same_folder(current: &std::path::Path, saved: &str) -> bool {
+    dunce::simplified(current) == dunce::simplified(std::path::Path::new(saved))
+}
+
 fn linked_scope(context: &Context, root_id: &str) -> Result<files::FileScope, String> {
     let saved = context
         .linked_roots
@@ -214,7 +222,7 @@ fn linked_scope(context: &Context, root_id: &str) -> Result<files::FileScope, St
         .services
         .linked
         .resolve(&context.project_id, root_id)?;
-    if current.to_string_lossy() != saved.canonical_path {
+    if !same_folder(&current, &saved.canonical_path) {
         return Err("The linked folder changed after this session started.".into());
     }
     files::FileScope::open(&current, None)
@@ -280,4 +288,29 @@ fn execute_local(context: &Context, name: &str, arguments: &Value) -> Result<Val
         _ => return Err("This tool is not available in the research session.".into()),
     };
     payload(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn a_granted_folder_is_the_same_folder_only_when_it_is_the_same_path() {
+        assert!(same_folder(Path::new("/data/refs"), "/data/refs"));
+        assert!(!same_folder(Path::new("/data/refs"), "/data/other"));
+        assert!(!same_folder(Path::new("/data"), "/data/refs"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn the_verbatim_and_plain_forms_of_a_windows_folder_match() {
+        let plain = Path::new(r"C:\Users\me\data");
+        assert!(same_folder(plain, r"\\?\C:\Users\me\data"));
+        assert!(same_folder(
+            Path::new(r"\\?\C:\Users\me\data"),
+            r"C:\Users\me\data"
+        ));
+        assert!(!same_folder(plain, r"\\?\C:\Users\me\other"));
+    }
 }

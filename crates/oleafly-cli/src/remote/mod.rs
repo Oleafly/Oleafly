@@ -170,9 +170,9 @@ impl CommandModule for Commands {
             RemoteCommand::Status(args) => tokio::task::block_in_place(|| {
                 list::status(&env, &sync::system_deps, &folder, &args)
             }),
-            RemoteCommand::Unlink(args) => {
-                tokio::task::block_in_place(|| list::unlink(&env, &folder, args.dry_run))
-            }
+            RemoteCommand::Unlink(args) => tokio::task::block_in_place(|| {
+                list::unlink(&env, &sync::system_deps, &folder, args.dry_run)
+            }),
             RemoteCommand::Open(args) => list::open(&env, &folder, args.print),
             RemoteCommand::Link(args) => tokio::task::block_in_place(|| {
                 let deps = sync::system_deps(&folder)?;

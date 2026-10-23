@@ -22,6 +22,7 @@ export interface MathpixPdfProgress {
 }
 
 const PAGE_RANGES_HEADER = "x-oleafly-page-ranges";
+const REQUEST_ID_HEADER = "x-oleafly-request-id";
 
 export const mathpixKeyStatus = () => invoke<MathpixKeyStatus>("mathpix_key_status");
 
@@ -41,8 +42,9 @@ function abortError(): DOMException {
 /**
  * Converts a PDF with Mathpix and returns its Mathpix Markdown. The whole
  * file is uploaded; `pageRanges` (such as "3-5") limits what Mathpix converts
- * and bills. Rust deletes the PDF from Mathpix when it finishes, fails, times
- * out or is cancelled through `signal`.
+ * and bills. Cancelling through `signal` stops the upload itself when it is
+ * still running; Rust deletes the PDF from Mathpix when the conversion
+ * finishes, fails, times out or is cancelled.
  */
 export async function mathpixPdf(
   bytes: Uint8Array,
@@ -55,19 +57,26 @@ export async function mathpixPdf(
   const { signal } = options;
   if (signal?.aborted) throw abortError();
   const requestId = crypto.randomUUID();
-  const pdfId = await invoke<string>("mathpix_pdf_upload", bytes, {
-    headers: { [PAGE_RANGES_HEADER]: options.pageRanges },
-  });
+  // One cancel call, whenever it comes: during the upload, between it and
+  // the wait, or during the wait.
+  let cancelling: Promise<void> | null = null;
+  const cancel = () => {
+    cancelling ??= invoke<void>("mathpix_pdf_cancel", { requestId }).catch(() => undefined);
+    return cancelling;
+  };
+  const stop = () => {
+    void cancel();
+  };
+  signal?.addEventListener("abort", stop, { once: true });
   const channel = new Channel<MathpixPdfProgress>();
   channel.onmessage = (progress) => options.onProgress?.(progress);
-  const cancel = () => {
-    void invoke<void>("mathpix_pdf_cancel", { requestId }).catch(() => undefined);
-  };
-  signal?.addEventListener("abort", cancel, { once: true });
   try {
-    // Stopped while the upload ran: cancel first, so the wait below only
-    // deletes the uploaded PDF from Mathpix.
-    if (signal?.aborted) await invoke<void>("mathpix_pdf_cancel", { requestId });
+    const pdfId = await invoke<string>("mathpix_pdf_upload", bytes, {
+      headers: { [PAGE_RANGES_HEADER]: options.pageRanges, [REQUEST_ID_HEADER]: requestId },
+    });
+    // Stopped as the upload finished: the cancel goes first, so the wait
+    // below only deletes the uploaded PDF from Mathpix.
+    if (signal?.aborted) await cancel();
     const markdown = await invoke<string>("mathpix_pdf_wait", {
       requestId,
       pdfId,
@@ -79,7 +88,7 @@ export async function mathpixPdf(
     if (signal?.aborted) throw abortError();
     throw error;
   } finally {
-    signal?.removeEventListener("abort", cancel);
+    signal?.removeEventListener("abort", stop);
     channel.onmessage = () => {};
   }
 }

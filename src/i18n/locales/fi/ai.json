@@ -43,13 +43,15 @@
       "command": "Vahvista komento",
       "externalTool": "Vahvista ulkoisen työkalun toiminto",
       "internet": "Vahvista verkkoyhteys",
-      "edit": "Vahvista tekoälyn muokkaus"
+      "edit": "Vahvista tekoälyn muokkaus",
+      "researchTask": "Vahvista tutkimustehtävä"
     },
     "headline": {
       "command": "Avustaja haluaa suorittaa tämän komennon",
       "externalTool": "Avustaja haluaa käyttää ulkoista työkalua",
       "internet": "Avustaja haluaa käyttää verkkoyhteyttä",
-      "edit": "Avustaja haluaa muuttaa tiedostoja"
+      "edit": "Avustaja haluaa muuttaa tiedostoja",
+      "researchTask": "Avustaja haluaa luoda tutkimustehtävän"
     },
     "mcpNote": "Tämä lähettää alla olevat argumentit määritetylle MCP-palvelimelle.",
     "line": "rivi {{line}}",
@@ -70,6 +72,22 @@
       "title": "Ulkoisen agentin pyyntö (MCP)",
       "moreWaiting_one": "{{count}} muu odottaa",
       "moreWaiting_other": "{{count}} muuta odottaa"
+    },
+    "researchTask": {
+      "note": "Tehtävä työskentelee itsekseen projektin kopiossa. Tarkistat sen muutokset jälkikäteen.",
+      "title": "Otsikko",
+      "goal": "Tavoite",
+      "skills": "Taidot",
+      "prompt": "Ohjeet",
+      "commands": "Komennot",
+      "commandsAsk": "Kysy ennen jokaista",
+      "network": "Verkko",
+      "timeBudget": "Aikabudjetti",
+      "timeBudgetDefault": "Oletus",
+      "minutes_one": "{{count}} minuutti",
+      "minutes_other": "{{count}} minuuttia",
+      "planFirst": "Suunnitelma ensin",
+      "startNow": "Aloita heti"
     }
   },
   "attachments": {
@@ -95,7 +113,9 @@
     "saveFailed": "Tiedostoa {{name}} ei voitu tallentaa.",
     "missing": "Tiedosto {{name}} ei ole enää saatavilla.",
     "sentAsText": "Tiedosto {{name}} lähetettiin tekstinä, koska tämä malli ei osaa lukea sitä tiedostona.",
-    "skipped": "Tiedostoa {{name}} ei lähetetty."
+    "skipped": "Tiedostoa {{name}} ei lähetetty.",
+    "dropUnreadable": "Kohteita {{names}} ei voitu lukea.",
+    "notReplayed": "Vanhan version tallentamia tiedostoja ei voi lähettää uudelleen: {{names}}."
   },
   "chat": {
     "pill": {
@@ -591,7 +611,10 @@
       "queued": "Jonossa: lähtee, kun agentti on valmis",
       "remove": "Poista jonossa oleva viesti",
       "sendNow": "Lähetä nyt",
-      "sendFailed": "Tätä viestiä ei lähetetty. Lähetä se uudelleen tai poista se."
+      "sendFailed": "Tätä viestiä ei lähetetty. Lähetä se uudelleen tai poista se.",
+      "queuedConnecting": "Jonossa: lähtee, kun agentti on valmis",
+      "retry": "Lähetä uudelleen",
+      "edit": "Muokkaa"
     },
     "slash": {
       "commands": "Agentin komennot",
@@ -631,7 +654,9 @@
       "apiKeyPlaceholder": "Liitä API-avaimesi",
       "geminiGoogle": "Kirjautuminen Googlella ei enää toimi yksityiskäyttäjien tilauksissa. Käytä Gemini-API-avainta tai Vertex AI -palvelua.",
       "noProject": "Avaa projekti, niin voit kirjautua päätteestä.",
-      "signOut": "Kirjaudu ulos"
+      "signOut": "Kirjaudu ulos",
+      "confirmTerminal": "{{agent}} kirjautuu alla olevalla komennolla, joka suoritetaan päätevälilehdessä. Tarkista se, ennen kuin hyväksyt.",
+      "remote": "Tämä keskustelu toimii toisella koneella. Kirjaudu agenttiin siellä."
     },
     "elicitation": {
       "ariaLabel": "Agentin pyyntö",
@@ -644,7 +669,8 @@
       "openUrl": "Avaa selaimessa",
       "confirmTitle": "Avataanko sivusto {{host}}?",
       "confirmDescription": "Agentti pyysi sinua viimeistelemään vaiheen tällä sivustolla. Se avautuu selaimessasi.",
-      "waiting": "Odotetaan, että sivusto valmistuu."
+      "waiting": "Odotetaan, että sivusto valmistuu.",
+      "openFailed": "Linkkiä ei voitu avata selaimessasi."
     },
     "remote": {
       "banner": "Hermes toimii palvelimella {{host}} SSH-yhteyden kautta. Sen muutokset jäävät sille koneelle."
@@ -655,7 +681,6 @@
       "search": "Hae keskusteluista",
       "empty": "Yksikään keskustelu ei vastaa hakua.",
       "loadMore": "Lataa lisää",
-      "open": "Avaa",
       "rename": "Nimeä uudelleen",
       "renameLabel": "Keskustelun nimi",
       "delete": "Poista",
@@ -676,8 +701,11 @@
       "fork": "Haaroita keskustelu",
       "forkUnsupported": "Tämä agentti ei voi haaroittaa keskusteluja.",
       "forkBusy": "Odota, että agentti on valmis, ennen kuin haaroitat.",
-      "v2": "ACP v2 -luonnos",
-      "remote": "Etä"
+      "v2": "Protokollan esikatselu",
+      "remote": "Etä",
+      "signOutTitle": "Kirjaudutaanko ulos agentista {{agent}}?",
+      "signOutDescription": "Tämä päättää itse {{agent}}-kirjautumisen. Myös pääte, joka käyttää samaa kirjautumista, kirjataan ulos, ja tämä keskustelu pysähtyy, kunnes kirjaudut uudelleen.",
+      "signOutAccount": "Kirjautuneena tilillä {{account}}"
     },
     "commit": {
       "button": "Tee commit",

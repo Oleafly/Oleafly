@@ -1,4 +1,5 @@
 //! `oleafly build` and `oleafly watch`.
+use std::future::Future;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -6,14 +7,15 @@ use std::time::Duration;
 use clap::Args;
 use notify::{Config, Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use oleafly_core::engine_spec::EngineFlags;
+use oleafly_core::exclude::is_quietly_ignored_name;
 use oleafly_core::{is_generated_directory, Engine};
 use serde_json::json;
 use tokio::sync::mpsc;
 
 use super::common::{build_json, print_build, CliCompiler};
 use super::CommandModule;
-use crate::contract::{path_arg, CliError, Context, ErrorKind, Exit, LogMode, Outcome};
-use crate::engine::{build_opened, open_project, BuildRequest, OpenedProject};
+use crate::contract::{path_arg, CliError, Context, ErrorKind, Exit, LogMode, Outcome, Warning};
+use crate::engine::{build_opened, open_project, output_destination, BuildRequest, OpenedProject};
 use crate::native::{ignored_flags, CompilerLog};
 
 pub const DEFAULT_TIMEOUT_SECONDS: u64 = 300;
@@ -103,7 +105,7 @@ fn streams_compiler_output(ctx: &Context) -> bool {
 
 fn request_for(ctx: &Context, args: &BuildArgs) -> BuildRequest {
     let log = if streams_compiler_output(ctx) {
-        CompilerLog::new(|text| eprint!("{text}"))
+        CompilerLog::new(crate::human::stream)
     } else {
         CompilerLog::default()
     };
@@ -120,7 +122,7 @@ fn request_for(ctx: &Context, args: &BuildArgs) -> BuildRequest {
                     "command": command,
                     "event": "lock_wait",
                 });
-                println!("{line}");
+                crate::human::out_line(&line.to_string());
             } else if !json && !quiet {
                 crate::human::note("Waiting for another Oleafly build of this project to finish.");
             }
@@ -206,27 +208,29 @@ async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
     // `ok` as 0.4.7 sent it on every watch event.
     ctx.stream_event(
         "watching",
-        json!({"ok": true, "project": opened.workspace.info()?}),
+        json!({"ok": true, "project": opened.workspace.info()?, "warnings": ctx.warnings()}),
     )?;
     if !ctx.json() {
         ctx.say(format!("Watching {}", root.display()));
     }
     let request = request_for(ctx, &args);
-    if !watch_build(ctx, &root, &args, &request, true).await? {
+    // The copy `-o` makes lands in the project when it names a file or folder
+    // there, and would start the next build if its events counted.
+    let output = watched_output(&root, &args, &opened.workspace.manifest().main_doc);
+    // One future for the whole run, so a signal between two builds isn't lost.
+    let mut stop = Box::pin(crate::stop_requested());
+    if !watch_build(ctx, &root, &args, &request, true, &mut stop).await? {
         return Ok(Outcome::printed());
     }
     loop {
         let event = tokio::select! {
-            signal = tokio::signal::ctrl_c() => {
-                signal.map_err(CliError::from)?;
-                return Ok(Outcome::printed());
-            }
+            () = &mut stop => return Ok(Outcome::printed()),
             event = receiver.recv() => event.ok_or_else(|| {
                 CliError::new(ErrorKind::Io, "watch.stopped", "The file watcher stopped unexpectedly.")
             })?,
         };
         match event {
-            Ok(event) if relevant_event(&event, &root) => {}
+            Ok(event) if relevant_event(&event, &root, output.as_deref()) => {}
             Ok(_) => continue,
             Err(error) => {
                 emit_watch_error(ctx, &error)?;
@@ -239,7 +243,7 @@ async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
                 emit_watch_error(ctx, &error)?;
             }
         }
-        if !watch_build(ctx, &root, &args, &request, false).await? {
+        if !watch_build(ctx, &root, &args, &request, false, &mut stop).await? {
             return Ok(Outcome::printed());
         }
     }
@@ -265,14 +269,16 @@ fn create_watcher(
     }
 }
 
-/// One build in watch mode; `false` when Ctrl+C ended it. Settings the
-/// Typst can't apply are only reported for the `first` build.
+/// One build in watch mode; `false` when `stop` (Ctrl+C, or SIGTERM or SIGHUP
+/// on Unix) ended it. Settings the Typst can't apply are only reported for
+/// the `first` build.
 async fn watch_build(
     ctx: &Context,
     root: &Path,
     args: &BuildArgs,
     request: &BuildRequest,
     first: bool,
+    stop: &mut (impl Future<Output = ()> + Unpin),
 ) -> Result<bool, CliError> {
     ctx.stream_event("build_started", json!({"ok": true}))?;
     let result = tokio::select! {
@@ -280,10 +286,7 @@ async fn watch_build(
             let opened = open_project(root, args.main.as_deref(), args.compiler.map(Into::into))?;
             build_opened(&opened, request).await
         } => result,
-        signal = tokio::signal::ctrl_c() => {
-            signal.map_err(CliError::from)?;
-            return Ok(false);
-        }
+        () = stop => return Ok(false),
     };
     let result = match result {
         Ok(result) => result,
@@ -295,16 +298,17 @@ async fn watch_build(
             return Ok(true);
         }
     };
+    let warnings: Vec<&Warning> = result
+        .warnings
+        .iter()
+        .filter(|warning| first || warning.code != crate::engine::TYPST_SETTING_UNSUPPORTED)
+        .collect();
     ctx.stream_event(
         "build_finished",
-        json!({"ok": result.ok, "build": build_json(&result, ctx.log_mode())}),
+        json!({"ok": result.ok, "build": build_json(&result, ctx.log_mode()), "warnings": warnings}),
     )?;
     if !ctx.json() {
-        for warning in result
-            .warnings
-            .iter()
-            .filter(|warning| first || warning.code != crate::engine::TYPST_SETTING_UNSUPPORTED)
-        {
+        for warning in warnings {
             ctx.warn(warning.code.clone(), warning.message.clone());
         }
         print_build(ctx, &result, streams_compiler_output(ctx));
@@ -315,7 +319,9 @@ async fn watch_build(
     Ok(true)
 }
 
-pub(crate) fn relevant_event(event: &Event, root: &Path) -> bool {
+/// Whether `event` is a change to the project's own files. `output` is where
+/// the `-o` copy lands, relative to `root` (see [`watched_output`]).
+pub(crate) fn relevant_event(event: &Event, root: &Path, output: Option<&Path>) -> bool {
     if !matches!(
         event.kind,
         EventKind::Any | EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_)
@@ -323,10 +329,55 @@ pub(crate) fn relevant_event(event: &Event, root: &Path) -> bool {
         return false;
     }
     event.paths.is_empty()
-        || event
-            .paths
-            .iter()
-            .any(|path| path.starts_with(root) && !ignored_path(path, root))
+        || event.paths.iter().any(|path| {
+            path.starts_with(root)
+                && !ignored_path(path, root)
+                && !written_by_oleafly(path, root, output)
+                && !folder_changed(event.kind, path)
+        })
+}
+
+/// A folder's own time moving, which a polling watcher reports whenever a
+/// file in it comes or goes (the project folder, the folder `-o` copies
+/// into). The file has its own event, and this one alone is no edit.
+fn folder_changed(kind: EventKind, path: &Path) -> bool {
+    matches!(kind, EventKind::Modify(_)) && path.is_dir()
+}
+
+/// The `-o` copy, the temporary file it is written through, and the files
+/// editors and sync tools leave beside the sources: none is a source change.
+fn written_by_oleafly(path: &Path, root: &Path, output: Option<&Path>) -> bool {
+    if path
+        .file_name()
+        .is_some_and(|name| is_quietly_ignored_name(&name.to_string_lossy()))
+    {
+        return true;
+    }
+    let (Some(output), Ok(relative)) = (output, path.strip_prefix(root)) else {
+        return false;
+    };
+    // Case-blind: macOS and Windows may report the name in another case.
+    relative
+        .to_string_lossy()
+        .eq_ignore_ascii_case(&output.to_string_lossy())
+}
+
+/// Where `-o` copies the PDF when that is inside the project, relative to
+/// its folder.
+fn watched_output(root: &Path, args: &BuildArgs, main_document: &str) -> Option<PathBuf> {
+    let destination = output_destination(args.output.as_deref()?, main_document).ok()?;
+    let parent = destination
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let parent = dunce::canonicalize(parent).ok()?;
+    let root = dunce::canonicalize(root).ok()?;
+    Some(
+        parent
+            .strip_prefix(root)
+            .ok()?
+            .join(destination.file_name()?),
+    )
 }
 
 pub(crate) fn ignored_path(path: &Path, root: &Path) -> bool {
@@ -394,24 +445,123 @@ mod tests {
         ] {
             assert!(relevant_event(
                 &Event::new(kind).add_path(root.join("chapters/one.tex")),
-                root
+                root,
+                None
             ));
         }
-        assert!(relevant_event(&Event::new(EventKind::Any), root));
+        assert!(relevant_event(&Event::new(EventKind::Any), root, None));
         assert!(!relevant_event(
             &Event::new(EventKind::Access(AccessKind::Any)).add_path(root.join("chapters/one.tex")),
-            root
+            root,
+            None
         ));
         assert!(!relevant_event(
             &Event::new(EventKind::Modify(ModifyKind::Any))
                 .add_path(root.join(".oleafly/build/out.pdf")),
-            root
+            root,
+            None
         ));
         assert!(!relevant_event(
             &Event::new(EventKind::Modify(ModifyKind::Any))
                 .add_path(PathBuf::from("another-project/paper.tex")),
-            root
+            root,
+            None
         ));
+    }
+
+    #[test]
+    fn the_output_copy_does_not_start_the_next_build() {
+        let root = Path::new("workspace");
+        let output = Path::new("out/paper.pdf");
+        let modified = |path: PathBuf| {
+            relevant_event(
+                &Event::new(EventKind::Modify(ModifyKind::Any)).add_path(path),
+                root,
+                Some(output),
+            )
+        };
+        // The copy, the file it is written through, and its rename (one
+        // event with both paths).
+        assert!(!modified(root.join("out/paper.pdf")));
+        assert!(!modified(root.join("out/Paper.PDF")));
+        assert!(!modified(root.join("out/.paper.pdf.oleafly-x1y2.tmp")));
+        assert!(!relevant_event(
+            &Event::new(EventKind::Modify(ModifyKind::Name(
+                notify::event::RenameMode::Both
+            )))
+            .add_path(root.join("out/.paper.pdf.oleafly-x1y2.tmp"))
+            .add_path(root.join("out/paper.pdf")),
+            root,
+            Some(output)
+        ));
+        // Editor leftovers are not source changes either.
+        assert!(!modified(root.join("chapters/.one.tex.swp")));
+        assert!(!modified(root.join("chapters/one.tex~")));
+        // A source, and a PDF that is not the copy, still are.
+        assert!(modified(root.join("chapters/one.tex")));
+        assert!(modified(root.join("figures/plot.pdf")));
+        assert!(modified(root.join("paper.pdf")));
+    }
+
+    #[test]
+    fn a_folders_own_time_moving_is_not_an_edit() {
+        use notify::event::MetadataKind;
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        std::fs::create_dir(root.join("out")).unwrap();
+        std::fs::write(root.join("main.tex"), "x").unwrap();
+        let metadata = EventKind::Modify(ModifyKind::Metadata(MetadataKind::WriteTime));
+        let on = |path: PathBuf| relevant_event(&Event::new(metadata).add_path(path), root, None);
+        // What a polling watcher says about the folders after the copy `-o`
+        // made in them: no edit, or the build would run on for ever.
+        assert!(!on(root.to_path_buf()));
+        assert!(!on(root.join("out")));
+        // The same event on a file is one, and so is a folder appearing.
+        assert!(on(root.join("main.tex")));
+        assert!(relevant_event(
+            &Event::new(EventKind::Create(CreateKind::Folder)).add_path(root.join("out")),
+            root,
+            None
+        ));
+    }
+
+    #[test]
+    fn the_watched_output_is_found_inside_the_project_only() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.join("out")).unwrap();
+        let args = |output: PathBuf| BuildArgs {
+            offline: false,
+            fast: false,
+            halt_on_error: false,
+            timeout_seconds: DEFAULT_TIMEOUT_SECONDS,
+            variant: None,
+            main: None,
+            compiler: None,
+            output: Some(output),
+        };
+        // A file, and a folder (the main document's name with .pdf).
+        assert_eq!(
+            watched_output(root, &args(root.join("out/paper.pdf")), "main.tex"),
+            Some(PathBuf::from("out/paper.pdf"))
+        );
+        assert_eq!(
+            watched_output(root, &args(root.join("out")), "chapters/main.tex"),
+            Some(PathBuf::from("out/main.pdf"))
+        );
+        assert_eq!(
+            watched_output(root, &args(root.join("paper.pdf")), "main.tex"),
+            Some(PathBuf::from("paper.pdf"))
+        );
+        // Outside the project, nothing to ignore; so too without `-o`.
+        assert_eq!(
+            watched_output(root, &args(outside.path().join("paper.pdf")), "main.tex"),
+            None
+        );
+        let mut without = args(root.join("paper.pdf"));
+        without.output = None;
+        assert_eq!(watched_output(root, &without, "main.tex"), None);
     }
 
     #[test]

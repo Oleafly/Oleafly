@@ -941,7 +941,7 @@
         "experimentation": "laborator, beta, funcții timpurii, experimental",
         "general": "preferințe, limbă, regiune, verificare ortografică, ortografie, greșeli de scriere, offline, tururi, comandă terminal",
         "help": "despre, versiune, actualizări, jurnal de modificări, noutăți, documentație, asistență, ajutor, comunitate, Discord, licență, raport de eroare",
-        "integrations": "Zotero, GitHub, MCP, citări, conturi, conexiuni",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, găzduire Git, aplicații desktop, Cua, MCP, citări, conturi, conexiuni",
         "shortcuts": "scurtături de tastatură, scurtături, combinații de taste, taste, tastatură",
         "research": "cercetare sarcini buget notificări treaz experimente rulări research tasks"
       },

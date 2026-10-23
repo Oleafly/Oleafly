@@ -126,6 +126,8 @@ pub struct AgentWorkspace {
     /// did not exist).
     journal: Mutex<BTreeMap<String, Option<String>>>,
     warnings: Vec<String>,
+    /// Review mode: files and folders the copy leaves out for their names.
+    left_out: usize,
 }
 
 fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -143,6 +145,43 @@ fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
 #[cfg(not(windows))]
 fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
     false
+}
+
+/// The permissions a file written over another keeps: the old file's, so an
+/// edit never drops the executable bit of a script. Windows has no mode to
+/// carry, and a read-only flag would stop the rename.
+#[cfg(unix)]
+fn kept_permissions(existing: &cap_std::fs::Metadata) -> Option<cap_std::fs::Permissions> {
+    Some(existing.permissions())
+}
+
+#[cfg(not(unix))]
+fn kept_permissions(_existing: &cap_std::fs::Metadata) -> Option<cap_std::fs::Permissions> {
+    None
+}
+
+/// The permissions of a review's saved copy, for a file the project doesn't
+/// have yet (the copy keeps what the run's working file had).
+#[cfg(unix)]
+fn saved_permissions(saved: &Path) -> Option<cap_std::fs::Permissions> {
+    std::fs::metadata(saved)
+        .ok()
+        .map(|metadata| cap_std::fs::Permissions::from_std(metadata.permissions()))
+}
+
+#[cfg(not(unix))]
+fn saved_permissions(_saved: &Path) -> Option<cap_std::fs::Permissions> {
+    None
+}
+
+fn apply_permissions(
+    file: &cap_std::fs::File,
+    permissions: Option<cap_std::fs::Permissions>,
+) -> std::io::Result<()> {
+    match permissions {
+        Some(permissions) => file.set_permissions(permissions),
+        None => Ok(()),
+    }
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -168,6 +207,22 @@ fn sha256_file(path: &Path) -> std::io::Result<String> {
         .collect())
 }
 
+/// Whether a name has the shape of a Windows 8.3 short name: up to six
+/// letters, digits or underscores, `~`, a number, and maybe an extension
+/// (`GIT~1`, `PROGRA~1.TXT`).
+fn is_short_name_alias(component: &str) -> bool {
+    let Some((base, rest)) = component.split_once('~') else {
+        return false;
+    };
+    let number = rest.split('.').next().unwrap_or_default();
+    (1..=6).contains(&base.len())
+        && base
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+        && !number.is_empty()
+        && number.bytes().all(|byte| byte.is_ascii_digit())
+}
+
 /// Whether a path a tool names is acceptable, as the model wrote it.
 fn path_problem(value: &str) -> Option<&'static str> {
     if value.len() > MAX_PATH_BYTES {
@@ -177,8 +232,20 @@ fn path_problem(value: &str) -> Option<&'static str> {
         return Some("Use a path relative to the project folder, with forward slashes, without .., drive letters or the .git and .oleafly folders.");
     }
     let components: Vec<&str> = value.split('/').collect();
+    // The shared rule for the folders Oleafly keeps for itself (`.git` in any
+    // folder and in any letter case or Unicode form, `.oleafly*`, `GIT~1`).
+    match oleafly_core::portable::synced_path_problem(value) {
+        Some(oleafly_core::portable::PortableProblem::ProtectedRoot) => {
+            return Some("That folder is off limits.");
+        }
+        Some(_) => return Some("Use a path without invisible characters."),
+        None => {}
+    }
+    // A project folder can sit on an NTFS, FAT or exFAT volume from any
+    // platform, where `.git` also answers to `GIT~1`, `.oleafly` to
+    // `OLEAFL~1` and `.private` to `PRIVAT~1`.
     if components.iter().any(|component| {
-        component.eq_ignore_ascii_case(".private") || component.eq_ignore_ascii_case(".git")
+        component.eq_ignore_ascii_case(".private") || is_short_name_alias(component)
     }) {
         return Some("That folder is off limits.");
     }
@@ -194,6 +261,53 @@ fn path_problem(value: &str) -> Option<&'static str> {
         );
     }
     None
+}
+
+/// Names of folders (or, in a linked worktree, files) Oleafly keeps for
+/// itself: what [`path_problem`] refuses, without the Windows short names.
+fn is_protected_name(name: &str) -> bool {
+    name.eq_ignore_ascii_case(".git")
+        || name.eq_ignore_ascii_case(".private")
+        || name.to_ascii_lowercase().starts_with(".oleafly")
+}
+
+/// The `.git`, `.private` and `.oleafly*` entries in `root` and a few levels
+/// below it (submodules and nested repositories), which a run's commands may
+/// read but not change. The file tools refuse the same names at any depth.
+pub(crate) fn protected_folders(root: &Path) -> Vec<PathBuf> {
+    const MAX_DEPTH: usize = 3;
+    const MAX_FOLDERS: usize = 2_000;
+    let mut found = Vec::new();
+    let mut queue = VecDeque::from([(root.to_path_buf(), 0usize)]);
+    let mut visited = 0;
+    while let Some((folder, depth)) = queue.pop_front() {
+        visited += 1;
+        if visited > MAX_FOLDERS {
+            break;
+        }
+        let Ok(entries) = std::fs::read_dir(&folder) else {
+            continue;
+        };
+        let mut entries: Vec<_> = entries.flatten().collect();
+        entries.sort_by_key(|entry| entry.file_name());
+        for entry in entries {
+            let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+                continue;
+            };
+            let Ok(metadata) = std::fs::symlink_metadata(entry.path()) else {
+                continue;
+            };
+            if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+                continue;
+            }
+            if is_protected_name(&name) {
+                found.push(entry.path());
+            } else if metadata.is_dir() && depth < MAX_DEPTH && !skipped_folder(&name) {
+                queue.push_back((entry.path(), depth + 1));
+            }
+        }
+    }
+    found
 }
 
 fn path_error(value: &str) -> ToolError {
@@ -215,7 +329,24 @@ struct WalkCounts {
     links: usize,
     cloud: usize,
     large: usize,
+    /// Files and folders left out for a name a run can't use.
     unnamed: usize,
+    unnamed_examples: Vec<String>,
+}
+
+impl WalkCounts {
+    fn note_unnamed(&mut self, path: &str) {
+        self.unnamed += 1;
+        if self.unnamed_examples.len() < 3 {
+            self.unnamed_examples.push(
+                path.chars()
+                    .take(80)
+                    .collect::<String>()
+                    .escape_debug()
+                    .to_string(),
+            );
+        }
+    }
 }
 
 fn skipped_folder(name: &str) -> bool {
@@ -255,7 +386,7 @@ fn walk(
         entries.sort_by_key(|entry| entry.file_name());
         for entry in entries {
             let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
-                counts.unnamed += 1;
+                counts.note_unnamed(&entry.file_name().to_string_lossy());
                 continue;
             };
             let Ok(metadata) = std::fs::symlink_metadata(entry.path()) else {
@@ -271,8 +402,14 @@ fn walk(
                 format!("{relative}/{name}")
             };
             if metadata.is_dir() {
-                if !skipped_folder(&name) && path_problem(&child).is_none() {
+                if skipped_folder(&name) {
+                    continue;
+                }
+                if path_problem(&child).is_none() {
                     queue.push_back(child);
+                } else {
+                    // The whole folder is out, so count it once.
+                    counts.note_unnamed(&child);
                 }
             } else if metadata.is_file() {
                 if oleafly_core::is_cloud_placeholder(&metadata) {
@@ -284,7 +421,7 @@ fn walk(
                     continue;
                 }
                 if path_problem(&child).is_some() {
-                    counts.unnamed += 1;
+                    counts.note_unnamed(&child);
                     continue;
                 }
                 if !visit(WalkedFile {
@@ -309,8 +446,32 @@ fn too_large(files: usize) -> CliError {
     .hint("Run again with --apply, or point -C at a smaller folder.")
 }
 
+/// Deletes the review run's working copy. A scanner or indexer on Windows
+/// can hold a file for a moment, so it tries again a few times.
+fn remove_working_copy(path: &Path) -> std::io::Result<()> {
+    let attempts: u64 = if cfg!(windows) { 5 } else { 1 };
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        match std::fs::remove_dir_all(path) {
+            Ok(()) => return Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(error) if attempt >= attempts => return Err(error),
+            Err(_) => std::thread::sleep(Duration::from_millis(100 * attempt)),
+        }
+    }
+}
+
 fn io_error(error: impl std::fmt::Display) -> CliError {
     CliError::new(ErrorKind::Io, "io.failed", error.to_string())
+}
+
+/// What copying the project into the review folder produced.
+struct Staged {
+    baseline: BTreeMap<String, Baseline>,
+    warnings: Vec<String>,
+    /// Files and folders left out of the copy for their names.
+    left_out: usize,
 }
 
 /// Copies the project into `work` and returns the copy's baseline.
@@ -319,7 +480,7 @@ fn stage(
     work: &Path,
     limits: &StageLimits,
     cancel: &CancellationToken,
-) -> Result<(BTreeMap<String, Baseline>, Vec<String>), CliError> {
+) -> Result<Staged, CliError> {
     let mut counts = WalkCounts::default();
     let mut planned = Vec::new();
     let mut total = 0u64;
@@ -371,7 +532,22 @@ fn stage(
             counts.large
         ));
     }
-    Ok((baseline, warnings))
+    if counts.unnamed > 0 {
+        let more = counts.unnamed.saturating_sub(counts.unnamed_examples.len());
+        let mut examples = counts.unnamed_examples.join(", ");
+        if more > 0 {
+            examples.push_str(&format!(" and {more} more"));
+        }
+        warnings.push(format!(
+            "Skipped {} files and folders with names a run can't use ({examples}). They are not in the review copy.",
+            counts.unnamed
+        ));
+    }
+    Ok(Staged {
+        baseline,
+        warnings,
+        left_out: counts.unnamed,
+    })
 }
 
 fn open_dir(path: &Path) -> Result<Dir, CliError> {
@@ -413,16 +589,16 @@ impl AgentWorkspace {
                 .unwrap_or_default(),
             _ => String::new(),
         };
-        let (work_root, baseline, warnings) = match &policy.mode {
+        let (work_root, baseline, warnings, left_out) = match &policy.mode {
             WriteMode::ReadOnly | WriteMode::Apply => {
-                (project.clone(), BTreeMap::new(), Vec::new())
+                (project.clone(), BTreeMap::new(), Vec::new(), 0)
             }
             WriteMode::Review { dir } => {
                 std::fs::create_dir_all(dir).map_err(io_error)?;
                 let work = dir.join("workspace");
                 std::fs::create_dir(&work).map_err(io_error)?;
                 let staged = stage(&project, &work, limits, cancel);
-                let (baseline, warnings) = match staged {
+                let staged = match staged {
                     Ok(staged) => staged,
                     Err(error) => {
                         let _ = std::fs::remove_dir_all(dir);
@@ -431,8 +607,9 @@ impl AgentWorkspace {
                 };
                 (
                     dunce::canonicalize(&work).map_err(io_error)?,
-                    baseline,
-                    warnings,
+                    staged.baseline,
+                    staged.warnings,
+                    staged.left_out,
                 )
             }
         };
@@ -446,6 +623,7 @@ impl AgentWorkspace {
             baseline,
             journal: Mutex::new(BTreeMap::new()),
             warnings,
+            left_out,
         })
     }
 
@@ -457,9 +635,16 @@ impl AgentWorkspace {
         &self.project
     }
 
-    /// Warnings from staging (links and cloud-only files left out).
+    /// Warnings from staging (links, cloud-only files and unusable names
+    /// left out).
     pub fn warnings(&self) -> &[String] {
         &self.warnings
+    }
+
+    /// How many files and folders the review copy leaves out for their
+    /// names (a colon, a reserved Windows name, a trailing dot).
+    pub fn left_out(&self) -> usize {
+        self.left_out
     }
 
     /// The path, if a tool may use it.
@@ -751,14 +936,14 @@ impl AgentWorkspace {
         }
         let checked = self.checked(path)?;
         let (directory, name) = self.parent(&checked, true)?;
-        let existed = match directory.symlink_metadata(&name) {
+        let (existed, permissions) = match directory.symlink_metadata(&name) {
             Ok(metadata) if metadata.is_symlink() || !metadata.is_file() => {
                 return Err(ToolError::Path(format!(
                     "{path} isn't a regular file (it may be a link or a folder)."
                 )));
             }
-            Ok(_) => true,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+            Ok(metadata) => (true, kept_permissions(&metadata)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (false, None),
             Err(error) => return Err(ToolError::Io(error.to_string())),
         };
         self.journal(path, &checked);
@@ -774,6 +959,8 @@ impl AgentWorkspace {
                 .map_err(|error| ToolError::Io(format!("{path} could not be written: {error}")))?;
             file.write_all(content.as_bytes())
                 .map_err(|error| ToolError::Io(error.to_string()))?;
+            apply_permissions(&file, permissions)
+                .map_err(|error| ToolError::Io(format!("{path} could not be written: {error}")))?;
             file.sync_all()
                 .map_err(|error| ToolError::Io(error.to_string()))?;
             drop(file);
@@ -841,13 +1028,20 @@ impl AgentWorkspace {
     /// Ends the run: what changed, and (review mode) the saved review. The
     /// working copy is deleted unless `keep_workspace`.
     pub fn finish(self, keep_workspace: bool) -> Result<ChangeSet, CliError> {
-        let set = self.collect()?;
+        let mut set = self.collect()?;
         let review = matches!(self.mode, WriteMode::Review { .. });
         if review && !keep_workspace {
             let work_root = self.work_root.clone();
             // The folder handle closes first (Windows can't delete an open folder).
             drop(self);
-            std::fs::remove_dir_all(&work_root).map_err(io_error)?;
+            // The review is saved by now, so a copy that can't be deleted
+            // (a scanner holds a build output) must not lose the report.
+            if let Err(error) = remove_working_copy(&work_root) {
+                set.warnings.push(format!(
+                    "The working copy could not be deleted ({error}). Delete {} when nothing uses it.",
+                    work_root.display()
+                ));
+            }
         }
         Ok(set)
     }
@@ -1194,6 +1388,12 @@ pub fn apply_review(
         if sha256_hex(&bytes).as_str() != change.after_sha256.as_deref().unwrap_or_default() {
             return Err(not_a_review());
         }
+        let permissions = folder
+            .symlink_metadata(name)
+            .ok()
+            .filter(|metadata| metadata.is_file())
+            .and_then(|metadata| kept_permissions(&metadata))
+            .or_else(|| saved_permissions(&review_dir.join("changes").join(&change.path)));
         let staging = format!(".agent-write-{:032x}", rand::random::<u128>());
         let mut options = OpenOptions::new();
         options
@@ -1203,6 +1403,7 @@ pub fn apply_review(
         let written = (|| -> std::io::Result<()> {
             let mut file = folder.open_with(&staging, &options)?;
             file.write_all(&bytes)?;
+            apply_permissions(&file, permissions)?;
             file.sync_all()?;
             drop(file);
             folder.rename(&staging, &folder, name)
@@ -1294,6 +1495,108 @@ mod tests {
             assert!(ws.checked(good).is_ok(), "{good}");
         }
         assert!(ws.checked(&"a/".repeat(600)).is_err());
+    }
+
+    #[test]
+    fn commands_may_not_change_the_folders_the_file_tools_refuse() {
+        let project = project_with(&[
+            ("main.tex", "a"),
+            (".git/HEAD", "ref"),
+            (".git/hooks/pre-commit.sample", "#!/bin/sh"),
+            (".private/key", "k"),
+            (".oleafly/build/main.pdf", "pdf"),
+            ("vendor/lib/.git", "gitdir: ../../.git/modules/lib"),
+            ("vendor/lib/src/a.tex", "a"),
+            ("node_modules/pkg/.git/config", "x"),
+            ("a/b/c/d/.git/config", "too deep"),
+            ("chapters/.GIT/config", "case"),
+        ]);
+        let root = dunce::canonicalize(project.path()).unwrap();
+        let mut relative: Vec<String> = protected_folders(&root)
+            .iter()
+            .map(|path| {
+                path.strip_prefix(&root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            })
+            .collect();
+        relative.sort();
+        assert_eq!(
+            relative,
+            [
+                ".git",
+                ".oleafly",
+                ".private",
+                "chapters/.GIT",
+                "vendor/lib/.git"
+            ]
+        );
+        // A folder with nothing to protect gives nothing.
+        let plain = project_with(&[("main.tex", "a")]);
+        assert!(protected_folders(plain.path()).is_empty());
+    }
+
+    #[test]
+    fn windows_short_names_of_protected_folders_are_refused_on_every_platform() {
+        let (_project, _reviews, ws) = review_workspace_with(&[("main.tex", "a")]);
+        for bad in [
+            "GIT~1/hooks/pre-commit",
+            "git~1/config",
+            "OLEAFL~1/build/main.pdf",
+            "sub/PRIVAT~1/key",
+            "sub/GIT~2",
+            "sub/GIT~1.bak/x",
+            ".g\u{200C}it/config",
+            "sub/.GIT/config",
+        ] {
+            assert!(
+                matches!(ws.checked(bad), Err(ToolError::Path(_))),
+                "{bad:?}"
+            );
+            assert!(path_problem(bad).is_some(), "{bad:?}");
+        }
+        for good in [
+            "notes~backup.tex",
+            "main.tex~",
+            "report~final/ch1.tex",
+            "sub~1x/a.tex",
+            "toolongname~1/a.tex",
+            "~1/a.tex",
+        ] {
+            assert!(ws.checked(good).is_ok(), "{good}");
+        }
+    }
+
+    #[test]
+    fn a_review_that_names_a_short_name_alias_is_not_applied() {
+        let project = project_with(&[("main.tex", "a")]);
+        let reviews = tempfile::tempdir().unwrap();
+        let review = reviews.path().join("run-1");
+        std::fs::create_dir_all(review.join("changes/GIT~1")).unwrap();
+        std::fs::write(review.join("changes/GIT~1/config"), "[core]\n").unwrap();
+        let project_path = dunce::canonicalize(project.path()).unwrap();
+        let manifest = ReviewManifest {
+            version: REVIEW_VERSION,
+            run_id: "run-1".into(),
+            project: project_path.clone(),
+            baseline: BTreeMap::new(),
+            changes: vec![FileChange {
+                path: "GIT~1/config".into(),
+                kind: ChangeKind::Added,
+                before_sha256: None,
+                after_sha256: Some(sha256_hex(b"[core]\n")),
+                bytes: Some(7),
+            }],
+        };
+        std::fs::write(
+            review.join("changes.json"),
+            serde_json::to_vec(&manifest).unwrap(),
+        )
+        .unwrap();
+        let error = apply_review(&review, &project_path, false).unwrap_err();
+        assert_eq!(error.code, "agent.not_a_review");
+        assert!(!project_path.join("GIT~1").exists());
     }
 
     #[cfg(unix)]
@@ -1582,6 +1885,187 @@ mod tests {
             "a\n"
         );
         assert!(!project.path().join("added.tex").exists());
+    }
+
+    #[cfg(unix)]
+    fn mode_of(path: &Path) -> u32 {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::metadata(path).unwrap().permissions().mode() & 0o7777
+    }
+
+    #[cfg(unix)]
+    fn make_script(project: &tempfile::TempDir) {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(
+            project.path().join("build.sh"),
+            std::fs::Permissions::from_mode(0o755),
+        )
+        .unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn editing_a_script_in_apply_mode_keeps_its_mode() {
+        let project = project_with(&[("build.sh", "#!/bin/sh\necho a\n")]);
+        make_script(&project);
+        let ws = AgentWorkspace::open(
+            project.path(),
+            &policy_for(WriteMode::Apply),
+            &STAGE_LIMITS,
+            &token(),
+        )
+        .unwrap();
+        ws.edit_text("build.sh", "echo a", "echo b", false).unwrap();
+        ws.write_text("fresh.sh", "echo new\n").unwrap();
+        assert!(std::fs::read_to_string(project.path().join("build.sh"))
+            .unwrap()
+            .contains("echo b"));
+        assert_eq!(mode_of(&project.path().join("build.sh")), 0o755);
+        assert_ne!(mode_of(&project.path().join("fresh.sh")) & 0o111, 0o111);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_review_keeps_a_scripts_mode_from_the_copy_to_the_applied_project() {
+        let project = project_with(&[("build.sh", "#!/bin/sh\necho a\n"), ("main.tex", "a\n")]);
+        make_script(&project);
+        let reviews = tempfile::tempdir().unwrap();
+        let ws = AgentWorkspace::open(
+            project.path(),
+            &policy_for(WriteMode::Review {
+                dir: reviews.path().join("run-1"),
+            }),
+            &STAGE_LIMITS,
+            &token(),
+        )
+        .unwrap();
+        ws.edit_text("build.sh", "echo a", "echo b", false).unwrap();
+        ws.write_text("added.tex", "new\n").unwrap();
+        assert_eq!(mode_of(&ws.work_root().join("build.sh")), 0o755);
+        let dir = ws.finish(false).unwrap().review_dir.unwrap();
+        assert_eq!(mode_of(&dir.join("changes/build.sh")), 0o755);
+        apply_review(&dir, project.path(), false).unwrap();
+        assert!(std::fs::read_to_string(project.path().join("build.sh"))
+            .unwrap()
+            .contains("echo b"));
+        assert_eq!(mode_of(&project.path().join("build.sh")), 0o755);
+        assert!(project.path().join("added.tex").is_file());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn applying_a_review_keeps_the_mode_the_project_file_has_now() {
+        let (project, _reviews, dir) = saved_review();
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(
+                project.path().join("main.tex"),
+                std::fs::Permissions::from_mode(0o600),
+            )
+            .unwrap();
+        }
+        apply_review(&dir, project.path(), false).unwrap();
+        assert_eq!(mode_of(&project.path().join("main.tex")), 0o600);
+    }
+
+    #[test]
+    fn names_a_run_can_t_use_are_reported_instead_of_dropped_silently() {
+        let (_project, _reviews, ws) = review_workspace_with(&[
+            ("main.tex", "a\n"),
+            ("PROGRA~1/data.csv", "1\n"),
+            ("PROGRA~1/more/deep.csv", "2\n"),
+            ("backup~2.tex", "b\n"),
+        ]);
+        // The folder counts once, with everything under it.
+        assert_eq!(ws.left_out(), 2);
+        let warning = ws
+            .warnings()
+            .iter()
+            .find(|warning| warning.contains("names a run can't use"))
+            .expect("a warning for the names");
+        assert!(
+            warning.contains("Skipped 2 files and folders")
+                && warning.contains("PROGRA~1")
+                && warning.contains("backup~2.tex"),
+            "{warning}"
+        );
+        assert!(!ws.work_root().join("PROGRA~1").exists());
+        assert!(ws.work_root().join("main.tex").is_file());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_colon_or_a_windows_device_name_on_unix_is_counted_too() {
+        let (_project, _reviews, ws) = review_workspace_with(&[
+            ("figures/Fig 3: overview.pdf", "pdf"),
+            ("aux/notes.txt", "n"),
+            ("figures/ok.pdf", "pdf"),
+        ]);
+        assert_eq!(ws.left_out(), 2);
+        assert!(ws.work_root().join("figures/ok.pdf").is_file());
+        assert!(ws
+            .warnings()
+            .iter()
+            .any(|warning| warning.contains("Fig 3: overview.pdf") && warning.contains("aux")));
+    }
+
+    #[test]
+    fn a_project_with_only_usable_names_has_no_names_warning() {
+        let (_project, _reviews, ws) = review_workspace_with(&[("main.tex", "a\n")]);
+        assert_eq!(ws.left_out(), 0);
+        assert!(ws.warnings().is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_working_copy_that_cannot_be_deleted_keeps_the_report() {
+        use std::os::unix::fs::PermissionsExt;
+        let probe = tempfile::tempdir().unwrap();
+        std::fs::create_dir(probe.path().join("d")).unwrap();
+        std::fs::write(probe.path().join("d/f"), "x").unwrap();
+        std::fs::set_permissions(
+            probe.path().join("d"),
+            std::fs::Permissions::from_mode(0o555),
+        )
+        .unwrap();
+        let can_delete_anyway = std::fs::remove_file(probe.path().join("d/f")).is_ok();
+        std::fs::set_permissions(
+            probe.path().join("d"),
+            std::fs::Permissions::from_mode(0o755),
+        )
+        .unwrap();
+        if can_delete_anyway {
+            return; // running as root: permissions don't stop a delete
+        }
+
+        let (_project, _reviews, ws) = review_workspace_with(&[("main.tex", "a\n")]);
+        ws.write_text("main.tex", "b\n").unwrap();
+        let locked = ws.work_root().join("locked");
+        std::fs::create_dir(&locked).unwrap();
+        std::fs::write(locked.join("out.txt"), "x").unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o555)).unwrap();
+        let work_root = ws.work_root().to_path_buf();
+        let result = ws.finish(false);
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let set = result.expect("a cleanup error is a warning, not a failed run");
+        assert!(set
+            .review_dir
+            .as_ref()
+            .unwrap()
+            .join("changes.json")
+            .is_file());
+        assert!(set
+            .changes
+            .iter()
+            .any(|change| change.path == "main.tex" && change.kind == ChangeKind::Modified));
+        assert!(
+            set.warnings.iter().any(|warning| warning
+                .contains("working copy could not be deleted")
+                && warning.contains(&*work_root.to_string_lossy())),
+            "{:?}",
+            set.warnings
+        );
+        assert!(work_root.exists());
     }
 
     #[test]

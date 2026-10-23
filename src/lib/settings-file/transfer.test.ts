@@ -140,7 +140,7 @@ describe("settings document", () => {
       "shortcuts",
       "experimentation",
     ]);
-    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "assistant", "files"]);
+    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "files"]);
     const text = serializeSettingsDocument(document);
     expect(text).toContain('\n  "general": {\n    "language": "system",');
     expect(text).toContain('"fontSize": 16');
@@ -271,17 +271,12 @@ describe("reading a settings file", () => {
     ]);
   });
 
-  it("round-trips the composer height and rejects values out of range", () => {
-    const ok = readSettingsFile(fileWith({ appearance: { assistant: { composerHeight: 300 } } }), snapshot());
-    expect(ok).toMatchObject({ ok: true, changed: ["appearance.assistant.composerHeight"] });
-    for (const composerHeight of [20, 5000]) {
-      const read = readSettingsFile(fileWith({ appearance: { assistant: { composerHeight } } }), snapshot());
-      expect(read.ok).toBe(false);
-      if (read.ok || read.reason !== "invalid") throw new Error("expected problems");
-      expect(read.problems).toEqual([
-        { path: "appearance.assistant.composerHeight", issue: { kind: "wholeRange", min: 56, max: 2000, step: 1 } },
-      ]);
-    }
+  it("keeps the composer height, a panel size, out of the settings file", () => {
+    useSettingsStore.getState().setAiComposerHeight(300);
+    expect(JSON.stringify(buildSettingsDocument(snapshot()))).not.toMatch(/composerHeight|"assistant"/);
+    const read = readSettingsFile(fileWith({ appearance: { assistant: { composerHeight: 400 } } }), snapshot());
+    expect(read).toMatchObject({ ok: true, changed: [], ignored: ["appearance.assistant"] });
+    expect(useSettingsStore.getState().aiComposerHeight).toBe(300);
   });
 
   it("round-trips the reasoning summaries setting in a settings file", () => {

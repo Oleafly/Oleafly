@@ -273,6 +273,28 @@ pub fn open_project(
     main: Option<&str>,
     compiler: Option<TexFlavor>,
 ) -> Result<OpenedProject, CliError> {
+    let opened = open_project_unchecked(path, main, compiler)?;
+    // Results carry these paths as JSON text, which has no way to hold bytes
+    // that aren't UTF-8; a command would panic with its work done.
+    for folder in [opened.workspace.root(), &opened.workspace.build_dir_path()] {
+        if folder.to_str().is_none() {
+            return Err(invalid(format!(
+                "The folder {} has a name that isn't valid UTF-8, so Oleafly can't report on it. Rename it, or open the project from another path.",
+                folder.display()
+            )));
+        }
+    }
+    Ok(opened)
+}
+
+fn open_project_unchecked(
+    path: &Path,
+    main: Option<&str>,
+    compiler: Option<TexFlavor>,
+) -> Result<OpenedProject, CliError> {
+    // `.\chapters\a.tex`, as a Windows shell completes it.
+    let main = main.map(crate::contract::project_path_arg);
+    let main = main.as_deref();
     // A path that leaves the project is refused before the folder is read.
     if let Some(main) = main {
         let relative = Path::new(main);
@@ -750,6 +772,24 @@ mod tests {
             flavored.workspace.manifest().tex_flavor.as_deref(),
             Some("xelatex")
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_project_whose_path_is_not_utf8_is_refused_up_front() {
+        use std::os::unix::ffi::OsStrExt;
+        let data = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        let parent = tempfile::tempdir().unwrap();
+        let folder = parent.path().join(std::ffi::OsStr::from_bytes(b"th\xe9se"));
+        // Some file systems (APFS) don't take such a name at all.
+        if std::fs::create_dir(&folder).is_err() {
+            return;
+        }
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        let error = open_project(&folder, None, None).unwrap_err();
+        assert_eq!(error.code, "project.invalid_input");
+        assert!(error.message.contains("UTF-8"), "{}", error.message);
     }
 
     #[test]

@@ -40,7 +40,7 @@ function photo(name: string, type: string, size = 4_000_000): File {
 }
 
 /** A module worker that answers each job with `answer(job)`. */
-function stubWorker(answer: (job: { id: number }) => Record<string, unknown> | "crash") {
+function stubWorker(answer: (job: { id: number }) => Record<string, unknown> | "crash" | "silent") {
   const created: FakeWorker[] = [];
   class FakeWorker {
     onmessage: ((event: { data: unknown }) => void) | null = null;
@@ -52,6 +52,7 @@ function stubWorker(answer: (job: { id: number }) => Record<string, unknown> | "
     postMessage(job: { id: number }) {
       queueMicrotask(() => {
         const reply = answer(job);
+        if (reply === "silent") return;
         if (reply === "crash") this.onerror?.();
         else this.onmessage?.({ data: { id: job.id, ...reply } });
       });
@@ -205,5 +206,47 @@ describe("normalizing an image in the worker", () => {
     expect(created[0].terminate).toHaveBeenCalledOnce();
     expect((await normalizeImage(small(), OPTIONS)).thumbnailUrl).toBe("data:t");
     expect(created).toHaveLength(2);
+  });
+
+  it("stops a worker that never answers, so the next image gets a new one", async () => {
+    vi.useFakeTimers();
+    try {
+      const created = stubWorker((job) => (job.id === 1 ? "silent" : { ok: true, thumbnailUrl: "data:t" }));
+      vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(bitmap(120, 80)));
+      stubCanvas();
+      const { normalizeImage } = await import("./image-normalize");
+      const small = () => new File([new Uint8Array([1])], "icon.png", { type: "image/png" });
+
+      const stuck = normalizeImage(small(), OPTIONS);
+      await vi.advanceTimersByTimeAsync(30_000);
+      // The wedged job falls back to the main thread, and its worker is gone.
+      expect((await stuck).thumbnailUrl).toBe("data:image/jpeg;base64,THUMB");
+      expect(created[0].terminate).toHaveBeenCalledOnce();
+      expect((await normalizeImage(small(), OPTIONS)).thumbnailUrl).toBe("data:t");
+      expect(created).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("lets the worker go once no image has needed it for a while", async () => {
+    vi.useFakeTimers();
+    try {
+      const created = stubWorker(() => ({ ok: true, thumbnailUrl: "data:t" }));
+      vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(bitmap(120, 80)));
+      stubCanvas();
+      const { normalizeImage } = await import("./image-normalize");
+      const small = () => new File([new Uint8Array([1])], "icon.png", { type: "image/png" });
+
+      await normalizeImage(small(), OPTIONS);
+      expect(created).toHaveLength(1);
+      expect(created[0].terminate).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(created[0].terminate).toHaveBeenCalledOnce();
+      await normalizeImage(small(), OPTIONS);
+      expect(created).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

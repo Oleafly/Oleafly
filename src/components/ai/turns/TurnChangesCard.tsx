@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { i18n } from "@/i18n";
 import type { TurnChange, TurnFileState, TurnUnavailable } from "@/lib/agent-turns";
+import { describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import type { ChatTurnChanges } from "@/store/chats";
 import { DiffPreview } from "./DiffPreview";
@@ -471,7 +472,7 @@ function CommitTurnForm({
         setError(null);
         void onCommit(files.filter((path) => chosen.has(path)), trimmed)
           .then(onClose)
-          .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
+          .catch((cause: unknown) => setError(describeError(cause)))
           .finally(() => setSaving(false));
       }}
     >

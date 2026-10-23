@@ -78,7 +78,7 @@ import { hostLabel, matchAccount, remoteWebUrl } from "@/lib/forge";
 import { describeError } from "@/lib/app-error";
 import { dirname } from "@/lib/path-utils";
 import { cn, isMac, isWindows } from "@/lib/utils";
-import { open } from "@tauri-apps/plugin-shell";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { useRowWindow } from "@/hooks/use-row-window";
@@ -1346,7 +1346,7 @@ export function GitMissingGuide({ os = HOST_OS }: Readonly<{ os?: HostOs }>) {
           <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
             {t(($) => $.shell.sourceControl.gitMissing.windows)}
           </p>
-          <Button size="sm" onClick={() => void open(GIT_FOR_WINDOWS_URL)}>
+          <Button size="sm" onClick={() => void openInSystemBrowser(GIT_FOR_WINDOWS_URL)}>
             {t(($) => $.shell.sourceControl.gitMissing.download)}
           </Button>
         </>
@@ -1737,7 +1737,7 @@ function Header({
             webUrl={url}
             host={host}
             account={remoteAccount}
-            onOpen={() => void open(url)}
+            onOpen={() => void openInSystemBrowser(url)}
             onCopyLink={() => onCopyLink?.(url)}
           />
         ) : null}

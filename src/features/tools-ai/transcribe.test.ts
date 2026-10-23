@@ -80,6 +80,8 @@ interface SentRequest {
   messages: { content: { type: string; text?: string; image?: string }[] }[];
   temperature?: number;
   max_tokens?: number;
+  effort?: string;
+  reasoning_summary?: boolean;
 }
 
 function sent(call = 0): SentRequest {
@@ -112,6 +114,41 @@ describe("image transcription", () => {
     expect(request.max_tokens).toBe(toolsMaxTokens(model));
     expect(mocks.completeViaBackend.mock.calls[0][2]).toEqual({ provider_id: "ollama", model_id: "llava" });
     expect(mocks.convertAdHoc).not.toHaveBeenCalled();
+  });
+
+  it("asks for no thinking: a transcription copies the page", async () => {
+    await transcribeImage(claude, PNG, { target: "LaTeX", mode: "image", fragment: true });
+    await transcribeEquationText(claude, "x squared", undefined);
+    for (const call of [0, 1]) {
+      expect(sent(call).effort).toBe("none");
+      expect(sent(call).reasoning_summary).toBe(false);
+    }
+    await transcribePdfPages(new Uint8Array([1]), [1], "Markdown");
+    expect(sent(2).effort).toBe("none");
+  });
+
+  it("fails a reply that stopped at the output limit instead of passing on half a page", async () => {
+    for (const stop of ["max_tokens", "length", "max_output_tokens"]) {
+      mocks.completeViaBackend.mockResolvedValue({ text: "\\begin{tabular}{ll} a & b", stop_reason: stop });
+      await expect(
+        transcribeImage(claude, PNG, { target: "LaTeX", mode: "image", fragment: true }),
+      ).rejects.toMatchObject({
+        name: "ToolsModelError",
+        message: researchTools.converterErrors.outputLimit,
+      });
+    }
+    // A scanned page that is cut off stops the run before the next page.
+    mocks.completeViaBackend.mockClear();
+    mocks.completeViaBackend.mockResolvedValue({ text: "half", stop_reason: "max_tokens" });
+    await expect(transcribePdfPages(new Uint8Array([1]), [1, 2, 3], "Markdown")).rejects.toThrow(
+      researchTools.converterErrors.outputLimit,
+    );
+    expect(mocks.completeViaBackend).toHaveBeenCalledOnce();
+    // Other reasons, and none at all, are fine.
+    mocks.completeViaBackend.mockResolvedValue({ text: "ok", stop_reason: "end_turn" });
+    await expect(
+      transcribeImage(claude, PNG, { target: "Typst", mode: "image", fragment: true }),
+    ).resolves.toBe("ok");
   });
 
   it("downscales for hosted models and keeps originals for Ollama", async () => {

@@ -13,9 +13,12 @@ pub struct HelperPaths {
     pub log: PathBuf,
     /// The app that is open (it shows task notifications itself).
     pub app_open: PathBuf,
+    /// The folders the app looks for programs in (the helper's own `PATH`
+    /// is minimal).
+    pub search_dirs: PathBuf,
 }
 
-/// `<data>/daemon/{daemon.lock, state.json, stop-request, helper.log, app-open.json}`.
+/// `<data>/daemon/{daemon.lock, state.json, stop-request, helper.log, app-open.json, search-dirs.json}`.
 pub fn helper_paths(data_root: &Path) -> HelperPaths {
     let dir = data_root.join("daemon");
     HelperPaths {
@@ -24,6 +27,7 @@ pub fn helper_paths(data_root: &Path) -> HelperPaths {
         stop_request: dir.join("stop-request"),
         log: dir.join("helper.log"),
         app_open: dir.join("app-open.json"),
+        search_dirs: dir.join("search-dirs.json"),
         dir,
     }
 }
@@ -63,6 +67,10 @@ mod tests {
         assert_eq!(
             paths.app_open,
             Path::new("/home/me/.oleafly/daemon/app-open.json")
+        );
+        assert_eq!(
+            paths.search_dirs,
+            Path::new("/home/me/.oleafly/daemon/search-dirs.json")
         );
     }
 

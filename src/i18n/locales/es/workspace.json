@@ -229,6 +229,7 @@
       "closeOne": "Cerrar el terminal",
       "closeProject": "Cerrar el proyecto",
       "dontAsk": "No volver a preguntar",
+      "dontAskHint": "Para volver a activarla, ve a Ajustes, Apariencia, Terminal, Preguntar antes de cerrar un terminal ocupado.",
       "many_one": "Un programa sigue ejecutándose en {{count}} terminal.",
       "many_many": "Hay programas que siguen ejecutándose en {{count}} terminales.",
       "many_other": "Hay programas que siguen ejecutándose en {{count}} terminales.",

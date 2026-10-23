@@ -5,7 +5,7 @@ import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { cn } from "@/lib/utils";
 import type { ResearchTask, ResearchTaskStatus } from "@/lib/research-tasks";
-import { STATUS_ICONS, statusBadgeClass, statusLabel } from "./task-status";
+import { STATUS_ICONS, statusBadgeVariant, statusLabel } from "./task-status";
 
 export function TaskStatusBadge({
   status,
@@ -17,7 +17,7 @@ export function TaskStatusBadge({
   useTranslation(["common", "researchTools"]);
   const Icon = STATUS_ICONS[status];
   return (
-    <Badge variant="outline" className={cn("gap-1", statusBadgeClass(status), className)}>
+    <Badge variant={statusBadgeVariant(status)} className={cn("gap-1", className)}>
       <Icon
         aria-hidden="true"
         className={cn("size-3", status === "running" && "animate-spin motion-reduce:animate-none")}

@@ -2404,12 +2404,14 @@ pub async fn install(root: &Path, definition: &AgentDefinition) -> Result<(), St
             "npm_config_globalconfig",
             locator::child_path(&temporary.join("empty-globalnpmrc")),
         );
-        command.env(
-            "npm_config_cache",
-            locator::child_path(&root.join("npm-cache")),
-        );
+        // The cache lives and ends with this install: one shared folder would
+        // keep every bridge version's tarballs for good.
+        let cache = temporary.join("npm-cache");
+        command.env("npm_config_cache", locator::child_path(&cache));
         command.env("npm_config_update_notifier", "false");
-        bounded_command(command, Duration::from_secs(300)).await?;
+        let installed = bounded_command(command, Duration::from_secs(300)).await;
+        let _ = tokio::fs::remove_dir_all(&cache).await;
+        installed?;
         let (name, _) = package_parts(&package.package, true)?;
         let package_root = temporary.join("node_modules").join(name);
         let manifest_bytes = tokio::fs::read(package_root.join("package.json"))

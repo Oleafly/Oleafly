@@ -31,6 +31,7 @@ notify = "8.2"
 oleafly-core = { path = "../oleafly-core" }
 oleafly-doctools = { path = "../oleafly-doctools" }
 oleafly-downloads = { path = "../oleafly-downloads" }
+oleafly-forge = { path = "../oleafly-forge" }
 oleafly-history = { path = "../oleafly-history" }
 oleafly-lint = { path = "../oleafly-lint", default-features = false }
 oleafly-preflight = { path = "../oleafly-preflight" }

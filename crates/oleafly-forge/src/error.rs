@@ -29,6 +29,9 @@ pub enum ForgeError {
     Forbidden {
         scopes: &'static str,
     },
+    /// The server refused because the organization requires single sign-on
+    /// and this sign-in is not authorized for it yet.
+    SsoRequired,
     MissingScopes {
         scopes: &'static str,
     },
@@ -82,6 +85,7 @@ impl ForgeError {
             ForgeError::SignInFailed { .. } => "git.sign_in_failed",
             ForgeError::Unauthorized => "git.forge_signed_out",
             ForgeError::Forbidden { .. } => "git.forge_forbidden",
+            ForgeError::SsoRequired => "git.forge_sso_required",
             ForgeError::MissingScopes { .. } => "git.forge_missing_scopes",
             ForgeError::NotFound => "git.forge_not_found",
             ForgeError::Conflict => "git.forge_repository_exists",
@@ -105,6 +109,7 @@ impl ForgeError {
             self,
             ForgeError::Unauthorized
                 | ForgeError::Forbidden { .. }
+                | ForgeError::SsoRequired
                 | ForgeError::MissingScopes { .. }
                 | ForgeError::InvalidToken
                 | ForgeError::TokenRejected
@@ -159,6 +164,9 @@ impl fmt::Display for ForgeError {
             ForgeError::Forbidden { scopes } => write!(
                 f,
                 "The server refused this. The token may be missing the {scopes} scopes."
+            ),
+            ForgeError::SsoRequired => f.write_str(
+                "The organization requires single sign-on. Authorize this sign-in for the organization on the server, then try again.",
             ),
             ForgeError::MissingScopes { scopes } => write!(
                 f,
@@ -237,6 +245,7 @@ mod tests {
             ForgeError::SignInFailed { detail: "x".into() },
             ForgeError::Unauthorized,
             ForgeError::Forbidden { scopes: "api" },
+            ForgeError::SsoRequired,
             ForgeError::MissingScopes { scopes: "api" },
             ForgeError::NotFound,
             ForgeError::Conflict,
@@ -288,6 +297,7 @@ mod tests {
     fn auth_and_network_errors_are_grouped_for_exit_codes() {
         assert!(ForgeError::Unauthorized.is_auth());
         assert!(ForgeError::MissingScopes { scopes: "api" }.is_auth());
+        assert!(ForgeError::SsoRequired.is_auth());
         assert!(ForgeError::Unreachable {
             detail: String::new()
         }

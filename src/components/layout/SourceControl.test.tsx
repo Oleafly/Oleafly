@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GitWorkspaceSnapshot } from "@oleafly/backend-port";
 import { SOURCE_CONTROL_SHOW_GRAPH_EVENT } from "@/lib/source-control-events";
-import { open } from "@tauri-apps/plugin-shell";
+import { openInSystemBrowser as open } from "@/lib/system-browser";
 import { GitMissingGuide, SourceControl } from "./SourceControl";
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -167,7 +167,7 @@ vi.mock("@/store/forge-accounts", () => ({
   ),
 }));
 
-vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
+vi.mock("@/lib/system-browser", () => ({ openInSystemBrowser: vi.fn(async () => true) }));
 
 vi.mock("@/lib/tauri", () => ({
   gitWorkspaceSnapshot: mocks.gitWorkspaceSnapshot,

@@ -201,7 +201,10 @@
       "unavailable": "Nicht verfügbar",
       "saving": "Wird gespeichert...",
       "saveTask": "Aufgabe speichern",
-      "createTask": "Aufgabe anlegen"
+      "createTask": "Aufgabe anlegen",
+      "replaceText": "Titel und Anweisungen, die Sie eingegeben haben, durch diesen Starter ersetzen?",
+      "keepText": "Meins behalten",
+      "replaceConfirm": "Ersetzen"
     },
     "starter": {
       "literatureReview": {
@@ -245,6 +248,10 @@
       "dependencies": "Abhängigkeiten",
       "dependencyUnavailable": "Nicht verfügbar",
       "noActivity": "Für diesen Lauf wurde keine Aktivität erfasst.",
+      "activityGap_one": "{{count}} Eintrag dazwischen wird nicht angezeigt.",
+      "activityGap_other": "{{count}} Einträge dazwischen werden nicht angezeigt.",
+      "activityMore": "Weitere Aktivität wird noch nicht angezeigt.",
+      "keepRunningDesktopApps": "Diese Aufgabe verwendet Desktop-Apps und braucht Sie dafür am Computer.",
       "startToRecord": "Starten Sie diese Aufgabe, um ihre Aktivität zu erfassen.",
       "reasoning": "Gemeldeter Gedankengang",
       "savedArtifact": "{{label}} gespeichert",
@@ -318,6 +325,10 @@
       "kindRun": "Einen Lauf starten",
       "kindMcp": "Ein Werkzeug verwenden",
       "expires": "Wartet bis {{time}}",
+      "detailCommand": "Vollständiger Befehl",
+      "detailRun": "Laufdetails",
+      "detailMcp": "Werkzeugargumente",
+      "loadFailed": "Wartende Anfragen konnten nicht geladen werden.",
       "status": {
         "approved": "Freigegeben",
         "denied": "Abgelehnt",
@@ -346,8 +357,9 @@
       "noRuns": "Keine Läufe aktiv.",
       "budget": "Budget",
       "timeUsed": "{{used}} von {{total}}",
-      "costUsed": "${{used}} von ${{limit}}",
-      "costSpent": "${{used}} ausgegeben",
+      "costUsed": "{{used}} von {{limit}}",
+      "costSpent": "{{used}} ausgegeben",
+      "ledgerCapped": "Es werden die neuesten {{limit}} Ergebnisse angezeigt.",
       "costUnknown": "Die Kosten für dieses Modell sind nicht bekannt.",
       "runsUsed": "{{used}} von {{limit}} Läufen",
       "runsUsedNoLimit": "{{used}} Läufe",
@@ -380,6 +392,10 @@
       "mcpServers": "MCP-Server, die Aufgaben verwenden können",
       "mcpServersHint": "Aufgaben rufen diese Werkzeuge nach den Befehlsregeln der jeweiligen Aufgabe auf.",
       "noMcpServers": "Es sind keine MCP-Server eingerichtet.",
+      "networkHint": "Befehle in Aufgaben erreichen das Internet. Jede Aufgabe kann das weiterhin ausschalten.",
+      "loadFailed": "Ihre Forschungseinstellungen konnten nicht geladen werden.",
+      "sectionName": "Forschung",
+      "resetConfirm": "Stellt die Forschungs-Standards wieder her: wach halten, Benachrichtigungen, Netzwerkzugriff, das Zeitbudget und die MCP-Server, die Aufgaben verwenden können. Laufziele und Hintergrundaufgaben bleiben unverändert.",
       "saveFailed": "Ihre Forschungseinstellungen konnten nicht gespeichert werden. Versuchen Sie es erneut."
     }
   },
@@ -891,7 +907,10 @@
     "fileReady": "{{fileName}} ist bereit",
     "saveWordHint": "Speichern Sie das Word-Dokument, wenn Sie so weit sind.",
     "resultPlaceholder": "Hier erscheint Ihr umgewandeltes Ergebnis.",
-    "progressConvertingSource": "Der Quelltext wird in Typst umgewandelt"
+    "progressConvertingSource": "Der Quelltext wird in Typst umgewandelt",
+    "pageRange": "Seiten",
+    "pageRangePlaceholder": "Alle Seiten oder ein Bereich wie 1-50",
+    "pageRangeInvalid": "Geben Sie eine Seitennummer oder einen Bereich wie 1-50 ein."
   },
   "converters": {
     "imageToLatex": {
@@ -1098,7 +1117,9 @@
     "fileTooLarge": "Wählen Sie eine Datei kleiner als 128 MB.",
     "emptySheet": "Das gewählte Blatt ist leer.",
     "arxivInputRequired": "Geben Sie eine arXiv-ID ein oder wählen Sie ein Quellarchiv.",
-    "equationToTypst": "Pandoc konnte diese Formel nicht in Typst umwandeln. Prüfen Sie die LaTeX-Formel und versuchen Sie es erneut."
+    "equationToTypst": "Pandoc konnte diese Formel nicht in Typst umwandeln. Prüfen Sie die LaTeX-Formel und versuchen Sie es erneut.",
+    "pdfTooManyPages": "Dieser Scan hat {{pages}} Seiten, und Oleafly transkribiert bis zu {{limit}} auf einmal. Geben Sie unter der Datei einen Seitenbereich wie 1-{{limit}} ein.",
+    "outputLimit": "Dem Modell ging der Platz aus, bevor es fertig war, deshalb wäre die Transkription unvollständig. Wählen Sie unter Einstellungen, KI, Tools ein Modell mit einem höheren Ausgabelimit oder transkribieren Sie einen kleineren Teil."
   },
   "converterNotes": {
     "scannedPages": "{{pages}} gescannte Seiten mit {{model}} transkribiert. Prüfen Sie Formeln und Tabellen, bevor Sie das Ergebnis verwenden.",
@@ -1740,10 +1761,14 @@
     "startAtLabel": "Starten um",
     "startNow": "Wenn ich sie starte",
     "keepRunning": "Weiterlaufen, wenn Oleafly geschlossen ist",
-    "keepRunningHint": "Schalten Sie zuerst unter Einstellungen, Forschung die Hintergrundarbeit ein.",
+    "keepRunningHint": "Schalten Sie zuerst unter Einstellungen, Forschung die Hintergrundaufgaben ein.",
     "invalidMetric": "Verwenden Sie Buchstaben, Zahlen, Punkte, Bindestriche oder Unterstriche.",
     "invalidCost": "Geben Sie einen Betrag über null ein.",
-    "invalidRuns": "Geben Sie eine ganze Zahl von 1 bis 1.000 ein."
+    "invalidRuns": "Geben Sie eine ganze Zahl von 1 bis 1.000 ein.",
+    "invalidStart": "Wählen Sie eine Startzeit innerhalb der nächsten 30 Tage.",
+    "invalidStartFormat": "Verwenden Sie das Format {{example}}.",
+    "startAtFormat": "Geben Sie die Zeit als {{example}} ein.",
+    "problemHidden": "Eine Angabe im Auftrag muss korrigiert werden. Öffnen Sie den Auftrag, um zu sehen, welche."
   },
   "runs": {
     "status": {
@@ -1755,11 +1780,6 @@
       "cancelled": "Gestoppt",
       "lost": "Verloren"
     }
-  },
-  "record": {
-    "title": "Forschungsprotokoll",
-    "openHandoff": "Übergabe öffnen",
-    "openReport": "Bericht öffnen"
   },
   "evidence": {
     "title": "Belegprüfungen",
@@ -1811,8 +1831,9 @@
       "edit": "Bearbeiten",
       "remove": "Entfernen",
       "removeTitle": "{{label}} entfernen?",
-      "removeConfirm": "Läufe, die dort bereits gestartet wurden, laufen weiter.",
+      "removeConfirm": "Läufe, die dort bereits gestartet wurden, laufen weiter. Aufgaben, die dort noch auf den Start warten, schlagen fehl.",
       "forgetHostKey": "Host-Schlüssel vergessen",
+      "reviewHostKey": "Host-Schlüssel prüfen",
       "notTested": "Nicht getestet",
       "tested": "Getestet {{time}}",
       "testFailed": "Test fehlgeschlagen",
@@ -1903,7 +1924,8 @@
       "none": "In Ihrer SSH-Konfiguration wurden keine Hosts gefunden.",
       "added": "Bereits hinzugefügt",
       "add_one": "{{count}} Host hinzufügen",
-      "add_other": "{{count}} Hosts hinzufügen"
+      "add_other": "{{count}} Hosts hinzufügen",
+      "skipped": "Nicht hinzugefügt: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Sandbox auf diesem Computer",
@@ -1934,6 +1956,7 @@
       "runsOn": "Läuft auf {{target}}",
       "runsLocal": "Läuft auf diesem Computer.",
       "missing": "Das Ziel, das diese Aufgabe verwendet hat, wurde entfernt. Wählen Sie ein anderes.",
+      "loadFailed": "Ihre Laufziele konnten nicht geladen werden.",
       "windowsOff": "Schalten Sie in den Einstellungen die Windows-Sandbox ein, um Befehle auf diesem Computer auszuführen.",
       "openSettings": "Einstellungen öffnen",
       "resources": "Slurm-Ressourcen"
@@ -1947,6 +1970,7 @@
       "movingBackHint": "Diese Aufgabe kehrt zu Oleafly zurück, wenn ihr aktueller Schritt endet."
     },
     "earlierActivity": "Frühere Aktivität anzeigen",
+    "earlierTruncated": "Von diesem früheren Lauf werden nur die ersten {{limit}} Einträge angezeigt.",
     "keepRunningFailed": "Diese Einstellung konnte nicht geändert werden. Versuchen Sie es erneut."
   }
 }

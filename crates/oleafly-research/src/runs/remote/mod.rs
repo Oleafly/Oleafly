@@ -27,6 +27,13 @@ pub mod target_test;
 pub(crate) mod testing;
 pub mod transport;
 
+/// How often a remote run is checked. Every check is a login to the host
+/// (and a query to the scheduler), which clusters rate-limit.
+#[cfg(not(test))]
+pub(crate) const REMOTE_POLL_EVERY: Duration = Duration::from_secs(15);
+#[cfg(test)]
+pub(crate) const REMOTE_POLL_EVERY: Duration = Duration::from_millis(200);
+
 /// An MCP server started over stdio for one call (the `cua` daemon).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct McpStdioServer {

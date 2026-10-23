@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} refused access to this repository. Check that your account can use it. If the organization uses single sign-on, authorize your sign-in for it first.",
+    "access_denied_account": "{{host}} refused access to this repository for {{account}}. Check that this account can use it. If the organization uses single sign-on, authorize your sign-in for it first.",
     "account_missing": "There is no Git hosting account for {{host}}. Add one in Settings.",
     "archive_too_large": "The repository files are larger than {{limit}} MB, so Oleafly can't import them. Clone the repository yourself and open its folder instead.",
-    "auth_rejected": "{{host}} turned down your saved sign-in. Sign in to {{host}} again in Settings.",
+    "auth_rejected": "{{host}} turned down the saved sign-in for {{account}}. Sign in to {{host}} again in Settings.",
     "credentials_missing": "{{host}} asked for a user name and password. Sign in to {{host}} in Settings, or set up an SSH key or a Git credential helper.",
     "credentials_rejected": "{{host}} turned down the user name and password Git offered. Sign in to {{host}} in Settings, or update the credentials your Git uses.",
     "device_flow_unavailable": "Browser sign-in isn't available for {{host}} in this build. Use an access token instead.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "A repository with this name already exists on {{host}}.",
     "forge_server_error": "{{host}} returned an error ({{status}}).",
     "forge_signed_out": "Your sign-in for {{host}} expired or was revoked. Sign in again in Settings.",
+    "forge_sso_required": "{{host}} needs this sign-in authorized for the organization's single sign-on. Authorize it on {{host}}, then try again.",
     "forge_store": "Oleafly couldn't read or save your Git hosting accounts.",
     "forge_token_invalid": "This doesn't look like an access token. Paste the whole token.",
     "forge_token_rejected": "{{host}} didn't accept this token. Check that you copied the whole token and that it hasn't expired.",
     "forge_unknown_server": "Oleafly couldn't tell what kind of server {{host}} is. Choose the server type.",
     "host_key_unknown": "SSH doesn't know {{host}} yet. Connect to it once from a terminal to accept its host key, then try again.",
     "host_unreachable": "Oleafly couldn't reach {{host}}. Check the address and your connection.",
+    "import_cancelled": "The import was cancelled.",
     "invalid_remote_url": "Enter the HTTPS or SSH address of a Git repository.",
     "nested_repository": "This project is inside another Git repository, so Oleafly won't create a separate one here.",
     "not_installed": "Git isn't installed on this computer. Install Git, then try again.",
     "push_rejected": "The remote branch has commits this project doesn't have yet. Pull first, then push again.",
     "remote_exists": "This project is already linked to {{remote}}.",
-    "remote_has_password": "Take the password out of the address. Oleafly signs in with your Git hosting account or your own Git credentials instead.",
+    "remote_has_password": "Take the password or access token out of the address. Oleafly signs in with your Git hosting account or your own Git credentials instead.",
     "repository_empty": "This repository has no commits yet, so there is nothing to import.",
     "repository_not_found": "{{host}} has no repository at this address, or your account can't see it.",
     "sign_in_cancelled": "Sign-in was cancelled in the browser.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly could not check your {{provider}} balance."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 isn't installed.",
+    "git_bash_missing": "Git Bash isn't installed. Install Git for Windows or pick another shell.",
+    "wsl_missing": "WSL isn't installed.",
+    "wsl_no_distro": "WSL has no Linux distribution yet.",
+    "shell_path_empty": "Enter a shell path in Settings, or pick another shell.",
+    "shell_path_missing": "There's no program at {{path}}."
+  },
   "mathpix": {
-    "keys_missing": "Add your Mathpix app ID and key in Settings, AI, Tools first.",
+    "keys_missing": "Add your Mathpix app ID and key in Settings, AI Assistant, Tools first.",
     "invalid_keys": "That app ID or key has characters Mathpix keys never contain. Copy them again from the Mathpix console.",
     "key_rejected": "Mathpix didn't accept these keys. Check the app ID and key in the Mathpix console.",
     "rate_limited": "Mathpix is limiting requests right now. Wait a minute, then try again.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "This PDF is larger than the 256 MB limit for Mathpix.",
     "timed_out": "Mathpix didn't finish this PDF within 30 minutes. Try fewer pages.",
     "cancelled": "The Mathpix conversion was stopped.",
-    "wrong_window": "Mathpix can only be used from the main Oleafly window."
+    "wrong_window": "Mathpix can only be used from the main Oleafly window.",
+    "pdf_too_large_ipc": "This computer can send Mathpix PDFs up to 16 MB. Split the PDF and try again."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver isn't installed. Install it in Settings → Integrations → Desktop apps.",
+    "not_installed": "Cua Driver isn't installed. Install it from Settings, Integrations, Desktop apps.",
     "too_old": "Cua Driver {{version}} is too old. Update it to {{minimum}} or newer.",
     "no_app_bundle": "Install Cua Driver with the official installer so it can hold the macOS permissions.",
     "change_declined": "You kept your previous Desktop apps settings.",

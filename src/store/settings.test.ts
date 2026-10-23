@@ -366,6 +366,16 @@ describe("useSettingsStore reset", () => {
     expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("1");
   });
 
+  it("keeps the dragged message box height out of Appearance's changed mark and reset", () => {
+    const settings = useSettingsStore.getState();
+    settings.setAiComposerHeight(300);
+    expect(useSettingsStore.getState().aiComposerHeight).toBe(300);
+    expect(localStorage.getItem("oleafly.ai.composerHeight")).toBe("300");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(false);
+    settings.resetAppearancePreferences();
+    expect(useSettingsStore.getState().aiComposerHeight).toBe(300);
+  });
+
   it("offers VS Code's cursor blinking styles and falls back to Blink", () => {
     const settings = useSettingsStore.getState();
     expect(useSettingsStore.getState().editorCursorBlinking).toBe("blink");

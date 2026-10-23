@@ -998,3 +998,85 @@ fn imported_cookie_debug_hides_values() {
     assert!(!printed.contains("SECRETVALUE"));
     assert!(printed.contains("site_session"));
 }
+
+/// The first Firefox profile `detect_sources_at` lists for the CLI.
+fn first_firefox_profile(home: &Path, platform: HostPlatform) -> Option<String> {
+    detect_sources_at(home, platform, ImportPolicy::Cli)
+        .into_iter()
+        .find(|source| {
+            source.browser == BrowserId::Firefox && source.status == CookieSourceStatus::Available
+        })
+        .and_then(|source| source.profile)
+}
+
+#[test]
+fn the_firefox_profile_the_browser_opens_is_listed_first() {
+    // Profile folders start with random letters, so by name an old profile
+    // can come before the one in use.
+    let linux = TempDir::new().unwrap();
+    let root = linux.path().join(".mozilla/firefox");
+    for name in ["a1.default", "z9.default-release", "m5.dev-edition-default"] {
+        create_file(&root.join(name).join("cookies.sqlite"));
+    }
+    assert_eq!(
+        first_firefox_profile(linux.path(), HostPlatform::Linux).as_deref(),
+        Some("a1.default")
+    );
+    fs::write(
+        root.join("profiles.ini"),
+        "[Profile1]\nName=default\nIsRelative=1\nPath=a1.default\nDefault=1\n\n[Profile0]\nName=default-release\nIsRelative=1\nPath=z9.default-release\n\n[Install4F96D1932A9F858E]\nDefault=z9.default-release\nLocked=1\n",
+    )
+    .unwrap();
+    assert_eq!(
+        first_firefox_profile(linux.path(), HostPlatform::Linux).as_deref(),
+        Some("z9.default-release")
+    );
+    // Without an install section, the profile marked as the default.
+    fs::write(
+        root.join("profiles.ini"),
+        "[Profile0]\nName=x\nIsRelative=1\nPath=m5.dev-edition-default\nDefault=1\n",
+    )
+    .unwrap();
+    assert_eq!(
+        first_firefox_profile(linux.path(), HostPlatform::Linux).as_deref(),
+        Some("m5.dev-edition-default")
+    );
+
+    // macOS keeps the settings beside the `Profiles` folder, and
+    // `installs.ini` names the install's profile with a path.
+    let mac = TempDir::new().unwrap();
+    let firefox = mac.path().join("Library/Application Support/Firefox");
+    for name in ["a1.default", "z9.default-release"] {
+        create_file(&firefox.join("Profiles").join(name).join("cookies.sqlite"));
+    }
+    fs::write(
+        firefox.join("installs.ini"),
+        "[2656FF1E876E9973]\nDefault=Profiles/z9.default-release\nLocked=1\n",
+    )
+    .unwrap();
+    assert_eq!(
+        first_firefox_profile(mac.path(), HostPlatform::Macos).as_deref(),
+        Some("z9.default-release")
+    );
+    // A name that matches no profile changes nothing.
+    fs::write(firefox.join("installs.ini"), "[X]\nDefault=Profiles/gone\n").unwrap();
+    assert_eq!(
+        first_firefox_profile(mac.path(), HostPlatform::Macos).as_deref(),
+        Some("a1.default")
+    );
+}
+
+#[test]
+fn a_cookie_name_two_cookies_share_is_sent_once_with_the_newest_value() {
+    let url = url::Url::parse("https://latex.example.edu/").unwrap();
+    // A Chromium store is read newest first.
+    let newest_first = vec![
+        cookie("session", "new", "latex.example.edu", "/", true),
+        cookie("session", "stale", ".example.edu", "/", true),
+        cookie("other", "x", ".example.edu", "/", true),
+    ];
+    assert_eq!(
+        cookie_header_for(&unique_cookies(newest_first), &url),
+        "session=new; other=x"
+    );
+}

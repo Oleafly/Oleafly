@@ -1,20 +1,15 @@
 ; 0.4.8 L: an installer run while the background helper works asks it to
 ; hand its tasks back and exit first (it is the app's own executable, so it
 ; would hold the files being replaced). The app stops it itself before an
-; in-app update.
+; in-app update. The command-line tool knows where the data folder is (a
+; relocated one included) and whether a helper holds its lock, so the
+; installer asks it instead of looking for a file; --force ends a helper that
+; does not stop in time. Without a tool in the install folder (a first
+; install) there is no helper.
 !macro OLEAFLY_STOP_BACKGROUND_HELPER
-  ${If} ${FileExists} "$PROFILE\.oleafly\daemon\state.json"
-    FileOpen $R8 "$PROFILE\.oleafly\daemon\stop-request" w
-    FileWrite $R8 "installer"
-    FileClose $R8
-    StrCpy $R9 0
-    ${Do}
-      Sleep 500
-      IntOp $R9 $R9 + 1
-      ${IfNot} ${FileExists} "$PROFILE\.oleafly\daemon\state.json"
-        ${Break}
-      ${EndIf}
-    ${LoopUntil} $R9 >= 60
+  ${If} ${FileExists} "$INSTDIR\oleafly-cli.exe"
+    nsExec::Exec '"$INSTDIR\oleafly-cli.exe" daemon stop --wait 30 --force'
+    Pop $R8
   ${EndIf}
 !macroend
 

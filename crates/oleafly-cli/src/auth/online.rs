@@ -123,6 +123,8 @@ fn browser_cookie(
             error.to_string(),
         )
     })?;
+    // One cookie per name, domain and path, the newest first.
+    let cookies = browser_cookies::unique_cookies(cookies);
     let header = Zeroizing::new(browser_cookies::cookie_header_for(&cookies, &url));
     if header.is_empty() {
         return Err(CliError::new(

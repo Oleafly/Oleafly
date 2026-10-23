@@ -6,7 +6,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use reqwest::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
+use reqwest::header::{ACCEPT, CONTENT_TYPE, LOCATION, USER_AGENT};
 use reqwest::Url;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -23,7 +23,7 @@ mod robots;
 mod search;
 
 use client::{redirect_allowed, PublicResolver};
-use provenance::{normalize_url, Provenance};
+use provenance::Provenance;
 use robots::Robots;
 
 pub const WEB_SEARCH_TOOL: &str = "web_search";
@@ -162,8 +162,13 @@ struct CachedRobots {
 }
 
 /// Two clients the web tools use: one for pages (public addresses only,
-/// redirects re-checked, no cookies), one for search APIs (no redirects, so
-/// a key in a header never follows one).
+/// redirects followed by hand so each hop is checked, no cookies), one for
+/// search APIs (no redirects, so a key in a header never follows one).
+///
+/// The page client honours the system proxy, which many university networks
+/// require. Through a proxy the proxy resolves the name and connects, so
+/// `PublicResolver` never sees it; `web_fetch` therefore resolves each hop's
+/// name itself first and refuses one that points inside the user's network.
 pub struct WebClient {
     fetch: reqwest::Client,
     pub(crate) api: reqwest::Client,
@@ -182,7 +187,8 @@ pub fn check_public_https_url(url: &Url) -> WebResult<()> {
 }
 
 /// A client for downloads (papers, data) that only reaches public https
-/// hosts, follows at most five https redirects and keeps no cookies.
+/// hosts, follows at most five https redirects and keeps no cookies. It
+/// honours the system proxy, as downloads did before.
 pub fn public_https_client(user_agent: &str, timeout: Duration) -> WebResult<reqwest::Client> {
     reqwest::Client::builder()
         .user_agent(user_agent)
@@ -205,13 +211,9 @@ impl WebClient {
         let fetch = reqwest::Client::builder()
             .user_agent(user_agent)
             .connect_timeout(CONNECT_TIMEOUT)
-            .redirect(reqwest::redirect::Policy::custom(|attempt| {
-                if redirect_allowed(attempt.url(), attempt.previous().len()) {
-                    attempt.follow()
-                } else {
-                    attempt.error("redirect to a disallowed address")
-                }
-            }))
+            // Redirects are followed in `web_fetch`, which checks the address
+            // and robots.txt of every hop.
+            .redirect(reqwest::redirect::Policy::none())
             .dns_resolver(Arc::new(PublicResolver))
             .build()
             .map_err(build_error)?;
@@ -238,7 +240,7 @@ impl WebClient {
             reqwest::Client::builder()
                 .no_proxy()
                 .connect_timeout(CONNECT_TIMEOUT)
-                .redirect(reqwest::redirect::Policy::limited(client::MAX_REDIRECTS))
+                .redirect(reqwest::redirect::Policy::none())
                 .build()
                 .unwrap()
         };
@@ -260,6 +262,33 @@ impl WebClient {
         }
     }
 
+    /// The answer for a site's robots.txt, following up to five redirects as
+    /// RFC 9309 asks, each to an address a fetch may reach. `None` when it
+    /// cannot be reached.
+    async fn get_robots(&self, mut url: Url, opts: &WebFetchOptions) -> Option<reqwest::Response> {
+        for _ in 0..=client::MAX_REDIRECTS {
+            if self.strict {
+                client::check_resolved_host(&url).await.ok()?;
+            }
+            let response = self
+                .fetch
+                .get(url.clone())
+                .header(USER_AGENT, &opts.user_agent)
+                .timeout(ROBOTS_TIMEOUT)
+                .send()
+                .await
+                .ok()?;
+            match redirect_target(&response, &url) {
+                Some(next) => {
+                    self.check(&next).ok()?;
+                    url = next;
+                }
+                None => return Some(response),
+            }
+        }
+        None
+    }
+
     async fn robots_for(&self, url: &Url, opts: &WebFetchOptions) -> (Robots, bool) {
         let origin = url.origin().ascii_serialization();
         if let Some(cached) = self
@@ -272,28 +301,18 @@ impl WebClient {
             return (cached.robots.clone(), cached.unreachable);
         }
         let (robots, unreachable) = match url.join("/robots.txt") {
-            Ok(robots_url) => {
-                let request = self
-                    .fetch
-                    .get(robots_url)
-                    .header(USER_AGENT, &opts.user_agent)
-                    .timeout(ROBOTS_TIMEOUT)
-                    .send();
-                match request.await {
-                    Ok(response) if response.status().is_success() => {
-                        match read_limited(response, ROBOTS_MAX_BYTES).await {
-                            Ok((bytes, _)) => {
-                                (Robots::parse(&String::from_utf8_lossy(&bytes)), false)
-                            }
-                            Err(_) => (Robots::disallow_all(), true),
-                        }
+            Ok(robots_url) => match self.get_robots(robots_url, opts).await {
+                Some(response) if response.status().is_success() => {
+                    match read_limited(response, ROBOTS_MAX_BYTES).await {
+                        Ok((bytes, _)) => (Robots::parse(&String::from_utf8_lossy(&bytes)), false),
+                        Err(_) => (Robots::disallow_all(), true),
                     }
-                    Ok(response) if response.status().is_client_error() => {
-                        (Robots::allow_all(), false)
-                    }
-                    _ => (Robots::disallow_all(), true),
                 }
-            }
+                Some(response) if response.status().is_client_error() => {
+                    (Robots::allow_all(), false)
+                }
+                _ => (Robots::disallow_all(), true),
+            },
             Err(_) => (Robots::disallow_all(), true),
         };
         let mut cache = self
@@ -397,7 +416,45 @@ fn cut_at_char_boundary(text: &mut String, max: usize) {
     text.truncate(end);
 }
 
-/// Reads a page as Markdown.
+/// The refusal for a redirect that leads somewhere a fetch may not go.
+fn redirect_blocked() -> WebError {
+    WebError::NotAllowed("Oleafly does not fetch local or private network addresses.".into())
+}
+
+/// Whether the site's robots.txt lets Oleafly read `target`.
+async fn check_robots(client: &WebClient, target: &Url, opts: &WebFetchOptions) -> WebResult<()> {
+    if !opts.respect_robots {
+        return Ok(());
+    }
+    let (robots, unreachable) = client.robots_for(target, opts).await;
+    let path = match target.query() {
+        Some(query) => format!("{}?{query}", target.path()),
+        None => target.path().to_string(),
+    };
+    if robots.allows(ROBOTS_TOKEN, &path) {
+        Ok(())
+    } else {
+        Err(WebError::Robots {
+            url: target.to_string(),
+            unreachable,
+        })
+    }
+}
+
+/// Where a redirect response sends the fetch, when it says.
+fn redirect_target(response: &reqwest::Response, from: &Url) -> Option<Url> {
+    if !matches!(response.status().as_u16(), 301 | 302 | 303 | 307 | 308) {
+        return None;
+    }
+    let location = response.headers().get(LOCATION)?.to_str().ok()?;
+    let mut next = from.join(location).ok()?;
+    next.set_fragment(None);
+    Some(next)
+}
+
+/// Reads a page as Markdown. Redirects are followed one hop at a time, and
+/// each hop meets the same rules as the first address: a public https host,
+/// and its own site's robots.txt.
 pub async fn web_fetch(
     client: &WebClient,
     url: &str,
@@ -412,32 +469,37 @@ pub async fn web_fetch(
     }
     target.set_fragment(None);
     client.check(&target)?;
-    if opts.respect_robots {
-        let (robots, unreachable) = client.robots_for(&target, opts).await;
-        let path = match target.query() {
-            Some(query) => format!("{}?{query}", target.path()),
-            None => target.path().to_string(),
-        };
-        if !robots.allows(ROBOTS_TOKEN, &path) {
-            return Err(WebError::Robots {
-                url: target.to_string(),
-                unreachable,
-            });
+    let mut started: Option<Instant> = None;
+    let mut hops = 0usize;
+    let response = loop {
+        if client.strict {
+            client::check_resolved_host(&target).await?;
         }
-    }
-    let started = Instant::now();
-    let response = tokio::time::timeout(
-        opts.timeout,
-        client
-            .fetch
-            .get(target.clone())
-            .header(ACCEPT, FETCH_ACCEPT)
-            .header(USER_AGENT, &opts.user_agent)
-            .send(),
-    )
-    .await
-    .map_err(|_| WebError::Timeout)?
-    .map_err(fetch_error)?;
+        check_robots(client, &target, opts).await?;
+        let started = *started.get_or_insert_with(Instant::now);
+        let response = tokio::time::timeout(
+            opts.timeout.saturating_sub(started.elapsed()),
+            client
+                .fetch
+                .get(target.clone())
+                .header(ACCEPT, FETCH_ACCEPT)
+                .header(USER_AGENT, &opts.user_agent)
+                .send(),
+        )
+        .await
+        .map_err(|_| WebError::Timeout)?
+        .map_err(fetch_error)?;
+        let Some(next) = redirect_target(&response, &target) else {
+            break response;
+        };
+        hops += 1;
+        if hops > client::MAX_REDIRECTS {
+            return Err(redirect_blocked());
+        }
+        client.check(&next).map_err(|_| redirect_blocked())?;
+        target = next;
+    };
+    let started = started.unwrap_or_else(Instant::now);
     if !response.status().is_success() {
         return Err(WebError::Http(response.status().as_u16()));
     }
@@ -706,13 +768,15 @@ async fn fetch_output(ctx: &WebToolContext, raw: &str) -> String {
         .get("offset")
         .and_then(Value::as_u64)
         .map_or(0, |offset| usize::try_from(offset).unwrap_or(usize::MAX));
-    if !ctx.provenance().contains(url) {
+    // What is fetched is the address that passed the check, not the string
+    // the model wrote, so nothing can ride along on a seen URL.
+    let Some(checked) = ctx.provenance().seen(url) else {
         return error_output(UNSEEN_URL);
-    }
-    let key = normalize_url(url).unwrap_or_else(|| url.to_string());
+    };
+    let key = checked.key;
     let page = match ctx.cached_page(&key) {
         Some(page) => page,
-        None => match web_fetch(&ctx.client, url, &ctx.fetch).await {
+        None => match web_fetch(&ctx.client, &checked.target, &ctx.fetch).await {
             Ok(page) => {
                 {
                     let mut provenance = ctx.provenance();

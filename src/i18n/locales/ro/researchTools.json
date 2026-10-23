@@ -202,7 +202,10 @@
       "unavailable": "Indisponibil",
       "saving": "Se salvează...",
       "saveTask": "Salvează sarcina",
-      "createTask": "Creează sarcina"
+      "createTask": "Creează sarcina",
+      "replaceText": "Înlocuiești titlul și instrucțiunile pe care le-ai scris cu acest punct de pornire?",
+      "keepText": "Păstrează textul meu",
+      "replaceConfirm": "Înlocuiește"
     },
     "starter": {
       "literatureReview": {
@@ -246,6 +249,11 @@
       "dependencies": "Dependențe",
       "dependencyUnavailable": "Indisponibilă",
       "noActivity": "Pentru această rulare nu s-a înregistrat nicio activitate.",
+      "activityGap_one": "{{count}} element intermediar nu este afișat.",
+      "activityGap_other": "{{count}} de elemente intermediare nu sunt afișate.",
+      "activityMore": "Mai există activitate care nu este afișată încă.",
+      "keepRunningDesktopApps": "Această sarcină folosește aplicații desktop, care au nevoie de tine la computer.",
+      "activityGap_few": "{{count}} elemente intermediare nu sunt afișate.",
       "startToRecord": "Pornește această sarcină ca să i se înregistreze activitatea.",
       "reasoning": "Raționamentul raportat",
       "savedArtifact": "S-a salvat {{label}}",
@@ -319,6 +327,10 @@
       "kindRun": "Pornește o rulare",
       "kindMcp": "Folosește un instrument",
       "expires": "Așteaptă până la {{time}}",
+      "detailCommand": "Comanda completă",
+      "detailRun": "Detaliile rulării",
+      "detailMcp": "Argumentele instrumentului",
+      "loadFailed": "Cererile în așteptare nu au putut fi încărcate.",
       "status": {
         "approved": "Aprobată",
         "denied": "Respinsă",
@@ -347,8 +359,9 @@
       "noRuns": "Nicio rulare în desfășurare.",
       "budget": "Buget",
       "timeUsed": "{{used}} din {{total}}",
-      "costUsed": "${{used}} din ${{limit}}",
-      "costSpent": "Cheltuit: ${{used}}",
+      "costUsed": "{{used}} din {{limit}}",
+      "costSpent": "Cheltuit: {{used}}",
+      "ledgerCapped": "Se arată cele mai recente {{limit}} rezultate.",
       "costUnknown": "Costul nu este cunoscut pentru acest model.",
       "runsUsed": "Rulări: {{used}} din {{limit}}",
       "runsUsedNoLimit": "Rulări: {{used}}",
@@ -381,6 +394,10 @@
       "mcpServers": "Servere MCP pe care le pot folosi sarcinile",
       "mcpServersHint": "Sarcinile apelează aceste instrumente după regulile de comenzi ale fiecărei sarcini.",
       "noMcpServers": "Nu este configurat niciun server MCP.",
+      "networkHint": "Comenzile din sarcini pot ajunge pe internet. Fiecare sarcină poate totuși să oprească asta.",
+      "loadFailed": "Setările tale de cercetare nu au putut fi încărcate.",
+      "sectionName": "Cercetare",
+      "resetConfirm": "Readu la valorile implicite pentru cercetare: menținerea computerului treaz, notificările, accesul la rețea, bugetul de timp și serverele MCP pe care le pot folosi sarcinile. Țintele de rulare și sarcinile în fundal rămân neschimbate.",
       "saveFailed": "Setările de cercetare nu au putut fi salvate. Încearcă din nou."
     }
   },
@@ -895,7 +912,10 @@
     "fileReady": "{{fileName}} este gata",
     "saveWordHint": "Salvează documentul Word când ești gata.",
     "resultPlaceholder": "Rezultatul convertit va apărea aici.",
-    "progressConvertingSource": "Se convertește sursa în Typst"
+    "progressConvertingSource": "Se convertește sursa în Typst",
+    "pageRange": "Pagini",
+    "pageRangePlaceholder": "Toate paginile sau un interval precum 1-50",
+    "pageRangeInvalid": "Introdu un număr de pagină sau un interval precum 1-50."
   },
   "converters": {
     "imageToLatex": {
@@ -1102,7 +1122,9 @@
     "fileTooLarge": "Alege un fișier mai mic de 128 MB.",
     "emptySheet": "Foaia selectată este goală.",
     "arxivInputRequired": "Introdu un identificator arXiv sau alege o arhivă sursă.",
-    "equationToTypst": "Pandoc nu a putut converti această ecuație în Typst. Verifică formula LaTeX și încearcă din nou."
+    "equationToTypst": "Pandoc nu a putut converti această ecuație în Typst. Verifică formula LaTeX și încearcă din nou.",
+    "pdfTooManyPages": "Acest scan are {{pages}} pagini, iar Oleafly transcrie cel mult {{limit}} odată. Introdu sub fișier un interval de pagini precum 1-{{limit}}.",
+    "outputLimit": "Modelul a rămas fără spațiu înainte să termine, deci transcrierea ar fi incompletă. Alege în Setări, Asistentul AI, Instrumente un model cu o limită de ieșire mai mare sau transcrie o parte mai mică."
   },
   "converterNotes": {
     "scannedPages": "Pagini scanate transcrise cu {{model}}: {{pages}}. Verifică ecuațiile și tabelele înainte să folosești rezultatul.",
@@ -1159,7 +1181,7 @@
       "cannotSeeImages": "{{model}} nu poate citi imagini. Alege un model de viziune.",
       "localModelGone": "{{model}} nu mai este în Ollama. Descarcă-l din nou sau alege alt model.",
       "imagesOnly": "{{model}} citește doar imagini. Alege un model de limbaj ca să convertești ecuații tastate.",
-      "mathpixNotSetUp": "Adaugă cheile Mathpix în Setări, AI, Instrumente sau alege alt model.",
+      "mathpixNotSetUp": "Adaugă cheile Mathpix în Setări, Asistentul AI, Instrumente sau alege alt model.",
       "imageTooLarge": "Această imagine este încă prea mare după micșorare. Decupeaz-o și încearcă din nou."
     }
   },
@@ -1763,10 +1785,14 @@
     "startAtLabel": "Pornește la",
     "startNow": "Când o pornesc eu",
     "keepRunning": "Continuă să ruleze după ce Oleafly se închide",
-    "keepRunningHint": "Activează mai întâi lucrul în fundal în Setări, Cercetare.",
+    "keepRunningHint": "Activează mai întâi Sarcini în fundal în Setări, Cercetare.",
     "invalidMetric": "Folosește litere, cifre, puncte, cratime sau liniuțe de subliniere.",
     "invalidCost": "Introdu o sumă mai mare decât zero.",
-    "invalidRuns": "Introdu un număr întreg de la 1 la 1.000."
+    "invalidRuns": "Introdu un număr întreg de la 1 la 1.000.",
+    "invalidStart": "Alege o oră de pornire în următoarele 30 de zile.",
+    "invalidStartFormat": "Folosește formatul {{example}}.",
+    "startAtFormat": "Scrie ora ca {{example}}.",
+    "problemHidden": "O opțiune din Fișa sarcinii are nevoie de corectare. Deschide Fișa sarcinii ca să vezi care."
   },
   "runs": {
     "status": {
@@ -1778,11 +1804,6 @@
       "cancelled": "Oprită",
       "lost": "Pierdută"
     }
-  },
-  "record": {
-    "title": "Registrul de cercetare",
-    "openHandoff": "Deschide predarea",
-    "openReport": "Deschide raportul"
   },
   "evidence": {
     "title": "Verificarea dovezilor",
@@ -1834,8 +1855,9 @@
       "edit": "Editează",
       "remove": "Elimină",
       "removeTitle": "Elimini {{label}}?",
-      "removeConfirm": "Rulările deja pornite acolo continuă.",
+      "removeConfirm": "Rulările deja pornite acolo continuă. Sarcinile care așteaptă să pornească pe ea vor eșua.",
       "forgetHostKey": "Uită cheia de gazdă",
+      "reviewHostKey": "Verifică cheia de gazdă",
       "notTested": "Netestat",
       "tested": "Testat {{time}}",
       "testFailed": "Testul a eșuat",
@@ -1927,7 +1949,8 @@
       "added": "Deja adăugată",
       "add_one": "Adaugă {{count}} gazdă",
       "add_few": "Adaugă {{count}} gazde",
-      "add_other": "Adaugă {{count}} de gazde"
+      "add_other": "Adaugă {{count}} de gazde",
+      "skipped": "Nu au fost adăugate: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Spațiul izolat de pe acest computer",
@@ -1958,6 +1981,7 @@
       "runsOn": "Rulează pe {{target}}",
       "runsLocal": "Rulează pe acest computer.",
       "missing": "Ținta folosită de această sarcină a fost eliminată. Alege alta.",
+      "loadFailed": "Țintele tale de rulare nu au putut fi încărcate.",
       "windowsOff": "Activează spațiul izolat Windows în Setări ca să rulezi comenzi pe acest computer.",
       "openSettings": "Deschide Setările",
       "resources": "Resurse Slurm"
@@ -1971,6 +1995,7 @@
       "movingBackHint": "Această sarcină revine în Oleafly când se termină pasul curent."
     },
     "earlierActivity": "Arată activitatea anterioară",
+    "earlierTruncated": "Din această rulare anterioară se arată doar primele {{limit}} elemente.",
     "keepRunningFailed": "Setarea nu a putut fi schimbată. Încearcă din nou."
   }
 }

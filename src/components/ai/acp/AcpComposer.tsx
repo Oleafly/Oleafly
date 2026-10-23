@@ -5,6 +5,7 @@ import {
   ChatComposer, type ChatComposerHandle, type MentionItem, type SlashItem,
 } from "@/components/ai/composer/ChatComposer";
 import { buildMentionEntries } from "@/components/ai/MentionMenu";
+import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { acpCancel, acpError, acpUsable, type AcpAgentStatus, type AcpSession } from "@/lib/acp";
 import { mentionInsertText } from "@/lib/composer-tokens";
@@ -16,22 +17,27 @@ import { useFilesStore } from "@/store/files";
 import { acpAttachmentKinds, acpMentionItems, acpSlashItems, composerMode } from "./acp-composer";
 import { settleSelectionQuotes, unsettleSelectionQuote, useSelectionQuote } from "./selection-quote";
 
+/** The composer a conversation's draft lives in; before one starts, the chosen agent's. */
+export function acpDraftId(projectId: string, agentId: string | null, session: AcpSession | undefined): string {
+  return session ? acpComposerId(projectId, session.agentId, session.id) : acpComposerId(projectId, agentId);
+}
+
 /** A snapshot of what the composer would send, and a way to clear it. */
-function takeDraft(projectId: string, agentId: string | null): AcpPromptDraft {
-  const composerId = acpComposerId(projectId, agentId);
+function takeDraft(projectId: string, composerId: string): AcpPromptDraft {
   const draft = useComposerDrafts.getState().drafts[composerId];
   const composer = useAcpSessionsStore.getState().composers[projectId];
   return {
     text: draft?.text ?? "",
-    attachments: [...(draft?.attachments ?? EMPTY_ATTACHMENTS)],
+    // A file that could not be prepared stays out of the message, as in the
+    // built-in composer. Clearing the draft removes its chip.
+    attachments: (draft?.attachments ?? EMPTY_ATTACHMENTS).filter((item) => item.status === "ready"),
     mentions: [],
     selections: [...(composer?.selections ?? [])],
     skill: composer?.skill ?? null,
   };
 }
 
-function clearDraft(projectId: string, agentId: string | null): void {
-  const composerId = acpComposerId(projectId, agentId);
+function clearDraft(projectId: string, composerId: string): void {
   const drafts = useComposerDrafts.getState();
   drafts.setText(composerId, "");
   drafts.setAttachments(composerId, []);
@@ -39,12 +45,18 @@ function clearDraft(projectId: string, agentId: string | null): void {
   useAcpSessionsStore.getState().setComposer(projectId, { skill: null, selections: [] });
 }
 
-/** Puts a draft back after a failed send or start, unless the user typed something new. */
-export function restoreDraft(projectId: string, agentId: string | null, draft: AcpPromptDraft): void {
-  const composerId = acpComposerId(projectId, agentId);
+/**
+ * Puts a draft back after a failed send or start. What the user has typed
+ * since stays: the restored text goes before it, and files join the ones
+ * already attached.
+ */
+export function restoreDraft(projectId: string, composerId: string, draft: AcpPromptDraft): void {
   const drafts = useComposerDrafts.getState();
-  if (!drafts.drafts[composerId]?.text) drafts.setText(composerId, draft.text);
-  if ((drafts.drafts[composerId]?.attachments.length ?? 0) === 0) drafts.setAttachments(composerId, draft.attachments);
+  const current = drafts.drafts[composerId];
+  if (draft.text && !current?.text) drafts.setText(composerId, draft.text);
+  else if (draft.text) drafts.setText(composerId, `${draft.text}\n\n${current?.text ?? ""}`);
+  const known = new Set((current?.attachments ?? EMPTY_ATTACHMENTS).map((item) => item.id));
+  drafts.addAttachments(composerId, draft.attachments.filter((item) => !known.has(item.id)));
   const composer = useAcpSessionsStore.getState().composers[projectId];
   if (!composer?.selections?.length && draft.selections.length > 0) unsettleSelectionQuote(projectId);
   useAcpSessionsStore.getState().setComposer(projectId, {
@@ -83,7 +95,7 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
     insertText: (text) => inner.current?.insertText(text),
     openFilePicker: () => inner.current?.openFilePicker(),
   }), []);
-  const composerId = acpComposerId(projectId, agentId);
+  const composerId = acpDraftId(projectId, agentId, session);
   const text = useComposerDrafts((state) => state.drafts[composerId]?.text ?? "");
   const attachments = useComposerDrafts((state) => state.drafts[composerId]?.attachments ?? EMPTY_ATTACHMENTS);
   const tree = useFilesStore((state) => state.tree);
@@ -122,33 +134,33 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
   );
 
   const submit = useCallback(() => {
-    const draft = takeDraft(projectId, agentId);
+    const draft = takeDraft(projectId, composerId);
     if (isEmpty(draft)) return;
     const store = useAcpSessionsStore.getState();
     if (mode === "start") {
-      clearDraft(projectId, agentId);
+      clearDraft(projectId, composerId);
       onStart(draft);
       return;
     }
     if (mode !== "send" || !session) return;
-    clearDraft(projectId, agentId);
+    clearDraft(projectId, composerId);
     onError(null);
     onSend();
     void store.sendPrompt(projectId, session.id, draft).then((sent) => {
-      if (!sent) restoreDraft(projectId, agentId, draft);
+      if (!sent) restoreDraft(projectId, composerId, draft);
     }).catch((error: unknown) => {
-      restoreDraft(projectId, agentId, draft);
+      restoreDraft(projectId, composerId, draft);
       onError(acpError(error));
     });
-  }, [agentId, mode, onError, onSend, onStart, projectId, session]);
+  }, [composerId, mode, onError, onSend, onStart, projectId, session]);
 
   const queue = useCallback(() => {
     if (!session) return;
-    const draft = takeDraft(projectId, agentId);
+    const draft = takeDraft(projectId, composerId);
     if (isEmpty(draft)) return;
     useAcpSessionsStore.getState().enqueue(session.id, draft);
-    clearDraft(projectId, agentId);
-  }, [agentId, projectId, session]);
+    clearDraft(projectId, composerId);
+  }, [composerId, projectId, session]);
 
   const stop = useCallback(() => {
     if (!session || session.status !== "running") return;
@@ -190,14 +202,20 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
     }
   })();
 
-  const iconButton = "ai-composer-attach flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40";
   const controls = (
     <>
       {leftControls}
       <Tooltip label={t(($) => $.ai.acp.attachFile)}>
-        <button type="button" aria-label={t(($) => $.ai.acp.attachFile)} className={iconButton} onClick={() => inner.current?.openFilePicker()}>
-          <Paperclip className="size-4" />
-        </button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={t(($) => $.ai.acp.attachFile)}
+          className="ai-composer-attach size-7 shrink-0 rounded-full text-muted-foreground"
+          onClick={() => inner.current?.openFilePicker()}
+        >
+          <Paperclip />
+        </Button>
       </Tooltip>
     </>
   );

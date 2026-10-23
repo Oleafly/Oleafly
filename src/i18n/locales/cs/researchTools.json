@@ -203,7 +203,10 @@
       "unavailable": "Není k dispozici",
       "saving": "Ukládá se...",
       "saveTask": "Uložit úlohu",
-      "createTask": "Vytvořit úlohu"
+      "createTask": "Vytvořit úlohu",
+      "replaceText": "Nahradit název a instrukce, které jste napsali, touto předlohou?",
+      "keepText": "Ponechat můj text",
+      "replaceConfirm": "Nahradit"
     },
     "starter": {
       "literatureReview": {
@@ -247,6 +250,12 @@
       "dependencies": "Závislosti",
       "dependencyUnavailable": "Není k dispozici",
       "noActivity": "Pro tento běh nebyla zaznamenána žádná aktivita.",
+      "activityGap_one": "{{count}} položka mezi nimi není zobrazena.",
+      "activityGap_other": "{{count}} položek mezi nimi není zobrazeno.",
+      "activityMore": "Další aktivita zatím není zobrazena.",
+      "keepRunningDesktopApps": "Tato úloha používá aplikace v počítači, které vyžadují vaši přítomnost u počítače.",
+      "activityGap_many": "{{count}} položky mezi nimi nejsou zobrazeny.",
+      "activityGap_few": "{{count}} položky mezi nimi nejsou zobrazeny.",
       "startToRecord": "Spusťte tuto úlohu a její aktivita se zaznamená.",
       "reasoning": "Nahlášené uvažování",
       "savedArtifact": "Uloženo {{label}}",
@@ -320,6 +329,10 @@
       "kindRun": "Zahájit běh",
       "kindMcp": "Použít nástroj",
       "expires": "Čeká do {{time}}",
+      "detailCommand": "Celý příkaz",
+      "detailRun": "Podrobnosti běhu",
+      "detailMcp": "Argumenty nástroje",
+      "loadFailed": "Čekající požadavky se nepodařilo načíst.",
       "status": {
         "approved": "Schváleno",
         "denied": "Zamítnuto",
@@ -348,8 +361,9 @@
       "noRuns": "Žádné běhy neprobíhají.",
       "budget": "Rozpočet",
       "timeUsed": "{{used}} z {{total}}",
-      "costUsed": "${{used}} z ${{limit}}",
-      "costSpent": "Utraceno ${{used}}",
+      "costUsed": "{{used}} z {{limit}}",
+      "costSpent": "Utraceno {{used}}",
+      "ledgerCapped": "Zobrazuje se jen posledních {{limit}} výsledků.",
       "costUnknown": "Náklady tohoto modelu nejsou známé.",
       "runsUsed": "Běhy: {{used}} z {{limit}}",
       "runsUsedNoLimit": "Běhy: {{used}}",
@@ -382,6 +396,10 @@
       "mcpServers": "Servery MCP, které mohou úlohy používat",
       "mcpServersHint": "Úlohy volají tyto nástroje podle pravidel pro příkazy každé úlohy.",
       "noMcpServers": "Nejsou nastavené žádné servery MCP.",
+      "networkHint": "Příkazy v úlohách se mohou dostat na internet. Každá úloha to ale může vypnout.",
+      "loadFailed": "Vaše nastavení výzkumu se nepodařilo načíst.",
+      "sectionName": "Výzkum",
+      "resetConfirm": "Obnoví výchozí nastavení výzkumu: nenechávání počítače usnout, upozornění, přístup k síti, časový rozpočet a servery MCP, které mohou úlohy používat. Cíle běhů a úlohy na pozadí zůstanou beze změny.",
       "saveFailed": "Nastavení výzkumu se nepodařilo uložit. Zkuste to znovu."
     }
   },
@@ -899,7 +917,10 @@
     "fileReady": "{{fileName}} je připraven",
     "saveWordHint": "Dokument Word uložte, až budete připraveni.",
     "resultPlaceholder": "Tady se objeví váš převedený výsledek.",
-    "progressConvertingSource": "Zdroj se převádí do formátu Typst"
+    "progressConvertingSource": "Zdroj se převádí do formátu Typst",
+    "pageRange": "Stránky",
+    "pageRangePlaceholder": "Všechny stránky, nebo rozsah jako 1-50",
+    "pageRangeInvalid": "Zadejte jedno číslo stránky, nebo rozsah jako 1-50."
   },
   "converters": {
     "imageToLatex": {
@@ -1106,7 +1127,9 @@
     "fileTooLarge": "Vyberte soubor menší než 128 MB.",
     "emptySheet": "Vybraný list je prázdný.",
     "arxivInputRequired": "Zadejte ID na arXiv nebo vyberte archiv zdrojů.",
-    "equationToTypst": "Pandoc nedokázal převést tuto rovnici do formátu Typst. Zkontrolujte matematiku LaTeX a zkuste to znovu."
+    "equationToTypst": "Pandoc nedokázal převést tuto rovnici do formátu Typst. Zkontrolujte matematiku LaTeX a zkuste to znovu.",
+    "pdfTooManyPages": "Tento sken má {{pages}} stránek a Oleafly přepisuje najednou nejvýše {{limit}}. Zadejte pod souborem rozsah stránek, například 1-{{limit}}.",
+    "outputLimit": "Modelu došel prostor dřív, než skončil, takže přepis by byl neúplný. Vyberte v Nastavení, Asistent AI, Nástroje model s větším limitem výstupu, nebo přepište menší část."
   },
   "converterNotes": {
     "scannedPages": "Přepsané naskenované stránky: {{pages}}, model {{model}}. Před použitím výsledku zkontrolujte rovnice a tabulky.",
@@ -1169,7 +1192,7 @@
       "cannotSeeImages": "{{model}} neumí číst obrázky. Vyberte obrazový model.",
       "localModelGone": "{{model}} už v Ollama není. Stáhněte ho znovu, nebo vyberte jiný model.",
       "imagesOnly": "{{model}} čte jen obrázky. Chcete-li převést napsané rovnice, vyberte jazykový model.",
-      "mathpixNotSetUp": "Přidejte klíče Mathpix v části Nastavení, AI, Nástroje, nebo vyberte jiný model.",
+      "mathpixNotSetUp": "Přidejte klíče Mathpix v Nastavení, Asistent AI, Nástroje, nebo vyberte jiný model.",
       "imageTooLarge": "Tento obrázek je i po zmenšení příliš velký. Ořízněte jej a zkuste to znovu."
     }
   },
@@ -1786,10 +1809,14 @@
     "startAtLabel": "Začít",
     "startNow": "Až ji spustím",
     "keepRunning": "Pokračovat i po zavření Oleafly",
-    "keepRunningHint": "Nejdřív zapněte práci na pozadí v části Nastavení, Výzkum.",
+    "keepRunningHint": "Nejdřív zapněte Úlohy na pozadí v Nastavení, Výzkum.",
     "invalidMetric": "Používejte písmena, číslice, tečky, pomlčky nebo podtržítka.",
     "invalidCost": "Zadejte částku větší než nula.",
-    "invalidRuns": "Zadejte celé číslo od 1 do 1 000."
+    "invalidRuns": "Zadejte celé číslo od 1 do 1 000.",
+    "invalidStart": "Vyberte čas zahájení v příštích 30 dnech.",
+    "invalidStartFormat": "Použijte formát {{example}}.",
+    "startAtFormat": "Zadejte čas ve tvaru {{example}}.",
+    "problemHidden": "Nějaká volba v Zadání potřebuje opravu. Otevřete Zadání a uvidíte, která."
   },
   "runs": {
     "status": {
@@ -1801,11 +1828,6 @@
       "cancelled": "Zastaveno",
       "lost": "Ztraceno"
     }
-  },
-  "record": {
-    "title": "Záznam výzkumu",
-    "openHandoff": "Otevřít předání",
-    "openReport": "Otevřít zprávu"
   },
   "evidence": {
     "title": "Kontrola důkazů",
@@ -1857,8 +1879,9 @@
       "edit": "Upravit",
       "remove": "Odebrat",
       "removeTitle": "Odebrat {{label}}?",
-      "removeConfirm": "Běhy, které tam už začaly, poběží dál.",
+      "removeConfirm": "Běhy, které už tam začaly, poběží dál. Úlohy, které na něm čekají na spuštění, selžou.",
       "forgetHostKey": "Zapomenout klíč hostitele",
+      "reviewHostKey": "Zkontrolovat klíč hostitele",
       "notTested": "Netestováno",
       "tested": "Testováno {{time}}",
       "testFailed": "Test selhal",
@@ -1951,7 +1974,8 @@
       "add_one": "Přidat hostitele ({{count}})",
       "add_few": "Přidat hostitele ({{count}})",
       "add_many": "Přidat hostitele ({{count}})",
-      "add_other": "Přidat hostitele ({{count}})"
+      "add_other": "Přidat hostitele ({{count}})",
+      "skipped": "Nepřidáno: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Izolované prostředí v tomto počítači",
@@ -1982,6 +2006,7 @@
       "runsOn": "Běží na {{target}}",
       "runsLocal": "Běží v tomto počítači.",
       "missing": "Cíl, který tato úloha používala, byl odebrán. Vyberte jiný.",
+      "loadFailed": "Vaše cíle běhů se nepodařilo načíst.",
       "windowsOff": "Chcete-li v tomto počítači spouštět příkazy, zapněte v Nastavení izolované prostředí Windows.",
       "openSettings": "Otevřít Nastavení",
       "resources": "Prostředky Slurm"
@@ -1995,6 +2020,7 @@
       "movingBackHint": "Tato úloha se vrátí do Oleafly, až skončí její aktuální krok."
     },
     "earlierActivity": "Zobrazit dřívější aktivitu",
+    "earlierTruncated": "Z tohoto dřívějšího běhu se zobrazuje jen prvních {{limit}} položek.",
     "keepRunningFailed": "Toto nastavení se nepodařilo změnit. Zkuste to znovu."
   }
 }

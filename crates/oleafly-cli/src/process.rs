@@ -1,4 +1,12 @@
 use std::io;
+use std::path::Path;
+use std::time::{Duration, Instant};
+
+#[cfg(windows)]
+const NULL_DEVICE: &str = "NUL";
+#[cfg(not(windows))]
+const NULL_DEVICE: &str = "/dev/null";
+const GIT_POLL: Duration = Duration::from_millis(25);
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -16,6 +24,73 @@ pub(crate) fn clear_inherited_git_env(command: &mut std::process::Command) {
     for name in oleafly_research::host::GIT_REPOSITORY_ENV {
         command.env_remove(name);
     }
+}
+
+/// Runs `git -C <root> <args>` to read a folder's state and returns up to
+/// `max_bytes` of its output when it succeeds (`None` when it can't start,
+/// fails or outlives `timeout`).
+///
+/// The folder's own `.git/config` comes with the folder, and `git status`
+/// runs the command it names as `core.fsmonitor`, so that and hooks are
+/// turned off. Optional locks are skipped (the index refresh would make a
+/// user's concurrent `git commit` fail), and the variables a calling Git
+/// exports (`GIT_DIR`...) are dropped, so Git reads the folder asked about.
+pub(crate) fn read_git(
+    git: &Path,
+    root: &Path,
+    args: &[&str],
+    timeout: Duration,
+    max_bytes: u64,
+) -> Option<Vec<u8>> {
+    use std::io::Read;
+    use std::process::Stdio;
+    let mut command = std::process::Command::new(git);
+    clear_inherited_git_env(&mut command);
+    command
+        .args(["-c", "core.fsmonitor=false", "-c"])
+        .arg(format!("core.hooksPath={NULL_DEVICE}"))
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    let mut child = command.spawn().ok()?;
+    let deadline = Instant::now() + timeout;
+    let (sender, receiver) = std::sync::mpsc::channel();
+    if let Some(stdout) = child.stdout.take() {
+        std::thread::spawn(move || {
+            let mut output = Vec::new();
+            let _ = stdout.take(max_bytes).read_to_end(&mut output);
+            let _ = sender.send(output);
+        });
+    }
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(GIT_POLL),
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+    };
+    let output = receiver
+        .recv_timeout(
+            deadline
+                .saturating_duration_since(Instant::now())
+                .max(GIT_POLL),
+        )
+        .unwrap_or_default();
+    status.success().then_some(output)
 }
 
 pub(crate) fn detach(command: &mut std::process::Command) {

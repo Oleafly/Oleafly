@@ -248,7 +248,9 @@ pub fn serve(options: ServeOptions) -> i32 {
 }
 
 /// Resolves on SIGTERM, SIGINT or SIGHUP (Unix), Ctrl+C on a Windows console.
-async fn termination() {
+/// `agent run`, `ask` and `mcp` use it too: a process ended by a signal never
+/// runs its destructors, so the commands it started would keep running.
+pub(crate) async fn termination() {
     #[cfg(unix)]
     {
         use tokio::signal::unix::{signal, SignalKind};

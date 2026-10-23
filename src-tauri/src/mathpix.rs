@@ -33,6 +33,11 @@ const API_BASE: &str = "https://api.mathpix.com";
 /// Mathpix takes a base64 `src` of up to 2 MB.
 const MAX_IMAGE_BASE64_CHARS: usize = 2_000_000;
 const MAX_PDF_BYTES: usize = 256 * 1024 * 1024;
+/// The most a PDF may be when the webview delivers it as a JSON array of
+/// numbers (the `postMessage` fallback). Tauri has already turned every byte
+/// into a 32-byte JSON value by then, so this keeps that near half a gigabyte.
+const MAX_JSON_PDF_BYTES: usize = 16 * 1024 * 1024;
+const _: () = assert!(MAX_JSON_PDF_BYTES < MAX_PDF_BYTES);
 const MAX_TEXT_REPLY_BYTES: usize = 8 * 1024 * 1024;
 const MAX_MMD_BYTES: usize = 32 * 1024 * 1024;
 const MAX_CREDENTIAL_CHARS: usize = 256;
@@ -43,6 +48,7 @@ const MAX_REQUEST_ID_CHARS: usize = 64;
 const MAX_CANCEL_ENTRIES: usize = 64;
 const MAX_BOUNDARY_TRIES: usize = 8;
 const PAGE_RANGES_HEADER: &str = "x-oleafly-page-ranges";
+const REQUEST_ID_HEADER: &str = "x-oleafly-request-id";
 const MAIN_WINDOW: &str = "main";
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -516,6 +522,25 @@ impl Api {
         Ok(pdf_id.to_owned())
     }
 
+    /// [`Self::pdf_upload`], dropped when `cancelled` is set: the request is
+    /// abandoned, so a PDF whose upload the user stopped is not converted
+    /// (and billed) behind their back.
+    async fn pdf_upload_unless_cancelled(
+        &self,
+        keys: &MathpixKeys,
+        pdf: &[u8],
+        page_ranges: Option<&str>,
+        cancelled: &AtomicBool,
+    ) -> Result<String, String> {
+        if cancelled.load(Ordering::SeqCst) {
+            return Err(code("mathpix.cancelled"));
+        }
+        tokio::select! {
+            result = self.pdf_upload(keys, pdf, page_ranges) => result,
+            () = until_cancelled(cancelled) => Err(code("mathpix.cancelled")),
+        }
+    }
+
     /// The PDF's progress, and the error Mathpix reported, if any.
     async fn pdf_status(
         &self,
@@ -842,6 +867,15 @@ async fn save_keys_with(
 /// The raw request body. Linux builds that fall back to `postMessage` IPC
 /// deliver it as a JSON array of numbers.
 fn upload_bytes(body: &tauri::ipc::InvokeBody) -> Result<Cow<'_, [u8]>, String> {
+    upload_bytes_within(body, MAX_JSON_PDF_BYTES)
+}
+
+/// [`upload_bytes`] with `json_limit` as the most a JSON array may carry.
+/// The length is checked before any byte is converted.
+fn upload_bytes_within(
+    body: &tauri::ipc::InvokeBody,
+    json_limit: usize,
+) -> Result<Cow<'_, [u8]>, String> {
     match body {
         tauri::ipc::InvokeBody::Raw(bytes) => {
             if bytes.len() > MAX_PDF_BYTES {
@@ -850,8 +884,8 @@ fn upload_bytes(body: &tauri::ipc::InvokeBody) -> Result<Cow<'_, [u8]>, String> 
             Ok(Cow::Borrowed(bytes.as_slice()))
         }
         tauri::ipc::InvokeBody::Json(Value::Array(values)) => {
-            if values.len() > MAX_PDF_BYTES {
-                return Err(code("mathpix.pdf_too_large"));
+            if values.len() > json_limit {
+                return Err(code("mathpix.pdf_too_large_ipc"));
             }
             values
                 .iter()
@@ -881,6 +915,23 @@ fn page_ranges_header(headers: &tauri::http::HeaderMap) -> Result<Option<String>
     }
     valid_page_ranges(ranges)?;
     Ok(Some(ranges.to_owned()))
+}
+
+/// The id the renderer gave this PDF's upload and wait, so Cancel reaches
+/// either; `None` when the header is absent.
+fn request_id_header(headers: &tauri::http::HeaderMap) -> Result<Option<String>, String> {
+    let Some(value) = headers.get(REQUEST_ID_HEADER) else {
+        return Ok(None);
+    };
+    let id = value
+        .to_str()
+        .map_err(|_| code("mathpix.invalid_response"))?
+        .trim();
+    if valid_request_id(id) {
+        Ok(Some(id.to_owned()))
+    } else {
+        Err(code("mathpix.invalid_response"))
+    }
 }
 
 #[tauri::command]
@@ -927,7 +978,9 @@ pub async fn mathpix_text(
 }
 
 /// Uploads a PDF sent as the raw request body; the `x-oleafly-page-ranges`
-/// header names the pages Mathpix converts and bills. Returns the PDF id.
+/// header names the pages Mathpix converts and bills. The optional
+/// `x-oleafly-request-id` header lets `mathpix_pdf_cancel` stop the upload
+/// itself, not only the wait that follows it. Returns the PDF id.
 #[tauri::command]
 pub async fn mathpix_pdf_upload(
     webview: tauri::Webview,
@@ -935,11 +988,17 @@ pub async fn mathpix_pdf_upload(
 ) -> Result<String, String> {
     require_main(&webview)?;
     let page_ranges = page_ranges_header(request.headers())?;
+    let request_id = request_id_header(request.headers())?;
     let pdf = upload_bytes(request.body())?;
     let keys = load_keys().await?;
-    Api::new()?
-        .pdf_upload(&keys, &pdf, page_ranges.as_deref())
-        .await
+    let api = Api::new()?;
+    match request_id.as_deref().map(|id| CANCELS.register(id)) {
+        Some(registration) => {
+            api.pdf_upload_unless_cancelled(&keys, &pdf, page_ranges.as_deref(), &registration.flag)
+                .await
+        }
+        None => api.pdf_upload(&keys, &pdf, page_ranges.as_deref()).await,
+    }
 }
 
 /// Waits for an uploaded PDF, reports progress, and returns its Mathpix

@@ -99,15 +99,35 @@ pub fn task_sandbox_spec_for(
     Ok(spec)
 }
 
+/// The allowed paths that no other allowed path contains. A grant on a folder
+/// covers everything below it, so a file or folder under another allowed
+/// folder needs none of its own: a project of thousands of files then
+/// grants its folders, not every file (a grant per file overflows the
+/// command line of the sandbox and slows every command down).
+fn outermost(allowed: &[PathBuf]) -> Vec<&Path> {
+    let mut sorted: Vec<&Path> = allowed.iter().map(PathBuf::as_path).collect();
+    sorted.sort_unstable();
+    let mut kept: Vec<&Path> = Vec::new();
+    for path in sorted {
+        // Sorted by components, a folder comes right before what is inside it.
+        if kept.last().is_some_and(|folder| path.starts_with(folder)) {
+            continue;
+        }
+        kept.push(path);
+    }
+    kept
+}
+
 /// The task's write grants: its allowed paths inside the workspace, created
-/// when missing, never through a link.
+/// when missing, never through a link. Paths below another allowed path are
+/// left out (see [`outermost`]).
 pub fn task_writable_paths(
     execution_root: &Path,
     allowed_paths: &[String],
 ) -> Result<Vec<PathBuf>, String> {
     let files = TaskFiles::open(execution_root, allowed_paths)?;
     let mut writable = Vec::new();
-    for relative in &files.allowed {
+    for relative in outermost(&files.allowed) {
         let path = files.root.join(relative);
         let (directory, name) = files.parent(relative, true)?;
         match directory.symlink_metadata(&name) {
@@ -117,6 +137,12 @@ pub fn task_writable_paths(
             Ok(metadata) if metadata.is_dir() || metadata.is_file() => {}
             Ok(_) => return Err("A task command can only use regular files and folders.".into()),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                // A folder the task is meant to write in comes back when it is
+                // gone. A file the task deleted or moved does not: creating it
+                // as a folder would break the next command that opens it.
+                if !is_known_folder(relative, &files.allowed) {
+                    continue;
+                }
                 directory
                     .create_dir(&name)
                     .map_err(|error| error.to_string())?;
@@ -130,6 +156,15 @@ pub fn task_writable_paths(
         writable.push(real);
     }
     Ok(writable)
+}
+
+/// Whether a missing allowed path is a folder: one of the output folders, or
+/// one that holds other allowed paths (the parent of a tracked file).
+fn is_known_folder(relative: &Path, allowed: &[PathBuf]) -> bool {
+    crate::isolation::is_output_directory(relative)
+        || allowed
+            .iter()
+            .any(|other| other != relative && other.starts_with(relative))
 }
 
 pub(crate) struct CommandTemp(pub(crate) PathBuf);

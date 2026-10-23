@@ -256,7 +256,9 @@
     "loadingRepositories": "正在加载仓库…",
     "repositoriesFailed": "无法加载仓库。",
     "noRepositories": "未找到仓库",
+    "noMatchLoaded": "已加载的仓库中没有匹配项。请加载更多以继续查找。",
     "privateRepository": "私有仓库",
+    "openFailed": "Oleafly 无法在你的浏览器中打开 {{host}}。",
     "openOnHost": "在 {{host}} 上打开",
     "openRepositoryOnHost": "在 {{host}} 上打开 {{name}}",
     "sources": {

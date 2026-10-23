@@ -137,6 +137,19 @@ impl Http {
             .map_err(|error| unreachable(&self.base, error))
     }
 
+    /// Whether `location` is this service's own login page, which is what a
+    /// signed-out request is sent to. A redirect anywhere else (another host,
+    /// a maintenance or challenge page) says nothing about the sign-in.
+    fn is_login_redirect(&self, location: &str) -> bool {
+        let Ok(base) = url::Url::parse(&format!("{}/", self.base)) else {
+            return false;
+        };
+        let Ok(target) = base.join(location) else {
+            return false;
+        };
+        target.origin() == base.origin() && target.path().trim_end_matches('/').ends_with("/login")
+    }
+
     fn classify(&self, response: &Response) -> Result<(), OnlineError> {
         let status = response.status();
         if status.is_redirection() {
@@ -144,12 +157,8 @@ impl Http {
                 .headers()
                 .get(LOCATION)
                 .and_then(|value| value.to_str().ok())
-                .unwrap_or_default()
-                .to_ascii_lowercase();
-            if ["login", "sso", "saml", "oauth", "auth"]
-                .iter()
-                .any(|marker| location.contains(marker))
-            {
+                .unwrap_or_default();
+            if self.is_login_redirect(location) {
                 return Err(expired());
             }
             return Err(unreachable(&self.base, format!("redirected to {location}")));
@@ -166,13 +175,32 @@ impl Http {
         let response = self
             .send(self.get("/project", cookie).header(ACCEPT, "text/html"))
             .await?;
+        // The service sends a signed-out visitor to its login page. A refusal
+        // or a page without the account's id comes from something in front of
+        // it (a firewall challenge, a maintenance page) and says nothing about
+        // the sign-in, which must not be forgotten for it.
+        if matches!(
+            response.status(),
+            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN
+        ) {
+            return Err(unreachable(
+                &self.base,
+                format!("HTTP {}", response.status().as_u16()),
+            ));
+        }
         self.classify(&response)?;
         let set_cookies = set_cookie_lines(response.headers());
         let page = response
             .text()
             .await
             .map_err(|error| unreachable(&self.base, error))?;
-        let mut dashboard = parse_dashboard(&page)?;
+        let mut dashboard = parse_dashboard(&page).map_err(|error| {
+            if error.kind == OnlineErrorKind::SessionExpired {
+                OnlineError::new(OnlineErrorKind::SignInFailed)
+            } else {
+                error
+            }
+        })?;
         dashboard.set_cookies = set_cookies;
         Ok(dashboard)
     }

@@ -242,6 +242,38 @@ fn overfull_width(text: &str) -> f64 {
     text.parse::<f64>().unwrap_or(f64::NAN)
 }
 
+/// `main.tex:12: Undefined control sequence.`, how TeX prints an error under
+/// `-file-line-error` (it has no `! ` line then).
+static FILE_LINE_ERROR: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(
+        r"^(?:[A-Za-z]:)?[^:\n]*\.(?:tex|sty|cls|ltx|def|cfg|clo|fd|bbx|cbx|lbx|dtx):\d+:\s",
+    )
+    .expect("the file-line-error pattern is valid")
+});
+
+/// Whether a build log shows a failed build, for a log that arrives without
+/// the build's own verdict (`oleafly check --build-log`): a TeX error (a
+/// `! ` line, or a `file:line:` one), a fatal error, a run with no pages of
+/// output, a compiler's own `error:` line (Tectonic, Typst), a Pandoc error,
+/// or latexmk giving up. Warnings and overfull boxes are not failures.
+pub fn infer_compile_status(log: &str) -> CompileStatus {
+    let failed = log.lines().map(str::trim_end).any(|line| {
+        line.starts_with("! ")
+            || line.starts_with("error:")
+            || line.starts_with("error[")
+            || line.starts_with("pandoc: ")
+            || line == "No pages of output."
+            || line == "Error producing PDF."
+            || line.contains("Latexmk: Errors, so I did not complete making targets")
+            || FILE_LINE_ERROR.is_match(line)
+    });
+    if failed {
+        CompileStatus::Error
+    } else {
+        CompileStatus::Success
+    }
+}
+
 pub fn run_compile_rules(context: Option<&CompileContext>, pdf: Option<&PdfFacts>) -> Vec<Finding> {
     let mut out = Vec::new();
     let log = context.map(|context| context.log.as_str()).unwrap_or("");
@@ -368,6 +400,42 @@ mod tests {
             status: CompileStatus::Success,
             log: text.into(),
         }
+    }
+
+    #[test]
+    fn a_log_with_a_tex_or_compiler_error_is_a_failed_build() {
+        for failing in [
+            "(./main.tex\n! LaTeX Error: File `missing.sty' not found.\n\nType X to quit.",
+            "! Undefined control sequence.\nl.5 \\foo",
+            "!  ==> Fatal error occurred, no output PDF file produced!",
+            "! Emergency stop.\r\nl.3 ",
+            "./main.tex:5: Undefined control sequence.\nl.5 \\foo",
+            "C:\\work\\main.tex:12: LaTeX Error: Missing \\begin{document}.",
+            "No pages of output.\nTranscript written on main.log.",
+            "error: halted on potentially-recoverable error as specified",
+            "error: unknown variable: foo\n  ┌─ main.typ:3:2",
+            "pandoc: Could not find data file templates/default.latex",
+            "Error producing PDF.",
+            "Latexmk: Errors, so I did not complete making targets",
+        ] {
+            assert_eq!(
+                infer_compile_status(failing),
+                CompileStatus::Error,
+                "{failing}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_log_with_only_warnings_is_a_good_build() {
+        let good = "This is pdfTeX, Version 3.141592653\n(./main.tex\nLaTeX Warning: Reference `a' on page 1 undefined on input line 4.\nOverfull \\hbox (3.0pt too wide) in paragraph at lines 5--6\nPackage hyperref Warning: Token not allowed in a PDF string.\nOutput written on main.pdf (1 page, 12345 bytes).\nTranscript written on main.log.\n";
+        assert_eq!(infer_compile_status(good), CompileStatus::Success);
+        assert_eq!(infer_compile_status(""), CompileStatus::Success);
+        // Text of the document that mentions an error is not an error line.
+        assert_eq!(
+            infer_compile_status("[]\\OT1/cmr/m/n/10 An error: here\nwarning: a hint\n"),
+            CompileStatus::Success
+        );
     }
 
     #[test]

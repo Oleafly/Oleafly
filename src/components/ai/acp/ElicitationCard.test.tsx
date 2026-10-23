@@ -9,7 +9,7 @@ const { restore } = await vi.hoisted(async () => {
 });
 
 const mocks = vi.hoisted(() => ({ open: vi.fn() }));
-vi.mock("@tauri-apps/plugin-shell", () => ({ open: mocks.open }));
+vi.mock("@/lib/system-browser", () => ({ openInSystemBrowser: mocks.open }));
 
 import type { AcpElicitation, AcpElicitationField, AcpFieldKind } from "@/lib/acp";
 import { chooseOption } from "./tests/ui-fixtures";
@@ -41,7 +41,7 @@ function show(value: AcpElicitation) {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.open.mockResolvedValue(undefined);
+  mocks.open.mockResolvedValue(true);
 });
 afterEach(async () => {
   cleanup();
@@ -141,6 +141,23 @@ describe("ElicitationCard", () => {
     await waitFor(() => expect(onRespond).toHaveBeenCalledWith("accept", undefined));
     expect(await screen.findByText("Waiting for the site to finish.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Decline" })).toBeNull();
+  });
+
+  it("says so, and does not tell the agent, when no browser opens", async () => {
+    mocks.open.mockResolvedValue(false);
+    const onRespond = show(request({ mode: "url", url: "https://auth.example.org/approve?code=1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open in browser" }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Open in browser/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The link could not be opened in your browser.");
+    expect(onRespond).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
+    // A second try that works clears the message.
+    mocks.open.mockResolvedValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Open in browser" }));
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: /^Open in browser/ }));
+    await waitFor(() => expect(onRespond).toHaveBeenCalledWith("accept", undefined));
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("opens nothing when the user cancels the site prompt or declines", async () => {

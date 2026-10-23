@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertCircle,
@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCompactCount } from "@/lib/format";
-import { formatDateTime } from "@/lib/intl";
+import { formatDateTime, formatNumber } from "@/lib/intl";
 import { describeError } from "@/lib/app-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Markdown } from "@/components/ui/markdown";
+import { SECTION_HEADING_CLASS } from "@/components/ui/section-heading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
@@ -50,8 +51,8 @@ import { i18n } from "@/i18n";
 import type { ResearchTaskDetailTab } from "@/store/research-tasks";
 import { phaseLabel, relativeTime, statusLabel } from "./task-status";
 import { TaskAgentChip, TaskOwnerBadge, TaskStatusBadge } from "./TaskChips";
-import { buildTaskTimeline, type TaskTimelineItem } from "./task-timeline";
-import { LoadingState } from "@/components/ui/empty";
+import { buildTaskTimeline, type TaskTimeline, type TaskTimelineItem } from "./task-timeline";
+import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { PendingApprovals } from "./PendingApprovals";
 import { PlanReview } from "./PlanReview";
 
@@ -81,6 +82,11 @@ export interface TaskDetailDialogProps {
   events: TaskTranscriptEvent[];
   eventsLoading: boolean;
   canLoadMoreEvents: boolean;
+  /**
+   * The sequence the loaded rows run up to when more rows follow it. Rows after
+   * it arrived live, so the rows in between are the gap Load more fills.
+   */
+  eventsLoadedThrough?: number | null;
   busy: boolean;
   agentName?: string;
   initialTab?: ResearchTaskDetailTab | null;
@@ -104,11 +110,16 @@ const EMPTY_CHANGES: NonNullable<ResearchTask["result"]>["changedFiles"] = [];
 
 /** "Show earlier activity" loads at most this many pages of 200 rows. */
 const EARLIER_PAGES = 10;
+const EARLIER_PAGE_SIZE = 200;
 
 interface EarlierGeneration {
   generation: number;
   events: TaskTranscriptEvent[];
+  /** The run has more rows than the pages that were loaded. */
+  truncated: boolean;
 }
+
+const NO_TIMELINE: TaskTimeline = { items: [], usage: { inputTokens: null, outputTokens: null } };
 
 function timestamp(value: number): string {
   const date = new Date(value);
@@ -198,6 +209,85 @@ function TimelineDot({
   );
 }
 
+function shallowEqual(left: object, right: object): boolean {
+  const a = left as Record<string, unknown>;
+  const b = right as Record<string, unknown>;
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
+}
+
+/** The same row content, so a row that did not change can skip rendering. */
+function sameTimelineItem(left: TaskTimelineItem, right: TaskTimelineItem): boolean {
+  if (left.key !== right.key || left.createdAt !== right.createdAt) return false;
+  if (left.kind === "tool") return right.kind === "tool" && shallowEqual(left.tool, right.tool);
+  if (left.kind === "artifact") return right.kind === "artifact" && shallowEqual(left.artifact, right.artifact);
+  return right.kind === left.kind && "text" in right && left.text === right.text;
+}
+
+interface TimelineRowProps {
+  item: TaskTimelineItem;
+  /** The newest row of a running task: its dot pulses and its text is still growing. */
+  live: boolean;
+  failing: boolean;
+  runKey: string;
+  loadingArtifact: boolean;
+  onOpenArtifact: (artifact: TaskArtifact) => void;
+}
+
+// A running task adds text every few tens of milliseconds; only the row that
+// changed renders again.
+const TimelineRow = memo(
+  function TimelineRow({ item, live, failing, runKey, loadingArtifact, onOpenArtifact }: Readonly<TimelineRowProps>) {
+    const { t } = useTranslation(["common", "researchTools"]);
+    return (
+      <li className="relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3">
+        <TimelineDot item={item} live={live} tall={item.kind === "tool"} failing={failing} />
+        <div className="min-w-0">
+          {item.kind === "milestone" ? (
+            <p className={cn("break-words text-xs leading-6", failing ? "text-destructive" : "text-muted-foreground")}>
+              {item.text}
+            </p>
+          ) : null}
+          {item.kind === "message" ? (
+            <Markdown className="min-w-0 break-words text-sm leading-6" streaming={live}>
+              {item.text}
+            </Markdown>
+          ) : null}
+          {item.kind === "reasoning" ? <ReasoningRow text={item.text} /> : null}
+          {item.kind === "tool" ? (
+            <div className="min-w-0 [&>div]:max-w-full">
+              <ResearchToolCard tc={item.tool} expansionKey={`research-task:${runKey}:${item.tool.id}`} />
+            </div>
+          ) : null}
+          {item.kind === "artifact" ? (
+            <Button
+              size="xs"
+              variant="outline"
+              className="max-w-full gap-1.5"
+              disabled={loadingArtifact}
+              onClick={() => onOpenArtifact(item.artifact)}
+            >
+              <Paperclip aria-hidden="true" />
+              <span className="min-w-0 truncate">
+                {loadingArtifact
+                  ? t(($) => $.researchTools.tasks.detail.loading)
+                  : t(($) => $.researchTools.tasks.detail.savedArtifact, { label: item.artifact.label })}
+              </span>
+            </Button>
+          ) : null}
+        </div>
+      </li>
+    );
+  },
+  (previous, next) =>
+    previous.live === next.live &&
+    previous.failing === next.failing &&
+    previous.runKey === next.runKey &&
+    previous.loadingArtifact === next.loadingArtifact &&
+    previous.onOpenArtifact === next.onOpenArtifact &&
+    sameTimelineItem(previous.item, next.item),
+);
+
 export function TaskDetailDialog({
   open,
   onOpenChange,
@@ -206,6 +296,7 @@ export function TaskDetailDialog({
   events,
   eventsLoading,
   canLoadMoreEvents,
+  eventsLoadedThrough,
   busy,
   agentName,
   initialTab,
@@ -236,8 +327,27 @@ export function TaskDetailDialog({
   const activeTaskRun = useRef(taskRunKey);
   activeTaskRun.current = taskRunKey;
   const running = task.status === "running";
+  // Saved rows run up to `eventsLoadedThrough` when more follow; the rows after
+  // it came in live, so the two parts are built apart and the gap shows between.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the timeline carries translated milestone text, so it is rebuilt on a language switch
-  const timeline = useMemo(() => buildTaskTimeline(events, running), [events, running, language]);
+  const { head, tail, hiddenRows } = useMemo(() => {
+    const split = eventsLoadedThrough ?? null;
+    if (split === null) return { head: buildTaskTimeline(events, running), tail: NO_TIMELINE, hiddenRows: null };
+    const saved: TaskTranscriptEvent[] = [];
+    const live: TaskTranscriptEvent[] = [];
+    for (const row of events) (row.sequence <= split ? saved : live).push(row);
+    return {
+      // A tool whose result is in the gap is not interrupted.
+      head: buildTaskTimeline(saved, true),
+      tail: buildTaskTimeline(live, running),
+      hiddenRows: live.length > 0 ? Math.max(0, live[0].sequence - split - 1) : null,
+    };
+  }, [events, eventsLoadedThrough, running, language]);
+  const timelineCount = head.items.length + tail.items.length;
+  const timelineUsage = {
+    inputTokens: tail.usage.inputTokens ?? head.usage.inputTokens,
+    outputTokens: tail.usage.outputTokens ?? head.usage.outputTokens,
+  };
   const changedFiles = task.result?.changedFiles ?? EMPTY_CHANGES;
   const changedPathsKey = changedFiles.map((change) => change.path).join("\n");
   // The task's own record (research/<slug>/) comes back with its review. It is
@@ -266,7 +376,6 @@ export function TaskDetailDialog({
   }, [initialTab]);
 
   const tab = chosenTab ?? autoTabFor(task);
-  const timelineCount = timeline.items.length;
 
   useEffect(() => {
     void timelineCount;
@@ -303,9 +412,15 @@ export function TaskDetailDialog({
     setEarlierLoading(false);
   }, [taskRunKey]);
 
-  const earlierEvents = useMemo(() => earlier.flatMap((entry) => entry.events), [earlier]);
+  // One timeline per run, so the end of one run's last message is not joined to the start of the next.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the timeline carries translated milestone text, so it is rebuilt on a language switch
-  const earlierTimeline = useMemo(() => buildTaskTimeline(earlierEvents, false), [earlierEvents, language]);
+  const earlierTimelines = useMemo(
+    () =>
+      earlier
+        .map((entry) => ({ ...entry, timeline: buildTaskTimeline(entry.events, false) }))
+        .filter((entry) => entry.timeline.items.length > 0 || entry.truncated),
+    [earlier, language],
+  );
   const oldestShown = earlier.length > 0 ? earlier[0].generation : null;
   let nextEarlier: number | null = null;
   // A task from an older backend has no `resumedFrom` at all.
@@ -314,6 +429,8 @@ export function TaskDetailDialog({
   }
   const canShowEarlier = nextEarlier !== null && nextEarlier >= 1;
   const unfinished = task.status === "queued" || task.status === "running" || task.status === "plan_ready";
+  // Desktop apps need someone at the computer, so the backend refuses to keep such a task running.
+  const desktopAppsKeepConflict = task.brief.permissions.desktopApps && task.keepRunningAfterQuit !== true;
 
   const toggleKeepRunning = async (keep: boolean) => {
     setSavingKeepRunning(true);
@@ -338,14 +455,16 @@ export function TaskDetailDialog({
     try {
       const loaded: TaskTranscriptEvent[] = [];
       let after: number | undefined;
+      let more = false;
       for (let page = 0; page < EARLIER_PAGES; page += 1) {
-        const result = await loadResearchTaskEvents(task.id, generation, after, 200);
+        const result = await loadResearchTaskEvents(task.id, generation, after, EARLIER_PAGE_SIZE);
         loaded.push(...result.events);
-        if (result.nextSequence === null) break;
-        after = result.nextSequence;
+        more = result.nextSequence !== null;
+        if (!more) break;
+        after = result.nextSequence ?? undefined;
       }
       if (activeTaskRun.current !== requestRunKey) return;
-      setEarlier((current) => [{ generation, events: loaded }, ...current]);
+      setEarlier((current) => [{ generation, events: loaded, truncated: more }, ...current]);
     } catch (failure) {
       if (activeTaskRun.current === requestRunKey) notifyError("research-task-earlier-activity", failure);
     } finally {
@@ -373,7 +492,7 @@ export function TaskDetailDialog({
       }
     } catch (error_) {
       if (activeTaskRun.current !== requestRunKey) return;
-      setPreviewError(error_ instanceof Error ? error_.message : String(error_));
+      setPreviewError(describeError(error_));
     } finally {
       if (activeTaskRun.current === requestRunKey) setPreviewingPath(null);
     }
@@ -389,7 +508,7 @@ export function TaskDetailDialog({
       setArtifactPreview(preview);
     } catch (error_) {
       if (activeTaskRun.current !== requestRunKey) return;
-      setPreviewError(error_ instanceof Error ? error_.message : String(error_));
+      setPreviewError(describeError(error_));
     } finally {
       if (activeTaskRun.current === requestRunKey) setPreviewingPath(null);
     }
@@ -407,8 +526,8 @@ export function TaskDetailDialog({
     .map((change) => change.path)
     .filter((path) => blocksApply(filePreviews[`${taskRunKey}:${path}`]));
   const usage = {
-    inputTokens: timeline.usage.inputTokens ?? task.result?.inputTokens ?? null,
-    outputTokens: timeline.usage.outputTokens ?? task.result?.outputTokens ?? null,
+    inputTokens: timelineUsage.inputTokens ?? task.result?.inputTokens ?? null,
+    outputTokens: timelineUsage.outputTokens ?? task.result?.outputTokens ?? null,
   };
   const artifacts = task.result?.artifacts ?? [];
 
@@ -416,6 +535,10 @@ export function TaskDetailDialog({
     setChosenTab("output");
     void previewArtifact(artifact);
   };
+  // The rows keep one handler, so a new render of this dialog does not redraw them.
+  const openArtifactRef = useRef(openArtifact);
+  openArtifactRef.current = openArtifact;
+  const openArtifactFromRow = useCallback((artifact: TaskArtifact) => openArtifactRef.current(artifact), []);
 
   const startButtonLabel = () => {
     if (task.startRequested) return t(($) => $.researchTools.tasks.detail.waiting);
@@ -582,7 +705,7 @@ export function TaskDetailDialog({
             <span className="min-w-0 flex-1 truncate font-mono text-xs">{change.path}</span>
           </Tooltip>
           {drifted ? (
-            <Badge variant="outline" className="shrink-0 gap-1 border-amber-500/50">
+            <Badge variant="warning" className="shrink-0 gap-1">
               <AlertTriangle aria-hidden="true" className="size-3" />
               {t(($) => $.researchTools.tasks.detail.changedSince)}
             </Badge>
@@ -639,6 +762,10 @@ export function TaskDetailDialog({
     );
   };
 
+  // "Select all" picks the files that can be applied; one that changed since the task started can't be.
+  const selectablePaths = changedFiles.map((change) => change.path).filter((path) => !driftedPaths.includes(path));
+  const allSelected = selectablePaths.length > 0 && selectablePaths.every((path) => selectedPaths.includes(path));
+
   const changedFilesSection = () => (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -646,23 +773,16 @@ export function TaskDetailDialog({
           <FileDiff className="size-4" />
           {t(($) => $.researchTools.tasks.detail.fileChanges)}
         </h5>
-        <button
-          type="button"
-          className="text-xs text-primary hover:underline"
-          onClick={() =>
-            setSelectedPaths(
-              selectedPaths.length === changedFiles.length
-                ? []
-                : changedFiles
-                    .map((change) => change.path)
-                    .filter((path) => !driftedPaths.includes(path)),
-            )
-          }
+        <Button
+          size="xs"
+          variant="link"
+          disabled={selectablePaths.length === 0}
+          onClick={() => setSelectedPaths(allSelected ? [] : selectablePaths)}
         >
-          {selectedPaths.length === changedFiles.length
+          {allSelected
             ? t(($) => $.researchTools.tasks.detail.clearSelection)
             : t(($) => $.researchTools.tasks.detail.selectAll)}
-        </button>
+        </Button>
       </div>
       {projectChanges.length > 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -785,7 +905,7 @@ export function TaskDetailDialog({
 
       {artifacts.length > 0 ? (
         <div className="space-y-2">
-          <h5 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <h5 className={SECTION_HEADING_CLASS}>
             {t(($) => $.researchTools.tasks.detail.artifacts)}
           </h5>
           {artifacts.map((artifact) => (
@@ -837,67 +957,17 @@ export function TaskDetailDialog({
         className="absolute bottom-3 left-[0.625rem] top-3 w-px bg-border"
       />
       <ol className="relative min-w-0 space-y-3">
-        {items.map((item, index) => {
-          const failing =
-            item.kind === "milestone" && isErrorMilestone(item.text, task.error);
-          return (
-            <li
-              key={item.key}
-              className="relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3"
-            >
-              <TimelineDot
-                item={item}
-                live={live && index === items.length - 1}
-                tall={item.kind === "tool"}
-                failing={failing}
-              />
-              <div className="min-w-0">
-                {item.kind === "milestone" ? (
-                  <p
-                    className={cn(
-                      "break-words text-xs leading-6",
-                      failing ? "text-destructive" : "text-muted-foreground",
-                    )}
-                  >
-                    {item.text}
-                  </p>
-                ) : null}
-                {item.kind === "message" ? (
-                  <Markdown className="min-w-0 break-words text-sm leading-6">
-                    {item.text}
-                  </Markdown>
-                ) : null}
-                {item.kind === "reasoning" ? <ReasoningRow text={item.text} /> : null}
-                {item.kind === "tool" ? (
-                  <div className="min-w-0 [&>div]:max-w-full">
-                    <ResearchToolCard
-                      tc={item.tool}
-                      expansionKey={`research-task:${taskRunKey}:${item.tool.id}`}
-                    />
-                  </div>
-                ) : null}
-                {item.kind === "artifact" ? (
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    className="max-w-full gap-1.5"
-                    disabled={previewingPath === item.artifact.path}
-                    onClick={() => openArtifact(item.artifact)}
-                  >
-                    <Paperclip aria-hidden="true" />
-                    <span className="min-w-0 truncate">
-                      {previewingPath === item.artifact.path
-                        ? t(($) => $.researchTools.tasks.detail.loading)
-                        : t(($) => $.researchTools.tasks.detail.savedArtifact, {
-                            label: item.artifact.label,
-                          })}
-                    </span>
-                  </Button>
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
+        {items.map((item, index) => (
+          <TimelineRow
+            key={item.key}
+            item={item}
+            live={live && index === items.length - 1}
+            failing={item.kind === "milestone" && isErrorMilestone(item.text, task.error)}
+            runKey={taskRunKey}
+            loadingArtifact={item.kind === "artifact" && previewingPath === item.artifact.path}
+            onOpenArtifact={openArtifactFromRow}
+          />
+        ))}
       </ol>
     </div>
   );
@@ -954,7 +1024,7 @@ export function TaskDetailDialog({
                   <Checkbox
                     id={`research-task-keep-running-${task.id}`}
                     checked={task.keepRunningAfterQuit === true}
-                    disabled={busy || savingKeepRunning || !unfinished || !backgroundEnabled}
+                    disabled={busy || savingKeepRunning || !unfinished || !backgroundEnabled || desktopAppsKeepConflict}
                     onCheckedChange={(next) => void toggleKeepRunning(next === true)}
                   />
                   <span>
@@ -962,6 +1032,11 @@ export function TaskDetailDialog({
                     {!backgroundEnabled ? (
                       <span className="block text-muted-foreground">
                         {t(($) => $.researchTools.brief.keepRunningHint)}
+                      </span>
+                    ) : null}
+                    {backgroundEnabled && unfinished && desktopAppsKeepConflict ? (
+                      <span className="block text-muted-foreground">
+                        {t(($) => $.researchTools.tasks.detail.keepRunningDesktopApps)}
                       </span>
                     ) : null}
                   </span>
@@ -1070,20 +1145,55 @@ export function TaskDetailDialog({
                     {t(($) => $.researchTools.backgroundHelper.earlierActivity)}
                   </Button>
                 ) : null}
-                {earlierTimeline.items.length > 0 ? (
-                  <div data-testid="research-task-earlier-activity" className="mb-3 border-b pb-3">
-                    {timelineList(earlierTimeline.items, false)}
+                {earlierTimelines.length > 0 ? (
+                  <div data-testid="research-task-earlier-activity" className="mb-3 space-y-3 border-b pb-3">
+                    {earlierTimelines.map((entry) => (
+                      <div key={entry.generation}>
+                        {entry.timeline.items.length > 0 ? timelineList(entry.timeline.items, false) : null}
+                        {entry.truncated ? (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {t(($) => $.researchTools.backgroundHelper.earlierTruncated, {
+                              limit: formatNumber(EARLIER_PAGES * EARLIER_PAGE_SIZE),
+                            })}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
                   </div>
                 ) : null}
-                {timeline.items.length === 0 && !eventsLoading ? (
-                  <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                    {task.executionGeneration > 0
-                      ? t(($) => $.researchTools.tasks.detail.noActivity)
-                      : t(($) => $.researchTools.tasks.detail.startToRecord)}
-                  </p>
-                ) : (
-                  timelineList(timeline.items, running)
-                )}
+                {timelineCount === 0 && !eventsLoading && !canLoadMoreEvents ? (
+                  <EmptyState
+                    size="compact"
+                    className="rounded-md border border-dashed p-3"
+                    description={
+                      task.executionGeneration > 0
+                        ? t(($) => $.researchTools.tasks.detail.noActivity)
+                        : t(($) => $.researchTools.tasks.detail.startToRecord)
+                    }
+                  />
+                ) : null}
+                {head.items.length > 0 ? timelineList(head.items, running && !canLoadMoreEvents) : null}
+                {canLoadMoreEvents ? (
+                  <div
+                    data-testid="research-task-activity-gap"
+                    className="my-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground"
+                  >
+                    <span>
+                      {hiddenRows
+                        ? t(($) => $.researchTools.tasks.detail.activityGap, { count: hiddenRows })
+                        : t(($) => $.researchTools.tasks.detail.activityMore)}
+                    </span>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      disabled={eventsLoading}
+                      onClick={() => void onLoadMoreEvents().catch(() => {})}
+                    >
+                      {t(($) => $.researchTools.tasks.detail.loadMore)}
+                    </Button>
+                  </div>
+                ) : null}
+                {tail.items.length > 0 ? timelineList(tail.items, running) : null}
                 {eventsLoading ? (
                   <LoadingState
                     size="compact"
@@ -1122,16 +1232,6 @@ export function TaskDetailDialog({
                     output: tokenCount(usage.outputTokens),
                   })}
             </p>
-            {canLoadMoreEvents ? (
-              <Button
-                size="xs"
-                variant="outline"
-                disabled={eventsLoading}
-                onClick={() => void onLoadMoreEvents().catch(() => {})}
-              >
-                {t(($) => $.researchTools.tasks.detail.loadMore)}
-              </Button>
-            ) : null}
           </footer>
         </article>
       </DialogContent>

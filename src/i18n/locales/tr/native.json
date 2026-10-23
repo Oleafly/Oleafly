@@ -100,6 +100,10 @@
       "action": "{{agent}} şunu yapmak istiyor: {{action}}.",
       "steps": "{{agent}} bir masaüstü uygulamasında şu adımları çalıştırmak istiyor:",
       "moreSteps": "Gösterilmeyen adımlar: {{count}}",
+      "moreItems": "{{count}} öğe daha gösterilmiyor",
+      "cut": "(+{{count}} karakter gösterilmedi)",
+      "signedIn": "Bu işlem, oturum açtığınız kendi tarayıcınızda yapılır.",
+      "signedInOn": "Bu işlem, oturum açtığınız kendi tarayıcınızda {{origin}} üzerinde yapılır.",
       "text": "Metin: \"{{text}}\"",
       "address": "Adres: {{url}}",
       "allowOnce": "Bir kez izin ver",
@@ -130,7 +134,8 @@
       "message": "Ajanlar bunları kullanabilecek ve her işlemden önce yine soracak:",
       "confirm": "İzin ver",
       "enabled": "Masaüstü uygulamaları",
-      "app": "Uygulama: {{name}}",
+      "app": "Uygulama: {{name}} ({{identity}})",
+      "more": "Ve {{count}} tane daha",
       "site": "Web sitesi: {{origin}}",
       "signedIn": "{{origin}} üzerinde oturum açılmış tarayıcınız",
       "scripted": "Cua betikleri"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly çalışmaya devam ediyor",
       "body": "Çalışmaya devam etmesi için işaretlediğiniz araştırma görevleri arka planda sürüyor. İlerlemelerini görmek için Oleafly'yi açın."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "İzin denetimleri kapalı ({{mode}})",
+      "description": "Ajan sormadan dosya düzenleyebilir ve komut çalıştırabilir. Oleafly onu başka bir kipe geçiremedi. Kipi ajanın kendi ayarlarından değiştirin."
     }
   }
 }

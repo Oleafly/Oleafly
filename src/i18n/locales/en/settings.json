@@ -11,12 +11,12 @@
       "checkingAction": "Checking",
       "checkingDescription": "This can take a moment while Oleafly checks the command line tools on this computer.",
       "checkingInstalled": "Checking installed agents",
-      "checkingTitle": "Looking for command line agents",
+      "checkingTitle": "Looking for CLI agents",
       "cliPathLabel": "Detected at",
       "cliTitle": "Command line tool",
       "copySignInCommand": "Copy sign-in command",
-      "emptyDescription": "Install a supported command line agent, then check again.",
-      "emptyTitle": "No command line agents found",
+      "emptyDescription": "Install a supported CLI agent, then check again.",
+      "emptyTitle": "No CLI agents found",
       "custom": {
         "description": "Paste an agent definition to register an agent Oleafly does not ship.",
         "hint": "Paste an agent definition with a pinned npm or uv package, a verified binary, or an installed executable. Keep passwords and API keys out of this JSON.",
@@ -36,7 +36,7 @@
       },
       "installBridge": "Install bridge",
       "installBridgeNextStep": "Install the ACP bridge, then sign in through the command line tool.",
-      "intro": "Connect a local agent through ACP. Each agent manages its own models, tools and sign-in, and API provider settings stay separate. Use the official CLI account for sign-in: Oleafly does not import account tokens or estimate subscription quotas.",
+      "intro": "CLI agents such as Claude Code, Codex and Gemini CLI connect through the Agent Client Protocol (ACP). Some need a bridge, a small adapter Oleafly installs so it can talk to them. Each agent manages its own models, tools and sign-in, and API provider settings stay separate. Use the official CLI account for sign-in: Oleafly does not import account tokens or estimate subscription quotas.",
       "nextStepTitle": "Next step",
       "notReported": "Not reported",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Show distribution",
         "title": "Find more agents"
       },
-      "sectionLabel": "ACP agents",
+      "sectionLabel": "CLI agents",
       "signInCommandLabel": "Sign-in command",
       "versionLabel": "Version",
       "updateBridge": "Update bridge",
@@ -147,7 +147,7 @@
         "label": "Use my Oleafly API key",
         "off": "Off (the agent signs in on its own)",
         "note": "Oleafly sends the key to this agent when a conversation starts and keeps it out of transcripts.",
-        "unavailable": "Add an API key under Settings, AI to use it here."
+        "unavailable": "Add an API key in Settings, AI Assistant, Providers and keys to use it here."
       },
       "hermes": {
         "title": "Hermes profile for this project",
@@ -175,7 +175,20 @@
         "test": "Test connection",
         "testOk": "Connected: {{version}}",
         "save": "Save",
-        "sshNote": "Oleafly signs in with your SSH keys only."
+        "sshNote": "Oleafly signs in with your SSH keys only.",
+        "folderHint": "The full path on that machine, such as /home/ada/paper.",
+        "needsValid": "Test connection and Save need valid values for: {{fields}}.",
+        "unsavedEdit": "Not saved yet. Save to use these changes.",
+        "unsavedMode": "Not saved yet. Until you save, this project keeps using: {{mode}}.",
+        "errors": {
+          "hostRequired": "Enter the host name or user@host.",
+          "hostInvalid": "Use only letters, digits, dots, dashes and @, and don't start with a dash.",
+          "port": "Use a port from 1 to 65535.",
+          "folderRequired": "Enter the full path of the project folder on that machine.",
+          "folderInvalid": "Use the full path, starting with /.",
+          "command": "Use hermes, or the full path to it starting with /.",
+          "profile": "Use lowercase letters, digits, dashes and underscores."
+        }
       }
     },
     "approvals": {
@@ -1007,6 +1020,8 @@
         "ariaLabel": "Terminal shell",
         "description": "New terminals start this shell. Open terminals keep theirs.",
         "label": "Shell",
+        "notFound": "{{name}} (not found)",
+        "notFoundNote": "{{name}} isn't available on this computer, so new terminals can't start. Pick another shell.",
         "options": {
           "auto": "Default ({{name}})",
           "cmd": "Command Prompt",
@@ -1021,14 +1036,17 @@
           "ariaLabel": "Custom shell path",
           "description": "The program new terminals run.",
           "label": "Shell path"
-        }
+        },
+        "windowsOnly": "{{name}} (Windows only)",
+        "windowsOnlyNote": "{{name}} only runs on Windows. New terminals here start {{fallback}} instead.",
+        "windowsOnlyNoteDefault": "{{name}} only runs on Windows. New terminals here start the default shell instead."
       },
       "shiftEnter": {
         "ariaLabel": "Shift+Enter in the terminal",
-        "description": "What Shift+Enter sends to the program in the terminal.",
-        "enter": "Enter",
+        "description": "What Shift+Enter sends to the program in the terminal. A new line lets chat-style tools such as Claude Code add a line to their prompt. Enter submits, like the Enter key.",
+        "enter": "Send Enter",
         "label": "Shift+Enter",
-        "newline": "New line"
+        "newline": "Insert a new line"
       },
       "startWithProject": {
         "description": "Start the shell when a project opens rather than the first time you show the terminal.",
@@ -1452,7 +1470,9 @@
       "detecting": "Checking the server…",
       "found": "This is a {{kind}} server.",
       "kindGitea": "Gitea or Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "Another server",
+      "replaces": "Signing in replaces {{login}} on {{host}}.",
       "scopesGitea": "Give it read and write access to repository and user.",
       "scopesGithub": "Give it the repo and read:user scopes.",
       "scopesGitlab": "Give it the api and write_repository scopes.",
@@ -1527,7 +1547,7 @@
       "site": "Site: {{domain}}",
       "confirmCopy": "Oleafly will read the cookies for {{domain}} from the {{profile}} profile in {{browser}}. They stay in Oleafly and go only to {{domain}}. You'll confirm once more in a system dialog.",
       "copyAction": "Copy sign-in",
-      "copying": "Copying...",
+      "copying": "Copying…",
       "notSignedIn_one": "Copied {{count}} cookie from {{browser}}, but it didn't sign you in. Sign in instead.",
       "notSignedIn_other": "Copied {{count}} cookies from {{browser}}, but they didn't sign you in. Sign in instead."
     },
@@ -1610,6 +1630,7 @@
         "notInstalled": "Cua Driver isn't installed.",
         "tooOld": "Cua Driver {{version}} is too old. Oleafly needs {{minimum}} or newer.",
         "noAppBundle": "Install Cua Driver with the official installer so it can hold the macOS permissions.",
+        "unreadableVersion": "Oleafly couldn't read Cua Driver's version. Check that it runs, then check again.",
         "path": "Found at {{path}}"
       },
       "install": {
@@ -1643,14 +1664,18 @@
         "empty": "No apps yet. Agents can only use apps you add here.",
         "add": "Add app",
         "remove": "Remove {{name}}",
+        "missing": "This program wasn't found on this computer. Remove it, or reinstall the app.",
         "dialog": {
           "title": "Add an app",
           "description": "Choose an app agents may use. They can open it, read its windows and act in it after you approve.",
           "search": "Search apps",
-          "loading": "Looking for apps...",
+          "loading": "Looking for apps…",
           "none": "No apps match.",
-          "choose": "Choose another app...",
-          "add": "Add"
+          "choose": "Choose another app…",
+          "add": "Add",
+          "added": "Already added.",
+          "more": "Showing {{shown}} of {{total}}. Search to narrow the list.",
+          "refresh": "Refresh"
         },
         "blocked": {
           "oleafly": "Oleafly can't control itself.",
@@ -1660,7 +1685,8 @@
           "passwords": "Password apps stay off limits.",
           "scripting": "Script runners can do anything on this computer.",
           "wrapper": "This entry starts another program. Choose that program instead.",
-          "sandboxed": "Flatpak and Snap apps aren't supported yet."
+          "sandboxed": "Flatpak and Snap apps aren't supported yet.",
+          "browser": "Add a browser's websites under Allowed websites instead."
         }
       },
       "sites": {
@@ -1671,6 +1697,7 @@
         "remove": "Remove {{origin}}",
         "signedIn": {
           "label": "Use my signed-in browser",
+          "labelFor": "Use my signed-in browser on {{origin}}",
           "description": "Agents work in your own Chrome or Edge on this site. Leave it off to use a separate browser profile."
         }
       },
@@ -1680,8 +1707,9 @@
       },
       "test": {
         "action": "Test connection",
-        "running": "Testing...",
+        "running": "Testing…",
         "ok": "Cua Driver is running with your limits.",
+        "problems": "Cua Driver's own check also reported:",
         "failed": "The test failed: {{detail}}"
       },
       "tool": {
@@ -2281,6 +2309,7 @@
       "stopHint": "Its tasks pause until you open Oleafly again.",
       "stopFailed": "The helper did not stop. Try again.",
       "openLog": "Show log",
+      "statusFailed": "The background helper's status could not be read.",
       "toggleFailed": "Could not change this setting. Try again."
     }
   }

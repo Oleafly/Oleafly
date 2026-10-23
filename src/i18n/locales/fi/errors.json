@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} esti pääsyn tähän repositorioon. Tarkista, että tililläsi on pääsy siihen. Jos organisaatio käyttää kertakirjautumista (SSO), valtuuta kirjautumisesi sille ensin.",
+    "access_denied_account": "{{host}} esti tilin {{account}} pääsyn tähän repositorioon. Tarkista, että tämä tili voi käyttää sitä. Jos organisaatio käyttää kertakirjautumista (SSO), valtuuta kirjautumisesi sille ensin.",
     "account_missing": "Palvelulle {{host}} ei ole Git-palvelun tiliä. Lisää tili asetuksissa.",
     "archive_too_large": "Repositorion tiedostot ovat yli {{limit}} MB, joten Oleafly ei voi tuoda niitä. Kloonaa repositorio itse ja avaa sen kansio.",
-    "auth_rejected": "{{host}} hylkäsi tallennetun kirjautumisesi. Kirjaudu palveluun {{host}} uudelleen asetuksissa.",
+    "auth_rejected": "{{host}} hylkäsi tilin {{account}} tallennetun kirjautumisen. Kirjaudu palveluun {{host}} uudelleen asetuksissa.",
     "credentials_missing": "{{host}} pyysi käyttäjänimeä ja salasanaa. Kirjaudu palveluun {{host}} asetuksissa tai määritä SSH-avain tai Gitin tunnistetietojen apuohjelma.",
     "credentials_rejected": "{{host}} hylkäsi käyttäjänimen ja salasanan, jotka Git tarjosi. Kirjaudu palveluun {{host}} asetuksissa tai päivitä Gitin käyttämät tunnistetiedot.",
     "device_flow_unavailable": "Selainkirjautuminen ei ole saatavilla palvelulle {{host}} tässä versiossa. Käytä sen sijaan käyttöoikeustunnusta.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Palvelussa {{host}} on jo tämän niminen repositorio.",
     "forge_server_error": "{{host}} palautti virheen ({{status}}).",
     "forge_signed_out": "Kirjautumisesi palveluun {{host}} vanheni tai peruttiin. Kirjaudu uudelleen asetuksissa.",
+    "forge_sso_required": "{{host}} vaatii, että tämä kirjautuminen on valtuutettu organisaation kertakirjautumiseen. Valtuuta se palvelussa {{host}} ja yritä sitten uudelleen.",
     "forge_store": "Oleafly ei voinut lukea tai tallentaa Git-palvelujen tilejäsi.",
     "forge_token_invalid": "Tämä ei näytä käyttöoikeustunnukselta. Liitä koko tunnus.",
     "forge_token_rejected": "{{host}} ei hyväksynyt tätä tunnusta. Tarkista, että kopioit koko tunnuksen ja ettei se ole vanhentunut.",
     "forge_unknown_server": "Oleafly ei tunnistanut, millainen palvelin {{host}} on. Valitse palvelimen tyyppi.",
     "host_key_unknown": "SSH ei vielä tunne palvelinta {{host}}. Yhdistä siihen kerran päätteestä ja hyväksy sen isäntäavain, ja yritä sitten uudelleen.",
     "host_unreachable": "Oleafly ei saanut yhteyttä palvelimeen {{host}}. Tarkista osoite ja verkkoyhteytesi.",
+    "import_cancelled": "Tuonti peruttiin.",
     "invalid_remote_url": "Anna Git-repositorion HTTPS- tai SSH-osoite.",
     "nested_repository": "Tämä projekti on toisen Git-repositorion sisällä, joten Oleafly ei luo tähän erillistä repositoriota.",
     "not_installed": "Gitiä ei ole asennettu tälle koneelle. Asenna Git ja yritä uudelleen.",
     "push_rejected": "Etähaarassa on commiteja, joita tässä projektissa ei vielä ole. Nouda ensin ja työnnä sitten uudelleen.",
     "remote_exists": "Tämä projekti on jo linkitetty kohteeseen {{remote}}.",
-    "remote_has_password": "Poista salasana osoitteesta. Oleafly kirjautuu sen sijaan Git-palvelun tililläsi tai omilla Git-tunnistetiedoillasi.",
+    "remote_has_password": "Poista salasana tai käyttöoikeustunnus osoitteesta. Oleafly kirjautuu sen sijaan Git-palvelun tililläsi tai omilla Git-tunnistetiedoillasi.",
     "repository_empty": "Tässä repositoriossa ei ole vielä commiteja, joten tuotavaa ei ole.",
     "repository_not_found": "Palvelussa {{host}} ei ole repositoriota tässä osoitteessa, tai tilisi ei näe sitä.",
     "sign_in_cancelled": "Kirjautuminen peruttiin selaimessa.",
@@ -269,6 +272,14 @@
   "provider_credit": {
     "failed": "Oleafly ei voinut tarkistaa saldoasi palvelussa {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 ei ole asennettu.",
+    "git_bash_missing": "Git Bash ei ole asennettu. Asenna Git for Windows tai valitse toinen shell.",
+    "wsl_missing": "WSL ei ole asennettu.",
+    "wsl_no_distro": "WSL:ssä ei ole vielä Linux-jakelua.",
+    "shell_path_empty": "Anna shellin polku asetuksissa tai valitse toinen shell.",
+    "shell_path_missing": "Polusta {{path}} ei löydy ohjelmaa."
+  },
   "mathpix": {
     "keys_missing": "Lisää ensin Mathpixin sovellustunnus ja avain kohdassa Asetukset, Tekoäly, Työkalut.",
     "invalid_keys": "Sovellustunnuksessa tai avaimessa on merkkejä, joita Mathpix-avaimissa ei koskaan ole. Kopioi ne uudelleen Mathpix-konsolista.",
@@ -282,7 +293,8 @@
     "pdf_too_large": "Tämä PDF on suurempi kuin Mathpix-palvelun 256 MB:n raja.",
     "timed_out": "Mathpix ei saanut tätä PDF-tiedostoa valmiiksi 30 minuutissa. Kokeile vähemmillä sivuilla.",
     "cancelled": "Mathpix-muunnos pysäytettiin.",
-    "wrong_window": "Mathpix-palvelua voi käyttää vain Oleaflyn pääikkunasta."
+    "wrong_window": "Mathpix-palvelua voi käyttää vain Oleaflyn pääikkunasta.",
+    "pdf_too_large_ipc": "Tämä tietokone voi lähettää Mathpixille PDF-tiedostoja enintään 16 MB. Jaa PDF ja yritä uudelleen."
   },
   "desktop_apps": {
     "not_installed": "Cua Driver -ohjelmaa ei ole asennettu. Asenna se kohdassa Asetukset → Integraatiot → Työpöytäsovellukset.",

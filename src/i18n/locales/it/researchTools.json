@@ -202,7 +202,10 @@
       "unavailable": "Non disponibile",
       "saving": "Salvataggio...",
       "saveTask": "Salva l'attività",
-      "createTask": "Crea l'attività"
+      "createTask": "Crea l'attività",
+      "replaceText": "Vuoi sostituire il titolo e le istruzioni che hai scritto con questa struttura di partenza?",
+      "keepText": "Mantieni i miei",
+      "replaceConfirm": "Sostituisci"
     },
     "starter": {
       "literatureReview": {
@@ -246,6 +249,11 @@
       "dependencies": "Dipendenze",
       "dependencyUnavailable": "Non disponibile",
       "noActivity": "Per questa esecuzione non è stata registrata nessuna attività.",
+      "activityGap_one": "{{count}} voce intermedia non è mostrata.",
+      "activityGap_other": "{{count}} voci intermedie non sono mostrate.",
+      "activityMore": "Altra attività svolta non è ancora mostrata.",
+      "keepRunningDesktopApps": "Questa attività usa le app desktop, che richiedono la tua presenza al computer.",
+      "activityGap_many": "{{count}} voci intermedie non sono mostrate.",
       "startToRecord": "Avvia questa attività per registrare quello che fa.",
       "reasoning": "Ragionamento riportato",
       "savedArtifact": "{{label}} salvato",
@@ -319,6 +327,10 @@
       "kindRun": "Avviare un'esecuzione",
       "kindMcp": "Usare uno strumento",
       "expires": "Attende fino al {{time}}",
+      "detailCommand": "Comando completo",
+      "detailRun": "Dettagli dell'esecuzione",
+      "detailMcp": "Argomenti dello strumento",
+      "loadFailed": "Non è stato possibile caricare le richieste in attesa.",
       "status": {
         "approved": "Approvata",
         "denied": "Negata",
@@ -347,8 +359,9 @@
       "noRuns": "Nessuna esecuzione in corso.",
       "budget": "Budget",
       "timeUsed": "{{used}} di {{total}}",
-      "costUsed": "${{used}} di ${{limit}}",
-      "costSpent": "${{used}} spesi",
+      "costUsed": "{{used}} di {{limit}}",
+      "costSpent": "{{used}} spesi",
+      "ledgerCapped": "Vengono mostrati gli ultimi {{limit}} risultati.",
       "costUnknown": "Il costo di questo modello non è noto.",
       "runsUsed": "{{used}} di {{limit}} esecuzioni",
       "runsUsedNoLimit": "{{used}} esecuzioni",
@@ -381,6 +394,10 @@
       "mcpServers": "Server MCP che le attività possono usare",
       "mcpServersHint": "Le attività chiamano questi strumenti secondo le regole dei comandi di ciascuna attività.",
       "noMcpServers": "Nessun server MCP configurato.",
+      "networkHint": "I comandi delle attività possono raggiungere internet. Ogni attività può comunque disattivarlo.",
+      "loadFailed": "Non è stato possibile caricare le tue impostazioni di ricerca.",
+      "sectionName": "Ricerca",
+      "resetConfirm": "Ripristina i valori predefiniti della ricerca: tieni attivo il computer, notifiche, accesso alla rete, budget di tempo e server MCP che le attività possono usare. Le destinazioni di esecuzione e le attività in background restano invariate.",
       "saveFailed": "Impossibile salvare le impostazioni di ricerca. Riprova."
     }
   },
@@ -895,7 +912,10 @@
     "fileReady": "{{fileName}} è pronto",
     "saveWordHint": "Salva il documento Word quando sei pronto.",
     "resultPlaceholder": "Qui comparirà il risultato convertito.",
-    "progressConvertingSource": "Conversione del sorgente in Typst"
+    "progressConvertingSource": "Conversione del sorgente in Typst",
+    "pageRange": "Pagine",
+    "pageRangePlaceholder": "Tutte le pagine, oppure un intervallo come 1-50",
+    "pageRangeInvalid": "Inserisci un numero di pagina oppure un intervallo come 1-50."
   },
   "converters": {
     "imageToLatex": {
@@ -1102,7 +1122,9 @@
     "fileTooLarge": "Scegli un file più piccolo di 128 MB.",
     "emptySheet": "Il foglio selezionato è vuoto.",
     "arxivInputRequired": "Inserisci un ID arXiv oppure scegli un archivio sorgente.",
-    "equationToTypst": "Pandoc non è riuscito a convertire questa equazione in Typst. Controlla la matematica LaTeX e riprova."
+    "equationToTypst": "Pandoc non è riuscito a convertire questa equazione in Typst. Controlla la matematica LaTeX e riprova.",
+    "pdfTooManyPages": "Questa scansione ha {{pages}} pagine e Oleafly ne trascrive al massimo {{limit}} alla volta. Inserisci sotto il file un intervallo di pagine come 1-{{limit}}.",
+    "outputLimit": "Il modello ha esaurito lo spazio prima di finire, quindi la trascrizione sarebbe incompleta. Scegli un modello con un limite di output più alto in Impostazioni, Assistente AI, Strumenti, oppure trascrivi una parte più piccola."
   },
   "converterNotes": {
     "scannedPages": "{{pages}} pagine scansionate trascritte con {{model}}. Controlla equazioni e tabelle prima di usare il risultato.",
@@ -1159,7 +1181,7 @@
       "cannotSeeImages": "{{model}} non sa leggere le immagini. Scegli un modello visivo.",
       "localModelGone": "{{model}} non è più in Ollama. Scaricalo di nuovo, oppure scegli un altro modello.",
       "imagesOnly": "{{model}} legge solo immagini. Scegli un modello linguistico per convertire le equazioni scritte.",
-      "mathpixNotSetUp": "Aggiungi le tue chiavi Mathpix in Impostazioni, AI, Strumenti, oppure scegli un altro modello.",
+      "mathpixNotSetUp": "Aggiungi le tue chiavi Mathpix in Impostazioni, Assistente AI, Strumenti, oppure scegli un altro modello.",
       "imageTooLarge": "Questa immagine è ancora troppo grande anche dopo averla ridotta. Ritagliala e riprova."
     }
   },
@@ -1763,10 +1785,14 @@
     "startAtLabel": "Inizia il",
     "startNow": "Quando la avvio",
     "keepRunning": "Continua anche con Oleafly chiuso",
-    "keepRunningHint": "Prima attiva il lavoro in background in Impostazioni, Ricerca.",
+    "keepRunningHint": "Prima attiva Attività in background in Impostazioni, Ricerca.",
     "invalidMetric": "Usa lettere, numeri, punti, trattini o trattini bassi.",
     "invalidCost": "Inserisci un importo maggiore di zero.",
-    "invalidRuns": "Inserisci un numero intero da 1 a 1.000."
+    "invalidRuns": "Inserisci un numero intero da 1 a 1.000.",
+    "invalidStart": "Scegli un orario di inizio entro i prossimi 30 giorni.",
+    "invalidStartFormat": "Usa il formato {{example}}.",
+    "startAtFormat": "Digita l'orario come {{example}}.",
+    "problemHidden": "Un'opzione nel Brief va corretta. Apri il Brief per vedere quale."
   },
   "runs": {
     "status": {
@@ -1778,11 +1804,6 @@
       "cancelled": "Fermata",
       "lost": "Persa"
     }
-  },
-  "record": {
-    "title": "Registro di ricerca",
-    "openHandoff": "Apri il passaggio di consegne",
-    "openReport": "Apri il rapporto"
   },
   "evidence": {
     "title": "Controllo delle prove",
@@ -1834,8 +1855,9 @@
       "edit": "Modifica",
       "remove": "Rimuovi",
       "removeTitle": "Rimuovere {{label}}?",
-      "removeConfirm": "Le esecuzioni già avviate lì continuano.",
+      "removeConfirm": "Le esecuzioni già avviate lì continuano. Le attività in attesa di avviarsi lì non riusciranno.",
       "forgetHostKey": "Dimentica la chiave host",
+      "reviewHostKey": "Controlla la chiave host",
       "notTested": "Non provata",
       "tested": "Provata {{time}}",
       "testFailed": "Prova non riuscita",
@@ -1927,7 +1949,8 @@
       "added": "Già aggiunto",
       "add_one": "Aggiungi {{count}} host",
       "add_many": "Aggiungi {{count}} host",
-      "add_other": "Aggiungi {{count}} host"
+      "add_other": "Aggiungi {{count}} host",
+      "skipped": "Non aggiunti: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Sandbox su questo computer",
@@ -1958,6 +1981,7 @@
       "runsOn": "Gira su {{target}}",
       "runsLocal": "Gira su questo computer.",
       "missing": "La destinazione usata da questa attività è stata rimossa. Scegline un'altra.",
+      "loadFailed": "Non è stato possibile caricare le tue destinazioni di esecuzione.",
       "windowsOff": "Attiva la sandbox di Windows nelle Impostazioni per eseguire comandi su questo computer.",
       "openSettings": "Apri le Impostazioni",
       "resources": "Risorse Slurm"
@@ -1971,6 +1995,7 @@
       "movingBackHint": "Questa attività torna in Oleafly quando finisce il passaggio in corso."
     },
     "earlierActivity": "Mostra l'attività precedente",
+    "earlierTruncated": "Di questa esecuzione precedente vengono mostrate solo le prime {{limit}} voci.",
     "keepRunningFailed": "Impossibile modificare questa impostazione. Riprova."
   }
 }

@@ -21,7 +21,7 @@ use tokio::sync::{watch, Semaphore};
 use zeroize::Zeroizing;
 
 use super::config::ready;
-use super::dispatch::{call_desktop_apps, turn_ended_in};
+use super::dispatch::{call_desktop_apps, project_denied, turn_ended_in};
 use super::policy::{tool_meta, POLICY_LINES};
 use super::{global, lock, log, CuaDriverState, CuaScope, Surface, DESKTOP_APPS_TOOL};
 use crate::mcp::protocol::{self, RpcOutcome};
@@ -159,7 +159,10 @@ impl Drop for CuaBridge {
 /// are logged and never stop the agent from starting.
 pub(crate) async fn acp_bridge(project_id: &str, agent_label: &str) -> Option<CuaBridge> {
     let state = global()?;
-    if !ready(&state.settings()) || !crate::trust::is_trusted(project_id) {
+    if !ready(&state.settings())
+        || !crate::trust::is_trusted(project_id)
+        || project_denied(&state, Some(project_id))
+    {
         return None;
     }
     let key = format!("acp:{}", random_hex(16).as_str());
@@ -282,7 +285,11 @@ async fn request(State(context): State<Arc<BridgeContext>>, request: Request) ->
             .into_response();
         }
     };
-    let tools: Vec<_> = tool_meta(&context.state.settings()).into_iter().collect();
+    // A project that denies desktop apps lists no tool.
+    let tools: Vec<_> = tool_meta(&context.state.settings())
+        .filter(|_| !project_denied(&context.state, context.scope.project_id.as_deref()))
+        .into_iter()
+        .collect();
     match protocol::dispatch(&message, &tools, &POLICY_LINES.join(" ")) {
         RpcOutcome::Reply(value) => Json(value).into_response(),
         RpcOutcome::Accepted => StatusCode::ACCEPTED.into_response(),

@@ -65,12 +65,12 @@ describe("AcpSessionHeader", () => {
 
   it("marks draft-protocol and remote conversations", () => {
     header(session("s", { capabilities: capabilities({ protocol: 2 }), remote: { host: "lab", folder: "/paper" } }));
-    expect(screen.getByText("ACP v2 draft")).toBeInTheDocument();
+    expect(screen.getByText("Protocol preview")).toBeInTheDocument();
     expect(screen.getByText("Remote")).toBeInTheDocument();
     cleanup();
     header(session("s", { title: "" }));
     expect(screen.getByTestId("acp-session-title")).toHaveTextContent("Untitled conversation");
-    expect(screen.queryByText("ACP v2 draft")).toBeNull();
+    expect(screen.queryByText("Protocol preview")).toBeNull();
   });
 
   it("renames the conversation from its title", async () => {
@@ -134,8 +134,27 @@ describe("AcpSessionHeader", () => {
     header(session("s", { capabilities: capabilities({ logout: true }) }));
     const menu = await openMenu();
     fireEvent.click(within(menu).getByRole("menuitem", { name: "Sign out" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Sign out of Codex?")).toBeInTheDocument();
+    expect(acpLogout).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Sign out" }));
     await waitFor(() => expect(acpLogout).toHaveBeenCalledWith("paper", "s"));
     await waitFor(() => expect(useAcpSessionsStore.getState().sessions.s.status).toBe("auth_required"));
+  });
+
+  it("asks before signing out, names the account and leaves the agent signed in when cancelled", async () => {
+    header(session("s", {
+      capabilities: capabilities({ logout: true }),
+      usage: { auth: { kind: "account", label: "Claude Max" } },
+    }));
+    const menu = await openMenu();
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Sign out" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Signed in with Claude Max")).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("terminal");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Cancel/ }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(acpLogout).not.toHaveBeenCalled();
   });
 
   it("offers no sign-out to agents without it", async () => {

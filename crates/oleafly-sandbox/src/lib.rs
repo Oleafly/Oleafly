@@ -17,9 +17,15 @@ mod ledger;
 mod linux;
 #[cfg(any(target_os = "macos", test))]
 mod macos;
+#[cfg(any(windows, test))]
+mod plan;
+#[cfg(any(target_os = "linux", windows, test))]
+mod probe;
 pub mod process;
 pub mod profile;
 mod resolve;
+mod roots;
+mod safe_fs;
 pub mod selftest;
 #[cfg(windows)]
 pub mod windows;
@@ -63,13 +69,19 @@ pub struct SandboxSpec {
     /// cannot be changed.
     #[serde(default)]
     pub env: BTreeMap<String, String>,
-    /// The program starts helper processes (`posix_spawn`); Codex does.
+    /// The program starts helper processes with `posix_spawn` (macOS blocks
+    /// it otherwise, so Rust's `Command`, `popen` and `system` fail). The
+    /// price: a program can then leave the command's process group through
+    /// the spawn attributes. Codex and long-running experiment runs set it;
+    /// short task commands don't.
     #[serde(default)]
     pub child_processes: bool,
     /// Private, writable HOME/TMP for the command.
     pub home: PathBuf,
-    /// Who the command runs for (`task:<id>`). On Windows it names the
-    /// task's AppContainer profile; empty only in self-tests.
+    /// Who the command runs for (`task:<id>` for a research task). On
+    /// Windows it names the AppContainer profile; empty only in self-tests.
+    /// Only `task:` owners may work in copies: [`release`] takes the entries
+    /// of any other owner off its folders.
     #[serde(default)]
     pub owner: String,
     /// The project id, the scope of `project_read_only` grants on Windows.
@@ -82,6 +94,11 @@ pub struct SandboxSpec {
     /// `.oleafly`).
     #[serde(default)]
     pub protected: Vec<PathBuf>,
+    /// Paths inside the workspace or another grant that the command can
+    /// neither read nor change (`.git/config`, `.private`, `.env`). Paths
+    /// that don't exist, or that no grant reaches, are ignored.
+    #[serde(default)]
+    pub deny_read: Vec<PathBuf>,
     /// Folders placed before the platform's base `PATH`.
     #[serde(default)]
     pub path_prepend: Vec<PathBuf>,
@@ -190,10 +207,7 @@ pub fn availability() -> Availability {
     }
     #[cfg(target_os = "linux")]
     {
-        match linux::bubblewrap() {
-            Some(_) => Availability::Available,
-            None => Availability::Unavailable(linux::MISSING_MESSAGE.into()),
-        }
+        linux::availability()
     }
     #[cfg(windows)]
     {
@@ -254,7 +268,8 @@ pub fn system_read_paths() -> Vec<PathBuf> {
 }
 
 /// Resolve the extra read grants: each must exist and must not be the
-/// filesystem root or the user's home folder.
+/// filesystem root, the user's home folder or a folder that holds it, or a
+/// top-level system folder.
 pub fn resolve_read_grants(paths: &[PathBuf]) -> Result<Vec<PathBuf>, SandboxError> {
     let home = home_dir().and_then(|home| home.canonicalize().ok().or(Some(home)));
     let mut resolved = Vec::with_capacity(paths.len());
@@ -262,7 +277,8 @@ pub fn resolve_read_grants(paths: &[PathBuf]) -> Result<Vec<PathBuf>, SandboxErr
         let path = path
             .canonicalize()
             .map_err(|_| SandboxError::Invalid("A task runtime file is unavailable.".into()))?;
-        if path.parent().is_none() || home.as_ref().is_some_and(|home| &path == home) {
+        if let Some(reason) = roots::broad_reason(&path, home.as_deref()) {
+            roots::note_refused(&path, reason);
             return Err(SandboxError::Invalid(
                 "Task runtimes require specific readable files or folders.".into(),
             ));
@@ -333,6 +349,7 @@ fn unix_command(
         child_processes: resolved.child_processes,
         readable: &readable,
         protected: &resolved.protected,
+        hidden: &resolved.hidden,
     };
     let mut command = platform_command(&platform)?;
     command.env_clear();
@@ -348,11 +365,12 @@ fn unix_command(
     Ok(command)
 }
 
-/// The folders the base environment points at, created when missing.
+/// The folders the base environment points at, created when missing. The
+/// command can make any of them a link, so none is created through one.
 #[cfg(not(windows))]
 fn create_home_folders(home: &Path) {
     for folder in ["tmp", ".config", ".cache", ".local/state", ".local/share"] {
-        let _ = std::fs::create_dir_all(home.join(folder));
+        let _ = safe_fs::create_folders_below(home, Path::new(folder));
     }
 }
 
@@ -432,8 +450,12 @@ pub fn fixed_environment(temp: &Path) -> Vec<(String, OsString)> {
     unix_environment(temp, &[])
 }
 
-/// Releases what the sandbox holds for `owner` (the Windows profile).
-/// Nothing to do on macOS and Linux.
+/// Releases what the sandbox holds for `owner`. On Windows that is the
+/// owner's profile and, unless the owner is a research task (`task:<id>`,
+/// whose folders are copies that go with the task), the access entries it
+/// put on folders that stay, such as a CLI run's project. Taking those off
+/// walks the folders, so call this off async and UI threads. Nothing to do
+/// on macOS and Linux.
 pub fn release(owner: &str) -> Result<(), SandboxError> {
     #[cfg(windows)]
     {
@@ -446,8 +468,11 @@ pub fn release(owner: &str) -> Result<(), SandboxError> {
     }
 }
 
-/// Releases every owner not in `active_owners` (startup sweep). Returns how
-/// many were released.
+/// Releases every research task (`task:<id>`) not in `active_owners`
+/// (startup sweep) and takes off the entries that runs of other owners left
+/// on folders when they were cut off. Other owners that still hold a
+/// profile, such as a CLI run that is working now, are left alone. Returns
+/// how many tasks were released.
 pub fn release_stale(active_owners: &[String]) -> Result<usize, SandboxError> {
     #[cfg(windows)]
     {
@@ -555,6 +580,8 @@ pub(crate) struct PlatformRequest<'a> {
     pub child_processes: bool,
     pub readable: &'a [PathBuf],
     pub protected: &'a [PathBuf],
+    /// Covered after every grant: no reads, no writes.
+    pub hidden: &'a [PathBuf],
 }
 
 #[cfg(target_os = "macos")]

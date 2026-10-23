@@ -1,7 +1,8 @@
 //! The environment of a run: every package and model cache inside the
 //! task's home, Python and plotting tuned for scripts, the linked data
 //! folders by name, and the host's proxy and certificate settings when the
-//! task has network access.
+//! task has network access. Logins inside proxy and package-index URLs stay
+//! out of the task's environment unless the user opts in.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -34,6 +35,27 @@ const NETWORK_VARS: [&str; 19] = [
     "NODE_EXTRA_CA_CERTS",
 ];
 
+/// Network variables that hold URLs (one or several), which can carry a
+/// login as `user:password@host`.
+const URL_VARS: [&str; 10] = [
+    "HTTP_PROXY",
+    "http_proxy",
+    "HTTPS_PROXY",
+    "https_proxy",
+    "ALL_PROXY",
+    "all_proxy",
+    "PIP_INDEX_URL",
+    "PIP_EXTRA_INDEX_URL",
+    "UV_INDEX_URL",
+    "UV_DEFAULT_INDEX",
+];
+
+/// Set to `1` in the host's environment to forward the logins inside proxy
+/// and package-index URLs to tasks that have network access. Off by default:
+/// code running in a task can read its own environment and send it anywhere
+/// the task's network reaches.
+pub const FORWARD_URL_LOGINS: &str = "OLEAFLY_SANDBOX_FORWARD_URL_LOGINS";
+
 /// Certificate files and folders named by the network variables.
 pub const CA_VARS: [&str; 5] = [
     "SSL_CERT_FILE",
@@ -42,6 +64,39 @@ pub const CA_VARS: [&str; 5] = [
     "CURL_CA_BUNDLE",
     "NODE_EXTRA_CA_CERTS",
 ];
+
+/// `value` with the login (`user:password@`) removed from every URL in it.
+/// A value can hold several URLs separated by white space; text that isn't
+/// a URL passes through.
+fn without_url_logins(value: &str) -> String {
+    let mut result = String::with_capacity(value.len());
+    let mut rest = value;
+    while !rest.is_empty() {
+        let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+        let (word, after) = rest.split_at(end);
+        result.push_str(&without_login(word));
+        let spaces = after.len() - after.trim_start().len();
+        result.push_str(&after[..spaces]);
+        rest = &after[spaces..];
+    }
+    result
+}
+
+/// One URL without its login: the part of the authority before the last `@`.
+fn without_login(url: &str) -> String {
+    let authority_start = url.find("://").map_or(0, |at| at + 3);
+    let authority_end = url[authority_start..]
+        .find(['/', '?', '#'])
+        .map_or(url.len(), |at| authority_start + at);
+    match url[authority_start..authority_end].rfind('@') {
+        Some(at) => format!(
+            "{}{}",
+            &url[..authority_start],
+            &url[authority_start + at + 1..]
+        ),
+        None => url.to_string(),
+    }
+}
 
 fn path_text(path: &Path) -> String {
     path.to_string_lossy().into_owned()
@@ -174,8 +229,14 @@ pub fn run_env(
     );
 
     if network {
+        let forward_logins = host_env(FORWARD_URL_LOGINS).is_some_and(|value| value == "1");
         for name in NETWORK_VARS {
             if let Some(value) = host_env(name).filter(|value| !value.is_empty()) {
+                let value = if !forward_logins && URL_VARS.contains(&name) {
+                    without_url_logins(&value)
+                } else {
+                    value
+                };
                 env.insert(name.to_string(), value);
             }
         }
@@ -291,8 +352,7 @@ mod tests {
 
     #[test]
     fn proxy_env_is_passed_only_with_network() {
-        let host =
-            |name: &str| (name == "HTTPS_PROXY").then(|| "http://u:p@proxy:8080".to_string());
+        let host = |name: &str| (name == "HTTPS_PROXY").then(|| "http://proxy:8080".to_string());
         let (offline, _) = run_env(
             RunProfile::Analysis,
             Path::new("/h"),
@@ -303,7 +363,64 @@ mod tests {
         );
         assert!(!offline.contains_key("HTTPS_PROXY"));
         let (online, _) = run_env(RunProfile::Analysis, Path::new("/h"), &[], &[], true, &host);
+        assert_eq!(online["HTTPS_PROXY"], "http://proxy:8080");
+    }
+
+    #[test]
+    fn logins_in_proxy_and_index_urls_stay_out_of_the_task() {
+        let host = |name: &str| {
+            match name {
+            "HTTPS_PROXY" => Some("http://u:p@proxy:8080".to_string()),
+            "ALL_PROXY" => Some("user:pass@proxy:3128".to_string()),
+            "PIP_INDEX_URL" => Some("https://__token__:pypi-AgEI@host.example/simple".to_string()),
+            "PIP_EXTRA_INDEX_URL" => Some(
+                "https://a:b@one.example/simple https://two.example/simple  https://c@three.example/x?y=a@b"
+                    .to_string(),
+            ),
+            "NO_PROXY" => Some("localhost,10.0.0.0/8".to_string()),
+            _ => None,
+        }
+        };
+        let (online, _) = run_env(RunProfile::Analysis, Path::new("/h"), &[], &[], true, &host);
+        assert_eq!(online["HTTPS_PROXY"], "http://proxy:8080");
+        assert_eq!(online["ALL_PROXY"], "proxy:3128");
+        assert_eq!(online["PIP_INDEX_URL"], "https://host.example/simple");
+        assert_eq!(
+            online["PIP_EXTRA_INDEX_URL"],
+            "https://one.example/simple https://two.example/simple  https://three.example/x?y=a@b"
+        );
+        assert_eq!(online["NO_PROXY"], "localhost,10.0.0.0/8");
+        for value in online.values() {
+            assert!(
+                !value.contains("pypi-AgEI") && !value.contains("u:p@"),
+                "{value}"
+            );
+        }
+    }
+
+    #[test]
+    fn logins_are_forwarded_only_when_the_user_opts_in() {
+        let host = |name: &str| match name {
+            "HTTPS_PROXY" => Some("http://u:p@proxy:8080".to_string()),
+            FORWARD_URL_LOGINS => Some("1".to_string()),
+            _ => None,
+        };
+        let (online, _) = run_env(RunProfile::Analysis, Path::new("/h"), &[], &[], true, &host);
         assert_eq!(online["HTTPS_PROXY"], "http://u:p@proxy:8080");
+        let not_one = |name: &str| match name {
+            "HTTPS_PROXY" => Some("http://u:p@proxy:8080".to_string()),
+            FORWARD_URL_LOGINS => Some("0".to_string()),
+            _ => None,
+        };
+        let (online, _) = run_env(
+            RunProfile::Analysis,
+            Path::new("/h"),
+            &[],
+            &[],
+            true,
+            &not_one,
+        );
+        assert_eq!(online["HTTPS_PROXY"], "http://proxy:8080");
     }
 
     #[test]

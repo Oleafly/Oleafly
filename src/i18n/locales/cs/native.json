@@ -100,6 +100,10 @@
       "action": "{{agent}} chce {{action}}.",
       "steps": "{{agent}} chce v aplikaci v počítači provést tyto kroky:",
       "moreSteps": "Nezobrazené kroky: {{count}}",
+      "moreItems": "Nezobrazené položky: {{count}}",
+      "cut": "(+{{count}} znaků nezobrazeno)",
+      "signedIn": "Tato akce probíhá ve vašem vlastním přihlášeném prohlížeči.",
+      "signedInOn": "Tato akce probíhá ve vašem vlastním přihlášeném prohlížeči, na adrese {{origin}}.",
       "text": "Text: „{{text}}“",
       "address": "Adresa: {{url}}",
       "allowOnce": "Povolit jednou",
@@ -130,7 +134,8 @@
       "message": "Agenti budou moci používat následující a před každou akcí se budou dál ptát:",
       "confirm": "Povolit",
       "enabled": "Aplikace v počítači",
-      "app": "Aplikace: {{name}}",
+      "app": "Aplikace: {{name}} ({{identity}})",
+      "more": "A ještě {{count}}",
       "site": "Web: {{origin}}",
       "signedIn": "Váš přihlášený prohlížeč na {{origin}}",
       "scripted": "Skripty Cua"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly pracuje dál",
       "body": "Výzkumné úlohy, které mají pokračovat, běží na pozadí. Otevřete Oleafly a uvidíte jejich průběh."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Kontrola oprávnění je vypnutá ({{mode}})",
+      "description": "Agent může upravovat soubory a spouštět příkazy bez ptaní. Oleafly ho nedokázal přepnout do jiného režimu. Režim změňte v nastavení samotného agenta."
     }
   }
 }

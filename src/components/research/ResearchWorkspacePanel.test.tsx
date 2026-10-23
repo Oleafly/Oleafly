@@ -261,4 +261,35 @@ describe("ResearchWorkspacePanel integration", () => {
     expect(useAssistantRuntimeStore.getState().runtime).toBe("acp");
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
   });
+
+  it("goes back to the Tasks tab when a task is opened for review from the Files rail", async () => {
+    const draft: ResearchTaskDraft = {
+      projectId: "paper", title: "Audit the cohort", prompt: "Audit", runtimeId: "builtin",
+      agentId: "openai", modelId: "research-model", skillIds: [], dependencyIds: [],
+    };
+    const reviewed = { ...task(draft), status: "awaiting_review" as const, executionGeneration: 1 };
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "get_config") return {};
+      if (command === "acp_catalog") return [];
+      if (command === "research_task_list") return [reviewed];
+      if (command === "research_task_events") return { events: [], nextSequence: null };
+      if (command === "research_workspace_get") return null;
+      return undefined;
+    });
+    useFilesStore.setState({ projectId: "paper" });
+    mount();
+    const user = userEvent.setup({ document });
+    await user.click(page().getByRole("tab", { name: enResearchTools.workspace.tabFolders }));
+    expect(page().getByRole("tab", { name: enResearchTools.workspace.tabFolders })).toHaveAttribute("data-state", "active");
+    await waitFor(() => expect(useResearchTasksStore.getState().tasks).toHaveLength(1));
+
+    // The Review button in the Files rail's Task outputs does this.
+    act(() => useResearchTasksStore.getState().openTaskDetail(reviewed.id, "review"));
+
+    // The dialog hides the tab strip from the accessibility tree while it is open.
+    await waitFor(() =>
+      expect(page().getByRole("tab", { name: enResearchTools.workspace.tabTasks, hidden: true })).toHaveAttribute("data-state", "active"),
+    );
+    expect(await page().findByRole("dialog")).toHaveTextContent(reviewed.title);
+  });
 });

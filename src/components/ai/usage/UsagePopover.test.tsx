@@ -51,6 +51,24 @@ describe("UsagePopover", () => {
     expect(plan).toHaveTextContent(en.usage.windowBlocked);
   });
 
+  it("gives every bar a name and a value for screen readers", () => {
+    render(
+      <UsagePopover
+        snapshot={{
+          context: { used: 160_000, size: 200_000 },
+          plan: { windows: [{ id: "week", label: "Weekly", utilization: 0.62, status: "ok" }] },
+          budget: { spentUsd: 4, limitUsd: 10 },
+        }}
+      />,
+    );
+    const bars = screen.getAllByRole("progressbar");
+    expect(bars.map((bar) => bar.getAttribute("aria-label"))).toEqual([en.usage.context, "Weekly", en.usage.budget]);
+    expect(bars.map((bar) => bar.getAttribute("aria-valuenow"))).toEqual(["80", "62", "40"]);
+    // The tone still colours the bar: a context at 80% is in the warning range.
+    expect(bars[0].firstElementChild?.className).toContain("bg-amber-500");
+    expect(bars[1].firstElementChild?.className).toContain("bg-primary");
+  });
+
   it("shows provider credit and the project budget", () => {
     render(
       <UsagePopover

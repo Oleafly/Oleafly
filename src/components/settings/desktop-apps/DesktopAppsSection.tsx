@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -16,7 +17,7 @@ import {
 import { SettingsPath, SettingsPathText } from "@/components/settings/SettingsPath";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
-import { describeError } from "@/lib/app-error";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import {
   cuaDriverSettingsSet,
   cuaDriverTest,
@@ -36,9 +37,8 @@ const AppPickerDialog = lazy(() => import("./AppPickerDialog"));
 
 const CUA_DRIVER_DOCS_URL = "https://cua.ai/docs/cua-driver";
 
-function SectionHeading({ children }: Readonly<{ children: string }>) {
-  return <h4 className="text-sm font-medium">{children}</h4>;
-}
+/** The change Rust asks the user about natively; saying no is not an error. */
+const CHANGE_DECLINED = "desktop_apps.change_declined";
 
 /** Settings › Integrations › Desktop apps. */
 export default function DesktopAppsSection() {
@@ -48,6 +48,8 @@ export default function DesktopAppsSection() {
   const projectId = useFilesStore((state) => state.projectId);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [siteError, setSiteError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [site, setSite] = useState("");
   const [testing, setTesting] = useState(false);
@@ -71,16 +73,25 @@ export default function DesktopAppsSection() {
 
   const settings = data.settings;
 
-  const save = async (next: DesktopAppsSettings): Promise<boolean> => {
+  const save = async (
+    next: DesktopAppsSettings,
+    showError: (message: string | null) => void = setError,
+  ): Promise<boolean> => {
     setSaving(true);
     setError(null);
+    setNotice(null);
+    setSiteError(null);
     try {
       const saved = await cuaDriverSettingsSet(next);
       storeSavedSettings(client, saved);
       await syncDesktopAppsTool();
       return true;
     } catch (failure) {
-      setError(describeError(failure));
+      if (decodeAppError(failure)?.code === CHANGE_DECLINED) {
+        setNotice(describeError(failure));
+      } else {
+        showError(describeError(failure));
+      }
       return false;
     } finally {
       setSaving(false);
@@ -95,8 +106,12 @@ export default function DesktopAppsSection() {
 
   const addSite = async () => {
     const origin = site.trim();
-    if (!origin) return;
-    if (await save({ ...settings, sites: [...settings.sites, { origin, signedIn: false }] })) setSite("");
+    if (!origin || saving) return;
+    const added = await save(
+      { ...settings, sites: [...settings.sites, { origin, signedIn: false }] },
+      setSiteError,
+    );
+    if (added) setSite("");
   };
 
   const runTest = async () => {
@@ -124,48 +139,27 @@ export default function DesktopAppsSection() {
         title={title}
         description={description}
         hint={
-          <button
+          <Button
             type="button"
-            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline focus-visible:underline"
+            variant="link"
+            size="sm"
+            className="h-auto gap-1 p-0 text-xs"
             onClick={() => void openInSystemBrowser(CUA_DRIVER_DOCS_URL)}
           >
             {t(($) => $.settings.integrations.desktopApps.docsLink)}
             <ExternalLink aria-hidden className="size-3" />
-          </button>
+          </Button>
         }
       >
         <DriverStatus status={data} projectId={projectId} onCheckAgain={() => void status.refetch()} />
       </IntegrationCard>
 
       {data.permissions ? (
-        <SettingsRow
-          testId="desktop-apps-permissions"
-          label={t(($) => $.settings.integrations.desktopApps.permissions.heading)}
-          description={
-            data.permissions.accessibility === true && data.permissions.screenRecording === true
-              ? t(($) => $.settings.integrations.desktopApps.permissions.granted)
-              : data.permissions.accessibility === false || data.permissions.screenRecording === false
-                ? t(($) => $.settings.integrations.desktopApps.permissions.needed)
-                : t(($) => $.settings.integrations.desktopApps.permissions.unknown)
-          }
-          control={
-            data.driverPath &&
-            !(data.permissions.accessibility === true && data.permissions.screenRecording === true) ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  void runInTerminal(t(($) => $.settings.integrations.desktopApps.permissions.terminalTitle), {
-                    program: data.driverPath ?? "",
-                    args: ["permissions", "grant"],
-                  })
-                }
-              >
-                {t(($) => $.settings.integrations.desktopApps.permissions.grant)}
-              </Button>
-            ) : null
-          }
+        <PermissionsRow
+          status={data}
+          projectId={projectId}
+          checking={status.isFetching}
+          onCheckAgain={() => void status.refetch()}
         />
       ) : null}
 
@@ -183,6 +177,19 @@ export default function DesktopAppsSection() {
               <CodeBlock className="mt-2" code={data.gnomeHelperLine} />
             ) : null
           }
+          control={
+            data.gnomeHelper ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={status.isFetching}
+                onClick={() => void status.refetch()}
+              >
+                {t(($) => $.settings.integrations.desktopApps.install.checkAgain)}
+              </Button>
+            )
+          }
         />
       )}
 
@@ -197,7 +204,7 @@ export default function DesktopAppsSection() {
 
       <section className="space-y-2" data-testid="desktop-apps-apps">
         <div className="flex items-center justify-between gap-2">
-          <SectionHeading>{t(($) => $.settings.integrations.desktopApps.apps.heading)}</SectionHeading>
+          <SectionHeading as="h4">{t(($) => $.settings.integrations.desktopApps.apps.heading)}</SectionHeading>
           <Button type="button" variant="outline" size="sm" disabled={saving} onClick={() => setPickerOpen(true)}>
             <Plus aria-hidden className="size-3.5" />
             {t(($) => $.settings.integrations.desktopApps.apps.add)}
@@ -210,7 +217,16 @@ export default function DesktopAppsSection() {
             <SettingsRow
               key={app.bundleId ?? app.executable ?? app.name}
               label={app.name}
-              description={app.bundleId ?? (app.executable ? <SettingsPath path={app.executable} /> : null)}
+              description={
+                <>
+                  {app.bundleId ?? (app.executable ? <SettingsPath path={app.executable} /> : null)}
+                  {app.executable && data.missingApps.includes(app.executable) ? (
+                    <span className="mt-0.5 block" data-testid="desktop-apps-missing">
+                      {t(($) => $.settings.integrations.desktopApps.apps.missing)}
+                    </span>
+                  ) : null}
+                </>
+              }
               control={
                 <Button
                   type="button"
@@ -231,11 +247,14 @@ export default function DesktopAppsSection() {
       </section>
 
       <section className="space-y-2" data-testid="desktop-apps-sites">
-        <SectionHeading>{t(($) => $.settings.integrations.desktopApps.sites.heading)}</SectionHeading>
+        <SectionHeading as="h4">{t(($) => $.settings.integrations.desktopApps.sites.heading)}</SectionHeading>
         <p className="text-xs text-muted-foreground">
           {t(($) => $.settings.integrations.desktopApps.sites.signedIn.description)}
         </p>
+        {/* No browser validation: WebKit blocks a bad address without saying
+            so. Rust checks the address and the message shows below. */}
         <form
+          noValidate
           className="flex gap-2"
           onSubmit={(event) => {
             event.preventDefault();
@@ -243,17 +262,24 @@ export default function DesktopAppsSection() {
           }}
         >
           <Input
-            type="url"
+            type="text"
+            inputMode="url"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             value={site}
+            disabled={saving}
             onChange={(event) => setSite(event.target.value)}
             placeholder={t(($) => $.settings.integrations.desktopApps.sites.placeholder)}
             aria-label={t(($) => $.settings.integrations.desktopApps.sites.add)}
+            aria-invalid={siteError ? true : undefined}
             className="min-w-0 flex-1"
           />
           <Button type="submit" size="sm" disabled={saving || !site.trim()}>
             {t(($) => $.settings.integrations.desktopApps.sites.add)}
           </Button>
         </form>
+        {siteError ? <IntegrationError>{siteError}</IntegrationError> : null}
         {settings.sites.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.desktopApps.sites.empty)}</p>
         ) : (
@@ -267,7 +293,9 @@ export default function DesktopAppsSection() {
                     <Switch
                       checked={entry.signedIn}
                       disabled={saving}
-                      aria-label={t(($) => $.settings.integrations.desktopApps.sites.signedIn.label)}
+                      aria-label={t(($) => $.settings.integrations.desktopApps.sites.signedIn.labelFor, {
+                        origin: entry.origin,
+                      })}
                       onCheckedChange={(signedIn) =>
                         void save({
                           ...settings,
@@ -308,6 +336,11 @@ export default function DesktopAppsSection() {
       />
 
       {error ? <IntegrationError>{error}</IntegrationError> : null}
+      {notice ? (
+        <p className="text-xs text-muted-foreground" role="status" data-testid="desktop-apps-declined">
+          {notice}
+        </p>
+      ) : null}
 
       <div className="space-y-2">
         <Button
@@ -332,6 +365,16 @@ export default function DesktopAppsSection() {
           <IntegrationError>
             {t(($) => $.settings.integrations.desktopApps.test.failed, { detail: failedDetail(report) })}
           </IntegrationError>
+        ) : null}
+        {report && report.problems.length > 0 ? (
+          <div className="space-y-1 text-xs text-muted-foreground" data-testid="desktop-apps-test-problems">
+            <p>{t(($) => $.settings.integrations.desktopApps.test.problems)}</p>
+            <ul className="list-disc pl-4">
+              {report.problems.map((problem) => (
+                <li key={problem}>{problem}</li>
+              ))}
+            </ul>
+          </div>
         ) : null}
         {testError ? (
           <IntegrationError>
@@ -384,11 +427,13 @@ function DriverStatus({
         })
       : status.driverProblem === "no_app_bundle"
         ? t(($) => $.settings.integrations.desktopApps.status.noAppBundle)
-        : t(($) => $.settings.integrations.desktopApps.status.notInstalled);
+        : status.driverProblem === "unreadable_version"
+          ? t(($) => $.settings.integrations.desktopApps.status.unreadableVersion)
+          : t(($) => $.settings.integrations.desktopApps.status.notInstalled);
   return (
     <div className="space-y-2" data-testid="desktop-apps-install">
       <p className="text-xs text-muted-foreground">{problem}</p>
-      <h4 className="text-sm font-medium">{t(($) => $.settings.integrations.desktopApps.install.heading)}</h4>
+      <SectionHeading as="h4">{t(($) => $.settings.integrations.desktopApps.install.heading)}</SectionHeading>
       <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.desktopApps.install.hint)}</p>
       <CodeBlock code={status.installLine} />
       <div className="flex flex-wrap items-center gap-2">
@@ -414,5 +459,62 @@ function DriverStatus({
         <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.desktopApps.install.needsProject)}</p>
       )}
     </div>
+  );
+}
+
+/** macOS: whether Cua Driver holds Accessibility and Screen Recording. */
+function PermissionsRow({
+  status,
+  projectId,
+  checking,
+  onCheckAgain,
+}: Readonly<{ status: DesktopAppsStatus; projectId: string | null; checking: boolean; onCheckAgain(): void }>) {
+  const { t } = useTranslation(["common", "settings"]);
+  const permissions = status.permissions;
+  if (!permissions) return null;
+  const granted = permissions.accessibility === true && permissions.screenRecording === true;
+  const missing = permissions.accessibility === false || permissions.screenRecording === false;
+  const canGrant = Boolean(status.driverPath);
+  let description = t(($) => $.settings.integrations.desktopApps.permissions.unknown);
+  if (granted) description = t(($) => $.settings.integrations.desktopApps.permissions.granted);
+  else if (missing) description = t(($) => $.settings.integrations.desktopApps.permissions.needed);
+  return (
+    <SettingsRow
+      testId="desktop-apps-permissions"
+      label={t(($) => $.settings.integrations.desktopApps.permissions.heading)}
+      description={description}
+      details={
+        !granted && canGrant && !projectId ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t(($) => $.settings.integrations.desktopApps.install.needsProject)}
+          </p>
+        ) : null
+      }
+      control={
+        granted ? null : (
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {canGrant ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!projectId}
+                onClick={() =>
+                  void runInTerminal(t(($) => $.settings.integrations.desktopApps.permissions.terminalTitle), {
+                    program: status.driverPath ?? "",
+                    args: ["permissions", "grant"],
+                  })
+                }
+              >
+                {t(($) => $.settings.integrations.desktopApps.permissions.grant)}
+              </Button>
+            ) : null}
+            <Button type="button" variant="ghost" size="sm" disabled={checking} onClick={onCheckAgain}>
+              {t(($) => $.settings.integrations.desktopApps.install.checkAgain)}
+            </Button>
+          </div>
+        )
+      }
+    />
   );
 }

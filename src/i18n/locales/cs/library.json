@@ -271,7 +271,9 @@
     "loadingRepositories": "Načítají se repozitáře…",
     "repositoriesFailed": "Repozitáře se nepodařilo načíst.",
     "noRepositories": "Nebyly nalezeny žádné repozitáře.",
+    "noMatchLoaded": "V dosud načtených repozitářích není žádná shoda. Načtěte další a hledejte dál.",
     "privateRepository": "Soukromý repozitář",
+    "openFailed": "Oleafly nemohl otevřít {{host}} ve vašem prohlížeči.",
     "openOnHost": "Otevřít na {{host}}",
     "openRepositoryOnHost": "Otevřít {{name}} na {{host}}",
     "sources": {

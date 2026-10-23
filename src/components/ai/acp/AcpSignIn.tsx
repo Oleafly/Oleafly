@@ -7,24 +7,35 @@ import {
   acpAuthenticate, acpDisconnect, acpReconnect, acpSignInCommand,
   type AcpAgentStatus, type AcpAuthMethod, type AcpSession,
 } from "@/lib/acp";
+import { describeError } from "@/lib/app-error";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 
 function isTerminalMethod(method: AcpAuthMethod): boolean {
   return method.kind === "terminal" || !!method.terminalCommand;
 }
 
-/** Opens the agent's sign-in command in a project terminal. */
+/**
+ * Opens the agent's sign-in command in a project terminal. With `confirmText`
+ * the terminal shows the whole command line first and the user must agree.
+ */
 export async function signInInTerminal(
   projectId: string | null,
   agentId: string,
   sessionId: string | null,
   methodId: string,
+  confirmText?: string,
 ): Promise<void> {
   const [launch, { openTerminalWith }] = await Promise.all([
     acpSignInCommand(projectId, agentId, sessionId, methodId),
     import("@/lib/terminal-launch"),
   ]);
-  await openTerminalWith({ title: launch.title, command: launch.program, args: launch.args, env: launch.env });
+  await openTerminalWith({
+    title: launch.title,
+    command: launch.program,
+    args: launch.args,
+    env: launch.env,
+    ...(confirmText ? { confirmText } : {}),
+  });
 }
 
 /** Sign-in choices for an agent that needs one: terminal, API key or the agent's own flow. */
@@ -46,10 +57,14 @@ export function AcpSignIn({
   const [terminalOpened, setTerminalOpened] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const apiMethod = session.authMethods.find((method) => method.apiKeyProvider);
+  // A conversation on another machine signs in there; a terminal here would sign in the wrong one.
+  const remote = !!session.remote;
+  const agentName = agent?.definition.name ?? session.agentId;
 
   const openTerminal = (method: AcpAuthMethod) => {
     setNotice(null);
-    void signInInTerminal(projectId, session.agentId, session.id, method.id)
+    const confirmText = t(($) => $.ai.acp.signIn.confirmTerminal, { agent: agentName });
+    void signInInTerminal(projectId, session.agentId, session.id, method.id, confirmText)
       .then(() => setTerminalOpened(true))
       .catch(async (error: unknown) => {
         const { TerminalLaunchError } = await import("@/lib/terminal-launch");
@@ -59,7 +74,7 @@ export function AcpSignIn({
           else if (error.reason === "invalid") setNotice(error.message);
           return;
         }
-        setNotice(error instanceof Error ? error.message : String(error));
+        setNotice(describeError(error));
       });
   };
 
@@ -82,6 +97,11 @@ export function AcpSignIn({
   return (
     <div data-testid="acp-sign-in" className="space-y-2 border-t border-border p-3 text-xs">
       <p>{agent?.signInHint ?? t(($) => $.ai.acp.signInFallback)}</p>
+      {remote && (
+        <p data-testid="acp-sign-in-remote" className="text-muted-foreground">
+          {t(($) => $.ai.acp.signIn.remote)}
+        </p>
+      )}
       {session.agentId === "gemini" && (
         <p className="text-muted-foreground">{t(($) => $.ai.acp.signIn.geminiGoogle)}</p>
       )}
@@ -114,7 +134,7 @@ export function AcpSignIn({
       )}
       <div className="flex flex-wrap gap-2">
         {session.authMethods
-          .filter((method) => !method.apiKeyProvider)
+          .filter((method) => !method.apiKeyProvider && !(remote && isTerminalMethod(method)))
           .map((method) =>
             isTerminalMethod(method) ? (
               <Button key={method.id} variant="outline" size="sm" type="button" disabled={busy} onClick={() => openTerminal(method)}>

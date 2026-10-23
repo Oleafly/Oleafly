@@ -40,10 +40,13 @@ pub(crate) enum BlockReason {
     Scripting,
     Wrapper,
     Sandboxed,
+    /// A web browser: websites are allowed one by one, with their own
+    /// limits, under Allowed websites.
+    Browser,
 }
 
 use BlockReason::{
-    Driver, Oleafly, Passwords, Sandboxed, Scripting, SystemSettings, Terminal, Wrapper,
+    Browser, Driver, Oleafly, Passwords, Sandboxed, Scripting, SystemSettings, Terminal, Wrapper,
 };
 
 const BUNDLE_IDS: &[(&str, BlockReason)] = &[
@@ -62,6 +65,26 @@ const BUNDLE_IDS: &[(&str, BlockReason)] = &[
     ("com.apple.ScriptEditor2", Scripting),
     ("com.apple.Automator", Scripting),
     ("com.apple.shortcuts", Scripting),
+    ("com.google.Chrome", Browser),
+    ("com.google.Chrome.beta", Browser),
+    ("com.google.Chrome.dev", Browser),
+    ("com.google.Chrome.canary", Browser),
+    ("org.chromium.Chromium", Browser),
+    ("com.apple.Safari", Browser),
+    ("com.apple.SafariTechnologyPreview", Browser),
+    ("org.mozilla.firefox", Browser),
+    ("org.mozilla.firefoxdeveloperedition", Browser),
+    ("org.mozilla.nightly", Browser),
+    ("com.microsoft.edgemac", Browser),
+    ("com.microsoft.edgemac.Beta", Browser),
+    ("com.microsoft.edgemac.Dev", Browser),
+    ("com.microsoft.edgemac.Canary", Browser),
+    ("com.brave.Browser", Browser),
+    ("com.brave.Browser.beta", Browser),
+    ("com.brave.Browser.nightly", Browser),
+    ("company.thebrowser.Browser", Browser),
+    ("com.operasoftware.Opera", Browser),
+    ("com.vivaldi.Vivaldi", Browser),
 ];
 
 /// Lower-case file names (Windows and Linux).
@@ -124,6 +147,30 @@ const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("javaw", Wrapper),
     ("flatpak", Sandboxed),
     ("snap", Sandboxed),
+    // Windows names count with or without `.exe`.
+    ("chrome", Browser),
+    ("google-chrome", Browser),
+    ("google-chrome-stable", Browser),
+    ("google-chrome-beta", Browser),
+    ("google-chrome-unstable", Browser),
+    ("chromium", Browser),
+    ("chromium-browser", Browser),
+    ("msedge", Browser),
+    ("microsoft-edge", Browser),
+    ("microsoft-edge-stable", Browser),
+    ("microsoft-edge-beta", Browser),
+    ("microsoft-edge-dev", Browser),
+    ("firefox", Browser),
+    ("firefox-esr", Browser),
+    ("firefox-bin", Browser),
+    ("brave", Browser),
+    ("brave-browser", Browser),
+    ("opera", Browser),
+    ("vivaldi", Browser),
+    ("vivaldi-stable", Browser),
+    ("iexplore", Browser),
+    ("epiphany", Browser),
+    ("librewolf", Browser),
 ];
 
 /// The last path component in lower case; both separators count.
@@ -814,6 +861,63 @@ mod tests {
     }
 
     #[test]
+    fn browsers_are_blocked_so_websites_keep_their_own_limits() {
+        for id in [
+            "com.google.Chrome",
+            "com.apple.Safari",
+            "org.mozilla.firefox",
+            "com.microsoft.edgemac",
+            "com.brave.Browser",
+            "company.thebrowser.Browser",
+            "COM.GOOGLE.CHROME",
+        ] {
+            assert_eq!(
+                blocked_reason(Platform::Macos, Some(id), None, "oleafly"),
+                Some(BlockReason::Browser),
+                "{id}"
+            );
+        }
+        let own = r"C:\Program Files\Oleafly\Oleafly.exe";
+        for path in [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\Mozilla Firefox\firefox.exe",
+            r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+            r"C:\Program Files\Internet Explorer\iexplore.exe",
+        ] {
+            assert_eq!(
+                blocked_reason(Platform::Windows, None, Some(path), own),
+                Some(BlockReason::Browser),
+                "{path}"
+            );
+        }
+        for path in [
+            "/usr/bin/google-chrome-stable",
+            "/opt/google/chrome/chrome",
+            "/usr/bin/firefox",
+            "/snap/bin/chromium",
+            "/usr/bin/microsoft-edge",
+            "/usr/bin/brave-browser",
+        ] {
+            assert_eq!(
+                blocked_reason(Platform::Linux, None, Some(path), "/opt/oleafly/oleafly"),
+                Some(BlockReason::Browser),
+                "{path}"
+            );
+        }
+        // Other programs that merely contain a browser's name stay allowed.
+        assert_eq!(
+            blocked_reason(
+                Platform::Linux,
+                None,
+                Some("/opt/firefox-profile-manager/manager"),
+                "/opt/oleafly/oleafly"
+            ),
+            None
+        );
+    }
+
+    #[test]
     fn app_paths_values_expand_and_unquote() {
         let expand = |value: &str| value.replace("%ProgramFiles%", r"C:\Program Files");
         assert_eq!(
@@ -911,5 +1015,9 @@ mod tests {
         assert_eq!(json["bundleId"], "com.apple.Terminal");
         assert_eq!(json["blocked"], "system_settings");
         assert!(json.get("executable").is_none());
+        assert_eq!(
+            serde_json::to_value(BlockReason::Browser).unwrap(),
+            "browser"
+        );
     }
 }

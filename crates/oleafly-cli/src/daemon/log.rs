@@ -1,23 +1,30 @@
 //! The helper's log: JSON lines in `<data>/daemon/helper.log`, rotated at
-//! 5 MiB (one older file kept). Every value is cut to 2 KiB and passes a
-//! matcher built from the keys and server values the helper knows, so a
-//! provider error that echoes a key never lands in the log.
+//! 5 MiB (one older file kept). Every value passes a matcher built from the
+//! keys and server values the helper knows, then is cut to 2 KiB, so a
+//! provider error that echoes a key never lands in the log (not even the
+//! start of one that straddles the cut).
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
 use serde_json::{Map, Value};
 
 pub const LOG_ROTATE_BYTES: u64 = 5 << 20;
 const MAX_FIELD_BYTES: usize = 2 * 1024;
+/// How long a rotation that failed (a viewer holds the log open on Windows)
+/// waits before it tries again.
+const ROTATE_RETRY: Duration = Duration::from_secs(60);
 const MASK: &str = "[redacted]";
 
 struct Inner {
     file: Option<File>,
     secrets: Vec<String>,
     matcher: Option<AhoCorasick>,
+    /// No rotation is tried before this moment (the last one failed).
+    rotate_blocked_until: Option<Instant>,
 }
 
 pub struct HelperLog {
@@ -75,6 +82,7 @@ impl HelperLog {
                 file: open(path),
                 secrets,
                 matcher,
+                rotate_blocked_until: None,
             }),
         }
     }
@@ -106,19 +114,42 @@ impl HelperLog {
     /// `text` as the log may hold it.
     pub fn redact(&self, text: &str) -> String {
         let inner = self.lock();
-        redact_with(cut(text), inner.matcher.as_ref())
+        clean(text, inner.matcher.as_ref())
     }
 
+    /// Moves a log of 5 MiB or more to `helper.log.1`. The older log goes
+    /// only when the rename replaces it. A rename that fails (on Windows a
+    /// viewer holds the file open without delete sharing) is not tried again
+    /// for a minute, and a log that keeps growing meanwhile is emptied at
+    /// twice the limit.
     fn rotate(&self, inner: &mut Inner) {
-        let large =
-            std::fs::metadata(&self.path).is_ok_and(|metadata| metadata.len() >= LOG_ROTATE_BYTES);
-        if !large {
+        let Some(size) = std::fs::metadata(&self.path)
+            .ok()
+            .map(|metadata| metadata.len())
+            .filter(|size| *size >= LOG_ROTATE_BYTES)
+        else {
+            return;
+        };
+        if inner
+            .rotate_blocked_until
+            .is_some_and(|until| Instant::now() < until)
+        {
+            if size >= LOG_ROTATE_BYTES * 2 {
+                inner.file = None;
+                let _ = OpenOptions::new()
+                    .write(true)
+                    .truncate(true)
+                    .open(&self.path);
+                inner.file = open(&self.path);
+            }
             return;
         }
         inner.file = None;
         let older = self.path.with_extension("log.1");
-        let _ = std::fs::remove_file(&older);
-        let _ = std::fs::rename(&self.path, &older);
+        inner.rotate_blocked_until = match std::fs::rename(&self.path, &older) {
+            Ok(()) => None,
+            Err(_) => Some(Instant::now() + ROTATE_RETRY),
+        };
         inner.file = open(&self.path);
     }
 
@@ -132,7 +163,7 @@ impl HelperLog {
         for (name, value) in fields {
             line.insert(
                 (*name).to_string(),
-                Value::from(redact_with(cut(value), inner.matcher.as_ref())),
+                Value::from(clean(value, inner.matcher.as_ref())),
             );
         }
         let mut text = Value::Object(line).to_string();
@@ -148,6 +179,12 @@ impl HelperLog {
             let _ = file.write_all(text.as_bytes());
         }
     }
+}
+
+/// `text` with the known secrets masked, then cut to the field limit.
+/// Cutting first would leave the start of a secret that straddles the cut.
+fn clean(text: &str, matcher: Option<&AhoCorasick>) -> String {
+    cut(&redact_with(text, matcher)).to_string()
 }
 
 pub(crate) fn redact_with(text: &str, matcher: Option<&AhoCorasick>) -> String {
@@ -195,6 +232,66 @@ mod tests {
         }
         assert!(path.with_extension("log.1").exists());
         assert!(std::fs::metadata(&path).unwrap().len() < LOG_ROTATE_BYTES);
+    }
+
+    #[test]
+    fn a_secret_that_straddles_the_cut_leaves_no_prefix_in_the_log() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("helper.log");
+        let key = "sk-live-abcdefghijklmnopqrstuvwxyz0123456789";
+        let log = HelperLog::open(&path, vec![key.to_string()], false);
+        // The key starts 20 bytes before the 2 KiB mark.
+        let body = format!("{}{key} and the rest", "x".repeat(MAX_FIELD_BYTES - 20));
+        log.event("error", "provider", &[("message", &body)]);
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(!text.contains("sk-live"), "{text}");
+        assert!(text.contains("[redacted]"));
+        assert!(!log.redact(&body).contains("sk-live"));
+        let line: Value = serde_json::from_str(text.lines().next().unwrap()).unwrap();
+        assert!(line["message"].as_str().unwrap().len() <= MAX_FIELD_BYTES);
+    }
+
+    #[test]
+    fn a_cut_never_splits_a_character_after_redaction() {
+        let matcher = build_matcher(&["secret-value".to_string()]);
+        // The mask ends at byte 1011, so the cut at 2048 falls inside a
+        // two-byte character and backs up to the one before.
+        let text = format!("x{}secret-value{}", "é".repeat(500), "ü".repeat(1_500));
+        let cleaned = clean(&text, matcher.as_ref());
+        assert_eq!(cleaned.len(), MAX_FIELD_BYTES - 1);
+        assert!(cleaned.contains("[redacted]") && !cleaned.contains("secret-value"));
+        assert!(cleaned.ends_with('ü'));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_failed_rotation_keeps_the_older_log_and_stops_the_log_growing_without_bound() {
+        use std::os::unix::fs::PermissionsExt;
+        // SAFETY: reads the process's user id.
+        if unsafe { libc::geteuid() } == 0 {
+            return; // root renames inside a read-only folder
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("helper.log");
+        let older = path.with_extension("log.1");
+        let log = HelperLog::open(&path, Vec::new(), false);
+        std::fs::write(&older, "history\n").unwrap();
+        // The rename needs the folder to be writable; appending does not.
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o555)).unwrap();
+        let filler = "x".repeat(MAX_FIELD_BYTES);
+        for _ in 0..((LOG_ROTATE_BYTES as usize * 3) / MAX_FIELD_BYTES) {
+            log.event("info", "fill", &[("text", &filler)]);
+        }
+        let blocked = log.lock().rotate_blocked_until.is_some();
+        let size = std::fs::metadata(&path).unwrap().len();
+        let history = std::fs::read_to_string(&older);
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(blocked, "the failed rotation is not retried on every line");
+        assert_eq!(history.unwrap(), "history\n");
+        assert!(
+            size < LOG_ROTATE_BYTES * 2 + 8 * 1024,
+            "the log kept growing: {size}"
+        );
     }
 
     #[test]

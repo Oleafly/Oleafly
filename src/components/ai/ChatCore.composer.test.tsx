@@ -95,6 +95,7 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   toastErrorUnique: vi.fn(),
   toastSuccess: vi.fn(),
+  toastInfo: vi.fn(),
   logError: vi.fn(),
   refetchSkills: vi.fn(),
   skillEntries: [] as Array<Record<string, unknown>>,
@@ -112,6 +113,7 @@ const mocks = vi.hoisted(() => ({
     open: boolean;
     skipped?: number;
     onOpen: (chat: StoredChat) => void;
+    onDelete: (chatId: string) => void;
   },
 }));
 
@@ -231,6 +233,7 @@ vi.mock("@/lib/toast", () => ({
     error: (...args: unknown[]) => mocks.toastError(...args),
     errorUnique: (...args: unknown[]) => mocks.toastErrorUnique(...args),
     success: (...args: unknown[]) => mocks.toastSuccess(...args),
+    info: (...args: unknown[]) => mocks.toastInfo(...args),
   },
 }));
 
@@ -561,6 +564,7 @@ beforeEach(() => {
   mocks.toastError.mockReset();
   mocks.toastErrorUnique.mockReset();
   mocks.toastSuccess.mockReset();
+  mocks.toastInfo.mockReset();
   mocks.logError.mockReset().mockResolvedValue(undefined);
   mocks.refetchSkills.mockReset().mockResolvedValue(undefined);
   mocks.skillEntries.length = 0;
@@ -701,7 +705,9 @@ function seedChat(messages: ChatMessage[], extra: Partial<StoredChat> = {}) {
 }
 
 function composerDraft() {
-  return useComposerDrafts.getState().drafts[builtinComposerId(useFilesStore.getState().projectId)];
+  // Each chat has its own draft; the chat on show is the active one.
+  const { projectId, activeId } = { ...useFilesStore.getState(), ...useChatsStore.getState() };
+  return useComposerDrafts.getState().drafts[builtinComposerId(projectId, activeId)];
 }
 
 function fileInput(rendered: RenderResult): HTMLInputElement {
@@ -1310,13 +1316,35 @@ describe("ChatCore composer, drafts and attachments", () => {
     await completeRun(0, "It shows a rising curve.");
 
     expect(mocks.storeToolImage).toHaveBeenCalledWith(useFilesStore.getState().projectId, image);
-    expect(savedMessages().at(-1)?.toolCalls?.[0]).toMatchObject({
+    const tool = savedMessages().at(-1)?.toolCalls?.[0];
+    expect(tool).toMatchObject({
       id: "img-1",
       name: "load_image",
       status: "done",
-      image,
       imageRef: { sha256: "sha-shot", mime: "image/png" },
     });
+    // Once the file is stored the chat holds the reference only, not the base64 as well.
+    expect(tool).not.toHaveProperty("image");
+  });
+
+  it("keeps the inline screenshot when it could not be stored", async () => {
+    mocks.storeToolImage.mockResolvedValue(null);
+    await renderChat();
+    sendFromComposer("Look at the figure");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    const run = mocks.runs[0].options;
+    const image = "data:image/png;base64,UExPVA==";
+
+    await act(async () => {
+      await run.handlers.onToolCall({ id: "img-1", name: "load_image", args: { path: "plot.png" } });
+      await run.tools.load_image.execute?.({ image });
+      run.handlers.onToolResult({ id: "img-1", output: { loaded: true } });
+    });
+    await completeRun(0, "It shows a rising curve.");
+
+    const tool = savedMessages().at(-1)?.toolCalls?.[0];
+    expect(tool).toMatchObject({ id: "img-1", image });
+    expect(tool).not.toHaveProperty("imageRef");
   });
 
   it("saves streamed text without indexing and indexes the finished reply", async () => {
@@ -1771,6 +1799,117 @@ describe("ChatCore effort, web and usage", () => {
   });
 });
 
+describe("ChatCore drafts per chat and queued follow-ups", () => {
+  function otherChat(): StoredChat {
+    const projectId = useFilesStore.getState().projectId as string;
+    const chat: StoredChat = {
+      id: "chat-2",
+      projectId,
+      title: "Earlier review",
+      createdAt: 1,
+      updatedAt: 2,
+      headOid: null,
+      messages: [{ id: "u9", role: "user", content: "Review section 2" }],
+    };
+    useChatsStore.setState((state) => ({ chats: [...state.chats, chat] }));
+    return chat;
+  }
+
+  it("keeps the text of each chat in that chat", async () => {
+    const other = otherChat();
+    await renderChat();
+    changeComposer("About the first chat");
+
+    act(() => mocks.historyProps?.onOpen(other));
+    await waitFor(() => expect(useChatsStore.getState().activeId).toBe("chat-2"));
+    expect(composerBox()).toHaveValue("");
+    changeComposer("About the second chat");
+
+    act(() => mocks.historyProps?.onOpen(useChatsStore.getState().byId("chat-1") as StoredChat));
+    await waitFor(() => expect(composerBox()).toHaveValue("About the first chat"));
+    act(() => mocks.historyProps?.onOpen(other));
+    await waitFor(() => expect(composerBox()).toHaveValue("About the second chat"));
+    // Enter sends into the chat the text belongs to, never into another.
+    pressEnter();
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(plainTranscript(mocks.runs[0].options.messages).at(-1)).toEqual({ role: "user", content: "About the second chat" });
+    await completeRun(0, "Done.");
+    expect(savedMessages("chat-1")).toEqual([]);
+  });
+
+  it("gives a new chat an empty box and keeps what was typed in the chat it left", async () => {
+    const rendered = await renderChat();
+    changeComposer("Half a thought");
+
+    fireEvent.click(rendered.getByRole("button", { name: enAi.header.newChat }));
+
+    expect(composerBox()).toHaveValue("");
+    changeComposer("Text for the new chat");
+    const projectId = useFilesStore.getState().projectId as string;
+    expect(useComposerDrafts.getState().drafts[builtinComposerId(projectId, "chat-1")]?.text).toBe("Half a thought");
+    expect(useComposerDrafts.getState().drafts[builtinComposerId(projectId)]?.text).toBe("Text for the new chat");
+  });
+
+  it("moves what is typed after pressing send into the chat the send creates", async () => {
+    useChatsStore.setState({ activeId: null });
+    await renderChat();
+    const projectId = useFilesStore.getState().projectId as string;
+    sendFromComposer("First message");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    const created = useChatsStore.getState().activeId as string;
+    expect(created).toBeTruthy();
+
+    changeComposer("Typed while it answers");
+
+    expect(useComposerDrafts.getState().drafts[builtinComposerId(projectId, created)]?.text).toBe("Typed while it answers");
+    expect(useComposerDrafts.getState().drafts[builtinComposerId(projectId)]).toBeUndefined();
+    await completeRun(0, "Answer.");
+  });
+
+  it("sends a queued follow-up on the model picked after it was queued", async () => {
+    await renderChat();
+    sendFromComposer("First question");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    sendFromComposer("Second question");
+    act(() => mocks.modelSelectorProps?.onChange?.("openai", "gpt-4o-mini"));
+
+    // The queued message follows at once, so the run registry is not empty in between.
+    await act(async () => {
+      mocks.runs[0].options.handlers.onText("First answer.");
+      mocks.runs[0].resolve({ text: "First answer.", usage: { input: 0, output: 0 }, steps: 1, stopped_at_cap: false, error: null });
+    });
+
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    const second = mocks.runs[1].options as unknown as { providerOverride?: { provider_id: string; model_id: string } };
+    expect(second.providerOverride).toEqual({ provider_id: "openai", model_id: "gpt-4o-mini" });
+    expect((mocks.runs[0].options as unknown as { providerOverride?: { model_id: string } }).providerOverride?.model_id).toBe("gpt-4o");
+    await completeRun(1, "Second answer.");
+  });
+
+  it("does not switch chats while a send is still preparing", async () => {
+    let release: () => void = () => {};
+    mocks.mcpAgentToolsList.mockImplementation(
+      () => new Promise((resolve) => { release = () => resolve([]); }),
+    );
+    const other = otherChat();
+    await renderChat();
+    sendFromComposer("For the first chat");
+    await waitFor(() => expect(mocks.mcpAgentToolsList).toHaveBeenCalled());
+
+    await act(async () => {
+      mocks.historyProps?.onOpen(other);
+    });
+    expect(useChatsStore.getState().activeId).toBe("chat-1");
+
+    release();
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(plainTranscript(mocks.runs[0].options.messages)).toEqual([{ role: "user", content: "For the first chat" }]);
+    expect(useChatsStore.getState().activeId).toBe("chat-1");
+    expect(savedMessages("chat-2").map((message) => message.content)).toEqual(["Review section 2"]);
+    await completeRun(0, "Done.");
+  });
+});
+
 describe("ChatCore message actions", () => {
   it("regenerates the latest reply from the same prompt and attachments", async () => {
     mocks.claimPrewarmed.mockResolvedValue("thread-1");
@@ -2091,9 +2230,15 @@ describe("ChatCore message actions", () => {
     fireEvent.click(rendered.getByRole("button", { name: enAi.header.newChat }));
 
     expect(rendered.queryByTestId("ai-edit-banner")).toBeNull();
-    expect(composerBox()).toHaveValue("Unsent draft");
-    expect(rendered.getByText("notes.txt")).toHaveAttribute("data-status", "ready");
+    // The draft goes back to the chat it was typed in; the new chat has its own box.
+    const projectId = useFilesStore.getState().projectId as string;
+    expect(useComposerDrafts.getState().drafts[builtinComposerId(projectId, "chat-1")]?.text).toBe("Unsent draft");
+    expect(composerBox()).toHaveValue("");
+    expect(rendered.queryByText("notes.txt")).toBeNull();
     expect(savedMessages().map((message) => message.content)).toContain("Plot the results");
+    act(() => mocks.historyProps?.onOpen(useChatsStore.getState().byId("chat-1") as StoredChat));
+    await waitFor(() => expect(composerBox()).toHaveValue("Unsent draft"));
+    expect(rendered.getByText("notes.txt")).toHaveAttribute("data-status", "ready");
   });
 
   it("puts the draft from before an edit back when another chat opens", async () => {
@@ -2114,6 +2259,11 @@ describe("ChatCore message actions", () => {
 
     await waitFor(() => expect(useChatsStore.getState().activeId).toBe("chat-2"));
     expect(rendered.queryByTestId("ai-edit-banner")).toBeNull();
+    // Each chat has its own draft: it went back to chat-1 and is not in chat-2's box.
+    expect(composerBox()).toHaveValue("");
+    expect(rendered.queryByText("notes.txt")).toBeNull();
+    act(() => mocks.historyProps?.onOpen(useChatsStore.getState().byId("chat-1") as StoredChat));
+    await waitFor(() => expect(useChatsStore.getState().activeId).toBe("chat-1"));
     expect(composerBox()).toHaveValue("Unsent draft");
     expect(rendered.getByText("notes.txt")).toHaveAttribute("data-status", "ready");
   });
@@ -2216,6 +2366,121 @@ describe("ChatCore message actions", () => {
       { role: "user", content: "Hello" },
     ]);
     await completeRun(0, "Hi again.");
+  });
+
+  it("keeps the turn when a regenerate cannot start", async () => {
+    mocks.claimPrewarmed.mockResolvedValue("thread-1");
+    await renderChat();
+    sendFromComposer("Summarise the notes");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await completeRun(0, "Here is the summary.");
+    const [user, reply] = savedMessages();
+    mocks.agentThreadRead.mockResolvedValue([{ turnId: "turn-a", clientTurnId: user.turnId }]);
+    await waitFor(() => expect(rowProps(reply.id as string)?.regenerateKind).toBe("regenerate"));
+
+    mocks.checkProjectBudget.mockResolvedValue("blocked");
+    await messageAction("regenerate", reply.id as string);
+    await waitFor(() => expect(mocks.checkProjectBudget).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    // The budget stopped the run: the question and the answer are still there, on screen, on disk and in the thread.
+    expect(mocks.runs).toHaveLength(1);
+    expect(mocks.agentThreadRollback).not.toHaveBeenCalled();
+    expect(savedMessages().map((message) => message.content)).toEqual(["Summarise the notes", "Here is the summary."]);
+    expect(rowProps(reply.id as string)).toBeDefined();
+
+    mocks.checkProjectBudget.mockResolvedValue("ok");
+    await messageAction("regenerate", reply.id as string);
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(mocks.agentThreadRollback).toHaveBeenCalledWith("thread-1", 1);
+    await completeRun(1, "A second summary.");
+  });
+
+  it("keeps an edit and its text when the run cannot start", async () => {
+    mocks.claimPrewarmed.mockResolvedValue("thread-1");
+    const rendered = await renderChat();
+    sendFromComposer("Draw the table");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await completeRun(0, "Here is the table.");
+    const [user] = savedMessages();
+    mocks.agentThreadRead.mockResolvedValue([{ turnId: "turn-a", clientTurnId: user.turnId }]);
+    await waitFor(() => expect(rowProps(user.id as string)?.editable).toBe(true));
+    await messageAction("edit", user.id as string);
+    changeComposer("Draw the table with borders");
+
+    mocks.checkProjectBudget.mockResolvedValue("blocked");
+    pressEnter();
+    await waitFor(() => expect(mocks.checkProjectBudget).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(mocks.runs).toHaveLength(1);
+    expect(rendered.getByTestId("ai-edit-banner")).toBeTruthy();
+    expect(composerBox()).toHaveValue("Draw the table with borders");
+    expect(savedMessages().map((message) => message.content)).toEqual(["Draw the table", "Here is the table."]);
+
+    mocks.checkProjectBudget.mockResolvedValue("ok");
+    pressEnter();
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(rendered.queryByTestId("ai-edit-banner")).toBeNull();
+    expect(lastUserContent(1)).toBe("Draw the table with borders");
+    await completeRun(1, "Here it is with borders.");
+  });
+
+  it("says which files of an older message cannot be sent again", async () => {
+    seedChat([
+      {
+        id: "u1",
+        role: "user",
+        content: "Read these",
+        turnId: "turn-1",
+        attachments: [
+          { name: "old.pdf", mediaType: "application/pdf" },
+          { name: "plot.png", mediaType: "image/png", sha256: "sha-plot.png", size: 9, kind: "image" },
+          { name: "table.csv", mediaType: "text/csv" },
+        ],
+      },
+      { id: "a1", role: "assistant", content: "Read them." },
+    ]);
+    await renderChat();
+    await waitFor(() => expect(rowProps("a1")?.regenerateKind).toBe("regenerate"));
+
+    await messageAction("regenerate", "a1");
+
+    expect(mocks.toastInfo).toHaveBeenCalledWith("Files from an older version can't be sent again: old.pdf, table.csv.");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await completeRun(0, "Read again.");
+  });
+
+  it("stops a run and clears the transcript when its chat is deleted from the history", async () => {
+    mocks.runAgentHarness.mockImplementationOnce(
+      (options: HarnessOptions) =>
+        new Promise((_resolve, reject) => {
+          options.onRequestId?.("request-delete");
+          options.handlers.onStep?.(0);
+          options.handlers.onText("Started.");
+          options.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        }),
+    );
+    const rendered = await renderChat();
+    sendFromComposer("Long task");
+    await waitFor(() => expect(rendered.getByRole("button", { name: enAi.composer.stop })).toBeTruthy());
+    const chatId = useChatsStore.getState().activeId as string;
+
+    act(() => mocks.historyProps?.onDelete(chatId));
+
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(useChatsStore.getState().byId(chatId)).toBeUndefined();
+    expect(useChatsStore.getState().activeId).toBeNull();
+    expect(rendered.queryByText("Long task")).toBeNull();
+    // The next message starts a chat of its own, not a copy of the deleted one.
+    sendFromComposer("Another question");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(plainTranscript(mocks.runs[0].options.messages)).toEqual([{ role: "user", content: "Another question" }]);
+    await completeRun(0, "Another answer.");
+    const fresh = useChatsStore.getState().chats.filter((chat) => chat.id !== chatId);
+    expect(fresh.flatMap((chat) => chat.messages.map((message) => message.content))).not.toContain("Long task");
   });
 
   it("says when a reply could not be sent again", async () => {

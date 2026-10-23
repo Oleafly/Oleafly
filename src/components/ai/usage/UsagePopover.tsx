@@ -3,10 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/ui/markdown";
+import { Progress } from "@/components/ui/progress";
 import { currentLocale } from "@/i18n";
 import { formatUsd } from "@/lib/ai-pricing";
 import { formatNumber, formatRelativeTime } from "@/lib/intl";
-import { cn } from "@/lib/utils";
 import type { UsageSnapshot, UsageWindow } from "./types";
 import { contextFraction, USAGE_TONE_BAR, usageTone, windowTone } from "./usage-tone";
 
@@ -45,15 +45,8 @@ function merge(snapshot: UsageSnapshot, extras: Partial<UsageSnapshot>): UsageSn
   return merged;
 }
 
-function Bar({ fraction, tone }: Readonly<{ fraction: number; tone: keyof typeof USAGE_TONE_BAR }>) {
-  return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-      <div
-        className={cn("h-full rounded-full", USAGE_TONE_BAR[tone])}
-        style={{ width: `${Math.round(Math.min(1, Math.max(0, fraction)) * 100)}%` }}
-      />
-    </div>
-  );
+function Bar({ fraction, tone, label }: Readonly<{ fraction: number; tone: keyof typeof USAGE_TONE_BAR; label: string }>) {
+  return <Progress value={fraction * 100} label={label} indicatorClassName={USAGE_TONE_BAR[tone]} />;
 }
 
 function Rows({ rows }: Readonly<{ rows: [string, ReactNode][] }>) {
@@ -103,7 +96,7 @@ function PlanWindow({ window, now }: Readonly<{ window: UsageWindow; now: number
           {formatNumber(window.utilization, { style: "percent", maximumFractionDigits: 0 })}
         </span>
       </div>
-      <Bar fraction={window.utilization} tone={tone} />
+      <Bar fraction={window.utilization} tone={tone} label={window.label} />
       {window.resetsAt !== undefined && (
         <div className="text-[0.625rem] text-muted-foreground">
           {t(($) => $.ai.usage.resetsAt, { time: untilLabel(window.resetsAt, now) })}
@@ -158,7 +151,7 @@ export function UsagePopover({
           <p className="text-muted-foreground">{t(($) => $.ai.usage.contextUnknown)}</p>
         ) : (
           <>
-            <Bar fraction={fraction} tone={usageTone(fraction)} />
+            <Bar fraction={fraction} tone={usageTone(fraction)} label={t(($) => $.ai.usage.context)} />
             <p className="tabular-nums text-muted-foreground">
               {t(($) => $.ai.usage.contextUsed, {
                 used: formatNumber(usage.context.used),
@@ -244,7 +237,7 @@ export function UsagePopover({
     sections.push(
       <Section key="budget" testId="usage-budget" title={t(($) => $.ai.usage.budget)}>
         {limitUsd !== undefined && limitUsd > 0 && (
-          <Bar fraction={spentUsd / limitUsd} tone={usageTone(spentUsd / limitUsd)} />
+          <Bar fraction={spentUsd / limitUsd} tone={usageTone(spentUsd / limitUsd)} label={t(($) => $.ai.usage.budget)} />
         )}
         <p className="tabular-nums text-muted-foreground">
           {limitUsd !== undefined

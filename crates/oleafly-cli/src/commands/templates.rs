@@ -563,7 +563,7 @@ async fn download_template(
                 "done": progress.done,
                 "total": progress.total,
             });
-            println!("{line}");
+            crate::human::out_line(&line.to_string());
         }
     };
     oleafly_downloads::template_packs::install_templates_in(&data, pack, vec![template], &report)

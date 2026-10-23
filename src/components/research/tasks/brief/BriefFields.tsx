@@ -1,6 +1,7 @@
 import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { i18n } from "@/i18n";
 import type { CommandPolicy, MetricGoal, ResearchBrief, RunProfile } from "@/lib/research-tasks";
+import { useSettingsStore } from "@/store/settings";
 import { DesktopAppsBriefField } from "./DesktopAppsBriefField";
 
 export const TIME_BUDGET_OPTIONS = [30, 60, 120, 240, 480, 720, 1440];
@@ -62,6 +64,61 @@ export function localDateTime(epochMs: number): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+// The backend takes a start time up to a minute old and 30 days ahead.
+const START_GRACE_MS = 60_000;
+const START_AHEAD_MS = 30 * 24 * 60 * 60 * 1000;
+const LOCAL_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/;
+
+/**
+ * Epoch milliseconds of text such as `2026-10-24T14:30` (a space may stand in
+ * for the T), or `NaN` when it isn't a real local date and time. A webview
+ * without date and time fields shows a plain text box, so this is strict.
+ */
+export function parseLocalDateTime(text: string): number {
+  const match = LOCAL_DATE_TIME.exec(text.trim());
+  if (!match) return Number.NaN;
+  const [year, month, day, hour, minute, second] = match.slice(1).map((part) => Number(part ?? 0));
+  const date = new Date(year, month - 1, day, hour, minute, second);
+  // 2026-02-31 would roll over into March; it is not a date.
+  const real =
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day &&
+    date.getHours() === hour &&
+    date.getMinutes() === minute;
+  return real ? date.getTime() : Number.NaN;
+}
+
+/** Why a start time can't be used (`NaN` is text that isn't a time), or `undefined` when it can. */
+export function startError(runAfter: number | null, now = Date.now()): string | undefined {
+  if (runAfter === null) return undefined;
+  if (!Number.isFinite(runAfter)) {
+    return i18n.t(($) => $.researchTools.brief.invalidStartFormat, { example: localDateTime(now + 24 * 60 * 60 * 1000) });
+  }
+  if (runAfter < now - START_GRACE_MS || runAfter > now + START_AHEAD_MS) {
+    return i18n.t(($) => $.researchTools.brief.invalidStart);
+  }
+  return undefined;
+}
+
+/** A start time that has already passed means "start now". */
+export function upcomingStart(runAfter: number | null | undefined, now = Date.now()): number | null {
+  return typeof runAfter === "number" && Number.isFinite(runAfter) && runAfter > now ? runAfter : null;
+}
+
+/** Whether the webview draws date and time fields; without them the field is a plain text box. */
+function supportsDateTimeInput(): boolean {
+  if (typeof document === "undefined") return true;
+  const input = document.createElement("input");
+  input.type = "datetime-local";
+  return input.type === "datetime-local";
+}
+
+/** Opens Settings on the Research section, where background work is turned on. */
+function openResearchSettings() {
+  useSettingsStore.getState().openSettingsAt("research");
+}
+
 function parseNumber(text: string): number | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -83,6 +140,8 @@ interface BriefFieldsProps {
   computeTargets?: { id: string; label: string; executor: string }[];
   /** Renders the whole "Run on" control (target, resources, notes) in place of the plain list. */
   renderCompute?: (fieldId: string) => ReactNode;
+  /** The "Run on" choice has a problem the composer found (a removed target, a field that doesn't read). */
+  computeProblem?: boolean;
 }
 
 export function BriefFields({
@@ -96,14 +155,22 @@ export function BriefFields({
   disabled = false,
   computeTargets = [],
   renderCompute,
+  computeProblem = false,
 }: Readonly<BriefFieldsProps>) {
   const { t } = useTranslation(["researchTools"]);
   const id = useId();
-  const [open, setOpen] = useState(false);
+  const errors = briefErrors(brief);
+  const startProblem = startError(runAfter);
+  const hasProblem = Object.keys(errors).length > 0 || startProblem !== undefined || computeProblem;
+  // A saved draft can hold a bad value, so the options open on the problem.
+  const [open, setOpen] = useState(hasProblem);
+  const [startText, setStartText] = useState(() =>
+    runAfter !== null && Number.isFinite(runAfter) ? localDateTime(runAfter) : "",
+  );
+  const [startAsText] = useState(() => !supportsDateTimeInput());
   const [criteriaText, setCriteriaText] = useState(() => brief.successCriteria.join("\n"));
   const [costText, setCostText] = useState(() => brief.budget.usdCap?.toString() ?? "");
   const [runsText, setRunsText] = useState(() => brief.budget.maxRuns?.toString() ?? "");
-  const errors = briefErrors(brief);
   const update = (patch: Partial<ResearchBrief>) => onChange({ ...brief, ...patch });
   // Desktop apps need someone at the computer to approve each action, so a
   // task that starts on a schedule or outlives the app gives them up.
@@ -164,16 +231,23 @@ export function BriefFields({
         <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.brief.criteriaHint)}</p>
       </div>
 
-      <button
+      <Button
         type="button"
-        className="flex items-center gap-1 rounded-md px-1 py-0.5 text-left text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:bg-muted"
+        variant="ghost"
+        size="xs"
+        className="justify-start gap-1 px-1 text-muted-foreground"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
         data-testid="research-brief-more"
       >
-        {open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}
+        {open ? <ChevronDown aria-hidden /> : <ChevronRight aria-hidden />}
         {t(($) => $.researchTools.brief.title)}
-      </button>
+      </Button>
+      {!open && hasProblem ? (
+        <p role="alert" className="text-xs text-destructive" data-testid="research-brief-problem">
+          {t(($) => $.researchTools.brief.problemHidden)}
+        </p>
+      ) : null}
 
       {open ? (
         <div className="grid gap-4 border-l pl-3">
@@ -461,16 +535,28 @@ export function BriefFields({
               id={fieldId("start")}
               type="datetime-local"
               disabled={disabled}
-              value={runAfter === null ? "" : localDateTime(runAfter)}
+              value={startText}
               min={localDateTime(Date.now())}
+              max={localDateTime(Date.now() + START_AHEAD_MS)}
+              placeholder={localDateTime(Date.now() + 24 * 60 * 60 * 1000)}
+              aria-invalid={Boolean(startProblem)}
               onChange={(event) => {
                 const value = event.target.value;
-                const at = value ? new Date(value).getTime() : Number.NaN;
-                const next = Number.isFinite(at) ? at : null;
-                if (next !== null) dropDesktopApps();
+                setStartText(value);
+                // Text that is not a time stays in the box; the composer sees `NaN` and won't save it.
+                const next = value.trim() === "" ? null : parseLocalDateTime(value);
+                if (next !== null && Number.isFinite(next)) dropDesktopApps();
                 onRunAfterChange(next);
               }}
             />
+            {startProblem ? <p className="text-xs text-destructive">{startProblem}</p> : null}
+            {startAsText && !startProblem ? (
+              <p className="text-xs text-muted-foreground">
+                {t(($) => $.researchTools.brief.startAtFormat, {
+                  example: localDateTime(Date.now() + 24 * 60 * 60 * 1000),
+                })}
+              </p>
+            ) : null}
             {runAfter === null ? (
               <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.brief.startNow)}</p>
             ) : null}
@@ -493,6 +579,18 @@ export function BriefFields({
               ) : null}
             </span>
           </label>
+          {!backgroundEnabled ? (
+            <Button
+              type="button"
+              size="xs"
+              variant="link"
+              className="-mt-2 justify-start px-0"
+              data-testid="research-brief-keep-running-settings"
+              onClick={openResearchSettings}
+            >
+              {t(($) => $.researchTools.compute.brief.openSettings)}
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>

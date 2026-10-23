@@ -23,7 +23,10 @@ export async function answerPdfTextRequest(token: string): Promise<void> {
   }
 }
 
-/** Answers the backend's PDF text requests while research views are open. */
+/**
+ * Answers the backend's PDF text requests for as long as the main window
+ * lives, whichever panel is open: the app shell mounts it once at startup.
+ */
 export async function mountResearchPdfBridge(): Promise<() => void> {
   return listen<{ token: string }>("research-pdf-text-request", (event) => {
     void answerPdfTextRequest(event.payload.token);

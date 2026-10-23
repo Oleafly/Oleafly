@@ -39,6 +39,7 @@ pub use check::{
     check_project, suggested_checks, visible, CheckOutcome, CheckRequest, CheckWarning,
     APP_ONLY_RULES, PORTED_RULE_IDS,
 };
+pub use compile_rules::infer_compile_status;
 pub use engine::{run_preflight, PreflightInput, SourceProfile};
 pub use messages::{
     describe_rule, describe_template, message, render_detail, Catalog, MessageRef, ParamValue,

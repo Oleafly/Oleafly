@@ -61,7 +61,9 @@ async fn save(
 }
 
 /// Sign in with an access token: check it, read the account, and save both.
-/// GitLab tokens that report their scopes must be able to push.
+/// GitLab tokens that report their scopes must be able to push. `ca_file`
+/// sets the account's CA file, an empty path clears it, and `None` keeps the
+/// one the account has.
 pub async fn sign_in_with_token(
     store: &ForgeStore,
     http: &ForgeHttp,
@@ -110,11 +112,13 @@ pub async fn sign_in_with_token(
         login: user.login,
         name: user.name,
         avatar_url: user.avatar_url,
-        ca_file: ca_file.map(str::to_string).or_else(|| {
-            existing
+        ca_file: match ca_file {
+            Some(path) if path.trim().is_empty() => None,
+            Some(path) => Some(path.to_string()),
+            None => existing
                 .as_ref()
-                .and_then(|account| account.ca_file.clone())
-        }),
+                .and_then(|account| account.ca_file.clone()),
+        },
         auth: AuthMethod::Token,
         added_at: existing.map(|account| account.added_at).unwrap_or(now_ms),
     };
@@ -219,19 +223,24 @@ pub async fn check_account(
         }
         Err(error) => return Err(error),
     };
-    let updated = ForgeAccount {
-        login: user.login,
-        name: user.name,
-        avatar_url: user.avatar_url,
-        ..account.clone()
-    };
-    if updated == account {
+    if user.login == account.login
+        && user.name == account.name
+        && user.avatar_url == account.avatar_url
+    {
         return Ok(outcome(CheckState::Ok, Some(account), false));
     }
+    // Only the profile fields are written, into the account as it is now:
+    // a CA file the user set while this check ran stays.
     let writer = store.clone();
-    let saved = updated.clone();
-    blocking(move || writer.update_account(saved)).await?;
-    Ok(outcome(CheckState::Ok, Some(updated), true))
+    let target = base.clone();
+    let stored =
+        blocking(move || writer.update_profile(&target, &user.login, user.name, user.avatar_url))
+            .await?;
+    Ok(match stored {
+        Some(updated) => outcome(CheckState::Ok, Some(updated), true),
+        // Signed out while the check ran: leave it gone.
+        None => outcome(CheckState::SignedOut, None, false),
+    })
 }
 
 /// Give a token that was saved without an account (for example by an older
@@ -461,6 +470,34 @@ mod tests {
         .unwrap();
         assert_eq!(again.added_at, 10);
         assert_eq!(store.token(&base).unwrap().unwrap().token, "glpat-second-2");
+    }
+
+    #[tokio::test]
+    async fn signing_in_again_can_set_keep_or_clear_the_ca_file() {
+        let mut replies = Vec::new();
+        for _ in 0..3 {
+            replies.push(MockResponse::json(200, USER).on("GET", "/api/v4/user"));
+            replies.push(
+                MockResponse::json(404, "{}").on("GET", "/api/v4/personal_access_tokens/self"),
+            );
+        }
+        let server = MockServer::start(replies);
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let http = ForgeHttp::new(None).unwrap();
+        let base = server.url();
+        let sign_in = |token: &'static str, ca_file: Option<&'static str>| {
+            sign_in_with_token(&store, &http, &base, ForgeKind::GitLab, token, ca_file, 1)
+        };
+        let set = sign_in("glpat-first-123", Some("/etc/ssl/corp.pem"))
+            .await
+            .unwrap();
+        assert_eq!(set.ca_file.as_deref(), Some("/etc/ssl/corp.pem"));
+        let kept = sign_in("glpat-second-12", None).await.unwrap();
+        assert_eq!(kept.ca_file.as_deref(), Some("/etc/ssl/corp.pem"));
+        let cleared = sign_in("glpat-third-123", Some("")).await.unwrap();
+        assert_eq!(cleared.ca_file, None);
+        assert_eq!(store.accounts().unwrap()[0].ca_file, None);
     }
 
     #[tokio::test]

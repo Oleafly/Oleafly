@@ -114,9 +114,11 @@ pub struct OllamaModelInfo {
     pub capabilities: Option<Vec<String>>,
 }
 
-/// `/api/show` answers by `"{base}|{digest or name}"`. A failed lookup is
-/// cached as `None` so a model Ollama cannot describe is not asked again on
-/// every listing; a lookup the deadline cut short is not cached.
+/// `/api/show` answers by `"{base}|{digest or name}"`. A model Ollama cannot
+/// describe (it answered, with no capabilities or a 4xx) is cached as `None`
+/// so it is not asked again on every listing. A lookup that did not get an
+/// answer (a timeout, a connection error, a 5xx while Ollama loads a model)
+/// and one the deadline cut short are not cached: the next listing asks again.
 type ShowCache = HashMap<String, Option<Vec<String>>>;
 
 static SHOW_CACHE: LazyLock<Mutex<ShowCache>> = LazyLock::new(Default::default);
@@ -188,23 +190,37 @@ async fn fetch_tags(client: &reqwest::Client, base: &str) -> Result<Vec<TagModel
     Ok(body.models)
 }
 
-/// What `/api/show` says the model can do. Any failure is `None`.
-async fn show_capabilities(
-    client: &reqwest::Client,
-    base: &str,
-    name: &str,
-) -> Option<Vec<String>> {
-    let response = client
+/// How a `/api/show` lookup ended.
+enum Show {
+    /// Ollama answered: what it said the model can do, or `None` when it
+    /// said nothing (an older Ollama, or a model it does not know).
+    Answer(Option<Vec<String>>),
+    /// No answer to rely on: worth asking again next time.
+    Unanswered,
+}
+
+/// What `/api/show` says the model can do.
+async fn show_capabilities(client: &reqwest::Client, base: &str, name: &str) -> Show {
+    let Ok(response) = client
         .post(format!("{base}/api/show"))
         .timeout(SHOW_TIMEOUT)
         .json(&serde_json::json!({ "model": name }))
         .send()
         .await
-        .ok()?;
-    if !response.status().is_success() {
-        return None;
+    else {
+        return Show::Unanswered;
+    };
+    let status = response.status();
+    if status.is_client_error() {
+        return Show::Answer(None);
     }
-    response.json::<ShowResponse>().await.ok()?.capabilities
+    if !status.is_success() {
+        return Show::Unanswered;
+    }
+    match response.json::<ShowResponse>().await {
+        Ok(body) => Show::Answer(body.capabilities),
+        Err(_) => Show::Unanswered,
+    }
 }
 
 async fn list_model_details_at(
@@ -246,17 +262,19 @@ async fn list_model_details_at(
         let client = &client;
         let mut answers =
             futures_util::stream::iter(lookups.into_iter().map(|(index, key, name)| async move {
-                let capabilities = show_capabilities(client, base, &name).await;
-                (index, key, capabilities)
+                let shown = show_capabilities(client, base, &name).await;
+                (index, key, shown)
             }))
             .buffer_unordered(SHOW_CONCURRENCY);
         // Dropping the stream at the deadline cancels the lookups still out;
         // their models stay unknown and uncached.
-        while let Ok(Some((index, key, capabilities))) =
+        while let Ok(Some((index, key, shown))) =
             tokio::time::timeout_at(deadline, answers.next()).await
         {
-            remember_capabilities(key, capabilities.clone());
-            models[index].capabilities = capabilities;
+            if let Show::Answer(capabilities) = shown {
+                remember_capabilities(key, capabilities.clone());
+                models[index].capabilities = capabilities;
+            }
         }
     }
 
@@ -494,6 +512,67 @@ mod tests {
             .collect();
         asked.sort();
         assert_eq!(asked, ["deepseek-ocr", "llava"]);
+    }
+
+    #[tokio::test]
+    async fn a_lookup_that_got_no_answer_is_not_cached_but_a_404_is() {
+        let loading = Arc::new(AtomicBool::new(true));
+        let still_loading = Arc::clone(&loading);
+        let fixture = serve(move |method, path, body| match (method, path) {
+            ("GET", "/api/tags") => Some((
+                200,
+                r#"{"models":[{"name":"my-ocr-finetune","digest":"ft-1"},{"name":"gone","digest":"gone-1"}]}"#
+                    .to_string(),
+            )),
+            // Ollama is busy loading a model: the fine-tune cannot be shown.
+            ("POST", "/api/show") if requested_model(body) == "my-ocr-finetune" => {
+                if still_loading.load(Ordering::SeqCst) {
+                    Some((503, String::new()))
+                } else {
+                    Some((
+                        200,
+                        r#"{"capabilities":["completion","vision"]}"#.to_string(),
+                    ))
+                }
+            }
+            _ => Some((404, String::new())),
+        })
+        .await;
+        let first = list_model_details_at(&fixture.base, Duration::from_secs(2))
+            .await
+            .unwrap();
+        let capabilities = |models: &[OllamaModelInfo], name: &str| {
+            models
+                .iter()
+                .find(|model| model.name == name)
+                .and_then(|model| model.capabilities.clone())
+        };
+        assert_eq!(capabilities(&first, "my-ocr-finetune"), None);
+
+        // Once Ollama has loaded, the next listing asks again and learns
+        // the model reads images; the model it does not know is not asked.
+        loading.store(false, Ordering::SeqCst);
+        let second = list_model_details_at(&fixture.base, Duration::from_secs(2))
+            .await
+            .unwrap();
+        assert_eq!(
+            capabilities(&second, "my-ocr-finetune"),
+            Some(vec!["completion".to_string(), "vision".to_string()])
+        );
+        assert_eq!(capabilities(&second, "gone"), None);
+        let asked: Vec<String> = fixture
+            .bodies("/api/show")
+            .iter()
+            .map(|body| requested_model(body))
+            .collect();
+        assert_eq!(asked.iter().filter(|name| *name == "gone").count(), 1);
+        assert_eq!(
+            asked
+                .iter()
+                .filter(|name| *name == "my-ocr-finetune")
+                .count(),
+            2
+        );
     }
 
     #[tokio::test]

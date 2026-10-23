@@ -16,7 +16,7 @@
       "cliTitle": "Instrument de linie de comandă",
       "copySignInCommand": "Copiază comanda de autentificare",
       "emptyDescription": "Instalează un agent de linie de comandă acceptat, apoi verifică din nou.",
-      "emptyTitle": "Nu s-a găsit niciun agent de linie de comandă",
+      "emptyTitle": "Nu s-a găsit niciun agent de linia de comandă",
       "custom": {
         "description": "Lipește o definiție de agent ca să înregistrezi un agent pe care Oleafly nu îl include.",
         "hint": "Lipește o definiție de agent cu un pachet npm sau uv fixat pe versiune, un binar verificat ori un executabil instalat. Nu pune parole și chei API în acest JSON.",
@@ -36,7 +36,7 @@
       },
       "installBridge": "Instalează puntea",
       "installBridgeNextStep": "Instalează puntea ACP, apoi autentifică-te din instrumentul de linie de comandă.",
-      "intro": "Conectează un agent local prin ACP. Fiecare agent își gestionează propriile modele, instrumente și autentificare, iar setările furnizorilor API rămân separate. Folosește contul oficial din linia de comandă pentru autentificare: Oleafly nu importă tokenuri de cont și nu estimează cotele de abonament.",
+      "intro": "Agenții din linia de comandă precum Claude Code, Codex și Gemini CLI se conectează prin Agent Client Protocol (ACP). Unii au nevoie de o punte, un mic adaptor pe care Oleafly îl instalează ca să poată vorbi cu ei. Fiecare agent își gestionează propriile modele, instrumente și autentificare, iar setările furnizorilor de API rămân separate. Folosește contul oficial din linia de comandă pentru autentificare: Oleafly nu importă tokenuri de cont și nu estimează cotele de abonament.",
       "nextStepTitle": "Pasul următor",
       "notReported": "Neraportat",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Arată distribuția",
         "title": "Găsește mai mulți agenți"
       },
-      "sectionLabel": "Agenți ACP",
+      "sectionLabel": "Agenți din linia de comandă",
       "signInCommandLabel": "Comandă de autentificare",
       "versionLabel": "Versiune",
       "updateBridge": "Actualizează puntea",
@@ -147,7 +147,7 @@
         "label": "Folosește cheia mea API din Oleafly",
         "off": "Dezactivat (agentul se autentifică singur)",
         "note": "Oleafly trimite cheia acestui agent când începe o conversație și o ține în afara transcrierilor.",
-        "unavailable": "Adaugă o cheie API în Setări, AI ca s-o folosești aici."
+        "unavailable": "Adaugă o cheie API în Setări, Asistentul AI, Furnizori și chei ca s-o folosești aici."
       },
       "hermes": {
         "title": "Profilul Hermes pentru acest proiect",
@@ -175,7 +175,20 @@
         "test": "Testează conexiunea",
         "testOk": "Conectat: {{version}}",
         "save": "Salvează",
-        "sshNote": "Oleafly se autentifică doar cu cheile tale SSH."
+        "sshNote": "Oleafly se autentifică doar cu cheile tale SSH.",
+        "folderHint": "Calea completă de pe acel computer, de exemplu /home/ada/paper.",
+        "needsValid": "Testează conexiunea și Salvează au nevoie de valori valide pentru: {{fields}}.",
+        "unsavedEdit": "Încă nesalvat. Salvează ca să folosești aceste modificări.",
+        "unsavedMode": "Încă nesalvat. Până salvezi, acest proiect continuă să folosească: {{mode}}.",
+        "errors": {
+          "hostRequired": "Introdu numele gazdei sau utilizator@gazdă.",
+          "hostInvalid": "Folosește doar litere, cifre, puncte, cratime și @, și nu începe cu o cratimă.",
+          "port": "Folosește un port de la 1 la 65535.",
+          "folderRequired": "Introdu calea completă a folderului de proiect de pe acel computer.",
+          "folderInvalid": "Folosește calea completă, începând cu /.",
+          "command": "Folosește hermes sau calea completă către el, începând cu /.",
+          "profile": "Folosește litere mici, cifre, cratime și liniuțe de subliniere."
+        }
       }
     },
     "approvals": {
@@ -1013,6 +1026,8 @@
         "ariaLabel": "Programul shell al terminalului",
         "description": "Terminalele noi pornesc acest shell. Terminalele deschise îl păstrează pe al lor.",
         "label": "Shell",
+        "notFound": "{{name}} (nu a fost găsit)",
+        "notFoundNote": "{{name}} nu este disponibil pe acest computer, deci terminalele noi nu pot porni. Alege alt shell.",
         "options": {
           "auto": "Implicit ({{name}})",
           "cmd": "Linie de comandă",
@@ -1027,14 +1042,17 @@
           "ariaLabel": "Calea personalizată către shell",
           "description": "Programul pe care îl rulează terminalele noi.",
           "label": "Calea către shell"
-        }
+        },
+        "windowsOnly": "{{name}} (doar Windows)",
+        "windowsOnlyNote": "{{name}} rulează doar pe Windows. Terminalele noi de aici pornesc în schimb {{fallback}}.",
+        "windowsOnlyNoteDefault": "{{name}} rulează doar pe Windows. Terminalele noi de aici pornesc în schimb shell-ul implicit."
       },
       "shiftEnter": {
         "ariaLabel": "Shift+Enter în terminal",
-        "description": "Ce trimite Shift+Enter programului din terminal.",
-        "enter": "Enter",
+        "description": "Ce trimite Shift+Enter programului din terminal. Un rând nou lasă instrumentele de tip chat, precum Claude Code, să adauge un rând la promptul lor. Enter trimite, ca tasta Enter.",
+        "enter": "Trimite Enter",
         "label": "Shift+Enter",
-        "newline": "Rând nou"
+        "newline": "Inserează un rând nou"
       },
       "startWithProject": {
         "description": "Pornește shell-ul la deschiderea unui proiect, nu prima dată când arăți terminalul.",
@@ -1462,7 +1480,9 @@
       "detecting": "Se verifică serverul…",
       "found": "Acesta este un server {{kind}}.",
       "kindGitea": "Gitea sau Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "Alt server",
+      "replaces": "Autentificarea îl înlocuiește pe {{login}} pe {{host}}.",
       "scopesGitea": "Dă-i acces de citire și scriere pentru repository și user.",
       "scopesGithub": "Dă-i permisiunile repo și read:user.",
       "scopesGitlab": "Dă-i permisiunile api și write_repository.",
@@ -1537,7 +1557,7 @@
       "site": "Site: {{domain}}",
       "confirmCopy": "Oleafly va citi cookie-urile pentru {{domain}} din profilul {{profile}} din {{browser}}. Rămân în Oleafly și ajung doar la {{domain}}. Vei confirma încă o dată într-un dialog al sistemului.",
       "copyAction": "Copiază autentificarea",
-      "copying": "Se copiază...",
+      "copying": "Se copiază…",
       "notSignedIn_one": "S-a copiat {{count}} cookie din {{browser}}, dar nu te-a autentificat. Autentifică-te direct.",
       "notSignedIn_few": "S-au copiat {{count}} cookie-uri din {{browser}}, dar nu te-au autentificat. Autentifică-te direct.",
       "notSignedIn_other": "S-au copiat {{count}} de cookie-uri din {{browser}}, dar nu te-au autentificat. Autentifică-te direct."
@@ -1624,6 +1644,7 @@
         "notInstalled": "Cua Driver nu este instalat.",
         "tooOld": "Cua Driver {{version}} este prea vechi. Oleafly are nevoie de {{minimum}} sau de o versiune mai nouă.",
         "noAppBundle": "Instalează Cua Driver cu programul de instalare oficial, ca să poată păstra permisiunile macOS.",
+        "unreadableVersion": "Oleafly nu a putut citi versiunea Cua Driver. Verifică dacă rulează, apoi verifică din nou.",
         "path": "Găsit la {{path}}"
       },
       "install": {
@@ -1657,14 +1678,18 @@
         "empty": "Încă nu există aplicații. Agenții pot folosi doar aplicațiile pe care le adaugi aici.",
         "add": "Adaugă o aplicație",
         "remove": "Elimină {{name}}",
+        "missing": "Acest program nu a fost găsit pe acest computer. Elimin-o sau reinstalează aplicația.",
         "dialog": {
           "title": "Adaugă o aplicație",
           "description": "Alege o aplicație pe care o pot folosi agenții. După ce aprobi, o pot deschide, îi pot citi ferestrele și pot lucra în ea.",
           "search": "Caută aplicații",
-          "loading": "Se caută aplicații...",
+          "loading": "Se caută aplicații…",
           "none": "Nicio aplicație nu se potrivește.",
-          "choose": "Alege altă aplicație...",
-          "add": "Adaugă"
+          "choose": "Alege altă aplicație…",
+          "add": "Adaugă",
+          "added": "Deja adăugată.",
+          "more": "Se arată {{shown}} din {{total}}. Caută ca să restrângi lista.",
+          "refresh": "Reîmprospătează"
         },
         "blocked": {
           "oleafly": "Oleafly nu se poate controla pe sine.",
@@ -1674,7 +1699,8 @@
           "passwords": "Aplicațiile de parole rămân în afara accesului.",
           "scripting": "Programele care rulează scripturi pot face orice pe acest computer.",
           "wrapper": "Această intrare pornește alt program. Alege în schimb acel program.",
-          "sandboxed": "Aplicațiile Flatpak și Snap nu sunt încă acceptate."
+          "sandboxed": "Aplicațiile Flatpak și Snap nu sunt încă acceptate.",
+          "browser": "Adaugă în schimb site-urile unui browser la Site-uri permise."
         }
       },
       "sites": {
@@ -1685,6 +1711,7 @@
         "remove": "Elimină {{origin}}",
         "signedIn": {
           "label": "Folosește browserul meu autentificat",
+          "labelFor": "Folosește browserul meu autentificat pe {{origin}}",
           "description": "Pe acest site, agenții lucrează în propriul tău Chrome sau Edge. Lasă opțiunea dezactivată ca să folosească un profil de browser separat."
         }
       },
@@ -1694,8 +1721,9 @@
       },
       "test": {
         "action": "Testează conexiunea",
-        "running": "Se testează...",
+        "running": "Se testează…",
         "ok": "Cua Driver rulează cu limitele tale.",
+        "problems": "Verificarea proprie a Cua Driver a raportat în plus:",
         "failed": "Testul a eșuat: {{detail}}"
       },
       "tool": {
@@ -2302,6 +2330,7 @@
       "stopHint": "Sarcinile lui rămân în pauză până deschizi din nou Oleafly.",
       "stopFailed": "Procesul auxiliar nu s-a oprit. Încearcă din nou.",
       "openLog": "Arată jurnalul",
+      "statusFailed": "Starea procesului auxiliar din fundal nu a putut fi citită.",
       "toggleFailed": "Setarea nu a putut fi schimbată. Încearcă din nou."
     }
   }

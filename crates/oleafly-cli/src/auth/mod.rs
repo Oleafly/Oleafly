@@ -83,8 +83,17 @@ pub enum BrowserArg {
 pub struct ServerLogin {
     #[arg(value_name = "URL", help = "Server address")]
     pub url: String,
-    #[arg(long, help = "Setup code for a new server's first sign-in")]
+    #[arg(
+        long,
+        help = "Setup code for a new server's first sign-in (other users here can see it in the process list; prefer --setup-code-stdin)"
+    )]
     pub setup_code: Option<String>,
+    #[arg(
+        long,
+        conflicts_with = "setup_code",
+        help = "Read the setup code from standard input"
+    )]
+    pub setup_code_stdin: bool,
     #[arg(long, help = "Open the sign-in page in your browser")]
     pub open: bool,
 }
@@ -220,14 +229,10 @@ impl CommandModule for Commands {
                 .await?
             }
             AuthCommand::Login(LoginTarget::Server(args)) => {
-                crate::server::account::sign_in_from(
-                    ctx,
-                    &env,
-                    &args.url,
-                    args.setup_code,
-                    args.open,
-                )
-                .await?
+                let setup_code =
+                    crate::server::account::setup_code(&env, &args, &mut std::io::stdin())?;
+                crate::server::account::sign_in_from(ctx, &env, &args.url, setup_code, args.open)
+                    .await?
             }
             AuthCommand::Login(LoginTarget::Git(args)) => {
                 let mut stdin = std::io::stdin();

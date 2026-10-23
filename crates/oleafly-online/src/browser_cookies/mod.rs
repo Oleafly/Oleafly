@@ -485,6 +485,10 @@ pub fn cookie_header_for(cookies: &[ImportedCookie], url: &url::Url) -> String {
         .host_str()
         .map(str::to_ascii_lowercase)
         .unwrap_or_default();
+    // A name that two cookies share (a `.host` one and a host-only one) is
+    // sent once, with the first value: the newest, for a Chromium store.
+    // `cookie_header` alone would keep the last.
+    let mut names = HashSet::new();
     cookie_header(
         cookies
             .iter()
@@ -497,6 +501,7 @@ pub fn cookie_header_for(cookies: &[ImportedCookie], url: &url::Url) -> String {
                         && cookie_applies(None, Some(&cookie.path), cookie.secure, url)
                 }
             })
+            .filter(|cookie| names.insert(cookie.name.clone()))
             .map(|cookie| (cookie.name.clone(), cookie.value.clone())),
     )
 }
@@ -510,10 +515,16 @@ pub fn detect_sources_at(
     let layouts = browser_layouts(platform);
     let mut detected = Vec::new();
     for layout in layouts {
-        let mut profiles = resolve_real_browser_root(home, layout.root, layout.browser)
-            .map(|root| discover_profiles(&root, layout.firefox))
+        let root = resolve_real_browser_root(home, layout.root, layout.browser).ok();
+        let mut profiles = root
+            .as_deref()
+            .map(|root| discover_profiles(root, layout.firefox))
             .unwrap_or_default();
-        profiles.sort_by_key(|profile| profile_sort_key(&profile.name));
+        let preferred = root
+            .as_deref()
+            .filter(|_| layout.firefox)
+            .and_then(firefox_default_profile);
+        profiles.sort_by_key(|profile| profile_sort_key(&profile.name, preferred.as_deref()));
         if profiles.is_empty() {
             detected.push(detected_source(
                 layout.browser,
@@ -1060,11 +1071,87 @@ fn detected_source(
     }
 }
 
-fn profile_sort_key(profile: &str) -> (u8, String) {
+/// Chromium's `Default` profile comes first, and for Firefox the profile the
+/// browser itself opens (`preferred`); the rest by name.
+fn profile_sort_key(profile: &str, preferred: Option<&str>) -> (u8, String) {
     (
-        if profile == "Default" { 0 } else { 1 },
+        if profile == "Default" || preferred == Some(profile) {
+            0
+        } else {
+            1
+        },
         profile.to_lowercase(),
     )
+}
+
+/// The text of a small settings file, unless it is a link or too big.
+fn read_small_ini(path: &Path) -> Option<String> {
+    let metadata = std::fs::symlink_metadata(path).ok()?;
+    if !metadata.is_file() || metadata.len() > 64 * 1024 {
+        return None;
+    }
+    std::fs::read_to_string(path).ok()
+}
+
+/// `[section]` headers with their `key=value` lines.
+fn ini_sections(text: &str) -> Vec<(String, Vec<(String, String)>)> {
+    let mut sections: Vec<(String, Vec<(String, String)>)> = Vec::new();
+    for line in text.lines().map(str::trim) {
+        if let Some(name) = line
+            .strip_prefix('[')
+            .and_then(|rest| rest.strip_suffix(']'))
+        {
+            sections.push((name.to_string(), Vec::new()));
+        } else if let (Some((_, entries)), Some((key, value))) =
+            (sections.last_mut(), line.split_once('='))
+        {
+            entries.push((key.trim().to_string(), value.trim().to_string()));
+        }
+    }
+    sections
+}
+
+/// The folder name of the profile Firefox opens: the default of its install
+/// (`installs.ini`, or an `[Install…]` section of `profiles.ini`), else the
+/// profile marked `Default=1`. Profile folders start with random letters, so
+/// their names say nothing about which one is in use.
+fn firefox_default_profile(root: &Path) -> Option<String> {
+    let folder = [Some(root), root.parent()]
+        .into_iter()
+        .flatten()
+        .find(|folder| {
+            folder.join("profiles.ini").is_file() || folder.join("installs.ini").is_file()
+        })?;
+    let value_of = |entries: &[(String, String)], wanted: &str| {
+        entries
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(wanted))
+            .map(|(_, value)| value.clone())
+    };
+    let last_part = |path: &str| {
+        path.rsplit(['/', '\\'])
+            .next()
+            .filter(|name| !name.is_empty() && *name != "." && *name != "..")
+            .map(str::to_string)
+    };
+    let installs = read_small_ini(&folder.join("installs.ini")).unwrap_or_default();
+    let profiles = read_small_ini(&folder.join("profiles.ini")).unwrap_or_default();
+    let installed = ini_sections(&installs)
+        .into_iter()
+        .chain(
+            ini_sections(&profiles)
+                .into_iter()
+                .filter(|(name, _)| name.starts_with("Install")),
+        )
+        .find_map(|(_, entries)| value_of(&entries, "Default").and_then(|path| last_part(&path)));
+    installed.or_else(|| {
+        ini_sections(&profiles)
+            .into_iter()
+            .filter(|(name, _)| name.starts_with("Profile"))
+            .find(|(_, entries)| value_of(entries, "Default").as_deref() == Some("1"))
+            .and_then(|(_, entries)| value_of(&entries, "Path"))
+            .and_then(|path| last_part(&path))
+    })
 }
 
 fn open_cookie_store(path: &Path, browser: BrowserId) -> Result<Connection, CookieImportError> {

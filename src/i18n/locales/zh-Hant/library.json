@@ -256,7 +256,9 @@
     "loadingRepositories": "正在載入儲存庫…",
     "repositoriesFailed": "無法載入儲存庫。",
     "noRepositories": "找不到儲存庫。",
+    "noMatchLoaded": "目前已載入的儲存庫中沒有符合的項目。載入更多以繼續尋找。",
     "privateRepository": "私人儲存庫",
+    "openFailed": "Oleafly 無法在你的瀏覽器中開啟 {{host}}。",
     "openOnHost": "在 {{host}} 上開啟",
     "openRepositoryOnHost": "在 {{host}} 上開啟 {{name}}",
     "sources": {

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, GitBranch, Server } from "lucide-react";
-import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -18,6 +17,7 @@ import {
   waitForDeviceSignIn,
 } from "@/lib/forge";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import {
   forgeDetect,
   forgeDeviceCancel,
@@ -56,12 +56,16 @@ export function AddAccountPanel({
   const [address, setAddress] = useState(initialBase ?? "");
   const [pendingBase, setPendingBase] = useState<string | null>(null);
   const [caFile, setCaFile] = useState<string | null>(initialCaFile);
+  // "Remove" was pressed: the sign-in clears the account's CA file. Without
+  // it, an account keeps the file it has.
+  const [caRemoved, setCaRemoved] = useState(false);
   const [needsCa, setNeedsCa] = useState(false);
   const [unknownBase, setUnknownBase] = useState<string | null>(null);
   const [server, setServer] = useState<FoundServer | null>(null);
   const [useToken, setUseToken] = useState(false);
   const [token, setToken] = useState("");
   const fieldId = useId();
+  const accounts = useForgeAccountsStore((s) => s.accounts);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [device, setDevice] = useState<ForgeDeviceStart | null>(null);
@@ -126,6 +130,7 @@ export function AddAccountPanel({
     });
     if (typeof picked !== "string") return;
     setCaFile(picked);
+    setCaRemoved(false);
     const base = pendingBase ?? address.trim();
     if (base) void detect(base, picked);
   };
@@ -143,7 +148,7 @@ export function AddAccountPanel({
       }
       deviceRef.current = start;
       setDevice(start);
-      void open(start.verificationUriComplete ?? start.verificationUri);
+      void openInSystemBrowser(start.verificationUriComplete ?? start.verificationUri);
       const account = await waitForDeviceSignIn(start, forgeDevicePoll, {
         cancelled: () => run !== generation.current,
       });
@@ -159,7 +164,10 @@ export function AddAccountPanel({
       onDone(account);
     } catch (failure) {
       if (run !== generation.current) return;
+      // Let the backend drop the flow and any grant it kept.
+      const failed = deviceRef.current;
       deviceRef.current = null;
+      if (failed) void forgeDeviceCancel(failed.flowId);
       setDevice(null);
       setError(describeError(failure));
     } finally {
@@ -185,7 +193,13 @@ export function AddAccountPanel({
     try {
       const account = await useForgeAccountsStore
         .getState()
-        .signInWithToken({ base: server.base, kind: server.kind, token: value, caFile });
+        .signInWithToken({
+          base: server.base,
+          kind: server.kind,
+          token: value,
+          // An empty path tells the backend to clear the account's CA file.
+          caFile: caRemoved ? "" : caFile,
+        });
       if (run !== generation.current) return;
       setToken("");
       onDone(account);
@@ -197,6 +211,8 @@ export function AddAccountPanel({
   };
 
   const host = server ? hostLabel(server.base) : "";
+  // One account per server: signing in again replaces the one it has.
+  const replaced = server ? accounts.find((account) => account.base === server.base) : undefined;
   const scopes = server
     ? {
         github: t(($) => $.settings.gitHosting.add.scopesGithub),
@@ -285,6 +301,9 @@ export function AddAccountPanel({
             <Button size="sm" variant="outline" data-testid="git-hosting-kind-gitea" onClick={() => chooseKind("gitea")}>
               {t(($) => $.settings.gitHosting.add.kindGitea)}
             </Button>
+            <Button size="sm" variant="outline" data-testid="git-hosting-kind-github" onClick={() => chooseKind("github")}>
+              {t(($) => $.settings.gitHosting.add.kindGithub)}
+            </Button>
           </div>
         </fieldset>
       ) : null}
@@ -296,6 +315,11 @@ export function AddAccountPanel({
       <p className="text-xs text-muted-foreground">
         {t(($) => $.settings.gitHosting.add.found, { kind: kindLabel({ kind: found.kind, flavor: found.flavor ?? undefined }) })}
       </p>
+      {replaced ? (
+        <p className="text-xs text-muted-foreground" data-testid="git-hosting-replaces">
+          {t(($) => $.settings.gitHosting.add.replaces, { login: replaced.login, host })}
+        </p>
+      ) : null}
       {found.deviceFlow && !useToken ? (
         <div className="space-y-2">
           <Button data-testid="git-hosting-sign-in-browser" disabled={busy} onClick={() => void signInWithBrowser()}>
@@ -353,7 +377,7 @@ export function AddAccountPanel({
               size="xs"
               className="h-auto px-0"
               data-testid="git-hosting-token-page"
-              onClick={() => void open(tokenPageUrl(found.base, found.kind))}
+              onClick={() => void openInSystemBrowser(tokenPageUrl(found.base, found.kind))}
             >
               {t(($) => $.settings.gitHosting.add.createToken, { host })}
               <ExternalLink />
@@ -386,7 +410,15 @@ export function AddAccountPanel({
               {t(($) => $.settings.gitHosting.add.caChoose)}
             </Button>
             {caFile ? (
-              <Button size="xs" variant="ghost" disabled={busy} onClick={() => setCaFile(null)}>
+              <Button
+                size="xs"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => {
+                  setCaFile(null);
+                  setCaRemoved(true);
+                }}
+              >
                 {t(($) => $.settings.gitHosting.add.caRemove)}
               </Button>
             ) : null}

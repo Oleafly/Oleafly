@@ -11,6 +11,16 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager, State, Webview};
 use zeroize::Zeroizing;
 
+/// Runs store or file work off the main thread. These commands take the
+/// store's one connection lock, which every streamed event append takes too.
+async fn off_thread<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 fn check_project(
     runtime: &AcpRuntime,
     id: &str,
@@ -41,11 +51,12 @@ pub async fn acp_registry_search(
 }
 
 #[tauri::command]
-pub fn acp_register(
+pub async fn acp_register(
     runtime: State<'_, Arc<AcpRuntime>>,
     definition_json: String,
 ) -> Result<AgentDefinition, String> {
-    runtime.register(&definition_json)
+    let runtime = runtime.inner().clone();
+    off_thread(move || runtime.register(&definition_json)).await
 }
 
 #[tauri::command]
@@ -303,19 +314,33 @@ pub async fn acp_delegated_permission(
         .await
 }
 
+/// A page of a project's conversations. `before` and `before_id` are the
+/// update time and id of the last one shown; `before` alone still works, and
+/// then skips conversations that share its timestamp.
 #[tauri::command]
-pub fn acp_sessions(
+pub async fn acp_sessions(
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     query: Option<String>,
     before: Option<u64>,
+    before_id: Option<String>,
     limit: Option<u32>,
 ) -> Result<SessionPage, String> {
     crate::paths::project_dir(&project_id)?;
     if query.as_ref().is_some_and(|query| query.len() > 200) {
         return Err("The search is too long.".into());
     }
-    runtime.session_page(&project_id, query.as_deref(), before, limit)
+    let runtime = runtime.inner().clone();
+    off_thread(move || {
+        runtime.session_page(
+            &project_id,
+            query.as_deref(),
+            before,
+            before_id.as_deref(),
+            limit,
+        )
+    })
+    .await
 }
 
 #[tauri::command]
@@ -329,15 +354,19 @@ pub async fn acp_snapshot(
 }
 
 #[tauri::command]
-pub fn acp_events(
+pub async fn acp_events(
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
     after: u64,
     limit: Option<usize>,
 ) -> Result<EventPage, String> {
-    check_project(&runtime, &session_id, &project_id)?;
-    runtime.events(&session_id, after, limit.unwrap_or(200))
+    let runtime = runtime.inner().clone();
+    off_thread(move || {
+        check_project(&runtime, &session_id, &project_id)?;
+        runtime.events(&session_id, after, limit.unwrap_or(200))
+    })
+    .await
 }
 
 /// Tests an agent program without saving it: the chosen `path`, or the
@@ -476,8 +505,11 @@ async fn owned(
 }
 
 #[tauri::command]
-pub fn acp_preferences(runtime: State<'_, Arc<AcpRuntime>>) -> AcpPreferences {
-    runtime.preferences()
+pub async fn acp_preferences(
+    runtime: State<'_, Arc<AcpRuntime>>,
+) -> Result<AcpPreferences, String> {
+    let runtime = runtime.inner().clone();
+    off_thread(move || Ok(runtime.preferences())).await
 }
 
 #[tauri::command]
@@ -491,11 +523,12 @@ pub async fn acp_set_preferences(
 }
 
 #[tauri::command]
-pub fn acp_agent_preferences(
+pub async fn acp_agent_preferences(
     runtime: State<'_, Arc<AcpRuntime>>,
     agent_id: String,
 ) -> Result<AgentPreferences, String> {
-    runtime.agent_preferences(&agent_id)
+    let runtime = runtime.inner().clone();
+    off_thread(move || runtime.agent_preferences(&agent_id)).await
 }
 
 #[tauri::command]
@@ -514,18 +547,22 @@ pub async fn acp_set_agent_preferences(
 }
 
 #[tauri::command]
-pub fn acp_provider_choices(
+pub async fn acp_provider_choices(
     runtime: State<'_, Arc<AcpRuntime>>,
     agent_id: String,
 ) -> Result<Vec<super::providers::ProviderChoice>, String> {
-    runtime.agent_definition(&agent_id)?;
-    let supported = runtime.agent_supported_providers(&agent_id);
-    let config = crate::config::read_config()?;
-    Ok(super::providers::provider_choices(&supported, &config))
+    let runtime = runtime.inner().clone();
+    off_thread(move || {
+        runtime.agent_definition(&agent_id)?;
+        let supported = runtime.agent_supported_providers(&agent_id);
+        let config = crate::config::read_config()?;
+        Ok(super::providers::provider_choices(&supported, &config))
+    })
+    .await
 }
 
 #[tauri::command]
-pub fn acp_buffer_reply(
+pub async fn acp_buffer_reply(
     webview: Webview,
     buffers: State<'_, Arc<super::buffers::WindowBuffers>>,
     request_id: String,
@@ -769,12 +806,13 @@ pub async fn acp_commit_turn(
 }
 
 #[tauri::command]
-pub fn acp_hermes_settings(
+pub async fn acp_hermes_settings(
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
 ) -> Result<HermesSettings, String> {
     crate::paths::project_dir(&project_id)?;
-    runtime.hermes_project_settings(&project_id)
+    let runtime = runtime.inner().clone();
+    off_thread(move || runtime.hermes_project_settings(&project_id)).await
 }
 
 #[tauri::command]

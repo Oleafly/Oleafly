@@ -11,12 +11,12 @@
       "checkingAction": "確認中",
       "checkingDescription": "Oleafly がこのコンピュータのコマンドラインツールを調べるため、少し時間がかかることがあります。",
       "checkingInstalled": "インストール済みのエージェントを確認しています",
-      "checkingTitle": "コマンドラインのエージェントを探しています",
+      "checkingTitle": "CLI エージェントを探しています",
       "cliPathLabel": "検出場所",
       "cliTitle": "コマンドラインツール",
       "copySignInCommand": "サインインのコマンドをコピー",
-      "emptyDescription": "対応しているコマンドラインのエージェントをインストールしてから、もう一度確認してください。",
-      "emptyTitle": "コマンドラインのエージェントが見つかりません",
+      "emptyDescription": "対応している CLI エージェントをインストールしてから、もう一度確認してください。",
+      "emptyTitle": "CLI エージェントが見つかりません",
       "custom": {
         "description": "エージェントの定義を貼り付けると、Oleafly に同梱されていないエージェントを登録できます。",
         "hint": "バージョンを固定した npm や uv のパッケージ、検証済みのバイナリ、インストール済みの実行ファイルを指すエージェント定義を貼り付けてください。この JSON にパスワードや API キーを書かないでください。",
@@ -36,7 +36,7 @@
       },
       "installBridge": "ブリッジをインストール",
       "installBridgeNextStep": "ACP ブリッジをインストールしてから、コマンドラインツールでサインインしてください。",
-      "intro": "ローカルのエージェントを ACP で接続します。各エージェントは自分でモデル、ツール、サインインを管理し、API プロバイダの設定とは切り離されています。サインインには公式の CLI のアカウントを使ってください。Oleafly はアカウントのトークンを取り込んだり、サブスクリプションの利用枠を推定したりはしません。",
+      "intro": "Claude Code、Codex、Gemini CLI などの CLI エージェントは、Agent Client Protocol（ACP）で接続します。一部にはブリッジが必要で、これは Oleafly がエージェントと対話できるようにインストールする小さなアダプターです。各エージェントは自分でモデル、ツール、サインインを管理し、API プロバイダの設定とは切り離されています。サインインには公式の CLI のアカウントを使ってください。Oleafly はアカウントのトークンを取り込んだり、サブスクリプションの利用枠を推定したりはしません。",
       "nextStepTitle": "次の手順",
       "notReported": "報告なし",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "配布情報を表示",
         "title": "ほかのエージェントを探す"
       },
-      "sectionLabel": "ACP エージェント",
+      "sectionLabel": "CLI エージェント",
       "signInCommandLabel": "サインインのコマンド",
       "versionLabel": "バージョン",
       "updateBridge": "ブリッジを更新",
@@ -147,7 +147,7 @@
         "label": "Oleafly の API キーを使う",
         "off": "オフ（エージェントが自分でサインイン）",
         "note": "会話の開始時に Oleafly がこのエージェントにキーを渡します。キーは会話の記録には残りません。",
-        "unavailable": "ここで使うには、「設定 → AI」で API キーを追加してください。"
+        "unavailable": "ここで使うには、「設定 → AI アシスタント → プロバイダとキー」で API キーを追加してください。"
       },
       "hermes": {
         "title": "このプロジェクトの Hermes プロファイル",
@@ -175,7 +175,20 @@
         "test": "接続をテスト",
         "testOk": "接続しました: {{version}}",
         "save": "保存",
-        "sshNote": "Oleafly のサインインには SSH キーだけを使います。"
+        "sshNote": "Oleafly のサインインには SSH キーだけを使います。",
+        "folderHint": "そのマシン上の完全なパス。例: /home/ada/paper",
+        "needsValid": "「接続をテスト」と「保存」には、{{fields}} を正しく入力する必要があります。",
+        "unsavedEdit": "まだ保存していません。変更を使うには保存してください。",
+        "unsavedMode": "まだ保存していません。保存するまで、このプロジェクトは {{mode}} を使い続けます。",
+        "errors": {
+          "hostRequired": "ホスト名または user@host を入力してください。",
+          "hostInvalid": "英字、数字、ドット、ハイフン、@ だけを使い、ハイフンで始めないでください。",
+          "port": "1 から 65535 までのポートを使ってください。",
+          "folderRequired": "そのマシン上のプロジェクトフォルダの完全なパスを入力してください。",
+          "folderInvalid": "/ で始まる完全なパスを指定してください。",
+          "command": "hermes、または / で始まる hermes への完全なパスを指定してください。",
+          "profile": "小文字、数字、ハイフン、アンダースコアを使ってください。"
+        }
       }
     },
     "approvals": {
@@ -1001,6 +1014,8 @@
         "ariaLabel": "ターミナルの shell",
         "description": "新しいターミナルではこの shell を起動します。開いているターミナルはそのままです。",
         "label": "Shell",
+        "notFound": "{{name}}（見つかりません）",
+        "notFoundNote": "{{name}} はこのコンピュータで使えないため、新しいターミナルを起動できません。別の shell を選んでください。",
         "options": {
           "auto": "既定（{{name}}）",
           "cmd": "コマンド プロンプト",
@@ -1015,14 +1030,17 @@
           "ariaLabel": "カスタムの shell のパス",
           "description": "新しいターミナルで実行するプログラムです。",
           "label": "Shell のパス"
-        }
+        },
+        "windowsOnly": "{{name}}（Windows のみ）",
+        "windowsOnlyNote": "{{name}} は Windows でしか動きません。ここでは新しいターミナルは代わりに {{fallback}} を起動します。",
+        "windowsOnlyNoteDefault": "{{name}} は Windows でしか動きません。ここでは新しいターミナルは代わりに既定の shell を起動します。"
       },
       "shiftEnter": {
         "ariaLabel": "ターミナルでの Shift+Enter",
-        "description": "Shift+Enter でターミナル内のプログラムに送る内容です。",
-        "enter": "Enter",
+        "description": "Shift+Enter でターミナル内のプログラムに送る内容です。改行にすると、Claude Code のようなチャット形式のツールでプロンプトに 1 行追加できます。Enter にすると、Enter キーと同じように送信します。",
+        "enter": "Enter を送信",
         "label": "Shift+Enter",
-        "newline": "改行"
+        "newline": "改行を挿入"
       },
       "startWithProject": {
         "description": "ターミナルを初めて表示したときではなく、プロジェクトを開いたときに shell を起動します。",
@@ -1442,7 +1460,9 @@
       "detecting": "サーバーを確認しています…",
       "found": "これは {{kind}} のサーバーです。",
       "kindGitea": "Gitea または Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "別のサーバー",
+      "replaces": "サインインすると、{{host}} の {{login}} が置き換えられます。",
       "scopesGitea": "repository と user の読み取りと書き込みの権限を付けてください。",
       "scopesGithub": "repo と read:user のスコープを付けてください。",
       "scopesGitlab": "api と write_repository のスコープを付けてください。",
@@ -1596,6 +1616,7 @@
         "notInstalled": "Cua Driver がインストールされていません。",
         "tooOld": "Cua Driver {{version}} は古すぎます。Oleafly には {{minimum}} 以降が必要です。",
         "noAppBundle": "macOS の権限を保持できるよう、公式のインストーラで Cua Driver をインストールしてください。",
+        "unreadableVersion": "Oleafly は Cua Driver のバージョンを読み取れませんでした。動作しているか確認してから、もう一度確認してください。",
         "path": "場所: {{path}}"
       },
       "install": {
@@ -1629,6 +1650,7 @@
         "empty": "アプリはまだありません。エージェントが使えるのは、ここに追加したアプリだけです。",
         "add": "アプリを追加",
         "remove": "{{name}} を削除",
+        "missing": "このプログラムはこのコンピュータで見つかりませんでした。削除するか、アプリを再インストールしてください。",
         "dialog": {
           "title": "アプリを追加",
           "description": "エージェントが使ってよいアプリを選んでください。あなたが承認したあと、エージェントはアプリを開き、ウィンドウを読み取り、その中で操作できます。",
@@ -1636,7 +1658,10 @@
           "loading": "アプリを探しています...",
           "none": "一致するアプリはありません。",
           "choose": "ほかのアプリを選ぶ...",
-          "add": "追加"
+          "add": "追加",
+          "added": "追加済みです。",
+          "more": "全 {{total}} 件中 {{shown}} 件を表示しています。検索して絞り込んでください。",
+          "refresh": "更新"
         },
         "blocked": {
           "oleafly": "Oleafly は自分自身を操作できません。",
@@ -1646,7 +1671,8 @@
           "passwords": "パスワード管理アプリは対象外です。",
           "scripting": "スクリプトの実行環境は、このコンピュータで何でもできてしまいます。",
           "wrapper": "この項目は別のプログラムを起動します。代わりにそのプログラムを選んでください。",
-          "sandboxed": "Flatpak と Snap のアプリにはまだ対応していません。"
+          "sandboxed": "Flatpak と Snap のアプリにはまだ対応していません。",
+          "browser": "ブラウザのウェブサイトは、代わりに「許可したウェブサイト」に追加してください。"
         }
       },
       "sites": {
@@ -1657,6 +1683,7 @@
         "remove": "{{origin}} を削除",
         "signedIn": {
           "label": "サインイン済みのブラウザを使う",
+          "labelFor": "{{origin}} でサインイン済みのブラウザを使う",
           "description": "このサイトでは、エージェントはあなたの Chrome または Edge で作業します。オフにすると、別のブラウザのプロファイルを使います。"
         }
       },
@@ -1668,6 +1695,7 @@
         "action": "接続をテスト",
         "running": "テストしています...",
         "ok": "Cua Driver はあなたの制限付きで動作しています。",
+        "problems": "Cua Driver 自身のチェックでも次の問題が報告されました：",
         "failed": "テストに失敗しました: {{detail}}"
       },
       "tool": {
@@ -2260,6 +2288,7 @@
       "stopHint": "Oleafly をもう一度開くまで、タスクは一時停止します。",
       "stopFailed": "ヘルパーを停止できませんでした。もう一度お試しください。",
       "openLog": "ログを表示",
+      "statusFailed": "バックグラウンドヘルパーの状態を読み取れませんでした。",
       "toggleFailed": "この設定を変更できませんでした。もう一度お試しください。"
     }
   }

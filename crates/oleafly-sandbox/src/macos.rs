@@ -1,7 +1,8 @@
 //! `sandbox-exec` profile for confined commands on macOS. The profile text is
 //! the one Oleafly 0.4.7 used for task commands; the workspace is readable as
-//! a whole, protected paths stay read-only inside write grants, and the
-//! Training run profile adds IOKit access for Metal.
+//! a whole, protected paths stay read-only inside write grants, hidden paths
+//! can't be read, and the Training run profile adds the IOKit user clients
+//! Metal needs.
 use crate::{PlatformRequest, SandboxError};
 use std::path::{Path, PathBuf};
 
@@ -12,6 +13,23 @@ pub(crate) const MISSING_MESSAGE: &str =
 const BASE_PROFILE: &str = "(version 1) (deny default) (allow process*) (allow syscall-unix) (allow file-read-metadata) (allow sysctl-read) (allow signal (target same-sandbox)) (deny syscall-unix (syscall-number SYS_setsid SYS_setpgid) (with errno 1))";
 /// Programs that do not start helpers may not use `posix_spawn`.
 const NO_SPAWN: &str = " (deny syscall-unix (syscall-number SYS_posix_spawn) (with errno 78))";
+
+/// The IOKit user clients the Training profile may open: the GPU drivers and
+/// IOSurface (buffers shared with the GPU). `AGXDeviceUserClient` alone runs
+/// Metal compute on Apple silicon (checked on an M3 Pro); the others cover
+/// other Apple GPUs, virtual machines and Intel Macs. Every other IOKit
+/// client (USB, HID, SMC, security tokens) stays closed.
+const GPU_USER_CLIENTS: [&str; 9] = [
+    "AGXDeviceUserClient",
+    "AGXSharedUserClient",
+    "AppleParavirtDeviceUserClient",
+    "IOSurfaceRootUserClient",
+    "IOSurfaceSendRight",
+    "IOAccelDevice2",
+    "IOAccelSharedUserClient2",
+    "IOAccelContext2",
+    "IOAccelSubmitter2",
+];
 
 /// The profile for `request`, without the program arguments.
 pub(crate) fn profile(request: &PlatformRequest<'_>) -> Result<String, SandboxError> {
@@ -26,7 +44,11 @@ pub(crate) fn profile(request: &PlatformRequest<'_>) -> Result<String, SandboxEr
     }
     if request.gpu {
         // Metal and the GPU drivers live behind IOKit user clients.
-        profile.push_str(" (allow iokit-open) (allow iokit-get-properties) (allow mach-lookup (global-name \"com.apple.MTLCompilerService\") (global-name \"com.apple.CoreDisplay.master\") (global-name \"com.apple.gpumemd.source\"))");
+        profile.push_str(" (allow iokit-open");
+        for class in GPU_USER_CLIENTS {
+            profile.push_str(&format!(" (iokit-user-client-class \"{class}\")"));
+        }
+        profile.push_str(") (allow iokit-get-properties) (allow mach-lookup (global-name \"com.apple.MTLCompilerService\") (global-name \"com.apple.CoreDisplay.master\") (global-name \"com.apple.gpumemd.source\"))");
     }
     for path in request
         .readable
@@ -58,6 +80,14 @@ pub(crate) fn profile(request: &PlatformRequest<'_>) -> Result<String, SandboxEr
         let quoted = quote(path)?;
         let filter = if path.is_dir() { "subpath" } else { "literal" };
         profile.push_str(&format!(" (deny file-write* ({filter} {quoted}))"));
+    }
+    // Hidden paths can't be read or changed, whatever grant covers them.
+    for path in request.hidden {
+        let quoted = quote(path)?;
+        let filter = if path.is_dir() { "subpath" } else { "literal" };
+        profile.push_str(&format!(
+            " (deny file-read* ({filter} {quoted})) (deny file-write* ({filter} {quoted}))"
+        ));
     }
     profile.push_str(" (allow file-write-data (literal \"/dev/null\") (literal \"/dev/zero\") (literal \"/dev/random\") (literal \"/dev/urandom\"))");
     Ok(profile)
@@ -109,6 +139,7 @@ mod tests {
             child_processes: false,
             readable,
             protected,
+            hidden: &[],
         }
     }
 
@@ -143,11 +174,56 @@ mod tests {
     fn gpu_rules_only_with_gpu() {
         assert!(!profile(&request(&[], &[], &[], false, false))
             .unwrap()
-            .contains("(allow iokit-open)"));
+            .contains("iokit-open"));
         let text = profile(&request(&[], &[], &[], false, true)).unwrap();
         assert!(
-            text.contains("(allow iokit-open)") && text.contains("com.apple.MTLCompilerService")
+            text.contains("(allow iokit-open (iokit-user-client-class")
+                && text.contains("com.apple.MTLCompilerService")
         );
+    }
+
+    #[test]
+    fn gpu_runs_open_only_the_gpu_iokit_clients() {
+        let text = profile(&request(&[], &[], &[], false, true)).unwrap();
+        // No rule opens every IOKit client.
+        assert!(!text.contains("(allow iokit-open)"));
+        let open = text.find("(allow iokit-open").unwrap();
+        let rule = &text[open..];
+        let rule = &rule[..rule.find(") (allow iokit-get-properties)").unwrap()];
+        for class in GPU_USER_CLIENTS {
+            assert!(rule.contains(&format!("(iokit-user-client-class \"{class}\")")));
+        }
+        assert!(rule.contains("AGXDeviceUserClient"));
+        assert_eq!(
+            rule.matches("iokit-user-client-class").count(),
+            GPU_USER_CLIENTS.len()
+        );
+    }
+
+    #[test]
+    fn hidden_paths_are_denied_after_every_allow() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join(".private");
+        let file = dir.path().join(".env");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::write(&file, "SECRET=1").unwrap();
+        let hidden = [folder.clone(), file.clone()];
+        let writable = [PathBuf::from("/w")];
+        let mut request = request(&writable, &[], &[], false, false);
+        request.hidden = &hidden;
+        let text = profile(&request).unwrap();
+        let last_allow = text.rfind("(allow file-write* (literal \"/w\"))").unwrap();
+        let folder_text = quote(&folder).unwrap();
+        let file_text = quote(&file).unwrap();
+        for rule in [
+            format!("(deny file-read* (subpath {folder_text}))"),
+            format!("(deny file-write* (subpath {folder_text}))"),
+            format!("(deny file-read* (literal {file_text}))"),
+            format!("(deny file-write* (literal {file_text}))"),
+        ] {
+            let at = text.find(&rule).unwrap_or_else(|| panic!("{rule} missing"));
+            assert!(at > last_allow, "{rule}");
+        }
     }
 
     #[test]

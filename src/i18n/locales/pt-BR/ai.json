@@ -43,13 +43,15 @@
       "command": "Confirmar comando",
       "externalTool": "Confirmar ação de ferramenta externa",
       "internet": "Confirmar acesso à internet",
-      "edit": "Confirmar edição da IA"
+      "edit": "Confirmar edição da IA",
+      "researchTask": "Confirmar tarefa de pesquisa"
     },
     "headline": {
       "command": "O assistente quer executar este comando",
       "externalTool": "O assistente quer usar uma ferramenta externa",
       "internet": "O assistente quer acessar a internet",
-      "edit": "O assistente quer alterar seus arquivos"
+      "edit": "O assistente quer alterar seus arquivos",
+      "researchTask": "O assistente quer criar uma tarefa de pesquisa"
     },
     "mcpNote": "Isso envia os argumentos abaixo para o servidor MCP configurado.",
     "line": "linha {{line}}",
@@ -71,6 +73,23 @@
       "moreWaiting_one": "mais {{count}} esperando",
       "moreWaiting_many": "mais {{count}} esperando",
       "moreWaiting_other": "mais {{count}} esperando"
+    },
+    "researchTask": {
+      "note": "A tarefa trabalha por conta própria em uma cópia do projeto. Você revisa as mudanças dela depois.",
+      "title": "Título",
+      "goal": "Objetivo",
+      "skills": "Habilidades",
+      "prompt": "Instruções",
+      "commands": "Comandos",
+      "commandsAsk": "Perguntar antes de cada um",
+      "network": "Rede",
+      "timeBudget": "Orçamento de tempo",
+      "timeBudgetDefault": "Padrão",
+      "minutes_one": "{{count}} minuto",
+      "minutes_other": "{{count}} minutos",
+      "planFirst": "Planejar primeiro",
+      "startNow": "Começar agora",
+      "minutes_many": "{{count}} minutos"
     }
   },
   "attachments": {
@@ -97,7 +116,9 @@
     "saveFailed": "Não foi possível salvar {{name}}.",
     "missing": "{{name}} não está mais disponível.",
     "sentAsText": "{{name}} foi enviado como texto porque este modelo não consegue lê-lo como arquivo.",
-    "skipped": "{{name}} não foi enviado."
+    "skipped": "{{name}} não foi enviado.",
+    "dropUnreadable": "Não foi possível ler {{names}}.",
+    "notReplayed": "Arquivos de uma versão mais antiga não podem ser enviados de novo: {{names}}."
   },
   "chat": {
     "pill": {
@@ -601,7 +622,10 @@
       "queued": "Na fila: será enviada quando o agente terminar",
       "remove": "Remover a mensagem da fila",
       "sendNow": "Enviar agora",
-      "sendFailed": "Esta mensagem não foi enviada. Envie de novo ou remova."
+      "sendFailed": "Esta mensagem não foi enviada. Envie de novo ou remova.",
+      "queuedConnecting": "Na fila: será enviada quando o agente estiver pronto",
+      "retry": "Enviar de novo",
+      "edit": "Editar"
     },
     "slash": {
       "commands": "Comandos do agente",
@@ -641,7 +665,9 @@
       "apiKeyPlaceholder": "Cole sua chave de API",
       "geminiGoogle": "O login com o Google não funciona mais nos planos individuais. Use uma chave de API do Gemini ou o Vertex AI.",
       "noProject": "Abra um projeto para fazer login pelo terminal.",
-      "signOut": "Sair"
+      "signOut": "Sair",
+      "confirmTerminal": "O {{agent}} faz login pelo comando abaixo, que roda em uma aba do terminal. Confira antes de concordar.",
+      "remote": "Esta conversa roda em outra máquina. Faça login no agente lá."
     },
     "elicitation": {
       "ariaLabel": "Pedido do agente",
@@ -654,7 +680,8 @@
       "openUrl": "Abrir no navegador",
       "confirmTitle": "Abrir {{host}}?",
       "confirmDescription": "O agente pediu que você conclua uma etapa neste site. Ele abre no seu navegador.",
-      "waiting": "Aguardando o site terminar."
+      "waiting": "Aguardando o site terminar.",
+      "openFailed": "Não foi possível abrir o link no seu navegador."
     },
     "remote": {
       "banner": "O Hermes roda em {{host}} via SSH. As alterações dele ficam naquela máquina."
@@ -665,7 +692,6 @@
       "search": "Buscar conversas",
       "empty": "Nenhuma conversa corresponde.",
       "loadMore": "Carregar mais",
-      "open": "Abrir",
       "rename": "Renomear",
       "renameLabel": "Nome da conversa",
       "delete": "Excluir",
@@ -686,8 +712,11 @@
       "fork": "Bifurcar a conversa",
       "forkUnsupported": "Este agente não consegue bifurcar conversas.",
       "forkBusy": "Espere o agente terminar antes de bifurcar.",
-      "v2": "Rascunho do ACP v2",
-      "remote": "Remoto"
+      "v2": "Prévia do protocolo",
+      "remote": "Remoto",
+      "signOutTitle": "Sair do {{agent}}?",
+      "signOutDescription": "Isto encerra o próprio login do {{agent}}. Um terminal que usa o mesmo login também é desconectado, e esta conversa para até você fazer login de novo.",
+      "signOutAccount": "Conectado com {{account}}"
     },
     "commit": {
       "button": "Fazer commit",

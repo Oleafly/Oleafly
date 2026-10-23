@@ -1,16 +1,17 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ExternalLink, GitBranch } from "lucide-react";
 import { ForgeRepoList } from "@/components/integrations/ForgeRepoList";
 import { Button } from "@/components/ui/button";
+import { LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { hasRemotePassword, hostLabel, isAllowedRemoteUrl } from "@/lib/forge";
+import { logError } from "@/lib/log";
+import { openInSystemBrowser } from "@/lib/system-browser";
 import type { ForgeAccount, ForgeRepo } from "@/lib/tauri";
-import { notifyError } from "@/lib/toast";
+import { toast } from "@/lib/toast";
 import { useForgeAccountsStore } from "@/store/forge-accounts";
 
 /** The import dialog's Git step: clone any repository by its address, or
@@ -50,9 +51,14 @@ export function GitImportView({
           type="button"
           aria-label={t(($) => $.library.import.openRepositoryOnHost, { name: repo.fullName, host })}
           onClick={() => {
-            openExternal(repo.webUrl).catch((error) => {
-              notifyError("open repository", error);
-            });
+            openInSystemBrowser(repo.webUrl)
+              .then((opened) => {
+                if (!opened) toast.error(t(($) => $.library.import.openFailed, { host }));
+              })
+              .catch((error: unknown) => {
+                void logError("open repository", error);
+                toast.error(t(($) => $.library.import.openFailed, { host }));
+              });
           }}
           className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
         >
@@ -111,12 +117,7 @@ export function GitImportView({
         </div>
       );
     }
-    return (
-      <p className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
-        <Spinner size="sm" />
-        {t(($) => $.library.import.loadingRepositories)}
-      </p>
-    );
+    return <LoadingState size="compact" className="p-3" label={t(($) => $.library.import.loadingRepositories)} />;
   };
 
   return (

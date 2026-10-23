@@ -9,6 +9,7 @@ pub mod sarif;
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use clap::{Args, Subcommand, ValueEnum};
 use oleafly_core::Engine;
@@ -93,7 +94,7 @@ pub struct CheckArgs {
     pub checks: Vec<CheckArg>,
     #[command(flatten)]
     pub report: ReportArgs,
-    #[arg(long, value_name = "FILE", value_parser = crate::contract::path_arg, help = "Check this build log instead of the last build's")]
+    #[arg(long, value_name = "FILE", value_parser = crate::contract::path_arg, help = "Check this build log instead of the last build's (a TeX error or an `error:` line in it counts as a failed build)")]
     pub build_log: Option<PathBuf>,
     #[arg(long, value_name = "FILE", value_parser = crate::contract::path_arg, help = "Check this PDF instead of the last build's")]
     pub pdf: Option<PathBuf>,
@@ -221,7 +222,7 @@ fn warning_of(warning: &CheckWarning) -> Warning {
 fn row_of(
     finding: &Finding,
     main_document: &str,
-    text_of: &mut dyn FnMut(&str) -> Option<SourceText>,
+    text_of: &mut dyn FnMut(&str) -> Option<Rc<SourceText>>,
 ) -> ReportRow {
     let catalog = Catalog::preflight();
     let title = catalog.render(&finding.title);
@@ -299,24 +300,28 @@ fn read_pdf(path: &Path, warnings: &mut Vec<Warning>) -> Option<oleafly_prefligh
             format!("Oleafly couldn't read the PDF, so its checks were skipped: {reason}"),
         ));
     };
-    match std::fs::metadata(path) {
-        Ok(metadata) if metadata.len() > oleafly_preflight::MAX_PDF_BYTES => {
-            unreadable(warnings, "it is larger than 256 MB".into());
-            return None;
-        }
-        Err(error) => {
-            unreadable(warnings, error.to_string());
-            return None;
-        }
-        Ok(_) => {}
+    if std::fs::metadata(path)
+        .is_ok_and(|metadata| metadata.len() > oleafly_preflight::MAX_PDF_BYTES)
+    {
+        unreadable(warnings, "it is larger than 256 MB".into());
+        return None;
     }
-    let bytes = match std::fs::read(path) {
-        Ok(bytes) => bytes,
-        Err(error) => {
-            unreadable(warnings, error.to_string());
-            return None;
-        }
-    };
+    // Read up to the limit and no further: a file that reports no length
+    // (a device, a pipe) must not be read to its end.
+    let mut bytes = Vec::new();
+    let read = std::fs::File::open(path).and_then(|file| {
+        use std::io::Read;
+        file.take(oleafly_preflight::MAX_PDF_BYTES + 1)
+            .read_to_end(&mut bytes)
+    });
+    if let Err(error) = read {
+        unreadable(warnings, error.to_string());
+        return None;
+    }
+    if bytes.len() as u64 > oleafly_preflight::MAX_PDF_BYTES {
+        unreadable(warnings, "it is larger than 256 MB".into());
+        return None;
+    }
     match oleafly_preflight::read_pdf_facts(&bytes) {
         Ok(facts) => Some(facts),
         Err(error) => {
@@ -326,17 +331,34 @@ fn read_pdf(path: &Path, warnings: &mut Vec<Warning>) -> Option<oleafly_prefligh
     }
 }
 
+/// What was left out because it is older than the sources: after a failed
+/// build the log is new and the PDF is the last good one, so say which.
+fn stale_output_warning(found: &artifacts::BuildArtifacts) -> Warning {
+    let message = match (found.log_stale, found.pdf_stale) {
+        (false, true) => "The PDF is older than the sources, so it wasn't checked. Run `oleafly build` first.",
+        (true, false) => "The build log is older than the sources, so it wasn't checked. Run `oleafly build` first.",
+        _ => "The last build is older than the sources, so its log and PDF weren't checked. Run `oleafly build` first.",
+    };
+    Warning::new("check.stale_build_output", message)
+}
+
 /// Runs a check (blocking: reads the project, the log and the PDF).
 pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
     let profile = source_profile(input.engine);
     let engine = preflight_engine(input.engine, input.tex_flavor.as_deref());
-    let snapshot = ProjectSnapshot::load(
+    // Sources in dependency, generated and hidden folders are not the
+    // project's: `oleafly lint` and a linked folder's checkpoints skip them
+    // too (a repository's `node_modules` holds thousands of Markdown files).
+    // Their files stay in the tree, for figures a document includes from there.
+    let snapshot = ProjectSnapshot::load_with(
         &input.root,
         &input.main_document,
         SnapshotLimits {
             max_text_bytes: MAX_TEXT_BYTES,
             max_depth: MAX_INCLUDE_DEPTH,
+            ..SnapshotLimits::default()
         },
+        &oleafly_core::exclude::is_linked_skipped_directory,
     )
     .map_err(CliError::from)?;
     let mut warnings = Vec::new();
@@ -349,22 +371,22 @@ pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
             snapshot.newest_text_modified(),
         );
         if found.stale && input.build_log.is_none() && input.pdf.is_none() {
-            warnings.push(Warning::new(
-                "check.stale_build_output",
-                "The last build is older than the sources, so its log and PDF weren't checked. Run `oleafly build` first.",
-            ));
+            warnings.push(stale_output_warning(&found));
         }
+        // A log that comes with the build's own record has its verdict; one
+        // named with `--build-log` is judged by what it says.
         let log = match &input.build_log {
-            Some(path) => Some((path.clone(), oleafly_preflight::CompileStatus::Success)),
-            None => found.log,
+            Some(path) => Some((path.clone(), None)),
+            None => found.log.map(|(path, status)| (path, Some(status))),
         };
         (log, input.pdf.clone().or(found.pdf))
     };
-    let compile = match &log {
-        Some((path, status)) => Some(CompileContext {
-            status: *status,
-            log: artifacts::read_log_head(path).map_err(CliError::from)?,
-        }),
+    let compile = match log {
+        Some((path, known)) => {
+            let text = artifacts::read_log_head(&path).map_err(CliError::from)?;
+            let status = known.unwrap_or_else(|| oleafly_preflight::infer_compile_status(&text));
+            Some((path, CompileContext { status, log: text }))
+        }
         None => None,
     };
     let pdf_facts = pdf
@@ -377,7 +399,7 @@ pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
         submission_profile: input.profile,
         anonymous_review: input.anonymous,
         typst_version: input.typst_version.clone(),
-        compile,
+        compile: compile.as_ref().map(|(_, context)| context.clone()),
         pdf_facts,
     });
     warnings.extend(outcome.warnings.iter().map(warning_of));
@@ -387,14 +409,18 @@ pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
         .map(String::as_str)
         .unwrap_or("");
     let checks = checks_selected(&input.checks, main_source);
-    let mut cache: std::collections::HashMap<String, Option<SourceText>> =
+    // A file's text is indexed once; each finding shares it (it takes about
+    // eleven bytes per character, and a thesis can have thousands of findings).
+    let mut cache: std::collections::HashMap<String, Option<Rc<SourceText>>> =
         std::collections::HashMap::new();
-    let mut text_of = |path: &str| -> Option<SourceText> {
+    let mut text_of = |path: &str| -> Option<Rc<SourceText>> {
         cache
             .entry(path.to_string())
             .or_insert_with(|| {
                 snapshot.texts.get(path).map(|text| {
-                    SourceText::new(oleafly_preflight::normalize_line_endings(text).into_owned())
+                    Rc::new(SourceText::new(
+                        oleafly_preflight::normalize_line_endings(text).into_owned(),
+                    ))
                 })
             })
             .clone()
@@ -447,8 +473,8 @@ pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
         "anonymous_review": input.anonymous,
         "checks": checks.iter().map(|id| id.as_str()).collect::<Vec<_>>(),
         "inputs": {
-            "build_log": log.as_ref().map(|(path, _)| path.clone()),
-            "build_status": log.as_ref().map(|(_, status)| match status {
+            "build_log": compile.as_ref().map(|(path, _)| path.clone()),
+            "build_status": compile.as_ref().map(|(_, context)| match context.status {
                 oleafly_preflight::CompileStatus::Success => "success",
                 oleafly_preflight::CompileStatus::Error => "error",
                 oleafly_preflight::CompileStatus::Idle => "idle",
@@ -579,6 +605,108 @@ mod tests {
             checks_selected(&[], "\\documentclass{article}"),
             suggested_checks("\\documentclass{article}")
         );
+    }
+
+    fn check_with_log(project: &Path, log: &Path) -> CheckRun {
+        execute(CheckInput {
+            root: project.to_path_buf(),
+            main_document: "main.tex".into(),
+            engine: Engine::Tectonic,
+            tex_flavor: None,
+            typst_version: None,
+            build_dir: project.join(".oleafly/build"),
+            profile: None,
+            anonymous: false,
+            checks: vec![CheckArg::All],
+            build_log: Some(log.to_path_buf()),
+            pdf: None,
+            no_build_output: false,
+        })
+        .unwrap()
+    }
+
+    #[test]
+    fn a_build_log_that_shows_a_failed_build_fails_the_check() {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\documentclass{article}\n\\usepackage{missing}\n\\begin{document}x\\end{document}\n",
+        )
+        .unwrap();
+        let failed = project.path().join("failed.log");
+        std::fs::write(
+            &failed,
+            "(./main.tex\n! LaTeX Error: File `missing.sty' not found.\n\nType X to quit.\n!  ==> Fatal error occurred, no output PDF file produced!\n",
+        )
+        .unwrap();
+        let run = check_with_log(project.path(), &failed);
+        assert_eq!(run.payload["inputs"]["build_status"], "error");
+        assert!(
+            run.rows.iter().any(|row| row.rule_id == "compile-failed"),
+            "{:?}",
+            run.rows.iter().map(|row| &row.rule_id).collect::<Vec<_>>()
+        );
+
+        let good = project.path().join("good.log");
+        std::fs::write(
+            &good,
+            "(./main.tex\nOverfull \\hbox (2.0pt too wide) in paragraph at lines 3--4\nOutput written on main.pdf (1 page, 1234 bytes).\n",
+        )
+        .unwrap();
+        let run = check_with_log(project.path(), &good);
+        assert_eq!(run.payload["inputs"]["build_status"], "success");
+        assert!(!run.rows.iter().any(|row| row.rule_id == "compile-failed"));
+    }
+
+    #[test]
+    fn sources_in_dependency_folders_are_not_checked_as_the_projects() {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\documentclass{article}\n\\begin{document}\n\\section{A}\\label{sec:a}\n\\end{document}\n",
+        )
+        .unwrap();
+        std::fs::create_dir_all(project.path().join("node_modules/pkg")).unwrap();
+        std::fs::write(
+            project.path().join("node_modules/pkg/vendored.tex"),
+            "\\section{B}\\label{sec:a} TODO\n",
+        )
+        .unwrap();
+        let run = execute(CheckInput {
+            root: project.path().to_path_buf(),
+            main_document: "main.tex".into(),
+            engine: Engine::Tectonic,
+            tex_flavor: None,
+            typst_version: None,
+            build_dir: project.path().join(".oleafly/build"),
+            profile: None,
+            anonymous: false,
+            checks: vec![CheckArg::All],
+            build_log: None,
+            pdf: None,
+            no_build_output: true,
+        })
+        .unwrap();
+        let reported = serde_json::to_string(&run.payload).unwrap();
+        assert!(!reported.contains("node_modules"), "{reported}");
+    }
+
+    #[test]
+    fn stale_output_names_what_was_left_out() {
+        let found = |log_stale, pdf_stale| artifacts::BuildArtifacts {
+            stale: true,
+            log_stale,
+            pdf_stale,
+            ..Default::default()
+        };
+        // After a failed build the log is new and the kept PDF is old.
+        let pdf_only = stale_output_warning(&found(false, true)).message;
+        assert!(pdf_only.contains("The PDF is older") && !pdf_only.contains("log"));
+        let log_only = stale_output_warning(&found(true, false)).message;
+        assert!(log_only.contains("build log is older") && !log_only.contains("PDF"));
+        assert!(stale_output_warning(&found(true, true))
+            .message
+            .contains("log and PDF"));
     }
 
     #[test]

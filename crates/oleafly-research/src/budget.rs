@@ -146,6 +146,28 @@ impl BudgetClock {
     }
 }
 
+/// Keeps a clock paused for as long as it lives (an approval wait). Dropping
+/// it resumes the clock, so a wait that is dropped (a tool call that timed
+/// out) never leaves the budget paused for good.
+pub struct ClockPause(Option<Arc<BudgetClock>>);
+
+impl ClockPause {
+    pub fn new(clock: Option<Arc<BudgetClock>>) -> Self {
+        if let Some(clock) = &clock {
+            clock.pause();
+        }
+        Self(clock)
+    }
+}
+
+impl Drop for ClockPause {
+    fn drop(&mut self) {
+        if let Some(clock) = self.0.take() {
+            clock.resume();
+        }
+    }
+}
+
 /// The clocks of running tasks, by task id.
 #[derive(Default)]
 pub struct BudgetClocks {
@@ -199,6 +221,19 @@ mod tests {
         clock.resume();
         assert_eq!(clock.active_ms(), 5 * 60 * 1000);
         assert_eq!(clock.remaining(), Duration::from_secs(115 * 60));
+    }
+
+    #[test]
+    fn a_dropped_pause_resumes_the_clock() {
+        let (time, clock) = clock(TaskBudget::default(), None);
+        let clock = Arc::new(clock);
+        time.advance(Duration::from_secs(60));
+        let pause = ClockPause::new(Some(clock.clone()));
+        time.advance(Duration::from_secs(60));
+        assert_eq!(clock.active_ms(), 60 * 1000);
+        drop(pause);
+        time.advance(Duration::from_secs(60));
+        assert_eq!(clock.active_ms(), 2 * 60 * 1000);
     }
 
     #[test]

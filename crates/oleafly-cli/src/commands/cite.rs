@@ -299,7 +299,9 @@ fn isbn_candidate(text: &str) -> Option<String> {
     let thirteen = candidate.len() == 13
         && candidate.bytes().all(|byte| byte.is_ascii_digit())
         && (candidate.starts_with("978") || candidate.starts_with("979"));
+    // Ten bytes of ASCII, not ten bytes that may end inside a character.
     let ten = candidate.len() == 10
+        && candidate.is_ascii()
         && candidate[..9].bytes().all(|byte| byte.is_ascii_digit())
         && (candidate.as_bytes()[9].is_ascii_digit() || candidate.as_bytes()[9] == b'X');
     (thirteen || ten).then_some(candidate)
@@ -735,14 +737,17 @@ pub(crate) struct BibTarget {
     pub declared: bool,
 }
 
-fn read_bounded(path: &Path, limit: u64) -> Option<String> {
+fn read_bounded_bytes(path: &Path, limit: u64) -> Option<Vec<u8>> {
     let metadata = std::fs::metadata(path).ok()?;
     if !metadata.is_file() || metadata.len() > limit {
         return None;
     }
-    std::fs::read(path)
-        .ok()
-        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+    std::fs::read(path).ok()
+}
+
+/// For reading only: bytes that aren't UTF-8 become U+FFFD.
+fn read_bounded(path: &Path, limit: u64) -> Option<String> {
+    read_bounded_bytes(path, limit).map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
 }
 
 fn slash(path: &Path) -> String {
@@ -924,6 +929,19 @@ pub(crate) fn app_project_lock(
     crate::app_paths::worktree_lock(data_root, identity.id(), LOCK_BUDGET).map(Some)
 }
 
+/// `updated` is `content` with an entry appended, in LF; in a CRLF file the
+/// appended part gets CRLF too.
+fn keep_line_endings(content: &str, updated: String) -> String {
+    let kept = content.trim_end();
+    match updated.strip_prefix(kept) {
+        Some(appended) if content.contains("\r\n") => format!(
+            "{kept}{}",
+            appended.replace("\r\n", "\n").replace('\n', "\r\n")
+        ),
+        _ => updated,
+    }
+}
+
 fn add_to_bibliography(
     ctx: &Context,
     workspace: &Workspace,
@@ -932,12 +950,25 @@ fn add_to_bibliography(
 ) -> Result<AddOutcome, CliError> {
     let _lock = app_project_lock(ctx, workspace)?;
     let content = if target.path.is_file() {
-        read_bounded(&target.path, MAX_BIB_BYTES).ok_or_else(|| {
+        let bytes = read_bounded_bytes(&target.path, MAX_BIB_BYTES).ok_or_else(|| {
             CliError::new(
                 ErrorKind::InvalidInput,
                 "bib.unreadable",
                 format!("Oleafly couldn't read {}.", target.relative),
             )
+        })?;
+        // The file is written back whole, so a Latin-1 or Windows-1252 one
+        // would lose every accented letter to U+FFFD.
+        String::from_utf8(bytes).map_err(|_| {
+            CliError::new(
+                ErrorKind::InvalidInput,
+                "bib.not_utf8",
+                format!(
+                    "{} isn't UTF-8, so Oleafly won't rewrite it.",
+                    target.relative
+                ),
+            )
+            .hint("Save it as UTF-8 in your editor, then add the entry again.")
         })?
     } else {
         String::new()
@@ -950,6 +981,7 @@ fn add_to_bibliography(
         )
     })?;
     if matches!(outcome, AddOutcome::Added { .. }) {
+        let updated = keep_line_endings(&content, updated);
         if let Some(parent) = target.path.parent() {
             std::fs::create_dir_all(parent).map_err(CliError::from)?;
         }
@@ -1700,6 +1732,68 @@ mod tests {
                 .unwrap_err()
                 .code,
             "usage.invalid"
+        );
+    }
+
+    #[test]
+    fn ten_byte_titles_with_wide_letters_are_titles_not_a_panic() {
+        // Each is ten bytes long with a character across byte 9.
+        for title in ["Книга", "Programmé", "A机器学", "ΑΒΓΔΕ"] {
+            assert_eq!(title.len(), 10, "{title}");
+            assert_eq!(kind(title), (InputKind::Title, title.into()), "{title}");
+        }
+        assert_eq!(
+            kind("0-8044-2957-X"),
+            (InputKind::Isbn, "080442957X".into())
+        );
+    }
+
+    #[test]
+    fn a_bibliography_that_is_not_utf8_is_left_alone() {
+        let ctx = Context::for_test(Default::default());
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\documentclass{article}\n\\bibliography{refs}\n",
+        )
+        .unwrap();
+        let latin1 = b"@book{m,\n  author = {M\xfcller, Hans},\n  title = {Z\xfcrich}\n}\n";
+        std::fs::write(project.path().join("refs.bib"), latin1).unwrap();
+        let workspace = Workspace::detected(project.path(), None).unwrap();
+        let target = bibliography_target(&ctx, &workspace, None).unwrap();
+        let entry = "@article{x,\n  author = {Knuth, Donald},\n  title = {Literate Programming},\n  year = {1984}\n}";
+        let error = add_to_bibliography(&ctx, &workspace, &target, entry).unwrap_err();
+        assert_eq!(error.code, "bib.not_utf8");
+        assert_eq!(
+            std::fs::read(project.path().join("refs.bib")).unwrap(),
+            latin1
+        );
+    }
+
+    #[test]
+    fn a_crlf_bibliography_gets_crlf_for_the_new_entry() {
+        let ctx = Context::for_test(Default::default());
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\documentclass{article}\n\\bibliography{refs}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.path().join("refs.bib"),
+            "\u{feff}@book{a,\r\n  title = {One}\r\n}\r\n",
+        )
+        .unwrap();
+        let workspace = Workspace::detected(project.path(), None).unwrap();
+        let target = bibliography_target(&ctx, &workspace, None).unwrap();
+        let entry = "@article{x,\n  author = {Knuth, Donald},\n  title = {Literate Programming},\n  year = {1984}\n}";
+        add_to_bibliography(&ctx, &workspace, &target, entry).unwrap();
+        let written = std::fs::read_to_string(project.path().join("refs.bib")).unwrap();
+        assert!(written.starts_with("\u{feff}@book{a,"));
+        assert!(written.contains("@article"));
+        assert_eq!(
+            written.matches('\n').count(),
+            written.matches("\r\n").count()
         );
     }
 

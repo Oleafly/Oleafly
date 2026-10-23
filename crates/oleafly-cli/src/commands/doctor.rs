@@ -117,9 +117,9 @@ async fn run_doctor(ctx: &Context) -> Result<Outcome, CliError> {
             (engine == Some(Engine::Typst)).then_some(&inventory),
         );
         if let Some((pin, summary)) = &settings {
-            println!("Typst settings:");
+            crate::human::out_line("Typst settings:");
             for line in typst_settings_lines(pin.as_deref(), summary) {
-                println!("{line}");
+                crate::human::out_line(&crate::human::plain(&line));
             }
         }
     }
@@ -558,32 +558,33 @@ fn status_of(status: DoctorStatus) -> CheckStatus {
 }
 
 fn print_doctor(report: &DoctorReport, inventory: Option<&TypstInventory>) {
+    use crate::human::{out_line, plain};
     for check in &report.checks {
-        anstream::println!(
+        out_line(&format!(
             "{} {}: {}",
             status_label(status_of(check.status)),
             check.name,
-            check.message
-        );
+            plain(&check.message)
+        ));
     }
     let Some(inventory) = inventory else {
         return;
     };
     if inventory.found.is_empty() {
-        println!("Typst found: none");
+        out_line("Typst found: none");
         return;
     }
-    println!("Typst found:");
+    out_line("Typst found:");
     for found in &inventory.found {
         let version = found
             .version
             .as_ref()
             .map_or_else(|| "unknown".to_string(), ToString::to_string);
-        println!(
+        out_line(&format!(
             "  {version:<12} {:<13} {}",
             found.source.label(),
-            found.path.display()
-        );
+            plain(&found.path.display().to_string())
+        ));
     }
 }
 

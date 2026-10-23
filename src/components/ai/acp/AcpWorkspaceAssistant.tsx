@@ -5,6 +5,7 @@ import {
 import { Brain, Plus, Server } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ChatComposerHandle } from "@/components/ai/composer/ChatComposer";
 import { useResearchChatActions } from "@/components/ai/use-research-chat-actions";
@@ -36,7 +37,7 @@ import { PermissionCard } from "./PermissionCard";
 import { useAcpConversation, useAcpHasMessages, useAcpMessages, type AcpConversation } from "./conversation";
 import type { ResearchChatActions } from "@/lib/chat-activity";
 import { Spinner } from "@/components/ui/spinner";
-import { AcpComposer, restoreDraft } from "./AcpComposer";
+import { AcpComposer, acpDraftId, restoreDraft } from "./AcpComposer";
 import { AcpComposerChips } from "./AcpComposerChips";
 import { AcpControls } from "./AcpControls";
 import { AcpSessionHeader } from "./AcpSessionHeader";
@@ -117,6 +118,13 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     try { await action(); } catch (error_) { setError(acpError(error_)); }
     finally { setBusy(false); }
   }, [setError]);
+  // A draft stays with what the user is writing for when a conversation starts from this panel.
+  const carryDraft = (fromId: string) => {
+    const state = useAcpSessionsStore.getState();
+    const id = state.activeByProject[projectId];
+    const started = id ? state.sessions[id] : undefined;
+    if (started) useComposerDrafts.getState().moveDraft(fromId, acpDraftId(projectId, null, started));
+  };
   const chooseAgent = (nextAgentId: string) => {
     const state = useAcpSessionsStore.getState();
     if (state.composers[projectId]?.agentId === nextAgentId) return;
@@ -129,12 +137,14 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     );
     void perform(async () => {
       if (ready) {
+        const shownDraft = acpDraftId(projectId, open.agentId, open);
         try {
           await useAcpSessionsStore.getState().start(projectId, nextAgentId);
         } catch (error_) {
           setComposer(projectId, { agentId: open.agentId });
           throw error_;
         }
+        carryDraft(shownDraft);
         return;
       }
       if (["ready", "auth_required"].includes(open.status)) {
@@ -169,7 +179,9 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       if (disposed) { detach(); return; }
       const state = useAcpSessionsStore.getState();
       await Promise.all([state.refreshCatalog(), state.loadProject(projectId)]);
-      const id = state.activeByProject[projectId];
+      if (disposed) return;
+      // Read after the waits: a conversation opened from History meanwhile stays shown.
+      const id = useAcpSessionsStore.getState().activeByProject[projectId];
       if (id) await state.open(projectId, id);
     })().catch((error_: unknown) => { if (!disposed) setError(acpError(error_)); });
     const refresh = () => { void useAcpSessionsStore.getState().refreshCatalog().catch(() => {}); };
@@ -185,6 +197,8 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     if (!catalog.length) return;
     if (agentId && catalog.some((agent) => agent.definition.id === agentId)) return;
     const preferred = catalog.find((agent) => acpUsable(agent)) ?? catalog[0];
+    // Text typed before the catalog loaded was kept under no agent.
+    useComposerDrafts.getState().moveDraft(acpComposerId(projectId, null), acpComposerId(projectId, preferred.definition.id));
     setComposer(projectId, { agentId: preferred.definition.id });
   }, [catalog, agentId, projectId, setComposer]);
 
@@ -203,7 +217,10 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
 
   const canStart = !!selectedAgent && acpUsable(selectedAgent) && !busy && !running;
   const start = () => void perform(async () => {
-    if (agentId) await useAcpSessionsStore.getState().start(projectId, agentId);
+    if (!agentId) return;
+    const shownDraft = acpDraftId(projectId, agentId, session);
+    await useAcpSessionsStore.getState().start(projectId, agentId);
+    carryDraft(shownDraft);
   });
   // Enter with no conversation starts one and sends the message when ready.
   const startWithDraft = useCallback((draft: AcpPromptDraft) => {
@@ -212,7 +229,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       try {
         await useAcpSessionsStore.getState().startWithPrompt(projectId, agentId, draft);
       } catch (error_) {
-        restoreDraft(projectId, agentId, draft);
+        restoreDraft(projectId, acpDraftId(projectId, agentId, undefined), draft);
         throw error_;
       }
     });
@@ -228,7 +245,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     const presetSkill = preset.skillId
       ? skills.find((entry) => entry.id === preset.skillId && entry.validation.status === "valid" && isSkillAvailable(entry))
       : undefined;
-    useComposerDrafts.getState().setText(acpComposerId(projectId, agentId), preset.prompt);
+    useComposerDrafts.getState().setText(acpDraftId(projectId, agentId, session), preset.prompt);
     setComposer(projectId, { skill: presetSkill ? { id: presetSkill.id, name: presetSkill.name } : null });
     focusComposer();
     if (!session && canStart && !starting) start();
@@ -300,9 +317,8 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     return t(($) => $.ai.acp.noResume);
   };
 
-  const conversationArea = () => (
-    <>
-    {(busy || starting) && !hasMessages ? (
+  const conversationArea = () =>
+    (busy || starting) && !hasMessages ? (
       <output
         data-testid="acp-connecting"
         className="mx-auto flex max-w-sm flex-col items-center gap-3 py-16 text-center"
@@ -326,43 +342,88 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       </output>
     ) : (
       conversationBody()
-    )}
-    </>
-  );
+    );
+
+  const reconnect = () =>
+    session &&
+    void perform(async () => {
+      useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id));
+    });
 
   const statusBanners = () => (
     <>
-<TrustRequiredNotice
-  projectId={projectId}
-  reason={t(($) => $.errors.trust.agents)}
-  className="mx-3 my-2"
-/>
-{session?.remote && (
-  <div data-testid="acp-remote-banner" className="mx-3 my-2 flex items-center gap-2 rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
-    <Server className="size-3.5 shrink-0" />
-    {t(($) => $.ai.acp.remote.banner, { host: session.remote.host })}
-  </div>
-)}
-{(error || (session?.error && session.status !== "auth_required")) && <div role="alert" className="mx-3 my-2 select-text rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
-{session?.status === "auth_required" && (
-  <AcpSignIn projectId={projectId} session={session} agent={sessionAgent} busy={busy} perform={(action) => void perform(action)} />
-)}
-{session && ["disconnected", "cancelled", "failed"].includes(session.status) && <div className="border-t border-border p-3 text-xs">
-  {canReconnect(session) ? <Button variant="outline" size="sm" type="button" disabled={busy} onClick={() => void perform(async () => { useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id)); })}>{t(($) => $.ai.acp.reconnect)}</Button> : <p>{noResumeHint(session)}</p>}
-</div>}
-{(permissions.length > 0 || elicitations.length > 0) && <div className="max-h-[60vh] space-y-2 overflow-y-auto border-t border-border p-3">
-  {elicitations.map((request) => (
-    <ElicitationCard
-      key={request.id}
-      request={request}
-      agentName={sessionAgent?.definition.name ?? session?.agentId ?? ""}
-      onRespond={(action, content) => answerQuestion(request.id, action, content)}
-    />
-  ))}
-  {permissions.map((request) => <PermissionCard key={request.id} request={request} agentName={selectedAgent?.definition.name ?? session?.agentId} onChoose={choosePermission} />)}
-</div>}
+      <TrustRequiredNotice
+        projectId={projectId}
+        reason={t(($) => $.errors.trust.agents)}
+        className="mx-3 my-2"
+      />
+      {session?.remote && (
+        <div
+          data-testid="acp-remote-banner"
+          className="mx-3 my-2 flex items-center gap-2 rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground"
+        >
+          <Server className="size-3.5 shrink-0" />
+          {t(($) => $.ai.acp.remote.banner, { host: session.remote.host })}
+        </div>
+      )}
+      {(error || (session?.error && session.status !== "auth_required")) && (
+        <div
+          role="alert"
+          className="mx-3 my-2 select-text rounded-md border border-destructive/40 p-2 text-xs text-destructive"
+        >
+          {error ?? session?.error}
+        </div>
+      )}
+      {session?.status === "auth_required" && (
+        <AcpSignIn
+          projectId={projectId}
+          session={session}
+          agent={sessionAgent}
+          busy={busy}
+          perform={(action) => void perform(action)}
+        />
+      )}
+      {session && ["disconnected", "cancelled", "failed"].includes(session.status) && (
+        <div className="border-t border-border p-3 text-xs">
+          {canReconnect(session) ? (
+            <Button variant="outline" size="sm" type="button" disabled={busy} onClick={reconnect}>
+              {t(($) => $.ai.acp.reconnect)}
+            </Button>
+          ) : (
+            <p>{noResumeHint(session)}</p>
+          )}
+        </div>
+      )}
+      {(permissions.length > 0 || elicitations.length > 0) && (
+        <div className="max-h-[60vh] space-y-2 overflow-y-auto border-t border-border p-3">
+          {elicitations.map((request) => (
+            <ElicitationCard
+              key={request.id}
+              request={request}
+              agentName={sessionAgent?.definition.name ?? session?.agentId ?? ""}
+              onRespond={(action, content) => answerQuestion(request.id, action, content)}
+            />
+          ))}
+          {permissions.map((request) => (
+            <PermissionCard
+              key={request.id}
+              request={request}
+              agentName={selectedAgent?.definition.name ?? session?.agentId}
+              onChoose={choosePermission}
+            />
+          ))}
+        </div>
+      )}
     </>
   );
+
+  const trackScroll = () => {
+    const el = scrollRef.current;
+    if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
+  const loadEarlier = () => {
+    if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId));
+  };
 
   const leftControls = (
     <div className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden">
@@ -391,60 +452,82 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     </div>
   );
 
-  return <section className="flex h-full min-h-0 flex-col bg-sidebar text-foreground" aria-label={t(($) => $.ai.acp.assistantAriaLabel)} data-composer-panel>
-    {session && !isDelegatedSession(session) && (
-      <AcpSessionHeader
-        projectId={projectId}
-        session={session}
-        agentName={agentNameOf(session.agentId)}
-        busy={busy}
-        perform={(action) => void perform(action)}
-      />
-    )}
-    <div ref={scrollRef} data-testid="acp-transcript" className="min-h-0 flex-1 overflow-y-auto px-4 py-3" onScroll={() => { const el = scrollRef.current; if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
-      {hasEarlier && <Button variant="outline" size="sm" type="button" className="mb-3 w-full" disabled={busy} onClick={() => { if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId)); }}>{t(($) => $.ai.acp.loadEarlier)}</Button>}
-      {conversationArea()}
-    </div>
-    {statusBanners()}
-    {selectedAgent && selectedReadiness !== "ready" && (
-      <div data-testid="acp-readiness-card" className="px-3 pb-2 pt-1">
-        <BridgeInstallCard agent={selectedAgent} onError={setError} />
+  return (
+    <section
+      className="flex h-full min-h-0 flex-col bg-sidebar text-foreground"
+      aria-label={t(($) => $.ai.acp.assistantAriaLabel)}
+      data-composer-panel
+    >
+      {session && !isDelegatedSession(session) && (
+        <AcpSessionHeader
+          projectId={projectId}
+          session={session}
+          agentName={agentNameOf(session.agentId)}
+          busy={busy}
+          perform={(action) => void perform(action)}
+        />
+      )}
+      <div
+        ref={scrollRef}
+        data-testid="acp-transcript"
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+        onScroll={trackScroll}
+      >
+        {hasEarlier && (
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            className="mb-3 w-full"
+            disabled={busy}
+            onClick={loadEarlier}
+          >
+            {t(($) => $.ai.acp.loadEarlier)}
+          </Button>
+        )}
+        {conversationArea()}
       </div>
-    )}
-    {/* The agent is settled once the conversation has a message; "+" starts another. */}
-    {!hasMessages && (
-      <div className="px-3 pb-1.5 pt-1">
-        <AgentPickerRow
-          agents={agentRoster(catalog)}
-          selectedId={agentId}
-          disabled={running || busy || starting}
-          onSelect={chooseAgent}
+      {statusBanners()}
+      {selectedAgent && selectedReadiness !== "ready" && (
+        <div data-testid="acp-readiness-card" className="px-3 pb-2 pt-1">
+          <BridgeInstallCard agent={selectedAgent} onError={setError} />
+        </div>
+      )}
+      {/* The agent is settled once the conversation has a message; "+" starts another. */}
+      {!hasMessages && (
+        <div className="px-3 pb-1.5 pt-1">
+          <AgentPickerRow
+            agents={agentRoster(catalog)}
+            selectedId={agentId}
+            disabled={running || busy || starting}
+            onSelect={chooseAgent}
+          />
+        </div>
+      )}
+      <AcpComposerChips projectId={projectId} session={session} />
+      <div className="p-3 pt-1">
+        <AcpComposer
+          ref={composerRef}
+          projectId={projectId}
+          session={session}
+          agent={selectedAgent}
+          agentId={agentId}
+          onStart={startWithDraft}
+          onSend={followSentMessage}
+          onError={setError}
+          leftControls={leftControls}
+          trailingControls={session ? (
+            <AcpControls projectId={projectId} session={session} disabled={busy || running} onError={setError} />
+          ) : null}
         />
       </div>
-    )}
-    <AcpComposerChips projectId={projectId} session={session} />
-    <div className="p-3 pt-1">
-      <AcpComposer
-        ref={composerRef}
-        projectId={projectId}
-        session={session}
-        agent={selectedAgent}
-        agentId={agentId}
-        onStart={startWithDraft}
-        onSend={followSentMessage}
-        onError={setError}
-        leftControls={leftControls}
-        trailingControls={session ? (
-          <AcpControls projectId={projectId} session={session} disabled={busy || running} onError={setError} />
-        ) : null}
-      />
-    </div>
-    {cleanLibraryOpen && (
-      <Suspense fallback={null}>
-        <CleanLibraryDialog open onClose={() => setCleanLibraryOpen(false)} />
-      </Suspense>
-    )}
-  </section>;
+      {cleanLibraryOpen && (
+        <Suspense fallback={null}>
+          <CleanLibraryDialog open onClose={() => setCleanLibraryOpen(false)} />
+        </Suspense>
+      )}
+    </section>
+  );
 }
 
 const AcpConversationMessages = memo(function AcpConversationMessages({
@@ -536,16 +619,19 @@ const AcpThinkingRow = memo(function AcpThinkingRow({
   );
 });
 
-const STATUS_DOT: Record<AcpSession["status"], string> = {
-  connecting: "bg-primary animate-pulse",
-  auth_required: "bg-amber-500",
-  ready: "bg-emerald-500",
-  running: "bg-primary animate-pulse",
-  cancelling: "bg-amber-500 animate-pulse",
-  cancelled: "bg-muted-foreground/60",
-  disconnected: "bg-muted-foreground/60",
-  failed: "bg-destructive",
+const STATUS_TONE: Record<AcpSession["status"], BadgeVariant> = {
+  connecting: "primaryGhost",
+  auth_required: "warning",
+  ready: "success",
+  running: "primaryGhost",
+  cancelling: "warning",
+  cancelled: "muted",
+  disconnected: "muted",
+  failed: "destructive",
 };
+
+/** The statuses in which the agent is busy: their dot pulses, unless motion is reduced. */
+const PULSING_STATUSES: ReadonlySet<AcpSession["status"]> = new Set(["connecting", "running", "cancelling"]);
 
 function sessionStatusLabel(status: AcpSession["status"]): string {
   switch (status) {
@@ -571,15 +657,23 @@ function sessionStatusLabel(status: AcpSession["status"]): string {
 function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: AcpSession; agentName: string; busy: boolean }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (
-    <span
+    <Badge
+      variant={busy ? "outline" : STATUS_TONE[session.status]}
+      size="sm"
       data-testid="acp-session-status"
       data-status={session.status}
-      className="inline-flex h-6 max-w-44 shrink-0 items-center gap-1.5 rounded-full border bg-background px-2 text-[0.625rem] text-muted-foreground"
+      className="h-6 max-w-44 gap-1.5 px-2"
     >
       {busy ? (
         <Spinner className="size-2.5" />
       ) : (
-        <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[session.status])} />
+        <span
+          aria-hidden
+          className={cn(
+            "size-1.5 shrink-0 rounded-full bg-current",
+            PULSING_STATUSES.has(session.status) && "motion-safe:animate-pulse",
+          )}
+        />
       )}
       <span className="truncate">
         {busy
@@ -595,7 +689,7 @@ function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: Acp
       {!busy && session.status === "ready" && (
         <span className="sr-only"> {sessionStatusLabel(session.status)}</span>
       )}
-    </span>
+    </Badge>
   );
 }
 

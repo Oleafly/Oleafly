@@ -54,7 +54,7 @@ code in your browser. Every server also takes an access token.
 **Publish** creates a repository on the account you pick and pushes the project
 to it, or links the project to one of your repositories. **Link by address**
 takes the HTTPS or SSH address of any repository and pushes there. Oleafly
-won't save an address that has a password in it.
+won't save an address that has a password or an access token in it.
 
 Push, pull and fetch don't need an account in Oleafly. Over SSH, Git uses your
 own keys. Over HTTPS, Git uses the account saved for that server, or else your
@@ -74,7 +74,9 @@ for its own requests and for Git.
 
 **Import** can pick a repository from any connected account, or clone any
 repository by its address. The imported project keeps the repository's
-history.
+history. **Cancel** stops a clone that is taking too long, and so does
+closing the dialog. Oleafly clones into `clone-staging` in its data folder
+first and clears what a stopped clone left there.
 
 ## When Git is not installed
 

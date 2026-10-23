@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearch from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import type { SandboxStatus } from "./compute-api";
 import { checkProblem, ComputeSandboxCard } from "./ComputeSandboxCard";
@@ -59,6 +60,24 @@ describe("ComputeSandboxCard", () => {
           throw new Error(`Unexpected command: ${command}`);
       }
     });
+  });
+
+  it("says why the status could not be read and loads it again on retry", async () => {
+    mockInvoke.mockReset().mockRejectedValueOnce(new Error("The sandbox probe failed.")).mockImplementation(async () => current);
+    render(<ComputeSandboxCard />);
+    expect((await screen.findByRole("alert")).textContent).toContain("The sandbox probe failed.");
+
+    await userEvent.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+
+    expect(await screen.findByTestId("compute-sandbox")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows a loading state until the status arrives", async () => {
+    render(<ComputeSandboxCard />);
+    expect(screen.getByRole("status").textContent).toContain(enCommon.state.loading);
+    await screen.findByTestId("compute-sandbox");
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("offers the Windows beta switch only on Windows", async () => {

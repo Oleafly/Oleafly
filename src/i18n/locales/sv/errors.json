@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} nekade åtkomst till det här repositoriet. Kontrollera att ditt konto har åtkomst till det. Om organisationen använder enkel inloggning (SSO) måste du först godkänna din inloggning för den.",
+    "access_denied_account": "{{host}} nekade {{account}} åtkomst till det här repositoriet. Kontrollera att kontot kan använda det. Om organisationen använder enkel inloggning (SSO) måste du först godkänna din inloggning för den.",
     "account_missing": "Det finns inget Git-konto för {{host}}. Lägg till ett i Inställningar.",
     "archive_too_large": "Repositoriets filer är större än {{limit}} MB, så Oleafly kan inte importera dem. Klona repositoriet själv och öppna dess mapp i stället.",
-    "auth_rejected": "{{host}} avvisade din sparade inloggning. Logga in på {{host}} igen i Inställningar.",
+    "auth_rejected": "{{host}} avvisade den sparade inloggningen för {{account}}. Logga in på {{host}} igen i Inställningar.",
     "credentials_missing": "{{host}} bad om ett användarnamn och ett lösenord. Logga in på {{host}} i Inställningar, eller konfigurera en SSH-nyckel eller en credential helper för Git.",
     "credentials_rejected": "{{host}} avvisade användarnamnet och lösenordet som Git skickade. Logga in på {{host}} i Inställningar, eller uppdatera inloggningsuppgifterna som din Git använder.",
     "device_flow_unavailable": "Inloggning via webbläsaren är inte tillgänglig för {{host}} i den här versionen. Använd en åtkomsttoken i stället.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Det finns redan ett repositorium med det här namnet på {{host}}.",
     "forge_server_error": "{{host}} returnerade ett fel ({{status}}).",
     "forge_signed_out": "Din inloggning för {{host}} har gått ut eller återkallats. Logga in igen i Inställningar.",
+    "forge_sso_required": "{{host}} kräver att den här inloggningen godkänns för organisationens enkel inloggning (SSO). Godkänn den på {{host}} och försök sedan igen.",
     "forge_store": "Oleafly kunde inte läsa eller spara dina Git-konton.",
     "forge_token_invalid": "Det här ser inte ut som en åtkomsttoken. Klistra in hela token.",
     "forge_token_rejected": "{{host}} godtog inte den här token. Kontrollera att du kopierade hela token och att den inte har gått ut.",
     "forge_unknown_server": "Oleafly kunde inte avgöra vilken sorts server {{host}} är. Välj servertyp.",
     "host_key_unknown": "SSH känner inte till {{host}} än. Anslut till servern en gång från en terminal för att godkänna dess värdnyckel och försök sedan igen.",
     "host_unreachable": "Oleafly kunde inte nå {{host}}. Kontrollera adressen och din anslutning.",
+    "import_cancelled": "Importen avbröts.",
     "invalid_remote_url": "Ange HTTPS- eller SSH-adressen till ett Git-repositorium.",
     "nested_repository": "Projektet ligger i ett annat Git-repositorium, så Oleafly skapar inget separat repositorium här.",
     "not_installed": "Git är inte installerat på den här datorn. Installera Git och försök igen.",
     "push_rejected": "Fjärrgrenen har incheckningar som det här projektet inte har än. Gör en pull först och pusha sedan igen.",
     "remote_exists": "Projektet är redan länkat till {{remote}}.",
-    "remote_has_password": "Ta bort lösenordet från adressen. Oleafly loggar i stället in med ditt Git-konto eller dina egna inloggningsuppgifter för Git.",
+    "remote_has_password": "Ta bort lösenordet eller åtkomsttoken ur adressen. Oleafly loggar i stället in med ditt konto för Git-värdtjänsten eller dina egna inloggningsuppgifter för Git.",
     "repository_empty": "Det här repositoriet har inga incheckningar än, så det finns inget att importera.",
     "repository_not_found": "{{host}} har inget repositorium på den här adressen, eller så kan ditt konto inte se det.",
     "sign_in_cancelled": "Inloggningen avbröts i webbläsaren.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly kunde inte kontrollera ditt saldo hos {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 är inte installerat.",
+    "git_bash_missing": "Git Bash är inte installerat. Installera Git for Windows eller välj ett annat shell.",
+    "wsl_missing": "WSL är inte installerat.",
+    "wsl_no_distro": "WSL har ingen Linux-distribution än.",
+    "shell_path_empty": "Ange en sökväg till ett shell i Inställningar, eller välj ett annat shell.",
+    "shell_path_missing": "Det finns inget program i {{path}}."
+  },
   "mathpix": {
-    "keys_missing": "Lägg först till ditt app-ID och din nyckel för Mathpix under Inställningar, AI, Verktyg.",
+    "keys_missing": "Lägg först till ditt app-ID och din nyckel för Mathpix under Inställningar, AI-assistent, Verktyg.",
     "invalid_keys": "App-ID:t eller nyckeln innehåller tecken som Mathpix-nycklar aldrig har. Kopiera dem igen från Mathpix-konsolen.",
     "key_rejected": "Mathpix godtog inte de här nycklarna. Kontrollera app-ID:t och nyckeln i Mathpix-konsolen.",
     "rate_limited": "Mathpix begränsar förfrågningar just nu. Vänta en minut och försök sedan igen.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "Den här PDF:en är större än gränsen på 256 MB för Mathpix.",
     "timed_out": "Mathpix blev inte klar med den här PDF:en inom 30 minuter. Försök med färre sidor.",
     "cancelled": "Mathpix-konverteringen stoppades.",
-    "wrong_window": "Mathpix kan bara användas från Oleaflys huvudfönster."
+    "wrong_window": "Mathpix kan bara användas från Oleaflys huvudfönster.",
+    "pdf_too_large_ipc": "Den här datorn kan skicka PDF-filer till Mathpix på upp till 16 MB. Dela PDF:en och försök igen."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver är inte installerat. Installera det under Inställningar → Integrationer → Skrivbordsappar.",
+    "not_installed": "Cua Driver är inte installerat. Installera det under Inställningar, Integrationer, Skrivbordsappar.",
     "too_old": "Cua Driver {{version}} är för gammalt. Uppdatera till {{minimum}} eller senare.",
     "no_app_bundle": "Installera Cua Driver med det officiella installationsprogrammet så att det kan få macOS-behörigheterna.",
     "change_declined": "Du behöll dina tidigare inställningar för Skrivbordsappar.",

@@ -507,7 +507,7 @@ describe("ACP assistant acceptance", () => {
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     await waitFor(() => expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0));
     typeMessage(ui.getByLabelText("Message CLI agent"), "Half written question");
-    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture")]?.text).toBe("Half written question");
+    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture", "saved")]?.text).toBe("Half written question");
     ui.unmount();
     const reopened = render(<AcpWorkspaceAssistant projectId="paper" />);
     await waitFor(() => expect(reopened.getByLabelText("Message CLI agent")).toHaveValue("Half written question"));

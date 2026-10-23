@@ -52,6 +52,8 @@
   },
   "import": {
     "clonePlaceholder": "Literal address examples. Keep them unchanged.",
+    "noMatchLoaded": "Shown in the repository list when the search box matches none of the repositories loaded so far, while the Load more button below can still load more.",
+    "openFailed": "Shown in a notification when the system browser could not be opened on a repository's page. {{host}} is a product name such as GitHub or GitLab, or a server name such as gitlab.example.org.",
     "menu": {
       "local": "Menu heading for import sources on this computer",
       "cloud": "Menu heading for import sources on the internet"

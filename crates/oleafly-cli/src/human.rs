@@ -1,8 +1,11 @@
 //! Output for people: labelled, colour-aware lines on stderr. Colour follows
 //! `--color`, `NO_COLOR`, `CLICOLOR` and whether stderr is a terminal.
+use std::borrow::Cow;
+use std::io::Write;
+
 use anstyle::{AnsiColor, Style};
 
-use crate::contract::ColorMode;
+use crate::contract::{CliError, ColorMode};
 
 pub fn init_color(mode: ColorMode) {
     let choice = match mode {
@@ -13,9 +16,83 @@ pub fn init_color(mode: ColorMode) {
     choice.write_global();
 }
 
+/// `text` with what a terminal would act on made visible. Messages carry
+/// text from the project (a citation key, a file name, a line of the
+/// compiler's log), and a project can put an escape sequence in any of them:
+/// one that sets the clipboard, or rewrites the lines above. Escapes, bells,
+/// backspaces and the rest of the control characters become their Unicode
+/// pictures (`␛`), the 8-bit controls become U+FFFD, and a carriage return
+/// that doesn't end a line becomes `␍` (one that does is dropped, so CRLF
+/// reads as LF). Tabs and line feeds stay.
+pub fn plain(text: &str) -> Cow<'_, str> {
+    let acts = |character: char| character.is_control() && !matches!(character, '\n' | '\t' | '\r');
+    if !text.chars().any(acts) && !text.contains('\r') {
+        return Cow::Borrowed(text);
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut characters = text.chars().peekable();
+    while let Some(character) = characters.next() {
+        match character {
+            '\r' if characters.peek().is_none_or(|next| *next == '\n') => {}
+            '\r' => out.push('\u{240D}'),
+            '\u{7f}' => out.push('\u{2421}'),
+            '\u{00}'..='\u{1f}' if !matches!(character, '\n' | '\t') => {
+                out.push(char::from_u32(0x2400 + u32::from(character)).unwrap_or('\u{FFFD}'));
+            }
+            '\u{80}'..='\u{9f}' => out.push('\u{FFFD}'),
+            other => out.push(other),
+        }
+    }
+    Cow::Owned(out)
+}
+
 fn labelled(label: &str, color: AnsiColor, message: &str) {
     let style = Style::new().bold().fg_color(Some(color.into()));
-    anstream::eprintln!("{style}{label}:{style:#} {message}");
+    let mut stderr = anstream::stderr().lock();
+    // A closed pipe on stderr is not worth a panic.
+    let _ = writeln!(stderr, "{style}{label}:{style:#} {}", plain(message));
+}
+
+/// Text on stderr as it comes (the compiler's log, streamed), made safe for
+/// a terminal. Never fails the command.
+pub fn stream(text: &str) {
+    let mut stderr = std::io::stderr().lock();
+    let _ = write!(stderr, "{}", plain(text));
+}
+
+/// A line on stderr (made safe for a terminal), like `eprintln!` without the
+/// panic when stderr is a closed pipe.
+pub fn stderr_line(text: &str) {
+    let mut stderr = anstream::stderr().lock();
+    let _ = writeln!(stderr, "{}", plain(text));
+}
+
+/// A line on stdout, like `println!` without the panic when it is a closed
+/// pipe. Not made safe: the caller's own colour codes pass.
+pub fn out_line(text: &str) {
+    let mut stdout = anstream::stdout().lock();
+    let _ = writeln!(stdout, "{text}");
+}
+
+/// A write to stdout failed. When the reader has gone (`oleafly completions
+/// zsh | head`) that is no failure: the process ends quietly, as a filter
+/// does. Anything else is an error.
+pub fn stdout_failed(error: std::io::Error) -> CliError {
+    if error.kind() == std::io::ErrorKind::BrokenPipe
+        || (cfg!(windows) && matches!(error.raw_os_error(), Some(109 | 232)))
+    {
+        std::process::exit(0);
+    }
+    CliError::from(error)
+}
+
+/// Writes `bytes` to stdout (a generated script or a manual page).
+pub fn write_stdout(bytes: &[u8]) -> Result<(), CliError> {
+    let mut stdout = std::io::stdout().lock();
+    stdout
+        .write_all(bytes)
+        .and_then(|()| stdout.flush())
+        .map_err(stdout_failed)
 }
 
 pub fn error(message: &str) {
@@ -50,4 +127,35 @@ pub fn status_label(status: CheckStatus) -> String {
     };
     let style = Style::new().bold().fg_color(Some(color.into()));
     format!("{style}{text}{style:#}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terminal_control_sequences_are_made_visible() {
+        let hostile = "key\u{1b}]52;c;ZXZpbA==\u{7}\u{1b}[2Kdone\u{8}\u{9b}31m\u{7f}";
+        let shown = plain(hostile);
+        assert_eq!(
+            shown,
+            "key\u{241b}]52;c;ZXZpbA==\u{2407}\u{241b}[2Kdone\u{2408}\u{fffd}31m\u{2421}"
+        );
+        assert!(!shown.chars().any(|character| character.is_control()));
+        // Ordinary text, tabs, line feeds and any script come through as they are.
+        for text in ["plain", "tab\tseparated\nlines\n", "Книга 机器学 é"] {
+            assert_eq!(plain(text), text);
+        }
+        assert_eq!(plain("crlf\r\nline"), "crlf\nline");
+        assert!(matches!(plain("nothing to do"), Cow::Borrowed(_)));
+        // A carriage return that doesn't end a line could rewrite the one before.
+        assert_eq!(plain("fake ok\rreal"), "fake ok\u{240d}real");
+        assert_eq!(plain("trailing\r"), "trailing");
+    }
+
+    #[test]
+    fn a_closed_stdout_pipe_is_not_an_error_but_other_failures_are() {
+        let other = stdout_failed(std::io::Error::from(std::io::ErrorKind::PermissionDenied));
+        assert_eq!(other.code, "io.failed");
+    }
 }

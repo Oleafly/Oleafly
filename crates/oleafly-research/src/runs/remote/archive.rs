@@ -205,6 +205,49 @@ pub fn pack_workspace<W: Write>(
     Ok(packer.summary)
 }
 
+/// Refuses a workspace that [`pack_workspace`] would refuse, for an upload
+/// that does not go through it (rsync): files over `max_file` are left out
+/// by rsync itself, the rest count towards the file and size limits.
+pub fn check_upload_limits(root: &Path, limits: &PackLimits) -> Result<(), RunError> {
+    fn walk(
+        folder: &Path,
+        relative: &str,
+        limits: &PackLimits,
+        files: &mut usize,
+        bytes: &mut u64,
+    ) -> Result<(), RunError> {
+        let Ok(entries) = std::fs::read_dir(folder) else {
+            return Ok(());
+        };
+        for entry in entries.filter_map(Result::ok) {
+            let Some(name) = entry.file_name().to_str().map(str::to_owned) else {
+                continue;
+            };
+            let path = if relative.is_empty() {
+                name.clone()
+            } else {
+                format!("{relative}/{name}")
+            };
+            let Ok(metadata) = std::fs::symlink_metadata(entry.path()) else {
+                continue;
+            };
+            if metadata.is_dir() {
+                if !excluded(&path, &name) {
+                    walk(&entry.path(), &path, limits, files, bytes)?;
+                }
+            } else if metadata.is_file() && metadata.len() <= limits.max_file {
+                *files += 1;
+                *bytes += metadata.len();
+                if *files > limits.max_files || *bytes > limits.max_total {
+                    return Err(too_large(limits));
+                }
+            }
+        }
+        Ok(())
+    }
+    walk(root, "", limits, &mut 0, &mut 0)
+}
+
 /// The bytes [`pack_workspace`] would send, from file sizes alone.
 pub fn workspace_bytes(root: &Path) -> u64 {
     fn walk(folder: &Path, relative: &str, total: &mut u64, seen: &mut usize) {
@@ -308,13 +351,24 @@ pub struct UnpackSummary {
     pub files: usize,
     pub bytes: u64,
     pub skipped: Vec<String>,
+    /// The copy stopped at a size or count cap, and the rest of the archive
+    /// was not read (so it was not transferred either).
+    pub truncated: bool,
+    /// The transfer ran out of time; what arrived is kept.
+    pub timed_out: bool,
 }
 
 /// A safe relative path, or `None`: UTF-8, `/` separators only, no `..`,
-/// root, drive or NUL.
+/// root, drive or NUL. A colon is refused only where it means a drive or an
+/// alternate data stream (Windows); a file such as
+/// `metrics_2026-10-23T12:00:00.csv` is a plain name elsewhere.
 fn safe_relative(raw: &[u8]) -> Option<PathBuf> {
     let text = std::str::from_utf8(raw).ok()?;
-    if text.is_empty() || text.contains(['\\', '\0', ':']) || text.starts_with('/') {
+    if text.is_empty()
+        || text.contains(['\\', '\0'])
+        || (cfg!(windows) && text.contains(':'))
+        || text.starts_with('/')
+    {
         return None;
     }
     let mut path = PathBuf::new();
@@ -370,7 +424,6 @@ pub fn unpack_into<R: Read>(
     let entries = archive.entries().map_err(|error| {
         RunError::Remote(format!("The run's outputs could not be read: {error}"))
     })?;
-    let mut stopped = false;
     for entry in entries {
         let mut entry = entry.map_err(|error| {
             RunError::Remote(format!("The run's outputs could not be read: {error}"))
@@ -395,14 +448,16 @@ pub fn unpack_into<R: Read>(
             }
         }
         let size = entry.header().size().unwrap_or(u64::MAX);
-        if stopped || summary.files >= limits.max_files || size > limits.max_file {
+        if size > limits.max_file {
             note_skipped(&mut summary.skipped, display);
             continue;
         }
-        if summary.bytes + size > limits.max_total {
-            stopped = true;
+        // At a cap the rest is not read: the caller drops the stream, which
+        // ends the transfer instead of downloading what would be thrown away.
+        if summary.files >= limits.max_files || summary.bytes + size > limits.max_total {
             note_skipped(&mut summary.skipped, display);
-            continue;
+            summary.truncated = true;
+            break;
         }
         if let Some(parent) = relative
             .parent()
@@ -586,6 +641,115 @@ mod tests {
             std::fs::read_to_string(dest.join("ok.txt")).unwrap(),
             "fine"
         );
+    }
+
+    #[test]
+    fn a_colon_is_a_plain_character_outside_windows() {
+        let names = [
+            "metrics_2026-10-23T12:00:00.csv",
+            "ckpt:best.pt",
+            "sub/run:1/log.txt",
+        ];
+        for name in names {
+            assert_eq!(
+                safe_relative(name.as_bytes()).is_some(),
+                !cfg!(windows),
+                "{name}"
+            );
+        }
+        // These stay refused everywhere.
+        for name in ["../x", "/x", "a\\b", "C:\\x"] {
+            assert!(safe_relative(name.as_bytes()).is_none(), "{name}");
+        }
+        let dest = tempfile::tempdir().unwrap();
+        let archive = crafted(&[("metrics:1.csv", tar::EntryType::Regular, b"x")]);
+        let summary =
+            unpack_outputs(archive.as_slice(), dest.path(), &UnpackLimits::default()).unwrap();
+        assert_eq!(summary.files, usize::from(!cfg!(windows)));
+        assert_eq!(dest.path().join("metrics:1.csv").is_file(), !cfg!(windows));
+    }
+
+    /// A reader that counts the bytes taken from it.
+    struct Counting<R> {
+        inner: R,
+        read: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    impl<R: Read> Read for Counting<R> {
+        fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+            let count = self.inner.read(buffer)?;
+            self.read
+                .fetch_add(count, std::sync::atomic::Ordering::SeqCst);
+            Ok(count)
+        }
+    }
+
+    #[test]
+    fn unpacking_stops_reading_at_the_total_cap() {
+        // Twenty 256 KiB files of data that does not compress.
+        let noise = |seed: u32| -> Vec<u8> {
+            (0..256 * 1024u32)
+                .map(|index| ((index ^ seed).wrapping_mul(2_654_435_761) >> 13) as u8)
+                .collect()
+        };
+        let files: Vec<(String, Vec<u8>)> = (0..20)
+            .map(|index| (format!("f{index:02}"), noise(index)))
+            .collect();
+        let entries: Vec<(&str, tar::EntryType, &[u8])> = files
+            .iter()
+            .map(|(name, data)| (name.as_str(), tar::EntryType::Regular, data.as_slice()))
+            .collect();
+        let archive = crafted(&entries);
+        let read = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let dest = tempfile::tempdir().unwrap();
+        let root =
+            cap_std::fs::Dir::open_ambient_dir(dest.path(), cap_std::ambient_authority()).unwrap();
+        let summary = unpack_into(
+            Counting {
+                inner: archive.as_slice(),
+                read: read.clone(),
+            },
+            &root,
+            &UnpackLimits {
+                max_total: 3 * 256 * 1024,
+                ..UnpackLimits::default()
+            },
+        )
+        .unwrap();
+
+        assert_eq!(summary.files, 3);
+        assert!(summary.truncated);
+        assert_eq!(summary.skipped, vec!["f03".to_string()]);
+        // Most of the archive was never read, so it was never downloaded.
+        let taken = read.load(std::sync::atomic::Ordering::SeqCst);
+        assert!(taken < archive.len() / 2, "{taken} of {}", archive.len());
+    }
+
+    #[test]
+    fn rsync_uploads_keep_to_the_same_limits_as_packed_ones() {
+        let source = tree();
+        // Two files count (the links and excluded folders do not).
+        assert!(check_upload_limits(source.path(), &PackLimits::default()).is_ok());
+        let few = PackLimits {
+            max_files: 1,
+            ..PackLimits::default()
+        };
+        assert!(matches!(
+            check_upload_limits(source.path(), &few),
+            Err(RunError::Invalid(_))
+        ));
+        let small = PackLimits {
+            max_total: 8,
+            ..PackLimits::default()
+        };
+        assert!(check_upload_limits(source.path(), &small).is_err());
+        // A file over the per-file limit is left out by rsync, not counted.
+        let tiny_files = PackLimits {
+            max_file: 8,
+            max_files: 1,
+            ..PackLimits::default()
+        };
+        assert!(check_upload_limits(source.path(), &tiny_files).is_ok());
     }
 
     #[test]

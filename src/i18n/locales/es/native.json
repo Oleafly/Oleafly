@@ -100,6 +100,10 @@
       "action": "{{agent}} quiere {{action}}.",
       "steps": "{{agent}} quiere hacer estos pasos en una aplicación de escritorio:",
       "moreSteps": "Pasos que no se muestran: {{count}}",
+      "moreItems": "{{count}} elementos más que no se muestran",
+      "cut": "(+{{count}} caracteres no mostrados)",
+      "signedIn": "Esto actúa en tu propio navegador con la sesión iniciada.",
+      "signedInOn": "Esto actúa en tu propio navegador con la sesión iniciada, en {{origin}}.",
       "text": "Texto: «{{text}}»",
       "address": "Dirección: {{url}}",
       "allowOnce": "Permitir una vez",
@@ -130,7 +134,8 @@
       "message": "Los agentes podrán usar lo siguiente y seguirán preguntando antes de cada acción:",
       "confirm": "Permitir",
       "enabled": "Aplicaciones de escritorio",
-      "app": "Aplicación: {{name}}",
+      "app": "Aplicación: {{name}} ({{identity}})",
+      "more": "Y {{count}} más",
       "site": "Sitio web: {{origin}}",
       "signedIn": "Tu navegador con la sesión iniciada en {{origin}}",
       "scripted": "Scripts de Cua"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly sigue trabajando",
       "body": "Las tareas de investigación que marcaste para seguir ejecutándose continúan en segundo plano. Abre Oleafly para ver su progreso."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Las comprobaciones de permisos están desactivadas ({{mode}})",
+      "description": "El agente puede editar archivos y ejecutar comandos sin preguntar. Oleafly no pudo cambiarlo a otro modo. Cambia el modo en los ajustes del propio agente."
     }
   }
 }

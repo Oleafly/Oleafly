@@ -364,6 +364,11 @@ function loadStuckWindowRestore(): Promise<() => void> {
   return import("@/lib/stuck-window-restore").then((m) => m.startStuckWindowRestore());
 }
 
+// Research tasks ask this window for PDF text, so it answers whichever panel is open.
+function loadResearchPdfBridge(): Promise<() => void> {
+  return import("@/lib/research-pdf-bridge").then((m) => m.mountResearchPdfBridge());
+}
+
 const SIDEBAR_DEFAULT_PX = 340;
 
 function shownViewMode(detached: boolean, selected: ViewMode): ViewMode {
@@ -588,6 +593,7 @@ function AppContent() {
     void import("@/lib/desktop-apps").then((m) => m.syncDesktopAppsTool());
   }, [native]);
   useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
+  useTauriSubscription(native ? loadResearchPdfBridge : null, "start the research PDF bridge");
   useTauriSubscription(
     native ? loadStuckWindowRestore : null,
     "reopen the work after a stuck window reload",

@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} odmítl přístup k tomuto repozitáři. Zkontrolujte, že k němu váš účet má přístup. Pokud organizace používá jednotné přihlašování (SSO), nejdřív pro ni autorizujte své přihlášení.",
+    "access_denied_account": "{{host}} odmítl přístup k tomuto repozitáři pro {{account}}. Zkontrolujte, že tento účet ho může používat. Pokud organizace používá jednotné přihlašování (SSO), nejdřív pro ni autorizujte své přihlášení.",
     "account_missing": "Pro {{host}} neexistuje žádný účet hostingu Git. Přidejte ho v Nastavení.",
     "archive_too_large": "Soubory repozitáře jsou větší než {{limit}} MB, proto je Oleafly nemůže importovat. Naklonujte repozitář sami a otevřete jeho složku.",
-    "auth_rejected": "{{host}} odmítl vaše uložené přihlášení. Znovu se přihlaste k {{host}} v Nastavení.",
+    "auth_rejected": "{{host}} odmítl uložené přihlášení pro {{account}}. Znovu se přihlaste k {{host}} v Nastavení.",
     "credentials_missing": "{{host}} si vyžádal uživatelské jméno a heslo. Přihlaste se k {{host}} v Nastavení, nebo nastavte klíč SSH či pomocníka pro přihlašovací údaje Git.",
     "credentials_rejected": "{{host}} odmítl uživatelské jméno a heslo, které nabídl Git. Přihlaste se k {{host}} v Nastavení, nebo aktualizujte přihlašovací údaje, které váš Git používá.",
     "device_flow_unavailable": "V tomto sestavení se nelze k {{host}} přihlásit přes prohlížeč. Použijte místo toho přístupový token.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Repozitář s tímto názvem už na {{host}} existuje.",
     "forge_server_error": "{{host}} vrátil chybu ({{status}}).",
     "forge_signed_out": "Vaše přihlášení k {{host}} vypršelo nebo bylo odvoláno. Přihlaste se znovu v Nastavení.",
+    "forge_sso_required": "{{host}} vyžaduje, aby bylo toto přihlášení autorizováno pro jednotné přihlašování organizace. Autorizujte ho na {{host}} a zkuste to znovu.",
     "forge_store": "Oleafly nedokázal přečíst ani uložit vaše účty hostingu Git.",
     "forge_token_invalid": "Toto nevypadá jako přístupový token. Vložte celý token.",
     "forge_token_rejected": "{{host}} tento token nepřijal. Zkontrolujte, že jste zkopírovali celý token a že nevypršel.",
     "forge_unknown_server": "Oleafly nedokázal zjistit, o jaký server jde v případě {{host}}. Vyberte typ serveru.",
     "host_key_unknown": "SSH zatím {{host}} nezná. Připojte se k němu jednou z terminálu, přijměte jeho klíč hostitele a pak to zkuste znovu.",
     "host_unreachable": "Oleafly se nemohl spojit s {{host}}. Zkontrolujte adresu a připojení.",
+    "import_cancelled": "Import byl zrušen.",
     "invalid_remote_url": "Zadejte adresu HTTPS nebo SSH repozitáře Git.",
     "nested_repository": "Tento projekt je uvnitř jiného repozitáře Git, proto v něm Oleafly nevytvoří samostatný repozitář.",
     "not_installed": "Git v tomto počítači není nainstalován. Nainstalujte Git a zkuste to znovu.",
     "push_rejected": "Vzdálená větev má commity, které tento projekt ještě nemá. Nejdřív stáhněte změny a pak je znovu odešlete.",
     "remote_exists": "Tento projekt je už propojen s {{remote}}.",
-    "remote_has_password": "Odeberte heslo z adresy. Oleafly se místo toho přihlašuje vaším účtem hostingu Git nebo vašimi vlastními přihlašovacími údaji Git.",
+    "remote_has_password": "Odeberte z adresy heslo nebo přístupový token. Oleafly se místo toho přihlašuje vaším účtem hostingu Git nebo vašimi vlastními přihlašovacími údaji Git.",
     "repository_empty": "Tento repozitář zatím nemá žádné commity, takže není co importovat.",
     "repository_not_found": "{{host}} na této adrese nemá žádný repozitář, nebo jej váš účet nevidí.",
     "sign_in_cancelled": "Přihlášení bylo v prohlížeči zrušeno.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly nedokázal zkontrolovat váš zůstatek u {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 není nainstalovaný.",
+    "git_bash_missing": "Git Bash není nainstalovaný. Nainstalujte Git for Windows, nebo vyberte jiný shell.",
+    "wsl_missing": "WSL není nainstalované.",
+    "wsl_no_distro": "WSL zatím nemá žádnou distribuci Linuxu.",
+    "shell_path_empty": "Zadejte cestu ke shellu v Nastavení, nebo vyberte jiný shell.",
+    "shell_path_missing": "V umístění {{path}} není žádný program."
+  },
   "mathpix": {
-    "keys_missing": "Nejdřív přidejte ID aplikace a klíč Mathpix v části Nastavení, AI, Nástroje.",
+    "keys_missing": "Nejdřív přidejte ID aplikace a klíč Mathpix v části Nastavení, Asistent AI, Nástroje.",
     "invalid_keys": "Toto ID aplikace nebo klíč obsahuje znaky, které klíče Mathpix nikdy nemají. Zkopírujte je znovu z konzole Mathpix.",
     "key_rejected": "Mathpix tyto klíče nepřijal. Zkontrolujte ID aplikace a klíč v konzoli Mathpix.",
     "rate_limited": "Mathpix teď omezuje počet požadavků. Počkejte minutu a zkuste to znovu.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "Toto PDF překračuje limit Mathpix 256 MB.",
     "timed_out": "Mathpix toto PDF nezpracoval do 30 minut. Zkuste méně stránek.",
     "cancelled": "Převod v Mathpix byl zastaven.",
-    "wrong_window": "Mathpix lze používat jen z hlavního okna Oleafly."
+    "wrong_window": "Mathpix lze používat jen z hlavního okna Oleafly.",
+    "pdf_too_large_ipc": "Tento počítač umí posílat PDF do Mathpix o velikosti nejvýše 16 MB. Rozdělte PDF a zkuste to znovu."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver není nainstalovaný. Nainstalujte ho v části Nastavení → Integrace → Aplikace v počítači.",
+    "not_installed": "Cua Driver není nainstalovaný. Nainstalujte ho v části Nastavení, Integrace, Aplikace v počítači.",
     "too_old": "Cua Driver {{version}} je příliš starý. Aktualizujte ho na verzi {{minimum}} nebo novější.",
     "no_app_bundle": "Nainstalujte Cua Driver oficiálním instalačním programem, aby mohl držet oprávnění macOS.",
     "change_declined": "Ponechali jste si předchozí nastavení aplikací v počítači.",

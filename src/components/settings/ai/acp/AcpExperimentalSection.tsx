@@ -79,7 +79,7 @@ export function AcpExperimentalSection() {
               <SelectTrigger aria-label={t(($) => $.settings.ai.agents.inactivity.label)} data-testid="acp-inactivity" className="h-8 w-36 text-xs">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[100]">
                 {choices.map((value) => (
                   <SelectItem key={value} value={String(value)}>
                     {t(($) => $.settings.ai.agents.inactivity.minutes, { count: value })}

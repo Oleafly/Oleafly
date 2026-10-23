@@ -7,6 +7,7 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
+import type { BadgeVariant } from "@/components/ui/badge";
 import { i18n } from "@/i18n";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import type { ApprovalStatus, ResearchTaskStatus, RunState, TaskPhase } from "@/lib/research-tasks";
@@ -40,14 +41,14 @@ export const STATUS_ICONS: Record<ResearchTaskStatus, typeof CircleDashed> = {
   plan_ready: ClipboardCheck,
 };
 
-const STATUS_BADGES: Record<ResearchTaskStatus, string> = {
-  queued: "border-border bg-muted text-muted-foreground",
-  running: "border-primary/30 bg-primary/10 text-primary",
-  awaiting_review: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  completed: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  failed: "border-destructive/30 bg-destructive/10 text-destructive",
-  cancelled: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  plan_ready: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+const STATUS_BADGES: Record<ResearchTaskStatus, BadgeVariant> = {
+  queued: "muted",
+  running: "primaryGhost",
+  awaiting_review: "warning",
+  completed: "success",
+  failed: "destructive",
+  cancelled: "warning",
+  plan_ready: "warning",
 };
 
 const STATUS_DOTS: Record<ResearchTaskStatus, string> = {
@@ -60,7 +61,8 @@ const STATUS_DOTS: Record<ResearchTaskStatus, string> = {
   plan_ready: "bg-amber-500",
 };
 
-export function statusBadgeClass(status: ResearchTaskStatus): string {
+/** The `Badge` tone of a task status. */
+export function statusBadgeVariant(status: ResearchTaskStatus): BadgeVariant {
   return STATUS_BADGES[status];
 }
 

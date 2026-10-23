@@ -257,9 +257,75 @@ fn event_data(event: &str) -> Option<String> {
     (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
+/// The bytes of an event stream not yet split into events. Network chunks
+/// end anywhere (inside a character, between the `\r` and `\n` of a line
+/// end), so events are cut from the raw bytes and only a whole event is
+/// decoded.
+#[derive(Default)]
+struct EventBuffer {
+    bytes: Vec<u8>,
+}
+
+impl EventBuffer {
+    fn push(&mut self, chunk: &[u8]) {
+        self.bytes.extend_from_slice(chunk);
+    }
+
+    fn len(&self) -> usize {
+        self.bytes.len()
+    }
+
+    /// The next whole event (it ends with a blank line), line ends as `\n`.
+    fn next_event(&mut self) -> Option<String> {
+        let end = event_end(&self.bytes)?;
+        let event: Vec<u8> = self.bytes.drain(..end).collect();
+        Some(decode_event(&event))
+    }
+
+    /// What is left when the stream closes.
+    fn rest(&mut self) -> String {
+        decode_event(&std::mem::take(&mut self.bytes))
+    }
+}
+
+fn decode_event(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes)
+        .replace("\r\n", "\n")
+        .replace('\r', "\n")
+}
+
+/// Where the first event of `buffer` ends: just after its blank line. A
+/// line end is `\n`, `\r\n` or a lone `\r`; a `\r` at the very end waits for
+/// the next chunk, which may start with its `\n`.
+fn event_end(buffer: &[u8]) -> Option<usize> {
+    let mut index = 0;
+    let mut after_line_end = false;
+    while index < buffer.len() {
+        let length = match buffer[index] {
+            b'\n' => 1,
+            b'\r' => match buffer.get(index + 1) {
+                Some(b'\n') => 2,
+                Some(_) => 1,
+                None => return None,
+            },
+            _ => {
+                after_line_end = false;
+                index += 1;
+                continue;
+            }
+        };
+        index += length;
+        if after_line_end {
+            return Some(index);
+        }
+        after_line_end = true;
+    }
+    None
+}
+
 /// Reads an event stream until the response to `id`.
 async fn read_event_stream(mut response: reqwest::Response, id: u64) -> Result<Value, String> {
-    let mut buffer = String::new();
+    let mut buffer = EventBuffer::default();
     let mut total = 0usize;
     loop {
         let chunk = response
@@ -267,7 +333,7 @@ async fn read_event_stream(mut response: reqwest::Response, id: u64) -> Result<V
             .await
             .map_err(|error| transport_error(&error))?;
         let Some(chunk) = chunk else {
-            if let Some(found) = event_data(&buffer)
+            if let Some(found) = event_data(&buffer.rest())
                 .and_then(|data| serde_json::from_str::<Value>(&data).ok())
                 .and_then(|message| find_response(&message, id))
             {
@@ -279,9 +345,8 @@ async fn read_event_stream(mut response: reqwest::Response, id: u64) -> Result<V
         if total > MAX_STREAM_BYTES {
             return Err("its answer is too large".into());
         }
-        buffer.push_str(&String::from_utf8_lossy(&chunk).replace("\r\n", "\n"));
-        while let Some(end) = buffer.find("\n\n") {
-            let event: String = buffer.drain(..end + 2).collect();
+        buffer.push(&chunk);
+        while let Some(event) = buffer.next_event() {
             if let Some(found) = event_data(&event)
                 .and_then(|data| serde_json::from_str::<Value>(&data).ok())
                 .and_then(|message| find_response(&message, id))
@@ -311,6 +376,67 @@ mod tests {
         assert!(find_response(&batch, 8).is_none());
         let request = json!({"jsonrpc":"2.0","id":7,"method":"ping"});
         assert!(find_response(&request, 7).is_none());
+    }
+
+    fn events_from(chunks: &[&[u8]]) -> Vec<String> {
+        let mut buffer = EventBuffer::default();
+        let mut events = Vec::new();
+        for chunk in chunks {
+            buffer.push(chunk);
+            while let Some(event) = buffer.next_event() {
+                events.push(event);
+            }
+        }
+        let rest = buffer.rest();
+        if !rest.is_empty() {
+            events.push(rest);
+        }
+        events
+    }
+
+    #[test]
+    fn a_character_split_across_chunks_is_not_corrupted() {
+        let text = "data: {\"text\":\"日本語 café 😀\"}\n\n".as_bytes();
+        // Every split point, including the middle of each multi-byte character.
+        for split in 1..text.len() {
+            let events = events_from(&[&text[..split], &text[split..]]);
+            assert_eq!(
+                events,
+                ["data: {\"text\":\"日本語 café 😀\"}\n\n"],
+                "{split}"
+            );
+        }
+        let one_byte_chunks: Vec<&[u8]> = text.chunks(1).collect();
+        assert_eq!(
+            events_from(&one_byte_chunks),
+            ["data: {\"text\":\"日本語 café 😀\"}\n\n"]
+        );
+    }
+
+    #[test]
+    fn crlf_line_ends_split_across_chunks_still_end_the_event() {
+        let stream = b"data: {\"id\":1}\r\n\r\ndata: {\"id\":2}\r\n\r\n";
+        for split in 1..stream.len() {
+            let events = events_from(&[&stream[..split], &stream[split..]]);
+            assert_eq!(
+                events,
+                ["data: {\"id\":1}\n\n", "data: {\"id\":2}\n\n"],
+                "{split}"
+            );
+        }
+        // A lone \r is a line end too.
+        assert_eq!(
+            events_from(&[b"data: {\"id\":3}\r\rdata: {\"id\":4}\r\r"]),
+            ["data: {\"id\":3}\n\n", "data: {\"id\":4}\n\n"]
+        );
+    }
+
+    #[test]
+    fn an_event_that_never_ends_is_left_for_the_close() {
+        let mut buffer = EventBuffer::default();
+        buffer.push(b"data: {\"id\":5}\r");
+        assert!(buffer.next_event().is_none());
+        assert_eq!(event_data(&buffer.rest()), Some("{\"id\":5}".into()));
     }
 
     #[test]

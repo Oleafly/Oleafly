@@ -132,6 +132,104 @@ async fn legacy_set_mode_is_used_when_the_agent_has_only_modes() {
     runtime.close(&id).await.unwrap();
 }
 
+fn notices(runtime: &AcpRuntime, id: &str) -> Vec<serde_json::Value> {
+    runtime
+        .events(id, 0, 500)
+        .unwrap()
+        .events
+        .into_iter()
+        .filter(|event| event.kind == "notice")
+        .map(|event| event.data)
+        .collect()
+}
+
+#[tokio::test]
+async fn a_session_that_starts_with_permission_checks_off_is_moved_to_the_safe_mode() {
+    let (temp, runtime, session) = runtime(vec![
+        "--claude-options".into(),
+        "--start-mode".into(),
+        "bypassPermissions".into(),
+        "--record-requests".into(),
+    ])
+    .await;
+    let id = session.session.id.clone();
+    let snapshot = runtime.snapshot(&id).await.unwrap();
+    assert_eq!(current(&snapshot, "mode").as_deref(), Some("default"));
+    let requests = std::fs::read_to_string(temp.path().join("requests.jsonl")).unwrap();
+    assert!(requests
+        .lines()
+        .any(|line| line.contains("session/set_config_option") && line.contains("\"default\"")));
+    assert!(notices(&runtime, &id).is_empty());
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_legacy_session_in_yolo_mode_is_moved_to_the_default_mode() {
+    let (temp, runtime, session) = runtime(vec![
+        "--legacy-modes".into(),
+        "--start-mode".into(),
+        "yolo".into(),
+        "--record-requests".into(),
+    ])
+    .await;
+    let id = session.session.id.clone();
+    let snapshot = runtime.snapshot(&id).await.unwrap();
+    assert_eq!(
+        snapshot.session.controls.mode_id.as_deref(),
+        Some("default")
+    );
+    let requests = std::fs::read_to_string(temp.path().join("requests.jsonl")).unwrap();
+    assert!(requests.contains("session/set_mode"));
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn an_agent_that_stays_in_a_blocked_mode_is_reported_to_the_user() {
+    let (_temp, runtime, session) = runtime(vec![
+        "--claude-options".into(),
+        "--start-mode".into(),
+        "bypassPermissions".into(),
+        "--refuse-mode".into(),
+    ])
+    .await;
+    let id = session.session.id.clone();
+    let snapshot = runtime.snapshot(&id).await.unwrap();
+    assert_eq!(
+        current(&snapshot, "mode").as_deref(),
+        Some("bypassPermissions")
+    );
+    let notices = notices(&runtime, &id);
+    assert_eq!(notices.len(), 1);
+    assert_eq!(notices[0]["severity"], "warning");
+    assert!(notices[0]["title"]
+        .as_str()
+        .unwrap()
+        .contains("Bypass permissions"));
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn an_agent_that_goes_into_a_blocked_mode_later_is_moved_out_of_it() {
+    let (_temp, runtime, session) = runtime(vec!["--claude-options".into()]).await;
+    let id = session.session.id.clone();
+    runtime
+        .prompt(&id, "go-bypass".into(), Vec::new())
+        .await
+        .unwrap();
+    // The switch runs behind the update that announced the mode.
+    let mut mode = None;
+    for _ in 0..200 {
+        let snapshot = runtime.snapshot(&id).await.unwrap();
+        mode = current(&snapshot, "mode");
+        if mode.as_deref() == Some("default") {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+    }
+    assert_eq!(mode.as_deref(), Some("default"));
+    runtime.close(&id).await.unwrap();
+}
+
 #[tokio::test]
 async fn a_task_model_the_agent_lacks_is_reported_not_fatal() {
     let (_temp, runtime, session) = runtime(Vec::new()).await;

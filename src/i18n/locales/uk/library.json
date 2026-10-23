@@ -271,7 +271,9 @@
     "loadingRepositories": "Завантаження репозиторіїв…",
     "repositoriesFailed": "Не вдалося завантажити репозиторії.",
     "noRepositories": "Репозиторіїв не знайдено.",
+    "noMatchLoaded": "Серед завантажених поки що репозиторіїв немає збігів. Завантажте ще, щоб продовжити пошук.",
     "privateRepository": "Приватний репозиторій",
+    "openFailed": "Oleafly не вдалося відкрити {{host}} у вашому браузері.",
     "openOnHost": "Відкрити на {{host}}",
     "openRepositoryOnHost": "Відкрити {{name}} на {{host}}",
     "sources": {

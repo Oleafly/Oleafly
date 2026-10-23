@@ -313,6 +313,8 @@ fn gone_owner() -> ProcessIdentity {
 
 #[derive(Default)]
 struct FakeHelper {
+    /// The version the helper reports (`None`: unknown).
+    version: Mutex<Option<String>>,
     running: AtomicBool,
     hung: AtomicBool,
     fail_start: AtomicBool,
@@ -341,7 +343,11 @@ impl HelperControl for FakeHelper {
         HelperStatus {
             running,
             pid: None,
-            app_version: None,
+            app_version: self
+                .version
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .clone(),
             phase: running.then_some(Phase::Ready),
             mode: None,
             started_at: None,
@@ -683,6 +689,52 @@ async fn launch_adopts_a_dead_helpers_tasks_and_asks_a_live_one_for_its_own() {
     assert!(task.reclaim_requested);
     assert_eq!(task.owner, OwnerKind::Daemon);
     assert_eq!(FakeHelper::count(&helper.terminations), 0);
+}
+
+#[tokio::test]
+async fn a_helper_of_another_version_is_asked_to_stop_when_the_app_opens() {
+    let fixture = Fixture::new();
+    let live = fixture.helper_running("Live");
+    let helper = FakeHelper::running();
+    *helper.version.lock().unwrap() = Some("0.0.1-old".into());
+
+    let summary = reclaim(&fixture.state, &helper);
+
+    // Its task still comes back through the reclaim request, and the helper
+    // is told to stop so the next hand-off starts a fresh one.
+    assert_eq!(summary.requested, 1);
+    assert_eq!(FakeHelper::count(&helper.stop_requests), 1);
+    assert!(
+        fixture
+            .app_store()
+            .require(&live.id)
+            .unwrap()
+            .reclaim_requested
+    );
+
+    // The same version, or one that is not known, keeps running.
+    for version in [Some(oleafly_cli::version::APP_VERSION.to_string()), None] {
+        let helper = FakeHelper::running();
+        *helper.version.lock().unwrap() = version;
+        reclaim(&fixture.state, &helper);
+        assert_eq!(FakeHelper::count(&helper.stop_requests), 0);
+    }
+}
+
+#[test]
+fn only_a_running_helper_of_a_known_other_version_is_stale() {
+    let status = |running: bool, version: Option<&str>| HelperStatus {
+        running,
+        app_version: version.map(str::to_owned),
+        ..FakeHelper::running().status()
+    };
+    assert!(helper_is_stale(&status(true, Some("0.0.1-old"))));
+    assert!(!helper_is_stale(&status(
+        true,
+        Some(oleafly_cli::version::APP_VERSION)
+    )));
+    assert!(!helper_is_stale(&status(true, None)));
+    assert!(!helper_is_stale(&status(false, Some("0.0.1-old"))));
 }
 
 #[tokio::test]
@@ -1077,6 +1129,23 @@ fn a_late_heartbeat_marks_the_helper_as_not_responding() {
     assert!(!heartbeat_is_fresh(&status(None), now));
 }
 
+#[test]
+fn a_helper_that_is_stopping_or_exiting_does_not_take_new_tasks() {
+    let status = |running: bool, phase: Option<Phase>| HelperStatus {
+        running,
+        phase,
+        ..FakeHelper::running().status()
+    };
+    // Nothing runs: start one.
+    assert!(needs_new_helper(&status(false, None)));
+    // A live one takes the tasks.
+    assert!(!needs_new_helper(&status(true, Some(Phase::Ready))));
+    assert!(!needs_new_helper(&status(true, Some(Phase::Starting))));
+    // One on its way out has already looked at its work.
+    assert!(needs_new_helper(&status(true, Some(Phase::Exiting))));
+    assert!(needs_new_helper(&status(true, Some(Phase::Stopping))));
+}
+
 // Usage.
 
 fn spool_event(id: &str, task: Option<&str>, cost: Option<f64>) -> UsageSpoolEvent {
@@ -1186,6 +1255,50 @@ fn the_spool_reaches_the_usage_ledger_once() {
     );
 }
 
+#[test]
+fn an_event_appended_during_an_import_is_read_by_the_next_one() {
+    let before: SpoolSignature = (100, None);
+    let appended: SpoolSignature = (180, None);
+    // Nothing changed since the signature was read: the spool is seen.
+    assert_eq!(
+        signature_to_keep(before, Some(before), false, || unreachable!()),
+        Some(before)
+    );
+    // The helper appended an event after the import read the spool: the
+    // later signature must not stand for an event that was never imported.
+    assert_eq!(
+        signature_to_keep(before, Some(appended), false, || false),
+        None
+    );
+    // Compaction rewrote the file and everything in it was imported.
+    assert_eq!(
+        signature_to_keep(before, Some(appended), false, || true),
+        Some(appended)
+    );
+    // A failed insert always reads the spool again.
+    assert_eq!(signature_to_keep(before, Some(before), true, || true), None);
+}
+
+#[test]
+fn the_spool_counts_as_imported_only_when_every_event_is() {
+    let data = tempfile::tempdir().unwrap();
+    usage_spool::append(
+        data.path(),
+        &spool_event("daemon-1", Some("task-1"), Some(0.25)),
+    )
+    .unwrap();
+    let mut imported = HashSet::from(["daemon-1".to_string()]);
+    assert!(spool_fully_imported(data.path(), &imported));
+    usage_spool::append(
+        data.path(),
+        &spool_event("daemon-2", Some("task-1"), Some(0.5)),
+    )
+    .unwrap();
+    assert!(!spool_fully_imported(data.path(), &imported));
+    imported.insert("daemon-2".into());
+    assert!(spool_fully_imported(data.path(), &imported));
+}
+
 // Dispatch and installer.
 
 #[test]
@@ -1224,8 +1337,13 @@ fn the_daemon_flag_is_recognised_only_as_its_own_argument() {
 fn the_windows_installer_stops_the_helper_and_removes_its_sign_in_entry() {
     let hooks = include_str!("../../windows/hooks.nsh");
     assert!(hooks.contains("!macro NSIS_HOOK_PREINSTALL"));
-    assert!(hooks.contains(r"$PROFILE\.oleafly\daemon\stop-request"));
-    assert!(hooks.contains(r"$PROFILE\.oleafly\daemon\state.json"));
+    // The tool finds the data folder itself (a relocated one included) and
+    // checks the helper's lock; the installer never looks at a state file,
+    // which a crash leaves behind.
+    assert!(hooks.contains(r#"daemon stop --wait 30 --force"#));
+    assert!(hooks.contains(r#"${FileExists} "$INSTDIR\oleafly-cli.exe""#));
+    assert!(!hooks.contains(r"$PROFILE\.oleafly"));
+    assert!(!hooks.contains("state.json"));
     assert!(hooks.contains(login_item::RUN_VALUE_NAME));
     assert!(
         hooks.contains("DeleteRegValue HKCU \"Software\\Microsoft\\Windows\\CurrentVersion\\Run\"")

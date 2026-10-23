@@ -407,7 +407,13 @@ describe("0.4.8 program checks", () => {
     // A program that only needs a sign-in works, so it is kept.
     expect(acpSetAgentProgram).toHaveBeenCalledWith("pi", PICKED);
     fireEvent.click(within(result).getByRole("button", { name: copy.signIn }));
-    await waitFor(() => expect(openTerminalWith).toHaveBeenCalledWith({ title: "Sign in to Pi", command: "/usr/local/bin/pi", args: ["login"], env: {} }));
+    await waitFor(() => expect(openTerminalWith).toHaveBeenCalledWith({
+      title: "Sign in to Pi",
+      command: "/usr/local/bin/pi",
+      args: ["login"],
+      env: {},
+      confirmText: "Pi signs in through the command below, which runs in a terminal tab. Check it before you agree.",
+    }));
     expect(acpSignInCommand).toHaveBeenCalledWith("paper", "pi", null, "login");
     expect(await within(result).findByText(copy.afterSignIn)).toBeInTheDocument();
   });

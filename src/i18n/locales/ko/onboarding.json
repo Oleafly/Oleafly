@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "연동",
-      "content": "GitHub, alphaXiv, Zotero, 인용 검색, Oleafly의 로컬 MCP 서버를 연결합니다."
+      "content": "Git 호스팅(GitHub, GitLab, Codeberg 등), alphaXiv, Zotero, 인용 검색, 에이전트용 데스크톱 앱, Oleafly의 로컬 MCP 서버를 연결합니다."
     },
     "shortcuts": {
       "title": "키보드 단축키",

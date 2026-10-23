@@ -266,7 +266,9 @@
     "loadingRepositories": "Chargement des dépôts…",
     "repositoriesFailed": "Les dépôts n'ont pas pu être chargés.",
     "noRepositories": "Aucun dépôt trouvé.",
+    "noMatchLoaded": "Aucune correspondance dans les dépôts chargés jusqu'ici. Chargez-en plus pour continuer à chercher.",
     "privateRepository": "Dépôt privé",
+    "openFailed": "Oleafly n'a pas pu ouvrir {{host}} dans votre navigateur.",
     "openOnHost": "Ouvrir sur {{host}}",
     "openRepositoryOnHost": "Ouvrir {{name}} sur {{host}}",
     "sources": {

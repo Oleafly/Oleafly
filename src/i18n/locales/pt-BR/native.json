@@ -100,6 +100,10 @@
       "action": "{{agent}} quer {{action}}.",
       "steps": "{{agent}} quer executar estas etapas em um aplicativo de desktop:",
       "moreSteps": "Etapas não exibidas: {{count}}",
+      "moreItems": "{{count}} itens a mais não exibidos",
+      "cut": "(+{{count}} caracteres não exibidos)",
+      "signedIn": "Isso acontece no seu próprio navegador conectado.",
+      "signedInOn": "Isso acontece no seu próprio navegador conectado, em {{origin}}.",
       "text": "Texto: \"{{text}}\"",
       "address": "Endereço: {{url}}",
       "allowOnce": "Permitir uma vez",
@@ -130,7 +134,8 @@
       "message": "Os agentes poderão usar o seguinte, e ainda vão perguntar antes de cada ação:",
       "confirm": "Permitir",
       "enabled": "Aplicativos de desktop",
-      "app": "Aplicativo: {{name}}",
+      "app": "Aplicativo: {{name}} ({{identity}})",
+      "more": "E mais {{count}}",
       "site": "Site: {{origin}}",
       "signedIn": "Seu navegador conectado em {{origin}}",
       "scripted": "Scripts do Cua"
@@ -188,6 +193,12 @@
     "started": {
       "title": "O Oleafly continua trabalhando",
       "body": "As tarefas de pesquisa que você marcou para continuar rodando seguem em segundo plano. Abra o Oleafly para ver o progresso."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Verificações de permissão desligadas ({{mode}})",
+      "description": "O agente pode editar arquivos e executar comandos sem perguntar. O Oleafly não conseguiu trocar para outro modo. Mude o modo nas configurações do próprio agente."
     }
   }
 }

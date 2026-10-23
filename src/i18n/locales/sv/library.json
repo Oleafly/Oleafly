@@ -261,7 +261,9 @@
     "loadingRepositories": "Läser in repositorier…",
     "repositoriesFailed": "Repositorierna kunde inte läsas in.",
     "noRepositories": "Inga repositorier hittades.",
+    "noMatchLoaded": "Ingen träff bland de repositorier som har lästs in hittills. Läs in fler för att fortsätta leta.",
     "privateRepository": "Privat repositorium",
+    "openFailed": "Oleafly kunde inte öppna {{host}} i din webbläsare.",
     "openOnHost": "Öppna på {{host}}",
     "openRepositoryOnHost": "Öppna {{name}} på {{host}}",
     "sources": {

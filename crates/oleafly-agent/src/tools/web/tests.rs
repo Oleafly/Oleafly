@@ -10,6 +10,7 @@ struct Route {
     status: &'static str,
     content_type: &'static str,
     body: Vec<u8>,
+    location: Option<String>,
 }
 
 fn route(status: &'static str, content_type: &'static str, body: impl Into<Vec<u8>>) -> Route {
@@ -17,6 +18,14 @@ fn route(status: &'static str, content_type: &'static str, body: impl Into<Vec<u
         status,
         content_type,
         body: body.into(),
+        location: None,
+    }
+}
+
+fn redirect(status: &'static str, location: impl Into<String>) -> Route {
+    Route {
+        location: Some(location.into()),
+        ..route(status, "text/plain", "")
     }
 }
 
@@ -62,8 +71,13 @@ fn site(routes: Vec<(&'static str, Route)>) -> Site {
                 .get(path.as_str())
                 .cloned()
                 .unwrap_or_else(|| route("404 Not Found", "text/plain", "missing"));
+            let location = reply
+                .location
+                .as_deref()
+                .map(|location| format!("Location: {location}\r\n"))
+                .unwrap_or_default();
             let head = format!(
-                "HTTP/1.1 {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                "HTTP/1.1 {}\r\nContent-Type: {}\r\n{location}Content-Length: {}\r\nConnection: close\r\n\r\n",
                 reply.status,
                 reply.content_type,
                 reply.body.len()
@@ -350,4 +364,153 @@ fn other_tools_are_not_web_tools() {
         },
     ));
     assert!(output.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn punctuation_added_to_a_seen_url_is_not_fetched() {
+    let site = site(vec![
+        ("/page", route("200 OK", "text/plain", "body")),
+        ("/page.,;:)", route("200 OK", "text/plain", "smuggled")),
+    ]);
+    let url = format!("{}/page", site.base);
+    let ctx = WebToolContext::for_tests(None);
+    ctx.observe_text(&format!("Please read {url} and summarize it"));
+
+    let tricked = run_web_tool(&ctx, &fetch_call(&format!("{url}.,;:)"), None))
+        .await
+        .unwrap();
+    assert!(
+        tricked
+            .output
+            .contains("has not appeared in this conversation"),
+        "{}",
+        tricked.output
+    );
+    assert_eq!(site.hits.load(Ordering::SeqCst), 0);
+
+    let honest = run_web_tool(&ctx, &fetch_call(&url, None)).await.unwrap();
+    assert!(honest.output.contains("body"), "{}", honest.output);
+    let requests = site.requests.lock().unwrap().clone();
+    assert!(requests
+        .iter()
+        .any(|request| request.starts_with("GET /page ")));
+    assert!(!requests
+        .iter()
+        .any(|request| request.starts_with("GET /page.")));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_redirect_is_followed_and_the_new_site_robots_txt_applies() {
+    let closed = site(vec![
+        (
+            "/robots.txt",
+            route("200 OK", "text/plain", "User-agent: *\nDisallow: /\n"),
+        ),
+        ("/p", route("200 OK", "text/plain", "private")),
+    ]);
+    let open = site(vec![("/p", route("200 OK", "text/plain", "public"))]);
+    let start = site(vec![
+        (
+            "/to-closed",
+            redirect("302 Found", format!("{}/p", closed.base)),
+        ),
+        (
+            "/to-open",
+            redirect("301 Moved Permanently", format!("{}/p#frag", open.base)),
+        ),
+        ("/relative", redirect("303 See Other", "/landing")),
+        ("/landing", route("200 OK", "text/plain", "landed")),
+    ]);
+    let client = WebClient::for_tests();
+
+    let error = web_fetch(&client, &format!("{}/to-closed", start.base), &options())
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(
+            error,
+            WebError::Robots {
+                unreachable: false,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+    assert_eq!(
+        closed.hits.load(Ordering::SeqCst),
+        0,
+        "the page was never requested"
+    );
+
+    let page = web_fetch(&client, &format!("{}/to-open", start.base), &options())
+        .await
+        .unwrap();
+    assert_eq!(page.markdown, "public");
+    assert_eq!(page.url, format!("{}/p", open.base));
+
+    let landed = web_fetch(&client, &format!("{}/relative", start.base), &options())
+        .await
+        .unwrap();
+    assert_eq!(landed.markdown, "landed");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn redirects_are_bounded_and_may_not_leave_http_and_https() {
+    let looping = site(vec![("/loop", redirect("302 Found", "/loop"))]);
+    let error = web_fetch(
+        &WebClient::for_tests(),
+        &format!("{}/loop", looping.base),
+        &options(),
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(error, WebError::NotAllowed(_)), "{error:?}");
+    assert_eq!(
+        looping.hits.load(Ordering::SeqCst),
+        client::MAX_REDIRECTS + 1
+    );
+
+    let elsewhere = site(vec![(
+        "/out",
+        redirect("302 Found", "ftp://example.org/file"),
+    )]);
+    let error = web_fetch(
+        &WebClient::for_tests(),
+        &format!("{}/out", elsewhere.base),
+        &options(),
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(error, WebError::NotAllowed(_)), "{error:?}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_robots_txt_that_redirects_is_followed() {
+    let site = site(vec![
+        ("/robots.txt", redirect("301 Moved Permanently", "/rules")),
+        (
+            "/rules",
+            route("200 OK", "text/plain", "User-agent: *\nDisallow: /secret\n"),
+        ),
+        ("/secret", route("200 OK", "text/plain", "hidden")),
+        ("/open", route("200 OK", "text/plain", "visible")),
+    ]);
+    let client = WebClient::for_tests();
+    let error = web_fetch(&client, &format!("{}/secret", site.base), &options())
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(
+            error,
+            WebError::Robots {
+                unreachable: false,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+    let page = web_fetch(&client, &format!("{}/open", site.base), &options())
+        .await
+        .unwrap();
+    assert_eq!(page.markdown, "visible");
 }

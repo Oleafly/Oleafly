@@ -225,6 +225,7 @@
       "closeOne": "Close terminal",
       "closeProject": "Close project",
       "dontAsk": "Don't ask again",
+      "dontAskHint": "To turn it back on, go to Settings, Appearance, Terminal, Ask before closing a busy terminal.",
       "many_one": "A program is still running in {{count}} terminal.",
       "many_other": "Programs are still running in {{count}} terminals.",
       "named": "{{process}} is still running in {{title}}.",

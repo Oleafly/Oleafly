@@ -19,8 +19,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   listResearchTaskApprovals: vi.fn(async () => []),
 }));
 
-vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: vi.fn(async () => () => {}) }));
-
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ runExternalProjectMutation: vi.fn() }) },
 }));

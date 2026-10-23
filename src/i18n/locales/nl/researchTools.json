@@ -201,7 +201,10 @@
       "unavailable": "Niet beschikbaar",
       "saving": "Opslaan...",
       "saveTask": "Taak opslaan",
-      "createTask": "Taak maken"
+      "createTask": "Taak maken",
+      "replaceText": "De titel en instructies die je hebt getypt vervangen door deze starter?",
+      "keepText": "De mijne houden",
+      "replaceConfirm": "Vervangen"
     },
     "starter": {
       "literatureReview": {
@@ -245,6 +248,10 @@
       "dependencies": "Afhankelijkheden",
       "dependencyUnavailable": "Niet beschikbaar",
       "noActivity": "Voor deze run is geen activiteit vastgelegd.",
+      "activityGap_one": "{{count}} item ertussen wordt niet getoond.",
+      "activityGap_other": "{{count}} items ertussen worden niet getoond.",
+      "activityMore": "Meer activiteit wordt nog niet getoond.",
+      "keepRunningDesktopApps": "Deze taak gebruikt desktop-apps, waarvoor je achter de computer moet zijn.",
       "startToRecord": "Start deze taak om de activiteit vast te leggen.",
       "reasoning": "Gemelde redenering",
       "savedArtifact": "{{label}} opgeslagen",
@@ -318,6 +325,10 @@
       "kindRun": "Een run starten",
       "kindMcp": "Een hulpmiddel gebruiken",
       "expires": "Wacht tot {{time}}",
+      "detailCommand": "Volledige opdracht",
+      "detailRun": "Details van de run",
+      "detailMcp": "Toolargumenten",
+      "loadFailed": "Wachtende verzoeken konden niet worden geladen.",
       "status": {
         "approved": "Goedgekeurd",
         "denied": "Geweigerd",
@@ -346,8 +357,9 @@
       "noRuns": "Geen lopende runs.",
       "budget": "Budget",
       "timeUsed": "{{used}} van {{total}}",
-      "costUsed": "${{used}} van ${{limit}}",
-      "costSpent": "${{used}} uitgegeven",
+      "costUsed": "{{used}} van {{limit}}",
+      "costSpent": "{{used}} uitgegeven",
+      "ledgerCapped": "De nieuwste {{limit}} resultaten worden getoond.",
       "costUnknown": "De kosten van dit model zijn onbekend.",
       "runsUsed": "{{used}} van {{limit}} runs",
       "runsUsedNoLimit": "{{used}} runs",
@@ -380,6 +392,10 @@
       "mcpServers": "MCP-servers die taken kunnen gebruiken",
       "mcpServersHint": "Taken roepen deze hulpmiddelen aan volgens de opdrachtregels van elke taak.",
       "noMcpServers": "Er zijn geen MCP-servers ingesteld.",
+      "networkHint": "Opdrachten in taken kunnen het internet bereiken. Elke taak kan dit nog uitzetten.",
+      "loadFailed": "Je instellingen voor onderzoek konden niet worden geladen.",
+      "sectionName": "Onderzoek",
+      "resetConfirm": "Zet de standaardwaarden van Onderzoek terug: wakker houden, meldingen, netwerktoegang, het tijdbudget en de MCP-servers die taken kunnen gebruiken. Run-doelen en achtergrondtaken blijven ongewijzigd.",
       "saveFailed": "Je instellingen voor onderzoek konden niet worden opgeslagen. Probeer het opnieuw."
     }
   },
@@ -891,7 +907,10 @@
     "fileReady": "{{fileName}} staat klaar",
     "saveWordHint": "Sla het Word-document op wanneer je zover bent.",
     "resultPlaceholder": "Hier verschijnt je omgezette resultaat.",
-    "progressConvertingSource": "De broncode omzetten naar Typst"
+    "progressConvertingSource": "De broncode omzetten naar Typst",
+    "pageRange": "Pagina's",
+    "pageRangePlaceholder": "Alle pagina's, of een bereik zoals 1-50",
+    "pageRangeInvalid": "Vul één paginanummer in, of een bereik zoals 1-50."
   },
   "converters": {
     "imageToLatex": {
@@ -1098,7 +1117,9 @@
     "fileTooLarge": "Kies een bestand kleiner dan 128 MB.",
     "emptySheet": "Het gekozen blad is leeg.",
     "arxivInputRequired": "Vul een arXiv-ID in of kies een bronarchief.",
-    "equationToTypst": "Pandoc kon deze vergelijking niet omzetten naar Typst. Controleer de LaTeX-wiskunde en probeer het opnieuw."
+    "equationToTypst": "Pandoc kon deze vergelijking niet omzetten naar Typst. Controleer de LaTeX-wiskunde en probeer het opnieuw.",
+    "pdfTooManyPages": "Deze scan heeft {{pages}} pagina's, en Oleafly neemt er maximaal {{limit}} per keer over. Vul onder het bestand een paginabereik in zoals 1-{{limit}}.",
+    "outputLimit": "Het model kreeg niet genoeg ruimte om het af te maken, dus de transcriptie zou onvolledig zijn. Kies een model met een grotere uitvoerlimiet bij Instellingen, AI, Hulpmiddelen, of neem een kleiner deel over."
   },
   "converterNotes": {
     "scannedPages": "{{pages}} gescande pagina's overgenomen met {{model}}. Controleer vergelijkingen en tabellen voordat je het resultaat gebruikt.",
@@ -1740,10 +1761,14 @@
     "startAtLabel": "Starten op",
     "startNow": "Als ik hem start",
     "keepRunning": "Blijven draaien als Oleafly gesloten is",
-    "keepRunningHint": "Zet eerst werk op de achtergrond aan bij Instellingen, Onderzoek.",
+    "keepRunningHint": "Zet eerst Achtergrondtaken aan bij Instellingen, Onderzoek.",
     "invalidMetric": "Gebruik letters, cijfers, punten, streepjes of underscores.",
     "invalidCost": "Vul een bedrag boven nul in.",
-    "invalidRuns": "Vul een geheel getal van 1 tot 1.000 in."
+    "invalidRuns": "Vul een geheel getal van 1 tot 1.000 in.",
+    "invalidStart": "Kies een starttijd binnen de komende 30 dagen.",
+    "invalidStartFormat": "Gebruik het formaat {{example}}.",
+    "startAtFormat": "Typ de tijd als {{example}}.",
+    "problemHidden": "Een optie in Opdracht klopt niet. Open Opdracht om te zien welke."
   },
   "runs": {
     "status": {
@@ -1755,11 +1780,6 @@
       "cancelled": "Gestopt",
       "lost": "Verloren"
     }
-  },
-  "record": {
-    "title": "Onderzoeksverslag",
-    "openHandoff": "Overdracht openen",
-    "openReport": "Rapport openen"
   },
   "evidence": {
     "title": "Controle van het bewijs",
@@ -1811,8 +1831,9 @@
       "edit": "Bewerken",
       "remove": "Verwijderen",
       "removeTitle": "{{label}} verwijderen?",
-      "removeConfirm": "Runs die daar al gestart zijn, blijven doorgaan.",
+      "removeConfirm": "Runs die daar al gestart zijn, blijven doorgaan. Taken die er nog op wachten om te starten, mislukken.",
       "forgetHostKey": "Hostsleutel vergeten",
+      "reviewHostKey": "Hostsleutel controleren",
       "notTested": "Niet getest",
       "tested": "Getest {{time}}",
       "testFailed": "Test mislukt",
@@ -1903,7 +1924,8 @@
       "none": "Geen hosts gevonden in je SSH-configuratie.",
       "added": "Al toegevoegd",
       "add_one": "{{count}} host toevoegen",
-      "add_other": "{{count}} hosts toevoegen"
+      "add_other": "{{count}} hosts toevoegen",
+      "skipped": "Niet toegevoegd: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Sandbox op deze computer",
@@ -1934,6 +1956,7 @@
       "runsOn": "Draait op {{target}}",
       "runsLocal": "Draait op deze computer.",
       "missing": "Het doel dat deze taak gebruikte is verwijderd. Kies een ander doel.",
+      "loadFailed": "Je run-doelen konden niet worden geladen.",
       "windowsOff": "Zet de Windows-sandbox aan bij Instellingen om opdrachten op deze computer uit te voeren.",
       "openSettings": "Instellingen openen",
       "resources": "Slurm-resources"
@@ -1947,6 +1970,7 @@
       "movingBackHint": "Deze taak komt terug naar Oleafly als de huidige stap klaar is."
     },
     "earlierActivity": "Eerdere activiteit tonen",
+    "earlierTruncated": "Alleen de eerste {{limit}} items van deze eerdere run worden getoond.",
     "keepRunningFailed": "Kon deze instelling niet wijzigen. Probeer het opnieuw."
   }
 }

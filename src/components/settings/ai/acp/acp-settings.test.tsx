@@ -31,7 +31,7 @@ import { chooseOption } from "@/components/ai/acp/tests/ui-fixtures";
 import { AcpAgentChoices } from "./AcpAgentChoices";
 import { AcpExperimentalSection } from "./AcpExperimentalSection";
 import { AcpProvidersSection } from "./AcpProvidersSection";
-import { HermesSection, remoteProblem } from "./HermesSection";
+import { HermesSection, remoteIssues, remoteProblem } from "./HermesSection";
 
 const prefs = (overrides: Partial<AcpPreferences> = {}): AcpPreferences => ({
   experimentalV2: false, experimentalProviders: false, inactivityMinutes: 20, ...overrides,
@@ -183,7 +183,9 @@ describe("Routing an agent through an Oleafly key", () => {
     vi.mocked(acpAgentPreferences).mockResolvedValue({ effort: null, mode: null, provider: null });
     vi.mocked(acpProviderChoices).mockResolvedValue([]);
     render(<AcpProvidersSection agentId="claude" />);
-    expect(await screen.findByText("Add an API key under Settings, AI to use it here.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Add an API key in Settings, AI Assistant, Providers and keys to use it here."),
+    ).toBeInTheDocument();
   });
 
   it("reports a failure to save the key choice", async () => {
@@ -268,6 +270,50 @@ describe("Hermes for this project", () => {
     })));
   });
 
+  it("says why the remote buttons are disabled and what is not saved yet", async () => {
+    vi.mocked(acpHermesSettings).mockResolvedValue(hermes());
+    vi.mocked(acpHermesStatus).mockResolvedValue(status());
+    vi.mocked(acpSetHermesSettings).mockResolvedValue(status({ mode: "remote" }));
+    render(<HermesSection projectId="paper" />);
+    await screen.findByText("Gateway running");
+    fireEvent.click(screen.getByRole("radio", { name: "Remote over SSH" }));
+
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    expect(screen.getByText("Test connection and Save need valid values for: Host and Project folder on that machine."))
+      .toHaveAttribute("id", save.getAttribute("aria-describedby"));
+    expect(screen.getByText("Not saved yet. Until you save, this project keeps using: Default profile (shared).")).toBeInTheDocument();
+    // An untouched empty field stays quiet; the folder shows what to type.
+    expect(screen.queryByText("Enter the host name or user@host.")).toBeNull();
+    expect(screen.getByText("The full path on that machine, such as /home/ada/paper.")).toBeInTheDocument();
+
+    const host = screen.getByLabelText("Host");
+    fireEvent.blur(host);
+    expect(screen.getByText("Enter the host name or user@host.")).toBeInTheDocument();
+    fireEvent.change(host, { target: { value: "-oProxy" } });
+    expect(host).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("Use only letters, digits, dots, dashes and @, and don't start with a dash.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Project folder on that machine"), { target: { value: "papers" } });
+    expect(screen.getByText("Use the full path, starting with /.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Port"), { target: { value: "70000" } });
+    expect(screen.getByText("Use a port from 1 to 65535.")).toBeInTheDocument();
+    expect(acpSetHermesSettings).not.toHaveBeenCalled();
+
+    fireEvent.change(host, { target: { value: "lab" } });
+    fireEvent.change(screen.getByLabelText("Port"), { target: { value: "" } });
+    fireEvent.change(screen.getByLabelText("Project folder on that machine"), { target: { value: "/home/ada/paper" } });
+    expect(save).toBeEnabled();
+    expect(host).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText(/need valid values for/)).toBeNull();
+    expect(screen.getByText("Not saved yet. Until you save, this project keeps using: Default profile (shared).")).toBeInTheDocument();
+
+    fireEvent.click(save);
+    await waitFor(() => expect(acpSetHermesSettings).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText(/Not saved yet/)).toBeNull());
+    fireEvent.change(screen.getByLabelText("Hermes command"), { target: { value: "/opt/hermes" } });
+    expect(screen.getByText("Not saved yet. Save to use these changes.")).toBeInTheDocument();
+  });
+
   it("reports a failed connection test and saves a valid remote at once", async () => {
     const remote = { host: "lab", port: null, folder: "/home/ada/paper", command: "/opt/hermes/bin/hermes", profile: null };
     vi.mocked(acpHermesSettings).mockResolvedValue(hermes({ remote }));
@@ -315,6 +361,14 @@ describe("remote Hermes checks", () => {
     expect(remoteProblem(ok)).toBe(false);
     expect(remoteProblem({ ...ok, port: 22, profile: "lab-1", command: "/usr/local/bin/hermes" })).toBe(false);
     expect(remoteProblem({ ...ok, profile: "" })).toBe(false);
+  });
+
+  it("names the field that is wrong", () => {
+    expect(remoteIssues(ok)).toEqual({});
+    expect(remoteIssues({ ...ok, host: "", folder: "" })).toEqual({ host: "required", folder: "required" });
+    expect(remoteIssues({ ...ok, host: "lab;rm", port: 0, folder: "rel", command: "x", profile: "Bad" })).toEqual({
+      host: "invalid", port: "invalid", folder: "invalid", command: "invalid", profile: "invalid",
+    });
   });
 
   it("refuses a bad host, port, folder, command or profile", () => {

@@ -74,6 +74,7 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   toastErrorUnique: vi.fn(),
   toastSuccess: vi.fn(),
+  toastInfo: vi.fn(),
   logError: vi.fn(),
   createSkill: vi.fn(),
   refetchSkills: vi.fn(),
@@ -222,6 +223,7 @@ vi.mock("@/lib/toast", () => ({
     error: (...args: unknown[]) => mocks.toastError(...args),
     errorUnique: (...args: unknown[]) => mocks.toastErrorUnique(...args),
     success: (...args: unknown[]) => mocks.toastSuccess(...args),
+    info: (...args: unknown[]) => mocks.toastInfo(...args),
   },
 }));
 

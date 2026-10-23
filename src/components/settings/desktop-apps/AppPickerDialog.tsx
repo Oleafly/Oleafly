@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import { SettingsPath } from "@/components/settings/SettingsPath";
 import { describeError } from "@/lib/app-error";
 import { cuaDriverPickApp, type AllowedApp, type BlockReason, type InstalledApp } from "@/lib/desktop-apps";
 import { cn } from "@/lib/utils";
-import { filterApps, sameApp, useInstalledApps } from "./desktop-apps-queries";
+import { appRowKey, matchApps, MAX_PICKER_ROWS, sameApp, useInstalledApps } from "./desktop-apps-queries";
 
 export interface AppPickerDialogProps {
   open: boolean;
@@ -26,19 +26,17 @@ export interface AppPickerDialogProps {
   onPick(app: InstalledApp): void;
 }
 
-function appKey(app: InstalledApp): string {
-  return app.bundleId ?? app.executable ?? app.name;
-}
-
 /** Picks an installed app agents may use. Blocked apps show why. */
 export default function AppPickerDialog({ open, onOpenChange, existing, onPick }: AppPickerDialogProps) {
   const { t } = useTranslation(["common", "settings"]);
   const apps = useInstalledApps(open);
+  const reasonIds = useId();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<InstalledApp | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choosing, setChoosing] = useState(false);
-  const shown = useMemo(() => filterApps(apps.data ?? [], query), [apps.data, query]);
+  const matches = useMemo(() => matchApps(apps.data ?? [], query), [apps.data, query]);
+  const shown = useMemo(() => matches.slice(0, MAX_PICKER_ROWS), [matches]);
 
   const blockedText = (reason: BlockReason) => t(($) => $.settings.integrations.desktopApps.apps.blocked[reason]);
 
@@ -84,13 +82,24 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
           <DialogDescription>{t(($) => $.settings.integrations.desktopApps.apps.dialog.description)}</DialogDescription>
         </DialogHeader>
 
-        <Input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t(($) => $.settings.integrations.desktopApps.apps.dialog.search)}
-          aria-label={t(($) => $.settings.integrations.desktopApps.apps.dialog.search)}
-        />
+        <div className="flex gap-2">
+          <Input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t(($) => $.settings.integrations.desktopApps.apps.dialog.search)}
+            aria-label={t(($) => $.settings.integrations.desktopApps.apps.dialog.search)}
+            className="min-w-0 flex-1"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={apps.isFetching}
+            onClick={() => void apps.refetch()}
+          >
+            {t(($) => $.settings.integrations.desktopApps.apps.dialog.refresh)}
+          </Button>
+        </div>
 
         {apps.isPending ? (
           <LoadingState label={t(($) => $.settings.integrations.desktopApps.apps.dialog.loading)} size="compact" />
@@ -99,46 +108,58 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
         ) : shown.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t(($) => $.settings.integrations.desktopApps.apps.dialog.none)}</p>
         ) : (
-          <ul className="max-h-80 space-y-1 overflow-y-auto" data-testid="desktop-apps-picker-list">
-            {shown.map((app) => {
-              const added = existing.some((known) => sameApp(known, app));
-              const unavailable = Boolean(app.blocked) || added;
-              const isSelected = selected !== null && appKey(selected) === appKey(app);
-              const reasonId = `desktop-app-reason-${appKey(app)}`;
-              return (
-                <li key={appKey(app)}>
-                  <button
-                    type="button"
-                    disabled={unavailable}
-                    aria-pressed={isSelected}
-                    aria-describedby={app.blocked ? reasonId : undefined}
-                    onClick={() => setSelected(app)}
-                    onDoubleClick={() => !unavailable && pick(app)}
-                    className={cn(
-                      "flex w-full flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors",
-                      "hover:bg-accent focus-visible:border-ring focus-visible:bg-accent",
-                      "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent",
-                      isSelected ? "border-primary bg-accent" : "border-transparent",
-                    )}
-                  >
-                    <span className="text-sm font-medium">{app.name}</span>
-                    {app.bundleId ? (
-                      <span className="text-xs text-muted-foreground">{app.bundleId}</span>
-                    ) : app.executable ? (
-                      <span className="text-xs text-muted-foreground">
-                        <SettingsPath path={app.executable} focusable={false} />
-                      </span>
-                    ) : null}
-                    {app.blocked ? (
-                      <span id={reasonId} className="text-xs text-muted-foreground">
-                        {blockedText(app.blocked)}
-                      </span>
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <ul className="max-h-80 space-y-1 overflow-y-auto" data-testid="desktop-apps-picker-list">
+              {shown.map((app, index) => {
+                const added = existing.some((known) => sameApp(known, app));
+                const unavailable = Boolean(app.blocked) || added;
+                const isSelected = selected !== null && appRowKey(selected) === appRowKey(app);
+                // The row's position, not its program: several entries can
+                // run the same program, and a path can hold spaces.
+                const reasonId = `${reasonIds}-reason-${index}`;
+                return (
+                  <li key={appRowKey(app)}>
+                    <button
+                      type="button"
+                      disabled={unavailable}
+                      aria-pressed={isSelected}
+                      aria-describedby={unavailable ? reasonId : undefined}
+                      onClick={() => setSelected(app)}
+                      onDoubleClick={() => !unavailable && pick(app)}
+                      className={cn(
+                        "flex w-full flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors",
+                        "hover:bg-accent focus-visible:border-ring focus-visible:bg-accent",
+                        "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent",
+                        isSelected ? "border-primary bg-accent" : "border-transparent",
+                      )}
+                    >
+                      <span className="text-sm font-medium">{app.name}</span>
+                      {app.bundleId ? (
+                        <span className="text-xs text-muted-foreground">{app.bundleId}</span>
+                      ) : app.executable ? (
+                        <span className="text-xs text-muted-foreground">
+                          <SettingsPath path={app.executable} focusable={false} />
+                        </span>
+                      ) : null}
+                      {unavailable ? (
+                        <span id={reasonId} className="text-xs text-muted-foreground">
+                          {app.blocked ? blockedText(app.blocked) : t(($) => $.settings.integrations.desktopApps.apps.dialog.added)}
+                        </span>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {matches.length > shown.length ? (
+              <p className="text-xs text-muted-foreground" data-testid="desktop-apps-picker-more">
+                {t(($) => $.settings.integrations.desktopApps.apps.dialog.more, {
+                  shown: shown.length,
+                  total: matches.length,
+                })}
+              </p>
+            ) : null}
+          </>
         )}
 
         {error ? <IntegrationError>{error}</IntegrationError> : null}

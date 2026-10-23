@@ -260,6 +260,22 @@ pub fn error_envelope(command: Option<&str>, error: &CliError, warnings: &[Warni
     })
 }
 
+/// A project path as someone typed it, with forward slashes. Windows shells
+/// complete `.\chapters\a.tex`, and project paths are written `./chapters/a.tex`
+/// everywhere else (on other systems a backslash is no separator and the path
+/// is refused).
+pub fn project_path_arg(value: &str) -> Cow<'_, str> {
+    slashed(value, cfg!(windows))
+}
+
+fn slashed(value: &str, windows: bool) -> Cow<'_, str> {
+    if windows && value.contains('\\') {
+        Cow::Owned(value.replace('\\', "/"))
+    } else {
+        Cow::Borrowed(value)
+    }
+}
+
 /// Path arguments refuse control characters.
 pub fn path_arg(value: &str) -> Result<PathBuf, String> {
     if value.chars().any(char::is_control) {
@@ -488,7 +504,7 @@ impl Context {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
             let mut stdout = std::io::stdout().lock();
-            let _ = writeln!(stdout, "{}", message.as_ref());
+            let _ = writeln!(stdout, "{}", crate::human::plain(message.as_ref()));
         }
     }
 
@@ -568,10 +584,11 @@ impl Context {
             )
             .hint("Use a path inside the project, written with forward slashes.")
         };
-        if relative.chars().any(char::is_control) || relative.contains('\\') {
+        let slashed = project_path_arg(relative);
+        if slashed.chars().any(char::is_control) || slashed.contains('\\') {
             return Err(unsafe_path());
         }
-        oleafly_core::resolve_project_path(workspace.root(), relative).map_err(|_| unsafe_path())
+        oleafly_core::resolve_project_path(workspace.root(), &slashed).map_err(|_| unsafe_path())
     }
 }
 
@@ -705,7 +722,7 @@ mod tests {
             "../x.tex",
             "/etc/passwd",
             "C:\\x.tex",
-            "a\\b.tex",
+            "..\\x.tex",
             "ok/\u{7}.tex",
         ] {
             assert_eq!(
@@ -714,6 +731,16 @@ mod tests {
                 "{bad}"
             );
         }
+        // A backslash is no separator except on Windows, where it is one.
+        let backslashed = ctx.resolve_project_file(&workspace, "a\\b.tex");
+        assert_eq!(backslashed.is_err(), cfg!(not(windows)));
         assert!(ctx.resolve_project_file(&workspace, "main.tex").is_ok());
+    }
+
+    #[test]
+    fn windows_paths_are_read_with_forward_slashes_only_on_windows() {
+        assert_eq!(slashed(".\\chapters\\a.tex", true), "./chapters/a.tex");
+        assert_eq!(slashed(".\\chapters\\a.tex", false), ".\\chapters\\a.tex");
+        assert!(matches!(slashed("chapters/a.tex", true), Cow::Borrowed(_)));
     }
 }

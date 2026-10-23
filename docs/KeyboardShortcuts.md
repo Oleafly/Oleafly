@@ -31,7 +31,9 @@ Windows and Linux.
 
 New terminal works anywhere in a project. Close terminal, Next terminal and
 Previous terminal act while focus is in the terminal dock, including inside a
-terminal.
+terminal. The backtick in Toggle terminal and New terminal is the key left of 1
+on every keyboard layout, so on a UK, German, French or Spanish layout press
+that key even though it types another character.
 
 Zen mode hides the toolbar, sidebar, assistant and terminal so only the editor
 (and the PDF, if it was showing) is left. While it is on, the toggle shortcuts
@@ -116,7 +118,9 @@ Command-Left, Command-Right and Command-Backspace, which the terminal uses, so
 Command-K clears the terminal there instead of opening the command palette. On
 Windows and Linux, Ctrl with a letter, Alt combinations, function keys and keys
 such as Enter, Tab and the arrows go to the shell. Chords a shell has no use
-for, such as Ctrl-Shift-F, Ctrl-= and Ctrl-0, still reach Oleafly. Characters
+for, such as Ctrl-= and Ctrl-0, still reach Oleafly. Ctrl-Shift-F finds in the
+terminal output there instead of searching all documents, and plain Ctrl-F
+stays with the program, for vim, less and the shell's line editor. Characters
 typed with an input method or AltGr always reach the shell.
 
 The terminal turns these keys into what shells and command-line programs
@@ -136,7 +140,8 @@ expect:
 | Ctrl-/ | Undo (0x1F) | Undo (0x1F) | Undo (0x1F) |
 | Ctrl-Shift-C, Ctrl-Shift-V | | Copy, paste | Copy, paste |
 | Ctrl-C with text selected, Ctrl-V | | Copy, paste | |
-| Ctrl-F (Command-F on macOS) | Find | Find | Find |
+| Command-F | Find | | |
+| Ctrl-Shift-F | | Find | Find |
 
 Shift-Enter sends a plain Enter instead when Settings > Appearance > Terminal
 says so.

@@ -271,7 +271,9 @@
     "loadingRepositories": "Wczytywanie repozytoriów…",
     "repositoriesFailed": "Nie udało się wczytać repozytoriów.",
     "noRepositories": "Nie znaleziono repozytoriów.",
+    "noMatchLoaded": "Brak dopasowania w dotychczas wczytanych repozytoriach. Wczytaj więcej, aby szukać dalej.",
     "privateRepository": "Repozytorium prywatne",
+    "openFailed": "Oleafly nie mógł otworzyć {{host}} w Twojej przeglądarce.",
     "openOnHost": "Otwórz w {{host}}",
     "openRepositoryOnHost": "Otwórz {{name}} w {{host}}",
     "sources": {

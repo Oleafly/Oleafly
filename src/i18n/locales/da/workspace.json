@@ -225,6 +225,7 @@
       "closeOne": "Luk terminalen",
       "closeProject": "Luk projektet",
       "dontAsk": "Spørg ikke igen",
+      "dontAskHint": "Slå den til igen under Indstillinger, Udseende, Terminal, Spørg, før en optaget terminal lukkes.",
       "many_one": "Et program kører stadig i {{count}} terminal.",
       "many_other": "Programmer kører stadig i {{count}} terminaler.",
       "named": "{{process}} kører stadig i {{title}}.",

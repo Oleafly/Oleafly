@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { gitAutoInitEnabled } from "@/components/settings/gitAutoInit";
 import { IntegrationConnected, IntegrationError } from "@/components/settings/IntegrationCard";
@@ -94,10 +94,7 @@ export function GitHostingSection() {
       </div>
       <GitAutoInitToggle />
       {status === "loading" && accounts.length === 0 ? (
-        <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Spinner size="sm" />
-          {t(($) => $.common.state.loading)}
-        </p>
+        <LoadingState size="compact" label={t(($) => $.common.state.loading)} />
       ) : null}
       {status === "error" && loadError ? <IntegrationError>{loadError}</IntegrationError> : null}
       {accounts.length > 0 ? (
@@ -117,9 +114,12 @@ export function GitHostingSection() {
         </div>
       ) : null}
       {accounts.length === 0 && status === "ready" ? (
-        <p className="text-xs text-muted-foreground" data-testid="git-hosting-empty">
-          {t(($) => $.settings.gitHosting.empty)}
-        </p>
+        <EmptyState
+          size="compact"
+          className="items-start text-left"
+          testId="git-hosting-empty"
+          description={t(($) => $.settings.gitHosting.empty)}
+        />
       ) : null}
       {adding ? (
         <AddAccountPanel

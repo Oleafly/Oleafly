@@ -1224,7 +1224,6 @@ const PREF_DEFAULTS = {
   defaultView: "editor-only" as LayoutPreset,
   openInTree: true,
   hoverPreview: true,
-  aiComposerHeight: 56,
   terminalOpen: false,
   terminalFontSize: 14,
   terminalFontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
@@ -1341,7 +1340,6 @@ export const SECTION_SETTINGS = {
     defaultView: "oleafly.defaultView",
     openInTree: "oleafly.openInTree",
     hoverPreview: "oleafly.hoverPreview",
-    aiComposerHeight: "oleafly.ai.composerHeight",
     accentColor: "oleafly.accent",
     dockPlacement: "oleafly.dockPlacement",
     bgPattern: "oleafly.bgPattern",
@@ -1733,6 +1731,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.ai.floating", v ? "1" : "0");
     set({ chatFloating: v });
   },
+  // The message box height is a panel size set by dragging its handle. Like
+  // the other panel sizes it stays on this device: no Settings row, no
+  // settings file entry, and Appearance's Reset leaves it alone.
   aiComposerHeight: readNumberInRange(ls("oleafly.ai.composerHeight", "56"), 56, 56, 2000),
   setAiComposerHeight: (v) => {
     const value = Number.isFinite(v) ? Math.round(Math.min(2000, Math.max(56, v))) : 56;

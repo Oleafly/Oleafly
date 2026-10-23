@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} nektet tilgang til dette repositoriet. Sjekk at kontoen din har tilgang til det. Hvis organisasjonen bruker enkel pålogging (SSO), må du først godkjenne påloggingen din for den.",
+    "access_denied_account": "{{host}} nektet {{account}} tilgang til dette repositoriet. Sjekk at denne kontoen har tilgang til det. Hvis organisasjonen bruker enkel pålogging (SSO), må du først godkjenne påloggingen din for den.",
     "account_missing": "Det finnes ingen Git-konto for {{host}}. Legg til en i Innstillinger.",
     "archive_too_large": "Filene i repositoriet er større enn {{limit}} MB, så Oleafly kan ikke importere dem. Klon repositoriet selv, og åpne mappen i stedet.",
-    "auth_rejected": "{{host}} avviste den lagrede innloggingen din. Logg inn på {{host}} på nytt i Innstillinger.",
+    "auth_rejected": "{{host}} avviste den lagrede innloggingen for {{account}}. Logg inn på {{host}} på nytt i Innstillinger.",
     "credentials_missing": "{{host}} ba om brukernavn og passord. Logg inn på {{host}} i Innstillinger, eller sett opp en SSH-nøkkel eller en credential helper for Git.",
     "credentials_rejected": "{{host}} avviste brukernavnet og passordet som Git sendte. Logg inn på {{host}} i Innstillinger, eller oppdater innloggingsopplysningene som Git bruker.",
     "device_flow_unavailable": "Innlogging i nettleseren er ikke tilgjengelig for {{host}} i denne versjonen. Bruk et tilgangstoken i stedet.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Det finnes allerede et repositorium med dette navnet på {{host}}.",
     "forge_server_error": "{{host}} returnerte en feil ({{status}}).",
     "forge_signed_out": "Innloggingen din for {{host}} har utløpt eller blitt trukket tilbake. Logg inn på nytt i Innstillinger.",
+    "forge_sso_required": "{{host}} krever at denne innloggingen er godkjent for organisasjonens enkle pålogging (SSO). Godkjenn den på {{host}}, og prøv deretter igjen.",
     "forge_store": "Oleafly kunne ikke lese eller lagre Git-kontoene dine.",
     "forge_token_invalid": "Dette ser ikke ut som et tilgangstoken. Lim inn hele tokenet.",
     "forge_token_rejected": "{{host}} godtok ikke dette tokenet. Sjekk at du kopierte hele tokenet, og at det ikke har utløpt.",
     "forge_unknown_server": "Oleafly kunne ikke avgjøre hva slags server {{host}} er. Velg servertype.",
     "host_key_unknown": "SSH kjenner ikke {{host}} ennå. Koble til serveren én gang fra en terminal for å godta vertsnøkkelen, og prøv deretter igjen.",
     "host_unreachable": "Oleafly fikk ikke kontakt med {{host}}. Sjekk adressen og tilkoblingen din.",
+    "import_cancelled": "Importen ble avbrutt.",
     "invalid_remote_url": "Skriv inn HTTPS- eller SSH-adressen til et Git-repositorium.",
     "nested_repository": "Dette prosjektet ligger i et annet Git-repositorium, så Oleafly oppretter ikke et eget repositorium her.",
     "not_installed": "Git er ikke installert på denne maskinen. Installer Git, og prøv igjen.",
     "push_rejected": "Den eksterne grenen har commiter som dette prosjektet ikke har ennå. Gjør en pull først, og push deretter på nytt.",
     "remote_exists": "Dette prosjektet er allerede koblet til {{remote}}.",
-    "remote_has_password": "Fjern passordet fra adressen. Oleafly logger i stedet inn med Git-kontoen din eller dine egne innloggingsopplysninger for Git.",
+    "remote_has_password": "Ta passordet eller tilgangstokenet ut av adressen. Oleafly logger i stedet inn med kontoen din for Git-hosting eller dine egne Git-påloggingsopplysninger.",
     "repository_empty": "Dette repositoriet har ingen commiter ennå, så det er ingenting å importere.",
     "repository_not_found": "{{host}} har ikke noe repositorium på denne adressen, eller kontoen din kan ikke se det.",
     "sign_in_cancelled": "Innloggingen ble avbrutt i nettleseren.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly kunne ikke sjekke saldoen din hos {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 er ikke installert.",
+    "git_bash_missing": "Git Bash er ikke installert. Installer Git for Windows, eller velg et annet shell.",
+    "wsl_missing": "WSL er ikke installert.",
+    "wsl_no_distro": "WSL har ingen Linux-distribusjon ennå.",
+    "shell_path_empty": "Skriv inn en bane til et shell i Innstillinger, eller velg et annet shell.",
+    "shell_path_missing": "Det finnes ikke noe program på {{path}}."
+  },
   "mathpix": {
-    "keys_missing": "Legg først til app-ID-en og nøkkelen din for Mathpix under Innstillinger, AI, Verktøy.",
+    "keys_missing": "Legg først til app-ID-en og nøkkelen din for Mathpix under Innstillinger, AI-assistent, Verktøy.",
     "invalid_keys": "App-ID-en eller nøkkelen inneholder tegn som Mathpix-nøkler aldri har. Kopier dem på nytt fra Mathpix-konsollen.",
     "key_rejected": "Mathpix godtok ikke disse nøklene. Sjekk app-ID-en og nøkkelen i Mathpix-konsollen.",
     "rate_limited": "Mathpix begrenser forespørsler akkurat nå. Vent et minutt, og prøv deretter igjen.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "Denne PDF-en er større enn grensen på 256 MB for Mathpix.",
     "timed_out": "Mathpix ble ikke ferdig med denne PDF-en innen 30 minutter. Prøv med færre sider.",
     "cancelled": "Mathpix-konverteringen ble stoppet.",
-    "wrong_window": "Mathpix kan bare brukes fra hovedvinduet i Oleafly."
+    "wrong_window": "Mathpix kan bare brukes fra hovedvinduet i Oleafly.",
+    "pdf_too_large_ipc": "Denne maskinen kan sende PDF-er på opptil 16 MB til Mathpix. Del opp PDF-en, og prøv igjen."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver er ikke installert. Installer den under Innstillinger → Integrasjoner → Skrivebordsapper.",
+    "not_installed": "Cua Driver er ikke installert. Installer den under Innstillinger, Integrasjoner, Skrivebordsapper.",
     "too_old": "Cua Driver {{version}} er for gammel. Oppdater til {{minimum}} eller nyere.",
     "no_app_bundle": "Installer Cua Driver med det offisielle installasjonsprogrammet, slik at den kan få macOS-tillatelsene.",
     "change_declined": "Du beholdt de tidligere innstillingene for Skrivebordsapper.",

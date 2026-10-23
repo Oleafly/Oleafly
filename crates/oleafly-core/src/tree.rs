@@ -58,6 +58,11 @@ pub fn slash_path(path: &Path) -> String {
         .join("/")
 }
 
+/// Visits every file of a project that is source, handing `visit` its path
+/// relative to `root` and its full path. Folders every other scan skips are
+/// not entered (`is_skipped_scan_directory`: dot folders such as `.venv` and
+/// `.idea`, `node_modules`, `target`, `build`, `out` and LaTeX's generated
+/// folders), and links are not followed.
 pub fn walk_source_tree(
     root: &Path,
     label: &str,
@@ -87,7 +92,7 @@ fn walk(
         }
         let path = entry.path();
         if file_type.is_dir() {
-            if !is_generated_directory(&entry.file_name()) {
+            if !is_skipped_scan_directory(&entry.file_name()) {
                 walk(root, &path, depth + 1, label, visit)?;
             }
         } else if file_type.is_file() {
@@ -123,6 +128,39 @@ mod tests {
         .unwrap();
 
         assert_eq!(seen, vec!["chapters/one.tex".to_string()]);
+    }
+
+    #[test]
+    fn walking_skips_what_every_other_scan_skips() {
+        let directory = TempDir::new().unwrap();
+        for kept in ["chapters", "figures"] {
+            std::fs::create_dir_all(directory.path().join(kept)).unwrap();
+            std::fs::write(directory.path().join(kept).join("part.tex"), "").unwrap();
+        }
+        std::fs::write(directory.path().join("main.tex"), "").unwrap();
+        // A Python environment, an IDE folder, latexmk output and LaTeX's
+        // generated folders hold files that are not the project's.
+        for skipped in [
+            ".venv/lib/site-packages/pkg",
+            ".idea",
+            "build",
+            "out",
+            "_minted-main",
+            "svg-inkscape",
+        ] {
+            std::fs::create_dir_all(directory.path().join(skipped)).unwrap();
+            std::fs::write(directory.path().join(skipped).join("foreign.tex"), "").unwrap();
+        }
+
+        let mut seen = Vec::new();
+        walk_source_tree(directory.path(), "source discovery", &mut |relative, _| {
+            seen.push(slash_path(relative));
+            Ok(())
+        })
+        .unwrap();
+        seen.sort();
+
+        assert_eq!(seen, ["chapters/part.tex", "figures/part.tex", "main.tex"]);
     }
 
     #[test]

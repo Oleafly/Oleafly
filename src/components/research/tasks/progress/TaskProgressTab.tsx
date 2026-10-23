@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Circle, CircleDot } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LoadingState } from "@/components/ui/empty";
+import { ErrorState, LoadingState } from "@/components/ui/empty";
 import { i18n } from "@/i18n";
+import { describeError } from "@/lib/app-error";
+import { formatNumber } from "@/lib/intl";
 import {
   cancelResearchTaskRun,
   progressResearchTask,
@@ -17,6 +19,8 @@ import { relativeTime, runStateLabel } from "../task-status";
 import { Sparkline } from "./Sparkline";
 
 const POLL_EVERY_MS = 3_000;
+/** The backend sends the last 50 ledger rows. */
+const LEDGER_ROWS = 50;
 
 function verdictLabel(verdict: string): string {
   switch (verdict.trim().toLowerCase()) {
@@ -43,27 +47,63 @@ function metricsText(metrics: Record<string, number>): string {
 }
 
 function money(value: number): string {
-  return value < 10 ? value.toFixed(2) : value.toFixed(0);
+  const digits = value < 10 ? 2 : 0;
+  return formatNumber(value, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
 }
 
 /** The task's plan, ledger, runs, best result and budget, refreshed while it runs. */
 export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
-  const { t } = useTranslation(["researchTools"]);
+  const { t } = useTranslation(["common", "researchTools"]);
   const [progress, setProgress] = useState<TaskProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<{ runId: string; text: string } | null>(null);
   const [stopping, setStopping] = useState<string | null>(null);
   const running = task.status === "running";
+  const loadRequest = useRef(0);
+  const loading = useRef(false);
+  // The run whose log is open; a log of a live run is read again with each refresh.
+  const openLog = useRef<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const next = await progressResearchTask(task.id);
-      setProgress(next);
-      setError(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    }
-  }, [task.id]);
+  const readLog = useCallback(
+    async (runId: string) => {
+      try {
+        const text = await researchTaskRunLog(task.id, runId);
+        // Another log may have been opened while this one was read.
+        if (openLog.current === runId) setLog({ runId, text });
+      } catch (cause) {
+        setError(describeError(cause));
+      }
+    },
+    [task.id],
+  );
+
+  const load = useCallback(
+    async (poll = false) => {
+      // A slow backend isn't asked again while it still answers the last poll.
+      if (poll && loading.current) return;
+      const request = ++loadRequest.current;
+      loading.current = true;
+      try {
+        const next = await progressResearchTask(task.id);
+        // An older answer must not replace a newer one.
+        if (request !== loadRequest.current) return;
+        setProgress(next);
+        setError(null);
+        const logged = openLog.current;
+        if (logged && next.runsInFlight.some((live) => live.runId === logged)) void readLog(logged);
+      } catch (cause) {
+        if (request === loadRequest.current) setError(describeError(cause));
+      } finally {
+        if (request === loadRequest.current) loading.current = false;
+      }
+    },
+    [task.id, readLog],
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: a task update means new progress to show
   useEffect(() => {
@@ -73,17 +113,14 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
   useEffect(() => {
     if (!running) return;
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load();
+      if (document.visibilityState === "visible") void load(true);
     }, POLL_EVERY_MS);
     return () => window.clearInterval(timer);
   }, [load, running]);
 
   const viewLog = async (run: RunRecord) => {
-    try {
-      setLog({ runId: run.runId, text: await researchTaskRunLog(task.id, run.runId) });
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    }
+    openLog.current = run.runId;
+    await readLog(run.runId);
   };
 
   const stopRun = async (run: RunRecord) => {
@@ -92,7 +129,7 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
       await cancelResearchTaskRun(task.id, run.runId);
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(describeError(cause));
     } finally {
       setStopping(null);
     }
@@ -100,9 +137,11 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
 
   if (!progress) {
     return error ? (
-      <p role="alert" className="select-text text-sm text-destructive">
-        {error}
-      </p>
+      <ErrorState message={error}>
+        <Button size="xs" variant="outline" onClick={() => void load()}>
+          {t(($) => $.common.actions.retry)}
+        </Button>
+      </ErrorState>
     ) : (
       <LoadingState size="compact" label={t(($) => $.researchTools.tasks.progress.loading)} />
     );
@@ -216,13 +255,9 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
                 {Object.keys(run.metrics).length > 0 ? (
                   <span className="truncate font-mono">{metricsText(run.metrics)}</span>
                 ) : null}
-                <button
-                  type="button"
-                  className="rounded px-1 text-primary hover:bg-muted hover:underline"
-                  onClick={() => void viewLog(run)}
-                >
+                <Button size="xs" variant="link" className="h-auto p-0" onClick={() => void viewLog(run)}>
                   {t(($) => $.researchTools.tasks.progress.viewLog)}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -277,6 +312,11 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
         <h4 id="research-progress-ledger" className="text-sm font-medium">
           {t(($) => $.researchTools.tasks.progress.ledger)}
         </h4>
+        {progress.ledger.length >= LEDGER_ROWS ? (
+          <p className="text-xs text-muted-foreground">
+            {t(($) => $.researchTools.tasks.progress.ledgerCapped, { limit: formatNumber(LEDGER_ROWS) })}
+          </p>
+        ) : null}
         {progress.ledger.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.tasks.progress.noLedger)}</p>
         ) : (

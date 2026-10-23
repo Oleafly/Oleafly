@@ -66,6 +66,10 @@ pub trait PdfTextExtractor: Send + Sync {
     async fn pages(&self, pdf: PathBuf) -> Result<Vec<String>, String>;
 }
 
+/// A file name for what was read: the readable start of `value` and a short
+/// hash of all of it, so names that differ only in a character the readable
+/// part replaces (`Paper A.pdf`, `Paper_A.pdf`) or after its first 80
+/// characters never share a record.
 fn safe_key(prefix: &str, value: &str) -> String {
     let cleaned: String = value
         .chars()
@@ -78,7 +82,8 @@ fn safe_key(prefix: &str, value: &str) -> String {
         })
         .take(80)
         .collect();
-    format!("{prefix}_{cleaned}")
+    let digest = format!("{:x}", Sha256::digest(value.as_bytes()));
+    format!("{prefix}_{cleaned}-{}", &digest[..8])
 }
 
 fn url_key(url: &str) -> String {
@@ -237,7 +242,18 @@ pub async fn read_paper(
             (safe_key("doi", &doi), None, None)
         }
         PaperRequest::Url { url } => (url_key(url), None, Some(url.clone())),
-        PaperRequest::Path { path, .. } => (safe_key("file", path), None, None),
+        // The same path in another data folder is another file.
+        PaperRequest::Path { path, root_id } => (
+            safe_key(
+                "file",
+                &match root_id {
+                    Some(root_id) => format!("{root_id}/{path}"),
+                    None => path.clone(),
+                },
+            ),
+            None,
+            None,
+        ),
     };
     let papers = format!("{record_dir}/papers");
     let text_path = format!("{papers}/{key}.txt");
@@ -369,9 +385,27 @@ mod tests {
 
     #[test]
     fn keys_are_safe_file_names() {
-        assert_eq!(safe_key("doi", "10.1000/x y"), "doi_10.1000_x_y");
-        assert_eq!(safe_key("arxiv", "2410.16464"), "arxiv_2410.16464");
+        assert_eq!(safe_key("doi", "10.1000/x y"), "doi_10.1000_x_y-ab5c2fbc");
+        assert_eq!(safe_key("arxiv", "2410.16464"), "arxiv_2410.16464-c1be2607");
         assert!(url_key("https://example.org/a.pdf").starts_with("url_"));
+    }
+
+    #[test]
+    fn different_papers_never_share_a_key() {
+        // Names that differ only in a character the readable part replaces.
+        assert_ne!(
+            safe_key("file", "data/Paper A.pdf"),
+            safe_key("file", "data/Paper_A.pdf")
+        );
+        // Names that differ only after the readable part ends.
+        let long = "x".repeat(100);
+        assert_ne!(
+            safe_key("file", &format!("{long}a.pdf")),
+            safe_key("file", &format!("{long}b.pdf"))
+        );
+        assert_ne!(safe_key("doi", "10.1/a/b"), safe_key("doi", "10.1/a_b"));
+        // The same key every time for the same paper, so a cached read is found.
+        assert_eq!(safe_key("doi", "10.1/a"), safe_key("doi", "10.1/a"));
     }
 
     #[tokio::test]
@@ -498,7 +532,7 @@ mod tests {
     }
 
     const RECORD: &str = "research/r-0000";
-    const TEXT_PATH: &str = "research/r-0000/papers/file_research_paper.pdf.txt";
+    const TEXT_PATH: &str = "research/r-0000/papers/file_research_paper.pdf-d0cb6c00.txt";
 
     fn workspace_paper() -> PaperRequest {
         PaperRequest::Path {
@@ -530,7 +564,7 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(paper.key, "file_research_paper.pdf");
+        assert_eq!(paper.key, "file_research_paper.pdf-d0cb6c00");
         assert_eq!(paper.pages, 2);
         assert_eq!(paper.stored, vec![TEXT_PATH.to_owned()]);
         assert_eq!(
@@ -545,7 +579,7 @@ mod tests {
         // The workspace PDF is read in place, not copied into the record.
         assert!(!root
             .path()
-            .join("research/r-0000/papers/file_research_paper.pdf.pdf")
+            .join("research/r-0000/papers/file_research_paper.pdf-d0cb6c00.pdf")
             .exists());
 
         // Read again: the record answers, a window at a time.
@@ -613,7 +647,7 @@ mod tests {
         let papers = root.path().join("research/r-0000/papers");
         std::fs::create_dir_all(&papers).unwrap();
         std::fs::write(
-            papers.join("arxiv_2410.16464.txt"),
+            papers.join("arxiv_2410.16464-c1be2607.txt"),
             "[p. 1]\nGraph networks\n\n",
         )
         .unwrap();
@@ -633,7 +667,7 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(paper.key, "arxiv_2410.16464");
+        assert_eq!(paper.key, "arxiv_2410.16464-c1be2607");
         assert_eq!(
             paper.source_url.as_deref(),
             Some("https://arxiv.org/pdf/2410.16464")

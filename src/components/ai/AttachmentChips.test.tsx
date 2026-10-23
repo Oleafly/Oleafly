@@ -66,4 +66,12 @@ describe("AttachmentChips", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove notes.txt" }));
     expect(onRemove).toHaveBeenCalledWith("b");
   });
+
+  it("makes the remove control at least 24px, with a focus style that is not an outline", () => {
+    render(<AttachmentChips items={[item({})]} onRemove={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "Remove plot.png" });
+    expect(button.className).toContain("size-6");
+    expect(button.className).toContain("focus-visible:bg-accent");
+    expect(button.className).not.toMatch(/outline|ring/);
+  });
 });

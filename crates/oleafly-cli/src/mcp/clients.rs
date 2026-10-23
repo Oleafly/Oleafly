@@ -378,7 +378,8 @@ pub fn write_entry(
                 .unwrap_or_default();
             name.push(BACKUP_SUFFIX);
             let backup = path.with_file_name(name);
-            oleafly_core::atomic::write_atomic(&backup, bytes).map_err(CliError::from)?;
+            // The client's config can hold its other servers' keys.
+            oleafly_core::atomic::write_atomic_private(&backup, bytes).map_err(CliError::from)?;
             Some(backup)
         }
         None => None,

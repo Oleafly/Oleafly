@@ -59,7 +59,14 @@ vi.mock("@/lib/native-file-dialog", () => ({
   pickOpenPath: vi.fn(async () => "/tmp/paper.zip"),
 }));
 
-vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => {}) }));
+vi.mock("@/lib/system-browser", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/system-browser")>()),
+  openInSystemBrowser: vi.fn(async () => true),
+}));
+vi.mock("@tauri-apps/api/event", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tauri-apps/api/event")>()),
+  emit: vi.fn(async () => {}),
+}));
 vi.mock("@/lib/overleaf", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/overleaf")>()),
   overleafStatus: vi.fn(async () => ({ server: "https://www.overleaf.com", signedIn: false, email: null })),
@@ -76,8 +83,9 @@ import {
 } from "@/features/project-import";
 import { allowRadixSelect, chooseOption } from "@/features/collab/tests/select";
 import { pickOpenPath } from "@/lib/native-file-dialog";
-import { notifyError } from "@/lib/toast";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { notifyError, toast } from "@/lib/toast";
+import { openInSystemBrowser as openExternal } from "@/lib/system-browser";
+import { emit } from "@tauri-apps/api/event";
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { useSettingsStore } from "@/store/settings";
@@ -513,7 +521,7 @@ describe("ProjectImportDialog Git step", () => {
   });
 
   it("opens a repository on its host and reports a failure to open it", async () => {
-    vi.mocked(openExternal).mockRejectedValueOnce(new Error("no browser"));
+    vi.mocked(openExternal).mockResolvedValueOnce(false);
     render(<ProjectImportDialog open onClose={vi.fn()} />);
     fireEvent.click(screen.getByTestId("project-import-git"));
 
@@ -524,8 +532,65 @@ describe("ProjectImportDialog Git step", () => {
     );
 
     expect(openExternal).toHaveBeenCalledWith("https://github.com/oleafly/paper");
-    await waitFor(() => expect(notifyError).toHaveBeenCalledWith("open repository", expect.any(Error)));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(fill(copy.openFailed, { host: "GitHub" })),
+    );
     expect(tauriMocks.forgeImportRepo).not.toHaveBeenCalled();
+  });
+
+  it("cancels a running clone from the dialog without reporting an error", async () => {
+    let fail!: (error: unknown) => void;
+    tauriMocks.gitCloneProject.mockReturnValueOnce(new Promise((_, reject) => { fail = reject; }));
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId("project-import-git"));
+    fireEvent.change(await screen.findByTestId("project-import-clone-url"), {
+      target: { value: "https://gitlab.com/g/paper.git" },
+    });
+    fireEvent.click(screen.getByTestId("project-import-clone"));
+
+    fireEvent.click(await screen.findByTestId("project-import-cancel"));
+    expect(emit).toHaveBeenCalledWith("import-cancel");
+    expect(onClose).not.toHaveBeenCalled();
+
+    // The backend answers with the cancelled error once Git is stopped.
+    fail('@oleafly/error:{"code":"git.import_cancelled","params":{}}');
+    await waitFor(() => expect(screen.queryByTestId("project-import-cancel")).not.toBeInTheDocument());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("project-import-clone-url")).toBeEnabled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("closing the dialog during a repository import cancels it", async () => {
+    tauriMocks.forgeImportRepo.mockReturnValueOnce(new Promise(() => {}));
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId("project-import-git"));
+    fireEvent.click(await screen.findByTestId("project-import-repository-oleafly/paper"));
+    await screen.findByTestId("project-import-cancel");
+
+    fireEvent.keyDown(screen.getByTestId("project-import-dialog"), { key: "Escape" });
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(emit).toHaveBeenCalledWith("import-cancel");
+  });
+
+  it("keeps a file import open while it runs, with no way to cancel it", async () => {
+    let finish!: () => void;
+    vi.mocked(pickOpenPath).mockResolvedValueOnce("/tmp/paper.docx");
+    vi.mocked(importSelectedFile).mockReturnValueOnce(new Promise((resolve) => { finish = () => resolve(true); }));
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId("project-import-word"));
+    await waitFor(() => expect(importSelectedFile).toHaveBeenCalled());
+
+    expect(screen.queryByTestId("project-import-cancel")).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByTestId("project-import-dialog"), { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+
+    finish();
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it("points to Git hosting settings when no account is connected", async () => {

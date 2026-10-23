@@ -55,6 +55,17 @@ fn the_ipc_fallback_number_array_becomes_bytes() {
 }
 
 #[test]
+fn a_json_array_upload_is_refused_above_its_lower_limit_before_conversion() {
+    let body = tauri::ipc::InvokeBody::Json(json!([1, 2, 3, 4]));
+    assert_eq!(upload_bytes_within(&body, 4).unwrap(), vec![1, 2, 3, 4]);
+    let error = upload_bytes_within(&body, 3).unwrap_err();
+    assert!(error.contains("attachments.too_large"), "{error}");
+    // The raw form is not held to it.
+    let raw = tauri::ipc::InvokeBody::Raw(vec![1, 2, 3, 4]);
+    assert_eq!(upload_bytes_within(&raw, 0).unwrap(), vec![1, 2, 3, 4]);
+}
+
+#[test]
 fn storing_twice_dedupes_by_hash() {
     let root = tempfile::tempdir().unwrap();
     let first = store_bytes(root.path(), "p1", "a.png", "image/png", b"same", 10).unwrap();

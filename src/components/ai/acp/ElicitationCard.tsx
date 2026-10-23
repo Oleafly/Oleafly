@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { AcpElicitation, AcpElicitationField } from "@/lib/acp";
+import { openInSystemBrowser } from "@/lib/system-browser";
 
 type Value = string | number | boolean | string[];
 type Action = "accept" | "decline" | "cancel";
@@ -92,6 +93,7 @@ export function ElicitationCard({
   const [sending, setSending] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [waiting, setWaiting] = useState(false);
+  const [linkFailed, setLinkFailed] = useState(false);
   const set = (name: string, value: Value | undefined) => setValues((current) => ({ ...current, [name]: value }));
   const problems = request.fields.filter((field) => fieldProblem(field, values[field.name]));
 
@@ -112,8 +114,12 @@ export function ElicitationCard({
   const openLink = async () => {
     setConfirming(false);
     if (!request.url) return;
-    const { open } = await import("@tauri-apps/plugin-shell");
-    await open(request.url);
+    // Opened first: when no browser opens, the agent is not told it was.
+    if (!(await openInSystemBrowser(request.url))) {
+      setLinkFailed(true);
+      return;
+    }
+    setLinkFailed(false);
     setWaiting(true);
     respond("accept");
   };
@@ -227,6 +233,9 @@ export function ElicitationCard({
             </Button>
           </div>
         </form>
+      )}
+      {linkFailed && (
+        <p role="alert" className="text-destructive">{t(($) => $.ai.acp.elicitation.openFailed)}</p>
       )}
       {request.mode === "url" && !waiting && (
         <div className="flex gap-2">

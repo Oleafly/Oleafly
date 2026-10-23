@@ -49,7 +49,7 @@ ignore_cancel = False
 credential = ""
 pid_file = sys.argv[1] if len(sys.argv) > 1 else ""
 protocol = 1
-options = {"mode": "default", "model": "opus", "effort": "default", "fast": False}
+options = {"mode": argument("--start-mode") or "default", "model": "opus", "effort": "default", "fast": False}
 
 if "--record-launch-count" in sys.argv:
     with open(declared_root / "launches.log", "a") as log:
@@ -176,7 +176,13 @@ for line in sys.stdin:
     elif method == "session/delete":
         result(request, {})
     elif method == "session/fork":
+        # Updates for the new session around its reply, as bridges send them.
+        around = {"method": "session/update", "params": {"sessionId": "fixture-fork", "update": {"sessionUpdate": "available_commands_update", "availableCommands": [{"name": "review", "description": "Review changes"}]}}}
+        if "--update-around-fork" in sys.argv:
+            send(around)
         result(request, {"sessionId": "fixture-fork"})
+        if "--update-around-fork" in sys.argv:
+            send(around)
     elif method == "session/close":
         result(request, {})
     elif method == "session/resume":
@@ -240,6 +246,8 @@ for line in sys.stdin:
         for index in range(100):
             update("agent_message_chunk", content={"type": "text", "text": "Replayed history " + str(index)})
         result(request, {"models": {"currentModelId": "fixture-model", "availableModels": [{"modelId": "fixture-model", "name": "Fixture model"}]}})
+    elif method == "session/set_config_option" and "--refuse-mode" in sys.argv and params.get("configId") == "mode":
+        send({"id": request["id"], "error": {"code": -32602, "message": "The mode cannot change"}})
     elif method == "session/set_config_option" and ("--claude-options" in sys.argv):
         value = params.get("value")
         options[params["configId"]] = value
@@ -311,6 +319,11 @@ for line in sys.stdin:
             continue
         if prompt == "slow-silent":
             pending_prompt = request
+            continue
+        if prompt == "go-bypass":
+            options["mode"] = "bypassPermissions"
+            update("config_option_update", configOptions=claude_options())
+            result(request, {"stopReason": "end_turn"})
             continue
         if prompt == "outside-events":
             result(request, {"stopReason": "end_turn"})
@@ -385,6 +398,19 @@ for line in sys.stdin:
             if spec.get("kind"):
                 tool["kind"] = spec["kind"]
             send({"id": "permission-wire", "method": "session/request_permission", "params": {"sessionId": native_id, "toolCall": tool, "options": [{"optionId": "yes", "name": "Allow once", "kind": "allow_once"}, {"optionId": "no", "name": "Reject", "kind": "reject_once"}]}})
+        elif prompt.startswith("announced-permission:"):
+            # The call is announced with its paths; the request names only its id.
+            pending_prompt = request
+            spec = json.loads(prompt[len("announced-permission:"):])
+            announced = {"toolCallId": "announced-1", "title": "Change a file", "status": "pending"}
+            if spec.get("kind"):
+                announced["kind"] = spec["kind"]
+            if spec.get("path"):
+                announced["locations"] = [{"path": spec["path"]}]
+            if spec.get("raw"):
+                announced["rawInput"] = spec["raw"]
+            update("tool_call", **announced)
+            send({"id": "permission-wire", "method": "session/request_permission", "params": {"sessionId": native_id, "toolCall": {"toolCallId": "announced-1"}, "options": [{"optionId": "yes", "name": "Allow once", "kind": "allow_once"}, {"optionId": "no", "name": "Reject", "kind": "reject_once"}]}})
         elif prompt == "huge-edit":
             target = os.path.join(os.getcwd(), "refs.bib")
             update("tool_call", toolCallId="edit-big", title="Edit refs.bib", kind="edit", status="in_progress", locations=[{"path": target}])

@@ -6,6 +6,8 @@ import {
   emptyTarget,
   executorFor,
   formatSlurmTime,
+  isSlurmName,
+  parseCount,
   parseMemory,
   parseSlurmTime,
   targetSummary,
@@ -57,6 +59,21 @@ describe("compute-api", () => {
     expect(parseMemory("1T")).toBe(1024);
     expect(parseMemory("16M")).toBeNull();
     expect(parseMemory("0")).toBeNull();
+  });
+
+  it("checks Slurm names and counts the way a target's defaults are checked", () => {
+    expect(isSlurmName("gpu-a100,cpu")).toBe(true);
+    expect(isSlurmName("gpu\n#SBATCH --x")).toBe(false);
+    expect(isSlurmName("two words")).toBe(false);
+    expect(isSlurmName("x".repeat(65))).toBe(false);
+    expect(parseCount("4", 0, 64)).toBe(4);
+    expect(parseCount(" 16 ", 1, 1024)).toBe(16);
+    expect(parseCount("0", 1, 1024)).toBeNull();
+    expect(parseCount("0", 0, 64)).toBe(0);
+    expect(parseCount("65", 0, 64)).toBeNull();
+    expect(parseCount("4 GPUs", 0, 64)).toBeNull();
+    expect(parseCount("", 0, 64)).toBeNull();
+    expect(parseCount("-1", 0, 64)).toBeNull();
   });
 
   it("summarizes targets", () => {

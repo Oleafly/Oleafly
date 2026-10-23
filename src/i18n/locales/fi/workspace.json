@@ -225,6 +225,7 @@
       "closeOne": "Sulje pääte",
       "closeProject": "Sulje projekti",
       "dontAsk": "Älä kysy uudelleen",
+      "dontAskHint": "Ota se takaisin käyttöön kohdasta Asetukset, Ulkoasu, Pääte, Kysy ennen varatun päätteen sulkemista.",
       "many_one": "Ohjelma on yhä käynnissä {{count}} päätteessä.",
       "many_other": "Ohjelmia on yhä käynnissä {{count}} päätteessä.",
       "named": "{{process}} on yhä käynnissä päätteessä {{title}}.",

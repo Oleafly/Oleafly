@@ -213,6 +213,10 @@ pub struct SessionRecord {
     /// The Oleafly provider whose key the agent was routed through.
     #[serde(default)]
     pub routed_provider: Option<String>,
+    /// For a fork: the last event copied from the conversation it was made
+    /// from. Those events were counted there, not here.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fork_sequence: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

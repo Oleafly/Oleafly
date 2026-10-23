@@ -481,7 +481,6 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
 
   pref("appearance.pdf.darkMode", "pdfDarkMode", bool),
   pref("appearance.pdf.hoverPreview", "hoverPreview", bool),
-  pref("appearance.assistant.composerHeight", "aiComposerHeight", wholeNumber(56, 2000)),
 
   pref("appearance.files.projectLayout", "homeProjectLayout", oneOf(["grid", "list"] as const)),
   pref("appearance.files.defaultLayout", "defaultView", oneOf(LAYOUT_PRESETS)),

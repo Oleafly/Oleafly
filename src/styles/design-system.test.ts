@@ -19,7 +19,6 @@ const PLAIN_TEXT_BLOCKS: Record<string, string> = {
   "src/components/research/LinkedFoldersSection.tsx": "a linked file's text preview",
   "src/components/research/TaskOutputsSection.tsx": "a task output's text preview",
   "src/components/research/tasks/TaskDetailDialog.tsx": "a task's log output",
-  "src/components/research/tasks/PendingApprovals.tsx": "a command waiting for approval, inside the button that expands it",
   "src/components/research/tasks/progress/TaskProgressTab.tsx": "a run's log output",
   "src/components/research/workspace/ResearchRootsPanel.tsx": "a research file's text preview",
   "src/components/ui/mermaid-diagram.tsx": "the failed diagram's source, already inside the chat's CopyableBlock",

@@ -31,7 +31,7 @@ pub(crate) mod task;
 #[cfg(test)]
 mod runtime_tests;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -139,6 +139,15 @@ pub(crate) struct CuaDriverState {
     pub(crate) approver: Arc<dyn gate::Approver>,
     /// The data folder whose `approvals.toml` deny rules apply.
     pub(crate) data_root: Option<PathBuf>,
+    /// One settings change at a time: it reads the settings, may wait on a
+    /// native dialog, then writes them.
+    pub(crate) apply: tokio::sync::Mutex<()>,
+    /// Session key → a signal that flips when the turn that owns it ends.
+    /// Calls waiting on a dialog stop waiting then.
+    turns: Mutex<HashMap<String, tokio::sync::watch::Sender<bool>>>,
+    /// Session keys of live subagents (see `TurnEndGuard`): the only keys a
+    /// model's own `__cuaSession` may name.
+    children: Mutex<HashSet<String>>,
 }
 
 pub(crate) fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -164,7 +173,37 @@ impl CuaDriverState {
             grants: Mutex::new(gate::GrantStore::default()),
             approver,
             data_root: Some(root),
+            apply: tokio::sync::Mutex::new(()),
+            turns: Mutex::new(HashMap::new()),
+            children: Mutex::new(HashSet::new()),
         }
+    }
+
+    /// Becomes `true` when the turn behind `session_key` ends.
+    pub(crate) fn turn_signal(&self, session_key: &str) -> tokio::sync::watch::Receiver<bool> {
+        lock(&self.turns)
+            .entry(session_key.to_string())
+            .or_insert_with(|| tokio::sync::watch::channel(false).0)
+            .subscribe()
+    }
+
+    /// Ends the turn behind `session_key` for everything waiting on it.
+    pub(crate) fn end_turn(&self, session_key: &str) {
+        if let Some(signal) = lock(&self.turns).remove(session_key) {
+            let _ = signal.send(true);
+        }
+    }
+
+    pub(crate) fn register_child(&self, session_key: &str) {
+        lock(&self.children).insert(session_key.to_string());
+    }
+
+    pub(crate) fn unregister_child(&self, session_key: &str) {
+        lock(&self.children).remove(session_key);
+    }
+
+    pub(crate) fn is_child(&self, session_key: &str) -> bool {
+        lock(&self.children).contains(session_key)
     }
 
     /// A copy of the current settings.
@@ -211,11 +250,27 @@ pub(crate) fn global() -> Option<Arc<CuaDriverState>> {
 /// left behind and starts the idle reaper.
 pub fn attach(app: &tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
-    let config = crate::config::read_config()
+    let stored = crate::config::read_config()
         .map(|config| config.cua_driver)
         .unwrap_or_default();
     let root = crate::paths::oleafly_root()?;
     let platform = Platform::current().ok_or("Desktop apps are not available on this system.")?;
+    // What is on disk was not necessarily written by Settings: keep only
+    // what a save would have accepted.
+    let (config, dropped) =
+        config::sanitize_loaded(stored, platform, &config::SystemProbe, &commands::own_exe());
+    if dropped > 0 {
+        log(format!(
+            "desktop apps: dropped {dropped} saved apps or websites that aren't allowed"
+        ));
+        let cleaned = config.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            let _ = crate::config::update_config(|config| {
+                config.cua_driver = cleaned;
+                Ok(())
+            });
+        });
+    }
     let state = Arc::new(CuaDriverState::new(
         config,
         Arc::new(runtime::ProcessLauncher::new(platform)),
@@ -245,12 +300,22 @@ pub(crate) fn shutdown_for_quit(budget: Duration) {
     let Some(state) = global() else {
         return;
     };
-    if state.runtimes.running().is_empty() {
+    tauri::async_runtime::block_on(async move { stop_everything(&state, budget).await });
+}
+
+/// Ends every daemon: calls waiting on a daemon are cancelled, the runtimes
+/// stop within `budget`, and a daemon a call or a start still holds (or that
+/// never got that far) is ended by its owner record.
+pub(crate) async fn stop_everything(state: &CuaDriverState, budget: Duration) {
+    let runtimes = &state.runtimes;
+    if !runtimes.has_daemons() && !runtimes.has_owner_records() {
         return;
     }
-    tauri::async_runtime::block_on(async move {
-        let _ = tokio::time::timeout(budget, state.runtimes.stop_all()).await;
-    });
+    runtimes.cancel(&RuntimeKind::ALL);
+    let _ = tokio::time::timeout(budget, runtimes.stop_within(&RuntimeKind::ALL, budget / 2)).await;
+    if runtimes.has_daemons() || runtimes.has_owner_records() {
+        runtimes.kill_by_records().await;
+    }
 }
 
 /// Lines tests log instead of writing the developer's app.log.

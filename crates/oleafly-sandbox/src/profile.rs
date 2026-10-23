@@ -89,6 +89,11 @@ pub struct RunInputs<'a> {
 
 /// The sandbox of a run: runtimes and skill folders readable, linked data
 /// read-only, writes exactly as given, caches in the task's home.
+///
+/// `child_processes` stays off, which is right for a short task command (no
+/// descendant can leave its process group). On macOS that also makes
+/// `posix_spawn` fail, so a long-running experiment run that starts `uv`,
+/// `pixi` or `cargo` sets `spec.child_processes = true` on the result.
 pub fn spec_for_run(inputs: &RunInputs<'_>) -> Result<SandboxSpec, SandboxError> {
     let (env, path_prepend) = run_env(
         inputs.profile,
@@ -143,7 +148,8 @@ pub fn task_home(tasks_root: &Path, task_id: &str) -> PathBuf {
 }
 
 /// Creates a task home and the folders its environment points at
-/// (owner-only on macOS and Linux).
+/// (owner-only on macOS and Linux). A folder the task replaced with a link
+/// is left alone.
 pub fn prepare_home(home: &Path) -> std::io::Result<()> {
     let mut folders = vec![
         "tmp",
@@ -159,7 +165,12 @@ pub fn prepare_home(home: &Path) -> std::io::Result<()> {
     }
     std::fs::create_dir_all(home)?;
     for folder in folders {
-        std::fs::create_dir_all(home.join(folder))?;
+        // The task can make any of these a link; nothing is created through one.
+        match crate::safe_fs::create_folders_below(home, Path::new(folder)) {
+            Ok(_) => {}
+            Err(error) if crate::safe_fs::is_link_error(&error) => {}
+            Err(error) => return Err(error),
+        }
     }
     #[cfg(unix)]
     {

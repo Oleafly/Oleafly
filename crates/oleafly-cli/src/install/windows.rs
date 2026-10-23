@@ -241,15 +241,23 @@ fn place_copy(bundled: &Path, destination: &Path) -> Result<(), InstallError> {
     std::fs::create_dir_all(dir)
         .map_err(|error| InstallError::new("shell_command.failed").detail(error))?;
     let temporary = dir.join(format!(".{COMMAND_FILE}.{}.tmp", std::process::id()));
-    std::fs::copy(bundled, &temporary)
-        .map_err(|error| InstallError::new("shell_command.failed").detail(error))?;
+    if let Err(error) = std::fs::copy(bundled, &temporary) {
+        // A copy that stopped halfway (disk full, a scanner) leaves a file
+        // the size of the CLI.
+        let _ = std::fs::remove_file(&temporary);
+        return Err(InstallError::new("shell_command.failed").detail(error));
+    }
     if std::fs::rename(&temporary, destination).is_ok() {
         sweep_old_copies(dir);
         return Ok(());
     }
     let old = dir.join(format!("{COMMAND_FILE}.old-{}", std::process::id()));
-    let moved =
-        std::fs::rename(destination, &old).and_then(|()| std::fs::rename(&temporary, destination));
+    let moved = std::fs::rename(destination, &old).and_then(|()| {
+        std::fs::rename(&temporary, destination).inspect_err(|_| {
+            // The running copy goes back where it was.
+            let _ = std::fs::rename(&old, destination);
+        })
+    });
     if let Err(error) = moved {
         let _ = std::fs::remove_file(&temporary);
         return Err(InstallError::new("shell_command.in_use")
@@ -260,13 +268,29 @@ fn place_copy(bundled: &Path, destination: &Path) -> Result<(), InstallError> {
     Ok(())
 }
 
+/// How old a temporary copy must be before a sweep treats it as left over:
+/// an install running right now may still be writing its own.
+const STALE_TEMPORARY: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// Removes the copies moved aside by an earlier install or uninstall, and
+/// temporary copies a crash left behind.
 fn sweep_old_copies(dir: &Path) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
-    let prefix = format!("{COMMAND_FILE}.old-");
+    let old = format!("{COMMAND_FILE}.old-");
+    let temporary = format!(".{COMMAND_FILE}.");
     for entry in entries.flatten() {
-        if entry.file_name().to_string_lossy().starts_with(&prefix) {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let stale_temporary = name.starts_with(&temporary)
+            && name.ends_with(".tmp")
+            && entry
+                .metadata()
+                .and_then(|metadata| metadata.modified())
+                .ok()
+                .and_then(|modified| modified.elapsed().ok())
+                .is_some_and(|age| age > STALE_TEMPORARY);
+        if name.starts_with(&old) || stale_temporary {
             let _ = std::fs::remove_file(entry.path());
         }
     }
@@ -286,8 +310,33 @@ pub fn install(env: &InstallEnv) -> Result<WindowsStatus, InstallError> {
             InstallError::new("shell_command.occupied").param("path", path.display().to_string())
         );
     }
+    let existed = path.exists();
     place_copy(bundled, &path)?;
     let entry = dir.display().to_string();
+    // The record comes before the PATH edit: with the copy in place and no
+    // record, a retry (and an uninstall) would call the copy someone else's.
+    // A copy that can't be recorded is taken back if it is new.
+    let recorded = file_sha256(&path)
+        .map_err(|error| InstallError::new("shell_command.failed").detail(error))
+        .and_then(|sha256| {
+            write_record(
+                &env.data_root,
+                &WindowsRecord {
+                    version: RECORD_VERSION,
+                    platform: "windows".into(),
+                    path: path.clone(),
+                    method: "copy".into(),
+                    sha256,
+                    path_entry: entry.clone(),
+                },
+            )
+        });
+    if let Err(error) = recorded {
+        if !existed {
+            let _ = std::fs::remove_file(&path);
+        }
+        return Err(error);
+    }
     let path_failed = |error: std::io::Error| {
         InstallError::new("shell_command.path_failed")
             .param("directory", entry.clone())
@@ -302,19 +351,6 @@ pub fn install(env: &InstallEnv) -> Result<WindowsStatus, InstallError> {
             .map_err(path_failed)?;
     }
     env.user_path.broadcast();
-    let sha256 = file_sha256(&path)
-        .map_err(|error| InstallError::new("shell_command.failed").detail(error))?;
-    write_record(
-        &env.data_root,
-        &WindowsRecord {
-            version: RECORD_VERSION,
-            platform: "windows".into(),
-            path: path.clone(),
-            method: "copy".into(),
-            sha256,
-            path_entry: entry,
-        },
-    )?;
     Ok(status(env))
 }
 
@@ -358,6 +394,10 @@ pub fn uninstall(env: &InstallEnv) -> Result<WindowsStatus, InstallError> {
     }
     env.user_path.broadcast();
     let _ = std::fs::remove_file(env.data_root.join(RECORD_FILE));
+    // A copy moved aside because it was running goes now if it has stopped.
+    if let Some(dir) = record.path.parent() {
+        sweep_old_copies(dir);
+    }
     Ok(status(env))
 }
 
@@ -628,7 +668,7 @@ mod tests {
         local: &Path,
         data: &Path,
         bundled: Option<PathBuf>,
-        user_path: &'a MemoryPath,
+        user_path: &'a dyn UserPath,
     ) -> InstallEnv<'a> {
         InstallEnv {
             local_app_data: local.to_path_buf(),
@@ -674,6 +714,97 @@ mod tests {
         );
         assert!(!command_path(&env).exists() && read_record(data.path()).is_none());
         assert_eq!(user_path.broadcasts.get(), 2);
+    }
+
+    /// A user path whose writes fail, as a registry policy can make them.
+    struct LockedPath(MemoryPath);
+
+    impl UserPath for LockedPath {
+        fn read(&self) -> std::io::Result<Option<(String, bool)>> {
+            self.0.read()
+        }
+
+        fn write(&self, _: &str, _: bool) -> std::io::Result<()> {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "blocked by policy",
+            ))
+        }
+
+        fn broadcast(&self) {
+            self.0.broadcast();
+        }
+    }
+
+    #[test]
+    fn an_install_that_fails_at_the_path_edit_can_be_retried_and_uninstalled() {
+        let local = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
+        let bundle = tempfile::tempdir().unwrap();
+        let cli = bundle.path().join("oleafly-cli.exe");
+        std::fs::write(&cli, b"cli v1").unwrap();
+        let locked = LockedPath(MemoryPath::new(Some(r"C:\Windows")));
+        let blocked = env(local.path(), data.path(), Some(cli.clone()), &locked);
+        let error = install(&blocked).unwrap_err();
+        assert_eq!(error.code, "shell_command.path_failed");
+        // The copy is on disk and recorded, so it is still ours.
+        assert!(command_path(&blocked).exists());
+        assert!(read_record(data.path()).is_some());
+        assert_eq!(status(&blocked).state, "installed");
+
+        let user_path = MemoryPath::new(Some(r"C:\Windows"));
+        let retry = env(local.path(), data.path(), Some(cli.clone()), &user_path);
+        let installed = install(&retry).unwrap();
+        assert_eq!((installed.state, installed.on_path), ("installed", true));
+
+        // And an install that failed the same way can be uninstalled.
+        let other_local = tempfile::tempdir().unwrap();
+        let other_data = tempfile::tempdir().unwrap();
+        let blocked = env(other_local.path(), other_data.path(), Some(cli), &locked);
+        install(&blocked).unwrap_err();
+        let removed = uninstall(&blocked).unwrap();
+        assert_eq!(removed.state, "not_installed");
+        assert!(!command_path(&blocked).exists());
+    }
+
+    #[test]
+    fn a_copy_that_cannot_be_recorded_is_taken_back_when_it_is_new() {
+        let local = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
+        let bundle = tempfile::tempdir().unwrap();
+        let cli = bundle.path().join("oleafly-cli.exe");
+        std::fs::write(&cli, b"cli v1").unwrap();
+        // A file where the data folder should be: the record can't be written.
+        let blocked_data = data.path().join("not-a-folder");
+        std::fs::write(&blocked_data, b"x").unwrap();
+        let user_path = MemoryPath::new(None);
+        let env = env(local.path(), &blocked_data, Some(cli), &user_path);
+        assert_eq!(install(&env).unwrap_err().code, "shell_command.failed");
+        assert!(!command_path(&env).exists());
+        assert_eq!(user_path.broadcasts.get(), 0);
+    }
+
+    #[test]
+    fn leftover_temporary_and_moved_aside_copies_are_swept() {
+        let dir = tempfile::tempdir().unwrap();
+        let stale = dir.path().join(".oleafly.exe.4242.tmp");
+        let fresh = dir.path().join(".oleafly.exe.4343.tmp");
+        let moved = dir.path().join("oleafly.exe.old-4141");
+        let unrelated = dir.path().join(".other.tmp");
+        for file in [&stale, &fresh, &moved, &unrelated] {
+            std::fs::write(file, b"x").unwrap();
+        }
+        let long_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        std::fs::File::options()
+            .write(true)
+            .open(&stale)
+            .unwrap()
+            .set_modified(long_ago)
+            .unwrap();
+        sweep_old_copies(dir.path());
+        assert!(!stale.exists() && !moved.exists());
+        // An install running right now may still be writing its own copy.
+        assert!(fresh.exists() && unrelated.exists());
     }
 
     #[test]

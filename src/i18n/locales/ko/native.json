@@ -100,6 +100,10 @@
       "action": "{{agent}}이(가) 다음 작업을 하려고 합니다: {{action}}.",
       "steps": "{{agent}}이(가) 데스크톱 앱에서 다음 단계를 실행하려고 합니다:",
       "moreSteps": "표시되지 않은 단계: {{count}}",
+      "moreItems": "표시하지 않은 항목 {{count}}개",
+      "cut": "(+{{count}}자 표시 안 함)",
+      "signedIn": "이 작업은 로그인된 내 브라우저에서 실행됩니다.",
+      "signedInOn": "이 작업은 로그인된 내 브라우저의 {{origin}}에서 실행됩니다.",
       "text": "텍스트: “{{text}}”",
       "address": "주소: {{url}}",
       "allowOnce": "한 번 허용",
@@ -130,7 +134,8 @@
       "message": "에이전트가 다음을 사용할 수 있게 됩니다. 작업할 때마다 여전히 먼저 묻습니다:",
       "confirm": "허용",
       "enabled": "데스크톱 앱",
-      "app": "앱: {{name}}",
+      "app": "앱: {{name}} ({{identity}})",
+      "more": "그 외 {{count}}개 더",
       "site": "웹사이트: {{origin}}",
       "signedIn": "{{origin}}에 로그인된 내 브라우저",
       "scripted": "Cua 스크립트"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly가 계속 작업 중입니다",
       "body": "계속 실행하도록 표시한 연구 작업은 백그라운드에서 계속됩니다. 진행 상황을 보려면 Oleafly를 여세요."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "권한 확인이 꺼져 있음({{mode}})",
+      "description": "에이전트가 묻지 않고 파일을 편집하고 명령을 실행할 수 있습니다. Oleafly가 다른 모드로 전환하지 못했습니다. 에이전트 자체 설정에서 모드를 바꾸세요."
     }
   }
 }

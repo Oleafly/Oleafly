@@ -10,7 +10,8 @@ use oleafly_agent::CancellationToken;
 use serde::{Deserialize, Serialize};
 
 use super::archive::{
-    pack_reader, unpack_into, workspace_bytes, PackLimits, UnpackLimits, UnpackSummary,
+    check_upload_limits, pack_reader, unpack_into, workspace_bytes, PackLimits, UnpackLimits,
+    UnpackSummary,
 };
 use super::mirror::{RemoteMirror, POLL_LOG_BYTES};
 use super::rsync::{local_rsync, rsync_args, rsync_shell};
@@ -28,7 +29,10 @@ use crate::runs::{
 pub(crate) const CALL_TIMEOUT: Duration = Duration::from_secs(60);
 const SMALL_OUTPUT: usize = 256 * 1024;
 const POLL_OUTPUT: usize = 2 * 1024 * 1024;
+#[cfg(not(test))]
 const OUTPUTS_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+#[cfg(test)]
+const OUTPUTS_TIMEOUT: Duration = Duration::from_secs(3);
 const TAIL_BYTES: u64 = 256 * 1024;
 /// How long past its own time limit a run may stay out of reach before it
 /// counts as lost.
@@ -162,8 +166,14 @@ pub(crate) fn unreachable(
     Ok(lost)
 }
 
-fn summary_note(summary: &UnpackSummary, run_id: &str) -> Option<String> {
+pub(crate) fn summary_note(summary: &UnpackSummary, run_id: &str) -> Option<String> {
     let folder = outputs_folder(run_id);
+    if summary.timed_out {
+        return Some(format!(
+            "Copying the outputs took longer than {} minutes, so only part of them is in {folder}/. The rest stayed on the host.",
+            OUTPUTS_TIMEOUT.as_secs() / 60
+        ));
+    }
     let mut note = match summary.files {
         0 => {
             return (!summary.skipped.is_empty()).then(|| {
@@ -188,6 +198,9 @@ fn summary_note(summary: &UnpackSummary, run_id: &str) -> Option<String> {
                 .collect::<Vec<_>>()
                 .join(", ")
         ));
+    }
+    if summary.truncated {
+        note.push_str(" Copying stopped at the size limit; the rest stayed on the host.");
     }
     Some(note)
 }
@@ -273,6 +286,11 @@ impl Remote {
         let timeout = Duration::from_secs((bytes / (1024 * 1024)).max(600));
         let quoted = sh_quote(dir);
         if let Some(program) = rsync {
+            // A packed upload refuses a workspace over the limits; so does this.
+            let root = workspace.to_path_buf();
+            tokio::task::spawn_blocking(move || check_upload_limits(&root, &PackLimits::default()))
+                .await
+                .map_err(|error| RunError::Io(error.to_string()))??;
             self.script(
                 &format!("mkdir -p {quoted}/work\n"),
                 CALL_TIMEOUT,
@@ -425,7 +443,8 @@ impl Remote {
         run_id: &str,
     ) -> Result<UnpackSummary, RunError> {
         let dest = fresh_outputs(workspace, run_id)?;
-        let (summary, output) = transport::run_streaming(
+        let started = std::time::Instant::now();
+        let streamed = transport::run_streaming(
             &self.ctx,
             &self.endpoint,
             &HostKeyMode::Strict,
@@ -435,7 +454,18 @@ impl Remote {
             &self.cancel,
             move |reader| unpack_into(reader, &dest, &UnpackLimits::default()),
         )
-        .await?;
+        .await;
+        let (summary, output) = match streamed {
+            // A copy that ran out of time keeps what arrived. Starting it over
+            // would repeat the same slow transfer until the run counted as lost.
+            Err(RunError::Network(_)) if started.elapsed() >= OUTPUTS_TIMEOUT => {
+                return Ok(UnpackSummary {
+                    timed_out: true,
+                    ..UnpackSummary::default()
+                });
+            }
+            streamed => streamed?,
+        };
         let summary = summary?;
         // Stopping early at a cap ends the transfer, so the exit status of
         // a copy that was cut short is not an error.
@@ -526,13 +556,17 @@ pub(crate) async fn read_remote_log(
             let _ = remote.exchange(mirror, dir, script).await;
         }
     }
-    mirror.answer(query)
+    mirror.answer(query).await
 }
 
 #[async_trait::async_trait]
 impl RunExecutor for SshExecutor {
     fn id(&self) -> &'static str {
         "ssh"
+    }
+
+    fn poll_every(&self) -> Duration {
+        super::REMOTE_POLL_EVERY
     }
 
     async fn start(&self, spec: &RunSpec) -> Result<RunHandle, RunError> {
@@ -762,6 +796,26 @@ mod tests {
             ),
             "{status:?}"
         );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn outputs_that_take_too_long_are_a_note_not_a_lost_connection() {
+        let world = ssh_world(false);
+        let handle = start(&world, "mkdir -p results; echo ok > results/a.txt").await;
+        world.slow_outputs();
+        let executor = SshExecutor::new(world.host.clone());
+        let status = wait_for_end(&executor, &handle).await;
+        // The run ends with a note; it is not kept "running, retrying" so that
+        // the whole copy starts over.
+        match status {
+            RunStatus::Finished {
+                exit_code: Some(0),
+                note: Some(note),
+                ..
+            } => assert!(note.contains("took longer than"), "{note}"),
+            other => panic!("{other:?}"),
+        }
+        assert!(handle.run_dir.join("outputs.done").exists());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

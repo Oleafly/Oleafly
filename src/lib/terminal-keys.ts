@@ -195,7 +195,11 @@ export function routeTerminalKey(event: TerminalKeyEvent, ctx: TerminalKeyContex
   const { platform } = ctx;
   if (platform === "mac" && only(event, { meta: true }) && key === "k") return { kind: "clear" };
   if (ctx.isAppShortcut(event)) return { kind: "app" };
-  const findChord = platform === "mac" ? only(event, { meta: true }) : only(event, { ctrl: true });
+  // Plain Ctrl+F belongs to the program (vim and less page forward, readline
+  // moves a character), so Windows and Linux use Ctrl+Shift+F, as Windows
+  // Terminal and GNOME Terminal do.
+  const findChord =
+    platform === "mac" ? only(event, { meta: true }) : only(event, { ctrl: true, shift: true });
   if (key === "f" && findChord) return { kind: "find" };
   const clipboard = copyOrPaste(event, key, ctx);
   if (clipboard) return clipboard;
@@ -212,9 +216,8 @@ export function routeTerminalKey(event: TerminalKeyEvent, ctx: TerminalKeyContex
 /**
  * Whether the terminal can turn this key into input: control characters,
  * Alt/Meta prefixes, named keys, printable characters and the keys the
- * router maps. App chords with no terminal meaning (Ctrl+= zoom,
- * Ctrl+Shift+F) are not terminal keys, so they keep working from the
- * terminal. AltGr characters have a single-character key, so they count.
+ * router maps. App chords with no terminal meaning (Ctrl+= zoom) are not
+ * terminal keys, so they keep working from the terminal. AltGr characters have a single-character key, so they count.
  */
 export function isTerminalKey(event: TerminalKeyEvent, platform: TerminalPlatform): boolean {
   if (MODIFIER_KEYS.has(event.key)) return false;

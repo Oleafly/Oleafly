@@ -201,7 +201,10 @@
       "unavailable": "Ei käytettävissä",
       "saving": "Tallennetaan...",
       "saveTask": "Tallenna tehtävä",
-      "createTask": "Luo tehtävä"
+      "createTask": "Luo tehtävä",
+      "replaceText": "Korvataanko kirjoittamasi otsikko ja ohjeet tällä pohjalla?",
+      "keepText": "Säilytä omat",
+      "replaceConfirm": "Korvaa"
     },
     "starter": {
       "literatureReview": {
@@ -245,6 +248,10 @@
       "dependencies": "Riippuvuudet",
       "dependencyUnavailable": "Ei käytettävissä",
       "noActivity": "Tälle ajolle ei kirjattu tapahtumia.",
+      "activityGap_one": "Välissä oleva {{count}} kohde ei näy.",
+      "activityGap_other": "Välissä olevaa {{count}} kohdetta ei näy.",
+      "activityMore": "Lisää tapahtumia ei näytetä vielä.",
+      "keepRunningDesktopApps": "Tämä tehtävä käyttää työpöytäsovelluksia, jotka vaativat sinua koneen ääressä.",
       "startToRecord": "Käynnistä tämä tehtävä, niin sen tapahtumat kirjataan.",
       "reasoning": "Raportoitu päättely",
       "savedArtifact": "Tallennettu {{label}}",
@@ -318,6 +325,10 @@
       "kindRun": "Aloita ajo",
       "kindMcp": "Käytä työkalua",
       "expires": "Odottaa {{time}} asti",
+      "detailCommand": "Koko komento",
+      "detailRun": "Ajon tiedot",
+      "detailMcp": "Työkalun argumentit",
+      "loadFailed": "Odottavia pyyntöjä ei voitu ladata.",
       "status": {
         "approved": "Hyväksytty",
         "denied": "Hylätty",
@@ -346,8 +357,9 @@
       "noRuns": "Ei käynnissä olevia ajoja.",
       "budget": "Budjetti",
       "timeUsed": "{{used}} / {{total}}",
-      "costUsed": "${{used}} / ${{limit}}",
-      "costSpent": "${{used}} käytetty",
+      "costUsed": "{{used}} / {{limit}}",
+      "costSpent": "{{used}} käytetty",
+      "ledgerCapped": "Näytetään vain uusimmat {{limit}} tulosta.",
       "costUnknown": "Tämän mallin kustannusta ei tiedetä.",
       "runsUsed": "Ajoja: {{used}} / {{limit}}",
       "runsUsedNoLimit": "Ajoja: {{used}}",
@@ -380,6 +392,10 @@
       "mcpServers": "MCP-palvelimet, joita tehtävät voivat käyttää",
       "mcpServersHint": "Tehtävät kutsuvat näitä työkaluja kunkin tehtävän komentosääntöjen mukaisesti.",
       "noMcpServers": "MCP-palvelimia ei ole määritetty.",
+      "networkHint": "Tehtävien komennot pääsevät internetiin. Jokainen tehtävä voi silti kytkeä verkon pois.",
+      "loadFailed": "Tutkimusasetuksiasi ei voitu ladata.",
+      "sectionName": "Tutkimus",
+      "resetConfirm": "Palauta tutkimuksen oletukset: hereillä pitäminen, ilmoitukset, verkkoyhteys, aikabudjetti ja MCP-palvelimet, joita tehtävät voivat käyttää. Ajokohteet ja taustatehtävät säilyvät ennallaan.",
       "saveFailed": "Tutkimusasetuksiasi ei voitu tallentaa. Yritä uudelleen."
     }
   },
@@ -891,7 +907,10 @@
     "fileReady": "{{fileName}} on valmis",
     "saveWordHint": "Tallenna Word-dokumentti, kun olet valmis.",
     "resultPlaceholder": "Muunnettu tulos ilmestyy tähän.",
-    "progressConvertingSource": "Muunnetaan lähdekoodia Typst-muotoon"
+    "progressConvertingSource": "Muunnetaan lähdekoodia Typst-muotoon",
+    "pageRange": "Sivut",
+    "pageRangePlaceholder": "Kaikki sivut tai alue, kuten 1-50",
+    "pageRangeInvalid": "Anna yksi sivunumero tai alue, kuten 1-50."
   },
   "converters": {
     "imageToLatex": {
@@ -1098,7 +1117,9 @@
     "fileTooLarge": "Valitse tiedosto, joka on pienempi kuin 128 MB.",
     "emptySheet": "Valittu taulukko on tyhjä.",
     "arxivInputRequired": "Anna arXiv-tunnus tai valitse lähdearkisto.",
-    "equationToTypst": "Pandoc ei voinut muuntaa tätä kaavaa Typst-muotoon. Tarkista LaTeX-matematiikka ja yritä uudelleen."
+    "equationToTypst": "Pandoc ei voinut muuntaa tätä kaavaa Typst-muotoon. Tarkista LaTeX-matematiikka ja yritä uudelleen.",
+    "pdfTooManyPages": "Tässä skannauksessa on {{pages}} sivua, ja Oleafly litteroi kerrallaan enintään {{limit}}. Anna tiedoston alle sivualue, esimerkiksi 1-{{limit}}.",
+    "outputLimit": "Mallilta loppui tila ennen valmistumista, joten litterointi jäisi kesken. Valitse kohdassa Asetukset, Tekoäly, Työkalut malli, jolla on suurempi tulostusraja, tai litteroi pienempi osa."
   },
   "converterNotes": {
     "scannedPages": "Skannatut sivut ({{pages}}) litteroitiin mallilla {{model}}. Tarkista kaavat ja taulukot ennen tuloksen käyttöä.",
@@ -1740,10 +1761,14 @@
     "startAtLabel": "Aloitusaika",
     "startNow": "Kun käynnistän sen",
     "keepRunning": "Jatka ajoa, kun Oleafly on suljettu",
-    "keepRunningHint": "Ota ensin taustatyö käyttöön kohdassa Asetukset, Tutkimus.",
+    "keepRunningHint": "Ota ensin Taustatehtävät käyttöön kohdassa Asetukset, Tutkimus.",
     "invalidMetric": "Käytä kirjaimia, numeroita, pisteitä, yhdysmerkkejä tai alaviivoja.",
     "invalidCost": "Anna nollaa suurempi summa.",
-    "invalidRuns": "Anna kokonaisluku, joka on vähintään 1 ja enintään 1 000."
+    "invalidRuns": "Anna kokonaisluku, joka on vähintään 1 ja enintään 1 000.",
+    "invalidStart": "Valitse aloitusaika seuraavan 30 päivän sisältä.",
+    "invalidStartFormat": "Käytä muotoa {{example}}.",
+    "startAtFormat": "Kirjoita aika muodossa {{example}}.",
+    "problemHidden": "Jokin toimeksiannon valinta vaatii korjausta. Avaa Toimeksianto nähdäksesi mikä."
   },
   "runs": {
     "status": {
@@ -1755,11 +1780,6 @@
       "cancelled": "Pysäytetty",
       "lost": "Kadonnut"
     }
-  },
-  "record": {
-    "title": "Tutkimuspäiväkirja",
-    "openHandoff": "Avaa luovutusmuistio",
-    "openReport": "Avaa raportti"
   },
   "evidence": {
     "title": "Näytön tarkistukset",
@@ -1811,8 +1831,9 @@
       "edit": "Muokkaa",
       "remove": "Poista",
       "removeTitle": "Poistetaanko kohde {{label}}?",
-      "removeConfirm": "Siellä jo käynnistetyt ajot jatkuvat.",
+      "removeConfirm": "Siellä jo käynnistetyt ajot jatkuvat. Aloitusta odottavat tehtävät epäonnistuvat.",
       "forgetHostKey": "Unohda isäntäavain",
+      "reviewHostKey": "Tarkista isäntäavain",
       "notTested": "Ei testattu",
       "tested": "Testattu {{time}}",
       "testFailed": "Testi epäonnistui",
@@ -1903,7 +1924,8 @@
       "none": "SSH-asetuksistasi ei löytynyt isäntiä.",
       "added": "Jo lisätty",
       "add_one": "Lisää {{count}} isäntä",
-      "add_other": "Lisää {{count}} isäntää"
+      "add_other": "Lisää {{count}} isäntää",
+      "skipped": "Ei lisätty: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Tämän koneen hiekkalaatikko",
@@ -1934,6 +1956,7 @@
       "runsOn": "Ajetaan kohteessa {{target}}",
       "runsLocal": "Ajetaan tällä koneella.",
       "missing": "Tämän tehtävän käyttämä kohde poistettiin. Valitse toinen.",
+      "loadFailed": "Ajokohteitasi ei voitu ladata.",
       "windowsOff": "Ota Windowsin hiekkalaatikko käyttöön asetuksissa, niin voit suorittaa komentoja tällä koneella.",
       "openSettings": "Avaa asetukset",
       "resources": "Slurm-resurssit"
@@ -1947,6 +1970,7 @@
       "movingBackHint": "Tämä tehtävä palaa Oleaflyhin, kun sen nykyinen vaihe päättyy."
     },
     "earlierActivity": "Näytä aiemmat tapahtumat",
+    "earlierTruncated": "Tästä aiemmasta ajosta näytetään vain ensimmäiset {{limit}} kohdetta.",
     "keepRunningFailed": "Asetusta ei voitu muuttaa. Yritä uudelleen."
   }
 }

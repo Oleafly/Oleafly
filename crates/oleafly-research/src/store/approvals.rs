@@ -132,6 +132,17 @@ impl TaskStore {
         self.approval(id)
     }
 
+    /// Withdraws one pending request (its wait ended without an answer).
+    pub fn withdraw_approval(&self, id: &str) -> Result<usize, String> {
+        self.open()?
+            .execute(
+                "UPDATE research_task_approvals SET status = 'withdrawn', decided_at = ?2
+                 WHERE id = ?1 AND status = 'pending'",
+                params![id, now_ms()],
+            )
+            .map_err(store_error)
+    }
+
     /// Withdraws every pending request of a generation (it ended).
     pub fn withdraw_approvals(&self, task_id: &str, generation: u64) -> Result<usize, String> {
         self.open()?

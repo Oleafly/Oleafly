@@ -16,8 +16,10 @@ use serde_json::{json, Value};
 use zeroize::Zeroizing;
 
 use crate::auth::shared::{
-    from_collab, from_store, now_ms, CliSecrets, Env, Report, CLI_ACCOUNT_PREFIX,
+    from_collab, from_store, now_ms, one_line, read_secret_input, CliSecrets, Env, Report,
+    CLI_ACCOUNT_PREFIX,
 };
+use crate::auth::ServerLogin;
 use crate::contract::{CliError, Context, ErrorKind};
 
 /// Where the command line keeps its collaboration state.
@@ -320,11 +322,26 @@ pub(crate) async fn sign_in(
         "account": account.as_ref().map(|account| json!({"accountId": account.account_id.to_string(), "displayName": account.display_name})),
         "device": "cli",
     }))
-    .line(format!("Signed in to {} as {who}. This command line shows up as its own device.", manifest.name));
+    .line(format!("Signed in to {} as {}. This command line shows up as its own device.", one_line(&manifest.name), one_line(&who)));
     for warning in report_warnings {
         report = report.warning("server.account_unread", warning);
     }
     Ok(report)
+}
+
+/// The setup code for a new server: from `--setup-code`, or with
+/// `--setup-code-stdin` from standard input (hidden when asked for in a
+/// terminal), which keeps it out of the process list and the shell history.
+pub(crate) fn setup_code(
+    env: &Env,
+    args: &ServerLogin,
+    input: &mut dyn std::io::Read,
+) -> Result<Option<String>, CliError> {
+    if !args.setup_code_stdin {
+        return Ok(args.setup_code.clone());
+    }
+    let code = read_secret_input(input, env.stdin_is_tty, env.interactive, "Setup code: ")?;
+    Ok(Some(code.as_str().to_string()))
 }
 
 /// `server sign-in` / `auth login server`: the code goes to standard error
@@ -441,9 +458,13 @@ pub(crate) fn status_rows(env: &Env) -> Result<Vec<Value>, CliError> {
 }
 
 pub(crate) fn status_lines(row: &Value) -> Vec<String> {
-    let text = |value: &Value| value.as_str().unwrap_or_default().to_string();
+    // The server names itself and its account, so neither can start a line of
+    // its own or steer the terminal.
+    let text = |value: &Value| one_line(value.as_str().unwrap_or_default());
     let cli = match (&row["cli"]["signedIn"], row["cli"]["account"].as_str()) {
-        (Value::Bool(true), Some(account)) => format!("this command line: signed in as {account}"),
+        (Value::Bool(true), Some(account)) => {
+            format!("this command line: signed in as {}", one_line(account))
+        }
         (Value::Bool(true), None) => "this command line: signed in".to_string(),
         _ => "this command line: not signed in".to_string(),
     };
@@ -475,6 +496,51 @@ mod tests {
             account: None,
             added_at: 1,
         }
+    }
+
+    fn login_args(code: Option<&str>, from_stdin: bool) -> ServerLogin {
+        ServerLogin {
+            url: "https://collab.uni.edu".into(),
+            setup_code: code.map(str::to_string),
+            setup_code_stdin: from_stdin,
+            open: false,
+        }
+    }
+
+    #[test]
+    fn the_setup_code_can_come_from_standard_input_instead_of_the_command_line() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = env_at(dir.path());
+        let from = |args: ServerLogin, input: &str| setup_code(&env, &args, &mut input.as_bytes());
+        assert_eq!(
+            from(login_args(Some("abc-123"), false), "")
+                .unwrap()
+                .as_deref(),
+            Some("abc-123")
+        );
+        assert_eq!(from(login_args(None, false), "ignored\n").unwrap(), None);
+        assert_eq!(
+            from(login_args(None, true), "code-9\r\n")
+                .unwrap()
+                .as_deref(),
+            Some("code-9")
+        );
+        assert_eq!(
+            from(login_args(None, true), "").unwrap_err().code,
+            "auth.empty_input"
+        );
+    }
+
+    #[test]
+    fn a_server_name_cannot_start_a_line_or_steer_the_terminal() {
+        let lines = status_lines(&json!({
+            "name": "Lab\n  this command line: signed in as admin\u{1b}[2J",
+            "url": "https://collab.uni.edu",
+            "cli": {"signedIn": true, "account": "Ada\nOleafly app: signed in"},
+            "app": {"signedIn": false},
+        }));
+        assert_eq!(lines.len(), 3, "{lines:?}");
+        assert!(lines.iter().all(|line| !line.contains(['\n', '\u{1b}'])));
     }
 
     #[test]

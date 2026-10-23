@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
+import { describeError } from "@/lib/app-error";
 import type { ForgeAccount, ForgeDevicePoll, ForgeDeviceStart } from "@/lib/tauri";
 
 const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
@@ -122,6 +124,30 @@ describe("remote address checks", () => {
     expect(hasRemotePassword("git@h.org:o/r.git")).toBe(false);
     expect(hasRemotePassword("https://h.org/x.git?a=b:c@d")).toBe(false);
   });
+
+  it("spots an access token in the user name position and keeps ordinary user names", () => {
+    // The same rows as `has_remote_password` in git.rs.
+    for (const token of [
+      "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+      "gho_abc",
+      "ghu_abc",
+      "ghs_abc",
+      "github_pat_11AAAA",
+      "glpat-AbCd_1234-xyz",
+      "gloas-abc",
+      "0123456789abcdef0123456789abcdef01234567",
+      "abcdefghijklmnopqrst",
+    ]) {
+      expect(hasRemotePassword(`https://${token}@github.com/o/r.git`), token).toBe(true);
+      expect(hasRemotePassword(`http://${token}@h.org/o/r.git`), token).toBe(true);
+    }
+    for (const user of ["u", "octocat", "zoe-q", "first.last", "me%40corp.example", "abcdefghijklmnopqrs"]) {
+      expect(hasRemotePassword(`https://${user}@h.org/o/r.git`), user).toBe(false);
+    }
+    // SSH user names are not credentials.
+    expect(hasRemotePassword("ssh://ghp_abcdefghijklmnopqrstuvwxyz@h.org/o/r.git")).toBe(false);
+    expect(hasRemotePassword("ghp_abcdefghijklmnopqrstuvwxyz@h.org:o/r.git")).toBe(false);
+  });
 });
 
 describe("remoteWebUrl", () => {
@@ -216,6 +242,67 @@ describe("waitForDeviceSignIn", () => {
     expect(poll).toHaveBeenCalledWith("flow-1");
   });
 
+  it("adds five seconds at every slow_down, even when the server names no interval", async () => {
+    const replies: ForgeDevicePoll[] = [
+      { status: "slow_down", interval: 5 },
+      { status: "slow_down", interval: 5 },
+      { status: "done", account: account("https://gitlab.com") },
+    ];
+    const sleeps: number[] = [];
+    await waitForDeviceSignIn(start, async () => replies.shift() as ForgeDevicePoll, {
+      cancelled: () => false,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      now: () => 0,
+    });
+    expect(sleeps).toEqual([5000, 10_000, 15_000]);
+  });
+
+  it("tries again after a network or server failure instead of losing the approval", async () => {
+    const unreachable = new Error('@oleafly/error:{"code":"git.host_unreachable","params":{"host":"GitHub"}}');
+    const server = new Error('@oleafly/error:{"code":"git.forge_server_error","params":{"host":"GitHub","status":"502"}}');
+    const replies: (ForgeDevicePoll | Error)[] = [
+      unreachable,
+      server,
+      { status: "pending" },
+      unreachable,
+      { status: "done", account: account("https://github.com", { kind: "github" }) },
+    ];
+    const poll = vi.fn(async () => {
+      const reply = replies.shift() as ForgeDevicePoll | Error;
+      if (reply instanceof Error) throw reply;
+      return reply;
+    });
+    const result = await waitForDeviceSignIn(start, poll, {
+      cancelled: () => false,
+      sleep: async () => {},
+      now: () => 0,
+    });
+    expect(result?.base).toBe("https://github.com");
+    expect(poll).toHaveBeenCalledTimes(5);
+  });
+
+  it("gives up after too many failures in a row, and at once for any other failure", async () => {
+    const unreachable = new Error('@oleafly/error:{"code":"git.host_unreachable","params":{}}');
+    const always = vi.fn(async (): Promise<ForgeDevicePoll> => {
+      throw unreachable;
+    });
+    await expect(
+      waitForDeviceSignIn(start, always, { cancelled: () => false, sleep: async () => {}, now: () => 0 }),
+    ).rejects.toBe(unreachable);
+    expect(always).toHaveBeenCalledTimes(6);
+
+    const denied = new Error('@oleafly/error:{"code":"git.sign_in_cancelled","params":{}}');
+    const once = vi.fn(async (): Promise<ForgeDevicePoll> => {
+      throw denied;
+    });
+    await expect(
+      waitForDeviceSignIn(start, once, { cancelled: () => false, sleep: async () => {}, now: () => 0 }),
+    ).rejects.toBe(denied);
+    expect(once).toHaveBeenCalledTimes(1);
+  });
+
   it("stops polling when cancelled or past the deadline", async () => {
     let cancelled = false;
     const poll = vi.fn(async (): Promise<ForgeDevicePoll> => {
@@ -239,6 +326,30 @@ describe("waitForDeviceSignIn", () => {
       }),
     ).resolves.toBeNull();
     expect(clock).toBeGreaterThanOrEqual(900 * 1000 + 30_000);
+  });
+});
+
+describe("Git errors that name the account", () => {
+  const envelope = (code: string, params: Record<string, string>) =>
+    `@oleafly/error:${JSON.stringify({ code, params })}`;
+
+  it("names the account in a refusal when the backend knows which sign-in it used", () => {
+    const params = { host: "GitHub", account: "octocat@github.com" };
+    const denied = describeError(envelope("git.access_denied", { ...params, context: "account" }));
+    expect(denied).toBe(
+      enErrors.git.access_denied_account.replace("{{host}}", "GitHub").replace("{{account}}", "octocat@github.com"),
+    );
+    expect(denied).toContain("octocat@github.com");
+    expect(denied).not.toContain("{{");
+
+    const rejected = describeError(envelope("git.auth_rejected", params));
+    expect(rejected).toContain("octocat@github.com");
+    expect(rejected).not.toContain("{{");
+  });
+
+  it("keeps the plain refusal when Git used its own sign-in", () => {
+    const denied = describeError(envelope("git.access_denied", { host: "GitHub" }));
+    expect(denied).toBe(enErrors.git.access_denied.replace("{{host}}", "GitHub"));
   });
 });
 

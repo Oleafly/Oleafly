@@ -78,7 +78,11 @@ pub fn default_launcher() -> AcpLauncher {
         let command = oleafly_sandbox::command(&launch.sandbox, &launch.program, &args)
             .map_err(String::from)?;
         let mut command = tokio::process::Command::from(command);
-        command.current_dir(&launch.sandbox.workspace);
+        // Never the verbatim `\\?\C:\...` form a canonicalized path has on
+        // Windows: `cmd.exe` and many programs reject it as a working folder
+        // (`cmd.exe` falls back to the Windows folder). The sandbox set the
+        // plain one; this keeps it.
+        command.current_dir(dunce::simplified(&launch.sandbox.workspace));
         Ok(command)
     })
 }
@@ -436,7 +440,6 @@ impl DaemonAcpAdapter {
     /// variables, with the sandbox's folders made for this generation's
     /// workspace (a task handed over before it started has none yet).
     fn launch_for(
-        &self,
         grant: &AcpGrant,
         context: &TaskRunContext,
     ) -> Result<(AcpLaunch, Option<AcpHandoff>), String> {
@@ -486,7 +489,15 @@ impl DaemonAcpAdapter {
             ));
         }
         let acp = grant.acp.clone().ok_or_else(|| OPEN_OLEAFLY.to_string())?;
-        let (launch, handoff) = self.launch_for(&acp, &context)?;
+        // Looking up the folders and runtimes is file work (on Windows an
+        // ACL walk), so it stays off the async threads.
+        let (launch, handoff) = {
+            let acp = acp.clone();
+            let context = context.clone();
+            tokio::task::spawn_blocking(move || Self::launch_for(&acp, &context))
+                .await
+                .map_err(|_| "The agent's sandbox could not be prepared.".to_string())??
+        };
         let skills = self.host.skills(&context)?;
         let root = PathBuf::from(&context.execution_root);
         let binding = TaskBinding {
@@ -546,7 +557,15 @@ impl DaemonAcpAdapter {
             &acp.agent_id,
             &servers,
         ));
-        let command = (self.launcher)(&launch)?;
+        // Building the sandboxed command can grant folder access on Windows
+        // (it walks permissions), so it stays off the async threads.
+        let command = {
+            let launcher = self.launcher.clone();
+            let prepared = launch.clone();
+            tokio::task::spawn_blocking(move || launcher(&prepared))
+                .await
+                .map_err(|_| "The agent could not be prepared.".to_string())??
+        };
         let (sender, mut receiver) = mpsc::unbounded_channel();
         let client = AcpClient::spawn(
             command,

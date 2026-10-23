@@ -6,9 +6,11 @@
 //! - `FAKE_EXPIRE_ON=n`: the n-th counted call is refused as expired, once;
 //! - `FAKE_HANG=<tool>`: that tool never answers;
 //! - `FAKE_FAIL=<tool>`: that tool runs and fails;
-//! - `FAKE_DELAY_MS=<ms>`: counted calls take that long.
+//! - `FAKE_DELAY_MS=<ms>`: counted calls take that long;
+//! - `FAKE_SELF_CHECK=fails|denied_other`: the bounded self-check tool fails
+//!   for another reason, or is denied for a reason that isn't the manifest.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -24,7 +26,9 @@ use super::dispatch::{call_desktop_apps, turn_ended_in};
 use super::gate::testing::ScriptedApprover;
 use super::gate::Answer;
 use super::policy::{self, session_label};
-use super::runtime::{DaemonHandle, DaemonLaunch, Launcher, RuntimePaths, IDLE_STOP, TIMEOUT_TEXT};
+use super::runtime::{
+    DaemonHandle, DaemonLaunch, Launcher, RuntimePaths, IDLE_STOP, STOPPED_TEXT, TIMEOUT_TEXT,
+};
 use super::{lock, BoxFuture, CuaDriverState, CuaScope, RuntimeKind, Surface, TurnEndGuard};
 use crate::mcp::client::{McpSessionLimits, McpStdioSession};
 
@@ -38,6 +42,7 @@ const expireOn = Number(process.env.FAKE_EXPIRE_ON || '0');
 const hang = process.env.FAKE_HANG || '';
 const fail = process.env.FAKE_FAIL || '';
 const delay = Number(process.env.FAKE_DELAY_MS || '0');
+const selfCheck = process.env.FAKE_SELF_CHECK || '';
 const marker = log + '.expired';
 const started = new Set();
 let counted = 0;
@@ -62,7 +67,13 @@ lines.on('line', async (line) => {
   const args = m.params.arguments || {};
   append({kind, tool: name, args, phase: 'start', at: Date.now()});
   const answer = (result) => { append({kind, tool: name, phase: 'end', at: Date.now()}); send({jsonrpc: '2.0', id: m.id, result}); };
-  if (name === 'get_screen_size') { answer(standard ? {content: [{type: 'text', text: '1920x1080'}]} : refused('permission_denied', 'not in the capability manifest')); return; }
+  if (name === 'get_screen_size') {
+    if (standard) answer({content: [{type: 'text', text: '1920x1080'}]});
+    else if (selfCheck === 'fails') answer({content: [{type: 'text', text: 'no display'}], isError: true, structuredContent: {code: 'tool_invocation_failed'}});
+    else if (selfCheck === 'denied_other') answer(refused('permission_denied', 'screen recording is not granted'));
+    else answer(refused('permission_denied', 'not in the capability manifest'));
+    return;
+  }
   if (name === hang) return;
   if (name === 'start_session') { started.add(args.session); answer({content: [{type: 'text', text: 'started'}]}); return; }
   if (name === 'end_session') { started.delete(args.session); answer({content: [{type: 'text', text: 'ended'}]}); return; }
@@ -80,6 +91,8 @@ struct FakeLauncher {
     log: PathBuf,
     env: BTreeMap<String, String>,
     opened: Mutex<HashMap<RuntimeKind, usize>>,
+    /// Kinds whose session can't be opened.
+    failing: Mutex<HashSet<RuntimeKind>>,
 }
 
 impl FakeLauncher {
@@ -94,7 +107,12 @@ impl FakeLauncher {
             log,
             env,
             opened: Mutex::new(HashMap::new()),
+            failing: Mutex::new(HashSet::new()),
         })
+    }
+
+    fn fail(&self, kind: RuntimeKind) {
+        lock(&self.failing).insert(kind);
     }
 
     fn opened(&self, kind: RuntimeKind) -> usize {
@@ -189,6 +207,9 @@ impl Launcher for FakeLauncher {
     ) -> BoxFuture<'a, Result<McpStdioSession, String>> {
         Box::pin(async move {
             let kind = kind_of(paths);
+            if lock(&self.failing).contains(&kind) {
+                return Err(super::runtime::start_failed("no browser on this computer"));
+            }
             *lock(&self.opened).entry(kind).or_default() += 1;
             let mut env = self.env.clone();
             env.insert("FAKE_KIND".into(), kind.as_str().into());
@@ -1095,4 +1116,618 @@ async fn task_desktop_calls_use_task_grants_and_end_at_shutdown() {
             }))
             .await
     );
+}
+
+// --- Grants, approvals and denied projects -----------------------------------
+
+#[tokio::test]
+async fn a_signed_in_action_always_asks_and_never_shares_a_separate_profile_grant() {
+    let f = fixture(
+        settings(&[("https://a.org", true)]),
+        &[],
+        ScriptedApprover::with(&[Answer::Session, Answer::Session, Answer::Once]),
+    );
+    let click =
+        |browser: &str| json!({"tool": "browser_click", "browser": browser, "args": {"ref": "e1"}});
+    // Allowed for the chat in the separate profile...
+    assert!(
+        !dispatch(&f, &chat("run:a"), click("separate"))
+            .await
+            .is_error
+    );
+    assert!(
+        !dispatch(&f, &chat("run:a"), click("separate"))
+            .await
+            .is_error
+    );
+    assert_eq!(f.approver.asked().len(), 1);
+    // ...does not cover the user's own browser, and an answer of "for this
+    // chat" there grants nothing (the dialog doesn't even offer it).
+    for expected in [2, 3] {
+        assert!(
+            !dispatch(&f, &chat("run:a"), click("signed_in"))
+                .await
+                .is_error
+        );
+        assert_eq!(f.approver.asked().len(), expected);
+    }
+    let asked = f.approver.asked();
+    assert!(!asked[0].contains("signed-in browser"), "{}", asked[0]);
+    assert!(
+        asked[1].contains("This acts in your own signed-in browser."),
+        "{}",
+        asked[1]
+    );
+    assert_eq!(*lock(&f.approver.session_options), vec![true, false, false]);
+    let kinds: Vec<String> = f
+        .launcher
+        .calls()
+        .iter()
+        .filter(|entry| entry["tool"] == "browser_click")
+        .map(|entry| entry["kind"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        kinds,
+        vec![
+            "browser",
+            "browser",
+            "signed-in-browser",
+            "signed-in-browser"
+        ]
+    );
+}
+
+#[tokio::test]
+async fn the_signed_in_dialog_names_the_site_it_goes_to() {
+    let f = fixture(
+        settings(&[("https://journal.example.org", true)]),
+        &[],
+        ScriptedApprover::with(&[Answer::Once]),
+    );
+    let outcome = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "browser_navigate", "browser": "signed_in",
+            "args": {"url": "https://journal.example.org/submit"}}),
+    )
+    .await;
+    assert!(!outcome.is_error, "{}", outcome.text);
+    assert!(
+        f.approver.asked()[0]
+            .contains("This acts in your own signed-in browser, on https://journal.example.org."),
+        "{}",
+        f.approver.asked()[0]
+    );
+}
+
+fn batch(steps: Value) -> Value {
+    json!({"tool": "run_steps", "args": {"steps": steps}})
+}
+
+#[tokio::test]
+async fn allowing_a_batch_for_the_chat_allows_only_the_tools_it_listed() {
+    let f = fixture(
+        settings(&[]),
+        &[],
+        ScriptedApprover::with(&[Answer::Session, Answer::Once, Answer::Once]),
+    );
+    let clicks = batch(json!([
+        {"tool": "click", "args": {"pid": 1}},
+        {"tool": "double_click", "args": {"pid": 1}}
+    ]));
+    assert!(!dispatch(&f, &chat("run:a"), clicks.clone()).await.is_error);
+    assert_eq!(f.approver.asked().len(), 1);
+    // The same tools again run without a question.
+    assert!(!dispatch(&f, &chat("run:a"), clicks).await.is_error);
+    assert_eq!(f.approver.asked().len(), 1);
+    // A batch that also types is a different question, and lists its steps.
+    let typing = batch(json!([
+        {"tool": "click", "args": {"pid": 1}},
+        {"type_text": {"text": "anything at all"}}
+    ]));
+    assert!(!dispatch(&f, &chat("run:a"), typing).await.is_error);
+    assert_eq!(f.approver.asked().len(), 2);
+    assert!(
+        f.approver.asked()[1].contains("2. type_text"),
+        "{}",
+        f.approver.asked()[1]
+    );
+    // Typing was allowed once, not for the chat.
+    assert!(
+        !dispatch(
+            &f,
+            &chat("run:a"),
+            json!({"tool": "type_text", "args": {"text": "hi"}})
+        )
+        .await
+        .is_error
+    );
+    assert_eq!(f.approver.asked().len(), 3);
+    // Clicking was allowed for the chat, in a batch or on its own.
+    assert!(
+        !dispatch(
+            &f,
+            &chat("run:a"),
+            json!({"tool": "click", "args": {"pid": 1}})
+        )
+        .await
+        .is_error
+    );
+    assert_eq!(f.approver.asked().len(), 3);
+}
+
+#[tokio::test]
+async fn steps_the_dialog_did_not_list_are_not_allowed_for_the_chat() {
+    let f = fixture(
+        settings(&[]),
+        &[],
+        ScriptedApprover::with(&[Answer::Session, Answer::Once]),
+    );
+    let mut steps: Vec<Value> = (0..60)
+        .map(|index| json!({"tool": "click", "args": {"x": index, "note": "n".repeat(150)}}))
+        .collect();
+    steps.push(json!({"tool": "hotkey", "args": {"keys": ["cmd", "q"]}}));
+    let outcome = dispatch(&f, &chat("run:a"), batch(Value::Array(steps))).await;
+    assert!(!outcome.is_error, "{}", outcome.text);
+    let message = f.approver.asked()[0].clone();
+    assert!(
+        message
+            .lines()
+            .last()
+            .unwrap()
+            .starts_with("Steps not shown: "),
+        "{message}"
+    );
+    assert!(!message.contains("hotkey"), "{message}");
+    // The hidden hotkey step ran with the batch, but was never allowed for
+    // the chat: on its own it asks.
+    assert!(f.launcher.tools().iter().any(|tool| tool == "run_steps"));
+    assert!(
+        !dispatch(
+            &f,
+            &chat("run:a"),
+            json!({"tool": "hotkey", "args": {"keys": ["cmd", "c"]}})
+        )
+        .await
+        .is_error
+    );
+    assert_eq!(f.approver.asked().len(), 2);
+}
+
+#[tokio::test]
+async fn the_driver_runs_the_steps_that_were_listed_and_nothing_else() {
+    let f = fixture(settings(&[]), &[], ScriptedApprover::with(&[Answer::Once]));
+    let outcome = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "run_steps", "args": {
+            "steps": [
+                {"tool": "click", "args": {"pid": 1, "session": "other"}, "extra": true},
+                {"type_text": {"text": "hi"}}
+            ],
+            "stop_on_error": false
+        }}),
+    )
+    .await;
+    assert!(!outcome.is_error, "{}", outcome.text);
+    let sent = f
+        .launcher
+        .calls()
+        .into_iter()
+        .find(|entry| entry["tool"] == "run_steps")
+        .unwrap();
+    let label = session_label("Assistant", "run:a");
+    assert_eq!(
+        sent["args"],
+        json!({
+            "steps": [
+                {"tool": "click", "args": {"pid": 1}},
+                {"type_text": {"text": "hi"}}
+            ],
+            "session": label
+        })
+    );
+}
+
+#[tokio::test]
+async fn a_deny_rule_refuses_start_session_before_any_daemon_starts() {
+    let f = fixture(settings(&[]), &[], ScriptedApprover::default());
+    crate::approvals::set_decision(
+        f.dir.path(),
+        "p1",
+        "desktop_apps",
+        Some(crate::approvals::ToolDecision::Deny),
+    )
+    .unwrap();
+    let scope = CuaScope {
+        project_id: Some("p1".into()),
+        ..chat("run:a")
+    };
+    let outcome = dispatch(&f, &scope, json!({"tool": "start_session"})).await;
+    assert!(outcome.is_error);
+    assert_eq!(outcome.text, super::gate::DENIED_TEXT);
+    assert!(f.launcher.calls().is_empty());
+    assert_eq!(f.launcher.opened(RuntimeKind::Desktop), 0);
+    // Another project is unaffected.
+    let other = CuaScope {
+        project_id: Some("p2".into()),
+        ..chat("run:b")
+    };
+    assert!(
+        !dispatch(&f, &other, json!({"tool": "start_session"}))
+            .await
+            .is_error
+    );
+}
+
+#[tokio::test]
+async fn start_session_lists_a_runtime_that_could_not_start_and_keeps_the_rest() {
+    let f = fixture(
+        settings(&[("https://a.org", false)]),
+        &[],
+        ScriptedApprover::default(),
+    );
+    f.launcher.fail(RuntimeKind::Browser);
+    let outcome = dispatch(&f, &chat("run:a"), json!({"tool": "start_session"})).await;
+    assert!(!outcome.is_error, "{}", outcome.text);
+    assert!(
+        outcome.text.contains("Allowed apps: Zotero"),
+        "{}",
+        outcome.text
+    );
+    assert!(outcome.text.contains("- click {pid"), "{}", outcome.text);
+    assert!(
+        outcome.text.contains("Not available right now"),
+        "{}",
+        outcome.text
+    );
+    assert!(
+        outcome
+            .text
+            .contains("- Websites in a separate profile: Cua Driver couldn't start: no browser on this computer"),
+        "{}",
+        outcome.text
+    );
+    // Apps still work.
+    let apps = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "get_window_state", "args": {"pid": 1}}),
+    )
+    .await;
+    assert!(!apps.is_error, "{}", apps.text);
+
+    // With nothing working, it is an error that says why.
+    let g = fixture(
+        settings(&[("https://a.org", false)]),
+        &[],
+        ScriptedApprover::default(),
+    );
+    g.launcher.fail(RuntimeKind::Desktop);
+    g.launcher.fail(RuntimeKind::Browser);
+    let none = dispatch(&g, &chat("run:a"), json!({"tool": "start_session"})).await;
+    assert!(none.is_error);
+    assert!(none.text.contains("- Apps: "), "{}", none.text);
+    assert!(
+        none.text.contains("- Websites in a separate profile: "),
+        "{}",
+        none.text
+    );
+}
+
+#[tokio::test]
+async fn a_turn_that_ends_while_a_dialog_is_open_stops_the_call() {
+    let approver = ScriptedApprover {
+        delay: Duration::from_secs(60),
+        ..ScriptedApprover::with(&[Answer::Once])
+    };
+    let f = fixture(settings(&[]), &[], approver);
+    let state = f.state.clone();
+    let call = tokio::spawn(async move {
+        call_desktop_apps(
+            &state,
+            &chat("run:a"),
+            json!({"tool": "click", "args": {"pid": 1}}),
+        )
+        .await
+    });
+    assert!(eventually(|| f.approver.asked().len() == 1).await);
+    let started = Instant::now();
+    turn_ended_in(&f.state, "run:a");
+    let outcome = tokio::time::timeout(Duration::from_secs(5), call)
+        .await
+        .expect("the call stops waiting")
+        .unwrap();
+    assert!(started.elapsed() < Duration::from_secs(5));
+    assert!(outcome.is_error);
+    assert!(outcome.text.contains("turn ended"), "{}", outcome.text);
+    assert!(!f.launcher.tools().contains(&"click".to_string()));
+}
+
+async fn eventually(check: impl Fn() -> bool) -> bool {
+    let deadline = Instant::now() + WAIT;
+    while Instant::now() < deadline {
+        if check() {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    false
+}
+
+#[tokio::test]
+async fn a_chat_result_keeps_no_second_copy_of_the_screenshot() {
+    let f = fixture(settings(&[]), &[], ScriptedApprover::default());
+    let chat_outcome = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "get_window_state", "args": {"pid": 1}}),
+    )
+    .await;
+    assert_eq!(chat_outcome.images.len(), 1);
+    assert!(chat_outcome.mcp_result.is_null());
+    let acp = CuaScope {
+        surface: Surface::Acp,
+        ..chat("acp:a")
+    };
+    let bridged = dispatch(
+        &f,
+        &acp,
+        json!({"tool": "get_window_state", "args": {"pid": 1}}),
+    )
+    .await;
+    assert_eq!(bridged.mcp_result["content"][1]["type"], "image");
+}
+
+// --- Runtimes: cancelling, stopping and the bounded self-check ---------------
+
+#[tokio::test]
+async fn cancelling_a_kind_stops_a_call_that_is_waiting_for_the_driver() {
+    let f = fixture(
+        settings(&[]),
+        &[("FAKE_HANG", "click")],
+        ScriptedApprover::default(),
+    );
+    let state = f.state.clone();
+    let call = tokio::spawn(async move {
+        state
+            .runtimes
+            .call(
+                RuntimeKind::Desktop,
+                "L",
+                "click",
+                json!({"session": "L", "pid": 1}),
+                WAIT,
+            )
+            .await
+    });
+    assert!(
+        f.launcher
+            .wait_for(|calls| calls.iter().any(|entry| entry["tool"] == "click"))
+            .await
+    );
+    let started = Instant::now();
+    f.state.runtimes.cancel(&[RuntimeKind::Desktop]);
+    let result = tokio::time::timeout(Duration::from_secs(5), call)
+        .await
+        .expect("the call stops")
+        .unwrap();
+    assert_eq!(result.unwrap_err(), STOPPED_TEXT);
+    assert!(started.elapsed() < Duration::from_secs(5));
+    assert!(f.state.runtimes.running().is_empty());
+    // The next call starts a fresh runtime.
+    let result = f
+        .state
+        .runtimes
+        .call(
+            RuntimeKind::Desktop,
+            "L",
+            "list_apps",
+            json!({"session": "L"}),
+            WAIT,
+        )
+        .await
+        .unwrap();
+    assert!(!result["isError"].as_bool().unwrap_or(false), "{result}");
+    assert_eq!(f.launcher.opened(RuntimeKind::Desktop), 2);
+}
+
+#[tokio::test]
+async fn a_settings_change_marks_only_the_runtimes_whose_manifest_changed() {
+    let f = fixture(
+        settings(&[("https://a.org", false)]),
+        &[],
+        ScriptedApprover::default(),
+    );
+    for (kind, tool) in [
+        (RuntimeKind::Desktop, "list_apps"),
+        (RuntimeKind::Browser, "get_browser_state"),
+    ] {
+        f.state
+            .runtimes
+            .call(kind, "", tool, json!({}), WAIT)
+            .await
+            .unwrap();
+    }
+    assert!(f.state.runtimes.stale_kinds().is_empty());
+    f.state.set_settings(settings(&[
+        ("https://a.org", false),
+        ("https://b.org", false),
+    ]));
+    assert_eq!(f.state.runtimes.stale_kinds(), vec![RuntimeKind::Browser]);
+    f.state.runtimes.stop_changed().await;
+    assert_eq!(f.state.runtimes.running(), vec![RuntimeKind::Desktop]);
+}
+
+#[tokio::test]
+async fn a_driver_that_fails_the_self_check_for_another_reason_is_not_trusted() {
+    for mode in ["fails", "denied_other"] {
+        let f = fixture(
+            settings(&[]),
+            &[("FAKE_SELF_CHECK", mode)],
+            ScriptedApprover::default(),
+        );
+        let error = f
+            .state
+            .runtimes
+            .call(
+                RuntimeKind::Desktop,
+                "L",
+                "click",
+                json!({"session": "L", "pid": 1}),
+                WAIT,
+            )
+            .await
+            .unwrap_err();
+        assert!(
+            error.contains("desktop_apps.not_bounded"),
+            "{mode}: {error}"
+        );
+        assert!(f.state.runtimes.running().is_empty(), "{mode}");
+    }
+}
+
+/// A launcher whose daemon is a real process (`sleep`) that never becomes
+/// ready: a start that is stuck, as a slow first launch of the macOS app is.
+#[cfg(unix)]
+#[derive(Default)]
+struct StuckStart {
+    pid: Mutex<Option<u32>>,
+    owner_file_when_waiting: Mutex<Option<bool>>,
+}
+
+#[cfg(unix)]
+impl Launcher for StuckStart {
+    fn locate(&self) -> BoxFuture<'_, Result<DriverInstall, String>> {
+        Box::pin(async {
+            Ok(DriverInstall {
+                binary: PathBuf::from("node"),
+                app_bundle: Some(PathBuf::from("/Applications/CuaDriver.app")),
+                version: Some((0, 36, 0)),
+            })
+        })
+    }
+
+    fn start_daemon<'a>(
+        &'a self,
+        _launch: &'a DaemonLaunch,
+        _paths: &'a RuntimePaths,
+    ) -> BoxFuture<'a, Result<DaemonHandle, String>> {
+        Box::pin(async move {
+            let mut child = std::process::Command::new("sleep")
+                .arg("300")
+                .spawn()
+                .map_err(|error| error.to_string())?;
+            let pid = child.id();
+            let started = match crate::process_identity::probe(pid) {
+                crate::process_identity::ProcessProbe::Running { started } => started,
+                crate::process_identity::ProcessProbe::Gone => None,
+            };
+            // Reap it when it ends, so it never lingers as a zombie.
+            std::thread::spawn(move || {
+                let _ = child.wait();
+            });
+            *lock(&self.pid) = Some(pid);
+            Ok(DaemonHandle::Detached { pid, started })
+        })
+    }
+
+    fn wait_ready<'a>(
+        &'a self,
+        _install: &'a DriverInstall,
+        paths: &'a RuntimePaths,
+        _handle: &'a mut DaemonHandle,
+    ) -> BoxFuture<'a, Result<(), String>> {
+        Box::pin(async move {
+            *lock(&self.owner_file_when_waiting) = Some(paths.owner_file.exists());
+            std::future::pending::<()>().await;
+            Ok(())
+        })
+    }
+
+    fn open_session<'a>(
+        &'a self,
+        _install: &'a DriverInstall,
+        _paths: &'a RuntimePaths,
+        _env: &'a BTreeMap<String, String>,
+    ) -> BoxFuture<'a, Result<McpStdioSession, String>> {
+        Box::pin(async { Err(super::runtime::start_failed("never reached")) })
+    }
+
+    fn stop_daemon<'a>(
+        &'a self,
+        _install: &'a DriverInstall,
+        _paths: &'a RuntimePaths,
+        _handle: DaemonHandle,
+    ) -> BoxFuture<'a, ()> {
+        Box::pin(async {})
+    }
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_daemon_that_is_still_starting_is_on_record_and_is_ended_at_quit() {
+    let dir = tempfile::tempdir().unwrap();
+    let launcher = Arc::new(StuckStart::default());
+    let state = Arc::new(CuaDriverState::for_test(
+        settings(&[]),
+        launcher.clone(),
+        Arc::new(ScriptedApprover::default()),
+        dir.path().to_path_buf(),
+    ));
+    let starting = state.clone();
+    let call = tokio::spawn(async move {
+        starting
+            .runtimes
+            .call(RuntimeKind::Desktop, "", "list_apps", json!({}), WAIT)
+            .await
+    });
+    assert!(eventually(|| lock(&launcher.owner_file_when_waiting).is_some()).await);
+    // The record exists before the daemon is ready, and the kind counts as
+    // having a daemon although nothing is running yet.
+    assert_eq!(*lock(&launcher.owner_file_when_waiting), Some(true));
+    assert!(state.runtimes.has_daemons());
+    assert!(state.runtimes.running().is_empty());
+    let pid = lock(&launcher.pid).expect("the daemon started");
+    assert!(matches!(
+        crate::process_identity::probe(pid),
+        crate::process_identity::ProcessProbe::Running { .. }
+    ));
+
+    // The start holds the slot, so a stop can't take it: quitting ends the
+    // daemon by its record instead of waiting.
+    let began = Instant::now();
+    super::stop_everything(&state, Duration::from_millis(600)).await;
+    assert!(
+        began.elapsed() < Duration::from_secs(5),
+        "{:?}",
+        began.elapsed()
+    );
+    assert!(
+        eventually(|| matches!(
+            crate::process_identity::probe(pid),
+            crate::process_identity::ProcessProbe::Gone
+        ))
+        .await
+    );
+    assert!(!state.runtimes.has_owner_records());
+    call.abort();
+}
+
+#[test]
+fn a_daemon_is_found_by_the_socket_it_serves() {
+    let listing = "\
+  101 /sbin/launchd
+  202 /Applications/CuaDriver.app/Contents/MacOS/cua-driver serve --socket /Users/a b/.oleafly/cua/desktop.sock --pid-file /Users/a b/.oleafly/cua/desktop.pid --permission-mode bounded
+  303 /Applications/CuaDriver.app/Contents/MacOS/cua-driver mcp --socket /Users/a b/.oleafly/cua/desktop.sock
+  404 /Applications/CuaDriver.app/Contents/MacOS/cua-driver serve --socket /Users/a b/.oleafly/cua/desktop.sock2 --pid-file x
+  505 /Applications/CuaDriver.app/Contents/MacOS/cua-driver serve --socket /Users/a b/.oleafly/cua/browser.sock --pid-file y
+ 7777 cua-driver serve --socket /Users/a b/.oleafly/cua/desktop.sock
+";
+    let found =
+        super::runtime::parse_serving_pids(listing, "/Users/a b/.oleafly/cua/desktop.sock", 7777);
+    // Not the client, not another socket, not this process.
+    assert_eq!(found, vec![202]);
+    assert!(super::runtime::parse_serving_pids("", "/x.sock", 1).is_empty());
+    assert!(super::runtime::parse_serving_pids("not a listing\n 12", "/x.sock", 1).is_empty());
 }

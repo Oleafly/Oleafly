@@ -17,17 +17,27 @@ pub struct BuildArtifacts {
     pub pdf: Option<PathBuf>,
     /// Build output exists but is older than the sources (so it was left out).
     pub stale: bool,
+    /// The log is what was left out (`stale` holds then too).
+    pub log_stale: bool,
+    /// The PDF is what was left out (`stale` holds then too).
+    pub pdf_stale: bool,
 }
 
+/// A regular file's time. A link in the build folder (a project can ship
+/// one) is not the build's output, and reading through it would read
+/// whatever it points at.
 fn modified(path: &Path) -> Option<SystemTime> {
-    std::fs::metadata(path)
+    std::fs::symlink_metadata(path)
         .ok()
         .filter(|metadata| metadata.is_file())
         .and_then(|metadata| metadata.modified().ok())
 }
 
 fn first_file(candidates: &[PathBuf]) -> Option<PathBuf> {
-    candidates.iter().find(|path| path.is_file()).cloned()
+    candidates
+        .iter()
+        .find(|path| std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file()))
+        .cloned()
 }
 
 /// The build output of `build_dir` for `main_document`, kept only when it is
@@ -77,6 +87,7 @@ pub fn discover(
             artifacts.log = Some((log, status));
         } else {
             artifacts.stale = true;
+            artifacts.log_stale = true;
         }
     }
     if let Some(pdf) = pdf {
@@ -84,6 +95,7 @@ pub fn discover(
             artifacts.pdf = Some(pdf);
         } else {
             artifacts.stale = true;
+            artifacts.pdf_stale = true;
         }
     }
     artifacts

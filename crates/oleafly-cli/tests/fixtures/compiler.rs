@@ -4,10 +4,13 @@
 // FIXTURE_BUNDLE_FAIL  fail like a bundle download while `--bundle` is given
 // FIXTURE_RECORD       append the arguments (and a few variables) to <exe>.calls
 // FIXTURE_TEX_LOG      copy this file to <outdir>/<stem>.log
+// A source containing `fixture-partial-pdf` ends like latexmk -f after a TeX
+// error: a partial PDF is written and the exit code is 12.
 use std::ffi::OsString;
 use std::path::PathBuf;
 
 const IMAGE_FAILURE_MARKER: &str = "fixture-libpng-error";
+const PARTIAL_PDF_MARKER: &str = "fixture-partial-pdf";
 const ENTRY_PREFIX: &str = "\\ifdefined\\pdfglyphtounicode";
 
 fn arguments() -> Vec<OsString> {
@@ -27,10 +30,14 @@ fn source() -> Option<PathBuf> {
     Some(last)
 }
 
-fn reports_an_image_failure() -> bool {
+fn source_contains(marker: &str) -> bool {
     source()
         .and_then(|source| std::fs::read_to_string(source).ok())
-        .is_some_and(|text| text.contains(IMAGE_FAILURE_MARKER))
+        .is_some_and(|text| text.contains(marker))
+}
+
+fn reports_an_image_failure() -> bool {
+    source_contains(IMAGE_FAILURE_MARKER)
 }
 
 fn print_version() -> bool {
@@ -130,6 +137,11 @@ fn main() {
         .or_else(|| last.file_stem().map(ToOwned::to_owned))
         .unwrap();
     std::fs::create_dir_all(&outdir).unwrap();
+    if source_contains(PARTIAL_PDF_MARKER) {
+        std::fs::write(outdir.join(&output_stem).with_extension("pdf"), b"%PDF-1.7\npartial\n").unwrap();
+        eprintln!("! Fixture failure");
+        std::process::exit(12);
+    }
     std::fs::write(outdir.join(&output_stem).with_extension("pdf"), b"%PDF-1.7\nfixture\n").unwrap();
     if let Some(log) = std::env::var_os("FIXTURE_TEX_LOG") {
         std::fs::copy(log, outdir.join(&output_stem).with_extension("log")).unwrap();

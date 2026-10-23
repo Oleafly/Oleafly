@@ -143,6 +143,21 @@ describe("ChatComposer", () => {
     expect(textarea()).toHaveValue("");
   });
 
+  it("lets the arrow keys move inside a recalled prompt of several lines", () => {
+    render(<Harness history={["old", "first\nsecond"]} />);
+    fireEvent.keyDown(textarea(), { key: "ArrowUp" });
+    expect(textarea()).toHaveValue("first\nsecond");
+    // The caret is on the second line: Up is left to the textarea.
+    fireEvent.keyDown(textarea(), { key: "ArrowUp" });
+    expect(textarea()).toHaveValue("first\nsecond");
+    textarea().setSelectionRange(2, 2);
+    // On the first line, Down moves down; Up steps back through history.
+    fireEvent.keyDown(textarea(), { key: "ArrowDown" });
+    expect(textarea()).toHaveValue("first\nsecond");
+    fireEvent.keyDown(textarea(), { key: "ArrowUp" });
+    expect(textarea()).toHaveValue("old");
+  });
+
   it("remembers what was sent for the project", () => {
     render(<Harness initial="  summarize section 2 " />);
     fireEvent.keyDown(textarea(), { key: "Enter" });

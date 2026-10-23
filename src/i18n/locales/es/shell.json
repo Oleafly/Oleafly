@@ -941,7 +941,7 @@
         "experimentation": "experimentos, laboratorio, beta, funciones experimentales, funciones anticipadas",
         "general": "preferencias, idioma, configuración regional, revisión ortográfica, ortografía, erratas, sin conexión, tutoriales, comando de terminal",
         "help": "acerca de, versión, actualizaciones, registro de cambios, novedades, documentación, soporte, ayuda, comunidad, Discord, licencia, informe de fallos",
-        "integrations": "Zotero, GitHub, MCP, citas, cuentas, conexiones",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, alojamiento Git, aplicaciones de escritorio, Cua, MCP, citas, cuentas, conexiones",
         "shortcuts": "atajos de teclado, atajos, combinaciones de teclas, teclas, teclado",
         "research": "investigación tareas presupuesto notificaciones mantener despierto experimentos ejecuciones research tasks"
       },

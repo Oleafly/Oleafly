@@ -27,6 +27,7 @@ import {
   importTargetsForKind,
   type ProjectImportFileKind,
 } from "@/features/project-import";
+import { cancelRepositoryImport } from "@/lib/forge";
 import type { ForgeAccount, ForgeRepo } from "@/lib/tauri";
 import { useForgeAccountsStore } from "@/store/forge-accounts";
 import { useSettingsStore } from "@/store/settings";
@@ -99,7 +100,7 @@ export function ProjectImportDialog({
   onImported?: () => void;
   initialView?: "sources" | "arxiv" | "overleaf" | "git";
 }>) {
-  const { t } = useTranslation(["library"]);
+  const { t } = useTranslation(["library", "common"]);
   const sourceCopy: Record<ProjectImportFileKind, { title: string; description: string }> = {
     project: {
       title: t(($) => $.library.import.sources.project.title),
@@ -132,6 +133,10 @@ export function ProjectImportDialog({
   // The local source whose picker or import is running, so its card spins.
   const [busyKind, setBusyKind] = useState<ProjectImportFileKind | null>(null);
   const busyRef = useRef(false);
+  // A repository import or clone can be stopped; the other imports cannot.
+  const [cancellable, setCancellable] = useState(false);
+  const cancellableRef = useRef(false);
+  const cancelledRef = useRef(false);
   const sessionRef = useRef(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Off every time the dialog opens: keeping an import as a template is rare.
@@ -159,9 +164,22 @@ export function ProjectImportDialog({
     void logError("project import", error);
   };
 
-  const runImport = async (work: () => Promise<boolean>) => {
+  /** Stop the repository import or clone that is running. The transfer
+   * ends, its staging folder goes and no project is created. */
+  const cancelImport = () => {
+    if (!busyRef.current || !cancellableRef.current || cancelledRef.current) return;
+    cancelledRef.current = true;
+    void cancelRepositoryImport().catch((error: unknown) => {
+      void logError("cancel repository import", error);
+    });
+  };
+
+  const runImport = async (work: () => Promise<boolean>, options: { cancellable?: boolean } = {}) => {
     if (busyRef.current) return;
     busyRef.current = true;
+    cancellableRef.current = options.cancellable === true;
+    cancelledRef.current = false;
+    setCancellable(cancellableRef.current);
     setBusy(true);
     setErrorMessage(null);
     const keepAsTemplate = alsoTemplate;
@@ -176,9 +194,13 @@ export function ProjectImportDialog({
         if (keepAsTemplate) void keepImportAsTemplate(before);
       }
     } catch (error) {
-      reportError(error);
+      // The person stopped it: nothing went wrong.
+      if (!cancelledRef.current) reportError(error);
     } finally {
       busyRef.current = false;
+      cancellableRef.current = false;
+      cancelledRef.current = false;
+      setCancellable(false);
       setBusy(false);
     }
   };
@@ -225,17 +247,23 @@ export function ProjectImportDialog({
   };
 
   const importRepository = async (account: ForgeAccount, repository: ForgeRepo) => {
-    await runImport(async () => {
-      await importForgeRepository(account.base, repository);
-      return true;
-    });
+    await runImport(
+      async () => {
+        await importForgeRepository(account.base, repository);
+        return true;
+      },
+      { cancellable: true },
+    );
   };
 
   const cloneByAddress = async (url: string) => {
-    await runImport(async () => {
-      await cloneRepository(url);
-      return true;
-    });
+    await runImport(
+      async () => {
+        await cloneRepository(url);
+        return true;
+      },
+      { cancellable: true },
+    );
   };
 
   const openGitHostingSettings = () => {
@@ -453,7 +481,15 @@ export function ProjectImportDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next && !busyRef.current) onClose();
+        if (next) return;
+        if (!busyRef.current) {
+          onClose();
+        } else if (cancellableRef.current) {
+          // Closing the dialog stops a repository transfer instead of
+          // leaving it running with no way back.
+          cancelImport();
+          onClose();
+        }
       }}
     >
       <DialogContent
@@ -490,7 +526,16 @@ export function ProjectImportDialog({
         </DialogHeader>
 
         {errorMessage && <p role="alert" className="shrink-0 select-text rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
-        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>}
+        {busy && (
+          <div className="flex shrink-0 items-center justify-between gap-2">
+            <output className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>
+            {cancellable ? (
+              <Button type="button" size="sm" variant="ghost" data-testid="project-import-cancel" onClick={cancelImport}>
+                {t(($) => $.common.actions.cancel)}
+              </Button>
+            ) : null}
+          </div>
+        )}
         <div
           className={cn(
             "-mx-6 -mb-6 min-h-0 px-6 pb-6",

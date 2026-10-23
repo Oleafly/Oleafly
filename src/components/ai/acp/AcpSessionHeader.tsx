@@ -2,6 +2,8 @@ import { useState } from "react";
 import { GitBranch, GitFork, LogOut, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -27,6 +29,7 @@ export function AcpSessionHeader({
   const { t } = useTranslation(["common", "ai"]);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const running = session.status === "running" || session.status === "cancelling";
   const canFork = !!session.capabilities.fork;
   const revision = session.startRevision?.slice(0, 7);
@@ -57,7 +60,7 @@ export function AcpSessionHeader({
           <button
             type="button"
             data-testid="acp-session-title"
-            className="min-w-0 flex-1 truncate rounded px-1 text-left font-medium hover:bg-accent"
+            className="min-w-0 flex-1 truncate rounded px-1 text-left font-medium hover:bg-accent focus-visible:bg-accent"
             onClick={() => setEditing(true)}
           >
             {session.title || t(($) => $.ai.acp.untitledConversation)}
@@ -80,12 +83,17 @@ export function AcpSessionHeader({
       )}
       <DropdownMenu>
         <Tooltip label={t(($) => $.ai.acp.header.menu)}>
-          <DropdownMenuTrigger
-            aria-label={t(($) => $.ai.acp.header.menu)}
-            data-testid="acp-session-menu"
-            className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <MoreHorizontal className="size-3.5" />
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t(($) => $.ai.acp.header.menu)}
+              data-testid="acp-session-menu"
+              className="size-6 shrink-0 text-muted-foreground [&_svg]:size-3.5"
+            >
+              <MoreHorizontal />
+            </Button>
           </DropdownMenuTrigger>
         </Tooltip>
         <DropdownMenuContent align="end" className="z-[100] w-56">
@@ -108,10 +116,9 @@ export function AcpSessionHeader({
           </DropdownMenuItem>
           {session.capabilities.logout && (
             <DropdownMenuItem
+              data-testid="acp-sign-out"
               disabled={busy || running}
-              onSelect={() => perform(async () => {
-                useAcpSessionsStore.getState().setSnapshot(await acpLogout(projectId, session.id));
-              })}
+              onSelect={() => setSigningOut(true)}
             >
               <LogOut className="size-3.5" />
               {t(($) => $.ai.acp.signIn.signOut)}
@@ -128,6 +135,26 @@ export function AcpSessionHeader({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <ConfirmationDialog
+        open={signingOut}
+        destructive
+        title={t(($) => $.ai.acp.header.signOutTitle, { agent: agentName })}
+        description={t(($) => $.ai.acp.header.signOutDescription, { agent: agentName })}
+        confirmLabel={t(($) => $.ai.acp.signIn.signOut)}
+        onCancel={() => setSigningOut(false)}
+        onConfirm={() => {
+          setSigningOut(false);
+          perform(async () => {
+            useAcpSessionsStore.getState().setSnapshot(await acpLogout(projectId, session.id));
+          });
+        }}
+      >
+        {session.usage?.auth?.label && (
+          <p className="mt-2 select-text text-xs font-medium">
+            {t(($) => $.ai.acp.header.signOutAccount, { account: session.usage.auth.label })}
+          </p>
+        )}
+      </ConfirmationDialog>
       <DeleteConversationDialog
         session={session}
         agentName={agentName}

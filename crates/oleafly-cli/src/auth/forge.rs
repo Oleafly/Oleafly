@@ -12,14 +12,16 @@ use crate::contract::{CliError, ErrorKind};
 
 const GITHUB: &str = "https://github.com";
 
+/// The account key the app uses for `host` (`www.` and API paths dropped,
+/// https required), so a token saved here is the one the app finds.
 fn host_base(host: &str) -> Result<String, CliError> {
-    accounts::normalize_forge_base(host).map_err(|reason| {
+    oleafly_forge::address::normalize_base_url(host).map_err(|error| {
         CliError::new(
             ErrorKind::Usage,
             "git.invalid_host",
             format!("\"{host}\" isn't a Git host address Oleafly can use."),
         )
-        .hint(reason)
+        .hint(error.to_string())
     })
 }
 
@@ -65,26 +67,51 @@ pub(crate) fn login(
     Ok(Report::new(json!({"host": base, "saved": !dry_run, "dryRun": dry_run})).line(line))
 }
 
-/// `auth logout git`: removes the host's token. The Oleafly app's own
-/// GitHub sign-in stays; sign out of it in the app.
+/// `auth logout git`: removes the host's token. For github.com it also
+/// removes the token of the Oleafly app's own GitHub sign-in (`github_token`,
+/// which the app keeps in step with its github.com account): `auth token`
+/// would otherwise still hand out a working token after the logout. The app
+/// then shows the account as signed out.
 pub(crate) fn logout(env: &Env, host: &str, dry_run: bool) -> Result<Report, CliError> {
     let base = host_base(host)?;
     let saved = accounts::forge_token(&env.store, &base)
         .map_err(|error| from_store(error, &env.data_root))?
         .is_some();
-    if saved && !dry_run {
-        accounts::forget_forge_token(&env.store, &base)
+    let app_token = base == GITHUB
+        && env
+            .store
+            .contains(GITHUB_TOKEN_ACCOUNT)
             .map_err(|error| from_store(error, &env.data_root))?;
+    if !dry_run {
+        if saved {
+            accounts::forget_forge_token(&env.store, &base)
+                .map_err(|error| from_store(error, &env.data_root))?;
+        }
+        if app_token {
+            env.store
+                .set(&[(GITHUB_TOKEN_ACCOUNT, "")])
+                .map_err(|error| from_store(error, &env.data_root))?;
+        }
     }
-    let removed: Vec<Value> = if saved {
-        vec![json!({"kind": "hostToken", "target": base})]
-    } else {
-        Vec::new()
+    let mut removed: Vec<Value> = Vec::new();
+    if saved {
+        removed.push(json!({"kind": "hostToken", "target": base}));
+    }
+    if app_token {
+        removed.push(json!({"kind": "appGithubToken", "target": base}));
+    }
+    let what = match (saved, app_token) {
+        (true, false) => format!("the token for {base}"),
+        (true, true) => {
+            format!("the token for {base} and the token of the Oleafly app's GitHub sign-in")
+        }
+        (false, true) => "the token of the Oleafly app's GitHub sign-in".to_string(),
+        (false, false) => String::new(),
     };
-    let line = match (saved, dry_run) {
-        (false, _) => format!("No token is saved for {base}."),
-        (true, true) => format!("Dry run: would remove the token for {base}."),
-        (true, false) => format!("Removed the token for {base}."),
+    let line = match (what.is_empty(), dry_run) {
+        (true, _) => format!("No token is saved for {base}."),
+        (false, true) => format!("Dry run: would remove {what}."),
+        (false, false) => format!("Removed {what}."),
     };
     Ok(Report::new(json!({"removed": removed, "dryRun": dry_run})).line(line))
 }
@@ -198,6 +225,98 @@ mod tests {
         let dry = login(&env, "gitlab.com", true, &mut "glpat-FORGE99".as_bytes()).unwrap();
         assert_eq!(dry.data["saved"], false);
         assert!(accounts::forge_tokens(&env.store).unwrap().is_empty());
+        // Plain http to a server elsewhere is refused, as the app refuses it.
+        assert_eq!(
+            login(&env, "http://git.example.org", true, &mut "tok".as_bytes())
+                .unwrap_err()
+                .code,
+            "git.invalid_host"
+        );
+    }
+
+    #[test]
+    fn git_login_saves_under_the_address_the_app_uses() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = env_at(dir.path());
+        let report = login(
+            &env,
+            "www.github.com",
+            false,
+            &mut "ghp_WWW12345\n".as_bytes(),
+        )
+        .unwrap();
+        assert_eq!(report.data["host"], "https://github.com");
+        assert_eq!(token(&env, "github.com").unwrap().as_str(), "ghp_WWW12345");
+    }
+
+    #[test]
+    fn logging_out_of_github_also_clears_the_app_sign_in_token() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = env_at(dir.path());
+        login(
+            &env,
+            "github.com",
+            false,
+            &mut "github_pat_CLI1234".as_bytes(),
+        )
+        .unwrap();
+        login(&env, "gitlab.com", false, &mut "glpat-FORGE99".as_bytes()).unwrap();
+        env.store
+            .set(&[(GITHUB_TOKEN_ACCOUNT, "gho_APPSIGNIN1")])
+            .unwrap();
+
+        let dry = logout(&env, "github.com", true).unwrap();
+        assert_eq!(dry.data["removed"].as_array().unwrap().len(), 2);
+        assert!(env.store.contains(GITHUB_TOKEN_ACCOUNT).unwrap(), "dry run");
+        assert!(token(&env, "github.com").is_ok());
+
+        let report = logout(&env, "https://github.com", false).unwrap();
+        let kinds: Vec<_> = report.data["removed"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["kind"].as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(kinds, ["hostToken", "appGithubToken"]);
+        assert!(report
+            .lines
+            .iter()
+            .any(|line| line.contains("GitHub sign-in")));
+        // Nothing hands out a GitHub token any more, and no row lists one.
+        assert_eq!(
+            token(&env, "github.com").unwrap_err().code,
+            "git.token_missing"
+        );
+        assert!(!env.store.contains(GITHUB_TOKEN_ACCOUNT).unwrap());
+        let hosts: Vec<String> = status_rows(&env)
+            .unwrap()
+            .iter()
+            .map(|row| row["host"].as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(hosts, ["https://gitlab.com"]);
+        // Other hosts keep theirs.
+        assert_eq!(token(&env, "gitlab.com").unwrap().as_str(), "glpat-FORGE99");
+    }
+
+    #[test]
+    fn logging_out_of_github_with_only_the_app_token_removes_that_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = env_at(dir.path());
+        env.store
+            .set(&[(GITHUB_TOKEN_ACCOUNT, "gho_APPSIGNIN1")])
+            .unwrap();
+        let report = logout(&env, "github.com", false).unwrap();
+        assert_eq!(
+            report.data["removed"],
+            json!([{"kind": "appGithubToken", "target": "https://github.com"}])
+        );
+        assert!(!env.store.contains(GITHUB_TOKEN_ACCOUNT).unwrap());
+        // Other hosts never touch it.
+        env.store
+            .set(&[(GITHUB_TOKEN_ACCOUNT, "gho_APPSIGNIN1")])
+            .unwrap();
+        logout(&env, "gitlab.com", false).unwrap();
+        assert!(env.store.contains(GITHUB_TOKEN_ACCOUNT).unwrap());
     }
 
     #[test]

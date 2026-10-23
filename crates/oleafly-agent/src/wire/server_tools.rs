@@ -50,8 +50,14 @@ pub(crate) fn anthropic_web_versions(model_id: &str) -> Option<AnthropicWebVersi
     }
 }
 
+/// Whether the Responses API runs web search for the model. The families
+/// support it, except `gpt-4.1-nano` and `o3-mini`, which answer a request
+/// that names the tool with a 400.
 fn responses_web_model(model_id: &str) -> bool {
     let id = model_id.to_ascii_lowercase();
+    if id.starts_with("gpt-4.1-nano") || id.starts_with("o3-mini") {
+        return false;
+    }
     ["gpt-4o", "gpt-4.1", "gpt-5", "gpt-6", "gpt-7", "o3", "o4"]
         .iter()
         .any(|prefix| id.starts_with(prefix))
@@ -140,6 +146,41 @@ mod tests {
         );
         assert!(anthropic_web_versions("claude-3-7-sonnet-latest").is_some());
         assert!(anthropic_web_versions("claude-3-haiku-20240307").is_none());
+    }
+
+    #[test]
+    fn models_without_hosted_web_search_use_the_local_tools() {
+        for model in [
+            "gpt-4.1-nano",
+            "gpt-4.1-nano-2025-04-14",
+            "o3-mini",
+            "O3-mini-high",
+        ] {
+            assert!(!responses_web_model(model), "{model}");
+        }
+        for model in [
+            "gpt-4.1",
+            "gpt-4.1-mini",
+            "gpt-4o",
+            "o3",
+            "o3-pro",
+            "o4-mini",
+            "gpt-5",
+            "gpt-6.1-sol",
+        ] {
+            assert!(responses_web_model(model), "{model}");
+        }
+        let responses = Wire::OpenAiResponses {
+            base_url: "https://api.openai.com/v1".into(),
+        };
+        let on = Some(WebTools {
+            search: true,
+            fetch: true,
+        });
+        assert_eq!(
+            native_web("openai", &responses, "gpt-4.1-nano", on),
+            NativeWeb::default()
+        );
     }
 
     #[test]

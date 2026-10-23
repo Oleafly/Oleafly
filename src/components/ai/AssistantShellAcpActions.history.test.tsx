@@ -88,9 +88,9 @@ describe("the CLI history menu", () => {
     const dialog = await screen.findByTestId("acp-history-dialog");
     expect(within(dialog).getByRole("textbox", { name: "Search conversations" })).toBeInTheDocument();
     await waitFor(() => expect(acpSessionPage).toHaveBeenCalledWith("paper", { query: undefined, before: undefined, limit: 50 }));
-    // The dialog has no close button of its own: its Close is the backdrop
-    // around it, which closes on mouse down, and Escape.
-    fireEvent.mouseDown(screen.getByRole("button", { name: "Close" }));
+    // Besides the close button in its header, the backdrop around the dialog
+    // closes it on mouse down, and so does Escape.
+    fireEvent.mouseDown(screen.getAllByRole("button", { name: "Close" })[0]);
     await waitFor(() => expect(screen.queryByTestId("acp-history-dialog")).toBeNull());
   });
 

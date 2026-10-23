@@ -2,6 +2,7 @@
 //! image, a PDF document, extracted text, or a short note saying why a file
 //! was not sent. Newer messages are resolved first, so the most recent
 //! attachments win the request's size budget.
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -33,6 +34,9 @@ struct MediaBudget {
     bytes: usize,
     images_left: usize,
     documents_left: usize,
+    /// PDF pages the request may still carry as documents. A provider limits
+    /// the pages of a whole request, not of each file.
+    pages_left: u32,
     text_chars: usize,
 }
 
@@ -43,7 +47,6 @@ pub(crate) struct RunMediaContext {
     project_id: Option<String>,
     images: Option<bool>,
     documents: bool,
-    page_limit: u32,
     budget: Mutex<MediaBudget>,
 }
 
@@ -72,6 +75,23 @@ fn base64_len(size: u64) -> usize {
     usize::try_from(size.div_ceil(3).saturating_mul(4)).unwrap_or(usize::MAX)
 }
 
+/// What a PDF with no recorded page count is counted as: one page for every
+/// 50 KB. Papers run lower and scans higher, so a guess that errs on the
+/// high side sends such a file as text sooner, which is the safe way to be
+/// wrong.
+const BYTES_PER_PAGE_GUESS: u64 = 50_000;
+
+fn guessed_pages(bytes: u64) -> u32 {
+    u32::try_from(bytes.div_ceil(BYTES_PER_PAGE_GUESS).max(1)).unwrap_or(u32::MAX)
+}
+
+/// The PDF a page image belongs to: the renderer names the images it adds
+/// for a scanned PDF `<pdf name> page <n>.png`.
+fn page_image_owner(name: &str) -> Option<&str> {
+    let (owner, page) = name.strip_suffix(".png")?.rsplit_once(" page ")?;
+    (!page.is_empty() && page.bytes().all(|byte| byte.is_ascii_digit())).then_some(owner)
+}
+
 fn text_like(mime: &str) -> bool {
     mime.starts_with("text/") || TEXT_MIMES.contains(&mime)
 }
@@ -91,11 +111,11 @@ impl RunMediaContext {
             project_id,
             images: accepts_images(resolved),
             documents: accepts_documents(resolved),
-            page_limit: document_page_limit(resolved),
             budget: Mutex::new(MediaBudget {
                 bytes: request_media_budget(resolved),
                 images_left: MAX_RUN_START_IMAGES,
                 documents_left: MAX_AGENT_DOCUMENTS,
+                pages_left: document_page_limit(resolved),
                 text_chars: text_attachment_budget(resolved),
             }),
         }
@@ -124,6 +144,9 @@ impl RunMediaContext {
                     ContentPart::Document { data, .. } => {
                         budget.bytes = budget.bytes.saturating_sub(data.len());
                         budget.documents_left = budget.documents_left.saturating_sub(1);
+                        let decoded = u64::try_from(data.len() / 4 * 3).unwrap_or(u64::MAX);
+                        budget.pages_left =
+                            budget.pages_left.saturating_sub(guessed_pages(decoded));
                     }
                     _ => {}
                 }
@@ -149,6 +172,20 @@ impl RunMediaContext {
         {
             return Ok(Vec::new());
         }
+        // PDFs the renderer sent with page images of their own: a PDF that
+        // cannot go as a document or text is still partly sent, as images.
+        let pdfs_with_pages: HashSet<String> = message
+            .content
+            .iter()
+            .filter_map(|part| match part {
+                ContentPart::Attachment { name, mime, .. }
+                    if mime.to_ascii_lowercase().starts_with("image/") =>
+                {
+                    page_image_owner(name).map(str::to_string)
+                }
+                _ => None,
+            })
+            .collect();
         let mut documents = Vec::new();
         let mut images = Vec::new();
         let mut texts = Vec::new();
@@ -157,7 +194,9 @@ impl RunMediaContext {
         for part in std::mem::take(&mut message.content) {
             match part {
                 ContentPart::Attachment { sha256, name, mime } => {
-                    match self.resolve_one(&sha256, &name, &mime.to_ascii_lowercase()) {
+                    let pages_follow = pdfs_with_pages.contains(&name);
+                    match self.resolve_one(&sha256, &name, &mime.to_ascii_lowercase(), pages_follow)
+                    {
                         Outcome::Document(part) => documents.push(part),
                         Outcome::Image(part) => images.push(part),
                         Outcome::Text(part, event) => {
@@ -184,7 +223,7 @@ impl RunMediaContext {
         Some((scope, meta))
     }
 
-    fn resolve_one(&self, sha256: &str, name: &str, mime: &str) -> Outcome {
+    fn resolve_one(&self, sha256: &str, name: &str, mime: &str, pages_follow: bool) -> Outcome {
         let Some((scope, meta)) = self.located(sha256) else {
             return skipped(name, "it is no longer stored on this computer.");
         };
@@ -192,7 +231,7 @@ impl RunMediaContext {
             return self.image(&scope, &meta, name, mime);
         }
         if mime == "application/pdf" {
-            return self.pdf(&scope, &meta, name);
+            return self.pdf(&scope, &meta, name, pages_follow);
         }
         if text_like(mime) {
             return match read_bytes(&self.root, &scope, sha256) {
@@ -238,18 +277,19 @@ impl RunMediaContext {
         })
     }
 
-    fn pdf(&self, scope: &str, meta: &AttachmentMeta, name: &str) -> Outcome {
+    fn pdf(&self, scope: &str, meta: &AttachmentMeta, name: &str, pages_follow: bool) -> Outcome {
         let size = base64_len(meta.size);
-        let fits_pages = meta.pages.is_none_or(|pages| pages <= self.page_limit);
+        let pages = meta.pages.unwrap_or_else(|| guessed_pages(meta.size));
         let room = {
             let budget = self.budget();
-            budget.documents_left > 0 && size <= budget.bytes
+            budget.documents_left > 0 && size <= budget.bytes && pages <= budget.pages_left
         };
-        if self.documents && fits_pages && room {
+        if self.documents && room {
             if let Ok(bytes) = read_bytes(&self.root, scope, &meta.sha256) {
                 let mut budget = self.budget();
                 budget.documents_left = budget.documents_left.saturating_sub(1);
                 budget.bytes = budget.bytes.saturating_sub(size);
+                budget.pages_left = budget.pages_left.saturating_sub(pages);
                 return Outcome::Document(ContentPart::Document {
                     mime: "application/pdf".into(),
                     data: base64::engine::general_purpose::STANDARD.encode(bytes),
@@ -268,6 +308,15 @@ impl RunMediaContext {
                     Some(Box::new(notice(SENT_AS_TEXT, name))),
                 );
             }
+        }
+        if pages_follow {
+            return Outcome::Text(
+                ContentPart::text(format!(
+                    "[Attachment \"{name}\"{} has no text Oleafly could extract. The images that follow are its first pages.]",
+                    pages_label(meta.pages)
+                )),
+                None,
+            );
         }
         skipped(name, "no text could be extracted from it.")
     }

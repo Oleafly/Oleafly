@@ -3,7 +3,9 @@ import type { ComponentType } from "react";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import type { AppConfig } from "@/lib/tauri";
 
 const mocks = vi.hoisted(() => ({
@@ -213,12 +215,113 @@ describe("ResearchSettingsSection", () => {
   it("changes nothing until the config has loaded, and says when it cannot load", async () => {
     mocks.getConfig.mockRejectedValue(new Error("config locked"));
     render(<ResearchSettingsSection />);
-    expect(await screen.findByRole("alert")).toHaveTextContent(copy.saveFailed);
+    // Not "could not be saved": nothing was saved.
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.loadFailed);
+    expect(screen.queryByText(copy.saveFailed)).toBeNull();
     expect(screen.getByRole("combobox", { name: copy.timeBudget })).toBeDisabled();
+    expect(toggle(copy.keepAwake)).toHaveAttribute("aria-disabled", "true");
 
     await userEvent.click(toggle(copy.keepAwake));
     expect(mocks.setConfig).not.toHaveBeenCalled();
     expect(toggle(copy.keepAwake)).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("loads the config again on retry and then lets the switches work", async () => {
+    mocks.getConfig.mockRejectedValueOnce(new Error("config locked"));
+    render(<ResearchSettingsSection />);
+    await screen.findByText(copy.loadFailed);
+
+    await userEvent.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+
+    await loaded();
+    expect(screen.queryByText(copy.loadFailed)).toBeNull();
+    await userEvent.click(toggle(copy.keepAwake));
+    expect(mocks.setConfig).toHaveBeenCalledOnce();
+  });
+
+  it("puts a switch back when its save fails", async () => {
+    mocks.setConfig.mockRejectedValueOnce(new Error("disk full"));
+    render(<ResearchSettingsSection />);
+    await loaded();
+
+    await userEvent.click(toggle(copy.keepAwake));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.saveFailed);
+    expect(toggle(copy.keepAwake)).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("saves only its own settings over a fresh read of the config", async () => {
+    render(<ResearchSettingsSection />);
+    await loaded();
+    // Another window changed an unrelated setting after this section loaded.
+    mocks.getConfig.mockResolvedValue(config({ ai_system_prompt: "Be brief." }));
+
+    await userEvent.click(toggle(copy.keepAwake));
+
+    expect(mocks.setConfig).toHaveBeenCalledExactlyOnceWith(
+      config({ ai_system_prompt: "Be brief.", research_keep_awake: false }),
+    );
+  });
+
+  it("explains what allowing the network does", async () => {
+    render(<ResearchSettingsSection />);
+    await loaded();
+    expect(screen.getByText(copy.networkHint)).toBeInTheDocument();
+  });
+
+  it("resets the research defaults after a confirmation and leaves the rest of the config alone", async () => {
+    mocks.getConfig.mockResolvedValue(
+      config({
+        research_keep_awake: false,
+        research_notifications: false,
+        research_command_network: true,
+        research_time_budget_minutes: 480,
+        research_task_mcp_servers: ["zotero"],
+        ai_system_prompt: "Be brief.",
+      }),
+    );
+    render(<ResearchSettingsSection />);
+    await loaded();
+    expect(screen.getByTestId("reset-changed-dot")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: enSettings.reset.button }));
+    const confirm = await screen.findByRole("alertdialog");
+    expect(confirm).toHaveTextContent(copy.resetConfirm);
+    expect(mocks.setConfig).not.toHaveBeenCalled();
+    await userEvent.click(within(confirm).getByRole("button", { name: enSettings.reset.button }));
+
+    await waitFor(() => expect(mocks.setConfig).toHaveBeenCalledOnce());
+    expect(mocks.setConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        research_keep_awake: true,
+        research_notifications: true,
+        research_command_network: false,
+        research_time_budget_minutes: 120,
+        research_task_mcp_servers: [],
+        ai_system_prompt: "Be brief.",
+      }),
+    );
+    expect(toggle(copy.keepAwake)).toHaveAttribute("aria-checked", "true");
+    expect(toggle(copy.network)).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("combobox", { name: copy.timeBudget })).toHaveTextContent("2 hours");
+    expect(screen.queryByTestId("reset-changed-dot")).toBeNull();
+  });
+
+  it("marks nothing as changed while every research setting is at its default", async () => {
+    mocks.getConfig.mockResolvedValue(config({ research_task_mcp_servers: [] }));
+    render(<ResearchSettingsSection />);
+    await loaded();
+
+    expect(screen.queryByTestId("reset-changed-dot")).toBeNull();
+    expect(screen.getByRole("button", { name: enSettings.reset.button })).toBeEnabled();
+  });
+
+  it("keeps the reset button off until the config has loaded", async () => {
+    mocks.getConfig.mockRejectedValue(new Error("config locked"));
+    render(<ResearchSettingsSection />);
+    await screen.findByRole("alert");
+
+    expect(screen.getByRole("button", { name: enSettings.reset.button })).toBeDisabled();
   });
 
   it("ignores answers that arrive after the section closed", async () => {

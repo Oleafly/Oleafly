@@ -6169,6 +6169,7 @@ dependencies = [
  "oleafly-core",
  "oleafly-doctools",
  "oleafly-downloads",
+ "oleafly-forge",
  "oleafly-history",
  "oleafly-lint",
  "oleafly-online",
@@ -6368,6 +6369,7 @@ name = "oleafly-preflight"
 version = "0.1.0"
 dependencies = [
  "fancy-regex",
+ "flate2",
  "icu_properties",
  "lopdf",
  "pretty_assertions",
@@ -6388,6 +6390,7 @@ dependencies = [
  "biblatex",
  "cap-fs-ext",
  "cap-std",
+ "dunce",
  "flate2",
  "fs4",
  "futures-util",

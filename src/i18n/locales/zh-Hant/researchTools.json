@@ -200,7 +200,10 @@
       "unavailable": "無法使用",
       "saving": "儲存中…",
       "saveTask": "儲存任務",
-      "createTask": "建立任務"
+      "createTask": "建立任務",
+      "replaceText": "要用這個起始方式取代你輸入的標題和指示嗎？",
+      "keepText": "保留我的",
+      "replaceConfirm": "取代"
     },
     "starter": {
       "literatureReview": {
@@ -244,6 +247,9 @@
       "dependencies": "相依項目",
       "dependencyUnavailable": "無法使用",
       "noActivity": "這次執行沒有記錄任何活動。",
+      "activityGap_other": "中間還有 {{count}} 個項目未顯示。",
+      "activityMore": "還有更多活動未顯示。",
+      "keepRunningDesktopApps": "這項任務會使用桌面應用程式，需要你在電腦前。",
       "startToRecord": "啟動這個任務以記錄它的活動。",
       "reasoning": "回報的推理過程",
       "savedArtifact": "已儲存 {{label}}",
@@ -317,6 +323,10 @@
       "kindRun": "開始執行",
       "kindMcp": "使用工具",
       "expires": "等候至 {{time}}",
+      "detailCommand": "完整指令",
+      "detailRun": "執行詳細資料",
+      "detailMcp": "工具引數",
+      "loadFailed": "無法載入等候中的要求。",
       "status": {
         "approved": "已核准",
         "denied": "已拒絕",
@@ -345,8 +355,9 @@
       "noRuns": "沒有進行中的執行。",
       "budget": "預算",
       "timeUsed": "{{used}} / {{total}}",
-      "costUsed": "${{used}} / ${{limit}}",
-      "costSpent": "已花費 ${{used}}",
+      "costUsed": "{{used}} / {{limit}}",
+      "costSpent": "已花費 {{used}}",
+      "ledgerCapped": "只顯示最新的 {{limit}} 筆結果。",
       "costUnknown": "這個模型的費用未知。",
       "runsUsed": "{{used}} / {{limit}} 次執行",
       "runsUsedNoLimit": "{{used}} 次執行",
@@ -379,6 +390,10 @@
       "mcpServers": "任務可以使用的 MCP 伺服器",
       "mcpServersHint": "任務會依照各自的指令規則呼叫這些工具。",
       "noMcpServers": "尚未設定 MCP 伺服器。",
+      "networkHint": "任務中的指令可存取網際網路。每項任務仍可自行關閉。",
+      "loadFailed": "無法載入你的研究設定。",
+      "sectionName": "研究",
+      "resetConfirm": "將研究預設值還原，包括保持喚醒、通知、網路存取、時間預算，以及任務可使用的 MCP 伺服器。運算目標與背景任務不會變動。",
       "saveFailed": "無法儲存你的研究設定。請再試一次。"
     }
   },
@@ -887,7 +902,10 @@
     "fileReady": "{{fileName}} 已就緒",
     "saveWordHint": "準備好之後再儲存 Word 文件。",
     "resultPlaceholder": "轉換結果會顯示在這裡。",
-    "progressConvertingSource": "正在將原始碼轉換為 Typst"
+    "progressConvertingSource": "正在將原始碼轉換為 Typst",
+    "pageRange": "頁面",
+    "pageRangePlaceholder": "所有頁面，或 1-50 這樣的範圍",
+    "pageRangeInvalid": "請輸入單一頁碼，或 1-50 這樣的範圍。"
   },
   "converters": {
     "imageToLatex": {
@@ -1094,7 +1112,9 @@
     "fileTooLarge": "請選擇小於 128 MB 的檔案。",
     "emptySheet": "選取的工作表是空的。",
     "arxivInputRequired": "請輸入 arXiv ID 或選擇原始碼壓縮檔。",
-    "equationToTypst": "Pandoc 無法將這個方程式轉換為 Typst。請檢查 LaTeX 數學式後再試一次。"
+    "equationToTypst": "Pandoc 無法將這個方程式轉換為 Typst。請檢查 LaTeX 數學式後再試一次。",
+    "pdfTooManyPages": "這份掃描檔有 {{pages}} 頁，而 Oleafly 每次最多轉錄 {{limit}} 頁。請在檔案下方輸入 1-{{limit}} 這樣的頁面範圍。",
+    "outputLimit": "模型在完成前就用盡了輸出空間，因此轉錄結果會不完整。請在「設定 > AI 助理 > 工具」中選擇輸出上限較大的模型，或改為轉錄較小的部分。"
   },
   "converterNotes": {
     "scannedPages": "已使用 {{model}} 轉錄 {{pages}} 頁掃描頁面。使用結果前請檢查方程式和表格。",
@@ -1139,7 +1159,7 @@
       "cannotSeeImages": "{{model}} 無法讀取影像。請選擇視覺模型。",
       "localModelGone": "{{model}} 已不在 Ollama 中。請重新拉取，或選擇其他模型。",
       "imagesOnly": "{{model}} 只能讀取影像。請選擇語言模型來轉換輸入的方程式。",
-      "mathpixNotSetUp": "請在「設定 > AI > 工具」中新增 Mathpix 金鑰，或選擇其他模型。",
+      "mathpixNotSetUp": "請在「設定 > AI 助理 > 工具」中新增你的 Mathpix 金鑰，或選擇其他模型。",
       "imageTooLarge": "縮小後影像仍然太大。請裁切後再試一次。"
     }
   },
@@ -1717,10 +1737,14 @@
     "startAtLabel": "開始時間",
     "startNow": "在我啟動時",
     "keepRunning": "Oleafly 關閉後繼續執行",
-    "keepRunningHint": "請先在「設定 > 研究」中開啟背景工作。",
+    "keepRunningHint": "請先在「設定 > 研究」中開啟背景任務。",
     "invalidMetric": "請使用字母、數字、句點、連字號或底線。",
     "invalidCost": "請輸入大於零的金額。",
-    "invalidRuns": "請輸入 1 到 1,000 之間的整數。"
+    "invalidRuns": "請輸入 1 到 1,000 之間的整數。",
+    "invalidStart": "請選擇未來 30 天內的開始時間。",
+    "invalidStartFormat": "請使用 {{example}} 這樣的格式。",
+    "startAtFormat": "請將時間輸入為 {{example}}。",
+    "problemHidden": "任務說明中有一個選項需要修正。開啟任務說明即可查看是哪一個。"
   },
   "runs": {
     "status": {
@@ -1732,11 +1756,6 @@
       "cancelled": "已停止",
       "lost": "已遺失"
     }
-  },
-  "record": {
-    "title": "研究紀錄",
-    "openHandoff": "開啟交接紀錄",
-    "openReport": "開啟報告"
   },
   "evidence": {
     "title": "證據檢查",
@@ -1788,8 +1807,9 @@
       "edit": "編輯",
       "remove": "移除",
       "removeTitle": "要移除 {{label}} 嗎？",
-      "removeConfirm": "已在那裡開始的執行會繼續進行。",
+      "removeConfirm": "已在那裡開始的執行會繼續進行。等待在它上面開始的任務則會失敗。",
       "forgetHostKey": "忘記主機金鑰",
+      "reviewHostKey": "檢查主機金鑰",
       "notTested": "未測試",
       "tested": "上次測試：{{time}}",
       "testFailed": "測試失敗",
@@ -1879,7 +1899,8 @@
       "body": "選擇要新增的主機。Oleafly 會讀取你的 SSH 設定，但絕不會變更它。",
       "none": "在你的 SSH 設定中找不到主機。",
       "added": "已新增",
-      "add_other": "新增 {{count}} 部主機"
+      "add_other": "新增 {{count}} 部主機",
+      "skipped": "未新增：{{hosts}}。{{reason}}"
     },
     "sandbox": {
       "heading": "這台電腦上的沙箱",
@@ -1910,6 +1931,7 @@
       "runsOn": "在 {{target}} 上執行",
       "runsLocal": "在這台電腦上執行。",
       "missing": "這項任務使用的目標已被移除。請選擇其他目標。",
+      "loadFailed": "無法載入你的執行目標。",
       "windowsOff": "請在設定中開啟 Windows 沙箱，才能在這台電腦上執行指令。",
       "openSettings": "開啟設定",
       "resources": "Slurm 資源"
@@ -1923,6 +1945,7 @@
       "movingBackHint": "目前的步驟結束後，這項任務會回到 Oleafly。"
     },
     "earlierActivity": "顯示較早的活動",
+    "earlierTruncated": "這次較早的執行只顯示前 {{limit}} 個項目。",
     "keepRunningFailed": "無法變更這項設定。請再試一次。"
   }
 }

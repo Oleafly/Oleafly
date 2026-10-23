@@ -1,5 +1,5 @@
 import { registerConnector } from "./connectors";
-import type { ConfirmFn } from "./tools";
+import type { ConfirmFn, ToolApprovalRequest } from "./tools";
 
 type RawSchema = {
   type: "object";
@@ -187,6 +187,35 @@ export interface ResearchTaskRequest {
   start: boolean;
 }
 
+/** What the user sees before an agent creates a research task: all that it can do on its own. */
+export interface ResearchTaskApprovalDetails {
+  title: string;
+  /** The whole prompt, as the task will get it. */
+  prompt: string;
+  goal: string | null;
+  skills: string[];
+  /** A task an agent creates asks before each command it runs. */
+  commands: "ask";
+  /** Network access for its commands; off unless the agent asked for it. */
+  network: boolean;
+  reviewPlanFirst: boolean;
+  timeBudgetMinutes: number | null;
+  start: boolean;
+}
+
+/** The prompt as far as a one-line summary shows it. */
+const SUMMARY_PROMPT_CHARS = 1_500;
+
+export function researchTaskSummary(details: ResearchTaskApprovalDetails): string {
+  const { title, prompt, start, network } = details;
+  const shown = prompt.length > SUMMARY_PROMPT_CHARS ? `${prompt.slice(0, SUMMARY_PROMPT_CHARS)}…` : prompt;
+  return [
+    `Create the research task "${title}"${start ? " and start it" : ""}.`,
+    `It works on its own in a copy of the project. Each command it runs asks first; network access is ${network ? "on" : "off"}.`,
+    `Prompt:\n${shown}`,
+  ].join("\n");
+}
+
 export interface ResearchTaskToolsHost {
   createResearchTask(input: ResearchTaskRequest): Promise<{ id: string; title: string; status: string }>;
   /** One task, or the latest ten when `id` is left out. */
@@ -253,14 +282,28 @@ export function createResearchTaskTools(
           return { error: "time_budget_minutes must be a whole number from 5 to 1440" };
         }
         const start = input.start !== false;
-        if (
-          confirm &&
-          !(await confirm({
+        if (confirm) {
+          // The user approves what the task may do, not only its name: the whole prompt,
+          // that its commands ask first, and whether they reach the network.
+          const details: ResearchTaskApprovalDetails = {
+            title,
+            prompt,
+            goal: typeof input.goal === "string" && input.goal.trim() ? input.goal.trim().slice(0, 2_000) : null,
+            skills,
+            commands: "ask",
+            network: input.network === true,
+            reviewPlanFirst: input.review_plan_first === true,
+            timeBudgetMinutes: typeof minutes === "number" ? minutes : null,
+            start,
+          };
+          const request: ToolApprovalRequest & { researchTask: ResearchTaskApprovalDetails } = {
             tool: "research_task_create",
-            summary: `Create the research task "${title}"${start ? " and start it" : ""}`,
-          }))
-        ) {
-          return { message: "The user declined.", declined: true, status: "declined", tool: "research_task_create" };
+            summary: researchTaskSummary(details),
+            researchTask: details,
+          };
+          if (!(await confirm(request))) {
+            return { message: "The user declined.", declined: true, status: "declined", tool: "research_task_create" };
+          }
         }
         try {
           return await host.createResearchTask({

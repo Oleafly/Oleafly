@@ -1794,6 +1794,180 @@ async fn native_builds_keep_the_last_good_pdf_when_a_build_fails() {
     assert!(leftovers.is_empty());
 }
 
+fn latexmk_compiler(tools_directory: &TempDir, failure: bool) -> NativeCompiler {
+    NativeCompiler::new(BuildTools {
+        latexmk: Some(compiler_fixture(tools_directory, failure)),
+        ..BuildTools::default()
+    })
+}
+
+fn staging_leftovers(build_dir: &Path) -> Vec<String> {
+    std::fs::read_dir(build_dir)
+        .unwrap()
+        .filter_map(std::result::Result::ok)
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| name.starts_with(oleafly_core::build_output::STAGING_PREFIX))
+        .collect()
+}
+
+#[cfg(unix)]
+#[tokio::test]
+async fn latexmk_never_writes_through_a_link_planted_in_the_build_folder() {
+    use std::os::unix::fs::symlink;
+    let tools_directory = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let outside = TempDir::new().unwrap();
+    let workspace = workspace_for_engine(&project, Engine::Latexmk, Some("pdflatex"));
+    let build = workspace.prepare_build().unwrap();
+    let build_dir = build.build_directory().to_path_buf();
+    let victim = outside.path().join("bashrc");
+    std::fs::write(&victim, "export PATH=safe\n").unwrap();
+    // The outputs latexmk writes, an auxiliary file and a linked folder.
+    symlink(&victim, build_dir.join("_oleafly_entry.pdf")).unwrap();
+    symlink(&victim, build_dir.join("_oleafly_entry.log")).unwrap();
+    symlink(&victim, build_dir.join("_oleafly_entry.synctex.gz")).unwrap();
+    symlink(&victim, build_dir.join("_oleafly_entry.aux")).unwrap();
+    symlink(outside.path(), build_dir.join("chapters")).unwrap();
+    std::fs::create_dir(build_dir.join("deeper")).unwrap();
+    symlink(&victim, build_dir.join("deeper/part.aux")).unwrap();
+
+    let result = latexmk_compiler(&tools_directory, false)
+        .build(&workspace, BuildOptions::default())
+        .await
+        .unwrap();
+
+    assert!(result.ok, "{}", result.log);
+    assert_eq!(
+        std::fs::read_to_string(&victim).unwrap(),
+        "export PATH=safe\n"
+    );
+    let pdf = build_dir.join("_oleafly_entry.pdf");
+    assert!(std::fs::symlink_metadata(&pdf).unwrap().is_file());
+    assert_eq!(std::fs::read(&pdf).unwrap(), b"%PDF-1.7\nfixture\n");
+    for name in [
+        "_oleafly_entry.log",
+        "_oleafly_entry.synctex.gz",
+        "_oleafly_entry.aux",
+        "chapters",
+        "deeper/part.aux",
+    ] {
+        assert!(
+            std::fs::symlink_metadata(build_dir.join(name)).is_err(),
+            "{name} is still there"
+        );
+    }
+    // The folder a link led to is untouched; only the link went.
+    assert!(outside.path().join("bashrc").is_file());
+}
+
+#[cfg(unix)]
+#[test]
+fn the_link_sweep_removes_special_files_without_opening_them() {
+    let build = TempDir::new().unwrap();
+    let pipe = build.path().join("_oleafly_entry.log");
+    let c_path = std::ffi::CString::new(pipe.to_str().unwrap()).unwrap();
+    assert_eq!(unsafe { libc::mkfifo(c_path.as_ptr(), 0o600) }, 0);
+    std::fs::write(build.path().join("_oleafly_entry.aux"), "aux").unwrap();
+    // Another build's staging folder is left alone, links inside it too.
+    let staging = build.path().join(format!(
+        "{}1-abc",
+        oleafly_core::build_output::STAGING_PREFIX
+    ));
+    std::fs::create_dir(&staging).unwrap();
+    std::os::unix::fs::symlink(build.path(), staging.join("loop")).unwrap();
+
+    remove_links(build.path(), 0).unwrap();
+
+    assert!(std::fs::symlink_metadata(&pipe).is_err());
+    assert_eq!(
+        std::fs::read_to_string(build.path().join("_oleafly_entry.aux")).unwrap(),
+        "aux"
+    );
+    assert!(std::fs::symlink_metadata(staging.join("loop")).is_ok());
+}
+
+#[tokio::test]
+async fn a_failed_latexmk_build_keeps_the_last_good_pdf() {
+    let tools_directory = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let workspace = workspace_for_engine(&project, Engine::Latexmk, Some("pdflatex"));
+    let compiler = latexmk_compiler(&tools_directory, false);
+    let good = compiler
+        .build(&workspace, BuildOptions::default())
+        .await
+        .unwrap();
+    assert!(good.ok && good.fresh, "{}", good.log);
+    let pdf = good.output.clone().unwrap();
+    assert_eq!(std::fs::read(&pdf).unwrap(), b"%PDF-1.7\nfixture\n");
+    // A SyncTeX file from the good build stays with it.
+    let synctex = pdf.with_file_name("_oleafly_entry.synctex.gz");
+    std::fs::write(&synctex, b"good synctex").unwrap();
+
+    // latexmk -f writes a best-effort PDF over it, and fails.
+    std::fs::write(project.path().join("main.tex"), "fixture-partial-pdf").unwrap();
+    let failed = compiler
+        .build(&workspace, BuildOptions::default())
+        .await
+        .unwrap();
+    assert!(!failed.ok, "{}", failed.log);
+    assert!(!failed.fresh);
+    assert_eq!(failed.output, None);
+    assert_eq!(failed.output_id, None);
+    assert_eq!(failed.previous_output.as_deref(), Some(pdf.as_path()));
+    assert_eq!(std::fs::read(&pdf).unwrap(), b"%PDF-1.7\nfixture\n");
+    assert_eq!(std::fs::read(&synctex).unwrap(), b"good synctex");
+    assert!(staging_leftovers(&workspace.build_dir_path()).is_empty());
+}
+
+#[tokio::test]
+async fn a_failed_first_latexmk_build_leaves_no_pdf_behind() {
+    let tools_directory = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    let workspace = workspace_for_engine(&project, Engine::Latexmk, Some("pdflatex"));
+    std::fs::write(project.path().join("main.tex"), "fixture-partial-pdf").unwrap();
+    let failed = latexmk_compiler(&tools_directory, false)
+        .build(&workspace, BuildOptions::default())
+        .await
+        .unwrap();
+    assert!(!failed.ok);
+    assert_eq!((failed.output, failed.previous_output), (None, None));
+    assert!(!workspace
+        .build_dir_path()
+        .join("_oleafly_entry.pdf")
+        .exists());
+    assert!(staging_leftovers(&workspace.build_dir_path()).is_empty());
+}
+
+#[test]
+fn a_latexmk_build_that_never_finished_puts_the_last_good_outputs_back() {
+    let build = TempDir::new().unwrap();
+    let pdf = build.path().join("_oleafly_entry.pdf");
+    std::fs::write(&pdf, "good").unwrap();
+    {
+        let _running = InPlaceOutputs::prepare(build.path()).unwrap();
+        // The compiler was cut off partway through the PDF and wrote a log.
+        std::fs::write(&pdf, "gar").unwrap();
+        std::fs::write(build.path().join("_oleafly_entry.log"), "log").unwrap();
+    }
+    assert_eq!(std::fs::read_to_string(&pdf).unwrap(), "good");
+    assert!(build.path().join("_oleafly_entry.log").is_file());
+    assert!(staging_leftovers(build.path()).is_empty());
+
+    // An output the compiler left alone is not replaced by its copy.
+    let mut quiet = InPlaceOutputs::prepare(build.path()).unwrap();
+    let before = std::fs::metadata(&pdf).unwrap().modified().unwrap();
+    quiet.finish(false);
+    assert_eq!(std::fs::metadata(&pdf).unwrap().modified().unwrap(), before);
+    drop(quiet);
+
+    // A good build keeps what it wrote.
+    let mut good = InPlaceOutputs::prepare(build.path()).unwrap();
+    std::fs::write(&pdf, "new").unwrap();
+    good.finish(true);
+    drop(good);
+    assert_eq!(std::fs::read_to_string(&pdf).unwrap(), "new");
+}
+
 #[tokio::test]
 async fn the_bundle_fallback_retries_without_the_mirror() {
     let tools_directory = TempDir::new().unwrap();

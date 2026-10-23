@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { useTranslation } from "react-i18next";
 import { GitBranch, Github, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -24,6 +25,7 @@ import { describeError } from "@/lib/app-error";
 import { formatNameList, formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -109,6 +111,9 @@ export function PublishDialog({
   const [replaceTarget, setReplaceTarget] = useState<PublishTarget | null>(null);
   const [secretsPrompt, setSecretsPrompt] = useState<SecretsPrompt | null>(null);
   const [leftOut, setLeftOut] = useState<string[]>([]);
+  // The repository this session created, so a publish that failed after
+  // creating it (the push, say) is retried against it, not created again.
+  const createdRepo = useRef<{ base: string; name: string; repo: ForgeRepo } | null>(null);
   const sessionRequest = useRef(0);
   const actionRequest = useRef(0);
   const closeTimer = useRef<number | null>(null);
@@ -148,6 +153,7 @@ export function PublishDialog({
     renderedIdentity.current = { open, projectId };
     sessionRequest.current += 1;
     actionRequest.current += 1;
+    createdRepo.current = null;
     if (closeTimer.current !== null) {
       window.clearTimeout(closeTimer.current);
       closeTimer.current = null;
@@ -188,8 +194,21 @@ export function PublishDialog({
   const noAccounts = (accountsStatus === "ready" || accountsStatus === "error") && accounts.length === 0;
   const shownTab: PublishTarget = noAccounts && !tabChosen ? "url" : tab;
 
+  /** Whether the dialog still belongs to the project an action started in,
+   * open or not. */
+  const isSameProject = (token: PublishActionToken) => renderedIdentity.current.projectId === token.projectId;
+
+  // An action that ends after the dialog was closed (or reopened) still says
+  // how it went, in a toast; one that ends in another project says nothing.
   const note = (token: PublishActionToken, ok: boolean, text: string) => {
     if (isCurrentAction(token)) setMsg({ ok, text });
+    else if (isSameProject(token)) (ok ? toast.success : toast.error)(text);
+  };
+
+  /** Tell Source Control the project now has a remote, whatever became of the
+   * push, as long as the project is still the dialog's. */
+  const reportLinked = (token: PublishActionToken, remoteUrl: string | null) => {
+    if (remoteUrl && isSameProject(token)) onPublished(remoteUrl);
   };
 
   const scheduleClose = (token: PublishActionToken) => {
@@ -231,36 +250,33 @@ export function PublishDialog({
     remoteUrl: string,
     replace: boolean,
     approved: string[],
+    onLinked: (remoteUrl: string) => void,
   ) => {
     const prepared = await gitPreparePublish(token.projectId, "Initial commit", {
       allowTrackedSecrets: approved,
     });
     if (isCurrentAction(token)) setLeftOut(prepared.leftOut);
     await (replace ? replaceRemote : linkRemote)(token.projectId, remoteUrl);
+    onLinked(remoteUrl);
     if (prepared.hasCommit) return prepared.leftOut;
-    if (isCurrentAction(token)) {
-      note(token, false, t(($) => $.library.github.nothingToPublish));
-      onPublished(remoteUrl);
-    }
+    note(token, false, t(($) => $.library.github.nothingToPublish));
     return null;
   };
 
   /** Report a finished publish. The dialog stays open while it names files it left out. */
-  const finishPublish = (
-    token: PublishActionToken,
-    remoteUrl: string,
-    text: string,
-    skipped: string[],
-  ) => {
-    if (!isCurrentAction(token)) return;
+  const finishPublish = (token: PublishActionToken, text: string, skipped: string[]) => {
     note(token, true, text);
-    onPublished(remoteUrl);
-    if (skipped.length === 0) scheduleClose(token);
+    if (isCurrentAction(token) && skipped.length === 0) scheduleClose(token);
   };
 
   const publishNew = async (replace = false, approved: string[] = []) => {
     if (!projectId || !account) return;
-    if (currentRemote && !replace) {
+    const name = slug(repoName.trim() || projectName || "oleafly-project");
+    const created = createdRepo.current;
+    const resumed = created?.base === account.base && created.name === name ? created.repo : null;
+    // A repository made by an earlier try of this dialog is already the
+    // project's remote, so linking it again needs no confirmation.
+    if (currentRemote && !replace && currentRemote !== resumed?.cloneUrl) {
       setMsg(null);
       setReplaceTarget("new");
       return;
@@ -270,22 +286,24 @@ export function PublishDialog({
     if (!action || !isCurrentAction(action)) return;
     setSecretsPrompt(null);
     setLeftOut([]);
-    const name = slug(repoName.trim() || projectName || "oleafly-project");
     if (!name) return note(action, false, t(($) => $.library.github.nameRequired));
     const target = account;
+    let linked: string | null = null;
     setBusy(true);
     try {
       const prompt = { target: "new" as const, replace, remoteUrl: null, host: hostLabel(target.base) };
       if (await stopsForSecrets(action, prompt, approved)) return;
-      const repo = await forgeCreateRepo(target.base, name, isPrivate);
+      const repo = resumed ?? (await forgeCreateRepo(target.base, name, isPrivate));
+      createdRepo.current = { base: target.base, name, repo };
       // The remote stays clean: Git signs in through the account's
       // credential helper, never a token in .git/config.
-      const skipped = await commitAndLink(action, repo.cloneUrl, replace, approved);
+      const skipped = await commitAndLink(action, repo.cloneUrl, replace, approved, (url) => {
+        linked = url;
+      });
       if (!skipped) return;
       await gitPush(action.projectId);
       finishPublish(
         action,
-        repo.cloneUrl,
         t(($) => $.library.github.published, { repository: repo.fullName }),
         skipped,
       );
@@ -293,6 +311,7 @@ export function PublishDialog({
       note(action, false, describeError(error));
     } finally {
       if (isCurrentAction(action)) setBusy(false);
+      reportLinked(action, linked);
     }
   };
 
@@ -313,18 +332,20 @@ export function PublishDialog({
     if (!action || !isCurrentAction(action)) return;
     setSecretsPrompt(null);
     setLeftOut([]);
+    let linked: string | null = null;
     setBusy(true);
     try {
       const prompt = { target, replace, remoteUrl, host: hostLabel(remoteUrl) };
       if (await stopsForSecrets(action, prompt, approved)) return;
-      const skipped = await commitAndLink(action, remoteUrl, replace, approved);
+      const skipped = await commitAndLink(action, remoteUrl, replace, approved, (url) => {
+        linked = url;
+      });
       if (!skipped) return;
       // An existing remote may already contain commits. Let the push report
       // when its history must be pulled and reconciled first.
       try {
         await gitPush(action.projectId);
       } catch (error) {
-        if (!isCurrentAction(action)) return;
         note(
           action,
           false,
@@ -333,14 +354,14 @@ export function PublishDialog({
             detail: describeError(error),
           }),
         );
-        onPublished(remoteUrl);
         return;
       }
-      finishPublish(action, remoteUrl, t(($) => $.library.github.linked, { remote: remoteUrl }), skipped);
+      finishPublish(action, t(($) => $.library.github.linked, { remote: remoteUrl }), skipped);
     } catch (error) {
       note(action, false, describeError(error));
     } finally {
       if (isCurrentAction(action)) setBusy(false);
+      reportLinked(action, linked);
     }
   };
 
@@ -483,9 +504,7 @@ export function PublishDialog({
       return accountsStatus === "ready" || accountsStatus === "error" ? (
         renderConnectPrompt()
       ) : (
-        <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
-          <Spinner /> {t(($) => $.common.state.loading)}
-        </div>
+        <LoadingState size="compact" className="justify-center p-6" label={t(($) => $.common.state.loading)} />
       );
     }
     return shownTab === "new" ? renderNew(account) : renderExisting(account);
@@ -507,9 +526,17 @@ export function PublishDialog({
             {title}
           </h2>
         </div>
-        <Button variant="ghost" size="icon" className="size-7" onClick={onClose}>
-          <X className="size-4" />
-        </Button>
+        <Tooltip label={t(($) => $.common.actions.close)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            aria-label={t(($) => $.common.actions.close)}
+            onClick={onClose}
+          >
+            <X className="size-4" />
+          </Button>
+        </Tooltip>
       </div>
 
       {accounts.length > 1 && account && shownTab !== "url" ? (

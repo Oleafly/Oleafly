@@ -221,6 +221,7 @@
       "closeOne": "關閉終端機",
       "closeProject": "關閉專案",
       "dontAsk": "不要再詢問",
+      "dontAskHint": "若要重新開啟，請前往「設定 > 外觀 > 終端機」的「關閉忙碌的終端機前詢問」。",
       "many_other": "仍有程式在 {{count}} 個終端機中執行。",
       "named": "{{process}} 仍在 {{title}} 中執行。",
       "quit": "結束",

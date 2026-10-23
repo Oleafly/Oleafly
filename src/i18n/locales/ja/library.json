@@ -256,7 +256,9 @@
     "loadingRepositories": "リポジトリを読み込み中…",
     "repositoriesFailed": "リポジトリを読み込めませんでした。",
     "noRepositories": "リポジトリが見つかりません。",
+    "noMatchLoaded": "読み込み済みのリポジトリには一致するものがありません。続けて探すには、さらに読み込んでください。",
     "privateRepository": "プライベートリポジトリ",
+    "openFailed": "Oleafly は {{host}} をブラウザで開けませんでした。",
     "openOnHost": "{{host}} で開く",
     "openRepositoryOnHost": "{{host}} で {{name}} を開く",
     "sources": {

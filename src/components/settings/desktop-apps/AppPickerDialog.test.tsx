@@ -92,4 +92,53 @@ describe("AppPickerDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(copy.blocked.terminal);
     expect(onPick).not.toHaveBeenCalled();
   });
+
+  it("keeps entries that run the same program apart", async () => {
+    const warn = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.installed.mockResolvedValue([
+      { name: "LibreOffice Writer", executable: "/opt/Libre Office/libreoffice" },
+      { name: "LibreOffice Calc", executable: "/opt/Libre Office/libreoffice" },
+      { name: "Terminal", executable: "/opt/Libre Office/term", blocked: "terminal" },
+    ]);
+    const user = userEvent.setup();
+    renderPicker();
+    const writer = await screen.findByRole("button", { name: /^LibreOffice Writer/ });
+    const calc = screen.getByRole("button", { name: /^LibreOffice Calc/ });
+    await user.click(writer);
+    expect(writer).toHaveAttribute("aria-pressed", "true");
+    expect(calc).toHaveAttribute("aria-pressed", "false");
+    // A blocked row's reason is wired to it even when its path has spaces.
+    const terminal = screen.getByRole("button", { name: /^Terminal/ });
+    const reason = document.getElementById(terminal.getAttribute("aria-describedby") ?? "");
+    expect(reason).toHaveTextContent(copy.blocked.terminal);
+    expect(warn.mock.calls.flat().join(" ")).not.toMatch(/same key/);
+    warn.mockRestore();
+  });
+
+  it("says how many apps are not listed and can load the list again", async () => {
+    const apps: InstalledApp[] = Array.from({ length: MAX_PICKER_ROWS + 30 }, (_, index) => ({
+      name: `App ${index}`,
+      executable: `/opt/app${index}/run`,
+    }));
+    mocks.installed.mockResolvedValue(apps);
+    const user = userEvent.setup();
+    renderPicker();
+    const more = await screen.findByTestId("desktop-apps-picker-more");
+    expect(more).toHaveTextContent(`Showing ${MAX_PICKER_ROWS} of ${MAX_PICKER_ROWS + 30}`);
+    mocks.installed.mockResolvedValue([{ name: "Zotero", bundleId: "org.zotero.zotero" }]);
+    await user.click(screen.getByRole("button", { name: copy.dialog.refresh }));
+    expect(await screen.findByRole("button", { name: /^Zotero/ })).toBeVisible();
+    expect(mocks.installed).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId("desktop-apps-picker-more")).toBeNull();
+  });
+
+  it("explains a browser and an app that is already added", async () => {
+    mocks.installed.mockResolvedValue([
+      { name: "Google Chrome", bundleId: "com.google.Chrome", blocked: "browser" },
+      { name: "Zotero", bundleId: "org.zotero.zotero" },
+    ]);
+    renderPicker(vi.fn(), [{ name: "Zotero", bundleId: "org.zotero.zotero" }]);
+    expect(await screen.findByText(copy.blocked.browser)).toBeVisible();
+    expect(screen.getByText(copy.dialog.added)).toBeVisible();
+  });
 });

@@ -36,7 +36,7 @@
       },
       "installBridge": "Zainstaluj mostek",
       "installBridgeNextStep": "Zainstaluj mostek ACP, a potem zaloguj się przez narzędzie wiersza poleceń.",
-      "intro": "Podłącz lokalnego agenta przez ACP. Każdy agent zarządza własnymi modelami, narzędziami i logowaniem, a ustawienia dostawców API pozostają osobne. Do logowania używaj oficjalnego konta CLI: Oleafly nie importuje tokenów kont ani nie szacuje limitów subskrypcji.",
+      "intro": "Agenci CLI, tacy jak Claude Code, Codex i Gemini CLI, łączą się przez Agent Client Protocol (ACP). Niektórzy potrzebują mostka, małego adaptera, który Oleafly instaluje, aby móc z nimi rozmawiać. Każdy agent zarządza własnymi modelami, narzędziami i logowaniem, a ustawienia dostawców API pozostają osobne. Do logowania używaj oficjalnego konta CLI: Oleafly nie importuje tokenów kont ani nie szacuje limitów subskrypcji.",
       "nextStepTitle": "Następny krok",
       "notReported": "Nie zgłoszono",
       "notice": {
@@ -147,7 +147,7 @@
         "label": "Użyj mojego klucza API Oleafly",
         "off": "Wyłączone (agent loguje się sam)",
         "note": "Oleafly wysyła klucz temu agentowi na początku rozmowy i nie umieszcza go w zapisach rozmów.",
-        "unavailable": "Dodaj klucz API w sekcji Ustawienia, AI, aby go tu użyć."
+        "unavailable": "Dodaj klucz API w sekcji Ustawienia, Asystent AI, Dostawcy i klucze, aby go tu użyć."
       },
       "hermes": {
         "title": "Profil Hermes dla tego projektu",
@@ -175,7 +175,20 @@
         "test": "Testuj połączenie",
         "testOk": "Połączono: {{version}}",
         "save": "Zapisz",
-        "sshNote": "Oleafly loguje się tylko Twoimi kluczami SSH."
+        "sshNote": "Oleafly loguje się tylko Twoimi kluczami SSH.",
+        "folderHint": "Pełna ścieżka na tamtej maszynie, na przykład /home/ada/paper.",
+        "needsValid": "Testuj połączenie i Zapisz wymagają poprawnych wartości dla: {{fields}}.",
+        "unsavedEdit": "Jeszcze nie zapisano. Zapisz, aby użyć tych zmian.",
+        "unsavedMode": "Jeszcze nie zapisano. Dopóki nie zapiszesz, ten projekt używa: {{mode}}.",
+        "errors": {
+          "hostRequired": "Wpisz nazwę hosta albo user@host.",
+          "hostInvalid": "Używaj tylko liter, cyfr, kropek, łączników i @ oraz nie zaczynaj od łącznika.",
+          "port": "Użyj portu od 1 do 65535.",
+          "folderRequired": "Wpisz pełną ścieżkę folderu projektu na tamtej maszynie.",
+          "folderInvalid": "Użyj pełnej ścieżki zaczynającej się od /.",
+          "command": "Użyj hermes albo pełnej ścieżki do niego zaczynającej się od /.",
+          "profile": "Używaj małych liter, cyfr, łączników i podkreśleń."
+        }
       }
     },
     "approvals": {
@@ -1019,6 +1032,8 @@
         "ariaLabel": "Powłoka terminala (shell)",
         "description": "Nowe terminale uruchamiają ten shell. Otwarte terminale zachowują swój.",
         "label": "Shell",
+        "notFound": "{{name}} (nie znaleziono)",
+        "notFoundNote": "{{name}} nie jest dostępny na tym komputerze, więc nowe terminale się nie uruchomią. Wybierz inny shell.",
         "options": {
           "auto": "Domyślny ({{name}})",
           "cmd": "Wiersz polecenia",
@@ -1033,14 +1048,17 @@
           "ariaLabel": "Własna ścieżka do shell",
           "description": "Program uruchamiany przez nowe terminale.",
           "label": "Ścieżka do shell"
-        }
+        },
+        "windowsOnly": "{{name}} (tylko Windows)",
+        "windowsOnlyNote": "{{name}} działa tylko w Windows. Nowe terminale uruchamiają tutaj {{fallback}}.",
+        "windowsOnlyNoteDefault": "{{name}} działa tylko w Windows. Nowe terminale uruchamiają tutaj domyślny shell."
       },
       "shiftEnter": {
         "ariaLabel": "Shift+Enter w terminalu",
-        "description": "Co Shift+Enter wysyła do programu w terminalu.",
-        "enter": "Enter",
+        "description": "Co Shift+Enter wysyła do programu w terminalu. Nowy wiersz pozwala narzędziom czatowym, takim jak Claude Code, dodać wiersz do swojego polecenia. Enter wysyła, tak jak klawisz Enter.",
+        "enter": "Wyślij Enter",
         "label": "Shift+Enter",
-        "newline": "Nowy wiersz"
+        "newline": "Wstaw nowy wiersz"
       },
       "startWithProject": {
         "description": "Uruchamiaj powłokę shell przy otwarciu projektu, a nie przy pierwszym pokazaniu terminala.",
@@ -1472,7 +1490,9 @@
       "detecting": "Sprawdzanie serwera…",
       "found": "To serwer {{kind}}.",
       "kindGitea": "Gitea lub Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "Inny serwer",
+      "replaces": "Zalogowanie zastąpi {{login}} na {{host}}.",
       "scopesGitea": "Nadaj mu uprawnienia do odczytu i zapisu dla repository i user.",
       "scopesGithub": "Nadaj mu zakresy repo i read:user.",
       "scopesGitlab": "Nadaj mu zakresy api i write_repository.",
@@ -1638,6 +1658,7 @@
         "notInstalled": "Cua Driver nie jest zainstalowany.",
         "tooOld": "Cua Driver {{version}} jest za stary. Oleafly potrzebuje wersji {{minimum}} lub nowszej.",
         "noAppBundle": "Zainstaluj Cua Driver oficjalnym instalatorem, aby mógł przechowywać uprawnienia macOS.",
+        "unreadableVersion": "Oleafly nie mógł odczytać wersji Cua Driver. Upewnij się, że działa, a potem sprawdź ponownie.",
         "path": "Znaleziono w {{path}}"
       },
       "install": {
@@ -1671,6 +1692,7 @@
         "empty": "Nie ma jeszcze aplikacji. Agenci mogą używać tylko aplikacji dodanych tutaj.",
         "add": "Dodaj aplikację",
         "remove": "Usuń {{name}}",
+        "missing": "Nie znaleziono tego programu na tym komputerze. Usuń go albo zainstaluj aplikację ponownie.",
         "dialog": {
           "title": "Dodaj aplikację",
           "description": "Wybierz aplikację, której mogą używać agenci. Po Twoim zatwierdzeniu mogą ją otwierać, czytać jej okna i w niej działać.",
@@ -1678,7 +1700,10 @@
           "loading": "Wyszukiwanie aplikacji...",
           "none": "Brak pasujących aplikacji.",
           "choose": "Wybierz inną aplikację...",
-          "add": "Dodaj"
+          "add": "Dodaj",
+          "added": "Już dodana.",
+          "more": "Pokazano {{shown}} z {{total}}. Zawęź listę wyszukiwaniem.",
+          "refresh": "Odśwież"
         },
         "blocked": {
           "oleafly": "Oleafly nie może sterować sam sobą.",
@@ -1688,7 +1713,8 @@
           "passwords": "Menedżery haseł są wyłączone z użycia.",
           "scripting": "Programy uruchamiające skrypty mogą zrobić na tym komputerze wszystko.",
           "wrapper": "Ten wpis uruchamia inny program. Wybierz zamiast niego tamten program.",
-          "sandboxed": "Aplikacje Flatpak i Snap nie są jeszcze obsługiwane."
+          "sandboxed": "Aplikacje Flatpak i Snap nie są jeszcze obsługiwane.",
+          "browser": "Strony przeglądarki dodaj zamiast tego w sekcji Dozwolone strony."
         }
       },
       "sites": {
@@ -1699,6 +1725,7 @@
         "remove": "Usuń {{origin}}",
         "signedIn": {
           "label": "Użyj mojej zalogowanej przeglądarki",
+          "labelFor": "Użyj mojej zalogowanej przeglądarki na {{origin}}",
           "description": "Na tej stronie agenci pracują w Twoim własnym Chrome lub Edge. Zostaw wyłączone, aby używać osobnego profilu przeglądarki."
         }
       },
@@ -1710,6 +1737,7 @@
         "action": "Testuj połączenie",
         "running": "Testowanie...",
         "ok": "Cua Driver działa z Twoimi limitami.",
+        "problems": "Własna kontrola Cua Driver zgłosiła też:",
         "failed": "Test nie powiódł się: {{detail}}"
       },
       "tool": {
@@ -2323,6 +2351,7 @@
       "stopHint": "Jego zadania czekają wstrzymane, dopóki ponownie nie otworzysz Oleafly.",
       "stopFailed": "Proces pomocniczy się nie zatrzymał. Spróbuj ponownie.",
       "openLog": "Pokaż dziennik",
+      "statusFailed": "Nie udało się odczytać stanu procesu pomocniczego w tle.",
       "toggleFailed": "Nie udało się zmienić tego ustawienia. Spróbuj ponownie."
     }
   }

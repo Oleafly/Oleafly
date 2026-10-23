@@ -108,6 +108,42 @@ async fn gitlab_searches_on_the_server_and_pages_by_header() {
 }
 
 #[tokio::test]
+async fn gitea_follows_the_link_header_when_the_server_caps_the_page_size() {
+    // `MAX_RESPONSE_ITEMS = 30`: 100 repositories come in pages of 30, so a
+    // count taken against the 50 asked for would stop after page 2.
+    let repos = r#"[{"id":1,"full_name":"me/paper","private":false}]"#;
+    let server = MockServer::start(vec![
+        MockResponse::raw(
+            200,
+            &[
+                ("x-total-count", "100"),
+                (
+                    "link",
+                    r#"<http://git.example/api/v1/user/repos?limit=50&page=3>; rel="next", <http://git.example/api/v1/user/repos?limit=50&page=4>; rel="last""#,
+                ),
+            ],
+            repos.as_bytes(),
+        ),
+        MockResponse::raw(
+            200,
+            &[
+                ("x-total-count", "100"),
+                (
+                    "link",
+                    r#"<http://git.example/api/v1/user/repos?limit=50&page=3>; rel="prev", <http://git.example/api/v1/user/repos?limit=50&page=1>; rel="first""#,
+                ),
+            ],
+            repos.as_bytes(),
+        ),
+    ]);
+    let http = ForgeHttp::new(None).unwrap();
+    let base = server.url();
+    let s = session(&http, ForgeKind::Gitea, &base, "gitea-token-1234");
+    assert_eq!(list_repos(&s, 2, None).await.unwrap().next_page, Some(3));
+    assert_eq!(list_repos(&s, 4, None).await.unwrap().next_page, None);
+}
+
+#[tokio::test]
 async fn gitea_pages_by_total_count() {
     let repos = r#"[{"id":1,"full_name":"me/paper","private":false}]"#;
     let server = MockServer::start(vec![

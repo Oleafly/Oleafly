@@ -221,7 +221,8 @@ impl CommandModule for Commands {
         let report = match command {
             ServerCommand::Status(args) => projects::status(&collab, &env, &folder, &args).await?,
             ServerCommand::SignIn(args) => {
-                account::sign_in_from(ctx, &env, &args.url, args.setup_code, args.open).await?
+                let setup_code = account::setup_code(&env, &args, &mut std::io::stdin())?;
+                account::sign_in_from(ctx, &env, &args.url, setup_code, args.open).await?
             }
             ServerCommand::Projects(args) => {
                 projects::projects(&collab, args.server.as_deref()).await?

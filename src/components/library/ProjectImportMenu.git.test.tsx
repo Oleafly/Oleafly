@@ -310,16 +310,6 @@ describe("ProjectImportMenu Git submenu", () => {
     expect(screen.getByTestId("project-import-dialog")).toHaveTextContent(enLibrary.import.gitTitle);
   });
 
-  it("opens a repository in the browser without importing it", async () => {
-    forgeListRepos.mockResolvedValue(page([PUBLIC_REPO]));
-    renderMenu();
-    openGitSubmenu();
-    const link = await screen.findByLabelText(openOnGitHub(PUBLIC_REPO));
-    fireEvent.pointerDown(link, { button: 0, ctrlKey: false });
-    expect(openExternal).toHaveBeenCalledWith(PUBLIC_REPO.webUrl);
-    expect(importForgeRepository).not.toHaveBeenCalled();
-  });
-
   it("reports an empty repository list", async () => {
     renderMenu();
     openGitSubmenu();
@@ -362,30 +352,6 @@ describe("ProjectImportMenu Git submenu", () => {
     expect(useSettingsStore.getState().settingsScrollTarget).toBe("git-hosting");
     expect(onImportSelected).toHaveBeenCalledTimes(1);
     expect(forgeListRepos).not.toHaveBeenCalled();
-  });
-
-  it("opens a repository once and reports one failure when Enter is held down", async () => {
-    forgeListRepos.mockResolvedValue(page([PUBLIC_REPO]));
-    openExternal.mockRejectedValue(new Error("no browser"));
-    renderMenu();
-    openGitSubmenu();
-    const link = await screen.findByLabelText(openOnGitHub(PUBLIC_REPO));
-    fireEvent.keyDown(link, { key: "Enter" });
-    fireEvent.keyDown(link, { key: "Enter", repeat: true });
-    fireEvent.keyDown(link, { key: "Enter", repeat: true });
-    await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
-    expect(openExternal).toHaveBeenCalledExactlyOnceWith(PUBLIC_REPO.webUrl);
-    expect(importForgeRepository).not.toHaveBeenCalled();
-  });
-
-  it("reports a failure to open a repository page", async () => {
-    forgeListRepos.mockResolvedValue(page([PUBLIC_REPO]));
-    openExternal.mockRejectedValue(new Error("no browser"));
-    renderMenu();
-    openGitSubmenu();
-    const link = await screen.findByLabelText(openOnGitHub(PUBLIC_REPO));
-    fireEvent.pointerDown(link, { button: 0, ctrlKey: false });
-    await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
   });
 
   it("keeps the listed repositories for a few minutes instead of asking each time the menu opens", async () => {
@@ -443,19 +409,21 @@ describe("ProjectImportMenu Git submenu", () => {
     expect(onImportSelected).not.toHaveBeenCalled();
   });
 
-  it("does not import the row whose browser link was just pressed and ignores other keys on the link", async () => {
+  it("keeps each repository row to the import action, which the keyboard reaches", async () => {
     forgeListRepos.mockResolvedValue(page([PUBLIC_REPO]));
     renderMenu();
     openGitSubmenu();
-    const link = await screen.findByLabelText(openOnGitHub(PUBLIC_REPO));
 
-    fireEvent.keyDown(link, { key: "a" });
+    const row = await screen.findByTestId(`import-git-repository-${PUBLIC_REPO.fullName}`);
+    // A menu item cannot hold a second control that arrow keys reach, so the
+    // row has none: opening the repository on its host is in the dialog.
+    expect(within(row).queryAllByRole("button")).toHaveLength(0);
+    expect(screen.queryByLabelText(openOnGitHub(PUBLIC_REPO))).toBeNull();
+
+    fireEvent.click(row);
+    await waitFor(() =>
+      expect(importForgeRepository).toHaveBeenCalledWith(GITHUB_ACCOUNT.base, PUBLIC_REPO),
+    );
     expect(openExternal).not.toHaveBeenCalled();
-    fireEvent.pointerDown(link, { button: 0, ctrlKey: false });
-    expect(fireEvent.click(link)).toBe(false);
-    fireEvent.click(screen.getByText(PUBLIC_REPO.fullName));
-
-    expect(openExternal).toHaveBeenCalledTimes(1);
-    expect(importForgeRepository).not.toHaveBeenCalled();
   });
 });

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { ErrorState, LoadingState } from "@/components/ui/empty";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Spinner } from "@/components/ui/spinner";
 import { SettingsNote } from "@/components/settings/SettingsNote";
@@ -33,7 +34,7 @@ export function checkProblem(report: SandboxCheckReport): string | null {
 
 /** The local sandbox: status, the Windows beta switch, interpreters and shared access. */
 export function ComputeSandboxCard() {
-  const { t } = useTranslation(["researchTools"]);
+  const { t } = useTranslation(["common", "researchTools"]);
   const [status, setStatus] = useState<SandboxStatus | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,8 +44,8 @@ export function ComputeSandboxCard() {
   const [removing, setRemoving] = useState(false);
   const live = useRef(true);
 
-  useEffect(() => {
-    live.current = true;
+  const load = useCallback(() => {
+    setFailure(null);
     void sandboxStatus(false)
       .then((next) => {
         if (live.current) setStatus(next);
@@ -52,10 +53,15 @@ export function ComputeSandboxCard() {
       .catch((error: unknown) => {
         if (live.current) setFailure(describeError(error));
       });
+  }, []);
+
+  useEffect(() => {
+    live.current = true;
+    load();
     return () => {
       live.current = false;
     };
-  }, []);
+  }, [load]);
 
   const apply = async (work: () => Promise<SandboxStatus>) => {
     setFailure(null);
@@ -96,13 +102,13 @@ export function ComputeSandboxCard() {
 
   if (!status) {
     return failure ? (
-      <p role="alert" className="select-text text-xs text-destructive">
-        {failure}
-      </p>
+      <ErrorState size="compact" message={failure}>
+        <Button size="xs" variant="outline" onClick={load}>
+          {t(($) => $.common.actions.retry)}
+        </Button>
+      </ErrorState>
     ) : (
-      <div className="flex justify-center py-2">
-        <Spinner aria-hidden />
-      </div>
+      <LoadingState size="compact" className="justify-center py-2" label={t(($) => $.common.state.loading)} />
     );
   }
 

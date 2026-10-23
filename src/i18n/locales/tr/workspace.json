@@ -225,6 +225,7 @@
       "closeOne": "Terminali kapat",
       "closeProject": "Projeyi kapat",
       "dontAsk": "Bir daha sorma",
+      "dontAskHint": "Yeniden açmak için Ayarlar, Görünüm, Terminal bölümündeki Meşgul bir terminali kapatmadan önce sor ayarına gidin.",
       "many_one": "{{count}} terminalde hâlâ bir program çalışıyor.",
       "many_other": "{{count}} terminalde hâlâ program çalışıyor.",
       "named": "{{process}}, {{title}} içinde hâlâ çalışıyor.",

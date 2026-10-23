@@ -160,6 +160,71 @@ fn a_linked_root_that_moved_is_refused() {
 }
 
 #[test]
+fn a_linked_root_in_the_apps_canonical_form_resolves() {
+    // The app records `std::fs::canonicalize`, which on Windows is the
+    // verbatim `\\?\C:\...` form; the helper checks with dunce.
+    let fixture = Fixture::new();
+    let linked = tempfile::tempdir().unwrap();
+    let app_form = std::fs::canonicalize(linked.path()).unwrap();
+    let mut grant = fixture.grant(&[TRUST_RESEARCH_TASKS]);
+    grant.linked_roots = vec![GrantedRoot {
+        id: "data".into(),
+        label: "Data".into(),
+        role: "data".into(),
+        canonical_path: app_form.to_string_lossy().into_owned(),
+    }];
+    let roots = GrantLinkedRoots::new(&grant);
+    assert_eq!(roots.resolve("paper", "data").unwrap(), app_form);
+    // Moved away: still refused in that form.
+    std::fs::remove_dir(&app_form).unwrap();
+    assert_eq!(roots.resolve("paper", "data").unwrap_err(), LINKED_MOVED);
+}
+
+#[cfg(windows)]
+#[test]
+fn a_verbatim_prefixed_grant_resolves_and_keeps_its_form() {
+    let fixture = Fixture::new();
+    let linked = tempfile::tempdir().unwrap();
+    let plain = dunce::canonicalize(linked.path()).unwrap();
+    let verbatim = format!(r"\\?\{}", plain.display());
+    let mut grant = fixture.grant(&[TRUST_RESEARCH_TASKS]);
+    grant.linked_roots = vec![GrantedRoot {
+        id: "data".into(),
+        label: "Data".into(),
+        role: "data".into(),
+        canonical_path: verbatim.clone(),
+    }];
+    let resolved = GrantLinkedRoots::new(&grant)
+        .resolve("paper", "data")
+        .unwrap();
+    assert_eq!(resolved.to_string_lossy(), verbatim);
+}
+
+#[test]
+fn folders_compare_in_one_form() {
+    assert!(same_folder(Path::new("/data/set"), Path::new("/data/set")));
+    assert!(!same_folder(
+        Path::new("/data/set"),
+        Path::new("/data/other")
+    ));
+    #[cfg(windows)]
+    {
+        assert!(same_folder(
+            Path::new(r"C:\data\set"),
+            Path::new(r"\\?\C:\data\set")
+        ));
+        assert!(same_folder(
+            Path::new(r"\\server\share\set"),
+            Path::new(r"\\?\UNC\server\share\set")
+        ));
+        assert!(!same_folder(
+            Path::new(r"C:\data\set"),
+            Path::new(r"\\?\C:\data\other")
+        ));
+    }
+}
+
+#[test]
 fn the_worktree_lock_is_the_one_the_app_uses() {
     let data = tempfile::tempdir().unwrap();
     let first = shared_worktree_lock(data.path(), "paper").unwrap();
@@ -276,6 +341,57 @@ fn spooled_usage_carries_cost_from_the_model_entry() {
     assert!((events[0].cost_usd.unwrap() - 4.5).abs() < 1e-9);
     assert_eq!(events[0].source, "daemon");
     assert_eq!(live.get("t1"), 0.0);
+}
+
+#[test]
+fn a_turn_that_starts_above_the_last_ones_totals_is_still_counted() {
+    let data = tempfile::tempdir().unwrap();
+    let log = Arc::new(HelperLog::open(
+        &data.path().join("helper.log"),
+        Vec::new(),
+        false,
+    ));
+    let live = Arc::new(LiveSpend::default());
+    let price = Price::from_entry(&json!({"cost": {"input": 3.0, "output": 15.0}}));
+    let sink = SpoolUsage::new(
+        data.path(),
+        "t2",
+        "paper",
+        "anthropic",
+        "claude-fable-5",
+        price,
+        live.clone(),
+        log,
+    );
+    let usage = |input, output| {
+        AgentEvent::usage(Usage {
+            input,
+            output,
+            ..Usage::default()
+        })
+    };
+    // A one-step turn, then a turn whose first totals are larger on both
+    // counters: no counter went down, but it is a new turn.
+    sink.observe(&AgentEvent::StepStart { step: 0 });
+    sink.observe(&usage(5_000, 300));
+    sink.observe(&AgentEvent::StepStart { step: 0 });
+    sink.observe(&usage(6_000, 400));
+    sink.observe(&AgentEvent::StepStart { step: 1 });
+    sink.observe(&usage(7_000, 500));
+    let expected = (5_000.0 + 7_000.0) / 1e6 * 3.0 + (300.0 + 500.0) / 1e6 * 15.0;
+    assert!(
+        (live.get("t2") - expected).abs() < 1e-9,
+        "{}",
+        live.get("t2")
+    );
+    sink.finish("completed");
+    let events = usage_spool::read_since(data.path(), "t2", 0).unwrap();
+    assert_eq!(events.len(), 1);
+    assert_eq!(
+        (events[0].input_tokens, events[0].output_tokens),
+        (Some(12_000), Some(800))
+    );
+    assert!((events[0].cost_usd.unwrap() - expected).abs() < 1e-9);
 }
 
 #[tokio::test]

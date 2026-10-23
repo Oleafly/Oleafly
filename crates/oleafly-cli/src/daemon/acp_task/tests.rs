@@ -589,4 +589,9 @@ fn the_default_launcher_rebuilds_the_sandboxed_command() {
     );
     assert!(value("OPENAI_API_KEY").is_none());
     assert!(std::path::Path::new(&launch.sandbox.workspace).is_dir());
+    // The agent starts in the task's folder, in its plain path form.
+    assert_eq!(
+        command.as_std().get_current_dir(),
+        Some(dunce::simplified(&launch.sandbox.workspace))
+    );
 }

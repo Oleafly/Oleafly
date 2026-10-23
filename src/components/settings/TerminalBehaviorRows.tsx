@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { formatNumber } from "@/lib/intl";
@@ -18,6 +19,20 @@ import {
 /** The default first and a custom path last; installed shells keep Rust's order between them. */
 const SHELL_RANK: Partial<Record<TerminalShellId, number>> = { auto: 0, custom: 2 };
 
+/** Why a saved shell can't start here: a Windows shell on another system, or one that isn't installed. */
+type ShellProblem = "windowsOnly" | "notFound";
+
+function shellProblem(
+  option: TerminalShellOption,
+  platform: ReturnType<typeof terminalPlatform>,
+  listKnown: boolean,
+): ShellProblem | null {
+  if (option.id === "auto" || option.id === "custom") return null;
+  // The other systems list only the default and a custom path.
+  if (platform !== "windows") return "windowsOnly";
+  return listKnown && !option.available ? "notFound" : null;
+}
+
 const FALLBACK_SHELLS: readonly TerminalShellOption[] = [
   { id: "auto", resolved: "auto", name: null, path: null, available: true },
   { id: "custom", resolved: "custom", name: null, path: null, available: true },
@@ -28,7 +43,11 @@ const FALLBACK_SHELLS: readonly TerminalShellOption[] = [
  * even when the list can't load. A saved choice that is no longer installed
  * stays listed so the picker shows what is set.
  */
-function useShellOptions(selected: TerminalShellId): readonly TerminalShellOption[] {
+function useShellOptions(selected: TerminalShellId): {
+  options: readonly TerminalShellOption[];
+  /** The computer answered, so a shell missing from its list really isn't there. */
+  known: boolean;
+} {
   const [loaded, setLoaded] = useState<readonly TerminalShellOption[] | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -52,7 +71,10 @@ function useShellOptions(selected: TerminalShellId): readonly TerminalShellOptio
     byId.set(selected, { id: selected, resolved: selected, name: null, path: null, available: false });
   }
   const rank = (id: TerminalShellId) => SHELL_RANK[id] ?? 1;
-  return [...byId.values()].sort((a, b) => rank(a.id) - rank(b.id));
+  return {
+    options: [...byId.values()].sort((a, b) => rank(a.id) - rank(b.id)),
+    known: (loaded ?? []).length > 0,
+  };
 }
 
 /** Shell, Shift+Enter, copy, Option-as-Meta, scrollback and close rows of the Terminal tab. */
@@ -72,15 +94,16 @@ export function TerminalBehaviorRows() {
   const setTerminalScrollback = useSettingsStore((state) => state.setTerminalScrollback);
   const terminalConfirmClose = useSettingsStore((state) => state.terminalConfirmClose);
   const setTerminalConfirmClose = useSettingsStore((state) => state.setTerminalConfirmClose);
-  const shells = useShellOptions(terminalShell);
+  const { options: shells, known: shellListKnown } = useShellOptions(terminalShell);
   const [pathDraft, setPathDraft] = useState(terminalShellPath);
-  const mac = terminalPlatform() === "mac";
+  const platform = terminalPlatform();
+  const mac = platform === "mac";
 
   useEffect(() => {
     setPathDraft(terminalShellPath);
   }, [terminalShellPath]);
 
-  const shellLabel = (option: TerminalShellOption): string => {
+  const baseShellLabel = (option: TerminalShellOption): string => {
     if (option.id !== "auto") return t(($) => $.settings.appearance.terminal.shell.options[option.id]);
     const name =
       option.resolved === "auto"
@@ -90,7 +113,30 @@ export function TerminalBehaviorRows() {
       ? t(($) => $.settings.appearance.terminal.shell.options.auto, { name })
       : t(($) => $.settings.appearance.terminal.shell.options.defaultShell);
   };
+  const shellLabel = (option: TerminalShellOption): string => {
+    const name = baseShellLabel(option);
+    switch (shellProblem(option, platform, shellListKnown)) {
+      case "windowsOnly":
+        return t(($) => $.settings.appearance.terminal.shell.windowsOnly, { name });
+      case "notFound":
+        return t(($) => $.settings.appearance.terminal.shell.notFound, { name });
+      default:
+        return name;
+    }
+  };
   const savePath = () => setTerminalShellPath(pathDraft);
+  const selectedShell = shells.find((option) => option.id === terminalShell);
+  const selectedProblem = selectedShell ? shellProblem(selectedShell, platform, shellListKnown) : null;
+  const defaultShellName = shells.find((option) => option.id === "auto")?.name ?? null;
+  let shellNote: string | null = null;
+  if (selectedShell && selectedProblem === "notFound") {
+    shellNote = t(($) => $.settings.appearance.terminal.shell.notFoundNote, { name: baseShellLabel(selectedShell) });
+  } else if (selectedShell && selectedProblem === "windowsOnly") {
+    const name = baseShellLabel(selectedShell);
+    shellNote = defaultShellName
+      ? t(($) => $.settings.appearance.terminal.shell.windowsOnlyNote, { name, fallback: defaultShellName })
+      : t(($) => $.settings.appearance.terminal.shell.windowsOnlyNoteDefault, { name });
+  }
 
   return (
     <>
@@ -115,6 +161,8 @@ export function TerminalBehaviorRows() {
           </Select>
         }
       />
+
+      {shellNote && <SettingsNote testId="terminal-shell-note">{shellNote}</SettingsNote>}
 
       {terminalShell === "custom" && (
         <SettingsRow
@@ -146,7 +194,7 @@ export function TerminalBehaviorRows() {
             onValueChange={(value) => setTerminalShiftEnter(value as TerminalShiftEnter)}
           >
             <SelectTrigger
-              className="w-[140px]"
+              className="w-[200px]"
               aria-label={t(($) => $.settings.appearance.terminal.shiftEnter.ariaLabel)}
             >
               <SelectValue />

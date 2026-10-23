@@ -29,6 +29,11 @@ pub use local::{supervisor_creation_flags, LocalExecutor, SupervisorCommand};
 pub use manager::{RunCompletion, RunManager, RunSummary, StartRun, WaitOutcome};
 pub use metrics::{parse_metrics_line, MetricsSummary};
 
+/// How often live runs are checked, unless their executor asks for longer.
+#[cfg(not(test))]
+pub const POLL_EVERY: Duration = Duration::from_secs(2);
+#[cfg(test)]
+pub const POLL_EVERY: Duration = Duration::from_millis(100);
 pub const MAX_RUN_LOG_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 pub const MAX_METRIC_LINES: usize = 10_000;
 pub const MAX_IN_FLIGHT_RUNS: usize = 4;
@@ -53,6 +58,16 @@ pub trait RunExecutor: Send + Sync {
     /// Space) when its task is deleted. Best effort.
     async fn cleanup(&self, _handle: &RunHandle) -> Result<(), RunError> {
         Ok(())
+    }
+    /// Removes the remote folder of a run whose start failed. Unlike
+    /// [`Self::cleanup`] it leaves what the task's other runs share alone.
+    async fn discard(&self, handle: &RunHandle) -> Result<(), RunError> {
+        self.cleanup(handle).await
+    }
+    /// How often a live run is checked: a remote run costs a login (and a
+    /// scheduler query), so its executor asks for longer.
+    fn poll_every(&self) -> Duration {
+        POLL_EVERY
     }
 }
 

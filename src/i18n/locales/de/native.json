@@ -100,6 +100,10 @@
       "action": "{{agent}} möchte {{action}}.",
       "steps": "{{agent}} möchte diese Schritte in einer Desktop-App ausführen:",
       "moreSteps": "Nicht angezeigte Schritte: {{count}}",
+      "moreItems": "{{count}} weitere Einträge nicht angezeigt",
+      "cut": "(+{{count}} Zeichen nicht angezeigt)",
+      "signedIn": "Dies geschieht in Ihrem eigenen angemeldeten Browser.",
+      "signedInOn": "Dies geschieht in Ihrem eigenen angemeldeten Browser, auf {{origin}}.",
       "text": "Text: „{{text}}“",
       "address": "Adresse: {{url}}",
       "allowOnce": "Einmal erlauben",
@@ -130,7 +134,8 @@
       "message": "Agenten können dann Folgendes verwenden und fragen trotzdem vor jeder Aktion:",
       "confirm": "Erlauben",
       "enabled": "Desktop-Apps",
-      "app": "App: {{name}}",
+      "app": "App: {{name}} ({{identity}})",
+      "more": "Und {{count}} weitere",
       "site": "Website: {{origin}}",
       "signedIn": "Ihr angemeldeter Browser auf {{origin}}",
       "scripted": "Cua-Skripte"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly arbeitet weiter",
       "body": "Forschungsaufgaben, die weiterlaufen sollen, laufen im Hintergrund weiter. Öffnen Sie Oleafly, um ihren Fortschritt zu sehen."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Berechtigungsprüfungen sind aus ({{mode}})",
+      "description": "Der Agent kann Dateien bearbeiten und Befehle ausführen, ohne zu fragen. Oleafly konnte ihn nicht auf einen anderen Modus umschalten. Ändern Sie den Modus in den eigenen Einstellungen des Agenten."
     }
   }
 }

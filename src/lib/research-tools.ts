@@ -53,7 +53,10 @@ const HOST: ResearchToolsHost & ResearchTaskToolsHost = {
     const brief = defaultBrief(input.brief.goal ?? input.prompt);
     brief.successCriteria = input.brief.successCriteria ?? [];
     brief.reviewPlanFirst = input.brief.reviewPlanFirst ?? false;
-    brief.permissions.network = input.brief.network ?? config.research_command_network ?? false;
+    // A task an agent creates asks before each command it runs, and has no network unless
+    // the agent asked for it and the user saw that in the confirmation.
+    brief.permissions.commands = "ask";
+    brief.permissions.network = input.brief.network ?? false;
     brief.budget.wallClockMinutes =
       input.brief.timeBudgetMinutes ?? config.research_time_budget_minutes ?? brief.budget.wallClockMinutes;
     let task = await createResearchTask({

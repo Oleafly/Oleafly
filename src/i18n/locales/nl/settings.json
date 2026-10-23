@@ -11,12 +11,12 @@
       "checkingAction": "Controleren",
       "checkingDescription": "Dit kan even duren terwijl Oleafly de opdrachtregeltools op deze computer nakijkt.",
       "checkingInstalled": "Geïnstalleerde agents controleren",
-      "checkingTitle": "Zoeken naar opdrachtregelagents",
+      "checkingTitle": "Zoeken naar CLI-agents",
       "cliPathLabel": "Gevonden in",
       "cliTitle": "Opdrachtregeltool",
       "copySignInCommand": "Aanmeldopdracht kopiëren",
-      "emptyDescription": "Installeer een ondersteunde opdrachtregelagent en controleer het opnieuw.",
-      "emptyTitle": "Geen opdrachtregelagents gevonden",
+      "emptyDescription": "Installeer een ondersteunde CLI-agent en controleer het opnieuw.",
+      "emptyTitle": "Geen CLI-agents gevonden",
       "custom": {
         "description": "Plak een agentdefinitie om een agent te registreren die niet met Oleafly meekomt.",
         "hint": "Plak een agentdefinitie met een vastgezet npm- of uv-pakket, een geverifieerd programma of een geïnstalleerd programma. Houd wachtwoorden en API-sleutels uit deze JSON.",
@@ -36,7 +36,7 @@
       },
       "installBridge": "Bridge installeren",
       "installBridgeNextStep": "Installeer de ACP-bridge en meld je daarna aan via de opdrachtregeltool.",
-      "intro": "Verbind een lokale agent via ACP. Elke agent beheert zijn eigen modellen, tools en aanmelding, en de instellingen van API-providers blijven apart. Gebruik het officiële CLI-account om je aan te melden: Oleafly importeert geen accounttokens en schat geen abonnementsquota.",
+      "intro": "CLI-agents zoals Claude Code, Codex en Gemini CLI verbinden via het Agent Client Protocol (ACP). Sommige hebben een bridge nodig, een kleine adapter die Oleafly installeert om met ze te kunnen praten. Elke agent beheert zijn eigen modellen, tools en aanmelding, en de instellingen van API-providers blijven apart. Gebruik het officiële CLI-account om je aan te melden: Oleafly importeert geen accounttokens en schat geen abonnementsquota.",
       "nextStepTitle": "Volgende stap",
       "notReported": "Niet gemeld",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Distributie tonen",
         "title": "Meer agents vinden"
       },
-      "sectionLabel": "ACP-agents",
+      "sectionLabel": "CLI-agents",
       "signInCommandLabel": "Aanmeldopdracht",
       "versionLabel": "Versie",
       "updateBridge": "Bridge bijwerken",
@@ -147,7 +147,7 @@
         "label": "Mijn API-sleutel van Oleafly gebruiken",
         "off": "Uit (de agent meldt zich zelf aan)",
         "note": "Oleafly stuurt de sleutel naar deze agent als een gesprek begint en houdt hem buiten de verslagen.",
-        "unavailable": "Voeg een API-sleutel toe bij Instellingen, AI om hem hier te gebruiken."
+        "unavailable": "Voeg een API-sleutel toe bij Instellingen, AI-assistent, Providers en sleutels om hem hier te gebruiken."
       },
       "hermes": {
         "title": "Hermes-profiel voor dit project",
@@ -175,7 +175,20 @@
         "test": "Verbinding testen",
         "testOk": "Verbonden: {{version}}",
         "save": "Opslaan",
-        "sshNote": "Oleafly meldt zich alleen aan met je SSH-sleutels."
+        "sshNote": "Oleafly meldt zich alleen aan met je SSH-sleutels.",
+        "folderHint": "Het volledige pad op die machine, zoals /home/ada/paper.",
+        "needsValid": "Verbinding testen en Opslaan hebben geldige waarden nodig voor: {{fields}}.",
+        "unsavedEdit": "Nog niet opgeslagen. Sla op om deze wijzigingen te gebruiken.",
+        "unsavedMode": "Nog niet opgeslagen. Tot je opslaat, blijft dit project {{mode}} gebruiken.",
+        "errors": {
+          "hostRequired": "Vul de hostnaam of user@host in.",
+          "hostInvalid": "Gebruik alleen letters, cijfers, punten, streepjes en @, en begin niet met een streepje.",
+          "port": "Gebruik een poort van 1 tot 65535.",
+          "folderRequired": "Vul het volledige pad van de projectmap op die machine in.",
+          "folderInvalid": "Gebruik het volledige pad, beginnend met /.",
+          "command": "Gebruik hermes, of het volledige pad ernaartoe, beginnend met /.",
+          "profile": "Gebruik kleine letters, cijfers, streepjes en underscores."
+        }
       }
     },
     "approvals": {
@@ -1007,6 +1020,8 @@
         "ariaLabel": "De shell van de terminal",
         "description": "Nieuwe terminals starten deze shell. Open terminals houden hun eigen shell.",
         "label": "Shell",
+        "notFound": "{{name}} (niet gevonden)",
+        "notFoundNote": "{{name}} is niet beschikbaar op deze computer, dus nieuwe terminals kunnen niet starten. Kies een andere shell.",
         "options": {
           "auto": "Standaard ({{name}})",
           "cmd": "Opdrachtprompt",
@@ -1021,14 +1036,17 @@
           "ariaLabel": "Eigen pad naar de shell",
           "description": "Het programma dat nieuwe terminals uitvoeren.",
           "label": "Pad naar de shell"
-        }
+        },
+        "windowsOnly": "{{name}} (alleen Windows)",
+        "windowsOnlyNote": "{{name}} draait alleen op Windows. Nieuwe terminals hier starten in plaats daarvan met {{fallback}}.",
+        "windowsOnlyNoteDefault": "{{name}} draait alleen op Windows. Nieuwe terminals hier starten in plaats daarvan met de standaard-shell."
       },
       "shiftEnter": {
         "ariaLabel": "Shift+Enter in de terminal",
-        "description": "Wat Shift+Enter naar het programma in de terminal stuurt.",
-        "enter": "Enter",
+        "description": "Wat Shift+Enter naar het programma in de terminal stuurt. Een nieuwe regel laat chatachtige tools zoals Claude Code een regel aan hun prompt toevoegen. Enter verstuurt, net als de Enter-toets.",
+        "enter": "Enter versturen",
         "label": "Shift+Enter",
-        "newline": "Nieuwe regel"
+        "newline": "Nieuwe regel invoegen"
       },
       "startWithProject": {
         "description": "Start de shell zodra een project opent in plaats van bij de eerste keer dat je de terminal toont.",
@@ -1452,7 +1470,9 @@
       "detecting": "Server controleren…",
       "found": "Dit is een {{kind}}-server.",
       "kindGitea": "Gitea of Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "Een andere server",
+      "replaces": "Aanmelden vervangt {{login}} op {{host}}.",
       "scopesGitea": "Geef het lees- en schrijftoegang tot repository en user.",
       "scopesGithub": "Geef het de scopes repo en read:user.",
       "scopesGitlab": "Geef het de scopes api en write_repository.",
@@ -1527,7 +1547,7 @@
       "site": "Site: {{domain}}",
       "confirmCopy": "Oleafly leest de cookies voor {{domain}} uit het profiel {{profile}} in {{browser}}. Ze blijven in Oleafly en gaan alleen naar {{domain}}. Je bevestigt het nog een keer in een systeemvenster.",
       "copyAction": "Aanmelding kopiëren",
-      "copying": "Kopiëren...",
+      "copying": "Kopiëren…",
       "notSignedIn_one": "{{count}} cookie gekopieerd uit {{browser}}, maar die heeft je niet aangemeld. Meld je rechtstreeks aan.",
       "notSignedIn_other": "{{count}} cookies gekopieerd uit {{browser}}, maar die hebben je niet aangemeld. Meld je rechtstreeks aan."
     },
@@ -1610,6 +1630,7 @@
         "notInstalled": "Cua Driver is niet geïnstalleerd.",
         "tooOld": "Cua Driver {{version}} is te oud. Oleafly heeft {{minimum}} of nieuwer nodig.",
         "noAppBundle": "Installeer Cua Driver met het officiële installatieprogramma, zodat het de rechten van macOS kan behouden.",
+        "unreadableVersion": "Oleafly kon de versie van Cua Driver niet lezen. Controleer of het draait en controleer daarna opnieuw.",
         "path": "Gevonden in {{path}}"
       },
       "install": {
@@ -1643,14 +1664,18 @@
         "empty": "Nog geen apps. Agents kunnen alleen apps gebruiken die je hier toevoegt.",
         "add": "App toevoegen",
         "remove": "{{name}} verwijderen",
+        "missing": "Dit programma is niet gevonden op deze computer. Verwijder het of installeer de app opnieuw.",
         "dialog": {
           "title": "Een app toevoegen",
           "description": "Kies een app die agents mogen gebruiken. Na je goedkeuring kunnen ze hem openen, de vensters lezen en erin handelen.",
           "search": "Apps zoeken",
-          "loading": "Apps zoeken...",
+          "loading": "Apps zoeken…",
           "none": "Geen apps gevonden.",
-          "choose": "Een andere app kiezen...",
-          "add": "Toevoegen"
+          "choose": "Een andere app kiezen…",
+          "add": "Toevoegen",
+          "added": "Al toegevoegd.",
+          "more": "{{shown}} van {{total}} getoond. Zoek om de lijst te verkleinen.",
+          "refresh": "Vernieuwen"
         },
         "blocked": {
           "oleafly": "Oleafly kan zichzelf niet bedienen.",
@@ -1660,7 +1685,8 @@
           "passwords": "Wachtwoordapps blijven verboden terrein.",
           "scripting": "Programma's die scripts uitvoeren, kunnen alles doen op deze computer.",
           "wrapper": "Dit item start een ander programma. Kies dat programma.",
-          "sandboxed": "Flatpak- en Snap-apps worden nog niet ondersteund."
+          "sandboxed": "Flatpak- en Snap-apps worden nog niet ondersteund.",
+          "browser": "Voeg in plaats daarvan de websites van een browser toe onder Toegestane websites."
         }
       },
       "sites": {
@@ -1671,6 +1697,7 @@
         "remove": "{{origin}} verwijderen",
         "signedIn": {
           "label": "Mijn aangemelde browser gebruiken",
+          "labelFor": "Mijn aangemelde browser op {{origin}} gebruiken",
           "description": "Agents werken op deze site in je eigen Chrome of Edge. Laat het uit staan om een apart browserprofiel te gebruiken."
         }
       },
@@ -1680,8 +1707,9 @@
       },
       "test": {
         "action": "Verbinding testen",
-        "running": "Testen...",
+        "running": "Testen…",
         "ok": "Cua Driver draait met jouw limieten.",
+        "problems": "De eigen controle van Cua Driver meldde ook:",
         "failed": "De test is mislukt: {{detail}}"
       },
       "tool": {
@@ -2281,6 +2309,7 @@
       "stopHint": "De taken ervan pauzeren tot je Oleafly weer opent.",
       "stopFailed": "Het achtergrondproces is niet gestopt. Probeer het opnieuw.",
       "openLog": "Logboek tonen",
+      "statusFailed": "De status van het achtergrondproces kon niet worden gelezen.",
       "toggleFailed": "Kon deze instelling niet wijzigen. Probeer het opnieuw."
     }
   }

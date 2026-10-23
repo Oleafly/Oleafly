@@ -472,10 +472,24 @@ pub fn cancel_script(dir: &str, grace_secs: u64) -> String {
 /// or in `<dir>/outputs.tgz`.
 pub fn outputs_script(dir: &str, to_file: bool) -> String {
     let target = if to_file { "../outputs.tgz" } else { "-" };
+    // An archive in a file says how big it is, so a download can be refused.
+    let size = if to_file {
+        "echo \"OLEAFLY_OUTPUTS_BYTES $(wc -c < ../outputs.tgz)\"\n"
+    } else {
+        ""
+    };
     format!(
-        "cd || exit 1\ncd {dir}/work || exit 1\nfind . -type f -newer ../started -size -65537k ! -path './runs/*' 2>/dev/null | head -n 10000 > ../outputs.list\nCOPYFILE_DISABLE=1 tar -czf {target} -T ../outputs.list\n",
+        "cd || exit 1\ncd {dir}/work || exit 1\nfind . -type f -newer ../started -size -65537k ! -path './runs/*' 2>/dev/null | head -n 10000 > ../outputs.list\nCOPYFILE_DISABLE=1 tar -czf {target} -T ../outputs.list\n{size}",
         dir = sh_quote(dir),
     )
+}
+
+/// The size of an outputs archive, from what [`outputs_script`] printed.
+pub fn outputs_bytes(printed: &str) -> Option<u64> {
+    printed
+        .lines()
+        .find_map(|line| line.strip_prefix("OLEAFLY_OUTPUTS_BYTES "))
+        .and_then(|bytes| bytes.trim().parse().ok())
 }
 
 /// Removes the run's folder (and its task folder once empty). Only a folder

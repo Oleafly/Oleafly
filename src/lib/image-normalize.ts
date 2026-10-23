@@ -31,6 +31,8 @@ const KEEP_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"
 const ALPHA_TYPES = new Set(["image/png", "image/gif", "image/webp", "image/avif"]);
 const KEEP_BYTES = 5 * 1024 * 1024;
 const WORKER_TIMEOUT_MS = 30_000;
+/** The worker holds its module and canvases while it lives; it goes after this long without a job. */
+const WORKER_IDLE_MS = 60_000;
 export const ENCODE_QUALITY = 0.85;
 export const THUMB_QUALITY = 0.7;
 
@@ -71,6 +73,7 @@ export function hasTransparency(data: Uint8ClampedArray): boolean {
 }
 
 let worker: Worker | null = null;
+let idleTimer: ReturnType<typeof setTimeout> | undefined;
 let nextJob = 0;
 const jobs = new Map<
   number,
@@ -83,6 +86,22 @@ function failAll(error: Error): void {
     job.reject(error);
     jobs.delete(id);
   }
+}
+
+function stopWorker(): void {
+  clearTimeout(idleTimer);
+  idleTimer = undefined;
+  worker?.terminate();
+  worker = null;
+}
+
+/** With no job left, the worker leaves after a while. */
+function stopWorkerWhenIdle(): void {
+  clearTimeout(idleTimer);
+  if (jobs.size > 0) return;
+  idleTimer = setTimeout(() => {
+    if (jobs.size === 0) stopWorker();
+  }, WORKER_IDLE_MS);
 }
 
 function imageWorker(): Worker | null {
@@ -104,21 +123,26 @@ function imageWorker(): Worker | null {
     clearTimeout(job.timer);
     if (data.ok) job.resolve({ bytes: data.bytes, mime: data.mime, thumbnailUrl: data.thumbnailUrl });
     else job.reject(new Error(data.error ?? "image worker failed"));
+    stopWorkerWhenIdle();
   };
   worker.onerror = () => {
     failAll(new Error("image worker crashed"));
-    worker?.terminate();
-    worker = null;
+    stopWorker();
   };
   return worker;
 }
 
 function runInWorker(target: Worker, job: ImageJob): Promise<ImageJobResult> {
   const id = ++nextJob;
+  clearTimeout(idleTimer);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
+      // A worker that did not answer is stuck, and the jobs queued behind it
+      // would wait just as long: drop it, and the next image gets a new one.
       jobs.delete(id);
       reject(new Error("image worker timed out"));
+      failAll(new Error("image worker timed out"));
+      stopWorker();
     }, WORKER_TIMEOUT_MS);
     jobs.set(id, { resolve, reject, timer });
     target.postMessage({ id, ...job }, [job.bitmap]);

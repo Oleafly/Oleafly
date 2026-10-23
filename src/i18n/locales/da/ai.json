@@ -43,13 +43,15 @@
       "command": "Bekræft kommandoen",
       "externalTool": "Bekræft handlingen i det eksterne værktøj",
       "internet": "Bekræft adgang til internettet",
-      "edit": "Bekræft AI-ændringen"
+      "edit": "Bekræft AI-ændringen",
+      "researchTask": "Bekræft forskningsopgaven"
     },
     "headline": {
       "command": "Assistenten vil køre denne kommando",
       "externalTool": "Assistenten vil bruge et eksternt værktøj",
       "internet": "Assistenten vil have adgang til internettet",
-      "edit": "Assistenten vil ændre dine filer"
+      "edit": "Assistenten vil ændre dine filer",
+      "researchTask": "Assistenten vil oprette en forskningsopgave"
     },
     "mcpNote": "Det sender argumenterne nedenfor til den konfigurerede MCP-server.",
     "line": "linje {{line}}",
@@ -70,6 +72,22 @@
       "title": "Forespørgsel fra ekstern agent (MCP)",
       "moreWaiting_one": "{{count}} mere venter",
       "moreWaiting_other": "{{count}} flere venter"
+    },
+    "researchTask": {
+      "note": "Opgaven arbejder selvstændigt i en kopi af projektet. Du gennemgår dens ændringer bagefter.",
+      "title": "Titel",
+      "goal": "Mål",
+      "skills": "Færdigheder",
+      "prompt": "Prompt",
+      "commands": "Kommandoer",
+      "commandsAsk": "Spørg før hver enkelt",
+      "network": "Netværk",
+      "timeBudget": "Tidsbudget",
+      "timeBudgetDefault": "Standard",
+      "minutes_one": "{{count}} minut",
+      "minutes_other": "{{count}} minutter",
+      "planFirst": "Plan først",
+      "startNow": "Start nu"
     }
   },
   "attachments": {
@@ -95,7 +113,9 @@
     "saveFailed": "Kunne ikke gemme {{name}}.",
     "missing": "{{name}} er ikke længere tilgængelig.",
     "sentAsText": "{{name}} blev sendt som tekst, fordi denne model ikke kan læse den som fil.",
-    "skipped": "{{name}} blev ikke sendt."
+    "skipped": "{{name}} blev ikke sendt.",
+    "dropUnreadable": "{{names}} kunne ikke læses.",
+    "notReplayed": "Filer fra en ældre version kan ikke sendes igen: {{names}}."
   },
   "chat": {
     "pill": {
@@ -591,7 +611,10 @@
       "queued": "I kø: sendes, når agenten er færdig",
       "remove": "Fjern beskeden fra køen",
       "sendNow": "Send nu",
-      "sendFailed": "Beskeden blev ikke sendt. Send den igen, eller fjern den."
+      "sendFailed": "Beskeden blev ikke sendt. Send den igen, eller fjern den.",
+      "queuedConnecting": "I kø: sendes, når agenten er klar",
+      "retry": "Send igen",
+      "edit": "Rediger"
     },
     "slash": {
       "commands": "Agentkommandoer",
@@ -631,7 +654,9 @@
       "apiKeyPlaceholder": "Indsæt din API-nøgle",
       "geminiGoogle": "Login med Google virker ikke længere for individuelle abonnementer. Brug en API-nøgle til Gemini eller Vertex AI.",
       "noProject": "Åbn et projekt for at logge ind fra terminalen.",
-      "signOut": "Log ud"
+      "signOut": "Log ud",
+      "confirmTerminal": "{{agent}} logger ind gennem kommandoen nedenfor, som kører i et terminalfaneblad. Tjek den, før du godkender.",
+      "remote": "Denne samtale kører på en anden maskine. Log ind på agenten der."
     },
     "elicitation": {
       "ariaLabel": "Forespørgsel fra agenten",
@@ -644,7 +669,8 @@
       "openUrl": "Åbn i browseren",
       "confirmTitle": "Vil du åbne {{host}}?",
       "confirmDescription": "Agenten bad dig om at gøre et trin færdigt på denne hjemmeside. Den åbnes i din browser.",
-      "waiting": "Venter på, at hjemmesiden bliver færdig."
+      "waiting": "Venter på, at hjemmesiden bliver færdig.",
+      "openFailed": "Linket kunne ikke åbnes i din browser."
     },
     "remote": {
       "banner": "Hermes kører på {{host}} via SSH. Dens ændringer bliver på den maskine."
@@ -655,7 +681,6 @@
       "search": "Søg i samtaler",
       "empty": "Ingen samtaler passer.",
       "loadMore": "Indlæs flere",
-      "open": "Åbn",
       "rename": "Omdøb",
       "renameLabel": "Samtalens navn",
       "delete": "Slet",
@@ -677,7 +702,10 @@
       "forkUnsupported": "Denne agent kan ikke forgrene samtaler.",
       "forkBusy": "Vent, til agenten er færdig, før du forgrener.",
       "v2": "Udkast til ACP v2",
-      "remote": "Ekstern"
+      "remote": "Ekstern",
+      "signOutTitle": "Log ud af {{agent}}?",
+      "signOutDescription": "Det afslutter selve {{agent}}-loginnet. En terminal, der bruger det samme login, bliver også logget ud, og denne samtale stopper, indtil du logger ind igen.",
+      "signOutAccount": "Logget ind med {{account}}"
     },
     "commit": {
       "button": "Commit",

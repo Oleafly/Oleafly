@@ -225,6 +225,7 @@
       "closeOne": "Terminal sluiten",
       "closeProject": "Project sluiten",
       "dontAsk": "Niet meer vragen",
+      "dontAskHint": "Om het weer aan te zetten, ga je naar Instellingen, Weergave, Terminal, Vragen voor het sluiten van een bezette terminal.",
       "many_one": "Er draait nog een programma in {{count}} terminal.",
       "many_other": "Er draaien nog programma's in {{count}} terminals.",
       "named": "{{process}} draait nog in {{title}}.",

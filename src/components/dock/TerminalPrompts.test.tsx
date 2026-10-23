@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import en from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import {
@@ -54,6 +54,7 @@ describe("terminal prompts", () => {
 
     const named = ask({ kind: "stop", reason: "close-tab", jobs: [{ title: "Terminal 2", process: "python" }] });
     expect(screen.getByRole("alertdialog")).toHaveTextContent("python is still running in Terminal 2.");
+    expect(screen.getByText(stop.dontAskHint)).toHaveTextContent("Settings, Appearance, Terminal");
     fireEvent.click(screen.getByRole("checkbox", { name: stop.dontAsk }));
     fireEvent.click(screen.getByRole("button", { name: stop.closeOne }));
     expect(await named).toBe(true);
@@ -101,6 +102,24 @@ describe("terminal prompts", () => {
     fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${en.terminal.launch.run}`) }));
     expect(await confirmed).toBe(true);
     expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("never runs a launch command on a bare Enter, and Cancel has the focus", async () => {
+    render(<TerminalPrompts />);
+    const answer = ask({ kind: "launch", title: "Install", description: "x", commandLine: "x" });
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toHaveTextContent(en.terminal.launch.title);
+    expect(within(dialog).getByRole("button", { name: new RegExp(`^${en.terminal.launch.run}`) })).not.toHaveTextContent(
+      "↵",
+    );
+
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    fireEvent.keyDown(dialog, { key: "Enter" });
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    await waitFor(() => expect(cancelButton()).toHaveFocus());
+
+    fireEvent.click(cancelButton());
+    expect(await answer).toBe(false);
   });
 
   it("answers an open prompt when the host goes away", async () => {

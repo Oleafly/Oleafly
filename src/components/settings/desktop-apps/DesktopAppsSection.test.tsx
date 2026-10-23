@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
@@ -30,7 +30,9 @@ vi.mock("@/lib/desktop-apps", () => ({
 vi.mock("@/lib/terminal-launch", () => ({
   openTerminalWith: mocks.openTerminalWith,
   TerminalLaunchError: class TerminalLaunchError extends Error {
-    reason = "invalid";
+    constructor(readonly reason = "invalid") {
+      super(reason);
+    }
   },
 }));
 vi.mock("@/lib/system-browser", () => ({ openInSystemBrowser: mocks.openInSystemBrowser }));
@@ -61,6 +63,7 @@ function status(overrides: Partial<DesktopAppsStatus> = {}): DesktopAppsStatus {
     spacesInstallLine: "curl -fsSL https://cua.ai/install.sh | sh",
     spacesInstallCommand: { program: "/bin/sh", args: ["-c", "curl -fsSL https://cua.ai/install.sh | sh"] },
     settings: OFF,
+    missingApps: [],
     ...overrides,
   };
 }
@@ -116,7 +119,21 @@ describe("DesktopAppsSection", () => {
       args: ["-NoProfile", "-Command", "irm https://cua.ai/driver/install.ps1 | iex"],
       confirmText: copy.install.confirm,
     });
-    expect(useSettingsStore.getState().settingsOpen).toBe(false);
+    await waitFor(() => expect(useSettingsStore.getState().settingsOpen).toBe(false));
+  });
+
+  it("keeps Settings open when the terminal confirmation is declined", async () => {
+    const user = userEvent.setup();
+    useFilesStore.setState({ projectId: "p1" });
+    const { TerminalLaunchError } = await import("@/lib/terminal-launch");
+    mocks.openTerminalWith.mockRejectedValueOnce(new TerminalLaunchError("cancelled"));
+    mocks.status.mockResolvedValue(
+      status({ driverProblem: "not_installed", driverPath: null, driverVersion: null }),
+    );
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: copy.install.run }));
+    await waitFor(() => expect(mocks.openTerminalWith).toHaveBeenCalled());
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
   });
 
   it("turns the connector on through Rust and refreshes the assistant tool", async () => {
@@ -141,6 +158,8 @@ describe("DesktopAppsSection", () => {
     expect(await screen.findByText(enErrors.desktop_apps.change_declined)).toBeVisible();
     expect(screen.getByRole("switch", { name: copy.enable.label })).toHaveAttribute("aria-checked", "false");
     expect(mocks.sync).not.toHaveBeenCalled();
+    // Saying no to the question is a note, not a failure.
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("adds a site and marks it for the signed-in browser", async () => {
@@ -159,7 +178,11 @@ describe("DesktopAppsSection", () => {
     );
     const row = (await screen.findByText("https://journal.example.org")).closest("div[class*='rounded-lg']");
     expect(row).not.toBeNull();
-    await user.click(within(row as HTMLElement).getByRole("switch", { name: copy.sites.signedIn.label }));
+    await user.click(
+      within(row as HTMLElement).getByRole("switch", {
+        name: copy.sites.signedIn.labelFor.replace("{{origin}}", "https://journal.example.org"),
+      }),
+    );
     await waitFor(() =>
       expect(mocks.settingsSet).toHaveBeenLastCalledWith({
         ...on,
@@ -204,5 +227,99 @@ describe("DesktopAppsSection", () => {
       args: ["permissions", "grant"],
       confirmText: undefined,
     });
+  });
+
+  it("lets Rust judge a website address and shows its answer by the field", async () => {
+    const user = userEvent.setup();
+    const on = { ...OFF, enabled: true };
+    mocks.status.mockResolvedValue(status({ settings: on }));
+    mocks.settingsSet.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "desktop_apps.site_invalid", params: { site: "example.org" }, detail: null })}`,
+    );
+    renderSection();
+    await user.type(await screen.findByRole("textbox", { name: copy.sites.add }), "example.org");
+    await user.click(screen.getByRole("button", { name: copy.sites.add }));
+    // No browser validation in the way: a bare host reaches Rust.
+    await waitFor(() =>
+      expect(mocks.settingsSet).toHaveBeenCalledWith({
+        ...on,
+        sites: [{ origin: "example.org", signedIn: false }],
+      }),
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("example.org");
+    expect(screen.getByTestId("desktop-apps-sites")).toContainElement(alert);
+    expect(screen.getByRole("textbox", { name: copy.sites.add })).toHaveValue("example.org");
+  });
+
+  it("ignores the website form while a change is being saved", async () => {
+    const user = userEvent.setup();
+    const on = { ...OFF, enabled: true };
+    mocks.status.mockResolvedValue(status({ settings: on }));
+    let finish: (settings: DesktopAppsSettings) => void = () => undefined;
+    mocks.settingsSet.mockImplementation(
+      () =>
+        new Promise<DesktopAppsSettings>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderSection();
+    const field = await screen.findByRole("textbox", { name: copy.sites.add });
+    await user.type(field, "https://a.org{Enter}");
+    await waitFor(() => expect(field).toBeDisabled());
+    fireEvent.submit(field.closest("form") as HTMLFormElement);
+    expect(mocks.settingsSet).toHaveBeenCalledTimes(1);
+    finish({ ...on, sites: [{ origin: "https://a.org", signedIn: false }] });
+    await waitFor(() => expect(field).toBeEnabled());
+  });
+
+  it("says why permissions can't be granted without a project, and checks again on request", async () => {
+    const user = userEvent.setup();
+    mocks.status.mockResolvedValue(status({ permissions: { accessibility: false, screenRecording: false } }));
+    renderSection();
+    const row = await screen.findByTestId("desktop-apps-permissions");
+    expect(within(row).getByRole("button", { name: copy.permissions.grant })).toBeDisabled();
+    expect(within(row).getByText(copy.install.needsProject)).toBeVisible();
+    mocks.status.mockResolvedValue(status({ permissions: { accessibility: true, screenRecording: true } }));
+    await user.click(within(row).getByRole("button", { name: copy.install.checkAgain }));
+    expect(await screen.findByText(copy.permissions.granted)).toBeVisible();
+  });
+
+  it("lists what Cua Driver's own check found even when the connection test passes", async () => {
+    const user = userEvent.setup();
+    mocks.status.mockResolvedValue(status({ settings: { ...OFF, enabled: true } }));
+    mocks.test.mockResolvedValue({
+      ok: true,
+      version: "0.36.1",
+      runtimes: [{ kind: "desktop", ok: true, detail: null }],
+      problems: ["Screen Recording is off"],
+    });
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: copy.test.action }));
+    expect(await screen.findByText(copy.test.ok)).toBeVisible();
+    const problems = screen.getByTestId("desktop-apps-test-problems");
+    expect(problems).toHaveTextContent(copy.test.problems);
+    expect(problems).toHaveTextContent("Screen Recording is off");
+  });
+
+  it("marks an allowed program that is gone, and it can still be removed", async () => {
+    const user = userEvent.setup();
+    const on = { ...OFF, enabled: true, apps: [{ name: "Slack", executable: "/opt/slack/slack" }] };
+    mocks.status.mockResolvedValue(
+      status({ platform: "linux", permissions: null, settings: on, missingApps: ["/opt/slack/slack"] }),
+    );
+    mocks.settingsSet.mockImplementation(async (settings: DesktopAppsSettings) => settings);
+    renderSection();
+    expect(await screen.findByText(copy.apps.missing)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Remove Slack" }));
+    await waitFor(() => expect(mocks.settingsSet).toHaveBeenCalledWith({ ...on, apps: [] }));
+  });
+
+  it("opens the Cua Driver docs from a link button", async () => {
+    const user = userEvent.setup();
+    mocks.status.mockResolvedValue(status());
+    renderSection();
+    await user.click(await screen.findByRole("button", { name: new RegExp(copy.docsLink) }));
+    expect(mocks.openInSystemBrowser).toHaveBeenCalledWith("https://cua.ai/docs/cua-driver");
   });
 });

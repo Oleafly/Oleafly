@@ -40,7 +40,7 @@ function ImageChip({ meta, scope }: Readonly<{ meta: AttachmentMeta; scope: stri
       onClick={() => setOpen(true)}
       aria-label={t(($) => $.ai.attachments.open, { name: meta.name })}
       className={cn(
-        "flex items-center gap-1.5 rounded-md border bg-background/60 p-0.5 pr-2 text-xs transition-colors hover:bg-accent disabled:cursor-default",
+        "flex items-center gap-1.5 rounded-md border bg-background/60 p-0.5 pr-2 text-xs transition-colors hover:bg-accent focus-visible:bg-accent disabled:cursor-default",
         failed && "opacity-60",
       )}
     >
@@ -97,7 +97,7 @@ function FileChip({ meta, scope }: Readonly<{ meta: AttachmentMeta; scope: strin
       onClick={() => void save()}
       aria-label={t(($) => $.ai.attachments.saveCopy, { name: meta.name })}
       className={cn(
-        "flex items-center gap-1.5 rounded-md border bg-background/60 px-2 py-1 text-xs transition-colors hover:bg-accent",
+        "flex items-center gap-1.5 rounded-md border bg-background/60 px-2 py-1 text-xs transition-colors hover:bg-accent focus-visible:bg-accent",
         missing && "opacity-60",
       )}
     >

@@ -5,7 +5,6 @@ use std::time::Duration;
 
 use clap::{Args, ValueEnum};
 use oleafly_core::context::{scan_project, ContextLimits, ContextScan};
-use oleafly_core::process_probe::probe_output;
 use oleafly_core::tex_errors::{rebase_log_files, resolve_extensionless_inputs};
 use oleafly_core::{parse_latex_log, LogDiagnostic, LogSeverity, Workspace, MAX_COMPILE_LOG_BYTES};
 use serde_json::{json, Value};
@@ -91,7 +90,7 @@ fn severity_label(severity: LogSeverity) -> &'static str {
 
 fn diagnostics_from_engine_log(workspace: &Workspace, path: &Path) -> Vec<LogDiagnostic> {
     use std::io::Read;
-    let Ok(file) = std::fs::File::open(path) else {
+    let Ok(file) = crate::record::open_regular_file(path) else {
         return Vec::new();
     };
     let mut bytes = Vec::new();
@@ -182,17 +181,15 @@ fn run_log(ctx: &Context, args: LogArgs) -> Result<Outcome, CliError> {
 
 /// `{branch, dirty, ahead, behind}` from `git status`, or `None`.
 fn git_summary(root: &Path) -> Option<Value> {
-    let root_text = root.to_str()?;
-    let output = probe_output(
-        Path::new("git"),
-        &["-C", root_text, "status", "--porcelain=v2", "--branch"],
+    let git = crate::typst_settings::find_git(root)?;
+    let stdout = crate::process::read_git(
+        &git,
+        root,
+        &["status", "--porcelain=v2", "--branch"],
         GIT_TIMEOUT,
         1024 * 1024,
     )?;
-    if !output.success {
-        return None;
-    }
-    let text = String::from_utf8_lossy(&output.stdout);
+    let text = String::from_utf8_lossy(&stdout);
     let mut branch: Option<String> = None;
     let mut ahead = 0i64;
     let mut behind = 0i64;
@@ -479,6 +476,43 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         assert!(git_summary(dir.path())
             .is_none_or(|value| value["branch"].is_string() || value["branch"].is_null()));
+    }
+
+    /// A repository folder that came from someone else carries its own
+    /// `.git/config`; `core.fsmonitor` there is a command `git status` runs.
+    #[cfg(unix)]
+    #[test]
+    fn git_status_does_not_run_the_command_a_repository_config_names() {
+        use std::os::unix::fs::PermissionsExt;
+        let outside = tempfile::tempdir().unwrap();
+        let repository = tempfile::tempdir().unwrap();
+        let Some(git) = crate::typst_settings::find_git(repository.path()) else {
+            return;
+        };
+        let git_in = |args: &[&str]| {
+            std::process::Command::new(&git)
+                .arg("-C")
+                .arg(repository.path())
+                .args(args)
+                .output()
+                .unwrap()
+        };
+        assert!(git_in(&["init", "-q"]).status.success());
+        let marker = outside.path().join("ran");
+        let hook = outside.path().join("hook.sh");
+        std::fs::write(&hook, format!("#!/bin/sh\ntouch '{}'\n", marker.display())).unwrap();
+        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+        git_in(&["config", "core.fsmonitor", &hook.display().to_string()]);
+        // Plain `git status` runs it; if this Git doesn't, there is nothing to prove.
+        git_in(&["status", "--porcelain=v2", "--branch"]);
+        if !marker.exists() {
+            return;
+        }
+        std::fs::remove_file(&marker).unwrap();
+
+        let summary = git_summary(repository.path()).unwrap();
+        assert_eq!(summary["dirty"], false);
+        assert!(!marker.exists(), "the repository's fsmonitor ran");
     }
 
     #[test]

@@ -266,7 +266,9 @@
     "loadingRepositories": "Carregando os repositórios…",
     "repositoriesFailed": "Não foi possível carregar os repositórios.",
     "noRepositories": "Nenhum repositório encontrado.",
+    "noMatchLoaded": "Nenhuma correspondência nos repositórios carregados até agora. Carregue mais para continuar procurando.",
     "privateRepository": "Repositório privado",
+    "openFailed": "O Oleafly não conseguiu abrir {{host}} no seu navegador.",
     "openOnHost": "Abrir em {{host}}",
     "openRepositoryOnHost": "Abrir {{name}} em {{host}}",
     "sources": {

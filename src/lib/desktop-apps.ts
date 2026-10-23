@@ -39,7 +39,8 @@ export type BlockReason =
   | "passwords"
   | "scripting"
   | "wrapper"
-  | "sandboxed";
+  | "sandboxed"
+  | "browser";
 
 export interface InstalledApp extends AllowedApp {
   blocked?: BlockReason;
@@ -53,7 +54,7 @@ export interface TerminalCommand {
 
 export type DesktopAppsRuntime = "desktop" | "browser" | "signed-in-browser";
 
-export type DriverProblem = "not_installed" | "too_old" | "no_app_bundle";
+export type DriverProblem = "not_installed" | "too_old" | "no_app_bundle" | "unreadable_version";
 
 export interface DesktopAppsStatus {
   platform: "macos" | "windows" | "linux";
@@ -74,6 +75,8 @@ export interface DesktopAppsStatus {
   spacesInstallLine: string;
   spacesInstallCommand: TerminalCommand;
   settings: DesktopAppsSettings;
+  /** Allowed apps (Windows and Linux) whose program is no longer on this computer, by `executable`. */
+  missingApps: string[];
 }
 
 export interface DesktopAppsTestReport {
@@ -95,6 +98,9 @@ export const cuaDriverPickApp = () => invoke<InstalledApp | null>("cua_driver_pi
 
 export const cuaDriverTest = () => invoke<DesktopAppsTestReport>("cua_driver_test");
 
+/** The tool spec, which exists only once the connector is on with something allowed. */
+export const cuaDriverToolSpec = () => invoke<DesktopAppsToolSpec | null>("cua_driver_tool_spec");
+
 let toolSpec: DesktopAppsToolSpec | null = null;
 
 /** Refreshes the cached tool spec: `null` until the connector is ready. */
@@ -104,7 +110,7 @@ export async function syncDesktopAppsTool(): Promise<void> {
     return;
   }
   try {
-    toolSpec = (await invoke<DesktopAppsToolSpec | null>("cua_driver_tool_spec")) ?? null;
+    toolSpec = (await cuaDriverToolSpec()) ?? null;
   } catch {
     toolSpec = null;
   }

@@ -66,6 +66,9 @@ impl ClientHost for NullHost {
     fn on_disconnected(&self) {}
 }
 
+/// Room kept in a frame for a reply's envelope (version, id and method).
+const REPLY_ENVELOPE: usize = 256;
+
 /// A request from the agent, with the means to answer it once.
 pub struct IncomingRequest {
     method: String,
@@ -87,7 +90,16 @@ impl IncomingRequest {
         serde_json::to_value(self.responder.id()).unwrap_or(Value::Null)
     }
 
+    /// Answers the request. A reply that would not fit one frame is sent as
+    /// an error instead: the transport ends the whole connection on a frame
+    /// that is too large.
     pub fn respond(self, result: Value) -> Result<(), RpcError> {
+        let id = serde_json::to_vec(self.responder.id()).map_or(0, |id| id.len());
+        let fits = serde_json::to_vec(&result)
+            .is_ok_and(|reply| reply.len().saturating_add(id) < MAX_FRAME - REPLY_ENVELOPE);
+        if !fits {
+            return self.reject(-32603, "The reply is too large to send over ACP.");
+        }
         self.responder
             .respond(result)
             .map_err(|_| RpcError::local("The agent is disconnected."))
@@ -639,6 +651,45 @@ impl AcpClient {
         ))
     }
 
+    /// Like [`Self::request`], but `quiet` is how long the agent may send
+    /// nothing, not how long the whole reply may take: every message from the
+    /// agent restarts it. For a reply that streams updates first.
+    async fn request_while_active(
+        &self,
+        method: &str,
+        params: Value,
+        quiet: Duration,
+    ) -> Result<Value, RpcError> {
+        let (_guard, receiver) = self.send_request(method, params).await?;
+        tokio::pin!(receiver);
+        let started = Instant::now();
+        let mut activity = self.shared.activity.subscribe();
+        loop {
+            let end = (*activity.borrow()).max(started) + quiet;
+            tokio::select! {
+                result = &mut receiver => {
+                    return match result {
+                        Ok(result) => result,
+                        Err(_) => Err(self.disconnected_before_reply()),
+                    };
+                }
+                changed = activity.changed() => {
+                    if changed.is_err() {
+                        return Err(self.disconnected_before_reply());
+                    }
+                }
+                _ = tokio::time::sleep_until(end) => {
+                    if Instant::now() >= (*activity.borrow()).max(started) + quiet {
+                        let _ = self.shared.stop.send(true);
+                        return Err(RpcError::local(
+                            "The agent did not reply in time and was stopped.",
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
     /// Sends `method` and waits for its reply. Past `deadline` the agent is
     /// stopped.
     pub async fn request(
@@ -735,7 +786,9 @@ impl AcpClient {
                 "ACP v2 has no session/load. Resume the session instead.",
             ));
         }
-        self.request(
+        // The agent answers only after replaying the whole conversation as
+        // updates, which can take longer than the deadline of a plain request.
+        self.request_while_active(
             "session/load",
             json!({"sessionId": session, "cwd": cwd, "mcpServers": mcp_servers}),
             REQUEST_TIMEOUT,

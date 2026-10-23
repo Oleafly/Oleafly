@@ -100,6 +100,10 @@
       "action": "{{agent}} veut {{action}}.",
       "steps": "{{agent}} veut effectuer ces étapes dans une application de bureau :",
       "moreSteps": "Étapes non affichées : {{count}}",
+      "moreItems": "{{count}} éléments supplémentaires non affichés",
+      "cut": "(+{{count}} caractères non affichés)",
+      "signedIn": "Cela se passe dans votre propre navigateur connecté.",
+      "signedInOn": "Cela se passe dans votre propre navigateur connecté, sur {{origin}}.",
       "text": "Texte : « {{text}} »",
       "address": "Adresse : {{url}}",
       "allowOnce": "Autoriser une fois",
@@ -130,7 +134,8 @@
       "message": "Les agents pourront utiliser les éléments suivants, et ils demanderont toujours avant chaque action :",
       "confirm": "Autoriser",
       "enabled": "Applications de bureau",
-      "app": "Application : {{name}}",
+      "app": "Application : {{name}} ({{identity}})",
+      "more": "Et {{count}} autres",
       "site": "Site web : {{origin}}",
       "signedIn": "Votre navigateur connecté sur {{origin}}",
       "scripted": "Scripts Cua"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly continue de travailler",
       "body": "Les tâches de recherche que vous avez choisi de poursuivre continuent en arrière-plan. Ouvrez Oleafly pour voir leur progression."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Les vérifications d'autorisations sont désactivées ({{mode}})",
+      "description": "L'agent peut modifier des fichiers et exécuter des commandes sans demander. Oleafly n'a pas pu le basculer dans un autre mode. Changez de mode dans les paramètres propres de l'agent."
     }
   }
 }

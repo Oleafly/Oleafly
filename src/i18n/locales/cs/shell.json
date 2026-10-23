@@ -958,7 +958,7 @@
         "experimentation": "experimenty, laboratoř, beta, experimentální funkce, nové funkce",
         "general": "předvolby, jazyk, národní prostředí, kontrola pravopisu, pravopis, překlepy, offline, prohlídky, příkaz terminálu",
         "help": "o aplikaci, verze, aktualizace, seznam změn, co je nového, dokumentace, podpora, nápověda, komunita, Discord, licence, hlášení pádu",
-        "integrations": "Zotero, GitHub, MCP, citace, účty, připojení",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, aplikace v počítači, Cua, MCP, citace, účty, připojení",
         "shortcuts": "klávesové zkratky, zkratky, klávesy, klávesnice",
         "research": "výzkum úlohy rozpočet oznámení neusínat experimenty běhy research tasks"
       },

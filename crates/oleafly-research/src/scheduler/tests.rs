@@ -3612,3 +3612,173 @@ mod approvals {
         stop(&restarted).await;
     }
 }
+
+/// An executor that only remembers what it was asked to clear.
+struct CleanupProbe {
+    cleaned: Arc<Mutex<Vec<String>>>,
+}
+
+#[async_trait::async_trait]
+impl crate::runs::RunExecutor for CleanupProbe {
+    fn id(&self) -> &'static str {
+        "cleanup-probe"
+    }
+
+    async fn start(
+        &self,
+        _spec: &crate::runs::RunSpec,
+    ) -> Result<crate::runs::RunHandle, crate::runs::RunError> {
+        Err(crate::runs::RunError::Unavailable("not used".into()))
+    }
+
+    async fn poll(
+        &self,
+        _handle: &crate::runs::RunHandle,
+    ) -> Result<crate::runs::RunStatus, crate::runs::RunError> {
+        Err(crate::runs::RunError::Unavailable("not used".into()))
+    }
+
+    async fn read_log(
+        &self,
+        _handle: &crate::runs::RunHandle,
+        _query: crate::runs::LogQuery,
+    ) -> Result<String, crate::runs::RunError> {
+        Ok(String::new())
+    }
+
+    async fn cancel(&self, _handle: &crate::runs::RunHandle) -> Result<(), crate::runs::RunError> {
+        Ok(())
+    }
+
+    async fn cleanup(&self, handle: &crate::runs::RunHandle) -> Result<(), crate::runs::RunError> {
+        lock(&self.cleaned).push(handle.run_id.clone());
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn deleting_a_task_cleans_what_its_runs_left_on_other_computers() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let (runtime, mut starts) = ControlledRuntime::new();
+    state.register_runtime("fixture", runtime).unwrap();
+    let store = state.store().unwrap();
+    let task = requested(&store, draft("paper", "Ran on a cluster"));
+    state.launch_ready().await.unwrap();
+    let run = next_run(&mut starts).await;
+    let finished = finish_run(&state, run, Ok(outcome("done"))).await;
+    assert_eq!(finished.status, ResearchTaskStatus::AwaitingReview);
+
+    let cleaned = Arc::new(Mutex::new(Vec::new()));
+    let services = state.services().unwrap();
+    services.runs.register_executor(Arc::new(CleanupProbe {
+        cleaned: cleaned.clone(),
+    }));
+    for run_id in ["r001", "r002"] {
+        store
+            .insert_run(&crate::model::RunRecord {
+                task_id: task.id.clone(),
+                run_id: run_id.into(),
+                execution_generation: task.execution_generation,
+                name: "baseline".into(),
+                executor: "cleanup-probe".into(),
+                command: "python train.py".into(),
+                cwd_rel: String::new(),
+                state: crate::model::RunState::Succeeded,
+                exit_code: Some(0),
+                started_at: crate::model::now_ms(),
+                finished_at: None,
+                run_dir: String::new(),
+                metrics: Default::default(),
+                reported: true,
+            })
+            .unwrap();
+        let handle = crate::runs::RunHandle {
+            version: crate::runs::HANDLE_VERSION,
+            executor: "cleanup-probe".into(),
+            task_id: task.id.clone(),
+            run_id: run_id.into(),
+            run_dir: PathBuf::new(),
+            started_at: 1,
+            data: serde_json::json!({}),
+        };
+        store
+            .set_run_handle(&task.id, run_id, &serde_json::to_string(&handle).unwrap())
+            .unwrap();
+    }
+
+    let id = task.id.clone();
+    state
+        .blocking(move |state| state.delete(&id))
+        .await
+        .unwrap();
+    assert!(store.require(&task.id).is_err());
+    tokio::time::timeout(CHILD_PATIENCE, async {
+        while lock(&cleaned).len() < 2 {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the runs' remote folders were never cleaned");
+    assert_eq!(*lock(&cleaned), vec!["r001".to_owned(), "r002".to_owned()]);
+    stop(&state).await;
+}
+
+fn phase(run: &StartedRun, phase: TaskPhase) {
+    (run.events)(TaskRuntimeEvent::Phase { phase });
+}
+
+#[tokio::test]
+async fn a_task_that_waits_lets_another_start_in_its_place() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let (runtime, mut starts) = ControlledRuntime::new();
+    state.register_runtime("fixture", runtime).unwrap();
+    let store = state.store().unwrap();
+    let waiting = requested(&store, draft("paper", "Waits for a cluster job"));
+    state.launch_ready().await.unwrap();
+    let first = next_run(&mut starts).await;
+    let second_task = requested(&store, draft("paper", "Next in line"));
+    let third_task = requested(&store, draft("paper", "Behind both"));
+    state.launch_ready().await.unwrap();
+    // One slot, held by the first task: the others queue.
+    assert!(
+        tokio::time::timeout(Duration::from_millis(200), starts.recv())
+            .await
+            .is_err()
+    );
+
+    // The first task waits for its runs, so the next task starts.
+    phase(&first, TaskPhase::WaitingRuns);
+    let second = next_run(&mut starts).await;
+    assert_eq!(second.context.task_id, second_task.id);
+
+    // The second waits too, but only one task may wait without a slot: the
+    // third stays queued instead of the queue starting without end.
+    phase(&second, TaskPhase::WaitingApproval);
+    assert!(
+        tokio::time::timeout(Duration::from_millis(300), starts.recv())
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        store.require(&third_task.id).unwrap().status,
+        ResearchTaskStatus::Queued
+    );
+
+    // The first works again and finishes; the slot it gave up is the second
+    // task's, which then runs on, and the third task gets the slot after it.
+    phase(&first, TaskPhase::Working);
+    assert_eq!(
+        finish_run(&state, first, Ok(outcome("done"))).await.id,
+        waiting.id
+    );
+    phase(&second, TaskPhase::Working);
+    finish_run(&state, second, Ok(outcome("done"))).await;
+    let third = next_run(&mut starts).await;
+    assert_eq!(third.context.task_id, third_task.id);
+    finish_run(&state, third, Ok(outcome("done"))).await;
+    stop(&state).await;
+}

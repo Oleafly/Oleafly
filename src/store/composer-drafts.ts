@@ -3,8 +3,11 @@ import type { DraftAttachment } from "@/components/ai/composer/types";
 
 // Drafts (text and attachments) per composer, kept in memory so they
 // survive switching panels, and recalled prompts per project, kept in
-// localStorage. A composer id is `<projectId>:<agent>`, for example
-// `p1:builtin` or `p1:acp:claude`.
+// localStorage. A composer id starts with the project id and names the
+// conversation it belongs to: `p1:builtin` is the next chat of the built-in
+// assistant, `p1:builtin:<chatId>` a chat's own draft, `p1:acp:claude` the CLI
+// agent that will start a conversation and `p1:acp:claude:<sessionId>` a
+// conversation's own draft.
 
 export interface ComposerDraft {
   text: string;
@@ -19,6 +22,8 @@ interface ComposerDraftsState {
   updateAttachment(composerId: string, id: string, patch: Partial<DraftAttachment>): boolean;
   removeAttachments(composerId: string, ids: readonly string[]): void;
   setAttachments(composerId: string, items: readonly DraftAttachment[]): void;
+  /** Moves a draft to another composer; a draft already there is kept and the moved one goes before it. */
+  moveDraft(fromId: string, toId: string): void;
 }
 
 export const EMPTY_ATTACHMENTS: readonly DraftAttachment[] = Object.freeze([]);
@@ -101,10 +106,28 @@ export const useComposerDrafts = create<ComposerDraftsState>()((set, get) => ({
       };
     });
   },
+  moveDraft(fromId, toId) {
+    if (fromId === toId) return;
+    set((state) => {
+      const moved = state.drafts[fromId];
+      if (!moved) return state;
+      const { [fromId]: _moved, ...rest } = state.drafts;
+      const target = rest[toId] ?? EMPTY_DRAFT;
+      const known = new Set(target.attachments.map((item) => item.id));
+      return {
+        drafts: withDraft(rest, toId, {
+          text: [moved.text, target.text].filter(Boolean).join("\n\n"),
+          attachments: [...moved.attachments.filter((item) => !known.has(item.id)), ...target.attachments],
+        }),
+      };
+    });
+  },
 }));
 
-export function builtinComposerId(projectId: string | null): string {
-  return `${projectId ?? "none"}:builtin`;
+/** The composer of the built-in assistant: one draft per chat, and one for the next new chat. */
+export function builtinComposerId(projectId: string | null, chatId: string | null = null): string {
+  const base = `${projectId ?? "none"}:builtin`;
+  return chatId ? `${base}:${chatId}` : base;
 }
 
 /** The project part of a composer id; prompt history is shared per project. */
@@ -121,17 +144,43 @@ export function draftAttachments(composerId: string): readonly DraftAttachment[]
   return useComposerDrafts.getState().drafts[composerId]?.attachments ?? EMPTY_ATTACHMENTS;
 }
 
-/** Stored hashes (page images included) that drafts of one project still use. */
+function addRefs(refs: Set<string>, items: readonly DraftAttachment[]): void {
+  for (const item of items) {
+    if (item.sha256) refs.add(item.sha256);
+    for (const page of item.pageImages ?? []) refs.add(page.sha256);
+  }
+}
+
+// Files that live outside the drafts but must survive a collection: the draft
+// stashed while a message is edited, and the CLI agent's queued messages.
+const heldAttachments = new Set<readonly DraftAttachment[]>();
+const attachmentHolders = new Set<() => Iterable<string>>();
+
+/** Keeps these attachments out of a collection until the returned function is called. */
+export function holdDraftAttachments(items: readonly DraftAttachment[]): () => void {
+  heldAttachments.add(items);
+  return () => {
+    heldAttachments.delete(items);
+  };
+}
+
+/** Registers a store whose files a collection must keep; it lists their hashes. */
+export function registerAttachmentHolder(holder: () => Iterable<string>): () => void {
+  attachmentHolders.add(holder);
+  return () => {
+    attachmentHolders.delete(holder);
+  };
+}
+
+/** Stored hashes (page images included) that drafts of one project, and what is held outside them, still use. */
 export function draftAttachmentRefs(projectId: string): string[] {
   const refs = new Set<string>();
   const prefix = `${projectId}:`;
   for (const [composerId, draft] of Object.entries(useComposerDrafts.getState().drafts)) {
-    if (!composerId.startsWith(prefix)) continue;
-    for (const item of draft.attachments) {
-      if (item.sha256) refs.add(item.sha256);
-      for (const page of item.pageImages ?? []) refs.add(page.sha256);
-    }
+    if (composerId.startsWith(prefix)) addRefs(refs, draft.attachments);
   }
+  for (const items of heldAttachments) addRefs(refs, items);
+  for (const holder of attachmentHolders) for (const ref of holder()) refs.add(ref);
   return [...refs];
 }
 

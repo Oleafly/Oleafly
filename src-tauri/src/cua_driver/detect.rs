@@ -27,7 +27,7 @@ pub(crate) struct DriverInstall {
     pub binary: PathBuf,
     /// macOS: the CuaDriver.app bundle holding the binary.
     pub app_bundle: Option<PathBuf>,
-    /// `None` when `--version` could not be read.
+    /// `None` when `--version` could not be read; that counts as a problem.
     pub version: Option<(u64, u64, u64)>,
 }
 
@@ -42,6 +42,11 @@ impl DriverInstall {
         }
         if platform == Platform::Macos && self.app_bundle.is_none() {
             return Some("no_app_bundle");
+        }
+        // A driver that doesn't say its version (or took too long to, on its
+        // first launch) can't be shown to be 0.36 or newer.
+        if self.version.is_none() {
+            return Some("unreadable_version");
         }
         None
     }
@@ -65,6 +70,12 @@ pub(crate) fn problem_error(problem: &str, install: Option<&DriverInstall>) -> S
             .param("minimum", version_string(MIN_DRIVER_VERSION))
             .into(),
         "no_app_bundle" => AppError::new("desktop_apps.no_app_bundle").into(),
+        "unreadable_version" => AppError::new("desktop_apps.start_failed")
+            .param(
+                "detail",
+                "Oleafly couldn't read the Cua Driver version. Check that it runs, then try again.",
+            )
+            .into(),
         _ => AppError::new("desktop_apps.not_installed").into(),
     }
 }
@@ -664,7 +675,14 @@ mod tests {
             version: None,
             ..unbundled
         };
-        assert_eq!(unknown.problem(Platform::Linux), None);
+        // A version that can't be read is not a pass.
+        assert_eq!(unknown.problem(Platform::Linux), Some("unreadable_version"));
+        let error = problem_error("unreadable_version", Some(&unknown));
+        assert!(error.contains("desktop_apps.start_failed"), "{error}");
+        assert!(
+            error.contains("couldn't read the Cua Driver version"),
+            "{error}"
+        );
         assert!(problem_error("not_installed", None).contains("desktop_apps.not_installed"));
     }
 

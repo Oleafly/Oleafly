@@ -12,22 +12,30 @@ export function useAttachmentUrl(
     url: null,
     failed: false,
   });
-  const key = ref ? `${scope ?? ""}:${ref.sha256}:${ref.mime}` : "";
+  // Callers often build `ref` anew on every render, so the effect depends on
+  // its two fields: depending on the object would reload on every render.
+  const sha256 = ref?.sha256;
+  const mime = ref?.mime;
+  const key = sha256 === undefined ? "" : `${scope ?? ""}:${sha256}:${mime}`;
   useEffect(() => {
-    if (!ref) return;
+    if (sha256 === undefined || mime === undefined) return;
     let cancelled = false;
-    attachmentObjectUrl(scope, ref.sha256, ref.mime).then(
+    const settle = (url: string | null, failed: boolean) =>
+      setState((current) =>
+        current.key === key && current.url === url && current.failed === failed ? current : { key, url, failed },
+      );
+    attachmentObjectUrl(scope, sha256, mime).then(
       (url) => {
-        if (!cancelled) setState({ key, url, failed: false });
+        if (!cancelled) settle(url, false);
       },
       () => {
-        if (!cancelled) setState({ key, url: null, failed: true });
+        if (!cancelled) settle(null, true);
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [key, ref, scope]);
-  if (!ref || state.key !== key) return { url: null, failed: false };
+  }, [key, sha256, mime, scope]);
+  if (sha256 === undefined || state.key !== key) return { url: null, failed: false };
   return { url: state.url, failed: state.failed };
 }

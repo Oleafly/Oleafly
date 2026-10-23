@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
@@ -45,7 +46,7 @@ export function ComputeSshImportDialog({
   onClose: () => void;
   onImport: (targets: ComputeTarget[]) => Promise<void>;
 }>) {
-  const { t } = useTranslation(["researchTools"]);
+  const { t } = useTranslation(["common", "researchTools"]);
   const [hosts, setHosts] = useState<SshConfigHost[] | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -78,7 +79,8 @@ export function ComputeSshImportDialog({
   const added = new Set(
     existing.flatMap((target) => (target.kind === "cuaSpace" ? [] : [target.host.toLowerCase()])),
   );
-  const chosen = (hosts ?? []).filter((host) => selected.has(host.alias));
+  // A host added by an import that stopped part way is added, not chosen again.
+  const chosen = (hosts ?? []).filter((host) => selected.has(host.alias) && !added.has(host.alias.toLowerCase()));
 
   const importChosen = async () => {
     setBusy(true);
@@ -107,14 +109,14 @@ export function ComputeSshImportDialog({
           <DialogDescription>{t(($) => $.researchTools.compute.import.body)}</DialogDescription>
         </DialogHeader>
         {hosts === null ? (
-          <div className="flex justify-center py-4">
-            <Spinner aria-hidden />
-          </div>
+          <LoadingState size="compact" className="justify-center py-4" label={t(($) => $.common.state.loading)} />
         ) : null}
         {hosts && hosts.length === 0 && !failure ? (
-          <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-            {t(($) => $.researchTools.compute.import.none)}
-          </p>
+          <EmptyState
+            size="compact"
+            className="rounded-md border border-dashed p-4"
+            description={t(($) => $.researchTools.compute.import.none)}
+          />
         ) : null}
         {hosts && hosts.length > 0 ? (
           <ul className="space-y-2">

@@ -136,6 +136,46 @@ describe("AcpControls", () => {
     await waitFor(() => expect(acpSetConfigOption).toHaveBeenCalledWith("paper", "s", "model", "gpt-5.5-mini"));
   });
 
+  it("moves between the models with the arrow keys, and only one is in the tab order", async () => {
+    show(withOptions(codexOptions()));
+    const listbox = await openModelPicker();
+    const current = within(listbox).getByRole("option", { name: "GPT-5.5" });
+    const mini = within(listbox).getByRole("option", { name: "GPT-5.5 mini" });
+    // The chosen model is the one Tab reaches; the others wait for the arrow keys.
+    expect(current).toHaveAttribute("tabindex", "0");
+    expect(mini).toHaveAttribute("tabindex", "-1");
+
+    current.focus();
+    fireEvent.keyDown(current, { key: "ArrowDown" });
+    expect(mini).toHaveFocus();
+    fireEvent.keyDown(mini, { key: "ArrowDown" });
+    expect(mini).toHaveFocus();
+    fireEvent.keyDown(mini, { key: "ArrowUp" });
+    expect(current).toHaveFocus();
+    fireEvent.keyDown(current, { key: "End" });
+    expect(mini).toHaveFocus();
+    fireEvent.keyDown(mini, { key: "Home" });
+    expect(current).toHaveFocus();
+    fireEvent.keyDown(current, { key: "g" });
+    expect(mini).toHaveFocus();
+    // A key that is not a movement is left alone.
+    expect(fireEvent.keyDown(mini, { key: "Enter" })).toBe(true);
+  });
+
+  it("skips a model that cannot be chosen", async () => {
+    show(withOptions([
+      selectOption("model", "Model", "model", "a", [choice("a", "Alpha"), choice("b", "Beta", { blocked: true }), choice("c", "Gamma")]),
+    ]));
+    const listbox = await openModelPicker();
+    const alpha = within(listbox).getByRole("option", { name: "Alpha" });
+    alpha.focus();
+
+    fireEvent.keyDown(alpha, { key: "ArrowDown" });
+
+    expect(within(listbox).getByRole("option", { name: "Gamma" })).toHaveFocus();
+    expect(within(listbox).getByRole("option", { name: "Beta" })).toHaveAttribute("tabindex", "-1");
+  });
+
   it("does nothing when the current model is chosen again", async () => {
     show(withOptions(codexOptions()));
     const listbox = await openModelPicker();

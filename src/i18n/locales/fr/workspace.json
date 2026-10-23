@@ -229,6 +229,7 @@
       "closeOne": "Fermer le terminal",
       "closeProject": "Fermer le projet",
       "dontAsk": "Ne plus demander",
+      "dontAskHint": "Pour le réactiver, ouvrez Paramètres, Apparence, Terminal, Demander avant de fermer un terminal occupé.",
       "many_one": "Un programme tourne encore dans {{count}} terminal.",
       "many_many": "Des programmes tournent encore dans {{count}} terminaux.",
       "many_other": "Des programmes tournent encore dans {{count}} terminaux.",

@@ -1,14 +1,12 @@
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueries, type UseQueryResult } from "@tanstack/react-query";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ExternalLink, GitBranch, Lock } from "lucide-react";
+import { GitBranch, Lock } from "lucide-react";
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { hostLabel } from "@/lib/forge";
 import { forgeListRepos, type ForgeAccount, type ForgeRepo } from "@/lib/tauri";
-import { notifyError } from "@/lib/toast";
 import { useForgeAccountsStore } from "@/store/forge-accounts";
 
 /** Rows per account in the menu; the rest are one click away in the dialog. */
@@ -30,7 +28,9 @@ function menuReposQuery(account: ForgeAccount) {
 
 /** The import menu's "Git repository" submenu: each connected account with
  * its most recent repositories, then "More repositories" and "Clone from
- * address", which open the import dialog. */
+ * address", which open the import dialog. A row only imports: a menu item
+ * cannot hold a second control that the keyboard reaches, so opening a
+ * repository on its host is left to the dialog's list. */
 export function GitRepoMenuItems({
   onImport,
   onMore,
@@ -48,23 +48,12 @@ export function GitRepoMenuItems({
   // Each account's list is kept for a few minutes, so opening the submenu
   // again does not ask every host again.
   const repoQueries = useQueries({ queries: accounts.map(menuReposQuery) });
-  // Radix decides an item is selected from its own pointer handling. The
-  // external-link button raises this flag and the item refuses to import
-  // while it is set.
-  const openingExternalRef = useRef(false);
 
   useEffect(() => {
     void useForgeAccountsStore.getState().ensureLoaded();
   }, []);
 
-  const openRepository = (repo: ForgeRepo) => {
-    openExternal(repo.webUrl).catch((error) => {
-      notifyError("open repository", error);
-    });
-  };
-
   const renderRepos = (account: ForgeAccount, query: UseQueryResult<ForgeRepo[]>) => {
-    const host = hostLabel(account.base);
     if (query.isError && !query.isFetching) {
       return (
         <DropdownMenuItem
@@ -91,15 +80,8 @@ export function GitRepoMenuItems({
       <DropdownMenuItem
         key={repo.id || repo.fullName}
         data-testid={`import-git-repository-${repo.fullName}`}
-        onSelect={(event) => {
-          if (openingExternalRef.current) {
-            openingExternalRef.current = false;
-            event.preventDefault();
-            return;
-          }
-          onImport(account, repo);
-        }}
-        className="group gap-2"
+        onSelect={() => onImport(account, repo)}
+        className="gap-2"
       >
         <GitBranch className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate">{repo.fullName}</span>
@@ -110,34 +92,6 @@ export function GitRepoMenuItems({
             </span>
           </Tooltip>
         ) : null}
-        <Tooltip label={t(($) => $.library.import.openOnHost, { host })} side="top">
-          <button
-            type="button"
-            aria-label={t(($) => $.library.import.openRepositoryOnHost, { name: repo.fullName, host })}
-            // Selecting the item closes the menu and unmounts this button, so
-            // a click handler is not guaranteed to run: open the page on
-            // pointerdown and stop the item from importing.
-            onPointerDown={(event) => {
-              openingExternalRef.current = true;
-              event.stopPropagation();
-              openRepository(repo);
-            }}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") return;
-              event.preventDefault();
-              event.stopPropagation();
-              if (event.repeat) return;
-              openRepository(repo);
-            }}
-            className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent/60 focus-visible:opacity-100 group-hover:opacity-100"
-          >
-            <ExternalLink className="size-3.5" />
-          </button>
-        </Tooltip>
       </DropdownMenuItem>
     ));
   };

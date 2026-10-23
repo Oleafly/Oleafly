@@ -331,10 +331,21 @@ pub(crate) fn error_for_status(
             .map(str::trim)
     };
     let retry_after_secs = header("retry-after").and_then(|value| value.parse::<u64>().ok());
+    let lower = body.to_ascii_lowercase();
     match status.as_u16() {
         401 => ForgeError::Unauthorized,
-        403 if header("x-ratelimit-remaining") == Some("0") => {
+        // GitHub also answers its secondary rate limit with 403: a
+        // `Retry-After` header, or the limit named in the body.
+        403 if header("x-ratelimit-remaining") == Some("0")
+            || retry_after_secs.is_some()
+            || lower.contains("rate limit") =>
+        {
             ForgeError::RateLimited { retry_after_secs }
+        }
+        // An organization that enforces SAML single sign-on refuses a token
+        // that was not authorized for it, with the same 403.
+        403 if header("x-github-sso").is_some() || lower.contains("saml") => {
+            ForgeError::SsoRequired
         }
         403 => ForgeError::Forbidden {
             scopes: scopes_hint,
@@ -581,6 +592,43 @@ mod tests {
                 ForgeError::RateLimited {
                     retry_after_secs: None,
                 },
+            ),
+            (
+                MockResponse::raw(
+                    403,
+                    &[("retry-after", "60")],
+                    br#"{"message":"You have exceeded a secondary rate limit."}"#,
+                ),
+                ForgeError::RateLimited {
+                    retry_after_secs: Some(60),
+                },
+            ),
+            (
+                MockResponse::json(
+                    403,
+                    r#"{"message":"You have exceeded a secondary rate limit. Please wait a few minutes."}"#,
+                ),
+                ForgeError::RateLimited {
+                    retry_after_secs: None,
+                },
+            ),
+            (
+                MockResponse::json(
+                    403,
+                    r#"{"message":"Resource protected by organization SAML enforcement. You must grant your Personal Access token access to this organization."}"#,
+                ),
+                ForgeError::SsoRequired,
+            ),
+            (
+                MockResponse::raw(
+                    403,
+                    &[(
+                        "x-github-sso",
+                        "required; url=https://github.com/orgs/o/sso",
+                    )],
+                    b"{}",
+                ),
+                ForgeError::SsoRequired,
             ),
             (
                 MockResponse::raw(429, &[("retry-after", "30")], b"{}"),

@@ -20,6 +20,9 @@ use crate::store::{EventWrite, TaskStore};
 const MAX_TEXT_SEGMENT_BYTES: usize = 32 * 1024;
 pub const WRITER_COMMIT_EVERY: Duration = Duration::from_millis(250);
 pub const WRITER_MAX_BATCH: usize = 64;
+/// Rows kept for another try while the database refuses them; past this the
+/// oldest go (a database that stays locked or broken must not fill memory).
+const MAX_UNSAVED_ROWS: usize = 20_000;
 pub const EMIT_COALESCE: Duration = Duration::from_millis(50);
 
 /// A transcript row: task, generation and sequence.
@@ -199,6 +202,16 @@ impl WriterBatch {
         }
     }
 
+    /// Puts back the rows of a batch that could not be written, before the
+    /// rows that came since, so the next batch tries them again in order.
+    fn retry(&mut self, mut unsaved: Vec<EventWrite>) {
+        unsaved.append(&mut self.rows);
+        if unsaved.len() > MAX_UNSAVED_ROWS {
+            unsaved.drain(..unsaved.len() - MAX_UNSAVED_ROWS);
+        }
+        self.rows = unsaved;
+    }
+
     /// The batch's rows, with the latest text of every grown segment.
     fn drain(&mut self) -> Vec<EventWrite> {
         let mut rows = std::mem::take(&mut self.rows);
@@ -222,6 +235,7 @@ fn writer_loop(
     };
     let mut connection: Option<Connection> = None;
     let mut batch = WriterBatch::default();
+    let mut failing = false;
     while let Ok(first) = receiver.recv() {
         let mut flush = batch.take(first);
         let deadline = Instant::now() + WRITER_COMMIT_EVERY;
@@ -238,9 +252,22 @@ fn writer_loop(
         }
         let rows = batch.drain();
         if !rows.is_empty() {
-            commit(&store, &mut connection, &rows);
-            #[cfg(test)]
-            commits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if commit(&store, &mut connection, &rows) {
+                failing = false;
+                #[cfg(test)]
+                commits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            } else {
+                // Locked for longer than the busy timeout, twice: keep the
+                // rows and write them with the next batch instead of losing
+                // them from the stored transcript.
+                if !failing {
+                    eprintln!(
+                        "Oleafly could not save a research task's transcript; it will try again."
+                    );
+                    failing = true;
+                }
+                batch.retry(rows);
+            }
         }
         for reply in std::mem::take(&mut batch.replies) {
             let _ = reply.send(());
@@ -249,20 +276,22 @@ fn writer_loop(
 }
 
 /// Writes a batch on the writer's connection, opening it again once when a
-/// write fails (the store may have been moved or replaced).
-fn commit(store: &TaskStore, connection: &mut Option<Connection>, rows: &[EventWrite]) {
+/// write fails (the store may have been moved or replaced). Whether the rows
+/// are written.
+fn commit(store: &TaskStore, connection: &mut Option<Connection>, rows: &[EventWrite]) -> bool {
     for _ in 0..2 {
         if connection.is_none() {
             *connection = store.writer_connection().ok();
         }
         let Some(open) = connection.as_mut() else {
-            return;
+            return false;
         };
         if TaskStore::write_events_on(open, rows).is_ok() {
-            return;
+            return true;
         }
         *connection = None;
     }
+    false
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -523,5 +552,83 @@ impl TranscriptRecorder {
             generation: self.generation,
         });
         self.state.writer().flush();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write(sequence: u64, replace: bool) -> EventWrite {
+        EventWrite {
+            task_id: "task".into(),
+            generation: 1,
+            sequence,
+            event_json: format!("{{\"kind\":\"status\",\"message\":\"row {sequence}\"}}"),
+            created_at: sequence as i64,
+            replace,
+        }
+    }
+
+    #[test]
+    fn rows_that_could_not_be_written_come_back_before_newer_ones() {
+        let mut batch = WriterBatch::default();
+        batch.rows.push(write(3, false));
+        batch.retry(vec![write(1, false), write(2, true)]);
+        let sequences: Vec<u64> = batch.rows.iter().map(|row| row.sequence).collect();
+        assert_eq!(sequences, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn rows_the_database_refuses_are_saved_by_a_later_batch() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("tasks");
+        let store = TaskStore::new(root.clone()).unwrap();
+        let task = store
+            .create(crate::test_support::draft("paper", "Locked out"))
+            .unwrap();
+        store.request_start(&task.id).unwrap();
+        let task = store.claim_next().unwrap().unwrap();
+        let row = |sequence| EventWrite {
+            task_id: task.id.clone(),
+            generation: task.execution_generation,
+            ..write(sequence, false)
+        };
+        let writer = TranscriptWriter::new(Ok(root.clone()));
+        let database = Connection::open(root.join("tasks.sqlite3")).unwrap();
+
+        // The first batch cannot be written (the table is out of reach).
+        database
+            .execute_batch("ALTER TABLE research_task_events RENAME TO events_away;")
+            .unwrap();
+        writer.submit(row(1));
+        writer.flush();
+        // The database is back; the next batch carries the first row too.
+        database
+            .execute_batch("ALTER TABLE events_away RENAME TO research_task_events;")
+            .unwrap();
+        writer.submit(row(2));
+        writer.flush();
+
+        let stored = store
+            .events(&task.id, task.execution_generation, None, 10)
+            .unwrap()
+            .events;
+        assert_eq!(
+            stored.iter().map(|row| row.sequence).collect::<Vec<_>>(),
+            vec![1, 2]
+        );
+    }
+
+    #[test]
+    fn a_database_that_stays_broken_does_not_fill_memory() {
+        let mut batch = WriterBatch::default();
+        let unsaved: Vec<EventWrite> = (1..=MAX_UNSAVED_ROWS as u64 + 10)
+            .map(|sequence| write(sequence, false))
+            .collect();
+        batch.retry(unsaved);
+        assert_eq!(batch.rows.len(), MAX_UNSAVED_ROWS);
+        // The oldest rows go first.
+        assert_eq!(batch.rows[0].sequence, 11);
     }
 }

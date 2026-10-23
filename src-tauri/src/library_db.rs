@@ -14,7 +14,7 @@ fn db_path(root: &Path) -> PathBuf {
     root.join("library.db")
 }
 
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 pub fn open(root: &Path) -> Result<Connection, String> {
     std::fs::create_dir_all(root).map_err(|e| format!("failed to create data dir: {e}"))?;
@@ -111,6 +111,7 @@ fn ensure_schema(conn: &Connection) -> Result<(), String> {
         CREATE INDEX IF NOT EXISTS usage_records_provider_time ON usage_records(provider_id, occurred_at_ms);
         CREATE INDEX IF NOT EXISTS usage_records_model_time ON usage_records(model_id, occurred_at_ms);
         CREATE INDEX IF NOT EXISTS usage_records_session_time ON usage_records(session_id, occurred_at_ms);
+        CREATE INDEX IF NOT EXISTS usage_records_task ON usage_records(task_id);
         CREATE TABLE IF NOT EXISTS library_migrations (
             name TEXT PRIMARY KEY,
             applied_at_ms INTEGER NOT NULL
@@ -881,6 +882,41 @@ mod tests {
         {"id":"chat-2","title":"Figures","messages":[
             {"role":"user","content":"draw a tikz diagram"}]}
     ]"#;
+
+    /// The indexes `usage_records` has.
+    fn usage_indexes(conn: &Connection) -> Vec<String> {
+        let mut statement = conn.prepare("PRAGMA index_list(usage_records)").unwrap();
+        statement
+            .query_map([], |row| row.get::<_, String>(1))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap()
+    }
+
+    #[test]
+    fn a_task_spend_lookup_uses_an_index_on_new_and_existing_libraries() {
+        let root = temp_root("task-index");
+        let conn = open(&root).unwrap();
+        assert!(usage_indexes(&conn).contains(&"usage_records_task".to_string()));
+        // A library from before the index: same schema version 2, no index.
+        conn.execute_batch("DROP INDEX usage_records_task;")
+            .unwrap();
+        conn.pragma_update(None, "user_version", 2).unwrap();
+        drop(conn);
+        let conn = open(&root).unwrap();
+        assert!(usage_indexes(&conn).contains(&"usage_records_task".to_string()));
+        let plan: String = conn
+            .query_row(
+                "EXPLAIN QUERY PLAN SELECT SUM(estimated_cost_usd) FROM usage_records \
+                 WHERE task_id = 'task-1'",
+                [],
+                |row| row.get(3),
+            )
+            .unwrap();
+        assert!(plan.contains("usage_records_task"), "{plan}");
+        drop(conn);
+        std::fs::remove_dir_all(&root).ok();
+    }
 
     #[test]
     fn indexes_and_finds_chats_by_content() {

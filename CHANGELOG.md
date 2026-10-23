@@ -79,7 +79,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Desktop apps. Agents can use the desktop programs and websites you allow,
   such as a journal's submission form or a statistics package, through Cua
   Driver, which you install yourself. Oleafly asks before every click or
-  keystroke. Set it up under Settings > Integrations > Desktop apps.
+  keystroke, and every time when an agent works in your own signed-in
+  browser. Browsers can't be added as apps; add the websites instead. Set it
+  up under Settings > Integrations > Desktop apps.
 - Web search and page reading in the assistant. Turn on Web in the composer.
   Recent Claude and OpenAI models use their provider's search; other models
   search with a Brave, Tavily or Serper key you add in Settings.
@@ -109,7 +111,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Terminal settings: the shell (PowerShell 7, Windows PowerShell, Command
   Prompt, Git Bash, WSL or a custom path on Windows), scrollback, copy on
   select, what Shift+Enter sends and Option as Meta on macOS. Find in the
-  terminal, activity dots on busy tabs, tab titles from programs, Open in
+  terminal (Ctrl+Shift+F on Windows and Linux, so Ctrl+F still reaches the
+  shell), activity dots on busy tabs, tab titles from programs, Open in
   terminal from the file tree, dragging files in to type their paths, and
   shortcuts for new, close, next and previous terminal.
 
@@ -206,6 +209,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   history from another.
 - Copying your sign-in from a browser didn't sign you in to an online LaTeX
   service. It now does, without opening a window.
+- Review in Files > Task outputs did nothing. It now opens the task in the
+  Research tab.
+- Task details showed only a long task's first 100 entries, with newer ones
+  appended after an unmarked gap. They now load the latest activity and mark
+  what is left out.
+- A CLI agent conversation could hang while starting on Linux when an
+  environment variable wasn't valid UTF-8.
 
 ## [0.4.7] - 2026-10-18
 

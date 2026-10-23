@@ -36,7 +36,7 @@
       },
       "installBridge": "Installer broen",
       "installBridgeNextStep": "Installer ACP-broen, og log så ind gennem kommandolinjeværktøjet.",
-      "intro": "Forbind en lokal agent gennem ACP. Hver agent styrer selv sine modeller, værktøjer og login, og indstillingerne for API-udbydere holdes adskilt. Brug den officielle CLI-konto til login: Oleafly importerer ikke kontotokens og gætter ikke på kvoter for abonnementer.",
+      "intro": "CLI-agenter som Claude Code, Codex og Gemini CLI forbinder gennem Agent Client Protocol (ACP). Nogle kræver en bro, en lille adapter, som Oleafly installerer, så den kan tale med dem. Hver agent styrer selv sine modeller, værktøjer og login, og indstillingerne for API-udbydere holdes adskilt. Brug den officielle CLI-konto til login: Oleafly importerer ikke kontotokens og gætter ikke på kvoter for abonnementer.",
       "nextStepTitle": "Næste skridt",
       "notReported": "Ikke oplyst",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Vis distributionen",
         "title": "Find flere agenter"
       },
-      "sectionLabel": "ACP-agenter",
+      "sectionLabel": "CLI-agenter",
       "signInCommandLabel": "Login-kommando",
       "versionLabel": "Version",
       "updateBridge": "Opdater broen",
@@ -147,7 +147,7 @@
         "label": "Brug min API-nøgle i Oleafly",
         "off": "Fra (agenten logger selv ind)",
         "note": "Oleafly sender nøglen til denne agent, når en samtale starter, og holder den ude af transskriptioner.",
-        "unavailable": "Tilføj en API-nøgle under Indstillinger, AI for at bruge den her."
+        "unavailable": "Tilføj en API-nøgle under Indstillinger, AI-assistent, Udbydere og nøgler for at bruge den her."
       },
       "hermes": {
         "title": "Hermes-profil til dette projekt",
@@ -175,7 +175,20 @@
         "test": "Test forbindelsen",
         "testOk": "Forbundet: {{version}}",
         "save": "Gem",
-        "sshNote": "Oleafly logger kun ind med dine SSH-nøgler."
+        "sshNote": "Oleafly logger kun ind med dine SSH-nøgler.",
+        "folderHint": "Den fulde sti på den maskine, for eksempel /home/ada/paper.",
+        "needsValid": "Test forbindelsen og Gem kræver gyldige værdier for: {{fields}}.",
+        "unsavedEdit": "Endnu ikke gemt. Gem for at bruge disse ændringer.",
+        "unsavedMode": "Endnu ikke gemt. Indtil du gemmer, bruger dette projekt stadig: {{mode}}.",
+        "errors": {
+          "hostRequired": "Indtast værtsnavnet eller user@host.",
+          "hostInvalid": "Brug kun bogstaver, tal, punktummer, bindestreger og @, og start ikke med en bindestreg.",
+          "port": "Brug en port fra 1 til 65535.",
+          "folderRequired": "Indtast den fulde sti til projektmappen på den maskine.",
+          "folderInvalid": "Brug den fulde sti, som starter med /.",
+          "command": "Brug hermes, eller den fulde sti til den, som starter med /.",
+          "profile": "Brug små bogstaver, tal, bindestreger og understregninger."
+        }
       }
     },
     "approvals": {
@@ -1007,6 +1020,8 @@
         "ariaLabel": "Terminalens shell",
         "description": "Nye terminaler starter denne shell. Åbne terminaler beholder deres.",
         "label": "Shell",
+        "notFound": "{{name}} (ikke fundet)",
+        "notFoundNote": "{{name}} er ikke tilgængelig på denne computer, så nye terminaler kan ikke starte. Vælg en anden shell.",
         "options": {
           "auto": "Standard ({{name}})",
           "cmd": "Kommandoprompt",
@@ -1021,14 +1036,17 @@
           "ariaLabel": "Sti til brugerdefineret shell",
           "description": "Det program, nye terminaler kører.",
           "label": "Sti til shell"
-        }
+        },
+        "windowsOnly": "{{name}} (kun Windows)",
+        "windowsOnlyNote": "{{name}} kører kun på Windows. Nye terminaler her starter {{fallback}} i stedet.",
+        "windowsOnlyNoteDefault": "{{name}} kører kun på Windows. Nye terminaler her starter standardshellen i stedet."
       },
       "shiftEnter": {
         "ariaLabel": "Shift+Enter i terminalen",
-        "description": "Hvad Shift+Enter sender til programmet i terminalen.",
-        "enter": "Enter",
+        "description": "Hvad Shift+Enter sender til programmet i terminalen. En ny linje lader chatbaserede værktøjer som Claude Code tilføje en linje til deres prompt. Enter sender, ligesom Enter-tasten.",
+        "enter": "Send Enter",
         "label": "Shift+Enter",
-        "newline": "Ny linje"
+        "newline": "Indsæt en ny linje"
       },
       "startWithProject": {
         "description": "Start shell, når et projekt åbnes, i stedet for første gang du viser terminalen.",
@@ -1452,7 +1470,9 @@
       "detecting": "Tjekker serveren…",
       "found": "Dette er en {{kind}}-server.",
       "kindGitea": "Gitea eller Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "En anden server",
+      "replaces": "Login erstatter {{login}} på {{host}}.",
       "scopesGitea": "Giv det læse- og skriveadgang til repository og user.",
       "scopesGithub": "Giv det rettighederne repo og read:user.",
       "scopesGitlab": "Giv det rettighederne api og write_repository.",
@@ -1527,7 +1547,7 @@
       "site": "Hjemmeside: {{domain}}",
       "confirmCopy": "Oleafly læser cookies til {{domain}} fra profilen {{profile}} i {{browser}}. De bliver i Oleafly og sendes kun til {{domain}}. Du bekræfter en gang til i en systemdialog.",
       "copyAction": "Kopiér login",
-      "copying": "Kopierer...",
+      "copying": "Kopierer…",
       "notSignedIn_one": "Kopierede {{count}} cookie fra {{browser}}, men den loggede dig ikke ind. Log ind i stedet.",
       "notSignedIn_other": "Kopierede {{count}} cookies fra {{browser}}, men de loggede dig ikke ind. Log ind i stedet."
     },
@@ -1610,6 +1630,7 @@
         "notInstalled": "Cua Driver er ikke installeret.",
         "tooOld": "Cua Driver {{version}} er for gammel. Oleafly kræver {{minimum}} eller nyere.",
         "noAppBundle": "Installer Cua Driver med det officielle installationsprogram, så den kan få macOS-tilladelserne.",
+        "unreadableVersion": "Oleafly kunne ikke læse Cua Drivers version. Tjek, at den kører, og tjek så igen.",
         "path": "Fundet i {{path}}"
       },
       "install": {
@@ -1643,14 +1664,18 @@
         "empty": "Ingen apps endnu. Agenter kan kun bruge apps, du tilføjer her.",
         "add": "Tilføj app",
         "remove": "Fjern {{name}}",
+        "missing": "Dette program blev ikke fundet på denne computer. Fjern den, eller geninstaller appen.",
         "dialog": {
           "title": "Tilføj en app",
           "description": "Vælg en app, som agenter må bruge. De kan åbne den, læse dens vinduer og handle i den, når du har godkendt.",
           "search": "Søg i apps",
-          "loading": "Leder efter apps...",
+          "loading": "Leder efter apps…",
           "none": "Ingen apps passer.",
-          "choose": "Vælg en anden app...",
-          "add": "Tilføj"
+          "choose": "Vælg en anden app…",
+          "add": "Tilføj",
+          "added": "Allerede tilføjet.",
+          "more": "Viser {{shown}} af {{total}}. Søg for at indsnævre listen.",
+          "refresh": "Opdater"
         },
         "blocked": {
           "oleafly": "Oleafly kan ikke styre sig selv.",
@@ -1660,7 +1685,8 @@
           "passwords": "Adgangskodeapps er altid udelukket.",
           "scripting": "Scriptkørere kan gøre hvad som helst på denne computer.",
           "wrapper": "Denne post starter et andet program. Vælg det program i stedet.",
-          "sandboxed": "Flatpak- og Snap-apps understøttes ikke endnu."
+          "sandboxed": "Flatpak- og Snap-apps understøttes ikke endnu.",
+          "browser": "Tilføj i stedet en browsers hjemmesider under Tilladte hjemmesider."
         }
       },
       "sites": {
@@ -1671,6 +1697,7 @@
         "remove": "Fjern {{origin}}",
         "signedIn": {
           "label": "Brug min browser med login",
+          "labelFor": "Brug min browser med login på {{origin}}",
           "description": "Agenter arbejder i din egen Chrome eller Edge på denne hjemmeside. Lad den være slået fra for at bruge en separat browserprofil."
         }
       },
@@ -1680,8 +1707,9 @@
       },
       "test": {
         "action": "Test forbindelsen",
-        "running": "Tester...",
+        "running": "Tester…",
         "ok": "Cua Driver kører med dine grænser.",
+        "problems": "Cua Drivers eget tjek meldte også:",
         "failed": "Testen mislykkedes: {{detail}}"
       },
       "tool": {
@@ -2281,6 +2309,7 @@
       "stopHint": "Dens opgaver sættes på pause, indtil du åbner Oleafly igen.",
       "stopFailed": "Hjælpeprocessen stoppede ikke. Prøv igen.",
       "openLog": "Vis loggen",
+      "statusFailed": "Statussen for hjælpeprocessen i baggrunden kunne ikke læses.",
       "toggleFailed": "Indstillingen kunne ikke ændres. Prøv igen."
     }
   }

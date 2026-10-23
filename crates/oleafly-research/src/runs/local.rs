@@ -159,6 +159,19 @@ fn status_from_file(status: StatusFile) -> Option<RunStatus> {
     }
 }
 
+/// Whether the process the status file names may still be the run: it is
+/// gone (its group can live on, and nothing else can have the id while it
+/// does), or it started when the supervisor saw it start. A pid another
+/// process has reused is left alone.
+fn may_be_the_run(probe: ProcessProbe, recorded: Option<u64>) -> bool {
+    match probe {
+        ProcessProbe::Gone => true,
+        ProcessProbe::Running { started } => {
+            matches!((recorded, started), (Some(recorded), Some(seen)) if recorded == seen)
+        }
+    }
+}
+
 /// Kills the run's process group (or tree) after its supervisor died.
 fn kill_orphaned_run(child_pid: u32) {
     #[cfg(unix)]
@@ -246,7 +259,9 @@ impl RunExecutor for LocalExecutor {
     }
 
     async fn read_log(&self, handle: &RunHandle, query: LogQuery) -> Result<String, RunError> {
-        log::answer(&handle.run_dir.join("stdout.log"), &query).map_err(RunError::Io)
+        log::answer_blocking(handle.run_dir.join("stdout.log"), query)
+            .await
+            .map_err(RunError::Io)
     }
 
     async fn cancel(&self, handle: &RunHandle) -> Result<(), RunError> {
@@ -254,8 +269,13 @@ impl RunExecutor for LocalExecutor {
             .await
             .map_err(|error| RunError::Io(format!("The run could not be stopped: {error}")))?;
         if !supervisor_alive(handle) {
-            if let Some(pid) = read_status(&handle.run_dir).and_then(|status| status.child_pid) {
-                kill_orphaned_run(pid);
+            if let Some(status) = read_status(&handle.run_dir) {
+                if let Some(pid) = status
+                    .child_pid
+                    .filter(|pid| may_be_the_run(identity::probe(*pid), status.child_started))
+                {
+                    kill_orphaned_run(pid);
+                }
             }
         }
         Ok(())
@@ -278,4 +298,34 @@ pub(crate) fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     file.write_all(bytes)
         .and_then(|_| file.sync_all())
         .map_err(|error| format!("The run settings could not be saved: {error}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_reused_pid_is_not_taken_for_the_run() {
+        // The run's process is gone: its group may still hold children.
+        assert!(may_be_the_run(ProcessProbe::Gone, Some(10)));
+        assert!(may_be_the_run(ProcessProbe::Gone, None));
+        // Still the process the supervisor saw start.
+        assert!(may_be_the_run(
+            ProcessProbe::Running { started: Some(10) },
+            Some(10)
+        ));
+        // Another process now has the id, or nothing says which one it is.
+        assert!(!may_be_the_run(
+            ProcessProbe::Running { started: Some(11) },
+            Some(10)
+        ));
+        assert!(!may_be_the_run(
+            ProcessProbe::Running { started: Some(10) },
+            None
+        ));
+        assert!(!may_be_the_run(
+            ProcessProbe::Running { started: None },
+            Some(10)
+        ));
+    }
 }

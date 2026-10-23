@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} heeft de toegang tot deze repository geweigerd. Controleer of je account er toegang toe heeft. Gebruikt de organisatie single sign-on, autoriseer dan eerst je aanmelding voor die organisatie.",
+    "access_denied_account": "{{host}} heeft de toegang tot deze repository voor {{account}} geweigerd. Controleer of dit account er gebruik van kan maken. Gebruikt de organisatie single sign-on, autoriseer dan eerst je aanmelding voor die organisatie.",
     "account_missing": "Er is geen Git-hostingaccount voor {{host}}. Voeg er een toe bij Instellingen.",
     "archive_too_large": "De repositorybestanden zijn groter dan {{limit}} MB, dus Oleafly kan ze niet importeren. Kloon de repository zelf en open de map.",
-    "auth_rejected": "{{host}} heeft je opgeslagen aanmelding geweigerd. Meld je opnieuw aan bij {{host}} via Instellingen.",
+    "auth_rejected": "{{host}} heeft de opgeslagen aanmelding voor {{account}} geweigerd. Meld je opnieuw aan bij {{host}} via Instellingen.",
     "credentials_missing": "{{host}} vroeg om een gebruikersnaam en wachtwoord. Meld je aan bij {{host}} via Instellingen, of stel een SSH-sleutel of een Git-credential-helper in.",
     "credentials_rejected": "{{host}} heeft de gebruikersnaam en het wachtwoord van Git geweigerd. Meld je aan bij {{host}} via Instellingen, of werk de inloggegevens bij die je Git gebruikt.",
     "device_flow_unavailable": "Aanmelden via de browser is in deze versie niet beschikbaar voor {{host}}. Gebruik in plaats daarvan een toegangstoken.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Er bestaat al een repository met deze naam op {{host}}.",
     "forge_server_error": "{{host}} gaf een fout terug ({{status}}).",
     "forge_signed_out": "Je aanmelding bij {{host}} is verlopen of ingetrokken. Meld je opnieuw aan via Instellingen.",
+    "forge_sso_required": "{{host}} vereist dat deze aanmelding is geautoriseerd voor de single sign-on van de organisatie. Autoriseer de aanmelding op {{host}} en probeer het daarna opnieuw.",
     "forge_store": "Oleafly kon je Git-hostingaccounts niet lezen of opslaan.",
     "forge_token_invalid": "Dit lijkt geen toegangstoken. Plak het hele token.",
     "forge_token_rejected": "{{host}} heeft dit token niet geaccepteerd. Controleer of je het hele token hebt gekopieerd en of het niet is verlopen.",
     "forge_unknown_server": "Oleafly kon niet bepalen wat voor server {{host}} is. Kies het type server.",
     "host_key_unknown": "SSH kent {{host}} nog niet. Maak één keer verbinding vanuit een terminal om de hostsleutel te accepteren en probeer het daarna opnieuw.",
     "host_unreachable": "Oleafly kon {{host}} niet bereiken. Controleer het adres en je verbinding.",
+    "import_cancelled": "Het importeren is geannuleerd.",
     "invalid_remote_url": "Vul het HTTPS- of SSH-adres van een Git-repository in.",
     "nested_repository": "Dit project staat in een andere Git-repository, dus Oleafly maakt hier geen aparte repository aan.",
     "not_installed": "Git is niet geïnstalleerd op deze computer. Installeer Git en probeer het opnieuw.",
     "push_rejected": "De externe branch heeft commits die dit project nog niet heeft. Doe eerst een pull en push daarna opnieuw.",
     "remote_exists": "Dit project is al gekoppeld aan {{remote}}.",
-    "remote_has_password": "Haal het wachtwoord uit het adres. Oleafly meldt zich in plaats daarvan aan met je Git-hostingaccount of met je eigen Git-inloggegevens.",
+    "remote_has_password": "Haal het wachtwoord of de toegangstoken uit het adres. Oleafly meldt zich in plaats daarvan aan met je Git-hostingaccount of met je eigen Git-inloggegevens.",
     "repository_empty": "Deze repository heeft nog geen commits, dus er is niets om te importeren.",
     "repository_not_found": "{{host}} heeft geen repository op dit adres, of je account kan hem niet zien.",
     "sign_in_cancelled": "Het aanmelden is in de browser geannuleerd.",
@@ -269,6 +272,14 @@
   "provider_credit": {
     "failed": "Oleafly kon je tegoed bij {{provider}} niet controleren."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 is niet geïnstalleerd.",
+    "git_bash_missing": "Git Bash is niet geïnstalleerd. Installeer Git for Windows of kies een andere shell.",
+    "wsl_missing": "WSL is niet geïnstalleerd.",
+    "wsl_no_distro": "WSL heeft nog geen Linux-distributie.",
+    "shell_path_empty": "Vul een shellpad in bij Instellingen, of kies een andere shell.",
+    "shell_path_missing": "Er staat geen programma op {{path}}."
+  },
   "mathpix": {
     "keys_missing": "Voeg eerst je app-ID en sleutel van Mathpix toe bij Instellingen, AI, Hulpmiddelen.",
     "invalid_keys": "Die app-ID of sleutel bevat tekens die nooit in Mathpix-sleutels voorkomen. Kopieer ze opnieuw uit de Mathpix-console.",
@@ -282,7 +293,8 @@
     "pdf_too_large": "Deze PDF is groter dan de limiet van 256 MB van Mathpix.",
     "timed_out": "Mathpix was niet binnen 30 minuten klaar met deze PDF. Probeer het met minder pagina's.",
     "cancelled": "De omzetting met Mathpix is gestopt.",
-    "wrong_window": "Mathpix kan alleen vanuit het hoofdvenster van Oleafly worden gebruikt."
+    "wrong_window": "Mathpix kan alleen vanuit het hoofdvenster van Oleafly worden gebruikt.",
+    "pdf_too_large_ipc": "Deze computer kan PDF's tot 16 MB naar Mathpix sturen. Splits de PDF en probeer het opnieuw."
   },
   "desktop_apps": {
     "not_installed": "Cua Driver is niet geïnstalleerd. Installeer het via Instellingen → Integraties → Desktop-apps.",

@@ -11,10 +11,11 @@ rust-version = "1.88"
 default = ["pdf"]
 # PDF facts (page sizes, fonts, links, outlines, attachments) read with lopdf.
 # lopdf 0.42 uses let chains, so it needs Rust 1.88 although it declares 1.85.
-pdf = ["dep:lopdf"]
+pdf = ["dep:lopdf", "dep:flate2"]
 
 [dependencies]
 fancy-regex = "0.19"
+flate2 = { version = "1.0", default-features = false, features = ["rust_backend"], optional = true }
 icu_properties = "2.2"
 lopdf = { version = "0.42", default-features = false, optional = true }
 regex = "1"

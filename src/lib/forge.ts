@@ -1,3 +1,5 @@
+import { emit } from "@tauri-apps/api/event";
+import { decodeAppError } from "@/lib/app-error";
 import {
   ghPublicRepoStats,
   type ForgeAccount,
@@ -111,7 +113,26 @@ export function isAllowedRemoteUrl(url: string): boolean {
   return at >= 0 && [...before.slice(at + 1)].length > 1;
 }
 
-/** Whether an `http(s)` address carries a password. */
+// Token prefixes of the hosts Oleafly signs in to: GitHub (classic, OAuth,
+// user-to-server, server-to-server, refresh, fine-grained) and GitLab
+// (personal, OAuth application secret). Mirrors `TOKEN_PREFIXES` in git.rs.
+const TOKEN_PREFIXES = ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_", "glpat-", "gloas-"];
+/** The shortest run of token characters that reads as a token, not a name. */
+const TOKEN_LIKE_LENGTH = 20;
+const TOKEN_CHARACTERS = /^[A-Za-z0-9_-]+$/;
+
+/** Whether a user name in a remote address looks like an access token: a
+ * known token prefix, or at least 20 letters, digits, `-` or `_`. */
+function looksLikeToken(user: string): boolean {
+  const lower = user.toLowerCase();
+  if (TOKEN_PREFIXES.some((prefix) => lower.startsWith(prefix))) return true;
+  return [...user].length >= TOKEN_LIKE_LENGTH && TOKEN_CHARACTERS.test(user);
+}
+
+/** Whether an `http(s)` address carries a password, or an access token in
+ * the user name position (`https://ghp_...@github.com/o/r.git`). Oleafly
+ * never saves either in `.git/config`. A plain user name is fine. Mirrors the
+ * Rust `has_remote_password`. */
 export function hasRemotePassword(url: string): boolean {
   const text = url.trim();
   const schemeEnd = text.indexOf("://");
@@ -122,7 +143,9 @@ export function hasRemotePassword(url: string): boolean {
   const authorityEnd = rest.search(/[/?#]/);
   const authority = authorityEnd < 0 ? rest : rest.slice(0, authorityEnd);
   const at = authority.lastIndexOf("@");
-  return at >= 0 && authority.slice(0, at).includes(":");
+  if (at < 0) return false;
+  const userinfo = authority.slice(0, at);
+  return userinfo.includes(":") || looksLikeToken(userinfo);
 }
 
 /** The host and any non-default port of a URL, base or scp-like remote. */
@@ -252,8 +275,22 @@ export const TOKEN_PLACEHOLDER: Record<ForgeKind, string> = {
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/** Failed polls in a row that a browser sign-in puts up with before it gives
+ * up: a network blip or a server hiccup must not waste an approval. */
+const POLL_FAILURES_TOLERATED = 5;
+const TRANSIENT_POLL_ERRORS = new Set(["git.host_unreachable", "git.forge_server_error", "git.forge_rate_limited"]);
+
+/** A poll failure worth trying again: the server could not be reached, or it
+ * answered with a server error or a rate limit. */
+function isTransientPollError(error: unknown): boolean {
+  const code = decodeAppError(error)?.code;
+  return code !== undefined && TRANSIENT_POLL_ERRORS.has(code);
+}
+
 /** Poll a browser sign-in until it is granted, cancelled or past its
- * deadline. Returns the signed-in account, or null. */
+ * deadline. Returns the signed-in account, or null. A poll that fails because
+ * of the network or the server is tried again a few times; any other failure
+ * is thrown. */
 export async function waitForDeviceSignIn(
   start: ForgeDeviceStart,
   poll: (flowId: string) => Promise<ForgeDevicePoll>,
@@ -266,16 +303,38 @@ export async function waitForDeviceSignIn(
   const sleep = options.sleep ?? defaultSleep;
   const now = options.now ?? Date.now;
   let wait = Math.max(start.interval, 5) * 1000;
+  let failures = 0;
   const deadline = now() + start.expiresIn * 1000 + 30_000;
   while (!options.cancelled() && now() < deadline) {
     await sleep(wait);
     if (options.cancelled()) return null;
-    const result = await poll(start.flowId);
+    let result: ForgeDevicePoll;
+    try {
+      result = await poll(start.flowId);
+    } catch (error) {
+      if (options.cancelled()) return null;
+      failures += 1;
+      if (!isTransientPollError(error) || failures > POLL_FAILURES_TOLERATED) throw error;
+      continue;
+    }
+    failures = 0;
     if (options.cancelled()) return null;
     if (result.status === "done") return result.account;
-    if (result.status === "slow_down") wait = Math.max(result.interval, 1) * 1000;
+    // RFC 8628: each slow_down adds 5 s to the interval, whether or not the
+    // server names a new one.
+    if (result.status === "slow_down") wait = Math.max(result.interval * 1000, wait + 5000);
   }
   return null;
+}
+
+/** Event the backend listens for to stop a repository import or clone that
+ * is running (`src-tauri/src/forge/cancel.rs`). */
+export const IMPORT_CANCEL_EVENT = "import-cancel";
+
+/** Stop the repository import or clone that is running: the transfer ends,
+ * its staging folder goes and no project is created. */
+export function cancelRepositoryImport(): Promise<void> {
+  return emit(IMPORT_CANCEL_EVENT);
 }
 
 const publicRepoStatsCache = new Map<string, Promise<GitHubRepoStats>>();

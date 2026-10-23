@@ -924,7 +924,7 @@
         "experimentation": "labs, bèta, beta, vroege functies, experimenteel",
         "general": "voorkeuren, taal, regio, spellingcontrole, spelling, typfouten, offline, rondleidingen, terminalopdracht",
         "help": "over, versie, updates, wijzigingen, releaseopmerkingen, wat is er nieuw, documentatie, ondersteuning, community, Discord, licentie, crashrapport",
-        "integrations": "Zotero, GitHub, MCP, citaties, bronvermeldingen, accounts, koppelingen, verbindingen",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, desktop-apps, Cua, MCP, citaties, accounts, verbindingen",
         "shortcuts": "sneltoetsen, toetscombinaties, toetsen, toetsenbord",
         "research": "onderzoek taken budget meldingen wakker houden experimenten runs research tasks"
       },

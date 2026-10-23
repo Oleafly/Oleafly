@@ -135,7 +135,7 @@ pub fn update_app_config(
     let text = serde_json::to_string_pretty(&Value::Object(config)).map_err(|error| {
         CliError::internal(format!("Oleafly couldn't write its settings: {error}"))
     })?;
-    oleafly_core::atomic::write_atomic(&path, text.as_bytes()).map_err(CliError::from)
+    oleafly_core::atomic::write_atomic_private(&path, text.as_bytes()).map_err(CliError::from)
 }
 
 #[cfg(test)]
@@ -194,6 +194,26 @@ mod tests {
         let mut expected = original.clone();
         expected["typst_default_version"] = Value::String("0.13.1".into());
         assert_eq!(written, expected);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_config_json_the_cli_creates_is_owner_only() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let data = tempfile::tempdir().unwrap();
+        update_app_config(data.path(), |config| {
+            config.insert(
+                "typst_default_version".into(),
+                Value::String("0.13.1".into()),
+            );
+            Ok(())
+        })
+        .unwrap();
+        let mode = std::fs::metadata(data.path().join(CONFIG_FILE))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o077, 0, "{mode:o}");
     }
 
     #[test]

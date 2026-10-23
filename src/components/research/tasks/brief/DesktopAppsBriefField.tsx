@@ -1,9 +1,22 @@
 import { useContext } from "react";
-import { QueryClientContext } from "@tanstack/react-query";
+import { QueryClientContext, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useDesktopAppsStatus } from "@/components/settings/desktop-apps/desktop-apps-queries";
-import type { DesktopAppsStatus } from "@/lib/desktop-apps";
+import {
+  DESKTOP_APPS_STATUS_KEY,
+  useDesktopAppsToolReady,
+} from "@/components/settings/desktop-apps/desktop-apps-queries";
+import { cuaDriverStatus, type DesktopAppsStatus } from "@/lib/desktop-apps";
+import { useSettingsStore } from "@/store/settings";
+
+/** Opens Settings, Integrations, Desktop apps, where the connector is turned on. */
+function openDesktopAppsSettings() {
+  const settings = useSettingsStore.getState();
+  settings.setSettingsInitialSection("integrations");
+  settings.setSettingsScrollTarget("desktop-apps");
+  settings.setSettingsOpen(true);
+}
 
 /** Tasks can use desktop apps when the connector is on and allows at least one app or site. */
 export function desktopAppsReady(status: DesktopAppsStatus | undefined): boolean {
@@ -30,8 +43,13 @@ export function DesktopAppsBriefField(props: Readonly<DesktopAppsBriefFieldProps
 }
 
 function WithStatus(props: Readonly<DesktopAppsBriefFieldProps>) {
-  const status = useDesktopAppsStatus();
-  return <DesktopAppsCheckbox {...props} ready={desktopAppsReady(status.data)} />;
+  // The full status runs the driver, so this only reads it when Settings has
+  // already loaded it. Otherwise the tool spec says whether agents can use
+  // desktop apps, which is all the brief needs.
+  const loaded = useQuery({ queryKey: DESKTOP_APPS_STATUS_KEY, queryFn: cuaDriverStatus, enabled: false });
+  const spec = useDesktopAppsToolReady(loaded.data === undefined);
+  const ready = loaded.data === undefined ? spec.data === true : desktopAppsReady(loaded.data);
+  return <DesktopAppsCheckbox {...props} ready={ready} />;
 }
 
 function DesktopAppsCheckbox({
@@ -42,7 +60,7 @@ function DesktopAppsCheckbox({
   onCheckedChange,
   ready,
 }: Readonly<DesktopAppsBriefFieldProps & { ready: boolean }>) {
-  const { t } = useTranslation(["settings"]);
+  const { t } = useTranslation(["settings", "researchTools"]);
   const blocked = !ready || unattended;
   let hint = t(($) => $.settings.integrations.desktopApps.task.description);
   if (unattended) {
@@ -51,17 +69,31 @@ function DesktopAppsCheckbox({
     hint = t(($) => $.settings.integrations.desktopApps.task.off);
   }
   return (
-    <label htmlFor={id} className="flex items-start gap-2 text-xs" data-testid="research-brief-desktop-apps">
-      <Checkbox
-        id={id}
-        disabled={disabled || blocked}
-        checked={checked && !blocked}
-        onCheckedChange={(next) => onCheckedChange(next === true)}
-      />
-      <span>
-        <span className="font-medium">{t(($) => $.settings.integrations.desktopApps.task.label)}</span>
-        <span className="block text-muted-foreground">{hint}</span>
-      </span>
-    </label>
+    <div className="grid gap-1" data-testid="research-brief-desktop-apps">
+      <label htmlFor={id} className="flex items-start gap-2 text-xs">
+        <Checkbox
+          id={id}
+          disabled={disabled || blocked}
+          checked={checked && !blocked}
+          onCheckedChange={(next) => onCheckedChange(next === true)}
+        />
+        <span>
+          <span className="font-medium">{t(($) => $.settings.integrations.desktopApps.task.label)}</span>
+          <span className="block text-muted-foreground">{hint}</span>
+        </span>
+      </label>
+      {!ready && !unattended ? (
+        <Button
+          type="button"
+          size="xs"
+          variant="link"
+          className="justify-start px-0"
+          data-testid="research-brief-desktop-apps-settings"
+          onClick={openDesktopAppsSettings}
+        >
+          {t(($) => $.researchTools.compute.brief.openSettings)}
+        </Button>
+      ) : null}
+    </div>
   );
 }

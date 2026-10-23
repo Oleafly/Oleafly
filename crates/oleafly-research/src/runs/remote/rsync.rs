@@ -47,6 +47,8 @@ pub fn rsync_args(shell: &str, local_root: &Path, remote_dir: &str, host: &str) 
     let mut args: Vec<OsString> = [
         "-rt",
         "--delete",
+        // The same per-file limit as a packed upload.
+        "--max-size=64M",
         "--exclude=/.git",
         "--exclude=/.oleafly",
         "--exclude=/runs/",
@@ -93,7 +95,12 @@ mod tests {
         .iter()
         .map(|arg| arg.to_string_lossy().into_owned())
         .collect();
-        for expected in ["--exclude=/.git", "--exclude=/runs/", "-e"] {
+        for expected in [
+            "--exclude=/.git",
+            "--exclude=/runs/",
+            "--max-size=64M",
+            "-e",
+        ] {
             assert!(args.contains(&expected.to_string()), "{expected}");
         }
         assert!(args.contains(&shell));

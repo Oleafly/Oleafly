@@ -17,6 +17,11 @@ pub(crate) const MAX_ATTACHMENT_TEXT_BYTES: usize = 16 * 1024 * 1024;
 pub(crate) const STORE_CAP_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 pub(crate) const GLOBAL_SCOPE: &str = "global";
 pub(crate) const MAX_UPLOAD_HEADER_BYTES: usize = 8 * 1024;
+/// The most an upload may be when the webview delivers it as a JSON array of
+/// numbers (the `postMessage` fallback). Tauri has already turned every byte
+/// into a 32-byte JSON value by then, so this keeps that near half a gigabyte.
+pub(crate) const MAX_JSON_UPLOAD_BYTES: usize = 16 * 1024 * 1024;
+const _: () = assert!(MAX_JSON_UPLOAD_BYTES <= MAX_ATTACHMENT_BYTES);
 const STORE_DIR: &str = "attachments";
 const MAX_NAME_CHARS: usize = 255;
 const MAX_MIME_LEN: usize = 100;
@@ -81,17 +86,31 @@ pub(crate) fn decode_upload(body: &[u8]) -> Result<(UploadHeader, &[u8]), String
 /// The raw request body. Linux builds that fall back to `postMessage` IPC
 /// deliver it as a JSON array of numbers.
 pub(crate) fn upload_bytes(body: &tauri::ipc::InvokeBody) -> Result<Vec<u8>, String> {
+    upload_bytes_within(body, MAX_JSON_UPLOAD_BYTES)
+}
+
+/// [`upload_bytes`] with `json_limit` as the most a JSON array may carry.
+/// The length is checked before any byte is converted.
+pub(crate) fn upload_bytes_within(
+    body: &tauri::ipc::InvokeBody,
+    json_limit: usize,
+) -> Result<Vec<u8>, String> {
     match body {
         tauri::ipc::InvokeBody::Raw(bytes) => Ok(bytes.clone()),
-        tauri::ipc::InvokeBody::Json(serde_json::Value::Array(values)) => values
-            .iter()
-            .map(|value| {
-                value
-                    .as_u64()
-                    .and_then(|number| u8::try_from(number).ok())
-                    .ok_or_else(invalid)
-            })
-            .collect(),
+        tauri::ipc::InvokeBody::Json(serde_json::Value::Array(values)) => {
+            if values.len() > json_limit {
+                return Err(too_large(json_limit));
+            }
+            values
+                .iter()
+                .map(|value| {
+                    value
+                        .as_u64()
+                        .and_then(|number| u8::try_from(number).ok())
+                        .ok_or_else(invalid)
+                })
+                .collect()
+        }
         tauri::ipc::InvokeBody::Json(_) => Err(invalid()),
     }
 }

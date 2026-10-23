@@ -80,6 +80,48 @@ describe("shortcut bindings", () => {
     }
   });
 
+  it("follows the physical backquote key on layouts that type something else there", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Linux x86_64" });
+    try {
+      const { matchesShortcut, bindingFromEvent, SHORTCUT_DEFINITIONS } = await import("@/store/shortcuts");
+      const binding = (id: string) => SHORTCUT_DEFINITIONS.find((definition) => definition.id === id)?.defaultBinding;
+      const newTerminal = binding("newTerminal");
+      const toggleTerminal = binding("toggleTerminal");
+      if (!newTerminal || !toggleTerminal) throw new Error("missing terminal bindings");
+      const backquote = { code: "Backquote", ctrlKey: true };
+
+      // UK layout: Shift+` types a not sign. German and French: a dead key.
+      expect(matchesShortcut(keyboard("\u00ac", { ...backquote, shiftKey: true }), newTerminal)).toBe(true);
+      expect(matchesShortcut(keyboard("Dead", { ...backquote, shiftKey: true }), newTerminal)).toBe(true);
+      expect(matchesShortcut(keyboard("Dead", backquote), toggleTerminal)).toBe(true);
+      // US layout and test events without a code still match by the character.
+      expect(matchesShortcut(keyboard("~", { ctrlKey: true, shiftKey: true }), newTerminal)).toBe(true);
+      expect(matchesShortcut(keyboard("`", { ctrlKey: true }), toggleTerminal)).toBe(true);
+      // Modifiers and the key itself still have to match.
+      expect(matchesShortcut(keyboard("\u00ac", backquote), newTerminal)).toBe(false);
+      expect(matchesShortcut(keyboard("\u00ac", { ...backquote, shiftKey: true }), toggleTerminal)).toBe(false);
+      expect(
+        matchesShortcut(keyboard("\u00ac", { code: "IntlBackslash", ctrlKey: true, shiftKey: true }), newTerminal),
+      ).toBe(false);
+
+      expect(bindingFromEvent(keyboard("\u00ac", { ...backquote, shiftKey: true }))).toEqual({
+        key: "~",
+        mod: true,
+        shift: true,
+        alt: false,
+      });
+      expect(bindingFromEvent(keyboard("\u00ba", backquote))).toEqual({
+        key: "`",
+        mod: true,
+        shift: false,
+        alt: false,
+      });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
   it("records macOS Ctrl as a fixed modifier", async () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "MacIntel" });

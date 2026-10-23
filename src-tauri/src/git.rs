@@ -158,6 +158,44 @@ fn run_configured_git_bounded(
     bounds: OutputBounds,
     configure: impl FnOnce(&mut Command),
 ) -> Result<std::process::Output, String> {
+    let (command, program) = prepared_git(root, args, optional_locks, configure)?;
+    crate::proc::output_contained_with_bounds(command, bounds)
+        .map_err(|error| spawn_failure(&error, root, &program))
+}
+
+/// [`run_configured_git_bounded`] for a step of an import the user can
+/// cancel: `idle` and `total` bound it as they do there, and flipping
+/// `cancel` kills Git's process tree and ends with the cancelled error.
+fn run_configured_git_cancellable(
+    root: &PathBuf,
+    args: &[&str],
+    optional_locks: bool,
+    (idle, total): (Duration, Duration),
+    cancel: &crate::forge::cancel::ImportCancel,
+    configure: impl FnOnce(&mut Command),
+) -> Result<std::process::Output, String> {
+    cancel.check()?;
+    let (command, program) = prepared_git(root, args, optional_locks, configure)?;
+    crate::forge::cancel::output_until_cancelled(command, idle, total, cancel).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::Interrupted {
+            crate::forge::cancel::ImportCancel::error()
+        } else {
+            spawn_failure(&error, root, &program)
+        }
+    })
+}
+
+/// A Git command ready to spawn: the program, arguments, working folder and
+/// an environment that cannot reach another repository and that keeps Git's
+/// messages in English, which [`classify_remote_failure`] and the commit
+/// path match on (the language variables only choose the message language,
+/// so UTF-8 paths and file names are unaffected).
+fn prepared_git(
+    root: &PathBuf,
+    args: &[&str],
+    optional_locks: bool,
+    configure: impl FnOnce(&mut Command),
+) -> Result<(Command, OsString), String> {
     let program = git_program();
     if !git_available_as(&program) {
         return Err(git_not_installed());
@@ -168,18 +206,21 @@ fn run_configured_git_bounded(
     testing::apply_inherited_env(&mut command);
     clear_inherited_git_env(&mut command);
     command.env("GIT_OPTIONAL_LOCKS", if optional_locks { "1" } else { "0" });
+    command.env("LANGUAGE", "en").env("LC_MESSAGES", "C");
     configure(&mut command);
-    crate::proc::output_contained_with_bounds(command, bounds).map_err(|error| {
-        // A missing working folder also fails with NotFound, so only blame
-        // Git when a fresh probe agrees that it has gone.
-        if error.kind() == std::io::ErrorKind::NotFound && root.is_dir() {
-            forget_git_probe(&program);
-            if !git_available_as(&program) {
-                return git_not_installed();
-            }
+    Ok((command, program))
+}
+
+fn spawn_failure(error: &std::io::Error, root: &Path, program: &OsStr) -> String {
+    // A missing working folder also fails with NotFound, so only blame
+    // Git when a fresh probe agrees that it has gone.
+    if error.kind() == std::io::ErrorKind::NotFound && root.is_dir() {
+        forget_git_probe(program);
+        if !git_available_as(program) {
+            return git_not_installed();
         }
-        format!("failed to run git: {error}")
-    })
+    }
+    format!("failed to run git: {error}")
 }
 
 fn git_not_installed() -> String {
@@ -1417,8 +1458,12 @@ pub(crate) fn is_allowed_remote_url(url: &str) -> bool {
         .is_some_and(|at| before[at + 1..].chars().count() > 1)
 }
 
-/// Whether an `http(s)` remote address carries a password. Oleafly never
-/// saves one in `.git/config`.
+/// Whether an `http(s)` remote address carries a password, or an access
+/// token in the user name position (`https://ghp_...@github.com/o/r.git`, the
+/// classic form). Oleafly never saves either in `.git/config`. A plain user
+/// name is fine: the saved address keeps it and the account helper still
+/// supplies the secret. `src/lib/forge.ts` (`hasRemotePassword`) has the same
+/// rule.
 pub(crate) fn has_remote_password(url: &str) -> bool {
     let u = url.trim();
     let Some(scheme_end) = u.find("://") else {
@@ -1432,9 +1477,43 @@ pub(crate) fn has_remote_password(url: &str) -> bool {
     }
     let rest = &u[scheme_end + 3..];
     let authority = &rest[..rest.find(['/', '?', '#']).unwrap_or(rest.len())];
-    authority
-        .rfind('@')
-        .is_some_and(|at| authority[..at].contains(':'))
+    let Some(at) = authority.rfind('@') else {
+        return false;
+    };
+    let userinfo = &authority[..at];
+    userinfo.contains(':') || looks_like_token(userinfo)
+}
+
+/// Token prefixes of the Git hosts Oleafly signs in to: GitHub (`ghp_`
+/// classic, `gho_` OAuth, `ghu_` user-to-server, `ghs_` server-to-server,
+/// `ghr_` refresh, `github_pat_` fine-grained) and GitLab (`glpat-`
+/// personal, `gloas-` OAuth application secret).
+const TOKEN_PREFIXES: [&str; 8] = [
+    "ghp_",
+    "gho_",
+    "ghu_",
+    "ghs_",
+    "ghr_",
+    "github_pat_",
+    "glpat-",
+    "gloas-",
+];
+
+/// The shortest run of token characters that reads as a token, not a name.
+const TOKEN_LIKE_LEN: usize = 20;
+
+/// Whether a user name in a remote address looks like an access token: a
+/// known token prefix, or at least [`TOKEN_LIKE_LEN`] characters that are all
+/// letters, digits, `-` or `_`. Ordinary user names stay under that.
+fn looks_like_token(user: &str) -> bool {
+    let lower = user.to_ascii_lowercase();
+    TOKEN_PREFIXES
+        .iter()
+        .any(|prefix| lower.starts_with(prefix))
+        || (user.chars().count() >= TOKEN_LIKE_LEN
+            && user
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
 }
 
 /// How a command that talks to a remote signs in: with the user's own Git
@@ -1448,9 +1527,25 @@ pub(crate) enum RemoteAuth {
 pub(crate) struct AccountCredential {
     /// The account's base URL; Git offers the token only below it.
     pub credential_url: String,
+    /// The user name Git sends with the token, which depends on the server
+    /// kind (GitLab wants `oauth2`).
     pub username: String,
+    /// The account's own login, for naming it in messages.
+    pub login: String,
     pub token: String,
     pub ca_file: Option<PathBuf>,
+}
+
+impl AccountCredential {
+    /// The account as messages name it: `login@host`, such as
+    /// `octocat@github.com`.
+    fn label(&self) -> String {
+        let host = self
+            .credential_url
+            .split_once("://")
+            .map_or(self.credential_url.as_str(), |(_, rest)| rest);
+        format!("{}@{host}", self.login)
+    }
 }
 
 impl std::fmt::Debug for AccountCredential {
@@ -1458,6 +1553,7 @@ impl std::fmt::Debug for AccountCredential {
         f.debug_struct("AccountCredential")
             .field("credential_url", &self.credential_url)
             .field("username", &self.username)
+            .field("login", &self.login)
             .field("token", &"***")
             .field("ca_file", &self.ca_file)
             .finish()
@@ -1514,27 +1610,44 @@ fn run_git_for_remote_with(
     args: &[&str],
     trailing: &[&OsStr],
 ) -> Result<std::process::Output, String> {
+    run_git_for_remote_until(root, auth, args, trailing, None)
+}
+
+/// [`run_git_for_remote_with`] that `cancel`, when given, can stop.
+fn run_git_for_remote_until(
+    root: &Path,
+    auth: &RemoteAuth,
+    args: &[&str],
+    trailing: &[&OsStr],
+    cancel: Option<&crate::forge::cancel::ImportCancel>,
+) -> Result<std::process::Output, String> {
     let credential_args = match auth {
         RemoteAuth::Account(credential) => account_credential_args(credential),
         RemoteAuth::User => Vec::new(),
     };
     let mut full: Vec<&str> = credential_args.iter().map(String::as_str).collect();
     full.extend_from_slice(args);
-    run_configured_git_bounded(
-        &root.to_path_buf(),
-        &full,
-        true,
-        remote_bounds(),
-        |command| {
-            command.args(trailing);
-            command.env("GIT_TERMINAL_PROMPT", "0");
-            if let RemoteAuth::Account(credential) = auth {
-                command
-                    .env(FORGE_USERNAME_ENV, &credential.username)
-                    .env(FORGE_TOKEN_ENV, &credential.token);
-            }
-        },
-    )
+    let root = root.to_path_buf();
+    let configure = |command: &mut Command| {
+        command.args(trailing);
+        command.env("GIT_TERMINAL_PROMPT", "0");
+        if let RemoteAuth::Account(credential) = auth {
+            command
+                .env(FORGE_USERNAME_ENV, &credential.username)
+                .env(FORGE_TOKEN_ENV, &credential.token);
+        }
+    };
+    match cancel {
+        Some(cancel) => run_configured_git_cancellable(
+            &root,
+            &full,
+            true,
+            (REMOTE_IDLE, REMOTE_TOTAL),
+            cancel,
+            configure,
+        ),
+        None => run_configured_git_bounded(&root, &full, true, remote_bounds(), configure),
+    }
 }
 
 /// The message for a failed remote command: a localizable reason when the
@@ -1546,17 +1659,25 @@ fn remote_failure(out: &std::process::Output, remote_url: &str, auth: &RemoteAut
             text = text.replace(&credential.token, "***");
         }
     }
-    match classify_remote_failure(&text, remote_url, matches!(auth, RemoteAuth::Account(_))) {
+    let account = match auth {
+        RemoteAuth::Account(credential) => Some(credential.label()),
+        RemoteAuth::User => None,
+    };
+    match classify_remote_failure(&text, remote_url, account.as_deref()) {
         Some(error) => error.into(),
         None => redact_userinfo(&text),
     }
 }
 
+/// A localizable reason for Git's failure output, when it names one.
+/// `account` is the Git hosting account the command signed in with
+/// (`login@host`), so a refusal can say whose sign-in it was.
 fn classify_remote_failure(
     text: &str,
     remote_url: &str,
-    uses_account: bool,
+    account: Option<&str>,
 ) -> Option<crate::app_error::AppError> {
+    let uses_account = account.is_some();
     let has = |needles: &[&str]| needles.iter().any(|needle| text.contains(needle));
     let repository_named_missing = text
         .lines()
@@ -1616,8 +1737,18 @@ fn classify_remote_failure(
     } else {
         return None;
     };
-    let error = crate::app_error::AppError::new(code)
+    let mut error = crate::app_error::AppError::new(code)
         .param("host", oleafly_forge::kind::host_label(remote_url));
+    if let Some(account) = account {
+        match code {
+            "git.auth_rejected" => error = error.param("account", account),
+            // The message has a variant that names the account.
+            "git.access_denied" => {
+                error = error.param("account", account).param("context", "account");
+            }
+            _ => {}
+        }
+    }
     // Only refusals keep Git's words: the reason (an expired token, no write
     // access, single sign-on) is in them and differs from case to case.
     let refused = matches!(
@@ -1792,14 +1923,18 @@ pub(crate) enum HistorySource<'a> {
 /// remote history. `commit` pins the history to the commit the archive was
 /// made from, so a branch that moved in between cannot mix two versions. The
 /// caller must hold the imported project's exclusive worktree lock for the
-/// full archive-import transaction.
+/// full archive-import transaction. `cancel`, when given, stops the fetch.
 pub(crate) fn attach_imported_repository_history_lock_held(
     project_id: &str,
     remote_url: &str,
     default_branch: &str,
     commit: Option<&str>,
     source: HistorySource<'_>,
+    cancel: Option<&crate::forge::cancel::ImportCancel>,
 ) -> Result<(), String> {
+    if has_remote_password(remote_url) {
+        return Err(crate::app_error::AppError::new("git.remote_has_password").into());
+    }
     if !is_allowed_remote_url(remote_url) {
         return Err(crate::app_error::AppError::new("git.invalid_remote_url").into());
     }
@@ -1814,19 +1949,22 @@ pub(crate) fn attach_imported_repository_history_lock_held(
         |root, refspec| {
             let (output, auth) = match source {
                 HistorySource::Remote(auth) => (
-                    run_git_for_remote(
+                    run_git_for_remote_until(
                         root,
                         auth,
                         &["fetch", "--no-tags", "--progress", "origin", refspec],
+                        &[],
+                        cancel,
                     )?,
                     auth,
                 ),
                 HistorySource::Local(path) => (
-                    run_git_for_remote_with(
+                    run_git_for_remote_until(
                         root,
                         &RemoteAuth::User,
                         &["fetch", "--no-tags", "--progress"],
                         &[path.as_os_str(), OsStr::new(refspec)],
+                        cancel,
                     )?,
                     &RemoteAuth::User,
                 ),
@@ -1946,7 +2084,8 @@ fn restore_missing_tracked_files(root: &PathBuf) -> Result<(), String> {
 /// refused.
 const CLONE_ARCHIVE_MAX_BYTES: u64 = 256 * 1024 * 1024;
 
-/// The address as typed, when Oleafly may clone it.
+/// The address as typed, when Oleafly may clone it. A password or an access
+/// token in it is refused: the address becomes the project's `origin`.
 fn checked_clone_url(url: &str) -> Result<String, String> {
     let url = url.trim();
     if has_remote_password(url) {
@@ -1960,18 +2099,59 @@ fn checked_clone_url(url: &str) -> Result<String, String> {
 
 /// Clone a repository by its address into a new library project, signing in
 /// with a matching Git hosting account or the user's own Git setup.
+///
+/// The webview can cancel it by emitting the import-cancel event
+/// ([`crate::forge::cancel::IMPORT_CANCEL_EVENT`]): the clone stops, its
+/// staging folder goes, and no project is created.
 #[tauri::command]
 pub async fn git_clone_project(app: tauri::AppHandle, url: String) -> Result<String, String> {
     let url = checked_clone_url(&url)?;
+    let (cancel, _listener) = crate::forge::cancel::cancel_on_event(&app);
     let auth = crate::forge::remote_auth::remote_auth_for_url(&url).await?;
+    let work = cancel.clone();
     let project_id = tauri::async_runtime::spawn_blocking(move || {
-        clone_into_library(&url, &url, &auth, &std::env::temp_dir())
+        let staging = clone_staging_folder()?;
+        clone_into_library(&url, &url, &auth, &staging, &work)
     })
     .await
     .map_err(|error| error.to_string())??;
     crate::project::record_tex_spec_for_new_project(&app, &project_id);
     Ok(project_id)
 }
+
+/// Where a clone is staged: under the app's data folder, not the system's
+/// temporary folder (a RAM-backed tmpfs on many Linux systems, and the
+/// system drive on Windows, for a repository that can be gigabytes).
+/// Folders an earlier run left behind are removed.
+fn clone_staging_folder() -> Result<PathBuf, String> {
+    let folder = paths::oleafly_root()?.join("clone-staging");
+    std::fs::create_dir_all(&folder)
+        .map_err(|error| format!("could not prepare a folder for the clone: {error}"))?;
+    remove_stale_clone_staging(&folder, Duration::from_secs(24 * 60 * 60));
+    Ok(folder)
+}
+
+/// Best effort: remove `oleafly-clone-*` folders older than `age`.
+fn remove_stale_clone_staging(folder: &Path, age: Duration) {
+    let Ok(entries) = std::fs::read_dir(folder) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let stale = entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with(CLONE_STAGING_PREFIX)
+            && entry
+                .metadata()
+                .and_then(|metadata| metadata.modified())
+                .is_ok_and(|modified| modified.elapsed().is_ok_and(|elapsed| elapsed > age));
+        if stale {
+            let _ = std::fs::remove_dir_all(entry.path());
+        }
+    }
+}
+
+const CLONE_STAGING_PREFIX: &str = "oleafly-clone-";
 
 /// Clone `source` in a staging folder, archive its files at the checked-out
 /// commit and import them through the guarded archive path, then attach the
@@ -1983,19 +2163,21 @@ fn clone_into_library(
     origin_url: &str,
     auth: &RemoteAuth,
     staging_parent: &Path,
+    cancel: &crate::forge::cancel::ImportCancel,
 ) -> Result<String, String> {
     std::fs::create_dir_all(staging_parent)
         .map_err(|error| format!("could not prepare a folder for the clone: {error}"))?;
     let staging = tempfile::Builder::new()
-        .prefix("oleafly-clone-")
+        .prefix(CLONE_STAGING_PREFIX)
         .tempdir_in(staging_parent)
         .map_err(|error| format!("could not prepare a folder for the clone: {error}"))?;
     let repository = staging.path().join("repository");
-    let cloned = run_git_for_remote_with(
+    let cloned = run_git_for_remote_until(
         staging.path(),
         auth,
         &["clone", "--no-checkout", "--progress", "--"],
         &[OsStr::new(source), repository.as_os_str()],
+        Some(cancel),
     )?;
     if !cloned.status.success() {
         return Err(remote_failure(&cloned, origin_url, auth));
@@ -2024,11 +2206,13 @@ fn clone_into_library(
     let archive = staging.path().join("archive.zip");
     let mut output = OsString::from("--output=");
     output.push(&archive);
-    ok_or_err(run_configured_git_bounded(
+    // `git archive` is silent while it works, so only the total bound applies.
+    ok_or_err(run_configured_git_cancellable(
         &repository,
         &["archive", "--format=zip", "--prefix=repository/"],
         true,
-        OutputBounds::total(WORKTREE_SCALE_DEADLINE),
+        (WORKTREE_SCALE_DEADLINE, WORKTREE_SCALE_DEADLINE),
+        cancel,
         |command| {
             command.arg(&output).arg(&commit);
         },
@@ -2042,6 +2226,7 @@ fn clone_into_library(
             .into());
     }
     let bytes = std::fs::read(&archive).map_err(|error| error.to_string())?;
+    cancel.check()?;
     crate::project::import_project_zip_bytes_with(clone_project_name(origin_url), &bytes, |id| {
         attach_imported_repository_history_lock_held(
             id,
@@ -2049,6 +2234,7 @@ fn clone_into_library(
             &branch,
             Some(&commit),
             HistorySource::Local(&repository),
+            Some(cancel),
         )
     })
 }
@@ -3899,6 +4085,7 @@ mod tests {
             "main",
             None,
             super::HistorySource::Remote(&super::RemoteAuth::User),
+            None,
         )
         .unwrap_err();
 
@@ -6315,10 +6502,22 @@ mod tests {
         );
     }
 
+    fn exit_status_for_test(code: i32) -> std::process::ExitStatus {
+        #[cfg(unix)]
+        use std::os::unix::process::ExitStatusExt;
+        #[cfg(windows)]
+        use std::os::windows::process::ExitStatusExt;
+        #[cfg(unix)]
+        return std::process::ExitStatus::from_raw(code << 8);
+        #[cfg(windows)]
+        return std::process::ExitStatus::from_raw(code as u32);
+    }
+
     fn account_credential(ca_file: Option<PathBuf>) -> super::AccountCredential {
         super::AccountCredential {
             credential_url: "https://example.org/gitlab".into(),
             username: "oauth2".into(),
+            login: "zoe".into(),
             token: "glpat-test-1234".into(),
             ca_file,
         }
@@ -6465,7 +6664,8 @@ mod tests {
     fn remote_failures_name_the_problem() {
         let url = "https://gitlab.example.org/g/p.git";
         let code = |text: &str, account: bool| {
-            super::classify_remote_failure(text, url, account).map(|error| error.code)
+            super::classify_remote_failure(text, url, account.then_some("zoe@gitlab.example.org"))
+                .map(|error| error.code)
         };
         for (text, with_account, without_account) in [
             (
@@ -6548,12 +6748,12 @@ mod tests {
             assert_eq!(code(text, false), Some(without_account), "{text}");
         }
         assert_eq!(code("error: something else went wrong", false), None);
-        let host = super::classify_remote_failure("Connection refused", url, false).unwrap();
+        let host = super::classify_remote_failure("Connection refused", url, None).unwrap();
         assert_eq!(host.params["host"], "gitlab.example.org");
         let named = super::classify_remote_failure(
             "Permission denied (publickey).",
             "git@gitlab.com:g/p.git",
-            false,
+            None,
         )
         .unwrap();
         assert_eq!(named.params["host"], "GitLab");
@@ -6564,7 +6764,7 @@ mod tests {
         let denied = super::classify_remote_failure(
             "remote: Permission to o/r.git denied to me.\nfatal: unable to access 'https://me:pw@github.com/o/r.git/': The requested URL returned error: 403",
             "https://github.com/o/r.git",
-            true,
+            Some("me@github.com"),
         )
         .unwrap();
         assert_eq!(denied.code, "git.access_denied");
@@ -6574,11 +6774,74 @@ mod tests {
             "{detail}"
         );
         assert!(!detail.contains("pw"), "{detail}");
-        let unreachable =
-            super::classify_remote_failure("Connection refused", "https://h.org/x", true).unwrap();
+        let unreachable = super::classify_remote_failure(
+            "Connection refused",
+            "https://h.org/x",
+            Some("me@h.org"),
+        )
+        .unwrap();
         assert_eq!(unreachable.detail, None);
         let long = super::git_reason(&"é".repeat(500));
         assert_eq!(long.chars().count(), 401);
+    }
+
+    #[test]
+    fn refusals_name_the_account_that_was_used() {
+        let url = "https://github.com/o/r.git";
+        let denied_text = "remote: Permission to o/r.git denied to octo.\nfatal: unable to access 'https://github.com/o/r.git/': The requested URL returned error: 403";
+        let denied =
+            super::classify_remote_failure(denied_text, url, Some("octo@github.com")).unwrap();
+        assert_eq!(denied.code, "git.access_denied");
+        assert_eq!(denied.params["account"], "octo@github.com");
+        // The message that names the account is the "account" variant.
+        assert_eq!(denied.params["context"], "account");
+
+        let rejected = super::classify_remote_failure(
+            "fatal: Authentication failed for 'https://github.com/o/r.git/'",
+            url,
+            Some("octo@github.com"),
+        )
+        .unwrap();
+        assert_eq!(rejected.code, "git.auth_rejected");
+        assert_eq!(rejected.params["account"], "octo@github.com");
+        assert!(!rejected.params.contains_key("context"));
+
+        // Git's own sign-in has no account to name.
+        let own = super::classify_remote_failure(denied_text, url, None).unwrap();
+        assert!(!own.params.contains_key("account"));
+        assert!(!own.params.contains_key("context"));
+        // Other failures do not name one either.
+        let unreachable =
+            super::classify_remote_failure("Connection refused", url, Some("octo@github.com"))
+                .unwrap();
+        assert!(!unreachable.params.contains_key("account"));
+    }
+
+    #[test]
+    fn an_account_is_named_by_its_login_and_server() {
+        assert_eq!(account_credential(None).label(), "zoe@example.org/gitlab");
+        let hosted = super::AccountCredential {
+            credential_url: "https://github.com".into(),
+            username: "octocat".into(),
+            login: "octocat".into(),
+            token: "ghp_test1234".into(),
+            ca_file: None,
+        };
+        assert_eq!(hosted.label(), "octocat@github.com");
+
+        let out = std::process::Output {
+            status: exit_status_for_test(1),
+            stdout: Vec::new(),
+            stderr: b"remote: Permission to o/r.git denied to zoe.\nfatal: unable to access 'https://example.org/gitlab/g/p.git/': The requested URL returned error: 403".to_vec(),
+        };
+        let text = super::remote_failure(
+            &out,
+            "https://example.org/gitlab/g/p.git",
+            &super::RemoteAuth::Account(account_credential(None)),
+        );
+        assert!(text.contains("git.access_denied"), "{text}");
+        assert!(text.contains("zoe@example.org/gitlab"), "{text}");
+        assert!(!text.contains("glpat-test-1234"), "{text}");
     }
 
     #[test]
@@ -6670,6 +6933,104 @@ mod tests {
         assert!(super::has_remote_password("https://u:pw@h.org/x.git"));
         assert!(!super::has_remote_password("https://u@h.org/x.git"));
         assert!(!super::has_remote_password("git@h.org:o/r.git"));
+    }
+
+    /// The same rows as `hasRemotePassword` in src/lib/forge.test.ts.
+    const TOKEN_USERS: [&str; 9] = [
+        "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+        "gho_abc",
+        "ghu_abc",
+        "ghs_abc",
+        "github_pat_11AAAA",
+        "glpat-AbCd_1234-xyz",
+        "gloas-abc",
+        "0123456789abcdef0123456789abcdef01234567",
+        "abcdefghijklmnopqrst",
+    ];
+
+    #[test]
+    fn an_access_token_in_the_user_name_position_is_refused_like_a_password() {
+        for user in TOKEN_USERS {
+            let address = format!("https://{user}@github.com/o/r.git");
+            assert!(super::has_remote_password(&address), "{user}");
+            assert!(
+                super::has_remote_password(&format!("http://{user}@h.org/o/r.git")),
+                "{user}"
+            );
+            let linked =
+                super::git_set_remote_sync("no-such-project".into(), address.clone(), false)
+                    .unwrap_err();
+            assert!(
+                linked.contains("git.remote_has_password"),
+                "{user}: {linked}"
+            );
+            let cloned = super::checked_clone_url(&address).unwrap_err();
+            assert!(
+                cloned.contains("git.remote_has_password"),
+                "{user}: {cloned}"
+            );
+        }
+    }
+
+    #[test]
+    fn ordinary_user_names_are_kept_in_a_remote_address() {
+        for user in [
+            "u",
+            "octocat",
+            "zoe-q",
+            "first.last",
+            "me%40corp.example",
+            "abcdefghijklmnopqrs",
+        ] {
+            let address = format!("https://{user}@h.org/o/r.git");
+            assert!(!super::has_remote_password(&address), "{user}");
+            assert_eq!(super::checked_clone_url(&address).unwrap(), address);
+        }
+        // SSH user names are not credentials in the address.
+        for address in [
+            "ssh://ghp_abcdefghijklmnopqrstuvwxyz@h.org/o/r.git",
+            "ghp_abcdefghijklmnopqrstuvwxyz@h.org:o/r.git",
+        ] {
+            assert!(!super::has_remote_password(address), "{address}");
+        }
+    }
+
+    #[test]
+    fn importing_history_refuses_an_address_with_a_token_too() {
+        let error = attach_imported_repository_history_lock_held(
+            "no-such-project",
+            "https://ghp_abcdefghijklmnopqrstuvwxyz@github.com/o/r.git",
+            "main",
+            None,
+            super::HistorySource::Remote(&super::RemoteAuth::User),
+            None,
+        )
+        .unwrap_err();
+        assert!(error.contains("git.remote_has_password"), "{error}");
+    }
+
+    #[test]
+    fn git_runs_with_english_messages_and_keeps_the_other_locale_variables() {
+        let root = temp_repo();
+        // As if Oleafly had been started under a German locale.
+        let _inherited = super::testing::inherit_git_env(vec![
+            ("LANGUAGE".into(), "de".into()),
+            ("LC_MESSAGES".into(), "de_DE.UTF-8".into()),
+            ("LC_CTYPE".into(), "de_DE.UTF-8".into()),
+            ("LANG".into(), "de_DE.UTF-8".into()),
+        ]);
+        let probe = [
+            "-c",
+            "alias.localecheck=!printf %s \"$LANGUAGE:$LC_MESSAGES:$LC_CTYPE:$LANG\"",
+            "localecheck",
+        ];
+        let expected = "en:C:de_DE.UTF-8:de_DE.UTF-8";
+        let local = run_git(&root, &probe).unwrap();
+        assert_eq!(String::from_utf8_lossy(&local.stdout), expected);
+        let read_only = run_git_read_only(&root, &probe).unwrap();
+        assert_eq!(String::from_utf8_lossy(&read_only.stdout), expected);
+        let remote = super::run_git_for_remote(&root, &super::RemoteAuth::User, &probe).unwrap();
+        assert_eq!(String::from_utf8_lossy(&remote.stdout), expected);
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -6877,6 +7238,7 @@ mod tests {
             "https://example.org/lab/paper.git",
             &super::RemoteAuth::User,
             staging_parent,
+            &crate::forge::cancel::ImportCancel::new(),
         )
         .unwrap();
         (data.clone(), data.join("projects").join(project_id))
@@ -6943,9 +7305,101 @@ mod tests {
             "https://example.org/lab/empty.git",
             &super::RemoteAuth::User,
             &parent.join("staging"),
+            &crate::forge::cancel::ImportCancel::new(),
         )
         .unwrap_err();
         assert!(error.contains("git.repository_empty"), "{error}");
+    }
+
+    #[test]
+    fn a_clone_that_was_already_cancelled_creates_nothing() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_dir("clone-cancelled-data");
+        std::fs::create_dir_all(data.join("projects")).unwrap();
+        let _data_dir = TestDataDirOverride::set(&data);
+        let bare = bare_remote(&data, &[("main.tex", MAIN_TEX)]);
+        let staging = temp_dir("clone-cancelled-staging");
+        let cancel = crate::forge::cancel::ImportCancel::new();
+        cancel.cancel();
+
+        let error = super::clone_into_library(
+            &bare.to_string_lossy(),
+            "https://example.org/lab/paper.git",
+            &super::RemoteAuth::User,
+            &staging,
+            &cancel,
+        )
+        .unwrap_err();
+
+        assert!(error.contains("git.import_cancelled"), "{error}");
+        assert_eq!(std::fs::read_dir(&staging).unwrap().count(), 0);
+        assert_eq!(std::fs::read_dir(data.join("projects")).unwrap().count(), 0);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cancelling_a_running_clone_stops_git_and_removes_the_staging_folder() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let programs = temp_dir("clone-cancel-git");
+        let fake = programs.join("fake-git");
+        // Answers the availability probe, then hangs like a huge download.
+        std::fs::write(
+            &fake,
+            "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'git version 2.40.0'; exit 0; fi\nsleep 60\n",
+        )
+        .unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let _program = super::testing::use_git_program(&fake);
+        let staging = temp_dir("clone-cancel-staging");
+        let cancel = crate::forge::cancel::ImportCancel::new();
+        let stopper = cancel.clone();
+        let canceller = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(700));
+            stopper.cancel();
+        });
+
+        let started = std::time::Instant::now();
+        let error = super::clone_into_library(
+            "https://example.org/lab/paper.git",
+            "https://example.org/lab/paper.git",
+            &super::RemoteAuth::User,
+            &staging,
+            &cancel,
+        )
+        .unwrap_err();
+        canceller.join().unwrap();
+
+        assert!(error.contains("git.import_cancelled"), "{error}");
+        assert!(started.elapsed() < Duration::from_secs(30));
+        assert_eq!(
+            std::fs::read_dir(&staging).unwrap().count(),
+            0,
+            "the staging folder is removed"
+        );
+    }
+
+    #[test]
+    fn clones_are_staged_in_the_data_folder_and_old_leftovers_are_removed() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = temp_dir("clone-staging-home");
+        let _data_dir = TestDataDirOverride::set(&data);
+
+        let folder = super::clone_staging_folder().unwrap();
+        assert_eq!(folder, data.join("clone-staging"));
+
+        let old = folder.join("oleafly-clone-old");
+        let unrelated = folder.join("keep-me");
+        std::fs::create_dir_all(old.join("repository")).unwrap();
+        std::fs::create_dir_all(&unrelated).unwrap();
+        std::thread::sleep(Duration::from_millis(20));
+        super::remove_stale_clone_staging(&folder, Duration::from_millis(5));
+        assert!(!old.exists(), "a leftover clone older than the limit goes");
+        assert!(unrelated.exists(), "other folders stay");
+
+        let fresh = folder.join("oleafly-clone-fresh");
+        std::fs::create_dir_all(&fresh).unwrap();
+        super::remove_stale_clone_staging(&folder, Duration::from_secs(24 * 60 * 60));
+        assert!(fresh.exists(), "a clone that may still be running stays");
     }
 
     #[test]

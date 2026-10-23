@@ -221,6 +221,7 @@
       "closeOne": "关闭终端",
       "closeProject": "关闭项目",
       "dontAsk": "不再询问",
+      "dontAskHint": "要重新开启，请前往“设置 → 外观 → 终端”，打开“关闭忙碌的终端前询问”。",
       "many_other": "仍有程序在 {{count}} 个终端中运行。",
       "named": "{{process}} 仍在 {{title}} 中运行。",
       "quit": "退出",

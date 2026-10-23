@@ -9,14 +9,15 @@ use oleafly_online::archive::{
 use oleafly_online::client::Http;
 use oleafly_online::projects::{imported_projects, list_projects};
 use oleafly_online::session;
-use oleafly_online::sync::{claim, probe, remove_link};
+use oleafly_online::sync::{claim, export_link_backups, probe, remove_link};
 use oleafly_online::{OnlineError, OnlineErrorKind};
 use serde_json::{json, Value};
 
-use super::scope::{git_token_for, parse_remote_ref, project_url, resolve_scope};
+use super::scope::{git_token_for, parse_remote_ref, project_url, resolve_scope, server_is_known};
+use super::sync::backups_folder;
 use super::{ImportArgs, RemoteDeps, StatusArgs};
 use crate::auth::online::{online_error, server_for};
-use crate::auth::shared::{from_online, user_agent, Env, Report};
+use crate::auth::shared::{from_online, one_line, user_agent, Env, Report};
 use crate::contract::{CliError, Context, ErrorKind, Exit};
 
 /// Called with a project's name as its download goes.
@@ -35,7 +36,7 @@ pub(crate) fn progress_reporter(ctx: &Context) -> impl Fn(&str, ImportProgress) 
                 let percent = received.saturating_mul(100) / total;
                 let step = percent / 10;
                 if shown.swap(step, Ordering::Relaxed) != step {
-                    ctx.note(format!("Downloading {name}: {percent}%"));
+                    ctx.note(format!("Downloading {}: {percent}%", one_line(name)));
                 }
             }
         }
@@ -65,12 +66,13 @@ pub(crate) async fn list(env: &Env, server: Option<&str>) -> Result<Report, CliE
     };
     let mut lines = vec![format!(
         "{count} in {}'s account on {server}",
-        session.email
+        one_line(&session.email)
     )];
     for project in &projects {
-        let mut line = format!("  {}  {}", project.id, project.name);
+        // Names come from other people's accounts: each stays on its line.
+        let mut line = format!("  {}  {}", project.id, one_line(&project.name));
         if let Some(owner) = project.owner_name.as_deref().filter(|_| !project.owned) {
-            line.push_str(&format!(" (shared by {owner})"));
+            line.push_str(&format!(" (shared by {})", one_line(owner)));
         }
         if project.archived {
             line.push_str(" [archived]");
@@ -146,7 +148,7 @@ pub(crate) async fn import(
         if args.dry_run {
             lines.push(format!(
                 "Would import {} into {}.",
-                project.name,
+                one_line(&project.name),
                 target.display()
             ));
             planned.push(json!({"remoteId": project.id, "name": project.name, "folder": target}));
@@ -167,7 +169,7 @@ pub(crate) async fn import(
             Ok(folder) => {
                 lines.push(format!(
                     "Imported {} into {}.",
-                    folder.name,
+                    one_line(&folder.name),
                     folder.folder.display()
                 ));
                 lines.push(format!(
@@ -228,7 +230,7 @@ pub(crate) fn status(
         (None, Some(origin)) => origin.server,
         (None, None) => server_for(env, None)?,
     };
-    let token = match git_token_for(env, &server) {
+    let token = match git_token_for(env, &server, false) {
         Ok((_, source)) => source.as_str(),
         Err(_) => "missing",
     };
@@ -265,8 +267,9 @@ pub(crate) fn status(
         _ => format!("Git token: none saved for {server}"),
     });
     if let (true, Some(link)) = (args.fetch, &link) {
+        scope.ensure_no_pending_restore()?;
         let deps = deps_for(scope.root())?;
-        let (token, _) = git_token_for(env, &link.server)?;
+        let (token, _) = git_token_for(env, &link.server, false)?;
         let url = (deps.url_for)(&link.server, &link.remote_id)
             .map_err(|error| online_error(error, &link.server))?;
         let paths = scope.sync_paths(&env.data_root)?;
@@ -295,8 +298,14 @@ pub(crate) fn status(
 }
 
 /// `remote unlink`: removes the private copy and the link record. The
-/// folder's files stay as they are.
-pub(crate) fn unlink(env: &Env, folder: &Path, dry_run: bool) -> Result<Report, CliError> {
+/// folder's files stay as they are. A saved copy of files that linking
+/// replaced is put in the folder first, since it lives in the private copy.
+pub(crate) fn unlink(
+    env: &Env,
+    deps_for: &dyn Fn(&Path) -> Result<RemoteDeps, CliError>,
+    folder: &Path,
+    dry_run: bool,
+) -> Result<Report, CliError> {
     let scope = resolve_scope(folder, &env.data_root)?;
     let paths = scope.sync_paths(&env.data_root)?;
     let linked = paths.dir.exists();
@@ -309,9 +318,45 @@ pub(crate) fn unlink(env: &Env, folder: &Path, dry_run: bool) -> Result<Report, 
             .line("Dry run: would unlink this folder. Your files would stay as they are."));
     }
     let _claim = claim(&paths).map_err(|error| from_online(&error))?;
+    let saved = saved_copies(deps_for, &scope, &paths)?;
     remove_link(&paths).map_err(|error| from_online(&error))?;
-    Ok(Report::new(json!({"unlinked": true, "dryRun": false}))
-        .line("Unlinked this folder. Your files are unchanged."))
+    let mut report = Report::new(json!({"unlinked": true, "dryRun": false, "backups": saved}))
+        .line("Unlinked this folder. Your files are unchanged.");
+    if !saved.is_empty() {
+        report = report.line(format!(
+            "Your versions of the files a link replaced are in {}.",
+            backups_folder(scope.root()).display()
+        ));
+    }
+    Ok(report)
+}
+
+/// Puts the saved copies of replaced files in the folder. Without Git they
+/// can't be read, so a mirror that holds some is kept.
+fn saved_copies(
+    deps_for: &dyn Fn(&Path) -> Result<RemoteDeps, CliError>,
+    scope: &super::scope::RemoteScope,
+    paths: &oleafly_online::sync::SyncPaths,
+) -> Result<Vec<Value>, CliError> {
+    let holds_copies = paths
+        .repo
+        .join(".git")
+        .join("refs")
+        .join("oleafly")
+        .read_dir()
+        .is_ok_and(|mut entries| entries.next().is_some())
+        || std::fs::read_to_string(paths.repo.join(".git").join("packed-refs"))
+            .is_ok_and(|refs| refs.contains("refs/oleafly/before-link-"));
+    if !holds_copies {
+        return Ok(Vec::new());
+    }
+    let deps = deps_for(scope.root())?;
+    let saved = export_link_backups(deps.git.as_ref(), paths, &backups_folder(scope.root()))
+        .map_err(|error| from_online(&error))?;
+    Ok(saved
+        .iter()
+        .map(|backup| json!({"name": backup.name, "files": backup.files}))
+        .collect())
 }
 
 /// Whether a browser can be opened here (Linux needs a display).
@@ -337,6 +382,17 @@ pub(crate) fn open(env: &Env, folder: &Path, print: bool) -> Result<Report, CliE
         }
     };
     let url = project_url(&server, &remote_id);
+    // The server comes from a file in the folder. It is only launched when
+    // it is the service's own or one the user signed in to; the address can
+    // still be printed.
+    if !print && !server_is_known(env, &server)? {
+        return Err(CliError::new(
+            ErrorKind::InvalidInput,
+            "remote.unknown_server",
+            format!("This folder names {server}, which you haven't signed in to."),
+        )
+        .hint("Run oleafly auth login online --server with that address, or use --print to see the project's address."));
+    }
     let opened = !print && can_open_browser() && open::that_detached(&url).is_ok();
     let line = if opened {
         format!("Opened {url}.")
@@ -462,10 +518,12 @@ mod tests {
         std::fs::create_dir_all(folder.join(".oleafly/online/repo")).unwrap();
         std::fs::write(folder.join(".oleafly/online/link.json"), "{}").unwrap();
         std::fs::write(folder.join("main.tex"), "hello").unwrap();
-        let dry = unlink(&env, &folder, true).unwrap();
+        let no_git =
+            |_: &Path| -> Result<RemoteDeps, CliError> { unreachable!("no copies to save") };
+        let dry = unlink(&env, &no_git, &folder, true).unwrap();
         assert_eq!(dry.data["unlinked"], false);
         assert!(folder.join(".oleafly/online").exists());
-        unlink(&env, &folder, false).unwrap();
+        unlink(&env, &no_git, &folder, false).unwrap();
         assert!(!folder.join(".oleafly/online").exists());
         assert_eq!(
             std::fs::read_to_string(folder.join("main.tex")).unwrap(),
@@ -492,6 +550,79 @@ mod tests {
             open(&env, &empty, true).unwrap_err().code,
             "remote.not_linked"
         );
+    }
+
+    #[test]
+    fn open_never_launches_a_server_only_a_folder_file_names() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = env_at(dir.path());
+        let folder = dir.path().join("paper");
+        std::fs::create_dir_all(&folder).unwrap();
+        let origin = |server: &str, project: &str| {
+            let record = json!({"importedFrom": {"service": oleafly_online::service::SERVICE_ID, "server": server, "projectId": project}});
+            std::fs::write(folder.join("project.json"), record.to_string()).unwrap();
+        };
+        // An address the user never signed in to can be printed, not launched.
+        origin("https://evil.example", "p9");
+        assert_eq!(
+            open(&env, &folder, true).unwrap().data["url"],
+            "https://evil.example/project/p9"
+        );
+        let refused = open(&env, &folder, false).unwrap_err();
+        assert_eq!(refused.code, "remote.unknown_server");
+        origin("\\\\attacker\\share", "p9");
+        assert_eq!(
+            open(&env, &folder, false).unwrap_err().code,
+            "remote.unknown_server"
+        );
+        // Records that aren't an https (or local) address, or whose project
+        // isn't a project id, are not believed at all.
+        for (server, project) in [
+            ("file:///etc/passwd", "p9"),
+            ("data:text/html,x", "p9"),
+            ("ftp://latex.example.edu", "p9"),
+            ("http://latex.example.edu", "p9"),
+            ("https://latex.example.edu", "../../x"),
+        ] {
+            origin(server, project);
+            assert_eq!(
+                open(&env, &folder, true).unwrap_err().code,
+                "remote.not_linked",
+                "{server} {project}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn names_from_other_accounts_stay_on_their_own_line() {
+        let page = dashboard_page(&json!([
+            remote_project_json("p1", "Real\n  p9  Fake project\u{1b}[2J"),
+            remote_project_json("p2", "Plain")
+        ]));
+        let server = FixtureServer::start(Arc::new(move |request: &Request| {
+            match request.path.as_str() {
+                "/project" => Reply::ok(page.clone()),
+                _ => Reply::status(404),
+            }
+        }))
+        .await;
+        let dir = tempfile::tempdir().unwrap();
+        let env = env_at(dir.path());
+        signed_in(&env, &server.base);
+        let report = list(&env, Some(&server.base)).await.unwrap();
+        assert_eq!(report.lines.len(), 3, "{:?}", report.lines);
+        assert!(report
+            .lines
+            .iter()
+            .all(|line| !line.contains(['\n', '\u{1b}'])));
+        // The data keeps the name as the service gave it.
+        let names: Vec<&str> = report.data["projects"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|project| project["name"].as_str())
+            .collect();
+        assert!(names.iter().any(|name| name.contains('\u{1b}')));
     }
 
     #[test]

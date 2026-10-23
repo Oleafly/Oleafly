@@ -261,7 +261,9 @@
     "loadingRepositories": "Depolar yükleniyor…",
     "repositoriesFailed": "Depolar yüklenemedi.",
     "noRepositories": "Depo bulunamadı.",
+    "noMatchLoaded": "Şu ana kadar yüklenen depolarda eşleşme yok. Aramaya devam etmek için daha fazla yükleyin.",
     "privateRepository": "Özel depo",
+    "openFailed": "Oleafly, {{host}} adresini tarayıcınızda açamadı.",
     "openOnHost": "{{host}} üzerinde aç",
     "openRepositoryOnHost": "{{name}} deposunu {{host}} üzerinde aç",
     "sources": {

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, CheckCircle2, MinusCircle } from "lucide-react";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/i18n";
+import { describeError } from "@/lib/app-error";
 import type { EvidenceCheckId, EvidenceItem, EvidenceReport, EvidenceStatus } from "@/lib/research-tasks";
 
 function checkLabel(id: EvidenceCheckId): string {
@@ -71,10 +73,20 @@ export function evidenceItemText(item: EvidenceItem): string {
   }
 }
 
-function StatusIcon({ status }: Readonly<{ status: EvidenceStatus }>) {
-  if (status === "pass") return <CheckCircle2 aria-hidden className="size-4 shrink-0 text-primary" />;
-  if (status === "warn") return <AlertTriangle aria-hidden className="size-4 shrink-0 text-amber-600" />;
-  return <MinusCircle aria-hidden className="size-4 shrink-0 text-muted-foreground" />;
+const STATUS_VARIANT: Record<EvidenceStatus, BadgeVariant> = {
+  pass: "success",
+  warn: "warning",
+  skipped: "muted",
+};
+
+function StatusBadge({ status }: Readonly<{ status: EvidenceStatus }>) {
+  const Icon = status === "pass" ? CheckCircle2 : status === "warn" ? AlertTriangle : MinusCircle;
+  return (
+    <Badge variant={STATUS_VARIANT[status]} className="shrink-0 gap-1">
+      <Icon aria-hidden className="size-3" />
+      {statusLabel(status)}
+    </Badge>
+  );
 }
 
 interface EvidenceChecklistProps {
@@ -87,11 +99,16 @@ interface EvidenceChecklistProps {
 export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<EvidenceChecklistProps>) {
   const { t } = useTranslation(["researchTools"]);
   const [refreshing, setRefreshing] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const busy = checking || refreshing;
   const refresh = async () => {
     setRefreshing(true);
+    setFailure(null);
     try {
       await onRefresh();
+    } catch (cause) {
+      // The checks didn't run (the workspace is gone, the task moved on): say so.
+      setFailure(describeError(cause));
     } finally {
       setRefreshing(false);
     }
@@ -105,21 +122,25 @@ export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<Evid
           </h5>
           <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.evidence.hint)}</p>
         </div>
-        <Button size="xs" variant="outline" disabled={busy} onClick={() => void refresh().catch(() => {})}>
+        <Button size="xs" variant="outline" disabled={busy} onClick={() => void refresh()}>
           {busy ? t(($) => $.researchTools.evidence.running) : t(($) => $.researchTools.evidence.refresh)}
         </Button>
       </div>
+      {failure ? (
+        <p role="alert" className="select-text text-xs text-destructive">
+          {failure}
+        </p>
+      ) : null}
       {report ? (
         <ul className="divide-y rounded-md border">
           {report.checks.map((check) => (
             <li key={check.id} className="px-3 py-2">
               <div className="flex items-center gap-2 text-sm">
-                <StatusIcon status={check.status} />
                 <span className="min-w-0 flex-1">{checkLabel(check.id)}</span>
-                <span className="text-xs text-muted-foreground">{statusLabel(check.status)}</span>
+                <StatusBadge status={check.status} />
               </div>
               {check.items.length > 0 ? (
-                <ul className="mt-1 space-y-0.5 pl-6 text-xs text-muted-foreground">
+                <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                   {check.items.slice(0, 50).map((item, index) => (
                     <li key={`${item.code}-${index}`} className="select-text break-words">
                       {evidenceItemText(item)}

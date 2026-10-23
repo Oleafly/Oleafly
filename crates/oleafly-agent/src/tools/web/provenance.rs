@@ -6,13 +6,17 @@ use std::collections::HashSet;
 use reqwest::Url;
 
 const MAX_URLS: usize = 10_000;
+/// Characters a sentence puts after a URL that are not part of it.
 const TRAILING: &[char] = &['.', ',', ';', ':', '!', '?', ')', ']', '}', '>', '\'', '"'];
+/// How many of them are peeled off one written URL, one at a time.
+const MAX_TRAILING_PEELED: usize = 8;
 
 /// A URL in the form the set compares: lowercase scheme and host, https
-/// for http, no default port, no fragment, trailing punctuation trimmed.
+/// for http, no default port, no fragment. Nothing is trimmed from the end:
+/// a URL that differs by a character is a different address, so appending
+/// punctuation to a seen URL cannot reach a new one.
 pub(crate) fn normalize_url(raw: &str) -> Option<String> {
-    let trimmed = raw.trim().trim_end_matches(TRAILING);
-    let mut url = Url::parse(trimmed).ok()?;
+    let mut url = Url::parse(raw.trim()).ok()?;
     match url.scheme() {
         "https" => {}
         "http" => url.set_scheme("https").ok()?,
@@ -24,6 +28,14 @@ pub(crate) fn normalize_url(raw: &str) -> Option<String> {
         url.set_port(None).ok()?;
     }
     Some(url.to_string())
+}
+
+/// A URL that passed the check: the normalized form (the cache key) and the
+/// address to fetch.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct SeenUrl {
+    pub(crate) key: String,
+    pub(crate) target: String,
 }
 
 #[derive(Debug, Default)]
@@ -41,7 +53,10 @@ impl Provenance {
         }
     }
 
-    /// Every http(s) URL written in `text`.
+    /// Every http(s) URL written in `text`. A URL at the end of a sentence
+    /// may or may not own the punctuation after it (`Foo_(bar)` does,
+    /// `a?x=1).` does not), so it is recorded as written and with the
+    /// trailing punctuation peeled off one character at a time.
     pub(crate) fn add_from_text(&mut self, text: &str) {
         let mut rest = text;
         while let Some(at) = rest.find("http") {
@@ -53,7 +68,15 @@ impl Provenance {
                         character.is_whitespace() || matches!(character, '<' | '>' | '"' | '`')
                     })
                     .unwrap_or(candidate.len());
-                self.add(&candidate[..end]);
+                let mut written = &candidate[..end];
+                self.add(written);
+                for _ in 0..MAX_TRAILING_PEELED {
+                    match written.strip_suffix(TRAILING) {
+                        Some(shorter) => written = shorter,
+                        None => break,
+                    }
+                    self.add(written);
+                }
                 rest = &candidate[end..];
             } else {
                 rest = &candidate[4..];
@@ -61,8 +84,29 @@ impl Provenance {
         }
     }
 
+    /// The address this conversation has seen for `url`, when it has: the
+    /// one a fetch must use, exactly what was checked and nothing appended
+    /// to it.
+    pub(crate) fn seen(&self, url: &str) -> Option<SeenUrl> {
+        let key = normalize_url(url)?;
+        if !self.urls.contains(&key) {
+            return None;
+        }
+        // The check treats http and https alike (a fetch goes over https
+        // either way); the address keeps the scheme it was asked for.
+        let mut target = Url::parse(&key).ok()?;
+        if Url::parse(url.trim()).is_ok_and(|written| written.scheme() == "http") {
+            let _ = target.set_scheme("http");
+        }
+        Some(SeenUrl {
+            key,
+            target: target.to_string(),
+        })
+    }
+
+    #[cfg(test)]
     pub(crate) fn contains(&self, url: &str) -> bool {
-        normalize_url(url).is_some_and(|normalized| self.urls.contains(&normalized))
+        self.seen(url).is_some()
     }
 }
 
@@ -80,6 +124,59 @@ mod tests {
         assert!(provenance.contains("https://b.org/x"));
         assert!(!provenance.contains("file:///etc/passwd"));
         assert!(!provenance.contains("https://example.com/a?x=2"));
+    }
+
+    #[test]
+    fn punctuation_appended_to_a_seen_url_is_another_address() {
+        let mut provenance = Provenance::default();
+        provenance.add_from_text("Read https://attacker.example/page please");
+        assert!(provenance.contains("https://attacker.example/page"));
+        // A page cannot spell data into the URL with trailing punctuation.
+        for appended in [".", ".,;:)", "?", "!)", "..."] {
+            let url = format!("https://attacker.example/page{appended}");
+            assert!(!provenance.contains(&url), "{url}");
+            assert_eq!(provenance.seen(&url), None);
+        }
+    }
+
+    #[test]
+    fn a_url_that_ends_in_a_parenthesis_is_read_whole() {
+        let mut provenance = Provenance::default();
+        provenance
+            .add_from_text("(see https://en.wikipedia.org/wiki/Rust_(programming_language)).");
+        // The page the sentence names, and the sentence-final forms.
+        assert_eq!(
+            provenance
+                .seen("https://en.wikipedia.org/wiki/Rust_(programming_language)")
+                .map(|seen| seen.target)
+                .as_deref(),
+            Some("https://en.wikipedia.org/wiki/Rust_(programming_language)")
+        );
+        assert!(provenance.contains("https://en.wikipedia.org/wiki/Rust_(programming_language))."));
+        assert!(
+            !provenance.contains("https://en.wikipedia.org/wiki/Rust_(programming_language))))")
+        );
+    }
+
+    #[test]
+    fn what_is_fetched_is_the_form_that_was_seen() {
+        let mut provenance = Provenance::default();
+        provenance.add_from_text("http://Example.COM:80/a?x=1#top");
+        assert_eq!(
+            provenance.seen("HTTPS://example.com/a?x=1#other"),
+            Some(SeenUrl {
+                key: "https://example.com/a?x=1".into(),
+                target: "https://example.com/a?x=1".into(),
+            })
+        );
+        // The scheme asked for is kept; the rest is what was checked.
+        assert_eq!(
+            provenance
+                .seen("http://example.com:80/a?x=1")
+                .unwrap()
+                .target,
+            "http://example.com/a?x=1"
+        );
     }
 
     #[test]

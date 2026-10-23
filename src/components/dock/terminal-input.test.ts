@@ -122,6 +122,22 @@ describe("terminal key handler", () => {
     expect(hooks.find).toHaveBeenCalledTimes(1);
   });
 
+  it("opens find on Ctrl+Shift+F and leaves Ctrl+F to the program on Windows and Linux", () => {
+    for (const platform of ["windows", "linux"] as const) {
+      hooks.find.mockClear();
+      const handler = attach(ctxFor(platform));
+      const find = keydown("F", { ctrlKey: true, shiftKey: true, keyCode: 70 });
+      expect(handler(find)).toBe(false);
+      expect(find.defaultPrevented).toBe(true);
+      expect(hooks.find).toHaveBeenCalledTimes(1);
+
+      const forward = keydown("f", { ctrlKey: true, keyCode: 70 });
+      expect(handler(forward)).toBe(true);
+      expect(forward.defaultPrevented).toBe(false);
+      expect(hooks.find).toHaveBeenCalledTimes(1);
+    }
+  });
+
   it("leaves ordinary keys to xterm", () => {
     const handler = attach(ctxFor("linux"));
     const down = keydown("a", { keyCode: 65 });

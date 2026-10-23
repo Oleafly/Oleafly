@@ -43,13 +43,15 @@
       "command": "Bekräfta kommandot",
       "externalTool": "Bekräfta åtgärden i det externa verktyget",
       "internet": "Bekräfta internetåtkomst",
-      "edit": "Bekräfta AI-ändringen"
+      "edit": "Bekräfta AI-ändringen",
+      "researchTask": "Bekräfta forskningsuppgiften"
     },
     "headline": {
       "command": "Assistenten vill köra det här kommandot",
       "externalTool": "Assistenten vill använda ett externt verktyg",
       "internet": "Assistenten vill komma åt internet",
-      "edit": "Assistenten vill ändra dina filer"
+      "edit": "Assistenten vill ändra dina filer",
+      "researchTask": "Assistenten vill skapa en forskningsuppgift"
     },
     "mcpNote": "Det här skickar argumenten nedan till den konfigurerade MCP-servern.",
     "line": "rad {{line}}",
@@ -70,6 +72,22 @@
       "title": "Begäran från extern agent (MCP)",
       "moreWaiting_one": "{{count}} till väntar",
       "moreWaiting_other": "{{count}} till väntar"
+    },
+    "researchTask": {
+      "note": "Uppgiften arbetar på egen hand i en kopia av projektet. Du granskar dess ändringar efteråt.",
+      "title": "Titel",
+      "goal": "Mål",
+      "skills": "Färdigheter",
+      "prompt": "Prompt",
+      "commands": "Kommandon",
+      "commandsAsk": "Fråga före varje",
+      "network": "Nätverk",
+      "timeBudget": "Tidsbudget",
+      "timeBudgetDefault": "Standard",
+      "minutes_one": "{{count}} minut",
+      "minutes_other": "{{count}} minuter",
+      "planFirst": "Planera först",
+      "startNow": "Starta nu"
     }
   },
   "attachments": {
@@ -95,7 +113,9 @@
     "saveFailed": "Det gick inte att spara {{name}}.",
     "missing": "{{name}} är inte längre tillgänglig.",
     "sentAsText": "{{name}} skickades som text eftersom den här modellen inte kan läsa den som fil.",
-    "skipped": "{{name}} skickades inte."
+    "skipped": "{{name}} skickades inte.",
+    "dropUnreadable": "{{names}} kunde inte läsas.",
+    "notReplayed": "Filer från en äldre version kan inte skickas igen: {{names}}."
   },
   "chat": {
     "pill": {
@@ -591,7 +611,10 @@
       "queued": "I kö: skickas när agenten är klar",
       "remove": "Ta bort meddelandet i kön",
       "sendNow": "Skicka nu",
-      "sendFailed": "Meddelandet skickades inte. Skicka det igen eller ta bort det."
+      "sendFailed": "Meddelandet skickades inte. Skicka det igen eller ta bort det.",
+      "queuedConnecting": "I kö: skickas när agenten är redo",
+      "retry": "Skicka igen",
+      "edit": "Redigera"
     },
     "slash": {
       "commands": "Agentkommandon",
@@ -631,7 +654,9 @@
       "apiKeyPlaceholder": "Klistra in din API-nyckel",
       "geminiGoogle": "Inloggning med Google fungerar inte längre för individuella abonnemang. Använd en Gemini-API-nyckel eller Vertex AI.",
       "noProject": "Öppna ett projekt för att logga in från terminalen.",
-      "signOut": "Logga ut"
+      "signOut": "Logga ut",
+      "confirmTerminal": "{{agent}} loggar in via kommandot nedan, som körs i en terminalflik. Kontrollera det innan du godkänner.",
+      "remote": "Den här konversationen körs på en annan dator. Logga in på agenten där."
     },
     "elicitation": {
       "ariaLabel": "Begäran från agenten",
@@ -644,7 +669,8 @@
       "openUrl": "Öppna i webbläsaren",
       "confirmTitle": "Vill du öppna {{host}}?",
       "confirmDescription": "Agenten bad dig slutföra ett steg på den här webbplatsen. Den öppnas i din webbläsare.",
-      "waiting": "Väntar på att webbplatsen ska bli klar."
+      "waiting": "Väntar på att webbplatsen ska bli klar.",
+      "openFailed": "Länken kunde inte öppnas i din webbläsare."
     },
     "remote": {
       "banner": "Hermes körs på {{host}} via SSH. Dess ändringar stannar på den datorn."
@@ -655,7 +681,6 @@
       "search": "Sök i konversationer",
       "empty": "Inga konversationer matchar.",
       "loadMore": "Läs in fler",
-      "open": "Öppna",
       "rename": "Byt namn",
       "renameLabel": "Konversationens namn",
       "delete": "Radera",
@@ -676,8 +701,11 @@
       "fork": "Förgrena konversationen",
       "forkUnsupported": "Den här agenten kan inte förgrena konversationer.",
       "forkBusy": "Vänta tills agenten är klar innan du förgrenar.",
-      "v2": "Utkast till ACP v2",
-      "remote": "Fjärr"
+      "v2": "Förhandsvisning av protokollet",
+      "remote": "Fjärr",
+      "signOutTitle": "Logga ut från {{agent}}?",
+      "signOutDescription": "Det här avslutar själva inloggningen för {{agent}}. En terminal som använder samma inloggning loggas också ut, och den här konversationen stannar tills du loggar in igen.",
+      "signOutAccount": "Inloggad med {{account}}"
     },
     "commit": {
       "button": "Checka in",

@@ -63,9 +63,11 @@ impl Report {
     }
 
     /// Prints the lines (people) and warnings, and returns the outcome.
+    /// The lines carry names and text from other people's accounts, so
+    /// nothing in them can steer the terminal.
     pub(crate) fn deliver(self, ctx: &Context) -> Outcome {
         for line in &self.lines {
-            ctx.say(line);
+            ctx.say(plain_text(line));
         }
         for warning in self.warnings {
             ctx.warn(warning.code, warning.message);
@@ -76,6 +78,27 @@ impl Report {
             Outcome::failure(self.exit, self.data)
         }
     }
+}
+
+/// `text` without anything a terminal would act on: control characters
+/// (escape sequences, carriage returns, bells) and the characters that
+/// reorder text. New lines and tabs stay. Text from a collaborator or a
+/// server (a project name, a comment) goes through this before it is printed.
+pub(crate) fn plain_text(text: &str) -> String {
+    text.chars()
+        .filter(|character| {
+            matches!(character, '\n' | '\t')
+                || !(character.is_control()
+                    || matches!(*character, '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'))
+        })
+        .collect()
+}
+
+/// [`plain_text`] for a value that belongs on one line, such as a project
+/// name: line breaks and tabs become spaces, so it can't start a line of its
+/// own.
+pub(crate) fn one_line(text: &str) -> String {
+    plain_text(&text.replace(['\n', '\t', '\r'], " "))
 }
 
 /// Lists a failure's files for people (JSON has them in `details`).
@@ -553,6 +576,20 @@ mod tests {
                 .unwrap_err()
                 .code,
             "auth.not_text"
+        );
+    }
+
+    #[test]
+    fn terminal_text_loses_escape_sequences_and_line_forgery() {
+        assert_eq!(
+            plain_text("ok\u{1b}]52;c;ZXZpbA==\u{7}\u{1b}[2J done\r\nnext\tcol"),
+            "ok]52;c;ZXZpbA==[2J done\nnext\tcol"
+        );
+        assert_eq!(plain_text("a\u{85}b\u{9b}c\u{202e}d"), "abcd");
+        assert_eq!(plain_text("Thèse – 论文 🙂"), "Thèse – 论文 🙂");
+        assert_eq!(
+            one_line("Real\n  p9  Fake project\u{1b}[0m"),
+            "Real   p9  Fake project[0m"
         );
     }
 

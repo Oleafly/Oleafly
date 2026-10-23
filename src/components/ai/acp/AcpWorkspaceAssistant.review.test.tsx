@@ -162,7 +162,9 @@ describe("CLI home research presets", () => {
 
     await waitFor(() => expect(acpStart).toHaveBeenCalledExactlyOnceWith("paper", "fixture"));
     const composer = useAcpSessionsStore.getState().composers.paper;
-    const draft = useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture")]?.text ?? "";
+    // The conversation it started has the draft.
+    const draft = useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture", "fresh")]?.text ?? "";
+    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture")]).toBeUndefined();
     expect(draft).toMatch(/^Audit the claims in this manuscript against their cited sources\./);
     expect(draft).toMatch(/Do not change manuscript files; write findings to research\/claims\.md\.$/);
     expect(composer?.skill).toEqual({ id: "oleafly-verify-claims", name: "Verify claims" });
@@ -183,7 +185,7 @@ describe("CLI home research presets", () => {
     await waitFor(() => expect(quickStartLabels(ui)).toContain("Reference cleanup"));
     fireEvent.click(ui.getByTitle("Reference cleanup"));
     expect(await ui.findByTestId("clean-library-dialog")).toBeInTheDocument();
-    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture")]?.text ?? "").toBe("");
+    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture", "saved")]?.text ?? "").toBe("");
   });
 
   it("sends the chosen skill with the message and shows it on the user row", async () => {
@@ -212,7 +214,7 @@ describe("CLI home research presets", () => {
 
   it("lets the user remove the skill chip", async () => {
     useAcpSessionsStore.setState({ composers: { paper: { agentId: "fixture", skill: { id: "oleafly-verify-claims", name: "Verify claims" } } } });
-    useComposerDrafts.getState().setText(acpComposerId("paper", "fixture"), "Hi");
+    useComposerDrafts.getState().setText(acpComposerId("paper", "fixture", "saved"), "Hi");
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     fireEvent.click(await ui.findByRole("button", { name: "Remove skill Verify claims" }));
     expect(ui.queryByTestId("acp-skill-chip")).toBeNull();

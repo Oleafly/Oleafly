@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} がこのリポジトリへのアクセスを拒否しました。アカウントにアクセス権があるか確認してください。組織がシングルサインオン (SSO) を使っている場合は、先にその組織に対してサインインを承認してください。",
+    "access_denied_account": "{{host}} が {{account}} に対してこのリポジトリへのアクセスを拒否しました。このアカウントがアクセスできるか確認してください。組織がシングルサインオン (SSO) を使っている場合は、先にその組織に対してサインインを承認してください。",
     "account_missing": "{{host}} の Git ホスティングのアカウントがありません。設定で追加してください。",
     "archive_too_large": "リポジトリのファイルが {{limit}} MB を超えているため、Oleafly では取り込めません。ご自身でリポジトリをクローンし、そのフォルダを開いてください。",
-    "auth_rejected": "{{host}} が保存済みのサインイン情報を受け付けませんでした。設定で {{host}} にサインインし直してください。",
+    "auth_rejected": "{{host}} が {{account}} の保存済みのサインイン情報を受け付けませんでした。設定で {{host}} にサインインし直してください。",
     "credentials_missing": "{{host}} からユーザー名とパスワードを求められました。設定で {{host}} にサインインするか、SSH キーまたは Git の認証情報ヘルパーを設定してください。",
     "credentials_rejected": "{{host}} が Git から渡されたユーザー名とパスワードを受け付けませんでした。設定で {{host}} にサインインするか、Git が使う認証情報を更新してください。",
     "device_flow_unavailable": "このビルドでは {{host}} へのブラウザでのサインインを使えません。代わりにアクセストークンを使ってください。",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "この名前のリポジトリは {{host}} にすでにあります。",
     "forge_server_error": "{{host}} からエラーが返されました（{{status}}）。",
     "forge_signed_out": "{{host}} のサインインが期限切れになったか、取り消されました。設定でサインインし直してください。",
+    "forge_sso_required": "{{host}} では、このサインインを組織のシングルサインオンに対して承認する必要があります。{{host}} で承認してから、もう一度お試しください。",
     "forge_store": "Oleafly は Git ホスティングのアカウントを読み込みも保存もできませんでした。",
     "forge_token_invalid": "アクセストークンではないようです。トークン全体を貼り付けてください。",
     "forge_token_rejected": "{{host}} がこのトークンを受け付けませんでした。トークン全体をコピーしたか、期限が切れていないかを確認してください。",
     "forge_unknown_server": "Oleafly は {{host}} がどの種類のサーバーか判別できませんでした。サーバーの種類を選んでください。",
     "host_key_unknown": "SSH はまだ {{host}} を知りません。一度ターミナルから接続してホスト鍵を受け入れてから、もう一度お試しください。",
     "host_unreachable": "Oleafly は {{host}} に接続できませんでした。アドレスと接続を確認してください。",
+    "import_cancelled": "読み込みをキャンセルしました。",
     "invalid_remote_url": "Git リポジトリの HTTPS または SSH のアドレスを入力してください。",
     "nested_repository": "このプロジェクトは別の Git リポジトリの中にあるため、Oleafly はここに別のリポジトリを作成しません。",
     "not_installed": "このコンピュータには Git がインストールされていません。Git をインストールしてから、もう一度お試しください。",
     "push_rejected": "リモートのブランチに、このプロジェクトにまだないコミットがあります。先にプルしてから、もう一度プッシュしてください。",
     "remote_exists": "このプロジェクトはすでに {{remote}} にリンクされています。",
-    "remote_has_password": "アドレスからパスワードを取り除いてください。Oleafly は代わりに Git ホスティングのアカウントか、ご自身の Git の認証情報でサインインします。",
+    "remote_has_password": "アドレスからパスワードまたはアクセストークンを取り除いてください。Oleafly は代わりに Git ホスティングのアカウントか、ご自身の Git の認証情報でサインインします。",
     "repository_empty": "このリポジトリにはまだコミットがないため、取り込むものがありません。",
     "repository_not_found": "{{host}} のこのアドレスにはリポジトリがないか、あなたのアカウントからは見えません。",
     "sign_in_cancelled": "ブラウザでサインインがキャンセルされました。",
@@ -269,6 +272,14 @@
   "provider_credit": {
     "failed": "Oleafly は {{provider}} の残高を確認できませんでした。"
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 がインストールされていません。",
+    "git_bash_missing": "Git Bash がインストールされていません。Git for Windows をインストールするか、別の shell を選んでください。",
+    "wsl_missing": "WSL がインストールされていません。",
+    "wsl_no_distro": "WSL に Linux ディストリビューションがまだありません。",
+    "shell_path_empty": "設定で Shell のパスを入力するか、別の shell を選んでください。",
+    "shell_path_missing": "{{path}} にプログラムがありません。"
+  },
   "mathpix": {
     "keys_missing": "先に「設定 → AI → ツール」で Mathpix のアプリ ID とキーを追加してください。",
     "invalid_keys": "そのアプリ ID またはキーには、Mathpix のキーに含まれない文字が入っています。Mathpix のコンソールからもう一度コピーしてください。",
@@ -282,7 +293,8 @@
     "pdf_too_large": "この PDF は Mathpix の上限である 256 MB を超えています。",
     "timed_out": "Mathpix は 30 分以内にこの PDF の処理を終えられませんでした。ページ数を減らしてお試しください。",
     "cancelled": "Mathpix での変換を停止しました。",
-    "wrong_window": "Mathpix は Oleafly のメインウィンドウからのみ使えます。"
+    "wrong_window": "Mathpix は Oleafly のメインウィンドウからのみ使えます。",
+    "pdf_too_large_ipc": "このコンピュータから Mathpix に送れる PDF は 16 MB までです。PDF を分割してから、もう一度お試しください。"
   },
   "desktop_apps": {
     "not_installed": "Cua Driver がインストールされていません。「設定 → 連携 → デスクトップアプリ」でインストールしてください。",

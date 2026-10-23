@@ -25,8 +25,6 @@ vi.mock("@/lib/research-tasks", () => ({
   watchResearchTask: vi.fn(async () => {}),
 }));
 
-vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: vi.fn(async () => () => {}) }));
-
 vi.mock("@/store/files", () => {
   let state: { projectId: string | null } = { projectId: null };
   const store = (selector: (value: typeof state) => unknown) => selector(state);

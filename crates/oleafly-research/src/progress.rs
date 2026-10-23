@@ -55,8 +55,9 @@ pub struct BudgetUsage {
     pub max_runs: Option<u32>,
 }
 
-/// The plan checklist and ledger rows from the task's record, when its
-/// workspace still exists.
+/// The plan checklist and every ledger row from the task's record, when its
+/// workspace still exists. The best result needs the whole ledger; the tab
+/// shows only [`recent_ledger`].
 pub fn record_contents(task: &ResearchTask) -> (Vec<PlanItem>, Vec<LedgerRow>) {
     let Some(isolation) = &task.isolation else {
         return (Vec::new(), Vec::new());
@@ -65,14 +66,15 @@ pub fn record_contents(task: &ResearchTask) -> (Vec<PlanItem>, Vec<LedgerRow>) {
     let plan = record::read_record_file(root, &task.record_slug, "plan.md", MAX_PLAN_BYTES)
         .map(|text| record::parse_plan_checklist(&text))
         .unwrap_or_default();
-    let mut ledger =
-        record::read_record_file(root, &task.record_slug, "ledger.tsv", MAX_LEDGER_BYTES)
-            .map(|text| record::parse_ledger(&text))
-            .unwrap_or_default();
-    if ledger.len() > MAX_LEDGER_ROWS {
-        ledger.drain(..ledger.len() - MAX_LEDGER_ROWS);
-    }
+    let ledger = record::read_record_file(root, &task.record_slug, "ledger.tsv", MAX_LEDGER_BYTES)
+        .map(|text| record::parse_ledger(&text))
+        .unwrap_or_default();
     (plan, ledger)
+}
+
+/// The newest ledger rows, which the Progress tab lists.
+pub fn recent_ledger(ledger: &[LedgerRow]) -> Vec<LedgerRow> {
+    ledger[ledger.len().saturating_sub(MAX_LEDGER_ROWS)..].to_vec()
 }
 
 /// The best value of the brief's main metric: over finished runs the ledger
@@ -212,6 +214,25 @@ mod tests {
         )
         .unwrap();
         assert_eq!(kept.run_id, "r001");
+    }
+
+    #[test]
+    fn the_best_run_comes_from_the_whole_ledger_not_its_last_rows() {
+        // r012 is the best run and was kept long ago; the newest 50 rows only
+        // keep worse ones.
+        let mut runs = vec![run("r012", 12, RunState::Succeeded, Some(1.05))];
+        let mut ledger = vec![row("r012", "keep")];
+        for index in 13..=80 {
+            let id = format!("r{index:03}");
+            runs.push(run(&id, index, RunState::Succeeded, Some(1.2)));
+            ledger.push(row(&id, "keep"));
+        }
+        assert_eq!(recent_ledger(&ledger).len(), MAX_LEDGER_ROWS);
+        assert_eq!(recent_ledger(&ledger[..3]).len(), 3);
+        // The rows shown do not hold r012, but the best result does.
+        assert!(recent_ledger(&ledger).iter().all(|row| row.id != "r012"));
+        let best = best_metric(&brief(), &runs, &ledger).unwrap();
+        assert_eq!((best.run_id.as_str(), best.value), ("r012", 1.05));
     }
 
     #[test]

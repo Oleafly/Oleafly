@@ -165,9 +165,11 @@ pub fn parse_ledger(text: &str) -> Vec<LedgerRow> {
         index("verdict"),
         index("notes"),
     );
-    lines
-        .filter(|line| !line.trim().is_empty())
-        .take(MAX_LEDGER_ROWS)
+    // The newest rows are the ones that matter when a ledger outgrows the cap.
+    let rows: Vec<&str> = lines.filter(|line| !line.trim().is_empty()).collect();
+    let skipped = rows.len().saturating_sub(MAX_LEDGER_ROWS);
+    rows.into_iter()
+        .skip(skipped)
         .map(|line| {
             let cells: Vec<&str> = line.split('\t').collect();
             let cell = |position: Option<usize>| {
@@ -349,6 +351,21 @@ mod tests {
         assert_eq!(rows[0].metrics, BTreeMap::from([("loss".to_owned(), 0.5)]));
         assert_eq!(rows[0].verdict, "keep");
         assert_eq!(rows[0].command, "python t.py");
+    }
+
+    #[test]
+    fn a_long_ledger_keeps_its_newest_rows() {
+        let mut text = format!("{LEDGER_HEADER}\n");
+        for index in 1..=MAX_LEDGER_ROWS + 100 {
+            text.push_str(&format!("r{index:04}\t\t\t\t\t\tkeep\t\n"));
+        }
+        let rows = parse_ledger(&text);
+        assert_eq!(rows.len(), MAX_LEDGER_ROWS);
+        assert_eq!(rows[0].id, "r0101");
+        assert_eq!(
+            rows[MAX_LEDGER_ROWS - 1].id,
+            format!("r{:04}", MAX_LEDGER_ROWS + 100)
+        );
     }
 
     #[test]

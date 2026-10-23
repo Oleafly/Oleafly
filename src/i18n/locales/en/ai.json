@@ -43,13 +43,15 @@
       "command": "Confirm command",
       "externalTool": "Confirm external tool action",
       "internet": "Confirm internet access",
-      "edit": "Confirm AI edit"
+      "edit": "Confirm AI edit",
+      "researchTask": "Confirm research task"
     },
     "headline": {
       "command": "The assistant wants to run this command",
       "externalTool": "The assistant wants to use an external tool",
       "internet": "The assistant wants to access the internet",
-      "edit": "The assistant wants to change your files"
+      "edit": "The assistant wants to change your files",
+      "researchTask": "The assistant wants to create a research task"
     },
     "mcpNote": "This sends the arguments below to the configured MCP server.",
     "line": "line {{line}}",
@@ -70,6 +72,22 @@
       "title": "External agent request (MCP)",
       "moreWaiting_one": "{{count}} more waiting",
       "moreWaiting_other": "{{count}} more waiting"
+    },
+    "researchTask": {
+      "note": "The task works on its own in a copy of the project. You review its changes afterwards.",
+      "title": "Title",
+      "goal": "Goal",
+      "skills": "Skills",
+      "prompt": "Prompt",
+      "commands": "Commands",
+      "commandsAsk": "Ask before each one",
+      "network": "Network",
+      "timeBudget": "Time budget",
+      "timeBudgetDefault": "Default",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "planFirst": "Plan first",
+      "startNow": "Start now"
     }
   },
   "attachments": {
@@ -95,7 +113,9 @@
     "saveFailed": "Couldn't save {{name}}.",
     "missing": "{{name}} is no longer available.",
     "sentAsText": "{{name}} was sent as text because this model can't read it as a file.",
-    "skipped": "{{name}} was not sent."
+    "skipped": "{{name}} was not sent.",
+    "dropUnreadable": "{{names}} could not be read.",
+    "notReplayed": "Files from an older version can't be sent again: {{names}}."
   },
   "chat": {
     "pill": {
@@ -591,7 +611,10 @@
       "queued": "Queued: sends when the agent finishes",
       "remove": "Remove queued message",
       "sendNow": "Send now",
-      "sendFailed": "This message was not sent. Send it again or remove it."
+      "sendFailed": "This message was not sent. Send it again or remove it.",
+      "queuedConnecting": "Queued: sends when the agent is ready",
+      "retry": "Send again",
+      "edit": "Edit"
     },
     "slash": {
       "commands": "Agent commands",
@@ -631,7 +654,9 @@
       "apiKeyPlaceholder": "Paste your API key",
       "geminiGoogle": "Signing in with Google no longer works for individual plans. Use a Gemini API key or Vertex AI.",
       "noProject": "Open a project to sign in from the terminal.",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "confirmTerminal": "{{agent}} signs in through the command below, which runs in a terminal tab. Check it before you agree.",
+      "remote": "This conversation runs on another machine. Sign in to the agent there."
     },
     "elicitation": {
       "ariaLabel": "Agent request",
@@ -644,7 +669,8 @@
       "openUrl": "Open in browser",
       "confirmTitle": "Open {{host}}?",
       "confirmDescription": "The agent asked you to finish a step on this site. It opens in your browser.",
-      "waiting": "Waiting for the site to finish."
+      "waiting": "Waiting for the site to finish.",
+      "openFailed": "The link could not be opened in your browser."
     },
     "remote": {
       "banner": "Hermes runs on {{host}} over SSH. Its changes stay on that machine."
@@ -655,7 +681,6 @@
       "search": "Search conversations",
       "empty": "No conversations match.",
       "loadMore": "Load more",
-      "open": "Open",
       "rename": "Rename",
       "renameLabel": "Conversation name",
       "delete": "Delete",
@@ -676,8 +701,11 @@
       "fork": "Fork conversation",
       "forkUnsupported": "This agent cannot fork conversations.",
       "forkBusy": "Wait for the agent to finish before you fork.",
-      "v2": "ACP v2 draft",
-      "remote": "Remote"
+      "v2": "Protocol preview",
+      "remote": "Remote",
+      "signOutTitle": "Sign out of {{agent}}?",
+      "signOutDescription": "This ends the {{agent}} sign-in itself. A terminal that uses the same sign-in is signed out too, and this conversation stops until you sign in again.",
+      "signOutAccount": "Signed in with {{account}}"
     },
     "commit": {
       "button": "Commit",

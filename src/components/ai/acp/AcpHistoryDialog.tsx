@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Pencil, Search, Trash2 } from "lucide-react";
+import { Pencil, Search, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -11,6 +12,7 @@ import {
   acpAgentSessions, acpError, acpSessionDelete, acpSessionImport, acpSessionPage, acpSessionRename,
   type AcpAgentSessionInfo, type AcpAgentStatus, type AcpSession,
 } from "@/lib/acp";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { i18n } from "@/i18n";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { toast } from "@/lib/toast";
@@ -27,14 +29,7 @@ export async function deleteConversation(
   agentName: string,
 ): Promise<void> {
   const outcome = await acpSessionDelete(projectId, session.id, fromAgent);
-  useAcpSessionsStore.setState((state) => {
-    const { [session.id]: _session, ...sessions } = state.sessions;
-    const { [session.id]: _events, ...events } = state.events;
-    const activeByProject = state.activeByProject[projectId] === session.id
-      ? { ...state.activeByProject, [projectId]: null }
-      : state.activeByProject;
-    return { sessions, events, activeByProject };
-  });
+  useAcpSessionsStore.getState().forgetSession(projectId, session.id);
   if (outcome.agentError) {
     toast.error(i18n.t(($) => $.ai.acp.history.deleteAgentFailed, { agent: agentName, error: outcome.agentError }));
   }
@@ -142,8 +137,10 @@ export function AcpHistoryDialog({
   const [rows, setRows] = useState<AcpSession[]>([]);
   const [hasMore, setHasMore] = useState(false);
   // Where the next page starts: the last conversation the backend sent,
-  // delegated ones included. The last row shown can be older than that.
-  const [cursor, setCursor] = useState<number | undefined>(undefined);
+  // delegated ones included. The last row shown can be older than that. The
+  // id breaks a tie between conversations updated at the same time.
+  const [cursor, setCursor] = useState<{ before: number; beforeId: string } | undefined>(undefined);
+  const search = useDebouncedValue(query.trim(), SEARCH_DELAY_MS, (value) => value === "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -154,17 +151,23 @@ export function AcpHistoryDialog({
   const importId = useId();
   const request = useRef(0);
 
-  const load = useCallback(async (search: string, before?: number) => {
+  const load = useCallback(async (term: string, after?: { before: number; beforeId: string }) => {
     const id = ++request.current;
     setLoading(true);
     setError(null);
     try {
-      const page = await acpSessionPage(projectId, { query: search || undefined, before, limit: PAGE });
+      const page = await acpSessionPage(projectId, {
+        query: term || undefined,
+        before: after?.before,
+        beforeId: after?.beforeId,
+        limit: PAGE,
+      });
       if (id !== request.current) return;
       const visible = page.sessions.filter((session) => !isDelegatedSession(session));
-      setRows((current) => (before === undefined ? visible : [...current, ...visible]));
+      setRows((current) => (after === undefined ? visible : [...current, ...visible]));
       setHasMore(page.hasMore);
-      setCursor(page.sessions.at(-1)?.updatedAt ?? before);
+      const last = page.sessions.at(-1);
+      setCursor(last ? { before: last.updatedAt, beforeId: last.id } : after);
     } catch (error_) {
       if (id === request.current) setError(acpError(error_));
     } finally {
@@ -173,10 +176,8 @@ export function AcpHistoryDialog({
   }, [projectId]);
 
   useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => void load(query.trim()), query ? SEARCH_DELAY_MS : 0);
-    return () => clearTimeout(timer);
-  }, [load, open, query]);
+    if (open) void load(search);
+  }, [load, open, search]);
 
   const rename = async (session: AcpSession, title: string) => {
     setRenaming(null);
@@ -224,7 +225,7 @@ export function AcpHistoryDialog({
       setPicked(new Set());
       setImporting(null);
       await useAcpSessionsStore.getState().loadProject(projectId);
-      await load(query.trim());
+      await load(search);
     } catch (error_) {
       setError(acpError(error_));
     }
@@ -241,7 +242,19 @@ export function AcpHistoryDialog({
       testId="acp-history-dialog"
     >
       <div className="flex max-h-[70vh] flex-col gap-3 p-4">
-        <h2 className="text-sm font-semibold">{t(($) => $.ai.acp.history.title)}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="min-w-0 flex-1 text-sm font-semibold">{t(($) => $.ai.acp.history.title)}</h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0 text-muted-foreground"
+            aria-label={t(($) => $.common.actions.close)}
+            onClick={onClose}
+          >
+            <X />
+          </Button>
+        </div>
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -252,10 +265,17 @@ export function AcpHistoryDialog({
             className="h-8 pl-7 text-sm"
           />
         </div>
-        {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+        {error && <ErrorState size="compact" message={error} />}
         <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto" data-testid="acp-history-rows">
           {rows.length === 0 && !loading && (
-            <li className="py-6 text-center text-xs text-muted-foreground">{t(($) => $.ai.acp.history.empty)}</li>
+            <li className="py-6">
+              <EmptyState size="compact" title={t(($) => $.ai.acp.history.empty)} />
+            </li>
+          )}
+          {rows.length === 0 && loading && (
+            <li className="flex justify-center py-6">
+              <LoadingState size="compact" label={t(($) => $.common.state.loading)} />
+            </li>
           )}
           {rows.map((session) => (
             <li key={session.id} data-testid="acp-history-row" className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50">
@@ -268,7 +288,11 @@ export function AcpHistoryDialog({
                     onCancel={() => setRenaming(null)}
                   />
                 ) : (
-                  <button type="button" className="block w-full truncate text-left text-sm" onClick={() => { onOpenSession(session.id); onClose(); }}>
+                  <button
+                    type="button"
+                    className="block w-full truncate rounded-sm text-left text-sm focus-visible:bg-accent"
+                    onClick={() => { onOpenSession(session.id); onClose(); }}
+                  >
                     {session.title || t(($) => $.ai.acp.untitledConversation)}
                   </button>
                 )}
@@ -277,26 +301,35 @@ export function AcpHistoryDialog({
                 </p>
               </div>
               <Tooltip label={t(($) => $.ai.acp.history.rename)}>
-                <button type="button" aria-label={t(($) => $.ai.acp.history.rename)} className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setRenaming(session.id)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-muted-foreground"
+                  aria-label={t(($) => $.ai.acp.history.rename)}
+                  onClick={() => setRenaming(session.id)}
+                >
                   <Pencil className="size-3.5" />
-                </button>
+                </Button>
               </Tooltip>
               <Tooltip label={session.status === "running" ? t(($) => $.ai.acp.history.deleteRunning) : t(($) => $.ai.acp.history.delete)}>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-muted-foreground hover:text-destructive"
                   aria-label={t(($) => $.ai.acp.history.delete)}
                   disabled={session.status === "running" || session.status === "cancelling"}
-                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-destructive disabled:opacity-40"
                   onClick={() => setDeleting(session)}
                 >
                   <Trash2 className="size-3.5" />
-                </button>
+                </Button>
               </Tooltip>
             </li>
           ))}
         </ul>
         {hasMore && (
-          <Button type="button" variant="outline" size="sm" disabled={loading} onClick={() => void load(query.trim(), cursor)}>
+          <Button type="button" variant="outline" size="sm" disabled={loading} onClick={() => void load(search, cursor)}>
             {t(($) => $.ai.acp.history.loadMore)}
           </Button>
         )}

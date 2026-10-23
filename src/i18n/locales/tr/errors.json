@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} bu depoya erişimi reddetti. Hesabınızın bu depoya erişimi olduğunu kontrol edin. Kuruluş çoklu oturum açma (SSO) kullanıyorsa önce oturumunuzu bu kuruluş için yetkilendirin.",
+    "access_denied_account": "{{host}}, bu depoya {{account}} hesabının erişimini reddetti. Bu hesabın depoyu kullanabildiğini kontrol edin. Kuruluş çoklu oturum açma (SSO) kullanıyorsa önce oturumunuzu bu kuruluş için yetkilendirin.",
     "account_missing": "{{host}} için Git barındırma hesabı yok. Ayarlar'dan bir hesap ekleyin.",
     "archive_too_large": "Depo dosyaları {{limit}} MB sınırını aşıyor, bu yüzden Oleafly bunları içe aktaramıyor. Depoyu kendiniz klonlayıp klasörünü açın.",
-    "auth_rejected": "{{host}} kayıtlı oturum bilgilerinizi reddetti. Ayarlar'dan {{host}} hizmetinde yeniden oturum açın.",
+    "auth_rejected": "{{host}}, {{account}} için kayıtlı oturum bilgisini reddetti. Ayarlar'dan {{host}} hizmetinde yeniden oturum açın.",
     "credentials_missing": "{{host}} bir kullanıcı adı ve parola istedi. Ayarlar'dan {{host}} hizmetinde oturum açın ya da bir SSH anahtarı veya Git kimlik bilgisi yardımcısı ayarlayın.",
     "credentials_rejected": "{{host}}, Git'in sunduğu kullanıcı adını ve parolayı reddetti. Ayarlar'dan {{host}} hizmetinde oturum açın ya da Git'inizin kullandığı kimlik bilgilerini güncelleyin.",
     "device_flow_unavailable": "Bu sürümde {{host}} için tarayıcıyla oturum açma kullanılamıyor. Bunun yerine bir erişim belirteci kullanın.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "{{host}} üzerinde bu adla bir depo zaten var.",
     "forge_server_error": "{{host}} bir hata döndürdü ({{status}}).",
     "forge_signed_out": "{{host}} oturumunuzun süresi doldu veya oturumunuz iptal edildi. Ayarlar'dan yeniden oturum açın.",
+    "forge_sso_required": "{{host}}, bu oturumun kuruluşun çoklu oturum açması için yetkilendirilmesini istiyor. {{host}} üzerinde yetkilendirin, sonra yeniden deneyin.",
     "forge_store": "Oleafly Git barındırma hesaplarınızı okuyamadı veya kaydedemedi.",
     "forge_token_invalid": "Bu bir erişim belirtecine benzemiyor. Belirtecin tamamını yapıştırın.",
     "forge_token_rejected": "{{host}} bu belirteci kabul etmedi. Belirtecin tamamını kopyaladığınızı ve süresinin dolmadığını kontrol edin.",
     "forge_unknown_server": "Oleafly, {{host}} sunucusunun türünü anlayamadı. Sunucu türünü seçin.",
     "host_key_unknown": "SSH henüz {{host}} sunucusunu tanımıyor. Ana bilgisayar anahtarını kabul etmek için bir terminalden bir kez bağlanın, sonra yeniden deneyin.",
     "host_unreachable": "Oleafly {{host}} sunucusuna ulaşamadı. Adresi ve bağlantınızı denetleyin.",
+    "import_cancelled": "İçe aktarma iptal edildi.",
     "invalid_remote_url": "Bir Git deposunun HTTPS veya SSH adresini girin.",
     "nested_repository": "Bu proje başka bir Git deposunun içinde olduğu için Oleafly burada ayrı bir depo oluşturmaz.",
     "not_installed": "Bu bilgisayarda Git kurulu değil. Git'i kurun, sonra yeniden deneyin.",
     "push_rejected": "Uzak dalda bu projede henüz olmayan işlemeler var. Önce çekin, sonra yeniden gönderin.",
     "remote_exists": "Bu proje zaten {{remote}} ile bağlantılı.",
-    "remote_has_password": "Parolayı adresten çıkarın. Oleafly bunun yerine Git barındırma hesabınızla veya kendi Git kimlik bilgilerinizle oturum açar.",
+    "remote_has_password": "Parolayı veya erişim belirtecini adresten çıkarın. Oleafly bunun yerine Git barındırma hesabınızla veya kendi Git kimlik bilgilerinizle oturum açar.",
     "repository_empty": "Bu depoda henüz işleme yok, bu yüzden içe aktarılacak bir şey yok.",
     "repository_not_found": "{{host}} üzerinde bu adreste bir depo yok veya hesabınız onu göremiyor.",
     "sign_in_cancelled": "Oturum açma tarayıcıda iptal edildi.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly {{provider}} bakiyenizi denetleyemedi."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 kurulu değil.",
+    "git_bash_missing": "Git Bash kurulu değil. Git for Windows'u kurun ya da başka bir shell seçin.",
+    "wsl_missing": "WSL kurulu değil.",
+    "wsl_no_distro": "WSL'de henüz bir Linux dağıtımı yok.",
+    "shell_path_empty": "Ayarlar'dan bir shell yolu girin ya da başka bir shell seçin.",
+    "shell_path_missing": "{{path}} konumunda bir program yok."
+  },
   "mathpix": {
-    "keys_missing": "Önce Ayarlar, Yapay zeka, Araçlar bölümünden Mathpix uygulama kimliğinizi ve anahtarınızı ekleyin.",
+    "keys_missing": "Önce Ayarlar, Yapay zeka asistanı, Araçlar bölümünden Mathpix uygulama kimliğinizi ve anahtarınızı ekleyin.",
     "invalid_keys": "Bu uygulama kimliği veya anahtar, Mathpix anahtarlarında hiç bulunmayan karakterler içeriyor. Bunları Mathpix konsolundan yeniden kopyalayın.",
     "key_rejected": "Mathpix bu anahtarları kabul etmedi. Mathpix konsolunda uygulama kimliğini ve anahtarı denetleyin.",
     "rate_limited": "Mathpix şu anda istekleri sınırlıyor. Bir dakika bekleyip yeniden deneyin.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "Bu PDF, Mathpix'in 256 MB sınırını aşıyor.",
     "timed_out": "Mathpix bu PDF'i 30 dakika içinde bitiremedi. Daha az sayfayla deneyin.",
     "cancelled": "Mathpix dönüştürmesi durduruldu.",
-    "wrong_window": "Mathpix yalnızca Oleafly'nin ana penceresinden kullanılabilir."
+    "wrong_window": "Mathpix yalnızca Oleafly'nin ana penceresinden kullanılabilir.",
+    "pdf_too_large_ipc": "Bu bilgisayar Mathpix'e en fazla 16 MB PDF gönderebilir. PDF'i bölüp yeniden deneyin."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver kurulu değil. Ayarlar → Tümleştirmeler → Masaüstü uygulamaları bölümünden kurun.",
+    "not_installed": "Cua Driver kurulu değil. Ayarlar, Tümleştirmeler, Masaüstü uygulamaları bölümünden kurun.",
     "too_old": "Cua Driver {{version}} çok eski. {{minimum}} veya daha yeni bir sürüme güncelleyin.",
     "no_app_bundle": "macOS izinlerini tutabilmesi için Cua Driver'ı resmi yükleyiciyle kurun.",
     "change_declined": "Önceki Masaüstü uygulamaları ayarlarınızı korudunuz.",

@@ -202,7 +202,10 @@
       "unavailable": "Indisponível",
       "saving": "Salvando...",
       "saveTask": "Salvar a tarefa",
-      "createTask": "Criar tarefa"
+      "createTask": "Criar tarefa",
+      "replaceText": "Substituir o título e as instruções que você digitou por este ponto de partida?",
+      "keepText": "Manter o meu",
+      "replaceConfirm": "Substituir"
     },
     "starter": {
       "literatureReview": {
@@ -246,6 +249,11 @@
       "dependencies": "Dependências",
       "dependencyUnavailable": "Indisponível",
       "noActivity": "Nenhuma atividade foi registrada nesta execução.",
+      "activityGap_one": "{{count}} item no meio não é exibido.",
+      "activityGap_other": "{{count}} itens no meio não são exibidos.",
+      "activityMore": "Mais atividade ainda não é exibida.",
+      "keepRunningDesktopApps": "Esta tarefa usa aplicativos de desktop, que precisam de você no computador.",
+      "activityGap_many": "{{count}} itens no meio não são exibidos.",
       "startToRecord": "Inicie esta tarefa para registrar a atividade dela.",
       "reasoning": "Raciocínio informado",
       "savedArtifact": "{{label}} salvo",
@@ -319,6 +327,10 @@
       "kindRun": "Iniciar uma execução",
       "kindMcp": "Usar uma ferramenta",
       "expires": "Aguarda até {{time}}",
+      "detailCommand": "Comando completo",
+      "detailRun": "Detalhes da execução",
+      "detailMcp": "Argumentos da ferramenta",
+      "loadFailed": "Não foi possível carregar os pedidos aguardando aprovação.",
       "status": {
         "approved": "Aprovado",
         "denied": "Negado",
@@ -347,8 +359,9 @@
       "noRuns": "Nenhuma execução em andamento.",
       "budget": "Orçamento",
       "timeUsed": "{{used}} de {{total}}",
-      "costUsed": "${{used}} de ${{limit}}",
-      "costSpent": "${{used}} gastos",
+      "costUsed": "{{used}} de {{limit}}",
+      "costSpent": "{{used}} gastos",
+      "ledgerCapped": "Exibindo os {{limit}} resultados mais recentes.",
       "costUnknown": "O custo deste modelo é desconhecido.",
       "runsUsed": "{{used}} de {{limit}} execuções",
       "runsUsedNoLimit": "{{used}} execuções",
@@ -381,6 +394,10 @@
       "mcpServers": "Servidores MCP que as tarefas podem usar",
       "mcpServersHint": "As tarefas chamam essas ferramentas seguindo as regras de comandos de cada tarefa.",
       "noMcpServers": "Nenhum servidor MCP configurado.",
+      "networkHint": "Os comandos das tarefas podem acessar a internet. Cada tarefa ainda pode desligar isso.",
+      "loadFailed": "Não foi possível carregar suas configurações de pesquisa.",
+      "sectionName": "Pesquisa",
+      "resetConfirm": "Restaura os padrões da pesquisa: manter o computador ativo, notificações, acesso à rede, o orçamento de tempo e os servidores MCP que as tarefas podem usar. Destinos de execução e tarefas em segundo plano ficam inalterados.",
       "saveFailed": "Não foi possível salvar suas configurações de pesquisa. Tente de novo."
     }
   },
@@ -895,7 +912,10 @@
     "fileReady": "{{fileName}} está pronto",
     "saveWordHint": "Salve o documento do Word quando quiser.",
     "resultPlaceholder": "Seu resultado convertido vai aparecer aqui.",
-    "progressConvertingSource": "Convertendo o código para Typst"
+    "progressConvertingSource": "Convertendo o código para Typst",
+    "pageRange": "Páginas",
+    "pageRangePlaceholder": "Todas as páginas, ou um intervalo como 1-50",
+    "pageRangeInvalid": "Digite um número de página, ou um intervalo como 1-50."
   },
   "converters": {
     "imageToLatex": {
@@ -1102,7 +1122,9 @@
     "fileTooLarge": "Escolha um arquivo menor que 128 MB.",
     "emptySheet": "A planilha selecionada está vazia.",
     "arxivInputRequired": "Digite um ID do arXiv ou escolha um arquivo de código.",
-    "equationToTypst": "O Pandoc não conseguiu converter esta equação para Typst. Confira a matemática LaTeX e tente de novo."
+    "equationToTypst": "O Pandoc não conseguiu converter esta equação para Typst. Confira a matemática LaTeX e tente de novo.",
+    "pdfTooManyPages": "Esta digitalização tem {{pages}} páginas, e o Oleafly transcreve até {{limit}} por vez. Digite um intervalo de páginas como 1-{{limit}} abaixo do arquivo.",
+    "outputLimit": "O modelo acabou o espaço antes de terminar, então a transcrição ficaria incompleta. Escolha um modelo com um limite de saída maior em Configurações, Assistente de IA, Ferramentas, ou transcreva uma parte menor."
   },
   "converterNotes": {
     "scannedPages": "{{pages}} páginas digitalizadas transcritas com {{model}}. Revise as equações e as tabelas antes de usar o resultado.",
@@ -1159,7 +1181,7 @@
       "cannotSeeImages": "{{model}} não lê imagens. Escolha um modelo de visão.",
       "localModelGone": "{{model}} não está mais no Ollama. Baixe de novo ou escolha outro modelo.",
       "imagesOnly": "{{model}} só lê imagens. Escolha um modelo de linguagem para converter equações digitadas.",
-      "mathpixNotSetUp": "Adicione suas chaves do Mathpix em Configurações, IA, Ferramentas, ou escolha outro modelo.",
+      "mathpixNotSetUp": "Adicione suas chaves do Mathpix em Configurações, Assistente de IA, Ferramentas, ou escolha outro modelo.",
       "imageTooLarge": "Esta imagem continua grande demais mesmo depois de reduzida. Recorte e tente de novo."
     }
   },
@@ -1763,10 +1785,14 @@
     "startAtLabel": "Começar em",
     "startNow": "Quando eu iniciar",
     "keepRunning": "Continuar rodando com o Oleafly fechado",
-    "keepRunningHint": "Primeiro ligue o trabalho em segundo plano em Configurações, Pesquisa.",
+    "keepRunningHint": "Primeiro ative Tarefas em segundo plano em Configurações, Pesquisa.",
     "invalidMetric": "Use letras, números, pontos, hífens ou sublinhados.",
     "invalidCost": "Digite um valor maior que zero.",
-    "invalidRuns": "Digite um número inteiro de 1 a 1.000."
+    "invalidRuns": "Digite um número inteiro de 1 a 1.000.",
+    "invalidStart": "Escolha um horário de início dentro dos próximos 30 dias.",
+    "invalidStartFormat": "Use o formato {{example}}.",
+    "startAtFormat": "Digite o horário como {{example}}.",
+    "problemHidden": "Uma opção do Briefing precisa de correção. Abra o Briefing para ver qual."
   },
   "runs": {
     "status": {
@@ -1778,11 +1804,6 @@
       "cancelled": "Parada",
       "lost": "Perdida"
     }
-  },
-  "record": {
-    "title": "Registro de pesquisa",
-    "openHandoff": "Abrir a passagem",
-    "openReport": "Abrir o relatório"
   },
   "evidence": {
     "title": "Verificação de evidências",
@@ -1834,8 +1855,9 @@
       "edit": "Editar",
       "remove": "Remover",
       "removeTitle": "Remover {{label}}?",
-      "removeConfirm": "As execuções que já começaram lá continuam rodando.",
+      "removeConfirm": "As execuções que já começaram lá continuam rodando. As tarefas que aguardam para começar nele vão falhar.",
       "forgetHostKey": "Esquecer a chave de host",
+      "reviewHostKey": "Verificar a chave de host",
       "notTested": "Não testado",
       "tested": "Testado {{time}}",
       "testFailed": "O teste falhou",
@@ -1927,7 +1949,8 @@
       "added": "Já adicionado",
       "add_one": "Adicionar {{count}} host",
       "add_many": "Adicionar {{count}} hosts",
-      "add_other": "Adicionar {{count}} hosts"
+      "add_other": "Adicionar {{count}} hosts",
+      "skipped": "Não adicionados: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Sandbox deste computador",
@@ -1958,6 +1981,7 @@
       "runsOn": "Roda em {{target}}",
       "runsLocal": "Roda neste computador.",
       "missing": "O destino que esta tarefa usava foi removido. Escolha outro.",
+      "loadFailed": "Não foi possível carregar seus destinos de execução.",
       "windowsOff": "Ligue o sandbox do Windows em Configurações para executar comandos neste computador.",
       "openSettings": "Abrir Configurações",
       "resources": "Recursos do Slurm"
@@ -1971,6 +1995,7 @@
       "movingBackHint": "Esta tarefa volta para o Oleafly quando a etapa atual terminar."
     },
     "earlierActivity": "Mostrar atividade anterior",
+    "earlierTruncated": "Só os primeiros {{limit}} itens desta execução anterior são exibidos.",
     "keepRunningFailed": "Não foi possível alterar esta configuração. Tente de novo."
   }
 }

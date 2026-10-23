@@ -239,6 +239,8 @@ pub struct ResearchTaskState {
 pub(crate) struct ResearchTaskStateInner {
     root: Result<PathBuf, String>,
     pub(crate) concurrency: Arc<Semaphore>,
+    /// How many tasks may wait without holding a concurrency slot.
+    parked: Arc<Semaphore>,
     scheduling: tokio::sync::Mutex<()>,
     stopping: AtomicBool,
     pub(crate) active: Mutex<HashMap<String, ActiveTask>>,
@@ -271,9 +273,46 @@ pub(crate) struct ActiveTask {
     pub(crate) handing_off: Arc<AtomicBool>,
     /// 0.4.8 L: what the generation left when it suspended.
     pub(crate) suspended: Arc<Mutex<Option<SuspendState>>>,
+    /// The concurrency slot the task holds while it works.
+    slot: Arc<Mutex<Option<OwnedSemaphorePermit>>>,
+    /// Set while the task waits without its slot (see [`Self::lend_slot`]).
+    lent: Arc<Mutex<Option<OwnedSemaphorePermit>>>,
 }
 
 impl ActiveTask {
+    /// Gives the concurrency slot back while the task waits for an approval
+    /// or for its runs, which can take a day: a task that does nothing must
+    /// not keep others from starting. At most as many tasks wait this way as
+    /// the queue runs at once; past that the waiting task keeps its slot.
+    fn lend_slot(&self, parked: &Arc<Semaphore>) -> bool {
+        let Ok(lent) = parked.clone().try_acquire_owned() else {
+            return false;
+        };
+        if lock(&self.slot).take().is_none() {
+            return false;
+        }
+        *lock(&self.lent) = Some(lent);
+        true
+    }
+
+    /// The task works again. It takes a slot back if one is free; if not, it
+    /// goes on without one, so it is never stopped in the middle of its work
+    /// (the queue then starts fewer new tasks until it ends).
+    fn retake_slot(&self, concurrency: &Arc<Semaphore>) {
+        if lock(&self.lent).take().is_none() {
+            return;
+        }
+        if let Ok(permit) = concurrency.clone().try_acquire_owned() {
+            *lock(&self.slot) = Some(permit);
+        }
+    }
+
+    /// Gives back everything the task holds (it ended).
+    fn release_slots(&self) {
+        drop(lock(&self.slot).take());
+        drop(lock(&self.lent).take());
+    }
+
     fn mark_settled(&self) {
         self.settled.store(true, Ordering::Release);
         self.settled_notify.notify_waiters();
@@ -306,6 +345,7 @@ impl ResearchTaskState {
                 writer: TranscriptWriter::new(root.clone()),
                 root,
                 concurrency: Arc::new(Semaphore::new(max_concurrent.clamp(1, 8))),
+                parked: Arc::new(Semaphore::new(max_concurrent.clamp(1, 8))),
                 scheduling: tokio::sync::Mutex::new(()),
                 stopping: AtomicBool::new(false),
                 active: Mutex::new(HashMap::new()),
@@ -544,13 +584,14 @@ impl ResearchTaskState {
     pub fn progress(&self, task_id: &str) -> Result<crate::progress::TaskProgress, String> {
         let store = self.store()?;
         let task = store.require(task_id)?;
-        let (plan, ledger) = crate::progress::record_contents(&task);
+        let (plan, full_ledger) = crate::progress::record_contents(&task);
         let services = self.services().ok();
         let runs = match &services {
             Some(services) => services.runs.list(task_id)?,
             None => store.runs(task_id)?,
         };
-        let best = crate::progress::best_metric(&task.brief, &runs, &ledger);
+        let best = crate::progress::best_metric(&task.brief, &runs, &full_ledger);
+        let ledger = crate::progress::recent_ledger(&full_ledger);
         let runs_started = runs.len() as u32;
         let (runs_in_flight, recent_runs) = crate::progress::split_runs(runs);
         let active_ms = services
@@ -642,6 +683,10 @@ impl ResearchTaskState {
         if task.status == ResearchTaskStatus::Running {
             return Err("Stop this task before deleting it.".into());
         }
+        // The run rows go with the task: read what the runs left elsewhere first.
+        let leftovers = self
+            .services()
+            .map(|services| services.runs.cleanup_handles(task_id));
         store.delete(task_id)?;
         let workspace_root = isolation::task_workspace_root(store.root(), task_id);
         let project_root = host
@@ -651,10 +696,10 @@ impl ResearchTaskState {
             .map(|location| location.root);
         let git = host.git();
         isolation::purge_task_workspaces(project_root.as_deref(), git.as_ref(), &workspace_root);
-        if let Ok(services) = self.services() {
+        if let (Ok(services), Ok(leftovers)) = (self.services(), leftovers) {
             let id = task_id.to_owned();
             self.runtime()
-                .spawn(async move { services.runs.cleanup_task(&id).await });
+                .spawn(async move { services.runs.cleanup_task(&id, leftovers).await });
         }
         self.refresh_attention();
         Ok(())
@@ -831,6 +876,8 @@ impl ResearchTaskState {
                 settled_notify: Arc::new(Notify::new()),
                 handing_off: Arc::new(AtomicBool::new(false)),
                 suspended: Arc::new(Mutex::new(None)),
+                slot: Arc::new(Mutex::new(None)),
+                lent: Arc::new(Mutex::new(None)),
             };
             // 0.4.8 L: fresh suspend signals for this generation.
             self.inner
@@ -1211,12 +1258,13 @@ impl ResearchTaskState {
 
     async fn execute(&self, task: ResearchTask, active: ActiveTask, permit: OwnedSemaphorePermit) {
         let generation = task.execution_generation;
+        *lock(&active.slot) = Some(permit);
         let store = match self.store() {
             Ok(store) => store,
             Err(_) => {
                 self.finish_active(&task.id, generation);
                 active.mark_settled();
-                drop(permit);
+                active.release_slots();
                 self.kick();
                 return;
             }
@@ -1243,7 +1291,7 @@ impl ResearchTaskState {
                 .await;
             self.inner.suspends.end(&task.id, generation);
             self.emit_with_dependents(&store, &task.id);
-            drop(permit);
+            active.release_slots();
             if !self.inner.stopping.load(Ordering::Acquire) {
                 self.kick();
             }
@@ -1273,7 +1321,7 @@ impl ResearchTaskState {
             crate::handoff::purge_files(store.root(), &task.id);
         }
         self.emit_with_dependents(&store, &task.id);
-        drop(permit);
+        active.release_slots();
         self.kick();
     }
 
@@ -1643,19 +1691,17 @@ impl ResearchTaskState {
         }
         let review_isolation = isolation.clone();
         let review_cancel = active.cancel.clone();
-        let changes = self
+        let review = self
             .runtime()
-            .spawn_blocking(move || {
-                isolation::collect_review_changes(&review_isolation, &review_cancel)
-            })
+            .spawn_blocking(move || isolation::collect_review(&review_isolation, &review_cancel))
             .await
             .map_err(|error| format!("Task review stopped unexpectedly: {error}"))
             .and_then(|result| result);
         if active.cancel.is_cancelled() {
             return;
         }
-        let changed_files = match changes {
-            Ok(changed_files) => changed_files,
+        let (changed_files, left_out) = match review {
+            Ok(review) => (review.changes, review.left_out),
             Err(error) => {
                 let _ = store.finish_failure(&task.id, generation, &error);
                 return;
@@ -1668,8 +1714,14 @@ impl ResearchTaskState {
                 return;
             }
         };
+        let mut summary: String = outcome.summary.chars().take(8_000).collect();
+        if left_out > 0 {
+            summary.push_str(&format!(
+                "\n\n{left_out} new files were left out of this review: the task made more than the review limit of 20,000 files or 2 GiB."
+            ));
+        }
         let result = TaskResultMetadata {
-            summary: outcome.summary.chars().take(8_000).collect(),
+            summary,
             changed_files: changed_files.clone(),
             artifacts,
             native_session_id: outcome.native_session_id,
@@ -1798,6 +1850,7 @@ impl ResearchTaskState {
                 if let Ok(store) = self.store() {
                     self.set_phase(&store, &task.id, task.execution_generation, *phase);
                 }
+                self.lend_or_retake_slot(&task.id, task.execution_generation, *phase);
             }
             TaskRuntimeEvent::Approval { status, .. } => {
                 if *status == ApprovalStatus::Pending {
@@ -1809,6 +1862,25 @@ impl ResearchTaskState {
                 self.refresh_attention();
             }
             _ => {}
+        }
+    }
+
+    /// A task that waits for an approval or for its runs lets another task
+    /// start in its place; one that works again takes a slot back.
+    fn lend_or_retake_slot(&self, task_id: &str, generation: u64, phase: TaskPhase) {
+        let Some(active) = lock(&self.inner.active)
+            .get(task_id)
+            .filter(|active| active.execution_generation == generation)
+            .cloned()
+        else {
+            return;
+        };
+        if matches!(phase, TaskPhase::WaitingApproval | TaskPhase::WaitingRuns) {
+            if active.lend_slot(&self.inner.parked) {
+                self.kick();
+            }
+        } else {
+            active.retake_slot(&self.inner.concurrency);
         }
     }
 

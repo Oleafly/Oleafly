@@ -171,6 +171,7 @@ import {
   draftAttachments,
   draftText,
   EMPTY_ATTACHMENTS,
+  holdDraftAttachments,
   useComposerDrafts,
 } from "@/store/composer-drafts";
 import {
@@ -183,6 +184,7 @@ import {
 } from "@/components/ai/chat-run-registry";
 import { personaGradient } from "@/lib/persona-colors";
 import { toast } from "@/lib/toast";
+import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
@@ -1020,14 +1022,15 @@ export function ChatCore() {
     activeChatId ? s.threadByChat[activeChatId] : undefined,
   );
   // The composer's draft (text and attachments) lives in the drafts store,
-  // so it survives switching panels.
-  const composerId = builtinComposerId(projectId);
+  // so it survives switching panels. Each chat has its own, and so has the
+  // next new chat: text typed for one chat is never sent into another.
+  const composerId = builtinComposerId(projectId, chatsProjectId === projectId ? activeChatId : null);
   const composerIdRef = useRef(composerId);
   composerIdRef.current = composerId;
+  // The draft on show; it changes with the chat, in an effect further down.
+  const shownDraftRef = useRef(composerId);
   const composerRef = useRef<ChatComposerHandle>(null);
-  const [input, setInputState] = useState(() =>
-    draftText(builtinComposerId(useFilesStore.getState().projectId)),
-  );
+  const [input, setInputState] = useState(() => draftText(composerId));
   const inputRef = useRef(input);
   inputRef.current = input;
   const inputRevisionRef = useRef(0);
@@ -1105,6 +1108,10 @@ export function ChatCore() {
   } | null>(null);
   const editTargetRef = useRef(editTarget);
   editTargetRef.current = editTarget;
+  // The draft set aside by an edit is not in the drafts store; its files must
+  // survive an attachment collection (deleting a chat runs one).
+  const editStash = editTarget?.stash.attachments;
+  useEffect(() => (editStash && editStash.length > 0 ? holdDraftAttachments(editStash) : undefined), [editStash]);
   // Leaving an edit, by cancelling it or by opening another chat, puts back
   // the draft the composer held before it.
   const cancelEdit = useCallback(() => {
@@ -1632,7 +1639,9 @@ export function ChatCore() {
   // a different conversation. Covers the recent-chats list and the history modal.
   const openChat = useCallback(
     async (chat: StoredChat) => {
-      if (streaming) return;
+      // A send that is still preparing has not set `streaming` yet, but it will
+      // take the chat on show: switching now would send into the other chat.
+      if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
       let body = chat;
       if (chat.stub) {
         // Older chats load as stubs; read the messages before showing them.
@@ -1647,6 +1656,7 @@ export function ChatCore() {
           toast.error(i18n.t(($) => $.ai.history.openFailed));
           return;
         }
+        if (sendPreparingRef.current || runOwnerRef.current) return;
       }
       setActiveChat(body.id);
       setMessages(body.messages);
@@ -1657,8 +1667,8 @@ export function ChatCore() {
     [streaming, setActiveChat, setMessages, cancelEdit]
   );
 
-  const newChat = useCallback(() => {
-    if (streaming) return;
+  // Clears the transcript for a new chat, whatever is running.
+  const startNewChat = useCallback(() => {
     setActiveChat(null);
     setMessages([]);
     useAgentTodoStore.getState().selectChat(null);
@@ -1675,7 +1685,30 @@ export function ChatCore() {
       setModel(modelId);
       setApiKey(keysMap[providerId] || "");
     }
-  }, [streaming, setActiveChat, keysMap, setMessages, cancelEdit]);
+  }, [setActiveChat, keysMap, setMessages, cancelEdit]);
+
+  const newChat = useCallback(() => {
+    if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
+    startNewChat();
+  }, [streaming, startNewChat]);
+
+  // Deleting the chat a run is writing into stops that run first, then clears
+  // the transcript: left alone, the run would write into a chat that is gone
+  // and the next message would bring the whole conversation back as a new chat.
+  const deleteChat = useCallback(
+    (id: string) => {
+      const run = activeChatRun();
+      const running = run?.chatId === id;
+      if (running) {
+        pendingImagesRef.current = [];
+        run.controller.abort();
+      }
+      const wasShown = useChatsStore.getState().activeId === id;
+      removeChat(id);
+      if (wasShown || running) startNewChat();
+    },
+    [removeChat, startNewChat],
+  );
 
   const archiveCurrentChat = useCallback(async () => {
     if (!activeChatId || !activeThreadId) return;
@@ -1909,17 +1942,28 @@ export function ChatCore() {
     [queueStreamDrain],
   );
 
+  // What the model picker holds now. The follow-up queued during a run is sent
+  // from that run's own `send`, a closure from when the run started, so `send`
+  // reads the picked model here and not from its closure.
+  const pickedModelRef = useRef({ provider, model, providerModelsMap, apiKey, activeProviderName });
+  pickedModelRef.current = { provider, model, providerModelsMap, apiKey, activeProviderName };
+
   const send = useCallback(async (
     text: string,
     queued?: QueuedFollowUp,
     options?: {
       approvedPlan?: boolean;
-      /** Regenerate or edit: send these attachments, not the draft's. */
-      replay?: { attachments: readonly DraftAttachment[] };
+      /**
+       * Regenerate or edit: send these attachments, not the draft's. `commit`
+       * puts the new turn in place of the old one; it runs once every check
+       * has passed, so a run that cannot start leaves the transcript as it was.
+       */
+      replay?: { attachments: readonly DraftAttachment[]; commit?: () => Promise<void> | void };
       /** Start a new chat with web access on (literature quick starts). */
       web?: boolean;
     },
   ) => {
+    const { provider, model, providerModelsMap, apiKey, activeProviderName } = pickedModelRef.current;
     const sendComposerId = composerIdRef.current;
     const draft = draftAttachments(sendComposerId);
     // Attachments still being prepared hold the message back.
@@ -2129,7 +2173,9 @@ export function ChatCore() {
         }
         return m;
       });
-      // The chat keeps the screenshot by reference; the data URL stays in memory.
+      // The chat keeps the screenshot by reference. The data URL shows it until
+      // the reference is stored, then goes: a long run would otherwise hold
+      // every screenshot in memory until the app restarts.
       void storeToolImage(runProjectId, dataUrl).then((ref) => {
         if (!ref) return;
         updateRunLast((m) => {
@@ -2137,7 +2183,8 @@ export function ChatCore() {
           const index = calls.findIndex((call) => call.id !== undefined && call.id === toolId);
           if (index < 0) return m;
           const next = [...calls];
-          next[index] = { ...next[index], imageRef: ref };
+          const { image: _inline, ...stored } = next[index];
+          next[index] = { ...stored, imageRef: ref };
           return { ...m, toolCalls: next };
         });
       });
@@ -2273,6 +2320,14 @@ export function ChatCore() {
       releaseRunReservation();
       return;
     }
+    if (options?.replay?.commit) {
+      try {
+        await options.replay.commit();
+      } catch (error) {
+        releaseRunReservation();
+        throw error;
+      }
+    }
     runPendingImages.push(...pendingImagesRef.current.splice(0));
 
     const priorMessages = messagesRef.current;
@@ -2337,6 +2392,10 @@ export function ChatCore() {
           web: options?.web ? WEB_ON : newChatSettingsRef.current.web,
         });
         chatId = created.id;
+        // What was typed for the next message since pressing send belongs to the chat that now exists.
+        if (sendComposerId === builtinComposerId(projectId)) {
+          useComposerDrafts.getState().moveDraft(sendComposerId, builtinComposerId(projectId, created.id));
+        }
       } else if (chatId && options?.web) {
         // A quick start that needs the web turns it on in the chat it starts in too.
         cs.setChatSettings(chatId, { web: WEB_ON });
@@ -3153,7 +3212,7 @@ ${sandboxedCustom}`;
         }
       }
     }
-  }, [streaming, apiKey, provider, model, providerModelsMap, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeProviderName, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced, dropPendingPersist, refreshChatCost]);
+  }, [streaming, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced, dropPendingPersist, refreshChatCost]);
 
   const stop = useCallback(() => {
     pendingImagesRef.current = [];
@@ -3176,10 +3235,20 @@ ${sandboxedCustom}`;
       !activeChatRun(),
   );
   const savedAttachmentsAsDrafts = useCallback(
-    (message: ChatMessage): DraftAttachment[] =>
-      (message.attachments ?? [])
-        .map((meta) => chatToDraftAttachment(meta, projectId))
-        .filter((item): item is DraftAttachment => item !== null),
+    (message: ChatMessage): DraftAttachment[] => {
+      const restored: DraftAttachment[] = [];
+      const left: string[] = [];
+      for (const meta of message.attachments ?? []) {
+        const draft = chatToDraftAttachment(meta, projectId);
+        if (draft) restored.push(draft);
+        else left.push(meta.name);
+      }
+      // A message saved before 0.4.8 kept only the names of its files.
+      if (left.length > 0) {
+        toast.info(i18n.t(($) => $.ai.attachments.notReplayed, { names: left.join(", ") }));
+      }
+      return restored;
+    },
     [projectId],
   );
 
@@ -3190,6 +3259,8 @@ ${sandboxedCustom}`;
       text: string;
       attachments: readonly DraftAttachment[];
       approvedPlan?: boolean;
+      /** The replay is going ahead: the run passed every check. */
+      onCommit?: () => void;
     }) => {
       const chatsState = useChatsStore.getState();
       const chatId = chatsState.activeId;
@@ -3210,40 +3281,54 @@ ${sandboxedCustom}`;
           args.mode === "fork" ? userTurnsFrom(current, args.userIndex) : 0,
         );
         const kept = current.slice(0, args.userIndex);
+        // Nothing changes until the run is about to start: when the budget,
+        // a blocked model or a tool limit stops it, the turn is still there.
         if (args.mode === "inPlace") {
-          setMessages(kept);
-          useChatsStore.getState().saveMessages(chatId, kept);
-          if (threadId && drop > 0) {
-            await agentThreadRollback(threadId, drop).catch((error: unknown) =>
-              logError("roll back thread", error),
-            );
-          }
-          for (const message of current.slice(args.userIndex)) {
-            if (message.role === "user" && message.turnId) {
-              useAgentTurnsStore.getState().rollbackTurn(chatId, message.turnId);
-            }
-          }
           await send(args.text, undefined, {
-            replay: { attachments: args.attachments },
+            replay: {
+              attachments: args.attachments,
+              commit: async () => {
+                args.onCommit?.();
+                setMessages(kept);
+                useChatsStore.getState().saveMessages(chatId, kept);
+                if (threadId && drop > 0) {
+                  await agentThreadRollback(threadId, drop).catch((error: unknown) =>
+                    logError("roll back thread", error),
+                  );
+                }
+                for (const message of current.slice(args.userIndex)) {
+                  if (message.role === "user" && message.turnId) {
+                    useAgentTurnsStore.getState().rollbackTurn(chatId, message.turnId);
+                  }
+                }
+              },
+            },
             approvedPlan: args.approvedPlan,
           });
           return;
         }
-        const newThread = threadId ? await agentThreadFork(threadId, projectId, drop) : null;
-        const fork = useChatsStore
-          .getState()
-          .create(projectId, chat.headOid ?? currentHead, { effort: chat.effort, web: chat.web });
-        useChatsStore.getState().saveMessages(fork.id, kept);
-        if (newThread) {
-          useAgentTurnsStore.setState((state) => ({
-            threadByChat: { ...state.threadByChat, [fork.id]: newThread },
-          }));
-          useChatsStore.getState().setThreadId(fork.id, newThread);
-        }
-        setMessages(kept);
-        useAgentTodoStore.getState().selectChat(fork.id);
-        toast.success(i18n.t(($) => $.ai.messageActions.forked));
-        await send(args.text, undefined, { replay: { attachments: args.attachments } });
+        await send(args.text, undefined, {
+          replay: {
+            attachments: args.attachments,
+            commit: async () => {
+              args.onCommit?.();
+              const newThread = threadId ? await agentThreadFork(threadId, projectId, drop) : null;
+              const fork = useChatsStore
+                .getState()
+                .create(projectId, chat.headOid ?? currentHead, { effort: chat.effort, web: chat.web });
+              useChatsStore.getState().saveMessages(fork.id, kept);
+              if (newThread) {
+                useAgentTurnsStore.setState((state) => ({
+                  threadByChat: { ...state.threadByChat, [fork.id]: newThread },
+                }));
+                useChatsStore.getState().setThreadId(fork.id, newThread);
+              }
+              setMessages(kept);
+              useAgentTodoStore.getState().selectChat(fork.id);
+              toast.success(i18n.t(($) => $.ai.messageActions.forked));
+            },
+          },
+        });
       } catch (error) {
         void logError("replay message", error);
         toast.error(i18n.t(($) => $.ai.messageActions.failed));
@@ -3271,11 +3356,20 @@ ${sandboxedCustom}`;
     const attachments = readyAttachments(draftItems);
     if (!text.trim() && attachments.length === 0) return;
     const run = () => {
-      // The draft the user had before editing comes back afterwards.
-      setInput(target.stash.text);
-      useComposerDrafts.getState().setAttachments(composerIdRef.current, target.stash.attachments);
-      setEditTarget(null);
-      void replay({ userIndex: target.userIndex, mode: target.mode, text, attachments });
+      // The draft the user had before editing comes back once the replay is
+      // going ahead; when it cannot start, the edit stays as it is.
+      const draftId = composerIdRef.current;
+      void replay({
+        userIndex: target.userIndex,
+        mode: target.mode,
+        text,
+        attachments,
+        onCommit: () => {
+          setInput(target.stash.text);
+          useComposerDrafts.getState().setAttachments(draftId, target.stash.attachments);
+          setEditTarget(null);
+        },
+      });
     };
     if (target.mode === "inPlace") confirmReplace(target.userIndex, run);
     else run();
@@ -3551,16 +3645,25 @@ ${sandboxedCustom}`;
     setGoalDraft("");
     setNewChatSettings({});
     setDroppedTurns(0);
+    const leaving = shownDraftRef.current;
     const editing = editTargetRef.current;
     if (editing) {
-      // The draft from before the edit goes back to the project it was typed in.
-      const previous = builtinComposerId(prev);
-      useComposerDrafts.getState().setText(previous, editing.stash.text);
-      useComposerDrafts.getState().setAttachments(previous, editing.stash.attachments);
+      // The draft from before the edit goes back to the chat it was typed in.
+      useComposerDrafts.getState().setText(leaving, editing.stash.text);
+      useComposerDrafts.getState().setAttachments(leaving, editing.stash.attachments);
     }
+    // The chat on show is not open when the project comes back, so what was
+    // typed for it waits in that project's next chat.
+    useComposerDrafts.getState().moveDraft(leaving, builtinComposerId(prev));
     setEditTarget(null);
-    setInputState(draftText(builtinComposerId(projectId)));
   }, [projectId, trackRunRequestId, dropPendingPersist]);
+
+  // Another chat, or another project, brings its own draft into the box.
+  useEffect(() => {
+    if (shownDraftRef.current === composerId) return;
+    shownDraftRef.current = composerId;
+    setInputState(draftText(composerId));
+  }, [composerId]);
 
   useEffect(() => {
     type ChatsState = ReturnType<typeof useChatsStore.getState>;
@@ -3789,19 +3892,11 @@ ${sandboxedCustom}`;
         )}
       </AssistantShellHeader>
 
-      {quotaWarning && (
-        <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[0.6875rem] text-amber-600 dark:text-amber-400">
-          {t(($) => $.ai.provider.quotaWarning)}
-        </div>
-      )}
+      {quotaWarning && <WorkspaceBanner tone="warning">{t(($) => $.ai.provider.quotaWarning)}</WorkspaceBanner>}
       {saveFailedWarning && (
-        <div
-          data-testid="ai-chat-save-failed"
-          role="status"
-          className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[0.6875rem] text-amber-600 dark:text-amber-400"
-        >
+        <WorkspaceBanner tone="warning" data-testid="ai-chat-save-failed" role="status">
           {t(($) => $.ai.conversation.saveFailed)}
-        </div>
+        </WorkspaceBanner>
       )}
 
       {!providerConfigReady && !apiKey && (
@@ -4238,16 +4333,17 @@ ${sandboxedCustom}`;
               </div>
             )}
             {activeChatId && saveProblems[activeChatId] === "tooLarge" && (
-              <div
+              <WorkspaceBanner
+                tone="warning"
                 data-testid="ai-chat-too-large"
                 role="status"
-                className="mb-2 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-300"
+                className="mb-2 flex-nowrap rounded-md border px-2.5"
               >
                 <span className="min-w-0 flex-1">{t(($) => $.ai.conversation.tooLargeToSave)}</span>
                 <Button type="button" size="xs" variant="outline" onClick={() => void exportActiveChat()}>
                   {t(($) => $.ai.conversation.exportChat)}
                 </Button>
-              </div>
+              </WorkspaceBanner>
             )}
             <ChatComposer
               ref={composerRef}
@@ -4568,10 +4664,7 @@ ${sandboxedCustom}`;
         currentHead={currentHead}
         onClose={() => setHistoryOpen(false)}
         onOpen={(chat) => void openChat(chat)}
-        onDelete={(id) => {
-          removeChat(id);
-          if (id === activeChatId) newChat();
-        }}
+        onDelete={deleteChat}
         skipped={skippedOnLoad}
       />
       <ConfirmationDialog

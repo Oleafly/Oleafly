@@ -3,15 +3,18 @@
 //!
 //! Until 0.4.8 each project kept one `chats/<project id>.json` array, which
 //! capped history at 50 chats and rewrote every chat on each save. The first
-//! load migrates that file into per-chat files and keeps it as
-//! `<project id>.json.migrated`. History before that lived in the webview's
-//! localStorage; the frontend still migrates that payload on first load.
+//! load merges that file into per-chat files and leaves it where it is, so a
+//! downgrade to 0.4.7 still finds its history; a marker beside the per-chat
+//! files records which version of the file was merged, so a chat deleted
+//! since is not brought back, and a file 0.4.7 wrote later is merged again.
+//! History before that lived in the webview's localStorage; the frontend
+//! still migrates that payload on first load.
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::paths;
 
@@ -27,7 +30,12 @@ const MAX_CHAT_JSON_BYTES: usize = 8 * 1024 * 1024;
 /// as stubs the webview loads when they are opened.
 const LOAD_BUDGET_BYTES: usize = 32 * 1024 * 1024;
 const MAX_CHAT_ID_LEN: usize = 128;
+/// A backup an earlier 0.4.8 build made by renaming the legacy file.
 const MIGRATED_SUFFIX: &str = ".json.migrated";
+/// Records, inside a project's chat folder, which legacy file was merged.
+const LEGACY_MARKER: &str = ".legacy-merged";
+/// What a load learned about the older chats, so it need not read them again.
+const STUB_INDEX: &str = ".stubs.json";
 /// Names Windows reserves for devices, in any case.
 const RESERVED_NAMES: [&str; 22] = [
     "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
@@ -60,6 +68,33 @@ struct ChatHead {
     id: String,
     #[serde(default)]
     updated_at: Option<f64>,
+}
+
+/// The legacy file a merge saw, and how many of its chats could not be
+/// merged, kept beside the per-chat files.
+#[derive(Serialize, Deserialize)]
+struct LegacyMarker {
+    stamp: String,
+    skipped: u32,
+}
+
+/// What a legacy merge did.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(crate) struct Migration {
+    /// The legacy file was merged by this call.
+    pub merged: bool,
+    /// Chats in the legacy file that cannot be per-chat files (an id that is
+    /// not a file name, a body over the limit): they stay in that file only.
+    pub skipped: u32,
+}
+
+/// One chat as the last load left it: enough to list it without reading it.
+#[derive(Serialize, Deserialize)]
+struct StubEntry {
+    len: u64,
+    modified: u128,
+    updated_at: f64,
+    stub: serde_json::Value,
 }
 
 fn save_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -115,24 +150,59 @@ fn read_head(json: &str) -> Option<ChatHead> {
     serde_json::from_str(json).ok()
 }
 
-/// Moves a legacy per-project array into per-chat files, keeping whichever
-/// copy of a chat is newer, then keeps the array as a backup. True when a
-/// legacy file was migrated.
-pub(crate) fn migrate_legacy_chats(root: &Path, project_id: &str) -> Result<bool, String> {
+/// The length and modification time of a file as one string: what tells a
+/// file that changed from the one a merge saw.
+fn file_stamp(path: &Path) -> Option<String> {
+    let meta = std::fs::metadata(path).ok()?;
+    Some(format!("{}:{}", meta.len(), modified_nanos(&meta)?))
+}
+
+fn modified_nanos(meta: &std::fs::Metadata) -> Option<u128> {
+    Some(
+        meta.modified()
+            .ok()?
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_nanos(),
+    )
+}
+
+/// Merges a legacy per-project array into per-chat files, keeping whichever
+/// copy of a chat is newer. The array itself stays, so 0.4.7 still reads it;
+/// a marker records the version that was merged, and the array is merged
+/// again only when it has changed since (0.4.7 saved to it).
+pub(crate) fn migrate_legacy(root: &Path, project_id: &str) -> Result<Migration, String> {
     let legacy = legacy_path(root, project_id)?;
+    // Stamped before it is read: a write in between only causes a re-merge.
+    let Some(stamp) = file_stamp(&legacy) else {
+        return Ok(Migration::default());
+    };
+    let dir = project_dir(root, project_id)?;
+    let marker_path = dir.join(LEGACY_MARKER);
+    let marker = std::fs::read(&marker_path)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<LegacyMarker>(&bytes).ok());
+    if let Some(marker) = marker.filter(|marker| marker.stamp == stamp) {
+        return Ok(Migration {
+            merged: false,
+            skipped: marker.skipped,
+        });
+    }
     let Ok(data) = std::fs::read(&legacy) else {
-        return Ok(false);
+        return Ok(Migration::default());
     };
     let parsed: serde_json::Value = serde_json::from_slice(&data)
         .map_err(|error| format!("legacy chats file is not valid JSON: {error}"))?;
-    let dir = project_dir(root, project_id)?;
     std::fs::create_dir_all(&dir)
         .map_err(|error| format!("failed to create the chats folder: {error}"))?;
+    let mut skipped = 0u32;
     for chat in parsed.as_array().map(Vec::as_slice).unwrap_or_default() {
         let Some(chat_id) = chat.get("id").and_then(serde_json::Value::as_str) else {
+            skipped += 1;
             continue;
         };
         if validate_chat_id(chat_id).is_err() {
+            skipped += 1;
             continue;
         }
         let path = dir.join(format!("{chat_id}.json"));
@@ -148,18 +218,29 @@ pub(crate) fn migrate_legacy_chats(root: &Path, project_id: &str) -> Result<bool
         }
         let json = chat.to_string();
         if json.len() > MAX_CHAT_JSON_BYTES {
+            skipped += 1;
             continue;
         }
         save_to_path(&path, &json)?;
+        // Best effort, a chat at a time: the whole history is never held
+        // as one string to index it.
+        let _ = crate::library_db::index_chat(root, project_id, chat);
     }
-    let all = read_project_chats(root, project_id, usize::MAX)?;
-    let _ = crate::library_db::index_project_chats(root, project_id, &all.json);
-    let _guard = save_lock();
-    replace_path(&legacy, &backup_path(root, project_id)?)?;
-    Ok(true)
+    let marker = serde_json::to_string(&LegacyMarker { stamp, skipped })
+        .map_err(|error| format!("failed to record the chat migration: {error}"))?;
+    save_to_path(&marker_path, &marker)?;
+    Ok(Migration {
+        merged: true,
+        skipped,
+    })
 }
 
-fn stub_of(value: &serde_json::Value) -> String {
+/// [`migrate_legacy`] for callers that only ask whether a merge ran.
+pub(crate) fn migrate_legacy_chats(root: &Path, project_id: &str) -> Result<bool, String> {
+    migrate_legacy(root, project_id).map(|migration| migration.merged)
+}
+
+fn stub_of(value: &serde_json::Value) -> serde_json::Value {
     let mut stub = serde_json::Map::new();
     for field in STUB_FIELDS {
         if let Some(entry) = value.get(field) {
@@ -173,12 +254,33 @@ fn stub_of(value: &serde_json::Value) -> String {
     stub.insert("messages".into(), serde_json::Value::Array(Vec::new()));
     stub.insert("stub".into(), serde_json::Value::Bool(true));
     stub.insert("messageCount".into(), count.into());
-    serde_json::Value::Object(stub).to_string()
+    serde_json::Value::Object(stub)
+}
+
+/// A chat file found in a project's folder, as its directory entry shows it.
+struct ChatFile {
+    stem: String,
+    path: PathBuf,
+    len: u64,
+    modified: u128,
+}
+
+fn read_stub_index(dir: &Path) -> std::collections::HashMap<String, StubEntry> {
+    std::fs::read(dir.join(STUB_INDEX))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or_default()
 }
 
 /// A project's chats as one JSON array, newest first: full bodies while
 /// they fit `budget`, stubs after that. Unreadable files are skipped and
 /// counted; nothing is created when the project has no chats.
+///
+/// A chat's body is read only when it goes into the answer in full. The
+/// stub of every other chat comes from an index kept beside the files
+/// (`.stubs.json`, keyed by each file's length and modification time), so a
+/// project with hundreds of long chats opens by reading the newest few. A
+/// file the index does not know, or that changed, is read once and added.
 pub(crate) fn read_project_chats(
     root: &Path,
     project_id: &str,
@@ -196,7 +298,7 @@ pub(crate) fn read_project_chats(
         Err(error) => return Err(format!("failed to read the chats folder: {error}")),
     };
     let mut skipped = 0u32;
-    let mut chats: Vec<(f64, String)> = Vec::new();
+    let mut files: Vec<ChatFile> = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
         let Some(name) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
@@ -205,44 +307,102 @@ pub(crate) fn read_project_chats(
         if name.starts_with('.') || !name.ends_with(".json") {
             continue;
         }
-        let stem = &name[..name.len() - ".json".len()];
-        let too_large = entry
-            .metadata()
-            .map(|meta| meta.len() > MAX_CHAT_JSON_BYTES as u64)
-            .unwrap_or(true);
-        if too_large {
-            skipped += 1;
-            continue;
-        }
-        let Ok(json) = std::fs::read_to_string(&path) else {
+        let stem = name[..name.len() - ".json".len()].to_string();
+        let Ok(meta) = entry.metadata() else {
             skipped += 1;
             continue;
         };
-        match read_head(&json) {
-            Some(head) if head.id == stem => {
-                chats.push((head.updated_at.unwrap_or(0.0), json));
-            }
-            _ => skipped += 1,
+        if meta.len() > MAX_CHAT_JSON_BYTES as u64 {
+            skipped += 1;
+            continue;
         }
+        let Some(modified) = modified_nanos(&meta) else {
+            skipped += 1;
+            continue;
+        };
+        files.push(ChatFile {
+            stem,
+            path,
+            len: meta.len(),
+            modified,
+        });
     }
-    chats.sort_by(|left, right| right.0.total_cmp(&left.0));
+
+    let mut known = read_stub_index(&dir);
+    let mut index: std::collections::HashMap<String, StubEntry> =
+        std::collections::HashMap::with_capacity(files.len());
+    let mut changed = false;
+    let mut listed: Vec<(ChatFile, f64)> = Vec::with_capacity(files.len());
+    for file in files {
+        let entry = match known
+            .remove(&file.stem)
+            .filter(|entry| entry.len == file.len && entry.modified == file.modified)
+        {
+            Some(entry) => entry,
+            None => {
+                changed = true;
+                let Ok(json) = std::fs::read_to_string(&file.path) else {
+                    skipped += 1;
+                    continue;
+                };
+                let head = read_head(&json).filter(|head| head.id == file.stem);
+                let value = serde_json::from_str::<serde_json::Value>(&json).ok();
+                let (Some(head), Some(value)) = (head, value) else {
+                    skipped += 1;
+                    continue;
+                };
+                StubEntry {
+                    len: file.len,
+                    modified: file.modified,
+                    updated_at: head.updated_at.unwrap_or(0.0),
+                    stub: stub_of(&value),
+                }
+            }
+        };
+        let stem = file.stem.clone();
+        listed.push((file, entry.updated_at));
+        index.insert(stem, entry);
+    }
+    // Files that are gone leave the index too.
+    changed |= !known.is_empty();
+    listed.sort_by(|left, right| right.1.total_cmp(&left.1));
+
     let mut used = 0usize;
-    let mut items = Vec::with_capacity(chats.len());
-    for (_, json) in chats {
-        if used.saturating_add(json.len()) <= budget {
-            used += json.len();
-            items.push(json);
-        } else {
-            match serde_json::from_str::<serde_json::Value>(&json) {
-                Ok(value) => items.push(stub_of(&value)),
-                Err(_) => skipped += 1,
+    let mut json = String::from("[");
+    for (file, _) in &listed {
+        let full = used.saturating_add(file.len as usize) <= budget;
+        let item = if full {
+            // Read again to include it, and checked again: it may have
+            // changed since the listing.
+            match std::fs::read_to_string(&file.path) {
+                Ok(body) if read_head(&body).is_some_and(|head| head.id == file.stem) => {
+                    used += body.len();
+                    body
+                }
+                _ => {
+                    skipped += 1;
+                    continue;
+                }
             }
+        } else {
+            match index.get(&file.stem) {
+                Some(entry) => entry.stub.to_string(),
+                None => continue,
+            }
+        };
+        if json.len() > 1 {
+            json.push(',');
+        }
+        json.push_str(&item);
+    }
+    json.push(']');
+    if changed {
+        // Best effort: without it the next load reads those files again.
+        if let Ok(text) = serde_json::to_string(&index) {
+            let _ = save_to_path(&dir.join(STUB_INDEX), &text);
         }
     }
-    Ok(ChatsLoad {
-        json: format!("[{}]", items.join(",")),
-        skipped,
-    })
+    Ok(ChatsLoad { json, skipped })
 }
 
 pub(crate) fn read_chat(root: &Path, project_id: &str, chat_id: &str) -> Result<String, String> {
@@ -341,16 +501,27 @@ async fn blocking<T: Send + 'static>(
 #[tauri::command]
 pub async fn chats_load(project_id: String) -> Result<ChatsLoad, String> {
     blocking(move |root| {
-        if let Err(error) = migrate_legacy_chats(&root, &project_id) {
-            crate::logsafe::info(
-                "chat migration",
-                serde_json::json!({ "error": error }),
-                serde_json::Value::Null,
-            );
-        }
-        read_project_chats(&root, &project_id, LOAD_BUDGET_BYTES)
+        let migration = migrate_logged(&root, &project_id);
+        let mut load = read_project_chats(&root, &project_id, LOAD_BUDGET_BYTES)?;
+        // Chats the legacy file holds that cannot be per-chat files are
+        // counted with the files that could not be read.
+        load.skipped = load.skipped.saturating_add(migration.skipped);
+        Ok(load)
     })
     .await
+}
+
+/// Merges a legacy file, logging a failure instead of returning it: the
+/// per-chat files load either way.
+fn migrate_logged(root: &Path, project_id: &str) -> Migration {
+    migrate_legacy(root, project_id).unwrap_or_else(|error| {
+        crate::logsafe::info(
+            "chat migration",
+            serde_json::json!({ "error": error }),
+            serde_json::Value::Null,
+        );
+        Migration::default()
+    })
 }
 
 #[tauri::command]
@@ -381,13 +552,7 @@ pub async fn chat_delete(project_id: String, chat_id: String) -> Result<(), Stri
 #[tauri::command]
 pub async fn load_project_chats(project_id: String) -> Result<String, String> {
     blocking(move |root| {
-        if let Err(error) = migrate_legacy_chats(&root, &project_id) {
-            crate::logsafe::info(
-                "chat migration",
-                serde_json::json!({ "error": error }),
-                serde_json::Value::Null,
-            );
-        }
+        migrate_logged(&root, &project_id);
         read_project_chats(&root, &project_id, usize::MAX).map(|load| load.json)
     })
     .await

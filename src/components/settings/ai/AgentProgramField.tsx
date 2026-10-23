@@ -534,7 +534,7 @@ function SignInResult({
   message: string;
   testId: string;
 }>) {
-  const { t } = useTranslation(["common", "settings"]);
+  const { t } = useTranslation(["common", "settings", "ai"]);
   const displayText = useDisplayText();
   const [opened, setOpened] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -543,7 +543,9 @@ function SignInResult({
 
   const signIn = (method: AcpAuthMethod) => {
     setError(null);
-    signInInTerminal(projectId, id, null, method.id)
+    // The terminal shows the whole command line first and runs it only if the person agrees.
+    const confirmText = t(($) => $.ai.acp.signIn.confirmTerminal, { agent: agent.definition.name });
+    signInInTerminal(projectId, id, null, method.id, confirmText)
       .then(() => setOpened(true))
       .catch(async (error_: unknown) => {
         const { TerminalLaunchError } = await import("@/lib/terminal-launch");

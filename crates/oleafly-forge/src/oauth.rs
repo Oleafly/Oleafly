@@ -603,6 +603,85 @@ mod tests {
         assert_eq!(server.requests().len(), 1, "one refresh for four callers");
     }
 
+    /// Wait until the mock server has received a request.
+    async fn request_arrived(server: &MockServer) {
+        for _ in 0..500 {
+            if !server.requests().is_empty() {
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        panic!("the refresh request never arrived");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_refresh_that_ends_after_a_sign_out_does_not_bring_the_account_back() {
+        let server = MockServer::start(vec![
+            MockResponse::json(200, FRESH).delayed(std::time::Duration::from_millis(300))
+        ]);
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let base = server.url();
+        let now_ms = crate::now_ms();
+        store
+            .save(gitlab_oauth_account(&base), expiring(now_ms, 60))
+            .unwrap();
+        let http = ForgeHttp::new(None).unwrap();
+        let refresh = tokio::spawn({
+            let (store, http, base) = (store.clone(), http.clone(), base.clone());
+            async move {
+                store
+                    .usable_token_with(&http, &base, now_ms, Some("client"))
+                    .await
+            }
+        });
+        request_arrived(&server).await;
+        assert!(store.remove(&base).unwrap(), "signed out mid-refresh");
+        assert_eq!(refresh.await.unwrap().unwrap(), None);
+        assert_eq!(store.token(&base).unwrap(), None);
+        assert!(
+            store.orphan_bases().unwrap().is_empty(),
+            "no token is left without its account"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn a_refresh_that_ends_after_a_new_sign_in_keeps_the_new_sign_in() {
+        let server = MockServer::start(vec![
+            MockResponse::json(200, FRESH).delayed(std::time::Duration::from_millis(300))
+        ]);
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let base = server.url();
+        let now_ms = crate::now_ms();
+        store
+            .save(gitlab_oauth_account(&base), expiring(now_ms, 60))
+            .unwrap();
+        let http = ForgeHttp::new(None).unwrap();
+        let refresh = tokio::spawn({
+            let (store, http, base) = (store.clone(), http.clone(), base.clone());
+            async move {
+                store
+                    .usable_token_with(&http, &base, now_ms, Some("client"))
+                    .await
+            }
+        });
+        request_arrived(&server).await;
+        let signed_in_again = ForgeToken {
+            token: "glpat-signed-in-again".into(),
+            refresh: None,
+            expires_at: None,
+        };
+        store
+            .save(gitlab_oauth_account(&base), signed_in_again.clone())
+            .unwrap();
+        assert_eq!(
+            refresh.await.unwrap().unwrap(),
+            Some(signed_in_again.clone())
+        );
+        assert_eq!(store.token(&base).unwrap(), Some(signed_in_again));
+    }
+
     #[tokio::test]
     async fn a_rejected_refresh_reports_signed_out_and_keeps_the_stored_token() {
         let server = MockServer::start(vec![MockResponse::json(

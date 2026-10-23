@@ -462,6 +462,22 @@ describe("AISection", () => {
     );
   });
 
+  it("marks Reset while reasoning summaries are on", async () => {
+    configFixture = {
+      ...configuredAiConfig(),
+      ai_system_prompt: "",
+      ai_pdf_capture: true,
+      ai_provider_models: {},
+      ai_reasoning_summaries: true,
+    };
+    renderSection();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: enSettings.reset.button }),
+      ).toHaveAccessibleDescription(enSettings.reset.changed),
+    );
+  });
+
   it("resets only AI Assistant preferences after confirmation", async () => {
     const user = userEvent.setup();
     useSettingsStore.getState().setLatexTools(true);
@@ -502,6 +518,7 @@ describe("AISection", () => {
         validation: { status: "valid" },
       },
     ];
+    configFixture = { ...configFixture, ai_reasoning_summaries: true };
     renderSection();
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("get_config"),
@@ -531,6 +548,7 @@ describe("AISection", () => {
         ai_model: "claude-sonnet-4-6",
         ai_system_prompt: "",
         ai_pdf_capture: true,
+        ai_reasoning_summaries: false,
         ai_keys: {
           anthropic: "__stored__",
           ollama: "http://127.0.0.1:11434",

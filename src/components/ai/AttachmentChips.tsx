@@ -1,6 +1,7 @@
 import { FileText, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ComposerAttachment } from "@/components/ai/composer/types";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatBytes } from "@/lib/format-bytes";
@@ -39,7 +40,7 @@ export function AttachmentChips({
             aria-busy={item.status === "processing" || undefined}
             className={cn(
               "relative flex max-w-[16rem] items-center gap-1.5 rounded-md border bg-muted/50 py-1 pl-1.5 text-xs",
-              onRemove ? "pr-6" : "pr-2",
+              onRemove ? "pr-8" : "pr-2",
               item.status === "error" && "border-destructive/50 text-destructive",
             )}
           >
@@ -69,14 +70,17 @@ export function AttachmentChips({
               )}
             </span>
             {onRemove && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 onClick={() => onRemove(item.id)}
                 aria-label={t(($) => $.ai.attachments.remove, { name: item.name })}
-                className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                // A 24px target: the chip is small, but the remove control is not.
+                className="absolute right-0.5 top-1/2 size-6 -translate-y-1/2 text-muted-foreground [&_svg]:size-3"
               >
-                <X className="size-3" />
-              </button>
+                <X />
+              </Button>
             )}
           </div>
         );

@@ -43,13 +43,15 @@
       "command": "確認指令",
       "externalTool": "確認外部工具動作",
       "internet": "確認網際網路存取",
-      "edit": "確認 AI 編輯"
+      "edit": "確認 AI 編輯",
+      "researchTask": "確認研究任務"
     },
     "headline": {
       "command": "助理想要執行這個指令",
       "externalTool": "助理想要使用外部工具",
       "internet": "助理想要存取網際網路",
-      "edit": "助理想要修改你的檔案"
+      "edit": "助理想要修改你的檔案",
+      "researchTask": "助理想要建立一項研究任務"
     },
     "mcpNote": "這會把下方的引數傳送到已設定的 MCP 伺服器。",
     "line": "第 {{line}} 行",
@@ -69,6 +71,21 @@
     "external": {
       "title": "外部代理程式請求（MCP）",
       "moreWaiting_other": "還有 {{count}} 項等待中"
+    },
+    "researchTask": {
+      "note": "任務會在專案副本中自行工作。之後你會審閱它的變更。",
+      "title": "標題",
+      "goal": "目標",
+      "skills": "技能",
+      "prompt": "指示",
+      "commands": "指令",
+      "commandsAsk": "逐一詢問",
+      "network": "網路",
+      "timeBudget": "時間預算",
+      "timeBudgetDefault": "預設",
+      "minutes_other": "{{count}} 分鐘",
+      "planFirst": "先審閱計畫",
+      "startNow": "立即開始"
     }
   },
   "attachments": {
@@ -93,7 +110,9 @@
     "saveFailed": "無法儲存 {{name}}。",
     "missing": "{{name}} 已無法使用。",
     "sentAsText": "這個模型無法以檔案形式讀取 {{name}}，因此改以文字傳送。",
-    "skipped": "未傳送 {{name}}。"
+    "skipped": "未傳送 {{name}}。",
+    "dropUnreadable": "無法讀取 {{names}}。",
+    "notReplayed": "來自舊版本的檔案無法再次傳送：{{names}}。"
   },
   "chat": {
     "pill": {
@@ -581,7 +600,10 @@
       "queued": "已排入佇列：代理程式完成後傳送",
       "remove": "移除佇列中的訊息",
       "sendNow": "立即傳送",
-      "sendFailed": "這則訊息未傳送。請重新傳送或將它移除。"
+      "sendFailed": "這則訊息未傳送。請重新傳送或將它移除。",
+      "queuedConnecting": "已排入佇列：代理程式就緒後傳送",
+      "retry": "重新傳送",
+      "edit": "編輯"
     },
     "slash": {
       "commands": "代理程式指令",
@@ -621,7 +643,9 @@
       "apiKeyPlaceholder": "貼上你的 API 金鑰",
       "geminiGoogle": "個人方案已無法使用 Google 登入。請使用 Gemini API 金鑰或 Vertex AI。",
       "noProject": "開啟專案後才能從終端機登入。",
-      "signOut": "登出"
+      "signOut": "登出",
+      "confirmTerminal": "{{agent}} 會透過下方的指令登入，這個指令會在終端機分頁中執行。同意前請先檢查。",
+      "remote": "這段對話在另一台機器上執行。請在那台機器上登入代理程式。"
     },
     "elicitation": {
       "ariaLabel": "代理程式要求",
@@ -634,7 +658,8 @@
       "openUrl": "在瀏覽器中開啟",
       "confirmTitle": "要開啟 {{host}} 嗎？",
       "confirmDescription": "代理程式請你在這個網站上完成一個步驟。網站會在你的瀏覽器中開啟。",
-      "waiting": "正在等候網站完成。"
+      "waiting": "正在等候網站完成。",
+      "openFailed": "無法在你的瀏覽器中開啟這個連結。"
     },
     "remote": {
       "banner": "Hermes 透過 SSH 在 {{host}} 上執行。它所做的變更會留在那台機器上。"
@@ -645,7 +670,6 @@
       "search": "搜尋對話",
       "empty": "沒有符合的對話。",
       "loadMore": "載入更多",
-      "open": "開啟",
       "rename": "重新命名",
       "renameLabel": "對話名稱",
       "delete": "刪除",
@@ -666,8 +690,11 @@
       "fork": "分支對話",
       "forkUnsupported": "這個代理程式無法分支對話。",
       "forkBusy": "請等代理程式完成後再分支。",
-      "v2": "ACP v2 草案",
-      "remote": "遠端"
+      "v2": "協定預覽",
+      "remote": "遠端",
+      "signOutTitle": "要登出 {{agent}} 嗎？",
+      "signOutDescription": "這會結束 {{agent}} 本身的登入。使用同一個登入的終端機也會一併登出，而且這段對話會停止，直到你再次登入。",
+      "signOutAccount": "已以 {{account}} 身分登入"
     },
     "commit": {
       "button": "提交",

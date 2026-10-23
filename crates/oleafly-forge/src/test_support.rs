@@ -15,6 +15,8 @@ pub struct MockResponse {
     declared_length: Option<u64>,
     /// Answer only requests with this method whose target starts with this.
     route: Option<(String, String)>,
+    /// Wait this long, once the request is recorded, before answering.
+    delay: Option<Duration>,
 }
 
 impl MockResponse {
@@ -36,6 +38,7 @@ impl MockResponse {
             body: body.to_vec(),
             declared_length: None,
             route: None,
+            delay: None,
         }
     }
 
@@ -55,6 +58,13 @@ impl MockResponse {
     /// with `prefix`. Unrouted answers are used in order for any request.
     pub fn on(mut self, method: &str, prefix: &str) -> MockResponse {
         self.route = Some((method.to_string(), prefix.to_string()));
+        self
+    }
+
+    /// Answer `delay` after the request arrived, for tests that act while a
+    /// call is in flight.
+    pub fn delayed(mut self, delay: Duration) -> MockResponse {
+        self.delay = Some(delay);
         self
     }
 
@@ -171,6 +181,9 @@ fn serve(mut stream: TcpStream, state: &Arc<Mutex<State>>) {
             b"no scripted response",
         )
     });
+    if let Some(delay) = response.delay {
+        std::thread::sleep(delay);
+    }
     let length = response
         .declared_length
         .unwrap_or(response.body.len() as u64);

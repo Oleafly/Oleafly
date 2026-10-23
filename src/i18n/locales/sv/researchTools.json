@@ -201,7 +201,10 @@
       "unavailable": "Inte tillgänglig",
       "saving": "Sparar...",
       "saveTask": "Spara uppgiften",
-      "createTask": "Skapa uppgift"
+      "createTask": "Skapa uppgift",
+      "replaceText": "Vill du ersätta titeln och instruktionerna du skrev med det här upplägget?",
+      "keepText": "Behåll mina",
+      "replaceConfirm": "Ersätt"
     },
     "starter": {
       "literatureReview": {
@@ -245,6 +248,10 @@
       "dependencies": "Beroenden",
       "dependencyUnavailable": "Inte tillgänglig",
       "noActivity": "Ingen aktivitet registrerades för den här körningen.",
+      "activityGap_one": "{{count}} objekt däremellan visas inte.",
+      "activityGap_other": "{{count}} objekt däremellan visas inte.",
+      "activityMore": "Mer aktivitet visas inte än.",
+      "keepRunningDesktopApps": "Den här uppgiften använder skrivbordsappar, som kräver att du är vid datorn.",
       "startToRecord": "Starta uppgiften för att registrera dess aktivitet.",
       "reasoning": "Rapporterat resonemang",
       "savedArtifact": "Sparade {{label}}",
@@ -318,6 +325,10 @@
       "kindRun": "Starta en körning",
       "kindMcp": "Använd ett verktyg",
       "expires": "Väntar till {{time}}",
+      "detailCommand": "Fullständigt kommando",
+      "detailRun": "Körningsdetaljer",
+      "detailMcp": "Verktygsargument",
+      "loadFailed": "Väntande förfrågningar kunde inte läsas in.",
       "status": {
         "approved": "Godkänd",
         "denied": "Nekad",
@@ -346,8 +357,9 @@
       "noRuns": "Inga pågående körningar.",
       "budget": "Budget",
       "timeUsed": "{{used}} av {{total}}",
-      "costUsed": "${{used}} av ${{limit}}",
-      "costSpent": "${{used}} förbrukat",
+      "costUsed": "{{used}} av {{limit}}",
+      "costSpent": "{{used}} förbrukat",
+      "ledgerCapped": "Visar de senaste {{limit}} resultaten.",
       "costUnknown": "Kostnaden är okänd för den här modellen.",
       "runsUsed": "{{used}} av {{limit}} körningar",
       "runsUsedNoLimit": "{{used}} körningar",
@@ -380,6 +392,10 @@
       "mcpServers": "MCP-servrar som uppgifter kan använda",
       "mcpServersHint": "Uppgifter anropar de här verktygen enligt varje uppgifts kommandoregler.",
       "noMcpServers": "Inga MCP-servrar är konfigurerade.",
+      "networkHint": "Kommandon i uppgifter kan nå internet. Varje uppgift kan fortfarande stänga av det.",
+      "loadFailed": "Dina forskningsinställningar kunde inte läsas in.",
+      "sectionName": "Forskning",
+      "resetConfirm": "Återställ standardinställningarna för forskning: håll vaken, aviseringar, nätverksåtkomst, tidsbudgeten och de MCP-servrar som uppgifter kan använda. Körningsmål och bakgrundsuppgifter lämnas oförändrade.",
       "saveFailed": "Dina forskningsinställningar kunde inte sparas. Försök igen."
     }
   },
@@ -891,7 +907,10 @@
     "fileReady": "{{fileName}} är klar",
     "saveWordHint": "Spara Word-dokumentet när du är redo.",
     "resultPlaceholder": "Ditt konverterade resultat visas här.",
-    "progressConvertingSource": "Konverterar källkoden till Typst"
+    "progressConvertingSource": "Konverterar källkoden till Typst",
+    "pageRange": "Sidor",
+    "pageRangePlaceholder": "Alla sidor, eller ett intervall som 1-50",
+    "pageRangeInvalid": "Ange ett sidnummer eller ett intervall som 1-50."
   },
   "converters": {
     "imageToLatex": {
@@ -1098,7 +1117,9 @@
     "fileTooLarge": "Välj en fil som är mindre än 128 MB.",
     "emptySheet": "Det valda bladet är tomt.",
     "arxivInputRequired": "Ange ett arXiv-ID eller välj ett källarkiv.",
-    "equationToTypst": "Pandoc kunde inte konvertera ekvationen till Typst. Kontrollera LaTeX-matematiken och försök igen."
+    "equationToTypst": "Pandoc kunde inte konvertera ekvationen till Typst. Kontrollera LaTeX-matematiken och försök igen.",
+    "pdfTooManyPages": "Den här skanningen har {{pages}} sidor, och Oleafly transkriberar upp till {{limit}} åt gången. Ange ett sidintervall som 1-{{limit}} under filen.",
+    "outputLimit": "Modellen fick slut på utrymme innan den blev klar, så transkriptionen skulle bli ofullständig. Välj en modell med högre gräns för utdata under Inställningar, AI-assistent, Verktyg, eller transkribera en mindre del."
   },
   "converterNotes": {
     "scannedPages": "Transkriberade {{pages}} inskannade sidor med {{model}}. Granska ekvationer och tabeller innan du använder resultatet.",
@@ -1149,7 +1170,7 @@
       "cannotSeeImages": "{{model}} kan inte läsa bilder. Välj en bildmodell.",
       "localModelGone": "{{model}} finns inte längre i Ollama. Hämta den igen, eller välj en annan modell.",
       "imagesOnly": "{{model}} läser bara bilder. Välj en språkmodell för att konvertera inskrivna ekvationer.",
-      "mathpixNotSetUp": "Lägg till dina Mathpix-nycklar under Inställningar, AI, Verktyg, eller välj en annan modell.",
+      "mathpixNotSetUp": "Lägg till dina Mathpix-nycklar under Inställningar, AI-assistent, Verktyg, eller välj en annan modell.",
       "imageTooLarge": "Bilden är fortfarande för stor efter förminskningen. Beskär den och försök igen."
     }
   },
@@ -1740,10 +1761,14 @@
     "startAtLabel": "Starttid",
     "startNow": "När jag startar den",
     "keepRunning": "Fortsätt köra när Oleafly är stängt",
-    "keepRunningHint": "Slå först på bakgrundsarbete under Inställningar, Forskning.",
+    "keepRunningHint": "Slå först på Bakgrundsuppgifter under Inställningar, Forskning.",
     "invalidMetric": "Använd bokstäver, siffror, punkter, bindestreck eller understreck.",
     "invalidCost": "Ange ett belopp större än noll.",
-    "invalidRuns": "Ange ett heltal från 1 till 1 000."
+    "invalidRuns": "Ange ett heltal från 1 till 1 000.",
+    "invalidStart": "Välj en starttid inom de kommande 30 dagarna.",
+    "invalidStartFormat": "Använd formatet {{example}}.",
+    "startAtFormat": "Skriv tiden som {{example}}.",
+    "problemHidden": "Ett alternativ i Uppdragsbeskrivningen behöver åtgärdas. Öppna Uppdragsbeskrivningen för att se vilket."
   },
   "runs": {
     "status": {
@@ -1755,11 +1780,6 @@
       "cancelled": "Stoppad",
       "lost": "Förlorad"
     }
-  },
-  "record": {
-    "title": "Forskningsprotokoll",
-    "openHandoff": "Öppna överlämningen",
-    "openReport": "Öppna rapporten"
   },
   "evidence": {
     "title": "Kontroller av underlaget",
@@ -1811,8 +1831,9 @@
       "edit": "Redigera",
       "remove": "Ta bort",
       "removeTitle": "Vill du ta bort {{label}}?",
-      "removeConfirm": "Körningar som redan har startat där fortsätter.",
+      "removeConfirm": "Körningar som redan har startat där fortsätter. Uppgifter som väntar på att starta på den kommer att misslyckas.",
       "forgetHostKey": "Glöm värdnyckeln",
+      "reviewHostKey": "Kontrollera värdnyckeln",
       "notTested": "Inte testad",
       "tested": "Testad {{time}}",
       "testFailed": "Testet misslyckades",
@@ -1903,7 +1924,8 @@
       "none": "Inga värdar hittades i din SSH-konfiguration.",
       "added": "Redan tillagd",
       "add_one": "Lägg till {{count}} värd",
-      "add_other": "Lägg till {{count}} värdar"
+      "add_other": "Lägg till {{count}} värdar",
+      "skipped": "Lades inte till: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Sandlåda på den här datorn",
@@ -1934,6 +1956,7 @@
       "runsOn": "Körs på {{target}}",
       "runsLocal": "Körs på den här datorn.",
       "missing": "Målet som den här uppgiften använde har tagits bort. Välj ett annat.",
+      "loadFailed": "Dina mål för körningar kunde inte läsas in.",
       "windowsOff": "Slå på Windows-sandlådan i Inställningar för att köra kommandon på den här datorn.",
       "openSettings": "Öppna Inställningar",
       "resources": "Slurm-resurser"
@@ -1947,6 +1970,7 @@
       "movingBackHint": "Uppgiften återvänder till Oleafly när det nuvarande steget är klart."
     },
     "earlierActivity": "Visa tidigare aktivitet",
+    "earlierTruncated": "Bara de första {{limit}} objekten från den tidigare körningen visas.",
     "keepRunningFailed": "Det gick inte att ändra den här inställningen. Försök igen."
   }
 }

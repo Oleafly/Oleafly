@@ -200,7 +200,10 @@
       "unavailable": "利用できません",
       "saving": "保存中...",
       "saveTask": "タスクを保存",
-      "createTask": "タスクを作成"
+      "createTask": "タスクを作成",
+      "replaceText": "入力したタイトルと指示を、このひな形の内容で置き換えますか？",
+      "keepText": "入力した内容を残す",
+      "replaceConfirm": "置き換える"
     },
     "starter": {
       "literatureReview": {
@@ -244,6 +247,9 @@
       "dependencies": "依存関係",
       "dependencyUnavailable": "利用できません",
       "noActivity": "この実行では経過が記録されませんでした。",
+      "activityGap_other": "この間の {{count}} 件は表示していません。",
+      "activityMore": "表示していない経過がまだあります。",
+      "keepRunningDesktopApps": "このタスクはデスクトップアプリを使うため、コンピュータの前にいる必要があります。",
       "startToRecord": "このタスクを開始すると、経過が記録されます。",
       "reasoning": "報告された推論",
       "savedArtifact": "{{label}} を保存しました",
@@ -317,6 +323,10 @@
       "kindRun": "実行を開始",
       "kindMcp": "ツールを使用",
       "expires": "{{time}} まで待機",
+      "detailCommand": "コマンド全体",
+      "detailRun": "実行の詳細",
+      "detailMcp": "ツールの引数",
+      "loadFailed": "待機中の要求を読み込めませんでした。",
       "status": {
         "approved": "承認済み",
         "denied": "拒否",
@@ -345,8 +355,9 @@
       "noRuns": "進行中の実行はありません。",
       "budget": "予算",
       "timeUsed": "{{total}} 中 {{used}}",
-      "costUsed": "${{limit}} 中 ${{used}}",
-      "costSpent": "${{used}} 使用",
+      "costUsed": "{{limit}} 中 {{used}}",
+      "costSpent": "{{used}} 使用",
+      "ledgerCapped": "最新の {{limit}} 件の結果を表示しています。",
       "costUnknown": "このモデルの費用は不明です。",
       "runsUsed": "{{limit}} 回中 {{used}} 回実行",
       "runsUsedNoLimit": "{{used}} 回実行",
@@ -379,6 +390,10 @@
       "mcpServers": "タスクが使える MCP サーバー",
       "mcpServersHint": "タスクは、各タスクのコマンドのルールに従ってこれらのツールを呼び出します。",
       "noMcpServers": "MCP サーバーは設定されていません。",
+      "networkHint": "タスクのコマンドはインターネットに接続できます。各タスクでオフにすることもできます。",
+      "loadFailed": "研究の設定を読み込めませんでした。",
+      "sectionName": "研究",
+      "resetConfirm": "研究の設定を既定に戻します: コンピュータのスリープを防ぐ設定、通知、ネットワークへのアクセス、時間の予算、タスクが使える MCP サーバー。実行先とバックグラウンドタスクは変わりません。",
       "saveFailed": "研究の設定を保存できませんでした。もう一度お試しください。"
     }
   },
@@ -887,7 +902,10 @@
     "fileReady": "{{fileName}} の準備ができました",
     "saveWordHint": "準備ができたら Word の文書を保存してください。",
     "resultPlaceholder": "変換の結果がここに表示されます。",
-    "progressConvertingSource": "ソースを Typst に変換しています"
+    "progressConvertingSource": "ソースを Typst に変換しています",
+    "pageRange": "ページ",
+    "pageRangePlaceholder": "すべてのページ、または 1-50 のような範囲",
+    "pageRangeInvalid": "ページ番号を 1 つ、または 1-50 のような範囲で入力してください。"
   },
   "converters": {
     "imageToLatex": {
@@ -1094,7 +1112,9 @@
     "fileTooLarge": "128 MB 未満のファイルを選んでください。",
     "emptySheet": "選択したシートは空です。",
     "arxivInputRequired": "arXiv の ID を入力するか、ソースのアーカイブを選んでください。",
-    "equationToTypst": "Pandoc はこの数式を Typst に変換できませんでした。LaTeX の数式を確認して、もう一度お試しください。"
+    "equationToTypst": "Pandoc はこの数式を Typst に変換できませんでした。LaTeX の数式を確認して、もう一度お試しください。",
+    "pdfTooManyPages": "このスキャンは {{pages}} ページあり、Oleafly が一度に文字起こしできるのは {{limit}} ページまでです。ファイルの下にある欄に、1-{{limit}} のようなページ範囲を入力してください。",
+    "outputLimit": "モデルは書き終える前に出力の上限に達するため、このままだと文字起こしは不完全になります。「設定 → AI アシスタント → ツール」で出力の上限が大きいモデルを選ぶか、範囲を狭めて文字起こししてください。"
   },
   "converterNotes": {
     "scannedPages": "{{model}} でスキャンした {{pages}} ページを文字起こししました。結果を使う前に、数式と表を確認してください。",
@@ -1717,10 +1737,14 @@
     "startAtLabel": "開始日時",
     "startNow": "自分で開始したとき",
     "keepRunning": "Oleafly を閉じても実行を続ける",
-    "keepRunningHint": "先に「設定 → 研究」でバックグラウンドでの作業をオンにしてください。",
+    "keepRunningHint": "先に「設定 → 研究」でバックグラウンドタスクをオンにしてください。",
     "invalidMetric": "英字、数字、ドット、ハイフン、アンダースコアを使ってください。",
     "invalidCost": "0 より大きい金額を入力してください。",
-    "invalidRuns": "1 から 1,000 までの整数を入力してください。"
+    "invalidRuns": "1 から 1,000 までの整数を入力してください。",
+    "invalidStart": "今後 30 日以内の開始日時を選んでください。",
+    "invalidStartFormat": "{{example}} の形式を使ってください。",
+    "startAtFormat": "時刻は {{example}} の形式で入力してください。",
+    "problemHidden": "依頼内容の項目に修正が必要なものがあります。どれかは、依頼内容を開いて確認してください。"
   },
   "runs": {
     "status": {
@@ -1732,11 +1756,6 @@
       "cancelled": "停止",
       "lost": "消失"
     }
-  },
-  "record": {
-    "title": "研究の記録",
-    "openHandoff": "引き継ぎを開く",
-    "openReport": "レポートを開く"
   },
   "evidence": {
     "title": "根拠の確認",
@@ -1788,8 +1807,9 @@
       "edit": "編集",
       "remove": "削除",
       "removeTitle": "{{label}} を削除しますか？",
-      "removeConfirm": "そこで開始済みの実行は続きます。",
+      "removeConfirm": "そこで開始済みの実行は続きます。そこで開始を待っているタスクは失敗します。",
       "forgetHostKey": "ホスト鍵を削除",
+      "reviewHostKey": "ホスト鍵を確認",
       "notTested": "未テスト",
       "tested": "{{time}}にテスト済み",
       "testFailed": "テストに失敗しました",
@@ -1879,7 +1899,8 @@
       "body": "追加するホストを選んでください。Oleafly は SSH の設定を読み取るだけで、変更はしません。",
       "none": "SSH の設定にホストが見つかりません。",
       "added": "追加済み",
-      "add_other": "{{count}} 個のホストを追加"
+      "add_other": "{{count}} 個のホストを追加",
+      "skipped": "追加されませんでした: {{hosts}}。{{reason}}"
     },
     "sandbox": {
       "heading": "このコンピュータのサンドボックス",
@@ -1910,6 +1931,7 @@
       "runsOn": "{{target}} で実行",
       "runsLocal": "このコンピュータで実行します。",
       "missing": "このタスクが使っていた実行先は削除されました。別の実行先を選んでください。",
+      "loadFailed": "実行先を読み込めませんでした。",
       "windowsOff": "このコンピュータでコマンドを実行するには、設定で Windows のサンドボックスをオンにしてください。",
       "openSettings": "設定を開く",
       "resources": "Slurm のリソース"
@@ -1923,6 +1945,7 @@
       "movingBackHint": "このタスクは現在のステップが終わると Oleafly に戻ります。"
     },
     "earlierActivity": "以前のアクティビティを表示",
+    "earlierTruncated": "この以前の実行では、先頭の {{limit}} 件だけを表示しています。",
     "keepRunningFailed": "この設定を変更できませんでした。もう一度お試しください。"
   }
 }

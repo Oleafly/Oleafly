@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} hat den Zugriff auf dieses Repository verweigert. Prüfen Sie, ob Ihr Konto Zugriff darauf hat. Wenn die Organisation Single Sign-on verwendet, autorisieren Sie Ihre Anmeldung zuerst dafür.",
+    "access_denied_account": "{{host}} hat {{account}} den Zugriff auf dieses Repository verweigert. Prüfen Sie, ob dieses Konto Zugriff darauf hat. Wenn die Organisation Single Sign-On verwendet, autorisieren Sie Ihre Anmeldung zuerst dafür.",
     "account_missing": "Für {{host}} gibt es kein Git-Hosting-Konto. Fügen Sie in den Einstellungen eines hinzu.",
     "archive_too_large": "Die Dateien des Repositorys sind größer als {{limit}} MB, daher kann Oleafly sie nicht importieren. Klonen Sie das Repository selbst und öffnen Sie stattdessen seinen Ordner.",
-    "auth_rejected": "{{host}} hat Ihre gespeicherte Anmeldung abgelehnt. Melden Sie sich in den Einstellungen erneut bei {{host}} an.",
+    "auth_rejected": "{{host}} hat die gespeicherte Anmeldung für {{account}} abgelehnt. Melden Sie sich in den Einstellungen erneut bei {{host}} an.",
     "credentials_missing": "{{host}} hat nach Benutzername und Passwort gefragt. Melden Sie sich in den Einstellungen bei {{host}} an, oder richten Sie einen SSH-Schlüssel oder einen Git-Credential-Helper ein.",
     "credentials_rejected": "{{host}} hat den Benutzernamen und das Passwort abgelehnt, die Git angeboten hat. Melden Sie sich in den Einstellungen bei {{host}} an, oder aktualisieren Sie die Zugangsdaten, die Ihr Git verwendet.",
     "device_flow_unavailable": "Die Anmeldung im Browser ist für {{host}} in diesem Build nicht verfügbar. Verwenden Sie stattdessen ein Zugriffstoken.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Auf {{host}} gibt es bereits ein Repository mit diesem Namen.",
     "forge_server_error": "{{host}} hat einen Fehler zurückgegeben ({{status}}).",
     "forge_signed_out": "Ihre Anmeldung bei {{host}} ist abgelaufen oder wurde widerrufen. Melden Sie sich in den Einstellungen erneut an.",
+    "forge_sso_required": "{{host}} verlangt, dass diese Anmeldung für das Single Sign-On der Organisation autorisiert wird. Autorisieren Sie sie auf {{host}} und versuchen Sie es dann erneut.",
     "forge_store": "Oleafly konnte Ihre Git-Hosting-Konten nicht lesen oder speichern.",
     "forge_token_invalid": "Das sieht nicht nach einem Zugriffstoken aus. Fügen Sie das ganze Token ein.",
     "forge_token_rejected": "{{host}} hat dieses Token nicht akzeptiert. Prüfen Sie, ob Sie das ganze Token kopiert haben und ob es abgelaufen ist.",
     "forge_unknown_server": "Oleafly konnte nicht erkennen, was für ein Server {{host}} ist. Wählen Sie den Servertyp.",
     "host_key_unknown": "SSH kennt {{host}} noch nicht. Verbinden Sie sich einmal über ein Terminal damit, um seinen Host-Schlüssel zu akzeptieren, und versuchen Sie es dann erneut.",
     "host_unreachable": "Oleafly konnte {{host}} nicht erreichen. Prüfen Sie die Adresse und Ihre Verbindung.",
+    "import_cancelled": "Der Import wurde abgebrochen.",
     "invalid_remote_url": "Geben Sie die HTTPS- oder SSH-Adresse eines Git-Repositorys ein.",
     "nested_repository": "Dieses Projekt liegt in einem anderen Git-Repository, daher legt Oleafly hier kein eigenes an.",
     "not_installed": "Git ist auf diesem Computer nicht installiert. Installieren Sie Git und versuchen Sie es dann erneut.",
     "push_rejected": "Der Remote-Branch hat Commits, die dieses Projekt noch nicht hat. Führen Sie zuerst einen Pull aus und pushen Sie dann erneut.",
     "remote_exists": "Dieses Projekt ist bereits mit {{remote}} verknüpft.",
-    "remote_has_password": "Entfernen Sie das Passwort aus der Adresse. Oleafly meldet sich stattdessen mit Ihrem Git-Hosting-Konto oder Ihren eigenen Git-Zugangsdaten an.",
+    "remote_has_password": "Entfernen Sie das Passwort oder den Zugriffstoken aus der Adresse. Oleafly meldet sich stattdessen mit Ihrem Git-Hosting-Konto oder Ihren eigenen Git-Zugangsdaten an.",
     "repository_empty": "Dieses Repository hat noch keine Commits, daher gibt es nichts zu importieren.",
     "repository_not_found": "{{host}} hat unter dieser Adresse kein Repository, oder Ihr Konto kann es nicht sehen.",
     "sign_in_cancelled": "Die Anmeldung wurde im Browser abgebrochen.",
@@ -269,6 +272,14 @@
   "provider_credit": {
     "failed": "Oleafly konnte Ihr Guthaben bei {{provider}} nicht abfragen."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 ist nicht installiert.",
+    "git_bash_missing": "Git Bash ist nicht installiert. Installieren Sie Git for Windows oder wählen Sie eine andere shell.",
+    "wsl_missing": "WSL ist nicht installiert.",
+    "wsl_no_distro": "WSL hat noch keine Linux-Distribution.",
+    "shell_path_empty": "Geben Sie einen shell-Pfad in den Einstellungen ein oder wählen Sie eine andere shell.",
+    "shell_path_missing": "Unter {{path}} gibt es kein Programm."
+  },
   "mathpix": {
     "keys_missing": "Fügen Sie zuerst Ihre Mathpix-App-ID und Ihren Schlüssel unter Einstellungen, KI, Tools hinzu.",
     "invalid_keys": "Diese App-ID oder dieser Schlüssel enthält Zeichen, die in Mathpix-Schlüsseln nie vorkommen. Kopieren Sie sie erneut aus der Mathpix-Konsole.",
@@ -282,7 +293,8 @@
     "pdf_too_large": "Dieses PDF ist größer als das Limit von 256 MB für Mathpix.",
     "timed_out": "Mathpix hat dieses PDF nicht innerhalb von 30 Minuten fertiggestellt. Versuchen Sie es mit weniger Seiten.",
     "cancelled": "Die Mathpix-Umwandlung wurde gestoppt.",
-    "wrong_window": "Mathpix kann nur im Oleafly-Hauptfenster verwendet werden."
+    "wrong_window": "Mathpix kann nur im Oleafly-Hauptfenster verwendet werden.",
+    "pdf_too_large_ipc": "Dieser Computer kann PDFs bis 16 MB an Mathpix senden. Teilen Sie das PDF und versuchen Sie es erneut."
   },
   "desktop_apps": {
     "not_installed": "Cua Driver ist nicht installiert. Installieren Sie es unter Einstellungen → Integrationen → Desktop-Apps.",

@@ -924,7 +924,7 @@
         "experimentation": "labb, beta, tidiga funktioner",
         "general": "inställningar, språk, region, stavningskontroll, stavning, stavfel, offline, rundturer, terminalkommando",
         "help": "om, version, uppdateringar, ändringslogg, nyheter, dokumentation, support, gemenskap, Discord, licens, kraschrapport",
-        "integrations": "Zotero, GitHub, MCP, citeringar, konton, anslutningar",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-värdtjänster, skrivbordsappar, Cua, MCP, citeringar, konton, anslutningar",
         "shortcuts": "kortkommandon, snabbtangenter, tangentbindningar, tangenter, tangentbord",
         "research": "forskning uppgifter budget aviseringar håll vaken experiment körningar"
       },

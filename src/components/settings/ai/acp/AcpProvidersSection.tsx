@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   acpAgentPreferences, acpError, acpPreferences, acpProviderChoices, acpSetAgentPreferences,
@@ -39,9 +40,7 @@ export function AcpProvidersSection({ agentId }: Readonly<{ agentId: string }>) 
   };
   return (
     <section data-testid={`acp-agent-providers-${agentId}`} className="space-y-1.5">
-      <h5 className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
-        {t(($) => $.settings.ai.agents.providers.label)}
-      </h5>
+      <SectionHeading as="h4">{t(($) => $.settings.ai.agents.providers.label)}</SectionHeading>
       {choices.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t(($) => $.settings.ai.agents.providers.unavailable)}</p>
       ) : (
@@ -49,7 +48,7 @@ export function AcpProvidersSection({ agentId }: Readonly<{ agentId: string }>) 
           <SelectTrigger aria-label={t(($) => $.settings.ai.agents.providers.label)} className="h-8 w-64 text-xs">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[100]">
             <SelectItem value={OFF}>{t(($) => $.settings.ai.agents.providers.off)}</SelectItem>
             {choices.map((choice) => (
               <SelectItem key={choice.id} value={choice.id}>{choice.label}</SelectItem>

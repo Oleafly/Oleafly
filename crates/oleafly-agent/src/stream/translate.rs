@@ -437,10 +437,7 @@ impl Translator {
                     .unwrap_or("OpenAI response stream failed")
                     .to_string();
                 self.done = true;
-                self.error = Some(AgentError::Provider {
-                    status: 400,
-                    message,
-                });
+                self.error = Some(AgentError::provider(400, message));
             }
             _ => {}
         }
@@ -756,23 +753,11 @@ fn web_search_call_events(item: &Value) -> Vec<AgentEvent> {
 
 fn anthropic_stream_error(kind: &str, message: String) -> AgentError {
     match kind {
-        "rate_limit_error" => AgentError::Provider {
-            status: 429,
-            message,
-        },
-        "overloaded_error" | "api_error" | "" => AgentError::Provider {
-            status: 529,
-            message,
-        },
+        "rate_limit_error" => AgentError::provider(429, message),
+        "overloaded_error" | "api_error" | "" => AgentError::provider(529, message),
         "timeout_error" => AgentError::Timeout,
-        "authentication_error" | "permission_error" => AgentError::Provider {
-            status: 401,
-            message,
-        },
-        _ => AgentError::Provider {
-            status: 400,
-            message,
-        },
+        "authentication_error" | "permission_error" => AgentError::provider(401, message),
+        _ => AgentError::provider(400, message),
     }
 }
 

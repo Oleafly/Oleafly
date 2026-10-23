@@ -12,6 +12,8 @@ const MAX_LINE_CHARS: usize = 500;
 pub const MAX_TAIL_LINES: usize = 2_000;
 pub const MAX_GREP_MATCHES: usize = 200;
 const MAX_PATTERN_CHARS: usize = 200;
+/// A grep looks at most this far into one line.
+const MAX_SCANNED_LINE_BYTES: u64 = 64 * 1024;
 
 fn cut(line: &str) -> String {
     let line = line.trim_end_matches('\r');
@@ -90,17 +92,24 @@ pub fn grep(path: &Path, pattern: &str, max_matches: usize) -> Result<String, St
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(String::new()),
         Err(error) => return Err(format!("The run log could not be read: {error}")),
     };
+    let unreadable = |error: std::io::Error| format!("The run log could not be read: {error}");
     let mut reader = std::io::BufReader::new(file);
     let mut matches = Vec::new();
     let mut buffer = Vec::new();
     let mut number = 0u64;
     loop {
         buffer.clear();
-        let read = reader
+        // A line without a newline (a progress bar, binary output) can be
+        // gigabytes: only its start is looked at, and the rest is skipped.
+        let read = (&mut reader)
+            .take(MAX_SCANNED_LINE_BYTES)
             .read_until(b'\n', &mut buffer)
-            .map_err(|error| format!("The run log could not be read: {error}"))?;
+            .map_err(unreadable)?;
         if read == 0 {
             break;
+        }
+        if read as u64 == MAX_SCANNED_LINE_BYTES && !buffer.ends_with(b"\n") {
+            skip_line(&mut reader).map_err(unreadable)?;
         }
         number += 1;
         let line = String::from_utf8_lossy(&buffer);
@@ -112,6 +121,33 @@ pub fn grep(path: &Path, pattern: &str, max_matches: usize) -> Result<String, St
         }
     }
     Ok(fit(matches))
+}
+
+/// Reads on to the end of the current line without keeping it.
+fn skip_line(reader: &mut impl BufRead) -> std::io::Result<()> {
+    loop {
+        let available = reader.fill_buf()?;
+        if available.is_empty() {
+            return Ok(());
+        }
+        match available.iter().position(|byte| *byte == b'\n') {
+            Some(index) => {
+                reader.consume(index + 1);
+                return Ok(());
+            }
+            None => {
+                let length = available.len();
+                reader.consume(length);
+            }
+        }
+    }
+}
+
+/// [`answer`] on a blocking thread: a grep can read gigabytes.
+pub async fn answer_blocking(path: std::path::PathBuf, query: LogQuery) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || answer(&path, &query))
+        .await
+        .map_err(|_| "The run log could not be read.".to_string())?
 }
 
 pub fn answer(path: &Path, query: &LogQuery) -> Result<String, String> {

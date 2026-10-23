@@ -162,9 +162,12 @@ pub fn env_key_names(provider_id: &str) -> &'static [&'static str] {
 }
 
 /// Every variable that may hold a provider key (children never see them).
+/// Ollama's host is an address, not a key, so `OLLAMA_HOST` stays out: a
+/// command that talks to a remote Ollama needs it, and it isn't a secret.
 pub fn all_key_variables() -> Vec<&'static str> {
     let mut names: Vec<&'static str> = CATALOG
         .iter()
+        .filter(|entry| !entry.is_host)
         .flat_map(|entry| env_key_names(entry.id).iter().copied())
         .collect();
     names.push("OLEAFLY_API_KEY");
@@ -433,6 +436,15 @@ mod tests {
         }
         assert!(env_key_names("my-custom").is_empty());
         assert!(all_key_variables().contains(&"OLEAFLY_API_KEY"));
+    }
+
+    #[test]
+    fn the_ollama_host_is_not_treated_as_a_secret() {
+        let names = all_key_variables();
+        assert!(!names.contains(&"OLLAMA_HOST"));
+        for key in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY"] {
+            assert!(names.contains(&key), "{key}");
+        }
     }
 
     #[test]

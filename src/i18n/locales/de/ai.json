@@ -43,13 +43,15 @@
       "command": "Befehl bestätigen",
       "externalTool": "Aktion eines externen Werkzeugs bestätigen",
       "internet": "Internetzugriff bestätigen",
-      "edit": "Änderung der KI bestätigen"
+      "edit": "Änderung der KI bestätigen",
+      "researchTask": "Forschungsaufgabe bestätigen"
     },
     "headline": {
       "command": "Der Assistent möchte diesen Befehl ausführen",
       "externalTool": "Der Assistent möchte ein externes Werkzeug nutzen",
       "internet": "Der Assistent möchte auf das Internet zugreifen",
-      "edit": "Der Assistent möchte Ihre Dateien ändern"
+      "edit": "Der Assistent möchte Ihre Dateien ändern",
+      "researchTask": "Der Assistent möchte eine Forschungsaufgabe anlegen"
     },
     "mcpNote": "Damit gehen die Argumente unten an den eingerichteten MCP-Server.",
     "line": "Zeile {{line}}",
@@ -70,6 +72,22 @@
       "title": "Anfrage eines externen Agenten (MCP)",
       "moreWaiting_one": "{{count}} weitere wartet",
       "moreWaiting_other": "{{count}} weitere warten"
+    },
+    "researchTask": {
+      "note": "Die Aufgabe arbeitet eigenständig in einer Kopie des Projekts. Die Änderungen prüfen Sie danach.",
+      "title": "Titel",
+      "goal": "Ziel",
+      "skills": "Skills",
+      "prompt": "Anweisungen",
+      "commands": "Befehle",
+      "commandsAsk": "Vor jedem Befehl fragen",
+      "network": "Netzwerk",
+      "timeBudget": "Zeitbudget",
+      "timeBudgetDefault": "Standard",
+      "minutes_one": "{{count}} Minute",
+      "minutes_other": "{{count}} Minuten",
+      "planFirst": "Zuerst planen",
+      "startNow": "Sofort starten"
     }
   },
   "attachments": {
@@ -95,7 +113,9 @@
     "saveFailed": "{{name}} konnte nicht gespeichert werden.",
     "missing": "{{name}} ist nicht mehr verfügbar.",
     "sentAsText": "{{name}} wurde als Text gesendet, weil dieses Modell die Datei nicht lesen kann.",
-    "skipped": "{{name}} wurde nicht gesendet."
+    "skipped": "{{name}} wurde nicht gesendet.",
+    "dropUnreadable": "{{names}} konnten nicht gelesen werden.",
+    "notReplayed": "Dateien aus einer älteren Version können nicht erneut gesendet werden: {{names}}."
   },
   "chat": {
     "pill": {
@@ -591,7 +611,10 @@
       "queued": "In der Warteschlange: wird gesendet, wenn der Agent fertig ist",
       "remove": "Nachricht aus der Warteschlange entfernen",
       "sendNow": "Jetzt senden",
-      "sendFailed": "Diese Nachricht wurde nicht gesendet. Senden Sie sie erneut oder entfernen Sie sie."
+      "sendFailed": "Diese Nachricht wurde nicht gesendet. Senden Sie sie erneut oder entfernen Sie sie.",
+      "queuedConnecting": "In der Warteschlange: wird gesendet, wenn der Agent bereit ist",
+      "retry": "Erneut senden",
+      "edit": "Bearbeiten"
     },
     "slash": {
       "commands": "Agentenbefehle",
@@ -631,7 +654,9 @@
       "apiKeyPlaceholder": "API-Schlüssel einfügen",
       "geminiGoogle": "Die Anmeldung mit Google funktioniert für Einzeltarife nicht mehr. Verwenden Sie einen Gemini-API-Schlüssel oder Vertex AI.",
       "noProject": "Öffnen Sie ein Projekt, um sich im Terminal anzumelden.",
-      "signOut": "Abmelden"
+      "signOut": "Abmelden",
+      "confirmTerminal": "{{agent}} meldet sich über den Befehl unten an, der in einem Terminal-Tab läuft. Prüfen Sie ihn, bevor Sie zustimmen.",
+      "remote": "Dieses Gespräch läuft auf einem anderen Rechner. Melden Sie sich dort beim Agenten an."
     },
     "elicitation": {
       "ariaLabel": "Anfrage des Agenten",
@@ -644,7 +669,8 @@
       "openUrl": "Im Browser öffnen",
       "confirmTitle": "{{host}} öffnen?",
       "confirmDescription": "Der Agent bittet Sie, auf dieser Website einen Schritt abzuschließen. Sie öffnet sich in Ihrem Browser.",
-      "waiting": "Warten, bis die Website fertig ist."
+      "waiting": "Warten, bis die Website fertig ist.",
+      "openFailed": "Der Link konnte nicht in Ihrem Browser geöffnet werden."
     },
     "remote": {
       "banner": "Hermes läuft über SSH auf {{host}}. Seine Änderungen bleiben auf diesem Rechner."
@@ -655,7 +681,6 @@
       "search": "Gespräche durchsuchen",
       "empty": "Keine passenden Gespräche.",
       "loadMore": "Mehr laden",
-      "open": "Öffnen",
       "rename": "Umbenennen",
       "renameLabel": "Name des Gesprächs",
       "delete": "Löschen",
@@ -677,7 +702,10 @@
       "forkUnsupported": "Dieser Agent kann keine Gespräche abzweigen.",
       "forkBusy": "Warten Sie, bis der Agent fertig ist, bevor Sie abzweigen.",
       "v2": "ACP v2 (Entwurf)",
-      "remote": "Entfernt"
+      "remote": "Entfernt",
+      "signOutTitle": "Von {{agent}} abmelden?",
+      "signOutDescription": "Damit wird die {{agent}}-Anmeldung selbst beendet. Auch ein Terminal, das dieselbe Anmeldung verwendet, wird abgemeldet, und dieses Gespräch stoppt, bis Sie sich erneut anmelden.",
+      "signOutAccount": "Angemeldet mit {{account}}"
     },
     "commit": {
       "button": "Commit",

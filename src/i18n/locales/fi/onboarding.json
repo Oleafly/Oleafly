@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Integraatiot",
-      "content": "Yhdistä GitHub, alphaXiv, Zotero, viitehaku ja Oleaflyn paikallinen MCP-palvelin."
+      "content": "Yhdistä Git-palvelut (GitHub, GitLab, Codeberg ja muut), alphaXiv, Zotero, viitehaku, agenttien työpöytäsovellukset ja Oleaflyn paikallinen MCP-palvelin."
     },
     "shortcuts": {
       "title": "Pikanäppäimet",

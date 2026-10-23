@@ -137,61 +137,137 @@ fn windows_program(path: &str) -> bool {
     name.ends_with(".exe") || name.ends_with(".com")
 }
 
-/// Checks and normalizes settings before they are saved.
+/// Why an app entry can't be used.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AppFault {
+    /// Not a usable entry: no bundle id or program path, or a script.
+    Invalid,
+    /// An app agents may never use.
+    Blocked,
+    /// A program that isn't on this computer (any more).
+    Missing,
+}
+
+/// One entry, checked against the platform's rules and the blocklist, in its
+/// stored form (name trimmed, program path canonical). The fault comes with
+/// the entry's name for the error text.
+fn check_app(
+    app: &AllowedApp,
+    platform: Platform,
+    probe: &dyn ExecutableProbe,
+    own_exe: &str,
+) -> Result<AllowedApp, (AppFault, String)> {
+    let name = clean_name(&app.name).map_err(|_| {
+        let shown: String = app
+            .name
+            .trim()
+            .chars()
+            .filter(|c| !c.is_control())
+            .collect();
+        (AppFault::Invalid, shown)
+    })?;
+    let fail = |fault: AppFault| (fault, name.clone());
+    match platform {
+        Platform::Macos => {
+            if app.executable.is_some() {
+                return Err(fail(AppFault::Invalid));
+            }
+            let bundle_id = app.bundle_id.as_deref().map(str::trim).unwrap_or_default();
+            if !valid_bundle_id(bundle_id) {
+                return Err(fail(AppFault::Invalid));
+            }
+            if blocked_reason(platform, Some(bundle_id), None, own_exe).is_some() {
+                return Err(fail(AppFault::Blocked));
+            }
+            Ok(AllowedApp {
+                name,
+                bundle_id: Some(bundle_id.to_string()),
+                executable: None,
+            })
+        }
+        Platform::Windows | Platform::Linux => {
+            if app.bundle_id.is_some() {
+                return Err(fail(AppFault::Invalid));
+            }
+            let raw = app.executable.as_deref().map(str::trim).unwrap_or_default();
+            if raw.is_empty() || raw.len() > MAX_PATH_BYTES || raw.chars().any(char::is_control) {
+                return Err(fail(AppFault::Invalid));
+            }
+            let executable = match probe.check(raw) {
+                Ok(executable) => executable,
+                Err(AppRejection::NotAProgram) => return Err(fail(AppFault::Invalid)),
+                // Gone, but still a name the blocklist knows.
+                Err(AppRejection::NotFound) => {
+                    return Err(fail(
+                        if blocked_reason(platform, None, Some(raw), own_exe).is_some() {
+                            AppFault::Blocked
+                        } else {
+                            AppFault::Missing
+                        },
+                    ));
+                }
+            };
+            // Scripts (.cmd, .bat, .ps1) are not programs to start.
+            if platform == Platform::Windows && !windows_program(&executable) {
+                return Err(fail(AppFault::Invalid));
+            }
+            // Both names count: a link named like an allowed program
+            // can point at a shell, and the other way round.
+            if blocked_reason(platform, None, Some(raw), own_exe).is_some()
+                || blocked_reason(platform, None, Some(executable.as_str()), own_exe).is_some()
+            {
+                return Err(fail(AppFault::Blocked));
+            }
+            Ok(AllowedApp {
+                name,
+                bundle_id: None,
+                executable: Some(executable),
+            })
+        }
+    }
+}
+
+fn fault_error((fault, name): (AppFault, String)) -> String {
+    match fault {
+        AppFault::Blocked => app_blocked(&name),
+        AppFault::Invalid | AppFault::Missing => app_invalid(&name),
+    }
+}
+
+/// Checks and normalizes settings that were never saved: every app is new.
+#[cfg(test)]
 pub(crate) fn validate(
     config: CuaDriverConfig,
     platform: Platform,
     probe: &dyn ExecutableProbe,
     own_exe: &str,
 ) -> Result<CuaDriverConfig, String> {
+    validate_against(
+        config,
+        platform,
+        probe,
+        own_exe,
+        &CuaDriverConfig::default(),
+    )
+}
+
+/// Like `validate`, but an app that is already in `stored` exactly as it is
+/// kept as it is, without looking at the file system again. A program that
+/// went away, or that a newer blocklist names, then never stops an unrelated
+/// change from saving, and never stops desktop apps from being turned off.
+pub(crate) fn validate_against(
+    config: CuaDriverConfig,
+    platform: Platform,
+    probe: &dyn ExecutableProbe,
+    own_exe: &str,
+    stored: &CuaDriverConfig,
+) -> Result<CuaDriverConfig, String> {
     let mut apps: Vec<AllowedApp> = Vec::new();
     for app in config.apps {
-        let name = clean_name(&app.name)?;
-        let checked = match platform {
-            Platform::Macos => {
-                if app.executable.is_some() {
-                    return Err(app_invalid(&name));
-                }
-                let bundle_id = app.bundle_id.as_deref().map(str::trim).unwrap_or_default();
-                if !valid_bundle_id(bundle_id) {
-                    return Err(app_invalid(&name));
-                }
-                if blocked_reason(platform, Some(bundle_id), None, own_exe).is_some() {
-                    return Err(app_blocked(&name));
-                }
-                AllowedApp {
-                    name,
-                    bundle_id: Some(bundle_id.to_string()),
-                    executable: None,
-                }
-            }
-            Platform::Windows | Platform::Linux => {
-                if app.bundle_id.is_some() {
-                    return Err(app_invalid(&name));
-                }
-                let raw = app.executable.as_deref().map(str::trim).unwrap_or_default();
-                if raw.is_empty() || raw.len() > MAX_PATH_BYTES || raw.chars().any(char::is_control)
-                {
-                    return Err(app_invalid(&name));
-                }
-                let executable = probe.check(raw).map_err(|_| app_invalid(&name))?;
-                // Scripts (.cmd, .bat, .ps1) are not programs to start.
-                if platform == Platform::Windows && !windows_program(&executable) {
-                    return Err(app_invalid(&name));
-                }
-                // Both names count: a link named like an allowed program
-                // can point at a shell, and the other way round.
-                if blocked_reason(platform, None, Some(raw), own_exe).is_some()
-                    || blocked_reason(platform, None, Some(executable.as_str()), own_exe).is_some()
-                {
-                    return Err(app_blocked(&name));
-                }
-                AllowedApp {
-                    name,
-                    bundle_id: None,
-                    executable: Some(executable),
-                }
-            }
+        let checked = if stored.apps.contains(&app) {
+            app
+        } else {
+            check_app(&app, platform, probe, own_exe).map_err(fault_error)?
         };
         let duplicate = apps
             .iter()
@@ -227,6 +303,78 @@ pub(crate) fn validate(
         sites,
         scripted_control: config.scripted_control,
     })
+}
+
+/// Settings read from the config file at startup, cleaned the way a save
+/// would: an entry that is no usable app or site, or that the blocklist
+/// names, is dropped (how many comes back for the log; duplicates are merged
+/// and not counted). A program that is only missing stays: it may be on a
+/// drive that isn't plugged in, and Settings shows it as removable.
+pub(crate) fn sanitize_loaded(
+    config: CuaDriverConfig,
+    platform: Platform,
+    probe: &dyn ExecutableProbe,
+    own_exe: &str,
+) -> (CuaDriverConfig, usize) {
+    let mut dropped = 0;
+    let mut apps: Vec<AllowedApp> = Vec::new();
+    for app in config.apps {
+        let kept = match check_app(&app, platform, probe, own_exe) {
+            Ok(checked) => checked,
+            Err((AppFault::Missing, _)) => app,
+            Err(_) => {
+                dropped += 1;
+                continue;
+            }
+        };
+        if !apps.iter().any(|known| same_app(known, &kept, platform)) {
+            apps.push(kept);
+        }
+    }
+    apps.truncate(MAX_APPS);
+    let mut sites: Vec<AllowedSite> = Vec::new();
+    for site in config.sites {
+        let Ok(origin) = canonical_origin(&site.origin) else {
+            dropped += 1;
+            continue;
+        };
+        match sites.iter_mut().find(|known| known.origin == origin) {
+            Some(known) => known.signed_in |= site.signed_in,
+            None => sites.push(AllowedSite {
+                origin,
+                signed_in: site.signed_in,
+            }),
+        }
+    }
+    sites.truncate(MAX_SITES);
+    (
+        CuaDriverConfig {
+            enabled: config.enabled,
+            apps,
+            sites,
+            scripted_control: config.scripted_control,
+        },
+        dropped,
+    )
+}
+
+/// Stored apps whose program is gone (Windows and Linux; macOS apps are
+/// kept by bundle id only), by `executable`, for Settings to show.
+pub(crate) fn missing_apps(
+    config: &CuaDriverConfig,
+    platform: Platform,
+    probe: &dyn ExecutableProbe,
+) -> Vec<String> {
+    if platform == Platform::Macos {
+        return Vec::new();
+    }
+    config
+        .apps
+        .iter()
+        .filter_map(|app| app.executable.as_deref())
+        .filter(|path| probe.check(path) == Err(AppRejection::NotFound))
+        .map(str::to_string)
+        .collect()
 }
 
 fn same_app(left: &AllowedApp, right: &AllowedApp, platform: Platform) -> bool {
@@ -286,7 +434,12 @@ pub(crate) fn canonical_origin(input: &str) -> Result<String, String> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Widening {
     Enabled,
-    App(String),
+    /// An app by the name it was given and the identity that was validated:
+    /// the bundle id (macOS) or the canonical program path (elsewhere).
+    App {
+        name: String,
+        identity: String,
+    },
     Site(String),
     SignedIn(String),
     ScriptedControl,
@@ -317,7 +470,14 @@ pub(crate) fn widening(old: &CuaDriverConfig, new: &CuaDriverConfig) -> Vec<Wide
     };
     for app in &new.apps {
         if !base.apps.iter().any(|known| app_key(known) == app_key(app)) {
-            found.push(Widening::App(app.name.clone()));
+            found.push(Widening::App {
+                name: app.name.clone(),
+                identity: app
+                    .bundle_id
+                    .clone()
+                    .or_else(|| app.executable.clone())
+                    .unwrap_or_default(),
+            });
         }
     }
     for site in &new.sites {
@@ -685,7 +845,10 @@ mod tests {
         assert_eq!(
             widening(&old, &new),
             vec![
-                Widening::App("Excel".into()),
+                Widening::App {
+                    name: "Excel".into(),
+                    identity: "com.microsoft.Excel".into()
+                },
                 Widening::SignedIn("https://a.org".into()),
                 Widening::ScriptedControl
             ]
@@ -733,5 +896,163 @@ mod tests {
         assert_eq!(back, config);
         let empty: CuaDriverConfig = serde_json::from_str("{}").unwrap();
         assert_eq!(empty, CuaDriverConfig::default());
+    }
+
+    /// A probe that says these programs are gone.
+    struct Gone(Vec<&'static str>);
+
+    impl ExecutableProbe for Gone {
+        fn check(&self, path: &str) -> Result<String, AppRejection> {
+            if self.0.contains(&path) {
+                Err(AppRejection::NotFound)
+            } else {
+                Ok(path.to_string())
+            }
+        }
+    }
+
+    const SLACK: &str = r"C:\Users\a\AppData\Local\slack\app-4.35.0\slack.exe";
+
+    #[test]
+    fn an_app_that_is_already_stored_is_not_looked_at_again() {
+        let stored = CuaDriverConfig {
+            enabled: true,
+            apps: vec![exe("Slack", SLACK)],
+            ..Default::default()
+        };
+        let gone = Gone(vec![SLACK]);
+        // Turning off, and changing something else, don't need the program.
+        let off = CuaDriverConfig {
+            enabled: false,
+            ..stored.clone()
+        };
+        assert_eq!(
+            validate_against(
+                off.clone(),
+                Platform::Windows,
+                &gone,
+                "Oleafly.exe",
+                &stored
+            )
+            .unwrap(),
+            off
+        );
+        let with_site = CuaDriverConfig {
+            sites: vec![site("https://a.org", false)],
+            ..stored.clone()
+        };
+        assert_eq!(
+            validate_against(
+                with_site.clone(),
+                Platform::Windows,
+                &gone,
+                "Oleafly.exe",
+                &stored
+            )
+            .unwrap(),
+            with_site
+        );
+        // Saving it from scratch (not stored yet) still needs the program.
+        let error = validate(stored.clone(), Platform::Windows, &gone, "Oleafly.exe").unwrap_err();
+        assert_eq!(code(&error), "desktop_apps.app_invalid");
+        // So does a new one, even next to the stored one.
+        let added = CuaDriverConfig {
+            apps: vec![exe("Slack", SLACK), exe("Zotero", r"C:\z\zotero.exe")],
+            ..stored.clone()
+        };
+        let gone_both = Gone(vec![SLACK, r"C:\z\zotero.exe"]);
+        let error = validate_against(added, Platform::Windows, &gone_both, "Oleafly.exe", &stored)
+            .unwrap_err();
+        assert_eq!(code(&error), "desktop_apps.app_invalid");
+        // An entry that changed (a renamed copy) is looked at again.
+        let renamed = CuaDriverConfig {
+            apps: vec![exe("Chat", SLACK)],
+            ..stored.clone()
+        };
+        assert!(
+            validate_against(renamed, Platform::Windows, &gone, "Oleafly.exe", &stored).is_err()
+        );
+    }
+
+    #[test]
+    fn a_missing_program_with_a_blocked_name_is_blocked_not_just_missing() {
+        let error = validate(
+            CuaDriverConfig {
+                enabled: true,
+                apps: vec![exe("Shell", r"C:\Windows\System32\cmd.exe")],
+                ..Default::default()
+            },
+            Platform::Windows,
+            &Gone(vec![r"C:\Windows\System32\cmd.exe"]),
+            "Oleafly.exe",
+        )
+        .unwrap_err();
+        assert_eq!(code(&error), "desktop_apps.app_blocked");
+    }
+
+    #[test]
+    fn startup_keeps_what_a_save_would_keep_and_drops_the_rest() {
+        let loaded = CuaDriverConfig {
+            enabled: true,
+            apps: vec![
+                app("Zotero", "org.zotero.zotero"),
+                app("Chrome", "com.google.Chrome"),
+                app("Terminal", "com.apple.Terminal"),
+                app("Bad", "not a bundle id"),
+                app("Zotero again", "org.zotero.zotero"),
+            ],
+            sites: vec![
+                site("https://a.org", false),
+                site("http://example.org", false),
+                site("https://A.org/", true),
+            ],
+            scripted_control: true,
+        };
+        let (kept, dropped) =
+            sanitize_loaded(loaded, Platform::Macos, &FakeProbe::echo(), "oleafly");
+        assert_eq!(kept.apps, vec![app("Zotero", "org.zotero.zotero")]);
+        assert_eq!(kept.sites, vec![site("https://a.org", true)]);
+        assert!(kept.enabled && kept.scripted_control);
+        // Chrome, Terminal, Bad and the invalid site; the duplicates merge
+        // and are not counted.
+        assert_eq!(dropped, 4);
+    }
+
+    #[test]
+    fn startup_keeps_a_program_that_is_only_missing() {
+        let loaded = CuaDriverConfig {
+            enabled: true,
+            apps: vec![
+                exe("Slack", SLACK),
+                exe("Shell", r"C:\Windows\System32\cmd.exe"),
+                exe("Script", r"C:\Tools\run.cmd"),
+            ],
+            ..Default::default()
+        };
+        let gone = Gone(vec![SLACK, r"C:\Windows\System32\cmd.exe"]);
+        let (kept, dropped) = sanitize_loaded(loaded, Platform::Windows, &gone, "Oleafly.exe");
+        // The script and the shell can never be allowed; Slack may be on a
+        // drive that is not plugged in.
+        assert_eq!(kept.apps, vec![exe("Slack", SLACK)]);
+        assert_eq!(dropped, 2);
+    }
+
+    #[test]
+    fn settings_say_which_stored_programs_are_gone() {
+        let config = CuaDriverConfig {
+            enabled: true,
+            apps: vec![exe("Slack", SLACK), exe("Zotero", r"C:\z\zotero.exe")],
+            ..Default::default()
+        };
+        assert_eq!(
+            missing_apps(&config, Platform::Windows, &Gone(vec![SLACK])),
+            vec![SLACK.to_string()]
+        );
+        // macOS apps are stored by bundle id only.
+        let mac = CuaDriverConfig {
+            apps: vec![app("Zotero", "org.zotero.zotero")],
+            ..config
+        };
+        assert!(missing_apps(&mac, Platform::Macos, &Gone(vec![])).is_empty());
     }
 }

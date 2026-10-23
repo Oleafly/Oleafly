@@ -62,7 +62,7 @@ you typed; the Shift+Enter setting turns it back into Enter. To copy and paste,
 use Ctrl+Shift+C and Ctrl+Shift+V on Windows and Linux. On Windows, Ctrl+C
 also copies when text is selected (without a selection it stops the running
 program) and Ctrl+V pastes. On macOS, ⌘C and ⌘V work as everywhere else.
-Ctrl+F (⌘F on macOS) searches the output, and ⌘K clears it on macOS. While a
+Ctrl+Shift+F (⌘F on macOS) searches the output, and ⌘K clears it on macOS. While a
 terminal has focus, keys go to the shell; [Terminal keys](KeyboardShortcuts.md#terminal-keys)
 lists the app shortcuts that still work there.
 

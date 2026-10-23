@@ -72,10 +72,12 @@ oleafly watch [the same options]
 ```
 
 `build` compiles the main document once. `watch` builds, then rebuilds on
-every change until you press Ctrl+C. `--main` builds another document of the
-project. `--compiler` picks the LaTeX compiler for latexmk projects
-(`pdflatex`, `xelatex`, `lualatex`, `uplatex`, `platex`). `--variant` picks a
-Typst variant from `project.json`.
+every change until you press Ctrl+C or close the terminal. A failed build
+keeps the last good PDF. With `-o` pointing inside the project, writing the
+copy doesn't start another build. `--main` builds another document of the
+project (on Windows, `\` works as well as `/`). `--compiler` picks the LaTeX
+compiler for latexmk projects (`pdflatex`, `xelatex`, `lualatex`, `uplatex`,
+`platex`). `--variant` picks a Typst variant from `project.json`.
 
 ```bash
 oleafly build -o ~/Desktop/paper.pdf
@@ -121,7 +123,7 @@ oleafly log [--diagnostics] [--tail LINES]
 `context` maps the project for a person or an agent: files, outline, labels,
 citations, missing files, unresolved references and the last build. `log`
 shows the last build's log; `--diagnostics` lists its errors and warnings
-with file and line.
+with file and line. Neither reads a build file that is a symbolic link.
 
 ### `oleafly doctor`
 
@@ -181,7 +183,8 @@ oleafly bib check [FILE] [--key KEY]... [--limit N]
 `cite` looks up a DOI, arXiv id, ISBN or PubMed id and prints its BibTeX.
 `--add` adds it to the project's bibliography (the `.bib` file the main
 document uses, unless you name one with `--bib`), with a citation key in the
-app's style. An entry whose DOI is already there isn't added twice. Words
+app's style. An entry whose DOI is already there isn't added twice. A `.bib`
+file that isn't UTF-8 is left alone, with the error `bib.not_utf8`. Words
 from a title list matching papers; `--pick N` takes one.
 
 `literature` searches OpenAlex, Semantic Scholar, Crossref, arXiv and PubMed
@@ -291,7 +294,7 @@ also explains the topics `exit-codes`, `environment` and `json`.
 
 ```bash
 oleafly auth login online [--server URL] --with-token | --cookie-stdin | --from-browser BROWSER [--profile NAME] [--dry-run]
-oleafly auth login server URL [--setup-code CODE] [--open]
+oleafly auth login server URL [--setup-code CODE | --setup-code-stdin] [--open]
 oleafly auth login git --host URL [--dry-run]
 oleafly auth status [online|server|git]
 oleafly auth logout online [--server URL] [--session-only | --git-token-only] [--dry-run]
@@ -313,7 +316,8 @@ and the command line share online sign-ins and Git tokens.
   saved.
 - `login server` signs this command line in to an Oleafly collaboration
   server with a code you approve in your browser. The command line is its
-  own device on the server, apart from the app.
+  own device on the server, apart from the app. `--setup-code-stdin` reads a
+  setup code from standard input, so it stays out of your shell history.
 - `login git` saves a token for a Git host such as `https://gitlab.com`.
 - Secrets are read from standard input, or asked for without echo in a
   terminal. They never appear in arguments, output or logs.
@@ -345,7 +349,13 @@ and lists the files; run it again with `--resolve PATH=local` or
 `--resolve PATH=remote` for each. `diff --exit-code` exits with 9 when files
 differ and 8 when they conflict. `diff --latexdiff` marks up the main
 document with what changed since the online version (it needs latexdiff from
-your TeX distribution), and `--pdf` compiles the result.
+your TeX distribution), and `--pdf` compiles the result. Without `-o`, the
+marked-up document is in the JSON result's `text` field.
+
+`link --prefer remote` saves the files it replaces in
+`.oleafly/online-backups/` first. `sync --dry-run` also says when it would
+only send your changes (`wouldPush` in JSON). A server address must use
+`https://`, except on this computer.
 
 A project in the app's library uses the app's sync state, so the app and the
 command line always agree. Any other folder keeps its own in
@@ -355,7 +365,7 @@ if the app imported it from the online service.
 ### `oleafly server`
 
 ```bash
-oleafly server sign-in URL [--setup-code CODE] [--open]
+oleafly server sign-in URL [--setup-code CODE | --setup-code-stdin] [--open]
 oleafly server status [SERVER] [--check]
 oleafly server projects [--server SERVER]
 oleafly server share [--link on|off] [--link-role editor|viewer] [--comments on|off] [--dry-run]
@@ -392,7 +402,8 @@ venue (`generic`, `arxiv`, `ieee`, `acm`, `journal`, `thesis`; picked from
 the main document when you don't name one), accessibility, references,
 privacy and, for a résumé, ATS. It reads the last build's log and PDF when
 they are newer than the sources; `--build-log` and `--pdf` name others, and
-`--no-build-output` checks the sources only. `--checks` picks what to report
+`--no-build-output` checks the sources only. With `--build-log`, `check`
+reads from the log whether that build failed. `--checks` picks what to report
 (`compile`, `submission`, `ats`, `a11y`, `refs`, `privacy` or `all`).
 
 Some PDF checks (accessibility tags, reading order, résumé parsing) run only
@@ -691,7 +702,8 @@ The exit code matches `error.kind`. `--events` adds progress lines before the
 result, each with `"type": "event"` and an `event` name. `oleafly watch
 --json` writes only events. Each has `ok`: the build's result on
 `build_finished`, `false` on `build_error` and `watch_error`, and `true` on
-the rest. Notes, progress and warnings for people go to stderr.
+the rest. `watching` and `build_finished` also carry the build's `warnings`.
+Notes, progress and warnings for people go to stderr.
 
 ## Exit codes
 
@@ -720,7 +732,8 @@ the rest. Notes, progress and warnings for people go to stderr.
 | `OLEAFLY_PACKS_BASE_URL` | Where template packs are downloaded from. |
 | `OLEAFLY_WATCH_POLL` | Set it to make `oleafly watch` poll for changes. |
 | `OLEAFLY_CLI` | Set for programs Oleafly starts: this command's path. |
-| `OLEAFLY_ONLINE_GIT_TOKEN` | A Git token for the online LaTeX service, used instead of a saved one (for CI). |
+| `OLEAFLY_ONLINE_GIT_TOKEN` | A Git token for the online LaTeX service, used instead of a saved one (for CI). It goes only to the service's own server, a server you name with `--server`, or one you've signed in to. |
+| `OLEAFLY_SANDBOX_FORWARD_URL_LOGINS` | Set it to `1` to keep user names and passwords in proxy and package-index addresses for sandboxed commands. By default they are removed. |
 | `OLEAFLY_PROVIDER`, `OLEAFLY_MODEL` | The AI provider and model for `oleafly agent` and `oleafly ask`. |
 | `OLEAFLY_API_KEY` | A key for that provider, used when its own variable isn't set. |
 | `CODEX_HOME` | Where Codex keeps its settings (for `mcp config`). |

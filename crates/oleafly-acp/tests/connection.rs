@@ -34,6 +34,9 @@ impl ClientHost for RecordingHost {
             .push(format!("request:{}", request.method()));
         if request.method() == "session/request_permission" {
             let _ = request.respond(json!({"outcome": {"outcome": "cancelled"}}));
+        } else if request.method() == "fs/read_text_file" {
+            // A reply the agent's frame cannot hold.
+            let _ = request.respond(json!({"content": "x".repeat(oleafly_acp::limits::MAX_FRAME)}));
         } else if request.method() == "slow/request" {
             let cancelled = request.cancelled();
             let signal = self.cancelled.lock().unwrap().clone();
@@ -156,6 +159,82 @@ async fn agent_requests_with_string_ids_are_answered_with_the_same_id() {
     let answer = agent.next().await;
     assert_eq!(answer["id"], "permission-wire");
     assert_eq!(answer["result"]["outcome"]["outcome"], "cancelled");
+}
+
+#[tokio::test]
+async fn a_reply_too_large_for_a_frame_becomes_an_error_and_the_connection_stays_open() {
+    let host = Arc::new(RecordingHost::default());
+    let (client, mut agent) = connect(host.clone());
+    agent
+        .send(
+            json!({"jsonrpc": "2.0", "id": 7, "method": "fs/read_text_file",
+            "params": {"sessionId": "s1", "path": "/p/big.txt"}}),
+        )
+        .await;
+    let answer = agent.next().await;
+    assert_eq!(answer["id"], 7);
+    assert_eq!(answer["error"]["code"], -32603);
+    assert_eq!(
+        answer["error"]["message"],
+        "The reply is too large to send over ACP."
+    );
+    // The connection still works in both directions.
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move {
+            client
+                .request("session/new", json!({}), Duration::from_secs(5))
+                .await
+        })
+    };
+    let request = agent.next().await;
+    agent
+        .send(json!({"jsonrpc": "2.0", "id": request["id"], "result": {"sessionId": "s1"}}))
+        .await;
+    assert_eq!(waiting.await.unwrap().unwrap()["sessionId"], "s1");
+    assert!(!client.is_closed());
+    assert!(!host.log().contains(&"disconnected".to_string()));
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_session_load_is_not_stopped_while_its_replay_keeps_arriving() {
+    let host = Arc::new(RecordingHost::default());
+    let (client, mut agent) = connect(host);
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move { client.load_session("s1", "/p", &[]).await })
+    };
+    let request = agent.next().await;
+    assert_eq!(request["method"], "session/load");
+    // Longer than the 60 s of a plain request, with no 60 s of silence.
+    for index in 0..6 {
+        tokio::time::sleep(Duration::from_secs(50)).await;
+        agent.send(update(index)).await;
+    }
+    assert!(!waiting.is_finished());
+    agent
+        .send(json!({"jsonrpc": "2.0", "id": request["id"], "result": {}}))
+        .await;
+    assert!(waiting.await.unwrap().is_ok());
+    assert!(!client.is_closed());
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_session_load_that_goes_quiet_stops_the_agent() {
+    let host = Arc::new(RecordingHost::default());
+    let (client, mut agent) = connect(host);
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move { client.load_session("s1", "/p", &[]).await })
+    };
+    agent.next().await;
+    tokio::time::sleep(Duration::from_secs(50)).await;
+    agent.send(update(0)).await;
+    let error = waiting.await.unwrap().unwrap_err();
+    assert_eq!(
+        error.message,
+        "The agent did not reply in time and was stopped."
+    );
 }
 
 #[tokio::test]

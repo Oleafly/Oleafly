@@ -23,8 +23,6 @@ vi.mock("@/lib/research-tasks", () => ({
   watchResearchTask: vi.fn(async () => {}),
 }));
 
-vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: vi.fn(async () => () => {}) }));
-
 vi.mock("@/store/files", () => {
   let state: { projectId: string | null } = { projectId: null };
   const store = (selector: (value: typeof state) => unknown) => selector(state);
@@ -42,6 +40,7 @@ import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: 
 
 let TaskOutputsSection: typeof import("./TaskOutputsSection").TaskOutputsSection;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
+let useSettingsStore: typeof import("@/store/settings").useSettingsStore;
 let cleanup: typeof import("@testing-library/react").cleanup;
 let fireEvent: typeof import("@testing-library/react").fireEvent;
 let render: typeof import("@testing-library/react").render;
@@ -66,6 +65,7 @@ beforeAll(async () => {
   });
   ({ cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
   ({ useFilesStore } = await import("@/store/files"));
+  ({ useSettingsStore } = await import("@/store/settings"));
   ({ TaskOutputsSection } = await import("./TaskOutputsSection"));
 });
 
@@ -205,6 +205,17 @@ describe("TaskOutputsSection", () => {
       within(page().getByRole("dialog")).getAllByRole("button", { name: enCommon.actions.close })[0],
     );
     await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("opens the Research panel with the task, because the review dialog lives there", () => {
+    useSettingsStore.setState({ railTab: "files" });
+    seed([task("review")]);
+    render(<TaskOutputsSection />);
+
+    fireEvent.click(page().getByRole("button", { name: "Review" }));
+
+    expect(useSettingsStore.getState().railTab).toBe("research");
+    expect(useResearchTasksStore.getState()).toMatchObject({ detailOpen: true, selectedTaskId: "review" });
   });
 
   it("opens the task detail on the review tab", () => {

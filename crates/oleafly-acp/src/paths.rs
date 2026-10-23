@@ -34,6 +34,45 @@ fn lexical_path_within(path: &Path, root: &Path) -> bool {
         })
 }
 
+/// Raw input fields that hold one path.
+const RAW_PATH_KEYS: [&str; 17] = [
+    "path",
+    "file_path",
+    "filePath",
+    "notebook_path",
+    "notebookPath",
+    "target_file",
+    "targetFile",
+    "old_path",
+    "oldPath",
+    "new_path",
+    "newPath",
+    "destination",
+    "source",
+    "cwd",
+    "directory",
+    "workdir",
+    "workingDirectory",
+];
+
+/// Raw input fields that hold a list of paths.
+const RAW_PATH_LISTS: [&str; 4] = ["paths", "files", "file_paths", "filePaths"];
+
+/// The paths in the usual fields of a tool call's raw input.
+pub fn raw_input_paths(tool: &Value) -> impl Iterator<Item = &str> {
+    let raw = &tool["rawInput"];
+    RAW_PATH_KEYS
+        .iter()
+        .filter_map(move |key| raw[key].as_str())
+        .chain(RAW_PATH_LISTS.iter().flat_map(move |key| {
+            raw[key]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+        }))
+}
+
 /// Every path a permission request names: its locations and the usual path
 /// fields of its raw input.
 pub fn permission_paths(tool: &Value) -> impl Iterator<Item = &str> {
@@ -42,11 +81,7 @@ pub fn permission_paths(tool: &Value) -> impl Iterator<Item = &str> {
         .into_iter()
         .flatten()
         .filter_map(|value| value["path"].as_str())
-        .chain(
-            ["path", "file_path", "filePath", "cwd", "directory"]
-                .iter()
-                .filter_map(|key| tool["rawInput"][key].as_str()),
-        )
+        .chain(raw_input_paths(tool))
 }
 
 /// Whether every path of a permission request is inside the canonical
@@ -156,6 +191,25 @@ mod tests {
         let tool = json!({"locations": [{"path": "a.tex"}], "rawInput": {"file_path": "b.tex", "cwd": "."}});
         let paths: Vec<&str> = permission_paths(&tool).collect();
         assert_eq!(paths, vec!["a.tex", "b.tex", "."]);
+    }
+
+    #[test]
+    fn other_raw_input_path_fields_are_checked_too() {
+        let root = tempfile::tempdir().unwrap();
+        let root = root.path().canonicalize().unwrap();
+        for tool in [
+            json!({"rawInput": {"notebook_path": "/somewhere/else.ipynb"}}),
+            json!({"rawInput": {"new_path": "/somewhere/else.tex"}}),
+            json!({"rawInput": {"destination": "/somewhere/else"}}),
+            json!({"rawInput": {"paths": ["a.tex", "/somewhere/else.tex"]}}),
+            json!({"rawInput": {"files": ["../up.tex"]}}),
+        ] {
+            assert!(!permission_paths_allowed(&root, &root, &tool), "{tool}");
+        }
+        let inside =
+            json!({"rawInput": {"notebook_path": "a.ipynb", "paths": ["b.tex", "c/d.tex"]}});
+        assert_eq!(permission_paths(&inside).count(), 3);
+        assert!(permission_paths_allowed(&root, &root, &inside));
     }
 
     #[cfg(unix)]

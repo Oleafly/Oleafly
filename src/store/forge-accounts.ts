@@ -28,6 +28,9 @@ interface ForgeAccountsState {
   /** Load once; concurrent callers share one request. */
   ensureLoaded: () => Promise<ForgeAccount[]>;
   reload: () => Promise<ForgeAccount[]>;
+  /** `caFile` is the account's certificate file after signing in: a path
+   * sets it, an empty string clears it, and null or none keeps the one the
+   * account has. */
   signInWithToken: (input: {
     base: string;
     kind: ForgeKind;

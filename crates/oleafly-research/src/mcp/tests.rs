@@ -749,6 +749,19 @@ fn task_binding(workspace: &Path, tasks_root: &Path) -> TaskBinding {
     }
 }
 
+#[tokio::test]
+async fn a_run_waiting_for_approval_is_not_cut_off_at_the_task_call_limit() {
+    let root = tempfile::tempdir().unwrap();
+    let mut binding = task_binding(root.path(), &root.path().join("tasks"));
+    let usual = transport::task_call_limit("start_run", &binding);
+    // Without a question to the user, a task tool gets the usual six minutes.
+    assert_eq!(usual, Duration::from_secs(360));
+    binding.brief.permissions.commands = crate::model::CommandPolicy::Ask;
+    // A run the user must approve waits for the answer (up to a day).
+    assert!(transport::task_call_limit("start_run", &binding) >= crate::approvals::APPROVAL_EXPIRY);
+    assert_eq!(transport::task_call_limit("wait_runs", &binding), usual);
+}
+
 /// The tools a `tools/list` request returns.
 async fn listed_tools(bridge: &ScopedResearchMcp) -> Vec<Value> {
     let response: Value = client()

@@ -97,7 +97,7 @@ beforeEach(() => {
   skillState.data = [];
   snapshots = { saved: { session: session(), permissions: [] } };
   history = { saved: [] };
-  useAcpSessionsStore.setState({ catalog: [], sessions: {}, events: {}, permissions: {}, activeByProject: { paper: "saved" }, composers: {}, errors: {}, starting: {} });
+  useAcpSessionsStore.setState({ catalog: [], sessions: {}, events: {}, permissions: {}, activeByProject: { paper: "saved" }, composers: {}, queues: {}, errors: {}, starting: {} });
   useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general", settingsScrollTarget: null, terminalOpen: false });
   useTerminalsStore.setState({ projectId: null, tabs: [], activeId: null, counters: {} });
   useComposerDrafts.setState({ drafts: {} });
@@ -135,7 +135,7 @@ function typeMessage(input: HTMLElement, value: string) {
   fireEvent.keyUp(input, { key: "a" });
 }
 
-const composerId = acpComposerId("paper", "fixture");
+const composerId = acpComposerId("paper", "fixture", "saved");
 
 function input(text: string, overrides: Partial<AcpPromptInput> = {}): AcpPromptInput {
   return { text, images: [], files: [], selections: [], skillId: null, ...overrides };
@@ -578,7 +578,8 @@ describe("ACP composer on the shared composer (0.4.8)", () => {
 
     typeMessage(composer, "Outline the paper");
     fireEvent.keyDown(composer, { key: "Enter" });
-    expect(await ui.findByTestId("acp-queued")).toHaveTextContent(enAi.acp.queue.queued);
+    // Nothing runs yet, so the message does not wait for a turn to finish.
+    expect(await ui.findByTestId("acp-queued")).toHaveTextContent(enAi.acp.queue.queuedConnecting);
     expect(composer).toHaveValue("");
     expect(acpPrompt).not.toHaveBeenCalled();
 
@@ -707,5 +708,149 @@ describe("ACP composer on the shared composer (0.4.8)", () => {
 
     expect(await ui.findByTestId("acp-elicitation")).toHaveTextContent("Which venue?");
     expect(ui.getByRole("button", { name: "Allow once" })).toBeInTheDocument();
+  });
+});
+
+describe("ACP drafts, failed sends and queued messages", () => {
+  const queuedDraft = { attachments: [], mentions: [], selections: [], skill: null };
+
+  it("sends only the files that are ready and drops the chip of one that could not be prepared", async () => {
+    vi.mocked(acpPrompt).mockResolvedValue({ session: { ...session(), lastSequence: 1 }, permissions: [] });
+    useComposerDrafts.getState().setAttachments(composerId, [
+      stored("paper.pdf", "pdf", "ab12"),
+      { ...stored("photo.heic", "image", ""), status: "error", error: "Cannot read it.", sha256: undefined },
+    ]);
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+    typeMessage(composer, "Summarise the PDF");
+    fireEvent.click(ui.getByRole("button", { name: enAi.acp.send }));
+
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalledExactlyOnceWith("paper", "saved", input("Summarise the PDF", {
+      files: [{ kind: "stored", sha256: "ab12", name: "paper.pdf", mime: "application/pdf" }],
+    })));
+    await waitFor(() => expect(ui.queryByRole("button", { name: "Remove photo.heic" })).toBeNull());
+    expect(ui.queryByRole("alert")).toBeNull();
+  });
+
+  it("puts a message that failed to send before what was typed since", async () => {
+    const failing = deferred<AcpSnapshot>();
+    vi.mocked(acpPrompt).mockReturnValue(failing.promise);
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+    typeMessage(composer, "The first message");
+    fireEvent.click(ui.getByRole("button", { name: enAi.acp.send }));
+    await waitFor(() => expect(composer).toHaveValue(""));
+    typeMessage(composer, "Already typing the next one");
+
+    await act(async () => {
+      failing.reject(new Error("The connection dropped."));
+    });
+
+    await waitFor(() => expect(composer).toHaveValue("The first message\n\nAlready typing the next one"));
+  });
+
+  it("lets a failed queued message be edited, with its text back in the box", async () => {
+    useAcpSessionsStore.setState({
+      queues: { saved: [{ ...queuedDraft, id: "q1", text: "Check the figures", failed: true }] },
+    });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+    expect(await ui.findByTestId("acp-queued")).toHaveTextContent(enAi.acp.queue.sendFailed);
+
+    fireEvent.click(ui.getByRole("button", { name: enAi.acp.queue.edit }));
+
+    expect(ui.queryByTestId("acp-queued")).toBeNull();
+    expect(composer).toHaveValue("Check the figures");
+    expect(useAcpSessionsStore.getState().queues.saved).toEqual([]);
+  });
+
+  it("sends a failed queued message again", async () => {
+    vi.mocked(acpPrompt).mockResolvedValue({ session: { ...session(), status: "running", lastSequence: 1 }, permissions: [] });
+    useAcpSessionsStore.setState({
+      queues: { saved: [{ ...queuedDraft, id: "q1", text: "Check the figures", failed: true }, { ...queuedDraft, id: "q2", text: "Then the tables" }] },
+    });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await readyComposer(ui);
+
+    fireEvent.click(await ui.findByRole("button", { name: enAi.acp.queue.retry }));
+
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalledWith("paper", "saved", input("Check the figures")));
+    await waitFor(() => expect(useAcpSessionsStore.getState().queues.saved?.map((item) => item.id)).not.toContain("q1"));
+  });
+
+  it("keeps a separate draft for each conversation", async () => {
+    snapshots.second = { session: session("second", { title: "Second conversation" }), permissions: [] };
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+    typeMessage(composer, "For the first conversation");
+
+    await act(async () => {
+      await useAcpSessionsStore.getState().open("paper", "second");
+    });
+    await waitFor(() => expect(ui.getByLabelText(enAi.acp.composerAriaLabel)).toHaveValue(""));
+    typeMessage(ui.getByLabelText(enAi.acp.composerAriaLabel), "For the second one");
+
+    await act(async () => {
+      await useAcpSessionsStore.getState().open("paper", "saved");
+    });
+    await waitFor(() => expect(ui.getByLabelText(enAi.acp.composerAriaLabel)).toHaveValue("For the first conversation"));
+    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture", "second")]?.text).toBe("For the second one");
+  });
+
+  it("keeps what was typed before an agent was chosen", async () => {
+    snapshots = {};
+    useAcpSessionsStore.setState({ activeByProject: {} });
+    useComposerDrafts.getState().setText(acpComposerId("paper", null), "Typed while the agents loaded");
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+
+    await waitFor(() => expect(ui.getByLabelText(enAi.acp.composerAriaLabel)).toHaveValue("Typed while the agents loaded"));
+    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", null)]).toBeUndefined();
+    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture")]?.text).toBe("Typed while the agents loaded");
+  });
+
+  it("carries the draft into the conversation it starts", async () => {
+    snapshots = {};
+    useAcpSessionsStore.setState({ activeByProject: {} });
+    vi.mocked(acpStart).mockResolvedValue({ session: session("fresh"), permissions: [] });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const composer = await readyComposer(ui);
+    typeMessage(composer, "Plan the experiments");
+    await waitFor(() => expect(ui.getByTestId("acp-start-conversation")).toBeEnabled());
+
+    fireEvent.click(ui.getByTestId("acp-start-conversation"));
+
+    await waitFor(() => expect(acpStart).toHaveBeenCalledExactlyOnceWith("paper", "fixture"));
+    await waitFor(() => expect(ui.getByLabelText(enAi.acp.composerAriaLabel)).toHaveValue("Plan the experiments"));
+    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture", "fresh")]?.text).toBe("Plan the experiments");
+  });
+
+  it("does not switch back to the conversation that was active before the panel finished loading", async () => {
+    snapshots.second = { session: session("second", { title: "Second conversation" }), permissions: [] };
+    const loading = deferred<AcpSnapshot["session"][]>();
+    const { acpSessions: sessionsMock } = await import("@/lib/acp");
+    vi.mocked(sessionsMock).mockReturnValue(loading.promise);
+    render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(sessionsMock).toHaveBeenCalled());
+
+    // The user opens another conversation from the history while the panel is still loading.
+    act(() => useAcpSessionsStore.getState().setActive("paper", "second"));
+    await act(async () => {
+      loading.resolve([session("saved"), session("second", { title: "Second conversation" })]);
+    });
+
+    await waitFor(() => expect(acpSnapshot).toHaveBeenCalledWith("paper", "second"));
+    expect(acpSnapshot).not.toHaveBeenCalledWith("paper", "saved");
+    expect(useAcpSessionsStore.getState().activeByProject.paper).toBe("second");
+  });
+
+  it("shows the session status as a badge whose dot stops pulsing when motion is reduced", async () => {
+    snapshots.saved = { session: session("saved", { status: "running" }), permissions: [] };
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+
+    const pill = await ui.findByTestId("acp-session-status");
+    await waitFor(() => expect(pill).toHaveAttribute("data-status", "running"));
+    const dot = pill.querySelector("span[aria-hidden]");
+    expect(dot?.className).toContain("motion-safe:animate-pulse");
+    expect(dot?.className).not.toMatch(/(^|\s)animate-pulse/);
   });
 });

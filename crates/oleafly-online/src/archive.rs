@@ -15,6 +15,10 @@ use crate::sync::{check_remote_paths, now_seconds};
 
 const SKIPPED_NAMES: [&str; 5] = ["__MACOSX", ".DS_Store", ".git", ".oleafly", "Thumbs.db"];
 const MAX_FOLDER_NAME: usize = 80;
+/// The longest folder name in bytes. File systems cap a name at 255 bytes,
+/// and the staging names add 37, so 80 characters that each take three or
+/// four bytes would not fit.
+const MAX_FOLDER_BYTES: usize = 180;
 const MANIFEST: &str = "project.json";
 
 #[derive(Clone, Copy, Debug)]
@@ -83,7 +87,10 @@ pub fn folder_name_for(project_name: &str) -> String {
         text.trim_matches(|character: char| character == ' ' || character == '.')
             .to_string()
     };
-    let capped: String = trim(&collapsed).chars().take(MAX_FOLDER_NAME).collect();
+    let mut capped: String = trim(&collapsed).chars().take(MAX_FOLDER_NAME).collect();
+    while capped.len() > MAX_FOLDER_BYTES {
+        capped.pop();
+    }
     let name = trim(&capped);
     if name.is_empty() {
         return "project".to_string();
@@ -224,6 +231,27 @@ fn usable_main(folder: &Path, main: &str) -> bool {
         && folder.join(main).is_file()
 }
 
+/// Replaces the `importedFrom` record in a `project.json` that came with the
+/// archive. Anyone who can edit the online project can put a record there that
+/// names another server, and the command line trusts that record to say where
+/// a folder came from. The rest of the file stays as it was.
+fn claim_origin(path: &Path, origin: Value) -> Result<(), OnlineError> {
+    let Ok(Value::Object(mut manifest)) = std::fs::read(path)
+        .map_err(|_| ())
+        .and_then(|bytes| serde_json::from_slice(&bytes).map_err(|_| ()))
+    else {
+        return Ok(());
+    };
+    if !manifest.contains_key("importedFrom") {
+        return Ok(());
+    }
+    manifest.insert("importedFrom".to_string(), origin);
+    let mut bytes = serde_json::to_vec_pretty(&Value::Object(manifest))
+        .map_err(|error| OnlineError::io(error.to_string()))?;
+    bytes.push(b'\n');
+    oleafly_secrets::fs::write_atomic(path, &bytes).map_err(OnlineError::io)
+}
+
 /// Writes the folder's `project.json` from the project's online settings,
 /// unless the archive brought its own. True when written.
 pub fn write_folder_manifest(
@@ -233,6 +261,7 @@ pub fn write_folder_manifest(
 ) -> Result<bool, OnlineError> {
     let path = folder.join(MANIFEST);
     if std::fs::symlink_metadata(&path).is_ok() {
+        claim_origin(&path, origin)?;
         return Ok(false);
     }
     let main_doc = settings
@@ -675,6 +704,61 @@ mod tests {
             std::fs::read_to_string(target.join("project.json")).unwrap(),
             own
         );
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn an_archive_cannot_say_where_the_folder_came_from() {
+        let own = json!({
+            "name": "Mine",
+            "main_doc": "notes.tex",
+            "engine": "xetex",
+            "importedFrom": {"service": SERVICE_ID, "server": "https://evil.example", "projectId": "zzz"}
+        });
+        let server = fixture(zip_bytes(&[
+            (
+                "notes.tex",
+                "\\documentclass{article}\\begin{document}y\\end{document}",
+            ),
+            ("project.json", &own.to_string()),
+        ]))
+        .await;
+        let http = Http::new(&server.base, "Oleafly/test").unwrap();
+        let parent = tempfile::tempdir().unwrap();
+        let target = parent.path().join("Mine");
+        import_into_folder(
+            &http,
+            "site_session=good",
+            &thesis_remote(),
+            &target,
+            &ImportLimits::default(),
+            &|_| {},
+        )
+        .await
+        .unwrap();
+        let kept: Value =
+            serde_json::from_str(&std::fs::read_to_string(target.join("project.json")).unwrap())
+                .unwrap();
+        assert_eq!(kept["importedFrom"]["server"], server.base.as_str());
+        assert_eq!(kept["importedFrom"]["projectId"], "a1");
+        assert_eq!(kept["main_doc"], "notes.tex");
+        assert_eq!(kept["engine"], "xetex");
+    }
+
+    #[test]
+    fn long_names_in_wide_characters_fit_a_file_name() {
+        for wide in ["字", "😀", "é"] {
+            let name = folder_name_for(&wide.repeat(100));
+            assert!(
+                name.len() <= MAX_FOLDER_BYTES,
+                "{wide}: {} bytes",
+                name.len()
+            );
+            assert!(!name.is_empty());
+            // The staging name for it stays under the 255-byte limit.
+            let staged = format!(".{name}.oleafly-import-{:016x}.zip", 0_u64);
+            assert!(staged.len() <= 255, "{wide}: {}", staged.len());
+        }
+        assert_eq!(folder_name_for(&"a".repeat(100)).len(), MAX_FOLDER_NAME);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

@@ -2317,21 +2317,26 @@ async fn execute_compile_spec(
     }
 }
 
-/// One build of a project's main document at a time, shared with the CLI
-/// (`oleafly build`) through the lock file beside the build folder. A folder
-/// the lock file can't be created in builds without it.
-async fn acquire_build_lock(
-    request: &CompileRequest<'_>,
-    spec: &EngineCompileSpec,
-) -> Result<Option<oleafly_core::build_output::BuildLock>, String> {
-    if !matches!(request.target, CompileTarget::Main { .. }) {
-        return Ok(None);
-    }
-    let build_dir = spec.artifacts.output_dir.clone();
-    let deadline = std::time::Instant::now() + COMPILE_TIMEOUT;
+/// How waiting for the build lock ended: the lock (or no lock, where the
+/// folder can't hold one), or the user stopped the compile first.
+enum BuildLockWait {
+    Held(Option<oleafly_core::build_output::BuildLock>),
+    Stopped,
+}
+
+/// Polls for the lock of `build_dir` until `timeout`. `stopped` is asked each
+/// time the lock turns out to be held, so Stop ends the wait within a poll;
+/// `on_wait` runs once, when the lock is first found held.
+async fn wait_for_build_lock(
+    build_dir: &Path,
+    timeout: std::time::Duration,
+    stopped: impl Fn() -> bool,
+    mut on_wait: impl FnMut(),
+) -> Result<BuildLockWait, String> {
+    let deadline = std::time::Instant::now() + timeout;
     let mut announced = false;
     loop {
-        let dir = build_dir.clone();
+        let dir = build_dir.to_path_buf();
         let attempt = tauri::async_runtime::spawn_blocking(move || {
             std::fs::create_dir_all(&dir)?;
             oleafly_core::build_output::BuildLock::try_acquire(&dir)
@@ -2339,16 +2344,16 @@ async fn acquire_build_lock(
         .await
         .map_err(|error| error.to_string())?;
         match attempt {
-            Ok(Some(lock)) => return Ok(Some(lock)),
+            Ok(Some(lock)) => return Ok(BuildLockWait::Held(Some(lock))),
             Ok(None) => {}
-            Err(_) => return Ok(None),
+            Err(_) => return Ok(BuildLockWait::Held(None)),
+        }
+        if stopped() {
+            return Ok(BuildLockWait::Stopped);
         }
         if !announced {
             announced = true;
-            let _ = request.app.emit(
-                request.log_event,
-                "[Oleafly] Waiting for another build of this project to finish…\n",
-            );
+            on_wait();
         }
         if std::time::Instant::now() >= deadline {
             return Err(
@@ -2360,12 +2365,66 @@ async fn acquire_build_lock(
     }
 }
 
+/// One build of a project's main document at a time, shared with the CLI
+/// (`oleafly build`) through the lock file beside the build folder. A folder
+/// the lock file can't be created in builds without it. Stop ends the wait
+/// for another build instead of waiting it out.
+async fn acquire_build_lock(
+    request: &CompileRequest<'_>,
+    spec: &EngineCompileSpec,
+) -> Result<BuildLockWait, String> {
+    if !matches!(request.target, CompileTarget::Main { .. }) {
+        return Ok(BuildLockWait::Held(None));
+    }
+    wait_for_build_lock(
+        &spec.artifacts.output_dir,
+        COMPILE_TIMEOUT,
+        || {
+            request
+                .cancel
+                .is_some_and(crate::state::CompileCancel::is_requested)
+        },
+        || {
+            let _ = request.app.emit(
+                request.log_event,
+                "[Oleafly] Waiting for another build of this project to finish…\n",
+            );
+        },
+    )
+    .await
+}
+
 pub async fn compile(request: CompileRequest<'_>) -> Result<CompileResult, String> {
     let cancel_scope = CompileCancelScope::new(request.cancel);
     let capabilities = request.engine.capabilities();
     validate_compile_capabilities(&request, capabilities)?;
     let spec = resolve_compile_spec(&request).await?;
-    let _build_lock = acquire_build_lock(&request, &spec).await?;
+    let _build_lock = match acquire_build_lock(&request, &spec).await? {
+        BuildLockWait::Held(lock) => lock,
+        BuildLockWait::Stopped => {
+            // Stopped while another build held the folder: nothing ran.
+            cancel_scope.finish();
+            let mut log = String::new();
+            append_bounded(
+                &mut log,
+                b"[Oleafly] Stopped while waiting for another build of this project.\nOleafly stopped the compile on request.\n",
+            );
+            return Ok(build_compile_result(
+                capabilities,
+                spec,
+                std::time::Instant::now(),
+                CompileResultParts {
+                    stopped: true,
+                    ok: false,
+                    has_pdf: false,
+                    output_id: None,
+                    errors: Vec::new(),
+                    diagnostics: Vec::new(),
+                    log,
+                },
+            ));
+        }
+    };
     let _tex_runtime = if request.engine.id() == DocumentEngineId::Latexmk {
         Some(crate::latex_engine::acquire_tex_runtime_read()?)
     } else {
@@ -3522,6 +3581,62 @@ mod tests {
         let (log, code) = run("printf 'error'; exit 1").await;
         assert_eq!(code, Some(1));
         assert!(!log.contains("crashed"), "{log}");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn stop_ends_the_wait_for_another_builds_lock() {
+        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+        let root = tempfile::tempdir().unwrap();
+        let build = root.path().join("build");
+        std::fs::create_dir_all(&build).unwrap();
+        let held = oleafly_core::build_output::BuildLock::try_acquire(&build)
+            .unwrap()
+            .unwrap();
+        let stop = AtomicBool::new(false);
+        let announced = AtomicUsize::new(0);
+        let started = std::time::Instant::now();
+        let waiting = wait_for_build_lock(
+            &build,
+            std::time::Duration::from_secs(30),
+            || stop.load(Ordering::SeqCst),
+            || {
+                announced.fetch_add(1, Ordering::SeqCst);
+                stop.store(true, Ordering::SeqCst);
+            },
+        )
+        .await
+        .unwrap();
+        assert!(matches!(waiting, BuildLockWait::Stopped));
+        assert_eq!(announced.load(Ordering::SeqCst), 1);
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+        drop(held);
+
+        // With the lock free, a stop request does not matter.
+        let free = wait_for_build_lock(&build, std::time::Duration::from_secs(30), || true, || {})
+            .await
+            .unwrap();
+        assert!(matches!(free, BuildLockWait::Held(Some(_))));
+    }
+
+    #[tokio::test]
+    async fn the_lock_wait_still_times_out_when_nobody_stops_it() {
+        let root = tempfile::tempdir().unwrap();
+        let build = root.path().join("build");
+        std::fs::create_dir_all(&build).unwrap();
+        let _held = oleafly_core::build_output::BuildLock::try_acquire(&build)
+            .unwrap()
+            .unwrap();
+        let error = wait_for_build_lock(
+            &build,
+            std::time::Duration::from_millis(250),
+            || false,
+            || {},
+        )
+        .await
+        .err()
+        .expect("the wait must time out");
+        assert!(error.contains("still running"), "{error}");
     }
 
     #[cfg(unix)]

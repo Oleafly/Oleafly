@@ -32,7 +32,7 @@ Oleafly needs Cua Driver 0.36.0 or newer. It looks for it here:
 
 You choose the apps and websites:
 
-- **Allowed apps.** Pick from the installed apps or choose a program file. On macOS an app is its bundle id; on Windows and Linux it is the program's full path. Some apps can never be added: Oleafly itself, Cua Driver, terminals and shells, system settings, password managers, script runners, programs that start other programs (such as `env` or `python`), and Flatpak or Snap apps. The picker shows why.
+- **Allowed apps.** Pick from the installed apps or choose a program file. On macOS an app is its bundle id; on Windows and Linux it is the program's full path. Some apps can never be added: Oleafly itself, Cua Driver, terminals and shells, system settings, password managers, script runners, programs that start other programs (such as `env` or `python`), Flatpak or Snap apps, and web browsers (add the sites you want under Allowed websites instead). The picker shows why.
 - **Allowed websites.** Enter `https://` addresses (or `http://` for this computer). Each site opens in a separate browser profile. Turn on "Use my signed-in browser" for a site to let agents work in your own Chrome or Edge there instead.
 - **Scripted control.** Off by default. When on, agents may run Cua scripts that do many steps at once. Each script asks you every time.
 
@@ -50,7 +50,7 @@ Oleafly starts up to three Cua Driver processes of its own, only while they are 
 
 Each one runs in **bounded** mode with a capability manifest Oleafly writes to `cua/` in Oleafly's data folder (`~/.oleafly/cua/` by default). The manifest lists exactly the apps or sites and the tools it may use. It expires after 8 hours and after 30 idle minutes; Oleafly starts a fresh process when that happens. A process nobody used for 25 minutes stops, and quitting Oleafly stops them all. If Oleafly crashed, it cleans up the old processes at the next start.
 
-On macOS Oleafly starts Cua Driver through `open -a CuaDriver.app`, so the macOS permissions stay with CuaDriver.app. Telemetry and the update check are off. On Windows the process listens on a named pipe for your user; elsewhere on a socket in Oleafly's data folder.
+On macOS Oleafly starts Cua Driver through `open -a CuaDriver.app`, so the macOS permissions stay with CuaDriver.app. The first start after an install can take up to 30 seconds while macOS checks the app. Telemetry and the update check are off. On Windows the process listens on a named pipe for your user; elsewhere on a socket in Oleafly's data folder.
 
 Before using a process, Oleafly checks that it is bounded: it asks for a tool no manifest allows. If Cua Driver runs it anyway, Oleafly stops the process and reports it.
 
@@ -60,9 +60,11 @@ No manifest ever allows these tools: `kill_app`, `install_extension`, `set_confi
 
 - **Looking** (`list_apps`, `list_windows`, `get_window_state`, `get_browser_state`) runs without asking.
 - **Actions** (clicks, typing, keys, opening apps, page changes) ask in a system dialog: "Allow once", "Allow for this chat" (or session, or task), or "Don't allow". Escape means don't allow.
-- **Batches** (`run_steps`) ask once and list every step.
+- **Your signed-in browser** asks before every action and has no "Allow for this…" choice. The dialog says it is your own browser and names the site.
+- **Batches** (`run_steps`) ask once and list every step. "Allow for this chat" on a batch covers the kinds of steps it listed, so a later batch with a new kind of step asks again.
 - **Scripts** (`run_script`) ask every time, with no "Allow for this…" choice.
-- A dialog that gets no answer counts as "Don't allow".
+- When text, a script or a list of steps is too long for the dialog, the dialog says how much it leaves out.
+- A dialog that gets no answer counts as "Don't allow". So does one still open when the chat turn ends.
 
 Your approval mode and allow rules don't skip these questions, not even Full access. A deny rule for `desktop_apps` in a project's approval rules turns desktop apps off for that project. Folders you haven't trusted never get desktop apps.
 
@@ -89,7 +91,7 @@ It connects read-only (`--permissions spaces:readonly`) and without your agent s
 
 "Test connection" starts each runtime, checks it is bounded and runs `cua-driver doctor`. If something still looks wrong, these commands show what Oleafly relies on. Replace the paths with yours.
 
-1. The version: `cua-driver --version` prints `cua-driver 0.36.0` or newer.
+1. The version: `cua-driver --version` prints `cua-driver 0.36.0` or newer. Oleafly won't turn on desktop apps if it can't read the version.
 2. A bounded process starts with Oleafly's manifest (turn desktop apps on once so the manifest exists):
    - macOS: `open -n -g -a /Applications/CuaDriver.app --env CUA_DRIVER_RS_TELEMETRY_ENABLED=false --env CUA_DRIVER_RS_UPDATE_CHECK=false --stdout /tmp/cua-test.log --stderr /tmp/cua-test.log --args serve --socket /tmp/cua-test.sock --pid-file /tmp/cua-test.pid --permission-mode bounded --capability-manifest ~/.oleafly/cua/desktop.manifest.yaml --approve-capability-manifest`
    - Linux: `cua-driver serve --socket /tmp/cua-test.sock --pid-file /tmp/cua-test.pid --permission-mode bounded --capability-manifest ~/.oleafly/cua/desktop.manifest.yaml --approve-capability-manifest`

@@ -98,6 +98,30 @@ pub(crate) fn check_url(url: &Url) -> WebResult<()> {
     }
 }
 
+/// Refuses a host name that resolves, here, to any address that is not
+/// public. Through a proxy the proxy resolves and connects, so
+/// `PublicResolver` never sees the name; this lookup runs before each request
+/// instead. A name that does not resolve here can only be reached through the
+/// proxy's own DNS, outside the user's network, so it is let through.
+pub(crate) async fn check_resolved_host(url: &Url) -> WebResult<()> {
+    let Some(url::Host::Domain(domain)) = url.host() else {
+        return Ok(());
+    };
+    let Ok(addresses) =
+        tokio::net::lookup_host((domain, url.port_or_known_default().unwrap_or(443))).await
+    else {
+        return Ok(());
+    };
+    let addresses: Vec<SocketAddr> = addresses.collect();
+    if addresses.iter().all(|address| is_public_ip(address.ip())) {
+        Ok(())
+    } else {
+        Err(WebError::NotAllowed(
+            "Oleafly does not fetch local or private network addresses.".into(),
+        ))
+    }
+}
+
 /// Whether the fetch follows a redirect to `next` after `hops` requests.
 pub(crate) fn redirect_allowed(next: &Url, hops: usize) -> bool {
     hops <= MAX_REDIRECTS && check_url(next).is_ok()
@@ -126,6 +150,22 @@ impl Resolve for PublicResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn a_name_that_resolves_to_a_private_address_is_refused_before_any_proxy() {
+        // `localhost` resolves through the hosts file on every platform.
+        let local = Url::parse("https://localhost/page").unwrap();
+        assert!(matches!(
+            check_resolved_host(&local).await,
+            Err(WebError::NotAllowed(_))
+        ));
+        // An address literal is checked by `check_url`, not here.
+        let literal = Url::parse("https://1.1.1.1/").unwrap();
+        assert!(check_resolved_host(&literal).await.is_ok());
+        // A name this computer cannot resolve is the proxy's to resolve.
+        let unknown = Url::parse("https://does-not-exist.invalid/").unwrap();
+        assert!(check_resolved_host(&unknown).await.is_ok());
+    }
 
     #[test]
     fn private_and_special_addresses_are_not_public() {

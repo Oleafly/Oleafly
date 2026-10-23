@@ -233,6 +233,7 @@
       "closeOne": "Zamknij terminal",
       "closeProject": "Zamknij projekt",
       "dontAsk": "Nie pytaj ponownie",
+      "dontAskHint": "Aby włączyć to ponownie, otwórz Ustawienia, Wygląd, Terminal, Pytaj przed zamknięciem zajętego terminala.",
       "many_one": "Program nadal działa w {{count}} terminalu.",
       "many_few": "Programy nadal działają w {{count}} terminalach.",
       "many_many": "Programy nadal działają w {{count}} terminalach.",

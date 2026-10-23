@@ -12,7 +12,7 @@ mod markdown;
 mod text;
 mod typst;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
 use serde::Serialize;
@@ -343,17 +343,25 @@ fn resolve_inputs(uses: &mut [Use], known: &Known, main_document: &str) -> Vec<b
     }
     let main_directory = dirname(main_document).to_string();
     let original: Vec<Option<String>> = uses.iter().map(|use_| use_.target.clone()).collect();
+    // The include and import uses of each file, in order, so a file's uses
+    // are found without scanning every use in the project.
+    let mut inputs_by_file: HashMap<String, Vec<usize>> = HashMap::new();
+    for (index, use_) in uses.iter().enumerate() {
+        if matches!(use_.kind, UseKind::Include | UseKind::Import) {
+            inputs_by_file
+                .entry(use_.file.clone())
+                .or_default()
+                .push(index);
+        }
+    }
     let mut reachable: BTreeSet<String> = BTreeSet::new();
     let mut pending = vec![main_document.to_string()];
     while let Some(file) = pending.pop() {
         if !reachable.insert(file.clone()) {
             continue;
         }
-        for index in 0..uses.len() {
+        for &index in inputs_by_file.get(&file).map_or(&[][..], Vec::as_slice) {
             let use_ = &uses[index];
-            if use_.file != file || !matches!(use_.kind, UseKind::Include | UseKind::Import) {
-                continue;
-            }
             if use_.kind == UseKind::Include
                 && engine_for(&use_.file) == Some(Engine::Latex)
                 && original[index].is_some()
@@ -431,6 +439,10 @@ pub fn scan_sources(
 
     let mut unresolved_refs: Vec<String> = Vec::new();
     let mut unresolved_cites: Vec<String> = Vec::new();
+    // What the two lists already hold, so a name is added once without
+    // scanning them (thousands of distinct unresolved names are possible).
+    let mut unresolved_ref_names: HashSet<&str> = HashSet::new();
+    let mut unresolved_cite_names: HashSet<&str> = HashSet::new();
     let mut cited: BTreeSet<String> = BTreeSet::new();
     let mut referenced: BTreeSet<(String, String)> = BTreeSet::new();
     for use_ in &uses {
@@ -441,13 +453,14 @@ pub fn scan_sources(
                     referenced.insert(key);
                 } else if use_.typst_at && bib_keys.contains(use_.name.as_str()) {
                     cited.insert(use_.name.clone());
-                } else if !unresolved_refs.contains(&use_.name) {
+                } else if unresolved_ref_names.insert(use_.name.as_str()) {
                     unresolved_refs.push(use_.name.clone());
                 }
             }
             UseKind::Cite => {
                 cited.insert(use_.name.clone());
-                if !bib_keys.contains(use_.name.as_str()) && !unresolved_cites.contains(&use_.name)
+                if !bib_keys.contains(use_.name.as_str())
+                    && unresolved_cite_names.insert(use_.name.as_str())
                 {
                     unresolved_cites.push(use_.name.clone());
                 }
@@ -640,6 +653,41 @@ mod tests {
             .iter()
             .map(|(path, text)| (path.to_string(), text.to_string()))
             .collect()
+    }
+
+    #[test]
+    fn unresolved_names_are_listed_once_in_the_order_they_first_appear() {
+        let files = sources(&[(
+            "main.tex",
+            "\\ref{b} \\ref{a} \\ref{b}\n\\cite{z} \\cite{y} \\cite{z}\n",
+        )]);
+        let all: Vec<String> = files.keys().cloned().collect();
+        let scan = scan_sources(&files, &all, "main.tex");
+        assert_eq!(scan.map.unresolved_refs, ["b", "a"]);
+        assert_eq!(scan.map.unresolved_cites, ["z", "y"]);
+    }
+
+    #[test]
+    fn includes_are_followed_through_every_file_that_is_reached() {
+        // main -> a -> b, with c never included: only what is reachable
+        // resolves from the main document's folder.
+        let files = sources(&[
+            ("main.tex", "\\input{a}\n\\input{missing}\n"),
+            ("a.tex", "\\input{b}\n"),
+            ("b.tex", "text\n"),
+            ("c.tex", "\\input{b}\n"),
+        ]);
+        let all: Vec<String> = files.keys().cloned().collect();
+        let scan = scan_sources(&files, &all, "main.tex");
+        let edges: Vec<(&str, Option<&str>)> = scan
+            .map
+            .input_graph
+            .iter()
+            .map(|edge| (edge.from.as_str(), edge.to.as_deref()))
+            .collect();
+        assert!(edges.contains(&("main.tex", Some("a.tex"))));
+        assert!(edges.contains(&("a.tex", Some("b.tex"))));
+        assert!(edges.contains(&("c.tex", Some("b.tex"))));
     }
 
     #[test]

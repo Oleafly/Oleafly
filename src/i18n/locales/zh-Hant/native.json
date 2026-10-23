@@ -100,6 +100,10 @@
       "action": "{{agent}} 想要{{action}}。",
       "steps": "{{agent}} 想要在桌面應用程式中執行以下步驟：",
       "moreSteps": "未顯示的步驟：{{count}}",
+      "moreItems": "還有 {{count}} 個項目未顯示",
+      "cut": "（還有 {{count}} 個字元未顯示）",
+      "signedIn": "這會在你自己已登入的瀏覽器中操作。",
+      "signedInOn": "這會在你自己已登入的瀏覽器中操作 {{origin}}。",
       "text": "文字：「{{text}}」",
       "address": "位址：{{url}}",
       "allowOnce": "允許一次",
@@ -130,7 +134,8 @@
       "message": "代理程式將能夠使用以下項目，而且每次動作前仍會詢問：",
       "confirm": "允許",
       "enabled": "桌面應用程式",
-      "app": "應用程式：{{name}}",
+      "app": "應用程式：{{name}}（{{identity}}）",
+      "more": "還有 {{count}} 個",
       "site": "網站：{{origin}}",
       "signedIn": "你在 {{origin}} 上已登入的瀏覽器",
       "scripted": "Cua 指令碼"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly 仍在工作",
       "body": "你標記為繼續執行的研究任務會在背景繼續執行。開啟 Oleafly 即可查看進度。"
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "權限檢查已關閉（{{mode}}）",
+      "description": "代理程式可以在不詢問的情況下編輯檔案並執行指令。Oleafly 無法將它切換到其他模式。請在代理程式自己的設定中變更模式。"
     }
   }
 }

@@ -31,6 +31,7 @@ import {
 } from "@/components/ai/SlashCommandMenu";
 import type { ComposerCommand } from "@/components/ai/composer-command-registry";
 import { useAutoSizeTextarea } from "@/components/ai/use-auto-size-textarea";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -43,6 +44,7 @@ import { cn, isLinux } from "@/lib/utils";
 import { useSettingsStore } from "@/store/settings";
 import { promptHistory, rememberPrompt } from "@/store/composer-drafts";
 import {
+  caretLines,
   clampComposerHeight,
   COMPOSER_DEFAULT_HEIGHT,
   COMPOSER_MAX_PANEL_SHARE,
@@ -366,6 +368,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     if (isImeEnter(event)) return;
     if (mentionOpen && mentionMenuRef.current?.handleKeyDown(event)) return;
     if (slashOpen && slashMenuRef.current?.handleKeyDown(event)) return;
+    const box = textareaRef.current;
+    const lines = box
+      ? caretLines(box.value, box.selectionStart ?? box.value.length, box.selectionEnd ?? box.value.length)
+      : null;
     const action = composerKeyAction({
       key: event.key,
       shiftKey: event.shiftKey,
@@ -377,6 +383,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       canSubmit,
       empty: (textareaRef.current?.value ?? value) === "",
       recalling: recall.current !== null,
+      caretOnFirstLine: lines?.onFirstLine,
+      caretOnLastLine: lines?.onLastLine,
     });
     switch (action) {
       case "submit":
@@ -467,7 +475,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       return;
     }
     void takeNativeDrop()
-      .then((items) => Promise.all(items.map((item) => item.read())))
+      .then(async (items) => (await import("@/lib/attachments-intake")).readDroppedFiles(items))
       .then((files) => {
         if (files.length > 0) onAddFiles?.(files);
       })
@@ -650,26 +658,28 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
             {trailingControls}
             {busy && onStop ? (
               <Tooltip label={stopTitle}>
-                <button
+                <Button
                   type="button"
+                  size="icon"
                   onClick={onStop}
                   disabled={stopDisabled}
                   aria-label={stopLabel}
-                  className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:opacity-90 disabled:opacity-40"
+                  className="ai-composer-submit size-8 shrink-0 rounded-full text-white disabled:opacity-40 [&_svg]:size-3.5"
                 >
-                  <Square className="size-3.5 fill-current" />
-                </button>
+                  <Square className="fill-current" />
+                </Button>
               </Tooltip>
             ) : (
-              <button
+              <Button
                 type="button"
+                size="icon"
                 onClick={busy ? queue : submit}
                 disabled={busy ? !canQueue : !canSubmit}
                 aria-label={sendLabel}
-                className="ai-composer-submit flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-white transition-colors hover:bg-primary disabled:opacity-40"
+                className="ai-composer-submit size-8 shrink-0 rounded-full text-white disabled:opacity-40"
               >
-                <ArrowUp className="size-4" />
-              </button>
+                <ArrowUp />
+              </Button>
             )}
           </div>
         </div>

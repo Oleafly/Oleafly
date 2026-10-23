@@ -464,12 +464,7 @@ describe("live subscriptions", () => {
       mountResearchTaskSubscriptions(),
     ]);
 
-    expect(listened()).toEqual([
-      "research-pdf-text-request",
-      "research-task-changed",
-      "research-task-delta",
-      "research-task-event",
-    ]);
+    expect(listened()).toEqual(["research-task-changed", "research-task-delta", "research-task-event"]);
 
     stopFirst();
     stopFirst();
@@ -478,7 +473,7 @@ describe("live subscriptions", () => {
 
     stopSecond();
     await flush();
-    expect(native.unlisteners.size).toBe(4);
+    expect(native.unlisteners.size).toBe(3);
     for (const stop of native.unlisteners.values()) expect(stop).toHaveBeenCalledTimes(1);
   });
 
@@ -489,7 +484,7 @@ describe("live subscriptions", () => {
 
     const again = await mountResearchTaskSubscriptions();
 
-    expect(native.listen).toHaveBeenCalledTimes(8);
+    expect(native.listen).toHaveBeenCalledTimes(6);
     again();
     await flush();
   });
@@ -509,7 +504,6 @@ describe("live subscriptions", () => {
     native.listen.mockImplementation(listen);
     const stop = await mountResearchTaskSubscriptions();
     expect([...native.handlers.keys()].sort()).toEqual([
-      "research-pdf-text-request",
       "research-task-changed",
       "research-task-delta",
       "research-task-event",
@@ -533,21 +527,30 @@ describe("live subscriptions", () => {
     await flush();
   });
 
-  it("answers PDF text requests while research views are open", async () => {
+  it("leaves PDF text requests to the app shell, so a research view is not needed to answer them", async () => {
     const stop = await mountResearchTaskSubscriptions();
-    answer({ research_pdf_text_fetch: new Error("The request expired.") });
 
-    emit("research-pdf-text-request", { token: "t9" });
-
-    await vi.waitFor(() =>
-      expect(native.invoke).toHaveBeenCalledWith("research_pdf_text_result", {
-        token: "t9",
-        pages: null,
-        error: "The request expired.",
-      }),
-    );
+    expect(native.handlers.has("research-pdf-text-request")).toBe(false);
+    expect(native.listen.mock.calls.map(([name]) => name)).not.toContain("research-pdf-text-request");
     stop();
     await flush();
+  });
+
+  it("keeps the listeners when a view replaces another in the same commit", async () => {
+    const first = await mountResearchTaskSubscriptions();
+    native.listen.mockClear();
+
+    // What React does when one rail panel replaces another: clean up, then mount.
+    first();
+    const second = mountResearchTaskSubscriptions();
+    const stopSecond = await second;
+    await flush();
+
+    expect(native.listen).not.toHaveBeenCalled();
+    for (const stop of native.unlisteners.values()) expect(stop).not.toHaveBeenCalled();
+    stopSecond();
+    await flush();
+    for (const stop of native.unlisteners.values()) expect(stop).toHaveBeenCalledTimes(1);
   });
 
   it("stops watching when the last view unmounts", async () => {

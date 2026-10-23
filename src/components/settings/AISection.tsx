@@ -262,6 +262,7 @@ export function AISection() {
     configLoaded &&
     (Boolean(cfg.ai_system_prompt) ||
       cfg.ai_pdf_capture === false ||
+      cfg.ai_reasoning_summaries === true ||
       Object.values(cfg.ai_provider_models).some((models) =>
         models.some((model) => !model.enabled),
       ) ||
@@ -625,6 +626,7 @@ export function AISection() {
       ...resetConfig,
       ai_system_prompt: "",
       ai_pdf_capture: true,
+      ai_reasoning_summaries: false,
     };
     try {
       await persist(next);

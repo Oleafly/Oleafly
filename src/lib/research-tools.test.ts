@@ -142,7 +142,11 @@ describe("creating research tasks from the assistant", () => {
       modelId: "",
       skillIds: [],
       dependencyIds: [],
-      brief: defaultBrief("Find papers on sparse attention"),
+      // A task an agent creates asks before each command and has no network.
+      brief: {
+        ...defaultBrief("Find papers on sparse attention"),
+        permissions: { network: false, commands: "ask", desktopApps: false },
+      },
     });
     expect(mocks.startResearchTask).toHaveBeenCalledWith("t1");
     expect(res).toEqual({ id: "t1", title: "Survey", status: "running" });
@@ -183,7 +187,7 @@ describe("creating research tasks from the assistant", () => {
         ...defaultBrief("Find the dropout rate with the lowest validation loss"),
         successCriteria: ["val_loss below 0.3"],
         reviewPlanFirst: true,
-        permissions: { network: false, commands: "allow", desktopApps: false },
+        permissions: { network: false, commands: "ask", desktopApps: false },
         budget: { wallClockMinutes: 30, usdCap: null, maxRuns: null, runTimeoutMinutes: 60 },
       },
     });
@@ -191,7 +195,7 @@ describe("creating research tasks from the assistant", () => {
     expect(res).toEqual({ id: "t2", title: "Ablation", status: "queued" });
   });
 
-  it("takes network access and the time budget from the research settings when the agent leaves them out", async () => {
+  it("takes the time budget from the research settings, keeps the network off and asks before each command when the agent leaves them out", async () => {
     mocks.getConfig.mockResolvedValue({ research_command_network: true, research_time_budget_minutes: 240 });
     mocks.createResearchTask.mockResolvedValue(task("t3"));
     const tools = createResearchTaskAiTools();
@@ -201,7 +205,7 @@ describe("creating research tasks from the assistant", () => {
     const [draft] = mocks.createResearchTask.mock.calls[0];
     expect(draft.brief).toMatchObject({
       goal: "Sweep the literature",
-      permissions: { network: true },
+      permissions: { network: false, commands: "ask" },
       budget: { wallClockMinutes: 240 },
     });
   });
@@ -223,10 +227,13 @@ describe("creating research tasks from the assistant", () => {
 
     const res = await tools.research_task_create.execute({ title: "Survey", prompt: "Find papers" });
 
-    expect(confirm).toHaveBeenCalledWith({
-      tool: "research_task_create",
-      summary: 'Create the research task "Survey" and start it',
-    });
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tool: "research_task_create",
+        summary: expect.stringContaining('Create the research task "Survey" and start it.'),
+        researchTask: expect.objectContaining({ prompt: "Find papers", commands: "ask", network: false }),
+      }),
+    );
     expect(res).toMatchObject({ declined: true, tool: "research_task_create" });
     expect(mocks.createResearchTask).not.toHaveBeenCalled();
   });

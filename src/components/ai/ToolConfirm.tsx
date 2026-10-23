@@ -11,7 +11,7 @@ import { isAutoApprovable } from "@/store/mcp-approvals";
 import type { McpApprovalDetails } from "@/lib/mcp-agent-tools";
 import { useDisplayPath, useDisplayText } from "@/lib/display-path";
 import { basename } from "@/lib/path-utils";
-import { toolRisk } from "@oleafly/ai-tools";
+import { toolRisk, type ResearchTaskApprovalDetails } from "@oleafly/ai-tools";
 
 export function firstChangedLine(oldText: string, newText: string): number {
   const a = oldText.split("\n");
@@ -35,6 +35,14 @@ function mcpApprovalDetails(req: ToolApprovalRequest): McpApprovalDetails | null
     return null;
   }
   return details as McpApprovalDetails;
+}
+
+function researchTaskDetails(req: ToolApprovalRequest): ResearchTaskApprovalDetails | null {
+  const task = (req as ToolApprovalRequest & { researchTask?: unknown }).researchTask;
+  if (!task || typeof task !== "object") return null;
+  const details = task as Partial<ResearchTaskApprovalDetails>;
+  if (typeof details.title !== "string" || typeof details.prompt !== "string") return null;
+  return details as ResearchTaskApprovalDetails;
 }
 
 // Re-export so MCP shell and others keep a single import path.
@@ -65,12 +73,15 @@ export function ToolConfirm({
   const canSession = isAutoApprovable(req.tool) && !!onApproveSession;
   const commandApproval = req.tool === "run_command";
   const mcpApproval = mcpApprovalDetails(req);
+  const researchTask = researchTaskDetails(req);
   const networkApproval = toolRisk(req.tool) === "network";
   let approvalLabel: string;
   if (commandApproval) {
     approvalLabel = t(($) => $.ai.approval.confirm.command);
   } else if (mcpApproval) {
     approvalLabel = t(($) => $.ai.approval.confirm.externalTool);
+  } else if (researchTask) {
+    approvalLabel = t(($) => $.ai.approval.confirm.researchTask);
   } else if (networkApproval) {
     approvalLabel = t(($) => $.ai.approval.confirm.internet);
   } else {
@@ -104,6 +115,8 @@ export function ToolConfirm({
     approvalHeadline = t(($) => $.ai.approval.headline.command);
   } else if (mcpApproval) {
     approvalHeadline = t(($) => $.ai.approval.headline.externalTool);
+  } else if (researchTask) {
+    approvalHeadline = t(($) => $.ai.approval.headline.researchTask);
   } else if (networkApproval) {
     approvalHeadline = t(($) => $.ai.approval.headline.internet);
   } else {
@@ -121,6 +134,11 @@ export function ToolConfirm({
           {mcpApproval && (
             <p className="text-[0.6875rem] leading-snug text-muted-foreground">
               {t(($) => $.ai.approval.mcpNote)}
+            </p>
+          )}
+          {researchTask && (
+            <p className="text-[0.6875rem] leading-snug text-muted-foreground">
+              {t(($) => $.ai.approval.researchTask.note)}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -189,6 +207,51 @@ export function ToolConfirm({
             <pre data-select-all-scope className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
               {displayText(mcpApproval.argumentsPreview)}
             </pre>
+          </div>
+        </div>
+      )}
+
+      {researchTask && (
+        <div className="select-text space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1.5 text-xs">
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.title)}</span>
+            <span className="min-w-0 break-words font-medium text-foreground">{researchTask.title}</span>
+            {researchTask.goal && (
+              <>
+                <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.goal)}</span>
+                <span className="min-w-0 break-words text-foreground">{researchTask.goal}</span>
+              </>
+            )}
+            {researchTask.skills.length > 0 && (
+              <>
+                <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.skills)}</span>
+                <span className="min-w-0 break-words text-foreground">{researchTask.skills.join(", ")}</span>
+              </>
+            )}
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.commands)}</span>
+            <span className="text-foreground">{t(($) => $.ai.approval.researchTask.commandsAsk)}</span>
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.network)}</span>
+            <span className="text-foreground">{researchTask.network ? t(($) => $.common.state.on) : t(($) => $.common.state.off)}</span>
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.timeBudget)}</span>
+            <span className="text-foreground">
+              {researchTask.timeBudgetMinutes == null
+                ? t(($) => $.ai.approval.researchTask.timeBudgetDefault)
+                : t(($) => $.ai.approval.researchTask.minutes, { count: researchTask.timeBudgetMinutes })}
+            </span>
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.planFirst)}</span>
+            <span className="text-foreground">{researchTask.reviewPlanFirst ? t(($) => $.common.actions.yes) : t(($) => $.common.actions.no)}</span>
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.startNow)}</span>
+            <span className="text-foreground">{researchTask.start ? t(($) => $.common.actions.yes) : t(($) => $.common.actions.no)}</span>
+          </div>
+          <div className="space-y-1 border-t border-border/60 pt-2">
+            <p className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.researchTask.prompt)}</p>
+            {/* Plain text on purpose: the user reads exactly what the task will be told. */}
+            <div
+              data-select-all-scope
+              className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 text-xs text-foreground"
+            >
+              {researchTask.prompt}
+            </div>
           </div>
         </div>
       )}

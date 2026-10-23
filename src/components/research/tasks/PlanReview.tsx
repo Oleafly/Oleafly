@@ -21,6 +21,8 @@ export function PlanReview({ task, busy, onApprove, onDiscard }: Readonly<PlanRe
   const taskKey = `${task.id}:${task.executionGeneration}`;
 
   useEffect(() => {
+    // A new run of the task has a new plan.
+    void taskKey;
     let current = true;
     setOriginal(null);
     setMissing(false);
@@ -36,8 +38,7 @@ export function PlanReview({ task, busy, onApprove, onDiscard }: Readonly<PlanRe
     return () => {
       current = false;
     };
-    // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the task's run changes
-  }, [taskKey]);
+  }, [taskKey, task.id]);
 
   const edited = original !== null && draft.trim() !== original.trim();
 

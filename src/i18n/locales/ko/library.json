@@ -256,7 +256,9 @@
     "loadingRepositories": "저장소를 불러오는 중…",
     "repositoriesFailed": "저장소를 불러오지 못했습니다.",
     "noRepositories": "저장소를 찾지 못했습니다.",
+    "noMatchLoaded": "지금까지 불러온 저장소에는 일치하는 항목이 없습니다. 계속 찾으려면 더 불러오세요.",
     "privateRepository": "비공개 저장소",
+    "openFailed": "Oleafly가 브라우저에서 {{host}}을(를) 열지 못했습니다.",
     "openOnHost": "{{host}}에서 열기",
     "openRepositoryOnHost": "{{host}}에서 {{name}} 열기",
     "sources": {

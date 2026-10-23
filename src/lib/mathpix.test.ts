@@ -47,14 +47,18 @@ describe("Mathpix bridge", () => {
     );
     const bytes = new Uint8Array([37, 80, 68, 70]);
     await expect(mathpixPdf(bytes, { pageRanges: "3-5" })).resolves.toBe("P1");
+    // The upload carries the request id too, so Cancel can reach it.
     expect(mocks.invoke).toHaveBeenNthCalledWith(1, "mathpix_pdf_upload", bytes, {
-      headers: { "x-oleafly-page-ranges": "3-5" },
+      headers: { "x-oleafly-page-ranges": "3-5", "x-oleafly-request-id": expect.any(String) },
     });
     expect(mocks.invoke).toHaveBeenNthCalledWith(2, "mathpix_pdf_wait", {
       requestId: expect.any(String),
       pdfId: "pdf-1",
       onProgress: mocks.channels[0],
     });
+    const uploadHeaders = (mocks.invoke.mock.calls[0][2] as { headers: Record<string, string> }).headers;
+    const waitArgs = mocks.invoke.mock.calls[1][1] as { requestId: string };
+    expect(uploadHeaders["x-oleafly-request-id"]).toBe(waitArgs.requestId);
   });
 
   it("forwards progress and returns the Markdown", async () => {
@@ -100,6 +104,35 @@ describe("Mathpix bridge", () => {
     controller.abort();
     await expect(running).rejects.toMatchObject({ name: "AbortError" });
     expect(mocks.invoke).toHaveBeenCalledWith("mathpix_pdf_cancel", { requestId: waitArgs.requestId });
+  });
+
+  it("stops the upload itself when the user cancels while it runs", async () => {
+    const controller = new AbortController();
+    let failUpload!: (reason: unknown) => void;
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "mathpix_pdf_upload") {
+        return new Promise((_resolve, reject) => {
+          failUpload = reject;
+        });
+      }
+      if (command === "mathpix_pdf_cancel") {
+        failUpload(CANCELLED);
+        return Promise.resolve();
+      }
+      return Promise.resolve();
+    });
+    const running = mathpixPdf(new Uint8Array([1]), { pageRanges: "1-9", signal: controller.signal });
+    await vi.waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("mathpix_pdf_upload", expect.anything(), expect.anything()));
+    const uploadHeaders = (mocks.invoke.mock.calls[0][2] as { headers: Record<string, string> }).headers;
+    controller.abort();
+    await expect(running).rejects.toMatchObject({ name: "AbortError" });
+    // The cancel reached the upload by its request id, and no wait was
+    // started for a PDF that was never created.
+    expect(mocks.invoke).toHaveBeenCalledWith("mathpix_pdf_cancel", {
+      requestId: uploadHeaders["x-oleafly-request-id"],
+    });
+    const commands = mocks.invoke.mock.calls.map(([command]) => command);
+    expect(commands).toEqual(["mathpix_pdf_upload", "mathpix_pdf_cancel"]);
   });
 
   it("deletes an upload that finished after the user stopped", async () => {

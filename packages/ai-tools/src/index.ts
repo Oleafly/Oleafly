@@ -31,6 +31,7 @@ export {
   type ResearchTaskToolsHost,
   type ResearchToolsHost,
 } from "./research-tools";
+export type { ResearchTaskApprovalDetails } from "./research-tools";
 export {
   createOverleafTools,
   type OverleafToolOutcome,

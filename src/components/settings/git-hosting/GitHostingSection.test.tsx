@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
@@ -38,7 +38,7 @@ vi.mock("@/lib/tauri", () => ({
   forgeSetCaFile: mocks.forgeSetCaFile,
   onForgeAccountsChanged: mocks.onForgeAccountsChanged,
 }));
-vi.mock("@tauri-apps/plugin-shell", () => ({ open: mocks.open }));
+vi.mock("@/lib/system-browser", () => ({ openInSystemBrowser: mocks.open }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: mocks.pickOpenPath }));
 
 import { useForgeAccountsStore } from "@/store/forge-accounts";
@@ -190,8 +190,10 @@ describe("GitHostingSection accounts", () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
+      // slow_down adds five seconds to the interval, whatever smaller
+      // number the server names.
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(6000);
+        await vi.advanceTimersByTimeAsync(10_000);
       });
 
       expect(mocks.forgeDevicePoll).toHaveBeenCalledTimes(2);
@@ -202,6 +204,144 @@ describe("GitHostingSection accounts", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("keeps waiting through a failed poll instead of losing the approval", async () => {
+    vi.useFakeTimers();
+    mocks.forgeDetect.mockResolvedValue(server("https://github.com", { kind: "github", deviceFlow: true }));
+    mocks.forgeDeviceStart.mockResolvedValue(githubStart);
+    const octocat = account("https://github.com", { kind: "github", login: "octocat", auth: "oauth" });
+    mocks.forgeDevicePoll
+      .mockRejectedValueOnce(envelope("git.host_unreachable", { host: "GitHub" }))
+      .mockResolvedValue({ status: "done", account: octocat });
+    try {
+      render(<GitHostingSection />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      fireEvent.click(screen.getByTestId("git-hosting-add"));
+      fireEvent.click(screen.getByTestId("git-hosting-preset-github"));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      fireEvent.click(screen.getByTestId("git-hosting-sign-in-browser"));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(screen.getByTestId("git-hosting-device-code")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+
+      expect(mocks.forgeDevicePoll).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId("git-hosting-notice")).toHaveTextContent("octocat");
+      expect(mocks.forgeDeviceCancel).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows a failure that will not pass and lets the backend drop the flow", async () => {
+    vi.useFakeTimers();
+    mocks.forgeDetect.mockResolvedValue(server("https://github.com", { kind: "github", deviceFlow: true }));
+    mocks.forgeDeviceStart.mockResolvedValue(githubStart);
+    mocks.forgeDevicePoll.mockRejectedValue(envelope("git.sign_in_cancelled", { host: "GitHub" }));
+    try {
+      render(<GitHostingSection />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      fireEvent.click(screen.getByTestId("git-hosting-add"));
+      fireEvent.click(screen.getByTestId("git-hosting-preset-github"));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      fireEvent.click(screen.getByTestId("git-hosting-sign-in-browser"));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(enErrors.git.sign_in_cancelled);
+      expect(mocks.forgeDevicePoll).toHaveBeenCalledTimes(1);
+      expect(mocks.forgeDeviceCancel).toHaveBeenCalledWith("flow-1");
+      expect(screen.queryByTestId("git-hosting-device-code")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says that signing in replaces the account the server already has", async () => {
+    const user = userEvent.setup();
+    mocks.forgeAccountsList.mockResolvedValue([account("https://github.com", { kind: "github", login: "alice" })]);
+    mocks.forgeDetect.mockImplementation(async (base: string) =>
+      base === "https://github.com" ? server(base, { kind: "github" }) : server(base),
+    );
+    render(<GitHostingSection />);
+    await screen.findByTestId("git-hosting-account-github.com");
+
+    await user.click(screen.getByTestId("git-hosting-add"));
+    await user.click(screen.getByTestId("git-hosting-preset-github"));
+    expect(await screen.findByTestId("git-hosting-replaces")).toHaveTextContent(
+      copy.add.replaces.replace("{{login}}", "alice").replace("{{host}}", "GitHub"),
+    );
+  });
+
+  it("does not warn about replacing an account on a server that has none", async () => {
+    const user = userEvent.setup();
+    mocks.forgeAccountsList.mockResolvedValue([account("https://github.com", { kind: "github", login: "alice" })]);
+    mocks.forgeDetect.mockResolvedValue(server("https://gitlab.com"));
+    render(<GitHostingSection />);
+    await screen.findByTestId("git-hosting-account-github.com");
+
+    await user.click(screen.getByTestId("git-hosting-add"));
+    await user.click(screen.getByTestId("git-hosting-preset-gitlab"));
+    expect(await screen.findByTestId("git-hosting-token")).toBeInTheDocument();
+    expect(screen.queryByTestId("git-hosting-replaces")).not.toBeInTheDocument();
+  });
+
+  it("offers GitHub Enterprise Server when detection cannot tell the server type", async () => {
+    const user = userEvent.setup();
+    mocks.forgeDetect.mockResolvedValue(server("https://ghe.example.edu", { kind: null }));
+    mocks.forgeSignInToken.mockResolvedValue(account("https://ghe.example.edu", { kind: "github" }));
+    render(<GitHostingSection />);
+
+    await user.click(await screen.findByTestId("git-hosting-add"));
+    await user.click(screen.getByTestId("git-hosting-preset-other"));
+    await user.type(screen.getByTestId("git-hosting-server-url"), "ghe.example.edu");
+    await user.click(screen.getByTestId("git-hosting-server-continue"));
+    expect(await screen.findByTestId("git-hosting-kind-github")).toHaveTextContent(copy.add.kindGithub);
+
+    await user.click(screen.getByTestId("git-hosting-kind-github"));
+    await user.type(screen.getByTestId("git-hosting-token"), "ghp_enterprise1");
+    await user.click(screen.getByTestId("git-hosting-token-connect"));
+    expect(mocks.forgeSignInToken).toHaveBeenCalledWith("https://ghe.example.edu", "github", "ghp_enterprise1", null);
+  });
+
+  it("sends the certificate file the account keeps, or an empty one after Remove", async () => {
+    const user = userEvent.setup();
+    const lab = account("https://example.org/gitlab", { caFile: "/certs/lab.pem" });
+    mocks.forgeAccountsList.mockResolvedValue([lab]);
+    mocks.forgeValidate.mockResolvedValue({ base: lab.base, state: "signed_out", account: lab });
+    mocks.forgeDetect.mockResolvedValue(server(lab.base));
+    mocks.forgeSignInToken.mockResolvedValue(lab);
+    render(<GitHostingSection />);
+
+    await user.click(await screen.findByTestId("git-hosting-sign-in-again-example.org/gitlab"));
+    await user.type(await screen.findByTestId("git-hosting-token"), "glpat-first-token");
+    await user.click(screen.getByTestId("git-hosting-token-connect"));
+    expect(mocks.forgeSignInToken).toHaveBeenLastCalledWith(lab.base, "gitlab", "glpat-first-token", "/certs/lab.pem");
+
+    mocks.forgeValidate.mockResolvedValue({ base: lab.base, state: "signed_out", account: lab });
+    await act(async () => {
+      await useForgeAccountsStore.getState().validateAll();
+    });
+    await user.click(await screen.findByTestId("git-hosting-sign-in-again-example.org/gitlab"));
+    const panel = await screen.findByTestId("git-hosting-add-panel");
+    await user.click(within(panel).getByRole("button", { name: copy.add.caRemove }));
+    await user.type(await screen.findByTestId("git-hosting-token"), "glpat-second-token");
+    await user.click(screen.getByTestId("git-hosting-token-connect"));
+    expect(mocks.forgeSignInToken).toHaveBeenLastCalledWith(lab.base, "gitlab", "glpat-second-token", "");
   });
 
   it("offers only a token for gitlab.com when this build has no GitLab app", async () => {

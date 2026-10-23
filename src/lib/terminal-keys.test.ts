@@ -178,12 +178,19 @@ describe("terminal key router", () => {
     expect(routeTerminalKey(key("/", { ctrl: true, alt: true }), ctx("linux"))).toEqual({ kind: "default" });
   });
 
-  it("opens find with Ctrl+F or Cmd+F", () => {
-    expect(routeTerminalKey(key("f", { ctrl: true }), ctx("linux"))).toEqual({ kind: "find" });
-    expect(routeTerminalKey(key("f", { ctrl: true }), ctx("windows"))).toEqual({ kind: "find" });
+  it("opens find with Ctrl+Shift+F, or Cmd+F on macOS", () => {
+    expect(routeTerminalKey(key("F", { ctrl: true, shift: true }), ctx("linux"))).toEqual({ kind: "find" });
+    expect(routeTerminalKey(key("F", { ctrl: true, shift: true }), ctx("windows"))).toEqual({ kind: "find" });
     expect(routeTerminalKey(key("f", { meta: true }), ctx("mac"))).toEqual({ kind: "find" });
     expect(routeTerminalKey(key("f", { ctrl: true }), ctx("mac"))).toEqual({ kind: "default" });
-    expect(routeTerminalKey(key("F", { ctrl: true, shift: true }), ctx("linux"))).toEqual({ kind: "default" });
+    expect(routeTerminalKey(key("F", { ctrl: true, shift: true }), ctx("mac"))).toEqual({ kind: "default" });
+  });
+
+  it("leaves plain Ctrl+F to the program on Windows and Linux", () => {
+    expect(routeTerminalKey(key("f", { ctrl: true }), ctx("linux"))).toEqual({ kind: "default" });
+    expect(routeTerminalKey(key("f", { ctrl: true }), ctx("windows"))).toEqual({ kind: "default" });
+    expect(terminalClaimsKey(key("f", { ctrl: true }), ctx("linux"))).toBe(true);
+    expect(terminalClaimsKey(key("f", { ctrl: true }), ctx("windows"))).toBe(true);
   });
 
   it("hands allow-listed app shortcuts to the app before the byte table", () => {
@@ -228,6 +235,7 @@ describe("terminal key router", () => {
     expect(terminalClaimsKey(key("F11", { shift: true }), c)).toBe(true);
     expect(terminalClaimsKey(key("`", { ctrl: true }), c)).toBe(false);
     expect(terminalClaimsKey(key("=", { ctrl: true }), c)).toBe(false);
+    expect(terminalClaimsKey(key("F", { ctrl: true, shift: true }), c)).toBe(true);
     expect(terminalClaimsKey(key("k", { meta: true }), ctx("mac"))).toBe(true);
     expect(terminalClaimsKey(key("b", { meta: true }), ctx("mac"))).toBe(false);
   });

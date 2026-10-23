@@ -2,9 +2,15 @@
 // equations and scanned PDF pages, for a general vision model, an OCR model
 // with its own prompt, or Mathpix. OCR Markdown goes through the bundled
 // Pandoc so tables and math survive in LaTeX, Typst and Markdown.
+import { isOutputLimitStop } from "@oleafly/ai-core";
 import type { ConverterProgressReporter } from "@/features/ad-hoc-converters";
 import { i18n } from "@/i18n";
-import { completeViaBackend, type AgentCompletionRequest, type AgentContentPart } from "@/lib/agent-backend";
+import {
+  completeViaBackend,
+  type AgentCompletionRequest,
+  type AgentCompletionResponse,
+  type AgentContentPart,
+} from "@/lib/agent-backend";
 import { mathpixPdf, mathpixText } from "@/lib/mathpix";
 import {
   dataUrlToImageInput,
@@ -80,22 +86,34 @@ function systemPrompt(target: OcrTarget, mode: TranscribeOptions["mode"]): strin
   ].join(" ");
 }
 
+// Transcription copies what is on the page, so no thinking: the lowest effort
+// the model accepts (none where thinking can be turned off). Thinking would
+// be billed as output and count against the reply's token ceiling, which is
+// where a dense page gets cut off.
 function llmRequest(model: ResolvedLlm, system: string | null, content: AgentContentPart[]): AgentCompletionRequest {
   return {
     ...(system ? { system } : {}),
     messages: [{ role: "user", content }],
     temperature: 0,
     max_tokens: toolsMaxTokens(model),
+    effort: "none",
+    reasoning_summary: false,
     timeout_ms: 180_000,
     idle_timeout_ms: 90_000,
   };
 }
 
 async function complete(model: ResolvedLlm, request: AgentCompletionRequest, signal?: AbortSignal): Promise<string> {
-  const response = await completeViaBackend(request, signal, {
-    provider_id: model.providerId,
-    model_id: model.modelId,
-  });
+  const response: AgentCompletionResponse = await completeViaBackend(
+    request,
+    signal,
+    { provider_id: model.providerId, model_id: model.modelId },
+  );
+  // A reply cut off at the output limit is half a page. Passing it on would
+  // put an unfinished equation or table into the user's document unmarked.
+  if (isOutputLimitStop(response.stop_reason)) {
+    throw new ToolsModelError(i18n.t(($) => $.researchTools.converterErrors.outputLimit));
+  }
   return response.text;
 }
 

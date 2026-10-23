@@ -37,6 +37,7 @@
       "closeOne": "Confirm button of the dialog shown before stopping a program that runs in the terminal",
       "closeProject": "Confirm button of the dialog shown before stopping programs that run in the terminal, when the user closes the project",
       "dontAsk": "Checkbox in the dialog shown before stopping programs that run in the terminal; it turns the question off",
+      "dontAskHint": "Small note under the Don't ask again checkbox. Settings, Appearance and Terminal are the names of the settings tabs and section; Ask before closing a busy terminal is the name of the row that turns the question back on. Keep them the same as in the settings strings.",
       "many_one": "{{count}} is the number of terminal tabs that still run a program",
       "many_other": "{{count}} is the number of terminal tabs that still run a program",
       "named": "{{process}} is a program name such as python or node; {{title}} is a terminal tab name such as \"Terminal 2\"",

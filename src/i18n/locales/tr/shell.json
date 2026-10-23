@@ -924,7 +924,7 @@
         "experimentation": "laboratuvar, beta, deneysel, erken özellikler",
         "general": "tercihler, dil, bölge, yazım denetimi, yazım, yazım hataları, çevrimdışı, turlar, terminal komutu",
         "help": "hakkında, sürüm, güncellemeler, değişiklik günlüğü, yenilikler, belgeler, destek, topluluk, Discord, lisans, çökme raporu",
-        "integrations": "Zotero, GitHub, MCP, atıflar, hesaplar, bağlantılar",
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git barındırma, masaüstü uygulamaları, Cua, MCP, atıflar, hesaplar, bağlantılar",
         "shortcuts": "tuş atamaları, kısayol tuşları, kısayollar, tuşlar, klavye",
         "research": "araştırma görevler bütçe bildirimler uyanık tut deneyler çalıştırmalar research tasks"
       },

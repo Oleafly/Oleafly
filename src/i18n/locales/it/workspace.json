@@ -229,6 +229,7 @@
       "closeOne": "Chiudi il terminale",
       "closeProject": "Chiudi il progetto",
       "dontAsk": "Non chiedere più",
+      "dontAskHint": "Per riattivarla, vai in Impostazioni, Aspetto, Terminale, Chiedi prima di chiudere un terminale occupato.",
       "many_one": "Un programma è ancora in esecuzione in {{count}} terminale.",
       "many_many": "Ci sono ancora programmi in esecuzione in {{count}} terminali.",
       "many_other": "Ci sono ancora programmi in esecuzione in {{count}} terminali.",

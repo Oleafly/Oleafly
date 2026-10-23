@@ -126,8 +126,10 @@ fn write_out(output: Option<&Path>, bytes: &[u8]) -> Result<(), CliError> {
         None => {
             use std::io::Write as _;
             let mut stdout = std::io::stdout().lock();
-            stdout.write_all(bytes).map_err(CliError::from)?;
-            stdout.flush().map_err(CliError::from)
+            stdout
+                .write_all(bytes)
+                .map_err(crate::human::stdout_failed)?;
+            stdout.flush().map_err(crate::human::stdout_failed)
         }
     }
 }

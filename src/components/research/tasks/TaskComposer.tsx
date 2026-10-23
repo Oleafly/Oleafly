@@ -27,12 +27,13 @@ import {
   type ResearchTask,
   type ResearchTaskEdit,
 } from "@/lib/research-tasks";
+import { describeError } from "@/lib/app-error";
 import { getConfig } from "@/lib/tauri";
 import { useResearchTasksStore, type ResearchTaskComposerDraft } from "@/store/research-tasks";
 import { i18n } from "@/i18n";
 import { statusLabel } from "./task-status";
 import type { ResearchTaskAgentOption } from "./ResearchTasksPanel";
-import { BriefFields, briefErrors } from "./brief/BriefFields";
+import { BriefFields, briefErrors, startError, upcomingStart } from "./brief/BriefFields";
 
 const ComputeBriefFields = lazy(() =>
   import("@/components/settings/research/ComputeBriefFields").then((module) => ({
@@ -129,6 +130,19 @@ function initialAgentKey(
   return "";
 }
 
+interface StarterBrief {
+  patch: Partial<ResearchBrief>;
+  previous: Record<string, unknown>;
+}
+
+/** A restored draft that began from a starter still has that starter's brief settings to undo. */
+function restoredStarterBrief(starterId: string | undefined): StarterBrief | null {
+  const patch = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === starterId)?.brief;
+  if (!patch) return null;
+  const defaults = defaultBrief() as unknown as Record<string, unknown>;
+  return { patch, previous: Object.fromEntries(Object.keys(patch).map((key) => [key, defaults[key]])) };
+}
+
 export function composerDraftKey(projectId: string, editingTaskId: string | null): string {
   return `${projectId}\u0000${editingTaskId ?? ""}`;
 }
@@ -170,8 +184,10 @@ function TaskComposerDraft({
   const [brief, setBrief] = useState<ResearchBrief>(
     () => restored?.brief ?? editingTask?.brief ?? defaultBrief(),
   );
-  const [runAfter, setRunAfter] = useState<number | null>(
-    restored?.runAfter ?? editingTask?.runAfter ?? null,
+  // A start time that already passed means "start now": the saved one on a task that
+  // waited behind another, or one in a draft left open for a while.
+  const [runAfter, setRunAfter] = useState<number | null>(() =>
+    upcomingStart(restored?.runAfter ?? editingTask?.runAfter ?? null),
   );
   const [keepRunning, setKeepRunning] = useState(
     restored?.keepRunning ?? editingTask?.keepRunningAfterQuit ?? false,
@@ -179,6 +195,11 @@ function TaskComposerDraft({
   const [backgroundEnabled, setBackgroundEnabled] = useState(false);
   const briefTouched = useRef(Boolean(restored?.brief || editingTask));
   const [error, setError] = useState<string | null>(null);
+  // The "Run on" fields found something that can't be saved (a removed target, bad Slurm text).
+  const [computeProblem, setComputeProblem] = useState(false);
+  // What the chosen starter set in the brief, and what each setting was before, so another choice can undo it.
+  const starterBrief = useRef<StarterBrief | null>(restoredStarterBrief(restored?.starterId));
+  const [pendingStarter, setPendingStarter] = useState<string | null>(null);
 
   // New tasks start with the time budget and network choice from Settings.
   useEffect(() => {
@@ -216,23 +237,55 @@ function TaskComposerDraft({
     if (firstAvailable) setAgentKey((current) => current || selectedAgentKey(firstAvailable));
   }, [firstAvailable]);
 
-  const chooseStarter = (nextStarterId: string) => {
+  const applyStarter = (nextStarterId: string) => {
     setStarterId(nextStarterId);
     const starter = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === nextStarterId);
+    // Settings the last starter turned on go back, unless the user changed them since.
+    let next = brief;
+    const applied = starterBrief.current;
+    starterBrief.current = null;
+    if (applied) {
+      const reverted: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(applied.patch)) {
+        if (Object.is((brief as unknown as Record<string, unknown>)[key], value)) reverted[key] = applied.previous[key];
+      }
+      next = { ...next, ...reverted };
+    }
     if (!starter) {
       setSkillIds([]);
+      if (next !== brief) setBrief(next);
       return;
     }
     setTitle(starter.title());
     setPrompt(starter.prompt);
     setSkillIds(starter.skillIds);
-    if (starter.brief) setBrief((previous) => ({ ...previous, ...starter.brief }));
+    if (starter.brief) {
+      const previous: Record<string, unknown> = {};
+      for (const key of Object.keys(starter.brief)) previous[key] = (next as unknown as Record<string, unknown>)[key];
+      starterBrief.current = { patch: starter.brief, previous };
+      next = { ...next, ...starter.brief };
+    }
+    if (next !== brief) setBrief(next);
+  };
+
+  /** A starter replaces the title and instructions, so ask first when the user changed them. */
+  const chooseStarter = (nextStarterId: string) => {
+    const chosen = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === nextStarterId);
+    const current = RESEARCH_TASK_STARTERS.find((candidate) => candidate.id === starterId);
+    const typed = title.trim() !== "" || prompt.trim() !== "";
+    const edited = current ? title !== current.title() || prompt !== current.prompt : typed;
+    if (chosen && typed && edited) {
+      setPendingStarter(nextStarterId);
+      return;
+    }
+    setPendingStarter(null);
+    applyStarter(nextStarterId);
   };
 
   const submit = async () => {
     const agent = agents.find((candidate) => selectedAgentKey(candidate) === agentKey);
     if (busy || !agent || agent.available === false || !title.trim() || !prompt.trim()) return;
-    if (Object.keys(briefErrors(brief)).length > 0) return;
+    if (Object.keys(briefErrors(brief)).length > 0 || startError(runAfter) !== undefined || computeProblem) return;
     const input: ResearchTaskEdit = {
       title: title.trim(),
       prompt: prompt.trim(),
@@ -251,7 +304,7 @@ function TaskComposerDraft({
       else await onCreate({ projectId, ...input });
       clearDraft(draftId);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(describeError(cause));
     }
   };
 
@@ -289,6 +342,8 @@ function TaskComposerDraft({
     Boolean(chosenAgent) &&
     chosenAgent?.available !== false &&
     Object.keys(briefErrors(brief)).length === 0 &&
+    startError(runAfter) === undefined &&
+    !computeProblem &&
     !busy;
 
   const submitLabel = () => {
@@ -339,6 +394,28 @@ function TaskComposerDraft({
                   ))}
                 </SelectContent>
               </Select>
+              {pendingStarter ? (
+                <div
+                  role="alert"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs"
+                >
+                  <span className="min-w-0">{t(($) => $.researchTools.tasks.composer.replaceText)}</span>
+                  <span className="flex shrink-0 gap-2">
+                    <Button size="xs" variant="outline" onClick={() => setPendingStarter(null)}>
+                      {t(($) => $.researchTools.tasks.composer.keepText)}
+                    </Button>
+                    <Button
+                      size="xs"
+                      onClick={() => {
+                        applyStarter(pendingStarter);
+                        setPendingStarter(null);
+                      }}
+                    >
+                      {t(($) => $.researchTools.tasks.composer.replaceConfirm)}
+                    </Button>
+                  </span>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -380,6 +457,7 @@ function TaskComposerDraft({
             onKeepRunningChange={setKeepRunning}
             backgroundEnabled={backgroundEnabled}
             disabled={busy}
+            computeProblem={computeProblem}
             renderCompute={(fieldId) => (
               <Suspense fallback={null}>
                 <ComputeBriefFields
@@ -387,6 +465,7 @@ function TaskComposerDraft({
                   value={brief.compute}
                   disabled={busy}
                   onChange={(compute) => changeBrief({ ...brief, compute })}
+                  onProblemChange={setComputeProblem}
                 />
               </Suspense>
             )}

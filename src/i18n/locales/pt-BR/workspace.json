@@ -229,6 +229,7 @@
       "closeOne": "Fechar o terminal",
       "closeProject": "Fechar o projeto",
       "dontAsk": "Não perguntar de novo",
+      "dontAskHint": "Para ligar de novo, vá para Configurações, Aparência, Terminal, Perguntar antes de fechar um terminal ocupado.",
       "many_one": "Um programa ainda está rodando em {{count}} terminal.",
       "many_many": "Ainda há programas rodando em {{count}} terminais.",
       "many_other": "Ainda há programas rodando em {{count}} terminais.",

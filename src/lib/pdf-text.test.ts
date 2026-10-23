@@ -124,3 +124,40 @@ describe("extractPdfText", () => {
     expect(getPage).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("extractPdfText timeout", () => {
+  beforeEach(() => {
+    mocks.destroy.mockReset().mockResolvedValue(undefined);
+    mocks.getDocument.mockReset();
+  });
+
+  it("gives up on a document that never loads and destroys its loading task", async () => {
+    mocks.getDocument.mockReturnValue({ promise: new Promise(() => {}), destroy: mocks.destroy });
+
+    await expect(extractPdfText(new Uint8Array([1]), { timeoutMs: 10 })).rejects.toThrow("timed out");
+    expect(mocks.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("gives up on a page that never answers, even when destroying hangs too", async () => {
+    mocks.destroy.mockReturnValue(new Promise(() => {}));
+    mocks.getDocument.mockReturnValue({
+      promise: Promise.resolve({ numPages: 2, getPage: vi.fn(() => new Promise(() => {})) }),
+      destroy: mocks.destroy,
+    });
+
+    await expect(extractPdfText(new Uint8Array([1]), { timeoutMs: 10 })).rejects.toThrow("timed out");
+  });
+
+  it("does not time out a document that answers in time", async () => {
+    mocks.getDocument.mockReturnValue({
+      promise: Promise.resolve({
+        numPages: 1,
+        getPage: vi.fn(async () => ({ getTextContent: async () => ({ items: [{ str: "Hi" }] }), cleanup: vi.fn() })),
+      }),
+      destroy: mocks.destroy,
+    });
+
+    await expect(extractPdfText(new Uint8Array([1]), { timeoutMs: 1000 })).resolves.toEqual({ pages: ["Hi"], numPages: 1 });
+    expect(mocks.destroy).toHaveBeenCalledOnce();
+  });
+});

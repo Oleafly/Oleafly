@@ -676,17 +676,43 @@ fn line_box(doc: &Doc, mut index: Option<usize>) -> Option<&Node> {
     None
 }
 
+/// The biggest SyncTeX file `read_synctex` opens. A 1000-page book's is a few
+/// megabytes; a build folder can come from anyone.
+const MAX_SYNCTEX_FILE_BYTES: u64 = 64 * 1024 * 1024;
+/// The most text `read_synctex` inflates from it (gzip stretches a run of
+/// zeros a thousand times over).
+const MAX_SYNCTEX_TEXT_BYTES: u64 = 128 * 1024 * 1024;
+
 /// The SyncTeX file of the last LaTeX build in `build_dir`, unzipped.
-/// Creates nothing.
+/// Creates nothing. A link in the build folder is refused rather than read
+/// through, and a file or its text over the limits above is refused too.
 pub fn read_synctex(build_dir: &Path) -> Result<String, DocError> {
+    read_synctex_limited(build_dir, MAX_SYNCTEX_FILE_BYTES, MAX_SYNCTEX_TEXT_BYTES)
+}
+
+fn read_synctex_limited(
+    build_dir: &Path,
+    max_file_bytes: u64,
+    max_text_bytes: u64,
+) -> Result<String, DocError> {
     // Compiles run through the `_oleafly_entry` wrapper, so the synctex file
     // is named after it.
     let path = build_dir.join(format!(
         "{}.synctex.gz",
         oleafly_core::engine_spec::ENTRY_STEM
     ));
-    let bytes = match std::fs::read(&path) {
-        Ok(bytes) => bytes,
+    let opened = std::fs::symlink_metadata(&path).and_then(|metadata| {
+        if metadata.is_file() {
+            std::fs::File::open(&path)
+        } else {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "it isn't a regular file",
+            ))
+        }
+    });
+    let file = match opened {
+        Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             return Err(DocError::new(
                 "synctex.not_compiled",
@@ -699,11 +725,26 @@ pub fn read_synctex(build_dir: &Path) -> Result<String, DocError> {
             )))
         }
     };
-    let mut decoder = GzDecoder::new(&bytes[..]);
+    let too_big = |what: &str| {
+        DocError::other(format!(
+            "The SyncTeX file is too large ({what}), so Oleafly won't read it."
+        ))
+    };
+    let length = file
+        .metadata()
+        .map_err(|error| DocError::other(format!("failed to read synctex {path:?}: {error}")))?
+        .len();
+    if length > max_file_bytes {
+        return Err(too_big("the file"));
+    }
     let mut text = String::new();
-    decoder
+    GzDecoder::new(file.take(max_file_bytes))
+        .take(max_text_bytes + 1)
         .read_to_string(&mut text)
         .map_err(|error| DocError::other(format!("failed to gunzip synctex: {error}")))?;
+    if text.len() as u64 > max_text_bytes {
+        return Err(too_big("its text"));
+    }
     Ok(text)
 }
 
@@ -1000,6 +1041,59 @@ Content:\n\
                 exact: true
             })
         );
+    }
+
+    fn gzip(bytes: &[u8]) -> Vec<u8> {
+        use flate2::{write::GzEncoder, Compression};
+        use std::io::Write;
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
+        encoder.write_all(bytes).unwrap();
+        encoder.finish().unwrap()
+    }
+
+    fn synctex_file(build: &Path) -> std::path::PathBuf {
+        build.join("_oleafly_entry.synctex.gz")
+    }
+
+    #[test]
+    fn read_synctex_unzips_a_file_within_the_limits() {
+        let build = tempfile::tempdir().unwrap();
+        std::fs::write(synctex_file(build.path()), gzip(b"SyncTeX Version:1\n")).unwrap();
+        assert_eq!(read_synctex(build.path()).unwrap(), "SyncTeX Version:1\n");
+    }
+
+    #[test]
+    fn read_synctex_stops_at_a_gzip_bomb_and_an_oversized_file() {
+        let build = tempfile::tempdir().unwrap();
+        // 1 MiB of zeros is a few kilobytes of gzip (how few depends on the
+        // deflate backend the workspace's features pick).
+        let bomb = gzip(&vec![0_u8; 1 << 20]);
+        assert!(bomb.len() < 64 * 1024, "{}", bomb.len());
+        std::fs::write(synctex_file(build.path()), &bomb).unwrap();
+        let error = read_synctex_limited(build.path(), 1 << 20, 64 * 1024).unwrap_err();
+        assert!(error.message.contains("its text"), "{error}");
+        // Just under the limit still reads.
+        assert_eq!(
+            read_synctex_limited(build.path(), 1 << 20, 1 << 20)
+                .unwrap()
+                .len(),
+            1 << 20
+        );
+        let error = read_synctex_limited(build.path(), 1024, 1 << 30).unwrap_err();
+        assert!(error.message.contains("the file"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn read_synctex_does_not_read_through_a_link() {
+        let build = tempfile::tempdir().unwrap();
+        let elsewhere = tempfile::tempdir().unwrap();
+        let real = elsewhere.path().join("other.synctex.gz");
+        std::fs::write(&real, gzip(b"SyncTeX Version:1\n")).unwrap();
+        std::os::unix::fs::symlink(&real, synctex_file(build.path())).unwrap();
+        let error = read_synctex(build.path()).unwrap_err();
+        assert_eq!(error.code, "doc.failed");
+        assert!(error.message.contains("regular file"), "{error}");
     }
 
     #[test]

@@ -22,6 +22,8 @@ use crate::typst::scan::scan_typst;
 pub struct SnapshotLimits {
     pub max_text_bytes: usize,
     pub max_depth: usize,
+    /// All the sources together: past this, the rest are left unread.
+    pub max_total_bytes: usize,
 }
 
 impl Default for SnapshotLimits {
@@ -29,6 +31,7 @@ impl Default for SnapshotLimits {
         Self {
             max_text_bytes: 2_000_000,
             max_depth: 64,
+            max_total_bytes: 256 * 1024 * 1024,
         }
     }
 }
@@ -164,20 +167,55 @@ impl ProjectSnapshot {
     /// Walks `root` and reads every indexable source up to the size limit.
     /// Only the root folder failing to open is an error.
     pub fn load(root: &Path, main_document: &str, limits: SnapshotLimits) -> io::Result<Self> {
+        Self::load_with(root, main_document, limits, &|_| false)
+    }
+
+    /// [`ProjectSnapshot::load`], leaving the sources unread in any folder
+    /// `unread` names (`node_modules`, a build folder): their files are
+    /// still in the tree, because a document may include a figure from
+    /// there, but they aren't projects' sources and aren't checked as such.
+    pub fn load_with(
+        root: &Path,
+        main_document: &str,
+        limits: SnapshotLimits,
+        unread: &dyn Fn(&str) -> bool,
+    ) -> io::Result<Self> {
         let mut tree_paths = Vec::new();
         let mut unreadable = Vec::new();
         walk(root, root, 0, limits, &mut tree_paths, &mut unreadable)?;
         let mut texts = BTreeMap::new();
         let mut oversized = Vec::new();
         let mut yaml_candidates = Vec::new();
+        let mut read_bytes = 0_usize;
+        let mut over_total = false;
         for path in &tree_paths {
             let yaml = is_bibliography_yaml_candidate(path) && !is_vendored_typst_package(path);
             if !is_indexable_path(path) && !yaml {
                 continue;
             }
+            let mut parts: Vec<&str> = path.split('/').collect();
+            parts.pop();
+            if parts.into_iter().any(unread) {
+                continue;
+            }
+            if read_bytes >= limits.max_total_bytes {
+                // One issue for the first file left out, not one for each.
+                if !over_total {
+                    over_total = true;
+                    unreadable.push(SnapshotIssue {
+                        path: path.clone(),
+                        message: "this and the sources after it were left unread because the project's sources are too large together".to_string(),
+                    });
+                }
+                continue;
+            }
             match read_text(&root.join(path), limits.max_text_bytes) {
-                Ok(TextRead::Text(text)) if yaml => yaml_candidates.push((path.clone(), text)),
+                Ok(TextRead::Text(text)) if yaml => {
+                    read_bytes += text.len();
+                    yaml_candidates.push((path.clone(), text));
+                }
                 Ok(TextRead::Text(text)) => {
+                    read_bytes += text.len();
                     texts.insert(path.clone(), text);
                 }
                 Ok(TextRead::TooLarge) => oversized.push(path.clone()),
@@ -280,6 +318,46 @@ mod tests {
             ProjectSnapshot::load(dir.path(), "main.tex", SnapshotLimits::default()).unwrap();
         assert_eq!(snapshot.tree_paths, vec!["main.tex", "node_modules/n.md"]);
         assert!(snapshot.texts.contains_key("node_modules/n.md"));
+    }
+
+    #[test]
+    fn sources_in_named_folders_are_listed_but_not_read() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), "main.tex", b"x");
+        write(dir.path(), "node_modules/dep/README.md", b"# dep");
+        write(dir.path(), "out/fig.pdf", b"%PDF");
+        write(dir.path(), "out/flat.tex", b"flattened");
+        write(dir.path(), "chapters/one.tex", b"one");
+        let unread = |name: &str| matches!(name, "node_modules" | "out");
+        let snapshot =
+            ProjectSnapshot::load_with(dir.path(), "main.tex", SnapshotLimits::default(), &unread)
+                .unwrap();
+        // A figure in `out/` is still there for `\includegraphics` to find.
+        assert!(snapshot.tree_paths.contains(&"out/fig.pdf".to_string()));
+        assert!(snapshot
+            .tree_paths
+            .contains(&"node_modules/dep/README.md".to_string()));
+        let read: Vec<_> = snapshot.texts.keys().map(String::as_str).collect();
+        assert_eq!(read, vec!["chapters/one.tex", "main.tex"]);
+        assert!(snapshot.unreadable.is_empty() && snapshot.oversized.is_empty());
+    }
+
+    #[test]
+    fn reading_stops_at_the_total_and_says_so_once() {
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["a.tex", "b.tex", "c.tex", "d.tex"] {
+            write(dir.path(), name, &[b'x'; 100]);
+        }
+        let limits = SnapshotLimits {
+            max_total_bytes: 150,
+            ..SnapshotLimits::default()
+        };
+        let snapshot = ProjectSnapshot::load(dir.path(), "a.tex", limits).unwrap();
+        let read: Vec<_> = snapshot.texts.keys().map(String::as_str).collect();
+        assert_eq!(read, vec!["a.tex", "b.tex"]);
+        assert_eq!(snapshot.tree_paths.len(), 4);
+        assert_eq!(snapshot.unreadable.len(), 1);
+        assert_eq!(snapshot.unreadable[0].path, "c.tex");
     }
 
     #[cfg(unix)]

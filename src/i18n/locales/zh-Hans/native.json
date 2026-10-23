@@ -100,6 +100,10 @@
       "action": "{{agent}} 想要{{action}}。",
       "steps": "{{agent}} 想要在桌面应用中执行以下步骤：",
       "moreSteps": "未显示的步骤：{{count}}",
+      "moreItems": "还有 {{count}} 项未显示",
+      "cut": "（+{{count}} 个字符未显示）",
+      "signedIn": "此操作会在你自己的已登录浏览器中进行。",
+      "signedInOn": "此操作会在你自己的已登录浏览器中进行：{{origin}}。",
       "text": "文本：“{{text}}”",
       "address": "地址：{{url}}",
       "allowOnce": "允许一次",
@@ -130,7 +134,8 @@
       "message": "代理将能够使用以下内容，并且每次操作前仍会询问：",
       "confirm": "允许",
       "enabled": "桌面应用",
-      "app": "应用：{{name}}",
+      "app": "应用：{{name}}（{{identity}}）",
+      "more": "还有 {{count}} 个",
       "site": "网站：{{origin}}",
       "signedIn": "你在 {{origin}} 上已登录的浏览器",
       "scripted": "Cua 脚本"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly 仍在工作",
       "body": "你标记为继续运行的研究任务会在后台继续运行。打开 Oleafly 即可查看进度。"
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "权限检查已关闭（{{mode}}）",
+      "description": "该代理无需询问即可编辑文件和运行命令。Oleafly 无法将其切换到其他模式。请在代理自己的设置中更改模式。"
     }
   }
 }

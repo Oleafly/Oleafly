@@ -100,6 +100,10 @@
       "action": "{{agent}} vil {{action}}.",
       "steps": "{{agent}} vil kjøre disse trinnene i en skrivebordsapp:",
       "moreSteps": "Trinn som ikke vises: {{count}}",
+      "moreItems": "{{count}} elementer til vises ikke",
+      "cut": "(+{{count}} tegn vises ikke)",
+      "signedIn": "Dette skjer i din egen innloggede nettleser.",
+      "signedInOn": "Dette skjer i din egen innloggede nettleser, på {{origin}}.",
       "text": "Tekst: «{{text}}»",
       "address": "Adresse: {{url}}",
       "allowOnce": "Tillat én gang",
@@ -130,7 +134,8 @@
       "message": "Agenter vil kunne bruke følgende, og de spør fortsatt før hver handling:",
       "confirm": "Tillat",
       "enabled": "Skrivebordsapper",
-      "app": "App: {{name}}",
+      "app": "App: {{name}} ({{identity}})",
+      "more": "Og {{count}} til",
       "site": "Nettsted: {{origin}}",
       "signedIn": "Den innloggede nettleseren din på {{origin}}",
       "scripted": "Cua-skript"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly jobber videre",
       "body": "Forskningsoppgaver du har merket for å fortsette å kjøre, fortsetter i bakgrunnen. Åpne Oleafly for å se fremdriften."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Tillatelsessjekkene er av ({{mode}})",
+      "description": "Agenten kan endre filer og kjøre kommandoer uten å spørre. Oleafly kunne ikke bytte den til en annen modus. Endre modusen i agentens egne innstillinger."
     }
   }
 }

@@ -67,6 +67,9 @@ impl Robots {
     }
 
     pub(crate) fn parse(text: &str) -> Robots {
+        // RFC 9309 allows a byte order mark in front of the file; left in, it
+        // sticks to the first key and the first group is never opened.
+        let text = text.strip_prefix('\u{feff}').unwrap_or(text);
         let mut groups: Vec<Group> = Vec::new();
         let mut current: Option<Group> = None;
         let mut last_was_agent = false;
@@ -183,6 +186,13 @@ mod tests {
             Robots::parse("user-agent: OLEAFLY\ndisallow: /\n").allows("Oleafly", "/robots.txt")
         );
         assert!(!Robots::parse("user-agent: OLEAFLY\ndisallow: /\n").allows("Oleafly/0.4.8", "/x"));
+    }
+
+    #[test]
+    fn a_byte_order_mark_does_not_hide_the_first_group() {
+        let robots = Robots::parse("\u{feff}User-agent: *\nDisallow: /secret\n");
+        assert!(!robots.allows("Oleafly", "/secret/page"));
+        assert!(robots.allows("Oleafly", "/open"));
     }
 
     #[test]

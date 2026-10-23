@@ -907,7 +907,7 @@
         "experimentation": "實驗室，測試版，beta，搶先體驗功能",
         "general": "偏好設定，語言，地區，拼字檢查，拼字，錯字，離線，導覽，終端機指令",
         "help": "關於，版本，更新，更新記錄，新功能，說明文件，支援，社群，Discord，授權條款，當機報告",
-        "integrations": "Zotero，GitHub，MCP，引用，帳戶，帳號，連線",
+        "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 代管，桌面應用程式，Cua，MCP，引用，帳號，連線",
         "shortcuts": "按鍵綁定，快捷鍵，熱鍵，按鍵，鍵盤",
         "research": "研究 任務 預算 通知 保持喚醒 實驗 執行 research tasks"
       },

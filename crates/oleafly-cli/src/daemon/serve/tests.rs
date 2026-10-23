@@ -213,3 +213,73 @@ fn background_tasks_off_stops_a_helper_started_at_sign_in() {
     assert_eq!(code, 0);
     assert!(!helper_paths(data.path()).state.exists());
 }
+
+/// A signal reaches the whole test process, so the check runs in a child
+/// copy of this test binary (the parent's other tests stay out of it).
+#[cfg(unix)]
+#[test]
+fn termination_resolves_on_sigterm_and_sighup() {
+    use std::io::{BufRead, BufReader};
+    use std::process::{Command, Stdio};
+
+    const CHILD: &str = "OLEAFLY_TEST_TERMINATION_CHILD";
+    if std::env::var_os(CHILD).is_some() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let mut waiting = Box::pin(termination());
+            // Polled once so the handlers exist before the parent signals.
+            let _ = tokio::time::timeout(Duration::from_millis(50), &mut waiting).await;
+            println!("ready");
+            waiting.await;
+        });
+        return;
+    }
+    for signal in [libc::SIGTERM, libc::SIGHUP] {
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "daemon::serve::tests::termination_resolves_on_sigterm_and_sighup",
+                "--nocapture",
+                "--test-threads=1",
+            ])
+            .env(CHILD, "1")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        // The harness starts the line with the test's name, so "ready" ends
+        // it. The reader keeps draining the pipe until the child is gone.
+        let stdout = child.stdout.take().unwrap();
+        let (ready_sender, ready) = std::sync::mpsc::channel();
+        let reader = std::thread::spawn(move || {
+            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                if line.ends_with("ready") {
+                    let _ = ready_sender.send(());
+                }
+            }
+        });
+        if ready.recv_timeout(Duration::from_secs(60)).is_err() {
+            let _ = child.kill();
+            panic!("the child never became ready");
+        }
+        let pid = i32::try_from(child.id()).unwrap();
+        // SAFETY: signalling the child process this test started.
+        assert_eq!(unsafe { libc::kill(pid, signal) }, 0);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let status = loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                break status;
+            }
+            if Instant::now() > deadline {
+                let _ = child.kill();
+                panic!("signal {signal} did not end the wait");
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        };
+        reader.join().unwrap();
+        assert!(status.success(), "signal {signal}: {status}");
+    }
+}

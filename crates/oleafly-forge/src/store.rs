@@ -5,7 +5,9 @@
 //! readers take it shared, writers exclusive. Token refreshes take a second
 //! lock, `<root>/.forge-refresh.lock`, so a slow refresh never blocks a
 //! reader. Lock order is forge store, then the app's config, then the secret
-//! store; nothing takes them the other way round.
+//! store; nothing takes them the other way round. A refresh holds the refresh
+//! lock and takes the store lock inside it; nothing takes the refresh lock
+//! while holding the store lock.
 use crate::address::normalize_base_url;
 use crate::git::valid_token;
 use crate::http::ForgeHttp;
@@ -280,6 +282,58 @@ impl ForgeStore {
         self.write_file_locked(&file)
     }
 
+    /// Save a changed login, name or picture into the account as it is now.
+    /// Only those three fields change, inside the exclusive lock, so a check
+    /// that started before the user changed the CA file never writes the old
+    /// one back. Returns the stored account, or `None` when it was removed.
+    pub fn update_profile(
+        &self,
+        base: &str,
+        login: &str,
+        name: Option<String>,
+        avatar_url: Option<String>,
+    ) -> Result<Option<ForgeAccount>, ForgeError> {
+        self.patch_account(base, |account| {
+            account.login = login.to_string();
+            account.name = name;
+            account.avatar_url = avatar_url;
+        })
+    }
+
+    /// Set or clear an account's CA file in the account as it is now.
+    /// Returns the stored account, or `None` when it was removed.
+    pub fn set_ca_file(
+        &self,
+        base: &str,
+        ca_file: Option<String>,
+    ) -> Result<Option<ForgeAccount>, ForgeError> {
+        self.patch_account(base, |account| account.ca_file = ca_file)
+    }
+
+    fn patch_account(
+        &self,
+        base: &str,
+        patch: impl FnOnce(&mut ForgeAccount),
+    ) -> Result<Option<ForgeAccount>, ForgeError> {
+        let base = normalize_base_url(base)?;
+        let _lock = self.lock(true)?;
+        let mut file = self.read_file_locked()?;
+        let Some(account) = file
+            .accounts
+            .iter_mut()
+            .find(|account| account.base == base)
+        else {
+            return Ok(None);
+        };
+        let before = account.clone();
+        patch(account);
+        let after = account.clone();
+        if after != before {
+            self.write_file_locked(&file)?;
+        }
+        Ok(Some(after))
+    }
+
     /// Add or replace an account's metadata without touching its token, for
     /// a token that was saved without an account.
     pub(crate) fn put_account(&self, account: ForgeAccount) -> Result<(), ForgeError> {
@@ -329,9 +383,32 @@ impl ForgeStore {
             .collect())
     }
 
-    /// Replace a token after a refresh. The account metadata stays.
-    pub(crate) fn write_token(&self, base: &str, token: &ForgeToken) -> Result<(), ForgeError> {
-        secret_accounts::save_forge_token(&self.secrets, base, token.clone()).map_err(store_error)
+    /// Store a refreshed token, unless the account was signed out or signed
+    /// in again while the refresh ran: then the refreshed token is dropped,
+    /// so a sign-out is never undone. `spent_refresh` is the refresh token
+    /// the refresh used. Returns the token now stored (`None` when signed
+    /// out).
+    pub(crate) fn replace_refreshed_token(
+        &self,
+        base: &str,
+        spent_refresh: Option<&str>,
+        fresh: &ForgeToken,
+    ) -> Result<Option<ForgeToken>, ForgeError> {
+        let _lock = self.lock(true)?;
+        let file = self.read_file_locked()?;
+        if !file.accounts.iter().any(|account| account.base == base) {
+            return Ok(None);
+        }
+        let current = secret_accounts::forge_token(&self.secrets, base).map_err(store_error)?;
+        let unchanged = current
+            .as_ref()
+            .is_some_and(|token| token.refresh.as_deref() == spent_refresh);
+        if !unchanged {
+            return Ok(current);
+        }
+        secret_accounts::save_forge_token(&self.secrets, base, fresh.clone())
+            .map_err(store_error)?;
+        Ok(Some(fresh.clone()))
     }
 
     /// Turn the 0.4.7 GitHub sign-in into a github.com account the first
@@ -366,10 +443,17 @@ impl ForgeStore {
             .accounts
             .iter()
             .position(|account| account.base == GITHUB_COM);
+        // A github.com token saved without an account (`oleafly auth login
+        // git`) is newer than the 0.4.7 sign-in the first run would import,
+        // and it gets its account later; only a sign-in an older build made
+        // since then replaces it.
+        let saved_token = secret_accounts::forge_token(&self.secrets, GITHUB_COM)
+            .map_err(store_error)?
+            .is_some();
         let mut changed = false;
         if let Some(legacy) = usable {
             let token = legacy.token.trim();
-            if (first && existing.is_none()) || signed_in_elsewhere {
+            if (first && existing.is_none() && !saved_token) || signed_in_elsewhere {
                 secret_accounts::save_forge_token(
                     &self.secrets,
                     GITHUB_COM,
@@ -408,6 +492,33 @@ impl ForgeStore {
         file.legacy_github_seen = Some(seen);
         self.write_file_locked(&file)?;
         Ok(changed)
+    }
+
+    /// Run `write_legacy`, which sets (or, for a sign-out, clears) the 0.4.7
+    /// `github_token` and `github_user` to mirror the github.com account, and
+    /// record that token's fingerprint. [`ForgeStore::migrate_legacy_github`]
+    /// then reads the mirror as this build's own write, not as a sign-in an
+    /// older build made, and leaves the account (its name, picture and CA
+    /// file) alone. `token` is what `write_legacy` writes, `None` when it
+    /// clears. `write_legacy` runs while this store's lock is held and may
+    /// take the app's config lock (lock order: forge store, config).
+    pub fn mirror_legacy_github(
+        &self,
+        token: Option<&str>,
+        write_legacy: impl FnOnce() -> Result<(), String>,
+    ) -> Result<(), ForgeError> {
+        let _lock = self.lock(true)?;
+        let mut file = self.read_file_locked()?;
+        write_legacy().map_err(store_error)?;
+        file.legacy_github_migrated = true;
+        file.legacy_github_seen = Some(
+            token
+                .map(str::trim)
+                .filter(|token| valid_token(token))
+                .map(secret_accounts::token_fingerprint)
+                .unwrap_or_default(),
+        );
+        self.write_file_locked(&file)
     }
 
     /// The token for `base`, refreshed first when it is a GitLab OAuth token
@@ -473,14 +584,17 @@ impl ForgeStore {
         };
         let mut fresh = grant.into_token(now_ms);
         if fresh.refresh.is_none() {
-            fresh.refresh = current.refresh;
+            fresh.refresh = current.refresh.clone();
         }
         let store = self.clone();
         let target = base.clone();
         let saved = fresh.clone();
-        blocking(move || store.write_token(&target, &saved)).await?;
+        let stored = blocking(move || {
+            store.replace_refreshed_token(&target, current.refresh.as_deref(), &saved)
+        })
+        .await?;
         drop(refresh_lock);
-        Ok(Some(fresh))
+        Ok(stored)
     }
 }
 
@@ -886,6 +1000,241 @@ mod tests {
             store.token(GITHUB_COM).unwrap().unwrap().token,
             "ghp_current123"
         );
+    }
+
+    fn github_account_with_details() -> ForgeAccount {
+        let mut github = account(GITHUB_COM);
+        github.kind = ForgeKind::GitHub;
+        github.auth = AuthMethod::OAuth;
+        github.avatar_url = Some("https://avatars.example/o.png".into());
+        github.ca_file = Some("/etc/ssl/corp.pem".into());
+        github
+    }
+
+    #[test]
+    fn mirroring_the_legacy_token_keeps_the_account_through_the_next_launch() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        // First launch of a new user: nothing to migrate yet.
+        assert!(!store.migrate_legacy_github(|| Ok(None)).unwrap());
+        // Signing in saves the account, then mirrors the token for 0.4.7.
+        let github = github_account_with_details();
+        store
+            .save(github.clone(), token("gho_signedin123"))
+            .unwrap();
+        let mut written = false;
+        store
+            .mirror_legacy_github(Some(" gho_signedin123 "), || {
+                written = true;
+                Ok(())
+            })
+            .unwrap();
+        assert!(written);
+
+        // The next launch is a new process with a new store handle.
+        let relaunched = ForgeStore::new(dir.path());
+        let changed = relaunched
+            .migrate_legacy_github(|| {
+                Ok(Some(LegacyGithub {
+                    token: "gho_signedin123".into(),
+                    login: "octo".into(),
+                }))
+            })
+            .unwrap();
+        assert!(!changed, "the mirror is this build's own write");
+        assert_eq!(relaunched.accounts().unwrap(), vec![github]);
+        assert_eq!(
+            relaunched.token(GITHUB_COM).unwrap().unwrap().token,
+            "gho_signedin123"
+        );
+    }
+
+    #[test]
+    fn mirroring_a_sign_out_leaves_the_next_migration_with_nothing_to_do() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        store
+            .save(github_account_with_details(), token("gho_signedin123"))
+            .unwrap();
+        store
+            .mirror_legacy_github(Some("gho_signedin123"), || Ok(()))
+            .unwrap();
+        store.mirror_legacy_github(None, || Ok(())).unwrap();
+        assert!(!store.migrate_legacy_github(|| Ok(None)).unwrap());
+        let text = std::fs::read_to_string(dir.path().join(ACCOUNTS_FILE)).unwrap();
+        let file: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(file["legacyGithubMigrated"], true);
+        assert_eq!(file["legacyGithubSeen"], "");
+    }
+
+    #[test]
+    fn a_failed_legacy_write_records_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let failed = store.mirror_legacy_github(Some("gho_signedin123"), || {
+            Err("config.json is corrupt".into())
+        });
+        assert!(matches!(failed, Err(ForgeError::Store { .. })));
+        assert!(!dir.path().join(ACCOUNTS_FILE).exists());
+    }
+
+    #[test]
+    fn an_older_build_signing_in_after_the_mirror_is_still_followed() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let github = github_account_with_details();
+        store.save(github, token("gho_signedin123")).unwrap();
+        store
+            .mirror_legacy_github(Some("gho_signedin123"), || Ok(()))
+            .unwrap();
+        assert!(store
+            .migrate_legacy_github(|| {
+                Ok(Some(LegacyGithub {
+                    token: "gho_elsewhere456".into(),
+                    login: "other".into(),
+                }))
+            })
+            .unwrap());
+        assert_eq!(store.accounts().unwrap()[0].login, "other");
+        assert_eq!(
+            store.token(GITHUB_COM).unwrap().unwrap().token,
+            "gho_elsewhere456"
+        );
+    }
+
+    #[test]
+    fn a_github_token_saved_by_the_cli_survives_the_first_migration() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        secret_accounts::save_forge_token(
+            &SecretStore::at(dir.path()),
+            GITHUB_COM,
+            token("github_pat_fromcli"),
+        )
+        .unwrap();
+        let legacy = |value: &str| -> Result<Option<LegacyGithub>, String> {
+            Ok(Some(LegacyGithub {
+                token: value.into(),
+                login: "octocat".into(),
+            }))
+        };
+        assert!(!store
+            .migrate_legacy_github(|| legacy("gho_legacy123"))
+            .unwrap());
+        assert_eq!(
+            store.token(GITHUB_COM).unwrap().unwrap().token,
+            "github_pat_fromcli"
+        );
+        assert!(store.accounts().unwrap().is_empty());
+        assert_eq!(store.orphan_bases().unwrap(), [GITHUB_COM]);
+
+        // A sign-in an older build makes later still replaces it.
+        assert!(store
+            .migrate_legacy_github(|| legacy("gho_newer456"))
+            .unwrap());
+        assert_eq!(
+            store.token(GITHUB_COM).unwrap().unwrap().token,
+            "gho_newer456"
+        );
+    }
+
+    #[test]
+    fn a_profile_update_keeps_a_ca_file_set_after_the_check_began() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        store
+            .save(account("https://gitlab.com"), token("glpat-abc12345"))
+            .unwrap();
+        // A check read the account without a CA file...
+        let snapshot = store.account("https://gitlab.com").unwrap().unwrap();
+        assert_eq!(snapshot.ca_file, None);
+        // ...then the user set one before the check finished.
+        store
+            .set_ca_file("https://gitlab.com", Some("/etc/ssl/corp.pem".into()))
+            .unwrap();
+        let stored = store
+            .update_profile(
+                "https://gitlab.com",
+                "octo-renamed",
+                Some("New Name".into()),
+                Some("https://a.example/n.png".into()),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(stored.login, "octo-renamed");
+        assert_eq!(stored.name.as_deref(), Some("New Name"));
+        assert_eq!(stored.ca_file.as_deref(), Some("/etc/ssl/corp.pem"));
+        assert_eq!(store.accounts().unwrap(), vec![stored]);
+        assert_eq!(
+            store.update_profile("https://codeberg.org", "x", None, None),
+            Ok(None)
+        );
+        assert_eq!(store.set_ca_file("https://codeberg.org", None), Ok(None));
+        assert_eq!(
+            store.token("https://gitlab.com").unwrap().unwrap().token,
+            "glpat-abc12345"
+        );
+    }
+
+    #[test]
+    fn a_refreshed_token_is_dropped_when_the_account_was_signed_out_meanwhile() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let base = "https://gitlab.com";
+        let spent = ForgeToken {
+            token: "old-access-token".into(),
+            refresh: Some("old-refresh-token".into()),
+            expires_at: Some(1),
+        };
+        let fresh = ForgeToken {
+            token: "new-access-token".into(),
+            refresh: Some("new-refresh-token".into()),
+            expires_at: Some(2),
+        };
+        store.save(account(base), spent).unwrap();
+        assert!(store.remove(base).unwrap());
+        assert_eq!(
+            store
+                .replace_refreshed_token(base, Some("old-refresh-token"), &fresh)
+                .unwrap(),
+            None
+        );
+        assert_eq!(store.token(base).unwrap(), None);
+        assert!(store.orphan_bases().unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_refreshed_token_never_replaces_a_newer_sign_in() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let base = "https://gitlab.com";
+        let spent = ForgeToken {
+            token: "old-access-token".into(),
+            refresh: Some("old-refresh-token".into()),
+            expires_at: Some(1),
+        };
+        let fresh = ForgeToken {
+            token: "new-access-token".into(),
+            refresh: Some("new-refresh-token".into()),
+            expires_at: Some(2),
+        };
+        store.save(account(base), spent.clone()).unwrap();
+        assert_eq!(
+            store
+                .replace_refreshed_token(base, Some("old-refresh-token"), &fresh)
+                .unwrap(),
+            Some(fresh.clone()),
+            "an unchanged token takes the refreshed one"
+        );
+        let signed_in_again = token("glpat-signed-in-again");
+        store.save(account(base), signed_in_again.clone()).unwrap();
+        assert_eq!(
+            store
+                .replace_refreshed_token(base, Some("new-refresh-token"), &fresh)
+                .unwrap(),
+            Some(signed_in_again.clone())
+        );
+        assert_eq!(store.token(base).unwrap(), Some(signed_in_again));
     }
 
     #[test]

@@ -1,9 +1,10 @@
-import { Clock, Quote, Send, Sparkles, X } from "lucide-react";
+import { Clock, Pencil, Quote, RotateCcw, Send, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type { AcpSession } from "@/lib/acp";
 import { cn } from "@/lib/utils";
 import { useAcpSessionsStore, type AcpQueuedPrompt } from "@/store/acp-sessions";
+import { acpDraftId, restoreDraft } from "./AcpComposer";
 import { settleSelectionQuotes } from "./selection-quote";
 
 const EMPTY_QUEUE: AcpQueuedPrompt[] = [];
@@ -29,6 +30,18 @@ export function AcpComposerChips({
   const selections = composer?.selections ?? [];
   if (!skill && selections.length === 0 && queue.length === 0) return null;
   const store = useAcpSessionsStore.getState;
+  // The failed message goes back into the composer it came from, to change and send again.
+  const editQueued = (item: AcpQueuedPrompt) => {
+    if (!session) return;
+    const { id: _id, sending: _sending, failed: _failed, ...draft } = item;
+    store().removeQueued(session.id, item.id);
+    restoreDraft(projectId, acpDraftId(projectId, session.agentId, session), draft);
+  };
+  const queueLabel = (item: AcpQueuedPrompt) => {
+    if (item.failed) return t(($) => $.ai.acp.queue.sendFailed);
+    // Until the agent has connected there is no turn to wait for.
+    return session?.status === "connecting" ? t(($) => $.ai.acp.queue.queuedConnecting) : t(($) => $.ai.acp.queue.queued);
+  };
   const steerable = !!session && session.status === "running" && !!session.capabilities.steering;
   return (
     <div className="mb-2 flex flex-col gap-1.5 px-3">
@@ -44,7 +57,7 @@ export function AcpComposerChips({
           <Clock className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="min-w-0 flex-1 truncate">
             <span className="text-muted-foreground">
-              {item.failed ? t(($) => $.ai.acp.queue.sendFailed) : t(($) => $.ai.acp.queue.queued)}
+              {queueLabel(item)}
             </span>{" "}
             {preview(item.text)}
           </span>
@@ -58,14 +71,31 @@ export function AcpComposerChips({
               <Send className="size-3" /> {t(($) => $.ai.acp.queue.sendNow)}
             </Button>
           )}
-          <button
+          {item.failed && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={() => session && void store().retryQueued(projectId, session.id, item.id)}
+              >
+                <RotateCcw /> {t(($) => $.ai.acp.queue.retry)}
+              </Button>
+              <Button type="button" variant="ghost" size="xs" onClick={() => editQueued(item)}>
+                <Pencil /> {t(($) => $.ai.acp.queue.edit)}
+              </Button>
+            </>
+          )}
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
+            className="size-6 shrink-0 text-muted-foreground"
             aria-label={t(($) => $.ai.acp.queue.remove)}
-            className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
             onClick={() => session && store().removeQueued(session.id, item.id)}
           >
-            <X className="size-3" />
-          </button>
+            <X />
+          </Button>
         </div>
       ))}
       {(skill || selections.length > 0) && (

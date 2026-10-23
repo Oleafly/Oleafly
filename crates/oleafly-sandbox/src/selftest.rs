@@ -201,6 +201,8 @@ pub fn run_sandboxed(request: &RunRequest) -> i32 {
     let host_env = |name: &str| std::env::var(name).ok();
     let owner = owner();
     let writable = [request.workspace.clone()];
+    // A run starts helper programs (`uv`, `pixi`, `cargo`), which macOS only
+    // allows with `child_processes`.
     let spec = spec_for_run(&RunInputs {
         profile: request.profile,
         owner: &owner,
@@ -214,6 +216,10 @@ pub fn run_sandboxed(request: &RunRequest) -> i32 {
         extra_read: &[],
         runtimes: &runtimes,
         host_env: &host_env,
+    })
+    .map(|mut spec| {
+        spec.child_processes = true;
+        spec
     });
     let program =
         which(&request.program, &search).unwrap_or_else(|| PathBuf::from(&request.program));
@@ -231,6 +237,9 @@ pub fn run_sandboxed(request: &RunRequest) -> i32 {
         }
     };
     let _ = release(&owner);
+    // The run's caches (pip, Hugging Face) are not worth keeping: every run
+    // gets a new home named after its process.
+    let _ = std::fs::remove_dir_all(&home);
     code
 }
 

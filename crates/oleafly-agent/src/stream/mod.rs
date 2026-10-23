@@ -15,9 +15,15 @@ use crate::sse::{SseDecoder, SseEvent};
 const DEFAULT_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(120);
 const LOCAL_STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(360);
 const MAX_STREAM_DURATION: Duration = Duration::from_secs(20 * 60);
-const MAX_STREAM_BYTES: usize = 64 * 1024 * 1024;
+pub(crate) const MAX_STREAM_BYTES: usize = 64 * 1024 * 1024;
 const MAX_TOOL_ARGUMENT_BYTES: usize = 8 * 1024 * 1024;
-pub(crate) const MAX_STREAM_TOOL_CALLS: usize = 32;
+/// The most tool calls one provider reply may carry before the stream is
+/// refused as malformed.
+pub(crate) const MAX_STREAM_TOOL_CALLS: usize = 256;
+/// The most of them a turn runs. The rest of a longer reply get an answer
+/// that says so, so the model sends them again, instead of the run ending
+/// after the tokens were paid for.
+pub(crate) const MAX_TOOL_CALLS_PER_TURN: usize = 32;
 
 pub(crate) mod anthropic_blocks;
 mod translate;

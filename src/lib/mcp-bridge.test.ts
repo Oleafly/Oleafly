@@ -352,10 +352,13 @@ describe("mcp tool registry", () => {
     const local = buildMcpToolRegistry({ confirm, readOnly: false, onImage: () => {} });
     const declined = await local.research_task_create.execute({ title: "Survey", prompt: "Find papers" });
 
-    expect(confirm).toHaveBeenCalledWith({
-      tool: "research_task_create",
-      summary: 'Create the research task "Survey" and start it',
-    });
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tool: "research_task_create",
+        summary: expect.stringContaining('Create the research task "Survey" and start it'),
+        researchTask: expect.objectContaining({ prompt: "Find papers" }),
+      }),
+    );
     expect(declined).toMatchObject({ declined: true, tool: "research_task_create" });
     expect(invoke).not.toHaveBeenCalledWith("research_task_create", expect.anything());
 

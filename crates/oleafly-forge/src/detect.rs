@@ -73,8 +73,17 @@ fn gitlab_match(probe: &Result<Probe, ForgeError>) -> bool {
     }
 }
 
+/// GitHub Enterprise Server answers `/api/v3/meta` to everyone, except in
+/// private mode, where the 401 still carries the `documentation_url` that
+/// only GitHub's API puts in its errors.
 fn github_match(probe: &Result<Probe, ForgeError>) -> bool {
-    matches!(probe, Ok(found) if found.status == 200 && found.field("installed_version").is_some())
+    match probe {
+        Ok(found) if found.status == 200 => found.field("installed_version").is_some(),
+        Ok(found) if found.status == 401 => {
+            found.field("message").is_some() && found.field("documentation_url").is_some()
+        }
+        _ => false,
+    }
 }
 
 /// Detect the server at a normalized base URL. Every probe failing with a
@@ -222,6 +231,26 @@ mod tests {
         .on("GET", "/api/v3/meta")])
         .await;
         assert_eq!(github.kind, Some(ForgeKind::GitHub));
+    }
+
+    #[tokio::test]
+    async fn private_mode_enterprise_github_is_recognized_by_its_401() {
+        let private = detect(vec![MockResponse::json(
+            401,
+            r#"{"message":"Requires authentication","documentation_url":"https://docs.github.com/enterprise/rest","status":"401"}"#,
+        )
+        .on("GET", "/api/v3/meta")])
+        .await;
+        assert_eq!(private.kind, Some(ForgeKind::GitHub));
+
+        // A 401 without GitHub's documentation link is not enough.
+        let other = detect(vec![MockResponse::json(
+            401,
+            r#"{"message":"Unauthorized"}"#,
+        )
+        .on("GET", "/api/v3/meta")])
+        .await;
+        assert_eq!(other.kind, None);
     }
 
     #[tokio::test]

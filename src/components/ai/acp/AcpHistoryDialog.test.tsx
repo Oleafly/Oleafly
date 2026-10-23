@@ -93,7 +93,7 @@ describe("AcpHistoryDialog", () => {
     vi.mocked(acpSessionPage).mockResolvedValueOnce({ sessions: rows(session("c0", { title: "Chapter zero", updatedAt: 10 })), hasMore: false });
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
     await screen.findByText("Chapter zero");
-    expect(acpSessionPage).toHaveBeenLastCalledWith("paper", { query: "chapter", before: 90, limit: 50 });
+    expect(acpSessionPage).toHaveBeenLastCalledWith("paper", { query: "chapter", before: 90, beforeId: "c1", limit: 50 });
     expect(screen.getAllByTestId("acp-history-row").map((item) => item.textContent?.split("Research CLI")[0])).toEqual(["Chapter three", "Chapter zero"]);
     expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
   });
@@ -117,13 +117,13 @@ describe("AcpHistoryDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
     await waitFor(() =>
-      expect(acpSessionPage).toHaveBeenLastCalledWith("paper", { query: undefined, before: 200, limit: 50 }),
+      expect(acpSessionPage).toHaveBeenLastCalledWith("paper", { query: undefined, before: 200, beforeId: "task", limit: 50 }),
     );
     // A page of delegated conversations alone still moves on.
     await waitFor(() => expect(screen.getByRole("button", { name: "Load more" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Load more" }));
     await screen.findByText("Chapter zero");
-    expect(acpSessionPage).toHaveBeenLastCalledWith("paper", { query: undefined, before: 150, limit: 50 });
+    expect(acpSessionPage).toHaveBeenLastCalledWith("paper", { query: undefined, before: 150, beforeId: "child", limit: 50 });
     expect(screen.getAllByTestId("acp-history-row").map((item) => item.textContent?.split("Research CLI")[0])).toEqual([
       "Chapter one",
       "Chapter zero",
@@ -144,6 +144,15 @@ describe("AcpHistoryDialog", () => {
     vi.mocked(acpSessionPage).mockRejectedValueOnce(new Error("The conversation list could not be read."));
     show();
     expect(await screen.findByRole("alert")).toHaveTextContent("The conversation list could not be read.");
+  });
+
+  it("has a visible close button", async () => {
+    const { onClose } = show();
+    await screen.findByText("Chapter one");
+    const buttons = screen.getAllByRole("button", { name: "Close" });
+    // The invisible backdrop also closes; the one in the header is the visible control.
+    fireEvent.click(buttons.at(-1) as HTMLElement);
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("opens a conversation and closes the dialog", async () => {

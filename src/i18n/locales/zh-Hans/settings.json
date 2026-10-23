@@ -36,7 +36,7 @@
       },
       "installBridge": "安装桥接程序",
       "installBridgeNextStep": "先安装 ACP 桥接程序，然后通过命令行工具登录。",
-      "intro": "通过 ACP 连接本地代理。每个代理自行管理其模型、工具和登录，API 提供商设置保持独立。请使用官方 CLI 账户登录：Oleafly 不会导入账户令牌，也不会估算订阅配额。",
+      "intro": "Claude Code、Codex 和 Gemini CLI 等命令行代理通过 Agent Client Protocol (ACP) 连接。部分代理需要桥接程序，它是 Oleafly 安装的一个小型适配器，让 Oleafly 能与它们通信。每个代理自行管理其模型、工具和登录，API 提供商设置保持独立。请使用官方 CLI 账户登录：Oleafly 不会导入账户令牌，也不会估算订阅配额。",
       "nextStepTitle": "下一步",
       "notReported": "未报告",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "显示分发信息",
         "title": "查找更多代理"
       },
-      "sectionLabel": "ACP 代理",
+      "sectionLabel": "CLI 代理",
       "signInCommandLabel": "登录命令",
       "versionLabel": "版本",
       "updateBridge": "更新桥接",
@@ -147,7 +147,7 @@
         "label": "使用我的 Oleafly API 密钥",
         "off": "关闭（代理自行登录）",
         "note": "对话开始时，Oleafly 会把密钥发送给此代理，并且不会将其写入记录。",
-        "unavailable": "请在“设置 > AI”中添加 API 密钥，才能在这里使用。"
+        "unavailable": "请在“设置 → AI 助手 → 提供商与密钥”中添加 API 密钥，才能在这里使用。"
       },
       "hermes": {
         "title": "此项目的 Hermes 配置文件",
@@ -175,7 +175,20 @@
         "test": "测试连接",
         "testOk": "已连接：{{version}}",
         "save": "保存",
-        "sshNote": "Oleafly 只使用你的 SSH 密钥登录。"
+        "sshNote": "Oleafly 只使用你的 SSH 密钥登录。",
+        "folderHint": "那台机器上的完整路径，例如 /home/ada/paper。",
+        "needsValid": "“测试连接”和“保存”需要这些字段的有效值：{{fields}}。",
+        "unsavedEdit": "尚未保存。请保存以使用这些更改。",
+        "unsavedMode": "尚未保存。保存之前，此项目会继续使用：{{mode}}。",
+        "errors": {
+          "hostRequired": "请输入主机名或 user@host。",
+          "hostInvalid": "只能使用字母、数字、点、短横线和 @，且不能以短横线开头。",
+          "port": "请使用 1 到 65535 之间的端口。",
+          "folderRequired": "请输入那台机器上项目文件夹的完整路径。",
+          "folderInvalid": "请使用以 / 开头的完整路径。",
+          "command": "请使用 hermes，或以 / 开头的完整路径。",
+          "profile": "只能使用小写字母、数字、短横线和下划线。"
+        }
       }
     },
     "approvals": {
@@ -1001,6 +1014,8 @@
         "ariaLabel": "终端 shell",
         "description": "新终端会启动此 shell。已打开的终端保留各自的 shell。",
         "label": "Shell",
+        "notFound": "{{name}}（未找到）",
+        "notFoundNote": "{{name}} 在这台电脑上不可用，因此无法启动新的终端。请选择其他 shell。",
         "options": {
           "auto": "默认（{{name}}）",
           "cmd": "命令提示符",
@@ -1015,14 +1030,17 @@
           "ariaLabel": "自定义 shell 路径",
           "description": "新终端运行的程序。",
           "label": "Shell 路径"
-        }
+        },
+        "windowsOnly": "{{name}}（仅限 Windows）",
+        "windowsOnlyNote": "{{name}} 只能在 Windows 上运行。这里的新终端会改为启动 {{fallback}}。",
+        "windowsOnlyNoteDefault": "{{name}} 只能在 Windows 上运行。这里的新终端会改为启动默认 shell。"
       },
       "shiftEnter": {
         "ariaLabel": "终端中的 Shift+Enter",
-        "description": "Shift+Enter 向终端中的程序发送的内容。",
-        "enter": "Enter",
+        "description": "Shift+Enter 向终端中的程序发送的内容。插入换行可让 Claude Code 等聊天式工具在提示词中另起一行。发送 Enter 的效果与按 Enter 键相同，都会提交。",
+        "enter": "发送 Enter",
         "label": "Shift+Enter",
-        "newline": "换行"
+        "newline": "插入换行"
       },
       "startWithProject": {
         "description": "在项目打开时启动 shell，而不是在首次显示终端时才启动。",
@@ -1442,7 +1460,9 @@
       "detecting": "正在检查服务器…",
       "found": "这是一台 {{kind}} 服务器。",
       "kindGitea": "Gitea 或 Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "其他服务器",
+      "replaces": "在此登录将替换 {{host}} 上的 {{login}}。",
       "scopesGitea": "为它授予 repository 和 user 的读写权限。",
       "scopesGithub": "为它授予 repo 和 read:user 权限范围。",
       "scopesGitlab": "为它授予 api 和 write_repository 权限范围。",
@@ -1517,7 +1537,7 @@
       "site": "网站：{{domain}}",
       "confirmCopy": "Oleafly 会从 {{browser}} 的 {{profile}} 配置文件中读取 {{domain}} 的 Cookie。它们会留在 Oleafly 中，并且只会发送到 {{domain}}。你还需要在系统对话框中再确认一次。",
       "copyAction": "复制登录信息",
-      "copying": "正在复制...",
+      "copying": "正在复制…",
       "notSignedIn_other": "已从 {{browser}} 复制 {{count}} 个 Cookie，但它们没有让你登录。请直接登录。"
     },
     "zotero": {
@@ -1596,6 +1616,7 @@
         "notInstalled": "尚未安装 Cua Driver。",
         "tooOld": "Cua Driver {{version}} 版本过旧。Oleafly 需要 {{minimum}} 或更高版本。",
         "noAppBundle": "请使用官方安装程序安装 Cua Driver，以便它能获得 macOS 权限。",
+        "unreadableVersion": "Oleafly 无法读取 Cua Driver 的版本。请确认它可以运行，然后重新检查。",
         "path": "位于 {{path}}"
       },
       "install": {
@@ -1629,6 +1650,7 @@
         "empty": "还没有应用。代理只能使用你在这里添加的应用。",
         "add": "添加应用",
         "remove": "移除 {{name}}",
+        "missing": "在这台电脑上找不到此程序。请移除它，或重新安装该应用。",
         "dialog": {
           "title": "添加应用",
           "description": "选择一个代理可以使用的应用。在你批准后，代理可以打开它、读取它的窗口并在其中操作。",
@@ -1636,7 +1658,10 @@
           "loading": "正在查找应用...",
           "none": "没有匹配的应用。",
           "choose": "选择其他应用...",
-          "add": "添加"
+          "add": "添加",
+          "added": "已添加。",
+          "more": "共 {{total}} 个应用，正在显示 {{shown}} 个。搜索可缩小范围。",
+          "refresh": "刷新"
         },
         "blocked": {
           "oleafly": "Oleafly 无法控制自身。",
@@ -1646,7 +1671,8 @@
           "passwords": "密码类应用不允许使用。",
           "scripting": "脚本运行器可以在这台计算机上执行任何操作。",
           "wrapper": "此条目会启动另一个程序。请改为选择那个程序。",
-          "sandboxed": "暂不支持 Flatpak 和 Snap 应用。"
+          "sandboxed": "暂不支持 Flatpak 和 Snap 应用。",
+          "browser": "请改为在“允许的网站”中添加该浏览器的网站。"
         }
       },
       "sites": {
@@ -1657,6 +1683,7 @@
         "remove": "移除 {{origin}}",
         "signedIn": {
           "label": "使用我已登录的浏览器",
+          "labelFor": "在 {{origin}} 上使用我已登录的浏览器",
           "description": "代理会在你自己的 Chrome 或 Edge 中操作此网站。关闭此选项则使用单独的浏览器配置文件。"
         }
       },
@@ -1666,8 +1693,9 @@
       },
       "test": {
         "action": "测试连接",
-        "running": "正在测试...",
+        "running": "正在测试…",
         "ok": "Cua Driver 正在按你的限制运行。",
+        "problems": "Cua Driver 自己的检查还报告了：",
         "failed": "测试失败：{{detail}}"
       },
       "tool": {
@@ -2260,6 +2288,7 @@
       "stopHint": "在你再次打开 Oleafly 之前，它的任务会暂停。",
       "stopFailed": "辅助程序未能停止。请重试。",
       "openLog": "显示日志",
+      "statusFailed": "无法读取后台辅助程序的状态。",
       "toggleFailed": "无法更改此设置。请重试。"
     }
   }

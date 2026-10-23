@@ -187,7 +187,7 @@ pub fn print_build(ctx: &Context, result: &BuildResult, streamed: bool) {
     if !streamed && ctx.log_mode() == LogMode::Tail && !ctx.quiet() {
         let tail = last_lines(&result.log, HUMAN_LOG_TAIL_LINES);
         if !tail.trim().is_empty() {
-            eprintln!("{tail}");
+            crate::human::stderr_line(&tail);
         }
     }
     crate::human::error(&format!("Build failed in {} ms", result.compile_time_ms));
@@ -197,11 +197,11 @@ pub fn print_build(ctx: &Context, result: &BuildResult, streamed: bool) {
         .filter(|error| error.kind == "error")
         .take(20)
     {
-        eprintln!(
+        crate::human::stderr_line(&format!(
             "{}{}",
             location(error.file.as_deref(), error.line),
             error.message
-        );
+        ));
     }
     if let Some(previous) = &result.previous_output {
         if !ctx.quiet() {

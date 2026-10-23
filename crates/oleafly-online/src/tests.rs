@@ -114,6 +114,45 @@ fn servers_normalize_to_a_base_without_trailing_slash() {
 }
 
 #[test]
+fn plain_http_is_only_for_a_server_on_this_computer() {
+    for local in [
+        "http://localhost:3000",
+        "http://127.0.0.1:8080",
+        "http://[::1]:8080",
+        "http://dev.localhost",
+        "https://latex.uni.edu",
+    ] {
+        assert!(session::normalize_server(Some(local)).is_ok(), "{local}");
+        assert!(session::is_secure_server(local), "{local}");
+    }
+    for remote in [
+        "http://latex.uni.edu",
+        "http://192.168.1.5:8080",
+        "http://10.0.0.2",
+        "http://notlocalhost",
+        "http://localhost.evil.example",
+    ] {
+        assert_eq!(
+            session::normalize_server(Some(remote)).unwrap_err().kind,
+            OnlineErrorKind::InvalidServer,
+            "{remote}"
+        );
+        assert!(!session::is_secure_server(remote), "{remote}");
+    }
+    // A link record from disk is checked again before a token is sent.
+    assert_eq!(
+        crate::sync::remote_url("http://latex.uni.edu", "64a1f0")
+            .unwrap_err()
+            .kind,
+        OnlineErrorKind::InvalidServer
+    );
+    assert_eq!(
+        crate::sync::remote_url("http://localhost:3000", "64a1f0").unwrap(),
+        "http://localhost:3000/git/64a1f0"
+    );
+}
+
+#[test]
 fn cookie_headers_dedupe_and_follow_set_cookie() {
     assert_eq!(
         session::cookie_header([
@@ -519,6 +558,74 @@ async fn listing_without_a_session_asks_to_sign_in_and_an_expired_session_is_for
     let error = list_projects(&http, &store).await.err().unwrap();
     assert_eq!(error.kind, OnlineErrorKind::SessionExpired);
     assert!(session::load(&store, &fixture.base).unwrap().is_none());
+}
+
+/// A server whose `/project` answers `reply`, and a saved session for it.
+async fn session_against(
+    reply: fn(&Request) -> Reply,
+) -> (FixtureServer, SecretStore, tempfile::TempDir) {
+    let fixture = FixtureServer::start(Arc::new(reply)).await;
+    let data = tempfile::tempdir().unwrap();
+    let store = SecretStore::at(data.path());
+    session::save(&store, &fixture.base, &session_of("s=keep", "u")).unwrap();
+    (fixture, store, data)
+}
+
+#[tokio::test]
+async fn a_firewall_or_maintenance_page_does_not_sign_the_account_out() {
+    let replies: [fn(&Request) -> Reply; 5] = [
+        |_| Reply::status(403),
+        |_| Reply::status(401),
+        |_| Reply::ok("<html><body>Down for maintenance</body></html>"),
+        |_| Reply::status(302).header("Location", "https://challenge.example.net/check"),
+        |_| Reply::status(302).header("Location", "/maintenance"),
+    ];
+    for reply in replies {
+        let (fixture, store, _data) = session_against(reply).await;
+        let http = Http::new(&fixture.base, AGENT).unwrap();
+        let error = list_projects(&http, &store).await.err().unwrap();
+        assert_ne!(error.kind, OnlineErrorKind::SessionExpired, "{error:?}");
+        assert!(
+            session::load(&store, &fixture.base).unwrap().is_some(),
+            "the sign-in was forgotten after {error:?}"
+        );
+    }
+    // A page without the account's id is a sign-in that could not be
+    // confirmed, not an expired one.
+    let (fixture, store, _data) =
+        session_against(|_| Reply::ok("<html><body>Please wait</body></html>")).await;
+    let http = Http::new(&fixture.base, AGENT).unwrap();
+    assert_eq!(
+        list_projects(&http, &store).await.err().unwrap().kind,
+        OnlineErrorKind::SignInFailed
+    );
+}
+
+#[tokio::test]
+async fn only_the_services_own_login_page_forgets_the_sign_in() {
+    let replies: [fn(&Request) -> Reply; 3] = [
+        |_| Reply::status(302).header("Location", "/login"),
+        |_| Reply::status(302).header("Location", "/login?redir=%2Fproject"),
+        |_| Reply::status(302).header("Location", "/login/"),
+    ];
+    for reply in replies {
+        let (fixture, store, _data) = session_against(reply).await;
+        let http = Http::new(&fixture.base, AGENT).unwrap();
+        let error = list_projects(&http, &store).await.err().unwrap();
+        assert_eq!(error.kind, OnlineErrorKind::SessionExpired);
+        assert!(session::load(&store, &fixture.base).unwrap().is_none());
+    }
+    // Another host's login page is not this service's.
+    let (fixture, store, _data) = session_against(|_| {
+        Reply::status(302).header("Location", "https://other.example.net/login")
+    })
+    .await;
+    let http = Http::new(&fixture.base, AGENT).unwrap();
+    assert_ne!(
+        list_projects(&http, &store).await.err().unwrap().kind,
+        OnlineErrorKind::SessionExpired
+    );
+    assert!(session::load(&store, &fixture.base).unwrap().is_some());
 }
 
 #[tokio::test]

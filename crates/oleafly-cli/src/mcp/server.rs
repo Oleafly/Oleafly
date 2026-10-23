@@ -127,7 +127,8 @@ fn id_key(id: &Value) -> String {
     id.to_string()
 }
 
-/// Serves MCP on stdio until stdin closes.
+/// Serves MCP on stdio until stdin closes, or until a signal asks it to stop
+/// (SIGTERM, SIGHUP or Ctrl+C), so the commands its tools started end with it.
 pub(crate) async fn serve_headless(context: ToolContext) -> Result<(), CliError> {
     let tools = all_tools();
     let instructions = instructions(&context.root);
@@ -143,7 +144,13 @@ pub(crate) async fn serve_headless(context: ToolContext) -> Result<(), CliError>
         Arc::new(Mutex::new(HashMap::new()));
     let mut tasks = tokio::task::JoinSet::new();
     let mut lines = StdinLines::new();
-    while let Some(line) = lines.next().await {
+    let mut stop = std::pin::pin!(crate::daemon::serve::termination());
+    loop {
+        let next = tokio::select! {
+            line = lines.next() => line,
+            () = &mut stop => None,
+        };
+        let Some(line) = next else { break };
         let message = match line {
             Line::Message(message) => message,
             Line::Reply(reply) => {

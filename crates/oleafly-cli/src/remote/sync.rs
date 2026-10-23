@@ -6,8 +6,9 @@ use std::sync::Arc;
 
 use oleafly_online::git::SystemGit;
 use oleafly_online::sync::{
-    self as online_sync, claim, diff_project, link_project, remove_link, sync_project, DiffOptions,
-    LinkOutcome, Mode, Side, SyncOptions, SyncOutcome,
+    self as online_sync, claim, diff_project, export_link_backups, link_project, remove_link,
+    sync_project, DiffOptions, LinkOutcome, Mode, Side, SyncOptions, SyncOutcome,
+    FILES_MAY_HAVE_CHANGED,
 };
 use oleafly_online::{OnlineError, OnlineErrorKind};
 use serde_json::json;
@@ -111,6 +112,12 @@ pub(crate) fn locate_git(project_root: &Path) -> Result<PathBuf, CliError> {
         .ok_or_else(|| from_online(&OnlineError::new(OnlineErrorKind::GitNotInstalled)))
 }
 
+/// Where the files a link replaced are saved: beside the private copy, so
+/// unlinking keeps them.
+pub(crate) fn backups_folder(root: &Path) -> PathBuf {
+    root.join(".oleafly").join("online-backups")
+}
+
 fn side_of(side: SideArg) -> Side {
     match side {
         SideArg::Local => Side::Local,
@@ -164,10 +171,13 @@ struct Prepared {
 /// The linked folder's mirror, token and address.
 fn prepare_linked(env: &Env, deps: &RemoteDeps, folder: &Path) -> Result<Prepared, CliError> {
     let scope = resolve_scope(folder, &env.data_root)?;
+    scope.ensure_no_pending_restore()?;
     let link = scope
         .current_link(&env.data_root)?
         .ok_or_else(|| from_online(&OnlineError::new(OnlineErrorKind::SyncNotLinked)))?;
-    let (token, _) = git_token_for(env, &link.server)?;
+    // The link record is in the folder, so the server is not one the user
+    // named.
+    let (token, _) = git_token_for(env, &link.server, false)?;
     let url = (deps.url_for)(&link.server, &link.remote_id)
         .map_err(|error| online_error(error, &link.server))?;
     let paths = scope.sync_paths(&env.data_root)?;
@@ -189,6 +199,7 @@ pub(crate) fn link(
     args: LinkArgs,
 ) -> Result<Report, CliError> {
     let scope = resolve_scope(folder, &env.data_root)?;
+    scope.ensure_no_pending_restore()?;
     let origin = scope.imported_from();
     let target = match &args.target {
         Some(input) => parse_remote_ref(input, args.server.as_deref(), &env.store)?,
@@ -216,7 +227,10 @@ pub(crate) fn link(
         return Err(CliError::new(ErrorKind::InvalidInput, "remote.not_imported", "This Oleafly app project didn't come from the online service.")
             .hint("Link it from the Oleafly app, or import the online project with oleafly remote import."));
     }
-    let (token, _) = git_token_for(env, &target.server)?;
+    // The project named on the command line (or its server) is the user's
+    // choice; where a folder says it came from is not.
+    let named_by_user = args.target.is_some() || args.server.is_some();
+    let (token, _) = git_token_for(env, &target.server, named_by_user)?;
     let url = (deps.url_for)(&target.server, &target.project_id)
         .map_err(|error| online_error(error, &target.server))?;
     let paths = scope.sync_paths(&env.data_root)?;
@@ -241,11 +255,33 @@ pub(crate) fn link(
         library,
     );
     let linked = matches!(outcome, Ok(LinkOutcome::Linked { .. }));
+    // Files here changed (or may have): the app's shell-escape trust was for
+    // what was there before.
+    let files_changed = match &outcome {
+        Ok(LinkOutcome::Linked { written }) => !written.is_empty(),
+        Ok(LinkOutcome::NeedsChoice(_)) => false,
+        Err(error) => error.params.contains_key(FILES_MAY_HAVE_CHANGED),
+    };
+    let revoked = if files_changed && !args.dry_run {
+        scope.revoke_shell_escape_trust(&env.data_root)
+    } else {
+        Ok(())
+    };
+    // A copy of what the online version replaced is put where it stays.
+    let backups = if linked && !args.dry_run && args.prefer == Some(SideArg::Remote) {
+        export_link_backups(deps.git.as_ref(), &paths, &backups_folder(scope.root()))
+            .map_err(|error| online_error(error, &target.server))
+    } else {
+        Ok(Vec::new())
+    };
     if !existed && (args.dry_run || !linked) {
         // A check or a refused link leaves no private copy behind.
         let _ = remove_link(&paths);
     }
-    match outcome.map_err(|error| online_error(error, &target.server))? {
+    let outcome = outcome.map_err(|error| online_error(error, &target.server))?;
+    revoked?;
+    let backups = backups?;
+    match outcome {
         LinkOutcome::NeedsChoice(differing) => Err(CliError::new(
             ErrorKind::Conflict,
             "remote.link_choice",
@@ -266,14 +302,32 @@ pub(crate) fn link(
             } else {
                 format!("Linked this folder to {address}.")
             };
-            Ok(Report::new(json!({
+            let saved: Vec<_> = backups
+                .iter()
+                .map(|backup| {
+                    json!({
+                        "folder": backups_folder(scope.root()).join(&backup.name),
+                        "files": backup.files,
+                    })
+                })
+                .collect();
+            let mut report = Report::new(json!({
                 "scope": scope.kind(),
                 "server": target.server,
                 "remoteId": target.project_id,
                 "written": written,
                 "dryRun": args.dry_run,
+                "backups": saved,
             }))
-            .line(line))
+            .line(line);
+            for backup in &backups {
+                report = report.line(format!(
+                    "Your versions of {} are saved in {}.",
+                    files(backup.files.len()),
+                    backups_folder(scope.root()).join(&backup.name).display()
+                ));
+            }
+            Ok(report)
         }
     }
 }
@@ -305,8 +359,21 @@ pub(crate) fn sync(
         &prepared.url,
         &prepared.token,
         &options,
-    )
-    .map_err(|error| online_error(error, &prepared.server))?;
+    );
+    // Files here changed (or may have): the app's shell-escape trust was for
+    // what was there before. The app does the same for every change it
+    // didn't make in its editor.
+    let files_changed = match &summary {
+        Ok(summary) => !(summary.written.is_empty() && summary.removed.is_empty()),
+        Err(error) => error.params.contains_key(FILES_MAY_HAVE_CHANGED),
+    };
+    let revoked = if files_changed && !args.dry_run {
+        prepared.scope.revoke_shell_escape_trust(&env.data_root)
+    } else {
+        Ok(())
+    };
+    let summary = summary.map_err(|error| online_error(error, &prepared.server))?;
+    revoked?;
     let changed = summary.written.len() + summary.removed.len();
     let line = match summary.outcome {
         SyncOutcome::Conflicts => {
@@ -336,6 +403,10 @@ pub(crate) fn sync(
         SyncOutcome::LocalOnly => {
             "Your changes are ready to send. Run oleafly remote sync without --no-push.".to_string()
         }
+        SyncOutcome::Planned if summary.would_push => format!(
+            "Dry run: {} would change here, and your changes would be sent online. Nothing was changed.",
+            files(changed)
+        ),
         SyncOutcome::Planned => format!(
             "Dry run: {} would change here. Nothing was changed.",
             files(changed)
@@ -527,12 +598,50 @@ pub(crate) mod tests {
                 project,
                 dir,
             };
+            // As after `oleafly auth login online --with-token`: a server the
+            // environment's token may go to when only a folder names it.
+            oleafly_online::session::save_git_token(
+                &world.env.store,
+                &world.server(),
+                "tok-unused-1",
+            )
+            .unwrap();
             let args = LinkArgs {
                 target: Some(world.reference()),
                 ..LinkArgs::default()
             };
             link(&world.env, &deps(), &world.project, args).unwrap();
             world
+        }
+
+        /// An app library project that came from the world's online
+        /// project, with `main.tex` = `text`. Not linked yet.
+        pub(crate) fn library_project(&self, id: &str, text: &str) -> PathBuf {
+            let project = self.env.projects_root().join(id);
+            std::fs::create_dir_all(&project).unwrap();
+            std::fs::write(project.join("main.tex"), text).unwrap();
+            let record = json!({"importedFrom": {
+                "service": oleafly_online::service::SERVICE_ID,
+                "server": self.server(),
+                "projectId": "remote",
+            }});
+            std::fs::write(project.join("project.json"), record.to_string()).unwrap();
+            project
+        }
+
+        /// The app's shell-escape trust record for a project.
+        pub(crate) fn trust_record(&self, id: &str) -> PathBuf {
+            self.env
+                .data_root
+                .join("device-trust")
+                .join("latex-shell-escape")
+                .join(format!("{id}.json"))
+        }
+
+        pub(crate) fn trust(&self, id: &str) {
+            let record = self.trust_record(id);
+            std::fs::create_dir_all(record.parent().unwrap()).unwrap();
+            std::fs::write(record, "{}").unwrap();
         }
 
         pub(crate) fn server(&self) -> String {
@@ -565,6 +674,169 @@ pub(crate) mod tests {
             git(&work, &["commit", "-q", "-am", "online edit"]);
             git(&work, &["push", "-q"]);
         }
+    }
+
+    fn read(path: &Path) -> String {
+        std::fs::read_to_string(path).unwrap()
+    }
+
+    fn link_library(world: &World, project: &Path, prefer: Option<SideArg>) -> Report {
+        let args = LinkArgs {
+            prefer,
+            ..LinkArgs::default()
+        };
+        link(&world.env, &deps(), project, args).unwrap()
+    }
+
+    #[test]
+    fn a_sync_that_changes_a_library_project_takes_its_shell_escape_trust_away() {
+        let world = World::linked();
+        let project = world.library_project("lib-1", "Hello\n");
+        link_library(&world, &project, None);
+        assert!(world
+            .env
+            .data_root
+            .join("project-worktree-locks/lib-1.lock")
+            .exists());
+        world.trust("lib-1");
+        world.trust("bystander");
+
+        // Nothing to pull, and a dry run: the trust stays.
+        sync(&world.env, &deps(), &project, SyncArgs::default()).unwrap();
+        world.edit_online("Changed online\n");
+        let dry = SyncArgs {
+            dry_run: true,
+            ..SyncArgs::default()
+        };
+        sync(&world.env, &deps(), &project, dry).unwrap();
+        assert!(world.trust_record("lib-1").exists());
+
+        sync(&world.env, &deps(), &project, SyncArgs::default()).unwrap();
+        assert_eq!(read(&project.join("main.tex")), "Changed online\n");
+        assert!(!world.trust_record("lib-1").exists());
+        assert!(world.trust_record("bystander").exists());
+    }
+
+    #[test]
+    fn a_folder_the_app_does_not_know_has_no_trust_to_take_away() {
+        let world = World::linked();
+        world.trust("paper");
+        world.edit_online("Changed online\n");
+        sync(&world.env, &deps(), &world.project, SyncArgs::default()).unwrap();
+        assert_eq!(read(&world.project.join("main.tex")), "Changed online\n");
+        assert!(world.trust_record("paper").exists());
+    }
+
+    #[test]
+    fn linking_with_the_online_copy_takes_the_trust_away_and_keeps_what_it_replaced() {
+        let world = World::linked();
+        let project = world.library_project("lib-2", "My own text\n");
+        world.trust("lib-2");
+        let report = link_library(&world, &project, Some(SideArg::Remote));
+        assert_eq!(read(&project.join("main.tex")), "Hello\n");
+        assert!(!world.trust_record("lib-2").exists());
+        let saved = report.data["backups"].as_array().unwrap();
+        assert_eq!(saved.len(), 1);
+        assert_eq!(saved[0]["files"], json!(["main.tex"]));
+        let folder = PathBuf::from(saved[0]["folder"].as_str().unwrap());
+        assert!(folder.starts_with(backups_folder(&project.canonicalize().unwrap())));
+        assert_eq!(read(&folder.join("main.tex")), "My own text\n");
+        assert!(report
+            .lines
+            .iter()
+            .any(|line| line.starts_with("Your versions of 1 file are saved in")));
+
+        // Unlinking removes the private copy but not the saved files.
+        let no_git = |_: &Path| -> Result<RemoteDeps, CliError> { Ok(deps()) };
+        let unlinked = super::super::list::unlink(&world.env, &no_git, &project, false).unwrap();
+        assert_eq!(unlinked.data["backups"][0]["files"], json!(["main.tex"]));
+        assert_eq!(read(&folder.join("main.tex")), "My own text\n");
+    }
+
+    #[test]
+    fn a_checkpoint_restore_the_app_has_not_finished_stops_every_command_that_reads_the_files() {
+        let world = World::linked();
+        let project = world.library_project("lib-3", "Hello\n");
+        link_library(&world, &project, None);
+        world.edit_online("Changed online\n");
+        let marker = project.join(".oleafly").join("checkpoint-restore-pending");
+        std::fs::create_dir_all(marker.parent().unwrap()).unwrap();
+        std::fs::write(&marker, "").unwrap();
+        world.trust("lib-3");
+
+        let pending = |error: CliError| {
+            assert_eq!(error.code, "conflict.restore_pending");
+            assert_eq!(error.exit() as u8, 8);
+        };
+        pending(sync(&world.env, &deps(), &project, SyncArgs::default()).unwrap_err());
+        pending(diff(&world.env, &deps(), &project, DiffArgs::default()).unwrap_err());
+        pending(link(&world.env, &deps(), &project, LinkArgs::default()).unwrap_err());
+        let fetch = super::super::StatusArgs { fetch: true };
+        let status = |_: &Path| -> Result<RemoteDeps, CliError> { Ok(deps()) };
+        pending(super::super::list::status(&world.env, &status, &project, &fetch).unwrap_err());
+        // Nothing was read or written, and the trust is as it was.
+        assert_eq!(read(&project.join("main.tex")), "Hello\n");
+        assert!(world.trust_record("lib-3").exists());
+
+        std::fs::remove_file(&marker).unwrap();
+        sync(&world.env, &deps(), &project, SyncArgs::default()).unwrap();
+        assert_eq!(read(&project.join("main.tex")), "Changed online\n");
+    }
+
+    #[test]
+    fn the_environments_git_token_only_goes_to_a_server_the_user_chose() {
+        let world = World::linked();
+        // A link record planted in the folder names another server.
+        let record = world.project.join(".oleafly/online/link.json");
+        let planted = read(&record).replace(&world.server(), "https://evil.example");
+        std::fs::write(&record, planted).unwrap();
+        for failure in [
+            sync(&world.env, &deps(), &world.project, SyncArgs::default()).unwrap_err(),
+            diff(&world.env, &deps(), &world.project, DiffArgs::default()).unwrap_err(),
+        ] {
+            assert_eq!(failure.code, "online.git_token_missing");
+        }
+
+        // So does a `project.json` that says where the folder came from.
+        let other = world.dir.path().join("other");
+        std::fs::create_dir_all(&other).unwrap();
+        let record = json!({"importedFrom": {
+            "service": oleafly_online::service::SERVICE_ID,
+            "server": "https://evil.example",
+            "projectId": "abc",
+        }});
+        std::fs::write(other.join("project.json"), record.to_string()).unwrap();
+        let failure = link(&world.env, &deps(), &other, LinkArgs::default()).unwrap_err();
+        assert_eq!(failure.code, "online.git_token_missing");
+        assert!(!other.join(".oleafly/online").exists());
+    }
+
+    #[test]
+    fn a_link_record_naming_a_server_nobody_may_use_is_refused() {
+        let world = World::linked();
+        let record = world.project.join(".oleafly/online/link.json");
+        let planted = read(&record).replace(&world.server(), "http://latex.example.edu");
+        std::fs::write(&record, planted).unwrap();
+        let failure = sync(&world.env, &deps(), &world.project, SyncArgs::default()).unwrap_err();
+        assert_eq!(failure.code, "online.invalid_server");
+    }
+
+    #[test]
+    fn a_dry_run_with_only_local_changes_says_the_changes_would_be_sent() {
+        let world = World::linked();
+        std::fs::write(world.project.join("main.tex"), "Local only\n").unwrap();
+        let dry = SyncArgs {
+            dry_run: true,
+            ..SyncArgs::default()
+        };
+        let report = sync(&world.env, &deps(), &world.project, dry).unwrap();
+        assert_eq!(report.data["outcome"], "planned");
+        assert_eq!(report.data["wouldPush"], true);
+        assert!(
+            report.lines[0].contains("would be sent online"),
+            "{:?}",
+            report.lines
+        );
     }
 
     #[test]

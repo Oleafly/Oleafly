@@ -43,13 +43,15 @@
       "command": "Opdracht bevestigen",
       "externalTool": "Actie van externe tool bevestigen",
       "internet": "Internettoegang bevestigen",
-      "edit": "AI-bewerking bevestigen"
+      "edit": "AI-bewerking bevestigen",
+      "researchTask": "Onderzoekstaak bevestigen"
     },
     "headline": {
       "command": "De assistent wil deze opdracht uitvoeren",
       "externalTool": "De assistent wil een externe tool gebruiken",
       "internet": "De assistent wil toegang tot internet",
-      "edit": "De assistent wil je bestanden wijzigen"
+      "edit": "De assistent wil je bestanden wijzigen",
+      "researchTask": "De assistent wil een onderzoekstaak aanmaken"
     },
     "mcpNote": "Hiermee gaan de argumenten hieronder naar de ingestelde MCP-server.",
     "line": "regel {{line}}",
@@ -70,6 +72,22 @@
       "title": "Verzoek van een externe agent (MCP)",
       "moreWaiting_one": "nog {{count}} in de wachtrij",
       "moreWaiting_other": "nog {{count}} in de wachtrij"
+    },
+    "researchTask": {
+      "note": "De taak werkt zelfstandig in een kopie van het project. Je beoordeelt de wijzigingen daarna.",
+      "title": "Titel",
+      "goal": "Doel",
+      "skills": "Vaardigheden",
+      "prompt": "Instructies",
+      "commands": "Opdrachten",
+      "commandsAsk": "Vragen voor elke opdracht",
+      "network": "Netwerk",
+      "timeBudget": "Tijdbudget",
+      "timeBudgetDefault": "Standaard",
+      "minutes_one": "{{count}} minuut",
+      "minutes_other": "{{count}} minuten",
+      "planFirst": "Eerst een plan maken",
+      "startNow": "Nu starten"
     }
   },
   "attachments": {
@@ -95,7 +113,9 @@
     "saveFailed": "Kon {{name}} niet opslaan.",
     "missing": "{{name}} is niet meer beschikbaar.",
     "sentAsText": "{{name}} is als tekst verstuurd, omdat dit model het niet als bestand kan lezen.",
-    "skipped": "{{name}} is niet verstuurd."
+    "skipped": "{{name}} is niet verstuurd.",
+    "dropUnreadable": "{{names}} konden niet worden gelezen.",
+    "notReplayed": "Bestanden van een oudere versie kunnen niet opnieuw worden verstuurd: {{names}}."
   },
   "chat": {
     "pill": {
@@ -591,7 +611,10 @@
       "queued": "In de wachtrij: wordt verstuurd zodra de agent klaar is",
       "remove": "Bericht uit de wachtrij verwijderen",
       "sendNow": "Nu versturen",
-      "sendFailed": "Dit bericht is niet verstuurd. Verstuur het opnieuw of verwijder het."
+      "sendFailed": "Dit bericht is niet verstuurd. Verstuur het opnieuw of verwijder het.",
+      "queuedConnecting": "In de wachtrij: wordt verstuurd zodra de agent gereed is",
+      "retry": "Opnieuw versturen",
+      "edit": "Bewerken"
     },
     "slash": {
       "commands": "Opdrachten van de agent",
@@ -631,7 +654,9 @@
       "apiKeyPlaceholder": "Plak je API-sleutel",
       "geminiGoogle": "Aanmelden met Google werkt niet meer voor individuele abonnementen. Gebruik een Gemini API-sleutel of Vertex AI.",
       "noProject": "Open een project om je vanuit de terminal aan te melden.",
-      "signOut": "Afmelden"
+      "signOut": "Afmelden",
+      "confirmTerminal": "{{agent}} meldt zich aan met de opdracht hieronder, die in een terminaltabblad wordt uitgevoerd. Controleer hem voordat je akkoord gaat.",
+      "remote": "Dit gesprek draait op een andere machine. Meld je daar aan bij de agent."
     },
     "elicitation": {
       "ariaLabel": "Verzoek van de agent",
@@ -644,7 +669,8 @@
       "openUrl": "Openen in browser",
       "confirmTitle": "{{host}} openen?",
       "confirmDescription": "De agent vraagt je een stap op deze site af te ronden. De site opent in je browser.",
-      "waiting": "Wachten tot de site klaar is."
+      "waiting": "Wachten tot de site klaar is.",
+      "openFailed": "De link kon niet in je browser worden geopend."
     },
     "remote": {
       "banner": "Hermes draait via SSH op {{host}}. De wijzigingen blijven op die machine."
@@ -655,7 +681,6 @@
       "search": "Gesprekken zoeken",
       "empty": "Geen gesprekken gevonden.",
       "loadMore": "Meer laden",
-      "open": "Openen",
       "rename": "Naam wijzigen",
       "renameLabel": "Naam van het gesprek",
       "delete": "Verwijderen",
@@ -676,8 +701,11 @@
       "fork": "Gesprek forken",
       "forkUnsupported": "Deze agent kan geen gesprekken forken.",
       "forkBusy": "Wacht tot de agent klaar is voordat je forkt.",
-      "v2": "ACP v2-concept",
-      "remote": "Extern"
+      "v2": "Protocolconcept",
+      "remote": "Extern",
+      "signOutTitle": "{{agent}} afmelden?",
+      "signOutDescription": "Dit beëindigt de aanmelding van {{agent}} zelf. Ook een terminal die dezelfde aanmelding gebruikt, wordt afgemeld, en dit gesprek stopt totdat je je opnieuw aanmeldt.",
+      "signOutAccount": "Aangemeld met {{account}}"
     },
     "commit": {
       "button": "Committen",

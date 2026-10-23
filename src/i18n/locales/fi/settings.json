@@ -36,7 +36,7 @@
       },
       "installBridge": "Asenna silta",
       "installBridgeNextStep": "Asenna ACP-silta ja kirjaudu sitten sisään komentorivityökalulla.",
-      "intro": "Yhdistä paikallinen agentti ACP:n kautta. Jokainen agentti hallitsee omat mallinsa, työkalunsa ja kirjautumisensa, ja API-palveluiden asetukset pysyvät erillään. Käytä kirjautumiseen agentin virallista komentorivitiliä: Oleafly ei tuo tilitokeneita eikä arvioi tilausten kiintiöitä.",
+      "intro": "Komentoriviagentit, kuten Claude Code, Codex ja Gemini CLI, yhdistyvät Agent Client Protocol -protokollalla (ACP). Osa tarvitsee sillan, pienen sovittimen, jonka Oleafly asentaa voidakseen puhua niille. Jokainen agentti hallitsee omia mallejaan, työkalujaan ja kirjautumistaan, ja API-palveluiden asetukset pysyvät erillään. Käytä kirjautumiseen agentin virallista komentorivitiliä: Oleafly ei tuo tilitokeneita eikä arvioi tilausten kiintiöitä.",
       "nextStepTitle": "Seuraava vaihe",
       "notReported": "Ei raportoitu",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Näytä jakelutiedot",
         "title": "Etsi lisää agentteja"
       },
-      "sectionLabel": "ACP-agentit",
+      "sectionLabel": "Komentoriviagentit",
       "signInCommandLabel": "Kirjautumiskomento",
       "versionLabel": "Versio",
       "updateBridge": "Päivitä silta",
@@ -147,7 +147,7 @@
         "label": "Käytä Oleaflyn API-avaintani",
         "off": "Ei käytössä (agentti kirjautuu itse)",
         "note": "Oleafly lähettää avaimen tälle agentille keskustelun alkaessa ja pitää sen poissa keskustelulokeista.",
-        "unavailable": "Lisää API-avain kohdassa Asetukset, Tekoäly, niin voit käyttää sitä tässä."
+        "unavailable": "Lisää API-avain kohdasta Asetukset, Tekoälyavustaja, Palvelut ja avaimet, niin voit käyttää sitä tässä."
       },
       "hermes": {
         "title": "Tämän projektin Hermes-profiili",
@@ -175,7 +175,20 @@
         "test": "Testaa yhteys",
         "testOk": "Yhdistetty: {{version}}",
         "save": "Tallenna",
-        "sshNote": "Oleafly kirjautuu vain SSH-avaimillasi."
+        "sshNote": "Oleafly kirjautuu vain SSH-avaimillasi.",
+        "folderHint": "Koko polku kyseisellä koneella, esimerkiksi /home/ada/paper.",
+        "needsValid": "Testaa yhteys ja Tallenna vaativat kelvolliset arvot seuraaville: {{fields}}.",
+        "unsavedEdit": "Ei vielä tallennettu. Tallenna muutokset käyttääksesi niitä.",
+        "unsavedMode": "Ei vielä tallennettu. Kunnes tallennat, tämä projekti käyttää yhä asetusta {{mode}}.",
+        "errors": {
+          "hostRequired": "Anna isäntänimi tai user@host.",
+          "hostInvalid": "Käytä vain kirjaimia, numeroita, pisteitä, yhdysmerkkejä ja @-merkkiä, äläkä ala yhdysmerkillä.",
+          "port": "Käytä porttia, joka on vähintään 1 ja enintään 65535.",
+          "folderRequired": "Anna projektikansion koko polku kyseisellä koneella.",
+          "folderInvalid": "Käytä koko polkua, joka alkaa merkillä /.",
+          "command": "Käytä hermes-komentoa tai sen koko polkua, joka alkaa merkillä /.",
+          "profile": "Käytä pieniä kirjaimia, numeroita, yhdysmerkkejä ja alaviivoja."
+        }
       }
     },
     "approvals": {
@@ -1007,6 +1020,8 @@
         "ariaLabel": "Päätteen shell",
         "description": "Uudet päätteet käynnistävät tämän shellin. Avoimet päätteet pitävät omansa.",
         "label": "Shell",
+        "notFound": "{{name}} (ei löytynyt)",
+        "notFoundNote": "{{name}} ei ole käytettävissä tällä tietokoneella, joten uusia päätteitä ei voi käynnistää. Valitse toinen shell.",
         "options": {
           "auto": "Oletus ({{name}})",
           "cmd": "Komentokehote",
@@ -1021,14 +1036,17 @@
           "ariaLabel": "Mukautetun shellin polku",
           "description": "Ohjelma, jonka uudet päätteet käynnistävät.",
           "label": "Shellin polku"
-        }
+        },
+        "windowsOnly": "{{name}} (vain Windows)",
+        "windowsOnlyNote": "{{name}} toimii vain Windowsissa. Uudet päätteet käynnistyvät täällä sen sijaan shellillä {{fallback}}.",
+        "windowsOnlyNoteDefault": "{{name}} toimii vain Windowsissa. Uudet päätteet käynnistyvät täällä sen sijaan oletusshellillä."
       },
       "shiftEnter": {
         "ariaLabel": "Shift+Enter päätteessä",
-        "description": "Mitä Shift+Enter lähettää päätteessä olevalle ohjelmalle.",
-        "enter": "Enter",
+        "description": "Mitä Shift+Enter lähettää päätteessä olevalle ohjelmalle. Uusi rivi antaa keskustelutyyppisille työkaluille, kuten Claude Code, mahdollisuuden lisätä rivin kehotteeseensa. Enter lähettää, kuten Enter-näppäin.",
+        "enter": "Lähetä Enter",
         "label": "Shift+Enter",
-        "newline": "Uusi rivi"
+        "newline": "Lisää uusi rivi"
       },
       "startWithProject": {
         "description": "Käynnistä shell-prosessi projektin avautuessa eikä vasta, kun pääte näytetään ensimmäisen kerran.",
@@ -1452,7 +1470,9 @@
       "detecting": "Tarkistetaan palvelinta…",
       "found": "Tämä on {{kind}}-palvelin.",
       "kindGitea": "Gitea tai Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "Muu palvelin",
+      "replaces": "Kirjautuminen korvaa tilin {{login}} palvelussa {{host}}.",
       "scopesGitea": "Anna sille luku- ja kirjoitusoikeus kohteisiin repository ja user.",
       "scopesGithub": "Anna sille oikeudet repo ja read:user.",
       "scopesGitlab": "Anna sille oikeudet api ja write_repository.",
@@ -1527,7 +1547,7 @@
       "site": "Sivusto: {{domain}}",
       "confirmCopy": "Oleafly lukee sivuston {{domain}} cookiet selaimen {{browser}} profiilista {{profile}}. Ne pysyvät Oleaflyssä ja menevät vain sivustolle {{domain}}. Vahvistat vielä kerran järjestelmän ikkunassa.",
       "copyAction": "Kopioi kirjautuminen",
-      "copying": "Kopioidaan...",
+      "copying": "Kopioidaan…",
       "notSignedIn_one": "Selaimesta {{browser}} kopioitiin {{count}} cookie, mutta sillä ei voinut kirjautua. Kirjaudu sen sijaan sisään.",
       "notSignedIn_other": "Selaimesta {{browser}} kopioitiin {{count}} cookieta, mutta niillä ei voinut kirjautua. Kirjaudu sen sijaan sisään."
     },
@@ -1610,6 +1630,7 @@
         "notInstalled": "Cua Driver -ohjelmaa ei ole asennettu.",
         "tooOld": "Cua Driver {{version}} on liian vanha. Oleafly tarvitsee version {{minimum}} tai uudemman.",
         "noAppBundle": "Asenna Cua Driver virallisella asennusohjelmalla, jotta se voi saada macOS-käyttöoikeudet.",
+        "unreadableVersion": "Oleafly ei voinut lukea Cua Driverin versiota. Tarkista, että se toimii, ja tarkista sitten uudelleen.",
         "path": "Sijainti: {{path}}"
       },
       "install": {
@@ -1643,14 +1664,18 @@
         "empty": "Ei vielä sovelluksia. Agentit voivat käyttää vain tähän lisäämiäsi sovelluksia.",
         "add": "Lisää sovellus",
         "remove": "Poista {{name}}",
+        "missing": "Tätä ohjelmaa ei löytynyt tältä tietokoneelta. Poista se tai asenna sovellus uudelleen.",
         "dialog": {
           "title": "Lisää sovellus",
           "description": "Valitse sovellus, jota agentit saavat käyttää. Ne voivat avata sen, lukea sen ikkunoita ja toimia siinä hyväksyntäsi jälkeen.",
           "search": "Hae sovelluksia",
-          "loading": "Etsitään sovelluksia...",
+          "loading": "Etsitään sovelluksia…",
           "none": "Yksikään sovellus ei vastaa hakua.",
-          "choose": "Valitse toinen sovellus...",
-          "add": "Lisää"
+          "choose": "Valitse toinen sovellus…",
+          "add": "Lisää",
+          "added": "Jo lisätty.",
+          "more": "Näytetään {{shown}} / {{total}}. Rajaa luetteloa hakemalla.",
+          "refresh": "Päivitä"
         },
         "blocked": {
           "oleafly": "Oleafly ei voi ohjata itseään.",
@@ -1660,7 +1685,8 @@
           "passwords": "Salasanasovellukset eivät ole sallittuja.",
           "scripting": "Skriptien suorittajat voivat tehdä tällä koneella mitä tahansa.",
           "wrapper": "Tämä kohde käynnistää toisen ohjelman. Valitse sen sijaan se ohjelma.",
-          "sandboxed": "Flatpak- ja Snap-sovelluksia ei vielä tueta."
+          "sandboxed": "Flatpak- ja Snap-sovelluksia ei vielä tueta.",
+          "browser": "Lisää selaimen sivustot sen sijaan kohdassa Sallitut sivustot."
         }
       },
       "sites": {
@@ -1671,6 +1697,7 @@
         "remove": "Poista {{origin}}",
         "signedIn": {
           "label": "Käytä selainta, johon olen kirjautunut",
+          "labelFor": "Käytä selainta, johon olen kirjautunut, osoitteessa {{origin}}",
           "description": "Agentit toimivat tällä sivustolla omassa Chrome- tai Edge-selaimessasi. Jätä tämä pois käytöstä, jos haluat käyttää erillistä selainprofiilia."
         }
       },
@@ -1680,8 +1707,9 @@
       },
       "test": {
         "action": "Testaa yhteys",
-        "running": "Testataan...",
+        "running": "Testataan…",
         "ok": "Cua Driver toimii asettamillasi rajoituksilla.",
+        "problems": "Cua Driverin oma tarkistus ilmoitti myös:",
         "failed": "Testi epäonnistui: {{detail}}"
       },
       "tool": {
@@ -2281,6 +2309,7 @@
       "stopHint": "Sen tehtävät odottavat, kunnes avaat Oleaflyn uudelleen.",
       "stopFailed": "Taustaprosessi ei pysähtynyt. Yritä uudelleen.",
       "openLog": "Näytä loki",
+      "statusFailed": "Taustaprosessin tilaa ei voitu lukea.",
       "toggleFailed": "Asetusta ei voitu muuttaa. Yritä uudelleen."
     }
   }

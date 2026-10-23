@@ -32,7 +32,7 @@ fn unavailable() -> String {
         .into()
 }
 
-fn own_exe() -> String {
+pub(crate) fn own_exe() -> String {
     std::env::current_exe()
         .map(|path| path.to_string_lossy().into_owned())
         .unwrap_or_default()
@@ -49,7 +49,7 @@ pub(crate) struct DesktopAppsStatus {
     pub supported: bool,
     pub driver_path: Option<String>,
     pub driver_version: Option<String>,
-    /// `not_installed`, `too_old` or `no_app_bundle`.
+    /// `not_installed`, `too_old`, `no_app_bundle` or `unreadable_version`.
     pub driver_problem: Option<&'static str>,
     pub minimum_version: String,
     /// The official line, shown for copying.
@@ -66,6 +66,9 @@ pub(crate) struct DesktopAppsStatus {
     pub spaces_install_line: &'static str,
     pub spaces_install_command: TerminalCommand,
     pub settings: CuaDriverConfig,
+    /// Allowed apps whose program is no longer on this computer (Windows
+    /// and Linux), by `executable`.
+    pub missing_apps: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -140,6 +143,9 @@ fn status_blocking(
             .map(|path| path.to_string_lossy().into_owned()),
         spaces_install_line: detect::spaces_install_line(shown),
         spaces_install_command: detect::spaces_install_command(shown),
+        missing_apps: platform
+            .map(|platform| config::missing_apps(&settings, platform, &SystemProbe))
+            .unwrap_or_default(),
         settings,
     }
 }
@@ -172,9 +178,10 @@ pub(crate) fn widening_lines(widening: &[Widening]) -> Vec<String> {
         .iter()
         .map(|item| match item {
             Widening::Enabled => crate::i18n::t("dialog.desktopAppsSettings.enabled"),
-            Widening::App(name) => {
-                crate::i18n::t_with("dialog.desktopAppsSettings.app", &[("name", name)])
-            }
+            Widening::App { name, identity } => crate::i18n::t_with(
+                "dialog.desktopAppsSettings.app",
+                &[("name", name), ("identity", identity)],
+            ),
             Widening::Site(origin) => {
                 crate::i18n::t_with("dialog.desktopAppsSettings.site", &[("origin", origin)])
             }
@@ -187,26 +194,43 @@ pub(crate) fn widening_lines(widening: &[Widening]) -> Vec<String> {
 }
 
 /// Validates, confirms widening, stores and applies new settings.
+///
+/// One change runs at a time, from the first read of the settings to the
+/// write, because the native question can wait for a long time. What it
+/// confirms is checked again against the settings as they are when the answer
+/// comes: if more would be widened by then, it asks again.
+///
+/// Narrowing and turning off return as soon as the settings are saved:
+/// calls still waiting on a daemon are cancelled and the daemons stop in the
+/// background.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn apply_settings(
-    state: &CuaDriverState,
+    state: &Arc<CuaDriverState>,
     next: CuaDriverConfig,
     platform: Platform,
     probe: &dyn ExecutableProbe,
     own_exe: &str,
     driver_problem: Option<String>,
-    confirm: impl FnOnce(Vec<String>) -> BoxFuture<'static, bool>,
+    mut confirm: impl FnMut(Vec<String>) -> BoxFuture<'static, bool>,
 ) -> Result<CuaDriverConfig, String> {
-    let next = config::validate(next, platform, probe, own_exe)?;
+    let _applying = state.apply.lock().await;
     let current = state.settings();
+    let next = config::validate_against(next, platform, probe, own_exe, &current)?;
     if next.enabled && !current.enabled {
         if let Some(problem) = driver_problem {
             return Err(problem);
         }
     }
-    let widening = config::widening(&current, &next);
-    if !widening.is_empty() && !confirm(widening_lines(&widening)).await {
-        return Err(AppError::new("desktop_apps.change_declined").into());
+    let mut confirmed: Vec<Widening> = Vec::new();
+    loop {
+        let widening = config::widening(&state.settings(), &next);
+        if widening.iter().all(|item| confirmed.contains(item)) {
+            break;
+        }
+        if !confirm(widening_lines(&widening)).await {
+            return Err(AppError::new("desktop_apps.change_declined").into());
+        }
+        confirmed = widening;
     }
     let stored = next.clone();
     tauri::async_runtime::spawn_blocking(move || {
@@ -218,11 +242,22 @@ pub(crate) async fn apply_settings(
     .await
     .map_err(blocking_error)??;
     state.set_settings(next.clone());
-    if next.enabled {
-        state.runtimes.stop_changed().await;
+    let stop = if next.enabled {
+        state.runtimes.stale_kinds()
     } else {
-        state.runtimes.stop_all().await;
         lock(&state.grants).clear_all();
+        RuntimeKind::ALL.to_vec()
+    };
+    if !stop.is_empty() {
+        state.runtimes.cancel(&stop);
+        let background = state.clone();
+        super::spawn_background(async move {
+            if background.settings().enabled {
+                background.runtimes.stop_changed().await;
+            } else {
+                background.runtimes.stop_all().await;
+            }
+        });
     }
     super::log(format!(
         "desktop apps: settings saved ({} apps, {} sites, {})",
@@ -235,8 +270,9 @@ pub(crate) async fn apply_settings(
 
 fn native_confirm<R: Runtime>(
     app: AppHandle<R>,
-) -> impl FnOnce(Vec<String>) -> BoxFuture<'static, bool> {
+) -> impl FnMut(Vec<String>) -> BoxFuture<'static, bool> {
     move |lines: Vec<String>| {
+        let app = app.clone();
         Box::pin(async move {
             use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
             let mut message = crate::i18n::t("dialog.desktopAppsSettings.message");
@@ -245,7 +281,11 @@ fn native_confirm<R: Runtime>(
                 message.push_str(line);
             }
             if lines.len() > MAX_CONFIRM_LINES {
-                message.push_str("\n…");
+                message.push('\n');
+                message.push_str(&crate::i18n::t_with(
+                    "dialog.desktopAppsSettings.more",
+                    &[("count", &(lines.len() - MAX_CONFIRM_LINES).to_string())],
+                ));
             }
             let (sender, receiver) = tokio::sync::oneshot::channel();
             app.dialog()
@@ -486,13 +526,13 @@ mod tests {
         }
     }
 
-    fn state(config: CuaDriverConfig, root: &std::path::Path) -> CuaDriverState {
-        CuaDriverState::for_test(
+    fn state(config: CuaDriverConfig, root: &std::path::Path) -> Arc<CuaDriverState> {
+        Arc::new(CuaDriverState::for_test(
             config,
             Arc::new(NoDriver),
             Arc::new(ScriptedApprover::default()),
             root.to_path_buf(),
-        )
+        ))
     }
 
     /// A data folder for one test; it goes away with the guard.
@@ -514,14 +554,14 @@ mod tests {
         }
     }
 
-    fn never_asked() -> impl FnOnce(Vec<String>) -> BoxFuture<'static, bool> {
+    fn never_asked() -> impl FnMut(Vec<String>) -> BoxFuture<'static, bool> {
         |lines: Vec<String>| -> BoxFuture<'static, bool> { panic!("asked: {lines:?}") }
     }
 
     fn answering(
         asked: Arc<Mutex<Vec<String>>>,
         answer: bool,
-    ) -> impl FnOnce(Vec<String>) -> BoxFuture<'static, bool> {
+    ) -> impl FnMut(Vec<String>) -> BoxFuture<'static, bool> {
         move |lines: Vec<String>| -> BoxFuture<'static, bool> {
             asked.lock().unwrap().extend(lines);
             Box::pin(async move { answer })
@@ -668,7 +708,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .iter()
-                .any(|line| line == "App: Excel"),
+                .any(|line| line == "App: Excel (com.microsoft.Excel)"),
             "{asked:?}"
         );
         assert_eq!(crate::config::read_config().unwrap().cua_driver, widened);
@@ -721,6 +761,247 @@ mod tests {
         assert!(!crate::config::read_config().unwrap().cua_driver.enabled);
     }
 
+    struct Gone(&'static str);
+
+    impl ExecutableProbe for Gone {
+        fn check(&self, path: &str) -> Result<String, AppRejection> {
+            if path == self.0 {
+                Err(AppRejection::NotFound)
+            } else {
+                Ok(path.to_string())
+            }
+        }
+    }
+
+    const SLACK: &str = r"C:\Users\a\AppData\Local\slack\app-4.35.0\slack.exe";
+
+    fn program(name: &str, path: &str) -> AllowedApp {
+        AllowedApp {
+            name: name.into(),
+            bundle_id: None,
+            executable: Some(path.into()),
+        }
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    async fn a_program_that_went_away_never_stops_a_save_or_the_off_switch() {
+        let _env = crate::paths::data_dir_env_lock();
+        let _data = DataDir::new();
+        let dir = tempfile::tempdir().unwrap();
+        let start = CuaDriverConfig {
+            enabled: true,
+            apps: vec![program("Slack", SLACK)],
+            ..Default::default()
+        };
+        let state = state(start.clone(), dir.path());
+        let gone = Gone(SLACK);
+
+        // A new website next to the stale app saves, and asks only about the site.
+        let asked = Arc::new(Mutex::new(Vec::new()));
+        let with_site = CuaDriverConfig {
+            sites: vec![crate::cua_driver::config::AllowedSite {
+                origin: "https://a.org".into(),
+                signed_in: false,
+            }],
+            ..start.clone()
+        };
+        apply_settings(
+            &state,
+            with_site.clone(),
+            Platform::Windows,
+            &gone,
+            "Oleafly.exe",
+            None,
+            answering(asked.clone(), true),
+        )
+        .await
+        .unwrap();
+        assert_eq!(*asked.lock().unwrap(), vec!["Website: https://a.org"]);
+
+        // So does turning desktop apps off.
+        let off = CuaDriverConfig {
+            enabled: false,
+            ..with_site
+        };
+        apply_settings(
+            &state,
+            off.clone(),
+            Platform::Windows,
+            &gone,
+            "Oleafly.exe",
+            None,
+            never_asked(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(state.settings(), off);
+        assert!(!crate::config::read_config().unwrap().cua_driver.enabled);
+
+        // A program that isn't there is still refused when it is new.
+        let added = CuaDriverConfig {
+            apps: vec![program("Slack", SLACK), program("Other", r"C:\o\other.exe")],
+            ..off
+        };
+        let error = apply_settings(
+            &state,
+            added,
+            Platform::Windows,
+            &Gone(r"C:\o\other.exe"),
+            "Oleafly.exe",
+            None,
+            never_asked(),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.contains("desktop_apps.app_invalid"), "{error}");
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    async fn one_settings_change_runs_at_a_time_and_asks_about_what_it_changes() {
+        let _env = crate::paths::data_dir_env_lock();
+        let _data = DataDir::new();
+        let dir = tempfile::tempdir().unwrap();
+        let start = CuaDriverConfig {
+            enabled: true,
+            apps: vec![app("Zotero", "org.zotero.zotero")],
+            ..Default::default()
+        };
+        let state = state(start.clone(), dir.path());
+        let with = |names: &[(&str, &str)]| CuaDriverConfig {
+            apps: names.iter().map(|(name, id)| app(name, id)).collect(),
+            ..start.clone()
+        };
+        let excel = with(&[
+            ("Zotero", "org.zotero.zotero"),
+            ("Excel", "com.microsoft.Excel"),
+        ]);
+        let word = with(&[
+            ("Zotero", "org.zotero.zotero"),
+            ("Word", "com.microsoft.Word"),
+        ]);
+
+        // The first change waits on its dialog; the second starts meanwhile.
+        let events = Arc::new(Mutex::new(Vec::<String>::new()));
+        let slow = {
+            let events = events.clone();
+            move |lines: Vec<String>| -> BoxFuture<'static, bool> {
+                let events = events.clone();
+                Box::pin(async move {
+                    events
+                        .lock()
+                        .unwrap()
+                        .push(format!("ask {}", lines.join("|")));
+                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                    events.lock().unwrap().push("answered".into());
+                    true
+                })
+            }
+        };
+        let quick = {
+            let events = events.clone();
+            move |lines: Vec<String>| -> BoxFuture<'static, bool> {
+                events
+                    .lock()
+                    .unwrap()
+                    .push(format!("ask {}", lines.join("|")));
+                Box::pin(async { true })
+            }
+        };
+        let first = apply_settings(&state, excel, Platform::Macos, &Echo, "oleafly", None, slow);
+        let second = async {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            apply_settings(
+                &state,
+                word.clone(),
+                Platform::Macos,
+                &Echo,
+                "oleafly",
+                None,
+                quick,
+            )
+            .await
+        };
+        let (first, second) = tokio::join!(first, second);
+        first.unwrap();
+        second.unwrap();
+        // The second did not ask until the first had been answered and saved,
+        // and then asked only about its own addition.
+        assert_eq!(
+            *events.lock().unwrap(),
+            vec![
+                "ask App: Excel (com.microsoft.Excel)".to_string(),
+                "answered".into(),
+                "ask App: Word (com.microsoft.Word)".into(),
+            ]
+        );
+        assert_eq!(state.settings(), word);
+        assert_eq!(crate::config::read_config().unwrap().cua_driver, word);
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    async fn it_asks_again_when_more_would_be_widened_by_the_time_of_the_answer() {
+        let _env = crate::paths::data_dir_env_lock();
+        let _data = DataDir::new();
+        let dir = tempfile::tempdir().unwrap();
+        let start = CuaDriverConfig {
+            enabled: true,
+            apps: vec![app("Zotero", "org.zotero.zotero")],
+            ..Default::default()
+        };
+        let state = state(start.clone(), dir.path());
+        let next = CuaDriverConfig {
+            apps: vec![
+                app("Zotero", "org.zotero.zotero"),
+                app("Excel", "com.microsoft.Excel"),
+            ],
+            ..start
+        };
+        // While the first question is open, Zotero is removed from the
+        // settings: saving `next` would now allow it again, which the
+        // question never listed.
+        let asked = Arc::new(Mutex::new(Vec::<Vec<String>>::new()));
+        let confirm = {
+            let asked = asked.clone();
+            let state = state.clone();
+            move |lines: Vec<String>| -> BoxFuture<'static, bool> {
+                let mut asked = asked.lock().unwrap();
+                if asked.is_empty() {
+                    state.set_settings(CuaDriverConfig {
+                        enabled: true,
+                        ..Default::default()
+                    });
+                }
+                asked.push(lines);
+                Box::pin(async { true })
+            }
+        };
+        apply_settings(
+            &state,
+            next.clone(),
+            Platform::Macos,
+            &Echo,
+            "oleafly",
+            None,
+            confirm,
+        )
+        .await
+        .unwrap();
+        let asked = asked.lock().unwrap();
+        assert_eq!(asked.len(), 2, "{asked:?}");
+        assert_eq!(asked[0], vec!["App: Excel (com.microsoft.Excel)"]);
+        assert_eq!(
+            asked[1],
+            vec![
+                "App: Zotero (org.zotero.zotero)".to_string(),
+                "App: Excel (com.microsoft.Excel)".into()
+            ]
+        );
+        assert_eq!(state.settings(), next);
+    }
+
     #[test]
     fn the_tool_spec_is_null_until_ready() {
         let dir = tempfile::tempdir().unwrap();
@@ -748,7 +1029,14 @@ mod tests {
     fn widening_lines_name_each_change() {
         let lines = widening_lines(&[
             Widening::Enabled,
-            Widening::App("Excel".into()),
+            Widening::App {
+                name: "Excel".into(),
+                identity: "com.microsoft.Excel".into(),
+            },
+            Widening::App {
+                name: "Stata".into(),
+                identity: r"C:\Program Files\Stata 18\StataSE-64.exe".into(),
+            },
             Widening::Site("https://a.org".into()),
             Widening::SignedIn("https://a.org".into()),
             Widening::ScriptedControl,
@@ -757,7 +1045,8 @@ mod tests {
             lines,
             vec![
                 "Desktop apps".to_string(),
-                "App: Excel".into(),
+                "App: Excel (com.microsoft.Excel)".into(),
+                r"App: Stata (C:\Program Files\Stata 18\StataSE-64.exe)".into(),
                 "Website: https://a.org".into(),
                 "Your signed-in browser on https://a.org".into(),
                 "Cua scripts".into(),
@@ -773,6 +1062,7 @@ mod tests {
         let json = serde_json::to_value(&status).unwrap();
         assert!(json.get("installCommand").is_some());
         assert!(json.get("spacesInstallLine").is_some());
+        assert_eq!(json["missingApps"], serde_json::json!([]));
         assert_eq!(json["minimumVersion"], "0.36.0");
     }
 }

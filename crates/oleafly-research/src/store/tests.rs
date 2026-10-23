@@ -783,6 +783,15 @@ fn brief_limits_are_enforced() {
     );
     assert_eq!(
         with(&|brief| {
+            brief.compute.resources = Some(crate::model::Resources {
+                time_minutes: Some(brief.budget.run_timeout_minutes + 1),
+                ..Default::default()
+            })
+        }),
+        "The cluster time limit cannot be longer than each run's time limit."
+    );
+    assert_eq!(
+        with(&|brief| {
             brief.primary_metric = Some(crate::model::PrimaryMetric {
                 name: "a b".into(),
                 goal: crate::model::MetricGoal::Maximize,
@@ -1193,13 +1202,70 @@ mod handoff {
             .unwrap()
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 3);
+        assert_eq!(version, 4);
         let task = store.require("task-v2").unwrap();
         assert!(task.keep_running_after_quit);
         assert_eq!(task.owner, OwnerKind::Daemon);
         assert!(!task.reclaim_requested);
         assert_eq!(task.resumed_from, None);
         assert!(store.handoff_record("task-v2").unwrap().is_none());
+    }
+
+    #[test]
+    fn a_version_3_store_gains_the_indexed_row_kind() {
+        let (temp, store) = store();
+        let task = claimed(&store, "Long transcript");
+        let generation = task.execution_generation;
+        for text in ["one", "two"] {
+            store
+                .append_event(
+                    &task.id,
+                    generation,
+                    &TaskRuntimeEvent::Text { text: text.into() },
+                )
+                .unwrap();
+        }
+        store
+            .append_event(
+                &task.id,
+                generation,
+                &TaskRuntimeEvent::Status {
+                    message: "Working on step 1.".into(),
+                },
+            )
+            .unwrap();
+        // A store from before the column: no `kind`, version 3.
+        let path = temp.path().join("tasks").join("tasks.sqlite3");
+        let connection = Connection::open(&path).unwrap();
+        connection
+            .execute_batch(
+                "DROP INDEX research_task_events_kind;
+                 ALTER TABLE research_task_events DROP COLUMN kind;
+                 PRAGMA user_version = 3;",
+            )
+            .unwrap();
+        drop(connection);
+
+        let store = TaskStore::new(temp.path().join("tasks")).unwrap();
+        // The rows written before get their kind, and counting uses the index.
+        assert_eq!(store.text_event_count(&task.id, generation).unwrap(), 2);
+        let connection = Connection::open(&path).unwrap();
+        let plan: Vec<String> = connection
+            .prepare(
+                "EXPLAIN QUERY PLAN SELECT COUNT(*) FROM research_task_events
+                 WHERE task_id = 't' AND execution_generation = 1
+                   AND kind IN (SELECT value FROM json_each('[\"text\"]'))",
+            )
+            .unwrap()
+            .query_map([], |row| row.get::<_, String>(3))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert!(
+            plan.iter()
+                .any(|step| step.contains("research_task_events_kind")),
+            "{plan:?}"
+        );
     }
 
     #[test]

@@ -1,10 +1,11 @@
 use super::preferences::{AgentPreferences, AgentRuntimeInfo, ProjectAgentSettings};
-use super::types::{AcpEvent, AgentDefinition, EventPage, SessionRecord, SessionStatus};
-use rusqlite::{params, Connection, OptionalExtension};
+use super::types::{AcpEvent, AgentDefinition, EventPage, SessionRecord};
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{path::Path, sync::Mutex};
 
 const UNAVAILABLE: &str = "ACP storage is unavailable.";
+const INTERRUPTED: &str = "The app closed before this session disconnected. You can read the saved conversation or reconnect.";
 
 pub struct Store {
     db: Mutex<Connection>,
@@ -21,6 +22,17 @@ fn decode(record: &str, updated_at: i64, last_sequence: i64) -> Result<SessionRe
         .last_sequence
         .max(u64::try_from(last_sequence).unwrap_or(0));
     Ok(session)
+}
+
+/// Keeps what searches look at (title, agent) in step with the record.
+fn index_for_search(tx: &Transaction, session: &SessionRecord) -> Result<(), String> {
+    tx.execute(
+        "INSERT INTO session_search (session_id, title, agent_id) VALUES (?1,?2,?3)
+         ON CONFLICT(session_id) DO UPDATE SET title=excluded.title, agent_id=excluded.agent_id",
+        params![session.id, session.title, session.agent_id],
+    )
+    .map(|_| ())
+    .map_err(|e| e.to_string())
 }
 
 fn signed(value: u64) -> i64 {
@@ -56,7 +68,8 @@ impl Store {
             CREATE TABLE IF NOT EXISTS agent_preferences (agent_id TEXT PRIMARY KEY, prefs TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS project_agent_settings (project_id TEXT NOT NULL, agent_id TEXT NOT NULL, settings TEXT NOT NULL, PRIMARY KEY(project_id, agent_id));
             CREATE TABLE IF NOT EXISTS agent_runtime (agent_id TEXT PRIMARY KEY, info TEXT NOT NULL);
-            CREATE TABLE IF NOT EXISTS session_counters (session_id TEXT PRIMARY KEY, last_sequence INTEGER NOT NULL);").map_err(|e| e.to_string())?;
+            CREATE TABLE IF NOT EXISTS session_counters (session_id TEXT PRIMARY KEY, last_sequence INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS session_search (session_id TEXT PRIMARY KEY, title TEXT NOT NULL, agent_id TEXT NOT NULL);").map_err(|e| e.to_string())?;
         let has_sequence = {
             let mut statement = db
                 .prepare("PRAGMA table_info(sessions)")
@@ -89,30 +102,30 @@ impl Store {
             [],
         )
         .map_err(|e| e.to_string())?;
-        let store = Self { db: Mutex::new(db) };
-        let mut after = None;
-        loop {
-            let page = store.sessions_page(after.as_deref(), 500)?;
-            if page.is_empty() {
-                break;
-            }
-            after = page.last().map(|session| session.id.clone());
-            for mut session in page {
-                if matches!(
-                    session.status,
-                    SessionStatus::Running
-                        | SessionStatus::Connecting
-                        | SessionStatus::Ready
-                        | SessionStatus::Cancelling
-                        | SessionStatus::AuthRequired
-                ) {
-                    session.status = SessionStatus::Disconnected;
-                    session.error = Some("The app closed before this session disconnected. You can read the saved conversation or reconnect.".into());
-                    store.save(&session)?;
-                }
-            }
-        }
-        Ok(store)
+        // What searches look at lives in a table of its own, so a search
+        // never parses the records. 0.4.7 does not write it: sessions it saved
+        // are added here, and ones it deleted are dropped.
+        db.execute(
+            "DELETE FROM session_search WHERE session_id NOT IN (SELECT id FROM sessions)",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        db.execute(
+            "INSERT INTO session_search (session_id, title, agent_id)
+             SELECT id, COALESCE(json_extract(record,'$.title'),''), COALESCE(json_extract(record,'$.agentId'),'')
+             FROM sessions WHERE id NOT IN (SELECT session_id FROM session_search)",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+        // No agent is connected yet: whatever a session was doing, it is not
+        // any more.
+        db.execute(
+            "UPDATE sessions SET record=json_set(record,'$.status','disconnected','$.error',?1)
+             WHERE json_extract(record,'$.status') IN ('running','connecting','ready','cancelling','auth_required')",
+            [INTERRUPTED],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(Self { db: Mutex::new(db) })
     }
 
     fn lock(&self) -> Result<std::sync::MutexGuard<'_, Connection>, String> {
@@ -142,6 +155,7 @@ impl Store {
             params![session.id, signed(session.last_sequence)],
         )
         .map_err(|e| e.to_string())?;
+        index_for_search(&tx, session)?;
         tx.commit().map_err(|e| e.to_string())
     }
 
@@ -209,14 +223,20 @@ impl Store {
         )
         .map_err(|e| e.to_string())?;
         let updated = match record {
-            Some(record) => tx.execute(
-                "UPDATE sessions SET record=?1, updated_at=?2 WHERE id=?3",
-                params![
-                    serde_json::to_string(record).map_err(|e| e.to_string())?,
-                    signed(event.timestamp),
-                    event.session_id
-                ],
-            ),
+            Some(record) => {
+                let updated = tx.execute(
+                    "UPDATE sessions SET record=?1, updated_at=?2 WHERE id=?3",
+                    params![
+                        serde_json::to_string(record).map_err(|e| e.to_string())?,
+                        signed(event.timestamp),
+                        event.session_id
+                    ],
+                );
+                if updated.as_ref().is_ok_and(|rows| *rows > 0) {
+                    index_for_search(&tx, record)?;
+                }
+                updated
+            }
             None => tx.execute(
                 "UPDATE sessions SET updated_at=?1 WHERE id=?2",
                 params![signed(event.timestamp), event.session_id],
@@ -294,14 +314,17 @@ impl Store {
         )
     }
 
-    /// A project's conversations, newest first: `before` is the update time
-    /// of the last one already shown; `query` matches titles and agent ids
-    /// literally.
+    /// A project's conversations, newest first. `before` is the update time
+    /// of the last one already shown and `before_id` its id: together they
+    /// are where the next page starts, so conversations that share a
+    /// timestamp are not skipped (with `before` alone, only older ones
+    /// follow). `query` matches titles and agent ids literally.
     pub fn page(
         &self,
         project: &str,
         query: Option<&str>,
         before: Option<u64>,
+        before_id: Option<&str>,
         limit: usize,
     ) -> Result<(Vec<SessionRecord>, bool), String> {
         let limit = limit.clamp(1, 200);
@@ -311,11 +334,11 @@ impl Store {
             .map(like_pattern);
         let mut sessions = self.query_records(
             "SELECT record, updated_at, COALESCE((SELECT last_sequence FROM session_counters WHERE session_id=sessions.id),0) FROM sessions WHERE project_id=?1
-             AND (?2 IS NULL OR json_extract(record,'$.title') LIKE ?2 ESCAPE '\\'
-                  OR json_extract(record,'$.agentId') LIKE ?2 ESCAPE '\\')
-             AND (?3 IS NULL OR updated_at < ?3)
-             ORDER BY updated_at DESC, id DESC LIMIT ?4",
-            params![project, pattern, before.map(signed), limit + 1],
+             AND (?2 IS NULL OR id IN (SELECT session_id FROM session_search
+                  WHERE title LIKE ?2 ESCAPE '\\' OR agent_id LIKE ?2 ESCAPE '\\'))
+             AND (?3 IS NULL OR updated_at < ?3 OR (updated_at = ?3 AND ?4 IS NOT NULL AND id < ?4))
+             ORDER BY updated_at DESC, id DESC LIMIT ?5",
+            params![project, pattern, before.map(signed), before_id, limit + 1],
         )?;
         let has_more = sessions.len() > limit;
         sessions.truncate(limit);
@@ -340,27 +363,48 @@ impl Store {
     }
 
     /// Copies a conversation's events to another session (a fork); returns
-    /// the last sequence copied.
+    /// the last sequence copied. The copy goes in chunks so appends of other
+    /// sessions are not held up behind one long write, and stops at the last
+    /// event the conversation had when it began.
     pub fn copy_events(&self, from: &str, to: &str) -> Result<u64, String> {
-        let mut db = self.lock()?;
-        let tx = db.transaction().map_err(|e| e.to_string())?;
-        tx.execute(
-            "INSERT INTO events (session_id, sequence, event)
-             SELECT ?2, sequence, json_set(event, '$.sessionId', ?2) FROM events WHERE session_id=?1",
-            params![from, to],
-        )
-        .map_err(|e| e.to_string())?;
-        let last: Option<i64> = tx
-            .query_row(
-                "SELECT MAX(sequence) FROM events WHERE session_id=?1",
-                [to],
-                |row| row.get(0),
-            )
-            .map_err(|e| e.to_string())?;
-        tx.commit().map_err(|e| e.to_string())?;
-        Ok(last
-            .and_then(|value| u64::try_from(value).ok())
-            .unwrap_or(0))
+        const CHUNK: i64 = 500;
+        let end = self.last_sequence(from)?;
+        let mut copied = 0i64;
+        let result = (|| -> Result<(), String> {
+            loop {
+                let db = self.lock()?;
+                let rows = db
+                    .execute(
+                        "INSERT INTO events (session_id, sequence, event)
+                         SELECT ?2, sequence, json_set(event, '$.sessionId', ?2) FROM events
+                         WHERE session_id=?1 AND sequence>?3 AND sequence<=?4
+                         ORDER BY sequence LIMIT ?5",
+                        params![from, to, copied, signed(end), CHUNK],
+                    )
+                    .map_err(|e| e.to_string())?;
+                if rows == 0 {
+                    return Ok(());
+                }
+                copied = db
+                    .query_row(
+                        "SELECT MAX(sequence) FROM events WHERE session_id=?1",
+                        [to],
+                        |row| row.get(0),
+                    )
+                    .map_err(|e| e.to_string())?;
+                if rows < CHUNK as usize {
+                    return Ok(());
+                }
+            }
+        })();
+        if let Err(error) = result {
+            // Never leave half a transcript behind.
+            if let Ok(db) = self.lock() {
+                let _ = db.execute("DELETE FROM events WHERE session_id=?1", [to]);
+            }
+            return Err(error);
+        }
+        Ok(u64::try_from(copied).unwrap_or(0))
     }
 
     pub fn delete_session(&self, id: &str) -> Result<(), String> {
@@ -371,6 +415,8 @@ impl Store {
         tx.execute("DELETE FROM sessions WHERE id=?1", [id])
             .map_err(|e| e.to_string())?;
         tx.execute("DELETE FROM session_counters WHERE session_id=?1", [id])
+            .map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM session_search WHERE session_id=?1", [id])
             .map_err(|e| e.to_string())?;
         tx.commit().map_err(|e| e.to_string())
     }
@@ -383,10 +429,13 @@ impl Store {
         Ok(record)
     }
 
+    /// The size of a session's events toward its transcript cap. Usage
+    /// events are not counted (the runtime leaves them out too).
     pub fn byte_count(&self, id: &str) -> Result<usize, String> {
         self.lock()?
             .query_row(
-                "SELECT COALESCE(SUM(length(event)),0) FROM events WHERE session_id=?1",
+                "SELECT COALESCE(SUM(length(event)),0) FROM events WHERE session_id=?1
+                 AND event NOT LIKE '%\"kind\":\"usage\"%'",
                 [id],
                 |row| row.get(0),
             )

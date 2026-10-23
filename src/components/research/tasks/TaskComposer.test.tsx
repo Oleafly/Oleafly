@@ -43,20 +43,30 @@ vi.mock("@/components/settings/research/ComputeBriefFields", () => ({
     value,
     disabled,
     onChange,
+    onProblemChange,
   }: {
     id: string;
     value: { target: string | null };
     disabled?: boolean;
     onChange: (next: { executor: string; target: string | null; resources: null }) => void;
+    onProblemChange?: (problem: boolean) => void;
   }) => (
-    <button
-      id={id}
-      type="button"
-      disabled={disabled}
-      onClick={() => onChange({ executor: "slurm", target: "t-s", resources: null })}
-    >
-      {`Runs on ${value.target ?? "this computer"}`}
-    </button>
+    <>
+      <button
+        id={id}
+        type="button"
+        disabled={disabled}
+        onClick={() => onChange({ executor: "slurm", target: "t-s", resources: null })}
+      >
+        {`Runs on ${value.target ?? "this computer"}`}
+      </button>
+      <button type="button" data-testid="compute-problem" onClick={() => onProblemChange?.(true)}>
+        {"problem"}
+      </button>
+      <button type="button" data-testid="compute-fixed" onClick={() => onProblemChange?.(false)}>
+        {"fixed"}
+      </button>
+    </>
   ),
 }));
 
@@ -156,6 +166,15 @@ function props(editingTask: ResearchTask | null = null) {
 
 function page() {
   return within(document.body);
+}
+
+/** A local date and time `days` from now, as a date field holds it; tests must not depend on today's date. */
+function startIn(days: number, hours = 9, minutes = 30): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  date.setHours(hours, minutes, 0, 0);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 async function fill(label: string, value: string) {
@@ -516,15 +535,16 @@ describe("TaskComposer brief", () => {
 
   it("schedules a start time", async () => {
     const input = props();
+    const at = startIn(2);
     render(<TaskComposer {...input} />);
     await named();
     openBrief();
-    fireEvent.change(page().getByLabelText(brief.startAtLabel), { target: { value: "2026-10-20T09:30" } });
+    fireEvent.change(page().getByLabelText(brief.startAtLabel), { target: { value: at } });
     create();
 
     await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
     expect(input.onCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ runAfter: new Date("2026-10-20T09:30").getTime(), keepRunningAfterQuit: false }),
+      expect.objectContaining({ runAfter: new Date(at).getTime(), keepRunningAfterQuit: false }),
     );
   });
 
@@ -632,7 +652,8 @@ describe("TaskComposer brief", () => {
     await backgroundWorkLoaded();
     expect(page().getByRole("combobox", { name: brief.timeLabel })).toHaveTextContent("30 minutes");
     fireEvent.click(page().getByRole("checkbox", { name: new RegExp(brief.reviewPlan) }));
-    fireEvent.change(page().getByLabelText(brief.startAtLabel), { target: { value: "2026-10-21T08:00" } });
+    const at = startIn(3, 8, 0);
+    fireEvent.change(page().getByLabelText(brief.startAtLabel), { target: { value: at } });
     fireEvent.click(page().getByRole("checkbox", { name: new RegExp(brief.keepRunning) }));
     fireEvent.keyDown(page().getByRole("dialog"), { key: "Escape" });
 
@@ -641,7 +662,7 @@ describe("TaskComposer brief", () => {
     expect(saved).toMatchObject({
       title: "Draft",
       prompt: "Notes",
-      runAfter: new Date("2026-10-21T08:00").getTime(),
+      runAfter: new Date(at).getTime(),
       keepRunning: true,
       brief: { reviewPlanFirst: true, budget: { wallClockMinutes: 30 } },
     });
@@ -659,16 +680,17 @@ describe("TaskComposer brief", () => {
     const draft = sent(input.onCreate);
     expect(draft.brief.reviewPlanFirst).toBe(true);
     expect(draft.brief.budget.wallClockMinutes).toBe(30);
-    expect(draft.runAfter).toBe(new Date("2026-10-21T08:00").getTime());
+    expect(draft.runAfter).toBe(new Date(at).getTime());
     expect(draft.keepRunningAfterQuit).toBe(true);
   });
 
   it("edits a task's brief, start time and keep-running choice", async () => {
     appConfig.get.mockResolvedValue({ research_background_enabled: true, research_time_budget_minutes: 720 });
+    const at = startIn(4, 7, 15);
     const editing: ResearchTask = {
       ...task("planned"),
       brief: briefFixture({ goal: "Old goal", reviewPlanFirst: true }),
-      runAfter: new Date("2026-10-22T07:15").getTime(),
+      runAfter: new Date(at).getTime(),
       keepRunningAfterQuit: true,
     };
     const input = props(editing);
@@ -677,7 +699,7 @@ describe("TaskComposer brief", () => {
     openBrief();
     await backgroundWorkLoaded();
     expect(page().getByRole("checkbox", { name: new RegExp(brief.keepRunning) })).toBeChecked();
-    expect(page().getByLabelText(brief.startAtLabel)).toHaveValue("2026-10-22T07:15");
+    expect(page().getByLabelText(brief.startAtLabel)).toHaveValue(at);
     expect(page().getByRole("combobox", { name: brief.timeLabel })).toHaveTextContent("2 hours");
     fireEvent.change(page().getByLabelText(brief.goalLabel), { target: { value: "New goal" } });
     fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask }));
@@ -687,9 +709,160 @@ describe("TaskComposer brief", () => {
       "planned",
       expect.objectContaining({
         brief: briefFixture({ goal: "New goal", reviewPlanFirst: true }),
-        runAfter: new Date("2026-10-22T07:15").getTime(),
+        runAfter: new Date(at).getTime(),
         keepRunningAfterQuit: true,
       }),
     );
+  });
+  it("undoes the plan review an earlier starter turned on when another starter is chosen", async () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.starter.experimentLoop.label);
+    openBrief();
+    expect(page().getByRole("checkbox", { name: new RegExp(brief.reviewPlan) })).toBeChecked();
+
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.starter.literatureReview.label);
+
+    expect(page().getByRole("checkbox", { name: new RegExp(brief.reviewPlan) })).not.toBeChecked();
+    create();
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+    expect(input.onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ skillIds: ["literature-review"], brief: briefFixture() }),
+    );
+  });
+
+  it("keeps a plan review the user chose themselves when another starter is chosen", () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    openBrief();
+    fireEvent.click(page().getByRole("checkbox", { name: new RegExp(brief.reviewPlan) }));
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.starter.experimentLoop.label);
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.starter.analysis.label);
+
+    expect(page().getByRole("checkbox", { name: new RegExp(brief.reviewPlan) })).toBeChecked();
+  });
+
+  it("keeps a plan review a starter turned on if the user turned it off and on again", () => {
+    render(<TaskComposer {...props()} />);
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.starter.experimentLoop.label);
+    openBrief();
+    const plan = page().getByRole("checkbox", { name: new RegExp(brief.reviewPlan) });
+    fireEvent.click(plan);
+    fireEvent.click(plan);
+    expect(plan).toBeChecked();
+
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.composer.blankStarter);
+
+    // It still holds the value the starter set, so it goes back with the starter.
+    expect(plan).not.toBeChecked();
+  });
+
+  it("asks before a starter replaces what the user typed, and keeps it on request", async () => {
+    render(<TaskComposer {...props()} />);
+    await named("My title", "My own instructions");
+
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+
+    expect(page().getByRole("alert")).toHaveTextContent(enResearchTools.tasks.composer.replaceText);
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("My title");
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.keepText }));
+    expect(page().queryByRole("alert")).toBeNull();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.promptLabel)).toHaveValue("My own instructions");
+  });
+
+  it("replaces what the user typed when they confirm the starter", async () => {
+    render(<TaskComposer {...props()} />);
+    await named("My title", "My own instructions");
+
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.replaceConfirm }));
+
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue(
+      enResearchTools.tasks.starter.analysis.title,
+    );
+    expect(page().queryByRole("alert")).toBeNull();
+  });
+
+  it("does not ask when the text is still the last starter's", () => {
+    render(<TaskComposer {...props()} />);
+    choose(enResearchTools.tasks.composer.starterLabel, "Analysis");
+    choose(enResearchTools.tasks.composer.starterLabel, enResearchTools.tasks.starter.literatureReview.label);
+
+    expect(page().queryByRole("alert")).toBeNull();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue(
+      enResearchTools.tasks.starter.literatureReview.title,
+    );
+  });
+
+  it("opens the options on a saved draft that holds a bad value and says so while they are folded", async () => {
+    const input = props();
+    const first = render(<TaskComposer {...input} />);
+    await named("Draft", "Notes");
+    openBrief();
+    fireEvent.change(page().getByLabelText(brief.costLabel), { target: { value: "abc" } });
+    openBrief();
+
+    expect(page().getByTestId("research-brief-problem")).toHaveTextContent(brief.problemHidden);
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeDisabled();
+    fireEvent.keyDown(page().getByRole("dialog"), { key: "Escape" });
+    first.unmount();
+
+    render(<TaskComposer {...input} />);
+    // The restored draft shows the problem where it can be fixed.
+    expect(page().getByTestId("research-brief-more")).toHaveAttribute("aria-expanded", "true");
+    expect(page().getByText(brief.invalidCost)).toBeInTheDocument();
+    expect(page().queryByTestId("research-brief-problem")).toBeNull();
+  });
+
+  it("blocks saving while the run settings have a problem and allows it once fixed", async () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await named();
+    openBrief();
+    fireEvent.click(await page().findByTestId("compute-problem"));
+    openBrief();
+
+    expect(page().getByTestId("research-brief-problem")).toBeInTheDocument();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeDisabled();
+
+    openBrief();
+    fireEvent.click(await page().findByTestId("compute-fixed"));
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeEnabled();
+    create();
+    await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+  });
+
+  it("treats a start time that already passed as starting now when a queued task is edited", async () => {
+    const editing: ResearchTask = { ...task("late"), runAfter: Date.now() - 6 * 60 * 60 * 1000 };
+    const input = props(editing);
+    render(<TaskComposer {...input} />);
+    openBrief();
+
+    expect(page().getByLabelText(brief.startAtLabel)).toHaveValue("");
+    expect(page().getByText(brief.startNow)).toBeInTheDocument();
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask }));
+
+    await waitFor(() => expect(input.onSave).toHaveBeenCalledOnce());
+    expect(input.onSave).toHaveBeenCalledWith("late", expect.objectContaining({ runAfter: null }));
+  });
+
+  it("explains a start time in the past or more than 30 days ahead and does not save it", async () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await named();
+    openBrief();
+    const start = page().getByLabelText(brief.startAtLabel);
+    expect(start).toHaveAttribute("max", expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/));
+
+    fireEvent.change(start, { target: { value: startIn(-2) } });
+    expect(page().getByText(brief.invalidStart)).toBeInTheDocument();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeDisabled();
+
+    fireEvent.change(start, { target: { value: startIn(45) } });
+    expect(page().getByText(brief.invalidStart)).toBeInTheDocument();
+
+    fireEvent.change(start, { target: { value: startIn(5) } });
+    expect(page().queryByText(brief.invalidStart)).toBeNull();
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeEnabled();
   });
 });

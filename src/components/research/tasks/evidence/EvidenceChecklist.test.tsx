@@ -81,7 +81,7 @@ describe("EvidenceChecklist", () => {
 
   it("lets the user check again after a refresh fails", async () => {
     const pending = deferred();
-    const onRefresh = vi.fn(() => pending.promise);
+    const onRefresh = vi.fn((): Promise<void> => pending.promise);
     render(<EvidenceChecklist report={null} checking={false} onRefresh={onRefresh} />);
 
     await userEvent.click(screen.getByRole("button", { name: evidence.refresh }));
@@ -89,7 +89,12 @@ describe("EvidenceChecklist", () => {
     await act(async () => pending.reject(new Error("The task workspace is gone.")));
 
     await waitFor(() => expect(screen.getByRole("button", { name: evidence.refresh })).toBeEnabled());
-    expect(screen.queryByText("The task workspace is gone.")).toBeNull();
+    // The checks did not run, so the checklist says why instead of looking unchanged.
+    expect(screen.getByRole("alert")).toHaveTextContent("The task workspace is gone.");
+
+    onRefresh.mockResolvedValueOnce(undefined);
+    await userEvent.click(screen.getByRole("button", { name: evidence.refresh }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   });
 
   it("says it is checking before the first report and while the backend checks", () => {

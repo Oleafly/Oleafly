@@ -1,7 +1,7 @@
 //! ACP protocol v2 (draft), used when the "Use ACP v2 when available"
 //! Experimental switch is on. Everything v2 sends is translated to the v1
 //! shapes the rest of Oleafly understands.
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 
 use serde_json::{json, Value};
 
@@ -95,7 +95,9 @@ struct MessageText {
 pub struct V2Translator {
     messages: HashMap<(String, String, String), MessageText>,
     order: VecDeque<(String, String, String)>,
-    tools: HashSet<(String, String)>,
+    /// Tool ids seen, each with when it was last seen (a counter).
+    tools: HashMap<(String, String), u64>,
+    tick: u64,
 }
 
 fn joined_text(content: &Value) -> String {
@@ -141,12 +143,28 @@ impl V2Translator {
         );
     }
 
-    /// Marks a tool id as seen; true the first time.
+    /// Marks a tool id as seen; true the first time. Past the limit the id
+    /// seen longest ago is forgotten, so a call still running keeps its
+    /// card.
     fn first_sight(&mut self, session: &str, id: &str) -> bool {
-        if self.tools.len() >= MAX_TOOL_IDS {
-            self.tools.clear();
+        self.tick += 1;
+        let key = (session.to_owned(), id.to_owned());
+        if let Some(seen) = self.tools.get_mut(&key) {
+            *seen = self.tick;
+            return false;
         }
-        self.tools.insert((session.to_owned(), id.to_owned()))
+        if self.tools.len() >= MAX_TOOL_IDS {
+            let oldest = self
+                .tools
+                .iter()
+                .min_by_key(|(_, seen)| **seen)
+                .map(|(key, _)| key.clone());
+            if let Some(oldest) = oldest {
+                self.tools.remove(&oldest);
+            }
+        }
+        self.tools.insert(key, self.tick);
+        true
     }
 
     fn upsert_message(&mut self, session: &str, kind: &str, update: &Value) -> Vec<Translated> {
@@ -267,6 +285,11 @@ impl V2Translator {
                 )]
             }
             "plan_update" => vec![Self::wrap(session, Self::plan(update))],
+            // The plan is gone: an empty one clears it from view.
+            "plan_removed" => vec![Self::wrap(
+                session,
+                json!({"sessionUpdate": "plan", "entries": []}),
+            )],
             "state_update" => match update["state"].as_str() {
                 Some("idle") => {
                     let mut outcome = json!({
@@ -431,6 +454,65 @@ mod tests {
         assert_eq!(update["update"]["sessionUpdate"], "agent_thought_chunk");
         assert_eq!(update["update"]["replace"], true);
         assert_eq!(update["update"]["content"]["text"], "Another");
+    }
+
+    fn tool_kinds(translated: &[Translated]) -> Vec<String> {
+        translated
+            .iter()
+            .filter_map(|item| match item {
+                Translated::Update(params) => params["update"]["sessionUpdate"]
+                    .as_str()
+                    .map(str::to_owned),
+                Translated::TurnEnd { .. } => None,
+            })
+            .collect()
+    }
+
+    fn tool_update(id: &str) -> Value {
+        json!({"sessionId": "s", "update": {"sessionUpdate": "tool_call_update", "toolCallId": id, "status": "in_progress"}})
+    }
+
+    #[test]
+    fn a_running_tool_keeps_its_card_after_thousands_of_other_tool_ids() {
+        let mut translator = V2Translator::default();
+        assert_eq!(
+            tool_kinds(&translator.translate(&tool_update("long-running"))),
+            ["tool_call"]
+        );
+        for index in 0..MAX_TOOL_IDS + 100 {
+            translator.translate(&tool_update(&format!("other-{index}")));
+            // The long call keeps reporting, so it is never the oldest.
+            if index % 100 == 0 {
+                assert_eq!(
+                    tool_kinds(&translator.translate(&tool_update("long-running"))),
+                    ["tool_call_update"]
+                );
+            }
+        }
+        assert_eq!(
+            tool_kinds(&translator.translate(&tool_update("long-running"))),
+            ["tool_call_update"]
+        );
+        assert!(translator.tools.len() <= MAX_TOOL_IDS);
+        // An id that fell out long ago starts a new card, as before.
+        assert_eq!(
+            tool_kinds(&translator.translate(&tool_update("other-0"))),
+            ["tool_call"]
+        );
+    }
+
+    #[test]
+    fn a_removed_plan_becomes_an_empty_plan() {
+        let mut translator = V2Translator::default();
+        let translated = translator.translate(
+            &json!({"sessionId": "s", "update": {"sessionUpdate": "plan_removed", "planId": "p1"}}),
+        );
+        let [Translated::Update(params)] = translated.as_slice() else {
+            panic!("one update");
+        };
+        assert_eq!(params["sessionId"], "s");
+        assert_eq!(params["update"]["sessionUpdate"], "plan");
+        assert_eq!(params["update"]["entries"], json!([]));
     }
 
     #[test]

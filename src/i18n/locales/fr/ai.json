@@ -43,13 +43,15 @@
       "command": "Confirmer la commande",
       "externalTool": "Confirmer l'action de l'outil externe",
       "internet": "Confirmer l'accès à internet",
-      "edit": "Confirmer la modification par l'IA"
+      "edit": "Confirmer la modification par l'IA",
+      "researchTask": "Confirmer la tâche de recherche"
     },
     "headline": {
       "command": "L'assistant veut exécuter cette commande",
       "externalTool": "L'assistant veut utiliser un outil externe",
       "internet": "L'assistant veut accéder à internet",
-      "edit": "L'assistant veut modifier vos fichiers"
+      "edit": "L'assistant veut modifier vos fichiers",
+      "researchTask": "L'assistant veut créer une tâche de recherche"
     },
     "mcpNote": "Cela envoie les arguments ci-dessous au serveur MCP configuré.",
     "line": "ligne {{line}}",
@@ -71,6 +73,23 @@
       "moreWaiting_one": "{{count}} autre en attente",
       "moreWaiting_many": "{{count}} autres en attente",
       "moreWaiting_other": "{{count}} autres en attente"
+    },
+    "researchTask": {
+      "note": "La tâche travaille de son côté dans une copie du projet. Vous relisez ses modifications ensuite.",
+      "title": "Titre",
+      "goal": "Objectif",
+      "skills": "Compétences",
+      "prompt": "Instructions",
+      "commands": "Commandes",
+      "commandsAsk": "Demander avant chacune",
+      "network": "Réseau",
+      "timeBudget": "Budget de temps",
+      "timeBudgetDefault": "Par défaut",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "planFirst": "Planifier d'abord",
+      "startNow": "Démarrer maintenant",
+      "minutes_many": "{{count}} minutes"
     }
   },
   "attachments": {
@@ -97,7 +116,9 @@
     "saveFailed": "Impossible d'enregistrer {{name}}.",
     "missing": "{{name}} n'est plus disponible.",
     "sentAsText": "{{name}} a été envoyé comme texte, car ce modèle ne peut pas le lire comme fichier.",
-    "skipped": "{{name}} n'a pas été envoyé."
+    "skipped": "{{name}} n'a pas été envoyé.",
+    "dropUnreadable": "Impossible de lire {{names}}.",
+    "notReplayed": "Les fichiers d'une version plus ancienne ne peuvent pas être renvoyés : {{names}}."
   },
   "chat": {
     "pill": {
@@ -601,7 +622,10 @@
       "queued": "En attente : envoyé quand l'agent aura terminé",
       "remove": "Retirer le message en attente",
       "sendNow": "Envoyer maintenant",
-      "sendFailed": "Ce message n'a pas été envoyé. Renvoyez-le ou retirez-le."
+      "sendFailed": "Ce message n'a pas été envoyé. Renvoyez-le ou retirez-le.",
+      "queuedConnecting": "En attente : envoyé quand l'agent sera prêt",
+      "retry": "Renvoyer",
+      "edit": "Modifier"
     },
     "slash": {
       "commands": "Commandes de l'agent",
@@ -641,7 +665,9 @@
       "apiKeyPlaceholder": "Collez votre clé API",
       "geminiGoogle": "La connexion avec Google ne fonctionne plus pour les offres individuelles. Utilisez une clé API Gemini ou Vertex AI.",
       "noProject": "Ouvrez un projet pour vous connecter depuis le terminal.",
-      "signOut": "Se déconnecter"
+      "signOut": "Se déconnecter",
+      "confirmTerminal": "{{agent}} se connecte avec la commande ci-dessous, qui s'exécute dans un onglet de terminal. Vérifiez-la avant d'accepter.",
+      "remote": "Cette conversation s'exécute sur une autre machine. Connectez-vous à l'agent là-bas."
     },
     "elicitation": {
       "ariaLabel": "Demande de l'agent",
@@ -654,7 +680,8 @@
       "openUrl": "Ouvrir dans le navigateur",
       "confirmTitle": "Ouvrir {{host}} ?",
       "confirmDescription": "L'agent vous demande de terminer une étape sur ce site. Il s'ouvre dans votre navigateur.",
-      "waiting": "En attente de la fin de l'étape sur le site."
+      "waiting": "En attente de la fin de l'étape sur le site.",
+      "openFailed": "Le lien n'a pas pu s'ouvrir dans votre navigateur."
     },
     "remote": {
       "banner": "Hermes s'exécute sur {{host}} via SSH. Ses modifications restent sur cette machine."
@@ -665,7 +692,6 @@
       "search": "Rechercher dans les conversations",
       "empty": "Aucune conversation ne correspond.",
       "loadMore": "Charger plus",
-      "open": "Ouvrir",
       "rename": "Renommer",
       "renameLabel": "Nom de la conversation",
       "delete": "Supprimer",
@@ -686,8 +712,11 @@
       "fork": "Dupliquer la conversation",
       "forkUnsupported": "Cet agent ne peut pas dupliquer les conversations.",
       "forkBusy": "Attendez que l'agent ait terminé avant de dupliquer.",
-      "v2": "Brouillon ACP v2",
-      "remote": "Distant"
+      "v2": "Aperçu du protocole",
+      "remote": "Distant",
+      "signOutTitle": "Se déconnecter de l'agent {{agent}} ?",
+      "signOutDescription": "Cela met fin à la connexion de l'agent {{agent}} elle-même. Un terminal qui utilise la même connexion est déconnecté aussi, et cette conversation s'arrête jusqu'à ce que vous vous reconnectiez.",
+      "signOutAccount": "Connecté avec {{account}}"
     },
     "commit": {
       "button": "Valider",

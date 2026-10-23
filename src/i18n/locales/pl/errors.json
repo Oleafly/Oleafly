@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} odmówił dostępu do tego repozytorium. Sprawdź, czy Twoje konto ma do niego dostęp. Jeśli organizacja używa logowania jednokrotnego (SSO), najpierw autoryzuj dla niej swoje logowanie.",
+    "access_denied_account": "{{host}} odmówił dostępu do tego repozytorium dla {{account}}. Sprawdź, czy to konto może z niego korzystać. Jeśli organizacja używa logowania jednokrotnego (SSO), najpierw autoryzuj dla niej swoje logowanie.",
     "account_missing": "Brak konta hostingu Git dla {{host}}. Dodaj je w Ustawieniach.",
     "archive_too_large": "Pliki repozytorium mają więcej niż {{limit}} MB, więc Oleafly nie może ich zaimportować. Sklonuj repozytorium samodzielnie i otwórz jego folder.",
-    "auth_rejected": "{{host}} odrzucił Twoje zapisane dane logowania. Zaloguj się ponownie do {{host}} w Ustawieniach.",
+    "auth_rejected": "{{host}} odrzucił zapisane dane logowania dla {{account}}. Zaloguj się ponownie do {{host}} w Ustawieniach.",
     "credentials_missing": "{{host}} poprosił o nazwę użytkownika i hasło. Zaloguj się do {{host}} w Ustawieniach albo skonfiguruj klucz SSH lub pomocnika poświadczeń Git.",
     "credentials_rejected": "{{host}} odrzucił nazwę użytkownika i hasło podane przez Git. Zaloguj się do {{host}} w Ustawieniach albo zaktualizuj poświadczenia, których używa Twój Git.",
     "device_flow_unavailable": "W tej wersji nie można zalogować się do {{host}} przez przeglądarkę. Użyj tokenu dostępu.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Repozytorium o tej nazwie już istnieje na {{host}}.",
     "forge_server_error": "{{host}} zwrócił błąd ({{status}}).",
     "forge_signed_out": "Twoje logowanie do {{host}} wygasło lub zostało cofnięte. Zaloguj się ponownie w Ustawieniach.",
+    "forge_sso_required": "{{host}} wymaga, aby to logowanie było autoryzowane dla logowania jednokrotnego (SSO) organizacji. Autoryzuj je w {{host}}, a potem spróbuj ponownie.",
     "forge_store": "Oleafly nie mógł odczytać ani zapisać Twoich kont hostingu Git.",
     "forge_token_invalid": "To nie wygląda na token dostępu. Wklej cały token.",
     "forge_token_rejected": "{{host}} nie przyjął tego tokenu. Sprawdź, czy skopiowano cały token i czy nie wygasł.",
     "forge_unknown_server": "Oleafly nie potrafi ustalić, jakim serwerem jest {{host}}. Wybierz typ serwera.",
     "host_key_unknown": "SSH jeszcze nie zna {{host}}. Połącz się z nim raz z terminala, aby zaakceptować jego klucz hosta, a potem spróbuj ponownie.",
     "host_unreachable": "Oleafly nie mógł połączyć się z {{host}}. Sprawdź adres i połączenie.",
+    "import_cancelled": "Import został anulowany.",
     "invalid_remote_url": "Wpisz adres HTTPS lub SSH repozytorium Git.",
     "nested_repository": "Ten projekt znajduje się w innym repozytorium Git, więc Oleafly nie utworzy tu osobnego repozytorium.",
     "not_installed": "Git nie jest zainstalowany na tym komputerze. Zainstaluj Git i spróbuj ponownie.",
     "push_rejected": "Zdalna gałąź ma commity, których ten projekt jeszcze nie ma. Najpierw pobierz zmiany, a potem wypchnij ponownie.",
     "remote_exists": "Ten projekt jest już powiązany z {{remote}}.",
-    "remote_has_password": "Usuń hasło z adresu. Oleafly loguje się zamiast tego Twoim kontem hostingu Git albo Twoimi własnymi poświadczeniami Git.",
+    "remote_has_password": "Usuń hasło albo token dostępu z adresu. Oleafly loguje się zamiast tego Twoim kontem hostingu Git albo Twoimi własnymi poświadczeniami Git.",
     "repository_empty": "To repozytorium nie ma jeszcze commitów, więc nie ma czego importować.",
     "repository_not_found": "{{host}} nie ma repozytorium pod tym adresem albo Twoje konto go nie widzi.",
     "sign_in_cancelled": "Logowanie zostało anulowane w przeglądarce.",
@@ -269,6 +272,14 @@
   "provider_credit": {
     "failed": "Oleafly nie mógł sprawdzić Twojego salda w {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 nie jest zainstalowany.",
+    "git_bash_missing": "Git Bash nie jest zainstalowany. Zainstaluj Git for Windows albo wybierz inny shell.",
+    "wsl_missing": "WSL nie jest zainstalowany.",
+    "wsl_no_distro": "WSL nie ma jeszcze żadnej dystrybucji Linuksa.",
+    "shell_path_empty": "Wpisz ścieżkę do shell w Ustawieniach albo wybierz inny shell.",
+    "shell_path_missing": "W {{path}} nie ma żadnego programu."
+  },
   "mathpix": {
     "keys_missing": "Najpierw dodaj identyfikator aplikacji i klucz Mathpix w sekcji Ustawienia, AI, Narzędzia.",
     "invalid_keys": "Ten identyfikator aplikacji lub klucz zawiera znaki, których klucze Mathpix nigdy nie mają. Skopiuj je ponownie z konsoli Mathpix.",
@@ -282,7 +293,8 @@
     "pdf_too_large": "Ten plik PDF przekracza limit 256 MB w Mathpix.",
     "timed_out": "Mathpix nie skończył tego pliku PDF w ciągu 30 minut. Spróbuj z mniejszą liczbą stron.",
     "cancelled": "Konwersja w Mathpix została zatrzymana.",
-    "wrong_window": "Mathpix można używać tylko z głównego okna Oleafly."
+    "wrong_window": "Mathpix można używać tylko z głównego okna Oleafly.",
+    "pdf_too_large_ipc": "Ten komputer może wysyłać do Mathpix pliki PDF o rozmiarze do 16 MB. Podziel plik PDF i spróbuj ponownie."
   },
   "desktop_apps": {
     "not_installed": "Cua Driver nie jest zainstalowany. Zainstaluj go w sekcji Ustawienia → Integracje → Aplikacje na komputerze.",

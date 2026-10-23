@@ -255,3 +255,38 @@ export async function intakeFiles(
     }
   }
 }
+
+/**
+ * Reads files dropped through the native bridge (Linux), where every byte
+ * crosses the IPC boundary. Only an item that could be attached is read, so a
+ * video or an archive never is; the rest are named in one toast. Items are read
+ * one after another, and one that cannot be read (a folder) does not stop the
+ * others.
+ */
+export async function readDroppedFiles(
+  items: readonly { name: string; read: () => Promise<File> }[],
+): Promise<File[]> {
+  const files: File[] = [];
+  const rejected: IntakeRejection[] = [];
+  const unreadable: string[] = [];
+  for (const item of items) {
+    if (!attachmentKind({ name: item.name, type: mimeForPath(item.name) })) {
+      rejected.push({ name: item.name, reason: "unsupported" });
+    } else if (files.length >= ATTACHMENT_LIMITS.perMessage) {
+      rejected.push({ name: item.name, reason: "tooMany", limit: ATTACHMENT_LIMITS.perMessage });
+    } else {
+      try {
+        files.push(await item.read());
+      } catch (error) {
+        void logError("read dropped file", error);
+        unreadable.push(item.name);
+      }
+    }
+  }
+  const notes = [
+    rejected.length > 0 ? rejectionMessage(rejected) : "",
+    unreadable.length > 0 ? i18n.t(($) => $.ai.attachments.dropUnreadable, { names: unreadable.join(", ") }) : "",
+  ].filter(Boolean);
+  if (notes.length > 0) toast.errorUnique("ai-attach", notes.join(" "));
+  return files;
+}

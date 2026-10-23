@@ -3,6 +3,7 @@
 //! notices and compaction summaries. Output kinds are kept only during a
 //! turn; the rest are kept at any time.
 use serde_json::{json, Value};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -119,12 +120,13 @@ impl AcpRuntime {
         }
         let native = params["sessionId"].as_str();
         if native != state.record.native_session_id.as_deref() {
-            let forked = native.is_some_and(|id| {
-                session
-                    .known_foreign
-                    .lock()
-                    .is_ok_and(|ids| ids.contains(id))
-            });
+            let forked = session.forking.load(Ordering::Acquire)
+                || native.is_some_and(|id| {
+                    session
+                        .known_foreign
+                        .lock()
+                        .is_ok_and(|ids| ids.contains(id))
+                });
             if forked {
                 return Ok(());
             }
@@ -165,12 +167,19 @@ impl AcpRuntime {
                     .apply_update(&session.redactor.value(update));
                 let controls =
                     serde_json::to_value(&state.record.controls).map_err(|e| e.to_string())?;
+                let blocked =
+                    !state.replaying && state.record.controls.blocked_mode(None).is_some();
                 self.emit_locked(
                     session,
                     &mut state,
                     "controls",
                     json!({"controls": controls}),
                 )?;
+                // The agent went into a mode with permission checks off.
+                if blocked {
+                    let (runtime, session) = (self.clone(), session.clone());
+                    tokio::spawn(async move { runtime.leave_blocked_mode(&session).await });
+                }
             }
             "usage_update" => {
                 let counters = {
@@ -182,7 +191,7 @@ impl AcpRuntime {
                         context_size: usage.context_size,
                         cost_amount: usage.cost_amount,
                         cost_currency: usage.cost_currency.clone(),
-                        session: Some(usage.clone()),
+                        session: Some(usage.without_plan()),
                         source: "acp_context".into(),
                         ..UsageCounters::default()
                     }

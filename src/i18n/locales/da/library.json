@@ -261,7 +261,9 @@
     "loadingRepositories": "Indlæser repositories…",
     "repositoriesFailed": "Dine repositories kunne ikke indlæses.",
     "noRepositories": "Der blev ikke fundet nogen repositories.",
+    "noMatchLoaded": "Ingen træf i de repositories, der er indlæst indtil videre. Indlæs flere for at fortsætte søgningen.",
     "privateRepository": "Privat repository",
+    "openFailed": "Oleafly kunne ikke åbne {{host}} i din browser.",
     "openOnHost": "Åbn på {{host}}",
     "openRepositoryOnHost": "Åbn {{name}} på {{host}}",
     "sources": {

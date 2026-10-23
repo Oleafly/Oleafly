@@ -261,7 +261,9 @@
     "loadingRepositories": "Laster repositorier…",
     "repositoriesFailed": "Repositoriene kunne ikke lastes.",
     "noRepositories": "Fant ingen repositorier.",
+    "noMatchLoaded": "Ingen treff i repositoriene som er lastet inn så langt. Last inn flere for å fortsette å lete.",
     "privateRepository": "Privat repositorium",
+    "openFailed": "Oleafly kunne ikke åpne {{host}} i nettleseren din.",
     "openOnHost": "Åpne på {{host}}",
     "openRepositoryOnHost": "Åpne {{name}} på {{host}}",
     "sources": {

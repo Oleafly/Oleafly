@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useState, type KeyboardEvent } from "react";
 import { Check, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { UsageMeter } from "@/components/ai/usage/UsageMeter";
@@ -6,7 +6,9 @@ import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup,
   DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -16,7 +18,7 @@ import {
 } from "@/lib/acp";
 import { cn } from "@/lib/utils";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
-import { currentName, groupControls, type ModelControl } from "./acp-controls";
+import { currentName, groupControls, listboxFocusTarget, type ModelControl } from "./acp-controls";
 import { canRefreshPlan, toUsageSnapshot, usageTooltip } from "./acp-usage";
 
 const TRIGGER = "h-7 w-auto min-w-0 max-w-44 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus-visible:bg-accent";
@@ -24,6 +26,20 @@ const TRIGGER = "h-7 w-auto min-w-0 max-w-44 gap-1 border-0 bg-transparent px-2 
 function modelLabel(control: ModelControl): string | null {
   if (control.kind === "config") return currentName(control.option);
   return control.models.find((model) => model.modelId === control.current)?.name ?? control.current;
+}
+
+/** The arrow keys, Home, End and typing a name move focus between the options of a listbox. */
+function moveOptionFocus(event: KeyboardEvent<HTMLDivElement>): void {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  const options = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]')];
+  const target = listboxFocusTarget(
+    options.map((option) => (option.disabled ? null : (option.textContent ?? ""))),
+    options.indexOf(document.activeElement as HTMLButtonElement),
+    event.key,
+  );
+  if (target === null) return;
+  event.preventDefault();
+  options[target]?.focus();
 }
 
 /** Model, effort, mode, Fast and the rest of the agent's options, plus usage. */
@@ -79,6 +95,9 @@ export function AcpControls({
       }
     : undefined;
 
+  // Only one option is in the tab order; the arrow keys move between them.
+  const entryChoice = (modelChoices.find((choice) => choice.id === currentModel && !choice.blocked)
+    ?? modelChoices.find((choice) => !choice.blocked))?.id;
   let lastGroup: string | null = null;
   return (
     <div className="flex min-w-0 items-center gap-0.5">
@@ -97,21 +116,27 @@ export function AcpControls({
             </span>
           }
         >
-          <div role="listbox" aria-label={t(($) => $.ai.acp.agentModel)} className="flex flex-col">
+          <div
+            role="listbox"
+            aria-label={t(($) => $.ai.acp.agentModel)}
+            className="flex flex-col"
+            onKeyDown={moveOptionFocus}
+          >
             {modelChoices.map((choice) => {
               const heading = choice.group && choice.group !== lastGroup ? choice.group : null;
               lastGroup = choice.group ?? lastGroup;
               return (
                 <div key={choice.id}>
-                  {heading && <div className="px-2 pb-0.5 pt-2 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">{heading}</div>}
+                  {heading && <SectionHeading as="div" className="px-2 pb-0.5 pt-2">{heading}</SectionHeading>}
                   <button
                     type="button"
                     role="option"
                     aria-selected={choice.id === currentModel}
                     aria-disabled={choice.blocked}
                     disabled={choice.blocked}
+                    tabIndex={choice.id === entryChoice ? 0 : -1}
                     className={cn(
-                      "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent disabled:opacity-50",
+                      "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent focus-visible:bg-accent disabled:opacity-50",
                       choice.id === currentModel && "bg-accent/60",
                     )}
                     onClick={() => chooseModel(choice.id)}
@@ -208,13 +233,18 @@ export function AcpControls({
       {groups.more.length > 0 && (
         <DropdownMenu>
           <Tooltip label={t(($) => $.ai.acp.controls.more)}>
-            <DropdownMenuTrigger
-              data-testid="acp-more-options"
-              aria-label={t(($) => $.ai.acp.controls.more)}
-              disabled={locked}
-              className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
-            >
-              <SlidersHorizontal className="size-3.5" />
+            <DropdownMenuTrigger asChild disabled={locked}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                data-testid="acp-more-options"
+                aria-label={t(($) => $.ai.acp.controls.more)}
+                disabled={locked}
+                className="size-7 shrink-0 rounded-full text-muted-foreground [&_svg]:size-3.5"
+              >
+                <SlidersHorizontal />
+              </Button>
             </DropdownMenuTrigger>
           </Tooltip>
           <DropdownMenuContent align="end" className="z-[100] w-60">

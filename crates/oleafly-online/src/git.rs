@@ -201,9 +201,25 @@ impl SystemGit {
     }
 }
 
+/// The Git subcommand in `args`, after any `-c name=value` pairs and global
+/// options such as `--git-dir=.git`.
+fn subcommand<'a>(args: &[&'a str]) -> Option<&'a str> {
+    let mut args = args.iter().copied();
+    while let Some(arg) = args.next() {
+        match arg {
+            "-c" | "-C" => {
+                args.next();
+            }
+            _ if arg.starts_with('-') => {}
+            _ => return Some(arg),
+        }
+    }
+    None
+}
+
 fn local_total(args: &[&str]) -> Duration {
-    match args.first() {
-        Some(&("add" | "checkout" | "clean" | "status" | "diff")) => LOCAL_SLOW_TOTAL,
+    match subcommand(args) {
+        Some("add" | "checkout" | "clean" | "status" | "diff") => LOCAL_SLOW_TOTAL,
         _ => LOCAL_TOTAL,
     }
 }
@@ -388,6 +404,22 @@ mod tests {
         assert_eq!(
             config.last().map(String::as_str),
             Some("credential.helper=")
+        );
+    }
+
+    #[test]
+    fn slow_calls_keep_their_longer_limit_behind_global_options() {
+        assert_eq!(
+            local_total(&["--git-dir=.git", "--work-tree=.", "checkout", "-f"]),
+            LOCAL_SLOW_TOTAL
+        );
+        assert_eq!(
+            local_total(&["-c", "core.x=1", "--no-replace-objects", "clean"]),
+            LOCAL_SLOW_TOTAL
+        );
+        assert_eq!(
+            local_total(&["--git-dir=.git", "rev-parse", "HEAD"]),
+            LOCAL_TOTAL
         );
     }
 

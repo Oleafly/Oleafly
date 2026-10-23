@@ -82,6 +82,23 @@ pub struct ModeOption {
     pub blocked: bool,
 }
 
+/// The mode an agent is in when Oleafly blocks it, and the way out.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BlockedMode {
+    /// The blocked mode's name.
+    pub name: String,
+    /// Where to switch to; `None` when the agent offers no other mode.
+    pub switch: Option<ModeSwitch>,
+}
+
+/// A switch to another mode: through the agent's mode option, or (`None`)
+/// the legacy `modes` object.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModeSwitch {
+    pub config_id: Option<String>,
+    pub to: String,
+}
+
 /// A config option value: a choice id, or a typed boolean.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -294,6 +311,67 @@ impl SessionControls {
         }
     }
 
+    /// The mode the agent is in, when it is one Oleafly blocks (permission
+    /// checks off). `preferred` is the mode to switch to first, then the
+    /// agent's `default` and `auto` modes, then any mode that is not blocked.
+    pub fn blocked_mode(&self, preferred: Option<&str>) -> Option<BlockedMode> {
+        fn pick<'a>(
+            choices: impl Iterator<Item = (&'a str, bool)> + Clone,
+            preferred: Option<&str>,
+        ) -> Option<&'a str> {
+            let allowed = |wanted: &str| {
+                choices
+                    .clone()
+                    .find(|(value, blocked)| !blocked && value.eq_ignore_ascii_case(wanted))
+                    .map(|(value, _)| value)
+            };
+            preferred
+                .and_then(allowed)
+                .or_else(|| allowed("default"))
+                .or_else(|| allowed("auto"))
+                .or_else(|| {
+                    choices
+                        .clone()
+                        .find(|(_, blocked)| !blocked)
+                        .map(|(v, _)| v)
+                })
+        }
+        if let Some(option) = self.by_category("mode") {
+            let ConfigKind::Select {
+                current_value: Some(current),
+                options,
+            } = &option.kind
+            else {
+                return None;
+            };
+            let in_use = options.iter().find(|c| &c.value == current && c.blocked)?;
+            let to = pick(
+                options.iter().map(|c| (c.value.as_str(), c.blocked)),
+                preferred,
+            );
+            return Some(BlockedMode {
+                name: in_use.name.clone(),
+                switch: to.map(|to| ModeSwitch {
+                    config_id: Some(option.id.clone()),
+                    to: to.to_owned(),
+                }),
+            });
+        }
+        let current = self.mode_id.as_deref()?;
+        let in_use = self.modes.iter().find(|m| m.id == current && m.blocked)?;
+        let to = pick(
+            self.modes.iter().map(|m| (m.id.as_str(), m.blocked)),
+            preferred,
+        );
+        Some(BlockedMode {
+            name: in_use.name.clone(),
+            switch: to.map(|to| ModeSwitch {
+                config_id: None,
+                to: to.to_owned(),
+            }),
+        })
+    }
+
     pub fn by_category(&self, category: &str) -> Option<&ConfigOptionView> {
         self.options
             .iter()
@@ -417,6 +495,54 @@ mod tests {
         assert!(controls.modes[1].blocked);
         assert!(controls.allows_mode("yolo").is_err());
         assert!(controls.allows_mode("default").is_ok());
+    }
+
+    #[test]
+    fn a_session_in_a_blocked_mode_is_told_where_to_go() {
+        let mut controls = SessionControls::default();
+        let mut start = claude();
+        start["configOptions"][0]["currentValue"] = json!("bypassPermissions");
+        controls.merge(&start);
+        let blocked = controls.blocked_mode(None).unwrap();
+        assert_eq!(blocked.name, "Bypass permissions");
+        assert_eq!(
+            blocked.switch,
+            Some(ModeSwitch {
+                config_id: Some("mode".into()),
+                to: "default".into()
+            })
+        );
+        // The mode the user last chose comes first, when it is allowed.
+        let blocked = controls.blocked_mode(Some("plan")).unwrap();
+        assert_eq!(blocked.switch.unwrap().to, "plan");
+        let blocked = controls.blocked_mode(Some("bypassPermissions")).unwrap();
+        assert_eq!(blocked.switch.unwrap().to, "default");
+        // In a mode that is fine, there is nothing to do.
+        controls.merge(&claude());
+        assert_eq!(controls.blocked_mode(None), None);
+    }
+
+    #[test]
+    fn legacy_modes_are_checked_too_and_a_dead_end_is_reported() {
+        let mut controls = SessionControls::default();
+        controls.merge(
+            &json!({"modes": {"currentModeId": "yolo", "availableModes": [
+            {"id": "default", "name": "Default"}, {"id": "yolo", "name": "YOLO"}]}}),
+        );
+        let blocked = controls.blocked_mode(None).unwrap();
+        assert_eq!(
+            blocked.switch,
+            Some(ModeSwitch {
+                config_id: None,
+                to: "default".into()
+            })
+        );
+        controls.merge(
+            &json!({"modes": {"currentModeId": "yolo", "availableModes": [
+            {"id": "yolo", "name": "YOLO"}]}}),
+        );
+        let stuck = controls.blocked_mode(None).unwrap();
+        assert_eq!((stuck.name.as_str(), stuck.switch), ("YOLO", None));
     }
 
     #[test]

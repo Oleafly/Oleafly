@@ -1,14 +1,19 @@
 //! Folder access entries for sandboxed tasks. A DACL write on a folder walks
 //! its whole subtree, so each root gets one inheritable entry, checked first
-//! and skipped when present. Traverse entries on ancestors are written with
-//! `SetFileSecurityW`, which does not walk. Access is never confined with a
-//! deny entry: a protected file gets a protected DACL without the task.
+//! and skipped when present (unless an earlier attempt was cut short: then
+//! the walk is made again). Traverse entries on ancestors are written with
+//! `SetFileSecurityW`, which does not walk. A protected file gets a protected
+//! DACL without the task. A protected or hidden folder gets an inheritable
+//! deny entry for the task, and the folder that holds it a deny entry for
+//! `FILE_DELETE_CHILD` on itself only: with that right on the parent, a task
+//! could delete or rename the protected entry whatever its own access list
+//! says, and put a new one in its place.
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 
 use windows_sys::Win32::Foundation::{GetLastError, LocalFree, ERROR_SUCCESS};
 use windows_sys::Win32::Security::Authorization::{
-    GetNamedSecurityInfoW, SetEntriesInAclW, SetNamedSecurityInfoW, EXPLICIT_ACCESS_W,
+    GetNamedSecurityInfoW, SetEntriesInAclW, SetNamedSecurityInfoW, DENY_ACCESS, EXPLICIT_ACCESS_W,
     GRANT_ACCESS, NO_MULTIPLE_TRUSTEE, REVOKE_ACCESS, SE_FILE_OBJECT, TRUSTEE_IS_SID,
     TRUSTEE_IS_UNKNOWN, TRUSTEE_W,
 };
@@ -20,8 +25,9 @@ use windows_sys::Win32::Security::{
     SUB_CONTAINERS_AND_OBJECTS_INHERIT,
 };
 use windows_sys::Win32::Storage::FileSystem::{
-    DELETE, FILE_DELETE_CHILD, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
-    FILE_READ_ATTRIBUTES, FILE_TRAVERSE, SYNCHRONIZE,
+    DELETE, FILE_APPEND_DATA, FILE_DELETE_CHILD, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ,
+    FILE_GENERIC_WRITE, FILE_READ_ATTRIBUTES, FILE_TRAVERSE, FILE_WRITE_ATTRIBUTES,
+    FILE_WRITE_DATA, FILE_WRITE_EA, SYNCHRONIZE,
 };
 use windows_sys::Win32::System::SystemServices::{
     ACCESS_ALLOWED_ACE_TYPE, ACCESS_DENIED_ACE_TYPE, SECURITY_DESCRIPTOR_REVISION,
@@ -49,6 +55,33 @@ impl Access {
                     | FILE_DELETE_CHILD
             }
             Self::Traverse => FILE_TRAVERSE | FILE_READ_ATTRIBUTES | SYNCHRONIZE,
+        }
+    }
+}
+
+/// What a deny entry takes from the task.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Deny {
+    /// Writing, adding, deleting and renaming; reading stays.
+    Write,
+    /// Everything.
+    All,
+}
+
+impl Deny {
+    fn mask(self) -> u32 {
+        // Not FILE_GENERIC_WRITE: it carries SYNCHRONIZE and READ_CONTROL,
+        // and denying those would stop the task from opening the folder
+        // for reading too.
+        let write = FILE_WRITE_DATA
+            | FILE_APPEND_DATA
+            | FILE_WRITE_EA
+            | FILE_WRITE_ATTRIBUTES
+            | DELETE
+            | FILE_DELETE_CHILD;
+        match self {
+            Self::Write => write,
+            Self::All => write | FILE_GENERIC_READ | FILE_GENERIC_WRITE | FILE_GENERIC_EXECUTE,
         }
     }
 }
@@ -221,9 +254,16 @@ fn write_this_only(path: &Path, dacl: *mut ACL) -> Result<(), SandboxError> {
     result.map_err(|code| error("writing the access list of", path, code))
 }
 
-/// Grants `access` to `sid` on `path` and everything below it.
-pub(crate) fn grant(path: &Path, sid: &OwnedSid, access: Access) -> Result<(), SandboxError> {
-    if has_allow(path, sid, access)? {
+/// Grants `access` to `sid` on `path` and everything below it. An entry
+/// that is on `path` already ends the call, unless `force`: the entry says
+/// nothing about the files below it when an earlier walk was cut short.
+pub(crate) fn grant(
+    path: &Path,
+    sid: &OwnedSid,
+    access: Access,
+    force: bool,
+) -> Result<(), SandboxError> {
+    if !force && has_allow(path, sid, access)? {
         return Ok(());
     }
     let inheritance = if path.is_dir() {
@@ -234,6 +274,28 @@ pub(crate) fn grant(path: &Path, sid: &OwnedSid, access: Access) -> Result<(), S
     let entry = explicit(sid, GRANT_ACCESS, access.mask(), inheritance);
     let (dacl, _current) = merged(path, &entry)?;
     write_named(path, dacl, 0)
+}
+
+/// Keeps `sid` out of `folder` and everything below it as far as `kind` says:
+/// an inheritable deny entry, which beats the grants the folder inherits.
+pub(crate) fn deny(folder: &Path, sid: &OwnedSid, kind: Deny) -> Result<(), SandboxError> {
+    let entry = explicit(
+        sid,
+        DENY_ACCESS,
+        kind.mask(),
+        SUB_CONTAINERS_AND_OBJECTS_INHERIT,
+    );
+    let (dacl, _current) = merged(folder, &entry)?;
+    write_named(folder, dacl, 0)
+}
+
+/// Keeps `sid` from deleting or renaming anything in `folder` through the
+/// folder itself (the entries on the files stay as they are, so the task can
+/// still delete what it may delete). This folder only, no walk.
+pub(crate) fn deny_delete_child(folder: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
+    let entry = explicit(sid, DENY_ACCESS, FILE_DELETE_CHILD, NO_INHERITANCE);
+    let (dacl, _current) = merged(folder, &entry)?;
+    write_this_only(folder, dacl)
 }
 
 /// Lets `sid` pass through `dir` to a granted folder below it.
@@ -357,13 +419,72 @@ mod tests {
         unsafe { (*dacl.dacl).AceCount }
     }
 
+    /// Whether `path` has a deny entry for `sid` covering all of `wanted`.
+    fn has_deny(path: &Path, sid: &OwnedSid, wanted: u32) -> bool {
+        let dacl = read_dacl(path).unwrap();
+        if dacl.dacl.is_null() {
+            return false;
+        }
+        // SAFETY: `dacl.dacl` points to a valid ACL owned by `dacl`.
+        unsafe {
+            for index in 0..u32::from((*dacl.dacl).AceCount) {
+                let mut ace: *mut core::ffi::c_void = std::ptr::null_mut();
+                if GetAce(dacl.dacl, index, &mut ace) == 0 {
+                    continue;
+                }
+                let denied = ace as *const ACCESS_ALLOWED_ACE;
+                if u32::from((*denied).Header.AceType) != ACCESS_DENIED_ACE_TYPE {
+                    continue;
+                }
+                let ace_sid = std::ptr::addr_of!((*denied).SidStart) as PSID;
+                if EqualSid(ace_sid, sid.as_psid()) != 0 && (*denied).Mask & wanted == wanted {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn deny_write_reaches_the_files_below_and_revoke_clears_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let child = dir.path().join("config");
+        std::fs::write(&child, "x").unwrap();
+        let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
+        grant(dir.path(), &sid, Access::ReadWrite, false).unwrap();
+        deny(dir.path(), &sid, Deny::Write).unwrap();
+        let write = Deny::Write.mask();
+        assert!(has_deny(dir.path(), &sid, write));
+        assert!(has_deny(&child, &sid, write));
+        // Reading is not denied.
+        assert!(!has_deny(dir.path(), &sid, FILE_GENERIC_READ));
+        revoke(dir.path(), &sid).unwrap();
+        assert!(!has_deny(dir.path(), &sid, write));
+        assert!(!has_deny(&child, &sid, write));
+    }
+
+    #[test]
+    fn deny_delete_child_stays_on_the_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let child = dir.path().join("config");
+        std::fs::write(&child, "x").unwrap();
+        let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
+        grant(dir.path(), &sid, Access::ReadWrite, false).unwrap();
+        deny_delete_child(dir.path(), &sid).unwrap();
+        assert!(has_deny(dir.path(), &sid, FILE_DELETE_CHILD));
+        assert!(!has_deny(&child, &sid, FILE_DELETE_CHILD));
+        revoke_traverse(dir.path(), &sid).unwrap();
+        assert!(!has_deny(dir.path(), &sid, FILE_DELETE_CHILD));
+        revoke(dir.path(), &sid).unwrap();
+    }
+
     #[test]
     fn grant_revoke_round_trip() {
         let dir = tempfile::tempdir().unwrap();
         let child = dir.path().join("child.txt");
         std::fs::write(&child, "x").unwrap();
         let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
-        grant(dir.path(), &sid, Access::Read).unwrap();
+        grant(dir.path(), &sid, Access::Read, false).unwrap();
         assert!(has_allow(dir.path(), &sid, Access::Read).unwrap());
         assert!(has_allow(&child, &sid, Access::Read).unwrap());
         revoke(dir.path(), &sid).unwrap();
@@ -374,9 +495,12 @@ mod tests {
     fn grant_is_skipped_when_present() {
         let dir = tempfile::tempdir().unwrap();
         let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
-        grant(dir.path(), &sid, Access::Read).unwrap();
+        grant(dir.path(), &sid, Access::Read, false).unwrap();
         let count = ace_count(dir.path());
-        grant(dir.path(), &sid, Access::Read).unwrap();
+        grant(dir.path(), &sid, Access::Read, false).unwrap();
+        assert_eq!(ace_count(dir.path()), count);
+        // A forced grant walks again but does not add a second entry.
+        grant(dir.path(), &sid, Access::Read, true).unwrap();
         assert_eq!(ace_count(dir.path()), count);
         revoke(dir.path(), &sid).unwrap();
     }
@@ -400,7 +524,7 @@ mod tests {
         std::fs::write(&protected, "gitdir: x").unwrap();
         std::fs::write(&other, "x").unwrap();
         let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
-        grant(dir.path(), &sid, Access::ReadWrite).unwrap();
+        grant(dir.path(), &sid, Access::ReadWrite, false).unwrap();
         exclude_file(&protected, &sid).unwrap();
         assert!(!has_allow(&protected, &sid, Access::ReadWrite).unwrap());
         assert!(has_allow(&other, &sid, Access::ReadWrite).unwrap());

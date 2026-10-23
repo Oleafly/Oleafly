@@ -232,6 +232,19 @@ export function formatSlurmTime(minutes: number | null | undefined): string {
   return days > 0 ? `${days}-${clock.padStart(8, "0")}` : clock;
 }
 
+/** Whether `value` is a name Slurm accepts for a partition, account or QOS (the same rule the Rust side applies). */
+export function isSlurmName(value: string): boolean {
+  return NAME.test(value);
+}
+
+/** A whole number from `min` to `max`, or `null` for anything else (such as "4 GPUs"). */
+export function parseCount(text: string, min: number, max: number): number | null {
+  const trimmed = text.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const value = Number(trimmed);
+  return value >= min && value <= max ? value : null;
+}
+
 /** Gigabytes from `16`, `16G`, `16GB` or `1T`. */
 export function parseMemory(text: string): number | null {
   const match = /^(\d{1,7})\s*([gt])?b?$/i.exec(text.trim());

@@ -18,10 +18,12 @@ const THEME = {
 };
 
 // Settings that only make sense on the computer that chose them: the
-// terminal shell (a Windows shell or path means nothing on a Mac).
+// terminal shell (a Windows shell or path means nothing on a Mac), and whether
+// task commands may reach the network, a security choice made per machine.
 const LOCAL_ONLY_PATHS: readonly (readonly string[])[] = [
   ["appearance", "terminal", "shell"],
   ["appearance", "terminal", "shellPath"],
+  ["research", "commandNetwork"],
 ];
 
 /** `node` without the value at `path`, dropping parents it leaves empty. Never mutates. */

@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/acp", async (original) => ({
   ...(await original<typeof import("@/lib/acp")>()),
   acpSessionExport: vi.fn(),
-  acpSessionEventsAll: vi.fn(),
+  acpEvents: vi.fn(),
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: vi.fn() }));
 vi.mock("@/lib/tauri", async (original) => ({
@@ -11,7 +11,7 @@ vi.mock("@/lib/tauri", async (original) => ({
   writeBytesFile: vi.fn(),
 }));
 
-import { acpSessionEventsAll, acpSessionExport } from "@/lib/acp";
+import { acpEvents, acpSessionExport } from "@/lib/acp";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { writeBytesFile } from "@/lib/tauri";
 import { formatDateTime } from "@/lib/intl";
@@ -119,13 +119,14 @@ describe("exportConversation", () => {
 
   it("offers Markdown first and writes it from every stored event", async () => {
     vi.mocked(pickSavePath).mockResolvedValue("/tmp/out.md");
-    vi.mocked(acpSessionEventsAll).mockResolvedValue(transcript());
+    vi.mocked(acpEvents).mockResolvedValue({ events: transcript(), hasMore: false });
     await expect(exportConversation({ projectId: "paper", session: target, projectName: "Thesis", agentName: "Research CLI" })).resolves.toBe(true);
     expect(pickSavePath).toHaveBeenCalledWith({
       defaultPath: "Claim audit part 2 3.md",
       filters: [{ name: "Markdown", extensions: ["md"] }, { name: "JSON", extensions: ["json"] }],
     });
-    expect(acpSessionEventsAll).toHaveBeenCalledWith("paper", "saved");
+    expect(acpEvents).toHaveBeenCalledOnce();
+    expect(acpEvents).toHaveBeenCalledWith("paper", "saved", 0, 500);
     const [path, base64] = vi.mocked(writeBytesFile).mock.calls[0];
     expect(path).toBe("/tmp/out.md");
     const text = new TextDecoder().decode(Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)));
@@ -138,8 +139,37 @@ describe("exportConversation", () => {
     vi.mocked(pickSavePath).mockResolvedValue("/tmp/Out.JSON");
     await exportConversation({ projectId: "paper", session: target, projectName: "Thesis", agentName: "Research CLI" });
     expect(acpSessionExport).toHaveBeenCalledWith("paper", "saved", "/tmp/Out.JSON");
-    expect(acpSessionEventsAll).not.toHaveBeenCalled();
+    expect(acpEvents).not.toHaveBeenCalled();
     expect(writeBytesFile).not.toHaveBeenCalled();
+  });
+
+  it("reads a long transcript a page at a time and writes the same Markdown as one pass", async () => {
+    vi.mocked(pickSavePath).mockResolvedValue("/tmp/long.md");
+    const all = transcript();
+    // The pages cut the assistant's reply and the tool call in the middle of the turn.
+    const pages = [all.slice(0, 3), all.slice(3, 5), all.slice(5)];
+    vi.mocked(acpEvents).mockImplementation(async (_project, _session, after = 0) => {
+      const index = after === 0 ? 0 : after === 3 ? 1 : 2;
+      return { events: pages[index], hasMore: index < pages.length - 1 };
+    });
+
+    await exportConversation({ projectId: "paper", session: target, projectName: "Thesis", agentName: "Research CLI" });
+
+    expect(vi.mocked(acpEvents).mock.calls.map((call) => call.slice(2))).toEqual([[0, 500], [3, 500], [5, 500]]);
+    const text = new TextDecoder().decode(Uint8Array.from(atob(vi.mocked(writeBytesFile).mock.calls[0][1]), (char) => char.charCodeAt(0)));
+    const expected = conversationMarkdown({ session: target, events: all, projectName: "Thesis", agentName: "Research CLI" });
+    expect(text).toBe(expected);
+  });
+
+  it("writes only the header for a conversation with no events", async () => {
+    vi.mocked(pickSavePath).mockResolvedValue("/tmp/empty.md");
+    vi.mocked(acpEvents).mockResolvedValue({ events: [], hasMore: false });
+
+    await exportConversation({ projectId: "paper", session: target, projectName: null, agentName: "Pi" });
+
+    const text = new TextDecoder().decode(Uint8Array.from(atob(vi.mocked(writeBytesFile).mock.calls[0][1]), (char) => char.charCodeAt(0)));
+    expect(text.startsWith("# Claim audit: part 2/3\n")).toBe(true);
+    expect(text).not.toContain("## You");
   });
 
   it("does nothing when the save dialog is cancelled", async () => {

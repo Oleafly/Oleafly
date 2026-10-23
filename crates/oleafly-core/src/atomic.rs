@@ -54,15 +54,27 @@ pub fn persist_with_retry(attempt: impl FnMut() -> io::Result<()>) -> io::Result
 
 /// A staging file beside `destination`, named `.{name}.oleafly-….tmp` so
 /// Oleafly's own folder scans skip it (`exclude::is_oleafly_owned_name`).
-fn staging_file(parent: &Path, destination: &Path) -> io::Result<NamedTempFile> {
+/// On Unix it is created the way any new file is, with mode 0666 minus the
+/// umask (the `tempfile` default of 0600 would leave a new output unreadable
+/// to a web server or another user), or with 0600 when `private`; an
+/// existing destination's permissions replace either afterwards
+/// (`keep_permissions`).
+fn staging_file(parent: &Path, destination: &Path, private: bool) -> io::Result<NamedTempFile> {
     let name: String = destination
         .file_name()
         .map(|name| name.to_string_lossy().chars().take(64).collect())
         .unwrap_or_default();
-    tempfile::Builder::new()
-        .prefix(&format!(".{name}.oleafly-"))
-        .suffix(".tmp")
-        .tempfile_in(parent)
+    let prefix = format!(".{name}.oleafly-");
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(&prefix).suffix(".tmp");
+    #[cfg(unix)]
+    if !private {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(std::fs::Permissions::from_mode(0o666));
+    }
+    #[cfg(not(unix))]
+    let _ = private;
+    builder.tempfile_in(parent)
 }
 
 fn refuse_symlink(path: &Path) -> io::Result<()> {
@@ -126,9 +138,13 @@ fn persist(temporary: NamedTempFile, destination: &Path) -> io::Result<()> {
 /// Writes `bytes` to a temporary file beside `path`, ready for
 /// [`commit_staged`] (so several files can be staged before any is replaced).
 pub fn stage_beside(path: &Path, bytes: &[u8]) -> io::Result<NamedTempFile> {
+    stage(path, bytes, false)
+}
+
+fn stage(path: &Path, bytes: &[u8], private: bool) -> io::Result<NamedTempFile> {
     refuse_symlink(path)?;
     let parent = parent_of(path)?;
-    let mut temporary = staging_file(parent, path)?;
+    let mut temporary = staging_file(parent, path, private)?;
     keep_permissions(path, temporary.path());
     temporary.write_all(bytes)?;
     temporary.as_file().sync_all()?;
@@ -150,12 +166,19 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
     commit_staged(staged, path)
 }
 
+/// [`write_atomic`] for content only its owner should read (a copy of a file
+/// that may hold credentials): a new file is created with mode 0600 on Unix.
+pub fn write_atomic_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    let staged = stage(path, bytes, true)?;
+    commit_staged(staged, path)
+}
+
 /// Copies `source` over `destination` in one rename, streaming the bytes.
 /// Returns how many bytes were copied.
 pub fn copy_atomic(source: &Path, destination: &Path) -> io::Result<u64> {
     refuse_symlink(destination)?;
     let parent = parent_of(destination)?.to_path_buf();
-    let mut temporary = staging_file(&parent, destination)?;
+    let mut temporary = staging_file(&parent, destination, false)?;
     keep_permissions(destination, temporary.path());
     let input = std::fs::File::open(source)?;
     let copied = io::copy(
@@ -207,6 +230,46 @@ mod tests {
             std::fs::metadata(&private).unwrap().permissions().mode() & 0o777,
             0o640
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_new_file_gets_the_mode_any_new_file_gets() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        // What the umask makes of a plain create here.
+        let plain = dir.path().join("plain.txt");
+        std::fs::File::create(&plain).unwrap();
+        let expected = std::fs::metadata(&plain).unwrap().permissions().mode() & 0o777;
+
+        let written = dir.path().join("written.txt");
+        write_atomic(&written, b"x").unwrap();
+        let source = dir.path().join("source.txt");
+        std::fs::write(&source, b"y").unwrap();
+        let copied = dir.path().join("copied.txt");
+        copy_atomic(&source, &copied).unwrap();
+        for path in [written, copied] {
+            assert_eq!(
+                std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+                expected,
+                "{}",
+                path.display()
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_private_write_creates_an_owner_only_file() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("secrets.json.bak");
+        write_atomic_private(&target, b"{}").unwrap();
+        assert_eq!(
+            std::fs::metadata(&target).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(std::fs::read(&target).unwrap(), b"{}");
     }
 
     #[test]

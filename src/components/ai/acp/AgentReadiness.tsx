@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
 import { acpError, acpInstall, acpReadiness, acpReadinessLabel, type AcpAgentStatus, type AcpReadiness } from "@/lib/acp";
+import { basename } from "@/lib/path-utils";
 import { isWindows } from "@/lib/utils";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useTerminalsStore } from "@/store/terminals";
@@ -68,7 +69,7 @@ export async function openAgentSignInTerminal(projectId: string, cliPath: string
   useTerminalsStore.getState().setProject(projectId);
   const { openTerminalWith, TerminalLaunchError } = await import("@/lib/terminal-launch");
   try {
-    await openTerminalWith({ title: cliPath.split(/[\\/]/).pop() ?? cliPath, command: cliPath });
+    await openTerminalWith({ title: basename(cliPath) || cliPath, command: cliPath });
     return true;
   } catch (error) {
     if (error instanceof TerminalLaunchError) return false;

@@ -646,17 +646,22 @@ impl NativeCompiler {
         flags: EngineFlags,
     ) -> std::result::Result<BuildResult, CliError> {
         let build_dir = build.build_directory().to_path_buf();
-        sweep_stale_staging(&build_dir, STALE_STAGING);
         let (lock, waited_ms) = self.lock_build(&build_dir).await?;
+        // With the lock held, a staging folder left behind is no running
+        // build's: its own mtime only moves when files come and go in it.
+        sweep_stale_staging(&build_dir, STALE_STAGING);
         let unlocked = lock.is_none();
         let started = Instant::now();
         let pdf = build_dir.join(format!("{ENTRY_STEM}.pdf"));
         let engine_log = build_dir.join(format!("{ENTRY_STEM}.log"));
-        let synctex = build_dir.join(format!("{ENTRY_STEM}.synctex.gz"));
-        let snapshot =
-            ArtifactSnapshot::capture(&[pdf.clone(), engine_log.clone(), synctex.clone()]);
 
         let mut command = self.command(build, flags, true)?;
+        // Only latexmk writes in place; the other engines write into the
+        // staging folder `command` made.
+        let mut in_place = match command.staging {
+            None => Some(InPlaceOutputs::prepare(&build_dir)?),
+            Some(_) => None,
+        };
         let (mut output, mut status) =
             run_command(&command.launch(), self.timeout, &self.log).await?;
         if let Some(note) = compiler_crash_note(&status) {
@@ -689,9 +694,9 @@ impl NativeCompiler {
             Some(staging) => staging.path().join(format!("{ENTRY_STEM}.log")),
             None => engine_log.clone(),
         };
-        let file_log_fresh = match &command.staging {
-            Some(_) => file_log_path.is_file(),
-            None => snapshot.is_fresh(&engine_log),
+        let file_log_fresh = match &in_place {
+            None => file_log_path.is_file(),
+            Some(outputs) => outputs.is_fresh(&engine_log),
         };
         let file_log = (tex_engine && file_log_fresh)
             .then(|| read_log_bounded(&file_log_path).ok())
@@ -714,9 +719,9 @@ impl NativeCompiler {
                 });
             }
         }
-        let wrote_pdf = match &command.staging {
-            Some(_) => produced_pdf,
-            None => pdf.is_file() && (snapshot.is_fresh(&pdf) || status.success()),
+        let wrote_pdf = match &in_place {
+            None => produced_pdf,
+            Some(outputs) => pdf.is_file() && (outputs.is_fresh(&pdf) || status.success()),
         };
         let ok = status.success() && wrote_pdf && !errors.iter().any(|error| error.kind == "error");
 
@@ -732,13 +737,16 @@ impl NativeCompiler {
             }
             staging.promote_all().map_err(output_locked_or)?;
         }
+        if let Some(mut outputs) = in_place.take() {
+            outputs.finish(ok);
+        }
         if build.engine() == Engine::Latexmk && status.success() {
             if let Some(latexmk) = self.tools.latexmk.as_deref() {
                 engine_spec::record_latexmk_binary(&build_dir, latexmk);
             }
         }
         let fresh = match build.engine() {
-            Engine::Latexmk => wrote_pdf,
+            Engine::Latexmk => ok && wrote_pdf,
             _ => ok && produced_pdf,
         };
         if image_check_applies(ok, build.engine()) {
@@ -1177,6 +1185,153 @@ fn diagnostic_of(error: &BuildError) -> LogDiagnostic {
     }
 }
 
+/// How deep [`remove_links`] looks into the build folder (latexmk writes
+/// `\include`d files' auxiliary files into matching subfolders).
+const MAX_LINK_SWEEP_DEPTH: usize = 8;
+/// The outputs a failed latexmk build puts back.
+const KEPT_OUTPUTS: [&str; 2] = ["pdf", "synctex.gz"];
+
+/// What a latexmk build writes in place in the build folder (the other
+/// engines write into a staging folder and keep the last good PDF by not
+/// promoting it).
+///
+/// Before the run, every symbolic link and special file in the folder goes:
+/// a cloned or unzipped project can ship `.oleafly/build/_oleafly_entry.log`
+/// as a link to a file elsewhere, and the compiler would write through it
+/// (`remove_file` unlinks a link without following it). The last good PDF and
+/// SyncTeX file are copied aside, and put back when the build fails, because
+/// latexmk's `-f` leaves a best-effort PDF over them. Dropping this before
+/// [`InPlaceOutputs::finish`] (the build timed out or was cancelled) puts
+/// them back too.
+struct InPlaceOutputs {
+    build_dir: PathBuf,
+    /// Copies of the outputs as they were; `None` when no folder could be made.
+    aside: Option<OutputStaging>,
+    before: ArtifactSnapshot,
+    finished: bool,
+}
+
+impl InPlaceOutputs {
+    fn prepare(build_dir: &Path) -> Result<Self> {
+        remove_links(build_dir, 0)?;
+        let aside = OutputStaging::create(build_dir).ok();
+        if let Some(aside) = &aside {
+            for name in Self::kept_names() {
+                let source = build_dir.join(&name);
+                let copy = aside.path().join(&name);
+                if source.is_file() && std::fs::copy(&source, &copy).is_err() {
+                    // A half copy would put a truncated PDF back.
+                    let _ = std::fs::remove_file(&copy);
+                }
+            }
+        }
+        let outputs: Vec<PathBuf> = ["pdf", "log", "synctex.gz"]
+            .iter()
+            .map(|extension| build_dir.join(format!("{ENTRY_STEM}.{extension}")))
+            .collect();
+        Ok(Self {
+            build_dir: build_dir.to_path_buf(),
+            aside,
+            before: ArtifactSnapshot::capture(&outputs),
+            finished: false,
+        })
+    }
+
+    fn kept_names() -> impl Iterator<Item = String> {
+        KEPT_OUTPUTS
+            .iter()
+            .map(|extension| format!("{ENTRY_STEM}.{extension}"))
+    }
+
+    /// The file exists and this build wrote it.
+    fn is_fresh(&self, path: &Path) -> bool {
+        self.before.is_fresh(path)
+    }
+
+    /// The build ended. A failed one gets its last good outputs back.
+    fn finish(&mut self, ok: bool) {
+        if !ok {
+            self.keep_last_good();
+        }
+        self.finished = true;
+    }
+
+    fn keep_last_good(&self) {
+        for name in Self::kept_names() {
+            let path = self.build_dir.join(&name);
+            let copy = self.aside.as_ref().map(|aside| aside.path().join(&name));
+            let touched = self.before.is_fresh(&path);
+            match copy.filter(|copy| copy.is_file()) {
+                Some(copy) if touched || !path.exists() => {
+                    let _ =
+                        oleafly_core::atomic::persist_with_retry(|| std::fs::rename(&copy, &path));
+                }
+                Some(_) => {}
+                // Nothing to put back: a failed build's best-effort output
+                // would pass for a good one, as no staged engine leaves it.
+                None if touched => {
+                    let _ = std::fs::remove_file(&path);
+                }
+                None => {}
+            }
+        }
+    }
+}
+
+impl Drop for InPlaceOutputs {
+    fn drop(&mut self) {
+        if !self.finished {
+            self.keep_last_good();
+        }
+    }
+}
+
+/// Removes every symbolic link and non-regular file (a FIFO, a socket, a
+/// device) under `directory`, without following any link. Real folders are
+/// searched to [`MAX_LINK_SWEEP_DEPTH`]; another build's staging folder is
+/// left alone.
+fn remove_links(directory: &Path, depth: usize) -> Result<()> {
+    let Ok(entries) = std::fs::read_dir(directory) else {
+        return Ok(());
+    };
+    for entry in entries.filter_map(std::result::Result::ok) {
+        if entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with(oleafly_core::build_output::STAGING_PREFIX)
+        {
+            continue;
+        }
+        // `DirEntry::file_type` reports a link as a link, never its target.
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        let path = entry.path();
+        if kind.is_dir() {
+            if depth < MAX_LINK_SWEEP_DEPTH {
+                remove_links(&path, depth + 1)?;
+            }
+        } else if !kind.is_file() {
+            // A folder link on Windows only goes with `remove_dir`.
+            let removed = std::fs::remove_file(&path).or_else(|_| std::fs::remove_dir(&path));
+            match removed {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(Error::new(
+                        ErrorKind::UnsafePath,
+                        format!(
+                            "{} in the build folder is a link or a special file, and Oleafly couldn't remove it: {error}",
+                            path.display()
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Copies the last build's intermediate files (`.aux`, `.toc`, ...) into a
 /// fresh staging folder.
 fn seed_staging(build_dir: &Path, staging: &Path) {
@@ -1200,7 +1355,7 @@ fn seed_staging(build_dir: &Path, staging: &Path) {
 
 fn read_log_bounded(path: &Path) -> std::io::Result<String> {
     use std::io::Read;
-    let mut file = std::fs::File::open(path)?;
+    let mut file = crate::record::open_regular_file(path)?;
     let mut bytes = Vec::with_capacity(MAX_LOG_BYTES.min(64 * 1024));
     file.by_ref()
         .take((MAX_LOG_BYTES + 1) as u64)
@@ -1727,7 +1882,7 @@ fn floor_char_boundary(text: &str, limit: usize) -> usize {
 
 pub(crate) fn fingerprint_file(path: &Path) -> Result<String> {
     use std::io::Read;
-    let mut file = std::fs::File::open(path)?;
+    let mut file = crate::record::open_regular_file(path)?;
     let mut hasher = Sha256::new();
     let mut buffer = [0_u8; 64 * 1024];
     let mut length = 0_u64;

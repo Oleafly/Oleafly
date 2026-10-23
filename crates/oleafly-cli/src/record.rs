@@ -47,21 +47,58 @@ pub fn write_record(build_dir: &Path, record: &BuildRecord, log: &str) -> std::i
     oleafly_core::atomic::write_atomic(&build_dir.join(RECORD_FILE), &text)
 }
 
+/// Opens `path` to read it, only when it is a regular file and not a link.
+/// A project can ship files in its build folder that point elsewhere
+/// (`.oleafly/build/oleafly-build.log` -> a key file), and what a build
+/// leaves there is never a link, so reading through one would hand a
+/// stranger's choice of file to whoever runs `oleafly log` (or an agent).
+pub fn open_regular_file(path: &Path) -> std::io::Result<std::fs::File> {
+    let refused = || {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("{} isn't a regular file", path.display()),
+        )
+    };
+    if !std::fs::symlink_metadata(path)?.is_file() {
+        return Err(refused());
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        // Closes the gap between the check and the open: a link swapped in
+        // fails, and a pipe swapped in doesn't wait for a writer.
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    let file = options.open(path)?;
+    if file.metadata()?.is_file() {
+        Ok(file)
+    } else {
+        Err(refused())
+    }
+}
+
 /// The record (≤ 8 MiB), or `None` when missing or unreadable.
 pub fn read_record(build_dir: &Path) -> Option<BuildRecord> {
     let path = build_dir.join(RECORD_FILE);
-    let metadata = std::fs::symlink_metadata(&path).ok()?;
-    if !metadata.is_file() || metadata.len() > MAX_RECORD_BYTES {
+    let mut file = open_regular_file(&path).ok()?;
+    if file.metadata().ok()?.len() > MAX_RECORD_BYTES {
         return None;
     }
-    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
+    let mut bytes = Vec::new();
+    file.by_ref()
+        .take(MAX_RECORD_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    serde_json::from_slice(&bytes).ok()
 }
 
 /// The last `max_lines` lines of `path`, reading at most `max_bytes` from its
 /// end (so a 1 GB log costs no more than a small one). `true` when lines were
 /// left out.
 pub fn read_tail(path: &Path, max_lines: usize, max_bytes: u64) -> std::io::Result<(String, bool)> {
-    let mut file = std::fs::File::open(path)?;
+    let mut file = open_regular_file(path)?;
     let length = file.metadata()?.len();
     let start = length.saturating_sub(max_bytes);
     file.seek(SeekFrom::Start(start))?;
@@ -122,8 +159,15 @@ pub struct LatestLog {
     pub record: Option<BuildRecord>,
 }
 
+fn is_regular_file(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_file())
+}
+
 fn modified_ms(path: &Path) -> Option<u64> {
-    let modified = std::fs::metadata(path).ok()?.modified().ok()?;
+    let metadata = std::fs::symlink_metadata(path)
+        .ok()
+        .filter(std::fs::Metadata::is_file)?;
+    let modified = metadata.modified().ok()?;
     modified
         .duration_since(UNIX_EPOCH)
         .ok()
@@ -145,7 +189,7 @@ pub fn latest_log(build_dir: &Path, main_document: &str) -> Option<LatestLog> {
     if let Some(record) = record {
         // A margin for file systems that round times.
         let newer_engine = engine_time.is_some_and(|time| time > record.finished_at_ms + 2_000);
-        if !newer_engine && cli_log.is_file() {
+        if !newer_engine && is_regular_file(&cli_log) {
             return Some(LatestLog {
                 source: LogSource::Cli,
                 path: cli_log,
@@ -153,7 +197,7 @@ pub fn latest_log(build_dir: &Path, main_document: &str) -> Option<LatestLog> {
             });
         }
     }
-    engine_log.is_file().then_some(LatestLog {
+    is_regular_file(&engine_log).then_some(LatestLog {
         source: LogSource::Engine,
         path: engine_log,
         record: None,
@@ -218,6 +262,48 @@ mod tests {
         assert!(truncated);
         assert_eq!(tail, "third");
         assert_eq!(tail_chars("short", 100), ("short".to_string(), false));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_in_the_build_folder_is_never_read_through() {
+        let dir = tempfile::tempdir().unwrap();
+        let secret = dir.path().join("secret.txt");
+        std::fs::write(&secret, "private key\n").unwrap();
+        let build = dir.path().join("build");
+        std::fs::create_dir(&build).unwrap();
+        for name in [LOG_FILE, "_oleafly_entry.log", RECORD_FILE] {
+            std::os::unix::fs::symlink(&secret, build.join(name)).unwrap();
+        }
+        assert!(open_regular_file(&build.join(LOG_FILE)).is_err());
+        assert!(read_tail(&build.join(LOG_FILE), 10, 1024).is_err());
+        assert_eq!(read_record(&build), None);
+        // Not the CLI's log and not the engine's: neither is a regular file.
+        std::fs::remove_file(build.join(RECORD_FILE)).unwrap();
+        std::fs::write(
+            build.join(RECORD_FILE),
+            serde_json::to_vec(&record(5)).unwrap(),
+        )
+        .unwrap();
+        assert!(latest_log(&build, "main.tex").is_none());
+        // A real file is read as before.
+        std::fs::remove_file(build.join(LOG_FILE)).unwrap();
+        std::fs::write(build.join(LOG_FILE), "cli\n").unwrap();
+        let latest = latest_log(&build, "main.tex").unwrap();
+        assert_eq!(latest.source, LogSource::Cli);
+        assert_eq!(read_tail(&latest.path, 10, 1024).unwrap().0, "cli\n");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_pipe_in_the_build_folder_is_refused_without_waiting_for_a_writer() {
+        let dir = tempfile::tempdir().unwrap();
+        let pipe = dir.path().join("oleafly-build.log");
+        let path = std::ffi::CString::new(pipe.to_str().unwrap()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(path.as_ptr(), 0o600) }, 0);
+        let started = std::time::Instant::now();
+        assert!(open_regular_file(&pipe).is_err());
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
     }
 
     #[test]

@@ -31,6 +31,7 @@ base64 = "0.23"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 zeroize = "=1.9.0"
 unicode-normalization = "0.1"
+dunce = "1.0"
 async-trait = "0.1"
 biblatex = "0.12.0"
 # Reads PDFs with lopdf 0.42, which uses let chains, so it needs Rust 1.88

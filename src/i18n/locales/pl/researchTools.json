@@ -203,7 +203,10 @@
       "unavailable": "Niedostępny",
       "saving": "Zapisywanie...",
       "saveTask": "Zapisz zadanie",
-      "createTask": "Utwórz zadanie"
+      "createTask": "Utwórz zadanie",
+      "replaceText": "Zastąpić tytuł i instrukcje, które wpisałeś, tym punktem startowym?",
+      "keepText": "Zachowaj moje",
+      "replaceConfirm": "Zastąp"
     },
     "starter": {
       "literatureReview": {
@@ -247,6 +250,12 @@
       "dependencies": "Zależności",
       "dependencyUnavailable": "Niedostępne",
       "noActivity": "Dla tego uruchomienia nie zarejestrowano żadnej aktywności.",
+      "activityGap_one": "Pomiędzy nimi nie wyświetlono {{count}} elementu.",
+      "activityGap_other": "Pomiędzy nimi nie wyświetlono {{count}} elementu.",
+      "activityMore": "Dalsza aktywność nie została jeszcze wyświetlona.",
+      "keepRunningDesktopApps": "To zadanie korzysta z aplikacji na komputerze, które wymagają Twojej obecności przy komputerze.",
+      "activityGap_many": "Pomiędzy nimi nie wyświetlono {{count}} elementów.",
+      "activityGap_few": "Pomiędzy nimi nie wyświetlono {{count}} elementów.",
       "startToRecord": "Uruchom to zadanie, aby rejestrować jego aktywność.",
       "reasoning": "Zgłoszone rozumowanie",
       "savedArtifact": "Zapisano {{label}}",
@@ -320,6 +329,10 @@
       "kindRun": "Rozpoczęcie uruchomienia",
       "kindMcp": "Użycie narzędzia",
       "expires": "Czeka do {{time}}",
+      "detailCommand": "Pełne polecenie",
+      "detailRun": "Szczegóły uruchomienia",
+      "detailMcp": "Argumenty narzędzia",
+      "loadFailed": "Nie udało się wczytać oczekujących żądań.",
       "status": {
         "approved": "Zatwierdzono",
         "denied": "Odmówiono",
@@ -348,8 +361,9 @@
       "noRuns": "Brak trwających uruchomień.",
       "budget": "Budżet",
       "timeUsed": "{{used}} z {{total}}",
-      "costUsed": "${{used}} z ${{limit}}",
-      "costSpent": "Wydano ${{used}}",
+      "costUsed": "{{used}} z {{limit}}",
+      "costSpent": "Wydano {{used}}",
+      "ledgerCapped": "Wyświetlono {{limit}} najnowszych wyników.",
       "costUnknown": "Koszt tego modelu jest nieznany.",
       "runsUsed": "Uruchomienia: {{used}} z {{limit}}",
       "runsUsedNoLimit": "Uruchomienia: {{used}}",
@@ -382,6 +396,10 @@
       "mcpServers": "Serwery MCP dostępne dla zadań",
       "mcpServersHint": "Zadania wywołują te narzędzia zgodnie z regułami poleceń każdego zadania.",
       "noMcpServers": "Nie skonfigurowano serwerów MCP.",
+      "networkHint": "Polecenia w zadaniach mają dostęp do internetu. Każde zadanie może to jednak wyłączyć.",
+      "loadFailed": "Nie udało się wczytać Twoich ustawień badań.",
+      "sectionName": "Badania",
+      "resetConfirm": "Przywróć domyślne ustawienia badań: nie usypianie komputera, powiadomienia, dostęp do sieci, budżet czasu i serwery MCP dostępne dla zadań. Cele uruchomień i zadania w tle pozostają bez zmian.",
       "saveFailed": "Nie udało się zapisać ustawień badań. Spróbuj ponownie."
     }
   },
@@ -899,7 +917,10 @@
     "fileReady": "Plik {{fileName}} jest gotowy",
     "saveWordHint": "Zapisz dokument Word, gdy będziesz gotowy.",
     "resultPlaceholder": "Tutaj pojawi się przekonwertowany wynik.",
-    "progressConvertingSource": "Konwertowanie źródła na Typst"
+    "progressConvertingSource": "Konwertowanie źródła na Typst",
+    "pageRange": "Strony",
+    "pageRangePlaceholder": "Wszystkie strony albo zakres, na przykład 1-50",
+    "pageRangeInvalid": "Wpisz numer jednej strony albo zakres, na przykład 1-50."
   },
   "converters": {
     "imageToLatex": {
@@ -1106,7 +1127,9 @@
     "fileTooLarge": "Wybierz plik mniejszy niż 128 MB.",
     "emptySheet": "Wybrany arkusz jest pusty.",
     "arxivInputRequired": "Podaj identyfikator arXiv albo wybierz archiwum źródeł.",
-    "equationToTypst": "Pandoc nie mógł przekonwertować tego równania na Typst. Sprawdź wzór LaTeX i spróbuj ponownie."
+    "equationToTypst": "Pandoc nie mógł przekonwertować tego równania na Typst. Sprawdź wzór LaTeX i spróbuj ponownie.",
+    "pdfTooManyPages": "Ten skan ma {{pages}} stron, a Oleafly przepisuje naraz do {{limit}}. Wpisz pod plikiem zakres stron, na przykład 1-{{limit}}.",
+    "outputLimit": "Modelowi zabrakło miejsca, zanim skończył, więc przepisanie byłoby niekompletne. Wybierz model z większym limitem długości odpowiedzi w sekcji Ustawienia, Asystent AI, Narzędzia albo przepisz mniejszą część."
   },
   "converterNotes": {
     "scannedPages": "Przepisano zeskanowane strony ({{pages}}) modelem {{model}}. Sprawdź równania i tabele przed użyciem wyniku.",
@@ -1789,7 +1812,11 @@
     "keepRunningHint": "Najpierw włącz pracę w tle w sekcji Ustawienia, Badania.",
     "invalidMetric": "Używaj liter, cyfr, kropek, łączników lub podkreśleń.",
     "invalidCost": "Wpisz kwotę większą od zera.",
-    "invalidRuns": "Wpisz liczbę całkowitą od 1 do 1000."
+    "invalidRuns": "Wpisz liczbę całkowitą od 1 do 1000.",
+    "invalidStart": "Wybierz czas rozpoczęcia w ciągu najbliższych 30 dni.",
+    "invalidStartFormat": "Użyj formatu {{example}}.",
+    "startAtFormat": "Wpisz czas w formacie {{example}}.",
+    "problemHidden": "Jedna z opcji w Zleceniu wymaga poprawy. Otwórz Zlecenie, aby zobaczyć, która."
   },
   "runs": {
     "status": {
@@ -1801,11 +1828,6 @@
       "cancelled": "Zatrzymane",
       "lost": "Utracone"
     }
-  },
-  "record": {
-    "title": "Zapis badań",
-    "openHandoff": "Otwórz przekazanie",
-    "openReport": "Otwórz raport"
   },
   "evidence": {
     "title": "Sprawdzanie dowodów",
@@ -1857,8 +1879,9 @@
       "edit": "Edytuj",
       "remove": "Usuń",
       "removeTitle": "Usunąć {{label}}?",
-      "removeConfirm": "Uruchomienia, które już tam wystartowały, działają dalej.",
+      "removeConfirm": "Uruchomienia, które już tam wystartowały, działają dalej. Zadania, które czekają tam na start, zakończą się niepowodzeniem.",
       "forgetHostKey": "Zapomnij klucz hosta",
+      "reviewHostKey": "Sprawdź klucz hosta",
       "notTested": "Nieprzetestowany",
       "tested": "Przetestowano {{time}}",
       "testFailed": "Test nie powiódł się",
@@ -1951,7 +1974,8 @@
       "add_one": "Dodaj {{count}} host",
       "add_few": "Dodaj {{count}} hosty",
       "add_many": "Dodaj {{count}} hostów",
-      "add_other": "Dodaj {{count}} hosta"
+      "add_other": "Dodaj {{count}} hosta",
+      "skipped": "Nie dodano: {{hosts}}. {{reason}}"
     },
     "sandbox": {
       "heading": "Piaskownica na tym komputerze",
@@ -1982,6 +2006,7 @@
       "runsOn": "Działa na {{target}}",
       "runsLocal": "Działa na tym komputerze.",
       "missing": "Cel używany przez to zadanie został usunięty. Wybierz inny.",
+      "loadFailed": "Nie udało się wczytać Twoich celów uruchomień.",
       "windowsOff": "Włącz piaskownicę Windows w Ustawieniach, aby uruchamiać polecenia na tym komputerze.",
       "openSettings": "Otwórz Ustawienia",
       "resources": "Zasoby Slurm"
@@ -1995,6 +2020,7 @@
       "movingBackHint": "To zadanie wróci do Oleafly, gdy skończy się jego bieżący krok."
     },
     "earlierActivity": "Pokaż wcześniejszą aktywność",
+    "earlierTruncated": "Pokazano tylko pierwsze {{limit}} elementów tego wcześniejszego uruchomienia.",
     "keepRunningFailed": "Nie udało się zmienić tego ustawienia. Spróbuj ponownie."
   }
 }

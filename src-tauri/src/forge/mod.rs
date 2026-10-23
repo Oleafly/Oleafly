@@ -2,6 +2,7 @@
 //! `oleafly-forge` crate (accounts, sign-in, repositories), the one-time move
 //! of the 0.4.7 GitHub sign-in, and the glue that imports a repository from
 //! an account. Remote Git commands get their sign-in from `remote_auth`.
+pub(crate) mod cancel;
 pub(crate) mod commands;
 pub(crate) mod import;
 pub(crate) mod public_stats;
@@ -13,6 +14,7 @@ use oleafly_forge::store::LegacyGithub;
 use oleafly_forge::{ForgeAccount, ForgeError, ForgeStore, ForgeToken};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::SystemTime;
 
@@ -20,12 +22,30 @@ use std::time::SystemTime;
 pub(crate) const ACCOUNTS_CHANGED_EVENT: &str = "forge-accounts-changed";
 
 /// The account store of the app's data folder, with the 0.4.7 GitHub sign-in
-/// moved in once. Blocking: call it from `spawn_blocking`.
+/// moved in once. A migration that fails (the legacy token is read through
+/// the app config, which fails on any unrelated bad secret) is logged and
+/// retried on the next call; it never stops a Git hosting command, which
+/// does not need the legacy sign-in. Blocking: call it from
+/// `spawn_blocking`.
 pub(crate) fn store() -> Result<ForgeStore, String> {
     let root = crate::paths::oleafly_root()?;
     let store = ForgeStore::new(&root);
-    migrate_once(&store)?;
+    if let Err(error) = migrate_once(&store) {
+        note_migration_failure(&error);
+    }
     Ok(store)
+}
+
+/// Write a failed legacy migration to the app log, once per process.
+fn note_migration_failure(error: &str) {
+    static LOGGED: AtomicBool = AtomicBool::new(false);
+    if LOGGED.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    let _ = crate::project::append_app_log(format!(
+        "The GitHub sign-in of an earlier version could not be moved to Git hosting yet ({}). It is tried again the next time.",
+        crate::app_error::english_error(error)
+    ));
 }
 
 /// Check the legacy GitHub sign-in at most once per data folder and process:
@@ -150,7 +170,10 @@ pub(crate) fn now_ms() -> u64 {
 
 /// Keep 0.4.7's `github_token` and `github_user` in step with the
 /// github.com account, so an older build still pushes after a downgrade.
-/// Other servers never touch them.
+/// Other servers never touch them. The token's fingerprint is recorded in the
+/// account store under its lock (lock order: forge store, config), so the
+/// next launch's migration reads the mirror as this build's own write and
+/// keeps the account's name, picture and CA file.
 pub(crate) fn mirror_legacy_github(
     base: &str,
     signed_in: Option<(&str, &str)>,
@@ -161,11 +184,17 @@ pub(crate) fn mirror_legacy_github(
     let (token, login) = signed_in
         .map(|(token, login)| (token.to_string(), login.to_string()))
         .unwrap_or_default();
-    crate::config::update_config(move |config| {
-        config.github_token = token;
-        config.github_user = login;
-        Ok(())
-    })
+    let recorded = (!token.is_empty()).then(|| token.clone());
+    let store = ForgeStore::new(crate::paths::oleafly_root()?);
+    store
+        .mirror_legacy_github(recorded.as_deref(), move || {
+            crate::config::update_config(move |config| {
+                config.github_token = token;
+                config.github_user = login;
+                Ok(())
+            })
+        })
+        .map_err(|error| app_error(&error, "GitHub"))
 }
 
 /// Normalize a base URL the user or the webview sent.
@@ -359,6 +388,113 @@ mod tests {
             "gho_legacy1234",
             "an older build still finds its token"
         );
+    }
+
+    #[test]
+    fn a_github_sign_in_keeps_its_account_through_the_next_launch() {
+        let _env = crate::paths::data_dir_env_lock();
+        let data = DataDir::new();
+        let mut github = gitlab_account(GITHUB_COM);
+        github.kind = ForgeKind::GitHub;
+        github.name = Some("Octo Cat".into());
+        github.avatar_url = Some("https://avatars.example/o.png".into());
+        github.ca_file = Some("/certs/corp ca.pem".into());
+        let sign_in = ForgeToken {
+            token: "gho_signedin123".into(),
+            refresh: None,
+            expires_at: None,
+        };
+        store().unwrap().save(github.clone(), sign_in).unwrap();
+        // What `forge_sign_in_token` and the browser sign-in do next.
+        mirror_legacy_github(GITHUB_COM, Some(("gho_signedin123", "octocat"))).unwrap();
+
+        // The next launch is a new process: a new store handle migrates again
+        // from the config the mirror wrote.
+        let relaunched = ForgeStore::new(data.path());
+        let changed = relaunched
+            .migrate_legacy_github(read_legacy_github)
+            .unwrap();
+
+        assert!(!changed, "the mirror is read as this build's own write");
+        assert_eq!(relaunched.accounts().unwrap(), vec![github]);
+        assert_eq!(
+            relaunched.token(GITHUB_COM).unwrap().unwrap().token,
+            "gho_signedin123"
+        );
+    }
+
+    #[test]
+    fn an_older_build_signing_in_after_a_mirror_is_still_followed() {
+        let _env = crate::paths::data_dir_env_lock();
+        let data = DataDir::new();
+        let mut github = gitlab_account(GITHUB_COM);
+        github.kind = ForgeKind::GitHub;
+        store()
+            .unwrap()
+            .save(
+                github,
+                ForgeToken {
+                    token: "gho_signedin123".into(),
+                    refresh: None,
+                    expires_at: None,
+                },
+            )
+            .unwrap();
+        mirror_legacy_github(GITHUB_COM, Some(("gho_signedin123", "octocat"))).unwrap();
+        // A downgrade: 0.4.7 signs in as someone else.
+        crate::config::update_config(|config| {
+            config.github_token = "gho_elsewhere456".into();
+            config.github_user = "other".into();
+            Ok(())
+        })
+        .unwrap();
+
+        let relaunched = ForgeStore::new(data.path());
+        assert!(relaunched
+            .migrate_legacy_github(read_legacy_github)
+            .unwrap());
+        assert_eq!(relaunched.accounts().unwrap()[0].login, "other");
+    }
+
+    #[test]
+    fn a_config_that_cannot_be_read_does_not_stop_git_hosting() {
+        let _env = crate::paths::data_dir_env_lock();
+        let data = DataDir::new();
+        std::fs::write(data.path().join("config.json"), "{ not json").unwrap();
+
+        // The legacy sign-in cannot be read, yet the accounts still open.
+        let opened = store().expect("Git hosting works without the legacy sign-in");
+        assert!(opened.accounts().unwrap().is_empty());
+        opened
+            .save(
+                gitlab_account("https://gitlab.com"),
+                ForgeToken {
+                    token: "glpat-plain-secret".into(),
+                    refresh: None,
+                    expires_at: None,
+                },
+            )
+            .unwrap();
+        let file: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(data.path().join(oleafly_forge::store::ACCOUNTS_FILE))
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            file["legacyGithubMigrated"], false,
+            "a migration that failed is not marked done"
+        );
+
+        // Once the config reads again, the next call migrates.
+        std::fs::remove_file(data.path().join("config.json")).unwrap();
+        crate::config::update_config(|config| {
+            config.github_token = "gho_legacy1234".into();
+            config.github_user = "octocat".into();
+            Ok(())
+        })
+        .unwrap();
+        let accounts = store().unwrap().accounts().unwrap();
+        assert!(accounts.iter().any(|account| account.base == GITHUB_COM));
     }
 
     #[test]

@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { SearchAddon } from "@xterm/addon-search";
-import { decodeAppError } from "@/lib/app-error";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import { Channel } from "@tauri-apps/api/core";
 import { Terminal } from "@xterm/xterm";
@@ -594,7 +594,13 @@ export function TerminalPane({
           return;
         }
         setBooted(true);
-        writeTerminalError(terminal, i18n.t(($) => $.workspace.terminal.errors.start), error, outputWritten);
+        writeTerminalError(
+          terminal,
+          i18n.t(($) => $.workspace.terminal.errors.start),
+          // A typed error (no WSL distribution, a missing shell) reads in the app's language.
+          decodeAppError(error) ? describeError(error) : error,
+          outputWritten,
+        );
       });
     }, 0);
 

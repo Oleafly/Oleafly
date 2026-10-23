@@ -1392,3 +1392,651 @@ fn windows_rules_apply_on_every_os() {
     );
     assert!(check_remote_paths_on(&["aux.tex".into()], false).is_ok());
 }
+
+fn forward_slashes(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+// Only the Unix tests (links, modes) apply a sync.
+#[cfg(unix)]
+fn apply_options() -> SyncOptions {
+    SyncOptions {
+        resolutions: BTreeMap::new(),
+        mode: Mode::Apply,
+        push: true,
+        worktree: None,
+    }
+}
+
+const DRIVER_TREE: &[(&str, &[u8])] = &[
+    ("main.tex", b"Main\n"),
+    (
+        "notes.tex",
+        b"one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\n",
+    ),
+    (".gitattributes", b"* merge=x\n"),
+];
+
+#[test]
+fn a_planted_mirror_config_runs_nothing_and_is_rewritten() {
+    let world = World::new(DRIVER_TREE);
+    world.link(None);
+    let marker = world.temp.path().join("driver-ran");
+    let command = format!("touch '{}'", forward_slashes(&marker));
+    let config = world.repo.join(".git").join("config");
+    let mut planted = std::fs::read_to_string(&config).unwrap();
+    planted.push_str(&format!(
+        "[merge \"x\"]\n\tdriver = {command}\n[http]\n\tproxy = http://127.0.0.1:9\n\tsslVerify = false\n[url \"file:///nowhere/\"]\n\tinsteadOf = file://\n[core]\n\tfsmonitor = {command}\n\tsshCommand = {command}\n[credential]\n\thelper = !{command}\n[include]\n\tpath = {}\n",
+        forward_slashes(&marker)
+    ));
+    std::fs::write(&config, planted).unwrap();
+    std::fs::write(world.repo.join(".git").join("commondir"), "../../elsewhere").unwrap();
+
+    world.write(
+        "notes.tex",
+        "ONE\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\n",
+    );
+    world.coauthor(&[(
+        "notes.tex",
+        Some("one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nNINE\n"),
+    )]);
+    let summary = world.sync();
+    assert!(merged(&summary), "{summary:?}");
+    assert!(!marker.exists(), "a planted command ran");
+    let merged_text = "ONE\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nNINE\n";
+    assert_eq!(world.local("notes.tex").as_deref(), Some(merged_text));
+    assert_eq!(world.remote_file("notes.tex").as_deref(), Some(merged_text));
+
+    let rewritten = std::fs::read_to_string(&config).unwrap();
+    for planted in [
+        "driver",
+        "proxy",
+        "sslVerify",
+        "insteadOf",
+        "fsmonitor",
+        "sshCommand",
+        "helper",
+        "include",
+    ] {
+        assert!(
+            !rewritten.contains(planted),
+            "{planted} survived:\n{rewritten}"
+        );
+    }
+    assert!(rewritten.contains("repositoryformatversion = 0"));
+    assert!(!world.repo.join(".git").join("commondir").exists());
+}
+
+#[test]
+fn the_mirror_config_keeps_only_the_repository_format() {
+    assert_eq!(
+        mirror_config_text("", false),
+        "[core]\n\trepositoryformatversion = 0\n\tfilemode = false\n\tbare = false\n\tignorecase = false\n"
+    );
+    let reftable = "[core]\n\trepositoryformatversion = 1\n\tignorecase = true\n\tworktree = /home/me\n\tsshCommand = evil\n[extensions]\n\trefStorage = reftable\n\tobjectFormat = sha256\n\tworktreeConfig = true\n[core \"x\"]\n\trepositoryformatversion = 0\n[remote \"origin\"]\n\turl = https://evil.example\n";
+    let text = mirror_config_text(reftable, false);
+    assert_eq!(
+        text,
+        "[core]\n\trepositoryformatversion = 1\n\tfilemode = false\n\tbare = false\n\tignorecase = true\n[extensions]\n\trefstorage = reftable\n\tobjectformat = sha256\n"
+    );
+    // Values of another shape are not carried over.
+    let odd = "[core]\n\trepositoryformatversion = 2\n\tignorecase = maybe\n[extensions]\n\trefstorage = $(touch x)\n";
+    assert_eq!(mirror_config_text(odd, true), mirror_config_text("", true));
+    // Extensions mean nothing in a version 0 repository.
+    assert!(
+        !mirror_config_text("[extensions]\n\trefstorage = reftable\n", false)
+            .contains("extensions")
+    );
+}
+
+/// A project folder that is itself a Git repository with an uncommitted edit,
+/// linked to the world's online project.
+struct Outer {
+    folder: PathBuf,
+    paths: SyncPaths,
+}
+
+impl Outer {
+    fn new(world: &World) -> Outer {
+        let folder = world.temp.path().join("outer");
+        copy_tree(&world.project, &folder);
+        run(&folder, &["init", "--quiet", "--initial-branch=trunk"]);
+        run(&folder, &["add", "-A"]);
+        run(&folder, &["commit", "--quiet", "-m", "Mine"]);
+        std::fs::write(folder.join("notes.tex"), "My own uncommitted edit\n").unwrap();
+        let paths = SyncPaths::for_folder(&folder);
+        Outer { folder, paths }
+    }
+
+    /// Everything about the user's own repository that a stray Git call
+    /// could change.
+    fn state(&self) -> (String, String, String, Vec<u8>) {
+        (
+            run(&self.folder, &["rev-parse", "HEAD"]),
+            run(&self.folder, &["symbolic-ref", "HEAD"]),
+            run(&self.folder, &["for-each-ref"]),
+            std::fs::read(self.folder.join("notes.tex")).unwrap(),
+        )
+    }
+}
+
+#[test]
+fn a_damaged_mirror_never_works_on_the_repository_around_it() {
+    let world = seeded();
+    let outer = Outer::new(&world);
+    let before = outer.state();
+    // A mirror whose `.git` is an empty folder: Git alone would skip it and
+    // use the user's own repository one level up.
+    std::fs::create_dir_all(outer.paths.repo.join(".git")).unwrap();
+    let outcome = link_project(
+        &world.git,
+        &outer.paths,
+        &outer.folder,
+        &world.server,
+        PROJECT,
+        &world.url(),
+        TOKEN,
+        None,
+        Mode::Apply,
+        None,
+        true,
+    )
+    .unwrap();
+    assert!(
+        matches!(outcome, LinkOutcome::NeedsChoice(_)),
+        "{outcome:?}"
+    );
+    assert_eq!(outer.state(), before);
+    assert!(outer.paths.repo.join(".git").join("HEAD").is_file());
+}
+
+#[test]
+fn a_mirror_that_stays_broken_is_refused_before_anything_changes() {
+    let world = seeded();
+    let outer = Outer::new(&world);
+    let before = outer.state();
+    let git_dir = outer.paths.repo.join(".git");
+    std::fs::create_dir_all(&git_dir).unwrap();
+    std::fs::write(git_dir.join("HEAD"), "not a ref\n").unwrap();
+    let error = fetch(&world.git, &outer.paths.repo, &world.url(), TOKEN).unwrap_err();
+    assert_eq!(error.kind, OnlineErrorKind::SyncNeedsRelink);
+    assert_eq!(outer.state(), before);
+    // A `.git` that is a file pointing elsewhere is no mirror either.
+    std::fs::remove_dir_all(&git_dir).unwrap();
+    std::fs::write(
+        &git_dir,
+        format!("gitdir: {}/.git\n", forward_slashes(&outer.folder)),
+    )
+    .unwrap();
+    let error = fetch(&world.git, &outer.paths.repo, &world.url(), TOKEN).unwrap_err();
+    assert_eq!(error.kind, OnlineErrorKind::SyncNeedsRelink);
+    assert_eq!(outer.state(), before);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_mirror_location_that_goes_through_a_link_is_refused() {
+    let world = seeded();
+    let elsewhere = world.temp.path().join("elsewhere");
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    let folder = world.temp.path().join("folder");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, folder.join(".oleafly")).unwrap();
+    let error = claim(&SyncPaths::for_folder(&folder)).unwrap_err();
+    assert_eq!(error.kind, OnlineErrorKind::SyncNeedsRelink);
+    assert_eq!(std::fs::read_dir(&elsewhere).unwrap().count(), 0);
+
+    let linked_repo = world.temp.path().join("repo-link");
+    std::os::unix::fs::symlink(&elsewhere, &linked_repo).unwrap();
+    let error = ensure_repo(&world.git, &linked_repo).unwrap_err();
+    assert_eq!(error.kind, OnlineErrorKind::SyncNeedsRelink);
+    assert_eq!(std::fs::read_dir(&elsewhere).unwrap().count(), 0);
+}
+
+#[test]
+fn the_mirror_keeps_a_config_git_can_use_after_a_rewrite() {
+    let world = seeded();
+    world.link(None);
+    let config = world.repo.join(".git").join("config");
+    std::fs::write(&config, "[core]\n\tbare = true\n\tworktree = /nowhere\n").unwrap();
+    ensure_repo(&world.git, &world.repo).unwrap();
+    assert!(std::fs::read_to_string(&config)
+        .unwrap()
+        .contains("bare = false"));
+    assert_eq!(world.sync().outcome, SyncOutcome::UpToDate);
+}
+
+fn stored(dir: &Path, files: &[(&str, &str)]) {
+    for (path, body) in files {
+        let target = dir.join(path);
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::fs::write(target, body).unwrap();
+    }
+}
+
+fn names_in(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+#[test]
+fn a_file_edited_after_it_was_read_is_never_overwritten_or_deleted() {
+    let temp = tempfile::tempdir().unwrap();
+    let (project, repo) = (temp.path().join("project"), temp.path().join("repo"));
+    stored(
+        &project,
+        &[
+            ("a.tex", "edited after the sync read it\n"),
+            ("b.tex", "edited too\n"),
+        ],
+    );
+    stored(&repo, &[("a.tex", "merged\n")]);
+    let mut seen = Snapshot::new();
+    seen.insert("a.tex".into(), fingerprint(b"as read\n"));
+    seen.insert("b.tex".into(), fingerprint(b"as read\n"));
+
+    let error = write_back(&project, &repo, &["a.tex".into()], &[], true, &seen).unwrap_err();
+    assert_eq!(error.kind, OnlineErrorKind::SyncFailed);
+    assert!(error
+        .detail
+        .unwrap()
+        .contains("a.tex changed while the sync ran"));
+    let error = write_back(&project, &repo, &[], &["b.tex".into()], true, &seen).unwrap_err();
+    assert_eq!(error.kind, OnlineErrorKind::SyncFailed);
+    assert_eq!(
+        std::fs::read_to_string(project.join("a.tex")).unwrap(),
+        "edited after the sync read it\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.join("b.tex")).unwrap(),
+        "edited too\n"
+    );
+    assert_eq!(names_in(&project), ["a.tex", "b.tex"]);
+
+    // A file that appeared since, or vanished since, counts as changed too.
+    stored(&repo, &[("new.tex", "from online\n")]);
+    stored(&project, &[("new.tex", "typed meanwhile\n")]);
+    assert!(write_back(&project, &repo, &["new.tex".into()], &[], true, &seen).is_err());
+    std::fs::remove_file(project.join("a.tex")).unwrap();
+    assert!(write_back(&project, &repo, &["a.tex".into()], &[], true, &seen).is_err());
+    assert!(!project.join("a.tex").exists());
+}
+
+#[test]
+fn a_file_that_is_as_it_was_read_is_replaced_and_removed() {
+    let temp = tempfile::tempdir().unwrap();
+    let (project, repo) = (temp.path().join("project"), temp.path().join("repo"));
+    stored(&project, &[("a.tex", "old\n"), ("gone/b.tex", "bye\n")]);
+    stored(&repo, &[("a.tex", "merged\n"), ("deep/er/c.tex", "new\n")]);
+    let mut seen = Snapshot::new();
+    seen.insert("a.tex".into(), fingerprint(b"old\n"));
+    seen.insert("gone/b.tex".into(), fingerprint(b"bye\n"));
+    let (wrote, deleted) = write_back(
+        &project,
+        &repo,
+        &["a.tex".into(), "deep/er/c.tex".into()],
+        &["gone/b.tex".into()],
+        true,
+        &seen,
+    )
+    .unwrap();
+    assert_eq!((wrote.len(), deleted.len()), (2, 1));
+    assert_eq!(
+        std::fs::read_to_string(project.join("a.tex")).unwrap(),
+        "merged\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.join("deep/er/c.tex")).unwrap(),
+        "new\n"
+    );
+    assert!(!project.join("gone").exists());
+    // No staging or moved-aside copies are left behind.
+    assert_eq!(names_in(&project), ["a.tex", "deep"]);
+}
+
+#[test]
+fn a_failure_partway_puts_every_file_back() {
+    let temp = tempfile::tempdir().unwrap();
+    let (project, repo) = (temp.path().join("project"), temp.path().join("repo"));
+    stored(
+        &project,
+        &[
+            ("gone.tex", "bye\n"),
+            ("one.tex", "old one\n"),
+            ("dir", "a file where a folder must go\n"),
+        ],
+    );
+    stored(
+        &repo,
+        &[
+            ("one.tex", "new one\n"),
+            ("fresh/two.tex", "new two\n"),
+            ("dir/three.tex", "new three\n"),
+        ],
+    );
+    let mut seen = Snapshot::new();
+    seen.insert("gone.tex".into(), fingerprint(b"bye\n"));
+    seen.insert("one.tex".into(), fingerprint(b"old one\n"));
+    seen.insert(
+        "dir".into(),
+        fingerprint(b"a file where a folder must go\n"),
+    );
+    let result = write_back(
+        &project,
+        &repo,
+        &[
+            "one.tex".into(),
+            "fresh/two.tex".into(),
+            "dir/three.tex".into(),
+        ],
+        &["gone.tex".into()],
+        true,
+        &seen,
+    );
+    assert!(result.is_err());
+    assert_eq!(
+        std::fs::read_to_string(project.join("gone.tex")).unwrap(),
+        "bye\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.join("one.tex")).unwrap(),
+        "old one\n"
+    );
+    assert!(!project.join("fresh").exists());
+    assert_eq!(names_in(&project), ["dir", "gone.tex", "one.tex"]);
+}
+
+#[test]
+fn planning_checks_nothing_on_disk_and_writes_nothing() {
+    let temp = tempfile::tempdir().unwrap();
+    let (project, repo) = (temp.path().join("project"), temp.path().join("repo"));
+    stored(&project, &[("a.tex", "edited\n"), ("b.tex", "x\n")]);
+    stored(&repo, &[("a.tex", "merged\n")]);
+    let (wrote, deleted) = write_back(
+        &project,
+        &repo,
+        &["a.tex".into()],
+        &["b.tex".into()],
+        false,
+        &Snapshot::new(),
+    )
+    .unwrap();
+    assert_eq!(
+        (wrote, deleted),
+        (vec!["a.tex".to_string()], vec!["b.tex".to_string()])
+    );
+    assert_eq!(
+        std::fs::read_to_string(project.join("a.tex")).unwrap(),
+        "edited\n"
+    );
+    assert!(project.join("b.tex").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_tracked_file_swapped_for_a_link_is_not_a_deletion_to_send() {
+    let world = seeded();
+    world.link(None);
+    let shared = world.temp.path().join("shared.bib");
+    std::fs::write(&shared, "@book{shared}\n").unwrap();
+    std::fs::remove_file(world.project.join("refs.bib")).unwrap();
+    std::os::unix::fs::symlink(&shared, world.project.join("refs.bib")).unwrap();
+    let error = sync_project(
+        &world.git,
+        &world.paths,
+        &world.project,
+        &world.url(),
+        TOKEN,
+        &apply_options(),
+    )
+    .unwrap_err();
+    assert_eq!(error.kind, OnlineErrorKind::SyncFailed);
+    assert!(error.detail.unwrap().contains("refs.bib is a link now"));
+    assert_eq!(
+        world.remote_file("refs.bib").as_deref(),
+        Some("@book{a, title={A}}\n")
+    );
+
+    // The same for a folder that became a link.
+    std::fs::remove_file(world.project.join("refs.bib")).unwrap();
+    stored(&world.project, &[("refs.bib", "@book{a, title={A}}\n")]);
+    let outside = world.temp.path().join("outside");
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::write(outside.join("fig.png"), "x").unwrap();
+    std::fs::remove_dir_all(world.project.join("img")).unwrap();
+    std::os::unix::fs::symlink(&outside, world.project.join("img")).unwrap();
+    assert!(sync_project(
+        &world.git,
+        &world.paths,
+        &world.project,
+        &world.url(),
+        TOKEN,
+        &apply_options(),
+    )
+    .is_err());
+    assert!(world.remote_file("img/fig.png").is_some());
+    assert_eq!(names_in(&outside), ["fig.png"]);
+}
+
+#[cfg(unix)]
+#[test]
+fn online_files_are_never_written_through_a_local_link() {
+    let temp = tempfile::tempdir().unwrap();
+    let (project, repo) = (temp.path().join("project"), temp.path().join("repo"));
+    let outside = temp.path().join("outside");
+    std::fs::create_dir_all(&project).unwrap();
+    std::fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, project.join("figures")).unwrap();
+    stored(&repo, &[("figures/new.png", "from online\n")]);
+    let error = write_back(
+        &project,
+        &repo,
+        &["figures/new.png".into()],
+        &[],
+        true,
+        &Snapshot::new(),
+    )
+    .unwrap_err();
+    assert_eq!(error.kind, OnlineErrorKind::SyncPathBlocked);
+    stored(&outside, &[("keep.png", "mine\n")]);
+    let error = write_back(
+        &project,
+        &repo,
+        &[],
+        &["figures/keep.png".into()],
+        true,
+        &Snapshot::new(),
+    )
+    .unwrap_err();
+    assert_eq!(error.kind, OnlineErrorKind::SyncPathBlocked);
+    assert_eq!(names_in(&outside), ["keep.png"]);
+}
+
+#[test]
+fn oleafly_and_editor_leftovers_are_never_synced() {
+    for name in [
+        ".main.tex.oleafly-4242-0-0000000000000000.tmp",
+        ".oleafly-diff-main.tex",
+        "chapters/.intro.tex.oleafly-1-2-00000000000000ab.tmp",
+        "main.tex.swp",
+        "main.tex~",
+        ".#main.tex",
+        "~$notes.docx",
+        "._main.tex",
+        "main (conflicted copy 2026-10-01).tex",
+        "notes.sync-conflict-20261001-120000.tex",
+        "figures/.DS_Store",
+    ] {
+        assert!(excluded(name), "{name}");
+    }
+    for name in [
+        "main.tex",
+        "chapters/intro.tex",
+        "refs.bib",
+        ".gitattributes",
+        "my~notes.tex",
+    ] {
+        assert!(!excluded(name), "{name}");
+    }
+    let world = seeded();
+    world.link(None);
+    world.write(
+        ".main.tex.oleafly-4242-0-0000000000000000.tmp",
+        "half a save",
+    );
+    world.write(".oleafly-diff-main.tex", "diff");
+    world.write("main.tex.swp", "vim");
+    world.write("._main.tex", "mac");
+    world.write("notes.tex", "Real edit\n");
+    assert_eq!(world.sync().outcome, SyncOutcome::Synced);
+    assert_eq!(
+        world.remote_file("notes.tex").as_deref(),
+        Some("Real edit\n")
+    );
+    for name in [
+        ".main.tex.oleafly-4242-0-0000000000000000.tmp",
+        ".oleafly-diff-main.tex",
+        "main.tex.swp",
+        "._main.tex",
+    ] {
+        assert_eq!(world.remote_file(name), None, "{name}");
+    }
+}
+
+#[test]
+fn failures_are_told_apart_by_what_git_said_not_by_the_address() {
+    let offline = |text: &str| classify_remote_failure(text).kind == OnlineErrorKind::SyncOffline;
+    // A project id or a port inside the address looks like a status code.
+    assert!(offline(
+        "fatal: unable to access 'https://git.overleaf.com/6403a1b2c3d4e5f600000000/': Could not resolve host: git.overleaf.com"
+    ));
+    assert!(offline(
+        "fatal: unable to access 'https://git.overleaf.com/6404a1b2c3d4e5f600000000/': Could not resolve host: git.overleaf.com"
+    ));
+    assert!(offline(
+        "fatal: unable to access 'https://latex.example.edu:4403/git/abc/': Failed to connect to latex.example.edu port 4403 after 3 ms: Couldn't connect to server"
+    ));
+    let kind = |text: &str| classify_remote_failure(text).kind;
+    assert_eq!(
+        kind("fatal: unable to access 'https://git.example.edu/x/': The requested URL returned error: 403"),
+        OnlineErrorKind::GitTokenRejected
+    );
+    assert_eq!(
+        kind("error: RPC failed; HTTP 401 curl 22 The requested URL returned error: 401"),
+        OnlineErrorKind::GitTokenRejected
+    );
+    assert_eq!(
+        kind("fatal: unable to access 'https://git.example.edu/x/': The requested URL returned error: 404"),
+        OnlineErrorKind::GitUnavailable
+    );
+    assert_eq!(
+        kind("fatal: unable to access 'https://git.example.edu/x/': The requested URL returned error: 4040"),
+        OnlineErrorKind::SyncOffline
+    );
+    assert_eq!(
+        kind("fatal: unable to access 'https://git.example.edu/x/': The requested URL returned error: 500"),
+        OnlineErrorKind::SyncOffline
+    );
+    assert_eq!(
+        kind("remote: HTTP Basic: Access denied"),
+        OnlineErrorKind::GitTokenRejected
+    );
+}
+
+#[test]
+fn a_dry_run_with_only_local_changes_says_it_would_send_them() {
+    let world = seeded();
+    world.link(None);
+    world.write("notes.tex", "Mine\n");
+    let summary = sync_project(
+        &world.git,
+        &world.paths,
+        &world.project,
+        &world.url(),
+        TOKEN,
+        &plan(),
+    )
+    .unwrap();
+    assert_eq!(summary.outcome, SyncOutcome::Planned);
+    assert!(summary.written.is_empty() && summary.removed.is_empty());
+    assert!(summary.would_push);
+    assert_eq!(serde_json::to_value(&summary).unwrap()["wouldPush"], true);
+    assert_ne!(world.remote_file("notes.tex").as_deref(), Some("Mine\n"));
+
+    let no_push = SyncOptions {
+        push: false,
+        ..plan()
+    };
+    let summary = sync_project(
+        &world.git,
+        &world.paths,
+        &world.project,
+        &world.url(),
+        TOKEN,
+        &no_push,
+    )
+    .unwrap();
+    assert!(!summary.would_push);
+    assert!(serde_json::to_value(&summary)
+        .unwrap()
+        .get("wouldPush")
+        .is_none());
+
+    world.write("notes.tex", "Notes\n");
+    let summary = sync_project(
+        &world.git,
+        &world.paths,
+        &world.project,
+        &world.url(),
+        TOKEN,
+        &plan(),
+    )
+    .unwrap();
+    assert_eq!(summary.outcome, SyncOutcome::UpToDate);
+}
+
+#[test]
+fn linking_with_the_online_version_saves_the_replaced_files_where_they_can_be_exported() {
+    let world = seeded();
+    world.write("notes.tex", "My notes\n");
+    world.write("only-here.tex", "mine alone\n");
+    let backups = world.temp.path().join("backups");
+    assert!(export_link_backups(&world.git, &world.paths, &backups)
+        .unwrap()
+        .is_empty());
+    assert!(matches!(
+        world.link(Some(Side::Remote)),
+        LinkOutcome::Linked { .. }
+    ));
+    assert_eq!(world.local("notes.tex").as_deref(), Some("Notes\n"));
+
+    let saved = export_link_backups(&world.git, &world.paths, &backups).unwrap();
+    assert_eq!(saved.len(), 1);
+    assert_eq!(saved[0].files, vec!["notes.tex".to_string()]);
+    let folder = backups.join(&saved[0].name);
+    assert_eq!(
+        std::fs::read_to_string(folder.join("notes.tex")).unwrap(),
+        "My notes\n"
+    );
+    // A file that was only here was never at risk.
+    assert!(!folder.join("only-here.tex").exists());
+    assert_eq!(names_in(&backups), vec![saved[0].name.clone()]);
+
+    // Asking again keeps what is there, and unlinking keeps it too.
+    assert_eq!(
+        export_link_backups(&world.git, &world.paths, &backups).unwrap(),
+        saved
+    );
+    remove_link(&world.paths).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(folder.join("notes.tex")).unwrap(),
+        "My notes\n"
+    );
+    assert!(export_link_backups(&world.git, &world.paths, &backups)
+        .unwrap()
+        .is_empty());
+}

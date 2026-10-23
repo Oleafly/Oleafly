@@ -11,12 +11,12 @@
       "checkingAction": "Verificando",
       "checkingDescription": "Isso pode demorar um pouco enquanto o Oleafly confere as ferramentas de linha de comando deste computador.",
       "checkingInstalled": "Verificando os agentes instalados",
-      "checkingTitle": "Procurando agentes de linha de comando",
+      "checkingTitle": "Procurando agentes de CLI",
       "cliPathLabel": "Detectado em",
       "cliTitle": "Ferramenta de linha de comando",
       "copySignInCommand": "Copiar o comando de login",
-      "emptyDescription": "Instale um agente de linha de comando compatível e verifique de novo.",
-      "emptyTitle": "Nenhum agente de linha de comando encontrado",
+      "emptyDescription": "Instale um agente de CLI compatível e verifique de novo.",
+      "emptyTitle": "Nenhum agente de CLI encontrado",
       "custom": {
         "description": "Cole uma definição de agente para registrar um agente que o Oleafly não traz.",
         "hint": "Cole uma definição de agente com um pacote npm ou uv fixado, um binário verificado ou um executável instalado. Não coloque senhas nem chaves de API neste JSON.",
@@ -36,7 +36,7 @@
       },
       "installBridge": "Instalar a ponte",
       "installBridgeNextStep": "Instale a ponte ACP e depois faça login pela ferramenta de linha de comando.",
-      "intro": "Conecte um agente local por ACP. Cada agente gerencia os próprios modelos, ferramentas e login, e as configurações de provedores de API ficam à parte. Use a conta oficial da CLI para o login: o Oleafly não importa tokens de conta nem estima cotas de assinatura.",
+      "intro": "Agentes de CLI como Claude Code, Codex e Gemini CLI se conectam pelo Agent Client Protocol (ACP). Alguns precisam de uma ponte, um pequeno adaptador que o Oleafly instala para conseguir falar com eles. Cada agente gerencia os próprios modelos, ferramentas e login, e as configurações de provedores de API ficam à parte. Use a conta oficial da CLI para o login: o Oleafly não importa tokens de conta nem estima cotas de assinatura.",
       "nextStepTitle": "Próximo passo",
       "notReported": "Não informado",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Mostrar a distribuição",
         "title": "Encontrar mais agentes"
       },
-      "sectionLabel": "Agentes ACP",
+      "sectionLabel": "Agentes de CLI",
       "signInCommandLabel": "Comando de login",
       "versionLabel": "Versão",
       "updateBridge": "Atualizar a ponte",
@@ -147,7 +147,7 @@
         "label": "Usar minha chave de API do Oleafly",
         "off": "Desligado (o agente faz login por conta própria)",
         "note": "O Oleafly envia a chave para este agente quando uma conversa começa e a deixa fora das transcrições.",
-        "unavailable": "Adicione uma chave de API em Configurações, IA para usar aqui."
+        "unavailable": "Adicione uma chave de API em Configurações, Assistente de IA, Provedores e chaves para usar aqui."
       },
       "hermes": {
         "title": "Perfil do Hermes para este projeto",
@@ -175,7 +175,20 @@
         "test": "Testar a conexão",
         "testOk": "Conectado: {{version}}",
         "save": "Salvar",
-        "sshNote": "O Oleafly só faz login com suas chaves SSH."
+        "sshNote": "O Oleafly só faz login com suas chaves SSH.",
+        "folderHint": "O caminho completo naquela máquina, como /home/ada/paper.",
+        "needsValid": "Testar a conexão e Salvar precisam de valores válidos para: {{fields}}.",
+        "unsavedEdit": "Ainda não salvo. Salve para usar estas alterações.",
+        "unsavedMode": "Ainda não salvo. Até você salvar, este projeto continua usando: {{mode}}.",
+        "errors": {
+          "hostRequired": "Digite o nome do host ou usuário@host.",
+          "hostInvalid": "Use só letras, números, pontos, hífens e @, e não comece com hífen.",
+          "port": "Use uma porta de 1 a 65535.",
+          "folderRequired": "Digite o caminho completo da pasta do projeto naquela máquina.",
+          "folderInvalid": "Use o caminho completo, começando com /.",
+          "command": "Use hermes, ou o caminho completo dele começando com /.",
+          "profile": "Use letras minúsculas, números, hífens e sublinhados."
+        }
       }
     },
     "approvals": {
@@ -1013,6 +1026,8 @@
         "ariaLabel": "O shell do terminal",
         "description": "Os novos terminais iniciam este shell. Os terminais abertos mantêm o deles.",
         "label": "Shell",
+        "notFound": "{{name}} (não encontrado)",
+        "notFoundNote": "{{name}} não está disponível neste computador, então os novos terminais não podem iniciar. Escolha outro shell.",
         "options": {
           "auto": "Padrão ({{name}})",
           "cmd": "Prompt de Comando",
@@ -1027,14 +1042,17 @@
           "ariaLabel": "Caminho personalizado do shell",
           "description": "O programa que os novos terminais executam.",
           "label": "Caminho do shell"
-        }
+        },
+        "windowsOnly": "{{name}} (somente Windows)",
+        "windowsOnlyNote": "O {{name}} só roda no Windows. Os novos terminais aqui iniciam {{fallback}} no lugar.",
+        "windowsOnlyNoteDefault": "O {{name}} só roda no Windows. Os novos terminais aqui iniciam o shell padrão no lugar."
       },
       "shiftEnter": {
         "ariaLabel": "Shift+Enter no terminal",
-        "description": "O que Shift+Enter envia ao programa no terminal.",
-        "enter": "Enter",
+        "description": "O que o Shift+Enter envia ao programa no terminal. Uma nova linha permite que ferramentas de conversa como o Claude Code adicionem uma linha ao prompt. Enter envia, igual à tecla Enter.",
+        "enter": "Enviar Enter",
         "label": "Shift+Enter",
-        "newline": "Nova linha"
+        "newline": "Inserir nova linha"
       },
       "startWithProject": {
         "description": "Inicia o shell quando um projeto abre, em vez da primeira vez que você mostra o terminal.",
@@ -1462,7 +1480,9 @@
       "detecting": "Verificando o servidor…",
       "found": "Este é um servidor {{kind}}.",
       "kindGitea": "Gitea ou Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
       "otherServer": "Outro servidor",
+      "replaces": "Fazer login substitui {{login}} em {{host}}.",
       "scopesGitea": "Dê a ele acesso de leitura e escrita a repository e user.",
       "scopesGithub": "Dê a ele os escopos repo e read:user.",
       "scopesGitlab": "Dê a ele os escopos api e write_repository.",
@@ -1537,7 +1557,7 @@
       "site": "Site: {{domain}}",
       "confirmCopy": "O Oleafly vai ler os cookies de {{domain}} do perfil {{profile}} do {{browser}}. Eles ficam no Oleafly e só vão para {{domain}}. Você vai confirmar mais uma vez em uma caixa de diálogo do sistema.",
       "copyAction": "Copiar o login",
-      "copying": "Copiando...",
+      "copying": "Copiando…",
       "notSignedIn_one": "{{count}} cookie copiado do {{browser}}, mas ele não fez o seu login. Faça login diretamente.",
       "notSignedIn_many": "{{count}} cookies copiados do {{browser}}, mas eles não fizeram o seu login. Faça login diretamente.",
       "notSignedIn_other": "{{count}} cookies copiados do {{browser}}, mas eles não fizeram o seu login. Faça login diretamente."
@@ -1624,6 +1644,7 @@
         "notInstalled": "O Cua Driver não está instalado.",
         "tooOld": "O Cua Driver {{version}} é antigo demais. O Oleafly precisa da versão {{minimum}} ou mais recente.",
         "noAppBundle": "Instale o Cua Driver com o instalador oficial para que ele possa manter as permissões do macOS.",
+        "unreadableVersion": "O Oleafly não conseguiu ler a versão do Cua Driver. Confira se ele roda e verifique de novo.",
         "path": "Encontrado em {{path}}"
       },
       "install": {
@@ -1657,14 +1678,18 @@
         "empty": "Nenhum aplicativo ainda. Os agentes só podem usar os aplicativos que você adicionar aqui.",
         "add": "Adicionar aplicativo",
         "remove": "Remover {{name}}",
+        "missing": "Este programa não foi encontrado neste computador. Remova-o ou reinstale o aplicativo.",
         "dialog": {
           "title": "Adicionar um aplicativo",
           "description": "Escolha um aplicativo que os agentes podem usar. Depois da sua aprovação, eles podem abri-lo, ler as janelas dele e agir nele.",
           "search": "Buscar aplicativos",
-          "loading": "Procurando aplicativos...",
+          "loading": "Procurando aplicativos…",
           "none": "Nenhum aplicativo corresponde.",
-          "choose": "Escolher outro aplicativo...",
-          "add": "Adicionar"
+          "choose": "Escolher outro aplicativo…",
+          "add": "Adicionar",
+          "added": "Já adicionado.",
+          "more": "Exibindo {{shown}} de {{total}}. Busque para filtrar a lista.",
+          "refresh": "Atualizar"
         },
         "blocked": {
           "oleafly": "O Oleafly não pode controlar a si mesmo.",
@@ -1674,7 +1699,8 @@
           "passwords": "Aplicativos de senhas ficam de fora.",
           "scripting": "Executores de scripts podem fazer qualquer coisa neste computador.",
           "wrapper": "Esta entrada inicia outro programa. Escolha esse programa.",
-          "sandboxed": "Aplicativos Flatpak e Snap ainda não são compatíveis."
+          "sandboxed": "Aplicativos Flatpak e Snap ainda não são compatíveis.",
+          "browser": "Adicione os sites de um navegador em Sites permitidos."
         }
       },
       "sites": {
@@ -1685,6 +1711,7 @@
         "remove": "Remover {{origin}}",
         "signedIn": {
           "label": "Usar meu navegador conectado",
+          "labelFor": "Usar meu navegador conectado em {{origin}}",
           "description": "Os agentes trabalham no seu próprio Chrome ou Edge neste site. Deixe desligado para usar um perfil de navegador separado."
         }
       },
@@ -1694,8 +1721,9 @@
       },
       "test": {
         "action": "Testar a conexão",
-        "running": "Testando...",
+        "running": "Testando…",
         "ok": "O Cua Driver está rodando com os seus limites.",
+        "problems": "A verificação do próprio Cua Driver também relatou:",
         "failed": "O teste falhou: {{detail}}"
       },
       "tool": {
@@ -2302,6 +2330,7 @@
       "stopHint": "As tarefas dele ficam pausadas até você abrir o Oleafly de novo.",
       "stopFailed": "O processo auxiliar não parou. Tente de novo.",
       "openLog": "Mostrar o log",
+      "statusFailed": "Não foi possível ler o status do processo auxiliar em segundo plano.",
       "toggleFailed": "Não foi possível alterar esta configuração. Tente de novo."
     }
   }

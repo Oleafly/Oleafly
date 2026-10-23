@@ -22,6 +22,7 @@ import {
   AttachmentError,
   attachmentKind,
   intakeFiles,
+  readDroppedFiles,
   rejectionMessage,
   screenFiles,
 } from "./attachments-intake";
@@ -197,5 +198,68 @@ describe("intake", () => {
       status: "error",
       error: en.attachments.unreadableImage.replace("{{name}}", "photo.heic"),
     });
+  });
+});
+
+describe("reading a native drop", () => {
+  const item = (name: string, read = vi.fn(async () => file(name, "", 5))) => ({ name, read });
+
+  it("reads only the items that could be attached, one after another", async () => {
+    const order: string[] = [];
+    const slow = item("paper.pdf", vi.fn(async () => {
+      order.push("paper:start");
+      await Promise.resolve();
+      order.push("paper:end");
+      return file("paper.pdf", "application/pdf");
+    }));
+    const next = item("notes.txt", vi.fn(async () => {
+      order.push("notes");
+      return file("notes.txt");
+    }));
+    const video = item("lecture.mp4");
+    const archive = item("data.zip");
+    const folder = item("results");
+
+    const files = await readDroppedFiles([slow, video, next, archive, folder]);
+
+    expect(files.map((value) => value.name)).toEqual(["paper.pdf", "notes.txt"]);
+    expect(order).toEqual(["paper:start", "paper:end", "notes"]);
+    // Nothing was pulled over IPC for what could not be attached.
+    expect(video.read).not.toHaveBeenCalled();
+    expect(archive.read).not.toHaveBeenCalled();
+    expect(folder.read).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).toHaveBeenCalledOnce();
+    const message = mocks.errorUnique.mock.calls[0][1] as string;
+    expect(message).toContain("lecture.mp4");
+    expect(message).toContain("data.zip");
+    expect(message).toContain("results");
+  });
+
+  it("keeps the files it could read when one cannot be read, and names that one", async () => {
+    const broken = item("data.csv", vi.fn(async () => {
+      throw new Error("Is a directory");
+    }));
+
+    const files = await readDroppedFiles([item("a.txt"), broken, item("b.txt")]);
+
+    expect(files.map((value) => value.name)).toEqual(["a.txt", "b.txt"]);
+    expect(mocks.errorUnique).toHaveBeenCalledWith("ai-attach", "data.csv could not be read.");
+    expect(mocks.logError).toHaveBeenCalledWith("read dropped file", expect.any(Error));
+  });
+
+  it("reads no more than one message holds", async () => {
+    const items = Array.from({ length: 12 }, (_, index) => item(`note-${index}.txt`));
+
+    const files = await readDroppedFiles(items);
+
+    expect(files).toHaveLength(10);
+    expect(items[10].read).not.toHaveBeenCalled();
+    expect(items[11].read).not.toHaveBeenCalled();
+    expect(mocks.errorUnique.mock.calls[0][1]).toContain("10");
+  });
+
+  it("says nothing when everything was read", async () => {
+    await readDroppedFiles([item("a.txt")]);
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
 });

@@ -26,6 +26,8 @@ pub mod runs;
 const MAX_TASKS_PER_PROJECT: usize = 500;
 pub const MAX_EVENTS_PER_RUN: u64 = 5_000;
 const TEXT_EVENT_KINDS: [&str; 2] = ["text", "reasoning"];
+/// The `kind` column of a transcript row: the kind its JSON names.
+const EVENT_KIND_COLUMN: &str = "GENERATED ALWAYS AS (json_extract(event_json, '$.kind')) VIRTUAL";
 
 #[derive(Clone)]
 pub struct TaskStore {
@@ -164,7 +166,7 @@ impl TaskStore {
             .query_row(
                 "SELECT COUNT(*) FROM research_task_events
                  WHERE task_id = ?1 AND execution_generation = ?2
-                   AND json_extract(event_json, '$.kind') IN (SELECT value FROM json_each(?3))",
+                   AND kind IN (SELECT value FROM json_each(?3))",
                 params![id, generation as i64, kinds],
                 |row| row.get(0),
             )
@@ -2187,6 +2189,7 @@ fn initialize_schema(connection: &mut Connection) -> Result<(), String> {
                    sequence INTEGER NOT NULL,
                    event_json TEXT NOT NULL,
                    created_at INTEGER NOT NULL,
+                   kind TEXT GENERATED ALWAYS AS (json_extract(event_json, '$.kind')) VIRTUAL,
                    PRIMARY KEY(task_id, execution_generation, sequence)
                  );",
         )
@@ -2454,6 +2457,17 @@ pub fn validate_brief(brief: &ResearchBrief) -> Result<(), String> {
     if !(1..=720).contains(&budget.run_timeout_minutes) {
         return Err("Each run can last up to 12 hours.".into());
     }
+    // A cluster job's time limit is capped at the run limit, so a longer ask
+    // would silently do nothing.
+    if brief
+        .compute
+        .resources
+        .as_ref()
+        .and_then(|resources| resources.time_minutes)
+        .is_some_and(|minutes| minutes > budget.run_timeout_minutes)
+    {
+        return Err("The cluster time limit cannot be longer than each run's time limit.".into());
+    }
     let executor = brief.compute.executor.trim();
     if executor.is_empty() || executor.len() > 40 {
         return Err("Choose where the task's runs execute.".into());
@@ -2633,7 +2647,7 @@ fn prune_text_events(
         .query_row(
             "SELECT COUNT(*) FROM research_task_events
              WHERE task_id = ?1 AND execution_generation = ?2
-               AND json_extract(event_json, '$.kind') IN (SELECT value FROM json_each(?3))",
+               AND kind IN (SELECT value FROM json_each(?3))",
             params![id, generation as i64, kinds],
             |row| row.get(0),
         )
@@ -2649,7 +2663,7 @@ fn prune_text_events(
                AND sequence IN (
                  SELECT sequence FROM research_task_events
                  WHERE task_id = ?1 AND execution_generation = ?2
-                   AND json_extract(event_json, '$.kind') IN (SELECT value FROM json_each(?3))
+                   AND kind IN (SELECT value FROM json_each(?3))
                  ORDER BY sequence ASC LIMIT ?4)",
             params![id, generation as i64, kinds, excess],
         )
@@ -2690,13 +2704,15 @@ fn store_error(error: rusqlite::Error) -> String {
 
 const OWNER_SCHEMA_VERSION: i64 = 1;
 const BRIEF_SCHEMA_VERSION: i64 = 2;
+const HANDOFF_SCHEMA_VERSION: i64 = 3;
 /// The store's `user_version`.
-pub const SCHEMA_VERSION: i64 = 3;
+pub const SCHEMA_VERSION: i64 = 4;
 
 /// Brings an older store up to [`SCHEMA_VERSION`] step by step. Version 1
 /// (0.4.7) added the run owner; version 2 (0.4.8) adds briefs, phases,
 /// budgets, runs and approvals; version 3 (0.4.8 L) adds handoffs between
-/// the app and the background helper.
+/// the app and the background helper; version 4 indexes the kind of every
+/// transcript row.
 fn migrate(connection: &mut Connection) -> Result<(), String> {
     if schema_version(connection)? >= SCHEMA_VERSION {
         return Ok(());
@@ -2788,7 +2804,7 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
     }
     // 0.4.8 L: reclaim requests, handoff records and the generation a
     // resumed one continues.
-    if version < SCHEMA_VERSION {
+    if version < HANDOFF_SCHEMA_VERSION {
         add_columns(&[
             ("reclaim_requested", "INTEGER NOT NULL DEFAULT 0"),
             ("handoff_json", "TEXT"),
@@ -2797,6 +2813,30 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
         upgrade(
             "CREATE INDEX IF NOT EXISTS research_tasks_owner_kind
                ON research_tasks(owner_kind, status);",
+        )?;
+    }
+    // The kind of each transcript row (`text`, `tool`, ...), read from its
+    // JSON once when it is written, so pruning a long transcript counts rows
+    // from the index instead of parsing every payload.
+    if version < SCHEMA_VERSION {
+        let has_kind = {
+            let mut statement = transaction
+                .prepare("PRAGMA table_xinfo(research_task_events)")
+                .map_err(store_error)?;
+            let names = statement
+                .query_map([], |row| row.get::<_, String>(1))
+                .and_then(|rows| rows.collect::<Result<HashSet<_>, _>>())
+                .map_err(store_error)?;
+            names.contains("kind")
+        };
+        if !has_kind {
+            upgrade(&format!(
+                "ALTER TABLE research_task_events ADD COLUMN kind TEXT {EVENT_KIND_COLUMN};"
+            ))?;
+        }
+        upgrade(
+            "CREATE INDEX IF NOT EXISTS research_task_events_kind
+               ON research_task_events(task_id, execution_generation, kind, sequence);",
         )?;
     }
     upgrade(&format!("PRAGMA user_version = {SCHEMA_VERSION};"))?;

@@ -233,6 +233,7 @@
       "closeOne": "Zavřít terminál",
       "closeProject": "Zavřít projekt",
       "dontAsk": "Už se neptat",
+      "dontAskHint": "Znovu to zapnete v Nastavení, Vzhled, Terminál, Ptát se před zavřením zaneprázdněného terminálu.",
       "many_one": "V {{count}} terminálu ještě běží program.",
       "many_few": "Ve {{count}} terminálech ještě běží programy.",
       "many_many": "V {{count}} terminálu ještě běží programy.",

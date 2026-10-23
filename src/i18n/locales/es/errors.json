@@ -82,9 +82,10 @@
   },
   "git": {
     "access_denied": "{{host}} denegó el acceso a este repositorio. Comprueba que tu cuenta tenga acceso. Si la organización usa inicio de sesión único (SSO), autoriza primero tu inicio de sesión para ella.",
+    "access_denied_account": "{{host}} denegó el acceso a este repositorio a {{account}}. Comprueba que esta cuenta pueda usarlo. Si la organización usa inicio de sesión único (SSO), autoriza primero tu inicio de sesión para ella.",
     "account_missing": "No hay ninguna cuenta de alojamiento Git para {{host}}. Añade una en Ajustes.",
     "archive_too_large": "Los archivos del repositorio ocupan más de {{limit}} MB, así que Oleafly no puede importarlos. Clona tú el repositorio y abre su carpeta.",
-    "auth_rejected": "{{host}} rechazó tu inicio de sesión guardado. Vuelve a iniciar sesión en {{host}} en Ajustes.",
+    "auth_rejected": "{{host}} rechazó el inicio de sesión guardado de {{account}}. Vuelve a iniciar sesión en {{host}} en Ajustes.",
     "credentials_missing": "{{host}} pidió un nombre de usuario y una contraseña. Inicia sesión en {{host}} en Ajustes o configura una clave SSH o un asistente de credenciales de Git.",
     "credentials_rejected": "{{host}} rechazó el nombre de usuario y la contraseña que ofreció Git. Inicia sesión en {{host}} en Ajustes o actualiza las credenciales que usa tu Git.",
     "device_flow_unavailable": "Esta versión no permite iniciar sesión en {{host}} desde el navegador. Usa un token de acceso.",
@@ -102,18 +103,20 @@
     "forge_repository_exists": "Ya existe un repositorio con este nombre en {{host}}.",
     "forge_server_error": "{{host}} devolvió un error ({{status}}).",
     "forge_signed_out": "Tu sesión en {{host}} caducó o se revocó. Vuelve a iniciar sesión en Ajustes.",
+    "forge_sso_required": "{{host}} necesita que este inicio de sesión esté autorizado para el inicio de sesión único de la organización. Autorízalo en {{host}} y vuelve a intentarlo.",
     "forge_store": "Oleafly no pudo leer ni guardar tus cuentas de alojamiento Git.",
     "forge_token_invalid": "Esto no parece un token de acceso. Pega el token completo.",
     "forge_token_rejected": "{{host}} no aceptó este token. Comprueba que copiaste el token completo y que no ha caducado.",
     "forge_unknown_server": "Oleafly no pudo saber qué tipo de servidor es {{host}}. Elige el tipo de servidor.",
     "host_key_unknown": "SSH todavía no conoce {{host}}. Conéctate una vez desde un terminal para aceptar su clave de host e inténtalo de nuevo.",
     "host_unreachable": "Oleafly no pudo conectar con {{host}}. Revisa la dirección y tu conexión.",
+    "import_cancelled": "Se canceló la importación.",
     "invalid_remote_url": "Escribe la dirección HTTPS o SSH de un repositorio Git.",
     "nested_repository": "Este proyecto está dentro de otro repositorio Git, así que Oleafly no creará uno aparte aquí.",
     "not_installed": "Git no está instalado en este equipo. Instala Git y vuelve a intentarlo.",
     "push_rejected": "La rama remota tiene commits que este proyecto aún no tiene. Descarga primero los cambios y luego vuelve a subirlos.",
     "remote_exists": "Este proyecto ya está enlazado con {{remote}}.",
-    "remote_has_password": "Quita la contraseña de la dirección. Oleafly inicia sesión con tu cuenta de alojamiento Git o con tus propias credenciales de Git.",
+    "remote_has_password": "Quita la contraseña o el token de acceso de la dirección. Oleafly inicia sesión con tu cuenta de alojamiento Git o con tus propias credenciales de Git.",
     "repository_empty": "Este repositorio todavía no tiene commits, así que no hay nada que importar.",
     "repository_not_found": "{{host}} no tiene ningún repositorio en esta dirección, o tu cuenta no puede verlo.",
     "sign_in_cancelled": "Se canceló el inicio de sesión en el navegador.",
@@ -269,8 +272,16 @@
   "provider_credit": {
     "failed": "Oleafly no pudo consultar tu saldo de {{provider}}."
   },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 no está instalado.",
+    "git_bash_missing": "Git Bash no está instalado. Instala Git for Windows o elige otro shell.",
+    "wsl_missing": "WSL no está instalado.",
+    "wsl_no_distro": "WSL todavía no tiene ninguna distribución de Linux.",
+    "shell_path_empty": "Escribe una ruta de shell en Ajustes o elige otro shell.",
+    "shell_path_missing": "No hay ningún programa en {{path}}."
+  },
   "mathpix": {
-    "keys_missing": "Primero añade tu ID de aplicación y tu clave de Mathpix en Ajustes, IA, Herramientas.",
+    "keys_missing": "Primero añade tu ID de aplicación y tu clave de Mathpix en Ajustes, Asistente de IA, Herramientas.",
     "invalid_keys": "Ese ID de aplicación o esa clave tienen caracteres que las claves de Mathpix nunca llevan. Vuelve a copiarlos desde la consola de Mathpix.",
     "key_rejected": "Mathpix no aceptó estas claves. Revisa el ID de aplicación y la clave en la consola de Mathpix.",
     "rate_limited": "Mathpix está limitando las peticiones ahora mismo. Espera un minuto e inténtalo de nuevo.",
@@ -282,10 +293,11 @@
     "pdf_too_large": "Este PDF supera el límite de 256 MB de Mathpix.",
     "timed_out": "Mathpix no terminó este PDF en 30 minutos. Prueba con menos páginas.",
     "cancelled": "Se detuvo la conversión con Mathpix.",
-    "wrong_window": "Mathpix solo se puede usar desde la ventana principal de Oleafly."
+    "wrong_window": "Mathpix solo se puede usar desde la ventana principal de Oleafly.",
+    "pdf_too_large_ipc": "Este equipo puede enviar a Mathpix PDF de hasta 16 MB. Divide el PDF y vuelve a intentarlo."
   },
   "desktop_apps": {
-    "not_installed": "Cua Driver no está instalado. Instálalo en Ajustes → Integraciones → Aplicaciones de escritorio.",
+    "not_installed": "Cua Driver no está instalado. Instálalo en Ajustes, Integraciones, Aplicaciones de escritorio.",
     "too_old": "Cua Driver {{version}} es demasiado antiguo. Actualízalo a {{minimum}} o posterior.",
     "no_app_bundle": "Instala Cua Driver con el instalador oficial para que pueda conservar los permisos de macOS.",
     "change_declined": "Conservaste tus ajustes anteriores de Aplicaciones de escritorio.",

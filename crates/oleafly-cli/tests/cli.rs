@@ -442,6 +442,123 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     assert_eq!(finished["build"]["engine"], "latexmk");
 }
 
+/// A running `oleafly --json watch ...` and the lines of its stdout.
+fn spawn_watch(
+    project: &std::path::Path,
+    compiler: &std::path::Path,
+    extra: &[&str],
+) -> (ChildGuard, Receiver<String>) {
+    let child = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "watch"])
+        .args(extra)
+        .current_dir(project)
+        .env("PATH", "")
+        .env("OLEAFLY_TECTONIC", compiler)
+        .env("OLEAFLY_WATCH_POLL", "1")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut child = ChildGuard(child);
+    let stdout = child.0.stdout.take().unwrap();
+    let (sender, receiver) = mpsc::channel();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            if sender.send(line).is_err() {
+                break;
+            }
+        }
+    });
+    (child, receiver)
+}
+
+#[test]
+fn watch_with_its_output_inside_the_project_builds_once() {
+    let project = TempDir::new().unwrap();
+    let tools = TempDir::new().unwrap();
+    assert!(run(&["init"], Some(project.path())).status.success());
+    let compiler = compiler_fixture(&tools);
+    let (_child, receiver) = spawn_watch(project.path(), &compiler, &["-o", "paper.pdf"]);
+
+    let watching = wait_for_json(&receiver, Duration::from_secs(10), |value| {
+        value["event"] == "watching"
+    });
+    assert_eq!(watching["warnings"], serde_json::json!([]));
+    let finished = wait_for_json(&receiver, Duration::from_secs(20), |value| {
+        value["event"] == "build_finished"
+    });
+    assert_eq!(finished["ok"], true);
+    assert_eq!(finished["warnings"], serde_json::json!([]));
+    assert!(project.path().join("paper.pdf").is_file());
+
+    // The copy it made is the project's newest file, and it must not count as
+    // an edit: a rebuild loop would have started again well within this.
+    let next = receiver.recv_timeout(Duration::from_secs(3));
+    assert!(
+        next.is_err(),
+        "another event after the only build: {next:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn watch_and_build_stop_cleanly_on_sigterm_and_sighup() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    for signal in [libc::SIGTERM, libc::SIGHUP] {
+        // `watch` ends as it does for Ctrl+C: exit 0, not killed by the signal.
+        let project = TempDir::new().unwrap();
+        assert!(run(&["init"], Some(project.path())).status.success());
+        let (mut watch, receiver) = spawn_watch(project.path(), &compiler, &[]);
+        wait_for_json(&receiver, Duration::from_secs(20), |value| {
+            value["event"] == "build_finished"
+        });
+        std::thread::sleep(Duration::from_millis(300));
+        unsafe { libc::kill(watch.0.id() as i32, signal) };
+        assert_eq!(
+            wait_with_deadline(&mut watch.0).code(),
+            Some(0),
+            "watch {signal}"
+        );
+
+        // `build` is interrupted: exit 130 and the usual error object.
+        let project = TempDir::new().unwrap();
+        assert!(run(&["init"], Some(project.path())).status.success());
+        let mut build = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+            .args(["--events", "build"])
+            .current_dir(project.path())
+            .env("PATH", "")
+            .env("OLEAFLY_TECTONIC", &compiler)
+            .env("FIXTURE_SLEEP_MS", "60000")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut lines = BufReader::new(build.stdout.take().unwrap()).lines();
+        let started = lines.next().unwrap().unwrap();
+        assert!(started.contains("build_started"), "{started}");
+        std::thread::sleep(Duration::from_millis(500));
+        unsafe { libc::kill(build.id() as i32, signal) };
+        let rest: Vec<String> = lines.map_while(Result::ok).collect();
+        let status = wait_with_deadline(&mut build);
+        assert_eq!(status.code(), Some(130), "build {signal}: {rest:?}");
+        let result: Value = serde_json::from_str(rest.last().unwrap()).unwrap();
+        assert_eq!(result["error"]["code"], "interrupted");
+    }
+}
+
+#[cfg(unix)]
+fn wait_with_deadline(child: &mut Child) -> std::process::ExitStatus {
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            return status;
+        }
+        assert!(Instant::now() < deadline, "the process didn't stop");
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
 #[test]
 fn completions_and_the_manual_are_generated_from_the_parser() {
     for shell in ["bash", "zsh", "fish", "powershell", "elvish"] {

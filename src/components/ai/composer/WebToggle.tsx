@@ -21,10 +21,10 @@ export function WebToggle({
         disabled={disabled}
         onClick={() => onChange(!on)}
         className={cn(
-          "ai-composer-web flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
+          "ai-composer-web flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
           on
-            ? "bg-sky-500/15 text-sky-700 hover:bg-sky-500/20 dark:text-sky-300"
-            : "text-muted-foreground",
+            ? "bg-primary/10 text-primary hover:bg-primary/15 focus-visible:bg-primary/20"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground",
         )}
       >
         <Globe className="size-4 shrink-0" />

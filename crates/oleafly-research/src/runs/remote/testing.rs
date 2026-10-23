@@ -128,6 +128,11 @@ impl World {
         std::fs::write(self.root.join("slow"), "").unwrap();
     }
 
+    /// Copying a run's outputs waits 8 s before it starts.
+    pub fn slow_outputs(&self) {
+        std::fs::write(self.root.join("slow-outputs"), "").unwrap();
+    }
+
     /// Files a test reads or writes on the "remote" side.
     pub fn remote(&self, relative: &str) -> PathBuf {
         self.remote_home().join(relative)
@@ -151,6 +156,12 @@ cd "$ROOT/remote home" || exit 1
 HOME="$ROOT/remote home"
 PATH="$ROOT/bin-remote:$PATH"
 export HOME PATH
+if [ -f "$ROOT/slow-outputs" ] && [ "$1" = "sh -s" ]; then
+  script=$(cat)
+  case "$script" in *outputs.list*) sleep 8;; esac
+  printf '%s\n' "$script" | /bin/sh -s
+  exit $?
+fi
 exec /bin/sh -c "$1"
 "#,
         root = root.display()

@@ -2,8 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DraftAttachment } from "@/components/ai/composer/types";
 import {
+  builtinComposerId,
+  composerHistoryKey,
   draftAttachmentRefs,
   draftText,
+  holdDraftAttachments,
+  registerAttachmentHolder,
   PROMPT_HISTORY_LIMIT,
   promptHistory,
   rememberPrompt,
@@ -68,6 +72,57 @@ describe("composer drafts", () => {
     ]);
     store.addAttachments("p2:builtin", [attachment("four", { sha256: "c" })]);
     expect(draftAttachmentRefs("p1").sort()).toEqual(["a", "b", "p1"]);
+  });
+});
+
+describe("a draft per conversation", () => {
+  it("names the composer of a chat and of the next new chat", () => {
+    expect(builtinComposerId("p1")).toBe("p1:builtin");
+    expect(builtinComposerId("p1", null)).toBe("p1:builtin");
+    expect(builtinComposerId("p1", "chat_1")).toBe("p1:builtin:chat_1");
+    expect(builtinComposerId(null)).toBe("none:builtin");
+    // Prompt history stays per project, whichever chat the prompt was typed in.
+    expect(composerHistoryKey("p1:builtin:chat_1")).toBe("p1");
+  });
+
+  it("moves a draft to another composer and puts it before what is there", () => {
+    const store = useComposerDrafts.getState();
+    store.setText("p1:builtin:a", "typed in a");
+    store.addAttachments("p1:builtin:a", [attachment("x", { sha256: "x1" })]);
+    store.setText("p1:builtin:b", "typed in b");
+    store.addAttachments("p1:builtin:b", [attachment("x", { sha256: "x1" }), attachment("y", { sha256: "y1" })]);
+
+    store.moveDraft("p1:builtin:a", "p1:builtin:b");
+
+    const drafts = useComposerDrafts.getState().drafts;
+    expect(drafts["p1:builtin:a"]).toBeUndefined();
+    expect(drafts["p1:builtin:b"].text).toBe("typed in a\n\ntyped in b");
+    expect(drafts["p1:builtin:b"].attachments.map((item) => item.id)).toEqual(["x", "y"]);
+  });
+
+  it("moves into an empty composer, and leaves everything alone when there is nothing to move", () => {
+    const store = useComposerDrafts.getState();
+    store.setText("p1:builtin:a", "typed in a");
+    store.moveDraft("p1:builtin:a", "p1:builtin");
+    expect(draftText("p1:builtin")).toBe("typed in a");
+    const before = useComposerDrafts.getState();
+    store.moveDraft("p1:builtin:none", "p1:builtin");
+    store.moveDraft("p1:builtin", "p1:builtin");
+    expect(useComposerDrafts.getState()).toBe(before);
+  });
+});
+
+describe("files held outside the drafts", () => {
+  it("keeps held attachments, and what a registered store lists, out of a collection", () => {
+    const stash = [attachment("s", { sha256: "stashed", pageImages: [{ sha256: "stashed-page", mime: "image/png" }] })];
+    const release = holdDraftAttachments(stash);
+    const unregister = registerAttachmentHolder(() => ["queued"]);
+    expect(draftAttachmentRefs("p1").sort()).toEqual(["queued", "stashed", "stashed-page"]);
+    release();
+    release();
+    expect(draftAttachmentRefs("p1")).toEqual(["queued"]);
+    unregister();
+    expect(draftAttachmentRefs("p1")).toEqual([]);
   });
 });
 

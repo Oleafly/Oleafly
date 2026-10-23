@@ -1,10 +1,11 @@
 //! Spec checks shared by every backend: real, canonical paths, write grants
-//! inside the workspace or the home folder, no read grant of the whole disk
-//! or the user's home, and protected paths only where a write grant would
-//! otherwise cover them.
+//! inside the workspace or the home folder, no read grant of the whole disk,
+//! a home folder or the folder that holds one, and protected paths only where
+//! a write grant would otherwise cover them.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::roots::{broad_reason, note_refused};
 use crate::{home_dir, SandboxError, SandboxSpec};
 
 /// A [`SandboxSpec`] with every path checked and canonical.
@@ -19,6 +20,8 @@ pub(crate) struct ResolvedSpec {
     pub read_write: Vec<PathBuf>,
     /// Paths inside a write grant that stay read-only.
     pub protected: Vec<PathBuf>,
+    /// Paths inside the grants the command can neither read nor change.
+    pub hidden: Vec<PathBuf>,
     pub network: bool,
     pub gpu: bool,
     pub child_processes: bool,
@@ -78,8 +81,8 @@ fn sorted(mut paths: Vec<PathBuf>) -> Vec<PathBuf> {
     paths
 }
 
-/// Read grants must exist and must not be the filesystem root or the
-/// user's home folder.
+/// Read grants must exist and must not be the filesystem root, the user's
+/// home folder or a folder that holds it, or a top-level system folder.
 fn read_grants(paths: &[PathBuf]) -> Result<Vec<PathBuf>, SandboxError> {
     let home = home_dir().map(|home| {
         home.canonicalize()
@@ -92,7 +95,8 @@ fn read_grants(paths: &[PathBuf]) -> Result<Vec<PathBuf>, SandboxError> {
             .canonicalize()
             .map(|path| plain_path(&path))
             .map_err(|_| SandboxError::Invalid("A task runtime file is unavailable.".into()))?;
-        if real.parent().is_none() || home.as_ref().is_some_and(|home| &real == home) {
+        if let Some(reason) = broad_reason(&real, home.as_deref()) {
+            note_refused(&real, reason);
             return Err(SandboxError::Invalid(
                 "Task runtimes require specific readable files or folders.".into(),
             ));
@@ -100,6 +104,18 @@ fn read_grants(paths: &[PathBuf]) -> Result<Vec<PathBuf>, SandboxError> {
         resolved.push(real);
     }
     Ok(sorted(resolved))
+}
+
+/// The existing paths of `hidden` that lie inside a folder the command can
+/// otherwise reach; anything else has nothing to hide.
+fn hidden_paths(spec: &SandboxSpec, reachable: &[&Path]) -> Vec<PathBuf> {
+    sorted(
+        spec.deny_read
+            .iter()
+            .filter_map(|path| path.canonicalize().ok().map(|path| plain_path(&path)))
+            .filter(|path| reachable.iter().any(|root| path.starts_with(root)))
+            .collect(),
+    )
 }
 
 /// Checks `spec` and makes every path canonical.
@@ -149,13 +165,24 @@ pub(crate) fn resolve(spec: &SandboxSpec) -> Result<ResolvedSpec, SandboxError> 
             .filter(|path| read_write.iter().any(|write| path.starts_with(write)))
             .collect(),
     );
+    let read_only = read_grants(&spec.read_only)?;
+    let project_read_only = read_grants(&spec.project_read_only)?;
+    let hidden = {
+        let reachable: Vec<&Path> = [workspace.as_path(), home.as_path()]
+            .into_iter()
+            .chain(read_only.iter().map(PathBuf::as_path))
+            .chain(project_read_only.iter().map(PathBuf::as_path))
+            .collect();
+        hidden_paths(spec, &reachable)
+    };
     Ok(ResolvedSpec {
         workspace,
         home,
-        read_only: read_grants(&spec.read_only)?,
-        project_read_only: read_grants(&spec.project_read_only)?,
+        read_only,
+        project_read_only,
         read_write,
         protected,
+        hidden,
         network: spec.network,
         gpu: spec.gpu,
         child_processes: spec.child_processes,

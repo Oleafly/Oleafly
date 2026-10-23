@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use crate::error::{AgentError, Result};
-use crate::stream::MAX_STREAM_TOOL_CALLS;
+use crate::stream::MAX_TOOL_CALLS_PER_TURN;
 
 /// Names reserved for the built-in shell tools; external registrations
 /// cannot shadow them.
@@ -15,7 +15,7 @@ pub const RESERVED_TOOL_NAMES: [&str; 2] = ["exec_command", "shell_command"];
 pub const MAX_TOOL_RESULT_BATCH_BYTES: usize = 96 * 1024 * 1024;
 
 pub fn validate_tool_calls_per_turn(calls: usize) -> Result<()> {
-    if calls > MAX_STREAM_TOOL_CALLS {
+    if calls > MAX_TOOL_CALLS_PER_TURN {
         Err(AgentError::Decode(
             "tool calls in one turn exceeded its safety limit".into(),
         ))

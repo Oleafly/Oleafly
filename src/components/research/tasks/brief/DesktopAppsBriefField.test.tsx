@@ -1,16 +1,24 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { DESKTOP_APPS_STATUS_KEY } from "@/components/settings/desktop-apps/desktop-apps-queries";
 import type { DesktopAppsSettings, DesktopAppsStatus } from "@/lib/desktop-apps";
+import { useSettingsStore } from "@/store/settings";
+
+const mocks = vi.hoisted(() => ({
+  status: vi.fn(() => new Promise(() => undefined)),
+  toolSpec: vi.fn(),
+}));
 
 vi.mock("@/lib/desktop-apps", () => ({
-  cuaDriverStatus: vi.fn(() => new Promise(() => undefined)),
+  cuaDriverStatus: mocks.status,
   cuaDriverInstalledApps: vi.fn(async () => []),
+  cuaDriverToolSpec: mocks.toolSpec,
 }));
 
 import { DesktopAppsBriefField, desktopAppsReady } from "./DesktopAppsBriefField";
@@ -51,6 +59,34 @@ describe("DesktopAppsBriefField", () => {
     expect(screen.getByTestId("research-brief-desktop-apps")).toHaveTextContent(copy.off);
   });
 
+  it("links to the Desktop apps settings when the connector is off, and opens them", async () => {
+    useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general", settingsScrollTarget: null });
+    render(<DesktopAppsBriefField id="d" checked={false} disabled={false} unattended={false} onCheckedChange={vi.fn()} />);
+    const link = screen.getByRole("button", { name: enResearchTools.compute.brief.openSettings });
+
+    await userEvent.click(link);
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsOpen: true,
+      settingsInitialSection: "integrations",
+      settingsScrollTarget: "desktop-apps",
+    });
+  });
+
+  it("leaves the link out when the connector is ready or the task is unattended", () => {
+    const view = render(
+      withStatus(
+        status(ONE_APP),
+        <DesktopAppsBriefField id="d" checked={false} disabled={false} unattended={false} onCheckedChange={vi.fn()} />,
+      ),
+    );
+    expect(screen.queryByTestId("research-brief-desktop-apps-settings")).toBeNull();
+    view.unmount();
+
+    render(<DesktopAppsBriefField id="d" checked={false} disabled={false} unattended onCheckedChange={vi.fn()} />);
+    expect(screen.queryByTestId("research-brief-desktop-apps-settings")).toBeNull();
+  });
+
   it("turns on when the connector is ready", async () => {
     const onCheckedChange = vi.fn();
     render(
@@ -77,5 +113,30 @@ describe("DesktopAppsBriefField", () => {
     expect(box).toBeDisabled();
     expect(box).not.toBeChecked();
     expect(screen.getByTestId("research-brief-desktop-apps")).toHaveTextContent(copy.unattended);
+  });
+
+  it("asks for the light tool spec, not the driver's full status, when Settings has not loaded it", async () => {
+    mocks.status.mockClear();
+    mocks.toolSpec.mockResolvedValue({ name: "desktop_apps", description: "", inputSchema: {} });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <DesktopAppsBriefField id="d" checked={false} disabled={false} unattended={false} onCheckedChange={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(screen.getByRole("checkbox")).toBeEnabled());
+    expect(mocks.status).not.toHaveBeenCalled();
+    expect(screen.getByTestId("research-brief-desktop-apps")).toHaveTextContent(copy.description);
+  });
+
+  it("stays off while the tool spec says desktop apps aren't ready", async () => {
+    mocks.toolSpec.mockResolvedValue(null);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <DesktopAppsBriefField id="d" checked disabled={false} unattended={false} onCheckedChange={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(mocks.toolSpec).toHaveBeenCalled());
+    expect(screen.getByRole("checkbox")).toBeDisabled();
+    expect(screen.getByTestId("research-brief-desktop-apps")).toHaveTextContent(copy.off);
   });
 });

@@ -11,8 +11,9 @@ use tokio::sync::oneshot;
 
 /// Bytes read from disk at most.
 pub(super) const MAX_READ_BYTES: u64 = 8 * 1024 * 1024;
-/// Text sent back at most (the ACP frame is 1 MiB).
-pub(super) const MAX_REPLY_BYTES: usize = 900 * 1024;
+/// The reply's text as it travels, escaped as a JSON string at most: the ACP
+/// frame is 1 MiB, with room left for the envelope.
+pub(super) const MAX_REPLY_BYTES: usize = oleafly_acp::limits::MAX_FRAME - 8 * 1024;
 const BUFFER_WAIT: Duration = Duration::from_millis(1500);
 const MAX_WAITING: usize = 32;
 
@@ -191,10 +192,25 @@ pub(super) async fn read_for_agent(
         }
     };
     let text = slice_lines(&text, line, limit);
-    if text.len() > MAX_REPLY_BYTES {
+    if !fits_reply(&text) {
         return Err((-32603, TOO_LARGE.to_string()));
     }
     Ok(text)
+}
+
+/// Whether `text` fits a reply once JSON escaping has added its bytes (a
+/// byte for each quote, backslash, newline and tab; five for other control
+/// characters).
+fn fits_reply(text: &str) -> bool {
+    // Escaping makes a byte at most six bytes, so only a text between a
+    // sixth of the limit and the whole limit needs measuring.
+    if text.len() > MAX_REPLY_BYTES {
+        return false;
+    }
+    if text.len() <= (MAX_REPLY_BYTES - 2) / 6 {
+        return true;
+    }
+    serde_json::to_vec(text).is_ok_and(|encoded| encoded.len() <= MAX_REPLY_BYTES)
 }
 
 #[cfg(test)]
@@ -208,6 +224,41 @@ mod tests {
         assert_eq!(slice_lines(text, None, Some(1)), "1\n");
         assert_eq!(slice_lines(text, Some(9), None), "");
         assert_eq!(slice_lines(text, None, None), text);
+    }
+
+    #[test]
+    fn a_reply_must_fit_the_frame_after_json_escaping() {
+        // Plain text: its raw size is what counts.
+        assert!(fits_reply(&"a".repeat(MAX_REPLY_BYTES - 2)));
+        assert!(!fits_reply(&"a".repeat(MAX_REPLY_BYTES)));
+        // Quotes double in size: 600 KiB of them are 1.2 MiB on the wire,
+        // though the raw text is well under the old 900 KiB limit.
+        assert!(!fits_reply(&"\"".repeat(600 * 1024)));
+        assert!(fits_reply(&"\"".repeat(400 * 1024)));
+        // So do backslashes and newlines; other control characters grow six
+        // times.
+        assert!(!fits_reply(&"\\".repeat(600 * 1024)));
+        assert!(!fits_reply(&"\n".repeat(600 * 1024)));
+        assert!(!fits_reply(&"\u{1}".repeat(200 * 1024)));
+        assert!(fits_reply("small"));
+    }
+
+    #[tokio::test]
+    async fn a_file_that_grows_past_the_frame_once_escaped_is_refused() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let quoted = root.join("quoted.json");
+        std::fs::write(&quoted, "\"".repeat(700 * 1024)).unwrap();
+        let plain = root.join("plain.tex");
+        std::fs::write(&plain, "x".repeat(700 * 1024)).unwrap();
+        let roots = [root.as_path()];
+
+        let refused = read_for_agent(None, None, "project", &roots, &quoted, None, None).await;
+        assert_eq!(refused, Err((-32603, TOO_LARGE.to_string())));
+        let text = read_for_agent(None, None, "project", &roots, &plain, None, None)
+            .await
+            .unwrap();
+        assert_eq!(text.len(), 700 * 1024);
     }
 
     #[test]

@@ -25,6 +25,8 @@ use crate::scheduler::{TaskEventSink, TaskServices};
 use crate::store::TaskStore;
 
 pub const SPAWN_AGENT: &str = "spawn_agent";
+/// What `start_run` answers while the user has not approved the plan.
+pub const PLAN_NO_RUNS: &str = "Write plan.md first. Runs start after the user approves the plan.";
 const MAX_TODOS: usize = 100;
 const MAX_TODO_CHARS: usize = 300;
 const MAX_NOTE_BYTES: usize = 4 * 1024;
@@ -33,6 +35,7 @@ const MAX_TABLE_METRICS: usize = 12;
 const TABLE_FORMATS: [&str; 3] = ["latex", "typst", "markdown"];
 const LEDGER_VERDICTS: [&str; 3] = ["keep", "discard", "crash"];
 const MAX_LOG_TAIL: usize = 2_000;
+const MAX_LEDGER_COMMAND_CHARS: usize = 400;
 
 /// What a task tool needs from the task it serves.
 #[derive(Clone)]
@@ -445,10 +448,24 @@ fn todos_from(args: &Value) -> Result<Vec<TodoItem>, String> {
         .collect()
 }
 
-fn ledger_text(files: &TaskFiles, path: &str) -> String {
-    files
-        .read(path)
-        .unwrap_or_else(|_| format!("{LEDGER_HEADER}\n"))
+/// The ledger so far. A ledger that is not there yet starts from its header;
+/// one that cannot be read is an error, never replaced by a fresh one.
+fn ledger_text(files: &TaskFiles, path: &str) -> Result<String, String> {
+    if files.exists(path)? {
+        files.read(path)
+    } else {
+        Ok(format!("{LEDGER_HEADER}\n"))
+    }
+}
+
+/// The run's command as the ledger keeps it: the run record has the whole of
+/// it, so a ledger of many results does not outgrow its file.
+fn ledger_command(command: &str) -> String {
+    let mut short: String = command.chars().take(MAX_LEDGER_COMMAND_CHARS).collect();
+    if short.len() < command.len() {
+        short.push('…');
+    }
+    short
 }
 
 async fn start_run(binding: &TaskBinding, args: &Value) -> Result<Value, String> {
@@ -456,6 +473,12 @@ async fn start_run(binding: &TaskBinding, args: &Value) -> Result<Value, String>
     let command = required(args, "command")?;
     if binding.brief.permissions.commands == CommandPolicy::Off {
         return Err(crate::approvals::COMMANDS_OFF.into());
+    }
+    // "Review the plan first" holds for every agent, including a CLI agent
+    // that reaches this tool through the bridge.
+    let task = binding.task()?;
+    if task.brief.review_plan_first && !task.plan_approved {
+        return Err(PLAN_NO_RUNS.into());
     }
     let env: BTreeMap<String, String> = match &args["env"] {
         Value::Null => BTreeMap::new(),
@@ -485,11 +508,15 @@ async fn start_run(binding: &TaskBinding, args: &Value) -> Result<Value, String>
         &binding.cancel,
     )
     .await?;
+    // An approval can arrive at the moment the task is cancelled.
+    if binding.cancel.is_cancelled() {
+        return Err("The task was cancelled.".into());
+    }
     let record = binding
         .services
         .runs
         .start(StartRun {
-            task: binding.task()?,
+            task,
             execution_root: binding.execution_root.clone(),
             allowed_paths: binding.allowed_paths.clone(),
             read_paths: binding.read_paths.clone(),
@@ -572,7 +599,7 @@ async fn ledger_append(binding: &TaskBinding, args: &Value) -> Result<Value, Str
     }
     let files = binding.files()?;
     let path = binding.record_file("ledger.tsv");
-    let existing = ledger_text(&files, &path);
+    let existing = ledger_text(&files, &path)?;
     let rows = parse_ledger(&existing);
     let mut metrics: BTreeMap<String, f64> = args["metrics"]
         .as_object()
@@ -597,11 +624,17 @@ async fn ledger_append(binding: &TaskBinding, args: &Value) -> Result<Value, Str
             for (name, value) in run.metrics {
                 metrics.entry(name).or_insert(value);
             }
-            (run.run_id, run.command)
+            (run.run_id, ledger_command(&run.command))
         }
         None => {
-            let notes = rows.iter().filter(|row| row.id.starts_with('n')).count();
-            (format!("n{:03}", notes + 1), String::new())
+            // After the highest note so far: the rows read may be only the
+            // newest of a long ledger, so counting them would repeat an id.
+            let last_note = rows
+                .iter()
+                .filter_map(|row| row.id.strip_prefix('n')?.parse::<usize>().ok())
+                .max()
+                .unwrap_or(0);
+            (format!("n{:03}", last_note + 1), String::new())
         }
     };
     let row = LedgerRow {
@@ -620,6 +653,9 @@ async fn ledger_append(binding: &TaskBinding, args: &Value) -> Result<Value, Str
     }
     updated.push_str(&format_ledger_row(&row));
     updated.push('\n');
+    if updated.len() > super::MAX_FILE_BYTES {
+        return Err("ledger.tsv is full (1 MiB). Move older rows into ledger-archive.tsv, keeping the header, then record this result again.".into());
+    }
     files.write(&path, &updated)?;
     Ok(json!({"id": id, "path": path}))
 }

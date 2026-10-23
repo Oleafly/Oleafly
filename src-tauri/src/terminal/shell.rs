@@ -3,6 +3,7 @@
 //! Linux start the login shell or a custom program. Path handling for Windows
 //! is plain string work, so every case is tested on every host.
 
+use crate::app_error::AppError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -113,12 +114,14 @@ impl ShellProbe for SystemProbe {
     }
 }
 
-const NO_PWSH: &str = "PowerShell 7 isn't installed.";
-const NO_GIT_BASH: &str =
-    "Git Bash isn't installed. Install Git for Windows or pick another shell.";
-const NO_WSL: &str = "WSL isn't installed.";
-const NO_WSL_DISTRO: &str = "WSL has no Linux distribution yet.";
-const NO_CUSTOM_PATH: &str = "Enter a shell path in Settings, or pick another shell.";
+// Start failures are app errors, so the terminal can show them in the user's
+// language; the English texts are `errors.terminal.*` in the errors catalog.
+const NO_PWSH: &str = "terminal.pwsh_missing";
+const NO_GIT_BASH: &str = "terminal.git_bash_missing";
+const NO_WSL: &str = "terminal.wsl_missing";
+const NO_WSL_DISTRO: &str = "terminal.wsl_no_distro";
+const NO_CUSTOM_PATH: &str = "terminal.shell_path_empty";
+const NO_CUSTOM_PROGRAM: &str = "terminal.shell_path_missing";
 
 /// Shells that take `-l` to run as a login shell on macOS and Linux, so they
 /// read the profile that sets up PATH. On Windows the same names mark MSYS2
@@ -132,7 +135,7 @@ pub(crate) fn resolve_shell(
     choice: &ShellChoice,
     windows: bool,
     probe: &dyn ShellProbe,
-) -> Result<ShellSpec, String> {
+) -> Result<ShellSpec, AppError> {
     if !windows {
         // A shell picked on Windows (synced settings) means nothing here.
         return match choice.id {
@@ -144,7 +147,7 @@ pub(crate) fn resolve_shell(
         ShellId::Auto => Ok(auto_windows_shell(probe)),
         ShellId::Pwsh => pwsh_path(probe)
             .map(|program| powershell_spec(ShellId::Pwsh, program))
-            .ok_or_else(|| NO_PWSH.to_string()),
+            .ok_or_else(|| AppError::new(NO_PWSH)),
         ShellId::Powershell => Ok(powershell_spec(
             ShellId::Powershell,
             windows_powershell_path(probe),
@@ -152,7 +155,7 @@ pub(crate) fn resolve_shell(
         ShellId::Cmd => Ok(cmd_spec(probe)),
         ShellId::GitBash => git_bash_path(probe)
             .map(git_bash_spec)
-            .ok_or_else(|| NO_GIT_BASH.to_string()),
+            .ok_or_else(|| AppError::new(NO_GIT_BASH)),
         ShellId::Wsl => wsl_spec(probe),
         ShellId::Custom => custom_shell(choice.path.as_deref(), true, probe),
     }
@@ -392,10 +395,10 @@ fn git_bash_spec(program: String) -> ShellSpec {
     }
 }
 
-fn wsl_spec(probe: &dyn ShellProbe) -> Result<ShellSpec, String> {
-    let program = wsl_path(probe).ok_or_else(|| NO_WSL.to_string())?;
+fn wsl_spec(probe: &dyn ShellProbe) -> Result<ShellSpec, AppError> {
+    let program = wsl_path(probe).ok_or_else(|| AppError::new(NO_WSL))?;
     if !probe.wsl_has_distro() {
-        return Err(NO_WSL_DISTRO.to_string());
+        return Err(AppError::new(NO_WSL_DISTRO));
     }
     // WSL starts in the working folder of the process, so no --cd.
     Ok(ShellSpec {
@@ -448,13 +451,13 @@ fn custom_shell(
     path: Option<&str>,
     windows: bool,
     probe: &dyn ShellProbe,
-) -> Result<ShellSpec, String> {
+) -> Result<ShellSpec, AppError> {
     let path = path.map(str::trim).unwrap_or_default();
     if path.is_empty() {
-        return Err(NO_CUSTOM_PATH.to_string());
+        return Err(AppError::new(NO_CUSTOM_PATH));
     }
     if !probe.is_file(path) {
-        return Err(format!("There's no program at {path}."));
+        return Err(AppError::new(NO_CUSTOM_PROGRAM).param("path", path));
     }
     let name = program_name(path);
     let login = LOGIN_SHELLS.contains(&name.to_ascii_lowercase().as_str());
@@ -589,7 +592,11 @@ mod tests {
     #[test]
     fn pwsh_is_refused_when_it_is_missing() {
         let error = resolve_shell(&choice(ShellId::Pwsh), true, &FakeProbe::windows()).unwrap_err();
-        assert!(error.contains("PowerShell 7"), "{error}");
+        assert_eq!(error.code, "terminal.pwsh_missing");
+        assert_eq!(
+            crate::app_error::english_error(&error.to_string()),
+            "PowerShell 7 isn't installed."
+        );
     }
 
     #[test]
@@ -639,7 +646,7 @@ mod tests {
             .located("git", r"C:\Windows\System32\git.exe");
         assert_eq!(git_bash_path(&probe), None);
         let error = resolve_shell(&choice(ShellId::GitBash), true, &probe).unwrap_err();
-        assert!(error.contains("Git Bash"), "{error}");
+        assert_eq!(error.code, "terminal.git_bash_missing");
     }
 
     #[test]
@@ -647,7 +654,7 @@ mod tests {
         let wsl = r"C:\Windows\System32\wsl.exe";
         let mut probe = FakeProbe::windows().file(wsl);
         let error = resolve_shell(&choice(ShellId::Wsl), true, &probe).unwrap_err();
-        assert!(error.contains("distribution"), "{error}");
+        assert_eq!(error.code, "terminal.wsl_no_distro");
 
         probe.distro = true;
         let probe = probe.var("WSLENV", "USERPROFILE/p");
@@ -670,7 +677,8 @@ mod tests {
     fn wsl_is_refused_when_it_is_not_installed() {
         let mut probe = FakeProbe::windows();
         probe.distro = true;
-        assert!(resolve_shell(&choice(ShellId::Wsl), true, &probe).is_err());
+        let error = resolve_shell(&choice(ShellId::Wsl), true, &probe).unwrap_err();
+        assert_eq!(error.code, "terminal.wsl_missing");
     }
 
     #[test]
@@ -694,9 +702,15 @@ mod tests {
 
         let missing = r"C:\Users\Zoë\My Shells\elvish.exe";
         let error = resolve_shell(&custom(missing), true, &probe).unwrap_err();
-        assert!(error.contains(missing), "{error}");
-        assert!(resolve_shell(&custom("   "), true, &probe).is_err());
-        assert!(resolve_shell(&choice(ShellId::Custom), true, &probe).is_err());
+        assert_eq!(error.code, "terminal.shell_path_missing");
+        assert_eq!(
+            crate::app_error::english_error(&error.to_string()),
+            format!("There's no program at {missing}.")
+        );
+        for empty in [custom("   "), choice(ShellId::Custom)] {
+            let error = resolve_shell(&empty, true, &probe).unwrap_err();
+            assert_eq!(error.code, "terminal.shell_path_empty");
+        }
     }
 
     #[test]

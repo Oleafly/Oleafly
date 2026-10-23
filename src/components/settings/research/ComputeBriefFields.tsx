@@ -1,6 +1,7 @@
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -16,6 +17,8 @@ import {
   computeSettings,
   executorFor,
   formatSlurmTime,
+  isSlurmName,
+  parseCount,
   parseMemory,
   parseSlurmTime,
   sandboxStatus,
@@ -52,28 +55,50 @@ export function computeFor(target: ComputeTarget | null): BriefCompute {
   };
 }
 
+/**
+ * The Slurm fields of a task. Text that is not valid stays in its field with a
+ * message, the brief keeps the last valid value, and `onProblemChange` tells
+ * the composer so it doesn't submit that older value.
+ */
 function SlurmResources({
   id,
   resources,
   onChange,
+  onProblemChange,
   disabled,
 }: Readonly<{
   id: string;
   resources: ComputeResources;
   onChange: (next: ComputeResources) => void;
+  onProblemChange?: (problem: boolean) => void;
   disabled?: boolean;
 }>) {
   const { t } = useTranslation(["researchTools"]);
   const [time, setTime] = useState(() => formatSlurmTime(resources.timeMinutes));
+  const [partition, setPartition] = useState(() => resources.partition ?? "");
+  const [gpus, setGpus] = useState(() => resources.gpus?.toString() ?? "");
+  const [cpus, setCpus] = useState(() => resources.cpus?.toString() ?? "");
   const [memory, setMemory] = useState(() => (resources.memoryGb ? String(resources.memoryGb) : ""));
-  const timeInvalid = time.trim() !== "" && parseSlurmTime(time) === null;
-  const memoryInvalid = memory.trim() !== "" && parseMemory(memory) === null;
-  const count = (value: string, max: number) => {
-    const trimmed = value.trim();
-    if (!/^\d+$/.test(trimmed)) return null;
-    const number = Number(trimmed);
-    return number <= max ? number : null;
+  const blank = (text: string) => text.trim() === "";
+  const timeInvalid = !blank(time) && parseSlurmTime(time) === null;
+  const partitionInvalid = !blank(partition) && !isSlurmName(partition.trim());
+  const gpusInvalid = !blank(gpus) && parseCount(gpus, 0, 64) === null;
+  const cpusInvalid = !blank(cpus) && parseCount(cpus, 1, 1024) === null;
+  const memoryInvalid = !blank(memory) && parseMemory(memory) === null;
+  const problem = timeInvalid || partitionInvalid || gpusInvalid || cpusInvalid || memoryInvalid;
+
+  useEffect(() => {
+    onProblemChange?.(problem);
+  }, [problem, onProblemChange]);
+  useEffect(() => () => onProblemChange?.(false), [onProblemChange]);
+
+  const field = <T,>(text: string, parse: (text: string) => T | null, apply: (value: T | null) => ComputeResources) => {
+    const parsed = blank(text) ? null : parse(text);
+    // Only a value that reads, or an emptied field, reaches the brief.
+    if (blank(text) || parsed !== null) onChange(apply(parsed));
   };
+  const message = (invalid: boolean, text: string) =>
+    invalid ? <span className="text-destructive">{text}</span> : null;
   return (
     <fieldset className="grid gap-2 rounded-lg border p-3 sm:grid-cols-2" disabled={disabled}>
       <legend className="px-1 text-xs font-medium">{t(($) => $.researchTools.compute.brief.resources)}</legend>
@@ -86,42 +111,58 @@ function SlurmResources({
           aria-invalid={timeInvalid || undefined}
           onChange={(event) => {
             setTime(event.target.value);
-            const minutes = event.target.value.trim() === "" ? null : parseSlurmTime(event.target.value);
-            if (event.target.value.trim() === "" || minutes !== null) onChange({ ...resources, timeMinutes: minutes });
+            field(event.target.value, parseSlurmTime, (timeMinutes) => ({ ...resources, timeMinutes }));
           }}
         />
-        {timeInvalid ? (
-          <span className="text-destructive">{t(($) => $.researchTools.compute.form.errors.time)}</span>
-        ) : null}
+        {message(timeInvalid, t(($) => $.researchTools.compute.form.errors.time))}
       </label>
       <label className="grid gap-1 text-xs" htmlFor={`${id}-partition`}>
         {t(($) => $.researchTools.compute.form.partition)}
         <Input
           id={`${id}-partition`}
-          value={resources.partition ?? ""}
+          value={partition}
           maxLength={64}
-          onChange={(event) => onChange({ ...resources, partition: event.target.value.trim() || null })}
+          aria-invalid={partitionInvalid || undefined}
+          onChange={(event) => {
+            setPartition(event.target.value);
+            field(
+              event.target.value,
+              (text) => (isSlurmName(text.trim()) ? text.trim() : null),
+              (value) => ({ ...resources, partition: value }),
+            );
+          }}
         />
+        {message(partitionInvalid, t(($) => $.researchTools.compute.form.errors.name))}
       </label>
       <label className="grid gap-1 text-xs" htmlFor={`${id}-gpus`}>
         {t(($) => $.researchTools.compute.form.gpus)}
         <Input
           id={`${id}-gpus`}
           inputMode="numeric"
-          maxLength={2}
-          value={resources.gpus ?? ""}
-          onChange={(event) => onChange({ ...resources, gpus: count(event.target.value, 64) })}
+          maxLength={8}
+          value={gpus}
+          aria-invalid={gpusInvalid || undefined}
+          onChange={(event) => {
+            setGpus(event.target.value);
+            field(event.target.value, (text) => parseCount(text, 0, 64), (value) => ({ ...resources, gpus: value }));
+          }}
         />
+        {message(gpusInvalid, t(($) => $.researchTools.compute.form.errors.count))}
       </label>
       <label className="grid gap-1 text-xs" htmlFor={`${id}-cpus`}>
         {t(($) => $.researchTools.compute.form.cpus)}
         <Input
           id={`${id}-cpus`}
           inputMode="numeric"
-          maxLength={4}
-          value={resources.cpus ?? ""}
-          onChange={(event) => onChange({ ...resources, cpus: count(event.target.value, 1024) })}
+          maxLength={8}
+          value={cpus}
+          aria-invalid={cpusInvalid || undefined}
+          onChange={(event) => {
+            setCpus(event.target.value);
+            field(event.target.value, (text) => parseCount(text, 1, 1024), (value) => ({ ...resources, cpus: value }));
+          }}
         />
+        {message(cpusInvalid, t(($) => $.researchTools.compute.form.errors.count))}
       </label>
       <label className="grid gap-1 text-xs" htmlFor={`${id}-mem`}>
         {t(($) => $.researchTools.compute.form.mem)}
@@ -132,13 +173,10 @@ function SlurmResources({
           aria-invalid={memoryInvalid || undefined}
           onChange={(event) => {
             setMemory(event.target.value);
-            const gigabytes = event.target.value.trim() === "" ? null : parseMemory(event.target.value);
-            if (event.target.value.trim() === "" || gigabytes !== null) onChange({ ...resources, memoryGb: gigabytes });
+            field(event.target.value, parseMemory, (value) => ({ ...resources, memoryGb: value }));
           }}
         />
-        {memoryInvalid ? (
-          <span className="text-destructive">{t(($) => $.researchTools.compute.form.errors.mem)}</span>
-        ) : null}
+        {message(memoryInvalid, t(($) => $.researchTools.compute.form.errors.mem))}
       </label>
     </fieldset>
   );
@@ -149,37 +187,49 @@ export function ComputeBriefFields({
   id,
   value,
   onChange,
+  onProblemChange,
   disabled = false,
 }: Readonly<{
   id?: string;
   value: BriefCompute;
   onChange: (next: BriefCompute) => void;
+  /** Tells the composer whether this choice can't be saved: a removed target or a field that doesn't read. */
+  onProblemChange?: (problem: boolean) => void;
   disabled?: boolean;
 }>) {
-  const { t } = useTranslation(["researchTools"]);
+  const { t } = useTranslation(["common", "researchTools"]);
   const fallbackId = useId();
   const fieldId = id ?? fallbackId;
   const [view, setView] = useState<ComputeView | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [resourceProblem, setResourceProblem] = useState(false);
   const [windowsOff, setWindowsOff] = useState(false);
 
+  const mounted = useRef(true);
+
+  const load = useCallback(() => {
+    void computeSettings()
+      .then((next) => {
+        if (!mounted.current) return;
+        setView(next);
+        setLoadFailed(false);
+      })
+      .catch(() => {
+        if (!mounted.current) return;
+        setLoadFailed(true);
+        setView((current) => current ?? { platform: "other", targets: [], tested: {}, sshAvailable: false, rsyncAvailable: false, cuaAvailable: false });
+      });
+  }, []);
+
   useEffect(() => {
-    let live = true;
-    const load = () => {
-      void computeSettings()
-        .then((next) => {
-          if (live) setView(next);
-        })
-        .catch(() => {
-          if (live) setView((current) => current ?? { platform: "other", targets: [], tested: {}, sshAvailable: false, rsyncAvailable: false, cuaAvailable: false });
-        });
-    };
+    mounted.current = true;
     load();
     window.addEventListener(COMPUTE_TARGETS_CHANGED, load);
     return () => {
-      live = false;
+      mounted.current = false;
       window.removeEventListener(COMPUTE_TARGETS_CHANGED, load);
     };
-  }, []);
+  }, [load]);
 
   const local = value.target === null;
   const platform = view?.platform;
@@ -200,8 +250,13 @@ export function ComputeBriefFields({
   }, [local, platform]);
 
   const selected = value.target ? view?.targets.find((target) => target.id === value.target) : undefined;
-  const missing = Boolean(value.target && view && !selected);
+  // A list that failed to load says nothing about whether the target still exists.
+  const missing = Boolean(value.target && view && !loadFailed && !selected);
   const tested = selected ? view?.tested[selected.id] : undefined;
+  const problem = missing || resourceProblem;
+  useEffect(() => {
+    onProblemChange?.(problem);
+  }, [problem, onProblemChange]);
 
   return (
     <div className="grid gap-2" data-testid="compute-brief-fields">
@@ -224,6 +279,13 @@ export function ComputeBriefFields({
           ))}
         </SelectContent>
       </Select>
+      {loadFailed ? (
+        <ErrorState size="compact" message={t(($) => $.researchTools.compute.brief.loadFailed)}>
+          <Button size="xs" variant="outline" onClick={load}>
+            {t(($) => $.common.actions.retry)}
+          </Button>
+        </ErrorState>
+      ) : null}
       {missing ? (
         <p role="alert" className="text-xs text-destructive">
           {t(($) => $.researchTools.compute.brief.missing)}
@@ -242,10 +304,11 @@ export function ComputeBriefFields({
           resources={fullResources(value.resources ?? selected.defaults)}
           disabled={disabled}
           onChange={(resources) => onChange({ ...value, resources })}
+          onProblemChange={setResourceProblem}
         />
       ) : null}
       {selected?.kind === "cuaSpace" && tested?.relay ? (
-        <p className="text-xs text-amber-700 dark:text-amber-300">{t(($) => $.researchTools.compute.notes.relay)}</p>
+        <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.compute.notes.relay)}</p>
       ) : null}
       {local && windowsOff ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs">

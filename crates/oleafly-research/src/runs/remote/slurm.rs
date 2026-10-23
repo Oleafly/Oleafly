@@ -41,8 +41,10 @@ pub struct SlurmHandleData {
     pub job_id: Option<String>,
 }
 
-/// The brief's resources over the target's defaults; the time limit comes
-/// from the run's timeout when neither sets one.
+/// The brief's resources over the target's defaults. The job's time limit is
+/// the shortest of what the brief asks for, the target's default and the
+/// run's timeout, so a cluster default of a day cannot outlast a run limit of
+/// half an hour; the timeout alone sets it when neither asks.
 pub fn merge_resources(
     requested: Option<&Resources>,
     defaults: &Resources,
@@ -51,10 +53,12 @@ pub fn merge_resources(
     let requested = requested.cloned().unwrap_or_default();
     let minutes = u32::try_from(timeout.as_secs().div_ceil(60).max(1)).unwrap_or(u32::MAX);
     Resources {
-        time_minutes: requested
-            .time_minutes
-            .or(defaults.time_minutes)
-            .or(Some(minutes)),
+        time_minutes: Some(
+            requested
+                .time_minutes
+                .or(defaults.time_minutes)
+                .map_or(minutes, |asked| asked.min(minutes)),
+        ),
         partition: requested.partition.or_else(|| defaults.partition.clone()),
         gpus: requested.gpus.or(defaults.gpus),
         cpus: requested.cpus.or(defaults.cpus),
@@ -426,6 +430,10 @@ impl RunExecutor for SlurmExecutor {
         "slurm"
     }
 
+    fn poll_every(&self) -> Duration {
+        super::REMOTE_POLL_EVERY
+    }
+
     async fn start(&self, spec: &RunSpec) -> Result<RunHandle, RunError> {
         let ComputeTarget::Slurm {
             id,
@@ -678,6 +686,38 @@ mod tests {
                 .partition
                 .as_deref(),
             Some("gpu")
+        );
+    }
+
+    #[test]
+    fn the_run_timeout_caps_what_the_cluster_default_or_the_brief_ask_for() {
+        let day = Resources {
+            time_minutes: Some(24 * 60),
+            ..Resources::default()
+        };
+        let quarter = Resources {
+            time_minutes: Some(15),
+            ..Resources::default()
+        };
+        let half_hour = Duration::from_secs(30 * 60);
+        // A target default of a day is cut to the run limit...
+        assert_eq!(
+            merge_resources(None, &day, half_hour).time_minutes,
+            Some(30)
+        );
+        // ...and so is a request in the brief.
+        assert_eq!(
+            merge_resources(Some(&day), &Resources::default(), half_hour).time_minutes,
+            Some(30)
+        );
+        // A shorter ask stands; the brief's ask wins over the target's default.
+        assert_eq!(
+            merge_resources(Some(&quarter), &day, half_hour).time_minutes,
+            Some(15)
+        );
+        assert_eq!(
+            merge_resources(None, &quarter, half_hour).time_minutes,
+            Some(15)
         );
     }
 

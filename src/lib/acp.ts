@@ -352,8 +352,11 @@ export const acpAuthenticate = (projectId: string, sessionId: string, methodId: 
 export const acpSetModel = (projectId: string, sessionId: string, modelId: string) => invoke<AcpSnapshot>("acp_set_model", { projectId, sessionId, modelId });
 export const acpPermission = (projectId: string, sessionId: string, permissionId: string, optionId: string | null) => invoke<void>("acp_permission", { projectId, sessionId, permissionId, optionId });
 export const acpDelegatedPermission = (projectId: string, sessionId: string, parentSessionId: string, permissionId: string, optionId: string | null) => invoke<void>("acp_delegated_permission", { projectId, sessionId, parentSessionId, permissionId, optionId });
-export const acpSessionPage = (projectId: string, options: { query?: string; before?: number; limit?: number } = {}) =>
-  invoke<AcpSessionPage>("acp_sessions", { projectId, query: options.query ?? null, before: options.before ?? null, limit: options.limit ?? null });
+/** `before` and `beforeId` are the update time and id of the last conversation shown (a keyset cursor). */
+export const acpSessionPage = (projectId: string, options: { query?: string; before?: number; beforeId?: string; limit?: number } = {}) =>
+  invoke<AcpSessionPage>("acp_sessions", {
+    projectId, query: options.query ?? null, before: options.before ?? null, beforeId: options.beforeId ?? null, limit: options.limit ?? null,
+  });
 /** The 200 newest conversations of a project, as many as 0.4.7 kept in the panel; History pages through the rest. */
 export const acpSessions = (projectId: string) => acpSessionPage(projectId, { limit: 200 }).then((page) => page.sessions);
 export const acpSnapshot = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_snapshot", { projectId, sessionId });

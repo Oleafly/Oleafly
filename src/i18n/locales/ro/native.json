@@ -100,6 +100,10 @@
       "action": "{{agent}} vrea să {{action}}.",
       "steps": "{{agent}} vrea să facă acești pași într-o aplicație desktop:",
       "moreSteps": "Pași neafișați: {{count}}",
+      "moreItems": "Încă {{count}} elemente neafișate",
+      "cut": "(+{{count}} caractere neafișate)",
+      "signedIn": "Acțiunea are loc în propriul tău browser autentificat.",
+      "signedInOn": "Acțiunea are loc în propriul tău browser autentificat, pe {{origin}}.",
       "text": "Text: „{{text}}”",
       "address": "Adresă: {{url}}",
       "allowOnce": "Permite o dată",
@@ -130,7 +134,8 @@
       "message": "Agenții vor putea folosi următoarele și vor cere în continuare voie înainte de fiecare acțiune:",
       "confirm": "Permite",
       "enabled": "Aplicații desktop",
-      "app": "Aplicație: {{name}}",
+      "app": "Aplicație: {{name}} ({{identity}})",
+      "more": "Și încă {{count}}",
       "site": "Site: {{origin}}",
       "signedIn": "Browserul tău autentificat pe {{origin}}",
       "scripted": "Scripturi Cua"
@@ -188,6 +193,12 @@
     "started": {
       "title": "Oleafly continuă să lucreze",
       "body": "Sarcinile de cercetare pe care le-ai marcat să continue rulează în fundal. Deschide Oleafly ca să le vezi progresul."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Verificările permisiunilor sunt dezactivate ({{mode}})",
+      "description": "Agentul poate edita fișiere și rula comenzi fără să întrebe. Oleafly nu a putut comuta la alt mod. Schimbă modul din setările proprii ale agentului."
     }
   }
 }

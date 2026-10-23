@@ -284,38 +284,42 @@ pub async fn set_tool_gateway(
     Ok(())
 }
 
-/// Creates the project's profile (a clone of the default one, without a
-/// shell alias), turns memory off and removes the memories it cloned.
+/// Makes sure the project's profile exists. A missing one is created (a
+/// clone of the default one, without a shell alias), with memory turned off
+/// and the memories it cloned removed; an existing one is left as it is, with
+/// whatever memory the user let it collect. Returns the profile's name and
+/// whether it was just created.
 pub async fn create_project_profile(
     hermes: &HermesProgram,
     project_id: &str,
     project_name: &str,
-) -> Result<String, String> {
+) -> Result<(String, bool), String> {
     let name = project_profile_name(project_id);
-    if !profile_exists(hermes, &name).await {
-        let description = format!(
-            "Oleafly project: {}",
-            project_name
-                .chars()
-                .filter(|c| !c.is_control())
-                .take(80)
-                .collect::<String>()
-        );
-        checked(
-            hermes,
-            None,
-            &[
-                "profile",
-                "create",
-                &name,
-                "--clone",
-                "--no-alias",
-                "--description",
-                &description,
-            ],
-        )
-        .await?;
+    if profile_exists(hermes, &name).await {
+        return Ok((name, false));
     }
+    let description = format!(
+        "Oleafly project: {}",
+        project_name
+            .chars()
+            .filter(|c| !c.is_control())
+            .take(80)
+            .collect::<String>()
+    );
+    checked(
+        hermes,
+        None,
+        &[
+            "profile",
+            "create",
+            &name,
+            "--clone",
+            "--no-alias",
+            "--description",
+            &description,
+        ],
+    )
+    .await?;
     set_memory(hermes, &name, false).await?;
     let shown = checked(hermes, None, &["profile", "show", &name]).await?;
     let home = crate::paths::home_dir()?;
@@ -326,7 +330,7 @@ pub async fn create_project_profile(
             let _ = tokio::fs::remove_file(folder.join("memories").join(file)).await;
         }
     }
-    Ok(name)
+    Ok((name, true))
 }
 
 /// The profile a project's sessions run in (`None` = Hermes's default).
@@ -425,6 +429,36 @@ pub fn apply_profile(
     Ok(())
 }
 
+/// The settings to store for a project. The memory and tool gateway flags
+/// mirror the project's profile and only `hermes_set_option` (or creating the
+/// profile) changes them, so the copy a window sends back never overwrites
+/// them. A profile made now starts with memory off.
+async fn settings_to_save(
+    hermes: Option<&HermesProgram>,
+    project_id: &str,
+    project_name: &str,
+    stored: &HermesSettings,
+    mut settings: HermesSettings,
+) -> Result<HermesSettings, String> {
+    settings.profile = None;
+    if let Some(remote) = &settings.remote {
+        super::remote::validate(remote)?;
+    }
+    if settings.mode == HermesMode::Remote && settings.remote.is_none() {
+        return Err("Enter the SSH host and remote folder first.".into());
+    }
+    settings.memory = stored.memory;
+    settings.tool_gateway = stored.tool_gateway;
+    if let (HermesMode::Project, Some(hermes)) = (settings.mode, hermes) {
+        let (name, created) = create_project_profile(hermes, project_id, project_name).await?;
+        if created {
+            settings.memory = false;
+        }
+        settings.profile = Some(name);
+    }
+    Ok(settings)
+}
+
 impl super::runtime::AcpRuntime {
     /// The `hermes` CLI as Oleafly would start it.
     async fn hermes_program(&self) -> Result<HermesProgram, String> {
@@ -467,21 +501,16 @@ impl super::runtime::AcpRuntime {
         &self,
         project_id: &str,
         project_name: &str,
-        mut settings: HermesSettings,
+        settings: HermesSettings,
     ) -> Result<HermesStatus, String> {
-        settings.profile = None;
-        if let Some(remote) = &settings.remote {
-            super::remote::validate(remote)?;
-        }
-        if settings.mode == HermesMode::Remote && settings.remote.is_none() {
-            return Err("Enter the SSH host and remote folder first.".into());
-        }
-        if settings.mode == HermesMode::Project {
-            let hermes = self.hermes_program().await?;
-            let name = create_project_profile(&hermes, project_id, project_name).await?;
-            settings.memory = false;
-            settings.profile = Some(name);
-        }
+        let stored = self.hermes_project_settings(project_id)?;
+        let hermes = if settings.mode == HermesMode::Project {
+            Some(self.hermes_program().await?)
+        } else {
+            None
+        };
+        let settings =
+            settings_to_save(hermes.as_ref(), project_id, project_name, &stored, settings).await?;
         self.save_hermes(project_id, &settings)?;
         self.hermes_project_status(project_id).await
     }
@@ -537,6 +566,192 @@ impl super::runtime::AcpRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A stand-in `hermes` that keeps its profiles and a log of its calls in
+    /// a folder, so tests can see what Oleafly asked it to do.
+    struct FakeHermes {
+        state: tempfile::TempDir,
+        program: HermesProgram,
+    }
+
+    impl FakeHermes {
+        fn new() -> Self {
+            const SCRIPT: &str = r#"
+import os, sys
+state, args = sys.argv[1], sys.argv[2:]
+profile = None
+if args[:1] == ["-p"]:
+    profile, args = args[1], args[2:]
+with open(os.path.join(state, "calls.log"), "a") as log:
+    log.write(" ".join((["-p", profile] if profile else []) + args) + "\n")
+folder = lambda name: os.path.join(state, "profiles", name)
+if args[:2] == ["profile", "show"]:
+    if not os.path.isdir(folder(args[2])):
+        sys.exit(1)
+    print("Path: " + folder(args[2]))
+elif args[:2] == ["profile", "create"]:
+    os.makedirs(os.path.join(folder(args[2]), "memories"))
+    for name in ("MEMORY.md", "USER.md"):
+        with open(os.path.join(folder(args[2]), "memories", name), "w") as file:
+            file.write("cloned from the default profile")
+elif args[:2] == ["config", "set"]:
+    pass
+else:
+    sys.exit(2)
+"#;
+            let state = tempfile::Builder::new()
+                .prefix("oleafly-hermes-fixture-")
+                .tempdir()
+                .unwrap();
+            let script = state.path().join("hermes.py");
+            std::fs::write(&script, SCRIPT).unwrap();
+            let program = HermesProgram {
+                program: crate::acp::tests::fixture_python(),
+                prefix_args: vec![
+                    "-u".into(),
+                    script.to_string_lossy().into_owned(),
+                    state.path().to_string_lossy().into_owned(),
+                ],
+            };
+            Self { state, program }
+        }
+
+        fn memory_file(&self, project_id: &str, name: &str) -> PathBuf {
+            self.state
+                .path()
+                .join("profiles")
+                .join(project_profile_name(project_id))
+                .join("memories")
+                .join(name)
+        }
+
+        fn calls(&self) -> Vec<String> {
+            std::fs::read_to_string(self.state.path().join("calls.log"))
+                .unwrap_or_default()
+                .lines()
+                .map(str::to_string)
+                .collect()
+        }
+    }
+
+    fn project_mode() -> HermesSettings {
+        HermesSettings {
+            mode: HermesMode::Project,
+            ..Default::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn a_new_project_profile_starts_without_the_cloned_memories() {
+        let fake = FakeHermes::new();
+        let (name, created) = create_project_profile(&fake.program, "thesis", "Thesis")
+            .await
+            .unwrap();
+        assert_eq!((name.as_str(), created), ("oleafly-thesis", true));
+        assert!(!fake.memory_file("thesis", "MEMORY.md").exists());
+        assert!(!fake.memory_file("thesis", "USER.md").exists());
+        assert!(fake
+            .calls()
+            .contains(&"-p oleafly-thesis config set memory.memory_enabled false".to_string()));
+    }
+
+    #[tokio::test]
+    async fn choosing_project_mode_again_keeps_the_profiles_memory() {
+        let fake = FakeHermes::new();
+        create_project_profile(&fake.program, "thesis", "Thesis")
+            .await
+            .unwrap();
+        // The user turned memory on and the profile collected some.
+        std::fs::write(
+            fake.memory_file("thesis", "MEMORY.md"),
+            "learned over weeks",
+        )
+        .unwrap();
+        std::fs::write(
+            fake.memory_file("thesis", "USER.md"),
+            "prefers British spelling",
+        )
+        .unwrap();
+        let calls = fake.calls().len();
+        let stored = HermesSettings {
+            memory: true,
+            ..project_mode()
+        };
+
+        let (_, created) = create_project_profile(&fake.program, "thesis", "Thesis")
+            .await
+            .unwrap();
+        assert!(!created);
+        // The window's copy of the settings is stale: memory is off in it.
+        let saved = settings_to_save(
+            Some(&fake.program),
+            "thesis",
+            "Thesis",
+            &stored,
+            project_mode(),
+        )
+        .await
+        .unwrap();
+
+        assert!(saved.memory, "the stored memory setting is kept");
+        assert_eq!(saved.profile.as_deref(), Some("oleafly-thesis"));
+        assert_eq!(
+            std::fs::read_to_string(fake.memory_file("thesis", "MEMORY.md")).unwrap(),
+            "learned over weeks"
+        );
+        assert_eq!(
+            std::fs::read_to_string(fake.memory_file("thesis", "USER.md")).unwrap(),
+            "prefers British spelling"
+        );
+        let later = fake.calls().split_off(calls);
+        assert!(
+            later.iter().all(|call| !call.contains("config set")),
+            "no setting changed: {later:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn saving_project_mode_for_a_new_profile_turns_memory_off() {
+        let fake = FakeHermes::new();
+        let stored = HermesSettings {
+            memory: true,
+            ..Default::default()
+        };
+        let saved = settings_to_save(
+            Some(&fake.program),
+            "thesis",
+            "Thesis",
+            &stored,
+            project_mode(),
+        )
+        .await
+        .unwrap();
+        assert!(!saved.memory);
+        assert_eq!(saved.profile.as_deref(), Some("oleafly-thesis"));
+    }
+
+    #[tokio::test]
+    async fn leaving_project_mode_keeps_the_stored_memory_flags() {
+        let stored = HermesSettings {
+            memory: true,
+            tool_gateway: true,
+            ..project_mode()
+        };
+        let saved = settings_to_save(
+            None,
+            "thesis",
+            "Thesis",
+            &stored,
+            HermesSettings {
+                mode: HermesMode::Default,
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+        assert!(saved.memory && saved.tool_gateway);
+        assert_eq!(saved.profile, None);
+    }
 
     #[test]
     fn project_profile_names_are_valid_and_distinct() {

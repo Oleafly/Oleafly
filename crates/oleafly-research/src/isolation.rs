@@ -183,13 +183,32 @@ pub fn prepare_at(
     prepared
 }
 
+/// What a review of a task's workspace found.
+pub struct TaskReview {
+    pub changes: Vec<TaskFileChange>,
+    /// New files past the limits of a copy, which the review leaves out.
+    pub left_out: usize,
+}
+
 pub fn collect_review_changes(
     isolation: &TaskIsolation,
     cancel: &CancellationToken,
 ) -> Result<Vec<TaskFileChange>, String> {
+    collect_review(isolation, cancel).map(|review| review.changes)
+}
+
+pub fn collect_review(
+    isolation: &TaskIsolation,
+    cancel: &CancellationToken,
+) -> Result<TaskReview, String> {
     let root = PathBuf::from(&isolation.execution_root);
     validate_real_root(&root, "task workspace")?;
-    let current = collect_manifest(&root, cancel)?;
+    let known: BTreeSet<String> = isolation
+        .baseline
+        .iter()
+        .map(|entry| entry.path.clone())
+        .collect();
+    let (current, over_limit) = collect_review_manifest(&root, &known, cancel)?;
     let baseline: BTreeMap<_, _> = isolation
         .baseline
         .iter()
@@ -251,7 +270,10 @@ pub fn collect_review_changes(
             _ => {}
         }
     }
-    Ok(changes)
+    Ok(TaskReview {
+        changes,
+        left_out: over_limit,
+    })
 }
 
 pub fn hash_file(path: &Path) -> Result<(String, u64), String> {
@@ -322,10 +344,6 @@ impl Default for CopyLimits {
 
 const DATA_FOLDER_HINT: &str = "Link large data as a data folder instead.";
 
-fn collect_manifest(root: &Path, cancel: &CancellationToken) -> Result<Vec<ManifestEntry>, String> {
-    collect_manifest_with_skips(root, cancel).map(|(entries, _)| entries)
-}
-
 fn collect_manifest_with_skips(
     root: &Path,
     cancel: &CancellationToken,
@@ -341,15 +359,7 @@ pub(crate) fn collect_manifest_limited(
     let canonical_root = root
         .canonicalize()
         .map_err(|error| format!("could not read {}: {error}", root.display()))?;
-    let mut walk = Walk {
-        root,
-        canonical_root: &canonical_root,
-        cancel,
-        limits,
-        entries: Vec::new(),
-        skipped: Vec::new(),
-        total_bytes: 0,
-    };
+    let mut walk = Walk::new(root, &canonical_root, cancel, limits, None);
     collect_directory(&mut walk, root)?;
     walk.entries
         .sort_by(|left, right| left.path.cmp(&right.path));
@@ -358,27 +368,94 @@ pub(crate) fn collect_manifest_limited(
     Ok((walk.entries, walk.skipped))
 }
 
+/// The files of a finished task's workspace for its review, and how many
+/// new files were left out. The files the project had (`known`) are always
+/// listed. New ones count against the limits of a copy, but past them they
+/// are left out instead of failing the task: a run that wrote 25,000 files
+/// still has its work reviewed.
+fn collect_review_manifest(
+    root: &Path,
+    known: &BTreeSet<String>,
+    cancel: &CancellationToken,
+) -> Result<(Vec<ManifestEntry>, usize), String> {
+    collect_review_manifest_limited(root, known, cancel, CopyLimits::default())
+}
+
+fn collect_review_manifest_limited(
+    root: &Path,
+    known: &BTreeSet<String>,
+    cancel: &CancellationToken,
+    limits: CopyLimits,
+) -> Result<(Vec<ManifestEntry>, usize), String> {
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|error| format!("could not read {}: {error}", root.display()))?;
+    let mut walk = Walk::new(root, &canonical_root, cancel, limits, Some(known));
+    collect_directory(&mut walk, root)?;
+    walk.entries
+        .sort_by(|left, right| left.path.cmp(&right.path));
+    Ok((walk.entries, walk.left_out))
+}
+
 struct Walk<'a> {
     root: &'a Path,
     canonical_root: &'a Path,
     cancel: &'a CancellationToken,
     limits: CopyLimits,
+    /// A review: the project's files, which no limit applies to.
+    known: Option<&'a BTreeSet<String>>,
     entries: Vec<ManifestEntry>,
     skipped: Vec<SkippedEntry>,
     total_bytes: u64,
+    /// A review: what the new files add up to, and those left out.
+    new_files: usize,
+    new_bytes: u64,
+    left_out: usize,
 }
 
-impl Walk<'_> {
+impl<'a> Walk<'a> {
+    fn new(
+        root: &'a Path,
+        canonical_root: &'a Path,
+        cancel: &'a CancellationToken,
+        limits: CopyLimits,
+        known: Option<&'a BTreeSet<String>>,
+    ) -> Self {
+        Self {
+            root,
+            canonical_root,
+            cancel,
+            limits,
+            known,
+            entries: Vec::new(),
+            skipped: Vec::new(),
+            total_bytes: 0,
+            new_files: 0,
+            new_bytes: 0,
+            left_out: 0,
+        }
+    }
+
     fn skip(&mut self, path: String, reason: SkipReason) {
         self.skipped.push(SkippedEntry { path, reason });
     }
 
     fn add(&mut self, portable: String, file: &Path, resolved_link: bool) -> Result<(), String> {
-        if self.entries.len() >= self.limits.max_files {
+        // A review lists the project's own files whatever the limits say,
+        // and counts only the new ones against them.
+        let reviewing = self.known.is_some();
+        let new_file = self
+            .known
+            .is_some_and(|known| !known.contains(portable.as_str()));
+        if !reviewing && self.entries.len() >= self.limits.max_files {
             return Err(format!(
                 "The project has more than {} task files. {DATA_FOLDER_HINT}",
                 self.limits.max_files
             ));
+        }
+        if new_file && self.new_files >= self.limits.max_files {
+            self.left_out += 1;
+            return Ok(());
         }
         // Size first: hashing refuses a file over the limit, and a large data
         // file is skipped, not a reason to fail the whole copy.
@@ -389,15 +466,25 @@ impl Walk<'_> {
             self.skip(portable, SkipReason::TooLarge);
             return Ok(());
         }
+        if new_file {
+            if self.new_bytes.saturating_add(size) > self.limits.max_total {
+                self.left_out += 1;
+                return Ok(());
+            }
+            self.new_files += 1;
+            self.new_bytes += size;
+        }
         let (sha256, size) = hash_file(file)?;
-        self.total_bytes = self
-            .total_bytes
-            .checked_add(size)
-            .ok_or_else(|| "The task source is too large.".to_string())?;
-        if self.total_bytes > self.limits.max_total {
-            return Err(format!(
-                "The task source is larger than 2 GiB. {DATA_FOLDER_HINT}"
-            ));
+        if !reviewing {
+            self.total_bytes = self
+                .total_bytes
+                .checked_add(size)
+                .ok_or_else(|| "The task source is too large.".to_string())?;
+            if self.total_bytes > self.limits.max_total {
+                return Err(format!(
+                    "The task source is larger than 2 GiB. {DATA_FOLDER_HINT}"
+                ));
+            }
         }
         self.entries.push(ManifestEntry {
             path: portable,
@@ -1006,6 +1093,12 @@ fn scrub_directory(
     Ok(())
 }
 
+/// Whether `path` is one of the folders every task may write in.
+pub(crate) fn is_output_directory(path: &Path) -> bool {
+    path.to_str()
+        .is_some_and(|path| OUTPUT_DIRECTORIES.contains(&path))
+}
+
 fn allowed_paths(manifest: &[ManifestEntry]) -> Vec<String> {
     let mut paths = BTreeSet::new();
     for entry in manifest {
@@ -1399,6 +1492,57 @@ mod copy_tests {
                 reason: SkipReason::TooLarge
             }]
         );
+    }
+
+    #[test]
+    fn a_review_lists_the_projects_files_and_leaves_out_new_ones_past_the_limits() {
+        let workspace = tempfile::tempdir().unwrap();
+        for name in ["a.tex", "b.tex", "c.tex"] {
+            std::fs::write(workspace.path().join(name), name).unwrap();
+        }
+        std::fs::create_dir(workspace.path().join("runs")).unwrap();
+        for index in 0..5 {
+            std::fs::write(
+                workspace.path().join(format!("runs/out{index}.csv")),
+                "12345",
+            )
+            .unwrap();
+        }
+        let known: BTreeSet<String> = ["a.tex", "b.tex", "c.tex"].map(String::from).into();
+        let limits = CopyLimits {
+            max_files: 2,
+            ..CopyLimits::default()
+        };
+        let (entries, left_out) = collect_review_manifest_limited(
+            workspace.path(),
+            &known,
+            &CancellationToken::new(),
+            limits,
+        )
+        .unwrap();
+        let paths: Vec<&str> = entries.iter().map(|entry| entry.path.as_str()).collect();
+        // The three project files are over the limit of two and still listed
+        // (they would otherwise look deleted); two new files fit.
+        assert_eq!(
+            paths,
+            ["a.tex", "b.tex", "c.tex", "runs/out0.csv", "runs/out1.csv"]
+        );
+        assert_eq!(left_out, 3);
+
+        // The new files also count by size, not only by number.
+        let limits = CopyLimits {
+            max_total: 12,
+            ..CopyLimits::default()
+        };
+        let (entries, left_out) = collect_review_manifest_limited(
+            workspace.path(),
+            &known,
+            &CancellationToken::new(),
+            limits,
+        )
+        .unwrap();
+        assert_eq!(entries.len(), 3 + 2);
+        assert_eq!(left_out, 3);
     }
 
     #[test]

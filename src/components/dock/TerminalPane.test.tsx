@@ -896,6 +896,23 @@ describe("TerminalPane", () => {
     expect(screen.queryByTestId("dock-terminal-loading")).toBeNull();
   });
 
+  it("writes a typed shell start error in the app's language instead of its raw code", async () => {
+    mocks.invoke.mockImplementation((command: string) =>
+      command === "term_open"
+        ? Promise.reject('@oleafly/error:{"code":"terminal.wsl_no_distro","params":{},"detail":null}')
+        : Promise.resolve(undefined),
+    );
+    render(<TerminalPane projectId="project-1" visible />);
+    const terminal = mocks.terminals[0];
+
+    await waitFor(() => {
+      expect(terminal.writeln).toHaveBeenCalledWith(
+        "\r\nThe shell could not start: WSL has no Linux distribution yet.",
+        expect.any(Function),
+      );
+    });
+  });
+
   it("writes input and resize failures into the terminal", async () => {
     mocks.invoke.mockImplementation((command: string) => {
       if (command === "term_open") return Promise.resolve(OPENED);
@@ -1301,11 +1318,12 @@ describe("TerminalPane", () => {
       expect(mocks.terminals[1].input).toHaveBeenLastCalledWith("\n", true);
     });
 
-    it("opens the find bar on Ctrl+F, loading the search addon once", async () => {
+    it("opens the find bar on Ctrl+Shift+F, loading the search addon once", async () => {
       render(<TerminalPane projectId="project-1" visible />);
       await waitForSession();
       const terminal = mocks.terminals[0];
-      const ctrlF = () => new KeyboardEvent("keydown", { key: "f", ctrlKey: true, cancelable: true });
+      const ctrlF = () =>
+        new KeyboardEvent("keydown", { key: "F", ctrlKey: true, shiftKey: true, cancelable: true });
 
       act(() => {
         terminal.keyHandler?.(ctrlF());
@@ -1338,7 +1356,9 @@ describe("TerminalPane", () => {
       await waitForSession();
       const terminal = mocks.terminals[0];
       act(() => {
-        terminal.keyHandler?.(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, cancelable: true }));
+        terminal.keyHandler?.(
+          new KeyboardEvent("keydown", { key: "F", ctrlKey: true, shiftKey: true, cancelable: true }),
+        );
       });
       const input = await screen.findByLabelText(enWorkspace.terminal.find.label);
 

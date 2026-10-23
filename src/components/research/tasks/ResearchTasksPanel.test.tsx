@@ -34,9 +34,6 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   setResearchTaskKeepRunning: vi.fn(),
 }));
 
-// The task subscriptions also answer PDF text requests; that bridge has its own tests.
-vi.mock("@/lib/research-pdf-bridge", () => ({ mountResearchPdfBridge: vi.fn(async () => () => {}) }));
-
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ runExternalProjectMutation: fileMocks.transaction }) },
 }));
@@ -790,6 +787,121 @@ describe("ResearchTasksPanel lifecycle", () => {
       await waitFor(() => expect(api.refreshResearchTaskEvidence).toHaveBeenCalledWith(current.id));
       await waitFor(() => expect(page().getByTestId("research-evidence")).not.toHaveTextContent("figures/new.png"));
       expect(page().getByTestId("research-evidence")).toHaveTextContent(enResearchTools.evidence.status.pass);
+    });
+
+    it("keeps a plan waiting for approval under Review, so the filter shows what needs the user", async () => {
+      const ready: ResearchTask = { ...task("ready", "paper", "plan_ready"), result: null, createdAt: 3 };
+      const waiting: ResearchTask = task("waiting");
+      const running: ResearchTask = { ...task("running", "paper", "running"), result: null, createdAt: 2 };
+      vi.mocked(api.listResearchTasks).mockResolvedValue([ready, waiting, running]);
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task ready/ });
+
+      expect(page().getByRole("tab", { name: /^Review/ })).toHaveTextContent("Review2");
+      expect(page().getByRole("tab", { name: /^Running/ })).toHaveTextContent("Running1");
+      selectTab(/^Review/);
+      const list = within(page().getByRole("navigation", { name: enResearchTools.tasks.panel.listLabel }));
+      expect(list.getByRole("button", { name: /Task ready/ })).toBeInTheDocument();
+      expect(list.getByRole("button", { name: /Task waiting/ })).toBeInTheDocument();
+      expect(list.queryByRole("button", { name: /Task running/ })).not.toBeInTheDocument();
+    });
+
+    it("builds no timeline while the task dialog is closed, however much live text arrives", async () => {
+      const running: ResearchTask = { ...task("busy", "paper", "running"), result: null };
+      vi.mocked(api.listResearchTasks).mockResolvedValue([running]);
+      const timeline = await import("./task-timeline");
+      const build = vi.spyOn(timeline, "buildTaskTimeline");
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task busy/ });
+      await waitFor(() => expect(useResearchTasksStore.getState().selectedTaskId).toBe(running.id));
+      build.mockClear();
+
+      for (let sequence = 1; sequence <= 5; sequence += 1) {
+        await act(async () =>
+          changedEvent?.({ taskId: running.id, executionGeneration: 1, sequence, event: { kind: "text", text: `Row ${sequence}` }, createdAt: sequence }),
+        );
+      }
+
+      expect(page().queryByRole("dialog")).toBeNull();
+      expect(build).not.toHaveBeenCalled();
+      openTask(running.title);
+      await page().findByRole("dialog");
+      expect(build).toHaveBeenCalled();
+      build.mockRestore();
+    });
+
+    it("keeps the task and tab opened from the Files rail when this panel opens", async () => {
+      const current = task("from-files");
+      vi.mocked(api.listResearchTasks).mockResolvedValue([current]);
+      useResearchTasksStore.setState({
+        projectId: "paper",
+        tasks: [current],
+        selectedTaskId: current.id,
+        detailOpen: true,
+        detailTab: "review",
+      });
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+
+      const dialog = await page().findByRole("dialog");
+      expect(within(dialog).getByRole("heading", { name: current.title })).toBeInTheDocument();
+      expect(within(dialog).getByRole("tab", { name: enResearchTools.tasks.detail.tabReview })).toHaveAttribute("data-state", "active");
+      await waitFor(() => expect(api.listResearchTasks).toHaveBeenCalledWith("paper"));
+      expect(useResearchTasksStore.getState()).toMatchObject({ selectedTaskId: current.id, detailOpen: true });
+    });
+
+    it("drops a task that was deleted elsewhere when the list is refreshed", async () => {
+      const kept = task("kept");
+      const gone = { ...task("gone"), createdAt: 0 };
+      vi.mocked(api.listResearchTasks).mockResolvedValueOnce([kept, gone]).mockResolvedValue([kept]);
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task gone/ });
+
+      fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.refreshAria }));
+
+      await waitFor(() => expect(page().queryByRole("button", { name: /Task gone/ })).not.toBeInTheDocument());
+      expect(card("Task kept")).toBeInTheDocument();
+    });
+
+    it("shows each request once while a task's dialog is open over the list", async () => {
+      const waiting: ResearchTask = { ...task("waiting", "paper", "running"), result: null, pendingApprovals: 1 };
+      vi.mocked(api.listResearchTasks).mockResolvedValue([waiting]);
+      vi.mocked(api.listResearchTaskApprovals).mockResolvedValue([approval("a1", "waiting")]);
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task waiting/ });
+      expect(await page().findAllByTestId("research-pending-approvals")).toHaveLength(1);
+
+      openTask(waiting.title);
+      const dialog = await page().findByRole("dialog");
+
+      await within(dialog).findByTestId("research-pending-approvals");
+      expect(page().getAllByTestId("research-pending-approvals")).toHaveLength(1);
+      closeDetail();
+      await waitFor(() => expect(page().getAllByTestId("research-pending-approvals")).toHaveLength(1));
+      expect(page().queryByRole("dialog")).toBeNull();
+    });
+
+    it("keeps one task's buttons locked while another task's action finishes", async () => {
+      const running: ResearchTask = { ...task("slow", "paper", "running"), result: null, createdAt: 2 };
+      const queued: ResearchTask = { ...task("quick", "paper", "queued"), result: null, executionGeneration: 0, createdAt: 1 };
+      const slowCancel = deferred<ResearchTask>();
+      vi.mocked(api.listResearchTasks).mockResolvedValue([running, queued]);
+      vi.mocked(api.cancelResearchTask).mockReturnValue(slowCancel.promise);
+      vi.mocked(api.startResearchTask).mockResolvedValue({ ...queued, status: "running", updatedAt: 2 });
+      render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+      await page().findByRole("button", { name: /Task slow/ });
+
+      openTask(running.title);
+      fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.stopTask }));
+      closeDetail();
+      await act(async () => {
+        await useResearchTasksStore.getState().startTask(queued.id);
+      });
+      openTask(running.title);
+
+      await waitFor(() => expect(useResearchTasksStore.getState().pendingActions).toEqual([running.id]));
+      expect(page().getByRole("button", { name: enResearchTools.tasks.detail.stopTask })).toBeDisabled();
+      await act(async () => slowCancel.resolve({ ...running, status: "cancelled", updatedAt: 3 }));
+      await waitFor(() => expect(useResearchTasksStore.getState().pendingActions).toEqual([]));
     });
   });
 });

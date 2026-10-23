@@ -89,6 +89,9 @@ function StopDialog({ prompt }: Readonly<{ prompt: StopPrompt }>) {
         />
         {t(($) => $.workspace.terminal.stop.dontAsk)}
       </label>
+      <p className="mt-1 pl-6 text-xs text-muted-foreground">
+        {t(($) => $.workspace.terminal.stop.dontAskHint)}
+      </p>
     </ConfirmationDialog>
   );
 }
@@ -99,6 +102,8 @@ function LaunchDialog({ prompt }: Readonly<{ prompt: LaunchPrompt }>) {
   return (
     <ConfirmationDialog
       open
+      // The terminal has just taken focus; a stray Enter must back out, not run the command.
+      confirmOnEnter={false}
       title={t(($) => $.workspace.terminal.launch.title)}
       description={prompt.description}
       confirmLabel={t(($) => $.workspace.terminal.launch.run)}

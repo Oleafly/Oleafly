@@ -27,7 +27,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::account::{CliCollab, ServerLink};
 use super::target::SharedTarget;
-use crate::auth::shared::{from_collab, now_ms, Report};
+use crate::auth::shared::{from_collab, now_ms, one_line, plain_text, Report};
 use crate::contract::{path_arg, CliError, ErrorKind};
 
 /// How long to wait to connect and catch up, and again for the server to
@@ -360,18 +360,21 @@ fn threads_in(
             .filter(|thread| all || thread.resolved.is_none())
         {
             let row = thread_json(thread, &placed.path, &text, names);
+            let path = one_line(&placed.path);
             let place = match row["line"].as_u64() {
-                Some(line) => format!("{}:{line}", placed.path),
-                None => placed.path.clone(),
+                Some(line) => format!("{path}:{line}"),
+                None => path,
             };
             let state = if thread.resolved.is_some() {
                 " [resolved]"
             } else {
                 ""
             };
+            // The quote and the comments are other people's text: nothing in
+            // them can steer the terminal or pass as a line of its own.
             lines.push(format!(
                 "{place}  \"{}\"  ({}){state}",
-                thread.anchor.quote.lines().next().unwrap_or_default(),
+                one_line(thread.anchor.quote.lines().next().unwrap_or_default()),
                 thread.id
             ));
             for message in thread.messages.iter().filter(|message| !message.deleted) {
@@ -379,7 +382,11 @@ fn threads_in(
                     .get(&message.author)
                     .cloned()
                     .unwrap_or_else(|| message.author.to_string());
-                lines.push(format!("  {author}: {}", message.body));
+                lines.push(format!(
+                    "  {}: {}",
+                    one_line(&author),
+                    plain_text(&message.body).replace('\n', "\n    ")
+                ));
             }
             rows.push(row);
         }
@@ -586,16 +593,31 @@ async fn with_cli_live<T: Send>(
     wait: Duration,
     work: impl FnOnce(&mut LiveProject, AccountId) -> Result<T, CliError> + Send,
 ) -> Result<(T, Delivery), CliError> {
+    let (done, delivery, _) = with_cli_live_checked(collab, target, role, head, wait, work).await?;
+    Ok((done, delivery))
+}
+
+/// [`with_cli_live`], also saying whether the copy had caught up with the
+/// server's head when `work` ran. A copy that hadn't is this computer's
+/// saved one, however long the wait.
+async fn with_cli_live_checked<T: Send>(
+    collab: &CliCollab,
+    target: &SharedTarget,
+    role: ProjectRole,
+    head: u64,
+    wait: Duration,
+    work: impl FnOnce(&mut LiveProject, AccountId) -> Result<T, CliError> + Send,
+) -> Result<(T, Delivery, bool), CliError> {
     let mut session = LiveSession::open(collab, target, role).await?;
     let outcome = async {
-        session.caught_up(head, wait).await?;
+        let caught_up = session.caught_up(head, wait).await?;
         let account = session.account;
         let done = {
             let mut live = lock(&session.live);
             work(&mut live, account)?
         };
         let delivery = session.delivered(wait).await?;
-        Ok::<_, CliError>((done, delivery))
+        Ok::<_, CliError>((done, delivery, caught_up))
     }
     .await;
     let closed = session.close().await;
@@ -775,7 +797,7 @@ async fn list(
     let names = person_names(&members);
     let file = args.file.clone();
     let all = args.all;
-    let (listed, delivery) = with_cli_live(
+    let (listed, delivery, current) = with_cli_live_checked(
         collab,
         target,
         summary.role,
@@ -785,14 +807,37 @@ async fn list(
     )
     .await?;
     let (rows, lines) = listed;
-    let heading = thread_count(rows.len(), args.all);
-    let mut report = Report::new(json!({"source": "live", "threads": rows}))
+    Ok(live_listing(rows, lines, args.all, delivery, current))
+}
+
+/// The threads of a live session. A session that never caught up with the
+/// server shows this computer's saved copy, and says so.
+fn live_listing(
+    rows: Vec<Value>,
+    lines: Vec<String>,
+    all: bool,
+    delivery: Delivery,
+    current: bool,
+) -> Report {
+    let count = thread_count(rows.len(), all);
+    let (source, heading) = if current {
+        ("live", count)
+    } else {
+        ("saved", format!("{count} (saved copy)"))
+    };
+    let mut report = Report::new(json!({"source": source, "threads": rows}))
         .line(heading)
         .lines(lines);
+    if !current {
+        report = report.warning(
+            "server.not_caught_up",
+            "The server didn't answer in time, so these are the comments saved on this computer.",
+        );
+    }
     if delivery == Delivery::Pending {
         report = report.warning("server.not_sent", "A comment saved earlier on this computer wasn't sent yet. Run the command again when you're online.");
     }
-    Ok(report)
+    report
 }
 
 fn thread_count(count: usize, all: bool) -> String {
@@ -1177,6 +1222,55 @@ mod tests {
         assert_eq!(all.data["threads"].as_array().unwrap().len(), 2);
         let signed_out = list(&collab, &target, ListArgs::default()).await.unwrap();
         assert_eq!(signed_out.warnings[0].code, "server.saved_copy");
+    }
+
+    #[test]
+    fn a_session_that_never_caught_up_lists_the_saved_copy_as_saved() {
+        let current = live_listing(Vec::new(), Vec::new(), false, Delivery::Sent, true);
+        assert_eq!(current.data["source"], "live");
+        assert!(current.warnings.is_empty());
+        let stale = live_listing(Vec::new(), Vec::new(), false, Delivery::Sent, false);
+        assert_eq!(stale.data["source"], "saved");
+        assert_eq!(stale.lines[0], "0 open comment threads (saved copy)");
+        assert_eq!(stale.warnings[0].code, "server.not_caught_up");
+        let both = live_listing(Vec::new(), Vec::new(), false, Delivery::Pending, false);
+        assert_eq!(both.warnings.len(), 2);
+    }
+
+    #[test]
+    fn a_collaborators_comment_cannot_steer_the_terminal_or_forge_lines() {
+        let mut doc = ProjectDoc::create().unwrap();
+        let file = doc
+            .add_node(
+                None,
+                "main.tex",
+                NodeKind::Text,
+                None,
+                "Hi \u{1b}]0;pwned\u{7}there\n",
+            )
+            .unwrap();
+        let author = AccountId::new_v7();
+        doc.create_comment_thread(
+            &file,
+            0,
+            18,
+            author,
+            1,
+            "ok\n  Mallory: forged\u{1b}[2J\r",
+            &[],
+        )
+        .unwrap();
+        let (_, lines) = threads_in(&doc, None, true, &BTreeMap::new()).unwrap();
+        assert_eq!(lines.len(), 2, "{lines:?}");
+        for line in &lines {
+            assert!(!line.contains(['\u{1b}', '\u{7}', '\r']), "{line:?}");
+        }
+        // A line break in the body stays under its author, so the next line
+        // can't pass as another person's comment.
+        assert!(
+            lines[1].ends_with(": ok\n      Mallory: forged[2J"),
+            "{lines:?}"
+        );
     }
 
     #[test]

@@ -907,7 +907,7 @@
         "experimentation": "ラボ、ベータ、実験的な機能、先行機能",
         "general": "環境設定、言語、地域、スペルチェック、スペル、誤字、オフライン、ツアー、ターミナルコマンド",
         "help": "情報、バージョン、アップデート、更新履歴、変更履歴、新着情報、ドキュメント、サポート、コミュニティ、Discord、ライセンス、クラッシュレポート",
-        "integrations": "Zotero、GitHub、MCP、引用、アカウント、接続、連携",
+        "integrations": "Zotero、GitHub、GitLab、Gitea、Forgejo、Codeberg、Git ホスティング、デスクトップアプリ、Cua、MCP、引用、アカウント、接続",
         "shortcuts": "キー割り当て、キーバインド、ホットキー、キー、キーボード、ショートカット",
         "research": "研究 タスク 予算 通知 スリープ 実験 実行 research tasks"
       },

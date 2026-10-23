@@ -197,6 +197,40 @@ fn row_of(diagnostic: &LintDiagnostic, file: &str, source: &SourceText) -> Repor
     }
 }
 
+/// One file's problems: the LaTeX and BibTeX rules, then spelling and
+/// grammar when a proofreader is given.
+fn diagnose(
+    target: &str,
+    source: &SourceText,
+    proofreader: Option<&mut Proofreader>,
+    warnings: &mut Vec<Warning>,
+) -> Vec<LintDiagnostic> {
+    let mut diagnostics = Vec::new();
+    if is_latex_source_path(target) {
+        diagnostics.extend(lint_latex_text(source));
+    }
+    if is_bibtex_source_path(target) {
+        diagnostics.extend(lint_bibtex_text(source));
+    }
+    if let (Some(checker), Some(format)) = (proofreader, format_for_path(target)) {
+        match checker.check(source, format) {
+            Ok(outcome) => {
+                if let Some(SkipReason::TooLarge { .. }) = outcome.skipped {
+                    warnings.push(Warning::new(
+                        "lint.prose_too_large",
+                        format!("Skipped spelling and grammar in {target} because it has more than 500,000 characters."),
+                    ));
+                }
+                diagnostics.extend(outcome.diagnostics);
+            }
+            Err(error) => {
+                warnings.push(Warning::new("lint.proofread_failed", format!("Spelling and grammar stopped early in {target} ({error}). Other results are still shown.")));
+            }
+        }
+    }
+    diagnostics
+}
+
 /// Lints the targets (blocking: reads files, runs Harper on this thread).
 pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
     let targets = select::lint_targets(&input.root, &input.paths, &input.cwd)?;
@@ -248,31 +282,9 @@ pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
             ),
         };
         let (normalized, map) = LineEndingMap::new(&original);
-        let source = SourceText::new(normalized);
-        let mut diagnostics = Vec::new();
-        if is_latex_source_path(target) {
-            diagnostics.extend(lint_latex_text(&source));
-        }
-        if is_bibtex_source_path(target) {
-            diagnostics.extend(lint_bibtex_text(&source));
-        }
+        let mut source = SourceText::new(normalized);
         let format = format_for_path(target);
-        if let (Some(checker), Some(format)) = (proofreader.as_mut(), format) {
-            match checker.check(&source, format) {
-                Ok(outcome) => {
-                    if let Some(SkipReason::TooLarge { .. }) = outcome.skipped {
-                        warnings.push(Warning::new(
-                            "lint.prose_too_large",
-                            format!("Skipped spelling and grammar in {target} because it has more than 500,000 characters."),
-                        ));
-                    }
-                    diagnostics.extend(outcome.diagnostics);
-                }
-                Err(error) => {
-                    warnings.push(Warning::new("lint.proofread_failed", format!("Spelling and grammar stopped early in {target} ({error}). Other results are still shown.")));
-                }
-            }
-        }
+        let mut diagnostics = diagnose(target, &source, proofreader.as_mut(), &mut warnings);
         if input.fix {
             let prose = format.map(|format| prose_for(format, &source));
             let mut edits: Vec<(usize, usize, String)> = Vec::new();
@@ -285,29 +297,37 @@ pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
             let edits = without_overlaps(edits);
             if !edits.is_empty() {
                 let result = if utf8 {
-                    apply_fixes(&original, &map, &source, &edits)
-                        .and_then(|text| write_if_unchanged(&path, &stamp, text.as_bytes()))
+                    apply_fixes(&original, &map, &source, &edits).and_then(|text| {
+                        write_if_unchanged(&path, &stamp, text.as_bytes()).map(|()| text)
+                    })
                 } else {
                     Err(FixError::NotUtf8)
                 };
                 match result {
-                    Ok(()) => {
+                    Ok(fixed_text) => {
                         fixed_files += 1;
-                        diagnostics.retain(|diagnostic| {
-                            let applied = edits.iter().find(|(from, to, _)| *from == diagnostic.from && *to == diagnostic.to && diagnostic.source == LintSource::Harper);
-                            match applied {
-                                Some((from, to, replacement)) => {
-                                    fixed.push(json!({
-                                        "file": target,
-                                        "rule_id": diagnostic.rule_id,
-                                        "range": {"from": from, "to": to, "start": source.position(*from), "end": source.position(*to)},
-                                        "replacement": replacement,
-                                    }));
-                                    false
-                                }
-                                None => true,
+                        for diagnostic in &diagnostics {
+                            let applied = edits.iter().find(|(from, to, _)| {
+                                *from == diagnostic.from
+                                    && *to == diagnostic.to
+                                    && diagnostic.source == LintSource::Harper
+                            });
+                            if let Some((from, to, replacement)) = applied {
+                                fixed.push(json!({
+                                    "file": target,
+                                    "rule_id": diagnostic.rule_id,
+                                    "range": {"from": from, "to": to, "start": source.position(*from), "end": source.position(*to)},
+                                    "replacement": replacement,
+                                }));
                             }
-                        });
+                        }
+                        // What is left is what the fixed file has, where it
+                        // has it: a fix moves every column after it on its
+                        // line, and one that joins lines moves every line.
+                        let (after, _) = LineEndingMap::new(&fixed_text);
+                        source = SourceText::new(after);
+                        diagnostics =
+                            diagnose(target, &source, proofreader.as_mut(), &mut Vec::new());
                     }
                     Err(FixError::ChangedOnDisk) => {
                         warnings.push(Warning::new("lint.fix_changed", format!("Didn't fix {target} because it changed while oleafly was checking it.")));
@@ -380,6 +400,13 @@ async fn run(ctx: &Context, args: LintArgs) -> Result<Outcome, CliError> {
         ctx.warn(warning.code.clone(), warning.message.clone());
     }
     let workspace = &opened.workspace;
+    // `--fix` writes sources, so it waits for the app's hold on the project
+    // (and refuses while a checkpoint restore is pending) like `cite --add`.
+    let _project_lock = if args.fix {
+        crate::commands::cite::app_project_lock(ctx, workspace)?
+    } else {
+        None
+    };
     let input = LintInput {
         root: workspace.root().to_path_buf(),
         cwd: std::env::current_dir().map_err(CliError::from)?,
@@ -488,6 +515,91 @@ mod tests {
                 .count(),
             1
         );
+    }
+
+    fn lint_args(fix: bool) -> LintArgs {
+        LintArgs {
+            paths: Vec::new(),
+            fix,
+            no_prose: false,
+            dialect: DialectArg::American,
+            words: Vec::new(),
+            report: ReportArgs {
+                format: None,
+                output: None,
+                fail_on: crate::check::report::FailOn::Error,
+                exit_code: false,
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn fix_leaves_a_project_alone_while_the_app_restores_a_checkpoint() {
+        if !AVAILABLE {
+            return;
+        }
+        let data = tempfile::tempdir().unwrap();
+        let project = data.path().join("projects").join("project-1");
+        std::fs::create_dir_all(project.join(".oleafly")).unwrap();
+        let notes = project.join("main.tex");
+        let source = "\\documentclass{article}\n\\begin{document}\nWe compare the the results.\n\\end{document}\n";
+        std::fs::write(&notes, source).unwrap();
+        std::fs::write(project.join(".oleafly/checkpoint-restore-pending"), "").unwrap();
+        let ctx = Context::for_test(crate::contract::ContextOptions {
+            project: project.clone(),
+            data_root: Some(data.path().to_path_buf()),
+            ..Default::default()
+        });
+        let error = run(&ctx, lint_args(true)).await.unwrap_err();
+        assert_eq!(error.code, "conflict.restore_pending");
+        assert_eq!(std::fs::read_to_string(&notes).unwrap(), source);
+        // Reading is not writing: a lint without --fix goes on.
+        assert!(run(&ctx, lint_args(false)).await.is_ok());
+    }
+
+    #[test]
+    fn what_is_left_after_a_fix_is_where_the_fixed_file_has_it() {
+        if !AVAILABLE {
+            return;
+        }
+        let project = tempfile::tempdir().unwrap();
+        let notes = project.path().join("main.tex");
+        // The repeated word runs across a line break, and fixing it takes a
+        // line out of the file; the unclosed figure is below it.
+        std::fs::write(
+            &notes,
+            "\\documentclass{article}\n\\begin{document}\nWe compare the\nthe results.\n\\begin{figure}\nx\n\\end{document}\n",
+        )
+        .unwrap();
+        let line_of = |run: &LintRun| -> Vec<u32> {
+            run.rows
+                .iter()
+                .filter(|row| row.rule_id.starts_with("latex/"))
+                .filter_map(|row| row.range.map(|range| range.start.line))
+                .collect()
+        };
+        let before = execute_lint(LintInput {
+            prose: true,
+            ..input(project.path())
+        })
+        .unwrap();
+        let run = execute_lint(LintInput {
+            prose: true,
+            fix: true,
+            ..input(project.path())
+        })
+        .unwrap();
+        assert_eq!(run.fixed, 1, "{:?}", run.payload["findings"]);
+        let after = std::fs::read_to_string(&notes).unwrap();
+        // The file had seven lines; the fix may have joined two of them.
+        let removed = 7 - u32::try_from(after.lines().count()).unwrap();
+        assert_eq!(removed, 1, "{after:?}");
+        let (was, now) = (line_of(&before), line_of(&run));
+        assert!(!now.is_empty());
+        assert_eq!(was.len(), now.len());
+        for (was, now) in was.iter().zip(&now) {
+            assert_eq!(*now + removed, *was, "{was} -> {now}");
+        }
     }
 
     #[test]

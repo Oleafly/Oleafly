@@ -9,8 +9,8 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
-use super::policy::{bounded, preview_args, CuratedTool, Step, ToolClass};
-use super::{BoxFuture, CuaScope, Surface};
+use super::policy::{clipped, preview_clipped, CuratedTool, Step, ToolClass};
+use super::{BoxFuture, CuaScope, RuntimeKind, Surface};
 
 pub(crate) const DENIED_TEXT: &str =
     "Desktop apps are denied for this project in the approval rules.";
@@ -29,17 +29,33 @@ pub(crate) enum GateDecision {
     Refuse(&'static str),
 }
 
-pub(crate) fn decide(tool: &CuratedTool, denied_by_rules: bool, granted: bool) -> GateDecision {
+/// What the gate does with one call. `granted` says the user already allowed
+/// this tool for the chat, session or task. A call in the user's own
+/// signed-in browser never takes part in grants: it asks every time, and the
+/// dialog has no "Allow for this chat" choice.
+pub(crate) fn decide(
+    tool: &CuratedTool,
+    denied_by_rules: bool,
+    granted: bool,
+    signed_in: bool,
+) -> GateDecision {
     if denied_by_rules {
         return GateDecision::Refuse(DENIED_TEXT);
     }
+    let session_grant = tool.session_grant && !signed_in;
     match tool.class {
         ToolClass::Session | ToolClass::Observe => GateDecision::Run,
-        ToolClass::Act if granted && tool.session_grant => GateDecision::Run,
+        ToolClass::Act if granted && session_grant => GateDecision::Run,
         ToolClass::Act => GateDecision::Ask {
-            session_option: tool.session_grant,
+            session_option: session_grant,
         },
     }
+}
+
+/// The name a grant is kept under: the tool on its runtime, so a grant for
+/// one profile never covers another.
+pub(crate) fn grant_name(kind: RuntimeKind, tool: &str) -> String {
+    format!("{}:{tool}", kind.as_str())
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -89,26 +105,87 @@ fn capitalized(text: &str) -> String {
 /// Looks up a dialog string by key, filling in its values.
 pub(crate) type Translate<'a> = dyn Fn(&str, &[(&str, &str)]) -> String + 'a;
 
+/// What the dialog says, and how many of a batch's steps it lists.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Approval {
+    pub message: String,
+    /// Steps of a batch the message lists (0 for a single action). The rest
+    /// run too when the batch is allowed, but the user never saw them.
+    pub shown_steps: usize,
+}
+
+fn more_items<'a>(t: &'a Translate<'a>) -> impl Fn(usize) -> String + 'a {
+    move |count| {
+        t(
+            "dialog.desktopApps.moreItems",
+            &[("count", &count.to_string())],
+        )
+    }
+}
+
+/// `text` within `max_chars`; a line that was cut ends with how many
+/// characters it lost.
+fn clip_with_note(text: &str, max_chars: usize, t: &Translate<'_>) -> String {
+    let total = text.chars().count();
+    if total <= max_chars {
+        return text.to_string();
+    }
+    let note = |cut: usize| t("dialog.desktopApps.cut", &[("count", &cut.to_string())]);
+    let keep = max_chars.saturating_sub(note(total).chars().count() + 1);
+    let kept: String = text.chars().take(keep).collect();
+    format!("{kept} {}", note(total - keep))
+}
+
+/// A detail followed, when it was cut, by how much is not shown.
+fn with_cut(detail: String, cut: usize, t: &Translate<'_>) -> String {
+    if cut == 0 {
+        return detail;
+    }
+    let note = t("dialog.desktopApps.cut", &[("count", &cut.to_string())]);
+    format!("{detail}\n{note}")
+}
+
+fn step_line(index: usize, step: &Step, t: &Translate<'_>) -> String {
+    let more = more_items(t);
+    let detail = super::policy::preview_text(&step.args, &more);
+    let line = format!("{}. {} {}", index + 1, step.tool, detail);
+    clip_with_note(line.trim_end(), MAX_STEP_LINE_CHARS, t)
+}
+
+/// The origin an address belongs to (`https://host[:port]`), when it is one.
+fn origin_of(url: &str) -> Option<String> {
+    let parsed = tauri::Url::parse(url.trim()).ok()?;
+    matches!(parsed.scheme(), "http" | "https")
+        .then(|| parsed.origin().ascii_serialization())
+        .filter(|origin| origin != "null")
+}
+
+fn signed_in_line(args: &Value, t: &Translate<'_>) -> String {
+    match args.get("url").and_then(Value::as_str).and_then(origin_of) {
+        Some(origin) => t("dialog.desktopApps.signedInOn", &[("origin", &origin)]),
+        None => t("dialog.desktopApps.signedIn", &[]),
+    }
+}
+
 /// The dialog text: what the agent wants to do, then the detail. A batch
-/// lists every step, each line and the whole message bounded.
+/// lists every step it has room for, each line and the whole message
+/// bounded, and says what it cut: characters of a line or text, the steps
+/// it left out. `signed_in` adds a line that the action happens in the
+/// user's own signed-in browser.
 pub(crate) fn approval_message(
     agent: &str,
     tool: &CuratedTool,
     args: &Value,
     steps: Option<&[Step]>,
+    signed_in: bool,
     t: &Translate<'_>,
-) -> String {
+) -> Approval {
     let agent = capitalized(agent);
     if let Some(steps) = steps {
         let mut message = t("dialog.desktopApps.steps", &[("agent", &agent)]);
+        let mut shown_steps = 0;
         for (index, step) in steps.iter().enumerate() {
-            let line = format!(
-                "{}. {} {}",
-                index + 1,
-                step.tool,
-                preview_args(&step.args, MAX_STEP_LINE_CHARS)
-            );
-            let line = bounded(line.trim_end(), MAX_STEP_LINE_CHARS);
+            let line = step_line(index, step, t);
             let left = (steps.len() - index).to_string();
             let more = t("dialog.desktopApps.moreSteps", &[("count", &left)]);
             let after = message.chars().count() + 1 + line.chars().count();
@@ -117,12 +194,19 @@ pub(crate) fn approval_message(
             if after > MAX_MESSAGE_CHARS || !room_for_more {
                 message.push('\n');
                 message.push_str(&more);
-                return message;
+                return Approval {
+                    message,
+                    shown_steps,
+                };
             }
             message.push('\n');
             message.push_str(&line);
+            shown_steps += 1;
         }
-        return message;
+        return Approval {
+            message,
+            shown_steps,
+        };
     }
     let action = tool
         .action_key
@@ -132,26 +216,32 @@ pub(crate) fn approval_message(
         "dialog.desktopApps.action",
         &[("agent", &agent), ("action", &action)],
     );
+    if signed_in {
+        message.push('\n');
+        message.push_str(&signed_in_line(args, t));
+    }
+    let more = more_items(t);
     let detail = if tool.name == "run_script" {
-        preview_args(args, MAX_SCRIPT_CHARS)
+        let (shown, cut) = preview_clipped(args, MAX_SCRIPT_CHARS, &more);
+        with_cut(shown, cut, t)
     } else if let Some(text) = args.get("text").and_then(Value::as_str) {
-        t(
-            "dialog.desktopApps.text",
-            &[("text", &bounded(text, MAX_TEXT_CHARS))],
-        )
+        let (shown, cut) = clipped(text, MAX_TEXT_CHARS);
+        with_cut(t("dialog.desktopApps.text", &[("text", &shown)]), cut, t)
     } else if let Some(url) = args.get("url").and_then(Value::as_str) {
-        t(
-            "dialog.desktopApps.address",
-            &[("url", &bounded(url, MAX_ADDRESS_CHARS))],
-        )
+        let (shown, cut) = clipped(url, MAX_ADDRESS_CHARS);
+        with_cut(t("dialog.desktopApps.address", &[("url", &shown)]), cut, t)
     } else {
-        preview_args(args, MAX_PREVIEW_CHARS)
+        let (shown, cut) = preview_clipped(args, MAX_PREVIEW_CHARS, &more);
+        with_cut(shown, cut, t)
     };
     if !detail.is_empty() {
         message.push_str("\n\n");
         message.push_str(&detail);
     }
-    bounded(&message, MAX_MESSAGE_CHARS)
+    Approval {
+        message: clip_with_note(&message, MAX_MESSAGE_CHARS, t),
+        shown_steps: 0,
+    }
 }
 
 /// Asks the user. Implementations answer `Deny` once `wait` has passed.
@@ -221,6 +311,11 @@ impl Approver for NativeApprover {
                 deny: crate::i18n::t("dialog.desktopApps.deny"),
             };
             let (sender, receiver) = tokio::sync::oneshot::channel();
+            // The first button is the default one on every system, and the
+            // plugin turns a closed dialog (Escape, the close button) into
+            // the last slot, which on Linux arrives as that slot's label. So
+            // "Don't allow" has to stay last: moving it first would make a
+            // closed dialog allow the action.
             let dialog = self
                 .app
                 .dialog()
@@ -377,28 +472,55 @@ mod tests {
     #[test]
     fn observation_runs_and_actions_ask() {
         assert_eq!(
-            decide(curated("list_windows").unwrap(), false, false),
+            decide(curated("list_windows").unwrap(), false, false, false),
             GateDecision::Run
         );
         assert_eq!(
-            decide(curated("start_session").unwrap(), false, false),
+            decide(curated("start_session").unwrap(), false, false, false),
             GateDecision::Run
         );
         assert_eq!(
-            decide(curated("click").unwrap(), false, false),
+            decide(curated("click").unwrap(), false, false, false),
             GateDecision::Ask {
                 session_option: true
             }
         );
         assert_eq!(
-            decide(curated("click").unwrap(), false, true),
+            decide(curated("click").unwrap(), false, true, false),
             GateDecision::Run
         );
         assert_eq!(
-            decide(curated("run_script").unwrap(), false, true),
+            decide(curated("run_script").unwrap(), false, true, false),
             GateDecision::Ask {
                 session_option: false
             }
+        );
+    }
+
+    #[test]
+    fn the_signed_in_browser_always_asks_and_offers_no_session_choice() {
+        for granted in [false, true] {
+            assert_eq!(
+                decide(curated("browser_click").unwrap(), false, granted, true),
+                GateDecision::Ask {
+                    session_option: false
+                },
+                "granted: {granted}"
+            );
+        }
+        // Looking is still free there.
+        assert_eq!(
+            decide(curated("get_browser_state").unwrap(), false, false, true),
+            GateDecision::Run
+        );
+    }
+
+    #[test]
+    fn grants_are_kept_per_runtime() {
+        assert_eq!(grant_name(RuntimeKind::Desktop, "click"), "desktop:click");
+        assert_ne!(
+            grant_name(RuntimeKind::Browser, "browser_click"),
+            grant_name(RuntimeKind::SignedInBrowser, "browser_click")
         );
     }
 
@@ -411,7 +533,7 @@ mod tests {
             "click",
         ] {
             assert_eq!(
-                decide(curated(name).unwrap(), true, true),
+                decide(curated(name).unwrap(), true, true, false),
                 GateDecision::Refuse(DENIED_TEXT),
                 "{name}"
             );
@@ -481,42 +603,108 @@ mod tests {
         assert!(!grants.has("chat:298", "click"));
     }
 
+    fn message(tool: &str, args: Value) -> String {
+        approval_message(
+            "assistant",
+            curated(tool).unwrap(),
+            &args,
+            None,
+            false,
+            &english,
+        )
+        .message
+    }
+
     #[test]
     fn single_actions_name_the_action_and_the_detail() {
-        let message = approval_message(
-            "assistant",
-            curated("type_text").unwrap(),
-            &json!({"text": "Results section", "session": "x"}),
-            None,
-            &english,
+        let text = message(
+            "type_text",
+            json!({"text": "Results section", "session": "x"}),
         );
         assert!(
-            message.starts_with("Assistant wants to type in an app."),
-            "{message}"
+            text.starts_with("Assistant wants to type in an app."),
+            "{text}"
         );
-        assert!(message.contains("Results section"));
-        let message = approval_message(
-            "assistant",
-            curated("browser_navigate").unwrap(),
-            &json!({"url": "https://journal.example.org/submit"}),
-            None,
-            &english,
+        assert!(text.contains("Results section"));
+        let text = message(
+            "browser_navigate",
+            json!({"url": "https://journal.example.org/submit"}),
         );
         assert!(
-            message.contains("https://journal.example.org/submit"),
-            "{message}"
+            text.contains("https://journal.example.org/submit"),
+            "{text}"
         );
-        let message = approval_message(
-            "assistant",
-            curated("click").unwrap(),
-            &json!({"pid": 4, "element_index": 7, "password": "hunter2"}),
-            None,
-            &english,
+        let text = message(
+            "click",
+            json!({"pid": 4, "element_index": 7, "password": "hunter2"}),
         );
         assert!(
-            message.contains("element_index") && !message.contains("hunter2"),
-            "{message}"
+            text.contains("element_index") && !text.contains("hunter2"),
+            "{text}"
         );
+    }
+
+    #[test]
+    fn a_signed_in_action_says_so_and_names_the_site_when_it_is_known() {
+        let ask = |tool: &str, args: Value, signed_in: bool| {
+            approval_message(
+                "assistant",
+                curated(tool).unwrap(),
+                &args,
+                None,
+                signed_in,
+                &english,
+            )
+            .message
+        };
+        let navigate = ask(
+            "browser_navigate",
+            json!({"url": "https://Journal.example.org:8443/submit?id=1"}),
+            true,
+        );
+        assert!(
+            navigate.contains(
+                "This acts in your own signed-in browser, on https://journal.example.org:8443."
+            ),
+            "{navigate}"
+        );
+        assert!(navigate.contains("Address: https://Journal.example.org:8443/submit?id=1"));
+        let click = ask("browser_click", json!({"ref": "e4"}), true);
+        assert!(
+            click.contains("This acts in your own signed-in browser.")
+                && !click.contains("browser, on "),
+            "{click}"
+        );
+        let separate = ask(
+            "browser_navigate",
+            json!({"url": "https://journal.example.org"}),
+            false,
+        );
+        assert!(!separate.contains("signed-in"), "{separate}");
+    }
+
+    #[test]
+    fn a_cut_text_or_address_says_how_much_is_not_shown() {
+        let text = message(
+            "type_text",
+            json!({"text": "a".repeat(MAX_TEXT_CHARS + 1234)}),
+        );
+        assert!(text.contains(&"a".repeat(MAX_TEXT_CHARS)), "{text}");
+        assert!(!text.contains(&"a".repeat(MAX_TEXT_CHARS + 1)));
+        assert!(text.ends_with("(+1234 characters not shown)"), "{text}");
+        let exact = message("type_text", json!({"text": "a".repeat(MAX_TEXT_CHARS)}));
+        assert!(!exact.contains("not shown"), "{exact}");
+        let address = message(
+            "browser_navigate",
+            json!({"url": format!("https://a.org/{}", "p".repeat(700))}),
+        );
+        assert!(address.contains("characters not shown"), "{address}");
+        let script = message(
+            "run_script",
+            json!({"script": "x".repeat(MAX_SCRIPT_CHARS + 50)}),
+        );
+        assert!(script.contains("characters not shown"), "{script}");
+        assert!(script.chars().count() <= MAX_MESSAGE_CHARS);
     }
 
     #[test]
@@ -535,17 +723,19 @@ mod tests {
                 args: json!({"key": "return"}),
             },
         ];
-        let message = approval_message(
+        let approval = approval_message(
             "assistant",
             curated("run_steps").unwrap(),
             &json!({}),
             Some(&steps),
+            false,
             &english,
         );
-        let lines: Vec<&str> = message.lines().collect();
-        assert!(lines[1].starts_with("1. click"), "{message}");
-        assert!(lines[2].starts_with("2. type_text"), "{message}");
-        assert!(lines[3].starts_with("3. press_key"), "{message}");
+        assert_eq!(approval.shown_steps, 3);
+        let lines: Vec<&str> = approval.message.lines().collect();
+        assert!(lines[1].starts_with("1. click"), "{}", approval.message);
+        assert!(lines[2].starts_with("2. type_text"), "{}", approval.message);
+        assert!(lines[3].starts_with("3. press_key"), "{}", approval.message);
 
         let long: Vec<Step> = (0..64)
             .map(|_| Step {
@@ -553,13 +743,15 @@ mod tests {
                 args: json!({"text": "a".repeat(1000)}),
             })
             .collect();
-        let message = approval_message(
+        let approval = approval_message(
             "assistant",
             curated("run_steps").unwrap(),
             &json!({}),
             Some(&long),
+            false,
             &english,
         );
+        let message = approval.message;
         assert!(
             message.chars().count() <= MAX_MESSAGE_CHARS,
             "{}",
@@ -572,9 +764,14 @@ mod tests {
             .filter(|line| line.contains(". type_text"))
             .count();
         assert_eq!(last, format!("Steps not shown: {}", 64 - shown));
+        assert_eq!(approval.shown_steps, shown);
+        assert!(shown < 64);
         for line in message.lines().skip(1) {
             assert!(line.chars().count() <= MAX_STEP_LINE_CHARS, "{line}");
         }
+        // A step line that was cut says by how much.
+        let second = message.lines().nth(1).unwrap();
+        assert!(second.ends_with("characters not shown)"), "{second}");
     }
 
     #[test]
