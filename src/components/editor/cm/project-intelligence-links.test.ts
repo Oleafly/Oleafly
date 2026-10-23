@@ -27,18 +27,20 @@ const FILES = [
 const views: EditorView[] = [];
 
 function viewFor(active: string, doc: string): EditorView {
+  // The first `|` marks the cursor; it is taken out by position.
+  const cursor = doc.indexOf("|");
+  const text = cursor < 0 ? doc : doc.slice(0, cursor) + doc.slice(cursor + 1);
   useFilesStore.setState({
     projectId: "links",
     activePath: active,
     mainDoc: "main.tex",
     tree: FILES.map((path) => ({ path, is_dir: false })),
-    files: { [active]: { content: doc.replace("|", ""), dirty: false } },
+    files: { [active]: { content: text, dirty: false } },
   });
   setEditorDocumentPath(active);
-  const cursor = doc.indexOf("|");
   const view = new EditorView({
     parent: document.body.appendChild(document.createElement("div")),
-    state: EditorState.create({ doc: doc.replace("|", ""), selection: { anchor: cursor < 0 ? doc.length : cursor } }),
+    state: EditorState.create({ doc: text, selection: { anchor: cursor < 0 ? doc.length : cursor } }),
   });
   views.push(view);
   return view;

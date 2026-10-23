@@ -138,9 +138,9 @@ const limits = {
   // search across nearby lines, accents typed as TeX macros, finding the
   // cursor's word among a source line's typeset lines, and rotated pages.
   // The graph measures 20,433,376 bytes on macOS, 7.6 KB above the line before.
-  // Links that open project files in Visual mode and word-level Typst sync
-  // (the cursor's word found from the paragraph start the preview server
-  // gives, the clicked word selected) bring it to 20,437,270 bytes.
+  // Links that open project files in Visual mode, word-level Typst sync and
+  // the cloud sync fixes bring it to 20,439,121 bytes. The DOMPurify 3.4.17
+  // and markdown-it 14.3.3 security updates then take it to 20,414,055.
   totalJavaScript: 20_440_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about

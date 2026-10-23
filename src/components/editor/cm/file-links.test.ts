@@ -10,13 +10,18 @@ import { appLinkInsertion, fileLinkInsertion, projectFileLinksExtension } from "
 
 const views: EditorView[] = [];
 
+/** `doc` with its first `|`, which marks the cursor, taken out. */
+function withoutCursor(doc: string, cursor: number): string {
+  return cursor < 0 ? doc : doc.slice(0, cursor) + doc.slice(cursor + 1);
+}
+
 function open(activePath: string, doc: string, mainDoc = "main.tex"): EditorView {
   useFilesStore.setState({ projectId: "links", activePath, mainDoc });
   const cursor = doc.indexOf("|");
   const view = new EditorView({
     parent: document.body.appendChild(document.createElement("div")),
     state: EditorState.create({
-      doc: doc.replace("|", ""),
+      doc: withoutCursor(doc, cursor),
       selection: { anchor: cursor < 0 ? doc.length : cursor },
       extensions: [projectFileLinksExtension()],
     }),
