@@ -156,7 +156,10 @@ pub(crate) fn clear_appimage_env(command: &mut Command) {
     }
 }
 
-#[cfg(test)]
+// AppImages exist only on Linux, and the launcher's variables are
+// colon-separated path lists, which Windows splits on semicolons instead. The
+// code these tests cover does nothing outside Linux (see `running`).
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 
@@ -385,7 +388,6 @@ mod tests {
         assert!(!applied.contains_key("GTK_THEME"));
     }
 
-    #[cfg(unix)]
     #[test]
     fn the_started_host_program_sees_the_cleaned_environment() {
         let image = image();
