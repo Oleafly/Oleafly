@@ -77,10 +77,9 @@ function flowText(pages: readonly number[], runsByPage: ReadonlyMap<number, read
   const offsets: number[] = [];
   const push = (piece: string, spot: Spot, offset: number) => {
     text += piece;
-    for (let unit = 0; unit < piece.length; unit++) {
-      spots.push(spot);
-      offsets.push(offset);
-    }
+    // One entry per UTF-16 unit of the piece.
+    spots.push(...new Array<Spot>(piece.length).fill(spot));
+    offsets.push(...new Array<number>(piece.length).fill(offset));
   };
   for (const page of pages) {
     const runs = runsByPage.get(page) ?? [];
@@ -205,20 +204,7 @@ export function linesFromAnchor(
   anchor: PageRect,
   runsByPage: ReadonlyMap<number, readonly PdfTextRun[]>,
 ): SyncTexLine[] {
-  const x = anchor.x + 1;
-  const y = anchor.y + anchor.height / 2;
-  const placed: { page: number; run: PdfTextRun }[] = [];
-  let anchorIndex = -1;
-  for (const page of [anchor.page - 1, anchor.page, anchor.page + 1]) {
-    for (const run of runsByPage.get(page) ?? []) {
-      if (run.str.trim() === "" || run.width <= 0) continue;
-      if (page === anchor.page && anchorIndex < 0) {
-        const under = x >= run.x - 1 && x <= run.x + run.width + 1 && y >= run.top - 2 && y <= run.top + run.height + 2;
-        if (under || run.top >= anchor.y + anchor.height) anchorIndex = placed.length;
-      }
-      placed.push({ page, run });
-    }
-  }
+  const { placed, anchorIndex } = runsAround(anchor, runsByPage);
   if (anchorIndex < 0) return [];
   const first = Math.max(0, anchorIndex - TYPST_LINES_BEFORE);
   const lines: SyncTexLine[] = [];
@@ -227,17 +213,8 @@ export function linesFromAnchor(
     const previous = lines.at(-1);
     // Bold, italic or a link start a new run inside one typeset line; keep
     // the line whole so the highlight covers it, not one piece of it.
-    if (previous && previous.page === page && sameBaseline(previous, run)) {
-      const right = Math.max(previous.x + previous.width, run.x + run.width);
-      const bottom = Math.max(previous.y + previous.height, run.top + run.height);
-      previous.x = Math.min(previous.x, run.x);
-      previous.y = Math.min(previous.y, run.top);
-      previous.width = right - previous.x;
-      previous.height = bottom - previous.y;
-      if (own) {
-        previous.from = Math.min(previous.from, run.x);
-        previous.to = Math.max(previous.to, run.x + run.width);
-      }
+    if (previous?.page === page && sameBaseline(previous, run)) {
+      widenLine(previous, run, own);
       return;
     }
     lines.push({
@@ -251,6 +228,48 @@ export function linesFromAnchor(
     });
   });
   return lines;
+}
+
+/**
+ * The visible runs on the anchor's page and the pages on either side, in
+ * reading order, with the index of the run the anchor points at: the one under
+ * it, or else the first one below it. -1 when there is none.
+ */
+function runsAround(
+  anchor: PageRect,
+  runsByPage: ReadonlyMap<number, readonly PdfTextRun[]>,
+): { placed: { page: number; run: PdfTextRun }[]; anchorIndex: number } {
+  const placed: { page: number; run: PdfTextRun }[] = [];
+  let anchorIndex = -1;
+  for (const page of [anchor.page - 1, anchor.page, anchor.page + 1]) {
+    for (const run of runsByPage.get(page) ?? []) {
+      if (run.str.trim() === "" || run.width <= 0) continue;
+      if (page === anchor.page && anchorIndex < 0 && pointsAt(anchor, run)) anchorIndex = placed.length;
+      placed.push({ page, run });
+    }
+  }
+  return { placed, anchorIndex };
+}
+
+function pointsAt(anchor: PageRect, run: PdfTextRun): boolean {
+  const x = anchor.x + 1;
+  const y = anchor.y + anchor.height / 2;
+  const under = x >= run.x - 1 && x <= run.x + run.width + 1 && y >= run.top - 2 && y <= run.top + run.height + 2;
+  return under || run.top >= anchor.y + anchor.height;
+}
+
+/** Grows `line` to cover `run`, and its own stretch too when the run is the block's. */
+function widenLine(line: SyncTexLine, run: PdfTextRun, own: boolean) {
+  const right = Math.max(line.x + line.width, run.x + run.width);
+  const bottom = Math.max(line.y + line.height, run.top + run.height);
+  line.x = Math.min(line.x, run.x);
+  line.y = Math.min(line.y, run.top);
+  line.width = right - line.x;
+  line.height = bottom - line.y;
+  if (own) {
+    line.from = Math.min(line.from, run.x);
+    line.to = Math.max(line.to, run.x + run.width);
+  }
 }
 
 function sameBaseline(line: PageRect, run: PdfTextRun): boolean {

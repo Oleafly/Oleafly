@@ -260,7 +260,7 @@ fn file_stamp(path: &Path) -> Option<(SystemTime, u64)> {
 /// Moves a record that can't be read out of the way, kept beside it for a look
 /// later, so sync starts over instead of failing on it every time.
 pub(crate) fn set_aside(path: &Path) {
-    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+    let Some(name) = path.file_name().and_then(std::ffi::OsStr::to_str) else {
         return;
     };
     let aside = path.with_file_name(format!(

@@ -88,13 +88,17 @@ const LETTERS: Record<string, string> = {
 };
 // \'e  \'{e}  \"{\i}  \c{c}  \v s  \ss  \o{}. Letter macros and \i, \j are
 // control words, so TeX drops one space after them: `Bj\o rn` reads "Bjørn".
-const TEX_LETTER =
-  /\\(?:(?<accent>['`"^~=.])\s*(?:\{\s*(?<braced>\\[ij]|[A-Za-z])\s*\}|(?<dotless>\\[ij]) ?|(?<bare>[A-Za-z]))|(?<named>[uvHckrdb])(?:\s*\{\s*(?<namedBraced>\\[ij]|[A-Za-z])\s*\}|\s+(?<namedBare>[A-Za-z]))|(?<letter>ss|ae|AE|oe|OE|aa|AA|[oOlL])(?![A-Za-z])(?:\{\}| )?)/g;
+const ACCENTED = String.raw`(?<accent>['\`"^~=.])\s*(?:\{\s*(?<braced>\\[ij]|[A-Za-z])\s*\}|(?<dotless>\\[ij]) ?|(?<bare>[A-Za-z]))`;
+const NAMED_ACCENT = String.raw`(?<named>[uvHckrdb])(?:\s*\{\s*(?<namedBraced>\\[ij]|[A-Za-z])\s*\}|\s+(?<namedBare>[A-Za-z]))`;
+const LETTER_MACRO = String.raw`(?<letter>ss|ae|AE|oe|OE|aa|AA|[oOlL])(?![A-Za-z])(?:\{\}| )?`;
+const TEX_LETTER = new RegExp(String.raw`\\(?:${ACCENTED}|${NAMED_ACCENT}|${LETTER_MACRO})`, "g");
 const HAS_TEX_LETTER = /\\(?:['`"^~=.]|[uvHckrdb][\s{]|(?:ss|ae|AE|oe|OE|aa|AA|[oOlL])(?![A-Za-z]))/;
 
+// An accent on \i or \j sits on the dotless letter; the reader sees i, j.
+const DOTLESS_BASES: Readonly<Record<string, string>> = { [String.raw`\i`]: "i", [String.raw`\j`]: "j" };
+
 function baseLetter(base: string): string {
-  // An accent on \i or \j sits on the dotless letter; the reader sees i, j.
-  return base === "\\i" ? "i" : base === "\\j" ? "j" : base;
+  return DOTLESS_BASES[base] ?? base;
 }
 
 /**

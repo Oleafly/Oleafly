@@ -279,19 +279,14 @@ function clickedWord(target: Node, text: string, range: TextRange): ClickedWord 
   };
 }
 
-function wordAtPoint(
+function textSpanAt(
   clientX: number,
   clientY: number,
-  eventTarget?: EventTarget | null,
-  root: ParentNode = document,
-): ClickedWord | null {
-  const d = document as Document & {
-    caretRangeFromPoint?: (x: number, y: number) => Range | null;
-    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
-  };
-  const clickedSpan = closestMatchingElement<HTMLElement>(eventTarget, ".textLayer span");
-  const containingSpan =
-    clickedSpan ??
+  eventTarget: EventTarget | null | undefined,
+  root: ParentNode,
+): HTMLElement | undefined {
+  return (
+    closestMatchingElement<HTMLElement>(eventTarget, ".textLayer span") ??
     Array.from(root.querySelectorAll<HTMLElement>(".textLayer span")).find((span) => {
       const rect = span.getBoundingClientRect();
       return (
@@ -300,34 +295,47 @@ function wordAtPoint(
         clientY >= rect.top &&
         clientY <= rect.bottom
       );
-    });
-  if (containingSpan) {
-    const text = containingSpan.textContent ?? "";
-    const node = containingSpan.firstChild;
-    const measured =
-      node?.nodeType === Node.TEXT_NODE && node.nodeValue === text
-        ? measuredTextOffset(node as Text, clientX)
-        : null;
-    const rect = containingSpan.getBoundingClientRect();
-    const word =
-      measured === null
-        ? wordRangeAtHorizontalPosition(text, rect.left, rect.width, clientX)
-        : wordRangeInText(text, measured);
-    if (word) return clickedWord(containingSpan, text, word);
-  }
-  let node: Node | null = null;
-  let offset = 0;
+    })
+  );
+}
+
+/** The word under `clientX` in a text-layer span, measured when its text is one node. */
+function wordInSpan(span: HTMLElement, clientX: number): ClickedWord | null {
+  const text = span.textContent ?? "";
+  const node = span.firstChild;
+  const measured =
+    node?.nodeType === Node.TEXT_NODE && node.nodeValue === text
+      ? measuredTextOffset(node as Text, clientX)
+      : null;
+  const rect = span.getBoundingClientRect();
+  const word =
+    measured === null
+      ? wordRangeAtHorizontalPosition(text, rect.left, rect.width, clientX)
+      : wordRangeInText(text, measured);
+  return word ? clickedWord(span, text, word) : null;
+}
+
+function caretAtPoint(clientX: number, clientY: number): { node: Node | null; offset: number } {
+  const d = document as Document & {
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+  };
   const range = d.caretRangeFromPoint?.(clientX, clientY); // WebKit + Chromium
-  if (range) {
-    node = range.startContainer;
-    offset = range.startOffset;
-  } else {
-    const pos = d.caretPositionFromPoint?.(clientX, clientY); // Firefox / standard
-    if (pos) {
-      node = pos.offsetNode;
-      offset = pos.offset;
-    }
-  }
+  if (range) return { node: range.startContainer, offset: range.startOffset };
+  const pos = d.caretPositionFromPoint?.(clientX, clientY); // Firefox / standard
+  return pos ? { node: pos.offsetNode, offset: pos.offset } : { node: null, offset: 0 };
+}
+
+function wordAtPoint(
+  clientX: number,
+  clientY: number,
+  eventTarget?: EventTarget | null,
+  root: ParentNode = document,
+): ClickedWord | null {
+  const containingSpan = textSpanAt(clientX, clientY, eventTarget, root);
+  const spanWord = containingSpan ? wordInSpan(containingSpan, clientX) : null;
+  if (spanWord) return spanWord;
+  const { node, offset } = caretAtPoint(clientX, clientY);
   if (node?.nodeType !== Node.TEXT_NODE || containingSpan?.contains(node) === false) {
     const fallbackText =
       containingSpan?.textContent?.trim() ??

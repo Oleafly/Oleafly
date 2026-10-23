@@ -5,6 +5,8 @@ import { Plugin, PluginKey, type EditorState, type Transaction } from "@tiptap/p
 import { isUrlWithScheme, markdownLinkDestination, readableLinkHref } from "../link-destination";
 import type { LinkHrefLocalizer, LinkHrefOpener } from "../options";
 
+const ESCAPED_QUOTE = String.raw`\"`;
+
 const URL_SCHEME = /^[a-z][a-z0-9+.-]*:/iu;
 
 interface AutolinkState {
@@ -68,7 +70,7 @@ export const MarkdownLink = Link.extend<LinkOptions & MarkdownLinkOptions>({
   renderHTML(props) {
     const rendered = this.parent?.(props) as [string, Record<string, unknown>, 0];
     const [tag, attributes, hole] = rendered;
-    if (isUrlWithScheme(String(attributes.href ?? ""))) return rendered;
+    if (isUrlWithScheme(typeof attributes.href === "string" ? attributes.href : "")) return rendered;
     // A relative href resolves against the app's own address. With
     // `target="_blank"` the shell plugin opened that address in the system
     // browser on Windows (`http://tauri.localhost/...`), a page that does not
@@ -90,7 +92,8 @@ export const MarkdownLink = Link.extend<LinkOptions & MarkdownLinkOptions>({
             const autolink = state.inAutolink;
             state.inAutolink = undefined;
             if (autolink) return ">";
-            const title = mark.attrs.title ? ` "${String(mark.attrs.title).replaceAll('"', String.raw`\"`)}"` : "";
+            const quoted = String(mark.attrs.title ?? "").replaceAll('"', ESCAPED_QUOTE);
+            const title = mark.attrs.title ? ` "${quoted}"` : "";
             return `](${markdownLinkDestination(readableLinkHref(String(mark.attrs.href ?? "")))}${title})`;
           },
           mightHaveLeadingWhitespace: true,

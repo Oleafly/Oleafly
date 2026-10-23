@@ -274,12 +274,21 @@ function rejoinHyphenated(word: string, context: WordContext | undefined) {
   if (!context) return null;
   const next = /^-\s+([\p{L}\p{M}]+)/u.exec(context.after);
   if (next) return { word: word + next[1], context: { ...context, after: context.after.slice(next[0].length) } };
-  const previous = /([\p{L}\p{M}]+)-\s+$/u.exec(context.before);
-  if (previous) {
-    return { word: previous[1] + word, context: { ...context, before: context.before.slice(0, previous.index) } };
+  // Scanned by hand: a regex anchored at the end backtracks through every
+  // starting point of a long run of letters.
+  const trimmed = context.before.trimEnd();
+  if (trimmed.length === context.before.length || !trimmed.endsWith("-")) return null;
+  const hyphen = trimmed.length - 1;
+  let start = hyphen;
+  for (let previous = characterBefore(trimmed, start); previous && HYPHENATED_LETTER.test(previous); ) {
+    start -= previous.length;
+    previous = characterBefore(trimmed, start);
   }
-  return null;
+  if (start === hyphen) return null;
+  return { word: trimmed.slice(start, hyphen) + word, context: { ...context, before: context.before.slice(0, start) } };
 }
+
+const HYPHENATED_LETTER = /^[\p{L}\p{M}]$/u;
 
 interface WordCandidate extends WordRange {
   /** Lines from the reported line. */
@@ -348,7 +357,11 @@ export function selectWordNearLine(line: number, word: string, context?: WordCon
     );
     if (nearest && (!around || nearest.score >= NEAR_EVIDENCE)) return nearest.candidate;
     if (!around) return undefined;
+    return findFar(needle, around) ?? nearest?.candidate;
+  };
 
+  // Lines further away only count with strong evidence from the words around.
+  const findFar = (needle: string, around: WordContext): WordCandidate | undefined => {
     const far: WordCandidate[] = [];
     for (let ln = 1; ln <= total; ln++) {
       if (Math.abs(ln - target) > NEAR_LINES) {
@@ -359,7 +372,7 @@ export function selectWordNearLine(line: number, word: string, context?: WordCon
       .map((match, index) => ({ candidate: far[index], ...match }))
       .sort((a, b) => b.score - a.score);
     const [first, second] = ranked;
-    return convincingFarMatch(first, second) ? first.candidate : nearest?.candidate;
+    return convincingFarMatch(first, second) ? first.candidate : undefined;
   };
 
   const joined = rejoinHyphenated(clicked, context);

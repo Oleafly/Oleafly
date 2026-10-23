@@ -59,6 +59,10 @@ export function closestMatchingElement<T extends Element>(
  * null when nothing is laid out (tests) or the run is not left-to-right, so the
  * caller can fall back to that estimate.
  */
+function hasWidth(rect: DOMRect | undefined): rect is DOMRect {
+  return (rect?.width ?? 0) > 0;
+}
+
 export function measuredTextOffset(node: Text, clientX: number): number | null {
   const length = node.length;
   if (!length || typeof node.ownerDocument?.createRange !== "function") return null;
@@ -70,8 +74,8 @@ export function measuredTextOffset(node: Text, clientX: number): number | null {
   };
   const first = box(0);
   const last = box(length - 1);
-  if (!first || !last || !(first.width > 0) || !(last.width > 0)) return null;
-  if (length > 1 && !(last.left > first.left)) return null;
+  if (!hasWidth(first) || !hasWidth(last)) return null;
+  if (length > 1 && last.left <= first.left) return null;
   if (clientX < first.left || clientX > last.right) return null;
   let low = 0;
   let high = length - 1;

@@ -2,6 +2,8 @@ import { Image } from "@tiptap/extension-image";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { markdownLinkDestination, readableLinkHref } from "../link-destination";
 
+const ESCAPED_QUOTE = String.raw`\"`;
+
 interface ImageSerializerState {
   esc(text: string): string;
   write(text: string): void;
@@ -24,7 +26,8 @@ export const MarkdownImage = Image.extend({
       ...this.parent?.(),
       markdown: {
         serialize(state: ImageSerializerState, node: ProseMirrorNode) {
-          const title = node.attrs.title ? ` "${String(node.attrs.title).replaceAll('"', String.raw`\"`)}"` : "";
+          const quoted = String(node.attrs.title ?? "").replaceAll('"', ESCAPED_QUOTE);
+          const title = node.attrs.title ? ` "${quoted}"` : "";
           const destination = markdownLinkDestination(readableLinkHref(String(node.attrs.src ?? "")));
           state.write(`![${state.esc(String(node.attrs.alt ?? ""))}](${destination}${title})`);
           if (node.isBlock) state.closeBlock(node);

@@ -2,6 +2,8 @@ import {
   synctexForward,
   synctexInverse,
   synctexMapLine,
+  type SynctexForwardHit,
+  type SynctexRect,
 } from "@/lib/tauri";
 import {
   findWordOnPages,
@@ -16,7 +18,6 @@ import {
   type WordContext,
 } from "@/components/editor/cm/controller";
 import { gotoRect, pdfPageText, type PdfTextRun } from "@/components/pdf/pdfController";
-import type { SynctexForwardHit, SynctexRect } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import {
@@ -179,8 +180,8 @@ export function goToSyncTex() {
 async function pageTexts(pages: readonly number[]): Promise<Map<number, PdfTextRun[]> | null> {
   const runsByPage = new Map<number, PdfTextRun[]>();
   try {
-    for (const page of pages) {
-      const runs = await pdfPageText(page);
+    const fetched = await Promise.all(pages.map(async (page) => [page, await pdfPageText(page)] as const));
+    for (const [page, runs] of fetched) {
       if (runs) runsByPage.set(page, runs);
     }
   } catch (e) {
@@ -327,6 +328,24 @@ async function focusInverseTarget(
   return contextStillValid(context);
 }
 
+/**
+ * Puts the cursor where a PDF click points in the source. Typst's preview
+ * server names the clicked character (`column`), so the word there is
+ * selected; a click on link text can come back elsewhere in the line, and then
+ * the clicked word is looked for around that line. SyncTeX only resolves to a
+ * line (its column is coarse and often lands on a `\begin`/`\end`), so the
+ * nearest matching word is selected, or else the line start.
+ */
+function placeInverseCursor(line: number, column: number | null, word?: string, wordContext?: WordContext) {
+  if (column !== null) {
+    if (word && (selectWordAt(line, column, word) || selectWordNearLine(line, word, wordContext))) return;
+    gotoLine(line, column + 1);
+    return;
+  }
+  if (word && selectWordNearLine(line, word, wordContext)) return;
+  gotoLine(line);
+}
+
 export async function inverseFromClick(
   page: number,
   x: number,
@@ -357,21 +376,7 @@ export async function inverseFromClick(
     const targetLine = target.line;
 
     if (!(await focusInverseTarget(store, context, target.path))) return;
-    if (typst && !context[1]) {
-      // Typst's preview server names the clicked character, so select the
-      // word there. A click on link text can come back elsewhere in the line;
-      // then the clicked word is looked for around that line instead.
-      if (word && (selectWordAt(targetLine, hit.column, word) || selectWordNearLine(targetLine, word, wordContext))) {
-        return;
-      }
-      gotoLine(targetLine, hit.column + 1);
-      return;
-    }
-    // SyncTeX only resolves to a line (its column is coarse and often lands on a
-    // `\begin`/`\end`). If we know the word that was clicked, place the cursor on
-    // the nearest matching word; otherwise fall back to the line start.
-    if (word && selectWordNearLine(targetLine, word, wordContext)) return;
-    gotoLine(targetLine);
+    placeInverseCursor(targetLine, typst && !context[1] ? hit.column : null, word, wordContext);
   } catch (e) {
     void logError("synctex inverse", e);
   }
