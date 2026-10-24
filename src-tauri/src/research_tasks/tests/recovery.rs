@@ -399,3 +399,44 @@ async fn recovery_keeps_a_run_owned_by_a_live_process_until_that_process_exits()
         ResearchTaskStatus::Failed
     );
 }
+
+// Discard changes after an apply that found the project changed cancels
+// the task: the failed apply left no journal, so its mark was cleared.
+#[tokio::test]
+async fn a_task_whose_apply_found_the_project_changed_can_still_be_cancelled() {
+    let data = DataRoot::new();
+    let project = data.project("paper");
+    let state = data.state(1);
+    let task = pending_review(&state, &project).await;
+    let store = state.store().unwrap();
+    // The user edited the manuscript after the task started.
+    fs::write(
+        project.join("main.tex"),
+        "an edit saved after the task started",
+    )
+    .unwrap();
+    let error = apply::apply_review(
+        &store,
+        &task,
+        &project,
+        &["main.tex".into(), "notes.md".into()],
+    )
+    .unwrap_err();
+    assert!(error.contains("changed after this task started"), "{error}");
+    assert!(!apply::has_recovery_journal(&store, &task).unwrap());
+    store.clear_apply(&task.id, Some(&error)).unwrap();
+    let retained = store.require(&task.id).unwrap();
+    assert_eq!(retained.status, ResearchTaskStatus::AwaitingReview);
+    assert!(retained
+        .error
+        .as_deref()
+        .is_some_and(|error| error.contains("changed after this task started")));
+
+    let cancelled = state.cancel(task.id.clone()).await.unwrap();
+    assert_eq!(cancelled.status, ResearchTaskStatus::Cancelled);
+    assert_eq!(
+        store.require(&task.id).unwrap().status,
+        ResearchTaskStatus::Cancelled
+    );
+    stop(&state).await;
+}

@@ -337,11 +337,15 @@ function installAiConnectHook() {
 }
 
 // 0.4.8: research tasks are experimental and off by default; the task specs
-// turn them on the way the Settings switch does.
+// turn them on the way the Settings switch does, and the switch spec turns
+// them off first, since a spec that ran earlier in the same data dir may
+// have left them on.
 function installResearchTasksHook() {
-  (window as unknown as { __researchTasksEnable?: () => Promise<boolean> }).__researchTasksEnable = async () => {
+  (window as unknown as { __researchTasksSet?: (enabled: boolean) => Promise<boolean> }).__researchTasksSet = async (
+    enabled,
+  ) => {
     const { setResearchTasksEnabled } = await import("@/store/research-tasks-flag");
-    await setResearchTasksEnabled(true);
+    await setResearchTasksEnabled(enabled);
     return true;
   };
 }

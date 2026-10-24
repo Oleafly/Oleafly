@@ -83,18 +83,22 @@ impl Coalescer {
         ))
     }
 
-    /// The held text that is due, without its last `keep` bytes, which stay
-    /// held for the message's next text: a secret still streaming in is not
-    /// split between two stored events. `redact` runs on all the held text
-    /// first, so one that already arrived whole is removed before the cut.
+    /// The held text that is due, without an ending that could begin a
+    /// secret still streaming in (`holdback` says how long), which stays
+    /// held for the message's next text so a secret is never split between
+    /// two stored events. `redact` runs on all the held text first, so one
+    /// that already arrived whole is removed before the cut. Prose is
+    /// stored whole: a message that then waits (a tool call, an agent
+    /// waiting to be stopped) must not stay unseen until it ends.
     pub fn take_due(
         &mut self,
-        keep: usize,
+        holdback: impl Fn(&str) -> usize,
         redact: impl Fn(&str) -> String,
         now: Instant,
     ) -> Option<Value> {
         let held = self.held.as_mut()?;
         held.text = redact(&held.text);
+        let keep = holdback(&held.text);
         if keep == 0 {
             return self.take();
         }
@@ -198,7 +202,7 @@ mod tests {
     fn a_secret_streamed_across_due_flushes_is_never_split_between_events() {
         let secret = "tok-0123456789abcdef0123456789abcdef";
         let redact = |text: &str| text.replace(secret, "[credential omitted]");
-        let keep = secret.len() - 1;
+        let holdback = |text: &str| overlap(text, secret);
         let start = Instant::now();
         let mut coalescer = Coalescer::default();
         let mut stored = Vec::new();
@@ -212,23 +216,62 @@ mod tests {
             coalescer.push("agent_message_chunk", Some("t"), None, piece, start);
             let later = start + FLUSH_AFTER * (index as u32 + 1);
             if coalescer.due(later) {
-                if let Some(update) = coalescer.take_due(keep, redact, later) {
+                if let Some(update) = coalescer.take_due(holdback, redact, later) {
                     stored.push(update["content"]["text"].as_str().unwrap().to_owned());
                 }
             }
         }
-        // The message ends: what is held is stored as it is.
-        stored.push(
-            coalescer.take().unwrap()["content"]["text"]
-                .as_str()
-                .unwrap()
-                .to_owned(),
-        );
+        // The message ends: anything still held is stored as it is.
+        if let Some(update) = coalescer.take() {
+            stored.push(update["content"]["text"].as_str().unwrap().to_owned());
+        }
         // Each event is redacted on its own when it is stored.
         let redacted: Vec<String> = stored.iter().map(|text| redact(text)).collect();
         let joined: String = redacted.concat();
         assert!(!joined.contains("0123456789"), "{redacted:?}");
         assert_eq!(joined, "Your key is [credential omitted] and more");
+    }
+
+    /// The longest ending of `text` that is a proper start of `secret`.
+    fn overlap(text: &str, secret: &str) -> usize {
+        (1..secret.len().min(text.len() + 1))
+            .rev()
+            .find(|&len| {
+                secret
+                    .as_bytes()
+                    .starts_with(&text.as_bytes()[text.len() - len..])
+            })
+            .unwrap_or(0)
+    }
+
+    #[test]
+    fn a_due_flush_stores_prose_whole_however_long_the_known_secrets_are() {
+        // A short message followed by a long wait (a tool call, an agent
+        // waiting to be stopped) stayed unstored, and unseen, until the
+        // message ended when the whole of it was held back as a possible
+        // secret: CI runners carry 40-character tokens in the environment.
+        let now = Instant::now();
+        let secret = "ghs_0123456789abcdef0123456789abcdef0123";
+        let mut coalescer = Coalescer::default();
+        coalescer.push(
+            "agent_message_chunk",
+            Some("t"),
+            None,
+            "ACP fixture waiting for cancellation.",
+            now,
+        );
+        let update = coalescer
+            .take_due(
+                |text| overlap(text, secret),
+                str::to_owned,
+                now + FLUSH_AFTER,
+            )
+            .unwrap();
+        assert_eq!(
+            update["content"]["text"],
+            "ACP fixture waiting for cancellation."
+        );
+        assert!(!coalescer.is_holding());
     }
 
     #[test]
@@ -237,7 +280,7 @@ mod tests {
         let mut coalescer = Coalescer::default();
         coalescer.push("agent_message_chunk", None, Some("m"), "all of it", now);
         let update = coalescer
-            .take_due(0, str::to_owned, now + FLUSH_AFTER)
+            .take_due(|_| 0, str::to_owned, now + FLUSH_AFTER)
             .unwrap();
         assert_eq!(update["content"]["text"], "all of it");
         assert_eq!(update["messageId"], "m");

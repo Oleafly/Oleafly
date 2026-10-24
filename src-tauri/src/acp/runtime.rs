@@ -2500,19 +2500,19 @@ impl AcpRuntime {
         Ok(())
     }
 
-    /// Stores the held text that is due, keeping back the end of it: a
-    /// secret still streaming in is never split between two stored events,
-    /// where neither part would match it.
+    /// Stores the held text that is due, keeping back only an ending that
+    /// could begin a secret still streaming in, so one is never split
+    /// between two stored events where neither part would match it.
     pub(super) fn flush_due(
         &self,
         session: &LiveSession,
         state: &mut LiveState,
     ) -> Result<(), String> {
-        let keep = session.redactor.longest_secret().saturating_sub(1);
-        let due =
-            state
-                .coalescer
-                .take_due(keep, |text| session.redactor.text(text), Instant::now());
+        let due = state.coalescer.take_due(
+            |text| session.redactor.holdback(text),
+            |text| session.redactor.text(text),
+            Instant::now(),
+        );
         if let Some(update) = due {
             let kind = update["sessionUpdate"]
                 .as_str()

@@ -46,13 +46,16 @@ async function connectAgent(page: Page) {
   );
   expect(connected, "the provider connection fixture must be available").toBe(true);
   // 0.4.8: research tasks are experimental and off by default.
-  const enabled = await page.evaluate<boolean>(`window.__researchTasksEnable?.() ?? false`);
+  const enabled = await page.evaluate<boolean>(`window.__researchTasksSet?.(true) ?? false`);
   expect(enabled, "the research tasks fixture must be available").toBe(true);
 }
 
 test("research tasks stay off until the experimental switch in Settings is turned on", async ({ tauriPage }) => {
   test.setTimeout(90_000);
   const run = Date.now().toString(36);
+  // A spec that ran earlier in this data dir may have turned tasks on.
+  const reset = await tauriPage.evaluate<boolean>(`window.__researchTasksSet?.(false) ?? false`);
+  expect(reset, "the research tasks fixture must be available").toBe(true);
   await createBlankProject(tauriPage, `Research switch ${run}`);
   await openRailTab(tauriPage, "Research workspace");
   const panel = tauriPage.getByTestId("research-workspace-panel");
@@ -64,10 +67,11 @@ test("research tasks stay off until the experimental switch in Settings is turne
   const toggle = tauriPage.getByTestId("research-tasks-switch");
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await expect(tauriPage.getByTestId("research-tasks-warning")).toContainText("Highly unstable");
-  await expect(tauriPage.getByRole("combobox", { name: "Default time budget" })).toHaveCount(0);
+  // The task defaults (the time budget among them) show only once tasks are on.
+  await expect(tauriPage.locator("#research-time-budget")).toHaveCount(0);
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "true");
-  await expect(tauriPage.getByRole("combobox", { name: "Default time budget" })).toBeVisible();
+  await expect(tauriPage.locator("#research-time-budget")).toHaveCount(1, { timeout: 10_000 });
   await tauriPage.click('[data-testid="settings-close"]');
 
   await expect(panel.getByTestId("research-tasks-off")).toHaveCount(0);

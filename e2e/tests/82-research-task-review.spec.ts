@@ -30,7 +30,7 @@ async function createProject(page: Page, run: string) {
   );
   expect(connected).toBe(true);
   // 0.4.8: research tasks are experimental and off by default.
-  const enabled = await page.evaluate<boolean>(`window.__researchTasksEnable?.() ?? false`);
+  const enabled = await page.evaluate<boolean>(`window.__researchTasksSet?.(true) ?? false`);
   expect(enabled).toBe(true);
   const projectId = await page.evaluate<string>(
     `document.querySelector('[data-e2e-project-id]')?.getAttribute('data-e2e-project-id') ?? ''`,
@@ -263,8 +263,11 @@ test("applying a task preserves an unsaved editor edit and retains the conflicti
   expect(readFileSync(join(retained.isolation!.executionRoot, "main.tex"), "utf8")).toBe(proposed);
 
   await detail.getByText("Discard changes", { exact: true }).click();
-  // Discarding asks first, in a question inside the task dialog.
-  await tauriPage.locator('[role="alertdialog"]').getByText("Discard changes", { exact: true }).click();
+  // Discarding asks first, in a question inside the task dialog. The bridge's
+  // getByText is page-wide even on a scoped locator, so the question's own
+  // button is found through a scoped CSS selector, or the click lands on the
+  // review tab's Discard button again.
+  await tauriPage.locator('[role="alertdialog"] button').filter({ hasText: "Discard changes" }).click();
   await expect(detail).toContainText("Cancelled", { timeout: 20_000 });
   expect((await nativeTask(tauriPage, projectId, task.title)).status).toBe("cancelled");
   expect(await readMain(tauriPage, projectId)).toBe(manual);

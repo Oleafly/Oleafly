@@ -53,6 +53,47 @@ impl Redactor {
             .unwrap_or(0)
     }
 
+    /// How many bytes at the end of `text` may be the start of a secret
+    /// still streaming in: the longest ending that begins a known secret,
+    /// or a last word that begins like a key the pattern rules remove once
+    /// it is long enough. What comes before them can be stored on its own.
+    /// Prose that no secret starts with gets 0, however long the secrets.
+    pub fn holdback(&self, text: &str) -> usize {
+        let mut keep = 0;
+        if let Ok(secrets) = self.secrets.read() {
+            for secret in secrets.iter() {
+                let mut len = secret.len().saturating_sub(1).min(text.len());
+                while len > keep {
+                    let start = text.len() - len;
+                    if text.is_char_boundary(start)
+                        && secret.as_bytes().starts_with(&text.as_bytes()[start..])
+                    {
+                        keep = len;
+                        break;
+                    }
+                    len -= 1;
+                }
+            }
+        }
+        let word_start = text
+            .char_indices()
+            .rev()
+            .find(|(_, c)| c.is_whitespace())
+            .map_or(0, |(at, c)| at + c.len_utf8());
+        let word = &text[word_start..];
+        let trimmed =
+            word.trim_start_matches(|c: char| !c.is_ascii_alphanumeric() && c != '-' && c != '_');
+        let starts_like_key = !trimmed.is_empty()
+            && KEY_PREFIXES.iter().any(|prefix| {
+                (trimmed.starts_with(prefix) && trimmed.len() < KEY_PATTERN_MIN)
+                    || prefix.starts_with(trimmed)
+            });
+        if starts_like_key {
+            keep = keep.max(word.len());
+        }
+        keep
+    }
+
     pub fn opaque_id(&self, value: &str) -> Result<String, String> {
         if value.is_empty() || value.len() > 512 || value.chars().any(char::is_control) {
             return Err("The agent returned an invalid protocol identifier.".into());
@@ -113,11 +154,10 @@ impl Redactor {
                         let trimmed = part.trim_matches(|c: char| {
                             !c.is_ascii_alphanumeric() && c != '-' && c != '_'
                         });
-                        if (trimmed.starts_with("sk-")
-                            || trimmed.starts_with("sk_")
-                            || trimmed.starts_with("ghp_")
-                            || trimmed.starts_with("AIza"))
-                            && trimmed.len() > 18
+                        if KEY_PREFIXES
+                            .iter()
+                            .any(|prefix| trimmed.starts_with(prefix))
+                            && trimmed.len() >= KEY_PATTERN_MIN
                         {
                             "[credential omitted] ".into()
                         } else {
@@ -169,6 +209,9 @@ const ASSIGNMENT_KEYS: [&str; 8] = [
 ];
 /// A shorter assigned value is a word of prose, not a credential.
 const MIN_ASSIGNED: usize = 6;
+/// Words that start like these are keys once they reach [`KEY_PATTERN_MIN`].
+const KEY_PREFIXES: [&str; 4] = ["sk-", "sk_", "ghp_", "AIza"];
+const KEY_PATTERN_MIN: usize = 19;
 /// A bearer token is at least this long.
 const MIN_BEARER: usize = 12;
 const OMITTED: &str = "[credential omitted]";
@@ -355,6 +398,34 @@ mod tests {
             redactor.value(&json!({"message": "typed-api-key-123456"})),
             json!({"message": "[credential omitted]"})
         );
+    }
+
+    #[test]
+    fn holdback_keeps_only_an_ending_that_could_start_a_secret() {
+        let secret = "tok-0123456789abcdef0123456789abcdef";
+        let redactor = Redactor::new(&[json!({"api_key": secret})]);
+        // Prose no secret starts with is stored whole, however long the secrets are.
+        assert_eq!(
+            redactor.holdback("ACP fixture waiting for cancellation."),
+            0
+        );
+        assert_eq!(redactor.holdback("works"), 0);
+        assert_eq!(redactor.holdback(""), 0);
+        // The start of a known secret waits for the rest of it.
+        assert_eq!(redactor.holdback("Your key is tok-0123"), 8);
+        assert_eq!(redactor.holdback("key=tok-0123"), 8);
+        assert_eq!(
+            redactor.holdback(&format!("Your key is {}", &secret[..35])),
+            35
+        );
+        // A whole secret is removed, not held.
+        assert_eq!(redactor.holdback(secret), 0);
+        // A last word that starts like a key waits until it is long enough to be removed.
+        assert_eq!(redactor.holdback("Use sk-abc"), 6);
+        assert_eq!(redactor.holdback("Use (ghp_ab"), 7);
+        assert_eq!(redactor.holdback("Option A"), 1);
+        assert_eq!(Redactor::new(&[]).holdback("done sk"), 2);
+        assert_eq!(redactor.holdback("Use sk-0123456789abcdefgh"), 0);
     }
 
     #[test]
