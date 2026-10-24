@@ -1079,9 +1079,12 @@ fn stage_project(
         Scope::Library => git_ok(git, repo, &["add", "--all", "--force", "--", "."])?,
         // A folder's own `.gitignore` files, copied in with the rest, keep
         // what they name here. The user's global excludes don't count, so
-        // what syncs doesn't depend on the computer.
+        // what syncs doesn't depend on the computer. Git skips an excludes
+        // file that doesn't exist, so a name that never does turns them off
+        // (Git for Windows refuses NUL as an excludes file).
         Scope::Folder => {
-            let excludes = format!("core.excludesFile={}", crate::git::null_device());
+            let none = repo.join(".git").join("oleafly-no-global-excludes");
+            let excludes = format!("core.excludesFile={}", none.display());
             git_ok(git, repo, &["-c", &excludes, "add", "--all", "--", "."])?
         }
     };

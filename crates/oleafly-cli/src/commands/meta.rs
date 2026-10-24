@@ -245,7 +245,8 @@ mod tests {
 
     #[test]
     fn help_environment_lists_every_variable_the_guide_documents() {
-        let guide = include_str!("../../../../docs/cli.md");
+        // A Windows checkout has CRLF line ends.
+        let guide = include_str!("../../../../docs/cli.md").replace("\r\n", "\n");
         let section = guide
             .split("\n## Environment\n")
             .nth(1)
