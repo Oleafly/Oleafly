@@ -10,6 +10,15 @@ pub struct HelperLock {
     _file: File,
 }
 
+impl Drop for HelperLock {
+    fn drop(&mut self) {
+        // Unlock before the file closes: a process spawned a moment ago still
+        // shares the file until it starts its program, and a flock would last
+        // until that copy closes too.
+        let _ = fs4::FileExt::unlock(&self._file);
+    }
+}
+
 fn open(path: &Path) -> io::Result<File> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -81,6 +90,20 @@ mod tests {
         assert!(HelperLock::is_held_elsewhere(&lock).unwrap());
         drop(first);
         assert!(!HelperLock::is_held_elsewhere(&lock).unwrap());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn dropping_the_lock_frees_it_while_a_copy_of_the_file_is_open() {
+        // A child process between fork and exec holds a copy of every open
+        // file, and a flock lasts until the last copy closes.
+        let dir = tempfile::tempdir().unwrap();
+        let lock = dir.path().join("daemon.lock");
+        let first = HelperLock::acquire(&lock, Duration::ZERO).unwrap().unwrap();
+        let copy = first._file.try_clone().unwrap();
+        drop(first);
+        assert!(!HelperLock::is_held_elsewhere(&lock).unwrap());
+        drop(copy);
     }
 
     #[test]

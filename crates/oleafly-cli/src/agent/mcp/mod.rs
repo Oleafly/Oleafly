@@ -27,8 +27,10 @@ use crate::app_paths::Platform;
 pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
 #[cfg(not(test))]
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(20);
+// Short in tests so the silent-server test stays quick, but long enough for
+// a fixture server to start on a loaded machine (2 s was not).
 #[cfg(test)]
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(2);
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 pub(crate) const CALL_TIMEOUT: Duration = Duration::from_secs(120);
 const MAX_TOOLS_PER_SERVER: usize = 128;
 const MAX_TOOLS: usize = 256;

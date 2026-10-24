@@ -2464,7 +2464,9 @@ async fn scheduled_tasks_start_on_time() {
     let (runtime, mut starts) = ControlledRuntime::new();
     state.register_runtime("fixture", runtime).unwrap();
     let store = state.store().unwrap();
-    let at = crate::model::now_ms() + 500;
+    // Far enough ahead that a loaded CI runner checks the queue before the
+    // task is due (Windows took over half a second for launch_ready).
+    let at = crate::model::now_ms() + 3_000;
     let task = requested(
         &store,
         ResearchTaskDraft {
