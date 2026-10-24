@@ -2,6 +2,8 @@
 // this type; the AI composer (mention), the terminal (path) and the editors
 // (a link to the file) read it.
 
+import { trimTrailingCharacter } from "./trim-character";
+
 export const TREE_DRAG_TYPE = "application/x-oleafly-tree-path";
 
 export function carriesTreePath(transfer: Pick<DataTransfer, "types"> | null | undefined): boolean {
@@ -13,6 +15,6 @@ export function treeDragPath(
   transfer: Pick<DataTransfer, "types" | "getData"> | null | undefined,
 ): string | null {
   if (!transfer || !carriesTreePath(transfer)) return null;
-  const path = transfer.getData(TREE_DRAG_TYPE).replace(/\\/g, "/").replace(/\/+$/, "");
+  const path = trimTrailingCharacter(transfer.getData(TREE_DRAG_TYPE).replaceAll("\\", "/"), "/");
   return path ? path : null;
 }

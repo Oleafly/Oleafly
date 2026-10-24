@@ -311,7 +311,7 @@ function capChats(chats: StoredChat[]): StoredChat[] {
     .slice(0, MAX_BROWSER_CHATS_PER_PROJECT);
 }
 
-async function persistBrowser(pid: string, chats: StoredChat[]): Promise<void> {
+function persistBrowser(pid: string, chats: StoredChat[]): void {
   const capped = capChats(chats);
   try {
     localStorage.setItem(legacyKey(pid), JSON.stringify(capped));

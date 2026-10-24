@@ -14,7 +14,7 @@ function renderHandle(height = 56) {
     onReset: vi.fn(),
   };
   render(<ComposerResizeHandle {...props} />);
-  return { props, handle: screen.getByRole("separator", { name: en.composer.resizeHandle }) };
+  return { props, handle: screen.getByRole("slider", { name: en.composer.resizeHandle }) };
 }
 
 describe("ComposerResizeHandle", () => {
@@ -37,6 +37,25 @@ describe("ComposerResizeHandle", () => {
     expect(props.onReset).toHaveBeenCalledOnce();
   });
 
+  it("takes the other slider keys", () => {
+    const { props, handle } = renderHandle(200);
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    expect(props.onCommit).toHaveBeenLastCalledWith(220);
+    fireEvent.keyDown(handle, { key: "ArrowLeft" });
+    expect(props.onCommit).toHaveBeenLastCalledWith(180);
+    fireEvent.keyDown(handle, { key: "PageUp" });
+    expect(props.onCommit).toHaveBeenLastCalledWith(300);
+    fireEvent.keyDown(handle, { key: "PageDown" });
+    expect(props.onCommit).toHaveBeenLastCalledWith(100);
+    fireEvent.keyDown(handle, { key: "End" });
+    expect(props.onCommit).toHaveBeenLastCalledWith(480);
+    fireEvent.keyDown(handle, { key: "Home" });
+    expect(props.onCommit).toHaveBeenLastCalledWith(56);
+    props.onCommit.mockClear();
+    fireEvent.keyDown(handle, { key: "Enter" });
+    expect(props.onCommit).not.toHaveBeenCalled();
+  });
+
   it("never goes past its bounds", () => {
     const { props, handle } = renderHandle();
     fireEvent.pointerDown(handle, { button: 0, clientY: 900, pointerId: 1 });
@@ -49,7 +68,7 @@ describe("ComposerResizeHandle", () => {
 
   it("exposes its value to assistive technology", () => {
     const { handle } = renderHandle(120);
-    expect(handle).toHaveAttribute("aria-orientation", "horizontal");
+    expect(handle).toHaveAttribute("aria-orientation", "vertical");
     expect(handle).toHaveAttribute("aria-valuenow", "120");
     expect(handle).toHaveAttribute("aria-valuemin", "56");
     expect(handle).toHaveAttribute("aria-valuemax", "480");

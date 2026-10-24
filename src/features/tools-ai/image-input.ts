@@ -41,7 +41,7 @@ export interface PreparedImage {
 }
 
 function ascii(bytes: Uint8Array, start: number, end: number): string {
-  return String.fromCharCode(...bytes.subarray(start, end));
+  return String.fromCodePoint(...bytes.subarray(start, end));
 }
 
 /** The image format by its first bytes, never by its name. */

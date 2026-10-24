@@ -344,7 +344,7 @@ describe("ChatComposer", () => {
   it("never goes past 60% of the panel or below two lines", () => {
     Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
     render(<Harness />);
-    const handle = screen.getByRole("separator", { name: en.composer.resizeHandle });
+    const handle = screen.getByRole("slider", { name: en.composer.resizeHandle });
     expect(handle).toHaveAttribute("aria-valuemax", "480");
     fireEvent.pointerDown(handle, { button: 0, clientY: 900, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientY: 0, pointerId: 1 });

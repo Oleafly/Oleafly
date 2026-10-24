@@ -28,12 +28,10 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 import { Spinner } from "@/components/ui/spinner";
+import { trimCharacter } from "@/lib/trim-character";
 
 function slug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^\w.-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return trimCharacter(name.toLowerCase().replace(/[^\w.-]+/g, "-"), "-");
 }
 
 type PublishActionToken = {

@@ -28,6 +28,6 @@ export function parseOsc52(data: string): Osc52Request {
     return INVALID;
   }
   if (binary.length > OSC52_MAX_BYTES) return INVALID;
-  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const bytes = Uint8Array.from(binary, (character) => character.codePointAt(0) ?? 0);
   return { kind: "write", text: new TextDecoder().decode(bytes) };
 }

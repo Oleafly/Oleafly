@@ -117,7 +117,7 @@ test("Up recalls the last prompt in an empty message box", async ({ tauriPage })
 test("the message box keeps the height the user gives it", async ({ tauriPage }) => {
   test.setTimeout(60_000);
   await connectAndOpenChat(tauriPage);
-  const handle = tauriPage.getByRole("separator", { name: "Resize the message box" });
+  const handle = tauriPage.getByRole("slider", { name: "Resize the message box" });
   await handle.focus();
   for (let step = 0; step < 3; step += 1) await tauriPage.keyboard.press("ArrowUp");
   const grown = await tauriPage.locator(TA).evaluate((element) => element.getBoundingClientRect().height);

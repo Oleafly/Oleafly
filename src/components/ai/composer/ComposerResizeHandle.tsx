@@ -3,6 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { COMPOSER_KEY_STEP } from "./composer-input";
 
+/** Page Up and Page Down move five lines at a time. */
+const COMPOSER_PAGE_STEP = COMPOSER_KEY_STEP * 5;
+
 interface DragState {
   startY: number;
   startHeight: number;
@@ -11,7 +14,7 @@ interface DragState {
 }
 
 /**
- * The bar on the composer's top edge: drag it, or use the arrow keys, to
+ * The bar on the composer's top edge: drag it, or use the slider keys, to
  * change the message box's resting height. Double-click resets it.
  */
 export function ComposerResizeHandle({
@@ -72,10 +75,34 @@ export function ComposerResizeHandle({
     onCommit(state.latest);
   };
 
+  // The keys of a slider: the arrows move one line, Page Up and Page Down
+  // five, Home and End go to the smallest and largest box.
+  const keyTarget = (key: string): number | null => {
+    switch (key) {
+      case "ArrowUp":
+      case "ArrowRight":
+        return height + COMPOSER_KEY_STEP;
+      case "ArrowDown":
+      case "ArrowLeft":
+        return height - COMPOSER_KEY_STEP;
+      case "PageUp":
+        return height + COMPOSER_PAGE_STEP;
+      case "PageDown":
+        return height - COMPOSER_PAGE_STEP;
+      case "Home":
+        return min;
+      case "End":
+        return max;
+      default:
+        return null;
+    }
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    const target = keyTarget(event.key);
+    if (target === null) return;
     event.preventDefault();
-    onCommit(clamp(height + (event.key === "ArrowUp" ? COMPOSER_KEY_STEP : -COMPOSER_KEY_STEP)));
+    onCommit(clamp(target));
   };
 
   return (
@@ -86,8 +113,8 @@ export function ComposerResizeHandle({
       className="absolute inset-x-6 -top-1 z-10 h-2"
     >
       <div
-        role="separator"
-        aria-orientation="horizontal"
+        role="slider"
+        aria-orientation="vertical"
         aria-label={t(($) => $.ai.composer.resizeHandle)}
         aria-valuemin={min}
         aria-valuemax={max}

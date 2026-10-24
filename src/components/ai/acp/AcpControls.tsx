@@ -119,6 +119,8 @@ export function AcpControls({
           <div
             role="listbox"
             aria-label={t(($) => $.ai.acp.agentModel)}
+            // Focusable so a click on a heading keeps the arrow keys working.
+            tabIndex={-1}
             className="flex flex-col"
             onKeyDown={moveOptionFocus}
           >

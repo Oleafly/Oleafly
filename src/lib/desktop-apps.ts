@@ -126,7 +126,7 @@ export function createDesktopAppsTools(): ToolSet {
     desktop_apps: {
       description: toolSpec.description,
       inputSchema: toolSpec.inputSchema,
-      execute: async () => ({ error: "Desktop apps run inside the Oleafly app only." }),
+      execute: () => Promise.resolve({ error: "Desktop apps run inside the Oleafly app only." }),
     },
   };
 }

@@ -87,7 +87,7 @@ $ver = Invoke-SandboxRun $Workspace @("cmd.exe", "/c", "ver")
 Add-Row "cmd ver" "runs" ($ver.Code -eq 0) ($ver.Out + $ver.Err)
 
 $pythons = @()
-try { $pythons = (& py -0p 2>$null) | ForEach-Object { ($_ -split '\s+')[-1] } | Where-Object { $_ -like "*.exe" } } catch {}
+try { $pythons = (& py -0p 2>$null) | ForEach-Object { ($_ -split '\s+')[-1] } | Where-Object { $_ -like "*.exe" } } catch { Write-Verbose "The py launcher isn't installed: $_" }
 if (-not $pythons -and $python) { $pythons = @($python.Source) }
 foreach ($py in $pythons) {
   $temp = Invoke-SandboxRun $Workspace @("`"$py`"", "-c", "`"import tempfile,os;d=tempfile.mkdtemp();open(os.path.join(d,'x'),'w').write('1');print('ok')`"")

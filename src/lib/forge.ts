@@ -1,5 +1,6 @@
 import { emit } from "@tauri-apps/api/event";
 import { decodeAppError } from "@/lib/app-error";
+import { trimCharacter, trimTrailingCharacter } from "@/lib/trim-character";
 import {
   ghPublicRepoStats,
   type ForgeAccount,
@@ -48,8 +49,8 @@ export interface ParsedRemote {
 const REMOTE_PROTOCOLS = new Set(["https", "http", "ssh", "git"]);
 
 function cleanPath(path: string): string {
-  const trimmed = path.replace(/^\/+|\/+$/g, "");
-  return trimmed.replace(/\.git$/, "").replace(/\/+$/, "");
+  const trimmed = trimCharacter(path, "/");
+  return trimTrailingCharacter(trimmed.replace(/\.git$/, ""), "/");
 }
 
 function parseUrl(text: string): URL | null {
@@ -181,7 +182,7 @@ export function accountKey(base: string): string {
 
 function basePath(base: string): string {
   const url = parseUrl(base);
-  return url ? url.pathname.replace(/\/+$/, "") : "";
+  return url ? trimTrailingCharacter(url.pathname, "/") : "";
 }
 
 function defaultPort(url: URL): string {

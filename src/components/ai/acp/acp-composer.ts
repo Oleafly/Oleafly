@@ -2,6 +2,7 @@ import type { AttachmentKind, MentionItem, SlashItem } from "@/components/ai/com
 import type { MentionEntry } from "@/components/ai/MentionMenu";
 import { filterMentionEntries } from "@/components/ai/MentionMenu";
 import type { AcpCommand, AcpSession } from "@/lib/acp";
+import { trimTrailingCharacter } from "@/lib/trim-character";
 
 /** What Enter does in the CLI composer. */
 export type AcpComposerMode = "send" | "queue" | "start" | "blocked";
@@ -63,12 +64,12 @@ export function acpSlashItems(
 }
 
 function basename(path: string): string {
-  const trimmed = path.replace(/\/+$/, "");
+  const trimmed = trimTrailingCharacter(path, "/");
   return trimmed.slice(trimmed.lastIndexOf("/") + 1);
 }
 
 function parent(path: string): string | undefined {
-  const trimmed = path.replace(/\/+$/, "");
+  const trimmed = trimTrailingCharacter(path, "/");
   const slash = trimmed.lastIndexOf("/");
   return slash > 0 ? trimmed.slice(0, slash) : undefined;
 }
