@@ -317,24 +317,23 @@ mod tests {
 
     #[tokio::test]
     async fn legacy_servers_get_a_fresh_process_after_the_probe() {
-        let directory = tempfile::tempdir().unwrap();
-        let launches = directory.path().join("launches");
+        // The server ignores the discover request, so the probe times out. Its
+        // tool says whether its process saw that request: only the probed one
+        // did, however late a loaded machine started either process.
         let script = concat!(
-            "const fs=require('node:fs');",
             "const readline=require('node:readline');",
-            "const marker=process.argv[1];",
-            "fs.appendFileSync(marker,'x');",
-            "const launch=fs.readFileSync(marker,'utf8').length;",
+            "let probed=false;",
             "const lines=readline.createInterface({input:process.stdin});",
             "const send=(value)=>process.stdout.write(JSON.stringify(value)+'\\n');",
             "lines.on('line',(line)=>{const m=JSON.parse(line);",
+            "if(m.method==='server/discover'){probed=true;return;}",
             "if(m.method==='initialize'){send({jsonrpc:'2.0',id:m.id,result:{protocolVersion:'2025-06-18',capabilities:{tools:{}},serverInfo:{name:'silent',version:'1'}}});}",
-            "if(m.method==='tools/list'){send({jsonrpc:'2.0',id:m.id,result:{tools:[{name:'tool_'+launch,inputSchema:{type:'object'}}]}});}",
+            "if(m.method==='tools/list'){send({jsonrpc:'2.0',id:m.id,result:{tools:[{name:probed?'probed':'fresh',inputSchema:{type:'object'}}]}});}",
             "});",
         );
         let session = McpStdioSession::open(
             "node",
-            &["-e".into(), script.into(), launches.display().to_string()],
+            &["-e".into(), script.into()],
             &BTreeMap::new(),
             McpSessionLimits {
                 max_message_bytes: 1024 * 1024,
@@ -344,7 +343,7 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(session.tools()[0].name, "tool_2");
+        assert_eq!(session.tools()[0].name, "fresh");
         session.close().await;
     }
 

@@ -54,11 +54,11 @@ pub fn persist_with_retry(attempt: impl FnMut() -> io::Result<()>) -> io::Result
 
 /// A staging file beside `destination`, named `.{name}.oleafly-….tmp` so
 /// Oleafly's own folder scans skip it (`exclude::is_oleafly_owned_name`).
-/// On Unix it is created the way any new file is, with mode 0666 minus the
-/// umask (the `tempfile` default of 0600 would leave a new output unreadable
-/// to a web server or another user), or with 0600 when `private`; an
-/// existing destination's permissions replace either afterwards
-/// (`keep_permissions`).
+/// It is created the way any new file is, so on Unix the umask decides its
+/// mode (the `tempfile` default of 0600 would leave a new output unreadable
+/// to a web server or another user), or with `tempfile`'s 0600 when
+/// `private`; an existing destination's permissions replace either
+/// afterwards (`keep_permissions`).
 fn staging_file(parent: &Path, destination: &Path, private: bool) -> io::Result<NamedTempFile> {
     let name: String = destination
         .file_name()
@@ -67,14 +67,16 @@ fn staging_file(parent: &Path, destination: &Path, private: bool) -> io::Result<
     let prefix = format!(".{name}.oleafly-");
     let mut builder = tempfile::Builder::new();
     builder.prefix(&prefix).suffix(".tmp");
-    #[cfg(unix)]
-    if !private {
-        use std::os::unix::fs::PermissionsExt;
-        builder.permissions(std::fs::Permissions::from_mode(0o666));
+    if private {
+        return builder.tempfile_in(parent);
     }
-    #[cfg(not(unix))]
-    let _ = private;
-    builder.tempfile_in(parent)
+    builder.make_in(parent, |path| {
+        std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(path)
+    })
 }
 
 fn refuse_symlink(path: &Path) -> io::Result<()> {

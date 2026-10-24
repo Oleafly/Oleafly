@@ -157,7 +157,8 @@ fn append_to_log(run_dir: &std::path::Path, line: &str) {
 /// side: an upload, or a job whose answer was lost. The executors write
 /// `handle.json` before they change anything remotely.
 async fn abandon_start(executor: &Arc<dyn RunExecutor>, run_dir: &std::path::Path) {
-    let Some(handle) = std::fs::read_to_string(run_dir.join("handle.json"))
+    let Some(handle) = tokio::fs::read_to_string(run_dir.join("handle.json"))
+        .await
         .ok()
         .and_then(|json| RunHandle::parse(&json).ok())
     else {
