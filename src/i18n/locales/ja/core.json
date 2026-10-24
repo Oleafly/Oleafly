@@ -567,7 +567,8 @@
       "compileFailed": "コンパイルに失敗しました",
       "compileSucceeded": "コンパイルに成功しました",
       "diagnostics_other": "{{count}} 件の診断",
-      "papers_other": "{{count}} 件の論文"
+      "papers_other": "{{count}} 件の論文",
+      "sourcesFailed_other": "{{count}} 件のソースが失敗"
     }
   },
   "ui": {

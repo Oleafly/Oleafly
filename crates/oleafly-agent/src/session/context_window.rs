@@ -7,9 +7,10 @@ use std::io::Write;
 
 use serde::Serialize;
 
+use crate::caps::MAX_AGENT_DOCUMENTS;
 use crate::complete::CompletionRequest;
 use crate::error::{AgentError, Result};
-use crate::message::{ContentPart, Message};
+use crate::message::{unresolved_attachment, ContentPart, Message};
 
 pub(crate) const MAX_AGENT_HISTORY_BYTES: usize = 128 * 1024 * 1024;
 // Keep the character guard within the serialized-history ceiling while leaving
@@ -19,7 +20,9 @@ pub(crate) const MAX_AGENT_CONTEXT_CHARS: usize = MAX_AGENT_HISTORY_BYTES / 4;
 pub(crate) const MAX_AGENT_MESSAGES: usize = 128;
 pub(crate) const MAX_TOOL_DEFINITIONS: usize = 128;
 pub(crate) const MAX_AGENT_TOOL_CALLS: usize = 256;
-pub(crate) const MAX_AGENT_IMAGES: usize = 12;
+/// Images across the request, tool results included. A run starts with at
+/// most 12 user images so tools keep room for theirs.
+pub(crate) const MAX_AGENT_IMAGES: usize = 20;
 
 pub fn validate_completion_request(request: &CompletionRequest) -> Result<()> {
     HistoryBudget::new(request).map(|_| ())
@@ -39,6 +42,14 @@ pub(crate) struct HistoryBudget {
 
 impl HistoryBudget {
     pub(crate) fn new(request: &CompletionRequest) -> Result<Self> {
+        if request
+            .messages
+            .iter()
+            .flat_map(|message| &message.content)
+            .any(|part| matches!(part, ContentPart::Attachment { .. }))
+        {
+            return Err(unresolved_attachment());
+        }
         if request.messages.len() > MAX_AGENT_MESSAGES {
             return Err(history_limit_error("agent message count"));
         }
@@ -56,6 +67,15 @@ impl HistoryBudget {
         let images = count_images(&request.messages)?;
         if images > MAX_AGENT_IMAGES {
             return Err(history_limit_error("agent image count"));
+        }
+        let documents = request
+            .messages
+            .iter()
+            .flat_map(|message| &message.content)
+            .filter(|part| matches!(part, ContentPart::Document { .. }))
+            .count();
+        if documents > MAX_AGENT_DOCUMENTS {
+            return Err(history_limit_error("agent document count"));
         }
         Ok(Self {
             serialized_bytes: serialized_size_limited(request, MAX_AGENT_HISTORY_BYTES)?,
@@ -200,8 +220,15 @@ fn part_context_chars(part: &ContentPart) -> Result<usize> {
             arguments,
             ..
         } => checked_context_fields([id.as_str(), name.as_str(), arguments.as_str()]),
-        ContentPart::ToolResult { id, name, output } => {
-            checked_context_fields([id.as_str(), name.as_str(), output.as_str()])
+        ContentPart::ToolResult {
+            id, name, output, ..
+        } => checked_context_fields([id.as_str(), name.as_str(), output.as_str()]),
+        ContentPart::Thinking { thinking, .. } => checked_chars(thinking),
+        ContentPart::RedactedThinking { .. }
+        | ContentPart::Document { .. }
+        | ContentPart::Attachment { .. } => Ok(0),
+        ContentPart::ProviderBlock { block, .. } => {
+            serialized_size_limited(block, MAX_AGENT_CONTEXT_CHARS)
         }
     }
 }
@@ -215,12 +242,14 @@ fn checked_context_fields<const N: usize>(fields: [&str; N]) -> Result<usize> {
 }
 
 fn completion_context_chars(request: &CompletionRequest) -> Result<usize> {
-    let system = request
-        .system
-        .as_deref()
-        .map(checked_chars)
-        .transpose()?
-        .unwrap_or(0);
+    let system = [request.system.as_deref(), request.system_suffix.as_deref()]
+        .into_iter()
+        .flatten()
+        .try_fold(0usize, |total, text| {
+            total
+                .checked_add(checked_chars(text)?)
+                .ok_or_else(|| history_limit_error("agent context"))
+        })?;
     let messages = request.messages.iter().try_fold(0usize, |total, message| {
         total
             .checked_add(message_context_chars(message)?)
@@ -237,8 +266,12 @@ fn message_image_count(message: &Message) -> usize {
     message
         .content
         .iter()
-        .filter(|part| matches!(part, ContentPart::Image { .. }))
-        .count()
+        .map(|part| match part {
+            ContentPart::Image { .. } => 1,
+            ContentPart::ToolResult { images, .. } => images.len(),
+            _ => 0,
+        })
+        .sum()
 }
 
 fn count_images(messages: &[Message]) -> Result<usize> {
@@ -320,5 +353,78 @@ mod tests {
         .unwrap_err();
         assert!(is_history_limit(&error));
         assert!(!is_history_limit(&AgentError::Transport("reset".into())));
+    }
+
+    fn user_req(parts: Vec<ContentPart>) -> CompletionRequest {
+        CompletionRequest {
+            messages: vec![Message {
+                role: Role::User,
+                content: parts,
+            }],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn tool_images_count_toward_the_image_limit() {
+        let request = user_req(vec![ContentPart::ToolResult {
+            id: "t".into(),
+            name: "n".into(),
+            output: "o".into(),
+            images: vec!["data:image/png;base64,AA".into(); MAX_AGENT_IMAGES + 1],
+        }]);
+        assert!(is_history_limit(&HistoryBudget::new(&request).unwrap_err()));
+    }
+
+    #[test]
+    fn documents_are_capped_and_count_no_context_chars() {
+        let document = |data: String| ContentPart::Document {
+            mime: "application/pdf".into(),
+            data,
+            name: "a.pdf".into(),
+        };
+        let too_many = user_req(
+            (0..=crate::caps::MAX_AGENT_DOCUMENTS)
+                .map(|_| document("JVBE".into()))
+                .collect(),
+        );
+        assert!(is_history_limit(
+            &HistoryBudget::new(&too_many).unwrap_err()
+        ));
+        let one = user_req(vec![document("A".repeat(1024 * 1024))]);
+        // Against an empty request: the tool list (`[]`) counts as before.
+        let empty = HistoryBudget::new(&user_req(Vec::new()))
+            .unwrap()
+            .context_chars;
+        assert_eq!(HistoryBudget::new(&one).unwrap().context_chars, empty);
+    }
+
+    #[test]
+    fn unresolved_attachments_are_refused_without_compacting() {
+        let error = HistoryBudget::new(&user_req(vec![ContentPart::Attachment {
+            sha256: "a".repeat(64),
+            name: "x".into(),
+            mime: "image/png".into(),
+        }]))
+        .unwrap_err();
+        assert!(!is_history_limit(&error));
+    }
+
+    #[test]
+    fn thinking_counts_its_text_and_redacted_thinking_counts_nothing() {
+        let budget = HistoryBudget::new(&user_req(vec![
+            ContentPart::Thinking {
+                thinking: "abcd".into(),
+                signature: "s".repeat(100),
+            },
+            ContentPart::RedactedThinking {
+                data: "x".repeat(100),
+            },
+        ]))
+        .unwrap();
+        let empty = HistoryBudget::new(&user_req(Vec::new()))
+            .unwrap()
+            .context_chars;
+        assert_eq!(budget.context_chars, empty + 4);
     }
 }

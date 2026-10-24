@@ -1,5 +1,4 @@
 import { getConfigCached } from "@/lib/config-cache";
-import { activeCuaSurface } from "@/lib/cua-sandbox";
 import {
   agentExec,
   agentExecAuthorize,
@@ -494,13 +493,9 @@ export function createOleaflyTools(opts?: {
   onImage?: (dataUrl: string) => void;
   mutationAllowed?: () => boolean;
   runId?: () => string | null;
-  alwaysConfirmComputerUse?: boolean;
 }) {
   return createOleaflyToolsCore(HOST, {
     ...opts,
-    // The computer_use tool is only exposed when the experimental web browser
-    // is enabled; otherwise the AI has no browser tool at all.
-    cuaSurface: useSettingsStore.getState().webBrowser ? activeCuaSurface : undefined,
     resolveExecCwd: agentExecCwd,
     authorizeExec: async (projectId, command, runIdOverride) => {
       // A subagent supplies its own external: owner so its commands can be

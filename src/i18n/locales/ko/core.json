@@ -567,7 +567,8 @@
       "compileFailed": "컴파일 실패",
       "compileSucceeded": "컴파일 성공",
       "diagnostics_other": "진단 {{count}}건",
-      "papers_other": "논문 {{count}}편"
+      "papers_other": "논문 {{count}}편",
+      "sourcesFailed_other": "소스 {{count}}개 실패"
     }
   },
   "ui": {

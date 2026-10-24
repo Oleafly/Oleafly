@@ -64,6 +64,18 @@ pub struct CustomProvider {
     pub key_optional: bool,
 }
 
+// 0.4.8 H: Tools model
+/// The provider and model the Tools converters and the editor's
+/// Image to LaTeX/Typst send images to.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct ToolsModelChoice {
+    pub provider: String,
+    pub model: String,
+}
+
+const MAX_TOOLS_PROVIDER_CHARS: usize = 128;
+const MAX_TOOLS_MODEL_CHARS: usize = 512;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Persona {
     pub id: String,
@@ -134,11 +146,19 @@ pub struct AppConfig {
     /// (`verify_pdf_pages`). Defaults to true; users can disable for privacy.
     #[serde(default = "default_ai_pdf_capture")]
     pub ai_pdf_capture: bool,
+    /// Ask thinking models for readable summaries of their reasoning.
+    #[serde(default)]
+    pub ai_reasoning_summaries: bool,
     /// Provider id -> per-model enable/source state (seeded from the static catalog).
     #[serde(default)]
     pub ai_provider_models: std::collections::HashMap<String, Vec<StoredModel>>,
     #[serde(default)]
     pub ai_custom_providers: Vec<CustomProvider>,
+    // 0.4.8 H: Tools model
+    /// The model the Tools converters and the editor's Image to LaTeX use.
+    /// `None` = automatic local (Ollama). Written only by `set_ai_tools_model`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_tools_model: Option<ToolsModelChoice>,
     #[serde(default)]
     pub ai_model_probes: BTreeMap<String, ModelProbe>,
     #[serde(default)]
@@ -181,6 +201,39 @@ pub struct AppConfig {
     pub latex_default_engine: Option<String>,
     #[serde(default)]
     pub live_collaboration: bool,
+    // 0.4.8 E: research task defaults
+    /// Keep the computer awake while a research task or run is active.
+    #[serde(default = "default_true")]
+    pub research_keep_awake: bool,
+    /// Notify when a task needs the user and no Oleafly window is focused.
+    #[serde(default = "default_true")]
+    pub research_notifications: bool,
+    /// New tasks start with network access for their commands.
+    #[serde(default)]
+    pub research_command_network: bool,
+    /// The time budget new tasks start with, in minutes.
+    #[serde(default = "default_research_minutes")]
+    pub research_time_budget_minutes: u32,
+    /// Names of MCP servers research tasks may use (each call is approved).
+    #[serde(default)]
+    pub research_task_mcp_servers: Vec<String>,
+    // 0.4.8 L: background tasks. Changed only through their own commands
+    // (`background_tasks_set_enabled`, `background_helper_set_login_item`).
+    /// Tasks marked to keep running move to the background helper when
+    /// Oleafly quits.
+    #[serde(default = "default_true")]
+    pub research_background_enabled: bool,
+    /// Start the background helper when the user signs in.
+    #[serde(default)]
+    pub research_background_at_login: bool,
+    // 0.4.8 I: Desktop apps. Device-local, written only by
+    // `cua_driver_settings_set`, which asks before widening control.
+    #[serde(default)]
+    pub cua_driver: crate::cua_driver::CuaDriverConfig,
+}
+
+fn default_research_minutes() -> u32 {
+    120
 }
 
 fn default_ui_locale() -> String {
@@ -213,8 +266,10 @@ impl Default for AppConfig {
             ai_keys: HashMap::new(),
             ai_system_prompt: String::new(),
             ai_pdf_capture: true,
+            ai_reasoning_summaries: false,
             ai_provider_models: std::collections::HashMap::new(),
             ai_custom_providers: Vec::new(),
+            ai_tools_model: None,
             ai_model_probes: BTreeMap::new(),
             ai_model_lists_refreshed_at: BTreeMap::new(),
             ai_personas: Vec::new(),
@@ -233,6 +288,15 @@ impl Default for AppConfig {
             typst_default_version: None,
             latex_default_engine: None,
             live_collaboration: false,
+            research_keep_awake: true,
+            research_notifications: true,
+            research_command_network: false,
+            research_time_budget_minutes: default_research_minutes(),
+            research_task_mcp_servers: Vec::new(),
+            // 0.4.8 L:
+            research_background_enabled: true,
+            research_background_at_login: false,
+            cua_driver: crate::cua_driver::CuaDriverConfig::default(),
         }
     }
 }
@@ -456,6 +520,61 @@ pub(crate) fn set_typst_default_choice(version: Option<String>) -> Result<(), St
             .filter(|version| !version.is_empty());
         Ok(())
     })
+}
+
+// 0.4.8 H: Tools model
+/// Trims and checks a Tools model choice. An Ollama choice without a model is
+/// the automatic local choice, stored as `None`.
+pub(crate) fn normalize_tools_choice(
+    choice: Option<ToolsModelChoice>,
+) -> Result<Option<ToolsModelChoice>, String> {
+    let Some(choice) = choice else {
+        return Ok(None);
+    };
+    // Checked before trimming: trim() would quietly drop a trailing newline.
+    if choice.provider.chars().any(char::is_control) {
+        return Err("Pick a provider for Tools.".into());
+    }
+    if choice.model.chars().any(char::is_control) {
+        return Err("Pick a model for Tools.".into());
+    }
+    let provider = choice.provider.trim();
+    let model = choice.model.trim();
+    if provider.is_empty() || provider.chars().count() > MAX_TOOLS_PROVIDER_CHARS {
+        return Err("Pick a provider for Tools.".into());
+    }
+    if model.chars().count() > MAX_TOOLS_MODEL_CHARS {
+        return Err("Pick a model for Tools.".into());
+    }
+    if model.is_empty() {
+        return if provider == "ollama" {
+            Ok(None)
+        } else {
+            Err("Pick a model for Tools.".into())
+        };
+    }
+    Ok(Some(ToolsModelChoice {
+        provider: provider.to_owned(),
+        model: model.to_owned(),
+    }))
+}
+
+pub(crate) fn set_ai_tools_model_blocking(choice: Option<ToolsModelChoice>) -> Result<(), String> {
+    let choice = normalize_tools_choice(choice)?;
+    update_config(|config| {
+        config.ai_tools_model = choice;
+        Ok(())
+    })
+}
+
+/// Sets the model the Tools converters use. Whole-config writes from the
+/// webview keep the stored choice (`set_config_blocking`), so only this
+/// command changes where Tools send images.
+#[tauri::command]
+pub async fn set_ai_tools_model(choice: Option<ToolsModelChoice>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || set_ai_tools_model_blocking(choice))
+        .await
+        .map_err(|error| format!("failed to save the Tools model: {error}"))?
 }
 
 pub(crate) const LATEXMK_ENGINE: &str = "latexmk";
@@ -990,8 +1109,15 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     drop_probes_for_moved_endpoints(&mut config, &stored);
     config.mcp_servers = stored.mcp_servers;
     config.typst_default_version = stored.typst_default_version;
+    // 0.4.8 H: only set_ai_tools_model changes where Tools send images.
+    config.ai_tools_model = stored.ai_tools_model;
     config.latex_default_engine = stored.latex_default_engine;
     config.live_collaboration = stored.live_collaboration;
+    // 0.4.8 I: only cua_driver_settings_set changes what agents may control.
+    config.cua_driver = stored.cua_driver;
+    // 0.4.8 L: only the background commands change these.
+    config.research_background_enabled = stored.research_background_enabled;
+    config.research_background_at_login = stored.research_background_at_login;
     config.github_connected = false;
     write_config_unlocked(&config)
 }
@@ -1023,6 +1149,57 @@ fn keep_newer_model_trust_records(config: &mut AppConfig, stored: &AppConfig) {
 mod tests {
     use super::*;
     use crate::proc::NoConsole as _;
+
+    #[test]
+    fn a_0_4_7_config_gets_the_research_defaults() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+
+        assert!(config.research_keep_awake);
+        assert!(config.research_notifications);
+        assert!(!config.research_command_network);
+        assert_eq!(config.research_time_budget_minutes, 120);
+        assert!(config.research_task_mcp_servers.is_empty());
+        let defaults = AppConfig::default();
+        assert_eq!(
+            (
+                defaults.research_keep_awake,
+                defaults.research_time_budget_minutes
+            ),
+            (true, 120)
+        );
+    }
+
+    // 0.4.8 L:
+    #[test]
+    fn background_settings_default_on_and_off_for_0_4_7_configs() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+        assert!(config.research_background_enabled && !config.research_background_at_login);
+        let defaults = AppConfig::default();
+        assert!(defaults.research_background_enabled && !defaults.research_background_at_login);
+    }
+
+    // 0.4.8 L:
+    #[test]
+    fn a_full_config_write_keeps_the_background_settings() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        update_config(|config| {
+            config.research_background_enabled = false;
+            config.research_background_at_login = true;
+            Ok(())
+        })
+        .unwrap();
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.research_background_enabled = true;
+        incoming.research_background_at_login = false;
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        let stored = read_config().unwrap();
+        assert!(!stored.research_background_enabled && stored.research_background_at_login);
+        std::fs::remove_dir_all(dir).ok();
+    }
 
     #[test]
     fn old_configs_keep_checkpoints_and_their_notifications_on() {
@@ -2098,6 +2275,49 @@ mod tests {
         std::fs::remove_dir_all(dir).ok();
     }
 
+    // 0.4.8 I: Desktop apps settings survive a generic settings save.
+    #[test]
+    fn generic_settings_updates_preserve_the_desktop_apps_settings() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        let stored = AppConfig {
+            cua_driver: crate::cua_driver::CuaDriverConfig {
+                enabled: true,
+                apps: vec![crate::cua_driver::config::AllowedApp {
+                    name: "Zotero".into(),
+                    bundle_id: Some("org.zotero.zotero".into()),
+                    executable: None,
+                }],
+                ..Default::default()
+            },
+            ..AppConfig::default()
+        };
+        write_config(&stored).unwrap();
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.github_user = "octocat".to_string();
+        incoming.cua_driver = crate::cua_driver::CuaDriverConfig::default();
+
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+
+        let persisted = read_config().unwrap();
+        assert_eq!(persisted.github_user, "octocat");
+        assert_eq!(persisted.cua_driver, stored.cua_driver);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn configs_from_0_4_7_load_with_desktop_apps_off() {
+        let config: AppConfig =
+            serde_json::from_str(r#"{"github_user":"octocat","live_collaboration":true}"#).unwrap();
+        assert!(!config.cua_driver.enabled);
+        assert!(config.cua_driver.apps.is_empty());
+        assert!(config.cua_driver.sites.is_empty());
+        assert!(!config.cua_driver.scripted_control);
+        assert_eq!(AppConfig::default().cua_driver, config.cua_driver);
+    }
+
     #[test]
     fn generic_settings_updates_carry_the_checkpoint_switches() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -2622,5 +2842,110 @@ mod tests {
         let error = restore_mcp_server_secret_markers(&mut incoming, &stored).unwrap_err();
 
         assert!(error.to_ascii_lowercase().contains("re-enter"));
+    }
+
+    // 0.4.8 H: Tools model
+    #[test]
+    fn old_configs_start_with_the_automatic_local_tools_model() {
+        let config: AppConfig = serde_json::from_str("{}").unwrap();
+        assert!(config.ai_tools_model.is_none());
+        assert!(AppConfig::default().ai_tools_model.is_none());
+        assert!(!serde_json::to_string(&AppConfig::default())
+            .unwrap()
+            .contains("ai_tools_model"));
+    }
+
+    #[test]
+    fn tools_choices_are_trimmed_and_an_empty_ollama_model_means_automatic() {
+        let choice = |provider: &str, model: &str| {
+            Some(ToolsModelChoice {
+                provider: provider.into(),
+                model: model.into(),
+            })
+        };
+        assert_eq!(normalize_tools_choice(None).unwrap(), None);
+        assert_eq!(
+            normalize_tools_choice(choice("ollama", "  ")).unwrap(),
+            None
+        );
+        assert_eq!(
+            normalize_tools_choice(choice(" ollama ", "")).unwrap(),
+            None
+        );
+        assert_eq!(
+            normalize_tools_choice(choice(" anthropic ", " claude-opus-5-5 ")).unwrap(),
+            choice("anthropic", "claude-opus-5-5")
+        );
+        assert_eq!(
+            normalize_tools_choice(choice("ollama", " glm-ocr:latest ")).unwrap(),
+            choice("ollama", "glm-ocr:latest")
+        );
+        assert!(normalize_tools_choice(choice("", "x")).is_err());
+        assert!(normalize_tools_choice(choice("   ", "x")).is_err());
+        assert!(normalize_tools_choice(choice("openai\n", "x")).is_err());
+        assert!(normalize_tools_choice(choice("openai", "gpt\u{0}")).is_err());
+        assert!(normalize_tools_choice(choice("anthropic", " ")).is_err());
+        assert!(normalize_tools_choice(choice(&"p".repeat(129), "x")).is_err());
+        assert!(normalize_tools_choice(choice(&"p".repeat(128), "x")).is_ok());
+        assert!(normalize_tools_choice(choice("openai", &"m".repeat(513))).is_err());
+        assert!(normalize_tools_choice(choice("openai", &"m".repeat(512))).is_ok());
+    }
+
+    #[test]
+    fn the_tools_model_persists_and_settings_writes_from_the_webview_keep_it() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+        assert!(read_config().unwrap().ai_tools_model.is_none());
+
+        set_ai_tools_model_blocking(Some(ToolsModelChoice {
+            provider: " anthropic ".into(),
+            model: "claude-opus-5-5".into(),
+        }))
+        .unwrap();
+        let mut incoming = get_config_blocking().unwrap();
+        assert_eq!(
+            incoming.ai_tools_model.as_ref().unwrap(),
+            &ToolsModelChoice {
+                provider: "anthropic".into(),
+                model: "claude-opus-5-5".into(),
+            }
+        );
+
+        // A stale whole-config write from the webview cannot drop or change it.
+        incoming.ai_tools_model = None;
+        tauri::async_runtime::block_on(set_config(incoming.clone())).unwrap();
+        assert_eq!(
+            read_config().unwrap().ai_tools_model.unwrap().provider,
+            "anthropic"
+        );
+        incoming.ai_tools_model = Some(ToolsModelChoice {
+            provider: "openai".into(),
+            model: "gpt-6-luna".into(),
+        });
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert_eq!(
+            read_config().unwrap().ai_tools_model.unwrap().provider,
+            "anthropic"
+        );
+
+        assert!(set_ai_tools_model_blocking(Some(ToolsModelChoice {
+            provider: "openai\r\n".into(),
+            model: "x".into(),
+        }))
+        .is_err());
+        assert_eq!(
+            read_config().unwrap().ai_tools_model.unwrap().model,
+            "claude-opus-5-5"
+        );
+
+        set_ai_tools_model_blocking(None).unwrap();
+        assert!(read_config().unwrap().ai_tools_model.is_none());
+        assert!(!std::fs::read_to_string(config_path().unwrap())
+            .unwrap()
+            .contains("ai_tools_model"));
+        std::fs::remove_dir_all(dir).ok();
     }
 }

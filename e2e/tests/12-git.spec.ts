@@ -1,7 +1,7 @@
 import { test, expect } from "../fixtures";
 import {
   createBlankProject,
-  ensureGithubConnected,
+  ensureGitHostingAccount,
   openProject,
   openRailTab,
   stageAllGitChanges,
@@ -82,22 +82,21 @@ async function stageAllAndCommit(page: Page, message: string) {
   }
 }
 
-test("Source Control keeps local Git available while GitHub is disconnected", async ({
+test("Source Control keeps local Git available while no Git hosting account is connected", async ({
   tauriPage,
 }) => {
-  // Ignored on purpose when a GitHub token is configured, because this case asserts the disconnected panel.
+  // Ignored on purpose when a GitHub token is configured, because this case asserts the panel without an account.
   test.skip(
     !!process.env.E2E_GITHUB_TOKEN,
-    "asserts the disconnected panel; a saved token leaves the account connected",
+    "asserts the panel without an account; a saved token leaves an account connected",
   );
   await createBlankProject(tauriPage, `Git local ${RUN}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openRailTab(tauriPage, "Source Control");
-  await expect(tauriPage.getByText("Connect GitHub to continue")).toHaveCount(0);
   await initializeRepository(tauriPage);
   await expect(tauriPage.locator('[data-testid="commit-title"]')).toBeVisible();
   await openSourceControlMoreActions(tauriPage);
-  await expect(tauriPage.getByText("Publish to GitHub", { exact: true })).toBeVisible({
+  await expect(tauriPage.getByTestId("source-control-publish")).toBeVisible({
     timeout: 10_000,
   });
   expect(
@@ -234,7 +233,7 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
 
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await ensureGithubConnected(tauriPage);
+  await ensureGitHostingAccount(tauriPage);
 
   await openRailTab(tauriPage, "Source Control");
   await openSourceControlMoreActions(tauriPage);
@@ -242,7 +241,8 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   // A previous run may have left a remote linked; unlink to get the Publish CTA.
   await tauriPage.waitForFunction(
     `Array.from(document.querySelectorAll('[role="menuitem"]')).some(entry =>
-      ["Publish to GitHub", "Unlink"].includes((entry.textContent ?? "").trim()) &&
+      (entry.getAttribute("data-testid") === "source-control-publish" ||
+        (entry.textContent ?? "").trim() === "Unlink") &&
       entry.getAttribute("aria-disabled") !== "true")`,
     15_000,
   );
@@ -252,16 +252,10 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   if (linked) {
     await tauriPage.getByText("Unlink", { exact: true }).click();
     await openSourceControlMoreActions(tauriPage);
-    await expect(tauriPage.getByText("Publish to GitHub")).toBeVisible({ timeout: 10_000 });
-    await tauriPage.waitForFunction(
-      `Array.from(document.querySelectorAll('[role="menuitem"]')).some(entry =>
-        (entry.textContent ?? "").trim() === "Publish to GitHub" &&
-        entry.getAttribute("aria-disabled") !== "true")`,
-      15_000,
-    );
+    await waitForPublishItem(tauriPage);
   }
 
-  await tauriPage.getByText("Publish to GitHub").click();
+  await tauriPage.getByTestId("source-control-publish").click();
   await tauriPage.fill('[aria-label="Repository name"]', repoName);
   await tauriPage.getByText("Create and push").click();
   await expect(tauriPage.getByText("Published to")).toBeVisible({ timeout: 90_000 });
@@ -282,5 +276,16 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   await openSourceControlMoreActions(tauriPage);
   await tauriPage.getByText("Unlink", { exact: true }).click();
   await openSourceControlMoreActions(tauriPage);
-  await expect(tauriPage.getByText("Publish to GitHub")).toBeVisible({ timeout: 10_000 });
+  await waitForPublishItem(tauriPage);
 });
+
+// The publish item reads "Change repo" while a remote is linked; wait for it
+// to offer publishing again.
+async function waitForPublishItem(page: Page) {
+  await page.waitForFunction(
+    `Array.from(document.querySelectorAll('[data-testid="source-control-publish"][role="menuitem"]')).some(entry =>
+      (entry.textContent ?? "").trim() !== "Change repo" &&
+      entry.getAttribute("aria-disabled") !== "true")`,
+    15_000,
+  );
+}

@@ -22,27 +22,61 @@ out, and the app log names the files that stopped the commit. Files the
 project's own `.gitignore` already covers don't count. Neither do templates
 like `.env.example`, SSH public keys or Keynote `.key` files.
 
-**Publish to GitHub** uses the same list, in any folder and any mix of upper
-and lower case. It commits everything else, and the dialog names the files it
-left out. Those stay in the project folder and aren't staged. A push uploads
-the whole branch history, so if a file with one of these names was ever
-committed, Oleafly lists it and waits for **Cancel** or **Publish anyway**
-before it creates anything on GitHub. The history check only looks at names,
-so it lists a Keynote `.key` file too.
+**Publish** uses the same list, in any folder and any mix of upper and lower
+case. It commits everything else, and the dialog names the files it left out.
+Those stay in the project folder and aren't staged. A push uploads the whole
+branch history, so if a file with one of these names was ever committed,
+Oleafly lists it and waits for **Cancel** or **Publish anyway** before it
+creates anything on the server. The history check only looks at names, so it
+lists a Keynote `.key` file too.
 
 Opening a project that has no repository yet only runs `git init`. It stages
 nothing and commits nothing. After the first commit, Oleafly commits only when
 you ask for it in the panel. Oleafly leaves the folder alone when it already
 sits inside another repository or was opened in place. You can turn all of this
-off in Settings, under Integrations and then GitHub, with **Initialise Git for
-every project**. With the switch off, Source Control starts only when you press
-**Initialize Repository** or publish to GitHub, or when an imported project
-already carries its own repository.
+off in Settings, under Integrations and then Git hosting, with **Initialise Git
+for every project**. With the switch off, Source Control starts only when you
+press **Initialize Repository** or publish the project, or when an imported
+project already carries its own repository.
 
 <div align="center">
   <img src="assets/readme/source-control.png" alt="Oleafly Source Control panel showing staged changes, a branch graph, and commit controls" width="100%" />
 </div>
 <p align="center"><em>Use normal Git operations beside the manuscript, with the repository state in view.</em></p>
+
+## Git hosting
+
+Source Control works with GitHub, GitLab, Gitea, Forgejo and Codeberg, and
+with servers you run yourself. Add accounts in Settings, under Integrations and
+then Git hosting. For github.com and gitlab.com you can sign in with a one-time
+code in your browser. Every server also takes an access token.
+
+**Publish** creates a repository on the account you pick and pushes the project
+to it, or links the project to one of your repositories. **Link by address**
+takes the HTTPS or SSH address of any repository and pushes there. Oleafly
+won't save an address that has a password or an access token in it.
+
+Push, pull and fetch don't need an account in Oleafly. Over SSH, Git uses your
+own keys. Over HTTPS, Git uses the account saved for that server, or else your
+own Git credentials. When a push or pull fails for one of these reasons, Source
+Control says so:
+
+- The server asked for a user name and password. Sign in to that server in
+  Settings, or set up an SSH key or a Git credential helper.
+- SSH doesn't know the server yet. Connect to it once from a terminal to accept
+  its host key, then try again.
+- The server refused your SSH key. Add your public key to your account on that
+  server, or load the key into your SSH agent.
+
+If your organization runs its own certificate authority, add its certificate
+file to the account in Settings. Oleafly uses that file for that server only,
+for its own requests and for Git.
+
+**Import** can pick a repository from any connected account, or clone any
+repository by its address. The imported project keeps the repository's
+history. **Cancel** stops a clone that is taking too long, and so does
+closing the dialog. Oleafly clones into `clone-staging` in its data folder
+first and clears what a stopped clone left there.
 
 ## When Git is not installed
 
@@ -69,7 +103,8 @@ instead of offering buttons that would fail:
 - Ahead and behind indicators for the configured remote.
 - The Explorer marks changed files with the same letters as Source Control (M,
   U, D and so on), and a folder that holds changes gets a dot.
-- Publish a project to GitHub or connect an existing repository.
+- Publish a project to GitHub, GitLab, Gitea, Forgejo, Codeberg or your own
+  server, or link it to any repository by address.
 - Continue editing from another editor or terminal without conversion.
 
 ## Safety boundaries
@@ -96,7 +131,9 @@ instead of offering buttons that would fail:
   older Oleafly version made, it adds just `.oleafly/`, so your own `.log` and
   `.out` files stay visible and you can still stage them. A rule in the
   project's own `.gitignore` still wins.
-- Git authentication tokens are not passed through shell command arguments.
+- Account tokens never appear in command arguments, remote addresses or
+  `.git/config`. Git gets a token only through a credential helper that answers
+  for that account's server address and nothing else.
 - The Git transport rejects helper syntax that could execute an unexpected
   command.
 - Export destinations are validated independently from project paths.
@@ -104,6 +141,10 @@ instead of offering buttons that would fail:
 ## Engineering anchors
 
 - `src-tauri/src/git.rs`: Git commands, remotes, authentication, and safety.
+- `src-tauri/src/forge/`: Git hosting accounts, publish, import and clone
+  commands.
+- `crates/oleafly-forge/`: account store, server APIs, sign-in and safe HTTP.
+  It has no Tauri dependency.
 - `src-tauri/src/project.rs`: project metadata and export history.
 - `src/store/files.ts`: filesystem-backed file state and autosave.
 - `src/components/layout/SourceControl.tsx`,

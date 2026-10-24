@@ -186,6 +186,10 @@
     "terminal": "Laster terminalen"
   },
   "terminal": {
+    "activity": "Ny aktivitet",
+    "clipboard": {
+      "blocked": "Et program i terminalen vil kopiere tekst."
+    },
     "closeCurrent": "Lukk denne",
     "closeLeft": "Lukk alle til venstre",
     "closeOthers": "Lukk de andre",
@@ -197,6 +201,19 @@
       "resize": "Terminalen kunne ikke endre størrelse",
       "start": "Kunne ikke starte shell"
     },
+    "find": {
+      "count": "{{current}} av {{total}}",
+      "label": "Søk i terminalen",
+      "next": "Neste treff",
+      "none": "Ingen treff",
+      "previous": "Forrige treff"
+    },
+    "launch": {
+      "invalid": "Denne kommandoen kan ikke kjøre i terminalen.",
+      "noProject": "Åpne et prosjekt for å bruke terminalen.",
+      "run": "Kjør",
+      "title": "Vil du kjøre denne kommandoen i terminalen?"
+    },
     "limitReached": "Lukk en terminal for å åpne en ny",
     "links": {
       "openFile": "{{modifier}}-klikk for å åpne",
@@ -204,8 +221,25 @@
       "openUrlFailed": "Kunne ikke åpne lenken."
     },
     "newTerminal": "Ny terminal",
+    "openInTerminal": "Åpne i terminalen",
     "settings": "Terminalinnstillinger",
     "starting": "Starter prosjektets shell…",
+    "stop": {
+      "closeMany": "Lukk terminalene",
+      "closeOne": "Lukk terminalen",
+      "closeProject": "Lukk prosjektet",
+      "dontAsk": "Ikke spør igjen",
+      "dontAskHint": "For å slå den på igjen, går du til Innstillinger, Utseende, Terminal, Spør før en opptatt terminal lukkes.",
+      "many_one": "Et program kjører fortsatt i {{count}} terminal.",
+      "many_other": "Programmer kjører fortsatt i {{count}} terminaler.",
+      "named": "{{process}} kjører fortsatt i {{title}}.",
+      "quit": "Avslutt",
+      "restart": "Start på nytt",
+      "switchProject": "Bytt prosjekt",
+      "titleMany": "Vil du stoppe programmene som kjører?",
+      "titleOne": "Vil du stoppe programmet som kjører?",
+      "unnamed": "Et program kjører fortsatt i {{title}}."
+    },
     "tabs": "Terminaler",
     "titleInput": "Terminaltittel"
   },

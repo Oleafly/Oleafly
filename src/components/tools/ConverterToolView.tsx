@@ -1,4 +1,4 @@
-import { type DragEvent as ReactDragEvent, useMemo, useRef, useState } from "react";
+import { type ComponentProps, type DragEvent as ReactDragEvent, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { languageForPath } from "@oleafly/editor";
 import {
@@ -11,6 +11,7 @@ import {
   FolderPlus,
   Image as ImageIcon,
   RotateCcw,
+  ScanText,
   Settings,
   ShieldCheck,
   Upload,
@@ -21,6 +22,12 @@ import { Input } from "@/components/ui/input";
 import { CodeField } from "@/components/tools/CodeField";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import {
+  openToolsSettings,
+  ScanEstimateText,
+  ToolsModelNotice,
+  ToolsModelPicker,
+} from "@/components/tools/ToolsModelBar";
+import {
   ToolPane,
   ToolSegmentedControl,
   ToolSplitView,
@@ -29,13 +36,17 @@ import {
 import {
   AD_HOC_CONVERTERS,
   converterCopy,
-  LocalModelError,
   projectReadySource,
   runAdHocConverter,
+  ScanConfirmationNeeded,
+  ToolsModelError,
+  parsePageRange,
   type ConverterInput,
   type ConverterOutput,
   type ConverterProgress,
 } from "@/features/ad-hoc-converters";
+import type { PageSize } from "@/features/tools-ai/scan-estimate";
+import { agentErrorKind } from "@/lib/agent-backend";
 import { createProjectFromAdHoc, writeBytesFile } from "@/lib/tauri";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { toolById } from "@/lib/tool-catalog";
@@ -47,7 +58,6 @@ import { cn } from "@/lib/utils";
 import { useAsyncTask } from "@/hooks/use-async-task";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
-import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 import { base64ToBytes, bytesToBase64, textToBase64 } from "@/lib/base64";
 import { basename } from "@/lib/path-utils";
@@ -62,7 +72,10 @@ type ConverterStatus =
 
 interface ConverterFailure {
   message: string;
-  localModel: boolean;
+  /** Where the fix lives: Settings, AI (Ollama) or Settings, AI, Tools. */
+  settings: "ai" | "ai-tools" | null;
+  /** A long scan waiting for the user's go-ahead, with its page sizes. */
+  scan: { sizes: PageSize[] } | null;
 }
 
 function stem(fileName: string): string {
@@ -193,10 +206,46 @@ async function saveOutput(output: ConverterOutput): Promise<void> {
   toast.success(i18n.t(($) => $.researchTools.converter.saved, { fileName }));
 }
 
-function converterInput(text: string, file: File | null): ConverterInput {
+function converterInput(
+  text: string,
+  file: File | null,
+  scanConfirmed = false,
+  pageRange?: readonly [number, number],
+): ConverterInput {
   const { engine } = useFilesStore.getState();
   const typstVersion = engine.id === "typst" ? engine.typst_resolved?.version : undefined;
-  return typstVersion ? { text, file, typstVersion } : { text, file };
+  const base: ConverterInput = typstVersion ? { text, file, typstVersion } : { text, file };
+  const input = pageRange ? { ...base, pageRange } : base;
+  return scanConfirmed ? { ...input, scanConfirmed: true } : input;
+}
+
+/** Which pages of a chosen scanned PDF to convert. Empty means every page. */
+function PageRangeField({
+  value,
+  invalid,
+  onChange,
+}: Readonly<{ value: string; invalid: boolean; onChange: (value: string) => void }>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t px-4 py-3">
+      <label htmlFor="converter-page-range" className="text-xs font-medium">
+        {t(($) => $.researchTools.converter.pageRange)}
+      </label>
+      <Input
+        id="converter-page-range"
+        data-testid="converter-page-range"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={t(($) => $.researchTools.converter.pageRangePlaceholder)}
+        className="h-8 w-64 max-w-full text-xs"
+      />
+      {invalid && (
+        <span role="alert" className="text-xs text-destructive">
+          {t(($) => $.researchTools.converter.pageRangeInvalid)}
+        </span>
+      )}
+    </div>
+  );
 }
 
 function ConversionNote({ note, details }: Readonly<{ note: string; details: readonly string[] }>) {
@@ -218,10 +267,174 @@ function failureMessage(error: unknown, fallback: string): string {
   return decodeAppError(error) ? describeError(error) : fallback;
 }
 
-function openLocalModelSettings(): void {
-  const settings = useSettingsStore.getState();
-  settings.setSettingsInitialSection("ai");
-  settings.setSettingsOpen(true);
+/** Which settings fix a failed model conversion, if any. */
+function failureSettings(caught: unknown, message: string): ConverterFailure["settings"] {
+  if (caught instanceof ToolsModelError) return caught.settings;
+  if (decodeAppError(caught)?.code.startsWith("mathpix.")) return "ai-tools";
+  const kind = agentErrorKind(caught);
+  if (kind === "not_configured" || kind === "auth") return "ai-tools";
+  if (/ollama/i.test(message)) return "ai";
+  return null;
+}
+
+/** A long scan waiting for confirmation: the page count, the estimate, the
+ * model picker and where the pages go, then Transcribe or Cancel. */
+function ScanConfirmation({
+  sizes,
+  onRun,
+  onCancel,
+}: Readonly<{ sizes: readonly PageSize[]; onRun: () => void; onCancel: () => void }>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div
+      data-testid="converter-scan-confirm"
+      className="flex min-h-72 flex-1 items-center justify-center p-8 text-center"
+    >
+      <div className="flex max-w-md flex-col items-center gap-3">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <ScanText className="size-5" />
+        </div>
+        <h2 className="text-sm font-semibold">{t(($) => $.researchTools.converterModel.scannedTitle)}</h2>
+        <ScanEstimateText sizes={sizes} />
+        <ToolsModelPicker className="w-64 max-w-full" />
+        <div className="text-xs">
+          <ToolsModelNotice scope="scans" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" data-testid="converter-scan-confirm-run" onClick={onRun}>
+            <ScanText /> {t(($) => $.researchTools.converterModel.transcribePages, { count: sizes.length })}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            {t(($) => $.researchTools.converter.cancel)}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function toolStatusState(busy: boolean, error: ConverterFailure | null): "ready" | "busy" | "error" {
+  if (busy) return "busy";
+  return error && !error.scan ? "error" : "ready";
+}
+
+/** Where the input goes: the model, arXiv, or nowhere because it stays on the device. */
+function InputDestination({
+  usesModel,
+  downloadsFromArxiv,
+}: Readonly<{ usesModel: "always" | "scans" | undefined; downloadsFromArxiv: boolean }>) {
+  const { t } = useTranslation(["researchTools"]);
+  if (usesModel) return <ToolsModelNotice scope={usesModel === "scans" ? "scans" : "images"} />;
+  if (downloadsFromArxiv) {
+    return (
+      <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-amber-600 dark:text-amber-400">
+        <CloudDownload className="size-3.5" /> {t(($) => $.researchTools.converter.downloadsFromArxiv)}
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-emerald-600 dark:text-emerald-400">
+      <ShieldCheck className="size-3.5" /> {t(($) => $.researchTools.converter.runsOnDevice)}
+    </span>
+  );
+}
+
+/** A failed conversion: what went wrong and, when there is one, where to fix it. */
+function FailureNotice({ error }: Readonly<{ error: ConverterFailure }>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center">
+      <div className="max-w-md">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+          <FileText className="size-5" />
+        </div>
+        <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.needsAttention)}</h2>
+        <p className="mt-2 select-text text-sm leading-relaxed text-muted-foreground">{error.message}</p>
+        {error.settings && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => {
+              if (error.settings) openToolsSettings(error.settings);
+            }}
+          >
+            <Settings />{" "}
+            {error.settings === "ai-tools"
+              ? t(($) => $.researchTools.converterModel.openToolsSettings)
+              : t(($) => $.researchTools.converter.openAiSettings)}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A binary result has nothing to show as text, so the pane says it is ready to save. */
+function BinaryResultNotice({ fileName }: Readonly<{ fileName: string }>) {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center">
+      <div>
+        <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <FileText className="size-6" />
+        </div>
+        <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.fileReady, { fileName })}</h2>
+        <p className="mt-2 text-xs text-muted-foreground">{t(($) => $.researchTools.converter.saveWordHint)}</p>
+      </div>
+    </div>
+  );
+}
+
+function ResultPlaceholder() {
+  const { t } = useTranslation(["researchTools"]);
+  return (
+    <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+      <div className="max-w-xs">
+        <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-muted">
+          <FileText className="size-4" />
+        </div>
+        {t(($) => $.researchTools.converter.resultPlaceholder)}
+      </div>
+    </div>
+  );
+}
+
+/** The output pane's content: a scan waiting for the go-ahead, the failure, the result, or the placeholder. */
+function OutputBody({
+  error,
+  output,
+  themeId,
+  language,
+  onOutputChange,
+  onRunScan,
+  onCancelScan,
+}: Readonly<{
+  error: ConverterFailure | null;
+  output: ConverterOutput | null;
+  themeId: string;
+  language: ComponentProps<typeof CodeField>["language"];
+  onOutputChange: (output: ConverterOutput) => void;
+  onRunScan: () => void;
+  onCancelScan: () => void;
+}>) {
+  if (error?.scan) return <ScanConfirmation sizes={error.scan.sizes} onRun={onRunScan} onCancel={onCancelScan} />;
+  if (error) return <FailureNotice error={error} />;
+  if (output?.kind === "binary") return <BinaryResultNotice fileName={output.fileName} />;
+  if (output && output.text !== null) {
+    return (
+      <CodeField
+        value={output.text}
+        onChange={(next) => onOutputChange({ ...output, text: next })}
+        language={language}
+        themeId={themeId}
+        readOnly={output.kind === "bundle"}
+        testId="converter-output"
+        className="min-h-72 flex-1 overflow-auto text-sm [&_.cm-editor]:h-full"
+      />
+    );
+  }
+  return <ResultPlaceholder />;
 }
 
 function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
@@ -234,15 +447,15 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const [mode, setMode] = useState<InputMode>(initialMode);
   const [text, setText] = useState(definition.example ?? "");
   const [file, setFile] = useState<File | null>(null);
+  const [pageRange, setPageRange] = useState("");
   const conversion = useAsyncTask<ConverterOutput, ConverterFailure>((caught) => {
     if (caught instanceof DOMException && caught.name === "AbortError") return null;
-    const message = caught instanceof Error ? caught.message : String(caught);
+    if (caught instanceof ScanConfirmationNeeded) {
+      return { message: "", settings: null, scan: { sizes: [...caught.sizes] } };
+    }
+    const message = describeError(caught).replace(/^\[[a-z_]+\]\s*/, "");
     void logError(`converter ${id}`, caught);
-    return {
-      message,
-      localModel: caught instanceof LocalModelError
-        || /ollama|local model|vision model/i.test(message),
-    };
+    return { message, settings: failureSettings(caught, message), scan: null };
   });
   const { result: output, busy, error, setResult: setOutput } = conversion;
   const [projectBusy, setProjectBusy] = useState(false);
@@ -258,7 +471,11 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     () => () => languageForPath(outputSourceName) ?? [],
     [outputSourceName],
   );
-  const canConvert = useFile ? Boolean(file) : Boolean(text.trim());
+  // A scanned PDF is transcribed one page at a time, so its converters let
+  // the user pick the pages: a long scan goes through in parts.
+  const choosesPages = definition.usesModel === "scans" && useFile;
+  const parsedRange = parsePageRange(pageRange);
+  const canConvert = (useFile ? Boolean(file) : Boolean(text.trim())) && (!choosesPages || parsedRange.valid);
   const progressLabel = (() => {
     switch (status.step) {
       case "ready":
@@ -280,11 +497,15 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       case "firstSheet":
         return t(($) => $.researchTools.converter.progressFirstSheet);
       case "visionModel":
-        return t(($) => $.researchTools.converter.progressVisionModel);
+        return t(($) => $.researchTools.converter.progressVisionModel, { model: status.model ?? "" });
       case "readingEquation":
-        return t(($) => $.researchTools.converter.progressReadingEquation);
+        return t(($) => $.researchTools.converter.progressReadingEquation, { model: status.model ?? "" });
       case "convertingEquation":
-        return t(($) => $.researchTools.converter.progressConvertingEquation);
+        return t(($) => $.researchTools.converter.progressConvertingEquation, { model: status.model ?? "" });
+      case "uploadingPdf":
+        return t(($) => $.researchTools.converterModel.progressUploading);
+      case "formattingTranscription":
+        return t(($) => $.researchTools.converterModel.progressFormatting);
       case "unpackingSource":
         return t(($) => $.researchTools.converter.progressUnpackingSource);
       case "downloadingSource":
@@ -295,6 +516,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
         return t(($) => $.researchTools.converter.progressTranscribingPage, {
           page: status.page ?? 0,
           total: status.total ?? 0,
+          model: status.model ?? "",
         });
     }
   })();
@@ -308,21 +530,35 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     resetConversion();
     setText("");
     setFile(null);
+    setPageRange("");
   };
 
-  const convert = async () => {
+  const convert = async (scanConfirmed = false) => {
     if (!canConvert || busy) return;
     setStatus({ step: "converting" });
-    const outcome = await conversion.run((signal) =>
-      runAdHocConverter(
-        id,
-        converterInput(useFile ? "" : text, useFile ? file : null),
-        (progress) => setStatus(progress),
-        signal,
-      ),
-    );
+    let awaitsConfirmation = false;
+    const outcome = await conversion.run(async (signal) => {
+      try {
+        return await runAdHocConverter(
+          id,
+          converterInput(
+            useFile ? "" : text,
+            useFile ? file : null,
+            scanConfirmed,
+            choosesPages ? parsedRange.range : undefined,
+          ),
+          (progress) => setStatus(progress),
+          signal,
+        );
+      } catch (error_) {
+        awaitsConfirmation = error_ instanceof ScanConfirmationNeeded;
+        throw error_;
+      }
+    });
     if (outcome.status === "done") setStatus({ step: "converted" });
-    else if (outcome.status === "failed") setStatus({ step: "needsAttention" });
+    else if (outcome.status === "failed") {
+      setStatus(awaitsConfirmation ? { step: "ready" } : { step: "needsAttention" });
+    }
   };
 
   const cancel = () => {
@@ -393,20 +629,23 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       showTheme
       testId="converter-tool-view"
       status={
-        <ToolStatus state={busy ? "busy" : error ? "error" : "ready"}>
+        <ToolStatus state={toolStatusState(busy, error)}>
           {progressLabel}
         </ToolStatus>
       }
       actions={
-        busy ? (
-          <Button variant="outline" size="sm" onClick={cancel} data-testid="converter-cancel">
-            <X /> {t(($) => $.researchTools.converter.cancel)}
-          </Button>
-        ) : (
-          <Button size="sm" disabled={!canConvert} onClick={() => void convert()} data-testid="converter-run">
-            <Check /> {t(($) => $.researchTools.converter.convert)}
-          </Button>
-        )
+        <div className="flex items-center gap-2">
+          {definition.usesModel && <ToolsModelPicker compact />}
+          {busy ? (
+            <Button variant="outline" size="sm" onClick={cancel} data-testid="converter-cancel">
+              <X /> {t(($) => $.researchTools.converter.cancel)}
+            </Button>
+          ) : (
+            <Button size="sm" disabled={!canConvert} onClick={() => void convert()} data-testid="converter-run">
+              <Check /> {t(($) => $.researchTools.converter.convert)}
+            </Button>
+          )}
+        </div>
       }
     >
       <ToolSplitView storageId={`converter-${id}`}>
@@ -439,15 +678,10 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
           footer={
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>{labels.inputHint}</span>
-              {definition.inputKind === "arxiv" && !useFile ? (
-                <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-amber-600 dark:text-amber-400">
-                  <CloudDownload className="size-3.5" /> {t(($) => $.researchTools.converter.downloadsFromArxiv)}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-emerald-600 dark:text-emerald-400">
-                  <ShieldCheck className="size-3.5" /> {t(($) => $.researchTools.converter.runsOnDevice)}
-                </span>
-              )}
+              <InputDestination
+                usesModel={definition.usesModel}
+                downloadsFromArxiv={definition.inputKind === "arxiv" && !useFile}
+              />
             </div>
           }
         >
@@ -475,15 +709,28 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
             </div>
           )}
           {useFile ? (
-            <FileDrop
-              file={file}
-              accept={definition.accept}
-              label={labels.inputLabel}
-              onChange={(next) => {
-                resetConversion();
-                setFile(next);
-              }}
-            />
+            <>
+              <FileDrop
+                file={file}
+                accept={definition.accept}
+                label={labels.inputLabel}
+                onChange={(next) => {
+                  resetConversion();
+                  setFile(next);
+                  setPageRange("");
+                }}
+              />
+              {choosesPages && file && (
+                <PageRangeField
+                  value={pageRange}
+                  invalid={!parsedRange.valid}
+                  onChange={(next) => {
+                    resetConversion();
+                    setPageRange(next);
+                  }}
+                />
+              )}
+            </>
           ) : definition.inputKind === "arxiv" ? (
             <div className="flex min-h-64 flex-1 items-center justify-center p-6">
               <div className="w-full max-w-md space-y-3">
@@ -556,51 +803,15 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
             output?.note ? <ConversionNote note={output.note} details={output.details ?? []} /> : undefined
           }
         >
-          {error ? (
-            <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center">
-              <div className="max-w-md">
-                <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-                  <FileText className="size-5" />
-                </div>
-                <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.needsAttention)}</h2>
-                <p className="mt-2 select-text text-sm leading-relaxed text-muted-foreground">{error.message}</p>
-                {error.localModel && (
-                  <Button variant="outline" size="sm" className="mt-4" onClick={openLocalModelSettings}>
-                    <Settings /> {t(($) => $.researchTools.converter.openAiSettings)}
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : output?.kind === "binary" ? (
-            <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center">
-              <div>
-                <div className="mx-auto flex size-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <FileText className="size-6" />
-                </div>
-                <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.fileReady, { fileName: output.fileName })}</h2>
-                <p className="mt-2 text-xs text-muted-foreground">{t(($) => $.researchTools.converter.saveWordHint)}</p>
-              </div>
-            </div>
-          ) : output?.text !== null && output ? (
-            <CodeField
-              value={output.text}
-              onChange={(next) => setOutput({ ...output, text: next })}
-              language={outputLanguage}
-              themeId={editorTheme}
-              readOnly={output.kind === "bundle"}
-              testId="converter-output"
-              className="min-h-72 flex-1 overflow-auto text-sm [&_.cm-editor]:h-full"
-            />
-          ) : (
-            <div className="flex min-h-72 flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
-              <div className="max-w-xs">
-                <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-lg bg-muted">
-                  <FileText className="size-4" />
-                </div>
-                {t(($) => $.researchTools.converter.resultPlaceholder)}
-              </div>
-            </div>
-          )}
+          <OutputBody
+            error={error}
+            output={output}
+            themeId={editorTheme}
+            language={outputLanguage}
+            onOutputChange={setOutput}
+            onRunScan={() => void convert(true)}
+            onCancelScan={resetConversion}
+          />
         </ToolPane>
       </ToolSplitView>
     </ToolPageShell>

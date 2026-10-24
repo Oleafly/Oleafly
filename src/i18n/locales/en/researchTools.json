@@ -2,6 +2,7 @@
   "workspace": {
     "title": "Research workspace",
     "configureAgents": "Configure research agents",
+    "openSettings": "Research settings",
     "configError": "Assistant settings could not be loaded.",
     "tabTasks": "Tasks",
     "tabFolders": "Linked folders",
@@ -135,7 +136,8 @@
       "awaitingReview": "Review needed",
       "completed": "Completed",
       "failed": "Failed",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "planReady": "Plan ready"
     },
     "relative": {
       "justNow": "just now",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "Session connected.",
-      "toolCall": "Tool call"
+      "toolCall": "Tool call",
+      "runStarted": "Started run {{name}}",
+      "runFinished": "Run {{name}}: {{status}}",
+      "approvalRequested": "Asked for approval: {{summary}}",
+      "approvalDecided": "Approval: {{status}}"
     },
     "panel": {
       "noProjectTitle": "Open a project to use research tasks",
@@ -172,7 +178,9 @@
       "viewTask": "View task",
       "deleteTitle": "Delete this task?",
       "deleteDescription": "\"{{title}}\" and its isolated workspace are removed. Files already applied to your project stay.",
-      "deleteConfirm": "Delete task"
+      "deleteConfirm": "Delete task",
+      "pendingApprovals_one": "{{count}} request waiting",
+      "pendingApprovals_other": "{{count}} requests waiting"
     },
     "composer": {
       "editTitle": "Edit task",
@@ -193,7 +201,10 @@
       "unavailable": "Unavailable",
       "saving": "Saving...",
       "saveTask": "Save task",
-      "createTask": "Create task"
+      "createTask": "Create task",
+      "replaceText": "Replace the title and instructions you typed with this starter?",
+      "keepText": "Keep mine",
+      "replaceConfirm": "Replace"
     },
     "starter": {
       "literatureReview": {
@@ -215,6 +226,10 @@
       "reviewerResponse": {
         "label": "Response to reviewers",
         "title": "Draft the reviewer response"
+      },
+      "experimentLoop": {
+        "label": "Run experiments",
+        "title": "Run experiments toward a goal"
       }
     },
     "detail": {
@@ -233,6 +248,10 @@
       "dependencies": "Dependencies",
       "dependencyUnavailable": "Unavailable",
       "noActivity": "No activity was recorded for this run.",
+      "activityGap_one": "{{count}} item in between is not shown.",
+      "activityGap_other": "{{count}} items in between are not shown.",
+      "activityMore": "More activity is not shown yet.",
+      "keepRunningDesktopApps": "This task uses desktop apps, which need you at the computer.",
       "startToRecord": "Start this task to record its activity.",
       "reasoning": "Reported reasoning",
       "savedArtifact": "Saved {{label}}",
@@ -245,6 +264,8 @@
       "clearSelection": "Clear selection",
       "selectAll": "Select all",
       "previewBeforeApply": "Preview every selected file before applying it.",
+      "researchRecord": "Research record",
+      "researchRecordHint": "The task's own notes. They don't need a preview before you apply them.",
       "driftedOne": "{{path}} changed in your project after this task started. Its diff is against the older version, so it cannot be applied.",
       "driftedMany": "{{fileCount}} files changed in your project after this task started. Their diffs are against the older versions, so they cannot be applied.",
       "applyAria": "Apply {{path}}",
@@ -274,7 +295,108 @@
       "loadMore": "Load more activity",
       "changeAdded": "added",
       "changeModified": "modified",
-      "changeDeleted": "deleted"
+      "changeDeleted": "deleted",
+      "tabProgress": "Progress",
+      "resume": "Resume",
+      "resumeHint": "Continue in the same workspace from the saved handoff.",
+      "startOver": "Start over",
+      "startOverHint": "Start from the current project. The research record comes along.",
+      "stopReason": {
+        "budgetTime": "Stopped when the time budget ran out.",
+        "budgetCost": "Stopped at the cost limit.",
+        "budgetRuns": "Stopped at the run limit."
+      },
+      "startsAt": "Starts {{time}}"
+    },
+    "plan": {
+      "title": "Plan",
+      "description": "Read the plan and edit it if you want. Approve it to let the task continue.",
+      "approve": "Approve plan",
+      "approveEdited": "Approve edited plan",
+      "discard": "Discard task",
+      "loading": "Loading the plan…",
+      "missing": "The plan file is missing. Retry the task."
+    },
+    "approvals": {
+      "title": "Waiting for your approval",
+      "approve": "Approve",
+      "deny": "Deny",
+      "kindCommand": "Run a command",
+      "kindRun": "Start a run",
+      "kindMcp": "Use a tool",
+      "expires": "Waits until {{time}}",
+      "detailCommand": "Full command",
+      "detailRun": "Run details",
+      "detailMcp": "Tool arguments",
+      "loadFailed": "Waiting requests could not be loaded.",
+      "status": {
+        "approved": "Approved",
+        "denied": "Denied",
+        "expired": "Expired",
+        "withdrawn": "Withdrawn"
+      }
+    },
+    "phase": {
+      "preparing": "Preparing the workspace",
+      "planning": "Writing the plan",
+      "working": "Working",
+      "waitingRuns": "Waiting for runs",
+      "waitingApproval": "Waiting for approval",
+      "wrappingUp": "Wrapping up",
+      "checkingEvidence": "Checking evidence"
+    },
+    "progress": {
+      "loading": "Loading progress…",
+      "plan": "Plan",
+      "noPlan": "No plan yet.",
+      "ledger": "Ledger",
+      "noLedger": "No results recorded yet.",
+      "best": "Best {{metric}}",
+      "bestValue": "{{value}} in run {{run}}",
+      "runsInFlight": "Runs in progress",
+      "noRuns": "No runs in progress.",
+      "budget": "Budget",
+      "timeUsed": "{{used}} of {{total}}",
+      "costUsed": "{{used}} of {{limit}}",
+      "costSpent": "{{used}} spent",
+      "ledgerCapped": "Showing the latest {{limit}} results.",
+      "costUnknown": "Cost isn't known for this model.",
+      "runsUsed": "{{used}} of {{limit}} runs",
+      "runsUsedNoLimit": "{{used}} runs",
+      "stopRun": "Stop run",
+      "viewLog": "View log",
+      "columns": {
+        "run": "Run",
+        "time": "Time",
+        "hypothesis": "Hypothesis",
+        "change": "Change",
+        "metrics": "Metrics",
+        "verdict": "Verdict"
+      },
+      "verdict": {
+        "keep": "Kept",
+        "discard": "Discarded",
+        "crash": "Crashed"
+      }
+    },
+    "settings": {
+      "title": "Research tasks",
+      "keepAwake": "Keep the computer awake while tasks run",
+      "keepAwakeHint": "Your screen can still turn off.",
+      "notifications": "Notify me when a task needs attention",
+      "notificationsHint": "Shown when Oleafly is in the background.",
+      "notificationsBlocked": "Notifications are off for Oleafly in system settings.",
+      "allowNotifications": "Allow notifications",
+      "network": "Allow network for task commands by default",
+      "timeBudget": "Default time budget",
+      "mcpServers": "MCP servers tasks can use",
+      "mcpServersHint": "Tasks call these tools under each task's command rules.",
+      "noMcpServers": "No MCP servers are set up.",
+      "networkHint": "Commands in tasks can reach the internet. Each task can still turn this off.",
+      "loadFailed": "Your research settings could not be loaded.",
+      "sectionName": "Research",
+      "resetConfirm": "Restore the research defaults: keep awake, notifications, network access, the time budget and the MCP servers tasks can use. Compute targets and background tasks stay unchanged.",
+      "saveFailed": "Your research settings could not be saved. Try again."
     }
   },
   "tools": {
@@ -354,7 +476,7 @@
       "name": "Image to LaTeX",
       "description": "Turn an image of notes, equations, or a table into editable LaTeX.",
       "tag1": "Images",
-      "tag2": "On-device model",
+      "tag2": "Local or hosted model",
       "tag3": "No project needed"
     },
     "visualTypstEditor": {
@@ -376,7 +498,7 @@
       "description": "Convert a typed equation or equation image into clean LaTeX math.",
       "tag1": "Text or image",
       "tag2": "Math",
-      "tag3": "On-device model"
+      "tag3": "Local or hosted model"
     },
     "excelToLatex": {
       "name": "Excel to LaTeX",
@@ -396,7 +518,7 @@
       "name": "Image to Typst",
       "description": "Turn an image of notes, equations, or a table into editable Typst.",
       "tag1": "Images",
-      "tag2": "On-device model",
+      "tag2": "Local or hosted model",
       "tag3": "No project needed"
     },
     "latexToHtml": {
@@ -744,13 +866,13 @@
     "progressNeedsAttention": "Needs attention",
     "progressCancelled": "Cancelled",
     "progressReadingPages": "Reading pages",
-    "progressTranscribingPage": "Transcribing page {{page}} of {{total}}",
+    "progressTranscribingPage": "Transcribing page {{page}} of {{total}} with {{model}}",
     "progressDocumentStructure": "Converting document structure",
     "progressMermaid": "Rendering the Mermaid diagram",
     "progressFirstSheet": "Reading the first sheet",
-    "progressVisionModel": "Running the local vision model",
-    "progressReadingEquation": "Reading the equation with the local vision model",
-    "progressConvertingEquation": "Converting the equation with the local model",
+    "progressVisionModel": "Reading the image with {{model}}",
+    "progressReadingEquation": "Reading the equation with {{model}}",
+    "progressConvertingEquation": "Converting the equation with {{model}}",
     "progressUnpackingSource": "Unpacking the saved source",
     "progressDownloadingSource": "Downloading the e-print source",
     "copied": "Copied {{label}}",
@@ -785,14 +907,17 @@
     "fileReady": "{{fileName}} is ready",
     "saveWordHint": "Save the Word document when you are ready.",
     "resultPlaceholder": "Your converted result will appear here.",
-    "progressConvertingSource": "Converting the source to Typst"
+    "progressConvertingSource": "Converting the source to Typst",
+    "pageRange": "Pages",
+    "pageRangePlaceholder": "All pages, or a range such as 1-50",
+    "pageRangeInvalid": "Enter one page number, or a range such as 1-50."
   },
   "converters": {
     "imageToLatex": {
       "title": "Image to LaTeX",
-      "subtitle": "Transcribe notes, equations, or tables with an on-device vision model",
+      "subtitle": "Transcribe notes, equations, or tables with a vision model",
       "inputLabel": "Image",
-      "inputHint": "PNG, JPEG, or WebP. The image stays on this device.",
+      "inputHint": "PNG, JPEG, or WebP, up to 20 MB.",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -825,9 +950,9 @@
     },
     "imageToTypst": {
       "title": "Image to Typst",
-      "subtitle": "Transcribe notes, equations, or tables with an on-device vision model",
+      "subtitle": "Transcribe notes, equations, or tables with a vision model",
       "inputLabel": "Image",
-      "inputHint": "PNG, JPEG, or WebP. The image stays on this device.",
+      "inputHint": "PNG, JPEG, or WebP, up to 20 MB.",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -883,14 +1008,14 @@
       "title": "PDF to Markdown",
       "subtitle": "Extract text, equations, and figures locally",
       "inputLabel": "PDF",
-      "inputHint": "Text PDFs use deterministic extraction. Scans use a local vision model.",
+      "inputHint": "Text PDFs use deterministic extraction. Scans use the model you pick.",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF to Typst",
       "subtitle": "Extract text, equations, and figures locally",
       "inputLabel": "PDF",
-      "inputHint": "Text PDFs use deterministic extraction. Scans use a local vision model.",
+      "inputHint": "Text PDFs use deterministic extraction. Scans use the model you pick.",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -981,10 +1106,10 @@
   "converterErrors": {
     "chooseSmallerImage": "Choose an image smaller than 20 MB.",
     "imageFormat": "Choose a PNG, JPEG, or WebP image.",
-    "ollamaUnavailable": "Start Ollama in Settings, then install a local model for this conversion.",
-    "visionModelMissing": "Install a vision model in Ollama, such as Llama 3.2 Vision, then try again.",
-    "localModelMissing": "Install a local Ollama model, then try again.",
-    "emptyTranscription": "The local model returned an empty transcription.",
+    "ollamaUnavailable": "Start Ollama, or pick another model for Tools.",
+    "visionModelMissing": "Pull a vision model in Ollama, such as glm-ocr, or pick another model for Tools.",
+    "localModelMissing": "Pull a model in Ollama, or pick another model for Tools.",
+    "emptyTranscription": "The model returned an empty transcription.",
     "pdfNoPages": "This PDF does not contain any pages to transcribe.",
     "pdfPageLimit": "Scanned-PDF transcription is limited to 50 pages at a time.",
     "pandocNotReady": "Pandoc isn't ready yet.",
@@ -992,10 +1117,12 @@
     "fileTooLarge": "Choose a file smaller than 128 MB.",
     "emptySheet": "The selected sheet is empty.",
     "arxivInputRequired": "Enter an arXiv ID or choose a source archive.",
-    "equationToTypst": "Pandoc couldn't convert this equation to Typst. Check the LaTeX math and try again."
+    "equationToTypst": "Pandoc couldn't convert this equation to Typst. Check the LaTeX math and try again.",
+    "pdfTooManyPages": "This scan has {{pages}} pages, and Oleafly transcribes up to {{limit}} at a time. Enter a page range such as 1-{{limit}} under the file.",
+    "outputLimit": "The model ran out of room before it finished, so the transcription would be incomplete. Pick a model with a larger output limit in Settings, AI Assistant, Tools, or transcribe a smaller part."
   },
   "converterNotes": {
-    "scannedPages": "Transcribed {{pages}} scanned pages with a local model. Review equations and tables before using the result.",
+    "scannedPages": "Transcribed {{pages}} scanned pages with {{model}}. Review equations and tables before using the result.",
     "extracted": "Extracted {{pages}} pages and {{figures}} figures locally.",
     "mermaidTikz": "Converted this flowchart into editable TikZ.",
     "mermaidRendered": "Rendered this diagram locally because its Mermaid syntax does not map cleanly to editable TikZ.",
@@ -1010,6 +1137,42 @@
     "notConverted_one": "{{count}} item did not convert.",
     "notConverted_other": "{{count}} items did not convert.",
     "checkLine": "Line {{line}}: {{message}}"
+  },
+  "converterModel": {
+    "label": "Model for Tools",
+    "automatic": "Automatic (best local model)",
+    "localGroup": "Local (Ollama)",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "Images are sent to {{provider}}",
+    "sentToHost": "Images are sent to Ollama at {{host}}",
+    "scansSentTo": "Scanned pages are sent to {{provider}}",
+    "scansSentToHost": "Scanned pages are sent to Ollama at {{host}}",
+    "pdfSentToMathpix": "The whole PDF is sent to Mathpix",
+    "transcribingHosted": "Sending the image to {{provider}}…",
+    "progressUploading": "Sending the PDF to Mathpix",
+    "progressFormatting": "Converting the transcription with Pandoc",
+    "scannedTitle": "This PDF looks scanned",
+    "estimateOllama_one": "{{count}} page. Ollama can take a while to read it.",
+    "estimateOllama_other": "{{count}} pages. Ollama reads them one at a time, which can take a while.",
+    "estimateCost_one": "{{count}} page. About {{cost}} with {{model}}.",
+    "estimateCost_other": "{{count}} pages. About {{cost}} with {{model}}.",
+    "estimateUnknown_one": "{{count}} page. {{provider}} bills this by usage.",
+    "estimateUnknown_other": "{{count}} pages. {{provider}} bills these by usage.",
+    "transcribePages_one": "Transcribe {{count}} page",
+    "transcribePages_other": "Transcribe {{count}} pages",
+    "transcribedWith": "Transcribed with {{model}}. Review equations and tables.",
+    "sentBadge": "Sent to {{provider}}",
+    "openToolsSettings": "Tools settings",
+    "errors": {
+      "offline": "Oleafly is in offline mode. Pick a local model, or turn offline mode off.",
+      "providerNotConfigured": "{{provider}} has no API key. Add one in Settings, or pick another model.",
+      "modelDisabled": "{{model}} is turned off in Settings. Turn it on, or pick another model.",
+      "cannotSeeImages": "{{model}} can't read images. Pick a vision model.",
+      "localModelGone": "{{model}} isn't in Ollama any more. Pull it again, or pick another model.",
+      "imagesOnly": "{{model}} reads images only. Pick a language model to convert typed equations.",
+      "mathpixNotSetUp": "Add your Mathpix keys in Settings, AI Assistant, Tools, or pick another model.",
+      "imageTooLarge": "This image is still too large after shrinking it. Crop it and try again."
+    }
   },
   "mermaidErrors": {
     "tooLarge": "This Mermaid diagram is larger than the 50,000-character limit.",
@@ -1557,5 +1720,257 @@
     "citeAdded": "Added {{citation}}",
     "addFailed": "Could not add citation.",
     "toastCopyFailed": "Could not copy BibTeX."
+  },
+  "brief": {
+    "title": "Brief",
+    "goalLabel": "Goal",
+    "goalPlaceholder": "What should this task find out or produce?",
+    "criteriaLabel": "Success criteria",
+    "criteriaHint": "One per line. Each one should be something you can check.",
+    "scopeLabel": "Scope",
+    "constraintsLabel": "Constraints",
+    "metricLabel": "Main metric",
+    "metricPlaceholder": "For example, val_loss",
+    "metricMaximize": "Higher is better",
+    "metricMinimize": "Lower is better",
+    "reviewPlan": "Review the plan first",
+    "reviewPlanHint": "The agent writes plan.md and waits for your approval before it starts.",
+    "commandsLabel": "Commands",
+    "commandsAllow": "Run without asking",
+    "commandsAsk": "Ask before running",
+    "commandsOff": "Don't run commands",
+    "network": "Allow network access for commands",
+    "networkHint": "Needed to install packages or download data.",
+    "budgetLabel": "Budget",
+    "timeLabel": "Time",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes",
+    "hours_one": "{{count}} hour",
+    "hours_other": "{{count}} hours",
+    "costLabel": "Cost limit (USD)",
+    "noLimit": "No limit",
+    "runsLabel": "Run limit",
+    "runTimeoutLabel": "Each run stops after",
+    "profileLabel": "Run profile",
+    "profileAnalysis": "Analysis",
+    "profileAnalysisHint": "Your Python and R environments, read-only data folders, no GPU.",
+    "profileTraining": "Training",
+    "profileTrainingHint": "Adds GPU access and longer runs.",
+    "computeLabel": "Where runs happen",
+    "computeLocal": "This computer",
+    "startAtLabel": "Start at",
+    "startNow": "When I start it",
+    "keepRunning": "Keep running when Oleafly is closed",
+    "keepRunningHint": "Turn on Background tasks in Settings, Research first.",
+    "invalidMetric": "Use letters, numbers, dots, dashes or underscores.",
+    "invalidCost": "Enter an amount above zero.",
+    "invalidRuns": "Enter a whole number from 1 to 1,000.",
+    "invalidStart": "Pick a start time within the next 30 days.",
+    "invalidStartFormat": "Use the format {{example}}.",
+    "startAtFormat": "Type the time as {{example}}.",
+    "problemHidden": "An option in Brief needs fixing. Open Brief to see which."
+  },
+  "runs": {
+    "status": {
+      "starting": "Starting",
+      "running": "Running",
+      "succeeded": "Finished",
+      "failed": "Failed",
+      "timedOut": "Timed out",
+      "cancelled": "Stopped",
+      "lost": "Lost"
+    }
+  },
+  "evidence": {
+    "title": "Evidence checks",
+    "hint": "These checks only warn. They don't block applying.",
+    "running": "Checking…",
+    "refresh": "Check again",
+    "status": {
+      "pass": "Passed",
+      "warn": "Check this",
+      "skipped": "Not checked"
+    },
+    "checks": {
+      "build": "The project builds",
+      "references": "No new unresolved references or citations",
+      "bibliography": "New bibliography entries are verified",
+      "numbers": "Numbers match their runs",
+      "figures": "New figures exist and are used"
+    },
+    "items": {
+      "buildFailed": "The build failed with {{errors}} errors.",
+      "buildSkipped": "The build wasn't checked: {{reason}}",
+      "referencesUnresolved": "{{key}} doesn't resolve.",
+      "referencesNotChecked": "References aren't checked in this build yet.",
+      "bibUnverified": "{{key}} couldn't be verified.",
+      "bibTitleMismatch": "{{key}} points to a different title: {{found}}",
+      "bibLookupFailed": "{{key}} couldn't be looked up. Try again later.",
+      "numbersMismatch": "{{value}} doesn't match run {{run}} ({{recorded}}).",
+      "numbersUnknownRun": "Run {{run}} doesn't exist.",
+      "numbersNoLedgerRow": "Run {{run}} has no ledger row.",
+      "figuresMissing": "{{path}} is referenced but missing.",
+      "figuresUnused": "{{path}} isn't used in the document."
+    }
+  },
+  "compute": {
+    "title": "Compute",
+    "description": "Choose where experiment runs execute. Each task picks a target in its brief.",
+    "targets": {
+      "heading": "Run targets",
+      "local": "This computer",
+      "localDescription": "Runs use the sandbox on this computer.",
+      "add": "Add target",
+      "addSsh": "SSH host",
+      "addSlurm": "Slurm cluster",
+      "addCua": "Cua Space",
+      "import": "Import from SSH config",
+      "test": "Test",
+      "testing": "Testing…",
+      "more": "More actions for {{label}}",
+      "edit": "Edit",
+      "remove": "Remove",
+      "removeTitle": "Remove {{label}}?",
+      "removeConfirm": "Runs already started there keep running. Tasks waiting to start on it will fail.",
+      "forgetHostKey": "Forget host key",
+      "reviewHostKey": "Check host key",
+      "notTested": "Not tested",
+      "tested": "Tested {{time}}",
+      "testFailed": "Test failed",
+      "perTaskSpace": "New Space for each task",
+      "saveFailed": "The target could not be saved: {{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly connects with your SSH keys or agent. It never asks for or stores passwords or keys.",
+      "windowsRsync": "Windows has no rsync, so Oleafly copies files with tar over SSH.",
+      "sshMissingWindows": "OpenSSH Client is not installed. Add it in Windows Settings under System, Optional features.",
+      "sshMissing": "OpenSSH is not installed. Install it with your package manager.",
+      "cuaMissing": "Cua is not installed. Install it from cua.ai, then test again.",
+      "relay": "This Space runs on a real computer. Runs there are not isolated.",
+      "outputs": "Files a run creates come back to runs/<run>/outputs in the task's copy."
+    },
+    "form": {
+      "addTitle": "Add {{kind}}",
+      "editTitle": "Edit {{label}}",
+      "label": "Name",
+      "host": "Host",
+      "hostHint": "A host from your SSH config, or a host name",
+      "user": "User",
+      "userHint": "Leave empty to use your SSH config.",
+      "port": "Port",
+      "remoteRoot": "Remote folder",
+      "remoteRootHint": "Runs go in .oleafly-runs in your home folder unless you choose another folder.",
+      "prelude": "Setup commands",
+      "preludeHint": "Run before each command, for example module load python.",
+      "partition": "Partition",
+      "account": "Account",
+      "qos": "QOS",
+      "time": "Time limit",
+      "timeHint": "For example 2:00:00 or 1-00:00:00",
+      "gpus": "GPUs",
+      "cpus": "CPUs",
+      "mem": "Memory (GB)",
+      "memHint": "For example 16",
+      "gpuFlag": "GPU option",
+      "spaceMode": "Space",
+      "spaceNamed": "Use a named Space",
+      "spacePerTask": "Create a new Space for each task",
+      "space": "Space name",
+      "image": "Image",
+      "save": "Save",
+      "cancel": "Cancel",
+      "errors": {
+        "label": "Enter a name of up to 80 characters.",
+        "host": "Enter a host name without spaces.",
+        "user": "Use letters, digits, dots, dashes or underscores.",
+        "port": "Use a port from 1 to 65535.",
+        "remoteRoot": "Use a folder path without spaces, quotes or \"..\".",
+        "time": "Use a Slurm time such as 2:00:00.",
+        "name": "Use letters, digits, dots, commas, dashes or underscores.",
+        "mem": "Use a whole number of gigabytes, such as 16.",
+        "count": "Use a whole number in the allowed range."
+      }
+    },
+    "test": {
+      "connect": "Connect",
+      "echo": "Run a command",
+      "disk": "Free space",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "Passed",
+      "warn": "Check this",
+      "fail": "Failed",
+      "skipped": "Not checked"
+    },
+    "hostKey": {
+      "title": "Trust this host?",
+      "body": "Oleafly has not connected to {{host}} before. Compare these fingerprints with the ones your administrator gives you.",
+      "trust": "Trust and connect",
+      "changedTitle": "Host key changed",
+      "changed": "The host key for {{host}} changed. Someone may be intercepting the connection. If your administrator replaced the key, forget the old key and test again."
+    },
+    "import": {
+      "title": "Import SSH hosts",
+      "body": "Pick the hosts to add. Oleafly reads your SSH config and never changes it.",
+      "none": "No hosts found in your SSH config.",
+      "added": "Already added",
+      "add_one": "Add {{count}} host",
+      "add_other": "Add {{count}} hosts",
+      "skipped": "Not added: {{hosts}}. {{reason}}"
+    },
+    "sandbox": {
+      "heading": "Sandbox on this computer",
+      "description": "Runs on this computer can read your interpreters and linked folders. They write only to the task's copy.",
+      "ready": "Ready",
+      "unavailable": "Not available",
+      "macos": "Uses the macOS sandbox.",
+      "linux": "Uses bubblewrap.",
+      "linuxMissing": "Install bubblewrap (bwrap) to run task commands.",
+      "windowsLabel": "Run task commands in the Windows sandbox",
+      "windowsDescription": "Commands run in a Windows AppContainer that can reach only the task's files and the folders below. Off by default while in beta.",
+      "gpuWindows": "GPU access in the Windows sandbox is not verified yet. Use an SSH or Slurm target for GPU work.",
+      "limitsWindows": "In the Windows sandbox, Python multiprocessing and Node.js programs that start other programs don't work yet.",
+      "check": "Check sandbox",
+      "checking": "Checking…",
+      "checkPassed": "The sandbox works.",
+      "checkFailed": "The sandbox check failed: {{reason}}",
+      "runtimes": "Interpreters",
+      "runtimesEmpty": "No Python, R or Julia found.",
+      "refresh": "Refresh",
+      "access": "Folders the sandbox can read",
+      "accessNote": "To let tasks read these folders, Oleafly adds a permission entry to each one.",
+      "removeAccess": "Remove access",
+      "removeAccessTitle": "Remove sandbox access?",
+      "removeAccessConfirm": "Remove the sandbox's access to these folders? Oleafly adds it again the next time a task needs it."
+    },
+    "brief": {
+      "runsOn": "Runs on {{target}}",
+      "runsLocal": "Runs on this computer.",
+      "missing": "The target this task used was removed. Choose another one.",
+      "loadFailed": "Your run targets could not be loaded.",
+      "windowsOff": "Turn on the Windows sandbox in Settings to run commands on this computer.",
+      "openSettings": "Open Settings",
+      "resources": "Slurm resources"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "In background",
+      "backgroundHint": "Oleafly's background helper is running this task. It moves back here after its current step.",
+      "movingBack": "Moving back",
+      "movingBackHint": "This task returns to Oleafly when its current step ends."
+    },
+    "earlierActivity": "Show earlier activity",
+    "earlierTruncated": "Only the first {{limit}} items of this earlier run are shown.",
+    "keepRunningFailed": "Could not change this setting. Try again."
   }
 }

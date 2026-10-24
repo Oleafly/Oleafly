@@ -17,9 +17,11 @@ function fitTextareaToContent(
   textarea: HTMLTextAreaElement,
   maxHeight: number,
   placeholder: string,
+  minHeight: number,
 ) {
   textarea.style.height = "auto";
-  textarea.style.height = `${Math.min(contentHeight(textarea, placeholder), maxHeight)}px`;
+  const height = Math.min(contentHeight(textarea, placeholder), maxHeight);
+  textarea.style.height = `${Math.max(height, Math.min(minHeight, maxHeight))}px`;
 }
 
 export function useAutoSizeTextarea(
@@ -28,6 +30,7 @@ export function useAutoSizeTextarea(
   value: string,
   placeholder: string,
   maxHeight = DEFAULT_MAX_HEIGHT,
+  minHeight = 0,
 ) {
   const latestPlaceholder = useRef(placeholder);
   latestPlaceholder.current = placeholder;
@@ -38,8 +41,8 @@ export function useAutoSizeTextarea(
     void value;
     const textarea = textareaRef.current;
     if (!textarea) return;
-    fitTextareaToContent(textarea, maxHeight, placeholder);
-  }, [maxHeight, placeholder, textareaRef, value]);
+    fitTextareaToContent(textarea, maxHeight, placeholder, minHeight);
+  }, [maxHeight, minHeight, placeholder, textareaRef, value]);
 
   useEffect(() => {
     const shell = shellRef.current;
@@ -52,10 +55,10 @@ export function useAutoSizeTextarea(
       previousWidth = nextWidth;
 
       const textarea = textareaRef.current;
-      if (textarea) fitTextareaToContent(textarea, maxHeight, latestPlaceholder.current);
+      if (textarea) fitTextareaToContent(textarea, maxHeight, latestPlaceholder.current, minHeight);
     });
 
     observer.observe(shell);
     return () => observer.disconnect();
-  }, [maxHeight, shellRef, textareaRef]);
+  }, [maxHeight, minHeight, shellRef, textareaRef]);
 }

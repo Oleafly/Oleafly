@@ -1,0 +1,57 @@
+{
+  "rotated-attachment.pdf": {
+    "attachmentCount": 1,
+    "author": null,
+    "creator": "Oleafly golden fixture",
+    "fonts": [
+      {
+        "embedded": false,
+        "name": "Courier"
+      }
+    ],
+    "formFieldCount": 0,
+    "linkCount": 0,
+    "outlineCount": 0,
+    "pageCount": 1,
+    "pages": [
+      {
+        "height": 400,
+        "rotation": 90,
+        "width": 600
+      }
+    ],
+    "producer": null,
+    "restricted": false,
+    "version": "1.7"
+  },
+  "two-sizes-links-outline.pdf": {
+    "attachmentCount": 0,
+    "author": "Ana Example",
+    "creator": null,
+    "fonts": [
+      {
+        "embedded": false,
+        "name": "Helvetica"
+      }
+    ],
+    "formFieldCount": 0,
+    "linkCount": 1,
+    "outlineCount": 2,
+    "pageCount": 2,
+    "pages": [
+      {
+        "height": 792,
+        "rotation": 0,
+        "width": 612
+      },
+      {
+        "height": 842,
+        "rotation": 0,
+        "width": 595
+      }
+    ],
+    "producer": "Oleafly golden fixture",
+    "restricted": false,
+    "version": "1.7"
+  }
+}

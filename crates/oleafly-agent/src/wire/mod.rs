@@ -1,18 +1,63 @@
 use serde_json::{json, Value};
 
 use crate::complete::CompletionRequest;
-use crate::error::Result;
-use crate::message::{parse_arguments, parse_data_url, ContentPart, Message, Role};
+use crate::effort::effective_effort;
+use crate::error::{AgentError, Result};
+use crate::message::{
+    parse_arguments, parse_image_url, unresolved_attachment, ContentPart, Message, Role,
+};
 use crate::provider::{Resolved, Wire};
-use crate::tool::{anthropic_tools, google_tools, openai_responses_tools, openai_tools};
+use crate::tool::{google_tools, openai_responses_tools, openai_tools, ToolSchema};
 
-pub(crate) const DEFAULT_MAX_TOKENS: u32 = 4096;
+mod anthropic;
+pub(crate) mod reasoning;
+pub mod server_tools;
 
-fn role_str(role: Role) -> &'static str {
+pub(crate) use anthropic::{anthropic_beta_header, anthropic_body};
+use reasoning::{
+    chat_reasoning_fields, default_max_tokens, google_thinking_config, joined_system,
+    responses_reasoning, STREAMING_MAX_TOKENS_CAP,
+};
+use server_tools::{native_web, responses_web_tool};
+
+pub(crate) fn role_str(role: Role) -> &'static str {
     match role {
         Role::User => "user",
         Role::Assistant => "assistant",
     }
+}
+
+/// Tools by name, so the list (and the provider's prompt cache) never
+/// depends on the order the renderer sent them in.
+pub(crate) fn sorted_tools(tools: &[ToolSchema]) -> Vec<&ToolSchema> {
+    let mut sorted: Vec<&ToolSchema> = tools.iter().collect();
+    sorted.sort_by(|left, right| left.name.cmp(&right.name));
+    sorted
+}
+
+fn owned_sorted_tools(tools: &[ToolSchema]) -> Vec<ToolSchema> {
+    sorted_tools(tools).into_iter().cloned().collect()
+}
+
+fn no_documents() -> AgentError {
+    AgentError::Decode("this provider does not accept documents".into())
+}
+
+fn data_url(mime: &str, data: &str) -> String {
+    format!("data:{mime};base64,{data}")
+}
+
+/// Images returned by the tool results of a message, in result order.
+fn result_images(message: &Message) -> Vec<&str> {
+    message
+        .content
+        .iter()
+        .filter_map(|part| match part {
+            ContentPart::ToolResult { images, .. } => Some(images.iter().map(String::as_str)),
+            _ => None,
+        })
+        .flatten()
+        .collect()
 }
 
 fn openai_tool_results(message: &Message, messages: &mut Vec<Value>) {
@@ -45,51 +90,85 @@ fn openai_tool_calls(rest: &[&ContentPart]) -> Vec<Value> {
         .collect()
 }
 
-fn openai_visible_content(rest: &[&ContentPart]) -> Result<Value> {
-    let visible: Vec<&&ContentPart> = rest
-        .iter()
-        .filter(|p| !matches!(p, ContentPart::ToolUse { .. }))
-        .collect();
-    Ok(match visible.as_slice() {
-        [] => Value::Null,
-        [ContentPart::Text { text }] => json!(text),
-        parts => {
-            let mut out = Vec::with_capacity(parts.len());
-            for part in parts {
-                out.push(match part {
-                    ContentPart::Text { text } => json!({ "type": "text", "text": text }),
-                    ContentPart::Image { image } => {
-                        parse_data_url(image)?;
-                        json!({ "type": "image_url", "image_url": { "url": image } })
-                    }
-                    _ => continue,
-                });
-            }
-            json!(out)
+/// One chat content part, or `None` for parts this wire leaves out.
+fn openai_content_part(part: &ContentPart, files: bool) -> Result<Option<Value>> {
+    Ok(match part {
+        ContentPart::Text { text } => Some(json!({ "type": "text", "text": text })),
+        ContentPart::Image { image } => {
+            parse_image_url(image)?;
+            Some(json!({ "type": "image_url", "image_url": { "url": image } }))
         }
+        ContentPart::Document { mime, data, name } => {
+            if !files {
+                return Err(no_documents());
+            }
+            Some(json!({
+                "type": "file",
+                "file": { "filename": name, "file_data": data_url(mime, data) },
+            }))
+        }
+        ContentPart::Attachment { .. } => return Err(unresolved_attachment()),
+        ContentPart::ToolUse { .. }
+        | ContentPart::ToolResult { .. }
+        | ContentPart::Thinking { .. }
+        | ContentPart::RedactedThinking { .. }
+        | ContentPart::ProviderBlock { .. } => None,
+    })
+}
+
+fn openai_visible_content(rest: &[&ContentPart], images: &[&str], files: bool) -> Result<Value> {
+    let mut parts = Vec::with_capacity(rest.len() + images.len());
+    for image in images {
+        parse_image_url(image)?;
+        parts.push(json!({ "type": "image_url", "image_url": { "url": image } }));
+    }
+    for part in rest {
+        if let Some(value) = openai_content_part(part, files)? {
+            parts.push(value);
+        }
+    }
+    Ok(match parts.as_slice() {
+        [] => Value::Null,
+        [only] if only["type"] == "text" => only["text"].clone(),
+        _ => Value::Array(parts),
     })
 }
 
 pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
+    let effort = effective_effort(resolved, req.effort);
+    // OpenRouter parses PDFs itself; other chat providers take no files.
+    let files = resolved.provider_id == "openrouter";
+    let mut has_documents = false;
     let mut messages: Vec<Value> = Vec::new();
-    if let Some(system) = req.system.as_ref().filter(|s| !s.is_empty()) {
+    if let Some(system) = joined_system(req) {
         messages.push(json!({ "role": "system", "content": system }));
     }
     for message in &req.messages {
         openai_tool_results(message, &mut messages);
+        let images = result_images(message);
         let rest: Vec<&ContentPart> = message
             .content
             .iter()
-            .filter(|p| !matches!(p, ContentPart::ToolResult { .. }))
+            .filter(|part| !matches!(part, ContentPart::ToolResult { .. }))
             .collect();
-        if rest.is_empty() {
+        has_documents |= rest
+            .iter()
+            .any(|part| matches!(part, ContentPart::Document { .. }));
+        if rest.is_empty() && images.is_empty() {
             continue;
         }
         let calls = openai_tool_calls(&rest);
-        let mut entry = json!({
-            "role": role_str(message.role),
-            "content": openai_visible_content(&rest)?,
-        });
+        let content = openai_visible_content(&rest, &images, files)?;
+        if content.is_null() && calls.is_empty() {
+            continue;
+        }
+        // Tool images go back as a user turn after the tool messages.
+        let role = if images.is_empty() {
+            role_str(message.role)
+        } else {
+            "user"
+        };
+        let mut entry = json!({ "role": role, "content": content });
         if !calls.is_empty() {
             entry["tool_calls"] = Value::Array(calls);
         }
@@ -100,11 +179,28 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
     if let Some(t) = req.temperature {
         body["temperature"] = json!(t);
     }
-    if let Some(m) = req.max_tokens {
+    if resolved.provider_id == "groq" {
+        // Groq's default completion ceiling is small (1 024).
+        let ceiling = req.max_tokens.or_else(|| {
+            resolved
+                .caps
+                .output_limit
+                .map(|_| default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP))
+        });
+        if let Some(ceiling) = ceiling {
+            body["max_completion_tokens"] = json!(ceiling);
+        }
+    } else if let Some(m) = req.max_tokens {
         body["max_tokens"] = json!(m);
     }
+    for (key, value) in chat_reasoning_fields(resolved, req, effort) {
+        body[key] = value;
+    }
+    if has_documents && files {
+        body["plugins"] = json!([{ "id": "file-parser", "pdf": { "engine": "native" } }]);
+    }
     if !req.tools.is_empty() {
-        body["tools"] = openai_tools(&req.tools);
+        body["tools"] = openai_tools(&owned_sorted_tools(&req.tools));
         // DeepSeek thinks by default and then answers a request that carries
         // tools with a 400 unless every earlier turn's reasoning_content is
         // sent back. History here keeps no reasoning, so tool runs go without.
@@ -115,19 +211,31 @@ pub(crate) fn openai_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
     Ok(body)
 }
 
-fn responses_message(message: &Message, parts: &[&ContentPart]) -> Result<Option<Value>> {
+fn responses_part(role: Role, part: &ContentPart) -> Result<Option<Value>> {
+    Ok(match part {
+        ContentPart::Text { text } => Some(match role {
+            Role::User => json!({ "type": "input_text", "text": text }),
+            Role::Assistant => json!({ "type": "output_text", "text": text }),
+        }),
+        ContentPart::Image { image } => {
+            parse_image_url(image)?;
+            Some(json!({ "type": "input_image", "image_url": image }))
+        }
+        ContentPart::Document { mime, data, name } => Some(json!({
+            "type": "input_file",
+            "filename": name,
+            "file_data": data_url(mime, data),
+        })),
+        ContentPart::Attachment { .. } => return Err(unresolved_attachment()),
+        _ => None,
+    })
+}
+
+fn responses_message(role: Role, parts: &[&ContentPart]) -> Result<Option<Value>> {
     let mut content = Vec::new();
     for part in parts {
-        match part {
-            ContentPart::Text { text } => content.push(match message.role {
-                Role::User => json!({ "type": "input_text", "text": text }),
-                Role::Assistant => json!({ "type": "output_text", "text": text }),
-            }),
-            ContentPart::Image { image } => {
-                parse_data_url(image)?;
-                content.push(json!({ "type": "input_image", "image_url": image }));
-            }
-            _ => {}
+        if let Some(value) = responses_part(role, part)? {
+            content.push(value);
         }
     }
     if content.is_empty() {
@@ -135,7 +243,23 @@ fn responses_message(message: &Message, parts: &[&ContentPart]) -> Result<Option
     }
     Ok(Some(json!({
         "type": "message",
-        "role": role_str(message.role),
+        "role": role_str(role),
+        "content": content,
+    })))
+}
+
+fn responses_images(images: &[&str]) -> Result<Option<Value>> {
+    if images.is_empty() {
+        return Ok(None);
+    }
+    let mut content = Vec::with_capacity(images.len());
+    for image in images {
+        parse_image_url(image)?;
+        content.push(json!({ "type": "input_image", "image_url": image }));
+    }
+    Ok(Some(json!({
+        "type": "message",
+        "role": "user",
         "content": content,
     })))
 }
@@ -146,14 +270,17 @@ pub(crate) fn openai_responses_input(messages: &[Message]) -> Result<Vec<Value>>
         let mut visible: Vec<&ContentPart> = Vec::new();
         for part in &message.content {
             match part {
-                ContentPart::Text { .. } | ContentPart::Image { .. } => visible.push(part),
+                ContentPart::Text { .. }
+                | ContentPart::Image { .. }
+                | ContentPart::Document { .. }
+                | ContentPart::Attachment { .. } => visible.push(part),
                 ContentPart::ToolUse {
                     id,
                     name,
                     arguments,
                     ..
                 } => {
-                    if let Some(item) = responses_message(message, &visible)? {
+                    if let Some(item) = responses_message(message.role, &visible)? {
                         input.push(item);
                     }
                     visible.clear();
@@ -165,7 +292,7 @@ pub(crate) fn openai_responses_input(messages: &[Message]) -> Result<Vec<Value>>
                     }));
                 }
                 ContentPart::ToolResult { id, output, .. } => {
-                    if let Some(item) = responses_message(message, &visible)? {
+                    if let Some(item) = responses_message(message.role, &visible)? {
                         input.push(item);
                     }
                     visible.clear();
@@ -175,9 +302,15 @@ pub(crate) fn openai_responses_input(messages: &[Message]) -> Result<Vec<Value>>
                         "output": output,
                     }));
                 }
+                ContentPart::Thinking { .. }
+                | ContentPart::RedactedThinking { .. }
+                | ContentPart::ProviderBlock { .. } => {}
             }
         }
-        if let Some(item) = responses_message(message, &visible)? {
+        if let Some(item) = responses_images(&result_images(message))? {
+            input.push(item);
+        }
+        if let Some(item) = responses_message(message.role, &visible)? {
             input.push(item);
         }
     }
@@ -185,18 +318,29 @@ pub(crate) fn openai_responses_input(messages: &[Message]) -> Result<Vec<Value>>
 }
 
 pub(crate) fn openai_responses_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
+    let effort = effective_effort(resolved, req.effort);
+    let native = native_web(
+        &resolved.provider_id,
+        &resolved.wire,
+        &resolved.model_id,
+        req.web,
+    );
     let input = match &req.openai_responses_input {
         Some(input) => input.clone(),
         None => openai_responses_input(&req.messages)?,
     };
 
+    let mut include = vec![json!("reasoning.encrypted_content")];
+    if native.search {
+        include.push(json!("web_search_call.action.sources"));
+    }
     let mut body = json!({
         "model": resolved.model_id,
         "input": input,
-        "include": ["reasoning.encrypted_content"],
+        "include": include,
         "store": false,
     });
-    if let Some(system) = req.system.as_ref().filter(|system| !system.is_empty()) {
+    if let Some(system) = joined_system(req) {
         body["instructions"] = json!(system);
     }
     if let Some(temperature) = req
@@ -208,106 +352,42 @@ pub(crate) fn openai_responses_body(resolved: &Resolved, req: &CompletionRequest
     if let Some(max_tokens) = req.max_tokens {
         body["max_output_tokens"] = json!(max_tokens);
     }
-    if !req.tools.is_empty() {
-        body["tools"] = openai_responses_tools(&req.tools);
+    if let Some(reasoning) = responses_reasoning(resolved, req, effort, native.search) {
+        body["reasoning"] = reasoning;
     }
-    Ok(body)
-}
-
-fn anthropic_part(part: &ContentPart) -> Result<Value> {
-    Ok(match part {
-        ContentPart::Text { text } => json!({ "type": "text", "text": text }),
-        ContentPart::Image { image } => {
-            let data = parse_data_url(image)?;
-            json!({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": data.media_type,
-                    "data": data.base64,
-                }
-            })
+    let mut tools = if req.tools.is_empty() {
+        Vec::new()
+    } else {
+        match openai_responses_tools(&owned_sorted_tools(&req.tools)) {
+            Value::Array(tools) => tools,
+            _ => Vec::new(),
         }
-        ContentPart::ToolUse {
-            id,
-            name,
-            arguments,
-            ..
-        } => json!({
-            "type": "tool_use",
-            "id": id,
-            "name": name,
-            "input": parse_arguments(arguments),
-        }),
-        ContentPart::ToolResult { id, output, .. } => json!({
-            "type": "tool_result",
-            "tool_use_id": id,
-            "content": output,
-        }),
-    })
-}
-
-pub(crate) fn anthropic_body(resolved: &Resolved, req: &CompletionRequest) -> Result<Value> {
-    let mut messages: Vec<Value> = Vec::new();
-    for message in &req.messages {
-        let mut parts = Vec::with_capacity(message.content.len());
-        for part in &message.content {
-            parts.push(anthropic_part(part)?);
-        }
-        messages.push(json!({ "role": role_str(message.role), "content": parts }));
-    }
-
-    let mut body = json!({
-        "model": resolved.model_id,
-        "messages": messages,
-        "max_tokens": req.max_tokens.unwrap_or(DEFAULT_MAX_TOKENS),
-    });
-    if let Some(system) = req.system.as_ref().filter(|s| !s.is_empty()) {
-        body["system"] = json!(system);
-    }
-    if let Some(t) = req
-        .temperature
-        .filter(|_| anthropic_accepts_temperature(&resolved.model_id))
-    {
-        body["temperature"] = json!(t);
-    }
-    if !req.tools.is_empty() {
-        body["tools"] = anthropic_tools(&req.tools);
-    }
-    Ok(body)
-}
-
-/// Claude models from Opus 4.7 on answer a `temperature` with a 400 (Sonnet
-/// 5.5 and Haiku 5.5 accept only the default), so it goes only to the older
-/// models that still honour it. An id that is not a Claude model keeps it.
-fn anthropic_accepts_temperature(model_id: &str) -> bool {
-    let id = model_id.to_ascii_lowercase();
-    let Some(at) = id.find("claude-") else {
-        return true;
     };
-    let rest = &id[at + "claude-".len()..];
-    if rest.starts_with('2') || rest.starts_with('3') || rest.starts_with("instant") {
-        return true;
+    if let Some(web) = responses_web_tool(native) {
+        tools.retain(|tool| tool["name"] != "web_search");
+        tools.push(web);
     }
-    // "sonnet-4", "sonnet-4-20250514", "opus-4-1-20250805", "haiku-4-5"
-    let mut version = rest.split('-').skip(1);
-    let major = version.next();
-    let minor = version.next().unwrap_or("0");
-    major == Some("4") && (minor.len() == 8 || minor.parse::<u32>().is_ok_and(|minor| minor <= 6))
+    if !tools.is_empty() {
+        body["tools"] = Value::Array(tools);
+    }
+    Ok(body)
 }
 
-fn google_part(part: &ContentPart) -> Result<Value> {
+fn google_part(part: &ContentPart) -> Result<Option<Value>> {
     Ok(match part {
-        ContentPart::Text { text } => json!({ "text": text }),
+        ContentPart::Text { text } => Some(json!({ "text": text })),
         ContentPart::Image { image } => {
-            let data = parse_data_url(image)?;
-            json!({
+            let data = parse_image_url(image)?;
+            Some(json!({
                 "inlineData": {
                     "mimeType": data.media_type,
                     "data": data.base64,
                 }
-            })
+            }))
         }
+        ContentPart::Document { mime, data, .. } => Some(json!({
+            "inlineData": { "mimeType": mime, "data": data }
+        })),
         ContentPart::ToolUse {
             name,
             arguments,
@@ -320,14 +400,18 @@ fn google_part(part: &ContentPart) -> Result<Value> {
             if let Some(signature) = thought_signature {
                 part["thoughtSignature"] = json!(signature);
             }
-            part
+            Some(part)
         }
-        ContentPart::ToolResult { name, output, .. } => json!({
+        ContentPart::ToolResult { name, output, .. } => Some(json!({
             "functionResponse": {
                 "name": name,
                 "response": { "result": output }
             }
-        }),
+        })),
+        ContentPart::Attachment { .. } => return Err(unresolved_attachment()),
+        ContentPart::Thinking { .. }
+        | ContentPart::RedactedThinking { .. }
+        | ContentPart::ProviderBlock { .. } => None,
     })
 }
 
@@ -349,6 +433,7 @@ fn gemini_takes_temperature(model_id: &str) -> bool {
 }
 
 fn google_generation_config(resolved: &Resolved, req: &CompletionRequest) -> Option<Value> {
+    let effort = effective_effort(resolved, req.effort);
     let mut generation = serde_json::Map::new();
     if let Some(t) = req
         .temperature
@@ -356,17 +441,17 @@ fn google_generation_config(resolved: &Resolved, req: &CompletionRequest) -> Opt
     {
         generation.insert("temperature".into(), json!(t));
     }
-    if let Some(m) = req.max_tokens {
+    let ceiling = req.max_tokens.or_else(|| {
+        resolved
+            .caps
+            .output_limit
+            .map(|_| default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP))
+    });
+    if let Some(m) = ceiling {
         generation.insert("maxOutputTokens".into(), json!(m));
     }
-    if resolved.model_id.starts_with("gemini-4") {
-        // Gemini 4 requires a thinking level; medium is its documented default.
-        generation.insert(
-            "thinkingConfig".into(),
-            json!({ "includeThoughts": true, "thinkingLevel": "medium" }),
-        );
-    } else if resolved.model_id.starts_with("gemini-") {
-        generation.insert("thinkingConfig".into(), json!({ "includeThoughts": true }));
+    if let Some(thinking) = google_thinking_config(resolved, req, effort) {
+        generation.insert("thinkingConfig".into(), thinking);
     }
     if generation.is_empty() {
         None
@@ -380,7 +465,18 @@ pub(crate) fn google_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
     for message in &req.messages {
         let mut parts = Vec::with_capacity(message.content.len());
         for part in &message.content {
-            parts.push(google_part(part)?);
+            if let Some(value) = google_part(part)? {
+                parts.push(value);
+            }
+        }
+        for image in result_images(message) {
+            let data = parse_image_url(image)?;
+            parts.push(json!({
+                "inlineData": { "mimeType": data.media_type, "data": data.base64 }
+            }));
+        }
+        if parts.is_empty() {
+            continue;
         }
         let role = match message.role {
             Role::User => "user",
@@ -390,14 +486,20 @@ pub(crate) fn google_body(resolved: &Resolved, req: &CompletionRequest) -> Resul
     }
 
     let mut body = json!({ "contents": contents });
-    if let Some(system) = req.system.as_ref().filter(|s| !s.is_empty()) {
-        body["systemInstruction"] = json!({ "parts": [{ "text": system }] });
+    let system_parts: Vec<Value> = [req.system.as_deref(), req.system_suffix.as_deref()]
+        .into_iter()
+        .flatten()
+        .filter(|text| !text.is_empty())
+        .map(|text| json!({ "text": text }))
+        .collect();
+    if !system_parts.is_empty() {
+        body["systemInstruction"] = json!({ "parts": system_parts });
     }
     if let Some(generation) = google_generation_config(resolved, req) {
         body["generationConfig"] = generation;
     }
     if !req.tools.is_empty() {
-        body["tools"] = google_tools(&req.tools);
+        body["tools"] = google_tools(&owned_sorted_tools(&req.tools));
     }
     Ok(body)
 }
@@ -463,6 +565,22 @@ pub fn wire_body(resolved: &Resolved, req: &CompletionRequest) -> Result<serde_j
         Wire::OpenAiChat { .. } => openai_body(resolved, req),
         Wire::Anthropic { .. } => anthropic_body(resolved, req),
         Wire::Google { .. } => google_body(resolved, req),
+    }
+}
+
+/// A request builder with its body and any beta header the body needs.
+pub(crate) fn body_request(
+    client: &reqwest::Client,
+    resolved: &Resolved,
+    streaming: bool,
+    body: &Value,
+) -> reqwest::RequestBuilder {
+    let builder = request_builder(client, resolved, streaming).json(body);
+    match anthropic_beta_header(body) {
+        Some(beta) if matches!(resolved.wire, Wire::Anthropic { .. }) => {
+            builder.header("anthropic-beta", beta)
+        }
+        _ => builder,
     }
 }
 

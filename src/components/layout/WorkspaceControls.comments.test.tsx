@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@/lib/browser-window", () => ({ toggleBrowser: vi.fn(), launchBrowser: vi.fn() }));
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";

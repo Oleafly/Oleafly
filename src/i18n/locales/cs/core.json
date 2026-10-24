@@ -615,7 +615,11 @@
       "papers_one": "{{count}} článek",
       "papers_few": "{{count}} články",
       "papers_many": "{{count}} článku",
-      "papers_other": "{{count}} článků"
+      "papers_other": "{{count}} článků",
+      "sourcesFailed_one": "{{count}} zdroj selhal",
+      "sourcesFailed_few": "{{count}} zdroje selhaly",
+      "sourcesFailed_many": "{{count}} zdroje selhalo",
+      "sourcesFailed_other": "{{count}} zdrojů selhalo"
     }
   },
   "ui": {

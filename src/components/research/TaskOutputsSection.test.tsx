@@ -1,6 +1,7 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ResearchTask, TaskFilePreview } from "@/lib/research-tasks";
+import { taskFieldsSince047 } from "./tasks/tests/task-fixtures";
 
 vi.mock("@/lib/research-tasks", () => ({
   acceptResearchTaskResult: vi.fn(),
@@ -17,6 +18,9 @@ vi.mock("@/lib/research-tasks", () => ({
   startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(),
   previewResearchTaskArtifact: vi.fn(),
+  // 0.4.8: the store also listens for live text and tells the backend which task it shows.
+  listenForResearchTaskDeltas: vi.fn(async () => () => {}),
+  watchResearchTask: vi.fn(async () => {}),
 }));
 
 vi.mock("@/store/files", () => {
@@ -36,6 +40,7 @@ import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: 
 
 let TaskOutputsSection: typeof import("./TaskOutputsSection").TaskOutputsSection;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
+let useSettingsStore: typeof import("@/store/settings").useSettingsStore;
 let cleanup: typeof import("@testing-library/react").cleanup;
 let fireEvent: typeof import("@testing-library/react").fireEvent;
 let render: typeof import("@testing-library/react").render;
@@ -60,6 +65,7 @@ beforeAll(async () => {
   });
   ({ cleanup, fireEvent, render, waitFor, within } = await import("@testing-library/react"));
   ({ useFilesStore } = await import("@/store/files"));
+  ({ useSettingsStore } = await import("@/store/settings"));
   ({ TaskOutputsSection } = await import("./TaskOutputsSection"));
 });
 
@@ -102,6 +108,7 @@ function task(id: string, status: ResearchTask["status"] = "awaiting_review"): R
     updatedAt: 1,
     startedAt: 1,
     finishedAt: 1,
+    ...taskFieldsSince047(),
   };
 }
 
@@ -198,6 +205,17 @@ describe("TaskOutputsSection", () => {
       within(page().getByRole("dialog")).getAllByRole("button", { name: enCommon.actions.close })[0],
     );
     await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("opens the Research panel with the task, because the review dialog lives there", () => {
+    useSettingsStore.setState({ railTab: "files" });
+    seed([task("review")]);
+    render(<TaskOutputsSection />);
+
+    fireEvent.click(page().getByRole("button", { name: "Review" }));
+
+    expect(useSettingsStore.getState().railTab).toBe("research");
+    expect(useResearchTasksStore.getState()).toMatchObject({ detailOpen: true, selectedTaskId: "review" });
   });
 
   it("opens the task detail on the review tab", () => {

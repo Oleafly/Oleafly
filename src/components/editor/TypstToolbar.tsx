@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
@@ -83,7 +83,8 @@ import {
   insertTypstTable,
   insertTypstUnderline,
 } from "@/components/editor/typst-commands";
-import { imageToLatexAvailable, imageToTypst } from "@/features/image-to-latex";
+import { imageToTypst } from "@/features/image-to-latex";
+import { useToolsImageReady } from "@/hooks/use-tools-image-ready";
 import { findReferences, goToDefinition, startRename } from "@/lib/index/nav";
 import { shortcut } from "@/lib/utils";
 import { openTypstPackages } from "@/components/typst-packages/open";
@@ -231,18 +232,8 @@ export function TypstToolbar({
       s.engine.id === "typst" &&
       s.engine.capabilities.supports_synctex,
   );
-  const [visionReady, setVisionReady] = useState(false);
+  const visionReady = useToolsImageReady();
   const imageInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    let active = true;
-    void imageToLatexAvailable().then((ready) => {
-      if (active) setVisionReady(ready);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [

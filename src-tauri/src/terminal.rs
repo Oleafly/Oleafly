@@ -1,32 +1,58 @@
-use std::collections::HashMap;
+pub(crate) mod env;
+mod flow;
+mod jobs;
+mod shell;
+
+use std::collections::{BTreeMap, HashMap};
 use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::mpsc::{sync_channel, SyncSender};
-use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::{Duration, Instant};
 
 use base64::Engine;
 use portable_pty::{CommandBuilder, MasterPty, PtySize};
 use rand::RngCore;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::webview::{PageLoadEvent, PageLoadPayload};
 use tauri::{ipc::Channel, RunEvent, Runtime, Webview};
+
+use self::env::CliEnv;
+use self::flow::{
+    next_batch, OutputFlow, OUTPUT_BATCH_BYTES, OUTPUT_BATCH_WINDOW, OUTPUT_QUEUE_CHUNKS,
+    OUTPUT_READ_BYTES,
+};
+use self::jobs::TerminalJob;
+use self::shell::{ShellChoice, ShellId, ShellKind, ShellOption};
 
 #[derive(Serialize)]
 #[serde(tag = "event", rename_all = "snake_case")]
 pub(crate) enum TerminalEvent {
-    Output { data: String },
+    /// `bytes` is the UTF-8 length of `data`, which the frontend
+    /// acknowledges once xterm has parsed it.
+    Output {
+        data: String,
+        bytes: usize,
+    },
     Exit,
-    InputError { message: String },
+    InputError {
+        message: String,
+    },
 }
 
 struct TermSession {
-    master: Arc<Mutex<Box<dyn MasterPty + Send>>>,
+    master: SharedMaster,
     writer: TerminalWriter,
-    child: Arc<Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
-    _containment: crate::proc::ProcessTreeGuard,
+    child: SharedChild,
+    containment: crate::proc::ProcessTreeGuard,
+    flow: Arc<OutputFlow>,
+    shell_pid: u32,
 }
+
+/// How long a hung-up shell gets to exit before it is killed.
+#[cfg(unix)]
+pub(crate) const HANGUP_GRACE: Duration = Duration::from_millis(500);
 
 const MAX_PENDING_INPUT_BYTES: usize = 4 * 1024 * 1024;
 const MAX_PENDING_INPUT_WRITES: usize = 256;
@@ -35,6 +61,9 @@ type WriteReceipt = tokio::sync::oneshot::Receiver<Result<(), String>>;
 
 /// The pair of handles a session reads from and writes to.
 type TerminalStreams = (Box<dyn Read + Send>, Box<dyn Write + Send>);
+
+type SharedMaster = Arc<Mutex<Box<dyn MasterPty + Send>>>;
+type SharedChild = Arc<Mutex<Box<dyn portable_pty::Child + Send + Sync>>>;
 
 struct PendingWrite {
     bytes: Vec<u8>,
@@ -90,7 +119,7 @@ fn write_terminal_input(
             Ok(written) => bytes = &bytes[written..],
             Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(std::time::Duration::from_millis(10));
+                std::thread::sleep(Duration::from_millis(10));
             }
             Err(error) => return Err(format!("failed to write to shell: {error}")),
         }
@@ -238,6 +267,14 @@ impl<T> SessionRegistry<T> {
         Ok(&record.session)
     }
 
+    /// Every session the owner opened, with its id.
+    fn owned<'a>(&'a self, owner: &'a SessionOwner) -> impl Iterator<Item = (&'a str, &'a T)> {
+        self.sessions
+            .iter()
+            .filter(move |(_, record)| &record.owner == owner)
+            .map(|(id, record)| (id.as_str(), &record.session))
+    }
+
     fn remove(&mut self, id: &str, owner: &SessionOwner) -> Result<Option<T>, String> {
         let Some(record) = self.sessions.get(id) else {
             return Ok(None);
@@ -298,11 +335,7 @@ fn stop_sessions_in_background(sessions: Vec<TermSession>) {
     }
     let _ = std::thread::Builder::new()
         .name("oleafly-terminal-cleanup".into())
-        .spawn(move || {
-            for session in sessions {
-                stop_session(session);
-            }
-        });
+        .spawn(move || stop_sessions(sessions));
 }
 
 pub(crate) fn kill_window_sessions(window_label: &str) {
@@ -335,9 +368,7 @@ fn kill_all_sessions() {
             .map(SessionRegistry::drain_all)
             .unwrap_or_default()
     };
-    for session in drained {
-        stop_session(session);
-    }
+    stop_sessions(drained);
 }
 
 pub fn on_page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>) {
@@ -392,7 +423,7 @@ fn webview_command_owner<R: Runtime>(
 
 /// Decode as much valid UTF-8 as `pending` holds, keeping an incomplete
 /// multi-byte tail for the next read. A per-read `from_utf8_lossy` would turn
-/// a character straddling the 8 KiB read boundary into U+FFFD on both sides.
+/// a character straddling a read boundary into U+FFFD on both sides.
 fn drain_utf8_lossy(pending: &mut Vec<u8>) -> String {
     let mut out = String::new();
     let mut start = 0usize;
@@ -450,22 +481,8 @@ fn apply_terminal_env(cmd: &mut CommandBuilder) {
     }
 }
 
-fn default_shell() -> CommandBuilder {
-    #[cfg(windows)]
-    let mut cmd = CommandBuilder::new("powershell.exe");
-    #[cfg(not(windows))]
-    let mut cmd = {
-        let mut cmd = CommandBuilder::new(crate::program_locator::user_shell());
-        cmd.arg("-l");
-        cmd
-    };
-    // The same search path agents get, so a CLI Oleafly found (for example
-    // one installed after Oleafly started) also runs by name here.
-    cmd.env("PATH", crate::program_locator::child_search_path(&[], &[]));
-    clear_appimage_env(&mut cmd);
-    cmd
-}
-
+/// Drops what an AppImage's launcher added to the environment, unless the
+/// shell itself comes from the AppImage.
 fn clear_appimage_env(cmd: &mut CommandBuilder) {
     let Some(program) = cmd.get_argv().first().cloned() else {
         return;
@@ -481,10 +498,18 @@ fn clear_appimage_env(cmd: &mut CommandBuilder) {
     }
 }
 
-fn project_shell(project_id: &str, root: &Path, autostart: bool) -> Result<CommandBuilder, String> {
-    let mut shell = default_shell();
+/// Apply the project's trust rules to a shell command. A restricted folder
+/// never gets a shell started in the background, and a shell the user opens
+/// gets Git hardened. Applied last, so nothing a launch sets can undo it.
+fn project_shell(
+    project_id: &str,
+    root: &Path,
+    autostart: bool,
+    mut cmd: CommandBuilder,
+) -> Result<CommandBuilder, String> {
+    clear_appimage_env(&mut cmd);
     let Some(hardening) = crate::trust::git_restriction(project_id, root)? else {
-        return Ok(shell);
+        return Ok(cmd);
     };
     if autostart {
         return Err(crate::app_error::AppError::new(
@@ -493,9 +518,34 @@ fn project_shell(project_id: &str, root: &Path, autostart: bool) -> Result<Comma
         .into());
     }
     for (key, value) in hardening {
-        shell.env(key, value);
+        cmd.env(key, value);
     }
-    Ok(shell)
+    Ok(cmd)
+}
+
+/// What a terminal starts with besides its project: a folder inside the
+/// project, extra environment and the shell setting.
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TerminalOpenOptions {
+    #[serde(default)]
+    pub cwd: Option<String>,
+    #[serde(default)]
+    pub env: Option<BTreeMap<String, String>>,
+    #[serde(default)]
+    pub shell: Option<ShellChoice>,
+}
+
+/// The session id and how its shell quotes typed commands.
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TerminalOpened {
+    pub id: String,
+    pub shell: ShellKind,
+    pub shell_id: ShellId,
+    /// The shell program's name (`zsh`, `bash`), which decides the bytes
+    /// Shift+Enter sends.
+    pub shell_name: String,
 }
 
 #[tauri::command]
@@ -505,17 +555,43 @@ pub async fn term_open<R: Runtime>(
     cols: u16,
     rows: u16,
     autostart: Option<bool>,
+    options: Option<TerminalOpenOptions>,
     channel: Channel<TerminalEvent>,
-) -> Result<String, String> {
+) -> Result<TerminalOpened, String> {
     let owner = webview_command_owner(&webview, &project_id)?;
-    let cwd = crate::paths::project_dir(&project_id)?;
+    let root = crate::paths::project_dir(&project_id)?;
+    let options = options.unwrap_or_default();
+    let cwd = env::terminal_cwd(&root, options.cwd.as_deref())?;
+    let launch_env = env::validate_launch_env(&options.env.unwrap_or_default(), cfg!(windows))?;
+    let choice = options.shell.unwrap_or_default();
+    let cli = CliEnv::current();
     let ticket = terminal_open_ticket(owner);
     tauri::async_runtime::spawn_blocking(move || {
-        let shell = project_shell(&project_id, &cwd, autostart.unwrap_or(false))?;
-        open_terminal_with_ticket(&cwd, ticket, cols, rows, channel, shell)
+        let spec = shell::resolve_shell(&choice, cfg!(windows), &shell::SystemProbe)?;
+        let mut cmd = CommandBuilder::new(&spec.program);
+        cmd.args(&spec.args);
+        env::apply_session_env(&mut cmd, &spec, &cli, &launch_env);
+        let cmd = project_shell(&project_id, &root, autostart.unwrap_or(false), cmd)?;
+        let id = open_terminal_with_ticket(&cwd, ticket, cols, rows, channel, cmd)?;
+        Ok(TerminalOpened {
+            id,
+            shell: spec.kind,
+            shell_id: spec.id,
+            shell_name: spec.name,
+        })
     })
     .await
     .map_err(|e| format!("failed to start shell: {e}"))?
+}
+
+/// The shells this computer can start, for the picker in Settings.
+#[tauri::command]
+pub async fn term_shells() -> Vec<ShellOption> {
+    tauri::async_runtime::spawn_blocking(|| {
+        shell::shell_options(cfg!(windows), &shell::SystemProbe)
+    })
+    .await
+    .unwrap_or_default()
 }
 
 struct TerminalOpenTicket {
@@ -588,11 +664,14 @@ fn open_terminal_with_ticket(
     let writer = TerminalWriter::start(writer, Some(channel.clone()))?;
 
     let child = Arc::new(Mutex::new(child));
+    let flow = OutputFlow::new();
     let session = TermSession {
         master: Arc::new(Mutex::new(pty.master)),
         writer,
         child: Arc::clone(&child),
-        _containment: containment,
+        containment,
+        flow: Arc::clone(&flow),
+        shell_pid: pid,
     };
     let id = {
         let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
@@ -613,7 +692,12 @@ fn open_terminal_with_ticket(
     );
 
     spawn_exit_poller(id.clone(), child);
-    spawn_output_reader(id.clone(), reader, channel);
+    if let Err(error) = spawn_output_pump(id.clone(), reader, channel, flow) {
+        if let Some(session) = take_session(&id) {
+            stop_session(session);
+        }
+        return Err(format!("failed to start terminal output: {error}"));
+    }
 
     Ok(id)
 }
@@ -663,12 +747,9 @@ fn terminal_streams(master: &(dyn MasterPty + Send)) -> Result<TerminalStreams, 
 /// and drop the session; closing the master unblocks the reader, which then
 /// delivers the exit event. The poller ends when the session is torn down
 /// elsewhere and its registry clone of the child goes away.
-fn spawn_exit_poller(
-    poll_id: String,
-    child: Arc<Mutex<Box<dyn portable_pty::Child + Send + Sync>>>,
-) {
+fn spawn_exit_poller(poll_id: String, child: SharedChild) {
     std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_millis(250));
+        std::thread::sleep(Duration::from_millis(250));
         if Arc::strong_count(&child) == 1 {
             break;
         }
@@ -688,7 +769,7 @@ fn spawn_exit_poller(
     });
 }
 
-/// Remove a session from the registry by id. The reader and the exit poller
+/// Remove a session from the registry by id. The pump and the exit poller
 /// race to tear the same session down, so whichever arrives second gets None.
 fn take_session(session_id: &str) -> Option<TermSession> {
     let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
@@ -697,75 +778,208 @@ fn take_session(session_id: &str) -> Option<TermSession> {
         .and_then(|registry| registry.remove_unchecked(session_id))
 }
 
-/// Forward shell output until the pty closes. Returns whether the channel still
-/// accepts events, and any bytes left after the last complete character.
-fn stream_terminal_output(
+/// Start the output pump: a reader thread that blocks on the pty and queues
+/// chunks (a full queue blocks it, so a flooding program blocks on write),
+/// and an emitter thread that batches the chunks, waits while the frontend
+/// is behind and sends them.
+fn spawn_output_pump(
+    session_id: String,
+    reader: Box<dyn Read + Send>,
+    channel: Channel<TerminalEvent>,
+    flow: Arc<OutputFlow>,
+) -> std::io::Result<()> {
+    let (queue, chunks) = sync_channel::<Vec<u8>>(OUTPUT_QUEUE_CHUNKS);
+    std::thread::Builder::new()
+        .name("oleafly-terminal-read".into())
+        .spawn(move || read_output(reader, &queue))?;
+    std::thread::Builder::new()
+        .name("oleafly-terminal-output".into())
+        .spawn(move || emit_output(&session_id, &chunks, &channel, &flow))?;
+    Ok(())
+}
+
+fn read_output(mut reader: Box<dyn Read + Send>, queue: &SyncSender<Vec<u8>>) {
+    let mut buffer = vec![0u8; OUTPUT_READ_BYTES];
+    loop {
+        match reader.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(count) => {
+                if queue.send(buffer[..count].to_vec()).is_err() {
+                    break;
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(_) => break,
+        }
+    }
+}
+
+/// Forward shell output until the reader ends, then tear the session down
+/// and send the exit event while the channel is open.
+fn emit_output(
     session_id: &str,
-    reader: &mut dyn Read,
+    chunks: &Receiver<Vec<u8>>,
     channel: &Channel<TerminalEvent>,
-) -> (bool, Vec<u8>) {
-    let mut buffer = [0u8; 8192];
+    flow: &OutputFlow,
+) {
     let mut pending: Vec<u8> = Vec::new();
     let mut channel_open = true;
-    while let Ok(count) = reader.read(&mut buffer) {
-        if count == 0 {
-            break;
-        }
+    // None means quiet, so the first chunk goes out at once.
+    let mut last_flush: Option<Instant> = None;
+    while let Some(batch) = next_batch(chunks, last_flush, OUTPUT_BATCH_WINDOW, OUTPUT_BATCH_BYTES)
+    {
         if !channel_open {
+            // Keep draining so the reader never blocks on a dead channel.
             continue;
         }
-        pending.extend_from_slice(&buffer[..count]);
+        pending.extend_from_slice(&batch);
         let data = drain_utf8_lossy(&mut pending);
         if data.is_empty() {
             continue;
         }
-        if channel.send(TerminalEvent::Output { data }).is_ok() {
+        if !flow.wait_for_room() {
+            // Closed while paused: drop the output, still send Exit later.
+            pending.clear();
             continue;
         }
-        channel_open = false;
-        pending.clear();
-        stop_sessions_in_background(take_session(session_id).into_iter().collect());
+        let bytes = data.len();
+        if channel.send(TerminalEvent::Output { data, bytes }).is_err() {
+            channel_open = false;
+            pending.clear();
+            stop_sessions_in_background(take_session(session_id).into_iter().collect());
+            continue;
+        }
+        flow.charge(bytes);
+        last_flush = Some(Instant::now());
     }
-    (channel_open, pending)
-}
-
-fn spawn_output_reader(
-    session_id: String,
-    mut reader: Box<dyn Read + Send>,
-    channel: Channel<TerminalEvent>,
-) {
-    std::thread::spawn(move || {
-        let (mut channel_open, pending) =
-            stream_terminal_output(&session_id, reader.as_mut(), &channel);
-        eprintln!("term: session {session_id} reader eof (channel_open={channel_open})");
-        if channel_open && !pending.is_empty() {
-            let data = String::from_utf8_lossy(&pending).to_string();
-            channel_open = channel.send(TerminalEvent::Output { data }).is_ok();
-        }
-        if let Some(session) = take_session(&session_id) {
-            stop_session(session);
-        }
-        if channel_open {
-            let delivered = channel.send(TerminalEvent::Exit).is_ok();
-            eprintln!("term: session {session_id} exit event delivered={delivered}");
-        }
-    });
+    eprintln!("term: session {session_id} reader eof (channel_open={channel_open})");
+    if channel_open && !pending.is_empty() {
+        let data = String::from_utf8_lossy(&pending).to_string();
+        let bytes = data.len();
+        channel_open = channel.send(TerminalEvent::Output { data, bytes }).is_ok();
+    }
+    if let Some(session) = take_session(session_id) {
+        stop_session(session);
+    }
+    if channel_open {
+        let delivered = channel.send(TerminalEvent::Exit).is_ok();
+        eprintln!("term: session {session_id} exit event delivered={delivered}");
+    }
 }
 
 fn stop_session(session: TermSession) {
-    let TermSession {
-        master,
-        writer,
-        child,
-        _containment,
-    } = session;
-    drop(writer);
-    drop(_containment);
-    drop(master);
-    if let Ok(mut guard) = child.lock() {
-        let _ = guard.kill();
-        let _ = guard.wait();
-    };
+    stop_sessions(vec![session]);
+}
+
+/// Stop shells in three steps: hang up (Unix: SIGHUP to the shell's process
+/// group and to its foreground job; Windows: close the kill-on-close job),
+/// give every shell one shared HANGUP_GRACE to exit, then kill what is left.
+/// Quitting with ten terminals waits at most once.
+fn stop_sessions(sessions: Vec<TermSession>) {
+    let stopping: Vec<Stopping> = sessions.into_iter().map(Stopping::hang_up).collect();
+    #[cfg(unix)]
+    {
+        let deadline = Instant::now() + HANGUP_GRACE;
+        while Instant::now() < deadline && !stopping.iter().all(Stopping::exited) {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+    for session in stopping {
+        session.kill();
+    }
+}
+
+/// A session between its hang-up and its kill.
+struct Stopping {
+    child: SharedChild,
+    #[cfg(unix)]
+    foreground: Option<i32>,
+    #[cfg(unix)]
+    containment: crate::proc::ProcessTreeGuard,
+    #[cfg(unix)]
+    master: SharedMaster,
+}
+
+impl Stopping {
+    #[cfg(unix)]
+    fn hang_up(session: TermSession) -> Self {
+        let TermSession {
+            master,
+            writer,
+            child,
+            containment,
+            flow,
+            shell_pid,
+        } = session;
+        flow.close();
+        let shell_group = shell_pid as i32;
+        // Read the foreground job before anything closes.
+        let foreground = jobs::unix_foreground_group(
+            shell_group,
+            master
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .process_group_leader(),
+        );
+        crate::proc::signal_process_group(shell_group, libc::SIGHUP);
+        if let Some(group) = foreground {
+            crate::proc::signal_process_group(group, libc::SIGHUP);
+        }
+        drop(writer);
+        Self {
+            child,
+            foreground,
+            containment,
+            master,
+        }
+    }
+
+    #[cfg(windows)]
+    fn hang_up(session: TermSession) -> Self {
+        let TermSession {
+            master,
+            writer,
+            child,
+            containment,
+            flow,
+            shell_pid: _,
+        } = session;
+        flow.close();
+        drop(writer);
+        // Closing the kill-on-close job ends every process in it.
+        drop(containment);
+        drop(master);
+        Self { child }
+    }
+
+    #[cfg(unix)]
+    fn exited(&self) -> bool {
+        self.child
+            .lock()
+            .ok()
+            .and_then(|mut child| child.try_wait().ok().flatten())
+            .is_some()
+    }
+
+    fn kill(self) {
+        #[cfg(unix)]
+        {
+            if let Some(group) = self.foreground {
+                crate::proc::signal_process_group(group, libc::SIGKILL);
+            }
+            // Dropping the guard sends SIGKILL to the shell's process group.
+            drop(self.containment);
+            drop(self.master);
+        }
+        if let Ok(mut child) = self.child.lock() {
+            // A child the grace loop already reaped must not be signalled:
+            // its pid may belong to another process by now.
+            if !matches!(child.try_wait(), Ok(Some(_))) {
+                let _ = child.kill();
+            }
+            let _ = child.wait();
+        };
+    }
 }
 
 #[tauri::command]
@@ -787,6 +1001,120 @@ fn write_terminal(owner: &SessionOwner, id: &str, data: &str) -> Result<WriteRec
         .ok_or_else(|| "terminal session is not open".to_string())?
         .get(id, owner)?;
     session.writer.enqueue(data)
+}
+
+/// The frontend parsed `bytes` of a session's output.
+#[tauri::command]
+pub fn term_ack<R: Runtime>(
+    webview: Webview<R>,
+    project_id: String,
+    id: String,
+    bytes: u64,
+) -> Result<(), String> {
+    let owner = webview_command_owner(&webview, &project_id)?;
+    ack_terminal(&owner, &id, bytes)
+}
+
+fn ack_terminal(owner: &SessionOwner, id: &str, bytes: u64) -> Result<(), String> {
+    let flow = {
+        let sessions = SESSIONS.lock().expect("terminal registry poisoned");
+        Arc::clone(
+            &sessions
+                .as_ref()
+                .ok_or_else(|| "terminal session is not open".to_string())?
+                .get(id, owner)?
+                .flow,
+        )
+    };
+    flow.ack(usize::try_from(bytes).unwrap_or(usize::MAX));
+    Ok(())
+}
+
+/// Which of the project's terminals (all, or `ids`) run a program besides
+/// their shell. Only busy terminals are listed.
+#[tauri::command]
+pub async fn term_foreground<R: Runtime>(
+    webview: Webview<R>,
+    project_id: String,
+    ids: Option<Vec<String>>,
+) -> Result<Vec<TerminalJob>, String> {
+    let owner = webview_command_owner(&webview, &project_id)?;
+    let probes = foreground_probes(&owner, ids.as_deref());
+    tauri::async_runtime::spawn_blocking(move || {
+        probes
+            .into_iter()
+            .filter_map(ForegroundProbe::job)
+            .collect()
+    })
+    .await
+    .map_err(|error| format!("failed to check the terminals: {error}"))
+}
+
+/// What the busy check needs from one session, taken under the registry
+/// lock so the slower process queries run without it.
+struct ForegroundProbe {
+    id: String,
+    shell_pid: u32,
+    #[cfg(unix)]
+    master: SharedMaster,
+    #[cfg(windows)]
+    processes: std::io::Result<Vec<u32>>,
+}
+
+fn foreground_probes(owner: &SessionOwner, ids: Option<&[String]>) -> Vec<ForegroundProbe> {
+    let sessions = SESSIONS.lock().expect("terminal registry poisoned");
+    let Some(registry) = sessions.as_ref() else {
+        return Vec::new();
+    };
+    registry
+        .owned(owner)
+        .filter(|(id, _)| ids.is_none_or(|wanted| wanted.iter().any(|candidate| candidate == id)))
+        .map(|(id, session)| ForegroundProbe {
+            id: id.to_string(),
+            shell_pid: session.shell_pid,
+            #[cfg(unix)]
+            master: Arc::clone(&session.master),
+            #[cfg(windows)]
+            processes: session.containment.process_ids(),
+        })
+        .collect()
+}
+
+impl ForegroundProbe {
+    #[cfg(unix)]
+    fn job(self) -> Option<TerminalJob> {
+        let foreground = self
+            .master
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .process_group_leader();
+        let group = jobs::unix_foreground_group(self.shell_pid as i32, foreground)?;
+        Some(TerminalJob {
+            id: self.id,
+            process: crate::proc::process_name(group).map(|name| jobs::display_process_name(&name)),
+        })
+    }
+
+    #[cfg(windows)]
+    fn job(self) -> Option<TerminalJob> {
+        let processes: Vec<(u32, String)> = self
+            .processes
+            .ok()?
+            .into_iter()
+            .map(|pid| {
+                (
+                    pid,
+                    crate::proc::process_image_name(pid).unwrap_or_default(),
+                )
+            })
+            .collect();
+        let image = jobs::windows_foreground_process(self.shell_pid, &processes)?;
+        let name = jobs::display_process_name(&image);
+        Some(TerminalJob {
+            id: self.id,
+            process: (!name.is_empty()).then_some(name),
+        })
+    }
 }
 
 #[tauri::command]
@@ -818,9 +1146,7 @@ fn resize_terminal(owner: &SessionOwner, id: &str, cols: u16, rows: u16) -> Resu
     };
     // Recover a poisoned master the way storage locks do. A panic in one
     // resize must not make every later resize of that terminal fail.
-    let master = master
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let master = master.lock().unwrap_or_else(PoisonError::into_inner);
     master
         .resize(PtySize {
             rows,
@@ -855,974 +1181,4 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
 }
 
 #[cfg(test)]
-mod tests {
-    #[test]
-    fn reload_rejects_an_in_flight_terminal_open() {
-        let directory = tempfile::tempdir().unwrap();
-        let owner = SessionOwner::new("audit-stale-open", "proj");
-        let ticket = terminal_open_ticket(owner.clone());
-        kill_window_sessions(&owner.window_label);
-        let result = open_terminal_with_ticket(
-            directory.path(),
-            ticket,
-            80,
-            24,
-            Channel::new(|_| Ok(())),
-            nonreading_terminal_fixture(),
-        );
-        assert!(result.unwrap_err().contains("reloaded"));
-        let sessions = SESSIONS.lock().unwrap();
-        assert!(!sessions
-            .as_ref()
-            .unwrap()
-            .sessions
-            .values()
-            .any(|record| record.owner == owner));
-    }
-
-    #[test]
-    fn slow_resize_does_not_hold_the_global_session_registry() {
-        let directory = tempfile::tempdir().unwrap();
-        let owner = SessionOwner::new("audit-resize-lock", "proj");
-        let id = open_terminal(
-            directory.path(),
-            owner.clone(),
-            80,
-            24,
-            Channel::new(|_| Ok(())),
-            nonreading_terminal_fixture(),
-        )
-        .unwrap();
-        let master = {
-            let sessions = SESSIONS.lock().unwrap();
-            Arc::clone(&sessions.as_ref().unwrap().get(&id, &owner).unwrap().master)
-        };
-        let locked = master.lock().unwrap();
-        let resize_owner = owner.clone();
-        let resize_id = id.clone();
-        let (started, ready) = std::sync::mpsc::channel();
-        let resize = std::thread::spawn(move || {
-            started.send(()).unwrap();
-            resize_terminal(&resize_owner, &resize_id, 100, 30)
-        });
-        ready
-            .recv_timeout(std::time::Duration::from_secs(2))
-            .unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        let registry_available = SESSIONS.try_lock().is_ok();
-        drop(locked);
-        resize.join().unwrap().unwrap();
-        kill_terminal(&owner, &id).unwrap();
-        assert!(
-            registry_available,
-            "resize blocked input/close for every terminal"
-        );
-    }
-
-    #[tokio::test]
-    async fn oversized_pastes_are_rejected_whole_and_leave_the_terminal_usable() {
-        let writer = TerminalWriter::start(Box::new(std::io::sink()), None).unwrap();
-        let error = writer
-            .enqueue(&"x".repeat(MAX_PENDING_INPUT_BYTES + 1))
-            .unwrap_err();
-        assert!(error.contains("Paste 4 MiB or less"));
-        assert_eq!(writer.pending_bytes.load(Ordering::Acquire), 0);
-        writer
-            .enqueue("echo ready\n")
-            .unwrap()
-            .await
-            .unwrap()
-            .unwrap();
-        writer
-            .enqueue(&"x".repeat(MAX_PENDING_INPUT_BYTES))
-            .unwrap()
-            .await
-            .unwrap()
-            .unwrap();
-    }
-
-    #[tokio::test]
-    async fn blocked_terminal_input_is_bounded_ordered_and_does_not_block_the_caller() {
-        struct BlockedWriter {
-            started: std::sync::mpsc::Sender<()>,
-            resume: std::sync::mpsc::Receiver<()>,
-            output: Arc<Mutex<Vec<u8>>>,
-        }
-        impl Write for BlockedWriter {
-            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-                self.started.send(()).unwrap();
-                self.resume.recv().unwrap();
-                self.output.lock().unwrap().extend_from_slice(bytes);
-                Ok(bytes.len())
-            }
-            fn flush(&mut self) -> std::io::Result<()> {
-                Ok(())
-            }
-        }
-        let (started, started_rx) = std::sync::mpsc::channel();
-        let (resume, resume_rx) = std::sync::mpsc::channel();
-        let output = Arc::new(Mutex::new(Vec::new()));
-        let writer = TerminalWriter::start(
-            Box::new(BlockedWriter {
-                started,
-                resume: resume_rx,
-                output: Arc::clone(&output),
-            }),
-            None,
-        )
-        .unwrap();
-        let first = writer.enqueue("first").unwrap();
-        started_rx
-            .recv_timeout(std::time::Duration::from_secs(2))
-            .unwrap();
-        let second = writer.enqueue("second").unwrap();
-        assert!(writer
-            .enqueue(&"x".repeat(MAX_PENDING_INPUT_BYTES))
-            .is_err());
-        assert_eq!(writer.pending_bytes.load(Ordering::Acquire), 11);
-        resume.send(()).unwrap();
-        first.await.unwrap().unwrap();
-        started_rx
-            .recv_timeout(std::time::Duration::from_secs(2))
-            .unwrap();
-        resume.send(()).unwrap();
-        second.await.unwrap().unwrap();
-        assert_eq!(*output.lock().unwrap(), b"firstsecond");
-        assert_eq!(writer.pending_bytes.load(Ordering::Acquire), 0);
-    }
-
-    #[tokio::test]
-    async fn terminal_writer_reports_io_failure_and_rejects_more_input() {
-        struct FailedWriter;
-        impl Write for FailedWriter {
-            fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
-                Err(std::io::Error::from(std::io::ErrorKind::BrokenPipe))
-            }
-            fn flush(&mut self) -> std::io::Result<()> {
-                Ok(())
-            }
-        }
-        let writer = TerminalWriter::start(Box::new(FailedWriter), None).unwrap();
-        assert!(writer.enqueue("hello").unwrap().await.unwrap().is_err());
-        assert!(writer.enqueue("again").is_err());
-    }
-
-    #[test]
-    fn terminal_env_advertises_truecolor_and_identity() {
-        let mut cmd = super::CommandBuilder::new("sh");
-        super::apply_terminal_env(&mut cmd);
-        let get = |k: &str| cmd.get_env(k).map(|v| v.to_string_lossy().into_owned());
-        assert_eq!(get("TERM").as_deref(), Some("xterm-256color"));
-        assert_eq!(get("COLORTERM").as_deref(), Some("truecolor"));
-        assert_eq!(get("TERM_PROGRAM").as_deref(), Some("Oleafly"));
-        assert_eq!(
-            get("TERM_PROGRAM_VERSION").as_deref(),
-            Some(env!("CARGO_PKG_VERSION"))
-        );
-        #[cfg(not(windows))]
-        {
-            // Either the host already has a UTF-8-capable locale, or we supplied one.
-            let host_has_locale = ["LC_ALL", "LC_CTYPE", "LANG"]
-                .iter()
-                .any(|k| std::env::var_os(k).is_some_and(|v| !v.is_empty()));
-            if !host_has_locale {
-                assert!(get("LANG").is_some_and(|v| v.ends_with("UTF-8")));
-            }
-        }
-    }
-
-    #[test]
-    fn drain_window_removes_only_that_windows_sessions() {
-        let mut registry = SessionRegistry::<u32>::default();
-        let main_id = registry.insert(SessionOwner::new("main", "alpha"), 1);
-        let other_main = registry.insert(SessionOwner::new("main", "beta"), 2);
-        let preview_id = registry.insert(SessionOwner::new("preview", "alpha"), 3);
-        let mut drained = registry.drain_window("main");
-        drained.sort_unstable();
-        assert_eq!(drained, vec![1, 2]);
-        assert!(registry.remove_unchecked(&main_id).is_none());
-        assert!(registry.remove_unchecked(&other_main).is_none());
-        assert_eq!(registry.remove_unchecked(&preview_id), Some(3));
-        assert!(registry.drain_all().is_empty());
-    }
-
-    #[test]
-    fn drain_project_removes_only_that_projects_sessions() {
-        let mut registry = SessionRegistry::<u32>::default();
-        let alpha_main = registry.insert(SessionOwner::new("main", "alpha"), 1);
-        let alpha_preview = registry.insert(SessionOwner::new("preview", "alpha"), 2);
-        let beta = registry.insert(SessionOwner::new("main", "beta"), 3);
-        let mut drained = registry.drain_project("alpha");
-        drained.sort_unstable();
-        assert_eq!(drained, vec![1, 2]);
-        assert!(registry.remove_unchecked(&alpha_main).is_none());
-        assert!(registry.remove_unchecked(&alpha_preview).is_none());
-        assert_eq!(registry.remove_unchecked(&beta), Some(3));
-        assert!(registry.drain_project("alpha").is_empty());
-    }
-    #[cfg(unix)]
-    use crate::proc::NoConsole as _;
-    #[test]
-    fn drain_utf8_keeps_a_split_multibyte_tail() {
-        let emoji = "café🦀".as_bytes();
-        let (head, tail) = emoji.split_at(emoji.len() - 2);
-        let mut pending = head.to_vec();
-        let mut out = super::drain_utf8_lossy(&mut pending);
-        pending.extend_from_slice(tail);
-        out.push_str(&super::drain_utf8_lossy(&mut pending));
-        assert_eq!(out, "café🦀");
-        assert!(pending.is_empty());
-    }
-
-    #[test]
-    fn drain_utf8_replaces_invalid_bytes() {
-        let mut pending = vec![b'o', b'k', 0xFF, b'!'];
-        let out = super::drain_utf8_lossy(&mut pending);
-        assert_eq!(out, "ok\u{FFFD}!");
-        assert!(pending.is_empty());
-    }
-
-    use super::*;
-    use crate::test_wait;
-
-    #[test]
-    #[cfg_attr(
-        windows,
-        ignore = "WebView2 child-webview creation needs a running message loop that a unit test thread does not provide"
-    )]
-    fn terminal_write_resolves_the_parent_of_a_multi_webview_window() {
-        #[cfg(not(windows))]
-        use std::os::unix::fs::PermissionsExt;
-
-        let root = std::env::temp_dir().join(format!(
-            "oleafly-terminal-multi-webview-{}",
-            std::process::id()
-        ));
-        std::fs::remove_dir_all(&root).ok();
-        let project = root.join("projects/proj");
-        std::fs::create_dir_all(&project).unwrap();
-        #[cfg(not(windows))]
-        let shell = {
-            let shell = root.join("test-shell.sh");
-            std::fs::write(
-                &shell,
-                b"#!/bin/sh\nIFS= read -r input\nprintf '%s' \"$input\" > terminal-input.txt\nsleep 10\n",
-            )
-            .unwrap();
-            std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o700)).unwrap();
-            CommandBuilder::new(shell)
-        };
-        #[cfg(windows)]
-        let shell = {
-            let mut shell = CommandBuilder::new("powershell.exe");
-            shell.arg("-NoProfile");
-            shell.arg("-Command");
-            shell.arg("$input = [Console]::In.ReadLine(); [IO.File]::WriteAllText('terminal-input.txt', $input); Start-Sleep -Seconds 10");
-            shell
-        };
-        let owner = SessionOwner::new("main", "proj");
-        let session_id = open_terminal(
-            &project,
-            owner.clone(),
-            80,
-            24,
-            Channel::new(|_| Ok(())),
-            shell,
-        )
-        .unwrap();
-        let app = tauri::test::mock_builder()
-            .invoke_handler(tauri::generate_handler![term_write])
-            .build(tauri::test::mock_context(tauri::test::noop_assets()))
-            .unwrap();
-        let main_webview = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .unwrap();
-        let window = main_webview.as_ref().window();
-        let _browser_webview = window
-            .add_child(
-                tauri::webview::WebviewBuilder::new(
-                    "oleafly-browser-pane-test",
-                    Default::default(),
-                ),
-                tauri::LogicalPosition::new(0, 0),
-                tauri::LogicalSize::new(400, 600),
-            )
-            .unwrap();
-
-        let response = tauri::test::get_ipc_response(
-            &main_webview,
-            tauri::webview::InvokeRequest {
-                cmd: "term_write".into(),
-                callback: tauri::ipc::CallbackFn(0),
-                error: tauri::ipc::CallbackFn(1),
-                url: if cfg!(windows) {
-                    "http://tauri.localhost"
-                } else {
-                    "tauri://localhost"
-                }
-                .parse()
-                .unwrap(),
-                body: serde_json::json!({
-                    "projectId": "proj",
-                    "id": session_id,
-                    "data": "hello from the main webview\n"
-                })
-                .into(),
-                headers: Default::default(),
-                invoke_key: tauri::test::INVOKE_KEY.to_string(),
-            },
-        );
-        let response = response.map(|body| body.deserialize::<()>().unwrap());
-        let received_path = project.join("terminal-input.txt");
-        let received = test_wait::read_until_blocking(
-            &received_path,
-            test_wait::CHILD_PATIENCE,
-            test_wait::exactly("hello from the main webview"),
-        );
-        let written = std::fs::read_to_string(&received_path);
-
-        kill_terminal(&owner, &session_id).unwrap();
-        std::fs::remove_dir_all(&root).ok();
-        assert_eq!(response, Ok(()));
-        assert_eq!(
-            received,
-            Some(()),
-            "the shell did not write the line it read: {written:?}"
-        );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn child_exit_sends_a_terminal_exit_event() {
-        let root = std::env::temp_dir().join(format!(
-            "oleafly-terminal-exit-event-{}",
-            std::process::id()
-        ));
-        std::fs::remove_dir_all(&root).ok();
-        let project = root.join("projects/proj");
-        std::fs::create_dir_all(&project).unwrap();
-        let mut shell = CommandBuilder::new("/bin/sh");
-        shell.arg("-c");
-        shell.arg("sleep 0.05");
-        let (events_tx, events_rx) = std::sync::mpsc::channel();
-        let channel = Channel::new(move |body| {
-            events_tx
-                .send(body.deserialize::<serde_json::Value>().unwrap())
-                .unwrap();
-            Ok(())
-        });
-
-        open_terminal(
-            &project,
-            SessionOwner::new("main", "proj"),
-            80,
-            24,
-            channel,
-            shell,
-        )
-        .unwrap();
-        // The contract is that the exit event arrives, not that it is the
-        // first event; a pty may emit terminal noise before the shell dies.
-        let deadline = std::time::Instant::now() + test_wait::CHILD_PATIENCE;
-        let mut events = Vec::new();
-        let exit_seen = loop {
-            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
-            if remaining.is_zero() {
-                break false;
-            }
-            match events_rx.recv_timeout(remaining) {
-                Ok(event) => {
-                    let is_exit = event == serde_json::json!({ "event": "exit" });
-                    events.push(event);
-                    if is_exit {
-                        break true;
-                    }
-                }
-                Err(_) => break false,
-            }
-        };
-
-        std::fs::remove_dir_all(&root).ok();
-        assert!(exit_seen, "no exit event; received: {events:?}");
-    }
-
-    #[test]
-    fn writes_to_unknown_sessions_are_rejected() {
-        let owner = SessionOwner::new("main", "proj");
-        assert!(write_terminal(&owner, "missing", "ls\n").is_err());
-        assert!(resize_terminal(&owner, "missing", 80, 24).is_err());
-        assert!(kill_terminal(&owner, "missing").is_ok());
-    }
-
-    #[test]
-    fn shell_builder_targets_a_login_shell() {
-        let cmd = default_shell();
-        let program = format!("{:?}", cmd);
-        #[cfg(not(windows))]
-        assert!(program.contains("sh") || program.contains("SHELL"));
-        #[cfg(windows)]
-        assert!(program.contains("powershell"));
-        let path = cmd.get_env("PATH").expect("the shell gets a search path");
-        assert!(!path.is_empty());
-        assert!(std::env::split_paths(path).all(|entry| !entry.as_os_str().is_empty()));
-    }
-
-    #[test]
-    fn terminal_session_ids_are_not_sequential_counters() {
-        let mut registry = SessionRegistry::default();
-        let id = registry.insert(SessionOwner::new("main", "proj"), ());
-        let numeric_suffix = id
-            .strip_prefix("term-")
-            .and_then(|suffix| suffix.parse::<u64>().ok());
-        let random_ids = (0..32)
-            .map(|_| random_session_id())
-            .collect::<std::collections::HashSet<_>>();
-
-        assert!(id.starts_with("term-"));
-        assert!(numeric_suffix.is_none());
-        assert_eq!(random_ids.len(), 32);
-        assert!(random_ids.iter().all(|id| id.len() >= 48));
-    }
-
-    #[test]
-    fn terminal_sessions_require_the_creating_window_and_project() {
-        let owner = SessionOwner::new("main", "project-a");
-        let mut registry = SessionRegistry::default();
-        let id = registry.insert(owner.clone(), ());
-        let wrong_window = SessionOwner::new("preview", "project-a");
-        let wrong_project = SessionOwner::new("main", "project-b");
-
-        assert!(registry.get(&id, &owner).is_ok());
-        assert_eq!(
-            registry.get(&id, &wrong_window).err().as_deref(),
-            Some("terminal session belongs to another window or project")
-        );
-        assert_eq!(
-            registry.remove(&id, &wrong_project).err().as_deref(),
-            Some("terminal session belongs to another window or project")
-        );
-        assert!(registry.get(&id, &owner).is_ok());
-        assert!(registry.remove(&id, &owner).unwrap().is_some());
-        assert_eq!(
-            command_owner("preview", "project-a").err().as_deref(),
-            Some("terminal is unavailable from this window")
-        );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn owning_window_and_project_can_write_to_the_shell() {
-        use std::os::unix::fs::PermissionsExt;
-
-        let root = std::env::temp_dir().join(format!(
-            "oleafly-terminal-owner-write-{}",
-            std::process::id()
-        ));
-        std::fs::remove_dir_all(&root).ok();
-        let project = root.join("projects/proj");
-        std::fs::create_dir_all(&project).unwrap();
-        let shell = root.join("test-shell.sh");
-        std::fs::write(
-            &shell,
-            b"#!/bin/sh\nIFS= read -r input\nprintf '%s' \"$input\" > terminal-input.txt\nsleep 10\n",
-        )
-        .unwrap();
-        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o700)).unwrap();
-        let owner = command_owner("main", "proj").unwrap();
-        let session_id = open_terminal(
-            &project,
-            owner.clone(),
-            80,
-            24,
-            Channel::new(|_| Ok(())),
-            CommandBuilder::new(&shell),
-        )
-        .unwrap();
-
-        write_terminal(&owner, &session_id, "hello from the owner\n").unwrap();
-        let received_path = project.join("terminal-input.txt");
-        let received = test_wait::read_until_blocking(
-            &received_path,
-            test_wait::CHILD_PATIENCE,
-            test_wait::exactly("hello from the owner"),
-        );
-        let written = std::fs::read_to_string(&received_path);
-
-        kill_terminal(&owner, &session_id).unwrap();
-        std::fs::remove_dir_all(&root).ok();
-        assert_eq!(
-            received,
-            Some(()),
-            "the shell did not write the line it read: {written:?}"
-        );
-    }
-
-    struct TerminalTestSession {
-        owner: SessionOwner,
-        id: String,
-    }
-
-    impl Drop for TerminalTestSession {
-        fn drop(&mut self) {
-            let _ = kill_terminal(&self.owner, &self.id);
-        }
-    }
-
-    #[test]
-    fn nonreading_terminal_child() {
-        if std::env::var("OLEAFLY_TERMINAL_TEST_CHILD").as_deref() != Ok("1") {
-            return;
-        }
-        #[cfg(windows)]
-        let mut output = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open("CONOUT$")
-            .unwrap();
-        #[cfg(unix)]
-        let mut output = std::io::stdout().lock();
-        output.write_all(b"READY").unwrap();
-        output.flush().unwrap();
-        let deadline = Instant::now() + std::time::Duration::from_secs(30);
-        while Instant::now() < deadline {
-            std::thread::sleep(std::time::Duration::from_millis(100));
-            if output.write_all(b".").and_then(|_| output.flush()).is_err() {
-                return;
-            }
-        }
-    }
-
-    fn nonreading_terminal_fixture() -> CommandBuilder {
-        let mut process = CommandBuilder::new(std::env::current_exe().unwrap());
-        process.args([
-            "--exact",
-            "terminal::tests::nonreading_terminal_child",
-            "--nocapture",
-        ]);
-        process.env("OLEAFLY_TERMINAL_TEST_CHILD", "1");
-        process
-    }
-
-    async fn wait_for_terminal_ready(
-        events: &mut tokio::sync::mpsc::UnboundedReceiver<serde_json::Value>,
-    ) {
-        let mut output = String::new();
-        tokio::time::timeout(test_wait::CHILD_PATIENCE, async {
-            while let Some(event) = events.recv().await {
-                if let Some(data) = event["data"].as_str() {
-                    output.push_str(data);
-                    if output.contains("READY") {
-                        return;
-                    }
-                }
-            }
-            panic!("terminal event stream closed before the shell was ready");
-        })
-        .await
-        .unwrap_or_else(|_| panic!("shell did not become ready; terminal output: {output:?}"));
-    }
-
-    #[tokio::test]
-    async fn hidden_terminal_starts_and_closes_without_a_cursor_response() {
-        let project = tempfile::tempdir().unwrap();
-        let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
-        let channel = Channel::new(move |body| {
-            let _ = events.send(body.deserialize::<serde_json::Value>().unwrap());
-            Ok(())
-        });
-        let owner = SessionOwner::new("main", "hidden-terminal");
-        let id = open_terminal(
-            project.path(),
-            owner.clone(),
-            80,
-            24,
-            channel,
-            nonreading_terminal_fixture(),
-        )
-        .unwrap();
-        let session = TerminalTestSession { owner, id };
-        wait_for_terminal_ready(&mut received).await;
-        kill_terminal(&session.owner, &session.id).unwrap();
-        tokio::time::timeout(std::time::Duration::from_secs(5), async {
-            while let Some(event) = received.recv().await {
-                if event["event"] == "exit" {
-                    return;
-                }
-            }
-            panic!("terminal event stream closed without an exit event");
-        })
-        .await
-        .expect("hidden terminal did not finish native teardown");
-    }
-
-    #[tokio::test]
-    async fn disconnecting_output_during_a_large_paste_reaps_the_shell() {
-        let project = tempfile::tempdir().unwrap();
-        let disconnect = Arc::new(AtomicBool::new(false));
-        let close_channel = Arc::clone(&disconnect);
-        let rejected = Arc::new(AtomicBool::new(false));
-        let observed_rejection = Arc::clone(&rejected);
-        let (events, mut received) = tokio::sync::mpsc::unbounded_channel();
-        let channel = Channel::new(move |body| {
-            if close_channel.load(Ordering::Acquire) {
-                observed_rejection.store(true, Ordering::Release);
-                return Err(tauri::Error::AssetNotFound("closed".into()));
-            }
-            let _ = events.send(body.deserialize::<serde_json::Value>().unwrap());
-            Ok(())
-        });
-        let owner = SessionOwner::new("main", "paste-disconnect");
-        let id = open_terminal(
-            project.path(),
-            owner.clone(),
-            80,
-            24,
-            channel,
-            nonreading_terminal_fixture(),
-        )
-        .unwrap();
-        let session = TerminalTestSession { owner, id };
-        wait_for_terminal_ready(&mut received).await;
-        let child = {
-            let sessions = SESSIONS.lock().unwrap();
-            Arc::clone(
-                &sessions
-                    .as_ref()
-                    .unwrap()
-                    .get(&session.id, &session.owner)
-                    .unwrap()
-                    .child,
-            )
-        };
-        let receipt =
-            write_terminal(&session.owner, &session.id, &"paste\n".repeat(80_000)).unwrap();
-        disconnect.store(true, Ordering::Release);
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
-        tokio::time::timeout_at(deadline, async {
-            while !rejected.load(Ordering::Acquire) {
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            }
-        })
-        .await
-        .expect("terminal never observed the disconnected output channel");
-        let _ = tokio::time::timeout_at(deadline, receipt)
-            .await
-            .expect("terminal input did not settle after disconnect");
-        tokio::time::timeout_at(deadline, async {
-            loop {
-                let exited = child
-                    .try_lock()
-                    .ok()
-                    .and_then(|mut child| child.try_wait().ok().flatten())
-                    .is_some();
-                if exited {
-                    break;
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-            }
-        })
-        .await
-        .expect("terminal shell did not exit after disconnect");
-        assert!(write_terminal(&session.owner, &session.id, "more").is_err());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn closed_output_channel_kills_the_login_shell() {
-        use std::os::unix::fs::PermissionsExt;
-        use std::sync::atomic::{AtomicUsize, Ordering};
-        use std::sync::{Arc, Barrier};
-
-        let root = std::env::temp_dir().join(format!(
-            "oleafly-terminal-channel-close-{}",
-            std::process::id()
-        ));
-        std::fs::remove_dir_all(&root).ok();
-        let project = root.join("projects/proj");
-        std::fs::create_dir_all(&project).unwrap();
-        let shell = root.join("test-shell.sh");
-        std::fs::write(
-            &shell,
-            b"#!/bin/sh\ntrap '' HUP\nprintf '%s\\n' \"$$\" > terminal.pid\nprintf ready\nread ignored\n",
-        )
-        .unwrap();
-        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o700)).unwrap();
-        let channel_entered = Arc::new(Barrier::new(2));
-        let close_channel = Arc::new(Barrier::new(2));
-        let send_attempts = Arc::new(AtomicUsize::new(0));
-        let callback_entered = Arc::clone(&channel_entered);
-        let callback_close = Arc::clone(&close_channel);
-        let callback_attempts = Arc::clone(&send_attempts);
-        let channel = Channel::new(move |_| {
-            if callback_attempts.fetch_add(1, Ordering::SeqCst) == 0 {
-                callback_entered.wait();
-                callback_close.wait();
-            }
-            Err(tauri::Error::AssetNotFound("closed".into()))
-        });
-
-        let owner = SessionOwner::new("main", "proj");
-        let session_id = open_terminal(
-            &project,
-            owner.clone(),
-            80,
-            24,
-            channel,
-            CommandBuilder::new(&shell),
-        )
-        .unwrap();
-        channel_entered.wait();
-        let pid_path = project.join("terminal.pid");
-        let pid = std::fs::read_to_string(&pid_path)
-            .unwrap()
-            .trim()
-            .to_string();
-        close_channel.wait();
-
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
-        let mut stopped = false;
-        while std::time::Instant::now() < deadline {
-            if !std::process::Command::new("kill")
-                .no_console()
-                .args(["-0", &pid])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status()
-                .is_ok_and(|status| status.success())
-            {
-                stopped = true;
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
-        if !stopped {
-            let _ = std::process::Command::new("kill")
-                .no_console()
-                .args(["-KILL", &pid])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status();
-        }
-        let _ = kill_terminal(&owner, &session_id);
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        std::fs::remove_dir_all(&root).ok();
-        assert!(stopped);
-        assert_eq!(send_attempts.load(Ordering::SeqCst), 1);
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn term_kill_terminates_background_descendants() {
-        use std::os::unix::fs::PermissionsExt;
-
-        let root = std::env::temp_dir().join(format!(
-            "oleafly-terminal-process-group-{}",
-            std::process::id()
-        ));
-        std::fs::remove_dir_all(&root).ok();
-        let project = root.join("projects/proj");
-        std::fs::create_dir_all(&project).unwrap();
-        let shell = root.join("test-shell.sh");
-        std::fs::write(
-            &shell,
-            b"#!/bin/sh\ntrap '' HUP TERM\n( trap '' HUP TERM; i=0; until [ -e release ] || [ \"$i\" -ge 1200 ]; do i=$((i + 1)); sleep 0.05; done; touch descendant-marker ) &\nprintf '%s\\n' \"$!\" > descendant.pid\nsleep 10\n",
-        )
-        .unwrap();
-        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o700)).unwrap();
-        let channel = Channel::new(|_| Ok(()));
-        let owner = SessionOwner::new("main", "proj");
-        let session_id = open_terminal(
-            &project,
-            owner.clone(),
-            80,
-            24,
-            channel,
-            CommandBuilder::new(&shell),
-        )
-        .unwrap();
-        let pid_path = project.join("descendant.pid");
-        // The shell's `>` creates descendant.pid before printf writes to it, so
-        // wait for the pid itself, not for the file.
-        let descendant_pid =
-            test_wait::read_until_blocking(&pid_path, test_wait::CHILD_PATIENCE, test_wait::pid)
-                .expect("the shell never wrote its descendant's pid");
-
-        kill_terminal(&owner, &session_id).unwrap();
-        // kill_terminal leaves the kill to a cleanup thread. Release the
-        // descendant only once it is gone, or once it has outlived term_kill.
-        let deadline = std::time::Instant::now() + test_wait::CHILD_PATIENCE;
-        let mut descendant_gone = false;
-        while std::time::Instant::now() < deadline {
-            if unsafe { libc::kill(descendant_pid, 0) } != 0 {
-                descendant_gone = true;
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
-        std::fs::write(project.join("release"), b"").unwrap();
-        if !descendant_gone {
-            // A descendant that outlived term_kill writes its marker once released.
-            std::thread::sleep(std::time::Duration::from_millis(500));
-        }
-        let marker_exists = project.join("descendant-marker").exists();
-        if !descendant_gone {
-            let _ = std::process::Command::new("kill")
-                .no_console()
-                .args(["-KILL", &descendant_pid.to_string()])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status();
-        }
-
-        std::fs::remove_dir_all(&root).ok();
-        assert!(
-            descendant_gone,
-            "term_kill left the background descendant running"
-        );
-        assert!(!marker_exists);
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn closing_a_window_stops_only_that_windows_shells() {
-        let root = std::env::temp_dir().join(format!(
-            "oleafly-terminal-window-drain-{}",
-            std::process::id()
-        ));
-        std::fs::remove_dir_all(&root).ok();
-        let project = root.join("projects/proj");
-        std::fs::create_dir_all(&project).unwrap();
-        let idle = || {
-            let mut shell = CommandBuilder::new("/bin/sh");
-            shell.arg("-c");
-            shell.arg("sleep 30");
-            shell
-        };
-        let closing = SessionOwner::new("terminal-drain-window", "proj");
-        let staying = SessionOwner::new("terminal-keep-window", "proj");
-        let closing_id = open_terminal(
-            &project,
-            closing.clone(),
-            80,
-            24,
-            Channel::new(|_| Ok(())),
-            idle(),
-        )
-        .unwrap();
-        let staying_id = open_terminal(
-            &project,
-            staying.clone(),
-            80,
-            24,
-            Channel::new(|_| Ok(())),
-            idle(),
-        )
-        .unwrap();
-
-        kill_window_sessions("terminal-window-with-no-shells");
-        assert!(write_terminal(&closing, &closing_id, "\n").is_ok());
-
-        kill_window_sessions("terminal-drain-window");
-        assert_eq!(
-            write_terminal(&closing, &closing_id, "\n").err().as_deref(),
-            Some("terminal session is not open")
-        );
-        assert!(write_terminal(&staying, &staying_id, "\n").is_ok());
-
-        kill_terminal(&staying, &staying_id).unwrap();
-        std::fs::remove_dir_all(&root).ok();
-    }
-
-    #[test]
-    fn the_lifecycle_plugin_carries_a_stable_name() {
-        use tauri::plugin::Plugin as _;
-
-        let plugin = lifecycle_plugin::<tauri::test::MockRuntime>();
-        assert_eq!(plugin.name(), "terminal-lifecycle");
-    }
-
-    #[test]
-    fn restricted_projects_refuse_background_shells_and_harden_user_shells() {
-        let temp = tempfile::tempdir().unwrap();
-        let _restricted = crate::trust::testing::restrict("restricted-terminal-project");
-        let refused = super::project_shell("restricted-terminal-project", temp.path(), true)
-            .err()
-            .unwrap();
-        assert!(refused.contains("\"code\":\"trust.terminal\""), "{refused}");
-        let shell =
-            super::project_shell("restricted-terminal-project", temp.path(), false).unwrap();
-        let start = std::env::var("GIT_CONFIG_COUNT")
-            .ok()
-            .and_then(|count| count.parse::<usize>().ok())
-            .unwrap_or(0);
-        assert_eq!(
-            shell
-                .get_env(format!("GIT_CONFIG_KEY_{start}"))
-                .and_then(|value| value.to_str()),
-            Some("core.fsmonitor")
-        );
-    }
-
-    #[test]
-    fn a_trusted_folder_in_an_untrusted_repository_gets_the_restricted_shell() {
-        let fixture = crate::trust::testing::LinkedFixture::new();
-        let repo = fixture.folders.path().join("repo");
-        std::fs::create_dir_all(repo.join(".git")).unwrap();
-        std::fs::write(repo.join(".git/HEAD"), "ref: refs/heads/main\n").unwrap();
-        let (id, paper) = fixture.link("repo/paper");
-        fixture.trust(&id, crate::trust::TrustScope::Folder);
-        let refused = super::project_shell(&id, &paper, true).err().unwrap();
-        assert!(refused.contains("\"code\":\"trust.terminal\""), "{refused}");
-        let start = std::env::var("GIT_CONFIG_COUNT")
-            .ok()
-            .and_then(|count| count.parse::<usize>().ok())
-            .unwrap_or(0);
-        let hardened = super::project_shell(&id, &paper, false).unwrap();
-        assert_eq!(
-            hardened
-                .get_env(format!("GIT_CONFIG_KEY_{start}"))
-                .and_then(|value| value.to_str()),
-            Some("core.fsmonitor")
-        );
-        fixture.trust(&id, crate::trust::TrustScope::Repository);
-        let plain = super::project_shell(&id, &paper, true).unwrap();
-        assert!(plain.get_env(format!("GIT_CONFIG_KEY_{start}")).is_none());
-    }
-
-    #[test]
-    fn term_open_refuses_a_background_shell_for_a_restricted_project() {
-        let _env = crate::paths::data_dir_env_lock();
-        let data = tempfile::tempdir().unwrap();
-        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
-        crate::paths::create_project_dir("restricted-term-open").unwrap();
-        let _restricted = crate::trust::testing::restrict("restricted-term-open");
-        let app = tauri::test::mock_builder()
-            .build(tauri::test::mock_context(tauri::test::noop_assets()))
-            .unwrap();
-        let main = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
-            .build()
-            .unwrap();
-        let refused = tauri::async_runtime::block_on(term_open(
-            main.as_ref().clone(),
-            "restricted-term-open".into(),
-            80,
-            24,
-            Some(true),
-            Channel::new(|_| Ok(())),
-        ))
-        .unwrap_err();
-        std::env::remove_var("OLEAFLY_DATA_DIR");
-        assert!(refused.contains("\"code\":\"trust.terminal\""), "{refused}");
-    }
-
-    #[test]
-    fn trusted_projects_keep_the_plain_shell() {
-        let temp = tempfile::tempdir().unwrap();
-        let shell = super::project_shell("trusted-terminal-project", temp.path(), true).unwrap();
-        let start = std::env::var("GIT_CONFIG_COUNT")
-            .ok()
-            .and_then(|count| count.parse::<usize>().ok())
-            .unwrap_or(0);
-        assert!(shell.get_env(format!("GIT_CONFIG_KEY_{start}")).is_none());
-    }
-}
+mod tests;

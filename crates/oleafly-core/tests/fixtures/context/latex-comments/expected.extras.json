@@ -1,0 +1,10 @@
+{
+  "missing_files": [],
+  "packages": [],
+  "roles": {
+    "main.tex": "main",
+    "refs.bib": "bibliography"
+  },
+  "unused_cites": [],
+  "unused_labels": []
+}

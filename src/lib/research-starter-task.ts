@@ -1,5 +1,5 @@
 import { getConfig } from "@/lib/tauri";
-import { createResearchTask, listResearchTasks } from "@/lib/research-tasks";
+import { createResearchTask, defaultBrief, listResearchTasks } from "@/lib/research-tasks";
 
 const pending = new Map<string, Promise<void>>();
 
@@ -23,6 +23,12 @@ export function ensureResearchStarterTask({ projectId, title, prompt }: {
       modelId: config.ai_model || "",
       skillIds: [],
       dependencyIds: [],
+      brief: (() => {
+        const brief = defaultBrief(prompt);
+        brief.permissions.network = config.research_command_network ?? false;
+        brief.budget.wallClockMinutes = config.research_time_budget_minutes ?? brief.budget.wallClockMinutes;
+        return brief;
+      })(),
     });
   })();
   pending.set(projectId, work);

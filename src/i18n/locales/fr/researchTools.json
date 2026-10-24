@@ -2,6 +2,7 @@
   "workspace": {
     "title": "Espace de recherche",
     "configureAgents": "Configurer les agents de recherche",
+    "openSettings": "Paramètres de recherche",
     "configError": "Les paramètres de l'assistant n'ont pas pu être chargés.",
     "tabTasks": "Tâches",
     "tabFolders": "Dossiers liés",
@@ -135,7 +136,8 @@
       "awaitingReview": "Relecture nécessaire",
       "completed": "Terminée",
       "failed": "Échec",
-      "cancelled": "Annulée"
+      "cancelled": "Annulée",
+      "planReady": "Plan prêt"
     },
     "relative": {
       "justNow": "à l'instant",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "Session connectée.",
-      "toolCall": "Appel d'outil"
+      "toolCall": "Appel d'outil",
+      "runStarted": "Exécution {{name}} lancée",
+      "runFinished": "Exécution {{name}} : {{status}}",
+      "approvalRequested": "Approbation demandée : {{summary}}",
+      "approvalDecided": "Approbation : {{status}}"
     },
     "panel": {
       "noProjectTitle": "Ouvrez un projet pour utiliser les tâches de recherche",
@@ -172,7 +178,10 @@
       "viewTask": "Voir la tâche",
       "deleteTitle": "Supprimer cette tâche ?",
       "deleteDescription": "« {{title}} » et son espace de travail isolé sont retirés. Les fichiers déjà appliqués à votre projet restent en place.",
-      "deleteConfirm": "Supprimer la tâche"
+      "deleteConfirm": "Supprimer la tâche",
+      "pendingApprovals_one": "{{count}} demande en attente",
+      "pendingApprovals_many": "{{count}} demandes en attente",
+      "pendingApprovals_other": "{{count}} demandes en attente"
     },
     "composer": {
       "editTitle": "Modifier la tâche",
@@ -193,7 +202,10 @@
       "unavailable": "Indisponible",
       "saving": "Enregistrement...",
       "saveTask": "Enregistrer la tâche",
-      "createTask": "Créer la tâche"
+      "createTask": "Créer la tâche",
+      "replaceText": "Remplacer le titre et les instructions que vous avez saisis par ce point de départ ?",
+      "keepText": "Garder le mien",
+      "replaceConfirm": "Remplacer"
     },
     "starter": {
       "literatureReview": {
@@ -215,6 +227,10 @@
       "reviewerResponse": {
         "label": "Réponse aux relecteurs",
         "title": "Rédiger la réponse aux relecteurs"
+      },
+      "experimentLoop": {
+        "label": "Lancer des expériences",
+        "title": "Lancer des expériences vers un objectif"
       }
     },
     "detail": {
@@ -233,6 +249,11 @@
       "dependencies": "Dépendances",
       "dependencyUnavailable": "Indisponible",
       "noActivity": "Aucune activité n'a été enregistrée pour cette exécution.",
+      "activityGap_one": "{{count}} élément intermédiaire n'est pas affiché.",
+      "activityGap_other": "{{count}} éléments intermédiaires ne sont pas affichés.",
+      "activityMore": "Il reste de l'activité non affichée.",
+      "keepRunningDesktopApps": "Cette tâche utilise des applications de bureau, qui exigent votre présence devant l'ordinateur.",
+      "activityGap_many": "{{count}} éléments intermédiaires ne sont pas affichés.",
       "startToRecord": "Démarrez cette tâche pour enregistrer son activité.",
       "reasoning": "Raisonnement rapporté",
       "savedArtifact": "{{label}} enregistré",
@@ -245,6 +266,8 @@
       "clearSelection": "Effacer la sélection",
       "selectAll": "Tout sélectionner",
       "previewBeforeApply": "Prévisualisez chaque fichier sélectionné avant de l'appliquer.",
+      "researchRecord": "Dossier de recherche",
+      "researchRecordHint": "Les notes de la tâche elle-même. Inutile de les prévisualiser avant de les appliquer.",
       "driftedOne": "{{path}} a changé dans votre projet après le démarrage de cette tâche. Sa comparaison porte sur l'ancienne version, il ne peut donc pas être appliqué.",
       "driftedMany": "{{fileCount}} fichiers ont changé dans votre projet après le démarrage de cette tâche. Leurs comparaisons portent sur les anciennes versions, ils ne peuvent donc pas être appliqués.",
       "applyAria": "Appliquer {{path}}",
@@ -274,7 +297,108 @@
       "loadMore": "Charger plus d'activité",
       "changeAdded": "ajouté",
       "changeModified": "modifié",
-      "changeDeleted": "supprimé"
+      "changeDeleted": "supprimé",
+      "tabProgress": "Progression",
+      "resume": "Reprendre",
+      "resumeHint": "Continuer dans le même espace de travail à partir de la passation enregistrée.",
+      "startOver": "Recommencer",
+      "startOverHint": "Repartir du projet actuel. Le dossier de recherche est conservé.",
+      "stopReason": {
+        "budgetTime": "Arrêtée quand le budget de temps a été épuisé.",
+        "budgetCost": "Arrêtée à la limite de coût.",
+        "budgetRuns": "Arrêtée à la limite d'exécutions."
+      },
+      "startsAt": "Commence le {{time}}"
+    },
+    "plan": {
+      "title": "Plan",
+      "description": "Lisez le plan et modifiez-le si vous le souhaitez. Approuvez-le pour que la tâche continue.",
+      "approve": "Approuver le plan",
+      "approveEdited": "Approuver le plan modifié",
+      "discard": "Abandonner la tâche",
+      "loading": "Chargement du plan…",
+      "missing": "Le fichier du plan est introuvable. Relancez la tâche."
+    },
+    "approvals": {
+      "title": "En attente de votre approbation",
+      "approve": "Approuver",
+      "deny": "Refuser",
+      "kindCommand": "Exécuter une commande",
+      "kindRun": "Lancer une exécution",
+      "kindMcp": "Utiliser un outil",
+      "expires": "Attend jusqu'au {{time}}",
+      "detailCommand": "Commande complète",
+      "detailRun": "Détails de l'exécution",
+      "detailMcp": "Arguments de l'outil",
+      "loadFailed": "Les demandes en attente n'ont pas pu être chargées.",
+      "status": {
+        "approved": "Approuvée",
+        "denied": "Refusée",
+        "expired": "Expirée",
+        "withdrawn": "Retirée"
+      }
+    },
+    "phase": {
+      "preparing": "Préparation de l'espace de travail",
+      "planning": "Rédaction du plan",
+      "working": "Travail en cours",
+      "waitingRuns": "En attente des exécutions",
+      "waitingApproval": "En attente d'approbation",
+      "wrappingUp": "Finalisation",
+      "checkingEvidence": "Vérification des preuves"
+    },
+    "progress": {
+      "loading": "Chargement de la progression…",
+      "plan": "Plan",
+      "noPlan": "Pas encore de plan.",
+      "ledger": "Registre",
+      "noLedger": "Aucun résultat enregistré pour l'instant.",
+      "best": "Meilleur {{metric}}",
+      "bestValue": "{{value}} dans l'exécution {{run}}",
+      "runsInFlight": "Exécutions en cours",
+      "noRuns": "Aucune exécution en cours.",
+      "budget": "Budget",
+      "timeUsed": "{{used}} sur {{total}}",
+      "costUsed": "{{used}} sur {{limit}}",
+      "costSpent": "{{used}} dépensés",
+      "ledgerCapped": "Affichage des {{limit}} derniers résultats.",
+      "costUnknown": "Le coût de ce modèle est inconnu.",
+      "runsUsed": "{{used}} exécutions sur {{limit}}",
+      "runsUsedNoLimit": "{{used}} exécutions",
+      "stopRun": "Arrêter l'exécution",
+      "viewLog": "Voir le journal",
+      "columns": {
+        "run": "Exécution",
+        "time": "Heure",
+        "hypothesis": "Hypothèse",
+        "change": "Modification",
+        "metrics": "Métriques",
+        "verdict": "Verdict"
+      },
+      "verdict": {
+        "keep": "Conservée",
+        "discard": "Abandonnée",
+        "crash": "Plantée"
+      }
+    },
+    "settings": {
+      "title": "Tâches de recherche",
+      "keepAwake": "Empêcher la mise en veille de l'ordinateur pendant les tâches",
+      "keepAwakeHint": "L'écran peut quand même s'éteindre.",
+      "notifications": "Me prévenir quand une tâche demande mon attention",
+      "notificationsHint": "Affiché quand Oleafly est en arrière-plan.",
+      "notificationsBlocked": "Les notifications d'Oleafly sont désactivées dans les réglages du système.",
+      "allowNotifications": "Autoriser les notifications",
+      "network": "Autoriser le réseau pour les commandes des tâches par défaut",
+      "timeBudget": "Budget de temps par défaut",
+      "mcpServers": "Serveurs MCP utilisables par les tâches",
+      "mcpServersHint": "Les tâches appellent ces outils selon les règles de commandes de chaque tâche.",
+      "noMcpServers": "Aucun serveur MCP n'est configuré.",
+      "networkHint": "Les commandes des tâches peuvent accéder à internet. Chaque tâche peut quand même le désactiver.",
+      "loadFailed": "Vos paramètres de recherche n'ont pas pu être chargés.",
+      "sectionName": "Recherche",
+      "resetConfirm": "Rétablir les valeurs par défaut de la recherche : empêcher la mise en veille, notifications, accès réseau, budget de temps et serveurs MCP utilisables par les tâches. Les cibles d'exécution et les tâches en arrière-plan restent inchangées.",
+      "saveFailed": "Impossible d'enregistrer vos paramètres de recherche. Réessayez."
     }
   },
   "tools": {
@@ -355,7 +479,7 @@
       "name": "Image vers LaTeX",
       "description": "Transformez l'image de notes, d'équations ou d'un tableau en LaTeX modifiable.",
       "tag1": "Images",
-      "tag2": "Modèle local",
+      "tag2": "Modèle local ou hébergé",
       "tag3": "Aucun projet nécessaire"
     },
     "visualTypstEditor": {
@@ -377,7 +501,7 @@
       "description": "Convertissez une équation saisie ou photographiée en maths LaTeX propres.",
       "tag1": "Texte ou image",
       "tag2": "Maths",
-      "tag3": "Modèle local"
+      "tag3": "Modèle local ou hébergé"
     },
     "excelToLatex": {
       "name": "Excel vers LaTeX",
@@ -397,7 +521,7 @@
       "name": "Image vers Typst",
       "description": "Transformez l'image de notes, d'équations ou d'un tableau en Typst modifiable.",
       "tag1": "Images",
-      "tag2": "Modèle local",
+      "tag2": "Modèle local ou hébergé",
       "tag3": "Aucun projet nécessaire"
     },
     "latexToHtml": {
@@ -747,13 +871,13 @@
     "progressNeedsAttention": "Demande votre attention",
     "progressCancelled": "Annulé",
     "progressReadingPages": "Lecture des pages",
-    "progressTranscribingPage": "Transcription de la page {{page}} sur {{total}}",
+    "progressTranscribingPage": "Transcription de la page {{page}} sur {{total}} avec {{model}}",
     "progressDocumentStructure": "Conversion de la structure du document",
     "progressMermaid": "Rendu du diagramme Mermaid",
     "progressFirstSheet": "Lecture de la première feuille",
-    "progressVisionModel": "Exécution du modèle de vision local",
-    "progressReadingEquation": "Lecture de l'équation avec le modèle de vision local",
-    "progressConvertingEquation": "Conversion de l'équation avec le modèle local",
+    "progressVisionModel": "Lecture de l'image avec {{model}}",
+    "progressReadingEquation": "Lecture de l'équation avec {{model}}",
+    "progressConvertingEquation": "Conversion de l'équation avec {{model}}",
     "progressUnpackingSource": "Décompression du source enregistré",
     "progressDownloadingSource": "Téléchargement du source de la prépublication",
     "copied": "{{label}} copié",
@@ -788,14 +912,17 @@
     "fileReady": "{{fileName}} est prêt",
     "saveWordHint": "Enregistrez le document Word quand vous êtes prêt.",
     "resultPlaceholder": "Votre résultat converti apparaîtra ici.",
-    "progressConvertingSource": "Conversion du source en Typst"
+    "progressConvertingSource": "Conversion du source en Typst",
+    "pageRange": "Pages",
+    "pageRangePlaceholder": "Toutes les pages, ou une plage comme 1-50",
+    "pageRangeInvalid": "Saisissez un numéro de page, ou une plage comme 1-50."
   },
   "converters": {
     "imageToLatex": {
       "title": "Image vers LaTeX",
-      "subtitle": "Transcrivez des notes, des équations ou des tableaux avec un modèle de vision local",
+      "subtitle": "Transcrivez des notes, des équations ou des tableaux avec un modèle de vision",
       "inputLabel": "Image",
-      "inputHint": "PNG, JPEG ou WebP. L'image reste sur cet appareil.",
+      "inputHint": "PNG, JPEG ou WebP, jusqu'à 20 Mo.",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -828,9 +955,9 @@
     },
     "imageToTypst": {
       "title": "Image vers Typst",
-      "subtitle": "Transcrivez des notes, des équations ou des tableaux avec un modèle de vision local",
+      "subtitle": "Transcrivez des notes, des équations ou des tableaux avec un modèle de vision",
       "inputLabel": "Image",
-      "inputHint": "PNG, JPEG ou WebP. L'image reste sur cet appareil.",
+      "inputHint": "PNG, JPEG ou WebP, jusqu'à 20 Mo.",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -886,14 +1013,14 @@
       "title": "PDF vers Markdown",
       "subtitle": "Extrayez le texte, les équations et les figures en local",
       "inputLabel": "PDF",
-      "inputHint": "Les PDF textuels utilisent une extraction déterministe. Les numérisations passent par un modèle de vision local.",
+      "inputHint": "Les PDF texte passent par une extraction déterministe. Les numérisations utilisent le modèle que vous choisissez.",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF vers Typst",
       "subtitle": "Extrayez le texte, les équations et les figures en local",
       "inputLabel": "PDF",
-      "inputHint": "Les PDF textuels utilisent une extraction déterministe. Les numérisations passent par un modèle de vision local.",
+      "inputHint": "Les PDF texte passent par une extraction déterministe. Les numérisations utilisent le modèle que vous choisissez.",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -984,10 +1111,10 @@
   "converterErrors": {
     "chooseSmallerImage": "Choisissez une image de moins de 20 Mo.",
     "imageFormat": "Choisissez une image PNG, JPEG ou WebP.",
-    "ollamaUnavailable": "Démarrez Ollama dans les Paramètres, puis installez un modèle local pour cette conversion.",
-    "visionModelMissing": "Installez un modèle de vision dans Ollama, par exemple Llama 3.2 Vision, puis réessayez.",
-    "localModelMissing": "Installez un modèle Ollama local, puis réessayez.",
-    "emptyTranscription": "Le modèle local a renvoyé une transcription vide.",
+    "ollamaUnavailable": "Démarrez Ollama, ou choisissez un autre modèle pour les Outils.",
+    "visionModelMissing": "Récupérez un modèle de vision dans Ollama, par exemple glm-ocr, ou choisissez un autre modèle pour les Outils.",
+    "localModelMissing": "Récupérez un modèle dans Ollama, ou choisissez un autre modèle pour les Outils.",
+    "emptyTranscription": "Le modèle a renvoyé une transcription vide.",
     "pdfNoPages": "Ce PDF ne contient aucune page à transcrire.",
     "pdfPageLimit": "La transcription des PDF numérisés est limitée à 50 pages à la fois.",
     "pandocNotReady": "Pandoc n'est pas encore prêt.",
@@ -995,10 +1122,12 @@
     "fileTooLarge": "Choisissez un fichier de moins de 128 Mo.",
     "emptySheet": "La feuille sélectionnée est vide.",
     "arxivInputRequired": "Saisissez un identifiant arXiv ou choisissez une archive source.",
-    "equationToTypst": "Pandoc n'a pas pu convertir cette équation en Typst. Vérifiez les maths LaTeX et réessayez."
+    "equationToTypst": "Pandoc n'a pas pu convertir cette équation en Typst. Vérifiez les maths LaTeX et réessayez.",
+    "pdfTooManyPages": "Cette numérisation compte {{pages}} pages, et Oleafly transcrit au plus {{limit}} à la fois. Saisissez une plage de pages comme 1-{{limit}} sous le fichier.",
+    "outputLimit": "Le modèle a manqué de place avant de terminer, la transcription serait donc incomplète. Choisissez un modèle avec une limite de sortie plus élevée dans Paramètres, Assistant IA, Outils, ou transcrivez une plus petite partie."
   },
   "converterNotes": {
-    "scannedPages": "{{pages}} pages numérisées transcrites avec un modèle local. Vérifiez les équations et les tableaux avant d'utiliser le résultat.",
+    "scannedPages": "{{pages}} pages numérisées transcrites avec {{model}}. Vérifiez les équations et les tableaux avant d'utiliser le résultat.",
     "extracted": "{{pages}} pages et {{figures}} figures extraites en local.",
     "mermaidTikz": "Cet organigramme a été converti en TikZ modifiable.",
     "mermaidRendered": "Ce diagramme a été rendu en local car sa syntaxe Mermaid ne se traduit pas proprement en TikZ modifiable.",
@@ -1015,6 +1144,46 @@
     "notConverted_many": "{{count}} éléments n'ont pas été convertis.",
     "notConverted_other": "{{count}} éléments n'ont pas été convertis.",
     "checkLine": "Ligne {{line}} : {{message}}"
+  },
+  "converterModel": {
+    "label": "Modèle pour les Outils",
+    "automatic": "Automatique (meilleur modèle local)",
+    "localGroup": "Local (Ollama)",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "Les images sont envoyées à {{provider}}",
+    "sentToHost": "Les images sont envoyées à Ollama sur {{host}}",
+    "scansSentTo": "Les pages numérisées sont envoyées à {{provider}}",
+    "scansSentToHost": "Les pages numérisées sont envoyées à Ollama sur {{host}}",
+    "pdfSentToMathpix": "Le PDF entier est envoyé à Mathpix",
+    "transcribingHosted": "Envoi de l'image à {{provider}}…",
+    "progressUploading": "Envoi du PDF à Mathpix",
+    "progressFormatting": "Conversion de la transcription avec Pandoc",
+    "scannedTitle": "Ce PDF semble numérisé",
+    "estimateOllama_one": "{{count}} page. Ollama peut mettre un moment à la lire.",
+    "estimateOllama_many": "{{count}} pages. Ollama les lit une par une, ce qui peut prendre un moment.",
+    "estimateOllama_other": "{{count}} pages. Ollama les lit une par une, ce qui peut prendre un moment.",
+    "estimateCost_one": "{{count}} page. Environ {{cost}} avec {{model}}.",
+    "estimateCost_many": "{{count}} pages. Environ {{cost}} avec {{model}}.",
+    "estimateCost_other": "{{count}} pages. Environ {{cost}} avec {{model}}.",
+    "estimateUnknown_one": "{{count}} page. {{provider}} la facture à l'usage.",
+    "estimateUnknown_many": "{{count}} pages. {{provider}} les facture à l'usage.",
+    "estimateUnknown_other": "{{count}} pages. {{provider}} les facture à l'usage.",
+    "transcribePages_one": "Transcrire {{count}} page",
+    "transcribePages_many": "Transcrire {{count}} pages",
+    "transcribePages_other": "Transcrire {{count}} pages",
+    "transcribedWith": "Transcrit avec {{model}}. Vérifiez les équations et les tableaux.",
+    "sentBadge": "Envoyé à {{provider}}",
+    "openToolsSettings": "Paramètres des Outils",
+    "errors": {
+      "offline": "Oleafly est en mode hors ligne. Choisissez un modèle local ou désactivez le mode hors ligne.",
+      "providerNotConfigured": "{{provider}} n'a pas de clé API. Ajoutez-en une dans les Paramètres, ou choisissez un autre modèle.",
+      "modelDisabled": "{{model}} est désactivé dans les Paramètres. Activez-le, ou choisissez un autre modèle.",
+      "cannotSeeImages": "{{model}} ne peut pas lire les images. Choisissez un modèle de vision.",
+      "localModelGone": "{{model}} n'est plus dans Ollama. Récupérez-le de nouveau, ou choisissez un autre modèle.",
+      "imagesOnly": "{{model}} lit uniquement des images. Choisissez un modèle de langage pour convertir des équations saisies.",
+      "mathpixNotSetUp": "Ajoutez vos clés Mathpix dans Paramètres, Assistant IA, Outils, ou choisissez un autre modèle.",
+      "imageTooLarge": "L'image reste trop grande après réduction. Recadrez-la et réessayez."
+    }
   },
   "mermaidErrors": {
     "tooLarge": "Ce diagramme Mermaid dépasse la limite de 50 000 caractères.",
@@ -1573,5 +1742,260 @@
     "citeAdded": "{{citation}} ajouté",
     "addFailed": "Impossible d'ajouter la citation.",
     "toastCopyFailed": "Impossible de copier le BibTeX."
+  },
+  "brief": {
+    "title": "Cahier des charges",
+    "goalLabel": "Objectif",
+    "goalPlaceholder": "Que doit découvrir ou produire cette tâche ?",
+    "criteriaLabel": "Critères de réussite",
+    "criteriaHint": "Un par ligne. Chacun doit être vérifiable.",
+    "scopeLabel": "Périmètre",
+    "constraintsLabel": "Contraintes",
+    "metricLabel": "Métrique principale",
+    "metricPlaceholder": "Par exemple, val_loss",
+    "metricMaximize": "Plus c'est haut, mieux c'est",
+    "metricMinimize": "Plus c'est bas, mieux c'est",
+    "reviewPlan": "Relire d'abord le plan",
+    "reviewPlanHint": "L'agent rédige plan.md et attend votre approbation avant de commencer.",
+    "commandsLabel": "Commandes",
+    "commandsAllow": "Exécuter sans demander",
+    "commandsAsk": "Demander avant d'exécuter",
+    "commandsOff": "Ne pas exécuter de commandes",
+    "network": "Autoriser l'accès réseau pour les commandes",
+    "networkHint": "Nécessaire pour installer des paquets ou télécharger des données.",
+    "budgetLabel": "Budget",
+    "timeLabel": "Durée",
+    "minutes_one": "{{count}} minute",
+    "minutes_many": "{{count}} minutes",
+    "minutes_other": "{{count}} minutes",
+    "hours_one": "{{count}} heure",
+    "hours_many": "{{count}} heures",
+    "hours_other": "{{count}} heures",
+    "costLabel": "Limite de coût (USD)",
+    "noLimit": "Aucune limite",
+    "runsLabel": "Limite d'exécutions",
+    "runTimeoutLabel": "Chaque exécution s'arrête après",
+    "profileLabel": "Profil d'exécution",
+    "profileAnalysis": "Analyse",
+    "profileAnalysisHint": "Vos environnements Python et R, des dossiers de données en lecture seule, pas de GPU.",
+    "profileTraining": "Entraînement",
+    "profileTrainingHint": "Ajoute l'accès au GPU et des exécutions plus longues.",
+    "computeLabel": "Lieu d'exécution",
+    "computeLocal": "Cet ordinateur",
+    "startAtLabel": "Commencer le",
+    "startNow": "Quand je la lance",
+    "keepRunning": "Continuer quand Oleafly est fermé",
+    "keepRunningHint": "Activez d'abord Tâches en arrière-plan dans Paramètres, Recherche.",
+    "invalidMetric": "Utilisez des lettres, des chiffres, des points, des tirets ou des tirets bas.",
+    "invalidCost": "Saisissez un montant supérieur à zéro.",
+    "invalidRuns": "Saisissez un nombre entier de 1 à 1 000.",
+    "invalidStart": "Choisissez une heure de début dans les 30 prochains jours.",
+    "invalidStartFormat": "Utilisez le format {{example}}.",
+    "startAtFormat": "Saisissez l'heure au format {{example}}.",
+    "problemHidden": "Une option du Cahier des charges doit être corrigée. Ouvrez-le pour voir laquelle."
+  },
+  "runs": {
+    "status": {
+      "starting": "Démarrage",
+      "running": "En cours",
+      "succeeded": "Terminée",
+      "failed": "Échouée",
+      "timedOut": "Délai dépassé",
+      "cancelled": "Arrêtée",
+      "lost": "Perdue"
+    }
+  },
+  "evidence": {
+    "title": "Vérification des preuves",
+    "hint": "Ces vérifications ne font qu'avertir. Elles n'empêchent pas l'application.",
+    "running": "Vérification…",
+    "refresh": "Vérifier de nouveau",
+    "status": {
+      "pass": "Réussi",
+      "warn": "À vérifier",
+      "skipped": "Non vérifié"
+    },
+    "checks": {
+      "build": "Le projet se compile",
+      "references": "Aucune nouvelle référence ou citation non résolue",
+      "bibliography": "Les nouvelles entrées bibliographiques sont vérifiées",
+      "numbers": "Les nombres correspondent à leurs exécutions",
+      "figures": "Les nouvelles figures existent et sont utilisées"
+    },
+    "items": {
+      "buildFailed": "La compilation a échoué avec {{errors}} erreurs.",
+      "buildSkipped": "La compilation n'a pas été vérifiée : {{reason}}",
+      "referencesUnresolved": "{{key}} n'est pas résolue.",
+      "referencesNotChecked": "Cette version ne vérifie pas encore les références.",
+      "bibUnverified": "Impossible de vérifier {{key}}.",
+      "bibTitleMismatch": "{{key}} renvoie à un autre titre : {{found}}",
+      "bibLookupFailed": "Impossible de rechercher {{key}}. Réessayez plus tard.",
+      "numbersMismatch": "{{value}} ne correspond pas à l'exécution {{run}} ({{recorded}}).",
+      "numbersUnknownRun": "L'exécution {{run}} n'existe pas.",
+      "numbersNoLedgerRow": "L'exécution {{run}} n'a pas de ligne dans le registre.",
+      "figuresMissing": "{{path}} est référencé mais introuvable.",
+      "figuresUnused": "{{path}} n'est pas utilisé dans le document."
+    }
+  },
+  "compute": {
+    "title": "Calcul",
+    "description": "Choisissez où s'exécutent les expériences. Chaque tâche choisit une cible dans son cahier des charges.",
+    "targets": {
+      "heading": "Cibles d'exécution",
+      "local": "Cet ordinateur",
+      "localDescription": "Les exécutions utilisent le bac à sable de cet ordinateur.",
+      "add": "Ajouter une cible",
+      "addSsh": "Hôte SSH",
+      "addSlurm": "Cluster Slurm",
+      "addCua": "Cua Space",
+      "import": "Importer depuis la configuration SSH",
+      "test": "Tester",
+      "testing": "Test en cours…",
+      "more": "Plus d'actions pour {{label}}",
+      "edit": "Modifier",
+      "remove": "Retirer",
+      "removeTitle": "Retirer {{label}} ?",
+      "removeConfirm": "Les exécutions déjà lancées là-bas continuent. Les tâches qui attendaient de démarrer dessus échoueront.",
+      "forgetHostKey": "Oublier la clé d'hôte",
+      "reviewHostKey": "Vérifier la clé d'hôte",
+      "notTested": "Non testée",
+      "tested": "Testée {{time}}",
+      "testFailed": "Échec du test",
+      "perTaskSpace": "Un nouveau Space pour chaque tâche",
+      "saveFailed": "Impossible d'enregistrer la cible : {{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly se connecte avec vos clés SSH ou votre agent SSH. Il ne demande ni ne stocke jamais de mots de passe ou de clés.",
+      "windowsRsync": "Windows n'a pas rsync, donc Oleafly copie les fichiers avec tar via SSH.",
+      "sshMissingWindows": "Le client OpenSSH n'est pas installé. Ajoutez-le dans les Paramètres Windows, sous Système, Fonctionnalités facultatives.",
+      "sshMissing": "OpenSSH n'est pas installé. Installez-le avec votre gestionnaire de paquets.",
+      "cuaMissing": "Cua n'est pas installé. Installez-le depuis cua.ai, puis testez de nouveau.",
+      "relay": "Ce Space s'exécute sur un vrai ordinateur. Les exécutions n'y sont pas isolées.",
+      "outputs": "Les fichiers créés par une exécution reviennent dans runs/<run>/outputs de la copie de la tâche."
+    },
+    "form": {
+      "addTitle": "Ajouter {{kind}}",
+      "editTitle": "Modifier {{label}}",
+      "label": "Nom",
+      "host": "Hôte",
+      "hostHint": "Un hôte de votre configuration SSH, ou un nom d'hôte",
+      "user": "Utilisateur",
+      "userHint": "Laissez vide pour utiliser votre configuration SSH.",
+      "port": "Port",
+      "remoteRoot": "Dossier distant",
+      "remoteRootHint": "Les exécutions vont dans .oleafly-runs dans votre dossier personnel, sauf si vous choisissez un autre dossier.",
+      "prelude": "Commandes de préparation",
+      "preludeHint": "Exécutées avant chaque commande, par exemple module load python.",
+      "partition": "Partition",
+      "account": "Compte",
+      "qos": "QOS",
+      "time": "Limite de temps",
+      "timeHint": "Par exemple 2:00:00 ou 1-00:00:00",
+      "gpus": "GPU",
+      "cpus": "CPU",
+      "mem": "Mémoire (Go)",
+      "memHint": "Par exemple 16",
+      "gpuFlag": "Option GPU",
+      "spaceMode": "Space",
+      "spaceNamed": "Utiliser un Space nommé",
+      "spacePerTask": "Créer un nouveau Space pour chaque tâche",
+      "space": "Nom du Space",
+      "image": "Image",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "errors": {
+        "label": "Saisissez un nom de 80 caractères au maximum.",
+        "host": "Saisissez un nom d'hôte sans espaces.",
+        "user": "Utilisez des lettres, des chiffres, des points, des tirets ou des tirets bas.",
+        "port": "Utilisez un port de 1 à 65535.",
+        "remoteRoot": "Utilisez un chemin de dossier sans espaces, guillemets ni « .. ».",
+        "time": "Utilisez une durée Slurm comme 2:00:00.",
+        "name": "Utilisez des lettres, des chiffres, des points, des virgules, des tirets ou des tirets bas.",
+        "mem": "Utilisez un nombre entier de gigaoctets, comme 16.",
+        "count": "Utilisez un nombre entier dans la plage autorisée."
+      }
+    },
+    "test": {
+      "connect": "Connexion",
+      "echo": "Exécuter une commande",
+      "disk": "Espace libre",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "Réussi",
+      "warn": "À vérifier",
+      "fail": "Échec",
+      "skipped": "Non vérifié"
+    },
+    "hostKey": {
+      "title": "Faire confiance à cet hôte ?",
+      "body": "Oleafly ne s'est jamais connecté à {{host}}. Comparez ces empreintes avec celles que vous a données votre administrateur.",
+      "trust": "Faire confiance et se connecter",
+      "changedTitle": "La clé d'hôte a changé",
+      "changed": "La clé d'hôte de {{host}} a changé. Quelqu'un intercepte peut-être la connexion. Si votre administrateur a remplacé la clé, oubliez l'ancienne clé et testez de nouveau."
+    },
+    "import": {
+      "title": "Importer des hôtes SSH",
+      "body": "Choisissez les hôtes à ajouter. Oleafly lit votre configuration SSH et ne la modifie jamais.",
+      "none": "Aucun hôte trouvé dans votre configuration SSH.",
+      "added": "Déjà ajouté",
+      "add_one": "Ajouter {{count}} hôte",
+      "add_many": "Ajouter {{count}} hôtes",
+      "add_other": "Ajouter {{count}} hôtes",
+      "skipped": "Hôtes non ajoutés : {{hosts}}. {{reason}}"
+    },
+    "sandbox": {
+      "heading": "Bac à sable de cet ordinateur",
+      "description": "Les exécutions sur cet ordinateur peuvent lire vos interpréteurs et les dossiers liés. Elles n'écrivent que dans la copie de la tâche.",
+      "ready": "Prêt",
+      "unavailable": "Indisponible",
+      "macos": "Utilise le bac à sable de macOS.",
+      "linux": "Utilise bubblewrap.",
+      "linuxMissing": "Installez bubblewrap (bwrap) pour exécuter les commandes des tâches.",
+      "windowsLabel": "Exécuter les commandes des tâches dans le bac à sable Windows",
+      "windowsDescription": "Les commandes s'exécutent dans un AppContainer Windows qui n'accède qu'aux fichiers de la tâche et aux dossiers ci-dessous. Désactivé par défaut pendant la bêta.",
+      "gpuWindows": "L'accès au GPU dans le bac à sable Windows n'est pas encore vérifié. Utilisez une cible SSH ou Slurm pour le travail sur GPU.",
+      "limitsWindows": "Dans le bac à sable Windows, le multiprocessing de Python et les programmes Node.js qui lancent d'autres programmes ne fonctionnent pas encore.",
+      "check": "Vérifier le bac à sable",
+      "checking": "Vérification…",
+      "checkPassed": "Le bac à sable fonctionne.",
+      "checkFailed": "La vérification du bac à sable a échoué : {{reason}}",
+      "runtimes": "Interpréteurs",
+      "runtimesEmpty": "Aucun Python, R ou Julia trouvé.",
+      "refresh": "Actualiser",
+      "access": "Dossiers que le bac à sable peut lire",
+      "accessNote": "Pour que les tâches puissent lire ces dossiers, Oleafly ajoute une entrée d'autorisation à chacun d'eux.",
+      "removeAccess": "Retirer l'accès",
+      "removeAccessTitle": "Retirer l'accès du bac à sable ?",
+      "removeAccessConfirm": "Retirer l'accès du bac à sable à ces dossiers ? Oleafly le rajoutera la prochaine fois qu'une tâche en aura besoin."
+    },
+    "brief": {
+      "runsOn": "S'exécute sur {{target}}",
+      "runsLocal": "S'exécute sur cet ordinateur.",
+      "missing": "La cible utilisée par cette tâche a été retirée. Choisissez-en une autre.",
+      "loadFailed": "Vos cibles d'exécution n'ont pas pu être chargées.",
+      "windowsOff": "Activez le bac à sable Windows dans les Paramètres pour exécuter des commandes sur cet ordinateur.",
+      "openSettings": "Ouvrir les Paramètres",
+      "resources": "Ressources Slurm"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "En arrière-plan",
+      "backgroundHint": "Le processus d'arrière-plan d'Oleafly exécute cette tâche. Elle revient ici après son étape en cours.",
+      "movingBack": "Retour en cours",
+      "movingBackHint": "Cette tâche revient dans Oleafly à la fin de son étape en cours."
+    },
+    "earlierActivity": "Afficher l'activité précédente",
+    "earlierTruncated": "Seuls les {{limit}} premiers éléments de cette exécution antérieure sont affichés.",
+    "keepRunningFailed": "Impossible de modifier ce réglage. Réessayez."
   }
 }

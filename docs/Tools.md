@@ -57,9 +57,61 @@ palette and slash-command menu.
 
 Most conversions use local files and the installed or bundled toolchain. An
 identifier lookup or a provider-backed refinement can make a network request.
-Image to LaTeX, Image to Typst and equation images use a vision model running
-in Ollama on your computer. The tool panel names that requirement before it
-runs.
+Image to LaTeX, Image to Typst, equation images and scanned PDFs use the Tools
+model described below. Each tool shows where its images go before it runs.
+
+## Models for images and scans
+
+Image to LaTeX, Image to Typst, Equation to LaTeX and Equation to Typst with an
+image, the scanned-PDF path of PDF to Markdown and PDF to Typst, and PDF to
+LaTeX for a scanned PDF all use one model, the Tools model. The editor
+toolbar's Image to LaTeX and Image to Typst buttons use it too.
+
+The default is **Automatic (best local model)**. It picks a vision model
+installed in Ollama and prefers OCR models, so images stay on this computer.
+For the best local results, pull an OCR model:
+
+```sh
+ollama pull glm-ocr
+```
+
+To use another model, open the model menu in the tool, or go to Settings > AI >
+Tools. The menu lists vision models from every provider you have set up. A
+model you turned off in Settings is not listed. When the model runs somewhere
+else, the tool says where images go before you convert, for example "Images are
+sent to Anthropic" or "Images are sent to Ollama at 192.168.1.9:11434". Offline
+mode refuses hosted models and Mathpix. Ollama keeps working, also on another
+computer on your network.
+
+Before an image goes to a hosted model, Oleafly shrinks it to 2,000 pixels on
+its long edge and re-encodes photos, which drops their location data. Replies
+are capped at the model's output limit.
+
+### OCR models
+
+glm-ocr, deepseek-ocr (Ollama 0.13 or later) and dots.ocr get the prompt each
+was trained on. dots.ocr is found when an OpenAI-compatible server lists it
+under the name `dots.ocr`. These models write Markdown, which the bundled Pandoc
+turns into LaTeX, Typst or Markdown. Tables and math survive the trip.
+
+### Scanned PDFs
+
+One run transcribes at most 50 pages. PDF to LaTeX follows the page range set
+in its options, and its banner shows the model, where the pages go and an
+estimate. The PDF to Markdown and PDF to Typst converters ask before a scan of
+five pages or more, with the page count and, for a hosted model, a rough price.
+Figures in scanned pages are not kept.
+
+### Mathpix
+
+Mathpix is optional and uses your own Mathpix account. Add the app ID and key
+in Settings > AI > Tools. Oleafly checks them with Mathpix, then stores them
+encrypted. Only Oleafly's backend reads the key, and it never shows it again.
+Images go to Mathpix's `/v3/text` endpoint. A scanned PDF is uploaded whole to
+`/v3/pdf` with the chosen page range, so Mathpix converts and bills only those
+pages. Oleafly deletes the PDF from Mathpix once it has read the result, and
+also when you cancel. Every request asks Mathpix not to keep your images
+(`improve_mathpix: false`).
 
 ## Validate
 

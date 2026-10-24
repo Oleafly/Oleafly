@@ -53,19 +53,6 @@
   "branding": {
     "assistantMascot": "Maskoten til AI-assistenten i Oleafly"
   },
-  "browser": {
-    "address": "Søk eller skriv inn en URL",
-    "back": "Tilbake",
-    "closeTab": "Lukk fanen",
-    "copyUrl": "Kopier URL-en",
-    "forward": "Fremover",
-    "moreOptions": "Flere valg",
-    "newTab": "Ny fane",
-    "openExternal": "Åpne i nettleseren din",
-    "openTabs": "Åpne faner",
-    "reload": "Last på nytt",
-    "setHomePage": "Bruk som startside"
-  },
   "changelog": {
     "installed": "Du har denne versjonen",
     "sectionItems_one": "{{count}} endring",
@@ -464,10 +451,6 @@
       "hide": "Skjul AI-assistenten",
       "show": "Vis AI-assistenten"
     },
-    "browser": {
-      "close": "Lukk nettleseren ({{shortcut}})",
-      "open": "Åpne nettleseren ({{shortcut}})"
-    },
     "settings": "Innstillinger",
     "sidebar": {
       "hide": "Skjul sidepanelet ({{shortcut}})",
@@ -570,17 +553,6 @@
     "saveCopy": "Lagre en kopi",
     "tryAgain": "Prøv igjen",
     "savedCopy": "De åpne filene dine ble lagret i {{folder}}."
-  },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "GitHub-handlinger",
-    "connect": "Koble til GitHub…",
-    "connectedAs": "Koblet til som @{{login}}",
-    "copyRepositoryLink": "Kopier lenken til repositoriet",
-    "openInGithub": "Åpne i GitHub",
-    "pushHint": "Push til GitHub for å slå på disse",
-    "settings": "GitHub-innstillinger",
-    "tooltip": "GitHub"
   },
   "home": {
     "ariaLabel": "Hjem",
@@ -726,6 +698,14 @@
     "sourceControl": "Versjonskontroll",
     "withShortcut": "{{label}} ({{shortcut}})"
   },
+  "remoteMenu": {
+    "accountLabel": "{{login}} på {{host}}",
+    "actions": "Handlinger for repositoriet",
+    "copyRepositoryLink": "Kopier lenken til repositoriet",
+    "openOnHost": "Åpne på {{host}}",
+    "settings": "Innstillinger for Git-hosting",
+    "signedInAs": "Logget inn på {{host}} som {{login}}"
+  },
   "renameDialog": {
     "close": "Lukk dialogen for nytt navn",
     "collision": "Det finnes allerede en {{kind}} som heter \"{{name}}\".",
@@ -773,9 +753,9 @@
         "movedCount_other": "Flyttet {{count}} prosjekter til papirkurven.",
         "title": "Faresone"
       },
-      "githubHint": "Sikkerhetskopier eller synkroniser et prosjekt mellom enheter: koble til GitHub, og bruk <push>Push</push> / <pull>Pull</pull> i Versjonskontroll. <setup>Sett opp GitHub →</setup>",
+      "gitHostingHint": "Ta sikkerhetskopi av eller synkroniser et prosjekt mellom enheter: koble det til et Git-repositorium, og bruk deretter <push>Push</push> / <pull>Pull</pull> i Versjonskontroll. <setup>Sett opp Git-hosting →</setup>",
       "localFirst": "Oleafly er lokal-først. Alle prosjekter ligger på disken din:",
-      "plainFolders": "Hvert prosjekt er en helt vanlig mappe. Git-historikk er valgfritt, og ingenting forlater maskinen din med mindre du pusher til GitHub.",
+      "plainFolders": "Hvert prosjekt er en helt vanlig mappe. Git-historikk er valgfritt, og ingenting forlater maskinen din med mindre du pusher det til en Git-server.",
       "recycleBin": {
         "clearAll": "Tøm alt",
         "clearFailed": "Kunne ikke tømme papirkurven.",
@@ -848,11 +828,7 @@
         "description": "Rediger prosjekter sammen med andre via en samarbeidsserver som du eller gruppen din drifter. Legger til seksjonen Samarbeid i Innstillinger. Av som standard mens det fortsatt er i beta.",
         "label": "Samarbeid i sanntid"
       },
-      "warning": "Disse funksjonene er eksperimentelle og fortsatt i beta. De er ikke ferdig testet og kan endre seg, slutte å virke eller bli fjernet i en senere utgave. Slå dem på bare hvis du vil prøve arbeid som pågår.",
-      "webBrowser": {
-        "description": "Vis nettleseren i appen (bryteren i panelet og hurtigtasten), og la AI-en styre den med datamaskinbruk. Av som standard mens det fortsatt er i beta. Når den er av, finnes det ingen nettleserknapp, og AI-en har ikke noe nettleserverktøy.",
-        "label": "Nettleser"
-      }
+      "warning": "Disse funksjonene er eksperimentelle og fortsatt i beta. De er ikke ferdig testet og kan endre seg, slutte å virke eller bli fjernet i en senere utgave. Slå dem på bare hvis du vil prøve arbeid som pågår."
     },
     "footer": {
       "followOnX": "Følg på X",
@@ -936,7 +912,8 @@
       "general": "Generelt",
       "help": "Hjelp og om",
       "integrations": "Integrasjoner",
-      "shortcuts": "Hurtigtaster"
+      "shortcuts": "Hurtigtaster",
+      "research": "Forskning"
     },
     "search": {
       "empty": "Ingen innstillinger passer",
@@ -951,8 +928,9 @@
         "experimentation": "lab, beta, eksperimenter, tidlige funksjoner",
         "general": "innstillinger, språk, region, stavekontroll, stavemåte, skrivefeil, frakoblet, omvisninger, terminalkommando",
         "help": "om, versjon, oppdateringer, endringslogg, hva er nytt, dokumentasjon, støtte, hjelp, fellesskap, Discord, lisens, krasjrapport",
-        "integrations": "Zotero, GitHub, MCP, siteringer, kontoer, tilkoblinger",
-        "shortcuts": "tastebindinger, hurtigtaster, taster, tastatur, snarveier"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, skrivebordsapper, Cua, MCP, siteringer, kontoer, tilkoblinger",
+        "shortcuts": "tastebindinger, hurtigtaster, taster, tastatur, snarveier",
+        "research": "forskning oppgaver budsjett varsler hold våken eksperimenter kjøringer"
       },
       "label": "Søk i innstillingene",
       "results_one": "{{count}} seksjon passer",
@@ -1034,7 +1012,6 @@
     "commitCount_other": "{{count}} commiter",
     "initialize": "Opprett repositorium",
     "initialized": "Git er satt opp på {{branch}}.",
-    "linkCopied": "GitHub-lenken er kopiert",
     "markResolved": "Merk som løst",
     "mergeNeedsAttention": "Løs flettekonflikter",
     "moreActions": "Flere handlinger i versjonskontrollen",
@@ -1048,18 +1025,19 @@
     "openFile": "Åpne filen",
     "openFileFor": "Åpne {{path}}",
     "popStash": "Bruk den nyeste stashen",
-    "publish": "Publiser til GitHub",
+    "publishRepository": "Publiser…",
+    "publishTo": "Publiser til {{host}}",
     "published": "Publisert til {{url}}",
     "pull": "Pull fra origin",
     "pullShort": "Pull",
     "push": "Commit og push til origin",
     "pushShort": "Push",
     "pushSkippedNoRemote": "⚠ Hoppet over push - ingen remote origin er satt nedenfor.",
-    "pushSkippedNoToken": "⚠ Hoppet over push - ingen GitHub-token (Innstillinger → GitHub).",
     "refresh": "Oppdater",
     "remote": "Remote",
     "remoteHint": "Opprett et nytt repo eller koble til et eksisterende som remote for dette prosjektet, og push.",
     "removeCredential": "Fjern den lagrede hemmeligheten",
+    "repositoryLinkCopied": "Lenken til repositoriet er kopiert",
     "restoreCommit": "Gjenopprett versjonen",
     "restoreCommitDescription": "Dette erstatter alle sporede prosjektfiler med denne versjonen og fjerner filer som er lagt til senere. Grenen din blir stående på commiten sin.",
     "restoreCommitTitle": "Gjenopprette denne versjonen?",
@@ -1089,7 +1067,7 @@
     "titleRequired": "Det kreves en commit-tittel.",
     "titleRequiredStatus": "Skriv inn en commit-tittel før du committer.",
     "unlink": "Koble fra",
-    "unlinked": "Koblet fra GitHub.",
+    "unlinkedFrom": "Koblet fra {{host}}.",
     "unstage": "Fjern fra klargjorte",
     "unstageFor": "Fjern {{path}} fra klargjorte",
     "unstageAll": "Fjern alt fra klargjorte",

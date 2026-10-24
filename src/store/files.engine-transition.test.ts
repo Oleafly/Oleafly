@@ -178,8 +178,8 @@ function seedProjectMetadata() {
 }
 
 describe("transactional project transitions", () => {
-  it("closes both docks before publishing a newly opened project", async () => {
-    useSettingsStore.setState({ terminalOpen: true, browserOpen: true });
+  it("closes the terminal dock before publishing a newly opened project", async () => {
+    useSettingsStore.setState({ terminalOpen: true });
     mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
 
     const opening = useFilesStore.getState().openProject("project");
@@ -187,7 +187,6 @@ describe("transactional project transitions", () => {
 
     expect(useSettingsStore.getState()).toMatchObject({
       terminalOpen: false,
-      browserOpen: false,
     });
     await opening;
   });

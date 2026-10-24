@@ -65,6 +65,31 @@ describe("ConfirmationDialog", () => {
     expect(props.onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  it("confirms with Enter from inside the dialog but not from an element outside it", () => {
+    const outside = document.createElement("textarea");
+    document.body.append(outside);
+    try {
+      const props = dialog();
+
+      fireEvent.keyDown(outside, { key: "Enter" });
+      expect(props.onConfirm).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(screen.getByRole("button", { name: /Discard/ }), { key: "Enter" });
+      expect(props.onConfirm).toHaveBeenCalledTimes(1);
+    } finally {
+      outside.remove();
+    }
+  });
+
+  it("skips the Enter shortcut and its hint when confirmOnEnter is off", () => {
+    const props = dialog({ confirmOnEnter: false });
+
+    fireEvent.keyDown(document.body, { key: "Enter" });
+
+    expect(props.onConfirm).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Discard" })).not.toHaveTextContent("↵");
+  });
+
   it("does not confirm a destructive action with Enter", () => {
     const props = dialog({ destructive: true });
 

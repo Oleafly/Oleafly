@@ -1,0 +1,74 @@
+{
+  "profile": "generic",
+  "project": {
+    "files": [
+      {
+        "hasContent": false,
+        "path": "build-logs/pandoc.log"
+      },
+      {
+        "hasContent": true,
+        "path": "main.md"
+      },
+      {
+        "hasContent": true,
+        "path": "refs.bib"
+      }
+    ],
+    "mainFile": "main.md"
+  },
+  "refs": null,
+  "report": {
+    "a11yScore": null,
+    "atsScore": null,
+    "compileScore": 79,
+    "coverage": {
+      "a11y": "not_run",
+      "ats": "not_run",
+      "compile": "evaluated",
+      "privacy": "unsupported",
+      "refs": "unsupported",
+      "submission": "unsupported"
+    },
+    "findings": [
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.compile-failed.detail"
+        },
+        "id": "compile-failed",
+        "lens": "compile",
+        "method": "compile-log",
+        "severity": "error",
+        "title": {
+          "key": "rules.compile-failed.title"
+        }
+      },
+      {
+        "certainty": "verified",
+        "detail": {
+          "key": "rules.compile-rerun-required.detail"
+        },
+        "id": "compile-rerun-required",
+        "lens": "compile",
+        "method": "compile-log",
+        "severity": "warning",
+        "title": {
+          "key": "rules.compile-rerun-required.title"
+        }
+      }
+    ],
+    "hasPdf": false,
+    "privacyScore": null,
+    "refsScore": null,
+    "scores": {
+      "a11y": 100,
+      "ats": 100,
+      "compile": 79,
+      "privacy": 100,
+      "refs": 100,
+      "submission": 100
+    },
+    "submissionScore": null
+  }
+}

@@ -14,6 +14,7 @@ vi.mock("@/lib/acp", async (original) => ({
   acpStart: vi.fn(), acpAuthenticate: vi.fn(), acpDisconnect: vi.fn(), acpReconnect: vi.fn(),
   acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpPermission: vi.fn(), acpCancel: vi.fn(),
   onAcpEvent: vi.fn(), onAcpResync: vi.fn(),
+  onAcpSession: vi.fn(async () => () => {}), onAcpBufferRequest: vi.fn(async () => () => {}),
 }));
 vi.mock("@/lib/agent-turns", async (original) => ({
   ...await original<typeof import("@/lib/agent-turns")>(),
@@ -66,7 +67,8 @@ import {
 import { agentTurnStatus } from "@/lib/agent-turns";
 import { gitIsInitialized } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
-import { useAcpSessionsStore } from "@/store/acp-sessions";
+import { acpComposerId, useAcpSessionsStore } from "@/store/acp-sessions";
+import { useComposerDrafts } from "@/store/composer-drafts";
 import { useFilesStore } from "@/store/files";
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
 import { useTurnReviewStore } from "@/components/ai/turns/turn-review-store";
@@ -103,6 +105,7 @@ beforeEach(() => {
   history = { saved: [] };
   emit = () => { throw new Error("The native event listener is not attached"); };
   useAcpSessionsStore.setState({ catalog: [], sessions: {}, events: {}, permissions: {}, activeByProject: { paper: "saved" }, composers: {}, errors: {}, starting: {} });
+  useComposerDrafts.setState({ drafts: {} });
   useFilesStore.setState({ projectName: "Thesis" });
   vi.mocked(acpCatalog).mockResolvedValue([agent()]);
   vi.mocked(acpSessions).mockImplementation(async () => Object.values(snapshots).map((value) => value.session));
@@ -147,9 +150,11 @@ describe("CLI home research presets", () => {
     useAcpSessionsStore.setState({ activeByProject: {} });
     vi.mocked(acpStart).mockResolvedValue({ session: session("fresh"), permissions: [] });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    // 0.4.8 added Compilation repair, Submission prep and Reviewer response.
     await waitFor(() => expect(quickStartLabels(ui)).toEqual([
       "Literature sweep", "Related work", "Citation audit", "Manuscript review",
-      "Reproducibility audit", "Figure audit", "Reference cleanup",
+      "Reproducibility audit", "Figure audit", "Compilation repair", "Submission prep",
+      "Reviewer response", "Reference cleanup",
     ]));
     await waitFor(() => expect(ui.getByTestId("acp-start-conversation")).toBeEnabled());
 
@@ -157,10 +162,13 @@ describe("CLI home research presets", () => {
 
     await waitFor(() => expect(acpStart).toHaveBeenCalledExactlyOnceWith("paper", "fixture"));
     const composer = useAcpSessionsStore.getState().composers.paper;
-    expect(composer?.draft).toMatch(/^Audit the claims in this manuscript against their cited sources\./);
-    expect(composer?.draft).toMatch(/Do not change manuscript files; write findings to research\/claims\.md\.$/);
+    // The conversation it started has the draft.
+    const draft = useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture", "fresh")]?.text ?? "";
+    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture")]).toBeUndefined();
+    expect(draft).toMatch(/^Audit the claims in this manuscript against their cited sources\./);
+    expect(draft).toMatch(/Do not change manuscript files; write findings to research\/claims\.md\.$/);
     expect(composer?.skill).toEqual({ id: "oleafly-verify-claims", name: "Verify claims" });
-    await waitFor(() => expect(ui.getByLabelText("Message CLI agent")).toHaveValue(composer?.draft));
+    await waitFor(() => expect(ui.getByLabelText("Message CLI agent")).toHaveValue(draft));
     expect(ui.getByTestId("acp-skill-chip")).toHaveTextContent("Verify claims");
     expect(acpPrompt).not.toHaveBeenCalled();
   });
@@ -177,12 +185,12 @@ describe("CLI home research presets", () => {
     await waitFor(() => expect(quickStartLabels(ui)).toContain("Reference cleanup"));
     fireEvent.click(ui.getByTitle("Reference cleanup"));
     expect(await ui.findByTestId("clean-library-dialog")).toBeInTheDocument();
-    expect(useAcpSessionsStore.getState().composers.paper?.draft ?? "").toBe("");
+    expect(useComposerDrafts.getState().drafts[acpComposerId("paper", "fixture", "saved")]?.text ?? "").toBe("");
   });
 
   it("sends the chosen skill with the message and shows it on the user row", async () => {
-    vi.mocked(acpPrompt).mockImplementation(async (_project, _id, text, _images, skillId) => {
-      history.saved = [event(1, "user_message", { text, skill: { id: skillId, name: "Verify claims" } })];
+    vi.mocked(acpPrompt).mockImplementation(async (_project, _id, input) => {
+      history.saved = [event(1, "user_message", { text: input.text, skill: { id: input.skillId, name: "Verify claims" } })];
       snapshots.saved = { session: session("saved", { status: "running", lastSequence: 1 }), permissions: [] };
       emit(history.saved[0]);
       return snapshots.saved;
@@ -197,13 +205,16 @@ describe("CLI home research presets", () => {
     typeMessage(input, "Check section 3");
     await waitFor(() => expect(ui.getByRole("button", { name: "Send" })).toBeEnabled());
     fireEvent.click(ui.getByRole("button", { name: "Send" }));
-    await waitFor(() => expect(acpPrompt).toHaveBeenCalledExactlyOnceWith("paper", "saved", "Check section 3", [], "oleafly-verify-claims"));
+    await waitFor(() => expect(acpPrompt).toHaveBeenCalledExactlyOnceWith("paper", "saved", {
+      text: "Check section 3", images: [], files: [], selections: [], skillId: "oleafly-verify-claims",
+    }));
     await waitFor(() => expect(ui.queryByTestId("acp-skill-chip")).toBeNull());
     expect(await ui.findByTestId("user-skill-chip")).toHaveTextContent("Verify claims");
   });
 
   it("lets the user remove the skill chip", async () => {
-    useAcpSessionsStore.setState({ composers: { paper: { agentId: "fixture", draft: "Hi", images: [], skill: { id: "oleafly-verify-claims", name: "Verify claims" } } } });
+    useAcpSessionsStore.setState({ composers: { paper: { agentId: "fixture", skill: { id: "oleafly-verify-claims", name: "Verify claims" } } } });
+    useComposerDrafts.getState().setText(acpComposerId("paper", "fixture", "saved"), "Hi");
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     fireEvent.click(await ui.findByRole("button", { name: "Remove skill Verify claims" }));
     expect(ui.queryByTestId("acp-skill-chip")).toBeNull();
@@ -270,9 +281,10 @@ describe("CLI conversation names and export", () => {
         <AcpWorkspaceAssistant projectId="paper" />
       </>,
     );
-    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
     const names = await menuItemNames(ui.getByRole("button", { name: "Saved conversations" }));
-    expect(names).toEqual(["Export conversation…", "Conversation saved · Research CLI"]);
+    // Since 0.4.8 the menu ends with All conversations, which opens the history.
+    expect(names).toEqual(["Export conversation…", "Conversation saved · Research CLI", "All conversations"]);
   });
 
   it("exports the open conversation from the top of the history menu", async () => {
@@ -283,7 +295,7 @@ describe("CLI conversation names and export", () => {
         <AcpWorkspaceAssistant projectId="paper" />
       </>,
     );
-    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
     await chooseMenuItem(ui.getByRole("button", { name: "Saved conversations" }), "Export conversation…");
     await waitFor(() => expect(exportConversation).toHaveBeenCalledWith({
       projectId: "paper",
@@ -302,7 +314,7 @@ describe("CLI conversation names and export", () => {
         <AcpWorkspaceAssistant projectId="paper" />
       </>,
     );
-    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
     await chooseMenuItem(ui.getByRole("button", { name: "Saved conversations" }), "Export conversation…");
     expect(await ui.findByRole("alert")).toHaveTextContent("Disk is full");
     expect(within(ui.container).queryByText("Conversation exported")).toBeNull();
@@ -323,7 +335,7 @@ describe("CLI history menu details", () => {
     useFilesStore.setState({ projectName: "" });
     vi.mocked(exportConversation).mockResolvedValue(false);
     const ui = workspace();
-    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
 
     await chooseMenuItem(ui.getByRole("button", { name: "Saved conversations" }), "Export conversation…");
 
@@ -334,7 +346,7 @@ describe("CLI history menu details", () => {
   it("names an untitled conversation and an agent that left the catalog", async () => {
     snapshots.old = { session: session("old", { title: "", agentId: "retired", updatedAt: 0 }), permissions: [] };
     const ui = workspace();
-    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
 
     const names = await menuItemNames(ui.getByRole("button", { name: "Saved conversations" }));
 
@@ -343,7 +355,7 @@ describe("CLI history menu details", () => {
 
   it("does nothing when the open conversation is picked again", async () => {
     const ui = workspace();
-    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
     const reads = vi.mocked(acpSnapshot).mock.calls.length;
 
     await chooseMenuItem(ui.getByRole("button", { name: "Saved conversations" }), "Conversation saved · Research CLI");

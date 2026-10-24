@@ -19,7 +19,6 @@
     "selectAll": "すべてを選択",
     "view": "表示",
     "toggleTerminal": "ターミナルの表示を切り替え",
-    "toggleBrowser": "ブラウザの表示を切り替え",
     "file": "ファイル",
     "openFolder": "フォルダを開く…",
     "openRecent": "最近使った項目を開く",
@@ -28,15 +27,7 @@
     "minimize": "しまう",
     "fullscreen": "フルスクリーンを切り替え",
     "bringAllToFront": "すべてを手前に移動",
-    "newTab": "新規タブ",
-    "openLocation": "場所を開く…",
-    "closeTab": "タブを閉じる",
-    "reloadPage": "ページを再読み込み",
     "zenMode": "Zen モード"
-  },
-  "window": {
-    "browser": "Oleafly ブラウザ",
-    "browserTitled": "{{title}} - Oleafly ブラウザ"
   },
   "dialog": {
     "cancel": "キャンセル",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Cookie の読み込みの確認",
-      "messageHost": "{{browser}} のプロファイル「{{profile}}」から {{hostname}} の Cookie を Oleafly のアプリ内ブラウザに読み込みますか？読み込んだ Cookie によってウェブサイトにサインインされる場合があります。",
-      "messageAll": "{{browser}} のプロファイル「{{profile}}」のすべての Cookie を Oleafly のアプリ内ブラウザに読み込みますか？読み込んだ Cookie によってウェブサイトにサインインされる場合があります。",
-      "confirm": "Cookie を読み込む"
+      "copyHost": "{{browser}} のプロファイル「{{profile}}」から {{hostname}} の Cookie を Oleafly にコピーしますか？これらを使って {{hostname}} にサインインできます。",
+      "copyAll": "{{browser}} のプロファイル「{{profile}}」からすべての Cookie を Oleafly にコピーしますか？これらを使ってウェブサイトにサインインできます。",
+      "copyConfirm": "Cookie をコピー"
     },
     "mcpApprove": {
       "title": "MCP ツールの承認",
@@ -103,6 +94,51 @@
       "confirm": "プログラムを使用",
       "pickTitle": "{{name}} のプログラムを選択",
       "filter": "プログラム"
+    },
+    "desktopApps": {
+      "title": "デスクトップアプリ",
+      "action": "{{agent}} が{{action}}ことを求めています。",
+      "steps": "{{agent}} がデスクトップアプリで次の手順を実行しようとしています:",
+      "moreSteps": "表示されていない手順: {{count}}",
+      "moreItems": "ほか {{count}} 件の項目は表示していません",
+      "cut": "（ほか {{count}} 文字を省略）",
+      "signedIn": "この操作は、サインイン済みのあなたのブラウザで行われます。",
+      "signedInOn": "この操作は、サインイン済みのあなたのブラウザの {{origin}} で行われます。",
+      "text": "テキスト: 「{{text}}」",
+      "address": "アドレス: {{url}}",
+      "allowOnce": "今回だけ許可",
+      "allowChat": "このチャットで許可",
+      "allowSession": "このセッションで許可",
+      "allowTask": "このタスクで許可",
+      "deny": "許可しない",
+      "actions": {
+        "launchApp": "アプリを開く",
+        "click": "アプリ内をクリックする",
+        "doubleClick": "アプリ内をダブルクリックする",
+        "rightClick": "アプリ内を右クリックする",
+        "typeText": "アプリ内で入力する",
+        "pressKey": "アプリ内でキーを押す",
+        "hotkey": "アプリ内でキーボードショートカットを押す",
+        "scroll": "アプリ内をスクロールする",
+        "setValue": "アプリ内の項目を変更する",
+        "browserPrepare": "ウェブサイト用にブラウザを開く",
+        "browserNavigate": "ウェブページに移動する",
+        "browserClick": "ウェブページ上をクリックする",
+        "browserType": "ウェブページ上で入力する",
+        "browserSelect": "ウェブページ上で選択肢を選ぶ",
+        "runScript": "Cua スクリプトを実行する"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "デスクトップの操作を許可しますか？",
+      "message": "エージェントは次のものを使えるようになります。操作のたびに確認は続きます:",
+      "confirm": "許可",
+      "enabled": "デスクトップアプリ",
+      "app": "アプリ: {{name}}（{{identity}}）",
+      "more": "ほか {{count}} 件",
+      "site": "ウェブサイト: {{origin}}",
+      "signedIn": "{{origin}} にサインイン済みのブラウザ",
+      "scripted": "Cua スクリプト"
     }
   },
   "errors": {
@@ -128,5 +164,41 @@
   "cloud": {
     "connectedPage": "接続しました。このタブを閉じて Oleafly に戻ってください。",
     "failedPage": "サインインは完了しませんでした。このタブを閉じて Oleafly に戻ってください。"
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "タスクを確認できます",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "プランの承認待ち",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "タスクがあなたの承認を待っています",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "タスクが停止しました",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "タスクの予算を使い切りました",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly は作業を続けています",
+      "body": "実行を続けるよう指定した研究タスクは、バックグラウンドで続行されます。進捗を見るには Oleafly を開いてください。"
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "権限の確認がオフになっています（{{mode}}）",
+      "description": "エージェントは、確認なしにファイルの編集やコマンドの実行ができます。Oleafly は別のモードに切り替えられませんでした。モードはエージェント自身の設定で変更してください。"
+    }
   }
 }

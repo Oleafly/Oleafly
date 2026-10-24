@@ -1,12 +1,14 @@
 import { i18n } from "@/i18n";
-import { acpSessionEventsAll, acpSessionExport, type AcpEvent, type AcpSession } from "@/lib/acp";
+import { acpEvents, acpSessionExport, type AcpEvent, type AcpSession } from "@/lib/acp";
 import type { TurnChange } from "@/lib/agent-turns";
 import { formatDateTime } from "@/lib/intl";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { writeBytesFile } from "@/lib/tauri";
 import type { ChatMessage, ChatTurnChanges } from "@/store/chats";
-import { projectAcpEvents } from "./projection";
+import type { RenderedMessage } from "@/components/ai/MessageList";
+import { createAcpProjector, projectAcpEvents } from "./projection";
 import { textToBase64 } from "@/lib/base64";
+import { currentName, groupControls } from "./acp-controls";
 
 export interface ConversationExportInput {
   session: AcpSession;
@@ -28,6 +30,28 @@ function modelLabel(session: AcpSession): string {
   return models.find((model) => model.modelId === modelId)?.name ?? modelId;
 }
 
+function approvalLabel(profile: string): string {
+  switch (profile) {
+    case "ask-for-approval":
+      return i18n.t(($) => $.ai.approval.modes.askForApproval.label);
+    case "approve-for-me":
+      return i18n.t(($) => $.ai.approval.modes.approveForMe.label);
+    case "full-access":
+      return i18n.t(($) => $.ai.approval.modes.fullAccess.label);
+    case "custom":
+      return i18n.t(($) => $.ai.approval.modes.custom.label);
+    default:
+      return profile;
+  }
+}
+
+function modeLabel(session: AcpSession): string | null {
+  const mode = groupControls(session.controls).mode;
+  if (!mode) return null;
+  if (mode.kind === "config") return currentName(mode.option);
+  return mode.modes.find((entry) => entry.id === mode.current)?.name ?? mode.current;
+}
+
 function header(input: ConversationExportInput): string[] {
   const { session, projectName, agentName } = input;
   const lines = [`# ${session.title.trim() || i18n.t(($) => $.ai.acp.export.untitled)}`, ""];
@@ -35,6 +59,14 @@ function header(input: ConversationExportInput): string[] {
   if (projectName) field(i18n.t(($) => $.ai.acp.export.project), projectName);
   field(i18n.t(($) => $.ai.acp.export.agent), [agentName, session.agentVersion].filter(Boolean).join(" "));
   field(i18n.t(($) => $.ai.acp.export.model), modelLabel(session));
+  const mode = modeLabel(session);
+  if (mode) field(i18n.t(($) => $.ai.acp.export.mode), mode);
+  const effort = groupControls(session.controls).effort;
+  const effortName = effort ? currentName(effort) : null;
+  if (effortName) field(i18n.t(($) => $.ai.acp.export.effort), effortName);
+  if (session.permissionProfile) {
+    field(i18n.t(($) => $.ai.acp.export.permissionProfile), approvalLabel(session.permissionProfile));
+  }
   if (session.startRevision) {
     const revision = session.startRevision.slice(0, 7);
     field(
@@ -45,6 +77,15 @@ function header(input: ConversationExportInput): string[] {
   field(i18n.t(($) => $.ai.acp.export.started), formatDateTime(session.createdAt));
   field(i18n.t(($) => $.ai.acp.export.updated), formatDateTime(session.updatedAt));
   lines.push("");
+  const commits = session.commits ?? [];
+  if (commits.length > 0) {
+    lines.push(`**${i18n.t(($) => $.ai.acp.export.commits)}**`, "");
+    for (const commit of commits) {
+      const subject = commit.message ? ` ${commit.message.split("\n")[0]}` : "";
+      lines.push(`- ${commit.commit.slice(0, 7)}${subject}`);
+    }
+    lines.push("");
+  }
   return lines;
 }
 
@@ -73,9 +114,16 @@ function assistantBody(message: ChatMessage): string[] {
 
 /** The conversation as Markdown: header, then each turn with its changed files. */
 export function conversationMarkdown(input: ConversationExportInput): string {
-  const lines = header(input);
+  return markdownFromRows(input, projectAcpEvents(input.events, false));
+}
+
+function markdownFromRows(
+  input: Omit<ConversationExportInput, "events">,
+  rows: readonly RenderedMessage[],
+): string {
+  const lines = header({ ...input, events: [] });
   let speaker: "user" | "assistant" | null = null;
-  for (const { msg } of projectAcpEvents(input.events, false)) {
+  for (const { msg } of rows) {
     if (msg.role === "user") {
       lines.push(`## ${i18n.t(($) => $.ai.acp.export.you)}`, "", msg.content.trim(), "");
       if (msg.skill) lines.push(`_${i18n.t(($) => $.ai.acp.export.skill, { name: msg.skill.name })}_`, "");
@@ -93,6 +141,31 @@ export function conversationMarkdown(input: ConversationExportInput): string {
   return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd()}\n`;
 }
 
+/** Events read from the store per request; the backend serves at most this many. */
+const EVENT_PAGE = 500;
+
+/**
+ * The whole conversation, projected as its events arrive a page at a time:
+ * no single response carries the transcript, the projector applies only each
+ * page's new events, and the window gets to paint between pages.
+ */
+async function projectStoredEvents(projectId: string, sessionId: string): Promise<RenderedMessage[]> {
+  const project = createAcpProjector();
+  let events: AcpEvent[] = [];
+  let rows: RenderedMessage[] = [];
+  let after = 0;
+  for (;;) {
+    const page = await acpEvents(projectId, sessionId, after, EVENT_PAGE);
+    if (page.events.length === 0) break;
+    // A new array each time: the projector tells a growing list from a changed one by its ends.
+    events = [...events, ...page.events];
+    rows = project(events, false);
+    after = page.events[page.events.length - 1].sequence;
+    if (!page.hasMore) break;
+  }
+  return rows;
+}
+
 function fileName(title: string): string {
   const safe = title.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
   return safe || i18n.t(($) => $.ai.acp.export.untitled);
@@ -102,7 +175,8 @@ function fileName(title: string): string {
  * Asks where to save and writes the conversation. The format follows the
  * chosen extension: `.json` is written by the backend straight from the
  * store (large transcripts never cross into the page), anything else is
- * Markdown. Resolves false when the dialog is cancelled.
+ * Markdown, built from the stored events read a page at a time. Resolves
+ * false when the dialog is cancelled.
  */
 export async function exportConversation({
   projectId,
@@ -122,7 +196,7 @@ export async function exportConversation({
     await acpSessionExport(projectId, session.id, path);
     return true;
   }
-  const events = await acpSessionEventsAll(projectId, session.id);
-  await writeBytesFile(path, textToBase64(conversationMarkdown({ session, events, projectName, agentName })));
+  const rows = await projectStoredEvents(projectId, session.id);
+  await writeBytesFile(path, textToBase64(markdownFromRows({ session, projectName, agentName }, rows)));
   return true;
 }

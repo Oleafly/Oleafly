@@ -186,6 +186,10 @@
     "terminal": "Terminal yükleniyor"
   },
   "terminal": {
+    "activity": "Yeni etkinlik",
+    "clipboard": {
+      "blocked": "Terminaldeki bir program metin kopyalamak istiyor."
+    },
     "closeCurrent": "Geçerli olanı kapat",
     "closeLeft": "Soldakilerin tümünü kapat",
     "closeOthers": "Diğerlerini kapat",
@@ -197,6 +201,19 @@
       "resize": "Terminal yeniden boyutlandırılamadı",
       "start": "Proje shell'i başlatılamadı"
     },
+    "find": {
+      "count": "{{total}} sonuçtan {{current}}.",
+      "label": "Terminalde bul",
+      "next": "Sonraki eşleşme",
+      "none": "Eşleşme yok",
+      "previous": "Önceki eşleşme"
+    },
+    "launch": {
+      "invalid": "Bu komut terminalde çalıştırılamaz.",
+      "noProject": "Terminali kullanmak için bir proje açın.",
+      "run": "Çalıştır",
+      "title": "Bu komut terminalde çalıştırılsın mı?"
+    },
     "limitReached": "Başka bir terminal açmak için birini kapatın",
     "links": {
       "openFile": "Açmak için {{modifier}}+tıklayın",
@@ -204,8 +221,25 @@
       "openUrlFailed": "Bağlantı açılamadı."
     },
     "newTerminal": "Yeni terminal",
+    "openInTerminal": "Terminalde aç",
     "settings": "Terminal ayarları",
     "starting": "Proje shell'i başlatılıyor…",
+    "stop": {
+      "closeMany": "Terminalleri kapat",
+      "closeOne": "Terminali kapat",
+      "closeProject": "Projeyi kapat",
+      "dontAsk": "Bir daha sorma",
+      "dontAskHint": "Yeniden açmak için Ayarlar, Görünüm, Terminal bölümündeki Meşgul bir terminali kapatmadan önce sor ayarına gidin.",
+      "many_one": "{{count}} terminalde hâlâ bir program çalışıyor.",
+      "many_other": "{{count}} terminalde hâlâ program çalışıyor.",
+      "named": "{{process}}, {{title}} içinde hâlâ çalışıyor.",
+      "quit": "Çık",
+      "restart": "Yeniden başlat",
+      "switchProject": "Projeyi değiştir",
+      "titleMany": "Çalışan programlar durdurulsun mu?",
+      "titleOne": "Çalışan program durdurulsun mu?",
+      "unnamed": "{{title}} içinde hâlâ bir program çalışıyor."
+    },
     "tabs": "Terminaller",
     "titleInput": "Terminal başlığı"
   },

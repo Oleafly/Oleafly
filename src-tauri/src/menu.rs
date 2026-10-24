@@ -1,6 +1,5 @@
 #![cfg_attr(not(target_os = "macos"), allow(dead_code))]
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 
 use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, Submenu, SubmenuBuilder};
@@ -18,10 +17,6 @@ const OPEN_FOLDER_ACCELERATOR: &str = "CmdOrCtrl+Shift+O";
 const RECENT_LIMIT: usize = 10;
 const VIEW_MENU: &str = "view_menu";
 const TERMINAL_ACCELERATOR: &str = "Ctrl+`";
-#[cfg(target_os = "linux")]
-const BROWSER_ACCELERATOR: &str = "Ctrl+Alt+B";
-#[cfg(not(target_os = "linux"))]
-const BROWSER_ACCELERATOR: &str = "Ctrl+Shift+B";
 #[cfg(target_os = "macos")]
 const ZEN_ACCELERATOR: &str = "Cmd+Ctrl+Shift+F";
 #[cfg(not(target_os = "macos"))]
@@ -33,56 +28,14 @@ const SETTINGS_ITEM: &str = "open_settings";
 const SETTINGS_ACCELERATOR: &str = "CmdOrCtrl+,";
 const SETTINGS_EVENT: &str = "settings:open";
 const TOGGLE_TERMINAL_ITEM: &str = "toggle_terminal";
-const TOGGLE_BROWSER_ITEM: &str = "toggle_browser";
 const TOGGLE_ZEN_ITEM: &str = "toggle_zen_mode";
 
 static RECENT_PROJECTS: Mutex<Vec<RecentProject>> = Mutex::new(Vec::new());
 static SHORTCUT_ACCELERATORS: Mutex<Option<ShortcutAccelerators>> = Mutex::new(None);
-static BROWSER_SHORTCUTS_ENABLED: AtomicBool = AtomicBool::new(false);
-
-struct BrowserShortcut {
-    submenu: &'static str,
-    id: &'static str,
-    label: &'static str,
-    accelerator: &'static str,
-    key: char,
-}
-
-const BROWSER_SHORTCUTS: [BrowserShortcut; 4] = [
-    BrowserShortcut {
-        submenu: FILE_MENU,
-        id: "browser_new_tab",
-        label: "menu.newTab",
-        accelerator: "CmdOrCtrl+T",
-        key: 't',
-    },
-    BrowserShortcut {
-        submenu: FILE_MENU,
-        id: "browser_open_location",
-        label: "menu.openLocation",
-        accelerator: "CmdOrCtrl+L",
-        key: 'l',
-    },
-    BrowserShortcut {
-        submenu: FILE_MENU,
-        id: "browser_close_tab",
-        label: "menu.closeTab",
-        accelerator: "CmdOrCtrl+W",
-        key: 'w',
-    },
-    BrowserShortcut {
-        submenu: VIEW_MENU,
-        id: "browser_reload",
-        label: "menu.reloadPage",
-        accelerator: "CmdOrCtrl+R",
-        key: 'r',
-    },
-];
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct ShortcutAccelerators {
     terminal: String,
-    browser: String,
     open_folder: String,
     zen_mode: String,
     settings: String,
@@ -95,7 +48,6 @@ fn shortcut_accelerators() -> ShortcutAccelerators {
         .clone()
         .unwrap_or_else(|| ShortcutAccelerators {
             terminal: TERMINAL_ACCELERATOR.to_owned(),
-            browser: BROWSER_ACCELERATOR.to_owned(),
             open_folder: OPEN_FOLDER_ACCELERATOR.to_owned(),
             zen_mode: ZEN_ACCELERATOR.to_owned(),
             settings: SETTINGS_ACCELERATOR.to_owned(),
@@ -104,7 +56,6 @@ fn shortcut_accelerators() -> ShortcutAccelerators {
 
 fn remember_shortcut_accelerators(
     terminal: &str,
-    browser: &str,
     open_folder: Option<&str>,
     zen_mode: Option<&str>,
     settings: Option<&str>,
@@ -114,7 +65,6 @@ fn remember_shortcut_accelerators(
         .lock()
         .unwrap_or_else(PoisonError::into_inner) = Some(ShortcutAccelerators {
         terminal: terminal.to_owned(),
-        browser: browser.to_owned(),
         open_folder: open_folder.map_or(current.open_folder, str::to_owned),
         zen_mode: zen_mode.map_or(current.zen_mode, str::to_owned),
         settings: settings.map_or(current.settings, str::to_owned),
@@ -184,22 +134,9 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .accelerator(&accelerators.open_folder)
         .build(handle)?;
     let open_recent = recent_submenu(handle, &recent_projects())?;
-    let browser_enabled = BROWSER_SHORTCUTS_ENABLED.load(Ordering::Relaxed);
-    let [new_tab, open_location, close_tab, reload_page] = BROWSER_SHORTCUTS.map(|shortcut| {
-        MenuItemBuilder::with_id(shortcut.id, t(shortcut.label))
-            .accelerator(shortcut.accelerator)
-            .enabled(browser_enabled)
-            .build(handle)
-    });
-    let (new_tab, open_location, close_tab, reload_page) =
-        (new_tab?, open_location?, close_tab?, reload_page?);
     let file_menu = SubmenuBuilder::with_id(handle, FILE_MENU, t("menu.file"))
         .item(&open_folder)
         .item(&open_recent)
-        .separator()
-        .item(&new_tab)
-        .item(&open_location)
-        .item(&close_tab)
         .build()?;
 
     let app_menu = SubmenuBuilder::with_id(handle, APP_MENU, t("menu.app"))
@@ -243,19 +180,13 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let toggle_terminal = MenuItemBuilder::with_id(TOGGLE_TERMINAL_ITEM, t("menu.toggleTerminal"))
         .accelerator(&accelerators.terminal)
         .build(handle)?;
-    let toggle_browser = MenuItemBuilder::with_id(TOGGLE_BROWSER_ITEM, t("menu.toggleBrowser"))
-        .accelerator(&accelerators.browser)
-        .build(handle)?;
     let toggle_zen = MenuItemBuilder::with_id(TOGGLE_ZEN_ITEM, t("menu.zenMode"))
         .accelerator(&accelerators.zen_mode)
         .build(handle)?;
     let view_menu = SubmenuBuilder::with_id(handle, VIEW_MENU, t("menu.view"))
         .item(&toggle_terminal)
-        .item(&toggle_browser)
         .separator()
         .item(&toggle_zen)
-        .separator()
-        .item(&reload_page)
         .build()?;
 
     let menu = MenuBuilder::new(handle)
@@ -363,7 +294,6 @@ pub fn set_recent_projects(app: AppHandle, projects: Vec<RecentProject>) -> Resu
 fn frontend_event(id: &str) -> Option<&'static str> {
     match id {
         TOGGLE_TERMINAL_ITEM => Some("menu://toggle-terminal"),
-        TOGGLE_BROWSER_ITEM => Some("menu://toggle-browser"),
         TOGGLE_ZEN_ITEM => Some("menu://toggle-zen-mode"),
         "edit_undo" => Some("menu://undo"),
         "edit_redo" => Some("menu://redo"),
@@ -384,13 +314,9 @@ fn main_window_focused<R: Runtime>(app: &AppHandle<R>) -> bool {
 
 fn dock_accelerator_updates<'a>(
     terminal: &'a str,
-    browser: &'a str,
     zen_mode: Option<&'a str>,
 ) -> Vec<(&'static str, &'a str)> {
-    let mut updates = vec![
-        (TOGGLE_TERMINAL_ITEM, terminal),
-        (TOGGLE_BROWSER_ITEM, browser),
-    ];
+    let mut updates = vec![(TOGGLE_TERMINAL_ITEM, terminal)];
     updates.extend(zen_mode.map(|accelerator| (TOGGLE_ZEN_ITEM, accelerator)));
     updates
 }
@@ -405,14 +331,13 @@ fn unregistrable_accelerator<'a>(accelerators: &[&'a str]) -> Option<&'a str> {
 
 fn paused_accelerators(
     accelerators: &ShortcutAccelerators,
-) -> [(&'static str, &'static str, String); 6] {
+) -> [(&'static str, &'static str, String); 5] {
     [
         (
             VIEW_MENU,
             TOGGLE_TERMINAL_ITEM,
             accelerators.terminal.clone(),
         ),
-        (VIEW_MENU, TOGGLE_BROWSER_ITEM, accelerators.browser.clone()),
         (VIEW_MENU, TOGGLE_ZEN_ITEM, accelerators.zen_mode.clone()),
         (
             FILE_MENU,
@@ -435,32 +360,6 @@ fn menu_item<R: Runtime>(
         .and_then(|submenu| submenu.get(id))
         .and_then(|item| item.as_menuitem().cloned())
         .ok_or_else(|| t_with("errors.menuItemUnavailable", &[("id", id)]))
-}
-
-fn browser_shortcut_key(id: &str) -> Option<char> {
-    BROWSER_SHORTCUTS
-        .iter()
-        .find(|shortcut| shortcut.id == id)
-        .map(|shortcut| shortcut.key)
-}
-
-pub fn set_browser_shortcuts_enabled<R: Runtime>(app: &AppHandle<R>, enabled: bool) {
-    BROWSER_SHORTCUTS_ENABLED.store(enabled, Ordering::Relaxed);
-    #[cfg(target_os = "windows")]
-    {
-        let _ = app;
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        let Some(menu) = app.menu() else {
-            return;
-        };
-        for shortcut in BROWSER_SHORTCUTS {
-            if let Ok(item) = menu_item(&menu, shortcut.submenu, shortcut.id) {
-                let _ = item.set_enabled(enabled);
-            }
-        }
-    }
 }
 
 #[tauri::command]
@@ -499,7 +398,6 @@ fn optional_accelerator_updates<'a>(
 pub fn set_dock_shortcut_accelerators(
     app: AppHandle,
     terminal_accelerator: String,
-    browser_accelerator: String,
     open_folder_accelerator: Option<String>,
     zen_mode_accelerator: Option<String>,
     settings_accelerator: Option<String>,
@@ -509,7 +407,6 @@ pub fn set_dock_shortcut_accelerators(
         let _ = (
             app,
             terminal_accelerator,
-            browser_accelerator,
             open_folder_accelerator,
             zen_mode_accelerator,
             settings_accelerator,
@@ -518,7 +415,7 @@ pub fn set_dock_shortcut_accelerators(
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let mut requested = vec![terminal_accelerator.as_str(), browser_accelerator.as_str()];
+        let mut requested = vec![terminal_accelerator.as_str()];
         requested.extend(open_folder_accelerator.as_deref());
         requested.extend(zen_mode_accelerator.as_deref());
         requested.extend(settings_accelerator.as_deref());
@@ -527,17 +424,14 @@ pub fn set_dock_shortcut_accelerators(
         }
         remember_shortcut_accelerators(
             &terminal_accelerator,
-            &browser_accelerator,
             open_folder_accelerator.as_deref(),
             zen_mode_accelerator.as_deref(),
             settings_accelerator.as_deref(),
         );
         let menu = app.menu().ok_or_else(|| t("errors.menuUnavailable"))?;
-        for (id, accelerator) in dock_accelerator_updates(
-            &terminal_accelerator,
-            &browser_accelerator,
-            zen_mode_accelerator.as_deref(),
-        ) {
+        for (id, accelerator) in
+            dock_accelerator_updates(&terminal_accelerator, zen_mode_accelerator.as_deref())
+        {
             menu_item(&menu, VIEW_MENU, id)?
                 .set_accelerator(Some(accelerator))
                 .map_err(|error| error.to_string())?;
@@ -555,9 +449,9 @@ pub fn set_dock_shortcut_accelerators(
 }
 
 fn reload_views<R: Runtime>(app: &AppHandle<R>) {
-    // Iterate windows and their webviews, not `webview_windows()`:
-    // that map drops a window the moment it hosts a second webview,
-    // as the browser window does, and Reload Views would skip it.
+    // Iterate windows and their webviews, not `webview_windows()`: that map
+    // drops a window the moment it hosts a second webview, and Reload Views
+    // would skip it.
     for window in app.windows().values() {
         for webview in window.webviews() {
             let _ = webview.eval("window.location.reload()");
@@ -579,10 +473,6 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             return;
         }
         let _ = app.emit(event, ());
-        return;
-    }
-    if let Some(key) = browser_shortcut_key(id) {
-        crate::browser::route_shortcut_to_focused_window(app, key);
         return;
     }
     if let Some(project_id) = recent_target(id) {
@@ -641,10 +531,7 @@ mod tests {
             frontend_event("toggle_terminal"),
             Some("menu://toggle-terminal")
         );
-        assert_eq!(
-            frontend_event("toggle_browser"),
-            Some("menu://toggle-browser")
-        );
+        assert_eq!(frontend_event("toggle_browser"), None);
         assert_eq!(
             frontend_event("toggle_zen_mode"),
             Some("menu://toggle-zen-mode")
@@ -657,24 +544,23 @@ mod tests {
     #[test]
     fn a_rebuilt_menu_keeps_the_shortcuts_the_user_chose() {
         assert_eq!(shortcut_accelerators().terminal, TERMINAL_ACCELERATOR);
-        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None, None, None);
+        remember_shortcut_accelerators("Cmd+J", None, None, None);
         assert_eq!(
             shortcut_accelerators(),
             ShortcutAccelerators {
                 terminal: "Cmd+J".to_owned(),
-                browser: "Cmd+Shift+K".to_owned(),
                 open_folder: OPEN_FOLDER_ACCELERATOR.to_owned(),
                 zen_mode: ZEN_ACCELERATOR.to_owned(),
                 settings: SETTINGS_ACCELERATOR.to_owned(),
             }
         );
-        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", Some("Cmd+Alt+O"), None, None);
+        remember_shortcut_accelerators("Cmd+J", Some("Cmd+Alt+O"), None, None);
         assert_eq!(shortcut_accelerators().open_folder, "Cmd+Alt+O");
-        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None, Some("Cmd+Alt+Z"), None);
+        remember_shortcut_accelerators("Cmd+J", None, Some("Cmd+Alt+Z"), None);
         assert_eq!(shortcut_accelerators().zen_mode, "Cmd+Alt+Z");
         assert_eq!(shortcut_accelerators().open_folder, "Cmd+Alt+O");
         assert_eq!(shortcut_accelerators().settings, SETTINGS_ACCELERATOR);
-        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None, None, Some("Cmd+Alt+,"));
+        remember_shortcut_accelerators("Cmd+J", None, None, Some("Cmd+Alt+,"));
         assert_eq!(shortcut_accelerators().open_folder, "Cmd+Alt+O");
         assert_eq!(shortcut_accelerators().zen_mode, "Cmd+Alt+Z");
         assert_eq!(shortcut_accelerators().settings, "Cmd+Alt+,");
@@ -697,7 +583,6 @@ mod tests {
     fn a_paused_recorder_frees_the_dock_open_folder_settings_and_quit_keys() {
         let paused = paused_accelerators(&ShortcutAccelerators {
             terminal: "Cmd+J".to_owned(),
-            browser: "Cmd+Shift+K".to_owned(),
             open_folder: "Cmd+Alt+O".to_owned(),
             zen_mode: "Cmd+Alt+Z".to_owned(),
             settings: "Cmd+,".to_owned(),
@@ -710,30 +595,13 @@ mod tests {
             items,
             [
                 (VIEW_MENU, TOGGLE_TERMINAL_ITEM, "Cmd+J"),
-                (VIEW_MENU, TOGGLE_BROWSER_ITEM, "Cmd+Shift+K"),
                 (VIEW_MENU, TOGGLE_ZEN_ITEM, "Cmd+Alt+Z"),
                 (FILE_MENU, OPEN_FOLDER_ITEM, "Cmd+Alt+O"),
                 (APP_MENU, SETTINGS_ITEM, "Cmd+,"),
                 (APP_MENU, QUIT_ITEM, QUIT_ACCELERATOR),
             ]
         );
-    }
-
-    #[test]
-    fn browser_shortcut_items_send_the_toolbar_its_own_keys() {
-        assert_eq!(browser_shortcut_key("browser_new_tab"), Some('t'));
-        assert_eq!(browser_shortcut_key("browser_open_location"), Some('l'));
-        assert_eq!(browser_shortcut_key("browser_close_tab"), Some('w'));
-        assert_eq!(browser_shortcut_key("browser_reload"), Some('r'));
-        assert_eq!(browser_shortcut_key("toggle_browser"), None);
-        for shortcut in BROWSER_SHORTCUTS {
-            assert_eq!(
-                unregistrable_accelerator(&[shortcut.accelerator]),
-                None,
-                "{}",
-                shortcut.accelerator
-            );
-        }
+        assert!(items.iter().all(|(_, id, _)| *id != "toggle_browser"));
     }
 
     #[test]
@@ -742,7 +610,6 @@ mod tests {
         assert!(edits_main_document("edit_redo"));
         for id in [
             "toggle_terminal",
-            "toggle_browser",
             "toggle_zen_mode",
             "open_folder",
             "open_settings",
@@ -836,17 +703,13 @@ mod tests {
     #[test]
     fn maps_accelerators_to_the_matching_menu_items() {
         assert_eq!(
-            dock_accelerator_updates("Ctrl+`", "Ctrl+Shift+B", None),
-            [
-                ("toggle_terminal", "Ctrl+`"),
-                ("toggle_browser", "Ctrl+Shift+B"),
-            ]
+            dock_accelerator_updates("Ctrl+`", None),
+            [("toggle_terminal", "Ctrl+`")]
         );
         assert_eq!(
-            dock_accelerator_updates("Ctrl+`", "Ctrl+Shift+B", Some("Cmd+Ctrl+Shift+F")),
+            dock_accelerator_updates("Ctrl+`", Some("Cmd+Ctrl+Shift+F")),
             [
                 ("toggle_terminal", "Ctrl+`"),
-                ("toggle_browser", "Ctrl+Shift+B"),
                 ("toggle_zen_mode", "Cmd+Ctrl+Shift+F"),
             ]
         );
@@ -860,7 +723,6 @@ mod tests {
             None
         );
         assert_ne!(ZEN_ACCELERATOR, TERMINAL_ACCELERATOR);
-        assert_ne!(ZEN_ACCELERATOR, BROWSER_ACCELERATOR);
         assert_ne!(ZEN_ACCELERATOR, OPEN_FOLDER_ACCELERATOR);
         assert_ne!(ZEN_ACCELERATOR, QUIT_ACCELERATOR);
     }

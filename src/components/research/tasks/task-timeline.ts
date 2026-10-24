@@ -7,6 +7,7 @@ import type {
   TaskTranscriptEvent,
 } from "@/lib/research-tasks";
 import type { ToolEntry } from "@/store/chats";
+import { approvalStatusLabel, phaseLabel, runStateLabel } from "./task-status";
 
 export interface TaskTimelineTool extends ToolEntry {
   id: string;
@@ -148,11 +149,32 @@ function applyToolEvent(state: TimelineState, base: TimelineBase, event: TaskToo
   if (existing.status !== "running") resolveCall(state.unresolved, resolved);
 }
 
+type EntryEvent = TaskTranscriptEvent["event"];
+
+function runMilestoneText(event: Extract<EntryEvent, { kind: "run" }>): string {
+  if (event.state === "starting" || event.state === "running") {
+    return i18n.t(($) => $.researchTools.tasks.timeline.runStarted, { name: event.name });
+  }
+  return i18n.t(($) => $.researchTools.tasks.timeline.runFinished, {
+    name: event.name,
+    status: runStateLabel(event.state),
+  });
+}
+
+function approvalMilestoneText(event: Extract<EntryEvent, { kind: "approval" }>): string {
+  if (event.status === "pending") {
+    return i18n.t(($) => $.researchTools.tasks.timeline.approvalRequested, { summary: event.summary });
+  }
+  return i18n.t(($) => $.researchTools.tasks.timeline.approvalDecided, {
+    status: approvalStatusLabel(event.status),
+  });
+}
+
 function appendEntry(
   state: TimelineState,
   usage: TaskTimelineUsage,
   base: TimelineBase,
-  event: TaskTranscriptEvent["event"],
+  event: EntryEvent,
 ) {
   switch (event.kind) {
     case "sessionBound":
@@ -180,6 +202,18 @@ function appendEntry(
       break;
     case "tool":
       applyToolEvent(state, base, event);
+      break;
+    case "run":
+      state.items.push({ ...base, kind: "milestone", text: runMilestoneText(event) });
+      break;
+    case "approval":
+      state.items.push({ ...base, kind: "milestone", text: approvalMilestoneText(event) });
+      break;
+    case "phase":
+      // The header shows the current phase; the timeline marks the waits.
+      if (event.phase !== "working" && event.phase !== "preparing") {
+        state.items.push({ ...base, kind: "milestone", text: phaseLabel(event.phase) });
+      }
       break;
   }
 }

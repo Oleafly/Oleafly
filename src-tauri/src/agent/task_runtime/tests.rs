@@ -1,6 +1,5 @@
 use super::*;
 use crate::test_wait;
-use tokio::io::AsyncWriteExt;
 
 fn context(root: &Path) -> TaskRunContext {
     TaskRunContext {
@@ -17,325 +16,14 @@ fn context(root: &Path) -> TaskRunContext {
         skill_ids: Vec::new(),
         source_revision: "snapshot".into(),
         allowed_paths: vec!["analysis".into()],
+        ..Default::default()
     }
-}
-
-#[test]
-fn workspace_requires_a_directory_and_explicit_nonempty_scope() {
-    let root = tempfile::tempdir().unwrap();
-    let ordinary_file = root.path().join("file");
-    std::fs::write(&ordinary_file, "original").unwrap();
-    assert!(TaskFiles::open(&ordinary_file, &["analysis".into()]).is_err());
-    assert!(TaskFiles::open(&root.path().join("missing"), &["analysis".into()]).is_err());
-    assert!(TaskFiles::open(root.path(), &[]).is_err());
-    for path in [
-        "",
-        ".",
-        "..",
-        "/",
-        "analysis/../outside",
-        "analysis/.OLEAFLY/state",
-    ] {
-        assert!(
-            TaskFiles::open(root.path(), &[path.into()]).is_err(),
-            "{path}"
-        );
-    }
-    assert_eq!(std::fs::read_to_string(ordinary_file).unwrap(), "original");
-}
-
-#[test]
-fn listing_leaf_scopes_traverses_parents_without_exposing_siblings() {
-    let root = tempfile::tempdir().unwrap();
-    for (path, content) in [
-        ("analysis/allowed/answer.md", "needle answer"),
-        ("analysis/allowed/extra.md", "needle extra"),
-        ("analysis/hidden.md", "needle hidden"),
-        ("analysis-neighbor/hidden.md", "needle neighbor"),
-        ("data/source.csv", "needle source"),
-    ] {
-        let path = root.path().join(path);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(path, content).unwrap();
-    }
-    let files = TaskFiles::open(
-        root.path(),
-        &[
-            "analysis/allowed/answer.md".into(),
-            "data/source.csv".into(),
-        ],
-    )
-    .unwrap();
-    assert_eq!(
-        files.list("").unwrap(),
-        (
-            vec![
-                "analysis/allowed/answer.md".into(),
-                "data/source.csv".into()
-            ],
-            false
-        )
-    );
-    assert_eq!(
-        files.list("analysis").unwrap(),
-        (vec!["analysis/allowed/answer.md".into()], false)
-    );
-    assert!(files.list("analysis-neighbor").is_err());
-    assert!(files.list("analysis/hidden.md").is_err());
-    assert!(files.read("analysis/allowed/extra.md").is_err());
-    let matches = files.search("needle").unwrap();
-    assert_eq!(matches["matches"].as_array().unwrap().len(), 2);
-    assert_eq!(matches["truncated"], false);
-}
-
-#[test]
-fn writes_reject_directory_destinations_and_file_parents_without_losing_data() {
-    let root = tempfile::tempdir().unwrap();
-    let files = TaskFiles::open(root.path(), &["analysis".into()]).unwrap();
-    files.write("analysis/existing.md", "original").unwrap();
-    assert!(files.write("analysis", "replacement").is_err());
-    assert!(files
-        .write("analysis/existing.md/child", "replacement")
-        .is_err());
-    assert_eq!(files.read("analysis/existing.md").unwrap(), "original");
-    assert_eq!(files.list("").unwrap().0, vec!["analysis/existing.md"]);
-    assert!(files.read("analysis").is_err());
-}
-
-#[cfg(unix)]
-#[test]
-fn fifo_and_symlink_roots_are_rejected_without_opening_external_files() {
-    use std::os::unix::fs::symlink;
-    let root = tempfile::tempdir().unwrap();
-    let linked = root.path().join("linked");
-    symlink(root.path(), &linked).unwrap();
-    assert!(TaskFiles::open(&linked, &["analysis".into()]).is_err());
-    std::fs::create_dir(root.path().join("analysis")).unwrap();
-    let fifo = root.path().join("analysis/pipe");
-    let fifo_name = std::ffi::CString::new(fifo.as_os_str().as_encoded_bytes()).unwrap();
-    assert_eq!(unsafe { libc::mkfifo(fifo_name.as_ptr(), 0o600) }, 0);
-    let files = TaskFiles::open(root.path(), &["analysis".into()]).unwrap();
-    assert!(files.read("analysis/pipe").is_err());
-    assert!(files.write("analysis/pipe", "text").is_err());
-    assert!(files.list("").unwrap().0.is_empty());
-}
-
-#[test]
-fn search_caps_matches_and_unicode_line_output_and_validates_queries() {
-    let root = tempfile::tempdir().unwrap();
-    let files = TaskFiles::open(root.path(), &["analysis".into()]).unwrap();
-    files
-        .write(
-            "analysis/matches.md",
-            &format!("needle {}\n", "🍃".repeat(400)).repeat(40),
-        )
-        .unwrap();
-    let result = files.search("needle").unwrap();
-    let matches = result["matches"].as_array().unwrap();
-    assert_eq!(matches.len(), 32);
-    assert_eq!(result["truncated"], true);
-    for (index, entry) in matches.iter().enumerate() {
-        assert_eq!(entry["path"], "analysis/matches.md");
-        assert_eq!(entry["line"], index + 1);
-        let text = entry["text"].as_str().unwrap();
-        assert!(text.starts_with("needle 🍃"));
-        assert!(text.ends_with("\n[output truncated]"));
-        assert!(!text.contains('\u{fffd}'));
-        assert!(text.len() <= 1024 + "\n[output truncated]".len());
-    }
-    assert!(files.search("").is_err());
-    assert!(files.search(&"x".repeat(1025)).is_err());
-    let missing = files.search("absent").unwrap();
-    assert!(missing["matches"].as_array().unwrap().is_empty());
-    assert_eq!(missing["truncated"], false);
-}
-
-#[test]
-fn search_reports_when_its_total_scan_budget_leaves_files_unread() {
-    let root = tempfile::tempdir().unwrap();
-    let analysis = root.path().join("analysis");
-    std::fs::create_dir(&analysis).unwrap();
-    let data = vec![b'x'; MAX_FILE_BYTES];
-    for index in 0..17 {
-        std::fs::write(analysis.join(format!("{index:02}.txt")), &data).unwrap();
-    }
-    std::fs::write(analysis.join("99.txt"), "needle").unwrap();
-    let files = TaskFiles::open(root.path(), &["analysis".into()]).unwrap();
-    let result = files.search("needle").unwrap();
-    assert!(result["matches"].as_array().unwrap().is_empty());
-    assert_eq!(result["truncated"], true);
-}
-
-#[test]
-fn listing_reports_truncation_without_exceeding_its_output_budget() {
-    let root = tempfile::tempdir().unwrap();
-    let analysis = root.path().join("analysis");
-    std::fs::create_dir(&analysis).unwrap();
-    for index in 0..150 {
-        std::fs::write(
-            analysis.join(format!("{index:03}-{}.txt", "a".repeat(190))),
-            "",
-        )
-        .unwrap();
-    }
-    let files = TaskFiles::open(root.path(), &["analysis".into()]).unwrap();
-    let (listed, truncated) = files.list("").unwrap();
-    assert!(truncated);
-    assert!(!listed.is_empty());
-    assert!(listed.len() < 150);
-    assert!(listed.iter().map(|path| path.len() + 4).sum::<usize>() <= MAX_OUTPUT_BYTES / 2);
-    assert!(listed.windows(2).all(|pair| pair[0] < pair[1]));
-    assert!(listed
-        .iter()
-        .all(|path| files.read(path).unwrap().is_empty()));
-}
-
-#[test]
-fn sandbox_rejects_invalid_temporary_folders_and_overbroad_read_grants() {
-    let root = tempfile::tempdir().unwrap();
-    let program = std::env::current_exe().unwrap();
-    let allowed = vec!["analysis".into()];
-    let temp_file = root.path().join("temp-file");
-    std::fs::write(&temp_file, "original").unwrap();
-    for temp in [root.path().join("missing"), temp_file.clone()] {
-        assert!(sandbox_task_command(&program, &[], root.path(), &allowed, &temp, false).is_err());
-    }
-    let temp = tempfile::tempdir().unwrap();
-    let filesystem_root = program.ancestors().last().unwrap().to_path_buf();
-    for read in [filesystem_root, root.path().join("missing-read")] {
-        assert!(sandbox_task_command_with_reads(
-            &program,
-            &[],
-            root.path(),
-            &allowed,
-            temp.path(),
-            false,
-            &[read]
-        )
-        .is_err());
-    }
-    assert_eq!(std::fs::read_to_string(temp_file).unwrap(), "original");
-}
-
-#[cfg(unix)]
-#[test]
-fn sandbox_rejects_linked_write_grants_and_linked_temporary_folders() {
-    use std::os::unix::fs::symlink;
-    let root = tempfile::tempdir().unwrap();
-    let outside = tempfile::tempdir().unwrap();
-    let temp = tempfile::tempdir().unwrap();
-    symlink(outside.path(), root.path().join("analysis")).unwrap();
-    let program = std::env::current_exe().unwrap();
-    assert!(sandbox_task_command(
-        &program,
-        &[],
-        root.path(),
-        &["analysis".into()],
-        temp.path(),
-        false
-    )
-    .is_err());
-    let linked_temp = root.path().join("linked-temp");
-    symlink(temp.path(), &linked_temp).unwrap();
-    assert!(sandbox_task_command(
-        &program,
-        &[],
-        root.path(),
-        &["other".into()],
-        &linked_temp,
-        false
-    )
-    .is_err());
-    assert!(std::fs::read_dir(outside.path()).unwrap().next().is_none());
-    assert!(!root.path().join("other").exists());
-}
-
-#[tokio::test]
-async fn output_reader_drains_backpressure_after_reaching_its_retention_limit() {
-    let (mut writer, reader) = tokio::io::duplex(1024);
-    let output = tokio::spawn(read_output(reader));
-    tokio::time::timeout(Duration::from_secs(5), async {
-        writer
-            .write_all(&vec![b'x'; MAX_OUTPUT_BYTES * 4])
-            .await
-            .unwrap();
-        writer.shutdown().await.unwrap();
-        let output = output.await.unwrap();
-        assert_eq!(output.len(), MAX_OUTPUT_BYTES + 1);
-        assert!(output.iter().all(|byte| *byte == b'x'));
-    })
-    .await
-    .unwrap();
-}
-
-#[tokio::test]
-async fn cancelled_and_invalid_commands_do_not_create_task_files() {
-    let root = tempfile::tempdir().unwrap();
-    let context = context(root.path());
-    let jobs = CommandJobs::default();
-    let cancelled = CancellationToken::new();
-    cancelled.cancel();
-    assert!(jobs
-        .run(
-            context.clone(),
-            "printf changed > analysis/result".into(),
-            cancelled
-        )
-        .await
-        .is_err());
-    for command in [" \n\t".to_string(), "x".repeat(16 * 1024 + 1)] {
-        assert!(jobs
-            .run(context.clone(), command, CancellationToken::new())
-            .await
-            .is_err());
-    }
-    jobs.finish().await;
-    assert!(lock(&jobs.tasks).is_empty());
-    assert!(std::fs::read_dir(root.path()).unwrap().next().is_none());
-}
-
-#[tokio::test]
-async fn active_task_cleanup_cancels_its_children_and_notifies_completion() {
-    let parent = CancellationToken::new();
-    let token = parent.child();
-    let child = token.child();
-    let sessions = Arc::new(Mutex::new(HashMap::new()));
-    let (done, mut completion) = tokio::sync::watch::channel(false);
-    lock(&sessions).insert(
-        "session".into(),
-        ActiveTaskRun {
-            token: token.clone(),
-            done: completion.clone(),
-        },
-    );
-    let (_other_done, other_completion) = tokio::sync::watch::channel(false);
-    let other_token = CancellationToken::new();
-    lock(&sessions).insert(
-        "other".into(),
-        ActiveTaskRun {
-            token: other_token.clone(),
-            done: other_completion,
-        },
-    );
-    let active = ActiveToken {
-        sessions: sessions.clone(),
-        session_id: "session".into(),
-        token,
-        done,
-    };
-    assert!(!*completion.borrow_and_update());
-    drop(active);
-    completion.changed().await.unwrap();
-    assert!(*completion.borrow());
-    assert!(child.is_cancelled());
-    assert!(!parent.is_cancelled());
-    assert!(!other_token.is_cancelled());
-    assert!(!lock(&sessions).contains_key("session"));
-    assert!(lock(&sessions).contains_key("other"));
 }
 
 struct LoopbackBridge {
     url: String,
+    // Only the macOS and Linux sandbox tests count the bridge calls.
+    #[cfg_attr(not(any(target_os = "macos", target_os = "linux")), allow(dead_code))]
     calls: Arc<Mutex<Vec<Value>>>,
     cancel: CancellationToken,
     server: Mutex<Option<tokio::task::JoinHandle<()>>>,
@@ -431,12 +119,18 @@ impl Drop for LoopbackBridge {
 }
 
 struct FixtureHost {
-    usage_root: PathBuf,
     provider_url: String,
     bridge: Arc<LoopbackBridge>,
     preparations: Mutex<Vec<TaskRunContext>>,
     bridge_gate: Option<Arc<tokio::sync::Semaphore>>,
     bridge_started: tokio::sync::Notify,
+}
+
+struct NullUsage;
+
+impl UsageSink for NullUsage {
+    fn observe(&self, _event: &oleafly_agent::AgentEvent) {}
+    fn finish(&self, _status: &str) {}
 }
 
 impl TaskHost for FixtureHost {
@@ -445,8 +139,11 @@ impl TaskHost for FixtureHost {
         Ok(String::new())
     }
 
+    fn skill_read_paths(&self, _context: &TaskRunContext) -> Vec<PathBuf> {
+        Vec::new()
+    }
+
     fn provider(&self, context: TaskRunContext) -> TaskRuntimeFuture<TaskProvider> {
-        let usage_root = self.usage_root.clone();
         let base_url = self.provider_url.clone();
         Box::pin(async move {
             Ok(TaskProvider {
@@ -460,13 +157,18 @@ impl TaskHost for FixtureHost {
                         base_url,
                         reasoning_content: true,
                     },
+                    caps: oleafly_agent::ModelCaps::default(),
                 },
-                usage_root,
+                usage: Box::new(NullUsage),
             })
         })
     }
 
-    fn bridge(&self, context: TaskRunContext) -> TaskRuntimeFuture<Arc<dyn TaskBridge>> {
+    fn bridge(
+        &self,
+        context: TaskRunContext,
+        _binding: Option<TaskBinding>,
+    ) -> TaskRuntimeFuture<Arc<dyn TaskBridge>> {
         lock(&self.preparations).push(context);
         self.bridge_started.notify_one();
         let gate = self.bridge_gate.clone();
@@ -480,90 +182,26 @@ impl TaskHost for FixtureHost {
     }
 }
 
-#[derive(Clone, Copy)]
-enum ProviderBehavior {
-    Edit,
-    Reject,
-    Wait,
-    RepeatTool,
-}
-
-struct ProviderFixture {
-    url: String,
-    requests: Arc<Mutex<Vec<Value>>>,
-    server: tokio::task::JoinHandle<()>,
-}
-
-fn tool_delta(calls: Vec<(&str, Value)>) -> Value {
-    json!({"tool_calls": calls.into_iter().enumerate().map(|(index,(name,args))| {
-        json!({"index":index,"id":format!("call-{index}"),"type":"function","function":{"name":name,"arguments":args.to_string()}})
-    }).collect::<Vec<_>>()})
-}
-
-impl ProviderFixture {
-    async fn start(behavior: ProviderBehavior) -> Self {
-        use axum::{
-            body::Body,
-            http::StatusCode,
-            response::{IntoResponse, Response},
-            routing::post,
-            Json, Router,
-        };
-        let requests = Arc::new(Mutex::new(Vec::new()));
-        let observed = requests.clone();
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap();
-        let router = Router::new().route("/v1/chat/completions", post(move |Json(request): Json<Value>| {
-            let step = { let mut requests = lock(&observed); let step = requests.len(); requests.push(request); step };
-            async move {
-                if matches!(behavior, ProviderBehavior::Reject) {
-                    return (StatusCode::BAD_REQUEST, Json(json!({"error":{"message":"fixture rejected this task"}}))).into_response();
-                }
-                if matches!(behavior, ProviderBehavior::Wait) {
-                    let stream = futures_util::stream::pending::<Result<String,std::io::Error>>();
-                    return Response::builder().header("content-type","text/event-stream").body(Body::from_stream(stream)).unwrap();
-                }
-                let delta = match (behavior,step) {
-                    (ProviderBehavior::RepeatTool,_) => tool_delta(vec![("list_files",json!({}))]),
-                    (_,0) => tool_delta(vec![
-                        ("write_file",json!({"path":"analysis/result.md","content":"Isolated manuscript revision"})),
-                        ("write_file",json!({"path":"../original/main.tex","content":"Forbidden revision"})),
-                    ]),
-                    (_,1) => tool_delta(vec![
-                        ("read_file",json!({"path":"analysis/result.md"})),
-                        ("list_files",json!({})),
-                        ("search_project",json!({"query":"revision"})),
-                        ("research_context",json!({})),
-                    ]),
-                    _ => json!({"content":"The isolated revision is ready.","reasoning_content":"Checked the scoped evidence."}),
-                };
-                let finish = if delta.get("tool_calls").is_some() { "tool_calls" } else { "stop" };
-                let content = format!("data: {}\n\ndata: {}\n\ndata: [DONE]\n\n",
-                    json!({"choices":[{"delta":delta}]}),
-                    json!({"choices":[{"delta":{},"finish_reason":finish}],"usage":{"prompt_tokens":10,"completion_tokens":2}}));
-                ([("content-type","text/event-stream")],content).into_response()
-            }
-        }));
-        let server = tokio::spawn(async move {
-            axum::serve(listener, router).await.unwrap();
-        });
-        Self {
-            url: format!("http://{address}/v1"),
-            requests,
-            server,
-        }
+/// What running tasks share, over a task store under `root`.
+fn task_services(root: &Path) -> TaskServices {
+    let tasks_root = root.join("tasks");
+    let clocks = Arc::new(oleafly_research::budget::BudgetClocks::default());
+    TaskServices {
+        runs: oleafly_research::runs::RunManager::new(
+            tasks_root.clone(),
+            tokio::runtime::Handle::current(),
+        ),
+        tasks_root: tasks_root.clone(),
+        clocks: clocks.clone(),
+        approvals: oleafly_research::approvals::ApprovalQueue::new(tasks_root, clocks),
+        workspace: None,
+        suspends: Arc::new(oleafly_research::scheduler::SuspendSignals::default()),
     }
 }
 
-impl Drop for ProviderFixture {
-    fn drop(&mut self) {
-        self.server.abort();
-    }
-}
-
-async fn fixture_host(root: &Path, url: String) -> Arc<FixtureHost> {
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+async fn fixture_host(_root: &Path, url: String) -> Arc<FixtureHost> {
     Arc::new(FixtureHost {
-        usage_root: root.join("usage"),
         provider_url: url,
         bridge: LoopbackBridge::start().await,
         preparations: Mutex::new(Vec::new()),
@@ -586,146 +224,6 @@ async fn bounded_wait(mut ready: impl FnMut() -> bool) {
     })
     .await
     .expect("the fixture did not reach its controlled boundary");
-}
-
-fn usage_row(root: &Path) -> (String, Option<i64>, Option<i64>, String, String, String) {
-    let database = crate::library_db::open(root).unwrap();
-    assert_eq!(
-        database
-            .query_row("SELECT COUNT(*) FROM usage_records", [], |row| row
-                .get::<_, i64>(0))
-            .unwrap(),
-        1
-    );
-    database.query_row("SELECT status,input_tokens,output_tokens,task_id,session_id,model_id FROM usage_records", [], |row| {
-        Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?))
-    }).unwrap()
-}
-
-#[tokio::test]
-async fn builtin_adapter_edits_isolated_files_and_records_native_usage() {
-    let root = tempfile::tempdir().unwrap();
-    let original = root.path().join("original");
-    let workspace = root.path().join("workspace");
-    std::fs::create_dir(&original).unwrap();
-    std::fs::create_dir(&workspace).unwrap();
-    std::fs::write(original.join("main.tex"), "Original manuscript").unwrap();
-    let provider = ProviderFixture::start(ProviderBehavior::Edit).await;
-    let host = fixture_host(root.path(), provider.url.clone()).await;
-    let adapter = BuiltinTaskAdapter {
-        host: host.clone(),
-        tokens: Arc::new(Mutex::new(HashMap::new())),
-    };
-    let (events, sink) = event_log();
-    let result = tokio::time::timeout(
-        Duration::from_secs(15),
-        adapter.run(context(&workspace), CancellationToken::new(), sink),
-    )
-    .await
-    .unwrap()
-    .unwrap();
-    assert_eq!(result.summary, "The isolated revision is ready.");
-    assert_eq!(
-        (result.input_tokens, result.output_tokens),
-        (Some(30), Some(6))
-    );
-    assert_eq!(
-        std::fs::read_to_string(workspace.join("analysis/result.md")).unwrap(),
-        "Isolated manuscript revision"
-    );
-    assert_eq!(
-        std::fs::read_to_string(original.join("main.tex")).unwrap(),
-        "Original manuscript"
-    );
-    assert!(lock(&adapter.tokens).is_empty());
-    host.bridge.assert_closed().await;
-    assert_eq!(lock(&host.bridge.calls)[0]["name"], "research_context");
-    {
-        let requests = lock(&provider.requests);
-        assert_eq!(requests.len(), 3);
-        assert!(requests.iter().all(|request| request["model"] == "test"));
-        let tool_results = requests[2]["messages"].to_string();
-        assert!(tool_results.contains("Isolated manuscript revision"));
-        assert!(tool_results.contains("Use a relative path"));
-        assert!(tool_results.contains("scoped research evidence"));
-    }
-    assert!(lock(&events).iter().any(|event| matches!(event,TaskRuntimeEvent::Reasoning{text} if text=="Checked the scoped evidence.")));
-    assert_eq!(
-        usage_row(&host.usage_root),
-        (
-            "completed".into(),
-            Some(30),
-            Some(6),
-            "task".into(),
-            "session".into(),
-            "test".into()
-        )
-    );
-}
-
-#[tokio::test]
-async fn builtin_adapter_failure_and_step_limit_close_resources_without_success() {
-    for (behavior, expected) in [
-        (ProviderBehavior::Reject, "fixture rejected"),
-        (ProviderBehavior::RepeatTool, "step limit"),
-    ] {
-        let root = tempfile::tempdir().unwrap();
-        let provider = ProviderFixture::start(behavior).await;
-        let host = fixture_host(root.path(), provider.url.clone()).await;
-        let adapter = BuiltinTaskAdapter {
-            host: host.clone(),
-            tokens: Arc::new(Mutex::new(HashMap::new())),
-        };
-        let error = tokio::time::timeout(
-            Duration::from_secs(20),
-            adapter.run(
-                context(root.path()),
-                CancellationToken::new(),
-                event_log().1,
-            ),
-        )
-        .await
-        .unwrap()
-        .unwrap_err();
-        assert!(error.contains(expected), "{error}");
-        assert!(lock(&adapter.tokens).is_empty());
-        host.bridge.assert_closed().await;
-        let row = usage_row(&host.usage_root);
-        assert_eq!(row.0, "failed");
-        if matches!(behavior, ProviderBehavior::Reject) {
-            assert_eq!((row.1, row.2), (None, None));
-        } else {
-            assert_eq!(lock(&provider.requests).len(), 50);
-            assert_eq!((row.1, row.2), (Some(500), Some(100)));
-        }
-    }
-}
-
-#[tokio::test]
-async fn builtin_adapter_cancellation_waits_for_the_stream_and_bridge() {
-    let root = tempfile::tempdir().unwrap();
-    let provider = ProviderFixture::start(ProviderBehavior::Wait).await;
-    let host = fixture_host(root.path(), provider.url.clone()).await;
-    let adapter = BuiltinTaskAdapter {
-        host: host.clone(),
-        tokens: Arc::new(Mutex::new(HashMap::new())),
-    };
-    let run = tokio::spawn(adapter.run(
-        context(root.path()),
-        CancellationToken::new(),
-        event_log().1,
-    ));
-    bounded_wait(|| !lock(&provider.requests).is_empty()).await;
-    tokio::time::timeout(Duration::from_secs(5), adapter.cancel("session".into()))
-        .await
-        .unwrap()
-        .unwrap();
-    let error = run.await.unwrap().unwrap_err();
-    assert!(error.contains("cancelled"), "{error}");
-    assert!(lock(&adapter.tokens).is_empty());
-    host.bridge.assert_closed().await;
-    let row = usage_row(&host.usage_root);
-    assert_eq!((row.0, row.1, row.2), ("cancelled".into(), None, None));
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
@@ -803,8 +301,9 @@ for line in sys.stdin:
             assert json.load(response)["content"][0]["text"] == "scoped research evidence"
         update("tool_call_update", toolCallId="write-1", title="Write isolated result",status="completed")
         update("usage_update", used=900,size=32000)
+        # One message per chunk: 300 stored events, so replay pages.
         for index in range(300):
-            update("agent_message_chunk", content={"type":"text","text":str(index) + ","})
+            update("agent_message_chunk", messageId="m" + str(index), content={"type":"text","text":str(index) + ","})
         result(request, {"stopReason":"end_turn","usage":{"inputTokens":11,"outputTokens":7}})
     elif method == "session/cancel" and pending:
         result(pending,{"stopReason":"cancelled"})
@@ -881,6 +380,7 @@ impl AcpFixture {
         let host = fixture_host(directory.path(), "http://127.0.0.1:9".into()).await;
         let adapter = AcpTaskAdapter {
             host: host.clone(),
+            services: task_services(directory.path()),
             runtime,
             tokens: Arc::new(Mutex::new(HashMap::new())),
         };
@@ -1130,7 +630,6 @@ async fn acp_adapter_cancel_during_bridge_preparation_prevents_native_start() {
     let root = tempfile::tempdir().unwrap();
     let gate = Arc::new(tokio::sync::Semaphore::new(0));
     let host = Arc::new(FixtureHost {
-        usage_root: root.path().join("usage"),
         provider_url: String::new(),
         bridge: LoopbackBridge::start().await,
         preparations: Mutex::new(Vec::new()),
@@ -1140,6 +639,7 @@ async fn acp_adapter_cancel_during_bridge_preparation_prevents_native_start() {
     let runtime = crate::acp::AcpRuntime::new(root.path().join("acp")).unwrap();
     let adapter = AcpTaskAdapter {
         host: host.clone(),
+        services: task_services(root.path()),
         runtime: runtime.clone(),
         tokens: Arc::new(Mutex::new(HashMap::new())),
     };

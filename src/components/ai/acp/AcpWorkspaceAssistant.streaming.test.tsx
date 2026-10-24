@@ -12,7 +12,7 @@ const renders = vi.hoisted(() => ({ picker: 0, menu: 0 }));
 vi.mock("@/lib/acp", async (original) => ({
   ...await original<typeof import("@/lib/acp")>(),
   acpCatalog: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), acpEvents: vi.fn(),
-  acpDisconnect: vi.fn(), onAcpEvent: vi.fn(), onAcpResync: vi.fn(),
+  acpDisconnect: vi.fn(), onAcpEvent: vi.fn(), onAcpResync: vi.fn(), onAcpSession: vi.fn(async () => () => {}), onAcpBufferRequest: vi.fn(async () => () => {}),
 }));
 vi.mock("@/lib/tauri", async (original) => ({
   ...await original<typeof import("@/lib/tauri")>(),
@@ -114,6 +114,20 @@ const toolOutput = (sequence: number, text: string) =>
   });
 
 describe("ACP assistant streaming", () => {
+  it("shows Thinking while the turn runs, except while the agent's thoughts stream", async () => {
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await ui.findByText("Checking");
+    expect(await ui.findByTestId("acp-thinking")).toHaveTextContent("Thinking");
+
+    await publish(event(4, "agent_thought_chunk", { content: { type: "text", text: "Weighing the tables" } }));
+    await waitFor(() => expect(ui.queryByTestId("acp-thinking")).not.toBeInTheDocument());
+
+    snapshots.saved = { session: session("saved", { status: "ready", lastSequence: 5 }), permissions: [] };
+    await publish(event(5, "turn_complete", { stopReason: "end_turn" }));
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
+    expect(ui.queryByTestId("acp-thinking")).not.toBeInTheDocument();
+  });
+
   it("streams agent text and tool output without rendering the composer, agent picker or header actions again", async () => {
     const ui = render(
       <>
@@ -144,7 +158,9 @@ describe("ACP assistant streaming", () => {
     await publish(event(8, "turn_complete", { stopReason: "end_turn" }));
 
     await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
-    expect(renders.picker).toBeGreaterThan(picker);
+    // A conversation with messages keeps its agent: the picker stays hidden.
+    expect(ui.queryByTestId("agent-picker-row")).not.toBeInTheDocument();
+    expect(renders.picker).toBe(picker);
     expect(ui.getByText("Checking the tables now.")).toBeInTheDocument();
     expect(ui.getByLabelText("Message CLI agent")).toBeEnabled();
   });

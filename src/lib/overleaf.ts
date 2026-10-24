@@ -53,6 +53,11 @@ export function overleafSignIn(server: string | null | undefined, title: string)
   return invoke<OverleafStatus>("overleaf_sign_in", { server: serverArg(server), title });
 }
 
+/** Signs in with the sign-in cookies a browser copy put in Oleafly, without a window. */
+export function overleafSignInWithAppCookies(server: string | null | undefined): Promise<OverleafStatus> {
+  return invoke<OverleafStatus>("overleaf_sign_in_with_app_cookies", { server: serverArg(server) });
+}
+
 export function overleafSignOut(server?: string | null): Promise<OverleafStatus> {
   return invoke<OverleafStatus>("overleaf_sign_out", { server: serverArg(server) });
 }

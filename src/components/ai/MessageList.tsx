@@ -12,7 +12,8 @@ import {
 import { flushSync } from "react-dom";
 import type { ChatMessage } from "@/store/chats";
 import type { ResearchChatActions } from "@/lib/chat-activity";
-import { MessageItem } from "@/components/ai/chat-parts";
+import { MessageItem, type MessageAction } from "@/components/ai/chat-parts";
+import type { MessageActionState } from "@/components/ai/chat-replay";
 import { liveMessageFor, type LiveMessageStore } from "@/components/ai/live-message";
 
 export interface RenderedMessage {
@@ -21,6 +22,8 @@ export interface RenderedMessage {
   live: boolean;
   isLatestAssistant: boolean;
   msg: ChatMessage;
+  /** Edit and Regenerate/Retry offered on this row. */
+  actions?: MessageActionState;
 }
 
 export const CHAT_SCROLL_TO_INDEX_EVENT = "oleafly:chat-scroll-to-index";
@@ -120,6 +123,7 @@ const MessageRow = memo(function MessageRow({
   actions,
   renderExtras,
   live,
+  onMessageAction,
 }: Readonly<{
   entry: RenderedMessage;
   isLast: boolean;
@@ -127,6 +131,7 @@ const MessageRow = memo(function MessageRow({
   actions?: ResearchChatActions;
   renderExtras?: (entry: RenderedMessage) => ReactNode;
   live?: LiveMessageStore;
+  onMessageAction?: (action: MessageAction, messageId: string) => void;
 }>) {
   const current = () => liveMessageFor(entry.msg, live?.get() ?? null);
   const msg = useSyncExternalStore(live?.subscribe ?? noSubscription, current, current);
@@ -145,6 +150,9 @@ const MessageRow = memo(function MessageRow({
         live={entry.live}
         actions={actions}
         expansionScope={`${chatId ?? "chat"}:${entry.key}`}
+        regenerateKind={entry.actions?.regenerate}
+        editable={entry.actions?.editable}
+        onMessageAction={onMessageAction}
       />
       {renderExtras?.(shown)}
     </div>
@@ -159,6 +167,7 @@ export function MessageList({
   renderExtras,
   actions,
   live,
+  onMessageAction,
 }: Readonly<{
   messages: readonly RenderedMessage[];
   chatId: string | null;
@@ -167,6 +176,8 @@ export function MessageList({
   renderExtras?: (entry: RenderedMessage) => ReactNode;
   actions?: ResearchChatActions;
   live?: LiveMessageStore;
+  /** A stable callback, so rows keep their memo. */
+  onMessageAction?: (action: MessageAction, messageId: string) => void;
 }>) {
   const heightsRef = useRef(new Map<string, number>());
   const heightsVersionRef = useRef(0);
@@ -354,6 +365,7 @@ export function MessageList({
           actions={actions}
           renderExtras={renderExtras}
           live={live}
+          onMessageAction={onMessageAction}
         />
       ))}
       {bottom > 0 && <div data-message-spacer="bottom" aria-hidden style={{ height: bottom }} />}

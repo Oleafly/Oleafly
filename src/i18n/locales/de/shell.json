@@ -53,19 +53,6 @@
   "branding": {
     "assistantMascot": "Maskottchen des Oleafly KI-Assistenten"
   },
-  "browser": {
-    "address": "Suchen oder eine URL eingeben",
-    "back": "Zurück",
-    "closeTab": "Reiter schließen",
-    "copyUrl": "URL kopieren",
-    "forward": "Vorwärts",
-    "moreOptions": "Weitere Optionen",
-    "newTab": "Neuer Reiter",
-    "openExternal": "In Ihrem Browser öffnen",
-    "openTabs": "Offene Reiter",
-    "reload": "Neu laden",
-    "setHomePage": "Als Startseite festlegen"
-  },
   "changelog": {
     "installed": "Sie nutzen diese Version",
     "sectionItems_one": "{{count}} Änderung",
@@ -464,10 +451,6 @@
       "hide": "KI-Assistent ausblenden",
       "show": "KI-Assistent anzeigen"
     },
-    "browser": {
-      "close": "Browser schließen ({{shortcut}})",
-      "open": "Browser öffnen ({{shortcut}})"
-    },
     "settings": "Einstellungen",
     "sidebar": {
       "hide": "Seitenleiste ausblenden ({{shortcut}})",
@@ -570,17 +553,6 @@
     "saveCopy": "Kopie speichern",
     "tryAgain": "Erneut versuchen",
     "savedCopy": "Ihre geöffneten Dateien wurden in {{folder}} gespeichert."
-  },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "GitHub-Aktionen",
-    "connect": "GitHub verbinden…",
-    "connectedAs": "Verbunden als @{{login}}",
-    "copyRepositoryLink": "Link zum Repository kopieren",
-    "openInGithub": "In GitHub öffnen",
-    "pushHint": "Pushen Sie zu GitHub, um diese freizuschalten",
-    "settings": "GitHub-Einstellungen",
-    "tooltip": "GitHub"
   },
   "home": {
     "ariaLabel": "Start",
@@ -726,6 +698,14 @@
     "sourceControl": "Versionsverwaltung",
     "withShortcut": "{{label}} ({{shortcut}})"
   },
+  "remoteMenu": {
+    "accountLabel": "{{login}} auf {{host}}",
+    "actions": "Repository-Aktionen",
+    "copyRepositoryLink": "Repository-Link kopieren",
+    "openOnHost": "Auf {{host}} öffnen",
+    "settings": "Git-Hosting-Einstellungen",
+    "signedInAs": "Bei {{host}} als {{login}} angemeldet"
+  },
   "renameDialog": {
     "close": "Umbenennungsdialog schließen",
     "collision": "{{kind}} mit dem Namen „{{name}}“ gibt es bereits.",
@@ -773,9 +753,9 @@
         "movedCount_other": "{{count}} Projekte in den Papierkorb verschoben.",
         "title": "Gefahrenbereich"
       },
-      "githubHint": "Ein Projekt sichern oder über Geräte hinweg abgleichen: GitHub verbinden und dann <push>Push</push> / <pull>Pull</pull> in der Versionsverwaltung nutzen. <setup>GitHub einrichten →</setup>",
+      "gitHostingHint": "Ein Projekt sichern oder zwischen Geräten synchronisieren: Verknüpfen Sie es mit einem Git-Repository und verwenden Sie dann <push>Push</push> / <pull>Pull</pull> in der Quellcodeverwaltung. <setup>Git-Hosting einrichten →</setup>",
       "localFirst": "Oleafly arbeitet lokal zuerst. Alle Projekte liegen auf Ihrer Festplatte:",
-      "plainFolders": "Jedes Projekt ist ein gewöhnlicher Ordner. Die Git-Historie ist optional, und nichts verlässt Ihren Rechner, solange Sie nicht zu GitHub pushen.",
+      "plainFolders": "Jedes Projekt ist ein normaler Ordner. Der Git-Verlauf ist optional, und nichts verlässt Ihren Rechner, solange Sie es nicht auf einen Git-Server pushen.",
       "recycleBin": {
         "clearAll": "Alle leeren",
         "clearFailed": "Der Papierkorb konnte nicht geleert werden.",
@@ -848,11 +828,7 @@
         "description": "Lässt Sie Projekte über einen Kollaborationsserver, den Sie oder Ihre Gruppe betreiben, gemeinsam mit anderen bearbeiten. Fügt den Einstellungen den Bereich Zusammenarbeit hinzu. Standardmäßig aus, solange es noch Beta ist.",
         "label": "Live-Zusammenarbeit"
       },
-      "warning": "Diese Funktionen sind experimentell und noch in der Beta. Sie sind noch nicht vollständig getestet und können sich ändern, kaputtgehen oder in einer künftigen Version verschwinden. Schalten Sie sie nur ein, wenn Sie Werk in Arbeit ausprobieren möchten.",
-      "webBrowser": {
-        "description": "Zeigt den integrierten Webbrowser (seinen Umschalter im Dock und sein Kürzel) und lässt die KI ihn per Computernutzung steuern. Standardmäßig aus, solange es in der Beta ist. Ausgeschaltet gibt es keine Browser-Schaltfläche und die KI hat kein Browser-Werkzeug.",
-        "label": "Webbrowser"
-      }
+      "warning": "Diese Funktionen sind experimentell und noch in der Beta. Sie sind noch nicht vollständig getestet und können sich ändern, kaputtgehen oder in einer künftigen Version verschwinden. Schalten Sie sie nur ein, wenn Sie Werk in Arbeit ausprobieren möchten."
     },
     "footer": {
       "followOnX": "Auf X folgen",
@@ -936,7 +912,8 @@
       "general": "Allgemein",
       "help": "Hilfe & Über",
       "integrations": "Integrationen",
-      "shortcuts": "Tastenkürzel"
+      "shortcuts": "Tastenkürzel",
+      "research": "Forschung"
     },
     "search": {
       "empty": "Keine passenden Einstellungen",
@@ -951,8 +928,9 @@
         "experimentation": "Experimente, Labs, Beta, experimentell, frühe Funktionen",
         "general": "Einstellungen, Sprache, Gebietsschema, Rechtschreibprüfung, Rechtschreibung, Tippfehler, offline, Touren, Terminalbefehl",
         "help": "Über, Version, Updates, Änderungsprotokoll, Was ist neu, Dokumentation, Support, Hilfe, Community, Discord, Lizenz, Absturzbericht",
-        "integrations": "Zotero, GitHub, MCP, Zitationen, Zitate, Konten, Verbindungen",
-        "shortcuts": "Tastenkürzel, Tastenkombinationen, Hotkeys, Tasten, Tastatur"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-Hosting, Desktop-Apps, Cua, MCP, Zitationen, Zitate, Konten, Verbindungen",
+        "shortcuts": "Tastenkürzel, Tastenkombinationen, Hotkeys, Tasten, Tastatur",
+        "research": "forschung aufgaben budget benachrichtigungen wach halten experimente läufe research tasks"
       },
       "label": "Einstellungen durchsuchen",
       "results_one": "{{count}} Bereich passt",
@@ -1034,7 +1012,6 @@
     "commitCount_other": "{{count}} Commits",
     "initialize": "Repository einrichten",
     "initialized": "Git auf {{branch}} eingerichtet.",
-    "linkCopied": "GitHub-Link kopiert",
     "markResolved": "Als gelöst markieren",
     "mergeNeedsAttention": "Merge-Konflikte lösen",
     "moreActions": "Weitere Aktionen der Versionsverwaltung",
@@ -1048,18 +1025,19 @@
     "openFile": "Datei öffnen",
     "openFileFor": "{{path}} öffnen",
     "popStash": "Neuesten Stash anwenden",
-    "publish": "Auf GitHub veröffentlichen",
+    "publishRepository": "Veröffentlichen…",
+    "publishTo": "Auf {{host}} veröffentlichen",
     "published": "Auf {{url}} veröffentlicht",
     "pull": "Von origin pullen",
     "pullShort": "Pull",
     "push": "Committen und zu origin pushen",
     "pushShort": "Push",
     "pushSkippedNoRemote": "⚠ Push übersprungen - unten ist kein Remote origin gesetzt.",
-    "pushSkippedNoToken": "⚠ Push übersprungen - kein GitHub-Token (Einstellungen → GitHub).",
     "refresh": "Aktualisieren",
     "remote": "Remote",
     "remoteHint": "Legen Sie ein neues Repository an oder verknüpfen Sie ein vorhandenes als Remote dieses Projekts und pushen Sie dann.",
     "removeCredential": "Gespeicherte Zugangsdaten entfernen",
+    "repositoryLinkCopied": "Repository-Link kopiert",
     "restoreCommit": "Version wiederherstellen",
     "restoreCommitDescription": "Das ersetzt jede verfolgte Projektdatei durch diese Version und entfernt später hinzugefügte Dateien. Ihr Branch bleibt auf seinem aktuellen Commit.",
     "restoreCommitTitle": "Diese Version wiederherstellen?",
@@ -1089,7 +1067,7 @@
     "titleRequired": "Ein Commit-Titel ist erforderlich.",
     "titleRequiredStatus": "Geben Sie vor dem Committen einen Commit-Titel ein.",
     "unlink": "Verknüpfung lösen",
-    "unlinked": "Verknüpfung mit GitHub gelöst.",
+    "unlinkedFrom": "Verknüpfung mit {{host}} aufgehoben.",
     "unstage": "Aus der Bereitstellung nehmen",
     "unstageFor": "{{path}} aus der Bereitstellung nehmen",
     "unstageAll": "Alle aus der Bereitstellung nehmen",

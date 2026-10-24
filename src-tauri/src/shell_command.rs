@@ -1,6 +1,14 @@
 #[cfg(unix)]
 pub(crate) mod unix;
+// 0.4.8 F1: the Windows terminal command.
+#[cfg(windows)]
+mod windows;
+// A glob, so the items #[tauri::command] generates beside each command come
+// along for generate_handler!.
+#[cfg(windows)]
+pub use windows::*;
 
+#[cfg(not(windows))]
 use crate::app_error::AppError;
 
 #[cfg(unix)]
@@ -56,13 +64,13 @@ pub async fn shell_command_uninstall() -> Result<unix::ShellCommandChange, Strin
     .await
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 #[derive(serde::Serialize)]
 pub struct UnsupportedStatus {
     state: &'static str,
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 #[tauri::command]
 pub async fn shell_command_status() -> Result<UnsupportedStatus, String> {
     Ok(UnsupportedStatus {
@@ -70,13 +78,13 @@ pub async fn shell_command_status() -> Result<UnsupportedStatus, String> {
     })
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 #[tauri::command]
 pub async fn shell_command_install() -> Result<(), String> {
     Err(AppError::new("shell_command.unsupported").into())
 }
 
-#[cfg(not(unix))]
+#[cfg(not(any(unix, windows)))]
 #[tauri::command]
 pub async fn shell_command_uninstall() -> Result<(), String> {
     Err(AppError::new("shell_command.unsupported").into())

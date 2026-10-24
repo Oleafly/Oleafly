@@ -19,9 +19,12 @@ import {
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { i18n } from "@/i18n";
 import { composerDraftKey, TaskComposer } from "./TaskComposer";
-import { relativeTime } from "./task-status";
-import { TaskAgentChip, TaskStatusBadge } from "./TaskChips";
+import { phaseLabel, relativeTime } from "./task-status";
+import { TaskAgentChip, TaskOwnerBadge, TaskStatusBadge } from "./TaskChips";
 import { TaskDetailDialog } from "./TaskDetailDialog";
+import { PendingApprovals } from "./PendingApprovals";
+import { refreshResearchTaskEvidence } from "@/lib/research-tasks";
+import { formatDateTime } from "@/lib/intl";
 import { LoadingState } from "@/components/ui/empty";
 
 export interface ResearchTaskAgentOption {
@@ -93,6 +96,7 @@ const TaskRow = memo(function TaskRow({
         </button>
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5">
           <TaskStatusBadge status={task.status} />
+          <TaskOwnerBadge task={task} />
           <TaskAgentChip
             task={task}
             agentName={agentName}
@@ -113,6 +117,21 @@ const TaskRow = memo(function TaskRow({
               {t(($) => $.researchTools.tasks.panel.waiting)}
             </span>
           ) : null}
+          {task.status === "running" && task.phase ? (
+            <span className="text-[0.6875rem] text-muted-foreground">{phaseLabel(task.phase)}</span>
+          ) : null}
+          {task.status === "queued" && task.runAfter ? (
+            <span className="text-[0.6875rem] text-muted-foreground">
+              {t(($) => $.researchTools.tasks.detail.startsAt, {
+                time: formatDateTime(new Date(task.runAfter)),
+              })}
+            </span>
+          ) : null}
+          {task.pendingApprovals > 0 ? (
+            <Badge variant="warning" className="text-[0.6875rem]">
+              {t(($) => $.researchTools.tasks.panel.pendingApprovals, { count: task.pendingApprovals })}
+            </Badge>
+          ) : null}
           <Button
             size="xs"
             variant="outline"
@@ -131,7 +150,7 @@ const TaskRow = memo(function TaskRow({
 
 type SelectedTaskDialogProps = Omit<
   ComponentProps<typeof TaskDetailDialog>,
-  "events" | "eventsLoading" | "canLoadMoreEvents"
+  "events" | "eventsLoading" | "canLoadMoreEvents" | "eventsLoadedThrough"
 >;
 
 function SelectedTaskDialog(props: Readonly<SelectedTaskDialogProps>) {
@@ -144,6 +163,7 @@ function SelectedTaskDialog(props: Readonly<SelectedTaskDialogProps>) {
       events={events}
       eventsLoading={eventsLoading}
       canLoadMoreEvents={eventsNextSequence !== null}
+      eventsLoadedThrough={eventsNextSequence}
     />
   );
 }
@@ -153,7 +173,7 @@ function matchesFilter(task: ResearchTask, filter: TaskFilter): boolean {
     case "running":
       return task.status === "running" || task.status === "queued";
     case "review":
-      return task.status === "awaiting_review";
+      return task.status === "awaiting_review" || task.status === "plan_ready";
     case "done":
       return task.status === "completed" || task.status === "failed" || task.status === "cancelled";
     default:
@@ -171,7 +191,7 @@ export function ResearchTasksPanel({
   const tasks = useResearchTasksStore((state) => state.tasks);
   const selectedTaskId = useResearchTasksStore((state) => state.selectedTaskId);
   const loading = useResearchTasksStore((state) => state.loading);
-  const action = useResearchTasksStore((state) => state.action);
+  const pendingActions = useResearchTasksStore((state) => state.pendingActions);
   const error = useResearchTasksStore((state) => state.error);
   const detailOpen = useResearchTasksStore((state) => state.detailOpen);
   const detailTab = useResearchTasksStore((state) => state.detailTab);
@@ -186,6 +206,7 @@ export function ResearchTasksPanel({
   const startTask = useResearchTasksStore((state) => state.startTask);
   const cancelTask = useResearchTasksStore((state) => state.cancelTask);
   const retryTask = useResearchTasksStore((state) => state.retryTask);
+  const approvePlan = useResearchTasksStore((state) => state.approvePlan);
   const applyTask = useResearchTasksStore((state) => state.applyTask);
   const acceptTask = useResearchTasksStore((state) => state.acceptTask);
   const deleteTask = useResearchTasksStore((state) => state.deleteTask);
@@ -229,7 +250,11 @@ export function ResearchTasksPanel({
   }, [projectBinding]);
 
   useEffect(() => {
-    void bindProject(projectId);
+    const state = useResearchTasksStore.getState();
+    // Task outputs in the Files rail may already hold this project and have opened
+    // a task for review; keep that selection and only bring the list up to date.
+    if (projectId && state.projectId === projectId) void state.refresh();
+    else void bindProject(projectId);
   }, [bindProject, projectId]);
 
   useTauriSubscription(mountResearchTaskSubscriptions, "listen for research tasks");
@@ -385,6 +410,11 @@ export function ResearchTasksPanel({
             </TabsList>
           </Tabs>
         </div>
+        {projectId && !detailOpen && tasks.some((task) => task.pendingApprovals > 0) ? (
+          <div className="shrink-0 px-3 pt-3">
+            <PendingApprovals projectId={projectId} tasks={tasks} />
+          </div>
+        ) : null}
         <ul
           ref={listRef}
           className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3"
@@ -496,14 +526,14 @@ export function ResearchTasksPanel({
         />
       ) : taskListBody()}
 
-      {selectedTask ? (
+      {selectedTask && (detailOpen || reopenDetail) ? (
         <SelectedTaskDialog
           key={`${selectedTask.id}:${selectedTask.executionGeneration}`}
           open={detailOpen}
           onOpenChange={setDetailOpen}
           task={selectedTask}
           tasks={tasks}
-          busy={action === selectedTask.id}
+          busy={pendingActions.includes(selectedTask.id)}
           agentName={agentNameFor(selectedTask)}
           initialTab={detailTab}
           onEdit={() => openComposer(selectedTask.id)}
@@ -513,8 +543,15 @@ export function ResearchTasksPanel({
           onCancel={async () => {
             await cancelTask(selectedTask.id);
           }}
-          onRetry={async () => {
-            await retryTask(selectedTask.id);
+          onRetry={async (mode) => {
+            await retryTask(selectedTask.id, mode);
+          }}
+          onApprovePlan={async (editedPlan) => {
+            await approvePlan(selectedTask.id, editedPlan);
+          }}
+          onRefreshEvidence={async () => {
+            const task = await refreshResearchTaskEvidence(selectedTask.id);
+            useResearchTasksStore.getState().receiveTask(task);
           }}
           onApply={async (paths) => {
             const task = await applyTask(selectedTask.id, paths);

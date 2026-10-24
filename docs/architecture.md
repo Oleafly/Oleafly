@@ -9,12 +9,22 @@ making document engines, filesystem policy, and external integrations explicit.
 | Area | Responsibility |
 | --- | --- |
 | `crates/oleafly-core/` | Shared project manifest, path safety, and build-directory policy |
-| `crates/oleafly-cli/` | The `oleaflyc` commands, native compiler adapter, and output contracts |
+| `crates/oleafly-cli/` | The `oleafly` command (built as `oleaflyc`): its commands, native compiler adapter, JSON contract and MCP server |
 | `crates/oleafly-agent/` | Provider-neutral agent runtime |
 | `crates/oleafly-history/` | Content-addressed compile checkpoints |
+| `crates/oleafly-forge/` | Git hosting accounts, tokens and server APIs, with no Tauri dependency so the CLI can share them |
 | `crates/oleafly-collab-protocol/` | Messages shared by the app and the collaboration server |
 | `crates/oleafly-collab/` | Live collaboration client: the shared project document, sync and comments |
 | `crates/oleafly-server/` | The collaboration server, built on Axum and SQLite |
+| `crates/oleafly-acp/` | Agent Client Protocol client for CLI agents, on the official Rust SDK |
+| `crates/oleafly-research/` | Research tasks: the store, scheduler, runs and their executors (local, SSH, Slurm, Cua Spaces), and the literature and citation tools |
+| `crates/oleafly-sandbox/` | Isolation for task commands and runs (macOS Seatbelt, Linux bubblewrap, the Windows AppContainer sandbox) and run profiles |
+| `crates/oleafly-secrets/` | The encrypted secret store, the data folder and private-file helpers, shared by the app and the CLI |
+| `crates/oleafly-online/` | Online LaTeX service client: sessions, project lists, folder import, browser cookie reading and Git-bridge sync |
+| `crates/oleafly-preflight/` | Preflight checks in Rust, with the same results as the app's panel, for `oleafly check` and research tasks |
+| `crates/oleafly-lint/` | LaTeX, BibTeX, spelling and grammar checks for `oleafly lint` |
+| `crates/oleafly-doctools/` | Document statistics, SyncTeX lookups and Pandoc exports, shared by the app and the CLI |
+| `crates/oleafly-downloads/` | TeX toolchain, Typst and template pack downloads, shared by the app and the CLI |
 | `src/` | Application shell, stores, Tauri adapters, contributions, and UI |
 | `packages/editor/` | Engine-neutral editor and language-service primitives |
 | `packages/wysiwyg/` | Tiptap schema and nodes for the visual editor |

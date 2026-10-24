@@ -19,6 +19,24 @@ function holdQuitAfterFailedSave() {
   return cancelQuitFlush().catch((cancelError) => logError("hold quit after failed save", cancelError));
 }
 
+function stayForRunningTerminals() {
+  return cancelQuitFlush().catch((cancelError) => logError("stay for running terminals", cancelError));
+}
+
+/**
+ * Whether the programs running in the project's terminals may stop. Asks
+ * (once) when one runs; loaded on demand so the quit path stays light.
+ */
+async function terminalsMayStop(restart: boolean): Promise<boolean> {
+  try {
+    const { confirmStopTerminals } = await import("@/lib/terminal-lifecycle");
+    return await confirmStopTerminals({ reason: restart ? "restart" : "quit" });
+  } catch (error) {
+    void logError("ask about running terminals", error);
+    return true;
+  }
+}
+
 /**
  * Transactional quit: the Rust side blocks window close, Cmd+Q, and Restart
  * while dirty buffers may exist and emits `quit-flush-requested` (payload:
@@ -52,7 +70,13 @@ export function QuitGuard() {
       if (installingRef.current) return;
       answerQuitRequest(() =>
         flushForQuitWithDeadline()
-          .then(() => confirmQuitFlush(restart))
+          .then(async () => {
+            if (!(await terminalsMayStop(restart))) {
+              await stayForRunningTerminals();
+              return;
+            }
+            await confirmQuitFlush(restart);
+          })
           .catch(async (error: unknown) => {
             setFailure({
               message: error instanceof Error ? error.message : String(error),

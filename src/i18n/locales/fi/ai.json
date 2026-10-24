@@ -43,13 +43,15 @@
       "command": "Vahvista komento",
       "externalTool": "Vahvista ulkoisen työkalun toiminto",
       "internet": "Vahvista verkkoyhteys",
-      "edit": "Vahvista tekoälyn muokkaus"
+      "edit": "Vahvista tekoälyn muokkaus",
+      "researchTask": "Vahvista tutkimustehtävä"
     },
     "headline": {
       "command": "Avustaja haluaa suorittaa tämän komennon",
       "externalTool": "Avustaja haluaa käyttää ulkoista työkalua",
       "internet": "Avustaja haluaa käyttää verkkoyhteyttä",
-      "edit": "Avustaja haluaa muuttaa tiedostoja"
+      "edit": "Avustaja haluaa muuttaa tiedostoja",
+      "researchTask": "Avustaja haluaa luoda tutkimustehtävän"
     },
     "mcpNote": "Tämä lähettää alla olevat argumentit määritetylle MCP-palvelimelle.",
     "line": "rivi {{line}}",
@@ -70,10 +72,50 @@
       "title": "Ulkoisen agentin pyyntö (MCP)",
       "moreWaiting_one": "{{count}} muu odottaa",
       "moreWaiting_other": "{{count}} muuta odottaa"
+    },
+    "researchTask": {
+      "note": "Tehtävä työskentelee itsekseen projektin kopiossa. Tarkistat sen muutokset jälkikäteen.",
+      "title": "Otsikko",
+      "goal": "Tavoite",
+      "skills": "Taidot",
+      "prompt": "Ohjeet",
+      "commands": "Komennot",
+      "commandsAsk": "Kysy ennen jokaista",
+      "network": "Verkko",
+      "timeBudget": "Aikabudjetti",
+      "timeBudgetDefault": "Oletus",
+      "minutes_one": "{{count}} minuutti",
+      "minutes_other": "{{count}} minuuttia",
+      "planFirst": "Suunnitelma ensin",
+      "startNow": "Aloita heti"
     }
   },
   "attachments": {
-    "remove": "Poista {{name}}"
+    "remove": "Poista {{name}}",
+    "processing": "Valmistellaan tiedostoa {{name}}…",
+    "failed": "Tiedostoa {{name}} ei voitu liittää.",
+    "pages_one": "{{count}} sivu",
+    "pages_other": "{{count}} sivua",
+    "pagesLimited": "Käytetään vain ensimmäiset {{limit}} sivua {{count}} sivusta.",
+    "tooMany": "Yhteen viestiin voi liittää enintään {{max}} tiedostoa.",
+    "tooLarge": "Tiedosto {{name}} on suurempi kuin {{limit}}.",
+    "unsupported": "Tiedostoa {{name}} ei voi liittää. Liitä kuvia, PDF-tiedostoja tai tekstitiedostoja.",
+    "unreadableImage": "Oleafly ei pysty lukemaan tiedoston {{name}} kuvamuotoa. Tallenna kuva PNG- tai JPEG-muodossa ja liitä se uudelleen.",
+    "unreadablePdf": "Tiedostoa {{name}} ei voitu avata PDF-tiedostona.",
+    "storeFailed": "Tiedostoa {{name}} ei voitu tallentaa tähän keskusteluun.",
+    "visionUnsupported": "{{model}} ei osaa lukea kuvia, joten tämän viestin kuvia ei lähetetä.",
+    "scannedPdf": "Tiedostossa {{name}} ei ole tekstikerrosta, eikä {{model}} osaa lukea kuvia.",
+    "dropFiles": "Pudota tiedostot liittääksesi ne",
+    "dropProjectFile": "Pudota mainitaksesi tämän tiedoston",
+    "open": "Avaa {{name}}",
+    "saveCopy": "Tallenna kopio tiedostosta {{name}}",
+    "saved": "Kopio tiedostosta {{name}} tallennettiin.",
+    "saveFailed": "Tiedostoa {{name}} ei voitu tallentaa.",
+    "missing": "Tiedosto {{name}} ei ole enää saatavilla.",
+    "sentAsText": "Tiedosto {{name}} lähetettiin tekstinä, koska tämä malli ei osaa lukea sitä tiedostona.",
+    "skipped": "Tiedostoa {{name}} ei lähetetty.",
+    "dropUnreadable": "Kohteita {{names}} ei voitu lukea.",
+    "notReplayed": "Vanhan version tallentamia tiedostoja ei voi lähettää uudelleen: {{names}}."
   },
   "chat": {
     "pill": {
@@ -182,7 +224,9 @@
     "stop": "Pysäytä",
     "stopTitle": "Pysäytä tuottaminen",
     "send": "Lähetä",
-    "checkAgain": "Tarkista uudelleen"
+    "checkAgain": "Tarkista uudelleen",
+    "resizeHandle": "Muuta viestikentän kokoa",
+    "resizeHint": "Muuta kokoa vetämällä. Palauta kaksoisnapsauttamalla."
   },
   "commands": {
     "groups": {
@@ -220,10 +264,6 @@
     "files": {
       "label": "Tiedostot",
       "description": "Liitä tiedostoja seuraavaan viestiin"
-    },
-    "browser": {
-      "label": "Liitä selain",
-      "description": "Avaa selain dokumentin viereen"
     }
   },
   "models": {
@@ -272,7 +312,10 @@
       "minutes": "{{count}} min sitten",
       "hours": "{{count}} h sitten",
       "days": "{{count}} pv sitten"
-    }
+    },
+    "skipped_one": "{{count}} keskustelu jäi lataamatta. Se on yhä levyllä.",
+    "skipped_other": "{{count}} keskustelua jäi lataamatta. Ne ovat yhä levyllä.",
+    "openFailed": "Tätä keskustelua ei voitu avata."
   },
   "tools": {
     "approval": {
@@ -318,7 +361,6 @@
       "listAgents": "Listaa apuagentit ja niiden tila.",
       "closeAgent": "Sulje apuagentti.",
       "runCommand": "Suorita shell-komento projektikansiossa, kahden minuutin rajalla.",
-      "computerUse": "Avaa verkkosivu avustajan selainikkunassa.",
       "toggleTheme": "Vaihda vaalean ja tumman tilan välillä.",
       "listOverleafProjects": "Listaa Overleaf-projektisi ja kirjaudu tarvittaessa ensin sisään.",
       "importOverleafProjects": "Tuo Overleaf-projekteja kirjastoosi kääntäjineen ja päätiedostoineen."
@@ -347,8 +389,7 @@
       "latexOnly": "Vain LaTeX-projekteissa",
       "latexAndTypstOnly": "Vain LaTeX- ja Typst-projekteissa",
       "pdfCaptureSetting": "Vaatii PDF-sivujen kaappausasetuksen",
-      "chatApproval": "Hyväksytään keskustelussa, yksi komento kerrallaan",
-      "browserSetting": "Vaatii verkkoselainasetuksen"
+      "chatApproval": "Hyväksytään keskustelussa, yksi komento kerrallaan"
     },
     "sourceGroups": {
       "figure": "Kuva",
@@ -471,18 +512,20 @@
     "resumeTask": "Jatka työtä avaamalla tutkimustehtävä.",
     "delegatedConversation": "Tämä keskustelu kuuluu delegoidun agentin ajoon.",
     "noResume": "Tämä agentti ei voi jatkaa tallennettuja keskusteluja. Aloita uusi keskustelu, kun olet valmis.",
-    "imageTooLarge": "Valitse kuva, joka on pienempi kuin 480 KiB. Liittää voi enintään neljä kuvaa.",
     "imageReadFailed": "Kuvaa ei voitu lukea.",
-    "removeImage": "Poista {{name}}",
     "composerAriaLabel": "Viesti komentoriviagentille",
     "composerPlaceholderReady": "Pyydä agenttia työskentelemään tämän projektin parissa",
     "composerPlaceholderIdle": "Aloita tai yhdistä keskustelu uudelleen, niin viestin voi lähettää",
-    "attachImage": "Liitä kuva",
     "startConversation": "Aloita keskustelu agentin {{agent}} kanssa",
     "startConversationFallback": "agentti",
     "agentModel": "Agentin malli",
     "modelManaged": "Agentti hallitsee mallia",
     "stop": "Pysäytä",
+    "stopReason": {
+      "refusal": "Agentti kieltäytyi jatkamasta tätä pyyntöä.",
+      "maxTokens": "Agentti saavutti tulosteensa enimmäispituuden ja pysähtyi.",
+      "maxTurnRequests": "Agentti saavutti tämän vuoron pyyntörajan ja pysähtyi."
+    },
     "stopTitle": "Pysäytä agentti",
     "send": "Lähetä",
     "connecting": "Yhdistetään",
@@ -500,8 +543,7 @@
     "roster": {
       "bridgeMissing": "asenna silta kohdassa Agentin käyttöönotto",
       "cliMissing": "komentorivityökalua ei löydy tältä koneelta",
-      "unavailable": "ei käytettävissä tällä koneella",
-      "comingSoon": "tulossa pian"
+      "unavailable": "ei käytettävissä tällä koneella"
     },
     "messageTooLarge": "Tämä viesti ja sen kuvat ovat liian suuria. Lyhennä viestiä tai poista jokin kuva.",
     "terminalCommand": "Agentti suorittaa päätekomentoa.",
@@ -549,7 +591,130 @@
       "tool": "Työkalu: {{name}}",
       "changedFiles": "Muuttuneet tiedostot",
       "moreFiles_one": "ja {{count}} muu tiedosto",
-      "moreFiles_other": "ja {{count}} muuta tiedostoa"
+      "moreFiles_other": "ja {{count}} muuta tiedostoa",
+      "mode": "Tila",
+      "effort": "Panostus",
+      "permissionProfile": "Hyväksyntätila",
+      "commits": "Commitit"
+    },
+    "composerPlaceholderStart": "Kirjoita agentille {{agent}} aloittaaksesi keskustelun",
+    "composerPlaceholderConnecting": "Kirjoita jo nyt. Viesti lähtee, kun agentti on valmis.",
+    "composerPlaceholderRunning": "Kirjoita seuraava viestisi. Se lähtee, kun agentti on valmis.",
+    "attachFile": "Liitä tiedostoja",
+    "composer": {
+      "tooManyAttachments": "Liitä yhteen viestiin enintään 10 tiedostoa.",
+      "imagesUnsupported": "Tämä agentti ei ota vastaan kuvia. Poista ne ja yritä uudelleen.",
+      "attachmentsNotReady": "Odota, kunnes liitteet on valmisteltu.",
+      "removeSelection": "Poista lainaus {{label}}"
+    },
+    "queue": {
+      "queued": "Jonossa: lähtee, kun agentti on valmis",
+      "remove": "Poista jonossa oleva viesti",
+      "sendNow": "Lähetä nyt",
+      "sendFailed": "Tätä viestiä ei lähetetty. Lähetä se uudelleen tai poista se.",
+      "queuedConnecting": "Jonossa: lähtee, kun agentti on valmis",
+      "retry": "Lähetä uudelleen",
+      "edit": "Muokkaa"
+    },
+    "slash": {
+      "commands": "Agentin komennot",
+      "skills": "Taidot"
+    },
+    "controls": {
+      "effort": "Panostus",
+      "mode": "Tila",
+      "more": "Lisää agentin asetuksia",
+      "blockedMode": "Pois käytöstä Oleaflyssä",
+      "blockedModeHint": "Oleafly pitää lupatarkistukset käytössä, joten tämä tila ei ole saatavilla."
+    },
+    "usage": {
+      "ariaLabel": "Näytä agentin käyttö",
+      "tooltip": "Tämän keskustelun käyttö",
+      "contextShare": "{{percent}} % kontekstista käytetty",
+      "window": {
+        "fiveHour": "5 tunnin istunto",
+        "weekly": "Viikoittain, kaikki mallit",
+        "weeklyOpus": "Viikoittain, Opus",
+        "weeklySonnet": "Viikoittain, Sonnet",
+        "overage": "Lisäkäyttö",
+        "other": "Käyttöraja {{id}}"
+      },
+      "costIn": "Agentti ilmoitti kustannukseksi {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} tokenia"
+    },
+    "compaction": {
+      "running": "Tiivistetään aiempaa kontekstia",
+      "done": "Aiempi konteksti tiivistettiin",
+      "failed": "Aiempaa kontekstia ei voitu tiivistää"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} päätteessä",
+      "afterTerminal": "Viimeistele kirjautuminen päätteessä ja yhdistä sitten uudelleen.",
+      "apiKeyLabel": "Palvelun {{provider}} API-avain",
+      "apiKeyPlaceholder": "Liitä API-avaimesi",
+      "geminiGoogle": "Kirjautuminen Googlella ei enää toimi yksityiskäyttäjien tilauksissa. Käytä Gemini-API-avainta tai Vertex AI -palvelua.",
+      "noProject": "Avaa projekti, niin voit kirjautua päätteestä.",
+      "signOut": "Kirjaudu ulos",
+      "confirmTerminal": "{{agent}} kirjautuu alla olevalla komennolla, joka suoritetaan päätevälilehdessä. Tarkista se, ennen kuin hyväksyt.",
+      "remote": "Tämä keskustelu toimii toisella koneella. Kirjaudu agenttiin siellä."
+    },
+    "elicitation": {
+      "ariaLabel": "Agentin pyyntö",
+      "from": "{{agent}} kysyy:",
+      "submit": "Lähetä",
+      "decline": "Kieltäydy",
+      "cancel": "Peruuta",
+      "required": "Pakollinen",
+      "invalid": "Tarkista tämä kenttä.",
+      "openUrl": "Avaa selaimessa",
+      "confirmTitle": "Avataanko sivusto {{host}}?",
+      "confirmDescription": "Agentti pyysi sinua viimeistelemään vaiheen tällä sivustolla. Se avautuu selaimessasi.",
+      "waiting": "Odotetaan, että sivusto valmistuu.",
+      "openFailed": "Linkkiä ei voitu avata selaimessasi."
+    },
+    "remote": {
+      "banner": "Hermes toimii palvelimella {{host}} SSH-yhteyden kautta. Sen muutokset jäävät sille koneelle."
+    },
+    "history": {
+      "all": "Kaikki keskustelut",
+      "title": "Keskustelut",
+      "search": "Hae keskusteluista",
+      "empty": "Yksikään keskustelu ei vastaa hakua.",
+      "loadMore": "Lataa lisää",
+      "rename": "Nimeä uudelleen",
+      "renameLabel": "Keskustelun nimi",
+      "delete": "Poista",
+      "deleteTitle": "Poistetaanko tämä keskustelu?",
+      "deleteDescription": "Oleafly poistaa sen keskustelulokin ja liitteet tästä projektista.",
+      "deleteFromAgent": "Poista se myös agentista {{agent}}",
+      "deleteAgentFailed": "Poistettu Oleaflystä. Agentti {{agent}} ei voinut poistaa omaa kopiotaan: {{error}}",
+      "deleteRunning": "Pysäytä agentti ennen kuin poistat tämän keskustelun.",
+      "importFind": "Etsi agentin {{agent}} keskustelut tälle projektille",
+      "imported": "Jo Oleaflyssä",
+      "importSelected": "Tuo valitut",
+      "importEmpty": "Agentilla {{agent}} ei ole muita keskusteluja tälle projektille."
+    },
+    "header": {
+      "startedAt": "Aloitettu versiosta {{revision}}",
+      "startedDirty": "Aloitettu versiosta {{revision}} vahvistamattomin muutoksin",
+      "menu": "Keskustelun toiminnot",
+      "fork": "Haaroita keskustelu",
+      "forkUnsupported": "Tämä agentti ei voi haaroittaa keskusteluja.",
+      "forkBusy": "Odota, että agentti on valmis, ennen kuin haaroitat.",
+      "v2": "Protokollan esikatselu",
+      "remote": "Etä",
+      "signOutTitle": "Kirjaudutaanko ulos agentista {{agent}}?",
+      "signOutDescription": "Tämä päättää itse {{agent}}-kirjautumisen. Myös pääte, joka käyttää samaa kirjautumista, kirjataan ulos, ja tämä keskustelu pysähtyy, kunnes kirjaudut uudelleen.",
+      "signOutAccount": "Kirjautuneena tilillä {{account}}"
+    },
+    "commit": {
+      "button": "Tee commit",
+      "title": "Tee commit tästä vuorosta",
+      "message": "Commit-viesti",
+      "files": "Commitiin tulevat tiedostot",
+      "defaultMessage": "Muutokset agentilta {{agent}}",
+      "submit": "Tee commit tiedostoista",
+      "cancel": "Peruuta"
     }
   },
   "agents": {
@@ -721,8 +886,6 @@
     "restoreFailed": "Palautus ei onnistunut: {{error}}",
     "steerFailed": "Käynnissä olevaa vuoroa ei voitu ohjata.",
     "approvalRuleSaveFailed": "Projektin hyväksyntäsääntöä ei voitu tallentaa.",
-    "attachmentTooLarge": "{{name}} on liian suuri (enintään 10 MB).",
-    "attachmentReadFailed": "Kohdetta {{name}} ei voitu lukea.",
     "tooManyTools": "Käytössä on {{enabled}} työkalua, mutta yksi ajo tukee enintään {{max}}. Poista käytöstä vähintään {{excess}} kohdassa Työkalut ja yritä uudelleen."
   },
   "header": {
@@ -749,7 +912,29 @@
     "summaryRunNoTokens_one": "Viimeisin ajo: {{count}} vaihe, tokenien summa ei saatavilla",
     "summaryRunNoTokens_other": "Viimeisin ajo: {{count}} vaihetta, tokenien summa ei saatavilla",
     "summaryChat": "Tämä keskustelu: {{steps}} vaihetta, {{tokens}} tokenia",
-    "summaryFallback": "Tekoälyn käyttö"
+    "summaryFallback": "Tekoälyn käyttö",
+    "context": "Konteksti",
+    "contextUsed": "{{used}} / {{size}} tokenia",
+    "contextShare": "{{percent}} kontekstista käytetty",
+    "contextUnknown": "Tämän mallin kontekstin kokoa ei tunneta.",
+    "reasoning": "Päättely",
+    "cacheRead": "Välimuistin luvut",
+    "cacheWrite": "Välimuistin kirjoitukset",
+    "cost": "Arvioitu kustannus",
+    "budget": "Projektin budjetti",
+    "budgetUsed": "{{spent}} / {{limit}}",
+    "credit": "Saldoa jäljellä",
+    "creditOf": "{{remaining}} / {{limit}}",
+    "planLimits": "Tilauksen rajat",
+    "resetsAt": "Nollautuu {{time}}",
+    "windowWarning": "Lähellä rajaa",
+    "windowBlocked": "Raja on täynnä",
+    "refreshPlan": "Päivitä tilauksen käyttö",
+    "refreshing": "Päivitetään…",
+    "historyTrimmed_one": "Mallille lähetettiin vain tämän keskustelun viimeinen {{count}} vuoro.",
+    "historyTrimmed_other": "Mallille lähetettiin vain tämän keskustelun viimeiset {{count}} vuoroa.",
+    "empty": "Tässä keskustelussa ei ole vielä käyttöä.",
+    "loading": "Ladataan käyttötietoja…"
   },
   "provider": {
     "connectTitle": "Yhdistä tekoälypalvelu jatkaaksesi",
@@ -769,7 +954,21 @@
     "projectSubtitle": "Työn alla \"{{project}}\"",
     "noOutput": "Malli ei palauttanut tulostetta. Tarkista Asetukset → Tekoälyavustaja.",
     "planMissing": "Hyväksyttävää suunnitelmaa ei vielä ole. Pyydä avustajalta suunnitelma tai ota suunnittelutila pois päältä.",
-    "planUnchanged": "Suunnitelma ei muuttunut."
+    "planUnchanged": "Suunnitelma ei muuttunut.",
+    "stillWorking": "Työskentelee yhä ({{seconds}} s). Päättelymallit ja paikalliset mallit voivat olla hitaita. Peruuta napsauttamalla Pysäytä.",
+    "retrying": "Yhteysongelma. Yritetään uudelleen ({{attempt}}/{{max}})…",
+    "stopped": "Pysäytetty.",
+    "stepLimit": "Vaiheraja saavutettiin. Jatka lähettämällä uusi viesti.",
+    "outputLimit": "Vastaus saavutti mallin tulosteen enimmäispituuden. Jatka lähettämällä uusi viesti.",
+    "tooLargeToSave": "Tämä keskustelu on liian pitkä tallennettavaksi. Uudet viestit säilyvät, kunnes suljet Oleaflyn. Vie keskustelu, jos haluat säilyttää kopion.",
+    "exportChat": "Vie keskustelu",
+    "exported": "Keskustelu vietiin.",
+    "exportFailed": "Keskustelua ei voitu viedä.",
+    "saveFailed": "Tämän keskustelun uusia viestejä ei voitu tallentaa. Tarkista, että levyllä on vapaata tilaa.",
+    "exportYou": "Sinä",
+    "exportAssistant": "Avustaja",
+    "exportAttachments": "Liitteet",
+    "exportTools": "Käytetyt työkalut"
   },
   "followUps": {
     "steered": "Ohjattiin käynnissä olevaan vuoroon: {{summary}}",
@@ -856,6 +1055,46 @@
     "figureAudit": "Kuvien tarkastus",
     "gitReview": "Git-tarkistus",
     "referenceCleanup": "Lähdeluettelon siivous",
-    "removeSkill": "Poista taito {{name}}"
+    "removeSkill": "Poista taito {{name}}",
+    "compilationRepair": "Käännöksen korjaus",
+    "submissionPrep": "Lähetyksen valmistelu",
+    "reviewerResponse": "Vastaus arvioijille"
+  },
+  "effort": {
+    "label": "Panostus",
+    "tooltip": "Kuinka paljon malli päättelee ennen vastaamista",
+    "ariaLabel": "Päättelyn panostus: {{level}}",
+    "auto": "Auto",
+    "autoDescription": "Käytä mallin oletusta",
+    "levels": {
+      "none": "Ei mitään",
+      "minimal": "Minimaalinen",
+      "low": "Matala",
+      "medium": "Keskitaso",
+      "high": "Korkea",
+      "xhigh": "Erittäin korkea",
+      "max": "Maksimi"
+    }
+  },
+  "web": {
+    "label": "Verkko",
+    "on": "Verkkohaku ja sivujen lukeminen ovat käytössä tässä keskustelussa",
+    "off": "Ota verkkohaku ja sivujen lukeminen käyttöön tässä keskustelussa",
+    "ariaLabel": "Verkkokäyttö",
+    "searchUnavailable": "Tämä malli ei osaa hakea verkosta. Lisää hakuavain asetuksissa, niin voit ottaa sen käyttöön."
+  },
+  "messageActions": {
+    "edit": "Muokkaa viestiä",
+    "regenerate": "Luo vastaus uudelleen",
+    "retry": "Yritä uudelleen",
+    "editingLatest": "Muokkaat viimeisintä viestiäsi. Kun lähetät sen, vastaus korvataan.",
+    "editingEarlier": "Muokkaat aiempaa viestiä. Kun lähetät sen, siitä alkaa uusi keskustelu, ja tämä keskustelu jää Historiaan.",
+    "cancelEdit": "Peruuta muokkaus",
+    "replaceTitle": "Korvataanko tämä vastaus?",
+    "replaceDescription_one": "Vastaus muutti {{count}} tiedoston. Muutos säilyy projektissasi, mutta sen kumoamiskortti katoaa vastauksen mukana.",
+    "replaceDescription_other": "Vastaus muutti {{count}} tiedostoa. Muutokset säilyvät projektissasi, mutta niiden kumoamiskortti katoaa vastauksen mukana.",
+    "replaceConfirm": "Korvaa vastaus",
+    "forked": "Muokatusta viestistä aloitettiin uusi keskustelu.",
+    "failed": "Viestiä ei voitu lähettää uudelleen."
   }
 }

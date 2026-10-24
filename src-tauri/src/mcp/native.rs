@@ -29,7 +29,7 @@ const MUTATING: &[&str] = &[
     "remember_note",
     "forget_note",
     "run_command",
-    "computer_use",
+    "research_task_create",
 ];
 
 pub fn is_mutating(name: &str) -> bool {
@@ -381,7 +381,6 @@ mod tests {
             "remember_note",
             "forget_note",
             "run_command",
-            "computer_use",
         ] {
             let error = match call("unused", name, &json!({})).await {
                 Ok(_) => panic!("{name} unexpectedly ran natively"),
@@ -396,9 +395,7 @@ mod tests {
         for name in MUTATING {
             assert!(is_mutating(name), "{name}");
         }
-        for name in ["run_command", "computer_use"] {
-            assert!(is_mutating(name), "{name}");
-        }
+        assert!(is_mutating("run_command"));
         for name in READ_ONLY {
             assert!(!is_mutating(name), "{name}");
         }

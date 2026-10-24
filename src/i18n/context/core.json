@@ -112,6 +112,10 @@
       "interrupted": "Tool call status: the run was cut short by something other than the reader",
       "running": "Tool call status: the call is still in flight",
       "timedOut": "Tool call status: the call passed its deadline"
+    },
+    "summary": {
+      "sourcesFailed_one": "Literature search card: no papers came back and one scholarly index, such as OpenAlex or Crossref, did not answer",
+      "sourcesFailed_other": "Literature search card: no papers came back and {{count}} scholarly indexes, such as OpenAlex or Crossref, did not answer"
     }
   },
   "ui": {

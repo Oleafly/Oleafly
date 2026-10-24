@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "pack": "research-core",
-  "version": "2026.09.04.2452259d",
+  "version": "2026.10.19.b7a82f61",
   "skills": [
     {
       "id": "citation-management",
@@ -18,6 +18,18 @@
         "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
         "commit": "1e5eeffbdad3749125afe7ab48a39694e27f181c"
       }
+    },
+    {
+      "id": "desktop-apps",
+      "name": "Desktop apps",
+      "description": "Work in desktop apps and websites the user allowed, through the desktop_apps tool. Use when the user asks to do something inside an app such as Zotero, Excel, Word, SPSS, Stata or Prism, or on a website such as a journal submission site or a library database, and no Oleafly tool or connector can do it.",
+      "tier": "native",
+      "phase": "tooling",
+      "license": "MIT",
+      "treeSha256": "2a6fcffb1deb51f469322efe283a7287eb65cc42031bdb36d0f3145c4f084ece",
+      "files": 1,
+      "bytes": 4431,
+      "version": "1.0.0"
     },
     {
       "id": "experimental-design",
@@ -96,15 +108,39 @@
       }
     },
     {
+      "id": "oleafly-cli",
+      "name": "oleafly-cli",
+      "description": "Build, diagnose and inspect an Oleafly LaTeX, Typst or Markdown project from a terminal or a coding agent with the oleafly command. Use for compile errors and build logs, the project's outline, labels and citations, word counts, exports to Word or HTML, citation lookup and bibliography cleanup, Typst versions, checkpoints, and setting up Oleafly's MCP server for an AI client.",
+      "tier": "native",
+      "phase": "tooling",
+      "license": "MIT",
+      "treeSha256": "cb69a95f849ddc82309654c805d9adef72d80b8d449b148e21d542f0d5748bf3",
+      "files": 2,
+      "bytes": 10116,
+      "version": "1.0.0"
+    },
+    {
       "id": "oleafly-data-analysis",
       "name": "Data analysis",
       "description": "Take data files that live in the project through to numbers, figures, and tables in the manuscript. Picks the method with the statistics skills, runs it as a saved script rather than an inline command, writes figures to figures/ and LaTeX tables to tables/, and reports effect sizes and confidence intervals in APA style.",
       "tier": "native",
       "phase": "authoring",
       "license": "MIT",
-      "treeSha256": "3f907efed5639a9c036cbcb09febe3499ac6f15c6628f1a748bb6039bec68db7",
+      "treeSha256": "462a76d4b77f8e3e0ef3762e61bec2e8007e526dccddda8cdf2d654d96c40873",
       "files": 3,
-      "bytes": 27140,
+      "bytes": 27548,
+      "version": "1.0.1"
+    },
+    {
+      "id": "oleafly-experiment-loop",
+      "name": "oleafly-experiment-loop",
+      "description": "Run a series of small, recorded experiments toward one goal inside an Oleafly research task. Use when the task is to improve a metric, tune a model or analysis, compare methods, or reproduce a result. Measures a baseline first, changes one thing per run, keeps only changes that help, records every result in the task's ledger, and writes the numbers into the manuscript with run markers.",
+      "tier": "native",
+      "phase": "research",
+      "license": "MIT",
+      "treeSha256": "336fdb448dc78f4261eb11d90e96458fd71c763e44bcae88bb10e609c83644fe",
+      "files": 2,
+      "bytes": 6559,
       "version": "1.0.0"
     },
     {
@@ -114,10 +150,10 @@
       "tier": "native",
       "phase": "figures",
       "license": "MIT",
-      "treeSha256": "191dfee567847efe69f228805a0d36b3311aa96e18a3481d29bbaa80afad48b2",
+      "treeSha256": "4f4e8a090cf88e409ee46d0c49e710c6e1069d595da5871fe89f0240c8f5a7c3",
       "files": 3,
-      "bytes": 21862,
-      "version": "1.1.0"
+      "bytes": 22315,
+      "version": "1.1.1"
     },
     {
       "id": "oleafly-latex-build",
@@ -126,22 +162,22 @@
       "tier": "native",
       "phase": "tooling",
       "license": "MIT",
-      "treeSha256": "5d265bfdc7819e761e32e22cfb23bb0523ac298701fbb760d18addfcdbd3cf2c",
+      "treeSha256": "76079f87b6c9042bb2506fb7221712edc1a9062f3d51f79b2eab318006f06ea0",
       "files": 3,
-      "bytes": 28587,
-      "version": "1.1.0"
+      "bytes": 29094,
+      "version": "1.1.1"
     },
     {
       "id": "oleafly-literature-sweep",
       "name": "oleafly-literature-sweep",
-      "description": "Turn a research question into an annotated reading list with provenance. Use when the user asks to find papers, survey the literature, gather background on a topic, collect sources for a section, or fill out a thin bibliography. Searches OpenAlex with literature_search, resolves canonical BibTeX with verify_citation, dedupes against the project bibliography before writing anything, and leaves behind research/reading-list.md plus one source note per paper.",
+      "description": "Turn a research question into an annotated reading list with provenance. Use when the user asks to find papers, survey the literature, gather background on a topic, collect sources for a section, or fill out a thin bibliography. Searches OpenAlex, Semantic Scholar, Crossref, arXiv and PubMed at once with literature_search, reads the strongest papers with read_paper, resolves canonical BibTeX with verify_citation, dedupes against the project bibliography before writing anything, and leaves behind research/reading-list.md plus one source note per paper.",
       "tier": "native",
       "phase": "research",
       "license": "MIT",
-      "treeSha256": "1e445facde6e9715bfa81376e1a88ae99855296d14c9495a26437a22ff83dd96",
+      "treeSha256": "925e55ff815c2d0d4e59b8c1f2ecd55b0ad131dd7df97c0e79c7db3158a48530",
       "files": 5,
-      "bytes": 24286,
-      "version": "1.0.0"
+      "bytes": 27230,
+      "version": "1.1.1"
     },
     {
       "id": "oleafly-manuscript-scaffold",
@@ -150,10 +186,10 @@
       "tier": "native",
       "phase": "authoring",
       "license": "MIT",
-      "treeSha256": "f52cc418a93db95d37f5ada4adef0ee45deb4fcdcd72f628b8f81e98b6bbef99",
+      "treeSha256": "bd4f8cfbd85989981f6eb153d8f00b4367fdbc2d63085e2226c036d76a7a008e",
       "files": 5,
-      "bytes": 21968,
-      "version": "1.0.0"
+      "bytes": 22475,
+      "version": "1.0.1"
     },
     {
       "id": "oleafly-pre-submission",
@@ -162,10 +198,10 @@
       "tier": "native",
       "phase": "submission",
       "license": "MIT",
-      "treeSha256": "17f7ed252246f363b1f66750b2c5f3ac9c9ff6a8c9ddc3998c8c787a3669a0e2",
+      "treeSha256": "0fe6c06dc6c251473e4b987c33a1322eaf45ab18cebee04c76e30421a90f07d0",
       "files": 5,
-      "bytes": 31965,
-      "version": "1.1.0"
+      "bytes": 32418,
+      "version": "1.1.1"
     },
     {
       "id": "oleafly-related-work",
@@ -174,10 +210,10 @@
       "tier": "native",
       "phase": "authoring",
       "license": "MIT",
-      "treeSha256": "1b8f128d40b11a7ac44158ae22cb16bd3b411ddd782ef9e6bb0d3d0850e980c6",
+      "treeSha256": "5c89d26998fc826af5b9ac03cfe9b431584ab99a27dc70dd8146b553e992c03e",
       "files": 6,
-      "bytes": 20301,
-      "version": "1.0.0"
+      "bytes": 20851,
+      "version": "1.0.1"
     },
     {
       "id": "oleafly-research-loop",
@@ -186,10 +222,10 @@
       "tier": "native",
       "phase": "research",
       "license": "MIT",
-      "treeSha256": "2953793cf78dad50877d2fa61fd461fc504cde5c95029451b922b0d3ada65f0c",
+      "treeSha256": "a85fd8e9527aebeaa2ad6bc2181b99c4af2d8096f3a7fa0684cec8f53db018f8",
       "files": 7,
-      "bytes": 30967,
-      "version": "1.0.0"
+      "bytes": 31773,
+      "version": "1.0.1"
     },
     {
       "id": "oleafly-response-letter",
@@ -198,10 +234,10 @@
       "tier": "native",
       "phase": "review",
       "license": "MIT",
-      "treeSha256": "68ad13b777cf1e1afbf269acf5de93b4b30378537488093b1e4d95623ac81db6",
+      "treeSha256": "3bb461f7a4669dde81061979d641bf365431399cc577c743c4f71b9cee0c3b01",
       "files": 5,
-      "bytes": 17539,
-      "version": "1.1.0"
+      "bytes": 18001,
+      "version": "1.1.1"
     },
     {
       "id": "oleafly-review-manuscript",
@@ -210,10 +246,10 @@
       "tier": "native",
       "phase": "review",
       "license": "MIT",
-      "treeSha256": "a22ac2d84d710973a5d3dd31a9674d3c93af3e5b791384b0d842370cd1ffc65d",
+      "treeSha256": "c37b4780214e1b0f1c27ca25b93f2bec6885aea54f2db05f019aeba3b672a3cf",
       "files": 4,
-      "bytes": 20415,
-      "version": "1.0.0"
+      "bytes": 20868,
+      "version": "1.0.1"
     },
     {
       "id": "oleafly-slides-and-posters",
@@ -222,10 +258,10 @@
       "tier": "native",
       "phase": "communication",
       "license": "MIT",
-      "treeSha256": "3a850b7a22857d2abce9d1c457ae5f1f52ad3518e270d776c2a36e06556823c5",
+      "treeSha256": "f3ab004ec29e82b656f8b91f8e8b0c63186e6224f7d8eeec393ba41531903f74",
       "files": 8,
-      "bytes": 35482,
-      "version": "1.0.0"
+      "bytes": 35989,
+      "version": "1.0.1"
     },
     {
       "id": "oleafly-verify-claims",
@@ -234,10 +270,10 @@
       "tier": "native",
       "phase": "review",
       "license": "MIT",
-      "treeSha256": "5ca059b9cbd301536101e2dae798983c14fa76afc770b4cf4c371592ad5b3e48",
+      "treeSha256": "3c8de8a084fcdab03627f77f6efee623dac2c7485d7c55751332506562174ef7",
       "files": 4,
-      "bytes": 18797,
-      "version": "1.0.0"
+      "bytes": 19296,
+      "version": "1.0.1"
     },
     {
       "id": "openresearch",
@@ -246,10 +282,10 @@
       "tier": "native",
       "phase": "research",
       "license": "MIT",
-      "treeSha256": "7beaf6bc091080bc08b60d3b8a7fd860d2df022de9bc743121d0ad08ab8e55c6",
+      "treeSha256": "b796844f1004c1595e6eef4fa98ec2da5eef630f237f8906a7382c80237b6b3e",
       "files": 3,
-      "bytes": 20828,
-      "version": "1.0.0"
+      "bytes": 21637,
+      "version": "1.1.0"
     },
     {
       "id": "paper-lookup",

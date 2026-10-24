@@ -53,19 +53,6 @@
   "branding": {
     "assistantMascot": "Maskot för Oleaflys AI-assistent"
   },
-  "browser": {
-    "address": "Sök eller ange en URL",
-    "back": "Tillbaka",
-    "closeTab": "Stäng fliken",
-    "copyUrl": "Kopiera URL",
-    "forward": "Framåt",
-    "moreOptions": "Fler alternativ",
-    "newTab": "Ny flik",
-    "openExternal": "Öppna i din webbläsare",
-    "openTabs": "Öppna flikar",
-    "reload": "Läs in på nytt",
-    "setHomePage": "Ange som startsida"
-  },
   "changelog": {
     "installed": "Du kör den här versionen",
     "sectionItems_one": "{{count}} ändring",
@@ -464,10 +451,6 @@
       "hide": "Dölj AI-assistenten",
       "show": "Visa AI-assistenten"
     },
-    "browser": {
-      "close": "Stäng webbläsaren ({{shortcut}})",
-      "open": "Öppna webbläsaren ({{shortcut}})"
-    },
     "settings": "Inställningar",
     "sidebar": {
       "hide": "Dölj sidofältet ({{shortcut}})",
@@ -570,17 +553,6 @@
     "saveCopy": "Spara en kopia",
     "tryAgain": "Försök igen",
     "savedCopy": "Dina öppna filer sparades i {{folder}}."
-  },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "GitHub-åtgärder",
-    "connect": "Anslut GitHub…",
-    "connectedAs": "Ansluten som @{{login}}",
-    "copyRepositoryLink": "Kopiera länken till repositoriet",
-    "openInGithub": "Öppna i GitHub",
-    "pushHint": "Pusha till GitHub för att aktivera dessa",
-    "settings": "GitHub-inställningar",
-    "tooltip": "GitHub"
   },
   "home": {
     "ariaLabel": "Start",
@@ -726,6 +698,14 @@
     "sourceControl": "Versionshantering",
     "withShortcut": "{{label}} ({{shortcut}})"
   },
+  "remoteMenu": {
+    "accountLabel": "{{login}} på {{host}}",
+    "actions": "Åtgärder för repositoriet",
+    "copyRepositoryLink": "Kopiera länken till repositoriet",
+    "openOnHost": "Öppna på {{host}}",
+    "settings": "Inställningar för Git-värdtjänster",
+    "signedInAs": "Inloggad på {{host}} som {{login}}"
+  },
   "renameDialog": {
     "close": "Stäng namnbytesdialogen",
     "collision": "{{kind}} med namnet \"{{name}}\" finns redan.",
@@ -773,9 +753,9 @@
         "movedCount_other": "Flyttade {{count}} projekt till papperskorgen.",
         "title": "Farlig zon"
       },
-      "githubHint": "Säkerhetskopiera eller synkronisera ett projekt mellan enheter: anslut GitHub och använd sedan <push>Push</push> / <pull>Pull</pull> i Versionshantering. <setup>Konfigurera GitHub →</setup>",
+      "gitHostingHint": "Säkerhetskopiera eller synka ett projekt mellan enheter: länka det till ett Git-repositorium och använd sedan <push>Push</push> / <pull>Pull</pull> i Versionshantering. <setup>Konfigurera Git-värdtjänster →</setup>",
       "localFirst": "Oleafly är lokalt först. Alla projekt ligger på din disk:",
-      "plainFolders": "Varje projekt är en vanlig mapp. Git-historik är valfritt, och ingenting lämnar din dator om du inte pushar till GitHub.",
+      "plainFolders": "Varje projekt är en vanlig mapp. Git-historik är valfritt, och ingenting lämnar din dator om du inte pushar det till en Git-server.",
       "recycleBin": {
         "clearAll": "Töm allt",
         "clearFailed": "Det gick inte att tömma papperskorgen.",
@@ -848,11 +828,7 @@
         "description": "Redigera projekt tillsammans med andra via en samarbetsserver som du eller din grupp driver. Lägger till avsnittet Samarbete i Inställningar. Av som standard medan det är i beta.",
         "label": "Samarbete i realtid"
       },
-      "warning": "De här funktionerna är experimentella och fortfarande i beta. De är inte fullt testade än och kan ändras, sluta fungera eller tas bort i en framtida version. Slå bara på dem om du vill prova pågående arbete.",
-      "webBrowser": {
-        "description": "Visa den inbyggda webbläsaren (dess knapp i dockan och dess kortkommando) och låt AI:n styra den med datoranvändning. Av som standard medan det fortfarande är i beta. När det är av finns ingen webbläsarknapp och AI:n har inget webbläsarverktyg.",
-        "label": "Webbläsare"
-      }
+      "warning": "De här funktionerna är experimentella och fortfarande i beta. De är inte fullt testade än och kan ändras, sluta fungera eller tas bort i en framtida version. Slå bara på dem om du vill prova pågående arbete."
     },
     "footer": {
       "followOnX": "Följ på X",
@@ -936,7 +912,8 @@
       "general": "Allmänt",
       "help": "Hjälp och om",
       "integrations": "Integrationer",
-      "shortcuts": "Kortkommandon"
+      "shortcuts": "Kortkommandon",
+      "research": "Forskning"
     },
     "search": {
       "empty": "Inga inställningar matchar",
@@ -951,8 +928,9 @@
         "experimentation": "labb, beta, tidiga funktioner",
         "general": "inställningar, språk, region, stavningskontroll, stavning, stavfel, offline, rundturer, terminalkommando",
         "help": "om, version, uppdateringar, ändringslogg, nyheter, dokumentation, support, gemenskap, Discord, licens, kraschrapport",
-        "integrations": "Zotero, GitHub, MCP, citeringar, konton, anslutningar",
-        "shortcuts": "kortkommandon, snabbtangenter, tangentbindningar, tangenter, tangentbord"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-värdtjänster, skrivbordsappar, Cua, MCP, citeringar, konton, anslutningar",
+        "shortcuts": "kortkommandon, snabbtangenter, tangentbindningar, tangenter, tangentbord",
+        "research": "forskning uppgifter budget aviseringar håll vaken experiment körningar"
       },
       "label": "Sök i inställningar",
       "results_one": "{{count}} avsnitt matchar",
@@ -1034,7 +1012,6 @@
     "commitCount_other": "{{count}} incheckningar",
     "initialize": "Initiera repositorium",
     "initialized": "Initierade Git på {{branch}}.",
-    "linkCopied": "GitHub-länken kopierad",
     "markResolved": "Markera som löst",
     "mergeNeedsAttention": "Lös sammanslagningskonflikter",
     "moreActions": "Fler åtgärder i versionshanteringen",
@@ -1048,18 +1025,19 @@
     "openFile": "Öppna filen",
     "openFileFor": "Öppna {{path}}",
     "popStash": "Tillämpa senaste stashen",
-    "publish": "Publicera på GitHub",
+    "publishRepository": "Publicera…",
+    "publishTo": "Publicera på {{host}}",
     "published": "Publicerat till {{url}}",
     "pull": "Hämta från origin",
     "pullShort": "Pull",
     "push": "Checka in och pusha till origin",
     "pushShort": "Push",
     "pushSkippedNoRemote": "⚠ Hoppade över pushen, ingen fjärransluten origin är angiven nedan.",
-    "pushSkippedNoToken": "⚠ Hoppade över pushen, ingen GitHub-token (Inställningar → GitHub).",
     "refresh": "Uppdatera",
     "remote": "Fjärranslutning",
     "remoteHint": "Skapa ett nytt repositorium eller länka ett befintligt som projektets fjärranslutning, och pusha sedan.",
     "removeCredential": "Ta bort sparad inloggningsuppgift",
+    "repositoryLinkCopied": "Länken till repositoriet har kopierats",
     "restoreCommit": "Återställ versionen",
     "restoreCommitDescription": "Det här ersätter varje spårad projektfil med den här versionen och tar bort filer som lagts till senare. Din gren står kvar på sin nuvarande incheckning.",
     "restoreCommitTitle": "Vill du återställa den här versionen?",
@@ -1089,7 +1067,7 @@
     "titleRequired": "En rubrik för incheckningen krävs.",
     "titleRequiredStatus": "Ange en rubrik för incheckningen innan du checkar in.",
     "unlink": "Ta bort länken",
-    "unlinked": "Länken till GitHub är borttagen.",
+    "unlinkedFrom": "Länken till {{host}} har tagits bort.",
     "unstage": "Ta ur kön",
     "unstageFor": "Ta {{path}} ur kön",
     "unstageAll": "Ta alla ur kön",

@@ -39,6 +39,33 @@ export interface AcpAgentStatus {
   programOverride?: string | null;
   /** The bridge cannot work without the vendor CLI (Pi). */
   cliRequired?: boolean;
+  /** What the agent reported the last time it was checked or connected. */
+  runtime?: AcpAgentRuntimeInfo | null;
+}
+export interface AcpAuthMethod {
+  id: string;
+  name: string;
+  description: string | null;
+  kind?: string | null;
+  args?: string[];
+  env?: Record<string, string>;
+  /** The provider whose API key this method takes. */
+  apiKeyProvider?: string | null;
+  /** The agent's own sign-in command. */
+  terminalCommand?: { command: string; args: string[]; label: string | null } | null;
+}
+export interface AcpAgentRuntimeInfo {
+  protocol: number;
+  protocolLabel: string;
+  providers: boolean;
+  providersSupported: string[];
+  steering: boolean;
+  sessionList: boolean;
+  sessionFork: boolean;
+  sessionDelete: boolean;
+  logout: boolean;
+  authMethods: AcpAuthMethod[];
+  checkedAt: number;
 }
 export type AcpRejectReason = "not_found" | "is_directory" | "not_executable" | "unsupported_script" | "gui_program" | "interpreter" | "network_path";
 export interface AcpRejectedCandidate { path: string; reason: AcpRejectReason }
@@ -56,7 +83,7 @@ export interface AcpCliStatus {
 export type AcpCheckCode =
   | "ready" | "not_found" | "is_directory" | "unsupported_script" | "not_executable" | "gui_program" | "interpreter"
   | "network_path" | "cli_missing" | "bridge_missing" | "node_missing" | "node_too_old" | "start_failed" | "timeout"
-  | "exited" | "not_acp";
+  | "exited" | "not_acp" | "needs_sign_in" | "session_failed";
 /** Result of the agent Test check. */
 export interface AcpAgentCheck {
   ok: boolean;
@@ -65,6 +92,8 @@ export interface AcpAgentCheck {
   program: string | null;
   version: string | null;
   agentName: string | null;
+  /** Sign-in methods, when the check found the agent needs a sign-in. */
+  authMethods?: AcpAuthMethod[];
 }
 export type AcpReadiness = "ready" | "bridge-missing" | "cli-missing" | "unavailable";
 export function acpReadiness(agent: AcpAgentStatus): AcpReadiness {
@@ -121,19 +150,111 @@ export interface AcpSession {
     embeddedContext: boolean;
     additionalDirectories: boolean;
     mcpHttp: boolean;
+    list?: boolean;
+    close?: boolean;
+    delete?: boolean;
+    fork?: boolean;
+    mcpSse?: boolean;
+    logout?: boolean;
+    providers?: boolean;
+    steering?: boolean;
+    authStatus?: boolean;
+    /** The negotiated protocol (0 for sessions saved before 0.4.8). */
+    protocol?: number;
   };
   controls: {
     models: { modelId: string; name: string }[];
     modelId: string | null;
     modelConfigId: string | null;
+    /** Every option the agent reports, in its order. */
+    options?: AcpConfigOption[];
+    /** Legacy modes. */
+    modes?: AcpModeOption[];
+    modeId?: string | null;
+    legacyModels?: boolean;
   };
-  authMethods: { id: string; name: string; description: string | null; kind?: string | null }[];
+  authMethods: AcpAuthMethod[];
   error: string | null;
   lastSequence: number;
   /** HEAD commit when the session started, when the project is a Git repository. */
   startRevision?: string | null;
   /** Whether the working tree had uncommitted changes when the session started. */
   startDirty?: boolean | null;
+  usage?: AcpSessionUsage | null;
+  availableCommands?: AcpCommand[];
+  /** The user renamed the conversation. */
+  titleLocked?: boolean;
+  commits?: AcpTurnCommit[];
+  forkedFrom?: string | null;
+  permissionProfile?: string | null;
+  remote?: { host: string; folder: string } | null;
+  routedProvider?: string | null;
+}
+export interface AcpSelectChoice { value: string; name: string; description: string | null; group: string | null; blocked: boolean }
+export type AcpConfigKind =
+  | { type: "select"; currentValue: string | null; options: AcpSelectChoice[] }
+  | { type: "boolean"; currentValue: boolean }
+  | { type: "unsupported"; rawType: string };
+export interface AcpConfigOption { id: string; name: string; description: string | null; category: string | null; kind: AcpConfigKind }
+export interface AcpModeOption { id: string; name: string; description: string | null; blocked: boolean }
+export type AcpConfigValue = string | { type: "boolean"; value: boolean };
+export interface AcpTurnTokens {
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  thoughtTokens?: number | null;
+  cachedReadTokens?: number | null;
+  cachedWriteTokens?: number | null;
+  totalTokens?: number | null;
+}
+export interface AcpRateLimitWindow {
+  id: string;
+  status: string;
+  utilization?: number | null;
+  resetsAt?: number | null;
+  overageStatus?: string | null;
+  usingOverage?: boolean | null;
+}
+export interface AcpAuthStatus { kind: string; label: string; detail?: string | null; plan?: string | null }
+export interface AcpSessionUsage {
+  contextUsed?: number | null;
+  contextSize?: number | null;
+  costAmount?: number | null;
+  costCurrency?: string | null;
+  lastTurn?: AcpTurnTokens | null;
+  sessionTokens?: AcpTurnTokens | null;
+  modelUsage?: { model: string; tokens: AcpTurnTokens }[];
+  rateLimits?: AcpRateLimitWindow[];
+  auth?: AcpAuthStatus | null;
+  planMarkdown?: string | null;
+  planMarkdownAt?: number | null;
+  model?: string | null;
+  updatedAt?: number;
+}
+export interface AcpCommand { name: string; description: string; hint: string | null }
+export interface AcpTurnCommit { turnId: string; commit: string; paths: string[]; message: string; createdAt: number }
+export type AcpFieldKind =
+  | { type: "string"; minLength: number | null; maxLength: number | null; format: string | null }
+  | { type: "number"; integer: boolean; minimum: number | null; maximum: number | null }
+  | { type: "boolean" }
+  | { type: "choice"; options: [string, string][]; multiple: boolean };
+export interface AcpElicitationField {
+  name: string;
+  title: string | null;
+  description: string | null;
+  kind: AcpFieldKind;
+  required: boolean;
+  default: unknown;
+  secret: boolean;
+}
+export interface AcpElicitation {
+  id: string;
+  mode: "form" | "url";
+  message: string;
+  url: string | null;
+  fields: AcpElicitationField[];
+  sessionId: string | null;
+  toolCallId: string | null;
+  expiresAt: number;
 }
 export interface AcpPermission {
   id: string;
@@ -151,7 +272,7 @@ export interface AcpPermission {
   diffs?: AcpPermissionDiff[];
 }
 export interface AcpPermissionDiff { path: string; oldText: string | null; newText: string | null; truncated: boolean }
-export interface AcpSnapshot { session: AcpSession; permissions: AcpPermission[] }
+export interface AcpSnapshot { session: AcpSession; permissions: AcpPermission[]; elicitations?: AcpElicitation[] }
 export interface AcpEvent {
   sessionId: string;
   projectId: string;
@@ -166,6 +287,51 @@ export interface AcpEvent {
 }
 export interface AcpEventPage { events: AcpEvent[]; hasMore: boolean }
 export interface AcpImage { mimeType: string; data: string }
+export type AcpPromptFile = { kind: "stored"; sha256: string; name: string; mime: string } | { kind: "project"; path: string };
+export interface AcpPromptInput {
+  text: string;
+  images: AcpImage[];
+  files: AcpPromptFile[];
+  selections: { path: string | null; text: string }[];
+  skillId: string | null;
+}
+export interface AcpSessionPage { sessions: AcpSession[]; hasMore: boolean }
+export interface AcpAgentSessionInfo { nativeSessionId: string; title: string | null; updatedAt: string | null; cwd: string; imported: boolean }
+export interface AcpAgentSessionPage { sessions: AcpAgentSessionInfo[]; nextCursor: string | null }
+export interface AcpDeleteOutcome { agentDeleted: boolean; agentError: string | null }
+export interface AcpTerminalSignIn { title: string; program: string; args: string[]; env: Record<string, string> }
+export type AcpSteerOutcome = "injected" | "promptRequired";
+export interface AcpPreferences { experimentalV2: boolean; experimentalProviders: boolean; inactivityMinutes: number }
+export interface AcpRememberedChoice { value: string; name: string }
+export interface AcpAgentPreferences { effort: AcpRememberedChoice | null; mode: AcpRememberedChoice | null; provider: string | null }
+export interface AcpProviderChoice { id: string; label: string; apiType: string }
+export interface AcpRemoteHermes { host: string; port: number | null; folder: string; command: string; profile: string | null }
+export interface AcpHermesSettings {
+  mode: "default" | "project" | "remote";
+  profile: string | null;
+  memory: boolean;
+  toolGateway: boolean;
+  remote: AcpRemoteHermes | null;
+}
+export interface AcpHermesStatus {
+  mode: "default" | "project" | "remote";
+  profile: string | null;
+  exists: boolean;
+  gateway: "ready" | "starting" | "stopped" | "unknown";
+  reason: string | null;
+  memory: boolean;
+  toolGateway: boolean;
+}
+export interface AcpSessionSummary {
+  projectId: string;
+  sessionId: string;
+  agentId: string;
+  title: string;
+  status: AcpSessionStatus;
+  updatedAt: number;
+  lastSequence: number;
+}
+export interface AcpBufferRequest { requestId: string; projectId: string; path: string }
 
 export const acpCatalog = (probe = false) => invoke<AcpAgentStatus[]>("acp_catalog", { probe });
 export const acpRegistrySearch = (query: string) => invoke<AcpRegistryEntry[]>("acp_registry_search", { query });
@@ -179,14 +345,20 @@ export const acpRemoveAgent = (agentId: string) => changedCatalog(invoke<void>("
 export const acpInstall = (agentId: string) => changedCatalog(invoke<AcpAgentStatus>("acp_install", { agentId }));
 export const acpStart = (projectId: string, agentId: string) => invoke<AcpSnapshot>("acp_start", { projectId, agentId });
 export const acpReconnect = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_reconnect", { projectId, sessionId });
-export const acpPrompt = (projectId: string, sessionId: string, text: string, images: AcpImage[] = [], skillId: string | null = null) => invoke<AcpSnapshot>("acp_prompt", { projectId, sessionId, text, images, skillId });
+export const acpPrompt = (projectId: string, sessionId: string, input: AcpPromptInput) => invoke<AcpSnapshot>("acp_prompt", { projectId, sessionId, input });
 export const acpCancel = (projectId: string, sessionId: string) => invoke<void>("acp_cancel", { projectId, sessionId });
 export const acpDisconnect = (projectId: string, sessionId: string) => invoke<void>("acp_disconnect", { projectId, sessionId });
-export const acpAuthenticate = (projectId: string, sessionId: string, methodId: string) => invoke<AcpSnapshot>("acp_authenticate", { projectId, sessionId, methodId });
+export const acpAuthenticate = (projectId: string, sessionId: string, methodId: string, apiKey: string | null = null) => invoke<AcpSnapshot>("acp_authenticate", { projectId, sessionId, methodId, apiKey });
 export const acpSetModel = (projectId: string, sessionId: string, modelId: string) => invoke<AcpSnapshot>("acp_set_model", { projectId, sessionId, modelId });
 export const acpPermission = (projectId: string, sessionId: string, permissionId: string, optionId: string | null) => invoke<void>("acp_permission", { projectId, sessionId, permissionId, optionId });
 export const acpDelegatedPermission = (projectId: string, sessionId: string, parentSessionId: string, permissionId: string, optionId: string | null) => invoke<void>("acp_delegated_permission", { projectId, sessionId, parentSessionId, permissionId, optionId });
-export const acpSessions = (projectId: string) => invoke<AcpSession[]>("acp_sessions", { projectId });
+/** `before` and `beforeId` are the update time and id of the last conversation shown (a keyset cursor). */
+export const acpSessionPage = (projectId: string, options: { query?: string; before?: number; beforeId?: string; limit?: number } = {}) =>
+  invoke<AcpSessionPage>("acp_sessions", {
+    projectId, query: options.query ?? null, before: options.before ?? null, beforeId: options.beforeId ?? null, limit: options.limit ?? null,
+  });
+/** The 200 newest conversations of a project, as many as 0.4.7 kept in the panel; History pages through the rest. */
+export const acpSessions = (projectId: string) => acpSessionPage(projectId, { limit: 200 }).then((page) => page.sessions);
 export const acpSnapshot = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_snapshot", { projectId, sessionId });
 export const acpEvents = (projectId: string, sessionId: string, after = 0, limit = 300) => invoke<AcpEventPage>("acp_events", { projectId, sessionId, after, limit });
 
@@ -204,8 +376,37 @@ export const acpSessionExport = (projectId: string, sessionId: string, path: str
 /** Every stored event of a conversation, oldest first. */
 export const acpSessionEventsAll = (projectId: string, sessionId: string) => invoke<AcpEvent[]>("acp_session_events_all", { projectId, sessionId });
 
+// 0.4.8: options, usage, sign-in, steering, sessions, Hermes
+export const acpSetConfigOption = (projectId: string, sessionId: string, configId: string, value: AcpConfigValue) => invoke<AcpSnapshot>("acp_set_config_option", { projectId, sessionId, configId, value });
+export const acpSetMode = (projectId: string, sessionId: string, modeId: string) => invoke<AcpSnapshot>("acp_set_mode", { projectId, sessionId, modeId });
+export const acpSteer = (projectId: string, sessionId: string, text: string) => invoke<AcpSteerOutcome>("acp_steer", { projectId, sessionId, text });
+export const acpRefreshPlanUsage = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_refresh_plan_usage", { projectId, sessionId });
+export const acpSignInCommand = (projectId: string | null, agentId: string, sessionId: string | null, methodId: string) => invoke<AcpTerminalSignIn>("acp_sign_in_command", { projectId, agentId, sessionId, methodId });
+export const acpLogout = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_logout", { projectId, sessionId });
+export const acpElicitationRespond = (projectId: string, sessionId: string, elicitationId: string, action: "accept" | "decline" | "cancel", content: Record<string, unknown> | null = null) =>
+  invoke<void>("acp_elicitation_respond", { projectId, sessionId, elicitationId, action, content });
+export const acpSessionRename = (projectId: string, sessionId: string, title: string) => invoke<AcpSession>("acp_session_rename", { projectId, sessionId, title });
+export const acpSessionDelete = (projectId: string, sessionId: string, fromAgent: boolean) => invoke<AcpDeleteOutcome>("acp_session_delete", { projectId, sessionId, fromAgent });
+export const acpAgentSessions = (projectId: string, agentId: string, cursor: string | null = null) => invoke<AcpAgentSessionPage>("acp_agent_sessions", { projectId, agentId, cursor });
+export const acpSessionImport = (projectId: string, agentId: string, nativeSessionIds: string[]) => invoke<AcpSession[]>("acp_session_import", { projectId, agentId, nativeSessionIds });
+export const acpFork = (projectId: string, sessionId: string) => invoke<AcpSnapshot>("acp_fork", { projectId, sessionId });
+export const acpCommitTurn = (projectId: string, sessionId: string, turnId: string, message: string, paths: string[]) => invoke<AcpTurnCommit>("acp_commit_turn", { projectId, sessionId, turnId, message, paths });
+export const acpPreferences = () => invoke<AcpPreferences>("acp_preferences");
+export const acpSetPreferences = (prefs: AcpPreferences) => invoke<AcpPreferences>("acp_set_preferences", { prefs });
+export const acpAgentPreferences = (agentId: string) => invoke<AcpAgentPreferences>("acp_agent_preferences", { agentId });
+export const acpSetAgentPreferences = (agentId: string, prefs: AcpAgentPreferences) => invoke<AcpAgentPreferences>("acp_set_agent_preferences", { agentId, prefs });
+export const acpProviderChoices = (agentId: string) => invoke<AcpProviderChoice[]>("acp_provider_choices", { agentId });
+export const acpHermesSettings = (projectId: string) => invoke<AcpHermesSettings>("acp_hermes_settings", { projectId });
+export const acpSetHermesSettings = (projectId: string, settings: AcpHermesSettings) => invoke<AcpHermesStatus>("acp_set_hermes_settings", { projectId, settings });
+export const acpHermesStatus = (projectId: string) => invoke<AcpHermesStatus>("acp_hermes_status", { projectId });
+export const acpHermesSetOption = (projectId: string, option: "memory" | "toolGateway", enabled: boolean) => invoke<AcpHermesStatus>("acp_hermes_set_option", { projectId, option, enabled });
+export const acpTestRemoteHermes = (projectId: string, remote: AcpRemoteHermes) => invoke<string>("acp_test_remote_hermes", { projectId, remote });
+export const acpBufferReply = (requestId: string, content: string | null) => invoke<void>("acp_buffer_reply", { requestId, content });
+
 export const onAcpEvent = (listener: (event: AcpEvent) => void) => listen<AcpEvent>("acp:event", ({ payload }) => listener(payload));
 export const onAcpResync = (listener: () => void) => listen("acp:resync", listener);
+export const onAcpSession = (listener: (summary: AcpSessionSummary) => void) => listen<AcpSessionSummary>("acp:session", ({ payload }) => listener(payload));
+export const onAcpBufferRequest = (listener: (request: AcpBufferRequest) => void) => listen<AcpBufferRequest>("acp:buffer-request", ({ payload }) => listener(payload));
 
 export function acpError(error: unknown): string {
   if (typeof error === "string") return error;

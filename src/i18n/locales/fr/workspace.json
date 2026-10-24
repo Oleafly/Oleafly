@@ -190,6 +190,10 @@
     "terminal": "Chargement du terminal"
   },
   "terminal": {
+    "activity": "Nouvelle activité",
+    "clipboard": {
+      "blocked": "Un programme du terminal veut copier du texte."
+    },
     "closeCurrent": "Fermer l'onglet actuel",
     "closeLeft": "Fermer tout à gauche",
     "closeOthers": "Fermer les autres",
@@ -201,6 +205,19 @@
       "resize": "Le terminal n'a pas pu être redimensionné",
       "start": "Le shell n'a pas pu démarrer"
     },
+    "find": {
+      "count": "{{current}} sur {{total}}",
+      "label": "Rechercher dans le terminal",
+      "next": "Résultat suivant",
+      "none": "Aucun résultat",
+      "previous": "Résultat précédent"
+    },
+    "launch": {
+      "invalid": "Cette commande ne peut pas s'exécuter dans le terminal.",
+      "noProject": "Ouvrez un projet pour utiliser le terminal.",
+      "run": "Exécuter",
+      "title": "Exécuter cette commande dans le terminal ?"
+    },
     "limitReached": "Fermez un terminal pour en ouvrir un autre",
     "links": {
       "openFile": "{{modifier}}-clic pour ouvrir",
@@ -208,8 +225,26 @@
       "openUrlFailed": "Impossible d'ouvrir le lien."
     },
     "newTerminal": "Nouveau terminal",
+    "openInTerminal": "Ouvrir dans le terminal",
     "settings": "Paramètres du terminal",
     "starting": "Démarrage du shell du projet…",
+    "stop": {
+      "closeMany": "Fermer les terminaux",
+      "closeOne": "Fermer le terminal",
+      "closeProject": "Fermer le projet",
+      "dontAsk": "Ne plus demander",
+      "dontAskHint": "Pour le réactiver, ouvrez Paramètres, Apparence, Terminal, Demander avant de fermer un terminal occupé.",
+      "many_one": "Un programme tourne encore dans {{count}} terminal.",
+      "many_many": "Des programmes tournent encore dans {{count}} terminaux.",
+      "many_other": "Des programmes tournent encore dans {{count}} terminaux.",
+      "named": "{{process}} tourne encore dans {{title}}.",
+      "quit": "Quitter",
+      "restart": "Redémarrer",
+      "switchProject": "Changer de projet",
+      "titleMany": "Arrêter les programmes en cours ?",
+      "titleOne": "Arrêter le programme en cours ?",
+      "unnamed": "Un programme tourne encore dans {{title}}."
+    },
     "tabs": "Terminaux",
     "titleInput": "Titre du terminal"
   },

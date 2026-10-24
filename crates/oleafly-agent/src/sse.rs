@@ -1,6 +1,10 @@
 use crate::error::{AgentError, Result};
 
-pub(crate) const MAX_SSE_EVENT_BYTES: usize = 1024 * 1024;
+/// The most one event may hold. A hosted web fetch of a PDF arrives as one
+/// event holding the whole file in base64, so the limit sits well above a
+/// megabyte; it stays under the 64 MiB the stream as a whole may carry.
+pub(crate) const MAX_SSE_EVENT_BYTES: usize = 32 * 1024 * 1024;
+const _: () = assert!(MAX_SSE_EVENT_BYTES < crate::stream::MAX_STREAM_BYTES);
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SseEvent {
@@ -250,6 +254,21 @@ mod tests {
         let error = d.push("7").unwrap_err();
         assert!(matches!(error, AgentError::Decode(_)));
         assert!(!error.retryable());
+    }
+
+    #[test]
+    fn an_event_carrying_a_fetched_pdf_decodes() {
+        // A 2 MiB PDF is about 2.8 MiB of base64 in one content block event.
+        let payload = "A".repeat(3 * 1024 * 1024);
+        let mut d = SseDecoder::new();
+        assert!(d
+            .push("event: content_block_start\ndata: {\"d\":\"")
+            .unwrap()
+            .is_empty());
+        assert!(d.push(&payload).unwrap().is_empty());
+        let events = d.push("\"}\n\n").unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].data.len(), payload.len() + 8);
     }
 
     #[test]

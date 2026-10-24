@@ -19,12 +19,17 @@ const MAX_NESTED_SCAN_DEPTH: usize = 5;
 const MAX_GIT_CONFIG_BYTES: u64 = 256 * 1024;
 const RUN_COMMAND_REFUSAL: &str =
     "Commands are turned off in this folder until the user trusts it in Oleafly.";
+// 0.4.8 I: desktop apps act outside the project, so untrusted folders never
+// get them.
+const DESKTOP_APPS_REFUSAL: &str =
+    "Oleafly limits this folder until the user trusts it, so desktop apps are off here.";
 const NETWORK_TOOLS: &[&str] = &[
     "literature_search",
     "verify_citation",
-    "computer_use",
     "list_overleaf_projects",
     "import_overleaf_projects",
+    "web_search",
+    "web_fetch",
 ];
 const DOCUMENT_EXTENSIONS: &[&str] = &[
     "bbl", "bbx", "bib", "bst", "cbx", "cfg", "cls", "csv", "dat", "def", "dtx", "eps", "gif",
@@ -620,6 +625,7 @@ pub fn ai_tool_gate(tool: &str, arguments: &serde_json::Value) -> AiToolGate {
         name if NETWORK_TOOLS.contains(&name) => {
             AiToolGate::Confirm(AiConfirm::Network(name.to_string()))
         }
+        crate::cua_driver::DESKTOP_APPS_TOOL => AiToolGate::Forbid(DESKTOP_APPS_REFUSAL),
         _ => AiToolGate::Allow,
     }
 }
@@ -1622,12 +1628,21 @@ mod tests {
             AiToolGate::Confirm(AiConfirm::Network("literature_search".into()))
         );
         assert_eq!(
-            ai_tool_gate("computer_use", &json!({})),
-            AiToolGate::Confirm(AiConfirm::Network("computer_use".into()))
-        );
-        assert_eq!(
             ai_tool_gate("read_file", &json!({"path": ".envrc"})),
             AiToolGate::Allow
+        );
+    }
+
+    #[test]
+    fn restricted_folders_refuse_desktop_apps() {
+        use serde_json::json;
+        assert!(matches!(
+            ai_tool_gate("desktop_apps", &json!({"tool": "list_apps"})),
+            AiToolGate::Forbid(_)
+        ));
+        assert_eq!(
+            ai_tool_gate("desktop_apps", &json!({"tool": "click"})),
+            AiToolGate::Forbid(DESKTOP_APPS_REFUSAL)
         );
     }
 

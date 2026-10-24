@@ -52,19 +52,6 @@
   "branding": {
     "assistantMascot": "Oleafly の AI アシスタントのマスコット"
   },
-  "browser": {
-    "address": "検索または URL を入力",
-    "back": "戻る",
-    "closeTab": "タブを閉じる",
-    "copyUrl": "URL をコピー",
-    "forward": "進む",
-    "moreOptions": "その他の操作",
-    "newTab": "新しいタブ",
-    "openExternal": "外部のブラウザで開く",
-    "openTabs": "開いているタブ",
-    "reload": "再読み込み",
-    "setHomePage": "ホームページに設定"
-  },
   "changelog": {
     "installed": "現在お使いのバージョンです",
     "sectionItems_other": "{{count}} 件の変更",
@@ -462,10 +449,6 @@
       "hide": "AI アシスタントを隠す",
       "show": "AI アシスタントを表示"
     },
-    "browser": {
-      "close": "ブラウザを閉じる（{{shortcut}}）",
-      "open": "ブラウザを開く（{{shortcut}}）"
-    },
     "settings": "設定",
     "sidebar": {
       "hide": "サイドバーを隠す（{{shortcut}}）",
@@ -567,17 +550,6 @@
     "saveCopy": "コピーを保存",
     "tryAgain": "再試行",
     "savedCopy": "開いているファイルを {{folder}} に保存しました。"
-  },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "GitHub の操作",
-    "connect": "GitHub に接続…",
-    "connectedAs": "@{{login}} として接続中",
-    "copyRepositoryLink": "リポジトリのリンクをコピー",
-    "openInGithub": "GitHub で開く",
-    "pushHint": "GitHub にプッシュすると使えるようになります",
-    "settings": "GitHub の設定",
-    "tooltip": "GitHub"
   },
   "home": {
     "ariaLabel": "ホーム",
@@ -722,6 +694,14 @@
     "sourceControl": "ソース管理",
     "withShortcut": "{{label}}（{{shortcut}}）"
   },
+  "remoteMenu": {
+    "accountLabel": "{{host}} の {{login}}",
+    "actions": "リポジトリの操作",
+    "copyRepositoryLink": "リポジトリのリンクをコピー",
+    "openOnHost": "{{host}} で開く",
+    "settings": "Git ホスティングの設定",
+    "signedInAs": "{{login}} として {{host}} にサインイン中"
+  },
   "renameDialog": {
     "close": "名前変更のダイアログを閉じる",
     "collision": "「{{name}}」という名前の{{kind}}はすでに存在します。",
@@ -764,9 +744,9 @@
         "movedCount_other": "{{count}} 件のプロジェクトをごみ箱に移動しました。",
         "title": "危険な操作"
       },
-      "githubHint": "プロジェクトをバックアップしたり端末間で同期したりするには、GitHub に接続してから、ソース管理で<push>プッシュ</push> / <pull>プル</pull>を使います。<setup>GitHub を設定 →</setup>",
+      "gitHostingHint": "プロジェクトをバックアップしたり、デバイス間で同期したりするには、Git リポジトリにリンクしてから、ソース管理で <push>プッシュ</push> / <pull>プル</pull> を使います。<setup>Git ホスティングを設定 →</setup>",
       "localFirst": "Oleafly はローカルファーストです。すべてのプロジェクトはあなたのディスク上にあります:",
-      "plainFolders": "各プロジェクトはただのフォルダです。Git の履歴は任意で、GitHub にプッシュしない限り、何もこのマシンの外には出ません。",
+      "plainFolders": "各プロジェクトは普通のフォルダです。Git の履歴は任意で、Git サーバーにプッシュしない限り、何もこのマシンの外には出ません。",
       "recycleBin": {
         "clearAll": "すべて削除",
         "clearFailed": "ごみ箱を空にできませんでした。",
@@ -833,11 +813,7 @@
         "description": "あなたやグループが運用する共同編集サーバーを通じて、ほかの人とプロジェクトを編集します。設定に「共同編集」セクションを追加します。ベータ版のため、既定ではオフです。",
         "label": "リアルタイム共同編集"
       },
-      "warning": "これらの機能は実験的で、まだベータ版です。十分にテストされておらず、今後のリリースで変更、不具合、削除の可能性があります。開発中のものを試したい場合にのみ有効にしてください。",
-      "webBrowser": {
-        "description": "アプリ内のウェブブラウザ（ドックの切り替えとショートカット）を表示し、AI がコンピュータ操作で動かせるようにします。ベータ版のため既定ではオフで、オフのときはブラウザのボタンも AI のブラウザツールもありません。",
-        "label": "ウェブブラウザ"
-      }
+      "warning": "これらの機能は実験的で、まだベータ版です。十分にテストされておらず、今後のリリースで変更、不具合、削除の可能性があります。開発中のものを試したい場合にのみ有効にしてください。"
     },
     "footer": {
       "followOnX": "X でフォロー",
@@ -919,7 +895,8 @@
       "general": "一般",
       "help": "ヘルプと情報",
       "integrations": "連携",
-      "shortcuts": "キーボードショートカット"
+      "shortcuts": "キーボードショートカット",
+      "research": "研究"
     },
     "search": {
       "empty": "一致する設定はありません",
@@ -934,8 +911,9 @@
         "experimentation": "ラボ、ベータ、実験的な機能、先行機能",
         "general": "環境設定、言語、地域、スペルチェック、スペル、誤字、オフライン、ツアー、ターミナルコマンド",
         "help": "情報、バージョン、アップデート、更新履歴、変更履歴、新着情報、ドキュメント、サポート、コミュニティ、Discord、ライセンス、クラッシュレポート",
-        "integrations": "Zotero、GitHub、MCP、引用、アカウント、接続、連携",
-        "shortcuts": "キー割り当て、キーバインド、ホットキー、キー、キーボード、ショートカット"
+        "integrations": "Zotero、GitHub、GitLab、Gitea、Forgejo、Codeberg、Git ホスティング、デスクトップアプリ、Cua、MCP、引用、アカウント、接続",
+        "shortcuts": "キー割り当て、キーバインド、ホットキー、キー、キーボード、ショートカット",
+        "research": "研究 タスク 予算 通知 スリープ 実験 実行 research tasks"
       },
       "label": "設定を検索",
       "results_other": "{{count}} 件のセクションが一致します"
@@ -1015,7 +993,6 @@
     "commitCount_other": "{{count}} 件のコミット",
     "initialize": "リポジトリを初期化",
     "initialized": "{{branch}} で Git を初期化しました。",
-    "linkCopied": "GitHub のリンクをコピーしました",
     "markResolved": "解決済みにする",
     "mergeNeedsAttention": "マージの衝突を解決してください",
     "moreActions": "ソース管理のその他の操作",
@@ -1029,18 +1006,19 @@
     "openFile": "ファイルを開く",
     "openFileFor": "{{path}} を開く",
     "popStash": "最新のスタッシュを適用",
-    "publish": "GitHub に公開",
+    "publishRepository": "公開…",
+    "publishTo": "{{host}} に公開",
     "published": "{{url}} に公開しました",
     "pull": "origin からプル",
     "pullShort": "プル",
     "push": "コミットして origin にプッシュ",
     "pushShort": "プッシュ",
     "pushSkippedNoRemote": "⚠ プッシュをスキップしました - 下でリモート origin が設定されていません。",
-    "pushSkippedNoToken": "⚠ プッシュをスキップしました - GitHub のトークンがありません（設定 → GitHub）。",
     "refresh": "更新",
     "remote": "リモート",
     "remoteHint": "新しいリポジトリを作るか、既存のものをこのプロジェクトのリモートとしてリンクしてから、プッシュしてください。",
     "removeCredential": "保存された資格情報を削除",
+    "repositoryLinkCopied": "リポジトリのリンクをコピーしました",
     "restoreCommit": "このバージョンを復元",
     "restoreCommitDescription": "追跡されているプロジェクトのファイルをすべてこのバージョンで置き換え、あとから追加されたファイルを削除します。ブランチは現在のコミットのままです。",
     "restoreCommitTitle": "このバージョンを復元しますか？",
@@ -1069,7 +1047,7 @@
     "titleRequired": "コミットのタイトルは必須です。",
     "titleRequiredStatus": "コミットする前にタイトルを入力してください。",
     "unlink": "リンクを解除",
-    "unlinked": "GitHub とのリンクを解除しました。",
+    "unlinkedFrom": "{{host}} とのリンクを解除しました。",
     "unstage": "ステージから外す",
     "unstageFor": "{{path}} をステージから外す",
     "unstageAll": "すべてステージから外す",

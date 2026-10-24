@@ -128,7 +128,7 @@
     },
     "integrations": {
       "title": "Tümleştirmeler",
-      "content": "GitHub, alphaXiv, Zotero, atıf aramasını ve Oleafly'nin yerel MCP sunucusunu bağlayın."
+      "content": "Git barındırmayı (GitHub, GitLab, Codeberg ve diğerleri), alphaXiv, Zotero, atıf aramasını, ajanlar için masaüstü uygulamalarını ve Oleafly'nin yerel MCP sunucusunu bağlayın."
     },
     "shortcuts": {
       "title": "Klavye kısayolları",

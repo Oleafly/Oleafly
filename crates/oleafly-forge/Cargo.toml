@@ -1,0 +1,28 @@
+[package]
+name = "oleafly-forge"
+version = "0.1.0"
+description = "Git hosting accounts, tokens and server APIs for the Oleafly app and CLI"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.87"
+
+[features]
+# The mock HTTP server other crates use in their own tests.
+test-support = []
+
+[dependencies]
+futures-util = "0.3"
+oleafly-core = { path = "../oleafly-core" }
+oleafly-secrets = { path = "../oleafly-secrets" }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
+url = "2.5"
+
+[dev-dependencies]
+base64 = "0.23"
+rustls-native-certs = "0.8"
+tempfile = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread", "sync", "time"] }

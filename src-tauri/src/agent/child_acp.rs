@@ -91,6 +91,7 @@ impl AcpChild {
                         task_id: None,
                         owner: Some(self.owner.clone()),
                         allowed_paths: None,
+                        task_commands: None,
                     },
                     servers,
                 )
@@ -107,7 +108,9 @@ impl AcpChild {
             )
             .await?;
         if let Some(model) = &self.model_id {
-            self.runtime.set_model(&snapshot.session.id, model).await?;
+            self.runtime
+                .select_model_if_offered(&snapshot.session.id, model)
+                .await?;
         }
         Ok(snapshot.session.id)
     }

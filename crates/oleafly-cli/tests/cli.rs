@@ -27,6 +27,19 @@ fn compiler_fixture(directory: &TempDir) -> PathBuf {
 
 struct ChildGuard(Child);
 
+/// Whether this machine has a latexmk that Oleafly finds without PATH (in
+/// the TeX folders it searches since 0.4.8). Tests that need latexmk
+/// missing can't run here.
+fn latexmk_installed_outside_path() -> bool {
+    let mut search = oleafly_core::tex_distro::TexSearch::from_env();
+    search.path = None;
+    let found = oleafly_core::tex_distro::find_tex_tool(&search, "latexmk");
+    if let Some(path) = &found {
+        eprintln!("skipped: {} is found without PATH", path.display());
+    }
+    found.is_some()
+}
+
 impl Drop for ChildGuard {
     fn drop(&mut self) {
         let _ = self.0.kill();
@@ -161,6 +174,9 @@ fn uninitialized_directories_fail_with_a_structured_error() {
 
 #[test]
 fn doctor_and_build_report_a_missing_compiler_consistently() {
+    if latexmk_installed_outside_path() {
+        return;
+    }
     let directory = TempDir::new().unwrap();
     assert!(
         run(&["init", "--engine", "latexmk"], Some(directory.path()))
@@ -186,6 +202,9 @@ fn doctor_and_build_report_a_missing_compiler_consistently() {
 
 #[test]
 fn doctor_explains_when_a_project_local_tool_override_is_refused() {
+    if latexmk_installed_outside_path() {
+        return;
+    }
     let directory = TempDir::new().unwrap();
     assert!(
         run(&["init", "--engine", "latexmk"], Some(directory.path()))
@@ -327,7 +346,7 @@ fn build_notes_each_flag_the_engine_ignores_and_keeps_the_exit_code() {
         );
         let stderr = String::from_utf8_lossy(&flagged.stderr);
         for flag in BUILD_FLAGS {
-            let note = format!("note: {flag} is ignored for {engine} projects");
+            let note = format!("warning: {flag} is ignored for {engine} projects");
             assert_eq!(
                 stderr.matches(&note).count(),
                 usize::from(ignored.contains(&flag)),
@@ -363,6 +382,9 @@ fn json_builds_keep_stderr_empty_when_a_flag_is_ignored() {
 
 #[test]
 fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
+    if latexmk_installed_outside_path() {
+        return;
+    }
     let project = TempDir::new().unwrap();
     let tools = TempDir::new().unwrap();
     assert!(run(&["init", "--engine", "latexmk"], Some(project.path()))
@@ -420,6 +442,123 @@ fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     assert_eq!(finished["build"]["engine"], "latexmk");
 }
 
+/// A running `oleafly --json watch ...` and the lines of its stdout.
+fn spawn_watch(
+    project: &std::path::Path,
+    compiler: &std::path::Path,
+    extra: &[&str],
+) -> (ChildGuard, Receiver<String>) {
+    let child = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["--json", "watch"])
+        .args(extra)
+        .current_dir(project)
+        .env("PATH", "")
+        .env("OLEAFLY_TECTONIC", compiler)
+        .env("OLEAFLY_WATCH_POLL", "1")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut child = ChildGuard(child);
+    let stdout = child.0.stdout.take().unwrap();
+    let (sender, receiver) = mpsc::channel();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            if sender.send(line).is_err() {
+                break;
+            }
+        }
+    });
+    (child, receiver)
+}
+
+#[test]
+fn watch_with_its_output_inside_the_project_builds_once() {
+    let project = TempDir::new().unwrap();
+    let tools = TempDir::new().unwrap();
+    assert!(run(&["init"], Some(project.path())).status.success());
+    let compiler = compiler_fixture(&tools);
+    let (_child, receiver) = spawn_watch(project.path(), &compiler, &["-o", "paper.pdf"]);
+
+    let watching = wait_for_json(&receiver, Duration::from_secs(10), |value| {
+        value["event"] == "watching"
+    });
+    assert_eq!(watching["warnings"], serde_json::json!([]));
+    let finished = wait_for_json(&receiver, Duration::from_secs(20), |value| {
+        value["event"] == "build_finished"
+    });
+    assert_eq!(finished["ok"], true);
+    assert_eq!(finished["warnings"], serde_json::json!([]));
+    assert!(project.path().join("paper.pdf").is_file());
+
+    // The copy it made is the project's newest file, and it must not count as
+    // an edit: a rebuild loop would have started again well within this.
+    let next = receiver.recv_timeout(Duration::from_secs(3));
+    assert!(
+        next.is_err(),
+        "another event after the only build: {next:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn watch_and_build_stop_cleanly_on_sigterm_and_sighup() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    for signal in [libc::SIGTERM, libc::SIGHUP] {
+        // `watch` ends as it does for Ctrl+C: exit 0, not killed by the signal.
+        let project = TempDir::new().unwrap();
+        assert!(run(&["init"], Some(project.path())).status.success());
+        let (mut watch, receiver) = spawn_watch(project.path(), &compiler, &[]);
+        wait_for_json(&receiver, Duration::from_secs(20), |value| {
+            value["event"] == "build_finished"
+        });
+        std::thread::sleep(Duration::from_millis(300));
+        unsafe { libc::kill(watch.0.id() as i32, signal) };
+        assert_eq!(
+            wait_with_deadline(&mut watch.0).code(),
+            Some(0),
+            "watch {signal}"
+        );
+
+        // `build` is interrupted: exit 130 and the usual error object.
+        let project = TempDir::new().unwrap();
+        assert!(run(&["init"], Some(project.path())).status.success());
+        let mut build = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+            .args(["--events", "build"])
+            .current_dir(project.path())
+            .env("PATH", "")
+            .env("OLEAFLY_TECTONIC", &compiler)
+            .env("FIXTURE_SLEEP_MS", "60000")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut lines = BufReader::new(build.stdout.take().unwrap()).lines();
+        let started = lines.next().unwrap().unwrap();
+        assert!(started.contains("build_started"), "{started}");
+        std::thread::sleep(Duration::from_millis(500));
+        unsafe { libc::kill(build.id() as i32, signal) };
+        let rest: Vec<String> = lines.map_while(Result::ok).collect();
+        let status = wait_with_deadline(&mut build);
+        assert_eq!(status.code(), Some(130), "build {signal}: {rest:?}");
+        let result: Value = serde_json::from_str(rest.last().unwrap()).unwrap();
+        assert_eq!(result["error"]["code"], "interrupted");
+    }
+}
+
+#[cfg(unix)]
+fn wait_with_deadline(child: &mut Child) -> std::process::ExitStatus {
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            return status;
+        }
+        assert!(Instant::now() < deadline, "the process didn't stop");
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
 #[test]
 fn completions_and_the_manual_are_generated_from_the_parser() {
     for shell in ["bash", "zsh", "fish", "powershell", "elvish"] {
@@ -450,14 +589,16 @@ fn completions_and_the_manual_are_generated_from_the_parser() {
     assert!(page.contains("oleafly"), "the manual must name the command");
 }
 
+// 0.4.8: the --json contract is versioned (`schema_version`), so the help
+// points to it instead of calling the interface unstable before 1.0.
 #[test]
-fn help_states_that_the_interface_is_unstable_before_1_0() {
+fn help_points_to_the_json_contract_and_the_exit_codes() {
     let output = run(&["--help"], None);
     assert!(output.status.success());
     let help = String::from_utf8(output.stdout).unwrap();
     assert!(
-        help.contains("0.x") && help.contains("1.0.0"),
-        "--help must say the interface is unstable before 1.0: {help}"
+        help.contains("oleafly help json") && help.contains("oleafly help exit-codes"),
+        "--help must point to the JSON contract and the exit codes: {help}"
     );
 }
 
@@ -540,6 +681,7 @@ fn build_without_a_project_json_uses_the_detected_main_document() {
     assert!(value["build"]["log"]
         .as_str()
         .is_some_and(|log| mentions(log, "paper/main.tex")));
+    assert_eq!(value["warnings"][0]["code"], "build.detected_main");
     assert!(!project.path().join("project.json").exists());
 
     let human = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
@@ -551,7 +693,7 @@ fn build_without_a_project_json_uses_the_detected_main_document() {
         .unwrap();
     assert!(human.status.success());
     assert!(String::from_utf8_lossy(&human.stderr)
-        .contains("No Oleafly project.json here, so building paper/main.tex"));
+        .contains("No Oleafly project.json here, so Oleafly picked paper/main.tex"));
 
     let ambiguous = TempDir::new().unwrap();
     write_tree(
@@ -791,20 +933,17 @@ fn clean_and_doctor_accept_a_folder_that_build_detected() {
 
 #[cfg(unix)]
 fn recording_app(directory: &std::path::Path) -> (PathBuf, PathBuf) {
-    use std::os::unix::fs::PermissionsExt;
     let app = directory.join("recording app");
     let record = directory.join("launched.txt");
-    std::fs::write(
+    write_executable(
         &app,
-        format!(
+        &format!(
             "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}.partial'\nmv '{}.partial' '{}'\n",
             record.display(),
             record.display(),
             record.display()
         ),
-    )
-    .unwrap();
-    std::fs::set_permissions(&app, std::fs::Permissions::from_mode(0o755)).unwrap();
+    );
     (app, record)
 }
 
@@ -952,30 +1091,77 @@ fn open_refuses_missing_folders_files_and_a_missing_app() {
     assert!(stderr.contains("that's this command"), "{stderr}");
 }
 
-/// Runs a freshly written fake Typst once, untimed. macOS checks every new
-/// executable on its first launch, which under load (or with a security tool
-/// scanning new files) outlasts the version probe's timeout, so the probe
-/// would report no version. The call log that run leaves is cleared.
-fn warm_typst(binary: &std::path::Path) {
-    let _ = std::process::Command::new(binary).arg("--version").output();
-    let _ = std::fs::remove_file(binary.with_file_name("fixture-typst-calls"));
-}
-
 fn typst_fixture(directory: &std::path::Path, version: &str) -> PathBuf {
     std::fs::create_dir_all(directory).unwrap();
     let binary = support::rust_fixture(directory, "typst.rs", "typst", None);
     std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
-    warm_typst(&binary);
+    warm_up_typst(&binary);
     binary
 }
 
 fn place_typst(fixture: &std::path::Path, directory: &std::path::Path, version: &str) -> PathBuf {
     std::fs::create_dir_all(directory).unwrap();
     let binary = directory.join(oleafly_cli::executable_name("typst"));
-    std::fs::copy(fixture, &binary).unwrap();
+    copy_executable(fixture, &binary);
     std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
-    warm_typst(&binary);
+    warm_up_typst(&binary);
     binary.canonicalize().unwrap()
+}
+
+/// Copies an executable without this test process ever holding it open for
+/// writing. On Linux, exec fails with "Text file busy" while any process has
+/// the file open for writing, and a sibling test that forks during a
+/// `std::fs::copy` keeps the copy's descriptor until its own exec. Here `cp`
+/// holds the only writer, and it has exited before this returns.
+#[cfg(unix)]
+fn copy_executable(from: &std::path::Path, to: &std::path::Path) {
+    let status = Command::new("cp").arg(from).arg(to).status().unwrap();
+    assert!(
+        status.success(),
+        "cp {} {}: {status}",
+        from.display(),
+        to.display()
+    );
+}
+
+/// Windows children inherit only handles marked inheritable, and Rust's files
+/// are not, so a copy that has returned has no writer left.
+#[cfg(not(unix))]
+fn copy_executable(from: &std::path::Path, to: &std::path::Path) {
+    std::fs::copy(from, to).unwrap();
+}
+
+/// Writes a script and makes it executable through `sh`, so this process never
+/// holds it open for writing either (see `copy_executable`).
+#[cfg(unix)]
+fn write_executable(path: &std::path::Path, contents: &str) {
+    use std::io::Write as _;
+    let mut writer = Command::new("sh")
+        .args(["-c", "cat > \"$1\" && chmod 700 \"$1\"", "sh"])
+        .arg(path)
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    writer
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(contents.as_bytes())
+        .unwrap();
+    assert!(writer.wait().unwrap().success());
+}
+
+/// The first start of a new binary can be slow on a busy machine (macOS
+/// checks it, and so can a security tool scanning new files), longer than the
+/// version probe waits. Start it once here, then forget the call so the tests
+/// count only their own.
+fn warm_up_typst(binary: &std::path::Path) {
+    let output = std::process::Command::new(binary)
+        .arg("--version")
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    std::fs::remove_file(binary.with_file_name("fixture-typst-calls")).unwrap();
 }
 
 fn install_typst(
@@ -1551,7 +1737,7 @@ fn a_variant_for_another_engine_is_noted_and_ignored() {
         &["build", "--variant", "review"],
     );
     assert!(output.status.success(), "{}", stderr(&output));
-    assert!(stderr(&output).contains("note: --variant is ignored for tectonic projects"));
+    assert!(stderr(&output).contains("warning: --variant is ignored for tectonic projects"));
 }
 
 #[test]
@@ -1605,15 +1791,15 @@ fn an_older_typst_gets_only_the_flags_it_knows_and_one_note_per_setting() {
     assert!(human.status.success(), "{}", stderr(&human));
     let notes: Vec<String> = stderr(&human)
         .lines()
-        .filter(|line| line.starts_with("note: "))
+        .filter(|line| line.starts_with("warning: "))
         .map(str::to_string)
         .collect();
     assert_eq!(
         notes,
         [
-            "note: Typst 0.11.1 does not support --ignore-system-fonts, so typst.system_fonts is not applied",
-            "note: Typst 0.11.1 does not support --ignore-system-fonts or --creation-timestamp, so typst.reproducible is not applied",
-            "note: Typst 0.11.1 does not support --package-path, so typst.vendor_packages is not applied",
+            "warning: Typst 0.11.1 does not support --ignore-system-fonts, so typst.system_fonts is not applied",
+            "warning: Typst 0.11.1 does not support --ignore-system-fonts or --creation-timestamp, so typst.reproducible is not applied",
+            "warning: Typst 0.11.1 does not support --package-path, so typst.vendor_packages is not applied",
         ]
     );
     let call = last_compile(&old);
@@ -1659,7 +1845,11 @@ fn an_older_typst_gets_only_the_flags_it_knows_and_one_note_per_setting() {
     set_typst(project.path(), settings("0.15.1"));
     let current = oleafly_typst(project.path(), data.path(), &[], None, &["build"]);
     assert!(current.status.success(), "{}", stderr(&current));
-    assert!(!stderr(&current).contains("note: "), "{}", stderr(&current));
+    assert!(
+        !stderr(&current).contains("warning: "),
+        "{}",
+        stderr(&current)
+    );
     let call = last_compile(&new);
     for expected in [
         "--ignore-system-fonts".to_string(),

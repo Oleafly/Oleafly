@@ -190,6 +190,10 @@
     "terminal": "Se încarcă terminalul"
   },
   "terminal": {
+    "activity": "Activitate nouă",
+    "clipboard": {
+      "blocked": "Un program din terminal vrea să copieze text."
+    },
     "closeCurrent": "Închide-l pe cel curent",
     "closeLeft": "Închide-le pe toate din stânga",
     "closeOthers": "Închide-le pe celelalte",
@@ -201,6 +205,19 @@
       "resize": "Terminalul nu a putut fi redimensionat",
       "start": "Procesul shell nu a putut porni"
     },
+    "find": {
+      "count": "{{current}} din {{total}}",
+      "label": "Caută în terminal",
+      "next": "Potrivirea următoare",
+      "none": "Nicio potrivire",
+      "previous": "Potrivirea anterioară"
+    },
+    "launch": {
+      "invalid": "Această comandă nu poate rula în terminal.",
+      "noProject": "Deschide un proiect ca să folosești terminalul.",
+      "run": "Rulează",
+      "title": "Rulezi această comandă în terminal?"
+    },
     "limitReached": "Închide un terminal ca să poți deschide altul",
     "links": {
       "openFile": "{{modifier}}-clic pentru a deschide",
@@ -208,8 +225,26 @@
       "openUrlFailed": "Linkul nu a putut fi deschis."
     },
     "newTerminal": "Terminal nou",
+    "openInTerminal": "Deschide în terminal",
     "settings": "Setările terminalului",
     "starting": "Pornește shell-ul proiectului…",
+    "stop": {
+      "closeMany": "Închide terminalele",
+      "closeOne": "Închide terminalul",
+      "closeProject": "Închide proiectul",
+      "dontAsk": "Nu mai întreba",
+      "dontAskHint": "Ca să o activezi din nou, mergi la Setări, Aspect, Terminal, Întreabă înainte să închizi un terminal ocupat.",
+      "many_one": "Un program încă rulează în {{count}} terminal.",
+      "many_few": "Încă rulează programe în {{count}} terminale.",
+      "many_other": "Încă rulează programe în {{count}} de terminale.",
+      "named": "{{process}} încă rulează în {{title}}.",
+      "quit": "Ieși",
+      "restart": "Repornește",
+      "switchProject": "Schimbă proiectul",
+      "titleMany": "Oprești programele care rulează?",
+      "titleOne": "Oprești programul care rulează?",
+      "unnamed": "Un program încă rulează în {{title}}."
+    },
     "tabs": "Terminale",
     "titleInput": "Titlul terminalului"
   },

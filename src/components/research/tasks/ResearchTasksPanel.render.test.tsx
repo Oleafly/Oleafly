@@ -6,12 +6,17 @@ import type { ResearchTask, TaskTranscriptEvent } from "@/lib/research-tasks";
 
 const chipRenders = vi.hoisted(() => new Map<string, number>());
 
-vi.mock("@/lib/research-tasks", () => ({
+vi.mock("@/lib/research-tasks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/research-tasks")>()),
   acceptResearchTaskResult: vi.fn(), applyResearchTask: vi.fn(), cancelResearchTask: vi.fn(),
   createResearchTask: vi.fn(), deleteResearchTask: vi.fn(), editResearchTask: vi.fn(), listResearchTasks: vi.fn(),
   listenForResearchTaskChanges: vi.fn(), listenForResearchTaskEvents: vi.fn(),
   loadResearchTaskEvents: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
+  // 0.4.8: the store also listens for live text and tells the backend which task it shows.
+  listenForResearchTaskDeltas: vi.fn(async () => () => {}),
+  watchResearchTask: vi.fn(async () => {}),
+  listResearchTaskApprovals: vi.fn(async () => []),
 }));
 
 vi.mock("@/store/files", () => ({
@@ -41,6 +46,7 @@ vi.mock("./TaskChips", async (importOriginal) => {
 import * as api from "@/lib/research-tasks";
 import { useResearchTasksStore } from "@/store/research-tasks";
 import { ResearchTasksPanel } from "./ResearchTasksPanel";
+import { taskFieldsSince047 } from "./tests/task-fixtures";
 
 function task(index: number): ResearchTask {
   return {
@@ -52,6 +58,7 @@ function task(index: number): ResearchTask {
     sourceRevision: "snapshot:base", isolation: null, error: null, result: null,
     review: null, startRequested: false, cancelRequested: false,
     createdAt: 1_000 - index, updatedAt: 1, startedAt: 1, finishedAt: null,
+    ...taskFieldsSince047(),
   };
 }
 

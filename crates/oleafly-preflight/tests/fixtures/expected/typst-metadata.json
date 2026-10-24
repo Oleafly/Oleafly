@@ -1,0 +1,242 @@
+{
+  "arrow-show-rule": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.no-author.detail"
+      },
+      "id": "no-author",
+      "lens": "submission",
+      "severity": "info",
+      "title": {
+        "key": "rules.no-author.title"
+      }
+    }
+  ],
+  "document-blank-values": [
+    {
+      "detail": {
+        "key": "rules.no-title.detailTypst"
+      },
+      "id": "no-title",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.1",
+          "label": "Document title",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.1-9"
+        },
+        {
+          "clause": "8.11.1",
+          "label": "Metadata",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "06-003",
+          "label": "Metadata",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "2.4.2",
+          "label": "Page Titled",
+          "standard": "WCAG-2.2",
+          "technique": "PDF18",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF18"
+        }
+      ],
+      "title": {
+        "key": "rules.no-title.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.no-author.detail"
+      },
+      "id": "no-author",
+      "lens": "submission",
+      "severity": "info",
+      "title": {
+        "key": "rules.no-author.title"
+      }
+    }
+  ],
+  "document-call-without-set": [
+    {
+      "detail": {
+        "key": "rules.no-title.detailTypst"
+      },
+      "id": "no-title",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.1",
+          "label": "Document title",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.1-9"
+        },
+        {
+          "clause": "8.11.1",
+          "label": "Metadata",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "06-003",
+          "label": "Metadata",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "2.4.2",
+          "label": "Page Titled",
+          "standard": "WCAG-2.2",
+          "technique": "PDF18",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF18"
+        }
+      ],
+      "title": {
+        "key": "rules.no-title.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.no-author.detail"
+      },
+      "id": "no-author",
+      "lens": "submission",
+      "severity": "info",
+      "title": {
+        "key": "rules.no-author.title"
+      }
+    }
+  ],
+  "document-set-rule": [],
+  "imported-function-call": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.no-author.detail"
+      },
+      "id": "no-author",
+      "lens": "submission",
+      "severity": "info",
+      "title": {
+        "key": "rules.no-author.title"
+      }
+    }
+  ],
+  "nothing": [
+    {
+      "detail": {
+        "key": "rules.no-title.detailTypst"
+      },
+      "id": "no-title",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.1",
+          "label": "Document title",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.1-9"
+        },
+        {
+          "clause": "8.11.1",
+          "label": "Metadata",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "06-003",
+          "label": "Metadata",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "2.4.2",
+          "label": "Page Titled",
+          "standard": "WCAG-2.2",
+          "technique": "PDF18",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF18"
+        }
+      ],
+      "title": {
+        "key": "rules.no-title.title"
+      }
+    },
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.no-author.detail"
+      },
+      "id": "no-author",
+      "lens": "submission",
+      "severity": "info",
+      "title": {
+        "key": "rules.no-author.title"
+      }
+    }
+  ],
+  "nothing-anonymous": [
+    {
+      "detail": {
+        "key": "rules.no-title.detailTypst"
+      },
+      "id": "no-title",
+      "lens": "a11y",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.1",
+          "label": "Document title",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.1-9"
+        },
+        {
+          "clause": "8.11.1",
+          "label": "Metadata",
+          "standard": "PDF/UA-2",
+          "url": "https://pdfa.org/iso-14289-2-pdf-ua-2-the-gold-standard-for-accessibility-in-pdf-2-0-has-arrived/"
+        },
+        {
+          "clause": "06-003",
+          "label": "Metadata",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "2.4.2",
+          "label": "Page Titled",
+          "standard": "WCAG-2.2",
+          "technique": "PDF18",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF18"
+        }
+      ],
+      "title": {
+        "key": "rules.no-title.title"
+      }
+    }
+  ],
+  "spread-over-files": [],
+  "template-named-variants": [],
+  "template-show-rule": []
+}

@@ -5,7 +5,7 @@ license: MIT
 compatibility: Figure preview works in LaTeX projects on Tectonic or latexmk and in Typst projects. Markdown projects have no figure preview. Matplotlib work needs Python 3.11 or newer on PATH and runs through approval-gated shell commands.
 allowed-tools: read_file write_file create_file replace_in_file list_files search_project project_map compile get_log get_pdf_text verify_pdf_pages run_command preview_figure insert_figure load_image update_todos load_skill read_skill_file
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   skill-author: Oleafly
   oleafly:
     tier: native
@@ -198,3 +198,14 @@ Captions carry the claim. First sentence says what the figure shows, the rest sa
 - [ ] The caption and label are present, in the right order
 - [ ] The checklist above was worked through, and anything skipped was named
 - [ ] The source that produces it (TikZ or Typst code, or a Python script) is in the project
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `get_log` | `oleafly log --diagnostics --json` |
+| `project_map` | `oleafly context --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |

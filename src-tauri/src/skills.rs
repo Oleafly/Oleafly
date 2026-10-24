@@ -131,6 +131,9 @@ pub struct SkillRecord {
     pub enabled: bool,
     pub removable: bool,
     pub validation: SkillValidation,
+    /// The user's own copy uses the id of a built-in skill, so the built-in
+    /// version (and its updates) never installs.
+    pub shadows_bundled: bool,
 }
 
 impl SkillRecord {
@@ -900,6 +903,7 @@ fn invalid_record(
         project_disabled: false,
         enabled: false,
         removable: source != SkillSource::Bundled,
+        shadows_bundled: false,
         validation: SkillValidation::Invalid {
             code: error.code,
             message: error.message,
@@ -920,21 +924,28 @@ fn inspect_real_skill(directory: &Path, id: &str, context: &RecordContext<'_>) -
     let repairable = source == SkillSource::Bundled
         && context.pack_ids.contains(id)
         && context.pack_version.is_some();
+    let shadows_bundled = source == SkillSource::User && context.pack_ids.contains(id);
     let markdown = match read_skill_markdown(directory) {
         Ok(markdown) => markdown,
-        Err(error) => return invalid_record(id, Some(directory), source, repairable, None, error),
+        Err(error) => {
+            let mut record = invalid_record(id, Some(directory), source, repairable, None, error);
+            record.shadows_bundled = shadows_bundled;
+            return record;
+        }
     };
     let document = match parse_skill_markdown(&markdown) {
         Ok(document) => document,
         Err(error) => {
-            return invalid_record(
+            let mut record = invalid_record(
                 id,
                 Some(directory),
                 source,
                 repairable,
                 Some(&markdown),
                 error,
-            )
+            );
+            record.shadows_bundled = shadows_bundled;
+            return record;
         }
     };
     let pack_version = manifest
@@ -985,6 +996,7 @@ fn inspect_real_skill(directory: &Path, id: &str, context: &RecordContext<'_>) -
         enabled: context.state.enabled.contains(id),
         removable: source != SkillSource::Bundled,
         validation: SkillValidation::Valid,
+        shadows_bundled,
     }
 }
 
@@ -1825,6 +1837,77 @@ fn seed_in(skills: &Path, pack_root: Option<&Path>) {
     let _ = crate::skills_pack::seed_from_pack_in(skills, pack_root, &manifest);
 }
 
+/// The backup folder for a replaced skill: `<id>-YYYYMMDD-HHMMSS` in UTC
+/// (no colons, so it is a valid name on every system).
+pub fn backup_dir_name(id: &str, now: std::time::SystemTime) -> String {
+    let seconds = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs() as i64)
+        .unwrap_or(0);
+    let (year, month, day) = crate::skills_catalog::civil_from_days(seconds.div_euclid(86_400));
+    let rest = seconds.rem_euclid(86_400);
+    format!(
+        "{id}-{year:04}{month:02}{day:02}-{:02}{:02}{:02}",
+        rest / 3_600,
+        rest % 3_600 / 60,
+        rest % 60
+    )
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillReplaceResult {
+    pub record: SkillRecord,
+    /// Where the user's copy went.
+    pub backup_path: String,
+}
+
+/// Moves the user's own copy of a built-in skill to `skills-backup/` and
+/// installs the built-in version in its place. Nothing is deleted.
+pub fn replace_with_builtin(
+    root: &Path,
+    pack_root: &Path,
+    id: &str,
+    now: std::time::SystemTime,
+) -> Result<SkillReplaceResult, String> {
+    let _guard = SKILLS_WRITE_LOCK
+        .lock()
+        .map_err(|_| "Skill storage is busy.".to_string())?;
+    validate_skill_id(id)?;
+    let skills = managed_skills_root(root)?;
+    let manifest = crate::skills_pack::read_pack_manifest(pack_root)?
+        .ok_or_else(|| "The built-in skill pack is not available.".to_string())?;
+    if manifest.find(id).is_none() {
+        return Err(format!("\"{id}\" is not part of the built-in skill pack."));
+    }
+    let directory = secure_skill_directory(&skills, id)?;
+    if source_for(&directory, read_managed_manifest(&directory).as_ref()) != SkillSource::User {
+        return Err("Only your own copy of a skill can be replaced.".into());
+    }
+    let backups = root.join("skills-backup");
+    std::fs::create_dir_all(&backups)
+        .map_err(|error| format!("The skill backup folder could not be created: {error}"))?;
+    let name = backup_dir_name(id, now);
+    let mut backup = backups.join(&name);
+    let mut attempt = 1;
+    while backup.exists() {
+        attempt += 1;
+        backup = backups.join(format!("{name}-{attempt}"));
+    }
+    if std::fs::rename(&directory, &backup).is_err() {
+        let mut budget = CopyBudget::default();
+        copy_tree(&directory, &directory, &backup, 0, &mut budget)?;
+        std::fs::remove_dir_all(&directory).map_err(|error| {
+            format!("Your copy was backed up but could not be removed: {error}")
+        })?;
+    }
+    crate::skills_pack::force_update_from_pack(&skills, pack_root, id)?;
+    Ok(SkillReplaceResult {
+        record: record_for(root, &skills, id)?,
+        backup_path: backup.to_string_lossy().into_owned(),
+    })
+}
+
 pub fn update_builtin(root: &Path, pack_root: &Path, id: &str) -> Result<SkillRecord, String> {
     let _guard = SKILLS_WRITE_LOCK
         .lock()
@@ -2140,6 +2223,26 @@ pub async fn skills_remove(id: String) -> Result<(), String> {
 pub async fn skills_read_file(id: String, path: String) -> Result<SkillFileContent, String> {
     off_ui_thread("read the skill file", move || {
         read_skill_file(&crate::paths::oleafly_root()?, &id, &path)
+    })
+    .await
+}
+
+/// Replaces the user's copy of a built-in skill with the built-in version,
+/// keeping the copy in a backup folder.
+#[tauri::command]
+pub async fn skills_replace_with_builtin(
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<SkillReplaceResult, String> {
+    let pack_root = app_pack_root(&app)
+        .ok_or_else(|| "The built-in skill pack is not available.".to_string())?;
+    off_ui_thread("replace the skill", move || {
+        replace_with_builtin(
+            &crate::paths::oleafly_root()?,
+            &pack_root,
+            &id,
+            std::time::SystemTime::now(),
+        )
     })
     .await
 }
@@ -2712,6 +2815,63 @@ mod tests {
         let manifest = read_managed_manifest(&directory).unwrap();
         assert_eq!(manifest.pack.as_deref(), Some("research-core"));
         assert_eq!(manifest.tree_sha256, tree_sha256(&directory).unwrap());
+    }
+
+    #[test]
+    fn a_user_skill_with_a_bundled_id_is_flagged() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.10.19", &["openresearch", "paper-lookup"]);
+        write_skill(
+            root.path(),
+            "openresearch",
+            &valid_skill("openresearch", "My own notes on orx.", "My steps."),
+        );
+        seed_from_pack(root.path(), pack.path()).unwrap();
+
+        let records = list_with(root.path(), Some(pack.path()), None).unwrap();
+        let mine = record(&records, "openresearch");
+        assert_eq!(mine.source, SkillSource::User);
+        assert!(mine.shadows_bundled);
+        assert!(!record(&records, "paper-lookup").shadows_bundled);
+    }
+
+    #[test]
+    fn replacing_a_shadowing_skill_keeps_a_backup() {
+        let root = tempfile::tempdir().unwrap();
+        let pack = Pack::new("2026.10.19", &["openresearch"]);
+        write_skill(
+            root.path(),
+            "openresearch",
+            &valid_skill("openresearch", "My own notes on orx.", "My steps."),
+        );
+        let now = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_792_333_800);
+
+        let replaced = replace_with_builtin(root.path(), pack.path(), "openresearch", now).unwrap();
+
+        assert_eq!(replaced.record.source, SkillSource::Bundled);
+        assert_eq!(replaced.record.instructions, "Follow the steps.");
+        let backup = PathBuf::from(&replaced.backup_path);
+        assert_eq!(
+            backup.file_name().unwrap().to_string_lossy(),
+            backup_dir_name("openresearch", now)
+        );
+        assert!(std::fs::read_to_string(backup.join("SKILL.md"))
+            .unwrap()
+            .contains("My steps."));
+        assert!(
+            replace_with_builtin(root.path(), pack.path(), "openresearch", now)
+                .unwrap_err()
+                .contains("Only your own copy")
+        );
+    }
+
+    #[test]
+    fn backup_names_have_no_colons() {
+        let now = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_792_333_800);
+        assert_eq!(
+            backup_dir_name("openresearch", now),
+            "openresearch-20261018-143000"
+        );
     }
 
     #[test]

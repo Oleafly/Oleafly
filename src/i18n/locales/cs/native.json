@@ -19,7 +19,6 @@
     "selectAll": "Vybrat vše",
     "view": "Zobrazit",
     "toggleTerminal": "Přepnout terminál",
-    "toggleBrowser": "Přepnout prohlížeč",
     "file": "Soubor",
     "openFolder": "Otevřít složku…",
     "openRecent": "Otevřít nedávné",
@@ -28,15 +27,7 @@
     "minimize": "Minimalizovat",
     "fullscreen": "Přepnout celou obrazovku",
     "bringAllToFront": "Přenést vše do popředí",
-    "newTab": "Nový panel",
-    "openLocation": "Otevřít adresu…",
-    "closeTab": "Zavřít panel",
-    "reloadPage": "Znovu načíst stránku",
     "zenMode": "Režim Zen"
-  },
-  "window": {
-    "browser": "Prohlížeč Oleafly",
-    "browserTitled": "{{title}} - Prohlížeč Oleafly"
   },
   "dialog": {
     "cancel": "Zrušit",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Potvrdit import cookies",
-      "messageHost": "Importovat cookies pro {{hostname}} z profilu „{{profile}}“ prohlížeče {{browser}} do vestavěného prohlížeče Oleafly? Importované cookies vás mohou přihlásit na weby.",
-      "messageAll": "Importovat všechny cookies z profilu „{{profile}}“ prohlížeče {{browser}} do vestavěného prohlížeče Oleafly? Importované cookies vás mohou přihlásit na weby.",
-      "confirm": "Importovat cookies"
+      "copyHost": "Zkopírovat do Oleafly soubory cookie pro {{hostname}} z profilu „{{profile}}“ prohlížeče {{browser}}? Mohou vás přihlásit k {{hostname}}.",
+      "copyAll": "Zkopírovat do Oleafly všechny soubory cookie z profilu „{{profile}}“ prohlížeče {{browser}}? Mohou vás přihlašovat k webům.",
+      "copyConfirm": "Zkopírovat soubory cookie"
     },
     "mcpApprove": {
       "title": "Schválit nástroj MCP",
@@ -103,6 +94,51 @@
       "confirm": "Použít program",
       "pickTitle": "Vyberte program pro {{name}}",
       "filter": "Programy"
+    },
+    "desktopApps": {
+      "title": "Aplikace v počítači",
+      "action": "{{agent}} chce {{action}}.",
+      "steps": "{{agent}} chce v aplikaci v počítači provést tyto kroky:",
+      "moreSteps": "Nezobrazené kroky: {{count}}",
+      "moreItems": "Nezobrazené položky: {{count}}",
+      "cut": "(+{{count}} znaků nezobrazeno)",
+      "signedIn": "Tato akce probíhá ve vašem vlastním přihlášeném prohlížeči.",
+      "signedInOn": "Tato akce probíhá ve vašem vlastním přihlášeném prohlížeči, na adrese {{origin}}.",
+      "text": "Text: „{{text}}“",
+      "address": "Adresa: {{url}}",
+      "allowOnce": "Povolit jednou",
+      "allowChat": "Povolit pro tento chat",
+      "allowSession": "Povolit pro tuto relaci",
+      "allowTask": "Povolit pro tuto úlohu",
+      "deny": "Nepovolit",
+      "actions": {
+        "launchApp": "otevřít aplikaci",
+        "click": "kliknout v aplikaci",
+        "doubleClick": "dvakrát kliknout v aplikaci",
+        "rightClick": "kliknout pravým tlačítkem v aplikaci",
+        "typeText": "psát v aplikaci",
+        "pressKey": "stisknout klávesu v aplikaci",
+        "hotkey": "stisknout klávesovou zkratku v aplikaci",
+        "scroll": "posouvat v aplikaci",
+        "setValue": "změnit pole v aplikaci",
+        "browserPrepare": "otevřít prohlížeč pro web",
+        "browserNavigate": "přejít na webovou stránku",
+        "browserClick": "kliknout na webové stránce",
+        "browserType": "psát na webové stránce",
+        "browserSelect": "vybrat možnost na webové stránce",
+        "runScript": "spustit skript Cua"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Povolit ovládání počítače?",
+      "message": "Agenti budou moci používat následující a před každou akcí se budou dál ptát:",
+      "confirm": "Povolit",
+      "enabled": "Aplikace v počítači",
+      "app": "Aplikace: {{name}} ({{identity}})",
+      "more": "A ještě {{count}}",
+      "site": "Web: {{origin}}",
+      "signedIn": "Váš přihlášený prohlížeč na {{origin}}",
+      "scripted": "Skripty Cua"
     }
   },
   "errors": {
@@ -128,5 +164,41 @@
   "cloud": {
     "connectedPage": "Jste připojeni. Tuto kartu můžete zavřít a vrátit se do Oleafly.",
     "failedPage": "Přihlášení se nedokončilo. Tuto kartu můžete zavřít a vrátit se do Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Úloha je připravená ke kontrole",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plán čeká na schválení",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "Úloha potřebuje vaše schválení",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Úloha se zastavila",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Rozpočet úlohy je vyčerpaný",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly pracuje dál",
+      "body": "Výzkumné úlohy, které mají pokračovat, běží na pozadí. Otevřete Oleafly a uvidíte jejich průběh."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Kontrola oprávnění je vypnutá ({{mode}})",
+      "description": "Agent může upravovat soubory a spouštět příkazy bez ptaní. Oleafly ho nedokázal přepnout do jiného režimu. Režim změňte v nastavení samotného agenta."
+    }
   }
 }

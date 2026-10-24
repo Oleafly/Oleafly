@@ -1,4 +1,5 @@
 mod client;
+mod errors;
 mod html;
 mod import;
 mod session;
@@ -80,6 +81,84 @@ pub async fn overleaf_sign_in<R: Runtime>(
     Ok(status_for(&base, Some(&signed_in)))
 }
 
+// 0.4.8 I: sign in with copied browser cookies
+/// One cookie from the main webview's store: name, value, domain, path and
+/// whether it is secure.
+pub(crate) type AppCookie = (String, String, Option<String>, Option<String>, bool);
+
+/// The errors a cookie sign-in keeps as they are, because they say what is
+/// wrong better than "the sign-in didn't work".
+const KEPT_SIGN_IN_ERRORS: &[&str] = &[
+    "\"overleaf.unreachable\"",
+    "\"overleaf.rate_limited\"",
+    "\"overleaf.invalid_server\"",
+];
+
+/// Signs in to the online LaTeX service with the cookies the browser sign-in
+/// copy put in the main webview's cookie store, without opening a window.
+/// Async because reading cookies deadlocks in sync commands on Windows.
+#[tauri::command]
+pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
+    webview: tauri::Webview<R>,
+    server: Option<String>,
+) -> Result<OverleafStatus, String> {
+    if crate::caller::own_window_label(&webview).as_deref() != Some("main") {
+        return Err(AppError::new("overleaf.sign_in_failed").into());
+    }
+    let base = session::normalize_server(server.as_deref())?;
+    let cookies: Vec<AppCookie> = webview
+        .cookies()
+        .map_err(|_| String::from(AppError::new("overleaf.sign_in_failed")))?
+        .iter()
+        .map(|cookie| {
+            (
+                cookie.name().to_string(),
+                cookie.value().to_string(),
+                cookie.domain().map(str::to_string),
+                cookie.path().map(str::to_string),
+                cookie.secure().unwrap_or(false),
+            )
+        })
+        .collect();
+    let header = app_cookie_header(&cookies, &base)?;
+    let signed_in = signin::session_from_cookie(&base, header)
+        .await
+        .map_err(|error| {
+            if KEPT_SIGN_IN_ERRORS.iter().any(|code| error.contains(code)) {
+                error
+            } else {
+                String::from(AppError::new("overleaf.browser_sign_in_failed"))
+            }
+        })?;
+    let saved = signed_in.clone();
+    let save_base = base.clone();
+    blocking(move || session::save(&save_base, &saved)).await?;
+    Ok(status_for(&base, Some(&signed_in)))
+}
+
+/// Cookie header for `base` from the main webview's cookies (name, value,
+/// domain, path, secure). Only cookies that would go to `base` are used.
+fn app_cookie_header(cookies: &[AppCookie], base: &str) -> Result<String, String> {
+    let url = tauri::Url::parse(base).map_err(|_| {
+        String::from(AppError::new("overleaf.invalid_server").param("server", base))
+    })?;
+    let header = session::cookie_header(
+        cookies
+            .iter()
+            .filter(|(_, _, domain, path, secure)| {
+                session::cookie_applies(domain.as_deref(), path.as_deref(), *secure, &url)
+            })
+            .map(|(name, value, _, _, _)| (name.clone(), value.clone())),
+    );
+    if header.is_empty() {
+        let host = url.host_str().unwrap_or(base).to_string();
+        return Err(AppError::new("overleaf.browser_sign_in_missing")
+            .param("server", host)
+            .into());
+    }
+    Ok(header)
+}
+
 #[tauri::command]
 pub async fn overleaf_sign_out(server: Option<String>) -> Result<OverleafStatus, String> {
     let base = session::normalize_server(server.as_deref())?;
@@ -150,19 +229,10 @@ pub struct SyncReport {
 
 fn imported_from(project_id: &str) -> Option<ImportedFrom> {
     let meta = crate::project::read_meta(project_id).ok()?;
-    let origin = meta.extra.get("importedFrom")?;
-    let text = |key: &str| {
-        origin
-            .get(key)
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_string)
-    };
-    if text("service").as_deref() != Some("overleaf") {
-        return None;
-    }
+    let origin = oleafly_online::projects::imported_from(meta.extra.get("importedFrom")?)?;
     Some(ImportedFrom {
-        server: text("server")?,
-        project_id: text("projectId")?,
+        server: origin.server,
+        project_id: origin.project_id,
     })
 }
 

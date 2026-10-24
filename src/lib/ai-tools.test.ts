@@ -56,11 +56,8 @@ import { setLastFigurePreview } from "./ai-figure";
 import { LATEX_ENGINE } from "./document-engine";
 import type { DocumentEngineDescriptor } from "./tauri";
 import { useFolderAccessStore } from "@/store/folder-access";
-import { useSettingsStore } from "@/store/settings";
 
 beforeEach(() => {
-  // computer_use is only exposed when the experimental web browser is on.
-  useSettingsStore.getState().setWebBrowser(true);
   for (const f of Object.values(mocks.api)) f.mockReset();
   mocks.filesState.applyExternalWrite.mockReset().mockReturnValue(true);
   mocks.filesState.applyExternalDelete.mockReset().mockReturnValue(true);
@@ -351,9 +348,8 @@ describe("ai-tools: command approval", () => {
 
     expect(tools.set_main_doc.description).toContain("active approval policy");
     expect(tools.run_command.description).toContain("active approval policy");
-    expect(tools.computer_use.description).toContain("active approval policy");
     expect(
-      [tools.set_main_doc, tools.run_command, tools.computer_use]
+      [tools.set_main_doc, tools.run_command]
         .map((tool) => tool.description)
         .join(" "),
     ).not.toMatch(/confirmed with the user|requires user approval/i);
@@ -374,10 +370,8 @@ describe("ai-tools: command approval", () => {
     expect(result).toEqual({ error: refused });
   });
 
-  it("omits computer_use entirely when the web browser is disabled", () => {
-    useSettingsStore.getState().setWebBrowser(false);
-    const tools = createOleaflyTools({ confirm: async () => true, runId: () => "run-1" });
-    expect(tools.computer_use).toBeUndefined();
+  it("never registers computer_use", () => {
+    expect(createOleaflyTools()).not.toHaveProperty("computer_use");
   });
 
   it("does not expose shell execution without an approval flow", async () => {

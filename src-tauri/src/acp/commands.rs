@@ -1,10 +1,25 @@
+use super::attachments::PromptInput;
+use super::hermes::{HermesSettings, HermesStatus};
 use super::{catalog::RegistryEntry, AcpRuntime};
 use super::{
-    AcpEvent, AgentCheck, AgentDefinition, AgentStatus, EventPage, ImagePrompt, SessionRecord,
-    SessionSnapshot, StartSession,
+    AcpEvent, AcpPreferences, AgentCheck, AgentDefinition, AgentPreferences, AgentSessionPage,
+    AgentStatus, DeleteOutcome, EventPage, SessionPage, SessionRecord, SessionSnapshot,
+    StartSession, SteerOutcome, TerminalSignIn, TurnCommit,
 };
+use oleafly_acp::controls::ConfigValue;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State, Webview};
+use zeroize::Zeroizing;
+
+/// Runs store or file work off the main thread. These commands take the
+/// store's one connection lock, which every streamed event append takes too.
+async fn off_thread<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|e| e.to_string())?
+}
 
 fn check_project(
     runtime: &AcpRuntime,
@@ -36,11 +51,12 @@ pub async fn acp_registry_search(
 }
 
 #[tauri::command]
-pub fn acp_register(
+pub async fn acp_register(
     runtime: State<'_, Arc<AcpRuntime>>,
     definition_json: String,
 ) -> Result<AgentDefinition, String> {
-    runtime.register(&definition_json)
+    let runtime = runtime.inner().clone();
+    off_thread(move || runtime.register(&definition_json)).await
 }
 
 #[tauri::command]
@@ -82,6 +98,9 @@ pub async fn acp_start(
         crate::research_mcp::start(app, project_id.clone(), None),
     )
     .await?;
+    // 0.4.8 I: desktop apps through their own bridge, when they are on.
+    let cua = crate::cua_driver::acp_bridge(&project_id, &agent_label(&runtime, &agent_id)).await;
+    let servers = agent_servers(&bridge, cua.as_ref());
     let result = runtime
         .start_with_mcp_at_generation(
             StartSession {
@@ -91,12 +110,44 @@ pub async fn acp_start(
                 owner: Some(owner.as_str().into()),
                 ..StartSession::default()
             },
-            vec![bridge.mcp_server()],
+            servers,
             Some(generation),
         )
         .await?;
-    runtime.retain_resource(&result.session.id, bridge).await?;
+    keep_agent_bridges(&runtime, &result.session.id, bridge, cua).await?;
     Ok(result)
+}
+
+// 0.4.8 I: the agent's name labels its desktop apps session.
+fn agent_label(runtime: &AcpRuntime, agent_id: &str) -> String {
+    runtime
+        .agent_definition(agent_id)
+        .map(|definition| definition.name)
+        .unwrap_or_else(|_| agent_id.to_string())
+}
+
+// 0.4.8 I: the research bridge, then desktop apps when present.
+fn agent_servers(
+    bridge: &crate::research_mcp::ScopedResearchMcp,
+    cua: Option<&crate::cua_driver::CuaBridge>,
+) -> Vec<serde_json::Value> {
+    let mut servers = vec![bridge.mcp_server()];
+    servers.extend(cua.map(crate::cua_driver::CuaBridge::mcp_server));
+    servers
+}
+
+// 0.4.8 I: one resource per session id, so both bridges go in one tuple; a
+// second insert would drop the research bridge.
+async fn keep_agent_bridges(
+    runtime: &AcpRuntime,
+    session_id: &str,
+    bridge: crate::research_mcp::ScopedResearchMcp,
+    cua: Option<crate::cua_driver::CuaBridge>,
+) -> Result<(), String> {
+    if let Some(cua) = &cua {
+        crate::cua_driver::bind_acp_session(session_id, cua.session_key());
+    }
+    runtime.retain_resource(session_id, (bridge, cua)).await
 }
 
 #[tauri::command]
@@ -127,15 +178,18 @@ pub async fn acp_reconnect(
         crate::research_mcp::start(app, project_id.clone(), None),
     )
     .await?;
+    // 0.4.8 I: desktop apps through their own bridge, when they are on.
+    let cua =
+        crate::cua_driver::acp_bridge(&project_id, &agent_label(&runtime, &record.agent_id)).await;
     let result = runtime
         .reconnect_with_mcp_at_generation(
             &session_id,
             Some(owner.as_str().into()),
-            vec![bridge.mcp_server()],
+            agent_servers(&bridge, cua.as_ref()),
             Some(generation),
         )
         .await?;
-    runtime.retain_resource(&session_id, bridge).await?;
+    keep_agent_bridges(&runtime, &session_id, bridge, cua).await?;
     Ok(result)
 }
 
@@ -145,14 +199,12 @@ pub async fn acp_prompt(
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
-    text: String,
-    images: Option<Vec<ImagePrompt>>,
-    skill_id: Option<String>,
+    input: PromptInput,
 ) -> Result<SessionSnapshot, String> {
     let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
     runtime.assert_owner(&session_id, owner.as_str()).await?;
-    let skill = match skill_id.filter(|id| !id.trim().is_empty()) {
+    let skill = match input.skill_id.clone().filter(|id| !id.trim().is_empty()) {
         Some(skill_id) => {
             let app = webview.app_handle().clone();
             let project = project_id.clone();
@@ -166,9 +218,7 @@ pub async fn acp_prompt(
         }
         None => None,
     };
-    runtime
-        .prompt_with_skill(&session_id, text, images.unwrap_or_default(), skill)
-        .await
+    runtime.prompt_input(&session_id, input, skill).await
 }
 
 #[tauri::command]
@@ -204,11 +254,13 @@ pub async fn acp_authenticate(
     project_id: String,
     session_id: String,
     method_id: String,
+    api_key: Option<String>,
 ) -> Result<SessionSnapshot, String> {
+    let api_key = api_key.map(Zeroizing::new);
     let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
     runtime.assert_owner(&session_id, owner.as_str()).await?;
-    runtime.authenticate(&session_id, &method_id).await
+    runtime.authenticate(&session_id, &method_id, api_key).await
 }
 
 #[tauri::command]
@@ -262,13 +314,33 @@ pub async fn acp_delegated_permission(
         .await
 }
 
+/// A page of a project's conversations. `before` and `before_id` are the
+/// update time and id of the last one shown; `before` alone still works, and
+/// then skips conversations that share its timestamp.
 #[tauri::command]
-pub fn acp_sessions(
+pub async fn acp_sessions(
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
-) -> Result<Vec<SessionRecord>, String> {
+    query: Option<String>,
+    before: Option<u64>,
+    before_id: Option<String>,
+    limit: Option<u32>,
+) -> Result<SessionPage, String> {
     crate::paths::project_dir(&project_id)?;
-    runtime.list(&project_id)
+    if query.as_ref().is_some_and(|query| query.len() > 200) {
+        return Err("The search is too long.".into());
+    }
+    let runtime = runtime.inner().clone();
+    off_thread(move || {
+        runtime.session_page(
+            &project_id,
+            query.as_deref(),
+            before,
+            before_id.as_deref(),
+            limit,
+        )
+    })
+    .await
 }
 
 #[tauri::command]
@@ -282,15 +354,19 @@ pub async fn acp_snapshot(
 }
 
 #[tauri::command]
-pub fn acp_events(
+pub async fn acp_events(
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
     after: u64,
     limit: Option<usize>,
 ) -> Result<EventPage, String> {
-    check_project(&runtime, &session_id, &project_id)?;
-    runtime.events(&session_id, after, limit.unwrap_or(200))
+    let runtime = runtime.inner().clone();
+    off_thread(move || {
+        check_project(&runtime, &session_id, &project_id)?;
+        runtime.events(&session_id, after, limit.unwrap_or(200))
+    })
+    .await
 }
 
 /// Tests an agent program without saving it: the chosen `path`, or the
@@ -411,4 +487,389 @@ pub async fn acp_session_events_all(
     tauri::async_runtime::spawn_blocking(move || reader.events_all(&session_id))
         .await
         .map_err(|e| e.to_string())?
+}
+
+// 0.4.8 D: preferences, options, usage, sign-in, steering, sessions, Hermes.
+
+/// The live session a window owns, after the usual project checks.
+async fn owned(
+    webview: &Webview,
+    runtime: &AcpRuntime,
+    project_id: &str,
+    session_id: &str,
+) -> Result<SessionRecord, String> {
+    let owner = caller_label(webview)?;
+    let record = check_project(runtime, session_id, project_id)?;
+    runtime.assert_owner(session_id, owner.as_str()).await?;
+    Ok(record)
+}
+
+#[tauri::command]
+pub async fn acp_preferences(
+    runtime: State<'_, Arc<AcpRuntime>>,
+) -> Result<AcpPreferences, String> {
+    let runtime = runtime.inner().clone();
+    off_thread(move || Ok(runtime.preferences())).await
+}
+
+#[tauri::command]
+pub async fn acp_set_preferences(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    prefs: AcpPreferences,
+) -> Result<AcpPreferences, String> {
+    super::setup::require_main_window(caller_label(&webview)?.as_str())?;
+    runtime.inner().clone().set_preferences(prefs).await
+}
+
+#[tauri::command]
+pub async fn acp_agent_preferences(
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+) -> Result<AgentPreferences, String> {
+    let runtime = runtime.inner().clone();
+    off_thread(move || runtime.agent_preferences(&agent_id)).await
+}
+
+#[tauri::command]
+pub async fn acp_set_agent_preferences(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+    prefs: AgentPreferences,
+) -> Result<AgentPreferences, String> {
+    super::setup::require_main_window(caller_label(&webview)?.as_str())?;
+    runtime
+        .inner()
+        .clone()
+        .set_agent_preferences(&agent_id, prefs)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_provider_choices(
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+) -> Result<Vec<super::providers::ProviderChoice>, String> {
+    let runtime = runtime.inner().clone();
+    off_thread(move || {
+        runtime.agent_definition(&agent_id)?;
+        let supported = runtime.agent_supported_providers(&agent_id);
+        let config = crate::config::read_config()?;
+        Ok(super::providers::provider_choices(&supported, &config))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn acp_buffer_reply(
+    webview: Webview,
+    buffers: State<'_, Arc<super::buffers::WindowBuffers>>,
+    request_id: String,
+    content: Option<String>,
+) -> Result<(), String> {
+    let window = caller_label(&webview)?;
+    buffers.reply(window.as_str(), &request_id, content)
+}
+
+#[tauri::command]
+pub async fn acp_set_config_option(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+    config_id: String,
+    value: ConfigValue,
+) -> Result<SessionSnapshot, String> {
+    owned(&webview, &runtime, &project_id, &session_id).await?;
+    runtime
+        .inner()
+        .clone()
+        .set_config_option(&session_id, &config_id, value)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_set_mode(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+    mode_id: String,
+) -> Result<SessionSnapshot, String> {
+    owned(&webview, &runtime, &project_id, &session_id).await?;
+    runtime
+        .inner()
+        .clone()
+        .set_mode(&session_id, &mode_id)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_refresh_plan_usage(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+) -> Result<SessionSnapshot, String> {
+    owned(&webview, &runtime, &project_id, &session_id).await?;
+    runtime
+        .inner()
+        .clone()
+        .refresh_plan_usage(&session_id)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_sign_in_command(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: Option<String>,
+    agent_id: String,
+    session_id: Option<String>,
+    method_id: String,
+) -> Result<TerminalSignIn, String> {
+    caller_label(&webview)?;
+    if let Some(project_id) = &project_id {
+        crate::paths::project_dir(project_id)?;
+        if let Some(session_id) = &session_id {
+            check_project(&runtime, session_id, project_id)?;
+        }
+    } else if session_id.is_some() {
+        return Err("Choose the project of this conversation.".into());
+    }
+    runtime
+        .sign_in_command(&agent_id, session_id.as_deref(), &method_id)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_logout(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+) -> Result<SessionSnapshot, String> {
+    owned(&webview, &runtime, &project_id, &session_id).await?;
+    runtime.inner().clone().logout(&session_id).await
+}
+
+#[tauri::command]
+pub async fn acp_elicitation_respond(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+    elicitation_id: String,
+    action: String,
+    content: Option<serde_json::Map<String, serde_json::Value>>,
+) -> Result<(), String> {
+    owned(&webview, &runtime, &project_id, &session_id).await?;
+    runtime
+        .respond_elicitation(&session_id, &elicitation_id, &action, content)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_steer(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+    text: String,
+) -> Result<SteerOutcome, String> {
+    owned(&webview, &runtime, &project_id, &session_id).await?;
+    runtime.inner().clone().steer(&session_id, text).await
+}
+
+#[tauri::command]
+pub async fn acp_session_rename(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+    title: String,
+) -> Result<SessionRecord, String> {
+    caller_label(&webview)?;
+    check_project(&runtime, &session_id, &project_id)?;
+    runtime.rename_session(&session_id, &title).await
+}
+
+#[tauri::command]
+pub async fn acp_session_delete(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+    from_agent: bool,
+) -> Result<DeleteOutcome, String> {
+    let owner = caller_label(&webview)?;
+    let record = check_project(&runtime, &session_id, &project_id)?;
+    if record.task_id.is_some() {
+        return Err("Delete research task conversations from the task.".into());
+    }
+    // A live conversation may only be deleted from its own window.
+    if let Err(error) = runtime.assert_owner(&session_id, owner.as_str()).await {
+        if error != "This ACP session is disconnected." {
+            return Err(error);
+        }
+    }
+    runtime
+        .inner()
+        .clone()
+        .delete_session(&session_id, from_agent)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_agent_sessions(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    agent_id: String,
+    cursor: Option<String>,
+) -> Result<AgentSessionPage, String> {
+    caller_label(&webview)?;
+    crate::paths::project_dir(&project_id)?;
+    runtime
+        .inner()
+        .clone()
+        .agent_sessions(&project_id, &agent_id, cursor)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_session_import(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    agent_id: String,
+    native_session_ids: Vec<String>,
+) -> Result<Vec<SessionRecord>, String> {
+    caller_label(&webview)?;
+    crate::paths::project_dir(&project_id)?;
+    runtime
+        .inner()
+        .clone()
+        .import_sessions(&project_id, &agent_id, native_session_ids)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_fork(
+    app: AppHandle,
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+) -> Result<SessionSnapshot, String> {
+    let owner = caller_label(&webview)?;
+    let record = check_project(&runtime, &session_id, &project_id)?;
+    runtime.assert_owner(&session_id, owner.as_str()).await?;
+    let _startup = runtime.begin_startup()?;
+    let bridge = super::admit_agent_bridge(
+        &project_id,
+        crate::research_mcp::start(app, project_id.clone(), None),
+    )
+    .await?;
+    // 0.4.8 I: a fork is a new session with its own desktop apps bridge.
+    let cua =
+        crate::cua_driver::acp_bridge(&project_id, &agent_label(&runtime, &record.agent_id)).await;
+    let result = runtime
+        .inner()
+        .clone()
+        .fork(
+            &session_id,
+            Some(owner.as_str().into()),
+            agent_servers(&bridge, cua.as_ref()),
+        )
+        .await?;
+    keep_agent_bridges(&runtime, &result.session.id, bridge, cua).await?;
+    Ok(result)
+}
+
+#[tauri::command]
+pub async fn acp_commit_turn(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    session_id: String,
+    turn_id: String,
+    message: String,
+    paths: Vec<String>,
+) -> Result<TurnCommit, String> {
+    caller_label(&webview)?;
+    check_project(&runtime, &session_id, &project_id)?;
+    runtime
+        .commit_turn(&session_id, &turn_id, &message, paths)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_hermes_settings(
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+) -> Result<HermesSettings, String> {
+    crate::paths::project_dir(&project_id)?;
+    let runtime = runtime.inner().clone();
+    off_thread(move || runtime.hermes_project_settings(&project_id)).await
+}
+
+#[tauri::command]
+pub async fn acp_set_hermes_settings(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    settings: HermesSettings,
+) -> Result<HermesStatus, String> {
+    caller_label(&webview)?;
+    let project = crate::paths::project_dir(&project_id)?;
+    crate::trust::require_trusted(&project_id, crate::trust::Capability::ExternalAgents)?;
+    let name = project
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| project_id.clone());
+    runtime
+        .set_hermes_project_settings(&project_id, &name, settings)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_hermes_status(
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+) -> Result<HermesStatus, String> {
+    crate::paths::project_dir(&project_id)?;
+    crate::trust::require_trusted(&project_id, crate::trust::Capability::ExternalAgents)?;
+    runtime.hermes_project_status(&project_id).await
+}
+
+#[tauri::command]
+pub async fn acp_hermes_set_option(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    project_id: String,
+    option: String,
+    enabled: bool,
+) -> Result<HermesStatus, String> {
+    caller_label(&webview)?;
+    crate::paths::project_dir(&project_id)?;
+    crate::trust::require_trusted(&project_id, crate::trust::Capability::ExternalAgents)?;
+    runtime
+        .hermes_set_option(&project_id, &option, enabled)
+        .await
+}
+
+#[tauri::command]
+pub async fn acp_test_remote_hermes(
+    webview: Webview,
+    project_id: String,
+    remote: super::remote::RemoteHermes,
+) -> Result<String, String> {
+    caller_label(&webview)?;
+    crate::paths::project_dir(&project_id)?;
+    crate::trust::require_trusted(&project_id, crate::trust::Capability::ExternalAgents)?;
+    let ssh = super::remote::locate_ssh()
+        .ok_or("Oleafly couldn't find ssh on this computer. Install OpenSSH, then try again.")?;
+    super::remote::test_connection(&ssh, &remote).await
 }

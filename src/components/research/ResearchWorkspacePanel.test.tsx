@@ -6,6 +6,7 @@ import type { ResearchTask, ResearchTaskDraft } from "@/lib/research-tasks";
 import type { ResearchWorkspace, ResearchRootFileContent } from "@/lib/research-workspace";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
+import { briefFixture, taskFieldsSince047 } from "./tasks/tests/task-fixtures";
 
 let ResearchWorkspacePanel: typeof import("./ResearchWorkspacePanel").ResearchWorkspacePanel;
 let useFilesStore: typeof import("@/store/files").useFilesStore;
@@ -111,6 +112,7 @@ function workspace(projectId: string): ResearchWorkspace {
 
 function task(draft: ResearchTaskDraft): ResearchTask {
   return {
+    ...taskFieldsSince047(),
     ...draft, id: `${draft.projectId}-task`, status: "queued", executionGeneration: 0,
     sessionId: null, nativeSessionId: null, sourceRevision: null, isolation: null,
     error: null, result: null, review: null, startRequested: false, cancelRequested: false,
@@ -129,12 +131,13 @@ function providerConfig(): AppConfig {
 }
 
 describe("ResearchWorkspacePanel integration", () => {
-  it("offers project-scoped entry points and opens agent settings without a project", async () => {
+  it("offers project-scoped entry points and opens the research settings without a project", async () => {
     native.invoke.mockResolvedValue({});
     mount();
     expect(page().getByText(enResearchTools.tasks.panel.noProjectTitle)).toBeInTheDocument();
-    fireEvent.click(page().getByRole("button", { name: enResearchTools.workspace.configureAgents }));
-    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "ai" });
+    // 0.4.8: the gear opens Settings, Research (agents are still chosen per task).
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.workspace.openSettings }));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "research" });
     await userEvent.setup({ document }).click(page().getByRole("tab", { name: "Linked folders" }));
     expect(page().getByText(enResearchTools.workspace.noProject)).toBeInTheDocument();
     expect(native.invoke.mock.calls.map(([command]) => command)).toEqual(["get_config"]);
@@ -172,7 +175,10 @@ describe("ResearchWorkspacePanel integration", () => {
     await act(async () => window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed", { detail: { ...config } })));
     fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask }));
     await waitFor(() => expect(native.invoke).toHaveBeenCalledWith("research_task_create", {
-      draft: { projectId: "paper", title: "Check the cohort evidence", prompt: "Compare the claims to the attached data", runtimeId: "builtin", agentId: "openai", modelId: "research-model", skillIds: ["oleafly-verify-claims"], dependencyIds: [] },
+      draft: {
+        projectId: "paper", title: "Check the cohort evidence", prompt: "Compare the claims to the attached data", runtimeId: "builtin", agentId: "openai", modelId: "research-model", skillIds: ["oleafly-verify-claims"], dependencyIds: [],
+        brief: briefFixture(), runAfter: null, keepRunningAfterQuit: false,
+      },
     }));
     await waitFor(() => expect(page().queryByLabelText(enResearchTools.tasks.composer.promptLabel)).not.toBeInTheDocument());
     expect(within(page().getByRole("dialog")).getByRole("heading", { name: "Check the cohort evidence" })).toBeInTheDocument();
@@ -254,5 +260,36 @@ describe("ResearchWorkspacePanel integration", () => {
 
     expect(useAssistantRuntimeStore.getState().runtime).toBe("acp");
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
+  });
+
+  it("goes back to the Tasks tab when a task is opened for review from the Files rail", async () => {
+    const draft: ResearchTaskDraft = {
+      projectId: "paper", title: "Audit the cohort", prompt: "Audit", runtimeId: "builtin",
+      agentId: "openai", modelId: "research-model", skillIds: [], dependencyIds: [],
+    };
+    const reviewed = { ...task(draft), status: "awaiting_review" as const, executionGeneration: 1 };
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "get_config") return {};
+      if (command === "acp_catalog") return [];
+      if (command === "research_task_list") return [reviewed];
+      if (command === "research_task_events") return { events: [], nextSequence: null };
+      if (command === "research_workspace_get") return null;
+      return undefined;
+    });
+    useFilesStore.setState({ projectId: "paper" });
+    mount();
+    const user = userEvent.setup({ document });
+    await user.click(page().getByRole("tab", { name: enResearchTools.workspace.tabFolders }));
+    expect(page().getByRole("tab", { name: enResearchTools.workspace.tabFolders })).toHaveAttribute("data-state", "active");
+    await waitFor(() => expect(useResearchTasksStore.getState().tasks).toHaveLength(1));
+
+    // The Review button in the Files rail's Task outputs does this.
+    act(() => useResearchTasksStore.getState().openTaskDetail(reviewed.id, "review"));
+
+    // The dialog hides the tab strip from the accessibility tree while it is open.
+    await waitFor(() =>
+      expect(page().getByRole("tab", { name: enResearchTools.workspace.tabTasks, hidden: true })).toHaveAttribute("data-state", "active"),
+    );
+    expect(await page().findByRole("dialog")).toHaveTextContent(reviewed.title);
   });
 });

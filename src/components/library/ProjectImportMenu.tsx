@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { lazy, Suspense, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ExternalLink, Github, Lock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,22 +12,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
-import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
   IMPORT_FILE_SOURCES,
+  importForgeRepository,
   importPickerOptions,
-  importGitHubRepository,
   importSelectedFile,
   importTargetsForKind,
   type ProjectImportFileKind,
 } from "@/features/project-import";
-import { useGithubStore } from "@/store/github";
+import type { ForgeAccount, ForgeRepo } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
-import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { ProjectImportDialog } from "./ProjectImportDialog";
 import { OpenLinkDialogSlot, useCollabLibraryKit } from "@/components/collab/CollabSlots";
 import { Spinner } from "@/components/ui/spinner";
+
+// The repository rows load with the submenu, so they stay out of the entry chunk.
+const GitRepoMenuItems = lazy(() =>
+  import("./GitRepoMenuItems").then((module) => ({ default: module.GitRepoMenuItems })),
+);
 
 export function ProjectImportMenu({
   align = "end",
@@ -50,52 +51,15 @@ export function ProjectImportMenu({
     html: t(($) => $.library.import.sources.html.title),
     typst: t(($) => $.library.import.sources.typst.title),
   };
-  const githubStatus = useGithubStore((state) => state.status);
-  const refreshGithub = useGithubStore((state) => state.refresh);
   const [open, setOpen] = useState(false);
-  const [githubOpen, setGithubOpen] = useState(false);
-  // Radix decides an item is selected from its own pointer handling, and which
-  // event that is has changed between versions. Rather than try to out-guess
-  // it, the external-link button raises this flag and the item refuses to
-  // import while it is set.
-  const openingExternalRef = useRef(false);
+  const [gitOpen, setGitOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [arxivOpen, setArxivOpen] = useState(false);
   const [sharedLinkOpen, setSharedLinkOpen] = useState(false);
   const collab = useCollabLibraryKit();
   const [overleafOpen, setOverleafOpen] = useState(false);
-  const [repositoryAttempt, setRepositoryAttempt] = useState(0);
-  const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
-  const [loadingRepositories, setLoadingRepositories] = useState(false);
-  const [repositoryLoadFailed, setRepositoryLoadFailed] = useState(false);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the retry counter explicitly starts another request.
-  useEffect(() => {
-    if (!githubOpen) return;
-    if (githubStatus === "unknown") {
-      void refreshGithub();
-      return;
-    }
-    if (githubStatus !== "connected" || repositories.length > 0) return;
-    let cancelled = false;
-    setLoadingRepositories(true);
-    setRepositoryLoadFailed(false);
-    githubListRepos()
-      .then((items) => {
-        if (!cancelled) setRepositories(items);
-      })
-      .catch((error) => {
-        void logError("github import repositories", error);
-        if (!cancelled) setRepositoryLoadFailed(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingRepositories(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [githubOpen, githubStatus, refreshGithub, repositories.length, repositoryAttempt]);
+  const [gitDialogOpen, setGitDialogOpen] = useState(false);
 
   const importFile = async (
     kind: ProjectImportFileKind,
@@ -116,137 +80,27 @@ export function ProjectImportMenu({
     }
   };
 
-  const importRepository = async (repository: GitHubRepo) => {
+  const importRepository = async (account: ForgeAccount, repository: ForgeRepo) => {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
     try {
-      await importGitHubRepository(repository);
+      await importForgeRepository(account.base, repository);
       onImportSelected?.();
     } catch (error) {
-      notifyError("import GitHub repository", error);
+      notifyError("import Git repository", error);
     } finally {
       busyRef.current = false;
       setBusy(false);
     }
   };
 
-  const openGithubSettings = () => {
+  const openGitHostingSettings = () => {
     const settings = useSettingsStore.getState();
     settings.setSettingsInitialSection("integrations");
-    settings.setSettingsScrollTarget("github");
+    settings.setSettingsScrollTarget("git-hosting");
     settings.setSettingsOpen(true);
     onImportSelected?.();
-  };
-
-  const renderRepositoryItems = () => {
-    if (githubStatus === "disconnected") {
-      return (
-        <DropdownMenuItem onSelect={openGithubSettings}>
-          <Github className="size-4 shrink-0 text-muted-foreground" />
-          {t(($) => $.library.import.menu.connect)}
-        </DropdownMenuItem>
-      );
-    }
-    if (githubStatus === "unknown" || loadingRepositories) {
-      return (
-        <DropdownMenuItem disabled>
-          <Spinner size="sm" />{" "}
-          {t(($) => $.library.import.loadingRepositories)}
-        </DropdownMenuItem>
-      );
-    }
-    if (repositoryLoadFailed) {
-      return (
-        <DropdownMenuItem
-          onSelect={(event) => {
-            event.preventDefault();
-            setRepositoryAttempt((attempt) => attempt + 1);
-          }}
-        >
-          {t(($) => $.library.import.menu.repositoriesRetry)}
-        </DropdownMenuItem>
-      );
-    }
-    if (repositories.length === 0) {
-      return (
-        <DropdownMenuItem disabled>
-          {t(($) => $.library.import.noRepositories)}
-        </DropdownMenuItem>
-      );
-    }
-    return (
-      repositories.map((repository) => (
-        <DropdownMenuItem
-          key={repository.full_name}
-          onSelect={(event) => {
-            if (openingExternalRef.current) {
-              openingExternalRef.current = false;
-              event.preventDefault();
-              return;
-            }
-            void importRepository(repository);
-          }}
-          className="group gap-2"
-        >
-          <Github className="size-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate">
-            {repository.full_name}
-          </span>
-          {repository.private ? (
-            <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
-              <span
-                role="img"
-                aria-label={t(($) => $.library.import.privateRepository)}
-                className="inline-flex shrink-0"
-              >
-                <Lock aria-hidden className="size-3 text-muted-foreground" />
-              </span>
-            </Tooltip>
-          ) : null}
-          <Tooltip label={t(($) => $.library.import.openOnGitHub)} side="top">
-            <button
-              type="button"
-              aria-label={t(($) => $.library.import.openRepository, {
-                name: repository.full_name,
-              })}
-              // The row imports the repository; this opens it in the
-              // browser. Radix selects the item on pointerdown, so
-              // both events have to stop here or the click would do
-              // one thing and then the other.
-              // Opened from pointerdown, not click: selecting the item
-              // closes the menu and unmounts this button, so a click
-              // handler is not guaranteed to run at all. That is why
-              // the first attempt imported the repository and never
-              // opened the page.
-              onPointerDown={(event) => {
-                openingExternalRef.current = true;
-                event.stopPropagation();
-                openExternal(repository.html_url).catch((error) => {
-                  notifyError("open repository", error);
-                });
-              }}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                event.stopPropagation();
-                if (event.repeat) return;
-                void openExternal(repository.html_url).catch((error) => {
-                  notifyError("open repository", error);
-                });
-              }}
-              className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 focus-visible:bg-accent/60"
-            >
-              <ExternalLink className="size-3.5" />
-            </button>
-          </Tooltip>
-        </DropdownMenuItem>
-      ))
-    );
   };
 
   return (
@@ -256,7 +110,7 @@ export function ProjectImportMenu({
       onOpenChange={(nextOpen) => {
         if (nextOpen && busyRef.current) return;
         setOpen(nextOpen);
-        if (!nextOpen) setGithubOpen(false);
+        if (!nextOpen) setGitOpen(false);
       }}
     >
       {triggerTooltip ? (
@@ -302,16 +156,34 @@ export function ProjectImportMenu({
             {collab.openLink}
           </DropdownMenuItem>
         ) : null}
-        <DropdownMenuSub open={githubOpen} onOpenChange={setGithubOpen}>
-          <DropdownMenuSubTrigger>GitHub</DropdownMenuSubTrigger>
+        <DropdownMenuSub open={gitOpen} onOpenChange={setGitOpen}>
+          <DropdownMenuSubTrigger data-testid="import-git">
+            {t(($) => $.library.import.menu.git)}
+          </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="max-h-72 min-w-64 overflow-y-auto">
-            {renderRepositoryItems()}
+            {gitOpen ? (
+              <Suspense
+                fallback={
+                  <DropdownMenuItem disabled>
+                    <Spinner size="sm" />
+                  </DropdownMenuItem>
+                }
+              >
+                <GitRepoMenuItems
+                  onImport={(account, repository) => void importRepository(account, repository)}
+                  onMore={() => setGitDialogOpen(true)}
+                  onClone={() => setGitDialogOpen(true)}
+                  onOpenSettings={openGitHostingSettings}
+                />
+              </Suspense>
+            ) : null}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       </DropdownMenuContent>
     </DropdownMenu>
     <ProjectImportDialog open={arxivOpen} initialView="arxiv" onClose={() => setArxivOpen(false)} onImported={onImportSelected} />
     <ProjectImportDialog open={overleafOpen} initialView="overleaf" onClose={() => setOverleafOpen(false)} onImported={onImportSelected} />
+    <ProjectImportDialog open={gitDialogOpen} initialView="git" onClose={() => setGitDialogOpen(false)} onImported={onImportSelected} />
     <OpenLinkDialogSlot open={sharedLinkOpen} onClose={() => setSharedLinkOpen(false)} />
     </>
   );

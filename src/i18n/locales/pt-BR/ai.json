@@ -43,13 +43,15 @@
       "command": "Confirmar comando",
       "externalTool": "Confirmar ação de ferramenta externa",
       "internet": "Confirmar acesso à internet",
-      "edit": "Confirmar edição da IA"
+      "edit": "Confirmar edição da IA",
+      "researchTask": "Confirmar tarefa de pesquisa"
     },
     "headline": {
       "command": "O assistente quer executar este comando",
       "externalTool": "O assistente quer usar uma ferramenta externa",
       "internet": "O assistente quer acessar a internet",
-      "edit": "O assistente quer alterar seus arquivos"
+      "edit": "O assistente quer alterar seus arquivos",
+      "researchTask": "O assistente quer criar uma tarefa de pesquisa"
     },
     "mcpNote": "Isso envia os argumentos abaixo para o servidor MCP configurado.",
     "line": "linha {{line}}",
@@ -71,10 +73,52 @@
       "moreWaiting_one": "mais {{count}} esperando",
       "moreWaiting_many": "mais {{count}} esperando",
       "moreWaiting_other": "mais {{count}} esperando"
+    },
+    "researchTask": {
+      "note": "A tarefa trabalha por conta própria em uma cópia do projeto. Você revisa as mudanças dela depois.",
+      "title": "Título",
+      "goal": "Objetivo",
+      "skills": "Habilidades",
+      "prompt": "Instruções",
+      "commands": "Comandos",
+      "commandsAsk": "Perguntar antes de cada um",
+      "network": "Rede",
+      "timeBudget": "Orçamento de tempo",
+      "timeBudgetDefault": "Padrão",
+      "minutes_one": "{{count}} minuto",
+      "minutes_other": "{{count}} minutos",
+      "planFirst": "Planejar primeiro",
+      "startNow": "Começar agora",
+      "minutes_many": "{{count}} minutos"
     }
   },
   "attachments": {
-    "remove": "Remover {{name}}"
+    "remove": "Remover {{name}}",
+    "processing": "Preparando {{name}}…",
+    "failed": "Não foi possível anexar {{name}}.",
+    "pages_one": "{{count}} página",
+    "pages_many": "{{count}} páginas",
+    "pages_other": "{{count}} páginas",
+    "pagesLimited": "Só as primeiras {{limit}} de {{count}} páginas são usadas.",
+    "tooMany": "Você pode anexar até {{max}} arquivos a uma mensagem.",
+    "tooLarge": "{{name}} passa de {{limit}}.",
+    "unsupported": "Não é possível anexar {{name}}. Anexe imagens, PDFs ou arquivos de texto.",
+    "unreadableImage": "O Oleafly não consegue ler o formato de imagem de {{name}}. Salve como PNG ou JPEG e anexe de novo.",
+    "unreadablePdf": "Não foi possível abrir {{name}} como PDF.",
+    "storeFailed": "Não foi possível salvar {{name}} para esta conversa.",
+    "visionUnsupported": "{{model}} não lê imagens, então as imagens desta mensagem não serão enviadas.",
+    "scannedPdf": "{{name}} não tem camada de texto, e {{model}} não lê imagens.",
+    "dropFiles": "Solte arquivos para anexá-los",
+    "dropProjectFile": "Solte para mencionar este arquivo",
+    "open": "Abrir {{name}}",
+    "saveCopy": "Salvar uma cópia de {{name}}",
+    "saved": "Uma cópia de {{name}} foi salva.",
+    "saveFailed": "Não foi possível salvar {{name}}.",
+    "missing": "{{name}} não está mais disponível.",
+    "sentAsText": "{{name}} foi enviado como texto porque este modelo não consegue lê-lo como arquivo.",
+    "skipped": "{{name}} não foi enviado.",
+    "dropUnreadable": "Não foi possível ler {{names}}.",
+    "notReplayed": "Arquivos de uma versão mais antiga não podem ser enviados de novo: {{names}}."
   },
   "chat": {
     "pill": {
@@ -188,7 +232,9 @@
     "stop": "Parar",
     "stopTitle": "Parar a geração",
     "send": "Enviar",
-    "checkAgain": "Verificar de novo"
+    "checkAgain": "Verificar de novo",
+    "resizeHandle": "Redimensionar a caixa de mensagem",
+    "resizeHint": "Arraste para redimensionar. Clique duas vezes para voltar ao tamanho original."
   },
   "commands": {
     "groups": {
@@ -226,10 +272,6 @@
     "files": {
       "label": "Arquivos",
       "description": "Anexar arquivos à sua próxima mensagem"
-    },
-    "browser": {
-      "label": "Anexar navegador",
-      "description": "Abrir o navegador ao lado do seu documento"
     }
   },
   "models": {
@@ -279,7 +321,11 @@
       "minutes": "há {{count}}min",
       "hours": "há {{count}}h",
       "days": "há {{count}}d"
-    }
+    },
+    "skipped_one": "Não foi possível carregar {{count}} conversa. Ela continua no disco.",
+    "skipped_many": "Não foi possível carregar {{count}} conversas. Elas continuam no disco.",
+    "skipped_other": "Não foi possível carregar {{count}} conversas. Elas continuam no disco.",
+    "openFailed": "Não foi possível abrir esta conversa."
   },
   "tools": {
     "approval": {
@@ -325,7 +371,6 @@
       "listAgents": "Listar os agentes auxiliares e o estado deles.",
       "closeAgent": "Encerrar um agente auxiliar.",
       "runCommand": "Executar um comando shell na pasta do projeto, com limite de dois minutos.",
-      "computerUse": "Abrir uma página da web na janela do navegador do assistente.",
       "toggleTheme": "Alternar entre o modo claro e o escuro.",
       "listOverleafProjects": "Listar seus projetos do Overleaf, fazendo login antes quando necessário.",
       "importOverleafProjects": "Importar projetos do Overleaf para a sua biblioteca, com o compilador e o arquivo principal."
@@ -354,8 +399,7 @@
       "latexOnly": "Só em projetos LaTeX",
       "latexAndTypstOnly": "Só em projetos LaTeX e Typst",
       "pdfCaptureSetting": "Precisa da configuração de captura de páginas do PDF",
-      "chatApproval": "Aprovada na conversa, um comando de cada vez",
-      "browserSetting": "Precisa da configuração do navegador web"
+      "chatApproval": "Aprovada na conversa, um comando de cada vez"
     },
     "sourceGroups": {
       "figure": "Figura",
@@ -478,18 +522,20 @@
     "resumeTask": "Abra a tarefa de pesquisa para retomar este trabalho.",
     "delegatedConversation": "Esta conversa pertence a uma execução de agente delegado.",
     "noResume": "Este agente não consegue retomar conversas salvas. Comece uma nova conversa quando quiser.",
-    "imageTooLarge": "Escolha uma imagem menor que 480 KiB. Você pode anexar até quatro imagens.",
     "imageReadFailed": "Não foi possível ler a imagem.",
-    "removeImage": "Remover {{name}}",
     "composerAriaLabel": "Mensagem para o agente de CLI",
     "composerPlaceholderReady": "Peça ao agente para trabalhar neste projeto",
     "composerPlaceholderIdle": "Comece ou reconecte uma conversa para enviar uma mensagem",
-    "attachImage": "Anexar imagem",
     "startConversation": "Começar uma conversa com o {{agent}}",
     "startConversationFallback": "um agente",
     "agentModel": "Modelo do agente",
     "modelManaged": "Modelo gerenciado pelo agente",
     "stop": "Parar",
+    "stopReason": {
+      "refusal": "O agente se recusou a continuar este pedido.",
+      "maxTokens": "O agente atingiu o limite de saída e parou.",
+      "maxTurnRequests": "O agente atingiu o limite de pedidos deste turno e parou."
+    },
     "stopTitle": "Parar o agente",
     "send": "Enviar",
     "connecting": "Conectando",
@@ -507,8 +553,7 @@
     "roster": {
       "bridgeMissing": "instale a ponte em Configuração do agente",
       "cliMissing": "CLI não encontrada neste computador",
-      "unavailable": "não disponível neste computador",
-      "comingSoon": "em breve"
+      "unavailable": "não disponível neste computador"
     },
     "messageTooLarge": "Esta mensagem e as imagens dela são grandes demais. Encurte a mensagem ou remova uma imagem.",
     "terminalCommand": "O agente está executando um comando no terminal.",
@@ -557,7 +602,130 @@
       "changedFiles": "Arquivos alterados",
       "moreFiles_one": "e mais {{count}} arquivo",
       "moreFiles_many": "e mais {{count}} arquivos",
-      "moreFiles_other": "e mais {{count}} arquivos"
+      "moreFiles_other": "e mais {{count}} arquivos",
+      "mode": "Modo",
+      "effort": "Esforço",
+      "permissionProfile": "Modo de aprovação",
+      "commits": "Commits"
+    },
+    "composerPlaceholderStart": "Escreva para {{agent}} para começar uma conversa",
+    "composerPlaceholderConnecting": "Já pode digitar. A mensagem é enviada quando o agente estiver pronto.",
+    "composerPlaceholderRunning": "Digite sua próxima mensagem. Ela é enviada quando o agente terminar.",
+    "attachFile": "Anexar arquivos",
+    "composer": {
+      "tooManyAttachments": "Anexe até 10 arquivos a uma mensagem.",
+      "imagesUnsupported": "Este agente não aceita imagens. Remova as imagens e tente de novo.",
+      "attachmentsNotReady": "Aguarde os anexos terminarem de ser preparados.",
+      "removeSelection": "Remover a citação {{label}}"
+    },
+    "queue": {
+      "queued": "Na fila: será enviada quando o agente terminar",
+      "remove": "Remover a mensagem da fila",
+      "sendNow": "Enviar agora",
+      "sendFailed": "Esta mensagem não foi enviada. Envie de novo ou remova.",
+      "queuedConnecting": "Na fila: será enviada quando o agente estiver pronto",
+      "retry": "Enviar de novo",
+      "edit": "Editar"
+    },
+    "slash": {
+      "commands": "Comandos do agente",
+      "skills": "Habilidades"
+    },
+    "controls": {
+      "effort": "Esforço",
+      "mode": "Modo",
+      "more": "Mais opções do agente",
+      "blockedMode": "Desativado no Oleafly",
+      "blockedModeHint": "O Oleafly mantém as verificações de permissão ligadas, então este modo não está disponível."
+    },
+    "usage": {
+      "ariaLabel": "Ver o uso do agente",
+      "tooltip": "Uso desta conversa",
+      "contextShare": "{{percent}}% da janela de contexto usada",
+      "window": {
+        "fiveHour": "Sessão de 5 horas",
+        "weekly": "Semanal, todos os modelos",
+        "weeklyOpus": "Semanal, Opus",
+        "weeklySonnet": "Semanal, Sonnet",
+        "overage": "Uso extra",
+        "other": "Limite de uso {{id}}"
+      },
+      "costIn": "O agente informou um custo de {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} tokens"
+    },
+    "compaction": {
+      "running": "Resumindo o contexto anterior",
+      "done": "Contexto anterior resumido",
+      "failed": "Não foi possível resumir o contexto anterior"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} no terminal",
+      "afterTerminal": "Termine o login no terminal e depois reconecte.",
+      "apiKeyLabel": "Chave de API do {{provider}}",
+      "apiKeyPlaceholder": "Cole sua chave de API",
+      "geminiGoogle": "O login com o Google não funciona mais nos planos individuais. Use uma chave de API do Gemini ou o Vertex AI.",
+      "noProject": "Abra um projeto para fazer login pelo terminal.",
+      "signOut": "Sair",
+      "confirmTerminal": "O {{agent}} faz login pelo comando abaixo, que roda em uma aba do terminal. Confira antes de concordar.",
+      "remote": "Esta conversa roda em outra máquina. Faça login no agente lá."
+    },
+    "elicitation": {
+      "ariaLabel": "Pedido do agente",
+      "from": "{{agent}} pergunta:",
+      "submit": "Enviar",
+      "decline": "Recusar",
+      "cancel": "Cancelar",
+      "required": "Obrigatório",
+      "invalid": "Confira este campo.",
+      "openUrl": "Abrir no navegador",
+      "confirmTitle": "Abrir {{host}}?",
+      "confirmDescription": "O agente pediu que você conclua uma etapa neste site. Ele abre no seu navegador.",
+      "waiting": "Aguardando o site terminar.",
+      "openFailed": "Não foi possível abrir o link no seu navegador."
+    },
+    "remote": {
+      "banner": "O Hermes roda em {{host}} via SSH. As alterações dele ficam naquela máquina."
+    },
+    "history": {
+      "all": "Todas as conversas",
+      "title": "Conversas",
+      "search": "Buscar conversas",
+      "empty": "Nenhuma conversa corresponde.",
+      "loadMore": "Carregar mais",
+      "rename": "Renomear",
+      "renameLabel": "Nome da conversa",
+      "delete": "Excluir",
+      "deleteTitle": "Excluir esta conversa?",
+      "deleteDescription": "O Oleafly remove a transcrição e os anexos dela deste projeto.",
+      "deleteFromAgent": "Excluir também do {{agent}}",
+      "deleteAgentFailed": "Excluída no Oleafly. O {{agent}} não conseguiu excluir a cópia dele: {{error}}",
+      "deleteRunning": "Pare o agente antes de excluir esta conversa.",
+      "importFind": "Encontrar conversas do {{agent}} para este projeto",
+      "imported": "Já está no Oleafly",
+      "importSelected": "Importar as selecionadas",
+      "importEmpty": "O {{agent}} não tem outras conversas deste projeto."
+    },
+    "header": {
+      "startedAt": "Iniciada em {{revision}}",
+      "startedDirty": "Iniciada em {{revision}} com alterações sem commit",
+      "menu": "Ações da conversa",
+      "fork": "Bifurcar a conversa",
+      "forkUnsupported": "Este agente não consegue bifurcar conversas.",
+      "forkBusy": "Espere o agente terminar antes de bifurcar.",
+      "v2": "Prévia do protocolo",
+      "remote": "Remoto",
+      "signOutTitle": "Sair do {{agent}}?",
+      "signOutDescription": "Isto encerra o próprio login do {{agent}}. Um terminal que usa o mesmo login também é desconectado, e esta conversa para até você fazer login de novo.",
+      "signOutAccount": "Conectado com {{account}}"
+    },
+    "commit": {
+      "button": "Fazer commit",
+      "title": "Fazer commit deste turno",
+      "message": "Mensagem do commit",
+      "files": "Arquivos para o commit",
+      "defaultMessage": "Alterações de {{agent}}",
+      "submit": "Fazer commit dos arquivos",
+      "cancel": "Cancelar"
     }
   },
   "agents": {
@@ -730,8 +898,6 @@
     "restoreFailed": "Não foi possível restaurar: {{error}}",
     "steerFailed": "Não foi possível redirecionar o turno em andamento.",
     "approvalRuleSaveFailed": "Não foi possível salvar a regra de aprovação do projeto.",
-    "attachmentTooLarge": "{{name}} é grande demais (máximo de 10 MB).",
-    "attachmentReadFailed": "Não foi possível ler {{name}}.",
     "tooManyTools": "{{enabled}} ferramentas estão ativas, mas uma execução comporta no máximo {{max}}. Desative ao menos {{excess}} em Ferramentas e tente de novo."
   },
   "header": {
@@ -760,7 +926,30 @@
     "summaryRunNoTokens_many": "Última execução: {{count}} etapas, total de tokens indisponível",
     "summaryRunNoTokens_other": "Última execução: {{count}} etapas, total de tokens indisponível",
     "summaryChat": "Esta conversa: {{steps}} etapas, {{tokens}} tokens",
-    "summaryFallback": "Uso de IA"
+    "summaryFallback": "Uso de IA",
+    "context": "Contexto",
+    "contextUsed": "{{used}} de {{size}} tokens",
+    "contextShare": "{{percent}} da janela de contexto usada",
+    "contextUnknown": "A janela de contexto deste modelo é desconhecida.",
+    "reasoning": "Raciocínio",
+    "cacheRead": "Leituras de cache",
+    "cacheWrite": "Gravações de cache",
+    "cost": "Custo estimado",
+    "budget": "Orçamento do projeto",
+    "budgetUsed": "{{spent}} de {{limit}}",
+    "credit": "Crédito restante",
+    "creditOf": "{{remaining}} de {{limit}}",
+    "planLimits": "Limites do plano",
+    "resetsAt": "Renova {{time}}",
+    "windowWarning": "Perto do limite",
+    "windowBlocked": "Limite atingido",
+    "refreshPlan": "Atualizar o uso do plano",
+    "refreshing": "Atualizando…",
+    "historyTrimmed_one": "Só {{count}} turno desta conversa, o último, foi enviado ao modelo.",
+    "historyTrimmed_many": "Só os últimos {{count}} turnos desta conversa foram enviados ao modelo.",
+    "historyTrimmed_other": "Só os últimos {{count}} turnos desta conversa foram enviados ao modelo.",
+    "empty": "Ainda não há uso nesta conversa.",
+    "loading": "Carregando o uso…"
   },
   "provider": {
     "connectTitle": "Conecte um provedor de IA para continuar",
@@ -780,7 +969,21 @@
     "projectSubtitle": "Trabalhando em \"{{project}}\"",
     "noOutput": "O modelo não devolveu saída alguma. Confira em Configurações → Assistente de IA.",
     "planMissing": "Ainda não há um plano para aprovar. Peça um ao assistente ou desligue o Plano.",
-    "planUnchanged": "O plano não mudou."
+    "planUnchanged": "O plano não mudou.",
+    "stillWorking": "Ainda trabalhando ({{seconds}} s). Modelos de raciocínio e modelos locais podem ser lentos. Clique em Parar para cancelar.",
+    "retrying": "Problema de conexão. Tentando de novo ({{attempt}} de {{max}})…",
+    "stopped": "Parado.",
+    "stepLimit": "O limite de etapas foi atingido. Envie outra mensagem para continuar.",
+    "outputLimit": "A resposta atingiu o limite de saída do modelo. Envie outra mensagem para continuar.",
+    "tooLargeToSave": "Esta conversa é longa demais para ser salva. As novas mensagens ficam guardadas até você fechar o Oleafly. Exporte a conversa para manter uma cópia.",
+    "exportChat": "Exportar a conversa",
+    "exported": "Conversa exportada.",
+    "exportFailed": "Não foi possível exportar a conversa.",
+    "saveFailed": "Não foi possível salvar as novas mensagens desta conversa. Verifique se o disco tem espaço livre.",
+    "exportYou": "Você",
+    "exportAssistant": "Assistente",
+    "exportAttachments": "Anexos",
+    "exportTools": "Ferramentas usadas"
   },
   "followUps": {
     "steered": "Redirecionado para o turno em andamento: {{summary}}",
@@ -872,6 +1075,47 @@
     "figureAudit": "Auditoria de figuras",
     "gitReview": "Revisão do Git",
     "referenceCleanup": "Limpeza de referências",
-    "removeSkill": "Remover a habilidade {{name}}"
+    "removeSkill": "Remover a habilidade {{name}}",
+    "compilationRepair": "Correção da compilação",
+    "submissionPrep": "Preparação da submissão",
+    "reviewerResponse": "Resposta aos revisores"
+  },
+  "effort": {
+    "label": "Esforço",
+    "tooltip": "Quanto o modelo raciocina antes de responder",
+    "ariaLabel": "Esforço de raciocínio: {{level}}",
+    "auto": "Automático",
+    "autoDescription": "Usar o padrão do modelo",
+    "levels": {
+      "none": "Nenhum",
+      "minimal": "Mínimo",
+      "low": "Baixo",
+      "medium": "Médio",
+      "high": "Alto",
+      "xhigh": "Muito alto",
+      "max": "Máximo"
+    }
+  },
+  "web": {
+    "label": "Web",
+    "on": "A pesquisa na web e a leitura de páginas estão ligadas nesta conversa",
+    "off": "Ligar a pesquisa na web e a leitura de páginas nesta conversa",
+    "ariaLabel": "Acesso à web",
+    "searchUnavailable": "Este modelo não pesquisa na web. Adicione uma chave de pesquisa em Configurações para ligar."
+  },
+  "messageActions": {
+    "edit": "Editar a mensagem",
+    "regenerate": "Gerar a resposta de novo",
+    "retry": "Tentar de novo",
+    "editingLatest": "Você está editando sua última mensagem. Ao enviar, a resposta é substituída.",
+    "editingEarlier": "Você está editando uma mensagem anterior. Ao enviar, uma nova conversa começa a partir dali, e esta continua no Histórico.",
+    "cancelEdit": "Cancelar a edição",
+    "replaceTitle": "Substituir esta resposta?",
+    "replaceDescription_one": "A resposta alterou {{count}} arquivo. A alteração continua no seu projeto, mas o cartão de desfazer some junto com a resposta.",
+    "replaceDescription_many": "A resposta alterou {{count}} arquivos. As alterações continuam no seu projeto, mas o cartão de desfazer some junto com a resposta.",
+    "replaceDescription_other": "A resposta alterou {{count}} arquivos. As alterações continuam no seu projeto, mas o cartão de desfazer some junto com a resposta.",
+    "replaceConfirm": "Substituir a resposta",
+    "forked": "Uma nova conversa começou a partir da mensagem editada.",
+    "failed": "Não foi possível enviar a mensagem de novo."
   }
 }

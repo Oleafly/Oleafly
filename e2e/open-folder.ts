@@ -238,11 +238,11 @@ export async function openFolder(page: Page, path: string): Promise<OpenedState>
 }
 
 export async function startChat(page: Page, projectId: string, message: string): Promise<void> {
-  await page.evaluate(
+  const chatId = await page.evaluate<string>(
     `import("/src/store/chats.ts").then(({ useChatsStore }) => {
       const chat = useChatsStore.getState().create(${scriptValue(projectId)}, null);
       useChatsStore.getState().saveMessages(chat.id, [{ id: "open-folder-message", role: "user", content: ${scriptValue(message)}, createdAt: Date.now() }]);
-      return true;
+      return chat.id;
     })`,
   );
   await expect
@@ -250,7 +250,8 @@ export async function startChat(page: Page, projectId: string, message: string):
       const dataDir = process.env.OLEAFLY_DATA_DIR;
       if (!dataDir) throw new Error("OLEAFLY_DATA_DIR is not set; run specs through scripts/e2e.sh");
       try {
-        return readFileSync(join(dataDir, "chats", `${projectId}.json`), "utf8").includes(message);
+        // One file per chat: chats/<project id>/<chat id>.json.
+        return readFileSync(join(dataDir, "chats", projectId, `${chatId}.json`), "utf8").includes(message);
       } catch {
         return false;
       }

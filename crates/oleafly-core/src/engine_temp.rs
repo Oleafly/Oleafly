@@ -219,6 +219,37 @@ pub fn long_path_name(path: &Path) -> Option<PathBuf> {
     )))
 }
 
+/// The 8.3 spelling of an existing Windows path (plain ASCII when the
+/// volume keeps short names); `None` elsewhere or when there is none.
+#[cfg(windows)]
+pub fn short_path_name(path: &Path) -> Option<PathBuf> {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    use windows_sys::Win32::Storage::FileSystem::GetShortPathNameW;
+
+    let input: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let mut output = vec![0u16; 260];
+    // A second try is enough unless the folder is renamed in between.
+    for _ in 0..3 {
+        let capacity = u32::try_from(output.len()).ok()?;
+        let written = unsafe { GetShortPathNameW(input.as_ptr(), output.as_mut_ptr(), capacity) };
+        let written = usize::try_from(written).ok()?;
+        if written == 0 {
+            return None;
+        }
+        if written < output.len() {
+            output.truncate(written);
+            return Some(PathBuf::from(std::ffi::OsString::from_wide(&output)));
+        }
+        output.resize(written, 0);
+    }
+    None
+}
+
+#[cfg(not(windows))]
+pub fn short_path_name(_path: &Path) -> Option<PathBuf> {
+    None
+}
+
 fn resolve_base(base: &Path, create: bool) -> io::Result<PathBuf> {
     if !base.is_absolute() {
         return Err(io::Error::new(

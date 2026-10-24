@@ -6,6 +6,8 @@ import type {
 } from "@oleafly/pdf-to-latex";
 import { convertPages } from "@oleafly/pdf-to-latex";
 import { create } from "zustand";
+import type { TranscriptionModelInfo } from "@/features/tools-ai/transcribe";
+import { describeError } from "@/lib/app-error";
 import { useHomeViewStore } from "@/store/home-view";
 
 let scanController: AbortController | null = null;
@@ -19,6 +21,8 @@ interface ImportState {
   figures: ExtractedFigure[];
   result: ConvertResult | null;
   scanTranscribed: boolean;
+  /** The Tools model that transcribed the scan, and where the pages went. */
+  scanModel: TranscriptionModelInfo | null;
   busy: boolean;
   error: string | null;
   view: "preview" | "source" | "split";
@@ -39,6 +43,7 @@ export const useImportStore = create<ImportState>((set, get) => ({
   figures: [],
   result: null,
   scanTranscribed: false,
+  scanModel: null,
   busy: false,
   error: null,
   view: "split",
@@ -57,6 +62,7 @@ export const useImportStore = create<ImportState>((set, get) => ({
       pdfBytes: bytes,
       result: null,
       scanTranscribed: false,
+      scanModel: null,
       pages: [],
       figures: [],
       options: {},
@@ -81,27 +87,33 @@ export const useImportStore = create<ImportState>((set, get) => ({
       options,
       result: convertPages(pages, options),
       scanTranscribed: false,
+      scanModel: null,
       busy: false,
       error: null,
     }));
   },
   transcribeScan: async () => {
-    const { pdfBytes, result, requestGeneration, busy } = get();
+    const { pdfBytes, result, requestGeneration, busy, pages, options } = get();
     if (!pdfBytes || !result?.report.likelyScanned || busy) return;
     const controller = new AbortController();
     scanController = controller;
     set({ busy: true, error: null });
     try {
-      const { transcribePdfPages } = await import("@/features/ad-hoc-converters");
-      const tex = await transcribePdfPages(
+      const [{ selectedPages }, { transcribePdfPages }] = await Promise.all([
+        import("@/features/tools-ai/scan-estimate"),
+        import("@/features/ad-hoc-converters"),
+      ]);
+      // The pages the conversion shows: the chosen range, not the first N.
+      const numbers = selectedPages(pages.length, options.pageRange);
+      const { text, model } = await transcribePdfPages(
         pdfBytes,
-        result.report.pages,
+        numbers,
         "LaTeX",
         undefined,
         controller.signal,
       );
       if (!get().open || get().requestGeneration !== requestGeneration) return;
-      set({ result: { ...result, tex }, scanTranscribed: true, busy: false });
+      set({ result: { ...result, tex: text }, scanTranscribed: true, scanModel: model, busy: false });
     } catch (error) {
       if (get().open && get().requestGeneration === requestGeneration) {
         set({
@@ -109,9 +121,7 @@ export const useImportStore = create<ImportState>((set, get) => ({
           error:
             error instanceof DOMException && error.name === "AbortError"
               ? null
-              : error instanceof Error
-                ? error.message
-                : String(error),
+              : describeError(error).replace(/^\[[a-z_]+\]\s*/, ""),
         });
       }
     } finally {
@@ -132,6 +142,7 @@ export const useImportStore = create<ImportState>((set, get) => ({
         figures: [],
         result: null,
         scanTranscribed: false,
+        scanModel: null,
         error: null,
       };
     }),

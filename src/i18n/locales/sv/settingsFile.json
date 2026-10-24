@@ -48,7 +48,6 @@
     "hexColor": "måste vara en färg som #2563eb",
     "hexColorOrEmpty": "måste vara en färg som #2563eb, eller \"\" för att använda temats färg",
     "text": "måste vara text med högst {{max}} tecken",
-    "webAddress": "måste vara en webbadress som börjar med http:// eller https://",
     "list": "måste vara en lista med högst {{max}} poster",
     "listItem": "är inte en tillåten post",
     "duplicate": "finns med två gånger",

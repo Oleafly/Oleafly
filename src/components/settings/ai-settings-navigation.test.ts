@@ -21,6 +21,10 @@ describe("AI settings navigation", () => {
   it("routes assistant MCP links to the MCP tab", () => {
     expect(aiSettingsDestination("ai-mcp")).toEqual({ tab: "mcp" });
   });
+
+  it("opens the Tools tab from the ai-tools link", () => {
+    expect(aiSettingsDestination("ai-tools")).toEqual({ tab: "tools" });
+  });
   it("opens the agents tab on one agent's card for a per-agent link", () => {
     expect(aiSettingsDestination("ai-agents")).toEqual({ tab: "agents" });
     expect(aiSettingsDestination("ai-agents:pi")).toEqual({ tab: "agents", agentId: "pi" });

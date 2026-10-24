@@ -7,6 +7,7 @@ use crate::error::AgentError;
 use crate::event::AgentEvent;
 use crate::provider::Wire;
 use crate::sse::SseEvent;
+use crate::stream::anthropic_blocks::{AnthropicBlocks, AssistantBlock};
 use crate::stream::{ToolCall, MAX_STREAM_TOOL_CALLS};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,6 +40,10 @@ pub struct Translator {
     synthetic: i64,
     error: Option<AgentError>,
     response_items: BTreeMap<i64, Value>,
+    anthropic: AnthropicBlocks,
+    container: Option<String>,
+    input_transformations: Vec<Value>,
+    refusal_category: Option<String>,
 }
 
 impl Translator {
@@ -54,6 +59,10 @@ impl Translator {
             synthetic: 0,
             error: None,
             response_items: BTreeMap::new(),
+            anthropic: AnthropicBlocks::default(),
+            container: None,
+            input_transformations: Vec::new(),
+            refusal_category: None,
         }
     }
 
@@ -107,6 +116,23 @@ impl Translator {
 
     pub fn response_items(&self) -> Vec<Value> {
         self.response_items.values().cloned().collect()
+    }
+
+    /// The Anthropic reply's blocks in stream order (empty on other wires).
+    pub(crate) fn take_blocks(&mut self) -> Vec<AssistantBlock> {
+        self.anthropic.finish()
+    }
+
+    pub fn container(&self) -> Option<String> {
+        self.container.clone()
+    }
+
+    pub fn input_transformations(&self) -> Vec<Value> {
+        self.input_transformations.clone()
+    }
+
+    pub fn refusal_category(&self) -> Option<String> {
+        self.refusal_category.clone()
     }
 
     fn start_call(&mut self, index: i64, id: String, name: String) -> Vec<AgentEvent> {
@@ -187,8 +213,12 @@ impl Translator {
                     || optional_u32_at(usage, "completion_tokens").is_some())
                 .then_some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
+                reasoning: optional_u32_at_path(
+                    usage,
+                    "/completion_tokens_details/reasoning_tokens",
+                ),
             });
-            out.push(AgentEvent::Usage { usage: self.usage });
+            out.push(AgentEvent::usage(self.usage));
         }
 
         let Some(choice) = value.pointer("/choices/0") else {
@@ -295,8 +325,9 @@ impl Translator {
                     || optional_u32_at(usage, "output_tokens").is_some())
                 .then_some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
+                reasoning: optional_u32_at_path(usage, "/output_tokens_details/reasoning_tokens"),
             });
-            out.push(AgentEvent::Usage { usage: self.usage });
+            out.push(AgentEvent::usage(self.usage));
         }
         self.stop_reason = Some(if kind == "response.completed" {
             "completed".into()
@@ -344,6 +375,18 @@ impl Translator {
             }
             "response.output_item.added" => {
                 if value.pointer("/item/type").and_then(|kind| kind.as_str())
+                    == Some("web_search_call")
+                {
+                    // The provider runs this search itself.
+                    out.push(AgentEvent::ToolCallStart {
+                        id: value
+                            .pointer("/item/id")
+                            .and_then(|id| id.as_str())
+                            .unwrap_or_default()
+                            .to_string(),
+                        name: "web_search".into(),
+                    });
+                } else if value.pointer("/item/type").and_then(|kind| kind.as_str())
                     == Some("function_call")
                 {
                     let id = value
@@ -377,6 +420,9 @@ impl Translator {
             "response.output_item.done" => {
                 if let Some(item) = value.get("item") {
                     self.response_items.insert(index, item.clone());
+                    if item.get("type").and_then(|kind| kind.as_str()) == Some("web_search_call") {
+                        out.extend(web_search_call_events(item));
+                    }
                 }
                 out.extend(self.close_call(index));
             }
@@ -391,10 +437,7 @@ impl Translator {
                     .unwrap_or("OpenAI response stream failed")
                     .to_string();
                 self.done = true;
-                self.error = Some(AgentError::Provider {
-                    status: 400,
-                    message,
-                });
+                self.error = Some(AgentError::provider(400, message));
             }
             _ => {}
         }
@@ -430,14 +473,38 @@ impl Translator {
                         cache_read: optional_u32_at(usage, "cache_read_input_tokens"),
                         cache_write: optional_u32_at(usage, "cache_creation_input_tokens"),
                         input_semantics: InputTokenSemantics::Exclusive,
+                        reasoning: None,
                     });
-                    out.push(AgentEvent::Usage { usage: self.usage });
+                    out.push(AgentEvent::usage(self.usage));
+                }
+                if let Some(transformations) = value
+                    .pointer("/message/input_transformations")
+                    .and_then(|value| value.as_array())
+                {
+                    self.input_transformations = transformations.clone();
+                }
+                if let Some(id) = value
+                    .pointer("/message/container/id")
+                    .and_then(|id| id.as_str())
+                {
+                    self.container = Some(id.to_string());
                 }
             }
-            "content_block_start" => out.extend(self.anthropic_block_start(&value, index)),
-            "content_block_delta" => out.extend(self.anthropic_block_delta(&value, index)),
+            "content_block_start" => {
+                if let Some(block) = value.get("content_block") {
+                    out.extend(self.anthropic.start(index, block));
+                }
+                out.extend(self.anthropic_block_start(&value, index));
+            }
+            "content_block_delta" => {
+                if let Some(delta) = value.get("delta") {
+                    self.anthropic.delta(index, delta);
+                }
+                out.extend(self.anthropic_block_delta(&value, index));
+            }
             "content_block_stop" => {
                 out.extend(self.close_call(index));
+                out.extend(self.anthropic.stop(index));
             }
             "message_delta" => out.extend(self.anthropic_message_delta(&value)),
             "message_stop" => {
@@ -501,11 +568,40 @@ impl Translator {
         let mut out = Vec::new();
         if let Some(reason) = value.pointer("/delta/stop_reason").and_then(|r| r.as_str()) {
             self.stop_reason = Some(reason.to_string());
+            if reason == "refusal" {
+                self.refusal_category = value
+                    .pointer("/delta/stop_details/category")
+                    .and_then(|category| category.as_str())
+                    .map(str::to_string);
+            }
+        }
+        if let Some(id) = value
+            .pointer("/delta/container/id")
+            .and_then(|id| id.as_str())
+        {
+            self.container = Some(id.to_string());
+        }
+        let mut changed = false;
+        if let Some(input) = optional_u32_at_path(value, "/usage/input_tokens") {
+            self.usage.input = input;
+            self.usage.input_known = Some(true);
+            changed = true;
+        }
+        if let Some(read) = optional_u32_at_path(value, "/usage/cache_read_input_tokens") {
+            self.usage.cache_read = Some(read);
+            changed = true;
+        }
+        if let Some(written) = optional_u32_at_path(value, "/usage/cache_creation_input_tokens") {
+            self.usage.cache_write = Some(written);
+            changed = true;
         }
         if let Some(output) = optional_u32_at_path(value, "/usage/output_tokens") {
             self.usage.output = output;
             self.usage.output_known = Some(true);
-            out.push(AgentEvent::Usage { usage: self.usage });
+            changed = true;
+        }
+        if changed {
+            out.push(AgentEvent::usage(self.usage));
         }
         out
     }
@@ -545,8 +641,9 @@ impl Translator {
                     .or(counted.then_some(0)),
                 cache_write: counted.then_some(0),
                 input_semantics: InputTokenSemantics::Inclusive,
+                reasoning: optional_u32_at(meta, "thoughtsTokenCount"),
             });
-            out.push(AgentEvent::Usage { usage: self.usage });
+            out.push(AgentEvent::usage(self.usage));
         }
 
         if let Some(parts) = value
@@ -615,25 +712,52 @@ impl Translator {
     }
 }
 
+/// The tool events a finished hosted web search becomes. It is never added
+/// to the client's tool calls.
+fn web_search_call_events(item: &Value) -> Vec<AgentEvent> {
+    let id = item
+        .get("id")
+        .and_then(|id| id.as_str())
+        .unwrap_or_default()
+        .to_string();
+    let query = item
+        .pointer("/action/query")
+        .and_then(|query| query.as_str())
+        .unwrap_or_default();
+    let sources: Vec<Value> = item
+        .pointer("/action/sources")
+        .and_then(|sources| sources.as_array())
+        .into_iter()
+        .flatten()
+        .map(|source| {
+            let mut entry = serde_json::json!({
+                "url": source.get("url").and_then(|url| url.as_str()).unwrap_or_default()
+            });
+            if let Some(title) = source.get("title").and_then(|title| title.as_str()) {
+                entry["title"] = serde_json::json!(title);
+            }
+            entry
+        })
+        .collect();
+    vec![
+        AgentEvent::ToolCallEnd {
+            id: id.clone(),
+            arguments: serde_json::json!({ "query": query }).to_string(),
+        },
+        AgentEvent::ToolOutcome {
+            id,
+            output: serde_json::json!({ "sources": sources }).to_string(),
+        },
+    ]
+}
+
 fn anthropic_stream_error(kind: &str, message: String) -> AgentError {
     match kind {
-        "rate_limit_error" => AgentError::Provider {
-            status: 429,
-            message,
-        },
-        "overloaded_error" | "api_error" | "" => AgentError::Provider {
-            status: 529,
-            message,
-        },
+        "rate_limit_error" => AgentError::provider(429, message),
+        "overloaded_error" | "api_error" | "" => AgentError::provider(529, message),
         "timeout_error" => AgentError::Timeout,
-        "authentication_error" | "permission_error" => AgentError::Provider {
-            status: 401,
-            message,
-        },
-        _ => AgentError::Provider {
-            status: 400,
-            message,
-        },
+        "authentication_error" | "permission_error" => AgentError::provider(401, message),
+        _ => AgentError::provider(400, message),
     }
 }
 

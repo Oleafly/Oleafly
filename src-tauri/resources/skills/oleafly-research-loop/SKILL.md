@@ -5,7 +5,7 @@ license: MIT
 compatibility: Works in any Oleafly project. Stages that compile need a document engine (LaTeX, Typst or Markdown). Handoffs to vendored skills need Python 3.11 or newer on the login shell PATH.
 allowed-tools: update_todos get_todos list_notes remember_note project_map list_files search_project read_file compile load_skill read_skill_file run_command spawn_agent wait_agent close_agent
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   skill-author: "Oleafly"
   oleafly:
     tier: native
@@ -196,3 +196,13 @@ Do not spawn agents for work that mutates the manuscript. Parallel writes to the
 - `references/project-layout.md` gives the file formats, key rules, and provenance fields in full.
 - `references/tooling.md` covers approval behaviour, subagent limits, and the vendored script surface.
 - `assets/reading-list.md`, `assets/source-note.md` and `assets/claims.md` are the starting templates for the three shared files.
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `project_map` | `oleafly context --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |

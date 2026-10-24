@@ -5,12 +5,7 @@ import {
   normalizeFigureCode,
 } from "@oleafly/latex";
 import { pickPagesToVerify } from "./pick-pages";
-import {
-  cuaActionRisk,
-  runCuaAction,
-  type CuaActionType,
-  type CuaSurface,
-} from "./cua";
+import { projectMapFromIndex } from "./project-map";
 import type { TypstFigureRender } from "./typst-figure";
 
 export type FigureEngine = "latex" | "typst";
@@ -231,9 +226,6 @@ export function createOleaflyTools(
     confirm?: ConfirmFn;
     onImage?: (dataUrl: string) => void;
     mutationAllowed?: () => boolean;
-    /** When present, exposes the computer_use tool over this sandbox surface. */
-    cuaSurface?: () => CuaSurface | null;
-    alwaysConfirmComputerUse?: boolean;
     resolveExecCwd?: (projectId: string) => Promise<string>;
     authorizeExec?: (
       projectId: string,
@@ -940,22 +932,7 @@ export function createOleaflyTools(
       execute: async () => {
         const index = await host.getProjectIndex();
         if (!index) return { error: "No project open" };
-        const of = (kind: string) => index.defs.filter((d) => d.kind === kind);
-        return {
-          files: of("file").map((d) => d.name),
-          sections: of("section").map((d) => ({ title: d.name, level: d.level, file: d.file, line: d.line })),
-          labels: of("label").map((d) => d.name),
-          bibKeys: of("bibentry").map((d) => d.name),
-          macros: of("macro").map((d) => d.name),
-          theorems: of("theorem").map((d) => d.name),
-          glossary: of("glossary").map((d) => d.name),
-          inputGraph: index.uses
-            .filter((u) => u.kind === "inputedge")
-            .map((u) => ({ from: u.file, to: u.target })),
-          unresolvedRefs: [...new Set(index.uses.filter((u) => u.kind === "ref" && !index.definitionFor(u)).map((u) => u.name))],
-          unresolvedCites: [...new Set(index.uses.filter((u) => u.kind === "cite" && !index.definitionFor(u)).map((u) => u.name))],
-          ambiguousTypstAtUses: [...new Set(index.uses.filter((u) => u.kind === "atuse").map((u) => u.name))],
-        };
+        return projectMapFromIndex(index);
       },
     },
 
@@ -1214,51 +1191,6 @@ export function createOleaflyTools(
         } catch (e) {
           return { error: String(e) };
         }
-      },
-    };
-  }
-
-  if (opts?.cuaSurface) {
-    const getSurface = opts.cuaSurface;
-    tools.computer_use = {
-      description: opts.alwaysConfirmComputerUse
-        ? "Drive the browser window: navigate to a URL, or wait for a page to load. It opens as a separate OS window whose page content cannot be read or scripted. Every navigation requires explicit user approval for external connections."
-        : "Drive the browser window as a computer-use agent. It opens as a separate OS window, so the only supported actions are navigate (open a URL) and wait (pause while a page loads). Its page content cannot be read, captured, or clicked from here. navigate reports the resulting URL and follows the active approval policy.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          action: {
-            type: "string",
-            enum: ["navigate", "wait"],
-          },
-          text: { type: "string", description: "URL to navigate to" },
-          amount: { type: "number", description: "wait milliseconds" },
-        },
-        required: ["action"],
-        additionalProperties: false,
-      },
-      execute: async (input) => {
-        const surface = getSurface();
-        if (!surface) {
-          return { error: "The browser window is unavailable. Enable the web browser to use computer_use." };
-        }
-        const action = {
-          type: input.action as CuaActionType,
-          selector: input.selector as string | undefined,
-          text: input.text as string | undefined,
-          amount: input.amount as number | undefined,
-        };
-        if (opts.alwaysConfirmComputerUse || cuaActionRisk(action.type) === "confirm") {
-          if (!confirm) return declined("computer_use");
-          const detail = action.selector || action.text || "";
-          if (!(await confirm({
-            tool: "computer_use",
-            summary: detail ? `${action.type} ${detail}` : action.type,
-          }))) {
-            return declined("computer_use");
-          }
-        }
-        return runCuaAction(surface, action);
       },
     };
   }

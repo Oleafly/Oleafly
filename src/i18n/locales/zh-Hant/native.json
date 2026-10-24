@@ -19,7 +19,6 @@
     "selectAll": "全選",
     "view": "檢視",
     "toggleTerminal": "切換終端機",
-    "toggleBrowser": "切換瀏覽器",
     "file": "檔案",
     "openFolder": "開啟資料夾…",
     "openRecent": "最近開啟",
@@ -28,15 +27,7 @@
     "minimize": "縮到最小",
     "fullscreen": "切換全螢幕",
     "bringAllToFront": "將全部視窗移至最前",
-    "newTab": "新增分頁",
-    "openLocation": "開啟位置…",
-    "closeTab": "關閉分頁",
-    "reloadPage": "重新載入頁面",
     "zenMode": "禪模式"
-  },
-  "window": {
-    "browser": "Oleafly 瀏覽器",
-    "browserTitled": "{{title}} - Oleafly 瀏覽器"
   },
   "dialog": {
     "cancel": "取消",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "確認匯入 Cookie",
-      "messageHost": "要將 {{browser}} 設定檔「{{profile}}」中 {{hostname}} 的 Cookie 匯入 Oleafly 的內建瀏覽器嗎？匯入的 Cookie 可能會讓你自動登入網站。",
-      "messageAll": "要將 {{browser}} 設定檔「{{profile}}」中的所有 Cookie 匯入 Oleafly 的內建瀏覽器嗎？匯入的 Cookie 可能會讓你自動登入網站。",
-      "confirm": "匯入 Cookie"
+      "copyHost": "要將 {{browser}} 設定檔「{{profile}}」中 {{hostname}} 的 Cookie 複製到 Oleafly 嗎？它們可用來登入 {{hostname}}。",
+      "copyAll": "要將 {{browser}} 設定檔「{{profile}}」中的所有 Cookie 複製到 Oleafly 嗎？它們可用來登入網站。",
+      "copyConfirm": "複製 Cookie"
     },
     "mcpApprove": {
       "title": "核准 MCP 工具",
@@ -103,6 +94,51 @@
       "confirm": "使用程式",
       "pickTitle": "選擇 {{name}} 的程式",
       "filter": "程式"
+    },
+    "desktopApps": {
+      "title": "桌面應用程式",
+      "action": "{{agent}} 想要{{action}}。",
+      "steps": "{{agent}} 想要在桌面應用程式中執行以下步驟：",
+      "moreSteps": "未顯示的步驟：{{count}}",
+      "moreItems": "還有 {{count}} 個項目未顯示",
+      "cut": "（還有 {{count}} 個字元未顯示）",
+      "signedIn": "這會在你自己已登入的瀏覽器中操作。",
+      "signedInOn": "這會在你自己已登入的瀏覽器中操作 {{origin}}。",
+      "text": "文字：「{{text}}」",
+      "address": "位址：{{url}}",
+      "allowOnce": "允許一次",
+      "allowChat": "在這個聊天中允許",
+      "allowSession": "在這個工作階段中允許",
+      "allowTask": "在這項任務中允許",
+      "deny": "不允許",
+      "actions": {
+        "launchApp": "開啟一個應用程式",
+        "click": "在應用程式中按一下",
+        "doubleClick": "在應用程式中按兩下",
+        "rightClick": "在應用程式中按右鍵",
+        "typeText": "在應用程式中輸入",
+        "pressKey": "在應用程式中按一個鍵",
+        "hotkey": "在應用程式中按快捷鍵",
+        "scroll": "在應用程式中捲動",
+        "setValue": "在應用程式中變更欄位",
+        "browserPrepare": "為網站開啟瀏覽器",
+        "browserNavigate": "前往網頁",
+        "browserClick": "在網頁上按一下",
+        "browserType": "在網頁上輸入",
+        "browserSelect": "在網頁上選擇選項",
+        "runScript": "執行 Cua 指令碼"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "要允許控制桌面嗎？",
+      "message": "代理程式將能夠使用以下項目，而且每次動作前仍會詢問：",
+      "confirm": "允許",
+      "enabled": "桌面應用程式",
+      "app": "應用程式：{{name}}（{{identity}}）",
+      "more": "還有 {{count}} 個",
+      "site": "網站：{{origin}}",
+      "signedIn": "你在 {{origin}} 上已登入的瀏覽器",
+      "scripted": "Cua 指令碼"
     }
   },
   "errors": {
@@ -128,5 +164,41 @@
   "cloud": {
     "connectedPage": "已連接。你可以關閉此分頁並返回 Oleafly。",
     "failedPage": "登入未完成。你可以關閉此分頁並返回 Oleafly。"
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "任務可供審閱",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "計畫等待核准",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "有任務需要你核准",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "任務已停止",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "任務預算已用完",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly 仍在工作",
+      "body": "你標記為繼續執行的研究任務會在背景繼續執行。開啟 Oleafly 即可查看進度。"
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "權限檢查已關閉（{{mode}}）",
+      "description": "代理程式可以在不詢問的情況下編輯檔案並執行指令。Oleafly 無法將它切換到其他模式。請在代理程式自己的設定中變更模式。"
+    }
   }
 }

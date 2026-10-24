@@ -86,7 +86,6 @@ import { usePreflightStore } from "@/store/preflight";
 import { editorLetterSpacingValue, editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
 import { fontFamilyName, fontFamilyStack } from "@/lib/font-families";
 import { applyAppTypography } from "@/lib/app-typography";
-import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { useZenStore } from "@/store/zen";
@@ -100,7 +99,6 @@ import {
   shouldCompileOnOpen,
 } from "@/lib/open-compile";
 import { useGitStatusStore } from "@/store/git-status";
-import { useGithubStore } from "@/store/github";
 import { forwardFromCursor } from "@/features/synctex";
 import { checkForUpdatesOnStartup, openUpdateWindow } from "@/lib/updater";
 import { isTauri } from "@tauri-apps/api/core";
@@ -146,7 +144,9 @@ import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import { startDefaultLatexEngineSync } from "@/lib/default-latex-engine";
 import { applyEditorColors } from "@/lib/editor-themes";
 import { useEditorColorKey } from "@/hooks/use-editor-theme";
-import { handleDockShortcut } from "@/lib/dock-shortcuts";
+import { handleDockShortcut, handleTerminalTabShortcut } from "@/lib/dock-shortcuts";
+import { isTerminalTarget } from "@/lib/terminal-keys";
+import { terminalOwnsKey } from "@/lib/terminal-shortcut-guard";
 import { historyCommand, inPlainField, runFieldHistory } from "@/lib/field-history";
 import {
   startNativeDockShortcutBridge,
@@ -364,6 +364,11 @@ function loadStuckWindowRestore(): Promise<() => void> {
   return import("@/lib/stuck-window-restore").then((m) => m.startStuckWindowRestore());
 }
 
+// Research tasks ask this window for PDF text, so it answers whichever panel is open.
+function loadResearchPdfBridge(): Promise<() => void> {
+  return import("@/lib/research-pdf-bridge").then((m) => m.mountResearchPdfBridge());
+}
+
 const SIDEBAR_DEFAULT_PX = 340;
 
 function shownViewMode(detached: boolean, selected: ViewMode): ViewMode {
@@ -396,7 +401,6 @@ function AppContent() {
   const { t } = useTranslation(["workspace"]);
   const [aboutOpen, setAboutOpen] = useState(false);
   const projectId = useFilesStore((s) => s.projectId);
-  const projectName = useFilesStore((s) => s.projectName);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const recompile = useCompileStore((s) => s.recompile);
   const selectedViewMode = useSettingsStore((s) => s.viewMode);
@@ -485,11 +489,6 @@ function AppContent() {
     );
   }, [terminalOpen, projectId]);
 
-  // The browser opens as its own window, so computer use just needs a CUA
-  // surface whose navigate opens/replaces that window; there is no dock to
-  // reveal. The computer_use tool is only exposed when the browser flag is on.
-  useEffect(() => registerBrowserCuaSurface(), []);
-
   useOpenFolderIntake();
   useTemplateLinkIntake();
 
@@ -553,7 +552,6 @@ function AppContent() {
     markBootStage("react-mounted");
     if (!bootSplashHeld()) dismissBootSplash();
     void refreshProjects();
-    void useGithubStore.getState().refresh();
     markBootStage("stores-ready");
   }, [refreshProjects]);
 
@@ -591,8 +589,11 @@ function AppContent() {
     if (!native) return;
     // Done here, not at module load, so it never fires IPC at import time.
     void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
+    // 0.4.8 I: the desktop_apps tool spec, after first paint.
+    void import("@/lib/desktop-apps").then((m) => m.syncDesktopAppsTool());
   }, [native]);
   useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
+  useTauriSubscription(native ? loadResearchPdfBridge : null, "start the research PDF bridge");
   useTauriSubscription(
     native ? loadStuckWindowRestore : null,
     "reopen the work after a stuck window reload",
@@ -771,6 +772,8 @@ function AppContent() {
     const onKey = (e: KeyboardEvent) => {
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
+      // Ctrl+B, Ctrl+Alt+P and the like belong to a focused terminal.
+      if (terminalOwnsKey(e)) return;
       if (matchesShortcut(e, useShortcutStore.getState().bindings.toggleSidebar)) {
         // Cmd/Ctrl+B means bold inside the source and visual editors; the
         // sidebar toggle must not shadow it there.
@@ -800,6 +803,8 @@ function AppContent() {
     const onKey = (e: KeyboardEvent) => {
       const command = historyCommand(e);
       if (!command) return;
+      // In the terminal, Ctrl+Z and Ctrl+Y are the shell's (suspend, yank).
+      if (isTerminalTarget(e.target)) return;
       const isRedo = command === "redo";
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
@@ -833,10 +838,12 @@ function AppContent() {
   useTauriEvent("menu://redo", () => runMenuHistory(true), native);
 
   useEffect(() => {
-    if (!projectId || usesNativeDockMenu()) return;
+    if (!projectId) return;
     const onKey = (event: KeyboardEvent) => {
       if (useTourStore.getState().activeTourId) return;
-      handleDockShortcut(event);
+      // Terminal tab shortcuts are not menu items, so they work on macOS too.
+      if (handleTerminalTabShortcut(event)) return;
+      if (!usesNativeDockMenu()) handleDockShortcut(event);
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -1105,7 +1112,6 @@ function AppContent() {
                     <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.terminal)} />}>
                       <TerminalDock
                         projectId={projectId}
-                        projectName={projectName}
                         visible={terminalOpen}
                       />
                     </Suspense>

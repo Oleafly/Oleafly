@@ -111,25 +111,35 @@ vi.mock("@/store/git-status", () => ({
   },
 }));
 
-vi.mock("@/components/integrations/PublishToGitHubDialog", () => ({
-  PublishToGitHubDialog: (props: unknown) => {
+vi.mock("@/components/integrations/PublishDialog", () => ({
+  PublishDialog: (props: unknown) => {
     mocks.publishDialog(props);
     return null;
   },
 }));
 
-vi.mock("@/components/layout/GithubMenu", () => ({
-  GithubMenu: ({ onCopyLink, onOpenInGithub }: { onCopyLink: () => void; onOpenInGithub: () => void }) => (
+vi.mock("@/components/layout/RemoteMenu", () => ({
+  RemoteMenu: ({ onCopyLink, onOpen }: { onCopyLink: () => void; onOpen: () => void }) => (
     <>
       <button type="button" onClick={onCopyLink}>
-        {"github-menu-copy"}
+        {"remote-menu-copy"}
       </button>
-      <button type="button" onClick={onOpenInGithub}>
-        {"github-menu-open"}
+      <button type="button" onClick={onOpen}>
+        {"remote-menu-open"}
       </button>
     </>
   ),
 }));
+
+vi.mock("@/store/forge-accounts", () => {
+  const state = { status: "ready", accounts: [], ensureLoaded: async () => [] };
+  return {
+    useForgeAccountsStore: Object.assign(
+      (selector: (value: typeof state) => unknown) => selector(state),
+      { getState: () => state },
+    ),
+  };
+});
 
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
 

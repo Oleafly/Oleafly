@@ -3,8 +3,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const toggleBrowser = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/browser-window", () => ({ toggleBrowser, launchBrowser: vi.fn() }));
 import {
   SidebarCollapseToggle,
   SidebarViews,
@@ -31,11 +29,9 @@ describe("WorkspaceControls", () => {
   beforeEach(() => {
     useSettingsStore.setState({
       terminalOpen: false,
-      browserOpen: false,
       assistantOpen: false,
       showTree: true,
       railTab: "files",
-      webBrowser: true,
     });
     useFilesStore.setState({ projectId: "proj-1" });
     useShortcutStore.getState().resetAll();
@@ -101,10 +97,9 @@ describe("WorkspaceControls", () => {
     fireEvent.click(screen.getByTestId("rail-assistant-toggle"));
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
     expect(screen.queryByTestId("open-settings")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("rail-browser-toggle")).toBeNull();
     openThemeMenu(screen.getByTestId("workspace-menu"));
-    fireEvent.click(screen.getByTestId("rail-browser-toggle"));
-    expect(toggleBrowser).toHaveBeenCalled();
-    openThemeMenu(screen.getByTestId("workspace-menu"));
+    expect(screen.queryByTestId("rail-browser-toggle")).toBeNull();
     fireEvent.click(screen.getByRole("menuitem", { name: enShell.toolbar.forkProject }));
     expect(fork).toHaveBeenCalledOnce();
     openThemeMenu(screen.getByTestId("workspace-menu"));
@@ -131,7 +126,7 @@ describe("WorkspaceControls", () => {
     expect(screen.getByTestId("open-settings")).toBeVisible();
   });
 
-  it("moves browser, theme, and settings between direct controls and the overflow menu", () => {
+  it("moves theme and settings between direct controls and the overflow menu", () => {
     useSettingsStore.setState({ settingsOpen: false });
     const { rerender } = render(<ThemeProvider><WorkspaceDockControls overflow={0} /></ThemeProvider>);
     expect(screen.getByRole("button", { name: enShell.dock.settings })).toBeVisible();
@@ -140,8 +135,7 @@ describe("WorkspaceControls", () => {
       "cloud-attention",
     );
     expect(screen.queryByRole("button", { name: enShell.toolbar.moreActions })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("rail-browser-toggle"));
-    expect(toggleBrowser).toHaveBeenCalled();
+    expect(screen.queryByTestId("rail-browser-toggle")).toBeNull();
     openThemeMenu(screen.getByRole("button", { name: "Appearance: System" }));
     fireEvent.click(screen.getByTestId("theme-option-dark"));
     expect(localStorage.getItem("oleafly.theme")).toBe("dark");
@@ -149,7 +143,6 @@ describe("WorkspaceControls", () => {
     rerender(<ThemeProvider><WorkspaceDockControls overflow={TOOLBAR_OVERFLOW.layout} /></ThemeProvider>);
     expect(screen.queryByRole("button", { name: enShell.dock.settings })).not.toBeInTheDocument();
     openThemeMenu(screen.getByTestId("workspace-menu"));
-    expect(screen.getByRole("menuitem", { name: /Open browser/ })).toBeVisible();
     expect(screen.getByRole("menuitem", { name: "Appearance: Dark" })).toBeVisible();
     const settingsItem = enShell.rail.withShortcut
       .replace("{{label}}", enShell.dock.settings)
@@ -176,20 +169,12 @@ describe("WorkspaceControls", () => {
     const bindings = useShortcutStore.getState().bindings;
     expect(screen.getByTestId("rail-terminal-toggle")).toHaveAttribute("aria-label",
       i18n.t(($) => $.shell.dock.terminal.show, { shortcut: shortcutLabel(bindings.toggleTerminal) }));
-    openThemeMenu(screen.getByTestId("workspace-menu"));
-    expect(screen.getByTestId("rail-browser-toggle")).toHaveTextContent(
-      i18n.t(($) => $.shell.dock.browser.open, { shortcut: shortcutLabel(bindings.toggleBrowser) }));
   });
 
-
-  it("names the open browser window and opens settings from the toolbar itself", () => {
-    useSettingsStore.setState({ browserOpen: true, settingsOpen: false });
+  it("opens settings from the toolbar itself", () => {
+    useSettingsStore.setState({ settingsOpen: false });
     render(<ThemeProvider><WorkspaceDockControls overflow={0} /></ThemeProvider>);
-    const close = i18n.t(($) => $.shell.dock.browser.close, {
-      shortcut: shortcutLabel(useShortcutStore.getState().bindings.toggleBrowser),
-    });
-
-    expect(screen.getByRole("button", { name: close })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByTestId("rail-browser-toggle")).toBeNull();
     fireEvent.click(screen.getByTestId("open-settings"));
 
     expect(useSettingsStore.getState().settingsOpen).toBe(true);

@@ -80,17 +80,50 @@
   "export": {
     "bibliography_unreadable": "Oleafly kon de bibliografie {{name}} niet lezen. Kijk of er een beschadigd item in staat en exporteer daarna opnieuw."
   },
-  "github": {
-    "sign_in_expired": "De aanmeldcode is verlopen. Probeer het opnieuw.",
-    "sign_in_cancelled": "De autorisatie bij GitHub is geannuleerd.",
-    "sign_in_failed": "Aanmelden bij GitHub is mislukt.",
-    "repositories_unavailable": "Kon de repository's niet laden.",
-    "create_repo_failed": "Kon de repository niet aanmaken ({{status}})."
-  },
   "git": {
-    "remote_exists": "Dit project is al gekoppeld aan {{remote}}.",
+    "access_denied": "{{host}} heeft de toegang tot deze repository geweigerd. Controleer of je account er toegang toe heeft. Gebruikt de organisatie single sign-on, autoriseer dan eerst je aanmelding voor die organisatie.",
+    "access_denied_account": "{{host}} heeft de toegang tot deze repository voor {{account}} geweigerd. Controleer of dit account er gebruik van kan maken. Gebruikt de organisatie single sign-on, autoriseer dan eerst je aanmelding voor die organisatie.",
+    "account_missing": "Er is geen Git-hostingaccount voor {{host}}. Voeg er een toe bij Instellingen.",
+    "archive_too_large": "De repositorybestanden zijn groter dan {{limit}} MB, dus Oleafly kan ze niet importeren. Kloon de repository zelf en open de map.",
+    "auth_rejected": "{{host}} heeft de opgeslagen aanmelding voor {{account}} geweigerd. Meld je opnieuw aan bij {{host}} via Instellingen.",
+    "credentials_missing": "{{host}} vroeg om een gebruikersnaam en wachtwoord. Meld je aan bij {{host}} via Instellingen, of stel een SSH-sleutel of een Git-credential-helper in.",
+    "credentials_rejected": "{{host}} heeft de gebruikersnaam en het wachtwoord van Git geweigerd. Meld je aan bij {{host}} via Instellingen, of werk de inloggegevens bij die je Git gebruikt.",
+    "device_flow_unavailable": "Aanmelden via de browser is in deze versie niet beschikbaar voor {{host}}. Gebruik in plaats daarvan een toegangstoken.",
+    "forge_bad_response": "{{host}} stuurde een antwoord dat Oleafly niet kon lezen.",
+    "forge_ca_file_invalid": "Oleafly kon geen certificaat uit dit bestand lezen. Kies een PEM- of DER-certificaatbestand kleiner dan 1 MB.",
+    "forge_forbidden": "{{host}} heeft dit geweigerd. Mogelijk mist het token de scopes {{scopes}}.",
+    "forge_https_required": "Gebruik een https://-adres. Gewone http werkt alleen voor servers in je eigen netwerk.",
+    "forge_invalid_repository": "Dat is geen repositorypad dat Oleafly kan gebruiken.",
+    "forge_invalid_repository_name": "Gebruik alleen letters, cijfers, punten, streepjes en underscores in de repositorynaam.",
+    "forge_invalid_server": "{{server}} is geen serveradres dat Oleafly kan gebruiken.",
+    "forge_missing_scopes": "Met dit token kun je niet naar {{host}} pushen. Maak een token met de scopes {{scopes}}.",
+    "forge_not_found": "{{host}} kon die repository niet vinden.",
+    "forge_rate_limited": "{{host}} beperkt op dit moment het aantal verzoeken. Probeer het over een minuut opnieuw.",
+    "forge_redirect_refused": "{{host}} probeerde Oleafly naar {{target}} te sturen, dus Oleafly is gestopt om je aanmelding te beschermen.",
+    "forge_repository_exists": "Er bestaat al een repository met deze naam op {{host}}.",
+    "forge_server_error": "{{host}} gaf een fout terug ({{status}}).",
+    "forge_signed_out": "Je aanmelding bij {{host}} is verlopen of ingetrokken. Meld je opnieuw aan via Instellingen.",
+    "forge_sso_required": "{{host}} vereist dat deze aanmelding is geautoriseerd voor de single sign-on van de organisatie. Autoriseer de aanmelding op {{host}} en probeer het daarna opnieuw.",
+    "forge_store": "Oleafly kon je Git-hostingaccounts niet lezen of opslaan.",
+    "forge_token_invalid": "Dit lijkt geen toegangstoken. Plak het hele token.",
+    "forge_token_rejected": "{{host}} heeft dit token niet geaccepteerd. Controleer of je het hele token hebt gekopieerd en of het niet is verlopen.",
+    "forge_unknown_server": "Oleafly kon niet bepalen wat voor server {{host}} is. Kies het type server.",
+    "host_key_unknown": "SSH kent {{host}} nog niet. Maak één keer verbinding vanuit een terminal om de hostsleutel te accepteren en probeer het daarna opnieuw.",
+    "host_unreachable": "Oleafly kon {{host}} niet bereiken. Controleer het adres en je verbinding.",
+    "import_cancelled": "Het importeren is geannuleerd.",
+    "invalid_remote_url": "Vul het HTTPS- of SSH-adres van een Git-repository in.",
     "nested_repository": "Dit project staat in een andere Git-repository, dus Oleafly maakt hier geen aparte repository aan.",
     "not_installed": "Git is niet geïnstalleerd op deze computer. Installeer Git en probeer het opnieuw.",
+    "push_rejected": "De externe branch heeft commits die dit project nog niet heeft. Doe eerst een pull en push daarna opnieuw.",
+    "remote_exists": "Dit project is al gekoppeld aan {{remote}}.",
+    "remote_has_password": "Haal het wachtwoord of de toegangstoken uit het adres. Oleafly meldt zich in plaats daarvan aan met je Git-hostingaccount of met je eigen Git-inloggegevens.",
+    "repository_empty": "Deze repository heeft nog geen commits, dus er is niets om te importeren.",
+    "repository_not_found": "{{host}} heeft geen repository op dit adres, of je account kan hem niet zien.",
+    "sign_in_cancelled": "Het aanmelden is in de browser geannuleerd.",
+    "sign_in_expired": "De aanmeldcode is verlopen. Probeer het opnieuw.",
+    "sign_in_failed": "Aanmelden is mislukt.",
+    "ssh_key_rejected": "{{host}} heeft je SSH-sleutel geweigerd. Voeg je openbare sleutel toe aan je account op {{host}}, of laad de sleutel in je SSH-agent.",
+    "tls_failed": "Oleafly kon het certificaat van {{host}} niet verifiëren. Als je organisatie een eigen certificeringsinstantie heeft, voeg dan het certificaatbestand ervan toe aan het account bij Instellingen.",
     "tracked_secret_files": "Publiceren gestopt omdat bestanden in de Git-geschiedenis van dit project sleutels of wachtwoorden kunnen bevatten: {{files}}"
   },
   "approvals": {
@@ -134,6 +167,8 @@
     "changed": "{{path}} is gewijzigd nadat Oleafly het had geïnstalleerd, dus Oleafly heeft het ongewijzigd gelaten.",
     "failed": "Oleafly kon de terminalopdracht niet installeren.",
     "remove_failed": "Oleafly kon de terminalopdracht niet verwijderen.",
+    "path_failed": "Oleafly heeft de opdracht geïnstalleerd, maar kon {{directory}} niet aan je PATH toevoegen.",
+    "in_use": "{{path}} is in gebruik. Sluit de terminals waarin oleafly draait en probeer het opnieuw.",
     "unsupported": "De terminalopdracht is op dit systeem nog niet beschikbaar."
   },
   "research": {
@@ -221,9 +256,59 @@
     "git_token_rejected": "Overleaf heeft het Git-token niet geaccepteerd. Het is misschien verlopen. Maak een nieuw token aan in je Overleaf-accountinstellingen.",
     "git_unavailable": "De Git-integratie van Overleaf is niet beschikbaar voor dit project. De eigenaar van het project heeft daarvoor een betaald abonnement of een universiteitsabonnement nodig.",
     "template_link_invalid": "Die link is geen sjabloonpagina van Overleaf. Kopieer het adres van een pagina op overleaf.com/latex/templates en probeer het opnieuw.",
-    "template_unavailable": "Oleafly kon dit sjabloon niet openen. Misschien is het uit de sjabloongalerij van Overleaf verwijderd."
+    "template_unavailable": "Oleafly kon dit sjabloon niet openen. Misschien is het uit de sjabloongalerij van Overleaf verwijderd.",
+    "browser_sign_in_missing": "Oleafly vond geen aanmelding voor {{server}} in dat browserprofiel. Meld je rechtstreeks aan.",
+    "browser_sign_in_failed": "De aanmelding uit je browser werkte niet. Misschien is hij verlopen. Meld je rechtstreeks aan."
   },
   "collab": {
     "turned_off": "Live samenwerken staat uit. Zet het aan in Instellingen, onder Experimenten."
+  },
+  "attachments": {
+    "too_large": "Dit bestand is groter dan {{max}} MB. Voeg een kleiner bestand toe.",
+    "invalid_request": "Oleafly kon deze bijlage niet lezen.",
+    "not_found": "Deze bijlage staat niet meer op deze computer.",
+    "storage_failed": "Oleafly kon deze bijlage niet opslaan."
+  },
+  "provider_credit": {
+    "failed": "Oleafly kon je tegoed bij {{provider}} niet controleren."
+  },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 is niet geïnstalleerd.",
+    "git_bash_missing": "Git Bash is niet geïnstalleerd. Installeer Git for Windows of kies een andere shell.",
+    "wsl_missing": "WSL is niet geïnstalleerd.",
+    "wsl_no_distro": "WSL heeft nog geen Linux-distributie.",
+    "shell_path_empty": "Vul een shellpad in bij Instellingen, of kies een andere shell.",
+    "shell_path_missing": "Er staat geen programma op {{path}}."
+  },
+  "mathpix": {
+    "keys_missing": "Voeg eerst je app-ID en sleutel van Mathpix toe bij Instellingen, AI, Hulpmiddelen.",
+    "invalid_keys": "Die app-ID of sleutel bevat tekens die nooit in Mathpix-sleutels voorkomen. Kopieer ze opnieuw uit de Mathpix-console.",
+    "key_rejected": "Mathpix heeft deze sleutels niet geaccepteerd. Controleer de app-ID en sleutel in de Mathpix-console.",
+    "rate_limited": "Mathpix beperkt op dit moment het aantal verzoeken. Wacht een minuut en probeer het daarna opnieuw.",
+    "unreachable": "Oleafly kon Mathpix niet bereiken. Controleer je internetverbinding en probeer het opnieuw.",
+    "http_error": "Mathpix gaf een fout terug (HTTP {{status}}). Probeer het later opnieuw.",
+    "invalid_response": "Mathpix stuurde een antwoord dat Oleafly niet kon lezen. Probeer het later opnieuw.",
+    "rejected": "Mathpix kon dit bestand niet lezen: {{reason}}",
+    "image_too_large": "Deze afbeelding is te groot voor Mathpix. Snijd hem bij en probeer het opnieuw.",
+    "pdf_too_large": "Deze PDF is groter dan de limiet van 256 MB van Mathpix.",
+    "timed_out": "Mathpix was niet binnen 30 minuten klaar met deze PDF. Probeer het met minder pagina's.",
+    "cancelled": "De omzetting met Mathpix is gestopt.",
+    "wrong_window": "Mathpix kan alleen vanuit het hoofdvenster van Oleafly worden gebruikt.",
+    "pdf_too_large_ipc": "Deze computer kan PDF's tot 16 MB naar Mathpix sturen. Splits de PDF en probeer het opnieuw."
+  },
+  "desktop_apps": {
+    "not_installed": "Cua Driver is niet geïnstalleerd. Installeer het via Instellingen → Integraties → Desktop-apps.",
+    "too_old": "Cua Driver {{version}} is te oud. Werk het bij naar {{minimum}} of nieuwer.",
+    "no_app_bundle": "Installeer Cua Driver met het officiële installatieprogramma, zodat het de rechten van macOS kan behouden.",
+    "change_declined": "Je hebt je vorige instellingen voor desktop-apps behouden.",
+    "app_blocked": "Agents kunnen {{name}} niet gebruiken.",
+    "app_invalid": "Oleafly kan {{name}} niet als app gebruiken.",
+    "site_invalid": "'{{site}}' is geen websiteadres dat Oleafly kan gebruiken. Gebruik https://, of http:// voor deze computer.",
+    "too_many_apps": "Je kunt maximaal {{limit}} apps toestaan.",
+    "too_many_sites": "Je kunt maximaal {{limit}} websites toestaan.",
+    "start_failed": "Cua Driver kon niet starten: {{detail}}",
+    "not_bounded": "Cua Driver startte niet met de limieten van Oleafly, dus Oleafly heeft het gestopt.",
+    "task_unattended": "Taken die volgens een schema of na het sluiten van Oleafly draaien, kunnen geen desktop-apps gebruiken.",
+    "main_window": "Wijzig desktop-apps vanuit het hoofdvenster."
   }
 }

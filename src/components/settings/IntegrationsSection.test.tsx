@@ -14,14 +14,17 @@ vi.mock("@/lib/mcp-bridge", () => ({
   refreshMcpRegistry: vi.fn(),
   revokeMcpBridgeCalls: vi.fn(),
 }));
-vi.mock("@/components/settings/GitHubSection", () => ({
-  GitHubSection: () => <div data-testid="github-settings-stub" />,
+vi.mock("@/components/settings/git-hosting/GitHostingSection", () => ({
+  GitHostingSection: () => <div data-testid="git-hosting-settings-stub" />,
 }));
 vi.mock("@/components/settings/AlphaXivSection", () => ({
   AlphaXivSection: () => <div data-testid="alphaxiv-settings-stub" />,
 }));
 vi.mock("@/components/settings/ZoteroSection", () => ({
   ZoteroSection: () => <div data-testid="zotero-settings-stub" />,
+}));
+vi.mock("@/components/settings/desktop-apps/DesktopAppsSection", () => ({
+  default: () => <div data-testid="desktop-apps-settings-stub" />,
 }));
 vi.mock("@/components/settings/CitationSearchIntegrationSection", () => ({
   CitationSearchIntegrationSection: () => (
@@ -54,10 +57,14 @@ describe("IntegrationsSection", () => {
   it("switches between every integration", async () => {
     const user = userEvent.setup();
     render(<IntegrationsSection />);
-    expect(screen.getByTestId("github-settings-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("git-hosting-settings-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("integrations-tab-git-hosting")).toHaveAttribute("aria-selected", "true");
 
+    await user.click(screen.getByRole("tab", { name: enSettings.integrations.desktopApps.tab }));
+    expect(await screen.findByTestId("desktop-apps-settings-stub")).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: "alphaXiv" }));
     expect(screen.getByTestId("alphaxiv-settings-stub")).toBeInTheDocument();
+    expect(screen.queryByTestId("desktop-apps-settings-stub")).toBeNull();
     await user.click(screen.getByRole("tab", { name: "Zotero" }));
     expect(screen.getByTestId("zotero-settings-stub")).toBeInTheDocument();
     await user.click(
@@ -74,7 +81,7 @@ describe("IntegrationsSection", () => {
       screen.getByRole("switch", { name: enSettings.mcp.section.enable.ariaLabel }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "GitHub" }));
+    await user.click(screen.getByRole("tab", { name: enSettings.gitHosting.title }));
     await user.click(screen.getByRole("tab", { name: "Oleafly MCP" }));
     expect(
       mockInvoke.mock.calls.filter(([command]) => command === "get_config"),
@@ -96,9 +103,21 @@ describe("IntegrationsSection", () => {
     ).toBeInTheDocument();
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
 
+    useSettingsStore.setState({ settingsScrollTarget: "git-hosting" });
+    rerender(<IntegrationsSection />);
+    expect(screen.getByTestId("git-hosting-settings-stub")).toBeInTheDocument();
+    expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
+
+    useSettingsStore.setState({ settingsScrollTarget: "desktop-apps" });
+    rerender(<IntegrationsSection />);
+    expect(screen.getByTestId("integrations-tab-desktop-apps")).toHaveAttribute("aria-selected", "true");
+    expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
+
+    useSettingsStore.setState({ settingsScrollTarget: "zotero" });
+    rerender(<IntegrationsSection />);
     useSettingsStore.setState({ settingsScrollTarget: "github" });
     rerender(<IntegrationsSection />);
-    expect(screen.getByTestId("github-settings-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("git-hosting-settings-stub")).toBeInTheDocument();
     expect(useSettingsStore.getState().settingsScrollTarget).toBeNull();
 
     useSettingsStore.setState({ settingsScrollTarget: "oleafly-mcp" });

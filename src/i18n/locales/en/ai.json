@@ -43,13 +43,15 @@
       "command": "Confirm command",
       "externalTool": "Confirm external tool action",
       "internet": "Confirm internet access",
-      "edit": "Confirm AI edit"
+      "edit": "Confirm AI edit",
+      "researchTask": "Confirm research task"
     },
     "headline": {
       "command": "The assistant wants to run this command",
       "externalTool": "The assistant wants to use an external tool",
       "internet": "The assistant wants to access the internet",
-      "edit": "The assistant wants to change your files"
+      "edit": "The assistant wants to change your files",
+      "researchTask": "The assistant wants to create a research task"
     },
     "mcpNote": "This sends the arguments below to the configured MCP server.",
     "line": "line {{line}}",
@@ -70,10 +72,50 @@
       "title": "External agent request (MCP)",
       "moreWaiting_one": "{{count}} more waiting",
       "moreWaiting_other": "{{count}} more waiting"
+    },
+    "researchTask": {
+      "note": "The task works on its own in a copy of the project. You review its changes afterwards.",
+      "title": "Title",
+      "goal": "Goal",
+      "skills": "Skills",
+      "prompt": "Prompt",
+      "commands": "Commands",
+      "commandsAsk": "Ask before each one",
+      "network": "Network",
+      "timeBudget": "Time budget",
+      "timeBudgetDefault": "Default",
+      "minutes_one": "{{count}} minute",
+      "minutes_other": "{{count}} minutes",
+      "planFirst": "Plan first",
+      "startNow": "Start now"
     }
   },
   "attachments": {
-    "remove": "Remove {{name}}"
+    "remove": "Remove {{name}}",
+    "processing": "Preparing {{name}}…",
+    "failed": "{{name}} could not be attached.",
+    "pages_one": "{{count}} page",
+    "pages_other": "{{count}} pages",
+    "pagesLimited": "Only the first {{limit}} of {{count}} pages are used.",
+    "tooMany": "You can attach up to {{max}} files to one message.",
+    "tooLarge": "{{name}} is larger than {{limit}}.",
+    "unsupported": "{{name}} can't be attached. Attach images, PDFs or text files.",
+    "unreadableImage": "Oleafly can't read the image format of {{name}}. Save it as PNG or JPEG and attach it again.",
+    "unreadablePdf": "{{name}} could not be opened as a PDF.",
+    "storeFailed": "{{name}} could not be saved for this chat.",
+    "visionUnsupported": "{{model}} can't read images, so the images in this message won't be sent.",
+    "scannedPdf": "{{name}} has no text layer, and {{model}} can't read images.",
+    "dropFiles": "Drop files to attach them",
+    "dropProjectFile": "Drop to mention this file",
+    "open": "Open {{name}}",
+    "saveCopy": "Save a copy of {{name}}",
+    "saved": "Saved a copy of {{name}}.",
+    "saveFailed": "Couldn't save {{name}}.",
+    "missing": "{{name}} is no longer available.",
+    "sentAsText": "{{name}} was sent as text because this model can't read it as a file.",
+    "skipped": "{{name}} was not sent.",
+    "dropUnreadable": "{{names}} could not be read.",
+    "notReplayed": "Files from an older version can't be sent again: {{names}}."
   },
   "chat": {
     "pill": {
@@ -182,7 +224,9 @@
     "stop": "Stop",
     "stopTitle": "Stop generating",
     "send": "Send",
-    "checkAgain": "Check again"
+    "checkAgain": "Check again",
+    "resizeHandle": "Resize the message box",
+    "resizeHint": "Drag to resize. Double-click to reset."
   },
   "commands": {
     "groups": {
@@ -220,10 +264,6 @@
     "files": {
       "label": "Files",
       "description": "Attach files to your next message"
-    },
-    "browser": {
-      "label": "Attach browser",
-      "description": "Open the browser beside your document"
     }
   },
   "models": {
@@ -272,7 +312,10 @@
       "minutes": "{{count}}m ago",
       "hours": "{{count}}h ago",
       "days": "{{count}}d ago"
-    }
+    },
+    "skipped_one": "{{count}} chat could not be loaded. It is still on disk.",
+    "skipped_other": "{{count}} chats could not be loaded. They are still on disk.",
+    "openFailed": "Couldn't open this chat."
   },
   "tools": {
     "approval": {
@@ -318,7 +361,6 @@
       "listAgents": "List the helper agents and their state.",
       "closeAgent": "Close a helper agent.",
       "runCommand": "Run a shell command in the project folder, with a two minute limit.",
-      "computerUse": "Open a web page in the assistant's browser window.",
       "toggleTheme": "Switch between light and dark mode.",
       "listOverleafProjects": "List your Overleaf projects, signing in first when needed.",
       "importOverleafProjects": "Import Overleaf projects into your library, with their compiler and main file."
@@ -347,8 +389,7 @@
       "latexOnly": "LaTeX projects only",
       "latexAndTypstOnly": "LaTeX and Typst projects only",
       "pdfCaptureSetting": "Needs the PDF page capture setting",
-      "chatApproval": "Approved in the chat, one command at a time",
-      "browserSetting": "Needs the web browser setting"
+      "chatApproval": "Approved in the chat, one command at a time"
     },
     "sourceGroups": {
       "figure": "Figure",
@@ -471,18 +512,20 @@
     "resumeTask": "Open the research task to resume this work.",
     "delegatedConversation": "This conversation belongs to a delegated agent run.",
     "noResume": "This agent cannot resume saved conversations. Start a new conversation when you are ready.",
-    "imageTooLarge": "Choose an image smaller than 480 KiB. You can attach up to four images.",
     "imageReadFailed": "The image could not be read.",
-    "removeImage": "Remove {{name}}",
     "composerAriaLabel": "Message CLI agent",
     "composerPlaceholderReady": "Ask the agent to work on this project",
     "composerPlaceholderIdle": "Start or reconnect a conversation to send a message",
-    "attachImage": "Attach image",
     "startConversation": "Start a conversation with {{agent}}",
     "startConversationFallback": "an agent",
     "agentModel": "Agent model",
     "modelManaged": "Model managed by the agent",
     "stop": "Stop",
+    "stopReason": {
+      "refusal": "The agent declined to continue this request.",
+      "maxTokens": "The agent reached its output limit and stopped.",
+      "maxTurnRequests": "The agent reached its request limit for this turn and stopped."
+    },
     "stopTitle": "Stop the agent",
     "send": "Send",
     "connecting": "Connecting",
@@ -500,8 +543,7 @@
     "roster": {
       "bridgeMissing": "install the bridge in Agent setup",
       "cliMissing": "CLI not found on this computer",
-      "unavailable": "not available on this computer",
-      "comingSoon": "coming soon"
+      "unavailable": "not available on this computer"
     },
     "messageTooLarge": "This message and its images are too large. Shorten the message or remove an image.",
     "terminalCommand": "The agent is running a terminal command.",
@@ -549,7 +591,130 @@
       "tool": "Tool: {{name}}",
       "changedFiles": "Changed files",
       "moreFiles_one": "and {{count}} more file",
-      "moreFiles_other": "and {{count}} more files"
+      "moreFiles_other": "and {{count}} more files",
+      "mode": "Mode",
+      "effort": "Effort",
+      "permissionProfile": "Approval mode",
+      "commits": "Commits"
+    },
+    "composerPlaceholderStart": "Message {{agent}} to start a conversation",
+    "composerPlaceholderConnecting": "Type now. It sends when the agent is ready.",
+    "composerPlaceholderRunning": "Type your next message. It sends when the agent finishes.",
+    "attachFile": "Attach files",
+    "composer": {
+      "tooManyAttachments": "Attach up to 10 files to one message.",
+      "imagesUnsupported": "This agent does not accept images. Remove them and try again.",
+      "attachmentsNotReady": "Wait for the attachments to finish preparing.",
+      "removeSelection": "Remove quote {{label}}"
+    },
+    "queue": {
+      "queued": "Queued: sends when the agent finishes",
+      "remove": "Remove queued message",
+      "sendNow": "Send now",
+      "sendFailed": "This message was not sent. Send it again or remove it.",
+      "queuedConnecting": "Queued: sends when the agent is ready",
+      "retry": "Send again",
+      "edit": "Edit"
+    },
+    "slash": {
+      "commands": "Agent commands",
+      "skills": "Skills"
+    },
+    "controls": {
+      "effort": "Effort",
+      "mode": "Mode",
+      "more": "More agent options",
+      "blockedMode": "Off in Oleafly",
+      "blockedModeHint": "Oleafly keeps permission checks on, so this mode is not available."
+    },
+    "usage": {
+      "ariaLabel": "View agent usage",
+      "tooltip": "Usage for this conversation",
+      "contextShare": "{{percent}}% of the context window used",
+      "window": {
+        "fiveHour": "5-hour session",
+        "weekly": "Weekly, all models",
+        "weeklyOpus": "Weekly, Opus",
+        "weeklySonnet": "Weekly, Sonnet",
+        "overage": "Extra usage",
+        "other": "Usage limit {{id}}"
+      },
+      "costIn": "The agent reported a cost of {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} tokens"
+    },
+    "compaction": {
+      "running": "Summarizing earlier context",
+      "done": "Summarized earlier context",
+      "failed": "Could not summarize earlier context"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} in the terminal",
+      "afterTerminal": "Finish signing in in the terminal, then reconnect.",
+      "apiKeyLabel": "API key for {{provider}}",
+      "apiKeyPlaceholder": "Paste your API key",
+      "geminiGoogle": "Signing in with Google no longer works for individual plans. Use a Gemini API key or Vertex AI.",
+      "noProject": "Open a project to sign in from the terminal.",
+      "signOut": "Sign out",
+      "confirmTerminal": "{{agent}} signs in through the command below, which runs in a terminal tab. Check it before you agree.",
+      "remote": "This conversation runs on another machine. Sign in to the agent there."
+    },
+    "elicitation": {
+      "ariaLabel": "Agent request",
+      "from": "{{agent}} asks:",
+      "submit": "Send",
+      "decline": "Decline",
+      "cancel": "Cancel",
+      "required": "Required",
+      "invalid": "Check this field.",
+      "openUrl": "Open in browser",
+      "confirmTitle": "Open {{host}}?",
+      "confirmDescription": "The agent asked you to finish a step on this site. It opens in your browser.",
+      "waiting": "Waiting for the site to finish.",
+      "openFailed": "The link could not be opened in your browser."
+    },
+    "remote": {
+      "banner": "Hermes runs on {{host}} over SSH. Its changes stay on that machine."
+    },
+    "history": {
+      "all": "All conversations",
+      "title": "Conversations",
+      "search": "Search conversations",
+      "empty": "No conversations match.",
+      "loadMore": "Load more",
+      "rename": "Rename",
+      "renameLabel": "Conversation name",
+      "delete": "Delete",
+      "deleteTitle": "Delete this conversation?",
+      "deleteDescription": "Oleafly removes its transcript and attachments from this project.",
+      "deleteFromAgent": "Also delete it from {{agent}}",
+      "deleteAgentFailed": "Deleted in Oleafly. {{agent}} could not delete its copy: {{error}}",
+      "deleteRunning": "Stop the agent before you delete this conversation.",
+      "importFind": "Find {{agent}} conversations for this project",
+      "imported": "Already in Oleafly",
+      "importSelected": "Import selected",
+      "importEmpty": "{{agent}} has no other conversations for this project."
+    },
+    "header": {
+      "startedAt": "Started at {{revision}}",
+      "startedDirty": "Started at {{revision}} with uncommitted changes",
+      "menu": "Conversation actions",
+      "fork": "Fork conversation",
+      "forkUnsupported": "This agent cannot fork conversations.",
+      "forkBusy": "Wait for the agent to finish before you fork.",
+      "v2": "Protocol preview",
+      "remote": "Remote",
+      "signOutTitle": "Sign out of {{agent}}?",
+      "signOutDescription": "This ends the {{agent}} sign-in itself. A terminal that uses the same sign-in is signed out too, and this conversation stops until you sign in again.",
+      "signOutAccount": "Signed in with {{account}}"
+    },
+    "commit": {
+      "button": "Commit",
+      "title": "Commit this turn",
+      "message": "Commit message",
+      "files": "Files to commit",
+      "defaultMessage": "Changes from {{agent}}",
+      "submit": "Commit files",
+      "cancel": "Cancel"
     }
   },
   "agents": {
@@ -721,8 +886,6 @@
     "restoreFailed": "Could not restore: {{error}}",
     "steerFailed": "The running turn could not be steered.",
     "approvalRuleSaveFailed": "Could not save the project approval rule.",
-    "attachmentTooLarge": "{{name}} is too large (max 10 MB).",
-    "attachmentReadFailed": "Couldn't read {{name}}.",
     "tooManyTools": "{{enabled}} tools are enabled, but a run supports up to {{max}}. Disable at least {{excess}} in Tools and try again."
   },
   "header": {
@@ -749,7 +912,29 @@
     "summaryRunNoTokens_one": "Last run: {{count}} step, token total unavailable",
     "summaryRunNoTokens_other": "Last run: {{count}} steps, token total unavailable",
     "summaryChat": "This chat: {{steps}} steps, {{tokens}} tokens",
-    "summaryFallback": "AI usage"
+    "summaryFallback": "AI usage",
+    "context": "Context",
+    "contextUsed": "{{used}} of {{size}} tokens",
+    "contextShare": "{{percent}} of the context window used",
+    "contextUnknown": "This model's context window is unknown.",
+    "reasoning": "Reasoning",
+    "cacheRead": "Cache reads",
+    "cacheWrite": "Cache writes",
+    "cost": "Estimated cost",
+    "budget": "Project budget",
+    "budgetUsed": "{{spent}} of {{limit}}",
+    "credit": "Credit left",
+    "creditOf": "{{remaining}} of {{limit}}",
+    "planLimits": "Plan limits",
+    "resetsAt": "Resets {{time}}",
+    "windowWarning": "Close to the limit",
+    "windowBlocked": "Limit reached",
+    "refreshPlan": "Refresh plan usage",
+    "refreshing": "Refreshing…",
+    "historyTrimmed_one": "Only the last {{count}} turn of this chat was sent to the model.",
+    "historyTrimmed_other": "Only the last {{count}} turns of this chat were sent to the model.",
+    "empty": "No usage in this chat yet.",
+    "loading": "Loading usage…"
   },
   "provider": {
     "connectTitle": "Connect an AI provider to continue",
@@ -769,7 +954,21 @@
     "projectSubtitle": "Working on \"{{project}}\"",
     "noOutput": "The model returned no output. Check Settings → AI Assistant.",
     "planMissing": "No plan to approve yet. Ask the assistant for one, or turn Plan off.",
-    "planUnchanged": "The plan is unchanged."
+    "planUnchanged": "The plan is unchanged.",
+    "stillWorking": "Still working ({{seconds}} s). Reasoning models and local models can be slow. Click Stop to cancel.",
+    "retrying": "Connection problem. Retrying ({{attempt}} of {{max}})…",
+    "stopped": "Stopped.",
+    "stepLimit": "Reached the step limit. Send another message to continue.",
+    "outputLimit": "The reply reached the model's output limit. Send another message to continue.",
+    "tooLargeToSave": "This chat is too long to save. New messages are kept until you close Oleafly. Export the chat to keep a copy.",
+    "exportChat": "Export chat",
+    "exported": "Chat exported.",
+    "exportFailed": "Couldn't export the chat.",
+    "saveFailed": "New messages in this chat could not be saved. Check that the disk has free space.",
+    "exportYou": "You",
+    "exportAssistant": "Assistant",
+    "exportAttachments": "Attachments",
+    "exportTools": "Tools used"
   },
   "followUps": {
     "steered": "Steered into the running turn: {{summary}}",
@@ -856,6 +1055,46 @@
     "figureAudit": "Figure audit",
     "gitReview": "Git review",
     "referenceCleanup": "Reference cleanup",
-    "removeSkill": "Remove skill {{name}}"
+    "removeSkill": "Remove skill {{name}}",
+    "compilationRepair": "Compilation repair",
+    "submissionPrep": "Submission prep",
+    "reviewerResponse": "Reviewer response"
+  },
+  "effort": {
+    "label": "Effort",
+    "tooltip": "How much the model reasons before it answers",
+    "ariaLabel": "Reasoning effort: {{level}}",
+    "auto": "Auto",
+    "autoDescription": "Use the model's default",
+    "levels": {
+      "none": "None",
+      "minimal": "Minimal",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "xhigh": "Extra high",
+      "max": "Max"
+    }
+  },
+  "web": {
+    "label": "Web",
+    "on": "Web search and page reading are on for this chat",
+    "off": "Turn on web search and page reading for this chat",
+    "ariaLabel": "Web access",
+    "searchUnavailable": "This model can't search the web. Add a search key in Settings to turn it on."
+  },
+  "messageActions": {
+    "edit": "Edit message",
+    "regenerate": "Regenerate reply",
+    "retry": "Retry",
+    "editingLatest": "Editing your last message. Sending it replaces the reply.",
+    "editingEarlier": "Editing an earlier message. Sending it starts a new chat from there, and this chat stays in History.",
+    "cancelEdit": "Cancel edit",
+    "replaceTitle": "Replace this reply?",
+    "replaceDescription_one": "The reply changed {{count}} file. The change stays in your project, but its undo card goes away with the reply.",
+    "replaceDescription_other": "The reply changed {{count}} files. The changes stay in your project, but their undo card goes away with the reply.",
+    "replaceConfirm": "Replace reply",
+    "forked": "Started a new chat from the edited message.",
+    "failed": "Couldn't send the message again."
   }
 }

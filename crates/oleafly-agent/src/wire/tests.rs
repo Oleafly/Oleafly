@@ -1,7 +1,10 @@
 use super::*;
-use crate::complete::CompletionRequest;
-use crate::message::ContentPart;
+use crate::caps::{BudgetRange, ModelCaps, ReasoningCaps};
+use crate::complete::{with_blocking_ceiling, CompletionRequest, WebTools};
+use crate::effort::Effort;
+use crate::message::{ContentPart, ProviderWire};
 use crate::provider::{ANTHROPIC_BASE, GOOGLE_BASE, OPENAI_BASE};
+use crate::wire::server_tools::anthropic_web_versions;
 
 fn resolved(wire: Wire) -> Resolved {
     Resolved {
@@ -10,6 +13,7 @@ fn resolved(wire: Wire) -> Resolved {
         credential: "sk-test".into(),
         auth: Some("sk-test".into()),
         wire,
+        caps: crate::caps::ModelCaps::default(),
     }
 }
 fn openai() -> Resolved {
@@ -151,6 +155,7 @@ fn tool_turn() -> CompletionRequest {
                     id: "call_1".into(),
                     name: "read_file".into(),
                     output: "\\documentclass{article}".into(),
+                    images: Vec::new(),
                 }],
             },
         ],
@@ -260,6 +265,7 @@ fn a_tool_result_only_turn_produces_no_empty_user_message() {
                 id: "c".into(),
                 name: "n".into(),
                 output: "out".into(),
+                images: Vec::new(),
             }],
         }],
         ..Default::default()
@@ -449,24 +455,6 @@ fn truncated_tool_arguments_do_not_break_the_request() {
     assert_eq!(
         anthropic_body(&openai(), &request).unwrap()["messages"][0]["content"][0]["input"],
         json!({})
-    );
-}
-
-#[test]
-fn anthropic_always_declares_a_token_ceiling() {
-    let req = CompletionRequest::prompt("s", "u");
-    assert_eq!(
-        anthropic_body(&openai(), &req).unwrap()["max_tokens"],
-        DEFAULT_MAX_TOKENS
-    );
-
-    let capped = CompletionRequest {
-        max_tokens: Some(64),
-        ..CompletionRequest::prompt("s", "u")
-    };
-    assert_eq!(
-        anthropic_body(&openai(), &capped).unwrap()["max_tokens"],
-        64
     );
 }
 
@@ -729,5 +717,955 @@ fn endpoints_are_built_without_double_slashes() {
             "gemini-3.5-flash-lite"
         ),
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
+    );
+}
+
+// --- 0.4.8: effort, thinking, ceilings, caching ----------------------------
+
+fn anthropic_model(id: &str, caps: ModelCaps) -> Resolved {
+    Resolved {
+        provider_id: "anthropic".into(),
+        model_id: id.into(),
+        caps,
+        ..resolved(Wire::Anthropic {
+            base_url: ANTHROPIC_BASE.into(),
+        })
+    }
+}
+
+fn reasoning_caps(efforts: &[Effort]) -> ModelCaps {
+    ModelCaps {
+        reasoning: ReasoningCaps {
+            flag: Some(true),
+            efforts: Some(efforts.to_vec()),
+            ..ReasoningCaps::default()
+        },
+        ..ModelCaps::default()
+    }
+}
+
+fn opus_caps() -> ModelCaps {
+    ModelCaps {
+        output_limit: Some(128_000),
+        ..reasoning_caps(&[
+            Effort::Low,
+            Effort::Medium,
+            Effort::High,
+            Effort::Xhigh,
+            Effort::Max,
+        ])
+    }
+}
+
+fn haiku_caps_with_toggle() -> ModelCaps {
+    let mut caps = reasoning_caps(&[
+        Effort::Low,
+        Effort::Medium,
+        Effort::High,
+        Effort::Xhigh,
+        Effort::Max,
+    ]);
+    caps.reasoning.toggle = true;
+    caps
+}
+
+fn responses_model(id: &str, caps: ModelCaps) -> Resolved {
+    Resolved {
+        provider_id: "openai".into(),
+        model_id: id.into(),
+        caps,
+        ..openai_responses()
+    }
+}
+
+fn chat(provider: &str, model: &str, caps: ModelCaps) -> Resolved {
+    Resolved {
+        provider_id: provider.into(),
+        model_id: model.into(),
+        caps,
+        ..openai()
+    }
+}
+
+fn gemini(id: &str, caps: ModelCaps) -> Resolved {
+    Resolved {
+        provider_id: "google".into(),
+        model_id: id.into(),
+        caps,
+        ..google()
+    }
+}
+
+fn flash_25_caps() -> ModelCaps {
+    ModelCaps::from_metadata_json(&json!({
+        "reasoning": true,
+        "reasoningOptions": [{"type":"toggle"},{"type":"budget_tokens","min":0,"max":24576}]
+    }))
+}
+
+fn pro_25_caps() -> ModelCaps {
+    ModelCaps::from_metadata_json(&json!({
+        "reasoning": true,
+        "reasoningOptions": [{"type":"budget_tokens","min":128,"max":32768}]
+    }))
+}
+
+fn with_effort(effort: Effort) -> CompletionRequest {
+    CompletionRequest {
+        effort: Some(effort),
+        ..CompletionRequest::prompt("s", "u")
+    }
+}
+
+fn tool(name: &str) -> crate::tool::ToolSchema {
+    crate::tool::ToolSchema {
+        name: name.into(),
+        description: format!("{name} tool"),
+        input_schema: json!({"type":"object","properties":{}}),
+    }
+}
+
+#[test]
+fn anthropic_effort_goes_in_output_config_with_adaptive_thinking() {
+    let r = anthropic_model("claude-opus-5-5", opus_caps());
+    let body = anthropic_body(
+        &r,
+        &CompletionRequest {
+            effort: Some(Effort::High),
+            temperature: Some(0.4),
+            ..CompletionRequest::prompt("s", "u")
+        },
+    )
+    .unwrap();
+    assert_eq!(body["output_config"], json!({"effort":"high"}));
+    assert_eq!(body["thinking"], json!({"type":"adaptive"}));
+    assert!(body.get("temperature").is_none());
+}
+
+#[test]
+fn anthropic_auto_effort_thinks_only_where_the_model_does_by_default() {
+    let five = anthropic_body(
+        &anthropic_model("claude-opus-5-5", opus_caps()),
+        &CompletionRequest::prompt("s", "u"),
+    )
+    .unwrap();
+    assert_eq!(five["thinking"], json!({"type":"adaptive"}));
+    assert!(five.get("output_config").is_none());
+    let four = anthropic_body(
+        &anthropic_model("claude-opus-4-8", ModelCaps::default()),
+        &CompletionRequest::prompt("s", "u"),
+    )
+    .unwrap();
+    assert!(four.get("thinking").is_none() && four.get("output_config").is_none());
+    let four_low = anthropic_body(
+        &anthropic_model("claude-opus-4-8", ModelCaps::default()),
+        &with_effort(Effort::Low),
+    )
+    .unwrap();
+    assert_eq!(
+        (
+            four_low["thinking"]["type"].as_str(),
+            four_low["output_config"]["effort"].as_str()
+        ),
+        (Some("adaptive"), Some("low"))
+    );
+}
+
+#[test]
+fn reasoning_summaries_ask_for_summarized_display() {
+    let body = anthropic_body(
+        &anthropic_model("claude-opus-5-5", opus_caps()),
+        &CompletionRequest {
+            reasoning_summary: Some(true),
+            ..CompletionRequest::prompt("s", "u")
+        },
+    )
+    .unwrap();
+    assert_eq!(body["thinking"]["display"], "summarized");
+}
+
+#[test]
+fn none_effort_disables_thinking_only_on_toggle_models() {
+    let haiku = anthropic_body(
+        &anthropic_model("claude-haiku-5-5", haiku_caps_with_toggle()),
+        &with_effort(Effort::Off),
+    )
+    .unwrap();
+    assert_eq!(haiku["thinking"], json!({"type":"disabled"}));
+    assert!(haiku.get("output_config").is_none());
+    let opus = anthropic_body(
+        &anthropic_model("claude-opus-5-5", opus_caps()),
+        &with_effort(Effort::Off),
+    )
+    .unwrap();
+    assert_eq!(opus["output_config"]["effort"], "low");
+}
+
+#[test]
+fn replayed_thinking_turns_on_the_drop_block_safety_net() {
+    let mut req = CompletionRequest::prompt("s", "u");
+    req.messages.push(Message {
+        role: Role::Assistant,
+        content: vec![
+            ContentPart::Thinking {
+                thinking: String::new(),
+                signature: "sig".into(),
+            },
+            ContentPart::ToolUse {
+                id: "t".into(),
+                name: "read_file".into(),
+                arguments: "{}".into(),
+                thought_signature: None,
+            },
+        ],
+    });
+    req.messages.push(Message {
+        role: Role::User,
+        content: vec![ContentPart::tool_result("t", "read_file", "ok")],
+    });
+    let body = anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).unwrap();
+    assert_eq!(
+        body["thinking"]["block_binding"]["prefix_mismatch_behavior"],
+        "drop_block"
+    );
+    assert_eq!(
+        anthropic_beta_header(&body),
+        Some("thinking-binding-controls-2026-08-01")
+    );
+    assert_eq!(
+        anthropic_beta_header(
+            &anthropic_body(
+                &anthropic_model("claude-opus-5-5", opus_caps()),
+                &CompletionRequest::prompt("s", "u")
+            )
+            .unwrap()
+        ),
+        None
+    );
+}
+
+#[test]
+fn anthropic_requests_cache_the_tool_list_and_the_conversation() {
+    let req = CompletionRequest {
+        tools: vec![tool("zeta"), tool("alpha")],
+        ..CompletionRequest::prompt("s", "u")
+    };
+    let body = anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).unwrap();
+    assert_eq!(body["cache_control"], json!({"type":"ephemeral"}));
+    assert_eq!(
+        (
+            body["tools"][0]["name"].as_str(),
+            body["tools"][1]["name"].as_str()
+        ),
+        (Some("alpha"), Some("zeta"))
+    );
+    assert_eq!(
+        body["tools"][1]["cache_control"],
+        json!({"type":"ephemeral"})
+    );
+    assert!(body["tools"][0].get("cache_control").is_none());
+}
+
+#[test]
+fn a_system_suffix_becomes_a_second_uncached_block() {
+    let req = CompletionRequest {
+        system_suffix: Some("ctx".into()),
+        ..CompletionRequest::prompt("stable", "u")
+    };
+    let body = anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).unwrap();
+    assert_eq!(
+        body["system"],
+        json!([{"type":"text","text":"stable","cache_control":{"type":"ephemeral"}},{"type":"text","text":"ctx"}])
+    );
+    assert_eq!(
+        openai_body(&openai(), &req).unwrap()["messages"][0]["content"],
+        "stable\n\nctx"
+    );
+    assert_eq!(
+        openai_responses_body(&openai_responses(), &req).unwrap()["instructions"],
+        "stable\n\nctx"
+    );
+    assert_eq!(
+        google_body(&google(), &req).unwrap()["systemInstruction"]["parts"],
+        json!([{"text":"stable"},{"text":"ctx"}])
+    );
+}
+
+#[test]
+fn anthropic_default_max_tokens_follow_the_output_limit() {
+    for (limit, want) in [
+        (Some(128_000), 64_000),
+        (Some(4_096), 4_096),
+        (None, 16_000),
+    ] {
+        let caps = ModelCaps {
+            output_limit: limit,
+            ..ModelCaps::default()
+        };
+        assert_eq!(
+            anthropic_body(
+                &anthropic_model("claude-x", caps),
+                &CompletionRequest::prompt("s", "u")
+            )
+            .unwrap()["max_tokens"],
+            want
+        );
+    }
+    assert_eq!(
+        anthropic_body(
+            &anthropic_model("claude-x", ModelCaps::default()),
+            &CompletionRequest {
+                max_tokens: Some(64),
+                ..CompletionRequest::prompt("s", "u")
+            }
+        )
+        .unwrap()["max_tokens"],
+        64
+    );
+}
+
+#[test]
+fn blocking_completions_cap_the_default_at_16k() {
+    let r = anthropic_model(
+        "claude-opus-5-5",
+        ModelCaps {
+            output_limit: Some(128_000),
+            ..ModelCaps::default()
+        },
+    );
+    assert_eq!(
+        with_blocking_ceiling(&r, &CompletionRequest::prompt("s", "u")).max_tokens,
+        Some(16_000)
+    );
+    assert_eq!(
+        with_blocking_ceiling(&openai_responses(), &CompletionRequest::prompt("s", "u")).max_tokens,
+        None
+    );
+}
+
+#[test]
+fn responses_reasoning_carries_effort_and_summaries_only_on_request() {
+    let sol = responses_model(
+        "gpt-6.1-sol",
+        reasoning_caps(&[
+            Effort::Low,
+            Effort::Medium,
+            Effort::High,
+            Effort::Xhigh,
+            Effort::Max,
+        ]),
+    );
+    let body = openai_responses_body(&sol, &with_effort(Effort::Xhigh)).unwrap();
+    assert_eq!(body["reasoning"], json!({"effort":"xhigh"}));
+    let summaries = openai_responses_body(
+        &sol,
+        &CompletionRequest {
+            reasoning_summary: Some(true),
+            ..with_effort(Effort::Xhigh)
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        summaries["reasoning"],
+        json!({"effort":"xhigh","summary":"auto"})
+    );
+    let off = openai_responses_body(
+        &sol,
+        &CompletionRequest {
+            reasoning_summary: Some(false),
+            ..CompletionRequest::prompt("s", "u")
+        },
+    )
+    .unwrap();
+    assert!(off.get("reasoning").is_none());
+    let gpt4o = responses_model(
+        "gpt-4o",
+        ModelCaps {
+            reasoning: ReasoningCaps {
+                flag: Some(false),
+                ..Default::default()
+            },
+            ..ModelCaps::default()
+        },
+    );
+    assert!(openai_responses_body(&gpt4o, &with_effort(Effort::High))
+        .unwrap()
+        .get("reasoning")
+        .is_none());
+}
+
+#[test]
+fn responses_minimal_effort_is_raised_when_web_search_is_on() {
+    let gpt5 = responses_model(
+        "gpt-5",
+        reasoning_caps(&[Effort::Minimal, Effort::Low, Effort::Medium, Effort::High]),
+    );
+    let body = openai_responses_body(
+        &gpt5,
+        &CompletionRequest {
+            effort: Some(Effort::Minimal),
+            web: Some(WebTools {
+                search: true,
+                fetch: false,
+            }),
+            ..CompletionRequest::prompt("s", "u")
+        },
+    )
+    .unwrap();
+    assert_eq!(body["reasoning"]["effort"], "low");
+}
+
+#[test]
+fn chat_providers_get_their_own_reasoning_field() {
+    assert_eq!(
+        openai_body(
+            &chat(
+                "xai",
+                "grok-4.7",
+                reasoning_caps(&[Effort::Low, Effort::Medium, Effort::High, Effort::Xhigh])
+            ),
+            &with_effort(Effort::High)
+        )
+        .unwrap()["reasoning_effort"],
+        "high"
+    );
+    assert_eq!(
+        openai_body(
+            &chat("groq", "openai/gpt-oss-120b", ModelCaps::default()),
+            &with_effort(Effort::Xhigh)
+        )
+        .unwrap()["reasoning_effort"],
+        "high"
+    );
+    assert_eq!(
+        openai_body(
+            &chat(
+                "openrouter",
+                "anthropic/claude-opus-5.5",
+                reasoning_caps(&[Effort::Low, Effort::High])
+            ),
+            &with_effort(Effort::High)
+        )
+        .unwrap()["reasoning"],
+        json!({"effort":"high"})
+    );
+    assert_eq!(
+        openai_body(
+            &chat("ollama", "gpt-oss:20b", ModelCaps::default()),
+            &with_effort(Effort::Low)
+        )
+        .unwrap()["reasoning_effort"],
+        "low"
+    );
+    let deepseek = openai_body(
+        &chat("deepseek", "deepseek-flash", ModelCaps::default()),
+        &with_effort(Effort::High),
+    )
+    .unwrap();
+    assert!(deepseek.get("reasoning_effort").is_none() && deepseek.get("reasoning").is_none());
+    assert!(openai_body(
+        &chat("mistral", "mistral-medium-latest", ModelCaps::default()),
+        &with_effort(Effort::High)
+    )
+    .unwrap()
+    .get("reasoning_effort")
+    .is_none());
+}
+
+#[test]
+fn openrouter_without_summaries_excludes_reasoning() {
+    let body = openai_body(
+        &chat("openrouter", "x/y", ModelCaps::default()),
+        &CompletionRequest {
+            reasoning_summary: Some(false),
+            ..CompletionRequest::prompt("s", "u")
+        },
+    )
+    .unwrap();
+    assert_eq!(body["reasoning"], json!({"exclude": true}));
+}
+
+#[test]
+fn groq_gets_a_completion_token_ceiling_from_metadata() {
+    let body = openai_body(
+        &chat(
+            "groq",
+            "openai/gpt-oss-120b",
+            ModelCaps {
+                output_limit: Some(65_536),
+                ..ModelCaps::default()
+            },
+        ),
+        &CompletionRequest::prompt("s", "u"),
+    )
+    .unwrap();
+    assert_eq!(body["max_completion_tokens"], 64_000);
+    assert!(body.get("max_tokens").is_none());
+}
+
+#[test]
+fn gemini_effort_sets_a_level_or_a_budget_never_both() {
+    let level = google_body(
+        &gemini(
+            "gemini-3.8-flash",
+            reasoning_caps(&[Effort::Low, Effort::Medium, Effort::High]),
+        ),
+        &with_effort(Effort::High),
+    )
+    .unwrap();
+    assert_eq!(
+        level["generationConfig"]["thinkingConfig"],
+        json!({"includeThoughts": true, "thinkingLevel": "high"})
+    );
+    let auto4 = google_body(
+        &gemini("gemini-4-argon", ModelCaps::default()),
+        &CompletionRequest::prompt("s", "u"),
+    )
+    .unwrap();
+    assert_eq!(
+        auto4["generationConfig"]["thinkingConfig"]["thinkingLevel"],
+        "medium"
+    );
+    let flash = flash_25_caps();
+    for (effort, want) in [
+        (Effort::Off, 0),
+        (Effort::Low, 1_024),
+        (Effort::Medium, 8_192),
+        (Effort::High, 24_576),
+    ] {
+        let body = google_body(
+            &gemini("gemini-2.5-flash", flash.clone()),
+            &with_effort(effort),
+        )
+        .unwrap();
+        let config = &body["generationConfig"]["thinkingConfig"];
+        assert_eq!(config["thinkingBudget"], want);
+        assert!(config.get("thinkingLevel").is_none());
+    }
+    assert_eq!(
+        google_body(
+            &gemini("gemini-2.5-pro", pro_25_caps()),
+            &with_effort(Effort::High)
+        )
+        .unwrap()["generationConfig"]["thinkingConfig"]["thinkingBudget"],
+        32_768
+    );
+    assert_eq!(
+        BudgetRange {
+            min: Some(0),
+            max: Some(1)
+        }
+        .max,
+        Some(1)
+    );
+}
+
+#[test]
+fn gemini_without_summaries_hides_thoughts() {
+    let body = google_body(
+        &gemini("gemini-3.8-flash", ModelCaps::default()),
+        &CompletionRequest {
+            reasoning_summary: Some(false),
+            ..CompletionRequest::prompt("s", "u")
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        body["generationConfig"]["thinkingConfig"]["includeThoughts"],
+        false
+    );
+}
+
+#[test]
+fn gemini_output_ceiling_comes_from_metadata() {
+    assert_eq!(
+        google_body(
+            &gemini(
+                "gemini-3.8-flash",
+                ModelCaps {
+                    output_limit: Some(65_536),
+                    ..ModelCaps::default()
+                }
+            ),
+            &CompletionRequest::prompt("s", "u")
+        )
+        .unwrap()["generationConfig"]["maxOutputTokens"],
+        64_000
+    );
+    assert!(google_body(
+        &gemini("gemini-3.8-flash", ModelCaps::default()),
+        &CompletionRequest::prompt("s", "u")
+    )
+    .unwrap()["generationConfig"]
+        .get("maxOutputTokens")
+        .is_none());
+}
+
+#[test]
+fn tool_lists_are_sorted_by_name_on_every_wire() {
+    let req = CompletionRequest {
+        tools: vec![tool("zeta"), tool("alpha")],
+        ..CompletionRequest::prompt("s", "u")
+    };
+    let chat_body = openai_body(&openai(), &req).unwrap();
+    assert_eq!(chat_body["tools"][0]["function"]["name"], "alpha");
+    let responses = openai_responses_body(&openai_responses(), &req).unwrap();
+    assert_eq!(responses["tools"][0]["name"], "alpha");
+    let google_body = google_body(&google(), &req).unwrap();
+    assert_eq!(
+        google_body["tools"][0]["functionDeclarations"][0]["name"],
+        "alpha"
+    );
+}
+
+// --- 0.4.8: documents, tool images, replay, hosted web tools ---------------
+
+fn user_with(parts: Vec<ContentPart>) -> CompletionRequest {
+    CompletionRequest {
+        messages: vec![Message {
+            role: Role::User,
+            content: parts,
+        }],
+        ..Default::default()
+    }
+}
+
+fn doc_part() -> ContentPart {
+    ContentPart::Document {
+        mime: "application/pdf".into(),
+        data: "JVBE".into(),
+        name: "a.pdf".into(),
+    }
+}
+
+fn tool_turn_with_images(images: Vec<String>) -> CompletionRequest {
+    let mut req = tool_turn();
+    if let Some(ContentPart::ToolResult {
+        images: slot,
+        output,
+        ..
+    }) = req.messages[2].content.first_mut()
+    {
+        *slot = images;
+        *output = "result".into();
+    }
+    req
+}
+
+fn assistant_then_user(parts: Vec<ContentPart>) -> CompletionRequest {
+    CompletionRequest {
+        messages: vec![
+            Message::user("find it"),
+            Message {
+                role: Role::Assistant,
+                content: parts,
+            },
+            Message::user("thanks"),
+        ],
+        ..Default::default()
+    }
+}
+
+#[test]
+fn documents_take_each_providers_own_shape() {
+    let req = user_with(vec![doc_part(), ContentPart::text("summarize")]);
+    let a = anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).unwrap();
+    assert_eq!(
+        a["messages"][0]["content"][0],
+        json!({"type":"document","source":{"type":"base64","media_type":"application/pdf","data":"JVBE"},"title":"a.pdf"})
+    );
+    assert_eq!(a["messages"][0]["content"][1]["type"], "text");
+    assert_eq!(
+        openai_responses_body(&openai_responses(), &req).unwrap()["input"][0]["content"][0],
+        json!({"type":"input_file","filename":"a.pdf","file_data":"data:application/pdf;base64,JVBE"})
+    );
+    assert_eq!(
+        google_body(&google(), &req).unwrap()["contents"][0]["parts"][0],
+        json!({"inlineData":{"mimeType":"application/pdf","data":"JVBE"}})
+    );
+    let or = openai_body(&chat("openrouter", "x/y", ModelCaps::default()), &req).unwrap();
+    assert_eq!(or["messages"][0]["content"][0]["type"], "file");
+    assert_eq!(
+        or["plugins"],
+        json!([{"id":"file-parser","pdf":{"engine":"native"}}])
+    );
+}
+
+#[test]
+fn a_document_never_reaches_a_provider_without_file_input() {
+    assert!(openai_body(
+        &chat("groq", "openai/gpt-oss-120b", ModelCaps::default()),
+        &user_with(vec![doc_part()])
+    )
+    .is_err());
+}
+
+#[test]
+fn anthropic_nests_tool_images_inside_their_tool_result() {
+    let req = tool_turn_with_images(vec!["data:image/png;base64,AA".into()]);
+    let body = anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).unwrap();
+    let content = &body["messages"][2]["content"];
+    assert_eq!(content.as_array().unwrap().len(), 1);
+    assert_eq!(
+        content[0]["content"][0],
+        json!({"type":"text","text":"result"})
+    );
+    assert_eq!(content[0]["content"][1]["type"], "image");
+}
+
+#[test]
+fn other_wires_keep_tool_images_after_the_results() {
+    let req = tool_turn_with_images(vec!["data:image/png;base64,AA".into()]);
+    let chat_body = openai_body(&openai(), &req).unwrap();
+    let messages = chat_body["messages"].as_array().unwrap();
+    let tool_at = messages.iter().position(|m| m["role"] == "tool").unwrap();
+    assert_eq!(messages[tool_at + 1]["role"], "user");
+    assert_eq!(messages[tool_at + 1]["content"][0]["type"], "image_url");
+
+    let responses = openai_responses_body(&openai_responses(), &req).unwrap();
+    let input = responses["input"].as_array().unwrap();
+    let output_at = input
+        .iter()
+        .position(|item| item["type"] == "function_call_output")
+        .unwrap();
+    assert_eq!(input[output_at + 1]["content"][0]["type"], "input_image");
+
+    let google_body = google_body(&google(), &req).unwrap();
+    let parts = google_body["contents"][2]["parts"].as_array().unwrap();
+    assert!(parts[0].get("functionResponse").is_some());
+    assert!(parts[1].get("inlineData").is_some());
+}
+
+#[test]
+fn anthropic_replays_thinking_and_provider_blocks_verbatim_in_order() {
+    let server = json!({"type":"server_tool_use","id":"srvtoolu_1","name":"web_search","input":{"query":"q"}});
+    let result = json!({"type":"web_search_tool_result","tool_use_id":"srvtoolu_1","content":[{"type":"web_search_result","url":"https://e.org","title":"E","encrypted_content":"x"}]});
+    let cited = json!({"type":"text","text":"born 1916","citations":[{"type":"web_search_result_location","url":"https://e.org","title":"E","encrypted_index":"i","cited_text":"1916"}]});
+    let req = assistant_then_user(vec![
+        ContentPart::Thinking {
+            thinking: String::new(),
+            signature: "s1".into(),
+        },
+        ContentPart::text("Searching."),
+        ContentPart::ProviderBlock {
+            wire: ProviderWire::Anthropic,
+            block: server.clone(),
+        },
+        ContentPart::ProviderBlock {
+            wire: ProviderWire::Anthropic,
+            block: result.clone(),
+        },
+        ContentPart::Thinking {
+            thinking: "more".into(),
+            signature: "s2".into(),
+        },
+        ContentPart::ProviderBlock {
+            wire: ProviderWire::Anthropic,
+            block: cited.clone(),
+        },
+    ]);
+    assert_eq!(
+        anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).unwrap()["messages"]
+            [1]["content"],
+        json!([
+            {"type":"thinking","thinking":"","signature":"s1"},
+            {"type":"text","text":"Searching."},
+            server,
+            result,
+            {"type":"thinking","thinking":"more","signature":"s2"},
+            cited
+        ])
+    );
+}
+
+#[test]
+fn thinking_and_provider_blocks_never_reach_other_wires() {
+    let req = assistant_then_user(vec![
+        ContentPart::Thinking {
+            thinking: "secret".into(),
+            signature: "sig-xyz".into(),
+        },
+        ContentPart::text("Answer."),
+        ContentPart::ProviderBlock {
+            wire: ProviderWire::Anthropic,
+            block: json!({"type":"server_tool_use","id":"srvtoolu_1"}),
+        },
+    ]);
+    for body in [
+        openai_body(&openai(), &req).unwrap(),
+        openai_responses_body(&openai_responses(), &req).unwrap(),
+        google_body(&google(), &req).unwrap(),
+    ] {
+        let text = body.to_string();
+        assert!(!text.contains("sig-xyz"), "{text}");
+        assert!(!text.contains("srvtoolu_1"), "{text}");
+        assert!(!text.contains("\"type\":\"thinking\""), "{text}");
+    }
+}
+
+#[test]
+fn anthropic_skips_empty_and_whitespace_only_assistant_text() {
+    let req = assistant_then_user(vec![
+        ContentPart::text(""),
+        ContentPart::text("  "),
+        ContentPart::ToolUse {
+            id: "t".into(),
+            name: "read_file".into(),
+            arguments: "{}".into(),
+            thought_signature: None,
+        },
+    ]);
+    let body = anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).unwrap();
+    let content = body["messages"][1]["content"].as_array().unwrap();
+    assert_eq!(content.len(), 1);
+    assert_eq!(content[0]["type"], "tool_use");
+}
+
+#[test]
+fn unsupported_image_types_are_refused_before_sending() {
+    let req = user_with(vec![ContentPart::Image {
+        image: "data:image/svg+xml;base64,AA".into(),
+    }]);
+    assert!(anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).is_err());
+    assert!(openai_body(&openai(), &req).is_err());
+    assert!(google_body(&google(), &req).is_err());
+}
+
+#[test]
+fn unresolved_attachments_never_leave() {
+    let req = user_with(vec![ContentPart::Attachment {
+        sha256: "a".repeat(64),
+        name: "x.png".into(),
+        mime: "image/png".into(),
+    }]);
+    for result in [
+        anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req),
+        openai_body(&openai(), &req),
+        openai_responses_body(&openai_responses(), &req),
+        google_body(&google(), &req),
+    ] {
+        assert!(result.unwrap_err().to_string().contains("resolved"));
+    }
+}
+
+#[test]
+fn anthropic_web_versions_follow_the_model_family() {
+    assert_eq!(
+        anthropic_web_versions("claude-opus-5-5").unwrap().search,
+        "web_search_20260209"
+    );
+    assert_eq!(
+        anthropic_web_versions("claude-haiku-5-5").unwrap().fetch,
+        "web_fetch_20250910"
+    );
+    assert!(anthropic_web_versions("claude-3-haiku-20240307").is_none());
+}
+
+#[test]
+fn hosted_web_tools_replace_local_tools_of_the_same_name() {
+    let req = CompletionRequest {
+        tools: vec![tool("web_search"), tool("read_file")],
+        web: Some(WebTools {
+            search: true,
+            fetch: true,
+        }),
+        ..CompletionRequest::prompt("s", "u")
+    };
+    let tools = anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).unwrap()
+        ["tools"]
+        .clone();
+    let names: Vec<(String, Option<String>)> = tools
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|tool| {
+            (
+                tool["name"].as_str().unwrap().to_string(),
+                tool.get("type")
+                    .and_then(|value| value.as_str())
+                    .map(String::from),
+            )
+        })
+        .collect();
+    assert_eq!(
+        names,
+        vec![
+            ("read_file".to_string(), None),
+            (
+                "web_search".to_string(),
+                Some("web_search_20260209".to_string())
+            ),
+            (
+                "web_fetch".to_string(),
+                Some("web_fetch_20260209".to_string())
+            )
+        ]
+    );
+}
+
+#[test]
+fn responses_web_search_adds_the_hosted_tool_and_sources() {
+    let body = openai_responses_body(
+        &responses_model("gpt-6.1-sol", ModelCaps::default()),
+        &CompletionRequest {
+            web: Some(WebTools {
+                search: true,
+                fetch: true,
+            }),
+            ..CompletionRequest::prompt("s", "u")
+        },
+    )
+    .unwrap();
+    assert!(body["tools"]
+        .as_array()
+        .unwrap()
+        .contains(&json!({"type":"web_search"})));
+    assert_eq!(
+        body["include"],
+        json!([
+            "reasoning.encrypted_content",
+            "web_search_call.action.sources"
+        ])
+    );
+}
+
+#[test]
+fn web_off_adds_no_hosted_tools() {
+    for web in [
+        None,
+        Some(WebTools {
+            search: false,
+            fetch: false,
+        }),
+    ] {
+        let req = CompletionRequest {
+            web,
+            ..CompletionRequest::prompt("s", "u")
+        };
+        assert!(
+            anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req)
+                .unwrap()
+                .get("tools")
+                .is_none()
+        );
+        assert!(
+            openai_responses_body(&responses_model("gpt-6.1-sol", ModelCaps::default()), &req)
+                .unwrap()
+                .get("tools")
+                .is_none()
+        );
+    }
+}
+
+#[test]
+fn the_container_is_sent_back_when_known() {
+    let req = CompletionRequest {
+        anthropic_container: Some("cntr_1".into()),
+        ..CompletionRequest::prompt("s", "u")
+    };
+    assert_eq!(
+        anthropic_body(&anthropic_model("claude-opus-5-5", opus_caps()), &req).unwrap()
+            ["container"],
+        "cntr_1"
     );
 }

@@ -16,6 +16,8 @@ import {
   agentSteer,
   agentThreadArchive,
   agentThreadFork,
+  agentThreadRollback,
+  providerCredit,
   completeText,
   completeViaBackend,
   runViaBackend,
@@ -166,6 +168,41 @@ describe("thread actions", () => {
       excludeTurns: null,
       projectId: "project-1",
     });
+  });
+});
+
+describe("0.4.8 thread and account actions", () => {
+  it("forks a thread without its last turns", async () => {
+    mocks.invoke.mockResolvedValueOnce("thread-new");
+    await agentThreadFork("t", "p", 2);
+    expect(mocks.invoke).toHaveBeenCalledWith("agent_thread_fork", {
+      threadId: "t",
+      excludeTurns: 2,
+      projectId: "p",
+    });
+  });
+
+  it("rolls back turns of a thread", async () => {
+    mocks.invoke.mockResolvedValueOnce([]);
+    await agentThreadRollback("t", 1);
+    expect(mocks.invoke).toHaveBeenCalledWith("agent_thread_rollback", { threadId: "t", numTurns: 1 });
+  });
+
+  it("reads provider credit and treats a missing command as no credit", async () => {
+    const credit = {
+      source: "openrouter",
+      currency: "USD",
+      remaining: 12.5,
+      limit: 20,
+      used: 7.5,
+      label: null,
+      available: null,
+    };
+    mocks.invoke.mockResolvedValueOnce(credit);
+    await expect(providerCredit("openrouter")).resolves.toEqual(credit);
+    expect(mocks.invoke).toHaveBeenCalledWith("agent_provider_credit", { providerId: "openrouter" });
+    mocks.invoke.mockRejectedValueOnce(new Error("command agent_provider_credit not found"));
+    await expect(providerCredit("openrouter")).resolves.toBeNull();
   });
 });
 

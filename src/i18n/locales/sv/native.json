@@ -19,7 +19,6 @@
     "selectAll": "Markera allt",
     "view": "Visa",
     "toggleTerminal": "Visa eller dölj terminalen",
-    "toggleBrowser": "Visa eller dölj webbläsaren",
     "file": "Arkiv",
     "openFolder": "Öppna mapp…",
     "openRecent": "Öppna senaste",
@@ -28,15 +27,7 @@
     "minimize": "Minimera",
     "fullscreen": "Växla helskärm",
     "bringAllToFront": "Lägg alla överst",
-    "newTab": "Ny flik",
-    "openLocation": "Öppna adress…",
-    "closeTab": "Stäng flik",
-    "reloadPage": "Läs in sidan på nytt",
     "zenMode": "Zen-läge"
-  },
-  "window": {
-    "browser": "Oleafly-webbläsaren",
-    "browserTitled": "{{title}} - Oleafly-webbläsaren"
   },
   "dialog": {
     "cancel": "Avbryt",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Bekräfta import av cookies",
-      "messageHost": "Vill du importera cookies för {{hostname}} från {{browser}}-profilen \"{{profile}}\" till Oleaflys inbyggda webbläsare? Importerade cookies kan logga in dig på webbplatser.",
-      "messageAll": "Vill du importera alla cookies från {{browser}}-profilen \"{{profile}}\" till Oleaflys inbyggda webbläsare? Importerade cookies kan logga in dig på webbplatser.",
-      "confirm": "Importera cookies"
+      "copyHost": "Vill du kopiera cookies för {{hostname}} från {{browser}}-profilen \"{{profile}}\" till Oleafly? De kan logga in dig på {{hostname}}.",
+      "copyAll": "Vill du kopiera alla cookies från {{browser}}-profilen \"{{profile}}\" till Oleafly? De kan logga in dig på webbplatser.",
+      "copyConfirm": "Kopiera cookies"
     },
     "mcpApprove": {
       "title": "Godkänn MCP-verktyg",
@@ -103,6 +94,51 @@
       "confirm": "Använd programmet",
       "pickTitle": "Välj programmet för {{name}}",
       "filter": "Program"
+    },
+    "desktopApps": {
+      "title": "Skrivbordsappar",
+      "action": "{{agent}} vill {{action}}.",
+      "steps": "{{agent}} vill köra de här stegen i en skrivbordsapp:",
+      "moreSteps": "Steg som inte visas: {{count}}",
+      "moreItems": "{{count}} objekt till visas inte",
+      "cut": "(+{{count}} tecken visas inte)",
+      "signedIn": "Det här sker i din egen inloggade webbläsare.",
+      "signedInOn": "Det här sker i din egen inloggade webbläsare, på {{origin}}.",
+      "text": "Text: \"{{text}}\"",
+      "address": "Adress: {{url}}",
+      "allowOnce": "Tillåt en gång",
+      "allowChat": "Tillåt för den här chatten",
+      "allowSession": "Tillåt för den här sessionen",
+      "allowTask": "Tillåt för den här uppgiften",
+      "deny": "Tillåt inte",
+      "actions": {
+        "launchApp": "öppna en app",
+        "click": "klicka i en app",
+        "doubleClick": "dubbelklicka i en app",
+        "rightClick": "högerklicka i en app",
+        "typeText": "skriva i en app",
+        "pressKey": "trycka på en tangent i en app",
+        "hotkey": "använda ett kortkommando i en app",
+        "scroll": "rulla i en app",
+        "setValue": "ändra ett fält i en app",
+        "browserPrepare": "öppna en webbläsare för en webbplats",
+        "browserNavigate": "gå till en webbsida",
+        "browserClick": "klicka på en webbsida",
+        "browserType": "skriva på en webbsida",
+        "browserSelect": "välja ett alternativ på en webbsida",
+        "runScript": "köra ett Cua-skript"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Vill du tillåta styrning av skrivbordet?",
+      "message": "Agenter kommer att kunna använda följande, och de frågar fortfarande före varje åtgärd:",
+      "confirm": "Tillåt",
+      "enabled": "Skrivbordsappar",
+      "app": "App: {{name}} ({{identity}})",
+      "more": "Och {{count}} till",
+      "site": "Webbplats: {{origin}}",
+      "signedIn": "Din inloggade webbläsare på {{origin}}",
+      "scripted": "Cua-skript"
     }
   },
   "errors": {
@@ -128,5 +164,41 @@
   "cloud": {
     "connectedPage": "Du är ansluten. Du kan stänga fliken och gå tillbaka till Oleafly.",
     "failedPage": "Inloggningen slutfördes inte. Du kan stänga fliken och gå tillbaka till Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Uppgiften är redo för granskning",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Planen är redo att godkännas",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "En uppgift behöver ditt godkännande",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Uppgiften stoppades",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Uppgiftens budget är slut",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly fortsätter arbeta",
+      "body": "Forskningsuppgifter som du har markerat att fortsätta köras körs vidare i bakgrunden. Öppna Oleafly för att se förloppet."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Behörighetskontrollerna är av ({{mode}})",
+      "description": "Agenten kan ändra filer och köra kommandon utan att fråga. Oleafly kunde inte växla den till ett annat läge. Ändra läget i agentens egna inställningar."
+    }
   }
 }

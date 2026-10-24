@@ -1,4 +1,12 @@
 use std::io;
+use std::path::Path;
+use std::time::{Duration, Instant};
+
+#[cfg(windows)]
+const NULL_DEVICE: &str = "NUL";
+#[cfg(not(windows))]
+const NULL_DEVICE: &str = "/dev/null";
+const GIT_POLL: Duration = Duration::from_millis(25);
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -8,6 +16,82 @@ const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
 const CREATE_SUSPENDED: u32 = 0x0000_0004;
 #[cfg(windows)]
 const DETACHED_PROCESS: u32 = 0x0000_0008;
+
+/// Drops the Git variables a calling Git exports (a hook sets `GIT_DIR` and
+/// `GIT_INDEX_FILE`, for example), so `git` acts on the folder it runs in
+/// and not on the caller's repository.
+pub(crate) fn clear_inherited_git_env(command: &mut std::process::Command) {
+    for name in oleafly_research::host::GIT_REPOSITORY_ENV {
+        command.env_remove(name);
+    }
+}
+
+/// Runs `git -C <root> <args>` to read a folder's state and returns up to
+/// `max_bytes` of its output when it succeeds (`None` when it can't start,
+/// fails or outlives `timeout`).
+///
+/// The folder's own `.git/config` comes with the folder, and `git status`
+/// runs the command it names as `core.fsmonitor`, so that and hooks are
+/// turned off. Optional locks are skipped (the index refresh would make a
+/// user's concurrent `git commit` fail), and the variables a calling Git
+/// exports (`GIT_DIR`...) are dropped, so Git reads the folder asked about.
+pub(crate) fn read_git(
+    git: &Path,
+    root: &Path,
+    args: &[&str],
+    timeout: Duration,
+    max_bytes: u64,
+) -> Option<Vec<u8>> {
+    use std::io::Read;
+    use std::process::Stdio;
+    let mut command = std::process::Command::new(git);
+    clear_inherited_git_env(&mut command);
+    command
+        .args(["-c", "core.fsmonitor=false", "-c"])
+        .arg(format!("core.hooksPath={NULL_DEVICE}"))
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    let mut child = command.spawn().ok()?;
+    let deadline = Instant::now() + timeout;
+    let (sender, receiver) = std::sync::mpsc::channel();
+    if let Some(stdout) = child.stdout.take() {
+        std::thread::spawn(move || {
+            let mut output = Vec::new();
+            let _ = stdout.take(max_bytes).read_to_end(&mut output);
+            let _ = sender.send(output);
+        });
+    }
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(GIT_POLL),
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+    };
+    let output = receiver
+        .recv_timeout(
+            deadline
+                .saturating_duration_since(Instant::now())
+                .max(GIT_POLL),
+        )
+        .unwrap_or_default();
+    status.success().then_some(output)
+}
 
 pub(crate) fn detach(command: &mut std::process::Command) {
     #[cfg(unix)]
@@ -231,5 +315,33 @@ fn resume_thread(thread_id: u32) -> io::Result<()> {
         let error = (previous_suspend_count == u32::MAX).then(io::Error::last_os_error);
         CloseHandle(thread);
         error.map_or(Ok(()), Err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsStr;
+
+    #[test]
+    fn git_runs_without_the_callers_repository_variables() {
+        let mut command = std::process::Command::new("git");
+        super::clear_inherited_git_env(&mut command);
+        let removed: Vec<&OsStr> = command
+            .get_envs()
+            .filter(|(_, value)| value.is_none())
+            .map(|(name, _)| name)
+            .collect();
+        for name in [
+            "GIT_DIR",
+            "GIT_WORK_TREE",
+            "GIT_INDEX_FILE",
+            "GIT_COMMON_DIR",
+            "GIT_PREFIX",
+        ] {
+            assert!(
+                removed.contains(&OsStr::new(name)),
+                "{name} is still passed on"
+            );
+        }
     }
 }

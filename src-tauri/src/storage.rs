@@ -1430,6 +1430,12 @@ fn permanently_delete_recycled_project_sync(recycle_id: &str) -> Result<(), Stri
                 manifest.project_id
             ));
         }
+        if let Err(error) = crate::attachments::remove_project(&manifest.project_id) {
+            let _ = crate::project::append_app_log(format!(
+                "could not remove the chat attachments of {}: {error}",
+                manifest.project_id
+            ));
+        }
     }
     complete_cleanup_job_locked(&cleanup_path, &cleanup).map_err(|error| {
         format!("the project was deleted, but its Checkpoints cleanup failed: {error}")

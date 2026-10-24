@@ -2,6 +2,7 @@
   "workspace": {
     "title": "Spațiu de cercetare",
     "configureAgents": "Configurează agenții de cercetare",
+    "openSettings": "Setări de cercetare",
     "configError": "Setările asistentului nu au putut fi încărcate.",
     "tabTasks": "Sarcini",
     "tabFolders": "Foldere asociate",
@@ -135,7 +136,8 @@
       "awaitingReview": "Necesită verificare",
       "completed": "Finalizată",
       "failed": "Eșuată",
-      "cancelled": "Anulată"
+      "cancelled": "Anulată",
+      "planReady": "Plan gata"
     },
     "relative": {
       "justNow": "chiar acum",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "Sesiune conectată.",
-      "toolCall": "Apel de instrument"
+      "toolCall": "Apel de instrument",
+      "runStarted": "A pornit rularea {{name}}",
+      "runFinished": "Rularea {{name}}: {{status}}",
+      "approvalRequested": "A cerut aprobare: {{summary}}",
+      "approvalDecided": "Aprobare: {{status}}"
     },
     "panel": {
       "noProjectTitle": "Deschide un proiect ca să folosești sarcinile de cercetare",
@@ -172,7 +178,10 @@
       "viewTask": "Vezi sarcina",
       "deleteTitle": "Ștergi această sarcină?",
       "deleteDescription": "„{{title}}” și spațiul ei de lucru izolat sunt eliminate. Fișierele deja aplicate în proiectul tău rămân.",
-      "deleteConfirm": "Șterge sarcina"
+      "deleteConfirm": "Șterge sarcina",
+      "pendingApprovals_one": "{{count}} cerere în așteptare",
+      "pendingApprovals_few": "{{count}} cereri în așteptare",
+      "pendingApprovals_other": "{{count}} de cereri în așteptare"
     },
     "composer": {
       "editTitle": "Editează sarcina",
@@ -193,7 +202,10 @@
       "unavailable": "Indisponibil",
       "saving": "Se salvează...",
       "saveTask": "Salvează sarcina",
-      "createTask": "Creează sarcina"
+      "createTask": "Creează sarcina",
+      "replaceText": "Înlocuiești titlul și instrucțiunile pe care le-ai scris cu acest punct de pornire?",
+      "keepText": "Păstrează textul meu",
+      "replaceConfirm": "Înlocuiește"
     },
     "starter": {
       "literatureReview": {
@@ -215,6 +227,10 @@
       "reviewerResponse": {
         "label": "Răspuns către recenzenți",
         "title": "Redactează răspunsul către recenzenți"
+      },
+      "experimentLoop": {
+        "label": "Rulează experimente",
+        "title": "Rulează experimente spre un obiectiv"
       }
     },
     "detail": {
@@ -233,6 +249,11 @@
       "dependencies": "Dependențe",
       "dependencyUnavailable": "Indisponibilă",
       "noActivity": "Pentru această rulare nu s-a înregistrat nicio activitate.",
+      "activityGap_one": "{{count}} element intermediar nu este afișat.",
+      "activityGap_other": "{{count}} de elemente intermediare nu sunt afișate.",
+      "activityMore": "Mai există activitate care nu este afișată încă.",
+      "keepRunningDesktopApps": "Această sarcină folosește aplicații desktop, care au nevoie de tine la computer.",
+      "activityGap_few": "{{count}} elemente intermediare nu sunt afișate.",
       "startToRecord": "Pornește această sarcină ca să i se înregistreze activitatea.",
       "reasoning": "Raționamentul raportat",
       "savedArtifact": "S-a salvat {{label}}",
@@ -245,6 +266,8 @@
       "clearSelection": "Golește selecția",
       "selectAll": "Selectează tot",
       "previewBeforeApply": "Previzualizează fiecare fișier selectat înainte să îl aplici.",
+      "researchRecord": "Registru de cercetare",
+      "researchRecordHint": "Notițele proprii ale sarcinii. Nu trebuie să le previzualizezi înainte să le aplici.",
       "driftedOne": "{{path}} s-a schimbat în proiectul tău după ce a pornit această sarcină. Comparația lui este față de versiunea veche, așa că nu poate fi aplicat.",
       "driftedMany": "{{fileCount}} fișiere s-au schimbat în proiectul tău după ce a pornit această sarcină. Comparațiile lor sunt față de versiunile vechi, așa că nu pot fi aplicate.",
       "applyAria": "Aplică {{path}}",
@@ -274,7 +297,108 @@
       "loadMore": "Încarcă mai multă activitate",
       "changeAdded": "adăugat",
       "changeModified": "modificat",
-      "changeDeleted": "șters"
+      "changeDeleted": "șters",
+      "tabProgress": "Progres",
+      "resume": "Reia",
+      "resumeHint": "Continuă în același spațiu de lucru, de la predarea salvată.",
+      "startOver": "Ia-o de la capăt",
+      "startOverHint": "Pornește de la proiectul curent. Registrul de cercetare vine și el.",
+      "stopReason": {
+        "budgetTime": "Oprită când s-a epuizat bugetul de timp.",
+        "budgetCost": "Oprită la limita de cost.",
+        "budgetRuns": "Oprită la limita de rulări."
+      },
+      "startsAt": "Pornește {{time}}"
+    },
+    "plan": {
+      "title": "Plan",
+      "description": "Citește planul și editează-l dacă vrei. Aprobă-l ca sarcina să continue.",
+      "approve": "Aprobă planul",
+      "approveEdited": "Aprobă planul editat",
+      "discard": "Renunță la sarcină",
+      "loading": "Se încarcă planul…",
+      "missing": "Fișierul planului lipsește. Reîncearcă sarcina."
+    },
+    "approvals": {
+      "title": "Se așteaptă aprobarea ta",
+      "approve": "Aprobă",
+      "deny": "Respinge",
+      "kindCommand": "Rulează o comandă",
+      "kindRun": "Pornește o rulare",
+      "kindMcp": "Folosește un instrument",
+      "expires": "Așteaptă până la {{time}}",
+      "detailCommand": "Comanda completă",
+      "detailRun": "Detaliile rulării",
+      "detailMcp": "Argumentele instrumentului",
+      "loadFailed": "Cererile în așteptare nu au putut fi încărcate.",
+      "status": {
+        "approved": "Aprobată",
+        "denied": "Respinsă",
+        "expired": "Expirată",
+        "withdrawn": "Retrasă"
+      }
+    },
+    "phase": {
+      "preparing": "Se pregătește spațiul de lucru",
+      "planning": "Se scrie planul",
+      "working": "Lucrează",
+      "waitingRuns": "Se așteaptă rulările",
+      "waitingApproval": "Se așteaptă aprobarea",
+      "wrappingUp": "Se finalizează",
+      "checkingEvidence": "Se verifică dovezile"
+    },
+    "progress": {
+      "loading": "Se încarcă progresul…",
+      "plan": "Plan",
+      "noPlan": "Încă nu există un plan.",
+      "ledger": "Registrul rezultatelor",
+      "noLedger": "Încă nu s-au înregistrat rezultate.",
+      "best": "Cea mai bună valoare pentru {{metric}}",
+      "bestValue": "{{value}} în rularea {{run}}",
+      "runsInFlight": "Rulări în desfășurare",
+      "noRuns": "Nicio rulare în desfășurare.",
+      "budget": "Buget",
+      "timeUsed": "{{used}} din {{total}}",
+      "costUsed": "{{used}} din {{limit}}",
+      "costSpent": "Cheltuit: {{used}}",
+      "ledgerCapped": "Se arată cele mai recente {{limit}} rezultate.",
+      "costUnknown": "Costul nu este cunoscut pentru acest model.",
+      "runsUsed": "Rulări: {{used}} din {{limit}}",
+      "runsUsedNoLimit": "Rulări: {{used}}",
+      "stopRun": "Oprește rularea",
+      "viewLog": "Vezi jurnalul",
+      "columns": {
+        "run": "Rulare",
+        "time": "Timp",
+        "hypothesis": "Ipoteză",
+        "change": "Modificare",
+        "metrics": "Metrici",
+        "verdict": "Verdict"
+      },
+      "verdict": {
+        "keep": "Păstrată",
+        "discard": "Abandonată",
+        "crash": "Blocată"
+      }
+    },
+    "settings": {
+      "title": "Sarcini de cercetare",
+      "keepAwake": "Ține computerul treaz cât rulează sarcinile",
+      "keepAwakeHint": "Ecranul se poate stinge în continuare.",
+      "notifications": "Anunță-mă când o sarcină are nevoie de atenție",
+      "notificationsHint": "Apare când Oleafly este în fundal.",
+      "notificationsBlocked": "Notificările pentru Oleafly sunt dezactivate în setările sistemului.",
+      "allowNotifications": "Permite notificările",
+      "network": "Permite implicit accesul la rețea pentru comenzile sarcinilor",
+      "timeBudget": "Buget de timp implicit",
+      "mcpServers": "Servere MCP pe care le pot folosi sarcinile",
+      "mcpServersHint": "Sarcinile apelează aceste instrumente după regulile de comenzi ale fiecărei sarcini.",
+      "noMcpServers": "Nu este configurat niciun server MCP.",
+      "networkHint": "Comenzile din sarcini pot ajunge pe internet. Fiecare sarcină poate totuși să oprească asta.",
+      "loadFailed": "Setările tale de cercetare nu au putut fi încărcate.",
+      "sectionName": "Cercetare",
+      "resetConfirm": "Readu la valorile implicite pentru cercetare: menținerea computerului treaz, notificările, accesul la rețea, bugetul de timp și serverele MCP pe care le pot folosi sarcinile. Țintele de rulare și sarcinile în fundal rămân neschimbate.",
+      "saveFailed": "Setările de cercetare nu au putut fi salvate. Încearcă din nou."
     }
   },
   "tools": {
@@ -355,7 +479,7 @@
       "name": "Din imagine în LaTeX",
       "description": "Transformă o imagine cu notițe, ecuații sau un tabel în cod LaTeX editabil.",
       "tag1": "Imagini",
-      "tag2": "Model pe dispozitiv",
+      "tag2": "Model local sau găzduit",
       "tag3": "Fără proiect"
     },
     "visualTypstEditor": {
@@ -377,7 +501,7 @@
       "description": "Convertește o ecuație scrisă sau fotografiată în formule LaTeX curate.",
       "tag1": "Text sau imagine",
       "tag2": "Formule",
-      "tag3": "Model pe dispozitiv"
+      "tag3": "Model local sau găzduit"
     },
     "excelToLatex": {
       "name": "Din Excel în LaTeX",
@@ -397,7 +521,7 @@
       "name": "Din imagine în Typst",
       "description": "Transformă o imagine cu notițe, ecuații sau un tabel în cod Typst editabil.",
       "tag1": "Imagini",
-      "tag2": "Model pe dispozitiv",
+      "tag2": "Model local sau găzduit",
       "tag3": "Fără proiect"
     },
     "latexToHtml": {
@@ -747,13 +871,13 @@
     "progressNeedsAttention": "Necesită atenție",
     "progressCancelled": "Anulat",
     "progressReadingPages": "Se citesc paginile",
-    "progressTranscribingPage": "Se transcrie pagina {{page}} din {{total}}",
+    "progressTranscribingPage": "Se transcrie pagina {{page}} din {{total}} cu {{model}}",
     "progressDocumentStructure": "Se convertește structura documentului",
     "progressMermaid": "Se randează diagrama Mermaid",
     "progressFirstSheet": "Se citește prima foaie",
-    "progressVisionModel": "Rulează modelul local de viziune",
-    "progressReadingEquation": "Se citește ecuația cu modelul local de viziune",
-    "progressConvertingEquation": "Se convertește ecuația cu modelul local",
+    "progressVisionModel": "Se citește imaginea cu {{model}}",
+    "progressReadingEquation": "Se citește ecuația cu {{model}}",
+    "progressConvertingEquation": "Se convertește ecuația cu {{model}}",
     "progressUnpackingSource": "Se despachetează sursa salvată",
     "progressDownloadingSource": "Se descarcă sursa preprintului",
     "copied": "S-a copiat {{label}}",
@@ -788,14 +912,17 @@
     "fileReady": "{{fileName}} este gata",
     "saveWordHint": "Salvează documentul Word când ești gata.",
     "resultPlaceholder": "Rezultatul convertit va apărea aici.",
-    "progressConvertingSource": "Se convertește sursa în Typst"
+    "progressConvertingSource": "Se convertește sursa în Typst",
+    "pageRange": "Pagini",
+    "pageRangePlaceholder": "Toate paginile sau un interval precum 1-50",
+    "pageRangeInvalid": "Introdu un număr de pagină sau un interval precum 1-50."
   },
   "converters": {
     "imageToLatex": {
       "title": "Din imagine în LaTeX",
-      "subtitle": "Transcrie notițe, ecuații sau tabele cu un model de viziune de pe dispozitiv",
+      "subtitle": "Transcrie notițe, ecuații sau tabele cu un model de viziune",
       "inputLabel": "Imagine",
-      "inputHint": "PNG, JPEG sau WebP. Imaginea rămâne pe acest dispozitiv.",
+      "inputHint": "PNG, JPEG sau WebP, până la 20 MB.",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -828,9 +955,9 @@
     },
     "imageToTypst": {
       "title": "Din imagine în Typst",
-      "subtitle": "Transcrie notițe, ecuații sau tabele cu un model de viziune de pe dispozitiv",
+      "subtitle": "Transcrie notițe, ecuații sau tabele cu un model de viziune",
       "inputLabel": "Imagine",
-      "inputHint": "PNG, JPEG sau WebP. Imaginea rămâne pe acest dispozitiv.",
+      "inputHint": "PNG, JPEG sau WebP, până la 20 MB.",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -886,14 +1013,14 @@
       "title": "Din PDF în Markdown",
       "subtitle": "Extrage local textul, ecuațiile și figurile",
       "inputLabel": "PDF",
-      "inputHint": "Fișierele PDF cu text folosesc extragere deterministă. Scanările folosesc un model local de viziune.",
+      "inputHint": "Din fișierele PDF cu text, textul se extrage determinist. Scanările folosesc modelul pe care îl alegi.",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "Din PDF în Typst",
       "subtitle": "Extrage local textul, ecuațiile și figurile",
       "inputLabel": "PDF",
-      "inputHint": "Fișierele PDF cu text folosesc extragere deterministă. Scanările folosesc un model local de viziune.",
+      "inputHint": "Din fișierele PDF cu text, textul se extrage determinist. Scanările folosesc modelul pe care îl alegi.",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -984,10 +1111,10 @@
   "converterErrors": {
     "chooseSmallerImage": "Alege o imagine mai mică de 20 MB.",
     "imageFormat": "Alege o imagine PNG, JPEG sau WebP.",
-    "ollamaUnavailable": "Pornește Ollama din Setări, apoi instalează un model local pentru această conversie.",
-    "visionModelMissing": "Instalează un model de viziune în Ollama, de exemplu Llama 3.2 Vision, apoi încearcă din nou.",
-    "localModelMissing": "Instalează un model local Ollama, apoi încearcă din nou.",
-    "emptyTranscription": "Modelul local a returnat o transcriere goală.",
+    "ollamaUnavailable": "Pornește Ollama sau alege alt model pentru Instrumente.",
+    "visionModelMissing": "Descarcă în Ollama un model de viziune, de exemplu glm-ocr, sau alege alt model pentru Instrumente.",
+    "localModelMissing": "Descarcă un model în Ollama sau alege alt model pentru Instrumente.",
+    "emptyTranscription": "Modelul a returnat o transcriere goală.",
     "pdfNoPages": "Acest PDF nu conține nicio pagină de transcris.",
     "pdfPageLimit": "Transcrierea fișierelor PDF scanate este limitată la 50 de pagini odată.",
     "pandocNotReady": "Pandoc nu este încă pregătit.",
@@ -995,10 +1122,12 @@
     "fileTooLarge": "Alege un fișier mai mic de 128 MB.",
     "emptySheet": "Foaia selectată este goală.",
     "arxivInputRequired": "Introdu un identificator arXiv sau alege o arhivă sursă.",
-    "equationToTypst": "Pandoc nu a putut converti această ecuație în Typst. Verifică formula LaTeX și încearcă din nou."
+    "equationToTypst": "Pandoc nu a putut converti această ecuație în Typst. Verifică formula LaTeX și încearcă din nou.",
+    "pdfTooManyPages": "Acest scan are {{pages}} pagini, iar Oleafly transcrie cel mult {{limit}} odată. Introdu sub fișier un interval de pagini precum 1-{{limit}}.",
+    "outputLimit": "Modelul a rămas fără spațiu înainte să termine, deci transcrierea ar fi incompletă. Alege în Setări, Asistentul AI, Instrumente un model cu o limită de ieșire mai mare sau transcrie o parte mai mică."
   },
   "converterNotes": {
-    "scannedPages": "S-au transcris {{pages}} pagini scanate cu un model local. Verifică ecuațiile și tabelele înainte să folosești rezultatul.",
+    "scannedPages": "Pagini scanate transcrise cu {{model}}: {{pages}}. Verifică ecuațiile și tabelele înainte să folosești rezultatul.",
     "extracted": "S-au extras local {{pages}} pagini și {{figures}} figuri.",
     "mermaidTikz": "Această diagramă de flux a fost convertită în cod TikZ editabil.",
     "mermaidRendered": "Această diagramă a fost randată local, fiindcă sintaxa ei Mermaid nu se traduce curat în cod TikZ editabil.",
@@ -1015,6 +1144,46 @@
     "notConverted_few": "{{count}} elemente nu s-au convertit.",
     "notConverted_other": "{{count}} de elemente nu s-au convertit.",
     "checkLine": "Linia {{line}}: {{message}}"
+  },
+  "converterModel": {
+    "label": "Model pentru Instrumente",
+    "automatic": "Automat (cel mai bun model local)",
+    "localGroup": "Local (Ollama)",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "Imaginile sunt trimise la {{provider}}",
+    "sentToHost": "Imaginile sunt trimise la Ollama, pe {{host}}",
+    "scansSentTo": "Paginile scanate sunt trimise la {{provider}}",
+    "scansSentToHost": "Paginile scanate sunt trimise la Ollama, pe {{host}}",
+    "pdfSentToMathpix": "Întregul PDF este trimis la Mathpix",
+    "transcribingHosted": "Se trimite imaginea la {{provider}}…",
+    "progressUploading": "Se trimite PDF-ul la Mathpix",
+    "progressFormatting": "Se convertește transcrierea cu Pandoc",
+    "scannedTitle": "Acest PDF pare scanat",
+    "estimateOllama_one": "{{count}} pagină. Ollama poate avea nevoie de ceva timp ca s-o citească.",
+    "estimateOllama_few": "{{count}} pagini. Ollama le citește pe rând, ceea ce poate dura.",
+    "estimateOllama_other": "{{count}} de pagini. Ollama le citește pe rând, ceea ce poate dura.",
+    "estimateCost_one": "{{count}} pagină. Aproximativ {{cost}} cu {{model}}.",
+    "estimateCost_few": "{{count}} pagini. Aproximativ {{cost}} cu {{model}}.",
+    "estimateCost_other": "{{count}} de pagini. Aproximativ {{cost}} cu {{model}}.",
+    "estimateUnknown_one": "{{count}} pagină. {{provider}} o facturează după utilizare.",
+    "estimateUnknown_few": "{{count}} pagini. {{provider}} le facturează după utilizare.",
+    "estimateUnknown_other": "{{count}} de pagini. {{provider}} le facturează după utilizare.",
+    "transcribePages_one": "Transcrie {{count}} pagină",
+    "transcribePages_few": "Transcrie {{count}} pagini",
+    "transcribePages_other": "Transcrie {{count}} de pagini",
+    "transcribedWith": "Transcris cu {{model}}. Verifică ecuațiile și tabelele.",
+    "sentBadge": "Trimis la {{provider}}",
+    "openToolsSettings": "Setările Instrumentelor",
+    "errors": {
+      "offline": "Oleafly este în modul offline. Alege un model local sau dezactivează modul offline.",
+      "providerNotConfigured": "{{provider}} nu are cheie API. Adaugă una în Setări sau alege alt model.",
+      "modelDisabled": "{{model}} este dezactivat în Setări. Activează-l sau alege alt model.",
+      "cannotSeeImages": "{{model}} nu poate citi imagini. Alege un model de viziune.",
+      "localModelGone": "{{model}} nu mai este în Ollama. Descarcă-l din nou sau alege alt model.",
+      "imagesOnly": "{{model}} citește doar imagini. Alege un model de limbaj ca să convertești ecuații tastate.",
+      "mathpixNotSetUp": "Adaugă cheile Mathpix în Setări, Asistentul AI, Instrumente sau alege alt model.",
+      "imageTooLarge": "Această imagine este încă prea mare după micșorare. Decupeaz-o și încearcă din nou."
+    }
   },
   "mermaidErrors": {
     "tooLarge": "Această diagramă Mermaid depășește limita de 50.000 de caractere.",
@@ -1573,5 +1742,260 @@
     "citeAdded": "S-a adăugat {{citation}}",
     "addFailed": "Citarea nu a putut fi adăugată.",
     "toastCopyFailed": "Codul BibTeX nu a putut fi copiat."
+  },
+  "brief": {
+    "title": "Fișa sarcinii",
+    "goalLabel": "Obiectiv",
+    "goalPlaceholder": "Ce ar trebui să afle sau să producă această sarcină?",
+    "criteriaLabel": "Criterii de reușită",
+    "criteriaHint": "Câte unul pe rând. Fiecare ar trebui să poată fi verificat.",
+    "scopeLabel": "Domeniu",
+    "constraintsLabel": "Constrângeri",
+    "metricLabel": "Metrica principală",
+    "metricPlaceholder": "De exemplu, val_loss",
+    "metricMaximize": "Mai mare este mai bine",
+    "metricMinimize": "Mai mic este mai bine",
+    "reviewPlan": "Verifică mai întâi planul",
+    "reviewPlanHint": "Agentul scrie plan.md și așteaptă aprobarea ta înainte să înceapă.",
+    "commandsLabel": "Comenzi",
+    "commandsAllow": "Rulează fără să întrebe",
+    "commandsAsk": "Întreabă înainte de rulare",
+    "commandsOff": "Nu rula comenzi",
+    "network": "Permite comenzilor accesul la rețea",
+    "networkHint": "Necesar pentru instalarea pachetelor sau descărcarea datelor.",
+    "budgetLabel": "Buget",
+    "timeLabel": "Timp",
+    "minutes_one": "{{count}} minut",
+    "minutes_few": "{{count}} minute",
+    "minutes_other": "{{count}} de minute",
+    "hours_one": "{{count}} oră",
+    "hours_few": "{{count}} ore",
+    "hours_other": "{{count}} de ore",
+    "costLabel": "Limită de cost (USD)",
+    "noLimit": "Fără limită",
+    "runsLabel": "Limită de rulări",
+    "runTimeoutLabel": "Fiecare rulare se oprește după",
+    "profileLabel": "Profil de rulare",
+    "profileAnalysis": "Analiză",
+    "profileAnalysisHint": "Mediile tale Python și R, foldere de date doar pentru citire, fără GPU.",
+    "profileTraining": "Antrenare",
+    "profileTrainingHint": "Adaugă acces la GPU și rulări mai lungi.",
+    "computeLabel": "Unde au loc rulările",
+    "computeLocal": "Acest computer",
+    "startAtLabel": "Pornește la",
+    "startNow": "Când o pornesc eu",
+    "keepRunning": "Continuă să ruleze după ce Oleafly se închide",
+    "keepRunningHint": "Activează mai întâi Sarcini în fundal în Setări, Cercetare.",
+    "invalidMetric": "Folosește litere, cifre, puncte, cratime sau liniuțe de subliniere.",
+    "invalidCost": "Introdu o sumă mai mare decât zero.",
+    "invalidRuns": "Introdu un număr întreg de la 1 la 1.000.",
+    "invalidStart": "Alege o oră de pornire în următoarele 30 de zile.",
+    "invalidStartFormat": "Folosește formatul {{example}}.",
+    "startAtFormat": "Scrie ora ca {{example}}.",
+    "problemHidden": "O opțiune din Fișa sarcinii are nevoie de corectare. Deschide Fișa sarcinii ca să vezi care."
+  },
+  "runs": {
+    "status": {
+      "starting": "Pornește",
+      "running": "Rulează",
+      "succeeded": "Încheiată",
+      "failed": "Eșuată",
+      "timedOut": "Timp expirat",
+      "cancelled": "Oprită",
+      "lost": "Pierdută"
+    }
+  },
+  "evidence": {
+    "title": "Verificarea dovezilor",
+    "hint": "Aceste verificări doar avertizează. Nu împiedică aplicarea.",
+    "running": "Se verifică…",
+    "refresh": "Verifică din nou",
+    "status": {
+      "pass": "Trecută",
+      "warn": "Verifică",
+      "skipped": "Neverificată"
+    },
+    "checks": {
+      "build": "Proiectul se compilează",
+      "references": "Nicio trimitere sau citare nouă nerezolvată",
+      "bibliography": "Intrările noi din bibliografie sunt verificate",
+      "numbers": "Numerele corespund rulărilor lor",
+      "figures": "Figurile noi există și sunt folosite"
+    },
+    "items": {
+      "buildFailed": "Compilarea a eșuat. Erori: {{errors}}.",
+      "buildSkipped": "Compilarea nu a fost verificată: {{reason}}",
+      "referencesUnresolved": "{{key}} nu se rezolvă.",
+      "referencesNotChecked": "Această compilare nu verifică încă trimiterile.",
+      "bibUnverified": "{{key}} nu a putut fi verificat.",
+      "bibTitleMismatch": "{{key}} indică un alt titlu: {{found}}",
+      "bibLookupFailed": "{{key}} nu a putut fi căutat. Încearcă din nou mai târziu.",
+      "numbersMismatch": "{{value}} nu corespunde rulării {{run}} ({{recorded}}).",
+      "numbersUnknownRun": "Rularea {{run}} nu există.",
+      "numbersNoLedgerRow": "Rularea {{run}} nu are un rând în registrul rezultatelor.",
+      "figuresMissing": "{{path}} este referit, dar lipsește.",
+      "figuresUnused": "{{path}} nu este folosit în document."
+    }
+  },
+  "compute": {
+    "title": "Calcul",
+    "description": "Alege unde se execută rulările experimentelor. Fiecare sarcină își alege ținta în fișa ei.",
+    "targets": {
+      "heading": "Ținte de rulare",
+      "local": "Acest computer",
+      "localDescription": "Rulările folosesc spațiul izolat de pe acest computer.",
+      "add": "Adaugă o țintă",
+      "addSsh": "Gazdă SSH",
+      "addSlurm": "Cluster Slurm",
+      "addCua": "Cua Space",
+      "import": "Importă din configurația SSH",
+      "test": "Testează",
+      "testing": "Se testează…",
+      "more": "Mai multe acțiuni pentru {{label}}",
+      "edit": "Editează",
+      "remove": "Elimină",
+      "removeTitle": "Elimini {{label}}?",
+      "removeConfirm": "Rulările deja pornite acolo continuă. Sarcinile care așteaptă să pornească pe ea vor eșua.",
+      "forgetHostKey": "Uită cheia de gazdă",
+      "reviewHostKey": "Verifică cheia de gazdă",
+      "notTested": "Netestat",
+      "tested": "Testat {{time}}",
+      "testFailed": "Testul a eșuat",
+      "perTaskSpace": "Space nou pentru fiecare sarcină",
+      "saveFailed": "Ținta nu a putut fi salvată: {{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly se conectează cu cheile tale SSH sau cu agentul SSH. Nu cere și nu stochează niciodată parole sau chei.",
+      "windowsRsync": "Windows nu are rsync, așa că Oleafly copiază fișierele cu tar prin SSH.",
+      "sshMissingWindows": "Clientul OpenSSH nu este instalat. Adaugă-l din Setările Windows, la Sistem, Caracteristici opționale.",
+      "sshMissing": "OpenSSH nu este instalat. Instalează-l cu managerul de pachete.",
+      "cuaMissing": "Cua nu este instalat. Instalează-l de pe cua.ai, apoi testează din nou.",
+      "relay": "Acest Space rulează pe un computer real. Rulările de acolo nu sunt izolate.",
+      "outputs": "Fișierele create de o rulare revin în runs/<run>/outputs, în copia sarcinii."
+    },
+    "form": {
+      "addTitle": "Adaugă {{kind}}",
+      "editTitle": "Editează {{label}}",
+      "label": "Nume",
+      "host": "Gazdă",
+      "hostHint": "O gazdă din configurația ta SSH sau un nume de gazdă",
+      "user": "Utilizator",
+      "userHint": "Lasă gol ca să folosești configurația SSH.",
+      "port": "Port",
+      "remoteRoot": "Folder la distanță",
+      "remoteRootHint": "Rulările ajung în .oleafly-runs din folderul tău personal, dacă nu alegi alt folder.",
+      "prelude": "Comenzi de pregătire",
+      "preludeHint": "Rulează înaintea fiecărei comenzi, de exemplu module load python.",
+      "partition": "Partiție",
+      "account": "Cont",
+      "qos": "QOS",
+      "time": "Limită de timp",
+      "timeHint": "De exemplu 2:00:00 sau 1-00:00:00",
+      "gpus": "GPU-uri",
+      "cpus": "CPU-uri",
+      "mem": "Memorie (GB)",
+      "memHint": "De exemplu 16",
+      "gpuFlag": "Opțiune GPU",
+      "spaceMode": "Space",
+      "spaceNamed": "Folosește un Space cu nume",
+      "spacePerTask": "Creează un Space nou pentru fiecare sarcină",
+      "space": "Numele Space-ului",
+      "image": "Imagine",
+      "save": "Salvează",
+      "cancel": "Anulează",
+      "errors": {
+        "label": "Introdu un nume de cel mult 80 de caractere.",
+        "host": "Introdu un nume de gazdă fără spații.",
+        "user": "Folosește litere, cifre, puncte, cratime sau liniuțe de subliniere.",
+        "port": "Folosește un port de la 1 la 65535.",
+        "remoteRoot": "Folosește o cale de folder fără spații, ghilimele sau „..”.",
+        "time": "Folosește un timp în format Slurm, de exemplu 2:00:00.",
+        "name": "Folosește litere, cifre, puncte, virgule, cratime sau liniuțe de subliniere.",
+        "mem": "Folosește un număr întreg de gigaocteți, de exemplu 16.",
+        "count": "Folosește un număr întreg din intervalul permis."
+      }
+    },
+    "test": {
+      "connect": "Conectare",
+      "echo": "Rularea unei comenzi",
+      "disk": "Spațiu liber",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "Trecut",
+      "warn": "Verifică",
+      "fail": "Eșuat",
+      "skipped": "Neverificat"
+    },
+    "hostKey": {
+      "title": "Ai încredere în această gazdă?",
+      "body": "Oleafly nu s-a mai conectat la {{host}}. Compară aceste amprente cu cele primite de la administrator.",
+      "trust": "Ai încredere și conectează-te",
+      "changedTitle": "Cheia de gazdă s-a schimbat",
+      "changed": "Cheia de gazdă pentru {{host}} s-a schimbat. Poate că cineva interceptează conexiunea. Dacă administratorul a înlocuit cheia, uită cheia veche și testează din nou."
+    },
+    "import": {
+      "title": "Importă gazde SSH",
+      "body": "Alege gazdele de adăugat. Oleafly îți citește configurația SSH și nu o modifică niciodată.",
+      "none": "Nu s-au găsit gazde în configurația ta SSH.",
+      "added": "Deja adăugată",
+      "add_one": "Adaugă {{count}} gazdă",
+      "add_few": "Adaugă {{count}} gazde",
+      "add_other": "Adaugă {{count}} de gazde",
+      "skipped": "Nu au fost adăugate: {{hosts}}. {{reason}}"
+    },
+    "sandbox": {
+      "heading": "Spațiul izolat de pe acest computer",
+      "description": "Rulările de pe acest computer îți pot citi interpretoarele și folderele asociate. Scriu doar în copia sarcinii.",
+      "ready": "Pregătit",
+      "unavailable": "Indisponibil",
+      "macos": "Folosește spațiul izolat macOS.",
+      "linux": "Folosește bubblewrap.",
+      "linuxMissing": "Instalează bubblewrap (bwrap) ca să rulezi comenzile sarcinilor.",
+      "windowsLabel": "Rulează comenzile sarcinilor în spațiul izolat Windows",
+      "windowsDescription": "Comenzile rulează într-un AppContainer Windows care ajunge doar la fișierele sarcinii și la folderele de mai jos. Dezactivat implicit cât timp este în beta.",
+      "gpuWindows": "Accesul la GPU în spațiul izolat Windows nu este încă verificat. Pentru lucrul pe GPU, folosește o țintă SSH sau Slurm.",
+      "limitsWindows": "În spațiul izolat Windows, multiprocessing din Python și programele Node.js care pornesc alte programe nu funcționează încă.",
+      "check": "Verifică spațiul izolat",
+      "checking": "Se verifică…",
+      "checkPassed": "Spațiul izolat funcționează.",
+      "checkFailed": "Verificarea spațiului izolat a eșuat: {{reason}}",
+      "runtimes": "Interpretoare",
+      "runtimesEmpty": "Nu s-a găsit Python, R sau Julia.",
+      "refresh": "Reîmprospătează",
+      "access": "Foldere pe care le poate citi spațiul izolat",
+      "accessNote": "Ca sarcinile să poată citi aceste foldere, Oleafly adaugă câte o intrare de permisiune fiecăruia.",
+      "removeAccess": "Elimină accesul",
+      "removeAccessTitle": "Elimini accesul spațiului izolat?",
+      "removeAccessConfirm": "Elimini accesul spațiului izolat la aceste foldere? Oleafly îl adaugă din nou data viitoare când o sarcină are nevoie de el."
+    },
+    "brief": {
+      "runsOn": "Rulează pe {{target}}",
+      "runsLocal": "Rulează pe acest computer.",
+      "missing": "Ținta folosită de această sarcină a fost eliminată. Alege alta.",
+      "loadFailed": "Țintele tale de rulare nu au putut fi încărcate.",
+      "windowsOff": "Activează spațiul izolat Windows în Setări ca să rulezi comenzi pe acest computer.",
+      "openSettings": "Deschide Setările",
+      "resources": "Resurse Slurm"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "În fundal",
+      "backgroundHint": "Procesul auxiliar din fundal al Oleafly rulează această sarcină. Sarcina revine aici după pasul curent.",
+      "movingBack": "Revine",
+      "movingBackHint": "Această sarcină revine în Oleafly când se termină pasul curent."
+    },
+    "earlierActivity": "Arată activitatea anterioară",
+    "earlierTruncated": "Din această rulare anterioară se arată doar primele {{limit}} elemente.",
+    "keepRunningFailed": "Setarea nu a putut fi schimbată. Încearcă din nou."
   }
 }

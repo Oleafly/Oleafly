@@ -43,13 +43,15 @@
       "command": "Bekreft kommandoen",
       "externalTool": "Bekreft handlingen i det eksterne verktøyet",
       "internet": "Bekreft nettilgang",
-      "edit": "Bekreft AI-endringen"
+      "edit": "Bekreft AI-endringen",
+      "researchTask": "Bekreft forskningsoppgaven"
     },
     "headline": {
       "command": "Assistenten vil kjøre denne kommandoen",
       "externalTool": "Assistenten vil bruke et eksternt verktøy",
       "internet": "Assistenten vil koble seg til internett",
-      "edit": "Assistenten vil endre filene dine"
+      "edit": "Assistenten vil endre filene dine",
+      "researchTask": "Assistenten vil opprette en forskningsoppgave"
     },
     "mcpNote": "Dette sender argumentene nedenfor til MCP-serveren som er satt opp.",
     "line": "linje {{line}}",
@@ -70,10 +72,50 @@
       "title": "Forespørsel fra ekstern agent (MCP)",
       "moreWaiting_one": "{{count}} til venter",
       "moreWaiting_other": "{{count}} til venter"
+    },
+    "researchTask": {
+      "note": "Oppgaven jobber på egen hånd i en kopi av prosjektet. Du går gjennom endringene etterpå.",
+      "title": "Tittel",
+      "goal": "Mål",
+      "skills": "Ferdigheter",
+      "prompt": "Instruksjoner",
+      "commands": "Kommandoer",
+      "commandsAsk": "Spør før hver av dem",
+      "network": "Nettverk",
+      "timeBudget": "Tidsbudsjett",
+      "timeBudgetDefault": "Standard",
+      "minutes_one": "{{count}} minutt",
+      "minutes_other": "{{count}} minutter",
+      "planFirst": "Plan først",
+      "startNow": "Start nå"
     }
   },
   "attachments": {
-    "remove": "Fjern {{name}}"
+    "remove": "Fjern {{name}}",
+    "processing": "Klargjør {{name}}…",
+    "failed": "{{name}} kunne ikke legges ved.",
+    "pages_one": "{{count}} side",
+    "pages_other": "{{count}} sider",
+    "pagesLimited": "Bare de første {{limit}} av {{count}} sider brukes.",
+    "tooMany": "Du kan legge ved opptil {{max}} filer i én melding.",
+    "tooLarge": "{{name}} er større enn {{limit}}.",
+    "unsupported": "{{name}} kan ikke legges ved. Legg ved bilder, PDF-er eller tekstfiler.",
+    "unreadableImage": "Oleafly kan ikke lese bildeformatet til {{name}}. Lagre bildet som PNG eller JPEG, og legg det ved på nytt.",
+    "unreadablePdf": "{{name}} kunne ikke åpnes som PDF.",
+    "storeFailed": "{{name}} kunne ikke lagres for denne samtalen.",
+    "visionUnsupported": "{{model}} kan ikke lese bilder, så bildene i denne meldingen blir ikke sendt.",
+    "scannedPdf": "{{name}} har ikke noe tekstlag, og {{model}} kan ikke lese bilder.",
+    "dropFiles": "Slipp filer for å legge dem ved",
+    "dropProjectFile": "Slipp for å nevne denne filen",
+    "open": "Åpne {{name}}",
+    "saveCopy": "Lagre en kopi av {{name}}",
+    "saved": "Lagret en kopi av {{name}}.",
+    "saveFailed": "Kunne ikke lagre {{name}}.",
+    "missing": "{{name}} er ikke lenger tilgjengelig.",
+    "sentAsText": "{{name}} ble sendt som tekst fordi denne modellen ikke kan lese den som fil.",
+    "skipped": "{{name}} ble ikke sendt.",
+    "dropUnreadable": "{{names}} kunne ikke leses.",
+    "notReplayed": "Filer fra en eldre versjon kan ikke sendes på nytt: {{names}}."
   },
   "chat": {
     "pill": {
@@ -182,7 +224,9 @@
     "stop": "Stopp",
     "stopTitle": "Stopp genereringen",
     "send": "Send",
-    "checkAgain": "Sjekk på nytt"
+    "checkAgain": "Sjekk på nytt",
+    "resizeHandle": "Endre størrelse på meldingsfeltet",
+    "resizeHint": "Dra for å endre størrelsen. Dobbeltklikk for å tilbakestille."
   },
   "commands": {
     "groups": {
@@ -220,10 +264,6 @@
     "files": {
       "label": "Filer",
       "description": "Legg ved filer i neste melding"
-    },
-    "browser": {
-      "label": "Legg ved nettleseren",
-      "description": "Åpne nettleseren ved siden av dokumentet ditt"
     }
   },
   "models": {
@@ -272,7 +312,10 @@
       "minutes": "for {{count}} min siden",
       "hours": "for {{count}} t siden",
       "days": "for {{count}} d siden"
-    }
+    },
+    "skipped_one": "{{count}} samtale kunne ikke lastes. Den ligger fortsatt på disken.",
+    "skipped_other": "{{count}} samtaler kunne ikke lastes. De ligger fortsatt på disken.",
+    "openFailed": "Kunne ikke åpne denne samtalen."
   },
   "tools": {
     "approval": {
@@ -318,7 +361,6 @@
       "listAgents": "List opp hjelpeagentene og tilstanden deres.",
       "closeAgent": "Lukk en hjelpeagent.",
       "runCommand": "Kjør en shell-kommando i prosjektmappen, med en grense på to minutter.",
-      "computerUse": "Åpne en nettside i nettleservinduet til assistenten.",
       "toggleTheme": "Bytt mellom lys og mørk modus.",
       "listOverleafProjects": "List opp Overleaf-prosjektene dine, og logg inn først ved behov.",
       "importOverleafProjects": "Importer Overleaf-prosjekter til biblioteket ditt, med kompilator og hovedfil."
@@ -347,8 +389,7 @@
       "latexOnly": "Bare LaTeX-prosjekter",
       "latexAndTypstOnly": "Bare LaTeX- og Typst-prosjekter",
       "pdfCaptureSetting": "Krever innstillingen for sidefangst i PDF",
-      "chatApproval": "Godkjennes i samtalen, én kommando om gangen",
-      "browserSetting": "Krever innstillingen for nettleser"
+      "chatApproval": "Godkjennes i samtalen, én kommando om gangen"
     },
     "sourceGroups": {
       "figure": "Figur",
@@ -471,18 +512,20 @@
     "resumeTask": "Åpne forskningsoppgaven for å fortsette dette arbeidet.",
     "delegatedConversation": "Denne samtalen hører til en delegert agentkjøring.",
     "noResume": "Denne agenten kan ikke gjenoppta lagrede samtaler. Start en ny samtale når du er klar.",
-    "imageTooLarge": "Velg et bilde som er mindre enn 480 KiB. Du kan legge ved opptil fire bilder.",
     "imageReadFailed": "Bildet kunne ikke leses.",
-    "removeImage": "Fjern {{name}}",
     "composerAriaLabel": "Skriv til CLI-agenten",
     "composerPlaceholderReady": "Be agenten jobbe med dette prosjektet",
     "composerPlaceholderIdle": "Start eller koble til en samtale for å sende en melding",
-    "attachImage": "Legg ved bilde",
     "startConversation": "Start en samtale med {{agent}}",
     "startConversationFallback": "en agent",
     "agentModel": "Agentmodell",
     "modelManaged": "Modellen styres av agenten",
     "stop": "Stopp",
+    "stopReason": {
+      "refusal": "Agenten avslo å fortsette med denne forespørselen.",
+      "maxTokens": "Agenten nådde grensen for utdata og stoppet.",
+      "maxTurnRequests": "Agenten nådde grensen for forespørsler i denne runden og stoppet."
+    },
     "stopTitle": "Stopp agenten",
     "send": "Send",
     "connecting": "Kobler til",
@@ -500,8 +543,7 @@
     "roster": {
       "bridgeMissing": "installer broen under Agentoppsett",
       "cliMissing": "fant ikke CLI-en på denne maskinen",
-      "unavailable": "ikke tilgjengelig på denne maskinen",
-      "comingSoon": "kommer snart"
+      "unavailable": "ikke tilgjengelig på denne maskinen"
     },
     "messageTooLarge": "Denne meldingen og bildene i den er for store. Kort ned meldingen eller fjern et bilde.",
     "terminalCommand": "Agenten kjører en terminalkommando.",
@@ -549,7 +591,130 @@
       "tool": "Verktøy: {{name}}",
       "changedFiles": "Endrede filer",
       "moreFiles_one": "og {{count}} fil til",
-      "moreFiles_other": "og {{count}} filer til"
+      "moreFiles_other": "og {{count}} filer til",
+      "mode": "Modus",
+      "effort": "Innsats",
+      "permissionProfile": "Godkjenningsmodus",
+      "commits": "Commiter"
+    },
+    "composerPlaceholderStart": "Skriv til {{agent}} for å starte en samtale",
+    "composerPlaceholderConnecting": "Skriv nå. Meldingen sendes når agenten er klar.",
+    "composerPlaceholderRunning": "Skriv neste melding. Den sendes når agenten er ferdig.",
+    "attachFile": "Legg ved filer",
+    "composer": {
+      "tooManyAttachments": "Legg ved opptil 10 filer i én melding.",
+      "imagesUnsupported": "Denne agenten tar ikke imot bilder. Fjern dem, og prøv igjen.",
+      "attachmentsNotReady": "Vent til vedleggene er klare.",
+      "removeSelection": "Fjern sitatet {{label}}"
+    },
+    "queue": {
+      "queued": "I kø: sendes når agenten er ferdig",
+      "remove": "Fjern meldingen fra køen",
+      "sendNow": "Send nå",
+      "sendFailed": "Meldingen ble ikke sendt. Send den på nytt, eller fjern den.",
+      "queuedConnecting": "I kø: sendes når agenten er klar",
+      "retry": "Send på nytt",
+      "edit": "Rediger"
+    },
+    "slash": {
+      "commands": "Agentkommandoer",
+      "skills": "Ferdigheter"
+    },
+    "controls": {
+      "effort": "Innsats",
+      "mode": "Modus",
+      "more": "Flere agentvalg",
+      "blockedMode": "Av i Oleafly",
+      "blockedModeHint": "Oleafly holder tillatelsessjekkene på, så denne modusen er ikke tilgjengelig."
+    },
+    "usage": {
+      "ariaLabel": "Se forbruket til agenten",
+      "tooltip": "Forbruk for denne samtalen",
+      "contextShare": "{{percent}} % av kontekstvinduet er brukt",
+      "window": {
+        "fiveHour": "5-timersøkt",
+        "weekly": "Ukentlig, alle modeller",
+        "weeklyOpus": "Ukentlig, Opus",
+        "weeklySonnet": "Ukentlig, Sonnet",
+        "overage": "Ekstra forbruk",
+        "other": "Forbruksgrense {{id}}"
+      },
+      "costIn": "Agenten rapporterte en kostnad på {{amount}} {{currency}}.",
+      "modelTokens": "{{model}}: {{tokens}} tokener"
+    },
+    "compaction": {
+      "running": "Oppsummerer tidligere kontekst",
+      "done": "Tidligere kontekst er oppsummert",
+      "failed": "Kunne ikke oppsummere tidligere kontekst"
+    },
+    "signIn": {
+      "inTerminal": "{{name}} i terminalen",
+      "afterTerminal": "Fullfør innloggingen i terminalen, og koble deretter til på nytt.",
+      "apiKeyLabel": "API-nøkkel for {{provider}}",
+      "apiKeyPlaceholder": "Lim inn API-nøkkelen din",
+      "geminiGoogle": "Innlogging med Google fungerer ikke lenger for individuelle abonnementer. Bruk en API-nøkkel for Gemini eller Vertex AI.",
+      "noProject": "Åpne et prosjekt for å logge inn fra terminalen.",
+      "signOut": "Logg ut",
+      "confirmTerminal": "{{agent}} logger inn med kommandoen nedenfor, som kjører i en fane i terminalen. Se over den før du godtar.",
+      "remote": "Denne samtalen kjører på en annen maskin. Logg inn på agenten der."
+    },
+    "elicitation": {
+      "ariaLabel": "Forespørsel fra agenten",
+      "from": "{{agent}} spør:",
+      "submit": "Send",
+      "decline": "Avslå",
+      "cancel": "Avbryt",
+      "required": "Påkrevd",
+      "invalid": "Sjekk dette feltet.",
+      "openUrl": "Åpne i nettleseren",
+      "confirmTitle": "Vil du åpne {{host}}?",
+      "confirmDescription": "Agenten ba deg fullføre et trinn på dette nettstedet. Det åpnes i nettleseren din.",
+      "waiting": "Venter på at nettstedet blir ferdig.",
+      "openFailed": "Lenken kunne ikke åpnes i nettleseren din."
+    },
+    "remote": {
+      "banner": "Hermes kjører på {{host}} via SSH. Endringene blir værende på den maskinen."
+    },
+    "history": {
+      "all": "Alle samtaler",
+      "title": "Samtaler",
+      "search": "Søk i samtaler",
+      "empty": "Ingen samtaler passer.",
+      "loadMore": "Last inn flere",
+      "rename": "Gi nytt navn",
+      "renameLabel": "Navn på samtalen",
+      "delete": "Slett",
+      "deleteTitle": "Vil du slette denne samtalen?",
+      "deleteDescription": "Oleafly fjerner transkripsjonen og vedleggene fra dette prosjektet.",
+      "deleteFromAgent": "Slett den også fra {{agent}}",
+      "deleteAgentFailed": "Slettet i Oleafly. {{agent}} kunne ikke slette sin kopi: {{error}}",
+      "deleteRunning": "Stopp agenten før du sletter denne samtalen.",
+      "importFind": "Finn samtaler fra {{agent}} for dette prosjektet",
+      "imported": "Allerede i Oleafly",
+      "importSelected": "Importer valgte",
+      "importEmpty": "{{agent}} har ingen andre samtaler for dette prosjektet."
+    },
+    "header": {
+      "startedAt": "Startet ved {{revision}}",
+      "startedDirty": "Startet ved {{revision}} med endringer som ikke er committet",
+      "menu": "Handlinger for samtalen",
+      "fork": "Forgren samtalen",
+      "forkUnsupported": "Denne agenten kan ikke forgrene samtaler.",
+      "forkBusy": "Vent til agenten er ferdig før du forgrener.",
+      "v2": "Forhåndsvisning av protokoll",
+      "remote": "Ekstern",
+      "signOutTitle": "Vil du logge ut av {{agent}}?",
+      "signOutDescription": "Dette avslutter selve {{agent}}-innloggingen. En terminal som bruker samme innlogging, logges også ut, og denne samtalen stopper til du logger inn igjen.",
+      "signOutAccount": "Logget inn med {{account}}"
+    },
+    "commit": {
+      "button": "Commit",
+      "title": "Commit denne runden",
+      "message": "Commit-melding",
+      "files": "Filer som skal committes",
+      "defaultMessage": "Endringer fra {{agent}}",
+      "submit": "Commit filene",
+      "cancel": "Avbryt"
     }
   },
   "agents": {
@@ -721,8 +886,6 @@
     "restoreFailed": "Kunne ikke gjenopprette: {{error}}",
     "steerFailed": "Kunne ikke styre innlegget som kjører.",
     "approvalRuleSaveFailed": "Kunne ikke lagre godkjenningsregelen for prosjektet.",
-    "attachmentTooLarge": "{{name}} er for stor (maks 10 MB).",
-    "attachmentReadFailed": "Kunne ikke lese {{name}}.",
     "tooManyTools": "{{enabled}} verktøy er på, men en kjøring støtter opptil {{max}}. Slå av minst {{excess}} under Verktøy og prøv igjen."
   },
   "header": {
@@ -749,7 +912,29 @@
     "summaryRunNoTokens_one": "Siste kjøring: {{count}} trinn, tokentotal er utilgjengelig",
     "summaryRunNoTokens_other": "Siste kjøring: {{count}} trinn, tokentotal er utilgjengelig",
     "summaryChat": "Denne samtalen: {{steps}} trinn, {{tokens}} tokener",
-    "summaryFallback": "AI-forbruk"
+    "summaryFallback": "AI-forbruk",
+    "context": "Kontekst",
+    "contextUsed": "{{used}} av {{size}} tokener",
+    "contextShare": "{{percent}} av kontekstvinduet er brukt",
+    "contextUnknown": "Kontekstvinduet til denne modellen er ukjent.",
+    "reasoning": "Resonnering",
+    "cacheRead": "Lesinger fra mellomlageret",
+    "cacheWrite": "Skrivinger til mellomlageret",
+    "cost": "Anslått kostnad",
+    "budget": "Prosjektbudsjett",
+    "budgetUsed": "{{spent}} av {{limit}}",
+    "credit": "Gjenværende kreditt",
+    "creditOf": "{{remaining}} av {{limit}}",
+    "planLimits": "Abonnementsgrenser",
+    "resetsAt": "Tilbakestilles {{time}}",
+    "windowWarning": "Nær grensen",
+    "windowBlocked": "Grensen er nådd",
+    "refreshPlan": "Oppdater abonnementsforbruket",
+    "refreshing": "Oppdaterer…",
+    "historyTrimmed_one": "Bare den siste {{count}} runden i denne samtalen ble sendt til modellen.",
+    "historyTrimmed_other": "Bare de siste {{count}} rundene i denne samtalen ble sendt til modellen.",
+    "empty": "Ikke noe forbruk i denne samtalen ennå.",
+    "loading": "Laster forbruk…"
   },
   "provider": {
     "connectTitle": "Koble til en AI-leverandør for å fortsette",
@@ -769,7 +954,21 @@
     "projectSubtitle": "Jobber med \"{{project}}\"",
     "noOutput": "Modellen ga ingenting tilbake. Se Innstillinger → AI-assistent.",
     "planMissing": "Det finnes ingen plan å godkjenne ennå. Be assistenten om en, eller slå av Plan.",
-    "planUnchanged": "Planen er uendret."
+    "planUnchanged": "Planen er uendret.",
+    "stillWorking": "Jobber fortsatt ({{seconds}} s). Resonneringsmodeller og lokale modeller kan være trege. Klikk på Stopp for å avbryte.",
+    "retrying": "Tilkoblingsproblem. Prøver igjen ({{attempt}} av {{max}})…",
+    "stopped": "Stoppet.",
+    "stepLimit": "Grensen for antall trinn er nådd. Send en ny melding for å fortsette.",
+    "outputLimit": "Svaret nådde grensen for utdata til modellen. Send en ny melding for å fortsette.",
+    "tooLargeToSave": "Denne samtalen er for lang til å lagres. Nye meldinger beholdes til du lukker Oleafly. Eksporter samtalen for å beholde en kopi.",
+    "exportChat": "Eksporter samtalen",
+    "exported": "Samtalen er eksportert.",
+    "exportFailed": "Kunne ikke eksportere samtalen.",
+    "saveFailed": "Nye meldinger i denne samtalen kunne ikke lagres. Sjekk at det er ledig plass på disken.",
+    "exportYou": "Du",
+    "exportAssistant": "Assistent",
+    "exportAttachments": "Vedlegg",
+    "exportTools": "Brukte verktøy"
   },
   "followUps": {
     "steered": "Styrt inn i innlegget som kjører: {{summary}}",
@@ -856,6 +1055,46 @@
     "figureAudit": "Sjekk av figurer",
     "gitReview": "Git-gjennomgang",
     "referenceCleanup": "Opprydding i referanser",
-    "removeSkill": "Fjern ferdigheten {{name}}"
+    "removeSkill": "Fjern ferdigheten {{name}}",
+    "compilationRepair": "Rett opp kompileringen",
+    "submissionPrep": "Forbered innsendingen",
+    "reviewerResponse": "Svar til fagfellene"
+  },
+  "effort": {
+    "label": "Innsats",
+    "tooltip": "Hvor mye modellen resonnerer før den svarer",
+    "ariaLabel": "Innsats for resonnering: {{level}}",
+    "auto": "Auto",
+    "autoDescription": "Bruk standarden til modellen",
+    "levels": {
+      "none": "Ingen",
+      "minimal": "Minimal",
+      "low": "Lav",
+      "medium": "Middels",
+      "high": "Høy",
+      "xhigh": "Ekstra høy",
+      "max": "Maks"
+    }
+  },
+  "web": {
+    "label": "Nett",
+    "on": "Nettsøk og lesing av sider er på for denne samtalen",
+    "off": "Slå på nettsøk og lesing av sider for denne samtalen",
+    "ariaLabel": "Nettilgang",
+    "searchUnavailable": "Denne modellen kan ikke søke på nettet. Legg til en søkenøkkel i Innstillinger for å slå det på."
+  },
+  "messageActions": {
+    "edit": "Rediger meldingen",
+    "regenerate": "Generer svaret på nytt",
+    "retry": "Prøv igjen",
+    "editingLatest": "Du redigerer den siste meldingen din. Når du sender den, erstattes svaret.",
+    "editingEarlier": "Du redigerer en tidligere melding. Når du sender den, starter en ny samtale derfra, og denne samtalen blir værende i Historikk.",
+    "cancelEdit": "Avbryt redigeringen",
+    "replaceTitle": "Vil du erstatte dette svaret?",
+    "replaceDescription_one": "Svaret endret {{count}} fil. Endringen blir værende i prosjektet ditt, men angrekortet forsvinner sammen med svaret.",
+    "replaceDescription_other": "Svaret endret {{count}} filer. Endringene blir værende i prosjektet ditt, men angrekortet forsvinner sammen med svaret.",
+    "replaceConfirm": "Erstatt svaret",
+    "forked": "Startet en ny samtale fra den redigerte meldingen.",
+    "failed": "Kunne ikke sende meldingen på nytt."
   }
 }

@@ -177,6 +177,49 @@ describe("extractForPreflight", () => {
     expect(destroy).toHaveBeenCalledOnce();
   });
 
+  it("reads a font once its page's operator list resolves it and counts attachments pdf.js returns as a Map", async () => {
+    const resolved = new Map<string, unknown>();
+    const getOperatorList = vi.fn(async () => {
+      resolved.set("g_d0_f1", { name: "Courier", missingFile: true });
+    });
+    const page = {
+      getTextContent: vi.fn().mockResolvedValue({
+        items: [
+          { str: "Rotated", fontName: "g_d0_f1" },
+          { str: "page", fontName: "g_d0_f1" },
+        ],
+      }),
+      getAnnotations: vi.fn().mockResolvedValue([]),
+      getViewport: vi.fn().mockReturnValue({ width: 400, height: 600, rotation: 90 }),
+      commonObjs: {
+        get: vi.fn((id: string) => {
+          if (!resolved.has(id)) throw new Error(`Requesting object that isn't resolved yet ${id}.`);
+          return resolved.get(id);
+        }),
+      },
+      getOperatorList,
+      getStructTree: vi.fn().mockRejectedValue(new Error("structure unavailable")),
+      cleanup: vi.fn(),
+    };
+    const doc = {
+      numPages: 1,
+      getPage: vi.fn().mockResolvedValue(page),
+      getMetadata: vi.fn().mockRejectedValue(new Error("metadata unavailable")),
+      getMarkInfo: vi.fn().mockRejectedValue(new Error("mark info unavailable")),
+      getViewerPreferences: vi.fn().mockRejectedValue(new Error("viewer preferences unavailable")),
+      getOutline: vi.fn().mockResolvedValue(null),
+      getAttachments: vi.fn().mockResolvedValue(new Map([["data.csv", { filename: "data.csv" }]])),
+      getPermissions: vi.fn().mockResolvedValue(null),
+    };
+    mocks.getDocument.mockReturnValue(taskFor(doc));
+
+    const result = await extractForPreflight(new TextEncoder().encode("%PDF-1.7"));
+
+    expect(getOperatorList).toHaveBeenCalledOnce();
+    expect(result.facts.fonts).toEqual([{ name: "Courier", embedded: false }]);
+    expect(result.facts.attachmentCount).toBe(1);
+  });
+
   it("prefers the XMP title, keeps the catalog language, and reads an unmarked empty structure as untagged", async () => {
     const metadata = new Map([
       ["dc:title", "XMP title"],

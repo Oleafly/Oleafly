@@ -3,9 +3,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use oleafly_core::typst_toolchain::{
-    TinymistRelease, ToolchainArtifact, ToolchainVersion, TypstToolchainCatalog,
-};
+use oleafly_core::typst_toolchain::{ToolchainArtifact, ToolchainVersion, TypstToolchainCatalog};
 
 use crate::project::ProjectMeta;
 use crate::toolchain_download::{
@@ -63,35 +61,7 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-fn minor_key(text: &str) -> Option<(u64, u64)> {
-    let (major, minor) = text.trim().split_once('.')?;
-    Some((major.parse().ok()?, minor.parse().ok()?))
-}
-
-pub(crate) fn release_for_typst<'a>(
-    catalog: &'a TypstToolchainCatalog,
-    typst: &ToolchainVersion,
-) -> Option<&'a TinymistRelease> {
-    let wanted = (typst.major, typst.minor);
-    let mut releases: Vec<((u64, u64), &TinymistRelease)> = catalog
-        .tinymist
-        .versions
-        .iter()
-        .filter_map(|release| Some((minor_key(&release.typst_minor)?, release)))
-        .collect();
-    releases.sort_by_key(|(key, _)| *key);
-    releases
-        .iter()
-        .rev()
-        .find(|(key, _)| *key <= wanted)
-        .or_else(|| releases.first())
-        .map(|(_, release)| *release)
-}
-
-pub(crate) fn tinymist_version_for(typst: &str) -> Option<String> {
-    let typst = ToolchainVersion::parse(typst)?;
-    release_for_typst(super::catalog(), &typst).map(|release| release.version.to_string())
-}
+pub(crate) use oleafly_downloads::typst::{release_for_typst, tinymist_version_for};
 
 pub(crate) fn choose(
     catalog: &TypstToolchainCatalog,

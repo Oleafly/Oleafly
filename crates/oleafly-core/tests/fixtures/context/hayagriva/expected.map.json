@@ -1,0 +1,27 @@
+{
+  "files": [
+    "main.typ",
+    "refs.yml"
+  ],
+  "sections": [
+    {
+      "title": "Hayagriva",
+      "level": 0,
+      "file": "main.typ",
+      "line": 1
+    }
+  ],
+  "labels": [],
+  "bibKeys": [
+    "knuth",
+    "lamport",
+    "spare"
+  ],
+  "macros": [],
+  "theorems": [],
+  "glossary": [],
+  "inputGraph": [],
+  "unresolvedRefs": [],
+  "unresolvedCites": [],
+  "ambiguousTypstAtUses": []
+}

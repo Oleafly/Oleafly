@@ -7,6 +7,7 @@ import {
   buildSnapshot,
   normalizeCost,
   normalizeModalities,
+  normalizeReasoningOptions,
   normalizeStatus,
   serializeSnapshot,
   summarize,
@@ -187,4 +188,38 @@ test("serializes with two-space indentation and a trailing newline", () => {
 
 test("rejects a payload that is not an object", () => {
   assert.throws(() => buildSnapshot("nope"), TypeError);
+});
+
+test("normalizes reasoning options to the snapshot shape", () => {
+  assert.deepEqual(
+    normalizeReasoningOptions([
+      { type: "toggle" },
+      { type: "effort", values: ["high", "default", "low", "ultra", "low"] },
+      { type: "budget_tokens", min: 0, max: 24576 },
+      { type: "other" },
+    ]),
+    [
+      { type: "toggle" },
+      { type: "effort", values: ["low", "high"] },
+      { type: "budget_tokens", min: 0, max: 24576 },
+    ],
+  );
+  assert.equal(normalizeReasoningOptions([]), undefined);
+  assert.equal(normalizeReasoningOptions({ type: "toggle" }), undefined);
+  assert.deepEqual(normalizeReasoningOptions([{ type: "budget_tokens", min: -5, max: 0 }]), [
+    { type: "budget_tokens" },
+  ]);
+});
+
+test("trimModel keeps reasoning options and omits them when upstream has none", () => {
+  assert.deepEqual(
+    trimModel("m", { reasoning: true, reasoning_options: [{ type: "effort", values: ["low"] }] })
+      .reasoningOptions,
+    [{ type: "effort", values: ["low"] }],
+  );
+  assert.equal("reasoningOptions" in trimModel("m", { reasoning: true }), false);
+  const keys = Object.keys(
+    trimModel("m", { reasoning: true, reasoning_options: [{ type: "toggle" }], attachment: true }),
+  );
+  assert.equal(keys.indexOf("reasoningOptions"), keys.indexOf("reasoning") + 1);
 });

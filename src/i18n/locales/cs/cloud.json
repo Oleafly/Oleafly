@@ -79,13 +79,13 @@
     "linkedNote_other": "{{count}} projektů otevřených ze složky se nesynchronizuje. Zálohují se jen projekty ve vaší knihovně."
   },
   "transfer": {
+    "uploading_one": "Nahrávání souborů: {{done}} z {{total}}",
     "uploading_few": "Nahrávání souborů: {{done}} z {{total}}",
     "uploading_many": "Nahrávání souborů: {{done}} z {{total}}",
-    "uploading_one": "Nahrávání souborů: {{done}} z {{total}}",
     "uploading_other": "Nahrávání souborů: {{done}} z {{total}}",
+    "downloading_one": "Stahování souborů: {{done}} z {{total}}",
     "downloading_few": "Stahování souborů: {{done}} z {{total}}",
     "downloading_many": "Stahování souborů: {{done}} z {{total}}",
-    "downloading_one": "Stahování souborů: {{done}} z {{total}}",
     "downloading_other": "Stahování souborů: {{done}} z {{total}}",
     "fetching": "Stahování: {{done}} z {{total}}"
   },

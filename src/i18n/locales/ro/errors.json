@@ -80,17 +80,50 @@
   "export": {
     "bibliography_unreadable": "Oleafly nu a putut citi bibliografia {{name}}. Verifică dacă are o intrare defectă, apoi exportă din nou."
   },
-  "github": {
-    "sign_in_expired": "Codul de autentificare a expirat. Încearcă din nou.",
-    "sign_in_cancelled": "Autorizarea GitHub a fost anulată.",
-    "sign_in_failed": "Autentificarea GitHub a eșuat.",
-    "repositories_unavailable": "Depozitele nu au putut fi încărcate.",
-    "create_repo_failed": "Depozitul nu a putut fi creat ({{status}})."
-  },
   "git": {
-    "remote_exists": "Acest proiect este deja legat de {{remote}}.",
+    "access_denied": "{{host}} a refuzat accesul la acest depozit. Verifică dacă contul tău are acces la el. Dacă organizația folosește autentificare unică (SSO), autorizează mai întâi autentificarea ta pentru ea.",
+    "access_denied_account": "{{host}} a refuzat accesul la acest depozit pentru {{account}}. Verifică dacă acest cont îl poate folosi. Dacă organizația folosește autentificare unică (SSO), autorizează mai întâi autentificarea ta pentru ea.",
+    "account_missing": "Nu există niciun cont de găzduire Git pentru {{host}}. Adaugă unul în Setări.",
+    "archive_too_large": "Fișierele depozitului depășesc {{limit}} MB, așa că Oleafly nu le poate importa. Clonează tu depozitul și deschide-i folderul.",
+    "auth_rejected": "{{host}} a respins autentificarea salvată pentru {{account}}. Autentifică-te din nou la {{host}} în Setări.",
+    "credentials_missing": "{{host}} a cerut un nume de utilizator și o parolă. Autentifică-te la {{host}} în Setări sau configurează o cheie SSH ori un asistent de credențiale Git.",
+    "credentials_rejected": "{{host}} a respins numele de utilizator și parola oferite de Git. Autentifică-te la {{host}} în Setări sau actualizează credențialele pe care le folosește Git.",
+    "device_flow_unavailable": "Autentificarea prin browser nu este disponibilă pentru {{host}} în această versiune. Folosește în schimb un token de acces.",
+    "forge_bad_response": "{{host}} a trimis un răspuns pe care Oleafly nu l-a putut citi.",
+    "forge_ca_file_invalid": "Oleafly nu a putut citi un certificat din acest fișier. Alege un fișier de certificat PEM sau DER mai mic de 1 MB.",
+    "forge_forbidden": "{{host}} a refuzat cererea. Poate că tokenului îi lipsesc permisiunile {{scopes}}.",
+    "forge_https_required": "Folosește o adresă https://. Adresele http simple funcționează doar pentru serverele din propria ta rețea.",
+    "forge_invalid_repository": "Aceasta nu este o cale de depozit pe care Oleafly o poate folosi.",
+    "forge_invalid_repository_name": "Folosește în numele depozitului doar litere, cifre, puncte, cratime și liniuțe de subliniere.",
+    "forge_invalid_server": "{{server}} nu este o adresă de server pe care Oleafly o poate folosi.",
+    "forge_missing_scopes": "Acest token nu poate trimite modificări către {{host}}. Creează un token cu permisiunile {{scopes}}.",
+    "forge_not_found": "{{host}} nu a găsit acel depozit.",
+    "forge_rate_limited": "{{host}} limitează cererile chiar acum. Încearcă din nou peste un minut.",
+    "forge_redirect_refused": "{{host}} a încercat să trimită Oleafly către {{target}}, așa că Oleafly s-a oprit ca să-ți protejeze autentificarea.",
+    "forge_repository_exists": "Pe {{host}} există deja un depozit cu acest nume.",
+    "forge_server_error": "{{host}} a returnat o eroare ({{status}}).",
+    "forge_signed_out": "Autentificarea ta pentru {{host}} a expirat sau a fost revocată. Autentifică-te din nou în Setări.",
+    "forge_sso_required": "{{host}} are nevoie ca această autentificare să fie autorizată pentru autentificarea unică (SSO) a organizației. Autorizeaz-o pe {{host}}, apoi încearcă din nou.",
+    "forge_store": "Oleafly nu a putut citi sau salva conturile tale de găzduire Git.",
+    "forge_token_invalid": "Acesta nu pare un token de acces. Lipește tokenul întreg.",
+    "forge_token_rejected": "{{host}} nu a acceptat acest token. Verifică dacă ai copiat tokenul întreg și dacă nu a expirat.",
+    "forge_unknown_server": "Oleafly nu a putut afla ce tip de server este {{host}}. Alege tipul serverului.",
+    "host_key_unknown": "SSH nu cunoaște încă {{host}}. Conectează-te o dată la el dintr-un terminal ca să-i accepți cheia de gazdă, apoi încearcă din nou.",
+    "host_unreachable": "Oleafly nu a putut ajunge la {{host}}. Verifică adresa și conexiunea.",
+    "import_cancelled": "Importul a fost anulat.",
+    "invalid_remote_url": "Introdu adresa HTTPS sau SSH a unui depozit Git.",
     "nested_repository": "Acest proiect se află într-un alt depozit Git, așa că Oleafly nu creează aici un depozit separat.",
     "not_installed": "Git nu este instalat pe acest computer. Instalează Git, apoi încearcă din nou.",
+    "push_rejected": "Ramura de la distanță are comiteri pe care acest proiect nu le are încă. Adu mai întâi modificările, apoi trimite din nou.",
+    "remote_exists": "Acest proiect este deja legat de {{remote}}.",
+    "remote_has_password": "Scoate parola sau tokenul de acces din adresă. Oleafly se autentifică în schimb cu contul tău de găzduire Git sau cu propriile tale credențiale Git.",
+    "repository_empty": "Acest depozit nu are încă nicio comitere, deci nu ai ce importa.",
+    "repository_not_found": "{{host}} nu are niciun depozit la această adresă sau contul tău nu îl poate vedea.",
+    "sign_in_cancelled": "Autentificarea a fost anulată în browser.",
+    "sign_in_expired": "Codul de autentificare a expirat. Încearcă din nou.",
+    "sign_in_failed": "Autentificarea a eșuat.",
+    "ssh_key_rejected": "{{host}} a refuzat cheia ta SSH. Adaugă cheia publică în contul tău de pe {{host}} sau încarcă cheia în agentul SSH.",
+    "tls_failed": "Oleafly nu a putut verifica certificatul pentru {{host}}. Dacă organizația ta are propria autoritate de certificare, adaugă fișierul ei de certificat la cont, în Setări.",
     "tracked_secret_files": "Publicarea s-a oprit pentru că fișiere din istoricul Git al proiectului pot conține chei sau parole: {{files}}"
   },
   "approvals": {
@@ -134,6 +167,8 @@
     "changed": "{{path}} s-a schimbat după ce Oleafly l-a instalat, așa că a fost lăsat neschimbat.",
     "failed": "Oleafly nu a putut instala comanda de terminal.",
     "remove_failed": "Oleafly nu a putut elimina comanda de terminal.",
+    "path_failed": "Oleafly a instalat comanda, dar nu a putut adăuga {{directory}} în PATH.",
+    "in_use": "{{path}} este folosit. Închide terminalele în care rulează oleafly, apoi încearcă din nou.",
     "unsupported": "Comanda de terminal nu este încă disponibilă pe acest sistem."
   },
   "research": {
@@ -221,9 +256,59 @@
     "git_token_rejected": "Overleaf nu a acceptat tokenul Git. Poate a expirat. Creează unul nou în setările contului tău Overleaf.",
     "git_unavailable": "Integrarea Git din Overleaf nu este disponibilă pentru acest proiect. Proprietarul proiectului are nevoie de un plan plătit sau universitar.",
     "template_link_invalid": "Acest link nu duce la o pagină de șablon Overleaf. Copiază adresa unei pagini de pe overleaf.com/latex/templates și încearcă din nou.",
-    "template_unavailable": "Oleafly nu a putut deschide acest șablon. Poate a fost eliminat din galeria Overleaf."
+    "template_unavailable": "Oleafly nu a putut deschide acest șablon. Poate a fost eliminat din galeria Overleaf.",
+    "browser_sign_in_missing": "Oleafly nu a găsit nicio autentificare pentru {{server}} în acel profil de browser. Autentifică-te direct.",
+    "browser_sign_in_failed": "Autentificarea preluată din browser nu a funcționat. Poate a expirat. Autentifică-te direct."
   },
   "collab": {
     "turned_off": "Colaborarea în timp real este dezactivată. Activeaz-o din Setări, la Experimente."
+  },
+  "attachments": {
+    "too_large": "Acest fișier depășește {{max}} MB. Atașează un fișier mai mic.",
+    "invalid_request": "Oleafly nu a putut citi acest atașament.",
+    "not_found": "Acest atașament nu mai este stocat pe acest computer.",
+    "storage_failed": "Oleafly nu a putut salva acest atașament."
+  },
+  "provider_credit": {
+    "failed": "Oleafly nu a putut verifica soldul tău la {{provider}}."
+  },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 nu este instalat.",
+    "git_bash_missing": "Git Bash nu este instalat. Instalează Git for Windows sau alege alt shell.",
+    "wsl_missing": "WSL nu este instalat.",
+    "wsl_no_distro": "WSL nu are încă nicio distribuție Linux.",
+    "shell_path_empty": "Introdu o cale de shell în Setări sau alege alt shell.",
+    "shell_path_missing": "Nu există niciun program la {{path}}."
+  },
+  "mathpix": {
+    "keys_missing": "Adaugă mai întâi ID-ul aplicației și cheia Mathpix în Setări, Asistentul AI, Instrumente.",
+    "invalid_keys": "Acel ID de aplicație sau acea cheie conține caractere pe care cheile Mathpix nu le au niciodată. Copiază-le din nou din consola Mathpix.",
+    "key_rejected": "Mathpix nu a acceptat aceste chei. Verifică ID-ul aplicației și cheia în consola Mathpix.",
+    "rate_limited": "Mathpix limitează cererile chiar acum. Așteaptă un minut, apoi încearcă din nou.",
+    "unreachable": "Oleafly nu a putut ajunge la Mathpix. Verifică conexiunea la internet, apoi încearcă din nou.",
+    "http_error": "Mathpix a returnat o eroare (HTTP {{status}}). Încearcă din nou mai târziu.",
+    "invalid_response": "Mathpix a trimis un răspuns pe care Oleafly nu l-a putut citi. Încearcă din nou mai târziu.",
+    "rejected": "Mathpix nu a putut citi acest fișier: {{reason}}",
+    "image_too_large": "Această imagine este prea mare pentru Mathpix. Decupeaz-o și încearcă din nou.",
+    "pdf_too_large": "Acest PDF depășește limita de 256 MB a Mathpix.",
+    "timed_out": "Mathpix nu a terminat acest PDF în 30 de minute. Încearcă cu mai puține pagini.",
+    "cancelled": "Conversia Mathpix a fost oprită.",
+    "wrong_window": "Mathpix poate fi folosit doar din fereastra principală Oleafly.",
+    "pdf_too_large_ipc": "Acest computer poate trimite la Mathpix PDF-uri de cel mult 16 MB. Împarte PDF-ul și încearcă din nou."
+  },
+  "desktop_apps": {
+    "not_installed": "Cua Driver nu este instalat. Instalează-l din Setări, Integrări, Aplicații desktop.",
+    "too_old": "Cua Driver {{version}} este prea vechi. Actualizează-l la {{minimum}} sau la o versiune mai nouă.",
+    "no_app_bundle": "Instalează Cua Driver cu programul de instalare oficial, ca să poată păstra permisiunile macOS.",
+    "change_declined": "Ai păstrat setările anterioare pentru aplicațiile desktop.",
+    "app_blocked": "Agenții nu pot folosi {{name}}.",
+    "app_invalid": "Oleafly nu poate folosi {{name}} ca aplicație.",
+    "site_invalid": "„{{site}}” nu este o adresă de site pe care Oleafly o poate folosi. Folosește https://, sau http:// pentru acest computer.",
+    "too_many_apps": "Numărul maxim de aplicații permise este {{limit}}.",
+    "too_many_sites": "Numărul maxim de site-uri permise este {{limit}}.",
+    "start_failed": "Cua Driver nu a putut porni: {{detail}}",
+    "not_bounded": "Cua Driver nu a pornit cu limitele Oleafly, așa că Oleafly l-a oprit.",
+    "task_unattended": "Sarcinile care rulează programat sau după ce se închide Oleafly nu pot folosi aplicații desktop.",
+    "main_window": "Schimbă setările pentru aplicațiile desktop din fereastra principală."
   }
 }

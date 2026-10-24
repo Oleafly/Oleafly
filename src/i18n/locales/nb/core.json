@@ -583,7 +583,9 @@
       "diagnostics_one": "{{count}} diagnosemelding",
       "diagnostics_other": "{{count}} diagnosemeldinger",
       "papers_one": "{{count}} artikkel",
-      "papers_other": "{{count}} artikler"
+      "papers_other": "{{count}} artikler",
+      "sourcesFailed_one": "{{count}} kilde mislyktes",
+      "sourcesFailed_other": "{{count}} kilder mislyktes"
     }
   },
   "ui": {

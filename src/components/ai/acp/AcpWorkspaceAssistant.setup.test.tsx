@@ -13,7 +13,8 @@ vi.mock("@/lib/acp", async (original) => ({
   ...await original<typeof import("@/lib/acp")>(),
   acpCatalog: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), acpEvents: vi.fn(),
   acpStart: vi.fn(), acpAuthenticate: vi.fn(), acpDisconnect: vi.fn(), acpReconnect: vi.fn(),
-  onAcpEvent: vi.fn(), onAcpResync: vi.fn(),
+  acpSignInCommand: vi.fn(), onAcpEvent: vi.fn(), onAcpResync: vi.fn(),
+  onAcpSession: vi.fn(async () => () => {}), onAcpBufferRequest: vi.fn(async () => () => {}),
 }));
 vi.mock("@/lib/skills", async (original) => ({
   ...await original<typeof import("@/lib/skills")>(),
@@ -24,12 +25,14 @@ vi.mock("@/components/usage/UsageReport", () => ({
 }));
 
 import {
-  acpAuthenticate, acpCatalog, acpEvents, acpSessions, acpSnapshot, onAcpEvent, onAcpResync,
+  acpAuthenticate, acpCatalog, acpEvents, acpSessions, acpSignInCommand, acpSnapshot, onAcpEvent, onAcpResync,
   type AcpAgentStatus, type AcpSnapshot,
 } from "@/lib/acp";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
+import { registerTerminalPromptHost, useTerminalPromptStore } from "@/lib/terminal-lifecycle";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { agent, session } from "./tests/ui-fixtures";
@@ -52,12 +55,30 @@ function pi(overrides: Partial<AcpAgentStatus> = {}): AcpAgentStatus {
 
 let snapshots: Record<string, AcpSnapshot>;
 
+/** The terminal dock asks before a sign-in command runs; this one reads the question and agrees. */
+function agreeToTerminalPrompts() {
+  const asked: { description: string; commandLine: string }[] = [];
+  const unregister = registerTerminalPromptHost();
+  const stop = useTerminalPromptStore.subscribe((state) => {
+    if (state.prompt?.kind !== "launch") return;
+    asked.push({ description: state.prompt.description, commandLine: state.prompt.commandLine });
+    state.answer(state.prompt.id, true);
+  });
+  return { asked, done: () => { stop(); unregister(); } };
+}
+
+function activeTerminal() {
+  const terminals = useTerminalsStore.getState();
+  return terminals.tabs.find((value) => value.id === terminals.activeId);
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
   snapshots = {};
   useAcpSessionsStore.setState({ catalog: [], sessions: {}, events: {}, permissions: {}, activeByProject: {}, composers: {}, errors: {} });
   useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general", settingsScrollTarget: null, terminalOpen: false });
   useTerminalsStore.setState({ projectId: null, tabs: [], activeId: null, counters: {} });
+  useFilesStore.setState({ projectId: null });
   vi.mocked(acpSessions).mockImplementation(async () => Object.values(snapshots).map((value) => value.session));
   vi.mocked(acpSnapshot).mockImplementation(async (_project, id) => {
     if (!snapshots[id]) throw new Error("Conversation missing");
@@ -98,35 +119,46 @@ describe("CLI agent setup in the assistant", () => {
 
   it("signs in through a terminal method by running the CLI in the project terminal", async () => {
     vi.mocked(acpCatalog).mockResolvedValue([pi({ cli: { command: "pi", displayName: "Pi", path: "/Users/ada/.npm-global/bin/pi", version: "0.81.2", signInCommand: "pi" } })]);
+    // Since 0.4.8 the backend picks the sign-in command: here the terminal
+    // login pi reports, which the app runs in the open project's terminal.
+    const login = ["/Users/ada/.npm-global/lib/node_modules/pi-acp/dist/index.js", "--terminal-login"];
+    vi.mocked(acpSignInCommand).mockResolvedValue({ title: "Sign in to Pi", program: "/usr/local/bin/node", args: login, env: {} });
+    useFilesStore.setState({ projectId: "paper" });
     snapshots.saved = {
       session: session("saved", {
         agentId: "pi", status: "auth_required",
-        authMethods: [{ id: "pi_terminal_login", name: "Launch pi in the terminal", description: null, kind: "terminal" }],
+        authMethods: [{
+          id: "pi_terminal_login", name: "Launch pi in the terminal", description: null, kind: "terminal",
+          terminalCommand: { command: "/usr/local/bin/node", args: login, label: "Launch pi" },
+        }],
       }),
       permissions: [],
     };
     useAcpSessionsStore.setState({ activeByProject: { paper: "saved" } });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const prompts = agreeToTerminalPrompts();
 
     fireEvent.click(await ui.findByRole("button", { name: "Launch pi in the terminal" }));
 
-    const terminals = useTerminalsStore.getState();
-    expect(terminals.projectId).toBe("paper");
-    const tab = terminals.tabs.find((value) => value.id === terminals.activeId);
-    expect(tab?.initialInput).toBe("'/Users/ada/.npm-global/bin/pi'\r");
+    await waitFor(() => expect(activeTerminal()?.launch).toEqual({ command: "/usr/local/bin/node", args: login }));
+    prompts.done();
+    // The user saw the whole command line, program and arguments, before it ran.
+    expect(prompts.asked).toHaveLength(1);
+    expect(prompts.asked[0].commandLine).toContain("/usr/local/bin/node");
+    expect(prompts.asked[0].commandLine).toContain("--terminal-login");
+    expect(prompts.asked[0].description).toContain("Pi");
+    expect(acpSignInCommand).toHaveBeenCalledExactlyOnceWith("paper", "pi", "saved", "pi_terminal_login");
+    expect(useTerminalsStore.getState().projectId).toBe("paper");
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
     expect(acpAuthenticate).not.toHaveBeenCalled();
     expect(ui.getByRole("button", { name: enAi.acp.reconnectAfterSignIn })).toBeInTheDocument();
   });
 
-  it.each([
-    ["an agent method", { kind: null }, "/usr/local/bin/pi"],
-    ["a terminal method without a located CLI", { kind: "terminal" }, null],
-  ])("asks the agent to authenticate for %s", async (_label, method, path) => {
-    vi.mocked(acpCatalog).mockResolvedValue([pi({ cli: { command: "pi", displayName: "Pi", path, version: null, signInCommand: "pi" } })]);
+  it("asks the agent to authenticate for an agent method", async () => {
+    vi.mocked(acpCatalog).mockResolvedValue([pi({ cli: { command: "pi", displayName: "Pi", path: "/usr/local/bin/pi", version: null, signInCommand: "pi" } })]);
     const authRequired = session("saved", {
       agentId: "pi", status: "auth_required",
-      authMethods: [{ id: "browser", name: "Sign in", description: null, ...method }],
+      authMethods: [{ id: "browser", name: "Sign in", description: null, kind: null }],
     });
     snapshots.saved = { session: authRequired, permissions: [] };
     vi.mocked(acpAuthenticate).mockResolvedValue({ session: { ...authRequired, status: "ready", lastSequence: 1 }, permissions: [] });
@@ -137,5 +169,31 @@ describe("CLI agent setup in the assistant", () => {
 
     await waitFor(() => expect(acpAuthenticate).toHaveBeenCalledExactlyOnceWith("paper", "saved", "browser"));
     expect(useTerminalsStore.getState().tabs).toHaveLength(0);
+  });
+
+  it("runs a terminal method's own sign-in in the terminal when the CLI was not located", async () => {
+    vi.mocked(acpCatalog).mockResolvedValue([pi({ cli: { command: "pi", displayName: "Pi", path: null, version: null, signInCommand: "pi" } })]);
+    // 0.4.7 asked the agent to authenticate here. Since 0.4.8 a terminal method
+    // always runs the sign-in command the backend gives: the agent with the
+    // method's own arguments.
+    vi.mocked(acpSignInCommand).mockResolvedValue({ title: "Sign in to Pi", program: "/tools/pi-acp", args: ["--terminal-login"], env: {} });
+    useFilesStore.setState({ projectId: "paper" });
+    snapshots.saved = {
+      session: session("saved", {
+        agentId: "pi", status: "auth_required",
+        authMethods: [{ id: "browser", name: "Sign in", description: null, kind: "terminal" }],
+      }),
+      permissions: [],
+    };
+    useAcpSessionsStore.setState({ activeByProject: { paper: "saved" } });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    const prompts = agreeToTerminalPrompts();
+
+    fireEvent.click(await ui.findByRole("button", { name: "Sign in in the terminal" }));
+
+    await waitFor(() => expect(activeTerminal()?.launch).toEqual({ command: "/tools/pi-acp", args: ["--terminal-login"] }));
+    prompts.done();
+    expect(acpSignInCommand).toHaveBeenCalledExactlyOnceWith("paper", "pi", "saved", "browser");
+    expect(acpAuthenticate).not.toHaveBeenCalled();
   });
 });

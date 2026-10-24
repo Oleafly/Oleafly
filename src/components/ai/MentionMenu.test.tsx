@@ -258,7 +258,7 @@ describe("MentionMenu with agents", () => {
 
     act(() => void ref.current?.handleKeyDown(keyEvent("Enter")));
     expect(selected[0]).toMatchObject({ kind: "agent", text: "@reviewer " });
-    const target = selected[0].kind === "agent" ? selected[0].target : null;
+    const target = selected[0].kind === "agent" ? (selected[0].target as DelegationTarget) : null;
     expect(target).toEqual(AGENTS[1]);
     const prompt = agentDelegationPrompt("@reviewer review the methods", target ? [target] : []);
     expect(prompt).toContain('"runtime":"acp"');

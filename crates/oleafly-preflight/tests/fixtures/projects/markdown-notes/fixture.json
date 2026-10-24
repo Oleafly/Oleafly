@@ -1,0 +1,21 @@
+{
+  "mainDocument": "main.md",
+  "cases": [
+    {
+      "name": "none",
+      "sourceProfile": "none",
+      "engine": "unknown",
+      "profile": null,
+      "anonymousReview": false
+    },
+    {
+      "name": "none-with-log",
+      "sourceProfile": "none",
+      "engine": "unknown",
+      "profile": null,
+      "anonymousReview": false,
+      "buildLog": "build-logs/pandoc.log",
+      "buildStatus": "error"
+    }
+  ]
+}

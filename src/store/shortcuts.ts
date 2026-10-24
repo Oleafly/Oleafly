@@ -9,7 +9,10 @@ export type ShortcutId =
   | "forwardSync"
   | "shortcutReference"
   | "toggleTerminal"
-  | "toggleBrowser"
+  | "newTerminal"
+  | "closeTerminal"
+  | "nextTerminal"
+  | "previousTerminal"
   | "toggleSidebar"
   | "togglePreview"
   | "toggleZenMode"
@@ -32,20 +35,12 @@ export interface ShortcutDefinition {
   defaultBinding: ShortcutBinding;
 }
 
-const BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, shift: true };
-const LINUX_BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, alt: true };
-
 const ZEN_MAC_BINDING: ShortcutBinding = { key: "f", mod: true, ctrl: true, shift: true };
 const ZEN_BINDING: ShortcutBinding = { key: "F11", shift: true };
 const FUNCTION_KEY = /^F(?:[1-9]|1\d|2[0-4])$/;
 
 function onApplePlatform(): boolean {
   return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-}
-
-function onLinuxDesktop(): boolean {
-  const tauri = Boolean((globalThis as { isTauri?: unknown }).isTauri);
-  return tauri && typeof navigator !== "undefined" && /Linux/.test(navigator.platform);
 }
 
 export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
@@ -73,11 +68,23 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     id: "toggleTerminal",
     defaultBinding: { key: "`", ctrl: true },
   },
+  // Terminal tabs. Ctrl+Shift+` reports "~" as its key on US layouts; a
+  // binding on ` or ~ follows the physical key (see matchesShortcut).
   {
-    id: "toggleBrowser",
-    get defaultBinding() {
-      return onLinuxDesktop() ? LINUX_BROWSER_BINDING : BROWSER_BINDING;
-    },
+    id: "newTerminal",
+    defaultBinding: { key: "~", ctrl: true, shift: true },
+  },
+  {
+    id: "closeTerminal",
+    defaultBinding: { key: "w", ctrl: true, shift: true },
+  },
+  {
+    id: "nextTerminal",
+    defaultBinding: { key: "PageDown", ctrl: true },
+  },
+  {
+    id: "previousTerminal",
+    defaultBinding: { key: "PageUp", ctrl: true },
   },
   {
     id: "toggleSidebar",
@@ -128,10 +135,6 @@ export function shortcutsDifferFromDefaults(bindings: ShortcutBindings): boolean
   return SHORTCUT_DEFINITIONS.some(({ id }) => !sameShortcutBinding(bindings[id], defaults[id]));
 }
 
-function isRetiredDefault(id: ShortcutId, binding: ShortcutBinding): boolean {
-  return id === "toggleBrowser" && onLinuxDesktop() && sameShortcutBinding(binding, BROWSER_BINDING);
-}
-
 export function isValidBinding(value: unknown): value is ShortcutBinding {
   if (!value || typeof value !== "object") return false;
   const { key, mod, ctrl } = value as { key?: unknown; mod?: unknown; ctrl?: unknown };
@@ -149,7 +152,7 @@ function storedBindings(value: unknown): ShortcutBindings {
   const clean: Partial<ShortcutBindings> = {};
   for (const id of Object.keys(defaults) as ShortcutId[]) {
     const binding = parsed[id];
-    if (isValidBinding(binding) && !isRetiredDefault(id, binding)) clean[id] = binding;
+    if (isValidBinding(binding)) clean[id] = binding;
   }
   return { ...defaults, ...clean };
 }
@@ -203,6 +206,13 @@ function optionLevelKey(event: KeyboardEvent, apple: boolean): string | null {
   return physicalKey(event);
 }
 
+// ` and ~ are one physical key, left of 1, and what it types depends on the
+// layout: UK Shift gives ¬ and German and Spanish layouts type a dead key. A
+// binding on either follows the key itself, so Ctrl+Shift+` works everywhere.
+function isBackquoteBinding(key: string): boolean {
+  return key === "`" || key === "~";
+}
+
 export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding): boolean {
   if (isAltGraphCharacter(event)) return false;
   const apple =
@@ -210,13 +220,22 @@ export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding):
   const ctrl = Boolean(binding.ctrl) || (!apple && Boolean(binding.mod));
   const meta = apple && Boolean(binding.mod);
   const key = binding.key.toLowerCase();
+  const physicalBackquote = isBackquoteBinding(key) && event.code === "Backquote";
   return (
-    (event.key.toLowerCase() === key || optionLevelKey(event, apple) === key) &&
+    (event.key.toLowerCase() === key || optionLevelKey(event, apple) === key || physicalBackquote) &&
     event.ctrlKey === ctrl &&
     event.metaKey === meta &&
     event.shiftKey === Boolean(binding.shift) &&
     event.altKey === Boolean(binding.alt)
   );
+}
+
+function bindingKey(event: KeyboardEvent, apple: boolean): string {
+  // The key left of 1 is recorded as ` or ~ whatever the layout types on it.
+  if (event.code === "Backquote") return event.shiftKey ? "~" : "`";
+  const optionLevel = optionLevelKey(event, apple);
+  if (optionLevel) return optionLevel;
+  return event.key.length === 1 ? event.key.toLowerCase() : event.key;
 }
 
 export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
@@ -232,7 +251,7 @@ export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return {
-    key: optionLevelKey(event, apple) ?? (event.key.length === 1 ? event.key.toLowerCase() : event.key),
+    key: bindingKey(event, apple),
     ...(event.metaKey || (event.ctrlKey && !apple) ? { mod: true } : {}),
     ...(event.ctrlKey && apple ? { ctrl: true } : {}),
     shift: event.shiftKey,

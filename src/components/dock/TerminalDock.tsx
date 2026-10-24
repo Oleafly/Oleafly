@@ -16,6 +16,13 @@ import {
 } from "@/components/ui/context-menu";
 import { BOOK_COLOR_OPTIONS, useBookColorLabels } from "@/components/library/Book";
 import { useAppTheme } from "@/lib/theme";
+import { registerProjectLeaveGuard } from "@/lib/project-leave-guards";
+import { createTerminalFocusTracker, type TerminalFocusTracker } from "@/lib/terminal-focus";
+import {
+  closeTerminalTabs,
+  confirmStopTerminals,
+  requestCloseTerminals,
+} from "@/lib/terminal-lifecycle";
 import { useResolvedTerminalTheme, useSettingsStore } from "@/store/settings";
 
 const stripButtonClass =
@@ -30,6 +37,7 @@ import {
   type TerminalTab,
 } from "@/store/terminals";
 import { TerminalPane } from "./TerminalPane";
+import { TerminalPrompts } from "./TerminalPrompts";
 import { RestrictedTerminalBadge } from "@/components/open-folder/TrustRequiredNotice";
 import { useFolderAccessStore } from "@/store/folder-access";
 import { CheckBadge } from "@/components/ui/check-badge";
@@ -165,6 +173,17 @@ function TerminalTabItem({
               style={{ backgroundColor: hex }}
             />
           )}
+          {tab.bell && (
+            <svg
+              role="img"
+              viewBox="0 0 6 6"
+              aria-label={t(($) => $.workspace.terminal.activity)}
+              data-testid="dock-terminal-tab-bell"
+              className="mr-0.5 size-1.5 shrink-0 text-primary"
+            >
+              <circle cx="3" cy="3" r="3" fill="currentColor" />
+            </svg>
+          )}
           {editing ? (
             <Input
               ref={inputRef}
@@ -177,22 +196,24 @@ function TerminalTabItem({
               className="h-5 w-32 rounded px-1 py-0 text-xs"
             />
           ) : (
-            <button
-              ref={tabRef}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              data-testid="dock-terminal-tab"
-              data-active={active ? "true" : "false"}
-              data-session-index={tab.index}
-              data-color={tab.color ?? "none"}
-              onClick={onActivate}
-              onDoubleClick={startEditing}
-              onKeyDown={onTabKeyDown}
-              className="max-w-40 truncate rounded-sm focus-visible:bg-accent/60"
-            >
-              {tab.title}
-            </button>
+            <Tooltip label={tab.oscTitle ?? tab.title} side="bottom" role="none" className="min-w-0">
+              <button
+                ref={tabRef}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-testid="dock-terminal-tab"
+                data-active={active ? "true" : "false"}
+                data-session-index={tab.index}
+                data-color={tab.color ?? "none"}
+                onClick={onActivate}
+                onDoubleClick={startEditing}
+                onKeyDown={onTabKeyDown}
+                className="max-w-40 truncate rounded-sm focus-visible:bg-accent/60"
+              >
+                {tab.title}
+              </button>
+            </Tooltip>
           )}
           <Tooltip label={t(($) => $.common.actions.close)} side="bottom">
             <button
@@ -281,20 +302,51 @@ function TerminalTabItem({
   );
 }
 
+/** The ids `which` would close around the tab at `id`, in tab order. */
+function idsAround(id: string, which: "others" | "left" | "right"): string[] {
+  const tabs = useTerminalsStore.getState().tabs;
+  const anchor = tabs.findIndex((tab) => tab.id === id);
+  if (anchor < 0) return [];
+  return tabs
+    .filter((_tab, position) => {
+      if (which === "left") return position < anchor;
+      if (which === "right") return position > anchor;
+      return position !== anchor;
+    })
+    .map((tab) => tab.id);
+}
+
+/** Closes tabs after asking about any program still running in them. */
+function closeAround(id: string, which: "others" | "left" | "right"): void {
+  const ids = idsAround(id, which);
+  if (ids.length === 0) return;
+  const store = useTerminalsStore.getState();
+  const close = {
+    others: () => store.closeOtherTerminals(id),
+    left: () => store.closeTerminalsToTheLeft(id),
+    right: () => store.closeTerminalsToTheRight(id),
+  }[which];
+  void requestCloseTerminals(ids, () => {
+    close();
+    for (const closed of ids) useFolderAccessStore.getState().forgetTerminal(closed);
+  });
+}
+
+function closeTab(id: string): void {
+  void requestCloseTerminals([id], () => closeTerminalTabs([id]));
+}
+
 export function TerminalDock({
   projectId,
-  projectName,
   visible = true,
 }: Readonly<{
   projectId: string;
-  projectName?: string;
   visible?: boolean;
 }>) {
   const { t } = useTranslation(["common", "workspace"]);
   const storeProjectId = useTerminalsStore((state) => state.projectId);
   const tabs = useTerminalsStore((state) => state.tabs);
   const activeId = useTerminalsStore((state) => state.activeId);
-  const setTerminalOpen = useSettingsStore((state) => state.setTerminalOpen);
   const terminalBackground = useResolvedTerminalTheme(useAppTheme()).background;
   const openTerminalSettings = () =>
     useSettingsStore.getState().openSettingsAt("appearance", "terminal");
@@ -302,6 +354,8 @@ export function TerminalDock({
   const empty = tabs.length === 0;
   const atLimit = tabs.length >= TERMINAL_LIMIT;
   const [sessions, setSessions] = useState<Readonly<Record<string, number>>>({});
+  const dockRef = useRef<HTMLDivElement | null>(null);
+  const focusTrackerRef = useRef<TerminalFocusTracker | null>(null);
 
   useLayoutEffect(() => {
     mountedDocks += 1;
@@ -320,12 +374,39 @@ export function TerminalDock({
     if (state.projectId === projectId && state.tabs.length === 0) state.addTerminal();
   }, [empty, projectId, ready, visible]);
 
-  const closeTab = (id: string) => {
-    const state = useTerminalsStore.getState();
-    if (!state.tabs.some((tab) => tab.id !== id)) setTerminalOpen(false);
-    state.closeTerminal(id);
-    useFolderAccessStore.getState().forgetTerminal(id);
-  };
+  // A bell rings the tab only while it is out of sight; showing it clears the dot.
+  useEffect(() => {
+    if (visible && activeId) useTerminalsStore.getState().clearTerminalBell(activeId);
+  }, [activeId, visible]);
+
+  useEffect(() => {
+    const tracker = createTerminalFocusTracker(() => dockRef.current);
+    focusTrackerRef.current = tracker;
+    return () => {
+      tracker.dispose();
+      if (focusTrackerRef.current === tracker) focusTrackerRef.current = null;
+    };
+  }, []);
+
+  // Keys must not keep reaching a shell nobody can see.
+  useEffect(() => {
+    if (visible) return;
+    const tracker = focusTrackerRef.current;
+    if (tracker?.focusWasInDock()) tracker.restore();
+  }, [visible]);
+
+  useEffect(
+    () =>
+      registerProjectLeaveGuard((leave) =>
+        leave.projectId === projectId
+          ? confirmStopTerminals({
+              reason: leave.reason === "close" ? "close-project" : "switch-project",
+              projectId,
+            })
+          : Promise.resolve(true),
+      ),
+    [projectId],
+  );
 
   const reopenTab = (id: string) => {
     useFolderAccessStore.getState().forgetTerminal(id);
@@ -333,7 +414,7 @@ export function TerminalDock({
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col">
+    <div ref={dockRef} data-terminal-dock="" className="flex h-full min-h-0 w-full flex-col">
       <div
         role="tablist"
         aria-label={t(($) => $.workspace.terminal.tabs)}
@@ -352,9 +433,9 @@ export function TerminalDock({
               canCloseLeft={position > 0}
               onActivate={() => useTerminalsStore.getState().activateTerminal(tab.id)}
               onClose={() => closeTab(tab.id)}
-              onCloseOthers={() => useTerminalsStore.getState().closeOtherTerminals(tab.id)}
-              onCloseRight={() => useTerminalsStore.getState().closeTerminalsToTheRight(tab.id)}
-              onCloseLeft={() => useTerminalsStore.getState().closeTerminalsToTheLeft(tab.id)}
+              onCloseOthers={() => closeAround(tab.id, "others")}
+              onCloseRight={() => closeAround(tab.id, "right")}
+              onCloseLeft={() => closeAround(tab.id, "left")}
               onRename={(title) => useTerminalsStore.getState().renameTerminal(tab.id, title)}
               onColor={(color) => useTerminalsStore.getState().setTerminalColor(tab.id, color)}
             />
@@ -393,27 +474,37 @@ export function TerminalDock({
           </button>
         </Tooltip>
       </div>
+      {/* Parked panes sit just outside this box; the clip keeps them unpainted. */}
       <div
-        className="flex min-h-0 flex-1 flex-col"
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
         style={{ backgroundColor: terminalBackground }}
       >
         {ready &&
-          tabs.map((tab) => (
-            <TerminalPane
-              key={`${tab.id}:${sessions[tab.id] ?? 0}`}
-              projectId={projectId}
-              projectName={projectName}
-              visible={visible && tab.id === activeId}
-              active={tab.id === activeId}
-              autoStart={tab.autoStart}
-              initialInput={sessions[tab.id] ? undefined : tab.initialInput}
-              onExit={() => closeTab(tab.id)}
-              onStarted={() =>
-                useFolderAccessStore.getState().noteTerminalStarted(projectId, tab.id)
-              }
-            />
-          ))}
+          tabs.map((tab) => {
+            const reopened = Boolean(sessions[tab.id]);
+            return (
+              <TerminalPane
+                key={`${tab.id}:${sessions[tab.id] ?? 0}`}
+                projectId={projectId}
+                tabId={tab.id}
+                visible={visible && tab.id === activeId}
+                active={tab.id === activeId}
+                autoStart={tab.autoStart}
+                cwd={tab.cwd}
+                env={reopened ? undefined : tab.env}
+                launch={reopened ? undefined : tab.launch}
+                initialInput={reopened ? undefined : tab.initialInput}
+                onExit={() => closeTerminalTabs([tab.id])}
+                onStarted={() =>
+                  useFolderAccessStore.getState().noteTerminalStarted(projectId, tab.id)
+                }
+                onBell={() => useTerminalsStore.getState().markTerminalBell(tab.id)}
+                onTitle={(title) => useTerminalsStore.getState().setTerminalOscTitle(tab.id, title)}
+              />
+            );
+          })}
       </div>
+      <TerminalPrompts />
     </div>
   );
 }

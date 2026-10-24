@@ -40,6 +40,22 @@ describe("SettingsRow", () => {
     expect(row.lastElementChild).toBe(control);
   });
 
+  it("wraps a long unbroken label or description instead of overflowing under the control", () => {
+    const origin = "https://a-very-long-subdomain.example-research-institute.org:8443/path/with/no/spaces";
+    render(
+      <SettingsRow
+        label={origin}
+        description={origin}
+        icon={<span>{ICON}</span>}
+        control={<button type="button">{CONTROL}</button>}
+      />,
+    );
+
+    for (const text of screen.getAllByText(origin)) {
+      expect(text.closest(".min-w-0.break-words")).not.toBeNull();
+    }
+  });
+
   it("omits the description and renders details, an adornment and a leading icon when given", () => {
     render(
       <SettingsRow

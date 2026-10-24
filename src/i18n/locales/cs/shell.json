@@ -55,19 +55,6 @@
   "branding": {
     "assistantMascot": "Maskot asistenta AI aplikace Oleafly"
   },
-  "browser": {
-    "address": "Hledejte nebo zadejte adresu URL",
-    "back": "Zpět",
-    "closeTab": "Zavřít kartu",
-    "copyUrl": "Kopírovat URL",
-    "forward": "Vpřed",
-    "moreOptions": "Další možnosti",
-    "newTab": "Nová karta",
-    "openExternal": "Otevřít ve vašem prohlížeči",
-    "openTabs": "Otevřené karty",
-    "reload": "Znovu načíst",
-    "setHomePage": "Nastavit jako domovskou stránku"
-  },
   "changelog": {
     "installed": "Máte tuto verzi",
     "sectionItems_one": "{{count}} změna",
@@ -468,10 +455,6 @@
       "hide": "Skrýt asistenta AI",
       "show": "Zobrazit asistenta AI"
     },
-    "browser": {
-      "close": "Zavřít prohlížeč ({{shortcut}})",
-      "open": "Otevřít prohlížeč ({{shortcut}})"
-    },
     "settings": "Nastavení",
     "sidebar": {
       "hide": "Skrýt postranní panel ({{shortcut}})",
@@ -576,17 +559,6 @@
     "saveCopy": "Uložit kopii",
     "tryAgain": "Zkusit znovu",
     "savedCopy": "Otevřené soubory byly uloženy do {{folder}}."
-  },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "Akce GitHub",
-    "connect": "Připojit GitHub…",
-    "connectedAs": "Připojeno jako @{{login}}",
-    "copyRepositoryLink": "Kopírovat odkaz na repozitář",
-    "openInGithub": "Otevřít na GitHubu",
-    "pushHint": "Tyto akce se zpřístupní po odeslání na GitHub",
-    "settings": "Nastavení GitHubu",
-    "tooltip": "GitHub"
   },
   "home": {
     "ariaLabel": "Domů",
@@ -734,6 +706,14 @@
     "sourceControl": "Správa verzí",
     "withShortcut": "{{label}} ({{shortcut}})"
   },
+  "remoteMenu": {
+    "accountLabel": "{{login}} na {{host}}",
+    "actions": "Akce repozitáře",
+    "copyRepositoryLink": "Zkopírovat odkaz na repozitář",
+    "openOnHost": "Otevřít na {{host}}",
+    "settings": "Nastavení hostingu Git",
+    "signedInAs": "Přihlášeno k {{host}} jako {{login}}"
+  },
   "renameDialog": {
     "close": "Zavřít dialog přejmenování",
     "collision": "{{kind}} s názvem „{{name}}“ už existuje.",
@@ -791,9 +771,9 @@
         "movedCount_other": "{{count}} projektů bylo přesunuto do koše.",
         "title": "Nebezpečná zóna"
       },
-      "githubHint": "Zálohujte nebo synchronizujte projekt mezi zařízeními: připojte GitHub a pak ve správě verzí použijte <push>Odeslat</push> / <pull>Stáhnout</pull>. <setup>Nastavit GitHub →</setup>",
+      "gitHostingHint": "Chcete-li projekt zálohovat nebo synchronizovat mezi zařízeními, propojte ho s repozitářem Git a ve správě verzí použijte <push>Odeslat</push> / <pull>Stáhnout</pull>. <setup>Nastavit hosting Git →</setup>",
       "localFirst": "Oleafly je především místní. Všechny projekty leží na vašem disku:",
-      "plainFolders": "Každý projekt je obyčejná složka. Historie Git je volitelná a nic neopouští váš počítač, dokud sami neodešlete na GitHub.",
+      "plainFolders": "Každý projekt je obyčejná složka. Historie Git je volitelná a nic neopustí váš počítač, dokud to neodešlete na server Git.",
       "recycleBin": {
         "clearAll": "Vysypat koš",
         "clearFailed": "Koš se nepodařilo vysypat.",
@@ -878,11 +858,7 @@
         "description": "Upravujte projekty s dalšími lidmi přes server pro spolupráci, který provozujete vy nebo vaše skupina. Přidá do Nastavení sekci „Spolupráce“. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
         "label": "Živá spolupráce"
       },
-      "warning": "Tyto funkce jsou experimentální a stále v beta verzi. Nejsou plně otestované a mohou se změnit, přestat fungovat nebo být v některém dalším vydání odebrány. Zapínejte je jen tehdy, pokud si chcete rozpracovanou práci vyzkoušet.",
-      "webBrowser": {
-        "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi. Když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
-        "label": "Webový prohlížeč"
-      }
+      "warning": "Tyto funkce jsou experimentální a stále v beta verzi. Nejsou plně otestované a mohou se změnit, přestat fungovat nebo být v některém dalším vydání odebrány. Zapínejte je jen tehdy, pokud si chcete rozpracovanou práci vyzkoušet."
     },
     "footer": {
       "followOnX": "Sledovat na X",
@@ -970,7 +946,8 @@
       "general": "Obecné",
       "help": "Nápověda a informace",
       "integrations": "Integrace",
-      "shortcuts": "Klávesové zkratky"
+      "shortcuts": "Klávesové zkratky",
+      "research": "Výzkum"
     },
     "search": {
       "empty": "Žádné nastavení neodpovídá",
@@ -985,8 +962,9 @@
         "experimentation": "experimenty, laboratoř, beta, experimentální funkce, nové funkce",
         "general": "předvolby, jazyk, národní prostředí, kontrola pravopisu, pravopis, překlepy, offline, prohlídky, příkaz terminálu",
         "help": "o aplikaci, verze, aktualizace, seznam změn, co je nového, dokumentace, podpora, nápověda, komunita, Discord, licence, hlášení pádu",
-        "integrations": "Zotero, GitHub, MCP, citace, účty, připojení",
-        "shortcuts": "klávesové zkratky, zkratky, klávesy, klávesnice"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, aplikace v počítači, Cua, MCP, citace, účty, připojení",
+        "shortcuts": "klávesové zkratky, zkratky, klávesy, klávesnice",
+        "research": "výzkum úlohy rozpočet oznámení neusínat experimenty běhy research tasks"
       },
       "label": "Hledat v nastavení",
       "results_one": "{{count}} odpovídající sekce",
@@ -1072,7 +1050,6 @@
     "commitCount_other": "{{count}} commitů",
     "initialize": "Inicializovat repozitář",
     "initialized": "Git byl inicializován na větvi {{branch}}.",
-    "linkCopied": "Odkaz na GitHub zkopírován",
     "markResolved": "Označit jako vyřešené",
     "mergeNeedsAttention": "Vyřešte konflikty sloučení",
     "moreActions": "Další akce správy verzí",
@@ -1086,18 +1063,19 @@
     "openFile": "Otevřít soubor",
     "openFileFor": "Otevřít {{path}}",
     "popStash": "Použít poslední úschovu",
-    "publish": "Publikovat na GitHub",
+    "publishRepository": "Publikovat…",
+    "publishTo": "Publikovat na {{host}}",
     "published": "Publikováno do {{url}}",
     "pull": "Stáhnout z origin",
     "pullShort": "Stáhnout",
     "push": "Commitnout a odeslat do origin",
     "pushShort": "Odeslat",
     "pushSkippedNoRemote": "⚠ Odeslání přeskočeno - níže není nastaven vzdálený repozitář origin.",
-    "pushSkippedNoToken": "⚠ Odeslání přeskočeno - chybí token GitHub (Nastavení → GitHub).",
     "refresh": "Obnovit",
     "remote": "Vzdálený repozitář",
     "remoteHint": "Vytvořte nový repozitář nebo propojte existující jako vzdálený repozitář tohoto projektu a pak odešlete.",
     "removeCredential": "Odebrat uložený přihlašovací údaj",
+    "repositoryLinkCopied": "Odkaz na repozitář byl zkopírován",
     "restoreCommit": "Obnovit verzi",
     "restoreCommitDescription": "Nahradí každý sledovaný soubor projektu touto verzí a odebere soubory přidané později. Vaše větev zůstane na svém aktuálním commitu.",
     "restoreCommitTitle": "Obnovit tuto verzi?",
@@ -1129,7 +1107,7 @@
     "titleRequired": "Název commitu je povinný.",
     "titleRequiredStatus": "Před commitem zadejte název commitu.",
     "unlink": "Odpojit",
-    "unlinked": "Odpojeno od GitHubu.",
+    "unlinkedFrom": "Propojení s {{host}} bylo zrušeno.",
     "unstage": "Odebrat z připravených",
     "unstageFor": "Odebrat {{path}} z připravených",
     "unstageAll": "Odebrat vše z připravených",

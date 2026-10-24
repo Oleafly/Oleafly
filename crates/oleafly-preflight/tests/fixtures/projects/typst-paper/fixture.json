@@ -1,0 +1,27 @@
+{
+  "mainDocument": "main.typ",
+  "cases": [
+    {
+      "name": "generic",
+      "sourceProfile": "typst",
+      "engine": "typst",
+      "profile": null,
+      "anonymousReview": false,
+      "typstVersion": "0.13.1"
+    },
+    {
+      "name": "ieee",
+      "sourceProfile": "typst",
+      "engine": "typst",
+      "profile": "ieee",
+      "anonymousReview": false
+    },
+    {
+      "name": "anonymous",
+      "sourceProfile": "typst",
+      "engine": "typst",
+      "profile": "generic",
+      "anonymousReview": true
+    }
+  ]
+}

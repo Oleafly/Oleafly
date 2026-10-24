@@ -583,7 +583,9 @@
       "diagnostics_one": "{{count}} diagnose",
       "diagnostics_other": "{{count}} diagnoses",
       "papers_one": "{{count}} artikel",
-      "papers_other": "{{count}} artikelen"
+      "papers_other": "{{count}} artikelen",
+      "sourcesFailed_one": "{{count}} bron mislukt",
+      "sourcesFailed_other": "{{count}} bronnen mislukt"
     }
   },
   "ui": {

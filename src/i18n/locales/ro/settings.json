@@ -16,7 +16,7 @@
       "cliTitle": "Instrument de linie de comandă",
       "copySignInCommand": "Copiază comanda de autentificare",
       "emptyDescription": "Instalează un agent de linie de comandă acceptat, apoi verifică din nou.",
-      "emptyTitle": "Nu s-a găsit niciun agent de linie de comandă",
+      "emptyTitle": "Nu s-a găsit niciun agent de linia de comandă",
       "custom": {
         "description": "Lipește o definiție de agent ca să înregistrezi un agent pe care Oleafly nu îl include.",
         "hint": "Lipește o definiție de agent cu un pachet npm sau uv fixat pe versiune, un binar verificat ori un executabil instalat. Nu pune parole și chei API în acest JSON.",
@@ -36,7 +36,7 @@
       },
       "installBridge": "Instalează puntea",
       "installBridgeNextStep": "Instalează puntea ACP, apoi autentifică-te din instrumentul de linie de comandă.",
-      "intro": "Conectează un agent local prin ACP. Fiecare agent își gestionează propriile modele, instrumente și autentificare, iar setările furnizorilor API rămân separate. Folosește contul oficial din linia de comandă pentru autentificare: Oleafly nu importă tokenuri de cont și nu estimează cotele de abonament.",
+      "intro": "Agenții din linia de comandă precum Claude Code, Codex și Gemini CLI se conectează prin Agent Client Protocol (ACP). Unii au nevoie de o punte, un mic adaptor pe care Oleafly îl instalează ca să poată vorbi cu ei. Fiecare agent își gestionează propriile modele, instrumente și autentificare, iar setările furnizorilor de API rămân separate. Folosește contul oficial din linia de comandă pentru autentificare: Oleafly nu importă tokenuri de cont și nu estimează cotele de abonament.",
       "nextStepTitle": "Pasul următor",
       "notReported": "Neraportat",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Arată distribuția",
         "title": "Găsește mai mulți agenți"
       },
-      "sectionLabel": "Agenți ACP",
+      "sectionLabel": "Agenți din linia de comandă",
       "signInCommandLabel": "Comandă de autentificare",
       "versionLabel": "Versiune",
       "updateBridge": "Actualizează puntea",
@@ -113,10 +113,82 @@
           "startFailed": "{{name}} nu a putut fi pornit.",
           "timeout": "{{name}} a pornit, dar nu a răspuns la timp.",
           "exited": "{{name}} s-a oprit înainte să răspundă.",
-          "notAcp": "{{name}} a pornit, dar Oleafly nu i-a înțeles răspunsul."
+          "notAcp": "{{name}} a pornit, dar Oleafly nu i-a înțeles răspunsul.",
+          "needsSignIn": "{{name}} funcționează. Autentifică-te înainte să începi o conversație.",
+          "sessionFailed": "{{name}} a pornit, dar nu a putut deschide o conversație."
         },
         "getNode": "Descarcă Node.js",
-        "copyDetails": "Copiază detaliile"
+        "copyDetails": "Copiază detaliile",
+        "signIn": "Autentifică-te",
+        "afterSignIn": "Termină autentificarea în terminal, apoi testează din nou programul."
+      },
+      "experimental": {
+        "title": "Experimental",
+        "description": "Acestea folosesc părți în stadiu de ciornă din Agent Client Protocol. Se pot schimba sau pot înceta să funcționeze.",
+        "v2": "Folosește ACP v2 când este disponibil",
+        "v2Description": "Agenții care acceptă ciorna versiunii 2 o folosesc. Ceilalți agenți rămân la versiunea 1.",
+        "providers": "Permite agenților să folosească cheile mele API din Oleafly",
+        "providersDescription": "Un agent care își poate redirecționa apelurile către model folosește cheia pe care o alegi pe cardul lui. Cheia ajunge doar la procesul acelui agent."
+      },
+      "inactivity": {
+        "label": "Oprește un agent tăcut după",
+        "description": "Când un agent nu trimite nimic atâta timp, Oleafly îl oprește. Te poți reconecta.",
+        "minutes": "{{count}} min"
+      },
+      "protocolLabel": "Protocol",
+      "remembered": {
+        "title": "Alegeri memorate",
+        "effort": "Efort: {{name}}",
+        "mode": "Mod: {{name}}",
+        "forget": "Uită",
+        "none": "Conversațiile noi folosesc valorile implicite ale agentului."
+      },
+      "providers": {
+        "label": "Folosește cheia mea API din Oleafly",
+        "off": "Dezactivat (agentul se autentifică singur)",
+        "note": "Oleafly trimite cheia acestui agent când începe o conversație și o ține în afara transcrierilor.",
+        "unavailable": "Adaugă o cheie API în Setări, Asistentul AI, Furnizori și chei ca s-o folosești aici."
+      },
+      "hermes": {
+        "title": "Profilul Hermes pentru acest proiect",
+        "default": "Profil implicit (comun)",
+        "project": "Profilul proiectului",
+        "remote": "La distanță, prin SSH",
+        "profileName": "Profilul {{name}}",
+        "memory": "Memoria proiectului",
+        "memoryDescription": "Hermes ține minte lucruri de la o conversație la alta în acest proiect.",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "Folosește instrumentele găzduite pentru căutare pe web, imagini, vorbire și browser din abonamentul tău Nous.",
+        "status": {
+          "ready": "Gateway pornit",
+          "starting": "Gateway în curs de pornire",
+          "stopped": "Gateway oprit",
+          "unknown": "Starea gateway-ului este necunoscută"
+        },
+        "refresh": "Verifică din nou",
+        "keepsRunning": "Deconectarea Oleafly nu oprește niciodată gateway-ul.",
+        "host": "Gazdă",
+        "port": "Port",
+        "folder": "Folderul proiectului pe acel computer",
+        "command": "Comanda Hermes",
+        "remoteProfile": "Profil (opțional)",
+        "test": "Testează conexiunea",
+        "testOk": "Conectat: {{version}}",
+        "save": "Salvează",
+        "sshNote": "Oleafly se autentifică doar cu cheile tale SSH.",
+        "folderHint": "Calea completă de pe acel computer, de exemplu /home/ada/paper.",
+        "needsValid": "Testează conexiunea și Salvează au nevoie de valori valide pentru: {{fields}}.",
+        "unsavedEdit": "Încă nesalvat. Salvează ca să folosești aceste modificări.",
+        "unsavedMode": "Încă nesalvat. Până salvezi, acest proiect continuă să folosească: {{mode}}.",
+        "errors": {
+          "hostRequired": "Introdu numele gazdei sau utilizator@gazdă.",
+          "hostInvalid": "Folosește doar litere, cifre, puncte, cratime și @, și nu începe cu o cratimă.",
+          "port": "Folosește un port de la 1 la 65535.",
+          "folderRequired": "Introdu calea completă a folderului de proiect de pe acel computer.",
+          "folderInvalid": "Folosește calea completă, începând cu /.",
+          "command": "Folosește hermes sau calea completă către el, începând cu /.",
+          "profile": "Folosește litere mici, cifre, cratime și liniuțe de subliniere."
+        }
       }
     },
     "approvals": {
@@ -195,6 +267,8 @@
       "defaultModelTitle": "Modelul implicit pentru conversații",
       "pdfCaptureDescription": "Îi permite agentului să transforme paginile compilate în imagini (verify_pdf_pages) pentru verificări vizuale ale aspectului. Dezactivează dacă preferi să nu trimiți imagini de pagină furnizorului tău.",
       "pdfCaptureLabel": "Permite capturarea paginilor PDF pentru AI",
+      "reasoningSummariesDescription": "Modelele care gândesc înainte să răspundă trimit un scurt rezumat al raționamentului. Se aplică modelelor Anthropic și OpenAI.",
+      "reasoningSummariesLabel": "Arată rezumatele raționamentului",
       "save": "Salvează instrucțiunile",
       "saved": "Salvat",
       "toolsHint": "Cere-i lucruri precum „repară erorile LaTeX”, „adaugă o secțiune Publicații” sau „recompilează și verifică PDF-ul”.",
@@ -512,7 +586,32 @@
       },
       "useInAllProjectsAria": "Folosește {{name}} în toate proiectele",
       "useInProjectAria": "Folosește {{name}} în acest proiect",
-      "validateAria": "Validează {{name}}"
+      "validateAria": "Validează {{name}}",
+      "shadowNote": "Este disponibilă o versiune Oleafly mai nouă a acestei abilități.",
+      "replaceAction": "Folosește versiunea Oleafly",
+      "replaceTitle": "Înlocuiești copia ta pentru {{name}}?",
+      "replaceBody": "Copia ta se mută într-un folder de rezervă. Nu se șterge nimic.",
+      "replaced": "Copia ta este în {{path}}."
+    },
+    "tools": {
+      "tabLabel": "Instrumente",
+      "loading": "Se încarcă setările Instrumentelor…",
+      "modelTitle": "Model pentru Instrumente",
+      "modelDescription": "Conversia din imagine în LaTeX, imaginile cu ecuații și fișierele PDF scanate folosesc acest model. Alegerea automată folosește Ollama, așa că imaginile rămân pe acest computer. Dacă Ollama nu rulează sau nu are niciun model care citește imagini, conversiile din imagine în LaTeX și în Typst din editor trimit imaginea la modelul asistentului.",
+      "ocrHint": "Pentru cele mai bune rezultate locale, descarcă un model OCR în Ollama:",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "Opțional. Mathpix citește ecuații, tabele și fișiere PDF scanate și îți facturează propriul cont Mathpix pentru fiecare imagine și pagină.",
+        "docs": "Obține chei Mathpix",
+        "appIdLabel": "ID-ul aplicației",
+        "appKeyLabel": "Cheia aplicației",
+        "save": "Salvează cheile",
+        "remove": "Elimină cheile",
+        "connected": "Conectat ca {{appId}}",
+        "saved": "Cheile Mathpix au fost salvate.",
+        "removed": "Cheile Mathpix au fost eliminate.",
+        "privacy": "Oleafly îi cere lui Mathpix să nu-ți păstreze imaginile și șterge fiecare PDF de pe Mathpix după ce citește rezultatul."
+      }
     }
   },
   "appearance": {
@@ -551,17 +650,6 @@
       "theme": {
         "description": "Varianta Sistem urmează sistemul de operare și se schimbă odată cu el.",
         "label": "Aspect"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "Pagina de start a browserului",
-        "description": "Alege pagina care se deschide odată cu browserul.",
-        "label": "Pagină de start"
-      },
-      "searchEngine": {
-        "description": "Alege motorul de căutare folosit pentru căutările de text.",
-        "label": "Motor de căutare implicit"
       }
     },
     "customTheme": {
@@ -861,7 +949,6 @@
     "sectionName": "Aspect",
     "tabs": {
       "app": "Aplicație",
-      "browser": "Browser",
       "editor": "Editor",
       "files": "Proiect",
       "pdf": "Previzualizare PDF",
@@ -885,6 +972,14 @@
         "foreground": "Text",
         "foregroundAriaLabel": "Culoarea textului din terminal",
         "label": "Culorile terminalului"
+      },
+      "confirmClose": {
+        "description": "Întreabă mai întâi când un program încă rulează într-un terminal pe care îl închizi, inclusiv când închizi proiectul sau ieși din aplicație.",
+        "label": "Întreabă înainte să închizi un terminal ocupat"
+      },
+      "copyOnSelect": {
+        "description": "Copiază textul din terminal imediat ce îl selectezi.",
+        "label": "Copiază la selectare"
       },
       "cursorBlink": {
         "description": "Fă cursorul din terminal să clipească.",
@@ -914,6 +1009,50 @@
       "fontWeightBold": {
         "description": "Stabilește grosimea textului aldin din terminal.",
         "label": "Grosimea fontului aldin"
+      },
+      "optionIsMeta": {
+        "description": "Trimite către shell combinațiile cu tasta Option ca Meta. Option nu mai scrie caractere speciale.",
+        "label": "Folosește Option ca Meta"
+      },
+      "scrollback": {
+        "ariaLabel": "Istoricul de derulare al terminalului",
+        "description": "Câte rânduri păstrează fiecare terminal. Mai multe rânduri folosesc mai multă memorie.",
+        "label": "Istoric de derulare",
+        "lines_one": "{{value}} rând",
+        "lines_few": "{{value}} rânduri",
+        "lines_other": "{{value}} de rânduri"
+      },
+      "shell": {
+        "ariaLabel": "Programul shell al terminalului",
+        "description": "Terminalele noi pornesc acest shell. Terminalele deschise îl păstrează pe al lor.",
+        "label": "Shell",
+        "notFound": "{{name}} (nu a fost găsit)",
+        "notFoundNote": "{{name}} nu este disponibil pe acest computer, deci terminalele noi nu pot porni. Alege alt shell.",
+        "options": {
+          "auto": "Implicit ({{name}})",
+          "cmd": "Linie de comandă",
+          "custom": "Cale personalizată",
+          "defaultShell": "Programul shell implicit",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "Calea personalizată către shell",
+          "description": "Programul pe care îl rulează terminalele noi.",
+          "label": "Calea către shell"
+        },
+        "windowsOnly": "{{name}} (doar Windows)",
+        "windowsOnlyNote": "{{name}} rulează doar pe Windows. Terminalele noi de aici pornesc în schimb {{fallback}}.",
+        "windowsOnlyNoteDefault": "{{name}} rulează doar pe Windows. Terminalele noi de aici pornesc în schimb shell-ul implicit."
+      },
+      "shiftEnter": {
+        "ariaLabel": "Shift+Enter în terminal",
+        "description": "Ce trimite Shift+Enter programului din terminal. Un rând nou lasă instrumentele de tip chat, precum Claude Code, să adauge un rând la promptul lor. Enter trimite, ca tasta Enter.",
+        "enter": "Trimite Enter",
+        "label": "Shift+Enter",
+        "newline": "Inserează un rând nou"
       },
       "startWithProject": {
         "description": "Pornește shell-ul la deschiderea unui proiect, nu prima dată când arăți terminalul.",
@@ -957,6 +1096,15 @@
       "saveEmail": "Salvează adresa de e-mail",
       "saveKey": "Salvează cheia"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "Opțional. Permite asistentului să caute pe web când furnizorul lui nu are propria căutare.",
+      "keyLabel": "Cheie Brave Search API",
+      "keyRemoveFailed": "Cheia Brave Search API nu a putut fi eliminată.",
+      "keyRemoved": "Cheia Brave Search API a fost eliminată",
+      "keySaveFailed": "Cheia Brave Search API nu a putut fi salvată.",
+      "keySaved": "Cheia Brave Search API a fost salvată"
+    },
     "connected": "Conectat",
     "description": "Gestionează credențialele folosite de sursele de căutare științifică.",
     "keyFree": {
@@ -996,7 +1144,17 @@
       "keySaveFailed": "Cheia API Serper nu a putut fi salvată.",
       "keySaved": "Cheia API Serper a fost salvată"
     },
-    "title": "Căutare de citări"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "Opțional. Permite asistentului să caute pe web când furnizorul lui nu are propria căutare.",
+      "keyLabel": "Cheie Tavily API",
+      "keyRemoveFailed": "Cheia Tavily API nu a putut fi eliminată.",
+      "keyRemoved": "Cheia Tavily API a fost eliminată",
+      "keySaveFailed": "Cheia Tavily API nu a putut fi salvată.",
+      "keySaved": "Cheia Tavily API a fost salvată"
+    },
+    "title": "Căutare de citări",
+    "webSearchOrder": "Pentru căutarea pe web, asistentul folosește întâi Brave, apoi Tavily, apoi Serper."
   },
   "cite": {
     "apa": "Aceeași referință în stil APA se află în spatele opțiunii Cite this repository de pe GitHub",
@@ -1294,17 +1452,64 @@
       }
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "Conectat",
-      "disconnect": "Deconectează",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{login}} pe {{host}}",
+      "caAdd": "Adaugă un fișier de certificat",
+      "caChange": "Schimbă fișierul de certificat",
+      "caFile": "Fișier de certificat: {{file}}",
+      "checking": "Se verifică…",
+      "signInAgain": "Autentifică-te din nou",
+      "signOut": "Deconectează-te",
+      "signedInAs": "Autentificat ca {{login}}",
+      "signedOut": "Deconectat",
+      "unreachable": "Serverul nu poate fi accesat"
     },
-    "advanced": {
+    "add": {
+      "browserHint": "Te autentifică printr-un cod de unică folosință, în browser.",
+      "caChoose": "Alege fișierul…",
+      "caFilter": "Fișiere de certificat",
+      "caHint": "Necesar doar când certificatul serverului provine de la autoritatea proprie a organizației tale.",
+      "caLabel": "Fișierul autorității de certificare",
+      "caPickerTitle": "Alege un fișier de certificat",
+      "caRemove": "Elimină",
+      "chooseKind": "Tipul serverului",
       "connect": "Conectează",
-      "toggle": "Avansat: folosește un token personal de acces",
-      "tokenPlaceholder": "ghp_…"
+      "continue": "Continuă",
+      "createToken": "Creează un token pe {{host}}",
+      "detecting": "Se verifică serverul…",
+      "found": "Acesta este un server {{kind}}.",
+      "kindGitea": "Gitea sau Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
+      "otherServer": "Alt server",
+      "replaces": "Autentificarea îl înlocuiește pe {{login}} pe {{host}}.",
+      "scopesGitea": "Dă-i acces de citire și scriere pentru repository și user.",
+      "scopesGithub": "Dă-i permisiunile repo și read:user.",
+      "scopesGitlab": "Dă-i permisiunile api și write_repository.",
+      "serverLabel": "Adresa serverului",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "Autentifică-te cu {{host}}",
+      "title": "Adaugă un cont de găzduire Git",
+      "tokenLabel": "Token de acces",
+      "useToken": "Folosește în schimb un token de acces"
     },
+    "addAccount": "Adaugă un cont",
+    "description": "Autentifică-te ca să trimiți și să aduci modificări, să publici proiecte și să imporți depozite. Funcționează cu GitHub, GitLab, Gitea, Forgejo și Codeberg, precum și cu serverele pe care le administrezi tu.",
+    "device": {
+      "open": "Deschide {{host}}",
+      "opened": "Oleafly a deschis <verificationLink>{{url}}</verificationLink> în browserul tău. Introdu codul acolo ca să termini autentificarea.",
+      "timedOut": "Timpul pentru autentificare a expirat. Încearcă din nou.",
+      "title": "Introdu acest cod pe {{host}}",
+      "waiting": "Se așteaptă să termini în browser…"
+    },
+    "empty": "Încă nu ai conturi. Proiectele legate după adresă trimit și aduc în continuare modificări cu propria ta autentificare Git sau cu cheia SSH.",
+    "notice": {
+      "signedIn": "Autentificat pe {{host}} ca {{login}}.",
+      "signedOut": "Deconectat de la {{host}}."
+    },
+    "title": "Găzduire Git"
+  },
+  "github": {
     "autoInit": {
       "description": "Proiectele noi și cele deschise primesc un depozit Git, ca panoul Git să poată urmări modificările. De obicei, un proiect nou începe cu o comitere a fișierelor lui. După aceea, Oleafly comite doar când îi ceri.",
       "label": "Inițializează Git pentru fiecare proiect"
@@ -1312,23 +1517,6 @@
     "config": {
       "loadFailed": "Setările Git nu au putut fi încărcate.",
       "saveFailed": "Setările Git nu au putut fi salvate."
-    },
-    "connect": "Conectează GitHub",
-    "description": "Fă copii de siguranță ale proiectelor, sincronizează-le între dispozitive și trimite sau adu din panoul Git.",
-    "device": {
-      "openGithub": "Deschide GitHub",
-      "opened": "Am deschis <verificationLink>{{url}}</verificationLink> în browserul tău. Lipește codul acolo ca să autorizezi Oleafly.",
-      "timedOut": "Autentificarea GitHub a expirat. Încearcă din nou.",
-      "title": "Introdu acest cod pe GitHub",
-      "waiting": "Se așteaptă autorizarea…"
-    },
-    "hint": {
-      "oauth": "Te autentifică printr-un cod de unică folosință, în browser.",
-      "token": "Autentificarea OAuth nu este încă pregătită în această versiune, așa că lipește un token."
-    },
-    "notice": {
-      "connected": "Conectat ca @{{login}}",
-      "disconnected": "Deconectat."
     }
   },
   "integrations": {
@@ -1345,35 +1533,14 @@
       "disconnectFailed": "alphaXiv nu a putut fi deconectat. Încearcă din nou."
     },
     "cookies": {
-      "action": "Importă cookie-uri",
-      "confirmAllDomains": "Ești pe cale să imporți cookie-uri din profilul {{profile}} al {{browser}}, pentru toate domeniile. Cookie-urile importate se păstrează în browserul integrat și se trimit doar către site-urile lor. Oleafly îți va cere încă o confirmare, într-o fereastră nativă, înainte să citească profilul.",
-      "confirmDomain": "Ești pe cale să imporți cookie-uri din profilul {{profile}} al {{browser}}, pentru {{domain}}. Cookie-urile importate se păstrează în browserul integrat și se trimit doar către site-urile lor. Oleafly îți va cere încă o confirmare, într-o fereastră nativă, înainte să citească profilul.",
       "confirmTitle": "Confirmă importul de cookie-uri",
-      "description": "Folosește în browserul integrat Oleafly o autentificare pe care o ai deja în alt browser.",
       "detecting": "Se caută profilurile de browser instalate...",
       "dialogDescription": "Alege un singur profil de browser instalat. Oleafly îl citește doar după ce verifici și confirmi importul. Cookie-urile Chromium se deblochează local, prin macOS Keychain. Oleafly nu trimite valorile cookie-urilor către niciun serviciu Oleafly.",
       "dialogTitle": "Importă cookie-uri din browser",
       "empty": "Nu s-a găsit niciun profil de browser acceptat.",
       "errors": {
-        "chooseProfile": "Alege un profil de browser disponibil.",
-        "hostname": "Introdu un nume de gazdă, de exemplu example.com."
+        "chooseProfile": "Alege un profil de browser disponibil."
       },
-      "hostnameHint": "Introdu numele de gazdă al unui site ca să imporți doar cookie-urile pe care le poate folosi acel site. Lasă gol ca să imporți fiecare cookie eligibil din acest profil.",
-      "hostnameLabel": "Gazdă țintă (opțional)",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_one": "S-a importat {{count}} cookie din {{browser}} pentru {{domain}}.",
-      "importedDomain_few": "S-au importat {{count}} cookie-uri din {{browser}} pentru {{domain}}.",
-      "importedDomain_other": "S-au importat {{count}} de cookie-uri din {{browser}} pentru {{domain}}.",
-      "importedProfileDomain_one": "S-a importat {{count}} cookie din {{browser}}, {{profile}} pentru {{domain}}.",
-      "importedProfileDomain_few": "S-au importat {{count}} cookie-uri din {{browser}}, {{profile}} pentru {{domain}}.",
-      "importedProfileDomain_other": "S-au importat {{count}} de cookie-uri din {{browser}}, {{profile}} pentru {{domain}}.",
-      "importedProfile_one": "S-a importat {{count}} cookie din {{browser}}, {{profile}}.",
-      "importedProfile_few": "S-au importat {{count}} cookie-uri din {{browser}}, {{profile}}.",
-      "importedProfile_other": "S-au importat {{count}} de cookie-uri din {{browser}}, {{profile}}.",
-      "imported_one": "S-a importat {{count}} cookie din {{browser}}.",
-      "imported_few": "S-au importat {{count}} cookie-uri din {{browser}}.",
-      "imported_other": "S-au importat {{count}} de cookie-uri din {{browser}}.",
-      "importing": "Se importă cookie-urile...",
       "profileGroupLabel": "Profiluri de browser",
       "profileLegend": "Profil de browser",
       "review": "Verifică importul",
@@ -1383,8 +1550,17 @@
         "noCookieStore": "Fără depozit de cookie-uri",
         "notInstalled": "Neinstalat"
       },
-      "title": "Importă cookie-uri",
-      "tryAgain": "Încearcă din nou"
+      "tryAgain": "Încearcă din nou",
+      "label": "Autentificare din browser",
+      "useBrowserSignIn": "Folosește autentificarea din browserul meu",
+      "signInDescription": "Copiază autentificarea pentru {{server}} dintr-un browser de pe acest computer, ca să nu fie nevoie să te autentifici din nou.",
+      "site": "Site: {{domain}}",
+      "confirmCopy": "Oleafly va citi cookie-urile pentru {{domain}} din profilul {{profile}} din {{browser}}. Rămân în Oleafly și ajung doar la {{domain}}. Vei confirma încă o dată într-un dialog al sistemului.",
+      "copyAction": "Copiază autentificarea",
+      "copying": "Se copiază…",
+      "notSignedIn_one": "S-a copiat {{count}} cookie din {{browser}}, dar nu te-a autentificat. Autentifică-te direct.",
+      "notSignedIn_few": "S-au copiat {{count}} cookie-uri din {{browser}}, dar nu te-au autentificat. Autentifică-te direct.",
+      "notSignedIn_other": "S-au copiat {{count}} de cookie-uri din {{browser}}, dar nu te-au autentificat. Autentifică-te direct."
     },
     "zotero": {
       "apiKeyHint": "Ca să obții o cheie: autentifică-te la <siteLink>zotero.org</siteLink>, deschide <keyLink>pagina cheilor API</keyLink> ca să creezi o cheie și copiază-ți identificatorul numeric de utilizator din aceeași pagină.",
@@ -1456,6 +1632,132 @@
       "gitSave": "Salvează",
       "gitRemove": "Elimină",
       "gitFailed": "Oleafly nu a putut salva tokenul Git. Verifică dacă ai lipit tot tokenul."
+    },
+    "desktopApps": {
+      "tab": "Aplicații desktop",
+      "title": "Aplicații desktop",
+      "description": "Permite agenților să folosească aplicații și site-uri de pe acest computer prin Cua Driver. Oleafly întreabă înainte de fiecare clic sau apăsare de tastă.",
+      "docsLink": "Documentația Cua Driver",
+      "status": {
+        "installed": "Cua Driver {{version}} este instalat.",
+        "installedNoVersion": "Cua Driver este instalat.",
+        "notInstalled": "Cua Driver nu este instalat.",
+        "tooOld": "Cua Driver {{version}} este prea vechi. Oleafly are nevoie de {{minimum}} sau de o versiune mai nouă.",
+        "noAppBundle": "Instalează Cua Driver cu programul de instalare oficial, ca să poată păstra permisiunile macOS.",
+        "unreadableVersion": "Oleafly nu a putut citi versiunea Cua Driver. Verifică dacă rulează, apoi verifică din nou.",
+        "path": "Găsit la {{path}}"
+      },
+      "install": {
+        "heading": "Instalează Cua Driver",
+        "hint": "Rulează această comandă într-un terminal. Oleafly nu instalează niciodată Cua Driver în locul tău.",
+        "run": "Rulează în terminal",
+        "needsProject": "Deschide un proiect ca s-o rulezi în terminalul Oleafly sau copiază comanda.",
+        "confirm": "Comanda descarcă programul de instalare Cua Driver de pe cua.ai și îl rulează în terminalul tău. Continui?",
+        "terminalTitle": "Instalarea Cua Driver",
+        "checkAgain": "Verifică din nou"
+      },
+      "permissions": {
+        "heading": "Permisiuni macOS",
+        "granted": "Cua Driver poate folosi Accesibilitatea și Înregistrarea ecranului.",
+        "needed": "Cua Driver are nevoie de Accesibilitate și Înregistrarea ecranului. Rulează pasul de acordare și urmează instrucțiunile.",
+        "unknown": "Oleafly nu a putut citi permisiunile Cua Driver.",
+        "grant": "Acordă permisiunile",
+        "terminalTitle": "Permisiunile Cua Driver"
+      },
+      "gnome": {
+        "heading": "Asistentul GNOME",
+        "needed": "În GNOME, rulează o dată asistentul de ferestre Cua, apoi deconectează-te și autentifică-te din nou.",
+        "active": "Asistentul de ferestre GNOME este activ."
+      },
+      "enable": {
+        "label": "Permite agenților să folosească aplicații desktop",
+        "description": "Agenții pot vedea aplicațiile și site-urile de mai jos. Clicurile, scrierea și schimbările de pagină îți cer mai întâi voie."
+      },
+      "apps": {
+        "heading": "Aplicații permise",
+        "empty": "Încă nu există aplicații. Agenții pot folosi doar aplicațiile pe care le adaugi aici.",
+        "add": "Adaugă o aplicație",
+        "remove": "Elimină {{name}}",
+        "missing": "Acest program nu a fost găsit pe acest computer. Elimin-o sau reinstalează aplicația.",
+        "dialog": {
+          "title": "Adaugă o aplicație",
+          "description": "Alege o aplicație pe care o pot folosi agenții. După ce aprobi, o pot deschide, îi pot citi ferestrele și pot lucra în ea.",
+          "search": "Caută aplicații",
+          "loading": "Se caută aplicații…",
+          "none": "Nicio aplicație nu se potrivește.",
+          "choose": "Alege altă aplicație…",
+          "add": "Adaugă",
+          "added": "Deja adăugată.",
+          "more": "Se arată {{shown}} din {{total}}. Caută ca să restrângi lista.",
+          "refresh": "Reîmprospătează"
+        },
+        "blocked": {
+          "oleafly": "Oleafly nu se poate controla pe sine.",
+          "driver": "Cua Driver nu se poate controla pe sine.",
+          "terminal": "Terminalele rulează comenzi fără aprobarea de comenzi din Oleafly.",
+          "system_settings": "Setările sistemului pot schimba permisiuni.",
+          "passwords": "Aplicațiile de parole rămân în afara accesului.",
+          "scripting": "Programele care rulează scripturi pot face orice pe acest computer.",
+          "wrapper": "Această intrare pornește alt program. Alege în schimb acel program.",
+          "sandboxed": "Aplicațiile Flatpak și Snap nu sunt încă acceptate.",
+          "browser": "Adaugă în schimb site-urile unui browser la Site-uri permise."
+        }
+      },
+      "sites": {
+        "heading": "Site-uri permise",
+        "empty": "Încă nu există site-uri.",
+        "add": "Adaugă un site",
+        "placeholder": "https://www.example.org",
+        "remove": "Elimină {{origin}}",
+        "signedIn": {
+          "label": "Folosește browserul meu autentificat",
+          "labelFor": "Folosește browserul meu autentificat pe {{origin}}",
+          "description": "Pe acest site, agenții lucrează în propriul tău Chrome sau Edge. Lasă opțiunea dezactivată ca să folosească un profil de browser separat."
+        }
+      },
+      "scripted": {
+        "label": "Control prin scripturi",
+        "description": "Permite agenților să ruleze scripturi Cua care fac mai mulți pași deodată. Oleafly întreabă înaintea fiecărui script."
+      },
+      "test": {
+        "action": "Testează conexiunea",
+        "running": "Se testează…",
+        "ok": "Cua Driver rulează cu limitele tale.",
+        "problems": "Verificarea proprie a Cua Driver a raportat în plus:",
+        "failed": "Testul a eșuat: {{detail}}"
+      },
+      "tool": {
+        "description": "Folosește aplicațiile desktop și site-urile pe care le-ai permis în Setări.",
+        "note": "Privitul se face imediat. Clicurile, scrierea și schimbările de pagină cer mai întâi voie."
+      },
+      "task": {
+        "label": "Aplicații desktop",
+        "description": "Permite acestei sarcini să folosească aplicațiile desktop permise. Trebuie să fii la computer ca să aprobi acțiunile.",
+        "off": "Activează mai întâi Aplicații desktop în Setări.",
+        "unattended": "Sarcinile care rulează programat sau după ce se închide Oleafly nu pot folosi aplicații desktop."
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "Conectează desktopuri și containere izolate din Cua Spaces ca server MCP. Experimental.",
+        "notInstalled": "Comanda cua nu este instalată.",
+        "connect": {
+          "label": "Conectează Cua Spaces",
+          "description": "Agenții îți pot lista Space-urile și pot urmări agenții care rulează acolo."
+        },
+        "fullAccess": {
+          "label": "Permite modificări",
+          "description": "Agenții pot și să creeze sau să șteargă Space-uri și să ruleze comenzi în ele."
+        },
+        "credentials": {
+          "label": "Partajează autentificările agenților mei",
+          "description": "Permite agenților care pornesc într-un Space să folosească autentificarea ta Claude Code sau Codex."
+        },
+        "failed": "Oleafly nu a putut actualiza conexiunea cu Cua Spaces.",
+        "install": {
+          "terminalTitle": "Instalarea Cua",
+          "confirm": "Comanda descarcă programul de instalare Cua de pe cua.ai și îl rulează în terminalul tău. Continui?"
+        }
+      }
     }
   },
   "language": {
@@ -1794,7 +2096,8 @@
       "unavailable": "Această copie a Oleafly nu include comanda."
     },
     "title": "Comandă de terminal",
-    "update": "Actualizează"
+    "update": "Actualizează",
+    "newTerminal": "Deschide un terminal nou ca să folosești oleafly. Terminalele deja deschise nu văd schimbarea."
   },
   "shortcuts": {
     "actions": {
@@ -1818,10 +2121,6 @@
         "description": "Deschide lista de scurtături a proiectului.",
         "label": "Lista de scurtături"
       },
-      "toggleBrowser": {
-        "description": "Arată sau ascunde browserul proiectului.",
-        "label": "Arată sau ascunde browserul"
-      },
       "toggleSidebar": {
         "description": "Arată sau ascunde bara laterală a proiectului.",
         "label": "Arată sau ascunde bara laterală"
@@ -1833,6 +2132,22 @@
       "toggleTerminal": {
         "description": "Arată sau ascunde terminalul proiectului.",
         "label": "Arată sau ascunde terminalul"
+      },
+      "newTerminal": {
+        "description": "Deschide altă filă de terminal.",
+        "label": "Terminal nou"
+      },
+      "closeTerminal": {
+        "description": "Închide fila de terminal în care scrii.",
+        "label": "Închide terminalul"
+      },
+      "nextTerminal": {
+        "description": "Treci la următoarea filă de terminal.",
+        "label": "Terminalul următor"
+      },
+      "previousTerminal": {
+        "description": "Treci la fila de terminal anterioară.",
+        "label": "Terminalul anterior"
       },
       "openFolder": {
         "label": "Deschide un folder",
@@ -1987,6 +2302,36 @@
       "elsewhere": "Meniul deschide o altă copie Oleafly. Repară-l ca să folosești aceasta.",
       "moved": "Indică o copie Oleafly care a fost mutată. Repar-o ca să folosești aceasta.",
       "noDefaultFileManager": "Sistemul nu are un manager de fișiere implicit pentru foldere, așa că această intrare ar putea deschide orice folder în Oleafly. Elimin-o."
+    }
+  },
+  "research": {
+    "background": {
+      "title": "Sarcini în fundal",
+      "enabled": {
+        "label": "Păstrează sarcinile în execuție după ce închizi Oleafly",
+        "description": "Sarcinile pe care le marchezi să continue trec la un mic proces auxiliar din fundal când ieși din aplicație. Oleafly le preia înapoi când îl deschizi."
+      },
+      "atLogin": {
+        "label": "Pornește procesul auxiliar când te conectezi la computer",
+        "description": "Reia sarcinile din fundal după o repornire. Procesul auxiliar se închide când nu are nimic de făcut.",
+        "moveApp": "Mută mai întâi Oleafly în folderul Aplicații.",
+        "needsBackground": "Activează mai întâi sarcinile în fundal."
+      },
+      "status": {
+        "label": "Proces auxiliar din fundal",
+        "running": "Rulează",
+        "stopped": "Nu rulează",
+        "notResponding": "Nu răspunde",
+        "tasks_one": "Lucrează la {{count}} sarcină",
+        "tasks_few": "Lucrează la {{count}} sarcini",
+        "tasks_other": "Lucrează la {{count}} de sarcini"
+      },
+      "stop": "Oprește procesul auxiliar",
+      "stopHint": "Sarcinile lui rămân în pauză până deschizi din nou Oleafly.",
+      "stopFailed": "Procesul auxiliar nu s-a oprit. Încearcă din nou.",
+      "openLog": "Arată jurnalul",
+      "statusFailed": "Starea procesului auxiliar din fundal nu a putut fi citită.",
+      "toggleFailed": "Setarea nu a putut fi schimbată. Încearcă din nou."
     }
   }
 }

@@ -43,7 +43,6 @@ test("workspace controls fit at the minimum window width with larger interface t
   await createBlankProject(page, "Layout geometry");
   await page.evaluate(`import("/src/store/settings.ts").then(({ useSettingsStore }) => {
     useSettingsStore.getState().setAppFontSize(22);
-    useSettingsStore.getState().setWebBrowser(true);
   })`);
   await expect.poll(async () => (await toolbarGeometry(page)).blocked).toEqual([]);
 });
@@ -60,7 +59,6 @@ test("wide toolbars restore direct actions and center the view group after resiz
   ] as const) {
     await page.evaluate(`Promise.all([import("/src/lib/e2e-probe.ts"), import("/src/store/settings.ts")]).then(async ([w, s]) => {
       s.useSettingsStore.getState().setAppFontSize(${fontSize});
-      s.useSettingsStore.getState().setWebBrowser(true);
       document.documentElement.style.zoom = '${zoom}';
       await w.resizeCurrentWindow(${width}, 800);
     })`);

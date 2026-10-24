@@ -38,12 +38,13 @@ Oleafly محرر قوي لكتابة الأوراق البحثية والأطر�
 - محرر مصنوع للمستندات الطويلة: إكمال للتسميات والاستشهادات والأوامر، وفحص مباشر للأخطاء، ومخطط للمشروع كله، ومفاتيح Vim وEmacs، ووضع مرئي، ولوحة قابلة للبحث تضم 236 رمزًا من رموز LaTeX.
 - جمّع على حاسوبك. تأتي Tectonic وTypst وPandoc مدمجة في التطبيق، ويتولى TeX Live أو MacTeX أو MiKTeX أو TinyTeX المهمة عندما يحتاج المشروع إلى توزيعة كاملة.
 - انقر في PDF للانتقال إلى المصدر ثم العودة، ويبقى آخر PDF سليم على الشاشة بينما تصلح خطأً.
-- كل مشروع مستودع Git يمكنك دفعه إلى GitHub، وتحفظ نقاط التحقق لقطة بعد كل تجميع ناجح.
+- كل مشروع مستودع Git يمكنك دفعه إلى GitHub أو GitLab أو Gitea أو Forgejo أو Codeberg أو خادم Git الخاص بك، وتحفظ نقاط التحقق لقطة بعد كل تجميع ناجح.
 - استشهد من مكتبة Zotero الخاصة بك أثناء الكتابة، وابحث في arXiv وSemantic Scholar وCrossref وPubMed وOpenAlex من دون مغادرة المحرر.
 - يعمل على حاسوبك تدقيق إملائي ونحوي مضبوط للكتابة الأكاديمية.
 - يكتشف Preflight قبل التقديم المراجع المعطوبة، والأشكال المفقودة، والخطوط التي لم تُضمَّن، وثغرات إمكانية الوصول، وأي شيء قد يكشف هوية المؤلفين في مراجعة مجهولة.
 - ارسم أشكالًا تبقى شيفرة TikZ أو Typst أو Mermaid، وابدأ من أكثر من 1,700 قالب للأوراق والأطروحات والشرائح والملصقات والسير الذاتية.
-- استورد من Word، أو ملف PDF، أو مصدر arXiv، أو مستودع GitHub، أو حساب LaTeX على الإنترنت.
+- استورد من Word، أو ملف PDF، أو مصدر arXiv، أو مستودع Git، أو حساب LaTeX على الإنترنت.
+- يبني الأمر `oleafly` مشاريعك ويفحصها ويزامنها من أي طرفية أو مهمة CI، بالمترجمات والإعدادات نفسها التي يستخدمها التطبيق.
 - تُبقي المزامنة السحابية مشروعاتك على كل حاسوب تستخدمه، ويمكنك مواصلة الكتابة دون اتصال.
 - يعمل Claude Code وCodex و12 وكيلًا آخر داخل مشروعك، أو يمكنك وصل أي نموذج، بما في ذلك النماذج المحلية. الذكاء الاصطناعي اختياري، وكل تغيير يجريه فرقٌ يمكنك مراجعته والتراجع عنه.
 - تُجري مهام البحث مراجعة أدبيات أو تدقيق أدلة أو جولة تنقيح في نسخة منفصلة من المشروع بينما تواصل الكتابة، وتختار أنت الملفات المتغيرة التي تحتفظ بها.
@@ -143,8 +144,9 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 - كل تغيير في ملف هو فرق. وافق على كل تغيير، أو دع المساعد يعمل بمفرده، أو اضبط قواعد لكل أداة، وتراجع عن ملف واحد أو عن دور كامل.
 - يرسم وضع التخطيط خريطة للمشروع قبل كتابة أي شيء.
 - يمكن تشغيل مراجعة أدبيات أو جولة تنقيح في Git worktree خاص بها بينما تواصل الكتابة. وتختار أنت الملفات المتغيرة التي تحتفظ بها.
-- يأتي التطبيق مع 36 مهارة بحثية، منها مسح الأدبيات، والأعمال ذات الصلة، والتحقق من الادعاءات، ورسائل الرد على المراجعين.
+- يأتي التطبيق مع 39 مهارة بحثية، منها مسح الأدبيات، والأعمال ذات الصلة، والتحقق من الادعاءات، ورسائل الرد على المراجعين.
 - يتيح خادم MCP محلي لعميل ذكاء اصطناعي خارجي استخدام أدوات المشروع نفسها. ولا يستمع إلا على 127.0.0.1.
+- يمنح `oleafly mcp` كلًا من Claude Code وCodex وCursor وGemini CLI أدوات المشروع عبر stdio، سواء كان التطبيق مفتوحًا أو مغلقًا.
 
 الذكاء الاصطناعي اختياري. يعمل المحرر والمترجم وPDF والاستشهادات والتدقيق اللغوي والفحوصات كلها عند إيقافه.
 
@@ -194,13 +196,15 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 
 ## Git والسجل وطرفية
 
-كل مشروع مجلد عادي فيه مستودع Git عادي. جهّز الملفات، واعرض الفروق، وأنشئ commit، وادفع واسحب وانشر إلى GitHub من لوحة التحكم بالمصدر، أو استخدم طرفيتك الخاصة، فلا شيء مخفي عنها. وتحفظ نقاط التحقق لقطة محلية بعد كل تجميع ناجح، لذلك يمكنك العودة إلى حالة سابقة من دون إنشاء commit.
+كل مشروع مجلد عادي فيه مستودع Git عادي. جهّز الملفات، واعرض الفروق، وأنشئ commit، وادفع واسحب وانشر إلى GitHub أو GitLab أو Gitea أو Forgejo أو Codeberg أو خادمك الخاص من لوحة التحكم بالمصدر، أو استخدم طرفيتك الخاصة، فلا شيء مخفي عنها. وتحفظ نقاط التحقق لقطة محلية بعد كل تجميع ناجح، لذلك يمكنك العودة إلى حالة سابقة من دون إنشاء commit.
 
 <p align="center">
   <img src="../assets/readme/git-history.png" alt="لوحة التحكم بالمصدر في Oleafly مع فرق ورسم للفروع وعناصر التحكم في commits" width="100%" />
 </p>
 
 توجد طرفية أسفل المحرر بما يصل إلى عشر علامات تبويب لكل مشروع. انقر مع الضغط على Cmd (أو Ctrl) على مسار ملف في مخرجاتها لفتحه عند ذلك السطر.
+
+يعمل الأمر `oleafly` على المشاريع نفسها من أي طرفية: البناء، وإعادة البناء عند كل تغيير، والفحص قبل الإرسال، والمزامنة مع خدمة LaTeX على الإنترنت، أو تشغيل وكيل Oleafly من دون فتح التطبيق. ويمكن لكل أمر أن يطبع JSON مع رموز خروج ثابتة للنصوص البرمجية وCI. راجع [دليل سطر الأوامر](../cli.md).
 
 ## والمزيد أيضًا
 
@@ -274,21 +278,21 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 </details>
 
 <details>
-<summary>المهارات البحثية الـ 36 المرفقة مع Oleafly</summary>
+<summary>المهارات البحثية الـ 39 المرفقة مع Oleafly</summary>
 
 المهارات مجلدات `SKILL.md` عادية تتبع بنية Agent Skills. شغّل إحداها بأمر شرطة مائلة، أو أضف مهاراتك الخاصة، أو شاركها مع وكلاء CLI المتوافقين على الحاسوب نفسه.
 
-تضم حزمة `research-core` المرفقة 36 مهارة. والأسماء أدناه هي المعرّفات المستخدمة في الكتالوج وإعدادات المشروع.
+تضم حزمة `research-core` المرفقة 39 مهارة. والأسماء أدناه هي المعرّفات المستخدمة في الكتالوج وإعدادات المشروع.
 
 | الفئة | المهارات |
 | --- | --- |
-| البحث والأدبيات | `citation-management`، `exploratory-data-analysis`، `hypothesis-generation`، `literature-review`، `oleafly-literature-sweep`، `oleafly-research-loop`، `openresearch`، `paper-lookup`، `research-lookup`، `scientific-brainstorming`، `scientific-critical-thinking` |
+| البحث والأدبيات | `citation-management`، `exploratory-data-analysis`، `hypothesis-generation`، `literature-review`، `oleafly-experiment-loop`، `oleafly-literature-sweep`، `oleafly-research-loop`، `openresearch`، `paper-lookup`، `research-lookup`، `scientific-brainstorming`، `scientific-critical-thinking` |
 | تأليف المخطوطة وتحليلها | `experimental-design`، `oleafly-data-analysis`، `oleafly-manuscript-scaffold`، `oleafly-related-work`، `scientific-writing`، `statistical-analysis`، `statistical-power`، `venue-templates` |
 | الأشكال والتصور | `oleafly-figure-prep`، `scientific-schematics`، `scientific-visualization` |
 | المراجعة والأدلة | `oleafly-response-letter`، `oleafly-review-manuscript`، `oleafly-verify-claims`، `peer-review`، `scholar-evaluation` |
 | التقديم | `oleafly-pre-submission` |
 | التواصل | `oleafly-slides-and-posters`، `pptx-posters`، `research-grants`، `scientific-slides` |
-| الاستيراد وأدوات البناء | `import-refine`، `oleafly-latex-build`، `pdf-to-latex`، `template-generate` |
+| الأدوات والأتمتة | `desktop-apps`، `import-refine`، `oleafly-cli`، `oleafly-latex-build`، `pdf-to-latex`، `template-generate` |
 
 </details>
 
@@ -367,6 +371,7 @@ curl -fsSL https://oleafly.com/server/install.sh | sudo sh
 - [AI Copilot](../AICopilot.md)
 - [المهارات](../Skills.md)
 - [تكامل MCP](../mcp.md)
+- [أداة سطر الأوامر](../cli.md)
 - [إعداد التطوير](../development.md)
 - [سجل التغييرات](../../CHANGELOG.md)
 

@@ -19,7 +19,6 @@
     "selectAll": "Marker alt",
     "view": "Vis",
     "toggleTerminal": "Vis eller skjul terminalen",
-    "toggleBrowser": "Vis eller skjul nettleseren",
     "file": "Arkiv",
     "openFolder": "Åpne mappe…",
     "openRecent": "Åpne nylig brukt",
@@ -28,15 +27,7 @@
     "minimize": "Minimer",
     "fullscreen": "Slå fullskjerm av eller på",
     "bringAllToFront": "Legg alle øverst",
-    "newTab": "Ny fane",
-    "openLocation": "Åpne adresse…",
-    "closeTab": "Lukk fane",
-    "reloadPage": "Last inn siden på nytt",
     "zenMode": "Zen-modus"
-  },
-  "window": {
-    "browser": "Oleafly-nettleser",
-    "browserTitled": "{{title}} - Oleafly-nettleser"
   },
   "dialog": {
     "cancel": "Avbryt",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Bekreft import av cookies",
-      "messageHost": "Vil du importere cookies for {{hostname}} fra {{browser}}-profilen \"{{profile}}\" til den innebygde nettleseren i Oleafly? Importerte cookies kan logge deg inn på nettsteder.",
-      "messageAll": "Vil du importere alle cookies fra {{browser}}-profilen \"{{profile}}\" til den innebygde nettleseren i Oleafly? Importerte cookies kan logge deg inn på nettsteder.",
-      "confirm": "Importer cookies"
+      "copyHost": "Vil du kopiere cookies for {{hostname}} fra {{browser}}-profilen «{{profile}}» til Oleafly? De kan logge deg inn på {{hostname}}.",
+      "copyAll": "Vil du kopiere alle cookies fra {{browser}}-profilen «{{profile}}» til Oleafly? De kan logge deg inn på nettsteder.",
+      "copyConfirm": "Kopier cookies"
     },
     "mcpApprove": {
       "title": "Godkjenn MCP-verktøy",
@@ -103,6 +94,51 @@
       "confirm": "Bruk programmet",
       "pickTitle": "Velg programmet for {{name}}",
       "filter": "Programmer"
+    },
+    "desktopApps": {
+      "title": "Skrivebordsapper",
+      "action": "{{agent}} vil {{action}}.",
+      "steps": "{{agent}} vil kjøre disse trinnene i en skrivebordsapp:",
+      "moreSteps": "Trinn som ikke vises: {{count}}",
+      "moreItems": "{{count}} elementer til vises ikke",
+      "cut": "(+{{count}} tegn vises ikke)",
+      "signedIn": "Dette skjer i din egen innloggede nettleser.",
+      "signedInOn": "Dette skjer i din egen innloggede nettleser, på {{origin}}.",
+      "text": "Tekst: «{{text}}»",
+      "address": "Adresse: {{url}}",
+      "allowOnce": "Tillat én gang",
+      "allowChat": "Tillat for denne samtalen",
+      "allowSession": "Tillat for denne økten",
+      "allowTask": "Tillat for denne oppgaven",
+      "deny": "Ikke tillat",
+      "actions": {
+        "launchApp": "åpne en app",
+        "click": "klikke i en app",
+        "doubleClick": "dobbeltklikke i en app",
+        "rightClick": "høyreklikke i en app",
+        "typeText": "skrive i en app",
+        "pressKey": "trykke på en tast i en app",
+        "hotkey": "bruke en hurtigtast i en app",
+        "scroll": "rulle i en app",
+        "setValue": "endre et felt i en app",
+        "browserPrepare": "åpne en nettleser for et nettsted",
+        "browserNavigate": "gå til en nettside",
+        "browserClick": "klikke på en nettside",
+        "browserType": "skrive på en nettside",
+        "browserSelect": "velge et alternativ på en nettside",
+        "runScript": "kjøre et Cua-skript"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Vil du tillate styring av skrivebordet?",
+      "message": "Agenter vil kunne bruke følgende, og de spør fortsatt før hver handling:",
+      "confirm": "Tillat",
+      "enabled": "Skrivebordsapper",
+      "app": "App: {{name}} ({{identity}})",
+      "more": "Og {{count}} til",
+      "site": "Nettsted: {{origin}}",
+      "signedIn": "Den innloggede nettleseren din på {{origin}}",
+      "scripted": "Cua-skript"
     }
   },
   "errors": {
@@ -128,5 +164,41 @@
   "cloud": {
     "connectedPage": "Du er tilkoblet. Du kan lukke denne fanen og gå tilbake til Oleafly.",
     "failedPage": "Innloggingen ble ikke fullført. Du kan lukke denne fanen og gå tilbake til Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Oppgaven er klar til gjennomgang",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Planen er klar til godkjenning",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "En oppgave trenger godkjenningen din",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Oppgaven stoppet",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Budsjettet for oppgaven er brukt opp",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly jobber videre",
+      "body": "Forskningsoppgaver du har merket for å fortsette å kjøre, fortsetter i bakgrunnen. Åpne Oleafly for å se fremdriften."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Tillatelsessjekkene er av ({{mode}})",
+      "description": "Agenten kan endre filer og kjøre kommandoer uten å spørre. Oleafly kunne ikke bytte den til en annen modus. Endre modusen i agentens egne innstillinger."
+    }
   }
 }

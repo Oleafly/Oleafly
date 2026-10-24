@@ -10,12 +10,15 @@ vi.mock("@/lib/acp", async (original) => ({
   ...await original<typeof import("@/lib/acp")>(),
   acpCatalog: vi.fn(), acpRegister: vi.fn(), acpInstall: vi.fn(), acpRegistrySearch: vi.fn(), acpRemoveAgent: vi.fn(), acpStart: vi.fn(),
   acpCheckAgent: vi.fn(), acpPickAgentProgram: vi.fn(), acpSetAgentProgram: vi.fn(),
+  acpPreferences: vi.fn(), acpSetPreferences: vi.fn(), acpAgentPreferences: vi.fn(), acpProviderChoices: vi.fn(),
+  acpHermesSettings: vi.fn(), acpHermesStatus: vi.fn(),
 }));
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
 
 import {
-  acpCatalog, acpCheckAgent, acpInstall, acpPickAgentProgram, acpRegister, acpRegistrySearch, acpRemoveAgent,
-  acpSetAgentProgram, acpStart, type AcpAgentStatus, type AcpCliStatus,
+  acpAgentPreferences, acpCatalog, acpCheckAgent, acpHermesSettings, acpHermesStatus, acpInstall, acpPickAgentProgram,
+  acpPreferences, acpProviderChoices, acpRegister, acpRegistrySearch, acpRemoveAgent,
+  acpSetAgentProgram, acpStart, type AcpAgentRuntimeInfo, type AcpAgentStatus, type AcpCliStatus,
 } from "@/lib/acp";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
@@ -49,6 +52,11 @@ beforeEach(() => {
   useSettingsStore.setState({ terminalOpen: false });
   useTerminalsStore.setState({ projectId: null, tabs: [], activeId: null, counters: {} });
   vi.mocked(acpCatalog).mockImplementation(async () => catalog);
+  vi.mocked(acpPreferences).mockResolvedValue({ experimentalV2: false, experimentalProviders: true, inactivityMinutes: 20 });
+  vi.mocked(acpAgentPreferences).mockResolvedValue({ effort: null, mode: null, provider: null });
+  vi.mocked(acpProviderChoices).mockResolvedValue([]);
+  vi.mocked(acpHermesSettings).mockResolvedValue({ mode: "default", profile: null, memory: false, toolGateway: false, remote: null });
+  vi.mocked(acpHermesStatus).mockResolvedValue({ mode: "default", profile: null, exists: false, gateway: "stopped", reason: null, memory: false, toolGateway: false });
   vi.mocked(acpRegister).mockImplementation(async (text) => {
     const definition = JSON.parse(text) as AcpAgentStatus["definition"];
     catalog = [...catalog, agent(definition.id, { definition, installed: false })];
@@ -437,8 +445,12 @@ describe("ACP agent setup acceptance", () => {
       copy.versionLabel,
       copy.platformLabel,
       copy.bridgeSourceLabel,
+      // Since 0.4.8: the protocol version the agent reported, if it has run.
+      copy.protocolLabel,
     ]);
-    expect(bridgeDetails.querySelector("dl")).toHaveClass("grid-cols-3");
+    expect(within(card).getByTestId("acp-agent-protocol-claude")).toHaveTextContent(copy.notReported);
+    // With the Protocol row: two columns, four from the sm width up.
+    expect(bridgeDetails.querySelector("dl")).toHaveClass("grid-cols-2", "sm:grid-cols-4");
     expect(within(card).getByTestId("acp-agent-install-claude")).toHaveTextContent(
       copy.installBridge,
     );
@@ -674,5 +686,58 @@ describe("CLI agent program setup", () => {
     ui.rerender(<AcpAgentsTab focusAgentId="pi" focusToken={3} onFocusHandled={() => onFocusHandled("new callback")} />);
     await act(async () => {});
     expect(onFocusHandled).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("0.4.8 agent card details", () => {
+  const runtime = (overrides: Partial<AcpAgentRuntimeInfo> = {}): AcpAgentRuntimeInfo => ({
+    protocol: 2, protocolLabel: "ACP v2 (draft 2.0.0-alpha.9)", providers: false, providersSupported: [], steering: true,
+    sessionList: true, sessionFork: true, sessionDelete: true, logout: true, authMethods: [], checkedAt: 1, ...overrides,
+  });
+
+  it("shows the agent's protocol", async () => {
+    catalog = [agent("fixture", { runtime: runtime() }), agent("other", { definition: { ...agent().definition, id: "other", name: "Other" } })];
+    const ui = render(<AcpAgentsTab />);
+    const card = await expandAgent(ui);
+    fireEvent.click(within(card).getByTestId("acp-agent-bridge-details-fixture-toggle"));
+    expect(within(card).getByTestId("acp-agent-protocol-fixture")).toHaveTextContent("ACP v2 (draft 2.0.0-alpha.9)");
+    const other = await expandAgent(ui, "other");
+    fireEvent.click(within(other).getByTestId("acp-agent-bridge-details-other-toggle"));
+    expect(within(other).getByTestId("acp-agent-protocol-other")).toHaveTextContent(copy.notReported);
+  });
+
+  it("warns Gemini users about Google sign-in", async () => {
+    catalog = [agent("gemini", { definition: { ...agent().definition, id: "gemini", name: "Gemini CLI" } }), agent()];
+    const ui = render(<AcpAgentsTab />);
+    const gemini = await expandAgent(ui, "gemini");
+    expect(within(gemini).getByTestId("acp-gemini-note")).toHaveTextContent(enAi.acp.signIn.geminiGoogle);
+    const fixture = await expandAgent(ui);
+    expect(within(fixture).queryByTestId("acp-gemini-note")).toBeNull();
+  });
+
+  it("shows remembered choices, key routing and the Hermes profile inside the open card", async () => {
+    catalog = [agent("hermes", { definition: { ...agent().definition, id: "hermes", name: "Hermes" }, runtime: runtime({ providers: true }) })];
+    const ui = render(<AcpAgentsTab projectId="paper" />);
+    const card = await expandAgent(ui, "hermes");
+    expect(await within(card).findByTestId("acp-agent-choices-hermes")).toBeInTheDocument();
+    expect(await within(card).findByTestId("acp-agent-providers-hermes")).toBeInTheDocument();
+    expect(await within(card).findByTestId("acp-hermes-section")).toBeInTheDocument();
+    expect(acpAgentPreferences).toHaveBeenCalledWith("hermes");
+    expect(acpHermesSettings).toHaveBeenCalledWith("paper");
+  });
+
+  it("leaves the Hermes profile out without a project and key routing out for agents that cannot route", async () => {
+    catalog = [agent("hermes", { definition: { ...agent().definition, id: "hermes", name: "Hermes" }, runtime: runtime({ providers: false }) })];
+    const ui = render(<AcpAgentsTab />);
+    const card = await expandAgent(ui, "hermes");
+    expect(await within(card).findByTestId("acp-agent-choices-hermes")).toBeInTheDocument();
+    expect(within(card).queryByTestId("acp-agent-providers-hermes")).toBeNull();
+    expect(within(card).queryByTestId("acp-hermes-section")).toBeNull();
+  });
+
+  it("ends the tab with the experimental settings", async () => {
+    catalog = [agent()];
+    const ui = render(<AcpAgentsTab />);
+    expect(await ui.findByTestId("acp-experimental")).toBeInTheDocument();
   });
 });

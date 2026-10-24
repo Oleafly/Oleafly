@@ -1,13 +1,29 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
 
-const toggleBrowser = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/browser-window", () => ({ toggleBrowser }));
 const toggleZenMode = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/zen-mode", () => ({ toggleZenMode }));
+const lifecycle = vi.hoisted(() => ({
+  requestCloseTerminals: vi.fn((_ids: readonly string[], close: () => void) => {
+    close();
+    return Promise.resolve(true);
+  }),
+  closeTerminalTabs: vi.fn(),
+}));
+vi.mock("@/lib/terminal-lifecycle", () => lifecycle);
 
-import { handleDockShortcut } from "./dock-shortcuts";
+import { useTerminalsStore } from "@/store/terminals";
+import { handleDockShortcut, handleTerminalTabShortcut } from "./dock-shortcuts";
+
+/** A target inside an xterm (and so inside the dock). */
+const insideTerminal = {
+  closest: (selector: string) => (selector === ".xterm" || selector === "[data-terminal-dock]" ? {} : null),
+};
+/** A target in the dock's tab strip, outside any xterm. */
+const insideDock = {
+  closest: (selector: string) => (selector === "[data-terminal-dock]" ? {} : null),
+};
 
 function keyboard(
   key: string,
@@ -29,7 +45,7 @@ function keyboard(
 
 describe("dock shortcuts", () => {
   beforeEach(() => {
-    useSettingsStore.setState({ terminalOpen: false, browserOpen: false, webBrowser: true });
+    useSettingsStore.setState({ terminalOpen: false });
     useShortcutStore.getState().resetAll();
   });
 
@@ -37,22 +53,16 @@ describe("dock shortcuts", () => {
     const event = keyboard("`", { ctrlKey: true });
 
     expect(handleDockShortcut(event)).toBe(true);
-    expect(useSettingsStore.getState()).toMatchObject({
-      terminalOpen: true,
-      browserOpen: false,
-    });
+    expect(useSettingsStore.getState().terminalOpen).toBe(true);
     expect(event.preventDefault).toHaveBeenCalledOnce();
     expect(event.stopPropagation).toHaveBeenCalledOnce();
   });
 
-  it("launches the browser window with fixed Ctrl+Shift+B", () => {
-    const event = keyboard("b", {
-      ctrlKey: true,
-      shiftKey: true,
-    });
+  it("leaves Ctrl+Shift+B alone now that there is no browser window", () => {
+    const event = keyboard("b", { ctrlKey: true, shiftKey: true });
 
-    expect(handleDockShortcut(event)).toBe(true);
-    expect(toggleBrowser).toHaveBeenCalled();
+    expect(handleDockShortcut(event)).toBe(false);
+    expect(event.preventDefault).not.toHaveBeenCalled();
     expect(useSettingsStore.getState().terminalOpen).toBe(false);
   });
 
@@ -73,18 +83,6 @@ describe("dock shortcuts", () => {
     expect(handleDockShortcut(keyboard("F11"))).toBe(false);
     expect(handleDockShortcut(keyboard("F10", { shiftKey: true }))).toBe(false);
     expect(toggleZenMode).not.toHaveBeenCalled();
-  });
-
-  it("leaves Ctrl+Shift+B to the visual editor's blockquote while it has focus", () => {
-    const event = keyboard("b", { ctrlKey: true, shiftKey: true });
-    Object.assign(event, {
-      target: { closest: (selector: string) => (selector === ".ProseMirror" ? {} : null) },
-    });
-    const calls = toggleBrowser.mock.calls.length;
-
-    expect(handleDockShortcut(event)).toBe(false);
-    expect(toggleBrowser).toHaveBeenCalledTimes(calls);
-    expect(event.preventDefault).not.toHaveBeenCalled();
   });
 
   it("ignores a character typed through AltGr that matches a Ctrl+Alt binding", () => {
@@ -119,9 +117,87 @@ describe("dock shortcuts", () => {
 
     expect(handleDockShortcut(event)).toBe(false);
     expect(event.preventDefault).not.toHaveBeenCalled();
-    expect(useSettingsStore.getState()).toMatchObject({
-      terminalOpen: false,
-      browserOpen: false,
-    });
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
+  });
+});
+
+describe("dock shortcuts and a focused terminal", () => {
+  const originalNavigator = globalThis.navigator;
+
+  beforeEach(() => {
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    useSettingsStore.setState({ terminalOpen: false });
+    useShortcutStore.getState().resetAll();
+    useTerminalsStore.setState({ projectId: null, tabs: [], activeId: null, counters: {} });
+    useTerminalsStore.getState().setProject("project-1");
+    toggleZenMode.mockClear();
+    lifecycle.requestCloseTerminals.mockClear();
+    lifecycle.closeTerminalTabs.mockClear();
+  });
+
+  afterEach(() => {
+    vi.stubGlobal("navigator", originalNavigator);
+  });
+
+  it("leaves Shift+F11 and Ctrl+Alt+B to a focused terminal", () => {
+    const zen = Object.assign(keyboard("F11", { shiftKey: true }), { target: insideTerminal });
+    const ctrlAltB = Object.assign(keyboard("b", { ctrlKey: true, altKey: true }), { target: insideTerminal });
+
+    expect(handleDockShortcut(zen)).toBe(false);
+    expect(handleDockShortcut(ctrlAltB)).toBe(false);
+    expect(toggleZenMode).not.toHaveBeenCalled();
+    expect(zen.preventDefault).not.toHaveBeenCalled();
+    expect(ctrlAltB.preventDefault).not.toHaveBeenCalled();
+
+    const outside = keyboard("F11", { shiftKey: true });
+    expect(handleDockShortcut(outside)).toBe(true);
+    expect(toggleZenMode).toHaveBeenCalledOnce();
+  });
+
+  it("still toggles the terminal from inside it", () => {
+    useSettingsStore.setState({ terminalOpen: true });
+    const event = Object.assign(keyboard("`", { ctrlKey: true }), { target: insideTerminal });
+
+    expect(handleDockShortcut(event)).toBe(true);
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
+  });
+
+  it("opens a new terminal with Ctrl+Shift+backquote from anywhere", () => {
+    const event = keyboard("~", { ctrlKey: true, shiftKey: true });
+
+    expect(handleTerminalTabShortcut(event)).toBe(true);
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(useTerminalsStore.getState().tabs).toHaveLength(2);
+    expect(useSettingsStore.getState().terminalOpen).toBe(true);
+  });
+
+  it("moves between terminal tabs only while the dock has focus", () => {
+    useTerminalsStore.getState().addTerminal();
+    const [first, second] = useTerminalsStore.getState().tabs;
+    expect(useTerminalsStore.getState().activeId).toBe(second.id);
+
+    const outside = keyboard("PageDown", { ctrlKey: true });
+    expect(handleTerminalTabShortcut(outside)).toBe(false);
+    expect(outside.preventDefault).not.toHaveBeenCalled();
+    expect(useTerminalsStore.getState().activeId).toBe(second.id);
+
+    const next = Object.assign(keyboard("PageDown", { ctrlKey: true }), { target: insideDock });
+    expect(handleTerminalTabShortcut(next)).toBe(true);
+    expect(useTerminalsStore.getState().activeId).toBe(first.id);
+
+    const previous = Object.assign(keyboard("PageUp", { ctrlKey: true }), { target: insideTerminal });
+    expect(handleTerminalTabShortcut(previous)).toBe(true);
+    expect(useTerminalsStore.getState().activeId).toBe(second.id);
+  });
+
+  it("closes the focused terminal through the confirmation", async () => {
+    const activeId = useTerminalsStore.getState().activeId;
+    const outside = keyboard("w", { ctrlKey: true, shiftKey: true });
+    expect(handleTerminalTabShortcut(outside)).toBe(false);
+
+    const event = Object.assign(keyboard("w", { ctrlKey: true, shiftKey: true }), { target: insideTerminal });
+    expect(handleTerminalTabShortcut(event)).toBe(true);
+    await vi.waitFor(() => expect(lifecycle.closeTerminalTabs).toHaveBeenCalledWith([activeId]));
+    expect(lifecycle.requestCloseTerminals).toHaveBeenCalledWith([activeId], expect.any(Function));
   });
 });

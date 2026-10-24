@@ -1,9 +1,7 @@
-use crate::native::{
-    bundled_tool_candidates, path_tool_candidates, resolve_executable, CandidateResolution,
-};
+use crate::native::{resolve_executable, CandidateResolution, Discovery};
 use oleafly_core::typst_toolchain::{
-    host_target, installed_typst_versions, typst_version_of, ToolchainVersion, TypstCapabilities,
-    TypstToolchainCatalog, TYPST_VERSION_TIMEOUT,
+    host_target, installed_typst_versions, system_typst_candidates, typst_version_of,
+    ToolchainVersion, TypstCapabilities, TypstToolchainCatalog, TYPST_VERSION_TIMEOUT,
 };
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -27,6 +25,16 @@ impl TypstOrigin {
             Self::Downloaded => "downloaded",
             Self::Bundled => "bundled",
             Self::System => "PATH",
+        }
+    }
+
+    /// The source word `oleafly version` prints.
+    pub(crate) const fn report_label(self) -> &'static str {
+        match self {
+            Self::Override => "override",
+            Self::Downloaded => "downloaded",
+            Self::Bundled => "bundled",
+            Self::System => "system",
         }
     }
 }
@@ -53,18 +61,17 @@ pub(crate) struct TypstInventory {
 }
 
 impl TypstInventory {
-    pub(crate) fn discover(workspace_root: &Path) -> Self {
+    /// Every Typst Oleafly can use: `OLEAFLY_TYPST`, the versions the app
+    /// downloaded, the bundled one (beside the CLI, then in the app), then
+    /// the system's.
+    pub(crate) fn discover_with(discovery: &Discovery) -> Self {
+        let workspace_root = discovery.workspace_root.as_path();
         let mut inventory = Self::default();
-        if let Some(value) = std::env::var_os(TYPST_OVERRIDE).filter(|value| !value.is_empty()) {
-            inventory.add(
-                PathBuf::from(value),
-                TypstOrigin::Override,
-                None,
-                workspace_root,
-            );
+        if let Some(value) = discovery.overrides.get(TYPST_OVERRIDE) {
+            inventory.add(value.clone(), TypstOrigin::Override, None, workspace_root);
         }
-        if let (Some(data_root), Some(target)) = (crate::desktop_link::data_root(), host_target()) {
-            for installed in installed_typst_versions(&data_root, target) {
+        if let (Some(data_root), Some(target)) = (discovery.data_root.as_deref(), host_target()) {
+            for installed in installed_typst_versions(data_root, target) {
                 inventory.add(
                     installed.path,
                     TypstOrigin::Downloaded,
@@ -73,10 +80,13 @@ impl TypstInventory {
                 );
             }
         }
-        for candidate in bundled_tool_candidates("typst") {
+        for candidate in discovery.bundled_candidates("typst") {
             inventory.add(candidate, TypstOrigin::Bundled, None, workspace_root);
         }
-        for candidate in path_tool_candidates("typst") {
+        for candidate in system_typst_candidates()
+            .into_iter()
+            .chain(discovery.path_candidates("typst"))
+        {
             inventory.add(candidate, TypstOrigin::System, None, workspace_root);
         }
         inventory
@@ -275,6 +285,29 @@ mod tests {
             found(version, TypstOrigin::Override, "/custom/typst"),
             found(Some("0.14.2"), TypstOrigin::System, "/usr/bin/typst"),
         ])
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_apps_bundled_typst_and_system_folders_are_in_the_inventory() {
+        use std::os::unix::fs::PermissionsExt;
+        let app = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        let typst = app.path().join("typst");
+        std::fs::write(&typst, "#!/bin/sh\necho 'typst 0.13.1 (abc)'\n").unwrap();
+        std::fs::set_permissions(&typst, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let discovery = Discovery {
+            workspace_root: project.path().canonicalize().unwrap(),
+            app: Some(crate::app_paths::InstalledApp {
+                executable: app.path().join("oleafly"),
+                bin_dir: app.path().to_path_buf(),
+                resources_dir: None,
+            }),
+            ..Discovery::default()
+        };
+        let inventory = TypstInventory::discover_with(&discovery);
+        let found = inventory.find(&typst.canonicalize().unwrap()).unwrap();
+        assert_eq!(found.source, TypstOrigin::Bundled);
     }
 
     #[test]

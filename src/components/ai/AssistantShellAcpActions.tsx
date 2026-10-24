@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import { BarChart3, Download, History, Plus, Settings2 } from "lucide-react";
+import { BarChart3, Download, History, ListTree, Plus, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AssistantFloatButton } from "@/components/ai/AssistantShellHeader";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,11 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { toast } from "@/lib/toast";
 import { exportConversation } from "@/components/ai/acp/export-conversation";
+
+const AcpHistoryDialog = lazy(() => import("@/components/ai/acp/AcpHistoryDialog"));
+
+/** Conversations listed in the history menu; the rest are in the dialog. */
+const MENU_CONVERSATIONS = 20;
 
 const UsageReportDialog = lazy(() =>
   import("@/components/usage/UsageReport").then((module) => ({
@@ -53,7 +58,8 @@ function SavedConversationItems({
     () =>
       Object.values(allSessions)
         .filter((value) => value.projectId === projectId && !isDelegatedSession(value))
-        .sort((a, b) => b.updatedAt - a.updatedAt),
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, MENU_CONVERSATIONS),
     [allSessions, projectId],
   );
   return sessions.map((value) => (
@@ -80,6 +86,7 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
     Object.values(state.sessions).some((value) => value.projectId === projectId && !isDelegatedSession(value)),
   );
   const [busy, setBusy] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const session = useAcpSessionView(activeId);
   const running = session?.status === "running" || session?.status === "cancelling";
   const installed = catalog.some((agent) => agent.definition.id === agentId && acpUsable(agent));
@@ -173,8 +180,25 @@ function AcpWorkspaceActions({ projectId }: Readonly<{ projectId: string }>) {
             agentName={agentName}
             onOpen={openSaved}
           />
+          <DropdownMenuSeparator />
+          <DropdownMenuItem data-testid="acp-history-all" onSelect={() => setHistoryOpen(true)}>
+            <ListTree className="size-3.5" />
+            {t(($) => $.ai.acp.history.all)}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {historyOpen && (
+        <Suspense fallback={null}>
+          <AcpHistoryDialog
+            projectId={projectId}
+            open
+            onClose={() => setHistoryOpen(false)}
+            onOpenSession={openSaved}
+            agentName={agentName}
+            importAgent={catalog.find((agent) => agent.definition.id === agentId)}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

@@ -398,4 +398,143 @@ describe("ACP projection details", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].msg.content).toBe("second");
   });
+
+  it("replaces the plan of a turn instead of adding another", () => {
+    const rows = projectAcpEvents([
+      event(1, "plan", { entries: [{ content: "Read", status: "pending" }] }),
+      event(2, "plan", { entries: [{ content: "Read", status: "completed" }, { content: "Write", status: "pending" }] }),
+    ], false);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.content).toBe("- [x] Read\n- [ ] Write");
+  });
+
+  it("explains refusal, output limit and request limit stops", () => {
+    for (const [reason, phrase] of [["refusal", "declined"], ["max_tokens", "output limit"], ["max_turn_requests", "request limit"]]) {
+      const rows = projectAcpEvents([chunk(1, "Partial"), event(2, "turn_complete", { stopReason: reason })], false);
+      expect(rows.at(-1)?.msg.notices?.[0]).toContain(phrase);
+    }
+    const done = projectAcpEvents([chunk(1, "Done"), event(2, "turn_complete", { stopReason: "end_turn" })], false);
+    expect(done).toHaveLength(1);
+  });
+
+  it("shows agent notices inline", () => {
+    const rows = projectAcpEvents([event(1, "notice", { severity: "warning", title: "Rate limited", description: "Retrying soon" })], false);
+    expect(rows[0].msg.notices).toEqual(["Rate limited: Retrying soon"]);
+  });
+
+  it("shows a notice with only a title or only a description, and none with neither", () => {
+    const rows = projectAcpEvents([
+      event(1, "notice", { title: "Rate limited" }),
+      event(2, "notice", { description: "Retrying soon" }),
+      event(3, "notice", {}),
+    ], false);
+    expect(rows.map((row) => row.msg.notices)).toEqual([["Rate limited"], ["Retrying soon"]]);
+  });
+
+  it("shows a failed or cancelled compaction as an error and an unfinished one as running", () => {
+    // While the turn is live, an unfinished step still reads as running.
+    const statusOf = (status: string) =>
+      projectAcpEvents([event(1, "compaction", { compactionId: "c", status })], true)[0].msg.toolCalls?.[0].status;
+    expect(statusOf("failed")).toBe("error");
+    expect(statusOf("cancelled")).toBe("error");
+    expect(statusOf("in_progress")).toBe("running");
+  });
+
+  it("shows compaction as a step with its summary", () => {
+    const rows = projectAcpEvents([
+      event(1, "compaction", { compactionId: "c1", status: "in_progress", summary: "" }),
+      event(2, "compaction", { compactionId: "c1", status: "completed", summary: "abc" }),
+    ], false);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.toolCalls?.[0]).toMatchObject({ id: "compaction:c1", status: "done", output: "abc" });
+  });
+
+  it("marks steered messages", () => {
+    const rows = projectAcpEvents([event(1, "user_message", { text: "Also this", steered: true })], true);
+    expect(rows[0].msg.steered).toBe(true);
+  });
+
+  it("lists sent files on the user's message", () => {
+    const rows = projectAcpEvents([event(1, "user_message", {
+      text: "Read these",
+      images: [{ mimeType: "image/png" }],
+      files: [{ name: "paper.pdf", mime: "application/pdf", size: 10 }],
+    })], false);
+    expect(rows[0].msg.attachments?.map((entry) => entry.name)).toEqual(["Image 1", "paper.pdf"]);
+  });
+
+  it("still renders a 0.4.7 user message with images only", () => {
+    const rows = projectAcpEvents([event(1, "user_message", { text: "Old", images: [{ mimeType: "image/jpeg" }] })], false);
+    expect(rows[0].msg.attachments).toEqual([{ name: "Image 1", mediaType: "image/jpeg" }]);
+  });
+
+  it("marks committed files on the turn's changes in either order", () => {
+    const changes = { snapshotId: "s1", files: [{ index: 0, path: "main.tex", change: "modified", beforeSize: 1, afterSize: 2, added: 1, removed: 0, alsoEditedHere: false, build: false }], moreFiles: 0, skipped: [], overlapped: false, unavailable: null };
+    const commit = event(4, "turn_commit", { turnId: "turn-1", commit: "abc1234", paths: ["main.tex"] });
+    const before = projectAcpEvents([chunk(1, "Done"), event(2, "turn_changes", { ...changes, turnId: "turn-1" }), commit], false);
+    expect(before[0].msg.turnChanges?.committed).toEqual({ "main.tex": "abc1234" });
+    const after = projectAcpEvents([chunk(1, "Done"), commit, event(5, "turn_changes", { ...changes, turnId: "turn-1" })], false);
+    expect(after[0].msg.turnChanges?.committed).toEqual({ "main.tex": "abc1234" });
+  });
+
+  it("replaces a message when the agent rewrites it", () => {
+    const rows = projectAcpEvents([
+      chunk(1, "Draft one"),
+      event(2, "agent_message_chunk", { content: { type: "text", text: "Final" }, replace: true }),
+    ], false);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.content).toBe("Final");
+  });
+
+  it("appends tool output chunks", () => {
+    const piece = (sequence: number, value: string) => event(sequence, "tool_call_update", {
+      toolCallId: "t", status: "in_progress", append: true,
+      content: [{ type: "content", content: { type: "text", text: value } }],
+    });
+    const rows = projectAcpEvents([event(1, "tool_call", { toolCallId: "t", title: "Run" }), piece(2, "ab"), piece(3, "c")], true);
+    expect(rows[0].msg.toolCalls?.[0].output).toBe("abc");
+  });
+
+  it("keeps a tool call's output and diffs through an update that carries none", () => {
+    const diff = { type: "diff", path: "main.tex", oldText: "a", newText: "b" };
+    const output = { type: "content", content: { type: "text", text: "first" } };
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "t", title: "Edit", status: "in_progress", content: [diff, output] }),
+      event(2, "tool_call_update", { toolCallId: "t", status: "completed" }),
+    ], true);
+    expect(rows[0].msg.toolCalls?.[0]).toMatchObject({
+      status: "done",
+      output: "first",
+      diffs: [{ path: "main.tex", oldText: "a", newText: "b", truncated: false }],
+    });
+  });
+
+  it("replaces output, and drops diffs, when a replacing update has new content without diffs", () => {
+    const diff = { type: "diff", path: "main.tex", oldText: "a", newText: "b" };
+    const text = (value: string) => ({ type: "content", content: { type: "text", text: value } });
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "t", title: "Edit", status: "in_progress", content: [diff, text("first")] }),
+      event(2, "tool_call_update", { toolCallId: "t", status: "in_progress", content: [text("second")] }),
+    ], true);
+    expect(rows[0].msg.toolCalls?.[0].output).toBe("second");
+    expect(rows[0].msg.toolCalls?.[0]).not.toHaveProperty("diffs");
+  });
+
+  it("keeps the diffs when an appending update has none", () => {
+    const diff = { type: "diff", path: "main.tex", oldText: "a", newText: "b" };
+    const text = (value: string) => ({ type: "content", content: { type: "text", text: value } });
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "t", title: "Edit", status: "in_progress", content: [diff, text("first")] }),
+      event(2, "tool_call_update", { toolCallId: "t", status: "in_progress", append: true, content: [text(" more")] }),
+    ], true);
+    expect(rows[0].msg.toolCalls?.[0]).toMatchObject({
+      output: "first more",
+      diffs: [{ path: "main.tex" }],
+    });
+  });
+
+  it("records the turn of every row", () => {
+    const rows = projectAcpEvents([chunk(1, "Hello")], false);
+    expect(rows[0].msg.turnId).toBe("turn-1");
+  });
 });

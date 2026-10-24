@@ -80,17 +80,50 @@
   "export": {
     "bibliography_unreadable": "Oleafly kunne ikke lese litteraturlisten {{name}}. Se etter en ødelagt oppføring, og eksporter på nytt."
   },
-  "github": {
-    "sign_in_expired": "Innloggingskoden utløp. Prøv igjen.",
-    "sign_in_cancelled": "GitHub-autorisasjonen ble avbrutt.",
-    "sign_in_failed": "Innlogging med GitHub mislyktes.",
-    "repositories_unavailable": "Kunne ikke laste inn repositoriene.",
-    "create_repo_failed": "Kunne ikke opprette repositoriet ({{status}})."
-  },
   "git": {
-    "remote_exists": "Dette prosjektet er allerede koblet til {{remote}}.",
+    "access_denied": "{{host}} nektet tilgang til dette repositoriet. Sjekk at kontoen din har tilgang til det. Hvis organisasjonen bruker enkel pålogging (SSO), må du først godkjenne påloggingen din for den.",
+    "access_denied_account": "{{host}} nektet {{account}} tilgang til dette repositoriet. Sjekk at denne kontoen har tilgang til det. Hvis organisasjonen bruker enkel pålogging (SSO), må du først godkjenne påloggingen din for den.",
+    "account_missing": "Det finnes ingen Git-konto for {{host}}. Legg til en i Innstillinger.",
+    "archive_too_large": "Filene i repositoriet er større enn {{limit}} MB, så Oleafly kan ikke importere dem. Klon repositoriet selv, og åpne mappen i stedet.",
+    "auth_rejected": "{{host}} avviste den lagrede innloggingen for {{account}}. Logg inn på {{host}} på nytt i Innstillinger.",
+    "credentials_missing": "{{host}} ba om brukernavn og passord. Logg inn på {{host}} i Innstillinger, eller sett opp en SSH-nøkkel eller en credential helper for Git.",
+    "credentials_rejected": "{{host}} avviste brukernavnet og passordet som Git sendte. Logg inn på {{host}} i Innstillinger, eller oppdater innloggingsopplysningene som Git bruker.",
+    "device_flow_unavailable": "Innlogging i nettleseren er ikke tilgjengelig for {{host}} i denne versjonen. Bruk et tilgangstoken i stedet.",
+    "forge_bad_response": "{{host}} sendte et svar Oleafly ikke kunne lese.",
+    "forge_ca_file_invalid": "Oleafly kunne ikke lese et sertifikat fra denne filen. Velg en PEM- eller DER-sertifikatfil på under 1 MB.",
+    "forge_forbidden": "{{host}} avviste dette. Tokenet mangler kanskje tillatelsene {{scopes}}.",
+    "forge_https_required": "Bruk en https://-adresse. Vanlig http fungerer bare for servere på ditt eget nettverk.",
+    "forge_invalid_repository": "Det er ikke en repositoriebane Oleafly kan bruke.",
+    "forge_invalid_repository_name": "Bruk bare bokstaver, sifre, punktum, bindestreker og understreker i navnet på repositoriet.",
+    "forge_invalid_server": "{{server}} er ikke en serveradresse Oleafly kan bruke.",
+    "forge_missing_scopes": "Dette tokenet kan ikke pushe til {{host}}. Opprett et token med tillatelsene {{scopes}}.",
+    "forge_not_found": "{{host}} fant ikke det repositoriet.",
+    "forge_rate_limited": "{{host}} begrenser forespørsler akkurat nå. Prøv igjen om et minutt.",
+    "forge_redirect_refused": "{{host}} prøvde å sende Oleafly videre til {{target}}, så Oleafly stoppet for å beskytte innloggingen din.",
+    "forge_repository_exists": "Det finnes allerede et repositorium med dette navnet på {{host}}.",
+    "forge_server_error": "{{host}} returnerte en feil ({{status}}).",
+    "forge_signed_out": "Innloggingen din for {{host}} har utløpt eller blitt trukket tilbake. Logg inn på nytt i Innstillinger.",
+    "forge_sso_required": "{{host}} krever at denne innloggingen er godkjent for organisasjonens enkle pålogging (SSO). Godkjenn den på {{host}}, og prøv deretter igjen.",
+    "forge_store": "Oleafly kunne ikke lese eller lagre Git-kontoene dine.",
+    "forge_token_invalid": "Dette ser ikke ut som et tilgangstoken. Lim inn hele tokenet.",
+    "forge_token_rejected": "{{host}} godtok ikke dette tokenet. Sjekk at du kopierte hele tokenet, og at det ikke har utløpt.",
+    "forge_unknown_server": "Oleafly kunne ikke avgjøre hva slags server {{host}} er. Velg servertype.",
+    "host_key_unknown": "SSH kjenner ikke {{host}} ennå. Koble til serveren én gang fra en terminal for å godta vertsnøkkelen, og prøv deretter igjen.",
+    "host_unreachable": "Oleafly fikk ikke kontakt med {{host}}. Sjekk adressen og tilkoblingen din.",
+    "import_cancelled": "Importen ble avbrutt.",
+    "invalid_remote_url": "Skriv inn HTTPS- eller SSH-adressen til et Git-repositorium.",
     "nested_repository": "Dette prosjektet ligger i et annet Git-repositorium, så Oleafly oppretter ikke et eget repositorium her.",
     "not_installed": "Git er ikke installert på denne maskinen. Installer Git, og prøv igjen.",
+    "push_rejected": "Den eksterne grenen har commiter som dette prosjektet ikke har ennå. Gjør en pull først, og push deretter på nytt.",
+    "remote_exists": "Dette prosjektet er allerede koblet til {{remote}}.",
+    "remote_has_password": "Ta passordet eller tilgangstokenet ut av adressen. Oleafly logger i stedet inn med kontoen din for Git-hosting eller dine egne Git-påloggingsopplysninger.",
+    "repository_empty": "Dette repositoriet har ingen commiter ennå, så det er ingenting å importere.",
+    "repository_not_found": "{{host}} har ikke noe repositorium på denne adressen, eller kontoen din kan ikke se det.",
+    "sign_in_cancelled": "Innloggingen ble avbrutt i nettleseren.",
+    "sign_in_expired": "Innloggingskoden har utløpt. Prøv igjen.",
+    "sign_in_failed": "Innloggingen mislyktes.",
+    "ssh_key_rejected": "{{host}} avviste SSH-nøkkelen din. Legg til den offentlige nøkkelen din i kontoen din på {{host}}, eller last inn nøkkelen i SSH-agenten din.",
+    "tls_failed": "Oleafly kunne ikke bekrefte sertifikatet til {{host}}. Hvis organisasjonen din har sin egen sertifiseringsinstans, legger du til sertifikatfilen dens i kontoen i Innstillinger.",
     "tracked_secret_files": "Publiseringen stoppet fordi filer i Git-historikken til prosjektet kan inneholde nøkler eller passord: {{files}}"
   },
   "approvals": {
@@ -134,6 +167,8 @@
     "changed": "{{path}} er endret etter at Oleafly installerte den, så den ble latt være.",
     "failed": "Oleafly kunne ikke installere terminalkommandoen.",
     "remove_failed": "Oleafly kunne ikke fjerne terminalkommandoen.",
+    "path_failed": "Oleafly installerte kommandoen, men kunne ikke legge {{directory}} til i PATH.",
+    "in_use": "{{path}} er i bruk. Lukk terminalene som kjører oleafly, og prøv deretter igjen.",
     "unsupported": "Terminalkommandoen er ikke tilgjengelig på dette systemet ennå."
   },
   "research": {
@@ -221,9 +256,59 @@
     "git_token_rejected": "Overleaf godtok ikke Git-tokenet. Det kan ha utløpt. Opprett et nytt i kontoinnstillingene dine på Overleaf.",
     "git_unavailable": "Git-integrasjonen i Overleaf er ikke tilgjengelig for dette prosjektet. Eieren av prosjektet trenger et betalt abonnement eller et universitetsabonnement.",
     "template_link_invalid": "Den lenken går ikke til en malside på Overleaf. Kopier adressen til en side fra overleaf.com/latex/templates, og prøv igjen.",
-    "template_unavailable": "Oleafly kunne ikke åpne denne malen. Den kan ha blitt fjernet fra malgalleriet til Overleaf."
+    "template_unavailable": "Oleafly kunne ikke åpne denne malen. Den kan ha blitt fjernet fra malgalleriet til Overleaf.",
+    "browser_sign_in_missing": "Oleafly fant ingen innlogging for {{server}} i den nettleserprofilen. Logg inn i stedet.",
+    "browser_sign_in_failed": "Innloggingen fra nettleseren din fungerte ikke. Den kan ha utløpt. Logg inn i stedet."
   },
   "collab": {
     "turned_off": "Samarbeid i sanntid er slått av. Slå det på i Innstillinger under Eksperimentering."
+  },
+  "attachments": {
+    "too_large": "Denne filen er større enn {{max}} MB. Legg ved en mindre fil.",
+    "invalid_request": "Oleafly kunne ikke lese dette vedlegget.",
+    "not_found": "Dette vedlegget er ikke lenger lagret på denne maskinen.",
+    "storage_failed": "Oleafly kunne ikke lagre dette vedlegget."
+  },
+  "provider_credit": {
+    "failed": "Oleafly kunne ikke sjekke saldoen din hos {{provider}}."
+  },
+  "terminal": {
+    "pwsh_missing": "PowerShell 7 er ikke installert.",
+    "git_bash_missing": "Git Bash er ikke installert. Installer Git for Windows, eller velg et annet shell.",
+    "wsl_missing": "WSL er ikke installert.",
+    "wsl_no_distro": "WSL har ingen Linux-distribusjon ennå.",
+    "shell_path_empty": "Skriv inn en bane til et shell i Innstillinger, eller velg et annet shell.",
+    "shell_path_missing": "Det finnes ikke noe program på {{path}}."
+  },
+  "mathpix": {
+    "keys_missing": "Legg først til app-ID-en og nøkkelen din for Mathpix under Innstillinger, AI-assistent, Verktøy.",
+    "invalid_keys": "App-ID-en eller nøkkelen inneholder tegn som Mathpix-nøkler aldri har. Kopier dem på nytt fra Mathpix-konsollen.",
+    "key_rejected": "Mathpix godtok ikke disse nøklene. Sjekk app-ID-en og nøkkelen i Mathpix-konsollen.",
+    "rate_limited": "Mathpix begrenser forespørsler akkurat nå. Vent et minutt, og prøv deretter igjen.",
+    "unreachable": "Oleafly fikk ikke kontakt med Mathpix. Sjekk internettilkoblingen din, og prøv deretter igjen.",
+    "http_error": "Mathpix returnerte en feil (HTTP {{status}}). Prøv igjen senere.",
+    "invalid_response": "Mathpix sendte et svar Oleafly ikke kunne lese. Prøv igjen senere.",
+    "rejected": "Mathpix kunne ikke lese denne filen: {{reason}}",
+    "image_too_large": "Bildet er for stort for Mathpix. Beskjær det, og prøv igjen.",
+    "pdf_too_large": "Denne PDF-en er større enn grensen på 256 MB for Mathpix.",
+    "timed_out": "Mathpix ble ikke ferdig med denne PDF-en innen 30 minutter. Prøv med færre sider.",
+    "cancelled": "Mathpix-konverteringen ble stoppet.",
+    "wrong_window": "Mathpix kan bare brukes fra hovedvinduet i Oleafly.",
+    "pdf_too_large_ipc": "Denne maskinen kan sende PDF-er på opptil 16 MB til Mathpix. Del opp PDF-en, og prøv igjen."
+  },
+  "desktop_apps": {
+    "not_installed": "Cua Driver er ikke installert. Installer den under Innstillinger, Integrasjoner, Skrivebordsapper.",
+    "too_old": "Cua Driver {{version}} er for gammel. Oppdater til {{minimum}} eller nyere.",
+    "no_app_bundle": "Installer Cua Driver med det offisielle installasjonsprogrammet, slik at den kan få macOS-tillatelsene.",
+    "change_declined": "Du beholdt de tidligere innstillingene for Skrivebordsapper.",
+    "app_blocked": "Agenter kan ikke bruke {{name}}.",
+    "app_invalid": "Oleafly kan ikke bruke {{name}} som app.",
+    "site_invalid": "«{{site}}» er ikke en nettstedsadresse Oleafly kan bruke. Bruk https://, eller http:// for denne maskinen.",
+    "too_many_apps": "Du kan tillate opptil {{limit}} apper.",
+    "too_many_sites": "Du kan tillate opptil {{limit}} nettsteder.",
+    "start_failed": "Cua Driver kunne ikke starte: {{detail}}",
+    "not_bounded": "Cua Driver startet ikke med grensene til Oleafly, så Oleafly stoppet den.",
+    "task_unattended": "Oppgaver som kjører etter en tidsplan eller etter at Oleafly er lukket, kan ikke bruke skrivebordsapper.",
+    "main_window": "Endre Skrivebordsapper fra hovedvinduet."
   }
 }

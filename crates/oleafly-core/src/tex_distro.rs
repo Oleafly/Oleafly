@@ -1,0 +1,946 @@
+//! TeX distribution discovery, shared by the desktop app and the CLI.
+//!
+//! Every input that depends on the machine (home folder, Oleafly's data
+//! folder, `PATH` and the Windows profile folders) comes in through
+//! [`TexSearch`], so both runtimes rank distributions the same way and tests
+//! can describe a machine without touching the environment. GUI apps launch
+//! with a minimal PATH, so relying on the inherited environment alone misses
+//! most real installs.
+
+use std::ffi::OsString;
+use std::path::{Path, PathBuf};
+
+/// Where to look for TeX on this machine.
+#[derive(Clone, Debug, Default)]
+pub struct TexSearch {
+    pub home: Option<PathBuf>,
+    /// Oleafly's data folder (its managed TinyTeX lives in `tinytex/`).
+    pub data_root: Option<PathBuf>,
+    pub path: Option<OsString>,
+    pub local_app_data: Option<PathBuf>,
+    pub app_data: Option<PathBuf>,
+    pub program_data: Option<PathBuf>,
+}
+
+impl TexSearch {
+    /// The process environment: `HOME`/`USERPROFILE`, `OLEAFLY_DATA_DIR`
+    /// (or `~/.oleafly`), `PATH` and the Windows profile folders.
+    pub fn from_env() -> Self {
+        let var = |name: &str| std::env::var_os(name).filter(|value| !value.is_empty());
+        let home = var("HOME")
+            .or_else(|| var("USERPROFILE"))
+            .map(PathBuf::from);
+        let data_root = var("OLEAFLY_DATA_DIR")
+            .map(PathBuf::from)
+            .or_else(|| home.as_ref().map(|home| home.join(".oleafly")));
+        Self {
+            home,
+            data_root,
+            path: var("PATH"),
+            local_app_data: var("LOCALAPPDATA").map(PathBuf::from),
+            app_data: var("APPDATA").map(PathBuf::from),
+            program_data: var("PROGRAMDATA").map(PathBuf::from),
+        }
+    }
+}
+
+/// The platform folder names under `bin/` this computer prefers, best first.
+pub fn host_platform_dirs() -> &'static [&'static str] {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("macos", "aarch64") => &["universal-darwin", "aarch64-darwin"],
+        ("macos", _) => &["universal-darwin", "x86_64-darwin"],
+        ("linux", "aarch64") => &["aarch64-linux"],
+        ("linux", "x86" | "i686") => &["i386-linux"],
+        ("linux", _) => &["x86_64-linux"],
+        ("windows", _) => &["windows", "win32"],
+        _ => &[],
+    }
+}
+
+/// Append the platform executable suffix.
+pub fn exe(name: &str) -> String {
+    if cfg!(windows) {
+        format!("{name}.exe")
+    } else {
+        name.to_string()
+    }
+}
+
+/// File names a TeX tool may resolve to, best-first. TeX Live on Windows
+/// ships most tools as `.exe` wrappers but installs `tlmgr` as `tlmgr.bat`,
+/// so `.exe`-only lookups miss it and TinyTeX validation fails with "no
+/// host-compatible tlmgr binary".
+fn tool_file_names(name: &str) -> Vec<String> {
+    tool_file_names_for(cfg!(windows), name)
+}
+
+fn tool_file_names_for(windows: bool, name: &str) -> Vec<String> {
+    if windows {
+        vec![format!("{name}.exe"), format!("{name}.bat")]
+    } else {
+        vec![name.to_string()]
+    }
+}
+
+pub fn find_tool_in_dir(dir: &Path, name: &str) -> Option<PathBuf> {
+    tool_file_names(name)
+        .into_iter()
+        .map(|file| dir.join(file))
+        .find(|candidate| candidate.is_file())
+}
+
+/// TeX binary directories to probe, best-first: full system installs (MacTeX,
+/// TeX Live by year, MiKTeX), then Oleafly's managed TinyTeX, then generic
+/// locations. A complete system distribution must outrank the compact TinyTeX:
+/// installing TinyTeX next to a full TeX Live used to silently downgrade every
+/// latexmk compile to the smaller package set and break previously working
+/// projects. Only existing directories are returned.
+pub fn tex_bin_dirs(search: &TexSearch) -> Vec<PathBuf> {
+    let mut system = Vec::new();
+    let mut managed = Vec::new();
+    let mut user_tinytex = Vec::new();
+    #[cfg(not(windows))]
+    let mut generic = Vec::new();
+    #[cfg(windows)]
+    let generic = Vec::new();
+    let home = search.home.clone();
+
+    #[cfg(target_os = "macos")]
+    {
+        push_existing(&mut system, PathBuf::from("/Library/TeX/texbin"));
+        push_texlive_year_bins(&mut system, Path::new("/usr/local/texlive"));
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        push_texlive_year_bins(&mut system, Path::new("/usr/local/texlive"));
+        push_texlive_year_bins(&mut system, Path::new("/opt/texlive"));
+        push_existing(&mut system, PathBuf::from("/usr/bin"));
+    }
+
+    #[cfg(windows)]
+    {
+        // TeX Live: C:\texlive\<year>\bin\windows (2023+) or bin\win32.
+        push_texlive_year_bins(&mut system, Path::new("C:\\texlive"));
+        // MiKTeX: per-user install first (the installer default), then machine-wide.
+        if let Some(local) = &search.local_app_data {
+            push_existing(
+                &mut system,
+                local.join("Programs\\MiKTeX\\miktex\\bin\\x64"),
+            );
+        }
+        push_existing(
+            &mut system,
+            PathBuf::from("C:\\Program Files\\MiKTeX\\miktex\\bin\\x64"),
+        );
+        push_existing(
+            &mut system,
+            PathBuf::from("C:\\Program Files\\MiKTeX 2.9\\miktex\\bin\\x64"),
+        );
+    }
+
+    // Oleafly's own TinyTeX (managed install; may nest TinyTeX/bin/<platform>).
+    if let Some(root) = &search.data_root {
+        push_texdir_bins(&mut managed, &root.join("tinytex"));
+    }
+
+    for root in user_tinytex_roots_for(
+        std::env::consts::OS,
+        home.as_deref(),
+        search.app_data.as_deref(),
+        search.program_data.as_deref(),
+    ) {
+        push_texdir_bins(&mut user_tinytex, &root);
+    }
+
+    // Generic locations last: these usually hold symlinks into one of the real
+    // distributions above.
+    #[cfg(target_os = "macos")]
+    {
+        push_existing(&mut generic, PathBuf::from("/usr/local/bin"));
+        push_existing(&mut generic, PathBuf::from("/opt/homebrew/bin"));
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        push_existing(&mut generic, PathBuf::from("/usr/local/bin"));
+    }
+
+    let inherited = search
+        .path
+        .as_ref()
+        .map(|path| {
+            std::env::split_paths(path)
+                .filter(|dir| dir.is_dir() && bin_dir_has_tex(dir))
+                .collect()
+        })
+        .unwrap_or_default();
+    compose_tex_bin_dirs(system, inherited, managed, user_tinytex, generic)
+}
+
+/// Locate a TeX tool (latexmk, lualatex, tlmgr, ...) by probing `tex_bin_dirs`
+/// and then the inherited PATH. Pure stat-based: never executes anything, so it
+/// is cheap enough to call from every compile-spec preparation.
+pub fn find_tex_tool(search: &TexSearch, name: &str) -> Option<PathBuf> {
+    find_tex_tool_in_dirs(name, tex_bin_dirs(search))
+}
+
+pub fn tex_tool_candidates(search: &TexSearch, name: &str) -> Vec<PathBuf> {
+    tex_tool_candidates_in_dirs(name, tex_bin_dirs(search))
+}
+
+fn compose_tex_bin_dirs(
+    system: Vec<PathBuf>,
+    inherited: Vec<PathBuf>,
+    managed: Vec<PathBuf>,
+    user_tinytex: Vec<PathBuf>,
+    generic: Vec<PathBuf>,
+) -> Vec<PathBuf> {
+    let (complete_system, incomplete_system): (Vec<_>, Vec<_>) = system
+        .into_iter()
+        .partition(|dir| bin_dir_has_complete_tex(dir));
+    let (inherited_tinytex, inherited_system): (Vec<_>, Vec<_>) = inherited
+        .into_iter()
+        .partition(|dir| bin_dir_is_tinytex(dir));
+    let (complete_inherited_system, incomplete_inherited_system): (Vec<_>, Vec<_>) =
+        inherited_system
+            .into_iter()
+            .partition(|dir| bin_dir_has_complete_tex(dir));
+    let mut dirs = Vec::new();
+    for tier in [
+        complete_system,
+        complete_inherited_system,
+        managed,
+        user_tinytex,
+        inherited_tinytex,
+        incomplete_system,
+        incomplete_inherited_system,
+        generic,
+    ] {
+        for dir in tier {
+            push_existing(&mut dirs, dir);
+        }
+    }
+    dirs
+}
+
+fn bin_dir_has_tex(dir: &Path) -> bool {
+    ["latexmk", "tlmgr", "pdflatex", "xelatex", "lualatex"]
+        .into_iter()
+        .any(|tool| find_tool_in_dir(dir, tool).is_some())
+}
+
+fn bin_dir_has_complete_tex(dir: &Path) -> bool {
+    [
+        "latexmk",
+        "pdflatex",
+        "xelatex",
+        "lualatex",
+        "kpsewhich",
+        "biber",
+    ]
+    .into_iter()
+    .all(|tool| find_tool_in_dir(dir, tool).is_some())
+}
+
+fn bin_dir_is_tinytex(dir: &Path) -> bool {
+    if named_tinytex_root(dir).is_some() {
+        return true;
+    }
+    ["latexmk", "tlmgr", "pdflatex", "xelatex", "lualatex"]
+        .into_iter()
+        .filter_map(|tool| find_tool_in_dir(dir, tool))
+        .filter_map(|tool| std::fs::canonicalize(tool).ok())
+        .any(|tool| named_tinytex_root(&tool).is_some())
+}
+
+fn tex_tool_candidates_in_dirs<I, P>(name: &str, dirs: I) -> Vec<PathBuf>
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<Path>,
+{
+    let mut candidates = Vec::new();
+    for dir in dirs {
+        let Some(candidate) = find_tool_in_dir(dir.as_ref(), name) else {
+            continue;
+        };
+        if !candidates.contains(&candidate) {
+            candidates.push(candidate);
+        }
+    }
+    candidates
+}
+
+fn find_tex_tool_in_dirs<I, P>(name: &str, dirs: I) -> Option<PathBuf>
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<Path>,
+{
+    dirs.into_iter()
+        .find_map(|dir| find_tool_in_dir(dir.as_ref(), name))
+}
+
+/// One detected TeX distribution, for the Settings "Manage TeX distributions"
+/// panel and the engine-picker modal.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct TexDistribution {
+    /// "oleafly-tinytex" | "mactex" | "texlive" | "miktex" | "tinytex" | "other"
+    pub kind: String,
+    pub label: String,
+    pub bin_dir: String,
+    pub latexmk: Option<String>,
+    pub tlmgr: Option<String>,
+}
+
+pub fn distribution_kind_for_tool(search: &TexSearch, tool: &Path) -> String {
+    tool.parent()
+        .map(|dir| classify_bin_dir(search, dir).0)
+        .unwrap_or_else(|| "other".into())
+}
+
+pub fn active_latexmk_distribution(search: &TexSearch) -> Option<TexDistribution> {
+    let latexmk = find_tex_tool(search, "latexmk")?;
+    distribution_for_bin_dir(search, latexmk.parent()?)
+}
+
+/// Enumerate distinct TeX distributions by classifying each discovered bin dir.
+/// Only the first bin dir of each root is reported so one install does not show
+/// up once per nested platform directory.
+pub fn list_distributions(search: &TexSearch) -> Vec<TexDistribution> {
+    let mut seen_roots: Vec<PathBuf> = Vec::new();
+    let mut result = Vec::new();
+    for dir in tex_bin_dirs(search) {
+        let (_, root) = classify_bin_dir(search, &dir);
+        if seen_roots.iter().any(|r| r == &root) {
+            continue;
+        }
+        let Some(distribution) = distribution_for_bin_dir(search, &dir) else {
+            continue;
+        };
+        seen_roots.push(root.clone());
+        result.push(distribution);
+    }
+    result
+}
+
+fn distribution_for_bin_dir(search: &TexSearch, dir: &Path) -> Option<TexDistribution> {
+    let (kind, root) = classify_bin_dir(search, dir);
+    let latexmk = find_tool_in_dir(dir, "latexmk");
+    let tlmgr = find_tool_in_dir(dir, "tlmgr");
+    let has_tex = latexmk.is_some()
+        || tlmgr.is_some()
+        || find_tool_in_dir(dir, "pdflatex").is_some()
+        || find_tool_in_dir(dir, "xelatex").is_some()
+        || find_tool_in_dir(dir, "lualatex").is_some();
+    has_tex.then(|| TexDistribution {
+        label: label_for(&kind, &root),
+        kind,
+        bin_dir: dir.to_string_lossy().into_owned(),
+        latexmk: latexmk.map(|tool| tool.to_string_lossy().into_owned()),
+        tlmgr: tlmgr.map(|tool| tool.to_string_lossy().into_owned()),
+    })
+}
+
+fn classify_bin_dir(search: &TexSearch, dir: &Path) -> (String, PathBuf) {
+    let text = dir.to_string_lossy().replace('\\', "/");
+    let lower = text.to_ascii_lowercase();
+    let managed = search
+        .data_root
+        .as_ref()
+        .map(|root| root.join("tinytex"))
+        .filter(|root| dir.starts_with(root));
+    if managed.is_some()
+        || lower.contains("/.oleafly/tinytex")
+        || lower.contains("oleafly") && lower.contains("tinytex")
+    {
+        let root = managed.unwrap_or_else(|| {
+            search
+                .data_root
+                .as_ref()
+                .map(|root| root.join("tinytex"))
+                .unwrap_or_else(|| dir.to_owned())
+        });
+        return ("oleafly-tinytex".into(), root);
+    }
+    if let Some(root) = named_tinytex_root(dir) {
+        return ("tinytex".into(), root);
+    }
+    if lower.starts_with("/library/tex") {
+        return ("mactex".into(), PathBuf::from("/Library/TeX/texbin"));
+    }
+    if lower.contains("miktex") {
+        return ("miktex".into(), dir.to_owned());
+    }
+    if lower.contains("texlive") {
+        // Root at the year directory: /usr/local/texlive/2025 or C:\texlive\2025.
+        let mut root = dir.to_owned();
+        while let Some(parent) = root.parent() {
+            let name = root
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            if name.len() == 4 && name.chars().all(|c| c.is_ascii_digit()) {
+                break;
+            }
+            root = parent.to_owned();
+            if root.parent().is_none() {
+                break;
+            }
+        }
+        return ("texlive".into(), root);
+    }
+    ("other".into(), dir.to_owned())
+}
+
+fn label_for(kind: &str, root: &Path) -> String {
+    match kind {
+        "oleafly-tinytex" => "TinyTeX (managed by Oleafly)".into(),
+        "tinytex" => "TinyTeX".into(),
+        "mactex" => "MacTeX / TeX Live".into(),
+        "miktex" => "MiKTeX".into(),
+        "texlive" => {
+            let year = root
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            if year.chars().all(|c| c.is_ascii_digit()) && !year.is_empty() {
+                format!("TeX Live {year}")
+            } else {
+                "TeX Live".into()
+            }
+        }
+        _ => format!("TeX tools in {}", root.display()),
+    }
+}
+
+fn push_existing(dirs: &mut Vec<PathBuf>, dir: PathBuf) {
+    if dir.is_dir() && !dirs.iter().any(|existing| existing == &dir) {
+        dirs.push(dir);
+    }
+}
+
+fn user_tinytex_roots_for(
+    os: &str,
+    home: Option<&Path>,
+    appdata: Option<&Path>,
+    programdata: Option<&Path>,
+) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    if let Some(home) = home {
+        roots.push(home.join(".TinyTeX"));
+        if os == "macos" {
+            roots.push(home.join("Library/TinyTeX"));
+        }
+    }
+    if os == "windows" {
+        if let Some(appdata) = appdata {
+            roots.push(appdata.join("TinyTeX"));
+        }
+        if let Some(programdata) = programdata {
+            roots.push(programdata.join("TinyTeX"));
+        }
+    }
+    roots.dedup();
+    roots
+}
+
+fn named_tinytex_root(dir: &Path) -> Option<PathBuf> {
+    dir.ancestors().find_map(|ancestor| {
+        let name = ancestor.file_name()?.to_string_lossy();
+        (name.eq_ignore_ascii_case("TinyTeX") || name.eq_ignore_ascii_case(".TinyTeX"))
+            .then(|| ancestor.to_owned())
+    })
+}
+
+fn platform_dir_rank_for(os: &str, arch: &str, name: &str) -> Option<u8> {
+    let lower = name.to_ascii_lowercase();
+    if !platform_os_matches(os, &lower) {
+        return None;
+    }
+    if platform_is_preferred_universal(os, &lower) || platform_arch_matches(arch, &lower) {
+        return Some(0);
+    }
+    if platform_names_architecture(&lower) {
+        return None;
+    }
+    if os == "windows" && lower.contains("win32") {
+        return matches!(arch, "x86_64" | "x86" | "i686").then_some(1);
+    }
+    Some(2)
+}
+
+fn platform_os_matches(os: &str, name: &str) -> bool {
+    match os {
+        "macos" => name.contains("darwin"),
+        "linux" => name.contains("linux"),
+        "windows" => name == "windows" || name.contains("win32") || name.contains("mingw"),
+        other => name.contains(other),
+    }
+}
+
+fn platform_is_preferred_universal(os: &str, name: &str) -> bool {
+    (os == "macos" && name.contains("universal")) || (os == "windows" && name == "windows")
+}
+
+fn platform_arch_matches(arch: &str, name: &str) -> bool {
+    match arch {
+        "x86_64" => ["x86_64", "amd64"]
+            .into_iter()
+            .any(|alias| name.contains(alias)),
+        "aarch64" => ["aarch64", "arm64"]
+            .into_iter()
+            .any(|alias| name.contains(alias)),
+        "x86" | "i686" => ["i386", "i686"]
+            .into_iter()
+            .any(|alias| name.contains(alias)),
+        "arm" => ["armhf", "armv7"]
+            .into_iter()
+            .any(|alias| name.contains(alias)),
+        other => name.contains(other),
+    }
+}
+
+fn platform_names_architecture(name: &str) -> bool {
+    [
+        "x86_64", "amd64", "aarch64", "arm64", "i386", "i686", "armhf", "armv7", "powerpc", "ppc",
+    ]
+    .into_iter()
+    .any(|known| name.contains(known))
+}
+
+fn push_platform_bins_for(dirs: &mut Vec<PathBuf>, bin: &Path, os: &str, arch: &str) {
+    let Ok(platforms) = std::fs::read_dir(bin) else {
+        return;
+    };
+    let mut ranked: Vec<(u8, String, PathBuf)> = platforms
+        .flatten()
+        .filter_map(|platform| {
+            let path = platform.path();
+            if !path.is_dir() {
+                return None;
+            }
+            let name = platform.file_name().to_string_lossy().into_owned();
+            platform_dir_rank_for(os, arch, &name).map(|rank| (rank, name, path))
+        })
+        .collect();
+    ranked.sort_by(|left, right| (left.0, &left.1).cmp(&(right.0, &right.1)));
+    for (_, _, path) in ranked {
+        push_existing(dirs, path);
+    }
+}
+
+/// TeX-dir layout: `<root>/bin/<platform>/` (TeX Live, TinyTeX), possibly with
+/// one extra nesting level from archive extraction (`<root>/TinyTeX/bin/...`).
+fn push_texdir_bins(dirs: &mut Vec<PathBuf>, root: &Path) {
+    for bin in texdir_bin_dirs(root) {
+        push_existing(dirs, bin);
+    }
+}
+
+pub fn texdir_bin_dirs(root: &Path) -> Vec<PathBuf> {
+    if !root.is_dir() {
+        return Vec::new();
+    }
+    let mut candidates = vec![root.to_owned()];
+    if let Ok(entries) = std::fs::read_dir(root) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                candidates.push(entry.path());
+            }
+        }
+    }
+    let mut dirs = Vec::new();
+    for candidate in candidates {
+        let bin = candidate.join("bin");
+        if !bin.is_dir() {
+            continue;
+        }
+        push_platform_bins_for(
+            &mut dirs,
+            &bin,
+            std::env::consts::OS,
+            std::env::consts::ARCH,
+        );
+    }
+    dirs
+}
+
+/// TeX Live installs under `<root>/<year>/bin/<platform>/`; probe years
+/// newest-first so a machine with several TeX Live releases prefers the latest.
+fn push_texlive_year_bins(dirs: &mut Vec<PathBuf>, root: &Path) {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return;
+    };
+    let mut years: Vec<PathBuf> = entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_dir()
+                && path
+                    .file_name()
+                    .and_then(std::ffi::OsStr::to_str)
+                    .is_some_and(|name| name.len() == 4 && name.chars().all(|c| c.is_ascii_digit()))
+        })
+        .collect();
+    years.sort();
+    years.reverse();
+    for year in years {
+        let bin = year.join("bin");
+        push_platform_bins_for(dirs, &bin, std::env::consts::OS, std::env::consts::ARCH);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_dir(name: &str) -> PathBuf {
+        tempfile::Builder::new()
+            .prefix(&format!("oleafly-texdist-{name}-"))
+            .tempdir()
+            .unwrap()
+            .keep()
+    }
+
+    fn create_tool(dir: &Path, name: &str) {
+        std::fs::create_dir_all(dir).unwrap();
+        std::fs::write(dir.join(exe(name)), b"test tool").unwrap();
+    }
+
+    fn create_complete_tex(dir: &Path) {
+        for tool in [
+            "latexmk",
+            "pdflatex",
+            "xelatex",
+            "lualatex",
+            "kpsewhich",
+            "biber",
+        ] {
+            create_tool(dir, tool);
+        }
+    }
+
+    #[test]
+    fn exe_appends_suffix_only_on_windows() {
+        if cfg!(windows) {
+            assert_eq!(exe("latexmk"), "latexmk.exe");
+        } else {
+            assert_eq!(exe("latexmk"), "latexmk");
+        }
+    }
+
+    #[test]
+    fn windows_tool_names_include_bat_fallback() {
+        assert_eq!(
+            tool_file_names_for(true, "tlmgr"),
+            vec!["tlmgr.exe".to_string(), "tlmgr.bat".to_string()]
+        );
+        assert_eq!(
+            tool_file_names_for(false, "tlmgr"),
+            vec!["tlmgr".to_string()]
+        );
+    }
+
+    #[test]
+    fn find_tool_in_dir_resolves_windows_bat_scripts() {
+        let directory = tempfile::tempdir().unwrap();
+        let dir = directory.path();
+        std::fs::write(dir.join("tlmgr.bat"), b"@echo off").unwrap();
+        std::fs::write(dir.join(exe("latexmk")), b"tool").unwrap();
+
+        assert_eq!(
+            find_tool_in_dir(dir, "latexmk"),
+            Some(dir.join(exe("latexmk")))
+        );
+        if cfg!(windows) {
+            assert_eq!(find_tool_in_dir(dir, "tlmgr"), Some(dir.join("tlmgr.bat")));
+            std::fs::write(dir.join("tlmgr.exe"), b"tool").unwrap();
+            assert_eq!(find_tool_in_dir(dir, "tlmgr"), Some(dir.join("tlmgr.exe")));
+        } else {
+            assert_eq!(find_tool_in_dir(dir, "tlmgr"), None);
+        }
+    }
+
+    #[test]
+    fn texlive_year_bins_prefer_newest() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let platform = match std::env::consts::OS {
+            "macos" => "universal-darwin",
+            "linux" if std::env::consts::ARCH == "aarch64" => "aarch64-linux",
+            "linux" => "x86_64-linux",
+            "windows" => "windows",
+            other => other,
+        };
+        for year in ["2023", "2025"] {
+            std::fs::create_dir_all(root.join(year).join("bin").join(platform)).unwrap();
+        }
+        std::fs::create_dir_all(root.join("texmf")).unwrap();
+        let mut dirs = Vec::new();
+        push_texlive_year_bins(&mut dirs, root);
+        assert_eq!(dirs.len(), 2);
+        assert!(dirs[0].to_string_lossy().contains("2025"));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn classify_recognizes_texlive_year_root() {
+        let (kind, root) = classify_bin_dir(
+            &TexSearch::default(),
+            Path::new("/usr/local/texlive/2025/bin/universal-darwin"),
+        );
+        assert_eq!(kind, "texlive");
+        assert!(root.to_string_lossy().ends_with("2025"));
+    }
+
+    #[test]
+    fn user_tinytex_roots_cover_official_platform_locations() {
+        let home = Path::new("/Users/researcher");
+        let mac = user_tinytex_roots_for("macos", Some(home), None, None);
+        assert!(mac.contains(&home.join(".TinyTeX")));
+        assert!(mac.contains(&home.join("Library/TinyTeX")));
+
+        let appdata = Path::new("C:/Users/researcher/AppData/Roaming");
+        let programdata = Path::new("C:/ProgramData");
+        let windows =
+            user_tinytex_roots_for("windows", Some(home), Some(appdata), Some(programdata));
+        assert!(windows.contains(&appdata.join("TinyTeX")));
+        assert!(windows.contains(&programdata.join("TinyTeX")));
+
+        let linux = user_tinytex_roots_for("linux", Some(home), None, None);
+        assert_eq!(linux, vec![home.join(".TinyTeX")]);
+    }
+
+    #[test]
+    fn official_user_tinytex_paths_are_classified_as_tinytex() {
+        for path in [
+            "/Users/researcher/Library/TinyTeX/bin/universal-darwin",
+            "C:/Users/researcher/AppData/Roaming/TinyTeX/bin/windows",
+            "/home/researcher/.TinyTeX/bin/x86_64-linux",
+        ] {
+            let (kind, root) = classify_bin_dir(&TexSearch::default(), Path::new(path));
+            assert_eq!(kind, "tinytex");
+            assert!(root.file_name().is_some_and(|name| name
+                .to_string_lossy()
+                .to_ascii_lowercase()
+                .contains("tinytex")));
+        }
+    }
+
+    #[test]
+    fn platform_ranking_rejects_wrong_architecture() {
+        assert_eq!(
+            platform_dir_rank_for("linux", "aarch64", "aarch64-linux"),
+            Some(0)
+        );
+        assert_eq!(
+            platform_dir_rank_for("linux", "aarch64", "x86_64-linux"),
+            None
+        );
+        assert_eq!(
+            platform_dir_rank_for("linux", "x86_64", "aarch64-linux"),
+            None
+        );
+        assert_eq!(
+            platform_dir_rank_for("macos", "aarch64", "universal-darwin"),
+            Some(0)
+        );
+        assert_eq!(
+            platform_dir_rank_for("macos", "aarch64", "x86_64-darwin"),
+            None
+        );
+        assert_eq!(
+            platform_dir_rank_for("windows", "x86_64", "windows"),
+            Some(0)
+        );
+        assert_eq!(platform_dir_rank_for("windows", "x86_64", "win32"), Some(1));
+        assert_eq!(platform_dir_rank_for("windows", "aarch64", "win32"), None);
+    }
+
+    #[test]
+    fn platform_bin_enumeration_is_deterministic_and_host_specific() {
+        let root = test_dir("platforms");
+        let bin = root.join("bin");
+        for platform in ["x86_64-linux", "aarch64-linux", "universal-darwin"] {
+            std::fs::create_dir_all(bin.join(platform)).unwrap();
+        }
+        let mut dirs = Vec::new();
+        push_platform_bins_for(&mut dirs, &bin, "linux", "aarch64");
+        assert_eq!(dirs, vec![bin.join("aarch64-linux")]);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn tex_bin_dirs_never_duplicates() {
+        let dirs = tex_bin_dirs(&TexSearch::from_env());
+        for (index, dir) in dirs.iter().enumerate() {
+            assert!(!dirs[index + 1..].contains(dir), "duplicate {dir:?}");
+        }
+    }
+
+    #[test]
+    fn tool_lookup_respects_distribution_priority() {
+        let root = test_dir("priority");
+        let system = root.join("system/bin");
+        let managed = root.join("managed/bin");
+        create_tool(&system, "latexmk");
+        create_tool(&managed, "latexmk");
+
+        let candidates = tex_tool_candidates_in_dirs("latexmk", [&system, &managed]);
+        assert_eq!(
+            candidates,
+            vec![system.join(exe("latexmk")), managed.join(exe("latexmk"))]
+        );
+        assert_eq!(
+            find_tex_tool_in_dirs("latexmk", [&system, &managed]),
+            candidates.first().cloned()
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn an_unusual_system_path_outranks_managed_tinytex() {
+        let root = test_dir("inherited-priority");
+        let inherited_system = root.join("custom-system/bin");
+        let managed = root.join(".oleafly/tinytex/bin/host");
+        create_complete_tex(&inherited_system);
+        create_tool(&managed, "latexmk");
+
+        let dirs = compose_tex_bin_dirs(
+            Vec::new(),
+            vec![inherited_system.clone()],
+            vec![managed.clone()],
+            Vec::new(),
+            Vec::new(),
+        );
+        assert_eq!(dirs, vec![inherited_system, managed]);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn an_incomplete_system_install_remains_available_below_managed_tinytex() {
+        let root = test_dir("incomplete-system");
+        let incomplete = root.join("system/bin");
+        let managed = root.join(".oleafly/tinytex/bin/host");
+        create_tool(&incomplete, "pdflatex");
+        create_tool(&managed, "latexmk");
+
+        let dirs = compose_tex_bin_dirs(
+            vec![incomplete.clone()],
+            Vec::new(),
+            vec![managed.clone()],
+            Vec::new(),
+            Vec::new(),
+        );
+        assert_eq!(dirs, vec![managed, incomplete]);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_platform_discovery_selects_the_windows_bin_directory() {
+        let root = test_dir("windows-platform");
+        let bin = root.join("TinyTeX/bin");
+        let windows = bin.join("windows");
+        let linux = bin.join("x86_64-linux");
+        std::fs::create_dir_all(&windows).unwrap();
+        std::fs::create_dir_all(&linux).unwrap();
+
+        let mut dirs = Vec::new();
+        push_platform_bins_for(&mut dirs, &bin, "windows", "x86_64");
+        assert_eq!(dirs, vec![windows]);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_path_symlink_into_tinytex_stays_in_the_tinytex_tier() {
+        let root = test_dir("symlink-priority");
+        let system = root.join("custom-system/bin");
+        let tinytex = root.join("TinyTeX/bin/host");
+        let inherited_wrapper = root.join("wrapper/bin");
+        create_complete_tex(&system);
+        create_tool(&tinytex, "latexmk");
+        std::fs::create_dir_all(&inherited_wrapper).unwrap();
+        std::os::unix::fs::symlink(
+            tinytex.join(exe("latexmk")),
+            inherited_wrapper.join(exe("latexmk")),
+        )
+        .unwrap();
+
+        let dirs = compose_tex_bin_dirs(
+            vec![system.clone()],
+            vec![inherited_wrapper.clone()],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        );
+        assert_eq!(dirs, vec![system, inherited_wrapper]);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn distribution_does_not_borrow_tlmgr_from_another_bin_dir() {
+        let root = test_dir("siblings");
+        let active = root.join("system/bin");
+        let inactive = root.join("managed/bin");
+        create_tool(&active, "latexmk");
+        create_tool(&inactive, "tlmgr");
+
+        let distribution = distribution_for_bin_dir(&TexSearch::default(), &active).unwrap();
+        let expected_latexmk = active.join(exe("latexmk")).to_string_lossy().into_owned();
+        assert_eq!(
+            distribution.latexmk.as_deref(),
+            Some(expected_latexmk.as_str())
+        );
+        assert_eq!(distribution.tlmgr, None);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn managed_tinytex_is_found_under_the_data_root() {
+        let data = tempfile::tempdir().unwrap();
+        let platform = host_platform_dirs()[0];
+        let bin = data.path().join("tinytex/bin").join(platform);
+        create_tool(&bin, "latexmk");
+        let search = TexSearch {
+            data_root: Some(data.path().to_path_buf()),
+            ..TexSearch::default()
+        };
+        let managed = bin.join(exe("latexmk"));
+        assert!(tex_tool_candidates(&search, "latexmk").contains(&managed));
+        assert_eq!(
+            distribution_kind_for_tool(&search, &managed),
+            "oleafly-tinytex"
+        );
+        // A full TeX installed on this machine stays first.
+        let system = find_tex_tool(&TexSearch::default(), "latexmk");
+        let found = find_tex_tool(&search, "latexmk").unwrap();
+        assert!(
+            found == managed || system.as_ref() == Some(&found),
+            "{found:?}"
+        );
+    }
+
+    #[test]
+    fn windows_miktex_and_texlive_roots_come_from_explicit_folders() {
+        let local = PathBuf::from("C:\\Users\\Ada Lovelace\\AppData\\Local");
+        let search = TexSearch {
+            local_app_data: Some(local.clone()),
+            ..TexSearch::default()
+        };
+        let candidate = search
+            .local_app_data
+            .as_ref()
+            .map(|local| local.join("Programs\\MiKTeX\\miktex\\bin\\x64"))
+            .unwrap();
+        assert!(candidate.starts_with(&local));
+        assert!(candidate.to_string_lossy().ends_with("miktex\\bin\\x64"));
+    }
+}

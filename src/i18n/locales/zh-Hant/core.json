@@ -567,7 +567,8 @@
       "compileFailed": "編譯失敗",
       "compileSucceeded": "編譯成功",
       "diagnostics_other": "{{count}} 項診斷",
-      "papers_other": "{{count}} 篇論文"
+      "papers_other": "{{count}} 篇論文",
+      "sourcesFailed_other": "{{count}} 個來源失敗"
     }
   },
   "ui": {

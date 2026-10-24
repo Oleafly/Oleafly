@@ -54,19 +54,6 @@
   "branding": {
     "assistantMascot": "Mascotte de l'assistant IA d'Oleafly"
   },
-  "browser": {
-    "address": "Rechercher ou saisir une URL",
-    "back": "Précédent",
-    "closeTab": "Fermer l'onglet",
-    "copyUrl": "Copier l'URL",
-    "forward": "Suivant",
-    "moreOptions": "Plus d'options",
-    "newTab": "Nouvel onglet",
-    "openExternal": "Ouvrir dans votre navigateur",
-    "openTabs": "Onglets ouverts",
-    "reload": "Recharger",
-    "setHomePage": "Définir comme page d'accueil"
-  },
   "changelog": {
     "installed": "Vous êtes sur cette version",
     "sectionItems_one": "{{count}} modification",
@@ -466,10 +453,6 @@
       "hide": "Masquer l'assistant IA",
       "show": "Afficher l'assistant IA"
     },
-    "browser": {
-      "close": "Fermer le navigateur ({{shortcut}})",
-      "open": "Ouvrir le navigateur ({{shortcut}})"
-    },
     "settings": "Paramètres",
     "sidebar": {
       "hide": "Masquer la barre latérale ({{shortcut}})",
@@ -573,17 +556,6 @@
     "saveCopy": "Enregistrer une copie",
     "tryAgain": "Réessayer",
     "savedCopy": "Vos fichiers ouverts ont été enregistrés dans {{folder}}."
-  },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub : {{login}}",
-    "actions": "Actions GitHub",
-    "connect": "Connecter GitHub…",
-    "connectedAs": "Connecté en tant que @{{login}}",
-    "copyRepositoryLink": "Copier le lien du dépôt",
-    "openInGithub": "Ouvrir dans GitHub",
-    "pushHint": "Poussez vers GitHub pour activer ces actions",
-    "settings": "Paramètres GitHub",
-    "tooltip": "GitHub"
   },
   "home": {
     "ariaLabel": "Accueil",
@@ -730,6 +702,14 @@
     "sourceControl": "Contrôle de version",
     "withShortcut": "{{label}} ({{shortcut}})"
   },
+  "remoteMenu": {
+    "accountLabel": "{{login}} sur {{host}}",
+    "actions": "Actions du dépôt",
+    "copyRepositoryLink": "Copier le lien du dépôt",
+    "openOnHost": "Ouvrir sur {{host}}",
+    "settings": "Paramètres d'hébergement Git",
+    "signedInAs": "Connecté à {{host}} en tant que {{login}}"
+  },
   "renameDialog": {
     "close": "Fermer la fenêtre de renommage",
     "collision": "Il existe déjà un élément de type {{kind}} nommé « {{name}} ».",
@@ -782,9 +762,9 @@
         "movedCount_other": "{{count}} projets déplacés vers la corbeille.",
         "title": "Zone sensible"
       },
-      "githubHint": "Sauvegardez ou synchronisez un projet entre vos appareils : connectez GitHub, puis utilisez <push>Pousser</push> / <pull>Tirer</pull> dans le contrôle de version. <setup>Configurer GitHub →</setup>",
+      "gitHostingHint": "Sauvegardez un projet ou synchronisez-le entre vos appareils : liez-le à un dépôt Git, puis utilisez <push>Pousser</push> / <pull>Tirer</pull> dans le contrôle de version. <setup>Configurer l'hébergement Git →</setup>",
       "localFirst": "Oleafly fonctionne d'abord en local. Tous les projets vivent sur votre disque :",
-      "plainFolders": "Chaque projet est un simple dossier. L'historique Git est facultatif, et rien ne quitte votre machine tant que vous ne poussez pas vers GitHub.",
+      "plainFolders": "Chaque projet est un simple dossier. L'historique Git est facultatif, et rien ne quitte votre machine tant que vous ne le poussez pas vers un serveur Git.",
       "recycleBin": {
         "clearAll": "Tout vider",
         "clearFailed": "Impossible de vider la corbeille.",
@@ -863,11 +843,7 @@
         "description": "Modifier des projets avec d'autres personnes via un serveur de collaboration que vous ou votre groupe hébergez. Ajoute une section Collaboration aux Paramètres. Désactivé par défaut tant que c'est en bêta.",
         "label": "Collaboration en direct"
       },
-      "warning": "Ces fonctions sont expérimentales et encore en bêta. Elles ne sont pas entièrement testées et peuvent changer, casser ou disparaître dans une prochaine version. Ne les activez que si vous voulez essayer un travail en cours.",
-      "webBrowser": {
-        "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta. Une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
-        "label": "Navigateur web"
-      }
+      "warning": "Ces fonctions sont expérimentales et encore en bêta. Elles ne sont pas entièrement testées et peuvent changer, casser ou disparaître dans une prochaine version. Ne les activez que si vous voulez essayer un travail en cours."
     },
     "footer": {
       "followOnX": "Suivre sur X",
@@ -953,7 +929,8 @@
       "general": "Général",
       "help": "Aide et à propos",
       "integrations": "Intégrations",
-      "shortcuts": "Raccourcis clavier"
+      "shortcuts": "Raccourcis clavier",
+      "research": "Recherche"
     },
     "search": {
       "empty": "Aucun paramètre ne correspond",
@@ -968,8 +945,9 @@
         "experimentation": "labo, laboratoire, bêta, fonctionnalités en avant-première",
         "general": "préférences, langue, région, vérification orthographique, orthographe, fautes de frappe, hors ligne, visites guidées, commande du terminal",
         "help": "à propos, version, mises à jour, journal des modifications, nouveautés, documentation, assistance, aide, communauté, Discord, licence, rapport de plantage",
-        "integrations": "Zotero, GitHub, MCP, citations, comptes, connexions",
-        "shortcuts": "raccourcis clavier, raccourcis, touches, clavier"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hébergement Git, applications de bureau, Cua, MCP, citations, comptes, connexions",
+        "shortcuts": "raccourcis clavier, raccourcis, touches, clavier",
+        "research": "recherche tâches budget notifications veille expériences exécutions research tasks"
       },
       "label": "Rechercher dans les paramètres",
       "results_one": "{{count}} section correspond",
@@ -1053,7 +1031,6 @@
     "commitCount_other": "{{count}} commits",
     "initialize": "Initialiser le dépôt",
     "initialized": "Git initialisé sur {{branch}}.",
-    "linkCopied": "Lien GitHub copié",
     "markResolved": "Marquer comme résolu",
     "mergeNeedsAttention": "Résoudre les conflits de fusion",
     "moreActions": "Plus d'actions de contrôle de version",
@@ -1067,18 +1044,19 @@
     "openFile": "Ouvrir le fichier",
     "openFileFor": "Ouvrir {{path}}",
     "popStash": "Appliquer le dernier remisage",
-    "publish": "Publier sur GitHub",
+    "publishRepository": "Publier…",
+    "publishTo": "Publier sur {{host}}",
     "published": "Publié sur {{url}}",
     "pull": "Tirer depuis origin",
     "pullShort": "Tirer",
     "push": "Valider et pousser vers origin",
     "pushShort": "Pousser",
     "pushSkippedNoRemote": "⚠ Push ignoré - aucun dépôt distant origin défini ci-dessous.",
-    "pushSkippedNoToken": "⚠ Push ignoré - aucun jeton GitHub (Paramètres → GitHub).",
     "refresh": "Actualiser",
     "remote": "Dépôt distant",
     "remoteHint": "Créez un dépôt ou liez-en un existant comme dépôt distant de ce projet, puis poussez.",
     "removeCredential": "Retirer l'identifiant enregistré",
+    "repositoryLinkCopied": "Lien du dépôt copié",
     "restoreCommit": "Restaurer la version",
     "restoreCommitDescription": "Cela remplace tous les fichiers suivis du projet par cette version et retire les fichiers ajoutés depuis. Votre branche reste sur son commit actuel.",
     "restoreCommitTitle": "Restaurer cette version ?",
@@ -1109,7 +1087,7 @@
     "titleRequired": "Un titre de commit est obligatoire.",
     "titleRequiredStatus": "Saisissez un titre de commit avant de valider.",
     "unlink": "Délier",
-    "unlinked": "Délié de GitHub.",
+    "unlinkedFrom": "Délié de {{host}}.",
     "unstage": "Désindexer",
     "unstageFor": "Désindexer {{path}}",
     "unstageAll": "Tout désindexer",

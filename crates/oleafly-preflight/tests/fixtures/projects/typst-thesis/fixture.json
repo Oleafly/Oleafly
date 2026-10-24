@@ -1,0 +1,12 @@
+{
+  "mainDocument": "main.typ",
+  "cases": [
+    {
+      "name": "detected",
+      "sourceProfile": "typst",
+      "engine": "typst",
+      "profile": null,
+      "anonymousReview": false
+    }
+  ]
+}

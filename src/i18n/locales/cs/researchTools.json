@@ -2,6 +2,7 @@
   "workspace": {
     "title": "Výzkumný prostor",
     "configureAgents": "Nastavit výzkumné agenty",
+    "openSettings": "Nastavení výzkumu",
     "configError": "Nastavení asistenta se nepodařilo načíst.",
     "tabTasks": "Úlohy",
     "tabFolders": "Propojené složky",
@@ -135,7 +136,8 @@
       "awaitingReview": "Čeká na posouzení",
       "completed": "Dokončeno",
       "failed": "Selhalo",
-      "cancelled": "Zrušeno"
+      "cancelled": "Zrušeno",
+      "planReady": "Plán je připravený"
     },
     "relative": {
       "justNow": "právě teď",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "Relace připojena.",
-      "toolCall": "Volání nástroje"
+      "toolCall": "Volání nástroje",
+      "runStarted": "Běh {{name}} zahájen",
+      "runFinished": "Běh {{name}}: {{status}}",
+      "approvalRequested": "Vyžádáno schválení: {{summary}}",
+      "approvalDecided": "Schválení: {{status}}"
     },
     "panel": {
       "noProjectTitle": "Otevřete projekt a můžete používat výzkumné úlohy",
@@ -172,7 +178,11 @@
       "viewTask": "Zobrazit úlohu",
       "deleteTitle": "Smazat tuto úlohu?",
       "deleteDescription": "„{{title}}“ a její samostatný pracovní prostor se odeberou. Soubory už použité ve vašem projektu zůstanou.",
-      "deleteConfirm": "Smazat úlohu"
+      "deleteConfirm": "Smazat úlohu",
+      "pendingApprovals_one": "{{count}} požadavek čeká",
+      "pendingApprovals_few": "{{count}} požadavky čekají",
+      "pendingApprovals_many": "{{count}} požadavku čeká",
+      "pendingApprovals_other": "{{count}} požadavků čeká"
     },
     "composer": {
       "editTitle": "Úprava úlohy",
@@ -193,7 +203,10 @@
       "unavailable": "Není k dispozici",
       "saving": "Ukládá se...",
       "saveTask": "Uložit úlohu",
-      "createTask": "Vytvořit úlohu"
+      "createTask": "Vytvořit úlohu",
+      "replaceText": "Nahradit název a instrukce, které jste napsali, touto předlohou?",
+      "keepText": "Ponechat můj text",
+      "replaceConfirm": "Nahradit"
     },
     "starter": {
       "literatureReview": {
@@ -215,6 +228,10 @@
       "reviewerResponse": {
         "label": "Odpověď recenzentům",
         "title": "Sepsat odpověď recenzentům"
+      },
+      "experimentLoop": {
+        "label": "Provést experimenty",
+        "title": "Provést experimenty směřující k cíli"
       }
     },
     "detail": {
@@ -233,6 +250,12 @@
       "dependencies": "Závislosti",
       "dependencyUnavailable": "Není k dispozici",
       "noActivity": "Pro tento běh nebyla zaznamenána žádná aktivita.",
+      "activityGap_one": "{{count}} položka mezi nimi není zobrazena.",
+      "activityGap_other": "{{count}} položek mezi nimi není zobrazeno.",
+      "activityMore": "Další aktivita zatím není zobrazena.",
+      "keepRunningDesktopApps": "Tato úloha používá aplikace v počítači, které vyžadují vaši přítomnost u počítače.",
+      "activityGap_many": "{{count}} položky mezi nimi nejsou zobrazeny.",
+      "activityGap_few": "{{count}} položky mezi nimi nejsou zobrazeny.",
       "startToRecord": "Spusťte tuto úlohu a její aktivita se zaznamená.",
       "reasoning": "Nahlášené uvažování",
       "savedArtifact": "Uloženo {{label}}",
@@ -245,6 +268,8 @@
       "clearSelection": "Zrušit výběr",
       "selectAll": "Vybrat vše",
       "previewBeforeApply": "Před použitím si každý vybraný soubor prohlédněte v náhledu.",
+      "researchRecord": "Záznam výzkumu",
+      "researchRecordHint": "Vlastní poznámky úlohy. Před použitím je nemusíte prohlížet v náhledu.",
       "driftedOne": "{{path}} se ve vašem projektu po spuštění této úlohy změnil. Jeho rozdíly jsou proti starší verzi, takže je nelze použít.",
       "driftedMany": "Ve vašem projektu se po spuštění této úlohy změnilo {{fileCount}} souborů. Jejich rozdíly jsou proti starším verzím, takže je nelze použít.",
       "applyAria": "Použít {{path}}",
@@ -274,7 +299,108 @@
       "loadMore": "Načíst další aktivitu",
       "changeAdded": "přidán",
       "changeModified": "změněn",
-      "changeDeleted": "smazán"
+      "changeDeleted": "smazán",
+      "tabProgress": "Průběh",
+      "resume": "Pokračovat",
+      "resumeHint": "Pokračovat ve stejném pracovním prostoru od uloženého předání.",
+      "startOver": "Začít znovu",
+      "startOverHint": "Začít od aktuálního projektu. Záznam výzkumu se přenese.",
+      "stopReason": {
+        "budgetTime": "Zastaveno po vyčerpání časového rozpočtu.",
+        "budgetCost": "Zastaveno na limitu nákladů.",
+        "budgetRuns": "Zastaveno na limitu běhů."
+      },
+      "startsAt": "Začne {{time}}"
+    },
+    "plan": {
+      "title": "Plán",
+      "description": "Přečtěte si plán a případně jej upravte. Schválením necháte úlohu pokračovat.",
+      "approve": "Schválit plán",
+      "approveEdited": "Schválit upravený plán",
+      "discard": "Zahodit úlohu",
+      "loading": "Načítá se plán…",
+      "missing": "Soubor plánu chybí. Zkuste úlohu znovu."
+    },
+    "approvals": {
+      "title": "Čeká na vaše schválení",
+      "approve": "Schválit",
+      "deny": "Zamítnout",
+      "kindCommand": "Spustit příkaz",
+      "kindRun": "Zahájit běh",
+      "kindMcp": "Použít nástroj",
+      "expires": "Čeká do {{time}}",
+      "detailCommand": "Celý příkaz",
+      "detailRun": "Podrobnosti běhu",
+      "detailMcp": "Argumenty nástroje",
+      "loadFailed": "Čekající požadavky se nepodařilo načíst.",
+      "status": {
+        "approved": "Schváleno",
+        "denied": "Zamítnuto",
+        "expired": "Vypršelo",
+        "withdrawn": "Staženo"
+      }
+    },
+    "phase": {
+      "preparing": "Připravuje se pracovní prostor",
+      "planning": "Píše se plán",
+      "working": "Pracuje se",
+      "waitingRuns": "Čeká se na běhy",
+      "waitingApproval": "Čeká se na schválení",
+      "wrappingUp": "Dokončuje se",
+      "checkingEvidence": "Kontrolují se důkazy"
+    },
+    "progress": {
+      "loading": "Načítá se průběh…",
+      "plan": "Plán",
+      "noPlan": "Zatím žádný plán.",
+      "ledger": "Záznam výsledků",
+      "noLedger": "Zatím nejsou zaznamenané žádné výsledky.",
+      "best": "Nejlepší {{metric}}",
+      "bestValue": "{{value}} v běhu {{run}}",
+      "runsInFlight": "Probíhající běhy",
+      "noRuns": "Žádné běhy neprobíhají.",
+      "budget": "Rozpočet",
+      "timeUsed": "{{used}} z {{total}}",
+      "costUsed": "{{used}} z {{limit}}",
+      "costSpent": "Utraceno {{used}}",
+      "ledgerCapped": "Zobrazuje se jen posledních {{limit}} výsledků.",
+      "costUnknown": "Náklady tohoto modelu nejsou známé.",
+      "runsUsed": "Běhy: {{used}} z {{limit}}",
+      "runsUsedNoLimit": "Běhy: {{used}}",
+      "stopRun": "Zastavit běh",
+      "viewLog": "Zobrazit protokol",
+      "columns": {
+        "run": "Běh",
+        "time": "Čas",
+        "hypothesis": "Hypotéza",
+        "change": "Změna",
+        "metrics": "Metriky",
+        "verdict": "Výsledek"
+      },
+      "verdict": {
+        "keep": "Ponecháno",
+        "discard": "Zahozeno",
+        "crash": "Selhalo"
+      }
+    },
+    "settings": {
+      "title": "Výzkumné úlohy",
+      "keepAwake": "Nenechat počítač usnout, dokud běží úlohy",
+      "keepAwakeHint": "Obrazovka se přesto může vypnout.",
+      "notifications": "Upozornit mě, když úloha potřebuje pozornost",
+      "notificationsHint": "Zobrazuje se, když Oleafly běží na pozadí.",
+      "notificationsBlocked": "Oznámení Oleafly jsou vypnutá v nastavení systému.",
+      "allowNotifications": "Povolit oznámení",
+      "network": "Ve výchozím stavu povolit příkazům úloh přístup k síti",
+      "timeBudget": "Výchozí časový rozpočet",
+      "mcpServers": "Servery MCP, které mohou úlohy používat",
+      "mcpServersHint": "Úlohy volají tyto nástroje podle pravidel pro příkazy každé úlohy.",
+      "noMcpServers": "Nejsou nastavené žádné servery MCP.",
+      "networkHint": "Příkazy v úlohách se mohou dostat na internet. Každá úloha to ale může vypnout.",
+      "loadFailed": "Vaše nastavení výzkumu se nepodařilo načíst.",
+      "sectionName": "Výzkum",
+      "resetConfirm": "Obnoví výchozí nastavení výzkumu: nenechávání počítače usnout, upozornění, přístup k síti, časový rozpočet a servery MCP, které mohou úlohy používat. Cíle běhů a úlohy na pozadí zůstanou beze změny.",
+      "saveFailed": "Nastavení výzkumu se nepodařilo uložit. Zkuste to znovu."
     }
   },
   "tools": {
@@ -356,7 +482,7 @@
       "name": "Obrázek do LaTeXu",
       "description": "Promění obrázek poznámek, rovnic nebo tabulky v upravitelný LaTeX.",
       "tag1": "Obrázky",
-      "tag2": "Model v zařízení",
+      "tag2": "Místní nebo hostovaný model",
       "tag3": "Bez potřeby projektu"
     },
     "visualTypstEditor": {
@@ -378,7 +504,7 @@
       "description": "Převeďte napsanou rovnici nebo její obrázek na čistou matematiku v LaTeXu.",
       "tag1": "Text nebo obrázek",
       "tag2": "Matematika",
-      "tag3": "Model v zařízení"
+      "tag3": "Místní nebo hostovaný model"
     },
     "excelToLatex": {
       "name": "Excel do LaTeXu",
@@ -398,7 +524,7 @@
       "name": "Obrázek do Typstu",
       "description": "Promění obrázek poznámek, rovnic nebo tabulky v upravitelný Typst.",
       "tag1": "Obrázky",
-      "tag2": "Model v zařízení",
+      "tag2": "Místní nebo hostovaný model",
       "tag3": "Bez potřeby projektu"
     },
     "latexToHtml": {
@@ -750,13 +876,13 @@
     "progressNeedsAttention": "Vyžaduje pozornost",
     "progressCancelled": "Zrušeno",
     "progressReadingPages": "Čtou se stránky",
-    "progressTranscribingPage": "Přepisuje se stránka {{page}} z {{total}}",
+    "progressTranscribingPage": "Přepisuje se stránka {{page}} z {{total}} pomocí {{model}}",
     "progressDocumentStructure": "Převádí se struktura dokumentu",
     "progressMermaid": "Vykresluje se diagram Mermaid",
     "progressFirstSheet": "Čte se první list",
-    "progressVisionModel": "Běží místní obrazový model",
-    "progressReadingEquation": "Rovnice se čte místním obrazovým modelem",
-    "progressConvertingEquation": "Rovnice se převádí místním modelem",
+    "progressVisionModel": "Čte se obrázek pomocí {{model}}",
+    "progressReadingEquation": "Čte se rovnice pomocí {{model}}",
+    "progressConvertingEquation": "Převádí se rovnice pomocí {{model}}",
     "progressUnpackingSource": "Rozbaluje se uložený zdroj",
     "progressDownloadingSource": "Stahuje se zdroj e-printu",
     "copied": "Zkopírováno {{label}}",
@@ -791,14 +917,17 @@
     "fileReady": "{{fileName}} je připraven",
     "saveWordHint": "Dokument Word uložte, až budete připraveni.",
     "resultPlaceholder": "Tady se objeví váš převedený výsledek.",
-    "progressConvertingSource": "Zdroj se převádí do formátu Typst"
+    "progressConvertingSource": "Zdroj se převádí do formátu Typst",
+    "pageRange": "Stránky",
+    "pageRangePlaceholder": "Všechny stránky, nebo rozsah jako 1-50",
+    "pageRangeInvalid": "Zadejte jedno číslo stránky, nebo rozsah jako 1-50."
   },
   "converters": {
     "imageToLatex": {
       "title": "Obrázek do LaTeXu",
-      "subtitle": "Přepište poznámky, rovnice nebo tabulky obrazovým modelem přímo v zařízení",
+      "subtitle": "Přepište poznámky, rovnice nebo tabulky obrazovým modelem",
       "inputLabel": "Obrázek",
-      "inputHint": "PNG, JPEG nebo WebP. Obrázek zůstává v tomto zařízení.",
+      "inputHint": "PNG, JPEG nebo WebP, do 20 MB.",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -831,9 +960,9 @@
     },
     "imageToTypst": {
       "title": "Obrázek do Typstu",
-      "subtitle": "Přepište poznámky, rovnice nebo tabulky obrazovým modelem přímo v zařízení",
+      "subtitle": "Přepište poznámky, rovnice nebo tabulky obrazovým modelem",
       "inputLabel": "Obrázek",
-      "inputHint": "PNG, JPEG nebo WebP. Obrázek zůstává v tomto zařízení.",
+      "inputHint": "PNG, JPEG nebo WebP, do 20 MB.",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -889,14 +1018,14 @@
       "title": "PDF do Markdownu",
       "subtitle": "Vytáhněte text, rovnice a obrázky místně",
       "inputLabel": "PDF",
-      "inputHint": "U textových PDF se použije deterministická extrakce. U skenů místní obrazový model.",
+      "inputHint": "Z textových PDF se text vytahuje deterministicky. Skeny používají model, který vyberete.",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF do Typstu",
       "subtitle": "Vytáhněte text, rovnice a obrázky místně",
       "inputLabel": "PDF",
-      "inputHint": "U textových PDF se použije deterministická extrakce. U skenů místní obrazový model.",
+      "inputHint": "Z textových PDF se text vytahuje deterministicky. Skeny používají model, který vyberete.",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -987,10 +1116,10 @@
   "converterErrors": {
     "chooseSmallerImage": "Vyberte obrázek menší než 20 MB.",
     "imageFormat": "Vyberte obrázek PNG, JPEG nebo WebP.",
-    "ollamaUnavailable": "Spusťte v Nastavení Ollama a pak pro tento převod nainstalujte místní model.",
-    "visionModelMissing": "Nainstalujte do Ollama obrazový model, například Llama 3.2 Vision, a zkuste to znovu.",
-    "localModelMissing": "Nainstalujte místní model do Ollama a zkuste to znovu.",
-    "emptyTranscription": "Místní model vrátil prázdný přepis.",
+    "ollamaUnavailable": "Spusťte Ollama, nebo pro Nástroje vyberte jiný model.",
+    "visionModelMissing": "Stáhněte do Ollama obrazový model, například glm-ocr, nebo pro Nástroje vyberte jiný model.",
+    "localModelMissing": "Stáhněte do Ollama model, nebo pro Nástroje vyberte jiný model.",
+    "emptyTranscription": "Model vrátil prázdný přepis.",
     "pdfNoPages": "Toto PDF neobsahuje žádné stránky k přepisu.",
     "pdfPageLimit": "Přepis skenovaného PDF je omezen na 50 stránek najednou.",
     "pandocNotReady": "Pandoc zatím není připravený.",
@@ -998,10 +1127,12 @@
     "fileTooLarge": "Vyberte soubor menší než 128 MB.",
     "emptySheet": "Vybraný list je prázdný.",
     "arxivInputRequired": "Zadejte ID na arXiv nebo vyberte archiv zdrojů.",
-    "equationToTypst": "Pandoc nedokázal převést tuto rovnici do formátu Typst. Zkontrolujte matematiku LaTeX a zkuste to znovu."
+    "equationToTypst": "Pandoc nedokázal převést tuto rovnici do formátu Typst. Zkontrolujte matematiku LaTeX a zkuste to znovu.",
+    "pdfTooManyPages": "Tento sken má {{pages}} stránek a Oleafly přepisuje najednou nejvýše {{limit}}. Zadejte pod souborem rozsah stránek, například 1-{{limit}}.",
+    "outputLimit": "Modelu došel prostor dřív, než skončil, takže přepis by byl neúplný. Vyberte v Nastavení, Asistent AI, Nástroje model s větším limitem výstupu, nebo přepište menší část."
   },
   "converterNotes": {
-    "scannedPages": "Místním modelem bylo přepsáno {{pages}} skenovaných stránek. Než výsledek použijete, zkontrolujte rovnice a tabulky.",
+    "scannedPages": "Přepsané naskenované stránky: {{pages}}, model {{model}}. Před použitím výsledku zkontrolujte rovnice a tabulky.",
     "extracted": "Místně bylo vytaženo {{pages}} stránek a {{figures}} obrázků.",
     "mermaidTikz": "Tento vývojový diagram byl převeden na upravitelný TikZ.",
     "mermaidRendered": "Tento diagram byl vykreslen místně, protože jeho syntaxe Mermaid se čistě nemapuje na upravitelný TikZ.",
@@ -1020,6 +1151,50 @@
     "notConverted_many": "{{count}} položky se nepřevedlo.",
     "notConverted_other": "{{count}} položek se nepřevedlo.",
     "checkLine": "Řádek {{line}}: {{message}}"
+  },
+  "converterModel": {
+    "label": "Model pro Nástroje",
+    "automatic": "Automaticky (nejlepší místní model)",
+    "localGroup": "Místní (Ollama)",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "Obrázky se odesílají do {{provider}}",
+    "sentToHost": "Obrázky se odesílají do Ollama na {{host}}",
+    "scansSentTo": "Naskenované stránky se odesílají do {{provider}}",
+    "scansSentToHost": "Naskenované stránky se odesílají do Ollama na {{host}}",
+    "pdfSentToMathpix": "Do Mathpix se odesílá celé PDF",
+    "transcribingHosted": "Obrázek se odesílá do {{provider}}…",
+    "progressUploading": "PDF se odesílá do Mathpix",
+    "progressFormatting": "Přepis se převádí pomocí Pandoc",
+    "scannedTitle": "Toto PDF vypadá jako sken",
+    "estimateOllama_one": "{{count}} stránka. Ollama ji může číst delší dobu.",
+    "estimateOllama_few": "{{count}} stránky. Ollama je čte jednu po druhé, což může chvíli trvat.",
+    "estimateOllama_many": "{{count}} stránky. Ollama je čte jednu po druhé, což může chvíli trvat.",
+    "estimateOllama_other": "{{count}} stránek. Ollama je čte jednu po druhé, což může chvíli trvat.",
+    "estimateCost_one": "{{count}} stránka. Zhruba {{cost}} s {{model}}.",
+    "estimateCost_few": "{{count}} stránky. Zhruba {{cost}} s {{model}}.",
+    "estimateCost_many": "{{count}} stránky. Zhruba {{cost}} s {{model}}.",
+    "estimateCost_other": "{{count}} stránek. Zhruba {{cost}} s {{model}}.",
+    "estimateUnknown_one": "{{count}} stránka. {{provider}} ji účtuje podle využití.",
+    "estimateUnknown_few": "{{count}} stránky. {{provider}} je účtuje podle využití.",
+    "estimateUnknown_many": "{{count}} stránky. {{provider}} je účtuje podle využití.",
+    "estimateUnknown_other": "{{count}} stránek. {{provider}} je účtuje podle využití.",
+    "transcribePages_one": "Přepsat {{count}} stránku",
+    "transcribePages_few": "Přepsat {{count}} stránky",
+    "transcribePages_many": "Přepsat {{count}} stránky",
+    "transcribePages_other": "Přepsat {{count}} stránek",
+    "transcribedWith": "Přepsáno pomocí {{model}}. Zkontrolujte rovnice a tabulky.",
+    "sentBadge": "Odesláno do {{provider}}",
+    "openToolsSettings": "Nastavení Nástrojů",
+    "errors": {
+      "offline": "Oleafly je v režimu offline. Vyberte místní model, nebo režim offline vypněte.",
+      "providerNotConfigured": "{{provider}} nemá klíč API. Přidejte ho v Nastavení, nebo vyberte jiný model.",
+      "modelDisabled": "{{model}} je v Nastavení vypnutý. Zapněte ho, nebo vyberte jiný model.",
+      "cannotSeeImages": "{{model}} neumí číst obrázky. Vyberte obrazový model.",
+      "localModelGone": "{{model}} už v Ollama není. Stáhněte ho znovu, nebo vyberte jiný model.",
+      "imagesOnly": "{{model}} čte jen obrázky. Chcete-li převést napsané rovnice, vyberte jazykový model.",
+      "mathpixNotSetUp": "Přidejte klíče Mathpix v Nastavení, Asistent AI, Nástroje, nebo vyberte jiný model.",
+      "imageTooLarge": "Tento obrázek je i po zmenšení příliš velký. Ořízněte jej a zkuste to znovu."
+    }
   },
   "mermaidErrors": {
     "tooLarge": "Tento diagram Mermaid přesahuje limit 50 000 znaků.",
@@ -1589,5 +1764,263 @@
     "citeAdded": "Přidáno {{citation}}",
     "addFailed": "Citaci se nepodařilo přidat.",
     "toastCopyFailed": "BibTeX se nepodařilo zkopírovat."
+  },
+  "brief": {
+    "title": "Zadání",
+    "goalLabel": "Cíl",
+    "goalPlaceholder": "Co má tato úloha zjistit nebo vytvořit?",
+    "criteriaLabel": "Kritéria úspěchu",
+    "criteriaHint": "Jedno na řádek. Každé by mělo jít ověřit.",
+    "scopeLabel": "Rozsah",
+    "constraintsLabel": "Omezení",
+    "metricLabel": "Hlavní metrika",
+    "metricPlaceholder": "Například val_loss",
+    "metricMaximize": "Vyšší je lepší",
+    "metricMinimize": "Nižší je lepší",
+    "reviewPlan": "Nejdřív zkontrolovat plán",
+    "reviewPlanHint": "Agent napíše plan.md a před začátkem počká na vaše schválení.",
+    "commandsLabel": "Příkazy",
+    "commandsAllow": "Spouštět bez ptaní",
+    "commandsAsk": "Ptát se před spuštěním",
+    "commandsOff": "Nespouštět příkazy",
+    "network": "Povolit příkazům přístup k síti",
+    "networkHint": "Potřebné k instalaci balíčků nebo stahování dat.",
+    "budgetLabel": "Rozpočet",
+    "timeLabel": "Čas",
+    "minutes_one": "{{count}} minuta",
+    "minutes_few": "{{count}} minuty",
+    "minutes_many": "{{count}} minuty",
+    "minutes_other": "{{count}} minut",
+    "hours_one": "{{count}} hodina",
+    "hours_few": "{{count}} hodiny",
+    "hours_many": "{{count}} hodiny",
+    "hours_other": "{{count}} hodin",
+    "costLabel": "Limit nákladů (USD)",
+    "noLimit": "Bez limitu",
+    "runsLabel": "Limit běhů",
+    "runTimeoutLabel": "Každý běh se zastaví po",
+    "profileLabel": "Profil běhu",
+    "profileAnalysis": "Analýza",
+    "profileAnalysisHint": "Vaše prostředí Python a R, datové složky jen pro čtení, bez GPU.",
+    "profileTraining": "Trénování",
+    "profileTrainingHint": "Přidává přístup ke GPU a delší běhy.",
+    "computeLabel": "Kde běhy probíhají",
+    "computeLocal": "Tento počítač",
+    "startAtLabel": "Začít",
+    "startNow": "Až ji spustím",
+    "keepRunning": "Pokračovat i po zavření Oleafly",
+    "keepRunningHint": "Nejdřív zapněte Úlohy na pozadí v Nastavení, Výzkum.",
+    "invalidMetric": "Používejte písmena, číslice, tečky, pomlčky nebo podtržítka.",
+    "invalidCost": "Zadejte částku větší než nula.",
+    "invalidRuns": "Zadejte celé číslo od 1 do 1 000.",
+    "invalidStart": "Vyberte čas zahájení v příštích 30 dnech.",
+    "invalidStartFormat": "Použijte formát {{example}}.",
+    "startAtFormat": "Zadejte čas ve tvaru {{example}}.",
+    "problemHidden": "Nějaká volba v Zadání potřebuje opravu. Otevřete Zadání a uvidíte, která."
+  },
+  "runs": {
+    "status": {
+      "starting": "Spouští se",
+      "running": "Běží",
+      "succeeded": "Dokončeno",
+      "failed": "Selhalo",
+      "timedOut": "Vypršel čas",
+      "cancelled": "Zastaveno",
+      "lost": "Ztraceno"
+    }
+  },
+  "evidence": {
+    "title": "Kontrola důkazů",
+    "hint": "Tyto kontroly jen upozorňují. Nebrání použití výsledku.",
+    "running": "Kontroluje se…",
+    "refresh": "Zkontrolovat znovu",
+    "status": {
+      "pass": "Prošlo",
+      "warn": "Zkontrolujte",
+      "skipped": "Nezkontrolováno"
+    },
+    "checks": {
+      "build": "Projekt se sestaví",
+      "references": "Žádné nové nevyřešené odkazy ani citace",
+      "bibliography": "Nové položky bibliografie jsou ověřené",
+      "numbers": "Čísla odpovídají svým běhům",
+      "figures": "Nové obrázky existují a používají se"
+    },
+    "items": {
+      "buildFailed": "Sestavení selhalo, počet chyb: {{errors}}.",
+      "buildSkipped": "Sestavení nebylo zkontrolováno: {{reason}}",
+      "referencesUnresolved": "{{key}} nelze vyřešit.",
+      "referencesNotChecked": "Toto sestavení zatím odkazy nekontroluje.",
+      "bibUnverified": "{{key}} se nepodařilo ověřit.",
+      "bibTitleMismatch": "{{key}} odkazuje na jiný název: {{found}}",
+      "bibLookupFailed": "{{key}} se nepodařilo vyhledat. Zkuste to později.",
+      "numbersMismatch": "{{value}} neodpovídá běhu {{run}} ({{recorded}}).",
+      "numbersUnknownRun": "Běh {{run}} neexistuje.",
+      "numbersNoLedgerRow": "Běh {{run}} nemá řádek v záznamu výsledků.",
+      "figuresMissing": "Na {{path}} se odkazuje, ale chybí.",
+      "figuresUnused": "{{path}} se v dokumentu nepoužívá."
+    }
+  },
+  "compute": {
+    "title": "Výpočty",
+    "description": "Vyberte, kde běhy experimentů probíhají. Každá úloha si cíl vybere ve svém zadání.",
+    "targets": {
+      "heading": "Cíle běhů",
+      "local": "Tento počítač",
+      "localDescription": "Běhy používají izolované prostředí v tomto počítači.",
+      "add": "Přidat cíl",
+      "addSsh": "Hostitel SSH",
+      "addSlurm": "Cluster Slurm",
+      "addCua": "Cua Space",
+      "import": "Importovat z konfigurace SSH",
+      "test": "Otestovat",
+      "testing": "Testuje se…",
+      "more": "Další akce pro {{label}}",
+      "edit": "Upravit",
+      "remove": "Odebrat",
+      "removeTitle": "Odebrat {{label}}?",
+      "removeConfirm": "Běhy, které už tam začaly, poběží dál. Úlohy, které na něm čekají na spuštění, selžou.",
+      "forgetHostKey": "Zapomenout klíč hostitele",
+      "reviewHostKey": "Zkontrolovat klíč hostitele",
+      "notTested": "Netestováno",
+      "tested": "Testováno {{time}}",
+      "testFailed": "Test selhal",
+      "perTaskSpace": "Nový Space pro každou úlohu",
+      "saveFailed": "Cíl se nepodařilo uložit: {{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly se připojuje vašimi klíči SSH nebo agentem SSH. Nikdy nežádá o hesla ani klíče a neukládá je.",
+      "windowsRsync": "Windows nemá rsync, proto Oleafly kopíruje soubory pomocí tar přes SSH.",
+      "sshMissingWindows": "Klient OpenSSH není nainstalovaný. Přidejte ho v Nastavení systému Windows v části Systém, Volitelné funkce.",
+      "sshMissing": "OpenSSH není nainstalované. Nainstalujte ho správcem balíčků.",
+      "cuaMissing": "Cua není nainstalované. Nainstalujte ho z cua.ai a pak otestujte znovu.",
+      "relay": "Tento Space běží na skutečném počítači. Běhy tam nejsou izolované.",
+      "outputs": "Soubory, které běh vytvoří, se vracejí do runs/<run>/outputs v kopii úlohy."
+    },
+    "form": {
+      "addTitle": "Přidat {{kind}}",
+      "editTitle": "Upravit {{label}}",
+      "label": "Název",
+      "host": "Hostitel",
+      "hostHint": "Hostitel z vaší konfigurace SSH, nebo název hostitele",
+      "user": "Uživatel",
+      "userHint": "Ponechte prázdné, chcete-li použít konfiguraci SSH.",
+      "port": "Port",
+      "remoteRoot": "Vzdálená složka",
+      "remoteRootHint": "Běhy se ukládají do .oleafly-runs ve vaší domovské složce, pokud nevyberete jinou složku.",
+      "prelude": "Přípravné příkazy",
+      "preludeHint": "Spouštějí se před každým příkazem, například module load python.",
+      "partition": "Oddíl",
+      "account": "Účet",
+      "qos": "QOS",
+      "time": "Časový limit",
+      "timeHint": "Například 2:00:00 nebo 1-00:00:00",
+      "gpus": "GPU",
+      "cpus": "CPU",
+      "mem": "Paměť (GB)",
+      "memHint": "Například 16",
+      "gpuFlag": "Možnost GPU",
+      "spaceMode": "Space",
+      "spaceNamed": "Použít pojmenovaný Space",
+      "spacePerTask": "Pro každou úlohu vytvořit nový Space",
+      "space": "Název Space",
+      "image": "Obraz",
+      "save": "Uložit",
+      "cancel": "Zrušit",
+      "errors": {
+        "label": "Zadejte název o délce nejvýše 80 znaků.",
+        "host": "Zadejte název hostitele bez mezer.",
+        "user": "Používejte písmena, číslice, tečky, pomlčky nebo podtržítka.",
+        "port": "Použijte port od 1 do 65535.",
+        "remoteRoot": "Použijte cestu ke složce bez mezer, uvozovek a „..“.",
+        "time": "Použijte čas ve formátu Slurm, například 2:00:00.",
+        "name": "Používejte písmena, číslice, tečky, čárky, pomlčky nebo podtržítka.",
+        "mem": "Použijte celé číslo v gigabajtech, například 16.",
+        "count": "Použijte celé číslo v povoleném rozsahu."
+      }
+    },
+    "test": {
+      "connect": "Připojení",
+      "echo": "Spuštění příkazu",
+      "disk": "Volné místo",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "Prošlo",
+      "warn": "Zkontrolujte",
+      "fail": "Selhalo",
+      "skipped": "Nezkontrolováno"
+    },
+    "hostKey": {
+      "title": "Důvěřovat tomuto hostiteli?",
+      "body": "Oleafly se k {{host}} ještě nikdy nepřipojil. Porovnejte tyto otisky s těmi, které vám dal správce.",
+      "trust": "Důvěřovat a připojit",
+      "changedTitle": "Klíč hostitele se změnil",
+      "changed": "Klíč hostitele {{host}} se změnil. Někdo možná zachytává připojení. Pokud klíč vyměnil správce, zapomeňte starý klíč a otestujte znovu."
+    },
+    "import": {
+      "title": "Importovat hostitele SSH",
+      "body": "Vyberte hostitele, které chcete přidat. Oleafly vaši konfiguraci SSH čte a nikdy ji nemění.",
+      "none": "Ve vaší konfiguraci SSH nebyli nalezeni žádní hostitelé.",
+      "added": "Už přidáno",
+      "add_one": "Přidat hostitele ({{count}})",
+      "add_few": "Přidat hostitele ({{count}})",
+      "add_many": "Přidat hostitele ({{count}})",
+      "add_other": "Přidat hostitele ({{count}})",
+      "skipped": "Nepřidáno: {{hosts}}. {{reason}}"
+    },
+    "sandbox": {
+      "heading": "Izolované prostředí v tomto počítači",
+      "description": "Běhy v tomto počítači mohou číst vaše interprety a propojené složky. Zapisují jen do kopie úlohy.",
+      "ready": "Připraveno",
+      "unavailable": "Není k dispozici",
+      "macos": "Používá izolované prostředí macOS.",
+      "linux": "Používá bubblewrap.",
+      "linuxMissing": "Chcete-li spouštět příkazy úloh, nainstalujte bubblewrap (bwrap).",
+      "windowsLabel": "Spouštět příkazy úloh v izolovaném prostředí Windows",
+      "windowsDescription": "Příkazy běží ve Windows AppContainer, který má přístup jen k souborům úlohy a ke složkám níže. Během bety je ve výchozím stavu vypnuté.",
+      "gpuWindows": "Přístup ke GPU v izolovaném prostředí Windows zatím není ověřený. Pro práci s GPU použijte cíl SSH nebo Slurm.",
+      "limitsWindows": "V izolovaném prostředí Windows zatím nefungují multiprocessing v Pythonu ani programy Node.js, které spouštějí další programy.",
+      "check": "Zkontrolovat izolované prostředí",
+      "checking": "Kontroluje se…",
+      "checkPassed": "Izolované prostředí funguje.",
+      "checkFailed": "Kontrola izolovaného prostředí selhala: {{reason}}",
+      "runtimes": "Interprety",
+      "runtimesEmpty": "Nebyl nalezen Python, R ani Julia.",
+      "refresh": "Obnovit",
+      "access": "Složky, které může izolované prostředí číst",
+      "accessNote": "Aby úlohy mohly tyto složky číst, přidá Oleafly ke každé z nich záznam oprávnění.",
+      "removeAccess": "Odebrat přístup",
+      "removeAccessTitle": "Odebrat přístup izolovaného prostředí?",
+      "removeAccessConfirm": "Odebrat přístup izolovaného prostředí k těmto složkám? Oleafly jej přidá znovu, až ho bude úloha příště potřebovat."
+    },
+    "brief": {
+      "runsOn": "Běží na {{target}}",
+      "runsLocal": "Běží v tomto počítači.",
+      "missing": "Cíl, který tato úloha používala, byl odebrán. Vyberte jiný.",
+      "loadFailed": "Vaše cíle běhů se nepodařilo načíst.",
+      "windowsOff": "Chcete-li v tomto počítači spouštět příkazy, zapněte v Nastavení izolované prostředí Windows.",
+      "openSettings": "Otevřít Nastavení",
+      "resources": "Prostředky Slurm"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "Na pozadí",
+      "backgroundHint": "Tuto úlohu provádí proces Oleafly na pozadí. Po aktuálním kroku se vrátí sem.",
+      "movingBack": "Vrací se",
+      "movingBackHint": "Tato úloha se vrátí do Oleafly, až skončí její aktuální krok."
+    },
+    "earlierActivity": "Zobrazit dřívější aktivitu",
+    "earlierTruncated": "Z tohoto dřívějšího běhu se zobrazuje jen prvních {{limit}} položek.",
+    "keepRunningFailed": "Toto nastavení se nepodařilo změnit. Zkuste to znovu."
   }
 }

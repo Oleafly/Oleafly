@@ -1,0 +1,329 @@
+//! Spec checks shared by every backend: real, canonical paths, write grants
+//! inside the workspace or the home folder, no read grant of the whole disk,
+//! a home folder or the folder that holds one, and protected paths only where
+//! a write grant would otherwise cover them.
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
+
+use crate::roots::{broad_reason, note_refused};
+use crate::{home_dir, SandboxError, SandboxSpec};
+
+/// A [`SandboxSpec`] with every path checked and canonical.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ResolvedSpec {
+    pub workspace: PathBuf,
+    pub home: PathBuf,
+    /// Extra read grants (runtimes, skill folders), sorted, without duplicates.
+    pub read_only: Vec<PathBuf>,
+    /// The project's linked data folders.
+    pub project_read_only: Vec<PathBuf>,
+    pub read_write: Vec<PathBuf>,
+    /// Paths inside a write grant that stay read-only.
+    pub protected: Vec<PathBuf>,
+    /// Paths inside the grants the command can neither read nor change.
+    pub hidden: Vec<PathBuf>,
+    pub network: bool,
+    pub gpu: bool,
+    pub child_processes: bool,
+    pub owner: String,
+    pub project: Option<String>,
+    pub path_prepend: Vec<PathBuf>,
+    /// The spec's own variables (the fixed ones were checked already).
+    pub env: BTreeMap<String, String>,
+}
+
+/// `path` without the `\\?\` prefix `canonicalize` adds on Windows, when the
+/// plain form is valid; unchanged elsewhere.
+pub(crate) fn plain_path(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    {
+        let text = path.as_os_str().to_string_lossy();
+        let plain = if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
+            format!(r"\\{rest}")
+        } else if let Some(rest) = text.strip_prefix(r"\\?\") {
+            rest.to_string()
+        } else {
+            return path.to_path_buf();
+        };
+        // A path of 260 characters or more needs the verbatim form.
+        if plain.encode_utf16().count() < 260 && !plain.is_empty() {
+            return PathBuf::from(plain);
+        }
+        path.to_path_buf()
+    }
+    #[cfg(not(windows))]
+    {
+        path.to_path_buf()
+    }
+}
+
+fn real_directory(path: &Path, what: &str) -> Result<PathBuf, SandboxError> {
+    if !path.is_absolute() {
+        return Err(SandboxError::Invalid(format!(
+            "The {what} must be an absolute path."
+        )));
+    }
+    let metadata = std::fs::symlink_metadata(path)
+        .map_err(|_| SandboxError::Invalid(format!("The {what} is unavailable.")))?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err(SandboxError::Invalid(format!(
+            "The {what} must be a real folder."
+        )));
+    }
+    path.canonicalize()
+        .map(|path| plain_path(&path))
+        .map_err(|error| SandboxError::Io(error.to_string()))
+}
+
+fn sorted(mut paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    paths.sort();
+    paths.dedup();
+    paths
+}
+
+/// Read grants must exist and must not be the filesystem root, the user's
+/// home folder or a folder that holds it, or a top-level system folder.
+fn read_grants(paths: &[PathBuf]) -> Result<Vec<PathBuf>, SandboxError> {
+    let home = home_dir().map(|home| {
+        home.canonicalize()
+            .map(|path| plain_path(&path))
+            .unwrap_or(home)
+    });
+    let mut resolved = Vec::with_capacity(paths.len());
+    for path in paths {
+        let real = path
+            .canonicalize()
+            .map(|path| plain_path(&path))
+            .map_err(|_| SandboxError::Invalid("A task runtime file is unavailable.".into()))?;
+        if let Some(reason) = broad_reason(&real, home.as_deref()) {
+            note_refused(&real, reason);
+            return Err(SandboxError::Invalid(
+                "Task runtimes require specific readable files or folders.".into(),
+            ));
+        }
+        resolved.push(real);
+    }
+    Ok(sorted(resolved))
+}
+
+/// The existing paths of `hidden` that lie inside a folder the command can
+/// otherwise reach; anything else has nothing to hide.
+fn hidden_paths(spec: &SandboxSpec, reachable: &[&Path]) -> Vec<PathBuf> {
+    sorted(
+        spec.deny_read
+            .iter()
+            .filter_map(|path| path.canonicalize().ok().map(|path| plain_path(&path)))
+            .filter(|path| reachable.iter().any(|root| path.starts_with(root)))
+            .collect(),
+    )
+}
+
+/// Checks `spec` and makes every path canonical.
+pub(crate) fn resolve(spec: &SandboxSpec) -> Result<ResolvedSpec, SandboxError> {
+    let workspace = real_directory(&spec.workspace, "task folder")?;
+    #[cfg(windows)]
+    {
+        if workspace
+            .as_os_str()
+            .to_string_lossy()
+            .encode_utf16()
+            .count()
+            >= 248
+        {
+            return Err(SandboxError::Invalid(
+                "The task folder path is too long for Windows. Move Oleafly's data folder to a shorter path."
+                    .into(),
+            ));
+        }
+    }
+    let home = crate::prepare_home(&spec.home).map(|path| plain_path(&path))?;
+    let mut read_write = Vec::with_capacity(spec.read_write.len());
+    for path in &spec.read_write {
+        let metadata = std::fs::symlink_metadata(path)
+            .map_err(|_| SandboxError::Invalid("A writable task path is unavailable.".into()))?;
+        if metadata.file_type().is_symlink() {
+            return Err(SandboxError::Invalid(
+                "A task command cannot use a writable symbolic link.".into(),
+            ));
+        }
+        let real = path
+            .canonicalize()
+            .map(|path| plain_path(&path))
+            .map_err(|error| SandboxError::Io(error.to_string()))?;
+        if !real.starts_with(&workspace) && !real.starts_with(&home) {
+            return Err(SandboxError::Invalid(
+                "A writable path is outside the task folder and its home folder.".into(),
+            ));
+        }
+        read_write.push(real);
+    }
+    let read_write = sorted(read_write);
+    let protected = sorted(
+        spec.protected
+            .iter()
+            .filter_map(|path| path.canonicalize().ok().map(|path| plain_path(&path)))
+            .filter(|path| read_write.iter().any(|write| path.starts_with(write)))
+            .collect(),
+    );
+    let read_only = read_grants(&spec.read_only)?;
+    let project_read_only = read_grants(&spec.project_read_only)?;
+    let hidden = {
+        let reachable: Vec<&Path> = [workspace.as_path(), home.as_path()]
+            .into_iter()
+            .chain(read_only.iter().map(PathBuf::as_path))
+            .chain(project_read_only.iter().map(PathBuf::as_path))
+            .collect();
+        hidden_paths(spec, &reachable)
+    };
+    Ok(ResolvedSpec {
+        workspace,
+        home,
+        read_only,
+        project_read_only,
+        read_write,
+        protected,
+        hidden,
+        network: spec.network,
+        gpu: spec.gpu,
+        child_processes: spec.child_processes,
+        owner: spec.owner.clone(),
+        project: spec.project.clone(),
+        path_prepend: spec.path_prepend.clone(),
+        env: spec.env.clone(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct Fixture {
+        workspace: tempfile::TempDir,
+        home: tempfile::TempDir,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            Self {
+                workspace: tempfile::tempdir().unwrap(),
+                home: tempfile::tempdir().unwrap(),
+            }
+        }
+
+        fn spec(&self) -> SandboxSpec {
+            SandboxSpec::new(
+                "task:test",
+                self.workspace.path().to_path_buf(),
+                self.home.path().to_path_buf(),
+            )
+        }
+    }
+
+    #[test]
+    fn rejects_write_paths_outside_workspace_and_home() {
+        let fixture = Fixture::new();
+        let sibling = tempfile::tempdir().unwrap();
+        let mut spec = fixture.spec();
+        spec.read_write = vec![sibling.path().to_path_buf()];
+        let error = resolve(&spec).unwrap_err().to_string();
+        assert!(error.contains("outside"), "{error}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_linked_write_paths() {
+        let fixture = Fixture::new();
+        let target = fixture.workspace.path().join("real");
+        std::fs::create_dir(&target).unwrap();
+        let link = fixture.workspace.path().join("link");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        let mut spec = fixture.spec();
+        spec.read_write = vec![link];
+        assert!(resolve(&spec)
+            .unwrap_err()
+            .to_string()
+            .contains("symbolic link"));
+    }
+
+    #[test]
+    fn rejects_filesystem_root_and_home_as_reads() {
+        let fixture = Fixture::new();
+        let mut spec = fixture.spec();
+        spec.read_only = vec![PathBuf::from(if cfg!(windows) { r"C:\" } else { "/" })];
+        assert!(resolve(&spec)
+            .unwrap_err()
+            .to_string()
+            .contains("specific readable files or folders"));
+        if let Some(home) = home_dir() {
+            let mut spec = fixture.spec();
+            spec.read_only = vec![home];
+            assert!(resolve(&spec).is_err());
+        }
+    }
+
+    #[test]
+    fn drops_missing_protected_paths() {
+        let fixture = Fixture::new();
+        let chapters = fixture.workspace.path().join("chapters");
+        std::fs::create_dir_all(chapters.join(".oleafly")).unwrap();
+        let outside = fixture.workspace.path().join(".oleafly-root");
+        std::fs::create_dir(&outside).unwrap();
+        let mut spec = fixture.spec();
+        spec.read_write = vec![chapters.clone()];
+        spec.protected = vec![chapters.join(".git"), chapters.join(".oleafly"), outside];
+        let resolved = resolve(&spec).unwrap();
+        assert_eq!(
+            resolved.protected,
+            vec![plain_path(
+                &chapters.join(".oleafly").canonicalize().unwrap()
+            )]
+        );
+    }
+
+    #[test]
+    fn dedupes_and_sorts_reads() {
+        let fixture = Fixture::new();
+        let a = tempfile::tempdir().unwrap();
+        let b = tempfile::tempdir().unwrap();
+        let mut spec = fixture.spec();
+        spec.read_only = vec![
+            b.path().to_path_buf(),
+            a.path().to_path_buf(),
+            b.path().to_path_buf(),
+        ];
+        let resolved = resolve(&spec).unwrap();
+        let mut expected = vec![
+            plain_path(&a.path().canonicalize().unwrap()),
+            plain_path(&b.path().canonicalize().unwrap()),
+        ];
+        expected.sort();
+        assert_eq!(resolved.read_only, expected);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn plain_path_strips_verbatim_prefix() {
+        assert_eq!(
+            plain_path(Path::new(r"\\?\C:\Users\A B")),
+            PathBuf::from(r"C:\Users\A B")
+        );
+        assert_eq!(
+            plain_path(Path::new(r"\\?\UNC\srv\s\x")),
+            PathBuf::from(r"\\srv\s\x")
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn refuses_workspace_paths_of_248_chars_or_more() {
+        let base = tempfile::tempdir().unwrap();
+        let mut deep = base.path().to_path_buf();
+        while deep.as_os_str().len() < 260 {
+            deep.push("abcdefghij");
+        }
+        std::fs::create_dir_all(&deep).unwrap();
+        let home = tempfile::tempdir().unwrap();
+        let spec = SandboxSpec::new("task:test", deep, home.path().to_path_buf());
+        assert!(resolve(&spec).unwrap_err().to_string().contains("too long"));
+    }
+}

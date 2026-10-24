@@ -407,7 +407,24 @@ pub fn remove_root(project_id: &str, root_id: &str) -> Result<ResearchWorkspace,
         .lock()
         .map_err(|_| "research workspace lock is unavailable".to_string())?;
     let path = workspace_path(project_id)?;
-    remove_root_from(&path, project_id, root_id)
+    let folder = read_workspace_from(&path, project_id)
+        .ok()
+        .and_then(|workspace| workspace.roots.into_iter().find(|root| root.id == root_id))
+        .map(|root| PathBuf::from(root.canonical_path));
+    let workspace = remove_root_from(&path, project_id, root_id)?;
+    // The Windows sandbox stops sharing an unlinked folder with tasks.
+    if let Some(folder) = folder.filter(|_| cfg!(windows)) {
+        std::thread::spawn(move || {
+            if let Err(error) =
+                oleafly_sandbox::remove_shared_access(oleafly_sandbox::SharedScope::Path(folder))
+            {
+                let _ = crate::project::append_app_log(format!(
+                    "Sandbox access to an unlinked folder could not be removed: {error}"
+                ));
+            }
+        });
+    }
+    Ok(workspace)
 }
 
 fn remove_root_from(

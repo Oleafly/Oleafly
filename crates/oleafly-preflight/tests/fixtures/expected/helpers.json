@@ -1,0 +1,242 @@
+{
+  "candidates-0": [
+    "refs",
+    "refs.bib",
+    "chapters/refs",
+    "chapters/refs.bib"
+  ],
+  "candidates-1": [
+    "refs.bib"
+  ],
+  "candidates-10": [],
+  "candidates-11": [],
+  "candidates-12": [
+    "quoted",
+    "quoted.bib"
+  ],
+  "candidates-2": [
+    "refs"
+  ],
+  "candidates-3": [
+    "a/refs",
+    "a/refs.bib",
+    "refs",
+    "refs.bib"
+  ],
+  "candidates-4": [
+    "a/refs.yml",
+    "refs.yml"
+  ],
+  "candidates-5": [
+    "refs.json"
+  ],
+  "candidates-6": [],
+  "candidates-7": [
+    "shared/refs",
+    "shared/refs.bib"
+  ],
+  "candidates-8": [],
+  "candidates-9": [],
+  "contact-0": true,
+  "contact-1": true,
+  "contact-2": false,
+  "contact-3": true,
+  "contact-4": true,
+  "declarations-0": [
+    {
+      "command": "bibliography",
+      "from": 0,
+      "raw": "a",
+      "to": 29
+    },
+    {
+      "command": "bibliography",
+      "from": 0,
+      "raw": "b",
+      "to": 29
+    }
+  ],
+  "declarations-1": [
+    {
+      "command": "addbibresource",
+      "from": 0,
+      "raw": "refs.bib",
+      "to": 34
+    }
+  ],
+  "declarations-2": [
+    {
+      "command": "bibliography",
+      "from": 0,
+      "raw": "quoted",
+      "to": 24
+    }
+  ],
+  "declarations-3": [
+    {
+      "command": "bibliography",
+      "from": 2,
+      "raw": "refs",
+      "to": 22
+    },
+    {
+      "command": "addbibresource",
+      "from": 25,
+      "raw": "other.bib",
+      "to": 51
+    }
+  ],
+  "declarations-4": [
+    {
+      "command": "bibliography",
+      "from": 3,
+      "raw": "refs",
+      "to": 22
+    }
+  ],
+  "display-name-0": "refs.bib",
+  "display-name-1": "refs.bib",
+  "display-name-2": "refs",
+  "display-name-3": "x.bib",
+  "document-class-0": "article",
+  "document-class-1": null,
+  "document-class-2": null,
+  "document-class-3": "report",
+  "document-class-4": "a",
+  "document-class-5": null,
+  "email-0": "ana.b+1@ex-ample.co.uk",
+  "email-1": null,
+  "email-2": null,
+  "email-3": "first@x.io",
+  "hayagriva-keys-0": [
+    "quoted key",
+    "smith2020"
+  ],
+  "hayagriva-keys-1": [
+    "a",
+    "b"
+  ],
+  "hayagriva-keys-2": [
+    "plain-key",
+    "single quoted"
+  ],
+  "looks-like-hayagriva-0": true,
+  "looks-like-hayagriva-1": true,
+  "looks-like-hayagriva-2": false,
+  "looks-like-hayagriva-3": false,
+  "looks-like-hayagriva-4": false,
+  "mask-comments-0": "a    \nc",
+  "mask-comments-1": "50\\% off       ",
+  "mask-comments-2": "x\\\\   ",
+  "mask-comments-3": "a    \nb",
+  "mask-comments-4": "          \n           ",
+  "parse-entry-0": {
+    "fields": {
+      "note": "x",
+      "title": "A {B} c",
+      "year": "2020"
+    },
+    "key": "key",
+    "type": "article"
+  },
+  "parse-entry-1": null,
+  "parse-entry-2": {
+    "fields": {
+      "doi": "10.1/x",
+      "url": "u"
+    },
+    "key": "k",
+    "type": "misc"
+  },
+  "parse-entry-3": null,
+  "parse-entry-4": {
+    "fields": {
+      "author": "A and B",
+      "booktitle": "Proc",
+      "title": "T"
+    },
+    "key": "a:b-c",
+    "type": "inproceedings"
+  },
+  "parse-entry-5": {
+    "fields": {
+      "title": "never close"
+    },
+    "key": "open",
+    "type": "article"
+  },
+  "parse-entry-6": null,
+  "parse-entry-7": {
+    "fields": {
+      "note": "b"
+    },
+    "key": "k",
+    "type": "misc"
+  },
+  "phone-0": "+1 (555) 123-4567",
+  "phone-1": "555 123 4567 ext. 12",
+  "phone-10": "978-3-16-148410-0",
+  "phone-11": "555.123.4567x89",
+  "phone-12": "1234567890",
+  "phone-13": null,
+  "phone-2": "+44 20 7946 0958",
+  "phone-3": "5551234567",
+  "phone-4": null,
+  "phone-5": null,
+  "phone-6": null,
+  "phone-7": null,
+  "phone-8": null,
+  "phone-9": "555 123-4567",
+  "profile-0": "ieee",
+  "profile-1": "acm",
+  "profile-2": "thesis",
+  "profile-3": "thesis",
+  "profile-4": "generic",
+  "profile-5": "ieee",
+  "profile-6": "acm",
+  "profile-7": "thesis",
+  "profile-8": "thesis",
+  "profile-9": "generic",
+  "resolve-0": "refs.bib",
+  "resolve-1": "refs.bib",
+  "resolve-2": "ch/refs.bib",
+  "resolve-3": "refs",
+  "resolve-4": null,
+  "resume-heading-0": "experience",
+  "resume-heading-1": "experience",
+  "resume-heading-2": "projects",
+  "resume-heading-3": null,
+  "resume-heading-4": null,
+  "resume-heading-5": "awards",
+  "resume-heading-6": "coursework",
+  "resume-heading-7": "education",
+  "resume-heading-8": "summary",
+  "resume-source-0": true,
+  "resume-source-1": true,
+  "resume-source-2": true,
+  "resume-source-3": false,
+  "resume-source-4": false,
+  "tagged-pdf-0": true,
+  "tagged-pdf-1": true,
+  "tagged-pdf-2": false,
+  "tagged-pdf-3": false,
+  "tagged-pdf-4": false,
+  "tagged-pdf-5": true,
+  "typst-path-0": "img/x.png",
+  "typst-path-1": "x.png",
+  "typst-path-2": null,
+  "typst-path-3": null,
+  "typst-path-4": null,
+  "typst-path-5": "a/b/d/e.png",
+  "typst-templates": [
+    "a-b",
+    "c"
+  ],
+  "typst-version-0": true,
+  "typst-version-1": false,
+  "typst-version-2": true,
+  "typst-version-3": true,
+  "typst-version-4": true,
+  "typst-version-5": true,
+  "typst-version-6": true
+}

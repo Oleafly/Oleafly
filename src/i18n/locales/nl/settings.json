@@ -11,12 +11,12 @@
       "checkingAction": "Controleren",
       "checkingDescription": "Dit kan even duren terwijl Oleafly de opdrachtregeltools op deze computer nakijkt.",
       "checkingInstalled": "Geïnstalleerde agents controleren",
-      "checkingTitle": "Zoeken naar opdrachtregelagents",
+      "checkingTitle": "Zoeken naar CLI-agents",
       "cliPathLabel": "Gevonden in",
       "cliTitle": "Opdrachtregeltool",
       "copySignInCommand": "Aanmeldopdracht kopiëren",
-      "emptyDescription": "Installeer een ondersteunde opdrachtregelagent en controleer het opnieuw.",
-      "emptyTitle": "Geen opdrachtregelagents gevonden",
+      "emptyDescription": "Installeer een ondersteunde CLI-agent en controleer het opnieuw.",
+      "emptyTitle": "Geen CLI-agents gevonden",
       "custom": {
         "description": "Plak een agentdefinitie om een agent te registreren die niet met Oleafly meekomt.",
         "hint": "Plak een agentdefinitie met een vastgezet npm- of uv-pakket, een geverifieerd programma of een geïnstalleerd programma. Houd wachtwoorden en API-sleutels uit deze JSON.",
@@ -36,7 +36,7 @@
       },
       "installBridge": "Bridge installeren",
       "installBridgeNextStep": "Installeer de ACP-bridge en meld je daarna aan via de opdrachtregeltool.",
-      "intro": "Verbind een lokale agent via ACP. Elke agent beheert zijn eigen modellen, tools en aanmelding, en de instellingen van API-providers blijven apart. Gebruik het officiële CLI-account om je aan te melden: Oleafly importeert geen accounttokens en schat geen abonnementsquota.",
+      "intro": "CLI-agents zoals Claude Code, Codex en Gemini CLI verbinden via het Agent Client Protocol (ACP). Sommige hebben een bridge nodig, een kleine adapter die Oleafly installeert om met ze te kunnen praten. Elke agent beheert zijn eigen modellen, tools en aanmelding, en de instellingen van API-providers blijven apart. Gebruik het officiële CLI-account om je aan te melden: Oleafly importeert geen accounttokens en schat geen abonnementsquota.",
       "nextStepTitle": "Volgende stap",
       "notReported": "Niet gemeld",
       "notice": {
@@ -62,7 +62,7 @@
         "showDistribution": "Distributie tonen",
         "title": "Meer agents vinden"
       },
-      "sectionLabel": "ACP-agents",
+      "sectionLabel": "CLI-agents",
       "signInCommandLabel": "Aanmeldopdracht",
       "versionLabel": "Versie",
       "updateBridge": "Bridge bijwerken",
@@ -113,10 +113,82 @@
           "startFailed": "{{name}} kon niet worden gestart.",
           "timeout": "{{name}} is gestart, maar heeft niet op tijd geantwoord.",
           "exited": "{{name}} is gestopt voordat het antwoordde.",
-          "notAcp": "{{name}} is gestart, maar Oleafly begreep het antwoord niet."
+          "notAcp": "{{name}} is gestart, maar Oleafly begreep het antwoord niet.",
+          "needsSignIn": "{{name}} werkt. Meld je aan voordat je een gesprek begint.",
+          "sessionFailed": "{{name}} is gestart, maar kon geen gesprek openen."
         },
         "getNode": "Node.js downloaden",
-        "copyDetails": "Details kopiëren"
+        "copyDetails": "Details kopiëren",
+        "signIn": "Aanmelden",
+        "afterSignIn": "Rond het aanmelden af in de terminal en test het programma daarna opnieuw."
+      },
+      "experimental": {
+        "title": "Experimenteel",
+        "description": "Deze opties gebruiken conceptonderdelen van het Agent Client Protocol. Ze kunnen veranderen of ophouden te werken.",
+        "v2": "ACP v2 gebruiken als dat beschikbaar is",
+        "v2Description": "Agents die het concept van versie 2 ondersteunen, gebruiken die. Andere agents blijven op versie 1.",
+        "providers": "Agents mijn API-sleutels van Oleafly laten gebruiken",
+        "providersDescription": "Een agent die zijn modelaanroepen kan omleiden, gebruikt de sleutel die je op zijn kaart kiest. De sleutel gaat alleen naar het proces van die agent."
+      },
+      "inactivity": {
+        "label": "Een stille agent stoppen na",
+        "description": "Als een agent zo lang niets stuurt, stopt Oleafly hem. Je kunt opnieuw verbinden.",
+        "minutes": "{{count}} minuten"
+      },
+      "protocolLabel": "Protocol",
+      "remembered": {
+        "title": "Onthouden keuzes",
+        "effort": "Inspanning: {{name}}",
+        "mode": "Modus: {{name}}",
+        "forget": "Vergeten",
+        "none": "Nieuwe gesprekken gebruiken de standaarden van de agent."
+      },
+      "providers": {
+        "label": "Mijn API-sleutel van Oleafly gebruiken",
+        "off": "Uit (de agent meldt zich zelf aan)",
+        "note": "Oleafly stuurt de sleutel naar deze agent als een gesprek begint en houdt hem buiten de verslagen.",
+        "unavailable": "Voeg een API-sleutel toe bij Instellingen, AI-assistent, Providers en sleutels om hem hier te gebruiken."
+      },
+      "hermes": {
+        "title": "Hermes-profiel voor dit project",
+        "default": "Standaardprofiel (gedeeld)",
+        "project": "Projectprofiel",
+        "remote": "Extern via SSH",
+        "profileName": "Profiel {{name}}",
+        "memory": "Projectgeheugen",
+        "memoryDescription": "Hermes onthoudt dingen tussen gesprekken in dit project.",
+        "toolGateway": "Tool Gateway",
+        "toolGatewayDescription": "Gebruik de gehoste hulpmiddelen voor zoeken op het web, afbeeldingen, spraak en de browser uit je Nous-abonnement.",
+        "status": {
+          "ready": "Gateway draait",
+          "starting": "Gateway start",
+          "stopped": "Gateway gestopt",
+          "unknown": "Status van de gateway onbekend"
+        },
+        "refresh": "Opnieuw controleren",
+        "keepsRunning": "Oleafly loskoppelen stopt de gateway nooit.",
+        "host": "Host",
+        "port": "Poort",
+        "folder": "Projectmap op die machine",
+        "command": "Hermes-opdracht",
+        "remoteProfile": "Profiel (optioneel)",
+        "test": "Verbinding testen",
+        "testOk": "Verbonden: {{version}}",
+        "save": "Opslaan",
+        "sshNote": "Oleafly meldt zich alleen aan met je SSH-sleutels.",
+        "folderHint": "Het volledige pad op die machine, zoals /home/ada/paper.",
+        "needsValid": "Verbinding testen en Opslaan hebben geldige waarden nodig voor: {{fields}}.",
+        "unsavedEdit": "Nog niet opgeslagen. Sla op om deze wijzigingen te gebruiken.",
+        "unsavedMode": "Nog niet opgeslagen. Tot je opslaat, blijft dit project {{mode}} gebruiken.",
+        "errors": {
+          "hostRequired": "Vul de hostnaam of user@host in.",
+          "hostInvalid": "Gebruik alleen letters, cijfers, punten, streepjes en @, en begin niet met een streepje.",
+          "port": "Gebruik een poort van 1 tot 65535.",
+          "folderRequired": "Vul het volledige pad van de projectmap op die machine in.",
+          "folderInvalid": "Gebruik het volledige pad, beginnend met /.",
+          "command": "Gebruik hermes, of het volledige pad ernaartoe, beginnend met /.",
+          "profile": "Gebruik kleine letters, cijfers, streepjes en underscores."
+        }
       }
     },
     "approvals": {
@@ -195,6 +267,8 @@
       "defaultModelTitle": "Standaardmodel voor chats",
       "pdfCaptureDescription": "Laat de agent gecompileerde pagina's omzetten in afbeeldingen (verify_pdf_pages) om de opmaak visueel te controleren. Zet dit uit als je liever geen pagina-afbeeldingen naar je provider stuurt.",
       "pdfCaptureLabel": "PDF-pagina's laten vastleggen voor AI",
+      "reasoningSummariesDescription": "Modellen die nadenken voordat ze antwoorden, sturen een korte samenvatting van hun redenering. Geldt voor modellen van Anthropic en OpenAI.",
+      "reasoningSummariesLabel": "Samenvattingen van de redenering tonen",
       "save": "Instructies opslaan",
       "saved": "Opgeslagen",
       "toolsHint": "Vraag bijvoorbeeld \"los de LaTeX-fouten op\", \"voeg een sectie Publicaties toe\" of \"compileer opnieuw en controleer de PDF\".",
@@ -509,7 +583,32 @@
       },
       "useInAllProjectsAria": "{{name}} in alle projecten gebruiken",
       "useInProjectAria": "{{name}} in dit project gebruiken",
-      "validateAria": "{{name}} valideren"
+      "validateAria": "{{name}} valideren",
+      "shadowNote": "Er is een nieuwere versie van deze vaardigheid van Oleafly beschikbaar.",
+      "replaceAction": "De versie van Oleafly gebruiken",
+      "replaceTitle": "Jouw kopie van {{name}} vervangen?",
+      "replaceBody": "Je kopie gaat naar een back-upmap. Er wordt niets verwijderd.",
+      "replaced": "Je kopie staat in {{path}}."
+    },
+    "tools": {
+      "tabLabel": "Hulpmiddelen",
+      "loading": "Instellingen voor Hulpmiddelen laden…",
+      "modelTitle": "Model voor Hulpmiddelen",
+      "modelDescription": "Afbeelding naar LaTeX, afbeeldingen van vergelijkingen en gescande PDF's gebruiken dit model. De automatische keuze gebruikt Ollama, dus afbeeldingen blijven op deze computer. Als Ollama niet draait of geen model heeft dat afbeeldingen kan lezen, sturen Afbeelding naar LaTeX en Afbeelding naar Typst in de editor de afbeelding naar het model van de assistent.",
+      "ocrHint": "Voor de beste lokale resultaten haal je een OCR-model op in Ollama:",
+      "mathpix": {
+        "title": "Mathpix",
+        "description": "Optioneel. Mathpix leest vergelijkingen, tabellen en gescande PDF's en rekent per afbeelding en pagina af bij je eigen Mathpix-account.",
+        "docs": "Mathpix-sleutels aanvragen",
+        "appIdLabel": "App-ID",
+        "appKeyLabel": "App-sleutel",
+        "save": "Sleutels opslaan",
+        "remove": "Sleutels verwijderen",
+        "connected": "Verbonden als {{appId}}",
+        "saved": "Mathpix-sleutels opgeslagen.",
+        "removed": "Mathpix-sleutels verwijderd.",
+        "privacy": "Oleafly vraagt Mathpix je afbeeldingen niet te bewaren en verwijdert elke PDF bij Mathpix nadat het resultaat is gelezen."
+      }
     }
   },
   "appearance": {
@@ -548,17 +647,6 @@
       "theme": {
         "description": "Systeem volgt het besturingssysteem en verandert mee.",
         "label": "Weergave"
-      }
-    },
-    "browser": {
-      "homePage": {
-        "ariaLabel": "Startpagina van de browser",
-        "description": "Kies de pagina die opent met het browserdock.",
-        "label": "Startpagina"
-      },
-      "searchEngine": {
-        "description": "Kies de zoekmachine voor tekstzoekopdrachten.",
-        "label": "Standaardzoekmachine"
       }
     },
     "customTheme": {
@@ -856,7 +944,6 @@
     "sectionName": "Weergave",
     "tabs": {
       "app": "App",
-      "browser": "Browser",
       "editor": "Editor",
       "files": "Project",
       "pdf": "PDF-voorbeeld",
@@ -880,6 +967,14 @@
         "foreground": "Tekst",
         "foregroundAriaLabel": "Tekstkleur van de terminal",
         "label": "Terminalkleuren"
+      },
+      "confirmClose": {
+        "description": "Eerst vragen als er nog een programma draait in een terminal die je sluit, ook als je het project sluit of stopt.",
+        "label": "Vragen voor het sluiten van een bezette terminal"
+      },
+      "copyOnSelect": {
+        "description": "Terminaltekst kopiëren zodra je hem selecteert.",
+        "label": "Kopiëren bij selecteren"
       },
       "cursorBlink": {
         "description": "Laat de cursor in de terminal knipperen.",
@@ -909,6 +1004,49 @@
       "fontWeightBold": {
         "description": "Stel de dikte in voor vette terminaltekst.",
         "label": "Dikte van vette tekst"
+      },
+      "optionIsMeta": {
+        "description": "Toetscombinaties met Option als Meta naar de shell sturen. Option typt dan geen speciale tekens meer.",
+        "label": "Option als Meta gebruiken"
+      },
+      "scrollback": {
+        "ariaLabel": "Scrollgeschiedenis van de terminal",
+        "description": "Hoeveel regels elke terminal bewaart. Meer regels gebruiken meer geheugen.",
+        "label": "Scrollgeschiedenis",
+        "lines_one": "{{value}} regel",
+        "lines_other": "{{value}} regels"
+      },
+      "shell": {
+        "ariaLabel": "De shell van de terminal",
+        "description": "Nieuwe terminals starten deze shell. Open terminals houden hun eigen shell.",
+        "label": "Shell",
+        "notFound": "{{name}} (niet gevonden)",
+        "notFoundNote": "{{name}} is niet beschikbaar op deze computer, dus nieuwe terminals kunnen niet starten. Kies een andere shell.",
+        "options": {
+          "auto": "Standaard ({{name}})",
+          "cmd": "Opdrachtprompt",
+          "custom": "Eigen pad",
+          "defaultShell": "Standaard-shell",
+          "gitBash": "Git Bash",
+          "powershell": "Windows PowerShell",
+          "pwsh": "PowerShell 7",
+          "wsl": "WSL"
+        },
+        "path": {
+          "ariaLabel": "Eigen pad naar de shell",
+          "description": "Het programma dat nieuwe terminals uitvoeren.",
+          "label": "Pad naar de shell"
+        },
+        "windowsOnly": "{{name}} (alleen Windows)",
+        "windowsOnlyNote": "{{name}} draait alleen op Windows. Nieuwe terminals hier starten in plaats daarvan met {{fallback}}.",
+        "windowsOnlyNoteDefault": "{{name}} draait alleen op Windows. Nieuwe terminals hier starten in plaats daarvan met de standaard-shell."
+      },
+      "shiftEnter": {
+        "ariaLabel": "Shift+Enter in de terminal",
+        "description": "Wat Shift+Enter naar het programma in de terminal stuurt. Een nieuwe regel laat chatachtige tools zoals Claude Code een regel aan hun prompt toevoegen. Enter verstuurt, net als de Enter-toets.",
+        "enter": "Enter versturen",
+        "label": "Shift+Enter",
+        "newline": "Nieuwe regel invoegen"
       },
       "startWithProject": {
         "description": "Start de shell zodra een project opent in plaats van bij de eerste keer dat je de terminal toont.",
@@ -952,6 +1090,15 @@
       "saveEmail": "E-mailadres opslaan",
       "saveKey": "Sleutel opslaan"
     },
+    "braveSearch": {
+      "docsLink": "Brave Search API",
+      "hint": "Optioneel. Laat de assistent op het web zoeken als zijn provider geen eigen zoekfunctie heeft.",
+      "keyLabel": "Brave Search API-sleutel",
+      "keyRemoveFailed": "Kon de Brave Search API-sleutel niet verwijderen.",
+      "keyRemoved": "Brave Search API-sleutel verwijderd",
+      "keySaveFailed": "Kon de Brave Search API-sleutel niet opslaan.",
+      "keySaved": "Brave Search API-sleutel opgeslagen"
+    },
     "connected": "Verbonden",
     "description": "Beheer de gegevens waarmee wetenschappelijke zoekbronnen worden benaderd.",
     "keyFree": {
@@ -991,7 +1138,17 @@
       "keySaveFailed": "Kon de Serper API-sleutel niet opslaan.",
       "keySaved": "Serper API-sleutel opgeslagen"
     },
-    "title": "Citaties zoeken"
+    "tavily": {
+      "docsLink": "Tavily API",
+      "hint": "Optioneel. Laat de assistent op het web zoeken als zijn provider geen eigen zoekfunctie heeft.",
+      "keyLabel": "Tavily API-sleutel",
+      "keyRemoveFailed": "Kon de Tavily API-sleutel niet verwijderen.",
+      "keyRemoved": "Tavily API-sleutel verwijderd",
+      "keySaveFailed": "Kon de Tavily API-sleutel niet opslaan.",
+      "keySaved": "Tavily API-sleutel opgeslagen"
+    },
+    "title": "Citaties zoeken",
+    "webSearchOrder": "Om op het web te zoeken gebruikt de assistent eerst Brave, dan Tavily en dan Serper."
   },
   "cite": {
     "apa": "Dezelfde referentie in APA staat achter Cite this repository op GitHub",
@@ -1285,17 +1442,64 @@
       }
     }
   },
-  "github": {
+  "gitHosting": {
     "account": {
-      "connected": "Verbonden",
-      "disconnect": "Verbinding verbreken",
-      "handle": "@{{login}}"
+      "ariaLabel": "{{login}} op {{host}}",
+      "caAdd": "Certificaatbestand toevoegen",
+      "caChange": "Certificaatbestand wijzigen",
+      "caFile": "Certificaatbestand: {{file}}",
+      "checking": "Controleren…",
+      "signInAgain": "Opnieuw aanmelden",
+      "signOut": "Afmelden",
+      "signedInAs": "Aangemeld als {{login}}",
+      "signedOut": "Afgemeld",
+      "unreachable": "Server niet bereikbaar"
     },
-    "advanced": {
+    "add": {
+      "browserHint": "Meldt je aan met een eenmalige code in je browser.",
+      "caChoose": "Bestand kiezen…",
+      "caFilter": "Certificaatbestanden",
+      "caHint": "Alleen nodig als het certificaat van de server van een eigen certificeringsinstantie van je organisatie komt.",
+      "caLabel": "Bestand van de certificeringsinstantie",
+      "caPickerTitle": "Kies een certificaatbestand",
+      "caRemove": "Verwijderen",
+      "chooseKind": "Type server",
       "connect": "Verbinden",
-      "toggle": "Geavanceerd: een personal access token gebruiken",
-      "tokenPlaceholder": "ghp_…"
+      "continue": "Doorgaan",
+      "createToken": "Een token maken op {{host}}",
+      "detecting": "Server controleren…",
+      "found": "Dit is een {{kind}}-server.",
+      "kindGitea": "Gitea of Forgejo",
+      "kindGithub": "GitHub Enterprise Server",
+      "otherServer": "Een andere server",
+      "replaces": "Aanmelden vervangt {{login}} op {{host}}.",
+      "scopesGitea": "Geef het lees- en schrijftoegang tot repository en user.",
+      "scopesGithub": "Geef het de scopes repo en read:user.",
+      "scopesGitlab": "Geef het de scopes api en write_repository.",
+      "serverLabel": "Serveradres",
+      "serverPlaceholder": "https://git.example.org",
+      "signInBrowser": "Aanmelden met {{host}}",
+      "title": "Een Git-hostingaccount toevoegen",
+      "tokenLabel": "Toegangstoken",
+      "useToken": "Een toegangstoken gebruiken"
     },
+    "addAccount": "Account toevoegen",
+    "description": "Meld je aan om te pushen en te pullen, projecten te publiceren en repository's te importeren. Werkt met GitHub, GitLab, Gitea, Forgejo en Codeberg, en met servers die je zelf beheert.",
+    "device": {
+      "open": "{{host}} openen",
+      "opened": "Oleafly heeft <verificationLink>{{url}}</verificationLink> in je browser geopend. Vul daar de code in om het aanmelden af te ronden.",
+      "timedOut": "De tijd voor het aanmelden is verstreken. Probeer het opnieuw.",
+      "title": "Vul deze code in op {{host}}",
+      "waiting": "Wachten tot je klaar bent in de browser…"
+    },
+    "empty": "Nog geen accounts. Projecten die je via een adres koppelt, pushen en pullen nog steeds met je eigen Git-aanmelding of SSH-sleutel.",
+    "notice": {
+      "signedIn": "Aangemeld bij {{host}} als {{login}}.",
+      "signedOut": "Afgemeld bij {{host}}."
+    },
+    "title": "Git-hosting"
+  },
+  "github": {
     "autoInit": {
       "description": "Nieuwe en geopende projecten krijgen een Git-repository zodat het Git-paneel wijzigingen kan volgen. Een nieuw project begint meestal met één commit van de bestanden. Daarna commit Oleafly alleen als je daarom vraagt.",
       "label": "Git initialiseren voor elk project"
@@ -1303,23 +1507,6 @@
     "config": {
       "loadFailed": "Kon de Git-instellingen niet laden.",
       "saveFailed": "Kon de Git-instellingen niet opslaan."
-    },
-    "connect": "GitHub verbinden",
-    "description": "Maak back-ups van projecten, synchroniseer tussen apparaten en push of pull vanuit het Git-paneel.",
-    "device": {
-      "openGithub": "GitHub openen",
-      "opened": "We hebben <verificationLink>{{url}}</verificationLink> in je browser geopend. Plak de code daar om Oleafly te autoriseren.",
-      "timedOut": "Het aanmelden bij GitHub duurde te lang. Probeer het opnieuw.",
-      "title": "Vul deze code in op GitHub",
-      "waiting": "Wachten op autorisatie…"
-    },
-    "hint": {
-      "oauth": "Meldt je aan met een eenmalige code in je browser.",
-      "token": "Aanmelden met OAuth is in deze build nog niet ingesteld, plak daarom een token."
-    },
-    "notice": {
-      "connected": "Verbonden als @{{login}}",
-      "disconnected": "Verbinding verbroken."
     }
   },
   "integrations": {
@@ -1336,31 +1523,14 @@
       "disconnectFailed": "De verbinding met alphaXiv kon niet worden verbroken. Probeer het opnieuw."
     },
     "cookies": {
-      "action": "Cookies importeren",
-      "confirmAllDomains": "Je staat op het punt cookies voor alle domeinen te importeren uit het profiel {{profile}} in {{browser}}. Cookie-waarden worden in de ingebouwde browser bewaard en alleen naar de bijbehorende websites gestuurd. Oleafly vraagt je nog één keer om bevestiging in een systeemvenster voordat het profiel wordt gelezen.",
-      "confirmDomain": "Je staat op het punt cookies voor {{domain}} te importeren uit het profiel {{profile}} in {{browser}}. Cookie-waarden worden in de ingebouwde browser bewaard en alleen naar de bijbehorende websites gestuurd. Oleafly vraagt je nog één keer om bevestiging in een systeemvenster voordat het profiel wordt gelezen.",
       "confirmTitle": "Cookie-import bevestigen",
-      "description": "Gebruik een bestaande browseraanmelding in de ingebouwde browser van Oleafly.",
       "detecting": "Zoeken naar geïnstalleerde browserprofielen...",
       "dialogDescription": "Kies één geïnstalleerd browserprofiel. Oleafly leest het pas nadat je de import hebt bekeken en bevestigd. Chromium-cookies worden lokaal ontgrendeld via de macOS-sleutelhanger. Oleafly stuurt geen cookiewaarden naar een Oleafly-dienst.",
       "dialogTitle": "Browsercookies importeren",
       "empty": "Er zijn geen ondersteunde browserprofielen gevonden.",
       "errors": {
-        "chooseProfile": "Kies een beschikbaar browserprofiel.",
-        "hostname": "Vul een hostnaam in, bijvoorbeeld example.com."
+        "chooseProfile": "Kies een beschikbaar browserprofiel."
       },
-      "hostnameHint": "Vul de hostnaam van een site in om alleen cookies te importeren die die site kan gebruiken. Laat leeg om elke geschikte cookie in dit profiel te importeren.",
-      "hostnameLabel": "Doelhostnaam (optioneel)",
-      "hostnamePlaceholder": "example.com",
-      "importedDomain_one": "{{count}} cookie uit {{browser}} geïmporteerd voor {{domain}}.",
-      "importedDomain_other": "{{count}} cookies uit {{browser}} geïmporteerd voor {{domain}}.",
-      "importedProfileDomain_one": "{{count}} cookie uit {{browser}}, {{profile}} geïmporteerd voor {{domain}}.",
-      "importedProfileDomain_other": "{{count}} cookies uit {{browser}}, {{profile}} geïmporteerd voor {{domain}}.",
-      "importedProfile_one": "{{count}} cookie uit {{browser}}, {{profile}} geïmporteerd.",
-      "importedProfile_other": "{{count}} cookies uit {{browser}}, {{profile}} geïmporteerd.",
-      "imported_one": "{{count}} cookie uit {{browser}} geïmporteerd.",
-      "imported_other": "{{count}} cookies uit {{browser}} geïmporteerd.",
-      "importing": "Cookies importeren...",
       "profileGroupLabel": "Browserprofielen",
       "profileLegend": "Browserprofiel",
       "review": "Import bekijken",
@@ -1370,8 +1540,16 @@
         "noCookieStore": "Geen cookieopslag",
         "notInstalled": "Niet geïnstalleerd"
       },
-      "title": "Cookies importeren",
-      "tryAgain": "Opnieuw proberen"
+      "tryAgain": "Opnieuw proberen",
+      "label": "Aanmelding uit de browser",
+      "useBrowserSignIn": "De aanmelding uit mijn browser gebruiken",
+      "signInDescription": "Kopieer je aanmelding voor {{server}} uit een browser op deze computer, zodat je je niet opnieuw hoeft aan te melden.",
+      "site": "Site: {{domain}}",
+      "confirmCopy": "Oleafly leest de cookies voor {{domain}} uit het profiel {{profile}} in {{browser}}. Ze blijven in Oleafly en gaan alleen naar {{domain}}. Je bevestigt het nog een keer in een systeemvenster.",
+      "copyAction": "Aanmelding kopiëren",
+      "copying": "Kopiëren…",
+      "notSignedIn_one": "{{count}} cookie gekopieerd uit {{browser}}, maar die heeft je niet aangemeld. Meld je rechtstreeks aan.",
+      "notSignedIn_other": "{{count}} cookies gekopieerd uit {{browser}}, maar die hebben je niet aangemeld. Meld je rechtstreeks aan."
     },
     "zotero": {
       "apiKeyHint": "Zo krijg je een sleutel: meld je aan bij <siteLink>zotero.org</siteLink>, open je <keyLink>pagina met API-sleutels</keyLink> om een sleutel aan te maken en kopieer je numerieke gebruikers-ID van diezelfde pagina.",
@@ -1440,6 +1618,132 @@
       "gitSave": "Opslaan",
       "gitRemove": "Weghalen",
       "gitFailed": "Oleafly kon het Git-token niet opslaan. Controleer of je het hele token hebt geplakt."
+    },
+    "desktopApps": {
+      "tab": "Desktop-apps",
+      "title": "Desktop-apps",
+      "description": "Laat agents via Cua Driver apps en websites op deze computer gebruiken. Oleafly vraagt het voor elke klik of toetsaanslag.",
+      "docsLink": "Documentatie van Cua Driver",
+      "status": {
+        "installed": "Cua Driver {{version}} is geïnstalleerd.",
+        "installedNoVersion": "Cua Driver is geïnstalleerd.",
+        "notInstalled": "Cua Driver is niet geïnstalleerd.",
+        "tooOld": "Cua Driver {{version}} is te oud. Oleafly heeft {{minimum}} of nieuwer nodig.",
+        "noAppBundle": "Installeer Cua Driver met het officiële installatieprogramma, zodat het de rechten van macOS kan behouden.",
+        "unreadableVersion": "Oleafly kon de versie van Cua Driver niet lezen. Controleer of het draait en controleer daarna opnieuw.",
+        "path": "Gevonden in {{path}}"
+      },
+      "install": {
+        "heading": "Cua Driver installeren",
+        "hint": "Voer deze opdracht uit in een terminal. Oleafly installeert Cua Driver nooit voor je.",
+        "run": "Uitvoeren in terminal",
+        "needsProject": "Open een project om dit in de terminal van Oleafly uit te voeren, of kopieer de opdracht.",
+        "confirm": "Dit downloadt het installatieprogramma van Cua Driver van cua.ai en voert het uit in je terminal. Doorgaan?",
+        "terminalTitle": "Cua Driver installeren",
+        "checkAgain": "Opnieuw controleren"
+      },
+      "permissions": {
+        "heading": "Rechten in macOS",
+        "granted": "Cua Driver kan Toegankelijkheid en Schermopname gebruiken.",
+        "needed": "Cua Driver heeft Toegankelijkheid en Schermopname nodig. Voer de stap voor het verlenen van rechten uit en volg de aanwijzingen.",
+        "unknown": "Oleafly kon de rechten van Cua Driver niet lezen.",
+        "grant": "Rechten verlenen",
+        "terminalTitle": "Rechten van Cua Driver"
+      },
+      "gnome": {
+        "heading": "GNOME-hulpprogramma",
+        "needed": "Voer onder GNOME één keer het vensterhulpprogramma van Cua uit, meld je dan af en weer aan.",
+        "active": "Het vensterhulpprogramma voor GNOME staat aan."
+      },
+      "enable": {
+        "label": "Agents desktop-apps laten gebruiken",
+        "description": "Agents kunnen de apps en websites hieronder zien. Voor klikken, typen en paginawijzigingen vragen ze het je eerst."
+      },
+      "apps": {
+        "heading": "Toegestane apps",
+        "empty": "Nog geen apps. Agents kunnen alleen apps gebruiken die je hier toevoegt.",
+        "add": "App toevoegen",
+        "remove": "{{name}} verwijderen",
+        "missing": "Dit programma is niet gevonden op deze computer. Verwijder het of installeer de app opnieuw.",
+        "dialog": {
+          "title": "Een app toevoegen",
+          "description": "Kies een app die agents mogen gebruiken. Na je goedkeuring kunnen ze hem openen, de vensters lezen en erin handelen.",
+          "search": "Apps zoeken",
+          "loading": "Apps zoeken…",
+          "none": "Geen apps gevonden.",
+          "choose": "Een andere app kiezen…",
+          "add": "Toevoegen",
+          "added": "Al toegevoegd.",
+          "more": "{{shown}} van {{total}} getoond. Zoek om de lijst te verkleinen.",
+          "refresh": "Vernieuwen"
+        },
+        "blocked": {
+          "oleafly": "Oleafly kan zichzelf niet bedienen.",
+          "driver": "Cua Driver kan zichzelf niet bedienen.",
+          "terminal": "Terminals voeren opdrachten uit zonder de goedkeuring van opdrachten in Oleafly.",
+          "system_settings": "Met de systeeminstellingen kun je rechten wijzigen.",
+          "passwords": "Wachtwoordapps blijven verboden terrein.",
+          "scripting": "Programma's die scripts uitvoeren, kunnen alles doen op deze computer.",
+          "wrapper": "Dit item start een ander programma. Kies dat programma.",
+          "sandboxed": "Flatpak- en Snap-apps worden nog niet ondersteund.",
+          "browser": "Voeg in plaats daarvan de websites van een browser toe onder Toegestane websites."
+        }
+      },
+      "sites": {
+        "heading": "Toegestane websites",
+        "empty": "Nog geen websites.",
+        "add": "Website toevoegen",
+        "placeholder": "https://www.example.org",
+        "remove": "{{origin}} verwijderen",
+        "signedIn": {
+          "label": "Mijn aangemelde browser gebruiken",
+          "labelFor": "Mijn aangemelde browser op {{origin}} gebruiken",
+          "description": "Agents werken op deze site in je eigen Chrome of Edge. Laat het uit staan om een apart browserprofiel te gebruiken."
+        }
+      },
+      "scripted": {
+        "label": "Bediening met scripts",
+        "description": "Laat agents Cua-scripts uitvoeren die veel stappen tegelijk doen. Oleafly vraagt het voor elk script."
+      },
+      "test": {
+        "action": "Verbinding testen",
+        "running": "Testen…",
+        "ok": "Cua Driver draait met jouw limieten.",
+        "problems": "De eigen controle van Cua Driver meldde ook:",
+        "failed": "De test is mislukt: {{detail}}"
+      },
+      "tool": {
+        "description": "Gebruik de desktop-apps en websites die je bij Instellingen hebt toegestaan.",
+        "note": "Kijken gebeurt meteen. Voor klikken, typen en paginawijzigingen wordt het eerst gevraagd."
+      },
+      "task": {
+        "label": "Desktop-apps",
+        "description": "Laat deze taak je toegestane desktop-apps gebruiken. Je moet bij de computer zijn om acties goed te keuren.",
+        "off": "Zet eerst desktop-apps aan bij Instellingen.",
+        "unattended": "Taken die volgens een schema of na het sluiten van Oleafly draaien, kunnen geen desktop-apps gebruiken."
+      },
+      "spaces": {
+        "title": "Cua Spaces",
+        "description": "Verbind afgeschermde desktops en containers uit Cua Spaces als een MCP-server. Experimenteel.",
+        "notInstalled": "De opdracht cua is niet geïnstalleerd.",
+        "connect": {
+          "label": "Cua Spaces verbinden",
+          "description": "Agents kunnen je Spaces opsommen en kijken hoe het gaat met agents die daar draaien."
+        },
+        "fullAccess": {
+          "label": "Wijzigingen toestaan",
+          "description": "Agents kunnen ook Spaces maken en verwijderen en er opdrachten in uitvoeren."
+        },
+        "credentials": {
+          "label": "De aanmeldingen van mijn agents delen",
+          "description": "Laat agents die in een Space starten je aanmelding voor Claude Code of Codex gebruiken."
+        },
+        "failed": "Oleafly kon de verbinding met Cua Spaces niet bijwerken.",
+        "install": {
+          "terminalTitle": "Cua installeren",
+          "confirm": "Dit downloadt het installatieprogramma van Cua van cua.ai en voert het uit in je terminal. Doorgaan?"
+        }
+      }
     }
   },
   "language": {
@@ -1772,7 +2076,8 @@
       "unavailable": "Deze kopie van Oleafly bevat de opdracht niet."
     },
     "title": "Terminalopdracht",
-    "update": "Bijwerken"
+    "update": "Bijwerken",
+    "newTerminal": "Open een nieuwe terminal om oleafly te gebruiken. Terminals die al open zijn, zien de wijziging niet."
   },
   "shortcuts": {
     "actions": {
@@ -1796,10 +2101,6 @@
         "description": "Open het overzicht met sneltoetsen van het project.",
         "label": "Sneltoetsenoverzicht"
       },
-      "toggleBrowser": {
-        "description": "Toon of verberg de projectbrowser.",
-        "label": "Browser tonen of verbergen"
-      },
       "toggleSidebar": {
         "description": "Toon of verberg de projectzijbalk.",
         "label": "Zijbalk tonen of verbergen"
@@ -1811,6 +2112,22 @@
       "toggleTerminal": {
         "description": "Toon of verberg de projectterminal.",
         "label": "Terminal tonen of verbergen"
+      },
+      "newTerminal": {
+        "description": "Een extra terminaltabblad openen.",
+        "label": "Nieuwe terminal"
+      },
+      "closeTerminal": {
+        "description": "Het terminaltabblad sluiten waarin je typt.",
+        "label": "Terminal sluiten"
+      },
+      "nextTerminal": {
+        "description": "Naar het volgende terminaltabblad gaan.",
+        "label": "Volgende terminal"
+      },
+      "previousTerminal": {
+        "description": "Naar het vorige terminaltabblad gaan.",
+        "label": "Vorige terminal"
       },
       "openFolder": {
         "label": "Map openen",
@@ -1965,6 +2282,35 @@
       "elsewhere": "Het menu opent een andere kopie van Oleafly. Herstel het om deze kopie te gebruiken.",
       "moved": "Dit verwijst naar een kopie van Oleafly die is verplaatst. Herstel het om deze kopie te gebruiken.",
       "noDefaultFileManager": "Je systeem heeft geen standaard bestandsbeheerder voor mappen, dus dit item kan elke map in Oleafly openen. Verwijder het."
+    }
+  },
+  "research": {
+    "background": {
+      "title": "Achtergrondtaken",
+      "enabled": {
+        "label": "Taken laten doorlopen als Oleafly sluit",
+        "description": "Taken die je wilt laten doorlopen, gaan bij het stoppen naar een klein achtergrondproces. Oleafly neemt ze terug als je het opent."
+      },
+      "atLogin": {
+        "label": "Het achtergrondproces starten als je je aanmeldt",
+        "description": "Hervat achtergrondtaken na een herstart. Het proces stopt als het niets te doen heeft.",
+        "moveApp": "Zet Oleafly eerst in je map Apps.",
+        "needsBackground": "Zet eerst achtergrondtaken aan."
+      },
+      "status": {
+        "label": "Achtergrondproces",
+        "running": "Draait",
+        "stopped": "Draait niet",
+        "notResponding": "Reageert niet",
+        "tasks_one": "Werkt aan {{count}} taak",
+        "tasks_other": "Werkt aan {{count}} taken"
+      },
+      "stop": "Achtergrondproces stoppen",
+      "stopHint": "De taken ervan pauzeren tot je Oleafly weer opent.",
+      "stopFailed": "Het achtergrondproces is niet gestopt. Probeer het opnieuw.",
+      "openLog": "Logboek tonen",
+      "statusFailed": "De status van het achtergrondproces kon niet worden gelezen.",
+      "toggleFailed": "Kon deze instelling niet wijzigen. Probeer het opnieuw."
     }
   }
 }

@@ -914,9 +914,11 @@ mod tests {
                     path: "main.tex".into(),
                     sha256: before_hash.clone(),
                     size: before_size,
+                    resolved_link: false,
                 }],
                 allowed_paths: vec!["main.tex".into()],
                 created_at: now_ms(),
+                skipped: Vec::new(),
             }),
             error: None,
             result: Some(TaskResultMetadata {
@@ -941,6 +943,21 @@ mod tests {
             updated_at: now_ms(),
             started_at: Some(now_ms()),
             finished_at: Some(now_ms()),
+            brief: Default::default(),
+            record_slug: String::new(),
+            run_after: None,
+            keep_running_after_quit: false,
+            owner: Default::default(),
+            phase: None,
+            plan_approved: false,
+            stop_reason: None,
+            evidence: None,
+            pending_approvals: 0,
+            active_ms: 0,
+            todos: Vec::new(),
+            pending_start: None,
+            reclaim_requested: false,
+            resumed_from: None,
         }
     }
 

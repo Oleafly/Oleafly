@@ -1,0 +1,665 @@
+{
+  "addbibresource-exact-name": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-bib-missing.detail"
+      },
+      "from": 0,
+      "id": "refs-bib-missing",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-bib-missing.title",
+        "params": {
+          "file": "refs"
+        }
+      },
+      "to": 21
+    }
+  ],
+  "bibliography-missing": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-bib-missing.detail"
+      },
+      "from": 0,
+      "id": "refs-bib-missing",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-bib-missing.title",
+        "params": {
+          "file": "missing.bib"
+        }
+      },
+      "to": 27
+    }
+  ],
+  "bibliography-no-project-files": [],
+  "bibliography-unresolved-any-directory": [],
+  "bibliography-unresolved-from-file": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-bib-missing.detail"
+      },
+      "from": 0,
+      "id": "refs-bib-missing",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-bib-missing.title",
+        "params": {
+          "file": "refs.bib"
+        }
+      },
+      "to": 19
+    }
+  ],
+  "cite-blank-keys": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detail"
+      },
+      "from": 0,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.title",
+        "params": {
+          "key": "a"
+        }
+      },
+      "to": 12
+    }
+  ],
+  "cite-known-key": [],
+  "cite-missing-key": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detail"
+      },
+      "from": 0,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.title",
+        "params": {
+          "key": "smith21"
+        }
+      },
+      "to": 14
+    }
+  ],
+  "cite-multi-key": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detail"
+      },
+      "from": 0,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.title",
+        "params": {
+          "key": "b"
+        }
+      },
+      "to": 10
+    }
+  ],
+  "cite-not-loaded": [],
+  "cite-optional-arguments": [],
+  "cite-two-missing": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detail"
+      },
+      "from": 0,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.title",
+        "params": {
+          "key": "a"
+        }
+      },
+      "to": 10
+    },
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detail"
+      },
+      "from": 0,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.title",
+        "params": {
+          "key": "b"
+        }
+      },
+      "to": 10
+    }
+  ],
+  "commented-cite": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detail"
+      },
+      "from": 14,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.title",
+        "params": {
+          "key": "kept"
+        }
+      },
+      "to": 25
+    }
+  ],
+  "cref-multiple": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-ref.detail"
+      },
+      "from": 0,
+      "id": "refs-undefined-ref",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-ref.title",
+        "params": {
+          "label": "b"
+        }
+      },
+      "to": 10
+    }
+  ],
+  "distinct-labels": [],
+  "duplicate-bib-key-biber": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-duplicate-bib-key.detailBiber",
+        "params": {
+          "places": "a.bib:2, b.bib:3"
+        }
+      },
+      "file": "a.bib",
+      "from": 5,
+      "id": "refs-duplicate-bib-key",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-bib-key.title",
+        "params": {
+          "key": "same"
+        }
+      },
+      "to": 19
+    }
+  ],
+  "duplicate-bib-key-bibtex": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-duplicate-bib-key.detail",
+        "params": {
+          "places": "refs.bib:1, refs.bib:9 (smith2020)"
+        }
+      },
+      "file": "refs.bib",
+      "from": 0,
+      "id": "refs-duplicate-bib-key",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-bib-key.title",
+        "params": {
+          "key": "Smith2020"
+        }
+      },
+      "to": 19
+    }
+  ],
+  "duplicate-doi": [
+    {
+      "detail": {
+        "key": "rules.refs-duplicate-bib.detail",
+        "params": {
+          "doi": "10.1/x"
+        }
+      },
+      "id": "refs-duplicate-bib",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-bib.title",
+        "params": {
+          "keys": "smith21, smithdup"
+        }
+      }
+    }
+  ],
+  "duplicate-doi-case-biber": [
+    {
+      "detail": {
+        "key": "rules.refs-duplicate-bib.detail",
+        "params": {
+          "doi": "10.1/x"
+        }
+      },
+      "id": "refs-duplicate-bib",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-bib.title",
+        "params": {
+          "keys": "smith2020, Smith2020"
+        }
+      }
+    }
+  ],
+  "duplicate-doi-case-only": [],
+  "duplicate-doi-repeated-and-other": [
+    {
+      "detail": {
+        "key": "rules.refs-duplicate-bib.detail",
+        "params": {
+          "doi": "10.1/x"
+        }
+      },
+      "id": "refs-duplicate-bib",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-bib.title",
+        "params": {
+          "keys": "same, other"
+        }
+      }
+    }
+  ],
+  "duplicate-doi-same-key": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-duplicate-bib-key.detail",
+        "params": {
+          "places": "refs.bib:1, extra.bib:1"
+        }
+      },
+      "file": "refs.bib",
+      "from": 0,
+      "id": "refs-duplicate-bib-key",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-bib-key.title",
+        "params": {
+          "key": "same"
+        }
+      },
+      "to": 14
+    }
+  ],
+  "duplicate-label": [
+    {
+      "detail": {
+        "key": "rules.refs-duplicate-label.detail"
+      },
+      "from": 9,
+      "id": "refs-duplicate-label",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-label.title",
+        "params": {
+          "label": "x"
+        }
+      },
+      "to": 18
+    }
+  ],
+  "duplicate-titles": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-duplicate-title.detail",
+        "params": {
+          "groups": "a / b"
+        }
+      },
+      "id": "refs-duplicate-title",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-duplicate-title.title",
+        "params": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "emoji-before-cite": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detail"
+      },
+      "from": 3,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.title",
+        "params": {
+          "key": "nope"
+        }
+      },
+      "to": 14
+    },
+    {
+      "detail": {
+        "key": "rules.refs-undefined-ref.detail"
+      },
+      "from": 19,
+      "id": "refs-undefined-ref",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-ref.title",
+        "params": {
+          "label": "gone"
+        }
+      },
+      "to": 29
+    }
+  ],
+  "graphics-by-base-name": [],
+  "graphics-missing": [
+    {
+      "detail": {
+        "key": "rules.refs-missing-asset.detailImage"
+      },
+      "from": 0,
+      "id": "refs-missing-asset",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-missing-asset.titleImage",
+        "params": {
+          "file": "figs/missing"
+        }
+      },
+      "to": 30
+    }
+  ],
+  "graphics-nested-path": [],
+  "incomplete-metadata": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-incomplete-metadata.detail",
+        "params": {
+          "examples": "a: author, journal/journaltitle, year/date"
+        }
+      },
+      "id": "refs-incomplete-metadata",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-incomplete-metadata.title",
+        "params": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "incomplete-metadata-truncated": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-incomplete-metadata.detailTruncated",
+        "params": {
+          "examples": "k0: author, journal/journaltitle, year/date · k1: author, journal/journaltitle, year/date · k2: author, journal/journaltitle, year/date · k3: author, journal/journaltitle, year/date · k4: author, journal/journaltitle, year/date"
+        }
+      },
+      "id": "refs-incomplete-metadata",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-incomplete-metadata.title",
+        "params": {
+          "count": 7
+        }
+      }
+    }
+  ],
+  "incomplete-unknown-type": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-incomplete-metadata.detail",
+        "params": {
+          "examples": "x: title, year/date · y: year/date"
+        }
+      },
+      "id": "refs-incomplete-metadata",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-incomplete-metadata.title",
+        "params": {
+          "count": 2
+        }
+      }
+    }
+  ],
+  "input-resolves-tex": [
+    {
+      "detail": {
+        "key": "rules.refs-missing-asset.detailInclude"
+      },
+      "from": 12,
+      "id": "refs-missing-asset",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-missing-asset.titleInclude",
+        "params": {
+          "file": "missing"
+        }
+      },
+      "to": 29
+    }
+  ],
+  "malformed-doi": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-malformed-doi.detail",
+        "params": {
+          "keys": "a, c"
+        }
+      },
+      "id": "refs-malformed-doi",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-malformed-doi.title",
+        "params": {
+          "count": 2
+        }
+      }
+    }
+  ],
+  "nocite-star": [],
+  "project-duplicate-labels": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-project-duplicate-label.detail",
+        "params": {
+          "labels": "fig:result (a.tex, b.tex)"
+        }
+      },
+      "id": "refs-project-duplicate-label",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-project-duplicate-label.title",
+        "params": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "project-quality-off": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-cite.detail"
+      },
+      "from": 0,
+      "id": "refs-undefined-cite",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-cite.title",
+        "params": {
+          "key": "x"
+        }
+      },
+      "to": 8
+    }
+  ],
+  "ref-defined-in-corpus": [],
+  "ref-defined-in-source": [],
+  "ref-missing": [
+    {
+      "detail": {
+        "key": "rules.refs-undefined-ref.detail"
+      },
+      "from": 0,
+      "id": "refs-undefined-ref",
+      "lens": "refs",
+      "severity": "error",
+      "title": {
+        "key": "rules.refs-undefined-ref.title",
+        "params": {
+          "label": "fig:2"
+        }
+      },
+      "to": 11
+    }
+  ],
+  "ref-trimmed-label": [],
+  "uncited-disabled-by-star": [],
+  "uncited-entries": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-incomplete-metadata.detail",
+        "params": {
+          "examples": "s: title, year/date"
+        }
+      },
+      "id": "refs-incomplete-metadata",
+      "lens": "refs",
+      "severity": "warning",
+      "title": {
+        "key": "rules.refs-incomplete-metadata.title",
+        "params": {
+          "count": 1
+        }
+      }
+    },
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-uncited-entries.detail",
+        "params": {
+          "keys": "b"
+        }
+      },
+      "id": "refs-uncited-entries",
+      "lens": "refs",
+      "severity": "info",
+      "title": {
+        "key": "rules.refs-uncited-entries.title",
+        "params": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "uncited-truncated": [
+    {
+      "certainty": "verified",
+      "detail": {
+        "key": "rules.refs-uncited-entries.detailTruncated",
+        "params": {
+          "keys": "u0, u1, u2, u3, u4, u5, u6, u7"
+        }
+      },
+      "id": "refs-uncited-entries",
+      "lens": "refs",
+      "severity": "info",
+      "title": {
+        "key": "rules.refs-uncited-entries.title",
+        "params": {
+          "count": 10
+        }
+      }
+    }
+  ],
+  "unreferenced-floats": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.refs-unreferenced-floats.detail",
+        "params": {
+          "labels": "fig:unused"
+        }
+      },
+      "id": "refs-unreferenced-floats",
+      "lens": "refs",
+      "severity": "info",
+      "title": {
+        "key": "rules.refs-unreferenced-floats.title",
+        "params": {
+          "count": 1
+        }
+      }
+    }
+  ],
+  "unreferenced-floats-truncated": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.refs-unreferenced-floats.detailTruncated",
+        "params": {
+          "labels": "fig:0, fig:1, fig:2, fig:3, fig:4, fig:5, fig:6, fig:7"
+        }
+      },
+      "id": "refs-unreferenced-floats",
+      "lens": "refs",
+      "severity": "info",
+      "title": {
+        "key": "rules.refs-unreferenced-floats.title",
+        "params": {
+          "count": 10
+        }
+      }
+    }
+  ]
+}

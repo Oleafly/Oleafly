@@ -76,16 +76,54 @@ jobs:
       - name: Build
         env:
           TARGET: ${{ matrix.target }}
-        run: cargo build --release --locked -p oleafly-cli --target "$TARGET"
+          OLEAFLY_COMMIT: ${{ github.sha }}
+        run: cargo build --release --locked -p oleafly-cli --features proofread --target "$TARGET"
+
+      - name: Check the version and run a smoke test
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          REF: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          bin="src-tauri/target/$TARGET/release/$CARGO_BIN"
+          if [ -f "$bin.exe" ]; then bin="$bin.exe"; fi
+          runner_arch="$(uname -m)"
+          if [ "$TARGET" = "x86_64-apple-darwin" ] && [ "$runner_arch" = "arm64" ] && ! /usr/bin/arch -x86_64 /usr/bin/true 2>/dev/null; then
+            echo "Skipping the smoke test: this runner can't run $TARGET binaries."
+            exit 0
+          fi
+          "$bin" --version
+          "$bin" help exit-codes > /dev/null
+          "$bin" --json version > version.json
+          # `oleafly --version` prints "oleafly <version> (<commit>)".
+          cli_version="$("$bin" --version | head -n 1 | awk '{print $2}')"
+          echo "The CLI reports version $cli_version"
+          case "$REF" in
+            cli-v*)
+              tag_version="${REF#cli-v}"
+              if [ "$cli_version" != "$tag_version" ]; then
+                echo "::error::The tag says $tag_version but the CLI reports $cli_version. Tag the commit whose tauri.conf.json has that version."
+                exit 1
+              fi
+              ;;
+          esac
+          # Engines may be missing on a bare runner (exit 4); the command must not crash.
+          status=0
+          "$bin" --json doctor > doctor.json || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 4 ]; then
+            echo "::warning::oleafly doctor exited with $status"
+            cat doctor.json || true
+          fi
 
       - name: Generate completions and the manual page
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist/completions dist/man
-          cargo run --release --locked -p oleafly-cli --bin "$CARGO_BIN" -- man > "dist/man/$SHIP_NAME.1"
+          cargo run --release --locked -p oleafly-cli --features proofread --bin "$CARGO_BIN" -- man > "dist/man/$SHIP_NAME.1"
           for shell in bash zsh fish powershell elvish; do
-            cargo run --release --locked -p oleafly-cli --bin "$CARGO_BIN" -- completions "$shell" \
+            cargo run --release --locked -p oleafly-cli --features proofread --bin "$CARGO_BIN" -- completions "$shell" \
               > "dist/completions/$SHIP_NAME.$shell"
           done
 
@@ -165,7 +203,7 @@ jobs:
           else
             cp "$source" "$staging/$SHIP_NAME"
           fi
-          cp LICENSE README.md "$staging/"
+          cp LICENSE README.md docs/cli.md "$staging/"
           cp -r dist/completions dist/man "$staging/"
           if [ "$RUNNER_OS" = "Windows" ]; then
             (cd dist && 7z a -tzip "$stem.zip" "$stem" >/dev/null)

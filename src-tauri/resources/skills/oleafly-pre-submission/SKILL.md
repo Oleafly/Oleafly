@@ -5,7 +5,7 @@ license: MIT
 compatibility: Any Oleafly project. The compile and log checks need a project that builds. arXiv source rules apply to LaTeX projects only, and Typst projects get their own source checks. Venue depth improves when the venue-templates skill is enabled.
 allowed-tools: read_file list_files search_project project_map compile get_log get_pdf_text verify_pdf_pages create_file write_file run_command load_skill read_skill_file show_location update_todos
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   skill-author: "Oleafly"
   oleafly:
     tier: native
@@ -177,3 +177,14 @@ Then `show_location` on the first two or three failures, and report in chat: how
 - No row is `pass` on an assumption.
 - The failures are listed in chat, worst first.
 - The user knows exactly which decisions are theirs.
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `get_log` | `oleafly log --diagnostics --json` |
+| `project_map` | `oleafly context --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |

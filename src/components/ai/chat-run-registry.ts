@@ -53,15 +53,3 @@ export function subscribeChatRun(fn: () => void): () => void {
     listeners.delete(fn);
   };
 }
-
-const drafts = new Map<string, string>();
-
-export function savedDraft(projectId: string | null): string {
-  return (projectId && drafts.get(projectId)) || "";
-}
-
-export function saveDraft(projectId: string | null, text: string): void {
-  if (!projectId) return;
-  if (text) drafts.set(projectId, text);
-  else drafts.delete(projectId);
-}

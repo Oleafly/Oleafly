@@ -615,7 +615,11 @@
       "papers_one": "{{count}} стаття",
       "papers_few": "{{count}} статті",
       "papers_many": "{{count}} статей",
-      "papers_other": "{{count}} статті"
+      "papers_other": "{{count}} статті",
+      "sourcesFailed_one": "{{count}} джерело з помилкою",
+      "sourcesFailed_few": "{{count}} джерела з помилкою",
+      "sourcesFailed_many": "{{count}} джерел з помилкою",
+      "sourcesFailed_other": "{{count}} джерела з помилкою"
     }
   },
   "ui": {

@@ -28,6 +28,7 @@ interface RowView {
   installed: boolean;
   installable: boolean;
   afterSignIn: boolean;
+  afterNewTerminal: boolean;
   hint: ShellCommandPathHint | null | undefined;
 }
 
@@ -35,6 +36,7 @@ function describeStatus(status: ShellCommandStatus | null): RowView {
   const state = status?.state;
   const installed = state === "installed" || state === "outdated";
   const afterSignIn = installed && status?.after_sign_in === true;
+  const afterNewTerminal = installed && !afterSignIn && status?.after_new_terminal === true;
   return {
     state,
     path: status?.path ?? "",
@@ -42,6 +44,7 @@ function describeStatus(status: ShellCommandStatus | null): RowView {
     installed,
     installable: state === "not_installed" || state === "outdated",
     afterSignIn,
+    afterNewTerminal,
     hint: installed && status?.on_path === false && !afterSignIn ? status.hint : null,
   };
 }
@@ -369,6 +372,11 @@ export function ShellCommandRow() {
           <SettingsPathText
             text={t(($) => $.settings.shellCommand.afterSignIn, { directory: view.directory })}
           />
+        </p>
+      ) : null}
+      {view.afterNewTerminal ? (
+        <p data-testid="shell-command-new-terminal" className="ml-7 mt-2 break-words text-xs text-muted-foreground">
+          {t(($) => $.settings.shellCommand.newTerminal)}
         </p>
       ) : null}
       {view.hint ? (

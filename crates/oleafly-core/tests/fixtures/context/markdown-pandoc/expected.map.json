@@ -1,0 +1,37 @@
+{
+  "files": [
+    "main.md",
+    "refs.bib"
+  ],
+  "sections": [
+    {
+      "title": "Intro",
+      "level": 0,
+      "file": "main.md",
+      "line": 6
+    },
+    {
+      "title": "Method Two",
+      "level": 1,
+      "file": "main.md",
+      "line": 10
+    }
+  ],
+  "labels": [
+    "sec:intro",
+    "method-two"
+  ],
+  "bibKeys": [
+    "knuth",
+    "lamport"
+  ],
+  "macros": [],
+  "theorems": [],
+  "glossary": [],
+  "inputGraph": [],
+  "unresolvedRefs": [],
+  "unresolvedCites": [
+    "ghost2000"
+  ],
+  "ambiguousTypstAtUses": []
+}

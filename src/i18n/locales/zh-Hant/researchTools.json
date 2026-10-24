@@ -2,6 +2,7 @@
   "workspace": {
     "title": "研究工作區",
     "configureAgents": "設定研究代理",
+    "openSettings": "研究設定",
     "configError": "無法載入助理設定。",
     "tabTasks": "任務",
     "tabFolders": "已連結資料夾",
@@ -135,7 +136,8 @@
       "awaitingReview": "待審閱",
       "completed": "已完成",
       "failed": "失敗",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "planReady": "計畫等待核准"
     },
     "relative": {
       "justNow": "剛剛",
@@ -145,7 +147,11 @@
     },
     "timeline": {
       "sessionConnected": "工作階段已連線。",
-      "toolCall": "工具呼叫"
+      "toolCall": "工具呼叫",
+      "runStarted": "已開始執行 {{name}}",
+      "runFinished": "執行 {{name}}：{{status}}",
+      "approvalRequested": "要求核准：{{summary}}",
+      "approvalDecided": "核准結果：{{status}}"
     },
     "panel": {
       "noProjectTitle": "開啟專案以使用研究任務",
@@ -172,7 +178,8 @@
       "viewTask": "查看任務",
       "deleteTitle": "要刪除這個任務嗎？",
       "deleteDescription": "「{{title}}」與它的獨立工作區會被刪除。已套用到專案的檔案會保留。",
-      "deleteConfirm": "刪除任務"
+      "deleteConfirm": "刪除任務",
+      "pendingApprovals_other": "{{count}} 個要求待處理"
     },
     "composer": {
       "editTitle": "編輯任務",
@@ -193,7 +200,10 @@
       "unavailable": "無法使用",
       "saving": "儲存中…",
       "saveTask": "儲存任務",
-      "createTask": "建立任務"
+      "createTask": "建立任務",
+      "replaceText": "要用這個起始方式取代你輸入的標題和指示嗎？",
+      "keepText": "保留我的",
+      "replaceConfirm": "取代"
     },
     "starter": {
       "literatureReview": {
@@ -215,6 +225,10 @@
       "reviewerResponse": {
         "label": "審稿意見回覆",
         "title": "草擬審稿意見回覆"
+      },
+      "experimentLoop": {
+        "label": "執行實驗",
+        "title": "圍繞目標執行實驗"
       }
     },
     "detail": {
@@ -233,6 +247,9 @@
       "dependencies": "相依項目",
       "dependencyUnavailable": "無法使用",
       "noActivity": "這次執行沒有記錄任何活動。",
+      "activityGap_other": "中間還有 {{count}} 個項目未顯示。",
+      "activityMore": "還有更多活動未顯示。",
+      "keepRunningDesktopApps": "這項任務會使用桌面應用程式，需要你在電腦前。",
       "startToRecord": "啟動這個任務以記錄它的活動。",
       "reasoning": "回報的推理過程",
       "savedArtifact": "已儲存 {{label}}",
@@ -245,6 +262,8 @@
       "clearSelection": "清除選取",
       "selectAll": "全選",
       "previewBeforeApply": "套用前請先預覽每個選取的檔案。",
+      "researchRecord": "研究紀錄",
+      "researchRecordHint": "任務自己的筆記，套用前不需預覽。",
       "driftedOne": "這個任務開始後，{{path}} 在你的專案中已變更。它的差異是對照舊版本，因此無法套用。",
       "driftedMany": "這個任務開始後，專案中有 {{fileCount}} 個檔案已變更。它們的差異是對照舊版本，因此無法套用。",
       "applyAria": "套用 {{path}}",
@@ -274,7 +293,108 @@
       "loadMore": "載入更多活動",
       "changeAdded": "新增",
       "changeModified": "修改",
-      "changeDeleted": "刪除"
+      "changeDeleted": "刪除",
+      "tabProgress": "進度",
+      "resume": "繼續",
+      "resumeHint": "在同一個工作區中，從儲存的交接紀錄繼續。",
+      "startOver": "重新開始",
+      "startOverHint": "從目前的專案開始。研究紀錄會一併帶入。",
+      "stopReason": {
+        "budgetTime": "時間預算用完後已停止。",
+        "budgetCost": "已在費用上限處停止。",
+        "budgetRuns": "已在執行次數上限處停止。"
+      },
+      "startsAt": "開始時間：{{time}}"
+    },
+    "plan": {
+      "title": "計畫",
+      "description": "請閱讀計畫，需要時可以編輯。核准後任務才會繼續。",
+      "approve": "核准計畫",
+      "approveEdited": "核准編輯後的計畫",
+      "discard": "捨棄任務",
+      "loading": "正在載入計畫…",
+      "missing": "計畫檔案遺失。請重試任務。"
+    },
+    "approvals": {
+      "title": "等候你核准",
+      "approve": "核准",
+      "deny": "拒絕",
+      "kindCommand": "執行指令",
+      "kindRun": "開始執行",
+      "kindMcp": "使用工具",
+      "expires": "等候至 {{time}}",
+      "detailCommand": "完整指令",
+      "detailRun": "執行詳細資料",
+      "detailMcp": "工具引數",
+      "loadFailed": "無法載入等候中的要求。",
+      "status": {
+        "approved": "已核准",
+        "denied": "已拒絕",
+        "expired": "已過期",
+        "withdrawn": "已撤回"
+      }
+    },
+    "phase": {
+      "preparing": "正在準備工作區",
+      "planning": "正在撰寫計畫",
+      "working": "正在工作",
+      "waitingRuns": "正在等候執行",
+      "waitingApproval": "正在等候核准",
+      "wrappingUp": "正在收尾",
+      "checkingEvidence": "正在檢查證據"
+    },
+    "progress": {
+      "loading": "正在載入進度…",
+      "plan": "計畫",
+      "noPlan": "還沒有計畫。",
+      "ledger": "結果紀錄",
+      "noLedger": "還沒有記錄任何結果。",
+      "best": "最佳 {{metric}}",
+      "bestValue": "執行 {{run}} 中為 {{value}}",
+      "runsInFlight": "進行中的執行",
+      "noRuns": "沒有進行中的執行。",
+      "budget": "預算",
+      "timeUsed": "{{used}} / {{total}}",
+      "costUsed": "{{used}} / {{limit}}",
+      "costSpent": "已花費 {{used}}",
+      "ledgerCapped": "只顯示最新的 {{limit}} 筆結果。",
+      "costUnknown": "這個模型的費用未知。",
+      "runsUsed": "{{used}} / {{limit}} 次執行",
+      "runsUsedNoLimit": "{{used}} 次執行",
+      "stopRun": "停止執行",
+      "viewLog": "檢視記錄",
+      "columns": {
+        "run": "執行",
+        "time": "時間",
+        "hypothesis": "假設",
+        "change": "變更",
+        "metrics": "指標",
+        "verdict": "結論"
+      },
+      "verdict": {
+        "keep": "保留",
+        "discard": "已捨棄",
+        "crash": "已當機"
+      }
+    },
+    "settings": {
+      "title": "研究任務",
+      "keepAwake": "任務執行時讓電腦保持喚醒",
+      "keepAwakeHint": "螢幕仍可能關閉。",
+      "notifications": "任務需要處理時通知我",
+      "notificationsHint": "在 Oleafly 位於背景時顯示。",
+      "notificationsBlocked": "Oleafly 的通知已在系統設定中關閉。",
+      "allowNotifications": "允許通知",
+      "network": "預設允許任務指令存取網路",
+      "timeBudget": "預設時間預算",
+      "mcpServers": "任務可以使用的 MCP 伺服器",
+      "mcpServersHint": "任務會依照各自的指令規則呼叫這些工具。",
+      "noMcpServers": "尚未設定 MCP 伺服器。",
+      "networkHint": "任務中的指令可存取網際網路。每項任務仍可自行關閉。",
+      "loadFailed": "無法載入你的研究設定。",
+      "sectionName": "研究",
+      "resetConfirm": "將研究預設值還原，包括保持喚醒、通知、網路存取、時間預算，以及任務可使用的 MCP 伺服器。運算目標與背景任務不會變動。",
+      "saveFailed": "無法儲存你的研究設定。請再試一次。"
     }
   },
   "tools": {
@@ -353,7 +473,7 @@
       "name": "圖片轉 LaTeX",
       "description": "把筆記、方程式或表格的圖片變成可編輯的 LaTeX。",
       "tag1": "圖片",
-      "tag2": "裝置端模型",
+      "tag2": "本機或代管模型",
       "tag3": "不需要專案"
     },
     "visualTypstEditor": {
@@ -375,7 +495,7 @@
       "description": "把輸入的方程式或方程式圖片轉換成乾淨的 LaTeX 數學式。",
       "tag1": "文字或圖片",
       "tag2": "數學式",
-      "tag3": "裝置端模型"
+      "tag3": "本機或代管模型"
     },
     "excelToLatex": {
       "name": "Excel 轉 LaTeX",
@@ -395,7 +515,7 @@
       "name": "圖片轉 Typst",
       "description": "把筆記、方程式或表格的圖片變成可編輯的 Typst。",
       "tag1": "圖片",
-      "tag2": "裝置端模型",
+      "tag2": "本機或代管模型",
       "tag3": "不需要專案"
     },
     "latexToHtml": {
@@ -741,13 +861,13 @@
     "progressNeedsAttention": "需要處理",
     "progressCancelled": "已取消",
     "progressReadingPages": "正在讀取頁面",
-    "progressTranscribingPage": "正在轉錄第 {{page}} 頁，共 {{total}} 頁",
+    "progressTranscribingPage": "正在使用 {{model}} 轉錄第 {{page}} 頁，共 {{total}} 頁",
     "progressDocumentStructure": "正在轉換文件結構",
     "progressMermaid": "正在算繪 Mermaid 圖表",
     "progressFirstSheet": "正在讀取第一個工作表",
-    "progressVisionModel": "正在執行本機視覺模型",
-    "progressReadingEquation": "正在用本機視覺模型讀取方程式",
-    "progressConvertingEquation": "正在用本機模型轉換方程式",
+    "progressVisionModel": "正在使用 {{model}} 讀取影像",
+    "progressReadingEquation": "正在使用 {{model}} 讀取方程式",
+    "progressConvertingEquation": "正在使用 {{model}} 轉換方程式",
     "progressUnpackingSource": "正在解開已儲存的原始碼",
     "progressDownloadingSource": "正在下載電子預印本原始碼",
     "copied": "已複製 {{label}}",
@@ -782,14 +902,17 @@
     "fileReady": "{{fileName}} 已就緒",
     "saveWordHint": "準備好之後再儲存 Word 文件。",
     "resultPlaceholder": "轉換結果會顯示在這裡。",
-    "progressConvertingSource": "正在將原始碼轉換為 Typst"
+    "progressConvertingSource": "正在將原始碼轉換為 Typst",
+    "pageRange": "頁面",
+    "pageRangePlaceholder": "所有頁面，或 1-50 這樣的範圍",
+    "pageRangeInvalid": "請輸入單一頁碼，或 1-50 這樣的範圍。"
   },
   "converters": {
     "imageToLatex": {
       "title": "圖片轉 LaTeX",
-      "subtitle": "用裝置端視覺模型轉錄筆記、方程式或表格",
+      "subtitle": "使用視覺模型轉錄筆記、方程式或表格",
       "inputLabel": "圖片",
-      "inputHint": "支援 PNG、JPEG 或 WebP。圖片不會離開這部裝置。",
+      "inputHint": "PNG、JPEG 或 WebP，最大 20 MB。",
       "outputLabel": "LaTeX"
     },
     "arxivToLatex": {
@@ -822,9 +945,9 @@
     },
     "imageToTypst": {
       "title": "圖片轉 Typst",
-      "subtitle": "用裝置端視覺模型轉錄筆記、方程式或表格",
+      "subtitle": "使用視覺模型轉錄筆記、方程式或表格",
       "inputLabel": "圖片",
-      "inputHint": "支援 PNG、JPEG 或 WebP。圖片不會離開這部裝置。",
+      "inputHint": "PNG、JPEG 或 WebP，最大 20 MB。",
       "outputLabel": "Typst"
     },
     "latexToHtml": {
@@ -880,14 +1003,14 @@
       "title": "PDF 轉 Markdown",
       "subtitle": "在本機擷取文字、方程式與圖片",
       "inputLabel": "PDF",
-      "inputHint": "含文字層的 PDF 採用確定性擷取，掃描檔則使用本機視覺模型。",
+      "inputHint": "文字型 PDF 使用確定性擷取。掃描檔使用你選擇的模型。",
       "outputLabel": "Markdown"
     },
     "pdfToTypst": {
       "title": "PDF 轉 Typst",
       "subtitle": "在本機擷取文字、方程式與圖片",
       "inputLabel": "PDF",
-      "inputHint": "含文字層的 PDF 採用確定性擷取，掃描檔則使用本機視覺模型。",
+      "inputHint": "文字型 PDF 使用確定性擷取。掃描檔使用你選擇的模型。",
       "outputLabel": "Typst"
     },
     "typstToLatex": {
@@ -978,10 +1101,10 @@
   "converterErrors": {
     "chooseSmallerImage": "請選擇小於 20 MB 的圖片。",
     "imageFormat": "請選擇 PNG、JPEG 或 WebP 圖片。",
-    "ollamaUnavailable": "請先在設定中啟動 Ollama，再為這次轉換安裝本機模型。",
-    "visionModelMissing": "請在 Ollama 中安裝視覺模型，例如 Llama 3.2 Vision，然後重試。",
-    "localModelMissing": "請安裝本機 Ollama 模型，然後重試。",
-    "emptyTranscription": "本機模型回傳了空白的轉錄結果。",
+    "ollamaUnavailable": "請啟動 Ollama，或為工具選擇其他模型。",
+    "visionModelMissing": "請在 Ollama 中拉取視覺模型（例如 glm-ocr），或為工具選擇其他模型。",
+    "localModelMissing": "請在 Ollama 中拉取模型，或為工具選擇其他模型。",
+    "emptyTranscription": "模型傳回了空白的轉錄結果。",
     "pdfNoPages": "這份 PDF 沒有可轉錄的頁面。",
     "pdfPageLimit": "掃描版 PDF 每次最多轉錄 50 頁。",
     "pandocNotReady": "Pandoc 尚未就緒。",
@@ -989,10 +1112,12 @@
     "fileTooLarge": "請選擇小於 128 MB 的檔案。",
     "emptySheet": "選取的工作表是空的。",
     "arxivInputRequired": "請輸入 arXiv ID 或選擇原始碼壓縮檔。",
-    "equationToTypst": "Pandoc 無法將這個方程式轉換為 Typst。請檢查 LaTeX 數學式後再試一次。"
+    "equationToTypst": "Pandoc 無法將這個方程式轉換為 Typst。請檢查 LaTeX 數學式後再試一次。",
+    "pdfTooManyPages": "這份掃描檔有 {{pages}} 頁，而 Oleafly 每次最多轉錄 {{limit}} 頁。請在檔案下方輸入 1-{{limit}} 這樣的頁面範圍。",
+    "outputLimit": "模型在完成前就用盡了輸出空間，因此轉錄結果會不完整。請在「設定 > AI 助理 > 工具」中選擇輸出上限較大的模型，或改為轉錄較小的部分。"
   },
   "converterNotes": {
-    "scannedPages": "已用本機模型轉錄 {{pages}} 個掃描頁面。使用結果前請檢查方程式與表格。",
+    "scannedPages": "已使用 {{model}} 轉錄 {{pages}} 頁掃描頁面。使用結果前請檢查方程式和表格。",
     "extracted": "已在本機擷取 {{pages}} 頁與 {{figures}} 張圖片。",
     "mermaidTikz": "已把這張流程圖轉換成可編輯的 TikZ。",
     "mermaidRendered": "這張圖表的 Mermaid 語法無法乾淨對應到可編輯的 TikZ，因此已在本機算繪。",
@@ -1005,6 +1130,38 @@
     "typstCheckFailed_other": "Typst 找到 {{count}} 個錯誤。",
     "notConverted_other": "有 {{count}} 個項目未轉換。",
     "checkLine": "第 {{line}} 行：{{message}}"
+  },
+  "converterModel": {
+    "label": "工具所用的模型",
+    "automatic": "自動（最佳本機模型）",
+    "localGroup": "本機（Ollama）",
+    "mathpixModel": "Mathpix OCR",
+    "sentTo": "影像會傳送到 {{provider}}",
+    "sentToHost": "影像會傳送到 {{host}} 上的 Ollama",
+    "scansSentTo": "掃描頁面會傳送到 {{provider}}",
+    "scansSentToHost": "掃描頁面會傳送到 {{host}} 上的 Ollama",
+    "pdfSentToMathpix": "整個 PDF 會傳送到 Mathpix",
+    "transcribingHosted": "正在將影像傳送到 {{provider}}…",
+    "progressUploading": "正在將 PDF 傳送到 Mathpix",
+    "progressFormatting": "正在使用 Pandoc 轉換轉錄結果",
+    "scannedTitle": "這個 PDF 看起來是掃描檔",
+    "estimateOllama_other": "共 {{count}} 頁。Ollama 會逐頁讀取，可能需要一段時間。",
+    "estimateCost_other": "共 {{count}} 頁。使用 {{model}} 約 {{cost}}。",
+    "estimateUnknown_other": "共 {{count}} 頁。{{provider}} 依用量計費。",
+    "transcribePages_other": "轉錄 {{count}} 頁",
+    "transcribedWith": "已使用 {{model}} 轉錄。請檢查方程式和表格。",
+    "sentBadge": "已傳送到 {{provider}}",
+    "openToolsSettings": "工具設定",
+    "errors": {
+      "offline": "Oleafly 處於離線模式。請選擇本機模型，或關閉離線模式。",
+      "providerNotConfigured": "{{provider}} 沒有 API 金鑰。請在設定中新增，或選擇其他模型。",
+      "modelDisabled": "{{model}} 已在設定中關閉。請將它開啟，或選擇其他模型。",
+      "cannotSeeImages": "{{model}} 無法讀取影像。請選擇視覺模型。",
+      "localModelGone": "{{model}} 已不在 Ollama 中。請重新拉取，或選擇其他模型。",
+      "imagesOnly": "{{model}} 只能讀取影像。請選擇語言模型來轉換輸入的方程式。",
+      "mathpixNotSetUp": "請在「設定 > AI 助理 > 工具」中新增你的 Mathpix 金鑰，或選擇其他模型。",
+      "imageTooLarge": "縮小後影像仍然太大。請裁切後再試一次。"
+    }
   },
   "mermaidErrors": {
     "tooLarge": "這張 Mermaid 圖表超過 50,000 個字元的上限。",
@@ -1541,5 +1698,254 @@
     "citeAdded": "已加入 {{citation}}",
     "addFailed": "無法加入引用。",
     "toastCopyFailed": "無法複製 BibTeX。"
+  },
+  "brief": {
+    "title": "任務說明",
+    "goalLabel": "目標",
+    "goalPlaceholder": "這項任務應該查明或產出什麼？",
+    "criteriaLabel": "成功標準",
+    "criteriaHint": "每行一條。每一條都應該是你可以檢查的內容。",
+    "scopeLabel": "範圍",
+    "constraintsLabel": "限制條件",
+    "metricLabel": "主要指標",
+    "metricPlaceholder": "例如 val_loss",
+    "metricMaximize": "越高越好",
+    "metricMinimize": "越低越好",
+    "reviewPlan": "先審閱計畫",
+    "reviewPlanHint": "代理程式會撰寫 plan.md，並在開始前等候你核准。",
+    "commandsLabel": "指令",
+    "commandsAllow": "直接執行，不需詢問",
+    "commandsAsk": "執行前詢問",
+    "commandsOff": "不執行指令",
+    "network": "允許指令存取網路",
+    "networkHint": "安裝套件或下載資料時需要。",
+    "budgetLabel": "預算",
+    "timeLabel": "時間",
+    "minutes_other": "{{count}} 分鐘",
+    "hours_other": "{{count}} 小時",
+    "costLabel": "費用上限（USD）",
+    "noLimit": "無上限",
+    "runsLabel": "執行次數上限",
+    "runTimeoutLabel": "每次執行的停止時間",
+    "profileLabel": "執行設定檔",
+    "profileAnalysis": "分析",
+    "profileAnalysisHint": "你的 Python 和 R 環境、唯讀的資料資料夾，不使用 GPU。",
+    "profileTraining": "訓練",
+    "profileTrainingHint": "增加 GPU 存取權和更長的執行時間。",
+    "computeLabel": "執行位置",
+    "computeLocal": "這台電腦",
+    "startAtLabel": "開始時間",
+    "startNow": "在我啟動時",
+    "keepRunning": "Oleafly 關閉後繼續執行",
+    "keepRunningHint": "請先在「設定 > 研究」中開啟背景任務。",
+    "invalidMetric": "請使用字母、數字、句點、連字號或底線。",
+    "invalidCost": "請輸入大於零的金額。",
+    "invalidRuns": "請輸入 1 到 1,000 之間的整數。",
+    "invalidStart": "請選擇未來 30 天內的開始時間。",
+    "invalidStartFormat": "請使用 {{example}} 這樣的格式。",
+    "startAtFormat": "請將時間輸入為 {{example}}。",
+    "problemHidden": "任務說明中有一個選項需要修正。開啟任務說明即可查看是哪一個。"
+  },
+  "runs": {
+    "status": {
+      "starting": "正在啟動",
+      "running": "正在執行",
+      "succeeded": "已完成",
+      "failed": "失敗",
+      "timedOut": "已逾時",
+      "cancelled": "已停止",
+      "lost": "已遺失"
+    }
+  },
+  "evidence": {
+    "title": "證據檢查",
+    "hint": "這些檢查只會發出警告，不會阻止套用結果。",
+    "running": "正在檢查…",
+    "refresh": "重新檢查",
+    "status": {
+      "pass": "已通過",
+      "warn": "請檢查",
+      "skipped": "未檢查"
+    },
+    "checks": {
+      "build": "專案可以建置",
+      "references": "沒有新的未解析參照或引用",
+      "bibliography": "新的參考文獻項目已驗證",
+      "numbers": "數字與對應的執行一致",
+      "figures": "新圖表存在且已被使用"
+    },
+    "items": {
+      "buildFailed": "建置失敗，出現 {{errors}} 個錯誤。",
+      "buildSkipped": "未檢查建置：{{reason}}",
+      "referencesUnresolved": "{{key}} 無法解析。",
+      "referencesNotChecked": "這個版本尚未檢查參照。",
+      "bibUnverified": "無法驗證 {{key}}。",
+      "bibTitleMismatch": "{{key}} 指向了不同的標題：{{found}}",
+      "bibLookupFailed": "無法查詢 {{key}}。請稍後再試一次。",
+      "numbersMismatch": "{{value}} 與執行 {{run}} 不一致（{{recorded}}）。",
+      "numbersUnknownRun": "執行 {{run}} 不存在。",
+      "numbersNoLedgerRow": "執行 {{run}} 沒有結果紀錄列。",
+      "figuresMissing": "{{path}} 被參照但遺失。",
+      "figuresUnused": "文件中未使用 {{path}}。"
+    }
+  },
+  "compute": {
+    "title": "運算資源",
+    "description": "選擇實驗執行的位置。每項任務會在任務說明中選擇一個目標。",
+    "targets": {
+      "heading": "執行目標",
+      "local": "這台電腦",
+      "localDescription": "執行會使用這台電腦上的沙箱。",
+      "add": "新增目標",
+      "addSsh": "SSH 主機",
+      "addSlurm": "Slurm 叢集",
+      "addCua": "Cua Space",
+      "import": "從 SSH 設定匯入",
+      "test": "測試",
+      "testing": "正在測試…",
+      "more": "{{label}} 的更多動作",
+      "edit": "編輯",
+      "remove": "移除",
+      "removeTitle": "要移除 {{label}} 嗎？",
+      "removeConfirm": "已在那裡開始的執行會繼續進行。等待在它上面開始的任務則會失敗。",
+      "forgetHostKey": "忘記主機金鑰",
+      "reviewHostKey": "檢查主機金鑰",
+      "notTested": "未測試",
+      "tested": "上次測試：{{time}}",
+      "testFailed": "測試失敗",
+      "perTaskSpace": "每項任務使用新的 Space",
+      "saveFailed": "無法儲存目標：{{message}}"
+    },
+    "kind": {
+      "ssh": "SSH",
+      "slurm": "Slurm",
+      "cuaSpace": "Cua Space"
+    },
+    "notes": {
+      "keys": "Oleafly 使用你的 SSH 金鑰或 SSH 代理程式連線，絕不會要求或儲存密碼和金鑰。",
+      "windowsRsync": "Windows 沒有 rsync，因此 Oleafly 會透過 SSH 使用 tar 複製檔案。",
+      "sshMissingWindows": "尚未安裝 OpenSSH 用戶端。請在 Windows 設定的「系統 > 選用功能」中新增。",
+      "sshMissing": "尚未安裝 OpenSSH。請使用你的套件管理員安裝。",
+      "cuaMissing": "尚未安裝 Cua。請從 cua.ai 安裝，然後重新測試。",
+      "relay": "這個 Space 在一台真實的電腦上執行。在那裡的執行沒有隔離。",
+      "outputs": "執行產生的檔案會回到任務副本中的 runs/<run>/outputs。"
+    },
+    "form": {
+      "addTitle": "新增 {{kind}}",
+      "editTitle": "編輯 {{label}}",
+      "label": "名稱",
+      "host": "主機",
+      "hostHint": "SSH 設定中的主機或主機名稱",
+      "user": "使用者",
+      "userHint": "留空即使用你的 SSH 設定。",
+      "port": "連接埠",
+      "remoteRoot": "遠端資料夾",
+      "remoteRootHint": "除非你選擇其他資料夾，否則執行都會放在主資料夾中的 .oleafly-runs 裡。",
+      "prelude": "設定指令",
+      "preludeHint": "在每個指令之前執行，例如 module load python。",
+      "partition": "分區",
+      "account": "帳號",
+      "qos": "QOS",
+      "time": "時間限制",
+      "timeHint": "例如 2:00:00 或 1-00:00:00",
+      "gpus": "GPU 數量",
+      "cpus": "CPU 數量",
+      "mem": "記憶體（GB）",
+      "memHint": "例如 16",
+      "gpuFlag": "GPU 選項",
+      "spaceMode": "Space",
+      "spaceNamed": "使用已命名的 Space",
+      "spacePerTask": "為每項任務建立新的 Space",
+      "space": "Space 名稱",
+      "image": "映像檔",
+      "save": "儲存",
+      "cancel": "取消",
+      "errors": {
+        "label": "請輸入不超過 80 個字元的名稱。",
+        "host": "請輸入不含空格的主機名稱。",
+        "user": "請使用字母、數字、句點、連字號或底線。",
+        "port": "請使用 1 到 65535 之間的連接埠。",
+        "remoteRoot": "請使用不含空格、引號或「..」的資料夾路徑。",
+        "time": "請使用 Slurm 時間格式，例如 2:00:00。",
+        "name": "請使用字母、數字、句點、逗號、連字號或底線。",
+        "mem": "請使用以 GB 為單位的整數，例如 16。",
+        "count": "請使用允許範圍內的整數。"
+      }
+    },
+    "test": {
+      "connect": "連線",
+      "echo": "執行指令",
+      "disk": "可用空間",
+      "python": "Python",
+      "gpu": "GPU",
+      "rsync": "rsync",
+      "slurm": "Slurm",
+      "cua": "Cua",
+      "space": "Space",
+      "pass": "已通過",
+      "warn": "請檢查",
+      "fail": "失敗",
+      "skipped": "未檢查"
+    },
+    "hostKey": {
+      "title": "要信任這部主機嗎？",
+      "body": "Oleafly 之前從未連線到 {{host}}。請將這些指紋與管理員提供的指紋進行比對。",
+      "trust": "信任並連線",
+      "changedTitle": "主機金鑰已變更",
+      "changed": "{{host}} 的主機金鑰已變更。可能有人正在攔截連線。如果是管理員更換了金鑰，請忘記舊金鑰後重新測試。"
+    },
+    "import": {
+      "title": "匯入 SSH 主機",
+      "body": "選擇要新增的主機。Oleafly 會讀取你的 SSH 設定，但絕不會變更它。",
+      "none": "在你的 SSH 設定中找不到主機。",
+      "added": "已新增",
+      "add_other": "新增 {{count}} 部主機",
+      "skipped": "未新增：{{hosts}}。{{reason}}"
+    },
+    "sandbox": {
+      "heading": "這台電腦上的沙箱",
+      "description": "這台電腦上的執行可以讀取你的直譯器和連結的資料夾，但只會寫入任務副本。",
+      "ready": "就緒",
+      "unavailable": "無法使用",
+      "macos": "使用 macOS 沙箱。",
+      "linux": "使用 bubblewrap。",
+      "linuxMissing": "請安裝 bubblewrap（bwrap）以執行任務指令。",
+      "windowsLabel": "在 Windows 沙箱中執行任務指令",
+      "windowsDescription": "指令會在 Windows AppContainer 中執行，只能存取任務的檔案和下方的資料夾。測試期間預設為關閉。",
+      "gpuWindows": "Windows 沙箱中的 GPU 存取尚未經過驗證。GPU 工作請使用 SSH 或 Slurm 目標。",
+      "limitsWindows": "在 Windows 沙箱中，Python 多處理程序和會啟動其他程式的 Node.js 程式暫時無法使用。",
+      "check": "檢查沙箱",
+      "checking": "正在檢查…",
+      "checkPassed": "沙箱運作正常。",
+      "checkFailed": "沙箱檢查失敗：{{reason}}",
+      "runtimes": "直譯器",
+      "runtimesEmpty": "找不到 Python、R 或 Julia。",
+      "refresh": "重新整理",
+      "access": "沙箱可以讀取的資料夾",
+      "accessNote": "為了讓任務能讀取這些資料夾，Oleafly 會在每個資料夾加入一筆權限項目。",
+      "removeAccess": "移除存取權",
+      "removeAccessTitle": "要移除沙箱存取權嗎？",
+      "removeAccessConfirm": "要移除沙箱對這些資料夾的存取權嗎？下次有任務需要時，Oleafly 會重新加入。"
+    },
+    "brief": {
+      "runsOn": "在 {{target}} 上執行",
+      "runsLocal": "在這台電腦上執行。",
+      "missing": "這項任務使用的目標已被移除。請選擇其他目標。",
+      "loadFailed": "無法載入你的執行目標。",
+      "windowsOff": "請在設定中開啟 Windows 沙箱，才能在這台電腦上執行指令。",
+      "openSettings": "開啟設定",
+      "resources": "Slurm 資源"
+    }
+  },
+  "backgroundHelper": {
+    "badge": {
+      "background": "在背景",
+      "backgroundHint": "Oleafly 的背景輔助程式正在執行這項任務。目前的步驟完成後，它會回到這裡。",
+      "movingBack": "正在移回",
+      "movingBackHint": "目前的步驟結束後，這項任務會回到 Oleafly。"
+    },
+    "earlierActivity": "顯示較早的活動",
+    "earlierTruncated": "這次較早的執行只顯示前 {{limit}} 個項目。",
+    "keepRunningFailed": "無法變更這項設定。請再試一次。"
   }
 }

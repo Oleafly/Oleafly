@@ -105,6 +105,21 @@ describe("InstructionsTab", () => {
     expect(localStorage.getItem("oleafly:ai_pdf_capture")).toBe("0");
   });
 
+  it("turns reasoning summaries on and saves the config", async () => {
+    const user = userEvent.setup();
+    const setCfg = vi.fn();
+    renderTab({ setCfg });
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: new RegExp(instructions.reasoningSummariesLabel),
+    });
+    expect(checkbox).not.toBeChecked();
+
+    await user.click(checkbox);
+    expect(setCfg).toHaveBeenCalledWith({ ...cfg, ai_reasoning_summaries: true });
+    expect(mocks.setConfig).toHaveBeenCalledWith({ ...cfg, ai_reasoning_summaries: true });
+  });
+
   it("reports a config write that fails", async () => {
     const user = userEvent.setup();
     const setMsg = vi.fn();

@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ChevronLeft, ExternalLink, Github, Lock } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { ChoiceCard } from "@/components/library/ChoiceCard";
 import { CHOICE_ART } from "@/components/library/choice-art";
 import { Input } from "@/components/ui/input";
@@ -16,20 +15,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tooltip } from "@/components/ui/tooltip";
 import { pickOpenPath } from "@/lib/native-file-dialog";
-import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
   IMPORT_FILE_SOURCES,
+  cloneRepository,
   importPickerOptions,
   importArxivPaper,
   importFileKind,
-  importGitHubRepository,
+  importForgeRepository,
   importSelectedFile,
   importTargetsForKind,
   type ProjectImportFileKind,
 } from "@/features/project-import";
-import { useGithubStore } from "@/store/github";
+import { cancelRepositoryImport } from "@/lib/forge";
+import type { ForgeAccount, ForgeRepo } from "@/lib/tauri";
+import { useForgeAccountsStore } from "@/store/forge-accounts";
 import { useSettingsStore } from "@/store/settings";
 import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
@@ -45,12 +45,18 @@ const OverleafImportView = lazy(() =>
   })),
 );
 
-type ImportView = "sources" | "github" | "target" | "arxiv" | "overleaf";
+const GitImportView = lazy(() =>
+  import("@/components/library/GitImportView").then((module) => ({
+    default: module.GitImportView,
+  })),
+);
+
+type ImportView = "sources" | "git" | "target" | "arxiv" | "overleaf";
 
 const VIEW_WIDTH: Record<ImportView, string> = {
   sources: "max-w-3xl",
   overleaf: "h-[min(48rem,calc(100dvh-2rem))] max-w-5xl",
-  github: "max-w-xl",
+  git: "max-w-xl",
   target: "max-w-xl",
   arxiv: "max-w-xl",
 };
@@ -92,9 +98,9 @@ export function ProjectImportDialog({
   open: boolean;
   onClose: () => void;
   onImported?: () => void;
-  initialView?: "sources" | "arxiv" | "overleaf";
+  initialView?: "sources" | "arxiv" | "overleaf" | "git";
 }>) {
-  const { t } = useTranslation(["library"]);
+  const { t } = useTranslation(["library", "common"]);
   const sourceCopy: Record<ProjectImportFileKind, { title: string; description: string }> = {
     project: {
       title: t(($) => $.library.import.sources.project.title),
@@ -117,8 +123,7 @@ export function ProjectImportDialog({
       description: t(($) => $.library.import.sources.typst.description),
     },
   };
-  const githubStatus = useGithubStore((state) => state.status);
-  const refreshGithub = useGithubStore((state) => state.refresh);
+  const gitAccounts = useForgeAccountsStore((state) => state.accounts.length);
   const [view, setView] = useState<ImportView>(
     initialView,
   );
@@ -128,15 +133,15 @@ export function ProjectImportDialog({
   // The local source whose picker or import is running, so its card spins.
   const [busyKind, setBusyKind] = useState<ProjectImportFileKind | null>(null);
   const busyRef = useRef(false);
+  // A repository import or clone can be stopped; the other imports cannot.
+  const [cancellable, setCancellable] = useState(false);
+  const cancellableRef = useRef(false);
+  const cancelledRef = useRef(false);
   const sessionRef = useRef(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Off every time the dialog opens: keeping an import as a template is rare.
   const [alsoTemplate, setAlsoTemplate] = useState(false);
   const alsoTemplateId = useId();
-  const [repositoryAttempt, setRepositoryAttempt] = useState(0);
-  const [repositories, setRepositories] = useState<GitHubRepo[]>([]);
-  const [loadingRepositories, setLoadingRepositories] = useState(false);
-  const [repositoryLoadFailed, setRepositoryLoadFailed] = useState(false);
 
   useEffect(() => {
     sessionRef.current += 1;
@@ -148,32 +153,10 @@ export function ProjectImportDialog({
     return () => { sessionRef.current += 1; };
   }, [open, initialView]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the retry counter explicitly starts another request.
+  // The Git card says whether accounts are connected.
   useEffect(() => {
-    if (!open || view !== "github") return;
-    if (githubStatus === "unknown") {
-      void refreshGithub();
-      return;
-    }
-    if (githubStatus !== "connected" || repositories.length > 0) return;
-    let cancelled = false;
-    setLoadingRepositories(true);
-    setRepositoryLoadFailed(false);
-    githubListRepos()
-      .then((items) => {
-        if (!cancelled) setRepositories(items);
-      })
-      .catch((error) => {
-        void logError("github import repositories", error);
-        if (!cancelled) setRepositoryLoadFailed(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingRepositories(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, view, githubStatus, refreshGithub, repositories.length, repositoryAttempt]);
+    if (open) void useForgeAccountsStore.getState().ensureLoaded();
+  }, [open]);
 
   const reportError = (error: unknown) => {
     const detail = error instanceof Error || typeof error === "string" ? describeError(error) : t(($) => $.library.import.failed);
@@ -181,9 +164,22 @@ export function ProjectImportDialog({
     void logError("project import", error);
   };
 
-  const runImport = async (work: () => Promise<boolean>) => {
+  /** Stop the repository import or clone that is running. The transfer
+   * ends, its staging folder goes and no project is created. */
+  const cancelImport = () => {
+    if (!busyRef.current || !cancellableRef.current || cancelledRef.current) return;
+    cancelledRef.current = true;
+    void cancelRepositoryImport().catch((error: unknown) => {
+      void logError("cancel repository import", error);
+    });
+  };
+
+  const runImport = async (work: () => Promise<boolean>, options: { cancellable?: boolean } = {}) => {
     if (busyRef.current) return;
     busyRef.current = true;
+    cancellableRef.current = options.cancellable === true;
+    cancelledRef.current = false;
+    setCancellable(cancellableRef.current);
     setBusy(true);
     setErrorMessage(null);
     const keepAsTemplate = alsoTemplate;
@@ -198,9 +194,13 @@ export function ProjectImportDialog({
         if (keepAsTemplate) void keepImportAsTemplate(before);
       }
     } catch (error) {
-      reportError(error);
+      // The person stopped it: nothing went wrong.
+      if (!cancelledRef.current) reportError(error);
     } finally {
       busyRef.current = false;
+      cancellableRef.current = false;
+      cancelledRef.current = false;
+      setCancellable(false);
       setBusy(false);
     }
   };
@@ -246,122 +246,44 @@ export function ProjectImportDialog({
     if (arxivId.trim()) await runImport(() => importArxivPaper(arxivId));
   };
 
-  const importRepository = async (repository: GitHubRepo) => {
-    await runImport(async () => { await importGitHubRepository(repository); return true; });
+  const importRepository = async (account: ForgeAccount, repository: ForgeRepo) => {
+    await runImport(
+      async () => {
+        await importForgeRepository(account.base, repository);
+        return true;
+      },
+      { cancellable: true },
+    );
   };
 
-  const openGithubSettings = () => {
+  const cloneByAddress = async (url: string) => {
+    await runImport(
+      async () => {
+        await cloneRepository(url);
+        return true;
+      },
+      { cancellable: true },
+    );
+  };
+
+  const openGitHostingSettings = () => {
     const settings = useSettingsStore.getState();
     settings.setSettingsInitialSection("integrations");
-    settings.setSettingsScrollTarget("github");
+    settings.setSettingsScrollTarget("git-hosting");
     settings.setSettingsOpen(true);
     onClose();
   };
 
-  const renderRepositoryList = () => {
-    if (githubStatus === "disconnected") {
-      return (
-        <div className="space-y-3 rounded-lg border bg-card p-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            {t(($) => $.library.import.connectPrompt)}
-          </p>
-          <Button type="button" size="sm" onClick={openGithubSettings}>
-            <Github aria-hidden="true" className="size-3.5" />
-            {t(($) => $.library.import.connect)}
-          </Button>
-        </div>
-      );
-    }
-    if (githubStatus === "unknown" || loadingRepositories) {
-      return (
-        <p className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
-          <Spinner size="sm" />
-          {t(($) => $.library.import.loadingRepositories)}
-        </p>
-      );
-    }
-    if (repositoryLoadFailed) {
-      return (
-        <div className="space-y-2 p-3">
-          <p role="alert" className="text-sm text-muted-foreground">
-            {t(($) => $.library.import.repositoriesFailed)}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setRepositoryAttempt((attempt) => attempt + 1)}
-          >
-            {t(($) => $.library.import.tryAgain)}
-          </Button>
-        </div>
-      );
-    }
-    if (repositories.length === 0) {
-      return (
-        <p className="p-3 text-sm text-muted-foreground">
-          {t(($) => $.library.import.noRepositories)}
-        </p>
-      );
-    }
-    return (
-      repositories.map((repository) => (
-        <div
-          key={repository.full_name}
-          className="group flex items-center gap-2 rounded-lg px-1 transition-colors hover:bg-accent"
-        >
-          <button
-            type="button"
-            disabled={busy}
-            data-testid={`project-import-repository-${repository.full_name}`}
-            onClick={() => void importRepository(repository)}
-            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-2 text-left transition-colors focus-visible:bg-accent disabled:opacity-60"
-          >
-            <Github aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate text-sm">{repository.full_name}</span>
-            {repository.private ? (
-              <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
-                <span
-                  role="img"
-                  aria-label={t(($) => $.library.import.privateRepository)}
-                  className="inline-flex shrink-0"
-                >
-                  <Lock aria-hidden="true" className="size-3 text-muted-foreground" />
-                </span>
-              </Tooltip>
-            ) : null}
-          </button>
-          <Tooltip label={t(($) => $.library.import.openOnGitHub)} side="top">
-            <button
-              type="button"
-              aria-label={t(($) => $.library.import.openRepository, {
-                name: repository.full_name,
-              })}
-              onClick={() => {
-                openExternal(repository.html_url).catch((error) => {
-                  notifyError("open repository", error);
-                });
-              }}
-              className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-            >
-              <ExternalLink aria-hidden="true" className="size-3.5" />
-            </button>
-          </Tooltip>
-        </div>
-      ))
-    );
-  };
-
   const viewTitles: Record<ImportView, string> = {
     sources: t(($) => $.library.import.title),
-    github: t(($) => $.library.import.githubTitle),
+    git: t(($) => $.library.import.gitTitle),
     target: t(($) => $.library.import.targetTitle),
     arxiv: t(($) => $.library.import.arxivTitle),
     overleaf: t(($) => $.library.import.overleaf.title),
   };
   const viewDescriptions: Record<ImportView, string> = {
     sources: t(($) => $.library.import.description),
-    github: t(($) => $.library.import.githubDescription),
+    git: t(($) => $.library.import.gitDescription),
     target: t(($) => $.library.import.targetDescription),
     arxiv: t(($) => $.library.import.arxivDescription),
     overleaf: t(($) => $.library.import.overleaf.description),
@@ -493,16 +415,16 @@ export function ProjectImportDialog({
                   />
                   <ChoiceCard
                     image={CHOICE_ART.importGithub}
-                    title={t(($) => $.library.import.github)}
+                    title={t(($) => $.library.import.git)}
                     description={
-                      githubStatus === "connected"
-                        ? t(($) => $.library.import.githubConnected)
-                        : t(($) => $.library.import.githubDisconnected)
+                      gitAccounts > 0
+                        ? t(($) => $.library.import.gitConnected)
+                        : t(($) => $.library.import.gitDisconnected)
                     }
-                    testId="project-import-github"
+                    testId="project-import-git"
                     compact
                     disabled={busy}
-                    onClick={() => setView("github")}
+                    onClick={() => setView("git")}
                   />
                   <ChoiceCard
                     image={CHOICE_ART.importOverleaf}
@@ -538,9 +460,20 @@ export function ProjectImportDialog({
       );
     }
     return (
-            <div className="max-h-80 space-y-1 overflow-y-auto">
-              {renderRepositoryList()}
-            </div>
+            <Suspense
+              fallback={
+                <output className="flex flex-1 items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                  <Spinner />
+                </output>
+              }
+            >
+              <GitImportView
+                busy={busy}
+                onImport={(account, repository) => void importRepository(account, repository)}
+                onClone={(url) => void cloneByAddress(url)}
+                onOpenSettings={openGitHostingSettings}
+              />
+            </Suspense>
     );
   };
 
@@ -548,7 +481,15 @@ export function ProjectImportDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next && !busyRef.current) onClose();
+        if (next) return;
+        if (!busyRef.current) {
+          onClose();
+        } else if (cancellableRef.current) {
+          // Closing the dialog stops a repository transfer instead of
+          // leaving it running with no way back.
+          cancelImport();
+          onClose();
+        }
       }}
     >
       <DialogContent
@@ -585,7 +526,16 @@ export function ProjectImportDialog({
         </DialogHeader>
 
         {errorMessage && <p role="alert" className="shrink-0 select-text rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
-        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>}
+        {busy && (
+          <div className="flex shrink-0 items-center justify-between gap-2">
+            <output className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>
+            {cancellable ? (
+              <Button type="button" size="sm" variant="ghost" data-testid="project-import-cancel" onClick={cancelImport}>
+                {t(($) => $.common.actions.cancel)}
+              </Button>
+            ) : null}
+          </div>
+        )}
         <div
           className={cn(
             "-mx-6 -mb-6 min-h-0 px-6 pb-6",

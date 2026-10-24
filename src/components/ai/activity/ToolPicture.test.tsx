@@ -13,6 +13,11 @@ vi.mock("@/lib/tauri", async (original) => ({
 }));
 vi.mock("@/lib/toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => undefined) }));
+vi.mock("@/lib/attachments", () => ({
+  attachmentRead: vi.fn(),
+  attachmentObjectUrl: vi.fn(),
+}));
+import { attachmentObjectUrl, attachmentRead } from "@/lib/attachments";
 import { logError } from "@/lib/log";
 import { writeProjectBytes } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -149,3 +154,34 @@ describe("freeFigurePath", () => {
   });
 });
 
+describe("screenshots kept by reference", () => {
+  const stored: ToolEntry = {
+    id: "tool-2",
+    name: "preview_figure",
+    status: "done",
+    imageRef: { sha256: "a".repeat(64), mime: "image/png" },
+  };
+
+  it("loads a stored screenshot by reference", async () => {
+    vi.mocked(attachmentObjectUrl).mockResolvedValue("blob:stored");
+    const rendered = render(<ToolPicture tc={stored} />);
+    await waitFor(() => expect(rendered.getByTestId("tool-image")).toHaveAttribute("src", "blob:stored"));
+    expect(attachmentObjectUrl).toHaveBeenCalledWith("paper", "a".repeat(64), "image/png");
+  });
+
+  it("still shows an old data URL screenshot", () => {
+    const rendered = render(<ToolPicture tc={picture} />);
+    expect(rendered.getByTestId("tool-image")).toHaveAttribute("src", picture.image);
+    expect(attachmentObjectUrl).not.toHaveBeenCalled();
+  });
+
+  it("saves a stored screenshot into the project", async () => {
+    vi.mocked(attachmentObjectUrl).mockResolvedValue("blob:stored");
+    vi.mocked(attachmentRead).mockResolvedValue(new Uint8Array([1, 2, 3]).buffer);
+    const rendered = render(<ToolPicture tc={stored} />);
+    fireEvent.click(rendered.getByTestId("tool-picture-save"));
+    await waitFor(() =>
+      expect(writeProjectBytes).toHaveBeenCalledExactlyOnceWith("paper", "figures/figure.png", "AQID"),
+    );
+  });
+});

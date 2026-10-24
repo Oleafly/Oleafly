@@ -108,6 +108,8 @@ test("a research task runs in Rust, reaches review, and records the same native 
     nativeSessionId: string | null;
     resultSessionId: string | null;
     status: string;
+    recordDir: string;
+    changedPaths: string[];
   }>(
     `import("/src/lib/research-tasks.ts").then(async ({ listResearchTasks }) => {
       const tasks = await listResearchTasks(${JSON.stringify(projectId)});
@@ -117,6 +119,8 @@ test("a research task runs in Rust, reaches review, and records the same native 
         nativeSessionId: task.nativeSessionId,
         resultSessionId: task.result?.nativeSessionId ?? null,
         status: task.status,
+        recordDir: task.recordDir,
+        changedPaths: (task.result?.changedFiles ?? []).map((change) => change.path),
       };
     })`,
   );
@@ -124,9 +128,13 @@ test("a research task runs in Rust, reaches review, and records the same native 
   expect(task.nativeSessionId).toBeTruthy();
   expect(task.resultSessionId).toBe(task.nativeSessionId);
   expect(server.requestCount()).toBeGreaterThan(0);
+  // The task changed no project files: its review is only its research record.
+  expect(task.changedPaths.length).toBeGreaterThan(0);
+  expect(task.changedPaths.every((path) => path.startsWith(`${task.recordDir}/`))).toBe(true);
 
   await clickTabByText(tauriPage, '[data-testid="research-task-detail"]', "Review");
-  await detail.getByText("Mark reviewed", { exact: true }).click();
+  // The record applies without a preview.
+  await detail.getByText(`Apply ${task.changedPaths.length} selected`, { exact: true }).click();
   await expect(detail).toContainText("Completed", { timeout: 20_000 });
   await tauriPage.press("body", "Escape");
   await expect(tauriPage.locator('[data-testid="research-task-detail"]')).toHaveCount(0);

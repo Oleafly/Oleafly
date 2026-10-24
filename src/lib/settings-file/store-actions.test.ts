@@ -104,11 +104,11 @@ describe("preference batch", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
-  it("closes the browser dock when the browser experiment turns off", () => {
-    useSettingsStore.setState({ webBrowser: true, browserOpen: true });
-    applyPreferences({ webBrowser: false });
-    expect(useSettingsStore.getState()).toMatchObject({ webBrowser: false, browserOpen: false });
-    expect(localStorage.getItem("oleafly.webBrowser")).toBe("0");
+  it("persists an experiment switch from a settings file", () => {
+    useSettingsStore.setState({ latexTools: false });
+    applyPreferences({ latexTools: true });
+    expect(useSettingsStore.getState().latexTools).toBe(true);
+    expect(localStorage.getItem("oleafly.latexTools")).toBe("1");
   });
 
   it("stops ignoring rules that are no longer disabled", () => {

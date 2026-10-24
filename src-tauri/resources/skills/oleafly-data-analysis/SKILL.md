@@ -5,7 +5,7 @@ license: MIT
 compatibility: Needs python3 on the login shell PATH with the analysis packages the method requires. Scripts run through run_command in the project directory, with a 120 second timeout and a 200 KiB output cap.
 allowed-tools: run_command, read_file, write_file, create_file, replace_in_file, list_files, search_project, compile, get_log, update_todos, remember_note, load_skill, read_skill_file
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   skill-author: Oleafly
   oleafly:
     tier: native
@@ -270,3 +270,13 @@ run, and the manuscript will disagree with the next rerun.
   intervals, the booktabs table generator, and matplotlib settings for print.
 
 Read them with `read_skill_file("oleafly-data-analysis", "references/reporting.md")`.
+
+## From a terminal
+
+Outside the app (a terminal, or a coding agent with a shell), the `oleafly` command does the same work. Always pass `--json` and check `ok`.
+
+| In Oleafly | From a terminal |
+|---|---|
+| `compile` | `oleafly build --json` |
+| `get_log` | `oleafly log --diagnostics --json` |
+| `list_files`, `read_file`, `search_project` | Your own file tools; `oleafly context --json` for the outline |

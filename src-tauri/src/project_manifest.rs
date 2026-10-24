@@ -91,7 +91,8 @@ fn locale_token(value: &str) -> bool {
 pub(crate) enum FolderManifest {
     Absent,
     Foreign,
-    Oleafly(FolderFields),
+    // Boxed: a serde_json Value keeps its key order, which makes it large.
+    Oleafly(Box<FolderFields>),
 }
 
 pub(crate) fn inspect_folder_manifest(root: &Path) -> FolderManifest {
@@ -121,7 +122,9 @@ pub(crate) fn inspect_folder_manifest(root: &Path) -> FolderManifest {
     value
         .as_object()
         .and_then(FolderFields::from_object)
-        .map_or(FolderManifest::Foreign, FolderManifest::Oleafly)
+        .map_or(FolderManifest::Foreign, |fields| {
+            FolderManifest::Oleafly(Box::new(fields))
+        })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,7 +136,7 @@ pub(crate) enum Route {
     },
     Split {
         location: ProjectLocation,
-        folder: FolderFields,
+        folder: Box<FolderFields>,
     },
 }
 
@@ -527,7 +530,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             inspect_folder_manifest(folder.path()),
-            FolderManifest::Oleafly(FolderFields {
+            FolderManifest::Oleafly(Box::new(FolderFields {
                 name: Some("Paper".into()),
                 main_doc: "paper/main.tex".into(),
                 engine: Some("xetex".into()),
@@ -535,7 +538,7 @@ mod tests {
                 dictionary_locale: None,
                 compile_dir: None,
                 typst: None,
-            })
+            }))
         );
     }
 

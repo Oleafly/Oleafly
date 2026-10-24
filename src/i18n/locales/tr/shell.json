@@ -53,19 +53,6 @@
   "branding": {
     "assistantMascot": "Oleafly yapay zeka asistanı maskotu"
   },
-  "browser": {
-    "address": "Arayın veya bir URL girin",
-    "back": "Geri",
-    "closeTab": "Sekmeyi kapat",
-    "copyUrl": "URL'yi kopyala",
-    "forward": "İleri",
-    "moreOptions": "Diğer seçenekler",
-    "newTab": "Yeni sekme",
-    "openExternal": "Kendi tarayıcınızda açın",
-    "openTabs": "Açık sekmeler",
-    "reload": "Yeniden yükle",
-    "setHomePage": "Ana sayfa olarak ayarla"
-  },
   "changelog": {
     "installed": "Bu sürümü kullanıyorsunuz",
     "sectionItems_one": "{{count}} değişiklik",
@@ -464,10 +451,6 @@
       "hide": "Yapay zeka asistanını gizle",
       "show": "Yapay zeka asistanını göster"
     },
-    "browser": {
-      "close": "Tarayıcıyı kapat ({{shortcut}})",
-      "open": "Tarayıcıyı aç ({{shortcut}})"
-    },
     "settings": "Ayarlar",
     "sidebar": {
       "hide": "Kenar çubuğunu gizle ({{shortcut}})",
@@ -570,17 +553,6 @@
     "saveCopy": "Kopya kaydet",
     "tryAgain": "Yeniden deneyin",
     "savedCopy": "Açık dosyalarınız {{folder}} konumuna kaydedildi."
-  },
-  "githubMenu": {
-    "accountAriaLabel": "GitHub: {{login}}",
-    "actions": "GitHub eylemleri",
-    "connect": "GitHub'ı bağla…",
-    "connectedAs": "@{{login}} olarak bağlı",
-    "copyRepositoryLink": "Depo bağlantısını kopyala",
-    "openInGithub": "GitHub'da aç",
-    "pushHint": "Bunları etkinleştirmek için GitHub'a gönderin",
-    "settings": "GitHub ayarları",
-    "tooltip": "GitHub"
   },
   "home": {
     "ariaLabel": "Ana ekran",
@@ -726,6 +698,14 @@
     "sourceControl": "Kaynak Denetimi",
     "withShortcut": "{{label}} ({{shortcut}})"
   },
+  "remoteMenu": {
+    "accountLabel": "{{host}} üzerinde {{login}}",
+    "actions": "Depo işlemleri",
+    "copyRepositoryLink": "Depo bağlantısını kopyala",
+    "openOnHost": "{{host}} üzerinde aç",
+    "settings": "Git barındırma ayarları",
+    "signedInAs": "{{host}} üzerinde {{login}} olarak oturum açıldı"
+  },
   "renameDialog": {
     "close": "Yeniden adlandırma penceresini kapat",
     "collision": "\"{{name}}\" adlı bir {{kind}} zaten var.",
@@ -773,9 +753,9 @@
         "movedCount_other": "{{count}} proje Geri Dönüşüm Kutusu'na taşındı.",
         "title": "Tehlikeli bölge"
       },
-      "githubHint": "Bir projeyi yedekleyin veya cihazlar arasında eşitleyin: GitHub'ı bağlayın, sonra Kaynak Denetimi'nde <push>Gönder</push> / <pull>Çek</pull> düğmelerini kullanın. <setup>GitHub'ı kur →</setup>",
+      "gitHostingHint": "Bir projeyi yedeklemek veya cihazlar arasında eşitlemek için bir Git deposuna bağlayın, sonra Kaynak Denetimi'nde <push>Gönder</push> / <pull>Çek</pull> kullanın. <setup>Git barındırmayı ayarla →</setup>",
       "localFirst": "Oleafly yerel önceliklidir. Tüm projeler diskinizde durur:",
-      "plainFolders": "Her proje düz bir klasördür. Git geçmişi isteğe bağlıdır ve siz GitHub'a göndermedikçe hiçbir şey makinenizden çıkmaz.",
+      "plainFolders": "Her proje sıradan bir klasördür. Git geçmişi isteğe bağlıdır ve bir Git sunucusuna göndermediğiniz sürece hiçbir şey makinenizden çıkmaz.",
       "recycleBin": {
         "clearAll": "Tümünü temizle",
         "clearFailed": "Geri Dönüşüm Kutusu temizlenemedi.",
@@ -848,11 +828,7 @@
         "description": "Projeleri, sizin veya grubunuzun çalıştırdığı bir iş birliği sunucusu üzerinden başkalarıyla birlikte düzenleyin. Ayarlar'a bir İş Birliği bölümü ekler. Beta aşamasında olduğu için varsayılan olarak kapalıdır.",
         "label": "Canlı iş birliği"
       },
-      "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır ve değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın.",
-      "webBrowser": {
-        "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Beta aşamasında olduğu için varsayılan olarak kapalıdır. Kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
-        "label": "Web tarayıcısı"
-      }
+      "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır ve değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın."
     },
     "footer": {
       "followOnX": "X'te takip edin",
@@ -936,7 +912,8 @@
       "general": "Genel",
       "help": "Yardım ve Hakkında",
       "integrations": "Tümleştirmeler",
-      "shortcuts": "Klavye Kısayolları"
+      "shortcuts": "Klavye Kısayolları",
+      "research": "Araştırma"
     },
     "search": {
       "empty": "Eşleşen ayar yok",
@@ -951,8 +928,9 @@
         "experimentation": "laboratuvar, beta, deneysel, erken özellikler",
         "general": "tercihler, dil, bölge, yazım denetimi, yazım, yazım hataları, çevrimdışı, turlar, terminal komutu",
         "help": "hakkında, sürüm, güncellemeler, değişiklik günlüğü, yenilikler, belgeler, destek, topluluk, Discord, lisans, çökme raporu",
-        "integrations": "Zotero, GitHub, MCP, atıflar, hesaplar, bağlantılar",
-        "shortcuts": "tuş atamaları, kısayol tuşları, kısayollar, tuşlar, klavye"
+        "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git barındırma, masaüstü uygulamaları, Cua, MCP, atıflar, hesaplar, bağlantılar",
+        "shortcuts": "tuş atamaları, kısayol tuşları, kısayollar, tuşlar, klavye",
+        "research": "araştırma görevler bütçe bildirimler uyanık tut deneyler çalıştırmalar research tasks"
       },
       "label": "Ayarlarda ara",
       "results_one": "{{count}} bölüm eşleşiyor",
@@ -1034,7 +1012,6 @@
     "commitCount_other": "{{count}} işleme",
     "initialize": "Depoyu Başlat",
     "initialized": "Git, {{branch}} dalında başlatıldı.",
-    "linkCopied": "GitHub bağlantısı kopyalandı",
     "markResolved": "Çözüldü olarak işaretle",
     "mergeNeedsAttention": "Birleştirme çakışmalarını çözün",
     "moreActions": "Diğer Kaynak Denetimi eylemleri",
@@ -1048,18 +1025,19 @@
     "openFile": "Dosyayı aç",
     "openFileFor": "{{path}} dosyasını aç",
     "popStash": "En son zulayı uygula",
-    "publish": "GitHub'da yayımla",
+    "publishRepository": "Yayımla…",
+    "publishTo": "{{host}} üzerinde yayımla",
     "published": "{{url}} adresinde yayımlandı",
     "pull": "origin deposundan çek",
     "pullShort": "Çek",
     "push": "İşle ve origin deposuna gönder",
     "pushShort": "Gönder",
     "pushSkippedNoRemote": "⚠ Gönderim atlandı - aşağıda origin uzak deposu ayarlı değil.",
-    "pushSkippedNoToken": "⚠ Gönderim atlandı - GitHub belirteci yok (Ayarlar → GitHub).",
     "refresh": "Yenile",
     "remote": "Uzak depo",
     "remoteHint": "Bu projenin uzak deposu olarak yeni bir depo oluşturun veya var olan birini bağlayın, sonra gönderin.",
     "removeCredential": "Kayıtlı kimlik bilgisini kaldır",
+    "repositoryLinkCopied": "Depo bağlantısı kopyalandı",
     "restoreCommit": "Sürümü geri yükle",
     "restoreCommitDescription": "Bu işlem, izlenen her proje dosyasının yerine bu sürümü koyar ve sonradan eklenen dosyaları kaldırır. Dalınız geçerli işlemesinde kalır.",
     "restoreCommitTitle": "Bu sürüm geri yüklensin mi?",
@@ -1089,7 +1067,7 @@
     "titleRequired": "İşleme başlığı zorunludur.",
     "titleRequiredStatus": "İşlemeden önce bir işleme başlığı girin.",
     "unlink": "Bağlantıyı kaldır",
-    "unlinked": "GitHub bağlantısı kaldırıldı.",
+    "unlinkedFrom": "{{host}} bağlantısı kaldırıldı.",
     "unstage": "Hazırlıktan çıkar",
     "unstageFor": "{{path}} dosyasını hazırlıktan çıkar",
     "unstageAll": "Tümünü hazırlıktan çıkar",

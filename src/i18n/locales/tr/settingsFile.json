@@ -48,7 +48,6 @@
     "hexColor": "#2563eb gibi bir renk olmalıdır",
     "hexColorOrEmpty": "#2563eb gibi bir renk ya da temanın rengini kullanmak için \"\" olmalıdır",
     "text": "en fazla {{max}} karakterlik bir metin olmalıdır",
-    "webAddress": "http:// veya https:// ile başlayan bir web adresi olmalıdır",
     "list": "en fazla {{max}} öğe içeren bir liste olmalıdır",
     "listItem": "izin verilen bir öğe değil",
     "duplicate": "iki kez listelenmiş",

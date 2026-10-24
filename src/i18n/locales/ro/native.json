@@ -19,7 +19,6 @@
     "selectAll": "Selectează tot",
     "view": "Vizualizare",
     "toggleTerminal": "Arată sau ascunde terminalul",
-    "toggleBrowser": "Arată sau ascunde browserul",
     "file": "Fișier",
     "openFolder": "Deschide un folder…",
     "openRecent": "Deschide recente",
@@ -28,15 +27,7 @@
     "minimize": "Minimizează",
     "fullscreen": "Comută ecranul complet",
     "bringAllToFront": "Adu totul în față",
-    "newTab": "Filă nouă",
-    "openLocation": "Deschide o adresă…",
-    "closeTab": "Închide fila",
-    "reloadPage": "Reîncarcă pagina",
     "zenMode": "Modul Zen"
-  },
-  "window": {
-    "browser": "Browser Oleafly",
-    "browserTitled": "{{title}} - Browser Oleafly"
   },
   "dialog": {
     "cancel": "Anulează",
@@ -52,9 +43,9 @@
     },
     "cookieImport": {
       "title": "Confirmă importul de cookie-uri",
-      "messageHost": "Imporți cookie-urile pentru {{hostname}} din profilul „{{profile}}” al {{browser}} în browserul integrat Oleafly? Cookie-urile importate te pot autentifica pe site-uri.",
-      "messageAll": "Imporți toate cookie-urile din profilul „{{profile}}” al {{browser}} în browserul integrat Oleafly? Cookie-urile importate te pot autentifica pe site-uri.",
-      "confirm": "Importă cookie-urile"
+      "copyHost": "Copiezi în Oleafly cookie-urile pentru {{hostname}} din profilul „{{profile}}” al browserului {{browser}}? Te pot autentifica pe {{hostname}}.",
+      "copyAll": "Copiezi în Oleafly toate cookie-urile din profilul „{{profile}}” al browserului {{browser}}? Te pot autentifica pe site-uri.",
+      "copyConfirm": "Copiază cookie-urile"
     },
     "mcpApprove": {
       "title": "Aprobă instrumentul MCP",
@@ -103,6 +94,51 @@
       "confirm": "Folosește programul",
       "pickTitle": "Alege programul pentru {{name}}",
       "filter": "Programe"
+    },
+    "desktopApps": {
+      "title": "Aplicații desktop",
+      "action": "{{agent}} vrea să {{action}}.",
+      "steps": "{{agent}} vrea să facă acești pași într-o aplicație desktop:",
+      "moreSteps": "Pași neafișați: {{count}}",
+      "moreItems": "Încă {{count}} elemente neafișate",
+      "cut": "(+{{count}} caractere neafișate)",
+      "signedIn": "Acțiunea are loc în propriul tău browser autentificat.",
+      "signedInOn": "Acțiunea are loc în propriul tău browser autentificat, pe {{origin}}.",
+      "text": "Text: „{{text}}”",
+      "address": "Adresă: {{url}}",
+      "allowOnce": "Permite o dată",
+      "allowChat": "Permite pentru această conversație",
+      "allowSession": "Permite pentru această sesiune",
+      "allowTask": "Permite pentru această sarcină",
+      "deny": "Nu permite",
+      "actions": {
+        "launchApp": "deschidă o aplicație",
+        "click": "dea clic într-o aplicație",
+        "doubleClick": "dea dublu clic într-o aplicație",
+        "rightClick": "dea clic dreapta într-o aplicație",
+        "typeText": "scrie într-o aplicație",
+        "pressKey": "apese o tastă într-o aplicație",
+        "hotkey": "apese o comandă rapidă de la tastatură într-o aplicație",
+        "scroll": "deruleze într-o aplicație",
+        "setValue": "schimbe un câmp într-o aplicație",
+        "browserPrepare": "deschidă un browser pentru un site",
+        "browserNavigate": "meargă la o pagină web",
+        "browserClick": "dea clic pe o pagină web",
+        "browserType": "scrie pe o pagină web",
+        "browserSelect": "aleagă o opțiune pe o pagină web",
+        "runScript": "ruleze un script Cua"
+      }
+    },
+    "desktopAppsSettings": {
+      "title": "Permiți controlul desktopului?",
+      "message": "Agenții vor putea folosi următoarele și vor cere în continuare voie înainte de fiecare acțiune:",
+      "confirm": "Permite",
+      "enabled": "Aplicații desktop",
+      "app": "Aplicație: {{name}} ({{identity}})",
+      "more": "Și încă {{count}}",
+      "site": "Site: {{origin}}",
+      "signedIn": "Browserul tău autentificat pe {{origin}}",
+      "scripted": "Scripturi Cua"
     }
   },
   "errors": {
@@ -128,5 +164,41 @@
   "cloud": {
     "connectedPage": "Ești conectat. Poți închide fila și reveni la Oleafly.",
     "failedPage": "Conectarea nu s-a terminat. Poți închide fila și reveni la Oleafly."
+  },
+  "researchTasks": {
+    "notify": {
+      "reviewReady": {
+        "title": "Sarcină gata de verificat",
+        "body": "{{title}}"
+      },
+      "planReady": {
+        "title": "Plan gata de aprobat",
+        "body": "{{title}}"
+      },
+      "approvalNeeded": {
+        "title": "O sarcină are nevoie de aprobarea ta",
+        "body": "{{title}}"
+      },
+      "failed": {
+        "title": "Sarcină oprită",
+        "body": "{{title}}"
+      },
+      "budgetReached": {
+        "title": "Bugetul sarcinii s-a epuizat",
+        "body": "{{title}}"
+      }
+    }
+  },
+  "backgroundHelper": {
+    "started": {
+      "title": "Oleafly continuă să lucreze",
+      "body": "Sarcinile de cercetare pe care le-ai marcat să continue rulează în fundal. Deschide Oleafly ca să le vezi progresul."
+    }
+  },
+  "acp": {
+    "blockedMode": {
+      "title": "Verificările permisiunilor sunt dezactivate ({{mode}})",
+      "description": "Agentul poate edita fișiere și rula comenzi fără să întrebe. Oleafly nu a putut comuta la alt mod. Schimbă modul din setările proprii ale agentului."
+    }
   }
 }
