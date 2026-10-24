@@ -347,6 +347,10 @@
     "zoteroSync": {
       "label": "Sync Zotero library",
       "keywords": "zotero sync refresh library"
+    },
+    "insertFileLink": {
+      "label": "Insert link to file",
+      "keywords": "link file path note reference"
     }
   },
   "community": {

@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "O Oleafly não conseguiu mover {{path}} para a Lixeira. Excluir permanentemente? Isso não pode ser desfeito.",
     "confirmPermanentDeleteWindows": "O Oleafly não conseguiu mover {{path}} para a Lixeira. Excluir permanentemente? Isso não pode ser desfeito.",
     "linkedReadOnly": "Aponta para um arquivo fora desta pasta, então é somente leitura.",
-    "partialFolder": "Alguns itens desta pasta não estão listados."
+    "partialFolder": "Alguns itens desta pasta não estão listados.",
+    "insertLink": "Inserir link",
+    "copyLink": "Copiar link",
+    "linkCopied": "Link copiado",
+    "copyLinkFailed": "O link não foi copiado. Verifique o acesso à área de transferência e tente de novo."
   },
   "explorer": {
     "resizeSections": "Redimensionar {{first}} e {{second}}"

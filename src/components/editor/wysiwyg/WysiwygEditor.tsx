@@ -68,6 +68,7 @@ import {
 } from "./project-intelligence";
 import { useIndexStore } from "@/store/project-index";
 import { resolveVisualAssetUrl } from "./asset-url";
+import { localizedVisualHref, openVisualLinkHref } from "@/features/file-links";
 import { createVisualPasteHandlers } from "./paste";
 import {
   applyVisualProofreadingSuggestion,
@@ -97,6 +98,8 @@ const BOOKTABS_PACKAGE = /\\usepackage\s*(?:\[[^\]]*\]\s*)?\{[^}]*\bbooktabs\b[^
 const PACKAGE_EXTENSIONS = createWysiwygExtensions({
   renderMath: renderMathExpression,
   resolveAssetUrl: resolveVisualAssetUrl,
+  localizeLinkHref: localizedVisualHref,
+  openLinkHref: openVisualLinkHref,
 });
 const PASTE_HANDLERS = createVisualPasteHandlers();
 

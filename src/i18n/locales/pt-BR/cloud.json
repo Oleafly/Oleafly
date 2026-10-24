@@ -125,6 +125,11 @@
     "heldMessage_other": "{{count}} de {{total}} arquivos foram excluídos aqui, então a sincronização está em pausa para proteger a cópia no seu Dropbox.",
     "putBack": "Restaurar os arquivos",
     "deleteToo": "Excluir também do Dropbox",
+    "heldRemoteMessage_one": "{{count}} de {{total}} arquivos está faltando no seu Dropbox, então a sincronização está em pausa para mantê-lo seguro neste computador.",
+    "heldRemoteMessage_many": "{{count}} de {{total}} arquivos estão faltando no seu Dropbox, então a sincronização está em pausa para mantê-los seguros neste computador.",
+    "heldRemoteMessage_other": "{{count}} de {{total}} arquivos estão faltando no seu Dropbox, então a sincronização está em pausa para mantê-los seguros neste computador.",
+    "putBackInDropbox": "Colocar de volta no Dropbox",
+    "deleteHere": "Excluir aqui também",
     "skipReason": {
       "unsupportedName": "Nome que não funciona em todos os computadores",
       "duplicateName": "Mesmo nome de outro arquivo, exceto por maiúsculas e minúsculas",
@@ -140,9 +145,9 @@
   },
   "confirm": {
     "removeTitle": "Remover {{name}} do Dropbox?",
-    "removeDescription": "Isso exclui a cópia no seu Dropbox para liberar espaço. O projeto continua neste computador e deixa de ser sincronizado aqui. Seus outros computadores mantêm as cópias deles.",
+    "removeDescription": "Isso exclui a cópia no seu Dropbox para liberar espaço. O projeto continua neste computador e deixa de ser sincronizado aqui. Seus outros computadores mantêm as cópias deles e também deixam de sincronizá-lo.",
     "removeAction": "Remover do Dropbox",
-    "removeRemoteDescription": "Isso exclui o projeto do seu Dropbox para liberar espaço. Ele não está neste computador, então você não poderá baixá-lo aqui depois. Os computadores que já têm o projeto mantêm as cópias deles.",
+    "removeRemoteDescription": "Isso exclui o projeto do seu Dropbox para liberar espaço. Ele não está neste computador, então você não poderá baixá-lo aqui depois. Os computadores que já têm o projeto mantêm as cópias deles e deixam de sincronizá-lo.",
     "replaceTitle": "Substituir a cópia de {{name}} no Dropbox?",
     "replaceDescription": "O Oleafly não consegue ler a cópia no seu Dropbox. Ela será substituída pela cópia deste computador, e tudo o que existir só no Dropbox será perdido.",
     "replaceAction": "Substituir",
@@ -151,6 +156,11 @@
     "deleteDescription_many": "Os {{count}} arquivos que você excluiu do projeto {{name}} neste computador também serão excluídos do seu Dropbox. Os outros computadores que sincronizam este projeto também vão perdê-los.",
     "deleteDescription_other": "Os {{count}} arquivos que você excluiu do projeto {{name}} neste computador também serão excluídos do seu Dropbox. Os outros computadores que sincronizam este projeto também vão perdê-los.",
     "deleteAction": "Excluir do Dropbox",
+    "deleteHereTitle": "Excluir esses arquivos também neste computador?",
+    "deleteHereDescription_one": "O arquivo que falta no seu Dropbox vai para a Lixeira deste computador, para que o projeto {{name}} fique igual ao dos seus outros computadores.",
+    "deleteHereDescription_many": "Os {{count}} arquivos que faltam no seu Dropbox vão para a Lixeira deste computador, para que o projeto {{name}} fique igual ao dos seus outros computadores.",
+    "deleteHereDescription_other": "Os {{count}} arquivos que faltam no seu Dropbox vão para a Lixeira deste computador, para que o projeto {{name}} fique igual ao dos seus outros computadores.",
+    "deleteHereAction": "Excluir aqui",
     "disconnectTitle": "Desconectar o Dropbox?",
     "disconnectDescription": "A sincronização para neste computador. Seus projetos continuam neste computador e no seu Dropbox.",
     "disconnectAction": "Desconectar"
@@ -179,7 +189,10 @@
     "removedRemote": "{{name}} foi removido do seu Dropbox.",
     "replaced": "{{name}} no seu Dropbox agora corresponde a este computador.",
     "filesRestored": "Os arquivos excluídos voltaram para o projeto {{name}}.",
-    "filesDeleted": "Os arquivos excluídos também foram removidos do seu Dropbox."
+    "filesDeleted": "Os arquivos excluídos também foram removidos do seu Dropbox.",
+    "filesUploadedAgain": "Os arquivos do projeto {{name}} voltaram para o seu Dropbox.",
+    "filesDeletedHere": "Os arquivos foram movidos para a Lixeira deste computador.",
+    "accessNotRevoked": "Desconectado. O Oleafly não conseguiu acessar o Dropbox para encerrar o acesso dele. Para encerrá-lo você mesmo, remova o Oleafly em Aplicativos conectados, nas configurações do Dropbox."
   },
   "errors": {
     "code_invalid": "Esse código não funcionou. Tente de novo.",
@@ -203,6 +216,7 @@
     "sign_in_cancelled": "O login no Dropbox foi cancelado.",
     "sign_in_timeout": "O login demorou demais. Tente de novo.",
     "too_many_files": "Este projeto tem mais de 100.000 arquivos. São arquivos demais para sincronizar.",
+    "traffic_limit": "Seu Dropbox atingiu o limite de envio deste mês. As novas alterações ficam neste computador até o Dropbox voltar a permitir envios.",
     "verify_failed": "Um arquivo do Dropbox não correspondia ao que o Oleafly esperava, então não foi alterado. A sincronização vai tentar de novo."
   }
 }

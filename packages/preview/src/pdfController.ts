@@ -6,6 +6,23 @@ export interface SynctexRect {
   height: number;
 }
 
+/** A run of PDF text, in points from the top-left of the unrotated page. */
+export interface PdfTextRun {
+  str: string;
+  x: number;
+  top: number;
+  width: number;
+  height: number;
+  hasEOL?: boolean;
+}
+
+/** What `pageClickToBp` and `gotoRect` need from a page's scale-1 pdf.js viewport. */
+export interface PdfPageGeometry {
+  viewBox: number[];
+  convertToPdfPoint(x: number, y: number): number[];
+  convertToViewportPoint(x: number, y: number): number[];
+}
+
 let logMiss: (scope: string, message: string) => void = () => {};
 /**
  * Centres `target` in its own scroll container.
@@ -54,20 +71,49 @@ let scale = 1;
 // Set by the active PdfViewer; used by forward SyncTeX to force-render a page
 // that virtualization has not rendered yet.
 let ensurePageRendered: ((pageNo: number) => void) | null = null;
+let pageGeometry: ((pageNo: number) => PdfPageGeometry | undefined) | null = null;
+let pageText: ((pageNo: number) => Promise<PdfTextRun[] | null>) | null = null;
 
 export function registerPdfView(state: {
   pages: PageEntry[];
   scale: number;
   ensurePageRendered?: (pageNo: number) => void;
+  /** The page's scale-1 viewport as shown, rotation included. */
+  pageGeometry?: (pageNo: number) => PdfPageGeometry | undefined;
+  pageText?: (pageNo: number) => Promise<PdfTextRun[] | null>;
 }) {
   pages = state.pages;
   scale = state.scale;
   ensurePageRendered = state.ensurePageRendered ?? null;
+  pageGeometry = state.pageGeometry ?? null;
+  pageText = state.pageText ?? null;
 }
 
 export function clearPdfView() {
   pages = [];
   ensurePageRendered = null;
+  pageGeometry = null;
+  pageText = null;
+}
+
+/** The page's text runs, in the frame SyncTeX uses. Null when no PDF is shown. */
+export function pdfPageText(pageNo: number): Promise<PdfTextRun[] | null> {
+  return pageText?.(pageNo) ?? Promise.resolve(null);
+}
+
+/**
+ * A SyncTeX box, in points from the top-left of the page as TeX laid it out,
+ * as a box on the shown page at scale 1. The page's own `/Rotate` and the
+ * viewer's rotate control both turn the shown page; SyncTeX knows neither.
+ */
+function shownBox(rect: SynctexRect, minHeight: number) {
+  const height = Math.max(rect.height, minHeight);
+  const geometry = pageGeometry?.(rect.page);
+  if (!geometry) return { left: rect.x, top: rect.y, width: rect.width, height };
+  const [left, , , top] = geometry.viewBox;
+  const [a, b] = geometry.convertToViewportPoint(left + rect.x, top - rect.y);
+  const [c, d] = geometry.convertToViewportPoint(left + rect.x + rect.width, top - rect.y - height);
+  return { left: Math.min(a, c), top: Math.min(b, d), width: Math.abs(c - a), height: Math.abs(d - b) };
 }
 
 export function gotoRect(rect: SynctexRect, attempt = 0) {
@@ -95,13 +141,13 @@ export function gotoRect(rect: SynctexRect, attempt = 0) {
 
   const hl = document.createElement("div");
   hl.className = "ll-synctex-hl";
-  const h = Math.max(rect.height, 8) * scale;
+  const box = shownBox(rect, 8);
   Object.assign(hl.style, {
     position: "absolute",
-    left: `${rect.x * scale}px`,
-    top: `${rect.y * scale}px`,
-    width: `${rect.width * scale}px`,
-    height: `${h}px`,
+    left: `${box.left * scale}px`,
+    top: `${box.top * scale}px`,
+    width: `${box.width * scale}px`,
+    height: `${box.height * scale}px`,
     background: "rgba(37, 99, 235, 0.28)",
     border: "1px solid rgb(37, 99, 235)",
     borderRadius: "2px",
@@ -155,5 +201,9 @@ export function pageClickToBp(
   if (x < 0 || y < 0 || x > rect.width / scale || y > rect.height / scale) {
     return null;
   }
-  return { page: pageNo, x, y };
+  // Back into the frame TeX laid the page out in, before any rotation.
+  const geometry = pageGeometry?.(pageNo);
+  if (!geometry) return { page: pageNo, x, y };
+  const [pdfX, pdfY] = geometry.convertToPdfPoint(x, y);
+  return { page: pageNo, x: pdfX - geometry.viewBox[0], y: geometry.viewBox[3] - pdfY };
 }

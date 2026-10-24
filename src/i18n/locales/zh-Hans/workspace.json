@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly 无法将 {{path}} 移到废纸篓。要改为永久删除吗？此操作无法撤销。",
     "confirmPermanentDeleteWindows": "Oleafly 无法将 {{path}} 移到回收站。要改为永久删除吗？此操作无法撤销。",
     "linkedReadOnly": "链接到此文件夹之外的文件，因此为只读。",
-    "partialFolder": "此文件夹中的部分项目未列出。"
+    "partialFolder": "此文件夹中的部分项目未列出。",
+    "insertLink": "插入链接",
+    "copyLink": "复制链接",
+    "linkCopied": "链接已复制",
+    "copyLinkFailed": "未能复制链接。请检查剪贴板权限后重试。"
   },
   "explorer": {
     "resizeSections": "调整 {{first}} 与 {{second}} 的大小"

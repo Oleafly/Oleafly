@@ -117,6 +117,10 @@
     "heldMessage_other": "{{count}} af {{total}} filer blev slettet her, så synkroniseringen er sat på pause for at beskytte kopien i din Dropbox.",
     "putBack": "Læg dem tilbage",
     "deleteToo": "Slet også fra Dropbox",
+    "heldRemoteMessage_one": "{{count}} af {{total}} filer mangler i din Dropbox, så synkroniseringen er sat på pause for at holde den i sikkerhed på denne computer.",
+    "heldRemoteMessage_other": "{{count}} af {{total}} filer mangler i din Dropbox, så synkroniseringen er sat på pause for at holde dem i sikkerhed på denne computer.",
+    "putBackInDropbox": "Læg dem tilbage i Dropbox",
+    "deleteHere": "Slet også her",
     "skipReason": {
       "unsupportedName": "Navn, der ikke virker på alle computere",
       "duplicateName": "Samme navn som en anden fil, bortset fra store og små bogstaver",
@@ -132,9 +136,9 @@
   },
   "confirm": {
     "removeTitle": "Vil du fjerne {{name}} fra Dropbox?",
-    "removeDescription": "Det sletter kopien i din Dropbox for at frigøre plads. Projektet bliver på denne computer og holder op med at synkronisere her. Dine andre computere beholder deres kopier.",
+    "removeDescription": "Det sletter kopien i din Dropbox for at frigøre plads. Projektet bliver på denne computer og holder op med at synkronisere her. Dine andre computere beholder deres kopier og holder også op med at synkronisere det.",
     "removeAction": "Fjern fra Dropbox",
-    "removeRemoteDescription": "Det sletter projektet fra din Dropbox for at frigøre plads. Det findes ikke på denne computer, så du kan ikke downloade det her bagefter. Computere, der allerede har det, beholder deres kopier.",
+    "removeRemoteDescription": "Det sletter projektet fra din Dropbox for at frigøre plads. Det findes ikke på denne computer, så du kan ikke downloade det her bagefter. Computere, der allerede har det, beholder deres kopier og holder op med at synkronisere det.",
     "replaceTitle": "Vil du erstatte kopien af {{name}} i Dropbox?",
     "replaceDescription": "Oleafly kan ikke læse kopien i din Dropbox. Den bliver erstattet med kopien på denne computer, og alt, der kun findes i Dropbox, går tabt.",
     "replaceAction": "Erstat",
@@ -142,6 +146,10 @@
     "deleteDescription_one": "Den fil, du slettede fra {{name}} på denne computer, bliver også slettet fra din Dropbox. Andre computere, der synkroniserer projektet, mister den også.",
     "deleteDescription_other": "De {{count}} filer, du slettede fra {{name}} på denne computer, bliver også slettet fra din Dropbox. Andre computere, der synkroniserer projektet, mister dem også.",
     "deleteAction": "Slet fra Dropbox",
+    "deleteHereTitle": "Vil du også slette disse filer på denne computer?",
+    "deleteHereDescription_one": "Den fil, der mangler i din Dropbox, flyttes til papirkurven på denne computer, så {{name}} stemmer overens med dine andre computere.",
+    "deleteHereDescription_other": "De {{count}} filer, der mangler i din Dropbox, flyttes til papirkurven på denne computer, så {{name}} stemmer overens med dine andre computere.",
+    "deleteHereAction": "Slet her",
     "disconnectTitle": "Vil du afbryde forbindelsen til Dropbox?",
     "disconnectDescription": "Synkroniseringen stopper på denne computer. Dine projekter bliver på denne computer og i din Dropbox.",
     "disconnectAction": "Afbryd forbindelsen"
@@ -167,7 +175,10 @@
     "removedRemote": "{{name}} blev fjernet fra din Dropbox.",
     "replaced": "{{name}} i din Dropbox stemmer nu overens med denne computer.",
     "filesRestored": "De slettede filer er tilbage i {{name}}.",
-    "filesDeleted": "De slettede filer blev også fjernet fra din Dropbox."
+    "filesDeleted": "De slettede filer blev også fjernet fra din Dropbox.",
+    "filesUploadedAgain": "Filerne fra {{name}} er tilbage i din Dropbox.",
+    "filesDeletedHere": "Filerne blev flyttet til papirkurven på denne computer.",
+    "accessNotRevoked": "Forbindelsen til Dropbox er afbrudt. Oleafly kunne ikke nå Dropbox for at afslutte sin adgang. Hvis du selv vil afslutte den, skal du fjerne Oleafly under Tilsluttede apps i dine Dropbox-indstillinger."
   },
   "errors": {
     "code_invalid": "Den kode virkede ikke. Prøv igen.",
@@ -191,6 +202,7 @@
     "sign_in_cancelled": "Log ind med Dropbox blev annulleret.",
     "sign_in_timeout": "Log ind tog for lang tid. Prøv igen.",
     "too_many_files": "Dette projekt har mere end 100.000 filer. Det er for mange til at synkronisere.",
+    "traffic_limit": "Din Dropbox har nået sin uploadgrænse for denne måned. Nye ændringer bliver på denne computer, indtil Dropbox tillader uploads igen.",
     "verify_failed": "En fil fra Dropbox svarede ikke til det, Oleafly forventede, så den blev ikke rørt. Synkroniseringen prøver igen."
   }
 }

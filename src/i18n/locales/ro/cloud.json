@@ -125,6 +125,11 @@
     "heldMessage_other": "Fișiere șterse aici: {{count}} din {{total}}. Sincronizarea este întreruptă ca să păstreze în siguranță copia din Dropbox.",
     "putBack": "Pune-le la loc",
     "deleteToo": "Șterge și din Dropbox",
+    "heldRemoteMessage_one": "Fișiere care lipsesc din Dropbox: {{count}} din {{total}}. Sincronizarea este întreruptă ca să le păstreze în siguranță pe acest computer.",
+    "heldRemoteMessage_few": "Fișiere care lipsesc din Dropbox: {{count}} din {{total}}. Sincronizarea este întreruptă ca să le păstreze în siguranță pe acest computer.",
+    "heldRemoteMessage_other": "Fișiere care lipsesc din Dropbox: {{count}} din {{total}}. Sincronizarea este întreruptă ca să le păstreze în siguranță pe acest computer.",
+    "putBackInDropbox": "Pune-le la loc în Dropbox",
+    "deleteHere": "Șterge și de aici",
     "skipReason": {
       "unsupportedName": "Nume care nu funcționează pe toate computerele",
       "duplicateName": "Același nume ca alt fișier, cu excepția majusculelor",
@@ -140,9 +145,9 @@
   },
   "confirm": {
     "removeTitle": "Elimini {{name}} din Dropbox?",
-    "removeDescription": "Copia din Dropbox va fi ștearsă ca să eliberezi spațiu. Proiectul rămâne pe acest computer și nu se mai sincronizează aici. Celelalte computere își păstrează copiile.",
+    "removeDescription": "Copia din Dropbox va fi ștearsă ca să eliberezi spațiu. Proiectul rămâne pe acest computer și nu se mai sincronizează aici. Celelalte computere își păstrează copiile și nici ele nu îl mai sincronizează.",
     "removeAction": "Elimină din Dropbox",
-    "removeRemoteDescription": "Proiectul va fi șters din Dropbox ca să eliberezi spațiu. Nu este pe acest computer, așa că nu îl vei mai putea descărca aici. Computerele care îl au deja își păstrează copiile.",
+    "removeRemoteDescription": "Proiectul va fi șters din Dropbox ca să eliberezi spațiu. Nu este pe acest computer, așa că nu îl vei mai putea descărca aici. Computerele care îl au deja își păstrează copiile și nu îl mai sincronizează.",
     "replaceTitle": "Înlocuiești copia proiectului {{name}} din Dropbox?",
     "replaceDescription": "Oleafly nu poate citi copia din Dropbox. Va fi înlocuită cu copia de pe acest computer, iar tot ce există doar în Dropbox se va pierde.",
     "replaceAction": "Înlocuiește",
@@ -151,6 +156,11 @@
     "deleteDescription_few": "Cele {{count}} fișiere pe care le-ai șters din proiectul {{name}} pe acest computer vor fi șterse și din Dropbox. Celelalte computere care sincronizează acest proiect le vor pierde și ele.",
     "deleteDescription_other": "Cele {{count}} de fișiere pe care le-ai șters din proiectul {{name}} pe acest computer vor fi șterse și din Dropbox. Celelalte computere care sincronizează acest proiect le vor pierde și ele.",
     "deleteAction": "Șterge din Dropbox",
+    "deleteHereTitle": "Ștergi aceste fișiere și de pe acest computer?",
+    "deleteHereDescription_one": "Fișierul care lipsește din Dropbox va fi mutat în Coșul de reciclare de pe acest computer, ca proiectul {{name}} să fie la fel ca pe celelalte computere ale tale.",
+    "deleteHereDescription_few": "Cele {{count}} fișiere care lipsesc din Dropbox vor fi mutate în Coșul de reciclare de pe acest computer, ca proiectul {{name}} să fie la fel ca pe celelalte computere ale tale.",
+    "deleteHereDescription_other": "Cele {{count}} de fișiere care lipsesc din Dropbox vor fi mutate în Coșul de reciclare de pe acest computer, ca proiectul {{name}} să fie la fel ca pe celelalte computere ale tale.",
+    "deleteHereAction": "Șterge de aici",
     "disconnectTitle": "Deconectezi Dropbox?",
     "disconnectDescription": "Sincronizarea se oprește pe acest computer. Proiectele tale rămân pe acest computer și în Dropbox.",
     "disconnectAction": "Deconectează"
@@ -179,7 +189,10 @@
     "removedRemote": "Proiectul {{name}} a fost eliminat din Dropbox.",
     "replaced": "Proiectul {{name}} din Dropbox este acum la fel ca pe acest computer.",
     "filesRestored": "Fișierele șterse au revenit în proiectul {{name}}.",
-    "filesDeleted": "Fișierele șterse au fost eliminate și din Dropbox."
+    "filesDeleted": "Fișierele șterse au fost eliminate și din Dropbox.",
+    "filesUploadedAgain": "Fișierele din proiectul {{name}} sunt din nou în Dropbox.",
+    "filesDeletedHere": "Fișierele au fost mutate în Coșul de reciclare de pe acest computer.",
+    "accessNotRevoked": "Dropbox a fost deconectat. Oleafly nu a putut ajunge la Dropbox ca să încheie accesul. Ca să îl închei tu, elimină Oleafly din secțiunea Aplicații conectate, în setările Dropbox."
   },
   "errors": {
     "code_invalid": "Codul acela nu a funcționat. Încearcă din nou.",
@@ -203,6 +216,7 @@
     "sign_in_cancelled": "Conectarea la Dropbox a fost anulată.",
     "sign_in_timeout": "Conectarea a durat prea mult. Încearcă din nou.",
     "too_many_files": "Acest proiect are peste 100.000 de fișiere. Sunt prea multe pentru sincronizare.",
+    "traffic_limit": "Contul tău Dropbox a atins limita de încărcare pentru această lună. Modificările noi rămân pe acest computer până când Dropbox permite din nou încărcările.",
     "verify_failed": "Un fișier din Dropbox nu corespundea cu ce aștepta Oleafly, așa că a fost lăsat neatins. Sincronizarea va încerca din nou."
   }
 }

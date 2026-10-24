@@ -654,6 +654,7 @@ fn shell_command(command: &str, cli: &crate::terminal::env::CliEnv) -> tokio::pr
     let mut c = {
         let mut c = tokio::process::Command::new(crate::program_locator::user_shell());
         c.arg("-lc").arg(command);
+        crate::proc::clear_appimage_env(c.as_std_mut());
         c
     };
     if let Some(dir) = &cli.dir {

@@ -86,7 +86,7 @@ async fn downloads_return_the_bytes_and_the_revision_dropbox_reports() {
     );
     assert_eq!(
         server_error(store.metadata("/projects/café/main.tex").await),
-        "dropbox returned status 400"
+        "dropbox returned status 400: fake dropbox failure"
     );
 }
 
@@ -245,7 +245,7 @@ async fn puts_honour_add_update_and_overwrite_modes() {
             "files/upload",
             None,
             Reply::Refuse("path/too_many_write_operations/.."),
-            1,
+            4,
         );
     });
     assert_eq!(
@@ -264,7 +264,7 @@ async fn puts_honour_add_update_and_overwrite_modes() {
             .unwrap_err(),
         StoreError::RateLimited
     );
-    assert_eq!(fake.with(|dropbox| dropbox.calls("files/upload")), 1);
+    assert_eq!(fake.with(|dropbox| dropbox.calls("files/upload")), 4);
 }
 
 #[tokio::test]
@@ -554,11 +554,11 @@ async fn an_expired_token_is_refreshed_once_and_a_second_refusal_means_revoked()
     assert!(refreshing.metadata(path).await.unwrap().is_some());
     assert_eq!(calls.load(Ordering::SeqCst), 1);
 
-    let stale: TokenRefresher = Arc::new(|| -> BoxFuture<'static, StoreResult<String>> {
+    let stale: TokenRefresher = Arc::new(|_| -> BoxFuture<'static, StoreResult<String>> {
         Box::pin(async { Ok("sl.stale".to_string()) })
     });
     let refused = store(&fake, Some(stale));
-    let failing: TokenRefresher = Arc::new(|| -> BoxFuture<'static, StoreResult<String>> {
+    let failing: TokenRefresher = Arc::new(|_| -> BoxFuture<'static, StoreResult<String>> {
         Box::pin(async { Err(StoreError::Network("offline".into())) })
     });
     let offline = store(&fake, Some(failing));
@@ -1027,4 +1027,249 @@ async fn copies_run_in_dropbox_one_at_a_time_or_as_a_batch_job() {
         }])
         .await;
     assert!(missing[0].is_err());
+}
+
+fn file_of(dir: &std::path::Path, name: &str, bytes: &[u8]) -> BatchFile {
+    let local = dir.join(name);
+    std::fs::write(&local, bytes).unwrap();
+    BatchFile {
+        remote: format!("/projects/p/files/{name}"),
+        local,
+    }
+}
+
+#[tokio::test]
+async fn a_slow_upload_is_not_cut_off_by_the_timeout_meant_for_stalled_downloads() {
+    let fake = FakeDropbox::start().await;
+    let token = fake.with(|dropbox| dropbox.mint_token());
+    let store = {
+        let _pointed = point_at(fake.endpoints());
+        DropboxStore::with_read_timeout(token, None, std::time::Duration::from_millis(300))
+    };
+    let path = "/projects/p/version.json";
+    fake.with(|dropbox| {
+        dropbox
+            .delays
+            .insert("files/upload".into(), std::time::Duration::from_millis(900));
+    });
+    store
+        .put(path, b"{}".to_vec(), WriteMode::Overwrite)
+        .await
+        .unwrap();
+    assert_eq!(fake.with(|dropbox| dropbox.calls("files/upload")), 1);
+
+    fake.with(|dropbox| {
+        dropbox.delays.insert(
+            "files/download".into(),
+            std::time::Duration::from_millis(900),
+        );
+    });
+    assert!(matches!(
+        store.get(path, 1024).await,
+        Err(StoreError::Network(_))
+    ));
+}
+
+#[tokio::test]
+async fn an_append_whose_reply_was_lost_carries_on_from_the_offset_dropbox_reports() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    let dir = tempfile::tempdir().unwrap();
+    let bytes: Vec<u8> = (0..(SINGLE_UPLOAD_LIMIT as usize * 2 + 1024))
+        .map(|index| (index % 249) as u8)
+        .collect();
+    let files = [file_of(dir.path(), "data.bin", &bytes)];
+    fake.with(|dropbox| {
+        dropbox.fault_after("files/upload_session/append_v2", Reply::Status(503), 1)
+    });
+    let results = store.put_paths(&files, &|| {}).await;
+    assert!(results[0].is_ok(), "{results:?}");
+    fake.with(|dropbox| {
+        assert_eq!(dropbox.read("/projects/p/files/data.bin"), Some(bytes));
+        assert_eq!(dropbox.calls("files/upload_session/append_v2"), 3);
+    });
+}
+
+#[tokio::test]
+async fn a_commit_sent_again_after_its_reply_was_lost_counts_as_done() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    let dir = tempfile::tempdir().unwrap();
+    let files = [
+        file_of(dir.path(), "a.tex", b"alpha"),
+        file_of(dir.path(), "b.tex", b"beta"),
+    ];
+    fake.with(|dropbox| {
+        dropbox.fault_after(
+            "files/upload_session/finish_batch_v2",
+            Reply::Status(503),
+            1,
+        );
+    });
+    let results = store.put_paths(&files, &|| {}).await;
+    for (result, file) in results.iter().zip(&files) {
+        let uploaded = result.as_ref().unwrap();
+        assert_eq!(
+            fake.with(|dropbox| dropbox.rev(&file.remote)),
+            Some(uploaded.rev.clone())
+        );
+    }
+    assert_eq!(
+        fake.with(|dropbox| dropbox.calls("files/upload_session/finish_batch_v2")),
+        2
+    );
+
+    // A session that is gone with another file at the path did not go in.
+    let other = [file_of(dir.path(), "c.tex", b"gamma")];
+    fake.with(|dropbox| dropbox.write("/projects/p/files/c.tex", b"someone else".to_vec()));
+    fake.with(|dropbox| {
+        dropbox.fault(
+            "files/upload_session/finish_batch_v2",
+            None,
+            Reply::Json(json!({"entries": [{".tag": "failure", "failure": {".tag": "lookup_failed", "lookup_failed": {".tag": "not_found"}}}]})),
+            1,
+        );
+    });
+    assert!(matches!(
+        store.put_paths(&other, &|| {}).await[0],
+        Err(StoreError::Server(_))
+    ));
+}
+
+#[tokio::test]
+async fn commits_refused_for_too_many_writes_are_sent_again() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    let dir = tempfile::tempdir().unwrap();
+    let files = [file_of(dir.path(), "a.tex", b"alpha")];
+    fake.with(|dropbox| {
+        dropbox.fault(
+            "files/upload_session/finish_batch_v2",
+            None,
+            Reply::Json(json!({"entries": [{".tag": "failure", "failure": {".tag": "too_many_write_operations"}}]})),
+            1,
+        );
+    });
+    let results = store.put_paths(&files, &|| {}).await;
+    assert!(results[0].is_ok(), "{results:?}");
+    assert_eq!(
+        fake.with(|dropbox| dropbox.calls("files/upload_session/finish_batch_v2")),
+        2
+    );
+
+    let path = "/projects/p/version.json";
+    fake.with(|dropbox| {
+        dropbox.clear_calls();
+        dropbox.fault(
+            "files/upload",
+            None,
+            Reply::Refuse("path/too_many_write_operations/.."),
+            1,
+        );
+    });
+    store
+        .put(path, b"{}".to_vec(), WriteMode::Overwrite)
+        .await
+        .unwrap();
+    assert_eq!(fake.with(|dropbox| dropbox.calls("files/upload")), 2);
+
+    fake.with(|dropbox| {
+        dropbox.clear_calls();
+        dropbox.fault(
+            "files/upload",
+            None,
+            Reply::Refuse("path/upload_traffic_limit_reached/.."),
+            1,
+        );
+    });
+    assert_eq!(
+        store
+            .put(path, b"{}".to_vec(), WriteMode::Overwrite)
+            .await
+            .unwrap_err(),
+        StoreError::TrafficLimit
+    );
+    assert_eq!(fake.with(|dropbox| dropbox.calls("files/upload")), 1);
+    assert!(StoreError::TrafficLimit.ends_round());
+}
+
+#[tokio::test]
+async fn a_file_of_whole_chunks_closes_its_session_without_an_empty_append() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    let dir = tempfile::tempdir().unwrap();
+    let bytes = vec![3_u8; SINGLE_UPLOAD_LIMIT as usize * 2];
+    let files = [file_of(dir.path(), "two.bin", &bytes)];
+    assert!(store.put_paths(&files, &|| {}).await[0].is_ok());
+    fake.with(|dropbox| {
+        assert_eq!(dropbox.read("/projects/p/files/two.bin"), Some(bytes));
+        assert_eq!(dropbox.calls("files/upload_session/append_v2"), 1);
+    });
+}
+
+#[tokio::test]
+async fn a_file_that_changes_while_it_uploads_is_not_committed() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    let dir = tempfile::tempdir().unwrap();
+    let files = [file_of(dir.path(), "notes.tex", b"first draft")];
+    fake.with(|dropbox| {
+        dropbox.delays.insert(
+            "files/upload_session/start".into(),
+            std::time::Duration::from_secs(2),
+        );
+    });
+    // Change the file while Dropbox holds the session start: after it was
+    // read, before the upload is committed.
+    let local = files[0].local.clone();
+    let arrived = {
+        let shared = fake.shared();
+        move || {
+            shared
+                .lock()
+                .unwrap()
+                .arrivals
+                .get("files/upload_session/start")
+                .copied()
+                .unwrap_or(0)
+        }
+    };
+    let writer = tokio::spawn(async move {
+        while arrived() == 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+        std::fs::write(&local, b"first draft, then more").unwrap();
+    });
+    let results = store.put_paths(&files, &|| {}).await;
+    writer.await.unwrap();
+    assert!(matches!(results[0], Err(StoreError::Io(_))), "{results:?}");
+    assert_eq!(
+        fake.with(|dropbox| dropbox.calls("files/upload_session/finish_batch_v2")),
+        0
+    );
+}
+
+#[tokio::test]
+async fn a_pinned_delete_that_dropbox_refuses_for_another_reason_is_still_to_do() {
+    let fake = FakeDropbox::start().await;
+    let store = store(&fake, None);
+    let path = "/projects/p/files/a.tex";
+    let rev = fake.with(|dropbox| dropbox.write(path, b"a".to_vec()));
+    fake.with(|dropbox| {
+        dropbox.fault(
+            "files/delete_v2",
+            None,
+            Reply::Refuse("path_write/no_write_permission/.."),
+            1,
+        );
+    });
+    assert!(matches!(
+        store.delete(path, Some(&rev)).await,
+        Err(StoreError::Rejected(_))
+    ));
+    assert!(fake.with(|dropbox| dropbox.read(path)).is_some());
+
+    let newer = fake.with(|dropbox| dropbox.write(path, b"newer".to_vec()));
+    store.delete(path, Some(&rev)).await.unwrap();
+    assert_eq!(fake.with(|dropbox| dropbox.rev(path)), Some(newer));
 }

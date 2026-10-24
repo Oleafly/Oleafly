@@ -14,7 +14,7 @@ import { useFilesStore } from "@/store/files";
 
 export type ImagePasteLanguage = "latex" | "typst";
 
-type FigureSnippetFor = (imported: ImportedImage) => { template: string; selStart: number; selEnd: number };
+export type FigureSnippetFor = (imported: ImportedImage) => { template: string; selStart: number; selEnd: number };
 
 interface TransferData {
   types: readonly string[];
@@ -57,6 +57,25 @@ async function typstFigureSnippetFor(): Promise<FigureSnippetFor> {
   };
 }
 
+export async function figureSnippetBuilder(language: ImagePasteLanguage): Promise<FigureSnippetFor> {
+  return language === "typst" ? typstFigureSnippetFor() : latexFigureSnippet;
+}
+
+export function insertFigureSnippet(
+  view: EditorView,
+  snippet: ReturnType<FigureSnippetFor>,
+  at: number | null,
+): number {
+  const selection = view.state.selection.main;
+  const from = Math.min(at ?? selection.from, view.state.doc.length);
+  const to = at === null ? selection.to : from;
+  view.dispatch({
+    changes: { from, to, insert: snippet.template },
+    selection: { anchor: from + snippet.selStart, head: from + snippet.selEnd },
+  });
+  return from + snippet.template.length;
+}
+
 async function insertImportedFigures(
   view: EditorView,
   files: File[],
@@ -64,17 +83,9 @@ async function insertImportedFigures(
   language: ImagePasteLanguage,
 ): Promise<void> {
   let position = at;
-  const snippetFor = language === "typst" ? await typstFigureSnippetFor() : latexFigureSnippet;
+  const snippetFor = await figureSnippetBuilder(language);
   await importImageFiles(files, (imported) => {
-    const snippet = snippetFor(imported);
-    const selection = view.state.selection.main;
-    const from = Math.min(position ?? selection.from, view.state.doc.length);
-    const to = position === null ? selection.to : from;
-    view.dispatch({
-      changes: { from, to, insert: snippet.template },
-      selection: { anchor: from + snippet.selStart, head: from + snippet.selEnd },
-    });
-    position = from + snippet.template.length;
+    position = insertFigureSnippet(view, snippetFor(imported), position);
   });
   view.focus();
 }

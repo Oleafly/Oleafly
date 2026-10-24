@@ -821,7 +821,11 @@ describe("PublishDialog accounts and addresses", () => {
 
     await user.click(screen.getByRole("tab", { name: "Link existing" }));
     await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "thesis");
-    await waitFor(() => expect(mocks.forgeListRepos).toHaveBeenLastCalledWith("https://gitlab.com", 1, "thesis"));
+    // Typing six letters and the 300 ms search debounce take close to the
+    // default second on a busy machine.
+    await waitFor(() => expect(mocks.forgeListRepos).toHaveBeenLastCalledWith("https://gitlab.com", 1, "thesis"), {
+      timeout: 3_000,
+    });
     view.unmount();
 
     mocks.forgeListRepos.mockClear();

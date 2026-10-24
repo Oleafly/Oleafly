@@ -1,5 +1,6 @@
 // A path dragged from the project's file tree. The tree sets it as data of
-// this type; the AI composer (mention) and the terminal (path) read it.
+// this type; the AI composer (mention), the terminal (path) and the editors
+// (a link to the file) read it.
 
 export const TREE_DRAG_TYPE = "application/x-oleafly-tree-path";
 

@@ -12,6 +12,22 @@ describe("settings that stay on each computer", () => {
     expect(withoutLocalOnlySettings(document)).toBe(document);
   });
 
+  it("keeps the default LaTeX engine on each computer, since latexmk needs TeX installed there", () => {
+    expect(
+      withoutLocalOnlySettings({
+        engine: { defaultLatexEngine: "latexmk" },
+        experimentation: { latexTools: true },
+      }),
+    ).toEqual({ experimentation: { latexTools: true } });
+    useSettingsStore.setState({ defaultLatexEngine: "tectonic", latexTools: false });
+    const read = readCloudSettings(
+      { engine: { defaultLatexEngine: "latexmk" }, experimentation: { latexTools: true } },
+      readLocalSnapshot(null, "system"),
+    );
+    if (!read.ok) throw new Error("expected readable settings");
+    expect(read.changed).toEqual(["experimentation.latexTools"]);
+  });
+
   it("applies a 0.4.7 cloud document and drops its browser keys", () => {
     useSettingsStore.setState({ latexTools: false });
     const read = readCloudSettings(

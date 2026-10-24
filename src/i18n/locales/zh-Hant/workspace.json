@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly 無法將 {{path}} 移到垃圾桶。要改為永久刪除嗎？此操作無法復原。",
     "confirmPermanentDeleteWindows": "Oleafly 無法將 {{path}} 移到資源回收筒。要改為永久刪除嗎？此操作無法復原。",
     "linkedReadOnly": "連結到此資料夾以外的檔案，因此為唯讀。",
-    "partialFolder": "此資料夾中的部分項目未列出。"
+    "partialFolder": "此資料夾中的部分項目未列出。",
+    "insertLink": "插入連結",
+    "copyLink": "複製連結",
+    "linkCopied": "已複製連結",
+    "copyLinkFailed": "連結未複製。請檢查剪貼簿存取權後再試一次。"
   },
   "explorer": {
     "resizeSections": "調整 {{first}} 與 {{second}} 的大小"

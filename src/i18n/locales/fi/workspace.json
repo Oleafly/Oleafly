@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly ei voinut siirtää kohdetta {{path}} roskakoriin. Poistetaanko se pysyvästi? Tätä ei voi kumota.",
     "confirmPermanentDeleteWindows": "Oleafly ei voinut siirtää kohdetta {{path}} roskakoriin. Poistetaanko se pysyvästi? Tätä ei voi kumota.",
     "linkedReadOnly": "Linkki tämän kansion ulkopuoliseen tiedostoon, joten se on vain luettavissa.",
-    "partialFolder": "Kaikkia tämän kansion kohteita ei ole listattu."
+    "partialFolder": "Kaikkia tämän kansion kohteita ei ole listattu.",
+    "insertLink": "Lisää linkki",
+    "copyLink": "Kopioi linkki",
+    "linkCopied": "Linkki kopioitu",
+    "copyLinkFailed": "Linkkiä ei kopioitu. Tarkista leikepöydän käyttöoikeus ja yritä uudelleen."
   },
   "explorer": {
     "resizeSections": "Muuta osioiden {{first}} ja {{second}} kokoa"

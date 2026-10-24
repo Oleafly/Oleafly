@@ -351,6 +351,10 @@
     "zoteroSync": {
       "label": "Synchronizuj bibliotekę Zotero",
       "keywords": "zotero synchronizacja odśwież biblioteka"
+    },
+    "insertFileLink": {
+      "label": "Wstaw odsyłacz do pliku",
+      "keywords": "odsyłacz plik ścieżka notatka"
     }
   },
   "community": {

@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly, {{path}} öğesini Çöp Sepeti'ne taşıyamadı. Bunun yerine kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
     "confirmPermanentDeleteWindows": "Oleafly, {{path}} öğesini Geri Dönüşüm Kutusu'na taşıyamadı. Bunun yerine kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
     "linkedReadOnly": "Bu klasörün dışındaki bir dosyaya bağlantı verir, bu yüzden salt okunurdur.",
-    "partialFolder": "Bu klasördeki bazı öğeler listelenmiyor."
+    "partialFolder": "Bu klasördeki bazı öğeler listelenmiyor.",
+    "insertLink": "Bağlantı ekle",
+    "copyLink": "Bağlantıyı kopyala",
+    "linkCopied": "Bağlantı kopyalandı",
+    "copyLinkFailed": "Bağlantı kopyalanmadı. Pano erişimini denetleyip yeniden deneyin."
   },
   "explorer": {
     "resizeSections": "{{first}} ve {{second}} bölümlerini yeniden boyutlandır"

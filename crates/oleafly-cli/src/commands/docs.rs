@@ -518,7 +518,7 @@ async fn run_forward(ctx: &Context, args: ForwardArgs) -> Result<Outcome, CliErr
     let line = i32::try_from(args.line).unwrap_or(i32::MAX);
     // SyncTeX names files with forward slashes.
     let file = crate::contract::project_path_arg(&args.file);
-    let position = synctex::forward(&doc, &file, line, &roots);
+    let position = synctex::forward(&doc, &file, line, &roots).map(|(rect, _)| rect);
     if !ctx.json() {
         match &position {
             Some(rect) => ctx.say(format!(

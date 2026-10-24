@@ -130,9 +130,13 @@ impl IsolationEnv for AppResearchHost {
     }
 
     fn git(&self) -> Option<GitEnv> {
-        crate::git::git_available().then(|| GitEnv {
-            program: crate::git::git_program(),
-            clear: &crate::git::GIT_REPOSITORY_ENV,
+        crate::git::git_available().then(|| {
+            let program = crate::git::git_program();
+            GitEnv {
+                env: crate::proc::appimage_env_changes(&program, |name| std::env::var_os(name)),
+                program,
+                clear: &crate::git::GIT_REPOSITORY_ENV,
+            }
         })
     }
 }

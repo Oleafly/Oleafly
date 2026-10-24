@@ -351,6 +351,10 @@
     "zoteroSync": {
       "label": "Synchronizovat knihovnu Zotero",
       "keywords": "zotero synchronizovat obnovit knihovna"
+    },
+    "insertFileLink": {
+      "label": "Vložit odkaz na soubor",
+      "keywords": "odkaz soubor cesta poznámka"
     }
   },
   "community": {

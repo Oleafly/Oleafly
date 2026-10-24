@@ -1,8 +1,8 @@
 //! SyncTeX for the app: the parsing and search live in
 //! `oleafly_doctools::synctex`; this module finds a project's build folder
 //! and serves the commands.
-use oleafly_doctools::synctex::{forward, inverse, map_source_line, parse};
-pub use oleafly_doctools::synctex::{SynctexHit, SynctexRect};
+use oleafly_doctools::synctex::{forward_hit, inverse, map_source_line, parse};
+pub use oleafly_doctools::synctex::{SynctexForwardHit, SynctexHit, SynctexRect};
 
 use crate::paths;
 
@@ -32,11 +32,11 @@ pub async fn synctex_forward(
     main_doc: String,
     file: String,
     line: i32,
-) -> Result<Option<SynctexRect>, String> {
-    tauri::async_runtime::spawn_blocking(move || -> Result<Option<SynctexRect>, String> {
+) -> Result<Option<SynctexForwardHit>, String> {
+    tauri::async_runtime::spawn_blocking(move || -> Result<Option<SynctexForwardHit>, String> {
         let text = read_synctex_text(&project_id, &main_doc)?;
         let doc = parse(&text);
-        Ok(forward(&doc, &file, line, &project_roots(&project_id)))
+        Ok(forward_hit(&doc, &file, line, &project_roots(&project_id)))
     })
     .await
     .map_err(|e| e.to_string())?

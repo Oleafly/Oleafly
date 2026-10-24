@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly kunne ikke flytte {{path}} til papirkurven. Slette den permanent i stedet? Dette kan ikke angres.",
     "confirmPermanentDeleteWindows": "Oleafly kunne ikke flytte {{path}} til papirkurven. Slette den permanent i stedet? Dette kan ikke angres.",
     "linkedReadOnly": "Lenker til en fil utenfor mappen og er derfor skrivebeskyttet.",
-    "partialFolder": "Ikke alle elementene i denne mappen vises."
+    "partialFolder": "Ikke alle elementene i denne mappen vises.",
+    "insertLink": "Sett inn lenke",
+    "copyLink": "Kopier lenke",
+    "linkCopied": "Lenken er kopiert",
+    "copyLinkFailed": "Lenken ble ikke kopiert. Sjekk tilgangen til utklippstavlen og prøv igjen."
   },
   "explorer": {
     "resizeSections": "Endre størrelse på {{first}} og {{second}}"

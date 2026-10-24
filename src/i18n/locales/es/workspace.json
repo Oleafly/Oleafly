@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly no pudo mover {{path}} a la Papelera. ¿Eliminarlo de forma permanente? No se puede deshacer.",
     "confirmPermanentDeleteWindows": "Oleafly no pudo mover {{path}} a la Papelera de reciclaje. ¿Eliminarlo de forma permanente? No se puede deshacer.",
     "linkedReadOnly": "Enlaza con un archivo fuera de esta carpeta, así que es de solo lectura.",
-    "partialFolder": "Algunos elementos de esta carpeta no aparecen en la lista."
+    "partialFolder": "Algunos elementos de esta carpeta no aparecen en la lista.",
+    "insertLink": "Insertar enlace",
+    "copyLink": "Copiar enlace",
+    "linkCopied": "Enlace copiado",
+    "copyLinkFailed": "El enlace no se copió. Revisa el acceso al portapapeles e inténtalo de nuevo."
   },
   "explorer": {
     "resizeSections": "Redimensionar {{first}} y {{second}}"

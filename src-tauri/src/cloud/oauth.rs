@@ -99,6 +99,16 @@ impl PkceFlow {
     }
 }
 
+/// Everything sync calls on Dropbox needs, from Dropbox's own route list: the
+/// account's email and storage use, and reading and writing files in the app
+/// folder. A token asks for no more, whatever else the app is allowed.
+pub(crate) const SCOPES: &str =
+    "account_info.read files.metadata.read files.content.read files.content.write";
+
+/// How long the browser tab waits for Oleafly to finish connecting before it
+/// says sign-in did not finish.
+const FINISH_WAIT: std::time::Duration = std::time::Duration::from_secs(180);
+
 pub(crate) fn redirect_uri(port: u16) -> String {
     format!("http://127.0.0.1:{port}/oauth/dropbox")
 }
@@ -118,6 +128,7 @@ pub(crate) fn authorize_url(
             .append_pair("token_access_type", "offline")
             .append_pair("code_challenge", &flow.challenge)
             .append_pair("code_challenge_method", "S256")
+            .append_pair("scope", SCOPES)
             .append_pair("state", &flow.state);
         if let Some(redirect) = redirect {
             query.append_pair("redirect_uri", redirect);
@@ -148,6 +159,7 @@ impl Default for LoopbackPages {
 struct LoopbackShared {
     expected_state: String,
     sender: Mutex<Option<oneshot::Sender<OAuthResult<String>>>>,
+    outcome: Mutex<Option<oneshot::Receiver<bool>>>,
     shutdown: Arc<Notify>,
     pages: LoopbackPages,
 }
@@ -155,6 +167,7 @@ struct LoopbackShared {
 pub(crate) struct LoopbackListener {
     pub(crate) port: u16,
     receiver: oneshot::Receiver<OAuthResult<String>>,
+    outcome: Option<oneshot::Sender<bool>>,
     shutdown: Arc<Notify>,
     task: tokio::task::JoinHandle<()>,
 }
@@ -164,16 +177,25 @@ impl LoopbackListener {
         Arc::clone(&self.shutdown)
     }
 
-    pub(crate) async fn wait(mut self, timeout: std::time::Duration) -> OAuthResult<String> {
-        let result = match tokio::time::timeout(timeout, &mut self.receiver).await {
+    /// Waits for the browser to bring back the sign-in code. The browser's
+    /// tab keeps waiting too, until `finish` says whether connecting worked.
+    pub(crate) async fn wait(&mut self, timeout: std::time::Duration) -> OAuthResult<String> {
+        match tokio::time::timeout(timeout, &mut self.receiver).await {
             Ok(Ok(result)) => result,
             Ok(Err(_)) => Err(OAuthError::Cancelled),
             Err(_) => Err(OAuthError::Timeout),
-        };
+        }
+    }
+
+    /// Answers the browser's tab with whether Oleafly connected, then stops
+    /// listening.
+    pub(crate) async fn finish(mut self, connected: bool) {
+        if let Some(outcome) = self.outcome.take() {
+            let _ = outcome.send(connected);
+        }
         self.shutdown.notify_one();
         let _ = tokio::time::timeout(std::time::Duration::from_secs(2), &mut self.task).await;
         self.task.abort();
-        result
     }
 
     pub(crate) fn cancel(self) {
@@ -247,14 +269,14 @@ async fn loopback_handler(
     if query_value(query, "state").as_deref() != Some(shared.expected_state.as_str()) {
         return (axum::http::StatusCode::BAD_REQUEST, "bad request").into_response();
     }
-    let (result, message) =
-        if let Some(code) = query_value(query, "code").filter(|code| !code.is_empty()) {
-            (Ok(code), shared.pages.success.clone())
-        } else if query_value(query, "error").is_some() {
-            (Err(OAuthError::Cancelled), shared.pages.failure.clone())
-        } else {
-            return (axum::http::StatusCode::BAD_REQUEST, "bad request").into_response();
-        };
+    let result = if let Some(code) = query_value(query, "code").filter(|code| !code.is_empty()) {
+        Ok(code)
+    } else if query_value(query, "error").is_some() {
+        Err(OAuthError::Cancelled)
+    } else {
+        return (axum::http::StatusCode::BAD_REQUEST, "bad request").into_response();
+    };
+    let signed_in = result.is_ok();
     let sender = shared
         .sender
         .lock()
@@ -263,8 +285,31 @@ async fn loopback_handler(
     if let Some(sender) = sender {
         let _ = sender.send(result);
     }
+    // The code only says Dropbox approved; Oleafly still has to trade it for
+    // a token and read the account, so the tab waits to say how that went.
+    let outcome = signed_in
+        .then(|| {
+            shared
+                .outcome
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .take()
+        })
+        .flatten();
+    let connected = match outcome {
+        Some(outcome) => matches!(
+            tokio::time::timeout(FINISH_WAIT, outcome).await,
+            Ok(Ok(true))
+        ),
+        None => false,
+    };
     shared.shutdown.notify_one();
-    axum::response::Html(page(&message)).into_response()
+    let message = if connected {
+        &shared.pages.success
+    } else {
+        &shared.pages.failure
+    };
+    axum::response::Html(page(message)).into_response()
 }
 
 pub(crate) async fn bind_loopback(
@@ -296,10 +341,12 @@ async fn bind_loopback_on(
         return Err(OAuthError::NoPort);
     };
     let (sender, receiver) = oneshot::channel();
+    let (outcome, outcome_receiver) = oneshot::channel();
     let shutdown = Arc::new(Notify::new());
     let shared = Arc::new(LoopbackShared {
         expected_state,
         sender: Mutex::new(Some(sender)),
+        outcome: Mutex::new(Some(outcome_receiver)),
         shutdown: Arc::clone(&shutdown),
         pages,
     });
@@ -320,6 +367,7 @@ async fn bind_loopback_on(
     Ok(LoopbackListener {
         port,
         receiver,
+        outcome: Some(outcome),
         shutdown,
         task,
     })
@@ -608,6 +656,10 @@ mod tests {
         assert_eq!(pairs["token_access_type"], "offline");
         assert_eq!(pairs["code_challenge"], flow.challenge);
         assert_eq!(pairs["code_challenge_method"], "S256");
+        assert_eq!(
+            pairs["scope"],
+            "account_info.read files.metadata.read files.content.read files.content.write"
+        );
         assert_eq!(pairs["state"], flow.state);
         assert_eq!(
             pairs["redirect_uri"],
@@ -635,7 +687,12 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(wrong.status().as_u16(), 400);
-        let waiting = tokio::spawn(listener.wait(Duration::from_secs(5)));
+        let waiting = tokio::spawn(async move {
+            let mut listener = listener;
+            let code = listener.wait(Duration::from_secs(5)).await;
+            listener.finish(code.is_ok()).await;
+            code
+        });
         let right = http
             .get(format!(
                 "http://127.0.0.1:{port}/oauth/dropbox?code=code-123&state={}",
@@ -650,13 +707,44 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn the_browser_hears_connecting_failed_after_the_code_arrived() {
+        let flow = PkceFlow::generate();
+        let listener = bind_loopback_on(&[0], flow.state.clone(), LoopbackPages::default())
+            .await
+            .unwrap();
+        let port = listener.port;
+        let waiting = tokio::spawn(async move {
+            let mut listener = listener;
+            let code = listener.wait(Duration::from_secs(5)).await;
+            listener.finish(false).await;
+            code
+        });
+        let page = reqwest::Client::new()
+            .get(format!(
+                "http://127.0.0.1:{port}/oauth/dropbox?code=code-123&state={}",
+                flow.state
+            ))
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+        assert!(page.contains("Sign-in did not finish"), "{page}");
+        assert_eq!(waiting.await.unwrap().unwrap(), "code-123");
+    }
+
+    #[tokio::test]
     async fn loopback_reports_refusals_and_timeouts() {
         let flow = PkceFlow::generate();
         let listener = bind_loopback_on(&[0], flow.state.clone(), LoopbackPages::default())
             .await
             .unwrap();
         let port = listener.port;
-        let waiting = tokio::spawn(listener.wait(Duration::from_secs(5)));
+        let waiting = tokio::spawn(async move {
+            let mut listener = listener;
+            listener.wait(Duration::from_secs(5)).await
+        });
         reqwest::Client::new()
             .get(format!(
                 "http://127.0.0.1:{port}/oauth/dropbox?error=access_denied&state={}",
@@ -666,7 +754,7 @@ mod tests {
             .await
             .unwrap();
         assert!(matches!(waiting.await.unwrap(), Err(OAuthError::Cancelled)));
-        let listener = bind_loopback_on(&[0], "state".into(), LoopbackPages::default())
+        let mut listener = bind_loopback_on(&[0], "state".into(), LoopbackPages::default())
             .await
             .unwrap();
         assert!(matches!(

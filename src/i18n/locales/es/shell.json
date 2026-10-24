@@ -349,6 +349,10 @@
     "zoteroSync": {
       "label": "Sincronizar la biblioteca de Zotero",
       "keywords": "zotero sincronizar refrescar biblioteca sync refresh library"
+    },
+    "insertFileLink": {
+      "label": "Insertar enlace a un archivo",
+      "keywords": "enlace archivo ruta nota referencia"
     }
   },
   "community": {

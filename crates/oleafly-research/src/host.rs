@@ -21,11 +21,14 @@ pub struct ProjectLocation {
     pub linked: bool,
 }
 
-/// The Git program and the inherited variables to clear before running it.
+/// The Git program, the inherited variables to clear before running it, and
+/// other changes to its environment: `None` removes a variable. The app sets
+/// these inside its AppImage, whose library paths would break the system Git.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitEnv {
     pub program: OsString,
     pub clear: &'static [&'static str],
+    pub env: Vec<(&'static str, Option<OsString>)>,
 }
 
 /// Variables that point Git at another repository. A task's Git commands
@@ -65,6 +68,7 @@ pub fn default_git_env() -> Option<GitEnv> {
         .map(|program| GitEnv {
             program: program.into_os_string(),
             clear: &GIT_REPOSITORY_ENV,
+            env: Vec::new(),
         })
 }
 

@@ -149,6 +149,7 @@ pub(crate) fn clear_inherited_git_env(command: &mut Command) {
     {
         command.env_remove(variable);
     }
+    crate::proc::clear_appimage_env(command);
 }
 
 fn run_configured_git_bounded(
@@ -3470,6 +3471,18 @@ fn stage_all_except_secrets(root: &PathBuf) -> Result<Vec<String>, String> {
     Ok(left_out
         .into_iter()
         .map(|path| String::from_utf8_lossy(&path).into_owned())
+        .collect())
+}
+
+/// Every path in the index, as Git spells it.
+pub(crate) fn tracked_paths(
+    root: &std::path::Path,
+) -> Result<std::collections::BTreeSet<String>, String> {
+    let root = root.to_path_buf();
+    let output = run_git_read_only(&root, &["ls-files", "-z", "--cached"])?;
+    Ok(git_listing(output)?
+        .into_iter()
+        .filter_map(|path| String::from_utf8(path).ok())
         .collect())
 }
 

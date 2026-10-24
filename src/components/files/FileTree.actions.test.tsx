@@ -9,6 +9,9 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   pickOpenPath: vi.fn(),
   openTerminalWith: vi.fn(),
+  toastSuccess: vi.fn(),
+  insertFileLink: vi.fn(() => true),
+  copyFileLink: vi.fn(async () => true),
 }));
 
 const launch = vi.hoisted(() => {
@@ -42,11 +45,15 @@ vi.mock("@/lib/toast", () => ({
   toast: {
     info: vi.fn(),
     infoUnique: vi.fn(),
-    success: vi.fn(),
+    success: mocks.toastSuccess,
     error: mocks.toastError,
     errorUnique: vi.fn(),
     dismiss: vi.fn(),
   },
+}));
+vi.mock("@/features/file-links", () => ({
+  insertFileLink: mocks.insertFileLink,
+  copyFileLink: mocks.copyFileLink,
 }));
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   flushWysiwygPendingEdits: vi.fn(),
@@ -1022,6 +1029,34 @@ describe("FileTree row actions", () => {
       ),
     );
     confirm.mockRestore();
+  });
+
+  it("inserts or copies a link to a file for the open document", async () => {
+    mocks.toastSuccess.mockReset();
+    render(<FileTree />);
+    act(() => useFilesStore.setState({ activePath: "main.tex" }));
+
+    openRowMenu("main.tex");
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(files.insertLink));
+    await waitFor(() => expect(mocks.insertFileLink).toHaveBeenCalledWith("main.tex"));
+
+    openRowMenu("main.tex");
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(files.copyLink));
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith(files.linkCopied));
+    expect(mocks.copyFileLink).toHaveBeenCalledWith("main.tex");
+
+    mocks.copyFileLink.mockResolvedValueOnce(false);
+    openRowMenu("main.tex");
+    fireEvent.click(within(await screen.findByRole("menu")).getByText(files.copyLink));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(files.copyLinkFailed));
+  });
+
+  it("offers Insert link only while a document that can hold one is open", async () => {
+    render(<FileTree />);
+    openRowMenu("main.tex");
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByText(files.insertLink)).toHaveAttribute("data-disabled");
+    expect(within(menu).getByText(files.copyLink)).not.toHaveAttribute("data-disabled");
   });
 
   it("offers Open and Set as main on a file row", async () => {

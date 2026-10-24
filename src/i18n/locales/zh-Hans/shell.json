@@ -345,6 +345,10 @@
     "zoteroSync": {
       "label": "同步 Zotero 库",
       "keywords": "zotero 同步 刷新 库"
+    },
+    "insertFileLink": {
+      "label": "插入文件链接",
+      "keywords": "链接 文件 路径 笔记 引用"
     }
   },
   "community": {

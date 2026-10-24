@@ -24,6 +24,8 @@ const UPLOAD_CONCURRENCY: usize = 16;
 const MAX_BATCH_ENTRIES: usize = 1_000;
 const MAX_DELETE_ENTRIES: usize = 250;
 const BATCH_JOB_WAIT: Duration = Duration::from_secs(300);
+const STREAM_READ_TIMEOUT: Duration = Duration::from_secs(60);
+const COMMIT_TIME_PER_FILE: Duration = Duration::from_millis(250);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum StoreError {
@@ -33,6 +35,7 @@ pub(crate) enum StoreError {
     Io(String),
     QuotaFull,
     RateLimited,
+    TrafficLimit,
     Conflict,
     Rejected(String),
     Verify(String),
@@ -48,13 +51,17 @@ impl StoreError {
             Self::Io(_) => "cloud.local_io",
             Self::QuotaFull => "cloud.quota_full",
             Self::RateLimited => "cloud.rate_limited",
+            Self::TrafficLimit => "cloud.traffic_limit",
             Self::Conflict => "cloud.remote_busy",
             Self::Verify(_) => "cloud.verify_failed",
         }
     }
 
     pub(crate) fn ends_round(&self) -> bool {
-        matches!(self, Self::Revoked | Self::Network(_) | Self::RateLimited)
+        matches!(
+            self,
+            Self::Revoked | Self::Network(_) | Self::RateLimited | Self::TrafficLimit
+        )
     }
 
     pub(crate) fn to_app_error(&self) -> String {
@@ -76,6 +83,7 @@ impl fmt::Display for StoreError {
             Self::Revoked => formatter.write_str("dropbox access was revoked"),
             Self::QuotaFull => formatter.write_str("dropbox is full"),
             Self::RateLimited => formatter.write_str("dropbox asked to slow down"),
+            Self::TrafficLimit => formatter.write_str("dropbox's upload limit was reached"),
             Self::Conflict => formatter.write_str("the remote record changed"),
             Self::Reset => formatter.write_str("the change cursor was reset"),
             Self::Network(message)
@@ -248,29 +256,30 @@ pub(crate) mod test_endpoints {
     }
 }
 
-pub(crate) fn http() -> &'static reqwest::Client {
-    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    CLIENT.get_or_init(|| {
-        reqwest::Client::builder()
-            .user_agent("Oleafly")
-            .connect_timeout(Duration::from_secs(15))
-            .read_timeout(Duration::from_secs(60))
-            .pool_idle_timeout(Duration::from_secs(90))
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new())
-    })
+fn client(read_timeout: Option<Duration>) -> reqwest::Client {
+    let mut builder = reqwest::Client::builder()
+        .user_agent("Oleafly")
+        .connect_timeout(Duration::from_secs(15))
+        .pool_idle_timeout(Duration::from_secs(90));
+    if let Some(read_timeout) = read_timeout {
+        builder = builder.read_timeout(read_timeout);
+    }
+    builder.build().unwrap_or_else(|_| reqwest::Client::new())
 }
 
-fn notify_http() -> &'static reqwest::Client {
+// Downloads run for as long as bytes keep arriving, so a stalled one is caught
+// by the read timeout. reqwest starts that timer when a request is created and
+// keeps it running until the reply headers arrive, so on an upload it would cap
+// sending the whole body at 60 seconds. Calls that carry their own total
+// timeout use the client without one.
+pub(crate) fn http() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
-    CLIENT.get_or_init(|| {
-        reqwest::Client::builder()
-            .user_agent("Oleafly")
-            .connect_timeout(Duration::from_secs(15))
-            .pool_idle_timeout(Duration::from_secs(90))
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new())
-    })
+    CLIENT.get_or_init(|| client(Some(STREAM_READ_TIMEOUT)))
+}
+
+fn timed_http() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| client(None))
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -281,7 +290,7 @@ pub(crate) struct Waited {
 
 pub(crate) async fn wait_for_changes(cursor: &str, timeout_secs: u64) -> StoreResult<Waited> {
     let timeout = timeout_secs.clamp(30, 480);
-    let response = notify_http()
+    let response = timed_http()
         .post(format!("{}/files/list_folder/longpoll", endpoints().notify))
         .timeout(Duration::from_secs(timeout + 120))
         .json(&serde_json::json!({ "cursor": cursor, "timeout": timeout }))
@@ -377,6 +386,8 @@ enum Refusal {
     QuotaFull,
     Reset,
     RateLimited,
+    TrafficLimit,
+    Offset(u64),
     Rejected(String),
     Other(String),
 }
@@ -389,9 +400,9 @@ fn classify(summary: &str) -> Refusal {
         Refusal::Reset
     } else if summary.contains("not_found") {
         Refusal::NotFound
-    } else if summary.contains("too_many_write_operations")
-        || summary.contains("upload_traffic_limit")
-    {
+    } else if summary.contains("upload_traffic_limit") {
+        Refusal::TrafficLimit
+    } else if summary.contains("too_many_write_operations") {
         Refusal::RateLimited
     } else if summary.contains("conflict") {
         Refusal::Conflict
@@ -419,8 +430,20 @@ fn refusal_error(refusal: Refusal) -> StoreError {
         Refusal::QuotaFull => StoreError::QuotaFull,
         Refusal::Reset => StoreError::Reset,
         Refusal::RateLimited => StoreError::RateLimited,
+        Refusal::TrafficLimit => StoreError::TrafficLimit,
+        Refusal::Offset(_) => StoreError::Server("dropbox expected another upload offset".into()),
         Refusal::Rejected(summary) => StoreError::Rejected(summary),
         Refusal::Other(summary) => StoreError::Server(summary),
+    }
+}
+
+fn correct_offset(error: &serde_json::Value) -> Option<u64> {
+    match error {
+        serde_json::Value::Object(fields) => fields
+            .get("correct_offset")
+            .and_then(serde_json::Value::as_u64)
+            .or_else(|| fields.values().find_map(correct_offset)),
+        _ => None,
     }
 }
 
@@ -453,8 +476,9 @@ fn upload_timeout(len: usize) -> Duration {
     RPC_TIMEOUT + Duration::from_secs(u64::try_from(len / 32_768).unwrap_or(u64::MAX))
 }
 
+/// Gets a fresh access token, given the one Dropbox just refused.
 pub(crate) type TokenRefresher =
-    Arc<dyn Fn() -> BoxFuture<'static, StoreResult<String>> + Send + Sync>;
+    Arc<dyn Fn(String) -> BoxFuture<'static, StoreResult<String>> + Send + Sync>;
 
 enum Body<'a> {
     None,
@@ -474,6 +498,8 @@ pub(crate) struct DropboxStore {
     content_base: String,
     token: Mutex<String>,
     refresher: Option<TokenRefresher>,
+    timed: reqwest::Client,
+    streaming: reqwest::Client,
 }
 
 impl DropboxStore {
@@ -484,6 +510,20 @@ impl DropboxStore {
             content_base: endpoints.content,
             token: Mutex::new(token),
             refresher,
+            timed: timed_http().clone(),
+            streaming: http().clone(),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_read_timeout(
+        token: String,
+        refresher: Option<TokenRefresher>,
+        read_timeout: Duration,
+    ) -> Self {
+        Self {
+            streaming: client(Some(read_timeout)),
+            ..Self::new(token, refresher)
         }
     }
 
@@ -502,7 +542,12 @@ impl DropboxStore {
     }
 
     fn request(&self, call: &Call<'_>) -> reqwest::RequestBuilder {
-        let mut request = http().post(&call.url).bearer_auth(self.token());
+        let client = if call.timeout.is_some() {
+            &self.timed
+        } else {
+            &self.streaming
+        };
+        let mut request = client.post(&call.url).bearer_auth(self.token());
         if let Some(timeout) = call.timeout {
             request = request.timeout(timeout);
         }
@@ -525,7 +570,7 @@ impl DropboxStore {
         let Some(refresher) = &self.refresher else {
             return Ok(false);
         };
-        let token = refresher().await?;
+        let token = refresher(self.token()).await?;
         self.set_token(token);
         *refreshed = true;
         Ok(true)
@@ -595,9 +640,27 @@ impl DropboxStore {
             .and_then(serde_json::Value::as_str)
             .unwrap_or_default();
         if status == 409 {
-            classify(summary)
+            if summary.contains("incorrect_offset") {
+                if let Some(offset) = value.get("error").and_then(correct_offset) {
+                    return Refusal::Offset(offset);
+                }
+            }
+            return classify(summary);
+        }
+        let detail: String = if summary.is_empty() {
+            String::from_utf8_lossy(&bytes)
+                .chars()
+                .filter(|character| !character.is_control())
+                .take(200)
+                .collect()
         } else {
+            summary.chars().take(200).collect()
+        };
+        let detail = detail.trim();
+        if detail.is_empty() {
             Refusal::Other(format!("dropbox returned status {status}"))
+        } else {
+            Refusal::Other(format!("dropbox returned status {status}: {detail}"))
         }
     }
 
@@ -606,17 +669,48 @@ impl DropboxStore {
         route: &str,
         arg: &serde_json::Value,
     ) -> StoreResult<Result<serde_json::Value, Refusal>> {
-        let response = self
-            .send(&Call {
+        self.rpc_within(route, arg, RPC_TIMEOUT).await
+    }
+
+    /// Sends `call`, waiting and trying again while Dropbox says it has too
+    /// many writes in flight. That refusal means nothing was written.
+    async fn send_writes(
+        &self,
+        call: &Call<'_>,
+    ) -> StoreResult<Result<reqwest::Response, Refusal>> {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            let response = self.send(call).await?;
+            if response.status().is_success() {
+                return Ok(Ok(response));
+            }
+            let refusal = Self::refusal(response).await;
+            if refusal != Refusal::RateLimited || attempt >= MAX_ATTEMPTS {
+                return Ok(Err(refusal));
+            }
+            tokio::time::sleep(retry_delay(attempt, None)).await;
+        }
+    }
+
+    async fn rpc_within(
+        &self,
+        route: &str,
+        arg: &serde_json::Value,
+        timeout: Duration,
+    ) -> StoreResult<Result<serde_json::Value, Refusal>> {
+        let response = match self
+            .send_writes(&Call {
                 url: format!("{}/{route}", self.api_base),
                 arg: None,
                 body: Body::Json(arg),
-                timeout: Some(RPC_TIMEOUT),
+                timeout: Some(timeout),
             })
-            .await?;
-        if !response.status().is_success() {
-            return Ok(Err(Self::refusal(response).await));
-        }
+            .await?
+        {
+            Ok(response) => response,
+            Err(refusal) => return Ok(Err(refusal)),
+        };
         let bytes = Self::read_capped(response, MAX_SMALL_BYTES).await?;
         let value = serde_json::from_slice(&bytes)
             .map_err(|_| StoreError::Server(format!("dropbox {route} reply was unreadable")))?;
@@ -629,17 +723,18 @@ impl DropboxStore {
         arg: &serde_json::Value,
         bytes: &[u8],
     ) -> StoreResult<Result<serde_json::Value, Refusal>> {
-        let response = self
-            .send(&Call {
+        let response = match self
+            .send_writes(&Call {
                 url: format!("{}/{route}", self.content_base),
                 arg: Some(arg_header(arg)),
                 body: Body::Bytes(bytes),
                 timeout: Some(upload_timeout(bytes.len())),
             })
-            .await?;
-        if !response.status().is_success() {
-            return Ok(Err(Self::refusal(response).await));
-        }
+            .await?
+        {
+            Ok(response) => response,
+            Err(refusal) => return Ok(Err(refusal)),
+        };
         let bytes = Self::read_capped(response, MAX_SMALL_BYTES).await?;
         if bytes.is_empty() {
             return Ok(Ok(serde_json::Value::Null));
@@ -761,16 +856,35 @@ impl DropboxStore {
                 let hash = hasher.finish();
                 return Self::uploaded(&finished, hash, size, &dropbox.finish());
             }
-            self.upload_call(
-                "files/upload_session/append_v2",
-                &serde_json::json!({"cursor": {"session_id": session_id, "offset": offset}, "close": false}),
-                &chunk,
-            )
-            .await?
-            .map_err(refusal_error)?;
+            self.append(&session_id, offset, &chunk, false).await?;
             offset += chunk.len() as u64;
         }
     }
+
+    async fn append(&self, id: &str, offset: u64, chunk: &[u8], close: bool) -> StoreResult<()> {
+        let arg =
+            serde_json::json!({"cursor": {"session_id": id, "offset": offset}, "close": close});
+        match self
+            .upload_call("files/upload_session/append_v2", &arg, chunk)
+            .await?
+        {
+            Ok(_) => Ok(()),
+            // A retry of an append that reached Dropbox but lost its reply:
+            // Dropbox already holds these bytes, or already closed the session.
+            Err(Refusal::Offset(correct)) if correct == offset + chunk.len() as u64 => Ok(()),
+            Err(Refusal::Other(summary)) if close && summary.starts_with("closed") => Ok(()),
+            Err(refusal) => Err(refusal_error(refusal)),
+        }
+    }
+}
+
+/// What tells a file changed while it was being read: its length and the time
+/// it was last written.
+async fn file_state(path: &Path) -> StoreResult<(u64, Option<std::time::SystemTime>)> {
+    let metadata = tokio::fs::metadata(path)
+        .await
+        .map_err(|error| StoreError::Io(error.to_string()))?;
+    Ok((metadata.len(), metadata.modified().ok()))
 }
 
 struct OpenSession {
@@ -795,6 +909,8 @@ fn tag_path(value: &serde_json::Value) -> String {
 
 impl DropboxStore {
     async fn open_session(&self, local: &Path) -> StoreResult<OpenSession> {
+        let before = file_state(local).await?;
+        let length = before.0;
         let mut file = tokio::fs::File::open(local)
             .await
             .map_err(|error| StoreError::Io(error.to_string()))?;
@@ -803,7 +919,8 @@ impl DropboxStore {
         let first = read_full(&mut file, SESSION_CHUNK).await?;
         hasher.update(&first);
         dropbox.update(&first);
-        let mut closed = first.len() < SESSION_CHUNK;
+        // Close with the last bytes, so a file of whole chunks needs no empty append.
+        let mut closed = first.len() < SESSION_CHUNK || first.len() as u64 >= length;
         let started = self
             .upload_call(
                 "files/upload_session/start",
@@ -824,15 +941,15 @@ impl DropboxStore {
             let chunk = read_full(&mut file, SESSION_CHUNK).await?;
             hasher.update(&chunk);
             dropbox.update(&chunk);
-            closed = chunk.len() < SESSION_CHUNK;
-            self.upload_call(
-                "files/upload_session/append_v2",
-                &serde_json::json!({"cursor": {"session_id": id, "offset": offset}, "close": closed}),
-                &chunk,
-            )
-            .await?
-            .map_err(refusal_error)?;
-            offset += chunk.len() as u64;
+            let next = offset + chunk.len() as u64;
+            closed = chunk.len() < SESSION_CHUNK || next >= length;
+            self.append(&id, offset, &chunk, closed).await?;
+            offset = next;
+        }
+        if offset != length || file_state(local).await? != before {
+            return Err(StoreError::Io(
+                "the file changed while it was uploading".into(),
+            ));
         }
         Ok(OpenSession {
             id,
@@ -855,10 +972,15 @@ impl DropboxStore {
                 })
             })
             .collect();
+        // The commit is one synchronous call, so a large batch takes longer.
+        let timeout = RPC_TIMEOUT
+            + COMMIT_TIME_PER_FILE
+                .saturating_mul(u32::try_from(sessions.len()).unwrap_or(u32::MAX));
         let reply = self
-            .rpc(
+            .rpc_within(
                 "files/upload_session/finish_batch_v2",
                 &serde_json::json!({ "entries": entries }),
+                timeout,
             )
             .await?
             .map_err(refusal_error)?;
@@ -869,20 +991,46 @@ impl DropboxStore {
             .ok_or_else(|| {
                 StoreError::Server("dropbox batch commit reply was unreadable".into())
             })?;
-        Ok(results
-            .iter()
-            .zip(sessions)
-            .map(|(result, (_, session))| {
-                match result.get(".tag").and_then(serde_json::Value::as_str) {
-                    Some("success") => {
-                        Self::uploaded(result, session.hash, session.size, &session.dropbox)
-                    }
-                    _ => Err(refusal_error(classify(&tag_path(
-                        result.get("failure").unwrap_or(result),
-                    )))),
-                }
-            })
-            .collect())
+        let mut finished = Vec::with_capacity(results.len());
+        for (result, (remote, session)) in results.iter().zip(sessions) {
+            if result.get(".tag").and_then(serde_json::Value::as_str) == Some("success") {
+                finished.push(Self::uploaded(
+                    result,
+                    session.hash,
+                    session.size,
+                    &session.dropbox,
+                ));
+                continue;
+            }
+            let reason = tag_path(result.get("failure").unwrap_or(result));
+            // A commit sent again after its reply was lost finds the session
+            // used up. If the file Dropbox holds is this upload, it went in.
+            let committed = if reason.starts_with("lookup_failed") {
+                self.committed(remote, session).await
+            } else {
+                None
+            };
+            finished.push(committed.ok_or_else(|| refusal_error(classify(&reason))));
+        }
+        Ok(finished)
+    }
+
+    async fn committed(&self, remote: &str, session: &OpenSession) -> Option<Uploaded> {
+        let value = self
+            .rpc("files/get_metadata", &serde_json::json!({ "path": remote }))
+            .await
+            .ok()?
+            .ok()?;
+        let same = value.get(".tag").and_then(serde_json::Value::as_str) == Some("file")
+            && value.get("size").and_then(serde_json::Value::as_u64) == Some(session.size)
+            && value
+                .get("content_hash")
+                .and_then(serde_json::Value::as_str)
+                == Some(session.dropbox.as_str());
+        if !same {
+            return None;
+        }
+        Self::uploaded(&value, session.hash, session.size, &session.dropbox).ok()
     }
 }
 
@@ -956,19 +1104,40 @@ impl DropboxStore {
                 items.len(),
             )
             .await?;
-        Ok(results
-            .iter()
-            .zip(items)
-            .map(
-                |(result, item)| match result.get(".tag").and_then(serde_json::Value::as_str) {
+        let mut done = Vec::with_capacity(items.len());
+        for (result, item) in results.iter().zip(items) {
+            done.push(
+                match result.get(".tag").and_then(serde_json::Value::as_str) {
                     Some("success") => Ok(()),
-                    _ => delete_refused(
-                        classify(&tag_path(result.get("failure").unwrap_or(result))),
-                        item.parent_rev.is_some(),
-                    ),
+                    _ => {
+                        let refusal = classify(&tag_path(result.get("failure").unwrap_or(result)));
+                        self.delete_refused(&item.remote, item.parent_rev.as_deref(), refusal)
+                            .await
+                    }
                 },
-            )
-            .collect())
+            );
+        }
+        Ok(done)
+    }
+
+    async fn delete_refused(
+        &self,
+        remote: &str,
+        parent_rev: Option<&str>,
+        refusal: Refusal,
+    ) -> StoreResult<()> {
+        match (refusal, parent_rev) {
+            (Refusal::NotFound, _) => Ok(()),
+            (Refusal::RateLimited, _) => Err(StoreError::RateLimited),
+            // A delete pinned to a revision is refused once another computer
+            // replaced the file, and then the newer file stays. Any other
+            // refusal leaves the file there, so it is still to be deleted.
+            (refusal, Some(rev)) => match self.metadata(remote).await? {
+                Some(meta) if meta.rev == rev => Err(refusal_error(refusal)),
+                _ => Ok(()),
+            },
+            (refusal, None) => Err(refusal_error(refusal)),
+        }
     }
 
     async fn copy_batch(&self, items: &[BatchCopy]) -> StoreResult<Vec<StoreResult<Copied>>> {
@@ -1015,15 +1184,6 @@ fn copied(metadata: &serde_json::Value) -> StoreResult<Copied> {
             .and_then(serde_json::Value::as_str)
             .map(str::to_string),
     })
-}
-
-fn delete_refused(refusal: Refusal, pinned: bool) -> StoreResult<()> {
-    match refusal {
-        Refusal::NotFound => Ok(()),
-        Refusal::RateLimited => Err(StoreError::RateLimited),
-        _ if pinned => Ok(()),
-        refusal => Err(refusal_error(refusal)),
-    }
 }
 
 async fn read_full(file: &mut tokio::fs::File, want: usize) -> StoreResult<Vec<u8>> {
@@ -1201,6 +1361,12 @@ impl CloudStore for DropboxStore {
                 _ => Ok(false),
             };
         }
+        if response
+            .content_length()
+            .is_some_and(|length| length > limit)
+        {
+            return Ok(false);
+        }
         match save_body(response, local, limit, received).await {
             Ok(_) => Ok(true),
             Err(StoreError::Verify(_)) => Ok(false),
@@ -1283,19 +1449,36 @@ impl CloudStore for DropboxStore {
             }
         }
         for batch in ready.chunks(MAX_BATCH_ENTRIES) {
-            let sessions: Vec<(&str, &OpenSession)> = batch
-                .iter()
-                .map(|(_, remote, session)| (*remote, *session))
-                .collect();
-            match self.finish_batch(&sessions).await {
-                Ok(finished) => {
-                    for ((index, _, _), result) in batch.iter().zip(finished) {
-                        results[*index] = Some(result);
+            let mut waiting = batch.to_vec();
+            for attempt in 1..=MAX_ATTEMPTS {
+                let sessions: Vec<(&str, &OpenSession)> = waiting
+                    .iter()
+                    .map(|(_, remote, session)| (*remote, *session))
+                    .collect();
+                match self.finish_batch(&sessions).await {
+                    Ok(finished) => {
+                        // Dropbox refuses some commits when too many writes are
+                        // in flight; their sessions are still open.
+                        let mut again = Vec::new();
+                        for (entry, result) in waiting.iter().zip(finished) {
+                            match result {
+                                Err(StoreError::RateLimited) if attempt < MAX_ATTEMPTS => {
+                                    again.push(*entry);
+                                }
+                                result => results[entry.0] = Some(result),
+                            }
+                        }
+                        if again.is_empty() {
+                            break;
+                        }
+                        tokio::time::sleep(retry_delay(attempt, None)).await;
+                        waiting = again;
                     }
-                }
-                Err(error) => {
-                    for (index, _, _) in batch {
-                        results[*index] = Some(Err(error.clone()));
+                    Err(error) => {
+                        for (index, _, _) in &waiting {
+                            results[*index] = Some(Err(error.clone()));
+                        }
+                        break;
                     }
                 }
             }
@@ -1315,7 +1498,7 @@ impl CloudStore for DropboxStore {
         }
         match self.rpc("files/delete_v2", &arg).await? {
             Ok(_) => Ok(()),
-            Err(refusal) => delete_refused(refusal, parent_rev.is_some()),
+            Err(refusal) => self.delete_refused(remote, parent_rev, refusal).await,
         }
     }
 

@@ -674,12 +674,18 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         if (report.error) {
           toast.errorUnique(ACTION_TOAST, describeError(report.error));
         } else {
-          toast.successUnique(
-            ACTION_TOAST,
-            choice === "restore"
-              ? i18n.t(($) => $.cloud.toast.filesRestored, { name: project.name })
-              : i18n.t(($) => $.cloud.toast.filesDeleted, { name: project.name }),
-          );
+          const remote = project.hold?.kind === "remoteDelete";
+          let message: string;
+          if (choice === "restore") {
+            message = remote
+              ? i18n.t(($) => $.cloud.toast.filesUploadedAgain, { name: project.name })
+              : i18n.t(($) => $.cloud.toast.filesRestored, { name: project.name });
+          } else {
+            message = remote
+              ? i18n.t(($) => $.cloud.toast.filesDeletedHere, { name: project.name })
+              : i18n.t(($) => $.cloud.toast.filesDeleted, { name: project.name });
+          }
+          toast.successUnique(ACTION_TOAST, message);
         }
         if (report.downloaded > 0 || report.deletedLocal > 0) await refreshLibrary();
         await followChangesOnDisk(report);
@@ -891,8 +897,9 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
     disconnect: async () => {
       if (get().disconnecting) return false;
       set({ disconnecting: true });
+      let remoteRevoked = true;
       try {
-        await cloudDisconnect();
+        ({ remoteRevoked } = await cloudDisconnect());
       } catch (error) {
         void logError("cloud disconnect", error);
         set({ disconnecting: false });
@@ -919,6 +926,7 @@ export const useCloudStore = create<CloudStoreState>((set, get) => {
         progress: {},
         resumedAt: {},
       });
+      if (!remoteRevoked) toast.infoUnique(ACTION_TOAST, i18n.t(($) => $.cloud.toast.accessNotRevoked));
       await get().refresh();
       return true;
     },

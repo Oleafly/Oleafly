@@ -349,6 +349,10 @@
     "zoteroSync": {
       "label": "Sincronizează biblioteca Zotero",
       "keywords": "zotero sincronizare reîmprospătare bibliotecă"
+    },
+    "insertFileLink": {
+      "label": "Inserează o legătură către un fișier",
+      "keywords": "legătură fișier cale notă referință"
     }
   },
   "community": {

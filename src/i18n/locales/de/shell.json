@@ -347,6 +347,10 @@
     "zoteroSync": {
       "label": "Zotero-Bibliothek synchronisieren",
       "keywords": "zotero synchronisieren auffrischen Bibliothek sync refresh library"
+    },
+    "insertFileLink": {
+      "label": "Link zu Datei einfügen",
+      "keywords": "link datei pfad notiz verweis"
     }
   },
   "community": {

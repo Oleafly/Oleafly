@@ -44,6 +44,10 @@ struct Mark {
     line: i32,
     h: f64,
     parent: Option<usize>,
+    /// An `x` (current point) record. pdfTeX writes one after a run of
+    /// characters and tags it with the node before the run, so after the first
+    /// word of a source line it still names the line above.
+    current: bool,
 }
 
 #[derive(Serialize, Clone, Copy)]
@@ -53,6 +57,29 @@ pub struct SynctexRect {
     pub y: f64,
     pub width: f64,
     pub height: f64,
+}
+
+/// One typeset line holding text from the line a forward search asked for.
+/// `from`..`to` is the stretch of the line where that source line's text sits,
+/// in bp like the rest.
+#[derive(Serialize, Clone, Copy, Debug)]
+pub struct SynctexLine {
+    pub page: i32,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+    pub from: f64,
+    pub to: f64,
+}
+
+/// A forward search answer: the box to fall back on, plus every typeset line
+/// of the source line so the caller can find the cursor's word among them.
+#[derive(Serialize)]
+pub struct SynctexForwardHit {
+    #[serde(flatten)]
+    pub rect: SynctexRect,
+    pub lines: Vec<SynctexLine>,
 }
 
 #[derive(Serialize)]
@@ -398,6 +425,7 @@ fn parse_mark(line: &str, parent: Option<usize>) -> Option<Mark> {
         line: line_no,
         h: h * SP_TO_BP,
         parent,
+        current: line.starts_with('x'),
     })
 }
 
@@ -497,9 +525,21 @@ pub fn tag_for_file(doc: &Doc, file: &str, roots: &[String]) -> Option<i32> {
     }
 }
 
-/// Forward search: (file, line) → tightest box on its page. Returns a rect in
-/// PDF bp with origin at the page's top-left (y grows downward).
-pub fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<SynctexRect> {
+/// How `forward` found its box.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Found {
+    /// A typeset line holding text from the line.
+    Text,
+    /// A box tagged with the line itself, such as a display or a float.
+    Box,
+    /// Only the box tagged with the nearest line.
+    Nearest,
+}
+
+/// Forward search: (file, line) → tightest box on its page, and how it was
+/// found. The rect is in PDF bp with origin at the page's top-left (y grows
+/// downward).
+pub fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<(SynctexRect, Found)> {
     let tag = tag_for_file(doc, file, roots)?;
     let real = |n: &Node| n.height + n.depth >= 4.0 && n.width >= 5.0;
 
@@ -507,7 +547,8 @@ pub fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<Syn
         .marks
         .iter()
         .filter(|mark| mark.tag == tag && mark.line == line)
-        .filter_map(|mark| line_box(doc, mark.parent))
+        .filter_map(|mark| line_box(doc, mark.parent).filter(|&owner| trusted(doc, mark, owner)))
+        .map(|owner| &doc.nodes[owner])
         .filter(|n| real(n))
         .min_by(|a, b| {
             a.page
@@ -516,7 +557,7 @@ pub fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<Syn
                 .then(a.h.total_cmp(&b.h))
         })
     {
-        return Some(to_rect(chosen));
+        return Some((to_rect(chosen), Found::Text));
     }
 
     // Prefer an exact-line match; among those, the tightest (smallest) real box.
@@ -530,7 +571,7 @@ pub fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<Syn
             .partial_cmp(&(b.width * (b.height + b.depth)))
             .unwrap_or(std::cmp::Ordering::Equal)
     }) {
-        return Some(to_rect(chosen));
+        return Some((to_rect(chosen), Found::Box));
     }
 
     // No exact match: nearest real node by line distance.
@@ -539,7 +580,144 @@ pub fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<Syn
         .iter()
         .filter(|n| n.tag == tag && real(n))
         .min_by_key(|n| (n.line - line).abs())?;
-    Some(to_rect(chosen))
+    Some((to_rect(chosen), Found::Nearest))
+}
+
+fn reading_order(a: &SynctexLine, b: &SynctexLine) -> std::cmp::Ordering {
+    a.page
+        .cmp(&b.page)
+        .then(a.y.total_cmp(&b.y))
+        .then(a.x.total_cmp(&b.x))
+}
+
+/// How far `forward_hit` looks for a neighbouring line with text when the line
+/// itself left none.
+const NEIGHBOUR_LINES: i32 = 3;
+
+/// Forward search with every typeset line of the source line attached.
+///
+/// A source line can leave no record at all: TeX drops the space after a
+/// paragraph's last word, so a line holding just that word has none, and the
+/// nearest tagged box is then the paragraph's first line. Its words follow the
+/// line above and come before the line below, so their typeset lines are
+/// offered instead, starting from the last one above.
+pub fn forward_hit(
+    doc: &Doc,
+    file: &str,
+    line: i32,
+    roots: &[String],
+) -> Option<SynctexForwardHit> {
+    let (mut rect, found) = forward(doc, file, line, roots)?;
+    let Some(tag) = tag_for_file(doc, file, roots) else {
+        return Some(SynctexForwardHit {
+            rect,
+            lines: Vec::new(),
+        });
+    };
+    let mut lines = forward_lines(doc, tag, line);
+    if lines.is_empty() && found == Found::Nearest {
+        let nearest = |step: i32| {
+            (1..=NEIGHBOUR_LINES)
+                .map(|distance| forward_lines(doc, tag, line + step * distance))
+                .find(|found| !found.is_empty())
+                .unwrap_or_default()
+        };
+        let above = nearest(-1);
+        let below = nearest(1);
+        if let Some(last) = above.last().or(below.first()) {
+            rect = SynctexRect {
+                page: last.page,
+                x: last.x,
+                y: last.y,
+                width: last.width,
+                height: last.height,
+            };
+        }
+        for candidate in above.into_iter().chain(below) {
+            let same = |other: &SynctexLine| {
+                other.page == candidate.page && other.x == candidate.x && other.y == candidate.y
+            };
+            if !lines.iter().any(same) {
+                lines.push(candidate);
+            }
+        }
+        lines.sort_by(reading_order);
+    }
+    Some(SynctexForwardHit { rect, lines })
+}
+
+/// Every typeset line holding text from `line`, in reading order.
+///
+/// A source line that holds a whole paragraph spans many typeset lines, and a
+/// wrapped one usually two, so the first box alone puts the highlight lines
+/// away from the cursor. The caller picks the line with the cursor's word in
+/// it. Each line also carries the stretch where this source line's words sit:
+/// a word's record follows it (see `refine_line`), so they run from the last
+/// record of another line before the first of ours to our last record, or to
+/// the end of the typeset line when nothing from another line follows.
+fn forward_lines(doc: &Doc, tag: i32, line: i32) -> Vec<SynctexLine> {
+    let real = |n: &Node| n.height + n.depth >= 4.0 && n.width >= 5.0;
+    let owners: Vec<(usize, &Mark)> = doc
+        .marks
+        .iter()
+        .filter(|mark| doc.inputs.contains_key(&mark.tag) && !mark.current)
+        .filter_map(|mark| {
+            line_box(doc, mark.parent)
+                .filter(|&owner| trusted(doc, mark, owner))
+                .map(|owner| (owner, mark))
+        })
+        .collect();
+    let wanted: Vec<usize> = owners
+        .iter()
+        .filter(|(_, mark)| mark.tag == tag && mark.line == line)
+        .map(|(owner, _)| *owner)
+        .collect();
+    let mut lines: Vec<SynctexLine> = Vec::new();
+    let mut seen: Vec<usize> = Vec::new();
+    for owner in wanted {
+        if seen.contains(&owner) || !real(&doc.nodes[owner]) {
+            continue;
+        }
+        seen.push(owner);
+        let node = &doc.nodes[owner];
+        let ours = |mark: &Mark| mark.tag == tag && mark.line == line;
+        // The box's own tag and line belong to the glue TeX adds when it
+        // breaks the paragraph, unless that is the line we were asked for.
+        let mut marks: Vec<&Mark> = owners
+            .iter()
+            .filter(|(o, mark)| {
+                *o == owner && (ours(mark) || (mark.tag, mark.line) != (node.tag, node.line))
+            })
+            .map(|(_, mark)| *mark)
+            .collect();
+        marks.sort_by(|a, b| a.h.total_cmp(&b.h));
+        let (Some(first), Some(last)) = (
+            marks.iter().position(|mark| ours(mark)),
+            marks.iter().rposition(|mark| ours(mark)),
+        ) else {
+            continue;
+        };
+        let from = first
+            .checked_sub(1)
+            .map_or(node.h, |previous| marks[previous].h);
+        let to = if marks[last + 1..].iter().any(|mark| !ours(mark)) {
+            marks[last].h
+        } else {
+            node.h + node.width
+        };
+        let rect = to_rect(node);
+        lines.push(SynctexLine {
+            page: rect.page,
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            from,
+            to,
+        });
+    }
+    lines.sort_by(reading_order);
+    lines
 }
 
 fn to_rect(n: &Node) -> SynctexRect {
@@ -640,36 +818,99 @@ fn pick_box(doc: &Doc, page: i32, x: f64, y: f64) -> Option<usize> {
         .or_else(|| nearest(doc, on_page.iter().copied().filter(named), x, y))
 }
 
+/// The page's outermost box. TeX tags it with the line it was reading when the
+/// page shipped out.
+fn page_box(doc: &Doc, mut index: usize) -> usize {
+    while let Some(parent) = doc.nodes[index].parent {
+        index = parent;
+    }
+    index
+}
+
+/// Whether a record inside the line box `owner` names the line its text was
+/// read from.
+///
+/// LuaTeX tags some nodes it makes late (font kerns and the glyphs after them)
+/// with the line it is reading when the page ships out: a heading from line 12
+/// on a page shipped at line 21 holds `k1,21` and `x1,21`, and in a project
+/// with `\input` files that line is in another file. A line box holds nothing
+/// read after the line that ended it, and a record that repeats the page box's
+/// tag and line without being the line box's own is that shipout line.
+fn trusted(doc: &Doc, mark: &Mark, owner: usize) -> bool {
+    let node = &doc.nodes[owner];
+    if mark.tag == node.tag && mark.line > node.line {
+        return false;
+    }
+    let page = &doc.nodes[page_box(doc, owner)];
+    (mark.tag, mark.line) != (page.tag, page.line) || (mark.tag, mark.line) == (node.tag, node.line)
+}
+
 fn refine_line(doc: &Doc, chosen: usize, x: f64) -> (i32, i32) {
     let node = &doc.nodes[chosen];
     let marks: Vec<&Mark> = doc
         .marks
         .iter()
-        .filter(|mark| doc.inputs.contains_key(&mark.tag) && within(doc, mark.parent, chosen))
+        .filter(|mark| {
+            doc.inputs.contains_key(&mark.tag)
+                && within(doc, mark.parent, chosen)
+                && trusted(doc, mark, chosen)
+        })
         .collect();
-    let from_text: Vec<&Mark> = marks
-        .iter()
-        .copied()
-        .filter(|mark| mark.tag != node.tag || mark.line != node.line)
-        .collect();
+    // Current-point records only repeat the node before them, so they count
+    // only where nothing else was recorded.
+    let solid: Vec<&Mark> = marks.iter().copied().filter(|mark| !mark.current).collect();
+    let marks = if solid.is_empty() { marks } else { solid };
+    // The glue TeX adds when it breaks a paragraph into lines (the left and
+    // right skips, the paragraph fill) carries the line that ended the
+    // paragraph, which is also the line box's own. That glue sits at the ends
+    // of the typeset line, so the box's own records are dropped there; in the
+    // middle they come from words read on that line, as in a display that
+    // spans several source lines.
+    let own = |mark: &&Mark| mark.tag == node.tag && mark.line == node.line;
+    let from_text: Vec<&Mark> = match (
+        marks.iter().position(|mark| !own(mark)),
+        marks.iter().rposition(|mark| !own(mark)),
+    ) {
+        (Some(first), Some(last)) => marks[first..=last].to_vec(),
+        _ => Vec::new(),
+    };
     let pool = if from_text.is_empty() {
         marks
     } else {
         from_text
     };
-    pool.iter()
+    // A word's records sit inside it and right after it: the space that
+    // follows a word is tagged with the word's line, the one before it with
+    // the previous word's. Taking the record left of the click put the first
+    // word of every source line on the line above. The last word of a typeset
+    // line has nothing after it, so fall back to the record on its left.
+    //
+    // Math is the exception. TeX spaces a formula when it closes, so that
+    // glue carries the box's own line however many source lines the formula
+    // took, and only the record before the click still names the line the
+    // symbol was typed on.
+    let after = pool
+        .iter()
+        .filter(|mark| mark.h >= x)
+        .min_by(|a, b| a.h.total_cmp(&b.h));
+    let before = pool
+        .iter()
         .rev()
         .filter(|mark| mark.h <= x)
-        .max_by(|a, b| a.h.total_cmp(&b.h))
-        .or_else(|| pool.iter().min_by(|a, b| a.h.total_cmp(&b.h)))
-        .map_or((node.tag, node.line), |mark| (mark.tag, mark.line))
+        .max_by(|a, b| a.h.total_cmp(&b.h));
+    let chosen = match (after, before) {
+        (Some(after), Some(before)) if own(after) && !own(before) => Some(before),
+        (Some(after), _) => Some(after),
+        (None, before) => before,
+    };
+    chosen.map_or((node.tag, node.line), |mark| (mark.tag, mark.line))
 }
 
-fn line_box(doc: &Doc, mut index: Option<usize>) -> Option<&Node> {
+fn line_box(doc: &Doc, mut index: Option<usize>) -> Option<usize> {
     while let Some(current) = index {
         let node = &doc.nodes[current];
         if node.kind == BoxKind::Horizontal && node.width > 0.0 {
-            return Some(node);
+            return Some(current);
         }
         index = node.parent;
     }
@@ -772,6 +1013,20 @@ mod tests {
         include_str!("../tests/fixtures/synctex/academic-article.inverse.tsv");
     const ARTICLE_FORWARD: &str =
         include_str!("../tests/fixtures/synctex/academic-article.forward.tsv");
+    // Ground truth from aligning every PDF word with the source word it was
+    // typed from: a hard-wrapped Tectonic article, and a LuaLaTeX project with
+    // `\input` chapters.
+    const WRAPPED: &[u8] = include_bytes!("../tests/fixtures/synctex/wrapped-prose.synctex.gz");
+    const WRAPPED_INVERSE: &str =
+        include_str!("../tests/fixtures/synctex/wrapped-prose.inverse.tsv");
+    const WRAPPED_FORWARD: &str =
+        include_str!("../tests/fixtures/synctex/wrapped-prose.forward.tsv");
+    const LUALATEX: &[u8] =
+        include_bytes!("../tests/fixtures/synctex/lualatex-chapters.synctex.gz");
+    const LUALATEX_INVERSE: &str =
+        include_str!("../tests/fixtures/synctex/lualatex-chapters.inverse.tsv");
+    const LUALATEX_FORWARD: &str =
+        include_str!("../tests/fixtures/synctex/lualatex-chapters.forward.tsv");
 
     fn fixture(gz: &[u8]) -> Doc {
         let mut text = String::new();
@@ -783,7 +1038,7 @@ mod tests {
         vec!["/p".to_string()]
     }
 
-    fn texlive_clicks(tsv: &str) -> Vec<(i32, f64, f64, &str, i32)> {
+    fn click_rows(tsv: &str) -> Vec<(i32, f64, f64, &str, i32)> {
         tsv.lines()
             .filter(|row| !row.is_empty())
             .map(|row| {
@@ -799,9 +1054,9 @@ mod tests {
             .collect()
     }
 
-    type TexliveSpots<'a> = (&'a str, i32, Vec<(i32, f64)>);
+    type LineSpots<'a> = (&'a str, i32, Vec<(i32, f64)>);
 
-    fn texlive_spots(tsv: &str) -> Vec<TexliveSpots<'_>> {
+    fn spot_rows(tsv: &str) -> Vec<LineSpots<'_>> {
         tsv.lines()
             .filter(|row| !row.is_empty())
             .map(|row| {
@@ -818,27 +1073,67 @@ mod tests {
             .collect()
     }
 
+    /// TeX Live's `synctex edit` takes the record left of the click. For the
+    /// first word of a source line that is the space ending the line above,
+    /// so there it answers one line early: the record before the click names
+    /// its line and the one after names ours.
+    fn texlive_takes_the_line_above(
+        doc: &Doc,
+        (page, x, y): (i32, f64, f64),
+        texlive: i32,
+        ours: i32,
+    ) -> bool {
+        let Some(chosen) = pick_box(doc, page, x, y) else {
+            return false;
+        };
+        let solid: Vec<&Mark> = doc
+            .marks
+            .iter()
+            .filter(|mark| within(doc, mark.parent, chosen) && !mark.current)
+            .collect();
+        let before = solid
+            .iter()
+            .filter(|mark| mark.h <= x)
+            .max_by(|a, b| a.h.total_cmp(&b.h));
+        let after = solid
+            .iter()
+            .filter(|mark| mark.h >= x)
+            .min_by(|a, b| a.h.total_cmp(&b.h));
+        ours == texlive + 1
+            && before.map(|mark| mark.line) == Some(texlive)
+            && after.map(|mark| mark.line) == Some(ours)
+    }
+
     #[test]
     fn inverse_search_matches_texlive_on_every_word_of_an_include_book() {
         let doc = fixture(BOOK);
         let roots = fixture_roots();
-        let clicks = texlive_clicks(BOOK_INVERSE);
+        let clicks = click_rows(BOOK_INVERSE);
         assert!(clicks.len() > 400);
-        for (page, x, y, file, line) in clicks {
-            let hit = inverse(&doc, page, x, y, &roots).expect("a word always hits");
-            assert_eq!(
-                (hit.file.as_str(), hit.line),
-                (file, line),
-                "click on page {page} at ({x}, {y})"
-            );
+        let mut first_words = 0;
+        for (page, x, y, file, line) in &clicks {
+            let hit = inverse(&doc, *page, *x, *y, &roots).expect("a word always hits");
+            assert_eq!(hit.file, *file, "click on page {page} at ({x}, {y})");
+            if hit.line != *line {
+                assert!(
+                    texlive_takes_the_line_above(&doc, (*page, *x, *y), *line, hit.line),
+                    "click on page {page} at ({x}, {y}) gave line {} for {line}",
+                    hit.line
+                );
+                first_words += 1;
+            }
         }
+        assert!(
+            first_words * 50 <= clicks.len(),
+            "{first_words} first words"
+        );
     }
 
     #[test]
     fn inverse_search_stays_within_two_lines_of_texlive_in_an_article() {
         let doc = fixture(ARTICLE);
         let roots = fixture_roots();
-        let clicks = texlive_clicks(ARTICLE_INVERSE);
+        let clicks = click_rows(ARTICLE_INVERSE);
         let mut exact = 0;
         for (page, x, y, file, line) in &clicks {
             let hit = inverse(&doc, *page, *x, *y, &roots).expect("a word always hits");
@@ -848,7 +1143,10 @@ mod tests {
                 "click on page {page} at ({x}, {y}) gave line {} for {line}",
                 hit.line
             );
-            exact += usize::from(hit.line == *line);
+            exact += usize::from(
+                hit.line == *line
+                    || texlive_takes_the_line_above(&doc, (*page, *x, *y), *line, hit.line),
+            );
         }
         assert!(
             exact * 100 >= clicks.len() * 95,
@@ -862,8 +1160,8 @@ mod tests {
         for (gz, tsv) in [(BOOK, BOOK_FORWARD), (ARTICLE, ARTICLE_FORWARD)] {
             let doc = fixture(gz);
             let roots = fixture_roots();
-            for (file, line, spots) in texlive_spots(tsv) {
-                let rect = forward(&doc, file, line, &roots).expect("a text line has a box");
+            for (file, line, spots) in spot_rows(tsv) {
+                let (rect, _) = forward(&doc, file, line, &roots).expect("a text line has a box");
                 let covered = spots.iter().any(|&(page, v)| {
                     page == rect.page && v >= rect.y - 1.0 && v <= rect.y + rect.height + 1.0
                 });
@@ -918,6 +1216,218 @@ g3,5:6578176,13156352\n\
 }2\n";
 
     #[test]
+    fn inverse_search_finds_the_line_each_word_was_typed_on() {
+        for (gz, tsv, least) in [
+            (WRAPPED, WRAPPED_INVERSE, 549),
+            (LUALATEX, LUALATEX_INVERSE, 373),
+        ] {
+            let doc = fixture(gz);
+            let roots = fixture_roots();
+            let clicks = click_rows(tsv);
+            let mut exact = 0;
+            for (page, x, y, file, line) in &clicks {
+                let hit = inverse(&doc, *page, *x, *y, &roots).expect("a word always hits");
+                assert_eq!(hit.file, *file, "click on page {page} at ({x}, {y})");
+                assert!(
+                    (hit.line - line).abs() <= 1,
+                    "click on page {page} at ({x}, {y}) gave line {} for {line}",
+                    hit.line
+                );
+                exact += usize::from(hit.line == *line);
+            }
+            assert!(exact >= least, "{exact} of {} exact", clicks.len());
+        }
+    }
+
+    #[test]
+    fn forward_search_offers_the_typeset_line_of_every_word() {
+        for (gz, tsv) in [(WRAPPED, WRAPPED_FORWARD), (LUALATEX, LUALATEX_FORWARD)] {
+            let doc = fixture(gz);
+            let roots = fixture_roots();
+            for (file, line, spots) in spot_rows(tsv) {
+                let hit = forward_hit(&doc, file, line, &roots).expect("a text line has a box");
+                for (page, y) in spots {
+                    assert!(
+                        hit.lines.iter().any(|typeset| {
+                            typeset.page == page
+                                && y >= typeset.y - 1.0
+                                && y <= typeset.y + typeset.height + 1.0
+                        }),
+                        "{file}:{line} offers no typeset line at page {page}, {y}"
+                    );
+                }
+            }
+        }
+    }
+
+    // One typeset line, x 100..600 bp, y 90..100 bp, of a paragraph that ended
+    // on line 9: a word from line 7, then the first word of line 8, then more
+    // of line 8 with a current-point record still naming line 7.
+    const FIRST_WORD: &str = "SyncTeX Version:1\n\
+Input:1:/p/main.tex\n\
+Content:\n\
+{1\n\
+[1,4:0,52625288:39468966,52625288,0\n\
+(1,9:6578176,6578176:32890880,657818,0\n\
+g1,7:9867264,6578176\n\
+g1,8:13156352,6578176\n\
+x1,7:16445440,6578176\n\
+g1,8:16445440,6578176\n\
+g1,9:39469056,6578176\n\
+)\n\
+]\n\
+}1\n";
+
+    #[test]
+    fn a_click_on_the_first_word_of_a_source_line_resolves_to_that_line() {
+        let doc = parse(FIRST_WORD);
+        let roots = fixture_roots();
+        let at = |x: f64| inverse(&doc, 1, x, 95.0, &roots).unwrap().line;
+        assert_eq!(at(125.0), 7);
+        // The space before the word ends line 7; the one after it is line 8's.
+        assert_eq!(at(175.0), 8);
+    }
+
+    #[test]
+    fn current_point_records_never_decide_the_line() {
+        let doc = parse(FIRST_WORD);
+        let roots = fixture_roots();
+        assert_eq!(inverse(&doc, 1, 225.0, 95.0, &roots).unwrap().line, 8);
+    }
+
+    // LuaTeX tags late kerns with the line it read when the page shipped out:
+    // chapter.tex:21 here. The heading is main.tex:12; the paragraph line box
+    // ended on line 30 and still holds a kern tagged 31.
+    const SHIPOUT: &str = "SyncTeX Version:1\n\
+Input:1:/p/main.tex\n\
+Input:2:/p/chapter.tex\n\
+Content:\n\
+{1\n\
+[2,21:0,52625288:39468966,52625288,0\n\
+(1,12:6578176,6578176:32890880,657818,0\n\
+g1,12:7894000,6578176\n\
+k2,21:9867264,6578176:65536\n\
+x2,21:11000000,6578176\n\
+g1,12:13156352,6578176\n\
+)\n\
+(1,30:6578176,13156352:32890880,657818,0\n\
+g1,28:7894000,13156352\n\
+k1,31:9867264,13156352:65536\n\
+g1,29:13156352,13156352\n\
+)\n\
+]\n\
+}1\n";
+
+    #[test]
+    fn lines_recorded_at_shipout_are_not_taken_for_the_text() {
+        let doc = parse(SHIPOUT);
+        let roots = fixture_roots();
+        let heading = inverse(&doc, 1, 160.0, 95.0, &roots).unwrap();
+        assert_eq!((heading.file.as_str(), heading.line), ("main.tex", 12));
+        assert_eq!(inverse(&doc, 1, 160.0, 195.0, &roots).unwrap().line, 29);
+    }
+
+    // A display closed on line 34: its spacing glue carries 34, while the
+    // nested boxes around 110 and 160 bp keep the lines typed in, 31 and 32.
+    const DISPLAY: &str = "SyncTeX Version:1\n\
+Input:1:/p/main.tex\n\
+Content:\n\
+{1\n\
+[1,4:0,52625288:39468966,52625288,0\n\
+(1,34:6578176,6578176:32890880,657818,0\n\
+(1,31:6578176,6578176:986726,657818,0\n\
+k1,31:7236000,6578176:65536\n\
+)\n\
+g1,34:8551629,6578176\n\
+(1,32:9867264,6578176:986726,657818,0\n\
+k1,32:10525000,6578176:65536\n\
+)\n\
+g1,34:11840717,6578176\n\
+)\n\
+]\n\
+}1\n";
+
+    #[test]
+    fn a_formula_s_spacing_does_not_pull_clicks_to_the_line_that_closed_it() {
+        let doc = parse(DISPLAY);
+        let roots = fixture_roots();
+        let at = |x: f64| inverse(&doc, 1, x, 95.0, &roots).unwrap().line;
+        assert_eq!(at(120.0), 31);
+        assert_eq!(at(170.0), 32);
+    }
+
+    // Line 5 of a paragraph that ends on line 9 fills three typeset lines; the
+    // third also holds the start of line 8 from 150 bp on.
+    const PARAGRAPH_LINE: &str = "SyncTeX Version:1\n\
+Input:1:/p/main.tex\n\
+Content:\n\
+{1\n\
+[1,4:0,52625288:39468966,52625288,0\n\
+(1,9:6578176,9209000:32890880,657818,0\n\
+g1,5:9867264,9209000\n\
+g1,8:13156352,9209000\n\
+)\n\
+(1,9:6578176,6578176:32890880,657818,0\n\
+g1,5:9867264,6578176\n\
+g1,5:13156352,6578176\n\
+)\n\
+(1,9:6578176,7894000:32890880,657818,0\n\
+g1,5:9867264,7894000\n\
+)\n\
+]\n\
+}1\n";
+
+    #[test]
+    fn forward_search_offers_every_typeset_line_of_a_source_line_in_reading_order() {
+        let doc = parse(PARAGRAPH_LINE);
+        let roots = fixture_roots();
+        let hit = forward_hit(&doc, "main.tex", 5, &roots).unwrap();
+        let tops: Vec<i64> = hit.lines.iter().map(|line| line.y.round() as i64).collect();
+        assert_eq!(tops, [90, 110, 130]);
+        assert_eq!(hit.rect.y.round() as i64, 90);
+        let (first, last) = (hit.lines[0], hit.lines[2]);
+        assert_eq!(
+            (first.from.round() as i64, first.to.round() as i64),
+            (100, 600)
+        );
+        // Line 8 takes over after the word that ends at 150 bp.
+        assert_eq!(
+            (last.from.round() as i64, last.to.round() as i64),
+            (100, 150)
+        );
+    }
+
+    // Line 7 holds only a paragraph's last word, whose space TeX dropped, so
+    // it has no record; lines 6 and 8 around it have text.
+    const SILENT_LINE: &str = "SyncTeX Version:1\n\
+Input:1:/p/main.tex\n\
+Content:\n\
+{1\n\
+[1,4:0,52625288:39468966,52625288,0\n\
+(1,9:6578176,6578176:32890880,657818,0\n\
+g1,6:9867264,6578176\n\
+g1,6:13156352,6578176\n\
+)\n\
+(1,9:6578176,7894000:32890880,657818,0\n\
+g1,6:9867264,7894000\n\
+)\n\
+(1,12:6578176,10525000:32890880,657818,0\n\
+g1,8:9867264,10525000\n\
+)\n\
+]\n\
+}1\n";
+
+    #[test]
+    fn a_source_line_without_records_offers_the_typeset_lines_around_it() {
+        let doc = parse(SILENT_LINE);
+        let roots = fixture_roots();
+        let hit = forward_hit(&doc, "main.tex", 7, &roots).unwrap();
+        assert_eq!(hit.lines.len(), 3);
+        // Its word follows line 6's text, so start at the last line of that.
+        assert_eq!(hit.rect.y.round() as i64, 110);
+    }
+
+    #[test]
     fn a_click_resolves_to_the_line_each_word_was_read_from() {
         let doc = parse(PARAGRAPH);
         let roots = fixture_roots();
@@ -943,7 +1453,7 @@ g3,5:6578176,13156352\n\
     fn forward_search_finds_a_line_inside_a_paragraph() {
         let doc = parse(PARAGRAPH);
         let roots = fixture_roots();
-        let rect = forward(&doc, "chapter.tex", 8, &roots).unwrap();
+        let (rect, _) = forward(&doc, "chapter.tex", 8, &roots).unwrap();
         assert_eq!(rect.page, 1);
         assert!((rect.y - 90.0).abs() < 1.0, "y = {}", rect.y);
     }

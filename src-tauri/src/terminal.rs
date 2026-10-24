@@ -481,6 +481,23 @@ fn apply_terminal_env(cmd: &mut CommandBuilder) {
     }
 }
 
+/// Drops what an AppImage's launcher added to the environment, unless the
+/// shell itself comes from the AppImage.
+fn clear_appimage_env(cmd: &mut CommandBuilder) {
+    let Some(program) = cmd.get_argv().first().cloned() else {
+        return;
+    };
+    let changes = crate::proc::appimage_env_changes(&program, |name| {
+        cmd.get_env(name).map(std::ffi::OsStr::to_os_string)
+    });
+    for (name, value) in changes {
+        match value {
+            Some(value) => cmd.env(name, value),
+            None => cmd.env_remove(name),
+        }
+    }
+}
+
 /// Apply the project's trust rules to a shell command. A restricted folder
 /// never gets a shell started in the background, and a shell the user opens
 /// gets Git hardened. Applied last, so nothing a launch sets can undo it.
@@ -490,6 +507,7 @@ fn project_shell(
     autostart: bool,
     mut cmd: CommandBuilder,
 ) -> Result<CommandBuilder, String> {
+    clear_appimage_env(&mut cmd);
     let Some(hardening) = crate::trust::git_restriction(project_id, root)? else {
         return Ok(cmd);
     };

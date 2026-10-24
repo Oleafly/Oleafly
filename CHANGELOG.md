@@ -115,6 +115,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shell), activity dots on busy tabs, tab titles from programs, Open in
   terminal from the file tree, dragging files in to type their paths, and
   shortcuts for new, close, next and previous terminal.
+- Dropping a file from the Files panel into a document now inserts a link to
+  it, written the way that language writes links: `[name](<path>)` in
+  Markdown, `#link("path")[name]` in Typst and `\href{path}{name}` in LaTeX,
+  relative to the open document. Dropping into an existing `\input{…}` or
+  `](…)` still inserts just the path. (#315)
+- Ctrl+Space completes project files inside Markdown and Typst links and in
+  LaTeX `\href{`. The Files panel has **Copy link** and **Insert link**, and
+  the command palette has **Insert link to file**. (#315)
+- In Visual mode, Cmd+click (Ctrl+click on Windows and Linux) on a link to a
+  project file opens that file in Oleafly. (#316)
 
 ### Changed
 
@@ -135,6 +145,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Usage and budget estimates price the new models. Context size, image
   support and prices in the model list come from a fresh copy of the
   models.dev data.
+- Cloud sync asks Dropbox for the four permissions it uses and no others, and
+  the docs list them. (#317)
+- The default LaTeX engine is now set on each computer and no longer syncs, so
+  a computer without a TeX installation keeps Tectonic. (#317)
+- Cloud sync leaves out `.venv` and `__pycache__` folders. A build file you
+  track in Git, such as a log of results, is now backed up. (#317)
 
 - The assistant's composer grows with your message and keeps a draft per
   chat, with your earlier messages a key press away (#304). Editing an
@@ -216,6 +232,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what is left out.
 - A CLI agent conversation could hang while starting on Linux when an
   environment variable wasn't valid UTF-8.
+- Clicking a word in the PDF selects that word in the source, even when it
+  appears more than once on the line. Before, Oleafly picked the first one.
+  (#314)
+- LaTeX jumps between the PDF and the source land on the right word and line.
+  The first word of a source line no longer jumps to the line above, a
+  paragraph written as one long line highlights the typeset line the cursor
+  is on, LuaLaTeX headings stay in their chapter file, accents typed as TeX
+  commands match, and rotated pages work. On 26,000 test clicks, exact words
+  went from 95.7% to 99.9%, and right lines from the source went from 28% to
+  99.9%. (#314)
+- Typst jumps work word to word too. From the source, the highlight is on the
+  line with the word under the cursor instead of the start of its paragraph,
+  and a click in the PDF selects the word clicked.
+- Links to project files stay relative paths however you make them: pasted
+  from the preview, typed in the link field, dragged in or copied with Copy
+  Link. Before, Windows saved them as `http://tauri.localhost/…`, macOS and
+  Linux dropped them, and clicking one in Visual mode opened a dead browser
+  page. Links already saved the old way open the right file in the preview.
+  (#316)
+- Images whose names have spaces or non-Latin letters keep readable paths
+  after an edit in Visual mode, and two images on their own lines no longer
+  merge onto one line. (#316)
+- In the Linux AppImage, Git push, pull and fetch failed on recent
+  distributions such as CachyOS and Arch with a missing nghttp2 symbol, and
+  Python didn't start from the built-in terminal. Programs Oleafly starts no
+  longer inherit the AppImage's library paths.
+- Cloud sync fixes (#317):
+  - Large files never finished uploading on slow connections.
+  - Renaming a file while its new name couldn't upload, for example with
+    Dropbox full, deleted the old name on your other computers.
+  - When files disappeared from a project's record in Dropbox, for example
+    after a restore, Oleafly deleted them on this computer too. It now pauses
+    and asks, with **Put them back in Dropbox** and **Delete here too**.
+  - A `project.json` from another computer that this version can't open no
+    longer replaces the one here.
+  - When a conflict copy couldn't upload, the other computer's version was
+    replaced anyway. Conflict copies are now named after the computer that
+    wrote that version.
+  - Editing the same AI persona on two computers made every computer drop
+    all personas. Personas now merge one at a time.
+  - A `project.json` this version can't read no longer makes excluded
+    folders upload.
+  - An upload whose reply got lost, or that Dropbox turned away for too many
+    writes, started over from the beginning or stopped the sync.
+  - Turning off sync on this computer now stops a sync that's running.
+    Disconnecting tells you when Dropbox couldn't be reached to end
+    Oleafly's access, and the browser says you're connected only once
+    connecting has finished.
+  - A damaged sync record no longer stops sync for good, a file another
+    program has open on Windows is tried again within minutes, and the first
+    backup of a large project no longer holds up saving.
+  - A project trusted to run shell commands asks again once files arrive
+    from Dropbox, as after a Git pull, and sync waits while a Git command is
+    changing the project's files.
 
 ## [0.4.7] - 2026-10-18
 

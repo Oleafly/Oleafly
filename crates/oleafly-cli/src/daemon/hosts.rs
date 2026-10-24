@@ -446,7 +446,20 @@ impl LinkedRoots for GrantLinkedRoots {
 /// carry the verbatim `\\?\` prefix that dunce drops, so both sides are
 /// compared without it.
 fn same_folder(current: &Path, granted: &Path) -> bool {
-    dunce::simplified(current) == dunce::simplified(granted)
+    comparable(current) == comparable(granted)
+}
+
+/// `path` without the verbatim prefix: `\\?\C:\x` becomes `C:\x` (dunce), and
+/// `\\?\UNC\server\share` becomes `\\server\share`, which dunce leaves alone.
+fn comparable(path: &Path) -> PathBuf {
+    let simple = dunce::simplified(path);
+    match simple
+        .to_str()
+        .and_then(|text| text.strip_prefix(r"\\?\UNC\"))
+    {
+        Some(rest) => PathBuf::from(format!(r"\\{rest}")),
+        None => simple.to_path_buf(),
+    }
 }
 
 /// Records a task's model use in the usage spool: one event per turn,

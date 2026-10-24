@@ -434,11 +434,23 @@ async fn the_state_follows_the_account_from_disconnected_to_revoked() {
     std::fs::create_dir_all(&record).unwrap();
     assert_eq!(code(&cloud_state().await.err().unwrap()), "cloud.local_io");
     std::fs::remove_dir(&record).unwrap();
+    // A record that can't be read is set aside, so this computer can connect again.
     std::fs::write(&record, vec![b' '; 1024 * 1024 + 1]).unwrap();
-    assert_eq!(code(&cloud_state().await.err().unwrap()), "cloud.local_io");
+    assert_eq!(state().await["status"], "disconnected");
+    assert!(!record.exists());
     std::fs::write(&record, b"{not json").unwrap();
-    assert_eq!(code(&cloud_state().await.err().unwrap()), "cloud.local_io");
-    std::fs::remove_file(&record).unwrap();
+    assert_eq!(state().await["status"], "disconnected");
+    let aside = std::fs::read_dir(record.parent().unwrap())
+        .unwrap()
+        .flatten()
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("connection.json.unreadable-")
+        })
+        .count();
+    assert!(aside >= 1);
     let empty = state().await;
     assert_eq!(empty["status"], "disconnected");
     assert_eq!(empty["projects"], json!([]));
@@ -1136,7 +1148,7 @@ async fn switching_off_renaming_and_disconnecting() {
     let harness = Harness::new().await;
     cloud_disconnect().await.unwrap();
     assert_eq!(
-        code(&cloud_set_enabled(true).unwrap_err()),
+        code(&cloud_set_enabled(true).await.unwrap_err()),
         "cloud.not_connected"
     );
     assert_eq!(
@@ -1150,7 +1162,7 @@ async fn switching_off_renaming_and_disconnecting() {
 
     harness.connect().await;
     cloud_set_device_name("Desk Mac".into()).unwrap();
-    cloud_set_enabled(false).unwrap();
+    cloud_set_enabled(false).await.unwrap();
     let off = state().await;
     assert_eq!(off["enabled"], false);
     assert_eq!(off["deviceName"], "Desk Mac");
@@ -1162,13 +1174,14 @@ async fn switching_off_renaming_and_disconnecting() {
         code(&cloud_settings_sync(json!({})).await.err().unwrap()),
         "cloud.disabled"
     );
-    cloud_set_enabled(true).unwrap();
+    cloud_set_enabled(true).await.unwrap();
     assert_eq!(state().await["enabled"], true);
 
     harness.fake.with(|dropbox| {
         dropbox.fault("auth/token/revoke", None, Reply::Status(500), 1);
     });
-    cloud_disconnect().await.unwrap();
+    let done = serde_json::to_value(cloud_disconnect().await.unwrap()).unwrap();
+    assert_eq!(done["remoteRevoked"], false);
     assert_eq!(
         harness
             .fake
@@ -1332,7 +1345,7 @@ async fn a_round_never_refreshes_into_another_account() {
     let harness = Harness::new().await;
     harness.connect().await;
     let refresh = crate::cloud::commands::refresher("dbid:someone-else");
-    let error = refresh().await.unwrap_err();
+    let error = refresh(String::new()).await.unwrap_err();
     assert!(matches!(error, StoreError::Network(_)));
     assert_eq!(state().await["status"], "connected");
     drop(harness);
@@ -1581,9 +1594,50 @@ async fn waiting_for_changes_follows_the_change_cursor_and_what_dropbox_asks() {
             .with(|dropbox| dropbox.calls("files/list_folder/longpoll")),
         5
     );
-    cloud_set_enabled(false).unwrap();
+    cloud_set_enabled(false).await.unwrap();
     assert_eq!(
         code(&cloud_wait_for_changes().await.err().unwrap()),
         "cloud.disabled"
     );
+}
+
+#[tokio::test]
+async fn files_from_dropbox_take_back_permission_to_run_shell_commands() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    harness.project("alpha", "Alpha", &[("main.tex", "alpha v1")]);
+    sync().await;
+    crate::project::write_shell_escape_trust("alpha").unwrap();
+    sync().await;
+    assert!(crate::project::shell_escape_trusted("alpha").unwrap());
+    edit_remote(
+        &harness.fake,
+        cloud_of("alpha"),
+        "main.tex",
+        "alpha v2 with \\write18",
+    );
+    let pulled = sync().await;
+    assert_eq!(report_for(&pulled, "alpha")["downloaded"], 1);
+    assert!(!crate::project::shell_escape_trusted("alpha").unwrap());
+}
+
+#[tokio::test]
+async fn requests_refused_together_share_one_new_token() {
+    let harness = Harness::new().await;
+    harness.connect().await;
+    let refreshes = || {
+        harness.fake.with(|dropbox| {
+            dropbox
+                .token_forms
+                .iter()
+                .filter(|form| form.get("grant_type").map(String::as_str) == Some("refresh_token"))
+                .count()
+        })
+    };
+    let refresh = crate::cloud::commands::refresher(crate::cloud::tests::fake_dropbox::ACCOUNT_ID);
+    let current = refresh(String::new()).await.unwrap();
+    assert_eq!(refreshes(), 0);
+    let (one, two) = tokio::join!(refresh(current.clone()), refresh(current.clone()));
+    assert_eq!(refreshes(), 1);
+    assert_eq!(one.unwrap(), two.unwrap());
 }

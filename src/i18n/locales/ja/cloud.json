@@ -109,6 +109,12 @@
     "heldMessage_other": "{{total}} 件中 {{count}} 件のファイルがここで削除されたため、Dropbox 内のコピーを守るために同期を一時停止しています。",
     "putBack": "元に戻す",
     "deleteToo": "Dropbox からも削除",
+    "heldRemoteMessage_other": "{{total}} 件中 {{count}} 件のファイルが Dropbox から見つからないため、このコンピューター上のファイルを守るために同期を一時停止しています。",
+    "putBackInDropbox": "Dropbox に戻す",
+    "deleteHere": "ここでも削除",
+    "heldRemoteMessage_other": "{{total}} 件中 {{count}} 件のファイルが Dropbox から見つからないため、このコンピューター上のファイルを守るために同期を一時停止しています。",
+    "putBackInDropbox": "Dropbox に戻す",
+    "deleteHere": "ここでも削除",
     "skipReason": {
       "unsupportedName": "一部のコンピューターで使えない名前",
       "duplicateName": "大文字と小文字の違いを除いて別のファイルと同じ名前",
@@ -124,15 +130,21 @@
   },
   "confirm": {
     "removeTitle": "{{name}} を Dropbox から削除しますか？",
-    "removeDescription": "容量を空けるため、Dropbox 内のコピーを削除します。プロジェクトはこのコンピューターに残り、ここでの同期は止まります。他のコンピューターのコピーはそのまま残ります。",
+    "removeDescription": "容量を空けるため、Dropbox 内のコピーを削除します。プロジェクトはこのコンピューターに残り、ここでの同期は止まります。他のコンピューターのコピーは残りますが、そちらでもこのプロジェクトの同期は止まります。",
     "removeAction": "Dropbox から削除",
-    "removeRemoteDescription": "容量を空けるため、Dropbox からこのプロジェクトを削除します。このコンピューターにはないため、後からここでダウンロードすることはできません。すでにプロジェクトがあるコンピューターでは、コピーがそのまま残ります。",
+    "removeRemoteDescription": "容量を空けるため、Dropbox からこのプロジェクトを削除します。このコンピューターにはないため、後からここでダウンロードすることはできません。すでにプロジェクトがあるコンピューターではコピーが残りますが、同期は止まります。",
     "replaceTitle": "Dropbox 内の {{name}} のコピーを置き換えますか？",
     "replaceDescription": "Oleafly は Dropbox 内のコピーを読み込めません。このコンピューターのコピーで置き換えられ、Dropbox にしかない内容は失われます。",
     "replaceAction": "置き換える",
     "deleteTitle": "これらのファイルを Dropbox からも削除しますか？",
     "deleteDescription_other": "このコンピューターで {{name}} から削除した {{count}} 件のファイルは、Dropbox からも削除されます。このプロジェクトを同期している他のコンピューターからも消えます。",
     "deleteAction": "Dropbox から削除",
+    "deleteHereTitle": "これらのファイルをこのコンピューターからも削除しますか？",
+    "deleteHereDescription_other": "Dropbox にない {{count}} 件のファイルは、このコンピューターのごみ箱に移動します。{{name}} が他のコンピューターと同じ内容になります。",
+    "deleteHereAction": "ここで削除",
+    "deleteHereTitle": "これらのファイルをこのコンピューターからも削除しますか？",
+    "deleteHereDescription_other": "Dropbox にない {{count}} 件のファイルは、このコンピューターのごみ箱に移動します。{{name}} が他のコンピューターと同じ内容になります。",
+    "deleteHereAction": "ここで削除",
     "disconnectTitle": "Dropbox の接続を解除しますか？",
     "disconnectDescription": "このコンピューターでの同期が停止します。プロジェクトはこのコンピューターと Dropbox に残ります。",
     "disconnectAction": "接続を解除"
@@ -155,7 +167,13 @@
     "removedRemote": "{{name}} を Dropbox から削除しました。",
     "replaced": "Dropbox 内の {{name}} が、このコンピューターと同じ内容になりました。",
     "filesRestored": "削除したファイルを {{name}} に戻しました。",
-    "filesDeleted": "削除したファイルを Dropbox からも削除しました。"
+    "filesDeleted": "削除したファイルを Dropbox からも削除しました。",
+    "filesUploadedAgain": "{{name}} のファイルを Dropbox に戻しました。",
+    "filesDeletedHere": "ファイルをこのコンピューターのごみ箱に移動しました。",
+    "accessNotRevoked": "接続を解除しました。Oleafly が Dropbox に接続できず、アクセスを終了できませんでした。自分で終了するには、Dropbox の設定の「連携アプリ」から Oleafly を削除してください。",
+    "filesUploadedAgain": "{{name}} のファイルを Dropbox に戻しました。",
+    "filesDeletedHere": "ファイルをこのコンピューターのごみ箱に移動しました。",
+    "accessNotRevoked": "接続を解除しました。Oleafly が Dropbox に接続できず、アクセスを終了できませんでした。自分で終了するには、Dropbox の設定の「連携アプリ」から Oleafly を削除してください。"
   },
   "errors": {
     "code_invalid": "そのコードは使えませんでした。もう一度お試しください。",
@@ -179,6 +197,8 @@
     "sign_in_cancelled": "Dropbox サインインはキャンセルされました。",
     "sign_in_timeout": "サインインに時間がかかりすぎました。もう一度お試しください。",
     "too_many_files": "このプロジェクトには 100,000 件を超えるファイルがあります。多すぎて同期できません。",
+    "traffic_limit": "Dropbox の今月のアップロード上限に達しました。Dropbox がアップロードを再び許可するまで、新しい変更はこのコンピューターに残ります。",
+    "traffic_limit": "Dropbox の今月のアップロード上限に達しました。Dropbox がアップロードを再び許可するまで、新しい変更はこのコンピューターに残ります。",
     "verify_failed": "Dropbox のファイルが Oleafly の想定と一致しなかったため、そのままにしました。同期を再試行します。"
   }
 }

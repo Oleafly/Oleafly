@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly n'a pas pu placer {{path}} dans la Corbeille. Le supprimer définitivement à la place ? Cette action est irréversible.",
     "confirmPermanentDeleteWindows": "Oleafly n'a pas pu placer {{path}} dans la Corbeille. Le supprimer définitivement à la place ? Cette action est irréversible.",
     "linkedReadOnly": "Renvoie vers un fichier situé hors de ce dossier, il est donc en lecture seule.",
-    "partialFolder": "Certains éléments de ce dossier ne sont pas listés."
+    "partialFolder": "Certains éléments de ce dossier ne sont pas listés.",
+    "insertLink": "Insérer un lien",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Lien copié",
+    "copyLinkFailed": "Le lien n'a pas été copié. Vérifiez l'accès au presse-papiers et réessayez."
   },
   "explorer": {
     "resizeSections": "Redimensionner {{first}} et {{second}}"

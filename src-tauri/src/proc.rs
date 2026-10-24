@@ -13,7 +13,9 @@
 
 use std::process::Command;
 
+mod appimage;
 mod output;
+pub(crate) use appimage::{appimage_env_changes, clear_appimage_env};
 pub use output::{output_contained_with_bounds, output_contained_with_timeout, OutputBounds};
 
 /// `CREATE_NO_WINDOW` (winbase.h): the child runs without allocating a console.

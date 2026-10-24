@@ -345,6 +345,10 @@
     "zoteroSync": {
       "label": "Zotero ライブラリを同期",
       "keywords": "zotero 同期 更新 ライブラリ"
+    },
+    "insertFileLink": {
+      "label": "ファイルへのリンクを挿入",
+      "keywords": "リンク ファイル パス ノート 参照"
     }
   },
   "community": {

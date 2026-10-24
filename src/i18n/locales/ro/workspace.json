@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly nu a putut muta {{path}} în Coș. Îl ștergi definitiv? Acțiunea nu poate fi anulată.",
     "confirmPermanentDeleteWindows": "Oleafly nu a putut muta {{path}} în Coșul de reciclare. Îl ștergi definitiv? Acțiunea nu poate fi anulată.",
     "linkedReadOnly": "Trimite la un fișier din afara acestui folder, așa că poate fi doar citit.",
-    "partialFolder": "Unele elemente din acest folder nu sunt listate."
+    "partialFolder": "Unele elemente din acest folder nu sunt listate.",
+    "insertLink": "Inserează o legătură",
+    "copyLink": "Copiază legătura",
+    "linkCopied": "Legătura a fost copiată",
+    "copyLinkFailed": "Legătura nu a fost copiată. Verifică accesul la clipboard și încearcă din nou."
   },
   "explorer": {
     "resizeSections": "Redimensionează {{first}} și {{second}}"

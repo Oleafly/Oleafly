@@ -37,6 +37,7 @@ import {
   pdfVisibleArea,
 } from "./pdfDetailGeometry";
 import { calibratePdfTextLayerWidths } from "./pdfTextLayerGeometry";
+import { pdfTextRuns } from "./pdfTextRuns";
 import { createPdfLayerQueue, type PdfLayerQueue } from "./pdfLayerQueue";
 import {
   createPdfRenderScheduler,
@@ -56,7 +57,15 @@ import {
 } from "./pdfSearch";
 import { safePdfExternalUrl } from "./pdfSecurity";
 import { createPdfScreenReaderLayer } from "./pdfScreenReader";
-import { closestMatchingElement, wordAtHorizontalPosition, wordInText } from "./textHit";
+import {
+  closestMatchingElement,
+  measuredTextOffset,
+  textAroundWord,
+  wordRangeAtHorizontalPosition,
+  wordRangeInText,
+  type PdfWordContext,
+  type TextRange,
+} from "./textHit";
 import { keyEchoTranslator, type PreviewTranslator } from "./messages";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -256,19 +265,28 @@ async function probePageText(doc: pdfjsLib.PDFDocumentProxy): Promise<PageTextCo
   }
 }
 
-function wordAtPoint(
+interface ClickedWord {
+  word: string;
+  context?: PdfWordContext;
+}
+
+function clickedWord(target: Node, text: string, range: TextRange): ClickedWord {
+  const element = target.nodeType === Node.ELEMENT_NODE ? (target as Element) : target.parentElement;
+  const layer = element?.closest(".textLayer");
+  return {
+    word: text.slice(range.start, range.end),
+    context: layer ? textAroundWord(layer, target, range) : undefined,
+  };
+}
+
+function textSpanAt(
   clientX: number,
   clientY: number,
-  eventTarget?: EventTarget | null,
-  root: ParentNode = document,
-): string | null {
-  const d = document as Document & {
-    caretRangeFromPoint?: (x: number, y: number) => Range | null;
-    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
-  };
-  const clickedSpan = closestMatchingElement<HTMLElement>(eventTarget, ".textLayer span");
-  const containingSpan =
-    clickedSpan ??
+  eventTarget: EventTarget | null | undefined,
+  root: ParentNode,
+): HTMLElement | undefined {
+  return (
+    closestMatchingElement<HTMLElement>(eventTarget, ".textLayer span") ??
     Array.from(root.querySelectorAll<HTMLElement>(".textLayer span")).find((span) => {
       const rect = span.getBoundingClientRect();
       return (
@@ -277,35 +295,57 @@ function wordAtPoint(
         clientY >= rect.top &&
         clientY <= rect.bottom
       );
-    });
-  if (containingSpan) {
-    const text = containingSpan.textContent ?? "";
-    const rect = containingSpan.getBoundingClientRect();
-    const word = wordAtHorizontalPosition(text, rect.left, rect.width, clientX);
-    if (word) return word;
-  }
-  let node: Node | null = null;
-  let offset = 0;
+    })
+  );
+}
+
+/** The word under `clientX` in a text-layer span, measured when its text is one node. */
+function wordInSpan(span: HTMLElement, clientX: number): ClickedWord | null {
+  const text = span.textContent ?? "";
+  const node = span.firstChild;
+  const measured =
+    node?.nodeType === Node.TEXT_NODE && node.nodeValue === text
+      ? measuredTextOffset(node as Text, clientX)
+      : null;
+  const rect = span.getBoundingClientRect();
+  const word =
+    measured === null
+      ? wordRangeAtHorizontalPosition(text, rect.left, rect.width, clientX)
+      : wordRangeInText(text, measured);
+  return word ? clickedWord(span, text, word) : null;
+}
+
+function caretAtPoint(clientX: number, clientY: number): { node: Node | null; offset: number } {
+  const d = document as Document & {
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+  };
   const range = d.caretRangeFromPoint?.(clientX, clientY); // WebKit + Chromium
-  if (range) {
-    node = range.startContainer;
-    offset = range.startOffset;
-  } else {
-    const pos = d.caretPositionFromPoint?.(clientX, clientY); // Firefox / standard
-    if (pos) {
-      node = pos.offsetNode;
-      offset = pos.offset;
-    }
-  }
+  if (range) return { node: range.startContainer, offset: range.startOffset };
+  const pos = d.caretPositionFromPoint?.(clientX, clientY); // Firefox / standard
+  return pos ? { node: pos.offsetNode, offset: pos.offset } : { node: null, offset: 0 };
+}
+
+function wordAtPoint(
+  clientX: number,
+  clientY: number,
+  eventTarget?: EventTarget | null,
+  root: ParentNode = document,
+): ClickedWord | null {
+  const containingSpan = textSpanAt(clientX, clientY, eventTarget, root);
+  const spanWord = containingSpan ? wordInSpan(containingSpan, clientX) : null;
+  if (spanWord) return spanWord;
+  const { node, offset } = caretAtPoint(clientX, clientY);
   if (node?.nodeType !== Node.TEXT_NODE || containingSpan?.contains(node) === false) {
     const fallbackText =
       containingSpan?.textContent?.trim() ??
       document.elementFromPoint(clientX, clientY)?.closest(".textLayer span")?.textContent?.trim() ??
       "";
-    return fallbackText || null;
+    return fallbackText ? { word: fallbackText } : null;
   }
   const text = node.textContent ?? "";
-  return wordInText(text, offset);
+  const word = wordRangeInText(text, offset);
+  return word ? clickedWord(node, text, word) : null;
 }
 
 // Render pages within this many CSS pixels of the viewport (above and below), so
@@ -1144,7 +1184,13 @@ export interface PdfViewerProps {
   /** Exact compile/PDF-load identity; never use a filename as this value. */
   documentIdentity?: string;
   scale: number;
-  onInverse?: (page: number, x: number, y: number, word?: string) => void;
+  onInverse?: (
+    page: number,
+    x: number,
+    y: number,
+    word?: string,
+    context?: PdfWordContext,
+  ) => void;
   onPageChange?: (current: number, total: number) => void;
   layout?: PdfLayout;
   onOpenLink?: (url: string) => void;
@@ -2276,6 +2322,23 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     [renderPage]
   );
 
+  // SyncTeX works in the page frame TeX laid out; these map it onto the page
+  // as shown, rotation included.
+  const syncPageGeometry = useCallback((pageNo: number) => pageViewportsRef.current.get(pageNo), []);
+
+  // Forward SyncTeX looks for the cursor's word in the text of the pages the
+  // source line landed on, which may not be rendered yet.
+  const syncPageText = useCallback(async (pageNo: number) => {
+    const doc = docRef.current;
+    if (!doc || pageNo < 1 || pageNo > doc.numPages) return null;
+    const page = await withTimeout(doc.getPage(pageNo), 8_000, "sync page");
+    const content =
+      textContentRef.current.get(pageNo) ??
+      (await withTimeout(page.getTextContent(TEXT_CONTENT_PARAMS), 8_000, "sync page text"));
+    if (docRef.current !== doc) return null;
+    return pdfTextRuns(content, page.getViewport({ scale: 1, rotation: 0 }));
+  }, []);
+
   const reconcileVisiblePages = useCallback(() => {
     const desired = new Set(
       prioritizePdfPages(
@@ -2839,8 +2902,18 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             ev.clientY || (spanRect ? spanRect.top + spanRect.height / 2 : ev.clientY);
           const hit = pageClickToBp(wrap, p, { clientX, clientY });
           if (hit) {
-            const word = wordAtPoint(clientX, clientY, ev.target, wrap);
-            onInverseRef.current?.(hit.page, hit.x, hit.y, word ?? undefined);
+            const clicked = wordAtPoint(clientX, clientY, ev.target, wrap);
+            const context = clicked?.context && {
+              before: pdfjsLib.normalizeUnicode(clicked.context.before),
+              after: pdfjsLib.normalizeUnicode(clicked.context.after),
+            };
+            onInverseRef.current?.(
+              hit.page,
+              hit.x,
+              hit.y,
+              clicked ? pdfjsLib.normalizeUnicode(clicked.word) : undefined,
+              context,
+            );
           }
         });
         return wrap;
@@ -2948,6 +3021,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         pages: [...wrapsRef.current.entries()].map(([pageNo, el]) => ({ pageNo, el })),
         scale: s,
         ensurePageRendered,
+        pageGeometry: syncPageGeometry,
+        pageText: syncPageText,
       });
 
       onPageChangeRef.current?.(currentPageRef.current, doc.numPages);
@@ -2963,6 +3038,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       unrenderPage,
       reconcileVisiblePages,
       ensurePageRendered,
+      syncPageGeometry,
+      syncPageText,
     ]
   );
 
@@ -3443,6 +3520,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         pages: [...wrapsRef.current.entries()].map(([pageNo, el]) => ({ pageNo, el })),
         scale: target,
         ensurePageRendered,
+        pageGeometry: syncPageGeometry,
+        pageText: syncPageText,
       });
     }, 120);
 
@@ -3459,6 +3538,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     unrenderPage,
     ensurePageRendered,
     reconcileVisiblePages,
+    syncPageGeometry,
+    syncPageText,
   ]);
 
   const handleDevicePixelRatioChange = useCallback(() => {

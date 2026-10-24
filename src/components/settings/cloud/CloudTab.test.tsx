@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
     cloudConnectWait: vi.fn(),
     cloudConnectPaste: vi.fn(),
     cloudConnectCancel: vi.fn(async () => undefined),
-    cloudDisconnect: vi.fn(async () => undefined),
+    cloudDisconnect: vi.fn(async () => ({ remoteRevoked: true })),
     cloudSetEnabled: vi.fn(async () => undefined),
     cloudSetDeviceName: vi.fn(async () => undefined),
     cloudSyncNow: vi.fn(),
@@ -414,6 +414,26 @@ describe("CloudTab", () => {
     expect(dialog).toHaveTextContent("The 12 files you deleted from Thesis");
     expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenCalledTimes(1);
     await userEvent.click(within(dialog).getByRole("button", { name: "Delete from Dropbox" }));
+    expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenLastCalledWith("thesis", "delete", []);
+  });
+
+  it("keeps files missing from Dropbox here, and deletes them only after confirming", async () => {
+    serve(
+      cloudState({ projects: [project({ mode: "held", hold: { kind: "remoteDelete", count: 3, total: 10 } })] }),
+    );
+    mocks.cloud.cloudProjectResolveHold.mockResolvedValue(holdReport());
+    render(<CloudTab />);
+    const held = await screen.findByTestId("cloud-project-held");
+    expect(held).toHaveTextContent("3 of 10 files are missing from your Dropbox");
+    await userEvent.click(within(held).getByRole("button", { name: "Put them back in Dropbox" }));
+    expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenCalledWith("thesis", "restore", []);
+    await waitFor(() => expect(within(held).getByRole("button", { name: "Delete here too" })).toBeEnabled());
+    await userEvent.click(within(held).getByRole("button", { name: "Delete here too" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Delete these files on this computer too?");
+    expect(dialog).toHaveTextContent("The 3 files missing from your Dropbox go to this computer's trash");
+    expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenCalledTimes(1);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete here" }));
     expect(mocks.cloud.cloudProjectResolveHold).toHaveBeenLastCalledWith("thesis", "delete", []);
   });
 

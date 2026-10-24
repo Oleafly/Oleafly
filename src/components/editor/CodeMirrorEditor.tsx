@@ -28,6 +28,7 @@ import { createPreflightLinter } from "./cm/preflight-linter";
 import { createTypstPackageHintLinter } from "./cm/typst-package-hints";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
 import { imagePasteExtension } from "./cm/image-paste";
+import { projectFileLinksExtension } from "./cm/file-links";
 import { cursorSignalExtension } from "./cm/cursor-signal";
 import { collabEditorSlot } from "./cm/collab-slot";
 import { commentsEditorSlot } from "./cm/comments-slot";
@@ -316,6 +317,7 @@ const TYPST_EXTENSIONS: Extension[] = [
 ];
 
 const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
+  projectFileLinksExtension(),
   codeIntel(),
   hoverIntel(),
   ...projectIntelligenceExtensions(),

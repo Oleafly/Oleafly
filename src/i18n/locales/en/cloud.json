@@ -117,6 +117,10 @@
     "heldMessage_other": "{{count}} of {{total}} files were deleted here, so sync is paused to keep the copy in your Dropbox safe.",
     "putBack": "Put them back",
     "deleteToo": "Delete from Dropbox too",
+    "heldRemoteMessage_one": "{{count}} of {{total}} files is missing from your Dropbox, so sync is paused to keep it safe on this computer.",
+    "heldRemoteMessage_other": "{{count}} of {{total}} files are missing from your Dropbox, so sync is paused to keep them safe on this computer.",
+    "putBackInDropbox": "Put them back in Dropbox",
+    "deleteHere": "Delete here too",
     "skipReason": {
       "unsupportedName": "Name that doesn't work on every computer",
       "duplicateName": "Same name as another file apart from capitals",
@@ -132,9 +136,9 @@
   },
   "confirm": {
     "removeTitle": "Remove {{name}} from Dropbox?",
-    "removeDescription": "This deletes the copy in your Dropbox to free up space. The project stays on this computer and stops syncing here. Your other computers keep their copies.",
+    "removeDescription": "This deletes the copy in your Dropbox to free up space. The project stays on this computer and stops syncing here. Your other computers keep their copies and stop syncing it too.",
     "removeAction": "Remove from Dropbox",
-    "removeRemoteDescription": "This deletes the project from your Dropbox to free up space. It isn't on this computer, so you can't download it here afterwards. Computers that already have it keep their copies.",
+    "removeRemoteDescription": "This deletes the project from your Dropbox to free up space. It isn't on this computer, so you can't download it here afterwards. Computers that already have it keep their copies and stop syncing it.",
     "replaceTitle": "Replace the copy of {{name}} in Dropbox?",
     "replaceDescription": "Oleafly can't read the copy in your Dropbox. It will be replaced with the copy on this computer, and anything that's only in Dropbox will be lost.",
     "replaceAction": "Replace",
@@ -142,6 +146,10 @@
     "deleteDescription_one": "The file you deleted from {{name}} on this computer will also be deleted from your Dropbox. Other computers that sync this project will lose it too.",
     "deleteDescription_other": "The {{count}} files you deleted from {{name}} on this computer will also be deleted from your Dropbox. Other computers that sync this project will lose them too.",
     "deleteAction": "Delete from Dropbox",
+    "deleteHereTitle": "Delete these files on this computer too?",
+    "deleteHereDescription_one": "The file missing from your Dropbox goes to this computer's trash, so {{name}} matches your other computers.",
+    "deleteHereDescription_other": "The {{count}} files missing from your Dropbox go to this computer's trash, so {{name}} matches your other computers.",
+    "deleteHereAction": "Delete here",
     "disconnectTitle": "Disconnect Dropbox?",
     "disconnectDescription": "Syncing stops on this computer. Your projects stay on this computer and in your Dropbox.",
     "disconnectAction": "Disconnect"
@@ -167,7 +175,10 @@
     "removedRemote": "{{name}} was removed from your Dropbox.",
     "replaced": "{{name}} in your Dropbox now matches this computer.",
     "filesRestored": "The deleted files are back in {{name}}.",
-    "filesDeleted": "The deleted files were removed from your Dropbox too."
+    "filesDeleted": "The deleted files were removed from your Dropbox too.",
+    "filesUploadedAgain": "The files from {{name}} are back in your Dropbox.",
+    "filesDeletedHere": "The files were moved to this computer's trash.",
+    "accessNotRevoked": "Disconnected. Oleafly couldn't reach Dropbox to end its access. To end it yourself, remove Oleafly under Connected apps in your Dropbox settings."
   },
   "errors": {
     "code_invalid": "That code didn't work. Try again.",
@@ -191,6 +202,7 @@
     "sign_in_cancelled": "Dropbox sign-in was cancelled.",
     "sign_in_timeout": "Sign-in took too long. Try again.",
     "too_many_files": "This project has more than 100,000 files. That's too many to sync.",
+    "traffic_limit": "Your Dropbox has reached its upload limit for this month. New changes stay on this computer until Dropbox allows uploads again.",
     "verify_failed": "A file from Dropbox didn't match what Oleafly expected, so it was left alone. Sync will try again."
   }
 }

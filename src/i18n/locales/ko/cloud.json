@@ -109,6 +109,12 @@
     "heldMessage_other": "여기에서 파일 {{total}}개 중 {{count}}개가 삭제되어, Dropbox에 있는 사본을 안전하게 지키려고 동기화를 일시 중지했습니다.",
     "putBack": "되돌려 놓기",
     "deleteToo": "Dropbox에서도 삭제",
+    "heldRemoteMessage_other": "Dropbox에서 파일 {{total}}개 중 {{count}}개를 찾을 수 없어, 이 컴퓨터에 있는 파일을 안전하게 지키려고 동기화를 일시 중지했습니다.",
+    "putBackInDropbox": "Dropbox에 되돌려 놓기",
+    "deleteHere": "여기에서도 삭제",
+    "heldRemoteMessage_other": "Dropbox에서 파일 {{total}}개 중 {{count}}개를 찾을 수 없어, 이 컴퓨터에 있는 파일을 안전하게 지키려고 동기화를 일시 중지했습니다.",
+    "putBackInDropbox": "Dropbox에 되돌려 놓기",
+    "deleteHere": "여기에서도 삭제",
     "skipReason": {
       "unsupportedName": "일부 컴퓨터에서 사용할 수 없는 이름",
       "duplicateName": "대소문자만 다르고 다른 파일과 같은 이름",
@@ -124,15 +130,21 @@
   },
   "confirm": {
     "removeTitle": "Dropbox에서 {{name}}을(를) 제거할까요?",
-    "removeDescription": "공간을 확보하기 위해 Dropbox에 있는 사본을 삭제합니다. 프로젝트는 이 컴퓨터에 남고, 여기에서는 동기화가 멈춥니다. 다른 컴퓨터는 각자의 사본을 그대로 유지합니다.",
+    "removeDescription": "공간을 확보하기 위해 Dropbox에 있는 사본을 삭제합니다. 프로젝트는 이 컴퓨터에 남고, 여기에서는 동기화가 멈춥니다. 다른 컴퓨터는 각자의 사본을 그대로 유지하지만, 그곳에서도 동기화가 멈춥니다.",
     "removeAction": "Dropbox에서 제거",
-    "removeRemoteDescription": "공간을 확보하기 위해 Dropbox에서 프로젝트를 삭제합니다. 이 컴퓨터에는 없으므로 삭제한 후에는 여기에서 다운로드할 수 없습니다. 이미 프로젝트가 있는 컴퓨터는 각자의 사본을 그대로 유지합니다.",
+    "removeRemoteDescription": "공간을 확보하기 위해 Dropbox에서 프로젝트를 삭제합니다. 이 컴퓨터에는 없으므로 삭제한 후에는 여기에서 다운로드할 수 없습니다. 이미 프로젝트가 있는 컴퓨터는 각자의 사본을 그대로 유지하지만 동기화는 멈춥니다.",
     "replaceTitle": "Dropbox에 있는 {{name}} 사본을 바꿀까요?",
     "replaceDescription": "Oleafly가 Dropbox에 있는 사본을 읽을 수 없습니다. 이 컴퓨터의 사본으로 바뀌며, Dropbox에만 있는 내용은 사라집니다.",
     "replaceAction": "바꾸기",
     "deleteTitle": "이 파일들을 Dropbox에서도 삭제할까요?",
     "deleteDescription_other": "이 컴퓨터의 {{name}}에서 삭제한 파일 {{count}}개가 Dropbox에서도 삭제됩니다. 이 프로젝트를 동기화하는 다른 컴퓨터에서도 사라집니다.",
     "deleteAction": "Dropbox에서 삭제",
+    "deleteHereTitle": "이 파일들을 이 컴퓨터에서도 삭제할까요?",
+    "deleteHereDescription_other": "Dropbox에 없는 파일 {{count}}개는 이 컴퓨터의 휴지통으로 이동하며, {{name}}이(가) 다른 컴퓨터와 같아집니다.",
+    "deleteHereAction": "여기에서 삭제",
+    "deleteHereTitle": "이 파일들을 이 컴퓨터에서도 삭제할까요?",
+    "deleteHereDescription_other": "Dropbox에 없는 파일 {{count}}개는 이 컴퓨터의 휴지통으로 이동하며, {{name}}이(가) 다른 컴퓨터와 같아집니다.",
+    "deleteHereAction": "여기에서 삭제",
     "disconnectTitle": "Dropbox 연결을 해제할까요?",
     "disconnectDescription": "이 컴퓨터에서 동기화가 멈춥니다. 프로젝트는 이 컴퓨터와 Dropbox에 그대로 남습니다.",
     "disconnectAction": "연결 해제"
@@ -155,7 +167,13 @@
     "removedRemote": "{{name}}을(를) Dropbox에서 제거했습니다.",
     "replaced": "이제 Dropbox에 있는 {{name}} 프로젝트가 이 컴퓨터와 같습니다.",
     "filesRestored": "삭제한 파일을 {{name}}에 되돌려 놓았습니다.",
-    "filesDeleted": "삭제한 파일을 Dropbox에서도 제거했습니다."
+    "filesDeleted": "삭제한 파일을 Dropbox에서도 제거했습니다.",
+    "filesUploadedAgain": "{{name}}의 파일을 Dropbox에 되돌려 놓았습니다.",
+    "filesDeletedHere": "파일을 이 컴퓨터의 휴지통으로 이동했습니다.",
+    "accessNotRevoked": "연결을 해제했습니다. Oleafly가 Dropbox에 연결할 수 없어 액세스를 종료하지 못했습니다. 직접 종료하려면 Dropbox 설정의 연결된 앱에서 Oleafly를 제거하세요.",
+    "filesUploadedAgain": "{{name}}의 파일을 Dropbox에 되돌려 놓았습니다.",
+    "filesDeletedHere": "파일을 이 컴퓨터의 휴지통으로 이동했습니다.",
+    "accessNotRevoked": "연결을 해제했습니다. Oleafly가 Dropbox에 연결할 수 없어 액세스를 종료하지 못했습니다. 직접 종료하려면 Dropbox 설정의 연결된 앱에서 Oleafly를 제거하세요."
   },
   "errors": {
     "code_invalid": "그 코드가 작동하지 않았습니다. 다시 시도하세요.",
@@ -179,6 +197,8 @@
     "sign_in_cancelled": "Dropbox 로그인이 취소되었습니다.",
     "sign_in_timeout": "로그인이 너무 오래 걸렸습니다. 다시 시도하세요.",
     "too_many_files": "이 프로젝트에는 파일이 100,000개 넘게 있습니다. 너무 많아서 동기화할 수 없습니다.",
+    "traffic_limit": "Dropbox가 이번 달 업로드 한도에 도달했습니다. Dropbox가 업로드를 다시 허용할 때까지 새 변경 사항은 이 컴퓨터에 남아 있습니다.",
+    "traffic_limit": "Dropbox가 이번 달 업로드 한도에 도달했습니다. Dropbox가 업로드를 다시 허용할 때까지 새 변경 사항은 이 컴퓨터에 남아 있습니다.",
     "verify_failed": "Dropbox에서 받은 파일이 Oleafly가 예상한 것과 달라 그대로 두었습니다. 다시 동기화를 시도합니다."
   }
 }

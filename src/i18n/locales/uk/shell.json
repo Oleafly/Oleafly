@@ -351,6 +351,10 @@
     "zoteroSync": {
       "label": "Синхронізувати бібліотеку Zotero",
       "keywords": "zotero синхронізація оновити бібліотека"
+    },
+    "insertFileLink": {
+      "label": "Вставити посилання на файл",
+      "keywords": "посилання файл шлях нотатка"
     }
   },
   "community": {

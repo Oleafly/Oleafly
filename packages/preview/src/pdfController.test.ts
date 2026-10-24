@@ -6,6 +6,7 @@ import {
   gotoPdfPage,
   gotoRect,
   pageClickToBp,
+  pdfPageText,
   registerPdfView,
   setPdfLogger,
 } from "./pdfController";
@@ -234,5 +235,74 @@ describe("pageClickToBp", () => {
     registerPdfView({ pages: [page], scale: 1 });
 
     expect(pageClickToBp(page.el, 1, { clientX, clientY })).toBeNull();
+  });
+});
+
+describe("SyncTeX on rotated pages", () => {
+  // pdf.js 6.3 viewports for a 612 x 792 page, measured: rotated 90 degrees,
+  // TeX's (100, 200) from the top-left shows at (592, 100).
+  const upright = {
+    viewBox: [0, 0, 612, 792],
+    convertToViewportPoint: (x: number, y: number) => [x, 792 - y],
+    convertToPdfPoint: (x: number, y: number) => [x, 792 - y],
+  };
+  const turned = {
+    viewBox: [0, 0, 612, 792],
+    convertToViewportPoint: (x: number, y: number) => [y, x],
+    convertToPdfPoint: (x: number, y: number) => [y, x],
+  };
+
+  beforeEach(() => {
+    Object.defineProperty(HTMLElement.prototype, "animate", {
+      configurable: true,
+      value: vi.fn(() => ({ onfinish: null })),
+    });
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(HTMLElement.prototype, "animate");
+  });
+
+  it("maps a click on a turned page back to the page as TeX laid it out", () => {
+    const [page] = mountPages(1);
+    page.el.getBoundingClientRect = () => box(0, 0, 792, 612);
+    registerPdfView({ pages: [page], scale: 1, pageGeometry: () => turned });
+
+    expect(pageClickToBp(page.el, 1, { clientX: 592, clientY: 100 })).toEqual({ page: 1, x: 100, y: 200 });
+  });
+
+  it("draws the highlight where a turned page shows the text", () => {
+    const [page] = mountPages(1);
+    registerPdfView({ pages: [page], scale: 2, pageGeometry: () => turned });
+
+    gotoRect({ page: 1, x: 100, y: 200, width: 50, height: 10 });
+
+    expect(page.el.querySelector(".ll-synctex-hl")).toHaveStyle({
+      left: "1164px",
+      top: "200px",
+      width: "20px",
+      height: "100px",
+    });
+  });
+
+  it("leaves an upright page exactly as before", () => {
+    const [page] = mountPages(1);
+    page.el.getBoundingClientRect = () => box(10, 20, 1224, 1584);
+    registerPdfView({ pages: [page], scale: 2, pageGeometry: () => upright });
+
+    expect(pageClickToBp(page.el, 1, { clientX: 110, clientY: 120 })).toEqual({ page: 1, x: 50, y: 50 });
+    gotoRect({ page: 1, x: 10, y: 20, width: 30, height: 4 });
+    expect(page.el.querySelector(".ll-synctex-hl")).toHaveStyle({ left: "20px", top: "40px", width: "60px", height: "16px" });
+  });
+
+  it("hands out the page text the viewer registered", async () => {
+    const runs = [{ str: "model", x: 72, top: 100, width: 30, height: 10 }];
+    const pageText = vi.fn(async () => runs);
+    registerPdfView({ pages: mountPages(1), scale: 1, pageText });
+
+    await expect(pdfPageText(1)).resolves.toBe(runs);
+    expect(pageText).toHaveBeenCalledWith(1);
+    clearPdfView();
+    await expect(pdfPageText(1)).resolves.toBeNull();
   });
 });

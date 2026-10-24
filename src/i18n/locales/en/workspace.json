@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly couldn't move {{path}} to the Trash. Delete it permanently instead? You can't undo this.",
     "confirmPermanentDeleteWindows": "Oleafly couldn't move {{path}} to the Recycle Bin. Delete it permanently instead? You can't undo this.",
     "linkedReadOnly": "Links to a file outside this folder, so it's read-only.",
-    "partialFolder": "Some items in this folder aren't listed."
+    "partialFolder": "Some items in this folder aren't listed.",
+    "insertLink": "Insert link",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied",
+    "copyLinkFailed": "The link wasn't copied. Check clipboard access and try again."
   },
   "explorer": {
     "resizeSections": "Resize {{first}} and {{second}}"

@@ -18,12 +18,15 @@ const THEME = {
 };
 
 // Settings that only make sense on the computer that chose them: the
-// terminal shell (a Windows shell or path means nothing on a Mac), and whether
-// task commands may reach the network, a security choice made per machine.
+// terminal shell (a Windows shell or path means nothing on a Mac), whether
+// task commands may reach the network, a security choice made per machine,
+// and the default LaTeX engine (latexmk needs a TeX installation another
+// computer may lack).
 const LOCAL_ONLY_PATHS: readonly (readonly string[])[] = [
   ["appearance", "terminal", "shell"],
   ["appearance", "terminal", "shellPath"],
   ["research", "commandNetwork"],
+  ["engine", "defaultLatexEngine"],
 ];
 
 /** `node` without the value at `path`, dropping parents it leaves empty. Never mutates. */

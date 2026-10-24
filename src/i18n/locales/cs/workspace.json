@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly nedokázal přesunout {{path}} do koše. Smazat natrvalo? Tuto akci nelze vrátit zpět.",
     "confirmPermanentDeleteWindows": "Oleafly nedokázal přesunout {{path}} do koše. Smazat natrvalo? Tuto akci nelze vrátit zpět.",
     "linkedReadOnly": "Odkazuje na soubor mimo tuto složku, proto je jen ke čtení.",
-    "partialFolder": "Některé položky v této složce nejsou vypsané."
+    "partialFolder": "Některé položky v této složce nejsou vypsané.",
+    "insertLink": "Vložit odkaz",
+    "copyLink": "Kopírovat odkaz",
+    "linkCopied": "Odkaz zkopírován",
+    "copyLinkFailed": "Odkaz nebyl zkopírován. Zkontrolujte přístup ke schránce a zkuste to znovu."
   },
   "explorer": {
     "resizeSections": "Změnit velikost sekcí {{first}} a {{second}}"

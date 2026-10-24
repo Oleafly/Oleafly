@@ -61,6 +61,7 @@ struct Fault {
     path: Option<String>,
     reply: Reply,
     remaining: usize,
+    after: bool,
 }
 
 pub(crate) struct Inner {
@@ -88,6 +89,9 @@ pub(crate) struct Inner {
     pub(crate) list_noise: bool,
     pub(crate) token_forms: Vec<BTreeMap<String, String>>,
     pub(crate) revoked: Vec<String>,
+    pub(crate) delays: BTreeMap<String, std::time::Duration>,
+    /// Requests counted as they arrive, before any delay.
+    pub(crate) arrivals: BTreeMap<String, usize>,
 }
 
 fn dropbox_hash(bytes: &[u8]) -> String {
@@ -221,6 +225,8 @@ impl Inner {
             list_noise: false,
             token_forms: Vec::new(),
             revoked: Vec::new(),
+            delays: BTreeMap::new(),
+            arrivals: BTreeMap::new(),
         }
     }
 
@@ -300,6 +306,19 @@ impl Inner {
             path: path.map(str::to_lowercase),
             reply,
             remaining: times,
+            after: false,
+        });
+    }
+
+    /// Carries the request out, then answers with `reply` instead, the way a
+    /// reply lost on the way back looks to the client.
+    pub(crate) fn fault_after(&mut self, route: &str, reply: Reply, times: usize) {
+        self.faults.push(Fault {
+            route: route.to_string(),
+            path: None,
+            reply,
+            remaining: times,
+            after: true,
         });
     }
 
@@ -316,6 +335,10 @@ impl Inner {
     }
 
     fn take_fault(&mut self, route: &str, arg: &Value) -> Option<Reply> {
+        self.take_fault_when(route, arg, false)
+    }
+
+    fn take_fault_when(&mut self, route: &str, arg: &Value, after: bool) -> Option<Reply> {
         let target = arg
             .get("path")
             .or_else(|| arg.pointer("/commit/path"))
@@ -324,6 +347,7 @@ impl Inner {
             .to_lowercase();
         let fault = self.faults.iter_mut().find(|fault| {
             fault.remaining > 0
+                && fault.after == after
                 && fault.route == route
                 && fault
                     .path
@@ -388,7 +412,8 @@ impl Inner {
         if !self.access.contains(&token) {
             return expired();
         }
-        match route.as_str() {
+        let lost = self.take_fault_when(&route, &arg, true);
+        let response = match route.as_str() {
             "auth/token/revoke" => {
                 self.access.remove(&token);
                 self.revoked.push(token);
@@ -438,7 +463,7 @@ impl Inner {
             }
             "files/upload_session/append_v2" => match self.append(&arg, body) {
                 Ok(_) => json_reply(Value::Null),
-                Err(summary) => refuse(summary),
+                Err(refused) => *refused,
             },
             "files/upload_session/finish_batch_v2" => self.finish_batch(&arg),
             "files/upload_session/finish" => match self.append(&arg, body) {
@@ -446,10 +471,11 @@ impl Inner {
                     let data = self.sessions.remove(&id).unwrap_or_default();
                     self.commit(&arg["commit"], data)
                 }
-                Err(summary) => refuse(summary),
+                Err(refused) => *refused,
             },
             _ => (StatusCode::NOT_FOUND, "unknown route").into_response(),
-        }
+        };
+        lost.map_or(response, reply_response)
     }
 
     fn token(&mut self, body: &[u8]) -> Response {
@@ -790,7 +816,7 @@ impl Inner {
             .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
     }
 
-    fn append(&mut self, arg: &Value, body: &[u8]) -> Result<String, &'static str> {
+    fn append(&mut self, arg: &Value, body: &[u8]) -> Result<String, Box<Response>> {
         let id = arg
             .pointer("/cursor/session_id")
             .and_then(Value::as_str)
@@ -798,10 +824,19 @@ impl Inner {
             .to_string();
         let offset = arg.pointer("/cursor/offset").and_then(Value::as_u64);
         let Some(data) = self.sessions.get_mut(&id) else {
-            return Err("lookup_failed/not_found/..");
+            return Err(Box::new(refuse("not_found/..")));
         };
         if offset != Some(data.len() as u64) {
-            return Err("lookup_failed/incorrect_offset/..");
+            return Err(Box::new(
+                (
+                    StatusCode::CONFLICT,
+                    axum::Json(json!({
+                        "error_summary": "incorrect_offset/..",
+                        "error": {".tag": "incorrect_offset", "correct_offset": data.len()}
+                    })),
+                )
+                    .into_response(),
+            ));
         }
         data.extend_from_slice(body);
         Ok(id)
@@ -927,6 +962,18 @@ async fn handle(
     let Ok(body) = axum::body::to_bytes(body, MAX_BODY).await else {
         return StatusCode::PAYLOAD_TOO_LARGE.into_response();
     };
+    let route = uri
+        .path()
+        .trim_start_matches("/content")
+        .trim_start_matches("/2/");
+    let delay = {
+        let mut inner = shared.lock().unwrap_or_else(PoisonError::into_inner);
+        *inner.arrivals.entry(route.to_string()).or_default() += 1;
+        inner.delays.get(route).copied()
+    };
+    if let Some(delay) = delay {
+        tokio::time::sleep(delay).await;
+    }
     shared
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
@@ -966,13 +1013,17 @@ impl FakeDropbox {
         }
     }
 
+    pub(crate) fn shared(&self) -> Arc<Mutex<Inner>> {
+        Arc::clone(&self.shared)
+    }
+
     pub(crate) fn with<T>(&self, change: impl FnOnce(&mut Inner) -> T) -> T {
         change(&mut self.shared.lock().unwrap_or_else(PoisonError::into_inner))
     }
 
     pub(crate) fn refresher(&self, calls: Arc<AtomicUsize>) -> TokenRefresher {
         let shared = Arc::clone(&self.shared);
-        Arc::new(move || -> BoxFuture<'static, StoreResult<String>> {
+        Arc::new(move |_stale| -> BoxFuture<'static, StoreResult<String>> {
             calls.fetch_add(1, Ordering::SeqCst);
             let token = shared
                 .lock()

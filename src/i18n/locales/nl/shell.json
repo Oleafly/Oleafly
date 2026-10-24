@@ -347,6 +347,10 @@
     "zoteroSync": {
       "label": "Zotero-bibliotheek synchroniseren",
       "keywords": "zotero synchroniseren vernieuwen bibliotheek"
+    },
+    "insertFileLink": {
+      "label": "Link naar bestand invoegen",
+      "keywords": "link bestand pad notitie verwijzing"
     }
   },
   "community": {

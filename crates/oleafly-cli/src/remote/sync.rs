@@ -739,7 +739,8 @@ pub(crate) mod tests {
         assert_eq!(saved.len(), 1);
         assert_eq!(saved[0]["files"], json!(["main.tex"]));
         let folder = PathBuf::from(saved[0]["folder"].as_str().unwrap());
-        assert!(folder.starts_with(backups_folder(&project.canonicalize().unwrap())));
+        // The report names folders the way scope does (no `\\?\` on Windows).
+        assert!(folder.starts_with(backups_folder(&dunce::canonicalize(&project).unwrap())));
         assert_eq!(read(&folder.join("main.tex")), "My own text\n");
         assert!(report
             .lines

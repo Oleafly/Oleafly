@@ -51,7 +51,11 @@
     "confirmPermanentDelete": "Oleafly kunde inte flytta {{path}} till papperskorgen. Vill du radera den permanent i stället? Det går inte att ångra.",
     "confirmPermanentDeleteWindows": "Oleafly kunde inte flytta {{path}} till papperskorgen. Vill du radera den permanent i stället? Det går inte att ångra.",
     "linkedReadOnly": "Länkar till en fil utanför mappen och är därför skrivskyddad.",
-    "partialFolder": "Alla objekt i den här mappen listas inte."
+    "partialFolder": "Alla objekt i den här mappen listas inte.",
+    "insertLink": "Infoga länk",
+    "copyLink": "Kopiera länk",
+    "linkCopied": "Länken kopierades",
+    "copyLinkFailed": "Länken kopierades inte. Kontrollera åtkomsten till urklipp och försök igen."
   },
   "explorer": {
     "resizeSections": "Ändra storlek på {{first}} och {{second}}"

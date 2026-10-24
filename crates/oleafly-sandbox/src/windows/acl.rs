@@ -14,8 +14,8 @@ use std::path::Path;
 use windows_sys::Win32::Foundation::{GetLastError, LocalFree, ERROR_SUCCESS};
 use windows_sys::Win32::Security::Authorization::{
     GetNamedSecurityInfoW, SetEntriesInAclW, SetNamedSecurityInfoW, DENY_ACCESS, EXPLICIT_ACCESS_W,
-    GRANT_ACCESS, NO_MULTIPLE_TRUSTEE, REVOKE_ACCESS, SE_FILE_OBJECT, TRUSTEE_IS_SID,
-    TRUSTEE_IS_UNKNOWN, TRUSTEE_W,
+    GRANT_ACCESS, NO_MULTIPLE_TRUSTEE, SE_FILE_OBJECT, TRUSTEE_IS_SID, TRUSTEE_IS_UNKNOWN,
+    TRUSTEE_W,
 };
 use windows_sys::Win32::Security::{
     AddAce, EqualSid, GetAce, InitializeAcl, InitializeSecurityDescriptor, SetFileSecurityW,
@@ -209,6 +209,17 @@ fn merged(path: &Path, entry: &EXPLICIT_ACCESS_W) -> Result<(*mut ACL, Dacl), Sa
 }
 
 fn write_named(path: &Path, dacl: *mut ACL, extra: u32) -> Result<(), SandboxError> {
+    let result = set_named(path, dacl, extra);
+    // SAFETY: allocated by SetEntriesInAclW.
+    unsafe {
+        LocalFree(dacl as *mut core::ffi::c_void);
+    }
+    result
+}
+
+/// Writes `dacl` to `path`; the system carries inheritable changes to
+/// everything below it. The caller owns `dacl`.
+fn set_named(path: &Path, dacl: *const ACL, extra: u32) -> Result<(), SandboxError> {
     let name = wide_path(path);
     // SAFETY: `name` is NUL-terminated and `dacl` a valid ACL.
     let code = unsafe {
@@ -222,10 +233,6 @@ fn write_named(path: &Path, dacl: *mut ACL, extra: u32) -> Result<(), SandboxErr
             std::ptr::null(),
         )
     };
-    // SAFETY: allocated by SetEntriesInAclW.
-    unsafe {
-        LocalFree(dacl as *mut core::ffi::c_void);
-    }
     if code != ERROR_SUCCESS {
         return Err(error("writing the access list of", path, code));
     }
@@ -234,9 +241,19 @@ fn write_named(path: &Path, dacl: *mut ACL, extra: u32) -> Result<(), SandboxErr
 
 /// Writes a DACL to this object only (no walk below it).
 fn write_this_only(path: &Path, dacl: *mut ACL) -> Result<(), SandboxError> {
+    let result = set_this_only(path, dacl);
+    // SAFETY: allocated by SetEntriesInAclW.
+    unsafe {
+        LocalFree(dacl as *mut core::ffi::c_void);
+    }
+    result
+}
+
+/// Writes `dacl` to `path` alone. The caller owns `dacl`.
+fn set_this_only(path: &Path, dacl: *const ACL) -> Result<(), SandboxError> {
     let name = wide_path(path);
-    // SAFETY: the descriptor lives on the stack for the call; `dacl` is
-    // freed after it.
+    // SAFETY: the descriptor lives on the stack for the call and `dacl`
+    // outlives it.
     let result = unsafe {
         let mut descriptor: SECURITY_DESCRIPTOR = std::mem::zeroed();
         let descriptor_ptr = &mut descriptor as *mut SECURITY_DESCRIPTOR as PSECURITY_DESCRIPTOR;
@@ -244,7 +261,6 @@ fn write_this_only(path: &Path, dacl: *mut ACL) -> Result<(), SandboxError> {
             && SetSecurityDescriptorDacl(descriptor_ptr, 1, dacl, 0) != 0
             && SetFileSecurityW(name.as_ptr(), DACL_SECURITY_INFORMATION, descriptor_ptr) != 0;
         let code = windows_sys::Win32::Foundation::GetLastError();
-        LocalFree(dacl as *mut core::ffi::c_void);
         if ok {
             Ok(())
         } else {
@@ -308,18 +324,73 @@ pub(crate) fn grant_traverse(dir: &Path, sid: &OwnedSid) -> Result<(), SandboxEr
     write_this_only(dir, dacl)
 }
 
-/// Removes `sid`'s entries from `path` and everything below it.
+/// Removes `sid`'s entries from `path` and everything below it: its allow
+/// entries and its deny entries alike (REVOKE_ACCESS would leave the deny
+/// entries in place).
 pub(crate) fn revoke(path: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
-    let entry = explicit(sid, REVOKE_ACCESS, 0, NO_INHERITANCE);
-    let (dacl, _current) = merged(path, &entry)?;
-    write_named(path, dacl, 0)
+    let current = read_dacl(path)?;
+    if current.dacl.is_null() {
+        return Ok(());
+    }
+    let acl = without_own_entries(&current, sid)
+        .map_err(|code| error("updating the access list of", path, code))?;
+    set_named(path, acl.as_ptr().cast::<ACL>(), 0)
 }
 
-/// Removes a traverse entry from `dir` only.
+/// Removes `sid`'s entries from `dir` only: a traverse grant and the
+/// folder-only delete deny.
 pub(crate) fn revoke_traverse(dir: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
-    let entry = explicit(sid, REVOKE_ACCESS, 0, NO_INHERITANCE);
-    let (dacl, _current) = merged(dir, &entry)?;
-    write_this_only(dir, dacl)
+    let current = read_dacl(dir)?;
+    if current.dacl.is_null() {
+        return Ok(());
+    }
+    let acl = without_own_entries(&current, sid)
+        .map_err(|code| error("updating the access list of", dir, code))?;
+    set_this_only(dir, acl.as_ptr().cast::<ACL>())
+}
+
+/// A copy of `dacl` without the allow and deny entries set on it for `sid`.
+/// Inherited entries stay as they are: writing the copy recomputes them from
+/// the parent. Held in `u32`s because an ACL and its entries need 4-byte
+/// alignment.
+fn without_own_entries(dacl: &Dacl, sid: &OwnedSid) -> Result<Vec<u32>, u32> {
+    // SAFETY: `dacl.dacl` is a valid ACL owned by `dacl` (the caller checked
+    // it isn't null); each entry is read within its own AceSize and copied
+    // into an aligned buffer before AddAce reads it.
+    unsafe {
+        let source = &*dacl.dacl;
+        let revision = u32::from(source.AclRevision);
+        let size = u32::from(source.AclSize);
+        let mut buffer = vec![0u32; (size as usize).div_ceil(4)];
+        let acl = buffer.as_mut_ptr().cast::<ACL>();
+        if InitializeAcl(acl, size, revision) == 0 {
+            return Err(GetLastError());
+        }
+        for index in 0..u32::from(source.AceCount) {
+            let mut ace: *mut core::ffi::c_void = std::ptr::null_mut();
+            if GetAce(dacl.dacl, index, &mut ace) == 0 {
+                return Err(GetLastError());
+            }
+            let header = &*ace.cast::<ACE_HEADER>();
+            let kind = u32::from(header.AceType);
+            let own = u32::from(header.AceFlags) & INHERITED_ACE == 0;
+            if own && (kind == ACCESS_ALLOWED_ACE_TYPE || kind == ACCESS_DENIED_ACE_TYPE) {
+                // Both entry types put the SID at the same place.
+                let entry = ace.cast::<ACCESS_ALLOWED_ACE>();
+                let ace_sid = std::ptr::addr_of!((*entry).SidStart) as PSID;
+                if EqualSid(ace_sid, sid.as_psid()) != 0 {
+                    continue;
+                }
+            }
+            let length = usize::from(header.AceSize);
+            let mut copy = vec![0u32; length.div_ceil(4)];
+            std::ptr::copy_nonoverlapping(ace.cast::<u8>(), copy.as_mut_ptr().cast::<u8>(), length);
+            if AddAce(acl, revision, u32::MAX, copy.as_ptr().cast(), length as u32) == 0 {
+                return Err(GetLastError());
+            }
+        }
+        Ok(buffer)
+    }
 }
 
 /// Keeps `sid` from writing a protected file inside a writable folder: the

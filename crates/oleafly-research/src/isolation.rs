@@ -622,6 +622,12 @@ fn run_git(
     for variable in git.clear {
         command.env_remove(variable);
     }
+    for (name, value) in &git.env {
+        match value {
+            Some(value) => command.env(name, value),
+            None => command.env_remove(name),
+        };
+    }
     command
         .arg("-c")
         .arg(format!("core.hooksPath={}", null_device()))

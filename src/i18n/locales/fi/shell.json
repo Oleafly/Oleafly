@@ -347,6 +347,10 @@
     "zoteroSync": {
       "label": "Synkronoi Zotero-kirjasto",
       "keywords": "zotero synkronoi päivitä kirjasto sync refresh library"
+    },
+    "insertFileLink": {
+      "label": "Lisää linkki tiedostoon",
+      "keywords": "linkki tiedosto polku muistiinpano viittaus"
     }
   },
   "community": {

@@ -207,9 +207,21 @@ pub(super) async fn execute(
 /// Whether `current` is the folder a session was granted (`saved`). On
 /// Windows one of them can be the verbatim form (`\\?\C:\data`, what
 /// `canonicalize` returns) and the other the plain one (`C:\data`, what a
-/// helper that simplifies paths returns): both are compared in plain form.
+/// helper that simplifies paths returns): both are compared in plain form,
+/// network shares too (`\\?\UNC\server\share`, which dunce leaves alone).
 fn same_folder(current: &std::path::Path, saved: &str) -> bool {
-    dunce::simplified(current) == dunce::simplified(std::path::Path::new(saved))
+    comparable(current) == comparable(std::path::Path::new(saved))
+}
+
+fn comparable(path: &std::path::Path) -> std::path::PathBuf {
+    let simple = dunce::simplified(path);
+    match simple
+        .to_str()
+        .and_then(|text| text.strip_prefix(r"\\?\UNC\"))
+    {
+        Some(rest) => std::path::PathBuf::from(format!(r"\\{rest}")),
+        None => simple.to_path_buf(),
+    }
 }
 
 fn linked_scope(context: &Context, root_id: &str) -> Result<files::FileScope, String> {

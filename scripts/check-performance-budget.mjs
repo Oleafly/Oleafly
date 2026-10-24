@@ -48,11 +48,14 @@ const limits = {
   // accounts, the Preflight context, the terminal key map and the Tools model
   // choice, about 105 KB of new modules before minification. The entry
   // measures 4.93 MB.
-  largestJavaScript: 4_950_000,
+  // +40 KB for main's links between project files and SyncTeX accuracy
+  // (about 21 KB of it lands in the entry with the source editor) on top of
+  // 0.4.8's audit fixes: the entry measures 4,969,172 bytes on macOS.
+  largestJavaScript: 4_990_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 4_950_000,
+  entryJavaScript: 4_990_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -133,9 +136,23 @@ const limits = {
   // in public/ and not counted here), and the server card and Email page
   // changes. About 1.3 KB of it is English strings in the entry. CI measured
   // 20,405,179 bytes on both Linux and Windows for one tree.
+  // +10 KB for links between project files: the clicked occurrence of a
+  // repeated word in PDF to source, link completion for Markdown, Typst and
+  // LaTeX, links dropped from the Files panel, and readable relative link
+  // destinations in Visual mode. About 8.3 KB of it is in the entry with the
+  // source editor. The combined graph measures 20,425,758 bytes on macOS,
+  // against 20,412,156 bytes on CI for its base.
+  // +10 KB for SyncTeX accuracy in both directions: the PDF-to-source word
+  // search across nearby lines, accents typed as TeX macros, finding the
+  // cursor's word among a source line's typeset lines, and rotated pages.
+  // The graph measures 20,433,376 bytes on macOS, 7.6 KB above the line before.
+  // Links that open project files in Visual mode, word-level Typst sync and
+  // the cloud sync fixes bring it to 20,439,121 bytes. The DOMPurify 3.4.17
+  // and markdown-it 14.3.3 security updates then take it to 20,414,055.
   // +500 KB for 0.4.8: CLI agent conversations, history and controls, research
   // tasks and their runs, Desktop apps, Git hosting, the terminal settings and
   // the entry growth above. The combined graph measures 20.91 MB.
+  // With both, the combined graph measures 20,950,195 bytes on macOS.
   totalJavaScript: 21_000_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about

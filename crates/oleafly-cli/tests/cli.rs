@@ -1152,8 +1152,9 @@ fn write_executable(path: &std::path::Path, contents: &str) {
 }
 
 /// The first start of a new binary can be slow on a busy machine (macOS
-/// checks it), longer than the version probe waits. Start it once here, then
-/// forget the call so the tests count only their own.
+/// checks it, and so can a security tool scanning new files), longer than the
+/// version probe waits. Start it once here, then forget the call so the tests
+/// count only their own.
 fn warm_up_typst(binary: &std::path::Path) {
     let output = std::process::Command::new(binary)
         .arg("--version")
