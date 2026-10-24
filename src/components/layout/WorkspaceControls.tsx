@@ -14,6 +14,7 @@ import { useSettingsStore, type RailTab } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useTerminalsStore } from "@/store/terminals";
 import { useMcpActivityStore } from "@/store/mcp-activity";
+import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 import { useCollabRail } from "@/components/collab/collab-rail";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
@@ -119,6 +120,11 @@ export function SidebarViews() {
   useEffect(() => {
     if (!commentsShown && railTab === "comments") setRailTab("files");
   }, [commentsShown, railTab, setRailTab]);
+  // 0.4.8: the Research tab exists only while research tasks (experimental) are on.
+  const researchShown = useResearchTasksEnabled();
+  useEffect(() => {
+    if (!researchShown && railTab === "research") setRailTab("files");
+  }, [researchShown, railTab, setRailTab]);
 
   const select = (tab: RailTab) => {
     setRailTab(tab);

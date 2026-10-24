@@ -1810,6 +1810,30 @@ impl AcpRuntime {
                 if !resuming {
                     self.apply_remembered(session).await;
                 }
+                // A session restored from the store knows its models but not
+                // the options they came from, and `session/load` returns
+                // none: setting the model it already runs makes the agent
+                // send every option, so the model, effort and mode pickers
+                // work again after a reconnect.
+                if resuming {
+                    let refresh = session.state.lock().ok().and_then(|state| {
+                        let controls = &state.record.controls;
+                        (!controls.legacy_models
+                            && controls.options.is_empty()
+                            && !controls.models.is_empty())
+                        .then(|| controls.model_id.clone())
+                        .flatten()
+                    });
+                    if let Some(model) = refresh {
+                        let _ = self
+                            .send_config_option_unchecked(
+                                session,
+                                "model",
+                                &oleafly_acp::controls::ConfigValue::Id(model),
+                            )
+                            .await;
+                    }
+                }
                 self.leave_blocked_mode(session).await;
                 Ok(())
             }
@@ -3359,7 +3383,10 @@ pub(super) fn build_agent_command(
             &record.project_id,
             Path::new(&record.project_path),
         )?;
-        spec.child_processes = catalog::is_codex(definition);
+        // Agents start helpers (git, shells, language servers, their own
+        // tools); without this the sandbox refuses `posix_spawn` with ENOSYS
+        // and the agent dies on its first command.
+        spec.child_processes = true;
         if cfg!(windows) {
             // The folder of the agent's program (the Node.js that runs a
             // bridge script) comes first on the task's PATH.
@@ -3709,7 +3736,7 @@ impl AcpRuntime {
             &super::task_launch::runtime_reads(&self.root, &definition, &launch),
         )?;
         spec.env = super::task_launch::task_env(&launch, project_id, &root)?;
-        spec.child_processes = catalog::is_codex(&definition);
+        spec.child_processes = true;
         if cfg!(windows) {
             spec.path_prepend = launch
                 .executable

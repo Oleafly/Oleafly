@@ -6,9 +6,7 @@
     "configError": "No se pudieron cargar los ajustes del asistente.",
     "tabTasks": "Tareas",
     "tabFolders": "Carpetas enlazadas",
-    "noProject": "Abre un proyecto para enlazar sus carpetas de investigación.",
-    "tasksOff": "Las tareas de investigación son experimentales y están desactivadas.",
-    "turnOn": "Activar en Ajustes"
+    "noProject": "Abre un proyecto para enlazar sus carpetas de investigación."
   },
   "roots": {
     "title": "Carpetas de investigación",
@@ -411,13 +409,6 @@
     },
     "settings": {
       "title": "Tareas de investigación",
-      "experimental": {
-        "label": "Activar las tareas de investigación",
-        "badge": "Experimental",
-        "description": "Un agente trabaja por su cuenta en una copia del proyecto, dentro de un presupuesto de tiempo, y deja sus cambios para que los revises.",
-        "warning": "Muy inestable. Las ejecuciones pueden atascarse, fallar o dejar cambios que tendrás que arreglar a mano, y consumen la cuota de tu proveedor todo el tiempo. Actívalo por tu cuenta y riesgo. Al desactivarlo se detienen todas las tareas en ejecución.",
-        "saveFailed": "No se pudo guardar el interruptor de las tareas de investigación. Inténtalo de nuevo."
-      },
       "keepAwake": "Mantener el equipo despierto mientras se ejecutan las tareas",
       "keepAwakeHint": "La pantalla puede apagarse igualmente.",
       "notifications": "Avisarme cuando una tarea necesite atención",

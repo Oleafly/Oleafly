@@ -485,8 +485,10 @@ async fn text_that_decoding_grows_past_the_cap_is_marked_truncated() {
 async fn a_slow_robots_txt_counts_against_the_fetch_timeout() {
     let site = site(vec![
         (
+            // Far longer than the fetch timeout: the fetch must give up long
+            // before robots.txt answers, whatever the load on the machine.
             "/robots.txt",
-            slow(route("200 OK", "text/plain", ""), Duration::from_secs(3)),
+            slow(route("200 OK", "text/plain", ""), Duration::from_secs(20)),
         ),
         ("/p", route("200 OK", "text/plain", "page")),
     ]);
@@ -499,7 +501,9 @@ async fn a_slow_robots_txt_counts_against_the_fetch_timeout() {
         .await
         .unwrap_err();
     assert_eq!(error, WebError::Timeout);
-    assert!(started.elapsed() < Duration::from_secs(2));
+    // A loaded runner polls the timeout late by a second or two; waiting out
+    // the robots route would take ten times longer.
+    assert!(started.elapsed() < Duration::from_secs(10));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

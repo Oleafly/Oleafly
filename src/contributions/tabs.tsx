@@ -5,6 +5,7 @@ import { i18n } from "@/i18n";
 import { useGitStatusStore } from "@/store/git-status";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { useResearchAttentionBadge } from "@/store/research-attention";
+import { researchTasksEnabled } from "@/store/research-tasks-flag";
 import {
   CollabPanel,
   CollabRailIcon,
@@ -38,6 +39,9 @@ export function registerRailTabs() {
     section: "assist",
     order: 60,
     beta: true,
+    // 0.4.8: research tasks are experimental and off by default; the rail
+    // entry comes and goes with the switch (WorkspaceControls re-renders on it).
+    when: () => researchTasksEnabled(),
     panel: ResearchWorkspacePanel,
     // Tasks waiting for a review, a plan approval or a command approval.
     useBadge: () => useResearchAttentionBadge(),

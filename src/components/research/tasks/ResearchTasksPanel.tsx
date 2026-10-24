@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
@@ -405,9 +406,10 @@ export function ResearchTasksPanel({
         aria-label={t(($) => $.researchTools.tasks.panel.listLabel)}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <div className="shrink-0 px-3 pt-3">
+        <div className="@container shrink-0 px-3 pt-3">
           <Tabs value={filter} onValueChange={(next) => setFilter(next as TaskFilter)}>
-            <TabsList size="sm" className="flex w-full overflow-x-auto">
+            {/* Below 18rem the four tabs truncate to syllables; a menu takes over there. */}
+            <TabsList size="sm" className="hidden w-full @[18rem]:flex">
               {FILTERS.map((entry) => (
                 <TabsTrigger
                   key={entry.id}
@@ -432,6 +434,22 @@ export function ResearchTasksPanel({
               ))}
             </TabsList>
           </Tabs>
+          <Select value={filter} onValueChange={(next) => setFilter(next as TaskFilter)}>
+            <SelectTrigger
+              aria-label={t(($) => $.researchTools.tasks.panel.listLabel)}
+              data-testid="research-task-filter-select"
+              className="h-8 w-full text-xs @[18rem]:hidden"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {FILTERS.map((entry) => (
+                <SelectItem key={entry.id} value={entry.id} className="text-xs">
+                  {entry.label()} · {counts[entry.id]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {projectId && !detailOpen && tasks.some((task) => task.pendingApprovals > 0) ? (
           <div className="shrink-0 px-3 pt-3">

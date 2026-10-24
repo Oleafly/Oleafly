@@ -833,6 +833,11 @@
         "description": "Muokkaa projekteja muiden kanssa yhteistyöpalvelimen kautta, jota sinä tai ryhmäsi ylläpitää. Lisää asetuksiin Yhteistyö-osion. Oletuksena pois, koska ominaisuus on vielä beta-vaiheessa.",
         "label": "Reaaliaikainen yhteistyö"
       },
+      "researchTasks": {
+        "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",
+        "label": "Tutkimustehtävät",
+        "saveFailed": "Tutkimustehtävien kytkintä ei voitu tallentaa. Yritä uudelleen."
+      },
       "warning": "Nämä ominaisuudet ovat kokeellisia ja yhä beta-vaiheessa. Niitä ei ole vielä testattu kattavasti, ja ne voivat muuttua, hajota tai poistua tulevassa julkaisussa. Ota ne käyttöön vain, jos haluat kokeilla keskeneräistä työtä."
     },
     "footer": {

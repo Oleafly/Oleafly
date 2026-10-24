@@ -6,9 +6,7 @@
     "configError": "Die Einstellungen des Assistenten konnten nicht geladen werden.",
     "tabTasks": "Aufgaben",
     "tabFolders": "Verknüpfte Ordner",
-    "noProject": "Öffnen Sie ein Projekt, um seine Forschungsordner zu verknüpfen.",
-    "tasksOff": "Forschungsaufgaben sind experimentell und ausgeschaltet.",
-    "turnOn": "In den Einstellungen einschalten"
+    "noProject": "Öffnen Sie ein Projekt, um seine Forschungsordner zu verknüpfen."
   },
   "roots": {
     "title": "Forschungsordner",
@@ -407,13 +405,6 @@
     },
     "settings": {
       "title": "Forschungsaufgaben",
-      "experimental": {
-        "label": "Forschungsaufgaben einschalten",
-        "badge": "Experimentell",
-        "description": "Ein Agent arbeitet eigenständig in einer Kopie des Projekts innerhalb eines Zeitbudgets und überlässt Ihnen die Prüfung seiner Änderungen.",
-        "warning": "Sehr instabil. Läufe können hängen bleiben, fehlschlagen oder Änderungen hinterlassen, die Sie von Hand bereinigen müssen, und sie verbrauchen die ganze Zeit das Kontingent Ihres Anbieters. Schalten Sie dies auf eigenes Risiko ein. Beim Ausschalten werden alle laufenden Aufgaben angehalten.",
-        "saveFailed": "Der Schalter für Forschungsaufgaben konnte nicht gespeichert werden. Versuchen Sie es erneut."
-      },
       "keepAwake": "Computer wach halten, während Aufgaben laufen",
       "keepAwakeHint": "Der Bildschirm kann sich trotzdem ausschalten.",
       "notifications": "Benachrichtigen, wenn eine Aufgabe Aufmerksamkeit braucht",

@@ -848,6 +848,11 @@
         "description": "Modifica i progetti con altre persone tramite un server di collaborazione gestito da te o dal tuo gruppo. Aggiunge la sezione Collaborazione alle Impostazioni. Disattivata per impostazione predefinita finché è in beta.",
         "label": "Collaborazione in tempo reale"
       },
+      "researchTasks": {
+        "description": "Un agente lavora in autonomia su una copia del progetto e lascia a te le modifiche da rivedere. Molto instabile: le esecuzioni possono bloccarsi, fallire o lasciare modifiche da sistemare a mano, e consumano di continuo la quota del tuo provider. Aggiunge la sezione Ricerca alle Impostazioni. Disattivandola si interrompono tutte le attività in corso. Disattivata per impostazione predefinita, attivala a tuo rischio.",
+        "label": "Attività di ricerca",
+        "saveFailed": "Impossibile salvare l'impostazione delle attività di ricerca. Riprova."
+      },
       "warning": "Queste funzioni sono sperimentali e ancora in beta. Non sono del tutto testate e possono cambiare, smettere di funzionare o essere rimosse in una versione futura. Attivale solo se vuoi provare un lavoro in corso."
     },
     "footer": {

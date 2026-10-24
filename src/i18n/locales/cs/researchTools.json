@@ -6,9 +6,7 @@
     "configError": "Nastavení asistenta se nepodařilo načíst.",
     "tabTasks": "Úlohy",
     "tabFolders": "Propojené složky",
-    "noProject": "Otevřete projekt a můžete propojit jeho výzkumné složky.",
-    "tasksOff": "Výzkumné úlohy jsou experimentální a vypnuté.",
-    "turnOn": "Zapnout v Nastavení"
+    "noProject": "Otevřete projekt a můžete propojit jeho výzkumné složky."
   },
   "roots": {
     "title": "Výzkumné složky",
@@ -415,13 +413,6 @@
     },
     "settings": {
       "title": "Výzkumné úlohy",
-      "experimental": {
-        "label": "Zapnout výzkumné úlohy",
-        "badge": "Experimentální",
-        "description": "Agent pracuje samostatně v kopii projektu v rámci časového rozpočtu a své změny nechá vám ke kontrole.",
-        "warning": "Velmi nestabilní. Běhy se mohou zaseknout, selhat nebo po sobě nechat změny, které musíte vyřešit ručně, a po celou dobu čerpají kvótu vašeho poskytovatele. Zapněte to na vlastní riziko. Po vypnutí se zastaví všechny běžící úlohy.",
-        "saveFailed": "Přepínač výzkumných úloh se nepodařilo uložit. Zkuste to znovu."
-      },
       "keepAwake": "Nenechat počítač usnout, dokud běží úlohy",
       "keepAwakeHint": "Obrazovka se přesto může vypnout.",
       "notifications": "Upozornit mě, když úloha potřebuje pozornost",

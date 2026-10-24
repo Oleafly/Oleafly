@@ -848,6 +848,11 @@
         "description": "Modifier des projets avec d'autres personnes via un serveur de collaboration que vous ou votre groupe hébergez. Ajoute une section Collaboration aux Paramètres. Désactivé par défaut tant que c'est en bêta.",
         "label": "Collaboration en direct"
       },
+      "researchTasks": {
+        "description": "Un agent travaille seul dans une copie du projet et vous laisse ses modifications à relire. Très instable. Une exécution peut se bloquer, échouer ou laisser des modifications à trier à la main, et elle consomme en continu le quota de votre fournisseur. Ajoute une section Recherche aux Paramètres. La désactiver arrête toutes les tâches en cours. Désactivé par défaut, à activer à vos risques et périls.",
+        "label": "Tâches de recherche",
+        "saveFailed": "Impossible d'enregistrer le réglage des tâches de recherche. Réessayez."
+      },
       "warning": "Ces fonctions sont expérimentales et encore en bêta. Elles ne sont pas entièrement testées et peuvent changer, casser ou disparaître dans une prochaine version. Ne les activez que si vous voulez essayer un travail en cours."
     },
     "footer": {

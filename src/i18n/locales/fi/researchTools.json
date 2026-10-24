@@ -6,9 +6,7 @@
     "configError": "Avustajan asetuksia ei voitu ladata.",
     "tabTasks": "Tehtävät",
     "tabFolders": "Linkitetyt kansiot",
-    "noProject": "Avaa projekti, niin sen tutkimuskansiot voi linkittää.",
-    "tasksOff": "Tutkimustehtävät ovat kokeellisia ja pois päältä.",
-    "turnOn": "Ota käyttöön asetuksissa"
+    "noProject": "Avaa projekti, niin sen tutkimuskansiot voi linkittää."
   },
   "roots": {
     "title": "Tutkimuskansiot",
@@ -407,13 +405,6 @@
     },
     "settings": {
       "title": "Tutkimustehtävät",
-      "experimental": {
-        "label": "Ota tutkimustehtävät käyttöön",
-        "badge": "Kokeellinen",
-        "description": "Agentti työskentelee itsenäisesti projektin kopiossa aikabudjetin puitteissa ja jättää muutokset sinun tarkistettavaksesi.",
-        "warning": "Erittäin epävakaa. Ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka joudut selvittämään käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Ota käyttöön omalla vastuullasi. Kytkeminen pois päältä pysäyttää kaikki käynnissä olevat tehtävät.",
-        "saveFailed": "Tutkimustehtävien kytkintä ei voitu tallentaa. Yritä uudelleen."
-      },
       "keepAwake": "Pidä kone hereillä tehtävien ajon aikana",
       "keepAwakeHint": "Näyttö voi silti sammua.",
       "notifications": "Ilmoita, kun tehtävä vaatii huomiota",

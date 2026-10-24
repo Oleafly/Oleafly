@@ -47,7 +47,7 @@ Alles hier ist kostenlos, auch das, wofür andere Editoren einen Bezahltarif ver
 - Der Befehl `oleafly` kompiliert, prüft und synchronisiert deine Projekte aus jedem Terminal oder CI-Job heraus, mit denselben Compilern und Einstellungen wie die App.
 - Die Cloud-Synchronisierung hält deine Projekte auf jedem Computer bereit, den du nutzt, und du kannst offline weiterschreiben.
 - Claude Code, Codex und 12 weitere Agenten arbeiten direkt in deinem Projekt, oder du verbindest ein beliebiges Modell, auch lokale. KI ist optional, und jede Änderung, die sie vornimmt, ist ein Diff, den du prüfen und rückgängig machen kannst.
-- Rechercheaufgaben führen eine Literaturübersicht, einen Evidenz-Audit oder eine Überarbeitung in einer separaten Kopie des Projekts aus, während du weiterschreibst, und du wählst, welche geänderten Dateien du behältst. Sie sind experimentell und standardmäßig ausgeschaltet; unter „Einstellungen > Forschung“ schaltest du sie ein.
+- Rechercheaufgaben führen eine Literaturübersicht, einen Evidenz-Audit oder eine Überarbeitung in einer separaten Kopie des Projekts aus, während du weiterschreibst, und du wählst, welche geänderten Dateien du behältst. Sie sind experimentell und standardmäßig ausgeschaltet; unter „Einstellungen > Experimente“ schaltest du sie ein.
 
 ## Gemeinsam live schreiben
 

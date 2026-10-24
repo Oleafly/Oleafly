@@ -6,9 +6,7 @@
     "configError": "Não foi possível carregar as configurações do assistente.",
     "tabTasks": "Tarefas",
     "tabFolders": "Pastas vinculadas",
-    "noProject": "Abra um projeto para vincular as pastas de pesquisa dele.",
-    "tasksOff": "As tarefas de pesquisa são experimentais e estão desligadas.",
-    "turnOn": "Ligar em Configurações"
+    "noProject": "Abra um projeto para vincular as pastas de pesquisa dele."
   },
   "roots": {
     "title": "Pastas de pesquisa",
@@ -411,13 +409,6 @@
     },
     "settings": {
       "title": "Tarefas de pesquisa",
-      "experimental": {
-        "label": "Ligar as tarefas de pesquisa",
-        "badge": "Experimental",
-        "description": "Um agente trabalha sozinho em uma cópia do projeto, dentro de um orçamento de tempo, e deixa as alterações para você revisar.",
-        "warning": "Muito instável. As execuções podem travar, falhar ou deixar alterações que você terá de resolver manualmente, e usam a cota do seu provedor o tempo todo. Ligue por sua conta e risco. Ao desligar, todas as tarefas em execução são interrompidas.",
-        "saveFailed": "Não foi possível salvar o interruptor das tarefas de pesquisa. Tente de novo."
-      },
       "keepAwake": "Manter o computador ativo enquanto as tarefas rodam",
       "keepAwakeHint": "A tela ainda pode desligar.",
       "notifications": "Avisar quando uma tarefa precisar de atenção",

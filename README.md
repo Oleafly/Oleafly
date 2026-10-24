@@ -47,7 +47,7 @@ Everything here is free, including what other editors keep for paid plans: real-
 - The `oleafly` command builds, checks and syncs your projects from any terminal or CI job, with the same compilers and settings as the app.
 - Cloud sync keeps your projects on every computer you use, and you can keep writing offline.
 - Claude Code, Codex and 12 more agents work inside your project, or connect any model, local ones included. AI is optional, and each change it makes is a diff you can review and undo.
-- Research tasks run a literature review, an evidence audit or a revision pass in a separate copy of the project while you keep writing, and you pick which changed files to keep. They are experimental and off by default; Settings > Research turns them on.
+- Research tasks run a literature review, an evidence audit or a revision pass in a separate copy of the project while you keep writing, and you pick which changed files to keep. They are experimental and off by default; Settings > Experimentation turns them on.
 
 ## Write together, live
 

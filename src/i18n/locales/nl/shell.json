@@ -833,6 +833,11 @@
         "description": "Bewerk projecten samen met anderen via een samenwerkingsserver die jij of je groep beheert. Voegt de sectie Samenwerking toe aan Instellingen. Staat standaard uit zolang dit in bèta is.",
         "label": "Live samenwerken"
       },
+      "researchTasks": {
+        "description": "Een agent werkt zelfstandig in een kopie van het project en laat de wijzigingen voor jou achter om te beoordelen. Zeer onstabiel: runs kunnen vastlopen, mislukken of wijzigingen achterlaten die je met de hand moet opruimen, en ze gebruiken de hele tijd het quotum van je provider. Voegt de sectie Onderzoek toe aan Instellingen. Als je het uitzet, stoppen alle lopende taken. Staat standaard uit. Zet het op eigen risico aan.",
+        "label": "Onderzoekstaken",
+        "saveFailed": "De schakelaar voor onderzoekstaken kon niet worden opgeslagen. Probeer het opnieuw."
+      },
       "warning": "Deze functies zijn experimenteel en nog in bèta. Ze zijn nog niet volledig getest en kunnen veranderen, stukgaan of in een volgende versie verdwijnen. Zet ze alleen aan als je werk in uitvoering wilt proberen."
     },
     "footer": {

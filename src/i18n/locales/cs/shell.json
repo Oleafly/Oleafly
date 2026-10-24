@@ -863,6 +863,11 @@
         "description": "Upravujte projekty s dalšími lidmi přes server pro spolupráci, který provozujete vy nebo vaše skupina. Přidá do Nastavení sekci „Spolupráce“. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
         "label": "Živá spolupráce"
       },
+      "researchTasks": {
+        "description": "Agent pracuje sám v kopii projektu a své změny nechá vám k posouzení. Velmi nestabilní: spuštění se mohou zaseknout, selhat nebo po sobě nechat změny, které budete muset vyřešit ručně, a po celou dobu spotřebovávají limit vašeho poskytovatele. Přidá do Nastavení sekci „Výzkum“. Po vypnutí se zastaví všechny běžící úlohy. Ve výchozím stavu vypnuto. Zapněte to na vlastní riziko.",
+        "label": "Výzkumné úlohy",
+        "saveFailed": "Přepínač výzkumných úloh se nepodařilo uložit. Zkuste to znovu."
+      },
       "warning": "Tyto funkce jsou experimentální a stále v beta verzi. Nejsou plně otestované a mohou se změnit, přestat fungovat nebo být v některém dalším vydání odebrány. Zapínejte je jen tehdy, pokud si chcete rozpracovanou práci vyzkoušet."
     },
     "footer": {

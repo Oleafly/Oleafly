@@ -270,7 +270,8 @@ function VHandle({
       >
         <span
           className={cn(
-            "pointer-events-none h-10 w-1 rounded-full bg-border transition-colors",
+            "pointer-events-none h-10 w-1 rounded-full bg-border opacity-0 transition-[opacity,background-color]",
+            "group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[separator=active]:opacity-100",
             "group-hover:bg-ring group-data-[separator=active]:bg-ring"
           )}
         />

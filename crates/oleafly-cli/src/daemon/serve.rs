@@ -267,22 +267,30 @@ pub fn serve(options: ServeOptions) -> i32 {
 /// Resolves on SIGTERM, SIGINT or SIGHUP (Unix), Ctrl+C on a Windows console.
 /// `agent run`, `ask` and `mcp` use it too: a process ended by a signal never
 /// runs its destructors, so the commands it started would keep running.
-pub(crate) async fn termination() {
+pub(crate) fn termination() -> impl std::future::Future<Output = ()> {
+    // The handlers are registered here, when the future is made, not when it
+    // is first polled: a signal that arrives in between (a client that stops
+    // the MCP server right after its first reply) would otherwise end the
+    // process with the default action, before the work is wound down.
     #[cfg(unix)]
     {
         use tokio::signal::unix::{signal, SignalKind};
-        let terminate = signal(SignalKind::terminate());
-        let interrupt = signal(SignalKind::interrupt());
-        let hangup = signal(SignalKind::hangup());
-        match (terminate, interrupt, hangup) {
-            (Ok(mut terminate), Ok(mut interrupt), Ok(mut hangup)) => {
-                tokio::select! {
-                    _ = terminate.recv() => {}
-                    _ = interrupt.recv() => {}
-                    _ = hangup.recv() => {}
+        let signals = (
+            signal(SignalKind::terminate()),
+            signal(SignalKind::interrupt()),
+            signal(SignalKind::hangup()),
+        );
+        async move {
+            match signals {
+                (Ok(mut terminate), Ok(mut interrupt), Ok(mut hangup)) => {
+                    tokio::select! {
+                        _ = terminate.recv() => {}
+                        _ = interrupt.recv() => {}
+                        _ = hangup.recv() => {}
+                    }
                 }
+                _ => std::future::pending::<()>().await,
             }
-            _ => std::future::pending::<()>().await,
         }
     }
     // A closed console, a logoff or a shutdown ends the process as surely as
@@ -290,26 +298,31 @@ pub(crate) async fn termination() {
     #[cfg(windows)]
     {
         use tokio::signal::windows::{ctrl_c, ctrl_close, ctrl_logoff, ctrl_shutdown};
-        match (ctrl_c(), ctrl_close(), ctrl_logoff(), ctrl_shutdown()) {
-            (Ok(mut interrupt), Ok(mut close), Ok(mut logoff), Ok(mut shutdown)) => {
-                tokio::select! {
-                    _ = interrupt.recv() => {}
-                    _ = close.recv() => {}
-                    _ = logoff.recv() => {}
-                    _ = shutdown.recv() => {}
+        let signals = (ctrl_c(), ctrl_close(), ctrl_logoff(), ctrl_shutdown());
+        async move {
+            match signals {
+                (Ok(mut interrupt), Ok(mut close), Ok(mut logoff), Ok(mut shutdown)) => {
+                    tokio::select! {
+                        _ = interrupt.recv() => {}
+                        _ = close.recv() => {}
+                        _ = logoff.recv() => {}
+                        _ = shutdown.recv() => {}
+                    }
                 }
-            }
-            _ => {
-                if tokio::signal::ctrl_c().await.is_err() {
-                    std::future::pending::<()>().await;
+                _ => {
+                    if tokio::signal::ctrl_c().await.is_err() {
+                        std::future::pending::<()>().await;
+                    }
                 }
             }
         }
     }
     #[cfg(not(any(unix, windows)))]
     {
-        if tokio::signal::ctrl_c().await.is_err() {
-            std::future::pending::<()>().await;
+        async {
+            if tokio::signal::ctrl_c().await.is_err() {
+                std::future::pending::<()>().await;
+            }
         }
     }
 }

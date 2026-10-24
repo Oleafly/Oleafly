@@ -863,6 +863,11 @@
         "description": "Edytuj projekty z innymi osobami za pośrednictwem serwera współpracy prowadzonego przez Ciebie lub Twoją grupę. Dodaje do Ustawień sekcję Współpraca. Domyślnie wyłączone, bo funkcja jest w wersji beta.",
         "label": "Współpraca na żywo"
       },
+      "researchTasks": {
+        "description": "Agent pracuje samodzielnie w kopii projektu, a zmiany zostawia Tobie do przejrzenia. Bardzo niestabilne: uruchomienia mogą się zawiesić, zakończyć błędem albo zostawić zmiany do ręcznego uporządkowania, a przez cały czas zużywają limit Twojego dostawcy. Dodaje do Ustawień sekcję Badania. Wyłączenie zatrzymuje wszystkie trwające zadania. Domyślnie wyłączone. Włącz na własne ryzyko.",
+        "label": "Zadania badawcze",
+        "saveFailed": "Nie udało się zapisać przełącznika zadań badawczych. Spróbuj ponownie."
+      },
       "warning": "Te funkcje są eksperymentalne i wciąż w wersji beta. Nie są jeszcze w pełni przetestowane i mogą się zmienić, przestać działać albo zniknąć w przyszłym wydaniu. Włącz je tylko wtedy, gdy chcesz wypróbować pracę w toku."
     },
     "footer": {

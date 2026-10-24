@@ -6,9 +6,7 @@
     "configError": "無法載入助理設定。",
     "tabTasks": "任務",
     "tabFolders": "已連結資料夾",
-    "noProject": "開啟專案後即可連結它的研究資料夾。",
-    "tasksOff": "研究任務屬於實驗性質，目前已關閉。",
-    "turnOn": "在設定中開啟"
+    "noProject": "開啟專案後即可連結它的研究資料夾。"
   },
   "roots": {
     "title": "研究資料夾",
@@ -403,14 +401,7 @@
     },
     "settings": {
       "title": "研究任務",
-      "experimental": {
-        "label": "開啟研究任務",
-        "badge": "實驗性",
-        "description": "代理會在專案的副本中自行運作，受時間預算限制，並把變更留給你審閱。",
-        "warning": "極不穩定。執行可能卡住、失敗，或留下需要你手動處理的變更，而且全程都會占用你的供應商配額。開啟時風險自負。關閉會停止所有執行中的任務。",
-        "saveFailed": "無法儲存研究任務開關。請再試一次。"
-      },
-      "keepAwake":"任務執行時讓電腦保持喚醒",
+      "keepAwake": "任務執行時讓電腦保持喚醒",
       "keepAwakeHint": "螢幕仍可能關閉。",
       "notifications": "任務需要處理時通知我",
       "notificationsHint": "在 Oleafly 位於背景時顯示。",

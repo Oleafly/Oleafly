@@ -833,6 +833,11 @@
         "description": "Rediger prosjekter sammen med andre via en samarbeidsserver som du eller gruppen din drifter. Legger til seksjonen Samarbeid i Innstillinger. Av som standard mens det fortsatt er i beta.",
         "label": "Samarbeid i sanntid"
       },
+      "researchTasks": {
+        "description": "En agent jobber på egen hånd i en kopi av prosjektet og lar endringene stå klare til gjennomgang. Svært ustabilt: kjøringer kan stoppe opp, mislykkes eller etterlate endringer du må rydde opp i for hånd, og de bruker leverandørens kvote hele tiden. Legger til seksjonen Forskning i Innstillinger. Hvis du slår det av, stoppes alle oppgaver som kjører. Av som standard. Aktiver det på eget ansvar.",
+        "label": "Forskningsoppgaver",
+        "saveFailed": "Bryteren for forskningsoppgaver kunne ikke lagres. Prøv igjen."
+      },
       "warning": "Disse funksjonene er eksperimentelle og fortsatt i beta. De er ikke ferdig testet og kan endre seg, slutte å virke eller bli fjernet i en senere utgave. Slå dem på bare hvis du vil prøve arbeid som pågår."
     },
     "footer": {

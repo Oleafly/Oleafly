@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FlaskConical, TriangleAlert } from "lucide-react";
+import { FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorState } from "@/components/ui/empty";
@@ -17,7 +17,6 @@ import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { durationLabel, TIME_BUDGET_OPTIONS } from "@/components/research/tasks/brief/BriefFields";
 import { researchNotificationPermission, type NotificationPermission } from "@/lib/research-tasks";
 import { getConfig, mcpServersList, setConfig as saveConfig, type AppConfig } from "@/lib/tauri";
-import { setResearchTasksEnabled, useResearchTasksEnabled } from "@/store/research-tasks-flag";
 import { ResearchCard } from "./ResearchCard";
 import { ResearchBackgroundSlot, ResearchComputeSlot } from "./slots";
 
@@ -43,13 +42,9 @@ function researchDefaults(): Pick<AppConfig, OwnedKey> {
   };
 }
 
-/** Settings › Research: the experimental switch, then the defaults and behaviour of research tasks. */
+/** Settings › Research: defaults and behaviour of research tasks. */
 export function ResearchSettingsSection() {
   const { t } = useTranslation(["common", "researchTools", "settings"]);
-  // 0.4.8: research tasks are experimental and off until the user turns them on here.
-  const tasksEnabled = useResearchTasksEnabled();
-  const [switchBusy, setSwitchBusy] = useState(false);
-  const [switchFailed, setSwitchFailed] = useState(false);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [servers, setServers] = useState<string[] | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | null>(null);
@@ -150,19 +145,6 @@ export function ResearchSettingsSection() {
       });
   };
 
-  const toggleTasks = async (value: boolean) => {
-    if (switchBusy) return;
-    setSwitchBusy(true);
-    setSwitchFailed(false);
-    try {
-      await setResearchTasksEnabled(value);
-    } catch {
-      setSwitchFailed(true);
-    } finally {
-      setSwitchBusy(false);
-    }
-  };
-
   const askPermission = async () => {
     try {
       setPermission(await researchNotificationPermission(true));
@@ -201,145 +183,115 @@ export function ResearchSettingsSection() {
           </ErrorState>
         ) : null}
         <SettingsToggleRow
-          label={t(($) => $.researchTools.tasks.settings.experimental.label)}
-          description={t(($) => $.researchTools.tasks.settings.experimental.description)}
-          checked={tasksEnabled}
-          disabled={switchBusy}
-          testId="research-tasks-switch"
-          adornment={
-            <span className="shrink-0 rounded-full border border-destructive/30 bg-destructive/10 px-1.5 text-[0.5625rem] font-semibold uppercase leading-[0.9375rem] tracking-wide text-destructive">
-              {t(($) => $.researchTools.tasks.settings.experimental.badge)}
-            </span>
-          }
-          onChange={(value) => void toggleTasks(value)}
+          label={t(($) => $.researchTools.tasks.settings.keepAwake)}
+          description={t(($) => $.researchTools.tasks.settings.keepAwakeHint)}
+          checked={config?.research_keep_awake !== false}
+          disabled={!config}
+          onChange={(value) => write({ research_keep_awake: value })}
         />
-        <div
-          role="note"
-          data-testid="research-tasks-warning"
-          className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-        >
-          <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-          <span>{t(($) => $.researchTools.tasks.settings.experimental.warning)}</span>
-        </div>
-        {switchFailed ? (
+        <SettingsToggleRow
+          label={t(($) => $.researchTools.tasks.settings.notifications)}
+          description={t(($) => $.researchTools.tasks.settings.notificationsHint)}
+          checked={config?.research_notifications !== false}
+          disabled={!config}
+          onChange={(value) => write({ research_notifications: value })}
+        />
+        {config?.research_notifications !== false && permission && permission !== "granted" ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs">
+            <span className="text-muted-foreground">
+              {t(($) => $.researchTools.tasks.settings.notificationsBlocked)}
+            </span>
+            <Button size="xs" variant="outline" onClick={() => void askPermission()}>
+              {t(($) => $.researchTools.tasks.settings.allowNotifications)}
+            </Button>
+          </div>
+        ) : null}
+        <SettingsToggleRow
+          label={t(($) => $.researchTools.tasks.settings.network)}
+          description={t(($) => $.researchTools.tasks.settings.networkHint)}
+          checked={config?.research_command_network === true}
+          disabled={!config}
+          onChange={(value) => write({ research_command_network: value })}
+        />
+        <SettingsRow
+          label={<label htmlFor="research-time-budget">{t(($) => $.researchTools.tasks.settings.timeBudget)}</label>}
+          control={
+            <Select
+              value={String(minutes)}
+              disabled={!config}
+              onValueChange={(value) => write({ research_time_budget_minutes: Number(value) })}
+            >
+              <SelectTrigger id="research-time-budget" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                {budgetOptions.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {durationLabel(option)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
+        <fieldset className="space-y-2">
+          <legend className="text-sm">{t(($) => $.researchTools.tasks.settings.mcpServers)}</legend>
+          <p className="text-xs text-muted-foreground">
+            {t(($) => $.researchTools.tasks.settings.mcpServersHint)}
+          </p>
+          {serversFailed ? (
+            <ErrorState size="compact" message={t(($) => $.settings.research.mcpServers.loadFailed)}>
+              <Button size="xs" variant="outline" onClick={loadServers}>
+                {t(($) => $.common.actions.retry)}
+              </Button>
+            </ErrorState>
+          ) : null}
+          {!serversFailed && servers?.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.tasks.settings.noMcpServers)}</p>
+          ) : null}
+          {serversFailed
+            ? null
+            : [...(servers ?? []), ...missingServers].map((name) => {
+                const id = `research-mcp-${name}`;
+                return (
+                  <label key={name} htmlFor={id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      id={id}
+                      disabled={!config}
+                      checked={chosenServers.includes(name)}
+                      onCheckedChange={(next) =>
+                        write({
+                          research_task_mcp_servers:
+                            next === true
+                              ? [...chosenServers, name]
+                              : chosenServers.filter((chosen) => chosen !== name),
+                        })
+                      }
+                    />
+                    <span className="truncate">
+                      {missingServers.includes(name)
+                        ? t(($) => $.settings.research.mcpServers.missing, { name })
+                        : name}
+                    </span>
+                  </label>
+                );
+              })}
+        </fieldset>
+        {saveFailed ? (
           <p role="alert" className="text-xs text-destructive">
-            {t(($) => $.researchTools.tasks.settings.experimental.saveFailed)}
+            {t(($) => $.researchTools.tasks.settings.saveFailed)}
           </p>
         ) : null}
-        {tasksEnabled ? (
-          <>
-            <SettingsToggleRow
-              label={t(($) => $.researchTools.tasks.settings.keepAwake)}
-              description={t(($) => $.researchTools.tasks.settings.keepAwakeHint)}
-              checked={config?.research_keep_awake !== false}
-              disabled={!config}
-              onChange={(value) => write({ research_keep_awake: value })}
-            />
-            <SettingsToggleRow
-              label={t(($) => $.researchTools.tasks.settings.notifications)}
-              description={t(($) => $.researchTools.tasks.settings.notificationsHint)}
-              checked={config?.research_notifications !== false}
-              disabled={!config}
-              onChange={(value) => write({ research_notifications: value })}
-            />
-            {config?.research_notifications !== false && permission && permission !== "granted" ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs">
-                <span className="text-muted-foreground">
-                  {t(($) => $.researchTools.tasks.settings.notificationsBlocked)}
-                </span>
-                <Button size="xs" variant="outline" onClick={() => void askPermission()}>
-                  {t(($) => $.researchTools.tasks.settings.allowNotifications)}
-                </Button>
-              </div>
-            ) : null}
-            <SettingsToggleRow
-              label={t(($) => $.researchTools.tasks.settings.network)}
-              description={t(($) => $.researchTools.tasks.settings.networkHint)}
-              checked={config?.research_command_network === true}
-              disabled={!config}
-              onChange={(value) => write({ research_command_network: value })}
-            />
-            <SettingsRow
-              label={<label htmlFor="research-time-budget">{t(($) => $.researchTools.tasks.settings.timeBudget)}</label>}
-              control={
-                <Select
-                  value={String(minutes)}
-                  disabled={!config}
-                  onValueChange={(value) => write({ research_time_budget_minutes: Number(value) })}
-                >
-                  <SelectTrigger id="research-time-budget" className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="z-[100]">
-                    {budgetOptions.map((option) => (
-                      <SelectItem key={option} value={String(option)}>
-                        {durationLabel(option)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              }
-            />
-            <fieldset className="space-y-2">
-              <legend className="text-sm">{t(($) => $.researchTools.tasks.settings.mcpServers)}</legend>
-              <p className="text-xs text-muted-foreground">
-                {t(($) => $.researchTools.tasks.settings.mcpServersHint)}
-              </p>
-              {serversFailed ? (
-                <ErrorState size="compact" message={t(($) => $.settings.research.mcpServers.loadFailed)}>
-                  <Button size="xs" variant="outline" onClick={loadServers}>
-                    {t(($) => $.common.actions.retry)}
-                  </Button>
-                </ErrorState>
-              ) : null}
-              {!serversFailed && servers?.length === 0 ? (
-                <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.tasks.settings.noMcpServers)}</p>
-              ) : null}
-              {serversFailed
-                ? null
-                : [...(servers ?? []), ...missingServers].map((name) => {
-                    const id = `research-mcp-${name}`;
-                    return (
-                      <label key={name} htmlFor={id} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          id={id}
-                          disabled={!config}
-                          checked={chosenServers.includes(name)}
-                          onCheckedChange={(next) =>
-                            write({
-                              research_task_mcp_servers:
-                                next === true
-                                  ? [...chosenServers, name]
-                                  : chosenServers.filter((chosen) => chosen !== name),
-                            })
-                          }
-                        />
-                        <span className="truncate">
-                          {missingServers.includes(name)
-                            ? t(($) => $.settings.research.mcpServers.missing, { name })
-                            : name}
-                        </span>
-                      </label>
-                    );
-                  })}
-            </fieldset>
-            {saveFailed ? (
-              <p role="alert" className="text-xs text-destructive">
-                {t(($) => $.researchTools.tasks.settings.saveFailed)}
-              </p>
-            ) : null}
-            <ResetToDefaults
-              sectionName={t(($) => $.researchTools.tasks.settings.sectionName)}
-              confirmationDescription={t(($) => $.researchTools.tasks.settings.resetConfirm)}
-              disabled={!config}
-              changed={changed}
-              onReset={() => write(researchDefaults())}
-            />
-          </>
-        ) : null}
+        <ResetToDefaults
+          sectionName={t(($) => $.researchTools.tasks.settings.sectionName)}
+          confirmationDescription={t(($) => $.researchTools.tasks.settings.resetConfirm)}
+          disabled={!config}
+          changed={changed}
+          onReset={() => write(researchDefaults())}
+        />
       </ResearchCard>
-      {tasksEnabled && ResearchComputeSlot ? <ResearchComputeSlot /> : null}
-      {tasksEnabled && ResearchBackgroundSlot ? <ResearchBackgroundSlot /> : null}
+      {ResearchComputeSlot ? <ResearchComputeSlot /> : null}
+      {ResearchBackgroundSlot ? <ResearchBackgroundSlot /> : null}
     </div>
   );
 }

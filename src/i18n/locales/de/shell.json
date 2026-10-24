@@ -833,6 +833,11 @@
         "description": "Lässt Sie Projekte über einen Kollaborationsserver, den Sie oder Ihre Gruppe betreiben, gemeinsam mit anderen bearbeiten. Fügt den Einstellungen den Bereich Zusammenarbeit hinzu. Standardmäßig aus, solange es noch Beta ist.",
         "label": "Live-Zusammenarbeit"
       },
+      "researchTasks": {
+        "description": "Ein Agent arbeitet eigenständig in einer Kopie des Projekts und hinterlässt seine Änderungen, damit Sie sie prüfen können. Sehr instabil: Läufe können hängen bleiben, fehlschlagen oder Änderungen hinterlassen, die Sie von Hand bereinigen müssen, und sie verbrauchen während der gesamten Laufzeit das Kontingent Ihres Anbieters. Fügt den Einstellungen den Bereich Forschung hinzu. Beim Ausschalten werden alle laufenden Aufgaben beendet. Standardmäßig aus. Schalten Sie es auf eigenes Risiko ein.",
+        "label": "Forschungsaufgaben",
+        "saveFailed": "Die Einstellung für Forschungsaufgaben konnte nicht gespeichert werden. Versuchen Sie es erneut."
+      },
       "warning": "Diese Funktionen sind experimentell und noch in der Beta. Sie sind noch nicht vollständig getestet und können sich ändern, kaputtgehen oder in einer künftigen Version verschwinden. Schalten Sie sie nur ein, wenn Sie Werk in Arbeit ausprobieren möchten."
     },
     "footer": {

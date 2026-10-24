@@ -833,6 +833,11 @@
         "description": "Projeleri, sizin veya grubunuzun çalıştırdığı bir iş birliği sunucusu üzerinden başkalarıyla birlikte düzenleyin. Ayarlar'a bir İş Birliği bölümü ekler. Beta aşamasında olduğu için varsayılan olarak kapalıdır.",
         "label": "Canlı iş birliği"
       },
+      "researchTasks": {
+        "description": "Bir ajan, projenin bir kopyasında kendi başına çalışır ve değişikliklerini sizin incelemeniz için bırakır. Çok kararsızdır: çalıştırmalar takılabilir, başarısız olabilir veya elle düzeltmeniz gereken değişiklikler bırakabilir, üstelik sağlayıcınızın kotasını baştan sona kullanır. Ayarlar'a bir Araştırma bölümü ekler. Kapatmak, çalışan tüm görevleri durdurur. Varsayılan olarak kapalıdır. Açarsanız sorumluluk size aittir.",
+        "label": "Araştırma görevleri",
+        "saveFailed": "Araştırma görevleri anahtarı kaydedilemedi. Yeniden deneyin."
+      },
       "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır ve değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın."
     },
     "footer": {

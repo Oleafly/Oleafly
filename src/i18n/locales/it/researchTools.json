@@ -6,9 +6,7 @@
     "configError": "Non è stato possibile caricare le impostazioni dell'assistente.",
     "tabTasks": "Attività",
     "tabFolders": "Cartelle collegate",
-    "noProject": "Apri un progetto per collegare le sue cartelle di ricerca.",
-    "tasksOff": "Le attività di ricerca sono sperimentali e disattivate.",
-    "turnOn": "Attiva nelle Impostazioni"
+    "noProject": "Apri un progetto per collegare le sue cartelle di ricerca."
   },
   "roots": {
     "title": "Cartelle di ricerca",
@@ -411,13 +409,6 @@
     },
     "settings": {
       "title": "Attività di ricerca",
-      "experimental": {
-        "label": "Attiva le attività di ricerca",
-        "badge": "Sperimentale",
-        "description": "Un agente lavora in autonomia in una copia del progetto, entro un budget di tempo, e ti lascia le modifiche da rivedere.",
-        "warning": "Molto instabile. Le esecuzioni possono bloccarsi, fallire o lasciare modifiche che dovrai sistemare a mano, e consumano per tutto il tempo la quota del tuo provider AI. Attiva questa opzione a tuo rischio. Se la disattivi, tutte le attività in esecuzione si interrompono.",
-        "saveFailed": "Impossibile salvare l'impostazione delle attività di ricerca. Riprova."
-      },
       "keepAwake": "Tieni attivo il computer mentre le attività girano",
       "keepAwakeHint": "Lo schermo può comunque spegnersi.",
       "notifications": "Avvisami quando un'attività richiede attenzione",

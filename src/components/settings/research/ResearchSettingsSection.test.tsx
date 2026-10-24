@@ -28,16 +28,6 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 
 vi.mock("@/lib/research-tasks", () => ({ researchNotificationPermission: mocks.permission }));
 
-// 0.4.8: research tasks are experimental; the switch lives in this section and the rest shows once it is on.
-const flag = await vi.hoisted(async () => {
-  const { create } = await import("zustand");
-  return { store: create<{ enabled: boolean }>(() => ({ enabled: true })), setEnabled: vi.fn() };
-});
-vi.mock("@/store/research-tasks-flag", () => ({
-  useResearchTasksEnabled: () => flag.store((state) => state.enabled),
-  setResearchTasksEnabled: (value: boolean) => flag.setEnabled(value),
-}));
-
 vi.mock("./slots", () => ({
   get ResearchComputeSlot() {
     return mocks.slots.compute;
@@ -100,56 +90,6 @@ describe("ResearchSettingsSection", () => {
     mocks.permission.mockReset().mockResolvedValue("granted");
     mocks.slots.compute = null;
     mocks.slots.background = null;
-    flag.store.setState({ enabled: true });
-    flag.setEnabled.mockReset().mockImplementation(async (value: boolean) => {
-      flag.store.setState({ enabled: value });
-    });
-  });
-
-  it("starts with research tasks off, warns how unstable they are, and shows the rest once they are on", async () => {
-    flag.store.setState({ enabled: false });
-    render(<ResearchSettingsSection />);
-    const tasksSwitch = screen.getByTestId("research-tasks-switch");
-    expect(tasksSwitch).toHaveAttribute("aria-checked", "false");
-    expect(screen.getByText(copy.experimental.badge)).toBeInTheDocument();
-    expect(screen.getByTestId("research-tasks-warning")).toHaveTextContent(copy.experimental.warning);
-    expect(screen.queryByRole("switch", { name: copy.keepAwake })).toBeNull();
-    expect(screen.queryByRole("combobox", { name: copy.timeBudget })).toBeNull();
-
-    await userEvent.click(tasksSwitch);
-
-    expect(flag.setEnabled).toHaveBeenCalledExactlyOnceWith(true);
-    expect(tasksSwitch).toHaveAttribute("aria-checked", "true");
-    await loaded();
-    expect(toggle(copy.keepAwake)).toBeInTheDocument();
-    // The switch has its own command; nothing is written through the whole config.
-    expect(mocks.setConfig).not.toHaveBeenCalled();
-  });
-
-  it("hides the compute and background cards while research tasks are off", () => {
-    mocks.slots.compute = () => <p data-testid="compute-card" />;
-    mocks.slots.background = () => <p data-testid="background-card" />;
-    flag.store.setState({ enabled: false });
-    const view = render(<ResearchSettingsSection />);
-    expect(screen.queryByTestId("compute-card")).toBeNull();
-    expect(screen.queryByTestId("background-card")).toBeNull();
-    view.unmount();
-
-    flag.store.setState({ enabled: true });
-    render(<ResearchSettingsSection />);
-    expect(screen.getByTestId("compute-card")).toBeInTheDocument();
-    expect(screen.getByTestId("background-card")).toBeInTheDocument();
-  });
-
-  it("keeps the switch where it was and says so when it could not be saved", async () => {
-    flag.store.setState({ enabled: false });
-    flag.setEnabled.mockRejectedValueOnce(new Error("Research tasks are off, but some running tasks could not be stopped"));
-    render(<ResearchSettingsSection />);
-
-    await userEvent.click(screen.getByTestId("research-tasks-switch"));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(copy.experimental.saveFailed);
-    expect(screen.getByTestId("research-tasks-switch")).toHaveAttribute("aria-checked", "false");
   });
 
   it("toggles keep awake through the app config", async () => {

@@ -833,6 +833,11 @@
         "description": "Edit projects with other people through a collaboration server that you or your group runs. Adds a Collaboration section to Settings. Off by default while in beta.",
         "label": "Live collaboration"
       },
+      "researchTasks": {
+        "description": "An agent works on its own in a copy of the project and leaves its changes for you to review. Highly unstable: runs can stall, fail or leave changes to sort out by hand, and they use your provider's quota the whole time. Adds a Research section to Settings. Turning it off stops every running task. Off by default. Turn it on at your own risk.",
+        "label": "Research tasks",
+        "saveFailed": "The research tasks switch could not be saved. Try again."
+      },
       "warning": "These features are experimental and still in beta. They are not fully tested yet and may change, break, or be removed in a future release. Turn them on only if you want to try work in progress."
     },
     "footer": {

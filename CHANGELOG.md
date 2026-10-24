@@ -51,12 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   commands or network access. Changes go to a review folder first, and
   `oleafly agent apply` writes them into the project.
 - Research tasks are experimental in this release and off for everyone.
-  Settings > Research has the switch, with a warning next to it: runs can
-  stall, fail or leave changes you have to sort out by hand, so turn them on
-  at your own risk. While they are off, the Research tab shows only your
-  linked folders, Files has no Task outputs, the assistant and outside agents
-  get no task tools, nothing moves to the background helper, and turning
-  them off again stops every running task. The literature tools, the
+  Settings > Experimentation has the switch, with a warning next to it: runs
+  can stall, fail or leave changes you have to sort out by hand, so turn them
+  on at your own risk. Turning it on adds the Research tab and the Research
+  section in Settings. While it is off, Files has no Task outputs, the
+  assistant and outside agents get no task tools, and nothing moves to the
+  background helper; turning it off again stops every running task. The
   assistant, the `oleafly` command and CLI agents do not depend on the
   switch.
 - Research tasks that keep going after you quit. Mark a task Keep running
@@ -140,6 +140,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   project file opens that file in Oleafly. (#316)
 
 ### Changed
+
+- The handles between the sidebar, the editor and the preview show their
+  grip only while you point at them or drag them.
 
 - With an Anthropic key, the default model is now Claude Opus 5.5, and the
   model list has Claude Sonnet 5.5, Claude Haiku 5.5 and Claude Fable 5.1.

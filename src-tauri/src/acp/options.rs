@@ -32,9 +32,25 @@ impl AcpRuntime {
         config_id: &str,
         value: &ConfigValue,
     ) -> Result<(), String> {
-        let record = self.copy_record(session)?;
-        record.controls.allows(config_id, value)?;
-        let native = record
+        self.copy_record(session)?
+            .controls
+            .allows(config_id, value)?;
+        self.send_config_option_unchecked(session, config_id, value)
+            .await
+    }
+
+    /// [`Self::send_config_option`] for an option the record does not list:
+    /// a session restored from the store knows its models but not the
+    /// options they came from. The agent's answer carries every option, so
+    /// the record is whole again afterwards.
+    pub(super) async fn send_config_option_unchecked(
+        &self,
+        session: &Arc<LiveSession>,
+        config_id: &str,
+        value: &ConfigValue,
+    ) -> Result<(), String> {
+        let native = self
+            .copy_record(session)?
             .native_session_id
             .ok_or("The ACP session is not ready.")?;
         let result = session
@@ -231,6 +247,22 @@ impl AcpRuntime {
         self.snapshot(id).await
     }
 
+    fn confirm_model(&self, session: &Arc<LiveSession>, model_id: &str) -> Result<(), String> {
+        let confirmed = self
+            .copy_record(session)?
+            .controls
+            .model_id
+            .is_some_and(|current| current == model_id);
+        if confirmed {
+            Ok(())
+        } else {
+            Err(
+                "The agent did not confirm that model. Reconnect to refresh its available models."
+                    .into(),
+            )
+        }
+    }
+
     async fn change_model(&self, session: &Arc<LiveSession>, model_id: &str) -> Result<(), String> {
         let record = self.copy_record(session)?;
         if record.status != SessionStatus::Ready
@@ -242,18 +274,31 @@ impl AcpRuntime {
         {
             return Err("This model is not available in the current ACP session.".into());
         }
-        if let Some(config_id) = record.controls.model_config_id.clone() {
+        let config_id = record.controls.model_config_id.clone().or_else(|| {
+            record
+                .controls
+                .by_category("model")
+                .map(|option| option.id.clone())
+        });
+        if let Some(config_id) = config_id {
             self.send_config_option(session, &config_id, &ConfigValue::Id(model_id.into()))
                 .await?;
-            let confirmed = self
-                .copy_record(session)?
-                .controls
-                .model_id
-                .is_some_and(|current| current == model_id);
-            if !confirmed {
-                return Err("The agent did not confirm that model. Reconnect to refresh its available models.".into());
+            return self.confirm_model(session, model_id);
+        }
+        if !record.controls.legacy_models {
+            // The models came from a config option, but a session restored
+            // from the store has the list without the option. Agents built
+            // on the ACP SDK (Claude Code, Codex) call it `model`, and their
+            // answer carries every option, so the record is whole again; one
+            // that names it differently says so, and the v1 request is next.
+            match self
+                .send_config_option_unchecked(session, "model", &ConfigValue::Id(model_id.into()))
+                .await
+            {
+                Ok(()) => return self.confirm_model(session, model_id),
+                Err(error) if error.contains("Unknown config option") => {}
+                Err(error) => return Err(error),
             }
-            return Ok(());
         }
         let native = record
             .native_session_id

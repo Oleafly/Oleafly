@@ -848,6 +848,11 @@
         "description": "Edita proyectos con otras personas a través de un servidor de colaboración que gestionas tú o tu grupo. Añade una sección Colaboración a los Ajustes. Desactivado por omisión mientras esté en beta.",
         "label": "Colaboración en tiempo real"
       },
+      "researchTasks": {
+        "description": "Un agente trabaja por su cuenta en una copia del proyecto y deja sus cambios para que los revises. Muy inestable: las ejecuciones pueden quedarse atascadas, fallar o dejar cambios que tendrás que arreglar a mano, y consumen la cuota de tu proveedor todo el tiempo. Añade una sección Investigación a los Ajustes. Al desactivarlo se detienen todas las tareas en curso. Desactivado por omisión. Actívalo por tu cuenta y riesgo.",
+        "label": "Tareas de investigación",
+        "saveFailed": "No se pudo guardar el ajuste de las tareas de investigación. Inténtalo de nuevo."
+      },
       "warning": "Estas funciones son experimentales y siguen en beta. Todavía no están probadas del todo y pueden cambiar, romperse o desaparecer en una versión futura. Actívalas solo si quieres probar trabajo en curso."
     },
     "footer": {

@@ -6,9 +6,7 @@
     "configError": "Assistentens inställningar kunde inte läsas in.",
     "tabTasks": "Uppgifter",
     "tabFolders": "Länkade mappar",
-    "noProject": "Öppna ett projekt för att länka dess forskningsmappar.",
-    "tasksOff": "Forskningsuppgifter är experimentella och avstängda.",
-    "turnOn": "Slå på i Inställningar"
+    "noProject": "Öppna ett projekt för att länka dess forskningsmappar."
   },
   "roots": {
     "title": "Forskningsmappar",
@@ -407,13 +405,6 @@
     },
     "settings": {
       "title": "Forskningsuppgifter",
-      "experimental": {
-        "label": "Slå på forskningsuppgifter",
-        "badge": "Experimentell",
-        "description": "En agent arbetar på egen hand i en kopia av projektet, inom en tidsbudget, och lämnar sina ändringar åt dig att granska.",
-        "warning": "Mycket instabilt. Körningar kan hänga sig, misslyckas eller lämna ändringar som du måste reda ut för hand, och de använder din leverantörs kvot hela tiden. Slå på det på egen risk. Om du stänger av det stoppas varje pågående uppgift.",
-        "saveFailed": "Reglaget för forskningsuppgifter kunde inte sparas. Försök igen."
-      },
       "keepAwake": "Håll datorn vaken medan uppgifter körs",
       "keepAwakeHint": "Skärmen kan fortfarande stängas av.",
       "notifications": "Meddela mig när en uppgift behöver uppmärksamhet",

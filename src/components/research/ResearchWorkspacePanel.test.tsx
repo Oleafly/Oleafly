@@ -23,9 +23,6 @@ let userEvent: typeof import("@testing-library/user-event").default;
 let queryClient: QueryClient;
 
 const native = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn(async () => () => {}) }));
-// 0.4.8: research tasks are experimental; the tasks tab shows only while they are on.
-const flag = vi.hoisted(() => ({ enabled: true }));
-vi.mock("@/store/research-tasks-flag", () => ({ useResearchTasksEnabled: () => flag.enabled }));
 vi.mock("@tauri-apps/api/core", async (original) => ({
   ...await original<typeof import("@tauri-apps/api/core")>(), invoke: native.invoke,
 }));
@@ -134,24 +131,6 @@ function providerConfig(): AppConfig {
 }
 
 describe("ResearchWorkspacePanel integration", () => {
-  // 0.4.8: research tasks are experimental and off by default.
-  it("shows only the linked folders and a way to turn tasks on while research tasks are off", () => {
-    flag.enabled = false;
-    try {
-      native.invoke.mockResolvedValue({});
-      mount();
-      const notice = page().getByTestId("research-tasks-off");
-      expect(notice).toHaveTextContent(enResearchTools.workspace.tasksOff);
-      expect(page().queryByRole("tab", { name: enResearchTools.workspace.tabTasks })).not.toBeInTheDocument();
-      expect(page().queryByText(enResearchTools.tasks.panel.noProjectTitle)).not.toBeInTheDocument();
-      expect(page().getByText(enResearchTools.workspace.noProject)).toBeInTheDocument();
-      fireEvent.click(within(notice).getByRole("button", { name: enResearchTools.workspace.turnOn }));
-      expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "research" });
-    } finally {
-      flag.enabled = true;
-    }
-  });
-
   it("offers project-scoped entry points and opens the research settings without a project", async () => {
     native.invoke.mockResolvedValue({});
     mount();

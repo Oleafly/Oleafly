@@ -47,7 +47,7 @@ Todo aquí es gratis, incluido lo que otros editores reservan para sus planes de
 - El comando `oleafly` compila, comprueba y sincroniza tus proyectos desde cualquier terminal o trabajo de CI, con los mismos compiladores y ajustes que la aplicación.
 - La sincronización en la nube mantiene tus proyectos en cada ordenador que usas, y puedes seguir escribiendo sin conexión.
 - Claude Code, Codex y 12 agentes más trabajan dentro de tu proyecto, o puedes conectar cualquier modelo, incluidos los locales. La IA es opcional, y cada cambio que hace es una diferencia que puedes revisar y deshacer.
-- Las tareas de investigación hacen una revisión bibliográfica, una auditoría de evidencias o una pasada de revisión en una copia separada del proyecto mientras sigues escribiendo, y tú eliges qué archivos modificados conservar. Son experimentales y vienen desactivadas de forma predeterminada; se activan en Ajustes > Investigación.
+- Las tareas de investigación hacen una revisión bibliográfica, una auditoría de evidencias o una pasada de revisión en una copia separada del proyecto mientras sigues escribiendo, y tú eliges qué archivos modificados conservar. Son experimentales y vienen desactivadas de forma predeterminada; se activan en Ajustes > Experimentación.
 
 ## Escribe en equipo, en directo
 

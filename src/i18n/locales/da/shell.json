@@ -833,6 +833,11 @@
         "description": "Rediger projekter sammen med andre via en samarbejdsserver, som du eller din gruppe driver. Tilføjer afsnittet Samarbejde under Indstillinger. Slået fra som udgangspunkt, mens det stadig er i beta.",
         "label": "Samarbejde i realtid"
       },
+      "researchTasks": {
+        "description": "En agent arbejder selvstændigt i en kopi af projektet og efterlader sine ændringer, så du kan gennemgå dem. Meget ustabilt: kørsler kan gå i stå, fejle eller efterlade ændringer, du selv må rette op på manuelt, og de bruger din udbyders kvote hele tiden. Tilføjer afsnittet Forskning under Indstillinger. Hvis du slår det fra, stoppes alle kørende opgaver. Slået fra som udgangspunkt. Slå det til på eget ansvar.",
+        "label": "Forskningsopgaver",
+        "saveFailed": "Indstillingen for forskningsopgaver kunne ikke gemmes. Prøv igen."
+      },
       "warning": "Disse funktioner er eksperimentelle og stadig i beta. De er ikke testet færdigt og kan ændre sig, gå i stykker eller forsvinde i en fremtidig udgivelse. Slå dem kun til, hvis du vil prøve noget, der er under udvikling."
     },
     "footer": {

@@ -26,7 +26,10 @@ let loading: Promise<void> | null = null;
 
 /** Reads the switch from the config once; a failed read is tried again by the next caller. */
 export function loadResearchTasksFlag(): Promise<void> {
-  loading ??= getConfig()
+  // Through a promise, so a bridge that throws (a test's partial mock) is a
+  // failed read like any other instead of an error inside a render effect.
+  loading ??= Promise.resolve()
+    .then(() => getConfig())
     .then((config) => {
       useResearchTasksFlagStore.setState({ enabled: config.research_tasks_enabled === true });
     })

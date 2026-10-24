@@ -50,45 +50,32 @@ async function connectAgent(page: Page) {
   expect(enabled, "the research tasks fixture must be available").toBe(true);
 }
 
-test("research tasks stay off until the experimental switch in Settings is turned on", async ({ tauriPage }) => {
+test("research tasks stay off until the Experimentation switch is turned on", async ({ tauriPage }) => {
   test.setTimeout(90_000);
   const run = Date.now().toString(36);
   // A spec that ran earlier in this data dir may have turned tasks on.
   const reset = await tauriPage.evaluate<boolean>(`window.__researchTasksSet?.(false) ?? false`);
   expect(reset, "the research tasks fixture must be available").toBe(true);
   await createBlankProject(tauriPage, `Research switch ${run}`);
+  // No Research tab in the rail, no Research section in Settings.
+  await expect(tauriPage.locator('[data-tour="rail-research"]')).toHaveCount(0);
+  await openSettings(tauriPage, "experimentation");
+  await expect(tauriPage.locator('[data-testid="settings-section-research"]')).toHaveCount(0);
+  const toggle = tauriPage.getByTestId("settings-research-tasks");
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(toggle).toContainText("Highly unstable");
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await expect(tauriPage.locator('[data-testid="settings-section-research"]')).toHaveCount(1, { timeout: 10_000 });
+  await tauriPage.click('[data-testid="settings-close"]');
+
+  await expect(tauriPage.locator('[data-tour="rail-research"]')).toHaveCount(1, { timeout: 10_000 });
   await openRailTab(tauriPage, "Research workspace");
   const panel = tauriPage.getByTestId("research-workspace-panel");
   await expect(panel).toBeVisible({ timeout: 20_000 });
-  await expect(panel.getByTestId("research-tasks-off")).toBeVisible();
-  await expect(panel.getByText("New task", { exact: true })).toHaveCount(0);
-
-  await openSettings(tauriPage, "research");
-  const toggle = tauriPage.getByTestId("research-tasks-switch");
-  await expect(toggle).toHaveAttribute("aria-checked", "false");
-  await expect(tauriPage.getByTestId("research-tasks-warning")).toContainText("Highly unstable");
-  // The task defaults (the time budget among them) show only once tasks are on.
-  await expect(tauriPage.locator("#research-time-budget")).toHaveCount(0);
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-checked", "true");
-  await expect(tauriPage.locator("#research-time-budget")).toHaveCount(1, { timeout: 10_000 });
-  await tauriPage.click('[data-testid="settings-close"]');
-
-  await expect(panel.getByTestId("research-tasks-off")).toHaveCount(0);
   await expect(panel.getByText("New task", { exact: true })).toBeVisible({ timeout: 20_000 });
 });
-
-async function activeProjectId(page: Page) {
-  const projectId = await page.evaluate<string>(
-    `document.querySelector('[data-e2e-project-id]')?.getAttribute('data-e2e-project-id') ?? ''`,
-  );
-  expect(projectId, "an open project must expose its native identity").not.toBe("");
-  return projectId;
-}
-
-async function chooseSelectOption(page: Page, trigger: string, option: string) {
-  await chooseAppSelectOption(page, trigger, { attribute: "data-label", value: option });
-}
 
 test("a research task runs in Rust, reaches review, and records the same native turn", async ({
   tauriPage,

@@ -252,8 +252,9 @@ by name, or leave the agent to find it through `list_skills`.
 A research task is an agent that works on its own in a copy of the project,
 within limits you set, and leaves its changes for you to review. Start one
 from the Research tab. Research tasks are experimental and off by default;
-the switch is in Settings > Research, next to a warning about how unstable
-they still are.
+the switch is in Settings > Experimentation, next to a warning about how
+unstable they still are, and turning it on adds the Research tab and the
+Research section in Settings.
 
 ### The brief
 

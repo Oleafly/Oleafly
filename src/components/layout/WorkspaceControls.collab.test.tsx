@@ -11,6 +11,7 @@ import { useCollabRail } from "@/components/collab/collab-rail";
 import { registerRailTabs } from "@/contributions/tabs";
 import { ThemeProvider } from "@/lib/theme";
 import { useFilesStore } from "@/store/files";
+import { useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
 
 registerRailTabs();
@@ -32,6 +33,8 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  // 0.4.8: the Research tab exists only while research tasks (experimental) are on.
+  useResearchTasksFlagStore.setState({ enabled: true });
   useSettingsStore.setState({ showTree: false, railTab: "files" });
   useFilesStore.setState({ projectId: "grant" });
   useCollabRail.setState({ visible: false, unread: false });

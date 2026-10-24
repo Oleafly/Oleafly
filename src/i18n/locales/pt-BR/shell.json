@@ -848,6 +848,11 @@
         "description": "Edite projetos com outras pessoas por um servidor de colaboração que você ou o seu grupo mantém. Adiciona uma seção Colaboração às Configurações. Desligado por padrão enquanto está em beta.",
         "label": "Colaboração em tempo real"
       },
+      "researchTasks": {
+        "description": "Um agente trabalha sozinho em uma cópia do projeto e deixa as alterações para você revisar. Muito instável: as execuções podem travar, falhar ou deixar alterações para resolver à mão, e usam a cota do seu provedor o tempo todo. Adiciona uma seção Pesquisa às Configurações. Ao desligar, todas as tarefas em andamento são interrompidas. Desligado por padrão. Ligue por sua conta e risco.",
+        "label": "Tarefas de pesquisa",
+        "saveFailed": "Não foi possível salvar o interruptor das tarefas de pesquisa. Tente de novo."
+      },
       "warning": "Estes recursos são experimentais e ainda estão em beta. Eles não foram totalmente testados e podem mudar, quebrar ou sumir em uma versão futura. Ligue-os só se você quiser experimentar o que está em andamento."
     },
     "footer": {

@@ -848,6 +848,11 @@
         "description": "Editează proiecte împreună cu alte persoane printr-un server de colaborare administrat de tine sau de grupul tău. Adaugă secțiunea Colaborare în Setări. Dezactivată implicit, cât timp este în beta.",
         "label": "Colaborare în timp real"
       },
+      "researchTasks": {
+        "description": "Un agent lucrează singur într-o copie a proiectului și îți lasă modificările spre revizuire. Foarte instabilă: rulările se pot bloca, pot eșua sau pot lăsa modificări de rezolvat manual și folosesc cota furnizorului tău pe toată durata lor. Adaugă secțiunea Cercetare în Setări. Dezactivarea oprește toate sarcinile în curs. Dezactivată implicit. Activeaz-o pe propria răspundere.",
+        "label": "Sarcini de cercetare",
+        "saveFailed": "Comutatorul sarcinilor de cercetare nu a putut fi salvat. Încearcă din nou."
+      },
       "warning": "Aceste funcții sunt experimentale și încă în beta. Nu sunt testate complet și se pot schimba, strica sau dispărea într-o versiune viitoare. Activează-le doar dacă vrei să încerci lucruri în lucru."
     },
     "footer": {

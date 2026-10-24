@@ -833,6 +833,11 @@
         "description": "Redigera projekt tillsammans med andra via en samarbetsserver som du eller din grupp driver. Lägger till avsnittet Samarbete i Inställningar. Av som standard medan det är i beta.",
         "label": "Samarbete i realtid"
       },
+      "researchTasks": {
+        "description": "En agent arbetar på egen hand i en kopia av projektet och lämnar sina ändringar åt dig att granska. Mycket instabilt: körningar kan hänga sig, misslyckas eller lämna ändringar att ordna upp för hand, och de använder din leverantörs kvot hela tiden. Lägger till avsnittet Forskning i Inställningar. Avstängning stoppar alla pågående uppgifter. Av som standard. Slå på det på egen risk.",
+        "label": "Forskningsuppgifter",
+        "saveFailed": "Reglaget för forskningsuppgifter kunde inte sparas. Försök igen."
+      },
       "warning": "De här funktionerna är experimentella och fortfarande i beta. De är inte fullt testade än och kan ändras, sluta fungera eller tas bort i en framtida version. Slå bara på dem om du vill prova pågående arbete."
     },
     "footer": {

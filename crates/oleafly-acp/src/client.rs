@@ -955,13 +955,11 @@ impl AcpClient {
         .await
     }
 
-    /// Legacy v1 model switch, for agents without config options.
+    /// Legacy v1 model switch, for agents without a model config option.
+    /// V2 moved the model to config options, but an agent that still lists
+    /// its models the v1 way (Claude Code does) answers this request too; a
+    /// refusal here left every model but the current one unselectable.
     pub async fn set_model(&self, session: &str, model_id: &str) -> Result<Value, RpcError> {
-        if self.protocol() == ProtocolVersion::V2 {
-            return Err(RpcError::local(
-                "ACP v2 has no session/set_model. Use the model option.",
-            ));
-        }
         self.request(
             "session/set_model",
             json!({"sessionId": session, "modelId": model_id}),

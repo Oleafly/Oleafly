@@ -1,58 +1,92 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
-import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false, invoke: vi.fn(async () => undefined) }));
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
-  appVersion: () => Promise.resolve("0.4.8"),
+  appVersion: () => Promise.resolve("0.4.6"),
   libraryRoot: vi.fn(async () => "/tmp/library"),
 }));
 vi.mock("@/components/layout/UpdateChecker", () => ({ UpdateChecker: () => null }));
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ preference: "dark", theme: "dark", setPreference: vi.fn(), toggleTheme: vi.fn() }),
 }));
-// The section itself reads the app config over IPC; it has its own tests.
 vi.mock("@/components/settings/research/ResearchSettingsSection", () => ({
-  ResearchSettingsSection: () => <div data-testid="research-settings-stub" />,
+  ResearchSettingsSection: () => <div data-testid="research-section-stub" />,
+}));
+
+// 0.4.8: research tasks are experimental. The switch lives in Experimentation and
+// Rust keeps it; the test stands in for that command with a store of its own.
+const flag = await vi.hoisted(async () => {
+  const { create } = await import("zustand");
+  return { store: create<{ enabled: boolean }>(() => ({ enabled: false })), set: vi.fn() };
+});
+vi.mock("@/store/research-tasks-flag", () => ({
+  useResearchTasksEnabled: () => flag.store((state) => state.enabled),
+  useResearchTasksFlagStore: flag.store,
+  setResearchTasksEnabled: (value: boolean) => flag.set(value),
 }));
 
 import { SettingsModal } from "./SettingsModal";
 
-describe("Settings, Research", () => {
+const experimentation = enShell.settings.experimentation;
+const nav = enShell.settings.nav;
+
+describe("Research tasks flag", () => {
   beforeEach(() => {
     localStorage.clear();
+    flag.store.setState({ enabled: false });
+    flag.set.mockReset().mockImplementation(async (value: boolean) => {
+      flag.store.setState({ enabled: value });
+    });
     const settings = useSettingsStore.getState();
-    settings.setSettingsInitialSection("general");
+    settings.setLiveCollaboration(false);
+    settings.setSettingsInitialSection("experimentation");
     settings.setSettingsOpen(true);
   });
 
-  it("lists Research after AI and loads the section with its strings", async () => {
+  it("turns research tasks on from Experimentation, which adds the Research section", async () => {
     render(<SettingsModal />);
-    const entry = screen.getByTestId("settings-section-research");
-    expect(entry).toHaveTextContent(enShell.settings.nav.research);
-    expect(screen.getByTestId("settings-section-ai").compareDocumentPosition(entry)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    const toggle = screen.getByRole("switch", { name: experimentation.researchTasks.label });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(toggle).toHaveTextContent("Highly unstable");
+    expect(screen.queryByRole("button", { name: nav.research })).toBeNull();
 
-    fireEvent.click(entry);
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
+    expect(flag.set).toHaveBeenCalledExactlyOnceWith(true);
+    expect(screen.getByRole("button", { name: nav.research })).toBeInTheDocument();
 
-    expect(await screen.findByTestId("research-settings-stub")).toBeInTheDocument();
-    expect(entry).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("heading", { level: 2, name: enShell.settings.nav.research })).toBeInTheDocument();
-    expect(i18n.hasResourceBundle("en", "researchTools")).toBe(true);
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "false"));
+    expect(screen.queryByRole("button", { name: nav.research })).toBeNull();
   });
 
-  it("opens straight on Research when asked", async () => {
+  it("leaves the Research section and goes back to General when the switch goes off there", async () => {
+    flag.store.setState({ enabled: true });
     useSettingsStore.getState().setSettingsInitialSection("research");
     render(<SettingsModal />);
+    expect(await screen.findByTestId("research-section-stub")).toBeInTheDocument();
 
-    expect(await screen.findByTestId("research-settings-stub")).toBeInTheDocument();
-    expect(screen.getByTestId("settings-section-research")).toHaveAttribute("aria-current", "page");
+    act(() => flag.store.setState({ enabled: false }));
+
+    await waitFor(() => expect(screen.queryByTestId("research-section-stub")).toBeNull());
+    expect(screen.queryByRole("button", { name: nav.research })).toBeNull();
+  });
+
+  it("says so and keeps the switch where it was when Rust refuses", async () => {
+    flag.set.mockRejectedValueOnce(new Error("Research tasks are off, but some running tasks could not be stopped"));
+    render(<SettingsModal />);
+    const toggle = screen.getByRole("switch", { name: experimentation.researchTasks.label });
+
+    fireEvent.click(toggle);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(experimentation.researchTasks.saveFailed);
+    expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 });
