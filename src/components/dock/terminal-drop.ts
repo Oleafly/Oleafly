@@ -4,6 +4,8 @@
 // without paths while the native drop handler stays off for the file tree.
 import type { TerminalPlatform } from "@/lib/terminal-keys";
 import {
+  absoluteTerminalPath,
+  hasControlCharacters,
   quoteShellArg,
   relativeTerminalPath,
   terminalPathArg,
@@ -63,19 +65,49 @@ export function parseUriList(text: string): string[] {
 }
 
 /**
+ * Dropped paths the terminal won't type. Quotes stop the shell's parser but
+ * not the line editor or the tty, so a name holding ESC, Ctrl+U or CR could
+ * edit the line and run a command before the user presses Enter.
+ */
+export function refusedDropPaths(drop: TerminalDrop): string[] {
+  return drop.paths.filter(hasControlCharacters);
+}
+
+/** The project folder on this computer, and whether the shell is WSL. */
+export interface TerminalDropRoot {
+  path: string;
+  wsl: boolean;
+}
+
+function treeWord(
+  path: string,
+  kind: TerminalShellKind,
+  platform: TerminalPlatform,
+  startFolder: string,
+  root: TerminalDropRoot | undefined,
+): string {
+  // An absolute path stays right after a `cd`; without the project folder
+  // the path is relative to the folder the terminal started in.
+  const absolute = root ? absoluteTerminalPath(root.path, path, platform, root.wsl) : null;
+  return terminalPathArg(kind, platform, absolute ?? relativeTerminalPath(startFolder, path));
+}
+
+/**
  * The text a drop types: each path quoted, separated by spaces, with a
- * trailing space. Tree paths are made relative to the terminal's start folder.
+ * trailing space. Tree paths are absolute when the project folder is known,
+ * else relative to the terminal's start folder. Paths with control
+ * characters are left out.
  */
 export function terminalDropText(
   drop: TerminalDrop,
   kind: TerminalShellKind,
   platform: TerminalPlatform,
   startFolder: string,
+  root?: TerminalDropRoot,
 ): string {
-  const words = drop.paths.map((path) =>
-    drop.kind === "tree"
-      ? terminalPathArg(kind, platform, relativeTerminalPath(startFolder, path))
-      : quoteShellArg(kind, path),
+  const safe = drop.paths.filter((path) => !hasControlCharacters(path));
+  const words = safe.map((path) =>
+    drop.kind === "tree" ? treeWord(path, kind, platform, startFolder, root) : quoteShellArg(kind, path),
   );
   return words.length > 0 ? `${words.join(" ")} ` : "";
 }

@@ -624,6 +624,7 @@
       "sendNow": "Enviar ahora",
       "sendFailed": "Este mensaje no se envió. Vuelve a enviarlo o quítalo.",
       "queuedConnecting": "En cola: se envía cuando el agente esté listo",
+      "queuedSignIn": "En cola: se envía cuando inicies sesión",
       "retry": "Enviar de nuevo",
       "edit": "Editar"
     },

@@ -3,12 +3,22 @@ import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import { describeError } from "@/lib/app-error";
 import type { ForgeAccount, ForgeDevicePoll, ForgeDeviceStart } from "@/lib/tauri";
 
-const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
+const { invoke, emit } = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  emit: vi.fn(async (_event: string, _payload?: unknown) => {}),
+}));
 vi.mock("@tauri-apps/api/core", () => ({ invoke, isTauri: () => true, Channel: class {} }));
+vi.mock("@tauri-apps/api/event", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tauri-apps/api/event")>()),
+  emit,
+}));
 
+import { forgeImportRepo, gitCloneProject } from "@/lib/tauri";
 import {
   FORGE_PRESETS,
+  IMPORT_CANCEL_EVENT,
   accountKey,
+  cancelRepositoryImport,
   githubGetPublicRepoStats,
   hasRemotePassword,
   hostLabel,
@@ -350,6 +360,34 @@ describe("Git errors that name the account", () => {
   it("keeps the plain refusal when Git used its own sign-in", () => {
     const denied = describeError(envelope("git.access_denied", { host: "GitHub" }));
     expect(denied).toBe(enErrors.git.access_denied.replace("{{host}}", "GitHub"));
+  });
+});
+
+describe("cancelling a repository import", () => {
+  it("names the import this window started last, and sends the cancel again", async () => {
+    vi.useFakeTimers();
+    try {
+      invoke.mockResolvedValueOnce("project-1").mockResolvedValueOnce("project-2");
+      const sentId = () => (invoke.mock.lastCall as [string, { cancelId: string }])[1].cancelId;
+      await forgeImportRepo("https://gitlab.com", "g/paper");
+      const importId = sentId();
+      await gitCloneProject("https://gitlab.com/g/other.git");
+      const cloneId = sentId();
+      expect(importId).toMatch(/^[0-9a-f-]{36}$/);
+      expect(cloneId).toMatch(/^[0-9a-f-]{36}$/);
+      expect(cloneId).not.toBe(importId);
+
+      emit.mockClear();
+      await cancelRepositoryImport();
+      expect(emit).toHaveBeenCalledWith(IMPORT_CANCEL_EVENT, { cancelId: cloneId });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(emit).toHaveBeenCalledTimes(3);
+      for (const call of emit.mock.calls) {
+        expect(call).toEqual([IMPORT_CANCEL_EVENT, { cancelId: cloneId }]);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

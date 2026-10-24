@@ -1,7 +1,10 @@
 //! `read_paper`: fetch an open-access PDF (or read one in the workspace),
 //! keep it in the task's record as `papers/<key>.pdf`, and return its text
 //! with `[p. N]` page anchors, a window at a time.
+use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -204,15 +207,171 @@ async fn extract(
         }
     }
     let bytes = pdf.to_vec();
+    let stop = Arc::new(AtomicBool::new(false));
+    let reader_stop = stop.clone();
     let pages = tokio::time::timeout(
         EXTRACT_LIMIT,
-        tokio::task::spawn_blocking(move || pdf_extract::extract_text_from_mem_by_pages(&bytes)),
+        tokio::task::spawn_blocking(move || rust_pages(&bytes, &reader_stop)),
     )
-    .await
-    .map_err(|_| "Reading the PDF's text took longer than a minute.".to_string())?
-    .map_err(|_| "Reading the PDF's text stopped unexpectedly.".to_string())?
-    .map_err(|error| format!("The PDF's text could not be read: {error}"))?;
-    Ok(pages)
+    .await;
+    // A reader that ran out of time stops at its next page.
+    stop.store(true, Ordering::Relaxed);
+    pages
+        .map_err(|_| "Reading the PDF's text took longer than a minute.".to_string())?
+        .map_err(|_| "Reading the PDF's text stopped unexpectedly.".to_string())?
+}
+
+/// The text of a PDF's first [`MAX_PAGES`] pages, read with pdf-extract.
+/// pdf-extract follows a page's `/Parent` chain and nested form XObjects
+/// with no loop check, and a loop overflows the stack, which aborts the
+/// whole process: every page is checked first, and a PDF with a loop is
+/// refused. Pages past the cap are counted, not read. `stop` ends the
+/// reading at the next page.
+fn rust_pages(bytes: &[u8], stop: &AtomicBool) -> Result<Vec<String>, String> {
+    let unreadable =
+        |error: pdf_extract::Error| format!("The PDF's text could not be read: {error}");
+    let mut document = pdf_extract::Document::load_mem(bytes).map_err(unreadable)?;
+    if document.is_encrypted() {
+        document.decrypt("").map_err(unreadable)?;
+    }
+    let pages = document.get_pages();
+    for &page in pages.values().take(MAX_PAGES) {
+        check_page(&document, page)?;
+    }
+    let mut texts = Vec::with_capacity(pages.len().min(MAX_PAGES));
+    for &number in pages.keys().take(MAX_PAGES) {
+        if stop.load(Ordering::Relaxed) {
+            break;
+        }
+        let mut text = String::new();
+        let read = {
+            let mut output = pdf_extract::PlainTextOutput::new(&mut text);
+            pdf_extract::output_doc_page(&document, &mut output, number)
+        };
+        // Like pdf-extract's own page loop, a page it can't read ends the text.
+        if read.is_err() {
+            break;
+        }
+        texts.push(text);
+    }
+    if texts.len() == MAX_PAGES {
+        // The pages left out still count, so the text says how many there are.
+        texts.resize(pages.len(), String::new());
+    }
+    Ok(texts)
+}
+
+/// Pages pdf-extract climbs for inherited attributes, at most.
+const MAX_PAGE_TREE_DEPTH: usize = 256;
+/// Form XObjects drawn inside each other, at most.
+const MAX_FORM_DEPTH: usize = 64;
+/// Form XObjects one page draws, counting repeats, at most.
+const MAX_FORM_DRAWS: usize = 4_096;
+const MALFORMED_PDF: &str = "The PDF's page structure is broken, so its text can't be read.";
+
+fn resolved<'a>(
+    document: &'a pdf_extract::Document,
+    object: &'a pdf_extract::Object,
+) -> &'a pdf_extract::Object {
+    match object.as_reference() {
+        Ok(id) => document.get_object(id).unwrap_or(object),
+        Err(_) => object,
+    }
+}
+
+fn dictionary_entry<'a>(
+    document: &'a pdf_extract::Document,
+    dictionary: &'a pdf_extract::Dictionary,
+    key: &[u8],
+) -> Option<&'a pdf_extract::Object> {
+    dictionary
+        .get(key)
+        .ok()
+        .map(|object| resolved(document, object))
+}
+
+/// Refuses a page whose `/Parent` chain loops, or whose form XObjects draw
+/// themselves (or nest too deeply or too often), the two paths pdf-extract
+/// recurses on.
+fn check_page(document: &pdf_extract::Document, page: pdf_extract::ObjectId) -> Result<(), String> {
+    let mut chain = Vec::new();
+    let mut seen = HashSet::from([page]);
+    let mut current = document.get_dictionary(page).ok();
+    while let Some(dictionary) = current {
+        chain.push(dictionary);
+        let Ok(parent) = dictionary
+            .get(b"Parent")
+            .and_then(pdf_extract::Object::as_reference)
+        else {
+            break;
+        };
+        if !seen.insert(parent) || seen.len() > MAX_PAGE_TREE_DEPTH {
+            return Err(MALFORMED_PDF.into());
+        }
+        current = document.get_dictionary(parent).ok();
+    }
+    // The resources pdf-extract draws the page with: the nearest in the chain.
+    let empty = pdf_extract::Dictionary::new();
+    let resources = chain
+        .iter()
+        .find_map(|dictionary| {
+            dictionary_entry(document, dictionary, b"Resources")
+                .and_then(|object| object.as_dict().ok())
+        })
+        .unwrap_or(&empty);
+    let content = document.get_page_content(page).unwrap_or_default();
+    check_forms(document, &content, resources, &mut Vec::new(), &mut 0)
+}
+
+/// Follows the `Do` operators of `content` the way pdf-extract draws them.
+fn check_forms(
+    document: &pdf_extract::Document,
+    content: &[u8],
+    resources: &pdf_extract::Dictionary,
+    path: &mut Vec<*const pdf_extract::Stream>,
+    draws: &mut usize,
+) -> Result<(), String> {
+    let Ok(content) = pdf_extract::content::Content::decode(content) else {
+        return Ok(());
+    };
+    for operation in content
+        .operations
+        .iter()
+        .filter(|operation| operation.operator == "Do")
+    {
+        let Some(name) = operation
+            .operands
+            .first()
+            .and_then(|operand| operand.as_name().ok())
+        else {
+            continue;
+        };
+        let Some(form) = dictionary_entry(document, resources, b"XObject")
+            .and_then(|xobjects| xobjects.as_dict().ok())
+            .and_then(|xobjects| dictionary_entry(document, xobjects, name))
+            .and_then(|object| object.as_stream().ok())
+        else {
+            continue;
+        };
+        *draws += 1;
+        let key: *const pdf_extract::Stream = form;
+        if *draws > MAX_FORM_DRAWS || path.len() >= MAX_FORM_DEPTH || path.contains(&key) {
+            return Err(MALFORMED_PDF.into());
+        }
+        let inner = dictionary_entry(document, &form.dict, b"Resources")
+            .and_then(|object| object.as_dict().ok())
+            .unwrap_or(resources);
+        let bytes = match form.filters() {
+            Ok(_) => form
+                .decompressed_content()
+                .unwrap_or_else(|_| form.content.clone()),
+            Err(_) => form.content.clone(),
+        };
+        path.push(key);
+        check_forms(document, &bytes, inner, path, draws)?;
+        path.pop();
+    }
+    Ok(())
 }
 
 /// Reads a paper into the record (`{record_dir}/papers/`) and returns a
@@ -468,14 +627,26 @@ mod tests {
     /// cross-reference table.
     fn one_page_pdf(text: &str) -> Vec<u8> {
         let content = format!("BT /F1 24 Tf 72 720 Td ({text}) Tj ET");
-        let objects = [
+        pdf_of(&[
             "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>"
                 .to_owned(),
-            format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+            stream("", &content),
             "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_owned(),
-        ];
+        ])
+    }
+
+    fn stream(dictionary: &str, content: &str) -> String {
+        format!(
+            "<< {dictionary} /Length {} >>\nstream\n{content}\nendstream",
+            content.len()
+        )
+    }
+
+    /// A PDF of `objects` (numbered from 1, the catalog first) with a correct
+    /// cross-reference table.
+    fn pdf_of(objects: &[String]) -> Vec<u8> {
         let mut pdf = b"%PDF-1.4\n".to_vec();
         let mut offsets = Vec::new();
         for (index, body) in objects.iter().enumerate() {
@@ -497,6 +668,84 @@ mod tests {
             .as_bytes(),
         );
         pdf
+    }
+
+    // pdf-extract climbs `/Parent` for a page's resources and media box with
+    // no loop check; these PDFs used to overflow the stack and abort.
+    #[test]
+    fn a_page_tree_whose_parents_loop_is_refused() {
+        let page_is_its_own_parent = pdf_of(&[
+            "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
+            "<< /Type /Page /Parent 3 0 R /Contents 4 0 R >>".to_owned(),
+            stream("", "BT ET"),
+        ]);
+        let parents_in_a_ring = pdf_of(&[
+            "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 /Parent 3 0 R >>".to_owned(),
+            "<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>".to_owned(),
+            stream("", "BT ET"),
+        ]);
+        for pdf in [page_is_its_own_parent, parents_in_a_ring] {
+            assert_eq!(
+                rust_pages(&pdf, &AtomicBool::new(false)).unwrap_err(),
+                MALFORMED_PDF
+            );
+        }
+    }
+
+    // pdf-extract draws a form XObject by recursing into it, so a form that
+    // draws itself (directly or through another form) never ends.
+    #[tokio::test]
+    async fn a_form_that_draws_itself_is_refused() {
+        let page = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /XObject << /X1 5 0 R /X2 6 0 R >> >> /Contents 4 0 R >>";
+        let form = "/Type /XObject /Subtype /Form /BBox [0 0 10 10]";
+        let draws_itself = pdf_of(&[
+            "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
+            page.to_owned(),
+            stream("", "/X1 Do"),
+            stream(form, "/X1 Do"),
+            stream(form, "BT ET"),
+        ]);
+        let draws_each_other = pdf_of(&[
+            "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
+            page.to_owned(),
+            stream("", "/X1 Do"),
+            stream(form, "/X2 Do"),
+            stream(form, "/X1 Do"),
+        ]);
+        for pdf in [draws_itself, draws_each_other] {
+            assert_eq!(
+                extract(&pdf, PathBuf::from("unused.pdf"), None)
+                    .await
+                    .unwrap_err(),
+                MALFORMED_PDF
+            );
+        }
+        // A form drawn twice side by side is fine.
+        let drawn_twice = pdf_of(&[
+            "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_owned(),
+            page.to_owned(),
+            stream("", "/X2 Do /X2 Do"),
+            stream(form, "BT ET"),
+            stream(form, "BT ET"),
+        ]);
+        assert_eq!(
+            rust_pages(&drawn_twice, &AtomicBool::new(false))
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn the_rust_reader_stops_when_asked() {
+        assert!(rust_pages(&one_page_pdf("Oleafly"), &AtomicBool::new(true))
+            .unwrap()
+            .is_empty());
     }
 
     /// A pdf.js bridge stand-in: fixed pages, or a failure; it counts calls.

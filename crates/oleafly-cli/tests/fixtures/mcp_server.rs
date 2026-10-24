@@ -1,5 +1,6 @@
 // A stdio MCP server for tests, built with plain rustc (std only).
-// Tools: `echo` (read only) returns its `text`; `write_note` returns "noted".
+// Tools: `echo` (read only) returns its `text` (the text `<cwd>` returns the
+// server's working folder); `write_note` returns "noted".
 // Switches (environment):
 // FIXTURE_SILENT=1   never answer
 // FIXTURE_ECHO_ENV   print this variable's value to stderr at start (the
@@ -76,7 +77,14 @@ fn main() {
             "tools/call" => {
                 let name = string_after(&line, "\"name\":").unwrap_or_default();
                 let text = if name == "echo" {
-                    string_after(&line, "\"text\":").unwrap_or_default()
+                    let text = string_after(&line, "\"text\":").unwrap_or_default();
+                    if text == "<cwd>" {
+                        std::env::current_dir()
+                            .map(|dir| dir.display().to_string())
+                            .unwrap_or_default()
+                    } else {
+                        text
+                    }
                 } else {
                     "noted".to_string()
                 };
@@ -91,7 +99,10 @@ fn main() {
                 continue;
             }
         };
-        let _ = writeln!(stdout, "{{\"jsonrpc\":\"2.0\",\"id\":{id},\"result\":{result}}}");
+        let _ = writeln!(
+            stdout,
+            "{{\"jsonrpc\":\"2.0\",\"id\":{id},\"result\":{result}}}"
+        );
         let _ = stdout.flush();
     }
 }

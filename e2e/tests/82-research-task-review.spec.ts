@@ -260,6 +260,8 @@ test("applying a task preserves an unsaved editor edit and retains the conflicti
   expect(readFileSync(join(retained.isolation!.executionRoot, "main.tex"), "utf8")).toBe(proposed);
 
   await detail.getByText("Discard changes", { exact: true }).click();
+  // Discarding asks first, in a question inside the task dialog.
+  await tauriPage.locator('[role="alertdialog"]').getByText("Discard changes", { exact: true }).click();
   await expect(detail).toContainText("Cancelled", { timeout: 20_000 });
   expect((await nativeTask(tauriPage, projectId, task.title)).status).toBe("cancelled");
   expect(await readMain(tauriPage, projectId)).toBe(manual);

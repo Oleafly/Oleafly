@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use crate::process::identity::ProcessIdentity;
 use crate::roots::comparable;
 use crate::SandboxError;
 
@@ -43,6 +44,10 @@ pub(crate) struct Ledger {
 pub(crate) struct ContainerRecord {
     pub owner: String,
     pub created_at: i64,
+    /// The process that uses the profile, so a sweep can tell a run that was
+    /// killed from one that is working.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process: Option<ProcessIdentity>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,6 +63,10 @@ pub(crate) struct GrantRecord {
     /// made again in full (an entry on the folder says nothing about the
     /// files below it).
     pub applied: bool,
+    /// An excluded file's access list from before the exclusion (SDDL), put
+    /// back when the last run that excludes the file is released.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub original: Option<String>,
 }
 
 impl GrantRecord {
@@ -214,14 +223,21 @@ impl Ledger {
     }
 
     /// Marks `record` applied. A record that was forgotten in the meantime
-    /// (the task was released) is put back, so the entry is not unknown.
+    /// (the task was released) is put back, so the entry is not unknown. The
+    /// first original access list on file is kept (a repeated exclusion only
+    /// sees its own work).
     pub(crate) fn complete(&mut self, record: &GrantRecord) {
         match self
             .grants
             .iter_mut()
             .find(|grant| grant.same_grant(record))
         {
-            Some(grant) => grant.applied = true,
+            Some(grant) => {
+                grant.applied = true;
+                if grant.original.is_none() {
+                    grant.original = record.original.clone();
+                }
+            }
             None => self.grants.push(GrantRecord {
                 applied: true,
                 ..record.clone()
@@ -260,6 +276,68 @@ pub(crate) trait GrantOps {
     /// Removes the entry. A folder that is gone counts as done.
     fn revoke(&self, record: &GrantRecord) -> Result<(), SandboxError>;
     fn present(&self, record: &GrantRecord) -> Presence;
+    /// Whether the process that uses a profile is still running. A record
+    /// without one is from a run that can't be told apart: not live.
+    fn process_is_live(&self, process: Option<ProcessIdentity>) -> bool;
+}
+
+/// Settles the excluded files among `leaving` (records about to be revoked)
+/// so that only the last run that keeps its task out of a file writes the
+/// file's original access list back. While another run still excludes the
+/// file, its list stays as it is and the oldest original moves to that run's
+/// record; of several leaving at once, only the oldest writes it back. The
+/// ledger's order is the order the exclusions were made in.
+fn hand_over_originals(ledger: &mut Ledger, leaving: &mut [GrantRecord]) {
+    let position = |ledger: &Ledger, record: &GrantRecord| {
+        ledger
+            .grants
+            .iter()
+            .position(|grant| grant.same_grant(record))
+            .unwrap_or(usize::MAX)
+    };
+    let mut paths: Vec<PathBuf> = leaving
+        .iter()
+        .filter(|record| record.access == GrantAccess::Excluded)
+        .map(|record| record.path.clone())
+        .collect();
+    paths.sort();
+    paths.dedup();
+    for path in paths {
+        let is_here =
+            |grant: &GrantRecord| grant.access == GrantAccess::Excluded && grant.path == path;
+        let mut going: Vec<usize> = (0..leaving.len())
+            .filter(|&index| is_here(&leaving[index]))
+            .collect();
+        going.sort_by_key(|&index| position(ledger, &leaving[index]));
+        let staying = ledger
+            .grants
+            .iter()
+            .enumerate()
+            .filter(|(_, grant)| {
+                is_here(grant) && !leaving.iter().any(|record| record.same_grant(grant))
+            })
+            .map(|(index, _)| index)
+            .next();
+        let oldest_going = going
+            .iter()
+            .find_map(|&index| leaving[index].original.clone().map(|text| (index, text)));
+        for &index in &going {
+            leaving[index].original = None;
+        }
+        let Some((index, original)) = oldest_going else {
+            continue;
+        };
+        match staying {
+            Some(stay) => {
+                if position(ledger, &leaving[index]) < stay
+                    || ledger.grants[stay].original.is_none()
+                {
+                    ledger.grants[stay].original = Some(original);
+                }
+            }
+            None => leaving[index].original = Some(original),
+        }
+    }
 }
 
 /// Deletes `owner`'s profile and settles its task grants. A research task's
@@ -289,36 +367,70 @@ pub(crate) fn release_begin(
         ledger.grants.retain(|grant| !owned(grant));
         return Ok(Vec::new());
     }
-    Ok(ledger
+    let mut leaving: Vec<GrantRecord> = ledger
         .grants
         .iter()
         .filter(|grant| owned(grant))
         .cloned()
-        .collect())
+        .collect();
+    hand_over_originals(ledger, &mut leaving);
+    Ok(leaving)
 }
 
 /// Task grants whose owner has no profile any more and is not a research
 /// task: entries left on folders that stay, to be revoked.
-pub(crate) fn orphan_revocations(ledger: &Ledger) -> Vec<GrantRecord> {
-    let live: Vec<&str> = ledger
+pub(crate) fn orphan_revocations(ledger: &mut Ledger) -> Vec<GrantRecord> {
+    let live: Vec<String> = ledger
         .containers
         .values()
-        .map(|record| record.owner.as_str())
+        .map(|record| record.owner.clone())
         .collect();
-    ledger
+    let mut leaving: Vec<GrantRecord> = ledger
         .grants
         .iter()
         .filter(|grant| {
             matches!(&grant.scope, GrantScope::Task { owner }
-                if !is_task_owner(owner) && !live.contains(&owner.as_str()))
+                if !is_task_owner(owner) && !live.contains(owner))
         })
         .cloned()
-        .collect()
+        .collect();
+    hand_over_originals(ledger, &mut leaving);
+    leaving
 }
 
-/// Releases every research task not in `active`; returns how many were
-/// released. Other owners (a CLI run that is working right now) are not this
-/// sweep's to release.
+/// Owners other than research tasks (a CLI run, a self-test) whose profile
+/// is used by a process that is gone: a run that was killed before it could
+/// release.
+fn abandoned_owners(ops: &dyn GrantOps, ledger: &Ledger) -> Vec<String> {
+    let mut owners: Vec<String> = ledger
+        .containers
+        .values()
+        .filter(|record| !is_task_owner(&record.owner) && !ops.process_is_live(record.process))
+        .map(|record| record.owner.clone())
+        .collect();
+    owners.sort();
+    owners.dedup();
+    owners
+}
+
+/// Deletes the profiles of [`abandoned_owners`]; their entries on folders
+/// are then [`orphan_revocations`]. Returns how many were released. Research
+/// tasks are left alone: only the app knows which of them are active.
+pub(crate) fn release_abandoned_with(
+    ops: &dyn GrantOps,
+    ledger: &mut Ledger,
+) -> Result<usize, SandboxError> {
+    let owners = abandoned_owners(ops, ledger);
+    for owner in &owners {
+        release_begin(ops, ledger, owner)?;
+    }
+    Ok(owners.len())
+}
+
+/// Releases every research task not in `active`, and every other owner
+/// whose process is gone (see [`release_abandoned_with`]); returns how many
+/// were released. A CLI run or a self-test that is working right now keeps
+/// what it holds.
 pub(crate) fn release_stale_with(
     ops: &dyn GrantOps,
     ledger: &mut Ledger,
@@ -334,6 +446,7 @@ pub(crate) fn release_stale_with(
         }))
         .filter(|owner| is_task_owner(owner) && !active.contains(owner))
         .collect();
+    owners.extend(abandoned_owners(ops, ledger));
     owners.sort();
     owners.dedup();
     for owner in &owners {
@@ -414,6 +527,8 @@ mod tests {
         failing: BTreeSet<PathBuf>,
         /// What `present` says; `Present` when a path isn't listed.
         presence: BTreeMap<PathBuf, Presence>,
+        /// Processes that are gone; every other recorded one is running.
+        dead: BTreeSet<u32>,
     }
 
     impl GrantOps for FakeOps {
@@ -437,6 +552,9 @@ mod tests {
                 .copied()
                 .unwrap_or(Presence::Present)
         }
+        fn process_is_live(&self, process: Option<ProcessIdentity>) -> bool {
+            process.is_some_and(|process| !self.dead.contains(&process.pid))
+        }
     }
 
     fn grant(path: &str, scope: GrantScope, access: GrantAccess) -> GrantRecord {
@@ -446,7 +564,15 @@ mod tests {
             scope,
             access,
             applied: true,
+            original: None,
         }
+    }
+
+    fn process(pid: u32) -> Option<ProcessIdentity> {
+        Some(ProcessIdentity {
+            pid,
+            started: Some(1),
+        })
     }
 
     fn ledger() -> Ledger {
@@ -457,6 +583,7 @@ mod tests {
                 ContainerRecord {
                     owner: owner.into(),
                     created_at: 1,
+                    process: process(10),
                 },
             );
             ledger.grants.push(grant(
@@ -487,13 +614,15 @@ mod tests {
         ledger
     }
 
-    /// A CLI run's profile and its grants on the user's own project.
-    fn with_cli_run(ledger: &mut Ledger, owner: &str) {
+    /// A CLI run's profile and its grants on the user's own project, made
+    /// by the process `pid`.
+    fn with_cli_run_in(ledger: &mut Ledger, owner: &str, pid: u32) {
         ledger.containers.insert(
             format!("Oleafly.Task.{owner}"),
             ContainerRecord {
                 owner: owner.into(),
                 created_at: 1,
+                process: process(pid),
             },
         );
         for (path, access) in [
@@ -509,6 +638,11 @@ mod tests {
                 access,
             ));
         }
+    }
+
+    /// A CLI run that is working (its process is running).
+    fn with_cli_run(ledger: &mut Ledger, owner: &str) {
+        with_cli_run_in(ledger, owner, 20);
     }
 
     fn is_task_grant_of(grant: &GrantRecord, wanted: &str) -> bool {
@@ -653,7 +787,7 @@ mod tests {
         with_cli_run(&mut ledger, "agent:gone");
         // The second run's profile is deleted; the first one is still working.
         ledger.containers.remove("Oleafly.Task.agent:gone");
-        let orphans = orphan_revocations(&ledger);
+        let orphans = orphan_revocations(&mut ledger);
         assert_eq!(orphans.len(), 3);
         assert!(orphans
             .iter()
@@ -661,7 +795,7 @@ mod tests {
         // Research tasks without a profile are not orphans: stale release
         // drops those records.
         ledger.containers.remove("Oleafly.Task.task:a");
-        assert!(orphan_revocations(&ledger)
+        assert!(orphan_revocations(&mut ledger)
             .iter()
             .all(|grant| !is_task_grant_of(grant, "task:a")));
     }
@@ -676,6 +810,7 @@ mod tests {
             ContainerRecord {
                 owner: "selftest:7".into(),
                 created_at: 1,
+                process: process(7),
             },
         );
         assert_eq!(
@@ -694,6 +829,203 @@ mod tests {
             .grants
             .iter()
             .any(|grant| is_task_grant_of(grant, "agent:run1")));
+    }
+
+    #[test]
+    fn the_sweep_releases_a_cli_run_whose_process_is_gone() {
+        let ops = FakeOps {
+            dead: [30].into(),
+            ..FakeOps::default()
+        };
+        let mut ledger = ledger();
+        with_cli_run(&mut ledger, "agent:live");
+        with_cli_run_in(&mut ledger, "agent:killed", 30);
+        assert_eq!(
+            release_stale_with(&ops, &mut ledger, &["task:a".into(), "task:b".into()]).unwrap(),
+            1
+        );
+        assert_eq!(
+            ops.deleted.lock().unwrap().as_slice(),
+            ["Oleafly.Task.agent:killed"]
+        );
+        assert!(ledger.containers.contains_key("Oleafly.Task.agent:live"));
+        // Its entries on the project are what the next step revokes.
+        let orphans = orphan_revocations(&mut ledger);
+        assert_eq!(orphans.len(), 3);
+        assert!(orphans
+            .iter()
+            .all(|grant| is_task_grant_of(grant, "agent:killed")));
+    }
+
+    #[test]
+    fn releasing_abandoned_runs_leaves_research_tasks_to_the_app() {
+        let ops = FakeOps {
+            dead: [30].into(),
+            ..FakeOps::default()
+        };
+        let mut ledger = ledger();
+        with_cli_run(&mut ledger, "agent:live");
+        with_cli_run_in(&mut ledger, "agent:killed", 30);
+        // A record that names no process can't be told apart from a dead one.
+        ledger.containers.insert(
+            "Oleafly.Task.selftest:9".into(),
+            ContainerRecord {
+                owner: "selftest:9".into(),
+                created_at: 1,
+                process: None,
+            },
+        );
+        assert_eq!(release_abandoned_with(&ops, &mut ledger).unwrap(), 2);
+        let mut deleted = ops.deleted.lock().unwrap().clone();
+        deleted.sort();
+        assert_eq!(
+            deleted,
+            ["Oleafly.Task.agent:killed", "Oleafly.Task.selftest:9"]
+        );
+        for kept in [
+            "Oleafly.Task.task:a",
+            "Oleafly.Task.task:b",
+            "Oleafly.Task.agent:live",
+        ] {
+            assert!(ledger.containers.contains_key(kept), "{kept}");
+        }
+    }
+
+    #[test]
+    fn container_records_without_a_process_still_load() {
+        let old = r#"{"version":1,"containers":{"Oleafly.Task.agent:r":{"owner":"agent:r","createdAt":5}},"grants":[]}"#;
+        let ledger: Ledger = serde_json::from_str(old).unwrap();
+        assert_eq!(ledger.containers["Oleafly.Task.agent:r"].process, None);
+        let record = ContainerRecord {
+            owner: "agent:r".into(),
+            created_at: 5,
+            process: process(42),
+        };
+        let text = serde_json::to_string(&record).unwrap();
+        assert_eq!(
+            serde_json::from_str::<ContainerRecord>(&text).unwrap(),
+            record
+        );
+    }
+
+    /// An excluded `.env` in the project, for the run `owner` with its own SID.
+    fn excluded_env(owner: &str, sid: &str, original: &str) -> GrantRecord {
+        GrantRecord {
+            path: PathBuf::from("/work/project/.env"),
+            sid: sid.into(),
+            scope: GrantScope::Task {
+                owner: owner.into(),
+            },
+            access: GrantAccess::Excluded,
+            applied: true,
+            original: Some(original.into()),
+        }
+    }
+
+    #[test]
+    fn an_excluded_file_gets_its_list_back_only_from_the_last_run_that_excludes_it() {
+        let ops = FakeOps::default();
+        let mut ledger = ledger();
+        with_cli_run(&mut ledger, "agent:first");
+        with_cli_run(&mut ledger, "agent:second");
+        // The second run excluded the file after the first one, so what it
+        // saw was the first run's protected list.
+        ledger
+            .grants
+            .push(excluded_env("agent:first", "S-1-15-2-11", "D:AI(original)"));
+        ledger
+            .grants
+            .push(excluded_env("agent:second", "S-1-15-2-22", "D:P(first's)"));
+        let first = release_begin(&ops, &mut ledger, "agent:first").unwrap();
+        let first_env = first
+            .iter()
+            .find(|grant| grant.access == GrantAccess::Excluded)
+            .unwrap();
+        // The second run still keeps its task out: nothing is written back,
+        // and the real original now waits on the second run's record.
+        assert_eq!(first_env.original, None);
+        ledger.forget(&first);
+        let second_env = ledger
+            .grants
+            .iter()
+            .find(|grant| grant.access == GrantAccess::Excluded)
+            .unwrap();
+        assert_eq!(second_env.original.as_deref(), Some("D:AI(original)"));
+        let second = release_begin(&ops, &mut ledger, "agent:second").unwrap();
+        let second_env = second
+            .iter()
+            .find(|grant| grant.access == GrantAccess::Excluded)
+            .unwrap();
+        assert_eq!(second_env.original.as_deref(), Some("D:AI(original)"));
+    }
+
+    #[test]
+    fn a_newer_run_leaving_first_keeps_the_older_runs_original() {
+        let ops = FakeOps::default();
+        let mut ledger = ledger();
+        with_cli_run(&mut ledger, "agent:first");
+        with_cli_run(&mut ledger, "agent:second");
+        ledger
+            .grants
+            .push(excluded_env("agent:first", "S-1-15-2-11", "D:AI(original)"));
+        ledger
+            .grants
+            .push(excluded_env("agent:second", "S-1-15-2-22", "D:P(first's)"));
+        let second = release_begin(&ops, &mut ledger, "agent:second").unwrap();
+        assert!(second
+            .iter()
+            .all(|grant| grant.access != GrantAccess::Excluded || grant.original.is_none()));
+        let first_env = ledger
+            .grants
+            .iter()
+            .find(|grant| grant.access == GrantAccess::Excluded && grant.sid == "S-1-15-2-11")
+            .unwrap();
+        assert_eq!(first_env.original.as_deref(), Some("D:AI(original)"));
+    }
+
+    #[test]
+    fn of_two_runs_cut_off_together_only_the_oldest_writes_the_list_back() {
+        let mut ledger = ledger();
+        with_cli_run(&mut ledger, "agent:first");
+        with_cli_run(&mut ledger, "agent:second");
+        ledger
+            .grants
+            .push(excluded_env("agent:first", "S-1-15-2-11", "D:AI(original)"));
+        ledger
+            .grants
+            .push(excluded_env("agent:second", "S-1-15-2-22", "D:P(first's)"));
+        ledger.containers.remove("Oleafly.Task.agent:first");
+        ledger.containers.remove("Oleafly.Task.agent:second");
+        let orphans = orphan_revocations(&mut ledger);
+        let originals: Vec<Option<&str>> = orphans
+            .iter()
+            .filter(|grant| grant.access == GrantAccess::Excluded)
+            .map(|grant| grant.original.as_deref())
+            .collect();
+        assert_eq!(originals.len(), 2);
+        assert_eq!(
+            originals
+                .iter()
+                .filter(|original| original.is_some())
+                .count(),
+            1
+        );
+        assert!(originals.contains(&Some("D:AI(original)")));
+    }
+
+    #[test]
+    fn completing_an_exclusion_keeps_the_first_original() {
+        let mut ledger = Ledger::default();
+        let mut record = excluded_env("agent:r", "S-1-15-2-11", "D:AI(original)");
+        record.applied = false;
+        record.original = None;
+        assert_eq!(ledger.begin(&record), Begin::Apply { force: false });
+        record.original = Some("D:AI(original)".into());
+        ledger.complete(&record);
+        // A forced retry sees only its own protected list.
+        record.original = Some("D:P(retry)".into());
+        ledger.complete(&record);
+        assert_eq!(ledger.grants[0].original.as_deref(), Some("D:AI(original)"));
     }
 
     #[test]

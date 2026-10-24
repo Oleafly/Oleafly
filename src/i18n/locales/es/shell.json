@@ -563,6 +563,9 @@
     "title": "Volver a la biblioteca",
     "tooltip": "Volver a la biblioteca de proyectos"
   },
+  "importDestination": {
+    "scansGoTo": "Los escaneos se envían a {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -676,8 +679,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Tus cambios sin guardar siguen abiertos. Quédate para resolver el problema o sal de todos modos y piérdelos.",
+      "descriptionReload": "{{reason}} Tus cambios sin guardar siguen abiertos. Quédate para resolver el problema o recarga de todos modos y piérdelos.",
       "descriptionRestart": "{{reason}} Tus cambios sin guardar siguen abiertos. Quédate para resolver el problema o reinicia de todos modos y piérdelos.",
       "quitAnyway": "Salir de todos modos",
+      "reloadAnyway": "Recargar de todos modos",
       "restartAnyway": "Reiniciar de todos modos",
       "stay": "Quedarse",
       "title": "No se pudieron guardar algunos archivos"

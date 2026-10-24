@@ -18,6 +18,9 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
 const STATUS_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_IN_FLIGHT: usize = 8;
 const LOOPBACK_PREFIX: &str = "http://127.0.0.1:";
+/// How long a confirmed "the app still has this project open" answer is
+/// reused before the next `tools/call` asks again.
+const PROJECT_CHECK_TTL: Duration = Duration::from_secs(1);
 
 /// The app's MCP endpoint.
 pub struct BridgeTarget {
@@ -108,8 +111,12 @@ pub async fn ping(target: &BridgeTarget, timeout: Duration) -> bool {
 /// The project the app has open (its `get_status` tool), if it answers.
 pub async fn app_project_id(target: &BridgeTarget) -> Option<String> {
     let client = client()?;
+    open_project_id(&client, target).await
+}
+
+async fn open_project_id(client: &reqwest::Client, target: &BridgeTarget) -> Option<String> {
     let body = json!({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_status", "arguments": {}}});
-    let response = post(&client, target, &body, None, STATUS_TIMEOUT)
+    let response = post(client, target, &body, None, STATUS_TIMEOUT)
         .await
         .ok()?;
     if !response.status().is_success() {
@@ -154,31 +161,85 @@ fn stopped_answering(id: &Value) -> String {
     json!({"jsonrpc": "2.0", "id": id, "error": {"code": -32603, "message": "The Oleafly app stopped answering."}}).to_string()
 }
 
+/// A failed tool result (the call reaches the client as a tool error, not
+/// a protocol error).
+fn tool_refused(id: &Value, text: &str) -> String {
+    json!({"jsonrpc": "2.0", "id": id, "result": {"content": [{"type": "text", "text": text}], "isError": true}}).to_string()
+}
+
 struct Shared {
     data_root: std::path::PathBuf,
     target: Mutex<BridgeTarget>,
     protocol: Mutex<Option<String>>,
     client: reqwest::Client,
     stdout: Mutex<tokio::io::Stdout>,
+    /// In auto mode, the project this folder is: every `tools/call` is
+    /// forwarded only while the app still has it open (the app's tools act
+    /// on whatever project it has open and take no project argument).
+    expected_project: Option<String>,
+    /// When the app last confirmed `expected_project` was open.
+    confirmed_at: std::sync::Mutex<Option<std::time::Instant>>,
+}
+
+impl Shared {
+    /// A copy of the endpoint, so no lock is held while a request runs.
+    async fn target(&self) -> BridgeTarget {
+        let target = self.target.lock().await;
+        BridgeTarget {
+            url: target.url.clone(),
+            token: target.token.clone(),
+        }
+    }
+
+    /// Why a `tools/call` must not be forwarded now, if it mustn't.
+    async fn project_refusal(&self) -> Option<&'static str> {
+        let expected = self.expected_project.as_deref()?;
+        let fresh =
+            |at: &Option<std::time::Instant>| at.is_some_and(|at| at.elapsed() < PROJECT_CHECK_TTL);
+        if fresh(&self.confirmed_at.lock().unwrap_or_else(|e| e.into_inner())) {
+            return None;
+        }
+        let target = self.target().await;
+        match open_project_id(&self.client, &target).await {
+            Some(open) if open == expected => {
+                *self.confirmed_at.lock().unwrap_or_else(|e| e.into_inner()) =
+                    Some(std::time::Instant::now());
+                None
+            }
+            Some(_) => Some(
+                "Oleafly now has another project open, so this call wasn't sent. Open this project in Oleafly again, or restart the MCP server to work on it without the app.",
+            ),
+            None => Some(
+                "Oleafly didn't say which project it has open, so this call wasn't sent. Try again.",
+            ),
+        }
+    }
 }
 
 /// Forwards one message; writes the reply (if any) to stdout.
 async fn forward(shared: Arc<Shared>, message: Value) {
     let id = message.get("id").cloned();
-    let is_initialize = message.get("method").and_then(Value::as_str) == Some("initialize");
+    let method = message.get("method").and_then(Value::as_str);
+    let is_initialize = method == Some("initialize");
+    if method == Some("tools/call") {
+        if let Some(refusal) = shared.project_refusal().await {
+            if let Some(id) = &id {
+                write_line(&shared.stdout, &tool_refused(id, refusal)).await;
+            }
+            return;
+        }
+    }
     for attempt in 0..2 {
         let protocol = shared.protocol.lock().await.clone();
-        let result = {
-            let target = shared.target.lock().await;
-            post(
-                &shared.client,
-                &target,
-                &message,
-                protocol.as_deref(),
-                REQUEST_TIMEOUT,
-            )
-            .await
-        };
+        let target = shared.target().await;
+        let result = post(
+            &shared.client,
+            &target,
+            &message,
+            protocol.as_deref(),
+            REQUEST_TIMEOUT,
+        )
+        .await;
         let response = match result {
             Ok(response) => response,
             Err(()) => break,
@@ -235,8 +296,13 @@ async fn forward(shared: Arc<Shared>, message: Value) {
     }
 }
 
-/// Bridges stdin to the app until stdin closes.
-pub async fn serve_bridge(data_root: &Path, target: BridgeTarget) -> Result<(), CliError> {
+/// Bridges stdin to the app until stdin closes. With `expected_project`,
+/// tool calls go through only while the app has that project open.
+pub async fn serve_bridge(
+    data_root: &Path,
+    target: BridgeTarget,
+    expected_project: Option<String>,
+) -> Result<(), CliError> {
     let client = client().ok_or_else(|| {
         CliError::new(
             ErrorKind::Internal,
@@ -250,6 +316,8 @@ pub async fn serve_bridge(data_root: &Path, target: BridgeTarget) -> Result<(), 
         protocol: Mutex::new(None),
         client,
         stdout: Mutex::new(tokio::io::stdout()),
+        expected_project,
+        confirmed_at: std::sync::Mutex::new(None),
     });
     let slots = Arc::new(Semaphore::new(MAX_IN_FLIGHT));
     let mut lines = super::server::StdinLines::new();
@@ -392,6 +460,108 @@ mod tests {
             token: Zeroizing::new("t".into()),
         };
         assert_eq!(app_project_id(&target).await.as_deref(), Some("abc"));
+        server.join().unwrap();
+    }
+
+    fn shared_for(url: String, expected_project: Option<&str>) -> Arc<Shared> {
+        Arc::new(Shared {
+            data_root: std::path::PathBuf::new(),
+            target: Mutex::new(BridgeTarget {
+                url,
+                token: Zeroizing::new("t".into()),
+            }),
+            protocol: Mutex::new(None),
+            client: client().unwrap(),
+            stdout: Mutex::new(tokio::io::stdout()),
+            expected_project: expected_project.map(str::to_owned),
+            confirmed_at: std::sync::Mutex::new(None),
+        })
+    }
+
+    #[tokio::test]
+    async fn tool_calls_stop_once_the_app_opens_another_project() {
+        let (url, server) = serve_once(
+            "200 OK",
+            r#"{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"project_id\":\"grant\"}"}]}}"#,
+        );
+        let shared = shared_for(url, Some("thesis"));
+        let refusal = shared.project_refusal().await.expect("refused");
+        assert!(refusal.contains("another project"));
+        server.join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_confirmed_project_is_reused_for_a_second() {
+        let (url, server) = serve_once(
+            "200 OK",
+            r#"{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"project_id\":\"thesis\"}"}]}}"#,
+        );
+        let shared = shared_for(url, Some("thesis"));
+        assert_eq!(shared.project_refusal().await, None);
+        server.join().unwrap();
+        // The server has gone: a second check inside the TTL doesn't ask.
+        assert_eq!(shared.project_refusal().await, None);
+        *shared.confirmed_at.lock().unwrap() = None;
+        assert!(shared.project_refusal().await.is_some());
+    }
+
+    #[tokio::test]
+    async fn without_an_expected_project_nothing_is_checked() {
+        let shared = shared_for("http://127.0.0.1:1/mcp".into(), None);
+        assert_eq!(shared.project_refusal().await, None);
+    }
+
+    #[tokio::test]
+    async fn requests_are_forwarded_side_by_side() {
+        // The server answers only once both requests have arrived, so a
+        // bridge that sends one request at a time never finishes.
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!(
+            "http://127.0.0.1:{}/mcp",
+            listener.local_addr().unwrap().port()
+        );
+        let server = std::thread::spawn(move || {
+            let mut streams = Vec::new();
+            for _ in 0..2 {
+                let (stream, _) = listener.accept().unwrap();
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                let mut length = 0usize;
+                loop {
+                    let mut line = String::new();
+                    reader.read_line(&mut line).unwrap();
+                    if let Some(value) = line.to_ascii_lowercase().strip_prefix("content-length:") {
+                        length = value.trim().parse().unwrap();
+                    }
+                    if line == "\r\n" {
+                        break;
+                    }
+                }
+                let mut payload = vec![0; length];
+                reader.read_exact(&mut payload).unwrap();
+                streams.push(stream);
+            }
+            for mut stream in streams {
+                stream
+                    .write_all(
+                        b"HTTP/1.1 202 Accepted\r\ncontent-length: 0\r\nconnection: close\r\n\r\n",
+                    )
+                    .unwrap();
+            }
+        });
+        let shared = shared_for(url, None);
+        let first = forward(
+            shared.clone(),
+            json!({"jsonrpc": "2.0", "method": "notifications/a"}),
+        );
+        let second = forward(
+            shared.clone(),
+            json!({"jsonrpc": "2.0", "method": "notifications/b"}),
+        );
+        tokio::time::timeout(Duration::from_secs(20), async {
+            tokio::join!(first, second);
+        })
+        .await
+        .expect("the second request waited for the first");
         server.join().unwrap();
     }
 }

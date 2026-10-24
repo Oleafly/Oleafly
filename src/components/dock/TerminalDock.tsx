@@ -21,6 +21,7 @@ import { createTerminalFocusTracker, type TerminalFocusTracker } from "@/lib/ter
 import {
   closeTerminalTabs,
   confirmStopTerminals,
+  forgetConfirmedLeave,
   requestCloseTerminals,
 } from "@/lib/terminal-lifecycle";
 import { useResolvedTerminalTheme, useSettingsStore } from "@/store/settings";
@@ -196,7 +197,7 @@ function TerminalTabItem({
               className="h-5 w-32 rounded px-1 py-0 text-xs"
             />
           ) : (
-            <Tooltip label={tab.oscTitle ?? tab.title} side="bottom" role="none" className="min-w-0">
+            <Tooltip label={tab.oscTitle || tab.title} side="bottom" role="none" className="min-w-0">
               <button
                 ref={tabRef}
                 type="button"
@@ -395,18 +396,21 @@ export function TerminalDock({
     if (tracker?.focusWasInDock()) tracker.restore();
   }, [visible]);
 
-  useEffect(
-    () =>
-      registerProjectLeaveGuard((leave) =>
-        leave.projectId === projectId
-          ? confirmStopTerminals({
-              reason: leave.reason === "close" ? "close-project" : "switch-project",
-              projectId,
-            })
-          : Promise.resolve(true),
-      ),
-    [projectId],
-  );
+  useEffect(() => {
+    const unregister = registerProjectLeaveGuard((leave) =>
+      leave.projectId === projectId
+        ? confirmStopTerminals({
+            reason: leave.reason === "close" ? "close-project" : "switch-project",
+            projectId,
+          })
+        : Promise.resolve(true),
+    );
+    return () => {
+      unregister();
+      // The project changed, so the leave the user confirmed is over.
+      forgetConfirmedLeave(projectId);
+    };
+  }, [projectId]);
 
   const reopenTab = (id: string) => {
     useFolderAccessStore.getState().forgetTerminal(id);

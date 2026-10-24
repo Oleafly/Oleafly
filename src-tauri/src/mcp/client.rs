@@ -3239,6 +3239,13 @@ pub async fn mcp_server_add<R: tauri::Runtime>(
 ) -> Result<McpManagedServer, String> {
     validate_command_webview(webview.label(), webview.window().label())?;
     let _guard = state.mutation.lock().await;
+    // 0.4.8 I: more power for Cua Spaces asks natively first.
+    crate::cua_driver::commands::confirm_spaces_change(
+        tauri::Manager::app_handle(&webview),
+        None,
+        &server,
+    )
+    .await?;
     let _permit = acquire_validation_slot(&state)?;
     add_server_with(&AppConfigRepository, server, connect_server)
         .await
@@ -3255,6 +3262,12 @@ pub async fn mcp_server_update<R: tauri::Runtime>(
     validate_command_webview(webview.label(), webview.window().label())?;
     let original_name = normalize_server_name(&original_name)?;
     let _guard = state.mutation.lock().await;
+    crate::cua_driver::commands::confirm_spaces_change(
+        tauri::Manager::app_handle(&webview),
+        Some(&original_name),
+        &server,
+    )
+    .await?;
     let _permit = server
         .enabled
         .then(|| acquire_validation_slot(&state))
@@ -3274,6 +3287,12 @@ pub async fn mcp_server_update_validated<R: tauri::Runtime>(
     validate_command_webview(webview.label(), webview.window().label())?;
     let original_name = normalize_server_name(&original_name)?;
     let _guard = state.mutation.lock().await;
+    crate::cua_driver::commands::confirm_spaces_change(
+        tauri::Manager::app_handle(&webview),
+        Some(&original_name),
+        &server,
+    )
+    .await?;
     let _permit = acquire_validation_slot(&state)?;
     edit_server_validated_with(&AppConfigRepository, &original_name, server, connect_server)
         .await
@@ -3290,6 +3309,12 @@ pub async fn mcp_server_set_enabled<R: tauri::Runtime>(
     validate_command_webview(webview.label(), webview.window().label())?;
     let name = normalize_server_name(&name)?;
     let _guard = state.mutation.lock().await;
+    crate::cua_driver::commands::confirm_spaces_enabled(
+        tauri::Manager::app_handle(&webview),
+        &name,
+        enabled,
+    )
+    .await?;
     let _permit = enabled
         .then(|| acquire_validation_slot(&state))
         .transpose()?;
@@ -3330,10 +3355,24 @@ fn enabled_servers_named(names: &[String]) -> Vec<McpServerConfig> {
         .unwrap_or_default()
 }
 
+/// Runs a config read on the blocking pool. Reading the config takes the
+/// config lock and decrypts the secret files, which can wait seconds behind a
+/// settings save; on a runtime worker that would hold up other tasks.
+async fn read_config_off_runtime<T: Send + 'static>(
+    read: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tokio::task::spawn_blocking(read)
+        .await
+        .map_err(|error| format!("MCP settings could not be read: {error}"))?
+}
+
 /// The agent tools of the enabled servers among `names`, named as the app's
 /// agent sees them. Servers that do not answer in time are left out.
 pub(crate) async fn task_server_tools(names: &[String]) -> Vec<McpAgentServer> {
-    let servers = enabled_servers_named(names);
+    let names = names.to_vec();
+    let servers = read_config_off_runtime(move || Ok(enabled_servers_named(&names)))
+        .await
+        .unwrap_or_default();
     let discoveries = futures_util::stream::iter(servers).map(|server| async move {
         let tools = connect_server(server.clone()).await.ok()?;
         Some((server, tools))
@@ -3385,7 +3424,9 @@ pub(crate) async fn call_enabled_server_tool(
     tool: &str,
     arguments: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
-    let server = load_enabled_server(&AppConfigRepository, server_name)?;
+    let name = server_name.to_owned();
+    let server =
+        read_config_off_runtime(move || load_enabled_server(&AppConfigRepository, &name)).await?;
     let deadline = tokio::time::Instant::now() + AGENT_TOOL_TIMEOUT;
     let result =
         connect_server_and_call_until(server.clone(), tool, arguments, || Ok(()), deadline)
@@ -6966,5 +7007,23 @@ mod tests {
         .await
         .unwrap_err();
         assert!(!error.contains("s3cr3t-value"), "{error}");
+    }
+
+    #[tokio::test]
+    async fn a_config_read_waiting_on_the_lock_leaves_the_runtime_free() {
+        // One runtime thread: the read only gets its answer if the task
+        // below runs while the read waits.
+        let (release, released) = std::sync::mpsc::channel::<()>();
+        let read = read_config_off_runtime(move || {
+            released
+                .recv_timeout(Duration::from_secs(5))
+                .map_err(|_| "the runtime was held up".to_string())?;
+            Ok("read")
+        });
+        let other_work = async move {
+            release.send(()).unwrap();
+        };
+        let (read, ()) = tokio::join!(read, other_work);
+        assert_eq!(read.unwrap(), "read");
     }
 }

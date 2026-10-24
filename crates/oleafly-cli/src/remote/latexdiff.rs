@@ -77,9 +77,20 @@ pub(crate) fn run_latexdiff(
     new_main: &Path,
     timeout: Duration,
 ) -> Result<Vec<u8>, CliError> {
-    let mut child = latexdiff_command(program, old_main, new_main)
-        .spawn()
-        .map_err(|error| failed(error.to_string()))?;
+    // TeX distributions start latexdiff through a wrapper that runs perl as
+    // a child of its own, so the whole tree is contained (as compiler runs
+    // are) and a timeout ends perl too.
+    let mut command = latexdiff_command(program, old_main, new_main);
+    crate::process::isolate_std(&mut command);
+    let mut child = command.spawn().map_err(|error| failed(error.to_string()))?;
+    let tree = match crate::process::contain(child.id()) {
+        Ok(tree) => tree,
+        Err(error) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(failed(error.to_string()));
+        }
+    };
     let mut stdout = child.stdout.take().ok_or_else(|| failed("no output"))?;
     let mut stderr = child.stderr.take().ok_or_else(|| failed("no output"))?;
     let out = std::thread::spawn(move || {
@@ -100,6 +111,7 @@ pub(crate) fn run_latexdiff(
         {
             Some(status) => break status,
             None if Instant::now() >= deadline => {
+                drop(tree);
                 let _ = child.kill();
                 let _ = child.wait();
                 return Err(failed(format!(
@@ -110,6 +122,8 @@ pub(crate) fn run_latexdiff(
             None => std::thread::sleep(Duration::from_millis(50)),
         }
     };
+    // Whatever the wrapper left running goes with it.
+    drop(tree);
     let output = out.join().unwrap_or_default();
     let errors = err.join().unwrap_or_default();
     if !status.success() || output.is_empty() {
@@ -263,6 +277,52 @@ mod tests {
         assert_eq!(args.len(), 3);
         assert_eq!(args[0], "--flatten");
         assert_eq!(args[2], r"C:\Users\Ana Lopez\paper\main.tex");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_latexdiff_that_runs_too_long_ends_with_the_programs_it_started() {
+        use std::io::Write as _;
+        let dir = tempfile::tempdir().unwrap();
+        let fake = dir.path().join("latexdiff");
+        let pid_file = dir.path().join("child.pid");
+        // As a TeX distribution's wrapper starts perl: a child of its own.
+        let script = format!(
+            "#!/bin/sh\nsleep 30 &\necho $! > '{}'\nwait\n",
+            pid_file.display()
+        );
+        let mut writer = Command::new("sh")
+            .args(["-c", "cat > \"$1\" && chmod 700 \"$1\"", "sh"])
+            .arg(&fake)
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+        writer
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(script.as_bytes())
+            .unwrap();
+        assert!(writer.wait().unwrap().success());
+        let main = dir.path().join("main.tex");
+        std::fs::write(&main, "x").unwrap();
+        let error = run_latexdiff(&fake, &main, &main, Duration::from_secs(5)).unwrap_err();
+        let cause = error.details.as_ref().unwrap()["cause"].to_string();
+        assert!(cause.contains("longer than"), "{cause}");
+        let pid: i32 = std::fs::read_to_string(&pid_file)
+            .unwrap()
+            .trim()
+            .parse()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        // SAFETY: probes a process id this test's script started.
+        while unsafe { libc::kill(pid, 0) } == 0 {
+            assert!(
+                Instant::now() < deadline,
+                "the wrapper's child kept running"
+            );
+            std::thread::sleep(Duration::from_millis(50));
+        }
     }
 
     #[cfg(unix)]

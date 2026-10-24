@@ -140,7 +140,9 @@ impl PidRegistry {
 
     /// Stops the agents whose owner is gone and that are still the process
     /// that was listed, and drops their lines. Returns the stopped ids.
-    /// Windows only drops the lines: its agents die with their job object.
+    /// A line without a start time is only dropped: its process id may
+    /// belong to anything by now. Windows only drops the lines: its agents
+    /// die with their job object.
     pub fn reap(
         dir: &Path,
         owner_alive: impl Fn(&OwnerTag) -> bool,
@@ -154,7 +156,7 @@ impl PidRegistry {
                 kept.push(entry);
                 continue;
             }
-            if still_same(entry.pid, entry.started) && stop(entry.pid) {
+            if entry.started.is_some() && still_same(entry.pid, entry.started) && stop(entry.pid) {
                 stopped.push(entry.pid);
             }
         }
@@ -211,8 +213,13 @@ mod tests {
             .arg("60")
             .spawn()
             .unwrap();
+        let started = match oleafly_sandbox::process::identity::probe(child.id()) {
+            oleafly_sandbox::process::identity::ProcessProbe::Running { started } => started,
+            oleafly_sandbox::process::identity::ProcessProbe::Gone => None,
+        };
+        assert!(started.is_some(), "the child's start time is known");
         let dead = PidRegistry::open(dir.path(), owner(4_000_020, "app")).unwrap();
-        dead.add(child.id(), None, Path::new("sleep")).unwrap();
+        dead.add(child.id(), started, Path::new("sleep")).unwrap();
         let live = PidRegistry::open(dir.path(), owner(4_000_021, "daemon")).unwrap();
         live.add(4_000_022, None, Path::new("agent")).unwrap();
         let stopped = PidRegistry::reap(
@@ -227,6 +234,27 @@ mod tests {
         let left = read_entries(dir.path()).unwrap();
         assert_eq!(left.len(), 1);
         assert_eq!(left[0].pid, 4_000_022);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_line_without_a_start_time_is_dropped_without_a_kill() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut child = std::process::Command::new("sleep")
+            .arg("60")
+            .spawn()
+            .unwrap();
+        let dead = PidRegistry::open(dir.path(), owner(4_000_040, "app")).unwrap();
+        dead.add(child.id(), None, Path::new("sleep")).unwrap();
+        let stopped = PidRegistry::reap(dir.path(), |_| false, |_, _| true).unwrap();
+        assert!(stopped.is_empty());
+        assert!(read_entries(dir.path()).unwrap().is_empty());
+        assert!(
+            child.try_wait().unwrap().is_none(),
+            "the process still runs"
+        );
+        child.kill().unwrap();
+        let _ = child.wait();
     }
 
     #[cfg(windows)]

@@ -1,8 +1,8 @@
 //! Tauri commands for Git hosting accounts. Tokens and device codes stay in
 //! Rust: the webview sends a pasted token once and gets back only accounts.
 use super::{
-    account_and_token, app_error, host_label, http_for_async, mirror_legacy_github,
-    normalized_base, now_ms, store, ACCOUNTS_CHANGED_EVENT,
+    account_and_token, app_error, host_label, http_for_async, mirror_legacy_github_or_log,
+    normalized_base, now_ms, sign_out_here, store, ACCOUNTS_CHANGED_EVENT,
 };
 use oleafly_forge::accounts::{self, AccountCheck};
 use oleafly_forge::api::{self, ForgeRepo, RepoPage, Session};
@@ -242,7 +242,11 @@ pub async fn forge_sign_in_token(
         let token = token.trim().to_string();
         let login = account.login.clone();
         let mirrored = base.clone();
-        blocking(move || mirror_legacy_github(&mirrored, Some((&token, &login)))).await?;
+        let _ = blocking(move || {
+            mirror_legacy_github_or_log(&mirrored, Some((&token, &login)));
+            Ok(())
+        })
+        .await;
     }
     notify_changed(&app);
     Ok(account)
@@ -395,7 +399,11 @@ pub async fn forge_device_poll(app: AppHandle, flow_id: String) -> Result<ForgeD
         if let Some(token) = token.filter(|_| account.base == GITHUB_COM) {
             let base = account.base.clone();
             let login = account.login.clone();
-            blocking(move || mirror_legacy_github(&base, Some((&token, &login)))).await?;
+            let _ = blocking(move || {
+                mirror_legacy_github_or_log(&base, Some((&token, &login)));
+                Ok(())
+            })
+            .await;
         }
         notify_changed(&app);
     }
@@ -413,15 +421,7 @@ pub async fn forge_device_cancel(flow_id: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn forge_sign_out(app: AppHandle, base: String) -> Result<(), String> {
     let base = normalized_base(&base)?;
-    let host = host_label(&base);
-    let target = base.clone();
-    blocking(move || {
-        store()?
-            .remove(&target)
-            .map_err(|error| app_error(&error, &host))?;
-        mirror_legacy_github(&target, None)
-    })
-    .await?;
+    blocking(move || sign_out_here(&base)).await?;
     notify_changed(&app);
     Ok(())
 }

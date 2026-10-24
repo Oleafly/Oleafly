@@ -2,7 +2,7 @@
 
 Desktop apps let agents work in apps and websites on your computer: the built-in assistant, CLI agents in a chat, and research tasks you watch. Oleafly drives them through [Cua Driver](https://cua.ai/docs/cua-driver), an open source program from Cua. Oleafly never installs, bundles or updates Cua Driver for you.
 
-Agents see one tool, `desktop_apps`. Looking at windows and pages runs right away. Every click, keystroke and page change asks you first, in a system dialog.
+Agents see one tool, `desktop_apps`. Looking at windows and pages runs right away. Oleafly asks before each action, in a system dialog, unless you allow that kind of action for the chat, session or task. Your signed-in browser and scripts always ask.
 
 Turn it on in **Settings > Integrations > Desktop apps**.
 
@@ -32,7 +32,7 @@ Oleafly needs Cua Driver 0.36.0 or newer. It looks for it here:
 
 You choose the apps and websites:
 
-- **Allowed apps.** Pick from the installed apps or choose a program file. On macOS an app is its bundle id; on Windows and Linux it is the program's full path. Some apps can never be added: Oleafly itself, Cua Driver, terminals and shells, system settings, password managers, script runners, programs that start other programs (such as `env` or `python`), Flatpak or Snap apps, and web browsers (add the sites you want under Allowed websites instead). The picker shows why.
+- **Allowed apps.** Pick from the installed apps or choose a program file. On macOS an app is its bundle id; on Windows and Linux it is the program's full path. Oleafly refuses the kinds of apps that would get around your limits: Oleafly itself, Cua Driver, terminals and shells, code editors with a built-in terminal (such as VS Code, Cursor, Zed and the JetBrains IDEs), system settings, password managers, script runners, programs that start other programs (such as `env` or `python`), Flatpak or Snap apps, and web browsers (add the sites you want under Allowed websites instead). The picker shows why. Oleafly knows these apps by name, so it can miss a less common browser, terminal or password manager. Don't add one of those yourself.
 - **Allowed websites.** Enter `https://` addresses (or `http://` for this computer). Each site opens in a separate browser profile. Turn on "Use my signed-in browser" for a site to let agents work in your own Chrome or Edge there instead.
 - **Scripted control.** Off by default. When on, agents may run Cua scripts that do many steps at once. Each script asks you every time.
 
@@ -59,12 +59,13 @@ No manifest ever allows these tools: `kill_app`, `install_extension`, `set_confi
 ## Approvals
 
 - **Looking** (`list_apps`, `list_windows`, `get_window_state`, `get_browser_state`) runs without asking.
-- **Actions** (clicks, typing, keys, opening apps, page changes) ask in a system dialog: "Allow once", "Allow for this chat" (or session, or task), or "Don't allow". Escape means don't allow.
-- **Your signed-in browser** asks before every action and has no "Allow for this…" choice. The dialog says it is your own browser and names the site.
-- **Batches** (`run_steps`) ask once and list every step. "Allow for this chat" on a batch covers the kinds of steps it listed, so a later batch with a new kind of step asks again.
+- **Actions** (clicks, typing, keys, opening apps, page changes) ask in a system dialog: "Allow once", "Allow for this chat" (or session, or task), or "Don't allow". Escape means don't allow. "Allow for this chat" covers that kind of action in every allowed app, so adding an app or a website in Settings clears those choices.
+- **What the dialog shows.** Every argument the agent sent, text or address first, with passwords and keys hidden. When Cua Driver described them earlier, the dialog also names the app, its window and the button or field the action is for. A research task's dialog names the task.
+- **Your signed-in browser** asks before every action and has no "Allow for this…" choice. The dialog says it is your own browser and names the site when Oleafly knows it: the page an action goes to, or the page the tab last showed.
+- **Batches** (`run_steps`) ask once and list their steps. A step the dialog has no room for doesn't run, and the agent is told to send it again. "Allow for this chat" on a batch covers the kinds of steps it listed, so a later batch with a new kind of step asks again.
 - **Scripts** (`run_script`) ask every time, with no "Allow for this…" choice.
 - When text, a script or a list of steps is too long for the dialog, the dialog says how much it leaves out.
-- A dialog that gets no answer counts as "Don't allow". So does one still open when the chat turn ends.
+- A dialog waits up to 3 minutes in a chat or a research task, and 90 seconds for a CLI agent. With no answer by then, nothing runs and the agent is told you didn't answer. Nothing runs either when the turn ends while the dialog is open. Stopping a CLI agent or a task also stops an action it already started.
 
 Your approval mode and allow rules don't skip these questions, not even Full access. A deny rule for `desktop_apps` in a project's approval rules turns desktop apps off for that project. Folders you haven't trusted never get desktop apps.
 
@@ -85,7 +86,7 @@ Cua Spaces gives agents isolated desktops and containers. Oleafly can add it as 
 | macOS, Linux | `curl -fsSL https://cua.ai/install.sh \| sh` |
 | Windows | `powershell.exe -NoProfile -Command "irm https://cua.ai/install.ps1 \| iex"` |
 
-It connects read-only (`--permissions spaces:readonly`) and without your agent sign-ins (`CUA_SPACES_AGENT_CREDENTIALS_HOME=none`). "Allow changes" and "Share my agent sign-ins" turn those on. Every Spaces call asks through the MCP approval, and long calls can run into the MCP tool time limit.
+It connects read-only (`--permissions spaces:readonly`) and without your agent sign-ins (`CUA_SPACES_AGENT_CREDENTIALS_HOME=none`). "Allow changes" and "Share my agent sign-ins" turn those on, after a system dialog asks you to confirm. Every Spaces call asks through the MCP approval, and long calls can run into the MCP tool time limit.
 
 ## Troubleshooting
 

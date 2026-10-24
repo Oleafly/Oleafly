@@ -386,6 +386,8 @@ export function SearchOmnibar() {
   const openHit = async (hit: SearchHit) => {
     close();
     await openProject(hit.project_id);
+    // A leave check (a running terminal program) can keep the old project open.
+    if (useFilesStore.getState().projectId !== hit.project_id) return;
     await openFile(hit.path);
     window.setTimeout(() => gotoLine(hit.line), 120);
   };

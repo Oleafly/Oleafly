@@ -15,12 +15,14 @@ Exit codes
   1    Something inside Oleafly went wrong (a bug).
   2    The command was used wrongly, or it needs --yes to go ahead.
   3    The project is missing or invalid, or a path points outside it.
-  4    A tool or the Oleafly app it needs isn't installed.
+  4    A tool or the Oleafly app it needs isn't installed, or a file outside
+       the project (a client's settings) couldn't be read or written.
   5    The build failed.
   6    You need to sign in.
   7    The network failed.
   8    Something else holds the project (another build, the app).
   9    A check found problems.
+  10   The agent stopped at its step or time limit.
   130  You pressed Ctrl+C.
 ";
 
@@ -37,8 +39,22 @@ Environment
   OLEAFLY_PACKS_BASE_URL  Where template packs are downloaded from.
   OLEAFLY_WATCH_POLL      Set it to make `oleafly watch` poll for changes.
   OLEAFLY_CLI             Set for programs Oleafly starts: this command's path.
+  OLEAFLY_ONLINE_GIT_TOKEN
+                          A Git token for the online LaTeX service, used
+                          instead of a saved one (for CI). It goes only to the
+                          service's own server, one you name with --server, or
+                          one you've signed in to.
+  OLEAFLY_SANDBOX_FORWARD_URL_LOGINS
+                          Set it to 1 to keep user names and passwords in
+                          proxy and package-index addresses for sandboxed
+                          commands. By default they are removed.
+  OLEAFLY_PROVIDER        The provider for `oleafly agent` and `oleafly ask`.
+  OLEAFLY_MODEL           The model for `oleafly agent` and `oleafly ask`.
+  OLEAFLY_API_KEY         A key for that provider, used when its own variable
+                          isn't set.
   CODEX_HOME              Where Codex keeps its settings (for `mcp config`).
-  CI                      When set, Oleafly never asks questions.
+  CI                      When set to anything but 0 or false, Oleafly never
+                          asks questions.
   NO_COLOR                When set, output has no color.
 ";
 
@@ -225,6 +241,30 @@ mod tests {
             HELP_ENVIRONMENT.contains("OLEAFLY_DATA_DIR") && HELP_ENVIRONMENT.contains("NO_COLOR")
         );
         assert!(HELP_JSON.contains("schema_version"));
+    }
+
+    #[test]
+    fn help_environment_lists_every_variable_the_guide_documents() {
+        let guide = include_str!("../../../../docs/cli.md");
+        let section = guide
+            .split("\n## Environment\n")
+            .nth(1)
+            .and_then(|rest| rest.split("\n## ").next())
+            .expect("docs/cli.md has an Environment section");
+        let mut documented = Vec::new();
+        for row in section.lines().filter(|line| line.starts_with("| `")) {
+            let first_cell = row.split('|').nth(1).unwrap_or_default();
+            documented.extend(first_cell.split('`').skip(1).step_by(2));
+        }
+        assert!(documented.len() > 10, "{documented:?}");
+        for variable in documented {
+            assert!(
+                HELP_ENVIRONMENT.contains(variable),
+                "`oleafly help environment` leaves out {variable}"
+            );
+        }
+        // `CI=0` and `CI=false` don't count, so "when set" alone is wrong.
+        assert!(HELP_ENVIRONMENT.contains("anything but 0 or false"));
     }
 
     #[test]

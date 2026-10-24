@@ -53,6 +53,9 @@ const PROCESS_LIST_TIMEOUT: Duration = Duration::from_secs(3);
 pub(crate) const STOPPED_TEXT: &str = "Desktop apps were changed or turned off in Settings, so Oleafly stopped this call. Check the app's state before you try again.";
 pub(crate) const TIMEOUT_TEXT: &str = "Desktop apps didn't answer in time, so Oleafly restarted the connection. Check the app's state before you try again.";
 const NOT_CONFIGURED_TEXT: &str = "Desktop apps have nothing allowed for this yet. The user can add apps and websites in Settings > Integrations > Desktop apps.";
+pub(crate) const TOO_LARGE_TEXT: &str = "Cua Driver's answer was larger than Oleafly can read, so it was left out. For get_window_state, pass include_screenshot: false or a smaller max_elements. If this was an action, it may have run: check the app's state before you try again.";
+/// How the MCP client reports a line longer than `MAX_MESSAGE_BYTES`.
+const TOO_LARGE_MARKER: &str = "server response exceeded the";
 
 /// Where one runtime keeps its files and listens.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -847,6 +850,10 @@ struct Live {
     /// Labels this daemon has a `start_session` for.
     started_labels: HashSet<String>,
     tools: Vec<McpServerTool>,
+    /// The session was dropped after an answer too large to read. The
+    /// daemon is fine, so the next call opens a new session on it instead
+    /// of restarting it.
+    reconnect: bool,
 }
 
 #[derive(Default)]
@@ -890,6 +897,9 @@ pub(crate) struct Runtimes {
     /// Bumped to cancel what is in flight on a kind: a call stops waiting
     /// for the driver, a start gives up.
     cancel: HashMap<RuntimeKind, tokio::sync::watch::Sender<u64>>,
+    /// Each kind's tool list from its last start, readable without the slot
+    /// lock (a dialog uses the schemas before asking).
+    known_tools: Mutex<HashMap<RuntimeKind, Vec<McpServerTool>>>,
 }
 
 /// Marks a kind as starting for as long as the start runs, however it ends.
@@ -952,7 +962,17 @@ impl Runtimes {
                 .iter()
                 .map(|kind| (*kind, tokio::sync::watch::channel(0).0))
                 .collect(),
+            known_tools: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// The driver's tools for `kind` as its last start listed them; empty
+    /// before the first start. Never starts anything.
+    pub(crate) fn known_tools(&self, kind: RuntimeKind) -> Vec<McpServerTool> {
+        lock(&self.known_tools)
+            .get(&kind)
+            .cloned()
+            .unwrap_or_default()
     }
 
     fn slot(&self, kind: RuntimeKind) -> Arc<tokio::sync::Mutex<Slot>> {
@@ -1217,15 +1237,42 @@ impl Runtimes {
             return Err(NOT_CONFIGURED_TEXT.into());
         };
         if let Some(live) = slot.live.as_mut() {
-            let healthy = live.session.is_some()
-                && live.manifest_hash == hash
-                && live.daemon.as_mut().is_some_and(DaemonHandle::alive);
-            if healthy {
+            let daemon_ok =
+                live.manifest_hash == hash && live.daemon.as_mut().is_some_and(DaemonHandle::alive);
+            if daemon_ok && live.session.is_some() {
+                return Ok(());
+            }
+            if daemon_ok && self.reopen_session(slot).await {
                 return Ok(());
             }
             self.stop_slot(kind, slot).await;
         }
         self.start_slot(kind, slot, rendered, hash).await
+    }
+
+    /// Opens a new session on the running daemon when the last one was
+    /// dropped only because an answer was too large to read.
+    async fn reopen_session(&self, slot: &mut Slot) -> bool {
+        let Some(live) = slot
+            .live
+            .as_mut()
+            .filter(|live| live.session.is_none() && live.reconnect)
+        else {
+            return false;
+        };
+        live.reconnect = false;
+        let env = daemon_env(self.platform, &process_env);
+        match self
+            .launcher
+            .open_session(&live.install, &live.paths, &env)
+            .await
+        {
+            Ok(session) => {
+                live.session = Some(session);
+                true
+            }
+            Err(_) => false,
+        }
     }
 
     async fn start_slot(
@@ -1323,6 +1370,7 @@ impl Runtimes {
             return Err(STOPPED_TEXT.into());
         }
         let tools = session.tools().to_vec();
+        lock(&self.known_tools).insert(kind, tools.clone());
         slot.live = Some(Live {
             install,
             paths,
@@ -1331,6 +1379,7 @@ impl Runtimes {
             manifest_hash: hash,
             started_labels: HashSet::new(),
             tools,
+            reconnect: false,
         });
         slot.last_used = Some(Instant::now());
         starting.finish();
@@ -1390,7 +1439,9 @@ impl Runtimes {
 
     /// One call on the open session. A timeout or a broken connection stops
     /// the runtime (so nothing half-done is reused); a JSON-RPC error from
-    /// the driver comes back as an error result.
+    /// the driver comes back as an error result. An answer too large to read
+    /// is no hang: it comes back as an error result that says how to ask
+    /// for less, and only the session is replaced.
     async fn call_once(
         &self,
         kind: RuntimeKind,
@@ -1399,6 +1450,7 @@ impl Runtimes {
         args: Value,
         timeout: Duration,
     ) -> Result<Value, String> {
+        self.reopen_session(slot).await;
         let Some(mut session) = slot.live.as_mut().and_then(|live| live.session.take()) else {
             self.stop_slot(kind, slot).await;
             return Err(TIMEOUT_TEXT.into());
@@ -1429,6 +1481,16 @@ impl Runtimes {
                         true,
                     )
                 }))
+            }
+            Ok(Err(error)) if error.contains(TOO_LARGE_MARKER) => {
+                // The rest of that answer is still in the pipe: this session
+                // can't be read again, but the daemon is fine.
+                drop(session);
+                if let Some(live) = slot.live.as_mut() {
+                    live.reconnect = true;
+                }
+                slot.last_used = Some(Instant::now());
+                Ok(text_result(TOO_LARGE_TEXT, true))
             }
             Ok(Err(_)) | Err(_) => {
                 drop(session);

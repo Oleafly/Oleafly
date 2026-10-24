@@ -690,6 +690,43 @@ mod tests {
     }
 
     #[test]
+    fn a_task_copy_of_a_linked_folder_builds_with_the_folders_settings() {
+        use crate::agent::tools::build::opened_for_task_copy;
+        let data = tempfile::tempdir().unwrap();
+        let folder = tempfile::tempdir().unwrap();
+        let copy = tempfile::tempdir().unwrap();
+        let _env = data_dir(data.path());
+        for root in [folder.path(), copy.path()] {
+            std::fs::create_dir(root.join("thesis")).unwrap();
+            std::fs::write(root.join("thesis/main.tex"), "\\documentclass{article}").unwrap();
+        }
+        let state = link(data.path(), "linked-task", folder.path(), None);
+        std::fs::write(
+            state.join("project.json"),
+            r#"{"name":"Thesis","main_doc":"thesis/main.tex","engine":"latexmk","tex_flavor":"lualatex"}"#,
+        )
+        .unwrap();
+        let settings = |opened: &OpenedProject| {
+            let manifest = opened.workspace.manifest();
+            (
+                manifest.engine.clone(),
+                manifest.tex_flavor.clone(),
+                opened.workspace.root().to_path_buf(),
+            )
+        };
+        let copy_root = copy.path().canonicalize().unwrap();
+        let opened = opened_for_task_copy(copy.path(), Some(folder.path())).unwrap();
+        assert_eq!(
+            settings(&opened),
+            ("latexmk".into(), Some("lualatex".into()), copy_root)
+        );
+        assert!(!copy.path().join("project.json").exists());
+        // Without the folder it came from, the copy is opened as itself.
+        let opened = opened_for_task_copy(copy.path(), None).unwrap();
+        assert_eq!(opened.origin, ProjectOrigin::Detected);
+    }
+
+    #[test]
     fn a_linked_folders_saved_typst_settings_reach_its_manifest_whole() {
         let data = tempfile::tempdir().unwrap();
         let folder = tempfile::tempdir().unwrap();

@@ -10,6 +10,7 @@ import { useTerminalsStore } from "@/store/terminals";
 import {
   closeTerminalTabs,
   confirmStopTerminals,
+  forgetConfirmedLeave,
   registerTerminalPromptHost,
   requestCloseTerminals,
   requestTerminalPrompt,
@@ -120,6 +121,22 @@ describe("terminal lifecycle", () => {
 
     vi.setSystemTime(Date.now() + 61_000);
     const later = confirmStopTerminals({ reason: "close-project", projectId: "p" });
+    await waitFor(() => expect(useTerminalPromptStore.getState().prompt).not.toBeNull());
+    answerOpenPrompt(false);
+    expect(await later).toBe(false);
+  });
+
+  it("asks again once the confirmed leave is over", async () => {
+    terminalJobs.mockResolvedValue([{ tabId: tabs()[0].id, process: "node" }]);
+    unhost = registerTerminalPromptHost();
+
+    const first = confirmStopTerminals({ reason: "switch-project", projectId: "p" });
+    await waitFor(() => expect(useTerminalPromptStore.getState().prompt).not.toBeNull());
+    answerOpenPrompt(true);
+    expect(await first).toBe(true);
+
+    forgetConfirmedLeave("p");
+    const later = confirmStopTerminals({ reason: "switch-project", projectId: "p" });
     await waitFor(() => expect(useTerminalPromptStore.getState().prompt).not.toBeNull());
     answerOpenPrompt(false);
     expect(await later).toBe(false);

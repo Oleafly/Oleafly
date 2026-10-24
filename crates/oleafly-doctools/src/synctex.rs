@@ -917,12 +917,13 @@ fn line_box(doc: &Doc, mut index: Option<usize>) -> Option<usize> {
     None
 }
 
-/// The biggest SyncTeX file `read_synctex` opens. A 1000-page book's is a few
-/// megabytes; a build folder can come from anyone.
-const MAX_SYNCTEX_FILE_BYTES: u64 = 64 * 1024 * 1024;
-/// The most text `read_synctex` inflates from it (gzip stretches a run of
-/// zeros a thousand times over).
-const MAX_SYNCTEX_TEXT_BYTES: u64 = 128 * 1024 * 1024;
+/// The biggest SyncTeX file `read_synctex` opens. A prose book's is a few
+/// megabytes, but pages dense with TikZ, pgfplots or tables run to hundreds;
+/// a build folder can come from anyone.
+const MAX_SYNCTEX_FILE_BYTES: u64 = 256 * 1024 * 1024;
+/// The most text `read_synctex` inflates from it: SyncTeX text compresses
+/// about tenfold, while gzip stretches a run of zeros a thousand times over.
+const MAX_SYNCTEX_TEXT_BYTES: u64 = 1024 * 1024 * 1024;
 
 /// The SyncTeX file of the last LaTeX build in `build_dir`, unzipped.
 /// Creates nothing. A link in the build folder is refused rather than read
@@ -1563,6 +1564,15 @@ Content:\n\
 
     fn synctex_file(build: &Path) -> std::path::PathBuf {
         build.join("_oleafly_entry.synctex.gz")
+    }
+
+    #[test]
+    fn the_limits_leave_room_for_a_large_book() {
+        // A TikZ-heavy thesis passes 128 MiB of SyncTeX text, which 0.4.7
+        // read without a limit.
+        let limits = [MAX_SYNCTEX_FILE_BYTES, MAX_SYNCTEX_TEXT_BYTES];
+        assert!(limits[0] >= 256 * 1024 * 1024);
+        assert!(limits[1] >= 1024 * 1024 * 1024);
     }
 
     #[test]

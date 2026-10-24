@@ -1014,7 +1014,10 @@ async fn restricted_folders_confirm_executable_config_writes_and_network_tools()
         *asked.lock().unwrap(),
         vec![
             crate::trust::AiConfirm::Write(".husky/pre-commit".into()),
-            crate::trust::AiConfirm::Network("literature_search".into()),
+            crate::trust::AiConfirm::Network {
+                tool: "literature_search".into(),
+                target: Some("\u{201c}x\u{201d}".into()),
+            },
         ]
     );
 }

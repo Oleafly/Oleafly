@@ -713,6 +713,45 @@ pub fn set_base(git: &dyn MirrorGit, repo: &Path, commit: &str) -> Result<(), On
     git_ok(git, repo, &["update-ref", BASE_REF, commit]).map(|_| ())
 }
 
+/// How often a mirror is tidied at most.
+const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
+/// When the mirror was last tidied, by its modification time.
+const MAINTENANCE_STAMP: &str = "oleafly-maintenance";
+/// What `git gc --auto` runs for here. Every other mirror call passes
+/// `gc.auto=0`, so this is the only place objects are ever packed, and a
+/// sync adds a full copy of each changed file.
+const MAINTENANCE: [&str; 12] = [
+    "-c",
+    "gc.auto=256",
+    "-c",
+    "gc.autoPackLimit=8",
+    "-c",
+    "gc.autoDetach=false",
+    "-c",
+    "maintenance.autoDetach=false",
+    "gc",
+    "--auto",
+    "--prune=now",
+    "--quiet",
+];
+
+/// Packs the mirror's objects and drops the ones nothing refers to, at most
+/// once a day. Call it after a sync that worked, with the sync claim held.
+/// Best effort: a failure only means the mirror stays as large as it is.
+pub fn maintain(git: &dyn MirrorGit, repo: &Path) {
+    let stamp = repo.join(".git").join(MAINTENANCE_STAMP);
+    let recent = std::fs::symlink_metadata(&stamp)
+        .and_then(|found| found.modified())
+        .ok()
+        .and_then(|modified| modified.elapsed().ok())
+        .is_some_and(|age| age < MAINTENANCE_INTERVAL);
+    // Stamped first, so a gc that keeps failing isn't tried on every sync.
+    if recent || oleafly_secrets::fs::write_atomic(&stamp, b"").is_err() {
+        return;
+    }
+    let _ = mirror_run(git, repo, &MAINTENANCE);
+}
+
 pub fn excluded(rel: &str) -> bool {
     if rel.eq_ignore_ascii_case("project.json") {
         return true;
@@ -730,6 +769,66 @@ pub fn excluded(rel: &str) -> bool {
         IGNORED_NAMES.contains(&part.to_ascii_lowercase().as_str())
             || oleafly_core::exclude::is_quietly_ignored_name(part)
     })
+}
+
+/// Whose files a sync carries. A folder outside the app's library (the CLI's
+/// folder and linked scopes) keeps its mirror inside itself, at
+/// `<folder>/.oleafly/online/repo`. Such a folder is often a whole working
+/// folder, so more of it stays here: see [`kept_local`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Scope {
+    Library,
+    Folder,
+}
+
+impl Scope {
+    fn of(project: &Path, repo: &Path) -> Scope {
+        if repo.starts_with(project) {
+            Scope::Folder
+        } else {
+            Scope::Library
+        }
+    }
+
+    /// Whether `rel` stays out of the sync: never sent online, never
+    /// written here from online, and never deleted online for being missing
+    /// here.
+    fn skips(self, project: &Path, rel: &str) -> bool {
+        excluded(rel)
+            || (self == Scope::Folder && kept_local(rel, |sibling| project.join(sibling).is_file()))
+    }
+}
+
+/// A file name that holds secrets: `.env` files, `.private`, private keys
+/// and certificate bundles. A public SSH key (`.pub`) is not one.
+fn private_name(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower.starts_with(".env")
+        || lower == ".private"
+        || [".pem", ".p12", ".pfx"]
+            .iter()
+            .any(|extension| lower.ends_with(extension))
+        || (["id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"]
+            .iter()
+            .any(|key| lower.starts_with(key))
+            && !lower.ends_with(".pub"))
+}
+
+/// Whether a folder's file stays here: anything under a dot-folder (or a
+/// dependency or build folder, as a linked folder skips them), `.env` files,
+/// `.private`, private keys, and TeX build output such as `main.aux`, or
+/// `main.pdf` beside `main.tex`. `has_sibling` says whether a project path
+/// exists here.
+pub fn kept_local(rel: &str, has_sibling: impl Fn(&str) -> bool) -> bool {
+    let mut parts: Vec<&str> = rel.split('/').collect();
+    let Some(name) = parts.pop() else {
+        return false;
+    };
+    parts
+        .iter()
+        .any(|folder| oleafly_core::exclude::is_linked_skipped_directory(folder))
+        || private_name(name)
+        || oleafly_core::exclude::is_build_artifact(rel, has_sibling)
 }
 
 fn safe_relative(rel: &str) -> bool {
@@ -798,8 +897,14 @@ pub fn check_remote_paths_on(paths: &[String], windows: bool) -> Result<(), Onli
     Ok(())
 }
 
-/// Every synced file of a project, by relative path.
+/// Every synced file of a library project, by relative path.
 pub fn project_files(root: &Path) -> Result<BTreeMap<String, PathBuf>, OnlineError> {
+    files_in(root, Scope::Library)
+}
+
+/// Every file of `root` that `scope` syncs, by relative path. A folder's
+/// skipped folders are never entered.
+fn files_in(root: &Path, scope: Scope) -> Result<BTreeMap<String, PathBuf>, OnlineError> {
     let mut files = BTreeMap::new();
     let mut total: u64 = 0;
     let mut stack = vec![(root.to_path_buf(), String::new())];
@@ -822,8 +927,16 @@ pub fn project_files(root: &Path) -> Result<BTreeMap<String, PathBuf>, OnlineErr
             }
             let metadata = std::fs::symlink_metadata(entry.path())?;
             if metadata.is_dir() {
+                if scope == Scope::Folder
+                    && oleafly_core::exclude::is_linked_skipped_directory(&name)
+                {
+                    continue;
+                }
                 stack.push((entry.path(), rel));
             } else if metadata.is_file() {
+                if scope.skips(root, &rel) {
+                    continue;
+                }
                 if metadata.len() > MAX_FILE_BYTES {
                     return Err(
                         OnlineError::new(OnlineErrorKind::SyncFileTooLarge).param("file", &rel)
@@ -935,11 +1048,12 @@ fn stage_project(
     repo: &Path,
     remove_missing: bool,
 ) -> Result<Staged, OnlineError> {
-    let files = project_files(project)?;
+    let scope = Scope::of(project, repo);
+    let files = files_in(project, scope)?;
     if remove_missing {
         let missing: Vec<String> = tracked_files(git, repo)?
             .into_iter()
-            .filter(|rel| !excluded(rel) && !files.contains_key(rel))
+            .filter(|rel| !scope.skips(project, rel) && !files.contains_key(rel))
             .collect();
         // A file swapped for a link is not a deletion to send online.
         if let Some(rel) = missing.iter().find(|rel| link_on_path(project, rel)) {
@@ -959,7 +1073,18 @@ fn stage_project(
         let (_, read) = copy_into(source, &repo.join(rel))?;
         seen.insert(rel.clone(), read);
     }
-    git_ok(git, repo, &["add", "--all", "--force", "--", "."])?;
+    match scope {
+        // Every file of a library project syncs, whatever a `.gitignore`
+        // in it says.
+        Scope::Library => git_ok(git, repo, &["add", "--all", "--force", "--", "."])?,
+        // A folder's own `.gitignore` files, copied in with the rest, keep
+        // what they name here. The user's global excludes don't count, so
+        // what syncs doesn't depend on the computer.
+        Scope::Folder => {
+            let excludes = format!("core.excludesFile={}", crate::git::null_device());
+            git_ok(git, repo, &["-c", &excludes, "add", "--all", "--", "."])?
+        }
+    };
     let staged = mirror_run(git, repo, &["diff", "--cached", "--quiet"])?;
     Ok(Staged {
         changed: !staged.status.success(),
@@ -1266,8 +1391,9 @@ fn write_back_steps(
     seen: &Snapshot,
     journal: &mut Journal<'_>,
 ) -> Result<(Vec<String>, Vec<String>), OnlineError> {
-    let deleted = remove_files(project, removed, apply, seen, journal)?;
-    let wrote = write_files(project, repo, written, apply, seen, journal)?;
+    let scope = Scope::of(project, repo);
+    let deleted = remove_files(project, scope, removed, apply, seen, journal)?;
+    let wrote = write_files(project, repo, scope, written, apply, seen, journal)?;
     Ok((wrote, deleted))
 }
 
@@ -1275,6 +1401,7 @@ fn write_back_steps(
 /// `apply`) and returns their paths.
 fn remove_files(
     project: &Path,
+    scope: Scope,
     removed: &[String],
     apply: bool,
     seen: &Snapshot,
@@ -1282,7 +1409,7 @@ fn remove_files(
 ) -> Result<Vec<String>, OnlineError> {
     let mut deleted = Vec::new();
     for rel in removed {
-        if excluded(rel) || !safe_relative(rel) {
+        if scope.skips(project, rel) || !safe_relative(rel) {
             continue;
         }
         if link_on_path(project, rel) {
@@ -1322,6 +1449,7 @@ fn read_current(destination: &Path) -> Result<Option<Vec<u8>>, OnlineError> {
 fn write_files(
     project: &Path,
     repo: &Path,
+    scope: Scope,
     written: &[String],
     apply: bool,
     seen: &Snapshot,
@@ -1329,7 +1457,7 @@ fn write_files(
 ) -> Result<Vec<String>, OnlineError> {
     let mut wrote = Vec::new();
     for rel in written {
-        if excluded(rel) || !safe_relative(rel) {
+        if scope.skips(project, rel) || !safe_relative(rel) {
             continue;
         }
         let source = repo.join(rel);
@@ -1533,7 +1661,8 @@ pub fn link_local(
     let remote_paths = tree_files(git, repo, remote)?;
     check_remote_paths(&remote_paths)?;
     reset_to(git, repo, remote)?;
-    let local = project_files(project)?;
+    let scope = Scope::of(project, repo);
+    let local = files_in(project, scope)?;
     let mut differing = Vec::new();
     let mut seen = Snapshot::new();
     for (rel, source) in &local {
@@ -1570,7 +1699,7 @@ pub fn link_local(
     }
     let mut to_write: Vec<String> = remote_paths
         .iter()
-        .filter(|rel| !excluded(rel) && !local.contains_key(*rel))
+        .filter(|rel| !scope.skips(project, rel) && !local.contains_key(*rel))
         .cloned()
         .collect();
     if prefer == Some(Side::Remote) {
@@ -1595,10 +1724,66 @@ pub struct LinkBackup {
     pub files: Vec<String>,
 }
 
+/// Whether `path` is a link or a Windows reparse point (a junction),
+/// read without following it.
+fn is_link(path: &Path) -> bool {
+    std::fs::symlink_metadata(path)
+        .is_ok_and(|found| found.file_type().is_symlink() || is_reparse_point(&found))
+}
+
+#[cfg(windows)]
+fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+    metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+}
+
+#[cfg(not(windows))]
+fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
+    false
+}
+
+fn through_a_link(place: &Path) -> OnlineError {
+    OnlineError::io(format!(
+        "{} is a link, so Oleafly won't save copies there.",
+        place.display()
+    ))
+}
+
+/// Refuses a destination that goes through a link anywhere below the
+/// folder that owns the mirror (the project folder, or the app's data
+/// folder). A folder from someone else can carry `.oleafly/online-backups`
+/// as a link to anywhere.
+fn check_destination(paths: &SyncPaths, destination: &Path) -> Result<(), OnlineError> {
+    let owner = paths.dir.parent().and_then(Path::parent);
+    let below = owner.and_then(|owner| {
+        destination
+            .strip_prefix(owner)
+            .ok()
+            .map(|rest| (owner, rest))
+    });
+    let mut places = Vec::new();
+    match below {
+        Some((owner, rest)) => {
+            let mut current = owner.to_path_buf();
+            for part in rest.components() {
+                current.push(part);
+                places.push(current.clone());
+            }
+        }
+        None => places.push(destination.to_path_buf()),
+    }
+    match places.into_iter().find(|place| is_link(place)) {
+        Some(place) => Err(through_a_link(&place)),
+        None => Ok(()),
+    }
+}
+
 /// Puts each saved copy of replaced local files in its own folder under
 /// `destination`, as plain files. A copy that already has its folder is
 /// skipped. Returns the copies that now have a folder, so the caller can say
 /// where they are before the mirror (their only other home) goes away.
+/// Nothing is written through a link below the folder that owns the mirror.
 pub fn export_link_backups(
     git: &dyn MirrorGit,
     paths: &SyncPaths,
@@ -1647,7 +1832,11 @@ pub fn export_link_backups(
         if replaced.is_empty() {
             continue;
         }
+        check_destination(paths, destination)?;
         let folder = destination.join(&name);
+        if is_link(&folder) {
+            return Err(through_a_link(&folder));
+        }
         if std::fs::symlink_metadata(&folder).is_err() {
             let partial = destination.join(format!(".{name}.oleafly-export.tmp"));
             let _ = std::fs::remove_dir_all(&partial);
@@ -1784,7 +1973,7 @@ pub fn sync_project(
     clear_stale_lock(repo);
     ensure_repo(git, repo)?;
     // A huge folder fails before any network call.
-    project_files(project)?;
+    files_in(project, Scope::of(project, repo))?;
     let mut base = rev(git, repo, BASE_REF)
         .ok_or_else(|| OnlineError::new(OnlineErrorKind::SyncNeedsRelink))?;
     let mut summary = None;
@@ -1884,6 +2073,7 @@ pub fn sync_project(
                 ..link
             },
         )?;
+        maintain(git, repo);
     }
     Ok(summary)
 }
@@ -2066,6 +2256,47 @@ pub fn diff_project(
         patch,
         truncated,
     })
+}
+
+/// The files here the next sync would send online: those the online copy
+/// last fetched lacks, and with `modified` also those it holds differently
+/// (a link that keeps the local versions). For a folder this leaves out what
+/// stays here ([`kept_local`]) and what its `.gitignore` names, as the sync
+/// does. The mirror is left at its base.
+pub fn pending_uploads(
+    git: &dyn MirrorGit,
+    paths: &SyncPaths,
+    project: &Path,
+    modified: bool,
+    worktree: Option<&WorktreeLock>,
+) -> Result<Vec<String>, OnlineError> {
+    let repo = &paths.repo;
+    clear_stale_lock(repo);
+    ensure_repo(git, repo)?;
+    let remote =
+        remote_tip(git, repo).ok_or_else(|| OnlineError::new(OnlineErrorKind::SyncNeedsRelink))?;
+    let base = rev(git, repo, BASE_REF);
+    let listed = {
+        let _held = hold_worktree(worktree, false)?;
+        (|| {
+            reset_to(git, repo, &remote)?;
+            stage_project(git, project, repo, true)?;
+            git_lines(
+                git,
+                repo,
+                &["diff", "--cached", "--name-status", "--no-renames", "-z"],
+            )
+        })()
+    };
+    reset_to(git, repo, base.as_deref().unwrap_or(&remote))?;
+    let mut uploads = Vec::new();
+    let mut entries = listed?.into_iter();
+    while let (Some(status), Some(path)) = (entries.next(), entries.next()) {
+        if status.starts_with('A') || (modified && status.starts_with('M')) {
+            uploads.push(path);
+        }
+    }
+    Ok(uploads)
 }
 
 /// Puts the mirror's worktree at the remote tip (for `latexdiff`).

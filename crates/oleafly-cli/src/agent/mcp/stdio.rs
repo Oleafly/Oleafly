@@ -148,18 +148,21 @@ impl StdioConnection {
         args: &[String],
         env: &BTreeMap<String, String>,
     ) -> Result<Self, String> {
-        Self::spawn_in(command, args, env, &[]).await
+        Self::spawn_in(command, args, env, &[], None).await
     }
 
     /// [`Self::spawn`] looking for the program in `search_dirs` (the
     /// helper's list, the app's folders first) instead of this process's
     /// `PATH`; the server gets the same list as its `PATH`, so a launcher
     /// such as `npx` finds its `node`. No folders: the process `PATH`.
+    /// With `current_dir`, the server starts in that folder (a run's working
+    /// copy) rather than in this process's working folder.
     pub async fn spawn_in(
         command: &str,
         args: &[String],
         env: &BTreeMap<String, String>,
         search_dirs: &[PathBuf],
+        current_dir: Option<&std::path::Path>,
     ) -> Result<Self, String> {
         let platform = Platform::current();
         let search_path = if search_dirs.is_empty() {
@@ -184,6 +187,9 @@ impl StdioConnection {
             .envs(command_env(std::env::vars_os()));
         if let Some(path) = &search_path {
             process.env("PATH", path);
+        }
+        if let Some(directory) = current_dir {
+            process.current_dir(directory);
         }
         process
             .envs(env)

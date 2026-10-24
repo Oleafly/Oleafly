@@ -50,14 +50,14 @@
       "platformLabel": "Platform",
       "refreshingStatus": "Refreshing agent status. The current list stays in place.",
       "registry": {
-        "description": "Search the ACP registry for agents published by other teams.",
+        "description": "Search the ACP registry for CLI agents published by other teams.",
         "hideDistribution": "Hide distribution",
         "register": "Register agent",
         "registered": "Registered",
         "reviewHint": "Registry entries describe software from its publishers. Review the distribution before registering or installing it.",
         "search": "Search",
-        "searchLabel": "Find an ACP agent",
-        "searchPlaceholder": "Search the ACP registry",
+        "searchLabel": "Find a CLI agent",
+        "searchPlaceholder": "Search for CLI agents",
         "searching": "Searching",
         "showDistribution": "Show distribution",
         "title": "Find more agents"
@@ -133,7 +133,8 @@
       "inactivity": {
         "label": "Stop a silent agent after",
         "description": "When an agent sends nothing for this long, Oleafly stops it. You can reconnect.",
-        "minutes": "{{count}} minutes"
+        "minutes_one": "{{count}} minute",
+        "minutes_other": "{{count}} minutes"
       },
       "protocolLabel": "Protocol",
       "remembered": {
@@ -1035,7 +1036,8 @@
         "path": {
           "ariaLabel": "Custom shell path",
           "description": "The program new terminals run.",
-          "label": "Shell path"
+          "label": "Shell path",
+          "missing": "Enter the full path to a shell. New terminals can't start until you do."
         },
         "windowsOnly": "{{name}} (Windows only)",
         "windowsOnlyNote": "{{name}} only runs on Windows. New terminals here start {{fallback}} instead.",
@@ -1622,7 +1624,7 @@
     "desktopApps": {
       "tab": "Desktop apps",
       "title": "Desktop apps",
-      "description": "Let agents use apps and websites on this computer through Cua Driver. Oleafly asks before every click or keystroke.",
+      "description": "Let agents use apps and websites on this computer through Cua Driver. Oleafly asks before each action, unless you allow that kind of action for the chat, session or task. Your signed-in browser and scripts always ask.",
       "docsLink": "Cua Driver docs",
       "status": {
         "installed": "Cua Driver {{version}} is installed.",
@@ -1635,7 +1637,7 @@
       },
       "install": {
         "heading": "Install Cua Driver",
-        "hint": "Run this command in a terminal. Oleafly never installs Cua Driver for you.",
+        "hint": "Run this command in a terminal, or use Run in terminal. The command starts Cua's official installer, and Oleafly doesn't download Cua Driver itself.",
         "run": "Run in terminal",
         "needsProject": "Open a project to run this in Oleafly's terminal, or copy the command.",
         "confirm": "This downloads the Cua Driver installer from cua.ai and runs it in your terminal. Continue?",
@@ -1657,7 +1659,7 @@
       },
       "enable": {
         "label": "Let agents use desktop apps",
-        "description": "Agents can see the apps and websites below. Clicks, typing and page changes ask you first."
+        "description": "Agents can see the apps and websites below. Clicks, typing and page changes ask you first, unless you allow them for the chat, session or task. Adding an app or website clears those choices."
       },
       "apps": {
         "heading": "Allowed apps",
@@ -1680,7 +1682,7 @@
         "blocked": {
           "oleafly": "Oleafly can't control itself.",
           "driver": "Cua Driver can't control itself.",
-          "terminal": "Terminals run commands without Oleafly's command approval.",
+          "terminal": "Terminals and code editors run commands without Oleafly's command approval.",
           "system_settings": "System settings can change permissions.",
           "passwords": "Password apps stay off limits.",
           "scripting": "Script runners can do anything on this computer.",
@@ -1714,7 +1716,7 @@
       },
       "tool": {
         "description": "Use the desktop apps and websites you allowed in Settings.",
-        "note": "Looking runs right away. Clicks, typing and page changes ask first."
+        "note": "Looking runs right away. Clicks, typing and page changes ask first, unless you allow them for the chat."
       },
       "task": {
         "label": "Desktop apps",
@@ -1724,7 +1726,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "Connect isolated desktops and containers from Cua Spaces as an MCP server. Experimental.",
+        "description": "Connect isolated desktops and containers from Cua Spaces as an MCP server.",
         "notInstalled": "The cua command isn't installed.",
         "connect": {
           "label": "Connect Cua Spaces",
@@ -1824,7 +1826,7 @@
         },
         "legend": "Approval policy",
         "trust": {
-          "description": "File changes do not prompt. Shell commands and computer control always require approval. Your MCP client remains an additional gate.",
+          "description": "File changes apply without asking. Shell commands and new research tasks always ask first. Your MCP client can still ask on its own.",
           "label": "Trust this connection"
         }
       },
@@ -2306,11 +2308,20 @@
         "tasks_other": "Working on {{count}} tasks"
       },
       "stop": "Stop helper",
-      "stopHint": "Its tasks pause until you open Oleafly again.",
+      "stopHint": "Its tasks move back to Oleafly and keep running here.",
+      "stopConfirm": {
+        "title": "Stop the background helper?",
+        "description_one": "Its {{count}} task moves back to Oleafly and keeps running here.",
+        "description_other": "Its {{count}} tasks move back to Oleafly and keep running here."
+      },
       "stopFailed": "The helper did not stop. Try again.",
       "openLog": "Show log",
       "statusFailed": "The background helper's status could not be read.",
       "toggleFailed": "Could not change this setting. Try again."
+    },
+    "mcpServers": {
+      "loadFailed": "The MCP server list could not be read.",
+      "missing": "{{name}} (not found)"
     }
   }
 }

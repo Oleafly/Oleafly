@@ -338,6 +338,19 @@ describe("terminals store", () => {
     expect(localStorage.getItem(terminalTitlesKey("project-1"))).toBeNull();
   });
 
+  it("forgets the program's title when it sets a blank one", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const id = useTerminalsStore.getState().tabs[0].id;
+
+    store.setTerminalOscTitle(id, "vim main.tex");
+    store.setTerminalOscTitle(id, "");
+    expect(useTerminalsStore.getState().tabs[0].oscTitle).toBeNull();
+    store.setTerminalOscTitle(id, "vim main.tex");
+    store.setTerminalOscTitle(id, "   ");
+    expect(useTerminalsStore.getState().tabs[0].oscTitle).toBeNull();
+  });
+
   it("activates the next and previous terminal, wrapping", () => {
     const store = useTerminalsStore.getState();
     store.setProject("project-1");

@@ -77,7 +77,7 @@ impl AgentError {
             return false;
         }
         let message = message.to_ascii_lowercase();
-        const MARKERS: [&str; 7] = [
+        const MARKERS: [&str; 14] = [
             "context length",
             "context window",
             "context_length_exceeded",
@@ -85,9 +85,25 @@ impl AgentError {
             "too many tokens",
             "reduce the length",
             "prompt is too long",
+            // Anthropic, when input and max_tokens together pass the window.
+            "context limit",
+            // Gemini, xAI and llama.cpp.
+            "maximum number of tokens",
+            "maximum prompt length",
+            "context size",
+            // Anthropic's 413 for a request over its byte limit.
+            "request_too_large",
+            "maximum allowed number of bytes",
+            "request too large",
         ];
         MARKERS.iter().any(|marker| message.contains(marker))
     }
+}
+
+/// A limit Oleafly sets itself, reported as a decode error. It reads as
+/// such, not as something the provider sent.
+fn is_local_limit(message: &str) -> bool {
+    message.contains("safety limit")
 }
 
 impl fmt::Display for AgentError {
@@ -99,6 +115,9 @@ impl fmt::Display for AgentError {
                 status, message, ..
             } => {
                 write!(f, "The provider returned {status}. {message}")
+            }
+            AgentError::Decode(m) if is_local_limit(m) => {
+                write!(f, "The run reached one of Oleafly's limits. {m}")
             }
             AgentError::Decode(m) => write!(f, "Unexpected response from the provider. {m}"),
             AgentError::Cancelled => write!(f, "The request was cancelled."),
@@ -136,6 +155,35 @@ mod tests {
         assert!(!AgentError::provider(400, "").retryable());
         assert!(!AgentError::Cancelled.retryable());
         assert!(!AgentError::NotConfigured("no key".into()).retryable());
+    }
+
+    #[test]
+    fn every_providers_wording_for_an_oversized_prompt_is_an_overflow() {
+        for (status, message) in [
+            (400, "input length and `max_tokens` exceed context limit: 136000 + 64000 > 200000"),
+            (400, "The input token count exceeds the maximum number of tokens allowed (1048576)."),
+            (400, "This model's maximum prompt length is 131072 but the request contains 140000 tokens."),
+            (400, "the request exceeds the available context size, try increasing it"),
+            (413, "{\"type\":\"request_too_large\",\"message\":\"Request exceeds the maximum allowed number of bytes.\"}"),
+        ] {
+            assert!(
+                AgentError::provider(status, message).is_context_overflow(),
+                "{message}"
+            );
+        }
+        assert!(!AgentError::provider(400, "invalid model id").is_context_overflow());
+    }
+
+    #[test]
+    fn a_local_limit_does_not_read_as_a_provider_error() {
+        let local = AgentError::Decode("agent message count exceeded its safety limit".into());
+        assert!(local
+            .to_string()
+            .starts_with("The run reached one of Oleafly's limits."));
+        let provider = AgentError::Decode("response carried no choices".into());
+        assert!(provider
+            .to_string()
+            .starts_with("Unexpected response from the provider."));
     }
 
     #[test]

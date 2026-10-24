@@ -613,6 +613,7 @@
       "sendNow": "Jetzt senden",
       "sendFailed": "Diese Nachricht wurde nicht gesendet. Senden Sie sie erneut oder entfernen Sie sie.",
       "queuedConnecting": "In der Warteschlange: wird gesendet, wenn der Agent bereit ist",
+      "queuedSignIn": "In der Warteschlange: wird nach Ihrer Anmeldung gesendet",
       "retry": "Erneut senden",
       "edit": "Bearbeiten"
     },

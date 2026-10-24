@@ -50,14 +50,14 @@
       "platformLabel": "Platforma",
       "refreshingStatus": "Obnovuje se stav agentů. Aktuální seznam zůstává na místě.",
       "registry": {
-        "description": "Hledejte v registru ACP agenty publikované jinými týmy.",
+        "description": "Hledejte v registru ACP agenty CLI publikované jinými týmy.",
         "hideDistribution": "Skrýt distribuci",
         "register": "Zaregistrovat agenta",
         "registered": "Zaregistrováno",
         "reviewHint": "Záznamy v registru popisují software slovy jeho vydavatelů. Než jej zaregistrujete nebo nainstalujete, distribuci si prohlédněte.",
         "search": "Hledat",
-        "searchLabel": "Najít agenta ACP",
-        "searchPlaceholder": "Hledat v registru ACP",
+        "searchLabel": "Najít agenta CLI",
+        "searchPlaceholder": "Hledat agenty CLI",
         "searching": "Hledá se",
         "showDistribution": "Zobrazit distribuci",
         "title": "Najít další agenty"
@@ -133,7 +133,10 @@
       "inactivity": {
         "label": "Zastavit mlčícího agenta po",
         "description": "Když agent tak dlouho nic nepošle, Oleafly ho zastaví. Můžete se znovu připojit.",
-        "minutes": "{{count}} min"
+        "minutes_one": "{{count}} minuta",
+        "minutes_few": "{{count}} minuty",
+        "minutes_many": "{{count}} minuty",
+        "minutes_other": "{{count}} minut"
       },
       "protocolLabel": "Protokol",
       "remembered": {
@@ -1047,7 +1050,8 @@
         "path": {
           "ariaLabel": "Vlastní cesta ke shellu (shell)",
           "description": "Program, který nové terminály spouštějí.",
-          "label": "Cesta ke shellu (shell)"
+          "label": "Cesta ke shellu (shell)",
+          "missing": "Zadejte úplnou cestu ke shellu. Dokud to neuděláte, nové terminály nelze spustit."
         },
         "windowsOnly": "{{name}} (jen Windows)",
         "windowsOnlyNote": "{{name}} běží jen ve Windows. Nové terminály tady místo něj spouštějí {{fallback}}.",
@@ -1650,7 +1654,7 @@
     "desktopApps": {
       "tab": "Aplikace v počítači",
       "title": "Aplikace v počítači",
-      "description": "Povolte agentům používat aplikace a weby v tomto počítači přes Cua Driver. Oleafly se ptá před každým kliknutím nebo stisknutím klávesy.",
+      "description": "Povolte agentům používat aplikace a weby v tomto počítači přes Cua Driver. Oleafly se před každou akcí zeptá, pokud takový druh akce nepovolíte pro chat, relaci nebo úlohu. Váš přihlášený prohlížeč a skripty se ptají vždy.",
       "docsLink": "Dokumentace Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} je nainstalovaný.",
@@ -1663,7 +1667,7 @@
       },
       "install": {
         "heading": "Instalace Cua Driver",
-        "hint": "Spusťte tento příkaz v terminálu. Oleafly Cua Driver nikdy neinstaluje za vás.",
+        "hint": "Spusťte tento příkaz v terminálu, nebo použijte Spustit v terminálu. Příkaz spustí oficiální instalační program Cua a Oleafly si Cua Driver sám nestahuje.",
         "run": "Spustit v terminálu",
         "needsProject": "Chcete-li to spustit v terminálu Oleafly, otevřete projekt, nebo příkaz zkopírujte.",
         "confirm": "Tento příkaz stáhne instalační program Cua Driver z cua.ai a spustí ho ve vašem terminálu. Pokračovat?",
@@ -1685,7 +1689,7 @@
       },
       "enable": {
         "label": "Povolit agentům používat aplikace v počítači",
-        "description": "Agenti vidí aplikace a weby níže. Před kliknutím, psaním a změnou stránky se vás nejdřív zeptají."
+        "description": "Agenti vidí aplikace a weby níže. Před kliknutím, psaním a změnou stránky se vás nejdřív zeptají, pokud je nepovolíte pro chat, relaci nebo úlohu. Přidáním aplikace nebo webu se tyto volby zruší."
       },
       "apps": {
         "heading": "Povolené aplikace",
@@ -1708,7 +1712,7 @@
         "blocked": {
           "oleafly": "Oleafly nemůže ovládat sám sebe.",
           "driver": "Cua Driver nemůže ovládat sám sebe.",
-          "terminal": "Terminály spouštějí příkazy bez schvalování příkazů v Oleafly.",
+          "terminal": "Terminály a editory kódu spouštějí příkazy bez schvalování příkazů v Oleafly.",
           "system_settings": "Nastavení systému může měnit oprávnění.",
           "passwords": "Aplikace pro hesla zůstávají mimo dosah.",
           "scripting": "Programy spouštějící skripty mohou v tomto počítači udělat cokoli.",
@@ -1742,7 +1746,7 @@
       },
       "tool": {
         "description": "Používat aplikace v počítači a weby povolené v Nastavení.",
-        "note": "Prohlížení proběhne hned. Kliknutí, psaní a změny stránky se nejdřív zeptají."
+        "note": "Prohlížení proběhne hned. Kliknutí, psaní a změny stránky se nejdřív zeptají, pokud je nepovolíte pro chat."
       },
       "task": {
         "label": "Aplikace v počítači",
@@ -1752,7 +1756,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "Připojte izolované plochy a kontejnery z Cua Spaces jako server MCP. Experimentální.",
+        "description": "Připojte izolované plochy a kontejnery z Cua Spaces jako server MCP.",
         "notInstalled": "Příkaz cua není nainstalovaný.",
         "connect": {
           "label": "Připojit Cua Spaces",
@@ -1854,7 +1858,7 @@
         },
         "legend": "Politika schvalování",
         "trust": {
-          "description": "Změny souborů se nedotazují. Příkazy shell a ovládání počítače vždy vyžadují schválení. Váš klient MCP zůstává další pojistkou.",
+          "description": "Změny souborů se provedou bez dotazu. Příkazy shell a nové výzkumné úlohy se vždy nejdřív zeptají. Váš klient MCP se může zeptat i sám.",
           "label": "Důvěřovat tomuto připojení"
         }
       },
@@ -2348,11 +2352,22 @@
         "tasks_other": "Úlohy v práci: {{count}}"
       },
       "stop": "Zastavit proces na pozadí",
-      "stopHint": "Jeho úlohy počkají pozastavené, dokud znovu neotevřete Oleafly.",
+      "stopHint": "Jeho úlohy se vrátí do Oleafly a poběží dál tady.",
+      "stopConfirm": {
+        "title": "Zastavit proces na pozadí?",
+        "description_one": "Jeho {{count}} úloha se vrátí do Oleafly a poběží dál tady.",
+        "description_few": "Jeho {{count}} úlohy se vrátí do Oleafly a poběží dál tady.",
+        "description_many": "Jeho {{count}} úlohy se vrátí do Oleafly a poběží dál tady.",
+        "description_other": "Jeho {{count}} úloh se vrátí do Oleafly a poběží dál tady."
+      },
       "stopFailed": "Proces na pozadí se nezastavil. Zkuste to znovu.",
       "openLog": "Zobrazit protokol",
       "statusFailed": "Stav procesu na pozadí se nepodařilo přečíst.",
       "toggleFailed": "Toto nastavení se nepodařilo změnit. Zkuste to znovu."
+    },
+    "mcpServers": {
+      "loadFailed": "Seznam serverů MCP se nepodařilo přečíst.",
+      "missing": "{{name}} (nenalezeno)"
     }
   }
 }

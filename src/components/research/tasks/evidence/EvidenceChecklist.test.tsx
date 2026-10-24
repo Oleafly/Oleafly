@@ -97,16 +97,25 @@ describe("EvidenceChecklist", () => {
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   });
 
-  it("says it is checking before the first report and while the backend checks", () => {
-    const view = render(<EvidenceChecklist report={null} checking onRefresh={vi.fn(async () => {})} />);
+  it("says it is checking while the backend checks, and still lets the user check again", async () => {
+    // A check cut off when the process running it exits says "Checking" for good.
+    const onRefresh = vi.fn(async () => {});
+    const view = render(<EvidenceChecklist report={null} checking onRefresh={onRefresh} />);
     const section = screen.getByTestId("research-evidence");
-    expect(screen.getByRole("button", { name: evidence.running })).toBeDisabled();
-    expect(within(section).getAllByText(evidence.running)).toHaveLength(2);
+    expect(within(section).getByRole("status")).toHaveTextContent(evidence.running);
     expect(within(section).queryByRole("list")).toBeNull();
+    await userEvent.click(within(section).getByRole("button", { name: evidence.refresh }));
+    expect(onRefresh).toHaveBeenCalledOnce();
 
-    view.rerender(<EvidenceChecklist report={null} checking={false} onRefresh={vi.fn(async () => {})} />);
+    view.rerender(<EvidenceChecklist report={null} checking={false} onRefresh={onRefresh} />);
     expect(within(section).getAllByText(evidence.refresh)).toHaveLength(1);
     expect(within(section).queryByText(evidence.running)).toBeNull();
+  });
+
+  it("says when no check has run, so it doesn't read as one that failed", () => {
+    render(<EvidenceChecklist report={null} checking={false} onRefresh={vi.fn(async () => {})} />);
+
+    expect(screen.getByTestId("research-evidence")).toHaveTextContent(evidence.empty);
   });
 
   it("shows at most fifty findings for one check", () => {
@@ -125,6 +134,8 @@ describe("EvidenceChecklist", () => {
     expect(screen.getByText("key0 couldn't be verified.")).toBeInTheDocument();
     expect(screen.getByText("key49 couldn't be verified.")).toBeInTheDocument();
     expect(screen.queryByText("key50 couldn't be verified.")).toBeNull();
+    // and says how many it left out
+    expect(screen.getByTestId("research-evidence-more")).toHaveTextContent("10 more aren't listed.");
   });
 });
 

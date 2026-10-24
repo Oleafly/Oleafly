@@ -85,6 +85,121 @@ fn split_mapping_key(line: &str) -> Option<(&str, &str)> {
     None
 }
 
+/// The most UTF-16 units a YAML bibliography may have
+/// (`MAX_BIBLIOGRAPHY_YAML_CHARACTERS`).
+const MAX_BIBLIOGRAPHY_YAML_CHARACTERS: usize = 1_000_000;
+/// How much of a YAML file the Hayagriva sniff reads.
+const SNIFF_WINDOW: usize = 8192;
+
+/// A YAML line without its comment (a `#` at the start or after a space,
+/// outside quotes).
+fn without_comment(line: &str) -> &str {
+    let mut quote: Option<char> = None;
+    let mut previous: Option<char> = None;
+    for (index, character) in line.char_indices() {
+        match quote {
+            Some(open) if character == open => quote = None,
+            Some(_) => {}
+            None if character == '"' || character == '\'' => quote = Some(character),
+            None if character == '#' && previous.is_none_or(char::is_whitespace) => {
+                return line[..index].trim_end();
+            }
+            None => {}
+        }
+        previous = Some(character);
+    }
+    line.trim_end()
+}
+
+/// The keys of a flow mapping (`{type: Article, title: X}`).
+fn flow_map_keys(value: &str) -> Vec<String> {
+    let Some(body) = value
+        .trim()
+        .strip_prefix('{')
+        .and_then(|rest| rest.strip_suffix('}'))
+    else {
+        return Vec::new();
+    };
+    let mut keys = Vec::new();
+    let mut depth = 0i32;
+    let mut item = String::new();
+    for character in body.chars().chain(std::iter::once(',')) {
+        match character {
+            '{' | '[' => depth += 1,
+            '}' | ']' => depth -= 1,
+            ',' if depth == 0 => {
+                if let Some((key, _)) = split_mapping_key(item.trim()) {
+                    keys.push(key.trim().trim_matches(['"', '\'']).to_string());
+                }
+                item.clear();
+                continue;
+            }
+            _ => {}
+        }
+        item.push(character);
+    }
+    keys
+}
+
+/// `looksLikeHayagriva`: the first entry of the file has a `type` or a
+/// `title` field.
+fn looks_like_hayagriva(text: &str) -> bool {
+    let mut window = String::new();
+    let mut units = 0;
+    for character in text.chars() {
+        units += character.len_utf16();
+        if units > SNIFF_WINDOW {
+            break;
+        }
+        window.push(character);
+    }
+    let indent = |line: &str| line.len() - line.trim_start_matches([' ', '\t']).len();
+    let blank = |line: &str| {
+        let rest = line.trim_start_matches([' ', '\t']);
+        rest.trim().is_empty() || rest.starts_with('#')
+    };
+    let mut lines = window.split('\n').map(|line| line.trim_end_matches('\r'));
+    let first = lines.find(|line| {
+        !blank(line)
+            && !line.starts_with("---")
+            && !line.starts_with("...")
+            && !line.starts_with('%')
+    });
+    let Some(first) = first else {
+        return false;
+    };
+    if indent(first) > 0
+        || first.starts_with(['-', '?', '[', '{', '&', '*', '!', '|', '>', '@', '`'])
+    {
+        return false;
+    }
+    let Some((_, rest)) = split_mapping_key(without_comment(first)) else {
+        return false;
+    };
+    let is_entry_field = |name: &str| name == "type" || name == "title";
+    if !rest.trim().is_empty() {
+        return flow_map_keys(rest).iter().any(|name| is_entry_field(name));
+    }
+    let body: Vec<&str> = lines
+        .take_while(|line| blank(line) || indent(line) > 0)
+        .filter(|line| !blank(line))
+        .collect();
+    let Some(field_indent) = body.first().map(|line| indent(line)) else {
+        return false;
+    };
+    body.iter()
+        .filter(|line| indent(line) == field_indent)
+        .filter_map(|line| split_mapping_key(without_comment(line.trim_start())))
+        .any(|(name, _)| is_entry_field(name.trim().trim_matches(['"', '\''])))
+}
+
+/// `acceptsBibliographyYaml`: small enough, and Hayagriva-shaped or named
+/// by a Typst `#bibliography`.
+pub(crate) fn accepts_bibliography_yaml(text: &str, named: bool) -> bool {
+    text.chars().map(char::len_utf16).sum::<usize>() <= MAX_BIBLIOGRAPHY_YAML_CHARACTERS
+        && (looks_like_hayagriva(text) || named)
+}
+
 /// Top-level keys of a Hayagriva file (`key:` at the start of a line).
 pub(crate) fn analyze_hayagriva(file: &str, text: &str) -> FileFacts {
     let mut facts = FileFacts::default();
@@ -151,6 +266,24 @@ mod tests {
                 "plain"
             ]
         );
+    }
+
+    #[test]
+    fn only_hayagriva_shaped_or_named_yaml_is_a_bibliography() {
+        let hayagriva = "# refs\nknuth:\n  type: book\n  title: X\n";
+        assert!(accepts_bibliography_yaml(hayagriva, false));
+        assert!(accepts_bibliography_yaml(
+            "---\nsmith: {type: article, title: Y}\n",
+            false
+        ));
+        let conda = "name: env\nchannels:\n  - conda-forge\ndependencies:\n  - numpy\n";
+        assert!(!accepts_bibliography_yaml(conda, false));
+        let compose = "services:\n  web:\n    image: nginx\nvolumes:\n  data: {}\n";
+        assert!(!accepts_bibliography_yaml(compose, false));
+        // A Typst `#bibliography("x.yml")` vouches for it.
+        assert!(accepts_bibliography_yaml(conda, true));
+        let huge = format!("{hayagriva}{}", "# padding\n".repeat(110_000));
+        assert!(!accepts_bibliography_yaml(&huge, true));
     }
 
     #[test]

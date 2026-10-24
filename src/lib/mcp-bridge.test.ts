@@ -476,8 +476,8 @@ describe("confirmForPolicy", () => {
     expect(r.wasPrompted()).toBe(false);
   });
 
-  it("trust still prompts before shell commands", async () => {
-    for (const tool of ["run_command"]) {
+  it("trust still prompts before shell commands and research tasks", async () => {
+    for (const tool of ["run_command", "research_task_create"]) {
       const r = denyingRequest();
       const confirm = confirmForPolicy("trust", r.fn);
       expect(await confirm(req(tool))).toBe(false);

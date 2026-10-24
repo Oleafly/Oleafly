@@ -4,8 +4,8 @@ import type { DraftAttachment } from "@/components/ai/composer/types";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import { registerAttachmentHolder, useComposerDrafts } from "@/store/composer-drafts";
 import {
-  acpBufferReply, acpCatalog, acpDisconnect, acpError, acpEvents, acpPrompt, acpSessions, acpSnapshot,
-  acpStart, acpSteer, onAcpBufferRequest, onAcpEvent, onAcpResync, onAcpSession,
+  acpBufferReply, acpCatalog, acpDisconnect, acpError, acpEvents, acpPrompt, acpPromptDelivered, acpSessions,
+  acpSnapshot, acpStart, acpSteer, onAcpBufferRequest, onAcpEvent, onAcpResync, onAcpSession,
   type AcpAgentStatus, type AcpBufferRequest, type AcpCommand, type AcpElicitation, type AcpEvent, type AcpPermission,
   type AcpSession, type AcpSessionSummary, type AcpSessionUsage, type AcpSnapshot, type AcpTurnCommit,
 } from "@/lib/acp";
@@ -66,6 +66,9 @@ interface AcpState {
   earlierLoaded: Record<string, number>;
   errors: Record<string, string | null>;
   setError: (projectId: string, message: string | null) => void;
+  /** Why a message of one conversation did not go out; shown only with that conversation. */
+  sessionErrors: Record<string, string | null>;
+  setSessionError: (sessionId: string, message: string | null) => void;
   /** Returns true only when this request supplied the accepted catalog. */
   refreshCatalog: (probe?: boolean) => Promise<boolean>;
   loadProject: (projectId: string) => Promise<void>;
@@ -85,12 +88,14 @@ interface AcpState {
   retryQueued: (projectId: string, sessionId: string, id: string) => Promise<void>;
   /** Drops everything the store holds for a deleted conversation. */
   forgetSession: (projectId: string, sessionId: string) => void;
-  /** False when the message was not sent (the project error says why). */
+  /** False when the message was not sent (the conversation's error says why). */
   sendPrompt: (projectId: string, sessionId: string, draft: AcpPromptDraft) => Promise<boolean>;
   startWithPrompt: (projectId: string, agentId: string, draft: AcpPromptDraft) => Promise<void>;
   dispatchQueued: (projectId: string, sessionId: string) => Promise<void>;
   steerQueued: (projectId: string, sessionId: string, id: string) => Promise<void>;
   applySummary: (summary: AcpSessionSummary) => void;
+  /** Disconnects the project's idle conversations when the window leaves the project; a working one keeps going. */
+  releaseProject: (projectId: string) => Promise<void>;
 }
 
 export function isDelegatedSession(session: AcpSession): boolean {
@@ -280,8 +285,11 @@ function sentUserMessage(before: number, sessionId: string): boolean {
 
 export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   catalog: [], sessions: {}, activeByProject: {}, events: {}, permissions: {}, elicitations: {}, composers: {},
-  queues: {}, watched: {}, sending: {}, earlierLoaded: {}, errors: {}, starting: {},
+  queues: {}, watched: {}, sending: {}, earlierLoaded: {}, errors: {}, sessionErrors: {}, starting: {},
   setError: (projectId, message) => set((state) => state.errors[projectId] === message ? state : ({ errors: { ...state.errors, [projectId]: message } })),
+  setSessionError: (sessionId, message) => set((state) => (state.sessionErrors[sessionId] ?? null) === message
+    ? state
+    : ({ sessionErrors: { ...state.sessionErrors, [sessionId]: message } })),
   refreshCatalog: async (probe = false) => {
     const request = ++catalogRequest;
     try {
@@ -425,7 +433,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
         [sessionId]: (state.queues[sessionId] ?? []).map((item) => (item.id === id ? { ...item, failed: false } : item)),
       },
     }));
-    get().setError(projectId, null);
+    get().setSessionError(sessionId, null);
     await get().dispatchQueued(projectId, sessionId);
   },
   forgetSession: (projectId, sessionId) => {
@@ -442,6 +450,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
         queues: drop(state.queues),
         sending: drop(state.sending),
         watched: drop(state.watched),
+        sessionErrors: drop(state.sessionErrors),
         ...withoutEvents(state, sessionId),
         activeByProject: state.activeByProject[projectId] === sessionId
           ? { ...state.activeByProject, [projectId]: null }
@@ -484,21 +493,30 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
           import("@/components/ai/acp/acp-attachments"),
           import("@/store/files"),
         ]);
-        const input = await toPromptInput(draft, session, useFilesStore.getState().tree);
+        // A queued message can go while the window shows another project; its
+        // mentions were then read from the conversation's project when it was queued.
+        const files = useFilesStore.getState();
+        const input = await toPromptInput(draft, session, files.projectId === projectId ? files.tree : null);
         get().setSnapshot(await acpPrompt(projectId, sessionId, input));
-        get().setError(projectId, null);
+        get().setSessionError(sessionId, null);
+        if (get().activeByProject[projectId] === sessionId) get().setError(projectId, null);
         return true;
       } catch (error) {
         await get().resync(projectId, sessionId).catch(() => {});
         const status = get().sessions[sessionId]?.status;
         if (status !== "auth_required") {
           const { promptErrorMessage } = await import("@/components/ai/acp/acp-attachments");
-          get().setError(projectId, promptErrorMessage(error) ?? acpError(error));
+          get().setSessionError(sessionId, promptErrorMessage(error) ?? acpError(error));
         }
-        return sentUserMessage(before, sessionId);
+        // The backend says whether the agent got the message before the turn
+        // failed; an older build only says why, and the transcript tells.
+        return acpPromptDelivered(error) ?? sentUserMessage(before, sessionId);
       }
     } finally {
       adjust(-1);
+      // A message queued while this one was on its way waits for a turn to
+      // end; when this one never reached the agent, no turn will.
+      if (!get().sending[sessionId]) void get().dispatchQueued(projectId, sessionId);
     }
   },
   startWithPrompt: async (projectId, agentId, draft) => {
@@ -518,14 +536,25 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     mark({ sending: true });
     const { id: _id, sending: _sending, failed: _failed, ...draft } = head;
     const sent = await get().sendPrompt(projectId, sessionId, draft);
-    if (sent) get().removeQueued(sessionId, head.id);
-    else mark({ sending: false, failed: true });
+    if (sent) {
+      get().removeQueued(sessionId, head.id);
+      // The turn can end before the prompt call returns; the next message
+      // then has no later event to wait for.
+      await get().dispatchQueued(projectId, sessionId);
+    } else {
+      mark({ sending: false, failed: true });
+    }
   },
   steerQueued: async (projectId, sessionId, id) => {
     const item = get().queues[sessionId]?.find((entry) => entry.id === id);
     const session = get().sessions[sessionId];
-    if (!item || session?.status !== "running" || !session.capabilities.steering) return;
+    if (!item || item.sending || item.failed || session?.status !== "running" || !session.capabilities.steering) return;
     if (item.attachments.length > 0 || item.selections.length > 0 || item.skill) return;
+    // On its way while the agent decides: a turn that ends meanwhile must not send it again.
+    const mark = (sending: boolean) => set((state) => ({
+      queues: { ...state.queues, [sessionId]: (state.queues[sessionId] ?? []).map((entry) => entry.id === id ? { ...entry, sending } : entry) },
+    }));
+    mark(true);
     try {
       const outcome = await acpSteer(projectId, sessionId, item.text);
       if (outcome === "injected") {
@@ -533,11 +562,14 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       } else {
         // The turn ended first: the message goes out as a turn of its own as
         // soon as the conversation is ready.
+        mark(false);
         await get().resync(projectId, sessionId).catch(() => {});
         await get().dispatchQueued(projectId, sessionId);
       }
     } catch (error) {
-      get().setError(projectId, acpError(error));
+      mark(false);
+      get().setSessionError(sessionId, acpError(error));
+      void get().dispatchQueued(projectId, sessionId);
     }
   },
   applySummary: (summary) => set((state) => {
@@ -556,6 +588,17 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       },
     };
   }),
+  releaseProject: async (projectId) => {
+    const state = get();
+    const idle = Object.values(state.sessions).filter((session) =>
+      session.projectId === projectId
+      && !isDelegatedSession(session)
+      && (session.status === "ready" || session.status === "auth_required")
+      && !state.sending[session.id]
+      && !state.queues[session.id]?.some((item) => !item.failed));
+    // A conversation of another window is refused by the backend; that one stays as it is.
+    await Promise.all(idle.map((session) => acpDisconnect(projectId, session.id).catch(() => {})));
+  },
 }));
 
 registerAttachmentHolder(() => {
@@ -595,6 +638,8 @@ let stopListeners: (() => void) | undefined;
 let listenerPromise: Promise<void> | undefined;
 let queued: AcpEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
+/** Set while nothing shows the agents but queued messages still wait for their turn to end. */
+let stopWhenSent: (() => void) | undefined;
 
 function statusForEvent(
   event: AcpEvent,
@@ -618,8 +663,54 @@ async function answerBufferRequest({ requestId, projectId, path }: AcpBufferRequ
   }
 }
 
+function applyEventBatch(batch: AcpEvent[]): void {
+  const store = useAcpSessionsStore.getState();
+  store.ingest(batch);
+  const refreshed = new Set<string>();
+  for (const event of batch) if (event.kind === "status" || event.kind === "turn_complete") {
+    if (refreshed.has(event.sessionId)) continue;
+    refreshed.add(event.sessionId);
+    void acpSnapshot(event.projectId, event.sessionId).then(useAcpSessionsStore.getState().setSnapshot).catch(() => {});
+  }
+  const ended = new Map<string, string>();
+  for (const event of batch) if (endsTurn(event)) ended.set(event.sessionId, event.projectId);
+  for (const [sessionId, projectId] of ended) {
+    if (store.queues[sessionId]?.length) void useAcpSessionsStore.getState().dispatchQueued(projectId, sessionId);
+  }
+  for (const projectId of new Set(batch.filter(mayHaveChangedFiles).map((event) => event.projectId))) {
+    refreshOpenFilesFromDisk(projectId);
+  }
+}
+
+/** Applies the events waiting for the 32 ms batch now. */
+function flushEventBatch(): void {
+  if (flushTimer) clearTimeout(flushTimer);
+  flushTimer = undefined;
+  const batch = queued;
+  queued = [];
+  if (batch.length > 0) applyEventBatch(batch);
+}
+
+/** Queued messages that go out when a turn ends, which only these listeners see. */
+function queueWaitsForTurn(state: Pick<AcpState, "queues" | "sessions">): boolean {
+  return Object.entries(state.queues).some(([sessionId, queue]) =>
+    QUEUE_FLUSHES_ITSELF.has(state.sessions[sessionId]?.status ?? "") && queue.some((item) => !item.failed));
+}
+
+function detachListeners(): void {
+  stopWhenSent?.();
+  stopWhenSent = undefined;
+  // The last events still count: one of them may end the turn a queued message waits for.
+  flushEventBatch();
+  stopListeners?.();
+  stopListeners = undefined;
+  listenerPromise = undefined;
+}
+
 export async function attachAcpListeners(): Promise<() => void> {
   listenerCount++;
+  stopWhenSent?.();
+  stopWhenSent = undefined;
   listenerPromise ??= (async () => {
     // Collected as they register: when a later registration fails, the ones
     // already made must not stay behind to double every event.
@@ -628,31 +719,18 @@ export async function attachAcpListeners(): Promise<() => void> {
       stops.push(await onAcpEvent((event) => {
         queued.push(event);
         if (flushTimer) return;
-        flushTimer = setTimeout(() => {
-          const batch = queued; queued = []; flushTimer = undefined;
-          const store = useAcpSessionsStore.getState();
-          store.ingest(batch);
-          const refreshed = new Set<string>();
-          for (const event of batch) if (event.kind === "status" || event.kind === "turn_complete") {
-            if (refreshed.has(event.sessionId)) continue;
-            refreshed.add(event.sessionId);
-            void acpSnapshot(event.projectId, event.sessionId).then(useAcpSessionsStore.getState().setSnapshot).catch(() => {});
-          }
-          const ended = new Map<string, string>();
-          for (const event of batch) if (endsTurn(event)) ended.set(event.sessionId, event.projectId);
-          for (const [sessionId, projectId] of ended) {
-            if (store.queues[sessionId]?.length) void useAcpSessionsStore.getState().dispatchQueued(projectId, sessionId);
-          }
-          for (const projectId of new Set(batch.filter(mayHaveChangedFiles).map((event) => event.projectId))) {
-            refreshOpenFilesFromDisk(projectId);
-          }
-        }, 32);
+        flushTimer = setTimeout(flushEventBatch, 32);
       }));
       stops.push(await onAcpResync(() => {
         const state = useAcpSessionsStore.getState();
         for (const [project, id] of Object.entries(state.activeByProject)) if (id) void state.resync(project, id).catch(() => {});
       }));
-      stops.push(await onAcpSession((summary) => useAcpSessionsStore.getState().applySummary(summary)));
+      // A summary is sent with each stored event: the event goes first, or the
+      // summary's sequence would make the store skip what only the event carries.
+      stops.push(await onAcpSession((summary) => {
+        flushEventBatch();
+        useAcpSessionsStore.getState().applySummary(summary);
+      }));
       stops.push(await onAcpBufferRequest((request) => void answerBufferRequest(request)));
     } catch (error) {
       for (const stop of stops) stop();
@@ -673,6 +751,16 @@ export async function attachAcpListeners(): Promise<() => void> {
   try { await listenerPromise; } catch (error) { listenerCount--; throw error; }
   return () => {
     listenerCount--;
-    if (listenerCount === 0) { stopListeners?.(); stopListeners = undefined; listenerPromise = undefined; if (flushTimer) { clearTimeout(flushTimer); } flushTimer = undefined; queued = []; }
+    if (listenerCount > 0) return;
+    if (!queueWaitsForTurn(useAcpSessionsStore.getState())) {
+      detachListeners();
+      return;
+    }
+    // Nothing shows the agents now (the built-in assistant is open, or another
+    // project), but a queued message still goes when its turn ends, not when
+    // the user comes back.
+    stopWhenSent ??= useAcpSessionsStore.subscribe((state) => {
+      if (listenerCount === 0 && !queueWaitsForTurn(state)) detachListeners();
+    });
   };
 }

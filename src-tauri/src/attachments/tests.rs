@@ -244,14 +244,63 @@ fn the_store_evicts_least_recently_used_blobs_beyond_the_cap() {
 fn gc_keeps_only_listed_hashes_and_reports_freed_bytes() {
     let root = tempfile::tempdir().unwrap();
     let keep = store_bytes(root.path(), "p1", "a", "text/plain", b"keep", 10).unwrap();
-    store_bytes(root.path(), "p1", "b", "text/plain", b"drop-1", 10).unwrap();
-    store_bytes(root.path(), "p1", "c", "text/plain", b"drop-22", 10).unwrap();
+    // Stored long ago, so past the grace period for fresh blobs.
+    for (name, bytes) in [("b", &b"drop-1"[..]), ("c", &b"drop-22"[..])] {
+        let meta = store_bytes(root.path(), "p1", name, "text/plain", bytes, 10).unwrap();
+        set_modified(&blob_path(root.path(), "p1", &meta.sha256), 1_000);
+    }
     let freed = gc_scope(root.path(), "p1", &[keep.sha256.to_ascii_uppercase()]).unwrap();
     assert_eq!(freed, 6 + 7);
     assert_eq!(
         blob_hashes(&scope_dir(root.path(), "p1")),
         vec![keep.sha256]
     );
+}
+
+#[test]
+fn gc_spares_blobs_stored_in_the_last_few_minutes() {
+    let root = tempfile::tempdir().unwrap();
+    // A scanned PDF whose page images are still being stored: no chat or
+    // draft lists it yet.
+    let fresh = store_bytes(
+        root.path(),
+        "p1",
+        "scan.pdf",
+        "application/pdf",
+        b"%PDF",
+        10,
+    )
+    .unwrap();
+    assert_eq!(gc_scope(root.path(), "p1", &[]).unwrap(), 0);
+    let blob = blob_path(root.path(), "p1", &fresh.sha256);
+    assert!(blob.is_file());
+    set_modified(&blob, 1_000);
+    assert_eq!(gc_scope(root.path(), "p1", &[]).unwrap(), 4);
+    assert!(!blob.exists());
+}
+
+#[test]
+fn attaching_a_stored_file_again_counts_as_using_it() {
+    let root = tempfile::tempdir().unwrap();
+    let (meta, added) =
+        store_bytes_reporting(root.path(), "p1", "a.pdf", "application/pdf", b"%PDF", 10).unwrap();
+    assert!(added);
+    let blob = blob_path(root.path(), "p1", &meta.sha256);
+    set_modified(&blob, 978_307_200);
+    let (_, added) =
+        store_bytes_reporting(root.path(), "p1", "a.pdf", "application/pdf", b"%PDF", 10).unwrap();
+    assert!(!added);
+    assert!(modified(&blob) > SystemTime::UNIX_EPOCH + Duration::from_secs(978_307_200));
+}
+
+#[test]
+fn puts_walk_the_store_for_its_cap_at_most_once_per_interval() {
+    let last = std::sync::Mutex::new(None);
+    let start = std::time::Instant::now();
+    assert!(cap_check_due(&last, start));
+    assert!(!cap_check_due(&last, start + Duration::from_secs(1)));
+    assert!(cap_check_due(&last, start + CAP_CHECK_INTERVAL));
+    assert!(!cap_check_due(&last, start + CAP_CHECK_INTERVAL));
 }
 
 #[test]

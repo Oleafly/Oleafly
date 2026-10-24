@@ -196,6 +196,8 @@
     "closeRight": "Alles rechts sluiten",
     "closeTab": "{{title}} sluiten",
     "color": "Kleur",
+    "dropRefused_one": "Deze bestandsnaam bevat een stuurteken, dus de terminal typt die niet.",
+    "dropRefused_other": "{{count}} bestandsnamen bevatten stuurtekens, dus de terminal typt die niet.",
     "errors": {
       "input": "De shell kon geen invoer aannemen",
       "resize": "De terminal kon niet van formaat veranderen",
@@ -234,6 +236,7 @@
       "many_other": "Er draaien nog programma's in {{count}} terminals.",
       "named": "{{process}} draait nog in {{title}}.",
       "quit": "Stoppen",
+      "reload": "Opnieuw laden",
       "restart": "Opnieuw starten",
       "switchProject": "Ander project",
       "titleMany": "De draaiende programma's stoppen?",

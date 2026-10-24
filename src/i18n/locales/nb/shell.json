@@ -560,6 +560,9 @@
     "title": "Tilbake til biblioteket",
     "tooltip": "Gå tilbake til prosjektbiblioteket"
   },
+  "importDestination": {
+    "scansGoTo": "Skanninger går til {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -673,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} De ulagrede endringene dine blir liggende åpne. Bli værende for å rette problemet, eller avslutt likevel og mist dem.",
+      "descriptionReload": "{{reason}} De ulagrede endringene dine blir liggende åpne. Bli værende for å rette problemet, eller last inn på nytt likevel og mist dem.",
       "descriptionRestart": "{{reason}} De ulagrede endringene dine blir liggende åpne. Bli værende for å rette problemet, eller start på nytt likevel og mist dem.",
       "quitAnyway": "Avslutt likevel",
+      "reloadAnyway": "Last inn på nytt likevel",
       "restartAnyway": "Start på nytt likevel",
       "stay": "Bli værende",
       "title": "Noen filer kunne ikke lagres"

@@ -1485,6 +1485,17 @@ async function preloadBibliographies(
   }
 }
 
+/**
+ * The CLI-agent conversations of a project the window leaves are disconnected
+ * when idle, so they do not keep running unseen (or count toward the session
+ * limit). One mid-turn keeps working; the project's assistant shows it again.
+ */
+function releaseIdleAgents(projectId: string): void {
+  void import("@/store/acp-sessions")
+    .then(({ useAcpSessionsStore }) => useAcpSessionsStore.getState().releaseProject(projectId))
+    .catch((error: unknown) => logError("disconnect idle agents", error));
+}
+
 async function openProjectTransition(
   id: string,
   shouldContinue: () => boolean,
@@ -1493,6 +1504,9 @@ async function openProjectTransition(
 ): Promise<void> {
   const prepared = await prepareProjectSwitch(id, shouldContinue, set, get);
   if (!prepared) return;
+  if (prepared.previousProjectId && prepared.previousProjectId !== id) {
+    releaseIdleAgents(prepared.previousProjectId);
+  }
   const { seq, superseded } = beginProjectOpen(id, shouldContinue, set, get);
   try {
     await loadOpenedProject(id, seq, superseded, set, get);
@@ -1862,6 +1876,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     cancelProofreading("visual");
     releaseIdleProofreadingWorker();
     useMcpApprovalStore.getState().cancelAll();
+    if (projectId) releaseIdleAgents(projectId);
     await mcpSetActiveProject(null).catch(() => {});
     invalidateWysiwygProjectSession();
     resetMutationGeneration();

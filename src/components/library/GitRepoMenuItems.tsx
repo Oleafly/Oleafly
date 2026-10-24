@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQueries, type UseQueryResult } from "@tanstack/react-query";
 import { GitBranch, Lock } from "lucide-react";
 import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { ErrorState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { hostLabel } from "@/lib/forge";
@@ -45,6 +46,7 @@ export function GitRepoMenuItems({
   const { t } = useTranslation(["library"]);
   const accounts = useForgeAccountsStore((s) => s.accounts);
   const status = useForgeAccountsStore((s) => s.status);
+  const error = useForgeAccountsStore((s) => s.error);
   // Each account's list is kept for a few minutes, so opening the submenu
   // again does not ask every host again.
   const repoQueries = useQueries({ queries: accounts.map(menuReposQuery) });
@@ -97,7 +99,31 @@ export function GitRepoMenuItems({
   };
 
   if (accounts.length === 0) {
-    if (status !== "ready" && status !== "error") {
+    if (status === "error") {
+      // The accounts couldn't be read, which isn't the same as having none.
+      return (
+        <>
+          <ErrorState
+            message={error ?? t(($) => $.library.import.repositoriesFailed)}
+            size="compact"
+            className="max-w-64 px-2 py-1.5"
+          />
+          <DropdownMenuItem
+            data-testid="import-git-accounts-retry"
+            onSelect={(event) => {
+              event.preventDefault();
+              void useForgeAccountsStore.getState().reload();
+            }}
+          >
+            {t(($) => $.library.import.tryAgain)}
+          </DropdownMenuItem>
+          <DropdownMenuItem data-testid="import-clone" onSelect={onClone}>
+            {t(($) => $.library.import.menu.clone)}
+          </DropdownMenuItem>
+        </>
+      );
+    }
+    if (status !== "ready") {
       return (
         <DropdownMenuItem disabled>
           <Spinner size="sm" /> {t(($) => $.library.import.loadingRepositories)}

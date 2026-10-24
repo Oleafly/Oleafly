@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { IntegrationCard, IntegrationError } from "@/components/settings/IntegrationCard";
@@ -16,8 +17,8 @@ export function SpacesCard({
   status,
   projectId,
 }: Readonly<{ status: DesktopAppsStatus; projectId: string | null }>) {
-  const { t } = useTranslation(["common", "settings"]);
-  const { connected, options, loading, failed, refresh, connect, update, disconnect } =
+  const { t } = useTranslation(["common", "settings", "errors"]);
+  const { connected, options, loading, failed, declined, refresh, connect, update, disconnect } =
     useCuaSpacesConnectorStore();
   const command = status.spacesCliPath;
 
@@ -30,6 +31,7 @@ export function SpacesCard({
       framed
       testId="desktop-apps-spaces"
       title={t(($) => $.settings.integrations.desktopApps.spaces.title)}
+      badge={<BetaBadge />}
       description={t(($) => $.settings.integrations.desktopApps.spaces.description)}
     >
       {command ? (
@@ -95,6 +97,12 @@ export function SpacesCard({
       )}
       {failed ? (
         <IntegrationError>{t(($) => $.settings.integrations.desktopApps.spaces.failed)}</IntegrationError>
+      ) : null}
+      {declined ? (
+        // Saying no to the system question is a note, not a failure; the switches show what is stored.
+        <output className="mt-2 block text-xs text-muted-foreground" data-testid="desktop-apps-spaces-declined">
+          {t(($) => $.errors.desktop_apps.change_declined)}
+        </output>
       ) : null}
     </IntegrationCard>
   );

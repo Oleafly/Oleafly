@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ExternalLink, GitBranch } from "lucide-react";
 import { ForgeRepoList } from "@/components/integrations/ForgeRepoList";
 import { Button } from "@/components/ui/button";
-import { LoadingState } from "@/components/ui/empty";
+import { ErrorState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -30,6 +30,7 @@ export function GitImportView({
   const { t } = useTranslation(["library", "errors"]);
   const accounts = useForgeAccountsStore((s) => s.accounts);
   const status = useForgeAccountsStore((s) => s.status);
+  const error = useForgeAccountsStore((s) => s.error);
   const [accountBase, setAccountBase] = useState<string | null>(null);
   const [url, setUrl] = useState("");
   const urlId = useId();
@@ -47,8 +48,11 @@ export function GitImportView({
     const host = hostLabel(target.base);
     return (
       <Tooltip label={t(($) => $.library.import.openOnHost, { host })} side="top">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
+          disabled={busy}
           aria-label={t(($) => $.library.import.openRepositoryOnHost, { name: repo.fullName, host })}
           onClick={() => {
             openInSystemBrowser(repo.webUrl)
@@ -60,10 +64,10 @@ export function GitImportView({
                 toast.error(t(($) => $.library.import.openFailed, { host }));
               });
           }}
-          className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+          className="h-7 w-7 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 [&_svg]:size-3.5"
         >
-          <ExternalLink aria-hidden="true" className="size-3.5" />
-        </button>
+          <ExternalLink aria-hidden="true" />
+        </Button>
       </Tooltip>
     );
   };
@@ -106,7 +110,27 @@ export function GitImportView({
         </section>
       );
     }
-    if (status === "ready" || status === "error") {
+    if (status === "error") {
+      // The accounts couldn't be read, which isn't the same as having none.
+      return (
+        <ErrorState
+          message={error ?? t(($) => $.library.import.repositoriesFailed)}
+          size="compact"
+          className="rounded-lg border bg-card p-4"
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-testid="project-import-accounts-retry"
+            onClick={() => void useForgeAccountsStore.getState().reload()}
+          >
+            {t(($) => $.library.import.tryAgain)}
+          </Button>
+        </ErrorState>
+      );
+    }
+    if (status === "ready") {
       return (
         <div className="space-y-3 rounded-lg border bg-card p-4 text-center">
           <p className="text-sm text-muted-foreground">{t(($) => $.library.import.connectPromptGit)}</p>

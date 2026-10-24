@@ -57,6 +57,7 @@ import { outsideCodeFences, useDisplayText } from "@/lib/display-path";
 import { formatList, formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { localizeMarkers, type MarkerLabels } from "@/lib/chat-markers";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 
@@ -1329,18 +1330,20 @@ function MessageActionButton({
 }>) {
   return (
     <Tooltip label={label}>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         aria-label={label}
         data-testid={testId}
         onClick={onClick}
         className={cn(
-          "shrink-0 self-center rounded-md p-1.5 text-muted-foreground transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100",
+          "size-6 shrink-0 self-center text-muted-foreground transition-opacity hover:text-foreground focus-visible:opacity-100 [&_svg]:size-3.5",
           visible ? "opacity-100" : "opacity-0 group-hover:opacity-100",
         )}
       >
-        <Icon className="size-3.5" />
-      </button>
+        <Icon />
+      </Button>
     </Tooltip>
   );
 }

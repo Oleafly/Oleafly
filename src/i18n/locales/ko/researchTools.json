@@ -203,7 +203,8 @@
       "createTask": "작업 만들기",
       "replaceText": "입력한 제목과 지시 사항을 이 시작 지점으로 바꿀까요?",
       "keepText": "내 것 유지",
-      "replaceConfirm": "바꾸기"
+      "replaceConfirm": "바꾸기",
+      "cannotSave": "위에 표시된 항목을 고친 뒤 다시 시도하세요."
     },
     "starter": {
       "literatureReview": {
@@ -304,16 +305,34 @@
         "budgetCost": "비용 한도에서 중지했습니다.",
         "budgetRuns": "실행 횟수 한도에서 중지했습니다."
       },
-      "startsAt": "시작: {{time}}"
+      "startsAt": "시작: {{time}}",
+      "olderActivity": "이 실행의 이전 활동은 표시되지 않습니다.",
+      "tooLargeToDiff": "이 파일은 너무 커서 여기서 비교할 수 없으므로 크기만 표시합니다."
+    },
+    "confirm": {
+      "stopTitle": "이 작업을 중지할까요?",
+      "stopDescription": "“{{title}}”은(는) 현재 단계가 끝나면 중지됩니다. 나중에 “이어서 하기”를 누르면 그 작업 공간에서 계속할 수 있습니다.",
+      "cancelTitle": "이 작업을 취소할까요?",
+      "cancelDescription": "“{{title}}”은(는) 실행되지 않습니다. 나중에 다시 시도할 수 있습니다.",
+      "cancelTask": "작업 취소",
+      "discardTitle": "이 변경 사항을 버릴까요?",
+      "discardDescription": "“{{title}}”의 변경 사항은 프로젝트에 하나도 반영되지 않으며, 작업은 취소됨으로 표시됩니다. “이어서 하기”를 누르면 에이전트가 다시 실행됩니다.",
+      "keepTask": "작업 유지",
+      "keepChanges": "변경 사항 유지",
+      "dependents_other": "이 작업을 기다리는 다음 {{count}}개 작업도 실패합니다:",
+      "runs_other": "다음 실행 {{count}}개도 중지됩니다:"
     },
     "plan": {
       "title": "계획",
       "description": "계획을 읽고 필요하면 편집하세요. 승인하면 작업이 계속됩니다.",
       "approve": "계획 승인",
       "approveEdited": "편집한 계획 승인",
-      "discard": "작업 버리기",
+      "discard": "작업 취소",
       "loading": "계획을 불러오는 중…",
-      "missing": "계획 파일이 없습니다. 작업을 다시 시도하세요."
+      "missing": "계획 파일이 없습니다. 작업을 다시 시도하세요.",
+      "loadFailed": "Oleafly가 계획을 불러오지 못했습니다.",
+      "truncated": "이 계획은 64 KiB보다 길어서 앞부분만 표시됩니다. 원하는 단계만 남기도록 편집한 뒤 승인하세요.",
+      "tooLong": "계획은 최대 64 KiB까지 가능합니다. 승인하기 전에 줄이세요."
     },
     "approvals": {
       "title": "승인을 기다리는 중",
@@ -362,6 +381,9 @@
       "runsUsed": "실행 {{limit}}회 중 {{used}}회",
       "runsUsedNoLimit": "실행 {{used}}회",
       "stopRun": "실행 중지",
+      "stopRunTitle": "이 실행을 중지할까요?",
+      "stopRunDescription": "“{{name}}”({{run}})이(가) 지금 중지됩니다. 다른 컴퓨터나 클러스터에서 실행 중인 작업도 그쪽에서 취소됩니다.",
+      "keepRun": "계속 실행",
       "viewLog": "로그 보기",
       "columns": {
         "run": "실행",
@@ -862,6 +884,7 @@
     "progressCancelled": "취소됨",
     "progressReadingPages": "페이지를 읽는 중",
     "progressTranscribingPage": "{{model}}(으)로 {{total}}페이지 중 {{page}}페이지를 옮겨 적는 중",
+    "progressTranscribingPdfPage": "{{model}}(으)로 {{pdfPage}}페이지를 옮겨 적는 중({{total}}페이지 중 {{page}}번째)",
     "progressDocumentStructure": "문서 구조를 변환하는 중",
     "progressMermaid": "Mermaid 다이어그램을 렌더링하는 중",
     "progressFirstSheet": "첫 시트를 읽는 중",
@@ -905,7 +928,8 @@
     "progressConvertingSource": "소스를 Typst로 변환하는 중",
     "pageRange": "페이지",
     "pageRangePlaceholder": "모든 페이지 또는 1-50 같은 범위",
-    "pageRangeInvalid": "페이지 번호 하나 또는 1-50 같은 범위를 입력하세요."
+    "pageRangeInvalid": "페이지 번호 하나 또는 1-50 같은 범위를 입력하세요.",
+    "pageCount_other": "이 PDF는 {{count}}페이지입니다."
   },
   "converters": {
     "imageToLatex": {
@@ -1114,10 +1138,12 @@
     "arxivInputRequired": "arXiv 아이디를 입력하거나 소스 압축 파일을 고르세요.",
     "equationToTypst": "Pandoc이 이 수식을 Typst로 변환하지 못했습니다. LaTeX 수식을 확인하고 다시 시도하세요.",
     "pdfTooManyPages": "이 스캔 파일은 {{pages}}페이지이고 Oleafly는 한 번에 {{limit}}페이지까지 옮겨 적을 수 있습니다. 파일 아래에 1-{{limit}} 같은 페이지 범위를 입력하세요.",
-    "outputLimit": "모델이 다 끝내기 전에 출력 공간이 부족해 옮겨 적기가 완전하지 않습니다. 설정 → AI → 도구에서 출력 한도가 더 큰 모델을 고르거나, 더 작은 부분만 옮겨 적으세요."
+    "outputLimit": "모델이 다 끝내기 전에 출력 공간이 부족해 옮겨 적기가 완전하지 않습니다. 설정 → AI → 도구에서 출력 한도가 더 큰 모델을 고르거나, 더 작은 부분만 옮겨 적으세요.",
+    "refused": "모델이 옮겨 적기를 거부해 아무것도 추가되지 않았습니다. 설정 → AI → 도구에서 다른 모델을 고르세요.",
+    "pageRangePastEnd_other": "이 PDF는 {{count}}페이지입니다. 1에서 {{count}} 사이의 범위를 입력하세요."
   },
   "converterNotes": {
-    "scannedPages": "{{model}}(으)로 스캔한 {{pages}}페이지를 옮겨 적었습니다. 결과를 쓰기 전에 수식과 표를 검토하세요.",
+    "scannedPages_other": "{{model}}(으)로 스캔한 {{count}}페이지를 옮겨 적었습니다. 결과를 쓰기 전에 수식과 표를 검토하세요.",
     "extracted": "이 컴퓨터에서 {{pages}}쪽과 그림 {{figures}}개를 뽑아냈습니다.",
     "mermaidTikz": "이 순서도를 편집 가능한 TikZ로 변환했습니다.",
     "mermaidRendered": "이 다이어그램의 Mermaid 문법은 편집 가능한 TikZ로 깔끔하게 옮겨지지 않아 이 컴퓨터에서 렌더링했습니다.",
@@ -1142,20 +1168,28 @@
     "scansSentToHost": "스캔한 페이지가 {{host}}의 Ollama로 전송됩니다",
     "pdfSentToMathpix": "PDF 전체가 Mathpix로 전송됩니다",
     "transcribingHosted": "이미지를 {{provider}}(으)로 보내는 중…",
+    "transcribingFallback": "이미지를 {{provider}}(으)로 보내는 중(어시스턴트 모델)…",
+    "sentFallback": "{{provider}}(으)로 전송됨(어시스턴트 모델)",
+    "editorFallback": "Ollama에 비전 모델이 생기기 전까지 편집기의 '이미지를 LaTeX로'는 이미지를 {{provider}}(으)로 보냅니다",
     "progressUploading": "PDF를 Mathpix로 보내는 중",
     "progressFormatting": "Pandoc으로 옮겨 적은 결과를 변환하는 중",
     "scannedTitle": "이 PDF는 스캔본으로 보입니다",
     "estimateOllama_other": "{{count}}페이지입니다. Ollama는 한 페이지씩 읽으므로 시간이 걸릴 수 있습니다.",
     "estimateCost_other": "{{count}}페이지입니다. {{model}}(으)로 약 {{cost}}입니다.",
     "estimateUnknown_other": "{{count}}페이지입니다. {{provider}}은(는) 사용량에 따라 요금을 청구합니다.",
+    "estimatePlan_other": "{{count}}페이지입니다. {{provider}} 요금제에 포함되어 있습니다.",
+    "estimateLocal_other": "{{count}}페이지입니다. 모델이 이 컴퓨터에서 실행되므로 비용이 들지 않습니다.",
+    "estimateFree_other": "{{count}}페이지입니다. {{model}}(으)로는 무료입니다.",
     "transcribePages_other": "{{count}}페이지 옮겨 적기",
     "transcribedWith": "{{model}}(으)로 옮겨 적었습니다. 수식과 표를 검토하세요.",
     "sentBadge": "{{provider}}(으)로 전송됨",
     "openToolsSettings": "도구 설정",
+    "openProviderSettings": "제공자 설정",
     "errors": {
       "offline": "Oleafly가 오프라인 모드입니다. 로컬 모델을 선택하거나 오프라인 모드를 끄세요.",
       "providerNotConfigured": "{{provider}}에 API 키가 없습니다. 설정에서 추가하거나 다른 모델을 선택하세요.",
       "modelDisabled": "{{model}}이(가) 설정에서 꺼져 있습니다. 켜거나 다른 모델을 선택하세요.",
+      "modelUnavailable": "{{model}}은(는) 더 이상 {{provider}}에서 사용할 수 없습니다. 다른 모델을 선택하세요.",
       "cannotSeeImages": "{{model}}은(는) 이미지를 읽을 수 없습니다. 비전 모델을 선택하세요.",
       "localModelGone": "{{model}}이(가) 더 이상 Ollama에 없습니다. 다시 내려받거나 다른 모델을 선택하세요.",
       "imagesOnly": "{{model}}은(는) 이미지만 읽습니다. 입력한 수식을 변환하려면 언어 모델을 선택하세요.",
@@ -1740,6 +1774,8 @@
     "keepRunningHint": "먼저 설정 → 연구에서 백그라운드 작업을 켜세요.",
     "invalidMetric": "영문자, 숫자, 점, 하이픈, 밑줄을 사용하세요.",
     "invalidCost": "0보다 큰 금액을 입력하세요.",
+    "invalidCostMax": "{{max}} 이하의 금액을 입력하세요.",
+    "invalidCostNumber": "{{example}}처럼 금액을 숫자로 입력하세요.",
     "invalidRuns": "1에서 1,000 사이의 정수를 입력하세요.",
     "invalidStart": "앞으로 30일 이내의 시작 시간을 고르세요.",
     "invalidStartFormat": "{{example}} 형식을 사용하세요.",
@@ -1762,6 +1798,8 @@
     "hint": "이 확인은 경고만 하며 적용을 막지 않습니다.",
     "running": "확인하는 중…",
     "refresh": "다시 확인",
+    "empty": "이 결과에 대한 확인이 아직 실행되지 않았습니다.",
+    "more_other": "나머지 {{count}}개는 목록에 표시하지 않았습니다.",
     "status": {
       "pass": "통과",
       "warn": "확인 필요",
@@ -1869,7 +1907,8 @@
         "time": "2:00:00 같은 Slurm 시간 형식을 사용하세요.",
         "name": "영문자, 숫자, 점, 쉼표, 하이픈, 밑줄을 사용하세요.",
         "mem": "16처럼 GB 단위의 정수를 사용하세요.",
-        "count": "허용 범위 안의 정수를 사용하세요."
+        "count": "허용 범위 안의 정수를 사용하세요.",
+        "prelude": "준비 명령은 4 KB 이하로 유지하세요. 악센트가 붙은 문자와 라틴 문자가 아닌 문자는 공간을 더 차지합니다."
       }
     },
     "test": {
@@ -1945,7 +1984,7 @@
       "movingBackHint": "이 작업은 현재 단계가 끝나면 Oleafly로 돌아옵니다."
     },
     "earlierActivity": "이전 활동 보기",
-    "earlierTruncated": "이전 실행에서는 처음 {{limit}}개 항목만 표시됩니다.",
+    "earlierTruncated": "이전 실행에서는 마지막 {{limit}}개 항목만 표시됩니다.",
     "keepRunningFailed": "이 설정을 바꾸지 못했습니다. 다시 시도하세요."
   }
 }

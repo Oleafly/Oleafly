@@ -1025,6 +1025,35 @@ fn anthropic_default_max_tokens_follow_the_output_limit() {
 }
 
 #[test]
+fn older_claude_models_get_a_default_that_leaves_room_for_the_input() {
+    let caps = || ModelCaps {
+        output_limit: Some(64_000),
+        context_window: Some(200_000),
+        ..ModelCaps::default()
+    };
+    let default_for = |model: &str| {
+        anthropic_body(
+            &anthropic_model(model, caps()),
+            &CompletionRequest::prompt("s", "u"),
+        )
+        .unwrap()["max_tokens"]
+            .clone()
+    };
+    // These refuse input plus max_tokens over the window.
+    for model in [
+        "claude-sonnet-4-20250514",
+        "claude-opus-4-1",
+        "claude-3-7-sonnet-latest",
+    ] {
+        assert_eq!(default_for(model), 16_000, "{model}");
+    }
+    // These stop at the window instead.
+    for model in ["claude-sonnet-4-5", "claude-opus-5-5", "claude-haiku-4-5"] {
+        assert_eq!(default_for(model), 64_000, "{model}");
+    }
+}
+
+#[test]
 fn blocking_completions_cap_the_default_at_16k() {
     let r = anthropic_model(
         "claude-opus-5-5",

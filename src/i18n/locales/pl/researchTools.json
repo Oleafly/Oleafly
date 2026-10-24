@@ -206,7 +206,8 @@
       "createTask": "Utwórz zadanie",
       "replaceText": "Zastąpić tytuł i instrukcje, które wpisałeś, tym punktem startowym?",
       "keepText": "Zachowaj moje",
-      "replaceConfirm": "Zastąp"
+      "replaceConfirm": "Zastąp",
+      "cannotSave": "Popraw opcje zaznaczone powyżej i spróbuj ponownie."
     },
     "starter": {
       "literatureReview": {
@@ -310,16 +311,40 @@
         "budgetCost": "Zatrzymano na limicie kosztów.",
         "budgetRuns": "Zatrzymano na limicie uruchomień."
       },
-      "startsAt": "Start: {{time}}"
+      "startsAt": "Start: {{time}}",
+      "olderActivity": "Wcześniejsza aktywność z tego uruchomienia nie jest wyświetlana.",
+      "tooLargeToDiff": "Ten plik jest za duży, aby go tu porównać, więc wyświetlane są tylko jego rozmiary."
+    },
+    "confirm": {
+      "stopTitle": "Zatrzymać to zadanie?",
+      "stopDescription": "\"{{title}}\" zatrzyma się po bieżącym kroku. Przycisk Wznów kontynuuje je później w jego obszarze roboczym.",
+      "cancelTitle": "Anulować to zadanie?",
+      "cancelDescription": "\"{{title}}\" nie zostanie uruchomione. Możesz spróbować ponownie później.",
+      "cancelTask": "Anuluj zadanie",
+      "discardTitle": "Odrzucić te zmiany?",
+      "discardDescription": "Żadne zmiany z zadania \"{{title}}\" nie trafią do Twojego projektu, a zadanie zostanie oznaczone jako anulowane. Wznów uruchamia agenta ponownie.",
+      "keepTask": "Zachowaj zadanie",
+      "keepChanges": "Zachowaj zmiany",
+      "dependents_one": "To zadanie na nie czeka i również zakończy się niepowodzeniem:",
+      "dependents_few": "Te {{count}} zadania na nie czekają i również zakończą się niepowodzeniem:",
+      "dependents_many": "Tych {{count}} zadań na nie czeka i również zakończy się niepowodzeniem:",
+      "dependents_other": "Tych {{count}} zadania na nie czeka i również zakończy się niepowodzeniem:",
+      "runs_one": "To uruchomienie również zostanie zatrzymane:",
+      "runs_few": "Te {{count}} uruchomienia również zostaną zatrzymane:",
+      "runs_many": "Tych {{count}} uruchomień również zostanie zatrzymanych:",
+      "runs_other": "Tych {{count}} uruchomienia również zostanie zatrzymanych:"
     },
     "plan": {
       "title": "Plan",
       "description": "Przeczytaj plan i edytuj go, jeśli chcesz. Zatwierdź go, aby zadanie mogło kontynuować.",
       "approve": "Zatwierdź plan",
       "approveEdited": "Zatwierdź edytowany plan",
-      "discard": "Odrzuć zadanie",
+      "discard": "Anuluj zadanie",
       "loading": "Wczytywanie planu…",
-      "missing": "Brak pliku planu. Ponów zadanie."
+      "missing": "Brak pliku planu. Ponów zadanie.",
+      "loadFailed": "Oleafly nie mógł wczytać planu.",
+      "truncated": "Ten plan jest dłuższy niż 64 KiB, więc wyświetlany jest tylko jego początek. Skróć go do potrzebnych kroków, a potem go zatwierdź.",
+      "tooLong": "Plan może mieć do 64 KiB. Skróć go, zanim go zatwierdzisz."
     },
     "approvals": {
       "title": "Czeka na Twoje zatwierdzenie",
@@ -368,6 +393,9 @@
       "runsUsed": "Uruchomienia: {{used}} z {{limit}}",
       "runsUsedNoLimit": "Uruchomienia: {{used}}",
       "stopRun": "Zatrzymaj uruchomienie",
+      "stopRunTitle": "Zatrzymać to uruchomienie?",
+      "stopRunDescription": "\"{{name}}\" ({{run}}) zatrzyma się teraz. Zadanie, które uruchomiło na innej maszynie lub w klastrze, również zostanie tam anulowane.",
+      "keepRun": "Pozostaw uruchomione",
       "viewLog": "Zobacz dziennik",
       "columns": {
         "run": "Uruchomienie",
@@ -877,6 +905,7 @@
     "progressCancelled": "Anulowano",
     "progressReadingPages": "Odczytywanie stron",
     "progressTranscribingPage": "Przepisywanie strony {{page}} z {{total}} modelem {{model}}",
+    "progressTranscribingPdfPage": "Przepisywanie strony {{pdfPage}} ({{page}} z {{total}}) modelem {{model}}",
     "progressDocumentStructure": "Konwertowanie struktury dokumentu",
     "progressMermaid": "Renderowanie diagramu Mermaid",
     "progressFirstSheet": "Odczytywanie pierwszego arkusza",
@@ -920,7 +949,11 @@
     "progressConvertingSource": "Konwertowanie źródła na Typst",
     "pageRange": "Strony",
     "pageRangePlaceholder": "Wszystkie strony albo zakres, na przykład 1-50",
-    "pageRangeInvalid": "Wpisz numer jednej strony albo zakres, na przykład 1-50."
+    "pageRangeInvalid": "Wpisz numer jednej strony albo zakres, na przykład 1-50.",
+    "pageCount_one": "Ten plik PDF ma {{count}} stronę.",
+    "pageCount_few": "Ten plik PDF ma {{count}} strony.",
+    "pageCount_many": "Ten plik PDF ma {{count}} stron.",
+    "pageCount_other": "Ten plik PDF ma {{count}} strony."
   },
   "converters": {
     "imageToLatex": {
@@ -1129,10 +1162,18 @@
     "arxivInputRequired": "Podaj identyfikator arXiv albo wybierz archiwum źródeł.",
     "equationToTypst": "Pandoc nie mógł przekonwertować tego równania na Typst. Sprawdź wzór LaTeX i spróbuj ponownie.",
     "pdfTooManyPages": "Ten skan ma {{pages}} stron, a Oleafly przepisuje naraz do {{limit}}. Wpisz pod plikiem zakres stron, na przykład 1-{{limit}}.",
-    "outputLimit": "Modelowi zabrakło miejsca, zanim skończył, więc przepisanie byłoby niekompletne. Wybierz model z większym limitem długości odpowiedzi w sekcji Ustawienia, Asystent AI, Narzędzia albo przepisz mniejszą część."
+    "outputLimit": "Modelowi zabrakło miejsca, zanim skończył, więc przepisanie byłoby niekompletne. Wybierz model z większym limitem długości odpowiedzi w sekcji Ustawienia, Asystent AI, Narzędzia albo przepisz mniejszą część.",
+    "refused": "Model odmówił przepisania tego, więc nic nie dodano. Wybierz inny model w sekcji Ustawienia, AI, Narzędzia.",
+    "pageRangePastEnd_one": "Ten plik PDF ma {{count}} stronę. Wpisz 1 albo zostaw pole Strony puste.",
+    "pageRangePastEnd_few": "Ten plik PDF ma {{count}} strony. Wpisz zakres od 1 do {{count}}.",
+    "pageRangePastEnd_many": "Ten plik PDF ma {{count}} stron. Wpisz zakres od 1 do {{count}}.",
+    "pageRangePastEnd_other": "Ten plik PDF ma {{count}} strony. Wpisz zakres od 1 do {{count}}."
   },
   "converterNotes": {
-    "scannedPages": "Przepisano zeskanowane strony ({{pages}}) modelem {{model}}. Sprawdź równania i tabele przed użyciem wyniku.",
+    "scannedPages_one": "Przepisano {{count}} zeskanowaną stronę modelem {{model}}. Przed użyciem wyniku sprawdź równania i tabele.",
+    "scannedPages_few": "Przepisano {{count}} zeskanowane strony modelem {{model}}. Przed użyciem wyniku sprawdź równania i tabele.",
+    "scannedPages_many": "Przepisano {{count}} zeskanowanych stron modelem {{model}}. Przed użyciem wyniku sprawdź równania i tabele.",
+    "scannedPages_other": "Przepisano {{count}} zeskanowanej strony modelem {{model}}. Przed użyciem wyniku sprawdź równania i tabele.",
     "extracted": "Wyodrębniono lokalnie {{pages}} stron i {{figures}} rysunków.",
     "mermaidTikz": "Przekonwertowano ten schemat blokowy na edytowalny kod TikZ.",
     "mermaidRendered": "Ten diagram wyrenderowano lokalnie, ponieważ jego składnia Mermaid nie przekłada się czysto na edytowalny kod TikZ.",
@@ -1163,6 +1204,9 @@
     "scansSentToHost": "Zeskanowane strony są wysyłane do Ollama na {{host}}",
     "pdfSentToMathpix": "Cały plik PDF jest wysyłany do Mathpix",
     "transcribingHosted": "Wysyłanie obrazu do {{provider}}…",
+    "transcribingFallback": "Wysyłanie obrazu do {{provider}} (model asystenta)…",
+    "sentFallback": "Wysłano do {{provider}} (model asystenta)",
+    "editorFallback": "Konwersja obrazu na LaTeX w edytorze wysyła obrazy do {{provider}}, dopóki Ollama nie ma modelu wizyjnego",
     "progressUploading": "Wysyłanie pliku PDF do Mathpix",
     "progressFormatting": "Konwertowanie przepisanego tekstu przez Pandoc",
     "scannedTitle": "Ten plik PDF wygląda na skan",
@@ -1178,6 +1222,18 @@
     "estimateUnknown_few": "{{count}} strony. {{provider}} nalicza opłatę według zużycia.",
     "estimateUnknown_many": "{{count}} stron. {{provider}} nalicza opłatę według zużycia.",
     "estimateUnknown_other": "{{count}} strony. {{provider}} nalicza opłatę według zużycia.",
+    "estimatePlan_one": "{{count}} strona. {{provider}} wlicza ją do Twojego planu.",
+    "estimatePlan_few": "{{count}} strony. {{provider}} wlicza je do Twojego planu.",
+    "estimatePlan_many": "{{count}} stron. {{provider}} wlicza je do Twojego planu.",
+    "estimatePlan_other": "{{count}} strony. {{provider}} wlicza je do Twojego planu.",
+    "estimateLocal_one": "{{count}} strona. Model działa na tym komputerze, bez kosztów.",
+    "estimateLocal_few": "{{count}} strony. Model działa na tym komputerze, bez kosztów.",
+    "estimateLocal_many": "{{count}} stron. Model działa na tym komputerze, bez kosztów.",
+    "estimateLocal_other": "{{count}} strony. Model działa na tym komputerze, bez kosztów.",
+    "estimateFree_one": "{{count}} strona. Bezpłatnie z {{model}}.",
+    "estimateFree_few": "{{count}} strony. Bezpłatnie z {{model}}.",
+    "estimateFree_many": "{{count}} stron. Bezpłatnie z {{model}}.",
+    "estimateFree_other": "{{count}} strony. Bezpłatnie z {{model}}.",
     "transcribePages_one": "Przepisz {{count}} stronę",
     "transcribePages_few": "Przepisz {{count}} strony",
     "transcribePages_many": "Przepisz {{count}} stron",
@@ -1185,10 +1241,12 @@
     "transcribedWith": "Przepisano modelem {{model}}. Sprawdź równania i tabele.",
     "sentBadge": "Wysłano do {{provider}}",
     "openToolsSettings": "Ustawienia Narzędzi",
+    "openProviderSettings": "Ustawienia dostawcy",
     "errors": {
       "offline": "Oleafly działa w trybie offline. Wybierz model lokalny albo wyłącz tryb offline.",
       "providerNotConfigured": "{{provider}} nie ma klucza API. Dodaj go w Ustawieniach albo wybierz inny model.",
       "modelDisabled": "{{model}} jest wyłączony w Ustawieniach. Włącz go albo wybierz inny model.",
+      "modelUnavailable": "{{model}} nie jest już dostępny u {{provider}}. Wybierz inny model.",
       "cannotSeeImages": "{{model}} nie odczytuje obrazów. Wybierz model wizyjny.",
       "localModelGone": "{{model}} nie ma już w Ollama. Pobierz go ponownie albo wybierz inny model.",
       "imagesOnly": "{{model}} odczytuje tylko obrazy. Aby przekonwertować wpisane równania, wybierz model językowy.",
@@ -1812,6 +1870,8 @@
     "keepRunningHint": "Najpierw włącz pracę w tle w sekcji Ustawienia, Badania.",
     "invalidMetric": "Używaj liter, cyfr, kropek, łączników lub podkreśleń.",
     "invalidCost": "Wpisz kwotę większą od zera.",
+    "invalidCostMax": "Wpisz kwotę do {{max}}.",
+    "invalidCostNumber": "Wpisz kwotę jako liczbę, na przykład {{example}}.",
     "invalidRuns": "Wpisz liczbę całkowitą od 1 do 1000.",
     "invalidStart": "Wybierz czas rozpoczęcia w ciągu najbliższych 30 dni.",
     "invalidStartFormat": "Użyj formatu {{example}}.",
@@ -1834,6 +1894,11 @@
     "hint": "Te kontrole tylko ostrzegają. Nie blokują stosowania zmian.",
     "running": "Sprawdzanie…",
     "refresh": "Sprawdź ponownie",
+    "empty": "Dla tego wyniku nie uruchomiono jeszcze żadnych kontroli.",
+    "more_one": "Pozostałe niewymienione: {{count}}.",
+    "more_few": "Pozostałe niewymienione: {{count}}.",
+    "more_many": "Pozostałe niewymienione: {{count}}.",
+    "more_other": "Pozostałe niewymienione: {{count}}.",
     "status": {
       "pass": "Zaliczone",
       "warn": "Do sprawdzenia",
@@ -1941,7 +2006,8 @@
         "time": "Użyj czasu w formacie Slurm, na przykład 2:00:00.",
         "name": "Używaj liter, cyfr, kropek, przecinków, łączników lub podkreśleń.",
         "mem": "Użyj liczby całkowitej gigabajtów, na przykład 16.",
-        "count": "Użyj liczby całkowitej z dozwolonego zakresu."
+        "count": "Użyj liczby całkowitej z dozwolonego zakresu.",
+        "prelude": "Polecenia przygotowawcze mogą mieć najwyżej 4 KB. Litery z akcentami i pisma nielacińskie zajmują więcej miejsca."
       }
     },
     "test": {
@@ -2020,7 +2086,7 @@
       "movingBackHint": "To zadanie wróci do Oleafly, gdy skończy się jego bieżący krok."
     },
     "earlierActivity": "Pokaż wcześniejszą aktywność",
-    "earlierTruncated": "Pokazano tylko pierwsze {{limit}} elementów tego wcześniejszego uruchomienia.",
+    "earlierTruncated": "Pokazano tylko ostatnie {{limit}} elementów tego wcześniejszego uruchomienia.",
     "keepRunningFailed": "Nie udało się zmienić tego ustawienia. Spróbuj ponownie."
   }
 }

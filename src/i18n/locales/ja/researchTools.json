@@ -203,7 +203,8 @@
       "createTask": "タスクを作成",
       "replaceText": "入力したタイトルと指示を、このひな形の内容で置き換えますか？",
       "keepText": "入力した内容を残す",
-      "replaceConfirm": "置き換える"
+      "replaceConfirm": "置き換える",
+      "cannotSave": "上で印の付いた項目を直してから、もう一度お試しください。"
     },
     "starter": {
       "literatureReview": {
@@ -304,16 +305,34 @@
         "budgetCost": "費用の上限で停止しました。",
         "budgetRuns": "実行回数の上限で停止しました。"
       },
-      "startsAt": "開始: {{time}}"
+      "startsAt": "開始: {{time}}",
+      "olderActivity": "この実行の以前の経過は表示していません。",
+      "tooLargeToDiff": "このファイルは大きすぎてここでは比較できないため、サイズだけを表示しています。"
+    },
+    "confirm": {
+      "stopTitle": "このタスクを停止しますか？",
+      "stopDescription": "「{{title}}」は現在のステップが終わった時点で停止します。あとで「再開」を押すと、その作業領域から続けられます。",
+      "cancelTitle": "このタスクをキャンセルしますか？",
+      "cancelDescription": "「{{title}}」は実行されません。あとで再試行できます。",
+      "cancelTask": "タスクをキャンセル",
+      "discardTitle": "これらの変更を破棄しますか？",
+      "discardDescription": "「{{title}}」による変更はプロジェクトに一切反映されず、タスクはキャンセル扱いになります。「再開」を押すと、エージェントがもう一度実行されます。",
+      "keepTask": "タスクを残す",
+      "keepChanges": "変更を残す",
+      "dependents_other": "これを待っている次の {{count}} 件のタスクも失敗します:",
+      "runs_other": "次の {{count}} 件の実行も停止します:"
     },
     "plan": {
       "title": "プラン",
       "description": "プランを読み、必要なら編集してください。承認するとタスクが続行します。",
       "approve": "プランを承認",
       "approveEdited": "編集したプランを承認",
-      "discard": "タスクを破棄",
+      "discard": "タスクをキャンセル",
       "loading": "プランを読み込んでいます…",
-      "missing": "プランのファイルが見つかりません。タスクを再試行してください。"
+      "missing": "プランのファイルが見つかりません。タスクを再試行してください。",
+      "loadFailed": "Oleafly はプランを読み込めませんでした。",
+      "truncated": "このプランは 64 KiB を超えているため、冒頭部分だけを表示しています。必要なステップだけに絞って編集してから、承認してください。",
+      "tooLong": "プランは 64 KiB までです。承認する前に短くしてください。"
     },
     "approvals": {
       "title": "あなたの承認を待っています",
@@ -362,6 +381,9 @@
       "runsUsed": "{{limit}} 回中 {{used}} 回実行",
       "runsUsedNoLimit": "{{used}} 回実行",
       "stopRun": "実行を停止",
+      "stopRunTitle": "この実行を停止しますか？",
+      "stopRunDescription": "「{{name}}」（{{run}}）をただちに停止します。別のマシンやクラスターで実行しているジョブも、そちらでキャンセルされます。",
+      "keepRun": "実行を続ける",
       "viewLog": "ログを表示",
       "columns": {
         "run": "実行",
@@ -862,6 +884,7 @@
     "progressCancelled": "キャンセル",
     "progressReadingPages": "ページを読み込んでいます",
     "progressTranscribingPage": "{{model}} で {{total}} ページ中 {{page}} ページ目を文字起こししています",
+    "progressTranscribingPdfPage": "{{model}} で {{pdfPage}} ページ目を文字起こししています（{{total}} ページ中 {{page}} ページ目）",
     "progressDocumentStructure": "文書の構造を変換しています",
     "progressMermaid": "Mermaid の図を描画しています",
     "progressFirstSheet": "最初のシートを読み込んでいます",
@@ -905,7 +928,8 @@
     "progressConvertingSource": "ソースを Typst に変換しています",
     "pageRange": "ページ",
     "pageRangePlaceholder": "すべてのページ、または 1-50 のような範囲",
-    "pageRangeInvalid": "ページ番号を 1 つ、または 1-50 のような範囲で入力してください。"
+    "pageRangeInvalid": "ページ番号を 1 つ、または 1-50 のような範囲で入力してください。",
+    "pageCount_other": "この PDF は {{count}} ページです。"
   },
   "converters": {
     "imageToLatex": {
@@ -1114,10 +1138,12 @@
     "arxivInputRequired": "arXiv の ID を入力するか、ソースのアーカイブを選んでください。",
     "equationToTypst": "Pandoc はこの数式を Typst に変換できませんでした。LaTeX の数式を確認して、もう一度お試しください。",
     "pdfTooManyPages": "このスキャンは {{pages}} ページあり、Oleafly が一度に文字起こしできるのは {{limit}} ページまでです。ファイルの下にある欄に、1-{{limit}} のようなページ範囲を入力してください。",
-    "outputLimit": "モデルは書き終える前に出力の上限に達するため、このままだと文字起こしは不完全になります。「設定 → AI アシスタント → ツール」で出力の上限が大きいモデルを選ぶか、範囲を狭めて文字起こししてください。"
+    "outputLimit": "モデルは書き終える前に出力の上限に達するため、このままだと文字起こしは不完全になります。「設定 → AI アシスタント → ツール」で出力の上限が大きいモデルを選ぶか、範囲を狭めて文字起こししてください。",
+    "refused": "モデルがこの文字起こしを断ったため、何も追加されませんでした。「設定 → AI アシスタント → ツール」で別のモデルを選んでください。",
+    "pageRangePastEnd_other": "この PDF は {{count}} ページです。1 から {{count}} までの範囲を入力してください。"
   },
   "converterNotes": {
-    "scannedPages": "{{model}} でスキャンした {{pages}} ページを文字起こししました。結果を使う前に、数式と表を確認してください。",
+    "scannedPages_other": "{{model}} でスキャンした {{count}} ページを文字起こししました。結果を使う前に、数式と表を確認してください。",
     "extracted": "{{pages}} ページと {{figures}} 件の図をローカルで取り出しました。",
     "mermaidTikz": "このフローチャートを、編集できる TikZ に変換しました。",
     "mermaidRendered": "この図の Mermaid の記法は、編集できる TikZ にきれいに対応づけられないため、ローカルで描画しました。",
@@ -1142,20 +1168,28 @@
     "scansSentToHost": "スキャンしたページは {{host}} の Ollama に送信されます",
     "pdfSentToMathpix": "PDF 全体が Mathpix に送信されます",
     "transcribingHosted": "画像を {{provider}} に送信しています…",
+    "transcribingFallback": "画像を {{provider}} に送信しています（アシスタントのモデル）…",
+    "sentFallback": "{{provider}} に送信済み（アシスタントのモデル）",
+    "editorFallback": "Ollama に画像認識モデルが入るまで、エディタの「画像から LaTeX へ」は画像を {{provider}} に送信します",
     "progressUploading": "PDF を Mathpix に送信しています",
     "progressFormatting": "Pandoc で文字起こしの結果を変換しています",
     "scannedTitle": "この PDF はスキャンのようです",
     "estimateOllama_other": "{{count}} ページあります。Ollama は 1 ページずつ読み取るため、時間がかかることがあります。",
     "estimateCost_other": "{{count}} ページあります。{{model}} で約 {{cost}} かかります。",
     "estimateUnknown_other": "{{count}} ページあります。{{provider}} は使用量に応じて課金します。",
+    "estimatePlan_other": "{{count}} ページあります。{{provider}} のプランに含まれています。",
+    "estimateLocal_other": "{{count}} ページあります。モデルはこのコンピュータで動くため、費用はかかりません。",
+    "estimateFree_other": "{{count}} ページあります。{{model}} なら無料です。",
     "transcribePages_other": "{{count}} ページを文字起こし",
     "transcribedWith": "{{model}} で文字起こししました。数式と表を確認してください。",
     "sentBadge": "{{provider}} に送信済み",
     "openToolsSettings": "ツールの設定",
+    "openProviderSettings": "プロバイダの設定",
     "errors": {
       "offline": "Oleafly はオフラインモードです。ローカルモデルを選ぶか、オフラインモードをオフにしてください。",
       "providerNotConfigured": "{{provider}} の API キーがありません。設定で追加するか、別のモデルを選んでください。",
       "modelDisabled": "{{model}} は設定でオフになっています。オンにするか、別のモデルを選んでください。",
+      "modelUnavailable": "{{model}} は {{provider}} では使えなくなりました。別のモデルを選んでください。",
       "cannotSeeImages": "{{model}} は画像を読み取れません。画像認識モデルを選んでください。",
       "localModelGone": "{{model}} は Ollama にもうありません。もう一度取得するか、別のモデルを選んでください。",
       "imagesOnly": "{{model}} は画像しか読み取れません。入力した数式を変換するには、言語モデルを選んでください。",
@@ -1740,6 +1774,8 @@
     "keepRunningHint": "先に「設定 → 研究」でバックグラウンドタスクをオンにしてください。",
     "invalidMetric": "英字、数字、ドット、ハイフン、アンダースコアを使ってください。",
     "invalidCost": "0 より大きい金額を入力してください。",
+    "invalidCostMax": "{{max}} までの金額を入力してください。",
+    "invalidCostNumber": "{{example}} のように、金額を数字で入力してください。",
     "invalidRuns": "1 から 1,000 までの整数を入力してください。",
     "invalidStart": "今後 30 日以内の開始日時を選んでください。",
     "invalidStartFormat": "{{example}} の形式を使ってください。",
@@ -1762,6 +1798,8 @@
     "hint": "これらの確認は警告するだけで、適用は止めません。",
     "running": "確認しています…",
     "refresh": "もう一度確認",
+    "empty": "この結果に対する確認は、まだ実行されていません。",
+    "more_other": "ほかに {{count}} 件は一覧に表示していません。",
     "status": {
       "pass": "合格",
       "warn": "要確認",
@@ -1869,7 +1907,8 @@
         "time": "2:00:00 のような Slurm の時間形式を使ってください。",
         "name": "英字、数字、ドット、カンマ、ハイフン、アンダースコアを使ってください。",
         "mem": "16 のように、GB 単位の整数を使ってください。",
-        "count": "許可された範囲の整数を使ってください。"
+        "count": "許可された範囲の整数を使ってください。",
+        "prelude": "準備用のコマンドは 4 KB 以内にしてください。アクセント付きの文字やラテン文字以外の文字は、より多くの容量を使います。"
       }
     },
     "test": {
@@ -1945,7 +1984,7 @@
       "movingBackHint": "このタスクは現在のステップが終わると Oleafly に戻ります。"
     },
     "earlierActivity": "以前のアクティビティを表示",
-    "earlierTruncated": "この以前の実行では、先頭の {{limit}} 件だけを表示しています。",
+    "earlierTruncated": "この以前の実行では、末尾の {{limit}} 件だけを表示しています。",
     "keepRunningFailed": "この設定を変更できませんでした。もう一度お試しください。"
   }
 }

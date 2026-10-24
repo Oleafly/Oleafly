@@ -496,6 +496,20 @@ describe("TerminalDock", () => {
     expect(tabs()[0]).toHaveTextContent("Terminal 1");
   });
 
+  it("shows the tab's name as its tooltip after the program clears its title", async () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    const first = useTerminalsStore.getState().tabs[0];
+    const pane = [...mocks.panes].reverse().find((props) => props.tabId === first.id) as
+      | { onTitle?: (title: string) => void }
+      | undefined;
+    act(() => pane?.onTitle?.("vim main.tex"));
+    act(() => pane?.onTitle?.(""));
+
+    const user = userEvent.setup();
+    await user.hover(tabs()[0]);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Terminal 1");
+  });
+
   it("asks before closing a busy tab and keeps it on cancel", async () => {
     mocks.settings.terminalConfirmClose = true;
     render(<TerminalDock projectId="project-1" visible />);
@@ -566,6 +580,32 @@ describe("TerminalDock", () => {
     expect(await projectLeaveAllowed({ projectId: "other", reason: "switch", targetProjectId: "x" })).toBe(true);
     view.unmount();
     expect(await projectLeaveAllowed({ projectId: "project-1", reason: "close", targetProjectId: null })).toBe(true);
+  });
+
+  it("asks again about a job started after coming back to the project", async () => {
+    mocks.settings.terminalConfirmClose = true;
+    const view = render(<TerminalDock projectId="project-1" visible />);
+    sessions.terminalJobs.mockImplementation(async () => [
+      { tabId: useTerminalsStore.getState().tabs[0].id, process: "latexmk" },
+    ]);
+    const leave = () =>
+      projectLeaveAllowed({ projectId: "project-1", reason: "switch", targetProjectId: "project-2" });
+
+    const first = leave();
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: enWorkspace.terminal.stop.switchProject }));
+    expect(await first).toBe(true);
+    // A second check within the same leave (a retry after a failed save) doesn't ask again.
+    expect(await leave()).toBe(true);
+    expect(sessions.terminalJobs).toHaveBeenCalledTimes(1);
+
+    view.rerender(<TerminalDock projectId="project-2" visible />);
+    view.rerender(<TerminalDock projectId="project-1" visible />);
+
+    const second = leave();
+    const again = await screen.findByRole("alertdialog");
+    fireEvent.click(within(again).getByRole("button", { name: /^Cancel/ }));
+    expect(await second).toBe(false);
   });
 });
 

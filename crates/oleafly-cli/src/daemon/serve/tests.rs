@@ -283,3 +283,30 @@ fn termination_resolves_on_sigterm_and_sighup() {
         assert!(status.success(), "signal {signal}: {status}");
     }
 }
+
+#[test]
+fn the_helper_finds_the_resources_beside_its_own_binary() {
+    let root = tempfile::tempdir().unwrap();
+    let (bin, resources) = if cfg!(target_os = "macos") {
+        (
+            root.path().join("Oleafly.app/Contents/MacOS"),
+            root.path().join("Oleafly.app/Contents/Resources/resources"),
+        )
+    } else {
+        // An AppImage mount: `usr/bin/<app>` and `usr/lib/Oleafly/resources`.
+        (
+            root.path().join("usr/bin"),
+            root.path().join("usr/lib/Oleafly/resources"),
+        )
+    };
+    std::fs::create_dir_all(&bin).unwrap();
+    std::fs::create_dir_all(resources.join("skills")).unwrap();
+    let found = super::own_resources(Some(bin.join("oleafly-desktop")));
+    if cfg!(windows) {
+        // Windows keeps them in `resources` beside the binary.
+        assert_eq!(found, None);
+    } else {
+        assert_eq!(found, Some(resources));
+    }
+    assert_eq!(super::own_resources(None), None);
+}

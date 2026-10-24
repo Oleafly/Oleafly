@@ -144,6 +144,23 @@ export function draftAttachments(composerId: string): readonly DraftAttachment[]
   return useComposerDrafts.getState().drafts[composerId]?.attachments ?? EMPTY_ATTACHMENTS;
 }
 
+/**
+ * The composer whose draft holds an attachment now: the one it was added to,
+ * or another of the same project the draft moved to while the file was
+ * prepared (a new chat's first send, a CLI conversation starting). Null when
+ * it was removed.
+ */
+export function composerHolding(composerId: string, attachmentId: string): string | null {
+  const drafts = useComposerDrafts.getState().drafts;
+  const holds = (id: string) => drafts[id]?.attachments.some((item) => item.id === attachmentId) ?? false;
+  if (holds(composerId)) return composerId;
+  const prefix = `${composerHistoryKey(composerId)}:`;
+  for (const id of Object.keys(drafts)) {
+    if (id.startsWith(prefix) && holds(id)) return id;
+  }
+  return null;
+}
+
 function addRefs(refs: Set<string>, items: readonly DraftAttachment[]): void {
   for (const item of items) {
     if (item.sha256) refs.add(item.sha256);
@@ -188,16 +205,34 @@ export const PROMPT_HISTORY_LIMIT = 50;
 const HISTORY_KEY = "oleafly.composer.history";
 const HISTORY_PROJECTS = 20;
 const HISTORY_MAX_CHARS = 4_000;
+/** What one project's prompts may take in all (about 64 KB as UTF-16), so the key stays small. */
+export const HISTORY_PROJECT_CHARS = 32_000;
 
 interface StoredHistory {
   v: 1;
   byProject: Record<string, { at: number; items: string[] }>;
 }
 
+// The history as last read or written, with the text it came from: each
+// arrow press reads it, and parsing it every time would be slow.
+let historyCache: { raw: string; history: StoredHistory } | null = null;
+
 function readHistory(): StoredHistory {
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (!raw) return { v: 1, byProject: {} };
+    // Another window may have written it since; the text says.
+    if (historyCache?.raw === raw) return historyCache.history;
+    const history = parseHistory(raw);
+    historyCache = { raw, history };
+    return history;
+  } catch {
+    return { v: 1, byProject: {} };
+  }
+}
+
+function parseHistory(raw: string): StoredHistory {
+  try {
     const parsed = JSON.parse(raw) as Partial<StoredHistory> | null;
     if (parsed?.v !== 1 || typeof parsed.byProject !== "object" || !parsed.byProject) {
       return { v: 1, byProject: {} };
@@ -218,10 +253,24 @@ function readHistory(): StoredHistory {
 
 function writeHistory(history: StoredHistory): void {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    const raw = JSON.stringify(history);
+    localStorage.setItem(HISTORY_KEY, raw);
+    historyCache = { raw, history };
   } catch {
     // History is a convenience; a full or blocked store only loses recall.
   }
+}
+
+/** The newest prompts that fit the count and the project's size limit. */
+function trimHistory(items: readonly string[]): string[] {
+  const kept: string[] = [];
+  let chars = 0;
+  for (let index = items.length - 1; index >= 0 && kept.length < PROMPT_HISTORY_LIMIT; index--) {
+    chars += items[index].length;
+    if (chars > HISTORY_PROJECT_CHARS) break;
+    kept.push(items[index]);
+  }
+  return kept.reverse();
 }
 
 /** Earlier prompts of the composer's project, newest last. */
@@ -232,7 +281,8 @@ export function promptHistory(composerId: string): readonly string[] {
 export function rememberPrompt(composerId: string, text: string): void {
   const prompt = text.trim();
   if (!prompt || prompt.length > HISTORY_MAX_CHARS) return;
-  const history = readHistory();
+  // A copy: the cached history must not change unless the write succeeds.
+  const history: StoredHistory = { v: 1, byProject: { ...readHistory().byProject } };
   const key = composerHistoryKey(composerId);
   const items = (history.byProject[key]?.items ?? []).filter((item) => item !== prompt);
   items.push(prompt);
@@ -240,7 +290,7 @@ export function rememberPrompt(composerId: string, text: string): void {
   const latest = Math.max(0, ...Object.values(history.byProject).map((entry) => entry.at));
   history.byProject[key] = {
     at: Math.max(Date.now(), latest + 1),
-    items: items.slice(-PROMPT_HISTORY_LIMIT),
+    items: trimHistory(items),
   };
   const projects = Object.entries(history.byProject);
   if (projects.length > HISTORY_PROJECTS) {

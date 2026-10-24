@@ -193,6 +193,9 @@ pub async fn acp_reconnect(
     Ok(result)
 }
 
+/// Sends a message. A failure is a plain string when the message was not
+/// sent, or `{"delivered": true, "message": "…"}` when it reached the
+/// conversation and the turn then ended in an error (see `PromptFailure`).
 #[tauri::command]
 pub async fn acp_prompt(
     webview: Webview,
@@ -200,7 +203,7 @@ pub async fn acp_prompt(
     project_id: String,
     session_id: String,
     input: PromptInput,
-) -> Result<SessionSnapshot, String> {
+) -> Result<SessionSnapshot, super::PromptFailure> {
     let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
     runtime.assert_owner(&session_id, owner.as_str()).await?;
@@ -218,7 +221,7 @@ pub async fn acp_prompt(
         }
         None => None,
     };
-    runtime.prompt_input(&session_id, input, skill).await
+    runtime.send_prompt(&session_id, input, skill).await
 }
 
 #[tauri::command]
@@ -543,6 +546,24 @@ pub async fn acp_set_agent_preferences(
         .inner()
         .clone()
         .set_agent_preferences(&agent_id, prefs)
+        .await
+}
+
+/// Changes one remembered choice of an agent (`effort`, `mode` or
+/// `provider`) and keeps the rest as stored.
+#[tauri::command]
+pub async fn acp_set_agent_preference(
+    webview: Webview,
+    runtime: State<'_, Arc<AcpRuntime>>,
+    agent_id: String,
+    slot: String,
+    value: serde_json::Value,
+) -> Result<AgentPreferences, String> {
+    super::setup::require_main_window(caller_label(&webview)?.as_str())?;
+    runtime
+        .inner()
+        .clone()
+        .set_agent_preference(&agent_id, &slot, value)
         .await
 }
 

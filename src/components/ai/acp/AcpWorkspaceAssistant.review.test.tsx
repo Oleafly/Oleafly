@@ -13,6 +13,7 @@ vi.mock("@/lib/acp", async (original) => ({
   acpCatalog: vi.fn(), acpSessions: vi.fn(), acpSnapshot: vi.fn(), acpEvents: vi.fn(),
   acpStart: vi.fn(), acpAuthenticate: vi.fn(), acpDisconnect: vi.fn(), acpReconnect: vi.fn(),
   acpSetModel: vi.fn(), acpPrompt: vi.fn(), acpPermission: vi.fn(), acpCancel: vi.fn(),
+  acpSessionRename: vi.fn(),
   onAcpEvent: vi.fn(), onAcpResync: vi.fn(),
   onAcpSession: vi.fn(async () => () => {}), onAcpBufferRequest: vi.fn(async () => () => {}),
 }));
@@ -61,8 +62,8 @@ vi.mock("@/components/usage/UsageReport", () => ({
 }));
 import type { ReactNode } from "react";
 import {
-  acpCatalog, acpEvents, acpPrompt, acpSessions, acpSnapshot, acpStart, onAcpEvent, onAcpResync, acpDisconnect,
-  type AcpEvent, type AcpPermission, type AcpSnapshot,
+  acpCatalog, acpEvents, acpPrompt, acpSessionRename, acpSessions, acpSnapshot, acpStart, onAcpEvent, onAcpResync,
+  acpDisconnect, type AcpEvent, type AcpPermission, type AcpSnapshot,
 } from "@/lib/acp";
 import { agentTurnStatus } from "@/lib/agent-turns";
 import { gitIsInitialized } from "@/lib/tauri";
@@ -104,7 +105,7 @@ beforeEach(() => {
   snapshots = { saved: { session: session(), permissions: [] } };
   history = { saved: [] };
   emit = () => { throw new Error("The native event listener is not attached"); };
-  useAcpSessionsStore.setState({ catalog: [], sessions: {}, events: {}, permissions: {}, activeByProject: { paper: "saved" }, composers: {}, errors: {}, starting: {} });
+  useAcpSessionsStore.setState({ catalog: [], sessions: {}, events: {}, permissions: {}, activeByProject: { paper: "saved" }, composers: {}, errors: {}, sessionErrors: {}, starting: {} });
   useComposerDrafts.setState({ drafts: {} });
   useFilesStore.setState({ projectName: "Thesis" });
   vi.mocked(acpCatalog).mockResolvedValue([agent()]);
@@ -171,6 +172,21 @@ describe("CLI home research presets", () => {
     await waitFor(() => expect(ui.getByLabelText("Message CLI agent")).toHaveValue(draft));
     expect(ui.getByTestId("acp-skill-chip")).toHaveTextContent("Verify claims");
     expect(acpPrompt).not.toHaveBeenCalled();
+  });
+
+  it("adds a preset after what the user already typed", async () => {
+    const draftId = acpComposerId("paper", "fixture", "saved");
+    useComposerDrafts.getState().setText(draftId, "Focus on chapter 2.");
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(quickStartLabels(ui)).toContain("Citation audit"));
+
+    fireEvent.click(ui.getByTitle("Citation audit"));
+
+    const draft = useComposerDrafts.getState().drafts[draftId]?.text ?? "";
+    expect(draft).toMatch(/^Focus on chapter 2\.\n\nAudit the claims in this manuscript/);
+    // Picked again, it is not added twice.
+    fireEvent.click(ui.getByTitle("Citation audit"));
+    expect(useComposerDrafts.getState().drafts[draftId]?.text).toBe(draft);
   });
 
   it("offers Git review only in a Git repository", async () => {
@@ -270,6 +286,34 @@ describe("CLI turn review", () => {
     const allow = await ui.findByRole("button", { name: "Allow once" });
     expect(allow.closest(".max-h-\\[60vh\\]")).not.toBeNull();
     expect(ui.getByRole("button", { name: "Show change" })).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("CLI status and errors", () => {
+  it("keeps the status pill on the agent while the conversation is renamed", async () => {
+    let renamed: (value: ReturnType<typeof session>) => void = () => {};
+    vi.mocked(acpSessionRename).mockReturnValue(new Promise<ReturnType<typeof session>>((resolve) => { renamed = resolve; }));
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
+    fireEvent.click(ui.getByTestId("acp-session-title"));
+    const input = ui.getByRole("textbox", { name: "Conversation name" });
+    fireEvent.change(input, { target: { value: "Introduction" } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(acpSessionRename).toHaveBeenCalled());
+
+    expect(ui.getByTestId("acp-session-status")).not.toHaveTextContent("Connecting");
+    expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI");
+    await act(async () => renamed(session("saved", { title: "Introduction" })));
+  });
+
+  it("shows why a message did not go out only with its own conversation", async () => {
+    useAcpSessionsStore.setState({ sessionErrors: { other: "The agent stopped answering." } });
+    const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveAttribute("data-status", "ready"));
+    expect(ui.queryByRole("alert")).toBeNull();
+
+    act(() => useAcpSessionsStore.getState().setSessionError("saved", "The message was too large."));
+    expect(await ui.findByRole("alert")).toHaveTextContent("The message was too large.");
   });
 });
 

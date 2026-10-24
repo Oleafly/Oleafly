@@ -182,7 +182,8 @@
   },
   "imageToLatex": {
     "failed": "Afbeelding naar LaTeX is mislukt: {{detail}}",
-    "transcribing": "Afbeelding overnemen…"
+    "transcribing": "Afbeelding overnemen…",
+    "notInserted": "Het actieve bestand is gewijzigd, dus de LaTeX-code is niet ingevoegd. Kopieer de code en plak die waar je wilt."
   },
   "import": {
     "chooseOfferedProjectType": "Kies een van de projecttypen die voor dit bestand worden aangeboden.",
@@ -603,6 +604,8 @@
     "saveReason": "de projectmap is niet beschikbaar"
   },
   "imageToTypst": {
-    "failed": "Afbeelding naar Typst is mislukt: {{detail}}"
+    "failed": "Afbeelding naar Typst is mislukt: {{detail}}",
+    "copied": "Typst-broncode gekopieerd",
+    "notInserted": "Het actieve bestand is gewijzigd, dus de Typst-code is niet ingevoegd. Kopieer de code en plak die waar je wilt."
   }
 }

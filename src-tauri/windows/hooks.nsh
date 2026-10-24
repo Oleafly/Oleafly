@@ -8,7 +8,7 @@
 ; install) there is no helper.
 !macro OLEAFLY_STOP_BACKGROUND_HELPER
   ${If} ${FileExists} "$INSTDIR\oleafly-cli.exe"
-    nsExec::Exec '"$INSTDIR\oleafly-cli.exe" daemon stop --wait 30 --force'
+    nsExec::Exec '"$INSTDIR\oleafly-cli.exe" daemon stop --wait 60 --force'
     Pop $R8
   ${EndIf}
 !macroend

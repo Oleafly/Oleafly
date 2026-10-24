@@ -99,11 +99,15 @@
       "title": "App desktop",
       "action": "{{agent}} vuole {{action}}.",
       "steps": "{{agent}} vuole eseguire questi passaggi in un'app desktop:",
-      "moreSteps": "Passaggi non mostrati: {{count}}",
-      "moreItems": "Altri {{count}} elementi non mostrati",
-      "cut": "(+{{count}} caratteri non mostrati)",
+      "moreSteps": "Passaggi non mostrati e non eseguiti: {{count}}",
+      "moreItems": "Elementi non mostrati: {{count}}",
+      "cut": "(caratteri non mostrati: {{count}})",
       "signedIn": "Questa azione avviene nel tuo browser con accesso effettuato.",
       "signedInOn": "Questa azione avviene nel tuo browser con accesso effettuato, su {{origin}}.",
+      "task": "Attività: {{title}}",
+      "app": "App: {{name}}",
+      "window": "Finestra: {{title}}",
+      "element": "Elemento: {{element}}",
       "text": "Testo: \"{{text}}\"",
       "address": "Indirizzo: {{url}}",
       "allowOnce": "Consenti una volta",
@@ -111,6 +115,7 @@
       "allowSession": "Consenti per questa sessione",
       "allowTask": "Consenti per questa attività",
       "deny": "Non consentire",
+      "pickedFile": "il file scelto",
       "actions": {
         "launchApp": "aprire un'app",
         "click": "fare clic in un'app",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Consentire il controllo del desktop?",
-      "message": "Gli agenti potranno usare quanto segue, e chiederanno comunque prima di ogni azione:",
+      "message": "Gli agenti potranno usare quanto segue. Chiedono prima di ogni azione e, quando salvi, tutte le scelte \"Consenti per questa chat\" vengono cancellate:",
       "confirm": "Consenti",
       "enabled": "App desktop",
-      "app": "App: {{name}} ({{identity}})",
+      "app": "App: {{identity}} ({{name}})",
       "more": "E altri {{count}}",
       "site": "Sito web: {{origin}}",
       "signedIn": "Il tuo browser con accesso effettuato su {{origin}}",
-      "scripted": "Script Cua"
+      "scripted": "Script Cua",
+      "spacesTitle": "Dare più accesso a Cua Spaces?",
+      "spacesMessage": "Gli agenti che usano Cua Spaces potranno:",
+      "spacesChanges": "Creare ed eliminare Spaces ed eseguire comandi al loro interno",
+      "spacesSignIns": "Usare il tuo accesso a Claude Code o Codex all'interno di uno Space"
     }
   },
   "errors": {

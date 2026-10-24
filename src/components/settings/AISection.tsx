@@ -240,6 +240,10 @@ export function AISection() {
         void setConfig(next);
       }
       setConfigLoaded(true);
+    }).catch((error: unknown) => {
+      // The switches stay off: the defaults shown are not the stored settings.
+      void logError("read the AI settings", error);
+      setMsg({ ok: false, text: describeError(error) });
     });
   }, []);
 
@@ -792,7 +796,7 @@ export function AISection() {
         <TabsContent value="instructions">
           <InstructionsTab
             cfg={cfg}
-            setCfg={setCfg}
+            configLoaded={configLoaded}
             savedKeys={savedKeys}
             persist={persist}
             sysPrompt={sysPrompt}

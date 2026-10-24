@@ -624,6 +624,7 @@
       "sendNow": "Trimite acum",
       "sendFailed": "Acest mesaj nu a fost trimis. Trimite-l din nou sau elimină-l.",
       "queuedConnecting": "În coadă: pleacă când agentul este pregătit",
+      "queuedSignIn": "În coadă: pleacă după ce te autentifici",
       "retry": "Trimite din nou",
       "edit": "Editează"
     },

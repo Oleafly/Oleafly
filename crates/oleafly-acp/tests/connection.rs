@@ -632,3 +632,150 @@ async fn steering_asks_for_prompt_required_idle_behavior() {
         .await;
     assert_eq!(waiting.await.unwrap().unwrap()["outcome"], "injected");
 }
+
+/// Records updates slowly, so the agent's last messages are still queued
+/// when its output ends.
+#[derive(Default)]
+struct SlowHost {
+    inner: RecordingHost,
+}
+
+impl ClientHost for SlowHost {
+    fn on_update(&self, params: Value) {
+        std::thread::sleep(Duration::from_millis(2));
+        self.inner.on_update(params);
+    }
+
+    fn on_request(&self, request: IncomingRequest) {
+        self.inner.on_request(request);
+    }
+
+    fn on_notification(&self, method: &str, params: Value) {
+        self.inner.on_notification(method, params);
+    }
+
+    fn on_dropped_update(&self, bytes: usize) {
+        self.inner.on_dropped_update(bytes);
+    }
+
+    fn on_disconnected(&self) {
+        self.inner.on_disconnected();
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_reply_sent_just_before_the_agent_exits_still_reaches_its_caller() {
+    let host = Arc::new(SlowHost::default());
+    let (client, mut agent) = connect(host.clone());
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move {
+            client
+                .request("logout", json!({}), Duration::from_secs(30))
+                .await
+        })
+    };
+    let request = agent.next().await;
+    for index in 0..100 {
+        agent.send(update(index)).await;
+    }
+    agent
+        .send(json!({"jsonrpc": "2.0", "id": request["id"], "result": {"done": true}}))
+        .await;
+    drop(agent);
+    assert_eq!(waiting.await.unwrap().unwrap()["done"], true);
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while !host.inner.log().contains(&"disconnected".to_string()) {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the host hears about the disconnect");
+    let log = host.inner.log();
+    // Every update the agent sent was handled before the disconnect.
+    assert_eq!(log.iter().filter(|entry| *entry == "update").count(), 100);
+    assert_eq!(log.last().map(String::as_str), Some("disconnected"));
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_v2_turn_ends_when_the_agent_disconnects() {
+    let host = Arc::new(RecordingHost::default());
+    let (client, mut agent) = connect(host);
+    let initializing = {
+        let client = client.clone();
+        tokio::spawn(async move {
+            client
+                .initialize(&oleafly_acp::ClientOptions {
+                    info: oleafly_acp::ClientInfo {
+                        name: "test".into(),
+                        title: "Test".into(),
+                        version: "1".into(),
+                    },
+                    prefer_v2: true,
+                    fs_read: false,
+                })
+                .await
+        })
+    };
+    let request = agent.next().await;
+    agent
+        .send(json!({"jsonrpc": "2.0", "id": request["id"], "result": {
+            "protocolVersion": 2, "capabilities": {"session": {}}, "authMethods": []}}))
+        .await;
+    initializing.await.unwrap().unwrap();
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move {
+            client
+                .prompt(
+                    "s1",
+                    vec![json!({"type": "text", "text": "hi"})],
+                    TurnTiming {
+                        inactivity: Some(Duration::from_secs(20 * 60)),
+                        ..Default::default()
+                    },
+                )
+                .await
+        })
+    };
+    let prompt = agent.next().await;
+    agent
+        .send(json!({"jsonrpc": "2.0", "id": prompt["id"], "result": {"messageId": "accepted-1"}}))
+        .await;
+    drop(agent);
+    let error = waiting.await.unwrap().unwrap_err();
+    assert!(
+        error.message.starts_with("The agent disconnected"),
+        "{}",
+        error.message
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_turn_that_only_cancels_keeps_the_agent_running_past_its_limit() {
+    let host = Arc::new(RecordingHost::default());
+    let (client, mut agent) = connect(host);
+    let waiting = {
+        let client = client.clone();
+        tokio::spawn(async move {
+            client
+                .prompt_or_cancel(
+                    "s1",
+                    vec![json!({"type": "text", "text": "/status"})],
+                    TurnTiming {
+                        inactivity: Some(Duration::from_secs(60)),
+                        absolute: Some(Duration::from_secs(90)),
+                        hold: None,
+                    },
+                )
+                .await
+        })
+    };
+    agent.next().await;
+    let error = waiting.await.unwrap().unwrap_err();
+    assert_eq!(error.message, "The agent did not reply in time.");
+    let cancel = agent.next().await;
+    assert_eq!(cancel["method"], "session/cancel");
+    assert_eq!(cancel["params"]["sessionId"], "s1");
+    assert!(!client.is_closed());
+}

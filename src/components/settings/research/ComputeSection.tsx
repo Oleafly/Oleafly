@@ -239,32 +239,39 @@ export function ComputeSection() {
   // A prompt never replaces the one on screen: the user is comparing that host's
   // fingerprints, and the Trust button must trust what they compared.
   const queueHostKey = useCallback((entry: HostKeyEntry) => {
-    setHostKeys((current) =>
-      current.some((item) => item.target.id === entry.target.id)
-        ? current.map((item) => (item.target.id === entry.target.id ? entry : item))
-        : [...current, entry],
-    );
+    setHostKeys((current) => {
+      const index = current.findIndex((item) => item.target.id === entry.target.id);
+      if (index === -1) return [...current, entry];
+      if (index === 0) return current;
+      return current.map((item, at) => (at === index ? entry : item));
+    });
   }, []);
+
+  // The latest test of each target; a test that a newer one replaced reports nothing.
+  const testRuns = useRef(new Map<string, number>());
 
   const runTest = useCallback(
     async (target: ComputeTarget) => {
-      setTesting((current) => new Set(current).add(target.id));
+      const run = (testRuns.current.get(target.id) ?? 0) + 1;
+      testRuns.current.set(target.id, run);
+      const current = () => mounted.current && testRuns.current.get(target.id) === run;
+      setTesting((testing) => new Set(testing).add(target.id));
       try {
         const report = await testComputeTarget(target.id);
-        if (!mounted.current) return;
-        setReports((current) => ({ ...current, [target.id]: report }));
+        if (!current()) return;
+        setReports((reports) => ({ ...reports, [target.id]: report }));
         if (report.hostKey) queueHostKey({ target, prompt: report.hostKey });
         await refresh();
       } catch (error) {
-        if (!mounted.current) return;
-        setReports((current) => ({
-          ...current,
+        if (!current()) return;
+        setReports((reports) => ({
+          ...reports,
           [target.id]: { targetId: target.id, checks: [], finishedAt: Date.now(), error: describeError(error) },
         }));
       } finally {
-        if (mounted.current) {
-          setTesting((current) => {
-            const next = new Set(current);
+        if (current()) {
+          setTesting((testing) => {
+            const next = new Set(testing);
             next.delete(target.id);
             return next;
           });

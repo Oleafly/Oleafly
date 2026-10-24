@@ -346,6 +346,7 @@ pub(crate) fn kill_window_sessions(window_label: &str) {
             .map(|registry| registry.drain_window(window_label))
             .unwrap_or_default()
     };
+    close_draining(|owner| owner.window_label == window_label);
     stop_sessions_in_background(drained);
 }
 
@@ -357,6 +358,7 @@ pub(crate) fn kill_project_sessions(project_id: &str) {
             .map(|registry| registry.drain_project(project_id))
             .unwrap_or_default()
     };
+    close_draining(|owner| owner.project_id == project_id);
     stop_sessions_in_background(drained);
 }
 
@@ -368,7 +370,38 @@ fn kill_all_sessions() {
             .map(SessionRegistry::drain_all)
             .unwrap_or_default()
     };
+    close_draining(|_| true);
     stop_sessions(drained);
+}
+
+/// The output flows of sessions whose shell ended on its own while their
+/// pump still had output to send. Acks keep reaching them until the pump
+/// reaches the end of the output; only a close drops what is left.
+static DRAINING: Mutex<BTreeMap<String, OwnedSession<Arc<OutputFlow>>>> =
+    Mutex::new(BTreeMap::new());
+
+fn draining() -> std::sync::MutexGuard<'static, BTreeMap<String, OwnedSession<Arc<OutputFlow>>>> {
+    DRAINING.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Closes the draining flows of the owners `closing` picks: their remaining
+/// output is dropped and their pumps end.
+fn close_draining(closing: impl Fn(&SessionOwner) -> bool) {
+    let flows: Vec<Arc<OutputFlow>> = {
+        let mut draining = draining();
+        let ids: Vec<String> = draining
+            .iter()
+            .filter(|(_, record)| closing(&record.owner))
+            .map(|(id, _)| id.clone())
+            .collect();
+        ids.iter()
+            .filter_map(|id| draining.remove(id))
+            .map(|record| record.session)
+            .collect()
+    };
+    for flow in flows {
+        flow.close();
+    }
 }
 
 pub fn on_page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>) {
@@ -534,6 +567,9 @@ pub(crate) struct TerminalOpenOptions {
     pub env: Option<BTreeMap<String, String>>,
     #[serde(default)]
     pub shell: Option<ShellChoice>,
+    /// The session is opened to run a launch command the app types in.
+    #[serde(default)]
+    pub launch: bool,
 }
 
 /// The session id and how its shell quotes typed commands.
@@ -546,6 +582,11 @@ pub(crate) struct TerminalOpened {
     /// The shell program's name (`zsh`, `bash`), which decides the bytes
     /// Shift+Enter sends.
     pub shell_name: String,
+    /// The project folder's absolute path on this computer (never the
+    /// `\\?\` form), so the paths of files dropped on the terminal stay
+    /// right after a `cd`. `None` for a path that isn't valid Unicode.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub root: Option<String>,
 }
 
 #[tauri::command]
@@ -562,7 +603,11 @@ pub async fn term_open<R: Runtime>(
     let root = crate::paths::project_dir(&project_id)?;
     let options = options.unwrap_or_default();
     let cwd = env::terminal_cwd(&root, options.cwd.as_deref())?;
-    let launch_env = env::validate_launch_env(&options.env.unwrap_or_default(), cfg!(windows))?;
+    let host_root = crate::program_locator::child_path(&root)
+        .to_str()
+        .map(str::to_owned);
+    let mut launch_env = env::validate_launch_env(&options.env.unwrap_or_default(), cfg!(windows))?;
+    launch_env.extend(env::launch_command_env(options.launch, cfg!(windows)));
     let choice = options.shell.unwrap_or_default();
     let cli = CliEnv::current();
     let ticket = terminal_open_ticket(owner);
@@ -578,6 +623,7 @@ pub async fn term_open<R: Runtime>(
             shell: spec.kind,
             shell_id: spec.id,
             shell_name: spec.name,
+            root: host_root,
         })
     })
     .await
@@ -762,7 +808,7 @@ fn spawn_exit_poller(poll_id: String, child: SharedChild) {
             continue;
         }
         eprintln!("term: session {poll_id} shell exited");
-        if let Some(session) = take_session(&poll_id) {
+        if let Some(session) = take_exited_session(&poll_id) {
             stop_session(session);
         }
         break;
@@ -776,6 +822,27 @@ fn take_session(session_id: &str) -> Option<TermSession> {
     sessions
         .as_mut()
         .and_then(|registry| registry.remove_unchecked(session_id))
+}
+
+/// [`take_session`] for a shell that ended on its own. Its output flow stays
+/// open and reachable for acks (in [`DRAINING`]) until the pump has sent the
+/// rest of the output; the session that is stopped gets a new flow to close.
+/// The move happens under the registry lock, so a pump that reaches the end
+/// first finds the session itself and nothing is left behind.
+fn take_exited_session(session_id: &str) -> Option<TermSession> {
+    let mut sessions = SESSIONS.lock().expect("terminal registry poisoned");
+    let registry = sessions.as_mut()?;
+    let owner = registry.sessions.get(session_id)?.owner.clone();
+    let mut session = registry.remove_unchecked(session_id)?;
+    let flow = std::mem::replace(&mut session.flow, OutputFlow::new());
+    draining().insert(
+        session_id.to_string(),
+        OwnedSession {
+            owner,
+            session: flow,
+        },
+    );
+    Some(session)
 }
 
 /// Start the output pump: a reader thread that blocks on the pty and queues
@@ -843,13 +910,17 @@ fn emit_output(
             continue;
         }
         let bytes = data.len();
+        // Counted before it goes out: the frontend can parse and ack it before
+        // `send` returns, and an ack must never find fewer bytes than it
+        // covers (the count would then drift up until output stops).
+        flow.charge(bytes);
         if channel.send(TerminalEvent::Output { data, bytes }).is_err() {
+            flow.ack(bytes);
             channel_open = false;
             pending.clear();
             stop_sessions_in_background(take_session(session_id).into_iter().collect());
             continue;
         }
-        flow.charge(bytes);
         last_flush = Some(Instant::now());
     }
     eprintln!("term: session {session_id} reader eof (channel_open={channel_open})");
@@ -861,6 +932,8 @@ fn emit_output(
     if let Some(session) = take_session(session_id) {
         stop_session(session);
     }
+    // A shell that ended on its own left its flow here for the acks.
+    draining().remove(session_id);
     if channel_open {
         let delivered = channel.send(TerminalEvent::Exit).is_ok();
         eprintln!("term: session {session_id} exit event delivered={delivered}");
@@ -1016,15 +1089,28 @@ pub fn term_ack<R: Runtime>(
 }
 
 fn ack_terminal(owner: &SessionOwner, id: &str, bytes: u64) -> Result<(), String> {
-    let flow = {
+    let open = {
         let sessions = SESSIONS.lock().expect("terminal registry poisoned");
-        Arc::clone(
-            &sessions
-                .as_ref()
-                .ok_or_else(|| "terminal session is not open".to_string())?
-                .get(id, owner)?
-                .flow,
-        )
+        match sessions.as_ref() {
+            Some(registry) if registry.sessions.contains_key(id) => {
+                Some(Arc::clone(&registry.get(id, owner)?.flow))
+            }
+            _ => None,
+        }
+    };
+    // A shell that ended on its own: its pump is still sending the rest.
+    let flow = match open {
+        Some(flow) => flow,
+        None => {
+            let draining = draining();
+            let record = draining
+                .get(id)
+                .ok_or_else(|| "terminal session is not open".to_string())?;
+            if &record.owner != owner {
+                return Err("terminal session belongs to another window or project".to_string());
+            }
+            Arc::clone(&record.session)
+        }
     };
     flow.ack(usize::try_from(bytes).unwrap_or(usize::MAX));
     Ok(())
@@ -1059,6 +1145,9 @@ struct ForegroundProbe {
     master: SharedMaster,
     #[cfg(windows)]
     processes: std::io::Result<Vec<u32>>,
+    /// Whether output arrived lately (the only sign of a program in WSL).
+    #[cfg(windows)]
+    recent_output: bool,
 }
 
 fn foreground_probes(owner: &SessionOwner, ids: Option<&[String]>) -> Vec<ForegroundProbe> {
@@ -1076,6 +1165,8 @@ fn foreground_probes(owner: &SessionOwner, ids: Option<&[String]>) -> Vec<Foregr
             master: Arc::clone(&session.master),
             #[cfg(windows)]
             processes: session.containment.process_ids(),
+            #[cfg(windows)]
+            recent_output: session.flow.output_within(jobs::WSL_BUSY_WINDOW),
         })
         .collect()
 }
@@ -1108,11 +1199,13 @@ impl ForegroundProbe {
                 )
             })
             .collect();
-        let image = jobs::windows_foreground_process(self.shell_pid, &processes)?;
-        let name = jobs::display_process_name(&image);
+        let image = jobs::windows_terminal_job(self.shell_pid, &processes, self.recent_output)?;
+        let name = image
+            .map(|image| jobs::display_process_name(&image))
+            .filter(|name| !name.is_empty());
         Some(TerminalJob {
             id: self.id,
-            process: (!name.is_empty()).then_some(name),
+            process: name,
         })
     }
 }
@@ -1176,6 +1269,21 @@ fn kill_terminal(owner: &SessionOwner, id: &str) -> Result<(), String> {
             None
         }
     };
+    // Closing a tab whose shell already ended drops the output still queued.
+    if session.is_none() {
+        let flow = {
+            let mut draining = draining();
+            match draining.get(id) {
+                Some(record) if &record.owner == owner => {
+                    draining.remove(id).map(|record| record.session)
+                }
+                _ => None,
+            }
+        };
+        if let Some(flow) = flow {
+            flow.close();
+        }
+    }
     stop_sessions_in_background(session.into_iter().collect());
     Ok(())
 }

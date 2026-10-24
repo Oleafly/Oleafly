@@ -560,6 +560,9 @@
     "title": "Tillbaka till biblioteket",
     "tooltip": "Gå tillbaka till projektbiblioteket"
   },
+  "importDestination": {
+    "scansGoTo": "Skanningar skickas till {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -673,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Dina osparade ändringar hålls kvar öppna. Stanna kvar för att lösa problemet, eller avsluta ändå och förlora dem.",
+      "descriptionReload": "{{reason}} Dina osparade ändringar hålls kvar öppna. Stanna kvar för att lösa problemet, eller läs in igen ändå och förlora dem.",
       "descriptionRestart": "{{reason}} Dina osparade ändringar hålls kvar öppna. Stanna kvar för att lösa problemet, eller starta om ändå och förlora dem.",
       "quitAnyway": "Avsluta ändå",
+      "reloadAnyway": "Läs in igen ändå",
       "restartAnyway": "Starta om ändå",
       "stay": "Stanna kvar",
       "title": "Några filer kunde inte sparas"

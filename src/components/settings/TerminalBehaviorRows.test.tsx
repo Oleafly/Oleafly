@@ -68,6 +68,19 @@ describe("terminal behavior settings", () => {
     expect(useSettingsStore.getState().terminalShellPath).toBe("C:\\msys64\\usr\\bin\\zsh.exe");
   });
 
+  it("warns while the custom shell has no path yet", async () => {
+    invoke.mockResolvedValue(WINDOWS_SHELLS);
+    useSettingsStore.setState({ terminalShell: "custom", terminalShellPath: "" });
+    render(<TerminalBehaviorRows />);
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("term_shells"));
+    expect(screen.getByTestId("terminal-shell-path-note")).toHaveTextContent(labels.shell.path.missing);
+
+    const path = screen.getByLabelText(labels.shell.path.ariaLabel);
+    fireEvent.change(path, { target: { value: "/usr/local/bin/fish" } });
+    fireEvent.blur(path);
+    await waitFor(() => expect(screen.queryByTestId("terminal-shell-path-note")).toBeNull());
+  });
+
   it("names the login shell as the default on macOS and Linux", async () => {
     invoke.mockResolvedValue([
       { id: "auto", resolved: "auto", name: "zsh", path: "/bin/zsh", available: true },

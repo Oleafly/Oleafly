@@ -19,6 +19,7 @@ vi.mock("@/lib/mathpix", () => ({ mathpixKeyStatus: mocks.mathpixKeyStatus }));
 
 import { useSettingsStore } from "@/store/settings";
 import {
+  editorImageFallback,
   LocalModelError,
   pickLocalModel,
   resolveToolsModel,
@@ -105,6 +106,32 @@ describe("automatic local model", () => {
     expect(pickLocalModel([{ name: "llama3.2", capabilities: null }], "image", "", new Set())).toBeNull();
   });
 
+  it("never picks an Ollama Cloud model, which runs on ollama.com", async () => {
+    const cloud = { name: "qwen3-vl:235b-cloud", capabilities: ["completion", "vision"], remote: true };
+    const tagged = { name: "minimax-m2:cloud", capabilities: ["completion", "vision"] };
+    expect(pickLocalModel([cloud, tagged, vision("llava")], "image", "qwen3-vl:235b-cloud", new Set())).toBe("llava");
+    expect(pickLocalModel([cloud, tagged], "image", "", new Set())).toBeNull();
+    expect(pickLocalModel([{ ...text("gpt-oss:120b-cloud"), remote: true }], "equation-text", "", new Set())).toBeNull();
+
+    // The assistant runs on Ollama Cloud: Automatic stays on this computer.
+    mocks.getConfig.mockResolvedValue(config({ ai_provider: "ollama", ai_model: "qwen3-vl:235b-cloud" }));
+    mocks.listOllamaModelDetails.mockResolvedValue([cloud]);
+    await expect(resolveToolsModel("image")).rejects.toThrow(researchTools.converterErrors.visionModelMissing);
+  });
+
+  it("never picks an embedding-only model for a chat request", async () => {
+    const embedding = (name: string) => ({ name, capabilities: ["embedding"] });
+    expect(pickLocalModel([embedding("bge-m3"), vision("qwen2.5vl:7b")], "equation-text", "", new Set())).toBe(
+      "qwen2.5vl:7b",
+    );
+    expect(pickLocalModel([embedding("all-minilm")], "equation-text", "", new Set())).toBeNull();
+    expect(pickLocalModel([{ name: "bge-m3", capabilities: ["embedding", "vision"] }], "image", "", new Set())).toBeNull();
+    // Without capabilities, a model still counts.
+    expect(pickLocalModel([{ name: "llama3.2", capabilities: null }], "equation-text", "", new Set())).toBe("llama3.2");
+    mocks.listOllamaModelDetails.mockResolvedValue([embedding("bge-m3"), text("llama3.2")]);
+    await expect(resolveToolsModel("equation-text")).resolves.toMatchObject({ modelId: "llama3.2" });
+  });
+
   it("typed equations skip OCR-only models", async () => {
     mocks.listOllamaModelDetails.mockResolvedValue([vision("glm-ocr"), text("llama3.2")]);
     await expect(resolveToolsModel("equation-text")).resolves.toMatchObject({ modelId: "llama3.2", profile: null });
@@ -146,6 +173,33 @@ describe("explicit choices", () => {
     await expect(resolveToolsModel("equation-text")).rejects.toThrow(errors.imagesOnly.replace("{{model}}", "glm-ocr"));
   });
 
+  it("an Ollama Cloud model the user picked is hosted and says it goes to Ollama Cloud", async () => {
+    mocks.getConfig.mockResolvedValue(config({ ai_tools_model: { provider: "ollama", model: "qwen3-vl:235b-cloud" } }));
+    mocks.listOllamaModelDetails.mockResolvedValue([
+      { name: "qwen3-vl:235b-cloud", capabilities: ["completion", "vision"], remote: true },
+    ]);
+    const model = await resolveToolsModel("image");
+    expect(model).toMatchObject({
+      engine: "llm",
+      providerId: "ollama",
+      modelId: "qwen3-vl:235b-cloud",
+      hosted: true,
+      destination: { kind: "provider", providerId: "ollama", name: "Ollama Cloud" },
+    });
+    // Hosted, so images are shrunk and re-encoded, and the hosted reply budget applies.
+    expect(model.engine === "llm" && toolsMaxTokens(model)).toBe(8192);
+
+    // Ollama marks it remote even without a cloud tag.
+    mocks.getConfig.mockResolvedValue(config({ ai_tools_model: { provider: "ollama", model: "shared-vl" } }));
+    mocks.listOllamaModelDetails.mockResolvedValue([
+      { name: "shared-vl", capabilities: ["completion", "vision"], remote: true },
+    ]);
+    await expect(resolveToolsModel("image")).resolves.toMatchObject({ hosted: true, destination: { name: "Ollama Cloud" } });
+
+    useSettingsStore.setState({ offline: true });
+    await expect(resolveToolsModel("image")).rejects.toThrow(errors.offline);
+  });
+
   it("a hosted choice resolves with its metadata and is hosted", async () => {
     mocks.getConfig.mockResolvedValue(
       config({
@@ -179,6 +233,8 @@ describe("explicit choices", () => {
     const refused = resolveToolsModel("image");
     await expect(refused).rejects.toBeInstanceOf(ToolsModelError);
     await expect(refused).rejects.toThrow(errors.providerNotConfigured.replace("{{provider}}", "Anthropic"));
+    // Keys live under Providers and keys, not Tools.
+    await expect(refused).rejects.toMatchObject({ settings: "ai-providers" });
     expect(listOllamaModelDetailsCalls()).toBe(0);
   });
 
@@ -190,9 +246,24 @@ describe("explicit choices", () => {
         ai_provider_models: { anthropic: [stored("claude-opus-5-5", false, { name: "Claude Opus 5.5" })] },
       }),
     );
-    await expect(resolveToolsModel("image")).rejects.toThrow(
-      errors.modelDisabled.replace("{{model}}", "Claude Opus 5.5"),
+    const disabled = resolveToolsModel("image");
+    await expect(disabled).rejects.toThrow(errors.modelDisabled.replace("{{model}}", "Claude Opus 5.5"));
+    await expect(disabled).rejects.toMatchObject({ settings: "ai-providers" });
+  });
+
+  it("says a hosted model is no longer offered, rather than turned off, when it left the list", async () => {
+    mocks.getConfig.mockResolvedValue(
+      config({
+        ai_keys: { anthropic: "__stored__" },
+        ai_tools_model: { provider: "anthropic", model: "claude-opus-4" },
+        ai_provider_models: { anthropic: [stored("claude-opus-5-5", true, { name: "Claude Opus 5.5" })] },
+      }),
     );
+    const gone = resolveToolsModel("image");
+    await expect(gone).rejects.toThrow(
+      errors.modelUnavailable.replace("{{model}}", "claude-opus-4").replace("{{provider}}", "Anthropic"),
+    );
+    await expect(gone).rejects.toMatchObject({ settings: "ai-tools" });
   });
 
   it("refuses a hosted model that can't read images, but allows it for typed equations", async () => {
@@ -277,6 +348,7 @@ describe("the editor's fallback to the assistant's model", () => {
       destination: { kind: "provider", providerId: "anthropic", name: "Anthropic" },
       metadata: opusMetadata,
       profile: null,
+      assistantFallback: true,
     });
     // The converters keep to the local default.
     await expect(resolveToolsModel("image")).rejects.toThrow(researchTools.converterErrors.ollamaUnavailable);
@@ -337,6 +409,36 @@ describe("the editor's fallback to the assistant's model", () => {
     mocks.listOllamaModelDetails.mockResolvedValue([vision("llava")]);
     mocks.setConfig.mockRejectedValue(new Error("disk full"));
     await expect(resolveToolsModel("image", editor)).rejects.toThrow("disk full");
+  });
+});
+
+describe("where the editor's images go with Automatic", () => {
+  const assistant = config({
+    ai_provider: "anthropic",
+    ai_model: "claude-opus-5-5",
+    ai_keys: { anthropic: "__stored__" },
+    ai_provider_models: {
+      anthropic: [stored("claude-opus-5-5", true, { name: "Claude Opus 5.5", metadata: opusMetadata })],
+    },
+  });
+  const anthropic = { kind: "provider", providerId: "anthropic", name: "Anthropic" };
+
+  it("names the assistant's provider when Ollama is down or cannot read images", () => {
+    expect(editorImageFallback(assistant, null)).toEqual(anthropic);
+    expect(editorImageFallback(assistant, [text("llama3.2")])).toEqual(anthropic);
+    expect(editorImageFallback(assistant, [{ ...vision("qwen3-vl:235b-cloud"), remote: true }])).toEqual(anthropic);
+  });
+
+  it("stays local when Ollama has a vision model, a Tools model is saved, or the assistant cannot read images", () => {
+    expect(editorImageFallback(assistant, [vision("llava")])).toBeNull();
+    expect(
+      editorImageFallback({ ...assistant, ai_tools_model: { provider: "ollama", model: "llava" } }, null),
+    ).toBeNull();
+    expect(
+      editorImageFallback(config({ ai_provider: "groq", ai_model: "openai/gpt-oss-120b", ai_keys: { groq: "k" } }), null),
+    ).toBeNull();
+    useSettingsStore.setState({ offline: true });
+    expect(editorImageFallback(assistant, null)).toBeNull();
   });
 });
 

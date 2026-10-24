@@ -57,7 +57,7 @@ at the pinned tag.
 | Crate | License |
 |---|---|
 | tauri, tauri-build | Apache-2.0 OR MIT |
-| tauri-plugin-shell / -dialog / -updater / -process / -single-instance | Apache-2.0 OR MIT |
+| tauri-plugin-shell / -dialog / -updater / -process / -single-instance / -notification | Apache-2.0 OR MIT |
 | serde, serde_json | MIT OR Apache-2.0 |
 | reqwest | MIT OR Apache-2.0 |
 | base64 | MIT OR Apache-2.0 |
@@ -66,6 +66,17 @@ at the pinned tag.
 | statrs | MIT |
 | rapidfuzz | MIT |
 | zip | MIT |
+| agent-client-protocol, agent-client-protocol-schema | Apache-2.0 |
+| harper-core | Apache-2.0 |
+| lopdf, pdf-extract | MIT |
+| fancy-regex | MIT |
+| dom_query | MIT |
+| encoding_rs | (Apache-2.0 OR MIT) AND BSD-3-Clause |
+| notify-rust | MIT OR Apache-2.0 |
+| rpassword | Apache-2.0 |
+| similar | Apache-2.0 |
+| toml_edit, roxmltree | MIT OR Apache-2.0 |
+| anstream, anstyle | MIT OR Apache-2.0 |
 
 ## Frontend (JavaScript / npm, bundled into the app)
 
@@ -75,6 +86,7 @@ at the pinned tag.
 | @tauri-apps/api | Apache-2.0 OR MIT |
 | @tauri-apps/plugin-dialog / -process / -shell / -updater | MIT OR Apache-2.0 |
 | @codemirror/* (autocomplete, commands, lang-*, language, legacy-modes, lint, search, state, view) | MIT |
+| @xterm/xterm, @xterm/addon-fit / -search / -unicode11 / -webgl | MIT |
 | @lezer/highlight | MIT |
 | @citation-js/core, @citation-js/plugin-bibtex, @citation-js/plugin-csl | MIT |
 | @replit/codemirror-vim | MIT |

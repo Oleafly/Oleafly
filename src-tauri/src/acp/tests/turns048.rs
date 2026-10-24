@@ -648,3 +648,242 @@ async fn routing_sends_providers_set_before_session_new_and_never_stores_the_key
     assert!(list < new);
     runtime.close(&snapshot.session.id).await.unwrap();
 }
+
+/// Counts the windows asked for open text; none has the file open.
+struct CountingBuffers(Arc<std::sync::atomic::AtomicUsize>);
+
+impl BufferSource for CountingBuffers {
+    fn open_buffer(
+        &self,
+        _owner: &str,
+        _project: &str,
+        _relative: &str,
+    ) -> BoxFuture<'static, Option<String>> {
+        self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Box::pin(async { None })
+    }
+}
+
+#[tokio::test]
+async fn a_delegated_agent_reads_from_disk_without_asking_a_window() {
+    let temp = fixture_temp();
+    let project = temp.path().join("project");
+    std::fs::create_dir(&project).unwrap();
+    std::fs::write(project.join("notes.tex"), "saved text").unwrap();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(&serde_json::to_string(&fixture_definition(Vec::new(), temp.path())).unwrap())
+        .unwrap();
+    let asked = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    runtime.set_buffer_source(Arc::new(CountingBuffers(asked.clone())));
+    let session = runtime
+        .start(StartSession {
+            project_id: "test-project".into(),
+            project_path: project,
+            agent_id: "fixture-agent".into(),
+            parent_session_id: Some("parent-chat".into()),
+            owner: Some("external:helper".into()),
+            ..StartSession::default()
+        })
+        .await
+        .unwrap();
+    let id = session.session.id.clone();
+    runtime
+        .prompt(&id, "read-file:notes.tex".into(), Vec::new())
+        .await
+        .unwrap();
+    assert!(texts(&runtime.events_all(&id).unwrap()).contains("Read: saved text"));
+    assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 0);
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_stored_question_keeps_its_secret_flags_and_an_echoed_answer_is_redacted() {
+    let (_temp, runtime, session) = runtime(vec!["--echo-answer".into()]).await;
+    let id = session.session.id.clone();
+    let prompting = runtime.clone();
+    let prompt_id = id.clone();
+    let turn = tokio::spawn(async move {
+        prompting
+            .prompt(&prompt_id, "ask-form".into(), Vec::new())
+            .await
+    });
+    let mut question = None;
+    for _ in 0..200 {
+        question = runtime.snapshot(&id).await.unwrap().elicitations.pop();
+        if question.is_some() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let question = question.expect("the question reaches the snapshot");
+    let stored = runtime
+        .events_all(&id)
+        .unwrap()
+        .into_iter()
+        .find(|event| event.kind == "elicitation")
+        .unwrap();
+    let secret = |name: &str| {
+        stored.data["fields"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|field| field["name"] == name)
+            .unwrap()["secret"]
+            .clone()
+    };
+    assert_eq!(secret("token"), Value::Bool(true));
+    assert_eq!(secret("region"), Value::Bool(false));
+    let marker = "typed-token-48151623";
+    let mut content = serde_json::Map::new();
+    content.insert("region".into(), json!("eu"));
+    content.insert("token".into(), json!(marker));
+    runtime
+        .respond_elicitation(&id, &question.id, "accept", Some(content))
+        .await
+        .unwrap();
+    turn.await.unwrap().unwrap();
+    let events = runtime.events_all(&id).unwrap();
+    // The agent echoed the token back; the transcript has it removed.
+    assert!(texts(&events).contains("Answer: accept"));
+    assert!(texts(&events).contains("\"eu\""));
+    assert!(!serde_json::to_string(&events).unwrap().contains(marker));
+    runtime.close(&id).await.unwrap();
+}
+
+/// Waits until the agent has listed its commands.
+async fn wait_for_commands(runtime: &Arc<AcpRuntime>, id: &str) {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while runtime
+            .snapshot(id)
+            .await
+            .unwrap()
+            .session
+            .available_commands
+            .is_empty()
+        {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the agent never listed its commands");
+}
+
+#[tokio::test]
+async fn a_plan_usage_refresh_shows_as_working_and_notes_its_cost_outside_any_turn() {
+    let (_temp, runtime, session) =
+        runtime(vec!["--commands-on-start".into(), "--usage-cost".into()]).await;
+    let id = session.session.id.clone();
+    wait_for_commands(&runtime, &id).await;
+    runtime
+        .prompt(&id, "Hello".into(), Vec::new())
+        .await
+        .unwrap();
+    let turn = runtime.snapshot(&id).await.unwrap().session.turn_id;
+    let before = runtime.snapshot(&id).await.unwrap().session.last_sequence;
+    runtime.refresh_plan_usage(&id).await.unwrap();
+    let after = runtime.events(&id, before, 500).unwrap().events;
+    let statuses: Vec<_> = after
+        .iter()
+        .filter(|event| event.kind == "status")
+        .map(|event| event.data["status"].clone())
+        .collect();
+    assert_eq!(statuses, [json!("running"), json!("ready")]);
+    let cost = after
+        .iter()
+        .find(|event| event.kind == "usage" && event.data["source"] == "acp_context")
+        .expect("the agent's total after the refresh is noted");
+    assert_eq!(cost.data["costAmount"], json!(0.05));
+    // It belongs to no turn, so the usage ledger charges no turn for it.
+    assert!(after.iter().all(|event| event.turn_id.is_none()));
+    assert_eq!(runtime.snapshot(&id).await.unwrap().session.turn_id, turn);
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_status_command_that_starts_a_tool_is_stopped_and_the_agent_stays_connected() {
+    let (_temp, runtime, session) = runtime(vec![
+        "--commands-on-start".into(),
+        "--status-runs-tools".into(),
+    ])
+    .await;
+    let id = session.session.id.clone();
+    wait_for_commands(&runtime, &id).await;
+    let before = runtime.snapshot(&id).await.unwrap().session.last_sequence;
+    let error = runtime.refresh_plan_usage(&id).await.unwrap_err();
+    assert!(error.contains("not a usage report"), "{error}");
+    let snapshot = runtime.snapshot(&id).await.unwrap();
+    assert_eq!(snapshot.session.status, SessionStatus::Ready);
+    assert!(snapshot
+        .session
+        .usage
+        .and_then(|usage| usage.plan_markdown)
+        .is_none());
+    let after = runtime.events(&id, before, 500).unwrap().events;
+    assert!(!kinds(&after)
+        .iter()
+        .any(|kind| kind.starts_with("tool_call")));
+    // The agent still answers.
+    runtime
+        .prompt(&id, "Hello".into(), Vec::new())
+        .await
+        .unwrap();
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn stop_pressed_after_the_turn_ended_keeps_the_agent_connected() {
+    let (_temp, runtime, session) = runtime(Vec::new()).await;
+    let id = session.session.id.clone();
+    runtime
+        .prompt(&id, "Hello".into(), Vec::new())
+        .await
+        .unwrap();
+    runtime.cancel(&id).await.unwrap();
+    let snapshot = runtime.snapshot(&id).await.unwrap();
+    assert_eq!(snapshot.session.status, SessionStatus::Ready);
+    runtime
+        .prompt(&id, "Again".into(), Vec::new())
+        .await
+        .unwrap();
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_message_delivered_in_a_turn_that_fails_is_reported_as_delivered() {
+    use super::super::attachments::PromptInput;
+    use crate::acp::PromptFailure;
+    let (_temp, runtime, session) = runtime(Vec::new()).await;
+    let id = session.session.id.clone();
+    let failure = runtime
+        .send_prompt(
+            &id,
+            PromptInput {
+                text: "leak-error".into(),
+                ..PromptInput::default()
+            },
+            None,
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        failure,
+        PromptFailure::Delivered {
+            delivered: true,
+            ..
+        }
+    ));
+    let wire = serde_json::to_value(&failure).unwrap();
+    assert_eq!(wire["delivered"], true);
+    assert!(wire["message"].as_str().unwrap().contains("Agent failure"));
+    // A message refused before it is sent stays a plain string.
+    let refused = runtime
+        .send_prompt(&id, PromptInput::default(), None)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        serde_json::to_value(&refused).unwrap(),
+        json!("Write a message before sending.")
+    );
+    runtime.close(&id).await.unwrap();
+}

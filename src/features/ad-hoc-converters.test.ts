@@ -14,7 +14,9 @@ const mocks = vi.hoisted(() => ({
   extractArxivSource: vi.fn(),
   extractPagesForConvert: vi.fn(),
   emitTable: vi.fn(),
-  pdfPageToPng: vi.fn(),
+  renderPages: vi.fn(),
+  /** The PDF pages renderPages drew, in order. */
+  rendered: [] as number[],
   readTableRowsFromBytes: vi.fn(),
   renderDiagram: vi.fn(),
   svgDocumentToPngBytes: vi.fn(),
@@ -48,7 +50,7 @@ vi.mock("@oleafly/pdf-to-latex", () => ({ convertPages: mocks.convertPages }));
 vi.mock("@oleafly/pdf-to-latex/pdf-adapter", () => ({
   extractPagesForConvert: mocks.extractPagesForConvert,
 }));
-vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: mocks.pdfPageToPng }));
+vi.mock("@/lib/pdf-image", () => ({ renderPages: mocks.renderPages }));
 vi.mock("@/components/ui/mermaid-diagram", () => ({ renderDiagram: mocks.renderDiagram }));
 vi.mock("@/features/equation-export", () => ({
   svgDocumentToPngBytes: mocks.svgDocumentToPngBytes,
@@ -123,8 +125,14 @@ beforeEach(() => {
     tex: "\\documentclass{article}\\begin{document}PDF text\\end{document}",
     report: { pages: 1, figures: 0, likelyScanned: false },
   });
-  mocks.extractPagesForConvert.mockResolvedValue({ pages: [{}], figures: [] });
-  mocks.pdfPageToPng.mockResolvedValue("data:image/png;base64,iVBORw0KGgo=");
+  mocks.extractPagesForConvert.mockResolvedValue({ pages: [{}, {}], figures: [], pageCount: 2 });
+  mocks.rendered = [];
+  mocks.renderPages.mockImplementation(async function* (_bytes: Uint8Array, pages: readonly number[]) {
+    for (const page of pages) {
+      mocks.rendered.push(page);
+      yield "data:image/png;base64,iVBORw0KGgo=";
+    }
+  });
   mocks.renderDiagram.mockImplementation(async () => renderedMermaidSvg());
   mocks.svgDocumentToPngBytes.mockResolvedValue(new Uint8Array([137, 80, 78, 71]));
   mocks.fletcherVersionFor.mockImplementation((version: string | null | undefined) =>
@@ -492,9 +500,11 @@ describe("ad-hoc converter registry", () => {
       step: "transcribingPage",
       page: 2,
       total: 2,
+      pdfPage: 2,
       model: "qwen2.5vl:7b",
     });
-    expect(mocks.pdfPageToPng).toHaveBeenCalledWith(bytes, 2, 1.6, "#ffffff");
+    expect(mocks.renderPages).toHaveBeenCalledWith(bytes, [1, 2], 1.6, "#ffffff");
+    expect(mocks.rendered).toEqual([1, 2]);
 
     const typst = await transcribePdfPages(bytes, [1, 2], "Typst");
     expect(typst.text).toContain("#pagebreak()");
@@ -509,7 +519,7 @@ describe("ad-hoc converter registry", () => {
     await expect(
       transcribePdfPages(new Uint8Array([1]), [1], "Markdown", undefined, controller.signal),
     ).rejects.toMatchObject({ name: "AbortError" });
-    expect(mocks.pdfPageToPng).not.toHaveBeenCalled();
+    expect(mocks.renderPages).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -545,6 +555,7 @@ describe("ad-hoc converter registry", () => {
     mocks.extractPagesForConvert.mockResolvedValue({
       pages: Array.from({ length: 5 }, () => ({ width: 612, height: 792, items: [], figureNames: [] })),
       figures: [],
+      pageCount: 5,
     });
     const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
     const asked = runAdHocConverter("pdf-to-markdown", { text: "", file: pdf });
@@ -570,6 +581,7 @@ describe("ad-hoc converter registry", () => {
     mocks.extractPagesForConvert.mockResolvedValue({
       pages: Array.from({ length: 120 }, () => ({ width: 612, height: 792, items: [], figureNames: [] })),
       figures: [],
+      pageCount: 120,
     });
     const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
     const failed = runAdHocConverter("pdf-to-markdown", { text: "", file: pdf });
@@ -580,12 +592,13 @@ describe("ad-hoc converter registry", () => {
   });
 
   it("reads only the chosen pages of a long scan", async () => {
-    const pages = Array.from({ length: 120 }, () => ({ width: 612, height: 792, items: [], figureNames: [] }));
+    // The adapter reads just the range: ten of the 120 pages.
+    const pages = Array.from({ length: 10 }, () => ({ width: 612, height: 792, items: [], figureNames: [] }));
     mocks.convertPages.mockReturnValue({
       tex: "",
       report: { pages: 10, figures: 0, likelyScanned: true },
     });
-    mocks.extractPagesForConvert.mockResolvedValue({ pages, figures: [] });
+    mocks.extractPagesForConvert.mockResolvedValue({ pages, figures: [], pageCount: 120 });
     const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
     const range = [61, 70] as const;
     const asked = runAdHocConverter("pdf-to-typst", { text: "", file: pdf, pageRange: range });
@@ -593,7 +606,12 @@ describe("ad-hoc converter registry", () => {
     await expect(asked).rejects.toMatchObject({
       sizes: Array.from({ length: 10 }, () => ({ width: 612, height: 792 })),
     });
-    expect(mocks.convertPages).toHaveBeenCalledWith(pages, { pageRange: [61, 70] });
+    expect(mocks.extractPagesForConvert).toHaveBeenCalledWith(new Uint8Array([37, 80, 68, 70]), {
+      pageRange: [61, 70],
+      figures: "if-text",
+      signal: undefined,
+    });
+    expect(mocks.convertPages).toHaveBeenCalledWith(pages);
 
     const result = await runAdHocConverter("pdf-to-typst", {
       text: "",
@@ -601,10 +619,49 @@ describe("ad-hoc converter registry", () => {
       pageRange: range,
       scanConfirmed: true,
     });
-    expect(mocks.pdfPageToPng.mock.calls.map(([, page]) => page)).toEqual([
-      61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
-    ]);
+    expect(mocks.rendered).toEqual([61, 62, 63, 64, 65, 66, 67, 68, 69, 70]);
     expect(result.note).toContain("Transcribed 10 scanned pages");
+  });
+
+  it("reads a scan without decoding its page images, and checks the signal while reading", async () => {
+    mocks.convertPages.mockReturnValue({ tex: "", report: { pages: 2, figures: 0, likelyScanned: true } });
+    const controller = new AbortController();
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
+    await runAdHocConverter("pdf-to-markdown", { text: "", file: pdf }, undefined, controller.signal);
+    expect(mocks.extractPagesForConvert).toHaveBeenCalledWith(expect.any(Uint8Array), {
+      figures: "if-text",
+      signal: controller.signal,
+    });
+  });
+
+  it("says how many pages the PDF has when the range starts past its end", async () => {
+    mocks.extractPagesForConvert.mockResolvedValue({ pages: [], figures: [], pageCount: 12 });
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
+    const failed = runAdHocConverter("pdf-to-markdown", { text: "", file: pdf, pageRange: [20, 40] });
+    await expect(failed).rejects.toThrow(
+      researchTools.converterErrors.pageRangePastEnd_other.replaceAll("{{count}}", "12"),
+    );
+    expect(mocks.convertPages).not.toHaveBeenCalled();
+    expect(mocks.convertAdHoc).not.toHaveBeenCalled();
+
+    mocks.extractPagesForConvert.mockResolvedValue({ pages: [], figures: [], pageCount: 1 });
+    await expect(
+      runAdHocConverter("pdf-to-typst", { text: "", file: pdf, pageRange: [2, 2] }),
+    ).rejects.toThrow(researchTools.converterErrors.pageRangePastEnd_one.replace("{{count}}", "1"));
+  });
+
+  it("says one scanned page, not one scanned pages", async () => {
+    mocks.convertPages.mockReturnValue({ tex: "", report: { pages: 1, figures: 0, likelyScanned: true } });
+    mocks.extractPagesForConvert.mockResolvedValue({
+      pages: [{ width: 612, height: 792, items: [], figureNames: [] }],
+      figures: [],
+      pageCount: 1,
+    });
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "scan.pdf");
+    const result = await runAdHocConverter("pdf-to-markdown", { text: "", file: pdf });
+    expect(result.note).toBe(
+      "Transcribed 1 scanned page with qwen2.5vl:7b. Review equations and tables before using the result.",
+    );
   });
 
   it("reads page ranges the way a person types them", () => {

@@ -79,6 +79,9 @@ pub(super) struct LiveState {
     pub(super) skill_folder: Option<PathBuf>,
     /// Text of a hidden plan-usage turn while one runs.
     pub(super) hidden: Option<String>,
+    /// The hidden turn started a tool: the command runs the model, not the
+    /// agent's own usage report, and the turn was cancelled.
+    pub(super) hidden_tools: bool,
     /// Streamed text held before it is stored.
     pub(super) coalescer: Coalescer,
     pub(super) flush_timer: bool,
@@ -95,10 +98,45 @@ pub(super) struct LiveState {
     pub(super) turn_closed: bool,
 }
 
-pub(super) struct TaskTemp(pub(super) PathBuf);
+/// A task agent's home, removed with its session unless it is kept (the
+/// second field) for a handoff or the next generation.
+pub(super) struct TaskTemp(pub(super) PathBuf, bool);
 impl Drop for TaskTemp {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
+        if !self.1 {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+}
+
+/// Why a message failed, as `acp_prompt` reports it: a plain string when
+/// the message never reached the transcript (like every other command's
+/// error), or `{"delivered": true, "message": "…"}` when it was delivered
+/// and the turn then ended in an error.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(untagged)]
+pub enum PromptFailure {
+    NotSent(String),
+    Delivered { delivered: bool, message: String },
+}
+
+impl PromptFailure {
+    pub fn into_message(self) -> String {
+        match self {
+            Self::NotSent(message) | Self::Delivered { message, .. } => message,
+        }
+    }
+}
+
+impl From<String> for PromptFailure {
+    fn from(message: String) -> Self {
+        Self::NotSent(message)
+    }
+}
+
+impl From<&str> for PromptFailure {
+    fn from(message: &str) -> Self {
+        Self::NotSent(message.to_owned())
     }
 }
 
@@ -234,6 +272,12 @@ impl Drop for LiveSession {
                 oleafly_acp::redact::clear_value(server);
             }
         }
+        // A home kept for a handoff or a retry outlives the session.
+        if *self.keep_home.get_mut() {
+            if let Some(home) = self.task_temp.as_mut() {
+                home.1 = true;
+            }
+        }
     }
 }
 
@@ -286,6 +330,47 @@ pub struct SessionSummary {
     pub last_sequence: u64,
 }
 
+/// How long a closed owner is remembered: no start takes this long.
+const OWNER_MEMORY: Duration = Duration::from_secs(10 * 60);
+
+/// When owners (windows, tasks, helper agents) closed, as tickets of one
+/// counter: a start made with a ticket taken before its owner closed is
+/// refused. Owners closed long ago are forgotten (tasks and helper agents
+/// are many over an app's life); `floor` is the newest ticket forgotten, so
+/// a start older than that is refused whatever its owner.
+#[derive(Default)]
+struct OwnerEpochs {
+    tick: u64,
+    closed: HashMap<String, (u64, Instant)>,
+    floor: u64,
+}
+
+impl OwnerEpochs {
+    fn ticket(&self) -> u64 {
+        self.tick
+    }
+
+    fn close(&mut self, owner: &str, now: Instant) {
+        self.tick += 1;
+        self.closed.insert(owner.to_owned(), (self.tick, now));
+        let floor = &mut self.floor;
+        self.closed.retain(|_, (ticket, at)| {
+            let keep = now.duration_since(*at) < OWNER_MEMORY;
+            if !keep {
+                *floor = (*floor).max(*ticket);
+            }
+            keep
+        });
+    }
+
+    fn is_current(&self, owner: &str, ticket: u64) -> bool {
+        match self.closed.get(owner) {
+            Some((closed, _)) => *closed <= ticket,
+            None => ticket >= self.floor,
+        }
+    }
+}
+
 #[derive(Default)]
 struct SummaryThrottle {
     last_sent: Option<Instant>,
@@ -302,13 +387,16 @@ pub struct AcpRuntime {
     starting: Mutex<HashSet<String>>,
     /// Short-lived agent connections (history, import), stopped with the app.
     transient: Mutex<Vec<Weak<AcpClient>>>,
+    /// The last short-lived connection, kept briefly for the next page or
+    /// the import that follows a listing.
+    pub(super) idle_transient: Mutex<Option<super::sessions::IdleTransient>>,
     events: broadcast::Sender<AcpEvent>,
     summaries: broadcast::Sender<SessionSummary>,
     summary_throttle: Mutex<HashMap<String, SummaryThrottle>>,
     installing: AsyncMutex<HashSet<String>>,
     registry: AsyncMutex<Option<(u64, Vec<catalog::RegistryEntry>)>>,
     resources: Mutex<HashMap<String, Box<dyn std::any::Any + Send + Sync>>>,
-    owner_epochs: Mutex<HashMap<String, u64>>,
+    owner_epochs: Mutex<OwnerEpochs>,
     startup: Mutex<StartupState>,
     startup_count: watch::Sender<usize>,
     review: ReviewHooks,
@@ -343,13 +431,14 @@ impl AcpRuntime {
             live: AsyncMutex::new(HashMap::new()),
             starting: Mutex::new(HashSet::new()),
             transient: Mutex::new(Vec::new()),
+            idle_transient: Mutex::new(None),
             events,
             summaries,
             summary_throttle: Mutex::new(HashMap::new()),
             installing: AsyncMutex::new(HashSet::new()),
             registry: AsyncMutex::new(None),
             resources: Mutex::new(HashMap::new()),
-            owner_epochs: Mutex::new(HashMap::new()),
+            owner_epochs: Mutex::new(OwnerEpochs::default()),
             startup: Mutex::new(StartupState::default()),
             startup_count: watch::channel(0).0,
             review,
@@ -358,18 +447,45 @@ impl AcpRuntime {
             pids: OnceLock::new(),
             this: this.clone(),
         });
+        // Task homes left by a crash hold copies of the user's sign-in files.
+        // No session is live yet: they move aside now, before any start, and
+        // are deleted with the rest off the startup path.
+        let _ = std::fs::rename(
+            runtime.root.join("task-temp"),
+            runtime.root.join(format!("{STALE_TASK_TEMP}{}", new_id())),
+        );
         // Old bridge versions left by earlier updates are removed once, off
         // the startup path.
         let cleanup_root = runtime.root.clone();
+        let weak = Arc::downgrade(&runtime);
         std::thread::spawn(move || {
-            for definition in catalog::builtins() {
-                let keep = definition.version.clone();
-                catalog::cleanup_old_versions(&cleanup_root, &definition, &keep);
+            remove_stale_task_temp(&cleanup_root);
+            startup_cleanup(&cleanup_root, helper_is_running(&cleanup_root));
+            if let Some(runtime) = weak.upgrade() {
+                runtime.forget_old_task_homes();
             }
-            // An earlier build kept every install's npm cache in one folder.
-            let _ = std::fs::remove_dir_all(cleanup_root.join("npm-cache"));
         });
         Ok(runtime)
+    }
+
+    /// Removes agent homes kept for task sessions that are gone or untouched
+    /// for 30 days.
+    fn forget_old_task_homes(&self) {
+        const KEEP: u64 = 30 * 24 * 60 * 60 * 1000;
+        let Ok(entries) = std::fs::read_dir(self.root.join("task-homes")) else {
+            return;
+        };
+        let now = now_ms();
+        for entry in entries.flatten() {
+            let id = entry.file_name().to_string_lossy().into_owned();
+            let kept = self
+                .store
+                .get(&id)
+                .is_ok_and(|record| now.saturating_sub(record.updated_at) < KEEP);
+            if !kept {
+                let _ = std::fs::remove_dir_all(entry.path());
+            }
+        }
     }
 
     /// Where open editor text comes from (the app's windows).
@@ -414,19 +530,22 @@ impl AcpRuntime {
         Ok(())
     }
 
-    pub fn owner_generation(&self, owner: &str) -> u64 {
+    /// A ticket for starting a session of `_owner`: the start is refused
+    /// once the owner closes after the ticket was taken.
+    pub fn owner_generation(&self, _owner: &str) -> u64 {
         self.owner_epochs
             .lock()
-            .ok()
-            .and_then(|epochs| epochs.get(owner).copied())
+            .map(|epochs| epochs.ticket())
             .unwrap_or(0)
     }
 
     fn owner_is_current(&self, owner: Option<&str>, generation: Option<u64>) -> bool {
         self.startup.lock().is_ok_and(|state| !state.stopping)
-            && owner
-                .zip(generation)
-                .is_none_or(|(owner, generation)| self.owner_generation(owner) == generation)
+            && owner.zip(generation).is_none_or(|(owner, generation)| {
+                self.owner_epochs
+                    .lock()
+                    .is_ok_and(|epochs| epochs.is_current(owner, generation))
+            })
     }
 
     pub fn stop_all_now(&self) {
@@ -442,6 +561,9 @@ impl AcpRuntime {
             for client in transient.iter().filter_map(Weak::upgrade) {
                 client.request_stop();
             }
+        }
+        if let Ok(mut idle) = self.idle_transient.lock() {
+            idle.take();
         }
         if let Ok(mut resources) = self.resources.lock() {
             resources.clear();
@@ -698,6 +820,50 @@ impl AcpRuntime {
         Ok(prefs)
     }
 
+    /// Changes one of an agent's remembered choices (`effort`, `mode` or
+    /// `provider`; `null` forgets it) and keeps the others as stored.
+    pub async fn set_agent_preference(
+        self: &Arc<Self>,
+        agent_id: &str,
+        slot: &str,
+        value: Value,
+    ) -> Result<AgentPreferences, String> {
+        self.definition(agent_id)?;
+        let choice = |value: Value| {
+            serde_json::from_value::<Option<super::preferences::RememberedChoice>>(value)
+                .map_err(|_| "This choice is not valid.".to_string())
+        };
+        let patch: Box<dyn FnOnce(&mut AgentPreferences) + Send> = match slot {
+            "effort" => {
+                let value = choice(value)?;
+                Box::new(move |prefs| prefs.effort = value)
+            }
+            "mode" => {
+                let value = choice(value)?;
+                Box::new(move |prefs| prefs.mode = value)
+            }
+            "provider" => {
+                let value = serde_json::from_value::<Option<String>>(value)
+                    .map_err(|_| "This provider is not valid.")?;
+                Box::new(move |prefs| prefs.provider = value)
+            }
+            _ => return Err("Choose effort, mode or provider.".into()),
+        };
+        let (before, after) = {
+            let runtime = self.clone();
+            let agent_id = agent_id.to_owned();
+            tokio::task::spawn_blocking(move || {
+                runtime.store.patch_agent_preferences(&agent_id, patch)
+            })
+            .await
+            .map_err(|_| "The agent's preferences could not be saved.")??
+        };
+        if before.provider.is_some() && after.provider.is_none() {
+            self.disable_routes(Some(agent_id)).await;
+        }
+        Ok(after)
+    }
+
     /// Turns routing through Oleafly keys off on live sessions (of one agent,
     /// or all); the agents fall back to their own sign-in.
     async fn disable_routes(self: &Arc<Self>, agent_id: Option<&str>) {
@@ -797,11 +963,6 @@ impl AcpRuntime {
         }
         let root = canonical_root(&options.project_path)?;
         let definition = self.definition(&options.agent_id)?;
-        if options.allowed_paths.is_some() {
-            if let Some(reason) = catalog::task_unavailable_reason(&definition) {
-                return Err(reason);
-            }
-        }
         let (start_revision, start_dirty) = if options.task_id.is_none() {
             review::start_revision(&self.review, &root).await
         } else {
@@ -903,6 +1064,13 @@ impl AcpRuntime {
         {
             return Err("This agent cannot resume saved sessions. Start a new conversation to continue working.".into());
         }
+        if record.native_session_id.is_some() {
+            let definition = self.definition(&record.agent_id)?;
+            let settings = self.hermes_settings(&definition, &record.project_id);
+            if let Some(reason) = moved_target(&record, &settings) {
+                return Err(reason.into());
+            }
+        }
         record.status = SessionStatus::Connecting;
         record.error = None;
         self.connect(record, owner, mcp_servers, None, None, generation)
@@ -911,17 +1079,39 @@ impl AcpRuntime {
 
     /// Reconnects a research task's earlier agent session in the same
     /// workspace, so a retried task continues the agent's conversation.
+    /// `native` is the agent's own session id the task recorded; the
+    /// agent's home kept from that generation is where it starts.
     pub async fn resume_task_session(
         self: &Arc<Self>,
-        record_id: &str,
+        native: &str,
         options: StartSession,
         mcp_servers: Vec<Value>,
         generation: Option<u64>,
     ) -> Result<SessionSnapshot, String> {
-        if self.get_live(record_id).await.is_ok() {
+        let task_id = options
+            .task_id
+            .as_deref()
+            .ok_or("Only a research task's agent session can be resumed.")?;
+        let found = {
+            let runtime = self.clone();
+            let (task_id, agent_id, native) = (
+                task_id.to_owned(),
+                options.agent_id.clone(),
+                native.to_owned(),
+            );
+            tokio::task::spawn_blocking(move || {
+                runtime
+                    .store
+                    .find_task_session(&task_id, &agent_id, &native)
+            })
+            .await
+            .map_err(|_| "The task's earlier agent session could not be read.")??
+        };
+        let mut record = found.ok_or("The task's earlier agent session was not found.")?;
+        let record_id = record.id.clone();
+        if self.get_live(&record_id).await.is_ok() {
             return Err("This ACP session is already connected.".into());
         }
-        let mut record = self.store.get(record_id)?;
         let same_task = record.task_id.is_some()
             && record.task_id == options.task_id
             && record.agent_id == options.agent_id
@@ -943,22 +1133,64 @@ impl AcpRuntime {
         )?;
         record.last_sequence = record
             .last_sequence
-            .max(self.store.last_sequence(record_id)?);
+            .max(self.store.last_sequence(&record_id)?);
         record.status = SessionStatus::Connecting;
         record.error = None;
-        self.connect(
-            record,
-            options.owner,
-            mcp_servers,
-            options.allowed_paths,
-            options.task_commands,
-            generation,
-        )
-        .await
+        // The agent keeps its session history in its home: the one kept when
+        // that generation ended, with its sign-in files copied fresh.
+        let home = self.task_home(&record_id);
+        if tokio::fs::symlink_metadata(&home)
+            .await
+            .is_ok_and(|metadata| metadata.is_dir())
+        {
+            remove_sign_in_files(&home, &record.agent_id).await;
+            adopt_home(&record_id, &home);
+        }
+        let result = self
+            .connect(
+                record,
+                options.owner,
+                mcp_servers,
+                options.allowed_paths,
+                options.task_commands,
+                generation,
+            )
+            .await;
+        // Unused when the start failed before the agent ran.
+        let _ = take_adopted_home(&record_id);
+        result
+    }
+
+    /// Where a task session's agent home is kept between generations.
+    fn task_home(&self, record_id: &str) -> PathBuf {
+        self.root.join("task-homes").join(record_id)
+    }
+
+    /// Ends a research task's session at the end of its generation and
+    /// keeps the agent's home (its own session history, without the sign-in
+    /// files) for the next generation's [`Self::resume_task_session`]. When
+    /// the home cannot be kept, the session is closed as usual.
+    pub(crate) async fn end_task_session(self: &Arc<Self>, record_id: &str) -> Result<(), String> {
+        let agent_id = match self.get_live(record_id).await {
+            Ok(session) => self.copy_record(&session)?.agent_id,
+            Err(_) => return Ok(()),
+        };
+        let home = self.task_home(record_id);
+        match self.close_task_for_handoff(record_id, &home).await {
+            Ok(_) => {
+                remove_sign_in_files(&home, &agent_id).await;
+                Ok(())
+            }
+            Err(_) => self.close(record_id).await,
+        }
     }
 
     /// The Hermes settings a session of `definition` in `project_id` uses.
-    fn hermes_settings(&self, definition: &AgentDefinition, project_id: &str) -> HermesSettings {
+    pub(super) fn hermes_settings(
+        &self,
+        definition: &AgentDefinition,
+        project_id: &str,
+    ) -> HermesSettings {
         if definition.id != hermes::HERMES_ID {
             return HermesSettings::default();
         }
@@ -1049,6 +1281,13 @@ impl AcpRuntime {
             return Err("The window or task closed while the agent was starting.".into());
         }
         let definition = self.definition(&record.agent_id)?;
+        // Every task start (new, resumed or adopted) is checked: the
+        // Windows sandbox switch or the agent may have changed since.
+        if allowed_paths.is_some() {
+            if let Some(reason) = catalog::task_unavailable_reason(&definition) {
+                return Err(reason);
+            }
+        }
         let prefs = self.preferences();
         let settings = self.hermes_settings(&definition, &record.project_id);
         let remote_mode = settings.mode == HermesMode::Remote;
@@ -1121,6 +1360,12 @@ impl AcpRuntime {
                     if let Ok(mut known) = self.v1_only.lock() {
                         known.insert((definition.id.clone(), launch.executable.clone()));
                     }
+                    // The v1 restart starts in the same home: a task agent's
+                    // history (an adopted home) must not go with this attempt.
+                    if let Some(home) = &session.task_temp {
+                        session.keep_home.store(true, Ordering::Release);
+                        adopt_home(&record.id, &home.0);
+                    }
                     session.client.shutdown().await;
                     // The respawn continues the same record: its events
                     // number on from the ones this attempt saved.
@@ -1179,7 +1424,7 @@ impl AcpRuntime {
             tokio::fs::create_dir_all(&path)
                 .await
                 .map_err(|_| "The task temporary directory could not be created.")?;
-            Some(TaskTemp(path))
+            Some(TaskTemp(path, false))
         } else {
             None
         };
@@ -1247,6 +1492,7 @@ impl AcpRuntime {
                 tool_calls: HashMap::new(),
                 skill_folder: None,
                 hidden: None,
+                hidden_tools: false,
                 coalescer: Coalescer::default(),
                 flush_timer: false,
                 compactions: HashMap::new(),
@@ -1323,11 +1569,13 @@ impl AcpRuntime {
             let Some(registry) = runtime.pids.get() else {
                 return;
             };
-            let started = match oleafly_sandbox::process::identity::probe(pid) {
-                oleafly_sandbox::process::identity::ProcessProbe::Running { started } => started,
-                oleafly_sandbox::process::identity::ProcessProbe::Gone => None,
-            };
-            let _ = registry.add(pid, started, &program);
+            // An agent that already exited needs no cleanup, and a line
+            // without a start time could later name another process.
+            if let oleafly_sandbox::process::identity::ProcessProbe::Running { started } =
+                oleafly_sandbox::process::identity::probe(pid)
+            {
+                let _ = registry.add(pid, started, &program);
+            }
         })
         .await;
     }
@@ -1377,9 +1625,17 @@ impl AcpRuntime {
             .map_err(InitFailure::Failed)?
             .remote
             .is_some();
+        // A sandboxed task agent reads files with its own tools, inside its
+        // sandbox: Oleafly reads outside it, so it never offers to.
+        let fs_read = !remote && session.task_temp.is_none();
+        if let Ok(mut state) = session.state.lock() {
+            // Set again below only when routing succeeds now: a record must
+            // not keep a provider this connection does not use.
+            state.record.routed_provider = None;
+        }
         let negotiated = match session
             .client
-            .initialize(&client_options(!remote, prefer_v2))
+            .initialize(&client_options(fs_read, prefer_v2))
             .await
         {
             Ok(negotiated) => negotiated,
@@ -1604,16 +1860,27 @@ impl AcpRuntime {
         input: PromptInput,
         skill: Option<PromptSkill>,
     ) -> Result<SessionSnapshot, String> {
+        self.send_prompt(id, input, skill)
+            .await
+            .map_err(PromptFailure::into_message)
+    }
+
+    /// [`Self::prompt_input`], telling a message that never reached the
+    /// transcript apart from one that did, in a turn that then failed.
+    pub async fn send_prompt(
+        self: &Arc<Self>,
+        id: &str,
+        input: PromptInput,
+        skill: Option<PromptSkill>,
+    ) -> Result<SessionSnapshot, PromptFailure> {
         let session = self.get_live(id).await?;
         let _operation = session
             .operation
             .try_lock()
             .map_err(|_| "This ACP agent is already working on a turn.")?;
         let record = self.copy_record(&session)?;
-        crate::trust::require_trusted(
-            &record.project_id,
-            crate::trust::Capability::ExternalAgents,
-        )?;
+        crate::trust::require_trusted(&record.project_id, crate::trust::Capability::ExternalAgents)
+            .map_err(String::from)?;
         if record.status != SessionStatus::Ready {
             return Err("Connect and sign in to this agent before sending a message.".into());
         }
@@ -1726,7 +1993,14 @@ impl AcpRuntime {
             };
             session.client.prompt(&native, blocks, timing).await
         };
-        self.finish_turn(&session, &record, result, turn_copy).await
+        // The message is in the transcript: a failure from here on is the
+        // turn's, and sending the message again would repeat it.
+        self.finish_turn(&session, &record, result, turn_copy)
+            .await
+            .map_err(|message| PromptFailure::Delivered {
+                delivered: true,
+                message,
+            })
     }
 
     /// Records how a turn ended: usage, turn changes, status.
@@ -1832,7 +2106,7 @@ impl AcpRuntime {
         if text.trim().is_empty() {
             return Err("Write a message before sending.".into());
         }
-        if text.len() > oleafly_acp::prompt::MAX_PROMPT_TEXT {
+        if !oleafly_acp::prompt::text_fits_transcript(&text) {
             return Err("This message is too large. Shorten it.".into());
         }
         let session = self.get_live(id).await?;
@@ -1880,9 +2154,15 @@ impl AcpRuntime {
             Ok(session) => session,
             Err(_) => return Ok(()),
         };
-        let running = self
-            .copy_record(&session)
-            .is_ok_and(|record| record.status == SessionStatus::Running);
+        let status = self.copy_record(&session).map(|record| record.status);
+        // Stop pressed as the turn ended: there is nothing to stop, and the
+        // agent stays connected.
+        if status.as_ref().is_ok_and(|status| {
+            !matches!(status, SessionStatus::Running | SessionStatus::Cancelling)
+        }) {
+            return Ok(());
+        }
+        let running = status.is_ok_and(|status| status == SessionStatus::Running);
         let cancelling = (|| {
             let mut state = session
                 .state
@@ -2014,8 +2294,7 @@ impl AcpRuntime {
 
     pub async fn close_owner(self: &Arc<Self>, owner: &str) {
         if let Ok(mut epochs) = self.owner_epochs.lock() {
-            let epoch = epochs.entry(owner.into()).or_default();
-            *epoch = epoch.wrapping_add(1);
+            epochs.close(owner, Instant::now());
         }
         let ids: Vec<_> = self
             .live
@@ -2221,6 +2500,29 @@ impl AcpRuntime {
         Ok(())
     }
 
+    /// Stores the held text that is due, keeping back the end of it: a
+    /// secret still streaming in is never split between two stored events,
+    /// where neither part would match it.
+    pub(super) fn flush_due(
+        &self,
+        session: &LiveSession,
+        state: &mut LiveState,
+    ) -> Result<(), String> {
+        let keep = session.redactor.longest_secret().saturating_sub(1);
+        let due =
+            state
+                .coalescer
+                .take_due(keep, |text| session.redactor.text(text), Instant::now());
+        if let Some(update) = due {
+            let kind = update["sessionUpdate"]
+                .as_str()
+                .unwrap_or("agent_message_chunk")
+                .to_owned();
+            self.store_event(session, state, &kind, update)?;
+        }
+        Ok(())
+    }
+
     pub(super) fn store_event(
         &self,
         session: &LiveSession,
@@ -2229,21 +2531,16 @@ impl AcpRuntime {
         data: Value,
     ) -> Result<(), String> {
         // `turn_changes` is built by Oleafly from project paths; redacting it
-        // would mangle file names such as `sk-learn-results.csv`.
-        let data = if kind == "turn_changes" {
-            data
-        } else {
-            transcript::bound_event(session.redactor.value(&data))
+        // would mangle file names such as `sk-learn-results.csv`. A question
+        // (`elicitation`) is redacted field by field when it arrives: the
+        // generic pass would turn each field's `secret` flag into text and
+        // could cut its link.
+        let data = match kind {
+            "turn_changes" => data,
+            "elicitation" => transcript::bound_event(data),
+            _ => transcript::bound_event(session.redactor.value(&data)),
         };
-        // Usage updates repeat the session's counters many times a turn:
-        // they never count toward the transcript cap, so a long conversation
-        // is not ended by them.
-        let counted = kind != "usage";
-        let bytes = if counted {
-            serde_json::to_vec(&data).map_err(|e| e.to_string())?.len()
-        } else {
-            0
-        };
+        let bytes = serde_json::to_vec(&data).map_err(|e| e.to_string())?.len();
         if state.bytes + bytes > MAX_SESSION_BYTES
             && !matches!(
                 kind,
@@ -2439,7 +2736,9 @@ impl AcpRuntime {
                 .map_err(|_| "The ACP session is unavailable.")?;
             (state.record.clone(), state.skill_folder.clone())
         };
-        if record.remote.is_some() {
+        // A task agent is sandboxed: Oleafly reads outside the sandbox, so it
+        // never reads for one (and never offered to).
+        if record.remote.is_some() || session.task_temp.is_some() {
             return incoming
                 .reject(-32601, "This client capability is not available.")
                 .map_err(|e| e.to_string());
@@ -2461,32 +2760,42 @@ impl AcpRuntime {
         let spelled = launch_root_for(&root);
         let path = PathBuf::from(raw);
         let in_project = oleafly_acp::paths::path_within(&root, &spelled, &path);
-        let in_skill = !in_project
-            && skill_folder.as_deref().is_some_and(|folder| {
-                folder.canonicalize().is_ok_and(|canonical| {
+        // The folder the file must still be in when it is read.
+        let within = if in_project {
+            Some(root.clone())
+        } else {
+            skill_folder.as_deref().and_then(|folder| {
+                folder.canonicalize().ok().filter(|canonical| {
                     oleafly_acp::paths::path_within(
-                        &canonical,
+                        canonical,
                         &crate::program_locator::child_path(folder),
                         &path,
                     )
                 })
-            });
-        if !in_project && !in_skill {
+            })
+        };
+        let Some(within) = within else {
             return incoming
                 .reject(-32602, super::buffers::OUTSIDE)
                 .map_err(|e| e.to_string());
-        }
+        };
         let source = self.buffers.get().cloned();
-        let owner = session.owner.clone();
+        // Only a window has open editor text: a delegated helper's owner is
+        // a command owner, not a window, and asking it would only wait.
+        let owner = session
+            .owner
+            .clone()
+            .filter(|_| in_project && record.parent_session_id.is_none());
         let line = params["line"].as_u64();
         let limit = params["limit"].as_u64();
         tokio::spawn(async move {
             let roots = [root.as_path(), spelled.as_path()];
             let result = super::buffers::read_for_agent(
                 source.as_deref(),
-                if in_project { owner.as_deref() } else { None },
+                owner.as_deref(),
                 &record.project_id,
                 &roots,
+                &within,
                 &path,
                 line,
                 limit,
@@ -2511,7 +2820,7 @@ impl AcpRuntime {
         let params = &incoming.params().clone();
         let wire_id = incoming.wire_id();
         let record = self.copy_record(session)?;
-        let (remembered, skill_folder) = {
+        let (remembered, skill_folder, hidden) = {
             let state = session
                 .state
                 .lock()
@@ -2521,8 +2830,16 @@ impl AcpRuntime {
                     .as_str()
                     .and_then(|id| state.tool_calls.get(id).cloned()),
                 state.skill_folder.clone(),
+                state.hidden.is_some(),
             )
         };
+        // A plan-usage refresh only reads the agent's own report: nothing
+        // it would ask for is allowed, and nobody sees a card for it.
+        if hidden {
+            return incoming
+                .respond(json!({"outcome":{"outcome":"cancelled"}}))
+                .map_err(|e| e.to_string());
+        }
         let in_turn = (session.owner.is_some() || session.task_temp.is_some())
             && record.status == SessionStatus::Running
             && params["sessionId"].as_str() == record.native_session_id.as_deref();
@@ -2810,17 +3127,90 @@ impl AcpRuntime {
 }
 
 /// Whether the record changed apart from its counters since it was stored.
+/// The usage view's own time moves with every usage update, so it does not
+/// count either: an update that changed no number rewrites nothing.
 fn record_changed(state: &mut LiveState) -> bool {
     let Some(saved) = &state.saved else {
         return true;
     };
     let (updated_at, last_sequence) = (state.record.updated_at, state.record.last_sequence);
+    let usage_at = state.record.usage.as_ref().map(|usage| usage.updated_at);
     state.record.updated_at = saved.updated_at;
     state.record.last_sequence = saved.last_sequence;
+    if let (Some(usage), Some(saved)) = (state.record.usage.as_mut(), saved.usage.as_ref()) {
+        usage.updated_at = saved.updated_at;
+    }
     let same = *saved == state.record;
     state.record.updated_at = updated_at;
     state.record.last_sequence = last_sequence;
+    if let (Some(usage), Some(at)) = (state.record.usage.as_mut(), usage_at) {
+        usage.updated_at = at;
+    }
     !same
+}
+
+/// Where the task homes of an earlier run go at startup, before they are
+/// deleted (a name with a random suffix each start).
+const STALE_TASK_TEMP: &str = "task-temp-stale-";
+
+/// Deletes the task homes earlier runs left (one that could not be deleted
+/// last time is tried again).
+fn remove_stale_task_temp(acp_root: &Path) {
+    let Ok(entries) = std::fs::read_dir(acp_root) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        if entry
+            .file_name()
+            .to_str()
+            .is_some_and(|name| name.starts_with(STALE_TASK_TEMP))
+        {
+            let _ = std::fs::remove_dir_all(entry.path());
+        }
+    }
+}
+
+/// Whether the background helper runs (it holds its lock). `acp_root` is
+/// `<data>/acp`.
+fn helper_is_running(acp_root: &Path) -> bool {
+    acp_root.parent().is_some_and(|data| {
+        let lock = oleafly_cli::daemon::paths::helper_paths(data).lock;
+        // An unreadable lock counts as held: deleting a bridge the helper
+        // still runs is worse than keeping one a day longer.
+        oleafly_cli::daemon::lock::HelperLock::is_held_elsewhere(&lock).unwrap_or(true)
+    })
+}
+
+/// The startup cleanup: bridge versions an update replaced and the npm
+/// cache of an earlier build. While the background helper runs, its agents
+/// may still load files from an old version, so versions stay until a
+/// start without it (an install removes them too).
+fn startup_cleanup(acp_root: &Path, helper_running: bool) {
+    if !helper_running {
+        for definition in catalog::builtins() {
+            let keep = definition.version.clone();
+            catalog::cleanup_old_versions(acp_root, &definition, &keep);
+        }
+    }
+    // An earlier build kept every install's npm cache in one folder.
+    let _ = std::fs::remove_dir_all(acp_root.join("npm-cache"));
+}
+
+/// Why a saved conversation can't continue where the project's agent runs
+/// now: its agent session lives on the machine it was made on.
+fn moved_target(record: &SessionRecord, settings: &HermesSettings) -> Option<&'static str> {
+    let now = settings
+        .remote
+        .as_ref()
+        .filter(|_| settings.mode == HermesMode::Remote);
+    match (&record.remote, now) {
+        (Some(_), None) => Some("This conversation ran on another machine, and Hermes now runs on this computer. Start a new conversation to continue."),
+        (None, Some(_)) => Some("This conversation ran on this computer, and Hermes now runs on another machine. Start a new conversation to continue."),
+        (Some(before), Some(now)) if before.host != now.host || before.folder != now.folder => {
+            Some("This conversation ran on another machine than the one Hermes uses now. Start a new conversation to continue.")
+        }
+        _ => None,
+    }
 }
 
 pub(super) fn default_title(definition: &AgentDefinition) -> String {
@@ -3145,15 +3535,18 @@ pub(super) fn skill_read_allowed(folder: &Path, kind: Option<&str>, tool: &Value
     oleafly_acp::paths::skill_read_allowed(folder, &spelled, kind, tool)
 }
 
+/// The turn's token counters for the usage ledger, read as the session's
+/// usage view reads them (`usage` or `_meta.quota.token_count`, camel or
+/// snake case).
 pub fn prompt_usage(value: &Value) -> Option<UsageCounters> {
-    let usage = value.get("usage")?;
+    let usage = oleafly_acp::usage::TurnTokens::from_prompt_response(value)?;
     Some(UsageCounters {
-        input_tokens: usage["inputTokens"].as_u64(),
-        output_tokens: usage["outputTokens"].as_u64(),
-        cache_read_tokens: usage["cachedReadTokens"].as_u64(),
-        cache_write_tokens: usage["cachedWriteTokens"].as_u64(),
-        total_tokens: usage["totalTokens"].as_u64(),
-        thought_tokens: usage["thoughtTokens"].as_u64(),
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+        cache_read_tokens: usage.cached_read_tokens,
+        cache_write_tokens: usage.cached_write_tokens,
+        total_tokens: usage.total_tokens,
+        thought_tokens: usage.thought_tokens,
         source: "acp_prompt".into(),
         ..UsageCounters::default()
     })
@@ -3178,6 +3571,28 @@ fn take_adopted_home(record_id: &str) -> Option<PathBuf> {
         .lock()
         .ok()
         .and_then(|mut homes| homes.as_mut().and_then(|homes| homes.remove(record_id)))
+}
+
+/// Whether a handed-back agent home is one the helper made for this task:
+/// an `acp-home-<generation>` folder (not a link) next to the task's
+/// workspace `root`, in the task's own folder. Anything else (a damaged
+/// record) is never made the agent's home, which is later deleted.
+fn handoff_home_allowed(is_folder: bool, home: &Path, root: &Path) -> bool {
+    let named = home
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with("acp-home-"));
+    named && is_folder && home.parent().is_some() && home.parent() == root.parent()
+}
+
+/// Removes the sign-in files copied into a task agent's home; a start
+/// copies them fresh.
+async fn remove_sign_in_files(home: &Path, agent_id: &str) {
+    let mut stale: Vec<&str> = oleafly_cli::daemon::acp_task::credential_files(agent_id).to_vec();
+    stale.push(".gemini/settings.json");
+    for relative in stale {
+        let _ = tokio::fs::remove_file(home.join(relative)).await;
+    }
 }
 
 /// How long [`rename_with_retry`] keeps trying, and how often.
@@ -3213,8 +3628,42 @@ impl AcpRuntime {
     /// The sandboxed launch of `agent_id` for a research task, as data: the
     /// background helper rebuilds the agent's command from it (the sandbox
     /// clears the environment, so nothing of the helper's leaks in). `home`
-    /// is the agent's home for the task.
+    /// is the agent's home for the task; the agent's sign-in files are
+    /// copied into it.
     pub(crate) async fn task_launch(
+        &self,
+        agent_id: &str,
+        project_id: &str,
+        task_id: &str,
+        execution_root: &Path,
+        allowed_paths: &[String],
+        home: &Path,
+    ) -> Result<oleafly_research::handoff::AcpLaunch, String> {
+        let launch = self
+            .task_launch_without_sign_in(
+                agent_id,
+                project_id,
+                task_id,
+                execution_root,
+                allowed_paths,
+                home,
+            )
+            .await?;
+        drop(super::task_launch::prepare_credentials(
+            &crate::paths::home_dir()?,
+            home,
+            agent_id,
+            &[],
+        )?);
+        Ok(launch)
+    }
+
+    /// [`Self::task_launch`] for a task the helper starts later (a queued
+    /// one): its home gets no copy of the sign-in files, which would sit
+    /// there until then. The helper copies them when it starts the task, to
+    /// the paths [`super::task_launch::prepare_credentials`] uses. Copies an
+    /// earlier generation left are removed.
+    pub(crate) async fn task_launch_without_sign_in(
         &self,
         agent_id: &str,
         project_id: &str,
@@ -3232,23 +3681,12 @@ impl AcpRuntime {
             return Err("Remote Hermes cannot run research tasks.".into());
         }
         let root = canonical_root(execution_root)?;
-        // The agent's sign-in files, copied fresh into its home (its own
-        // session history there stays).
+        // The agent's home: its own session history there stays, sign-in
+        // copies are removed (a start copies them fresh).
         tokio::fs::create_dir_all(home)
             .await
             .map_err(|_| "The agent's home could not be made.")?;
-        let mut stale: Vec<&str> =
-            oleafly_cli::daemon::acp_task::credential_files(&definition.id).to_vec();
-        stale.push(".gemini/settings.json");
-        for relative in stale {
-            let _ = tokio::fs::remove_file(home.join(relative)).await;
-        }
-        drop(super::task_launch::prepare_credentials(
-            &crate::paths::home_dir()?,
-            home,
-            &definition.id,
-            &[],
-        )?);
+        remove_sign_in_files(home, &definition.id).await;
         let record = SessionRecord {
             project_id: project_id.into(),
             project_path: root.to_string_lossy().into_owned(),
@@ -3333,19 +3771,22 @@ impl AcpRuntime {
                 tokio::time::sleep(Duration::from_millis(50)).await;
             }
         }
-        if let Some(parent) = destination.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .map_err(|_| "The task's folder for the agent home could not be made.")?;
+        // A home kept from the last generation is already where it goes.
+        if home != destination {
+            if let Some(parent) = destination.parent() {
+                tokio::fs::create_dir_all(parent)
+                    .await
+                    .map_err(|_| "The task's folder for the agent home could not be made.")?;
+            }
+            let _ = tokio::fs::remove_dir_all(destination).await;
+            let (from, to) = (home.clone(), destination.to_path_buf());
+            tokio::task::spawn_blocking(move || {
+                rename_with_retry(&from, &to, &|from, to| std::fs::rename(from, to))
+            })
+            .await
+            .map_err(|_| "The agent home could not be moved.")?
+            .map_err(|error| format!("The agent home could not be moved: {error}"))?;
         }
-        let _ = tokio::fs::remove_dir_all(destination).await;
-        let (from, to) = (home.clone(), destination.to_path_buf());
-        tokio::task::spawn_blocking(move || {
-            rename_with_retry(&from, &to, &|from, to| std::fs::rename(from, to))
-        })
-        .await
-        .map_err(|_| "The agent home could not be moved.")?
-        .map_err(|error| format!("The agent home could not be moved: {error}"))?;
         if let Ok(mut state) = session.state.lock() {
             state.record.status = SessionStatus::Disconnected;
             let _ = self.emit_locked(
@@ -3383,15 +3824,19 @@ impl AcpRuntime {
         }
         let home = canonical_root(&handoff.home)?;
         let root = canonical_root(&options.project_path)?;
+        // The folder itself, not a link to one.
+        let is_folder = tokio::fs::symlink_metadata(&handoff.home)
+            .await
+            .is_ok_and(|metadata| metadata.is_dir());
+        if !handoff_home_allowed(is_folder, &home, &root) {
+            return Err(
+                "The agent's home from the background helper is not in this task's folder.".into(),
+            );
+        }
         let definition = self.definition(&options.agent_id)?;
         // The sign-in files are copied again: the user may have signed in
         // anew since the handoff.
-        let mut stale: Vec<&str> =
-            oleafly_cli::daemon::acp_task::credential_files(&definition.id).to_vec();
-        stale.push(".gemini/settings.json");
-        for relative in stale {
-            let _ = tokio::fs::remove_file(home.join(relative)).await;
-        }
+        remove_sign_in_files(&home, &definition.id).await;
         let time = now_ms();
         let record = SessionRecord {
             id: new_id(),
@@ -3464,6 +3909,93 @@ mod handoff_tests {
         })
         .is_err());
         assert_eq!(stuck.get(), 5);
+    }
+
+    #[test]
+    fn a_start_is_refused_only_when_its_owner_closed_after_it_began() {
+        use super::OwnerEpochs;
+        use std::time::{Duration, Instant};
+        let now = Instant::now();
+        let mut epochs = OwnerEpochs::default();
+        let ticket = epochs.ticket();
+        epochs.close("research-task:a", now);
+        assert!(!epochs.is_current("research-task:a", ticket));
+        assert!(epochs.is_current("window", ticket));
+        assert!(epochs.is_current("research-task:a", epochs.ticket()));
+        // Owners closed long ago are forgotten; a start that old is refused
+        // whatever its owner, a newer one is not.
+        let later = now + Duration::from_secs(11 * 60);
+        let recent = epochs.ticket();
+        for index in 0..1000 {
+            epochs.close(&format!("external:{index}"), now);
+        }
+        epochs.close("research-task:b", later);
+        assert_eq!(epochs.closed.len(), 1);
+        assert!(!epochs.is_current("research-task:a", ticket));
+        assert!(!epochs.is_current("external:5", recent));
+        assert!(epochs.is_current("external:5", epochs.ticket()));
+        assert!(epochs.is_current("window", epochs.ticket()));
+    }
+
+    #[test]
+    fn old_bridge_versions_stay_while_the_background_helper_runs() {
+        let data = tempfile::tempdir().unwrap();
+        let acp = data.path().join("acp");
+        let definition = super::catalog::builtins().remove(0);
+        let old = acp.join("agents").join(&definition.id).join("0.0.1");
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(old.join("receipt.json"), "{}").unwrap();
+        let lock = oleafly_cli::daemon::lock::HelperLock::acquire(
+            &oleafly_cli::daemon::paths::helper_paths(data.path()).lock,
+            std::time::Duration::ZERO,
+        )
+        .unwrap()
+        .expect("the test holds the helper lock");
+        assert!(super::helper_is_running(&acp));
+        super::startup_cleanup(&acp, super::helper_is_running(&acp));
+        assert!(old.is_dir(), "kept while the helper runs");
+        drop(lock);
+        assert!(!super::helper_is_running(&acp));
+        super::startup_cleanup(&acp, super::helper_is_running(&acp));
+        assert!(!old.exists(), "removed at a start without the helper");
+    }
+
+    #[test]
+    fn a_usage_update_that_changed_no_number_rewrites_no_record() {
+        use super::{record_changed, LiveState};
+        use crate::acp::{SessionRecord, SessionUsage};
+        let record = SessionRecord {
+            usage: Some(SessionUsage {
+                context_used: Some(10),
+                updated_at: 1,
+                ..SessionUsage::default()
+            }),
+            ..SessionRecord::default()
+        };
+        let mut state = LiveState {
+            record: record.clone(),
+            saved: Some(record),
+            permissions: Default::default(),
+            elicitations: Default::default(),
+            replaying: false,
+            cancelled: false,
+            bytes: 0,
+            tool_calls: Default::default(),
+            skill_folder: None,
+            hidden: None,
+            hidden_tools: false,
+            coalescer: Default::default(),
+            flush_timer: false,
+            compactions: Default::default(),
+            default_title: false,
+            early: Vec::new(),
+            turn_closed: false,
+        };
+        state.record.usage.as_mut().unwrap().updated_at = 2;
+        assert!(!record_changed(&mut state));
+        assert_eq!(state.record.usage.as_ref().unwrap().updated_at, 2);
+        state.record.usage.as_mut().unwrap().context_used = Some(11);
+        assert!(record_changed(&mut state));
     }
 
     /// The helper refreshes an agent's sign-in files by the same list the

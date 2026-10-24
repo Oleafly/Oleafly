@@ -99,11 +99,15 @@
       "title": "Aplicativos de desktop",
       "action": "{{agent}} quer {{action}}.",
       "steps": "{{agent}} quer executar estas etapas em um aplicativo de desktop:",
-      "moreSteps": "Etapas não exibidas: {{count}}",
-      "moreItems": "{{count}} itens a mais não exibidos",
-      "cut": "(+{{count}} caracteres não exibidos)",
+      "moreSteps": "Etapas não exibidas e não executadas: {{count}}",
+      "moreItems": "Itens não exibidos: {{count}}",
+      "cut": "(caracteres não exibidos: {{count}})",
       "signedIn": "Isso acontece no seu próprio navegador conectado.",
       "signedInOn": "Isso acontece no seu próprio navegador conectado, em {{origin}}.",
+      "task": "Tarefa: {{title}}",
+      "app": "Aplicativo: {{name}}",
+      "window": "Janela: {{title}}",
+      "element": "Elemento: {{element}}",
       "text": "Texto: \"{{text}}\"",
       "address": "Endereço: {{url}}",
       "allowOnce": "Permitir uma vez",
@@ -111,6 +115,7 @@
       "allowSession": "Permitir nesta sessão",
       "allowTask": "Permitir nesta tarefa",
       "deny": "Não permitir",
+      "pickedFile": "o arquivo que você escolheu",
       "actions": {
         "launchApp": "abrir um aplicativo",
         "click": "clicar em um aplicativo",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Permitir o controle do desktop?",
-      "message": "Os agentes poderão usar o seguinte, e ainda vão perguntar antes de cada ação:",
+      "message": "Os agentes poderão usar o seguinte. Eles perguntam antes de cada ação, e salvar isto limpa todas as escolhas de \"Permitir nesta conversa\":",
       "confirm": "Permitir",
       "enabled": "Aplicativos de desktop",
-      "app": "Aplicativo: {{name}} ({{identity}})",
+      "app": "Aplicativo: {{identity}} ({{name}})",
       "more": "E mais {{count}}",
       "site": "Site: {{origin}}",
       "signedIn": "Seu navegador conectado em {{origin}}",
-      "scripted": "Scripts do Cua"
+      "scripted": "Scripts do Cua",
+      "spacesTitle": "Dar mais acesso ao Cua Spaces?",
+      "spacesMessage": "Os agentes que usam o Cua Spaces poderão:",
+      "spacesChanges": "Criar e excluir Spaces e executar comandos neles",
+      "spacesSignIns": "Usar seu login do Claude Code ou do Codex dentro de um Space"
     }
   },
   "errors": {

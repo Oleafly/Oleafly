@@ -99,11 +99,15 @@
       "title": "Aplicații desktop",
       "action": "{{agent}} vrea să {{action}}.",
       "steps": "{{agent}} vrea să facă acești pași într-o aplicație desktop:",
-      "moreSteps": "Pași neafișați: {{count}}",
-      "moreItems": "Încă {{count}} elemente neafișate",
-      "cut": "(+{{count}} caractere neafișate)",
+      "moreSteps": "Pași neafișați și neexecutați: {{count}}",
+      "moreItems": "Elemente neafișate: {{count}}",
+      "cut": "(caractere neafișate: {{count}})",
       "signedIn": "Acțiunea are loc în propriul tău browser autentificat.",
       "signedInOn": "Acțiunea are loc în propriul tău browser autentificat, pe {{origin}}.",
+      "task": "Sarcină: {{title}}",
+      "app": "Aplicație: {{name}}",
+      "window": "Fereastră: {{title}}",
+      "element": "Element: {{element}}",
       "text": "Text: „{{text}}”",
       "address": "Adresă: {{url}}",
       "allowOnce": "Permite o dată",
@@ -111,6 +115,7 @@
       "allowSession": "Permite pentru această sesiune",
       "allowTask": "Permite pentru această sarcină",
       "deny": "Nu permite",
+      "pickedFile": "fișierul ales de tine",
       "actions": {
         "launchApp": "deschidă o aplicație",
         "click": "dea clic într-o aplicație",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Permiți controlul desktopului?",
-      "message": "Agenții vor putea folosi următoarele și vor cere în continuare voie înainte de fiecare acțiune:",
+      "message": "Agenții vor putea folosi următoarele. Cer voie înainte de fiecare acțiune, iar salvarea șterge toate alegerile „Permite pentru această conversație”:",
       "confirm": "Permite",
       "enabled": "Aplicații desktop",
-      "app": "Aplicație: {{name}} ({{identity}})",
+      "app": "Aplicație: {{identity}} ({{name}})",
       "more": "Și încă {{count}}",
       "site": "Site: {{origin}}",
       "signedIn": "Browserul tău autentificat pe {{origin}}",
-      "scripted": "Scripturi Cua"
+      "scripted": "Scripturi Cua",
+      "spacesTitle": "Dai Cua Spaces mai mult acces?",
+      "spacesMessage": "Agenții care folosesc Cua Spaces vor putea:",
+      "spacesChanges": "Să creeze și să șteargă Space-uri și să ruleze comenzi în ele",
+      "spacesSignIns": "Să folosească într-un Space autentificarea ta Claude Code sau Codex"
     }
   },
   "errors": {

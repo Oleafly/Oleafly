@@ -204,7 +204,8 @@
       "createTask": "Skapa uppgift",
       "replaceText": "Vill du ersätta titeln och instruktionerna du skrev med det här upplägget?",
       "keepText": "Behåll mina",
-      "replaceConfirm": "Ersätt"
+      "replaceConfirm": "Ersätt",
+      "cannotSave": "Rätta alternativen som är markerade ovan och försök igen."
     },
     "starter": {
       "literatureReview": {
@@ -306,16 +307,36 @@
         "budgetCost": "Stoppades vid kostnadsgränsen.",
         "budgetRuns": "Stoppades vid gränsen för körningar."
       },
-      "startsAt": "Startar {{time}}"
+      "startsAt": "Startar {{time}}",
+      "olderActivity": "Tidigare aktivitet från den här körningen visas inte.",
+      "tooLargeToDiff": "Filen är för stor för att jämföras här, så bara storlekarna visas."
+    },
+    "confirm": {
+      "stopTitle": "Vill du stoppa den här uppgiften?",
+      "stopDescription": "\"{{title}}\" stoppas efter sitt nuvarande steg. Med Återuppta kan du fortsätta senare från dess arbetsyta.",
+      "cancelTitle": "Vill du avbryta den här uppgiften?",
+      "cancelDescription": "\"{{title}}\" körs inte. Du kan försöka igen senare.",
+      "cancelTask": "Avbryt uppgiften",
+      "discardTitle": "Vill du slänga de här ändringarna?",
+      "discardDescription": "Inga av ändringarna från \"{{title}}\" når ditt projekt, och uppgiften markeras som avbruten. Med Återuppta körs agenten igen.",
+      "keepTask": "Behåll uppgiften",
+      "keepChanges": "Behåll ändringarna",
+      "dependents_one": "Den här uppgiften väntar på den och misslyckas också:",
+      "dependents_other": "De här {{count}} uppgifterna väntar på den och misslyckas också:",
+      "runs_one": "Den här körningen stoppas också:",
+      "runs_other": "De här {{count}} körningarna stoppas också:"
     },
     "plan": {
       "title": "Plan",
       "description": "Läs planen och redigera den om du vill. Godkänn den så att uppgiften kan fortsätta.",
       "approve": "Godkänn planen",
       "approveEdited": "Godkänn den redigerade planen",
-      "discard": "Släng uppgiften",
+      "discard": "Avbryt uppgiften",
       "loading": "Läser in planen…",
-      "missing": "Planfilen saknas. Kör uppgiften igen."
+      "missing": "Planfilen saknas. Kör uppgiften igen.",
+      "loadFailed": "Oleafly kunde inte läsa in planen.",
+      "truncated": "Den här planen är längre än 64 KiB, så bara början visas. Korta ned den till de steg du vill ha och godkänn den sedan.",
+      "tooLong": "En plan kan vara högst 64 KiB. Korta ned den innan du godkänner den."
     },
     "approvals": {
       "title": "Väntar på ditt godkännande",
@@ -364,6 +385,9 @@
       "runsUsed": "{{used}} av {{limit}} körningar",
       "runsUsedNoLimit": "{{used}} körningar",
       "stopRun": "Stoppa körningen",
+      "stopRunTitle": "Vill du stoppa den här körningen?",
+      "stopRunDescription": "\"{{name}}\" ({{run}}) stoppas nu. Ett jobb som den kör på en annan maskin eller i ett kluster avbryts också där.",
+      "keepRun": "Fortsätt köra",
       "viewLog": "Visa loggen",
       "columns": {
         "run": "Körning",
@@ -867,6 +891,7 @@
     "progressCancelled": "Avbruten",
     "progressReadingPages": "Läser sidor",
     "progressTranscribingPage": "Transkriberar sida {{page}} av {{total}} med {{model}}",
+    "progressTranscribingPdfPage": "Transkriberar sida {{pdfPage}} ({{page}} av {{total}}) med {{model}}",
     "progressDocumentStructure": "Konverterar dokumentets struktur",
     "progressMermaid": "Renderar Mermaid-diagrammet",
     "progressFirstSheet": "Läser det första bladet",
@@ -910,7 +935,9 @@
     "progressConvertingSource": "Konverterar källkoden till Typst",
     "pageRange": "Sidor",
     "pageRangePlaceholder": "Alla sidor, eller ett intervall som 1-50",
-    "pageRangeInvalid": "Ange ett sidnummer eller ett intervall som 1-50."
+    "pageRangeInvalid": "Ange ett sidnummer eller ett intervall som 1-50.",
+    "pageCount_one": "Den här PDF:en har {{count}} sida.",
+    "pageCount_other": "Den här PDF:en har {{count}} sidor."
   },
   "converters": {
     "imageToLatex": {
@@ -1119,10 +1146,14 @@
     "arxivInputRequired": "Ange ett arXiv-ID eller välj ett källarkiv.",
     "equationToTypst": "Pandoc kunde inte konvertera ekvationen till Typst. Kontrollera LaTeX-matematiken och försök igen.",
     "pdfTooManyPages": "Den här skanningen har {{pages}} sidor, och Oleafly transkriberar upp till {{limit}} åt gången. Ange ett sidintervall som 1-{{limit}} under filen.",
-    "outputLimit": "Modellen fick slut på utrymme innan den blev klar, så transkriptionen skulle bli ofullständig. Välj en modell med högre gräns för utdata under Inställningar, AI-assistent, Verktyg, eller transkribera en mindre del."
+    "outputLimit": "Modellen fick slut på utrymme innan den blev klar, så transkriptionen skulle bli ofullständig. Välj en modell med högre gräns för utdata under Inställningar, AI-assistent, Verktyg, eller transkribera en mindre del.",
+    "refused": "Modellen vägrade transkribera det här, så inget lades till. Välj en annan modell under Inställningar, AI-assistent, Verktyg.",
+    "pageRangePastEnd_one": "Den här PDF:en har {{count}} sida. Ange 1 eller lämna Sidor tomt.",
+    "pageRangePastEnd_other": "Den här PDF:en har {{count}} sidor. Ange ett intervall från 1 till {{count}}."
   },
   "converterNotes": {
-    "scannedPages": "Transkriberade {{pages}} inskannade sidor med {{model}}. Granska ekvationer och tabeller innan du använder resultatet.",
+    "scannedPages_one": "Transkriberade {{count}} inskannad sida med {{model}}. Granska ekvationer och tabeller innan du använder resultatet.",
+    "scannedPages_other": "Transkriberade {{count}} inskannade sidor med {{model}}. Granska ekvationer och tabeller innan du använder resultatet.",
     "extracted": "Extraherade {{pages}} sidor och {{figures}} figurer lokalt.",
     "mermaidTikz": "Konverterade det här flödesschemat till redigerbar TikZ.",
     "mermaidRendered": "Renderade det här diagrammet lokalt eftersom dess Mermaid-syntax inte går att översätta rent till redigerbar TikZ.",
@@ -1149,6 +1180,9 @@
     "scansSentToHost": "Inskannade sidor skickas till Ollama på {{host}}",
     "pdfSentToMathpix": "Hela PDF:en skickas till Mathpix",
     "transcribingHosted": "Skickar bilden till {{provider}}…",
+    "transcribingFallback": "Skickar bilden till {{provider}} (assistentmodell)…",
+    "sentFallback": "Skickad till {{provider}} (assistentmodell)",
+    "editorFallback": "Bild till LaTeX i redigeraren skickar bilder till {{provider}} tills Ollama har en bildmodell",
     "progressUploading": "Skickar PDF:en till Mathpix",
     "progressFormatting": "Konverterar transkriptionen med Pandoc",
     "scannedTitle": "Den här PDF:en ser inskannad ut",
@@ -1158,15 +1192,23 @@
     "estimateCost_other": "{{count}} sidor. Cirka {{cost}} med {{model}}.",
     "estimateUnknown_one": "{{count}} sida. {{provider}} debiterar den efter användning.",
     "estimateUnknown_other": "{{count}} sidor. {{provider}} debiterar dem efter användning.",
+    "estimatePlan_one": "{{count}} sida. Den ingår i ditt abonnemang hos {{provider}}.",
+    "estimatePlan_other": "{{count}} sidor. De ingår i ditt abonnemang hos {{provider}}.",
+    "estimateLocal_one": "{{count}} sida. Modellen körs på den här datorn utan kostnad.",
+    "estimateLocal_other": "{{count}} sidor. Modellen körs på den här datorn utan kostnad.",
+    "estimateFree_one": "{{count}} sida. Gratis med {{model}}.",
+    "estimateFree_other": "{{count}} sidor. Gratis med {{model}}.",
     "transcribePages_one": "Transkribera {{count}} sida",
     "transcribePages_other": "Transkribera {{count}} sidor",
     "transcribedWith": "Transkriberad med {{model}}. Granska ekvationer och tabeller.",
     "sentBadge": "Skickad till {{provider}}",
     "openToolsSettings": "Inställningar för Verktyg",
+    "openProviderSettings": "Leverantörsinställningar",
     "errors": {
       "offline": "Oleafly är i offlineläge. Välj en lokal modell, eller stäng av offlineläget.",
       "providerNotConfigured": "{{provider}} har ingen API-nyckel. Lägg till en i Inställningar, eller välj en annan modell.",
       "modelDisabled": "{{model}} är avstängd i Inställningar. Slå på den, eller välj en annan modell.",
+      "modelUnavailable": "{{model}} är inte längre tillgänglig hos {{provider}}. Välj en annan modell.",
       "cannotSeeImages": "{{model}} kan inte läsa bilder. Välj en bildmodell.",
       "localModelGone": "{{model}} finns inte längre i Ollama. Hämta den igen, eller välj en annan modell.",
       "imagesOnly": "{{model}} läser bara bilder. Välj en språkmodell för att konvertera inskrivna ekvationer.",
@@ -1764,6 +1806,8 @@
     "keepRunningHint": "Slå först på Bakgrundsuppgifter under Inställningar, Forskning.",
     "invalidMetric": "Använd bokstäver, siffror, punkter, bindestreck eller understreck.",
     "invalidCost": "Ange ett belopp större än noll.",
+    "invalidCostMax": "Ange ett belopp på högst {{max}}.",
+    "invalidCostNumber": "Ange beloppet som ett tal, till exempel {{example}}.",
     "invalidRuns": "Ange ett heltal från 1 till 1 000.",
     "invalidStart": "Välj en starttid inom de kommande 30 dagarna.",
     "invalidStartFormat": "Använd formatet {{example}}.",
@@ -1786,6 +1830,9 @@
     "hint": "De här kontrollerna varnar bara. De hindrar dig inte från att tillämpa.",
     "running": "Kontrollerar…",
     "refresh": "Kontrollera igen",
+    "empty": "Inga kontroller har körts på det här resultatet än.",
+    "more_one": "{{count}} till visas inte i listan.",
+    "more_other": "{{count}} till visas inte i listan.",
     "status": {
       "pass": "Godkänd",
       "warn": "Kontrollera detta",
@@ -1893,7 +1940,8 @@
         "time": "Använd en Slurm-tid som 2:00:00.",
         "name": "Använd bokstäver, siffror, punkter, kommatecken, bindestreck eller understreck.",
         "mem": "Använd ett helt antal gigabyte, till exempel 16.",
-        "count": "Använd ett heltal inom det tillåtna intervallet."
+        "count": "Använd ett heltal inom det tillåtna intervallet.",
+        "prelude": "Håll de förberedande kommandona på 4 KB eller mindre. Bokstäver med accenter och icke-latinska skriftsystem tar mer plats."
       }
     },
     "test": {
@@ -1970,7 +2018,7 @@
       "movingBackHint": "Uppgiften återvänder till Oleafly när det nuvarande steget är klart."
     },
     "earlierActivity": "Visa tidigare aktivitet",
-    "earlierTruncated": "Bara de första {{limit}} objekten från den tidigare körningen visas.",
+    "earlierTruncated": "Bara de sista {{limit}} objekten från den tidigare körningen visas.",
     "keepRunningFailed": "Det gick inte att ändra den här inställningen. Försök igen."
   }
 }

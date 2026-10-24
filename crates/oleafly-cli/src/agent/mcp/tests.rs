@@ -167,6 +167,73 @@ async fn ask_keeps_only_read_only_tools() {
     assert_eq!(tools, ["echo"]);
 }
 
+fn run_policy(mode: WriteMode) -> RunPolicy {
+    RunPolicy {
+        allow: AllowSet {
+            write: mode != WriteMode::ReadOnly,
+            commands: true,
+            network: true,
+        },
+        mode,
+        question: false,
+    }
+}
+
+#[tokio::test]
+async fn a_run_outside_apply_gets_only_read_only_tools() {
+    let fixture = mcp_fixture::start(Mode::Json);
+    let work = tempfile::tempdir().unwrap();
+    for (mode, expected) in [
+        (WriteMode::ReadOnly, vec!["echo"]),
+        (
+            WriteMode::Review {
+                dir: work.path().join("review"),
+            },
+            vec!["echo"],
+        ),
+        (WriteMode::Apply, vec!["echo", "write_note"]),
+    ] {
+        let (hub, _) = McpHub::connect_for_run(
+            &[remote("papers", &fixture.url(), &[])],
+            &run_policy(mode.clone()),
+            &McpSelection::All,
+            &[],
+            work.path(),
+            &token(),
+        )
+        .await;
+        let tools: Vec<&str> = hub.tools().iter().map(|tool| tool.tool.as_str()).collect();
+        assert_eq!(tools, expected, "{mode:?}");
+    }
+}
+
+#[tokio::test]
+async fn a_runs_stdio_servers_start_in_its_working_folder() {
+    let directory = tempfile::tempdir().unwrap();
+    let exe = fixture_exe(directory.path());
+    let work = tempfile::tempdir().unwrap();
+    let (hub, warnings) = McpHub::connect_for_run(
+        &[stdio("fixture", &exe, &[])],
+        &run_policy(WriteMode::Apply),
+        &McpSelection::All,
+        &[],
+        work.path(),
+        &token(),
+    )
+    .await;
+    assert!(warnings.is_empty(), "{warnings:?}");
+    let echo = hub.tools().iter().find(|tool| tool.tool == "echo").unwrap();
+    let cwd = hub
+        .call(&echo.agent_name, json!({"text": "<cwd>"}), &token())
+        .await
+        .unwrap();
+    assert_eq!(
+        std::fs::canonicalize(cwd).unwrap(),
+        std::fs::canonicalize(work.path()).unwrap()
+    );
+    hub.shutdown().await;
+}
+
 #[tokio::test]
 async fn a_failing_server_never_shows_its_env_values() {
     let (_, warnings) = McpHub::connect(

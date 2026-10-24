@@ -7,7 +7,10 @@ const mocks = vi.hoisted(() => ({
   ensurePandoc: vi.fn(),
   mathpixText: vi.fn(),
   mathpixPdf: vi.fn(),
-  pdfPageToPng: vi.fn(),
+  renderPages: vi.fn(),
+  /** The pages renderPages drew, and how many times it closed its document. */
+  rendered: [] as number[],
+  closed: 0,
   downscaleImage: vi.fn(),
   resolveToolsModel: vi.fn(),
 }));
@@ -24,7 +27,7 @@ vi.mock("@/lib/mathpix", () => ({
   mathpixPdf: mocks.mathpixPdf,
   mathpixKeyStatus: vi.fn(),
 }));
-vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: mocks.pdfPageToPng }));
+vi.mock("@/lib/pdf-image", () => ({ renderPages: mocks.renderPages }));
 vi.mock("./image-downscale", () => ({ downscaleImage: mocks.downscaleImage }));
 vi.mock("./tools-model", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./tools-model")>()),
@@ -94,7 +97,18 @@ beforeEach(() => {
   mocks.ensurePandoc.mockResolvedValue(true);
   mocks.convertAdHoc.mockResolvedValue({ text: "converted\n" });
   mocks.downscaleImage.mockResolvedValue(JPEG);
-  mocks.pdfPageToPng.mockResolvedValue("data:image/png;base64,iVBORw0KGgo=");
+  mocks.rendered = [];
+  mocks.closed = 0;
+  mocks.renderPages.mockImplementation(async function* (_bytes: Uint8Array, pages: readonly number[]) {
+    try {
+      for (const page of pages) {
+        mocks.rendered.push(page);
+        yield "data:image/png;base64,iVBORw0KGgo=";
+      }
+    } finally {
+      mocks.closed += 1;
+    }
+  });
   mocks.resolveToolsModel.mockResolvedValue(llm());
 });
 
@@ -216,7 +230,7 @@ describe("image transcription", () => {
       transcribeImage(mathpix, PNG, { target: "LaTeX", mode: "image", fragment: true }),
     ).resolves.toBe("\\[\nx\n\\]");
     expect(mocks.downscaleImage).toHaveBeenCalledWith(PNG, IMAGE_BUDGETS.mathpix);
-    expect(mocks.mathpixText).toHaveBeenCalledWith("/9j/4A==", "image/jpeg");
+    expect(mocks.mathpixText).toHaveBeenCalledWith("/9j/4A==", "image/jpeg", { signal: undefined });
     await expect(
       transcribeImage(mathpix, PNG, { target: "Typst", mode: "image", fragment: true }),
     ).resolves.toBe("$ x $");
@@ -259,6 +273,33 @@ describe("image transcription", () => {
     ]);
   });
 
+  it("hands Mathpix the signal, so a cancel stops the billed request", async () => {
+    const controller = new AbortController();
+    mocks.mathpixText.mockImplementation(async () => {
+      controller.abort();
+      return { text: "x", latexStyled: "x", confidence: 0.9 };
+    });
+    await expect(
+      transcribeImage(mathpix, PNG, { target: "LaTeX", mode: "image", fragment: true, signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(mocks.mathpixText).toHaveBeenCalledWith("/9j/4A==", "image/jpeg", { signal: controller.signal });
+  });
+
+  it("fails a refused or filtered reply instead of inserting it", async () => {
+    for (const stop of ["refusal", "content_filter", "safety"]) {
+      mocks.completeViaBackend.mockResolvedValue({ text: "I can't help with that.", stop_reason: stop });
+      await expect(
+        transcribeImage(claude, PNG, { target: "LaTeX", mode: "image", fragment: true }),
+      ).rejects.toMatchObject({ name: "ToolsModelError", message: researchTools.converterErrors.refused });
+    }
+    mocks.completeViaBackend.mockClear();
+    mocks.completeViaBackend.mockResolvedValue({ text: "half a page", stop_reason: "content_filter" });
+    await expect(transcribePdfPages(new Uint8Array([1]), [1, 2], "Markdown")).rejects.toThrow(
+      researchTools.converterErrors.refused,
+    );
+    expect(mocks.completeViaBackend).toHaveBeenCalledOnce();
+  });
+
   it("treats an empty reply as an error", async () => {
     mocks.completeViaBackend.mockResolvedValue({ text: "```latex\n\n```" });
     const empty = transcribeImage(llm(), PNG, { target: "LaTeX", mode: "image", fragment: true });
@@ -285,7 +326,7 @@ describe("scanned PDF transcription", () => {
     await expect(transcribePdfPages(bytes, tooMany, "LaTeX")).rejects.toThrow(
       researchTools.converterErrors.pdfPageLimit,
     );
-    expect(mocks.pdfPageToPng).not.toHaveBeenCalled();
+    expect(mocks.renderPages).not.toHaveBeenCalled();
     expect(mocks.resolveToolsModel).not.toHaveBeenCalled();
   });
 
@@ -302,7 +343,8 @@ describe("scanned PDF transcription", () => {
     });
     expect(result).toEqual({ text: "converted", model: { label: "deepseek-ocr", sentTo: null } });
     expect(progress).toHaveBeenLastCalledWith({ step: "formattingTranscription", model: "deepseek-ocr" });
-    expect(mocks.pdfPageToPng).toHaveBeenCalledWith(bytes, 2, 1.6, "#ffffff");
+    expect(mocks.renderPages).toHaveBeenCalledWith(bytes, [1, 2], 1.6, "#ffffff");
+    expect(mocks.rendered).toEqual([1, 2]);
   });
 
   it("keeps the generic per-page LaTeX wrapper and page breaks for other models", async () => {
@@ -318,7 +360,10 @@ describe("scanned PDF transcription", () => {
     mocks.resolveToolsModel.mockResolvedValue(mathpix);
     mocks.mathpixPdf.mockImplementation(
       async (_bytes: Uint8Array, options: { onProgress?: (progress: unknown) => void }) => {
+        options.onProgress?.({ status: "loaded", pagesDone: 0, pagesTotal: 0 });
+        options.onProgress?.({ status: "split", pagesDone: 0, pagesTotal: 3 });
         options.onProgress?.({ status: "split", pagesDone: 1, pagesTotal: 3 });
+        options.onProgress?.({ status: "completed", pagesDone: 3, pagesTotal: 3 });
         return "P1\n\\pagebreak\nP2";
       },
     );
@@ -328,7 +373,10 @@ describe("scanned PDF transcription", () => {
     expect(mocks.mathpixPdf).toHaveBeenCalledWith(bytes, expect.objectContaining({ pageRanges: "3-5" }));
     expect(progress.mock.calls.map(([event]) => event)).toEqual([
       { step: "uploadingPdf", model: "Mathpix" },
-      { step: "transcribingPage", page: 1, total: 3, model: "Mathpix" },
+      // Mathpix counts finished pages: the page it reads is the next one.
+      { step: "transcribingPage", page: 1, total: 3, pdfPage: 3, model: "Mathpix" },
+      { step: "transcribingPage", page: 2, total: 3, pdfPage: 4, model: "Mathpix" },
+      { step: "transcribingPage", page: 3, total: 3, pdfPage: 5, model: "Mathpix" },
       { step: "formattingTranscription", model: "Mathpix" },
     ]);
     expect(mocks.convertAdHoc).toHaveBeenCalledWith({
@@ -336,7 +384,7 @@ describe("scanned PDF transcription", () => {
       target: "latex",
       text: "P1\n\n```{=latex}\n\\newpage\n```\n\nP2",
     });
-    expect(mocks.pdfPageToPng).not.toHaveBeenCalled();
+    expect(mocks.renderPages).not.toHaveBeenCalled();
     expect(result.model).toEqual({ label: "Mathpix", sentTo: "Mathpix" });
   });
 
@@ -361,9 +409,32 @@ describe("scanned PDF transcription", () => {
     await expect(
       transcribePdfPages(bytes, [4, 5], "Markdown", progress, controller.signal),
     ).rejects.toMatchObject({ name: "AbortError" });
-    expect(progress).toHaveBeenCalledWith({ step: "transcribingPage", page: 1, total: 2, model: "llava" });
-    expect(mocks.pdfPageToPng).toHaveBeenCalledOnce();
-    expect(mocks.pdfPageToPng).toHaveBeenCalledWith(bytes, 4, 1.6, "#ffffff");
+    expect(progress).toHaveBeenCalledWith({ step: "transcribingPage", page: 1, total: 2, pdfPage: 4, model: "llava" });
+    expect(mocks.rendered).toEqual([4]);
+    // The document is closed even though the run stopped part-way.
+    expect(mocks.closed).toBe(1);
+  });
+
+  it("loads the PDF once for every page and closes it when done or failed", async () => {
+    await transcribePdfPages(bytes, [2, 3, 4], "Markdown");
+    expect(mocks.renderPages).toHaveBeenCalledOnce();
+    expect(mocks.renderPages).toHaveBeenCalledWith(bytes, [2, 3, 4], 1.6, "#ffffff");
+    expect(mocks.rendered).toEqual([2, 3, 4]);
+    expect(mocks.closed).toBe(1);
+
+    mocks.completeViaBackend.mockRejectedValueOnce(new Error("provider down"));
+    await expect(transcribePdfPages(bytes, [1, 2], "Markdown")).rejects.toThrow("provider down");
+    expect(mocks.rendered).toEqual([2, 3, 4, 1]);
+    expect(mocks.closed).toBe(2);
+  });
+
+  it("names the PDF page next to its place in the run", async () => {
+    const progress = vi.fn();
+    await transcribePdfPages(bytes, [41, 42], "Markdown", progress);
+    expect(progress.mock.calls.map(([event]) => event).filter((event) => event.step === "transcribingPage")).toEqual([
+      { step: "transcribingPage", page: 1, total: 2, pdfPage: 41, model: "llava" },
+      { step: "transcribingPage", page: 2, total: 2, pdfPage: 42, model: "llava" },
+    ]);
   });
 
   it("returns the model label and where the pages went", async () => {

@@ -50,8 +50,7 @@ import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
 import { CodeBlock } from "@/components/ui/code-block";
 
-const AcpAgentChoices = lazy(() => import("./acp/AcpAgentChoices"));
-const AcpProvidersSection = lazy(() => import("./acp/AcpProvidersSection"));
+const AcpAgentPreferenceSections = lazy(() => import("./acp/AcpAgentPreferenceSections"));
 const AcpExperimentalSection = lazy(() => import("./acp/AcpExperimentalSection"));
 const HermesSection = lazy(() => import("./acp/HermesSection"));
 
@@ -451,8 +450,7 @@ function AgentCard({
           )}
           <div className="space-y-4 border-t border-border/70 pt-4">
             <Suspense fallback={null}>
-              <AcpAgentChoices agentId={id} />
-              {agent.runtime?.providers && <AcpProvidersSection agentId={id} />}
+              <AcpAgentPreferenceSections agentId={id} providers={Boolean(agent.runtime?.providers)} />
               {id === "hermes" && projectId && <HermesSection projectId={projectId} />}
             </Suspense>
           </div>

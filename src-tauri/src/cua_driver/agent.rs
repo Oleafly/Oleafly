@@ -118,6 +118,7 @@ pub(crate) async fn agent_tool(
         project_id: project_id.map(str::to_string),
         agent_label: run.agent_label.clone(),
         surface: Surface::Chat,
+        task_title: None,
     };
     let outcome = call_desktop_apps(&state, &scope, arguments).await;
     oleafly_agent::ToolOutput {

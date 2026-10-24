@@ -334,7 +334,14 @@ export interface TaskTranscriptEvent {
 export interface TaskTranscriptPage {
   events: TaskTranscriptEvent[];
   nextSequence: number | null;
+  /** A page read backwards: older rows come before this sequence (pass it as the next `beforeSequence`). */
+  previousSequence?: number | null;
+  /** The generation this one resumed; `null` for a fresh start, where the chain of runs ends. */
+  resumedFrom?: number | null;
 }
+
+/** A `beforeSequence` above every row: the page holds the newest rows. */
+export const NEWEST_EVENTS = Number.MAX_SAFE_INTEGER;
 
 export interface TaskApplyResult {
   task: ResearchTask;
@@ -420,6 +427,20 @@ export const loadResearchTaskEvents = (
     limit,
   });
 
+/** The `limit` rows just before `beforeSequence`, oldest first (`NEWEST_EVENTS` reads the newest page). */
+export const loadResearchTaskEventsBefore = (
+  taskId: string,
+  executionGeneration: number,
+  beforeSequence: number,
+  limit = 100,
+) =>
+  invoke<TaskTranscriptPage>("research_task_events", {
+    taskId,
+    executionGeneration,
+    beforeSequence,
+    limit,
+  });
+
 export const previewResearchTaskFile = (taskId: string, path: string) =>
   invoke<TaskFilePreview>("research_task_file_preview", { taskId, path });
 
@@ -457,8 +478,20 @@ export const listenForResearchTaskDeltas = (
 export const watchResearchTask = (taskId: string | null) =>
   invoke<void>("research_task_watch", { taskId });
 
+/** A plan-first task's plan as the review shows it; `truncated` when the file is longer (64 KiB). */
+export interface TaskPlanText {
+  text: string;
+  truncated: boolean;
+}
+
+/** The plan most a review can show, in UTF-8 bytes, as the backend counts it. */
+export const MAX_PLAN_BYTES = 64 * 1024;
+
 export const loadResearchTaskPlan = (taskId: string) =>
-  invoke<string>("research_task_plan", { taskId });
+  invoke<TaskPlanText | string>("research_task_plan", { taskId }).then(
+    // An older backend sends the text alone.
+    (plan): TaskPlanText => (typeof plan === "string" ? { text: plan, truncated: false } : plan),
+  );
 
 /** Approves the plan, replacing it first when `editedPlan` is given. */
 export const approveResearchTaskPlan = (taskId: string, editedPlan?: string) =>

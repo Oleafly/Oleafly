@@ -26,14 +26,18 @@ pub(crate) struct DesktopAppsTaskBridge {
 
 impl DesktopAppsTaskBridge {
     /// `inner` plus desktop apps, or `inner` alone when they aren't ready.
+    /// `title` names the task in its dialogs.
     pub(crate) async fn wrap(
         inner: Arc<dyn TaskBridge>,
         task_id: &str,
         generation: u64,
         project_id: &str,
+        title: &str,
     ) -> Result<Arc<dyn TaskBridge>, String> {
         match global() {
-            Some(state) => Self::wrap_with(inner, state, task_id, generation, project_id).await,
+            Some(state) => {
+                Self::wrap_with(inner, state, task_id, generation, project_id, title).await
+            }
             None => Ok(inner),
         }
     }
@@ -44,16 +48,30 @@ impl DesktopAppsTaskBridge {
         task_id: &str,
         generation: u64,
         project_id: &str,
+        title: &str,
     ) -> Result<Arc<dyn TaskBridge>, String> {
         if !ready(&state.settings()) || project_denied(&state, Some(project_id)) {
             return Ok(inner);
         }
+        let title: String = title
+            .chars()
+            .filter(|character| !super::config::is_format_char(*character))
+            .map(|character| {
+                if character.is_control() {
+                    ' '
+                } else {
+                    character
+                }
+            })
+            .collect();
+        let title = title.split_whitespace().collect::<Vec<_>>().join(" ");
         let scope = CuaScope {
             grant_key: format!("task:{task_id}"),
             session_key: format!("task:{task_id}:{generation}"),
             project_id: Some(project_id.to_string()),
             agent_label: "Research task".into(),
             surface: Surface::Task,
+            task_title: (!title.is_empty()).then(|| super::policy::bounded(&title, 120)),
         };
         let cua = CuaBridge::start_with(scope, state.clone()).await?;
         Ok(Arc::new(Self { inner, cua, state }))

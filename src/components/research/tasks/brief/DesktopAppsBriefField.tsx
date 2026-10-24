@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { QueryClientContext, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,8 @@ interface DesktopAppsBriefFieldProps {
   /** The task starts on a schedule or keeps running after Oleafly closes. */
   unattended: boolean;
   onCheckedChange: (checked: boolean) => void;
+  /** Opens Settings; the composer closes first, since Settings can't open inside it. */
+  onOpenSettings?: (open: () => void) => void;
 }
 
 /** The brief's "Desktop apps" permission. */
@@ -39,7 +41,7 @@ export function DesktopAppsBriefField(props: Readonly<DesktopAppsBriefFieldProps
   // Without the app's query client (tests, windows that don't load it) the
   // connector's status is unknown, so the permission stays off.
   const client = useContext(QueryClientContext);
-  return client ? <WithStatus {...props} /> : <DesktopAppsCheckbox {...props} ready={false} />;
+  return client ? <WithStatus {...props} /> : <DesktopAppsCheckbox {...props} ready={false} known={false} />;
 }
 
 function WithStatus(props: Readonly<DesktopAppsBriefFieldProps>) {
@@ -49,7 +51,8 @@ function WithStatus(props: Readonly<DesktopAppsBriefFieldProps>) {
   const loaded = useQuery({ queryKey: DESKTOP_APPS_STATUS_KEY, queryFn: cuaDriverStatus, enabled: false });
   const spec = useDesktopAppsToolReady(loaded.data === undefined);
   const ready = loaded.data === undefined ? spec.data === true : desktopAppsReady(loaded.data);
-  return <DesktopAppsCheckbox {...props} ready={ready} />;
+  const known = loaded.data !== undefined || spec.data !== undefined;
+  return <DesktopAppsCheckbox {...props} ready={ready} known={known} />;
 }
 
 function DesktopAppsCheckbox({
@@ -58,10 +61,18 @@ function DesktopAppsCheckbox({
   disabled,
   unattended,
   onCheckedChange,
+  onOpenSettings,
   ready,
-}: Readonly<DesktopAppsBriefFieldProps & { ready: boolean }>) {
+  known,
+}: Readonly<DesktopAppsBriefFieldProps & { ready: boolean; known: boolean }>) {
   const { t } = useTranslation(["settings", "researchTools"]);
   const blocked = !ready || unattended;
+  // A box shown unchecked must not save as on: a task that can't use desktop
+  // apps gives the permission up (once the connector's state is known).
+  const drop = checked && (unattended || (known && !ready));
+  useEffect(() => {
+    if (drop) onCheckedChange(false);
+  }, [drop, onCheckedChange]);
   let hint = t(($) => $.settings.integrations.desktopApps.task.description);
   if (unattended) {
     hint = t(($) => $.settings.integrations.desktopApps.task.unattended);
@@ -89,7 +100,7 @@ function DesktopAppsCheckbox({
           variant="link"
           className="justify-start px-0"
           data-testid="research-brief-desktop-apps-settings"
-          onClick={openDesktopAppsSettings}
+          onClick={() => (onOpenSettings ? onOpenSettings(openDesktopAppsSettings) : openDesktopAppsSettings())}
         >
           {t(($) => $.researchTools.compute.brief.openSettings)}
         </Button>

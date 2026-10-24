@@ -31,7 +31,9 @@ import {
   listResearchTasks,
   loadResearchAttention,
   loadResearchTaskEvents,
+  loadResearchTaskEventsBefore,
   loadResearchTaskPlan,
+  NEWEST_EVENTS,
   normalizeTask,
   previewResearchTaskArtifact,
   previewResearchTaskFile,
@@ -384,11 +386,37 @@ describe("research task commands", () => {
     expect(native.invoke).toHaveBeenCalledWith("research_task_watch", { taskId });
   });
 
-  it("loads a task's plan", async () => {
+  it("loads a task's plan and whether the review shows all of it", async () => {
+    native.invoke.mockResolvedValueOnce({ text: "- [ ] Measure the baseline", truncated: true });
+
+    await expect(loadResearchTaskPlan("t1")).resolves.toEqual({ text: "- [ ] Measure the baseline", truncated: true });
+    expect(native.invoke).toHaveBeenCalledWith("research_task_plan", { taskId: "t1" });
+  });
+
+  it("reads the plan text an older backend sends alone as the whole plan", async () => {
     native.invoke.mockResolvedValueOnce("- [ ] Measure the baseline");
 
-    await expect(loadResearchTaskPlan("t1")).resolves.toBe("- [ ] Measure the baseline");
-    expect(native.invoke).toHaveBeenCalledWith("research_task_plan", { taskId: "t1" });
+    await expect(loadResearchTaskPlan("t1")).resolves.toEqual({ text: "- [ ] Measure the baseline", truncated: false });
+  });
+
+  it("loads the newest transcript page, or the page before a row", async () => {
+    native.invoke.mockResolvedValue({ events: [], nextSequence: null, previousSequence: null, resumedFrom: null });
+
+    await loadResearchTaskEventsBefore("t1", 2, NEWEST_EVENTS);
+    await loadResearchTaskEventsBefore("t1", 1, 40, 200);
+
+    expect(native.invoke).toHaveBeenNthCalledWith(1, "research_task_events", {
+      taskId: "t1",
+      executionGeneration: 2,
+      beforeSequence: Number.MAX_SAFE_INTEGER,
+      limit: 100,
+    });
+    expect(native.invoke).toHaveBeenNthCalledWith(2, "research_task_events", {
+      taskId: "t1",
+      executionGeneration: 1,
+      beforeSequence: 40,
+      limit: 200,
+    });
   });
 
   it("approves the plan as written", async () => {

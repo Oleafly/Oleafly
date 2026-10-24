@@ -602,6 +602,7 @@
       "sendNow": "지금 보내기",
       "sendFailed": "이 메시지를 보내지 못했습니다. 다시 보내거나 삭제하세요.",
       "queuedConnecting": "대기 중: 에이전트가 준비되면 전송",
+      "queuedSignIn": "대기 중: 로그인하면 전송",
       "retry": "다시 보내기",
       "edit": "편집"
     },

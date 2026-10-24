@@ -11,6 +11,8 @@ struct Route {
     content_type: &'static str,
     body: Vec<u8>,
     location: Option<String>,
+    /// How long the site waits before it answers.
+    delay: Duration,
 }
 
 fn route(status: &'static str, content_type: &'static str, body: impl Into<Vec<u8>>) -> Route {
@@ -19,7 +21,12 @@ fn route(status: &'static str, content_type: &'static str, body: impl Into<Vec<u
         content_type,
         body: body.into(),
         location: None,
+        delay: Duration::ZERO,
     }
+}
+
+fn slow(route: Route, delay: Duration) -> Route {
+    Route { delay, ..route }
 }
 
 fn redirect(status: &'static str, location: impl Into<String>) -> Route {
@@ -71,6 +78,7 @@ fn site(routes: Vec<(&'static str, Route)>) -> Site {
                 .get(path.as_str())
                 .cloned()
                 .unwrap_or_else(|| route("404 Not Found", "text/plain", "missing"));
+            std::thread::sleep(reply.delay);
             let location = reply
                 .location
                 .as_deref()
@@ -318,6 +326,222 @@ async fn the_runner_records_urls_from_other_tools() {
     .await;
     let output = runner(fetch_call(&url, None)).await;
     assert!(output.output.contains("page body"), "{}", output.output);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_url_the_model_wrote_into_another_tool_is_not_fetched() {
+    let site = site(vec![("/c", route("200 OK", "text/plain", "stolen"))]);
+    let url = format!("{}/c?d=bWFpbi50ZXg", site.base);
+    let ctx = Arc::new(WebToolContext::for_tests(None));
+    // read_file fails naming the path it was given; a note tool hands its
+    // text back.
+    let inner: ToolRunner = Arc::new(|call: ToolCall| {
+        Box::pin(async move {
+            let args: Value = serde_json::from_str(&call.arguments).unwrap();
+            match call.name.as_str() {
+                "read_file" => ToolOutput::text(
+                    json!({ "error": format!("failed to read {}: No such file", args["path"].as_str().unwrap()) })
+                        .to_string(),
+                ),
+                _ => ToolOutput::text(format!("Saved: {}", args["text"].as_str().unwrap())),
+            }
+        })
+    });
+    let runner = web_tool_runner(ctx, inner);
+    let call = |id: &str, name: &str, arguments: Value| ToolCall {
+        id: id.into(),
+        name: name.into(),
+        arguments: arguments.to_string(),
+        ..Default::default()
+    };
+    runner(call("1", "read_file", json!({ "path": url }))).await;
+    runner(call(
+        "2",
+        "remember_note",
+        json!({ "text": format!("visit {url}/") }),
+    ))
+    .await;
+    for attempt in [url.clone(), format!("{url}/")] {
+        let output = runner(fetch_call(&attempt, None)).await;
+        assert!(
+            output
+                .output
+                .contains("has not appeared in this conversation"),
+            "{}",
+            output.output
+        );
+    }
+    assert_eq!(site.hits.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn a_saved_history_cannot_make_the_models_own_urls_seen() {
+    let ctx = WebToolContext::for_tests(None);
+    let written = "https://evil.example/c?d=c2VjcmV0";
+    ctx.observe_messages(&[
+        Message::user("Fix the bibliography. Sources: https://arxiv.org/abs/2401.00001"),
+        Message {
+            role: Role::Assistant,
+            content: vec![ContentPart::ToolUse {
+                id: "1".into(),
+                name: "update_todos".into(),
+                arguments: json!({ "todos": [written] }).to_string(),
+                thought_signature: None,
+            }],
+        },
+        Message {
+            role: Role::User,
+            content: vec![ContentPart::tool_result(
+                "1",
+                "update_todos",
+                json!({ "todos": [written], "found": "https://doi.org/10.1/x" }).to_string(),
+            )],
+        },
+    ]);
+    let provenance = ctx.provenance();
+    assert!(!provenance.contains(written));
+    assert!(provenance.contains("https://arxiv.org/abs/2401.00001"));
+    assert!(provenance.contains("https://doi.org/10.1/x"));
+}
+
+#[test]
+fn hosted_search_results_become_fetchable_for_the_whole_run() {
+    let ctx = WebToolContext::for_tests(None);
+    let outcome = |output: Value| crate::event::AgentEvent::ToolOutcome {
+        id: "srvtoolu_1".into(),
+        output: output.to_string(),
+    };
+    ctx.observe_event(&outcome(
+        json!({ "results": [{ "title": "P", "url": "https://arxiv.org/abs/1" }] }),
+    ));
+    ctx.observe_event(&outcome(
+        json!({ "sources": [{ "url": "https://e.org/2" }] }),
+    ));
+    // Only result lists are read, never other text, and never an error.
+    ctx.observe_event(&outcome(json!({ "note": "https://evil.example/n" })));
+    ctx.observe_event(&outcome(
+        json!({ "error": "x", "results": [{ "url": "https://evil.example/e" }] }),
+    ));
+    ctx.observe_messages(&[Message {
+        role: Role::Assistant,
+        content: vec![ContentPart::ProviderBlock {
+            wire: crate::message::ProviderWire::Anthropic,
+            block: json!({
+                "type": "web_search_tool_result",
+                "tool_use_id": "srvtoolu_2",
+                "content": [{ "type": "web_search_result", "url": "https://history.example/3", "title": "T", "encrypted_content": "x" }]
+            }),
+        }],
+    }]);
+    let provenance = ctx.provenance();
+    for seen in [
+        "https://arxiv.org/abs/1",
+        "https://e.org/2",
+        "https://history.example/3",
+    ] {
+        assert!(provenance.contains(seen), "{seen}");
+    }
+    assert!(!provenance.contains("https://evil.example/n"));
+    assert!(!provenance.contains("https://evil.example/e"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_chat_is_not_told_to_use_a_tool_it_lacks_for_a_pdf() {
+    let site = site(vec![(
+        "/paper.pdf",
+        route("200 OK", "application/pdf", "%PDF-1.7"),
+    )]);
+    let url = format!("{}/paper.pdf", site.base);
+    let ctx = WebToolContext::for_tests(None);
+    ctx.observe_text(&url);
+    let output = run_web_tool(&ctx, &fetch_call(&url, None)).await.unwrap();
+    assert!(output.output.contains("This is a PDF"), "{}", output.output);
+    assert!(!output.output.contains("read_paper"), "{}", output.output);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn text_that_decoding_grows_past_the_cap_is_marked_truncated() {
+    // 4 MB of Cyrillic in windows-1251 is 8 MB of UTF-8.
+    let site = site(vec![(
+        "/ru",
+        route(
+            "200 OK",
+            "text/plain; charset=windows-1251",
+            vec![0xE0u8; 4 * 1024 * 1024],
+        ),
+    )]);
+    let page = web_fetch(
+        &WebClient::for_tests(),
+        &format!("{}/ru", site.base),
+        &options(),
+    )
+    .await
+    .unwrap();
+    assert!(page.truncated);
+    assert!(page.markdown.len() <= MAX_FETCH_BYTES);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_slow_robots_txt_counts_against_the_fetch_timeout() {
+    let site = site(vec![
+        (
+            "/robots.txt",
+            slow(route("200 OK", "text/plain", ""), Duration::from_secs(3)),
+        ),
+        ("/p", route("200 OK", "text/plain", "page")),
+    ]);
+    let opts = WebFetchOptions {
+        timeout: Duration::from_millis(500),
+        ..options()
+    };
+    let started = Instant::now();
+    let error = web_fetch(&WebClient::for_tests(), &format!("{}/p", site.base), &opts)
+        .await
+        .unwrap_err();
+    assert_eq!(error, WebError::Timeout);
+    assert!(started.elapsed() < Duration::from_secs(2));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_page_that_takes_too_long_to_convert_is_read_as_plain_text() {
+    let page = format!(
+        "<html><body><h1>Title</h1>{}</body></html>",
+        "<p>word</p>".repeat(100_000)
+    );
+    let extracted = extract_html(
+        page.clone(),
+        Url::parse("https://site.org/").unwrap(),
+        Duration::ZERO,
+    )
+    .await;
+    assert_eq!(extracted.markdown, html::flatten(&page).markdown);
+    assert!(extracted.markdown.starts_with("Title"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_deeply_nested_page_is_fetched_as_text_without_crashing() {
+    let depth = 50_000;
+    let body = format!(
+        "{}leaf{}",
+        "<ul><li>".repeat(depth),
+        "</li></ul>".repeat(depth)
+    );
+    let site = site(vec![(
+        "/deep",
+        route(
+            "200 OK",
+            "text/html",
+            format!("<html><body>{body}</body></html>"),
+        ),
+    )]);
+    let page = web_fetch(
+        &WebClient::for_tests(),
+        &format!("{}/deep", site.base),
+        &options(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(page.markdown, "leaf");
 }
 
 #[tokio::test]

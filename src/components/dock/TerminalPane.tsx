@@ -27,7 +27,13 @@ import {
 import { terminalPlatform } from "@/lib/terminal-keys";
 import { parseOsc52 } from "@/lib/terminal-osc52";
 import { windowsPtyOption } from "@/lib/terminal-platform";
-import { shellCommandLine, type TerminalCommand, type TerminalShellKind } from "@/lib/terminal-quote";
+import {
+  shellCommandLine,
+  withoutEscapes,
+  type TerminalCommand,
+  type TerminalShellKind,
+} from "@/lib/terminal-quote";
+import { toast } from "@/lib/toast";
 import { registerTerminalSession } from "@/lib/terminal-sessions";
 import { isAllowListedTerminalShortcut } from "@/lib/terminal-shortcut-guard";
 import {
@@ -41,7 +47,7 @@ import { createTerminalLinkHandler, createTerminalLinkProvider } from "./termina
 import { TerminalLinkTooltip, type TerminalLinkTip } from "./TerminalLinkTooltip";
 import { attachTerminalKeys } from "./terminal-input";
 import { copyTerminalText } from "./terminal-clipboard";
-import { canDropOnTerminal, readTerminalDrop, terminalDropText } from "./terminal-drop";
+import { canDropOnTerminal, readTerminalDrop, refusedDropPaths, terminalDropText } from "./terminal-drop";
 import type { TerminalSearch } from "./TerminalFindBar";
 import { Spinner } from "@/components/ui/spinner";
 import "@xterm/xterm/css/xterm.css";
@@ -196,6 +202,7 @@ export function TerminalPane({
   const shellKindRef = useRef<TerminalShellKind>("posix");
   const shellIdRef = useRef<TerminalShellId | null>(null);
   const shellNameRef = useRef<string | null>(null);
+  const rootRef = useRef<string | null>(null);
   const resizerRef = useRef<ReturnType<typeof createTerminalResizer> | null>(null);
   const surfacedErrorsRef = useRef(new Set<string>());
   const outputWrittenRef = useRef<(() => void) | undefined>(undefined);
@@ -433,6 +440,16 @@ export function TerminalPane({
       }
     };
     host.addEventListener("mouseup", copyOnSelect);
+    // A clipboard paste holding ESC goes in without it, before xterm's own
+    // paste handler sees the event, so it can't end bracketed paste early.
+    const pasteWithoutEscapes = (event: ClipboardEvent) => {
+      const text = event.clipboardData?.getData("text/plain");
+      if (!text?.includes("\x1b")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      terminal.paste(withoutEscapes(text));
+    };
+    host.addEventListener("paste", pasteWithoutEscapes, true);
 
     let sessionId: string | null = null;
     let sessionLive = false;
@@ -538,7 +555,13 @@ export function TerminalPane({
         cols: openedCols,
         rows: openedRows,
         autostart: !visibleRef.current && !autoStartRef.current,
-        options: { cwd: cwdRef.current, env: envRef.current, shell },
+        options: {
+          cwd: cwdRef.current,
+          env: envRef.current,
+          shell,
+          // Rust keeps the start folder out of a launch session's program lookup on Windows.
+          ...(launchRef.current ? { launch: true } : {}),
+        },
         channel,
       })
       .then((session) => {
@@ -555,6 +578,7 @@ export function TerminalPane({
         shellKindRef.current = session.shell;
         shellIdRef.current = session.shellId;
         shellNameRef.current = session.shellName ?? null;
+        rootRef.current = session.root ?? null;
         if (tabIdRef.current) unregisterSession = registerTerminalSession(tabIdRef.current, projectId, id);
         acks.ready();
         resizer = createTerminalResizer(
@@ -650,6 +674,7 @@ export function TerminalPane({
       bellSub.dispose();
       titleSub.dispose();
       host.removeEventListener("mouseup", copyOnSelect);
+      host.removeEventListener("paste", pasteWithoutEscapes, true);
       releaseSelectAll();
       linkProvider.dispose();
       hideLinkTip();
@@ -802,7 +827,13 @@ export function TerminalPane({
         const drop = readTerminalDrop(event.dataTransfer, platformRef.current);
         const terminal = terminalRef.current;
         if (!drop || !terminal) return;
-        terminal.paste(terminalDropText(drop, shellKindRef.current, platformRef.current, cwdRef.current ?? ""));
+        const refused = refusedDropPaths(drop).length;
+        if (refused > 0) {
+          toast.error(i18n.t(($) => $.workspace.terminal.dropRefused, { count: refused }));
+        }
+        const root = rootRef.current ? { path: rootRef.current, wsl: shellIdRef.current === "wsl" } : undefined;
+        const text = terminalDropText(drop, shellKindRef.current, platformRef.current, cwdRef.current ?? "", root);
+        if (text) terminal.paste(withoutEscapes(text));
         terminal.focus();
       }}
       style={{

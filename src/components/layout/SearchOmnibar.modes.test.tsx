@@ -207,6 +207,23 @@ describe("SearchOmnibar modes", () => {
     vi.useRealTimers();
   });
 
+  it("opens nothing in the current project when the switch to the hit's project is declined", async () => {
+    mocks.searchDocs.mockResolvedValue([{ ...HIT, project_id: "beta", project_name: "Beta survey" }]);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(<SearchOmnibar />);
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await user.type(screen.getByPlaceholderText(omnibar.placeholder), "/docs transformer");
+    await vi.advanceTimersByTimeAsync(250);
+    await user.click(await screen.findByText("intro.tex"));
+
+    // openProject resolves with "alpha" still open, as after Cancel on the stop prompt.
+    await waitFor(() => expect(mocks.openProject).toHaveBeenCalledWith("beta"));
+    await vi.advanceTimersByTimeAsync(200);
+    expect(mocks.openFile).not.toHaveBeenCalled();
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it("survives a document search that fails", async () => {
     mocks.searchDocs.mockRejectedValue(new Error("index down"));
     vi.useFakeTimers({ shouldAdvanceTime: true });

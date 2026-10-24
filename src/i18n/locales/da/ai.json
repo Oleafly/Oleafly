@@ -613,6 +613,7 @@
       "sendNow": "Send nu",
       "sendFailed": "Beskeden blev ikke sendt. Send den igen, eller fjern den.",
       "queuedConnecting": "I kø: sendes, når agenten er klar",
+      "queuedSignIn": "I kø: sendes, når du har logget ind",
       "retry": "Send igen",
       "edit": "Rediger"
     },

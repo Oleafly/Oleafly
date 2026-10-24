@@ -14,6 +14,7 @@ vi.mock("@/lib/acp", async (original) => ({
   acpSetPreferences: vi.fn(),
   acpAgentPreferences: vi.fn(),
   acpSetAgentPreferences: vi.fn(),
+  acpSetAgentPreference: vi.fn(),
   acpProviderChoices: vi.fn(),
   acpHermesSettings: vi.fn(),
   acpSetHermesSettings: vi.fn(),
@@ -24,14 +25,24 @@ vi.mock("@/lib/acp", async (original) => ({
 
 import {
   acpAgentPreferences, acpHermesSetOption, acpHermesSettings, acpHermesStatus, acpPreferences, acpProviderChoices,
-  acpSetAgentPreferences, acpSetHermesSettings, acpSetPreferences, acpTestRemoteHermes,
-  type AcpHermesSettings, type AcpHermesStatus, type AcpPreferences,
+  acpSetAgentPreference, acpSetAgentPreferences, acpSetHermesSettings, acpSetPreferences, acpTestRemoteHermes,
+  type AcpAgentPreferences, type AcpHermesSettings, type AcpHermesStatus, type AcpPreferences,
 } from "@/lib/acp";
 import { chooseOption } from "@/components/ai/acp/tests/ui-fixtures";
-import { AcpAgentChoices } from "./AcpAgentChoices";
+import { AcpAgentPreferenceSections } from "./AcpAgentPreferenceSections";
 import { AcpExperimentalSection } from "./AcpExperimentalSection";
-import { AcpProvidersSection } from "./AcpProvidersSection";
 import { HermesSection, remoteIssues, remoteProblem } from "./HermesSection";
+
+/** An agent's remembered choices kept the way Rust keeps them: each save changes one slot. */
+function storeAgentPreferences(initial: AcpAgentPreferences) {
+  let stored = initial;
+  vi.mocked(acpAgentPreferences).mockImplementation(async () => stored);
+  vi.mocked(acpSetAgentPreference).mockImplementation(async (_agent, slot, value) => {
+    stored = { ...stored, [slot]: value } as AcpAgentPreferences;
+    return stored;
+  });
+  return () => stored;
+}
 
 const prefs = (overrides: Partial<AcpPreferences> = {}): AcpPreferences => ({
   experimentalV2: false, experimentalProviders: false, inactivityMinutes: 20, ...overrides,
@@ -90,6 +101,14 @@ describe("Experimental agent settings", () => {
     expect(screen.getByTestId("acp-inactivity")).toHaveTextContent("45 minutes");
   });
 
+  it("names a saved one-minute limit in the singular", async () => {
+    vi.mocked(acpPreferences).mockResolvedValue(prefs({ inactivityMinutes: 1 }));
+    await openExperimental();
+    const trigger = screen.getByTestId("acp-inactivity");
+    expect(trigger).toHaveTextContent("1 minute");
+    expect(trigger).not.toHaveTextContent("1 minutes");
+  });
+
   it("shows why the settings could not be read or saved, and puts the switch back", async () => {
     vi.mocked(acpPreferences).mockRejectedValueOnce(new Error("Settings are locked."));
     render(<AcpExperimentalSection />);
@@ -122,89 +141,179 @@ describe("Experimental agent settings", () => {
     expect(screen.getByRole("switch", { name: "Use ACP v2 when available" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("switch", { name: "Let agents use my Oleafly API keys" })).toHaveAttribute("aria-checked", "true");
   });
+
+  it("keeps a newer switch when the answer to an earlier save arrives late", async () => {
+    vi.mocked(acpPreferences).mockResolvedValue(prefs());
+    let answerFirst: (value: AcpPreferences) => void = () => {};
+    vi.mocked(acpSetPreferences)
+      .mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve; }))
+      .mockImplementation(async (value) => value);
+    await openExperimental();
+    fireEvent.click(screen.getByRole("switch", { name: "Use ACP v2 when available" }));
+    await waitFor(() => expect(acpSetPreferences).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("switch", { name: "Let agents use my Oleafly API keys" }));
+    await waitFor(() => expect(acpSetPreferences).toHaveBeenCalledTimes(2));
+    answerFirst(prefs({ experimentalV2: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByRole("switch", { name: "Use ACP v2 when available" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("switch", { name: "Let agents use my Oleafly API keys" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("shows the stored values after two saves in a row fail", async () => {
+    vi.mocked(acpPreferences).mockResolvedValue(prefs());
+    const failures: ((error: Error) => void)[] = [];
+    vi.mocked(acpSetPreferences).mockImplementation(() => new Promise((_resolve, reject) => { failures.push(reject); }));
+    await openExperimental();
+    fireEvent.click(screen.getByRole("switch", { name: "Use ACP v2 when available" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Let agents use my Oleafly API keys" }));
+    await waitFor(() => expect(failures).toHaveLength(2));
+    failures[0](new Error("Disk full."));
+    failures[1](new Error("Disk full."));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Disk full.");
+    await waitFor(() => expect(acpPreferences).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: "Use ACP v2 when available" })).toHaveAttribute("aria-checked", "false"),
+    );
+    expect(screen.getByRole("switch", { name: "Let agents use my Oleafly API keys" })).toHaveAttribute("aria-checked", "false");
+  });
 });
 
 describe("Remembered agent choices", () => {
   it("forgets a remembered effort", async () => {
     const remembered = { effort: { value: "high", name: "High" }, mode: { value: "plan", name: "Plan" }, provider: null };
-    vi.mocked(acpAgentPreferences).mockResolvedValue(remembered);
-    vi.mocked(acpSetAgentPreferences).mockImplementation(async (_agent, value) => value);
-    render(<AcpAgentChoices agentId="claude" />);
+    storeAgentPreferences(remembered);
+    render(<AcpAgentPreferenceSections agentId="claude" providers={false} />);
     expect(await screen.findByText("Effort: High")).toBeInTheDocument();
     expect(screen.getByText("Mode: Plan")).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Forget" })[0]);
-    await waitFor(() => expect(acpSetAgentPreferences).toHaveBeenCalledWith("claude", { ...remembered, effort: null }));
+    await waitFor(() => expect(acpSetAgentPreference).toHaveBeenCalledWith("claude", "effort", null));
     await waitFor(() => expect(screen.queryByText("Effort: High")).toBeNull());
     fireEvent.click(screen.getByRole("button", { name: "Forget" }));
+    await waitFor(() => expect(acpSetAgentPreference).toHaveBeenLastCalledWith("claude", "mode", null));
     await waitFor(() => expect(screen.getByText("New conversations use the agent's defaults.")).toBeInTheDocument());
+    expect(acpSetAgentPreferences).not.toHaveBeenCalled();
   });
 
   it("reports a failure to read or forget a choice", async () => {
     vi.mocked(acpAgentPreferences).mockRejectedValueOnce(new Error("No such agent."));
-    render(<AcpAgentChoices agentId="ghost" />);
+    render(<AcpAgentPreferenceSections agentId="ghost" providers={false} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("No such agent.");
     cleanup();
     vi.mocked(acpAgentPreferences).mockResolvedValue({ effort: null, mode: { value: "plan", name: "Plan" }, provider: null });
-    vi.mocked(acpSetAgentPreferences).mockRejectedValue(new Error("Could not save."));
-    render(<AcpAgentChoices agentId="claude" />);
+    vi.mocked(acpSetAgentPreference).mockRejectedValue(new Error("Could not save."));
+    render(<AcpAgentPreferenceSections agentId="claude" providers={false} />);
     fireEvent.click(await screen.findByRole("button", { name: "Forget" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not save.");
     expect(screen.getByText("Mode: Plan")).toBeInTheDocument();
   });
 });
 
+describe("One agent card's remembered choices and key routing", () => {
+  const high = { value: "high", name: "High" };
+
+  beforeEach(() => {
+    vi.mocked(acpPreferences).mockResolvedValue(prefs({ experimentalProviders: true }));
+    vi.mocked(acpProviderChoices).mockResolvedValue([{ id: "openai", label: "OpenAI", apiType: "openai" }]);
+  });
+
+  it("keeps the chosen key when the effort is forgotten afterwards", async () => {
+    const stored = storeAgentPreferences({ effort: high, mode: null, provider: null });
+    render(<AcpAgentPreferenceSections agentId="claude" providers />);
+    const trigger = await screen.findByRole("combobox", { name: "Use my Oleafly API key" });
+    await chooseOption(trigger, "OpenAI");
+    await waitFor(() => expect(stored().provider).toBe("openai"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Forget" }));
+    await waitFor(() => expect(screen.getByText("New conversations use the agent's defaults.")).toBeInTheDocument());
+    expect(stored()).toEqual({ effort: null, mode: null, provider: "openai" });
+    expect(screen.getByRole("combobox", { name: "Use my Oleafly API key" })).toHaveTextContent("OpenAI");
+  });
+
+  it("does not bring a forgotten effort back when a key is chosen afterwards", async () => {
+    const stored = storeAgentPreferences({ effort: high, mode: null, provider: null });
+    render(<AcpAgentPreferenceSections agentId="claude" providers />);
+    fireEvent.click(await screen.findByRole("button", { name: "Forget" }));
+    await waitFor(() => expect(screen.getByText("New conversations use the agent's defaults.")).toBeInTheDocument());
+
+    await chooseOption(await screen.findByRole("combobox", { name: "Use my Oleafly API key" }), "OpenAI");
+    await waitFor(() => expect(stored()).toEqual({ effort: null, mode: null, provider: "openai" }));
+    expect(screen.getByText("New conversations use the agent's defaults.")).toBeInTheDocument();
+  });
+});
+
 describe("Routing an agent through an Oleafly key", () => {
   it("routes an agent through an Oleafly key when the switch is on", async () => {
     vi.mocked(acpPreferences).mockResolvedValue(prefs({ experimentalProviders: true }));
-    vi.mocked(acpAgentPreferences).mockResolvedValue({ effort: null, mode: null, provider: null });
+    storeAgentPreferences({ effort: null, mode: null, provider: null });
     vi.mocked(acpProviderChoices).mockResolvedValue([{ id: "openrouter", label: "OpenRouter", apiType: "openai" }]);
-    vi.mocked(acpSetAgentPreferences).mockImplementation(async (_agent, value) => value);
-    render(<AcpProvidersSection agentId="claude" />);
+    render(<AcpAgentPreferenceSections agentId="claude" providers />);
     const trigger = await screen.findByRole("combobox", { name: "Use my Oleafly API key" });
     expect(trigger).toHaveTextContent("Off (the agent signs in on its own)");
     await chooseOption(trigger, "OpenRouter");
-    await waitFor(() => expect(acpSetAgentPreferences).toHaveBeenCalledWith("claude", { effort: null, mode: null, provider: "openrouter" }));
+    await waitFor(() => expect(acpSetAgentPreference).toHaveBeenCalledWith("claude", "provider", "openrouter"));
     await chooseOption(trigger, "Off (the agent signs in on its own)");
-    await waitFor(() => expect(acpSetAgentPreferences).toHaveBeenLastCalledWith("claude", { effort: null, mode: null, provider: null }));
+    await waitFor(() => expect(acpSetAgentPreference).toHaveBeenLastCalledWith("claude", "provider", null));
   });
 
   it("stays hidden while the experimental switch is off", async () => {
     vi.mocked(acpPreferences).mockResolvedValue(prefs());
     vi.mocked(acpAgentPreferences).mockResolvedValue({ effort: null, mode: null, provider: null });
     vi.mocked(acpProviderChoices).mockResolvedValue([]);
-    render(<AcpProvidersSection agentId="claude" />);
+    render(<AcpAgentPreferenceSections agentId="claude" providers />);
     await waitFor(() => expect(acpProviderChoices).toHaveBeenCalled());
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByTestId("acp-agent-providers-claude")).toBeNull();
+  });
+
+  it("shows and hides the key picker on an open card as the Experimental switch changes", async () => {
+    let global = prefs();
+    vi.mocked(acpPreferences).mockImplementation(async () => global);
+    vi.mocked(acpSetPreferences).mockImplementation(async (value) => {
+      global = value;
+      return value;
+    });
+    vi.mocked(acpAgentPreferences).mockResolvedValue({ effort: null, mode: null, provider: null });
+    vi.mocked(acpProviderChoices).mockResolvedValue([{ id: "openrouter", label: "OpenRouter", apiType: "openai" }]);
+    render(<AcpAgentPreferenceSections agentId="claude" providers />);
+    await openExperimental();
+    expect(screen.queryByTestId("acp-agent-providers-claude")).toBeNull();
+
+    fireEvent.click(screen.getByRole("switch", { name: "Let agents use my Oleafly API keys" }));
+    expect(await screen.findByRole("combobox", { name: "Use my Oleafly API key" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: "Let agents use my Oleafly API keys" }));
+    await waitFor(() => expect(screen.queryByTestId("acp-agent-providers-claude")).toBeNull());
   });
 
   it("asks for an API key when there is none to route through", async () => {
     vi.mocked(acpPreferences).mockResolvedValue(prefs({ experimentalProviders: true }));
     vi.mocked(acpAgentPreferences).mockResolvedValue({ effort: null, mode: null, provider: null });
     vi.mocked(acpProviderChoices).mockResolvedValue([]);
-    render(<AcpProvidersSection agentId="claude" />);
+    render(<AcpAgentPreferenceSections agentId="claude" providers />);
     expect(
       await screen.findByText("Add an API key in Settings, AI Assistant, Providers and keys to use it here."),
     ).toBeInTheDocument();
   });
 
-  it("reports a failure to save the key choice", async () => {
+  it("reports a failure to save the key choice and shows the stored one", async () => {
     vi.mocked(acpPreferences).mockResolvedValue(prefs({ experimentalProviders: true }));
     vi.mocked(acpAgentPreferences).mockResolvedValue({ effort: null, mode: null, provider: "openrouter" });
     vi.mocked(acpProviderChoices).mockResolvedValue([{ id: "openrouter", label: "OpenRouter", apiType: "openai" }, { id: "groq", label: "Groq", apiType: "openai" }]);
-    vi.mocked(acpSetAgentPreferences).mockRejectedValue(new Error("This agent cannot use Groq."));
-    render(<AcpProvidersSection agentId="claude" />);
-    await chooseOption(await screen.findByRole("combobox", { name: "Use my Oleafly API key" }), "Groq");
+    vi.mocked(acpSetAgentPreference).mockRejectedValue(new Error("This agent cannot use Groq."));
+    render(<AcpAgentPreferenceSections agentId="claude" providers />);
+    const trigger = await screen.findByRole("combobox", { name: "Use my Oleafly API key" });
+    await chooseOption(trigger, "Groq");
     expect(await screen.findByRole("alert")).toHaveTextContent("This agent cannot use Groq.");
+    expect(trigger).toHaveTextContent("OpenRouter");
   });
 
-  it("stays hidden when the choices cannot be read", async () => {
-    vi.mocked(acpPreferences).mockRejectedValue(new Error("x"));
+  it("says why the key choices could not be read", async () => {
+    vi.mocked(acpPreferences).mockRejectedValue(new Error("Agent settings are locked."));
     vi.mocked(acpAgentPreferences).mockResolvedValue({ effort: null, mode: null, provider: null });
     vi.mocked(acpProviderChoices).mockResolvedValue([]);
-    const { container } = render(<AcpProvidersSection agentId="claude" />);
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(container).toBeEmptyDOMElement();
+    render(<AcpAgentPreferenceSections agentId="claude" providers />);
+    const section = await screen.findByTestId("acp-agent-providers-claude");
+    expect(section).toHaveTextContent("Use my Oleafly API key");
+    expect(screen.getByRole("alert")).toHaveTextContent("Agent settings are locked.");
   });
 });
 
@@ -352,6 +461,19 @@ describe("Hermes for this project", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Project profile" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not create the profile.");
   });
+
+  it("goes back to the mode this project still uses when a mode change fails", async () => {
+    vi.mocked(acpHermesSettings).mockResolvedValue(hermes());
+    vi.mocked(acpHermesStatus).mockResolvedValue(status());
+    vi.mocked(acpSetHermesSettings).mockRejectedValue(new Error("This project is not trusted for external agents."));
+    render(<HermesSection projectId="paper" />);
+    await screen.findByText("Gateway running");
+    fireEvent.click(screen.getByRole("radio", { name: "Project profile" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("This project is not trusted for external agents.");
+    expect(screen.getByRole("radio", { name: "Default profile (shared)" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Project profile" })).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByRole("switch", { name: "Project memory" })).toBeNull();
+  });
 });
 
 describe("remote Hermes checks", () => {
@@ -377,6 +499,8 @@ describe("remote Hermes checks", () => {
     expect(remoteProblem({ ...ok, host: "lab;rm" })).toBe(true);
     expect(remoteProblem({ ...ok, port: 0 })).toBe(true);
     expect(remoteProblem({ ...ok, port: 70000 })).toBe(true);
+    expect(remoteIssues({ ...ok, port: 2222.5 })).toEqual({ port: "invalid" });
+    expect(remoteIssues({ ...ok, port: Number.NaN })).toEqual({ port: "invalid" });
     expect(remoteProblem({ ...ok, folder: "relative/path" })).toBe(true);
     expect(remoteProblem({ ...ok, folder: "/home/ada\npaper" })).toBe(true);
     expect(remoteProblem({ ...ok, command: "hermes; rm -rf /" })).toBe(true);

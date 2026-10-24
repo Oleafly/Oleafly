@@ -122,6 +122,8 @@ fn parse_selftest(argv: &[OsString]) -> Result<SelfTestOptions, String> {
 
 /// Dispatches the self-test and run entries.
 pub fn main(flag: &str, argv: &[OsString]) -> i32 {
+    // What an earlier run that was killed still holds (Windows) goes first.
+    let _ = crate::release_abandoned();
     match flag {
         SELFTEST_FLAG => match parse_selftest(argv) {
             Ok(options) => {
@@ -224,7 +226,7 @@ pub fn run_sandboxed(request: &RunRequest) -> i32 {
     let program =
         which(&request.program, &search).unwrap_or_else(|| PathBuf::from(&request.program));
     let code = match spec.and_then(|spec| crate::command(&spec, &program, &request.args)) {
-        Ok(mut command) => match command.status() {
+        Ok(mut command) => match run_contained(&mut command) {
             Ok(status) => status.code().unwrap_or(1),
             Err(error) => {
                 eprintln!("oleafly-sandbox: the program could not start: {error}");
@@ -241,6 +243,35 @@ pub fn run_sandboxed(request: &RunRequest) -> i32 {
     // gets a new home named after its process.
     let _ = std::fs::remove_dir_all(&home);
     code
+}
+
+/// Runs `command` to its end. On Windows the launcher, and the program it
+/// starts, sit in a kill-on-close job, so they end with this process however
+/// it ends (`Stop-Process`, a closed console) instead of running on with the
+/// run's folder access.
+fn run_contained(command: &mut std::process::Command) -> std::io::Result<std::process::ExitStatus> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // Resumed once it is in the job. The console and Ctrl+C stay as they
+        // are, unlike `isolate_std_process_tree`.
+        const CREATE_SUSPENDED: u32 = 0x0000_0004;
+        command.creation_flags(CREATE_SUSPENDED);
+        let mut child = command.spawn()?;
+        let _job = match crate::process::contain_process_tree(child.id()) {
+            Ok(job) => job,
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error);
+            }
+        };
+        child.wait()
+    }
+    #[cfg(not(windows))]
+    {
+        command.status()
+    }
 }
 
 fn which(program: &OsString, search: &[PathBuf]) -> Option<PathBuf> {

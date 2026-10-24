@@ -27,11 +27,11 @@ use crate::host::{
 use crate::isolation;
 use crate::keep_awake::KeepAwake;
 use crate::model::{
-    ApprovalStatus, HandoffResume, PendingStart, ResearchTask, ResearchTaskDraft, ResearchTaskEdit,
-    ResearchTaskStatus, ResumeContext, ResumeReason, RetryMode, StopReason, SuspendState,
-    TaskArtifact, TaskFileChange, TaskIsolation, TaskPhase, TaskResultMetadata, TaskRunContext,
-    TaskRuntimeEvent, TaskRuntimeOutcome, TaskTranscriptDelta, TaskTranscriptEvent,
-    TaskTranscriptPage,
+    ApprovalStatus, CommandPolicy, HandoffResume, PendingStart, ResearchTask, ResearchTaskDraft,
+    ResearchTaskEdit, ResearchTaskStatus, ResumeContext, ResumeReason, RetryMode, StopReason,
+    SuspendState, TaskArtifact, TaskFileChange, TaskIsolation, TaskPhase, TaskPlanText,
+    TaskResultMetadata, TaskRunContext, TaskRuntimeEvent, TaskRuntimeOutcome, TaskTranscriptDelta,
+    TaskTranscriptEvent, TaskTranscriptPage,
 };
 use crate::record;
 use crate::recorder::{TranscriptRecorder, TranscriptWriter};
@@ -44,6 +44,8 @@ pub type TaskEventSink = Arc<dyn Fn(TaskRuntimeEvent) + Send + Sync>;
 /// The message every host-dependent call returns before [`ResearchTaskState::attach`].
 pub const NOT_ATTACHED: &str = "Research tasks are still starting. Try again in a moment.";
 const PLAN_MISSING: &str = "The agent finished without writing plan.md. Retry the task.";
+const PLAN_TOO_LONG: &str =
+    "The plan is longer than 64 KiB, so the end of it isn't shown. Edit it down before you approve it.";
 const WORKSPACE_GONE: &str = "The saved workspace is gone. Start over instead.";
 /// The handoff and plan a resumed conversation starts from, at most.
 const RESUME_FILE_BYTES: usize = 16 * 1024;
@@ -243,6 +245,8 @@ pub(crate) struct ResearchTaskStateInner {
     parked: Arc<Semaphore>,
     scheduling: tokio::sync::Mutex<()>,
     stopping: AtomicBool,
+    /// Set while the host recovers before queued work may start.
+    launch_hold: AtomicBool,
     pub(crate) active: Mutex<HashMap<String, ActiveTask>>,
     pub(crate) runtimes: Mutex<HashMap<String, Arc<dyn TaskRuntimeAdapter>>>,
     host: Mutex<Option<Arc<dyn ResearchHost>>>,
@@ -253,6 +257,8 @@ pub(crate) struct ResearchTaskStateInner {
     attention_pending: AtomicBool,
     /// Dedupes the timer that wakes the queue at a scheduled start.
     wake_generation: AtomicU64,
+    /// That timer, stopped when a newer one replaces it.
+    wake_timer: Mutex<Option<tokio::task::JoinHandle<()>>>,
     /// 0.4.8 L: suspend signals of running generations.
     suspends: Arc<SuspendSignals>,
     /// 0.4.8 L: cancels and reclaims from the other process being handled.
@@ -348,6 +354,7 @@ impl ResearchTaskState {
                 parked: Arc::new(Semaphore::new(max_concurrent.clamp(1, 8))),
                 scheduling: tokio::sync::Mutex::new(()),
                 stopping: AtomicBool::new(false),
+                launch_hold: AtomicBool::new(false),
                 active: Mutex::new(HashMap::new()),
                 runtimes: Mutex::new(HashMap::new()),
                 host: Mutex::new(None),
@@ -356,6 +363,7 @@ impl ResearchTaskState {
                 keep_awake: KeepAwake::new(),
                 attention_pending: AtomicBool::new(false),
                 wake_generation: AtomicU64::new(0),
+                wake_timer: Mutex::new(None),
                 suspends: Arc::new(SuspendSignals::default()),
                 foreign_inflight: Mutex::new(HashSet::new()),
             }),
@@ -514,7 +522,7 @@ impl ResearchTaskState {
             }
         }
         if let Some(brief) = &draft.brief {
-            self.check_executor(&brief.compute.executor)?;
+            self.check_compute(&brief.compute)?;
         }
         let task = self.store()?.create(draft)?;
         self.emit_task(&task);
@@ -523,23 +531,36 @@ impl ResearchTaskState {
 
     pub fn edit(&self, task_id: &str, edit: ResearchTaskEdit) -> Result<ResearchTask, String> {
         if let Some(brief) = &edit.brief {
-            self.check_executor(&brief.compute.executor)?;
+            self.check_compute(&brief.compute)?;
         }
         let task = self.store()?.edit(task_id, edit)?;
         self.emit_task(&task);
         Ok(task)
     }
 
-    fn check_executor(&self, executor: &str) -> Result<(), String> {
+    /// The brief's runs can go where it says: the executor is here and, for
+    /// a remote one, its target is still set up (a removed target would fail
+    /// every run once the task started).
+    fn check_compute(&self, compute: &crate::model::ComputeTarget) -> Result<(), String> {
         let Ok(services) = self.services() else {
             return Ok(());
         };
-        let executor = executor.trim();
-        if services.runs.executor_ids().contains(&executor) {
-            Ok(())
-        } else {
-            Err(format!("The {executor} compute target isn't available."))
+        let executor = compute.executor.trim();
+        if !services.runs.executor_ids().contains(&executor) {
+            return Err(format!("The {executor} compute target isn't available."));
         }
+        if !matches!(executor, "ssh" | "slurm" | "cua-space") {
+            return Ok(());
+        }
+        let Some(target) = compute.target.as_deref() else {
+            return Err("Choose a compute target for this task's runs.".into());
+        };
+        let data_root = services.tasks_root.parent().unwrap_or(&services.tasks_root);
+        let saved = crate::runs::remote::settings::load(data_root);
+        if crate::runs::remote::settings::find(&saved, target).is_none() {
+            return Err("The compute target in this brief was removed. Choose another one.".into());
+        }
+        Ok(())
     }
 
     pub fn request_start(&self, task_id: &str) -> Result<(), String> {
@@ -559,24 +580,29 @@ impl ResearchTaskState {
         let store = self.store()?;
         host.require_trusted(&store.require(task_id)?.project_id)?;
         let task = store.retry_with(task_id, mode)?;
+        // A retry starts a new conversation: no saved one or agent home
+        // (with its sign-in files) carries over.
+        crate::handoff::purge_files(store.root(), task_id);
         self.emit_task(&task);
         Ok(task)
     }
 
-    /// The plan a plan-first task wrote (at most 64 KiB).
-    pub fn plan(&self, task_id: &str) -> Result<String, String> {
+    /// The plan a plan-first task wrote (at most 64 KiB), and whether the
+    /// file is longer than that.
+    pub fn plan(&self, task_id: &str) -> Result<TaskPlanText, String> {
         let task = self.store()?.require(task_id)?;
         let isolation = task
             .isolation
             .as_ref()
             .ok_or_else(|| "The plan file is missing. Retry the task.".to_string())?;
-        record::read_record_file(
+        record::read_record_file_cut(
             Path::new(&isolation.execution_root),
             &task.record_slug,
             "plan.md",
             MAX_PLAN_BYTES,
         )
-        .filter(|plan| !plan.trim().is_empty())
+        .filter(|(plan, _)| !plan.trim().is_empty())
+        .map(|(text, truncated)| TaskPlanText { text, truncated })
         .ok_or_else(|| "The plan file is missing. Retry the task.".to_string())
     }
 
@@ -592,7 +618,10 @@ impl ResearchTaskState {
         };
         let best = crate::progress::best_metric(&task.brief, &runs, &full_ledger);
         let ledger = crate::progress::recent_ledger(&full_ledger);
-        let runs_started = runs.len() as u32;
+        // The run limit counts the runs since the last fresh start.
+        let runs_started =
+            runs.len()
+                .saturating_sub(store.runs_baseline(task_id).unwrap_or(0)) as u32;
         let (runs_in_flight, recent_runs) = crate::progress::split_runs(runs);
         let active_ms = services
             .as_ref()
@@ -653,6 +682,10 @@ impl ResearchTaskState {
                         std::slice::from_ref(&dir),
                     )?
                     .write(&format!("{dir}/plan.md"), &plan)?;
+                } else if state.plan(&task.id).is_ok_and(|plan| plan.truncated) {
+                    // The review showed only the start of the plan: the user
+                    // approves what they saw, so they shorten it first.
+                    return Err(PLAN_TOO_LONG.into());
                 }
                 let approved = store.approve_plan(&task.id)?;
                 state.emit_task(&approved);
@@ -671,9 +704,23 @@ impl ResearchTaskState {
         after: Option<u64>,
         limit: usize,
     ) -> Result<TaskTranscriptPage, String> {
+        self.events_page(task_id, generation, after, None, limit)
+    }
+
+    /// [`Self::events`], or with `before` a page backwards from the newest
+    /// rows below it (see [`TaskStore::events_page`]).
+    pub fn events_page(
+        &self,
+        task_id: &str,
+        generation: u64,
+        after: Option<u64>,
+        before: Option<u64>,
+        limit: usize,
+    ) -> Result<TaskTranscriptPage, String> {
         // Rows still in the writer's batch belong in the page.
         self.inner.writer.flush();
-        self.store()?.events(task_id, generation, after, limit)
+        self.store()?
+            .events_page(task_id, generation, after, before, limit)
     }
 
     pub fn delete(&self, task_id: &str) -> Result<(), String> {
@@ -834,7 +881,9 @@ impl ResearchTaskState {
     }
 
     pub async fn launch_ready(&self) -> Result<(), String> {
-        if self.inner.stopping.load(Ordering::Acquire) {
+        if self.inner.stopping.load(Ordering::Acquire)
+            || self.inner.launch_hold.load(Ordering::Acquire)
+        {
             return Ok(());
         }
         // Work waits in the queue until a host is attached.
@@ -892,21 +941,31 @@ impl ResearchTaskState {
         }
     }
 
-    /// Wakes the queue when the earliest scheduled task may start.
+    /// Wakes the queue when the earliest scheduled task may start. One timer
+    /// is armed at a time: a new one replaces (and stops) the last.
     fn wake_at_next_start(&self, store: &TaskStore) {
         let Ok(Some(at)) = store.next_run_after() else {
             return;
         };
         let generation = self.inner.wake_generation.fetch_add(1, Ordering::AcqRel) + 1;
-        let delay =
-            Duration::from_millis(u64::try_from(at - crate::model::now_ms()).unwrap_or(0) + 50);
         let state = self.clone();
-        self.runtime().spawn(async move {
-            tokio::time::sleep(delay).await;
+        let timer = self.runtime().spawn(async move {
+            loop {
+                let (sleep, due) = wake_step(at, crate::model::now_ms());
+                tokio::time::sleep(sleep).await;
+                if due {
+                    break;
+                }
+            }
             if state.inner.wake_generation.load(Ordering::Acquire) == generation {
-                let _ = state.launch_ready().await;
+                // In a task of its own, so stopping this timer never stops
+                // a queue run under way.
+                state.kick();
             }
         });
+        if let Some(previous) = lock(&self.inner.wake_timer).replace(timer) {
+            previous.abort();
+        }
     }
 
     pub async fn resume_after_failed_update(&self) -> Result<(), String> {
@@ -955,6 +1014,22 @@ impl ResearchTaskState {
     /// goes on.
     pub fn stop_admitting(&self) {
         self.inner.stopping.store(true, Ordering::Release);
+    }
+
+    /// Whether queued work still starts here (no quit or handoff under way).
+    pub fn admitting(&self) -> bool {
+        !self.inner.stopping.load(Ordering::Acquire)
+    }
+
+    /// Starts no queued work until [`Self::release_launches`]: the app
+    /// holds launches until it has recovered interrupted applies, so a task
+    /// never copies a half-applied project as its baseline.
+    pub fn hold_launches(&self) {
+        self.inner.launch_hold.store(true, Ordering::Release);
+    }
+
+    pub fn release_launches(&self) {
+        self.inner.launch_hold.store(false, Ordering::Release);
     }
 
     /// Ends the running generations of `ids` so their tasks can move to
@@ -1009,7 +1084,10 @@ impl ResearchTaskState {
         let store = self.store().ok();
         for (id, active) in waiting {
             let generation = active.execution_generation;
-            let state = lock(&active.suspended).take();
+            // Copied, not taken: a second suspend of the same task (the helper
+            // stopping during a reclaim) gets the same saved conversation, so
+            // whichever handoff lands first carries it.
+            let state = lock(&active.suspended).clone();
             let current = store.as_ref().and_then(|store| store.require(&id).ok());
             let running_here = current.as_ref().is_some_and(|task| {
                 task.status == ResearchTaskStatus::Running
@@ -1181,7 +1259,11 @@ impl ResearchTaskState {
         if cancellation.status == ResearchTaskStatus::Cancelled {
             let cancelled_id = cancellation.id.clone();
             self.blocking(move |state| {
-                state.emit_with_dependents(&state.store()?, &cancelled_id);
+                let store = state.store()?;
+                // A queued task handed over at quit may hold a copy of its
+                // agent's sign-in files; a cancelled task keeps none.
+                crate::handoff::purge_files(store.root(), &cancelled_id);
+                state.emit_with_dependents(&store, &cancelled_id);
                 Ok(())
             })
             .await?;
@@ -1388,6 +1470,13 @@ impl ResearchTaskState {
             _ => None,
         };
         let plan_phase = task.brief.review_plan_first && !task.plan_approved;
+        // "Review the plan first": nothing runs unasked before the user has
+        // seen the plan. Commands, MCP tools and a CLI agent's own tool calls
+        // ask first while the agent plans.
+        let mut brief = task.brief.clone();
+        if plan_phase && brief.permissions.commands == CommandPolicy::Allow {
+            brief.permissions.commands = CommandPolicy::Ask;
+        }
         let context = TaskRunContext {
             task_id: task.id.clone(),
             execution_generation: generation,
@@ -1402,7 +1491,7 @@ impl ResearchTaskState {
             skill_ids: task.skill_ids.clone(),
             source_revision: isolation.source_revision.clone(),
             allowed_paths: isolation.allowed_paths.clone(),
-            brief: task.brief.clone(),
+            brief,
             record_dir,
             dependencies: store.dependency_results(&task.id).unwrap_or_default(),
             resume,
@@ -1495,10 +1584,12 @@ impl ResearchTaskState {
             }
             None if outcome.is_ok() => {
                 if let Some(max) = task.brief.budget.max_runs {
+                    // Runs from before a fresh start don't count.
+                    let baseline = store.runs_baseline(&task.id).unwrap_or(0);
                     if services
                         .runs
                         .list(&task.id)
-                        .map(|runs| runs.len())
+                        .map(|runs| runs.len().saturating_sub(baseline))
                         .unwrap_or(0)
                         >= max as usize
                     {
@@ -1626,8 +1717,21 @@ impl ResearchTaskState {
                 if run_token.is_cancelled() {
                     return;
                 }
-                let _ = store.set_active_ms(&task_id, generation, clock.active_ms());
-                match clock.exhausted() {
+                // SQLite writes and the usage ledger's spend: off the async
+                // workers that also answer the app's commands.
+                let (checked_store, checked_task, checked_clock) =
+                    (store.clone(), task_id.clone(), clock.clone());
+                let exhausted = tokio::task::spawn_blocking(move || {
+                    let _ = checked_store.set_active_ms(
+                        &checked_task,
+                        generation,
+                        checked_clock.active_ms(),
+                    );
+                    checked_clock.exhausted()
+                })
+                .await
+                .unwrap_or(None);
+                match exhausted {
                     Some(BudgetKind::Cost) => {
                         *lock(&stop) = Some(BudgetKind::Cost);
                         run_token.cancel();
@@ -1745,25 +1849,39 @@ impl ResearchTaskState {
         isolation: TaskIsolation,
         changes: Vec<TaskFileChange>,
     ) {
+        // Set before the check starts, so the background helper counts it as
+        // work from the moment the task finishes and does not exit under it.
+        self.set_phase(
+            &store,
+            &task.id,
+            task.execution_generation,
+            TaskPhase::CheckingEvidence,
+        );
         let state = self.clone();
         self.runtime().spawn(async move {
-            state.set_phase(
-                &store,
-                &task.id,
-                task.execution_generation,
-                TaskPhase::CheckingEvidence,
-            );
             let report = state.evidence_report(&task, &isolation, &changes).await;
             let _ = store.set_evidence(&task.id, task.execution_generation, &report);
             let _ = store.clear_phase(&task.id, task.execution_generation);
-            if let Ok(current) = store.require(&task.id) {
-                state.emit_task(&current);
+            let current = store.require(&task.id).ok();
+            if let Some(current) = &current {
+                state.emit_task(current);
             }
-            // The review only needs the baseline of files that changed.
-            let _ = state
-                .runtime()
-                .spawn_blocking(move || isolation::prune_baseline(&isolation, &changes))
-                .await;
+            // The review only needs the baseline of files that changed. A
+            // newer generation (the task was discarded and resumed meanwhile)
+            // shares the workspace and needs the baseline of its own changes.
+            let reviewed = current.is_some_and(|current| {
+                current.execution_generation == task.execution_generation
+                    && matches!(
+                        current.status,
+                        ResearchTaskStatus::AwaitingReview | ResearchTaskStatus::Completed
+                    )
+            });
+            if reviewed {
+                let _ = state
+                    .runtime()
+                    .spawn_blocking(move || isolation::prune_baseline(&isolation, &changes))
+                    .await;
+            }
         });
     }
 
@@ -1782,6 +1900,9 @@ impl ResearchTaskState {
             .unwrap_or_default();
         let report = self.evidence_report(&task, &isolation, &changes).await;
         store.set_evidence(&task.id, task.execution_generation, &report)?;
+        // A check cut off by an exit left "Checking evidence" behind; this
+        // one finished, so it ends that.
+        store.clear_phase(&task.id, task.execution_generation)?;
         let current = store.require(&task.id)?;
         self.emit_task(&current);
         Ok(current)
@@ -1806,12 +1927,18 @@ impl ResearchTaskState {
         )
         .map(|text| record::parse_ledger(&text))
         .unwrap_or_default();
+        let project_root = self
+            .host()
+            .and_then(|host| host.locate_project(&task.project_id))
+            .ok()
+            .map(|location| location.root);
         let inputs = crate::evidence::EvidenceInputs {
             isolation,
             changes,
             runs,
             ledger,
             workspace: services.and_then(|services| services.workspace),
+            project_root,
         };
         crate::evidence::check_evidence(inputs, &CancellationToken::new()).await
     }
@@ -1983,6 +2110,23 @@ impl ResearchTaskState {
         if let Some(host) = lock(&self.inner.host).clone() {
             host.transcript_delta(delta);
         }
+    }
+}
+
+/// The longest the wake timer sleeps before it reads the wall clock again.
+/// Tokio's timers run on the monotonic clock, which stops while the computer
+/// sleeps, so one long sleep would start a scheduled task late by however
+/// long the computer slept.
+const WAKE_CHECK_EVERY: Duration = Duration::from_secs(60);
+
+/// How long the wake timer sleeps now, and whether the start at `at` is due
+/// once it wakes (both in epoch ms).
+fn wake_step(at: i64, now: i64) -> (Duration, bool) {
+    let until = Duration::from_millis(u64::try_from(at.saturating_sub(now)).unwrap_or(0) + 50);
+    if until > WAKE_CHECK_EVERY {
+        (WAKE_CHECK_EVERY, false)
+    } else {
+        (until, true)
     }
 }
 

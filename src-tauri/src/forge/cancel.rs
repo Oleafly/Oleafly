@@ -1,8 +1,9 @@
 //! Cancelling a clone or an import of a Git repository. The webview emits
 //! [`IMPORT_CANCEL_EVENT`]; that flips an [`ImportCancel`], which stops the
 //! Git command that is running (its whole process tree) and every step after
-//! it. The event carries no id: the import dialog runs one transfer at a
-//! time, and a cancel stops every transfer that is running.
+//! it. The event names the import it stops by the id the webview gave the
+//! command, so a Cancel in one window never stops another window's import.
+//! An event without an id stops every import, as before ids.
 use std::io;
 use std::process::{Command, Output, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -75,11 +76,39 @@ impl<R: Runtime> Drop for CancelOnEvent<R> {
     }
 }
 
-/// A new switch that the cancel event flips until the returned guard drops.
-pub(crate) fn cancel_on_event<R: Runtime>(app: &AppHandle<R>) -> (ImportCancel, CancelOnEvent<R>) {
+/// What the cancel event carries.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CancelRequest {
+    #[serde(default)]
+    cancel_id: Option<String>,
+}
+
+/// Whether a cancel event with `payload` stops the import with `cancel_id`:
+/// when both name an import, only the same one.
+fn stops(payload: &str, cancel_id: Option<&str>) -> bool {
+    let requested = serde_json::from_str::<CancelRequest>(payload)
+        .ok()
+        .and_then(|request| request.cancel_id);
+    match (requested, cancel_id) {
+        (Some(requested), Some(own)) => requested == own,
+        _ => true,
+    }
+}
+
+/// A new switch that the cancel event for `cancel_id` flips until the
+/// returned guard drops. Call it before the command's first await.
+pub(crate) fn cancel_on_event<R: Runtime>(
+    app: &AppHandle<R>,
+    cancel_id: Option<String>,
+) -> (ImportCancel, CancelOnEvent<R>) {
     let cancel = ImportCancel::new();
     let flipped = cancel.clone();
-    let id = app.listen_any(IMPORT_CANCEL_EVENT, move |_| flipped.cancel());
+    let id = app.listen_any(IMPORT_CANCEL_EVENT, move |event| {
+        if stops(event.payload(), cancel_id.as_deref()) {
+            flipped.cancel();
+        }
+    });
     (
         cancel,
         CancelOnEvent {
@@ -218,16 +247,35 @@ mod tests {
     use tauri::Emitter;
 
     #[test]
+    fn a_cancel_stops_only_the_import_it_names() {
+        let app = tauri::test::mock_app();
+        let (mine, _mine) = cancel_on_event(app.handle(), Some("import-a".into()));
+        let (theirs, _theirs) = cancel_on_event(app.handle(), Some("import-b".into()));
+        app.handle()
+            .emit(
+                IMPORT_CANCEL_EVENT,
+                serde_json::json!({ "cancelId": "import-b" }),
+            )
+            .unwrap();
+        assert!(!mine.is_cancelled(), "another window's Cancel");
+        assert!(theirs.is_cancelled());
+
+        // A cancel without an id stops every import, as before ids.
+        app.handle().emit(IMPORT_CANCEL_EVENT, ()).unwrap();
+        assert!(mine.is_cancelled());
+    }
+
+    #[test]
     fn the_cancel_event_flips_the_switch_until_the_guard_drops() {
         let app = tauri::test::mock_app();
-        let (cancel, guard) = cancel_on_event(app.handle());
+        let (cancel, guard) = cancel_on_event(app.handle(), None);
         assert!(!cancel.is_cancelled());
         assert!(cancel.check().is_ok());
         app.handle().emit(IMPORT_CANCEL_EVENT, ()).unwrap();
         assert!(cancel.is_cancelled());
         assert!(cancel.check().unwrap_err().contains("git.import_cancelled"));
 
-        let (later, guard_later) = cancel_on_event(app.handle());
+        let (later, guard_later) = cancel_on_event(app.handle(), None);
         drop(guard_later);
         drop(guard);
         app.handle().emit(IMPORT_CANCEL_EVENT, ()).unwrap();

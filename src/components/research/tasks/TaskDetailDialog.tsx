@@ -17,6 +17,7 @@ import { describeError } from "@/lib/app-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   Dialog,
   DialogContent,
@@ -30,9 +31,11 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
 import { ResearchToolCard } from "@/components/ai/activity/ResearchToolCard";
 import {
-  loadResearchTaskEvents,
+  loadResearchTaskEventsBefore,
+  NEWEST_EVENTS,
   previewResearchTaskArtifact,
   previewResearchTaskFile,
+  progressResearchTask,
   setResearchTaskKeepRunning,
 } from "@/lib/research-tasks";
 import { getConfig } from "@/lib/tauri";
@@ -40,18 +43,27 @@ import { notifyError } from "@/lib/toast";
 import type {
   ResearchTask,
   RetryMode,
+  RunRecord,
   StopReason,
   TaskArtifact,
   TaskArtifactPreview,
   TaskFileChange,
   TaskFilePreview,
+  TaskPreviewContent,
   TaskTranscriptEvent,
 } from "@/lib/research-tasks";
 import { i18n } from "@/i18n";
 import type { ResearchTaskDetailTab } from "@/store/research-tasks";
 import { phaseLabel, relativeTime, statusLabel } from "./task-status";
 import { TaskAgentChip, TaskOwnerBadge, TaskStatusBadge } from "./TaskChips";
-import { buildTaskTimeline, type TaskTimeline, type TaskTimelineItem } from "./task-timeline";
+import {
+  buildTaskTimeline,
+  buildTaskTimelineIncremental,
+  latestTimelineUsage,
+  type TaskTimeline,
+  type TaskTimelineCache,
+  type TaskTimelineItem,
+} from "./task-timeline";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { PendingApprovals } from "./PendingApprovals";
 import { PlanReview } from "./PlanReview";
@@ -81,12 +93,8 @@ export interface TaskDetailDialogProps {
   tasks: ResearchTask[];
   events: TaskTranscriptEvent[];
   eventsLoading: boolean;
+  /** Older saved rows of this run come before the loaded ones; Load more reads them. */
   canLoadMoreEvents: boolean;
-  /**
-   * The sequence the loaded rows run up to when more rows follow it. Rows after
-   * it arrived live, so the rows in between are the gap Load more fills.
-   */
-  eventsLoadedThrough?: number | null;
   busy: boolean;
   agentName?: string;
   initialTab?: ResearchTaskDetailTab | null;
@@ -117,9 +125,52 @@ interface EarlierGeneration {
   events: TaskTranscriptEvent[];
   /** The run has more rows than the pages that were loaded. */
   truncated: boolean;
+  /** The run this one resumed; `null` when it started fresh, where the chain ends. */
+  resumedFrom: number | null;
 }
 
 const NO_TIMELINE: TaskTimeline = { items: [], usage: { inputTokens: null, outputTokens: null } };
+
+/** Items the Activity tab keeps mounted from the end; "Load more" shows older ones. */
+const SHOWN_ITEMS = 200;
+
+/** How much of an item there is, so the list follows a message that grows. */
+function itemSize(item: TaskTimelineItem | undefined): number {
+  if (!item) return 0;
+  if (item.kind === "tool") return (item.tool.input?.length ?? 0) + (item.tool.output?.length ?? 0);
+  return "text" in item ? item.text.length : 0;
+}
+
+/** A side of a preview a text diff can't show: too large to read, or not text. */
+function undiffable(side: TaskPreviewContent): boolean {
+  return side.exists && (side.truncated || side.binary || side.text === null);
+}
+
+/** Tasks that wait for this one and fail when it is cancelled, as the backend fails them. */
+function waitingDependents(taskId: string, tasks: readonly ResearchTask[]): ResearchTask[] {
+  const failing: ResearchTask[] = [];
+  const seen = new Set([taskId]);
+  const pending = [taskId];
+  while (pending.length > 0) {
+    const stopped = pending.pop();
+    for (const candidate of tasks) {
+      if (
+        stopped !== undefined &&
+        !seen.has(candidate.id) &&
+        candidate.status === "queued" &&
+        candidate.startRequested &&
+        candidate.dependencyIds.includes(stopped)
+      ) {
+        seen.add(candidate.id);
+        failing.push(candidate);
+        pending.push(candidate.id);
+      }
+    }
+  }
+  return failing;
+}
+
+type StopAction = "stop" | "cancel" | "discard";
 
 function timestamp(value: number): string {
   const date = new Date(value);
@@ -371,6 +422,8 @@ function KeepRunningToggle({
   onToggle,
 }: Readonly<KeepRunningToggleProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
+  // With background tasks off every task stops at quit, as the composer shows it.
+  const keeps = task.keepRunningAfterQuit === true && backgroundEnabled;
   return (
     <label
       htmlFor={`research-task-keep-running-${task.id}`}
@@ -379,7 +432,7 @@ function KeepRunningToggle({
     >
       <Checkbox
         id={`research-task-keep-running-${task.id}`}
-        checked={task.keepRunningAfterQuit === true}
+        checked={keeps}
         disabled={busy || saving || !unfinished || !backgroundEnabled || desktopAppsKeepConflict}
         onCheckedChange={(next) => onToggle(next === true)}
       />
@@ -521,63 +574,37 @@ function EarlierActivity({ canShow, loading, timelines, onShow, listProps }: Rea
   );
 }
 
-interface ActivityGapProps {
-  hiddenRows: number | null;
-  loading: boolean;
-  onLoadMore: () => Promise<void>;
-}
-
-/** Marks the rows that sit between the saved part of the transcript and the part that arrived live. */
-function ActivityGap({ hiddenRows, loading, onLoadMore }: Readonly<ActivityGapProps>) {
-  const { t } = useTranslation(["common", "researchTools"]);
-  return (
-    <div
-      data-testid="research-task-activity-gap"
-      className="my-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground"
-    >
-      <span>
-        {hiddenRows
-          ? t(($) => $.researchTools.tasks.detail.activityGap, { count: hiddenRows })
-          : t(($) => $.researchTools.tasks.detail.activityMore)}
-      </span>
-      <Button
-        size="xs"
-        variant="outline"
-        disabled={loading}
-        onClick={() => void onLoadMore().catch(() => {})}
-      >
-        {t(($) => $.researchTools.tasks.detail.loadMore)}
-      </Button>
-    </div>
-  );
-}
-
 interface ActivityTimelineProps {
-  head: TaskTimeline;
-  tail: TaskTimeline;
-  hiddenRows: number | null;
+  timeline: TaskTimeline;
+  /** How many items, from the newest, are mounted. */
+  shown: number;
   executionGeneration: number;
   running: boolean;
   loading: boolean;
   canLoadMore: boolean;
-  onLoadMore: () => Promise<void>;
+  onShowOlder: () => void;
   listProps: TimelineListShared;
 }
 
-/** The saved rows, the gap Load more fills, the rows that arrived live, and what to show before any of them. */
+/**
+ * The run's newest items, with "Load more" above them for older ones (first
+ * the items this window holds, then the rows the backend still has), and what
+ * to show before there are any.
+ */
 function ActivityTimeline({
-  head,
-  tail,
-  hiddenRows,
+  timeline,
+  shown,
   executionGeneration,
   running,
   loading,
   canLoadMore,
-  onLoadMore,
+  onShowOlder,
   listProps,
 }: Readonly<ActivityTimelineProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
-  const empty = head.items.length + tail.items.length === 0 && !loading && !canLoadMore;
+  const items = timeline.items.length > shown ? timeline.items.slice(-shown) : timeline.items;
+  const older = canLoadMore || items.length < timeline.items.length;
+  const empty = timeline.items.length === 0 && !loading && !canLoadMore;
   return (
     <>
       {empty ? (
@@ -591,9 +618,18 @@ function ActivityTimeline({
           }
         />
       ) : null}
-      {head.items.length > 0 ? <TimelineList items={head.items} live={running && !canLoadMore} {...listProps} /> : null}
-      {canLoadMore ? <ActivityGap hiddenRows={hiddenRows} loading={loading} onLoadMore={onLoadMore} /> : null}
-      {tail.items.length > 0 ? <TimelineList items={tail.items} live={running} {...listProps} /> : null}
+      {older ? (
+        <div
+          data-testid="research-task-activity-older"
+          className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground"
+        >
+          <span>{t(($) => $.researchTools.tasks.detail.olderActivity)}</span>
+          <Button size="xs" variant="outline" disabled={loading} onClick={onShowOlder}>
+            {t(($) => $.researchTools.tasks.detail.loadMore)}
+          </Button>
+        </div>
+      ) : null}
+      {items.length > 0 ? <TimelineList items={items} live={running} {...listProps} /> : null}
       {loading ? (
         <LoadingState
           size="compact"
@@ -621,6 +657,77 @@ function TokenUsage({ usage }: Readonly<{ usage: { inputTokens: number | null; o
   );
 }
 
+interface StopConfirmationProps {
+  action: StopAction | null;
+  title: string;
+  dependents: readonly ResearchTask[];
+  runs: readonly RunRecord[];
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+/** Asks before Stop task, Cancel or Discard changes, naming the tasks that fail with it and the runs that stop. */
+function StopConfirmation({ action, title, dependents, runs, onConfirm, onCancel }: Readonly<StopConfirmationProps>) {
+  const { t } = useTranslation(["common", "researchTools"]);
+  let heading = "";
+  let description = "";
+  let confirmLabel = "";
+  let keepLabel = t(($) => $.researchTools.tasks.confirm.keepTask);
+  if (action === "stop") {
+    heading = t(($) => $.researchTools.tasks.confirm.stopTitle);
+    description = t(($) => $.researchTools.tasks.confirm.stopDescription, { title });
+    confirmLabel = t(($) => $.researchTools.tasks.detail.stopTask);
+  } else if (action === "cancel") {
+    heading = t(($) => $.researchTools.tasks.confirm.cancelTitle);
+    description = t(($) => $.researchTools.tasks.confirm.cancelDescription, { title });
+    confirmLabel = t(($) => $.researchTools.tasks.confirm.cancelTask);
+  } else if (action === "discard") {
+    heading = t(($) => $.researchTools.tasks.confirm.discardTitle);
+    description = t(($) => $.researchTools.tasks.confirm.discardDescription, { title });
+    confirmLabel = t(($) => $.researchTools.tasks.detail.discardChanges);
+    keepLabel = t(($) => $.researchTools.tasks.confirm.keepChanges);
+  }
+  return (
+    <ConfirmationDialog
+      open={action !== null}
+      destructive
+      title={heading}
+      description={description}
+      confirmLabel={confirmLabel}
+      cancelLabel={keepLabel}
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    >
+      {dependents.length > 0 ? (
+        <div className="mt-3 text-xs" data-testid="research-task-confirm-dependents">
+          <p className="font-medium">
+            {t(($) => $.researchTools.tasks.confirm.dependents, { count: dependents.length })}
+          </p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
+            {dependents.map((dependent) => (
+              <li key={dependent.id} className="break-words">
+                {dependent.title}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {runs.length > 0 ? (
+        <div className="mt-3 text-xs" data-testid="research-task-confirm-runs">
+          <p className="font-medium">{t(($) => $.researchTools.tasks.confirm.runs, { count: runs.length })}</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
+            {runs.map((run) => (
+              <li key={run.runId} className="break-words">
+                {run.name} <span className="font-mono">{run.runId}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </ConfirmationDialog>
+  );
+}
+
 export function TaskDetailDialog({
   open,
   onOpenChange,
@@ -629,7 +736,6 @@ export function TaskDetailDialog({
   events,
   eventsLoading,
   canLoadMoreEvents,
-  eventsLoadedThrough,
   busy,
   agentName,
   initialTab,
@@ -658,27 +764,7 @@ export function TaskDetailDialog({
   const activeTaskRun = useRef(taskRunKey);
   activeTaskRun.current = taskRunKey;
   const running = task.status === "running";
-  // Saved rows run up to `eventsLoadedThrough` when more follow; the rows after
-  // it came in live, so the two parts are built apart and the gap shows between.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the timeline carries translated milestone text, so it is rebuilt on a language switch
-  const { head, tail, hiddenRows } = useMemo(() => {
-    const split = eventsLoadedThrough ?? null;
-    if (split === null) return { head: buildTaskTimeline(events, running), tail: NO_TIMELINE, hiddenRows: null };
-    const saved: TaskTranscriptEvent[] = [];
-    const live: TaskTranscriptEvent[] = [];
-    for (const row of events) (row.sequence <= split ? saved : live).push(row);
-    return {
-      // A tool whose result is in the gap is not interrupted.
-      head: buildTaskTimeline(saved, true),
-      tail: buildTaskTimeline(live, running),
-      hiddenRows: live.length > 0 ? Math.max(0, live[0].sequence - split - 1) : null,
-    };
-  }, [events, eventsLoadedThrough, running, language]);
-  const timelineCount = head.items.length + tail.items.length;
-  const timelineUsage = {
-    inputTokens: tail.usage.inputTokens ?? head.usage.inputTokens,
-    outputTokens: tail.usage.outputTokens ?? head.usage.outputTokens,
-  };
+  const timelineUsage = useMemo(() => latestTimelineUsage(events), [events]);
   const changedFiles = task.result?.changedFiles ?? EMPTY_CHANGES;
   const changedPathsKey = changedFiles.map((change) => change.path).join("\n");
   // The task's own record (research/<slug>/) comes back with its review. It is
@@ -707,14 +793,44 @@ export function TaskDetailDialog({
   }, [initialTab]);
 
   const tab = chosenTab ?? autoTabFor(task);
+  const activityShown = open && tab === "activity";
 
+  // A running task adds text many times a second. The timeline is built only
+  // while Activity shows, and then only past the part that has settled.
+  const timelineCache = useRef<{ language: string; cache: TaskTimelineCache | null }>({ language, cache: null });
+  const shownTimeline = useRef<TaskTimeline>(NO_TIMELINE);
+  const timeline = useMemo(() => {
+    if (!activityShown) return shownTimeline.current;
+    const reusable = timelineCache.current.language === language ? timelineCache.current.cache : null;
+    const built = buildTaskTimelineIncremental(events, running, reusable);
+    // Milestones carry translated text, so a language switch builds everything again.
+    timelineCache.current = { language, cache: built.cache };
+    shownTimeline.current = built.timeline;
+    return built.timeline;
+  }, [activityShown, events, running, language]);
+  const timelineCount = timeline.items.length;
+  const lastItemSize = itemSize(timeline.items.at(-1));
+  const [shownItems, setShownItems] = useState(SHOWN_ITEMS);
+
+  // Follows the newest item, also while its text grows, unless the reader scrolled up.
   useEffect(() => {
     void timelineCount;
+    void lastItemSize;
     if (!open || tab !== "activity" || !running) return;
     const container = activityRef.current;
     if (!container || !nearBottom.current) return;
     container.scrollTop = container.scrollHeight;
-  }, [open, tab, running, timelineCount]);
+  }, [open, tab, running, timelineCount, lastItemSize]);
+
+  const showOlderActivity = () => {
+    if (timeline.items.length > shownItems) {
+      setShownItems((current) => current + SHOWN_ITEMS);
+      return;
+    }
+    // The rest comes from the backend; what it sends shows with the items already here.
+    setShownItems(timeline.items.length + SHOWN_ITEMS);
+    void onLoadMoreEvents().catch(() => {});
+  };
 
   // 0.4.8 L: keep running after Oleafly closes, and the generations a
   // resumed task continues.
@@ -754,12 +870,11 @@ export function TaskDetailDialog({
         .filter((entry) => entry.timeline.items.length > 0 || entry.truncated),
     [earlier, language],
   );
-  const oldestShown = earlier.length > 0 ? earlier[0].generation : null;
-  let nextEarlier: number | null = null;
-  // A task from an older backend has no `resumedFrom` at all.
-  if (task.resumedFrom != null) {
-    nextEarlier = oldestShown === null ? task.resumedFrom : oldestShown - 1;
-  }
+  // Each run says which run it resumed; the chain ends at one that started
+  // fresh, since the runs before that belong to another attempt. A task from an
+  // older backend has no `resumedFrom` at all.
+  const oldestShown = earlier.length > 0 ? earlier[0] : null;
+  const nextEarlier = oldestShown ? oldestShown.resumedFrom : (task.resumedFrom ?? null);
   const canShowEarlier = nextEarlier !== null && nextEarlier >= 1;
   const unfinished = task.status === "queued" || task.status === "running" || task.status === "plan_ready";
   // Desktop apps need someone at the computer, so the backend refuses to keep such a task running.
@@ -780,24 +895,76 @@ export function TaskDetailDialog({
     }
   };
 
+  // Stop, Cancel and Discard end the task and fail what waits for it, so they ask first.
+  const [confirming, setConfirming] = useState<StopAction | null>(null);
+  const [confirmRuns, setConfirmRuns] = useState<RunRecord[]>([]);
+  const [applying, setApplying] = useState(false);
+  const dependentsToFail = useMemo(
+    () => (confirming ? waitingDependents(task.id, tasks) : []),
+    [confirming, task.id, tasks],
+  );
+  const contentRef = useRef<HTMLDivElement | null>(null);
+
+  const confirmRequest = useRef(0);
+  const askToStop = (action: StopAction) => {
+    const request = ++confirmRequest.current;
+    setConfirming(action);
+    setConfirmRuns([]);
+    if (task.executionGeneration === 0) return;
+    // The runs it started stop with it, a job on a cluster too.
+    void Promise.resolve()
+      .then(() => progressResearchTask(task.id))
+      .then((progress) => {
+        if (confirmRequest.current === request) setConfirmRuns(progress?.runsInFlight ?? []);
+      })
+      .catch(() => {});
+  };
+
+  const confirmStop = () => {
+    confirmRequest.current += 1;
+    setConfirming(null);
+    void onCancel().catch(() => {});
+  };
+
+  const keepGoing = () => {
+    confirmRequest.current += 1;
+    setConfirming(null);
+  };
+
+  const apply = async () => {
+    setApplying(true);
+    try {
+      await onApply(selectedPaths);
+    } catch {
+      // The dialog's error banner says what went wrong.
+    } finally {
+      setApplying(false);
+    }
+  };
+
   const showEarlierActivity = async () => {
     if (nextEarlier === null) return;
     const generation = nextEarlier;
     const requestRunKey = taskRunKey;
     setEarlierLoading(true);
     try {
-      const loaded: TaskTranscriptEvent[] = [];
-      let after: number | undefined;
+      // The end of the earlier run first: that is what this run continues from.
+      const pages: TaskTranscriptEvent[][] = [];
+      let before = NEWEST_EVENTS;
       let more = false;
+      let resumedFrom: number | null = null;
       for (let page = 0; page < EARLIER_PAGES; page += 1) {
-        const result = await loadResearchTaskEvents(task.id, generation, after, EARLIER_PAGE_SIZE);
-        loaded.push(...result.events);
-        more = result.nextSequence !== null;
-        if (!more) break;
-        after = result.nextSequence ?? undefined;
+        const result = await loadResearchTaskEventsBefore(task.id, generation, before, EARLIER_PAGE_SIZE);
+        if (page === 0) resumedFrom = result.resumedFrom ?? null;
+        pages.unshift(result.events);
+        const previous = result.previousSequence ?? null;
+        more = previous !== null;
+        if (previous === null) break;
+        before = previous;
       }
       if (activeTaskRun.current !== requestRunKey) return;
-      setEarlier((current) => [{ generation, events: loaded, truncated: more }, ...current]);
+      const loaded = pages.flat();
+      setEarlier((current) => [{ generation, events: loaded, truncated: more, resumedFrom }, ...current]);
     } catch (error_) {
       if (activeTaskRun.current === requestRunKey) notifyError("research-task-earlier-activity", error_);
     } finally {
@@ -934,7 +1101,7 @@ export function TaskDetailDialog({
           size="sm"
           variant="ghost"
           disabled={busy}
-          onClick={() => void onCancel().catch(() => {})}
+          onClick={() => askToStop("cancel")}
         >
           {t(($) => $.common.actions.cancel)}
         </Button>
@@ -945,7 +1112,7 @@ export function TaskDetailDialog({
         size="sm"
         variant="destructive"
         disabled={busy || task.cancelRequested}
-        onClick={() => void onCancel().catch(() => {})}
+        onClick={() => askToStop("stop")}
       >
         {task.cancelRequested
           ? t(($) => $.researchTools.tasks.detail.stopping)
@@ -1065,13 +1232,22 @@ export function TaskDetailDialog({
         ) : null}
         {preview ? (
           <div className="mt-3 overflow-hidden rounded-md border">
-            {preview.before.text !== null || preview.after.text !== null ? (
+            {/* A side too large to read, or not text, has no text: diffing it against "" would read as every line removed. */}
+            {(preview.before.text !== null || preview.after.text !== null) &&
+            !undiffable(preview.before) &&
+            !undiffable(preview.after) ? (
               <InlineDiffPreview
                 path={preview.path}
                 oldText={preview.before.text ?? ""}
                 newText={preview.after.text ?? ""}
               />
             ) : (
+              <>
+              {preview.before.truncated || preview.after.truncated ? (
+                <p className="border-b px-3 py-2 text-xs text-muted-foreground" data-testid="research-task-preview-too-large">
+                  {t(($) => $.researchTools.tasks.detail.tooLargeToDiff)}
+                </p>
+              ) : null}
               <div className="grid grid-cols-2 divide-x text-xs text-muted-foreground">
                 <div className="p-3">
                   {preview.before.exists
@@ -1088,6 +1264,7 @@ export function TaskDetailDialog({
                     : t(($) => $.researchTools.tasks.detail.afterAbsent)}
                 </div>
               </div>
+              </>
             )}
           </div>
         ) : null}
@@ -1163,7 +1340,7 @@ export function TaskDetailDialog({
           <Button
             variant="outline"
             disabled={busy}
-            onClick={() => void onCancel().catch(() => {})}
+            onClick={() => askToStop("discard")}
           >
             {t(($) => $.researchTools.tasks.detail.discardChanges)}
           </Button>
@@ -1175,9 +1352,10 @@ export function TaskDetailDialog({
                 (path) => !inRecord(path) && !filePreviews[`${taskRunKey}:${path}`],
               )
             }
-            onClick={() => void onApply(selectedPaths).catch(() => {})}
+            onClick={() => void apply()}
           >
-            {busy
+            {/* Only this button's own action reads as applying; Discard keeps it as it is. */}
+            {applying
               ? t(($) => $.researchTools.tasks.detail.applying)
               : t(($) => $.researchTools.tasks.detail.applySelected, {
                   selected: selectedPaths.length,
@@ -1197,7 +1375,7 @@ export function TaskDetailDialog({
         task={task}
         busy={busy}
         onApprove={onApprovePlan}
-        onDiscard={onCancel}
+        onDiscard={async () => askToStop("cancel")}
       />
     ) : (
       <>
@@ -1293,14 +1471,20 @@ export function TaskDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        ref={contentRef}
         data-testid="research-task-detail"
         className="flex h-[min(92vh,980px)] w-[min(96vw,1180px)] max-w-none flex-col gap-0 overflow-hidden p-0"
+        onEscapeKeyDown={(event) => {
+          // Escape closes a confirmation open in the dialog, not the dialog with it.
+          if (contentRef.current?.querySelector('[role="alertdialog"]')) event.preventDefault();
+        }}
       >
         <article
           aria-labelledby="research-task-detail-title"
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
-          <header className="shrink-0 space-y-3 border-b px-5 py-4 pr-14">
+          {/* Approvals can stack up here, so the header scrolls before the tabs lose their room. */}
+          <header className="max-h-[45vh] shrink-0 space-y-3 overflow-y-auto border-b px-5 py-4 pr-14">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1 basis-64">
                 <DialogTitle
@@ -1380,14 +1564,13 @@ export function TaskDetailDialog({
                   listProps={timelineProps}
                 />
                 <ActivityTimeline
-                  head={head}
-                  tail={tail}
-                  hiddenRows={hiddenRows}
+                  timeline={timeline}
+                  shown={shownItems}
                   executionGeneration={task.executionGeneration}
                   running={running}
                   loading={eventsLoading}
                   canLoadMore={canLoadMoreEvents}
-                  onLoadMore={onLoadMoreEvents}
+                  onShowOlder={showOlderActivity}
                   listProps={timelineProps}
                 />
               </section>
@@ -1416,6 +1599,14 @@ export function TaskDetailDialog({
             <TokenUsage usage={usage} />
           </footer>
         </article>
+        <StopConfirmation
+          action={confirming}
+          title={task.title}
+          dependents={dependentsToFail}
+          runs={confirmRuns}
+          onConfirm={confirmStop}
+          onCancel={keepGoing}
+        />
       </DialogContent>
     </Dialog>
   );

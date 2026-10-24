@@ -346,7 +346,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "image-to-latex",
     label: "LaTeX equation",
-    blurb: "The Tools model (local Ollama unless you pick another) transcribes an equation or table photo into editable LaTeX, on the Tools page and from the editor toolbar.",
+    blurb: "The Tools model (local Ollama unless you pick another) transcribes an equation or table photo into editable LaTeX, on the Tools page and from the editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.",
     source: "image",
     target: "latex",
     direction: "tool",
@@ -357,7 +357,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "image-to-typst",
     label: "Typst source",
-    blurb: "The Tools model (local Ollama unless you pick another) transcribes notes, equations, or tables into editable Typst, on the Tools page and from the Typst editor toolbar.",
+    blurb: "The Tools model (local Ollama unless you pick another) transcribes notes, equations, or tables into editable Typst, on the Tools page and from the Typst editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.",
     source: "image",
     target: "typst",
     direction: "tool",

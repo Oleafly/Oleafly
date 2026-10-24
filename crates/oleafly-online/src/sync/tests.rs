@@ -2040,3 +2040,245 @@ fn linking_with_the_online_version_saves_the_replaced_files_where_they_can_be_ex
         .unwrap()
         .is_empty());
 }
+
+#[test]
+fn a_folder_keeps_secrets_and_build_output_here() {
+    let here = |rel: &str| {
+        kept_local(rel, |sibling| {
+            sibling == "main.tex" || sibling == "figs/plot.typ"
+        })
+    };
+    for rel in [
+        ".env",
+        ".env.local",
+        "sub/.envrc",
+        ".private",
+        ".private/notes.md",
+        ".vscode/settings.json",
+        "node_modules/x/index.js",
+        "keys/id_ed25519",
+        "id_rsa",
+        "cert.pem",
+        "store.p12",
+        "main.aux",
+        "main.pdf",
+        "figs/plot.pdf",
+        "build/main.log",
+        "_minted-main/x.pyg",
+    ] {
+        assert!(here(rel), "{rel}");
+    }
+    for rel in [
+        "main.tex",
+        "id_ed25519.pub",
+        "identity.tex",
+        "figs/photo.pdf",
+        ".gitignore",
+        ".latexmkrc",
+        "chapters/intro.tex",
+    ] {
+        assert!(!here(rel), "{rel}");
+    }
+}
+
+#[test]
+fn a_folder_never_sends_its_secrets_build_output_or_ignored_files() {
+    let world = seeded();
+    world.coauthor(&[("main.pdf", Some("the online build\n"))]);
+    let paths = SyncPaths::for_folder(&world.project);
+    for (path, body) in [
+        (".env", "API_KEY=secret\n"),
+        (".private/notes.md", "private\n"),
+        (".vscode/settings.json", "{}\n"),
+        ("node_modules/x/index.js", "x\n"),
+        ("id_ed25519", "PRIVATE KEY\n"),
+        ("id_ed25519.pub", "ssh-ed25519 AAAA\n"),
+        ("cert.pem", "CERT\n"),
+        ("main.aux", "\\relax\n"),
+        ("main.pdf", "my local build\n"),
+        ("figures/plot.pdf", "a figure\n"),
+        (".gitignore", "secret-notes.txt\n"),
+        ("secret-notes.txt", "ignored\n"),
+    ] {
+        world.write(path, body);
+    }
+    assert!(matches!(
+        world.link_at(&paths, &world.project, None),
+        LinkOutcome::Linked { .. }
+    ));
+    // The online build output is not written over the one here.
+    assert_eq!(world.local("main.pdf").as_deref(), Some("my local build\n"));
+
+    let mut uploads = pending_uploads(&world.git, &paths, &world.project, false, None).unwrap();
+    uploads.sort();
+    assert_eq!(
+        uploads,
+        [".gitignore", "figures/plot.pdf", "id_ed25519.pub"]
+    );
+    assert_eq!(
+        rev(&world.git, &paths.repo, "HEAD"),
+        rev(&world.git, &paths.repo, BASE_REF),
+        "the listing leaves the mirror at its base"
+    );
+
+    let options = SyncOptions {
+        resolutions: BTreeMap::new(),
+        mode: Mode::Apply,
+        push: true,
+        worktree: None,
+    };
+    assert_eq!(
+        world.sync_at(&paths, &world.project, &options).outcome,
+        SyncOutcome::Synced
+    );
+    for sent in [".gitignore", "figures/plot.pdf", "id_ed25519.pub"] {
+        assert!(world.remote_file(sent).is_some(), "{sent}");
+    }
+    for kept in [
+        ".env",
+        ".private/notes.md",
+        ".vscode/settings.json",
+        "node_modules/x/index.js",
+        "id_ed25519",
+        "cert.pem",
+        "main.aux",
+        "secret-notes.txt",
+    ] {
+        assert!(world.remote_file(kept).is_none(), "{kept}");
+        assert!(world.project.join(kept).is_file(), "{kept}");
+    }
+    // A build output online is neither replaced nor deleted.
+    assert_eq!(
+        world.remote_file("main.pdf").as_deref(),
+        Some("the online build\n")
+    );
+    std::fs::remove_file(world.project.join("main.pdf")).unwrap();
+    assert!(matches!(
+        world.sync_at(&paths, &world.project, &options).outcome,
+        SyncOutcome::UpToDate
+    ));
+    assert_eq!(
+        world.remote_file("main.pdf").as_deref(),
+        Some("the online build\n")
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn link_backups_are_never_written_through_a_link() {
+    let world = seeded();
+    let paths = SyncPaths::for_folder(&world.project);
+    world.write("notes.tex", "My notes\n");
+    assert!(matches!(
+        world.link_at(&paths, &world.project, Some(Side::Remote)),
+        LinkOutcome::Linked { .. }
+    ));
+    let elsewhere = world.temp.path().join("elsewhere");
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    let backups = world.project.join(".oleafly").join("online-backups");
+    std::os::unix::fs::symlink(&elsewhere, &backups).unwrap();
+
+    let error = export_link_backups(&world.git, &paths, &backups).unwrap_err();
+    assert!(
+        error
+            .detail
+            .as_deref()
+            .unwrap_or_default()
+            .contains("is a link"),
+        "{error:?}"
+    );
+    assert!(names_in(&elsewhere).is_empty());
+
+    // A real folder there works.
+    std::fs::remove_file(&backups).unwrap();
+    let saved = export_link_backups(&world.git, &paths, &backups).unwrap();
+    assert_eq!(saved.len(), 1);
+    assert_eq!(saved[0].files, ["notes.tex"]);
+}
+
+/// Git that records every local call's arguments.
+struct RecordingGit {
+    inner: SystemGit,
+    calls: std::sync::Mutex<Vec<Vec<String>>>,
+}
+
+impl RecordingGit {
+    fn new() -> RecordingGit {
+        RecordingGit {
+            inner: system_git(),
+            calls: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    fn gc_calls(&self) -> Vec<Vec<String>> {
+        self.calls
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|args| args.iter().any(|arg| arg == "gc"))
+            .cloned()
+            .collect()
+    }
+}
+
+impl MirrorGit for RecordingGit {
+    fn run(&self, repo: &Path, args: &[&str]) -> Result<Output, OnlineError> {
+        self.calls
+            .lock()
+            .unwrap()
+            .push(args.iter().map(|arg| arg.to_string()).collect());
+        self.inner.run(repo, args)
+    }
+
+    fn run_remote(
+        &self,
+        repo: &Path,
+        credential_origin: &str,
+        token: &str,
+        args: &[&str],
+    ) -> Result<Output, OnlineError> {
+        self.inner.run_remote(repo, credential_origin, token, args)
+    }
+}
+
+#[test]
+fn the_mirror_is_tidied_after_a_sync_at_most_once_a_day() {
+    let world = seeded();
+    world.link(None);
+    world.write("notes.tex", "Mine\n");
+    assert_eq!(world.sync().outcome, SyncOutcome::Synced);
+    let stamp = world.repo.join(".git").join("oleafly-maintenance");
+    assert!(stamp.is_file(), "a sync that worked tidies the mirror");
+
+    let git = RecordingGit::new();
+    maintain(&git, &world.repo);
+    assert!(git.gc_calls().is_empty(), "not twice in one day");
+
+    let two_days_ago = std::time::SystemTime::now() - Duration::from_secs(2 * 24 * 60 * 60);
+    std::fs::File::options()
+        .write(true)
+        .open(&stamp)
+        .unwrap()
+        .set_modified(two_days_ago)
+        .unwrap();
+    maintain(&git, &world.repo);
+    let calls = git.gc_calls();
+    assert_eq!(calls.len(), 1);
+    // Every other call turns auto-gc off; this one turns it back on.
+    for setting in [
+        "gc.auto=256",
+        "gc.autoDetach=false",
+        "--auto",
+        "--prune=now",
+    ] {
+        assert!(
+            calls[0].iter().any(|arg| arg == setting),
+            "{setting}: {calls:?}"
+        );
+    }
+    maintain(&git, &world.repo);
+    assert_eq!(git.gc_calls().len(), 1);
+
+    // The mirror still syncs.
+    assert_eq!(world.sync().outcome, SyncOutcome::UpToDate);
+}

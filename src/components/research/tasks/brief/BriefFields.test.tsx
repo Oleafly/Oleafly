@@ -22,14 +22,18 @@ import {
   briefErrors,
   durationLabel,
   localDateTime,
+  parseAmount,
   parseLocalDateTime,
   startError,
   TIME_BUDGET_OPTIONS,
   upcomingStart,
 } from "./BriefFields";
 import { useSettingsStore } from "@/store/settings";
+import { i18n } from "@/i18n";
 
 const copy = enResearchTools.brief;
+const notANumber = copy.invalidCostNumber.replace("{{example}}", "2.5");
+const overTheLimit = copy.invalidCostMax.replace("{{max}}", "10,000");
 const desktopApps = enSettings.integrations.desktopApps.task;
 
 type Props = ComponentProps<typeof BriefFields>;
@@ -202,9 +206,13 @@ describe("BriefFields", () => {
     expect(cost).toHaveAttribute("aria-invalid", "true");
     fireEvent.change(cost, { target: { value: "lots" } });
     expect(last(onBrief).budget.usdCap).toBeNaN();
-    expect(screen.getByText(copy.invalidCost)).toBeInTheDocument();
+    // Each problem says what is wrong with the amount.
+    expect(screen.getByText(notANumber)).toBeInTheDocument();
+    fireEvent.change(cost, { target: { value: "10001" } });
+    expect(screen.getByText(overTheLimit)).toBeInTheDocument();
     fireEvent.change(cost, { target: { value: "2.5" } });
     expect(screen.queryByText(copy.invalidCost)).toBeNull();
+    expect(screen.queryByText(notANumber)).toBeNull();
     expect(last(onBrief).budget.usdCap).toBe(2.5);
     fireEvent.change(cost, { target: { value: " " } });
     expect(last(onBrief).budget.usdCap).toBeNull();
@@ -452,7 +460,7 @@ describe("BriefFields", () => {
     const view = render(<Harness initial={bad} />);
     // Opens on the bad value, where it can be fixed.
     expect(screen.getByTestId("research-brief-more")).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText(copy.invalidCost)).toBeInTheDocument();
+    expect(screen.getByText(notANumber)).toBeInTheDocument();
     expect(screen.queryByTestId("research-brief-problem")).toBeNull();
 
     openBrief();
@@ -570,10 +578,11 @@ describe("brief helpers", () => {
     });
     expect(briefErrors(briefFixture({ primaryMetric: { name: "train/loss", goal: "minimize" } }))).toEqual({});
     const budget = briefFixture().budget;
-    expect(briefErrors(briefFixture({ budget: { ...budget, usdCap: 10_001 } }))).toEqual({ cost: copy.invalidCost });
+    expect(briefErrors(briefFixture({ budget: { ...budget, usdCap: 10_001 } }))).toEqual({ cost: overTheLimit });
     expect(briefErrors(briefFixture({ budget: { ...budget, usdCap: Number.POSITIVE_INFINITY } }))).toEqual({
-      cost: copy.invalidCost,
+      cost: notANumber,
     });
+    expect(briefErrors(briefFixture({ budget: { ...budget, usdCap: -1 } }))).toEqual({ cost: copy.invalidCost });
     expect(briefErrors(briefFixture({ budget: { ...budget, usdCap: 10_000, maxRuns: 1_000 } }))).toEqual({});
     expect(briefErrors(briefFixture({ budget: { ...budget, maxRuns: 0 } }))).toEqual({ runs: copy.invalidRuns });
     expect(briefErrors(briefFixture({ budget: { ...budget, maxRuns: 1_001 } }))).toEqual({ runs: copy.invalidRuns });
@@ -619,5 +628,21 @@ describe("brief helpers", () => {
     const at = new Date(2026, 0, 5, 7, 4).getTime();
     expect(localDateTime(at)).toBe("2026-01-05T07:04");
     expect(new Date(localDateTime(at)).getTime()).toBe(at);
+  });
+});
+
+describe("parseAmount", () => {
+  it("reads an amount typed with the UI language's decimal comma, and a point in any language", () => {
+    const language = i18n.language;
+    try {
+      i18n.language = "de";
+      expect(parseAmount("1,5")).toBe(1.5);
+      expect(parseAmount("2.5")).toBe(2.5);
+      i18n.language = "en";
+      expect(parseAmount("1,5")).toBeNaN();
+      expect(parseAmount(" ")).toBeNull();
+    } finally {
+      i18n.language = language;
+    }
   });
 });

@@ -237,7 +237,12 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     program_locator::start_background_probe();
     acp::attach(app.handle()).map_err(std::io::Error::other)?;
     // 0.4.8 F1: `oleafly` for agents, terminals and research commands, and
-    // the Windows terminal command kept current after an update.
+    // the Windows terminal command kept current after an update. The shim's
+    // path is known up front, so a terminal restored before the refresh
+    // ends still finds `oleafly`.
+    if let Some(shim) = program_locator::planned_cli_shim() {
+        acp::set_cli_program(shim);
+    }
     tauri::async_runtime::spawn_blocking(|| {
         match program_locator::refresh_cli_shim() {
             Ok(path) => acp::set_cli_program(path),
@@ -1161,6 +1166,7 @@ pub fn run() {
             acp::commands::acp_set_preferences,
             acp::commands::acp_agent_preferences,
             acp::commands::acp_set_agent_preferences,
+            acp::commands::acp_set_agent_preference,
             acp::commands::acp_provider_choices,
             acp::commands::acp_buffer_reply,
             acp::commands::acp_set_config_option,
@@ -1207,6 +1213,7 @@ pub fn run() {
             mathpix::mathpix_save_keys,
             mathpix::mathpix_clear_keys,
             mathpix::mathpix_text,
+            mathpix::mathpix_text_cancel,
             mathpix::mathpix_pdf_upload,
             mathpix::mathpix_pdf_wait,
             mathpix::mathpix_pdf_cancel,

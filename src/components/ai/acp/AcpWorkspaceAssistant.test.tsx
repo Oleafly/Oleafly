@@ -148,7 +148,7 @@ describe("ACP assistant acceptance", () => {
     useAcpSessionsStore.setState({ activeByProject: {} });
     const ui = render(<AcpWorkspaceAssistant projectId="paper" />);
     const notice = await ui.findByTestId("trust-required-notice");
-    expect(notice).toHaveTextContent("Trust this folder to use external agents.");
+    expect(notice).toHaveTextContent("Trust this folder to use CLI agents.");
     expect(within(notice).getByRole("button", { name: "Trust this folder" })).toBeInTheDocument();
     useFolderAccessStore.getState().reset(null);
   });

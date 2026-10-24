@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { setConfig, type AppConfig } from "@/lib/tauri";
+import type { AppConfig } from "@/lib/tauri";
 import { describeError } from "@/lib/app-error";
 import { configuredModelGroups } from "@/lib/ai-model-groups";
 import { AiToolsTable } from "@/components/ai/AiToolsList";
@@ -12,7 +12,8 @@ import { ModelSelector } from "@/components/ai/ModelSelector";
 
 export interface InstructionsTabProps {
   cfg: AppConfig;
-  setCfg: Dispatch<SetStateAction<AppConfig>>;
+  /** False until the stored config is read: the switches stay off so a click can't write the defaults. */
+  configLoaded: boolean;
   savedKeys: Record<string, string>;
   persist: (next: AppConfig) => Promise<void>;
   sysPrompt: string;
@@ -24,7 +25,7 @@ export interface InstructionsTabProps {
 
 export function InstructionsTab({
   cfg,
-  setCfg,
+  configLoaded,
   savedKeys,
   persist,
   sysPrompt,
@@ -103,16 +104,19 @@ export function InstructionsTab({
             id="ai-pdf-capture"
             className="mt-0.5"
             checked={cfg.ai_pdf_capture !== false}
+            disabled={!configLoaded}
             onCheckedChange={(checked) => {
               const on = checked === true;
-              const next = { ...cfg, ai_pdf_capture: on };
-              setCfg(next);
-              try {
-                localStorage.setItem("oleafly:ai_pdf_capture", on ? "1" : "0");
-              } catch {
-                /* ignore */
-              }
-              void setConfig(next).catch((err) => setMsg({ ok: false, text: describeError(err) }));
+              // persist() merges into the stored config; the box changes only once it is saved.
+              void persist({ ...cfg, ai_pdf_capture: on })
+                .then(() => {
+                  try {
+                    localStorage.setItem("oleafly:ai_pdf_capture", on ? "1" : "0");
+                  } catch {
+                    /* ignore */
+                  }
+                })
+                .catch((err) => setMsg({ ok: false, text: describeError(err) }));
             }}
           />
           <span>
@@ -129,10 +133,11 @@ export function InstructionsTab({
             id="ai-reasoning-summaries"
             className="mt-0.5"
             checked={cfg.ai_reasoning_summaries === true}
+            disabled={!configLoaded}
             onCheckedChange={(checked) => {
-              const next = { ...cfg, ai_reasoning_summaries: checked === true };
-              setCfg(next);
-              void setConfig(next).catch((err) => setMsg({ ok: false, text: describeError(err) }));
+              void persist({ ...cfg, ai_reasoning_summaries: checked === true }).catch((err) =>
+                setMsg({ ok: false, text: describeError(err) }),
+              );
             }}
           />
           <span>

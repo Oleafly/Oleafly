@@ -162,7 +162,9 @@ impl AcpRuntime {
         if state.replaying && !applies_while_replaying(kind) {
             return Ok(());
         }
-        if state.hidden.is_some() {
+        // During a hidden plan-usage turn the agent's controls and commands
+        // still apply (the mode guard included); its output stays hidden.
+        if state.hidden.is_some() && !Self::kept_while_hidden(kind) {
             Self::hidden_update(session, &mut state, kind, update);
             return Ok(());
         }
@@ -332,8 +334,8 @@ impl AcpRuntime {
             self.store_event(session, state, &previous_kind, previous)?;
         }
         if state.coalescer.due(now) {
-            self.flush_held(session, state)?;
-        } else if !state.flush_timer {
+            self.flush_due(session, state)?;
+        } else if !state.flush_timer && !state.coalescer.only_carry() {
             state.flush_timer = true;
             self.schedule_flush(session);
         }
@@ -353,12 +355,14 @@ impl AcpRuntime {
                 let Ok(mut state) = session.state.lock() else {
                     return;
                 };
-                if !state.coalescer.is_holding() {
+                // Text held back by a due flush waits for the message's next
+                // text or its end, which store it.
+                if !state.coalescer.is_holding() || state.coalescer.only_carry() {
                     state.flush_timer = false;
                     return;
                 }
                 if state.coalescer.due(Instant::now()) {
-                    let _ = runtime.flush_held(&session, &mut state);
+                    let _ = runtime.flush_due(&session, &mut state);
                     state.flush_timer = false;
                     return;
                 }
@@ -366,9 +370,29 @@ impl AcpRuntime {
         });
     }
 
+    /// Updates handled as usual during a hidden plan-usage turn.
+    fn kept_while_hidden(kind: &str) -> bool {
+        matches!(
+            kind,
+            "config_option_update"
+                | "config_options_update"
+                | "current_model_update"
+                | "current_mode_update"
+                | "available_commands_update"
+        )
+    }
+
     /// During a hidden plan-usage turn only the answer text and usage count.
+    /// A tool call means the command runs the model (a prompt command the
+    /// project defines under that name): the turn is cancelled.
     fn hidden_update(session: &LiveSession, state: &mut LiveState, kind: &str, update: &Value) {
         match kind {
+            "tool_call" | "tool_call_update" if !state.hidden_tools => {
+                state.hidden_tools = true;
+                if let Some(native) = state.record.native_session_id.as_deref() {
+                    let _ = session.client.cancel(native);
+                }
+            }
             "agent_message_chunk" if !state.turn_closed => {
                 if let (Some(text), Some(buffer)) = (chunk_text(update), state.hidden.as_mut()) {
                     if buffer.len() + text.len() <= MAX_HIDDEN_TEXT {

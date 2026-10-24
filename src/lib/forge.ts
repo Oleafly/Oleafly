@@ -2,6 +2,7 @@ import { emit } from "@tauri-apps/api/event";
 import { decodeAppError } from "@/lib/app-error";
 import { trimCharacter, trimTrailingCharacter } from "@/lib/trim-character";
 import {
+  currentRepositoryImportId,
   ghPublicRepoStats,
   type ForgeAccount,
   type ForgeDevicePoll,
@@ -346,10 +347,22 @@ export async function waitForDeviceSignIn(
  * is running (`src-tauri/src/forge/cancel.rs`). */
 export const IMPORT_CANCEL_EVENT = "import-cancel";
 
-/** Stop the repository import or clone that is running: the transfer ends,
- * its staging folder goes and no project is created. */
+/** When a Cancel is sent again: one right after the start can reach the
+ * backend before the import listens for it. */
+const CANCEL_RESENDS_MS = [250, 1000] as const;
+
+/** Stop the repository import or clone this window started: the transfer
+ * ends, its staging folder goes and no project is created. The cancel names
+ * that import, so other windows' imports go on, and sending it again can
+ * only ever stop that one. */
 export function cancelRepositoryImport(): Promise<void> {
-  return emit(IMPORT_CANCEL_EVENT);
+  const cancelId = currentRepositoryImportId();
+  if (!cancelId) return emit(IMPORT_CANCEL_EVENT);
+  const send = () => emit(IMPORT_CANCEL_EVENT, { cancelId });
+  for (const delay of CANCEL_RESENDS_MS) {
+    setTimeout(() => void send().catch(() => {}), delay);
+  }
+  return send();
 }
 
 const publicRepoStatsCache = new Map<string, Promise<GitHubRepoStats>>();

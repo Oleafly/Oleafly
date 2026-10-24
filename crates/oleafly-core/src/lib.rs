@@ -15,6 +15,7 @@ pub mod hlc;
 pub mod ids;
 mod image_check;
 mod latexmk_env;
+pub mod linked_capture;
 pub mod locking;
 mod manifest;
 pub mod pandoc;

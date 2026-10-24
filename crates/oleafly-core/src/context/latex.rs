@@ -25,7 +25,7 @@ const OPAQUE_ENVIRONMENTS: [&str; 7] = [
     "comment",
 ];
 
-const REFERENCE_COMMANDS: [&str; 21] = [
+const REFERENCE_COMMANDS: [&str; 22] = [
     "crefrange",
     "Crefrange",
     "cpagerefrange",
@@ -47,6 +47,7 @@ const REFERENCE_COMMANDS: [&str; 21] = [
     "sref",
     "labelref",
     "hyperref",
+    "subref",
 ];
 
 const CITATION_COMMANDS: [&str; 32] = [
@@ -172,6 +173,84 @@ fn verb_span_end(chars: &[char], command_end: usize) -> Option<usize> {
     )
 }
 
+/// The end (exclusive) of the `open`..`close` group at `at`, escapes
+/// skipped, or `None` when it doesn't close.
+fn balanced_group_end(chars: &[char], at: usize, open: char, close: char) -> Option<usize> {
+    if chars.get(at) != Some(&open) {
+        return None;
+    }
+    let mut depth = 0usize;
+    let mut cursor = at;
+    while cursor < chars.len() {
+        let character = chars[cursor];
+        if character == '\\' {
+            cursor += 2;
+            continue;
+        }
+        if character == open {
+            depth += 1;
+        } else if character == close {
+            depth -= 1;
+            if depth == 0 {
+                return Some(cursor + 1);
+            }
+        }
+        cursor += 1;
+    }
+    None
+}
+
+fn skip_inline_spaces(chars: &[char], mut at: usize) -> usize {
+    while chars
+        .get(at)
+        .is_some_and(|character| *character == ' ' || *character == '\t')
+    {
+        at += 1;
+    }
+    at
+}
+
+/// The end of a `\lstinline` or `\mintinline` span whose command name ends
+/// at `command_end` (`latexInlineVerbatimSpan`): options, the language for
+/// `\mintinline`, then a body in braces or between two delimiters. `None`
+/// when no body follows.
+fn listing_span_end(chars: &[char], command_end: usize, minted: bool) -> Option<usize> {
+    let line_end = |from: usize| {
+        (from..chars.len())
+            .find(|index| chars[*index] == '\n')
+            .unwrap_or(chars.len())
+    };
+    let mut cursor = command_end;
+    if chars.get(cursor) == Some(&'*') {
+        cursor += 1;
+    }
+    cursor = skip_inline_spaces(chars, cursor);
+    if chars.get(cursor) == Some(&'[') {
+        match balanced_group_end(chars, cursor, '[', ']') {
+            Some(end) => cursor = skip_inline_spaces(chars, end),
+            None => return Some(line_end(cursor + 1)),
+        }
+    }
+    if minted {
+        cursor = skip_inline_spaces(chars, balanced_group_end(chars, cursor, '{', '}')?);
+    }
+    if chars.get(cursor) == Some(&'{') {
+        return Some(
+            balanced_group_end(chars, cursor, '{', '}').unwrap_or_else(|| line_end(cursor + 1)),
+        );
+    }
+    let &delimiter = chars.get(cursor)?;
+    if is_js_space(delimiter) {
+        return None;
+    }
+    let end = line_end(cursor + 1);
+    Some(
+        (cursor + 1..end)
+            .find(|index| chars[*index] == delimiter)
+            .map_or(end, |index| index + 1),
+    )
+}
+
 /// The end of the opaque environment a `\begin` opens (its name starts at
 /// `command_end`), or `None` when the environment is an ordinary one.
 fn opaque_environment_end(chars: &[char], command_end: usize) -> Option<usize> {
@@ -211,12 +290,16 @@ pub(crate) fn mask_ignored(chars: &[char]) -> Vec<char> {
             command_end += 1;
         }
         let name = string_of(&chars[cursor + 1..command_end]);
-        if name == "verb" {
-            if let Some(end) = verb_span_end(chars, command_end) {
-                blank_span(&mut out, cursor, end);
-                cursor = end.max(cursor + 1);
-                continue;
-            }
+        let inline_end = match name.as_str() {
+            "verb" => verb_span_end(chars, command_end),
+            "lstinline" => listing_span_end(chars, command_end, false),
+            "mintinline" => listing_span_end(chars, command_end, true),
+            _ => None,
+        };
+        if let Some(end) = inline_end {
+            blank_span(&mut out, cursor, end);
+            cursor = end.max(cursor + 1);
+            continue;
         }
         if name == "begin" {
             if let Some(end) = opaque_environment_end(chars, command_end) {
@@ -850,6 +933,17 @@ fn citation_uses(facts: &mut Facts<'_>, source: &[char], lower: &str, groups: Ve
     if braced.is_empty() {
         return;
     }
+    // `\nocite{*}` cites every entry of the bibliography.
+    if lower == "nocite"
+        && braced.iter().any(|group| {
+            group.complete
+                && string_of(&source[group.content_from..group.content_to])
+                    .split(',')
+                    .any(|key| trim_js(key) == "*")
+        })
+    {
+        facts.facts.cites_all = true;
+    }
     for group in citation_key_groups(lower, braced) {
         for (token, from) in logical_tokens(source, &group, true) {
             facts.use_(UseKind::Cite, token, from, None);
@@ -893,6 +987,25 @@ fn edge_uses(
                 );
                 let target = resolve_project_path(facts.file, &raw, None);
                 facts.use_(UseKind::Import, raw, file_from, target);
+            }
+            // `\graphicspath{{figures/}{img/}}`: folders figures are also
+            // looked for in.
+            "graphicspath" | "svgpath" => {
+                let groups = command_groups(masked, after, closing);
+                if let Some(outer) = groups.iter().find(|group| group.open == '{') {
+                    let inner = command_groups(masked, outer.content_from, closing);
+                    for group in inner
+                        .iter()
+                        .filter(|group| group.open == '{' && group.complete)
+                    {
+                        let folder =
+                            trim_js(&string_of(&masked[group.content_from..group.content_to]))
+                                .replace('"', "");
+                        if !folder.is_empty() && !facts.facts.search_paths.contains(&folder) {
+                            facts.facts.search_paths.push(folder);
+                        }
+                    }
+                }
             }
             "includegraphics" | "includesvg" => {
                 let groups = command_groups(masked, after, closing);
@@ -1087,6 +1200,34 @@ mod tests {
         assert_eq!(names(&facts, DefKind::Label), ["l1", "h1"]);
         assert_eq!(uses(&facts, UseKind::Ref), ["a", "b", "x", "y", "r1"]);
         assert_eq!(uses(&facts, UseKind::Cite), ["k", "k", "j"]);
+    }
+
+    #[test]
+    fn inline_listings_are_masked_like_verb() {
+        let facts = analyze(
+            "main.tex",
+            "\\lstinline|\\cite{x}| \\lstinline[language=C]{a % \\cite{y}} \\mintinline{python}|\\cite{z}| \\mintinline[o]{c}{\\cite{w}}\n\\lstinline|a%b| see \\cref{alg:a}\n",
+        );
+        assert!(uses(&facts, UseKind::Cite).is_empty());
+        assert_eq!(uses(&facts, UseKind::Ref), ["alg:a"]);
+    }
+
+    #[test]
+    fn nocite_star_cites_everything_and_subref_is_a_reference() {
+        let facts = analyze("main.tex", "\\nocite{*}\\subref{fig:a}\n");
+        assert!(facts.cites_all);
+        assert!(uses(&facts, UseKind::Cite).is_empty());
+        assert_eq!(uses(&facts, UseKind::Ref), ["fig:a"]);
+        assert!(!analyze("main.tex", "\\nocite{a}\n").cites_all);
+    }
+
+    #[test]
+    fn graphicspath_folders_are_collected() {
+        let facts = analyze(
+            "main.tex",
+            "\\graphicspath{{figures/}{\"img dir/\"}}\\svgpath{{svg/}}\n% \\graphicspath{{hidden/}}\n",
+        );
+        assert_eq!(facts.search_paths, ["figures/", "img dir/", "svg/"]);
     }
 
     #[test]

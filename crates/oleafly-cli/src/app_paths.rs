@@ -14,10 +14,30 @@ pub fn data_root() -> Option<PathBuf> {
     {
         return Some(PathBuf::from(directory));
     }
-    std::env::var_os("HOME")
-        .filter(|value| !value.is_empty())
-        .or_else(|| std::env::var_os("USERPROFILE").filter(|value| !value.is_empty()))
-        .map(|home| PathBuf::from(home).join(".oleafly"))
+    home_dir().map(|home| home.join(".oleafly"))
+}
+
+/// The user's home, as the app finds it. On Windows that is `USERPROFILE`
+/// first: the app started from the Start menu has no `HOME`, while an MSYS2
+/// or Cygwin shell sets one of its own (`C:\msys64\home\<user>`), and the
+/// CLI must use the app's folder from there too.
+pub fn home_dir() -> Option<PathBuf> {
+    home_from(&|name| std::env::var_os(name), cfg!(windows))
+}
+
+fn home_from(
+    variable: &dyn Fn(&str) -> Option<std::ffi::OsString>,
+    windows: bool,
+) -> Option<PathBuf> {
+    let order: [&str; 2] = if windows {
+        ["USERPROFILE", "HOME"]
+    } else {
+        ["HOME", "USERPROFILE"]
+    };
+    order
+        .iter()
+        .find_map(|name| variable(name).filter(|value| !value.is_empty()))
+        .map(PathBuf::from)
 }
 
 /// This command's own file, links resolved.
@@ -171,9 +191,7 @@ pub fn installed_app() -> Option<InstalledApp> {
         override_app: std::env::var_os("OLEAFLY_APP")
             .filter(|value| !value.is_empty())
             .map(PathBuf::from),
-        home: std::env::var_os("HOME")
-            .or_else(|| std::env::var_os("USERPROFILE"))
-            .map(PathBuf::from),
+        home: home_dir(),
         install_dirs: crate::launcher::windows_install_dirs(),
     };
     app_bin_candidates(&search)
@@ -424,6 +442,29 @@ pub fn restore_pending(root: &Path, identity: &ProjectIdentity) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn windows_finds_the_home_the_app_uses_before_a_shells_home() {
+        let shell = |name: &str| match name {
+            "HOME" => Some("C:\\msys64\\home\\ada".into()),
+            "USERPROFILE" => Some("C:\\Users\\ada".into()),
+            _ => None,
+        };
+        assert_eq!(
+            home_from(&shell, true),
+            Some(PathBuf::from("C:\\Users\\ada"))
+        );
+        assert_eq!(
+            home_from(&shell, false),
+            Some(PathBuf::from("C:\\msys64\\home\\ada"))
+        );
+        let start_menu = |name: &str| (name == "USERPROFILE").then(|| "C:\\Users\\ada".into());
+        assert_eq!(
+            home_from(&start_menu, true),
+            Some(PathBuf::from("C:\\Users\\ada"))
+        );
+        assert_eq!(home_from(&|_| Some("".into()), true), None);
+    }
 
     #[test]
     fn installed_app_dirs_on_windows_read_the_registry_then_local_app_data() {

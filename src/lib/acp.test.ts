@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acpReadiness, acpReadinessLabel, acpUsable, type AcpAgentStatus } from "./acp";
+import { acpError, acpPromptDelivered, acpReadiness, acpReadinessLabel, acpUsable, type AcpAgentStatus } from "./acp";
 
 function status(overrides: Partial<AcpAgentStatus> = {}): AcpAgentStatus {
   return {
@@ -51,5 +51,22 @@ describe("ACP readiness", () => {
     expect(acpUsable(status({ installed: true, cli }))).toBe(true);
     expect(acpUsable(status({ cli }))).toBe(false);
     expect(acpUsable(status({ canInstall: false }))).toBe(false);
+  });
+});
+
+describe("a message that failed to send", () => {
+  it("tells a message the agent got from one it never got", () => {
+    expect(acpPromptDelivered({ delivered: true, message: "The agent stopped answering." })).toBe(true);
+    expect(acpPromptDelivered({ delivered: false, message: "x" })).toBe(false);
+    // A plain string (an older build) or another error does not say.
+    expect(acpPromptDelivered("The agent is not connected.")).toBeNull();
+    expect(acpPromptDelivered(new Error("boom"))).toBeNull();
+    expect(acpPromptDelivered(null)).toBeNull();
+  });
+
+  it("explains a delivered message's failed turn with its own words", () => {
+    expect(acpError({ delivered: true, message: "The agent stopped answering." })).toBe("The agent stopped answering.");
+    expect(acpError("plain")).toBe("plain");
+    expect(acpError(new Error("thrown"))).toBe("thrown");
   });
 });

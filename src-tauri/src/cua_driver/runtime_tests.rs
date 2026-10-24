@@ -8,7 +8,11 @@
 //! - `FAKE_FAIL=<tool>`: that tool runs and fails;
 //! - `FAKE_DELAY_MS=<ms>`: counted calls take that long;
 //! - `FAKE_SELF_CHECK=fails|denied_other`: the bounded self-check tool fails
-//!   for another reason, or is denied for a reason that isn't the manifest.
+//!   for another reason, or is denied for a reason that isn't the manifest;
+//! - `FAKE_STRUCTURED=1`: `list_windows` and `get_window_state` also answer
+//!   with `structuredContent` (windows; elements with tokens);
+//! - `FAKE_HUGE=<tool>`: that tool answers with a line longer than the
+//!   launcher's `FAKE_MAX_MESSAGE_BYTES` (Rust side) allows.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -43,14 +47,18 @@ const hang = process.env.FAKE_HANG || '';
 const fail = process.env.FAKE_FAIL || '';
 const delay = Number(process.env.FAKE_DELAY_MS || '0');
 const selfCheck = process.env.FAKE_SELF_CHECK || '';
+const structured = process.env.FAKE_STRUCTURED === '1';
+const huge = process.env.FAKE_HUGE || '';
 const marker = log + '.expired';
 const started = new Set();
 let counted = 0;
 const names = ['start_session','end_session','list_apps','list_windows','get_window_state','get_browser_state','launch_app','click','double_click','right_click','type_text','press_key','hotkey','scroll','set_value','run_steps','run_script','browser_prepare','browser_navigate','browser_click','browser_type','browser_select','health_report'];
+const properties = {pid: {type: 'integer'}, session: {type: 'string'}};
+for (const key of ['window_id','element_index','element_token','snapshot_id','x','y','text','key','keys','url','ref','value','steps','stop_on_error','profile','note','bundle_id','include_screenshot']) properties[key] = {};
 const tools = names.map((name) => ({
   name,
   description: name + ' does a thing. More detail here.',
-  inputSchema: {type: 'object', properties: {pid: {type: 'integer'}, session: {type: 'string'}}, required: name === 'click' ? ['pid'] : []},
+  inputSchema: {type: 'object', properties, required: name === 'click' ? ['pid'] : []},
 }));
 const send = (value) => process.stdout.write(JSON.stringify(value) + '\n');
 const append = (entry) => fs.appendFileSync(log, JSON.stringify(entry) + '\n');
@@ -82,6 +90,9 @@ lines.on('line', async (line) => {
   if (expireOn > 0 && counted === expireOn && !fs.existsSync(marker)) { fs.writeFileSync(marker, '1'); answer(refused('permission_denied', 'capability manifest idle timeout exceeded')); return; }
   if (args.session !== undefined && !started.has(args.session)) { answer(refused('session_ended', 'that session ended')); return; }
   if (name === fail) { answer({content: [{type: 'text', text: 'it failed'}], isError: true, structuredContent: {code: 'tool_invocation_failed'}}); return; }
+  if (name === huge) { answer({content: [{type: 'text', text: 'x'.repeat(40000)}]}); return; }
+  if (name === 'list_windows' && structured) { answer({content: [{type: 'text', text: '1 window'}], structuredContent: {windows: [{pid: 4312, window_id: 88, app_name: 'Zotero', title: 'My Library'}]}}); return; }
+  if (name === 'get_window_state' && structured) { answer({content: [{type: 'text', text: 'window tree'}, {type: 'image', mimeType: 'image/png', data: 'iVBORw0KGgo='}], structuredContent: {snapshot_id: 's1', pid: args.pid, window_id: args.window_id, elements: [{element_index: 0, element_token: 'el-0', role: 'AXButton', label: 'Export'}]}}); return; }
   if (name === 'get_window_state') { answer({content: [{type: 'text', text: 'window tree'}, {type: 'image', mimeType: 'image/png', data: 'iVBORw0KGgo='}]}); return; }
   answer({content: [{type: 'text', text: name + ' ok'}]});
 });
@@ -213,12 +224,17 @@ impl Launcher for FakeLauncher {
             *lock(&self.opened).entry(kind).or_default() += 1;
             let mut env = self.env.clone();
             env.insert("FAKE_KIND".into(), kind.as_str().into());
+            let max_message_bytes = self
+                .env
+                .get("FAKE_MAX_MESSAGE_BYTES")
+                .and_then(|bytes| bytes.parse().ok())
+                .unwrap_or(16 * 1024 * 1024);
             McpStdioSession::open(
                 "node",
                 &["-e".into(), FAKE_DRIVER.into()],
                 &env,
                 McpSessionLimits {
-                    max_message_bytes: 16 * 1024 * 1024,
+                    max_message_bytes,
                     probe_timeout: Duration::from_millis(500),
                     open_timeout: Duration::from_secs(20),
                 },
@@ -293,6 +309,7 @@ fn chat(session_key: &str) -> CuaScope {
         project_id: None,
         agent_label: "Assistant".into(),
         surface: Surface::Chat,
+        task_title: None,
     }
 }
 
@@ -826,7 +843,15 @@ async fn an_answer_after_the_wait_is_ignored() {
     )
     .await;
     assert!(outcome.is_error);
+    // No answer is not a no: the model hears which it was.
+    assert_eq!(
+        outcome.text,
+        "The user didn't answer the approval dialog in time, so nothing was done."
+    );
     assert!(f.launcher.calls().is_empty());
+    assert!(lock(&super::TEST_LOG)
+        .iter()
+        .any(|line| line == "desktop apps: click refused:no_answer"));
 }
 
 #[tokio::test]
@@ -972,6 +997,7 @@ async fn a_closed_bridge_answers_gone_and_ends_its_session() {
         project_id: None,
         agent_label: "Agent".into(),
         surface: Surface::Acp,
+        task_title: None,
     };
     let bridge = super::CuaBridge::start_with(scope, f.state.clone())
         .await
@@ -1045,6 +1071,7 @@ async fn tasks_get_desktop_apps_only_when_the_brief_allows_it_and_someone_is_the
         "t1",
         1,
         "p1",
+        "Survey",
     )
     .await
     .unwrap();
@@ -1055,10 +1082,16 @@ async fn tasks_get_desktop_apps_only_when_the_brief_allows_it_and_someone_is_the
     assert_eq!(plain.mcp_servers().len(), 1);
 
     let on = fixture(settings(&[]), &[], ScriptedApprover::default());
-    let wrapped =
-        super::task::DesktopAppsTaskBridge::wrap_with(inner, on.state.clone(), "t1", 1, "p1")
-            .await
-            .unwrap();
+    let wrapped = super::task::DesktopAppsTaskBridge::wrap_with(
+        inner,
+        on.state.clone(),
+        "t1",
+        1,
+        "p1",
+        "Survey",
+    )
+    .await
+    .unwrap();
     assert!(wrapped
         .tool_definitions()
         .iter()
@@ -1085,6 +1118,7 @@ async fn task_desktop_calls_use_task_grants_and_end_at_shutdown() {
         "t1",
         1,
         "p1",
+        "Export the survey data",
     )
     .await
     .unwrap();
@@ -1098,6 +1132,12 @@ async fn task_desktop_calls_use_task_grants_and_end_at_shutdown() {
         assert_eq!(result["isError"], false, "{result}");
     }
     assert_eq!(f.approver.asked().len(), 1);
+    // The dialog says which task asks.
+    assert!(
+        f.approver.asked()[0].contains("Task: Export the survey data"),
+        "{}",
+        f.approver.asked()[0]
+    );
     assert_eq!(
         wrapped
             .clone()
@@ -1257,7 +1297,7 @@ async fn allowing_a_batch_for_the_chat_allows_only_the_tools_it_listed() {
 }
 
 #[tokio::test]
-async fn steps_the_dialog_did_not_list_are_not_allowed_for_the_chat() {
+async fn steps_the_dialog_did_not_list_never_run_and_are_not_allowed_for_the_chat() {
     let f = fixture(
         settings(&[]),
         &[],
@@ -1270,18 +1310,39 @@ async fn steps_the_dialog_did_not_list_are_not_allowed_for_the_chat() {
     let outcome = dispatch(&f, &chat("run:a"), batch(Value::Array(steps))).await;
     assert!(!outcome.is_error, "{}", outcome.text);
     let message = f.approver.asked()[0].clone();
+    let last = message.lines().last().unwrap();
     assert!(
-        message
-            .lines()
-            .last()
-            .unwrap()
-            .starts_with("Steps not shown: "),
+        last.starts_with("Steps not shown and not run: "),
         "{message}"
     );
     assert!(!message.contains("hotkey"), "{message}");
-    // The hidden hotkey step ran with the batch, but was never allowed for
-    // the chat: on its own it asks.
-    assert!(f.launcher.tools().iter().any(|tool| tool == "run_steps"));
+    let shown = message
+        .lines()
+        .filter(|line| line.contains(". click"))
+        .count();
+    assert!(shown > 0 && shown < 61, "{shown}");
+    // The driver got exactly the listed steps: the hidden hotkey never ran.
+    let sent = f
+        .launcher
+        .calls()
+        .into_iter()
+        .find(|entry| entry["tool"] == "run_steps")
+        .unwrap();
+    let forwarded = sent["args"]["steps"].as_array().unwrap();
+    assert_eq!(forwarded.len(), shown);
+    assert!(
+        forwarded.iter().all(|step| step["tool"] == "click"),
+        "{sent}"
+    );
+    // And the model is told so.
+    assert!(
+        outcome
+            .text
+            .contains(&format!("Only the first {shown} of 61 steps ran")),
+        "{}",
+        outcome.text
+    );
+    // It was never allowed for the chat either: on its own it asks.
     assert!(
         !dispatch(
             &f,
@@ -1730,4 +1791,257 @@ fn a_daemon_is_found_by_the_socket_it_serves() {
     assert_eq!(found, vec![202]);
     assert!(super::runtime::parse_serving_pids("", "/x.sock", 1).is_empty());
     assert!(super::runtime::parse_serving_pids("not a listing\n 12", "/x.sock", 1).is_empty());
+}
+
+// --- Dialog contents, structured answers and stops -------------------------
+
+#[tokio::test]
+async fn arguments_the_driver_does_not_take_never_reach_the_dialog_or_the_driver() {
+    let f = fixture(settings(&[]), &[], ScriptedApprover::with(&[Answer::Once]));
+    // A start lists the driver's tools and the arguments each takes.
+    let started = dispatch(&f, &chat("run:a"), json!({"tool": "start_session"})).await;
+    assert!(!started.is_error, "{}", started.text);
+    let outcome = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "launch_app", "args": {
+            "bundle_id": "org.zotero.zotero",
+            "webkit_inspector_port": 9222,
+            "text": "Opening Zotero"
+        }}),
+    )
+    .await;
+    assert!(!outcome.is_error, "{}", outcome.text);
+    let asked = f.approver.asked();
+    assert!(
+        asked[0].contains("org.zotero.zotero") && !asked[0].contains("webkit_inspector_port"),
+        "{}",
+        asked[0]
+    );
+    let sent = f
+        .launcher
+        .calls()
+        .into_iter()
+        .find(|entry| entry["tool"] == "launch_app")
+        .unwrap();
+    assert_eq!(sent["args"]["bundle_id"], "org.zotero.zotero");
+    assert!(
+        sent["args"].get("webkit_inspector_port").is_none(),
+        "{sent}"
+    );
+}
+
+#[tokio::test]
+async fn a_chat_reads_the_element_tokens_the_driver_puts_in_structured_content() {
+    let f = fixture(
+        settings(&[]),
+        &[("FAKE_STRUCTURED", "1")],
+        ScriptedApprover::default(),
+    );
+    let outcome = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "get_window_state", "args": {"pid": 4312, "window_id": 88}}),
+    )
+    .await;
+    assert!(!outcome.is_error, "{}", outcome.text);
+    assert!(outcome.text.starts_with("window tree"), "{}", outcome.text);
+    for part in [
+        "snapshot_id \"s1\"",
+        "element_index 0",
+        "element_token \"el-0\"",
+        "role \"AXButton\"",
+        "label \"Export\"",
+    ] {
+        assert!(outcome.text.contains(part), "{part}: {}", outcome.text);
+    }
+    assert_eq!(outcome.images.len(), 1);
+}
+
+#[tokio::test]
+async fn the_dialog_names_the_app_window_and_element_the_driver_described() {
+    let f = fixture(
+        settings(&[]),
+        &[("FAKE_STRUCTURED", "1")],
+        ScriptedApprover::with(&[Answer::Once]),
+    );
+    dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "get_window_state", "args": {"pid": 4312, "window_id": 88}}),
+    )
+    .await;
+    let outcome = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "click", "args": {"pid": 4312, "element_token": "el-0"}}),
+    )
+    .await;
+    assert!(!outcome.is_error, "{}", outcome.text);
+    let asked = f.approver.asked()[0].clone();
+    for line in [
+        "App: Zotero",
+        "Window: My Library",
+        "Element: Button \"Export\"",
+    ] {
+        assert!(asked.lines().any(|shown| shown == line), "{line}: {asked}");
+    }
+    // The handle is shown, not redacted.
+    assert!(asked.contains("\"element_token\":\"el-0\""), "{asked}");
+}
+
+#[tokio::test]
+async fn an_agent_turn_that_ends_during_a_call_stops_it() {
+    let f = fixture(
+        settings(&[]),
+        &[("FAKE_HANG", "click")],
+        ScriptedApprover::with(&[Answer::Once]),
+    );
+    let scope = CuaScope {
+        grant_key: "acp:z".into(),
+        surface: Surface::Acp,
+        ..chat("acp:z")
+    };
+    let state = f.state.clone();
+    let call = tokio::spawn(async move {
+        call_desktop_apps(&state, &scope, json!({"tool": "click", "args": {"pid": 1}})).await
+    });
+    assert!(
+        f.launcher
+            .wait_for(|calls| calls.iter().any(|entry| entry["tool"] == "click"))
+            .await
+    );
+    turn_ended_in(&f.state, "acp:z");
+    let outcome = tokio::time::timeout(Duration::from_secs(5), call)
+        .await
+        .expect("the call stops with the turn")
+        .unwrap();
+    assert!(outcome.is_error);
+    assert!(outcome.text.contains("The turn ended"), "{}", outcome.text);
+}
+
+#[tokio::test]
+async fn turning_desktop_apps_off_while_a_dialog_is_open_says_they_are_off() {
+    let approver = ScriptedApprover {
+        delay: Duration::from_millis(400),
+        ..ScriptedApprover::with(&[Answer::Once])
+    };
+    let f = fixture(settings(&[]), &[], approver);
+    let state = f.state.clone();
+    let call = tokio::spawn(async move {
+        call_desktop_apps(
+            &state,
+            &chat("run:a"),
+            json!({"tool": "click", "args": {"pid": 1}}),
+        )
+        .await
+    });
+    assert!(eventually(|| f.approver.asked().len() == 1).await);
+    f.state.set_settings(CuaDriverConfig {
+        enabled: false,
+        ..settings(&[])
+    });
+    let outcome = call.await.unwrap();
+    assert!(outcome.is_error);
+    assert_eq!(
+        outcome.text,
+        "Desktop apps are off. The user can turn them on in Settings > Integrations > Desktop apps."
+    );
+    assert!(!f.launcher.tools().contains(&"click".to_string()));
+}
+
+#[tokio::test]
+async fn an_answer_too_large_to_read_says_how_to_ask_for_less_and_keeps_the_daemon() {
+    let f = fixture(
+        settings(&[]),
+        &[
+            ("FAKE_HUGE", "get_window_state"),
+            ("FAKE_MAX_MESSAGE_BYTES", "16384"),
+        ],
+        ScriptedApprover::default(),
+    );
+    let outcome = dispatch(
+        &f,
+        &chat("run:a"),
+        json!({"tool": "get_window_state", "args": {"pid": 1}}),
+    )
+    .await;
+    assert!(outcome.is_error);
+    assert!(
+        outcome.text.contains("include_screenshot: false"),
+        "{}",
+        outcome.text
+    );
+    assert_ne!(outcome.text, TIMEOUT_TEXT);
+    assert_eq!(f.state.runtimes.running(), vec![RuntimeKind::Desktop]);
+    // The next call gets a new session on the same daemon, with no second
+    // start (and no second bounded self-check).
+    let next = dispatch(&f, &chat("run:a"), json!({"tool": "list_windows"})).await;
+    assert!(!next.is_error, "{}", next.text);
+    assert_eq!(f.launcher.opened(RuntimeKind::Desktop), 2);
+    let self_checks = f
+        .launcher
+        .calls()
+        .iter()
+        .filter(|entry| entry["tool"] == policy::SELF_CHECK_TOOL)
+        .count();
+    assert_eq!(self_checks, 1);
+}
+
+struct LinkProbe;
+
+impl super::config::ExecutableProbe for LinkProbe {
+    fn check(&self, path: &str) -> Result<String, super::config::AppRejection> {
+        // A link with a harmless name that points at a shell.
+        if path == "/usr/local/bin/notes" {
+            Ok("/bin/bash".into())
+        } else {
+            Ok(path.into())
+        }
+    }
+}
+
+#[tokio::test]
+async fn startup_checks_the_programs_in_the_background_and_drops_what_a_save_would() {
+    let program = |name: &str, path: &str| AllowedApp {
+        name: name.into(),
+        bundle_id: None,
+        executable: Some(path.into()),
+    };
+    let stored = CuaDriverConfig {
+        enabled: true,
+        apps: vec![
+            program("Notes", "/usr/local/bin/notes"),
+            program("Zotero", "/opt/zotero/zotero"),
+        ],
+        ..Default::default()
+    };
+    let own = "/opt/oleafly/oleafly";
+    // The quick check at startup never looks at the file system.
+    let (quick, dropped) = super::config::sanitize_loaded(
+        stored,
+        super::Platform::Linux,
+        &super::config::NameOnlyProbe,
+        own,
+    );
+    assert_eq!(dropped, 0);
+    assert_eq!(quick.apps.len(), 2);
+    let f = fixture(quick, &[], ScriptedApprover::default());
+    let dropped = super::resanitize(
+        &f.state,
+        super::Platform::Linux,
+        Arc::new(LinkProbe),
+        own.into(),
+    )
+    .await;
+    assert_eq!(dropped, 1);
+    let names: Vec<String> = f
+        .state
+        .settings()
+        .apps
+        .into_iter()
+        .map(|app| app.name)
+        .collect();
+    assert_eq!(names, vec!["Zotero".to_string()]);
 }

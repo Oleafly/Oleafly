@@ -12,7 +12,10 @@ use crate::contract::{CliError, ErrorKind};
 
 pub const CONFIG_FILE: &str = "config.json";
 const LOCK_FILE: &str = ".config-store.lock";
-const MAX_CONFIG_BYTES: u64 = 1024 * 1024;
+/// The app reads its settings at any size; 4 MiB is the limit its other
+/// readers here use too (`desktop_config`), well above a real file.
+const MAX_CONFIG_BYTES: u64 = 4 * 1024 * 1024;
+const TOO_LARGE: &str = "config.json is larger than 4 MiB";
 const LOCK_BUDGET: Duration = Duration::from_secs(10);
 pub const LATEXMK_ENGINE: &str = "latexmk";
 
@@ -30,7 +33,7 @@ fn read_object(path: &Path) -> Result<Option<Map<String, Value>>, String> {
         return Err("config.json isn't a regular file".into());
     }
     if metadata.len() > MAX_CONFIG_BYTES {
-        return Err("config.json is larger than 1 MiB".into());
+        return Err(TOO_LARGE.into());
     }
     let bytes = std::fs::read(path).map_err(|error| error.to_string())?;
     match serde_json::from_slice::<Value>(&bytes) {
@@ -40,7 +43,7 @@ fn read_object(path: &Path) -> Result<Option<Map<String, Value>>, String> {
     }
 }
 
-/// The app's settings (≤ 1 MiB); `None` when missing or unreadable.
+/// The app's settings (≤ 4 MiB); `None` when missing or unreadable.
 pub fn read_app_config(data_root: &Path) -> Option<Map<String, Value>> {
     read_object(&config_path(data_root)).ok().flatten()
 }
@@ -119,6 +122,14 @@ pub fn update_app_config(
     let path = config_path(data_root);
     let mut config = read_object(&path)
         .map_err(|reason| {
+            if reason == TOO_LARGE {
+                return CliError::new(
+                    ErrorKind::System,
+                    "config.too_large",
+                    "Oleafly's settings file is larger than 4 MiB, so the CLI left it alone.",
+                )
+                .hint("Change this setting in the Oleafly app instead.");
+            }
             CliError::new(
                 ErrorKind::Io,
                 "config.corrupt",
@@ -214,6 +225,31 @@ mod tests {
             .permissions()
             .mode();
         assert_eq!(mode & 0o077, 0, "{mode:o}");
+    }
+
+    #[test]
+    fn a_large_config_is_read_and_one_too_large_is_called_that() {
+        let data = tempfile::tempdir().unwrap();
+        // Over the old 1 MiB cap: long provider model lists.
+        let models: Vec<Value> = (0..40_000)
+            .map(|index| serde_json::json!({"id": format!("model-{index}"), "enabled": true}))
+            .collect();
+        let big = serde_json::json!({"typst_default_version": "0.13.1", "ai_provider_models": {"x": models}});
+        std::fs::write(data.path().join(CONFIG_FILE), big.to_string()).unwrap();
+        assert!(
+            std::fs::metadata(data.path().join(CONFIG_FILE))
+                .unwrap()
+                .len()
+                > 1024 * 1024
+        );
+        assert_eq!(typst_default_choice(data.path()).as_deref(), Some("0.13.1"));
+        std::fs::write(
+            data.path().join(CONFIG_FILE),
+            vec![b' '; MAX_CONFIG_BYTES as usize + 1],
+        )
+        .unwrap();
+        let error = update_app_config(data.path(), |_| Ok(())).unwrap_err();
+        assert_eq!(error.code, "config.too_large");
     }
 
     #[test]

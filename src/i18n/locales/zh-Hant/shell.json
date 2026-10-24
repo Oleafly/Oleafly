@@ -557,6 +557,9 @@
     "title": "返回專案庫",
     "tooltip": "返回專案庫"
   },
+  "importDestination": {
+    "scansGoTo": "掃描檔會傳送到 {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -670,8 +673,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} 未儲存的變更仍保持開啟。你可以留下來解決問題，或仍要結束並放棄這些變更。",
+      "descriptionReload": "{{reason}} 未儲存的變更仍保持開啟。你可以留下來解決問題，或仍要重新載入並放棄這些變更。",
       "descriptionRestart": "{{reason}} 未儲存的變更仍保持開啟。你可以留下來解決問題，或仍要重新啟動並放棄這些變更。",
       "quitAnyway": "仍要結束",
+      "reloadAnyway": "仍要重新載入",
       "restartAnyway": "仍要重新啟動",
       "stay": "留下",
       "title": "部分檔案無法儲存"

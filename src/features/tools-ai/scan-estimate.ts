@@ -26,6 +26,12 @@ export interface PageSize {
 export type ScanEstimate =
   | { kind: "ollama"; pages: number }
   | { kind: "cost"; pages: number; usd: number }
+  /** A subscription covers it, such as a coding plan or Ollama Cloud. */
+  | { kind: "plan"; pages: number; provider: string }
+  /** A model server on this computer other than Ollama. */
+  | { kind: "local"; pages: number }
+  /** The model's listed price is zero. */
+  | { kind: "free"; pages: number }
   | { kind: "unknown"; pages: number; provider: string };
 
 function finite(value: number): number {
@@ -46,13 +52,15 @@ export function imageTokens(width: number, height: number): number {
   return Math.ceil(fit.width / PATCH_PIXELS) * Math.ceil(fit.height / PATCH_PIXELS);
 }
 
-/** USD per million input and output tokens, when they are known. */
-function ratesFor(summary: ToolsChoiceSummary): { input: number; output: number } | null {
+/** USD per million input and output tokens, `"plan"` when a subscription
+ * covers the model, or null when the price is not known. */
+function ratesFor(summary: ToolsChoiceSummary): { input: number; output: number } | "plan" | null {
   const cost = summary.metadata?.cost;
   if (typeof cost?.input === "number" && typeof cost.output === "number") {
     return { input: cost.input, output: cost.output };
   }
   const price = lookupPrice(summary.modelId);
+  if (price.note === "plan") return "plan";
   if (price.note) return null;
   return { input: price.inputPerMTok, output: price.outputPerMTok };
 }
@@ -62,15 +70,20 @@ export function estimateScan(sizes: readonly PageSize[], summary: ToolsChoiceSum
   if (summary.engine === "mathpix") {
     return { kind: "cost", pages, usd: Math.round(pages * MATHPIX_USD_PER_PDF_PAGE * 1e6) / 1e6 };
   }
-  if (summary.providerId === "ollama") return { kind: "ollama", pages };
-  const rates = ratesFor(summary);
-  if (!rates) {
-    return {
-      kind: "unknown",
-      pages,
-      provider: destinationName(summary.destination) ?? summary.providerId,
-    };
+  const provider = destinationName(summary.destination);
+  if (summary.providerId === "ollama") {
+    // An Ollama Cloud model runs on ollama.com under the user's plan.
+    return provider && summary.destination.kind === "provider"
+      ? { kind: "plan", pages, provider }
+      : { kind: "ollama", pages };
   }
+  if (summary.destination.kind === "device") return { kind: "local", pages };
+  const rates = ratesFor(summary);
+  if (rates === "plan") return { kind: "plan", pages, provider: provider ?? summary.providerId };
+  if (!rates) {
+    return { kind: "unknown", pages, provider: provider ?? summary.providerId };
+  }
+  if (rates.input === 0 && rates.output === 0) return { kind: "free", pages };
   const inputTokens = sizes.reduce((total, size) => {
     const pixels = pagePixels(size);
     return total + imageTokens(pixels.width, pixels.height) + PROMPT_TOKENS_PER_PAGE;

@@ -43,10 +43,21 @@ pub const HEARTBEAT: Duration = Duration::from_secs(5);
 pub const LOCK_BUDGET: Duration = Duration::from_secs(10);
 /// `oleafly daemon run` waits less: someone is watching.
 const FOREGROUND_LOCK_BUDGET: Duration = Duration::from_secs(2);
-/// How long running tasks get to stop when the app takes them back.
+/// How long running tasks get to stop when the app takes them back. The
+/// app waits `STOP_SUSPEND + CANCEL_GRACE` and a margin before it ends the
+/// helper (`STOP_WAIT` in the app's `daemon_handoff`).
 const STOP_SUSPEND: Duration = Duration::from_secs(30);
 /// … and when the helper is told to end.
 const SIGNAL_SUSPEND: Duration = Duration::from_secs(10);
+/// Past its suspend budget a release cancels what still runs and waits for
+/// it; this bounds that wait, so the whole release ends inside the app's
+/// stop wait (a helper ended mid-handoff leaves tasks with a dead owner).
+const RELEASE_MARGIN: Duration = Duration::from_secs(10);
+/// How often the helper reads the notification and keep-awake settings
+/// again.
+const PREFS_REFRESH: Duration = Duration::from_secs(10);
+/// How often a release looks whether the app's reclaims under way are done.
+const IN_FLIGHT_POLL: Duration = Duration::from_millis(200);
 const CONCURRENCY: usize = 2;
 /// Exit code when another helper runs (`oleafly daemon run`).
 pub const ALREADY_RUNNING: i32 = 8;
@@ -176,6 +187,7 @@ pub fn serve(options: ServeOptions) -> i32 {
             return 1;
         }
     };
+    log.take_rotation();
     let identity = oleafly_sandbox::process::identity::current();
     let started_ms = now_ms();
     let state = Arc::new(StateWriter::new(
@@ -241,8 +253,13 @@ pub fn serve(options: ServeOptions) -> i32 {
     if let Ok(heartbeat) = heartbeat {
         let _ = heartbeat.join();
     }
-    state.remove();
+    // The lock goes before the state file: a held lock with no state file
+    // reads as a live helper, so a quit in between would start none. Past
+    // the lock the state says this helper is going, which starts a new one
+    // (it waits for nothing), and only this helper's own file is removed.
+    let _ = state.set_phase(Phase::Exiting);
     drop(lock);
+    state.remove();
     log.event("info", "exited", &[("code", &code.to_string())]);
     code
 }
@@ -268,12 +285,44 @@ pub(crate) async fn termination() {
             _ => std::future::pending::<()>().await,
         }
     }
-    #[cfg(not(unix))]
+    // A closed console, a logoff or a shutdown ends the process as surely as
+    // Ctrl+C, so the helper hands its tasks back for those too.
+    #[cfg(windows)]
+    {
+        use tokio::signal::windows::{ctrl_c, ctrl_close, ctrl_logoff, ctrl_shutdown};
+        match (ctrl_c(), ctrl_close(), ctrl_logoff(), ctrl_shutdown()) {
+            (Ok(mut interrupt), Ok(mut close), Ok(mut logoff), Ok(mut shutdown)) => {
+                tokio::select! {
+                    _ = interrupt.recv() => {}
+                    _ = close.recv() => {}
+                    _ = logoff.recv() => {}
+                    _ = shutdown.recv() => {}
+                }
+            }
+            _ => {
+                if tokio::signal::ctrl_c().await.is_err() {
+                    std::future::pending::<()>().await;
+                }
+            }
+        }
+    }
+    #[cfg(not(any(unix, windows)))]
     {
         if tokio::signal::ctrl_c().await.is_err() {
             std::future::pending::<()>().await;
         }
     }
+}
+
+/// The helper's own resources (bundled skills): those beside the binary it
+/// runs as. An AppImage helper runs from a mount of its own, and the
+/// quitting app's mount, which a grant names, is gone by then.
+fn own_resources(executable: Option<PathBuf>) -> Option<PathBuf> {
+    let executable = executable?;
+    let bin_dir = executable.parent()?;
+    crate::app_paths::resources_candidates(bin_dir, crate::app_paths::Platform::current())
+        .into_iter()
+        .find(|folder| folder.is_dir())
 }
 
 fn status_of(task: &ResearchTask) -> bool {
@@ -289,17 +338,48 @@ async fn release(
     reason: HandoffReason,
     deadline: Duration,
     log: &HelperLog,
+    in_flight: &std::collections::HashSet<String>,
 ) {
     tasks.stop_admitting();
-    let mine = store.daemon_tasks().unwrap_or_default();
-    let running: Vec<String> = mine
-        .iter()
-        .filter(|task| status_of(task))
-        .map(|task| task.id.clone())
-        .collect();
-    let results = tasks
-        .suspend(&running, SuspendMode::Prompt, Some(deadline))
-        .await;
+    let running_ids = || -> Vec<String> {
+        store
+            .daemon_tasks()
+            .unwrap_or_default()
+            .iter()
+            .filter(|task| status_of(task))
+            .map(|task| task.id.clone())
+            .collect()
+    };
+    // A task the app is taking back (or cancelling) is being suspended
+    // already: suspending it a second time races that one for its saved
+    // conversation, and the loser hands it over without it. Those finish
+    // first (they hand their task over themselves), within the budget.
+    let started = Instant::now();
+    let mut running = running_ids();
+    while running.iter().any(|id| in_flight.contains(id)) && started.elapsed() < deadline {
+        tokio::time::sleep(IN_FLIGHT_POLL).await;
+        running = running_ids();
+    }
+    let deadline = deadline
+        .saturating_sub(started.elapsed())
+        .max(IN_FLIGHT_POLL);
+    // The suspend cancels what is still running past `deadline` and waits
+    // for it; the wait is bounded so the release ends inside the app's stop
+    // wait. Tasks still running then stay this helper's, and the next owner
+    // recovers them as interrupted.
+    let bound = deadline + oleafly_acp::limits::CANCEL_GRACE + RELEASE_MARGIN;
+    let results = match tokio::time::timeout(
+        bound,
+        tasks.suspend(&running, SuspendMode::Prompt, Some(deadline)),
+    )
+    .await
+    {
+        Ok(results) => results,
+        Err(_) => {
+            log.event("error", "release_timed_out", &[]);
+            Vec::new()
+        }
+    };
     for (id, result) in results {
         let Some((generation, mut record)) =
             handoff_record_for(&result, OwnerKind::Daemon, to, reason)
@@ -387,18 +467,20 @@ async fn run(
         options.app_launch.clone(),
     ));
     let live = Arc::new(LiveSpend::default());
+    let resources_dir = options
+        .resources_dir
+        .clone()
+        .or_else(|| own_resources(std::env::current_exe().ok()));
     let tasks = ResearchTaskState::new(Ok(tasks_root.clone()), CONCURRENCY);
-    tasks.attach(
-        Arc::new(DaemonResearchHost::new(
-            data_root,
-            options.resources_dir.clone(),
-            prefs,
-            notifier.clone(),
-            log.clone(),
-            live.clone(),
-        )),
-        tokio::runtime::Handle::current(),
-    );
+    let research_host = Arc::new(DaemonResearchHost::new(
+        data_root,
+        resources_dir.clone(),
+        prefs,
+        notifier.clone(),
+        log.clone(),
+        live.clone(),
+    ));
+    tasks.attach(research_host.clone(), tokio::runtime::Handle::current());
     let services = match tasks.services() {
         Ok(services) => services,
         Err(error) => {
@@ -408,7 +490,7 @@ async fn run(
     };
     let task_host = Arc::new(DaemonTaskHost::new(
         data_root,
-        options.resources_dir.clone(),
+        resources_dir,
         log.clone(),
         live,
     ));
@@ -450,13 +532,25 @@ async fn run(
     tokio::pin!(signal);
     let mut idle_since = Instant::now();
     let mut announced = false;
+    let mut prefs_read = Instant::now();
+    // Tasks the app is taking back or cancelling, handled in the background.
+    let mut in_flight = std::collections::HashSet::new();
     loop {
+        if prefs_read.elapsed() >= PREFS_REFRESH {
+            prefs_read = Instant::now();
+            let root = data_root.clone();
+            if let Ok(Ok(prefs)) =
+                tokio::task::spawn_blocking(move || desktop_config::load_prefs(&root)).await
+            {
+                research_host.set_prefs(prefs);
+            }
+        }
         tokio::select! {
             _ = tokio::time::sleep(TICK) => {}
             _ = &mut signal => {
                 log.event("info", "signal", &[]);
                 let _ = state.set_phase(Phase::Stopping);
-                release(&tasks, &store, OwnerKind::Daemon, HandoffReason::Signal, SIGNAL_SUSPEND, log).await;
+                release(&tasks, &store, OwnerKind::Daemon, HandoffReason::Signal, SIGNAL_SUSPEND, log, &in_flight).await;
                 return 0;
             }
         }
@@ -470,6 +564,7 @@ async fn run(
                 HandoffReason::Stop,
                 STOP_SUSPEND,
                 log,
+                &in_flight,
             )
             .await;
             return 0;
@@ -478,13 +573,28 @@ async fn run(
             log.event("error", "launch_failed", &[("message", &error)]);
         }
         let grant = |task: &ResearchTask| grant_for(&store, &task.id);
-        if let Err(error) = tasks.apply_foreign_requests(&grant).await {
-            log.event("error", "requests_failed", &[("message", &error)]);
+        match tasks.apply_foreign_requests(&grant).await {
+            Ok(started) => in_flight.extend(started),
+            Err(error) => log.event("error", "requests_failed", &[("message", &error)]),
+        }
+        // A reclaim or cancel is done once its task isn't running here.
+        if !in_flight.is_empty() {
+            let running: std::collections::HashSet<String> = store
+                .daemon_tasks()
+                .unwrap_or_default()
+                .into_iter()
+                .filter(status_of)
+                .map(|task| task.id)
+                .collect();
+            in_flight.retain(|id| running.contains(id));
         }
         let work = store.owned_work().unwrap_or_default();
         if options.mode == ServeMode::App && !announced && work.running > 0 {
             announced = true;
-            notifier.started();
+            // A user who reopened the app already sees the tasks.
+            if !super::control::app_is_open(&paths.app_open) {
+                notifier.started();
+            }
         }
         if work.running + work.queued > 0 || options.stay {
             idle_since = Instant::now();

@@ -89,6 +89,14 @@ pub(crate) fn validate_launch_env(
         .collect()
 }
 
+/// What a session opened to run a launch command (an installer, a sign-in)
+/// adds on Windows: cmd.exe then never runs a program of that name from the
+/// project folder in place of the one on PATH (a `powershell.exe` in a
+/// downloaded project, say). Applied after the launch's own variables.
+pub(crate) fn launch_command_env(launch: bool, windows: bool) -> Option<(String, String)> {
+    (launch && windows).then(|| ("NoDefaultCurrentDirectoryInExePath".into(), "1".into()))
+}
+
 fn valid_env_name(name: &str) -> bool {
     let mut chars = name.chars();
     let Some(first) = chars.next() else {
@@ -327,6 +335,18 @@ mod tests {
         assert!(appimage_env_edits(&lookup).is_empty());
         let relative = |name: &str| (name == "APPDIR").then(|| OsString::from("squashfs-root"));
         assert!(appimage_env_edits(&relative).is_empty());
+    }
+
+    #[test]
+    fn launch_sessions_on_windows_never_run_programs_from_the_project_folder() {
+        assert_eq!(
+            launch_command_env(true, true),
+            Some(("NoDefaultCurrentDirectoryInExePath".into(), "1".into()))
+        );
+        // A terminal the user opens keeps cmd.exe's usual search, and the
+        // variable means nothing elsewhere.
+        assert_eq!(launch_command_env(false, true), None);
+        assert_eq!(launch_command_env(true, false), None);
     }
 
     #[test]

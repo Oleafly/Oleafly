@@ -134,7 +134,11 @@ fn validate_import_request(
         return Err(CookieImportError::ConfirmationRequired);
     }
     reader::validate_profile(profile)?;
-    reader::normalize_import_domain(domain)?;
+    // A copy is for signing in to one site; every cookie of a profile is
+    // never needed.
+    if reader::normalize_import_domain(domain)?.is_none() {
+        return Err(CookieImportError::InvalidDomain);
+    }
     Ok(())
 }
 
@@ -526,6 +530,17 @@ mod tests {
             !everything.to_lowercase().contains("in-app browser"),
             "{everything}"
         );
+    }
+
+    #[test]
+    fn a_copy_always_names_the_site_it_signs_in_to() {
+        for domain in [None, Some(""), Some("  ")] {
+            assert_eq!(
+                validate_import_request("main", true, "Default", domain),
+                Err(CookieImportError::InvalidDomain),
+                "{domain:?}"
+            );
+        }
     }
 
     #[test]

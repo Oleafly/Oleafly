@@ -186,7 +186,8 @@
   },
   "imageToLatex": {
     "failed": "Převod obrázku do LaTeXu selhal: {{detail}}",
-    "transcribing": "Přepisuje se obrázek…"
+    "transcribing": "Přepisuje se obrázek…",
+    "notInserted": "Aktivní soubor se změnil, takže LaTeX nebyl vložen. Zkopírujte ho a vložte tam, kam potřebujete."
   },
   "import": {
     "chooseOfferedProjectType": "Vyberte některý z typů projektu nabízených pro tento soubor.",
@@ -637,6 +638,8 @@
     "saveReason": "složka projektu není dostupná"
   },
   "imageToTypst": {
-    "failed": "Převod obrázku do formátu Typst selhal: {{detail}}"
+    "failed": "Převod obrázku do formátu Typst selhal: {{detail}}",
+    "copied": "Zdrojový kód Typst zkopírován",
+    "notInserted": "Aktivní soubor se změnil, takže Typst nebyl vložen. Zkopírujte ho a vložte tam, kam potřebujete."
   }
 }

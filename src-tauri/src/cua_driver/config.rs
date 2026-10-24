@@ -84,6 +84,17 @@ impl ExecutableProbe for SystemProbe {
     }
 }
 
+/// Takes every program path as it is, without touching the file system:
+/// the quick check at startup, before `SystemProbe` runs in the background
+/// (a program on a share that can't be reached must not hold up the app).
+pub(crate) struct NameOnlyProbe;
+
+impl ExecutableProbe for NameOnlyProbe {
+    fn check(&self, path: &str) -> Result<String, AppRejection> {
+        Ok(path.to_string())
+    }
+}
+
 /// Settings are usable: on, with something agents may use.
 pub(crate) fn ready(config: &CuaDriverConfig) -> bool {
     config.enabled && (!config.apps.is_empty() || !config.sites.is_empty())
@@ -119,8 +130,40 @@ fn valid_bundle_id(value: &str) -> bool {
         })
 }
 
+/// Unicode format characters (category Cf): bidi controls, zero-width
+/// characters and the like, which can reorder or hide text around them.
+pub(crate) fn is_format_char(character: char) -> bool {
+    matches!(
+        character,
+        '\u{00AD}'
+            | '\u{0600}'..='\u{0605}'
+            | '\u{061C}'
+            | '\u{06DD}'
+            | '\u{070F}'
+            | '\u{0890}'..='\u{0891}'
+            | '\u{08E2}'
+            | '\u{180E}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{2066}'..='\u{206F}'
+            | '\u{FEFF}'
+            | '\u{FFF9}'..='\u{FFFB}'
+            | '\u{110BD}'
+            | '\u{110CD}'
+            | '\u{13430}'..='\u{1343F}'
+            | '\u{1BCA0}'..='\u{1BCA3}'
+            | '\u{1D173}'..='\u{1D17A}'
+            | '\u{E0001}'
+            | '\u{E0020}'..='\u{E007F}'
+    )
+}
+
+/// A name without format characters, trimmed; control characters make it
+/// invalid.
 fn clean_name(name: &str) -> Result<String, String> {
-    let trimmed = name.trim();
+    let visible: String = name.chars().filter(|c| !is_format_char(*c)).collect();
+    let trimmed = visible.trim();
     if trimmed.is_empty() || trimmed.chars().any(char::is_control) {
         return Err(app_invalid(
             &trimmed
@@ -162,7 +205,7 @@ fn check_app(
             .name
             .trim()
             .chars()
-            .filter(|c| !c.is_control())
+            .filter(|c| !c.is_control() && !is_format_char(*c))
             .collect();
         (AppFault::Invalid, shown)
     })?;
@@ -445,18 +488,15 @@ pub(crate) enum Widening {
     ScriptedControl,
 }
 
-fn app_key(app: &AllowedApp) -> (Option<String>, Option<String>) {
-    (
-        app.bundle_id.as_ref().map(|id| id.to_ascii_lowercase()),
-        app.executable
-            .as_ref()
-            .map(|path| path.to_ascii_lowercase()),
-    )
-}
-
 /// What `new` allows beyond `old`. Turning the connector on lists
-/// everything it grants; narrowing lists nothing.
-pub(crate) fn widening(old: &CuaDriverConfig, new: &CuaDriverConfig) -> Vec<Widening> {
+/// everything it grants; narrowing lists nothing. Apps count as the same by
+/// the platform's own rules (`same_app`), the ones saving uses: on Linux a
+/// path that differs only in case is another program.
+pub(crate) fn widening(
+    old: &CuaDriverConfig,
+    new: &CuaDriverConfig,
+    platform: Platform,
+) -> Vec<Widening> {
     if !new.enabled {
         return Vec::new();
     }
@@ -469,7 +509,7 @@ pub(crate) fn widening(old: &CuaDriverConfig, new: &CuaDriverConfig) -> Vec<Wide
         &empty
     };
     for app in &new.apps {
-        if !base.apps.iter().any(|known| app_key(known) == app_key(app)) {
+        if !base.apps.iter().any(|known| same_app(known, app, platform)) {
             found.push(Widening::App {
                 name: app.name.clone(),
                 identity: app
@@ -843,7 +883,7 @@ mod tests {
             scripted_control: true,
         };
         assert_eq!(
-            widening(&old, &new),
+            widening(&old, &new, Platform::Macos),
             vec![
                 Widening::App {
                     name: "Excel".into(),
@@ -853,12 +893,75 @@ mod tests {
                 Widening::ScriptedControl
             ]
         );
-        assert!(widening(&new, &old).is_empty());
+        assert!(widening(&new, &old, Platform::Macos).is_empty());
         assert_eq!(
-            widening(&CuaDriverConfig::default(), &old)[0],
+            widening(&CuaDriverConfig::default(), &old, Platform::Macos)[0],
             Widening::Enabled
         );
-        assert!(widening(&old, &CuaDriverConfig::default()).is_empty());
+        assert!(widening(&old, &CuaDriverConfig::default(), Platform::Macos).is_empty());
+    }
+
+    #[test]
+    fn a_linux_path_that_differs_only_in_case_is_a_new_app_to_confirm() {
+        let old = CuaDriverConfig {
+            enabled: true,
+            apps: vec![exe("Zotero", "/home/u/Apps/zotero/zotero")],
+            ..Default::default()
+        };
+        let new = CuaDriverConfig {
+            apps: vec![
+                exe("Zotero", "/home/u/Apps/zotero/zotero"),
+                exe("Zotero", "/home/u/apps/zotero/zotero"),
+            ],
+            ..old.clone()
+        };
+        assert_eq!(
+            widening(&old, &new, Platform::Linux),
+            vec![Widening::App {
+                name: "Zotero".into(),
+                identity: "/home/u/apps/zotero/zotero".into()
+            }]
+        );
+        // Windows paths ignore case, there and when saving.
+        let windows_old = CuaDriverConfig {
+            apps: vec![exe("Stata", r"C:\Stata\StataSE-64.exe")],
+            ..old
+        };
+        let windows_new = CuaDriverConfig {
+            apps: vec![exe("Stata", r"c:\stata\statase-64.exe")],
+            ..windows_old.clone()
+        };
+        assert!(widening(&windows_old, &windows_new, Platform::Windows).is_empty());
+    }
+
+    #[test]
+    fn names_lose_bidi_and_zero_width_characters() {
+        let probe = FakeProbe::echo();
+        let saved = validate(
+            CuaDriverConfig {
+                enabled: true,
+                apps: vec![app("Zo\u{202E}te\u{200B}ro\u{2066}", "org.zotero.zotero")],
+                ..Default::default()
+            },
+            Platform::Macos,
+            &probe,
+            "oleafly",
+        )
+        .unwrap();
+        assert_eq!(saved.apps[0].name, "Zotero");
+        let error = validate(
+            CuaDriverConfig {
+                enabled: true,
+                apps: vec![app("\u{202E}\u{200F}", "org.zotero.zotero")],
+                ..Default::default()
+            },
+            Platform::Macos,
+            &probe,
+            "oleafly",
+        )
+        .unwrap_err();
+        assert_eq!(code(&error), "desktop_apps.app_invalid");
+        assert!(is_format_char('\u{FEFF}') && !is_format_char('é'));
     }
 
     #[test]

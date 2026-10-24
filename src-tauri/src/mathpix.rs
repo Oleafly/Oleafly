@@ -471,6 +471,25 @@ impl Api {
         })
     }
 
+    /// [`Self::text`], dropped when `cancelled` is set: an image read the
+    /// user stopped ends with its request, and one stopped before it started
+    /// sends nothing.
+    async fn text_unless_cancelled(
+        &self,
+        keys: &MathpixKeys,
+        image_base64: &str,
+        mime: &str,
+        cancelled: &AtomicBool,
+    ) -> Result<MathpixTextResult, String> {
+        if cancelled.load(Ordering::SeqCst) {
+            return Err(code("mathpix.cancelled"));
+        }
+        tokio::select! {
+            result = self.text(keys, image_base64, mime) => result,
+            () = until_cancelled(cancelled) => Err(code("mathpix.cancelled")),
+        }
+    }
+
     async fn pdf_upload(
         &self,
         keys: &MathpixKeys,
@@ -713,8 +732,9 @@ impl Api {
     }
 }
 
-/// Cancel flags of PDF waits, by request id. A cancel can arrive before its
-/// wait starts (the upload was still running); it leaves a set flag behind.
+/// Cancel flags of image reads, PDF uploads and PDF waits, by request id. A
+/// cancel can arrive before its wait starts (the upload was still running);
+/// it leaves a set flag behind.
 #[derive(Default)]
 struct CancelRegistry {
     flags: Mutex<HashMap<String, Arc<AtomicBool>>>,
@@ -772,7 +792,10 @@ impl CancelRegistry {
     }
 }
 
-/// A wait's place in the registry, removed when the wait ends.
+/// A wait's place in the registry, removed when the wait ends unless it was
+/// cancelled: a cancel that lands as an upload finishes must still stop the
+/// wait that follows under the same id, so its set flag stays (until
+/// [`CancelRegistry::make_room`] drops it).
 struct Registration<'a> {
     registry: &'a CancelRegistry,
     id: String,
@@ -782,9 +805,10 @@ struct Registration<'a> {
 impl Drop for Registration<'_> {
     fn drop(&mut self) {
         let mut flags = self.registry.lock();
-        if flags
-            .get(&self.id)
-            .is_some_and(|flag| Arc::ptr_eq(flag, &self.flag))
+        if !self.flag.load(Ordering::SeqCst)
+            && flags
+                .get(&self.id)
+                .is_some_and(|flag| Arc::ptr_eq(flag, &self.flag))
         {
             flags.remove(&self.id);
         }
@@ -962,19 +986,43 @@ pub async fn mathpix_clear_keys(webview: tauri::Webview) -> Result<(), String> {
         .map_err(|error| format!("failed to remove the Mathpix keys: {error}"))?
 }
 
-/// Reads one image (PNG or JPEG, base64) with Mathpix.
+/// Reads one image (PNG or JPEG, base64) with Mathpix. With a `request_id`,
+/// `mathpix_text_cancel` with the same id stops the read.
 #[tauri::command]
 pub async fn mathpix_text(
     webview: tauri::Webview,
     image_base64: String,
     mime: String,
+    request_id: Option<String>,
 ) -> Result<MathpixTextResult, String> {
     require_main(&webview)?;
     if image_base64.len() > MAX_IMAGE_BASE64_CHARS {
         return Err(code("mathpix.image_too_large"));
     }
+    if request_id
+        .as_deref()
+        .is_some_and(|id| !valid_request_id(id))
+    {
+        return Err(code("mathpix.invalid_response"));
+    }
+    // Registered before the keys load, so a cancel from then on stops it.
+    let registration = request_id.as_deref().map(|id| CANCELS.register(id));
     let keys = load_keys().await?;
-    Api::new()?.text(&keys, &image_base64, &mime).await
+    let api = Api::new()?;
+    match &registration {
+        Some(registration) => {
+            api.text_unless_cancelled(&keys, &image_base64, &mime, &registration.flag)
+                .await
+        }
+        None => api.text(&keys, &image_base64, &mime).await,
+    }
+}
+
+/// Stops the image read `mathpix_text` runs under `request_id`, also when
+/// it has not started yet.
+#[tauri::command]
+pub fn mathpix_text_cancel(request_id: String) {
+    CANCELS.cancel(&request_id);
 }
 
 /// Uploads a PDF sent as the raw request body; the `x-oleafly-page-ranges`

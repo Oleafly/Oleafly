@@ -186,7 +186,8 @@
   },
   "imageToLatex": {
     "failed": "Konwersja obrazu na LaTeX nie powiodła się: {{detail}}",
-    "transcribing": "Przepisywanie obrazu…"
+    "transcribing": "Przepisywanie obrazu…",
+    "notInserted": "Aktywny plik się zmienił, więc kod LaTeX nie został wstawiony. Skopiuj go i wklej tam, gdzie chcesz."
   },
   "import": {
     "chooseOfferedProjectType": "Wybierz jeden z typów projektu proponowanych dla tego pliku.",
@@ -637,6 +638,8 @@
     "saveReason": "folder projektu jest niedostępny"
   },
   "imageToTypst": {
-    "failed": "Konwersja obrazu na Typst nie powiodła się: {{detail}}"
+    "failed": "Konwersja obrazu na Typst nie powiodła się: {{detail}}",
+    "copied": "Skopiowano źródło Typst",
+    "notInserted": "Aktywny plik się zmienił, więc kod Typst nie został wstawiony. Skopiuj go i wklej tam, gdzie chcesz."
   }
 }

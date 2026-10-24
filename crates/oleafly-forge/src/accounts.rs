@@ -290,8 +290,15 @@ pub async fn adopt_orphan(
     };
     let writer = store.clone();
     let saved = account.clone();
-    blocking(move || writer.put_account(saved)).await?;
-    Ok(account)
+    let read = token.token.clone();
+    if blocking(move || writer.put_account(saved, &read)).await? {
+        return Ok(account);
+    }
+    // Someone signed in to this server meanwhile: their account stays.
+    let reader = store.clone();
+    blocking(move || reader.account(&account.base))
+        .await?
+        .ok_or(ForgeError::Unauthorized)
 }
 
 #[cfg(test)]
@@ -639,5 +646,60 @@ mod tests {
         assert_eq!(account.login, "octo");
         assert!(store.orphan_bases().unwrap().is_empty());
         assert_eq!(store.accounts().unwrap(), vec![account]);
+    }
+
+    #[tokio::test]
+    async fn adopting_a_token_never_replaces_an_account_signed_in_meanwhile() {
+        let server = MockServer::start(vec![
+            MockResponse::json(401, r#"{"message":"401 Unauthorized"}"#)
+                .on("GET", "/api/v4/version"),
+            MockResponse::json(404, "{}").on("GET", "/api/forgejo/v1/version"),
+            MockResponse::json(404, "{}").on("GET", "/api/v1/version"),
+            MockResponse::json(404, "{}").on("GET", "/api/v3/meta"),
+            MockResponse::json(200, USER).on("GET", "/api/v4/user"),
+        ]);
+        let dir = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(dir.path());
+        let fresh = ForgeAccount {
+            base: server.url(),
+            kind: ForgeKind::GitLab,
+            flavor: None,
+            login: "fresh".into(),
+            name: Some("Fresh Sign-in".into()),
+            avatar_url: None,
+            ca_file: Some("/certs/corp.pem".into()),
+            auth: AuthMethod::Token,
+            added_at: 3,
+        };
+        store
+            .save(
+                fresh.clone(),
+                ForgeToken {
+                    token: "glpat-fresh-123".into(),
+                    refresh: None,
+                    expires_at: None,
+                },
+            )
+            .unwrap();
+        let http = ForgeHttp::new(None).unwrap();
+        let kept = adopt_orphan(&store, &http, &server.url(), 7).await.unwrap();
+        assert_eq!(kept, fresh);
+        assert_eq!(store.accounts().unwrap(), vec![fresh.clone()]);
+
+        // A token that changed after it was read gets no account either.
+        let other = tempfile::tempdir().unwrap();
+        let store = ForgeStore::new(other.path());
+        oleafly_secrets::accounts::save_forge_token(
+            &oleafly_secrets::SecretStore::at(other.path()),
+            &server.url(),
+            ForgeToken {
+                token: "glpat-newer-456".into(),
+                refresh: None,
+                expires_at: None,
+            },
+        )
+        .unwrap();
+        assert!(!store.put_account(fresh, "glpat-older-123").unwrap());
+        assert!(store.accounts().unwrap().is_empty());
     }
 }

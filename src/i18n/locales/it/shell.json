@@ -563,6 +563,9 @@
     "title": "Torna alla libreria",
     "tooltip": "Torna alla libreria dei progetti"
   },
+  "importDestination": {
+    "scansGoTo": "Le scansioni vengono inviate a {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -676,8 +679,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Le tue modifiche non salvate restano aperte. Resta per risolvere il problema oppure esci comunque e perdile.",
+      "descriptionReload": "{{reason}} Le tue modifiche non salvate restano aperte. Resta per risolvere il problema oppure ricarica comunque e perdile.",
       "descriptionRestart": "{{reason}} Le tue modifiche non salvate restano aperte. Resta per risolvere il problema oppure riavvia comunque e perdile.",
       "quitAnyway": "Esci comunque",
+      "reloadAnyway": "Ricarica comunque",
       "restartAnyway": "Riavvia comunque",
       "stay": "Resta",
       "title": "Alcuni file non sono stati salvati"

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   readProjectSourcesBatch: vi.fn(),
   logError: vi.fn(),
   mcpSetActiveProject: vi.fn(async () => {}),
+  releaseProject: vi.fn(async (_projectId: string) => {}),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -39,6 +40,9 @@ vi.mock("@/lib/proofreading/client", () => ({
   cancelProofreading: vi.fn(),
   releaseIdleProofreadingWorker: vi.fn(),
 }));
+vi.mock("@/store/acp-sessions", () => ({
+  useAcpSessionsStore: { getState: () => ({ releaseProject: mocks.releaseProject }) },
+}));
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   flushWysiwygPendingEdits: vi.fn(),
   invalidateWysiwygProjectSession: vi.fn(),
@@ -49,6 +53,7 @@ import { useFilesStore } from "./files";
 
 beforeEach(async () => {
   await useFilesStore.getState().closeProject();
+  mocks.releaseProject.mockReset().mockResolvedValue(undefined);
   mocks.getProject.mockReset().mockResolvedValue({ name: "Paper", kind: "", main_doc: "main.tex" });
   mocks.getProjectEngine.mockReset().mockResolvedValue(LATEX_ENGINE);
   mocks.projectMutationGeneration.mockReset().mockResolvedValue(0);
@@ -95,5 +100,25 @@ describe("project leave guards in the files store", () => {
     expect(seen.at(-1)).toEqual({ projectId: "p2", reason: "close", targetProjectId: null });
     expect(useFilesStore.getState().projectId).toBeNull();
     stop();
+  });
+});
+
+describe("CLI agents of a project the window leaves", () => {
+  it("disconnects the idle ones on a switch or a close, and not when the leave is refused", async () => {
+    await useFilesStore.getState().openProject("p1");
+    await useFilesStore.getState().openProject("p1");
+    expect(mocks.releaseProject).not.toHaveBeenCalled();
+
+    const stop = registerProjectLeaveGuard(async () => false);
+    await useFilesStore.getState().openProject("p2");
+    await useFilesStore.getState().closeProject();
+    expect(mocks.releaseProject).not.toHaveBeenCalled();
+    stop();
+
+    await useFilesStore.getState().openProject("p2");
+    await vi.waitFor(() => expect(mocks.releaseProject).toHaveBeenCalledWith("p1"));
+    await useFilesStore.getState().closeProject();
+    await vi.waitFor(() => expect(mocks.releaseProject).toHaveBeenLastCalledWith("p2"));
+    expect(mocks.releaseProject).toHaveBeenCalledTimes(2);
   });
 });

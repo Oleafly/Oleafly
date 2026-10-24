@@ -306,8 +306,16 @@ pub async fn research_compute_forget_host_key<R: tauri::Runtime>(
     blocking(move || {
         let target = find_target(&root, &target_id)?;
         let endpoint = endpoint_of(&target)?;
-        host_keys::forget(&known_hosts_file(&root), &endpoint.host, endpoint.port)
+        let removed = host_keys::forget(&known_hosts_file(&root), &endpoint.host, endpoint.port)
             .map_err(String::from)?;
+        // Saying it worked when nothing was removed would leave a replaced
+        // key trusted without the user knowing.
+        if removed == 0 {
+            return Err(format!(
+                "No trusted key for {} was found, so nothing was removed.",
+                endpoint.host
+            ));
+        }
         settings::update(&root, |saved| {
             saved.tested.remove(&target_id);
             Ok(())

@@ -563,6 +563,9 @@
     "title": "Voltar para a biblioteca",
     "tooltip": "Voltar para a biblioteca de projetos"
   },
+  "importDestination": {
+    "scansGoTo": "As digitalizações vão para {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -676,8 +679,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Suas mudanças não salvas continuam abertas. Fique para resolver o problema ou encerre mesmo assim e perca-as.",
+      "descriptionReload": "{{reason}} Suas mudanças não salvas continuam abertas. Fique para resolver o problema ou recarregue mesmo assim e perca-as.",
       "descriptionRestart": "{{reason}} Suas mudanças não salvas continuam abertas. Fique para resolver o problema ou reinicie mesmo assim e perca-as.",
       "quitAnyway": "Encerrar mesmo assim",
+      "reloadAnyway": "Recarregar mesmo assim",
       "restartAnyway": "Reiniciar mesmo assim",
       "stay": "Ficar",
       "title": "Alguns arquivos não puderam ser salvos"

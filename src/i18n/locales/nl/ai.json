@@ -613,6 +613,7 @@
       "sendNow": "Nu versturen",
       "sendFailed": "Dit bericht is niet verstuurd. Verstuur het opnieuw of verwijder het.",
       "queuedConnecting": "In de wachtrij: wordt verstuurd zodra de agent gereed is",
+      "queuedSignIn": "In de wachtrij: wordt verstuurd nadat je je hebt aangemeld",
       "retry": "Opnieuw versturen",
       "edit": "Bewerken"
     },

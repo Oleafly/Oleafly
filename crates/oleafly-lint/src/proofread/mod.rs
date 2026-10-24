@@ -13,7 +13,7 @@ pub mod fix;
 use std::collections::BTreeMap;
 use std::fmt;
 
-use oleafly_preflight::text::SourceText;
+use oleafly_preflight::text::{is_js_space_unit, js_trim, SourceText};
 use oleafly_preflight::types::Severity;
 
 pub use config::{
@@ -128,6 +128,74 @@ pub(crate) fn lint_range(
     (to > from && to <= text_length).then_some((from, to))
 }
 
+/// `PROOFREADING_RENDER_LIMITS` (`packages/editor/src/proofreading.ts`):
+/// the longest spelling finding, the longest grammar span, and the most
+/// findings one word gets.
+const SPELLING_SPAN_LIMIT: usize = 40;
+const GRAMMAR_SPAN_LIMIT: usize = 300;
+const SAME_WORD_LIMIT: usize = 20;
+
+/// `isSpellingDiagnosticKind`.
+fn is_spelling_kind(kind: &str) -> bool {
+    kind.is_empty() || kind == "Spelling"
+}
+
+/// `boundedSentenceEnd`: just past the first `.`, `?` or `!` after `from`
+/// that ends a sentence, or `cap`.
+fn bounded_sentence_end(text: &SourceText, from: usize, cap: usize) -> usize {
+    for index in from + 1..cap {
+        if !matches!(text.unit(index), Some(0x2E | 0x3F | 0x21)) {
+            continue;
+        }
+        let next = index + 1;
+        if next >= cap || text.unit(next).is_some_and(is_js_space_unit) {
+            return next;
+        }
+    }
+    cap
+}
+
+/// `renderableSpanEnd`: where the app would end a finding, or `None` when
+/// it drops it (a spelling finding over 40 units or across lines).
+fn renderable_span_end(kind: &str, from: usize, to: usize, text: &SourceText) -> Option<usize> {
+    if to <= from || to > text.len_utf16() {
+        return None;
+    }
+    if is_spelling_kind(kind) {
+        let one_line = !text.units()[from..to].contains(&0x0A);
+        return (to - from <= SPELLING_SPAN_LIMIT && one_line).then_some(to);
+    }
+    let bounded = bounded_sentence_end(text, from, to.min(from + GRAMMAR_SPAN_LIMIT));
+    (bounded > from).then_some(bounded)
+}
+
+/// `guardProofreadingDiagnostics`, which every mode of the app's worker
+/// runs: spans the app can't show are dropped or cut at their sentence's
+/// end (a cut one loses its suggestions, so it is never fixed), and no word
+/// gets more than 20 findings. `found` is sorted by range.
+fn guarded(found: Vec<(LintDiagnostic, String)>, text: &SourceText) -> Vec<LintDiagnostic> {
+    let mut per_word: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut output = Vec::new();
+    for (mut diagnostic, kind) in found {
+        let Some(to) = renderable_span_end(&kind, diagnostic.from, diagnostic.to, text) else {
+            continue;
+        };
+        let key = js_trim(&text.slice(diagnostic.from, to)).to_lowercase();
+        let seen = per_word.entry(key).or_insert(0);
+        if *seen >= SAME_WORD_LIMIT {
+            continue;
+        }
+        *seen += 1;
+        if to != diagnostic.to {
+            diagnostic.to = to;
+            diagnostic.suggestions.clear();
+            diagnostic.fixable = false;
+        }
+        output.push(diagnostic);
+    }
+    output
+}
+
 /// The worker's `grammarLintOutcome` for every lint: map back, drop lints
 /// over masked regions and over accepted words, and mark safe fixes.
 /// Returns the findings sorted by range and the count of unmappable lints.
@@ -137,7 +205,7 @@ pub(crate) fn diagnostics_from(
     input: &ProseInput,
     ignored: &IgnoredWords,
 ) -> (Vec<LintDiagnostic>, usize) {
-    let mut diagnostics = Vec::new();
+    let mut diagnostics: Vec<(LintDiagnostic, String)> = Vec::new();
     let mut malformed = 0;
     for lint in raw {
         let Some((from, to)) = lint_range(
@@ -159,19 +227,22 @@ pub(crate) fn diagnostics_from(
         let fixable = lint.suggestions.len() == 1
             && is_safe_fix_kind(&lint.kind)
             && fix::source_matches_prose(text, input, from, to);
-        diagnostics.push(LintDiagnostic {
-            from,
-            to,
-            severity: Severity::Warning,
-            message: LintMessage::Text(lint.message),
-            source: LintSource::Harper,
-            rule_id: format!("harper/{}", lint.rule),
-            suggestions: lint.suggestions,
-            fixable,
-        });
+        diagnostics.push((
+            LintDiagnostic {
+                from,
+                to,
+                severity: Severity::Warning,
+                message: LintMessage::Text(lint.message),
+                source: LintSource::Harper,
+                rule_id: format!("harper/{}", lint.rule),
+                suggestions: lint.suggestions,
+                fixable,
+            },
+            lint.kind,
+        ));
     }
-    diagnostics.sort_by_key(|diagnostic| (diagnostic.from, diagnostic.to));
-    (diagnostics, malformed)
+    diagnostics.sort_by_key(|(diagnostic, _)| (diagnostic.from, diagnostic.to));
+    (guarded(diagnostics, text), malformed)
 }
 
 fn too_large(text: &SourceText) -> Option<ProofreadOutcome> {
@@ -194,7 +265,7 @@ thread_local! {
 mod engine {
     use std::collections::{BTreeMap, BTreeSet};
     use std::panic::{catch_unwind, AssertUnwindSafe};
-    use std::sync::Arc;
+    use std::sync::{Arc, OnceLock};
 
     use harper_core::linting::{LintGroup, Suggestion};
     use harper_core::parsers::PlainEnglish;
@@ -219,27 +290,43 @@ mod engine {
         }
     }
 
-    fn curated_group() -> LintGroup {
-        LintGroup::new_curated(
-            Arc::new(MutableDictionary::new()),
-            harper_core::Dialect::American,
-        )
+    /// What the curated rule set says about itself, read once: building it
+    /// builds every rule, Weir sources included.
+    struct CuratedRules {
+        names: BTreeSet<String>,
+        descriptions: BTreeMap<String, String>,
+    }
+
+    fn curated_rules() -> &'static CuratedRules {
+        static CURATED: OnceLock<CuratedRules> = OnceLock::new();
+        CURATED.get_or_init(|| {
+            let group = LintGroup::new_curated(
+                Arc::new(MutableDictionary::new()),
+                harper_core::Dialect::American,
+            );
+            let names = match serde_json::to_value(&group.config) {
+                Ok(serde_json::Value::Object(map)) => map.keys().cloned().collect(),
+                _ => BTreeSet::new(),
+            };
+            let descriptions = group
+                .all_descriptions()
+                .into_iter()
+                .map(|(rule, description)| (rule.to_string(), description.to_string()))
+                .collect();
+            CuratedRules {
+                names,
+                descriptions,
+            }
+        })
     }
 
     /// The rule names of Harper's default config (`getDefaultLintConfig`).
-    pub(super) fn known_rules() -> BTreeSet<String> {
-        match serde_json::to_value(&curated_group().config) {
-            Ok(serde_json::Value::Object(map)) => map.keys().cloned().collect(),
-            _ => BTreeSet::new(),
-        }
+    pub(super) fn known_rules() -> &'static BTreeSet<String> {
+        &curated_rules().names
     }
 
-    pub(super) fn rule_descriptions() -> BTreeMap<String, String> {
-        curated_group()
-            .all_descriptions()
-            .into_iter()
-            .map(|(rule, description)| (rule.to_string(), description.to_string()))
-            .collect()
+    pub(super) fn rule_descriptions() -> &'static BTreeMap<String, String> {
+        &curated_rules().descriptions
     }
 
     /// harper-wasm's `Linter` after `setDialect`, `setLintConfig`,
@@ -267,8 +354,7 @@ mod engine {
             merged.add_dictionary(Arc::new(user));
             let dictionary = Arc::new(merged);
             let mut lint_group = LintGroup::new_curated_empty_config(dictionary.clone(), dialect);
-            let known = known_rules();
-            for (rule, enabled) in build_lint_config(&[], &[], Some(&known)) {
+            for (rule, enabled) in build_lint_config(&[], &[], Some(known_rules())) {
                 lint_group.config.set_rule_enabled(rule, enabled);
             }
             Self {
@@ -446,10 +532,11 @@ impl Proofreader {
 }
 
 /// Every Harper rule with its description; empty without `proofread`.
+/// Built once per process.
 pub fn rule_descriptions() -> BTreeMap<String, String> {
     #[cfg(feature = "proofread")]
     {
-        engine::rule_descriptions()
+        engine::rule_descriptions().clone()
     }
     #[cfg(not(feature = "proofread"))]
     {
@@ -512,6 +599,41 @@ mod tests {
         assert_eq!((found[0].from, found[0].to), (20, 27));
         assert_eq!(found[0].rule_id, "harper/RepeatedWords");
         assert!(found[0].fixable);
+    }
+
+    #[test]
+    fn findings_are_guarded_like_the_app_shows_them() {
+        let sentence = "We recieve it. ";
+        let text = SourceText::new(format!(
+            "{}{} Then more text here.",
+            sentence.repeat(25),
+            "word ".repeat(20)
+        ));
+        let input = prose_for(ProseFormat::Markdown, &text);
+        let mut lints: Vec<RawLint> = (0..25)
+            .map(|index| {
+                let from = index * sentence.len() + 3;
+                raw("SpellCheck", "Spelling", from, from + 7, Some("receive"))
+            })
+            .collect();
+        // A grammar span that runs past the end of its sentence, and a
+        // spelling span too long to show.
+        let words = 25 * sentence.len();
+        lints.push(raw("Long", "Grammar", 0, 20, Some("x")));
+        lints.push(raw("SpellCheck", "Spelling", words, words + 45, Some("y")));
+        let (found, _) = diagnostics_from(lints, &text, &input, &IgnoredWords::default());
+        let spelling = found
+            .iter()
+            .filter(|diagnostic| diagnostic.rule_id == "harper/SpellCheck")
+            .count();
+        assert_eq!(spelling, 20);
+        let cut = found
+            .iter()
+            .find(|diagnostic| diagnostic.rule_id == "harper/Long")
+            .expect("the cut grammar finding");
+        assert_eq!((cut.from, cut.to), (0, 14));
+        assert!(cut.suggestions.is_empty());
+        assert!(!cut.fixable);
     }
 
     #[cfg(not(feature = "proofread"))]

@@ -810,7 +810,25 @@ pub struct TaskTranscriptDelta {
 #[serde(rename_all = "camelCase")]
 pub struct TaskTranscriptPage {
     pub events: Vec<TaskTranscriptEvent>,
+    /// Newer rows follow: pass this as the next `after_sequence`.
     pub next_sequence: Option<u64>,
+    /// Older rows precede a backwards page: pass this as the next
+    /// `before_sequence`.
+    #[serde(default)]
+    pub previous_sequence: Option<u64>,
+    /// The generation this one resumed; `None` for a fresh start (or a
+    /// generation from before this was recorded).
+    #[serde(default)]
+    pub resumed_from: Option<u64>,
+}
+
+/// A plan-first task's plan as the review shows it, and whether the file was
+/// longer than the review shows (64 KiB).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskPlanText {
+    pub text: String,
+    pub truncated: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]

@@ -45,6 +45,20 @@ export function ollamaModelSeesImages(info: OllamaModelInfo): boolean {
   return visionCapable(LOCAL_TOOLS_PROVIDER, info.name);
 }
 
+export const OLLAMA_CLOUD_NAME = "Ollama Cloud";
+
+/** Whether an Ollama model runs on Ollama's servers rather than here:
+ * Ollama says so, or the model's tag does ("qwen3-vl:235b-cloud",
+ * "minimax-m2:cloud"). */
+export function ollamaModelIsRemote(info: Pick<OllamaModelInfo, "name" | "remote">): boolean {
+  if (info.remote) return true;
+  const name = info.name.trim().toLowerCase();
+  const colon = name.lastIndexOf(":");
+  const base = colon >= 0 ? name.slice(0, colon) : name;
+  const tag = colon >= 0 ? name.slice(colon + 1) : "";
+  return tag === "cloud" || tag.endsWith("-cloud") || base.endsWith("-cloud");
+}
+
 /** Models the user turned off in Settings for this provider. */
 export function disabledModels(cfg: AppConfig, providerId: string): ReadonlySet<string> {
   return new Set(
@@ -130,6 +144,11 @@ export function toolsDestination(
   return { kind: "provider", providerId, name: toolsProviderName(cfg, providerId) };
 }
 
+/** Where an Ollama Cloud model sends its input, whichever Ollama lists it. */
+export function ollamaCloudDestination(): ToolsDestination {
+  return { kind: "provider", providerId: LOCAL_TOOLS_PROVIDER, name: OLLAMA_CLOUD_NAME };
+}
+
 /** A short name for where the images went, or null for this computer. */
 export function destinationName(destination: ToolsDestination): string | null {
   switch (destination.kind) {
@@ -153,9 +172,19 @@ export interface ToolsChoiceSummary {
   metadata?: ModelMetadata;
 }
 
-export function describeToolsChoice(cfg: AppConfig): ToolsChoiceSummary {
+/** `ollama`, the current Ollama listing when there is one, also catches a
+ * cloud model copied under a name without its cloud tag. */
+export function describeToolsChoice(
+  cfg: AppConfig,
+  ollama?: readonly OllamaModelInfo[] | null,
+): ToolsChoiceSummary {
   const choice = toolsChoice(cfg);
-  const destination = toolsDestination(cfg);
+  const pickedOllama = choice?.provider === LOCAL_TOOLS_PROVIDER ? choice.model : null;
+  const listed = pickedOllama === null ? undefined : ollama?.find((model) => model.name === pickedOllama);
+  const destination =
+    pickedOllama !== null && ollamaModelIsRemote(listed ?? { name: pickedOllama })
+      ? ollamaCloudDestination()
+      : toolsDestination(cfg);
   if (!choice) {
     return {
       engine: "llm",

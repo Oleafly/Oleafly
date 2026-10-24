@@ -15,6 +15,8 @@ import {
   disabledModels,
   LOCAL_TOOLS_PROVIDER,
   MATHPIX_TOOLS_PROVIDER,
+  ollamaCloudDestination,
+  ollamaModelIsRemote,
   ollamaModelSeesImages,
   toolsChoice,
   toolsDestination,
@@ -33,12 +35,16 @@ export interface ResolvedLlm {
   providerId: string;
   modelId: string;
   label: string;
-  /** Not Ollama: hosted API limits apply. */
+  /** Not a model Ollama runs here: hosted API limits apply. Ollama Cloud
+   * models are hosted. */
   hosted: boolean;
   /** Where the input goes (privacy). */
   destination: ToolsDestination;
   metadata?: ModelMetadata;
   profile: OcrProfile | null;
+  /** The assistant's model, used because no Tools model is saved and no
+   * local model could run (the editor's Image to LaTeX/Typst only). */
+  assistantFallback?: boolean;
 }
 
 export interface ResolvedMathpix {
@@ -50,12 +56,15 @@ export interface ResolvedMathpix {
 
 export type ResolvedToolsModel = ResolvedLlm | ResolvedMathpix;
 
-/** A Tools model that cannot run. `settings` names the place that fixes it:
- * Settings, AI (the Ollama card) or Settings, AI, Tools. */
-export class ToolsModelError extends Error {
-  readonly settings: "ai" | "ai-tools";
+/** Where a Tools model problem is fixed: Settings, AI (the Ollama card),
+ * Settings, AI, Tools, or Settings, AI, Providers and keys. */
+export type ToolsSettingsTarget = "ai" | "ai-tools" | "ai-providers";
 
-  constructor(message: string, settings: "ai" | "ai-tools" = "ai-tools") {
+/** A Tools model that cannot run. `settings` names the place that fixes it. */
+export class ToolsModelError extends Error {
+  readonly settings: ToolsSettingsTarget;
+
+  constructor(message: string, settings: ToolsSettingsTarget = "ai-tools") {
     super(message);
     this.name = "ToolsModelError";
     this.settings = settings;
@@ -86,16 +95,26 @@ export function toolsMaxTokens(model: Pick<ResolvedLlm, "hosted" | "metadata">):
 
 const PROFILE_ORDER: readonly OcrProfileId[] = ["glm-ocr", "deepseek-ocr", "dots-ocr"];
 
+/** Whether a model can answer a chat request. Ollama lists embedding-only
+ * models (bge-m3, all-minilm) next to chat models; without capabilities the
+ * model is given the benefit of the doubt. */
+function answersChat(model: OllamaModelInfo): boolean {
+  return !model.capabilities || model.capabilities.includes("completion");
+}
+
 /** The automatic local choice: an OCR model first, then the assistant's
  * Ollama model, then the first that fits. Typed equations need a language
- * model, so OCR-only models are skipped for them. */
+ * model, so OCR-only models are skipped for them. Ollama Cloud models are
+ * never picked: they do not run on this computer. */
 export function pickLocalModel(
   models: readonly OllamaModelInfo[],
   task: ToolsTask,
   assistantModel: string,
   disabled: ReadonlySet<string>,
 ): string | null {
-  const usable = models.filter((model) => !disabled.has(model.name));
+  const usable = models.filter(
+    (model) => !disabled.has(model.name) && !ollamaModelIsRemote(model) && answersChat(model),
+  );
   if (task === "equation-text") {
     const text = usable.filter((model) => !ocrProfileFor(model.name));
     return text.find((model) => model.name === assistantModel)?.name ?? text[0]?.name ?? null;
@@ -171,6 +190,7 @@ function assertLocalModelCanRun(
   if (disabled.has(explicit)) {
     throw new ToolsModelError(
       i18n.t(($) => $.researchTools.converterModel.errors.modelDisabled, { model: explicit }),
+      "ai-providers",
     );
   }
   if (task === "equation-text" && ocrProfileFor(explicit)) {
@@ -209,33 +229,49 @@ async function resolveLocal(task: ToolsTask, cfg: AppConfig, explicit: string): 
     }
     modelId = picked;
   }
+  // An Ollama Cloud model the user picked runs on ollama.com: it is hosted,
+  // so it gets the hosted image budget and says where the input goes.
+  const remote = ollamaModelIsRemote(models.find((model) => model.name === modelId) ?? { name: modelId });
+  if (remote && useSettingsStore.getState().offline) throw offlineError();
   await ensureOllamaModelEnabled(cfg, modelId, models);
   return {
     engine: "llm",
     providerId: LOCAL_TOOLS_PROVIDER,
     modelId,
     label: modelId,
-    hosted: false,
-    destination: toolsDestination(cfg),
+    hosted: remote,
+    destination: remote ? ollamaCloudDestination() : toolsDestination(cfg),
     profile: ocrProfileFor(modelId),
   };
 }
 
 function resolveHosted(task: ToolsTask, cfg: AppConfig, choice: ToolsModelChoice): ResolvedLlm {
   if (useSettingsStore.getState().offline) throw offlineError();
+  // Keys and model switches live under Providers and keys, not Tools.
   if (!toolsProviderConfigured(cfg, choice.provider)) {
     throw new ToolsModelError(
       i18n.t(($) => $.researchTools.converterModel.errors.providerNotConfigured, {
         provider: toolsProviderName(cfg, choice.provider),
       }),
+      "ai-providers",
     );
   }
   const stored = cfg.ai_provider_models?.[choice.provider];
   const entry = stored?.find((model) => model.id === choice.model);
   const label = entry?.name || choice.model;
-  if (stored && !entry?.enabled) {
+  if (stored && !entry) {
+    // Gone from the provider's model list, so there is no switch to turn on.
+    throw new ToolsModelError(
+      i18n.t(($) => $.researchTools.converterModel.errors.modelUnavailable, {
+        model: label,
+        provider: toolsProviderName(cfg, choice.provider),
+      }),
+    );
+  }
+  if (entry && !entry.enabled) {
     throw new ToolsModelError(
       i18n.t(($) => $.researchTools.converterModel.errors.modelDisabled, { model: label }),
+      "ai-providers",
     );
   }
   if (task === "image" && !visionCapable(choice.provider, choice.model, entry?.metadata)) {
@@ -260,10 +296,27 @@ function assistantFallbackModel(task: ToolsTask, cfg: AppConfig): ResolvedLlm | 
   const { providerId, modelId } = pickActiveProvider(cfg);
   if (providerId === LOCAL_TOOLS_PROVIDER) return null;
   try {
-    return resolveHosted(task, cfg, { provider: providerId, model: modelId });
+    return { ...resolveHosted(task, cfg, { provider: providerId, model: modelId }), assistantFallback: true };
   } catch {
     return null;
   }
+}
+
+/** Where the editor's Image to LaTeX/Typst sends images when nothing is
+ * saved for Tools and the local Ollama cannot read them: the assistant's
+ * hosted model, or null when the editor stays local (or fails). `ollama` is
+ * the current listing, or null when Ollama could not be reached. */
+export function editorImageFallback(
+  cfg: AppConfig,
+  ollama: readonly OllamaModelInfo[] | null,
+): ToolsDestination | null {
+  if (toolsChoice(cfg)) return null;
+  if (ollama) {
+    const assistantModel = cfg.ai_provider === LOCAL_TOOLS_PROVIDER ? cfg.ai_model : "";
+    const disabled = disabledModels(cfg, LOCAL_TOOLS_PROVIDER);
+    if (pickLocalModel(ollama, "image", assistantModel, disabled)) return null;
+  }
+  return assistantFallbackModel("image", cfg)?.destination ?? null;
 }
 
 export interface ResolveToolsOptions {

@@ -24,7 +24,7 @@ mod windows;
 // 0.4.8 F1: `oleafly` on the PATH of every child the app starts.
 #[path = "program_locator/cli.rs"]
 mod cli;
-pub(crate) use cli::refresh_cli_shim;
+pub(crate) use cli::{planned_cli_shim, refresh_cli_shim};
 
 #[cfg(test)]
 #[path = "program_locator/tests.rs"]

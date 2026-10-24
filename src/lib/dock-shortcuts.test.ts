@@ -185,9 +185,27 @@ describe("dock shortcuts and a focused terminal", () => {
     expect(handleTerminalTabShortcut(next)).toBe(true);
     expect(useTerminalsStore.getState().activeId).toBe(first.id);
 
-    const previous = Object.assign(keyboard("PageUp", { ctrlKey: true }), { target: insideTerminal });
+    const previous = Object.assign(keyboard("PageUp", { ctrlKey: true }), { target: insideDock });
     expect(handleTerminalTabShortcut(previous)).toBe(true);
     expect(useTerminalsStore.getState().activeId).toBe(second.id);
+  });
+
+  it("leaves Ctrl+PageUp and Ctrl+PageDown to a focused terminal off macOS", () => {
+    useTerminalsStore.getState().addTerminal();
+    const [first, second] = useTerminalsStore.getState().tabs;
+    const inTerminal = (key: string) =>
+      Object.assign(keyboard(key, { ctrlKey: true }), { type: "keydown", target: insideTerminal });
+
+    for (const key of ["PageDown", "PageUp"]) {
+      const event = inTerminal(key);
+      expect(handleTerminalTabShortcut(event)).toBe(false);
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    }
+    expect(useTerminalsStore.getState().activeId).toBe(second.id);
+
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    expect(handleTerminalTabShortcut(inTerminal("PageDown"))).toBe(true);
+    expect(useTerminalsStore.getState().activeId).toBe(first.id);
   });
 
   it("closes the focused terminal through the confirmation", async () => {

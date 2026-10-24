@@ -12,6 +12,17 @@ use crate::limits::PROMPT_BUDGET;
 pub const MAX_ATTACHMENTS: usize = 10;
 /// The longest message text.
 pub const MAX_PROMPT_TEXT: usize = 256 * 1024;
+/// Room the stored `user_message` event keeps for everything but the text.
+const USER_MESSAGE_ROOM: usize = 4 * 1024;
+
+/// Whether `text` is short enough to send and to store whole: once
+/// escaped as JSON (quotes, backslashes and newlines grow) it still fits
+/// one transcript event, with room for the rest of the message.
+pub fn text_fits_transcript(text: &str) -> bool {
+    text.len() <= MAX_PROMPT_TEXT
+        && serde_json::to_vec(text)
+            .is_ok_and(|encoded| encoded.len() <= crate::bound::MAX_EVENT_BYTES - USER_MESSAGE_ROOM)
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -116,7 +127,7 @@ pub fn prompt_blocks(
     if attachments > MAX_ATTACHMENTS {
         return Err(PromptError::TooMany);
     }
-    if parts.text.len() > MAX_PROMPT_TEXT {
+    if !text_fits_transcript(parts.text) {
         return Err(PromptError::TooLarge);
     }
     if !parts.images.is_empty() && !caps.image {
@@ -420,6 +431,26 @@ mod tests {
             prompt_blocks("s", &parts, &caps(false, true)),
             Err(PromptError::TooMany)
         );
+    }
+
+    #[test]
+    fn a_text_that_could_not_be_stored_whole_is_refused() {
+        // Under the raw limit, but twice that once its quotes are escaped.
+        let quoted = "\"".repeat(200 * 1024);
+        let parts = PromptParts {
+            text: &quoted,
+            skill_block: None,
+            images: &[],
+            links: &[],
+            texts: &[],
+        };
+        assert_eq!(
+            prompt_blocks("s", &parts, &caps(false, false)),
+            Err(PromptError::TooLarge)
+        );
+        let plain = "x".repeat(200 * 1024);
+        assert!(text_fits_transcript(&plain));
+        assert!(!text_fits_transcript(&quoted));
     }
 
     #[test]

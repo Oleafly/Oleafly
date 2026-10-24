@@ -44,6 +44,8 @@ export function handleTerminalTabShortcut(event: KeyboardEvent): boolean {
     return true;
   }
   if (!isInsideTerminalDock(event.target)) return false;
+  // Off macOS a focused terminal keeps Ctrl+PageDown and Ctrl+PageUp (vim's tab keys).
+  if (terminalOwnsKey(event)) return false;
   if (matchesShortcut(event, bindings.nextTerminal)) {
     consume(event);
     useTerminalsStore.getState().activateRelativeTerminal(1);

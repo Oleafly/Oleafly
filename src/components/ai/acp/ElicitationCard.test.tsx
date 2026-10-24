@@ -34,7 +34,7 @@ function request(overrides: Partial<AcpElicitation> = {}): AcpElicitation {
 }
 
 function show(value: AcpElicitation) {
-  const onRespond = vi.fn(async () => {});
+  const onRespond = vi.fn(async () => true);
   render(<ElicitationCard request={value} agentName="Codex" onRespond={onRespond} />);
   return onRespond;
 }
@@ -140,7 +140,19 @@ describe("ElicitationCard", () => {
     await waitFor(() => expect(mocks.open).toHaveBeenCalledWith("https://auth.example.org/approve?code=1"));
     await waitFor(() => expect(onRespond).toHaveBeenCalledWith("accept", undefined));
     expect(await screen.findByText("Waiting for the site to finish.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Decline" })).toBeNull();
+    // The step on the site may never finish: Decline stays.
+    expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
+  });
+
+  it("offers the link again when the answer did not reach the agent", async () => {
+    const onRespond = vi.fn(async () => false);
+    render(<ElicitationCard request={request({ mode: "url", url: "https://auth.example.org/approve" })} agentName="Codex" onRespond={onRespond} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open in browser" }));
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: /^Open in browser/ }));
+    await waitFor(() => expect(onRespond).toHaveBeenCalledWith("accept", undefined));
+    expect(await screen.findByRole("button", { name: "Open in browser" })).toBeEnabled();
+    expect(screen.queryByText("Waiting for the site to finish.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Decline" })).toBeEnabled();
   });
 
   it("says so, and does not tell the agent, when no browser opens", async () => {

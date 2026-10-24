@@ -204,6 +204,10 @@
     "closeRight": "Zavřít vše napravo",
     "closeTab": "Zavřít {{title}}",
     "color": "Barva",
+    "dropRefused_one": "Název tohoto souboru obsahuje řídicí znak, proto ho terminál nezadá.",
+    "dropRefused_few": "Názvy {{count}} souborů obsahují řídicí znaky, proto je terminál nezadá.",
+    "dropRefused_many": "Názvy {{count}} souboru obsahují řídicí znaky, proto je terminál nezadá.",
+    "dropRefused_other": "Názvy {{count}} souborů obsahují řídicí znaky, proto je terminál nezadá.",
     "errors": {
       "input": "Prostředí shell nepřijalo vstup",
       "resize": "Velikost terminálu se nepodařilo změnit",
@@ -244,6 +248,7 @@
       "many_other": "V {{count}} terminálech ještě běží programy.",
       "named": "{{process}} ještě běží v {{title}}.",
       "quit": "Ukončit",
+      "reload": "Znovu načíst",
       "restart": "Restartovat",
       "switchProject": "Přepnout projekt",
       "titleMany": "Zastavit běžící programy?",

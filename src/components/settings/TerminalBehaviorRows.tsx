@@ -185,6 +185,12 @@ export function TerminalBehaviorRows() {
         />
       )}
 
+      {terminalShell === "custom" && terminalShellPath.trim() === "" && (
+        <SettingsNote testId="terminal-shell-path-note">
+          {t(($) => $.settings.appearance.terminal.shell.path.missing)}
+        </SettingsNote>
+      )}
+
       <SettingsRow
         label={t(($) => $.settings.appearance.terminal.shiftEnter.label)}
         description={t(($) => $.settings.appearance.terminal.shiftEnter.description)}

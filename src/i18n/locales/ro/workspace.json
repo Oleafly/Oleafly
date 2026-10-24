@@ -200,6 +200,9 @@
     "closeRight": "Închide-le pe toate din dreapta",
     "closeTab": "Închide {{title}}",
     "color": "Culoare",
+    "dropRefused_one": "Numele acestui fișier conține un caracter de control, așa că terminalul nu îl va scrie.",
+    "dropRefused_few": "Numele a {{count}} fișiere conțin caractere de control, așa că terminalul nu le va scrie.",
+    "dropRefused_other": "Numele a {{count}} de fișiere conțin caractere de control, așa că terminalul nu le va scrie.",
     "errors": {
       "input": "Terminalul nu a putut primi date de intrare de la shell",
       "resize": "Terminalul nu a putut fi redimensionat",
@@ -239,6 +242,7 @@
       "many_other": "Încă rulează programe în {{count}} de terminale.",
       "named": "{{process}} încă rulează în {{title}}.",
       "quit": "Ieși",
+      "reload": "Reîncarcă",
       "restart": "Repornește",
       "switchProject": "Schimbă proiectul",
       "titleMany": "Oprești programele care rulează?",

@@ -205,7 +205,8 @@
       "createTask": "Creează sarcina",
       "replaceText": "Înlocuiești titlul și instrucțiunile pe care le-ai scris cu acest punct de pornire?",
       "keepText": "Păstrează textul meu",
-      "replaceConfirm": "Înlocuiește"
+      "replaceConfirm": "Înlocuiește",
+      "cannotSave": "Corectează opțiunile marcate mai sus, apoi încearcă din nou."
     },
     "starter": {
       "literatureReview": {
@@ -308,16 +309,38 @@
         "budgetCost": "Oprită la limita de cost.",
         "budgetRuns": "Oprită la limita de rulări."
       },
-      "startsAt": "Pornește {{time}}"
+      "startsAt": "Pornește {{time}}",
+      "olderActivity": "Activitatea anterioară din această rulare nu este afișată.",
+      "tooLargeToDiff": "Acest fișier este prea mare pentru a fi comparat aici, așa că se arată doar dimensiunile lui."
+    },
+    "confirm": {
+      "stopTitle": "Oprești această sarcină?",
+      "stopDescription": "„{{title}}” se oprește după pasul curent. „Reia” o continuă mai târziu din spațiul ei de lucru.",
+      "cancelTitle": "Anulezi această sarcină?",
+      "cancelDescription": "„{{title}}” nu va rula. O poți reîncerca mai târziu.",
+      "cancelTask": "Anulează sarcina",
+      "discardTitle": "Renunți la aceste modificări?",
+      "discardDescription": "Nicio modificare din „{{title}}” nu ajunge în proiectul tău, iar sarcina este marcată ca anulată. „Reia” pornește din nou agentul.",
+      "keepTask": "Păstrează sarcina",
+      "keepChanges": "Păstrează modificările",
+      "dependents_one": "Această sarcină o așteaptă și eșuează și ea:",
+      "dependents_few": "Aceste {{count}} sarcini o așteaptă și eșuează și ele:",
+      "dependents_other": "Aceste {{count}} de sarcini o așteaptă și eșuează și ele:",
+      "runs_one": "Această rulare se oprește și ea:",
+      "runs_few": "Aceste {{count}} rulări se opresc și ele:",
+      "runs_other": "Aceste {{count}} de rulări se opresc și ele:"
     },
     "plan": {
       "title": "Plan",
       "description": "Citește planul și editează-l dacă vrei. Aprobă-l ca sarcina să continue.",
       "approve": "Aprobă planul",
       "approveEdited": "Aprobă planul editat",
-      "discard": "Renunță la sarcină",
+      "discard": "Anulează sarcina",
       "loading": "Se încarcă planul…",
-      "missing": "Fișierul planului lipsește. Reîncearcă sarcina."
+      "missing": "Fișierul planului lipsește. Reîncearcă sarcina.",
+      "loadFailed": "Oleafly nu a putut încărca planul.",
+      "truncated": "Acest plan este mai lung de 64 KiB, așa că se arată doar începutul lui. Scurtează-l la pașii pe care îi vrei, apoi aprobă-l.",
+      "tooLong": "Un plan poate avea cel mult 64 KiB. Scurtează-l înainte să-l aprobi."
     },
     "approvals": {
       "title": "Se așteaptă aprobarea ta",
@@ -366,6 +389,9 @@
       "runsUsed": "Rulări: {{used}} din {{limit}}",
       "runsUsedNoLimit": "Rulări: {{used}}",
       "stopRun": "Oprește rularea",
+      "stopRunTitle": "Oprești această rulare?",
+      "stopRunDescription": "„{{name}}” ({{run}}) se oprește acum. O lucrare pe care o rulează pe altă mașină sau pe un cluster este anulată și acolo.",
+      "keepRun": "Lasă să ruleze",
       "viewLog": "Vezi jurnalul",
       "columns": {
         "run": "Rulare",
@@ -872,6 +898,7 @@
     "progressCancelled": "Anulat",
     "progressReadingPages": "Se citesc paginile",
     "progressTranscribingPage": "Se transcrie pagina {{page}} din {{total}} cu {{model}}",
+    "progressTranscribingPdfPage": "Se transcrie pagina {{pdfPage}} ({{page}} din {{total}}) cu {{model}}",
     "progressDocumentStructure": "Se convertește structura documentului",
     "progressMermaid": "Se randează diagrama Mermaid",
     "progressFirstSheet": "Se citește prima foaie",
@@ -915,7 +942,10 @@
     "progressConvertingSource": "Se convertește sursa în Typst",
     "pageRange": "Pagini",
     "pageRangePlaceholder": "Toate paginile sau un interval precum 1-50",
-    "pageRangeInvalid": "Introdu un număr de pagină sau un interval precum 1-50."
+    "pageRangeInvalid": "Introdu un număr de pagină sau un interval precum 1-50.",
+    "pageCount_one": "Acest PDF are {{count}} pagină.",
+    "pageCount_few": "Acest PDF are {{count}} pagini.",
+    "pageCount_other": "Acest PDF are {{count}} de pagini."
   },
   "converters": {
     "imageToLatex": {
@@ -1124,10 +1154,16 @@
     "arxivInputRequired": "Introdu un identificator arXiv sau alege o arhivă sursă.",
     "equationToTypst": "Pandoc nu a putut converti această ecuație în Typst. Verifică formula LaTeX și încearcă din nou.",
     "pdfTooManyPages": "Acest scan are {{pages}} pagini, iar Oleafly transcrie cel mult {{limit}} odată. Introdu sub fișier un interval de pagini precum 1-{{limit}}.",
-    "outputLimit": "Modelul a rămas fără spațiu înainte să termine, deci transcrierea ar fi incompletă. Alege în Setări, Asistentul AI, Instrumente un model cu o limită de ieșire mai mare sau transcrie o parte mai mică."
+    "outputLimit": "Modelul a rămas fără spațiu înainte să termine, deci transcrierea ar fi incompletă. Alege în Setări, Asistentul AI, Instrumente un model cu o limită de ieșire mai mare sau transcrie o parte mai mică.",
+    "refused": "Modelul a refuzat să transcrie asta, așa că nu s-a adăugat nimic. Alege alt model în Setări, Asistentul AI, Instrumente.",
+    "pageRangePastEnd_one": "Acest PDF are {{count}} pagină. Introdu 1 sau lasă câmpul „Pagini” gol.",
+    "pageRangePastEnd_few": "Acest PDF are {{count}} pagini. Introdu un interval de la 1 la {{count}}.",
+    "pageRangePastEnd_other": "Acest PDF are {{count}} de pagini. Introdu un interval de la 1 la {{count}}."
   },
   "converterNotes": {
-    "scannedPages": "Pagini scanate transcrise cu {{model}}: {{pages}}. Verifică ecuațiile și tabelele înainte să folosești rezultatul.",
+    "scannedPages_one": "S-a transcris {{count}} pagină scanată cu {{model}}. Verifică ecuațiile și tabelele înainte de a folosi rezultatul.",
+    "scannedPages_few": "S-au transcris {{count}} pagini scanate cu {{model}}. Verifică ecuațiile și tabelele înainte de a folosi rezultatul.",
+    "scannedPages_other": "S-au transcris {{count}} de pagini scanate cu {{model}}. Verifică ecuațiile și tabelele înainte de a folosi rezultatul.",
     "extracted": "S-au extras local {{pages}} pagini și {{figures}} figuri.",
     "mermaidTikz": "Această diagramă de flux a fost convertită în cod TikZ editabil.",
     "mermaidRendered": "Această diagramă a fost randată local, fiindcă sintaxa ei Mermaid nu se traduce curat în cod TikZ editabil.",
@@ -1156,6 +1192,9 @@
     "scansSentToHost": "Paginile scanate sunt trimise la Ollama, pe {{host}}",
     "pdfSentToMathpix": "Întregul PDF este trimis la Mathpix",
     "transcribingHosted": "Se trimite imaginea la {{provider}}…",
+    "transcribingFallback": "Se trimite imaginea la {{provider}} (modelul asistentului)…",
+    "sentFallback": "Trimis la {{provider}} (modelul asistentului)",
+    "editorFallback": "Funcția „Din imagine în LaTeX” din editor trimite imaginile la {{provider}} până când Ollama are un model de viziune",
     "progressUploading": "Se trimite PDF-ul la Mathpix",
     "progressFormatting": "Se convertește transcrierea cu Pandoc",
     "scannedTitle": "Acest PDF pare scanat",
@@ -1168,16 +1207,27 @@
     "estimateUnknown_one": "{{count}} pagină. {{provider}} o facturează după utilizare.",
     "estimateUnknown_few": "{{count}} pagini. {{provider}} le facturează după utilizare.",
     "estimateUnknown_other": "{{count}} de pagini. {{provider}} le facturează după utilizare.",
+    "estimatePlan_one": "{{count}} pagină. {{provider}} o include în planul tău.",
+    "estimatePlan_few": "{{count}} pagini. {{provider}} le include în planul tău.",
+    "estimatePlan_other": "{{count}} de pagini. {{provider}} le include în planul tău.",
+    "estimateLocal_one": "{{count}} pagină. Modelul rulează pe acest computer, fără costuri.",
+    "estimateLocal_few": "{{count}} pagini. Modelul rulează pe acest computer, fără costuri.",
+    "estimateLocal_other": "{{count}} de pagini. Modelul rulează pe acest computer, fără costuri.",
+    "estimateFree_one": "{{count}} pagină. Gratuit cu {{model}}.",
+    "estimateFree_few": "{{count}} pagini. Gratuit cu {{model}}.",
+    "estimateFree_other": "{{count}} de pagini. Gratuit cu {{model}}.",
     "transcribePages_one": "Transcrie {{count}} pagină",
     "transcribePages_few": "Transcrie {{count}} pagini",
     "transcribePages_other": "Transcrie {{count}} de pagini",
     "transcribedWith": "Transcris cu {{model}}. Verifică ecuațiile și tabelele.",
     "sentBadge": "Trimis la {{provider}}",
     "openToolsSettings": "Setările Instrumentelor",
+    "openProviderSettings": "Setările furnizorului",
     "errors": {
       "offline": "Oleafly este în modul offline. Alege un model local sau dezactivează modul offline.",
       "providerNotConfigured": "{{provider}} nu are cheie API. Adaugă una în Setări sau alege alt model.",
       "modelDisabled": "{{model}} este dezactivat în Setări. Activează-l sau alege alt model.",
+      "modelUnavailable": "{{model}} nu mai este disponibil la {{provider}}. Alege alt model.",
       "cannotSeeImages": "{{model}} nu poate citi imagini. Alege un model de viziune.",
       "localModelGone": "{{model}} nu mai este în Ollama. Descarcă-l din nou sau alege alt model.",
       "imagesOnly": "{{model}} citește doar imagini. Alege un model de limbaj ca să convertești ecuații tastate.",
@@ -1788,6 +1838,8 @@
     "keepRunningHint": "Activează mai întâi Sarcini în fundal în Setări, Cercetare.",
     "invalidMetric": "Folosește litere, cifre, puncte, cratime sau liniuțe de subliniere.",
     "invalidCost": "Introdu o sumă mai mare decât zero.",
+    "invalidCostMax": "Introdu o sumă de cel mult {{max}}.",
+    "invalidCostNumber": "Introdu suma ca număr, de exemplu {{example}}.",
     "invalidRuns": "Introdu un număr întreg de la 1 la 1.000.",
     "invalidStart": "Alege o oră de pornire în următoarele 30 de zile.",
     "invalidStartFormat": "Folosește formatul {{example}}.",
@@ -1810,6 +1862,10 @@
     "hint": "Aceste verificări doar avertizează. Nu împiedică aplicarea.",
     "running": "Se verifică…",
     "refresh": "Verifică din nou",
+    "empty": "Pentru acest rezultat nu s-a rulat încă nicio verificare.",
+    "more_one": "Încă neafișate: {{count}}.",
+    "more_few": "Încă neafișate: {{count}}.",
+    "more_other": "Încă neafișate: {{count}}.",
     "status": {
       "pass": "Trecută",
       "warn": "Verifică",
@@ -1917,7 +1973,8 @@
         "time": "Folosește un timp în format Slurm, de exemplu 2:00:00.",
         "name": "Folosește litere, cifre, puncte, virgule, cratime sau liniuțe de subliniere.",
         "mem": "Folosește un număr întreg de gigaocteți, de exemplu 16.",
-        "count": "Folosește un număr întreg din intervalul permis."
+        "count": "Folosește un număr întreg din intervalul permis.",
+        "prelude": "Păstrează comenzile de configurare la 4 KB sau mai puțin. Literele cu diacritice și scrierile non-latine ocupă mai mult spațiu."
       }
     },
     "test": {
@@ -1995,7 +2052,7 @@
       "movingBackHint": "Această sarcină revine în Oleafly când se termină pasul curent."
     },
     "earlierActivity": "Arată activitatea anterioară",
-    "earlierTruncated": "Din această rulare anterioară se arată doar primele {{limit}} elemente.",
+    "earlierTruncated": "Din această rulare anterioară se arată doar ultimele {{limit}} elemente.",
     "keepRunningFailed": "Setarea nu a putut fi schimbată. Încearcă din nou."
   }
 }

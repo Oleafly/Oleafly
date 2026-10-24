@@ -336,6 +336,99 @@ describe("extractForPreflight", () => {
     expect(result.ua.xmpTitle).toBe("A tagged paper");
     expect(result.facts.author).toBe("Ada Lovelace, Alan Turing");
   });
+
+  const docWithPage = (page: unknown, attachments: unknown = null) => ({
+    numPages: 1,
+    getPage: vi.fn().mockResolvedValue(page),
+    getMetadata: vi.fn().mockResolvedValue({ info: {}, metadata: null }),
+    getMarkInfo: vi.fn().mockResolvedValue({ Marked: true }),
+    getViewerPreferences: vi.fn().mockResolvedValue(null),
+    getOutline: vi.fn().mockResolvedValue(null),
+    getAttachments: vi.fn().mockResolvedValue(attachments),
+    getPermissions: vi.fn().mockResolvedValue(null),
+  });
+
+  it("keeps font data so embedded fonts read as embedded, and a missing file wins over substituted data", async () => {
+    const fonts: Record<string, unknown> = {
+      f1: { name: "Embedded", data: new Uint8Array([1]) },
+      f2: { name: "Helvetica", missingFile: true, data: new Uint8Array([2]) },
+    };
+    const page = {
+      getTextContent: vi.fn().mockResolvedValue({
+        items: [
+          { str: "A", fontName: "f1" },
+          { str: "B", fontName: "f2" },
+        ],
+      }),
+      getAnnotations: vi.fn().mockResolvedValue([]),
+      getViewport: vi.fn().mockReturnValue({ width: 1, height: 1, rotation: 0 }),
+      commonObjs: { get: vi.fn((id: string) => fonts[id]) },
+      getStructTree: vi.fn().mockResolvedValue(null),
+      cleanup: vi.fn(),
+    };
+    mocks.getDocument.mockReturnValue(taskFor(docWithPage(page)));
+
+    const result = await extractForPreflight(new TextEncoder().encode("%PDF-1.7"));
+
+    expect(mocks.getDocument).toHaveBeenCalledWith(expect.objectContaining({ fontExtraProperties: true }));
+    expect(result.facts.fonts).toEqual([
+      { name: "Embedded", embedded: true },
+      { name: "Helvetica", embedded: false },
+    ]);
+  });
+
+  it("waits for an embedded font that is still loading after the operator list", async () => {
+    const resolved = new Map<string, unknown>();
+    const waiting = new Map<string, (data: unknown) => void>();
+    const page = {
+      getTextContent: vi.fn().mockResolvedValue({ items: [{ str: "Body", fontName: "g_d0_f1" }] }),
+      getAnnotations: vi.fn().mockResolvedValue([]),
+      getViewport: vi.fn().mockReturnValue({ width: 1, height: 1, rotation: 0 }),
+      commonObjs: {
+        get: vi.fn((id: string, callback?: (data: unknown) => void) => {
+          if (callback) {
+            waiting.set(id, callback);
+            return null;
+          }
+          if (!resolved.has(id)) throw new Error(`Requesting object that isn't resolved yet ${id}.`);
+          return resolved.get(id);
+        }),
+      },
+      // The font arrives, then loads (FontFace.loaded) a moment after the
+      // operator list has resolved.
+      getOperatorList: vi.fn(async () => {
+        setTimeout(() => {
+          const font = { name: "NimbusRomNo9L-Regu", data: new Uint8Array([1]) };
+          resolved.set("g_d0_f1", font);
+          waiting.get("g_d0_f1")?.(font);
+        }, 20);
+      }),
+      getStructTree: vi.fn().mockResolvedValue(null),
+      cleanup: vi.fn(),
+    };
+    mocks.getDocument.mockReturnValue(taskFor(docWithPage(page)));
+
+    const result = await extractForPreflight(new TextEncoder().encode("%PDF-1.7"));
+
+    expect(result.facts.fonts).toEqual([{ name: "NimbusRomNo9L-Regu", embedded: true }]);
+  });
+
+  it("counts file attachment annotations as attachments", async () => {
+    const page = {
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      getAnnotations: vi.fn().mockResolvedValue([{ subtype: "FileAttachment" }, { subtype: "Link" }]),
+      getViewport: vi.fn().mockReturnValue({ width: 1, height: 1, rotation: 0 }),
+      commonObjs: { get: vi.fn() },
+      getStructTree: vi.fn().mockResolvedValue(null),
+      cleanup: vi.fn(),
+    };
+    mocks.getDocument.mockReturnValue(taskFor(docWithPage(page, new Map([["a.csv", {}]]))));
+
+    const result = await extractForPreflight(new TextEncoder().encode("%PDF-1.7"));
+
+    expect(result.facts.attachmentCount).toBe(2);
+    expect(result.facts.linkCount).toBe(1);
+  });
 });
 
 describe("extractForPreflight: structure identity across pages", () => {

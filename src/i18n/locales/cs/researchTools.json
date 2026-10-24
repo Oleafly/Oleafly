@@ -206,7 +206,8 @@
       "createTask": "Vytvořit úlohu",
       "replaceText": "Nahradit název a instrukce, které jste napsali, touto předlohou?",
       "keepText": "Ponechat můj text",
-      "replaceConfirm": "Nahradit"
+      "replaceConfirm": "Nahradit",
+      "cannotSave": "Opravte výše označené možnosti a zkuste to znovu."
     },
     "starter": {
       "literatureReview": {
@@ -310,16 +311,40 @@
         "budgetCost": "Zastaveno na limitu nákladů.",
         "budgetRuns": "Zastaveno na limitu běhů."
       },
-      "startsAt": "Začne {{time}}"
+      "startsAt": "Začne {{time}}",
+      "olderActivity": "Dřívější aktivita z tohoto běhu se nezobrazuje.",
+      "tooLargeToDiff": "Tento soubor je příliš velký na porovnání, proto se zobrazují jen jeho velikosti."
+    },
+    "confirm": {
+      "stopTitle": "Zastavit tuto úlohu?",
+      "stopDescription": "„{{title}}“ se zastaví po aktuálním kroku. Tlačítko Pokračovat ji později znovu rozběhne z jejího pracovního prostoru.",
+      "cancelTitle": "Zrušit tuto úlohu?",
+      "cancelDescription": "„{{title}}“ se nespustí. Později to můžete zkusit znovu.",
+      "cancelTask": "Zrušit úlohu",
+      "discardTitle": "Zahodit tyto změny?",
+      "discardDescription": "Žádná změna z úlohy „{{title}}“ se do vašeho projektu nedostane a úloha se označí jako zrušená. Pokračovat spustí agenta znovu.",
+      "keepTask": "Ponechat úlohu",
+      "keepChanges": "Ponechat změny",
+      "dependents_one": "Tato úloha na ni čeká a také selže:",
+      "dependents_few": "Tyto {{count}} úlohy na ni čekají a také selžou:",
+      "dependents_many": "Těchto {{count}} úlohy na ni čeká a také selže:",
+      "dependents_other": "Těchto {{count}} úloh na ni čeká a také selže:",
+      "runs_one": "Tento běh se také zastaví:",
+      "runs_few": "Tyto {{count}} běhy se také zastaví:",
+      "runs_many": "Těchto {{count}} běhu se také zastaví:",
+      "runs_other": "Těchto {{count}} běhů se také zastaví:"
     },
     "plan": {
       "title": "Plán",
       "description": "Přečtěte si plán a případně jej upravte. Schválením necháte úlohu pokračovat.",
       "approve": "Schválit plán",
       "approveEdited": "Schválit upravený plán",
-      "discard": "Zahodit úlohu",
+      "discard": "Zrušit úlohu",
       "loading": "Načítá se plán…",
-      "missing": "Soubor plánu chybí. Zkuste úlohu znovu."
+      "missing": "Soubor plánu chybí. Zkuste úlohu znovu.",
+      "loadFailed": "Oleafly nedokázal plán načíst.",
+      "truncated": "Tento plán je delší než 64 KiB, proto se zobrazuje jen jeho začátek. Zkraťte ho na požadované kroky a potom ho schvalte.",
+      "tooLong": "Plán může mít nejvýše 64 KiB. Než ho schválíte, zkraťte ho."
     },
     "approvals": {
       "title": "Čeká na vaše schválení",
@@ -368,6 +393,9 @@
       "runsUsed": "Běhy: {{used}} z {{limit}}",
       "runsUsedNoLimit": "Běhy: {{used}}",
       "stopRun": "Zastavit běh",
+      "stopRunTitle": "Zastavit tento běh?",
+      "stopRunDescription": "„{{name}}“ ({{run}}) se zastaví hned. Úloha, kterou spustil na jiném počítači nebo v clusteru, se tam také zruší.",
+      "keepRun": "Nechat běžet",
       "viewLog": "Zobrazit protokol",
       "columns": {
         "run": "Běh",
@@ -877,6 +905,7 @@
     "progressCancelled": "Zrušeno",
     "progressReadingPages": "Čtou se stránky",
     "progressTranscribingPage": "Přepisuje se stránka {{page}} z {{total}} pomocí {{model}}",
+    "progressTranscribingPdfPage": "Přepisuje se stránka {{pdfPage}} ({{page}} z {{total}}) pomocí {{model}}",
     "progressDocumentStructure": "Převádí se struktura dokumentu",
     "progressMermaid": "Vykresluje se diagram Mermaid",
     "progressFirstSheet": "Čte se první list",
@@ -920,7 +949,11 @@
     "progressConvertingSource": "Zdroj se převádí do formátu Typst",
     "pageRange": "Stránky",
     "pageRangePlaceholder": "Všechny stránky, nebo rozsah jako 1-50",
-    "pageRangeInvalid": "Zadejte jedno číslo stránky, nebo rozsah jako 1-50."
+    "pageRangeInvalid": "Zadejte jedno číslo stránky, nebo rozsah jako 1-50.",
+    "pageCount_one": "Toto PDF má {{count}} stránku.",
+    "pageCount_few": "Toto PDF má {{count}} stránky.",
+    "pageCount_many": "Toto PDF má {{count}} stránky.",
+    "pageCount_other": "Toto PDF má {{count}} stránek."
   },
   "converters": {
     "imageToLatex": {
@@ -1129,10 +1162,18 @@
     "arxivInputRequired": "Zadejte ID na arXiv nebo vyberte archiv zdrojů.",
     "equationToTypst": "Pandoc nedokázal převést tuto rovnici do formátu Typst. Zkontrolujte matematiku LaTeX a zkuste to znovu.",
     "pdfTooManyPages": "Tento sken má {{pages}} stránek a Oleafly přepisuje najednou nejvýše {{limit}}. Zadejte pod souborem rozsah stránek, například 1-{{limit}}.",
-    "outputLimit": "Modelu došel prostor dřív, než skončil, takže přepis by byl neúplný. Vyberte v Nastavení, Asistent AI, Nástroje model s větším limitem výstupu, nebo přepište menší část."
+    "outputLimit": "Modelu došel prostor dřív, než skončil, takže přepis by byl neúplný. Vyberte v Nastavení, Asistent AI, Nástroje model s větším limitem výstupu, nebo přepište menší část.",
+    "refused": "Model odmítl tento přepis provést, takže se nic nepřidalo. Vyberte jiný model v Nastavení, Asistent AI, Nástroje.",
+    "pageRangePastEnd_one": "Toto PDF má {{count}} stránku. Zadejte 1, nebo nechte pole Stránky prázdné.",
+    "pageRangePastEnd_few": "Toto PDF má {{count}} stránky. Zadejte rozsah od 1 do {{count}}.",
+    "pageRangePastEnd_many": "Toto PDF má {{count}} stránky. Zadejte rozsah od 1 do {{count}}.",
+    "pageRangePastEnd_other": "Toto PDF má {{count}} stránek. Zadejte rozsah od 1 do {{count}}."
   },
   "converterNotes": {
-    "scannedPages": "Přepsané naskenované stránky: {{pages}}, model {{model}}. Před použitím výsledku zkontrolujte rovnice a tabulky.",
+    "scannedPages_one": "Přepsána {{count}} skenovaná stránka pomocí {{model}}. Před použitím výsledku zkontrolujte rovnice a tabulky.",
+    "scannedPages_few": "Přepsány {{count}} skenované stránky pomocí {{model}}. Před použitím výsledku zkontrolujte rovnice a tabulky.",
+    "scannedPages_many": "Přepsáno {{count}} skenované stránky pomocí {{model}}. Před použitím výsledku zkontrolujte rovnice a tabulky.",
+    "scannedPages_other": "Přepsáno {{count}} skenovaných stránek pomocí {{model}}. Před použitím výsledku zkontrolujte rovnice a tabulky.",
     "extracted": "Místně bylo vytaženo {{pages}} stránek a {{figures}} obrázků.",
     "mermaidTikz": "Tento vývojový diagram byl převeden na upravitelný TikZ.",
     "mermaidRendered": "Tento diagram byl vykreslen místně, protože jeho syntaxe Mermaid se čistě nemapuje na upravitelný TikZ.",
@@ -1163,6 +1204,9 @@
     "scansSentToHost": "Naskenované stránky se odesílají do Ollama na {{host}}",
     "pdfSentToMathpix": "Do Mathpix se odesílá celé PDF",
     "transcribingHosted": "Obrázek se odesílá do {{provider}}…",
+    "transcribingFallback": "Obrázek se odesílá do {{provider}} (model asistenta)…",
+    "sentFallback": "Odesláno do {{provider}} (model asistenta)",
+    "editorFallback": "Převod obrázku do LaTeXu v editoru odesílá obrázky do {{provider}}, dokud Ollama nemá obrazový model",
     "progressUploading": "PDF se odesílá do Mathpix",
     "progressFormatting": "Přepis se převádí pomocí Pandoc",
     "scannedTitle": "Toto PDF vypadá jako sken",
@@ -1178,6 +1222,18 @@
     "estimateUnknown_few": "{{count}} stránky. {{provider}} je účtuje podle využití.",
     "estimateUnknown_many": "{{count}} stránky. {{provider}} je účtuje podle využití.",
     "estimateUnknown_other": "{{count}} stránek. {{provider}} je účtuje podle využití.",
+    "estimatePlan_one": "{{count}} stránka. {{provider}} ji zahrnuje ve vašem tarifu.",
+    "estimatePlan_few": "{{count}} stránky. {{provider}} je zahrnuje ve vašem tarifu.",
+    "estimatePlan_many": "{{count}} stránky. {{provider}} je zahrnuje ve vašem tarifu.",
+    "estimatePlan_other": "{{count}} stránek. {{provider}} je zahrnuje ve vašem tarifu.",
+    "estimateLocal_one": "{{count}} stránka. Model běží na tomto počítači, bez nákladů.",
+    "estimateLocal_few": "{{count}} stránky. Model běží na tomto počítači, bez nákladů.",
+    "estimateLocal_many": "{{count}} stránky. Model běží na tomto počítači, bez nákladů.",
+    "estimateLocal_other": "{{count}} stránek. Model běží na tomto počítači, bez nákladů.",
+    "estimateFree_one": "{{count}} stránka. Zdarma s {{model}}.",
+    "estimateFree_few": "{{count}} stránky. Zdarma s {{model}}.",
+    "estimateFree_many": "{{count}} stránky. Zdarma s {{model}}.",
+    "estimateFree_other": "{{count}} stránek. Zdarma s {{model}}.",
     "transcribePages_one": "Přepsat {{count}} stránku",
     "transcribePages_few": "Přepsat {{count}} stránky",
     "transcribePages_many": "Přepsat {{count}} stránky",
@@ -1185,10 +1241,12 @@
     "transcribedWith": "Přepsáno pomocí {{model}}. Zkontrolujte rovnice a tabulky.",
     "sentBadge": "Odesláno do {{provider}}",
     "openToolsSettings": "Nastavení Nástrojů",
+    "openProviderSettings": "Nastavení poskytovatele",
     "errors": {
       "offline": "Oleafly je v režimu offline. Vyberte místní model, nebo režim offline vypněte.",
       "providerNotConfigured": "{{provider}} nemá klíč API. Přidejte ho v Nastavení, nebo vyberte jiný model.",
       "modelDisabled": "{{model}} je v Nastavení vypnutý. Zapněte ho, nebo vyberte jiný model.",
+      "modelUnavailable": "{{model}} už není u {{provider}} k dispozici. Vyberte jiný model.",
       "cannotSeeImages": "{{model}} neumí číst obrázky. Vyberte obrazový model.",
       "localModelGone": "{{model}} už v Ollama není. Stáhněte ho znovu, nebo vyberte jiný model.",
       "imagesOnly": "{{model}} čte jen obrázky. Chcete-li převést napsané rovnice, vyberte jazykový model.",
@@ -1812,6 +1870,8 @@
     "keepRunningHint": "Nejdřív zapněte Úlohy na pozadí v Nastavení, Výzkum.",
     "invalidMetric": "Používejte písmena, číslice, tečky, pomlčky nebo podtržítka.",
     "invalidCost": "Zadejte částku větší než nula.",
+    "invalidCostMax": "Zadejte částku nejvýše {{max}}.",
+    "invalidCostNumber": "Zadejte částku jako číslo, například {{example}}.",
     "invalidRuns": "Zadejte celé číslo od 1 do 1 000.",
     "invalidStart": "Vyberte čas zahájení v příštích 30 dnech.",
     "invalidStartFormat": "Použijte formát {{example}}.",
@@ -1834,6 +1894,11 @@
     "hint": "Tyto kontroly jen upozorňují. Nebrání použití výsledku.",
     "running": "Kontroluje se…",
     "refresh": "Zkontrolovat znovu",
+    "empty": "Pro tento výsledek zatím neproběhly žádné kontroly.",
+    "more_one": "Neuvedeno dalších: {{count}}.",
+    "more_few": "Neuvedeno dalších: {{count}}.",
+    "more_many": "Neuvedeno dalších: {{count}}.",
+    "more_other": "Neuvedeno dalších: {{count}}.",
     "status": {
       "pass": "Prošlo",
       "warn": "Zkontrolujte",
@@ -1941,7 +2006,8 @@
         "time": "Použijte čas ve formátu Slurm, například 2:00:00.",
         "name": "Používejte písmena, číslice, tečky, čárky, pomlčky nebo podtržítka.",
         "mem": "Použijte celé číslo v gigabajtech, například 16.",
-        "count": "Použijte celé číslo v povoleném rozsahu."
+        "count": "Použijte celé číslo v povoleném rozsahu.",
+        "prelude": "Přípravné příkazy zkraťte na 4 KB nebo méně. Písmena s diakritikou a nelatinková písma zabírají víc místa."
       }
     },
     "test": {
@@ -2020,7 +2086,7 @@
       "movingBackHint": "Tato úloha se vrátí do Oleafly, až skončí její aktuální krok."
     },
     "earlierActivity": "Zobrazit dřívější aktivitu",
-    "earlierTruncated": "Z tohoto dřívějšího běhu se zobrazuje jen prvních {{limit}} položek.",
+    "earlierTruncated": "Z tohoto dřívějšího běhu se zobrazuje jen posledních {{limit}} položek.",
     "keepRunningFailed": "Toto nastavení se nepodařilo změnit. Zkuste to znovu."
   }
 }

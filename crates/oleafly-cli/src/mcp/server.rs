@@ -153,10 +153,14 @@ pub(crate) async fn serve_headless(context: ToolContext) -> Result<(), CliError>
     let mut tasks = tokio::task::JoinSet::new();
     let mut lines = StdinLines::new();
     let mut stop = std::pin::pin!(crate::daemon::serve::termination());
+    let mut signalled = false;
     loop {
         let next = tokio::select! {
             line = lines.next() => line,
-            () = &mut stop => None,
+            () = &mut stop => {
+                signalled = true;
+                None
+            }
         };
         let Some(line) = next else { break };
         let message = match line {
@@ -212,6 +216,14 @@ pub(crate) async fn serve_headless(context: ToolContext) -> Result<(), CliError>
     }
     tasks.abort_all();
     while tasks.join_next().await.is_some() {}
+    if signalled {
+        // Standard input is read on a thread tokio can't stop, so ending
+        // the runtime would wait for the client to close it; the default
+        // signal actions are gone too (`termination` took them), so a
+        // stopped server would linger. The work is done: exit now.
+        let _ = stdout.lock().await.flush().await;
+        std::process::exit(0);
+    }
     Ok(())
 }
 

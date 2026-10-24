@@ -28,7 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   citations and bibliography cleanup, Typst versions, templates, the app's
   checkpoints and settings. Turn it on under Settings > General > Terminal
   command. On Windows, Install copies it into your user folder and adds it to
-  your PATH. Oleafly's own terminal and the agents it starts always have it.
+  your PATH. Oleafly's own terminal and the agents it starts have it on their
+  PATH.
 - `oleafly mcp`, an MCP server for Claude Code, Claude Desktop, Codex, Cursor
   and Gemini CLI. It needs no URL, token or Node.js. With the app open it
   passes calls to the app, with your approval rules; on its own it offers
@@ -70,18 +71,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stopped.
 - Remote compute for research tasks. Add SSH machines and Slurm clusters, or
   Cua Spaces, under Settings > Research > Compute, and send a task's runs
-  there. Oleafly checks host keys, reads your SSH config without changing it
-  and never stores passwords or keys. Runs choose a profile: Analysis by
+  there. Oleafly checks host keys, and Forget host key works for machines
+  from your SSH config too. It reads your SSH config without changing it and
+  never stores passwords or keys. Runs choose a profile: Analysis by
   default, or Training with GPUs and longer time limits.
 - A Windows sandbox for research tasks, in beta and off by default. Commands
   run in an AppContainer that reaches only the task's files and the folders
   you allow. With it on, CLI agents can run as tasks on Windows too.
 - Desktop apps. Agents can use the desktop programs and websites you allow,
   such as a journal's submission form or a statistics package, through Cua
-  Driver, which you install yourself. Oleafly asks before every click or
-  keystroke, and every time when an agent works in your own signed-in
-  browser. Browsers can't be added as apps; add the websites instead. Set it
-  up under Settings > Integrations > Desktop apps.
+  Driver, which you install yourself. Oleafly asks before each action unless
+  you allow that kind of action for the chat, session or task, and your own
+  signed-in browser and scripts always ask. Common browsers, terminals, code
+  editors and password managers can't be added as apps. For a browser, add
+  the websites instead. Set it up under Settings > Integrations > Desktop
+  apps.
 - Web search and page reading in the assistant. Turn on Web in the composer.
   Recent Claude and OpenAI models use their provider's search; other models
   search with a Brave, Tavily or Serper key you add in Settings.
@@ -168,8 +172,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   toolbar's image button uses the model for Tools. If you haven't picked one
   and no local model can read the image, it still uses the assistant's model,
   as before.
-- Updates and the Windows installer stop the background helper before they
-  replace Oleafly.
+- Updates and both Windows installers, the `.exe` and the `.msi`, stop the
+  background helper before they replace Oleafly.
 - A few `oleafly` changes that scripts may notice. Lines that started with
   `note:` now start with `warning:`, and each warning in `--json` output has
   a code. A failed build now keeps the last good PDF instead of deleting it,
@@ -218,18 +222,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a page range.
 - Preflight's checks for fonts that aren't embedded in the PDF and for files
   attached to it never found anything. Both work now, in the app and in
-  `oleafly check`.
+  `oleafly check`, and the attachment check also finds files attached to a
+  page, as `\attachfile` adds them.
 - Importing a Git repository left out the files it marks `export-ignore`,
-  and the next commit deleted them from the repository. A repository that
-  changed during an import could also get its files from one commit and its
-  history from another.
+  and the next commit deleted them from the repository. Tracked files the
+  import leaves out on purpose, such as `.DS_Store`, no longer turn into
+  deletions when you stage everything. A repository that changed during an
+  import could also get its files from one commit and its history from
+  another.
 - Copying your sign-in from a browser didn't sign you in to an online LaTeX
   service. It now does, without opening a window.
+- When you linked a project to an online LaTeX service, Oleafly kept a copy
+  of each file the online version replaced, and stopping the sync deleted
+  those copies. They're now saved in Oleafly's data folder, and Oleafly
+  tells you where.
+- The sync copy of a project linked to an online LaTeX service grew with
+  every sync. It's now tidied after a sync, at most once a day.
+- Deleting a project for good from the Recycle Bin left its assistant chats
+  on disk and in chat search. They're now deleted with it.
+- Switching to another project while the assistant was replying could lose
+  the part of the reply it had already written. Oleafly now keeps it.
+- On macOS and Linux, each Show in folder left a finished process behind
+  until you quit Oleafly. It now goes away as soon as it finishes.
 - Review in Files > Task outputs did nothing. It now opens the task in the
   Research tab.
 - Task details showed only a long task's first 100 entries, with newer ones
-  appended after an unmarked gap. They now load the latest activity and mark
-  what is left out.
+  appended after an unmarked gap. They now open on the newest activity, and
+  Load more shows older entries.
 - A CLI agent conversation could hang while starting on Linux when an
   environment variable wasn't valid UTF-8.
 - Clicking a word in the PDF selects that word in the source, even when it

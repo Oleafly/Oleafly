@@ -14,6 +14,7 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { describeError } from "@/lib/app-error";
 import {
+  announceSandboxChanged,
   checkSandbox,
   removeSandboxAccess,
   sandboxStatus,
@@ -265,7 +266,17 @@ export function ComputeSandboxCard() {
 
   return (
     <div className="space-y-3" data-testid="compute-sandbox">
-      <SandboxStatusRow status={status} onSetWindows={(enabled) => void apply(() => setWindowsSandbox(enabled))} />
+      <SandboxStatusRow
+        status={status}
+        onSetWindows={(enabled) =>
+          void apply(async () => {
+            const next = await setWindowsSandbox(enabled);
+            // A task brief that warns about the sandbox being off checks again.
+            announceSandboxChanged(next);
+            return next;
+          })
+        }
+      />
       {windows && !status.available && status.reason ? (
         <p role="alert" className="select-text text-xs text-destructive">
           {status.reason}

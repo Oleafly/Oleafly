@@ -4,6 +4,8 @@ import type { DraftAttachment } from "@/components/ai/composer/types";
 import {
   builtinComposerId,
   composerHistoryKey,
+  composerHolding,
+  HISTORY_PROJECT_CHARS,
   draftAttachmentRefs,
   draftText,
   holdDraftAttachments,
@@ -112,6 +114,19 @@ describe("a draft per conversation", () => {
   });
 });
 
+describe("an attachment whose draft moved", () => {
+  it("is found in the composer of the same project its draft moved to", () => {
+    const drafts = useComposerDrafts.getState();
+    drafts.addAttachments("p1:builtin", [attachment("a", { status: "processing" })]);
+    expect(composerHolding("p1:builtin", "a")).toBe("p1:builtin");
+    drafts.moveDraft("p1:builtin", "p1:builtin:chat-1");
+    expect(composerHolding("p1:builtin", "a")).toBe("p1:builtin:chat-1");
+    // Another project's composers are never searched.
+    drafts.moveDraft("p1:builtin:chat-1", "p2:builtin");
+    expect(composerHolding("p1:builtin", "a")).toBeNull();
+  });
+});
+
 describe("files held outside the drafts", () => {
   it("keeps held attachments, and what a registered store lists, out of a collection", () => {
     const stash = [attachment("s", { sha256: "stashed", pageImages: [{ sha256: "stashed-page", mime: "image/png" }] })];
@@ -155,6 +170,29 @@ describe("prompt history", () => {
     expect(promptHistory("p1:builtin")).toEqual([]);
     expect(promptHistory("p2:builtin")).toEqual(["hello"]);
     expect(promptHistory("p21:builtin")).toEqual(["hello"]);
+  });
+
+  it("keeps only the newest prompts that fit a project's size limit", () => {
+    const long = (index: number) => `${index}`.padEnd(3_000, "x");
+    for (let index = 1; index <= 20; index += 1) rememberPrompt("p1:builtin", long(index));
+    const history = promptHistory("p1:builtin");
+    expect(history.join("").length).toBeLessThanOrEqual(HISTORY_PROJECT_CHARS);
+    expect(history.at(-1)).toBe(long(20));
+    expect(history).toHaveLength(Math.floor(HISTORY_PROJECT_CHARS / 3_000));
+  });
+
+  it("reads the stored history once while nothing changes it", () => {
+    rememberPrompt("p1:builtin", "first");
+    const parse = vi.spyOn(JSON, "parse");
+    for (let step = 0; step < 5; step += 1) expect(promptHistory("p1:builtin")).toEqual(["first"]);
+    expect(parse).not.toHaveBeenCalled();
+    // Another window wrote it meanwhile: the new text is read.
+    localStorage.setItem(
+      "oleafly.composer.history",
+      JSON.stringify({ v: 1, byProject: { p1: { at: 1, items: ["from another window"] } } }),
+    );
+    expect(promptHistory("p1:builtin")).toEqual(["from another window"]);
+    expect(parse).toHaveBeenCalledTimes(1);
   });
 
   it("works when localStorage throws", () => {

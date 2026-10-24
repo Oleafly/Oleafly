@@ -44,7 +44,10 @@ pub fn new_state() -> ResearchTaskState {
 }
 
 /// Connect the queue to the app: trust, projects, skills and webview events.
+/// Queued work waits for [`recover`]: the launch handoff runs beside it and
+/// must not start a task over a project an interrupted apply left half done.
 pub fn attach(state: &ResearchTaskState, app: &tauri::AppHandle) {
+    state.hold_launches();
     state.attach(
         Arc::new(host::AppResearchHost::new(app.clone())),
         tauri::async_runtime::handle().inner().clone(),
@@ -57,6 +60,22 @@ pub async fn recover(
     state: &ResearchTaskState,
     app_state: &crate::state::AppState,
 ) -> Result<(), String> {
+    // However recovery ends, work the user starts from now on runs; the
+    // launch handoff starts queued work only after a clean recovery.
+    struct Release<'a> {
+        state: &'a ResearchTaskState,
+        clean: bool,
+    }
+    impl Drop for Release<'_> {
+        fn drop(&mut self) {
+            self.state.release_launches();
+            recovery().send_replace(Some(self.clean));
+        }
+    }
+    let mut release = Release {
+        state,
+        clean: false,
+    };
     let store = state.store()?;
     let mut failures = Vec::new();
     let mut unresolved = 0usize;
@@ -73,6 +92,9 @@ pub async fn recover(
             failures.push(format!("{}: {error}", pending.task_id));
         }
     }
+    // Queued work starts now only when no apply is left unresolved.
+    release.clean = unresolved == 0;
+    drop(release);
     state.recover_runs(unresolved == 0).await?;
     // Sandbox profiles of tasks that no longer exist (Windows) go now.
     if let Ok(tasks) = store.all_tasks() {
@@ -92,6 +114,24 @@ pub async fn recover(
             failures.join("; ")
         ))
     }
+}
+
+/// How the launch's [`recover`] went: `None` until it ends, then whether it
+/// left no apply unresolved.
+fn recovery() -> &'static tokio::sync::watch::Sender<Option<bool>> {
+    static RECOVERY: std::sync::OnceLock<tokio::sync::watch::Sender<Option<bool>>> =
+        std::sync::OnceLock::new();
+    RECOVERY.get_or_init(|| tokio::sync::watch::channel(None).0)
+}
+
+/// Waits for the launch's [`recover`]; `true` when queued work may start
+/// (no interrupted apply is left unresolved).
+pub(crate) async fn recovered_cleanly() -> bool {
+    let mut outcome = recovery().subscribe();
+    outcome
+        .wait_for(Option::is_some)
+        .await
+        .is_ok_and(|outcome| *outcome == Some(true))
 }
 
 async fn recover_pending(
@@ -238,6 +278,9 @@ pub async fn research_task_retry(
     .await
 }
 
+/// A page of a generation's transcript. Forward from `after_sequence`, or,
+/// with `before_sequence`, backwards from the newest rows below it (a value
+/// above every row, such as `Number.MAX_SAFE_INTEGER`, reads the newest page).
 #[tauri::command]
 pub async fn research_task_events(
     state: tauri::State<'_, ResearchTaskState>,
@@ -245,12 +288,14 @@ pub async fn research_task_events(
     execution_generation: u64,
     after_sequence: Option<u64>,
     limit: Option<usize>,
+    before_sequence: Option<u64>,
 ) -> Result<TaskTranscriptPage, String> {
     blocking_task_command(&state, move |state| {
-        state.events(
+        state.events_page(
             &task_id,
             execution_generation,
             after_sequence,
+            before_sequence,
             limit.unwrap_or(100),
         )
     })
@@ -400,7 +445,7 @@ fn check_task_id(task_id: &str) -> Result<(), String> {
 pub async fn research_task_plan(
     state: tauri::State<'_, ResearchTaskState>,
     task_id: String,
-) -> Result<String, String> {
+) -> Result<model::TaskPlanText, String> {
     blocking_task_command(&state, move |state| state.plan(&task_id)).await
 }
 
@@ -772,7 +817,7 @@ mod tests {
                 .unwrap();
             assert_eq!(retried.status, ResearchTaskStatus::Queued);
             assert_eq!(retried.title, edited.title);
-            let transcript = research_task_events(state(), task.id.clone(), 0, None, None)
+            let transcript = research_task_events(state(), task.id.clone(), 0, None, None, None)
                 .await
                 .unwrap();
             assert!(transcript.events.is_empty());

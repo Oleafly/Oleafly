@@ -28,6 +28,10 @@ pub struct WindowsRecord {
     pub sha256: String,
     /// The PATH entry this install added (to remove exactly it).
     pub path_entry: String,
+    /// While a refresh replaces the copy: the old copy's sha256, which is
+    /// still this app's (a refresh cut short leaves either copy).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub replacing_sha256: Option<String>,
 }
 
 /// The user's `Path` value (`REG_SZ` or `REG_EXPAND_SZ`).
@@ -197,7 +201,9 @@ fn on_path(env: &InstallEnv, dir: &Path) -> bool {
 fn is_ours(path: &Path, record: Option<&WindowsRecord>) -> bool {
     record.is_some_and(|record| {
         normalize_entry(&record.path.to_string_lossy()) == normalize_entry(&path.to_string_lossy())
-            && file_sha256(path).is_ok_and(|sha| sha == record.sha256)
+            && file_sha256(path).is_ok_and(|sha| {
+                sha == record.sha256 || record.replacing_sha256.as_ref() == Some(&sha)
+            })
     })
 }
 
@@ -328,6 +334,7 @@ pub fn install(env: &InstallEnv) -> Result<WindowsStatus, InstallError> {
                     method: "copy".into(),
                     sha256,
                     path_entry: entry.clone(),
+                    replacing_sha256: None,
                 },
             )
         });
@@ -418,11 +425,32 @@ pub fn refresh_if_outdated(env: &InstallEnv) -> Result<bool, InstallError> {
     if fresh == record.sha256 {
         return Ok(false);
     }
-    place_copy(bundled, &record.path)?;
-    record.sha256 = file_sha256(&record.path)
+    // The record names both copies before the copy changes, so a refresh
+    // that fails or is cut short at any point leaves a copy that is still
+    // this app's (to refresh, reinstall or remove).
+    let current = file_sha256(&record.path)
         .map_err(|error| InstallError::new("shell_command.failed").detail(error))?;
+    record.replacing_sha256 = Some(current.clone());
+    record.sha256 = fresh;
     write_record(&env.data_root, &record)?;
-    Ok(true)
+    let placed = place_copy(bundled, &record.path).and_then(|()| {
+        file_sha256(&record.path)
+            .map_err(|error| InstallError::new("shell_command.failed").detail(error))
+    });
+    match placed {
+        Ok(sha256) => {
+            record.sha256 = sha256;
+            record.replacing_sha256 = None;
+            write_record(&env.data_root, &record)?;
+            Ok(true)
+        }
+        Err(error) => {
+            record.sha256 = current;
+            record.replacing_sha256 = None;
+            let _ = write_record(&env.data_root, &record);
+            Err(error)
+        }
+    }
 }
 
 /// The user's PATH in the registry (`HKCU\Environment\Path`).
@@ -805,6 +833,28 @@ mod tests {
         assert!(!stale.exists() && !moved.exists());
         // An install running right now may still be writing its own copy.
         assert!(fresh.exists() && unrelated.exists());
+    }
+
+    #[test]
+    fn a_refresh_cut_short_leaves_a_copy_that_is_still_ours() {
+        let local = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
+        let bundle = tempfile::tempdir().unwrap();
+        let cli = bundle.path().join("oleafly-cli.exe");
+        std::fs::write(&cli, b"cli v1").unwrap();
+        let user_path = MemoryPath::new(None);
+        let env = env(local.path(), data.path(), Some(cli.clone()), &user_path);
+        install(&env).unwrap();
+        // The record was written for v2, then the app quit before the copy.
+        let mut record = read_record(data.path()).unwrap();
+        record.replacing_sha256 = Some(record.sha256.clone());
+        record.sha256 = "0".repeat(64);
+        write_record(data.path(), &record).unwrap();
+        std::fs::write(&cli, b"cli v2").unwrap();
+        assert_eq!(status(&env).state, "outdated");
+        assert!(refresh_if_outdated(&env).unwrap());
+        assert_eq!(status(&env).state, "installed");
+        assert_eq!(read_record(data.path()).unwrap().replacing_sha256, None);
     }
 
     #[test]

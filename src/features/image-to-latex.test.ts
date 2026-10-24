@@ -169,6 +169,77 @@ describe("imageToLatex", () => {
     expect(mocks.toast.dismiss).not.toHaveBeenCalled();
   });
 
+  it("keeps the result in a toast with a Copy button when the webview refuses the late clipboard write", async () => {
+    mocks.transcribeEditorImage.mockImplementation(async () => {
+      mocks.files.activePath = "chapter.tex";
+      return "x^2";
+    });
+    mocks.writeText.mockRejectedValueOnce(new DOMException("not allowed", "NotAllowedError"));
+
+    await imageToLatex(image());
+
+    expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
+    const [key, message, action, sticky] = mocks.toast.infoUnique.mock.lastCall as unknown as [
+      string,
+      string,
+      { label: string; onClick: () => void },
+      boolean,
+    ];
+    expect([key, message, sticky]).toEqual([KEY, i18n.t(($) => $.core.imageToLatex.notInserted), true]);
+    expect(action.label).toBe(i18n.t(($) => $.common.actions.copy));
+
+    // The click carries the gesture the webview wants.
+    action.onClick();
+    await vi.waitFor(() => expect(mocks.writeText).toHaveBeenCalledTimes(2));
+    expect(mocks.writeText).toHaveBeenLastCalledWith("x^2");
+    await vi.waitFor(() =>
+      expect(mocks.toast.infoUnique).toHaveBeenLastCalledWith(KEY, i18n.t(($) => $.library.pdfImport.copied)),
+    );
+  });
+
+  it("says Typst, not LaTeX, when Image to Typst copies its result", async () => {
+    mocks.transcribeEditorImage.mockImplementation(async () => {
+      mocks.files.activePath = "chapter.typ";
+      return "$ x $";
+    });
+    await imageToTypst(image());
+    expect(mocks.toast.infoUnique).toHaveBeenLastCalledWith(KEY, "Copied Typst source");
+
+    mocks.files.activePath = "main.tex";
+    mocks.transcribeEditorImage.mockImplementation(async () => {
+      mocks.files.activePath = "chapter.typ";
+      return "$ x $";
+    });
+    mocks.writeText.mockRejectedValueOnce(new Error("denied"));
+    await imageToTypst(image());
+    const [, notice] = mocks.toast.infoUnique.mock.lastCall as unknown as [string, string];
+    expect(notice).toBe(i18n.t(($) => $.core.imageToTypst.notInserted));
+  });
+
+  it("says the assistant's model read the image when the editor fell back to it", async () => {
+    const fallback = { engine: "llm", label: "Claude Opus 5.5", assistantFallback: true };
+    mocks.modelInfo.mockReturnValue({ label: "Claude Opus 5.5", sentTo: "Anthropic" });
+    mocks.transcribeEditorImage.mockImplementation(
+      async (_file: File, _target: string, options: { onModel?: (model: unknown) => void }) => {
+        options.onModel?.(fallback);
+        return "x^2";
+      },
+    );
+
+    await imageToLatex(image());
+
+    expect(mocks.toast.infoUnique).toHaveBeenCalledWith(
+      KEY,
+      "Sending the image to Anthropic (assistant model)…",
+      undefined,
+      true,
+    );
+    expect(mocks.insertAtCursor).toHaveBeenCalledWith("x^2");
+    // The note stays after success instead of vanishing.
+    expect(mocks.toast.dismiss).not.toHaveBeenCalled();
+    expect(mocks.toast.infoUnique).toHaveBeenLastCalledWith(KEY, "Sent to Anthropic (assistant model)");
+  });
+
   it("keeps a newer transcription's progress visible when an older one finishes first", async () => {
     let finishFirst!: (value: string) => void;
     mocks.transcribeEditorImage

@@ -334,22 +334,35 @@ impl ForgeStore {
         Ok(Some(after))
     }
 
-    /// Add or replace an account's metadata without touching its token, for
-    /// a token that was saved without an account.
-    pub(crate) fn put_account(&self, account: ForgeAccount) -> Result<(), ForgeError> {
+    /// Add the account of a token that was saved without one, without
+    /// touching the token. Insert-only: an account that appeared while the
+    /// server was asked who the token belongs to (the user signed in) is
+    /// kept, and nothing is added once the token is no longer `token_read`.
+    /// Returns whether the account was added.
+    pub(crate) fn put_account(
+        &self,
+        account: ForgeAccount,
+        token_read: &str,
+    ) -> Result<bool, ForgeError> {
         let mut account = account;
         account.base = normalize_base_url(&account.base)?;
         let _lock = self.lock(true)?;
         let mut file = self.read_file_locked()?;
-        match file
+        if file
             .accounts
-            .iter_mut()
-            .find(|existing| existing.base == account.base)
+            .iter()
+            .any(|existing| existing.base == account.base)
         {
-            Some(existing) => *existing = account,
-            None => file.accounts.push(account),
+            return Ok(false);
         }
-        self.write_file_locked(&file)
+        let current =
+            secret_accounts::forge_token(&self.secrets, &account.base).map_err(store_error)?;
+        if current.is_none_or(|token| token.token != token_read) {
+            return Ok(false);
+        }
+        file.accounts.push(account);
+        self.write_file_locked(&file)?;
+        Ok(true)
     }
 
     /// Forget an account. The token goes first, so a failure part way leaves

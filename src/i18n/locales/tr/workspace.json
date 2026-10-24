@@ -196,6 +196,8 @@
     "closeRight": "Sağdakilerin tümünü kapat",
     "closeTab": "{{title}} sekmesini kapat",
     "color": "Renk",
+    "dropRefused_one": "Bu dosyanın adında bir denetim karakteri var, bu yüzden terminal onu yazmaz.",
+    "dropRefused_other": "{{count}} dosyanın adında denetim karakterleri var, bu yüzden terminal bunları yazmaz.",
     "errors": {
       "input": "Proje shell'i girdiyi kabul edemedi",
       "resize": "Terminal yeniden boyutlandırılamadı",
@@ -234,6 +236,7 @@
       "many_other": "{{count}} terminalde hâlâ program çalışıyor.",
       "named": "{{process}}, {{title}} içinde hâlâ çalışıyor.",
       "quit": "Çık",
+      "reload": "Yeniden yükle",
       "restart": "Yeniden başlat",
       "switchProject": "Projeyi değiştir",
       "titleMany": "Çalışan programlar durdurulsun mu?",

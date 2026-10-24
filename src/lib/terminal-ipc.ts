@@ -15,6 +15,8 @@ export interface TerminalOpenOptions {
   cwd?: string;
   env?: Record<string, string>;
   shell?: { id: TerminalShellId; path?: string };
+  /** The session runs a launch command Oleafly types in (sign-in, install). */
+  launch?: boolean;
 }
 
 export interface TerminalOpened {
@@ -25,6 +27,8 @@ export interface TerminalOpened {
   shellId: TerminalShellId;
   /** The shell program's name, such as `zsh` or `bash`. */
   shellName?: string;
+  /** The project folder's absolute path on this computer, so dropped paths stay right after `cd`. */
+  root?: string;
 }
 
 export interface TerminalShellOption {

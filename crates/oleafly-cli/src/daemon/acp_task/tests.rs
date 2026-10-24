@@ -355,7 +355,9 @@ fn adapter(setup: &Setup, launcher: AcpLauncher) -> (ResearchTaskState, DaemonAc
         state.services().unwrap(),
         launcher,
     )
-    .unwrap();
+    .unwrap()
+    // Never the developer's own sign-in files.
+    .with_user_home(setup.data.path().join("user-home"));
     (state, adapter)
 }
 
@@ -627,5 +629,439 @@ fn the_default_launcher_rebuilds_the_sandboxed_command() {
     assert_eq!(
         command.as_std().get_current_dir(),
         Some(dunce::simplified(&launch.sandbox.workspace))
+    );
+}
+
+#[test]
+fn a_request_is_judged_with_the_paths_its_tool_call_announced() {
+    let mut calls = HashMap::new();
+    track_call(
+        &mut calls,
+        &json!({"sessionUpdate": "tool_call", "toolCallId": "x", "kind": "edit",
+            "locations": [{"path": "/home/me/.bashrc"}],
+            "content": [{"type": "diff", "path": "/home/me/.profile", "newText": "a"}]}),
+    );
+    let (kind, paths) = judged_request(&calls, &json!({"toolCallId": "x"}));
+    assert_eq!(kind.as_deref(), Some("edit"));
+    assert_eq!(paths, ["/home/me/.bashrc", "/home/me/.profile"]);
+    // The request's own paths are judged too.
+    let (_, paths) = judged_request(
+        &calls,
+        &json!({"toolCallId": "x", "rawInput": {"file_path": "notes.md"}}),
+    );
+    assert_eq!(paths, ["/home/me/.bashrc", "/home/me/.profile", "notes.md"]);
+    let (kind, paths) = judged_request(&calls, &json!({"toolCallId": "unknown"}));
+    assert_eq!((kind, paths.len()), (None, 0));
+}
+
+#[test]
+fn a_call_naming_more_paths_than_are_kept_is_judged_as_outside() {
+    let mut calls = HashMap::new();
+    let locations: Vec<Value> = (0..=MAX_TRACKED_PATHS)
+        .map(|index| json!({"path": format!("file-{index}.tex")}))
+        .collect();
+    track_call(
+        &mut calls,
+        &json!({"toolCallId": "big", "kind": "edit", "locations": locations}),
+    );
+    let (_, paths) = judged_request(&calls, &json!({"toolCallId": "big"}));
+    assert_eq!(paths.last().map(String::as_str), Some(UNTRACKED_PATH));
+}
+
+#[test]
+fn reads_and_changes_that_name_no_path_are_refused() {
+    let grant = acp_grant(&[], false);
+    let judged = |kind: &str, names_paths: bool| Judged {
+        kind: Some(kind.into()),
+        in_root: true,
+        names_paths,
+        refused_now: false,
+    };
+    for kind in ["read", "edit", "delete", "move"] {
+        assert_eq!(
+            request_decision(&grant, &judged(kind, false), CommandPolicy::Allow),
+            PermissionPath::Refuse,
+            "{kind}"
+        );
+        assert_eq!(
+            request_decision(&grant, &judged(kind, true), CommandPolicy::Allow),
+            PermissionPath::Allow,
+            "{kind}"
+        );
+    }
+    assert_eq!(
+        request_decision(&grant, &judged("think", false), CommandPolicy::Allow),
+        PermissionPath::Allow
+    );
+    let refused = Judged {
+        refused_now: true,
+        ..judged("edit", true)
+    };
+    assert_eq!(
+        request_decision(&grant, &refused, CommandPolicy::Allow),
+        PermissionPath::Refuse
+    );
+}
+
+#[test]
+fn the_projects_rules_are_read_as_the_app_reads_them() {
+    let data = tempfile::tempdir().unwrap();
+    // No rules file: nothing is refused.
+    assert!(!rules_refuse(data.path(), "paper", Some("execute")));
+    std::fs::write(
+        data.path().join(APPROVALS_FILE),
+        "\"$approval_modes\" = { paper = \"custom\" }\n\n[paper]\nrun_command = \"deny\"\nread_file = \"allow\"\n\n[other]\ndelete_file = \"deny\"\n",
+    )
+    .unwrap();
+    assert!(rules_refuse(data.path(), "paper", Some("execute")));
+    assert!(!rules_refuse(data.path(), "paper", Some("edit")));
+    assert!(!rules_refuse(data.path(), "paper", Some("read")));
+    // A kind no tool's rules cover is refused while a deny rule exists.
+    assert!(rules_refuse(data.path(), "paper", Some("fetch")));
+    assert!(rules_refuse(data.path(), "paper", None));
+    assert!(!rules_refuse(data.path(), "third", Some("fetch")));
+    assert!(!rules_refuse(data.path(), "paper", Some("delete")));
+    // A file the app couldn't read refuses everything.
+    std::fs::write(
+        data.path().join(APPROVALS_FILE),
+        "[paper\nrun_command = deny",
+    )
+    .unwrap();
+    assert!(rules_refuse(data.path(), "paper", Some("edit")));
+    std::fs::write(
+        data.path().join(APPROVALS_FILE),
+        "[paper]\nrun_command = \"maybe\"\n",
+    )
+    .unwrap();
+    assert!(rules_refuse(data.path(), "paper", Some("edit")));
+}
+
+#[test]
+fn the_mode_guard_leaves_a_mode_with_permission_checks_off() {
+    let redactor = Redactor::new(&[]);
+    let mut guard = ModeGuard::default();
+    guard
+        .controls
+        .merge(&json!({"modes": {"currentModeId": "bypassPermissions",
+        "availableModes": [{"id": "default", "name": "Default"},
+            {"id": "bypassPermissions", "name": "Bypass permissions"}]}}));
+    let switch = guard
+        .next_switch()
+        .expect("a switch out of the bypass mode");
+    assert_eq!(
+        (switch.config_id.as_deref(), switch.to.as_str()),
+        (None, "default")
+    );
+    guard.switching = true;
+    assert!(guard.notice(&redactor).is_none());
+    guard.switched(&switch, &json!({}));
+    assert!(guard.controls.blocked_mode(None).is_none());
+    assert!(guard.next_switch().is_none() && guard.notice(&redactor).is_none());
+    // An agent that keeps going back is told about once the attempts run out.
+    for _ in 0..MAX_MODE_SWITCHES {
+        guard.controls.mode_id = Some("bypassPermissions".into());
+        if let Some(switch) = guard.next_switch() {
+            guard.switched(&switch, &json!({}));
+        }
+    }
+    guard.controls.mode_id = Some("bypassPermissions".into());
+    assert!(guard.next_switch().is_none());
+    assert!(guard
+        .notice(&redactor)
+        .is_some_and(|notice| notice.contains("Bypass permissions")));
+    assert!(guard.notice(&redactor).is_none());
+}
+
+fn json_text(value: &str) -> String {
+    serde_json::to_string(value).unwrap()
+}
+
+/// The answer the fixture logged for its permission request.
+fn permission_answer(setup: &Setup) -> String {
+    logged(setup)
+        .into_iter()
+        .find(|line| line.starts_with("permission "))
+        .expect("the request must be answered")
+}
+
+async fn run_to_end(setup: &Setup, env: Vec<(&'static str, String)>) -> Vec<TaskRuntimeEvent> {
+    let launcher = fixture_launcher(setup, env);
+    let (_state, adapter) = adapter(setup, launcher);
+    let (events, recorded) = sink();
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        adapter.run(context(setup, None, None), CancellationToken::new(), events),
+    )
+    .await
+    .expect("the run must end")
+    .unwrap();
+    let recorded = recorded.lock().unwrap().clone();
+    recorded
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_request_naming_only_its_call_id_is_judged_by_the_calls_paths() {
+    let setup = setup(CommandPolicy::Allow);
+    let outside = setup.data.path().join("elsewhere").join("notes.md");
+    let announce = format!(
+        "\"toolCallId\":\"tool-2\",\"kind\":\"edit\",\"locations\":[{{\"path\":{}}}]",
+        json_text(&outside.to_string_lossy())
+    );
+    run_to_end(
+        &setup,
+        vec![
+            ("FIXTURE_ANNOUNCE", announce),
+            ("FIXTURE_ASK_TOOL", "{\"toolCallId\":\"tool-2\"}".into()),
+        ],
+    )
+    .await;
+    let answer = permission_answer(&setup);
+    assert!(answer.contains("\"cancelled\""), "{answer}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_edit_request_that_names_no_path_is_refused() {
+    let setup = setup(CommandPolicy::Allow);
+    run_to_end(
+        &setup,
+        vec![(
+            "FIXTURE_ASK_TOOL",
+            "{\"toolCallId\":\"tool-3\",\"kind\":\"edit\",\"title\":\"Edit\"}".into(),
+        )],
+    )
+    .await;
+    let answer = permission_answer(&setup);
+    assert!(answer.contains("\"optionId\":\"reject\""), "{answer}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_canonical_path_inside_the_task_folder_is_allowed_however_the_folder_is_stored() {
+    let setup = setup(CommandPolicy::Allow);
+    // The folder as stored need not be canonical (on macOS the temporary
+    // folder is behind a link; on Windows canonical paths are `\\?\C:\`).
+    let stored = setup.data.path().join("workspace");
+    let inside = setup.workspace.join("research").join("notes.md");
+    let launcher = fixture_launcher(
+        &setup,
+        vec![(
+            "FIXTURE_ASK_TOOL",
+            format!(
+                "{{\"toolCallId\":\"tool-4\",\"kind\":\"edit\",\"locations\":[{{\"path\":{}}}]}}",
+                json_text(&inside.to_string_lossy())
+            ),
+        )],
+    );
+    let (_state, adapter) = adapter(&setup, launcher);
+    let (events, _) = sink();
+    let mut context = context(&setup, None, None);
+    context.execution_root = stored.to_string_lossy().into_owned();
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        adapter.run(context, CancellationToken::new(), events),
+    )
+    .await
+    .expect("the run must end")
+    .unwrap();
+    let answer = permission_answer(&setup);
+    assert!(answer.contains("\"optionId\":\"allow\""), "{answer}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_deny_rule_added_after_the_handoff_refuses_the_request() {
+    let setup = setup(CommandPolicy::Allow);
+    std::fs::write(
+        setup.data.path().join(APPROVALS_FILE),
+        "[paper]\nrun_command = \"deny\"\n",
+    )
+    .unwrap();
+    run_to_end(&setup, vec![("FIXTURE_ASK", "1".into())]).await;
+    let answer = permission_answer(&setup);
+    assert!(answer.contains("\"optionId\":\"reject\""), "{answer}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_agent_started_with_permission_checks_off_is_switched_before_the_turn() {
+    let setup = setup(CommandPolicy::Allow);
+    run_to_end(&setup, vec![("FIXTURE_MODE", "bypassPermissions".into())]).await;
+    let lines = logged(&setup);
+    let switched = lines.iter().position(|line| line == "set_mode default");
+    let prompted = lines.iter().position(|line| line.starts_with("prompt "));
+    assert!(
+        matches!((switched, prompted), (Some(switched), Some(prompted)) if switched < prompted),
+        "{lines:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_new_session_is_bound_by_the_agents_own_id() {
+    let setup = setup(CommandPolicy::Allow);
+    let recorded = run_to_end(&setup, Vec::new()).await;
+    assert!(recorded.iter().any(|event| matches!(event,
+        TaskRuntimeEvent::SessionBound { native_session_id } if native_session_id == "agent-session-1")));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_stop_during_a_reclaim_interrupts_the_turn() {
+    let setup = setup(CommandPolicy::Allow);
+    let launcher = fixture_launcher(&setup, vec![("FIXTURE_SLOW", "1".into())]);
+    let (_state, adapter) = adapter(&setup, launcher);
+    let step = CancellationToken::new();
+    let withdraw = CancellationToken::new();
+    let adapter = adapter.with_suspend_tokens(step.clone(), withdraw.clone());
+    let (events, _) = sink();
+    let run = tokio::spawn({
+        let context = context(&setup, None, None);
+        async move { adapter.run(context, CancellationToken::new(), events).await }
+    });
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while !logged(&setup)
+            .iter()
+            .any(|line| line.starts_with("prompt "))
+        {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("the turn must start");
+    // A reclaim waits for the turn to end ...
+    step.cancel();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(!logged(&setup)
+        .iter()
+        .any(|line| line == "method session/cancel"));
+    // ... and a stop that comes meanwhile ends it now.
+    withdraw.cancel();
+    let outcome = tokio::time::timeout(Duration::from_secs(10), run)
+        .await
+        .expect("the stop must end the turn")
+        .unwrap();
+    assert!(outcome.is_ok(), "{outcome:?}");
+    assert!(logged(&setup)
+        .iter()
+        .any(|line| line == "method session/cancel"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_cancel_ends_an_agent_that_never_answers_its_start() {
+    let setup = setup(CommandPolicy::Allow);
+    let launcher = fixture_launcher(&setup, vec![("FIXTURE_NO_INIT", "1".into())]);
+    let (_state, adapter) = adapter(&setup, launcher);
+    let (events, _) = sink();
+    let cancel = CancellationToken::new();
+    let run = tokio::spawn({
+        let context = context(&setup, None, None);
+        let cancel = cancel.clone();
+        async move { adapter.run(context, cancel, events).await }
+    });
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while !logged(&setup)
+            .iter()
+            .any(|line| line == "method initialize")
+        {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("the agent must be asked to start");
+    cancel.cancel();
+    let result = tokio::time::timeout(Duration::from_secs(10), run)
+        .await
+        .expect("a cancel must not wait for the start-up request")
+        .unwrap();
+    assert_eq!(result.unwrap_err(), CANCELLED);
+}
+
+#[test]
+fn the_agents_sign_in_files_are_copied_into_a_home_that_lacks_them() {
+    let user = tempfile::tempdir().unwrap();
+    let task = tempfile::tempdir().unwrap();
+    let home = task.path().join("acp-home-2");
+    std::fs::create_dir_all(user.path().join(".claude")).unwrap();
+    std::fs::write(
+        user.path().join(".claude/.credentials.json"),
+        r#"{"token":"oauth-user"}"#,
+    )
+    .unwrap();
+    copy_credentials(user.path(), &home, "claude").unwrap();
+    let copied = home.join(".claude/.credentials.json");
+    assert_eq!(
+        std::fs::read_to_string(&copied).unwrap(),
+        r#"{"token":"oauth-user"}"#
+    );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&copied), 0o600);
+        assert_eq!(mode(&home.join(".claude")), 0o700);
+        assert_eq!(mode(&home), 0o700);
+    }
+    // A home that has them (an older handoff, a refreshed token) keeps them.
+    std::fs::write(&copied, r#"{"token":"refreshed"}"#).unwrap();
+    copy_credentials(user.path(), &home, "claude").unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&copied).unwrap(),
+        r#"{"token":"refreshed"}"#
+    );
+    // Nothing to copy is fine.
+    copy_credentials(user.path(), &task.path().join("other"), "codex").unwrap();
+}
+
+#[test]
+fn sign_in_files_that_are_links_too_large_or_not_json_are_refused() {
+    let user = tempfile::tempdir().unwrap();
+    let task = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(user.path().join(".codex")).unwrap();
+    std::fs::write(
+        user.path().join(".codex/auth.json"),
+        vec![b' '; MAX_CREDENTIAL_BYTES as usize + 1],
+    )
+    .unwrap();
+    assert!(copy_credentials(user.path(), &task.path().join("a"), "codex").is_err());
+    std::fs::write(user.path().join(".codex/auth.json"), "not json").unwrap();
+    assert!(copy_credentials(user.path(), &task.path().join("b"), "codex").is_err());
+    #[cfg(unix)]
+    {
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(outside.path().join("auth.json"), "{}").unwrap();
+        std::fs::remove_file(user.path().join(".codex/auth.json")).unwrap();
+        std::os::unix::fs::symlink(
+            outside.path().join("auth.json"),
+            user.path().join(".codex/auth.json"),
+        )
+        .unwrap();
+        assert!(copy_credentials(user.path(), &task.path().join("c"), "codex").is_err());
+    }
+    assert!(!task.path().join("a/.codex/auth.json").exists());
+}
+
+#[test]
+fn gemini_gets_its_sign_in_choice_with_its_files() {
+    let user = tempfile::tempdir().unwrap();
+    let task = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(user.path().join(".gemini")).unwrap();
+    std::fs::write(user.path().join(".gemini/oauth_creds.json"), "{}").unwrap();
+    copy_credentials(user.path(), task.path(), "gemini").unwrap();
+    assert!(
+        std::fs::read_to_string(task.path().join(".gemini/settings.json"))
+            .unwrap()
+            .contains("oauth-personal")
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_task_started_in_the_helper_gets_the_agents_sign_in() {
+    let setup = setup(CommandPolicy::Allow);
+    let user = setup.data.path().join("user-home");
+    std::fs::create_dir_all(user.join(".claude")).unwrap();
+    std::fs::write(
+        user.join(".claude/.credentials.json"),
+        r#"{"token":"oauth-helper"}"#,
+    )
+    .unwrap();
+    run_to_end(&setup, Vec::new()).await;
+    assert_eq!(
+        std::fs::read_to_string(setup.home.join(".claude/.credentials.json")).unwrap(),
+        r#"{"token":"oauth-helper"}"#
     );
 }

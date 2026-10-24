@@ -306,6 +306,7 @@ impl TaskHost for NativeTaskHost {
             let task_id = context.task_id.clone();
             let generation = context.execution_generation;
             let project_id = context.project_id.clone();
+            let title = context.title.clone();
             let bridge = crate::research_mcp::start_restricted(
                 app,
                 context.project_id,
@@ -325,6 +326,7 @@ impl TaskHost for NativeTaskHost {
                 &task_id,
                 generation,
                 &project_id,
+                &title,
             )
             .await
             .unwrap_or(bridge))
@@ -704,10 +706,10 @@ impl AcpTaskAdapter {
             }
         } else {
             match previous {
-                Some(record_id) => match self
+                Some(native) => match self
                     .runtime
                     .resume_task_session(
-                        &record_id,
+                        &native,
                         options.clone(),
                         servers.clone(),
                         Some(generation),
@@ -749,9 +751,13 @@ impl AcpTaskAdapter {
             }
         };
         let id = session.id.clone();
-        events(TaskRuntimeEvent::SessionBound {
-            native_session_id: id.clone(),
-        });
+        // The agent's own session id, as the background helper records it:
+        // whoever runs the task next resumes that session.
+        if let Some(native) = session.native_session_id.clone() {
+            events(TaskRuntimeEvent::SessionBound {
+                native_session_id: native,
+            });
+        }
         let start = PromptStart {
             resumed,
             adopted,
@@ -788,14 +794,16 @@ impl AcpTaskAdapter {
                     }
                 }
             }
+            // The agent's home (its own session history) is kept, so a
+            // retry or the approved plan's generation resumes its session.
             Ok(PromptEnd::Finished(outcome)) => {
-                let cleanup = self.runtime.close(&id).await;
+                let cleanup = self.runtime.end_task_session(&id).await;
                 bridge.shutdown().await;
                 cleanup?;
                 Ok(outcome)
             }
             Err(error) => {
-                let cleanup = self.runtime.cancel(&id).await;
+                let cleanup = self.runtime.end_task_session(&id).await;
                 bridge.shutdown().await;
                 cleanup?;
                 Err(error)
@@ -828,29 +836,20 @@ impl AcpTaskAdapter {
                 ),
             });
         }
+        // Only this turn's events: a resumed session's record already holds
+        // the earlier generation's.
+        let before = self.runtime.snapshot(id).await?.session;
         let mut receiver = self.runtime.subscribe();
-        let mut sequence = 0;
+        let mut sequence = before.last_sequence;
         let mut stop_reason = None;
         let mut result = TaskRuntimeOutcome {
             summary: String::new(),
             artifacts: Vec::new(),
-            native_session_id: Some(id.into()),
+            native_session_id: before.native_session_id.clone(),
             input_tokens: None,
             output_tokens: None,
         };
-        // A resumed agent already has the task; it gets the handoff instead.
-        let text = match (&context.resume, start.resumed) {
-            // 0.4.8 L: an agent session handed back says where it stopped.
-            (resume, true) if start.adopted => oleafly_cli::daemon::acp_task::continuation_prompt(
-                resume.as_ref(),
-                &context.record_dir,
-                start.turn_interrupted,
-            ),
-            (Some(resume), true) => {
-                oleafly_research::prompt::resume_message(resume, &context.record_dir)
-            }
-            _ => task_prompt(context, skills),
-        };
+        let text = first_prompt(context, skills, start);
         // 0.4.8 L: a quit or an update ends the turn now; the next owner
         // continues the agent's session. A reclaim lets the turn finish.
         let step = self.services.suspends.token(&context.task_id);
@@ -942,6 +941,30 @@ impl AcpTaskAdapter {
                 return Ok(());
             }
         }
+    }
+}
+
+/// The turn a task's agent starts with. A resumed agent already has the
+/// task and gets the handoff; a fresh session of a retried or approved task
+/// gets the task and what the earlier generation left (the approved plan,
+/// the handoff), never the bare task alone.
+fn first_prompt(context: &TaskRunContext, skills: &str, start: PromptStart) -> String {
+    match (&context.resume, start.resumed) {
+        // 0.4.8 L: an agent session handed back says where it stopped.
+        (resume, true) if start.adopted => oleafly_cli::daemon::acp_task::continuation_prompt(
+            resume.as_ref(),
+            &context.record_dir,
+            start.turn_interrupted,
+        ),
+        (Some(resume), true) => {
+            oleafly_research::prompt::resume_message(resume, &context.record_dir)
+        }
+        (Some(resume), false) => format!(
+            "{}\n\n{}",
+            task_prompt(context, skills),
+            oleafly_research::prompt::resume_message(resume, &context.record_dir)
+        ),
+        (None, _) => task_prompt(context, skills),
     }
 }
 
@@ -1116,6 +1139,49 @@ mod tests {
                 ..
             }) if id == "tool-9" && status == "done"
         ));
+    }
+
+    #[test]
+    fn a_fresh_session_of_an_approved_plan_still_gets_the_plan() {
+        let context = TaskRunContext {
+            task_id: "task".into(),
+            title: "Survey".into(),
+            prompt: "Survey the field".into(),
+            record_dir: "research/survey".into(),
+            resume: Some(oleafly_research::model::ResumeContext {
+                reason: oleafly_research::model::ResumeReason::PlanApproved,
+                handoff: String::new(),
+                plan: "1. Read the three papers".into(),
+                ledger_tail: String::new(),
+                previous_native_session_id: Some("agent-session".into()),
+            }),
+            ..Default::default()
+        };
+        // The earlier session could not be continued: a fresh one starts.
+        let fresh = first_prompt(&context, "", PromptStart::default());
+        assert!(fresh.contains("approved the plan"), "{fresh}");
+        assert!(fresh.contains("1. Read the three papers"), "{fresh}");
+        assert!(fresh.starts_with(&task_prompt(&context, "")), "{fresh}");
+        // A continued session already has the task.
+        let resumed = first_prompt(
+            &context,
+            "",
+            PromptStart {
+                resumed: true,
+                ..PromptStart::default()
+            },
+        );
+        assert!(!resumed.contains(&task_prompt(&context, "")));
+        assert!(resumed.contains("approved the plan"));
+        // Without anything to resume, the task alone.
+        let first = TaskRunContext {
+            resume: None,
+            ..context.clone()
+        };
+        assert_eq!(
+            first_prompt(&first, "", PromptStart::default()),
+            task_prompt(&first, "")
+        );
     }
 
     #[cfg(target_os = "macos")]

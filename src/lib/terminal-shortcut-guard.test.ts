@@ -46,9 +46,21 @@ describe("terminal shortcut guard", () => {
     expect(owns(textarea, { key: "F11", shiftKey: true })).toBe(true);
     expect(owns(textarea, { key: "p", ctrlKey: true, altKey: true })).toBe(true);
     expect(owns(textarea, { key: "`", ctrlKey: true })).toBe(false);
-    expect(owns(textarea, { key: "k", ctrlKey: true })).toBe(false);
     expect(owns(textarea, { key: "=", ctrlKey: true })).toBe(false);
     expect(owns(textarea, { key: "~", ctrlKey: true, shiftKey: true })).toBe(false);
+    expect(owns(textarea, { key: "w", ctrlKey: true, shiftKey: true })).toBe(false);
+  });
+
+  it("keeps Ctrl+K and Ctrl+PageUp/PageDown for the program on Windows and Linux", () => {
+    for (const os of ["Win32", "Linux x86_64"]) {
+      platform = os;
+      // Ctrl+K is kill-line in readline and cut in nano; vim switches tabs on Ctrl+PageDown.
+      expect(owns(textarea, { key: "k", ctrlKey: true })).toBe(true);
+      expect(owns(textarea, { key: "PageDown", ctrlKey: true })).toBe(true);
+      expect(owns(textarea, { key: "PageUp", ctrlKey: true })).toBe(true);
+    }
+    platform = "MacIntel";
+    expect(owns(textarea, { key: "PageDown", ctrlKey: true })).toBe(false);
   });
 
   it("never claims keys outside a terminal", () => {

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(async () => undefined),
   confirmQuitFlush: vi.fn(async () => {}),
   cancelQuitFlush: vi.fn(async () => {}),
+  reloadViews: vi.fn(async () => {}),
   flushForQuit: vi.fn(async () => {}),
   notifyError: vi.fn(),
   logError: vi.fn(async () => {}),
@@ -25,6 +26,7 @@ vi.mock("@tauri-apps/api/core", () => ({ isTauri: mocks.isTauri, invoke: mocks.i
 vi.mock("@/lib/tauri", () => ({
   confirmQuitFlush: mocks.confirmQuitFlush,
   cancelQuitFlush: mocks.cancelQuitFlush,
+  reloadViews: mocks.reloadViews,
 }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
@@ -58,6 +60,7 @@ beforeEach(() => {
   });
   mocks.confirmQuitFlush.mockClear().mockResolvedValue(undefined);
   mocks.cancelQuitFlush.mockClear().mockResolvedValue(undefined);
+  mocks.reloadViews.mockClear().mockResolvedValue(undefined);
   mocks.flushForQuit.mockReset().mockResolvedValue(undefined);
   mocks.notifyError.mockClear();
   mocks.logError.mockClear();
@@ -210,6 +213,60 @@ describe("QuitGuard", () => {
     fireEvent.click(screen.getByRole("button", { name: /quit anyway/i }));
 
     await waitFor(() => expect(mocks.confirmQuitFlush).toHaveBeenCalledWith(false));
+    expect(mocks.confirmStopTerminals).toHaveBeenCalledWith({ reason: "quit" });
+  });
+
+  it("still asks about running terminals after quit anyway, and stays on no", async () => {
+    mocks.flushForQuit.mockRejectedValue(new Error("disk full"));
+    mocks.confirmStopTerminals.mockResolvedValue(false);
+    render(<QuitGuard />);
+    await fireQuitRequest(true);
+
+    await screen.findByText(/could not be saved/i);
+    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: /restart anyway/i }));
+
+    await waitFor(() => expect(mocks.confirmStopTerminals).toHaveBeenCalledWith({ reason: "restart" }));
+    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(2));
+    expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
+  });
+
+  it("saves and asks about running terminals before Reload Views reloads", async () => {
+    render(<QuitGuard />);
+    await waitFor(() => expect(mocks.events.has("menu://reload-views")).toBe(true));
+    mocks.events.get("menu://reload-views")?.({ payload: null });
+
+    await waitFor(() => expect(mocks.reloadViews).toHaveBeenCalledTimes(1));
+    expect(mocks.confirmStopTerminals).toHaveBeenCalledWith({ reason: "reload" });
+    expect(mocks.flushForQuit.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.confirmStopTerminals.mock.invocationCallOrder[0],
+    );
+    expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
+  });
+
+  it("keeps the views when the user keeps the running programs", async () => {
+    mocks.confirmStopTerminals.mockResolvedValue(false);
+    render(<QuitGuard />);
+    await waitFor(() => expect(mocks.events.has("menu://reload-views")).toBe(true));
+    mocks.events.get("menu://reload-views")?.({ payload: null });
+
+    await waitFor(() => expect(mocks.confirmStopTerminals).toHaveBeenCalledWith({ reason: "reload" }));
+    expect(mocks.reloadViews).not.toHaveBeenCalled();
+    expect(mocks.cancelQuitFlush).not.toHaveBeenCalled();
+  });
+
+  it("offers to reload anyway after a failed save", async () => {
+    mocks.flushForQuit.mockRejectedValue(new Error("disk full"));
+    render(<QuitGuard />);
+    await waitFor(() => expect(mocks.events.has("menu://reload-views")).toBe(true));
+    mocks.events.get("menu://reload-views")?.({ payload: null });
+
+    expect(await screen.findByText(/reload anyway and lose them/)).toHaveTextContent("disk full");
+    fireEvent.click(screen.getByRole("button", { name: /Reload anyway/ }));
+
+    await waitFor(() => expect(mocks.reloadViews).toHaveBeenCalledTimes(1));
+    expect(mocks.cancelQuitFlush).not.toHaveBeenCalled();
+    expect(mocks.confirmQuitFlush).not.toHaveBeenCalled();
   });
 
   it("ignores a repeated quit request while a flush is already running", async () => {

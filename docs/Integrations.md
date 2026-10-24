@@ -8,7 +8,7 @@ preflight do not require an account.
 
 | Integration | Purpose | Boundary |
 | --- | --- | --- |
-| Git hosting (GitHub, GitLab, Gitea, Forgejo, Codeberg) | Sign-in with a browser code (github.com, gitlab.com) or an access token, repository lists, publish, import, push and pull | Network calls go only to servers you add. Tokens stay in encrypted storage, and Git gets one only for that server's addresses |
+| Git hosting (GitHub, GitLab, Gitea, Forgejo, Codeberg) | Sign-in with a browser code (github.com) or an access token, repository lists, publish, import, push and pull | Network calls go only to servers you add. Tokens stay in encrypted storage, and Git gets one only for that server's addresses |
 | MCP | Expose project tools to external clients | Localhost HTTP with a bearer token you can regenerate, and the same approval model |
 | alphaXiv | Lets the assistant search papers, read them and use your alphaXiv library, through alphaXiv's MCP server | API key from alphaXiv; the assistant asks before each call, and a key alphaXiv refuses is not saved |
 | Zotero | Search the whole Zotero library while citing, add only the cited entries to the project's `.bib` and keep them up to date, or import a whole library | Read-only. Talks to Zotero on this computer through its local API with no account, or to zotero.org with an API key kept in encrypted storage that never reaches the webview |

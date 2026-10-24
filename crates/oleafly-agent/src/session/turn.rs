@@ -129,11 +129,24 @@ where
             pauses += 1;
             continuing = true;
             append_final_response(resolved, &mut request, &outcome)?;
+            // The paused reply grows the history like any other step.
+            ensure_budget(
+                client,
+                resolved,
+                &mut request,
+                config,
+                pipeline,
+                &mut ledger,
+                &mut on_event,
+            )
+            .await?;
             continue;
         }
         pauses = 0;
         if outcome.tool_calls.is_empty() {
-            if has_next_step {
+            // A run being cancelled takes no steer: the next request would
+            // never send it, so it must not be acknowledged as delivered.
+            if has_next_step && !pipeline.token.is_cancelled() {
                 if let Some(rx) = steer_rx.as_mut() {
                     let steers = drain_steer(rx);
                     if !steers.is_empty() {
@@ -171,7 +184,13 @@ where
         if !has_next_step {
             continue;
         }
-        let steers = steer_rx.as_mut().map(drain_steer).unwrap_or_default();
+        // A cancel during the tools ends the run at the next request, so
+        // steers stay undelivered (and unacknowledged) for the caller.
+        let steers = if pipeline.token.is_cancelled() {
+            Vec::new()
+        } else {
+            steer_rx.as_mut().map(drain_steer).unwrap_or_default()
+        };
         let acknowledgements = append_steered_messages(&mut request, steers)?;
         // The turn must continue, so an exhausted window rolls over into a
         // compacted context instead of failing.
@@ -211,13 +230,19 @@ where
 {
     match HistoryBudget::new(request) {
         Ok(_) => Ok(()),
-        Err(error) if config.auto_compact && is_history_limit(&error) => {
+        // A history that compaction cannot make smaller fails as it is,
+        // without paying for a summary.
+        Err(error)
+            if config.auto_compact
+                && is_history_limit(&error)
+                && compact::compaction_would_shrink(&request.messages, &resolved.caps) =>
+        {
             let summary =
                 compact_with_usage(client, resolved, request, &pipeline.token, ledger, on_event)
                     .await;
             match summary {
                 Ok(summary) => {
-                    let dropped = compact::apply_compaction(request, summary);
+                    let dropped = compact::apply_compaction(request, summary, &resolved.caps);
                     on_event(AgentEvent::Compacted {
                         dropped_messages: u32::try_from(dropped).unwrap_or(u32::MAX),
                         reason: "context_limit".to_string(),
@@ -264,7 +289,11 @@ where
     let first =
         stream_with_retries(client, resolved, request, &pipeline.token, ledger, on_event).await;
     match first {
-        Err(error) if config.auto_compact && error.is_context_overflow() => {
+        Err(error)
+            if config.auto_compact
+                && error.is_context_overflow()
+                && compact::compaction_would_shrink(&request.messages, &resolved.caps) =>
+        {
             let summary = match compact_with_usage(
                 client,
                 resolved,
@@ -279,7 +308,7 @@ where
                 Err(AgentError::Cancelled) => return Err(AgentError::Cancelled),
                 Err(_) => return Err(error),
             };
-            let dropped = compact::apply_compaction(request, summary);
+            let dropped = compact::apply_compaction(request, summary, &resolved.caps);
             on_event(AgentEvent::Compacted {
                 dropped_messages: u32::try_from(dropped).unwrap_or(u32::MAX),
                 reason: "provider_context_overflow".to_string(),
@@ -372,9 +401,14 @@ where
         let streamed = {
             let usage = &ledger.usage;
             let forward = &mut |event: AgentEvent| {
+                // A tool call already shown (or a hosted search already run
+                // and billed) cannot be taken back either.
                 if matches!(
                     event,
-                    AgentEvent::TextDelta { .. } | AgentEvent::ReasoningDelta { .. }
+                    AgentEvent::TextDelta { .. }
+                        | AgentEvent::ReasoningDelta { .. }
+                        | AgentEvent::ToolCallStart { .. }
+                        | AgentEvent::ToolOutcome { .. }
                 ) {
                     saw_output = true;
                 }
@@ -432,9 +466,11 @@ pub(crate) async fn append_tool_turns<F>(
 where
     F: FnMut(AgentEvent) + Send,
 {
+    // The continuation is taken, not copied (it can hold megabytes of
+    // images and encrypted reasoning), and put back once extended.
     let mut responses_input = if matches!(resolved.wire, Wire::OpenAiResponses { .. }) {
-        Some(match &request.openai_responses_input {
-            Some(input) => input.clone(),
+        Some(match request.openai_responses_input.take() {
+            Some(input) => input,
             None => crate::wire::openai_responses_input(&request.messages)?,
         })
     } else {
@@ -461,7 +497,7 @@ where
     )
     .await?;
     for call in skipped {
-        let output = ToolOutput::text(serde_json::json!({ "error": TOO_MANY_CALLS }).to_string());
+        let output = ToolOutput::text(skipped_call_output());
         on_event(AgentEvent::ToolOutcome {
             id: call.id.clone(),
             output: output.output.clone(),
@@ -484,6 +520,11 @@ where
 /// every block in stream order (thinking, cited text, server tool blocks) so
 /// the next request replays them exactly; other wires keep the text and the
 /// tool calls.
+/// The answer a call gets when its reply sent more calls than a turn runs.
+pub(crate) fn skipped_call_output() -> String {
+    serde_json::json!({ "error": TOO_MANY_CALLS }).to_string()
+}
+
 pub fn assistant_message(outcome: &StreamOutcome) -> Message {
     if !outcome.blocks.is_empty() {
         let content = outcome
@@ -651,9 +692,26 @@ where
     ledger.usage.preview(Usage::default(), on_event);
     let mut attempt = 0;
     let mut allowance = ledger.retries.request_allowance();
+    let mut budget = compact::summary_budget(&resolved.caps);
+    let mut halvings = 0u32;
+    let mut timed_out = false;
     let response = loop {
-        match compact::compact_history(client, resolved, request, token).await {
+        match compact::compact_history(client, resolved, request, budget, token).await {
+            // The summary itself did not fit the window: try again with
+            // half the transcript, a few times.
+            Err(error)
+                if error.is_context_overflow()
+                    && halvings < compact::MAX_SUMMARY_HALVINGS
+                    && budget > compact::MIN_SUMMARY_INPUT_CHARS =>
+            {
+                budget = (budget / 2).max(compact::MIN_SUMMARY_INPUT_CHARS);
+                halvings += 1;
+            }
+            // Each attempt sends (and bills) the whole transcript, so a
+            // summary that ran out of time is tried once more, no more.
+            Err(AgentError::Timeout) if timed_out => return Err(AgentError::Timeout),
             Err(error) if should_retry(&error, allowance, false) => {
+                timed_out |= matches!(error, AgentError::Timeout);
                 allowance = allowance.saturating_sub(1);
                 ledger.retries.spend();
                 on_event(AgentEvent::Retry {
@@ -804,8 +862,8 @@ fn append_final_response(
     outcome: &StreamOutcome,
 ) -> Result<()> {
     let responses_input = if matches!(resolved.wire, Wire::OpenAiResponses { .. }) {
-        Some(match &request.openai_responses_input {
-            Some(input) => input.clone(),
+        Some(match request.openai_responses_input.take() {
+            Some(input) => input,
             None => crate::wire::openai_responses_input(&request.messages)?,
         })
     } else {
@@ -1670,6 +1728,279 @@ mod tests {
                     .count(),
                 2
             );
+        }
+
+        /// Answers one request per raw HTTP reply, in order.
+        fn serve_raw(replies: Vec<String>) -> Script {
+            let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+            let address = listener.local_addr().unwrap();
+            let requests = Arc::new(Mutex::new(Vec::new()));
+            let seen = requests.clone();
+            std::thread::spawn(move || {
+                for reply in replies {
+                    let Ok((mut stream, _)) = listener.accept() else {
+                        return;
+                    };
+                    let raw = read_request(&mut stream);
+                    if let Some(start) = raw.find("\r\n\r\n") {
+                        if let Ok(value) = serde_json::from_str(&raw[start + 4..]) {
+                            seen.lock().unwrap().push(value);
+                        }
+                    }
+                    let _ = stream.write_all(reply.as_bytes());
+                    let _ = stream.flush();
+                }
+            });
+            Script { address, requests }
+        }
+
+        fn overflow() -> (&'static str, &'static str, String) {
+            (
+                "400 Bad Request",
+                "application/json",
+                json!({"error":{"message":"This model's maximum context length is 8192 tokens"}})
+                    .to_string(),
+            )
+        }
+
+        fn summary_reply() -> (&'static str, &'static str, String) {
+            (
+                "200 OK",
+                "application/json",
+                json!({"choices":[{"message":{"content":"the summary"},"finish_reason":"stop"}]})
+                    .to_string(),
+            )
+        }
+
+        async fn run_collecting(
+            script: &Script,
+            request: CompletionRequest,
+            pipeline: ToolPipeline,
+            steer_rx: Option<tokio::sync::mpsc::UnboundedReceiver<SteeredInput>>,
+            runner: ToolRunner,
+            max_retries: u32,
+        ) -> (Result<RunOutcome>, Vec<AgentEvent>) {
+            let mut events = Vec::new();
+            let outcome = tokio::time::timeout(
+                Duration::from_secs(10),
+                crate::run::run_agent_with_pipeline(
+                    &crate::build_client().unwrap(),
+                    &resolved(script.address),
+                    request,
+                    &RunConfig {
+                        max_retries,
+                        retry_base_ms: 1,
+                        ..RunConfig::default()
+                    },
+                    pipeline,
+                    steer_rx,
+                    runner,
+                    |event| events.push(event),
+                ),
+            )
+            .await
+            .expect("the run did not finish");
+            (outcome, events)
+        }
+
+        #[tokio::test]
+        async fn an_overflow_that_compaction_cannot_shrink_ends_without_a_billed_summary() {
+            let script = serve(vec![
+                overflow(),
+                summary_reply(),
+                ("200 OK", "text/event-stream", text_stream("answer")),
+            ]);
+            let (outcome, _) = run_collecting(
+                &script,
+                CompletionRequest::prompt("system", "one long first request"),
+                ToolPipeline::default(),
+                None,
+                quiet_runner(),
+                0,
+            )
+            .await;
+            let outcome = outcome.unwrap();
+            assert!(outcome.error.is_some());
+            assert_eq!(script.requests.lock().unwrap().len(), 1);
+        }
+
+        #[tokio::test]
+        async fn a_summary_that_overflows_is_retried_with_half_the_transcript() {
+            let script = serve(vec![
+                overflow(),
+                overflow(),
+                summary_reply(),
+                ("200 OK", "text/event-stream", text_stream("done")),
+            ]);
+            let request = CompletionRequest {
+                system: Some("system".into()),
+                messages: (0..25)
+                    .map(|index| Message::user(format!("{index} {}", "w".repeat(6_000))))
+                    .collect(),
+                ..CompletionRequest::default()
+            };
+            let (outcome, _) = run_collecting(
+                &script,
+                request,
+                ToolPipeline::default(),
+                None,
+                quiet_runner(),
+                0,
+            )
+            .await;
+            let outcome = outcome.unwrap();
+            assert_eq!(outcome.error, None);
+            assert_eq!(outcome.text, "done");
+            let requests = script.requests.lock().unwrap();
+            assert_eq!(requests.len(), 4);
+            let transcript = |index: usize| {
+                requests[index]["messages"][1]["content"]
+                    .as_str()
+                    .unwrap()
+                    .len()
+            };
+            assert!(
+                transcript(2) < transcript(1),
+                "{} {}",
+                transcript(2),
+                transcript(1)
+            );
+        }
+
+        #[tokio::test]
+        async fn a_paused_reply_that_fills_the_history_compacts_before_the_next_step() {
+            let paused = format!(
+                "data: {}\n\ndata: {}\n\ndata: [DONE]\n\n",
+                json!({"choices":[{"delta":{"content":"part one "}}]}),
+                json!({"choices":[{"delta":{},"finish_reason":"pause_turn"}]}),
+            );
+            let script = serve(vec![
+                ("200 OK", "text/event-stream", paused),
+                summary_reply(),
+                ("200 OK", "text/event-stream", text_stream("done")),
+            ]);
+            let request = CompletionRequest {
+                system: Some("system".into()),
+                messages: (0..crate::session::context_window::MAX_AGENT_MESSAGES)
+                    .map(|index| Message::user(format!("message {index}")))
+                    .collect(),
+                ..CompletionRequest::default()
+            };
+            let (outcome, events) = run_collecting(
+                &script,
+                request,
+                ToolPipeline::default(),
+                None,
+                quiet_runner(),
+                0,
+            )
+            .await;
+            let outcome = outcome.unwrap();
+            assert_eq!(outcome.error, None);
+            assert!(outcome.text.ends_with("done"), "{}", outcome.text);
+            assert!(events
+                .iter()
+                .any(|event| matches!(event, AgentEvent::Compacted { .. })));
+            assert_eq!(script.requests.lock().unwrap().len(), 3);
+        }
+
+        #[tokio::test]
+        async fn a_steer_queued_while_a_cancelled_run_finishes_its_tools_is_not_acknowledged() {
+            let script = serve(vec![(
+                "200 OK",
+                "text/event-stream",
+                tool_call_stream("read_file"),
+            )]);
+            let pipeline = ToolPipeline::default();
+            let token = pipeline.token.clone();
+            let (handle, steer_rx) = crate::run::SteerHandle::channel();
+            let steer = tokio::spawn(async move {
+                handle.steer(Message::user("also check the abstract")).await
+            });
+            tokio::task::yield_now().await;
+            // Stop is pressed while the tool runs.
+            let runner: ToolRunner = Arc::new(move |_| {
+                token.cancel();
+                Box::pin(async { ToolOutput::text("contents") })
+            });
+            let (outcome, events) = run_collecting(
+                &script,
+                CompletionRequest::prompt("system", "read"),
+                pipeline,
+                Some(steer_rx),
+                runner,
+                0,
+            )
+            .await;
+            assert!(outcome.unwrap().error.is_some());
+            assert!(!steer.await.unwrap(), "the steer was reported delivered");
+            assert!(!events
+                .iter()
+                .any(|event| matches!(event, AgentEvent::Steered { .. })));
+        }
+
+        #[tokio::test]
+        async fn a_step_that_already_showed_a_tool_call_is_not_retried() {
+            let call = json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","type":"function","function":{"name":"read_file","arguments":"{"}}]}}]});
+            // The connection drops long before the promised length.
+            let cut = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: 100000\r\nConnection: close\r\n\r\ndata: {call}\n\n"
+            );
+            let finished = text_stream("finished");
+            let whole = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{finished}",
+                finished.len()
+            );
+            let script = serve_raw(vec![cut, whole]);
+            let (outcome, events) = run_collecting(
+                &script,
+                CompletionRequest::prompt("system", "read"),
+                ToolPipeline::default(),
+                None,
+                quiet_runner(),
+                2,
+            )
+            .await;
+            assert!(events
+                .iter()
+                .any(|event| matches!(event, AgentEvent::ToolCallStart { .. })));
+            assert!(outcome.unwrap().error.is_some());
+            assert!(!events
+                .iter()
+                .any(|event| matches!(event, AgentEvent::Retry { .. })));
+            assert_eq!(script.requests.lock().unwrap().len(), 1);
+        }
+
+        #[tokio::test]
+        async fn a_run_that_ends_in_an_error_reports_it_as_an_event() {
+            let script = serve(Vec::new());
+            let tools = (0..=crate::session::context_window::MAX_TOOL_DEFINITIONS)
+                .map(|index| crate::tool::ToolSchema {
+                    name: format!("tool_{index}"),
+                    description: String::new(),
+                    input_schema: json!({"type": "object"}),
+                })
+                .collect();
+            let (outcome, events) = run_collecting(
+                &script,
+                CompletionRequest {
+                    tools,
+                    ..CompletionRequest::prompt("system", "hi")
+                },
+                ToolPipeline::default(),
+                None,
+                quiet_runner(),
+                0,
+            )
+            .await;
+            let error = outcome.unwrap_err();
+            // Compaction cannot change the tool list, so nothing was sent.
+            assert!(script.requests.lock().unwrap().is_empty());
+            assert!(error.to_string().contains("Oleafly's limits"), "{error}");
+            assert!(events.iter().any(|event| matches!(
+                event,
+                AgentEvent::Error { message, .. } if *message == error.to_string()
+            )));
         }
 
         #[tokio::test]

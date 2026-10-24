@@ -24,7 +24,18 @@ const IMAGE_TYPES: &[&str] = &["image/png", "image/jpeg", "image/webp", "image/g
 const OFF_TEXT: &str =
     "Desktop apps are off. The user can turn them on in Settings > Integrations > Desktop apps.";
 const DECLINED_TEXT: &str = "The user didn't allow this action.";
+const NO_ANSWER_TEXT: &str =
+    "The user didn't answer the approval dialog in time, so nothing was done.";
 const TURN_ENDED_TEXT: &str = "The turn ended before the user answered, so nothing was done.";
+const STOPPED_AT_TURN_END_TEXT: &str =
+    "The turn ended, so Oleafly stopped this call. Check the app's state before you try again.";
+const BATCH_TOO_LONG_TEXT: &str =
+    "That batch is too long for the approval dialog. Send fewer steps at a time.";
+/// The most elements a chat result lists from the driver's structured
+/// answer, and the most characters that list takes.
+const MAX_LISTED_ELEMENTS: usize = 300;
+const MAX_ELEMENT_LIST_CHARS: usize = 24 * 1024;
+const MAX_ELEMENT_LINE_CHARS: usize = 240;
 const NO_SIGNED_IN_TEXT: &str = "No website is marked for the user's signed-in browser. Use browser \"separate\", or ask the user to mark the site in Settings > Integrations > Desktop apps.";
 
 #[derive(Debug, Clone, PartialEq)]
@@ -51,6 +62,72 @@ impl DesktopAppsOutcome {
     fn error(text: impl Into<String>) -> Self {
         Self::text(text, true)
     }
+
+    /// Adds a line the model reads, to the text and to the MCP result.
+    fn add_note(&mut self, note: &str) {
+        if !self.text.is_empty() {
+            self.text.push('\n');
+        }
+        self.text.push_str(note);
+        if let Some(content) = self
+            .mcp_result
+            .get_mut("content")
+            .and_then(Value::as_array_mut)
+        {
+            content.push(json!({"type": "text", "text": note}));
+        }
+    }
+}
+
+/// The elements of a `get_window_state` answer as lines the model can act
+/// on, for a chat, which reads only text: index, token, role and label, and
+/// the snapshot they belong to. Bounded; says how many it left out.
+fn element_list(structured: &Value) -> Option<String> {
+    let elements = structured.get("elements").and_then(Value::as_array)?;
+    if elements.is_empty() {
+        return None;
+    }
+    let field = |element: &Value, key: &str| -> Option<String> {
+        match element.get(key)? {
+            Value::String(text) if !text.trim().is_empty() => Some(format!("{key} {text:?}")),
+            Value::Number(number) => Some(format!("{key} {number}")),
+            _ => None,
+        }
+    };
+    let mut lines = Vec::new();
+    match structured.get("snapshot_id") {
+        Some(Value::String(id)) => lines.push(format!("Elements (snapshot_id {id:?}):")),
+        Some(Value::Number(id)) => lines.push(format!("Elements (snapshot_id {id}):")),
+        _ => lines.push("Elements:".to_string()),
+    }
+    let mut used = lines[0].len();
+    let mut listed = 0;
+    for element in elements.iter().take(MAX_LISTED_ELEMENTS) {
+        let parts: Vec<String> = ["element_index", "element_token", "role", "label"]
+            .iter()
+            .filter_map(|key| field(element, key))
+            .collect();
+        if parts.is_empty() {
+            continue;
+        }
+        let line = format!(
+            "- {}",
+            policy::bounded(&parts.join(", "), MAX_ELEMENT_LINE_CHARS)
+        );
+        if used + line.len() + 1 > MAX_ELEMENT_LIST_CHARS {
+            break;
+        }
+        used += line.len() + 1;
+        lines.push(line);
+        listed += 1;
+    }
+    if listed < elements.len() {
+        lines.push(format!(
+            "{} more elements are not listed here.",
+            elements.len() - listed
+        ));
+    }
+    Some(lines.join("\n"))
 }
 
 /// An error string as the model should read it: AppError envelopes in
@@ -129,6 +206,11 @@ fn outcome_with(result: &Value, keep_mcp: bool) -> DesktopAppsOutcome {
         if let Some(structured) = result.get("structuredContent") {
             text = structured.to_string();
         }
+    } else if let Some(listed) = result.get("structuredContent").and_then(element_list) {
+        // The element tokens are only in the structured answer, and a chat
+        // reads text alone.
+        text.push('\n');
+        text.push_str(&listed);
     }
     let mut mcp_result = Value::Null;
     if keep_mcp {
@@ -417,7 +499,7 @@ pub(crate) async fn call_desktop_apps(
         }
         Family::Browser | Family::Session => RuntimeKind::Browser,
     };
-    let steps = if tool.name == "run_steps" {
+    let mut steps = if tool.name == "run_steps" {
         match policy::parse_steps(&Value::Object(args.clone())) {
             Ok(steps) => Some(steps),
             Err(error) => {
@@ -428,9 +510,37 @@ pub(crate) async fn call_desktop_apps(
     } else {
         None
     };
+    // What the dialog lists and what the driver gets: only the arguments the
+    // driver's own schema names (once a start has listed them).
+    let mut args = args;
+    if tool.class == policy::ToolClass::Act {
+        let known = state.runtimes.known_tools(kind);
+        let schema = |name: &str| {
+            known
+                .iter()
+                .find(|known| known.name == name)
+                .map(|known| known.input_schema.clone())
+        };
+        match steps.as_mut() {
+            Some(steps) => {
+                for step in steps.iter_mut() {
+                    if let (Some(schema), Value::Object(map)) = (schema(&step.tool), &step.args) {
+                        step.args = Value::Object(policy::schema_args(&schema, map.clone()));
+                    }
+                }
+            }
+            None => {
+                if let Some(schema) = schema(tool.name) {
+                    args = policy::schema_args(&schema, args);
+                }
+            }
+        }
+    }
 
     let signed_in = kind == RuntimeKind::SignedInBrowser;
     let granted = !signed_in && already_allowed(state, scope, kind, tool, steps.as_deref());
+    // Steps the dialog had no room for; they don't run.
+    let mut skipped_steps = 0;
     match gate::decide(tool, denied, granted, signed_in) {
         GateDecision::Run => {}
         GateDecision::Refuse(text) => {
@@ -438,14 +548,20 @@ pub(crate) async fn call_desktop_apps(
             return DesktopAppsOutcome::error(text);
         }
         GateDecision::Ask { session_option } => {
+            let context = dialog_context(state, scope, &args, steps.as_deref());
             let approval = gate::approval_message(
                 &scope.agent_label,
                 tool,
                 &Value::Object(args.clone()),
                 steps.as_deref(),
                 signed_in,
+                &context,
                 &|key, params| crate::i18n::t_with(key, params),
             );
+            if steps.is_some() && approval.shown_steps == 0 {
+                log_outcome(tool.name, "error");
+                return DesktopAppsOutcome::error(BATCH_TOO_LONG_TEXT);
+            }
             // The dialog stays up until answered; the turn it belongs to may
             // end first (Stop, a timeout), and then nothing runs.
             let mut ended = state.turn_signal(&scope.session_key);
@@ -468,9 +584,18 @@ pub(crate) async fn call_desktop_apps(
                     log_outcome(tool.name, "refused:user");
                     return DesktopAppsOutcome::error(DECLINED_TEXT);
                 }
+                Answer::Unanswered => {
+                    log_outcome(tool.name, "refused:no_answer");
+                    return DesktopAppsOutcome::error(NO_ANSWER_TEXT);
+                }
                 _ if *ended.borrow() => {
                     log_outcome(tool.name, "refused:turn_ended");
                     return DesktopAppsOutcome::error(TURN_ENDED_TEXT);
+                }
+                // Turned off while the dialog was open.
+                _ if !ready(&state.settings()) => {
+                    log_outcome(tool.name, "refused:off");
+                    return DesktopAppsOutcome::error(OFF_TEXT);
                 }
                 Answer::Session if session_option => {
                     let mut grants = lock(&state.grants);
@@ -486,6 +611,11 @@ pub(crate) async fn call_desktop_apps(
                 }
                 Answer::Session | Answer::Once => {}
             }
+            // Only the steps the dialog listed run.
+            if let Some(steps) = steps.as_mut() {
+                skipped_steps = steps.len().saturating_sub(approval.shown_steps);
+                steps.truncate(approval.shown_steps);
+            }
         }
     }
 
@@ -495,6 +625,7 @@ pub(crate) async fn call_desktop_apps(
         CALL_TIMEOUT
     };
     // A batch runs exactly the steps that were checked and shown.
+    let observed_args = Value::Object(args.clone());
     let mut forwarded = match &steps {
         Some(steps) => match policy::steps_payload(&Value::Object(args), steps) {
             Value::Object(map) => map,
@@ -503,14 +634,38 @@ pub(crate) async fn call_desktop_apps(
         None => args,
     };
     forwarded.insert("session".into(), Value::String(label.clone()));
-    match state
+    let call = state
         .runtimes
-        .call(kind, &label, tool.name, Value::Object(forwarded), timeout)
-        .await
-    {
+        .call(kind, &label, tool.name, Value::Object(forwarded), timeout);
+    // A CLI agent's or a task's turn can end (Stop) while the call waits for
+    // the runtime or runs; then it stops too. A chat's own Stop drops it.
+    let called = if scope.surface == Surface::Chat {
+        Some(call.await)
+    } else {
+        let mut ended = state.turn_signal(&scope.session_key);
+        tokio::select! {
+            biased;
+            _ = ended.wait_for(|ended| *ended) => None,
+            result = call => Some(result),
+        }
+    };
+    let Some(called) = called else {
+        log_outcome(tool.name, "refused:turn_ended");
+        return DesktopAppsOutcome::error(STOPPED_AT_TURN_END_TEXT);
+    };
+    match called {
         Ok(result) => {
             log_outcome(tool.name, &result_status(&result));
-            outcome_with(&result, scope.surface != Surface::Chat)
+            lock(&state.seen).record(&scope.session_key, kind, tool.name, &observed_args, &result);
+            let mut outcome = outcome_with(&result, scope.surface != Surface::Chat);
+            if skipped_steps > 0 {
+                let ran = steps.as_ref().map_or(0, Vec::len);
+                outcome.add_note(&format!(
+                    "Only the first {ran} of {} steps ran. The approval dialog had no room for the other {skipped_steps}, so they did not run. Send them again in a smaller run_steps batch.",
+                    ran + skipped_steps
+                ));
+            }
+            outcome
         }
         Err(error) => {
             log_outcome(tool.name, "error");
@@ -519,10 +674,32 @@ pub(crate) async fn call_desktop_apps(
     }
 }
 
+/// The task, the targets and the signed-in tab a dialog names, from what
+/// the driver said before.
+fn dialog_context(
+    state: &CuaDriverState,
+    scope: &CuaScope,
+    args: &Map<String, Value>,
+    steps: Option<&[policy::Step]>,
+) -> gate::DialogContext {
+    let seen = lock(&state.seen);
+    gate::DialogContext {
+        task: scope.task_title.clone(),
+        target: seen.target(&Value::Object(args.clone())),
+        steps: steps
+            .into_iter()
+            .flatten()
+            .map(|step| seen.target(&step.args))
+            .collect(),
+        origin: seen.origin(&scope.session_key),
+    }
+}
+
 /// Ends the Cua session a turn used, if it used one. Runs in the background.
 pub(crate) fn turn_ended_in(state: &Arc<CuaDriverState>, session_key: &str) {
     // A call still waiting on the user's answer stops waiting.
     state.end_turn(session_key);
+    lock(&state.seen).forget_session(session_key);
     let Some(label) = lock(&state.labels).remove(session_key) else {
         return;
     };

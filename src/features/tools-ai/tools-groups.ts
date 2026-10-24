@@ -11,6 +11,7 @@ import {
   LOCAL_TOOLS_PROVIDER,
   MATHPIX_TOOLS_MODEL,
   MATHPIX_TOOLS_PROVIDER,
+  ollamaModelIsRemote,
   ollamaModelSeesImages,
   visionCapable,
 } from "./tools-choice";
@@ -24,8 +25,9 @@ export function toolsModelGroups(
   const disabled = disabledModels(cfg, LOCAL_TOOLS_PROVIDER);
   const local: ModelSelectorModel[] = [
     { id: "", name: i18n.t(($) => $.researchTools.converterModel.automatic) },
+    // Ollama Cloud models run on ollama.com, so they are not "Local".
     ...(ollama ?? [])
-      .filter((model) => !disabled.has(model.name) && ollamaModelSeesImages(model))
+      .filter((model) => !disabled.has(model.name) && !ollamaModelIsRemote(model) && ollamaModelSeesImages(model))
       .map((model) => ({ id: model.name, name: model.name })),
   ];
   const hosted = configuredModelGroups(

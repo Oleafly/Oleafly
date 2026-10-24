@@ -190,6 +190,13 @@ impl TurnTokens {
         (tokens != Self::default()).then_some(tokens)
     }
 
+    /// A turn's tokens from its `session/prompt` answer: `usage`, else the
+    /// `_meta.quota.token_count` some agents send instead.
+    pub fn from_prompt_response(response: &Value) -> Option<Self> {
+        Self::parse(&response["usage"])
+            .or_else(|| Self::parse(&response["_meta"]["quota"]["token_count"]))
+    }
+
     fn add(&mut self, other: &Self) {
         fn sum(into: &mut Option<u64>, value: Option<u64>) {
             if let Some(value) = value {
@@ -298,9 +305,7 @@ impl SessionUsage {
     /// agents add.
     pub fn apply_prompt_response(&mut self, response: &Value, now: u64) {
         let quota = &response["_meta"]["quota"];
-        let turn = TurnTokens::parse(&response["usage"])
-            .or_else(|| TurnTokens::parse(&quota["token_count"]));
-        if let Some(turn) = turn {
+        if let Some(turn) = TurnTokens::from_prompt_response(response) {
             self.session_tokens
                 .get_or_insert_with(TurnTokens::default)
                 .add(&turn);

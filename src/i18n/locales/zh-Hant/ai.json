@@ -602,6 +602,7 @@
       "sendNow": "立即傳送",
       "sendFailed": "這則訊息未傳送。請重新傳送或將它移除。",
       "queuedConnecting": "已排入佇列：代理程式就緒後傳送",
+      "queuedSignIn": "已排入佇列：登入後傳送",
       "retry": "重新傳送",
       "edit": "編輯"
     },

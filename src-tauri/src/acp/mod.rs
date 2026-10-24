@@ -27,7 +27,7 @@ mod updates;
 mod usage_probe;
 
 pub use options::ModelChoice;
-pub use runtime::{AcpRuntime, PermissionDelegate};
+pub use runtime::{AcpRuntime, PermissionDelegate, PromptFailure};
 pub use types::*;
 
 use std::path::PathBuf;
@@ -69,6 +69,16 @@ pub(super) fn route_target(owner: Option<&str>, windows: &[String]) -> Route {
     }
 }
 
+/// Whether the owner of a line in `agents.pids` still runs: this instance
+/// (`me`) always does, so its own agents are never reaped.
+pub(super) fn owner_alive(
+    owner: &oleafly_acp::orphans::OwnerTag,
+    me: oleafly_sandbox::process::identity::ProcessIdentity,
+) -> bool {
+    use oleafly_sandbox::process::identity;
+    owner.identity == me || identity::owner_is_live(Some(owner.identity), me, identity::probe)
+}
+
 pub fn attach(app: &tauri::AppHandle) -> Result<(), String> {
     let root = crate::paths::oleafly_root()?.join("acp");
     let runtime = AcpRuntime::new(root.clone())?;
@@ -82,14 +92,15 @@ pub fn attach(app: &tauri::AppHandle) -> Result<(), String> {
     // Nothing waits for the reap; it runs in the background.
     drop(tauri::async_runtime::spawn_blocking(move || {
         use oleafly_sandbox::process::identity;
+        let me = identity::current();
         let _ = oleafly_acp::orphans::PidRegistry::reap(
             &registry_root,
-            |owner| {
-                identity::owner_is_live(Some(owner.identity), identity::current(), identity::probe)
-            },
+            // This instance's own lines (an agent started before the reap
+            // ran) belong to a live owner, as the helper's reap counts them.
+            |owner| owner_alive(owner, me),
             |pid, started| {
                 matches!(identity::probe(pid), identity::ProcessProbe::Running { started: now }
-                    if started.is_none() || now == started)
+                    if started.is_some() && now == started)
             },
         );
     }));

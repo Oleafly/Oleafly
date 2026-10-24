@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { StoredAttachmentRef } from "@/components/ai/composer/types";
-import { attachmentObjectUrl } from "@/lib/attachments";
+import { attachmentObjectUrl, holdAttachmentObjectUrl } from "@/lib/attachments";
 
 /** An object URL for a stored file, or `failed` when it cannot be read. */
 export function useAttachmentUrl(
@@ -20,13 +20,17 @@ export function useAttachmentUrl(
   useEffect(() => {
     if (sha256 === undefined || mime === undefined) return;
     let cancelled = false;
+    // Held while shown: the cache may drop it for newer files meanwhile.
+    let release: (() => void) | undefined;
     const settle = (url: string | null, failed: boolean) =>
       setState((current) =>
         current.key === key && current.url === url && current.failed === failed ? current : { key, url, failed },
       );
     attachmentObjectUrl(scope, sha256, mime).then(
       (url) => {
-        if (!cancelled) settle(url, false);
+        if (cancelled) return;
+        release = holdAttachmentObjectUrl(url);
+        settle(url, false);
       },
       () => {
         if (!cancelled) settle(null, true);
@@ -34,6 +38,7 @@ export function useAttachmentUrl(
     );
     return () => {
       cancelled = true;
+      release?.();
     };
   }, [key, sha256, mime, scope]);
   if (sha256 === undefined || state.key !== key) return { url: null, failed: false };

@@ -31,12 +31,13 @@ mod translate;
 pub(crate) use anthropic_blocks::AssistantBlock;
 pub use translate::{Translator, WireKind};
 
-/// The reply stopped because it reached its output limit.
+/// The reply stopped because it reached its output limit, or the context
+/// window filled up while it was being written.
 pub fn is_output_limit_stop(reason: Option<&str>) -> bool {
     reason.is_some_and(|reason| {
         matches!(
             reason.trim().to_ascii_lowercase().as_str(),
-            "length" | "max_tokens" | "max_output_tokens"
+            "length" | "max_tokens" | "max_output_tokens" | "model_context_window_exceeded"
         )
     })
 }

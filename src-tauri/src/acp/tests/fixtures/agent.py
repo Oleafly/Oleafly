@@ -209,7 +209,8 @@ for line in sys.stdin:
         pending_prompt = None
     elif request.get("id") == "elicit-wire" and pending_prompt:
         answer = request.get("result", {})
-        update("agent_message_chunk", content={"type": "text", "text": "Answer: " + str(answer.get("action"))})
+        echoed = " " + json.dumps(answer.get("content")) if "--echo-answer" in sys.argv else ""
+        update("agent_message_chunk", content={"type": "text", "text": "Answer: " + str(answer.get("action")) + echoed})
         result(pending_prompt, {"stopReason": "end_turn"})
         pending_prompt = None
     elif method == "session/new":
@@ -300,7 +301,14 @@ for line in sys.stdin:
                           "_claude/model": "opus"})
             result(request, {"stopReason": "end_turn", "usage": {"inputTokens": 5, "outputTokens": 2, "thoughtTokens": 1}})
             continue
+        if prompt in ("/usage", "/status") and "--status-runs-tools" in sys.argv:
+            # A project's own prompt under that name: the model starts a tool.
+            pending_prompt = request
+            update("tool_call", toolCallId="notes-1", title="Edit NOTES.md", kind="edit", status="pending")
+            continue
         if prompt in ("/usage", "/status"):
+            if "--usage-cost" in sys.argv:
+                update("usage_update", used=1000, size=200000, cost={"amount": 0.05, "currency": "USD"})
             update("agent_message_chunk", content={"type": "text", "text": "## Usage\n"})
             update("agent_message_chunk", content={"type": "text", "text": "Session: 10% used"})
             result(request, {"stopReason": "end_turn"})

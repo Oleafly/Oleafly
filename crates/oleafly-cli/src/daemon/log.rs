@@ -30,7 +30,30 @@ struct Inner {
 pub struct HelperLog {
     path: PathBuf,
     to_stderr: bool,
+    /// Set once this process holds the helper lock: only the helper that
+    /// runs rotates the log (a second one that lost the lock would move the
+    /// running one's file away from under it).
+    rotates: std::sync::atomic::AtomicBool,
     inner: Mutex<Inner>,
+}
+
+/// Whether `file` is still the file at `path` (another process may have
+/// rotated it away). Where that can't be told, it is.
+fn still_at(file: &File, path: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        match (file.metadata(), std::fs::metadata(path)) {
+            (Ok(open), Ok(named)) => open.dev() == named.dev() && open.ino() == named.ino(),
+            _ => false,
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        // Windows: an open log can't be renamed away (no delete sharing).
+        let _ = (file, path);
+        true
+    }
 }
 
 fn build_matcher(secrets: &[String]) -> Option<AhoCorasick> {
@@ -78,6 +101,7 @@ impl HelperLog {
         Self {
             path: path.to_path_buf(),
             to_stderr,
+            rotates: std::sync::atomic::AtomicBool::new(false),
             inner: Mutex::new(Inner {
                 file: open(path),
                 secrets,
@@ -85,6 +109,12 @@ impl HelperLog {
                 rotate_blocked_until: None,
             }),
         }
+    }
+
+    /// This process holds the helper lock now, so it may rotate the log.
+    pub fn take_rotation(&self) {
+        self.rotates
+            .store(true, std::sync::atomic::Ordering::Release);
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
@@ -171,7 +201,17 @@ impl HelperLog {
         if self.to_stderr {
             let _ = std::io::stderr().write_all(text.as_bytes());
         }
-        self.rotate(&mut inner);
+        // Another process moved the file away: write where the path is now.
+        if inner
+            .file
+            .as_ref()
+            .is_some_and(|file| !still_at(file, &self.path))
+        {
+            inner.file = None;
+        }
+        if self.rotates.load(std::sync::atomic::Ordering::Acquire) {
+            self.rotate(&mut inner);
+        }
         if inner.file.is_none() {
             inner.file = open(&self.path);
         }
@@ -211,6 +251,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("helper.log");
         let log = HelperLog::open(&path, vec!["sk-live-1".into()], false);
+        log.take_rotation();
         log.event("error", "provider", &[("message", "bad key sk-live-1")]);
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(!text.contains("sk-live-1") && text.contains("[redacted]"));
@@ -232,6 +273,30 @@ mod tests {
         }
         assert!(path.with_extension("log.1").exists());
         assert!(std::fs::metadata(&path).unwrap().len() < LOG_ROTATE_BYTES);
+    }
+
+    #[test]
+    fn a_helper_without_the_lock_never_rotates_the_running_ones_log() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("helper.log");
+        std::fs::write(&path, vec![b'x'; LOG_ROTATE_BYTES as usize + 1]).unwrap();
+        let second = HelperLog::open(&path, Vec::new(), false);
+        second.event("info", "already_running", &[]);
+        assert!(!path.with_extension("log.1").exists());
+        assert!(std::fs::metadata(&path).unwrap().len() > LOG_ROTATE_BYTES);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_log_moved_away_by_another_process_is_reopened_at_its_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("helper.log");
+        let log = HelperLog::open(&path, Vec::new(), false);
+        log.event("info", "first", &[]);
+        std::fs::rename(&path, path.with_extension("log.1")).unwrap();
+        log.event("info", "second", &[]);
+        let now = std::fs::read_to_string(&path).unwrap();
+        assert!(now.contains("second") && !now.contains("first"));
     }
 
     #[test]
@@ -275,6 +340,7 @@ mod tests {
         let path = dir.path().join("helper.log");
         let older = path.with_extension("log.1");
         let log = HelperLog::open(&path, Vec::new(), false);
+        log.take_rotation();
         std::fs::write(&older, "history\n").unwrap();
         // The rename needs the folder to be writable; appending does not.
         std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o555)).unwrap();

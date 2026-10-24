@@ -1,14 +1,49 @@
 //! `preflight_check` and `lint_sources` for `oleafly mcp`: the `check` and
 //! `lint` reports as tool results. Both only read; `lint_sources` never
 //! fixes.
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 use serde_json::{json, Value};
 
-use super::{execute, CheckArg, CheckInput};
-use crate::lint::{execute_lint, DialectArg, LintInput};
+use super::{execute_until, CheckArg, CheckInput};
+use crate::lint::{execute_lint_until, DialectArg, LintInput};
 use crate::mcp::tools::{object, tool, BoxFuture, McpToolSet, ToolContext, ToolError, READ};
 use crate::mcp::ToolMeta;
 
 pub struct CheckTools;
+
+/// Checks and lints that run at once, across calls. A blocking walk goes on
+/// after its client cancels the call, so the slot is held by the work, not
+/// by the call: cancelled calls can't pile up past the limit.
+static BLOCKING_SLOTS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(4);
+
+/// Sets its flag when the call is dropped (the client cancelled it), so the
+/// blocking work stops at its next stage.
+struct CancelOnDrop(Arc<AtomicBool>);
+
+impl Drop for CancelOnDrop {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::Release);
+    }
+}
+
+async fn blocking_slot() -> Result<tokio::sync::SemaphorePermit<'static>, ToolError> {
+    BLOCKING_SLOTS
+        .acquire()
+        .await
+        .map_err(|_| ToolError("Oleafly is stopping.".into()))
+}
+
+/// A run's payload with its warnings (a stale build, a missing main
+/// document, proofreading that isn't available), which say what the
+/// findings don't cover.
+fn with_warnings(mut payload: Value, warnings: &[crate::contract::Warning]) -> Value {
+    if let Some(object) = payload.as_object_mut() {
+        object.insert("warnings".into(), json!(warnings));
+    }
+    payload
+}
 
 fn check_arg(name: &str) -> Result<CheckArg, ToolError> {
     Ok(match name {
@@ -92,10 +127,16 @@ async fn preflight_check(args: &Value, ctx: &ToolContext) -> Result<Value, ToolE
         pdf: None,
         no_build_output: false,
     };
-    let run = tokio::task::spawn_blocking(move || execute(input))
-        .await
-        .map_err(|error| ToolError(error.to_string()))??;
-    Ok(run.payload)
+    let slot = blocking_slot().await?;
+    let cancel = Arc::new(AtomicBool::new(false));
+    let _cancel_on_drop = CancelOnDrop(cancel.clone());
+    let run = tokio::task::spawn_blocking(move || {
+        let _slot = slot;
+        execute_until(input, &cancel)
+    })
+    .await
+    .map_err(|error| ToolError(error.to_string()))??;
+    Ok(with_warnings(run.payload, &run.warnings))
 }
 
 async fn lint_sources(args: &Value, ctx: &ToolContext) -> Result<Value, ToolError> {
@@ -128,10 +169,16 @@ async fn lint_sources(args: &Value, ctx: &ToolContext) -> Result<Value, ToolErro
         dialect,
         words: String::new(),
     };
-    let run = tokio::task::spawn_blocking(move || execute_lint(input))
-        .await
-        .map_err(|error| ToolError(error.to_string()))??;
-    Ok(run.payload)
+    let slot = blocking_slot().await?;
+    let cancel = Arc::new(AtomicBool::new(false));
+    let _cancel_on_drop = CancelOnDrop(cancel.clone());
+    let run = tokio::task::spawn_blocking(move || {
+        let _slot = slot;
+        execute_lint_until(input, &cancel)
+    })
+    .await
+    .map_err(|error| ToolError(error.to_string()))??;
+    Ok(with_warnings(run.payload, &run.warnings))
 }
 
 impl McpToolSet for CheckTools {
@@ -218,6 +265,39 @@ mod tests {
         }
     }
 
+    #[test]
+    fn a_cancelled_check_stops_and_gives_back_its_slot() {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(project.path().join("main.tex"), "\\documentclass{article}").unwrap();
+        let input = CheckInput {
+            root: project.path().to_path_buf(),
+            main_document: "main.tex".into(),
+            engine: oleafly_core::Engine::Tectonic,
+            tex_flavor: None,
+            typst_version: None,
+            build_dir: project.path().join(".oleafly/build"),
+            profile: None,
+            anonymous: false,
+            checks: Vec::new(),
+            build_log: None,
+            pdf: None,
+            no_build_output: false,
+        };
+        let cancel = AtomicBool::new(true);
+        let error = execute_until(input, &cancel).err().unwrap();
+        assert_eq!(error.code, "interrupted");
+        let flag = Arc::new(AtomicBool::new(false));
+        drop(CancelOnDrop(flag.clone()));
+        assert!(flag.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn warnings_ride_along_with_the_payload() {
+        let warning = crate::contract::Warning::new("check.stale_build_output", "old");
+        let value = with_warnings(json!({"findings": []}), &[warning]);
+        assert_eq!(value["warnings"][0]["code"], "check.stale_build_output");
+    }
+
     #[tokio::test]
     async fn preflight_check_tool_returns_the_cli_payload() {
         let project = tempfile::tempdir().unwrap();
@@ -235,7 +315,9 @@ mod tests {
             .unwrap()
             .await
             .unwrap();
-        for key in ["findings", "summary", "scores", "coverage", "profile"] {
+        for key in [
+            "findings", "summary", "scores", "coverage", "profile", "warnings",
+        ] {
             assert!(value.get(key).is_some(), "{key}");
         }
         let error = CheckTools

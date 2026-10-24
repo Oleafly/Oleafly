@@ -122,6 +122,9 @@ pub struct AgentWorkspace {
     mode: WriteMode,
     run_id: String,
     baseline: BTreeMap<String, Baseline>,
+    /// Apply mode with commands: `baseline` holds the whole project as it
+    /// was at the start, so what commands changed is found by comparing.
+    tracked: bool,
     /// Apply mode: each touched path's content before the run (`None`: it
     /// did not exist).
     journal: Mutex<BTreeMap<String, Option<String>>>,
@@ -534,6 +537,72 @@ struct Staged {
     left_out: usize,
 }
 
+/// Every walkable file of `root` with its sha256. `None` past `limits`.
+fn snapshot(
+    root: &Path,
+    limits: &StageLimits,
+    cancel: &CancellationToken,
+) -> Result<Option<BTreeMap<String, Baseline>>, CliError> {
+    let mut current = BTreeMap::new();
+    let mut counts = WalkCounts::default();
+    let mut total = 0u64;
+    let mut within = true;
+    walk(root, limits.max_file_bytes, cancel, &mut counts, |file| {
+        total += file.size;
+        if current.len() >= limits.max_files || total > limits.max_bytes {
+            within = false;
+            return Ok(false);
+        }
+        let sha256 = sha256_file(&file.absolute).map_err(io_error)?;
+        current.insert(
+            file.relative,
+            Baseline {
+                sha256,
+                size: file.size,
+            },
+        );
+        Ok(true)
+    })?;
+    Ok(within.then_some(current))
+}
+
+/// What changed between two snapshots, sorted by path.
+fn compare(
+    before: &BTreeMap<String, Baseline>,
+    now: &BTreeMap<String, Baseline>,
+) -> Vec<FileChange> {
+    let mut changes = Vec::new();
+    for (path, current) in now {
+        match before.get(path) {
+            Some(earlier) if earlier.sha256 == current.sha256 => {}
+            earlier => changes.push(FileChange {
+                path: path.clone(),
+                kind: if earlier.is_some() {
+                    ChangeKind::Modified
+                } else {
+                    ChangeKind::Added
+                },
+                before_sha256: earlier.map(|earlier| earlier.sha256.clone()),
+                after_sha256: Some(current.sha256.clone()),
+                bytes: Some(current.size),
+            }),
+        }
+    }
+    for (path, earlier) in before {
+        if !now.contains_key(path) {
+            changes.push(FileChange {
+                path: path.clone(),
+                kind: ChangeKind::Deleted,
+                before_sha256: Some(earlier.sha256.clone()),
+                after_sha256: None,
+                bytes: None,
+            });
+        }
+    }
+    changes.sort_by(|left, right| left.path.cmp(&right.path));
+    changes
+}
+
 /// Copies the project into `work` and returns the copy's baseline.
 fn stage(
     project: &Path,
@@ -649,7 +718,22 @@ impl AgentWorkspace {
                 .unwrap_or_default(),
             _ => String::new(),
         };
+        let mut tracked = false;
         let (work_root, baseline, warnings, left_out) = match &policy.mode {
+            // Commands change files no tool records, so the project is
+            // hashed now and compared at the end.
+            WriteMode::Apply if policy.allow.commands => match snapshot(&project, limits, cancel)? {
+                Some(baseline) => {
+                    tracked = true;
+                    (project.clone(), baseline, Vec::new(), 0)
+                }
+                None => (
+                    project.clone(),
+                    BTreeMap::new(),
+                    vec!["The project is too large to compare, so changes made by commands aren't listed.".to_string()],
+                    0,
+                ),
+            },
             WriteMode::ReadOnly | WriteMode::Apply => {
                 (project.clone(), BTreeMap::new(), Vec::new(), 0)
             }
@@ -681,6 +765,7 @@ impl AgentWorkspace {
             mode: policy.mode.clone(),
             run_id,
             baseline,
+            tracked,
             journal: Mutex::new(BTreeMap::new()),
             warnings,
             left_out,
@@ -1134,7 +1219,19 @@ impl AgentWorkspace {
             WriteMode::Apply => {
                 let journal = std::mem::take(&mut *lock(&self.journal));
                 let mut changes = Vec::new();
+                let mut warnings = self.warnings.clone();
+                if self.tracked {
+                    match snapshot(&self.work_root, &STAGE_LIMITS, &CancellationToken::new())? {
+                        Some(now) => changes = compare(&self.baseline, &now),
+                        None => warnings.push("The project grew too large to compare, so changes made by commands aren't listed.".into()),
+                    }
+                }
                 for (path, before) in journal {
+                    if changes.iter().any(|change| change.path == path)
+                        || (self.tracked && self.baseline.contains_key(&path))
+                    {
+                        continue;
+                    }
                     let after_path = self.work_root.join(&path);
                     let after = sha256_file(&after_path).ok();
                     let kind = match (&before, &after) {
@@ -1156,11 +1253,12 @@ impl AgentWorkspace {
                         bytes,
                     });
                 }
+                changes.sort_by(|left, right| left.path.cmp(&right.path));
                 Ok(ChangeSet {
                     mode: "apply",
                     review_dir: None,
                     changes,
-                    warnings: self.warnings.clone(),
+                    warnings,
                 })
             }
             WriteMode::Review { dir } => self.save_review(dir),
@@ -1168,52 +1266,14 @@ impl AgentWorkspace {
     }
 
     fn save_review(&self, dir: &Path) -> Result<ChangeSet, CliError> {
-        let mut current: BTreeMap<String, Baseline> = BTreeMap::new();
-        let mut counts = WalkCounts::default();
-        let token = CancellationToken::new();
-        walk(&self.work_root, u64::MAX, &token, &mut counts, |file| {
-            let sha256 = sha256_file(&file.absolute).map_err(io_error)?;
-            current.insert(
-                file.relative,
-                Baseline {
-                    sha256,
-                    size: file.size,
-                },
-            );
-            Ok(true)
-        })?;
-        let mut changes = Vec::new();
-        for (path, now) in &current {
-            match self.baseline.get(path) {
-                Some(before) if before.sha256 == now.sha256 => {}
-                Some(before) => changes.push(FileChange {
-                    path: path.clone(),
-                    kind: ChangeKind::Modified,
-                    before_sha256: Some(before.sha256.clone()),
-                    after_sha256: Some(now.sha256.clone()),
-                    bytes: Some(now.size),
-                }),
-                None => changes.push(FileChange {
-                    path: path.clone(),
-                    kind: ChangeKind::Added,
-                    before_sha256: None,
-                    after_sha256: Some(now.sha256.clone()),
-                    bytes: Some(now.size),
-                }),
-            }
-        }
-        for (path, before) in &self.baseline {
-            if !current.contains_key(path) {
-                changes.push(FileChange {
-                    path: path.clone(),
-                    kind: ChangeKind::Deleted,
-                    before_sha256: Some(before.sha256.clone()),
-                    after_sha256: None,
-                    bytes: None,
-                });
-            }
-        }
-        changes.sort_by(|left, right| left.path.cmp(&right.path));
+        let unbounded = StageLimits {
+            max_files: usize::MAX,
+            max_bytes: u64::MAX,
+            max_file_bytes: u64::MAX,
+        };
+        let current =
+            snapshot(&self.work_root, &unbounded, &CancellationToken::new())?.unwrap_or_default();
+        let changes = compare(&self.baseline, &current);
         let changed_root = dir.join("changes");
         let mut patch = String::new();
         for change in &changes {

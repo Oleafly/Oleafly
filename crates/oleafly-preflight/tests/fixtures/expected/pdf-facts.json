@@ -1,4 +1,49 @@
 {
+  "embedded-font.pdf": {
+    "attachmentCount": 0,
+    "author": null,
+    "creator": null,
+    "fonts": [
+      {
+        "embedded": true,
+        "name": "OleaflyFixtureSerif"
+      }
+    ],
+    "formFieldCount": 0,
+    "linkCount": 0,
+    "outlineCount": 0,
+    "pageCount": 1,
+    "pages": [
+      {
+        "height": 792,
+        "rotation": 0,
+        "width": 612
+      }
+    ],
+    "producer": null,
+    "restricted": false,
+    "version": "1.7"
+  },
+  "file-attachment-annotation.pdf": {
+    "attachmentCount": 1,
+    "author": null,
+    "creator": null,
+    "fonts": [],
+    "formFieldCount": 0,
+    "linkCount": 0,
+    "outlineCount": 0,
+    "pageCount": 1,
+    "pages": [
+      {
+        "height": 792,
+        "rotation": 0,
+        "width": 612
+      }
+    ],
+    "producer": null,
+    "restricted": false,
+    "version": "1.7"
+  },
   "rotated-attachment.pdf": {
     "attachmentCount": 1,
     "author": null,

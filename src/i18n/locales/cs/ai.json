@@ -635,6 +635,7 @@
       "sendNow": "Odeslat hned",
       "sendFailed": "Tato zpráva se neodeslala. Odešlete ji znovu nebo ji odeberte.",
       "queuedConnecting": "Ve frontě: odešle se, až bude agent připravený",
+      "queuedSignIn": "Ve frontě: odešle se po přihlášení",
       "retry": "Odeslat znovu",
       "edit": "Upravit"
     },

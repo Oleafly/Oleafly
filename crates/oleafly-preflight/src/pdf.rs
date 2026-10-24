@@ -83,9 +83,27 @@ fn header_version(bytes: &[u8]) -> Option<String> {
         .and_then(|found| found.group(&head, 1).map(str::to_string))
 }
 
-/// Whether the file declares an encryption dictionary. Read from the bytes
-/// because a reader that decrypts on load may drop the trailer entry.
-fn declares_encryption(bytes: &[u8]) -> bool {
+/// How far past a `trailer` keyword, or around an `/XRef` stream's type, its
+/// dictionary is looked at.
+const TRAILER_WINDOW: usize = 64 * 1024;
+
+fn find_from(haystack: &[u8], needle: &[u8], from: usize) -> Option<usize> {
+    haystack
+        .get(from..)?
+        .windows(needle.len())
+        .position(|window| window == needle)
+        .map(|at| from + at)
+}
+
+fn rfind_before(haystack: &[u8], needle: &[u8], before: usize) -> Option<usize> {
+    haystack
+        .get(..before)?
+        .windows(needle.len())
+        .rposition(|window| window == needle)
+}
+
+/// Whether `bytes` holds a `/Encrypt` key (not `/EncryptMetadata`).
+fn has_encrypt_key(bytes: &[u8]) -> bool {
     const KEY: &[u8] = b"/Encrypt";
     bytes.windows(KEY.len()).enumerate().any(|(index, window)| {
         window == KEY
@@ -93,6 +111,46 @@ fn declares_encryption(bytes: &[u8]) -> bool {
                 .get(index + KEY.len())
                 .is_none_or(|next| !next.is_ascii_alphanumeric())
     })
+}
+
+/// The bytes of every trailer dictionary: after each `trailer` keyword up to
+/// its `startxref`, and each cross-reference stream's dictionary (from its
+/// `obj` to its `stream`).
+fn trailer_dictionaries(bytes: &[u8]) -> Vec<&[u8]> {
+    let mut found = Vec::new();
+    let mut from = 0;
+    while let Some(at) = find_from(bytes, b"trailer", from) {
+        let limit = (at + TRAILER_WINDOW).min(bytes.len());
+        let end = find_from(&bytes[..limit], b"startxref", at).unwrap_or(limit);
+        found.push(&bytes[at..end]);
+        from = at + 1;
+    }
+    let mut from = 0;
+    while let Some(at) = find_from(bytes, b"/XRef", from) {
+        from = at + 1;
+        if bytes
+            .get(at + 5)
+            .is_some_and(|next| next.is_ascii_alphanumeric())
+        {
+            continue;
+        }
+        let floor = at.saturating_sub(TRAILER_WINDOW);
+        let start = rfind_before(bytes, b"obj", at).filter(|start| *start >= floor);
+        let limit = (at + TRAILER_WINDOW).min(bytes.len());
+        let end = find_from(&bytes[..limit], b"stream", at);
+        if let (Some(start), Some(end)) = (start, end) {
+            found.push(&bytes[start..end]);
+        }
+    }
+    found
+}
+
+/// Whether the file declares an encryption dictionary. Read from the bytes
+/// because a reader that decrypts on load may drop the trailer entry, and
+/// only from the trailers, as pdf.js reads it: the words `/Encrypt` in an
+/// uncompressed bookmark or XMP packet are not one.
+fn declares_encryption(bytes: &[u8]) -> bool {
+    trailer_dictionaries(bytes).into_iter().any(has_encrypt_key)
 }
 
 fn widen<T: Into<f64>>(value: T) -> f64 {
@@ -317,26 +375,34 @@ fn annotation_displayed(doc: &Document, annotation: &Dictionary) -> bool {
     flags & (2 | 32) == 0
 }
 
-fn annotation_counts(doc: &Document, page: &Dictionary) -> (u32, u32) {
+/// A page's links and form fields (displayed ones), and its file
+/// attachment annotations (`\attachfile`), shown or not: a hidden one still
+/// carries its file.
+fn annotation_counts(doc: &Document, page: &Dictionary) -> (u32, u32, u32) {
     let Some(Object::Array(annotations)) = get(doc, page, b"Annots") else {
-        return (0, 0);
+        return (0, 0, 0);
     };
     let mut links = 0;
     let mut widgets = 0;
+    let mut attachments = 0;
     for annotation in annotations {
         let Some(annotation) = dict(doc, annotation) else {
             continue;
         };
+        let subtype = name(doc, annotation, b"Subtype");
+        if subtype == Some(b"FileAttachment") {
+            attachments += 1;
+        }
         if !annotation_displayed(doc, annotation) {
             continue;
         }
-        match name(doc, annotation, b"Subtype") {
+        match subtype {
             Some(b"Link") => links += 1,
             Some(b"Widget") => widgets += 1,
             _ => {}
         }
     }
-    (links, widgets)
+    (links, widgets, attachments)
 }
 
 /// Distinct names in the `/Names /EmbeddedFiles` tree. A kid that appears
@@ -753,6 +819,7 @@ fn read_document(bytes: &[u8], limits: Limits) -> Result<PdfFacts, PdfFactsError
     let mut pages = Vec::new();
     let mut link_count = 0;
     let mut form_field_count = 0;
+    let mut annotation_attachments = 0;
     let mut scan = FontScan {
         doc: &doc,
         fonts: Vec::new(),
@@ -775,9 +842,10 @@ fn read_document(bytes: &[u8], limits: Limits) -> Result<PdfFacts, PdfFactsError
             }
         };
         pages.push(page_facts(&doc, page));
-        let (links, widgets) = annotation_counts(&doc, page);
+        let (links, widgets, attachments) = annotation_counts(&doc, page);
         link_count += links;
         form_field_count += widgets;
+        annotation_attachments += attachments;
         let resources = inherited(&doc, page, b"Resources").and_then(|object| dict(&doc, object));
         let content = page_content(&doc, page, &mut scan.inflated);
         scan_content(&mut scan, &content, resources, 0);
@@ -796,7 +864,7 @@ fn read_document(bytes: &[u8], limits: Limits) -> Result<PdfFacts, PdfFactsError
         pages,
         outline_count: outline_count(&doc),
         link_count,
-        attachment_count: attachment_count(&doc),
+        attachment_count: attachment_count(&doc) + annotation_attachments,
         form_field_count,
         restricted: Some(declares_encryption(bytes) || doc.trailer.has(b"Encrypt")),
         author,
@@ -1142,6 +1210,45 @@ mod tests {
         hybrid.extend_from_slice(b"9 0 obj\n");
         hybrid.extend_from_slice(&flate_stream("/Subtype /Image", &zeros));
         assert!(container_streams_are_bounded(&hybrid, SMALL));
+    }
+
+    #[test]
+    fn encryption_words_outside_the_trailer_do_not_make_a_pdf_restricted() {
+        let bookmark = pdf(
+            &[
+                "<< /Type /Catalog /Pages 2 0 R /Outlines 4 0 R >>",
+                "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+                "<< /Title (The /Encrypt dictionary) >>",
+            ],
+            "",
+        );
+        assert!(!declares_encryption(&bookmark));
+        assert_eq!(read_pdf_facts(&bookmark).unwrap().restricted, Some(false));
+        // A cross-reference stream's dictionary is a trailer too.
+        assert!(declares_encryption(
+            b"9 0 obj\n<< /Type /XRef /Size 3 /Encrypt 5 0 R /W [1 2 1] >>\nstream\nxx\nendstream"
+        ));
+        assert!(!declares_encryption(
+            b"9 0 obj\n<< /Type /XRef /Size 3 >>\nstream\n/Encrypt\nendstream"
+        ));
+    }
+
+    #[test]
+    fn file_attachment_annotations_count_as_attachments() {
+        let attached = pdf(
+            &[
+                "<< /Type /Catalog /Pages 2 0 R >>",
+                "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [4 0 R 5 0 R] >>",
+                "<< /Type /Annot /Subtype /FileAttachment /Rect [72 600 92 620] /FS << /Type /Filespec /F (data.csv) >> >>",
+                "<< /Type /Annot /Subtype /FileAttachment /F 2 /Rect [0 0 1 1] /FS << /Type /Filespec /F (hidden.csv) >> >>",
+            ],
+            "",
+        );
+        let facts = read_pdf_facts(&attached).unwrap();
+        assert_eq!(facts.attachment_count, 2);
+        assert_eq!(facts.link_count, 0);
     }
 
     #[test]

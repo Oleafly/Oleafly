@@ -357,7 +357,11 @@ async fn compile_with_cli(root: PathBuf) -> Result<CompileSummary, String> {
 }
 
 impl WorkspaceTools for AppWorkspaceTools {
-    fn compile(&self, root: PathBuf) -> TaskRuntimeFuture<CompileSummary> {
+    fn compile(
+        &self,
+        root: PathBuf,
+        _source: Option<PathBuf>,
+    ) -> TaskRuntimeFuture<CompileSummary> {
         Box::pin(compile_with_cli(root))
     }
 
@@ -389,7 +393,8 @@ pub(crate) fn project_map_of(root: &Path) -> Result<Value, String> {
         &oleafly_core::context::ContextLimits::default(),
     )
     .map_err(|error| error.message().to_string())?;
-    serde_json::to_value(scan.map).map_err(|error| error.to_string())
+    // Cut to fit a tool result, with `truncatedCounts` naming what was cut.
+    Ok(oleafly_core::context::map_view(&scan.map))
 }
 
 pub(crate) fn unavailable_skill(

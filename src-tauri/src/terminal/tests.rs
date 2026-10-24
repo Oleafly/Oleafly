@@ -762,6 +762,80 @@ fn output_events_carry_their_utf8_byte_count() {
 }
 
 #[test]
+fn an_ack_that_comes_back_during_the_send_is_counted() {
+    // The frontend can parse and acknowledge a batch before `send` returns.
+    let flow = OutputFlow::new();
+    let acking = Arc::clone(&flow);
+    let channel = Channel::new(move |body| {
+        let event = body.deserialize::<serde_json::Value>().unwrap();
+        if let Some(bytes) = event["bytes"].as_u64() {
+            acking.ack(bytes as usize);
+        }
+        Ok(())
+    });
+    let (queue, chunks) = sync_channel(4);
+    queue.send(b"hello".to_vec()).unwrap();
+    queue.send(b" world".to_vec()).unwrap();
+    drop(queue);
+    emit_output("term-ack-during-send", &chunks, &channel, &flow);
+    assert_eq!(flow.unacked(), 0);
+}
+
+#[cfg(unix)]
+#[test]
+fn output_left_when_a_paused_shell_exits_on_its_own_still_arrives() {
+    // Past the watermark by more than one batch, and by little enough that
+    // the rest fits in the pump's queue: the shell exits while output is
+    // paused (nothing is acknowledged until then).
+    const TOTAL: usize = FLOW_HIGH_WATERMARK + 100_000;
+    let project = tempfile::tempdir().unwrap();
+    let counter = OutputCounter::new();
+    let owner = SessionOwner::new("main", "drain-after-exit");
+    let mut shell = CommandBuilder::new("/bin/sh");
+    shell.args(["-c", &format!("head -c {TOTAL} /dev/zero | tr '\\0' x")]);
+    let id = open_terminal(
+        project.path(),
+        owner.clone(),
+        80,
+        24,
+        counter.channel(),
+        shell,
+    )
+    .unwrap();
+    let session = TerminalTestSession { owner, id };
+    let open = || {
+        SESSIONS
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|registry| registry.get(&session.id, &session.owner).is_ok())
+    };
+    let deadline = Instant::now() + test_wait::CHILD_PATIENCE;
+    while open() && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(!open(), "the shell did not exit");
+    assert!(
+        counter.total.load(Ordering::Acquire) < TOTAL,
+        "the output never paused"
+    );
+    // The tab still acknowledges what it parses, and the rest comes through.
+    let mut acked = 0;
+    let deadline = Instant::now() + test_wait::CHILD_PATIENCE;
+    while !counter.exited.load(Ordering::Acquire) && Instant::now() < deadline {
+        let total = counter.total.load(Ordering::Acquire);
+        if total > acked {
+            ack_terminal(&session.owner, &session.id, (total - acked) as u64).unwrap();
+            acked = total;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(counter.exited.load(Ordering::Acquire), "no exit event");
+    assert_eq!(counter.total.load(Ordering::Acquire), TOTAL);
+    assert!(!counter.mismatched.load(Ordering::Acquire));
+}
+
+#[test]
 fn closing_a_paused_session_releases_the_pump() {
     let project = tempfile::tempdir().unwrap();
     let counter = OutputCounter::new();
@@ -1420,6 +1494,7 @@ fn term_open_starts_in_a_project_folder_with_the_launch_env() {
             id: ShellId::Custom,
             path: Some(shell.display().to_string()),
         }),
+        launch: true,
     };
     let opened = tauri::async_runtime::block_on(term_open(
         main.as_ref().clone(),
@@ -1438,6 +1513,13 @@ fn term_open_starts_in_a_project_folder_with_the_launch_env() {
     };
     assert_eq!(opened.shell, ShellKind::Posix);
     assert_eq!(opened.shell_id, ShellId::Custom);
+    // The project folder, not the folder the shell started in.
+    let host_root = std::path::PathBuf::from(opened.root.clone().unwrap());
+    assert!(host_root.is_absolute());
+    assert_eq!(
+        host_root.canonicalize().unwrap(),
+        root.canonicalize().unwrap()
+    );
     let note = test_wait::read_until_blocking(
         &chapters.join("note.txt"),
         test_wait::CHILD_PATIENCE,
@@ -1453,6 +1535,24 @@ fn term_open_starts_in_a_project_folder_with_the_launch_env() {
     );
     assert_eq!(note, Some(()));
     assert_eq!(place, Some(chapters.canonicalize().unwrap()));
+}
+
+#[test]
+fn an_opened_terminal_names_its_project_folder_only_when_known() {
+    let opened = |root: Option<&str>| {
+        serde_json::to_value(TerminalOpened {
+            id: "t-1".into(),
+            shell: ShellKind::Posix,
+            shell_id: ShellId::Auto,
+            shell_name: "zsh".into(),
+            root: root.map(str::to_owned),
+        })
+        .unwrap()
+    };
+    let named = opened(Some("/Users/ada/paper"));
+    assert_eq!(named["root"], "/Users/ada/paper");
+    assert_eq!(named["shellName"], "zsh");
+    assert!(opened(None).get("root").is_none());
 }
 
 #[test]

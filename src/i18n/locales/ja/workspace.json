@@ -192,6 +192,7 @@
     "closeRight": "右側をすべて閉じる",
     "closeTab": "{{title}} を閉じる",
     "color": "色",
+    "dropRefused_other": "ファイル名 {{count}} 件に制御文字が含まれているため、ターミナルには入力しません。",
     "errors": {
       "input": "shell が入力を受け付けられませんでした",
       "resize": "ターミナルのサイズを変更できませんでした",
@@ -229,6 +230,7 @@
       "many_other": "{{count}} 個のターミナルでプログラムがまだ動いています。",
       "named": "{{title}} で {{process}} がまだ動いています。",
       "quit": "終了",
+      "reload": "再読み込み",
       "restart": "再起動",
       "switchProject": "プロジェクトを切り替える",
       "titleMany": "実行中のプログラムを停止しますか？",

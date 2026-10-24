@@ -13,6 +13,7 @@ import {
 import type { ResearchBrief } from "@/lib/research-tasks";
 import { useSettingsStore } from "@/store/settings";
 import {
+  COMPUTE_SANDBOX_CHANGED,
   COMPUTE_TARGETS_CHANGED,
   computeSettings,
   executorFor,
@@ -26,6 +27,7 @@ import {
   type ComputeResources,
   type ComputeTarget,
   type ComputeView,
+  type SandboxStatus,
 } from "./compute-api";
 
 type BriefCompute = ResearchBrief["compute"];
@@ -188,6 +190,7 @@ export function ComputeBriefFields({
   value,
   onChange,
   onProblemChange,
+  onOpenSettings,
   disabled = false,
 }: Readonly<{
   id?: string;
@@ -195,6 +198,8 @@ export function ComputeBriefFields({
   onChange: (next: BriefCompute) => void;
   /** Tells the composer whether this choice can't be saved: a removed target or a field that doesn't read. */
   onProblemChange?: (problem: boolean) => void;
+  /** Opens Settings; the composer closes first, since Settings can't open inside it. */
+  onOpenSettings?: (open: () => void) => void;
   disabled?: boolean;
 }>) {
   const { t } = useTranslation(["common", "researchTools"]);
@@ -244,8 +249,15 @@ export function ComputeBriefFields({
         if (live) setWindowsOff(status.windowsEnabled !== true);
       })
       .catch(() => {});
+    // Turning the sandbox on in Settings clears the note at once.
+    const changed = (event: Event) => {
+      const status = (event as CustomEvent<SandboxStatus | undefined>).detail;
+      if (live && status) setWindowsOff(status.windowsEnabled !== true);
+    };
+    window.addEventListener(COMPUTE_SANDBOX_CHANGED, changed);
     return () => {
       live = false;
+      window.removeEventListener(COMPUTE_SANDBOX_CHANGED, changed);
     };
   }, [local, platform]);
 
@@ -316,7 +328,11 @@ export function ComputeBriefFields({
           <Button
             size="xs"
             variant="outline"
-            onClick={() => useSettingsStore.getState().openSettingsAt("research")}
+            onClick={() => {
+              const open = () => useSettingsStore.getState().openSettingsAt("research");
+              if (onOpenSettings) onOpenSettings(open);
+              else open();
+            }}
           >
             {t(($) => $.researchTools.compute.brief.openSettings)}
           </Button>

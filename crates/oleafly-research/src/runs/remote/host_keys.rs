@@ -114,7 +114,28 @@ pub async fn trust(
             endpoint.host
         )));
     }
+    let lines: Vec<String> = lines
+        .iter()
+        .map(|line| with_target_name(line, &endpoint.host, endpoint.port))
+        .collect();
     append_lines(&ctx.oleafly_known_hosts, &lines)
+}
+
+/// A probed key line with the target's own name added to its hosts. ssh
+/// writes the line under the resolved `HostName` and `Port`, so for a
+/// target imported from `~/.ssh/config` (an alias) the line would not name
+/// the target at all, and "Forget host key" would find nothing to remove.
+fn with_target_name(line: &str, host: &str, port: Option<u16>) -> String {
+    let Some((hosts, rest)) = line.split_once(char::is_whitespace) else {
+        return line.to_owned();
+    };
+    let Some(name) = host_patterns(host, port).into_iter().next() else {
+        return line.to_owned();
+    };
+    if hosts.split(',').any(|entry| entry == name) {
+        return line.to_owned();
+    }
+    format!("{hosts},{name} {}", rest.trim_start())
 }
 
 fn lock_for(file: &Path) -> Result<std::fs::File, RunError> {
@@ -181,10 +202,14 @@ fn host_patterns(host: &str, port: Option<u16>) -> Vec<String> {
 /// Removes the keys Oleafly trusted for `host` (and `port`); returns how
 /// many lines went.
 pub fn forget(file: &Path, host: &str, port: Option<u16>) -> Result<usize, RunError> {
+    if !file.exists() {
+        return Ok(0);
+    }
+    // Read under the lock, so a line a concurrent trust writes is never lost.
+    let _lock = lock_for(file)?;
     let Ok(existing) = std::fs::read_to_string(file) else {
         return Ok(0);
     };
-    let _lock = lock_for(file)?;
     let patterns = host_patterns(host, port);
     let mut removed = 0;
     let mut kept = String::new();
@@ -291,6 +316,49 @@ exit 255
             .unwrap_err();
         assert!(error.to_string().contains("different key"), "{error}");
         assert!(!ctx.oleafly_known_hosts.exists());
+    }
+
+    // ssh writes the probed key under the resolved host name, which a target
+    // imported from ~/.ssh/config does not use: the trusted line names the
+    // target too, so forgetting it by its own name removes the key.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_key_trusted_for_an_alias_is_forgotten_by_that_alias() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = fake_ssh(dir.path(), KEY);
+        let endpoint = SshEndpoint {
+            host: "cluster".into(),
+            user: None,
+            port: None,
+        };
+        let confirmed = vec!["SHA256:KBnev/h5SIgwiDASyOnH51z2NYWfa99cXhaTQrXXW0A".to_string()];
+        trust(&ctx, &endpoint, &confirmed, &CancellationToken::new())
+            .await
+            .unwrap();
+        let text = std::fs::read_to_string(&ctx.oleafly_known_hosts).unwrap();
+        assert_eq!(text, format!("h,cluster ssh-ed25519 {KEY}\n"));
+        assert_eq!(
+            forget(&ctx.oleafly_known_hosts, "cluster", None).unwrap(),
+            1
+        );
+        assert_eq!(
+            std::fs::read_to_string(&ctx.oleafly_known_hosts).unwrap(),
+            ""
+        );
+        assert_eq!(
+            forget(&ctx.oleafly_known_hosts, "cluster", None).unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn the_target_name_goes_beside_the_probed_host_once() {
+        let line = format!("h ssh-ed25519 {KEY}");
+        assert_eq!(
+            with_target_name(&line, "alias", Some(2222)),
+            format!("h,[alias]:2222 ssh-ed25519 {KEY}")
+        );
+        assert_eq!(with_target_name(&line, "h", None), line);
     }
 
     #[cfg(unix)]

@@ -1295,6 +1295,49 @@ async fn tools_that_need_the_host_say_what_is_missing() {
 }
 
 #[tokio::test]
+async fn a_run_approval_shows_the_folder_time_limit_and_environment_values() {
+    let mut brief = ResearchBrief::default();
+    brief.permissions.commands = CommandPolicy::Ask;
+    let fixture = tool_task(brief);
+    let binding = fixture.binding.clone();
+    let asking = tokio::spawn(async move {
+        call_task_tool(
+            "start_run",
+            json!({
+                "name": "eval",
+                "command": "python eval.py",
+                "cwd": "analysis",
+                "timeout": 30,
+                "env": {"SEED": "1", "PYTHONSTARTUP": "./x.py"},
+            }),
+            &binding,
+        )
+        .await
+    });
+    let approvals = fixture.binding.services.approvals.clone();
+    let pending = tokio::time::timeout(crate::test_support::CHILD_PATIENCE, async {
+        loop {
+            let pending = approvals.pending("paper").unwrap();
+            if !pending.is_empty() {
+                return pending;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the run never asked");
+    assert_eq!(
+        pending[0].detail,
+        "eval\npython eval.py\nFolder: analysis\nTime limit: 30 minutes\nEnvironment:\nPYTHONSTARTUP=./x.py\nSEED=1"
+    );
+    approvals.decide(&pending[0].id, false).unwrap();
+    assert_eq!(
+        asking.await.unwrap().unwrap().unwrap_err(),
+        crate::approvals::DENIED
+    );
+}
+
+#[tokio::test]
 async fn runs_wait_for_the_plan_for_every_agent() {
     let brief = ResearchBrief {
         review_plan_first: true,

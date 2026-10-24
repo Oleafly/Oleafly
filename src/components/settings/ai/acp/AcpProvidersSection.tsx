@@ -2,41 +2,59 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  acpAgentPreferences, acpError, acpPreferences, acpProviderChoices, acpSetAgentPreferences,
-  type AcpAgentPreferences, type AcpProviderChoice,
-} from "@/lib/acp";
+import { acpError, acpPreferences, acpProviderChoices, type AcpPreferences, type AcpProviderChoice } from "@/lib/acp";
+import { ACP_PREFERENCES_CHANGED, type AgentPreferences } from "./agent-preferences";
 
 const OFF = "__off__";
 
 /** Routing an agent that supports it through one of the user's Oleafly API keys (Experimental). */
-export function AcpProvidersSection({ agentId }: Readonly<{ agentId: string }>) {
+export function AcpProvidersSection({
+  agentId,
+  preferences,
+}: Readonly<{ agentId: string; preferences: AgentPreferences }>) {
   const { t } = useTranslation(["common", "settings"]);
   const [enabled, setEnabled] = useState(false);
-  const [prefs, setPrefs] = useState<AcpAgentPreferences | null>(null);
-  const [choices, setChoices] = useState<AcpProviderChoice[]>([]);
+  const [choices, setChoices] = useState<AcpProviderChoice[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let current = true;
-    Promise.all([acpPreferences(), acpAgentPreferences(agentId), acpProviderChoices(agentId)])
-      .then(([global, agentPrefs, available]) => {
+    // The Experimental switch on this tab turns the picker on and off while the card is open.
+    let announced = false;
+    const onPreferences = (event: Event) => {
+      const saved = (event as CustomEvent<AcpPreferences>).detail;
+      if (!saved) return;
+      announced = true;
+      setEnabled(saved.experimentalProviders);
+    };
+    window.addEventListener(ACP_PREFERENCES_CHANGED, onPreferences);
+    Promise.all([acpPreferences(), acpProviderChoices(agentId)])
+      .then(([global, available]) => {
         if (!current) return;
-        setEnabled(global.experimentalProviders);
-        setPrefs(agentPrefs);
+        if (!announced) setEnabled(global.experimentalProviders);
         setChoices(available);
       })
-      .catch((error_: unknown) => { if (current) setError(acpError(error_)); });
-    return () => { current = false; };
+      .catch((error_: unknown) => { if (current) setLoadError(acpError(error_)); });
+    return () => {
+      current = false;
+      window.removeEventListener(ACP_PREFERENCES_CHANGED, onPreferences);
+    };
   }, [agentId]);
 
-  if (!enabled || !prefs) return null;
+  const prefs = preferences.prefs;
+  if (loadError) {
+    return (
+      <section data-testid={`acp-agent-providers-${agentId}`} className="space-y-1.5">
+        <SectionHeading as="h4">{t(($) => $.settings.ai.agents.providers.label)}</SectionHeading>
+        <p role="alert" className="text-xs text-destructive">{loadError}</p>
+      </section>
+    );
+  }
+  if (!enabled || !prefs || !choices) return null;
   const choose = (value: string) => {
-    const next = { ...prefs, provider: value === OFF ? null : value };
     setError(null);
-    acpSetAgentPreferences(agentId, next)
-      .then(setPrefs)
-      .catch((error_: unknown) => setError(acpError(error_)));
+    void preferences.save("provider", value === OFF ? null : value).then(setError);
   };
   return (
     <section data-testid={`acp-agent-providers-${agentId}`} className="space-y-1.5">
@@ -61,5 +79,3 @@ export function AcpProvidersSection({ agentId }: Readonly<{ agentId: string }>) 
     </section>
   );
 }
-
-export default AcpProvidersSection;

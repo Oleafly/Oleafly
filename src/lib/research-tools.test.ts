@@ -24,7 +24,8 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => ({ projectId: files.projectId }) } }));
 
 import { defaultBrief, normalizeTask, type ResearchTask } from "@/lib/research-tasks";
-import { createResearchAiTools, createResearchTaskAiTools } from "./research-tools";
+import { defaultModel } from "@/lib/ai-providers";
+import { builtinTaskAgent, createResearchAiTools, createResearchTaskAiTools, defaultGoal } from "./research-tools";
 
 function task(id: string, overrides: Partial<ResearchTask> = {}): ResearchTask {
   return normalizeTask({
@@ -123,7 +124,8 @@ describe("app-level research tools wiring", () => {
 
 describe("creating research tasks from the assistant", () => {
   it("creates a task in the open project with the default brief and starts it", async () => {
-    mocks.getConfig.mockResolvedValue({});
+    // The listed config shows a stored key as a marker.
+    mocks.getConfig.mockResolvedValue({ ai_keys: { openai: "__stored__" } });
     mocks.createResearchTask.mockResolvedValue(task("t1", { title: "Survey" }));
     mocks.startResearchTask.mockResolvedValue(task("t1", { title: "Survey", status: "running" }));
     const tools = createResearchTaskAiTools();
@@ -139,7 +141,7 @@ describe("creating research tasks from the assistant", () => {
       prompt: "Find papers on sparse attention",
       runtimeId: "builtin",
       agentId: "openai",
-      modelId: "",
+      modelId: defaultModel("openai"),
       skillIds: [],
       dependencyIds: [],
       // A task an agent creates asks before each command and has no network.
@@ -156,6 +158,7 @@ describe("creating research tasks from the assistant", () => {
     mocks.getConfig.mockResolvedValue({
       ai_provider: "anthropic",
       ai_model: "claude-test",
+      ai_keys: { anthropic: "__stored__" },
       research_command_network: true,
       research_time_budget_minutes: 240,
     });
@@ -196,7 +199,11 @@ describe("creating research tasks from the assistant", () => {
   });
 
   it("takes the time budget from the research settings, keeps the network off and asks before each command when the agent leaves them out", async () => {
-    mocks.getConfig.mockResolvedValue({ research_command_network: true, research_time_budget_minutes: 240 });
+    mocks.getConfig.mockResolvedValue({
+      ai_keys: { openai: "__stored__" },
+      research_command_network: true,
+      research_time_budget_minutes: 240,
+    });
     mocks.createResearchTask.mockResolvedValue(task("t3"));
     const tools = createResearchTaskAiTools();
 
@@ -316,5 +323,44 @@ describe("research task status for the assistant", () => {
 
     await expect(tools.research_task_status.execute({})).resolves.toEqual({ error: "Open a project first." });
     expect(mocks.listResearchTasks).not.toHaveBeenCalled();
+  });
+});
+
+describe("research tasks an agent creates without everything set", () => {
+  it("takes the goal from the start of a long prompt, short enough for the task store", async () => {
+    mocks.getConfig.mockResolvedValue({ ai_keys: { openai: "__stored__" } });
+    mocks.createResearchTask.mockResolvedValue(task("long"));
+    const prompt = `${"Survey the field. ".repeat(400)}😀 end`;
+    const tools = createResearchTaskAiTools();
+
+    await tools.research_task_create.execute({ title: "Long", prompt, start: false });
+
+    const [draft] = mocks.createResearchTask.mock.calls[0];
+    expect(draft.prompt).toBe(prompt.trim());
+    expect(draft.brief.goal.length).toBeLessThanOrEqual(2_000);
+    expect(prompt.startsWith(draft.brief.goal)).toBe(true);
+  });
+
+  it("doesn't end a cut goal on half a character", () => {
+    const prompt = `${"a".repeat(1_999)}😀 and more`;
+
+    expect(defaultGoal(prompt)).toBe("a".repeat(1_999));
+  });
+
+  it("refuses with a clear message when no AI provider has a key, and creates nothing", async () => {
+    mocks.getConfig.mockResolvedValue({ ai_provider: "anthropic", ai_model: "claude-test", ai_keys: {} });
+    const tools = createResearchTaskAiTools();
+
+    const res = await tools.research_task_create.execute({ title: "Survey", prompt: "Find papers", start: true });
+
+    expect(res).toEqual({ error: expect.stringContaining("No AI provider has an API key") });
+    expect(mocks.createResearchTask).not.toHaveBeenCalled();
+    expect(mocks.startResearchTask).not.toHaveBeenCalled();
+  });
+
+  it("runs on a provider that has a key when the chosen one has none", async () => {
+    await expect(
+      builtinTaskAgent({ ai_provider: "openai", ai_model: "gpt-test", ai_keys: { anthropic: "__stored__" } } as never),
+    ).resolves.toEqual({ agentId: "anthropic", modelId: defaultModel("anthropic") });
   });
 });

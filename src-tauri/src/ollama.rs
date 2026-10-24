@@ -97,6 +97,31 @@ struct TagModel {
     /// Present from Ollama 0.6 on; older versions leave it out.
     #[serde(default)]
     capabilities: Option<Vec<String>>,
+    /// Set for an Ollama Cloud model (signed in, Ollama 0.12 on): Ollama
+    /// forwards its requests to this host instead of running it here.
+    #[serde(default)]
+    remote_host: Option<String>,
+    #[serde(default)]
+    remote_model: Option<String>,
+}
+
+impl TagModel {
+    /// Whether Ollama sends this model's requests to another computer, such
+    /// as ollama.com. A version that leaves out `remote_host` still names its
+    /// cloud models with a `cloud` or `-cloud` tag.
+    fn is_remote(&self) -> bool {
+        let set = |field: &Option<String>| {
+            field
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty())
+        };
+        if set(&self.remote_host) || set(&self.remote_model) {
+            return true;
+        }
+        let name = self.name.trim().to_ascii_lowercase();
+        let (base, tag) = name.rsplit_once(':').unwrap_or((name.as_str(), ""));
+        tag == "cloud" || tag.ends_with("-cloud") || base.ends_with("-cloud")
+    }
 }
 
 #[derive(Deserialize)]
@@ -106,12 +131,14 @@ struct ShowResponse {
 }
 
 /// A pulled model and what it can do (`"vision"`, `"tools"`, ...). `None`
-/// means Ollama did not say.
+/// means Ollama did not say. `remote` marks an Ollama Cloud model, which
+/// runs on another computer even though the local Ollama lists it.
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct OllamaModelInfo {
     pub name: String,
     pub capabilities: Option<Vec<String>>,
+    pub remote: bool,
 }
 
 /// `/api/show` answers by `"{base}|{digest or name}"`. A model Ollama cannot
@@ -234,10 +261,12 @@ async fn list_model_details_at(
     let mut lookups: Vec<(usize, String, String)> = Vec::new();
     for tag in tags {
         let index = models.len();
+        let remote = tag.is_remote();
         if tag.capabilities.is_some() {
             models.push(OllamaModelInfo {
                 name: tag.name,
                 capabilities: tag.capabilities,
+                remote,
             });
             continue;
         }
@@ -246,6 +275,7 @@ async fn list_model_details_at(
             models.push(OllamaModelInfo {
                 name: tag.name,
                 capabilities,
+                remote,
             });
             continue;
         }
@@ -255,6 +285,7 @@ async fn list_model_details_at(
         models.push(OllamaModelInfo {
             name: tag.name,
             capabilities: None,
+            remote,
         });
     }
 
@@ -470,14 +501,55 @@ mod tests {
                 OllamaModelInfo {
                     name: "glm-ocr:latest".into(),
                     capabilities: Some(vec!["completion".into(), "vision".into()]),
+                    remote: false,
                 },
                 OllamaModelInfo {
                     name: "llama3.2".into(),
                     capabilities: Some(vec!["completion".into(), "tools".into()]),
+                    remote: false,
                 },
             ]
         );
         assert_eq!(fixture.count("/api/show"), 0);
+    }
+
+    #[tokio::test]
+    async fn cloud_models_are_marked_remote() {
+        let fixture = serve(|method, path, _| match (method, path) {
+            ("GET", "/api/tags") => Some((
+                200,
+                r#"{"models":[
+                    {"name":"qwen3-vl:235b-cloud","digest":"c1","capabilities":["completion","vision"],
+                     "remote_model":"qwen3-vl:235b","remote_host":"https://ollama.com:443"},
+                    {"name":"gpt-oss:120b-cloud","digest":"c2","capabilities":["completion"]},
+                    {"name":"minimax-m2:cloud","digest":"c3","capabilities":["completion"]},
+                    {"name":"proxied","digest":"c4","capabilities":["completion"],"remote_host":"http://10.0.0.2:11434"},
+                    {"name":"qwen2.5vl:7b","digest":"l1","capabilities":["completion","vision"],"remote_host":""},
+                    {"name":"wordcloud:latest","digest":"l2","capabilities":["completion"]}
+                ]}"#
+                .to_string(),
+            )),
+            _ => Some((404, String::new())),
+        })
+        .await;
+        let models = list_model_details_at(&fixture.base, Duration::from_millis(500))
+            .await
+            .unwrap();
+        let remote: Vec<(&str, bool)> = models
+            .iter()
+            .map(|model| (model.name.as_str(), model.remote))
+            .collect();
+        assert_eq!(
+            remote,
+            [
+                ("gpt-oss:120b-cloud", true),
+                ("minimax-m2:cloud", true),
+                ("proxied", true),
+                ("qwen2.5vl:7b", false),
+                ("qwen3-vl:235b-cloud", true),
+                ("wordcloud:latest", false),
+            ]
+        );
     }
 
     #[tokio::test]

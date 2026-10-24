@@ -131,6 +131,18 @@ pub enum KeyKind {
 }
 
 /// The app settings the CLI shows: CLI name, `config.json` key, kind.
+/// The app's counter of CLI changes to [`APP_SAVED_KEYS`].
+const CLI_REVISION_KEY: &str = "cli_settings_revision";
+/// Settings the app saves from its settings views as part of the whole
+/// config (the others it keeps as stored, or changes on their own).
+const APP_SAVED_KEYS: [&str; 5] = [
+    "checkpoints_enabled",
+    "checkpoint_notifications",
+    "git_auto_init",
+    "skills_share_with_agents",
+    "ui_locale",
+];
+
 pub const GLOBAL_KEYS: &[(&str, &str, KeyKind)] = &[
     (
         "typst.default_version",
@@ -601,6 +613,7 @@ fn config_set(
         let data_root = data_root(ctx)?;
         let to_store = stored.clone();
         crate::app_config::update_app_config(&data_root, move |config| {
+            let before = config.get(file_key).cloned();
             match to_store {
                 Some(value) => {
                     config.insert(file_key.into(), value);
@@ -608,6 +621,16 @@ fn config_set(
                 None => {
                     config.remove(file_key);
                 }
+            }
+            // A settings view of the open app that read its copy before
+            // this keeps what the CLI set when it saves (the app compares
+            // revisions).
+            if config.get(file_key) != before.as_ref() && APP_SAVED_KEYS.contains(&file_key) {
+                let revision = config
+                    .get(CLI_REVISION_KEY)
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0);
+                config.insert(CLI_REVISION_KEY.into(), json!(revision.saturating_add(1)));
             }
             Ok(())
         })?;
@@ -644,6 +667,11 @@ fn config_set(
         return Err(CliError::usage(format!("{key} isn't a project setting."))
             .details(json!({"keys": PROJECT_KEYS})));
     }
+    if key == "typst.version" {
+        if let Some(version) = value.map(str::trim).filter(|version| !version.is_empty()) {
+            accepted_typst_pin(ctx, version)?;
+        }
+    }
     let root = project_root(ctx)?;
     let _lock = project_lock(ctx, &root)?;
     let mut fields = read_project_json(&root)?;
@@ -661,6 +689,36 @@ fn config_set(
     Ok(Outcome::success(
         json!({"key": key, "value": effective, "scope": "project"}),
     ))
+}
+
+/// Refuses a Typst version the app wouldn't accept as a pin: one the
+/// catalog doesn't list that is neither bundled nor the system's (a typo
+/// would make every build fail).
+fn accepted_typst_pin(ctx: &Context, version: &str) -> Result<(), CliError> {
+    let bundled = crate::native::Discovery::from_env(ctx.project())
+        .bundled_candidates("typst")
+        .into_iter()
+        .find(|path| path.is_file());
+    let (data_root, lookup) = match ctx.data_root() {
+        Some(root) => (
+            root.to_path_buf(),
+            oleafly_downloads::typst::SystemLookup::Cached,
+        ),
+        None => (PathBuf::new(), oleafly_downloads::typst::SystemLookup::Lazy),
+    };
+    let default_choice = ctx
+        .data_root()
+        .and_then(crate::app_config::typst_default_choice);
+    oleafly_downloads::typst::TypstToolchain::new(
+        data_root,
+        oleafly_core::typst_toolchain::host_target(),
+        bundled,
+        default_choice,
+        lookup,
+    )
+    .accepted_pin(version)
+    .map(|_| ())
+    .map_err(super::typst_cmd::typst_error)
 }
 
 fn read_manifest_at(path: &Path) -> Option<ProjectManifest> {
@@ -932,6 +990,46 @@ mod tests {
                 .code,
             "usage.invalid"
         );
+    }
+
+    #[test]
+    fn a_global_change_to_a_setting_the_app_saves_bumps_the_revision() {
+        let data = tempfile::tempdir().unwrap();
+        let ctx = context(data.path(), data.path());
+        let revision = || -> Value {
+            let saved: Value =
+                serde_json::from_slice(&std::fs::read(data.path().join("config.json")).unwrap())
+                    .unwrap();
+            saved[CLI_REVISION_KEY].clone()
+        };
+        config_set(&ctx, "git.auto_init", Some("false"), true).unwrap();
+        assert_eq!(revision(), json!(1));
+        // The same value again changes nothing.
+        config_set(&ctx, "git.auto_init", Some("false"), true).unwrap();
+        assert_eq!(revision(), json!(1));
+        config_set(&ctx, "ui.locale", Some("de"), true).unwrap();
+        assert_eq!(revision(), json!(2));
+        // The app keeps this one as stored anyway.
+        config_set(&ctx, "latex.default_engine", Some("latexmk"), true).unwrap();
+        assert_eq!(revision(), json!(2));
+    }
+
+    #[test]
+    fn a_typst_pin_the_app_wouldnt_accept_is_refused() {
+        let project = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
+        std::fs::write(project.path().join("main.typ"), "= Hi\n").unwrap();
+        std::fs::write(
+            project.path().join("project.json"),
+            r#"{"name":"P","main_doc":"main.typ","engine":"typst"}"#,
+        )
+        .unwrap();
+        let ctx = context(project.path(), data.path());
+        assert!(config_set(&ctx, "typst.version", Some("0.31.1"), false).is_err());
+        let saved = std::fs::read_to_string(project.path().join("project.json")).unwrap();
+        assert!(!saved.contains("0.31.1"), "{saved}");
+        let bundled = oleafly_downloads::typst::bundled_version();
+        config_set(&ctx, "typst.version", Some(&bundled), false).unwrap();
     }
 
     #[test]

@@ -826,9 +826,16 @@ pub(crate) fn bibliography_target(
         .parent()
         .map(slash)
         .filter(|dir| !dir.is_empty());
+    let typst = manifest.engine()? == Engine::Typst;
     let mut first_declared: Option<(String, PathBuf)> = None;
     for name in declared {
         let mut name = name.replace('\\', "/");
+        // In Typst a leading `/` means the project root (the usual form when
+        // the main file sits in a folder).
+        let rooted = typst && name.starts_with('/') && !name.starts_with("//");
+        if rooted {
+            name = name.trim_start_matches('/').to_string();
+        }
         while let Some(rest) = name.strip_prefix("./") {
             name = rest.to_string();
         }
@@ -836,13 +843,14 @@ pub(crate) fn bibliography_target(
             name.push_str(".bib");
         }
         if !name.to_ascii_lowercase().ends_with(".bib")
+            || name.is_empty()
             || name.starts_with('/')
             || name.contains(':')
         {
             continue;
         }
         let mut candidates = Vec::new();
-        if let Some(dir) = &main_dir {
+        if let Some(dir) = main_dir.as_ref().filter(|_| !rooted) {
             candidates.push(format!("{dir}/{name}"));
         }
         candidates.push(name);
@@ -1201,14 +1209,51 @@ fn parse_sources(names: &[String]) -> Result<Vec<LiteratureSourceId>, CliError> 
     Ok(sources)
 }
 
+/// Where answers are cached: the data folder's cache, else a private folder
+/// (owner only) that lasts for this command. A shared, predictable file in
+/// the temporary folder could be read, or filled with chosen answers, by
+/// another user of the machine.
+fn literature_cache(data_root: Option<&Path>) -> (PathBuf, Option<tempfile::TempDir>) {
+    if let Some(root) = data_root.filter(|root| root.is_dir()) {
+        return (root.join("literature-cache.sqlite3"), None);
+    }
+    let private = tempfile::Builder::new()
+        .prefix("oleafly-literature-")
+        .tempdir()
+        .ok()
+        .filter(|private| owner_only(private.path()));
+    match private {
+        Some(private) => (private.path().join("cache.sqlite3"), Some(private)),
+        // No cache at all: a folder that doesn't exist can't be opened.
+        None => (
+            std::env::temp_dir()
+                .join(format!("oleafly-no-cache-{}", std::process::id()))
+                .join("cache.sqlite3"),
+            None,
+        ),
+    }
+}
+
+/// Makes `folder` reachable by its owner only.
+fn owner_only(folder: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(folder, std::fs::Permissions::from_mode(0o700)).is_ok()
+    }
+    #[cfg(not(unix))]
+    {
+        // A temporary folder under the user's profile is the user's.
+        let _ = folder;
+        true
+    }
+}
+
 async fn run_literature(ctx: &Context, args: LiteratureArgs) -> Result<Outcome, CliError> {
     let query = args.query.join(" ");
     let sources = parse_sources(&args.sources)?;
     let secrets = connector_secrets(ctx);
-    let cache = match ctx.data_root().filter(|root| root.is_dir()) {
-        Some(root) => root.join("literature-cache.sqlite3"),
-        None => std::env::temp_dir().join("oleafly-literature-cache.sqlite3"),
-    };
+    let (cache, _private) = literature_cache(ctx.data_root());
     let client = LiteratureClient::new(cache);
     let request = LiteratureQuery {
         query: query.clone(),
@@ -1732,6 +1777,53 @@ mod tests {
                 .unwrap_err()
                 .code,
             "usage.invalid"
+        );
+    }
+
+    #[test]
+    fn without_a_data_folder_the_literature_cache_is_private_to_the_run() {
+        let (path, private) = literature_cache(None);
+        let private = private.expect("a private folder");
+        assert!(path.starts_with(private.path()));
+        assert_ne!(
+            path,
+            std::env::temp_dir().join("oleafly-literature-cache.sqlite3")
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(private.path())
+                .unwrap()
+                .permissions()
+                .mode();
+            assert_eq!(mode & 0o077, 0);
+        }
+        let data = tempfile::tempdir().unwrap();
+        let (path, none) = literature_cache(Some(data.path()));
+        assert_eq!(
+            (path, none.is_none()),
+            (data.path().join("literature-cache.sqlite3"), true)
+        );
+    }
+
+    #[test]
+    fn a_typst_root_relative_bibliography_is_found_from_the_project_root() {
+        let ctx = Context::for_test(Default::default());
+        let project = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join("src")).unwrap();
+        std::fs::create_dir_all(project.path().join("archive")).unwrap();
+        std::fs::write(
+            project.path().join("src/main.typ"),
+            "= Hi\n#bibliography(\"/refs.bib\")\n",
+        )
+        .unwrap();
+        std::fs::write(project.path().join("refs.bib"), "").unwrap();
+        std::fs::write(project.path().join("archive/old.bib"), "").unwrap();
+        let workspace = Workspace::detected(project.path(), Some("src/main.typ")).unwrap();
+        let target = bibliography_target(&ctx, &workspace, None).unwrap();
+        assert_eq!(
+            (target.relative.as_str(), target.exists, target.declared),
+            ("refs.bib", true, true)
         );
     }
 

@@ -14,7 +14,9 @@ const notifyError = vi.fn();
 const forgeState = vi.hoisted(() => ({
   status: "ready" as "idle" | "loading" | "ready" | "error",
   accounts: [] as ForgeAccount[],
+  error: null as string | null,
   ensureLoaded: vi.fn(async () => [] as ForgeAccount[]),
+  reload: vi.fn(async () => [] as ForgeAccount[]),
 }));
 
 vi.mock("@/store/forge-accounts", () => ({
@@ -143,7 +145,9 @@ function openGitSubmenu() {
 beforeEach(() => {
   forgeState.status = "ready";
   forgeState.accounts = [GITHUB_ACCOUNT];
+  forgeState.error = null;
   forgeState.ensureLoaded.mockClear();
+  forgeState.reload.mockClear();
   forgeListRepos.mockReset();
   forgeListRepos.mockResolvedValue(page([]));
   importForgeRepository.mockReset();
@@ -352,6 +356,20 @@ describe("ProjectImportMenu Git submenu", () => {
     expect(useSettingsStore.getState().settingsScrollTarget).toBe("git-hosting");
     expect(onImportSelected).toHaveBeenCalledTimes(1);
     expect(forgeListRepos).not.toHaveBeenCalled();
+  });
+
+  it("says the accounts couldn't load and offers to try again, instead of asking to connect one", async () => {
+    forgeState.status = "error";
+    forgeState.accounts = [];
+    forgeState.error = "forge-accounts.json is locked.";
+    renderMenu();
+    openGitSubmenu();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("forge-accounts.json is locked.");
+    expect(screen.queryByTestId("import-git-connect")).toBeNull();
+    expect(screen.getByTestId("import-clone")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("import-git-accounts-retry"));
+    await waitFor(() => expect(forgeState.reload).toHaveBeenCalledTimes(1));
   });
 
   it("keeps the listed repositories for a few minutes instead of asking each time the menu opens", async () => {

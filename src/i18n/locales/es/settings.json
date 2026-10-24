@@ -50,14 +50,14 @@
       "platformLabel": "Plataforma",
       "refreshingStatus": "Actualizando el estado de los agentes. La lista actual se mantiene.",
       "registry": {
-        "description": "Busca en el registro de ACP agentes publicados por otros equipos.",
+        "description": "Busca en el registro de ACP agentes de línea de comandos publicados por otros equipos.",
         "hideDistribution": "Ocultar la distribución",
         "register": "Registrar el agente",
         "registered": "Registrado",
         "reviewHint": "Las entradas del registro describen software según sus editores. Revisa la distribución antes de registrarla o instalarla.",
         "search": "Buscar",
-        "searchLabel": "Encontrar un agente de ACP",
-        "searchPlaceholder": "Buscar en el registro de ACP",
+        "searchLabel": "Encontrar un agente de línea de comandos",
+        "searchPlaceholder": "Buscar agentes de línea de comandos",
         "searching": "Buscando",
         "showDistribution": "Mostrar la distribución",
         "title": "Encontrar más agentes"
@@ -133,7 +133,9 @@
       "inactivity": {
         "label": "Detener un agente en silencio después de",
         "description": "Cuando un agente no envía nada durante este tiempo, Oleafly lo detiene. Puedes volver a conectar.",
-        "minutes": "{{count}} minutos"
+        "minutes_one": "{{count}} minuto",
+        "minutes_many": "{{count}} minutos",
+        "minutes_other": "{{count}} minutos"
       },
       "protocolLabel": "Protocolo",
       "remembered": {
@@ -1041,7 +1043,8 @@
         "path": {
           "ariaLabel": "Ruta personalizada del shell",
           "description": "El programa que ejecutan los terminales nuevos.",
-          "label": "Ruta del shell"
+          "label": "Ruta del shell",
+          "missing": "Escribe la ruta completa de un shell. Los terminales nuevos no pueden iniciarse hasta que lo hagas."
         },
         "windowsOnly": "{{name}} (solo Windows)",
         "windowsOnlyNote": "{{name}} solo funciona en Windows. Los terminales nuevos de aquí inician {{fallback}} en su lugar.",
@@ -1636,7 +1639,7 @@
     "desktopApps": {
       "tab": "Aplicaciones de escritorio",
       "title": "Aplicaciones de escritorio",
-      "description": "Permite que los agentes usen aplicaciones y sitios web de este equipo mediante Cua Driver. Oleafly pregunta antes de cada clic o pulsación de tecla.",
+      "description": "Permite que los agentes usen aplicaciones y sitios web de este equipo mediante Cua Driver. Oleafly pregunta antes de cada acción, salvo que permitas ese tipo de acción para el chat, la sesión o la tarea. Tu navegador con sesión iniciada y los scripts siempre preguntan.",
       "docsLink": "Documentación de Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} está instalado.",
@@ -1649,7 +1652,7 @@
       },
       "install": {
         "heading": "Instalar Cua Driver",
-        "hint": "Ejecuta este comando en un terminal. Oleafly nunca instala Cua Driver por ti.",
+        "hint": "Ejecuta este comando en un terminal o usa Ejecutar en el terminal. El comando inicia el instalador oficial de Cua, y Oleafly no descarga Cua Driver por sí mismo.",
         "run": "Ejecutar en el terminal",
         "needsProject": "Abre un proyecto para ejecutarlo en el terminal de Oleafly, o copia el comando.",
         "confirm": "Esto descarga el instalador de Cua Driver desde cua.ai y lo ejecuta en tu terminal. ¿Continuar?",
@@ -1671,7 +1674,7 @@
       },
       "enable": {
         "label": "Permitir que los agentes usen aplicaciones de escritorio",
-        "description": "Los agentes pueden ver las aplicaciones y los sitios web de abajo. Los clics, la escritura y los cambios de página te preguntan primero."
+        "description": "Los agentes pueden ver las aplicaciones y los sitios web de abajo. Los clics, la escritura y los cambios de página te preguntan primero, salvo que los permitas para el chat, la sesión o la tarea. Al añadir una aplicación o un sitio web se borran esas opciones."
       },
       "apps": {
         "heading": "Aplicaciones permitidas",
@@ -1694,7 +1697,7 @@
         "blocked": {
           "oleafly": "Oleafly no puede controlarse a sí mismo.",
           "driver": "Cua Driver no puede controlarse a sí mismo.",
-          "terminal": "Los terminales ejecutan comandos sin la aprobación de comandos de Oleafly.",
+          "terminal": "Los terminales y los editores de código ejecutan comandos sin la aprobación de comandos de Oleafly.",
           "system_settings": "Los ajustes del sistema pueden cambiar permisos.",
           "passwords": "Las aplicaciones de contraseñas quedan fuera.",
           "scripting": "Los ejecutores de scripts pueden hacer cualquier cosa en este equipo.",
@@ -1728,7 +1731,7 @@
       },
       "tool": {
         "description": "Usa las aplicaciones de escritorio y los sitios web que permitiste en Ajustes.",
-        "note": "Mirar se hace al momento. Los clics, la escritura y los cambios de página preguntan primero."
+        "note": "Mirar se hace al momento. Los clics, la escritura y los cambios de página preguntan primero, salvo que los permitas para el chat."
       },
       "task": {
         "label": "Aplicaciones de escritorio",
@@ -1738,7 +1741,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "Conecta escritorios y contenedores aislados de Cua Spaces como un servidor MCP. Experimental.",
+        "description": "Conecta escritorios y contenedores aislados de Cua Spaces como un servidor MCP.",
         "notInstalled": "El comando cua no está instalado.",
         "connect": {
           "label": "Conectar Cua Spaces",
@@ -1839,7 +1842,7 @@
         },
         "legend": "Política de aprobación",
         "trust": {
-          "description": "Los cambios en archivos no preguntan. Los comandos de shell y el control del ordenador siempre necesitan aprobación. Tu cliente de MCP sigue siendo un filtro adicional.",
+          "description": "Los cambios en archivos se aplican sin preguntar. Los comandos de shell y las tareas de investigación nuevas siempre preguntan primero. Tu cliente de MCP todavía puede preguntar por su cuenta.",
           "label": "Confiar en esta conexión"
         }
       },
@@ -2327,11 +2330,21 @@
         "tasks_other": "Trabajando en {{count}} tareas"
       },
       "stop": "Detener el proceso auxiliar",
-      "stopHint": "Sus tareas se pausan hasta que vuelvas a abrir Oleafly.",
+      "stopHint": "Sus tareas vuelven a Oleafly y siguen ejecutándose aquí.",
+      "stopConfirm": {
+        "title": "¿Detener el proceso auxiliar en segundo plano?",
+        "description_one": "{{count}} tarea vuelve a Oleafly y sigue ejecutándose aquí.",
+        "description_many": "{{count}} tareas vuelven a Oleafly y siguen ejecutándose aquí.",
+        "description_other": "{{count}} tareas vuelven a Oleafly y siguen ejecutándose aquí."
+      },
       "stopFailed": "El proceso auxiliar no se detuvo. Inténtalo de nuevo.",
       "openLog": "Mostrar el registro",
       "statusFailed": "No se pudo leer el estado del proceso auxiliar en segundo plano.",
       "toggleFailed": "No se pudo cambiar este ajuste. Inténtalo de nuevo."
+    },
+    "mcpServers": {
+      "loadFailed": "No se pudo leer la lista de servidores MCP.",
+      "missing": "{{name}} (no encontrado)"
     }
   }
 }

@@ -557,6 +557,9 @@
     "title": "라이브러리로 돌아가기",
     "tooltip": "프로젝트 라이브러리로 돌아갑니다"
   },
+  "importDestination": {
+    "scansGoTo": "스캔본은 {{provider}}(으)로 전송됩니다"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -670,8 +673,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} 저장하지 않은 변경 사항은 그대로 열려 있습니다. 남아서 문제를 해결하거나, 그대로 종료해 변경 사항을 버릴 수 있습니다.",
+      "descriptionReload": "{{reason}} 저장하지 않은 변경 사항은 그대로 열려 있습니다. 남아서 문제를 해결하거나, 그대로 다시 불러와 변경 사항을 버릴 수 있습니다.",
       "descriptionRestart": "{{reason}} 저장하지 않은 변경 사항은 그대로 열려 있습니다. 남아서 문제를 해결하거나, 그대로 다시 시작해 변경 사항을 버릴 수 있습니다.",
       "quitAnyway": "그대로 종료",
+      "reloadAnyway": "그대로 다시 불러오기",
       "restartAnyway": "그대로 다시 시작",
       "stay": "남기",
       "title": "일부 파일을 저장하지 못했습니다"

@@ -7,7 +7,7 @@ pub mod mcp;
 pub mod report;
 pub mod sarif;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -21,7 +21,7 @@ use oleafly_preflight::{
 };
 use serde_json::{json, Map, Value};
 
-use report::{deliver, Delivery, Level, ReportRow, RowRange, RuleMeta};
+use report::{deliver, fingerprint_line, Delivery, Level, ReportRow, RowRange, RuleMeta};
 pub use report::{FailOn, FormatArg, ReportArgs};
 
 use crate::commands::CommandModule;
@@ -218,11 +218,13 @@ fn warning_of(warning: &CheckWarning) -> Warning {
     }
 }
 
-/// A finding as a report row; `text_of` gives a file's LF-normalised text.
+/// A finding as a report row; `text_of` gives a file's LF-normalised text,
+/// and `lines` what rows keep of each file's lines so far.
 fn row_of(
     finding: &Finding,
     main_document: &str,
     text_of: &mut dyn FnMut(&str) -> Option<Rc<SourceText>>,
+    lines: &mut HashMap<String, HashMap<usize, String>>,
 ) -> ReportRow {
     let catalog = Catalog::preflight();
     let title = catalog.render(&finding.title);
@@ -243,7 +245,11 @@ fn row_of(
                 start: text.position(from),
                 end: text.position(to),
             });
-            line_text = Some(text.line_text(from));
+            line_text = Some(fingerprint_line(
+                &text,
+                from,
+                lines.entry(path.clone()).or_default(),
+            ));
         }
     }
     let json = json!({
@@ -344,6 +350,26 @@ fn stale_output_warning(found: &artifacts::BuildArtifacts) -> Warning {
 
 /// Runs a check (blocking: reads the project, the log and the PDF).
 pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
+    execute_until(input, &std::sync::atomic::AtomicBool::new(false))
+}
+
+/// [`execute`], stopping between its stages once `cancel` is set (an MCP
+/// client cancelled the call, whose blocking work can't be aborted).
+pub fn execute_until(
+    input: CheckInput,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Result<CheckRun, CliError> {
+    let stopped = || {
+        if cancel.load(std::sync::atomic::Ordering::Acquire) {
+            Err(CliError::new(
+                ErrorKind::Interrupted,
+                "interrupted",
+                "Stopped.",
+            ))
+        } else {
+            Ok(())
+        }
+    };
     let profile = source_profile(input.engine);
     let engine = preflight_engine(input.engine, input.tex_flavor.as_deref());
     // Sources in dependency, generated and hidden folders are not the
@@ -361,6 +387,7 @@ pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
         &oleafly_core::exclude::is_linked_skipped_directory,
     )
     .map_err(CliError::from)?;
+    stopped()?;
     let mut warnings = Vec::new();
     let (log, pdf) = if input.no_build_output {
         (None, None)
@@ -373,6 +400,17 @@ pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
         if found.stale && input.build_log.is_none() && input.pdf.is_none() {
             warnings.push(stale_output_warning(&found));
         }
+        if let Some(other) = &found.other_document {
+            if input.build_log.is_none() && input.pdf.is_none() {
+                warnings.push(Warning::new(
+                    "check.other_document_build",
+                    format!(
+                        "The last build was of {other}, so its log and PDF weren't checked. Build {} first.",
+                        input.main_document
+                    ),
+                ));
+            }
+        }
         // A log that comes with the build's own record has its verdict; one
         // named with `--build-log` is judged by what it says.
         let log = match &input.build_log {
@@ -384,14 +422,26 @@ pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
     let compile = match log {
         Some((path, known)) => {
             let text = artifacts::read_log_head(&path).map_err(CliError::from)?;
-            let status = known.unwrap_or_else(|| oleafly_preflight::infer_compile_status(&text));
+            // TeX writes its fatal lines near the end, so a long log is
+            // judged by its end too.
+            let status = match known {
+                Some(status) => status,
+                None => match artifacts::read_log_tail(&path).map_err(CliError::from)? {
+                    Some(tail) => {
+                        oleafly_preflight::infer_compile_status(&format!("{text}\n{tail}"))
+                    }
+                    None => oleafly_preflight::infer_compile_status(&text),
+                },
+            };
             Some((path, CompileContext { status, log: text }))
         }
         None => None,
     };
+    stopped()?;
     let pdf_facts = pdf
         .as_deref()
         .and_then(|path| read_pdf(path, &mut warnings));
+    stopped()?;
     let outcome = check_project(&CheckRequest {
         snapshot: &snapshot,
         source_profile: profile,
@@ -403,6 +453,7 @@ pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
         pdf_facts,
     });
     warnings.extend(outcome.warnings.iter().map(warning_of));
+    stopped()?;
     let main_source = snapshot
         .texts
         .get(&snapshot.main_document)
@@ -431,9 +482,10 @@ pub fn execute(input: CheckInput) -> Result<CheckRun, CliError> {
         .iter()
         .filter(|finding| visible(finding, &checks))
         .collect();
+    let mut lines = HashMap::new();
     let rows: Vec<ReportRow> = shown
         .iter()
-        .map(|finding| row_of(finding, &snapshot.main_document, &mut text_of))
+        .map(|finding| row_of(finding, &snapshot.main_document, &mut text_of, &mut lines))
         .collect();
     let mut rules: Vec<RuleMeta> = Vec::new();
     for finding in &shown {
@@ -742,5 +794,44 @@ mod tests {
         assert!(!serde_json::to_string(&run.payload)
             .unwrap()
             .contains("sk-proj-"));
+    }
+
+    #[test]
+    fn a_finding_on_a_very_long_line_keeps_a_digest_of_it() {
+        let project = tempfile::tempdir().unwrap();
+        let short = "See \\ref{gone}.";
+        let long = format!("See \\ref{{nowhere}}{}.", " x".repeat(50_000));
+        std::fs::write(
+            project.path().join("main.tex"),
+            format!("\\documentclass{{article}}\n\\begin{{document}}\n{short}\n{long}\n\\end{{document}}\n"),
+        )
+        .unwrap();
+        let run = execute(CheckInput {
+            root: project.path().to_path_buf(),
+            main_document: "main.tex".into(),
+            engine: Engine::Tectonic,
+            tex_flavor: None,
+            typst_version: None,
+            build_dir: project.path().join(".oleafly/build"),
+            profile: None,
+            anonymous: false,
+            checks: vec![CheckArg::Refs],
+            build_log: None,
+            pdf: None,
+            no_build_output: true,
+        })
+        .unwrap();
+        let on_line = |line: u32| {
+            run.rows
+                .iter()
+                .filter(|row| row.range.is_some_and(|range| range.start.line == line))
+                .filter_map(|row| row.line_text.as_deref())
+                .collect::<Vec<_>>()
+        };
+        // A short line is kept as it is, so its SARIF fingerprint is unchanged.
+        assert!(!on_line(3).is_empty(), "{:?}", run.payload["findings"]);
+        assert!(on_line(3).iter().all(|text| *text == short));
+        assert!(!on_line(4).is_empty(), "{:?}", run.payload["findings"]);
+        assert!(on_line(4).iter().all(|text| text.len() < 64));
     }
 }

@@ -566,6 +566,9 @@
     "title": "Zpět do knihovny",
     "tooltip": "Zpět do knihovny projektů"
   },
+  "importDestination": {
+    "scansGoTo": "Skeny se odesílají do {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -679,8 +682,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Vaše neuložené změny zůstávají otevřené. Zůstaňte a problém vyřešte, nebo aplikaci přesto ukončete a o změny přijďte.",
+      "descriptionReload": "{{reason}} Vaše neuložené změny zůstávají otevřené. Zůstaňte a problém vyřešte, nebo aplikaci přesto znovu načtěte a o změny přijďte.",
       "descriptionRestart": "{{reason}} Vaše neuložené změny zůstávají otevřené. Zůstaňte a problém vyřešte, nebo aplikaci přesto restartujte a o změny přijďte.",
       "quitAnyway": "Přesto ukončit",
+      "reloadAnyway": "Přesto znovu načíst",
       "restartAnyway": "Přesto restartovat",
       "stay": "Zůstat",
       "title": "Některé soubory se nepodařilo uložit"

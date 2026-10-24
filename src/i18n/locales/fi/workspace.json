@@ -196,6 +196,8 @@
     "closeRight": "Sulje kaikki oikealta",
     "closeTab": "Sulje {{title}}",
     "color": "Väri",
+    "dropRefused_one": "Tämän tiedoston nimessä on ohjausmerkki, joten pääte ei kirjoita sitä.",
+    "dropRefused_other": "{{count}} tiedostonimessä on ohjausmerkkejä, joten pääte ei kirjoita niitä.",
     "errors": {
       "input": "Syötettä ei voitu välittää shell-prosessille",
       "resize": "Päätteen kokoa ei voitu muuttaa",
@@ -234,6 +236,7 @@
       "many_other": "Ohjelmia on yhä käynnissä {{count}} päätteessä.",
       "named": "{{process}} on yhä käynnissä päätteessä {{title}}.",
       "quit": "Lopeta",
+      "reload": "Lataa uudelleen",
       "restart": "Käynnistä uudelleen",
       "switchProject": "Vaihda projektia",
       "titleMany": "Pysäytetäänkö käynnissä olevat ohjelmat?",

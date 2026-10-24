@@ -500,6 +500,7 @@ export function ComputeTargetDialog({
                 id={id("prelude")}
                 label={t(($) => $.researchTools.compute.form.prelude)}
                 hint={t(($) => $.researchTools.compute.form.preludeHint)}
+                error={message("prelude")}
               >
                 <Textarea
                   id={id("prelude")}
@@ -509,6 +510,7 @@ export function ComputeTargetDialog({
                   spellCheck={false}
                   className="font-mono text-xs"
                   onChange={(event) => set("prelude", event.target.value)}
+                  {...invalid("prelude")}
                 />
               </Field>
             </>

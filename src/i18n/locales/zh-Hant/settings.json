@@ -50,14 +50,14 @@
       "platformLabel": "平台",
       "refreshingStatus": "正在重新整理代理程式狀態。目前的清單維持不變。",
       "registry": {
-        "description": "在 ACP 註冊庫中搜尋其他團隊發布的代理程式。",
+        "description": "在 ACP 註冊庫中搜尋其他團隊發布的 CLI 代理程式。",
         "hideDistribution": "隱藏發行資訊",
         "register": "註冊代理程式",
         "registered": "已註冊",
         "reviewHint": "註冊庫項目由發布者自行描述其軟體。註冊或安裝前，請先審視發行內容。",
         "search": "搜尋",
-        "searchLabel": "尋找 ACP 代理程式",
-        "searchPlaceholder": "搜尋 ACP 註冊庫",
+        "searchLabel": "尋找 CLI 代理程式",
+        "searchPlaceholder": "搜尋 CLI 代理程式",
         "searching": "搜尋中",
         "showDistribution": "顯示發行資訊",
         "title": "尋找更多代理程式"
@@ -133,7 +133,7 @@
       "inactivity": {
         "label": "代理程式無回應多久後停止",
         "description": "代理程式在這段時間內沒有傳送任何內容時，Oleafly 會停止它。你可以重新連線。",
-        "minutes": "{{count}} 分鐘"
+        "minutes_other": "{{count}} 分鐘"
       },
       "protocolLabel": "協定",
       "remembered": {
@@ -1029,7 +1029,8 @@
         "path": {
           "ariaLabel": "自訂 shell 路徑",
           "description": "新的終端機執行的程式。",
-          "label": "Shell 路徑"
+          "label": "Shell 路徑",
+          "missing": "請輸入 shell 的完整路徑。在此之前無法開啟新的終端機。"
         },
         "windowsOnly": "{{name}}（僅限 Windows）",
         "windowsOnlyNote": "{{name}} 只能在 Windows 上執行。這裡的新終端機會改為啟動 {{fallback}}。",
@@ -1608,7 +1609,7 @@
     "desktopApps": {
       "tab": "桌面應用程式",
       "title": "桌面應用程式",
-      "description": "讓代理程式透過 Cua Driver 使用這台電腦上的應用程式和網站。每次點按或按鍵前，Oleafly 都會詢問。",
+      "description": "讓代理程式透過 Cua Driver 使用這台電腦上的應用程式和網站。Oleafly 在每次動作前都會詢問，除非你已在聊天、工作階段或任務中允許該類動作。你已登入的瀏覽器和指令碼一律會詢問。",
       "docsLink": "Cua Driver 說明文件",
       "status": {
         "installed": "已安裝 Cua Driver {{version}}。",
@@ -1621,7 +1622,7 @@
       },
       "install": {
         "heading": "安裝 Cua Driver",
-        "hint": "在終端機中執行這個指令。Oleafly 絕不會替你安裝 Cua Driver。",
+        "hint": "在終端機中執行這個指令，或使用「在終端機中執行」。這個指令會啟動 Cua 的官方安裝程式，Oleafly 本身不會下載 Cua Driver。",
         "run": "在終端機中執行",
         "needsProject": "開啟一個專案即可在 Oleafly 的終端機中執行，或者複製這個指令。",
         "confirm": "這會從 cua.ai 下載 Cua Driver 安裝程式並在你的終端機中執行。要繼續嗎？",
@@ -1643,7 +1644,7 @@
       },
       "enable": {
         "label": "允許代理程式使用桌面應用程式",
-        "description": "代理程式可以看到下方的應用程式和網站。點按、輸入和頁面變更都會先詢問你。"
+        "description": "代理程式可以看到下方的應用程式和網站。點按、輸入和頁面變更都會先詢問你，除非你已在聊天、工作階段或任務中允許。新增應用程式或網站會清除這些選擇。"
       },
       "apps": {
         "heading": "允許的應用程式",
@@ -1666,7 +1667,7 @@
         "blocked": {
           "oleafly": "Oleafly 無法控制自己。",
           "driver": "Cua Driver 無法控制自己。",
-          "terminal": "終端機會略過 Oleafly 的指令核准來執行指令。",
+          "terminal": "終端機和程式碼編輯器會略過 Oleafly 的指令核准來執行指令。",
           "system_settings": "系統設定可以變更權限。",
           "passwords": "不允許使用密碼類應用程式。",
           "scripting": "指令碼執行器可以在這台電腦上執行任何操作。",
@@ -1700,7 +1701,7 @@
       },
       "tool": {
         "description": "使用你在設定中允許的桌面應用程式和網站。",
-        "note": "檢視會立即進行。點按、輸入和頁面變更會先詢問。"
+        "note": "檢視會立即進行。點按、輸入和頁面變更會先詢問，除非你已在聊天中允許。"
       },
       "task": {
         "label": "桌面應用程式",
@@ -1710,7 +1711,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "將 Cua Spaces 中隔離的桌面和容器以 MCP 伺服器連結。實驗性功能。",
+        "description": "將 Cua Spaces 中隔離的桌面和容器以 MCP 伺服器連結。",
         "notInstalled": "尚未安裝 cua 指令。",
         "connect": {
           "label": "連結 Cua Spaces",
@@ -1809,7 +1810,7 @@
         },
         "legend": "核准政策",
         "trust": {
-          "description": "檔案變更不會出現提示。shell 指令與電腦控制一律需要核准。你的 MCP 用戶端仍是另一道關卡。",
+          "description": "檔案變更會直接套用，不會詢問。shell 指令和新增研究任務一律會先詢問。你的 MCP 用戶端仍可自行詢問。",
           "label": "信任這個連線"
         }
       },
@@ -2285,11 +2286,19 @@
         "tasks_other": "正在處理 {{count}} 項任務"
       },
       "stop": "停止輔助程式",
-      "stopHint": "在你再次開啟 Oleafly 之前，它的任務會暫停。",
+      "stopHint": "它的任務會回到 Oleafly，並在這裡繼續執行。",
+      "stopConfirm": {
+        "title": "要停止背景輔助程式嗎？",
+        "description_other": "它的 {{count}} 項任務會回到 Oleafly，並在這裡繼續執行。"
+      },
       "stopFailed": "輔助程式沒有停止。請再試一次。",
       "openLog": "顯示記錄",
       "statusFailed": "無法讀取背景輔助程式的狀態。",
       "toggleFailed": "無法變更這項設定。請再試一次。"
+    },
+    "mcpServers": {
+      "loadFailed": "無法讀取 MCP 伺服器清單。",
+      "missing": "{{name}}（找不到）"
     }
   }
 }

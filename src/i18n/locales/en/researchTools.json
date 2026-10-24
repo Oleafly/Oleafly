@@ -204,7 +204,8 @@
       "createTask": "Create task",
       "replaceText": "Replace the title and instructions you typed with this starter?",
       "keepText": "Keep mine",
-      "replaceConfirm": "Replace"
+      "replaceConfirm": "Replace",
+      "cannotSave": "Fix the options marked above, then try again."
     },
     "starter": {
       "literatureReview": {
@@ -306,16 +307,36 @@
         "budgetCost": "Stopped at the cost limit.",
         "budgetRuns": "Stopped at the run limit."
       },
-      "startsAt": "Starts {{time}}"
+      "startsAt": "Starts {{time}}",
+      "olderActivity": "Earlier activity from this run isn't shown.",
+      "tooLargeToDiff": "This file is too large to compare here, so only its sizes are shown."
+    },
+    "confirm": {
+      "stopTitle": "Stop this task?",
+      "stopDescription": "\"{{title}}\" stops after its current step. Resume continues it later from its workspace.",
+      "cancelTitle": "Cancel this task?",
+      "cancelDescription": "\"{{title}}\" won't run. You can retry it later.",
+      "cancelTask": "Cancel task",
+      "discardTitle": "Discard these changes?",
+      "discardDescription": "None of the changes from \"{{title}}\" reach your project, and the task is marked cancelled. Resume runs the agent again.",
+      "keepTask": "Keep task",
+      "keepChanges": "Keep changes",
+      "dependents_one": "This task waits for it and fails too:",
+      "dependents_other": "These {{count}} tasks wait for it and fail too:",
+      "runs_one": "This run stops too:",
+      "runs_other": "These {{count}} runs stop too:"
     },
     "plan": {
       "title": "Plan",
       "description": "Read the plan and edit it if you want. Approve it to let the task continue.",
       "approve": "Approve plan",
       "approveEdited": "Approve edited plan",
-      "discard": "Discard task",
+      "discard": "Cancel task",
       "loading": "Loading the plan…",
-      "missing": "The plan file is missing. Retry the task."
+      "missing": "The plan file is missing. Retry the task.",
+      "loadFailed": "Oleafly couldn't load the plan.",
+      "truncated": "This plan is longer than 64 KiB, so only its start is shown. Edit it down to the steps you want, then approve it.",
+      "tooLong": "A plan can be up to 64 KiB. Shorten it before you approve it."
     },
     "approvals": {
       "title": "Waiting for your approval",
@@ -364,6 +385,9 @@
       "runsUsed": "{{used}} of {{limit}} runs",
       "runsUsedNoLimit": "{{used}} runs",
       "stopRun": "Stop run",
+      "stopRunTitle": "Stop this run?",
+      "stopRunDescription": "\"{{name}}\" ({{run}}) stops now. A job it runs on another machine or a cluster is cancelled there too.",
+      "keepRun": "Keep running",
       "viewLog": "View log",
       "columns": {
         "run": "Run",
@@ -867,6 +891,7 @@
     "progressCancelled": "Cancelled",
     "progressReadingPages": "Reading pages",
     "progressTranscribingPage": "Transcribing page {{page}} of {{total}} with {{model}}",
+    "progressTranscribingPdfPage": "Transcribing page {{pdfPage}} ({{page}} of {{total}}) with {{model}}",
     "progressDocumentStructure": "Converting document structure",
     "progressMermaid": "Rendering the Mermaid diagram",
     "progressFirstSheet": "Reading the first sheet",
@@ -910,7 +935,9 @@
     "progressConvertingSource": "Converting the source to Typst",
     "pageRange": "Pages",
     "pageRangePlaceholder": "All pages, or a range such as 1-50",
-    "pageRangeInvalid": "Enter one page number, or a range such as 1-50."
+    "pageRangeInvalid": "Enter one page number, or a range such as 1-50.",
+    "pageCount_one": "This PDF has {{count}} page.",
+    "pageCount_other": "This PDF has {{count}} pages."
   },
   "converters": {
     "imageToLatex": {
@@ -1119,10 +1146,14 @@
     "arxivInputRequired": "Enter an arXiv ID or choose a source archive.",
     "equationToTypst": "Pandoc couldn't convert this equation to Typst. Check the LaTeX math and try again.",
     "pdfTooManyPages": "This scan has {{pages}} pages, and Oleafly transcribes up to {{limit}} at a time. Enter a page range such as 1-{{limit}} under the file.",
-    "outputLimit": "The model ran out of room before it finished, so the transcription would be incomplete. Pick a model with a larger output limit in Settings, AI Assistant, Tools, or transcribe a smaller part."
+    "outputLimit": "The model ran out of room before it finished, so the transcription would be incomplete. Pick a model with a larger output limit in Settings, AI Assistant, Tools, or transcribe a smaller part.",
+    "refused": "The model declined to transcribe this, so nothing was added. Pick another model in Settings, AI Assistant, Tools.",
+    "pageRangePastEnd_one": "This PDF has {{count}} page. Enter 1, or leave Pages empty.",
+    "pageRangePastEnd_other": "This PDF has {{count}} pages. Enter a range from 1 to {{count}}."
   },
   "converterNotes": {
-    "scannedPages": "Transcribed {{pages}} scanned pages with {{model}}. Review equations and tables before using the result.",
+    "scannedPages_one": "Transcribed {{count}} scanned page with {{model}}. Review equations and tables before using the result.",
+    "scannedPages_other": "Transcribed {{count}} scanned pages with {{model}}. Review equations and tables before using the result.",
     "extracted": "Extracted {{pages}} pages and {{figures}} figures locally.",
     "mermaidTikz": "Converted this flowchart into editable TikZ.",
     "mermaidRendered": "Rendered this diagram locally because its Mermaid syntax does not map cleanly to editable TikZ.",
@@ -1149,6 +1180,9 @@
     "scansSentToHost": "Scanned pages are sent to Ollama at {{host}}",
     "pdfSentToMathpix": "The whole PDF is sent to Mathpix",
     "transcribingHosted": "Sending the image to {{provider}}…",
+    "transcribingFallback": "Sending the image to {{provider}} (assistant model)…",
+    "sentFallback": "Sent to {{provider}} (assistant model)",
+    "editorFallback": "The editor's Image to LaTeX sends images to {{provider}} until Ollama has a vision model",
     "progressUploading": "Sending the PDF to Mathpix",
     "progressFormatting": "Converting the transcription with Pandoc",
     "scannedTitle": "This PDF looks scanned",
@@ -1158,15 +1192,23 @@
     "estimateCost_other": "{{count}} pages. About {{cost}} with {{model}}.",
     "estimateUnknown_one": "{{count}} page. {{provider}} bills this by usage.",
     "estimateUnknown_other": "{{count}} pages. {{provider}} bills these by usage.",
+    "estimatePlan_one": "{{count}} page. {{provider}} includes it in your plan.",
+    "estimatePlan_other": "{{count}} pages. {{provider}} includes these in your plan.",
+    "estimateLocal_one": "{{count}} page. The model runs on this computer, at no cost.",
+    "estimateLocal_other": "{{count}} pages. The model runs on this computer, at no cost.",
+    "estimateFree_one": "{{count}} page. Free with {{model}}.",
+    "estimateFree_other": "{{count}} pages. Free with {{model}}.",
     "transcribePages_one": "Transcribe {{count}} page",
     "transcribePages_other": "Transcribe {{count}} pages",
     "transcribedWith": "Transcribed with {{model}}. Review equations and tables.",
     "sentBadge": "Sent to {{provider}}",
     "openToolsSettings": "Tools settings",
+    "openProviderSettings": "Provider settings",
     "errors": {
       "offline": "Oleafly is in offline mode. Pick a local model, or turn offline mode off.",
       "providerNotConfigured": "{{provider}} has no API key. Add one in Settings, or pick another model.",
       "modelDisabled": "{{model}} is turned off in Settings. Turn it on, or pick another model.",
+      "modelUnavailable": "{{model}} isn't available from {{provider}} any more. Pick another model.",
       "cannotSeeImages": "{{model}} can't read images. Pick a vision model.",
       "localModelGone": "{{model}} isn't in Ollama any more. Pull it again, or pick another model.",
       "imagesOnly": "{{model}} reads images only. Pick a language model to convert typed equations.",
@@ -1764,6 +1806,8 @@
     "keepRunningHint": "Turn on Background tasks in Settings, Research first.",
     "invalidMetric": "Use letters, numbers, dots, dashes or underscores.",
     "invalidCost": "Enter an amount above zero.",
+    "invalidCostMax": "Enter an amount up to {{max}}.",
+    "invalidCostNumber": "Enter the amount as a number, such as {{example}}.",
     "invalidRuns": "Enter a whole number from 1 to 1,000.",
     "invalidStart": "Pick a start time within the next 30 days.",
     "invalidStartFormat": "Use the format {{example}}.",
@@ -1786,6 +1830,9 @@
     "hint": "These checks only warn. They don't block applying.",
     "running": "Checking…",
     "refresh": "Check again",
+    "empty": "No checks have run on this result yet.",
+    "more_one": "{{count}} more isn't listed.",
+    "more_other": "{{count}} more aren't listed.",
     "status": {
       "pass": "Passed",
       "warn": "Check this",
@@ -1893,7 +1940,8 @@
         "time": "Use a Slurm time such as 2:00:00.",
         "name": "Use letters, digits, dots, commas, dashes or underscores.",
         "mem": "Use a whole number of gigabytes, such as 16.",
-        "count": "Use a whole number in the allowed range."
+        "count": "Use a whole number in the allowed range.",
+        "prelude": "Keep the setup commands to 4 KB or less. Accented letters and non-Latin scripts take more space."
       }
     },
     "test": {
@@ -1970,7 +2018,7 @@
       "movingBackHint": "This task returns to Oleafly when its current step ends."
     },
     "earlierActivity": "Show earlier activity",
-    "earlierTruncated": "Only the first {{limit}} items of this earlier run are shown.",
+    "earlierTruncated": "Only the last {{limit}} items of this earlier run are shown.",
     "keepRunningFailed": "Could not change this setting. Try again."
   }
 }

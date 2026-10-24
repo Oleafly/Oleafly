@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 
 const AUTO = "auto";
@@ -36,15 +37,17 @@ export function EffortSelector({
       <DropdownMenu>
         <Tooltip label={t(($) => $.ai.effort.tooltip)}>
           <DropdownMenuTrigger asChild disabled={disabled}>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               aria-label={t(($) => $.ai.effort.ariaLabel, { level: shown })}
               data-testid="ai-effort-selector"
-              className="ai-composer-effort-trigger flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:bg-accent"
+              className="ai-composer-effort-trigger h-7 shrink-0 gap-1 px-2 text-muted-foreground hover:text-foreground data-[state=open]:bg-accent"
             >
-              <Gauge className="size-4 shrink-0" />
+              <Gauge />
               <span className="ai-composer-effort-value">{shown}</span>
-            </button>
+            </Button>
           </DropdownMenuTrigger>
         </Tooltip>
         <DropdownMenuContent align="end" className="w-56">

@@ -99,11 +99,15 @@
       "title": "Skrivebordsapper",
       "action": "{{agent}} vil {{action}}.",
       "steps": "{{agent}} vil kjøre disse trinnene i en skrivebordsapp:",
-      "moreSteps": "Trinn som ikke vises: {{count}}",
-      "moreItems": "{{count}} elementer til vises ikke",
-      "cut": "(+{{count}} tegn vises ikke)",
+      "moreSteps": "Trinn som ikke vises og ikke kjøres: {{count}}",
+      "moreItems": "Elementer som ikke vises: {{count}}",
+      "cut": "(tegn som ikke vises: {{count}})",
       "signedIn": "Dette skjer i din egen innloggede nettleser.",
       "signedInOn": "Dette skjer i din egen innloggede nettleser, på {{origin}}.",
+      "task": "Oppgave: {{title}}",
+      "app": "App: {{name}}",
+      "window": "Vindu: {{title}}",
+      "element": "Element: {{element}}",
       "text": "Tekst: «{{text}}»",
       "address": "Adresse: {{url}}",
       "allowOnce": "Tillat én gang",
@@ -111,6 +115,7 @@
       "allowSession": "Tillat for denne økten",
       "allowTask": "Tillat for denne oppgaven",
       "deny": "Ikke tillat",
+      "pickedFile": "filen du valgte",
       "actions": {
         "launchApp": "åpne en app",
         "click": "klikke i en app",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Vil du tillate styring av skrivebordet?",
-      "message": "Agenter vil kunne bruke følgende, og de spør fortsatt før hver handling:",
+      "message": "Agenter vil kunne bruke følgende. De spør før hver handling, og når du lagrer, fjernes alle valg av «Tillat for denne samtalen»:",
       "confirm": "Tillat",
       "enabled": "Skrivebordsapper",
-      "app": "App: {{name}} ({{identity}})",
+      "app": "App: {{identity}} ({{name}})",
       "more": "Og {{count}} til",
       "site": "Nettsted: {{origin}}",
       "signedIn": "Den innloggede nettleseren din på {{origin}}",
-      "scripted": "Cua-skript"
+      "scripted": "Cua-skript",
+      "spacesTitle": "Vil du gi Cua Spaces mer tilgang?",
+      "spacesMessage": "Agenter som bruker Cua Spaces vil kunne:",
+      "spacesChanges": "Opprette og slette Spaces og kjøre kommandoer i dem",
+      "spacesSignIns": "Bruke innloggingen din for Claude Code eller Codex i en Space"
     }
   },
   "errors": {

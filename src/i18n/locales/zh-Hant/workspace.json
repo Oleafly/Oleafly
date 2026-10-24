@@ -192,6 +192,7 @@
     "closeRight": "關閉右側全部",
     "closeTab": "關閉 {{title}}",
     "color": "顏色",
+    "dropRefused_other": "{{count}} 個檔名包含控制字元，因此不會在終端機中輸入。",
     "errors": {
       "input": "shell 無法接受輸入",
       "resize": "終端機無法調整大小",
@@ -229,6 +230,7 @@
       "many_other": "仍有程式在 {{count}} 個終端機中執行。",
       "named": "{{process}} 仍在 {{title}} 中執行。",
       "quit": "結束",
+      "reload": "重新載入",
       "restart": "重新啟動",
       "switchProject": "切換專案",
       "titleMany": "要停止正在執行的程式嗎？",

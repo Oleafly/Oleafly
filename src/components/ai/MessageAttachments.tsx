@@ -3,6 +3,7 @@ import { FileCode2, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { StoredAttachmentRef } from "@/components/ai/composer/types";
 import { useAttachmentUrl } from "@/components/ai/composer/use-attachment-url";
+import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { attachmentRead } from "@/lib/attachments";
 import { bytesToBase64 } from "@/lib/base64";
@@ -32,16 +33,18 @@ function ImageChip({ meta, scope }: Readonly<{ meta: AttachmentMeta; scope: stri
   const { url, failed } = useAttachmentUrl(scope, ref);
   const [open, setOpen] = useState(false);
   const chip = (
-    <button
+    <Button
       type="button"
+      variant="outline"
       data-testid="message-attachment"
       data-state={failed ? "missing" : "ready"}
       disabled={!url}
       onClick={() => setOpen(true)}
       aria-label={t(($) => $.ai.attachments.open, { name: meta.name })}
       className={cn(
-        "flex items-center gap-1.5 rounded-md border bg-background/60 p-0.5 pr-2 text-xs transition-colors hover:bg-accent focus-visible:bg-accent disabled:cursor-default",
-        failed && "opacity-60",
+        // A missing file keeps its tooltip, so the disabled chip still takes the pointer.
+        "h-auto gap-1.5 bg-background/60 p-0.5 pr-2 text-xs font-normal disabled:pointer-events-auto disabled:cursor-default disabled:opacity-100",
+        failed && "opacity-60 disabled:opacity-60",
       )}
     >
       {url ? (
@@ -50,7 +53,7 @@ function ImageChip({ meta, scope }: Readonly<{ meta: AttachmentMeta; scope: stri
         <span className="size-10 rounded bg-muted" />
       )}
       <span className="max-w-[140px] truncate">{meta.name}</span>
-    </button>
+    </Button>
   );
   return (
     <>
@@ -90,14 +93,15 @@ function FileChip({ meta, scope }: Readonly<{ meta: AttachmentMeta; scope: strin
     }
   };
   const chip = (
-    <button
+    <Button
       type="button"
+      variant="outline"
       data-testid="message-attachment"
       data-state={missing ? "missing" : "ready"}
       onClick={() => void save()}
       aria-label={t(($) => $.ai.attachments.saveCopy, { name: meta.name })}
       className={cn(
-        "flex items-center gap-1.5 rounded-md border bg-background/60 px-2 py-1 text-xs transition-colors hover:bg-accent focus-visible:bg-accent",
+        "h-auto gap-1.5 bg-background/60 px-2 py-1 text-xs font-normal",
         missing && "opacity-60",
       )}
     >
@@ -106,7 +110,7 @@ function FileChip({ meta, scope }: Readonly<{ meta: AttachmentMeta; scope: strin
         <span className="block max-w-[160px] truncate">{meta.name}</span>
         {detail && <span className="block text-[0.625rem] text-muted-foreground">{detail}</span>}
       </span>
-    </button>
+    </Button>
   );
   return missing ? (
     <Tooltip label={t(($) => $.ai.attachments.missing, { name: meta.name })}>{chip}</Tooltip>

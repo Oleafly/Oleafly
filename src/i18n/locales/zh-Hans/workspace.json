@@ -192,6 +192,7 @@
     "closeRight": "关闭右侧所有标签页",
     "closeTab": "关闭 {{title}}",
     "color": "颜色",
+    "dropRefused_other": "{{count}} 个文件名包含控制字符，因此不会在终端中输入。",
     "errors": {
       "input": "shell 无法接受输入。",
       "resize": "终端无法调整大小。",
@@ -229,6 +230,7 @@
       "many_other": "仍有程序在 {{count}} 个终端中运行。",
       "named": "{{process}} 仍在 {{title}} 中运行。",
       "quit": "退出",
+      "reload": "重新加载",
       "restart": "重新启动",
       "switchProject": "切换项目",
       "titleMany": "停止正在运行的程序？",

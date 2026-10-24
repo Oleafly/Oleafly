@@ -55,13 +55,32 @@ const BUNDLE_IDS: &[(&str, BlockReason)] = &[
     ("com.apple.Terminal", Terminal),
     ("com.googlecode.iterm2", Terminal),
     ("dev.warp.Warp-Stable", Terminal),
+    ("dev.warp.Warp-Preview", Terminal),
     ("com.mitchellh.ghostty", Terminal),
     ("net.kovidgoyal.kitty", Terminal),
     ("org.alacritty", Terminal),
     ("com.github.wez.wezterm", Terminal),
+    ("co.zeit.hyper", Terminal),
+    ("org.tabby", Terminal),
+    ("com.raphaelamorim.rio", Terminal),
+    // Code editors with a built-in terminal.
+    ("com.microsoft.VSCode", Terminal),
+    ("com.microsoft.VSCodeInsiders", Terminal),
+    ("com.vscodium", Terminal),
+    ("com.todesktop.230313mzl4w4u92", Terminal),
+    ("com.exafunction.windsurf", Terminal),
+    ("dev.zed.Zed", Terminal),
+    ("dev.zed.Zed-Preview", Terminal),
+    ("com.google.android.studio", Terminal),
     ("com.apple.systempreferences", SystemSettings),
     ("com.apple.keychainaccess", Passwords),
     ("com.apple.Passwords", Passwords),
+    ("com.1password.1password", Passwords),
+    ("com.agilebits.onepassword7", Passwords),
+    ("com.bitwarden.desktop", Passwords),
+    ("org.keepassxc.keepassxc", Passwords),
+    ("com.lastpass.LastPass", Passwords),
+    ("in.sinew.Enpass-Desktop", Passwords),
     ("com.apple.ScriptEditor2", Scripting),
     ("com.apple.Automator", Scripting),
     ("com.apple.shortcuts", Scripting),
@@ -81,10 +100,30 @@ const BUNDLE_IDS: &[(&str, BlockReason)] = &[
     ("com.microsoft.edgemac.Canary", Browser),
     ("com.brave.Browser", Browser),
     ("com.brave.Browser.beta", Browser),
+    ("com.brave.Browser.dev", Browser),
     ("com.brave.Browser.nightly", Browser),
     ("company.thebrowser.Browser", Browser),
+    ("company.thebrowser.dia", Browser),
     ("com.operasoftware.Opera", Browser),
+    ("com.operasoftware.OperaGX", Browser),
+    ("com.operasoftware.OperaNext", Browser),
+    ("com.operasoftware.OperaDeveloper", Browser),
     ("com.vivaldi.Vivaldi", Browser),
+    ("com.vivaldi.Vivaldi.snapshot", Browser),
+    ("com.kagi.kagimacOS", Browser),
+    ("com.kagi.kagimacOS.RC", Browser),
+    ("com.duckduckgo.macos.browser", Browser),
+    ("app.zen-browser.zen", Browser),
+    ("org.torproject.torbrowser", Browser),
+    ("io.gitlab.librewolf-community.librewolf", Browser),
+    ("net.waterfox.waterfox", Browser),
+    ("one.ablaze.floorp", Browser),
+];
+
+/// Bundle id prefixes: every app of that maker is blocked.
+const BUNDLE_ID_PREFIXES: &[(&str, BlockReason)] = &[
+    // JetBrains IDEs have a built-in terminal.
+    ("com.jetbrains.", Terminal),
 ];
 
 /// Lower-case file names (Windows and Linux).
@@ -123,6 +162,66 @@ const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("zsh", Terminal),
     ("fish", Terminal),
     ("dash", Terminal),
+    // Windows names count with or without `.exe`.
+    ("powershell_ise", Terminal),
+    ("mintty", Terminal),
+    ("git-bash", Terminal),
+    ("git-cmd", Terminal),
+    ("hyper", Terminal),
+    ("tabby", Terminal),
+    ("guake", Terminal),
+    ("tilda", Terminal),
+    ("yakuake", Terminal),
+    ("lxterminal", Terminal),
+    ("mate-terminal", Terminal),
+    ("qterminal", Terminal),
+    ("terminology", Terminal),
+    ("st", Terminal),
+    ("urxvt", Terminal),
+    ("rxvt", Terminal),
+    ("uxterm", Terminal),
+    ("sakura", Terminal),
+    ("ghostty", Terminal),
+    ("rio", Terminal),
+    ("warp", Terminal),
+    ("warp-terminal", Terminal),
+    ("x-terminal-emulator", Terminal),
+    ("cool-retro-term", Terminal),
+    ("deepin-terminal", Terminal),
+    // Code editors with a built-in terminal.
+    ("code", Terminal),
+    ("code-insiders", Terminal),
+    ("codium", Terminal),
+    ("cursor", Terminal),
+    ("windsurf", Terminal),
+    ("zed", Terminal),
+    ("zeditor", Terminal),
+    ("idea", Terminal),
+    ("idea64", Terminal),
+    ("idea.sh", Terminal),
+    ("pycharm", Terminal),
+    ("pycharm64", Terminal),
+    ("pycharm.sh", Terminal),
+    ("webstorm", Terminal),
+    ("webstorm64", Terminal),
+    ("clion", Terminal),
+    ("clion64", Terminal),
+    ("goland", Terminal),
+    ("goland64", Terminal),
+    ("rider", Terminal),
+    ("rider64", Terminal),
+    ("rustrover", Terminal),
+    ("rustrover64", Terminal),
+    ("phpstorm", Terminal),
+    ("phpstorm64", Terminal),
+    ("datagrip", Terminal),
+    ("datagrip64", Terminal),
+    ("rubymine", Terminal),
+    ("rubymine64", Terminal),
+    ("dataspell", Terminal),
+    ("dataspell64", Terminal),
+    ("studio", Terminal),
+    ("studio64", Terminal),
     ("systemsettings.exe", SystemSettings),
     ("control.exe", SystemSettings),
     ("mmc.exe", SystemSettings),
@@ -132,6 +231,13 @@ const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("systemsettings", SystemSettings),
     ("seahorse", Passwords),
     ("kwalletmanager5", Passwords),
+    ("kwalletmanager", Passwords),
+    ("1password", Passwords),
+    ("bitwarden", Passwords),
+    ("keepassxc", Passwords),
+    ("keepass", Passwords),
+    ("enpass", Passwords),
+    ("proton-pass", Passwords),
     ("wscript.exe", Scripting),
     ("cscript.exe", Scripting),
     ("mshta.exe", Scripting),
@@ -165,12 +271,31 @@ const FILE_NAMES: &[(&str, BlockReason)] = &[
     ("firefox-bin", Browser),
     ("brave", Browser),
     ("brave-browser", Browser),
+    ("brave-browser-stable", Browser),
+    ("brave-browser-beta", Browser),
+    ("brave-browser-nightly", Browser),
     ("opera", Browser),
+    ("opera-beta", Browser),
+    ("opera-developer", Browser),
     ("vivaldi", Browser),
     ("vivaldi-stable", Browser),
+    ("vivaldi-snapshot", Browser),
     ("iexplore", Browser),
     ("epiphany", Browser),
     ("librewolf", Browser),
+    ("arc", Browser),
+    ("zen", Browser),
+    ("zen-browser", Browser),
+    ("floorp", Browser),
+    ("waterfox", Browser),
+    ("duckduckgo", Browser),
+    ("konqueror", Browser),
+    ("falkon", Browser),
+    ("qutebrowser", Browser),
+    ("midori", Browser),
+    ("palemoon", Browser),
+    ("thorium", Browser),
+    ("thorium-browser", Browser),
 ];
 
 /// The last path component in lower case; both separators count.
@@ -206,6 +331,13 @@ pub(crate) fn blocked_reason(
         if let Some((_, reason)) = BUNDLE_IDS
             .iter()
             .find(|(blocked, _)| blocked.eq_ignore_ascii_case(id))
+        {
+            return Some(*reason);
+        }
+        let lower = id.to_ascii_lowercase();
+        if let Some((_, reason)) = BUNDLE_ID_PREFIXES
+            .iter()
+            .find(|(prefix, _)| lower.starts_with(prefix))
         {
             return Some(*reason);
         }
@@ -912,6 +1044,144 @@ mod tests {
                 None,
                 Some("/opt/firefox-profile-manager/manager"),
                 "/opt/oleafly/oleafly"
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn more_browsers_password_managers_terminals_and_code_editors_are_blocked() {
+        for (id, reason) in [
+            ("com.operasoftware.OperaGX", BlockReason::Browser),
+            ("com.kagi.kagimacOS", BlockReason::Browser),
+            ("com.duckduckgo.macos.browser", BlockReason::Browser),
+            ("app.zen-browser.zen", BlockReason::Browser),
+            ("com.brave.Browser.dev", BlockReason::Browser),
+            ("com.vivaldi.Vivaldi.snapshot", BlockReason::Browser),
+            ("com.1password.1password", BlockReason::Passwords),
+            ("com.bitwarden.desktop", BlockReason::Passwords),
+            ("org.keepassxc.keepassxc", BlockReason::Passwords),
+            ("co.zeit.hyper", BlockReason::Terminal),
+            ("org.tabby", BlockReason::Terminal),
+            ("com.microsoft.VSCode", BlockReason::Terminal),
+            ("com.todesktop.230313mzl4w4u92", BlockReason::Terminal),
+            ("dev.zed.Zed", BlockReason::Terminal),
+            ("com.jetbrains.pycharm.ce", BlockReason::Terminal),
+            ("COM.JETBRAINS.INTELLIJ", BlockReason::Terminal),
+        ] {
+            assert_eq!(
+                blocked_reason(Platform::Macos, Some(id), None, "oleafly"),
+                Some(reason),
+                "{id}"
+            );
+        }
+        let own = r"C:\Program Files\Oleafly\Oleafly.exe";
+        for (path, reason) in [
+            (
+                r"C:\Users\a\AppData\Local\Arc\arc.exe",
+                BlockReason::Browser,
+            ),
+            (
+                r"C:\Program Files\Zen Browser\zen.exe",
+                BlockReason::Browser,
+            ),
+            (
+                r"C:\Program Files\Ablaze Floorp\floorp.exe",
+                BlockReason::Browser,
+            ),
+            (
+                r"C:\Program Files\Waterfox\waterfox.exe",
+                BlockReason::Browser,
+            ),
+            (
+                r"C:\Program Files\1Password\1Password.exe",
+                BlockReason::Passwords,
+            ),
+            (
+                r"C:\Program Files\Bitwarden\Bitwarden.exe",
+                BlockReason::Passwords,
+            ),
+            (
+                r"C:\Program Files\KeePassXC\KeePassXC.exe",
+                BlockReason::Passwords,
+            ),
+            (
+                r"C:\Program Files\KeePass Password Safe 2\KeePass.exe",
+                BlockReason::Passwords,
+            ),
+            (
+                r"C:\Program Files\Git\usr\bin\mintty.exe",
+                BlockReason::Terminal,
+            ),
+            (r"C:\Program Files\Git\git-bash.exe", BlockReason::Terminal),
+            (
+                r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell_ise.exe",
+                BlockReason::Terminal,
+            ),
+            (
+                r"C:\Users\a\AppData\Local\Programs\Microsoft VS Code\Code.exe",
+                BlockReason::Terminal,
+            ),
+            (
+                r"C:\Users\a\AppData\Local\Programs\cursor\Cursor.exe",
+                BlockReason::Terminal,
+            ),
+            (
+                r"C:\Program Files\JetBrains\PyCharm 2025.1\bin\pycharm64.exe",
+                BlockReason::Terminal,
+            ),
+        ] {
+            assert_eq!(
+                blocked_reason(Platform::Windows, None, Some(path), own),
+                Some(reason),
+                "{path}"
+            );
+        }
+        for (path, reason) in [
+            ("/usr/bin/konqueror", BlockReason::Browser),
+            ("/usr/bin/falkon", BlockReason::Browser),
+            ("/usr/bin/qutebrowser", BlockReason::Browser),
+            ("/opt/zen/zen", BlockReason::Browser),
+            ("/usr/bin/floorp", BlockReason::Browser),
+            ("/opt/waterfox/waterfox", BlockReason::Browser),
+            ("/usr/bin/1password", BlockReason::Passwords),
+            ("/usr/bin/keepassxc", BlockReason::Passwords),
+            ("/usr/bin/guake", BlockReason::Terminal),
+            ("/usr/bin/tilda", BlockReason::Terminal),
+            ("/usr/bin/yakuake", BlockReason::Terminal),
+            ("/usr/bin/lxterminal", BlockReason::Terminal),
+            ("/usr/bin/mate-terminal", BlockReason::Terminal),
+            ("/usr/bin/qterminal", BlockReason::Terminal),
+            ("/usr/bin/terminology", BlockReason::Terminal),
+            ("/usr/local/bin/st", BlockReason::Terminal),
+            ("/usr/bin/urxvt", BlockReason::Terminal),
+            ("/usr/bin/ghostty", BlockReason::Terminal),
+            ("/usr/share/code/code", BlockReason::Terminal),
+            ("/usr/bin/zed", BlockReason::Terminal),
+            ("/opt/pycharm/bin/pycharm.sh", BlockReason::Terminal),
+        ] {
+            assert_eq!(
+                blocked_reason(Platform::Linux, None, Some(path), "/opt/oleafly/oleafly"),
+                Some(reason),
+                "{path}"
+            );
+        }
+        // Names that only start like a blocked one stay allowed.
+        assert_eq!(
+            blocked_reason(
+                Platform::Linux,
+                None,
+                Some("/opt/stata/xstata-se"),
+                "/opt/oleafly/oleafly"
+            ),
+            None
+        );
+        assert_eq!(
+            blocked_reason(
+                Platform::Macos,
+                Some("com.jetbrainsish.app"),
+                None,
+                "oleafly"
             ),
             None
         );

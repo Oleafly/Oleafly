@@ -2317,11 +2317,60 @@ async fn execute_compile_spec(
     }
 }
 
-/// How waiting for the build lock ended: the lock (or no lock, where the
-/// folder can't hold one), or the user stopped the compile first.
+/// How waiting for the build lock ended: the lock (none for a build that
+/// doesn't need one), or the user stopped the compile first.
 enum BuildLockWait {
-    Held(Option<oleafly_core::build_output::BuildLock>),
+    Held(Option<BuildGuard>),
     Stopped,
+}
+
+/// What keeps other builds (the CLI's, another window's) out of a build
+/// folder while one runs: the lock file, or, where the file system can't
+/// lock files, the lock folder the CLI uses there too.
+#[derive(Debug)]
+struct BuildGuard {
+    _file: Option<oleafly_core::build_output::BuildLock>,
+    _folder: Option<oleafly_core::build_output::DirLock>,
+}
+
+impl BuildGuard {
+    fn file(lock: oleafly_core::build_output::BuildLock) -> Self {
+        Self {
+            _file: Some(lock),
+            _folder: None,
+        }
+    }
+
+    fn folder(lock: oleafly_core::build_output::DirLock) -> Self {
+        Self {
+            _file: None,
+            _folder: Some(lock),
+        }
+    }
+}
+
+/// A lock folder older than the compile timeout plus this is a stopped
+/// build's.
+const DIR_LOCK_SLACK: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// One try at the lock of `build_dir`: the lock file while `file_locks`, the
+/// lock folder once the file system turned out not to lock files. Returns
+/// the guard, if free, and whether file locks still work.
+fn try_build_lock(
+    build_dir: &Path,
+    file_locks: bool,
+) -> std::io::Result<(Option<BuildGuard>, bool)> {
+    use oleafly_core::build_output::{locks_unsupported, BuildLock, DirLock};
+    std::fs::create_dir_all(build_dir)?;
+    if file_locks {
+        match BuildLock::try_acquire(build_dir) {
+            Ok(lock) => return Ok((lock.map(BuildGuard::file), true)),
+            Err(error) if !locks_unsupported(&error) => return Err(error),
+            Err(_) => {}
+        }
+    }
+    DirLock::try_acquire(build_dir, COMPILE_TIMEOUT + DIR_LOCK_SLACK)
+        .map(|lock| (lock.map(BuildGuard::folder), false))
 }
 
 /// Polls for the lock of `build_dir` until `timeout`. `stopped` is asked each
@@ -2335,18 +2384,23 @@ async fn wait_for_build_lock(
 ) -> Result<BuildLockWait, String> {
     let deadline = std::time::Instant::now() + timeout;
     let mut announced = false;
+    let mut file_locks = true;
     loop {
         let dir = build_dir.to_path_buf();
-        let attempt = tauri::async_runtime::spawn_blocking(move || {
-            std::fs::create_dir_all(&dir)?;
-            oleafly_core::build_output::BuildLock::try_acquire(&dir)
-        })
-        .await
-        .map_err(|error| error.to_string())?;
+        let attempt =
+            tauri::async_runtime::spawn_blocking(move || try_build_lock(&dir, file_locks))
+                .await
+                .map_err(|error| error.to_string())?;
         match attempt {
-            Ok(Some(lock)) => return Ok(BuildLockWait::Held(Some(lock))),
-            Ok(None) => {}
-            Err(_) => return Ok(BuildLockWait::Held(None)),
+            Ok((Some(guard), _)) => return Ok(BuildLockWait::Held(Some(guard))),
+            Ok((None, files)) => file_locks = files,
+            // A linked lock file, no permission, a full disk: building
+            // anyway would let two builds overwrite each other's files.
+            Err(error) => {
+                return Err(format!(
+                    "Oleafly couldn't lock the build folder, so the build didn't run: {error}"
+                ))
+            }
         }
         if stopped() {
             return Ok(BuildLockWait::Stopped);
@@ -2366,9 +2420,10 @@ async fn wait_for_build_lock(
 }
 
 /// One build of a project's main document at a time, shared with the CLI
-/// (`oleafly build`) through the lock file beside the build folder. A folder
-/// the lock file can't be created in builds without it. Stop ends the wait
-/// for another build instead of waiting it out.
+/// (`oleafly build`) through the lock file beside the build folder, or the
+/// lock folder where the file system can't lock files. Any other lock error
+/// stops the build. Stop ends the wait for another build instead of waiting
+/// it out.
 async fn acquire_build_lock(
     request: &CompileRequest<'_>,
     spec: &EngineCompileSpec,
@@ -3617,6 +3672,27 @@ mod tests {
             .await
             .unwrap();
         assert!(matches!(free, BuildLockWait::Held(Some(_))));
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_lock_file_that_cannot_be_used_stops_the_build() {
+        let root = tempfile::tempdir().unwrap();
+        let build = root.path().join("build");
+        std::fs::create_dir_all(&build).unwrap();
+        let elsewhere = root.path().join("elsewhere");
+        std::fs::write(&elsewhere, b"keep").unwrap();
+        std::os::unix::fs::symlink(
+            &elsewhere,
+            oleafly_core::build_output::build_lock_path(&build),
+        )
+        .unwrap();
+        let error = wait_for_build_lock(&build, std::time::Duration::from_secs(5), || false, || {})
+            .await
+            .err()
+            .expect("a build must not run without its lock");
+        assert!(error.contains("couldn't lock the build folder"), "{error}");
+        assert_eq!(std::fs::read(&elsewhere).unwrap(), b"keep");
     }
 
     #[tokio::test]

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use oleafly_agent::tools::web::{
     web_fetch_schema, web_search_schema, SearchKey, WebToolContext, WEB_FETCH_TOOL, WEB_SEARCH_TOOL,
 };
-use oleafly_agent::{native_web, AgentEvent, CompletionRequest, Resolved};
+use oleafly_agent::{native_web, AgentEvent, CompletionRequest, NativeWeb, Resolved, WebTools};
 use serde::Serialize;
 
 pub(crate) const WEB_USER_AGENT: &str = concat!(
@@ -64,6 +64,17 @@ pub(crate) fn add_local_web_tools(
         &resolved.model_id,
         Some(web),
     );
+    add_missing_web_tools(request, web, native, has_search_key)
+}
+
+/// Adds the local tool for each web tool the request asks for that the
+/// provider does not run (`native`), with a notice when search has no key.
+fn add_missing_web_tools(
+    request: &mut CompletionRequest,
+    web: WebTools,
+    native: NativeWeb,
+    has_search_key: bool,
+) -> Vec<AgentEvent> {
     let has = |request: &CompletionRequest, name: &str| {
         request.tools.iter().any(|tool| tool.name == name)
     };
@@ -91,18 +102,29 @@ pub(crate) fn add_local_web_tools(
 /// unless the chat turned web on. The context exists even when the
 /// provider runs both tools itself, so subagents on other models can use
 /// the local ones.
+///
+/// `hosted_allowed` is false in a folder the user has not trusted: the
+/// provider's own web tools run on its servers, where the folder-trust
+/// prompt cannot ask before them, so the run uses the local tools, which
+/// it asks about, and the request no longer asks the provider for its own.
 pub(crate) fn prepare_run_web(
     request: &mut CompletionRequest,
     resolved: &Resolved,
     key: Option<SearchKey>,
+    hosted_allowed: bool,
 ) -> Result<RunWeb, String> {
-    if !request.web.is_some_and(|web| web.any()) {
+    let Some(web) = request.web.filter(|web| web.any()) else {
         return Ok(RunWeb {
             ctx: None,
             notices: Vec::new(),
         });
-    }
-    let notices = add_local_web_tools(request, resolved, key.is_some());
+    };
+    let notices = if hosted_allowed {
+        add_local_web_tools(request, resolved, key.is_some())
+    } else {
+        request.web = None;
+        add_missing_web_tools(request, web, NativeWeb::default(), key.is_some())
+    };
     let ctx = WebToolContext::new(key, WEB_USER_AGENT).map_err(|error| error.to_string())?;
     ctx.observe_messages(&request.messages);
     Ok(RunWeb {
@@ -258,12 +280,23 @@ mod tests {
     #[test]
     fn prepare_run_web_adds_only_missing_local_tools() {
         let mut request = web_request();
-        let run =
-            prepare_run_web(&mut request, &anthropic_resolved("claude-opus-5-5"), None).unwrap();
+        let run = prepare_run_web(
+            &mut request,
+            &anthropic_resolved("claude-opus-5-5"),
+            None,
+            true,
+        )
+        .unwrap();
         assert!(request.tools.is_empty() && run.notices.is_empty() && run.ctx.is_some());
 
         let mut gemini = web_request();
-        let run = prepare_run_web(&mut gemini, &google_resolved("gemini-3.8-flash"), None).unwrap();
+        let run = prepare_run_web(
+            &mut gemini,
+            &google_resolved("gemini-3.8-flash"),
+            None,
+            true,
+        )
+        .unwrap();
         assert_eq!(
             gemini
                 .tools
@@ -280,6 +313,7 @@ mod tests {
             &mut gemini,
             &google_resolved("gemini-3.8-flash"),
             Some(SearchKey::Brave("k".into())),
+            true,
         )
         .unwrap();
         assert_eq!(
@@ -300,8 +334,55 @@ mod tests {
         );
 
         let mut off = CompletionRequest::prompt("s", "u");
-        let run = prepare_run_web(&mut off, &google_resolved("gemini-3.8-flash"), None).unwrap();
+        let run =
+            prepare_run_web(&mut off, &google_resolved("gemini-3.8-flash"), None, true).unwrap();
         assert!(run.ctx.is_none() && off.tools.is_empty());
+    }
+
+    #[test]
+    fn an_untrusted_folder_uses_the_local_web_tools_the_trust_prompt_covers() {
+        let names = |request: &CompletionRequest| {
+            let mut names: Vec<String> =
+                request.tools.iter().map(|tool| tool.name.clone()).collect();
+            names.sort_unstable();
+            names
+        };
+        let mut request = web_request();
+        let run = prepare_run_web(
+            &mut request,
+            &anthropic_resolved("claude-opus-5-5"),
+            Some(SearchKey::Brave("k".into())),
+            false,
+        )
+        .unwrap();
+        // The provider is not asked for its own tools, and the local ones
+        // stand in for them.
+        assert_eq!(request.web, None);
+        assert_eq!(names(&request), ["web_fetch", "web_search"]);
+        assert!(run.ctx.is_some() && run.notices.is_empty());
+        let body =
+            oleafly_agent::complete::wire_body(&anthropic_resolved("claude-opus-5-5"), &request)
+                .unwrap()
+                .to_string();
+        assert!(
+            !body.contains("web_search_2") && !body.contains("web_fetch_2"),
+            "{body}"
+        );
+
+        // Without a search key only fetch is local, and the user is told.
+        let mut keyless = web_request();
+        let run = prepare_run_web(
+            &mut keyless,
+            &anthropic_resolved("claude-opus-5-5"),
+            None,
+            false,
+        )
+        .unwrap();
+        assert_eq!(names(&keyless), ["web_fetch"]);
+        assert!(matches!(
+            run.notices.as_slice(),
+            [AgentEvent::Notice { code, .. }] if code == "web_search_unavailable"
+        ));
     }
 
     #[test]

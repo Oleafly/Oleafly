@@ -45,8 +45,9 @@ function messageLines(message: StoredMessage, labels: ReturnType<typeof markerLa
 export function chatMarkdown(chat: StoredChat, opts: { projectName: string | null }): string {
   const labels = markerLabels();
   const lines: string[] = [`# ${chat.title || i18n.t(($) => $.ai.history.untitled)}`, ""];
-  if (opts.projectName) lines.push(`- Project: ${opts.projectName}`);
-  lines.push(`- Started: ${formatDateTime(chat.createdAt)}`, "");
+  // The same field names as a CLI conversation's export, in the reader's language.
+  if (opts.projectName) lines.push(`- ${i18n.t(($) => $.ai.acp.export.project)}: ${opts.projectName}`);
+  lines.push(`- ${i18n.t(($) => $.ai.acp.export.started)}: ${formatDateTime(chat.createdAt)}`, "");
   for (const message of chat.messages) lines.push(...messageLines(message, labels));
   return `${lines.join("\n").trimEnd()}\n`;
 }

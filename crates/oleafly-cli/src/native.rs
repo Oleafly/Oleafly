@@ -11,7 +11,9 @@ use crate::typst_settings::TypstSettings;
 use oleafly_core::biber_env::{
     compile_path_env, prepare_unpack_dir, tectonic_biber_in, UNPACK_ENV,
 };
-use oleafly_core::build_output::{sweep_stale_staging, ArtifactSnapshot, BuildLock, OutputStaging};
+use oleafly_core::build_output::{
+    locks_unsupported, sweep_stale_staging, ArtifactSnapshot, BuildLock, DirLock, OutputStaging,
+};
 use oleafly_core::engine_spec::{
     self, compiler_crash_note, is_bundle_fetch_failure, latex_entry_source, tex_bundle_url,
     EngineFlags, MarkdownPdfArgs, BUNDLE_FALLBACK_NOTE, ENTRY_STEM, ENTRY_TEX,
@@ -229,9 +231,7 @@ impl Discovery {
         let data_root = crate::app_paths::data_root();
         let cli_dir = oleafly_core::sidecar::executable_dir();
         let app = crate::app_paths::installed_app();
-        let home = var("HOME")
-            .or_else(|| var("USERPROFILE"))
-            .map(PathBuf::from);
+        let home = crate::app_paths::home_dir();
         let path = var("PATH");
         let tex = TexSearch {
             data_root: data_root.clone(),
@@ -639,20 +639,36 @@ impl NativeCompiler {
         self.build_prepared(&prepared, flags).await
     }
 
-    /// The project's build lock and how long it took. `None` when the folder
-    /// can't hold a lock (some cluster file systems): the build runs without
-    /// one, as in the app.
+    /// The project's build lock and how long it took. Where the file system
+    /// can't lock files at all (NFS without a lock service, some cluster
+    /// file systems) builds take turns through a lock folder instead. Any
+    /// other lock error (a linked lock file, no permission, a full disk)
+    /// stops the build: two builds in one folder overwrite each other's
+    /// files.
     async fn lock_build(
         &self,
         build_dir: &Path,
-    ) -> std::result::Result<(Option<BuildLock>, u64), CliError> {
+    ) -> std::result::Result<(BuildHold, u64), CliError> {
         let started = Instant::now();
         let mut told = false;
+        let mut file_locks = true;
         loop {
-            match BuildLock::try_acquire(build_dir) {
-                Ok(Some(lock)) => return Ok((Some(lock), started.elapsed().as_millis() as u64)),
-                Ok(None) => {}
-                Err(_) => return Ok((None, started.elapsed().as_millis() as u64)),
+            let held = if file_locks {
+                match BuildLock::try_acquire(build_dir) {
+                    Ok(lock) => lock.map(BuildHold::file),
+                    Err(error) if locks_unsupported(&error) => {
+                        file_locks = false;
+                        continue;
+                    }
+                    Err(error) => return Err(lock_failed(build_dir, &error)),
+                }
+            } else {
+                DirLock::try_acquire(build_dir, self.timeout + DIR_LOCK_SLACK)
+                    .map_err(|error| lock_failed(build_dir, &error))?
+                    .map(BuildHold::folder)
+            };
+            if let Some(held) = held {
+                return Ok((held, started.elapsed().as_millis() as u64));
             }
             if !told {
                 told = true;
@@ -677,7 +693,7 @@ impl NativeCompiler {
         // With the lock held, a staging folder left behind is no running
         // build's: its own mtime only moves when files come and go in it.
         sweep_stale_staging(&build_dir, STALE_STAGING);
-        let unlocked = lock.is_none();
+        let unlocked = lock.is_folder();
         let started = Instant::now();
         let pdf = build_dir.join(format!("{ENTRY_STEM}.pdf"));
         let engine_log = build_dir.join(format!("{ENTRY_STEM}.log"));
@@ -773,7 +789,7 @@ impl NativeCompiler {
             warnings: if unlocked {
                 vec![crate::contract::Warning::new(
                     "build.unlocked",
-                    "This folder doesn't support file locks, so this build ran without one. Don't run two builds of this project at the same time.",
+                    "This folder doesn't support file locks, so builds took turns through a lock folder instead. Older Oleafly versions don't use it, so don't run them on this project at the same time.",
                 )]
             } else {
                 Vec::new()
@@ -1127,6 +1143,48 @@ impl oleafly_doctools::ToolRunner for CliToolRunner {
                 .map_err(|error| error.to_string())
         })
     }
+}
+
+/// A lock folder older than the build timeout plus this is a stopped
+/// build's, and is taken over.
+const DIR_LOCK_SLACK: Duration = Duration::from_secs(60);
+
+/// What keeps other builds of the project out while this one runs: the
+/// build lock, or a lock folder where the file system can't lock files.
+pub(crate) struct BuildHold {
+    _file: Option<BuildLock>,
+    folder: Option<DirLock>,
+}
+
+impl BuildHold {
+    fn file(lock: BuildLock) -> Self {
+        Self {
+            _file: Some(lock),
+            folder: None,
+        }
+    }
+
+    fn folder(lock: DirLock) -> Self {
+        Self {
+            _file: None,
+            folder: Some(lock),
+        }
+    }
+
+    fn is_folder(&self) -> bool {
+        self.folder.is_some()
+    }
+}
+
+fn lock_failed(build_dir: &Path, error: &std::io::Error) -> CliError {
+    CliError::new(
+        CliErrorKind::Io,
+        "build.lock_failed",
+        format!(
+            "Oleafly couldn't lock the build folder {}: {error}",
+            build_dir.display()
+        ),
+    )
 }
 
 /// The error a build gets when another build of the project holds the lock

@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { degrees, PDFDocument, PDFHeader, PDFName, PDFString, StandardFonts } from "pdf-lib";
 import type { PdfFacts } from "@oleafly/preflight";
-import { byCodePoint, expectGolden, PREFLIGHT_FIXTURES, WRITE } from "./support";
+import { byCodePoint, expectGolden, PREFLIGHT_FIXTURES, REPO, WRITE } from "./support";
 
 // PDF facts read by pdf.js, the reader the app uses. crates/oleafly-preflight
 // reads the same files with lopdf and compares against this golden.
@@ -83,9 +83,73 @@ async function rotatedAttachment(): Promise<Uint8Array> {
   return doc.save({ useObjectStreams: false });
 }
 
+// A TrueType font embedded as FontFile2, the way LaTeX's output embeds every
+// font: the app and the CLI must both read it as embedded.
+async function embeddedFont(): Promise<Uint8Array> {
+  const doc = await PDFDocument.create({ updateMetadata: false });
+  const ttf = new Uint8Array(
+    fs.readFileSync(path.join(REPO, "node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.ttf")),
+  );
+  const fontFile = doc.context.register(doc.context.flateStream(ttf, { Length1: ttf.length }));
+  const descriptor = doc.context.register(
+    doc.context.obj({
+      Type: "FontDescriptor",
+      FontName: "OleaflyFixtureSerif",
+      Flags: 32,
+      FontBBox: [0, -250, 1000, 750],
+      ItalicAngle: 0,
+      Ascent: 750,
+      Descent: -250,
+      CapHeight: 700,
+      StemV: 80,
+      FontFile2: fontFile,
+    }),
+  );
+  const font = doc.context.register(
+    doc.context.obj({
+      Type: "Font",
+      Subtype: "TrueType",
+      BaseFont: "OleaflyFixtureSerif",
+      FirstChar: 65,
+      LastChar: 67,
+      Widths: [700, 700, 700],
+      Encoding: "WinAnsiEncoding",
+      FontDescriptor: descriptor,
+    }),
+  );
+  const page = doc.addPage([612, 792]);
+  page.node.set(PDFName.of("Contents"), doc.context.register(doc.context.flateStream("BT /F1 24 Tf 72 700 Td (ABC) Tj ET")));
+  page.node.set(PDFName.of("Resources"), doc.context.obj({ Font: { F1: font } }));
+  return doc.save({ useObjectStreams: false });
+}
+
+// A file attached the way `\attachfile` does it: in a FileAttachment
+// annotation, not in the catalog's EmbeddedFiles tree.
+async function fileAttachmentAnnotation(): Promise<Uint8Array> {
+  const doc = await PDFDocument.create({ updateMetadata: false });
+  const page = doc.addPage([612, 792]);
+  const data = new Uint8Array(new TextEncoder().encode("a,b\n1,2\n"));
+  const file = doc.context.register(doc.context.flateStream(data, { Type: "EmbeddedFile" }));
+  const spec = doc.context.obj({ Type: "Filespec", F: PDFString.of("data.csv"), EF: { F: file } });
+  const annotation = doc.context.register(
+    doc.context.obj({
+      Type: "Annot",
+      Subtype: "FileAttachment",
+      Rect: [72, 700, 92, 720],
+      FS: spec,
+      Contents: PDFString.of("Data"),
+      Name: "Paperclip",
+    }),
+  );
+  page.node.set(PDFName.of("Annots"), doc.context.obj([annotation]));
+  return doc.save({ useObjectStreams: false });
+}
+
 const BUILDERS: Record<string, () => Promise<Uint8Array>> = {
   "two-sizes-links-outline.pdf": twoSizesLinksOutline,
   "rotated-attachment.pdf": rotatedAttachment,
+  "embedded-font.pdf": embeddedFont,
+  "file-attachment-annotation.pdf": fileAttachmentAnnotation,
 };
 
 function normalized(facts: PdfFacts): PdfFacts {

@@ -54,6 +54,54 @@ fn staged_isolation_copies_dirty_files_without_touching_the_source() {
     assert!(!destination.join(".Private").exists());
 }
 
+#[test]
+fn staged_isolation_leaves_out_keys_and_credential_folders() {
+    let temp = tempfile::tempdir().unwrap();
+    let project = temp.path().join("project");
+    let secrets = [
+        ".ssh/config",
+        ".gnupg/pubring.kbx",
+        ".aws/credentials",
+        ".kube/config",
+        ".docker/config.json",
+        ".config/gcloud/application_default_credentials.json",
+        "id_rsa",
+        "keys/id_ed25519_work",
+        "deploy_key",
+        ".netrc",
+        ".pgpass",
+        "vault.kdbx",
+    ];
+    let kept = [
+        "main.tex",
+        "id_ed25519.pub",
+        "data/id_map.csv",
+        ".config/latexmk/latexmkrc",
+    ];
+    for path in secrets.iter().chain(&kept) {
+        let file = project.join(path);
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(file, "content").unwrap();
+    }
+    let destination = temp.path().join("managed/task/1");
+
+    prepare_at(
+        &project,
+        &destination,
+        IsolationSource::Repository,
+        git_env().as_ref(),
+        &CancellationToken::new(),
+    )
+    .unwrap();
+
+    for path in secrets {
+        assert!(!destination.join(path).exists(), "{path} was copied");
+    }
+    for path in kept {
+        assert!(destination.join(path).exists(), "{path} was left out");
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn staged_isolation_preserves_executable_permissions() {

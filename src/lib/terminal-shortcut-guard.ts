@@ -2,6 +2,7 @@
 // focused terminal. Runs on every keydown, so it does one DOM lookup first
 // and only reads the stores for keys pressed inside an xterm.
 import {
+  isCtrlTerminalKey,
   isTerminalTarget,
   terminalClaimsKey,
   terminalPlatform,
@@ -21,8 +22,14 @@ export const TERMINAL_APP_SHORTCUTS: readonly ShortcutId[] = [
   "previousTerminal",
 ];
 
-/** Whether the key is one of the allow-listed app shortcuts, by the current bindings. */
+/**
+ * Whether the key is one of the allow-listed app shortcuts, by the current
+ * bindings. Off macOS, Ctrl+letter and Ctrl+PageDown stay with the program
+ * in the terminal whatever they are bound to (the palette's Ctrl+K, the tab
+ * keys' Ctrl+PageUp and Ctrl+PageDown).
+ */
 export function isAllowListedTerminalShortcut(event: TerminalKeyEvent): boolean {
+  if (terminalPlatform() !== "mac" && isCtrlTerminalKey(event)) return false;
   const bindings = useShortcutStore.getState().bindings;
   // matchesShortcut reads getModifierState when the event has it (AltGr).
   const keyboardEvent = event as unknown as KeyboardEvent;

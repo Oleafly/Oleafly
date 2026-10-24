@@ -457,3 +457,56 @@ fn agent_preferences_and_runtime_info_round_trip() {
     store.set_agent_runtime("claude", &info).unwrap();
     assert_eq!(store.agent_runtime("claude").unwrap(), Some(info));
 }
+
+#[test]
+fn imported_agent_sessions_are_found_in_one_query() {
+    let temp = tempfile::tempdir().unwrap();
+    let store = Store::open(temp.path()).unwrap();
+    for (id, native, project) in [
+        ("a", "agent-one", "p"),
+        ("b", "agent-two", "p"),
+        ("c", "agent-three", "other"),
+    ] {
+        let mut saved = record(id, project, "x", 1);
+        saved.native_session_id = Some(native.into());
+        store.save(&saved).unwrap();
+    }
+    let found = store
+        .imported_natives("p", "claude", &["agent-one", "agent-three", "agent-four"])
+        .unwrap();
+    assert_eq!(
+        found,
+        std::collections::HashSet::from(["agent-one".to_string()])
+    );
+    assert!(store
+        .imported_natives("p", "codex", &["agent-one"])
+        .unwrap()
+        .is_empty());
+    assert!(store
+        .imported_natives("p", "claude", &[])
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
+fn a_task_session_is_found_by_its_task_and_the_agents_own_id() {
+    let temp = tempfile::tempdir().unwrap();
+    let store = Store::open(temp.path()).unwrap();
+    let mut older = record("old", "p", "x", 1);
+    older.task_id = Some("task-1".into());
+    older.native_session_id = Some("agent-session".into());
+    store.save(&older).unwrap();
+    let mut newer = record("new", "p", "x", 2);
+    newer.task_id = Some("task-1".into());
+    newer.native_session_id = Some("agent-session".into());
+    store.save(&newer).unwrap();
+    let found = store
+        .find_task_session("task-1", "claude", "agent-session")
+        .unwrap()
+        .unwrap();
+    assert_eq!(found.id, "new");
+    assert!(store
+        .find_task_session("task-2", "claude", "agent-session")
+        .unwrap()
+        .is_none());
+}

@@ -101,18 +101,27 @@ pub(crate) fn check_url(url: &Url) -> WebResult<()> {
 /// Refuses a host name that resolves, here, to any address that is not
 /// public. Through a proxy the proxy resolves and connects, so
 /// `PublicResolver` never sees the name; this lookup runs before each request
-/// instead. A name that does not resolve here can only be reached through the
-/// proxy's own DNS, outside the user's network, so it is let through.
+/// instead. A name that does not resolve here is refused too: a company or
+/// university proxy sits inside the network and resolves names that only
+/// exist there. (Without a proxy such a name could not be reached anyway.)
 pub(crate) async fn check_resolved_host(url: &Url) -> WebResult<()> {
     let Some(url::Host::Domain(domain)) = url.host() else {
         return Ok(());
     };
-    let Ok(addresses) =
-        tokio::net::lookup_host((domain, url.port_or_known_default().unwrap_or(443))).await
-    else {
-        return Ok(());
+    let unresolved = || {
+        WebError::NotAllowed(
+            "This computer could not look up the site's address, so Oleafly did not fetch it."
+                .into(),
+        )
     };
-    let addresses: Vec<SocketAddr> = addresses.collect();
+    let addresses: Vec<SocketAddr> =
+        tokio::net::lookup_host((domain, url.port_or_known_default().unwrap_or(443)))
+            .await
+            .map_err(|_| unresolved())?
+            .collect();
+    if addresses.is_empty() {
+        return Err(unresolved());
+    }
     if addresses.iter().all(|address| is_public_ip(address.ip())) {
         Ok(())
     } else {
@@ -162,9 +171,15 @@ mod tests {
         // An address literal is checked by `check_url`, not here.
         let literal = Url::parse("https://1.1.1.1/").unwrap();
         assert!(check_resolved_host(&literal).await.is_ok());
-        // A name this computer cannot resolve is the proxy's to resolve.
+    }
+
+    #[tokio::test]
+    async fn a_name_this_computer_cannot_resolve_is_not_left_to_a_proxy() {
+        // A proxy inside the network would resolve an internal-only name.
         let unknown = Url::parse("https://does-not-exist.invalid/").unwrap();
-        assert!(check_resolved_host(&unknown).await.is_ok());
+        let error = check_resolved_host(&unknown).await.unwrap_err();
+        assert!(matches!(error, WebError::NotAllowed(_)), "{error:?}");
+        assert!(error.to_string().contains("could not look up"), "{error}");
     }
 
     #[test]

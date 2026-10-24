@@ -197,6 +197,29 @@ pub(crate) fn mirror_legacy_github(
         .map_err(|error| app_error(&error, "GitHub"))
 }
 
+/// [`mirror_legacy_github`] after the account change already happened: the
+/// 0.4.7 fields only help a downgrade, so a config that can't be written
+/// (a damaged config.json, a secret that can't be decrypted) is logged and
+/// never fails the sign-in or sign-out. The next sign-in writes them again.
+pub(crate) fn mirror_legacy_github_or_log(base: &str, signed_in: Option<(&str, &str)>) {
+    if let Err(error) = mirror_legacy_github(base, signed_in) {
+        let _ = crate::project::append_app_log(format!(
+            "The GitHub sign-in could not be copied for earlier versions of Oleafly ({}). Git hosting is not affected.",
+            crate::app_error::english_error(&error)
+        ));
+    }
+}
+
+/// Forget an account and its token on this device, then clear the 0.4.7
+/// copy of a github.com sign-in as best effort. Blocking.
+pub(crate) fn sign_out_here(base: &str) -> Result<(), String> {
+    store()?
+        .remove(base)
+        .map_err(|error| app_error(&error, &host_label(base)))?;
+    mirror_legacy_github_or_log(base, None);
+    Ok(())
+}
+
 /// Normalize a base URL the user or the webview sent.
 pub(crate) fn normalized_base(base: &str) -> Result<String, String> {
     oleafly_forge::address::normalize_base_url(base)
@@ -510,6 +533,36 @@ mod tests {
         let config = crate::config::read_config().unwrap();
         assert!(config.github_token.is_empty());
         assert!(config.github_user.is_empty());
+    }
+
+    #[test]
+    fn a_config_that_cannot_be_written_never_fails_a_github_sign_in_or_out() {
+        let _env = crate::paths::data_dir_env_lock();
+        let data = DataDir::new();
+        let mut github = gitlab_account(GITHUB_COM);
+        github.kind = ForgeKind::GitHub;
+        store()
+            .unwrap()
+            .save(
+                github,
+                ForgeToken {
+                    token: "gho_signedin123".into(),
+                    refresh: None,
+                    expires_at: None,
+                },
+            )
+            .unwrap();
+        std::fs::write(data.path().join("config.json"), "{ not json").unwrap();
+        assert!(
+            mirror_legacy_github(GITHUB_COM, None).is_err(),
+            "the copy for earlier versions can't be written"
+        );
+
+        mirror_legacy_github_or_log(GITHUB_COM, Some(("gho_signedin123", "octocat")));
+        assert_eq!(store().unwrap().accounts().unwrap().len(), 1);
+        sign_out_here(GITHUB_COM).unwrap();
+        assert!(store().unwrap().accounts().unwrap().is_empty());
+        assert!(store().unwrap().token(GITHUB_COM).unwrap().is_none());
     }
 
     #[test]

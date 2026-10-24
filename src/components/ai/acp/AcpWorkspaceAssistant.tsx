@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/empty";
 import type { ChatComposerHandle } from "@/components/ai/composer/ChatComposer";
 import { useResearchChatActions } from "@/components/ai/use-research-chat-actions";
 import { MessageList, type RenderedMessage } from "@/components/ai/MessageList";
@@ -70,13 +71,24 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const agentId = composer?.agentId ?? null;
   const setComposer = useAcpSessionsStore((state) => state.setComposer);
   const error = useAcpSessionsStore((state) => state.errors[projectId] ?? null);
+  // Why this conversation's last message did not go out (kept with it, not the project).
+  const sessionError = useAcpSessionsStore((state) => (activeId ? state.sessionErrors[activeId] ?? null : null));
   const starting = useAcpSessionsStore((state) => state.starting[projectId] ?? false);
   const setProjectError = useAcpSessionsStore((state) => state.setError);
   const setError = useCallback(
-    (message: string | null) => setProjectError(projectId, message),
+    (message: string | null) => {
+      setProjectError(projectId, message);
+      // A new action clears what the open conversation last reported, as it clears the project's.
+      if (message === null) {
+        const shown = useAcpSessionsStore.getState().activeByProject[projectId];
+        if (shown) useAcpSessionsStore.getState().setSessionError(shown, null);
+      }
+    },
     [projectId, setProjectError],
   );
   const [busy, setBusy] = useState(false);
+  // Connecting to the agent (reconnect, sign in); the status pill says so, unlike other actions.
+  const [connecting, setConnecting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
   const composerRef = useRef<ChatComposerHandle>(null);
@@ -118,6 +130,10 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     try { await action(); } catch (error_) { setError(acpError(error_)); }
     finally { setBusy(false); }
   }, [setError]);
+  const performConnecting = useCallback(async (action: () => Promise<void>) => {
+    setConnecting(true);
+    try { await perform(action); } finally { setConnecting(false); }
+  }, [perform]);
   // A draft stays with what the user is writing for when a conversation starts from this panel.
   const carryDraft = (fromId: string) => {
     const state = useAcpSessionsStore.getState();
@@ -173,7 +189,9 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   useEffect(() => {
     let disposed = false;
     let detach: (() => void) | undefined;
-    setError(null);
+    // The project's last error only: why a conversation's message did not go
+    // out stays until the user does something there.
+    setProjectError(projectId, null);
     void (async () => {
       detach = await attachAcpListeners();
       if (disposed) { detach(); return; }
@@ -191,7 +209,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       detach?.();
       window.removeEventListener("oleafly:acp-catalog-changed", refresh);
     };
-  }, [projectId, setError]);
+  }, [projectId, setError, setProjectError]);
 
   useEffect(() => {
     if (!catalog.length) return;
@@ -208,11 +226,17 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     try { await acpPermission(projectId, activeId, id, option); }
     catch (error_) { setError(acpError(error_)); }
   };
+  /** False when the answer did not reach the agent (the banner says why). */
   const answerQuestion = async (id: string, action: "accept" | "decline" | "cancel", content?: Record<string, unknown>) => {
-    if (!activeId) return;
+    if (!activeId) return false;
     setError(null);
-    try { await acpElicitationRespond(projectId, activeId, id, action, content ?? null); }
-    catch (error_) { setError(acpError(error_)); }
+    try {
+      await acpElicitationRespond(projectId, activeId, id, action, content ?? null);
+      return true;
+    } catch (error_) {
+      setError(acpError(error_));
+      return false;
+    }
   };
 
   const canStart = !!selectedAgent && acpUsable(selectedAgent) && !busy && !running;
@@ -245,7 +269,13 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     const presetSkill = preset.skillId
       ? skills.find((entry) => entry.id === preset.skillId && entry.validation.status === "valid" && isSkillAvailable(entry))
       : undefined;
-    useComposerDrafts.getState().setText(acpDraftId(projectId, agentId, session), preset.prompt);
+    // Added after what the user typed, which stays.
+    const draftId = acpDraftId(projectId, agentId, session);
+    const typed = useComposerDrafts.getState().drafts[draftId]?.text ?? "";
+    let text = preset.prompt;
+    if (typed.includes(preset.prompt)) text = typed;
+    else if (typed.trim()) text = `${typed.trimEnd()}\n\n${preset.prompt}`;
+    useComposerDrafts.getState().setText(draftId, text);
     setComposer(projectId, { skill: presetSkill ? { id: presetSkill.id, name: presetSkill.name } : null });
     focusComposer();
     if (!session && canStart && !starting) start();
@@ -346,7 +376,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
 
   const reconnect = () =>
     session &&
-    void perform(async () => {
+    void performConnecting(async () => {
       useAcpSessionsStore.getState().setSnapshot(await acpReconnect(projectId, session.id));
     });
 
@@ -366,13 +396,12 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
           {t(($) => $.ai.acp.remote.banner, { host: session.remote.host })}
         </div>
       )}
-      {(error || (session?.error && session.status !== "auth_required")) && (
-        <div
-          role="alert"
-          className="mx-3 my-2 select-text rounded-md border border-destructive/40 p-2 text-xs text-destructive"
-        >
-          {error ?? session?.error}
-        </div>
+      {(error || sessionError || (session?.error && session.status !== "auth_required")) && (
+        <ErrorState
+          size="compact"
+          className="mx-3 my-2 rounded-md border border-destructive/40 p-2"
+          message={error ?? sessionError ?? session?.error}
+        />
       )}
       {session?.status === "auth_required" && (
         <AcpSignIn
@@ -380,7 +409,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
           session={session}
           agent={sessionAgent}
           busy={busy}
-          perform={(action) => void perform(action)}
+          perform={(action) => void performConnecting(action)}
         />
       )}
       {session && ["disconnected", "cancelled", "failed"].includes(session.status) && (
@@ -431,7 +460,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
         <SessionStatusPill
           session={session}
           agentName={agentNameOf(session.agentId)}
-          busy={busy}
+          connecting={connecting || starting}
         />
       ) : (
         <Button
@@ -654,10 +683,10 @@ function sessionStatusLabel(status: AcpSession["status"]): string {
   }
 }
 
-function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: AcpSession; agentName: string; busy: boolean }>) {
+function SessionStatusPill({ session, agentName, connecting }: Readonly<{ session: AcpSession; agentName: string; connecting: boolean }>) {
   const { t } = useTranslation(["common", "ai"]);
   let text: string;
-  if (busy) {
+  if (connecting) {
     text = t(($) => $.ai.acp.connecting);
   } else if (session.status === "ready") {
     text = agentName;
@@ -669,13 +698,13 @@ function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: Acp
   }
   return (
     <Badge
-      variant={busy ? "outline" : STATUS_TONE[session.status]}
+      variant={connecting ? "outline" : STATUS_TONE[session.status]}
       size="sm"
       data-testid="acp-session-status"
       data-status={session.status}
       className="h-6 max-w-44 gap-1.5 px-2"
     >
-      {busy ? (
+      {connecting ? (
         <Spinner className="size-2.5" />
       ) : (
         <span
@@ -688,7 +717,7 @@ function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: Acp
       )}
       <span className="truncate">{text}</span>
       {/* Ready shows as the green dot alone; screen readers still hear it. */}
-      {!busy && session.status === "ready" && (
+      {!connecting && session.status === "ready" && (
         <span className="sr-only"> {sessionStatusLabel(session.status)}</span>
       )}
     </Badge>

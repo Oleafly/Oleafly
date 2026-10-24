@@ -99,11 +99,15 @@
       "title": "デスクトップアプリ",
       "action": "{{agent}} が{{action}}ことを求めています。",
       "steps": "{{agent}} がデスクトップアプリで次の手順を実行しようとしています:",
-      "moreSteps": "表示されていない手順: {{count}}",
-      "moreItems": "ほか {{count}} 件の項目は表示していません",
-      "cut": "（ほか {{count}} 文字を省略）",
+      "moreSteps": "表示されず、実行もされない手順: {{count}}",
+      "moreItems": "表示していない項目: {{count}}",
+      "cut": "（表示していない文字数: {{count}}）",
       "signedIn": "この操作は、サインイン済みのあなたのブラウザで行われます。",
       "signedInOn": "この操作は、サインイン済みのあなたのブラウザの {{origin}} で行われます。",
+      "task": "タスク: {{title}}",
+      "app": "アプリ: {{name}}",
+      "window": "ウィンドウ: {{title}}",
+      "element": "要素: {{element}}",
       "text": "テキスト: 「{{text}}」",
       "address": "アドレス: {{url}}",
       "allowOnce": "今回だけ許可",
@@ -111,6 +115,7 @@
       "allowSession": "このセッションで許可",
       "allowTask": "このタスクで許可",
       "deny": "許可しない",
+      "pickedFile": "あなたが選んだファイル",
       "actions": {
         "launchApp": "アプリを開く",
         "click": "アプリ内をクリックする",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "デスクトップの操作を許可しますか？",
-      "message": "エージェントは次のものを使えるようになります。操作のたびに確認は続きます:",
+      "message": "エージェントは次のものを使えるようになります。操作のたびに確認が入り、保存すると「このチャットで許可」の選択はすべて解除されます:",
       "confirm": "許可",
       "enabled": "デスクトップアプリ",
-      "app": "アプリ: {{name}}（{{identity}}）",
+      "app": "アプリ: {{identity}}（{{name}}）",
       "more": "ほか {{count}} 件",
       "site": "ウェブサイト: {{origin}}",
       "signedIn": "{{origin}} にサインイン済みのブラウザ",
-      "scripted": "Cua スクリプト"
+      "scripted": "Cua スクリプト",
+      "spacesTitle": "Cua Spaces にさらに多くの権限を与えますか？",
+      "spacesMessage": "Cua Spaces を使うエージェントは、次のことができるようになります:",
+      "spacesChanges": "Space の作成と削除、およびその中でのコマンドの実行",
+      "spacesSignIns": "Space の中で Claude Code または Codex のサインインを使う"
     }
   },
   "errors": {

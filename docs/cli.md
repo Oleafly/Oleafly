@@ -21,8 +21,8 @@ to use.
   new terminal afterwards. Remove undoes both, and so does uninstalling
   Oleafly.
 - **Programs Oleafly starts** (the built-in terminal, CLI agents, research
-  commands) always find `oleafly` on their PATH, and its full path in the
-  `OLEAFLY_CLI` variable.
+  commands) find `oleafly` on their PATH, and its full path in the
+  `OLEAFLY_CLI` variable, once Oleafly has set it up on its first launch.
 - **Without the app:** each release also has standalone archives for
   macOS, Linux and Windows. They build with the compilers on your PATH.
 
@@ -110,8 +110,9 @@ oleafly templates show ID
 ```
 
 `list` shows the installed templates: the app's own, downloaded packs and
-your saved templates. `--all` adds templates that download on first use, and
-`--refresh` fetches the latest pack catalog first.
+your saved templates. `--all` adds templates that download on first use.
+`--refresh` fetches the latest pack catalog first and lists those templates
+too.
 
 ### `oleafly context` and `oleafly log`
 
@@ -161,7 +162,7 @@ oleafly convert INPUT --to FORMAT [--from FORMAT] [-o PATH] [--force]
 projects also export `pdf`, `png`, `svg` and `html` with Typst itself. A
 LaTeX or Markdown project's `pdf` export is its last good build. Without
 `-o`, files go to the build folder's `exports` folder. An `-o` path must be
-outside the project.
+outside the project or inside its build folder.
 
 `convert` turns one file into `latex`, `markdown`, `typst`, `html` or `docx`.
 It never replaces an existing file unless you pass `--force`.
@@ -260,7 +261,8 @@ load, and `skills path` prints where they are.
 
 ```bash
 oleafly mcp [--bridge auto|always|never]
-oleafly mcp config --client CLIENT [--scope project|user] [--write] [--yes]
+oleafly mcp config --client CLIENT [--scope project|user] [--command PATH] [--name NAME]
+                   [--write] [--yes]
 ```
 
 `oleafly mcp` is an MCP server on stdio. On its own it offers read tools
@@ -272,7 +274,14 @@ tools and its approval prompts (`--bridge always` requires the app,
 
 `mcp config` prints the entry for `claude-code`, `claude-desktop`, `codex`,
 `cursor` or `gemini`, and with `--write` adds it to that client's settings
-file (keeping a backup).
+file (keeping a backup). Inside a project the entry goes in the project's
+settings, elsewhere in your user settings; Claude Desktop has user settings
+only. `--command` sets the program the client starts (by default `oleafly`
+for a project, or this command's full path for user settings), and `--name`
+the server's name in the client (`oleafly` by default). Claude Code keeps
+user servers in its own settings, so with `--client claude-code --scope user`
+the command prints the `claude mcp add` line to run instead, and `--write` is
+refused.
 
 ```bash
 oleafly mcp config --client claude-code --write
@@ -353,14 +362,19 @@ your TeX distribution), and `--pdf` compiles the result. Without `-o`, the
 marked-up document is in the JSON result's `text` field.
 
 `link --prefer remote` saves the files it replaces in
-`.oleafly/online-backups/` first. `sync --dry-run` also says when it would
-only send your changes (`wouldPush` in JSON). A server address must use
+`.oleafly/online-backups/` first. `link` lists the files the first sync will
+send from here (`uploads` in JSON). `sync --dry-run` also says when it would
+only send your changes (`wouldPush` in JSON), and lists the files here that
+the online project doesn't have yet (`uploads`). A server address must use
 `https://`, except on this computer.
 
 A project in the app's library uses the app's sync state, so the app and the
 command line always agree. Any other folder keeps its own in
-`.oleafly/online/`. From the command line you can link a library project only
-if the app imported it from the online service.
+`.oleafly/online/`, and some of its files never go online: anything in a
+dot-folder or a dependency or build folder, `.env` files, `.private`, private
+keys, TeX build output such as `main.aux` (or `main.pdf` next to `main.tex`)
+and what the folder's `.gitignore` lists. From the command line you can link
+a library project only if the app imported it from the online service.
 
 ### `oleafly server`
 
@@ -447,11 +461,11 @@ differ from the app's spelling dictionaries.
 use the AI providers, keys and MCP servers you set up in Oleafly.
 
 ```bash
-oleafly agent run "Fix the broken references in the introduction"
+oleafly agent run --allow write "Fix the broken references in the introduction"
 oleafly agent run --allow write,commands --apply "Make the paper compile"
 oleafly ask "Which sections still cite preprints?"
 echo "Summarize the methods section" | oleafly ask -
-oleafly agent apply .oleafly/agent-runs/20261019-0f3a
+oleafly agent apply .oleafly/agent-runs/1792400000000-0f3a
 ```
 
 Run them inside a project folder, or point at one with `-C <folder>`.
@@ -465,15 +479,16 @@ Run them inside a project folder, or point at one with `-C <folder>`.
 | `--provider ID` | The AI provider. Default: the one picked in Oleafly. |
 | `--model ID` | The model. Default: the one picked in Oleafly. |
 | `--effort LEVEL` | How hard the model thinks: `auto` (default), `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`. |
-| `--allow WHAT` | What the agent may do besides reading: `write`, `commands`, `network`. Repeat the flag or join values with commas. |
+| `--allow WHAT` | What the agent may do besides reading: `write`, `commands`, `network`. Repeat the flag or join values with commas. Without `write`, the run only reads. |
 | `--apply` | Write changes straight into the project instead of a review folder. Needs `--allow write`. |
-| `--review-dir DIR` | Save the review here. Default: `.oleafly/agent-runs/<run id>` in the project. |
+| `--review-dir DIR` | Save the review here. Needs `--allow write`, and the folder must be empty or not exist yet. Inside the project it has to be under `.oleafly`. Default: `.oleafly/agent-runs/<run id>` in the project, or `~/.oleafly/linked/<id>/agent-runs/<run id>` for a folder the app opened in place. |
 | `--max-steps N` | Stop after this many steps (1 to 2000, default 50). |
 | `--timeout SECONDS` | Stop after this many seconds (10 to 86400, default 1800). |
 | `--skill ID` | Use this skill. Repeat for more. |
 | `--mcp NAME` | Use only this MCP server. Repeat for more. |
 | `--no-mcp` | Use none of your MCP servers. |
 | `--keep-workspace` | Keep the working copy in the review folder. |
+| `--unsandboxed-commands` | Where Oleafly's sandbox doesn't work, let commands run as you in a review run too. They can then change files outside the review copy. |
 
 ### `oleafly ask [QUESTION]`
 
@@ -497,14 +512,23 @@ steps with `--max-steps` (up to 200) and the time with `--timeout`.
 `web_search` needs a Brave, Tavily or Serper key in Oleafly's settings. A
 provider that searches the web itself uses its own search instead.
 
+Where the sandbox doesn't work, commands run as you. They run only with
+`--apply`, or in a review run with `--unsandboxed-commands`, and never in a
+run that only reads. A warning before the run starts says which applies.
+
 ### Review or apply
 
-By default the agent works on a copy of the project. When it finishes,
+Without `--allow write`, `agent run` only reads the project: it reports what
+it found or would change, and saves nothing (`mode` is `read`). With
+`--allow write`, the agent works on a copy of the project. When it finishes,
 Oleafly saves its changes in a review folder and prints how to apply them:
 
 ```text
-Saved 3 changes for review in .oleafly/agent-runs/20261019-0f3a. Apply them with: oleafly agent apply .oleafly/agent-runs/20261019-0f3a
+Saved 3 changes for review in .oleafly/agent-runs/1792400000000-0f3a. Apply them with: oleafly agent apply .oleafly/agent-runs/1792400000000-0f3a
 ```
+
+The run id is the time the run started, in milliseconds, and four random
+hexadecimal digits.
 
 `oleafly agent apply DIR` writes the saved changes into the project. It
 refuses when a file in the project changed since the run started, and lists
@@ -558,9 +582,9 @@ With `--json` the CLI prints one result object:
   "command": "agent run",
   "ok": true,
   "run": {
-    "runId": "20261019-0f3a",
+    "runId": "1792400000000-0f3a",
     "mode": "review",
-    "reviewDir": "/Users/me/paper/.oleafly/agent-runs/20261019-0f3a",
+    "reviewDir": "/Users/me/paper/.oleafly/agent-runs/1792400000000-0f3a",
     "provider": "anthropic",
     "model": "claude-sonnet-4-5",
     "credentialSource": "env:ANTHROPIC_API_KEY",
@@ -577,9 +601,12 @@ With `--json` the CLI prints one result object:
 }
 ```
 
-`mode` is `read` (`ask`), `review` or `apply`. `credentialSource` is
-`store`, `env:<VARIABLE>` or `none`, never the key itself. `stopReason` is
-`end_turn`, `step_limit`, `timeout` or `interrupted`.
+`mode` is `read` (`ask`, or `agent run` without `--allow write`), `review`
+or `apply`. `credentialSource` is `store`, `env:<VARIABLE>` or `none`, never
+the key itself. `stopReason` is `end_turn`, `step_limit`, `timeout` or
+`interrupted`. A run that stopped at its step or time limit prints the same
+result with `"ok": false` and an `error` whose code is `agent.step_limit` or
+`agent.timeout`.
 
 With `--events`, each event is one JSON line before the result:
 `{"schema_version": 1, "type": "event", "command": "agent run", "event": "<name>", …}`.
@@ -603,13 +630,14 @@ second Ctrl+C exits at once.
 | Code | When |
 |---|---|
 | 0 | The agent finished. |
-| 1 | It stopped at the step limit or the time limit (the result is still printed). |
-| 2 | The command line is wrong, for example no prompt. |
-| 3 | The project or the review folder can't be used, or a path is unsafe. |
-| 4 | No provider is set up, or a key is missing. |
-| 6 | The provider rejected the key. |
-| 7 | The provider or a network tool could not be reached. |
+| 1 | The provider failed after the run started (`agent.provider_error`), or something inside Oleafly went wrong. |
+| 2 | The command line is wrong: no prompt, `--apply` or `--review-dir` without `--allow write`, or a review folder that isn't empty or isn't allowed there. |
+| 3 | The project can't be used, the prompt can't be read, `agent apply` was given a folder that isn't a review of this project, or a path is unsafe. |
+| 4 | No provider is set up (`agent.no_provider`). |
+| 6 | There is no key for the provider (`agent.missing_key`), or the provider rejected it. |
+| 7 | Oleafly couldn't reach the provider before the first step finished. |
 | 8 | `agent apply` found files that changed since the run. |
+| 10 | It stopped at the step limit or the time limit (the result is still printed). |
 | 130 | You pressed Ctrl+C. |
 
 ## Background helper
@@ -633,8 +661,8 @@ an update never starts the helper. The tasks wait for Oleafly to open again.
 ### `oleafly daemon run`
 
 Runs the helper in this terminal. It prints its log there and stops on
-Ctrl+C. `--stay` keeps it running when there is nothing to do. It exits with
-8 when another helper already runs.
+Ctrl+C, with exit code 0. `--stay` keeps it running when there is nothing to
+do. It exits with 8 when another helper already runs.
 
 ### `oleafly daemon status`
 
@@ -677,12 +705,16 @@ Asks the helper to hand its tasks back and exit. The tasks wait for Oleafly.
 The helper keeps its files in `~/.oleafly/daemon/` (or
 `$OLEAFLY_DATA_DIR/daemon/`): `helper.log` (rotated at 5 MiB, one old file
 kept), `state.json` (process id, phase and heartbeat, no paths or keys),
-`daemon.lock`, `stop-request` and `usage-spool.jsonl` (token counts and
-costs that Oleafly adds to your usage history). The log never holds keys,
-prompts or replies.
+`daemon.lock`, `stop-request`, `app-open.json` (which process is the open
+app, so the helper leaves notifications to it), `search-dirs.json` (the
+folders the app finds programs in, which the helper uses too), and
+`usage-spool.jsonl` with its `usage-spool.lock` (token counts and costs that
+Oleafly adds to your usage history). The log never holds keys, prompts or
+replies.
 
-On Windows the installer asks a running helper to stop before it replaces
-the app, and the uninstaller removes the helper's sign-in entry.
+On Windows both installers, the `.exe` and the `.msi`, ask a running helper
+to stop before they replace the app, and uninstalling removes the helper's
+sign-in entry.
 
 ## JSON output
 
@@ -698,12 +730,35 @@ else. Every result has:
 | `warnings` | `[{code, message}]`, possibly empty |
 | `error` | on failure: `{kind, code, message, hint?, retryable?, details?}` |
 
-The exit code matches `error.kind`. `--events` adds progress lines before the
-result, each with `"type": "event"` and an `event` name. `oleafly watch
---json` writes only events. Each has `ok`: the build's result on
-`build_finished`, `false` on `build_error` and `watch_error`, and `true` on
-the rest. `watching` and `build_finished` also carry the build's `warnings`.
-Notes, progress and warnings for people go to stderr.
+Every result with `"ok": false` has an `error`, and the exit code matches
+`error.kind`:
+
+| `error.kind` | Exit code |
+|---|---|
+| `internal` | 1 |
+| `usage` | 2 |
+| `invalid_input`, `not_initialized`, `invalid_manifest`, `unsafe_path`, `io` | 3 |
+| `missing_tool`, `system` (a file outside the project, such as a client's settings, couldn't be read or written) | 4 |
+| `build` | 5 |
+| `auth` | 6 |
+| `network` | 7 |
+| `conflict` | 8 |
+| `findings` | 9 |
+| `limit` (an agent run stopped at its step or time limit) | 10 |
+| `interrupted` | 130 |
+
+When the command's own fields already say what went wrong (a failed build,
+the findings of `check`, `lint` or `bib check`, the problems `doctor`
+found), `error` carries a general code such as `build.failed` or `findings`,
+and the details stay in those fields.
+
+`--events` adds progress lines before the result, each with
+`"type": "event"` and an `event` name. `oleafly watch --json` writes only
+events. Each has `ok`: the build's result on `build_finished`, `false` on
+`build_error` and `watch_error`, and `true` on the rest, except
+`lock_wait`, which only says the build is waiting for another build of the
+same project. `watching` and `build_finished` also carry the build's
+`warnings`. Notes, progress and warnings for people go to stderr.
 
 ## Exit codes
 
@@ -713,13 +768,17 @@ Notes, progress and warnings for people go to stderr.
 | 1 | Something inside Oleafly went wrong (a bug). |
 | 2 | The command was used wrongly, or it needs `--yes` to go ahead. |
 | 3 | The project is missing or invalid, or a path points outside it. |
-| 4 | A tool or the Oleafly app it needs isn't installed. |
+| 4 | A tool or the Oleafly app it needs isn't installed, or a file outside the project (a client's settings) couldn't be read or written. |
 | 5 | The build failed. |
 | 6 | You need to sign in. |
 | 7 | The network failed. |
 | 8 | Something else holds the project (another build, the app). |
 | 9 | A check found problems. |
+| 10 | The agent stopped at its step or time limit. |
 | 130 | You pressed Ctrl+C. |
+
+`oleafly watch` and `oleafly daemon run` run until you stop them, so Ctrl+C
+ends them with 0.
 
 ## Environment
 
@@ -737,7 +796,7 @@ Notes, progress and warnings for people go to stderr.
 | `OLEAFLY_PROVIDER`, `OLEAFLY_MODEL` | The AI provider and model for `oleafly agent` and `oleafly ask`. |
 | `OLEAFLY_API_KEY` | A key for that provider, used when its own variable isn't set. |
 | `CODEX_HOME` | Where Codex keeps its settings (for `mcp config`). |
-| `CI` | When set, Oleafly never asks questions. |
+| `CI` | When set to anything but `0` or `false`, Oleafly never asks questions. |
 | `NO_COLOR` | When set, output has no color. |
 
 `--no-input` also turns off questions; a command that needs confirmation

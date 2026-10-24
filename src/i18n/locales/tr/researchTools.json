@@ -204,7 +204,8 @@
       "createTask": "Görev oluştur",
       "replaceText": "Yazdığınız başlık ve yönergeler bu hazır görevle değiştirilsin mi?",
       "keepText": "Benimkini koru",
-      "replaceConfirm": "Değiştir"
+      "replaceConfirm": "Değiştir",
+      "cannotSave": "Yukarıda işaretlenen seçenekleri düzeltin, sonra yeniden deneyin."
     },
     "starter": {
       "literatureReview": {
@@ -306,16 +307,36 @@
         "budgetCost": "Maliyet sınırında durdu.",
         "budgetRuns": "Çalıştırma sınırında durdu."
       },
-      "startsAt": "Başlangıç: {{time}}"
+      "startsAt": "Başlangıç: {{time}}",
+      "olderActivity": "Bu çalıştırmanın önceki etkinliği gösterilmiyor.",
+      "tooLargeToDiff": "Bu dosya burada karşılaştırılamayacak kadar büyük, bu yüzden yalnızca boyutları gösteriliyor."
+    },
+    "confirm": {
+      "stopTitle": "Bu görev durdurulsun mu?",
+      "stopDescription": "\"{{title}}\" geçerli adımından sonra durur. \"Sürdür\" onu daha sonra çalışma alanından devam ettirir.",
+      "cancelTitle": "Bu görev iptal edilsin mi?",
+      "cancelDescription": "\"{{title}}\" çalışmayacak. Daha sonra yeniden deneyebilirsiniz.",
+      "cancelTask": "Görevi iptal et",
+      "discardTitle": "Bu değişiklikler atılsın mı?",
+      "discardDescription": "\"{{title}}\" görevindeki değişikliklerin hiçbiri projenize ulaşmaz ve görev iptal edildi olarak işaretlenir. \"Sürdür\" ajanı yeniden çalıştırır.",
+      "keepTask": "Görevi tut",
+      "keepChanges": "Değişiklikleri tut",
+      "dependents_one": "Onu bekleyen bu görev de başarısız olur:",
+      "dependents_other": "Onu bekleyen bu {{count}} görev de başarısız olur:",
+      "runs_one": "Bu çalıştırma da durur:",
+      "runs_other": "Bu {{count}} çalıştırma da durur:"
     },
     "plan": {
       "title": "Plan",
       "description": "Planı okuyun ve isterseniz düzenleyin. Görevin devam etmesi için planı onaylayın.",
       "approve": "Planı onayla",
       "approveEdited": "Düzenlenen planı onayla",
-      "discard": "Görevi at",
+      "discard": "Görevi iptal et",
       "loading": "Plan yükleniyor…",
-      "missing": "Plan dosyası eksik. Görevi yeniden deneyin."
+      "missing": "Plan dosyası eksik. Görevi yeniden deneyin.",
+      "loadFailed": "Oleafly planı yükleyemedi.",
+      "truncated": "Bu plan 64 KiB'den uzun olduğu için yalnızca başı gösteriliyor. İstediğiniz adımlara kadar kısaltın, sonra onaylayın.",
+      "tooLong": "Bir plan en fazla 64 KiB olabilir. Onaylamadan önce kısaltın."
     },
     "approvals": {
       "title": "Onayınızı bekliyor",
@@ -364,6 +385,9 @@
       "runsUsed": "{{limit}} çalıştırmadan {{used}}",
       "runsUsedNoLimit": "{{used}} çalıştırma",
       "stopRun": "Çalıştırmayı durdur",
+      "stopRunTitle": "Bu çalıştırma durdurulsun mu?",
+      "stopRunDescription": "\"{{name}}\" ({{run}}) şimdi durur. Başka bir makinede veya kümede çalıştırdığı iş de orada iptal edilir.",
+      "keepRun": "Çalışmaya devam etsin",
       "viewLog": "Günlüğü görüntüle",
       "columns": {
         "run": "Çalıştırma",
@@ -867,6 +891,7 @@
     "progressCancelled": "İptal edildi",
     "progressReadingPages": "Sayfalar okunuyor",
     "progressTranscribingPage": "{{model}} ile sayfa {{page}} / {{total}} metne dökülüyor",
+    "progressTranscribingPdfPage": "{{model}} ile {{pdfPage}}. sayfa ({{page}} / {{total}}) metne dökülüyor",
     "progressDocumentStructure": "Belge yapısı dönüştürülüyor",
     "progressMermaid": "Mermaid diyagramı işleniyor",
     "progressFirstSheet": "İlk sayfa okunuyor",
@@ -910,7 +935,9 @@
     "progressConvertingSource": "Kaynak Typst'e dönüştürülüyor",
     "pageRange": "Sayfalar",
     "pageRangePlaceholder": "Tüm sayfalar ya da 1-50 gibi bir aralık",
-    "pageRangeInvalid": "Tek bir sayfa numarası ya da 1-50 gibi bir aralık girin."
+    "pageRangeInvalid": "Tek bir sayfa numarası ya da 1-50 gibi bir aralık girin.",
+    "pageCount_one": "Bu PDF'de {{count}} sayfa var.",
+    "pageCount_other": "Bu PDF'de {{count}} sayfa var."
   },
   "converters": {
     "imageToLatex": {
@@ -1119,10 +1146,14 @@
     "arxivInputRequired": "Bir arXiv kimliği girin veya bir kaynak arşivi seçin.",
     "equationToTypst": "Pandoc bu denklemi Typst'e dönüştüremedi. LaTeX matematiğini denetleyip yeniden deneyin.",
     "pdfTooManyPages": "Bu taramada {{pages}} sayfa var, Oleafly bir seferde en fazla {{limit}} sayfayı metne döker. Dosyanın altına 1-{{limit}} gibi bir sayfa aralığı girin.",
-    "outputLimit": "Model, işini bitirmeden önce yazacak yer kalmadı, bu yüzden metne döküm eksik kalırdı. Ayarlar, Yapay zeka asistanı, Araçlar bölümünden çıktı sınırı daha büyük bir model seçin ya da daha küçük bir bölümü metne dökün."
+    "outputLimit": "Model, işini bitirmeden önce yazacak yer kalmadı, bu yüzden metne döküm eksik kalırdı. Ayarlar, Yapay zeka asistanı, Araçlar bölümünden çıktı sınırı daha büyük bir model seçin ya da daha küçük bir bölümü metne dökün.",
+    "refused": "Model bunu metne dökmeyi reddetti, bu yüzden hiçbir şey eklenmedi. Ayarlar, Yapay zeka asistanı, Araçlar bölümünden başka bir model seçin.",
+    "pageRangePastEnd_one": "Bu PDF'de {{count}} sayfa var. 1 girin ya da Sayfalar alanını boş bırakın.",
+    "pageRangePastEnd_other": "Bu PDF'de {{count}} sayfa var. 1 ile {{count}} arasında bir aralık girin."
   },
   "converterNotes": {
-    "scannedPages": "{{model}} ile {{pages}} taranmış sayfa metne döküldü. Sonucu kullanmadan önce denklemleri ve tabloları gözden geçirin.",
+    "scannedPages_one": "{{count}} taranmış sayfa {{model}} ile metne döküldü. Sonucu kullanmadan önce denklemleri ve tabloları gözden geçirin.",
+    "scannedPages_other": "{{count}} taranmış sayfa {{model}} ile metne döküldü. Sonucu kullanmadan önce denklemleri ve tabloları gözden geçirin.",
     "extracted": "{{pages}} sayfa ve {{figures}} şekil yerel olarak çıkarıldı.",
     "mermaidTikz": "Bu akış şeması düzenlenebilir TikZ koduna dönüştürüldü.",
     "mermaidRendered": "Mermaid sözdizimi düzenlenebilir TikZ koduna düzgün eşlenmediği için bu diyagram yerel olarak işlendi.",
@@ -1149,6 +1180,9 @@
     "scansSentToHost": "Taranmış sayfalar {{host}} üzerindeki Ollama'ya gönderilir",
     "pdfSentToMathpix": "PDF'in tamamı Mathpix'e gönderilir",
     "transcribingHosted": "Görsel {{provider}} hizmetine gönderiliyor…",
+    "transcribingFallback": "Görsel {{provider}} hizmetine gönderiliyor (asistan modeli)…",
+    "sentFallback": "{{provider}} hizmetine gönderildi (asistan modeli)",
+    "editorFallback": "Ollama'da görü modeli olana kadar düzenleyicideki Görselden LaTeX özelliği görselleri {{provider}} hizmetine gönderir",
     "progressUploading": "PDF Mathpix'e gönderiliyor",
     "progressFormatting": "Metin Pandoc ile dönüştürülüyor",
     "scannedTitle": "Bu PDF taranmış görünüyor",
@@ -1158,15 +1192,23 @@
     "estimateCost_other": "{{count}} sayfa. {{model}} ile yaklaşık {{cost}}.",
     "estimateUnknown_one": "{{count}} sayfa. {{provider}} bunu kullanıma göre ücretlendirir.",
     "estimateUnknown_other": "{{count}} sayfa. {{provider}} bunları kullanıma göre ücretlendirir.",
+    "estimatePlan_one": "{{count}} sayfa. {{provider}} bunu planınıza dahil eder.",
+    "estimatePlan_other": "{{count}} sayfa. {{provider}} bunları planınıza dahil eder.",
+    "estimateLocal_one": "{{count}} sayfa. Model bu bilgisayarda çalışır, ücretsizdir.",
+    "estimateLocal_other": "{{count}} sayfa. Model bu bilgisayarda çalışır, ücretsizdir.",
+    "estimateFree_one": "{{count}} sayfa. {{model}} ile ücretsiz.",
+    "estimateFree_other": "{{count}} sayfa. {{model}} ile ücretsiz.",
     "transcribePages_one": "{{count}} sayfayı metne dök",
     "transcribePages_other": "{{count}} sayfayı metne dök",
     "transcribedWith": "{{model}} ile metne döküldü. Denklemleri ve tabloları gözden geçirin.",
     "sentBadge": "{{provider}} hizmetine gönderildi",
     "openToolsSettings": "Araçlar ayarları",
+    "openProviderSettings": "Sağlayıcı ayarları",
     "errors": {
       "offline": "Oleafly çevrimdışı modda. Yerel bir model seçin veya çevrimdışı modu kapatın.",
       "providerNotConfigured": "{{provider}} için API anahtarı yok. Ayarlar'dan bir anahtar ekleyin veya başka bir model seçin.",
       "modelDisabled": "{{model}}, Ayarlar'da kapalı. Açın veya başka bir model seçin.",
+      "modelUnavailable": "{{model}} artık {{provider}} üzerinde kullanılamıyor. Başka bir model seçin.",
       "cannotSeeImages": "{{model}} görselleri okuyamıyor. Bir görü modeli seçin.",
       "localModelGone": "{{model}} artık Ollama'da yok. Yeniden indirin veya başka bir model seçin.",
       "imagesOnly": "{{model}} yalnızca görselleri okur. Yazılmış denklemleri dönüştürmek için bir dil modeli seçin.",
@@ -1764,6 +1806,8 @@
     "keepRunningHint": "Önce Ayarlar, Araştırma bölümünden Arka plan görevlerini açın.",
     "invalidMetric": "Harf, rakam, nokta, kısa çizgi veya alt çizgi kullanın.",
     "invalidCost": "Sıfırdan büyük bir tutar girin.",
+    "invalidCostMax": "En fazla {{max}} olan bir tutar girin.",
+    "invalidCostNumber": "Tutarı {{example}} gibi bir sayı olarak girin.",
     "invalidRuns": "1 ile 1.000 arasında bir tam sayı girin.",
     "invalidStart": "Önümüzdeki 30 gün içinde bir başlangıç zamanı seçin.",
     "invalidStartFormat": "{{example}} biçimini kullanın.",
@@ -1786,6 +1830,9 @@
     "hint": "Bu denetimler yalnızca uyarır. Uygulamayı engellemez.",
     "running": "Denetleniyor…",
     "refresh": "Yeniden denetle",
+    "empty": "Bu sonuç için henüz hiçbir denetim çalıştırılmadı.",
+    "more_one": "{{count}} tane daha listelenmiyor.",
+    "more_other": "{{count}} tane daha listelenmiyor.",
     "status": {
       "pass": "Geçti",
       "warn": "Bunu denetleyin",
@@ -1893,7 +1940,8 @@
         "time": "2:00:00 gibi bir Slurm süresi kullanın.",
         "name": "Harf, rakam, nokta, virgül, kısa çizgi veya alt çizgi kullanın.",
         "mem": "16 gibi tam sayı bir gigabayt değeri kullanın.",
-        "count": "İzin verilen aralıkta bir tam sayı kullanın."
+        "count": "İzin verilen aralıkta bir tam sayı kullanın.",
+        "prelude": "Kurulum komutlarını 4 KB veya daha az tutun. Aksanlı harfler ve Latin olmayan yazılar daha fazla yer kaplar."
       }
     },
     "test": {
@@ -1970,7 +2018,7 @@
       "movingBackHint": "Bu görev, geçerli adımı bitince Oleafly'ye geri döner."
     },
     "earlierActivity": "Önceki etkinliği göster",
-    "earlierTruncated": "Bu eski çalıştırmanın yalnızca ilk {{limit}} öğesi gösteriliyor.",
+    "earlierTruncated": "Bu eski çalıştırmanın yalnızca son {{limit}} öğesi gösteriliyor.",
     "keepRunningFailed": "Bu ayar değiştirilemedi. Yeniden deneyin."
   }
 }

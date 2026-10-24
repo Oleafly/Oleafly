@@ -294,23 +294,41 @@ fn code_step(raw: &[char], index: usize, masks: &mut Masks, frame: &mut CodeFram
 
 /// `maskTypstSource`: `text` without comments and raw blocks; `code` also
 /// without string contents and autolinks.
+#[cfg(test)]
 pub(crate) fn mask_source(raw: &[char]) -> (Vec<char>, Vec<char>) {
+    let (text, code, _) = mask_source_with_code_regions(raw);
+    (text, code)
+}
+
+/// [`mask_source`], and which characters sit in code (after a `#`, inside
+/// its braces and parentheses) rather than markup.
+fn mask_source_with_code_regions(raw: &[char]) -> (Vec<char>, Vec<char>, Vec<bool>) {
     let mut masks = Masks {
         text: raw.to_vec(),
         code: raw.to_vec(),
     };
+    let mut in_code = vec![false; raw.len()];
     let mut frames = vec![Frame::Markup {
         close: false,
         brackets: 0,
     }];
     let mut index = 0;
     while index < raw.len() {
-        let step = match frames.last_mut().expect("the markup frame stays") {
+        let (step, code_frame) = match frames.last_mut().expect("the markup frame stays") {
             Frame::Markup { close, brackets } => {
-                markup_step(raw, index, &mut masks, *close, brackets)
+                (markup_step(raw, index, &mut masks, *close, brackets), false)
             }
-            Frame::Code(frame) => code_step(raw, index, &mut masks, frame),
+            Frame::Code(frame) => (code_step(raw, index, &mut masks, frame), true),
         };
+        let next = match &step {
+            Step::Advance(next) | Step::PopAdvance(next) | Step::Push(_, next) => *next,
+            Step::Pop => index,
+        };
+        if code_frame {
+            for cell in in_code.iter_mut().take(next).skip(index) {
+                *cell = true;
+            }
+        }
         match step {
             Step::Advance(next) => index = next,
             Step::Pop => {
@@ -326,7 +344,7 @@ pub(crate) fn mask_source(raw: &[char]) -> (Vec<char>, Vec<char>) {
             }
         }
     }
-    (masks.text, masks.code)
+    (masks.text, masks.code, in_code)
 }
 
 /// `maskQuotedContents`: string contents blanked, quotes kept.
@@ -377,25 +395,36 @@ fn trim_reference(name: &str) -> &str {
     name.trim_end_matches(['.', ':'])
 }
 
-/// `resolveImport` from the legacy Typst parser: relative to the file,
-/// `.typ` added when the last segment has no extension.
+/// `resolveImport` from the legacy Typst parser: relative to the file (or
+/// to the project root for a `/`-rooted path, as Typst reads it), `.typ`
+/// added when the last segment has no extension. A path that climbs out of
+/// the project resolves to nothing.
 fn resolve_import(from: &str, raw: &str) -> Option<String> {
-    if raw.starts_with('@') || raw.contains("://") || raw.starts_with('/') {
+    if raw.starts_with('@') || raw.contains("://") {
         return None;
     }
-    let mut parts: Vec<&str> = from.split('/').collect();
-    parts.pop();
-    parts.extend(raw.strip_prefix("./").unwrap_or(raw).split('/'));
+    let mut parts: Vec<&str> = Vec::new();
+    match raw.strip_prefix('/') {
+        Some(rooted) => parts.extend(rooted.split('/')),
+        None => {
+            parts.extend(from.split('/'));
+            parts.pop();
+            parts.extend(raw.strip_prefix("./").unwrap_or(raw).split('/'));
+        }
+    }
     let mut normalized: Vec<&str> = Vec::new();
     for part in parts {
         if part.is_empty() || part == "." {
             continue;
         }
         if part == ".." {
-            normalized.pop();
+            normalized.pop()?;
         } else {
             normalized.push(part);
         }
+    }
+    if normalized.is_empty() {
+        return None;
     }
     let target = normalized.join("/");
     let last = target.rfind('/').map_or(0, |index| index + 1);
@@ -633,8 +662,9 @@ fn quoted_after_space(text: &[char], from: usize) -> Option<(usize, usize)> {
     Some((cursor, close))
 }
 
-/// `#include "x"` and `#import "x"`.
-fn includes(facts: &mut Facts<'_>, text: &[char]) {
+/// `#include "x"` and `#import "x"`, and `include "x"` and `import "x"`
+/// inside code (`#let ch = include "ch.typ"`, `#{ include "a.typ" }`).
+fn includes(facts: &mut Facts<'_>, text: &[char], in_code: &[bool]) {
     for keyword in ["include", "import"] {
         let pattern = format!("#{keyword}");
         let kind = if keyword == "import" {
@@ -644,8 +674,16 @@ fn includes(facts: &mut Facts<'_>, text: &[char]) {
         };
         let mut index = 0;
         while index < text.len() {
-            if starts_with_at(text, index, &pattern) {
-                if let Some((open, close)) = quoted_after_space(text, index + pattern.len()) {
+            let hashed = starts_with_at(text, index, &pattern);
+            let bare = !hashed
+                && in_code.get(index) == Some(&true)
+                && starts_with_at(text, index, keyword)
+                && index.checked_sub(1).is_none_or(|before| {
+                    !(is_identifier_continue(text[before]) || matches!(text[before], '#' | '.'))
+                });
+            let keyword_end = index + if hashed { pattern.len() } else { keyword.len() };
+            if hashed || bare {
+                if let Some((open, close)) = quoted_after_space(text, keyword_end) {
                     let raw_target = string_of(&text[open + 1..close]);
                     if !raw_target.is_empty() {
                         if let Some(target) = resolve_import(facts.file, &raw_target) {
@@ -806,6 +844,22 @@ fn bibliography_paths(facts: &mut Facts<'_>, text: &[char], from: usize, end: us
     }
 }
 
+/// Whether the arguments `from..end` hold `full: true`, which cites every
+/// entry of the bibliography.
+fn cites_full(code_mask: &[char], from: usize, end: usize) -> bool {
+    (from..end).any(|at| {
+        starts_with_at(code_mask, at, "full")
+            && !code_mask
+                .get(at.wrapping_sub(1))
+                .is_some_and(|before| is_identifier_continue(*before))
+            && {
+                let colon = skip_spaces(code_mask, at + 4);
+                code_mask.get(colon) == Some(&':')
+                    && starts_with_at(code_mask, skip_spaces(code_mask, colon + 1), "true")
+            }
+    })
+}
+
 /// `#bibliography("a.bib")` / `#bibliography(("a.bib", "b.yml"))`.
 fn bibliography_calls(facts: &mut Facts<'_>, text: &[char], code_mask: &[char]) {
     let mut index = 0;
@@ -815,6 +869,9 @@ fn bibliography_calls(facts: &mut Facts<'_>, text: &[char], code_mask: &[char]) 
             if text.get(cursor) == Some(&'(') {
                 let end = bibliography_arguments_end(text, code_mask, cursor);
                 bibliography_paths(facts, text, cursor + 1, end);
+                if cites_full(code_mask, cursor + 1, end) {
+                    facts.facts.cites_all = true;
+                }
                 index = end;
                 continue;
             }
@@ -859,7 +916,7 @@ fn image_calls(facts: &mut Facts<'_>, text: &[char], code_mask: &[char]) {
 pub(crate) fn analyze(file: &str, raw_text: &str) -> FileFacts {
     let source = Source::new(raw_text);
     let raw = source.chars.clone();
-    let (text, code) = mask_source(&raw);
+    let (text, code, in_code) = mask_source_with_code_regions(&raw);
     let code_mask = mask_quoted_contents(&text);
     let mut facts = Facts {
         file,
@@ -869,7 +926,7 @@ pub(crate) fn analyze(file: &str, raw_text: &str) -> FileFacts {
     headings(&mut facts, &text);
     labels(&mut facts, &raw, &code);
     references(&mut facts, &code);
-    includes(&mut facts, &text);
+    includes(&mut facts, &text, &in_code);
     let_bindings(&mut facts, &code_mask);
     reference_calls(&mut facts, &code_mask);
     cite_calls(&mut facts, &text, &code_mask);
@@ -997,10 +1054,8 @@ mod tests {
             named(UseKind::Asset),
             [("fig.png".to_string(), Some("fig.png".to_string()))]
         );
-        assert_eq!(
-            named(UseKind::Include),
-            [("../up".to_string(), Some("up.typ".to_string()))]
-        );
+        // `../up` from the project root leaves the project.
+        assert!(named(UseKind::Include).is_empty());
         assert_eq!(
             named(UseKind::Import),
             [("lib.typ".to_string(), Some("lib.typ".to_string()))]
@@ -1046,6 +1101,45 @@ mod tests {
                 blank(15)
             )
         );
+    }
+
+    #[test]
+    fn rooted_imports_start_at_the_project_and_climbing_out_resolves_nothing() {
+        assert_eq!(
+            resolve_import("chapters/a.typ", "/template.typ").as_deref(),
+            Some("template.typ")
+        );
+        assert_eq!(resolve_import("a.typ", "../outside.typ"), None);
+        assert_eq!(resolve_import("chapters/a.typ", "../../outside"), None);
+    }
+
+    #[test]
+    fn code_mode_includes_are_edges_but_prose_is_not() {
+        let facts = analyze(
+            "main.typ",
+            "#let ch = include \"ch.typ\"\n#{\n  include \"b.typ\"\n}\nWe include \"prose.typ\" here.\n#import \"/lib.typ\": *\n",
+        );
+        let inputs: Vec<(UseKind, Option<String>)> = facts
+            .uses
+            .iter()
+            .filter(|use_| matches!(use_.kind, UseKind::Include | UseKind::Import))
+            .map(|use_| (use_.kind, use_.target.clone()))
+            .collect();
+        assert_eq!(
+            inputs,
+            [
+                (UseKind::Include, Some("ch.typ".to_string())),
+                (UseKind::Include, Some("b.typ".to_string())),
+                (UseKind::Import, Some("lib.typ".to_string())),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_full_bibliography_cites_everything() {
+        assert!(analyze("main.typ", "#bibliography(\"refs.bib\", full: true)\n").cites_all);
+        assert!(!analyze("main.typ", "#bibliography(\"refs.bib\", full: false)\n").cites_all);
+        assert!(!analyze("main.typ", "#bibliography(\"refs.bib\")\n").cites_all);
     }
 
     #[test]

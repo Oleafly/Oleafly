@@ -84,6 +84,7 @@ export const SETTINGS_SEARCH_EXCLUDED: readonly CatalogPath[] = [
   ["settings", "reset"],
   // Validation messages and the task brief's own lines are not settings.
   ["researchTools", "compute", "form", "errors"],
+  ["settings", "research", "mcpServers"],
   ["researchTools", "compute", "brief"],
   ["shell", "settings", "nav"],
   ["shell", "settings", "close"],

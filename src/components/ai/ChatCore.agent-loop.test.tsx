@@ -5524,6 +5524,20 @@ describe("ChatCore composer shortcuts", () => {
     );
   });
 
+  it("puts a home card's skill command before what the user typed", async () => {
+    mocks.skillEntries.push(
+      skillEntry({ id: "proofread", name: "Proofread", enabled: true, projectEnabled: true }),
+    );
+    const rendered = await renderChat();
+    changeComposer("the abstract, please keep it short");
+
+    fireEvent.click(await rendered.findByTestId("assistant-home-card-proofread"));
+
+    expect((rendered.getByPlaceholderText("Ask AI to help with your document…") as HTMLTextAreaElement).value).toBe(
+      "/proofread the abstract, please keep it short",
+    );
+  });
+
   it("fills the composer from a prompt shortcut and sends with the button", async () => {
     const rendered = await renderChat();
 

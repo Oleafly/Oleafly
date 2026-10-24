@@ -644,17 +644,64 @@ fn a_cancel_that_arrives_before_the_wait_still_stops_it() {
     let early = registry.register("early-request");
     assert!(early.flag.load(Ordering::SeqCst));
     drop(early);
-    assert!(!registry.lock().contains_key("early-request"));
 
     let late = registry.register("late-request");
     assert!(!late.flag.load(Ordering::SeqCst));
     registry.cancel("late-request");
     assert!(late.flag.load(Ordering::SeqCst));
     drop(late);
-    assert!(registry.lock().is_empty());
+
+    // A wait that ends without a cancel leaves nothing behind.
+    drop(registry.register("finished-request"));
+    assert!(!registry.lock().contains_key("finished-request"));
 
     registry.cancel("../not an id");
-    assert!(registry.lock().is_empty());
+    assert!(!registry.lock().contains_key("../not an id"));
+}
+
+#[test]
+fn a_cancel_that_lands_as_the_upload_finishes_still_stops_the_wait() {
+    let registry = CancelRegistry::default();
+    let upload = registry.register("request");
+    registry.cancel("request");
+    // The upload's answer came in before it saw the flag.
+    drop(upload);
+    let wait = registry.register("request");
+    assert!(wait.flag.load(Ordering::SeqCst));
+}
+
+#[tokio::test]
+async fn a_cancelled_image_read_sends_nothing_and_a_running_one_stops() {
+    let server = serve(|_| Reply::ok(r#"{"text":"x"}"#)).await;
+    let error = Api::for_tests(&server.base)
+        .text_unless_cancelled(&keys(), IMAGE, "image/png", &AtomicBool::new(true))
+        .await
+        .unwrap_err();
+    assert_eq!(error_code(&error), "mathpix.cancelled");
+    assert!(server.requests("/").is_empty());
+
+    // A server that takes the request and never answers.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let holder = std::thread::spawn(move || {
+        let (stream, _) = listener.accept().unwrap();
+        std::thread::sleep(Duration::from_secs(3));
+        drop(stream);
+    });
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let stop = Arc::clone(&cancelled);
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(60)).await;
+        stop.store(true, Ordering::SeqCst);
+    });
+    let started = std::time::Instant::now();
+    let error = Api::for_tests(&base)
+        .text_unless_cancelled(&keys(), IMAGE, "image/png", &cancelled)
+        .await
+        .unwrap_err();
+    assert_eq!(error_code(&error), "mathpix.cancelled");
+    assert!(started.elapsed() < Duration::from_secs(2));
+    holder.join().unwrap();
 }
 
 #[test]

@@ -182,7 +182,8 @@
   },
   "imageToLatex": {
     "failed": "Image to LaTeX failed: {{detail}}",
-    "transcribing": "Transcribing image…"
+    "transcribing": "Transcribing image…",
+    "notInserted": "The active file changed, so the LaTeX wasn't inserted. Copy it, then paste it where you want it."
   },
   "import": {
     "chooseOfferedProjectType": "Choose one of the project types offered for this file.",
@@ -603,6 +604,8 @@
     "saveReason": "the project folder isn't available"
   },
   "imageToTypst": {
-    "failed": "Image to Typst failed: {{detail}}"
+    "failed": "Image to Typst failed: {{detail}}",
+    "copied": "Copied Typst source",
+    "notInserted": "The active file changed, so the Typst wasn't inserted. Copy it, then paste it where you want it."
   }
 }

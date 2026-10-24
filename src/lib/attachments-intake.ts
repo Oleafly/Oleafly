@@ -7,7 +7,12 @@ import { formatBytes } from "@/lib/format-bytes";
 import { mimeForPath } from "@/lib/image-mime";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
-import { draftAttachments, useComposerDrafts } from "@/store/composer-drafts";
+import {
+  composerHolding,
+  draftAttachments,
+  registerAttachmentHolder,
+  useComposerDrafts,
+} from "@/store/composer-drafts";
 
 export const ATTACHMENT_LIMITS = {
   perMessage: 10,
@@ -159,7 +164,7 @@ type NormalizedAttachment = Awaited<ReturnType<Normalizer["normalizeAttachment"]
 type StoredMeta = Awaited<ReturnType<typeof attachmentPut>>;
 
 function isDrafted(composerId: string, id: string): boolean {
-  return draftAttachments(composerId).some((item) => item.id === id);
+  return composerHolding(composerId, id) !== null;
 }
 
 /** Stores a PDF's text layer; whether it was stored. A failure is logged, not fatal. */
@@ -182,12 +187,14 @@ async function storePdfText(
 function storePageImages(
   scope: string | null,
   normalized: NormalizedAttachment,
+  held: string[],
 ): Promise<StoredAttachmentRef[]> {
   return Promise.all(
     (normalized.pageImages ?? []).map(async (image, index) => {
       const stored = await store(() =>
         attachmentPut(scope, `${normalized.name} page ${index + 1}.png`, image.mime, image.bytes),
       );
+      held.push(stored.sha256);
       return { sha256: stored.sha256, mime: stored.mime };
     }),
   );
@@ -219,28 +226,37 @@ async function prepareAttachment(
   normalizer: Normalizer,
 ): Promise<void> {
   const drafts = useComposerDrafts.getState();
+  // The draft can move to another composer meanwhile; the chip is found where it is now.
+  const holder = () => composerHolding(ctx.composerId, draft.id) ?? ctx.composerId;
+  // Stored but not on the chip yet: a collection (a chat deleted meanwhile) must keep them.
+  const held: string[] = [];
+  const release = registerAttachmentHolder(() => held);
   try {
     const normalized = await normalizer.normalizeAttachment(file, kind, ATTACHMENT_LIMITS);
     if (!isDrafted(ctx.composerId, draft.id)) return;
     const meta = await store(() =>
       attachmentPut(ctx.scope, normalized.name, normalized.mime, normalized.bytes),
     );
+    held.push(meta.sha256);
     const hasText = kind === "pdf" ? await storePdfText(ctx.scope, meta.sha256, normalized) : undefined;
-    const pageImages = await storePageImages(ctx.scope, normalized);
-    const duplicate = draftAttachments(ctx.composerId).some(
+    const pageImages = await storePageImages(ctx.scope, normalized, held);
+    const composerId = holder();
+    const duplicate = draftAttachments(composerId).some(
       (item) => item.id !== draft.id && item.status === "ready" && item.sha256 === meta.sha256,
     );
     if (duplicate) {
-      drafts.removeAttachments(ctx.composerId, [draft.id]);
+      drafts.removeAttachments(composerId, [draft.id]);
       return;
     }
-    drafts.updateAttachment(ctx.composerId, draft.id, readyPatch(meta, normalized, hasText, pageImages));
+    drafts.updateAttachment(composerId, draft.id, readyPatch(meta, normalized, hasText, pageImages));
   } catch (error) {
     void logError("prepare attachment", error);
-    drafts.updateAttachment(ctx.composerId, draft.id, {
+    drafts.updateAttachment(holder(), draft.id, {
       status: "error",
       error: failureMessage(error, draft.name),
     });
+  } finally {
+    release();
   }
 }
 

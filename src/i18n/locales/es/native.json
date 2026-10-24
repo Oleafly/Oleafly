@@ -99,11 +99,15 @@
       "title": "Aplicaciones de escritorio",
       "action": "{{agent}} quiere {{action}}.",
       "steps": "{{agent}} quiere hacer estos pasos en una aplicación de escritorio:",
-      "moreSteps": "Pasos que no se muestran: {{count}}",
-      "moreItems": "{{count}} elementos más que no se muestran",
-      "cut": "(+{{count}} caracteres no mostrados)",
+      "moreSteps": "Pasos que no se muestran y no se ejecutan: {{count}}",
+      "moreItems": "Elementos que no se muestran: {{count}}",
+      "cut": "(caracteres que no se muestran: {{count}})",
       "signedIn": "Esto actúa en tu propio navegador con la sesión iniciada.",
       "signedInOn": "Esto actúa en tu propio navegador con la sesión iniciada, en {{origin}}.",
+      "task": "Tarea: {{title}}",
+      "app": "Aplicación: {{name}}",
+      "window": "Ventana: {{title}}",
+      "element": "Elemento: {{element}}",
       "text": "Texto: «{{text}}»",
       "address": "Dirección: {{url}}",
       "allowOnce": "Permitir una vez",
@@ -111,6 +115,7 @@
       "allowSession": "Permitir en esta sesión",
       "allowTask": "Permitir en esta tarea",
       "deny": "No permitir",
+      "pickedFile": "el archivo elegido",
       "actions": {
         "launchApp": "abrir una aplicación",
         "click": "hacer clic en una aplicación",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "¿Permitir el control del escritorio?",
-      "message": "Los agentes podrán usar lo siguiente y seguirán preguntando antes de cada acción:",
+      "message": "Los agentes podrán usar lo siguiente. Preguntan antes de cada acción y, al guardar, se borran todas las opciones \"Permitir en este chat\":",
       "confirm": "Permitir",
       "enabled": "Aplicaciones de escritorio",
-      "app": "Aplicación: {{name}} ({{identity}})",
+      "app": "Aplicación: {{identity}} ({{name}})",
       "more": "Y {{count}} más",
       "site": "Sitio web: {{origin}}",
       "signedIn": "Tu navegador con la sesión iniciada en {{origin}}",
-      "scripted": "Scripts de Cua"
+      "scripted": "Scripts de Cua",
+      "spacesTitle": "¿Dar más acceso a Cua Spaces?",
+      "spacesMessage": "Los agentes que usan Cua Spaces podrán:",
+      "spacesChanges": "Crear y eliminar Spaces, y ejecutar comandos en ellos",
+      "spacesSignIns": "Usar tu inicio de sesión de Claude Code o Codex dentro de un Space"
     }
   },
   "errors": {

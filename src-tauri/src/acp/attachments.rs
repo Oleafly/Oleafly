@@ -305,19 +305,31 @@ impl FileScope<'_> {
             {
                 (
                     format!("Selection from {path}"),
-                    oleafly_acp::paths::file_uri(&self.spelled.join(path)).ok(),
+                    oleafly_acp::paths::file_uri(&self.spelled.join(path))
+                        .ok()
+                        .map(|uri| selection_uri(&uri)),
                 )
             }
             _ => ("Selection".to_string(), None),
         };
         Some(EmbeddedText {
             // A selection is quoted, not linked: the link would bring the
-            // whole file.
+            // whole file. Embedded, it names its own resource, never the
+            // file's, so the agent does not take it for the file's content.
             uri: uri.filter(|_| self.caps.embedded_context),
             name,
             mime_type: Some("text/plain".into()),
             text,
         })
+    }
+}
+
+/// The resource a selection of the file at `file_uri` is sent as: the file's
+/// path under its own scheme (`oleafly-selection:///…/main.tex`).
+fn selection_uri(file_uri: &str) -> String {
+    match file_uri.strip_prefix("file:") {
+        Some(rest) => format!("oleafly-selection:{rest}"),
+        None => format!("oleafly-selection:{file_uri}"),
     }
 }
 
@@ -431,6 +443,29 @@ mod tests {
         assert!(resolved.links[0].uri.ends_with("/main.tex"));
         assert_eq!(resolved.texts[0].text, "\\section{A}");
         assert!(!attachment_dir(&root, "s").exists());
+    }
+
+    #[test]
+    fn an_embedded_selection_never_names_the_whole_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        std::fs::write(root.join("main.tex"), "\\section{A}\nWhole file.").unwrap();
+        let input = PromptInput {
+            selections: vec![PromptSelection {
+                path: Some("main.tex".into()),
+                text: "One paragraph.".into(),
+            }],
+            ..Default::default()
+        };
+        let caps = Capabilities {
+            embedded_context: true,
+            ..Default::default()
+        };
+        let resolved = resolve(&input, "p", &root, &root, "s", &caps).unwrap();
+        let uri = resolved.texts[0].uri.as_deref().unwrap();
+        assert!(uri.starts_with("oleafly-selection:"), "{uri}");
+        assert!(uri.ends_with("/main.tex"), "{uri}");
+        assert_eq!(resolved.texts[0].text, "One paragraph.");
     }
 
     #[test]

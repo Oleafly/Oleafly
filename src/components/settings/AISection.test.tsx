@@ -23,6 +23,7 @@ const captured = vi.hoisted(() => ({
     setSysPrompt: (value: string) => void;
     saveSystemPrompt: () => Promise<void>;
     sysPromptSaved: boolean;
+    configLoaded: boolean;
   },
 }));
 
@@ -675,6 +676,22 @@ describe("AISection", () => {
 
     resolveConfig?.(configuredAiConfig());
     await waitFor(() => expect(reset).toBeEnabled());
+  });
+
+  it("keeps the instruction switches off and says why when the config cannot be read", async () => {
+    const user = userEvent.setup();
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "get_config") throw new Error("The settings file is locked.");
+      if (command === "mcp_servers_list") return [];
+      throw new Error(`Unexpected command: ${command}`);
+    });
+
+    renderSection();
+    await user.click(screen.getByRole("tab", { name: enSettings.ai.section.tabs.instructions }));
+
+    expect(await screen.findByText("The settings file is locked.")).toBeInTheDocument();
+    expect(captured.instructions?.configLoaded).toBe(false);
+    expect(mockInvoke.mock.calls.filter(([command]) => command === "set_config")).toHaveLength(0);
   });
 
   it("keeps the PDF runtime mirror consistent when a skill reset fails", async () => {

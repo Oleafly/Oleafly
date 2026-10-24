@@ -50,14 +50,14 @@
       "platformLabel": "Platform",
       "refreshingStatus": "De agentstatus wordt vernieuwd. De huidige lijst blijft staan.",
       "registry": {
-        "description": "Doorzoek het ACP-register naar agents die andere teams hebben gepubliceerd.",
+        "description": "Doorzoek het ACP-register naar CLI-agents die andere teams hebben gepubliceerd.",
         "hideDistribution": "Distributie verbergen",
         "register": "Agent registreren",
         "registered": "Geregistreerd",
         "reviewHint": "Vermeldingen in het register beschrijven software volgens de uitgevers ervan. Bekijk de distributie voordat je hem registreert of installeert.",
         "search": "Zoeken",
-        "searchLabel": "Een ACP-agent zoeken",
-        "searchPlaceholder": "Zoek in het ACP-register",
+        "searchLabel": "Een CLI-agent zoeken",
+        "searchPlaceholder": "Zoek naar CLI-agents",
         "searching": "Zoeken",
         "showDistribution": "Distributie tonen",
         "title": "Meer agents vinden"
@@ -133,7 +133,8 @@
       "inactivity": {
         "label": "Een stille agent stoppen na",
         "description": "Als een agent zo lang niets stuurt, stopt Oleafly hem. Je kunt opnieuw verbinden.",
-        "minutes": "{{count}} minuten"
+        "minutes_one": "{{count}} minuut",
+        "minutes_other": "{{count}} minuten"
       },
       "protocolLabel": "Protocol",
       "remembered": {
@@ -1035,7 +1036,8 @@
         "path": {
           "ariaLabel": "Eigen pad naar de shell",
           "description": "Het programma dat nieuwe terminals uitvoeren.",
-          "label": "Pad naar de shell"
+          "label": "Pad naar de shell",
+          "missing": "Vul het volledige pad naar een shell in. Nieuwe terminals kunnen niet starten totdat je dat doet."
         },
         "windowsOnly": "{{name}} (alleen Windows)",
         "windowsOnlyNote": "{{name}} draait alleen op Windows. Nieuwe terminals hier starten in plaats daarvan met {{fallback}}.",
@@ -1622,7 +1624,7 @@
     "desktopApps": {
       "tab": "Desktop-apps",
       "title": "Desktop-apps",
-      "description": "Laat agents via Cua Driver apps en websites op deze computer gebruiken. Oleafly vraagt het voor elke klik of toetsaanslag.",
+      "description": "Laat agents via Cua Driver apps en websites op deze computer gebruiken. Oleafly vraagt het voor elke actie, tenzij je dat soort actie toestaat voor de chat, de sessie of de taak. Je aangemelde browser en scripts vragen het altijd.",
       "docsLink": "Documentatie van Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} is geïnstalleerd.",
@@ -1635,7 +1637,7 @@
       },
       "install": {
         "heading": "Cua Driver installeren",
-        "hint": "Voer deze opdracht uit in een terminal. Oleafly installeert Cua Driver nooit voor je.",
+        "hint": "Voer deze opdracht uit in een terminal, of gebruik Uitvoeren in terminal. De opdracht start het officiële installatieprogramma van Cua, en Oleafly downloadt Cua Driver zelf niet.",
         "run": "Uitvoeren in terminal",
         "needsProject": "Open een project om dit in de terminal van Oleafly uit te voeren, of kopieer de opdracht.",
         "confirm": "Dit downloadt het installatieprogramma van Cua Driver van cua.ai en voert het uit in je terminal. Doorgaan?",
@@ -1657,7 +1659,7 @@
       },
       "enable": {
         "label": "Agents desktop-apps laten gebruiken",
-        "description": "Agents kunnen de apps en websites hieronder zien. Voor klikken, typen en paginawijzigingen vragen ze het je eerst."
+        "description": "Agents kunnen de apps en websites hieronder zien. Voor klikken, typen en paginawijzigingen vragen ze het je eerst, tenzij je ze toestaat voor de chat, de sessie of de taak. Als je een app of website toevoegt, vervallen die keuzes."
       },
       "apps": {
         "heading": "Toegestane apps",
@@ -1680,7 +1682,7 @@
         "blocked": {
           "oleafly": "Oleafly kan zichzelf niet bedienen.",
           "driver": "Cua Driver kan zichzelf niet bedienen.",
-          "terminal": "Terminals voeren opdrachten uit zonder de goedkeuring van opdrachten in Oleafly.",
+          "terminal": "Terminals en code-editors voeren opdrachten uit zonder de goedkeuring van opdrachten in Oleafly.",
           "system_settings": "Met de systeeminstellingen kun je rechten wijzigen.",
           "passwords": "Wachtwoordapps blijven verboden terrein.",
           "scripting": "Programma's die scripts uitvoeren, kunnen alles doen op deze computer.",
@@ -1714,7 +1716,7 @@
       },
       "tool": {
         "description": "Gebruik de desktop-apps en websites die je bij Instellingen hebt toegestaan.",
-        "note": "Kijken gebeurt meteen. Voor klikken, typen en paginawijzigingen wordt het eerst gevraagd."
+        "note": "Kijken gebeurt meteen. Voor klikken, typen en paginawijzigingen wordt het eerst gevraagd, tenzij je ze toestaat voor de chat."
       },
       "task": {
         "label": "Desktop-apps",
@@ -1724,7 +1726,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "Verbind afgeschermde desktops en containers uit Cua Spaces als een MCP-server. Experimenteel.",
+        "description": "Verbind afgeschermde desktops en containers uit Cua Spaces als een MCP-server.",
         "notInstalled": "De opdracht cua is niet geïnstalleerd.",
         "connect": {
           "label": "Cua Spaces verbinden",
@@ -1824,7 +1826,7 @@
         },
         "legend": "Goedkeuringsbeleid",
         "trust": {
-          "description": "Bestandswijzigingen vragen niets. Shell-opdrachten en computerbesturing vragen altijd om goedkeuring. Je MCP-client blijft een extra controle.",
+          "description": "Bestandswijzigingen worden zonder vragen toegepast. Shell-opdrachten en nieuwe onderzoekstaken vragen altijd eerst om goedkeuring. Je MCP-client kan nog steeds zelf vragen.",
           "label": "Deze verbinding vertrouwen"
         }
       },
@@ -2306,11 +2308,20 @@
         "tasks_other": "Werkt aan {{count}} taken"
       },
       "stop": "Achtergrondproces stoppen",
-      "stopHint": "De taken ervan pauzeren tot je Oleafly weer opent.",
+      "stopHint": "De taken ervan komen terug naar Oleafly en blijven hier draaien.",
+      "stopConfirm": {
+        "title": "Het achtergrondproces stoppen?",
+        "description_one": "{{count}} taak komt terug naar Oleafly en blijft hier draaien.",
+        "description_other": "{{count}} taken komen terug naar Oleafly en blijven hier draaien."
+      },
       "stopFailed": "Het achtergrondproces is niet gestopt. Probeer het opnieuw.",
       "openLog": "Logboek tonen",
       "statusFailed": "De status van het achtergrondproces kon niet worden gelezen.",
       "toggleFailed": "Kon deze instelling niet wijzigen. Probeer het opnieuw."
+    },
+    "mcpServers": {
+      "loadFailed": "De lijst met MCP-servers kon niet worden gelezen.",
+      "missing": "{{name}} (niet gevonden)"
     }
   }
 }

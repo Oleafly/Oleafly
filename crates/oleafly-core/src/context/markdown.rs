@@ -1,5 +1,7 @@
 //! Markdown (Pandoc): headings, `{#id}` and automatic heading anchors,
 //! `@key` citations, front-matter `bibliography:` and `!include` lines.
+use std::collections::{HashMap, HashSet};
+
 use super::text::{is_js_space, resolve_project_path, string_of, trim_js, Source};
 use super::{Def, DefKind, FileFacts, Use, UseKind};
 
@@ -202,15 +204,32 @@ pub(crate) fn markdown_slug(title: &str) -> String {
     }
 }
 
-fn unique_identifier(base: &str, used: &[String]) -> String {
-    if !used.iter().any(|name| name == base) {
-        return base.to_string();
+/// The anchors a file's headings have taken, for Pandoc's `-1`, `-2`
+/// suffixes. The next suffix to try is kept per base, so a changelog of
+/// thousands of `## 1.2.3` headings (all `section`) stays linear.
+#[derive(Default)]
+struct UsedIdentifiers {
+    used: HashSet<String>,
+    next_suffix: HashMap<String, usize>,
+}
+
+impl UsedIdentifiers {
+    fn insert(&mut self, anchor: String) {
+        self.used.insert(anchor);
     }
-    let mut suffix = 1;
-    while used.iter().any(|name| *name == format!("{base}-{suffix}")) {
-        suffix += 1;
+
+    fn unique(&mut self, base: &str) -> String {
+        if !self.used.contains(base) {
+            return base.to_string();
+        }
+        // Suffixes below the stored one were taken when last tried, and
+        // anchors are never given back.
+        let suffix = self.next_suffix.entry(base.to_string()).or_insert(1);
+        while self.used.contains(&format!("{base}-{suffix}")) {
+            *suffix += 1;
+        }
+        format!("{base}-{suffix}")
     }
-    format!("{base}-{suffix}")
 }
 
 /// `{#id .class key=value}` → `id` and its offset inside the braces.
@@ -640,7 +659,7 @@ fn heading_anchors(
     headings: &[Heading],
     explicit: &[(String, u32)],
 ) {
-    let mut used: Vec<String> = Vec::new();
+    let mut used = UsedIdentifiers::default();
     for (name, from, _, line_index) in headings {
         let line = lines[*line_index];
         let explicit_id = attribute_blocks(&line.chars().collect::<Vec<_>>())
@@ -649,8 +668,8 @@ fn heading_anchors(
             .map(|(name, _)| name);
         let anchor = explicit_id
             .clone()
-            .unwrap_or_else(|| unique_identifier(&markdown_slug(name), &used));
-        used.push(anchor.clone());
+            .unwrap_or_else(|| used.unique(&markdown_slug(name)));
+        used.insert(anchor.clone());
         let line_number = facts.source.line_of(*from);
         if explicit
             .iter()
@@ -662,34 +681,62 @@ fn heading_anchors(
     }
 }
 
-/// `!include file` lines.
-fn include_lines(facts: &mut Facts<'_>, lines: &[&str]) {
-    for (index, line) in lines.iter().enumerate() {
-        let trimmed = line.trim_start();
-        let rest = trimmed
-            .strip_prefix("!include")
-            .filter(|rest| rest.starts_with(char::is_whitespace))
-            .map(str::trim_start);
-        let Some(rest) = rest else {
-            continue;
-        };
-        let raw: String = rest
-            .trim_matches(['"', '\''])
-            .chars()
-            .take_while(|character| !is_js_space(*character) && !"\"'}%>".contains(*character))
-            .collect();
-        if raw.is_empty() {
-            continue;
+/// What follows an include directive at the start of `line`: `!include`,
+/// Quarto and Hugo `{{< include >}}` (or `{{include}}`), and Jekyll
+/// `{% include %}`, each then white space.
+fn after_include_keyword(rest: &str) -> Option<&str> {
+    rest.strip_prefix("include")
+        .filter(|rest| rest.starts_with(char::is_whitespace))
+        .map(str::trim_start)
+}
+
+fn include_argument(line: &str) -> Option<&str> {
+    let trimmed = line.trim_start();
+    let after_keyword = after_include_keyword;
+    if let Some(rest) = trimmed.strip_prefix("!include") {
+        return rest
+            .starts_with(char::is_whitespace)
+            .then(|| rest.trim_start());
+    }
+    if let Some(rest) = trimmed.strip_prefix("{{") {
+        let rest = rest.strip_prefix('<').unwrap_or(rest).trim_start();
+        return after_keyword(rest);
+    }
+    trimmed
+        .strip_prefix("{%")
+        .and_then(|rest| after_keyword(rest.trim_start()))
+}
+
+/// The included path: `(["']?)([^"'\s}%>]+)\1`.
+fn include_target(argument: &str) -> Option<String> {
+    let quote = argument
+        .chars()
+        .next()
+        .filter(|first| matches!(first, '"' | '\''));
+    let body = quote.map_or(argument, |quote| &argument[quote.len_utf8()..]);
+    let raw: String = body
+        .chars()
+        .take_while(|character| !is_js_space(*character) && !"\"'}%>".contains(*character))
+        .collect();
+    let closed = quote.is_none_or(|quote| body[raw.len()..].starts_with(quote));
+    (!raw.is_empty() && closed).then_some(raw)
+}
+
+/// Include directives (`addMarkdownIncludes`), read from the visible text so
+/// an example inside a code fence is not one.
+fn include_lines(facts: &mut Facts<'_>, visible: &[char]) {
+    let text = string_of(visible);
+    let mut line_offset = 0;
+    for line in text.split('\n') {
+        let length = line.chars().count();
+        if let Some(raw) = include_argument(line).and_then(include_target) {
+            let at = line
+                .find(raw.as_str())
+                .map_or(0, |byte| line[..byte].chars().count());
+            let target = resolve_project_path(facts.file, &raw, None);
+            facts.use_(UseKind::Include, raw, line_offset + at, target);
         }
-        let line_offset: usize = lines[..index]
-            .iter()
-            .map(|line| line.chars().count() + 1)
-            .sum();
-        let at = line
-            .find(raw.as_str())
-            .map_or(0, |byte| line[..byte].chars().count());
-        let target = resolve_project_path(facts.file, &raw, None);
-        facts.use_(UseKind::Include, raw, line_offset + at, target);
+        line_offset += length + 1;
     }
 }
 
@@ -711,7 +758,7 @@ pub(crate) fn analyze(file: &str, text: &str) -> FileFacts {
     citations(&mut facts, &visible, &urls);
     let explicit = explicit_anchors(&mut facts, &visible, &urls);
     heading_anchors(&mut facts, &lines, &headings, &explicit);
-    include_lines(&mut facts, &lines);
+    include_lines(&mut facts, &visible);
     facts.facts
 }
 
@@ -847,6 +894,33 @@ mod tests {
                 ("b.md".to_string(), Some("notes/b.md".to_string())),
             ]
         );
+    }
+
+    #[test]
+    fn quarto_hugo_and_jekyll_includes_are_edges_and_fenced_ones_are_not() {
+        let facts = analyze(
+            "main.md",
+            "{{< include _intro.md >}}\n{{include parts/b.md}}\n{% include \"c.md\" %}\n```\n!include fenced.md\n```\n!include 'broken.md\n",
+        );
+        let names: Vec<String> = uses(&facts, UseKind::Include)
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect();
+        assert_eq!(names, ["_intro.md", "parts/b.md", "c.md"]);
+    }
+
+    #[test]
+    fn many_headings_with_one_slug_get_numbered_anchors_quickly() {
+        let text: String = (0..20_000)
+            .map(|index| format!("## 1.{index}\n\n"))
+            .collect();
+        let started = std::time::Instant::now();
+        let facts = analyze("CHANGELOG.md", &text);
+        assert!(started.elapsed() < std::time::Duration::from_secs(10));
+        let labels = names(&facts, DefKind::Label);
+        assert_eq!(labels.len(), 20_000);
+        assert_eq!(&labels[..3], ["section", "section-1", "section-2"]);
+        assert_eq!(labels[19_999], "section-19999");
     }
 
     #[test]

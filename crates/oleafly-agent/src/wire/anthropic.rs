@@ -12,7 +12,10 @@ use crate::message::{
 };
 use crate::provider::Resolved;
 use crate::tool::ToolSchema;
-use crate::wire::reasoning::{anthropic_thinking, default_max_tokens, STREAMING_MAX_TOKENS_CAP};
+use crate::wire::reasoning::{
+    anthropic_checks_output_room, anthropic_thinking, default_max_tokens, OUTPUT_ROOM_MAX_TOKENS,
+    STREAMING_MAX_TOKENS_CAP,
+};
 use crate::wire::server_tools::{anthropic_server_tools, native_web};
 use crate::wire::{role_str, sorted_tools};
 
@@ -181,9 +184,16 @@ pub(crate) fn anthropic_body(resolved: &Resolved, req: &CompletionRequest) -> Re
     body.insert("messages".into(), Value::Array(messages));
     body.insert(
         "max_tokens".into(),
-        json!(req
-            .max_tokens
-            .unwrap_or_else(|| default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP))),
+        json!(req.max_tokens.unwrap_or_else(|| {
+            let ceiling = default_max_tokens(&resolved.caps, STREAMING_MAX_TOKENS_CAP);
+            // A large default would leave older models no room for the
+            // input; they get one closer to what they used to.
+            if anthropic_checks_output_room(model) {
+                ceiling.min(OUTPUT_ROOM_MAX_TOKENS)
+            } else {
+                ceiling
+            }
+        })),
     );
     if let Some(system) = system_field(req) {
         body.insert("system".into(), system);

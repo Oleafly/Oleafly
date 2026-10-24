@@ -298,6 +298,11 @@ describe("TaskProgressTab", () => {
     const live = within(tab).getByText("wider model").closest("li") as HTMLElement;
 
     await userEvent.click(within(live).getByRole("button", { name: copy.stopRun }));
+    // Stopping can end a long job on a cluster, so it asks first, naming the run.
+    expect(api.cancelResearchTaskRun).not.toHaveBeenCalled();
+    const confirm = screen.getByRole("alertdialog");
+    expect(confirm).toHaveTextContent('"wider model" (r003) stops now.');
+    await userEvent.click(within(confirm).getByRole("button", { name: copy.stopRun }));
     expect(api.cancelResearchTaskRun).toHaveBeenCalledWith("task-1", "r003");
     expect(within(live).getByRole("button", { name: copy.stopRun })).toBeDisabled();
     await act(async () => finish());
@@ -313,10 +318,23 @@ describe("TaskProgressTab", () => {
     const live = within(tab).getByText("wider model").closest("li") as HTMLElement;
 
     await userEvent.click(within(live).getByRole("button", { name: copy.stopRun }));
+    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: copy.stopRun }));
 
     expect(await within(tab).findByRole("alert")).toHaveTextContent("The run already finished.");
     expect(api.progressResearchTask).toHaveBeenCalledOnce();
     expect(within(live).getByRole("button", { name: copy.stopRun })).toBeEnabled();
+  });
+
+  it("keeps the run going when the user keeps it", async () => {
+    render(<TaskProgressTab task={running()} />);
+    const tab = await shown();
+    const live = within(tab).getByText("wider model").closest("li") as HTMLElement;
+
+    await userEvent.click(within(live).getByRole("button", { name: copy.stopRun }));
+    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: new RegExp(copy.keepRun) }));
+
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(api.cancelResearchTaskRun).not.toHaveBeenCalled();
   });
 
   it("shows a load failure in place of the board", async () => {

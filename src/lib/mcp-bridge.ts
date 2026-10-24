@@ -75,7 +75,9 @@ const MUTATING_TOOLS = new Set([
   "research_task_create",
 ]);
 
-const ALWAYS_PROMPT_TOOLS = new Set(["run_command"]);
+// Asked about under every policy, "trust" included: a command runs on this
+// computer, and a research task runs for hours on the user's provider.
+const ALWAYS_PROMPT_TOOLS = new Set(["run_command", "research_task_create"]);
 
 const DENIED_BY_RULES = "This tool is denied for this project in approvals.toml.";
 const RULES_UNREADABLE = "Oleafly couldn't read the approval rules in approvals.toml, so it refused this tool.";

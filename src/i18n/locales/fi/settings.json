@@ -50,14 +50,14 @@
       "platformLabel": "Alusta",
       "refreshingStatus": "Päivitetään agenttien tilaa. Nykyinen luettelo pysyy paikallaan.",
       "registry": {
-        "description": "Hae ACP-rekisteristä muiden tiimien julkaisemia agentteja.",
+        "description": "Hae ACP-rekisteristä muiden tiimien julkaisemia komentoriviagentteja.",
         "hideDistribution": "Piilota jakelutiedot",
         "register": "Rekisteröi agentti",
         "registered": "Rekisteröity",
         "reviewHint": "Rekisterin tiedot kuvaavat ohjelmistoa sen julkaisijoiden sanoin. Tarkista jakelu ennen rekisteröintiä tai asennusta.",
         "search": "Hae",
-        "searchLabel": "Etsi ACP-agentti",
-        "searchPlaceholder": "Hae ACP-rekisteristä",
+        "searchLabel": "Etsi komentoriviagentti",
+        "searchPlaceholder": "Hae komentoriviagentteja",
         "searching": "Haetaan",
         "showDistribution": "Näytä jakelutiedot",
         "title": "Etsi lisää agentteja"
@@ -133,7 +133,8 @@
       "inactivity": {
         "label": "Pysäytä hiljainen agentti, kun on kulunut",
         "description": "Kun agentti ei lähetä mitään näin pitkään aikaan, Oleafly pysäyttää sen. Voit yhdistää uudelleen.",
-        "minutes": "{{count}} minuuttia"
+        "minutes_one": "{{count}} minuutti",
+        "minutes_other": "{{count}} minuuttia"
       },
       "protocolLabel": "Protokolla",
       "remembered": {
@@ -1035,7 +1036,8 @@
         "path": {
           "ariaLabel": "Mukautetun shellin polku",
           "description": "Ohjelma, jonka uudet päätteet käynnistävät.",
-          "label": "Shellin polku"
+          "label": "Shellin polku",
+          "missing": "Anna shellin koko polku. Uudet päätteet eivät käynnisty, ennen kuin teet sen."
         },
         "windowsOnly": "{{name}} (vain Windows)",
         "windowsOnlyNote": "{{name}} toimii vain Windowsissa. Uudet päätteet käynnistyvät täällä sen sijaan shellillä {{fallback}}.",
@@ -1622,7 +1624,7 @@
     "desktopApps": {
       "tab": "Työpöytäsovellukset",
       "title": "Työpöytäsovellukset",
-      "description": "Anna agenttien käyttää tämän koneen sovelluksia ja sivustoja Cua Driver -ohjelman kautta. Oleafly kysyy ennen jokaista napsautusta tai näppäilyä.",
+      "description": "Anna agenttien käyttää tämän koneen sovelluksia ja sivustoja Cua Driver -ohjelman kautta. Oleafly kysyy ennen jokaista toimintoa, ellet salli sellaista toimintoa keskustelussa, istunnossa tai tehtävässä. Kirjautunut selaimesi ja skriptit kysyvät aina.",
       "docsLink": "Cua Driver -ohjeet",
       "status": {
         "installed": "Cua Driver {{version}} on asennettu.",
@@ -1635,7 +1637,7 @@
       },
       "install": {
         "heading": "Asenna Cua Driver",
-        "hint": "Suorita tämä komento päätteessä. Oleafly ei koskaan asenna Cua Driver -ohjelmaa puolestasi.",
+        "hint": "Suorita tämä komento päätteessä tai käytä Suorita päätteessä -painiketta. Komento käynnistää Cuan virallisen asennusohjelman, eikä Oleafly lataa Cua Driver -ohjelmaa itse.",
         "run": "Suorita päätteessä",
         "needsProject": "Avaa projekti, niin voit suorittaa tämän Oleaflyn päätteessä, tai kopioi komento.",
         "confirm": "Tämä lataa Cua Driver -asennusohjelman osoitteesta cua.ai ja suorittaa sen päätteessäsi. Jatketaanko?",
@@ -1657,7 +1659,7 @@
       },
       "enable": {
         "label": "Anna agenttien käyttää työpöytäsovelluksia",
-        "description": "Agentit näkevät alla olevat sovellukset ja sivustot. Napsautukset, kirjoittaminen ja sivunvaihdot kysyvät sinulta ensin."
+        "description": "Agentit näkevät alla olevat sovellukset ja sivustot. Napsautukset, kirjoittaminen ja sivunvaihdot kysyvät sinulta ensin, ellet salli niitä keskustelussa, istunnossa tai tehtävässä. Sovelluksen tai sivuston lisääminen poistaa nämä valinnat."
       },
       "apps": {
         "heading": "Sallitut sovellukset",
@@ -1680,7 +1682,7 @@
         "blocked": {
           "oleafly": "Oleafly ei voi ohjata itseään.",
           "driver": "Cua Driver ei voi ohjata itseään.",
-          "terminal": "Päätteet suorittavat komentoja ilman Oleaflyn komentojen hyväksyntää.",
+          "terminal": "Päätteet ja koodieditorit suorittavat komentoja ilman Oleaflyn komentojen hyväksyntää.",
           "system_settings": "Järjestelmäasetukset voivat muuttaa käyttöoikeuksia.",
           "passwords": "Salasanasovellukset eivät ole sallittuja.",
           "scripting": "Skriptien suorittajat voivat tehdä tällä koneella mitä tahansa.",
@@ -1714,7 +1716,7 @@
       },
       "tool": {
         "description": "Käytä työpöytäsovelluksia ja sivustoja, jotka olet sallinut asetuksissa.",
-        "note": "Katsominen tapahtuu heti. Napsautukset, kirjoittaminen ja sivunvaihdot kysyvät ensin."
+        "note": "Katsominen tapahtuu heti. Napsautukset, kirjoittaminen ja sivunvaihdot kysyvät ensin, ellet salli niitä keskustelussa."
       },
       "task": {
         "label": "Työpöytäsovellukset",
@@ -1724,7 +1726,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "Yhdistä Cua Spaces -palvelun eristetyt työpöydät ja kontit MCP-palvelimena. Kokeellinen.",
+        "description": "Yhdistä Cua Spaces -palvelun eristetyt työpöydät ja kontit MCP-palvelimena.",
         "notInstalled": "Komentoa cua ei ole asennettu.",
         "connect": {
           "label": "Yhdistä Cua Spaces",
@@ -1824,7 +1826,7 @@
         },
         "legend": "Hyväksyntäkäytäntö",
         "trust": {
-          "description": "Tiedostomuutokset eivät kysy lupaa. Shell-komennot ja tietokoneen ohjaus vaativat aina hyväksynnän. MCP-asiakkaasi toimii silti lisäporttina.",
+          "description": "Tiedostomuutokset otetaan käyttöön kysymättä. Shell-komennot ja uudet tutkimustehtävät kysyvät aina ensin. MCP-asiakkaasi voi silti kysyä itse.",
           "label": "Luota tähän yhteyteen"
         }
       },
@@ -2306,11 +2308,20 @@
         "tasks_other": "Työn alla {{count}} tehtävää"
       },
       "stop": "Pysäytä taustaprosessi",
-      "stopHint": "Sen tehtävät odottavat, kunnes avaat Oleaflyn uudelleen.",
+      "stopHint": "Sen tehtävät siirtyvät takaisin Oleaflyhin ja jatkavat täällä käynnissä.",
+      "stopConfirm": {
+        "title": "Pysäytetäänkö taustaprosessi?",
+        "description_one": "Sen {{count}} tehtävä siirtyy takaisin Oleaflyhin ja jatkaa täällä käynnissä.",
+        "description_other": "Sen {{count}} tehtävää siirtyy takaisin Oleaflyhin ja jatkaa täällä käynnissä."
+      },
       "stopFailed": "Taustaprosessi ei pysähtynyt. Yritä uudelleen.",
       "openLog": "Näytä loki",
       "statusFailed": "Taustaprosessin tilaa ei voitu lukea.",
       "toggleFailed": "Asetusta ei voitu muuttaa. Yritä uudelleen."
+    },
+    "mcpServers": {
+      "loadFailed": "MCP-palvelinten luetteloa ei voitu lukea.",
+      "missing": "{{name}} (ei löytynyt)"
     }
   }
 }

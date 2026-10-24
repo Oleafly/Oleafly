@@ -624,6 +624,7 @@
       "sendNow": "Envoyer maintenant",
       "sendFailed": "Ce message n'a pas été envoyé. Renvoyez-le ou retirez-le.",
       "queuedConnecting": "En attente : envoyé quand l'agent sera prêt",
+      "queuedSignIn": "En attente : envoyé après votre connexion",
       "retry": "Renvoyer",
       "edit": "Modifier"
     },

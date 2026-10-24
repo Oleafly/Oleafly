@@ -200,6 +200,9 @@
     "closeRight": "Cerrar todos los de la derecha",
     "closeTab": "Cerrar {{title}}",
     "color": "Color",
+    "dropRefused_one": "El nombre de este archivo tiene un carácter de control, así que el terminal no lo escribirá.",
+    "dropRefused_many": "{{count}} nombres de archivo tienen caracteres de control, así que el terminal no los escribirá.",
+    "dropRefused_other": "{{count}} nombres de archivo tienen caracteres de control, así que el terminal no los escribirá.",
     "errors": {
       "input": "El shell no pudo aceptar la entrada",
       "resize": "No se pudo redimensionar el terminal",
@@ -239,6 +242,7 @@
       "many_other": "Hay programas que siguen ejecutándose en {{count}} terminales.",
       "named": "{{process}} sigue ejecutándose en {{title}}.",
       "quit": "Salir",
+      "reload": "Recargar",
       "restart": "Reiniciar",
       "switchProject": "Cambiar de proyecto",
       "titleMany": "¿Detener los programas en ejecución?",

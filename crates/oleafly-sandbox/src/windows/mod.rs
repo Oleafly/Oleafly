@@ -25,6 +25,7 @@ use crate::ledger::{
 };
 use crate::plan::{self, Sids, Step};
 use crate::probe::ProbeCache;
+use crate::process::identity::{self, ProcessIdentity};
 use crate::{config, safe_fs, Availability, ResolvedSpec, SandboxError, SharedGrantView};
 use acl::{Access, Deny};
 use sid::{
@@ -100,34 +101,67 @@ pub(crate) struct Prepared {
     pub capabilities: Vec<String>,
 }
 
+type WalkLocks = Mutex<BTreeMap<String, Arc<Mutex<()>>>>;
+
+fn walk_locks() -> &'static WalkLocks {
+    static LOCKS: WalkLocks = Mutex::new(BTreeMap::new());
+    &LOCKS
+}
+
 /// One lock per access entry in this process: a second command that needs
 /// the same folder waits for the first one's walk instead of repeating it.
-fn walk_lock(record: &GrantRecord) -> Arc<Mutex<()>> {
-    static LOCKS: Mutex<BTreeMap<String, Arc<Mutex<()>>>> = Mutex::new(BTreeMap::new());
+/// The entry leaves the map when the last command that wanted it is done.
+struct WalkLock {
+    key: String,
+    lock: Arc<Mutex<()>>,
+}
+
+impl Drop for WalkLock {
+    fn drop(&mut self) {
+        let mut locks = walk_locks().lock().unwrap_or_else(PoisonError::into_inner);
+        // This handle and the map's own: nobody else holds or waits for it,
+        // and nobody can take it without the map's lock.
+        if Arc::strong_count(&self.lock) == 2 {
+            locks.remove(&self.key);
+        }
+    }
+}
+
+fn walk_lock(record: &GrantRecord) -> WalkLock {
     let key = format!(
         "{}|{}|{:?}",
         record.path.display(),
         record.sid,
         record.access
     );
-    let mut locks = LOCKS.lock().unwrap_or_else(PoisonError::into_inner);
-    Arc::clone(locks.entry(key).or_default())
+    let mut locks = walk_locks().lock().unwrap_or_else(PoisonError::into_inner);
+    let lock = Arc::clone(locks.entry(key.clone()).or_default());
+    WalkLock { key, lock }
 }
 
 /// Writes the entry `record` describes. `force` walks the folder again even
-/// when its own entry is there.
-fn apply(record: &GrantRecord, force: bool) -> Result<(), SandboxError> {
+/// when its own entry is there. An exclusion returns the file's access list
+/// from before (SDDL).
+fn apply(record: &GrantRecord, force: bool) -> Result<Option<String>, SandboxError> {
     let sid = OwnedSid::from_sddl(&record.sid)?;
     let path = record.path.as_path();
+    let none = |result: Result<(), SandboxError>| result.map(|()| None);
     match record.access {
-        GrantAccess::Read => acl::grant(path, &sid, Access::Read, force),
-        GrantAccess::ReadWrite => acl::grant(path, &sid, Access::ReadWrite, force),
-        GrantAccess::Traverse => acl::grant_traverse(path, &sid),
-        GrantAccess::Excluded => acl::exclude_file(path, &sid),
-        GrantAccess::DenyWrite => acl::deny(path, &sid, Deny::Write),
-        GrantAccess::DenyAll => acl::deny(path, &sid, Deny::All),
-        GrantAccess::DenyDeleteChild => acl::deny_delete_child(path, &sid),
+        GrantAccess::Read => none(acl::grant(path, &sid, Access::Read, force)),
+        GrantAccess::ReadWrite => none(acl::grant(path, &sid, Access::ReadWrite, force)),
+        GrantAccess::Traverse => none(acl::grant_traverse(path, &sid)),
+        GrantAccess::Excluded => acl::exclude_file(path, &sid).map(Some),
+        GrantAccess::DenyWrite => none(acl::deny(path, &sid, Deny::Write)),
+        GrantAccess::DenyAll => none(acl::deny(path, &sid, Deny::All)),
+        GrantAccess::DenyDeleteChild => none(acl::deny_delete_child(path, &sid)),
     }
+}
+
+/// Entries on one folder alone, with no walk below it. They are quick, so
+/// they skip the ledger round trip of [`run_step`] and their marks are saved
+/// together at the end of [`prepare`].
+fn is_quick(access: GrantAccess) -> bool {
+    matches!(access, GrantAccess::Traverse | GrantAccess::DenyDeleteChild)
 }
 
 /// Makes one entry, outside the ledger lock: the walk below a folder can
@@ -136,22 +170,46 @@ fn apply(record: &GrantRecord, force: bool) -> Result<(), SandboxError> {
 /// was saved before; it is marked applied afterwards.
 fn run_step(state: &Path, step: &Step, force: bool) -> Result<(), SandboxError> {
     let walk = walk_lock(&step.record);
-    let _held = walk.lock().unwrap_or_else(PoisonError::into_inner);
+    let _held = walk.lock.lock().unwrap_or_else(PoisonError::into_inner);
     // Another command may have finished this entry while this one waited.
     if ledger::lock(state)?.load()?.is_applied(&step.record) {
         return Ok(());
     }
-    apply(&step.record, force)?;
+    let original = apply(&step.record, force)?;
     let lock = ledger::lock(state)?;
     let mut ledger_state = lock.load()?;
-    ledger_state.complete(&step.record);
+    ledger_state.complete(&GrantRecord {
+        original,
+        ..step.record.clone()
+    });
     lock.save(&ledger_state)
 }
 
-fn forget_unapplied(state: &Path, record: &GrantRecord) -> Result<(), SandboxError> {
+/// Makes a quick entry (see [`is_quick`]) without touching the ledger.
+fn run_quick_step(step: &Step, force: bool) -> Result<(), SandboxError> {
+    let walk = walk_lock(&step.record);
+    let _held = walk.lock.lock().unwrap_or_else(PoisonError::into_inner);
+    apply(&step.record, force).map(|_| ())
+}
+
+/// Saves the marks of the quick entries of one [`prepare`] in one go: the
+/// ones made, and the traverse entries a folder refused (not needed).
+fn settle_quick_steps(
+    state: &Path,
+    finished: &[GrantRecord],
+    refused: &[GrantRecord],
+) -> Result<(), SandboxError> {
+    if finished.is_empty() && refused.is_empty() {
+        return Ok(());
+    }
     let lock = ledger::lock(state)?;
     let mut ledger_state = lock.load()?;
-    ledger_state.forget_unapplied(record);
+    for record in finished {
+        ledger_state.complete(record);
+    }
+    for record in refused {
+        ledger_state.forget_unapplied(record);
+    }
     lock.save(&ledger_state)
 }
 
@@ -170,19 +228,33 @@ pub(crate) fn prepare(spec: &ResolvedSpec) -> Result<Prepared, SandboxError> {
         ));
     }
     let state = state_dir()?;
+    // A deny entry needs something to sit on: a protected folder that isn't
+    // there yet is created empty first.
+    crate::resolve::create_missing_protected(spec)?;
     let name = container_name(&spec.owner);
     let (steps, pending, capabilities) = {
         let lock = ledger::lock(&state)?;
         let mut ledger_state = lock.load()?;
-        if !ledger_state.containers.contains_key(&name) {
-            ledger_state.containers.insert(
-                name.clone(),
-                ContainerRecord {
-                    owner: spec.owner.clone(),
-                    created_at: now_ms(),
-                },
-            );
-            lock.save(&ledger_state)?;
+        // The process that uses the profile is on record, so a sweep can
+        // tell a run that was killed from one that is working.
+        let process = Some(identity::current());
+        match ledger_state.containers.get_mut(&name) {
+            None => {
+                ledger_state.containers.insert(
+                    name.clone(),
+                    ContainerRecord {
+                        owner: spec.owner.clone(),
+                        created_at: now_ms(),
+                        process,
+                    },
+                );
+                lock.save(&ledger_state)?;
+            }
+            Some(record) if record.process != process => {
+                record.process = process;
+                lock.save(&ledger_state)?;
+            }
+            Some(_) => {}
         }
         let package = container::ensure(&name)?;
         let runtime = capability_sid(RUNTIME_CAPABILITY)?;
@@ -219,23 +291,39 @@ pub(crate) fn prepare(spec: &ResolvedSpec) -> Result<Prepared, SandboxError> {
         (steps, pending, capabilities)
     };
     let mut refused: HashSet<usize> = HashSet::new();
+    let mut quick_finished = Vec::new();
+    let mut quick_refused = Vec::new();
+    let mut outcome = Ok(());
     for (index, force) in pending {
         let step = &steps[index];
         if step.chain.is_some_and(|chain| refused.contains(&chain)) {
             continue;
         }
-        if let Err(error) = run_step(&state, step, force) {
+        let result = if is_quick(step.record.access) {
+            run_quick_step(step, force).map(|()| quick_finished.push(step.record.clone()))
+        } else {
+            run_step(&state, step, force)
+        };
+        if let Err(error) = result {
             match step.chain {
                 // A folder that refuses a traverse entry ends that climb; the
                 // rest above it is the user's own business.
                 Some(chain) => {
                     refused.insert(chain);
-                    forget_unapplied(&state, &step.record)?;
+                    quick_refused.push(step.record.clone());
                 }
-                None => return Err(error),
+                None => {
+                    outcome = Err(error);
+                    break;
+                }
             }
         }
     }
+    // The quick entries made so far are on record even when a later one
+    // failed.
+    let settled = settle_quick_steps(&state, &quick_finished, &quick_refused);
+    outcome?;
+    settled?;
     Ok(Prepared {
         container: name,
         capabilities,
@@ -369,7 +457,12 @@ impl GrantOps for RealOps {
             GrantAccess::Traverse | GrantAccess::DenyDeleteChild => {
                 acl::revoke_traverse(&record.path, &sid)
             }
-            GrantAccess::Excluded => Ok(()),
+            // Only the last run that excludes the file carries its original
+            // list (see `ledger::hand_over_originals`).
+            GrantAccess::Excluded => match &record.original {
+                Some(original) => acl::restore_file(&record.path, &sid, original),
+                None => Ok(()),
+            },
             GrantAccess::Read
             | GrantAccess::ReadWrite
             | GrantAccess::DenyWrite
@@ -399,6 +492,13 @@ impl GrantOps for RealOps {
             Ok(false) => Presence::Absent,
             Err(_) => Presence::Unknown,
         }
+    }
+
+    fn process_is_live(&self, process: Option<ProcessIdentity>) -> bool {
+        let current = identity::current();
+        // This process's own runs are working; a record with this pid and
+        // another start time is from an earlier process.
+        process == Some(current) || identity::owner_is_live(process, current, identity::probe)
     }
 }
 
@@ -443,6 +543,16 @@ fn revoke_and_forget(records: &[GrantRecord]) -> Result<(), SandboxError> {
 pub(crate) fn release(owner: &str) -> Result<(), SandboxError> {
     let to_revoke = with_ledger(|state| ledger::release_begin(&RealOps, state, owner))?;
     revoke_and_forget(&to_revoke)
+}
+
+/// Releases the runs other than research tasks whose process is gone.
+pub(crate) fn release_abandoned() -> Result<usize, SandboxError> {
+    let (released, orphans) = with_ledger(|state| {
+        let released = ledger::release_abandoned_with(&RealOps, state)?;
+        Ok((released, ledger::orphan_revocations(state)))
+    })?;
+    revoke_and_forget(&orphans)?;
+    Ok(released)
 }
 
 pub(crate) fn release_stale(active: &[String]) -> Result<usize, SandboxError> {
@@ -537,9 +647,50 @@ mod tests {
             scope: GrantScope::Runtimes,
             access: GrantAccess::Read,
             applied: true,
+            original: None,
         };
         assert!(RealOps.revoke(&record).is_ok());
         // Missing says nothing about whether the entry is still there.
         assert_eq!(RealOps.present(&record), Presence::Unknown);
+    }
+
+    #[test]
+    fn a_walk_lock_leaves_the_map_when_the_last_holder_is_done() {
+        let record = GrantRecord {
+            path: PathBuf::from(r"C:\walk-lock-test"),
+            sid: "S-1-15-2-99".into(),
+            scope: GrantScope::Runtimes,
+            access: GrantAccess::Read,
+            applied: false,
+            original: None,
+        };
+        let key = |lock: &WalkLock| lock.key.clone();
+        let first = walk_lock(&record);
+        let second = walk_lock(&record);
+        let name = key(&first);
+        assert!(Arc::ptr_eq(&first.lock, &second.lock));
+        drop(first);
+        // Someone still holds it.
+        assert!(walk_locks()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(&name));
+        drop(second);
+        assert!(!walk_locks()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(&name));
+    }
+
+    #[test]
+    fn this_process_and_its_own_runs_are_live_and_a_gone_one_is_not() {
+        let current = identity::current();
+        assert!(RealOps.process_is_live(Some(current)));
+        assert!(!RealOps.process_is_live(None));
+        // An earlier process with this pid.
+        assert!(!RealOps.process_is_live(Some(ProcessIdentity {
+            pid: current.pid,
+            started: current.started.map(|started| started.wrapping_add(1)),
+        })));
     }
 }

@@ -281,8 +281,10 @@ export const useTerminalsStore = create<TerminalsState>((set, get) => {
     },
     setTerminalOscTitle: (id, title) => {
       const state = get();
-      if (!state.tabs.some((tab) => tab.id === id && tab.oscTitle !== title)) return;
-      set({ tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, oscTitle: title } : tab)) });
+      // A program that clears its title gives the tab its own name back.
+      const oscTitle = title.trim() === "" ? null : title;
+      if (!state.tabs.some((tab) => tab.id === id && tab.oscTitle !== oscTitle)) return;
+      set({ tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, oscTitle } : tab)) });
     },
     renameTerminal: (id, title) => {
       const state = get();

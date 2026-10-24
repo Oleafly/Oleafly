@@ -1,4 +1,4 @@
-import { type ComponentProps, type DragEvent as ReactDragEvent, useMemo, useRef, useState } from "react";
+import { type ComponentProps, type DragEvent as ReactDragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { languageForPath } from "@oleafly/editor";
 import {
@@ -46,6 +46,8 @@ import {
   type ConverterProgress,
 } from "@/features/ad-hoc-converters";
 import type { PageSize } from "@/features/tools-ai/scan-estimate";
+import { transcribingPageLabel } from "@/features/tools-ai/scan-progress";
+import type { ToolsSettingsTarget } from "@/features/tools-ai/tools-model";
 import { agentErrorKind } from "@/lib/agent-backend";
 import { createProjectFromAdHoc, writeBytesFile } from "@/lib/tauri";
 import { pickSavePath } from "@/lib/native-file-dialog";
@@ -72,8 +74,9 @@ type ConverterStatus =
 
 interface ConverterFailure {
   message: string;
-  /** Where the fix lives: Settings, AI (Ollama) or Settings, AI, Tools. */
-  settings: "ai" | "ai-tools" | null;
+  /** Where the fix lives: Settings, AI (Ollama), Settings, AI, Tools, or
+   * Settings, AI, Providers and keys. */
+  settings: ToolsSettingsTarget | null;
   /** A long scan waiting for the user's go-ahead, with its page sizes. */
   scan: { sizes: PageSize[] } | null;
 }
@@ -223,8 +226,9 @@ function converterInput(
 function PageRangeField({
   value,
   invalid,
+  pageCount,
   onChange,
-}: Readonly<{ value: string; invalid: boolean; onChange: (value: string) => void }>) {
+}: Readonly<{ value: string; invalid: boolean; pageCount: number | null; onChange: (value: string) => void }>) {
   const { t } = useTranslation(["researchTools"]);
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t px-4 py-3">
@@ -239,6 +243,11 @@ function PageRangeField({
         placeholder={t(($) => $.researchTools.converter.pageRangePlaceholder)}
         className="h-8 w-64 max-w-full text-xs"
       />
+      {pageCount !== null && (
+        <span data-testid="converter-page-count" className="text-xs text-muted-foreground">
+          {t(($) => $.researchTools.converter.pageCount, { count: pageCount })}
+        </span>
+      )}
       {invalid && (
         <span role="alert" className="text-xs text-destructive">
           {t(($) => $.researchTools.converter.pageRangeInvalid)}
@@ -246,6 +255,28 @@ function PageRangeField({
       )}
     </div>
   );
+}
+
+/** How many pages the chosen PDF has, or null until it is known. */
+function usePdfPageCount(file: File | null, enabled: boolean): number | null {
+  const [count, setCount] = useState<{ file: File; pages: number } | null>(null);
+  useEffect(() => {
+    if (!enabled || !file) return;
+    let active = true;
+    void (async () => {
+      try {
+        const { countPdfPages } = await import("@oleafly/pdf-to-latex/pdf-adapter");
+        const pages = await countPdfPages(new Uint8Array(await file.arrayBuffer()));
+        if (active) setCount({ file, pages });
+      } catch {
+        // An unreadable PDF is reported when it is converted.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [enabled, file]);
+  return enabled && count && count.file === file ? count.pages : null;
 }
 
 function ConversionNote({ note, details }: Readonly<{ note: string; details: readonly string[] }>) {
@@ -272,7 +303,7 @@ function failureSettings(caught: unknown, message: string): ConverterFailure["se
   if (caught instanceof ToolsModelError) return caught.settings;
   if (decodeAppError(caught)?.code.startsWith("mathpix.")) return "ai-tools";
   const kind = agentErrorKind(caught);
-  if (kind === "not_configured" || kind === "auth") return "ai-tools";
+  if (kind === "not_configured" || kind === "auth") return "ai-providers";
   if (/ollama/i.test(message)) return "ai";
   return null;
 }
@@ -324,7 +355,9 @@ function InputDestination({
   downloadsFromArxiv,
 }: Readonly<{ usesModel: "always" | "scans" | undefined; downloadsFromArxiv: boolean }>) {
   const { t } = useTranslation(["researchTools"]);
-  if (usesModel) return <ToolsModelNotice scope={usesModel === "scans" ? "scans" : "images"} />;
+  if (usesModel) {
+    return <ToolsModelNotice scope={usesModel === "scans" ? "scans" : "images"} editorFallback={false} />;
+  }
   if (downloadsFromArxiv) {
     return (
       <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-amber-600 dark:text-amber-400">
@@ -337,6 +370,17 @@ function InputDestination({
       <ShieldCheck className="size-3.5" /> {t(($) => $.researchTools.converter.runsOnDevice)}
     </span>
   );
+}
+
+function settingsLabel(t: ReturnType<typeof useTranslation<["researchTools"]>>["t"], target: ToolsSettingsTarget): string {
+  switch (target) {
+    case "ai-tools":
+      return t(($) => $.researchTools.converterModel.openToolsSettings);
+    case "ai-providers":
+      return t(($) => $.researchTools.converterModel.openProviderSettings);
+    case "ai":
+      return t(($) => $.researchTools.converter.openAiSettings);
+  }
 }
 
 /** A failed conversion: what went wrong and, when there is one, where to fix it. */
@@ -360,9 +404,7 @@ function FailureNotice({ error }: Readonly<{ error: ConverterFailure }>) {
             }}
           >
             <Settings />{" "}
-            {error.settings === "ai-tools"
-              ? t(($) => $.researchTools.converterModel.openToolsSettings)
-              : t(($) => $.researchTools.converter.openAiSettings)}
+            {settingsLabel(t, error.settings)}
           </Button>
         )}
       </div>
@@ -474,6 +516,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   // A scanned PDF is transcribed one page at a time, so its converters let
   // the user pick the pages: a long scan goes through in parts.
   const choosesPages = definition.usesModel === "scans" && useFile;
+  const pdfPageCount = usePdfPageCount(file, choosesPages);
   const parsedRange = parsePageRange(pageRange);
   const canConvert = (useFile ? Boolean(file) : Boolean(text.trim())) && (!choosesPages || parsedRange.valid);
   const progressLabel = (() => {
@@ -513,11 +556,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
       case "convertingSource":
         return t(($) => $.researchTools.converter.progressConvertingSource);
       case "transcribingPage":
-        return t(($) => $.researchTools.converter.progressTranscribingPage, {
-          page: status.page ?? 0,
-          total: status.total ?? 0,
-          model: status.model ?? "",
-        });
+        return transcribingPageLabel(status);
     }
   })();
 
@@ -724,6 +763,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                 <PageRangeField
                   value={pageRange}
                   invalid={!parsedRange.valid}
+                  pageCount={pdfPageCount}
                   onChange={(next) => {
                     resetConversion();
                     setPageRange(next);

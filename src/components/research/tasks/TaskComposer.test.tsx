@@ -70,6 +70,13 @@ vi.mock("@/components/settings/research/ComputeBriefFields", () => ({
   ),
 }));
 
+// The composer checks the brief's compute target itself; outside the app the list doesn't load.
+const computeApi = vi.hoisted(() => ({ settings: vi.fn() }));
+vi.mock("@/components/settings/research/compute-api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/settings/research/compute-api")>()),
+  computeSettings: computeApi.settings,
+}));
+
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ runExternalProjectMutation: vi.fn() }) },
 }));
@@ -111,6 +118,7 @@ beforeEach(() => {
   useResearchTasksStore.setState({ composerDrafts: {} });
   // Outside the app the config is unavailable, as it was for these tests before 0.4.8.
   appConfig.get.mockReset().mockRejectedValue(new Error("The app config is not available."));
+  computeApi.settings.mockReset().mockRejectedValue(new Error("The compute settings are not available."));
 });
 
 afterEach(() => cleanup());
@@ -810,7 +818,7 @@ describe("TaskComposer brief", () => {
     render(<TaskComposer {...input} />);
     // The restored draft shows the problem where it can be fixed.
     expect(page().getByTestId("research-brief-more")).toHaveAttribute("aria-expanded", "true");
-    expect(page().getByText(brief.invalidCost)).toBeInTheDocument();
+    expect(page().getByText(brief.invalidCostNumber.replace("{{example}}", "2.5"))).toBeInTheDocument();
     expect(page().queryByTestId("research-brief-problem")).toBeNull();
   });
 
@@ -864,5 +872,75 @@ describe("TaskComposer brief", () => {
     fireEvent.change(start, { target: { value: startIn(5) } });
     expect(page().queryByText(brief.invalidStart)).toBeNull();
     expect(page().getByRole("button", { name: enResearchTools.tasks.composer.createTask })).toBeEnabled();
+  });
+});
+
+describe("TaskComposer checks and Settings links", () => {
+  const brief = enResearchTools.brief;
+
+  function minutesFromNow(minutes: number): string {
+    const date = new Date(Date.now() + minutes * 60_000);
+    const pad = (value: number) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  it("finds a removed compute target with the brief folded, opens it and won't save", async () => {
+    computeApi.settings.mockResolvedValue({
+      platform: "macos",
+      targets: [{ kind: "ssh", id: "kept", label: "Kept", host: "kept.example", prelude: "" }],
+      tested: {},
+      sshAvailable: true,
+      rsyncAvailable: true,
+      cuaAvailable: false,
+    });
+    const editing: ResearchTask = {
+      ...task("slurm"),
+      brief: briefFixture({ compute: { executor: "slurm", target: "gone", resources: null } }),
+    };
+    const input = props(editing);
+    render(<TaskComposer {...input} />);
+
+    await waitFor(() => expect(page().getByTestId("research-brief-more")).toHaveAttribute("aria-expanded", "true"));
+    expect(page().getByRole("button", { name: enResearchTools.tasks.composer.saveTask })).toBeDisabled();
+    expect(computeApi.settings).toHaveBeenCalled();
+  });
+
+  it("closes, keeping the draft, before a Settings link opens Settings", async () => {
+    const input = { ...props(), onOpenSettings: vi.fn((open: () => void) => open()) };
+    const { useSettingsStore } = await import("@/store/settings");
+    useSettingsStore.setState({ settingsOpen: false });
+    render(<TaskComposer {...input} />);
+    await fill(enResearchTools.tasks.composer.titleLabel, "Kept draft");
+    fireEvent.click(page().getByTestId("research-brief-more"));
+
+    fireEvent.click(page().getByTestId("research-brief-keep-running-settings"));
+
+    expect(input.onDismiss).toHaveBeenCalledOnce();
+    expect(input.onOpenSettings).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+    expect(useResearchTasksStore.getState().composerDrafts[composerDraftKey("paper", null)]).toMatchObject({
+      title: "Kept draft",
+    });
+    useSettingsStore.setState({ settingsOpen: false });
+  });
+
+  it("starts now when the start time passed while the form stayed open", async () => {
+    const input = props();
+    render(<TaskComposer {...input} />);
+    await fill(enResearchTools.tasks.composer.titleLabel, "Soon");
+    await fill(enResearchTools.tasks.composer.promptLabel, "Run it soon");
+    fireEvent.click(page().getByTestId("research-brief-more"));
+    fireEvent.change(page().getByLabelText(brief.startAtLabel), { target: { value: minutesFromNow(3) } });
+    const create = page().getByRole("button", { name: enResearchTools.tasks.composer.createTask });
+    expect(create).toBeEnabled();
+    const later = Date.now() + 10 * 60_000;
+    const now = vi.spyOn(Date, "now").mockReturnValue(later);
+    try {
+      fireEvent.click(create);
+      await waitFor(() => expect(input.onCreate).toHaveBeenCalledOnce());
+      expect(input.onCreate).toHaveBeenCalledWith(expect.objectContaining({ runAfter: null }));
+    } finally {
+      now.mockRestore();
+    }
   });
 });

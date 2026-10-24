@@ -345,18 +345,48 @@ impl Store {
         Ok((sessions, has_more))
     }
 
-    /// The saved conversation an agent session id was imported or started as.
-    pub fn find_by_native(
+    /// Which of `natives` (agent session ids) are already saved as
+    /// conversations of the project, in one pass over its records.
+    pub fn imported_natives(
         &self,
         project: &str,
         agent: &str,
-        native_session_id: &str,
+        natives: &[&str],
+    ) -> Result<std::collections::HashSet<String>, String> {
+        if natives.is_empty() {
+            return Ok(std::collections::HashSet::new());
+        }
+        let wanted = serde_json::to_string(natives).map_err(|e| e.to_string())?;
+        let db = self.lock()?;
+        let mut statement = db
+            .prepare(
+                "SELECT DISTINCT json_extract(record,'$.nativeSessionId') FROM sessions
+                 WHERE project_id=?1 AND json_extract(record,'$.agentId')=?2
+                 AND json_extract(record,'$.nativeSessionId') IN (SELECT value FROM json_each(?3))",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = statement
+            .query_map(params![project, agent, wanted], |row| {
+                row.get::<_, String>(0)
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
+    }
+
+    /// A research task's conversation with the agent's own session
+    /// `native`, the latest when there are several.
+    pub fn find_task_session(
+        &self,
+        task: &str,
+        agent: &str,
+        native: &str,
     ) -> Result<Option<SessionRecord>, String> {
         Ok(self
             .query_records(
-                "SELECT record, updated_at, COALESCE((SELECT last_sequence FROM session_counters WHERE session_id=sessions.id),0) FROM sessions WHERE project_id=?1
-                 AND json_extract(record,'$.agentId')=?2 AND json_extract(record,'$.nativeSessionId')=?3 LIMIT 1",
-                params![project, agent, native_session_id],
+                "SELECT record, updated_at, COALESCE((SELECT last_sequence FROM session_counters WHERE session_id=sessions.id),0) FROM sessions
+                 WHERE json_extract(record,'$.taskId')=?1 AND json_extract(record,'$.agentId')=?2
+                 AND json_extract(record,'$.nativeSessionId')=?3 ORDER BY updated_at DESC LIMIT 1",
+                params![task, agent, native],
             )?
             .into_iter()
             .next())
@@ -617,6 +647,37 @@ impl Store {
             &[agent],
             prefs,
         )
+    }
+
+    /// Changes an agent's preferences with `patch` in one step under the
+    /// store's lock, so two windows changing different choices keep both.
+    /// Returns the preferences before and after.
+    pub fn patch_agent_preferences(
+        &self,
+        agent: &str,
+        patch: impl FnOnce(&mut AgentPreferences),
+    ) -> Result<(AgentPreferences, AgentPreferences), String> {
+        let db = self.lock()?;
+        let stored: Option<String> = db
+            .query_row(
+                "SELECT prefs FROM agent_preferences WHERE agent_id=?1",
+                [agent],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+        let before: AgentPreferences = stored
+            .and_then(|json| serde_json::from_str(&json).ok())
+            .unwrap_or_default();
+        let mut after = before.clone();
+        patch(&mut after);
+        let after = after.normalized();
+        db.execute(
+            "INSERT INTO agent_preferences VALUES (?1,?2) ON CONFLICT(agent_id) DO UPDATE SET prefs=excluded.prefs",
+            params![agent, serde_json::to_string(&after).map_err(|e| e.to_string())?],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok((before, after))
     }
 
     pub fn project_agent_settings(

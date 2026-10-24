@@ -88,7 +88,7 @@ function seed(projectId: string) {
       tasks: [task("outputs-a"), task("outputs-b")],
       selectedTaskId: null,
       events: [],
-      eventsNextSequence: null,
+      eventsPreviousSequence: null,
       loading: false,
       eventsLoading: false,
       action: null,

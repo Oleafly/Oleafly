@@ -613,6 +613,7 @@
       "sendNow": "Lähetä nyt",
       "sendFailed": "Tätä viestiä ei lähetetty. Lähetä se uudelleen tai poista se.",
       "queuedConnecting": "Jonossa: lähtee, kun agentti on valmis",
+      "queuedSignIn": "Jonossa: lähtee, kun olet kirjautunut sisään",
       "retry": "Lähetä uudelleen",
       "edit": "Muokkaa"
     },

@@ -125,7 +125,24 @@ pub struct RunManager {
     checks: Arc<Semaphore>,
     /// Transcript sinks of running generations, by task.
     sinks: Mutex<HashMap<String, (u64, TaskEventSink)>>,
+    /// Runs whose start is under way in this process, by task and run id.
+    /// A remote start can take longer than [`START_DEADLINE_MS`] (a large
+    /// upload), so these are never lost for taking long.
+    starting: Mutex<HashSet<(String, String)>>,
     this: Weak<RunManager>,
+}
+
+/// Takes a run off [`RunManager::starting`] when its start ends, however it
+/// ends.
+struct Starting {
+    manager: Arc<RunManager>,
+    key: (String, String),
+}
+
+impl Drop for Starting {
+    fn drop(&mut self) {
+        lock(&self.manager.starting).remove(&self.key);
+    }
 }
 
 fn state_of(outcome: RunOutcomeKind) -> RunState {
@@ -191,6 +208,7 @@ impl RunManager {
             watches: Mutex::new(HashMap::new()),
             checks: Arc::new(Semaphore::new(MAX_CONCURRENT_CHECKS)),
             sinks: Mutex::new(HashMap::new()),
+            starting: Mutex::new(HashSet::new()),
             this: this.clone(),
         })
     }
@@ -261,6 +279,35 @@ impl RunManager {
     /// (a remote start uploads the workspace first). Returns at once with
     /// the run starting.
     pub async fn start(&self, request: StartRun) -> Result<RunRecord, String> {
+        let manager = self.this.upgrade().ok_or("Runs are shutting down.")?;
+        // The checks and the sandbox spec read SQLite and walk the
+        // workspace's allowed paths: off the async workers.
+        let preparing = manager.clone();
+        let (store, executor, spec, record) = self
+            .runtime
+            .spawn_blocking(move || preparing.prepare_start(request))
+            .await
+            .map_err(|error| format!("The run could not be prepared: {error}"))??;
+        self.emit(&record);
+        let starting = Starting {
+            manager: manager.clone(),
+            key: (record.task_id.clone(), record.run_id.clone()),
+        };
+        lock(&self.starting).insert(starting.key.clone());
+        self.runtime.spawn(async move {
+            let started = executor.start(&spec).await;
+            manager.started(&store, &executor, &spec, started).await;
+            drop(starting);
+        });
+        Ok(record)
+    }
+
+    /// Checks a run request, prepares its sandbox and records it as
+    /// starting (blocking).
+    fn prepare_start(
+        &self,
+        request: StartRun,
+    ) -> Result<(TaskStore, Arc<dyn RunExecutor>, RunSpec, RunRecord), String> {
         let task = &request.task;
         let brief = &task.brief;
         if brief.permissions.commands == CommandPolicy::Off {
@@ -284,7 +331,9 @@ impl RunManager {
         let store = self.store()?;
         let runs = store.runs(&task.id)?;
         if let Some(max) = brief.budget.max_runs {
-            if runs.len() >= max as usize {
+            // Runs from before a fresh start don't count.
+            let counted = runs.len().saturating_sub(store.runs_baseline(&task.id)?);
+            if counted >= max as usize {
                 return Err(format!("The task reached its run limit of {max}."));
             }
         }
@@ -305,8 +354,7 @@ impl RunManager {
         }
         let run_id = next_run_id(runs.len());
         let run_dir = self.tasks_root.join("runs").join(&task.id).join(&run_id);
-        tokio::fs::create_dir_all(&run_dir)
-            .await
+        std::fs::create_dir_all(&run_dir)
             .map_err(|error| format!("The run folder could not be created: {error}"))?;
         // One home per task: package installs and caches carry over between runs.
         let home = task_home(&self.tasks_root, &task.id);
@@ -375,13 +423,7 @@ impl RunManager {
             reported: false,
         };
         store.insert_run(&record)?;
-        self.emit(&record);
-        let manager = self.this.upgrade().ok_or("Runs are shutting down.")?;
-        self.runtime.spawn(async move {
-            let started = executor.start(&spec).await;
-            manager.started(&store, &executor, &spec, started).await;
-        });
-        Ok(record)
+        Ok((store, executor, spec, record))
     }
 
     /// Records how a run's start went (it ran in the background).
@@ -524,9 +566,12 @@ impl RunManager {
             }
             return Ok(());
         };
-        self.stop(&handle).await?;
+        // Kept on the row: while the run still reports running, the monitor
+        // sends the cancel again (its host may be out of reach right now).
+        store.request_run_cancel(task_id, run_id)?;
+        let stopped = self.stop(&handle).await;
         self.ensure_monitor();
-        Ok(())
+        stopped
     }
 
     async fn stop(&self, handle: &RunHandle) -> Result<(), String> {
@@ -557,11 +602,25 @@ impl RunManager {
             .unwrap_or_default()
             .into_iter()
             .filter_map(|run| {
-                let handle =
-                    RunHandle::parse(&store.run_handle(task_id, &run.run_id).ok()??).ok()?;
+                if let Some(handle) = store
+                    .run_handle(task_id, &run.run_id)
+                    .ok()
+                    .flatten()
+                    .and_then(|json| RunHandle::parse(&json).ok())
+                {
+                    return Some(RunCleanup {
+                        handle,
+                        live: !run.state.is_terminal(),
+                    });
+                }
+                // A start cut off by a quit or a crash recorded no handle, but
+                // the executor wrote `handle.json` before it changed anything
+                // remotely: an upload, or a job, may still be there.
+                let json = std::fs::read_to_string(PathBuf::from(&run.run_dir).join("handle.json"))
+                    .ok()?;
                 Some(RunCleanup {
-                    handle,
-                    live: !run.state.is_terminal(),
+                    handle: RunHandle::parse(&json).ok()?,
+                    live: true,
                 })
             })
             .collect()
@@ -771,16 +830,28 @@ impl RunManager {
             return Checked::Pending;
         };
         let Some(handle) = handle else {
+            // A start still under way, here or in another live process, may
+            // take as long as its upload: it records how it went itself.
+            let key = (record.task_id.clone(), record.run_id.clone());
+            if lock(&self.starting).contains(&key)
+                || store
+                    .run_starting_elsewhere(&record.task_id, &record.run_id)
+                    .unwrap_or(false)
+            {
+                return Checked::Pending;
+            }
             if now_ms() - record.started_at > START_DEADLINE_MS
                 && store
                     .lose_run(&record.task_id, &record.run_id)
                     .unwrap_or(false)
             {
-                append_to_log(
-                    &PathBuf::from(&record.run_dir),
-                    "[The run never finished starting.]",
-                );
+                let run_dir = PathBuf::from(&record.run_dir);
+                append_to_log(&run_dir, "[The run never finished starting.]");
                 self.completed(&record.task_id, &record.run_id);
+                // The cut-off start may have left an upload or a job behind.
+                if let Some(executor) = self.executor(&record.executor) {
+                    abandon_start(&executor, &run_dir).await;
+                }
                 return Checked::Settled;
             }
             return Checked::Pending;
@@ -826,7 +897,16 @@ impl RunManager {
             // A note on a running run says the host could not be reached.
             RunStatus::Running { note: Some(_), .. } => return Checked::Trouble,
             RunStatus::Starting | RunStatus::Queued { .. } | RunStatus::Running { .. } => {
-                return Checked::Pending
+                // A cancel that never reached the host goes again, less
+                // often while the host stays out of reach.
+                if store
+                    .run_cancel_requested(&record.task_id, &record.run_id)
+                    .unwrap_or(false)
+                    && executor.cancel(&handle).await.is_err()
+                {
+                    return Checked::Trouble;
+                }
+                return Checked::Pending;
             }
         };
         let run_dir = handle.run_dir.clone();

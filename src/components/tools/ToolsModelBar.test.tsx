@@ -176,6 +176,80 @@ describe("Tools model notice", () => {
     await waitFor(() => expect(screen.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", kind));
     expect(screen.getByTestId("tools-model-notice")).toHaveTextContent(text);
   });
+
+  it("names Ollama Cloud for a picked cloud model instead of this device", async () => {
+    mocks.getConfig.mockResolvedValue(config({ ai_tools_model: { provider: "ollama", model: "qwen3-vl:235b-cloud" } }));
+    renderWithQuery(<ToolsModelNotice scope="images" />);
+    await waitFor(() => expect(screen.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "provider"));
+    expect(screen.getByTestId("tools-model-notice")).toHaveTextContent("Images are sent to Ollama Cloud");
+  });
+
+  it("trusts Ollama's listing for a cloud model copied under a plain name", async () => {
+    mocks.getConfig.mockResolvedValue(config({ ai_tools_model: { provider: "ollama", model: "my-vl" } }));
+    mocks.listOllamaModelDetails.mockResolvedValue([
+      { name: "my-vl", capabilities: ["completion", "vision"], remote: true },
+    ]);
+    renderWithQuery(<ToolsModelNotice scope="scans" />);
+    await waitFor(() => expect(screen.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "provider"));
+    expect(screen.getByTestId("tools-model-notice")).toHaveTextContent("Scanned pages are sent to Ollama Cloud");
+  });
+
+  describe("with Automatic and a hosted assistant model that reads images", () => {
+    const assistant = config({
+      ai_provider: "anthropic",
+      ai_model: "claude-opus-5-5",
+      ai_keys: { anthropic: "__stored__" },
+      ai_provider_models: {
+        anthropic: [
+          {
+            id: "claude-opus-5-5",
+            name: "Claude Opus 5.5",
+            enabled: true,
+            source: "fetched",
+            metadata: {
+              name: "Claude Opus 5.5",
+              inputModalities: ["text", "image"],
+              outputModalities: ["text"],
+              toolCall: true,
+              reasoning: true,
+              attachment: true,
+              structuredOutput: true,
+              status: "active",
+            },
+          },
+        ],
+      },
+    });
+    const fallback = model.editorFallback.replace("{{provider}}", "Anthropic");
+
+    it("says the editor sends images to the assistant's provider while Ollama cannot read them", async () => {
+      mocks.getConfig.mockResolvedValue(assistant);
+      mocks.listOllamaModelDetails.mockRejectedValue(new Error("connection refused"));
+      renderWithQuery(<ToolsModelNotice scope="images" />);
+      await waitFor(() =>
+        expect(screen.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "assistant"),
+      );
+      expect(screen.getByTestId("tools-model-notice")).toHaveTextContent(fallback);
+    });
+
+    it("keeps Runs on this device once Ollama has a vision model, and on converter pages", async () => {
+      mocks.getConfig.mockResolvedValue(assistant);
+      mocks.listOllamaModelDetails.mockResolvedValue([{ name: "llava", capabilities: ["completion", "vision"] }]);
+      const withModel = renderWithQuery(<ToolsModelNotice scope="images" />);
+      await waitFor(() => expect(mocks.listOllamaModelDetails).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(screen.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "device"),
+      );
+      withModel.unmount();
+
+      mocks.listOllamaModelDetails.mockReset().mockRejectedValue(new Error("connection refused"));
+      renderWithQuery(<ToolsModelNotice scope="images" editorFallback={false} />);
+      await waitFor(() =>
+        expect(screen.getByTestId("tools-model-notice")).toHaveAttribute("data-destination", "device"),
+      );
+      expect(mocks.listOllamaModelDetails).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe("Scan estimate", () => {
@@ -224,6 +298,55 @@ describe("Scan estimate", () => {
     );
   });
 
+  it("shows the plan, local and free estimates", async () => {
+    mocks.getConfig.mockResolvedValue(config({ ai_tools_model: { provider: "ollama", model: "qwen3-vl:235b-cloud" } }));
+    const cloud = renderWithQuery(<ScanEstimateText sizes={[letter, letter]} />);
+    await waitFor(() =>
+      expect(screen.getByTestId("scan-estimate")).toHaveTextContent("2 pages. Ollama Cloud includes these in your plan."),
+    );
+    cloud.unmount();
+
+    resetProviderConfigCache();
+    mocks.getConfig.mockResolvedValue(
+      config({
+        ai_custom_providers: [
+          { id: "lmstudio", name: "LM Studio", baseURL: "http://localhost:1234/v1", keyOptional: true },
+        ],
+        ai_tools_model: { provider: "lmstudio", model: "qwen2.5vl-unpriced" },
+      }),
+    );
+    const local = renderWithQuery(<ScanEstimateText sizes={[letter]} />);
+    await waitFor(() =>
+      expect(screen.getByTestId("scan-estimate")).toHaveTextContent(
+        "1 page. The model runs on this computer, at no cost.",
+      ),
+    );
+    local.unmount();
+
+    resetProviderConfigCache();
+    mocks.getConfig.mockResolvedValue(
+      config({
+        ai_keys: { openrouter: "__stored__" },
+        ai_tools_model: { provider: "openrouter", model: "vision-free" },
+        ai_provider_models: {
+          openrouter: [
+            {
+              id: "vision-free",
+              name: "Vision Free",
+              enabled: true,
+              source: "fetched",
+              metadata: { ...opus, cost: { input: 0, output: 0 } },
+            },
+          ],
+        },
+      }),
+    );
+    renderWithQuery(<ScanEstimateText sizes={[letter, letter, letter]} />);
+    await waitFor(() =>
+      expect(screen.getByTestId("scan-estimate")).toHaveTextContent("3 pages. Free with Vision Free."),
+    );
+  });
+
   it("shows at least one cent for a tiny Mathpix run", async () => {
     mocks.getConfig.mockResolvedValue(config({ ai_tools_model: { provider: "mathpix", model: "mathpix" } }));
     renderWithQuery(<ScanEstimateText sizes={[letter]} />);
@@ -244,5 +367,15 @@ describe("Tools settings link", () => {
     });
     openToolsSettings("ai-tools");
     expect(useSettingsStore.getState().settingsScrollTarget).toBe("ai-tools");
+  });
+
+  it("opens Providers and keys, where keys and model switches live, for a key or model problem", () => {
+    useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general", settingsScrollTarget: null });
+    openToolsSettings("ai-providers");
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsOpen: true,
+      settingsInitialSection: "ai",
+      settingsScrollTarget: null,
+    });
   });
 });

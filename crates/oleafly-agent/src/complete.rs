@@ -16,7 +16,7 @@ pub(crate) use crate::wire::{
 pub use crate::wire::{request_builder, wire_body};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(180);
-const MAX_COMPLETION_DURATION: Duration = Duration::from_secs(10 * 60);
+pub(crate) const MAX_COMPLETION_DURATION: Duration = Duration::from_secs(10 * 60);
 
 const MAX_ERROR_CHARS: usize = 300;
 pub(crate) const MAX_COMPLETION_BODY_BYTES: usize = 16 * 1024 * 1024;

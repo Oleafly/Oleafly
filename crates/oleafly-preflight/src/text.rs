@@ -192,6 +192,17 @@ impl SourceText {
         }
     }
 
+    /// [`SourceText::position`] as an editor shows it: a byte-order mark at
+    /// the start of the text takes no column, so the first character after
+    /// it is 1:1 (VS Code and the app agree).
+    pub fn editor_position(&self, unit: usize) -> Position {
+        let mut position = self.position(unit);
+        if position.line == 1 && position.column > 1 && self.units.first() == Some(&0xFEFF) {
+            position.column -= 1;
+        }
+        position
+    }
+
     /// The text of the line that contains `unit`, without its newline.
     pub fn line_text(&self, unit: usize) -> String {
         let line = self.line_index(unit.min(self.units.len()));
@@ -485,6 +496,17 @@ mod tests {
         let t = SourceText::new("é😀\nx".into());
         assert_eq!(t.position(3), Position { line: 1, column: 4 });
         assert_eq!(t.position(4), Position { line: 2, column: 1 });
+    }
+
+    #[test]
+    fn a_byte_order_mark_takes_no_column_in_editor_positions() {
+        let t = SourceText::new("\u{feff}ab\ncd".into());
+        assert_eq!(t.editor_position(1), Position { line: 1, column: 1 });
+        assert_eq!(t.editor_position(2), Position { line: 1, column: 2 });
+        assert_eq!(t.editor_position(5), Position { line: 2, column: 2 });
+        assert_eq!(t.editor_position(0), Position { line: 1, column: 1 });
+        let plain = SourceText::new("ab".into());
+        assert_eq!(plain.editor_position(1), Position { line: 1, column: 2 });
     }
 
     #[test]

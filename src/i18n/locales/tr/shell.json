@@ -560,6 +560,9 @@
     "title": "Kitaplığa dön",
     "tooltip": "Proje kitaplığına geri dön"
   },
+  "importDestination": {
+    "scansGoTo": "Taramalar {{provider}} hizmetine gider"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -673,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Kaydedilmemiş değişiklikleriniz açık tutuldu. Sorunu çözmek için kalın ya da yine de çıkıp onları kaybedin.",
+      "descriptionReload": "{{reason}} Kaydedilmemiş değişiklikleriniz açık tutuldu. Sorunu çözmek için kalın ya da yine de yeniden yükleyip onları kaybedin.",
       "descriptionRestart": "{{reason}} Kaydedilmemiş değişiklikleriniz açık tutuldu. Sorunu çözmek için kalın ya da yine de yeniden başlatıp onları kaybedin.",
       "quitAnyway": "Yine de çık",
+      "reloadAnyway": "Yine de yeniden yükle",
       "restartAnyway": "Yine de yeniden başlat",
       "stay": "Kal",
       "title": "Bazı dosyalar kaydedilemedi"

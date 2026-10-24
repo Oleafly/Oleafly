@@ -122,10 +122,11 @@ pub fn write_if_unchanged(path: &Path, before: &FileStamp, bytes: &[u8]) -> Resu
     oleafly_core::atomic::write_atomic(path, bytes).map_err(FixError::Io)
 }
 
-/// Drops edits that overlap an earlier one.
-pub fn without_overlaps(mut edits: Vec<(usize, usize, String)>) -> Vec<(usize, usize, String)> {
+/// Drops edits that overlap an earlier one. What rides along with each
+/// range (the replacement, and whatever else the caller tracks) stays with it.
+pub fn without_overlaps<T>(mut edits: Vec<(usize, usize, T)>) -> Vec<(usize, usize, T)> {
     edits.sort_by_key(|(from, to, _)| (*from, *to));
-    let mut kept: Vec<(usize, usize, String)> = Vec::new();
+    let mut kept: Vec<(usize, usize, T)> = Vec::new();
     for edit in edits {
         if kept.last().is_none_or(|last| edit.0 >= last.1) {
             kept.push(edit);
@@ -178,9 +179,9 @@ mod tests {
     #[test]
     fn overlapping_edits_are_dropped() {
         let kept = without_overlaps(vec![
-            (5, 9, "a".into()),
-            (0, 6, "b".into()),
-            (9, 10, "c".into()),
+            (5, 9, "a".to_string()),
+            (0, 6, "b".to_string()),
+            (9, 10, "c".to_string()),
         ]);
         assert_eq!(
             kept.iter().map(|edit| edit.2.as_str()).collect::<Vec<_>>(),

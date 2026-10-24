@@ -18,8 +18,11 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
   writeBytesFile: vi.fn(),
+  countPdfPages: vi.fn(),
   nativeFiles: [] as { name: string; read: () => Promise<File> }[],
 }));
+
+vi.mock("@oleafly/pdf-to-latex/pdf-adapter", () => ({ countPdfPages: mocks.countPdfPages }));
 
 vi.mock("@/lib/native-drop", () => ({
   isNativeFileDrop: (transfer: DataTransfer | undefined) =>
@@ -102,6 +105,7 @@ beforeEach(() => {
   mocks.refreshProjects.mockResolvedValue(undefined);
   mocks.pickSavePath.mockResolvedValue(null);
   mocks.writeBytesFile.mockResolvedValue(undefined);
+  mocks.countPdfPages.mockRejectedValue(new Error("not a PDF"));
   useFilesStore.setState({
     projectId: null,
     openProject: mocks.openProject,
@@ -842,5 +846,62 @@ describe("ConverterToolView and the Tools model", () => {
     fireEvent.change(screen.getByTestId("converter-file-input"), { target: { files: [image()] } });
     fireEvent.click(screen.getByTestId("converter-run"));
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Reading the image with glm-ocr"));
+  });
+
+  it("names the PDF page being read next to its place in the range", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "pdf-to-markdown" });
+    mocks.runAdHocConverter.mockImplementation(
+      (_id: string, _input: unknown, onProgress: (status: unknown) => void) => {
+        onProgress({ step: "transcribingPage", page: 1, total: 10, pdfPage: 41, model: "glm-ocr" });
+        return new Promise(() => {});
+      },
+    );
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), {
+      target: { files: [new File(["%PDF"], "scan.pdf", { type: "application/pdf" })] },
+    });
+    fireEvent.click(screen.getByTestId("converter-run"));
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Transcribing page 41 (1 of 10) with glm-ocr"),
+    );
+  });
+
+  it("shows how many pages the chosen PDF has next to the range", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "pdf-to-typst" });
+    mocks.countPdfPages.mockResolvedValue(12);
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), {
+      target: { files: [new File(["%PDF"], "scan.pdf", { type: "application/pdf" })] },
+    });
+    expect(await screen.findByTestId("converter-page-count")).toHaveTextContent("This PDF has 12 pages.");
+    expect(mocks.countPdfPages).toHaveBeenCalledOnce();
+  });
+
+  it("offers Provider settings for a missing key or a model turned off", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "image-to-latex" });
+    useSettingsStore.setState({ settingsScrollTarget: null });
+    mocks.runAdHocConverter.mockRejectedValue(new ToolsModelError("Anthropic has no API key.", "ai-providers"));
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), { target: { files: [image()] } });
+    fireEvent.click(screen.getByTestId("converter-run"));
+    fireEvent.click(
+      await screen.findByRole("button", { name: researchTools.converterModel.openProviderSettings }),
+    );
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsOpen: true,
+      settingsInitialSection: "ai",
+      settingsScrollTarget: null,
+    });
+  });
+
+  it("sends a rejected API key to Provider settings, where keys live", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "image-to-latex" });
+    mocks.runAdHocConverter.mockRejectedValue(new Error("[auth] The API key was rejected."));
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-file-input"), { target: { files: [image()] } });
+    fireEvent.click(screen.getByTestId("converter-run"));
+    expect(
+      await screen.findByRole("button", { name: researchTools.converterModel.openProviderSettings }),
+    ).toBeInTheDocument();
   });
 });

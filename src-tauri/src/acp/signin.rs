@@ -171,6 +171,8 @@ impl AcpRuntime {
         method_id: &str,
     ) -> Result<TerminalSignIn, String> {
         let definition = self.definition(agent_id)?;
+        // The conversation's project: Hermes signs in per project profile.
+        let mut project_id = None;
         let methods = match session_id {
             Some(id) => {
                 let record = match self.get_live(id).await {
@@ -183,6 +185,7 @@ impl AcpRuntime {
                             .into(),
                     );
                 }
+                project_id = Some(record.project_id);
                 record.auth_methods
             }
             None => self
@@ -196,7 +199,7 @@ impl AcpRuntime {
             .find(|method| method.id == method_id)
             .ok_or("This sign-in method is no longer available.")?;
         let program = self.store.agent_program(agent_id)?;
-        let launch = {
+        let mut launch = {
             let root = self.root.clone();
             let definition = definition.clone();
             catalog::blocking(move || {
@@ -204,6 +207,12 @@ impl AcpRuntime {
             })
             .await??
         };
+        // A project's Hermes sessions run in its own profile, which has its
+        // own sign-in: the terminal signs in to that profile.
+        if let Some(project_id) = &project_id {
+            let settings = self.hermes_settings(&definition, project_id);
+            sign_in_profile(&mut launch, &definition, project_id, &settings)?;
+        }
         let own = method.terminal_command.as_ref().filter(|command| {
             Path::new(&command.command).is_absolute() && Path::new(&command.command).is_file()
         });
@@ -382,7 +391,18 @@ impl AcpRuntime {
                 .get(elicitation_id)
                 .ok_or("This question has expired.")?;
             match action {
-                "accept" => elicitation::accept(&pending.view, &content.unwrap_or_default())?,
+                "accept" => {
+                    let content = content.unwrap_or_default();
+                    let answer = elicitation::accept(&pending.view, &content)?;
+                    // A password or token typed into the form is removed from
+                    // whatever the agent echoes back from now on.
+                    for field in pending.view.fields.iter().filter(|field| field.secret) {
+                        if let Some(value) = content.get(&field.name).and_then(Value::as_str) {
+                            session.redactor.add_secret(value);
+                        }
+                    }
+                    answer
+                }
                 "decline" => elicitation::decline(),
                 "cancel" => elicitation::cancel(),
                 _ => return Err("Choose accept, decline or cancel.".into()),
@@ -477,11 +497,42 @@ impl AcpRuntime {
     }
 }
 
+/// The launch a terminal sign-in starts from: with a project in Hermes's
+/// project mode, the project's profile (`hermes -p oleafly-<project> …`).
+fn sign_in_profile(
+    launch: &mut catalog::Launch,
+    definition: &super::types::AgentDefinition,
+    project_id: &str,
+    settings: &super::hermes::HermesSettings,
+) -> Result<(), String> {
+    if settings.mode != super::hermes::HermesMode::Project {
+        return Ok(());
+    }
+    let definition_args = definition
+        .distribution
+        .command
+        .as_ref()
+        .map(|command| command.args.clone())
+        .unwrap_or_default();
+    super::hermes::apply_profile(launch, &definition_args, project_id, settings)
+}
+
+/// A question as it is stored and shown: every text the agent wrote is
+/// redacted here, field by field (the stored event skips the generic pass,
+/// which would turn the `secret` flags into text). The link stays whole.
 fn redact_view(view: &mut ElicitationView, redactor: &oleafly_acp::redact::Redactor) {
     view.message = redactor.text(&view.message);
     for field in &mut view.fields {
         field.title = field.title.as_deref().map(|text| redactor.text(text));
         field.description = field.description.as_deref().map(|text| redactor.text(text));
+        if let Some(Value::String(default)) = &mut field.default {
+            *default = redactor.text(default);
+        }
+        if let oleafly_acp::elicitation::FieldKind::Choice { options, .. } = &mut field.kind {
+            for (_, title) in options.iter_mut() {
+                *title = redactor.text(title);
+            }
+        }
     }
 }
 
@@ -638,5 +689,39 @@ mod tests {
             .await
             .unwrap_err();
         assert!(error.contains("another machine"), "{error}");
+    }
+
+    #[test]
+    fn a_terminal_sign_in_for_a_hermes_project_profile_signs_in_to_that_profile() {
+        let definition = catalog::builtins()
+            .into_iter()
+            .find(|definition| definition.id == super::super::hermes::HERMES_ID)
+            .unwrap();
+        let launch = || catalog::Launch {
+            executable: std::path::PathBuf::from("/usr/local/bin/hermes"),
+            args: definition
+                .distribution
+                .command
+                .as_ref()
+                .map(|command| command.args.clone())
+                .unwrap_or_default(),
+            version: None,
+            managed: false,
+            batch: false,
+            entry: None,
+            needs_local_folder: false,
+            env: Vec::new(),
+        };
+        let mut project = launch();
+        let settings = super::super::hermes::HermesSettings {
+            mode: super::super::hermes::HermesMode::Project,
+            ..Default::default()
+        };
+        sign_in_profile(&mut project, &definition, "thesis", &settings).unwrap();
+        assert_eq!(&project.args[..2], ["-p", "oleafly-thesis"]);
+        // Hermes's own default profile: the launch as it is.
+        let mut default = launch();
+        sign_in_profile(&mut default, &definition, "thesis", &Default::default()).unwrap();
+        assert_eq!(default.args, launch().args);
     }
 }

@@ -4,6 +4,12 @@
 // FIXTURE_LOG    append "method <name>", "prompt <text>" and "permission
 //                <answer>" lines to this file
 // FIXTURE_ASK    on a prompt, ask permission to run a command first
+// FIXTURE_ASK_TOOL  on a prompt, ask permission with this JSON as toolCall
+// FIXTURE_ANNOUNCE  before asking, send a tool_call update with these JSON
+//                   fields (`"toolCallId":...,"kind":...` without braces)
+// FIXTURE_MODE   start sessions in this legacy mode (`default` and
+//                `bypassPermissions` are offered); log "set_mode <id>"
+// FIXTURE_NO_INIT  never answer initialize
 // FIXTURE_SLOW   on a prompt, wait for session/cancel and end "cancelled"
 // It keeps a file per session under $HOME/.claude/projects, as an agent
 // keeps its own history.
@@ -19,7 +25,10 @@ fn raw_after(line: &str, key: &str) -> Option<String> {
         let end = rest[1..].find('"')? + 2;
         return Some(rest[..end].to_string());
     }
-    let digits: String = rest.chars().take_while(|character| character.is_ascii_digit() || *character == '-').collect();
+    let digits: String = rest
+        .chars()
+        .take_while(|character| character.is_ascii_digit() || *character == '-')
+        .collect();
     (!digits.is_empty()).then_some(digits)
 }
 
@@ -49,7 +58,11 @@ fn string_after(line: &str, key: &str) -> Option<String> {
 
 fn log(line: &str) {
     if let Ok(path) = std::env::var("FIXTURE_LOG") {
-        if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+        {
             let _ = writeln!(file, "{line}");
         }
     }
@@ -80,7 +93,17 @@ fn update(stdout: &mut std::io::Stdout, session: &str, text: &str) {
 fn main() {
     let caps = std::env::var("FIXTURE_CAPS").unwrap_or_default();
     let has = |name: &str| caps.split(',').any(|cap| cap.trim() == name);
-    let ask = std::env::var("FIXTURE_ASK").is_ok();
+    let ask_tool = std::env::var("FIXTURE_ASK_TOOL").ok();
+    let ask = std::env::var("FIXTURE_ASK").is_ok() || ask_tool.is_some();
+    let ask_tool = ask_tool.unwrap_or_else(|| {
+        "{\"toolCallId\":\"tool-1\",\"title\":\"Run tests\",\"kind\":\"execute\",\"rawInput\":{\"command\":\"make test\"}}".to_string()
+    });
+    let announce = std::env::var("FIXTURE_ANNOUNCE").ok();
+    let mode = std::env::var("FIXTURE_MODE").ok();
+    let modes = mode.as_ref().map(|mode| {
+        format!(",\"modes\":{{\"currentModeId\":\"{mode}\",\"availableModes\":[{{\"id\":\"default\",\"name\":\"Default\"}},{{\"id\":\"bypassPermissions\",\"name\":\"Bypass permissions\"}}]}}")
+    }).unwrap_or_default();
+    let no_init = std::env::var("FIXTURE_NO_INIT").is_ok();
     let slow = std::env::var("FIXTURE_SLOW").is_ok();
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
@@ -115,6 +138,9 @@ fn main() {
             continue;
         };
         log(&format!("method {method}"));
+        if no_init && method == "initialize" {
+            continue;
+        }
         let result = match method.as_str() {
             "initialize" => format!(
                 "{{\"protocolVersion\":1,\"agentCapabilities\":{{\"loadSession\":{},\"sessionCapabilities\":{{{}}},\"mcpCapabilities\":{{\"http\":true}}}}}}",
@@ -128,7 +154,7 @@ fn main() {
             ),
             "session/new" => {
                 keep_session(&session);
-                format!("{{\"sessionId\":\"{session}\"}}")
+                format!("{{\"sessionId\":\"{session}\"{modes}}}")
             }
             "session/resume" | "session/load" => {
                 session = string_after(&line, "\"sessionId\":").unwrap_or(session);
@@ -136,6 +162,10 @@ fn main() {
                 if method == "session/load" {
                     update(&mut stdout, &session, "replayed history");
                 }
+                format!("{{{}}}", modes.trim_start_matches(','))
+            }
+            "session/set_mode" => {
+                log(&format!("set_mode {}", string_after(&line, "\"modeId\":").unwrap_or_default()));
                 "{}".to_string()
             }
             "session/close" => "{}".to_string(),
@@ -144,10 +174,18 @@ fn main() {
                 log(&format!("prompt {}", text.replace('\n', " ")));
                 if ask {
                     pending_prompt = Some(id);
+                    if let Some(fields) = &announce {
+                        send(
+                            &mut stdout,
+                            &format!(
+                                "{{\"jsonrpc\":\"2.0\",\"method\":\"session/update\",\"params\":{{\"sessionId\":\"{session}\",\"update\":{{\"sessionUpdate\":\"tool_call\",\"title\":\"Tool\",{fields}}}}}}}"
+                            ),
+                        );
+                    }
                     send(
                         &mut stdout,
                         &format!(
-                            "{{\"jsonrpc\":\"2.0\",\"id\":{PERMISSION_ID},\"method\":\"session/request_permission\",\"params\":{{\"sessionId\":\"{session}\",\"toolCall\":{{\"toolCallId\":\"tool-1\",\"title\":\"Run tests\",\"kind\":\"execute\",\"rawInput\":{{\"command\":\"make test\"}}}},\"options\":[{{\"optionId\":\"allow\",\"name\":\"Allow\",\"kind\":\"allow_once\"}},{{\"optionId\":\"reject\",\"name\":\"Reject\",\"kind\":\"reject_once\"}}]}}}}"
+                            "{{\"jsonrpc\":\"2.0\",\"id\":{PERMISSION_ID},\"method\":\"session/request_permission\",\"params\":{{\"sessionId\":\"{session}\",\"toolCall\":{ask_tool},\"options\":[{{\"optionId\":\"allow\",\"name\":\"Allow\",\"kind\":\"allow_once\"}},{{\"optionId\":\"reject\",\"name\":\"Reject\",\"kind\":\"reject_once\"}}]}}}}"
                         ),
                     );
                     continue;
@@ -167,6 +205,9 @@ fn main() {
                 continue;
             }
         };
-        send(&mut stdout, &format!("{{\"jsonrpc\":\"2.0\",\"id\":{id},\"result\":{result}}}"));
+        send(
+            &mut stdout,
+            &format!("{{\"jsonrpc\":\"2.0\",\"id\":{id},\"result\":{result}}}"),
+        );
     }
 }

@@ -613,6 +613,7 @@
       "sendNow": "Skicka nu",
       "sendFailed": "Meddelandet skickades inte. Skicka det igen eller ta bort det.",
       "queuedConnecting": "I kö: skickas när agenten är redo",
+      "queuedSignIn": "I kö: skickas när du har loggat in",
       "retry": "Skicka igen",
       "edit": "Redigera"
     },

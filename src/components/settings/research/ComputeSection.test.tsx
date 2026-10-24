@@ -137,6 +137,42 @@ describe("ComputeSection", () => {
     await waitFor(() => expect(screen.queryByTestId("compute-host-key-dialog")).toBeNull());
   });
 
+  it("shows only the latest test's host key when a target is tested again before the first test ends", async () => {
+    const answers: ((hostKey: ComputeTestReport["hostKey"]) => void)[] = [];
+    extra.research_compute_target_test = (args) =>
+      new Promise((resolve) => {
+        answers.push((hostKey) =>
+          resolve({ ...report, targetId: args.targetId as string, checks: [{ id: "connect", status: "fail", detail: "unknown key" }], hostKey }),
+        );
+      });
+    extra.research_compute_target_save = () => current;
+    const key = (host: string) => ({
+      host,
+      keys: [{ keyType: "ssh-ed25519", fingerprint: `SHA256:${host}-fingerprint` }],
+      changed: false,
+    });
+    render(<ComputeSection />);
+    const lab = await screen.findByTestId("compute-target-t-a");
+    await userEvent.click(within(lab).getByRole("button", { name: strings.targets.test }));
+    await waitFor(() => expect(answers).toHaveLength(1));
+
+    // Edit the target and save while the first test still runs: that starts a second test.
+    await userEvent.click(within(lab).getByRole("button", { name: strings.targets.more.replace("{{label}}", "Lab box") }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: strings.targets.edit }));
+    const form = await screen.findByTestId("compute-target-dialog");
+    await userEvent.click(within(form).getByTestId("compute-target-save"));
+    await waitFor(() => expect(answers).toHaveLength(2));
+
+    answers[0](key("old-lab"));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.queryByTestId("compute-host-key-dialog")).toBeNull();
+
+    answers[1](key("new-lab"));
+    const dialog = await screen.findByTestId("compute-host-key-dialog");
+    expect(dialog).toHaveTextContent("new-lab-fingerprint");
+    expect(dialog).not.toHaveTextContent("old-lab-fingerprint");
+  });
+
   it("shows the changed-key warning without a trust button", async () => {
     report = { ...report, checks: [], hostKey: { host: "lab", keys: [], changed: true } };
     render(<ComputeSection />);

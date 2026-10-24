@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FlaskConical } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { acpError, acpPreferences, acpSetPreferences, type AcpPreferences } from "@/lib/acp";
+import { announceAcpPreferences } from "./agent-preferences";
 
 const INACTIVITY_CHOICES = [10, 20, 30, 60, 120] as const;
 
@@ -14,6 +15,8 @@ export function AcpExperimentalSection() {
   const { t } = useTranslation(["common", "settings"]);
   const [prefs, setPrefs] = useState<AcpPreferences | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Only the answer to the latest save is shown; an older one would undo a newer switch.
+  const latest = useRef(0);
 
   useEffect(() => {
     let current = true;
@@ -25,16 +28,22 @@ export function AcpExperimentalSection() {
 
   const save = (patch: Partial<AcpPreferences>) => {
     if (!prefs) return;
-    const previous = prefs;
-    const next = { ...previous, ...patch };
+    const next = { ...prefs, ...patch };
+    const request = ++latest.current;
+    const show = (stored: AcpPreferences) => {
+      if (request !== latest.current) return;
+      setPrefs(stored);
+      announceAcpPreferences(stored);
+    };
     setPrefs(next);
     setError(null);
     acpSetPreferences(next)
-      .then(setPrefs)
+      .then(show)
       .catch((error_: unknown) => {
-        // Undo only this change: a save made since keeps its own value.
-        setPrefs((current) => (current === next ? previous : current));
         setError(acpError(error_));
+        // A newer save brings the stored values back with it.
+        if (request !== latest.current) return;
+        acpPreferences().then(show).catch(() => {});
       });
   };
 

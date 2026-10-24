@@ -1632,6 +1632,11 @@ fn run_git_for_remote_until(
     let configure = |command: &mut Command| {
         command.args(trailing);
         command.env("GIT_TERMINAL_PROMPT", "0");
+        // A curl trace would print the account's `Authorization` header into
+        // the output the error message is made from.
+        for variable in GIT_TRACE_ENV {
+            command.env_remove(variable);
+        }
         if let RemoteAuth::Account(credential) = auth {
             command
                 .env(FORGE_USERNAME_ENV, &credential.username)
@@ -1690,6 +1695,8 @@ fn classify_remote_failure(
             .lines()
             .any(|line| line.contains("Permission to ") && line.contains(" denied"));
     let mut with_reason = true;
+    // Settings can only add GitHub, GitLab, Gitea and Forgejo servers.
+    let settings_can_sign_in = !is_unsupported_forge(remote_url);
     let code = if has(&[
         "could not read Username",
         "could not read Password",
@@ -1698,8 +1705,10 @@ fn classify_remote_failure(
         with_reason = false;
         if uses_account {
             "git.auth_rejected"
-        } else {
+        } else if settings_can_sign_in {
             "git.credentials_missing"
+        } else {
+            "git.credentials_missing_helper"
         }
     } else if has(&[
         "Authentication failed for",
@@ -1708,8 +1717,10 @@ fn classify_remote_failure(
     ]) {
         if uses_account {
             "git.auth_rejected"
-        } else {
+        } else if settings_can_sign_in {
             "git.credentials_rejected"
+        } else {
+            "git.credentials_rejected_helper"
         }
     } else if access_denied {
         "git.access_denied"
@@ -1754,13 +1765,38 @@ fn classify_remote_failure(
     // access, single sign-on) is in them and differs from case to case.
     let refused = matches!(
         code,
-        "git.auth_rejected" | "git.credentials_rejected" | "git.access_denied"
+        "git.auth_rejected"
+            | "git.credentials_rejected"
+            | "git.credentials_rejected_helper"
+            | "git.access_denied"
     );
     Some(if refused && with_reason {
         error.detail(git_reason(text))
     } else {
         error
     })
+}
+
+/// Whether `remote_url` is on a hosted service that Settings can't add an
+/// account for (Bitbucket, Azure DevOps, SourceHut, AWS CodeCommit, Google
+/// Cloud Source). A server of any other name may be a GitLab, Gitea or
+/// Forgejo that Settings can add.
+fn is_unsupported_forge(remote_url: &str) -> bool {
+    let Some(host) = oleafly_forge::address::host_of(remote_url) else {
+        return false;
+    };
+    let host = host.split(':').next().unwrap_or_default();
+    let on = |domain: &str| host == domain || host.ends_with(&format!(".{domain}"));
+    [
+        "bitbucket.org",
+        "dev.azure.com",
+        "visualstudio.com",
+        "sr.ht",
+        "amazonaws.com",
+        "source.developers.google.com",
+    ]
+    .into_iter()
+    .any(on)
 }
 
 /// Git's output on one line, without any user name or password, cut to a
@@ -2022,6 +2058,8 @@ where
         // A server's archive leaves out `export-ignore` files. They are still
         // tracked, so bring them back instead of committing their deletion.
         restore_missing_tracked_files(root)?;
+        restore_substituted_files(root);
+        skip_never_restored(root);
 
         // project.json and any archive-safety normalization become one local
         // commit above the imported branch, leaving future pulls mergeable.
@@ -2057,13 +2095,7 @@ fn restore_missing_tracked_files(root: &PathBuf) -> Result<(), String> {
     };
     let paths: Vec<Vec<u8>> = missing
         .into_iter()
-        .filter(|path| {
-            !path.split(|byte| *byte == b'/').any(|segment| {
-                NEVER_RESTORED
-                    .iter()
-                    .any(|name| segment.eq_ignore_ascii_case(name.as_bytes()))
-            })
-        })
+        .filter(|path| !never_restored(path))
         .collect();
     if paths.is_empty() {
         return Ok(());
@@ -2078,6 +2110,125 @@ fn restore_missing_tracked_files(root: &PathBuf) -> Result<(), String> {
         ],
         &paths,
     );
+    Ok(())
+}
+
+/// Whether a tracked path has a [`NEVER_RESTORED`] name in it.
+fn never_restored(path: &[u8]) -> bool {
+    path.split(|byte| *byte == b'/').any(|segment| {
+        NEVER_RESTORED
+            .iter()
+            .any(|name| segment.eq_ignore_ascii_case(name.as_bytes()))
+    })
+}
+
+/// `args` with each of `paths` (as Git spells them) after it, in groups
+/// small enough for any command line. Stops at the first failure.
+fn run_git_with_paths(
+    root: &PathBuf,
+    args: &[&str],
+    paths: &[Vec<u8>],
+) -> Result<Vec<std::process::Output>, String> {
+    let mut outputs = Vec::new();
+    for group in paths.chunks(100) {
+        let output = run_configured_git(root, args, false, |command| {
+            command.args(group.iter().map(|path| path_from_git(path)));
+        })?;
+        if !output.status.success() {
+            return Err(out_to_string(&output));
+        }
+        outputs.push(output);
+    }
+    Ok(outputs)
+}
+
+/// Check out from the index the tracked files that carry `export-subst`.
+/// The server's archive expanded their `$Format:…$` placeholders, and
+/// committing that text would replace the placeholders upstream for
+/// everyone. Best effort, like [`restore_missing_tracked_files`].
+fn restore_substituted_files(root: &PathBuf) {
+    let Ok(listing) = run_git_read_only(root, &["ls-files", "-z", "--modified"]) else {
+        return;
+    };
+    let Ok(modified) = git_listing(listing) else {
+        return;
+    };
+    let Ok(outputs) = run_git_with_paths(
+        root,
+        &["check-attr", "--cached", "-z", "export-subst", "--"],
+        &modified,
+    ) else {
+        return;
+    };
+    // Each answer is `path NUL attribute NUL value NUL`.
+    let substituted: Vec<Vec<u8>> = outputs
+        .iter()
+        .flat_map(|output| {
+            let fields: Vec<&[u8]> = output.stdout.split(|byte| *byte == 0).collect();
+            fields
+                .chunks(3)
+                .filter_map(|answer| match answer {
+                    [path, _, value] if *value == b"set" => Some(path.to_vec()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    if !substituted.is_empty() {
+        let _ = run_git_with_pathspecs(
+            root,
+            &[
+                "--literal-pathspecs",
+                "-c",
+                "core.symlinks=false",
+                "checkout",
+            ],
+            &substituted,
+        );
+    }
+}
+
+/// Mark the tracked files the import never writes ([`NEVER_RESTORED`]
+/// names such as `.DS_Store`) skip-worktree, so "Stage all" never stages
+/// their deletion and a push never removes them upstream. Best effort.
+fn skip_never_restored(root: &PathBuf) {
+    let Ok(listing) = run_git_read_only(root, &["ls-files", "-z", "--deleted"]) else {
+        return;
+    };
+    let Ok(missing) = git_listing(listing) else {
+        return;
+    };
+    let left_out: Vec<Vec<u8>> = missing
+        .into_iter()
+        .filter(|path| never_restored(path))
+        .collect();
+    let _ = run_git_with_paths(root, &["update-index", "--skip-worktree", "--"], &left_out);
+}
+
+/// Refuses a commit whose files add up to more than `limit` bytes, read
+/// from its tree before any of them is written out.
+fn refuse_large_tree(repository: &PathBuf, commit: &str, limit: u64) -> Result<(), String> {
+    let listing = git_listing(run_git_read_only(
+        repository,
+        &["ls-tree", "-r", "-l", "-z", commit],
+    )?)?;
+    // Each entry is `mode type object size TAB path`; only blobs have a size.
+    let total: u64 = listing
+        .iter()
+        .filter_map(|entry| {
+            let meta = std::str::from_utf8(entry.split(|byte| *byte == b'\t').next()?).ok()?;
+            let mut fields = meta.split_whitespace();
+            if fields.nth(1)? != "blob" {
+                return None;
+            }
+            fields.nth(1)?.parse::<u64>().ok()
+        })
+        .sum();
+    if total > limit {
+        return Err(crate::app_error::AppError::new("git.archive_too_large")
+            .param("limit", limit / (1024 * 1024))
+            .into());
+    }
     Ok(())
 }
 
@@ -2102,12 +2253,16 @@ fn checked_clone_url(url: &str) -> Result<String, String> {
 /// with a matching Git hosting account or the user's own Git setup.
 ///
 /// The webview can cancel it by emitting the import-cancel event
-/// ([`crate::forge::cancel::IMPORT_CANCEL_EVENT`]): the clone stops, its
-/// staging folder goes, and no project is created.
+/// ([`crate::forge::cancel::IMPORT_CANCEL_EVENT`]) with `cancel_id`: the
+/// clone stops, its staging folder goes, and no project is created.
 #[tauri::command]
-pub async fn git_clone_project(app: tauri::AppHandle, url: String) -> Result<String, String> {
+pub async fn git_clone_project(
+    app: tauri::AppHandle,
+    url: String,
+    cancel_id: Option<String>,
+) -> Result<String, String> {
     let url = checked_clone_url(&url)?;
-    let (cancel, _listener) = crate::forge::cancel::cancel_on_event(&app);
+    let (cancel, _listener) = crate::forge::cancel::cancel_on_event(&app, cancel_id);
     let auth = crate::forge::remote_auth::remote_auth_for_url(&url).await?;
     let work = cancel.clone();
     let project_id = tauri::async_runtime::spawn_blocking(move || {
@@ -2199,6 +2354,10 @@ fn clone_into_library(
     let commit = String::from_utf8_lossy(&head.stdout).trim().to_string();
     ok_or_err(head)?;
     validate_git_oid(&commit)?;
+
+    // A repository whose files can't fit is refused before its archive is
+    // written to disk and read into memory.
+    refuse_large_tree(&repository, &commit, CLONE_ARCHIVE_MAX_BYTES)?;
 
     let info = repository.join(".git").join("info");
     std::fs::create_dir_all(&info).map_err(|error| error.to_string())?;
@@ -5591,6 +5750,87 @@ mod tests {
         parse_status_porcelain(&String::from_utf8_lossy(&out.stdout))
     }
 
+    fn attach_from(imported: &PathBuf, remote: &Path) {
+        let remote_url = remote.to_string_lossy().into_owned();
+        attach_imported_repository_history_at(
+            imported,
+            &remote_url,
+            "main",
+            None,
+            |root, refspec| ok_or_err(run_git(root, &["fetch", "--no-tags", "origin", refspec])?),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn an_import_never_commits_the_placeholders_the_archive_expanded() {
+        let remote = temp_repo();
+        write(&remote, ".gitattributes", "version.tex export-subst\n");
+        write(
+            &remote,
+            "version.tex",
+            "\\newcommand\\commit{$Format:%h$}\n",
+        );
+        write(&remote, "main.tex", "main\n");
+        stage_all(&remote).unwrap();
+        assert!(commit_index(&remote, "Remote base").unwrap());
+
+        // What a server's archive of that commit holds.
+        let imported = temp_dir("history-import-subst");
+        write(&imported, ".gitattributes", "version.tex export-subst\n");
+        write(&imported, "version.tex", "\\newcommand\\commit{abc1234}\n");
+        write(&imported, "main.tex", "main\n");
+        write(&imported, "project.json", "{}\n");
+        attach_from(&imported, &remote);
+
+        assert_eq!(
+            git_text(&imported, &["show", "HEAD:version.tex"]),
+            "\\newcommand\\commit{$Format:%h$}"
+        );
+        let changed: Vec<String> = status(&imported)
+            .into_iter()
+            .map(|change| change.path)
+            .collect();
+        assert!(changed.is_empty(), "{changed:?}");
+    }
+
+    #[test]
+    fn tracked_junk_the_import_left_out_is_never_staged_as_deleted() {
+        let remote = temp_repo();
+        write(&remote, "main.tex", "main\n");
+        std::fs::create_dir_all(remote.join("figures")).unwrap();
+        write(&remote.join("figures"), ".DS_Store", "junk\n");
+        stage_all(&remote).unwrap();
+        ok_or_err(run_git(&remote, &["add", "--force", "--", "figures/.DS_Store"]).unwrap())
+            .unwrap();
+        assert!(commit_index(&remote, "Remote base").unwrap());
+
+        let imported = temp_dir("history-import-junk");
+        write(&imported, "main.tex", "main\n");
+        attach_from(&imported, &remote);
+        write(&imported, "main.tex", "edited\n");
+        stage_all(&imported).unwrap();
+
+        let staged = git_text(&imported, &["diff", "--cached", "--name-status"]);
+        assert!(staged.contains("main.tex"), "{staged}");
+        assert!(!staged.contains(".DS_Store"), "{staged}");
+        assert!(git_text(&imported, &["ls-files"]).contains("figures/.DS_Store"));
+    }
+
+    #[test]
+    fn a_clone_larger_than_the_limit_is_refused_before_its_archive_is_written() {
+        let remote = temp_repo();
+        write(&remote, "data.csv", &"x".repeat(4096));
+        write(&remote, "main.tex", "main\n");
+        stage_all(&remote).unwrap();
+        assert!(commit_index(&remote, "Remote base").unwrap());
+        let head = git_text(&remote, &["rev-parse", "HEAD"]);
+
+        let error = super::refuse_large_tree(&remote, &head, 1024).unwrap_err();
+        assert!(error.contains("\"git.archive_too_large\""), "{error}");
+        super::refuse_large_tree(&remote, &head, 1 << 20).unwrap();
+    }
+
     #[test]
     fn staging_in_a_repository_the_user_made_adds_only_the_state_folder_exclude() {
         let root = temp_repo();
@@ -6652,6 +6892,27 @@ mod tests {
     }
 
     #[test]
+    fn remote_commands_never_inherit_git_trace_variables() {
+        let root = temp_repo();
+        let _inherited = super::testing::inherit_git_env(vec![
+            ("GIT_TRACE_CURL".into(), "1".into()),
+            ("GIT_CURL_VERBOSE".into(), "1".into()),
+        ]);
+        let probe = [
+            "-c",
+            "alias.envcheck=!printf %s \"${GIT_TRACE_CURL-unset}:${GIT_CURL_VERBOSE-unset}\"",
+            "envcheck",
+        ];
+        let account = super::run_git_for_remote(
+            &root,
+            &super::RemoteAuth::Account(account_credential(None)),
+            &probe,
+        )
+        .unwrap();
+        assert_eq!(String::from_utf8_lossy(&account.stdout), "unset:unset");
+    }
+
+    #[test]
     fn remote_commands_never_prompt_in_a_terminal() {
         let root = temp_repo();
         let probe = [
@@ -6761,6 +7022,47 @@ mod tests {
             assert_eq!(code(text, false), Some(without_account), "{text}");
         }
         assert_eq!(code("error: something else went wrong", false), None);
+        // Settings can't add an account for these, so the advice leaves it out.
+        for (remote, prompt, refused) in [
+            (
+                "https://bitbucket.org/team/paper.git",
+                "git.credentials_missing_helper",
+                "git.credentials_rejected_helper",
+            ),
+            (
+                "https://zoe@dev.azure.com/org/p/_git/paper",
+                "git.credentials_missing_helper",
+                "git.credentials_rejected_helper",
+            ),
+            (
+                "https://git.sr.ht/~zoe/paper",
+                "git.credentials_missing_helper",
+                "git.credentials_rejected_helper",
+            ),
+            (
+                "https://git.example.edu/zoe/paper.git",
+                "git.credentials_missing",
+                "git.credentials_rejected",
+            ),
+        ] {
+            let found = |text: &str| {
+                super::classify_remote_failure(text, remote, None).map(|error| error.code)
+            };
+            assert_eq!(
+                found("fatal: could not read Username: terminal prompts disabled"),
+                Some(prompt),
+                "{remote}"
+            );
+            assert_eq!(
+                found("fatal: Authentication failed for 'x'"),
+                Some(refused),
+                "{remote}"
+            );
+        }
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
+        assert!(catalog["git"]["credentials_missing_helper"].is_string());
+        assert!(catalog["git"]["credentials_rejected_helper"].is_string());
         let host = super::classify_remote_failure("Connection refused", url, None).unwrap();
         assert_eq!(host.params["host"], "gitlab.example.org");
         let named = super::classify_remote_failure(

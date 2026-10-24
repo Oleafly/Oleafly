@@ -53,6 +53,21 @@ describe("chat export", () => {
     expect(markdown).toContain(`**${en.conversation.exportTools}**\n\n- read_file\n- write_file`);
   });
 
+  it("writes the project and start fields in the reader's language", async () => {
+    const { i18n } = await import("@/i18n");
+    const language = i18n.language;
+    i18n.addResource(language, "ai", "acp.export.project", "Projekt");
+    i18n.addResource(language, "ai", "acp.export.started", "Begonnen");
+    try {
+      const markdown = chatMarkdown(chat, { projectName: "Thesis" });
+      expect(markdown).toContain("- Projekt: Thesis");
+      expect(markdown).toMatch(/\n- Begonnen: .+\n/);
+    } finally {
+      i18n.addResource(language, "ai", "acp.export.project", en.acp.export.project);
+      i18n.addResource(language, "ai", "acp.export.started", en.acp.export.started);
+    }
+  });
+
   it("shows stored markers in the reader's language", () => {
     expect(chatMarkdown(chat, { projectName: null })).toContain(`Started.\n\n_${en.conversation.stopped}_`);
   });

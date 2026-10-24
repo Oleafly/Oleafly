@@ -4,9 +4,11 @@
 //! app call the same tool the same way.
 //!
 //! A stdio server runs a program, so it needs `--allow commands`; a remote
-//! server needs `--allow network`; `oleafly ask` keeps only tools that say
-//! they only read. Server values (env, headers) never appear in a warning,
-//! an error or a result.
+//! server needs `--allow network`; `oleafly ask`, and an `agent run` whose
+//! changes don't go straight into the project, keep only tools that say they
+//! only read (a server acts on the real files, not on the run's review
+//! copy). Server values (env, headers) never appear in a warning, an error
+//! or a result.
 pub mod http;
 pub mod stdio;
 
@@ -21,7 +23,7 @@ use oleafly_agent::{CancellationToken, ToolSchema};
 use serde_json::{json, Value};
 
 use super::desktop_config::{McpServer, McpTransport};
-use super::policy::RunPolicy;
+use super::policy::{RunPolicy, WriteMode};
 use crate::app_paths::Platform;
 
 pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
@@ -374,18 +376,33 @@ fn initialize_params() -> Value {
     })
 }
 
+/// Where a hub's stdio servers start, and which tools it offers.
+#[derive(Clone, Copy)]
+struct Placement<'a> {
+    /// The program search path (empty: this process's `PATH`).
+    search_dirs: &'a [PathBuf],
+    /// The folder stdio servers start in (`None`: this process's).
+    current_dir: Option<&'a Path>,
+    /// Offer only tools marked `readOnlyHint`.
+    read_only: bool,
+}
+
 /// Connects one server and lists its tools.
 async fn connect_one(
     server: &McpServer,
     values: Option<&AhoCorasick>,
-    search_dirs: &[PathBuf],
+    placement: Placement<'_>,
 ) -> Result<(Connection, Vec<Value>), String> {
     let started = match &server.transport {
-        McpTransport::Stdio { command, args, env } => {
-            stdio::StdioConnection::spawn_in(command, args, env, search_dirs)
-                .await
-                .map(Connection::Stdio)
-        }
+        McpTransport::Stdio { command, args, env } => stdio::StdioConnection::spawn_in(
+            command,
+            args,
+            env,
+            placement.search_dirs,
+            placement.current_dir,
+        )
+        .await
+        .map(Connection::Stdio),
         McpTransport::Remote { url, headers } => {
             http::HttpConnection::new(url, headers).map(Connection::Http)
         }
@@ -497,12 +514,12 @@ fn retain_allowed(chosen: &mut Vec<&McpServer>, policy: &RunPolicy, warnings: &m
 }
 
 /// One listed tool as the run exposes it. `None` when its name is unusable or
-/// shows a stored value, `oleafly ask` can't use it, or `known` has it.
+/// shows a stored value, a `read_only` hub can't use it, or `known` has it.
 fn tool_spec(
     server: &McpServer,
     tool: &Value,
     values: Option<&AhoCorasick>,
-    policy: &RunPolicy,
+    read_only: bool,
     known: &[McpToolSpec],
 ) -> Option<McpToolSpec> {
     let name = tool["name"]
@@ -513,7 +530,7 @@ fn tool_spec(
         return None;
     }
     let read_only_hint = tool["annotations"]["readOnlyHint"].as_bool() == Some(true);
-    if policy.question && !read_only_hint {
+    if read_only && !read_only_hint {
         return None;
     }
     let agent_name = agent_tool_name(&server.name, name);
@@ -574,6 +591,42 @@ impl McpHub {
         search_dirs: &[PathBuf],
         cancel: &CancellationToken,
     ) -> (McpHub, Vec<String>) {
+        let placement = Placement {
+            search_dirs,
+            current_dir: None,
+            read_only: policy.question,
+        };
+        Self::connect_placed(servers, policy, selection, secrets, placement, cancel).await
+    }
+
+    /// The servers of an `agent run` whose working folder is `work_root`
+    /// (the review copy, or the project with `--apply`). Stdio servers start
+    /// there. A server acts on whatever it reaches, not on the run's copy,
+    /// so outside `--apply` only tools that say they only read are offered.
+    pub async fn connect_for_run(
+        servers: &[McpServer],
+        policy: &RunPolicy,
+        selection: &McpSelection,
+        secrets: &[String],
+        work_root: &Path,
+        cancel: &CancellationToken,
+    ) -> (McpHub, Vec<String>) {
+        let placement = Placement {
+            search_dirs: &[],
+            current_dir: Some(work_root),
+            read_only: policy.question || policy.mode != WriteMode::Apply,
+        };
+        Self::connect_placed(servers, policy, selection, secrets, placement, cancel).await
+    }
+
+    async fn connect_placed(
+        servers: &[McpServer],
+        policy: &RunPolicy,
+        selection: &McpSelection,
+        secrets: &[String],
+        placement: Placement<'_>,
+        cancel: &CancellationToken,
+    ) -> (McpHub, Vec<String>) {
         let mut warnings = Vec::new();
         let mut chosen = choose_servers(servers, selection, &mut warnings);
         retain_allowed(&mut chosen, policy, &mut warnings);
@@ -585,7 +638,7 @@ impl McpHub {
         let attempts = chosen.iter().map(|server| {
             let values = matcher(&server_values(server));
             async move {
-                let result = connect_one(server, values.as_ref(), search_dirs).await;
+                let result = connect_one(server, values.as_ref(), placement).await;
                 (server, values, result)
             }
         });
@@ -601,7 +654,13 @@ impl McpHub {
         for (server, values, result) in results {
             match result {
                 Ok((connection, tools)) => {
-                    hub.add_tools(server, tools, values.as_ref(), policy, &mut warnings);
+                    hub.add_tools(
+                        server,
+                        tools,
+                        values.as_ref(),
+                        placement.read_only,
+                        &mut warnings,
+                    );
                     hub.servers.push(Server {
                         name: server.name.clone(),
                         connection,
@@ -628,7 +687,7 @@ impl McpHub {
         server: &McpServer,
         tools: Vec<Value>,
         values: Option<&AhoCorasick>,
-        policy: &RunPolicy,
+        read_only: bool,
         warnings: &mut Vec<String>,
     ) {
         for tool in tools {
@@ -636,7 +695,7 @@ impl McpHub {
                 warnings.push(format!("Only the first {MAX_TOOLS} MCP tools are used."));
                 break;
             }
-            if let Some(spec) = tool_spec(server, &tool, values, policy, &self.tools) {
+            if let Some(spec) = tool_spec(server, &tool, values, read_only, &self.tools) {
                 self.tools.push(spec);
             }
         }

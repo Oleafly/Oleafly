@@ -227,6 +227,24 @@ pub(crate) fn ensure_shim_at(
     Ok(shim)
 }
 
+/// The command an earlier launch left in `dir`, at the path
+/// [`ensure_shim_at`] writes it to.
+fn existing_shim(dir: &Path) -> Option<PathBuf> {
+    let shim = dir.join(executable("oleafly"));
+    std::fs::symlink_metadata(&shim)
+        .is_ok_and(|metadata| metadata.is_file() || metadata.file_type().is_symlink())
+        .then_some(shim)
+}
+
+/// Where [`refresh_cli_shim`] keeps `oleafly`, when an earlier launch put it
+/// there already and this build ships the tool: known before the refresh
+/// runs, so a terminal or agent started meanwhile (a terminal restored at
+/// launch, while Windows copies and scans the new binary) still gets it.
+pub(crate) fn planned_cli_shim() -> Option<PathBuf> {
+    bundled_cli()?;
+    existing_shim(&crate::paths::oleafly_root().ok()?.join("cli").join("bin"))
+}
+
 /// Sets up `<data>/cli/bin/oleafly` for this build; returns its path.
 pub(crate) fn refresh_cli_shim() -> Result<PathBuf, String> {
     let bundled =
@@ -382,6 +400,18 @@ mod tests {
         std::fs::write(&cli, b"version two, longer").unwrap();
         ensure_shim_at(&dir, &cli, ShimMethod::Copy).unwrap();
         assert_eq!(std::fs::read(&shim).unwrap(), b"version two, longer");
+    }
+
+    #[test]
+    fn the_planned_shim_is_where_the_refresh_puts_it() {
+        let bundle = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
+        let dir = data.path().join("cli").join("bin");
+        // Nothing yet: the first launch waits for the refresh.
+        assert_eq!(existing_shim(&dir), None);
+        let cli = fake_cli(bundle.path(), b"cli");
+        let shim = ensure_shim_at(&dir, &cli, ShimMethod::Copy).unwrap();
+        assert_eq!(existing_shim(&dir), Some(shim));
     }
 
     #[test]

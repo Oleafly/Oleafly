@@ -57,14 +57,16 @@ export function AcpSessionHeader({
         />
       ) : (
         <Tooltip label={t(($) => $.ai.acp.history.rename)}>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             data-testid="acp-session-title"
-            className="min-w-0 flex-1 truncate rounded px-1 text-left font-medium hover:bg-accent focus-visible:bg-accent"
+            className="h-6 min-w-0 flex-1 justify-start rounded px-1 text-xs font-medium"
             onClick={() => setEditing(true)}
           >
-            {session.title || t(($) => $.ai.acp.untitledConversation)}
-          </button>
+            <span className="truncate">{session.title || t(($) => $.ai.acp.untitledConversation)}</span>
+          </Button>
         </Tooltip>
       )}
       {revision && (

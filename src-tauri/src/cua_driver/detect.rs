@@ -215,6 +215,23 @@ pub(crate) fn parse_version(stdout: &str) -> Option<(u64, u64, u64)> {
     })
 }
 
+/// The driver run for one command: the same small environment its daemon
+/// and client get (an AppImage's libraries and the shell's secrets stay
+/// behind), with telemetry and the update check off.
+fn driver_command(
+    binary: &Path,
+    args: &[&str],
+    lookup: &dyn Fn(&str) -> Option<String>,
+) -> Command {
+    let platform = Platform::current().unwrap_or(Platform::Linux);
+    let mut command = Command::new(binary);
+    command
+        .args(args)
+        .env_clear()
+        .envs(super::runtime::daemon_env(platform, lookup));
+    command
+}
+
 /// Runs the driver with telemetry and the update check off. Returns
 /// whether it exited 0, then stdout and stderr.
 pub(crate) fn run_driver(
@@ -222,11 +239,7 @@ pub(crate) fn run_driver(
     args: &[&str],
     timeout: Duration,
 ) -> Option<(bool, String, String)> {
-    let mut command = Command::new(binary);
-    command
-        .args(args)
-        .env("CUA_DRIVER_RS_TELEMETRY_ENABLED", "false")
-        .env("CUA_DRIVER_RS_UPDATE_CHECK", "false");
+    let command = driver_command(binary, args, &process_env);
     let output = crate::proc::output_contained_with_timeout(command, timeout).ok()?;
     Some((
         output.status.success(),
@@ -286,10 +299,37 @@ pub(crate) struct TerminalCommand {
     pub args: Vec<String>,
 }
 
+/// Windows PowerShell by its full path. The line is typed into the tab's
+/// shell in the project folder, and cmd.exe looks there before the search
+/// path, so a bare `powershell.exe` could start a program the project holds.
+fn windows_powershell(env: &dyn Fn(&str) -> Option<String>) -> String {
+    let root = env("SystemRoot")
+        .map(|root| root.trim().trim_end_matches(['\\', '/']).to_string())
+        .filter(|root| {
+            let bytes = root.as_bytes();
+            bytes.len() >= 3
+                && bytes[0].is_ascii_alphabetic()
+                && bytes[1] == b':'
+                && matches!(bytes[2], b'\\' | b'/')
+                && !root.contains(['"', '\'', '`', '\0'])
+        })
+        .unwrap_or_else(|| r"C:\Windows".to_string());
+    format!(r"{root}\System32\WindowsPowerShell\v1.0\powershell.exe")
+}
+
 fn terminal_command(platform: Platform, line: &str, windows_script: &str) -> TerminalCommand {
+    terminal_command_with(platform, line, windows_script, &process_env)
+}
+
+fn terminal_command_with(
+    platform: Platform,
+    line: &str,
+    windows_script: &str,
+    env: &dyn Fn(&str) -> Option<String>,
+) -> TerminalCommand {
     match platform {
         Platform::Windows => TerminalCommand {
-            program: "powershell.exe".into(),
+            program: windows_powershell(env),
             args: vec![
                 "-NoProfile".into(),
                 "-Command".into(),
@@ -715,10 +755,16 @@ mod tests {
             }
         );
         // The same words work typed into PowerShell, cmd and Git Bash.
+        let windows = |name: &str| (name == "SystemRoot").then(|| r"D:\WINDOWS".to_string());
         assert_eq!(
-            install_command(Platform::Windows),
+            terminal_command_with(
+                Platform::Windows,
+                install_line(Platform::Windows),
+                "irm https://cua.ai/driver/install.ps1 | iex",
+                &windows
+            ),
             TerminalCommand {
-                program: "powershell.exe".into(),
+                program: r"D:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe".into(),
                 args: vec![
                     "-NoProfile".into(),
                     "-Command".into(),
@@ -732,6 +778,74 @@ mod tests {
         );
         let json = serde_json::to_value(install_command(Platform::Macos)).unwrap();
         assert_eq!(json["program"], "/bin/sh");
+    }
+
+    #[test]
+    fn windows_install_commands_never_start_a_bare_powershell() {
+        // A project folder's own powershell.exe must never win: cmd.exe
+        // looks in the current folder first.
+        for command in [
+            install_command(Platform::Windows),
+            spaces_install_command(Platform::Windows),
+        ] {
+            assert!(
+                command
+                    .program
+                    .ends_with(r"\System32\WindowsPowerShell\v1.0\powershell.exe"),
+                "{}",
+                command.program
+            );
+            assert!(command.program.as_bytes()[1] == b':', "{}", command.program);
+        }
+        // A SystemRoot that isn't a drive path falls back to the usual one.
+        for root in ["", ".", r"Windows", "\"C:\\x\" & calc", r"\\server\share"] {
+            let env = |name: &str| (name == "SystemRoot").then(|| root.to_string());
+            assert_eq!(
+                windows_powershell(&env),
+                r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+                "{root}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn driver_commands_get_the_small_environment_and_nothing_else() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let fake = dir.path().join("cua-driver");
+        std::fs::write(&fake, "#!/bin/sh\nexec /usr/bin/env\n").unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let parent = |name: &str| match name {
+            "HOME" => Some("/home/a".to_string()),
+            "LD_LIBRARY_PATH" => Some("/tmp/.mount_x/usr/lib".to_string()),
+            "OPENAI_API_KEY" => Some("sk-test".to_string()),
+            _ => None,
+        };
+        let output = crate::proc::output_contained_with_timeout(
+            driver_command(&fake, &["--version"], &parent),
+            Duration::from_secs(10),
+        )
+        .unwrap();
+        let printed = String::from_utf8_lossy(&output.stdout);
+        let names: Vec<&str> = printed
+            .lines()
+            .filter_map(|line| line.split_once('=').map(|(name, _)| name))
+            .collect();
+        assert!(names.contains(&"HOME"), "{printed}");
+        assert!(printed.contains("CUA_DRIVER_RS_TELEMETRY_ENABLED=false"));
+        assert!(printed.contains("CUA_DRIVER_RS_UPDATE_CHECK=false"));
+        let expected = super::super::runtime::daemon_env(
+            Platform::current().unwrap_or(Platform::Linux),
+            &parent,
+        );
+        // Only the allowlist, plus what the shell itself sets.
+        for name in names {
+            assert!(
+                expected.contains_key(name) || matches!(name, "PWD" | "SHLVL" | "_" | "OLDPWD"),
+                "{name} leaked: {printed}"
+            );
+        }
     }
 
     #[test]

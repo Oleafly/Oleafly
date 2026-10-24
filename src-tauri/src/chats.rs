@@ -5,8 +5,10 @@
 //! capped history at 50 chats and rewrote every chat on each save. The first
 //! load merges that file into per-chat files and leaves it where it is, so a
 //! downgrade to 0.4.7 still finds its history; a marker beside the per-chat
-//! files records which version of the file was merged, so a chat deleted
-//! since is not brought back, and a file 0.4.7 wrote later is merged again.
+//! files records which version of the file was merged and which chats came
+//! from it. A file 0.4.7 wrote later is merged again: a chat deleted here
+//! since stays deleted, and a chat continued in both versions is kept twice,
+//! the 0.4.7 copy as a chat of its own.
 //! History before that lived in the webview's localStorage; the frontend
 //! still migrates that payload on first load.
 
@@ -70,12 +72,135 @@ struct ChatHead {
     updated_at: Option<f64>,
 }
 
-/// The legacy file a merge saw, and how many of its chats could not be
-/// merged, kept beside the per-chat files.
+/// The legacy file a merge saw, how many of its chats could not be merged,
+/// and the chats taken from it, kept beside the per-chat files.
 #[derive(Serialize, Deserialize)]
 struct LegacyMarker {
     stamp: String,
     skipped: u32,
+    /// By chat id. Markers from earlier 0.4.8 builds have none.
+    #[serde(default)]
+    merged: std::collections::HashMap<String, MergedChat>,
+}
+
+/// A chat a merge took from the legacy file.
+#[derive(Clone, Serialize, Deserialize)]
+struct MergedChat {
+    /// Its `updatedAt` in the legacy file at that merge.
+    updated_at: Option<f64>,
+    /// The per-chat file holding the legacy copy when it is not the chat's
+    /// own: both copies had changed, so the legacy one became a chat of its
+    /// own beside the other.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    copy: Option<String>,
+}
+
+/// The id a legacy copy gets when the chat changed in both versions: the
+/// chat's id, shortened if need be, and the copy's `updatedAt`.
+fn legacy_copy_id(chat_id: &str, updated_at: Option<f64>) -> String {
+    let suffix = format!("-legacy-{}", updated_at.unwrap_or(0.0).max(0.0) as u64);
+    // Chat ids are ASCII, so any byte is a character boundary.
+    let keep = chat_id.len().min(MAX_CHAT_ID_LEN - suffix.len());
+    format!("{}{suffix}", &chat_id[..keep])
+}
+
+/// What a merge does with one legacy chat.
+enum MergeStep {
+    /// Leave the per-chat files as they are; the record is what the marker
+    /// keeps for the chat.
+    Keep(MergedChat),
+    /// Write the legacy copy to the per-chat file of `target`; `copy` is
+    /// `target` when that is not the chat's own id.
+    Write {
+        target: String,
+        copy: Option<String>,
+    },
+}
+
+/// Decides [`MergeStep`] for the legacy chat `chat_id`, whose `updatedAt` in
+/// the legacy file is `incoming`. `seen` is what an earlier merge recorded
+/// for it; `local_updated_at` reads the `updatedAt` of a per-chat file
+/// (`None` when there is no file).
+fn merge_step(
+    chat_id: &str,
+    incoming: Option<f64>,
+    seen: Option<&MergedChat>,
+    local_updated_at: impl Fn(&str) -> Option<Option<f64>>,
+) -> MergeStep {
+    let Some(seen) = seen else {
+        // New to the merges: whichever copy is newer wins.
+        let newer_here = local_updated_at(chat_id)
+            .is_some_and(|existing| existing.unwrap_or(f64::MIN) >= incoming.unwrap_or(f64::MIN));
+        return if newer_here {
+            MergeStep::Keep(MergedChat {
+                updated_at: incoming,
+                copy: None,
+            })
+        } else {
+            MergeStep::Write {
+                target: chat_id.to_owned(),
+                copy: None,
+            }
+        };
+    };
+    if seen.updated_at == incoming {
+        // 0.4.7 has not changed it since the last merge.
+        return MergeStep::Keep(seen.clone());
+    }
+    let target = seen.copy.clone().unwrap_or_else(|| chat_id.to_owned());
+    match local_updated_at(&target) {
+        // Deleted here since: it stays deleted.
+        None => MergeStep::Keep(MergedChat {
+            updated_at: incoming,
+            copy: seen.copy.clone(),
+        }),
+        // Unchanged here since: the newer legacy copy replaces it.
+        Some(local) if local == seen.updated_at => MergeStep::Write {
+            target,
+            copy: seen.copy.clone(),
+        },
+        // Changed in both versions: the legacy copy becomes a chat of its
+        // own, so neither loses messages.
+        Some(_) => {
+            let id = legacy_copy_id(chat_id, incoming);
+            MergeStep::Write {
+                target: id.clone(),
+                copy: Some(id),
+            }
+        }
+    }
+}
+
+/// Writes a legacy chat to the per-chat file of `id` (its own id, or the id
+/// of its legacy copy) and indexes it. `false` when it is over the size
+/// limit and was not written.
+fn write_merged(
+    root: &Path,
+    project_id: &str,
+    dir: &Path,
+    chat: &serde_json::Value,
+    id: &str,
+) -> Result<bool, String> {
+    let renamed;
+    let chat = if chat.get("id").and_then(serde_json::Value::as_str) == Some(id) {
+        chat
+    } else {
+        let mut copy = chat.clone();
+        if let Some(fields) = copy.as_object_mut() {
+            fields.insert("id".into(), serde_json::Value::String(id.to_owned()));
+        }
+        renamed = copy;
+        &renamed
+    };
+    let json = chat.to_string();
+    if json.len() > MAX_CHAT_JSON_BYTES {
+        return Ok(false);
+    }
+    save_to_path(&dir.join(format!("{id}.json")), &json)?;
+    // Best effort, a chat at a time: the whole history is never held as one
+    // string to index it.
+    let _ = crate::library_db::index_chat(root, project_id, chat);
+    Ok(true)
 }
 
 /// What a legacy merge did.
@@ -167,10 +292,16 @@ fn modified_nanos(meta: &std::fs::Metadata) -> Option<u128> {
     )
 }
 
-/// Merges a legacy per-project array into per-chat files, keeping whichever
-/// copy of a chat is newer. The array itself stays, so 0.4.7 still reads it;
-/// a marker records the version that was merged, and the array is merged
-/// again only when it has changed since (0.4.7 saved to it).
+/// Merges a legacy per-project array into per-chat files. The array itself
+/// stays, so 0.4.7 still reads it; a marker records the version that was
+/// merged and the chats taken from it, and the array is merged again only
+/// when it has changed since (0.4.7 saved to it).
+///
+/// A chat the first merge sees is written unless its per-chat file is at
+/// least as new. A chat an earlier merge took is looked at again only when
+/// 0.4.7 changed it since: deleted here since, it stays deleted; unchanged
+/// here since, the legacy copy replaces it; changed in both versions, the
+/// legacy copy is kept beside it as a chat of its own.
 pub(crate) fn migrate_legacy(root: &Path, project_id: &str) -> Result<Migration, String> {
     let legacy = legacy_path(root, project_id)?;
     // Stamped before it is read: a write in between only causes a re-merge.
@@ -182,12 +313,13 @@ pub(crate) fn migrate_legacy(root: &Path, project_id: &str) -> Result<Migration,
     let marker = std::fs::read(&marker_path)
         .ok()
         .and_then(|bytes| serde_json::from_slice::<LegacyMarker>(&bytes).ok());
-    if let Some(marker) = marker.filter(|marker| marker.stamp == stamp) {
+    if let Some(marker) = marker.as_ref().filter(|marker| marker.stamp == stamp) {
         return Ok(Migration {
             merged: false,
             skipped: marker.skipped,
         });
     }
+    let earlier = marker.map(|marker| marker.merged).unwrap_or_default();
     let Ok(data) = std::fs::read(&legacy) else {
         return Ok(Migration::default());
     };
@@ -195,7 +327,14 @@ pub(crate) fn migrate_legacy(root: &Path, project_id: &str) -> Result<Migration,
         .map_err(|error| format!("legacy chats file is not valid JSON: {error}"))?;
     std::fs::create_dir_all(&dir)
         .map_err(|error| format!("failed to create the chats folder: {error}"))?;
+    // The `updatedAt` of a per-chat file, `None` when there is no file.
+    let local_updated_at = |id: &str| {
+        std::fs::read_to_string(dir.join(format!("{id}.json")))
+            .ok()
+            .map(|json| read_head(&json).and_then(|head| head.updated_at))
+    };
     let mut skipped = 0u32;
+    let mut merged = std::collections::HashMap::new();
     for chat in parsed.as_array().map(Vec::as_slice).unwrap_or_default() {
         let Some(chat_id) = chat.get("id").and_then(serde_json::Value::as_str) else {
             skipped += 1;
@@ -205,29 +344,36 @@ pub(crate) fn migrate_legacy(root: &Path, project_id: &str) -> Result<Migration,
             skipped += 1;
             continue;
         }
-        let path = dir.join(format!("{chat_id}.json"));
         let incoming = chat.get("updatedAt").and_then(serde_json::Value::as_f64);
-        let existing = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|json| read_head(&json))
-            .map(|head| head.updated_at);
-        if let Some(existing) = existing {
-            if existing.unwrap_or(f64::MIN) >= incoming.unwrap_or(f64::MIN) {
-                continue;
+        let seen = earlier.get(chat_id);
+        match merge_step(chat_id, incoming, seen, local_updated_at) {
+            MergeStep::Keep(record) => {
+                merged.insert(chat_id.to_owned(), record);
+            }
+            MergeStep::Write { target, copy } => {
+                if write_merged(root, project_id, &dir, chat, &target)? {
+                    merged.insert(
+                        chat_id.to_owned(),
+                        MergedChat {
+                            updated_at: incoming,
+                            copy,
+                        },
+                    );
+                } else {
+                    skipped += 1;
+                    if let Some(seen) = seen {
+                        merged.insert(chat_id.to_owned(), seen.clone());
+                    }
+                }
             }
         }
-        let json = chat.to_string();
-        if json.len() > MAX_CHAT_JSON_BYTES {
-            skipped += 1;
-            continue;
-        }
-        save_to_path(&path, &json)?;
-        // Best effort, a chat at a time: the whole history is never held
-        // as one string to index it.
-        let _ = crate::library_db::index_chat(root, project_id, chat);
     }
-    let marker = serde_json::to_string(&LegacyMarker { stamp, skipped })
-        .map_err(|error| format!("failed to record the chat migration: {error}"))?;
+    let marker = serde_json::to_string(&LegacyMarker {
+        stamp,
+        skipped,
+        merged,
+    })
+    .map_err(|error| format!("failed to record the chat migration: {error}"))?;
     save_to_path(&marker_path, &marker)?;
     Ok(Migration {
         merged: true,

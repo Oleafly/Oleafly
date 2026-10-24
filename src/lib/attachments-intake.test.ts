@@ -17,7 +17,7 @@ vi.mock("@/lib/attachments", () => ({
 vi.mock("@/lib/toast", () => ({ toast: { errorUnique: mocks.errorUnique } }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
-import { draftAttachments, useComposerDrafts } from "@/store/composer-drafts";
+import { draftAttachmentRefs, draftAttachments, useComposerDrafts } from "@/store/composer-drafts";
 import {
   AttachmentError,
   attachmentKind,
@@ -218,6 +218,48 @@ describe("intake", () => {
     await running;
     expect(draftAttachments(COMPOSER)).toEqual([]);
     expect(mocks.attachmentPut).not.toHaveBeenCalled();
+  });
+
+  it("marks the chip ready in the composer its draft moved to while it was prepared", async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.normalizeAttachment.mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    mocks.attachmentPut.mockResolvedValue(stored("a.png", "h1"));
+    const running = intakeFiles([file("a.png", "image/png")], { composerId: COMPOSER, scope: "p1" });
+    await vi.waitFor(() => expect(draftAttachments(COMPOSER)).toHaveLength(1));
+    // The first send of a new chat moves the draft to the chat it created.
+    useComposerDrafts.getState().moveDraft(COMPOSER, "p1:builtin:chat-1");
+    resolve({ name: "a.png", mime: "image/png", bytes: new Uint8Array([1]) });
+    await running;
+    expect(draftAttachments("p1:builtin:chat-1")[0]).toMatchObject({ status: "ready", sha256: "h1" });
+    expect(draftAttachments(COMPOSER)).toEqual([]);
+  });
+
+  it("keeps stored files out of a collection until the chip lists them", async () => {
+    mocks.normalizeAttachment.mockResolvedValue({
+      name: "scan.pdf",
+      mime: "application/pdf",
+      bytes: new Uint8Array([1]),
+      pageImages: [{ mime: "image/png", bytes: new Uint8Array([2]) }],
+    });
+    let releasePage!: (value: ReturnType<typeof stored>) => void;
+    mocks.attachmentPut
+      .mockResolvedValueOnce(stored("scan.pdf", "pdf", "application/pdf"))
+      .mockReturnValueOnce(new Promise((resolve) => { releasePage = resolve; }));
+    const running = intakeFiles([file("scan.pdf", "application/pdf")], { composerId: COMPOSER, scope: "p1" });
+    await vi.waitFor(() => expect(mocks.attachmentPut).toHaveBeenCalledTimes(2));
+    // The PDF is stored, its chip still says "processing" and has no hash.
+    expect(draftAttachments(COMPOSER)[0].sha256).toBeUndefined();
+    expect(draftAttachmentRefs("p1")).toContain("pdf");
+    releasePage(stored("scan.pdf page 1.png", "page"));
+    await running;
+    expect(draftAttachmentRefs("p1").sort()).toEqual(["page", "pdf"]);
+    // Removed, nothing holds them any more.
+    useComposerDrafts.getState().removeAttachments(COMPOSER, [draftAttachments(COMPOSER)[0].id]);
+    expect(draftAttachmentRefs("p1")).toEqual([]);
   });
 
   it("turns a failed preparation into an error chip with a readable message", async () => {

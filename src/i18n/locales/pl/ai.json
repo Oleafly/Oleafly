@@ -635,6 +635,7 @@
       "sendNow": "Wyślij teraz",
       "sendFailed": "Ta wiadomość nie została wysłana. Wyślij ją ponownie albo usuń.",
       "queuedConnecting": "W kolejce: zostanie wysłana, gdy agent będzie gotowy",
+      "queuedSignIn": "W kolejce: zostanie wysłana po zalogowaniu",
       "retry": "Wyślij ponownie",
       "edit": "Edytuj"
     },

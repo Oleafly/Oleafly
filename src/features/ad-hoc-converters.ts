@@ -49,8 +49,11 @@ export type ConverterProgressStep =
 
 export interface ConverterProgress {
   step: ConverterProgressStep;
+  /** The ordinal of the page being read, of `total`. */
   page?: number;
   total?: number;
+  /** The PDF page number of that page, such as 41 for the first page of 41-50. */
+  pdfPage?: number;
   /** The Tools model doing the work, by name. */
   model?: string;
 }
@@ -665,12 +668,26 @@ async function pdfToText(
   const bytes = new Uint8Array(await requireFile(input).arrayBuffer());
   onProgress?.({ step: "readingPages" });
   const { extractPagesForConvert } = await import("@oleafly/pdf-to-latex/pdf-adapter");
-  const extracted = await extractPagesForConvert(bytes);
-  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   const range = input.pageRange;
-  const latex = convertPages(extracted.pages, range ? { pageRange: [range[0], range[1]] } : {});
+  // Only the chosen pages are read, and their images are decoded only when
+  // the pages have text: a scan's page images are never PNG-encoded here.
+  const extracted = await extractPagesForConvert(bytes, {
+    ...(range ? { pageRange: [range[0], range[1]] as const } : {}),
+    figures: "if-text",
+    signal,
+  });
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  // A range past the last page would read nothing and report "Converted".
+  if (range && range[0] > extracted.pageCount) {
+    throw new Error(
+      extracted.pageCount < 1
+        ? i18n.t(($) => $.researchTools.converterErrors.pdfNoPages)
+        : i18n.t(($) => $.researchTools.converterErrors.pageRangePastEnd, { count: extracted.pageCount }),
+    );
+  }
+  const latex = convertPages(extracted.pages);
   if (latex.report.likelyScanned) {
-    const pages = range ? selectedPages(extracted.pages.length, range) : selectedPages(latex.report.pages);
+    const pages = selectedPages(extracted.pageCount, range);
     // One run transcribes at most SCAN_PAGE_LIMIT pages. Say so before the
     // cost confirmation, not after the user has confirmed it.
     if (pages.length > SCAN_PAGE_LIMIT) {
@@ -682,10 +699,7 @@ async function pdfToText(
       );
     }
     if (pages.length >= LONG_SCAN_PAGES && !input.scanConfirmed) {
-      const sizes = range
-        ? pages.flatMap((page) => extracted.pages[page - 1] ?? [])
-        : extracted.pages;
-      throw new ScanConfirmationNeeded(sizes.map(({ width, height }) => ({ width, height })));
+      throw new ScanConfirmationNeeded(extracted.pages.map(({ width, height }) => ({ width, height })));
     }
     const transcribed = await transcribePdfPages(
       bytes,
@@ -699,7 +713,7 @@ async function pdfToText(
       transcribed.text,
       [],
       i18n.t(($) => $.researchTools.converterNotes.scannedPages, {
-        pages: pages.length,
+        count: pages.length,
         model: transcribed.model.label,
       }),
     );

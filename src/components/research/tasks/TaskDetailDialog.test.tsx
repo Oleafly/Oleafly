@@ -14,6 +14,7 @@ import { formatDateTime } from "@/lib/intl";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { taskFieldsSince047 } from "./tests/task-fixtures";
+import * as timelineBuilders from "./task-timeline";
 
 let TaskDetailDialog: typeof import("./TaskDetailDialog").TaskDetailDialog;
 let act: typeof import("@testing-library/react").act;
@@ -40,7 +41,10 @@ const previewMocks = vi.hoisted(() => ({
 vi.mock("@/lib/research-tasks", () => ({
   previewResearchTaskFile: previewMocks.file,
   previewResearchTaskArtifact: previewMocks.artifact,
-  loadResearchTaskEvents: previewMocks.events,
+  // The dialog pages backwards: the newest rows of a run first.
+  loadResearchTaskEventsBefore: previewMocks.events,
+  NEWEST_EVENTS: Number.MAX_SAFE_INTEGER,
+  MAX_PLAN_BYTES: 64 * 1024,
   setResearchTaskKeepRunning: previewMocks.keepRunning,
   loadResearchTaskPlan: previewMocks.plan,
   progressResearchTask: previewMocks.progress,
@@ -69,6 +73,16 @@ vi.mock("@/components/ui/markdown", () => ({
     return <p data-streaming={streaming ? "true" : undefined}>{children}</p>;
   },
 }));
+
+// The real builders, counted, so a test can tell when the timeline is built.
+vi.mock("./task-timeline", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./task-timeline")>();
+  return {
+    ...actual,
+    buildTaskTimeline: vi.fn(actual.buildTaskTimeline),
+    buildTaskTimelineIncremental: vi.fn(actual.buildTaskTimelineIncremental),
+  };
+});
 
 beforeAll(async () => {
   const dom = new JSDOM("<!doctype html><html><body></body></html>", {
@@ -214,7 +228,7 @@ describe("TaskDetailDialog", () => {
     previewMocks.events.mockReset();
     previewMocks.keepRunning.mockReset();
     previewMocks.config.mockReset().mockResolvedValue({ research_background_enabled: true });
-    previewMocks.plan.mockReset().mockResolvedValue("- [ ] Measure the baseline");
+    previewMocks.plan.mockReset().mockResolvedValue({ text: "- [ ] Measure the baseline", truncated: false });
     previewMocks.progress.mockReset();
     previewMocks.runLog.mockReset();
     previewMocks.cancelRun.mockReset();
@@ -239,6 +253,9 @@ describe("TaskDetailDialog", () => {
         },
       ],
       nextSequence: null,
+      previousSequence: null,
+      // Each run resumed the one before it; the first started fresh.
+      resumedFrom: generation > 1 ? generation - 1 : null,
     }));
     const current: ResearchTask = {
       ...task("resumed"),
@@ -257,7 +274,7 @@ describe("TaskDetailDialog", () => {
     const earlier = enResearchTools.backgroundHelper.earlierActivity;
     fireEvent.click(page().getByRole("button", { name: earlier }));
     expect(await page().findByText("Generation 2 notes")).toBeInTheDocument();
-    expect(previewMocks.events).toHaveBeenCalledWith("resumed", 2, undefined, 200);
+    expect(previewMocks.events).toHaveBeenCalledWith("resumed", 2, Number.MAX_SAFE_INTEGER, 200);
     // Repeatable down the chain, to the first generation.
     fireEvent.click(page().getByRole("button", { name: earlier }));
     expect(await page().findByText("Generation 1 notes")).toBeInTheDocument();
@@ -276,6 +293,8 @@ describe("TaskDetailDialog", () => {
         },
       ],
       nextSequence: null,
+      previousSequence: null,
+      resumedFrom: generation - 1,
     }));
     const current: ResearchTask = { ...task("resumed"), status: "running", executionGeneration: 3, resumedFrom: 2 };
     const view = render(<TaskDetailDialog {...props(current)} />);
@@ -289,7 +308,34 @@ describe("TaskDetailDialog", () => {
     expect(page().getByRole("button", { name: earlier })).toBeEnabled();
     fireEvent.click(page().getByRole("button", { name: earlier }));
     expect(await page().findByText("Generation 3 notes")).toBeInTheDocument();
-    expect(previewMocks.events).toHaveBeenLastCalledWith("resumed", 3, undefined, 200);
+    expect(previewMocks.events).toHaveBeenLastCalledWith("resumed", 3, Number.MAX_SAFE_INTEGER, 200);
+  });
+
+  it("stops showing earlier activity at a run that started fresh", async () => {
+    previewMocks.events.mockImplementation(async (taskId: string, generation: number) => ({
+      events: [
+        {
+          taskId,
+          executionGeneration: generation,
+          sequence: 1,
+          event: { kind: "status", message: `Generation ${generation} notes` },
+          createdAt: 1,
+        },
+      ],
+      nextSequence: null,
+      previousSequence: null,
+      // Generation 2 was a "Start over": generation 1 is another attempt.
+      resumedFrom: generation === 3 ? 2 : null,
+    }));
+    const current: ResearchTask = { ...task("chain"), status: "running", executionGeneration: 3, resumedFrom: 2 };
+    render(<TaskDetailDialog {...props(current)} />);
+    const earlier = enResearchTools.backgroundHelper.earlierActivity;
+
+    fireEvent.click(page().getByRole("button", { name: earlier }));
+
+    expect(await page().findByText("Generation 2 notes")).toBeInTheDocument();
+    expect(page().queryByRole("button", { name: earlier })).not.toBeInTheDocument();
+    expect(previewMocks.events.mock.calls.map(([, generation]) => generation)).toEqual([2]);
   });
 
   it("keeps the keep-running choice fixed for finished tasks and while background tasks are off", async () => {
@@ -304,6 +350,58 @@ describe("TaskDetailDialog", () => {
       page().getByRole("checkbox", { name: new RegExp(enResearchTools.brief.keepRunning) }),
     ).toBeDisabled();
     expect(page().queryByRole("button", { name: enResearchTools.backgroundHelper.earlierActivity })).toBeNull();
+  });
+
+  it("shows keep running off while background tasks are off, as the composer does", async () => {
+    previewMocks.config.mockResolvedValue({ research_background_enabled: false });
+    render(<TaskDetailDialog {...props({ ...task("kept"), status: "queued", keepRunningAfterQuit: true })} />);
+
+    await page().findByText(enResearchTools.brief.keepRunningHint);
+    expect(page().getByRole("checkbox", { name: new RegExp(enResearchTools.brief.keepRunning) })).not.toBeChecked();
+  });
+
+  it("lets the header scroll, so stacked approvals can't push the tabs out of the dialog", () => {
+    render(<TaskDetailDialog {...props(task("header"))} />);
+
+    const header = page().getByRole("heading", { name: "Task header" }).closest("header");
+    expect(header?.className).toContain("overflow-y-auto");
+    expect(header?.className).toMatch(/max-h-/);
+  });
+
+  it("says Applying only while its own apply runs", async () => {
+    const applying = deferred<void>();
+    const current = task("label");
+    const input = { ...props(current), onApply: vi.fn(() => applying.promise) };
+    previewMocks.file.mockResolvedValue(preview("after"));
+    const view = render(<TaskDetailDialog {...input} busy />);
+    // Another action on the task (Discard) keeps the buttons busy without applying.
+    expect(page().queryByRole("button", { name: enResearchTools.tasks.detail.applying })).toBeNull();
+    view.rerender(<TaskDetailDialog {...input} />);
+    fireEvent.click(page().getByRole("button", { name: "Preview" }));
+    await page().findByText("before -> after");
+
+    fireEvent.click(page().getByRole("button", { name: "Apply 1 selected" }));
+
+    expect(page().getByRole("button", { name: enResearchTools.tasks.detail.applying })).toBeInTheDocument();
+    await act(async () => applying.resolve());
+    expect(page().getByRole("button", { name: "Apply 1 selected" })).toBeInTheDocument();
+  });
+
+  it("shows sizes, not a diff of every line removed, for a side too large to read", async () => {
+    const big = preview("small");
+    previewMocks.file.mockResolvedValue({
+      ...big,
+      after: { ...big.after, text: null, binary: true, truncated: true, size: 410_000 },
+    });
+    render(<TaskDetailDialog {...props(task("big"))} />);
+
+    fireEvent.click(page().getByRole("button", { name: "Preview" }));
+
+    expect(await page().findByTestId("research-task-preview-too-large")).toHaveTextContent(
+      enResearchTools.tasks.detail.tooLargeToDiff,
+    );
+    expect(page().queryByText(/before ->/)).toBeNull();
+    expect(page().getByText(enResearchTools.tasks.detail.afterBytes.replace("{{size}}", "410000"))).toBeInTheDocument();
   });
 
   it("shows where a helper task runs beside its status", () => {
@@ -363,13 +461,49 @@ describe("TaskDetailDialog", () => {
     });
   });
 
-  it("lets the user discard changes while a task is awaiting review", async () => {
+  it("lets the user discard changes while a task is awaiting review, after asking", async () => {
     const onCancel = vi.fn(async () => {});
     render(<TaskDetailDialog {...props(task("review"), onCancel)} />);
 
     fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.discardChanges }));
+    const confirm = page().getByRole("alertdialog");
+    expect(confirm).toHaveTextContent(enResearchTools.tasks.confirm.discardTitle);
+    expect(onCancel).not.toHaveBeenCalled();
+    fireEvent.click(within(confirm).getByRole("button", { name: enResearchTools.tasks.detail.discardChanges }));
 
     await waitFor(() => expect(onCancel).toHaveBeenCalledOnce());
+    expect(page().queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("names the tasks that fail and the runs that stop with a cancelled task, and keeps it on Keep", async () => {
+    const current = { ...task("base"), status: "running" as const, result: null };
+    const waiting = { ...task("waiting"), status: "queued" as const, startRequested: true, dependencyIds: ["base"] };
+    const chained = { ...task("chained"), status: "queued" as const, startRequested: true, dependencyIds: ["waiting"] };
+    const draft = { ...task("draft"), status: "queued" as const, startRequested: false, dependencyIds: ["base"] };
+    const done = { ...task("done"), status: "completed" as const, dependencyIds: ["base"] };
+    const run = { taskId: "base", runId: "r007", name: "train-large", executionGeneration: 1, state: "running" as const };
+    previewMocks.progress.mockResolvedValue({ runsInFlight: [run], recentRuns: [], plan: [], todos: [], ledger: [] });
+    const input = { ...props(current), tasks: [current, waiting, chained, draft, done] };
+    render(<TaskDetailDialog {...input} />);
+
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.stopTask }));
+
+    const confirm = page().getByRole("alertdialog");
+    const dependents = within(confirm).getByTestId("research-task-confirm-dependents");
+    expect(dependents).toHaveTextContent("These 2 tasks wait for it and fail too:");
+    expect(dependents).toHaveTextContent("Task waiting");
+    expect(dependents).toHaveTextContent("Task chained");
+    expect(dependents).not.toHaveTextContent("Task draft");
+    expect(dependents).not.toHaveTextContent("Task done");
+    expect(await within(confirm).findByTestId("research-task-confirm-runs")).toHaveTextContent("train-large r007");
+
+    // Escape closes the question, not the task dialog.
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await waitFor(() => expect(page().queryByRole("alertdialog")).toBeNull());
+    expect(input.onOpenChange).not.toHaveBeenCalled();
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.stopTask }));
+    fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: /Keep task/ }));
+    expect(input.onCancel).not.toHaveBeenCalled();
   });
 
   it("applies only selected files after each selected file has been previewed", async () => {
@@ -389,6 +523,8 @@ describe("TaskDetailDialog", () => {
     fireEvent.click(page().getByRole("checkbox", { name: "Apply references.bib" }));
     fireEvent.click(page().getByRole("button", { name: "Apply 1 selected" }));
     expect(input.onApply).toHaveBeenCalledWith(["main.tex"]);
+    // The button says it is applying until the apply returns.
+    await page().findByRole("button", { name: "Apply 1 selected" });
 
     fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.selectAll }));
     expect(page().getByRole("button", { name: "Apply 2 selected" })).toBeDisabled();
@@ -492,6 +628,9 @@ describe("TaskDetailDialog", () => {
     fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.startWhenReady }));
     fireEvent.click(page().getByRole("button", { name: enCommon.actions.edit }));
     fireEvent.click(page().getByRole("button", { name: enCommon.actions.cancel }));
+    fireEvent.click(
+      within(page().getByRole("alertdialog")).getByRole("button", { name: enResearchTools.tasks.confirm.cancelTask }),
+    );
     expect(input.onStart).toHaveBeenCalledOnce();
     expect(input.onEdit).toHaveBeenCalledOnce();
     expect(input.onCancel).toHaveBeenCalledOnce();
@@ -504,6 +643,10 @@ describe("TaskDetailDialog", () => {
     const input = props(current);
     const view = render(<TaskDetailDialog {...input} />);
     fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.stopTask }));
+    expect(input.onCancel).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(page().getByRole("alertdialog")).getByRole("button", { name: enResearchTools.tasks.detail.stopTask }),
+    );
     expect(input.onCancel).toHaveBeenCalledOnce();
     view.rerender(<TaskDetailDialog {...input} task={{ ...current, cancelRequested: true }} />);
     expect(page().getByRole("button", { name: enResearchTools.tasks.detail.stopping })).toBeDisabled();
@@ -1063,7 +1206,12 @@ describe("TaskDetailDialog", () => {
       fireEvent.click(page().getByRole("button", { name: plan.approveEdited }));
       expect(input.onApprovePlan).toHaveBeenLastCalledWith("- [ ] edited");
 
+      // "Cancel task" cancels, as its name says, after asking.
       fireEvent.click(page().getByRole("button", { name: plan.discard }));
+      expect(input.onCancel).not.toHaveBeenCalled();
+      fireEvent.click(
+        within(page().getByRole("alertdialog")).getByRole("button", { name: enResearchTools.tasks.confirm.cancelTask }),
+      );
       expect(input.onCancel).toHaveBeenCalledOnce();
       // A plan waiting for approval has not finished, so it can still be kept running.
       expect(page().getByRole("checkbox", { name: enResearchTools.brief.keepRunning })).toBeEnabled();
@@ -1107,7 +1255,9 @@ describe("TaskDetailDialog", () => {
       const checking: ResearchTask = { ...task("checking"), status: "completed", phase: "checking_evidence" };
       const view = render(<TaskDetailDialog {...props(checking)} initialTab="review" onRefreshEvidence={onRefreshEvidence} />);
       const checklist = await page().findByTestId("research-evidence");
-      expect(within(checklist).getByRole("button", { name: enResearchTools.evidence.running })).toBeDisabled();
+      expect(within(checklist).getByRole("status")).toHaveTextContent(enResearchTools.evidence.running);
+      // A check cut off by an exit says "Checking" for good: Check again stays the way out.
+      expect(within(checklist).getByRole("button", { name: enResearchTools.evidence.refresh })).toBeEnabled();
 
       view.rerender(
         <TaskDetailDialog {...props({ ...checking, phase: null })} initialTab="review" onRefreshEvidence={onRefreshEvidence} />,
@@ -1152,52 +1302,37 @@ describe("TaskDetailDialog", () => {
     });
     const running = (): ResearchTask => ({ ...task("long"), status: "running", result: null });
 
-    it("marks the gap between the saved rows and the live ones, and loads more from there", () => {
+    it("offers Load more above the newest activity, where older rows come from", () => {
       const input = {
         ...props(running()),
         canLoadMoreEvents: true,
-        eventsLoadedThrough: 2,
-        events: [row(1, "First saved"), row(2, "Second saved"), row(10, "First live"), row(11, "Newest live")],
+        events: [row(3999, "Older shown"), row(4000, "Newest saved")],
       };
       render(<TaskDetailDialog {...input} />);
 
-      const gap = page().getByTestId("research-task-activity-gap");
-      expect(gap).toHaveTextContent("7 items in between are not shown.");
-      const after = (node: HTMLElement) => node.compareDocumentPosition(gap) & Node.DOCUMENT_POSITION_FOLLOWING;
-      const before = (node: HTMLElement) => gap.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING;
-      expect(after(page().getByText("Second saved"))).toBeTruthy();
-      expect(before(page().getByText("First live"))).toBeTruthy();
-
+      const older = page().getByTestId("research-task-activity-older");
+      expect(older).toHaveTextContent(detail.olderActivity);
+      expect(older.compareDocumentPosition(page().getByText("Older shown")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       const buttons = page().getAllByRole("button", { name: detail.loadMore });
       expect(buttons).toHaveLength(1);
-      expect(gap).toContainElement(buttons[0]);
+      expect(older).toContainElement(buttons[0]);
       fireEvent.click(buttons[0]);
       expect(input.onLoadMoreEvents).toHaveBeenCalledOnce();
     });
 
-    it("says one item is missing in the singular", () => {
-      render(
-        <TaskDetailDialog
-          {...props(running())}
-          canLoadMoreEvents
-          eventsLoadedThrough={1}
-          events={[row(1, "Saved"), row(3, "Live")]}
-        />,
-      );
-      expect(page().getByTestId("research-task-activity-gap")).toHaveTextContent("1 item in between is not shown.");
-    });
+    it("keeps the newest items mounted and shows older ones it holds before asking for more", () => {
+      const events = Array.from({ length: 250 }, (_, index) => row(index + 1, `Step ${index + 1}`));
+      const input = { ...props(running()), events };
+      render(<TaskDetailDialog {...input} />);
 
-    it("offers Load more at the end when no live row follows the saved ones", () => {
-      render(
-        <TaskDetailDialog
-          {...props(running())}
-          canLoadMoreEvents
-          eventsLoadedThrough={2}
-          events={[row(1, "Saved one"), row(2, "Saved two")]}
-        />,
-      );
-      expect(page().getByTestId("research-task-activity-gap")).toHaveTextContent(detail.activityMore);
-      expect(page().getByRole("button", { name: detail.loadMore })).toBeInTheDocument();
+      expect(page().queryByText("Step 50")).toBeNull();
+      expect(page().getByText("Step 51")).toBeInTheDocument();
+      expect(page().getByText("Step 250")).toBeInTheDocument();
+      fireEvent.click(page().getByRole("button", { name: detail.loadMore }));
+
+      expect(page().getByText("Step 1")).toBeInTheDocument();
+      expect(input.onLoadMoreEvents).not.toHaveBeenCalled();
+      expect(page().queryByTestId("research-task-activity-older")).toBeNull();
     });
 
     it("keeps Load more out of the footer, so the other tabs don't offer it", () => {
@@ -1206,10 +1341,38 @@ describe("TaskDetailDialog", () => {
       expect(page().queryByRole("button", { name: detail.loadMore })).toBeNull();
     });
 
-    it("shows no gap note when everything is loaded", () => {
+    it("offers no Load more when everything is loaded", () => {
       render(<TaskDetailDialog {...props(running())} events={[row(1, "Saved"), row(2, "Live")]} />);
-      expect(page().queryByTestId("research-task-activity-gap")).toBeNull();
+      expect(page().queryByTestId("research-task-activity-older")).toBeNull();
       expect(page().queryByRole("button", { name: detail.loadMore })).toBeNull();
+    });
+
+    it("builds no timeline while another tab shows, and catches up when Activity opens", () => {
+      const view = render(
+        <TaskDetailDialog {...props(running())} initialTab="review" events={[text(1, "Streaming answer")]} />,
+      );
+      vi.mocked(timelineBuilders.buildTaskTimeline).mockClear();
+      vi.mocked(timelineBuilders.buildTaskTimelineIncremental).mockClear();
+      view.rerender(
+        <TaskDetailDialog {...props(running())} initialTab="review" events={[text(1, "Streaming answer grows")]} />,
+      );
+      expect(timelineBuilders.buildTaskTimeline).not.toHaveBeenCalled();
+      expect(timelineBuilders.buildTaskTimelineIncremental).not.toHaveBeenCalled();
+
+      openTab(detail.tabActivity);
+      expect(page().getByText("Streaming answer grows")).toBeInTheDocument();
+    });
+
+    it("follows a message while its text grows", () => {
+      const view = render(<TaskDetailDialog {...props(running())} events={[text(1, "Thinking")]} />);
+      const panel = page().getByRole("tabpanel");
+      const scrolled = vi.fn();
+      Object.defineProperty(panel, "scrollHeight", { configurable: true, get: () => 900 });
+      Object.defineProperty(panel, "scrollTop", { configurable: true, get: () => 0, set: scrolled });
+
+      view.rerender(<TaskDetailDialog {...props(running())} events={[text(1, "Thinking about the ledger")]} />);
+
+      expect(scrolled).toHaveBeenCalledWith(900);
     });
 
     it("streams only the newest message of a running task and redraws only the row that changed", () => {
@@ -1245,20 +1408,25 @@ describe("TaskDetailDialog", () => {
       expect(page().getByText("Done thinking")).not.toHaveAttribute("data-streaming");
     });
 
-    it("keeps each earlier run in its own timeline and says when a run was only partly loaded", async () => {
-      previewMocks.events.mockImplementation(async (taskId: string, generation: number, after?: number) => ({
-        events: [
-          {
-            taskId,
-            executionGeneration: generation,
-            sequence: (after ?? 0) + 1,
-            event: { kind: "text", text: `Run ${generation} part ${(after ?? 0) + 1}` },
-            createdAt: 1,
-          },
-        ],
-        // Generation 2 never runs out of rows; generation 1 ends after one.
-        nextSequence: generation === 2 ? (after ?? 0) + 1 : null,
-      }));
+    it("keeps each earlier run in its own timeline and shows the end of a run it only partly loaded", async () => {
+      previewMocks.events.mockImplementation(async (taskId: string, generation: number, before: number) => {
+        const sequence = before === Number.MAX_SAFE_INTEGER ? 1000 : before - 1;
+        return {
+          events: [
+            {
+              taskId,
+              executionGeneration: generation,
+              sequence,
+              event: { kind: "text", text: `Run ${generation} part ${sequence}.` },
+              createdAt: 1,
+            },
+          ],
+          nextSequence: null,
+          // Generation 2 never runs out of older rows; generation 1 has one.
+          previousSequence: generation === 2 ? sequence : null,
+          resumedFrom: generation === 2 ? 1 : null,
+        };
+      });
       const current: ResearchTask = { ...task("long"), status: "running", result: null, executionGeneration: 3, resumedFrom: 2 };
       render(<TaskDetailDialog {...props(current)} />);
       const earlier = enResearchTools.backgroundHelper.earlierActivity;
@@ -1271,13 +1439,16 @@ describe("TaskDetailDialog", () => {
         ),
       );
       expect(previewMocks.events.mock.calls.filter(([, generation]) => generation === 2)).toHaveLength(10);
-      expect(previewMocks.events).toHaveBeenCalledWith("long", 2, 1, 200);
+      expect(previewMocks.events).toHaveBeenCalledWith("long", 2, Number.MAX_SAFE_INTEGER, 200);
+      expect(previewMocks.events).toHaveBeenCalledWith("long", 2, 1000, 200);
+      // What run 3 continues from: the end of run 2.
+      expect(page().getByText(/Run 2 part 1000\.$/)).toBeInTheDocument();
 
       fireEvent.click(page().getByRole("button", { name: earlier }));
-      await page().findByText("Run 1 part 1");
+      await page().findByText("Run 1 part 1000.");
       // The last text of run 2 and the first of run 1 are not joined into one message.
-      expect(page().getByText("Run 1 part 1").textContent).toBe("Run 1 part 1");
-      expect(page().getByText(/Run 2 part 1/).textContent).not.toContain("Run 1 part 1");
+      expect(page().getByText("Run 1 part 1000.").textContent).toBe("Run 1 part 1000.");
+      expect(page().getByText(/Run 2 part 1000/).textContent).not.toContain("Run 1");
     });
   });
 

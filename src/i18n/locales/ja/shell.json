@@ -557,6 +557,9 @@
     "title": "ライブラリに戻る",
     "tooltip": "プロジェクトライブラリに戻ります"
   },
+  "importDestination": {
+    "scansGoTo": "スキャンは {{provider}} に送信されます"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -670,8 +673,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} 未保存の変更は開いたまま保持されています。このまま問題を直すか、そのまま終了して変更を失うかを選んでください。",
+      "descriptionReload": "{{reason}} 未保存の変更は開いたまま保持されています。このまま問題を直すか、そのまま再読み込みして変更を失うかを選んでください。",
       "descriptionRestart": "{{reason}} 未保存の変更は開いたまま保持されています。このまま問題を直すか、そのまま再起動して変更を失うかを選んでください。",
       "quitAnyway": "そのまま終了",
+      "reloadAnyway": "そのまま再読み込み",
       "restartAnyway": "そのまま再起動",
       "stay": "このまま続ける",
       "title": "保存できないファイルがあります"

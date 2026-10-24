@@ -132,6 +132,137 @@ impl Remote {
     }
 }
 
+/// A library project that says it was imported from `world`'s project.
+fn imported_project(world: &Remote) -> (String, PathBuf) {
+    let project_id = crate::project::create_blank_project("Synced".into()).unwrap();
+    let root = crate::paths::project_dir(&project_id).unwrap();
+    let mut meta = crate::project::read_meta(&project_id).unwrap();
+    meta.extra.insert(
+        "importedFrom".to_string(),
+        serde_json::json!({ "service": "overleaf", "server": world.server, "projectId": PROJECT }),
+    );
+    crate::project::write_meta(&project_id, &meta).unwrap();
+    super::session::save_git_token(&world.server, TOKEN).unwrap();
+    (project_id, root)
+}
+
+fn linked_record(world: &Remote) -> sync::SyncLink {
+    sync::SyncLink {
+        server: world.server.clone(),
+        remote_id: PROJECT.to_string(),
+        linked_at: 0,
+        auto: true,
+        last_sync_at: None,
+    }
+}
+
+fn runtime() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap()
+}
+
+#[test]
+fn stopping_the_sync_keeps_the_files_overleaf_s_versions_replaced() {
+    let _guard = crate::paths::data_dir_env_lock();
+    let data = tempfile::tempdir().unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+    let world = Remote::seeded();
+    let (project_id, root) = imported_project(&world);
+    std::fs::write(root.join("notes.tex"), "My own notes\n").unwrap();
+    let repo = sync::repo_dir(&project_id).unwrap();
+    let remote = sync::fetch(&repo, &world.url(), TOKEN).unwrap();
+    assert!(matches!(
+        sync::link_local(&root, &repo, &remote, Some(Side::Remote)).unwrap(),
+        LinkOutcome::Linked { .. }
+    ));
+    sync::write_link(&project_id, &linked_record(&world)).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(root.join("notes.tex")).unwrap(),
+        "Notes\n"
+    );
+
+    let status = runtime()
+        .block_on(super::overleaf_sync_unlink(project_id.clone()))
+        .unwrap();
+    assert!(!status.linked);
+    assert!(!repo.exists());
+    let folder = PathBuf::from(status.backups_folder.expect("the copies are kept"));
+    assert_eq!(folder, sync::backups_dir(&project_id).unwrap());
+    let saved: Vec<PathBuf> = std::fs::read_dir(&folder)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    assert_eq!(saved.len(), 1);
+    assert_eq!(
+        std::fs::read_to_string(saved[0].join("notes.tex")).unwrap(),
+        "My own notes\n"
+    );
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_push_refused_after_the_merge_reloads_the_files_and_says_they_changed() {
+    use std::os::unix::fs::PermissionsExt;
+    use tauri::{Listener, Manager};
+
+    let _guard = crate::paths::data_dir_env_lock();
+    let data = tempfile::tempdir().unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+    let world = Remote::seeded();
+    let (project_id, root) = imported_project(&world);
+    let repo = sync::repo_dir(&project_id).unwrap();
+    let remote = sync::fetch(&repo, &world.url(), TOKEN).unwrap();
+    sync::link_local(&root, &repo, &remote, Some(Side::Local)).unwrap();
+    sync::write_link(&project_id, &linked_record(&world)).unwrap();
+    let runtime = runtime();
+    assert_eq!(
+        runtime
+            .block_on(super::overleaf_sync_check(project_id.clone()))
+            .unwrap()
+            .outcome,
+        "synced"
+    );
+
+    world.coauthor(&[("refs.bib", "@book{late}\n")]);
+    std::fs::write(root.join("notes.tex"), "Edited here\n").unwrap();
+    let hook = world.bare().join("hooks").join("pre-receive");
+    std::fs::create_dir_all(hook.parent().unwrap()).unwrap();
+    std::fs::write(&hook, "#!/bin/sh\nexit 1\n").unwrap();
+    std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    let app = tauri::test::mock_builder()
+        .manage(crate::state::AppState::default())
+        .build(tauri::test::mock_context(tauri::test::noop_assets()))
+        .unwrap();
+    let published = std::sync::Arc::new(AtomicU64::new(0));
+    let heard = published.clone();
+    app.listen_any("project-state-changed", move |_| {
+        heard.fetch_add(1, Ordering::SeqCst);
+    });
+    let error = runtime
+        .block_on(super::overleaf_sync_now(
+            app.handle().clone(),
+            app.state::<crate::state::AppState>(),
+            project_id.clone(),
+            None,
+            None,
+            None,
+        ))
+        .err()
+        .expect("the push is refused");
+    assert!(error.contains("\"overleaf.sync_incomplete\""), "{error}");
+    assert_eq!(
+        std::fs::read_to_string(root.join("refs.bib")).unwrap(),
+        "@book{late}\n"
+    );
+    assert_eq!(published.load(Ordering::SeqCst), 1, "the editor reloads");
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+}
+
 #[test]
 fn the_app_git_adapter_fetches_and_links_a_local_remote() {
     let remote = Remote::seeded();

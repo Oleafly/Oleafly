@@ -1636,9 +1636,18 @@ export const forgeListRepos = (base: string, page: number, query?: string | null
   invoke<ForgeRepoPage>("forge_list_repos", { base, page, query: query ?? null });
 export const forgeCreateRepo = (base: string, name: string, isPrivate: boolean) =>
   invoke<ForgeRepo>("forge_create_repo", { base, name, private: isPrivate });
+let repositoryImportId: string | null = null;
+/** The id the repository import or clone this window started last can be
+ * cancelled by (`cancelRepositoryImport` in `@/lib/forge`). */
+export const currentRepositoryImportId = (): string | null => repositoryImportId;
+function nextRepositoryImportId(): string {
+  repositoryImportId = crypto.randomUUID();
+  return repositoryImportId;
+}
 export const forgeImportRepo = (base: string, fullName: string) =>
-  invoke<string>("forge_import_repo", { base, fullName });
-export const gitCloneProject = (url: string) => invoke<string>("git_clone_project", { url });
+  invoke<string>("forge_import_repo", { base, fullName, cancelId: nextRepositoryImportId() });
+export const gitCloneProject = (url: string) =>
+  invoke<string>("git_clone_project", { url, cancelId: nextRepositoryImportId() });
 
 export function onForgeAccountsChanged(handler: () => void): Promise<UnlistenFn> {
   return listen<null>(FORGE_ACCOUNTS_CHANGED_EVENT, () => handler());

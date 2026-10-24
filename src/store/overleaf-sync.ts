@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { AppError } from "@/lib/app-error";
 import { isOverleafError } from "@/lib/overleaf";
 import {
   overleafGitTokenSet,
@@ -170,7 +171,12 @@ export const useOverleafSyncStore = create<OverleafSyncState>((set, get) => ({
     const projectId = get().projectId;
     if (!projectId || get().phase !== "idle") return;
     try {
-      set({ status: await overleafSyncUnlink(projectId), conflicts: [], resolutions: {}, choice: [], error: null, lastReport: null });
+      const status = await overleafSyncUnlink(projectId);
+      // The sync panel's status line says where the replaced files went.
+      const kept = status.backupsFolder
+        ? new AppError("overleaf.sync_backups_saved", { folder: status.backupsFolder }, null)
+        : null;
+      set({ status, conflicts: [], resolutions: {}, choice: [], error: kept, lastReport: null });
     } catch (error) {
       set({ error });
     }

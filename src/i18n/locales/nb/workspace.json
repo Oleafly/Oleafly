@@ -196,6 +196,8 @@
     "closeRight": "Lukk alle til høyre",
     "closeTab": "Lukk {{title}}",
     "color": "Farge",
+    "dropRefused_one": "Filnavnet inneholder et kontrolltegn, så terminalen skriver det ikke inn.",
+    "dropRefused_other": "{{count}} filnavn inneholder kontrolltegn, så terminalen skriver dem ikke inn.",
     "errors": {
       "input": "Kunne ikke sende inndata til shell",
       "resize": "Terminalen kunne ikke endre størrelse",
@@ -234,6 +236,7 @@
       "many_other": "Programmer kjører fortsatt i {{count}} terminaler.",
       "named": "{{process}} kjører fortsatt i {{title}}.",
       "quit": "Avslutt",
+      "reload": "Last inn på nytt",
       "restart": "Start på nytt",
       "switchProject": "Bytt prosjekt",
       "titleMany": "Vil du stoppe programmene som kjører?",

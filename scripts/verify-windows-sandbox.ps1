@@ -61,6 +61,15 @@ function Invoke-SandboxRun([string]$Workspace, [string[]]$Command, [string]$Prof
 $Os = Get-CimInstance Win32_OperatingSystem
 $OsLine = "$($Os.Caption) $($Os.Version) build $($Os.BuildNumber)"
 
+function Get-TaskProfiles {
+  @(Get-ChildItem "$env:LOCALAPPDATA\Packages" -Directory -Filter "Oleafly.Task.*" -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty Name)
+}
+
+# Research tasks have profiles with the same prefix, so only the ones this
+# script adds count in the cleanup check.
+$ProfilesBefore = Get-TaskProfiles
+
 # 1. Self-test
 $selfArgs = @("--oleafly-sandbox-selftest", "--json")
 if ($Network) { $selfArgs += "--network" }
@@ -135,8 +144,8 @@ $longRun = Invoke-SandboxRun $Long @("cmd.exe", "/c", "ver")
 Add-Row "long workspace path" "refused as too long" ($longRun.Err -match "too long") ($longRun.Err)
 
 # No profiles left for the released self-test owners.
-$left = Get-ChildItem "$env:LOCALAPPDATA\Packages" -Directory -Filter "Oleafly.Task.*" -ErrorAction SilentlyContinue
-Add-Row "cleanup" "no self-test profiles left" ($null -eq $left -or $left.Count -eq 0) (($left | Select-Object -ExpandProperty Name) -join ", ")
+$left = @(Get-TaskProfiles | Where-Object { $ProfilesBefore -notcontains $_ })
+Add-Row "cleanup" "no self-test profiles left" ($left.Count -eq 0) ($left -join ", ")
 
 Remove-Item $Base -Recurse -Force -ErrorAction SilentlyContinue
 

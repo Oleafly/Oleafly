@@ -140,7 +140,7 @@ function seed(tasks: ResearchTask[]) {
     tasks,
     selectedTaskId: null,
     events: [],
-    eventsNextSequence: null,
+    eventsPreviousSequence: null,
     loading: false,
     eventsLoading: false,
     action: null,

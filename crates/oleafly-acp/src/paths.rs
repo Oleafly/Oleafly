@@ -115,6 +115,15 @@ pub fn skill_read_allowed(
         })
 }
 
+/// A relative path the agent's own tools expand outside the folder it is
+/// joined to: `~/…`, `$HOME/…`, `%USERPROFILE%\…`.
+fn expands_elsewhere(path: &Path) -> bool {
+    path.components().next().is_some_and(|part| {
+        matches!(part, Component::Normal(name)
+            if name.to_str().is_some_and(|name| name.starts_with(['~', '$', '%'])))
+    })
+}
+
 /// Whether `path` (relative ones are joined to `root`) leads inside the
 /// canonical `root`, spelled either as `root` or as `spelled`.
 pub fn path_within(root: &Path, spelled: &Path, path: &Path) -> bool {
@@ -124,13 +133,18 @@ pub fn path_within(root: &Path, spelled: &Path, path: &Path) -> bool {
     {
         return false;
     }
+    if !path.is_absolute() && expands_elsewhere(path) {
+        return false;
+    }
     let candidate = if path.is_absolute() {
         path.to_path_buf()
     } else {
         root.join(path)
     };
+    // A dangling link counts as there: its target is what the agent would
+    // reach, and it cannot be resolved, so the path is refused below.
     let mut existing = candidate.as_path();
-    while !existing.exists() {
+    while existing.symlink_metadata().is_err() {
         let Some(parent) = existing.parent() else {
             return false;
         };
@@ -184,6 +198,35 @@ mod tests {
         assert!(!path_within(&root, &root, Path::new("../x")));
         assert!(!path_within(&root, &root, Path::new("a/../../x")));
         assert!(path_within(&root, &root, Path::new("chapter/intro.tex")));
+    }
+
+    #[test]
+    fn home_and_variable_paths_are_never_within() {
+        let root = tempfile::tempdir().unwrap();
+        let root = root.path().canonicalize().unwrap();
+        for path in [
+            "~/.ssh/id_rsa",
+            "~",
+            "$HOME/.bashrc",
+            "%USERPROFILE%/x",
+            "~user/x",
+        ] {
+            assert!(!path_within(&root, &root, Path::new(path)), "{path}");
+        }
+        // Only a leading component expands.
+        assert!(path_within(&root, &root, Path::new("notes/~draft.tex")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_dangling_link_inside_the_root_is_not_within() {
+        let root = tempfile::tempdir().unwrap();
+        let root = root.path().canonicalize().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        std::os::unix::fs::symlink(outside.path().join("missing"), root.join("link")).unwrap();
+        assert!(!path_within(&root, &root, Path::new("link")));
+        assert!(!path_within(&root, &root, &root.join("link")));
+        assert!(!path_within(&root, &root, Path::new("link/deeper.tex")));
     }
 
     #[test]

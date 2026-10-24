@@ -394,7 +394,7 @@ The Tools model (local Ollama unless you pick another) transcribes scanned pages
 
 ### image-to-latex
 
-The Tools model (local Ollama unless you pick another) transcribes an equation or table photo into editable LaTeX, on the Tools page and from the editor toolbar.
+The Tools model (local Ollama unless you pick another) transcribes an equation or table photo into editable LaTeX, on the Tools page and from the editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.
 
 - **Direction:** tool
 - **Engine:** local-model
@@ -403,7 +403,7 @@ The Tools model (local Ollama unless you pick another) transcribes an equation o
 
 ### image-to-typst
 
-The Tools model (local Ollama unless you pick another) transcribes notes, equations, or tables into editable Typst, on the Tools page and from the Typst editor toolbar.
+The Tools model (local Ollama unless you pick another) transcribes notes, equations, or tables into editable Typst, on the Tools page and from the Typst editor toolbar. With no Tools model picked and no Ollama vision model, the editor toolbar sends the image to the assistant's model.
 
 - **Direction:** tool
 - **Engine:** local-model

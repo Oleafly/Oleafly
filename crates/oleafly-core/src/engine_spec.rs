@@ -415,16 +415,19 @@ pub fn compiler_crash_note(_status: &std::process::ExitStatus) -> Option<String>
     None
 }
 
-/// Every `.bib` file of the project, slash-relative and sorted; generated
-/// folders, links and cloud placeholders are skipped.
+/// Every `.bib` file of the project, slash-relative and sorted; links, cloud
+/// placeholders and Oleafly's, git's and npm's folders are skipped. A
+/// bibliography may live anywhere else (`out/refs.bib`, `.refs/library.bib`),
+/// so the source walk's wider skip list doesn't apply.
 pub fn discover_bibliographies(project_root: &Path) -> crate::Result<Vec<String>> {
     if !project_root.is_dir() {
         return Ok(Vec::new());
     }
     let mut found = Vec::new();
-    crate::walk_source_tree(
+    crate::tree::walk_tree_skipping(
         project_root,
         "bibliography search",
+        &|name| matches!(name.to_str(), Some(".oleafly" | ".git" | "node_modules")),
         &mut |relative, path| {
             let is_bib = relative
                 .extension()

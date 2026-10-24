@@ -1341,6 +1341,41 @@ mod handoff {
         stop(&state).await;
     }
 
+    // The helper stopping while it hands a task back to the app suspends
+    // the task twice: both handoffs carry the saved conversation, so the one
+    // that wins never resumes from the record alone.
+    #[tokio::test]
+    async fn two_suspends_of_one_task_both_get_its_saved_conversation() {
+        let data = DataRoot::new();
+        data.project("paper");
+        let state = data.state(2);
+        let (runtime, mut starts) = ControlledRuntime::new();
+        state.register_runtime("fixture", runtime.clone()).unwrap();
+        let store = state.store().unwrap();
+        let task = requested(&store, keep_running("paper", "Overnight"));
+        let run = started(&state, &runtime, &mut starts, &task).await;
+        let generation = run.context.execution_generation;
+        let suspend = |mode, deadline| {
+            let state = state.clone();
+            let id = task.id.clone();
+            tokio::spawn(async move { state.suspend(&[id], mode, deadline).await })
+        };
+        let reclaim = suspend(SuspendMode::Graceful, None);
+        let release = suspend(SuspendMode::Prompt, Some(Duration::from_secs(5)));
+        suspend_when_asked(&state, run).await;
+        for results in [reclaim.await.unwrap(), release.await.unwrap()] {
+            assert_eq!(
+                results[0].1,
+                SuspendResult::Suspended {
+                    generation,
+                    state: snapshot_state(generation),
+                },
+                "{results:?}"
+            );
+        }
+        stop(&state).await;
+    }
+
     #[tokio::test]
     async fn a_suspend_that_misses_its_deadline_stops_the_runtime_and_keeps_its_task() {
         let data = DataRoot::new();
@@ -1988,7 +2023,7 @@ async fn a_plan_first_task_stops_at_plan_ready_with_its_workspace() {
     );
     assert!(workspace.is_dir());
     assert_eq!(
-        state.plan(&task.id).unwrap(),
+        state.plan(&task.id).unwrap().text,
         "- [ ] baseline\n- [ ] dropout sweep\n"
     );
 
@@ -2120,7 +2155,7 @@ async fn approving_a_plan_as_written_keeps_it_and_needs_a_task_that_waits_for_ap
         store.require(&task.id).unwrap().status,
         ResearchTaskStatus::PlanReady
     );
-    assert_eq!(state.plan(&task.id).unwrap(), "- [ ] as written\n");
+    assert_eq!(state.plan(&task.id).unwrap().text, "- [ ] as written\n");
 
     // A blank edit is no edit: the plan as written is carried out.
     state
@@ -2136,6 +2171,84 @@ async fn approving_a_plan_as_written_keeps_it_and_needs_a_task_that_waits_for_ap
         .expect("an approved plan resumes the task");
     assert_eq!(resume.reason, ResumeReason::PlanApproved);
     assert_eq!(resume.plan, "- [ ] as written\n");
+    finish_run(&state, working, Ok(outcome("carried out"))).await;
+    stop(&state).await;
+}
+
+#[tokio::test]
+async fn a_plan_longer_than_the_review_shows_is_flagged_and_needs_an_edit() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let (runtime, mut starts) = ControlledRuntime::new();
+    state.register_runtime("fixture", runtime).unwrap();
+    let store = state.store().unwrap();
+    let task = requested(&store, plan_first("paper", "A long plan"));
+    state.launch_ready().await.unwrap();
+    let planning = next_run(&mut starts).await;
+    let long = format!(
+        "{}- [ ] the step past the cut\n",
+        "- [ ] step\n".repeat(7_000)
+    );
+    write_record(&planning, "plan.md", &long);
+    finish_run(&state, planning, Ok(outcome("planned"))).await;
+
+    let plan = state.plan(&task.id).unwrap();
+    assert!(plan.truncated);
+    assert_eq!(plan.text.len(), 64 * 1024);
+    assert!(!plan.text.contains("past the cut"));
+    // Approving what the review could not show is refused.
+    assert_eq!(
+        state.approve_plan(task.id.clone(), None).await.unwrap_err(),
+        PLAN_TOO_LONG
+    );
+    assert_eq!(
+        store.require(&task.id).unwrap().status,
+        ResearchTaskStatus::PlanReady
+    );
+    // An edit that fits replaces it.
+    state
+        .approve_plan(task.id.clone(), Some("- [ ] shorter\n".into()))
+        .await
+        .unwrap();
+    let working = next_run(&mut starts).await;
+    assert_eq!(
+        working.context.resume.clone().unwrap().plan,
+        "- [ ] shorter\n"
+    );
+    finish_run(&state, working, Ok(outcome("carried out"))).await;
+    stop(&state).await;
+}
+
+#[tokio::test]
+async fn commands_ask_first_while_a_plan_first_task_plans() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let (runtime, mut starts) = ControlledRuntime::new();
+    state.register_runtime("fixture", runtime).unwrap();
+    let store = state.store().unwrap();
+    // Commands run without asking in the brief; while the agent plans, they ask.
+    let task = requested(&store, plan_first("paper", "Plan before running"));
+    assert_eq!(task.brief.permissions.commands, CommandPolicy::Allow);
+    state.launch_ready().await.unwrap();
+    let planning = next_run(&mut starts).await;
+    assert!(planning.context.plan_phase);
+    assert_eq!(
+        planning.context.brief.permissions.commands,
+        CommandPolicy::Ask
+    );
+    write_record(&planning, "plan.md", "- [ ] baseline\n");
+    finish_run(&state, planning, Ok(outcome("planned"))).await;
+
+    // Once the plan is approved, the brief's own policy holds again.
+    state.approve_plan(task.id.clone(), None).await.unwrap();
+    let working = next_run(&mut starts).await;
+    assert!(!working.context.plan_phase);
+    assert_eq!(
+        working.context.brief.permissions.commands,
+        CommandPolicy::Allow
+    );
     finish_run(&state, working, Ok(outcome("carried out"))).await;
     stop(&state).await;
 }
@@ -2491,6 +2604,153 @@ async fn scheduled_tasks_start_on_time() {
 }
 
 #[tokio::test]
+async fn a_brief_whose_compute_target_was_removed_is_refused() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let mut brief = crate::model::ResearchBrief::default();
+    brief.compute.executor = "slurm".into();
+    let on = |target: Option<&str>| {
+        let mut brief = brief.clone();
+        brief.compute.target = target.map(str::to_owned);
+        ResearchTaskDraft {
+            brief: Some(brief),
+            ..draft("paper", "On the cluster")
+        }
+    };
+    assert_eq!(
+        state.create(on(Some("cluster"))).unwrap_err(),
+        "The compute target in this brief was removed. Choose another one."
+    );
+    assert_eq!(
+        state.create(on(None)).unwrap_err(),
+        "Choose a compute target for this task's runs."
+    );
+    let settings = data.directory.path().join("research/compute.json");
+    std::fs::create_dir_all(settings.parent().unwrap()).unwrap();
+    std::fs::write(
+        &settings,
+        r#"{"version":1,"targets":[{"kind":"slurm","id":"cluster","label":"Cluster","host":"login"}]}"#,
+    )
+    .unwrap();
+    let task = state.create(on(Some("cluster"))).unwrap();
+    // Removed after the task was queued: editing it refuses the stale brief.
+    std::fs::write(&settings, r#"{"version":1,"targets":[]}"#).unwrap();
+    let edit = ResearchTaskEdit {
+        title: task.title.clone(),
+        prompt: task.prompt.clone(),
+        runtime_id: task.runtime_id.clone(),
+        agent_id: task.agent_id.clone(),
+        model_id: task.model_id.clone(),
+        brief: Some(task.brief.clone()),
+        ..Default::default()
+    };
+    assert_eq!(
+        state.edit(&task.id, edit).unwrap_err(),
+        "The compute target in this brief was removed. Choose another one."
+    );
+    stop(&state).await;
+}
+
+#[tokio::test]
+async fn cancelling_or_retrying_a_queued_task_removes_copied_sign_in_files() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let store = state.store().unwrap();
+    let task = store.create(draft("paper", "Handed over at quit")).unwrap();
+    // The quit handoff copied the agent's sign-in files for the next owner.
+    let copied = |generation| {
+        let home = crate::handoff::acp_home_path(store.root(), &task.id, generation);
+        std::fs::create_dir_all(home.join(".claude")).unwrap();
+        std::fs::write(home.join(".claude/.credentials.json"), "token").unwrap();
+        home
+    };
+    let home = copied(1);
+    let cancelled = state.cancel(task.id.clone()).await.unwrap();
+    assert_eq!(cancelled.status, ResearchTaskStatus::Cancelled);
+    assert!(!home.exists());
+
+    let home = copied(2);
+    state.retry(&task.id, RetryMode::Fresh).unwrap();
+    assert!(!home.exists());
+    stop(&state).await;
+}
+
+#[tokio::test]
+async fn held_launches_start_nothing_until_released() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let (runtime, mut starts) = ControlledRuntime::new();
+    state.register_runtime("fixture", runtime).unwrap();
+    let store = state.store().unwrap();
+    // The app holds launches while it recovers interrupted applies.
+    state.hold_launches();
+    let task = requested(&store, draft("paper", "Waits for recovery"));
+    state.launch_ready().await.unwrap();
+    assert!(starts.try_recv().is_err());
+    assert_eq!(
+        store.require(&task.id).unwrap().status,
+        ResearchTaskStatus::Queued
+    );
+    state.release_launches();
+    state.launch_ready().await.unwrap();
+    let run = next_run(&mut starts).await;
+    assert_eq!(run.context.task_id, task.id);
+    finish_run(&state, run, Ok(outcome("done"))).await;
+    stop(&state).await;
+}
+
+#[test]
+fn the_wake_timer_reads_the_wall_clock_again_at_least_every_minute() {
+    let now = 1_000_000_000;
+    // A start 15 hours away is checked again in a minute, in case the
+    // computer slept meanwhile (the timer's clock stops while it sleeps).
+    assert_eq!(
+        wake_step(now + 15 * 60 * 60 * 1000, now),
+        (WAKE_CHECK_EVERY, false)
+    );
+    assert_eq!(
+        wake_step(now + 10_000, now),
+        (Duration::from_millis(10_050), true)
+    );
+    assert_eq!(
+        wake_step(now - 5_000, now),
+        (Duration::from_millis(50), true)
+    );
+}
+
+#[tokio::test]
+async fn a_new_wake_timer_stops_the_one_it_replaces() {
+    let data = DataRoot::new();
+    data.project("paper");
+    let state = data.state(1);
+    let (runtime, _starts) = ControlledRuntime::new();
+    state.register_runtime("fixture", runtime).unwrap();
+    let store = state.store().unwrap();
+    requested(
+        &store,
+        ResearchTaskDraft {
+            run_after: Some(crate::model::now_ms() + 2 * 24 * 60 * 60 * 1000),
+            ..draft("paper", "In two days")
+        },
+    );
+    state.launch_ready().await.unwrap();
+    let first = lock(&state.inner.wake_timer)
+        .as_ref()
+        .expect("a timer waits for the scheduled start")
+        .abort_handle();
+    state.launch_ready().await.unwrap();
+    poll_until(|| first.is_finished()).await;
+    assert!(!lock(&state.inner.wake_timer)
+        .as_ref()
+        .unwrap()
+        .is_finished());
+    stop(&state).await;
+}
+
+#[tokio::test]
 async fn review_plan_and_failure_raise_notifications_and_attention() {
     let data = DataRoot::new();
     data.project("paper");
@@ -2542,7 +2802,11 @@ async fn review_plan_and_failure_raise_notifications_and_attention() {
 struct WarningWorkspace;
 
 impl WorkspaceTools for WarningWorkspace {
-    fn compile(&self, _root: PathBuf) -> TaskRuntimeFuture<crate::host::CompileSummary> {
+    fn compile(
+        &self,
+        _root: PathBuf,
+        _source: Option<PathBuf>,
+    ) -> TaskRuntimeFuture<crate::host::CompileSummary> {
         Box::pin(async {
             Ok(crate::host::CompileSummary {
                 ok: false,

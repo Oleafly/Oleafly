@@ -50,14 +50,14 @@
       "platformLabel": "Plattform",
       "refreshingStatus": "Uppdaterar agenternas status. Den aktuella listan ligger kvar.",
       "registry": {
-        "description": "Sök i ACP-registret efter agenter som publicerats av andra team.",
+        "description": "Sök i ACP-registret efter CLI-agenter som publicerats av andra team.",
         "hideDistribution": "Dölj distributionen",
         "register": "Registrera agenten",
         "registered": "Registrerad",
         "reviewHint": "Poster i registret beskriver programvara utifrån dess utgivare. Granska distributionen innan du registrerar eller installerar den.",
         "search": "Sök",
-        "searchLabel": "Hitta en ACP-agent",
-        "searchPlaceholder": "Sök i ACP-registret",
+        "searchLabel": "Hitta en CLI-agent",
+        "searchPlaceholder": "Sök efter CLI-agenter",
         "searching": "Söker",
         "showDistribution": "Visa distributionen",
         "title": "Hitta fler agenter"
@@ -133,7 +133,8 @@
       "inactivity": {
         "label": "Stoppa en tyst agent efter",
         "description": "När en agent inte skickar något på så lång tid stoppar Oleafly den. Du kan ansluta igen.",
-        "minutes": "{{count}} minuter"
+        "minutes_one": "{{count}} minut",
+        "minutes_other": "{{count}} minuter"
       },
       "protocolLabel": "Protokoll",
       "remembered": {
@@ -1035,7 +1036,8 @@
         "path": {
           "ariaLabel": "Sökväg till eget shell",
           "description": "Programmet som nya terminaler kör.",
-          "label": "Sökväg till shell"
+          "label": "Sökväg till shell",
+          "missing": "Ange den fullständiga sökvägen till ett shell. Nya terminaler kan inte starta förrän du gör det."
         },
         "windowsOnly": "{{name}} (bara Windows)",
         "windowsOnlyNote": "{{name}} körs bara på Windows. Nya terminaler här startar {{fallback}} i stället.",
@@ -1622,7 +1624,7 @@
     "desktopApps": {
       "tab": "Skrivbordsappar",
       "title": "Skrivbordsappar",
-      "description": "Låt agenter använda appar och webbplatser på den här datorn via Cua Driver. Oleafly frågar före varje klick eller tangenttryckning.",
+      "description": "Låt agenter använda appar och webbplatser på den här datorn via Cua Driver. Oleafly frågar före varje åtgärd, om du inte tillåter den typen av åtgärd för chatten, sessionen eller uppgiften. Din inloggade webbläsare och skript frågar alltid.",
       "docsLink": "Dokumentation för Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} är installerat.",
@@ -1635,7 +1637,7 @@
       },
       "install": {
         "heading": "Installera Cua Driver",
-        "hint": "Kör det här kommandot i en terminal. Oleafly installerar aldrig Cua Driver åt dig.",
+        "hint": "Kör det här kommandot i en terminal, eller använd Kör i terminalen. Kommandot startar Cuas officiella installationsprogram, och Oleafly laddar inte ner Cua Driver själv.",
         "run": "Kör i terminalen",
         "needsProject": "Öppna ett projekt för att köra det här i Oleaflys terminal, eller kopiera kommandot.",
         "confirm": "Det här laddar ner installationsprogrammet för Cua Driver från cua.ai och kör det i din terminal. Vill du fortsätta?",
@@ -1657,7 +1659,7 @@
       },
       "enable": {
         "label": "Låt agenter använda skrivbordsappar",
-        "description": "Agenter kan se apparna och webbplatserna nedan. Klick, inskrivning och sidbyten frågar dig först."
+        "description": "Agenter kan se apparna och webbplatserna nedan. Klick, inskrivning och sidbyten frågar dig först, om du inte tillåter dem för chatten, sessionen eller uppgiften. När du lägger till en app eller webbplats rensas de valen."
       },
       "apps": {
         "heading": "Tillåtna appar",
@@ -1680,7 +1682,7 @@
         "blocked": {
           "oleafly": "Oleafly kan inte styra sig själv.",
           "driver": "Cua Driver kan inte styra sig själv.",
-          "terminal": "Terminaler kör kommandon utan Oleaflys godkännande av kommandon.",
+          "terminal": "Terminaler och kodredigerare kör kommandon utan Oleaflys godkännande av kommandon.",
           "system_settings": "Systeminställningar kan ändra behörigheter.",
           "passwords": "Lösenordsappar är alltid spärrade.",
           "scripting": "Skriptkörare kan göra vad som helst på den här datorn.",
@@ -1714,7 +1716,7 @@
       },
       "tool": {
         "description": "Använd de skrivbordsappar och webbplatser som du har tillåtit i Inställningar.",
-        "note": "Att titta sker direkt. Klick, inskrivning och sidbyten frågar först."
+        "note": "Att titta sker direkt. Klick, inskrivning och sidbyten frågar först, om du inte tillåter dem för chatten."
       },
       "task": {
         "label": "Skrivbordsappar",
@@ -1724,7 +1726,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "Anslut isolerade skrivbord och containrar från Cua Spaces som en MCP-server. Experimentellt.",
+        "description": "Anslut isolerade skrivbord och containrar från Cua Spaces som en MCP-server.",
         "notInstalled": "Kommandot cua är inte installerat.",
         "connect": {
           "label": "Anslut Cua Spaces",
@@ -1824,7 +1826,7 @@
         },
         "legend": "Godkännandepolicy",
         "trust": {
-          "description": "Filändringar frågar inte. Shell-kommandon och datorstyrning kräver alltid godkännande. Din MCP-klient är fortfarande en extra spärr.",
+          "description": "Filändringar tillämpas utan att fråga. Shell-kommandon och nya forskningsuppgifter frågar alltid först. Din MCP-klient kan fortfarande fråga på egen hand.",
           "label": "Lita på den här anslutningen"
         }
       },
@@ -2306,11 +2308,20 @@
         "tasks_other": "Arbetar med {{count}} uppgifter"
       },
       "stop": "Stoppa hjälpprocessen",
-      "stopHint": "Dess uppgifter pausas tills du öppnar Oleafly igen.",
+      "stopHint": "Dess uppgifter flyttas tillbaka till Oleafly och fortsätter köras här.",
+      "stopConfirm": {
+        "title": "Vill du stoppa hjälpprocessen i bakgrunden?",
+        "description_one": "{{count}} uppgift flyttas tillbaka till Oleafly och fortsätter köras här.",
+        "description_other": "{{count}} uppgifter flyttas tillbaka till Oleafly och fortsätter köras här."
+      },
       "stopFailed": "Hjälpprocessen stoppades inte. Försök igen.",
       "openLog": "Visa loggen",
       "statusFailed": "Statusen för hjälpprocessen kunde inte läsas.",
       "toggleFailed": "Det gick inte att ändra den här inställningen. Försök igen."
+    },
+    "mcpServers": {
+      "loadFailed": "Listan över MCP-servrar kunde inte läsas.",
+      "missing": "{{name}} (hittades inte)"
     }
   }
 }

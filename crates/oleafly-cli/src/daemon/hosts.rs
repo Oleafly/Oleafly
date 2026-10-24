@@ -171,13 +171,23 @@ pub struct DaemonResearchHost {
     tasks_root: PathBuf,
     data_root: PathBuf,
     resources_dir: Option<PathBuf>,
-    prefs: Prefs,
+    /// The user's choices, read again while the helper runs.
+    prefs: std::sync::Mutex<Prefs>,
     notifier: Arc<Notifier>,
     log: Arc<HelperLog>,
     live: Arc<LiveSpend>,
 }
 
 impl DaemonResearchHost {
+    /// Notifications or keep-awake changed in the app's settings.
+    pub fn set_prefs(&self, prefs: Prefs) {
+        *lock(&self.prefs) = prefs;
+        self.notifier.set_enabled(prefs.notifications);
+    }
+
+    fn prefs(&self) -> Prefs {
+        *lock(&self.prefs)
+    }
     pub fn new(
         data_root: &Path,
         resources_dir: Option<PathBuf>,
@@ -190,7 +200,7 @@ impl DaemonResearchHost {
             tasks_root: data_root.join("research-tasks"),
             data_root: data_root.to_path_buf(),
             resources_dir,
-            prefs,
+            prefs: std::sync::Mutex::new(prefs),
             notifier,
             log,
             live,
@@ -345,7 +355,7 @@ impl ResearchHost for DaemonResearchHost {
     }
 
     fn notify(&self, notification: Notification) {
-        if !self.prefs.notifications {
+        if !self.prefs().notifications {
             return;
         }
         // An open app tells the user itself (finishing a task clears its
@@ -356,7 +366,7 @@ impl ResearchHost for DaemonResearchHost {
     }
 
     fn keep_awake_enabled(&self) -> bool {
-        self.prefs.keep_awake
+        self.prefs().keep_awake
     }
 
     fn task_spend_usd(&self, task_id: &str) -> Option<f64> {
@@ -663,6 +673,31 @@ impl WebTools for CliWebTools {
 }
 
 /// The helper's task host.
+/// The file and database reads of [`DaemonTaskHost`], owned, for blocking
+/// threads.
+struct HostReader {
+    data_root: PathBuf,
+    tasks_root: PathBuf,
+    resources_dir: Option<PathBuf>,
+    log: Arc<HelperLog>,
+}
+
+impl HostReader {
+    fn grant(&self, task_id: &str) -> Result<TaskGrant, String> {
+        task_grant(&self.tasks_root, task_id)
+    }
+
+    fn config(&self) -> Result<DesktopConfig, String> {
+        let config = desktop_config::load(&self.data_root).map_err(|error| error.to_string())?;
+        self.log.add_secrets(secret_values(&config));
+        Ok(config)
+    }
+
+    fn skills(&self, grant: &TaskGrant) -> CliSkills {
+        grant_skills(&self.data_root, self.resources_dir.as_deref(), grant)
+    }
+}
+
 pub struct DaemonTaskHost {
     data_root: PathBuf,
     tasks_root: PathBuf,
@@ -705,6 +740,17 @@ impl DaemonTaskHost {
 
     pub(crate) fn grant(&self, task_id: &str) -> Result<TaskGrant, String> {
         task_grant(&self.tasks_root, task_id)
+    }
+
+    /// What reading a task's grant, settings and skills needs, owned, for a
+    /// blocking thread.
+    fn reader(&self) -> HostReader {
+        HostReader {
+            data_root: self.data_root.clone(),
+            tasks_root: self.tasks_root.clone(),
+            resources_dir: self.resources_dir.clone(),
+            log: self.log.clone(),
+        }
     }
 
     /// The app's settings now; their secrets join the log's list.
@@ -755,7 +801,14 @@ impl TaskHost for DaemonTaskHost {
         let log = self.log.clone();
         let live = self.live.clone();
         Box::pin(async move {
-            let grant = task_grant(&tasks_root, &context.task_id)?;
+            // A database read: off the helper's two async threads.
+            let grant = {
+                let tasks_root = tasks_root.clone();
+                let task_id = context.task_id.clone();
+                tokio::task::spawn_blocking(move || task_grant(&tasks_root, &task_id))
+                    .await
+                    .map_err(|_| OPEN_OLEAFLY.to_string())??
+            };
             let root = data_root.clone();
             let config = tokio::task::spawn_blocking(move || desktop_config::load(&root))
                 .await
@@ -801,14 +854,22 @@ impl TaskHost for DaemonTaskHost {
         context: TaskRunContext,
         binding: Option<TaskBinding>,
     ) -> TaskRuntimeFuture<Arc<dyn TaskBridge>> {
-        let grant = self.grant(&context.task_id);
-        let config = self.config();
-        let skills = grant
-            .as_ref()
-            .ok()
-            .map(|grant| self.skills(grant))
-            .unwrap_or_default();
+        let reader = self.reader();
+        let task_id = context.task_id.clone();
         Box::pin(async move {
+            // The grant is a database read and the settings decrypt the
+            // secret store: off the helper's two async threads.
+            let (grant, config, skills) = tokio::task::spawn_blocking(move || {
+                let grant = reader.grant(&task_id);
+                let skills = grant
+                    .as_ref()
+                    .ok()
+                    .map(|grant| reader.skills(grant))
+                    .unwrap_or_default();
+                (grant, reader.config(), skills)
+            })
+            .await
+            .map_err(|_| OPEN_OLEAFLY.to_string())?;
             let grant = grant?;
             if !grant.allows(TRUST_MCP) {
                 return Err(trust_error(TRUST_MCP));
@@ -879,12 +940,20 @@ impl TaskHost for DaemonTaskHost {
     }
 
     fn task_mcp_tools(&self, context: &TaskRunContext) -> TaskRuntimeFuture<Vec<TaskMcpTool>> {
-        let config = self.config();
+        let reader = self.reader();
+        let task_id = context.task_id.clone();
         let brief = context.brief.clone();
         let log = self.log.clone();
-        let grant = self.grant(&context.task_id);
-        let search_dirs = self.program_search_dirs();
         Box::pin(async move {
+            let (config, grant, search_dirs) = tokio::task::spawn_blocking(move || {
+                (
+                    reader.config(),
+                    reader.grant(&task_id),
+                    search_dirs_of(&reader.data_root),
+                )
+            })
+            .await
+            .map_err(|_| OPEN_OLEAFLY.to_string())?;
             let config = config?;
             if !grant.is_ok_and(|grant| grant.allows(TRUST_MCP)) {
                 return Ok(Vec::new());

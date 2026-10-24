@@ -100,12 +100,13 @@ the first one. Stop when `build.ok` is `true` and `build.errors` is empty.
 | 1 | A bug in Oleafly. | Report it to the user with the message. |
 | 2 | The command was used wrongly, or needs `--yes`. | Fix the arguments; ask before adding `--yes`. |
 | 3 | The project is missing or invalid, or a path is outside it. | Check the folder and `project.json`. |
-| 4 | A tool or the app isn't installed. | Tell the user what to install (see `hint`). |
+| 4 | A tool or the app isn't installed, no AI provider is set up, or a file outside the project couldn't be read or written. | Tell the user what to install or set up (see `hint`). |
 | 5 | The build failed. | Read `build.errors` and fix the first one. |
 | 6 | Sign-in needed. | Ask the user to sign in. |
 | 7 | The network failed. | Retry later; it may be offline. |
 | 8 | The project is busy (another build, the app). | Wait a moment and retry. |
 | 9 | A check found problems. | Report or fix the findings. |
+| 10 | An agent run reached its step or time limit. | Report what was done; raise the limit only if the user asks. |
 | 130 | Interrupted. | Stop. |
 
 ## MCP

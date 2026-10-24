@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearch from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { useSettingsStore } from "@/store/settings";
-import { COMPUTE_TARGETS_CHANGED, type ComputeView } from "./compute-api";
+import { announceSandboxChanged, COMPUTE_TARGETS_CHANGED, type ComputeView, type SandboxStatus } from "./compute-api";
 import { ComputeBriefFields, computeFor } from "./ComputeBriefFields";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -119,6 +119,36 @@ describe("ComputeBriefFields", () => {
     render(<ComputeBriefFields value={local} onChange={vi.fn()} />);
     expect(await screen.findByText(strings.brief.windowsOff)).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: strings.brief.openSettings }));
+    expect(openSettingsAt).toHaveBeenCalledWith("research");
+    openSettingsAt.mockRestore();
+  });
+
+  it("drops the Windows note as soon as the sandbox is turned on in Settings", async () => {
+    current = view({ platform: "windows" });
+    windowsEnabled = false;
+    render(<ComputeBriefFields value={local} onChange={vi.fn()} />);
+    expect(await screen.findByText(strings.brief.windowsOff)).toBeTruthy();
+
+    act(() =>
+      announceSandboxChanged({ platform: "windows", available: true, windowsEnabled: true } as SandboxStatus),
+    );
+
+    expect(screen.queryByText(strings.brief.windowsOff)).toBeNull();
+  });
+
+  it("lets the composer close before it opens Settings", async () => {
+    current = view({ platform: "windows" });
+    windowsEnabled = false;
+    const openSettingsAt = vi.spyOn(useSettingsStore.getState(), "openSettingsAt").mockImplementation(() => {});
+    const onOpenSettings = vi.fn();
+    render(<ComputeBriefFields value={local} onChange={vi.fn()} onOpenSettings={onOpenSettings} />);
+    expect(await screen.findByText(strings.brief.windowsOff)).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: strings.brief.openSettings }));
+
+    expect(onOpenSettings).toHaveBeenCalledOnce();
+    expect(openSettingsAt).not.toHaveBeenCalled();
+    onOpenSettings.mock.calls[0][0]();
     expect(openSettingsAt).toHaveBeenCalledWith("research");
     openSettingsAt.mockRestore();
   });

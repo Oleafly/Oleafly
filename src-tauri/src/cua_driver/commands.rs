@@ -2,6 +2,7 @@
 //! window only. A change that widens what agents may control asks through a
 //! native confirmation first, so the renderer can never widen control alone.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -172,7 +173,24 @@ pub async fn cua_driver_status<R: Runtime>(
     .map_err(blocking_error)
 }
 
-/// One line per widening, for the confirmation.
+/// A bundle id or program path as the confirmation shows it: format
+/// characters (bidi controls, zero-width characters) written out as
+/// `\u{…}`, so they can't reorder or hide what is being allowed.
+fn visible_identity(identity: &str) -> String {
+    identity
+        .chars()
+        .map(|character| {
+            if config::is_format_char(character) || character.is_control() {
+                format!("\\u{{{:04x}}}", u32::from(character))
+            } else {
+                character.to_string()
+            }
+        })
+        .collect()
+}
+
+/// One line per widening, for the confirmation. The identity that was
+/// checked comes first, before the name the app gave itself.
 pub(crate) fn widening_lines(widening: &[Widening]) -> Vec<String> {
     widening
         .iter()
@@ -180,7 +198,7 @@ pub(crate) fn widening_lines(widening: &[Widening]) -> Vec<String> {
             Widening::Enabled => crate::i18n::t("dialog.desktopAppsSettings.enabled"),
             Widening::App { name, identity } => crate::i18n::t_with(
                 "dialog.desktopAppsSettings.app",
-                &[("name", name), ("identity", identity)],
+                &[("name", name), ("identity", &visible_identity(identity))],
             ),
             Widening::Site(origin) => {
                 crate::i18n::t_with("dialog.desktopAppsSettings.site", &[("origin", origin)])
@@ -223,7 +241,7 @@ pub(crate) async fn apply_settings(
     }
     let mut confirmed: Vec<Widening> = Vec::new();
     loop {
-        let widening = config::widening(&state.settings(), &next);
+        let widening = config::widening(&state.settings(), &next, platform);
         if widening.iter().all(|item| confirmed.contains(item)) {
             break;
         }
@@ -232,6 +250,7 @@ pub(crate) async fn apply_settings(
         }
         confirmed = widening;
     }
+    let widened = !confirmed.is_empty();
     let stored = next.clone();
     tauri::async_runtime::spawn_blocking(move || {
         crate::config::update_config(|config| {
@@ -242,10 +261,14 @@ pub(crate) async fn apply_settings(
     .await
     .map_err(blocking_error)??;
     state.set_settings(next.clone());
+    // A grant names a tool, not an app or a site: "Allow for this chat" on
+    // clicks must not carry over to an app or site added since.
+    if widened || !next.enabled {
+        lock(&state.grants).clear_all();
+    }
     let stop = if next.enabled {
         state.runtimes.stale_kinds()
     } else {
-        lock(&state.grants).clear_all();
         RuntimeKind::ALL.to_vec()
     };
     if !stop.is_empty() {
@@ -271,11 +294,25 @@ pub(crate) async fn apply_settings(
 fn native_confirm<R: Runtime>(
     app: AppHandle<R>,
 ) -> impl FnMut(Vec<String>) -> BoxFuture<'static, bool> {
+    native_confirm_with(
+        app,
+        "dialog.desktopAppsSettings.title",
+        "dialog.desktopAppsSettings.message",
+    )
+}
+
+/// A native "Allow" / "Cancel" question with `title_key` and `message_key`,
+/// listing what would be allowed.
+fn native_confirm_with<R: Runtime>(
+    app: AppHandle<R>,
+    title_key: &'static str,
+    message_key: &'static str,
+) -> impl FnMut(Vec<String>) -> BoxFuture<'static, bool> {
     move |lines: Vec<String>| {
         let app = app.clone();
         Box::pin(async move {
             use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-            let mut message = crate::i18n::t("dialog.desktopAppsSettings.message");
+            let mut message = crate::i18n::t(message_key);
             for line in lines.iter().take(MAX_CONFIRM_LINES) {
                 message.push_str("\n• ");
                 message.push_str(line);
@@ -290,7 +327,7 @@ fn native_confirm<R: Runtime>(
             let (sender, receiver) = tokio::sync::oneshot::channel();
             app.dialog()
                 .message(message)
-                .title(crate::i18n::t("dialog.desktopAppsSettings.title"))
+                .title(crate::i18n::t(title_key))
                 .kind(MessageDialogKind::Warning)
                 .buttons(MessageDialogButtons::OkCancelCustom(
                     crate::i18n::t("dialog.desktopAppsSettings.confirm"),
@@ -381,9 +418,13 @@ pub async fn cua_driver_pick_app<R: Runtime>(
     else {
         return Ok(None);
     };
-    let path = selection
-        .into_path()
-        .map_err(|_| String::from(AppError::new("desktop_apps.app_invalid").param("name", "")))?;
+    let shown = selection.to_string();
+    let path = selection.into_path().map_err(|_| {
+        String::from(
+            AppError::new("desktop_apps.app_invalid").param("name", picked_name(Path::new(&shown))),
+        )
+    })?;
+    let name = picked_name(&path);
     let picked = tauri::async_runtime::spawn_blocking(move || match platform {
         Platform::Macos => apps::app_from_bundle(&path),
         Platform::Windows | Platform::Linux => apps::app_from_executable(platform, &path),
@@ -393,9 +434,173 @@ pub async fn cua_driver_pick_app<R: Runtime>(
     match picked {
         Some(app) => Ok(Some(app)),
         None => Err(AppError::new("desktop_apps.app_invalid")
-            .param("name", "")
+            .param("name", name)
             .into()),
     }
+}
+
+/// The picked file as an error names it: its file name, without control or
+/// format characters.
+fn picked_name(path: &Path) -> String {
+    let name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let name: String = name
+        .chars()
+        .filter(|character| !character.is_control() && !config::is_format_char(*character))
+        .take(120)
+        .collect();
+    if name.trim().is_empty() {
+        crate::i18n::t("dialog.desktopApps.pickedFile")
+    } else {
+        name
+    }
+}
+
+const SPACES_CREDENTIALS_ENV: &str = "CUA_SPACES_AGENT_CREDENTIALS_HOME";
+
+/// A Cua Spaces server (`cua daemon mcp`), and whether each of its guards is
+/// on: read-only, and the user's agent sign-ins kept out.
+fn spaces_guards(server: &crate::config::McpServerConfig) -> Option<(bool, bool)> {
+    let crate::config::McpServerTransport::Stdio { command, args, env } = &server.transport else {
+        return None;
+    };
+    let program = apps::file_name_lower(command);
+    let spaces = matches!(program.as_str(), "cua" | "cua.exe")
+        && args.first().map(String::as_str) == Some("daemon")
+        && args.get(1).map(String::as_str) == Some("mcp");
+    if !spaces {
+        return None;
+    }
+    let read_only = args
+        .windows(2)
+        .any(|pair| pair[0] == "--permissions" && pair[1] == "spaces:readonly")
+        || args
+            .iter()
+            .any(|arg| arg == "--permissions=spaces:readonly");
+    let no_sign_ins = env
+        .get(SPACES_CREDENTIALS_ENV)
+        .is_some_and(|value| value == "none");
+    Some((read_only, no_sign_ins))
+}
+
+/// What saving `next` over `stored` lets agents in Cua Spaces do that they
+/// could not before, as confirmation lines. A server that is off, or not a
+/// Spaces server, has every guard on.
+pub(crate) fn spaces_widening(
+    stored: Option<&crate::config::McpServerConfig>,
+    next: &crate::config::McpServerConfig,
+) -> Vec<String> {
+    use crate::config::McpServerTransport;
+    let guards = |server: Option<&crate::config::McpServerConfig>| {
+        server
+            .filter(|server| server.enabled)
+            .and_then(spaces_guards)
+            .unwrap_or((true, true))
+    };
+    // A stored value comes back from Settings as a marker; it means the
+    // value is kept.
+    let mut next = next.clone();
+    if let (
+        Some(McpServerTransport::Stdio {
+            env: stored_env, ..
+        }),
+        McpServerTransport::Stdio { env, .. },
+    ) = (stored.map(|stored| &stored.transport), &mut next.transport)
+    {
+        for (key, value) in env.iter_mut() {
+            if value == crate::config::REDACTED {
+                if let Some(previous) = stored_env.get(key) {
+                    value.clone_from(previous);
+                }
+            }
+        }
+    }
+    let (was_read_only, kept_sign_ins) = guards(stored);
+    let (read_only, no_sign_ins) = guards(Some(&next));
+    let mut lines = Vec::new();
+    if was_read_only && !read_only {
+        lines.push(crate::i18n::t("dialog.desktopAppsSettings.spacesChanges"));
+    }
+    if kept_sign_ins && !no_sign_ins {
+        lines.push(crate::i18n::t("dialog.desktopAppsSettings.spacesSignIns"));
+    }
+    lines
+}
+
+/// Before an MCP server is saved: when the save gives agents in Cua Spaces
+/// more power (changes, or the user's agent sign-ins), ask natively first,
+/// as Desktop apps settings do. `stored_name` is the server being edited.
+pub(crate) async fn confirm_spaces_change<R: Runtime>(
+    app: &AppHandle<R>,
+    stored_name: Option<&str>,
+    next: &crate::config::McpServerConfig,
+) -> Result<(), String> {
+    // Only a Spaces server that runs can give more power.
+    if !next.enabled || spaces_guards(next).is_none() {
+        return Ok(());
+    }
+    let stored = match stored_name {
+        Some(name) => {
+            let name = name.to_string();
+            tauri::async_runtime::spawn_blocking(move || {
+                crate::config::read_config().ok().and_then(|config| {
+                    config
+                        .mcp_servers
+                        .into_iter()
+                        .find(|server| server.name == name)
+                })
+            })
+            .await
+            .map_err(blocking_error)?
+        }
+        None => None,
+    };
+    let lines = spaces_widening(stored.as_ref(), next);
+    if lines.is_empty() {
+        return Ok(());
+    }
+    let mut confirm = native_confirm_with(
+        app.clone(),
+        "dialog.desktopAppsSettings.spacesTitle",
+        "dialog.desktopAppsSettings.spacesMessage",
+    );
+    if confirm(lines).await {
+        Ok(())
+    } else {
+        Err(AppError::new("desktop_apps.change_declined").into())
+    }
+}
+
+/// `confirm_spaces_change` for turning a stored server on or off.
+pub(crate) async fn confirm_spaces_enabled<R: Runtime>(
+    app: &AppHandle<R>,
+    name: &str,
+    enabled: bool,
+) -> Result<(), String> {
+    if !enabled {
+        return Ok(());
+    }
+    let owned = name.to_string();
+    let stored = tauri::async_runtime::spawn_blocking(move || {
+        crate::config::read_config().ok().and_then(|config| {
+            config
+                .mcp_servers
+                .into_iter()
+                .find(|server| server.name == owned)
+        })
+    })
+    .await
+    .map_err(blocking_error)?;
+    let Some(stored) = stored else {
+        return Ok(());
+    };
+    let next = crate::config::McpServerConfig {
+        enabled: true,
+        ..stored
+    };
+    confirm_spaces_change(app, Some(name), &next).await
 }
 
 fn result_ok(result: &Value) -> (bool, Option<String>) {
@@ -708,7 +913,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .iter()
-                .any(|line| line == "App: Excel (com.microsoft.Excel)"),
+                .any(|line| line == "App: com.microsoft.Excel (Excel)"),
             "{asked:?}"
         );
         assert_eq!(crate::config::read_config().unwrap().cua_driver, widened);
@@ -931,9 +1136,9 @@ mod tests {
         assert_eq!(
             *events.lock().unwrap(),
             vec![
-                "ask App: Excel (com.microsoft.Excel)".to_string(),
+                "ask App: com.microsoft.Excel (Excel)".to_string(),
                 "answered".into(),
-                "ask App: Word (com.microsoft.Word)".into(),
+                "ask App: com.microsoft.Word (Word)".into(),
             ]
         );
         assert_eq!(state.settings(), word);
@@ -991,12 +1196,12 @@ mod tests {
         .unwrap();
         let asked = asked.lock().unwrap();
         assert_eq!(asked.len(), 2, "{asked:?}");
-        assert_eq!(asked[0], vec!["App: Excel (com.microsoft.Excel)"]);
+        assert_eq!(asked[0], vec!["App: com.microsoft.Excel (Excel)"]);
         assert_eq!(
             asked[1],
             vec![
-                "App: Zotero (org.zotero.zotero)".to_string(),
-                "App: Excel (com.microsoft.Excel)".into()
+                "App: org.zotero.zotero (Zotero)".to_string(),
+                "App: com.microsoft.Excel (Excel)".into()
             ]
         );
         assert_eq!(state.settings(), next);
@@ -1045,13 +1250,163 @@ mod tests {
             lines,
             vec![
                 "Desktop apps".to_string(),
-                "App: Excel (com.microsoft.Excel)".into(),
-                r"App: Stata (C:\Program Files\Stata 18\StataSE-64.exe)".into(),
+                "App: com.microsoft.Excel (Excel)".into(),
+                r"App: C:\Program Files\Stata 18\StataSE-64.exe (Stata)".into(),
                 "Website: https://a.org".into(),
                 "Your signed-in browser on https://a.org".into(),
                 "Cua scripts".into(),
             ]
         );
+    }
+
+    #[tokio::test]
+    #[allow(clippy::await_holding_lock)] // env-lock fixture, as in the other app tests
+    async fn adding_an_app_or_site_forgets_allow_for_this_chat() {
+        let _env = crate::paths::data_dir_env_lock();
+        let _data = DataDir::new();
+        let dir = tempfile::tempdir().unwrap();
+        let start = CuaDriverConfig {
+            enabled: true,
+            apps: vec![app("Zotero", "org.zotero.zotero")],
+            ..Default::default()
+        };
+        let state = state(start.clone(), dir.path());
+        lock(&state.grants).grant("chat:1", "desktop:click");
+        // Saving without widening keeps the grant.
+        apply_settings(
+            &state,
+            start.clone(),
+            Platform::Macos,
+            &Echo,
+            "oleafly",
+            None,
+            never_asked(),
+        )
+        .await
+        .unwrap();
+        assert!(lock(&state.grants).has("chat:1", "desktop:click"));
+        let widened = CuaDriverConfig {
+            apps: vec![
+                app("Zotero", "org.zotero.zotero"),
+                app("Excel", "com.microsoft.Excel"),
+            ],
+            ..start
+        };
+        let asked = Arc::new(Mutex::new(Vec::new()));
+        apply_settings(
+            &state,
+            widened,
+            Platform::Macos,
+            &Echo,
+            "oleafly",
+            None,
+            answering(asked, true),
+        )
+        .await
+        .unwrap();
+        assert!(!lock(&state.grants).has("chat:1", "desktop:click"));
+    }
+
+    #[test]
+    fn the_confirmation_writes_out_characters_that_could_hide_the_identity() {
+        let lines = widening_lines(&[Widening::App {
+            name: "Notes".into(),
+            identity: "/home/u/bin/evil\u{202e}txt.notes".into(),
+        }]);
+        assert_eq!(
+            lines,
+            vec![r"App: /home/u/bin/evil\u{202e}txt.notes (Notes)"]
+        );
+    }
+
+    #[test]
+    fn a_picked_file_is_named_in_the_error() {
+        assert_eq!(
+            picked_name(Path::new("/Users/a/Desktop/run.command")),
+            "run.command"
+        );
+        assert_eq!(
+            picked_name(Path::new("C:\\Tools\\setup\u{202e}.exe")),
+            if cfg!(windows) {
+                "setup.exe".to_string()
+            } else {
+                r"C:\Tools\setup.exe".to_string()
+            }
+        );
+        assert_eq!(picked_name(Path::new("/")), "the file you picked");
+    }
+
+    fn spaces(
+        args: &[&str],
+        env: &[(&str, &str)],
+        enabled: bool,
+    ) -> crate::config::McpServerConfig {
+        crate::config::McpServerConfig {
+            name: "Cua Spaces".into(),
+            enabled,
+            transport: crate::config::McpServerTransport::Stdio {
+                command: "/Users/a/.local/bin/cua".into(),
+                args: args.iter().map(|arg| (*arg).to_string()).collect(),
+                env: env
+                    .iter()
+                    .map(|(name, value)| ((*name).to_string(), (*value).to_string()))
+                    .collect(),
+            },
+        }
+    }
+
+    #[test]
+    fn spaces_changes_and_sign_ins_need_a_native_yes() {
+        let guarded = spaces(
+            &["daemon", "mcp", "--permissions", "spaces:readonly"],
+            &[(SPACES_CREDENTIALS_ENV, "none")],
+            true,
+        );
+        let open = spaces(&["daemon", "mcp"], &[], true);
+        // Connecting with both guards on asks nothing.
+        assert!(spaces_widening(None, &guarded).is_empty());
+        // Dropping either guard asks, whether added or edited.
+        assert_eq!(
+            spaces_widening(Some(&guarded), &open),
+            vec![
+                "Create and delete Spaces, and run commands in them".to_string(),
+                "Use your Claude Code or Codex sign-in inside a Space".into()
+            ]
+        );
+        assert_eq!(spaces_widening(None, &open).len(), 2);
+        let sign_ins_only = spaces(
+            &["daemon", "mcp", "--permissions", "spaces:readonly"],
+            &[],
+            true,
+        );
+        assert_eq!(
+            spaces_widening(Some(&guarded), &sign_ins_only),
+            vec!["Use your Claude Code or Codex sign-in inside a Space".to_string()]
+        );
+        // Narrowing, an unchanged open server and a stored value kept as a
+        // marker ask nothing.
+        assert!(spaces_widening(Some(&open), &guarded).is_empty());
+        assert!(spaces_widening(Some(&open), &open).is_empty());
+        let marker = spaces(
+            &["daemon", "mcp", "--permissions", "spaces:readonly"],
+            &[(SPACES_CREDENTIALS_ENV, crate::config::REDACTED)],
+            true,
+        );
+        assert!(spaces_widening(Some(&guarded), &marker).is_empty());
+        // A server that is off does nothing yet; turning it on is the change.
+        let off = spaces(&["daemon", "mcp"], &[], false);
+        assert!(spaces_widening(Some(&guarded), &off).is_empty());
+        assert_eq!(spaces_widening(Some(&off), &open).len(), 2);
+        // Other servers are not Spaces.
+        let other = crate::config::McpServerConfig {
+            transport: crate::config::McpServerTransport::Stdio {
+                command: "npx".into(),
+                args: vec!["daemon".into(), "mcp".into()],
+                env: Default::default(),
+            },
+            ..open
+        };
+        assert!(spaces_widening(None, &other).is_empty());
     }
 
     #[test]

@@ -19,6 +19,7 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   listenForResearchTaskDeltas: vi.fn(async () => () => {}),
   listenForResearchTaskEvents: vi.fn(async () => () => {}),
   loadResearchTaskEvents: vi.fn(),
+  loadResearchTaskEventsBefore: vi.fn(),
   retryResearchTask: vi.fn(),
   startResearchTask: vi.fn(),
   // Selecting a task tells the backend which task this window shows.
@@ -101,7 +102,7 @@ beforeEach(() => {
     tasks: [],
     selectedTaskId: null,
     events: [],
-    eventsNextSequence: null,
+    eventsPreviousSequence: null,
     loading: false,
     eventsLoading: false,
     action: null,
@@ -141,13 +142,16 @@ describe("research task panel state", () => {
     expect(useResearchTasksStore.getState()).toMatchObject({ detailTab: "output", detailOpen: true });
   });
 
-  it("opens the detail of the task that is already selected without reloading it", () => {
-    useResearchTasksStore.setState({ tasks: [task("a")], selectedTaskId: "a" });
-
+  it("opens the detail of the task it already shows without reloading it", async () => {
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
+    useResearchTasksStore.setState({ tasks: [task("a")], selectedTaskId: null });
     useResearchTasksStore.getState().openTaskDetail("a");
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().eventsLoading).toBe(false));
 
-    expect(useResearchTasksStore.getState()).toMatchObject({ detailOpen: true, detailTab: null });
-    expect(api.loadResearchTaskEvents).not.toHaveBeenCalled();
+    useResearchTasksStore.getState().openTaskDetail("a", "review");
+
+    expect(useResearchTasksStore.getState()).toMatchObject({ detailOpen: true, detailTab: "review" });
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenCalledOnce();
   });
 
   it("clears an error", () => {
@@ -216,6 +220,9 @@ describe("loading research tasks", () => {
 });
 
 describe("research task activity", () => {
+  // The transcript loads and streams only while the task dialog shows it.
+  beforeEach(() => useResearchTasksStore.setState({ detailOpen: true }));
+
   it("loads no activity for a task that has not run or is unknown", async () => {
     useResearchTasksStore.setState({ tasks: [task("draft", { executionGeneration: 0 })] });
 
@@ -227,12 +234,12 @@ describe("research task activity", () => {
 
     await useResearchTasksStore.getState().selectTask(null);
     expect(useResearchTasksStore.getState()).toMatchObject({ selectedTaskId: null, eventsLoading: false });
-    expect(api.loadResearchTaskEvents).not.toHaveBeenCalled();
+    expect(api.loadResearchTaskEventsBefore).not.toHaveBeenCalled();
   });
 
   it("shows why the activity could not load", async () => {
     useResearchTasksStore.setState({ tasks: [task("a")] });
-    vi.mocked(api.loadResearchTaskEvents).mockRejectedValue(new Error("log missing"));
+    vi.mocked(api.loadResearchTaskEventsBefore).mockRejectedValue(new Error("log missing"));
 
     await useResearchTasksStore.getState().selectTask("a");
 
@@ -242,7 +249,7 @@ describe("research task activity", () => {
   it("drops an activity failure for a task that is no longer selected", async () => {
     useResearchTasksStore.setState({ tasks: [task("a"), task("b")] });
     let fail: (error: Error) => void = () => {};
-    vi.mocked(api.loadResearchTaskEvents).mockReturnValueOnce(new Promise((_resolve, reject) => (fail = reject)));
+    vi.mocked(api.loadResearchTaskEventsBefore).mockReturnValueOnce(new Promise((_resolve, reject) => (fail = reject)));
 
     const pending = useResearchTasksStore.getState().selectTask("a");
     useResearchTasksStore.setState({ selectedTaskId: "b" });
@@ -252,36 +259,42 @@ describe("research task activity", () => {
     expect(useResearchTasksStore.getState().error).toBeNull();
   });
 
-  it("loads older activity pages after the first one", async () => {
+  it("loads the newest activity first and older pages before it", async () => {
     useResearchTasksStore.setState({ tasks: [task("a")] });
-    vi.mocked(api.loadResearchTaskEvents)
-      .mockResolvedValueOnce({ events: [event("a", 3), event("a", 4)], nextSequence: 3 })
-      .mockResolvedValueOnce({ events: [event("a", 1), event("a", 2), event("a", 9, 2)], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore)
+      .mockResolvedValueOnce({ events: [event("a", 3), event("a", 4)], nextSequence: null, previousSequence: 3 })
+      .mockResolvedValueOnce({
+        events: [event("a", 1), event("a", 2), event("a", 9, 2)],
+        nextSequence: null,
+        previousSequence: null,
+      });
 
     await useResearchTasksStore.getState().selectTask("a");
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenLastCalledWith("a", 1, api.NEWEST_EVENTS);
+    expect(useResearchTasksStore.getState().eventsPreviousSequence).toBe(3);
     await useResearchTasksStore.getState().loadMoreEvents();
 
-    expect(api.loadResearchTaskEvents).toHaveBeenLastCalledWith("a", 1, 3);
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenLastCalledWith("a", 1, 3);
     expect(useResearchTasksStore.getState().events.map((e) => e.sequence)).toEqual([1, 2, 3, 4]);
-    expect(useResearchTasksStore.getState()).toMatchObject({ eventsNextSequence: null, eventsLoading: false });
+    expect(useResearchTasksStore.getState()).toMatchObject({ eventsPreviousSequence: null, eventsLoading: false });
 
     await useResearchTasksStore.getState().loadMoreEvents();
-    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(2);
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenCalledTimes(2);
   });
 
   it("loads no older pages while loading or without a selected task", async () => {
     await useResearchTasksStore.getState().loadMoreEvents();
-    useResearchTasksStore.setState({ selectedTaskId: "gone", eventsNextSequence: 2 });
+    useResearchTasksStore.setState({ selectedTaskId: "gone", eventsPreviousSequence: 2 });
     await useResearchTasksStore.getState().loadMoreEvents();
     useResearchTasksStore.setState({ tasks: [task("gone")], eventsLoading: true });
     await useResearchTasksStore.getState().loadMoreEvents();
 
-    expect(api.loadResearchTaskEvents).not.toHaveBeenCalled();
+    expect(api.loadResearchTaskEventsBefore).not.toHaveBeenCalled();
   });
 
   it("shows why an older activity page could not load", async () => {
-    useResearchTasksStore.setState({ tasks: [task("a")], selectedTaskId: "a", eventsNextSequence: 5 });
-    vi.mocked(api.loadResearchTaskEvents).mockRejectedValue(new Error("page lost"));
+    useResearchTasksStore.setState({ tasks: [task("a")], selectedTaskId: "a", eventsPreviousSequence: 5 });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockRejectedValue(new Error("page lost"));
 
     await useResearchTasksStore.getState().loadMoreEvents();
 
@@ -289,9 +302,9 @@ describe("research task activity", () => {
   });
 
   it("drops an older page that arrives after the selection changed", async () => {
-    useResearchTasksStore.setState({ tasks: [task("a"), task("b")], selectedTaskId: "a", eventsNextSequence: 5 });
+    useResearchTasksStore.setState({ tasks: [task("a"), task("b")], selectedTaskId: "a", eventsPreviousSequence: 5 });
     let resolve: (page: { events: TaskTranscriptEvent[]; nextSequence: number | null }) => void = () => {};
-    vi.mocked(api.loadResearchTaskEvents).mockReturnValueOnce(new Promise((done) => (resolve = done)));
+    vi.mocked(api.loadResearchTaskEventsBefore).mockReturnValueOnce(new Promise((done) => (resolve = done)));
 
     const pending = useResearchTasksStore.getState().loadMoreEvents();
     useResearchTasksStore.setState({ selectedTaskId: "b" });
@@ -478,7 +491,7 @@ describe("research task subscriptions", () => {
       onEvent = handler;
       return unlistenEvents;
     });
-    useResearchTasksStore.setState({ tasks: [task("a")], selectedTaskId: "a" });
+    useResearchTasksStore.setState({ tasks: [task("a")], selectedTaskId: "a", detailOpen: true });
 
     const unmount = await mountResearchTaskSubscriptions();
     onTask(task("b", { createdAt: 2 }));
@@ -504,6 +517,7 @@ describe("research task subscriptions", () => {
     useResearchTasksStore.setState({
       tasks: [task("a")],
       selectedTaskId: "a",
+      detailOpen: true,
       events: [{ taskId: "a", executionGeneration: 1, sequence: 1, event: { kind: "text", text: "Read" }, createdAt: 1 }],
     });
 
@@ -621,11 +635,10 @@ describe("refresh and the open task's dialog", () => {
   it("clears the selection and closes the dialog when the selected task vanished", async () => {
     const kept = task("kept");
     const gone = task("gone");
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [event("gone", 1)], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [event("gone", 1)], nextSequence: null });
     useResearchTasksStore.setState({ tasks: [kept, gone] });
-    await useResearchTasksStore.getState().selectTask("gone");
     useResearchTasksStore.getState().openTaskDetail("gone", "review");
-    expect(useResearchTasksStore.getState().events).toHaveLength(1);
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(1));
     vi.mocked(api.listResearchTasks).mockResolvedValue([kept]);
 
     await useResearchTasksStore.getState().refresh();
@@ -635,36 +648,36 @@ describe("refresh and the open task's dialog", () => {
       detailOpen: false,
       detailTab: null,
       events: [],
-      eventsNextSequence: null,
+      eventsPreviousSequence: null,
     });
     expect(api.watchResearchTask).toHaveBeenLastCalledWith(null);
   });
 
   it("stops watching when the dialog closes and loads the task again when it opens", async () => {
     useResearchTasksStore.setState({ tasks: [task("a")] });
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [event("a", 1)], nextSequence: null });
-    await useResearchTasksStore.getState().selectTask("a");
-    useResearchTasksStore.getState().setDetailOpen(true);
-    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(1);
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [event("a", 1)], nextSequence: null });
+    useResearchTasksStore.getState().openTaskDetail("a");
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(1));
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenCalledTimes(1);
 
     useResearchTasksStore.getState().setDetailOpen(false);
     expect(api.watchResearchTask).toHaveBeenLastCalledWith(null);
 
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({
       events: [event("a", 1), event("a", 2)],
       nextSequence: null,
     });
     useResearchTasksStore.getState().openTaskDetail("a", "activity");
     await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(2));
     expect(api.watchResearchTask).toHaveBeenLastCalledWith("a");
-    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(2);
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenCalledTimes(2);
   });
 
   it("stops watching the old project's task when another project opens", async () => {
     useResearchTasksStore.setState({ tasks: [task("a")] });
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
     vi.mocked(api.listResearchTasks).mockResolvedValue([]);
-    await useResearchTasksStore.getState().selectTask("a");
+    useResearchTasksStore.getState().openTaskDetail("a");
     expect(api.watchResearchTask).toHaveBeenLastCalledWith("a");
 
     await useResearchTasksStore.getState().bindProject("other");
@@ -672,64 +685,85 @@ describe("refresh and the open task's dialog", () => {
     expect(api.watchResearchTask).toHaveBeenLastCalledWith(null);
   });
 
-  it("loads the pages after the first while the dialog is open, so saved rows meet live ones", async () => {
-    useResearchTasksStore.setState({ tasks: [task("a")] });
-    vi.mocked(api.loadResearchTaskEvents).mockImplementation(async (_id, _generation, after) => {
-      if (after === undefined) return { events: [event("a", 1), event("a", 2)], nextSequence: 2 };
-      if (after === 2) return { events: [event("a", 3), event("a", 4)], nextSequence: 4 };
-      return { events: [event("a", 5)], nextSequence: null };
-    });
-
-    useResearchTasksStore.getState().openTaskDetail("a");
-    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(5));
-
-    expect(useResearchTasksStore.getState().events.map((row) => row.sequence)).toEqual([1, 2, 3, 4, 5]);
-    expect(useResearchTasksStore.getState().eventsNextSequence).toBeNull();
-    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(3);
-  });
-
-  it("stops catching up after a bounded number of pages and leaves the rest to Load more", async () => {
-    useResearchTasksStore.setState({ tasks: [task("a")] });
-    let next = 0;
-    vi.mocked(api.loadResearchTaskEvents).mockImplementation(async () => {
-      next += 1;
-      return { events: [event("a", next)], nextSequence: next };
-    });
-
-    useResearchTasksStore.getState().openTaskDetail("a");
-    await vi.waitFor(() => expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(10));
-    await Promise.resolve();
-
-    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(10);
-    expect(useResearchTasksStore.getState().eventsNextSequence).toBe(10);
-  });
-
-  it("loads only the first page while the dialog is closed", async () => {
-    useResearchTasksStore.setState({ tasks: [task("a")] });
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [event("a", 1)], nextSequence: 1 });
+  it("neither loads nor streams a task selected while no dialog shows it", async () => {
+    useResearchTasksStore.setState({ tasks: [task("a", { status: "running" })] });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [event("a", 1)], nextSequence: null });
 
     await useResearchTasksStore.getState().selectTask("a");
-    await Promise.resolve();
+    useResearchTasksStore.getState().receiveEvent(event("a", 2));
+    useResearchTasksStore.getState().receiveDelta({
+      taskId: "a",
+      executionGeneration: 1,
+      sequence: 3,
+      kind: "text",
+      append: "Reading",
+      createdAt: 3,
+    });
 
-    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(1);
-    // Opening the dialog then fills in the rest.
-    vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [event("a", 2)], nextSequence: null });
+    expect(api.loadResearchTaskEventsBefore).not.toHaveBeenCalled();
+    expect(api.watchResearchTask).not.toHaveBeenCalledWith("a");
+    expect(useResearchTasksStore.getState()).toMatchObject({ selectedTaskId: "a", events: [], eventsLoading: false });
+
+    // Opening the dialog watches the task and loads what it missed.
     useResearchTasksStore.getState().openTaskDetail("a");
-    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(2));
-    expect(useResearchTasksStore.getState().eventsNextSequence).toBeNull();
-    expect(useResearchTasksStore.getState().events.map((row) => row.sequence)).toEqual([1, 2]);
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(1));
+    expect(api.watchResearchTask).toHaveBeenLastCalledWith("a");
   });
 
-  it("stops catching up when the page it asked for fails", async () => {
+  it("doesn't watch the task again when a new run starts while the dialog is closed", async () => {
+    const running = task("a", { status: "running" });
+    useResearchTasksStore.setState({ tasks: [running] });
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
+    useResearchTasksStore.getState().openTaskDetail("a");
+    useResearchTasksStore.getState().setDetailOpen(false);
+    vi.mocked(api.watchResearchTask).mockClear();
+    vi.mocked(api.loadResearchTaskEventsBefore).mockClear();
+
+    useResearchTasksStore.getState().receiveTask({ ...running, executionGeneration: 2, updatedAt: 2 });
+    await Promise.resolve();
+
+    expect(api.watchResearchTask).not.toHaveBeenCalledWith("a");
+    expect(api.loadResearchTaskEventsBefore).not.toHaveBeenCalled();
+  });
+
+  it("loads the newest page first, so the latest activity shows and meets the live rows", async () => {
     useResearchTasksStore.setState({ tasks: [task("a")] });
-    vi.mocked(api.loadResearchTaskEvents)
-      .mockResolvedValueOnce({ events: [event("a", 1)], nextSequence: 1 })
+    vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({
+      events: [event("a", 3999), event("a", 4000)],
+      nextSequence: null,
+      previousSequence: 3999,
+    });
+
+    useResearchTasksStore.getState().openTaskDetail("a");
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(2));
+
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenCalledWith("a", 1, api.NEWEST_EVENTS);
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenCalledTimes(1);
+    expect(useResearchTasksStore.getState().eventsPreviousSequence).toBe(3999);
+  });
+
+  it("keeps where to page back from when an older page fails", async () => {
+    useResearchTasksStore.setState({ tasks: [task("a")] });
+    vi.mocked(api.loadResearchTaskEventsBefore)
+      .mockResolvedValueOnce({ events: [event("a", 5)], nextSequence: null, previousSequence: 5 })
       .mockRejectedValue(new Error("page lost"));
 
     useResearchTasksStore.getState().openTaskDetail("a");
-    await vi.waitFor(() => expect(useResearchTasksStore.getState().error).toBe("page lost"));
-    await Promise.resolve();
+    await vi.waitFor(() => expect(useResearchTasksStore.getState().events).toHaveLength(1));
+    await useResearchTasksStore.getState().loadMoreEvents();
 
-    expect(api.loadResearchTaskEvents).toHaveBeenCalledTimes(2);
+    expect(useResearchTasksStore.getState()).toMatchObject({ error: "page lost", eventsPreviousSequence: 5 });
+  });
+});
+
+describe("a reloaded page", () => {
+  it("tells the backend it watches no task, so the task the previous page watched stops streaming", async () => {
+    vi.resetModules();
+    const freshApi = await import("@/lib/research-tasks");
+    const { useResearchTasksStore: fresh } = await import("./research-tasks");
+
+    fresh.getState().setDetailOpen(false);
+
+    expect(freshApi.watchResearchTask).toHaveBeenCalledWith(null);
   });
 });

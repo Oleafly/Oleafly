@@ -81,10 +81,35 @@ export async function attachmentText(scope: string | null, sha256: string): Prom
 const OBJECT_URL_LIMIT = 48;
 const objectUrls = new Map<string, string>();
 const pendingObjectUrls = new Map<string, Promise<string>>();
+/** URLs shown somewhere now, by how many: the cache drops them but does not revoke them. */
+const heldObjectUrls = new Map<string, number>();
+/** Held URLs the cache dropped; revoked when the last holder lets go. */
+const droppedObjectUrls = new Set<string>();
+
+/**
+ * Keeps an object URL from `attachmentObjectUrl` valid until the returned
+ * function is called (an image on screen, a preview that may open).
+ */
+export function holdAttachmentObjectUrl(url: string): () => void {
+  heldObjectUrls.set(url, (heldObjectUrls.get(url) ?? 0) + 1);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    const count = (heldObjectUrls.get(url) ?? 1) - 1;
+    if (count > 0) {
+      heldObjectUrls.set(url, count);
+      return;
+    }
+    heldObjectUrls.delete(url);
+    if (droppedObjectUrls.delete(url)) URL.revokeObjectURL(url);
+  };
+}
 
 /**
  * An object URL for a stored file, for thumbnails and previews. The newest
- * 48 stay cached (the oldest is revoked); concurrent requests share one read.
+ * 48 stay cached (the oldest is revoked unless something still holds it);
+ * concurrent requests share one read.
  */
 export function attachmentObjectUrl(
   scope: string | null,
@@ -109,7 +134,8 @@ export function attachmentObjectUrl(
         if (oldest.done) break;
         const oldUrl = objectUrls.get(oldest.value);
         objectUrls.delete(oldest.value);
-        if (oldUrl) URL.revokeObjectURL(oldUrl);
+        if (oldUrl && heldObjectUrls.has(oldUrl)) droppedObjectUrls.add(oldUrl);
+        else if (oldUrl) URL.revokeObjectURL(oldUrl);
       }
       return url;
     })

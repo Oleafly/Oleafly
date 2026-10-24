@@ -206,6 +206,7 @@ paths it expects to change. Trust prompts are answered through
 | Fonts (Offline & Downloads) | download -> installed -> remove (hermetic assets dir) | 15 |
 | TinyTeX engine install | | 🔑 [net, ~100MB] |
 | Editor font size select | every option restyles CodeMirror live, restores | 32 |
+| Terminal appearance | font size and color theme apply to the open terminal (size, theme and background), then restore | 72 |
 | Dark-mode toggle in settings | flips the real theme | 32 |
 | Reset to defaults, app-font/accent selects | | — (cosmetic) |
 

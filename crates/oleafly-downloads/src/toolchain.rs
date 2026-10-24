@@ -611,14 +611,30 @@ impl VersionLock {
         let file = options
             .open(&path)
             .map_err(|error| filesystem_error("open", &path, error))?;
-        fs4::FileExt::try_lock(&file).map_err(|_| {
-            ToolchainInstallError::new(
-                ToolchainInstallErrorKind::AlreadyInstalling,
-                "Another Oleafly window is already installing this version.",
-            )
-        })?;
+        // Only a lock someone holds is another install; a folder that can't
+        // lock (a share without lock support) is a failed install, not one
+        // to wait for forever.
+        fs4::FileExt::try_lock(&file).map_err(|error| lock_error(&path, error))?;
         Ok(Self { file })
     }
+}
+
+fn lock_error(path: &Path, error: fs4::TryLockError) -> ToolchainInstallError {
+    match error {
+        fs4::TryLockError::WouldBlock => ToolchainInstallError::new(
+            ToolchainInstallErrorKind::AlreadyInstalling,
+            "Another Oleafly window is already installing this version.",
+        ),
+        fs4::TryLockError::Error(error) => filesystem_error("lock", path, error),
+    }
+}
+
+/// The slowest download that still finishes: the whole-request limit
+/// grows with the archive (a stalled one fails at the stall timeout anyway).
+const SLOWEST_RATE: u64 = 8 * 1024;
+
+fn request_limit(total: Duration, archive_size: u64) -> Duration {
+    total.max(Duration::from_secs(archive_size / SLOWEST_RATE))
 }
 
 impl Drop for VersionLock {
@@ -831,7 +847,7 @@ fn http_client(plan: &InstallPlan) -> Result<reqwest::Client, ToolchainInstallEr
     let builder = reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .connect_timeout(plan.timeouts.connect)
-        .timeout(plan.timeouts.total)
+        .timeout(request_limit(plan.timeouts.total, plan.archive_size))
         .redirect(policy);
     let builder = if cfg!(test) {
         builder.no_proxy()
@@ -1522,6 +1538,27 @@ mod tests {
             member: None,
             binary,
         }
+    }
+
+    #[test]
+    fn only_a_held_lock_reads_as_another_install() {
+        let path = Path::new("/data/staging/typst-0.13.1.lock");
+        assert_eq!(
+            lock_error(path, fs4::TryLockError::WouldBlock).kind(),
+            ToolchainInstallErrorKind::AlreadyInstalling
+        );
+        let unsupported = std::io::Error::new(std::io::ErrorKind::Unsupported, "no locks here");
+        let failed = lock_error(path, fs4::TryLockError::Error(unsupported));
+        assert_eq!(failed.kind(), ToolchainInstallErrorKind::InstallFailed);
+        assert!(failed.message().contains("no locks here"));
+    }
+
+    #[test]
+    fn a_large_archive_gets_time_to_arrive_on_a_slow_link() {
+        let total = Duration::from_secs(30 * 60);
+        assert_eq!(request_limit(total, 1024), total);
+        // 58 MB at 8 KiB/s is about two hours.
+        assert!(request_limit(total, 58_000_000) > Duration::from_secs(7_000));
     }
 
     fn quick_timeouts() -> DownloadTimeouts {

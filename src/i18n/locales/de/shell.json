@@ -560,6 +560,9 @@
     "title": "Zurück zur Bibliothek",
     "tooltip": "Zurück zur Projektbibliothek"
   },
+  "importDestination": {
+    "scansGoTo": "Scans werden an {{provider}} gesendet"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -673,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Ihre ungespeicherten Änderungen bleiben geöffnet. Bleiben Sie, um das Problem zu lösen, oder beenden Sie trotzdem und verlieren Sie sie.",
+      "descriptionReload": "{{reason}} Ihre ungespeicherten Änderungen bleiben geöffnet. Bleiben Sie, um das Problem zu lösen, oder laden Sie trotzdem neu und verlieren Sie sie.",
       "descriptionRestart": "{{reason}} Ihre ungespeicherten Änderungen bleiben geöffnet. Bleiben Sie, um das Problem zu lösen, oder starten Sie trotzdem neu und verlieren Sie sie.",
       "quitAnyway": "Trotzdem beenden",
+      "reloadAnyway": "Trotzdem neu laden",
       "restartAnyway": "Trotzdem neu starten",
       "stay": "Bleiben",
       "title": "Einige Dateien konnten nicht gespeichert werden"

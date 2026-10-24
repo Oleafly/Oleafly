@@ -27,6 +27,9 @@ const QUIT_ITEM: &str = "quit_app";
 const SETTINGS_ITEM: &str = "open_settings";
 const SETTINGS_ACCELERATOR: &str = "CmdOrCtrl+,";
 const SETTINGS_EVENT: &str = "settings:open";
+/// Asks the main window to save its files and check for running terminal
+/// programs; it then reloads every view through the `reload_views` command.
+const RELOAD_VIEWS_EVENT: &str = "menu://reload-views";
 const TOGGLE_TERMINAL_ITEM: &str = "toggle_terminal";
 const TOGGLE_ZEN_ITEM: &str = "toggle_zen_mode";
 
@@ -491,7 +494,13 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
             let _ = app.emit_to("main", SETTINGS_EVENT, ());
         }
         "reload_views" => {
-            reload_views(app);
+            // A reload stops the main window's terminal sessions, so the main
+            // window asks first. Without one there is nothing to ask about.
+            if app.get_window("main").is_some() {
+                let _ = app.emit_to("main", RELOAD_VIEWS_EVENT, ());
+            } else {
+                reload_views(app);
+            }
         }
         "restart_app" => {
             // A restart tears the webview down exactly like a quit, so it

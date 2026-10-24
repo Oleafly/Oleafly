@@ -1,6 +1,7 @@
 import { FileText, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ComposerAttachment } from "@/components/ai/composer/types";
+import type { AttachmentKind, ComposerAttachment } from "@/components/ai/composer/types";
+import { useAttachmentUrl } from "@/components/ai/composer/use-attachment-url";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -11,11 +12,24 @@ import { cn } from "@/lib/utils";
 // intake module loads lazily, so the number is repeated here).
 const PDF_PAGE_LIMIT = 100;
 
+/** A chip; a draft's attachment also says where its file is stored. */
+type ChipItem = ComposerAttachment & { kind?: AttachmentKind; sha256?: string; scope?: string | null };
+
+/** A stored image without a thumbnail (a sent message put back to edit), read from the store. */
+function StoredThumbnail({ item, sha256 }: Readonly<{ item: ChipItem; sha256: string }>) {
+  const { url } = useAttachmentUrl(item.scope ?? null, { sha256, mime: item.mime });
+  if (!url) return <FileText className="size-4 shrink-0 text-muted-foreground" />;
+  return <img src={url} alt="" className="size-6 shrink-0 rounded object-cover" />;
+}
+
 // The spinner while it processes, then the thumbnail, then a file icon.
-function AttachmentLeading({ item }: Readonly<{ item: ComposerAttachment }>) {
+function AttachmentLeading({ item }: Readonly<{ item: ChipItem }>) {
   if (item.status === "processing") return <Spinner size="xs" aria-hidden="true" />;
   if (item.thumbnailUrl && item.status === "ready") {
     return <img src={item.thumbnailUrl} alt="" className="size-6 shrink-0 rounded object-cover" />;
+  }
+  if (item.status === "ready" && item.kind === "image" && item.sha256) {
+    return <StoredThumbnail item={item} sha256={item.sha256} />;
   }
   return <FileText className="size-4 shrink-0 text-muted-foreground" />;
 }
@@ -25,7 +39,7 @@ export function AttachmentChips({
   items,
   onRemove,
 }: Readonly<{
-  items: readonly ComposerAttachment[];
+  items: readonly ChipItem[];
   onRemove?: (id: string) => void;
 }>) {
   const { t } = useTranslation(["common", "ai"]);

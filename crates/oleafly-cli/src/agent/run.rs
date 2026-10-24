@@ -43,6 +43,8 @@ use crate::engine::{open_project, ProjectOrigin};
 const MAX_PROMPT_BYTES: usize = 1 << 20;
 /// How long the end of a run waits for a tool that is still running.
 const FINISH_WAIT: Duration = Duration::from_secs(10);
+/// How long a second Ctrl+C waits for the sandbox release before quitting.
+const QUIT_RELEASE_WAIT: Duration = Duration::from_secs(5);
 /// Streamed text is held back until a space (so a key split across two
 /// pieces is still found), but never more than this.
 const MAX_HELD_TEXT: usize = 8 * 1024;
@@ -101,6 +103,8 @@ pub struct AgentRunRequest {
     pub mcp: McpSelection,
     pub keep_workspace: bool,
     pub run_id: String,
+    /// `--unsandboxed-commands`.
+    pub unsandboxed_commands: bool,
 }
 
 /// Replaces every occurrence of a secret with `[redacted]`.
@@ -275,6 +279,7 @@ pub async fn agent_run(ctx: &Context, args: AgentRunArgs) -> Result<Outcome, Cli
         mcp,
         keep_workspace: args.keep_workspace,
         run_id: new_run_id(),
+        unsandboxed_commands: args.unsandboxed_commands,
     };
     execute(ctx, request, &env_lookup).await
 }
@@ -299,6 +304,7 @@ pub async fn ask(ctx: &Context, args: AskArgs) -> Result<Outcome, CliError> {
         },
         keep_workspace: false,
         run_id: new_run_id(),
+        unsandboxed_commands: false,
     };
     execute(ctx, request, &env_lookup).await
 }
@@ -321,9 +327,24 @@ pub async fn agent_apply(ctx: &Context, args: AgentApplyArgs) -> Result<Outcome,
     let project = project_folder(ctx)?;
     let review = args.review_dir.clone();
     let dry_run = args.dry_run;
-    let changes = tokio::task::spawn_blocking(move || apply_review(&review, &project, dry_run))
-        .await
-        .map_err(|_| CliError::internal("The review could not be applied."))??;
+    // Writing the files can't be stopped halfway without leaving the
+    // project half changed, so Ctrl+C waits for it and the result says what
+    // was applied (rather than "Stopped." over an apply that went on).
+    let work = tokio::task::spawn_blocking(move || apply_review(&review, &project, dry_run));
+    tokio::pin!(work);
+    let mut told = false;
+    let applied = loop {
+        tokio::select! {
+            applied = &mut work => break applied,
+            () = crate::daemon::serve::termination(), if !told => {
+                told = true;
+                if !ctx.quiet() && !ctx.json() {
+                    crate::human::note("Finishing the apply: stopping now would leave the project half changed.");
+                }
+            }
+        }
+    };
+    let changes = applied.map_err(|_| CliError::internal("The review could not be applied."))??;
     if !ctx.quiet() {
         let count = changes.len();
         let noun = if count == 1 { "change" } else { "changes" };
@@ -410,6 +431,14 @@ struct Printer<'a> {
     last_usage: (Option<u32>, Option<u32>),
 }
 
+/// An event's fields with every secret replaced: the long values are
+/// redacted whole before the event cuts them, so a key across the cut is
+/// still found.
+fn redacted_fields(event: &RunEvent, redactor: &Redactor) -> Value {
+    let redacted = event.clone().redacted(&|text| redactor.text(text));
+    redactor.value(redacted.fields())
+}
+
 fn tool_line(name: &str, arguments: &str) -> String {
     let parsed: Value = serde_json::from_str(arguments).unwrap_or(Value::Null);
     let detail = ["path", "command", "query", "id", "url", "doi"]
@@ -442,11 +471,15 @@ impl<'a> Printer<'a> {
     fn event(&self, event: &RunEvent) {
         let _ = self
             .ctx
-            .event(event.name(), self.redactor.value(event.fields()));
+            .event(event.name(), redacted_fields(event, self.redactor));
     }
 
+    /// Model text can echo pages, MCP results or project files, so escape
+    /// sequences in it are shown, not acted on (as `human::plain` does for
+    /// everything else).
     fn print_text(&mut self, text: &str) {
         let text = self.redactor.text(text);
+        let text = crate::human::plain(&text);
         let mut stdout = std::io::stdout().lock();
         let _ = stdout.write_all(text.as_bytes());
         let _ = stdout.flush();
@@ -679,8 +712,13 @@ fn run_secrets(
 
 /// Cancels the run on Ctrl+C, and on Unix on a closed terminal (SIGHUP) or a
 /// stop from a supervisor (SIGTERM): the commands the run started die with
-/// it. A second signal quits at once.
-fn watch_for_interrupt(cancel: CancellationToken, quiet: bool) -> tokio::task::JoinHandle<()> {
+/// it. A second signal quits at once, after a bounded try at releasing what
+/// the sandbox holds for the run's commands (`owner`; nothing else would).
+fn watch_for_interrupt(
+    cancel: CancellationToken,
+    quiet: bool,
+    owner: Option<String>,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         crate::daemon::serve::termination().await;
         cancel.cancel();
@@ -688,6 +726,10 @@ fn watch_for_interrupt(cancel: CancellationToken, quiet: bool) -> tokio::task::J
             crate::human::note("Stopping. Press Ctrl+C again to quit at once.");
         }
         crate::daemon::serve::termination().await;
+        if let Some(owner) = owner {
+            let release = tokio::task::spawn_blocking(move || oleafly_sandbox::release(&owner));
+            let _ = tokio::time::timeout(QUIT_RELEASE_WAIT, release).await;
+        }
         std::process::exit(Exit::Interrupted as i32);
     })
 }
@@ -785,142 +827,195 @@ pub async fn execute(
     // The run's commands run for an owner of their own (on Windows a
     // profile of their own); it is released when the run ends, however it
     // ends (an error, Ctrl+C, a finished report).
-    let _sandbox_owner = run_policy
+    // Grants of runs that were killed (a second Ctrl+C, a crash) have no
+    // one left to take them off; a run with commands sweeps them first
+    // (Windows; nothing to do elsewhere). Research tasks' are the app's.
+    if run_policy.allow.commands {
+        let _ = tokio::task::spawn_blocking(oleafly_sandbox::release_abandoned).await;
+    }
+    let sandbox_owner = run_policy
         .allow
         .commands
         .then(|| OwnerRelease::new(&request.run_id));
-
-    let config = match data_root.clone() {
-        Some(root) => tokio::task::spawn_blocking(move || desktop_config::load(&root))
-            .await
-            .map_err(|_| CliError::internal("Oleafly's settings could not be read."))??,
-        None => DesktopConfig::empty(),
-    };
-    let resolved: ResolvedProvider = resolve(&policy_data, &config, &request.choice, env)?;
-    for warning in &resolved.warnings {
-        ctx.warn("agent.model_not_enabled", warning.clone());
-    }
-    let secrets = run_secrets(&config, &resolved, env);
-    let redactor = Arc::new(Redactor::new(&secrets));
-    let provider = resolved.resolved.provider_id.clone();
-    let model = resolved.resolved.model_id.clone();
-    let credential_source = resolved.source.label();
-
-    let cancel = CancellationToken::new();
-    let interrupt = watch_for_interrupt(cancel.clone(), ctx.json() || ctx.quiet());
-    let result = run_with(
-        ctx,
-        &request,
-        &run_policy,
-        &project,
-        data_root.as_deref(),
-        project_id.as_deref(),
-        main_document.as_deref(),
-        config,
-        resolved,
-        &redactor,
-        &cancel,
-    )
-    .await;
-    interrupt.abort();
-    let RunEnd {
-        result,
-        tracker,
-        workspace,
-        hub,
-        tool_calls,
-        tool_warnings,
-        price,
-    } = match result {
-        Ok(end) => end,
-        Err(error) => return Err(error),
-    };
-    // Ctrl+C before the run ended; then stop whatever a tool still runs.
-    let interrupted = cancel.is_cancelled();
-    cancel.cancel();
-    for (code, message) in tool_warnings {
-        ctx.warn(code, message);
-    }
-    if let Some(hub) = &hub {
-        hub.shutdown().await;
-    }
-    drop(hub);
-    let keep = request.keep_workspace;
-    let set = tokio::task::spawn_blocking(move || {
-        AgentWorkspace::finish_shared(workspace, keep, FINISH_WAIT)
-    })
-    .await
-    .map_err(|_| CliError::internal("The run's changes could not be collected."))??;
-    for warning in &set.warnings {
-        ctx.warn(workspace_warning_code(warning), warning.clone());
-    }
-    let mut review_dir = set.review_dir.clone();
-    if set.changes.is_empty() && !request.keep_workspace {
-        if let Some(dir) = review_dir.take() {
-            drop_empty_review(&dir);
+    let owner_name = sandbox_owner.as_ref().map(|owner| owner.owner().to_owned());
+    let reported: Result<Outcome, CliError> = async {
+        let config = match data_root.clone() {
+            Some(root) => tokio::task::spawn_blocking(move || desktop_config::load(&root))
+                .await
+                .map_err(|_| CliError::internal("Oleafly's settings could not be read."))??,
+            None => DesktopConfig::empty(),
+        };
+        let resolved: ResolvedProvider = resolve(&policy_data, &config, &request.choice, env)?;
+        for warning in &resolved.warnings {
+            ctx.warn("agent.model_not_enabled", warning.clone());
         }
-    }
+        let secrets = run_secrets(&config, &resolved, env);
+        let redactor = Arc::new(Redactor::new(&secrets));
+        let provider = resolved.resolved.provider_id.clone();
+        let model = resolved.resolved.model_id.clone();
+        let credential_source = resolved.source.label();
 
-    let stop = classify(&result, interrupted, tracker.steps, &provider, &redactor);
-    let cost = price.map(|price| price.cost(&tracker.usage));
-    if tracker.usage_seen {
-        if let Some(root) = &data_root {
-            let event = UsageSpoolEvent {
-                id: usage_spool::event_id("cli-agent"),
-                source: "cli-agent".into(),
-                task_id: None,
-                project_id: project_id.clone(),
-                project_path: Some(project.to_string_lossy().into_owned()),
-                provider: provider.clone(),
-                model: model.clone(),
-                input_tokens: (tracker.usage.input_known != Some(false))
-                    .then_some(tracker.usage.input),
-                output_tokens: (tracker.usage.output_known != Some(false))
-                    .then_some(tracker.usage.output),
-                cache_read_tokens: tracker.usage.cache_read,
-                cache_write_tokens: tracker.usage.cache_write,
-                cost_usd: cost,
-                status: spool_status(stop.as_ref().ok().copied()).into(),
-                at: now_ms(),
-            };
-            record_usage(ctx, root, event).await;
-        }
-    }
-    let stop = stop?;
-    let text = match &result {
-        Ok(outcome) if !outcome.text.trim().is_empty() => outcome.text.clone(),
-        _ => tracker.text(),
-    };
-    let report = AgentRunReport {
-        run_id: request.run_id.clone(),
-        mode: set.mode,
-        review_dir: review_dir.clone(),
-        provider,
-        model,
-        credential_source,
-        stop_reason: stop,
-        steps: tracker.steps,
-        tool_calls,
-        text: redactor.text(&text),
-        changes: set.changes.clone(),
-        usage: usage_summary(&tracker.usage, tracker.usage_seen, cost),
-    };
-    warn_if_cut_short(ctx, stop, tracker.steps, request.timeout);
-    if !ctx.json() && !ctx.quiet() {
-        say_changes(
+        let cancel = CancellationToken::new();
+        let interrupt = watch_for_interrupt(cancel.clone(), ctx.json() || ctx.quiet(), owner_name);
+        let result = run_with(
             ctx,
-            review_dir.as_deref(),
-            &run_policy.mode,
-            set.changes.len(),
-        );
+            &request,
+            &run_policy,
+            &project,
+            data_root.as_deref(),
+            project_id.as_deref(),
+            main_document.as_deref(),
+            config,
+            resolved,
+            &redactor,
+            &cancel,
+        )
+        .await;
+        interrupt.abort();
+        let RunEnd {
+            result,
+            tracker,
+            workspace,
+            hub,
+            tool_calls,
+            tool_warnings,
+            price,
+        } = match result {
+            Ok(end) => end,
+            Err(error) => return Err(error),
+        };
+        // Ctrl+C before the run ended; then stop whatever a tool still runs.
+        let interrupted = cancel.is_cancelled();
+        cancel.cancel();
+        for (code, message) in tool_warnings {
+            ctx.warn(code, message);
+        }
+        if let Some(hub) = &hub {
+            hub.shutdown().await;
+        }
+        drop(hub);
+        let keep = request.keep_workspace;
+        let set = tokio::task::spawn_blocking(move || {
+            AgentWorkspace::finish_shared(workspace, keep, FINISH_WAIT)
+        })
+        .await
+        .map_err(|_| CliError::internal("The run's changes could not be collected."))??;
+        for warning in &set.warnings {
+            ctx.warn(workspace_warning_code(warning), warning.clone());
+        }
+        let mut review_dir = set.review_dir.clone();
+        if set.changes.is_empty() && !request.keep_workspace {
+            if let Some(dir) = review_dir.take() {
+                drop_empty_review(&dir);
+            }
+        }
+
+        let stop = classify(&result, interrupted, tracker.steps, &provider, &redactor);
+        let cost = price.map(|price| price.cost(&tracker.usage));
+        if tracker.usage_seen {
+            if let Some(root) = &data_root {
+                let event = UsageSpoolEvent {
+                    id: usage_spool::event_id("cli-agent"),
+                    source: "cli-agent".into(),
+                    task_id: None,
+                    project_id: project_id.clone(),
+                    project_path: Some(project.to_string_lossy().into_owned()),
+                    provider: provider.clone(),
+                    model: model.clone(),
+                    input_tokens: (tracker.usage.input_known != Some(false))
+                        .then_some(tracker.usage.input),
+                    output_tokens: (tracker.usage.output_known != Some(false))
+                        .then_some(tracker.usage.output),
+                    cache_read_tokens: tracker.usage.cache_read,
+                    cache_write_tokens: tracker.usage.cache_write,
+                    cost_usd: cost,
+                    status: spool_status(stop.as_ref().ok().copied()).into(),
+                    at: now_ms(),
+                };
+                record_usage(ctx, root, event).await;
+            }
+        }
+        let stop = match stop {
+            Ok(stop) => stop,
+            // The run's work is kept: the error says where it is.
+            Err(error) => {
+                if !ctx.json() && !ctx.quiet() {
+                    say_changes(
+                        ctx,
+                        review_dir.as_deref(),
+                        &run_policy.mode,
+                        set.changes.len(),
+                    );
+                }
+                let details = json!({
+                    "runId": request.run_id,
+                    "mode": set.mode,
+                    "reviewDir": review_dir,
+                    "changes": set.changes,
+                });
+                return Err(error.details(redactor.value(details)));
+            }
+        };
+        let text = match &result {
+            Ok(outcome) if !outcome.text.trim().is_empty() => outcome.text.clone(),
+            _ => tracker.text(),
+        };
+        let report = AgentRunReport {
+            run_id: request.run_id.clone(),
+            mode: set.mode,
+            review_dir: review_dir.clone(),
+            provider,
+            model,
+            credential_source,
+            stop_reason: stop,
+            steps: tracker.steps,
+            tool_calls,
+            text: redactor.text(&text),
+            changes: set.changes.clone(),
+            usage: usage_summary(&tracker.usage, tracker.usage_seen, cost),
+        };
+        warn_if_cut_short(ctx, stop, tracker.steps, request.timeout);
+        if !ctx.json() && !ctx.quiet() {
+            say_changes(
+                ctx,
+                review_dir.as_deref(),
+                &run_policy.mode,
+                set.changes.len(),
+            );
+        }
+        let value =
+            json!({ "run": redactor.value(serde_json::to_value(&report).unwrap_or(Value::Null)) });
+        Ok(match stop {
+            StopKind::EndTurn => Outcome::success(value),
+            StopKind::StepLimit => Outcome::failure_with(
+                &CliError::new(
+                    ErrorKind::Limit,
+                    "agent.step_limit",
+                    format!("The agent stopped after {} steps.", tracker.steps),
+                ),
+                value,
+            ),
+            StopKind::Timeout => Outcome::failure_with(
+                &CliError::new(
+                    ErrorKind::Limit,
+                    "agent.timeout",
+                    format!(
+                        "The agent stopped after {} seconds.",
+                        request.timeout.as_secs()
+                    ),
+                ),
+                value,
+            ),
+            StopKind::Interrupted => Outcome::failure(Exit::Interrupted, value),
+        })
     }
-    let value =
-        json!({ "run": redactor.value(serde_json::to_value(&report).unwrap_or(Value::Null)) });
-    Ok(match stop {
-        StopKind::EndTurn => Outcome::success(value),
-        StopKind::StepLimit | StopKind::Timeout => Outcome::failure(Exit::Internal, value),
-        StopKind::Interrupted => Outcome::failure(Exit::Interrupted, value),
-    })
+    .await;
+    // What the sandbox holds for the run's commands goes before the command
+    // returns, off the async threads (on Windows it walks the folders).
+    if let Some(owner) = sandbox_owner {
+        owner.release_now(ctx).await;
+    }
+    reported
 }
 
 /// What the run left for the report.
@@ -985,16 +1080,27 @@ async fn run_with(
     // The user's MCP servers. A server that fails is a warning.
     let hub = if request.mcp != McpSelection::None && !config.mcp_servers.is_empty() {
         let secrets = secret_values(&config);
-        let (hub, warnings) = McpHub::connect(
+        let (hub, warnings) = McpHub::connect_for_run(
             &config.mcp_servers,
             run_policy,
             &request.mcp,
             &secrets,
+            workspace.work_root(),
             cancel,
         )
         .await;
         for warning in warnings {
             ctx.warn("agent.mcp", redactor.text(&warning));
+        }
+        if !run_policy.question && !hub.server_names().is_empty() {
+            ctx.warn(
+                "agent.mcp_outside_copy",
+                if run_policy.mode == WriteMode::Apply {
+                    "MCP tools act on whatever their server reaches, so changes they make aren't listed in this run's changes."
+                } else {
+                    "Only MCP tools that say they only read are offered: a server works on the real files, not on this run's copy."
+                },
+            );
         }
         Some(Arc::new(hub))
     } else {
@@ -1020,6 +1126,7 @@ async fn run_with(
         events: sink,
         last_build: Mutex::new(None),
         warned_unsandboxed: AtomicBool::new(false),
+        unsandboxed_commands: request.unsandboxed_commands,
         skills: Arc::new(skills),
         read_paths,
         secrets: Arc::new(StoreSecrets::from_config(&config)),
@@ -1159,6 +1266,26 @@ async fn run_with(
             "Using {} {}. {mode}",
             resolved.resolved.provider_id, resolved.resolved.model_id
         ));
+    }
+    // Where the sandbox can't hold commands, say so before the first one
+    // runs (or is refused), not after.
+    if run_policy.allow.commands {
+        let root = data_root.map(Path::to_path_buf);
+        let unavailable = tokio::task::spawn_blocking(move || {
+            super::tools::command::sandbox_unavailable(root.as_deref())
+        })
+        .await
+        .ok()
+        .flatten();
+        if let Some(reason) = unavailable {
+            let (code, message) = super::tools::command::unsandboxed_note(
+                &run_policy.mode,
+                request.unsandboxed_commands,
+                &reason,
+            );
+            tool_ctx.warned_unsandboxed.store(true, Ordering::Release);
+            ctx.warn(code, message);
+        }
     }
     let price = resolved.price;
     let run = oleafly_agent::run_agent_with_pipeline(
@@ -1349,6 +1476,25 @@ mod tests {
             classify(&Ok(RunOutcome::default()), false, 1, "openai", &redactor).unwrap(),
             StopKind::EndTurn
         );
+    }
+
+    #[test]
+    fn a_secret_across_the_event_cut_is_still_redacted() {
+        let secret = "sk-live-0123456789abcdef";
+        let redactor = Redactor::new(&[secret.into()]);
+        // The key starts just before the 4 KiB cut and ends after it.
+        let arguments = format!("{}{secret}{}", "a".repeat(4086), "b".repeat(100));
+        let fields = redacted_fields(
+            &RunEvent::ToolCall {
+                id: "1".into(),
+                name: "write_file".into(),
+                arguments,
+            },
+            &redactor,
+        );
+        let shown = fields["arguments"].as_str().unwrap();
+        assert!(!shown.contains("sk-live"), "{}", &shown[4080..]);
+        assert!(shown.ends_with("[redacted]") && fields["truncated"] == true);
     }
 
     #[test]

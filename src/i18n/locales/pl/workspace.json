@@ -204,6 +204,10 @@
     "closeRight": "Zamknij wszystkie po prawej",
     "closeTab": "Zamknij {{title}}",
     "color": "Kolor",
+    "dropRefused_one": "Nazwa tego pliku zawiera znak sterujący, więc terminal go nie wpisze.",
+    "dropRefused_few": "Nazwy {{count}} plików zawierają znaki sterujące, więc terminal ich nie wpisze.",
+    "dropRefused_many": "Nazwy {{count}} plików zawierają znaki sterujące, więc terminal ich nie wpisze.",
+    "dropRefused_other": "Nazwy {{count}} pliku zawierają znaki sterujące, więc terminal ich nie wpisze.",
     "errors": {
       "input": "Powłoka shell nie przyjęła danych wejściowych",
       "resize": "Nie udało się zmienić rozmiaru terminala",
@@ -244,6 +248,7 @@
       "many_other": "Programy nadal działają w {{count}} terminala.",
       "named": "{{process}} nadal działa w {{title}}.",
       "quit": "Zakończ",
+      "reload": "Wczytaj ponownie",
       "restart": "Uruchom ponownie",
       "switchProject": "Przełącz projekt",
       "titleMany": "Zatrzymać działające programy?",

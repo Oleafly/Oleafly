@@ -309,9 +309,22 @@ pub(crate) fn without_private_keys(args: &Value) -> Value {
     }
 }
 
-/// The `run_steps` arguments Oleafly sends: only the steps it showed, each
-/// in the shape the model used (`{tool, args}` or `{<tool>: args}`), so the
-/// driver runs exactly what the dialog listed. Other options are dropped.
+/// `args` without the keys the tool's `inputSchema` doesn't list, so nothing
+/// reaches the driver that the driver says it doesn't take. A schema with no
+/// `properties` object leaves the arguments as they are.
+pub(crate) fn schema_args(schema: &Value, args: Map<String, Value>) -> Map<String, Value> {
+    let Some(properties) = schema.get("properties").and_then(Value::as_object) else {
+        return args;
+    };
+    args.into_iter()
+        .filter(|(key, _)| properties.contains_key(key))
+        .collect()
+}
+
+/// The `run_steps` arguments Oleafly sends: the steps given (the ones the
+/// dialog listed), each in the shape the model used (`{tool, args}` or
+/// `{<tool>: args}`), so the driver runs exactly what the dialog listed.
+/// Other options are dropped.
 pub(crate) fn steps_payload(args: &Value, steps: &[Step]) -> Value {
     let originals = args.get("steps").and_then(Value::as_array);
     let items: Vec<Value> = steps
@@ -332,8 +345,15 @@ pub(crate) fn steps_payload(args: &Value, steps: &[Step]) -> Value {
     json!({ "steps": items })
 }
 
+/// Element handles are how the driver names a button or a field, not
+/// secrets: the dialog shows them.
+const ELEMENT_HANDLES: &[&str] = &["element_token"];
+
 fn secret_key(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
+    if ELEMENT_HANDLES.contains(&lower.as_str()) {
+        return false;
+    }
     [
         "password",
         "passwd",
@@ -795,6 +815,32 @@ mod tests {
         assert!(listed.contains("[6 more]"), "{listed}");
         let exact: Vec<u32> = (0..64).collect();
         assert!(!preview_text(&json!({ "items": exact }), &more).contains("more"));
+    }
+
+    #[test]
+    fn previews_show_element_handles_but_still_hide_tokens() {
+        let preview = preview_text(
+            &json!({"element_token": "el-42", "pid": 7, "api_token": "s3cret"}),
+            &more,
+        );
+        assert!(preview.contains("\"element_token\":\"el-42\""), "{preview}");
+        assert!(!preview.contains("s3cret"), "{preview}");
+    }
+
+    #[test]
+    fn arguments_the_schema_does_not_list_are_dropped() {
+        let schema = json!({"type": "object", "properties": {"bundle_id": {}, "session": {}}});
+        let args =
+            json!({"bundle_id": "org.zotero.zotero", "webkit_inspector_port": 9222, "text": "x"});
+        let Value::Object(args) = args else {
+            unreachable!()
+        };
+        assert_eq!(
+            Value::Object(schema_args(&schema, args.clone())),
+            json!({"bundle_id": "org.zotero.zotero"})
+        );
+        // A schema that lists nothing keeps everything.
+        assert_eq!(schema_args(&json!({"type": "object"}), args.clone()), args);
     }
 
     #[test]

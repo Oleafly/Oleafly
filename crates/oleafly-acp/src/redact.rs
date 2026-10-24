@@ -45,6 +45,14 @@ impl Redactor {
         secrets.dedup();
     }
 
+    /// The length of the longest secret it removes (0 without any).
+    pub fn longest_secret(&self) -> usize {
+        self.secrets
+            .read()
+            .map(|secrets| secrets.first().map_or(0, String::len))
+            .unwrap_or(0)
+    }
+
     pub fn opaque_id(&self, value: &str) -> Result<String, String> {
         if value.is_empty() || value.len() > 512 || value.chars().any(char::is_control) {
             return Err("The agent returned an invalid protocol identifier.".into());
@@ -99,41 +107,24 @@ impl Redactor {
         output
             .lines()
             .map(|line| {
-                let lower = line.to_ascii_lowercase();
-                let assignment = [
-                    "password",
-                    "api_key",
-                    "api-key",
-                    "apikey",
-                    "access_token",
-                    "refresh_token",
-                    "authorization",
-                    "client_secret",
-                ]
-                .iter()
-                .any(|key| lower.contains(key))
-                    && (line.contains('=') || line.contains(':'));
-                if assignment || lower.contains("bearer ") {
-                    "[credential omitted]".to_owned()
-                } else {
-                    line.split_inclusive(char::is_whitespace)
-                        .map(|part| {
-                            let trimmed = part.trim_matches(|c: char| {
-                                !c.is_ascii_alphanumeric() && c != '-' && c != '_'
-                            });
-                            if (trimmed.starts_with("sk-")
-                                || trimmed.starts_with("sk_")
-                                || trimmed.starts_with("ghp_")
-                                || trimmed.starts_with("AIza"))
-                                && trimmed.len() > 18
-                            {
-                                "[credential omitted] ".into()
-                            } else {
-                                part.to_owned()
-                            }
-                        })
-                        .collect()
-                }
+                redact_assignments(line)
+                    .split_inclusive(char::is_whitespace)
+                    .map(|part| {
+                        let trimmed = part.trim_matches(|c: char| {
+                            !c.is_ascii_alphanumeric() && c != '-' && c != '_'
+                        });
+                        if (trimmed.starts_with("sk-")
+                            || trimmed.starts_with("sk_")
+                            || trimmed.starts_with("ghp_")
+                            || trimmed.starts_with("AIza"))
+                            && trimmed.len() > 18
+                        {
+                            "[credential omitted] ".into()
+                        } else {
+                            part.to_owned()
+                        }
+                    })
+                    .collect::<String>()
             })
             .collect::<Vec<_>>()
             .join("\n")
@@ -162,6 +153,115 @@ impl Redactor {
             ),
             other => other.clone(),
         }
+    }
+}
+
+/// Words whose assigned value is a credential (`password = …`).
+const ASSIGNMENT_KEYS: [&str; 8] = [
+    "password",
+    "api_key",
+    "api-key",
+    "apikey",
+    "access_token",
+    "refresh_token",
+    "authorization",
+    "client_secret",
+];
+/// A shorter assigned value is a word of prose, not a credential.
+const MIN_ASSIGNED: usize = 6;
+/// A bearer token is at least this long.
+const MIN_BEARER: usize = 12;
+const OMITTED: &str = "[credential omitted]";
+
+fn is_word(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-'
+}
+
+fn skip_blanks(bytes: &[u8], mut index: usize) -> usize {
+    while matches!(bytes.get(index), Some(b' ' | b'\t')) {
+        index += 1;
+    }
+    index
+}
+
+/// Where the value that starts at `start` ends: at whitespace, a quote or a
+/// separator.
+fn value_end(line: &str, start: usize) -> usize {
+    line[start..]
+        .find(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | ',' | ';' | '`'))
+        .map_or(line.len(), |offset| start + offset)
+}
+
+/// The value assigned after a key that ends at `key_end`: past an optional
+/// closing quote, `=` or `:` (not `://`), an optional opening quote and a
+/// `Bearer`, `Basic` or `Token` scheme.
+fn assigned_value(line: &str, key_end: usize) -> Option<(usize, usize)> {
+    let bytes = line.as_bytes();
+    let mut at = key_end;
+    if matches!(bytes.get(at), Some(b'"' | b'\'')) {
+        at += 1;
+    }
+    at = skip_blanks(bytes, at);
+    match bytes.get(at) {
+        Some(b'=') => {}
+        Some(b':') if !line[at..].starts_with("://") => {}
+        _ => return None,
+    }
+    at = skip_blanks(bytes, at + 1);
+    if matches!(bytes.get(at), Some(b'"' | b'\'')) {
+        at += 1;
+    }
+    let mut end = value_end(line, at);
+    if matches!(
+        line[at..end].to_ascii_lowercase().as_str(),
+        "bearer" | "basic" | "token"
+    ) {
+        at = skip_blanks(bytes, end);
+        end = value_end(line, at);
+    }
+    (end - at >= MIN_ASSIGNED).then_some((at, end))
+}
+
+/// Replaces the values of credential assignments in one line (`password =
+/// hunter22`, `"api_key": "sk-…"`, `Authorization: Bearer …`, `bearer …`)
+/// and nothing else: prose that only mentions a password stays as written.
+fn redact_assignments(line: &str) -> std::borrow::Cow<'_, str> {
+    let bytes = line.as_bytes();
+    let mut output = String::new();
+    let mut copied = 0;
+    let mut index = 0;
+    while index < bytes.len() {
+        if !is_word(bytes[index]) {
+            index += 1;
+            continue;
+        }
+        let start = index;
+        while index < bytes.len() && is_word(bytes[index]) {
+            index += 1;
+        }
+        let word = line[start..index].to_ascii_lowercase();
+        let value = if word == "bearer" {
+            Some(skip_blanks(bytes, index))
+                .filter(|at| *at > index)
+                .map(|at| (at, value_end(line, at)))
+                .filter(|(at, end)| end - at >= MIN_BEARER)
+        } else if ASSIGNMENT_KEYS.iter().any(|key| word.contains(key)) {
+            assigned_value(line, index)
+        } else {
+            None
+        };
+        if let Some((at, end)) = value {
+            output.push_str(&line[copied..at]);
+            output.push_str(OMITTED);
+            copied = end;
+            index = end;
+        }
+    }
+    if copied == 0 {
+        std::borrow::Cow::Borrowed(line)
+    } else {
+        output.push_str(&line[copied..]);
+        std::borrow::Cow::Owned(output)
     }
 }
 
@@ -300,6 +400,57 @@ mod tests {
             environment_secrets(vars.into_iter()),
             vec!["secret-value-123456".to_string()]
         );
+    }
+
+    #[test]
+    fn prose_that_mentions_a_password_is_kept() {
+        let redactor = Redactor::new(&[]);
+        for line in [
+            "The login flow works as follows: the client sends the password to the server.",
+            "Section 2: password hashing",
+            "Open https://aistudio.google.com/apikey to make a key.",
+            "Authorization: see chapter 3",
+            "He was the bearer of bad news.",
+        ] {
+            assert_eq!(redactor.text(line), line);
+        }
+    }
+
+    #[test]
+    fn only_the_assigned_credential_is_replaced() {
+        let redactor = Redactor::new(&[]);
+        assert_eq!(
+            redactor.text("Use password = hunter2222 to log in."),
+            "Use password = [credential omitted] to log in."
+        );
+        assert_eq!(
+            redactor.text(r#"{"api_key": "abc-live-0123456789", "user": "me"}"#),
+            r#"{"api_key": "[credential omitted]", "user": "me"}"#
+        );
+        assert_eq!(
+            redactor.text("OPENAI_API_KEY=abc0123456789xyz"),
+            "OPENAI_API_KEY=[credential omitted]"
+        );
+        assert_eq!(
+            redactor.text("Authorization: Bearer abcdef0123456789"),
+            "Authorization: Bearer [credential omitted]"
+        );
+        assert_eq!(
+            redactor.text("curl -H 'bearer abcdef0123456789' https://x"),
+            "curl -H 'bearer [credential omitted]' https://x"
+        );
+        assert_eq!(
+            redactor.text("https://x.example/y?api_key=abcdef12&q=1 then"),
+            "https://x.example/y?api_key=[credential omitted] then"
+        );
+    }
+
+    #[test]
+    fn the_longest_secret_is_known() {
+        let redactor = Redactor::new(&[]);
+        let before = redactor.longest_secret();
+        redactor.add_secret(&"k".repeat(before + 40));
+        assert_eq!(redactor.longest_secret(), before + 40);
     }
 
     #[test]

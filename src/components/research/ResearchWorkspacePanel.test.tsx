@@ -71,7 +71,7 @@ beforeEach(() => {
   resetProviderConfigCache();
   useFilesStore.setState({ projectId: null });
   useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" });
-  useResearchTasksStore.setState({ projectId: null, tasks: [], selectedTaskId: null, events: [], eventsNextSequence: null, loading: false, eventsLoading: false, action: null, error: null });
+  useResearchTasksStore.setState({ projectId: null, tasks: [], selectedTaskId: null, events: [], eventsPreviousSequence: null, loading: false, eventsLoading: false, action: null, error: null });
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
 });
 
@@ -140,7 +140,12 @@ describe("ResearchWorkspacePanel integration", () => {
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "research" });
     await userEvent.setup({ document }).click(page().getByRole("tab", { name: "Linked folders" }));
     expect(page().getByText(enResearchTools.workspace.noProject)).toBeInTheDocument();
-    expect(native.invoke.mock.calls.map(([command]) => command)).toEqual(["get_config"]);
+    // A fresh page tells the backend once that it watches no task (one a reloaded page watched stops streaming).
+    const calls = native.invoke.mock.calls.filter(([command]) => command !== "research_task_watch");
+    expect(calls.map(([command]) => command)).toEqual(["get_config"]);
+    for (const [command, args] of native.invoke.mock.calls) {
+      if (command === "research_task_watch") expect(args).toEqual({ taskId: null });
+    }
   });
 
   // This complete dialog flow types both fields and rerenders per keystroke;
@@ -260,6 +265,9 @@ describe("ResearchWorkspacePanel integration", () => {
 
     expect(useAssistantRuntimeStore.getState().runtime).toBe("acp");
     expect(useSettingsStore.getState().assistantOpen).toBe(true);
+    // The modal task dialog closes, so the assistant isn't left behind it.
+    expect(useResearchTasksStore.getState().detailOpen).toBe(false);
+    await waitFor(() => expect(page().queryByRole("dialog")).toBeNull());
   });
 
   it("goes back to the Tasks tab when a task is opened for review from the Files rail", async () => {

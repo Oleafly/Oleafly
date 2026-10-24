@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   add: vi.fn(),
   update: vi.fn(),
+  updateUnvalidated: vi.fn(),
   remove: vi.fn(),
   notify: vi.fn(),
 }));
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => ({
   mcpServersList: mocks.list,
   mcpServerAdd: mocks.add,
+  mcpServerUpdate: mocks.updateUnvalidated,
   mcpServerUpdateValidated: mocks.update,
   mcpServerRemove: mocks.remove,
 }));
@@ -39,6 +41,7 @@ beforeEach(() => {
     connected: false,
     loading: false,
     failed: false,
+    declined: false,
     serverName: null,
     options: { fullAccess: false, shareCredentials: false },
   });
@@ -107,6 +110,88 @@ describe("Cua Spaces connector", () => {
     ).resolves.toBe(false);
     expect(useCuaSpacesConnectorStore.getState()).toMatchObject({ connected: false, failed: true, loading: false });
     expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
+  it("keeps the stored switches when the user says no to the system question", async () => {
+    const options = { fullAccess: false, shareCredentials: false };
+    useCuaSpacesConnectorStore.setState({ connected: true, serverName: "Cua Spaces", options });
+    mocks.list.mockResolvedValueOnce([managed(cuaSpacesServerConfig(COMMAND, options))]);
+    mocks.update.mockRejectedValueOnce(
+      `@oleafly/error:${JSON.stringify({ code: "desktop_apps.change_declined", params: {}, detail: null })}`,
+    );
+
+    await expect(
+      useCuaSpacesConnectorStore.getState().update(COMMAND, { fullAccess: true, shareCredentials: false }),
+    ).resolves.toBe(false);
+
+    expect(useCuaSpacesConnectorStore.getState()).toMatchObject({
+      connected: true,
+      options,
+      declined: true,
+      failed: false,
+      loading: false,
+    });
+    expect(mocks.notify).not.toHaveBeenCalled();
+
+    // The next change starts without the note.
+    mocks.list.mockResolvedValueOnce([managed(cuaSpacesServerConfig(COMMAND, options))]);
+    mocks.update.mockImplementation(async (_name: string, config: McpServerConfig) => managed(config));
+    await useCuaSpacesConnectorStore.getState().update(COMMAND, { fullAccess: false, shareCredentials: false });
+    expect(useCuaSpacesConnectorStore.getState().declined).toBe(false);
+  });
+
+  it("shows a server turned off in MCP settings as not connected", async () => {
+    mocks.list.mockResolvedValueOnce([
+      managed({ ...cuaSpacesServerConfig(COMMAND, { fullAccess: false, shareCredentials: false }), enabled: false }),
+    ]);
+
+    await useCuaSpacesConnectorStore.getState().refresh();
+
+    expect(useCuaSpacesConnectorStore.getState()).toMatchObject({ connected: false, serverName: "Cua Spaces" });
+  });
+
+  it("changes only the switches, keeping the user's arguments, env values and on or off", async () => {
+    const edited = {
+      ...cuaSpacesServerConfig("/opt/cua/bin/cua", { fullAccess: false, shareCredentials: false }, "Spaces"),
+      enabled: false,
+      args: ["daemon", "mcp", "--log-level", "debug", "--permissions", "spaces:readonly"],
+      env: { CUA_SPACES_AGENT_CREDENTIALS_HOME: "__stored__", CUA_API_KEY: "__stored__" },
+    } as McpServerConfig;
+    mocks.list.mockResolvedValueOnce([managed(edited)]);
+    mocks.updateUnvalidated.mockImplementation(async (_name: string, config: McpServerConfig) => managed(config));
+
+    await expect(
+      useCuaSpacesConnectorStore.getState().update(COMMAND, { fullAccess: true, shareCredentials: true }),
+    ).resolves.toBe(true);
+
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.updateUnvalidated).toHaveBeenCalledWith("Spaces", {
+      ...edited,
+      enabled: false,
+      args: ["daemon", "mcp", "--log-level", "debug"],
+      env: { CUA_API_KEY: "__stored__" },
+    });
+    expect(useCuaSpacesConnectorStore.getState().connected).toBe(false);
+  });
+
+  it("turns a server that was off back on when the user connects", async () => {
+    const off = {
+      ...cuaSpacesServerConfig(COMMAND, { fullAccess: true, shareCredentials: true }),
+      enabled: false,
+      env: { CUA_API_KEY: "__stored__" },
+    } as McpServerConfig;
+    mocks.list.mockResolvedValueOnce([managed(off)]);
+    mocks.update.mockImplementation(async (_name: string, config: McpServerConfig) => managed(config));
+
+    await useCuaSpacesConnectorStore.getState().connect(COMMAND, { fullAccess: false, shareCredentials: false });
+
+    expect(mocks.update).toHaveBeenCalledWith("Cua Spaces", {
+      ...off,
+      enabled: true,
+      args: ["daemon", "mcp", "--permissions", "spaces:readonly"],
+      env: { CUA_API_KEY: "__stored__", CUA_SPACES_AGENT_CREDENTIALS_HOME: "none" },
+    });
+    expect(useCuaSpacesConnectorStore.getState().connected).toBe(true);
   });
 
   it("finds an existing server by its command and arguments", async () => {

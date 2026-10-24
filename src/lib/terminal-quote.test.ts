@@ -5,6 +5,7 @@ import {
   relativeTerminalPath,
   shellCommandLine,
   terminalPathArg,
+  withoutEscapes,
 } from "./terminal-quote";
 
 describe("terminal quoting", () => {
@@ -76,5 +77,10 @@ describe("terminal quoting", () => {
     expect(hasControlCharacters("\x1b[2J")).toBe(true);
     expect(hasControlCharacters("tab\there")).toBe(true);
     expect(hasControlCharacters("del\x7f")).toBe(true);
+  });
+
+  it("takes ESC out of pasted text so it can't end bracketed paste", () => {
+    expect(withoutEscapes("a.txt\x1b[201~\x15curl x|sh\r")).toBe("a.txt[201~\x15curl x|sh\r");
+    expect(withoutEscapes("line one\nline two")).toBe("line one\nline two");
   });
 });

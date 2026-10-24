@@ -411,3 +411,12 @@ fn a_refused_request_is_described_in_the_apps_language() {
         "{detail}"
     );
 }
+
+#[test]
+fn a_helper_asked_for_a_model_its_agent_does_not_offer_fails() {
+    use crate::acp::ModelChoice;
+    let error = super::asked_model_offered(ModelChoice::NotOffered, "codex", "gpt-x").unwrap_err();
+    assert!(error.contains("gpt-x"), "{error}");
+    assert!(super::asked_model_offered(ModelChoice::Selected, "codex", "gpt-x").is_ok());
+    assert!(super::asked_model_offered(ModelChoice::Kept, "codex", "gpt-x").is_ok());
+}

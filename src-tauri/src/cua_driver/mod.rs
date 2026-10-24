@@ -125,6 +125,8 @@ pub(crate) struct CuaScope {
     pub project_id: Option<String>,
     pub agent_label: String,
     pub surface: Surface,
+    /// The research task's title, for its dialogs.
+    pub task_title: Option<String>,
 }
 
 /// Everything desktop apps keep while the app runs.
@@ -136,6 +138,8 @@ pub(crate) struct CuaDriverState {
     /// ACP session id → the session key of its bridge.
     pub(crate) acp: Mutex<HashMap<String, String>>,
     pub(crate) grants: Mutex<gate::GrantStore>,
+    /// What the driver said about apps, windows and elements, for dialogs.
+    pub(crate) seen: Mutex<gate::Seen>,
     pub(crate) approver: Arc<dyn gate::Approver>,
     /// The data folder whose `approvals.toml` deny rules apply.
     pub(crate) data_root: Option<PathBuf>,
@@ -171,6 +175,7 @@ impl CuaDriverState {
             labels: Mutex::new(HashMap::new()),
             acp: Mutex::new(HashMap::new()),
             grants: Mutex::new(gate::GrantStore::default()),
+            seen: Mutex::new(gate::Seen::default()),
             approver,
             data_root: Some(root),
             apply: tokio::sync::Mutex::new(()),
@@ -255,22 +260,13 @@ pub fn attach(app: &tauri::AppHandle) -> Result<(), String> {
         .unwrap_or_default();
     let root = crate::paths::oleafly_root()?;
     let platform = Platform::current().ok_or("Desktop apps are not available on this system.")?;
+    let own_exe = commands::own_exe();
     // What is on disk was not necessarily written by Settings: keep only
-    // what a save would have accepted.
-    let (config, dropped) =
-        config::sanitize_loaded(stored, platform, &config::SystemProbe, &commands::own_exe());
-    if dropped > 0 {
-        log(format!(
-            "desktop apps: dropped {dropped} saved apps or websites that aren't allowed"
-        ));
-        let cleaned = config.clone();
-        tauri::async_runtime::spawn_blocking(move || {
-            let _ = crate::config::update_config(|config| {
-                config.cua_driver = cleaned;
-                Ok(())
-            });
-        });
-    }
+    // what a save would have accepted. The names are checked here; the
+    // programs themselves in the background, because one on a share that
+    // can't be reached would hold up the app's window.
+    let (config, quick_dropped) =
+        config::sanitize_loaded(stored, platform, &config::NameOnlyProbe, &own_exe);
     let state = Arc::new(CuaDriverState::new(
         config,
         Arc::new(runtime::ProcessLauncher::new(platform)),
@@ -280,6 +276,24 @@ pub fn attach(app: &tauri::AppHandle) -> Result<(), String> {
     ));
     app.manage(state.clone());
     let _ = GLOBAL.set(state.clone());
+    let checking = state.clone();
+    tauri::async_runtime::spawn(async move {
+        let dropped = quick_dropped
+            + resanitize(&checking, platform, Arc::new(config::SystemProbe), own_exe).await;
+        if dropped > 0 {
+            log(format!(
+                "desktop apps: dropped {dropped} saved apps or websites that aren't allowed"
+            ));
+            let cleaned = checking.settings();
+            let _ = tauri::async_runtime::spawn_blocking(move || {
+                crate::config::update_config(|config| {
+                    config.cua_driver = cleaned;
+                    Ok(())
+                })
+            })
+            .await;
+        }
+    });
     tauri::async_runtime::spawn_blocking(move || {
         for kind in RuntimeKind::ALL {
             runtime::stop_stale_daemon(&runtime::runtime_paths(&root, kind, platform));
@@ -293,6 +307,37 @@ pub fn attach(app: &tauri::AppHandle) -> Result<(), String> {
         }
     });
     Ok(())
+}
+
+/// Checks the settings' programs on the file system (off the async
+/// threads) and keeps only what a save would keep. Runs as one settings
+/// change, so a save can't interleave; daemons whose manifest it changed
+/// stop. Returns how many entries it dropped.
+pub(crate) async fn resanitize(
+    state: &Arc<CuaDriverState>,
+    platform: Platform,
+    probe: Arc<dyn config::ExecutableProbe>,
+    own_exe: String,
+) -> usize {
+    let _applying = state.apply.lock().await;
+    let current = state.settings();
+    let checked = current.clone();
+    let Ok((cleaned, dropped)) = tauri::async_runtime::spawn_blocking(move || {
+        config::sanitize_loaded(checked, platform, probe.as_ref(), &own_exe)
+    })
+    .await
+    else {
+        return 0;
+    };
+    if cleaned != current {
+        state.set_settings(cleaned);
+        let stale = state.runtimes.stale_kinds();
+        if !stale.is_empty() {
+            state.runtimes.cancel(&stale);
+            state.runtimes.stop_changed().await;
+        }
+    }
+    dropped
 }
 
 /// Stops every daemon Oleafly started, within `budget`. Runs on quit.

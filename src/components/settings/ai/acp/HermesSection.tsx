@@ -27,7 +27,9 @@ export function remoteIssues(remote: AcpRemoteHermes): Partial<Record<RemoteFiel
   const issues: Partial<Record<RemoteField, RemoteIssue>> = {};
   if (remote.host === "") issues.host = "required";
   else if (!HOST.test(remote.host) || remote.host.startsWith("-")) issues.host = "invalid";
-  if (remote.port !== null && (remote.port < 1 || remote.port > 65535)) issues.port = "invalid";
+  if (remote.port !== null && (!Number.isInteger(remote.port) || remote.port < 1 || remote.port > 65535)) {
+    issues.port = "invalid";
+  }
   if (remote.folder === "") issues.folder = "required";
   else if (!remote.folder.startsWith("/") || /[\r\n\0]/.test(remote.folder)) issues.folder = "invalid";
   if (!COMMAND.test(remote.command)) issues.command = "invalid";
@@ -123,7 +125,7 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
     return () => { current = false; };
   }, [projectId, refresh]);
 
-  const run = (action: () => Promise<AcpHermesStatus>, onStored?: () => void) => {
+  const run = (action: () => Promise<AcpHermesStatus>, onStored?: () => void, onFailed?: () => void) => {
     setBusy(true);
     setError(null);
     action()
@@ -131,7 +133,10 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
         setStatus(next);
         onStored?.();
       })
-      .catch((error_: unknown) => setError(acpError(error_)))
+      .catch((error_: unknown) => {
+        onFailed?.();
+        setError(acpError(error_));
+      })
       .finally(() => setBusy(false));
   };
 
@@ -142,8 +147,10 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
       setSettings(next);
       return;
     }
+    const before = saved ?? settings;
     setSettings(next);
-    run(() => acpSetHermesSettings(projectId, next), () => setSaved(next));
+    // A mode that was not saved goes back to the one this project still uses.
+    run(() => acpSetHermesSettings(projectId, next), () => setSaved(next), () => setSettings(before));
   };
   const saveRemote = () => {
     if (!settings || remoteProblem(remote)) return;

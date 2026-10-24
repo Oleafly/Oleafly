@@ -613,6 +613,7 @@
       "sendNow": "Şimdi gönder",
       "sendFailed": "Bu ileti gönderilmedi. Yeniden gönderin veya kaldırın.",
       "queuedConnecting": "Sırada: ajan hazır olunca gönderilir",
+      "queuedSignIn": "Sırada: oturum açınca gönderilir",
       "retry": "Yeniden gönder",
       "edit": "Düzenle"
     },

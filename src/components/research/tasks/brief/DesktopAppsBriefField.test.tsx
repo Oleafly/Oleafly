@@ -139,4 +139,56 @@ describe("DesktopAppsBriefField", () => {
     expect(screen.getByRole("checkbox")).toBeDisabled();
     expect(screen.getByTestId("research-brief-desktop-apps")).toHaveTextContent(copy.off);
   });
+
+  it("gives the permission up when the connector is off, so the brief can't save it on", () => {
+    const onCheckedChange = vi.fn();
+    render(
+      withStatus(
+        status({ ...ONE_APP, enabled: false }),
+        <DesktopAppsBriefField id="d" checked disabled={false} unattended={false} onCheckedChange={onCheckedChange} />,
+      ),
+    );
+
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(onCheckedChange).toHaveBeenCalledWith(false);
+  });
+
+  it("gives the permission up for a task nobody watches", () => {
+    const onCheckedChange = vi.fn();
+    render(
+      withStatus(
+        status(ONE_APP),
+        <DesktopAppsBriefField id="d" checked disabled={false} unattended onCheckedChange={onCheckedChange} />,
+      ),
+    );
+
+    expect(onCheckedChange).toHaveBeenCalledWith(false);
+  });
+
+  it("keeps the permission while the connector's state is still unknown", () => {
+    const onCheckedChange = vi.fn();
+    render(<DesktopAppsBriefField id="d" checked disabled={false} unattended={false} onCheckedChange={onCheckedChange} />);
+
+    expect(onCheckedChange).not.toHaveBeenCalled();
+  });
+
+  it("opens Settings through the composer when it asks to close first", async () => {
+    useSettingsStore.setState({ settingsOpen: false });
+    const onOpenSettings = vi.fn((open: () => void) => open());
+    render(
+      <DesktopAppsBriefField
+        id="d"
+        checked={false}
+        disabled={false}
+        unattended={false}
+        onCheckedChange={vi.fn()}
+        onOpenSettings={onOpenSettings}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: enResearchTools.compute.brief.openSettings }));
+
+    expect(onOpenSettings).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+  });
 });

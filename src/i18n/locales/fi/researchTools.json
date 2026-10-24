@@ -204,7 +204,8 @@
       "createTask": "Luo tehtävä",
       "replaceText": "Korvataanko kirjoittamasi otsikko ja ohjeet tällä pohjalla?",
       "keepText": "Säilytä omat",
-      "replaceConfirm": "Korvaa"
+      "replaceConfirm": "Korvaa",
+      "cannotSave": "Korjaa yllä merkityt valinnat ja yritä uudelleen."
     },
     "starter": {
       "literatureReview": {
@@ -306,16 +307,36 @@
         "budgetCost": "Pysäytettiin kustannusrajaan.",
         "budgetRuns": "Pysäytettiin ajorajaan."
       },
-      "startsAt": "Alkaa {{time}}"
+      "startsAt": "Alkaa {{time}}",
+      "olderActivity": "Tämän ajon aiempia tapahtumia ei näytetä.",
+      "tooLargeToDiff": "Tiedosto on liian suuri vertailtavaksi tässä, joten vain sen koot näytetään."
+    },
+    "confirm": {
+      "stopTitle": "Pysäytetäänkö tämä tehtävä?",
+      "stopDescription": "\"{{title}}\" pysähtyy nykyisen vaiheensa jälkeen. Jatka-painikkeella voit jatkaa sitä myöhemmin sen työtilasta.",
+      "cancelTitle": "Peruutetaanko tämä tehtävä?",
+      "cancelDescription": "\"{{title}}\" ei käynnisty. Voit yrittää sitä uudelleen myöhemmin.",
+      "cancelTask": "Peruuta tehtävä",
+      "discardTitle": "Hylätäänkö nämä muutokset?",
+      "discardDescription": "Mikään tehtävän \"{{title}}\" muutoksista ei päädy projektiisi, ja tehtävä merkitään peruutetuksi. Jatka-painike ajaa agentin uudelleen.",
+      "keepTask": "Säilytä tehtävä",
+      "keepChanges": "Säilytä muutokset",
+      "dependents_one": "Tämä tehtävä odottaa sitä ja epäonnistuu myös:",
+      "dependents_other": "Nämä {{count}} tehtävää odottavat sitä ja epäonnistuvat myös:",
+      "runs_one": "Tämä ajo pysähtyy myös:",
+      "runs_other": "Nämä {{count}} ajoa pysähtyvät myös:"
     },
     "plan": {
       "title": "Suunnitelma",
       "description": "Lue suunnitelma ja muokkaa sitä halutessasi. Hyväksy se, niin tehtävä voi jatkua.",
       "approve": "Hyväksy suunnitelma",
       "approveEdited": "Hyväksy muokattu suunnitelma",
-      "discard": "Hylkää tehtävä",
+      "discard": "Peruuta tehtävä",
       "loading": "Ladataan suunnitelmaa…",
-      "missing": "Suunnitelmatiedosto puuttuu. Aja tehtävä uudelleen."
+      "missing": "Suunnitelmatiedosto puuttuu. Aja tehtävä uudelleen.",
+      "loadFailed": "Oleafly ei voinut ladata suunnitelmaa.",
+      "truncated": "Tämä suunnitelma on yli 64 KiB, joten vain sen alku näytetään. Karsi se haluamiisi vaiheisiin ja hyväksy se sitten.",
+      "tooLong": "Suunnitelma voi olla enintään 64 KiB. Lyhennä sitä ennen hyväksymistä."
     },
     "approvals": {
       "title": "Odottaa hyväksyntääsi",
@@ -364,6 +385,9 @@
       "runsUsed": "Ajoja: {{used}} / {{limit}}",
       "runsUsedNoLimit": "Ajoja: {{used}}",
       "stopRun": "Pysäytä ajo",
+      "stopRunTitle": "Pysäytetäänkö tämä ajo?",
+      "stopRunDescription": "\"{{name}}\" ({{run}}) pysähtyy nyt. Sen toisella koneella tai klusterissa suorittama työ perutaan myös siellä.",
+      "keepRun": "Pidä käynnissä",
       "viewLog": "Näytä loki",
       "columns": {
         "run": "Ajo",
@@ -867,6 +891,7 @@
     "progressCancelled": "Peruutettu",
     "progressReadingPages": "Luetaan sivuja",
     "progressTranscribingPage": "Litteroidaan sivua {{page}}/{{total}} mallilla {{model}}",
+    "progressTranscribingPdfPage": "Litteroidaan sivua {{pdfPage}} ({{page}} / {{total}}) mallilla {{model}}",
     "progressDocumentStructure": "Muunnetaan dokumentin rakennetta",
     "progressMermaid": "Piirretään Mermaid-kaaviota",
     "progressFirstSheet": "Luetaan ensimmäistä taulukkoa",
@@ -910,7 +935,9 @@
     "progressConvertingSource": "Muunnetaan lähdekoodia Typst-muotoon",
     "pageRange": "Sivut",
     "pageRangePlaceholder": "Kaikki sivut tai alue, kuten 1-50",
-    "pageRangeInvalid": "Anna yksi sivunumero tai alue, kuten 1-50."
+    "pageRangeInvalid": "Anna yksi sivunumero tai alue, kuten 1-50.",
+    "pageCount_one": "Tässä PDF-tiedostossa on {{count}} sivu.",
+    "pageCount_other": "Tässä PDF-tiedostossa on {{count}} sivua."
   },
   "converters": {
     "imageToLatex": {
@@ -1119,10 +1146,14 @@
     "arxivInputRequired": "Anna arXiv-tunnus tai valitse lähdearkisto.",
     "equationToTypst": "Pandoc ei voinut muuntaa tätä kaavaa Typst-muotoon. Tarkista LaTeX-matematiikka ja yritä uudelleen.",
     "pdfTooManyPages": "Tässä skannauksessa on {{pages}} sivua, ja Oleafly litteroi kerrallaan enintään {{limit}}. Anna tiedoston alle sivualue, esimerkiksi 1-{{limit}}.",
-    "outputLimit": "Mallilta loppui tila ennen valmistumista, joten litterointi jäisi kesken. Valitse kohdassa Asetukset, Tekoäly, Työkalut malli, jolla on suurempi tulostusraja, tai litteroi pienempi osa."
+    "outputLimit": "Mallilta loppui tila ennen valmistumista, joten litterointi jäisi kesken. Valitse kohdassa Asetukset, Tekoäly, Työkalut malli, jolla on suurempi tulostusraja, tai litteroi pienempi osa.",
+    "refused": "Malli kieltäytyi litteroimasta tätä, joten mitään ei lisätty. Valitse toinen malli kohdassa Asetukset, Tekoäly, Työkalut.",
+    "pageRangePastEnd_one": "Tässä PDF-tiedostossa on {{count}} sivu. Anna 1 tai jätä Sivut-kenttä tyhjäksi.",
+    "pageRangePastEnd_other": "Tässä PDF-tiedostossa on {{count}} sivua. Anna alue väliltä 1-{{count}}."
   },
   "converterNotes": {
-    "scannedPages": "Skannatut sivut ({{pages}}) litteroitiin mallilla {{model}}. Tarkista kaavat ja taulukot ennen tuloksen käyttöä.",
+    "scannedPages_one": "Litteroitu {{count}} skannattu sivu mallilla {{model}}. Tarkista kaavat ja taulukot ennen tuloksen käyttöä.",
+    "scannedPages_other": "Litteroitu {{count}} skannattua sivua mallilla {{model}}. Tarkista kaavat ja taulukot ennen tuloksen käyttöä.",
     "extracted": "{{pages}} sivua ja {{figures}} kuvaa poimittiin paikallisesti.",
     "mermaidTikz": "Tämä vuokaavio muunnettiin muokattavaksi TikZ-koodiksi.",
     "mermaidRendered": "Tämä kaavio piirrettiin paikallisesti, koska sen Mermaid-syntaksi ei kartoitu siististi muokattavaan TikZ-koodiin.",
@@ -1149,6 +1180,9 @@
     "scansSentToHost": "Skannatut sivut lähetetään Ollamalle osoitteessa {{host}}",
     "pdfSentToMathpix": "Koko PDF lähetetään Mathpix-palveluun",
     "transcribingHosted": "Lähetetään kuvaa palveluun {{provider}}…",
+    "transcribingFallback": "Lähetetään kuvaa palveluun {{provider}} (avustajan malli)…",
+    "sentFallback": "Lähetetty palveluun {{provider}} (avustajan malli)",
+    "editorFallback": "Editorin Kuvasta LaTeXiin -toiminto lähettää kuvat palveluun {{provider}}, kunnes Ollamalla on konenäkömalli",
     "progressUploading": "Lähetetään PDF Mathpix-palveluun",
     "progressFormatting": "Muunnetaan litterointia Pandocilla",
     "scannedTitle": "Tämä PDF vaikuttaa skannatulta",
@@ -1158,15 +1192,23 @@
     "estimateCost_other": "{{count}} sivua. Noin {{cost}} mallilla {{model}}.",
     "estimateUnknown_one": "{{count}} sivu. {{provider}} laskuttaa sen käytön mukaan.",
     "estimateUnknown_other": "{{count}} sivua. {{provider}} laskuttaa ne käytön mukaan.",
+    "estimatePlan_one": "{{count}} sivu. {{provider}} sisällyttää sen tilaukseesi.",
+    "estimatePlan_other": "{{count}} sivua. {{provider}} sisällyttää ne tilaukseesi.",
+    "estimateLocal_one": "{{count}} sivu. Malli toimii tällä koneella ilman kustannuksia.",
+    "estimateLocal_other": "{{count}} sivua. Malli toimii tällä koneella ilman kustannuksia.",
+    "estimateFree_one": "{{count}} sivu. Maksuton mallilla {{model}}.",
+    "estimateFree_other": "{{count}} sivua. Maksuton mallilla {{model}}.",
     "transcribePages_one": "Litteroi {{count}} sivu",
     "transcribePages_other": "Litteroi {{count}} sivua",
     "transcribedWith": "Litteroitu mallilla {{model}}. Tarkista kaavat ja taulukot.",
     "sentBadge": "Lähetetty palveluun {{provider}}",
     "openToolsSettings": "Työkalujen asetukset",
+    "openProviderSettings": "Palvelun asetukset",
     "errors": {
       "offline": "Oleafly on offline-tilassa. Valitse paikallinen malli tai poista offline-tila käytöstä.",
       "providerNotConfigured": "Palvelulla {{provider}} ei ole API-avainta. Lisää avain asetuksissa tai valitse toinen malli.",
       "modelDisabled": "{{model}} on poistettu käytöstä asetuksissa. Ota se käyttöön tai valitse toinen malli.",
+      "modelUnavailable": "{{model}} ei ole enää saatavilla palvelusta {{provider}}. Valitse toinen malli.",
       "cannotSeeImages": "{{model}} ei osaa lukea kuvia. Valitse konenäkömalli.",
       "localModelGone": "Mallia {{model}} ei enää ole Ollamassa. Nouda se uudelleen tai valitse toinen malli.",
       "imagesOnly": "{{model}} lukee vain kuvia. Valitse kielimalli, jos haluat muuntaa kirjoitettuja kaavoja.",
@@ -1764,6 +1806,8 @@
     "keepRunningHint": "Ota ensin Taustatehtävät käyttöön kohdassa Asetukset, Tutkimus.",
     "invalidMetric": "Käytä kirjaimia, numeroita, pisteitä, yhdysmerkkejä tai alaviivoja.",
     "invalidCost": "Anna nollaa suurempi summa.",
+    "invalidCostMax": "Anna summa, joka on enintään {{max}}.",
+    "invalidCostNumber": "Anna summa lukuna, esimerkiksi {{example}}.",
     "invalidRuns": "Anna kokonaisluku, joka on vähintään 1 ja enintään 1 000.",
     "invalidStart": "Valitse aloitusaika seuraavan 30 päivän sisältä.",
     "invalidStartFormat": "Käytä muotoa {{example}}.",
@@ -1786,6 +1830,9 @@
     "hint": "Nämä tarkistukset vain varoittavat. Ne eivät estä käyttöönottoa.",
     "running": "Tarkistetaan…",
     "refresh": "Tarkista uudelleen",
+    "empty": "Tälle tulokselle ei ole vielä tehty tarkistuksia.",
+    "more_one": "{{count}} lisää ei ole luettelossa.",
+    "more_other": "{{count}} lisää ei ole luettelossa.",
     "status": {
       "pass": "Läpäisty",
       "warn": "Tarkista tämä",
@@ -1893,7 +1940,8 @@
         "time": "Käytä Slurmin aikamuotoa, kuten 2:00:00.",
         "name": "Käytä kirjaimia, numeroita, pisteitä, pilkkuja, yhdysmerkkejä tai alaviivoja.",
         "mem": "Käytä gigatavuina kokonaislukua, esimerkiksi 16.",
-        "count": "Käytä kokonaislukua sallitulta väliltä."
+        "count": "Käytä kokonaislukua sallitulta väliltä.",
+        "prelude": "Pidä valmistelukomennot enintään 4 kt:n kokoisina. Aksenttikirjaimet ja ei-latinalaiset kirjoitusjärjestelmät vievät enemmän tilaa."
       }
     },
     "test": {
@@ -1970,7 +2018,7 @@
       "movingBackHint": "Tämä tehtävä palaa Oleaflyhin, kun sen nykyinen vaihe päättyy."
     },
     "earlierActivity": "Näytä aiemmat tapahtumat",
-    "earlierTruncated": "Tästä aiemmasta ajosta näytetään vain ensimmäiset {{limit}} kohdetta.",
+    "earlierTruncated": "Tästä aiemmasta ajosta näytetään vain viimeiset {{limit}} kohdetta.",
     "keepRunningFailed": "Asetusta ei voitu muuttaa. Yritä uudelleen."
   }
 }

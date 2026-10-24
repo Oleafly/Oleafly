@@ -17,8 +17,19 @@ use super::types::{
 };
 
 const TRANSIENT_TIMEOUT: Duration = Duration::from_secs(30);
+/// How long a short-lived connection waits for the next page or import.
+const TRANSIENT_IDLE: Duration = Duration::from_secs(30);
 const MAX_IMPORT: usize = 50;
 const MAX_COMMIT_PATHS: usize = 200;
+
+/// A short-lived connection kept after its work for the next one of the same
+/// agent and folder (the list's next page, the import after it).
+pub(super) struct IdleTransient {
+    key: (String, String, PathBuf),
+    client: Arc<AcpClient>,
+    negotiated: Negotiated,
+    cwd: String,
+}
 
 impl AcpRuntime {
     pub fn session_page(
@@ -135,6 +146,25 @@ impl AcpRuntime {
     ) -> Result<T, String> {
         crate::trust::require_trusted(project_id, crate::trust::Capability::ExternalAgents)?;
         let _startup = self.begin_startup()?;
+        let key = (
+            project_id.to_owned(),
+            agent_id.to_owned(),
+            root.to_path_buf(),
+        );
+        let kept =
+            self.idle_transient.lock().ok().and_then(|mut idle| {
+                idle.take_if(|kept| kept.key == key && !kept.client.is_closed())
+            });
+        if let Some(kept) = kept {
+            let result = tokio::time::timeout(
+                TRANSIENT_TIMEOUT,
+                work(&kept.client, &kept.negotiated, &kept.cwd),
+            )
+            .await
+            .unwrap_or_else(|_| Err("The agent did not answer in time.".into()));
+            self.keep_or_stop_transient(kept, result.is_ok()).await;
+            return result;
+        }
         let definition = self.definition(agent_id)?;
         let root = root.to_path_buf();
         let launch = {
@@ -166,13 +196,64 @@ impl AcpRuntime {
                 .initialize(&client_options(false, false))
                 .await
                 .map_err(String::from)?;
-            work(&client, &negotiated, &cwd_text).await
+            let result = work(&client, &negotiated, &cwd_text).await;
+            Ok::<_, String>((negotiated, result))
         })
         .await
         .unwrap_or_else(|_| Err("The agent did not answer in time.".into()));
-        client.shutdown().await;
-        self.untrack_transient(&client).await;
-        result
+        match result {
+            Ok((negotiated, result)) => {
+                let kept = IdleTransient {
+                    key,
+                    client,
+                    negotiated,
+                    cwd: cwd_text,
+                };
+                self.keep_or_stop_transient(kept, result.is_ok()).await;
+                result
+            }
+            Err(error) => {
+                client.shutdown().await;
+                self.untrack_transient(&client).await;
+                Err(error)
+            }
+        }
+    }
+
+    /// Keeps a short-lived connection whose work went well for a while, in
+    /// place of the one kept before; stops it otherwise.
+    async fn keep_or_stop_transient(self: &Arc<Self>, kept: IdleTransient, worked: bool) {
+        if !worked || kept.client.is_closed() {
+            kept.client.shutdown().await;
+            self.untrack_transient(&kept.client).await;
+            return;
+        }
+        let client = kept.client.clone();
+        let replaced = self
+            .idle_transient
+            .lock()
+            .ok()
+            .and_then(|mut idle| idle.replace(kept));
+        if let Some(replaced) = replaced {
+            replaced.client.shutdown().await;
+            self.untrack_transient(&replaced.client).await;
+        }
+        let runtime = Arc::downgrade(self);
+        tokio::spawn(async move {
+            tokio::time::sleep(TRANSIENT_IDLE).await;
+            let Some(runtime) = runtime.upgrade() else {
+                return;
+            };
+            let idle = runtime
+                .idle_transient
+                .lock()
+                .ok()
+                .and_then(|mut idle| idle.take_if(|kept| Arc::ptr_eq(&kept.client, &client)));
+            if let Some(idle) = idle {
+                idle.client.shutdown().await;
+                runtime.untrack_transient(&idle.client).await;
+            }
+        });
     }
 
     /// The agent's own sessions for this project (`session/list`), marking
@@ -247,17 +328,43 @@ impl AcpRuntime {
                     .map(|title| title.chars().take(120).collect()),
                 updated_at: entry["updatedAt"].as_str().map(str::to_owned),
                 cwd: cwd.to_owned(),
-                imported: self
-                    .store
-                    .find_by_native(project_id, agent_id, native)?
-                    .is_some(),
+                imported: false,
             });
+        }
+        let natives: Vec<String> = sessions
+            .iter()
+            .map(|session| session.native_session_id.clone())
+            .collect();
+        let imported = self.imported_natives(project_id, agent_id, natives).await?;
+        for session in &mut sessions {
+            session.imported = imported.contains(&session.native_session_id);
         }
         let page = AgentSessionPage {
             sessions,
             next_cursor: next.filter(|cursor| cursor.len() <= 2048),
         };
         Ok((page, capabilities, methods))
+    }
+
+    /// Which agent sessions are saved as conversations already: one store
+    /// query, off the async workers (the store's lock is the one every live
+    /// session's events take).
+    async fn imported_natives(
+        self: &Arc<Self>,
+        project_id: &str,
+        agent_id: &str,
+        natives: Vec<String>,
+    ) -> Result<std::collections::HashSet<String>, String> {
+        let runtime = self.clone();
+        let (project_id, agent_id) = (project_id.to_owned(), agent_id.to_owned());
+        tokio::task::spawn_blocking(move || {
+            let natives: Vec<&str> = natives.iter().map(String::as_str).collect();
+            runtime
+                .store
+                .imported_natives(&project_id, &agent_id, &natives)
+        })
+        .await
+        .map_err(|_| "The saved conversations could not be read.")?
     }
 
     /// Saves agent sessions as Oleafly conversations (disconnected; they
@@ -276,16 +383,15 @@ impl AcpRuntime {
         let (page, capabilities, methods) =
             self.list_agent_sessions(project_id, agent_id, None).await?;
         let redactor = oleafly_acp::redact::Redactor::new(&[]);
+        let known = self
+            .imported_natives(project_id, agent_id, native_ids.clone())
+            .await?;
         let mut imported = Vec::new();
         for native in native_ids {
             if native.is_empty() || native.len() > 512 || native.chars().any(char::is_control) {
                 continue;
             }
-            if self
-                .store
-                .find_by_native(project_id, agent_id, &native)?
-                .is_some()
-            {
+            if known.contains(&native) {
                 continue;
             }
             let listed = page
@@ -401,6 +507,8 @@ impl AcpRuntime {
             forked_from: Some(record.id.clone()),
             fork_sequence: None,
             usage: None,
+            // Set again only if the fork's own connection routes the agent.
+            routed_provider: None,
             ..record
         };
         self.store.save(&copy)?;

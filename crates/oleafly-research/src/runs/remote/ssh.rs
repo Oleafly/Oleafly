@@ -282,7 +282,11 @@ impl Remote {
         dir: &str,
         rsync: Option<&Path>,
     ) -> Result<SyncMode, RunError> {
-        let bytes = workspace_bytes(workspace);
+        // The walk can cover 100k entries: it runs off the async workers.
+        let walked = workspace.to_path_buf();
+        let bytes = tokio::task::spawn_blocking(move || workspace_bytes(&walked))
+            .await
+            .map_err(|error| RunError::Io(error.to_string()))?;
         let timeout = Duration::from_secs((bytes / (1024 * 1024)).max(600));
         let quoted = sh_quote(dir);
         if let Some(program) = rsync {

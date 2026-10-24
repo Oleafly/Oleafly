@@ -306,6 +306,28 @@ impl SessionControls {
             }
             Some("current_mode_update") => {
                 self.mode_id = text(&update["currentModeId"]);
+                // The mode option shows the same mode: an agent that reports
+                // a switch only this way must not leave it stale, or a
+                // switch into a permissions-off mode goes unseen.
+                let mode_id = self.mode_id.clone();
+                if let Some(ConfigOptionView {
+                    kind:
+                        ConfigKind::Select {
+                            current_value,
+                            options,
+                        },
+                    ..
+                }) = self
+                    .options
+                    .iter_mut()
+                    .find(|option| option.category.as_deref() == Some("mode"))
+                {
+                    if let Some(mode) =
+                        mode_id.filter(|mode| options.iter().any(|choice| &choice.value == mode))
+                    {
+                        *current_value = Some(mode);
+                    }
+                }
             }
             _ => {}
         }
@@ -552,6 +574,26 @@ mod tests {
             &json!({"sessionUpdate": "current_mode_update", "currentModeId": "plan"}),
         );
         assert_eq!(controls.mode_id.as_deref(), Some("plan"));
+    }
+
+    #[test]
+    fn a_mode_switch_reported_only_as_current_mode_update_is_seen_by_the_mode_option() {
+        let mut controls = SessionControls::default();
+        controls.merge(&claude());
+        assert_eq!(controls.blocked_mode(None), None);
+        controls.apply_update(&json!({"sessionUpdate": "current_mode_update",
+            "currentModeId": "bypassPermissions"}));
+        let blocked = controls.blocked_mode(None).unwrap();
+        assert_eq!(blocked.name, "Bypass permissions");
+        assert_eq!(blocked.switch.unwrap().to, "default");
+        // A mode the option does not list leaves its value alone.
+        controls.apply_update(
+            &json!({"sessionUpdate": "current_mode_update", "currentModeId": "unknown"}),
+        );
+        assert!(matches!(
+            &controls.by_category("mode").unwrap().kind,
+            ConfigKind::Select { current_value: Some(value), .. } if value == "bypassPermissions"
+        ));
     }
 
     #[test]

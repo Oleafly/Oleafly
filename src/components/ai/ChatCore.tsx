@@ -144,7 +144,6 @@ import {
 import type { MessageAction } from "@/components/ai/chat-parts";
 import {
   attachmentNotice,
-  attachmentObjectUrl,
   attachmentText,
   chatToDraftAttachment,
   draftToChatAttachment,
@@ -172,6 +171,7 @@ import {
   draftText,
   EMPTY_ATTACHMENTS,
   holdDraftAttachments,
+  registerAttachmentHolder,
   useComposerDrafts,
 } from "@/store/composer-drafts";
 import {
@@ -199,7 +199,14 @@ import {
   resolveModelTrust,
 } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
-import { useChatsStore, type ChatMessage, type ChatTurnChanges, type ReasoningBlockData, type StoredChat } from "@/store/chats";
+import {
+  messageAttachmentRefs,
+  useChatsStore,
+  type ChatMessage,
+  type ChatTurnChanges,
+  type ReasoningBlockData,
+  type StoredChat,
+} from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
@@ -300,6 +307,8 @@ const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]
 const FULL_ACCESS_DECLINED = "approvals.full_access_declined";
 /** When the chat's cost is read back from the usage ledger after a run. */
 const CHAT_COST_REFRESH_MS = 1_000;
+/** The longest a streaming reply goes unsaved. */
+const PERSIST_MAX_WAIT_MS = 2_000;
 
 export function steerRunAlreadyEnded(error: unknown): boolean {
   let text = "";
@@ -1038,6 +1047,9 @@ export function ChatCore() {
   const commitLiveMessages = useCallback(() => {
     if (committedMessagesRef.current !== messagesRef.current) setMessages(messagesRef.current);
   }, [setMessages]);
+  // The transcript on show can hold files the saved chat does not list yet
+  // (a reply streaming); deleting another chat collects only what nothing uses.
+  useEffect(() => registerAttachmentHolder(() => messageAttachmentRefs(messagesRef.current)), []);
   const delegatedSubagents = useMemo(
     () => messages.flatMap((message) => message.subagents ?? []),
     [messages],
@@ -1331,6 +1343,8 @@ export function ChatCore() {
   // Trailing-debounce timer for persisting the streaming conversation.
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistPendingRef = useRef<{ chatId: string; msgs: ChatMessage[] } | null>(null);
+  // When the save now waiting was first put off.
+  const persistSinceRef = useRef(0);
   // Two-tier stream flushing: text deltas ride the frame cadence (rAF while
   // visible, a timer otherwise), structural output rides a 50 ms interval,
   // and terminal events drain both before applying. Patches batch into one
@@ -1601,6 +1615,18 @@ export function ChatCore() {
   // Coalesce to ~1 write/400ms (disk via Tauri, or localStorage in browser).
   const persistDebounced = useCallback(
     (chatId: string | null, msgs: ChatMessage[]) => {
+      // A reply that streams without a pause is still saved every couple of
+      // seconds, so little is lost when the window closes or the project changes.
+      const now = Date.now();
+      const pending = persistPendingRef.current;
+      if (!pending || pending.chatId !== chatId) persistSinceRef.current = now;
+      else if (chatId && now - persistSinceRef.current >= PERSIST_MAX_WAIT_MS) {
+        if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+        persistPendingRef.current = null;
+        persist(chatId, msgs);
+        return;
+      }
       persistPendingRef.current = chatId ? { chatId, msgs } : null;
       persistTimerRef.current = scheduleChatPersistence(
         persistTimerRef.current,
@@ -1668,6 +1694,7 @@ export function ChatCore() {
       if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
       let body = chat;
       if (chat.stub) {
+        const openingProject = useFilesStore.getState().projectId;
         // Older chats load as stubs; read the messages before showing them.
         try {
           body = (await useChatsStore.getState().loadChatBody(chat.id)) ?? chat;
@@ -1681,11 +1708,16 @@ export function ChatCore() {
           return;
         }
         if (sendPreparingRef.current || runOwnerRef.current) return;
+        // The project changed while the chat was read: it is not one of the open project's chats.
+        if (useFilesStore.getState().projectId !== openingProject) return;
       }
       setActiveChat(body.id);
       setMessages(body.messages);
       useAgentTodoStore.getState().selectChat(body.id);
       setHistoryOpen(false);
+      // The usage of the last run and a trimmed-history note belong to the chat they ran in.
+      setRunUsage(null);
+      setDroppedTurns(0);
       cancelEdit();
     },
     [streaming, setActiveChat, setMessages, cancelEdit]
@@ -1699,6 +1731,7 @@ export function ChatCore() {
     setActivePersonaId(null);
     setNewChatSettings({});
     setDroppedTurns(0);
+    setRunUsage(null);
     cancelEdit();
     // Drop any mid-chat model switch too: a fresh chat starts on the
     // configured default, not whatever the last conversation was left on.
@@ -1728,10 +1761,24 @@ export function ChatCore() {
         run.controller.abort();
       }
       const wasShown = useChatsStore.getState().activeId === id;
+      const drafts = useComposerDrafts.getState();
+      const deletedDraft = builtinComposerId(projectId, id);
+      const editing = editTargetRef.current;
+      if (editing && wasShown) {
+        // What was typed before the edit goes to the new chat; the edit goes with the chat.
+        drafts.setText(deletedDraft, editing.stash.text);
+        drafts.setAttachments(deletedDraft, editing.stash.attachments);
+        drafts.moveDraft(deletedDraft, builtinComposerId(projectId));
+        editTargetRef.current = null;
+        setEditTarget(null);
+      }
+      // The chat's own draft goes too, so its files can be collected.
+      drafts.setText(deletedDraft, "");
+      drafts.setAttachments(deletedDraft, []);
       removeChat(id);
       if (wasShown || running) startNewChat();
     },
-    [removeChat, startNewChat],
+    [projectId, removeChat, startNewChat],
   );
 
   const archiveCurrentChat = useCallback(async () => {
@@ -1836,9 +1883,11 @@ export function ChatCore() {
 
   const pickHomeSkill = useCallback(
     (skill: SkillEntry) => {
-      const next = `/${skill.id} `;
-      setInput(next);
-      focusComposerAt(next.length);
+      // The command goes before what the user typed, which stays.
+      const command = `/${skill.id} `;
+      const typed = inputRef.current.trimStart();
+      setInput(typed.startsWith(command) ? typed : `${command}${typed}`);
+      focusComposerAt(command.length);
     },
     [focusComposerAt, setInput],
   );
@@ -1906,16 +1955,22 @@ export function ChatCore() {
     chatId: string | null;
     apply: (message: ChatMessage) => ChatMessage;
   }>) => {
-    if (!patches.length) return;
+    // A patch is for the chat on show; one that lands after another chat
+    // opened (a screenshot stored late) must not change or save that chat.
+    const shownChatId = useChatsStore.getState().activeId;
+    const applicable = patches.filter((patch) => patch.chatId === shownChatId);
+    if (!applicable.length) return;
     const prev = messagesRef.current;
     if (!prev.length) return;
     const copy = [...prev];
     let last = copy.at(-1);
     if (last === undefined) return;
-    for (const patch of patches) last = patch.apply(last);
+    const before = last;
+    for (const patch of applicable) last = patch.apply(last);
+    if (last === before) return;
     copy[copy.length - 1] = last;
     publishMessages(copy);
-    const chatId = patches.at(-1)?.chatId ?? null;
+    const chatId = shownChatId;
     if (chatId) useChatsStore.getState().setLive(chatId, copy);
     persistDebounced(chatId, copy);
   }, [persistDebounced, publishMessages]);
@@ -2183,6 +2238,13 @@ export function ChatCore() {
     const updateRunLastText = (fn: (message: ChatMessage) => ChatMessage) => {
       if (runIsCurrent()) updateLast(runChatId, fn, "text");
     };
+    // Screenshots this run stored, kept out of an attachment collection until
+    // the chat lists them; and the stores still under way.
+    const runImageRefs: string[] = [];
+    const runImageStores: Promise<unknown>[] = [];
+    let releaseRunImages: (() => void) | null = null;
+    // Set once the run's last save is made: later patches go to the saved chat.
+    let runSaved = false;
     const collectRunImage = (dataUrl: string) => {
       runPendingImages.push(dataUrl);
       let toolId: string | undefined;
@@ -2197,13 +2259,26 @@ export function ChatCore() {
         }
         return m;
       });
+      releaseRunImages ??= registerAttachmentHolder(() => runImageRefs);
       // The chat keeps the screenshot by reference. The data URL shows it until
       // the reference is stored, then goes: a long run would otherwise hold
       // every screenshot in memory until the app restarts.
-      void storeToolImage(runProjectId, dataUrl).then((ref) => {
+      const stored = storeToolImage(runProjectId, dataUrl).then((ref) => {
         if (!ref) return;
-        updateRunLast((m) => withStoredToolImage(m, toolId, ref));
+        runImageRefs.push(ref.sha256);
+        if (!runSaved) {
+          updateRunLast((m) => withStoredToolImage(m, toolId, ref));
+          return;
+        }
+        // The run is over: the saved chat takes the reference, whatever chat is on show now.
+        const chats = useChatsStore.getState();
+        const saved = runChatId && chats.projectId === runProjectId ? chats.byId(runChatId)?.messages : undefined;
+        const next = saved?.map((m) => withStoredToolImage(m, toolId, ref));
+        if (runChatId && saved && next?.some((m, index) => m !== saved[index])) {
+          chats.saveMessages(runChatId, next);
+        }
       });
+      runImageStores.push(stored);
     };
     let runEndedCleanly = false;
     const setRunThinking = (value: string | null) => {
@@ -3196,6 +3271,11 @@ ${sandboxedCustom}`;
           }
         }
       }
+      runSaved = true;
+      if (releaseRunImages) {
+        const release = releaseRunImages;
+        void Promise.allSettled(runImageStores).then(release);
+      }
       if (runChatId) useChatsStore.getState().clearLive(runChatId);
       runPendingImages.length = 0;
       if (activeChatRun() === runHandle) {
@@ -3323,8 +3403,10 @@ ${sandboxedCustom}`;
           replay: {
             attachments: args.attachments,
             commit: async () => {
-              args.onCommit?.();
               const newThread = threadId ? await agentThreadFork(threadId, projectId, drop) : null;
+              // The edit leaves the composer only once the fork exists: a fork
+              // that fails keeps the edited text to send again.
+              args.onCommit?.();
               const fork = useChatsStore
                 .getState()
                 .create(projectId, chat.headOid ?? currentHead, { effort: chat.effort, web: chat.web });
@@ -3417,17 +3499,9 @@ ${sandboxedCustom}`;
     };
     const attachments = savedAttachmentsAsDrafts(userMessage);
     setInput(userMessage.content);
+    // An image chip reads its stored file while it is shown (a cached URL
+    // kept in the draft could be revoked under it).
     useComposerDrafts.getState().setAttachments(composerIdRef.current, attachments);
-    for (const item of attachments) {
-      if (item.kind !== "image" || !item.sha256) continue;
-      void attachmentObjectUrl(projectId, item.sha256, item.mime)
-        .then((url) =>
-          useComposerDrafts
-            .getState()
-            .updateAttachment(composerIdRef.current, item.id, { thumbnailUrl: url }),
-        )
-        .catch(() => undefined);
-    }
     setEditTarget({ messageId, userIndex: index, mode: replayMode(current, index), stash });
     focusComposerAt(userMessage.content.length);
   };
@@ -3641,7 +3715,20 @@ ${sandboxedCustom}`;
         streamPatchesRef.current = { text: [], output: [] };
         streamDrainQueuedRef.current = { text: false, output: false };
       });
+      // What streamed since the last save is kept, marked as stopped, in the
+      // project the run belongs to (its chats are still the ones loaded).
+      const pending = persistPendingRef.current;
       dropPendingPersist();
+      const runChatId = run.chatId;
+      let latest: ChatMessage[] | undefined;
+      if (pending && pending.chatId === runChatId) latest = pending.msgs;
+      else if (runChatId) latest = useChatsStore.getState().byId(runChatId)?.messages;
+      const reply = latest?.at(-1);
+      if (prev && runChatId && latest && reply?.role === "assistant") {
+        const content = reply.content ?? "";
+        const stopped = content.endsWith(STOPPED_MARKER) ? reply : { ...reply, content: appendMarker(content, STOPPED_MARKER) };
+        useChatsStore.getState().saveMessages(runChatId, [...latest.slice(0, -1), stopped], { projectId: prev });
+      }
       trackRunRequestId(null);
       runOwnerRef.current = false;
       endChatRun(run);
@@ -4395,14 +4482,16 @@ ${sandboxedCustom}`;
                       )}
                       <span className="min-w-0">{modelNoticeLine}</span>
                       {canRecheckModel && (
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="xs"
                           data-testid="ai-model-recheck"
                           onClick={() => void recheckModel()}
-                          className="shrink-0 rounded px-1 font-medium text-foreground underline-offset-2 hover:underline"
+                          className="h-5 shrink-0 px-1 text-foreground"
                         >
                           {t(($) => $.ai.composer.checkAgain)}
-                        </button>
+                        </Button>
                       )}
                     </p>
                   )}

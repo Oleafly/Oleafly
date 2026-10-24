@@ -7,6 +7,7 @@ use oleafly_forge::address::{self, RemoteProtocol};
 use oleafly_forge::git::valid_token;
 use oleafly_forge::{ForgeAccount, ForgeError, ForgeToken};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// The sign-in for a remote address. Only `http(s)` remotes under an
 /// account's base get its token; a GitLab OAuth token is refreshed first.
@@ -22,18 +23,26 @@ pub(crate) async fn remote_auth_for_url(url: &str) -> Result<RemoteAuth, String>
     }
     let target = url.trim().to_string();
     let found = tauri::async_runtime::spawn_blocking(move || {
-        let store = store()?;
-        let accounts = store
-            .accounts()
-            .map_err(|error| app_error(&error, &host_label(&target)))?;
-        Ok::<_, String>(
-            address::account_for_remote(&accounts, &target)
+        let read = store().and_then(|store| {
+            let accounts = store
+                .accounts()
+                .map_err(|error| app_error(&error, &host_label(&target)))?;
+            Ok((store, accounts))
+        });
+        match read {
+            Ok((store, accounts)) => address::account_for_remote(&accounts, &target)
                 .cloned()
                 .map(|account| (store, account)),
-        )
+            // An account store that can't be read (damaged, locked) never
+            // stops a remote: Git signs in as the user set it up to.
+            Err(error) => {
+                note_unreadable_accounts(&error);
+                None
+            }
+        }
     })
     .await
-    .map_err(|error| error.to_string())??;
+    .map_err(|error| error.to_string())?;
     let Some((store, account)) = found else {
         return Ok(RemoteAuth::User);
     };
@@ -48,6 +57,19 @@ pub(crate) async fn remote_auth_for_url(url: &str) -> Result<RemoteAuth, String>
         Ok(None) => Ok(RemoteAuth::User),
         Err(error) => Err(app_error(&error, &host)),
     }
+}
+
+/// Write an account store that can't be read to the app log, once per
+/// process.
+fn note_unreadable_accounts(error: &str) {
+    static LOGGED: AtomicBool = AtomicBool::new(false);
+    if LOGGED.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    let _ = crate::project::append_app_log(format!(
+        "Oleafly couldn't read the Git hosting accounts ({}), so Git signs in with your own setup for now.",
+        crate::app_error::english_error(error)
+    ));
 }
 
 /// What Git needs to sign in as `account`: its base URL as the credential
@@ -156,5 +178,21 @@ mod tests {
                 "{other}"
             );
         }
+    }
+
+    #[test]
+    fn a_damaged_account_store_leaves_git_to_the_users_own_sign_in() {
+        let _env = crate::paths::data_dir_env_lock();
+        let data = DataDir::new();
+        std::fs::write(
+            data.path().join(oleafly_forge::store::ACCOUNTS_FILE),
+            "{ not json",
+        )
+        .unwrap();
+        let auth = tauri::async_runtime::block_on(remote_auth_for_url(
+            "https://bitbucket.org/team/paper.git",
+        ))
+        .unwrap();
+        assert!(matches!(auth, RemoteAuth::User));
     }
 }

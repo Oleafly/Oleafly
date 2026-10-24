@@ -560,6 +560,9 @@
     "title": "Takaisin kirjastoon",
     "tooltip": "Palaa projektikirjastoon"
   },
+  "importDestination": {
+    "scansGoTo": "Skannaukset lähetetään palveluun {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -673,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Tallentamattomat muutokset pidetään avoinna. Jää korjaamaan ongelma tai lopeta silti ja menetä ne.",
+      "descriptionReload": "{{reason}} Tallentamattomat muutokset pidetään avoinna. Jää korjaamaan ongelma tai lataa silti uudelleen ja menetä ne.",
       "descriptionRestart": "{{reason}} Tallentamattomat muutokset pidetään avoinna. Jää korjaamaan ongelma tai käynnistä silti uudelleen ja menetä ne.",
       "quitAnyway": "Lopeta silti",
+      "reloadAnyway": "Lataa silti uudelleen",
       "restartAnyway": "Käynnistä silti uudelleen",
       "stay": "Jää",
       "title": "Joitakin tiedostoja ei voitu tallentaa"

@@ -88,7 +88,12 @@ impl BufferSource for Arc<WindowBuffers> {
         project_id: &str,
         relative: &str,
     ) -> BoxFuture<'static, Option<String>> {
-        use tauri::Emitter;
+        use tauri::{Emitter, Manager};
+        // Only a window has open editor text: a task or helper owner is not
+        // one, and asking would only wait out the timeout.
+        if self.app.get_webview_window(owner).is_none() {
+            return Box::pin(async { None });
+        }
         let buffers = self.clone();
         let owner = owner.to_owned();
         let payload = json!({
@@ -151,15 +156,77 @@ pub(super) fn slice_lines(text: &str, line: Option<u64>, limit: Option<u64>) -> 
     text.split_inclusive('\n').skip(skip).take(take).collect()
 }
 
+/// Opens `path` for reading without following a link in its last part (and,
+/// on Unix, without waiting on a named pipe).
+fn open_no_follow(path: &Path) -> std::io::Result<std::fs::File> {
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        options.custom_flags(windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    options.open(path)
+}
+
+/// Reads the file `path` leads to now, if it is still inside the canonical
+/// folder `within`. The path is resolved again at read time (a link made
+/// after the request was checked does not lead out), and the file is opened
+/// by its resolved path without following links.
+fn read_inside(path: &Path, within: &Path) -> Result<Vec<u8>, (i64, String)> {
+    use std::io::Read as _;
+    let unreadable = || (-32603, "The file could not be read.".to_string());
+    let real = path.canonicalize().map_err(|_| unreadable())?;
+    if !real.starts_with(within) {
+        return Err((-32602, OUTSIDE.to_string()));
+    }
+    let file = open_no_follow(&real).map_err(|_| unreadable())?;
+    let metadata = file.metadata().map_err(|_| unreadable())?;
+    if !metadata.is_file() {
+        return Err((-32602, NOT_TEXT.to_string()));
+    }
+    if metadata.len() > MAX_READ_BYTES {
+        return Err((-32603, TOO_LARGE.to_string()));
+    }
+    // The opened file is the one the resolved path names: no folder on the
+    // way was swapped for a link meanwhile.
+    if real.canonicalize().ok().as_deref() != Some(real.as_path()) {
+        return Err((-32602, OUTSIDE.to_string()));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt as _;
+        let named = std::fs::symlink_metadata(&real).map_err(|_| unreadable())?;
+        if (named.dev(), named.ino()) != (metadata.dev(), metadata.ino()) {
+            return Err((-32602, OUTSIDE.to_string()));
+        }
+    }
+    let mut bytes = Vec::new();
+    file.take(MAX_READ_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| unreadable())?;
+    if bytes.len() as u64 > MAX_READ_BYTES {
+        return Err((-32603, TOO_LARGE.to_string()));
+    }
+    Ok(bytes)
+}
+
 /// The text an agent asked for: the open buffer of the owner window when
-/// there is one, otherwise the file on disk; then `line`/`limit`. Errors
-/// carry the JSON-RPC code to answer with.
+/// there is one, otherwise the file on disk, which must still be inside
+/// the canonical folder `within`; then `line`/`limit`. Errors carry the
+/// JSON-RPC code to answer with.
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn read_for_agent(
     source: Option<&dyn BufferSource>,
     owner: Option<&str>,
     project_id: &str,
     roots: &[&Path],
+    within: &Path,
     absolute: &Path,
     line: Option<u64>,
     limit: Option<u64>,
@@ -174,20 +241,10 @@ pub(super) async fn read_for_agent(
         Some(text) => text,
         None => {
             let path = absolute.to_path_buf();
-            let bytes = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, (i64, String)> {
-                let metadata = std::fs::metadata(&path)
-                    .map_err(|_| (-32603, "The file could not be read.".to_string()))?;
-                if !metadata.is_file() {
-                    return Err((-32602, NOT_TEXT.to_string()));
-                }
-                if metadata.len() > MAX_READ_BYTES {
-                    return Err((-32603, TOO_LARGE.to_string()));
-                }
-                std::fs::read(&path)
-                    .map_err(|_| (-32603, "The file could not be read.".to_string()))
-            })
-            .await
-            .map_err(|_| (-32603, "The file could not be read.".to_string()))??;
+            let within = within.to_path_buf();
+            let bytes = tokio::task::spawn_blocking(move || read_inside(&path, &within))
+                .await
+                .map_err(|_| (-32603, "The file could not be read.".to_string()))??;
             String::from_utf8(bytes).map_err(|_| (-32603, NOT_TEXT.to_string()))?
         }
     };
@@ -253,12 +310,83 @@ mod tests {
         std::fs::write(&plain, "x".repeat(700 * 1024)).unwrap();
         let roots = [root.as_path()];
 
-        let refused = read_for_agent(None, None, "project", &roots, &quoted, None, None).await;
+        let refused =
+            read_for_agent(None, None, "project", &roots, &root, &quoted, None, None).await;
         assert_eq!(refused, Err((-32603, TOO_LARGE.to_string())));
-        let text = read_for_agent(None, None, "project", &roots, &plain, None, None)
+        let text = read_for_agent(None, None, "project", &roots, &root, &plain, None, None)
             .await
             .unwrap();
         assert_eq!(text.len(), 700 * 1024);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_link_made_after_the_check_does_not_lead_out_of_the_project() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("project");
+        std::fs::create_dir(&root).unwrap();
+        let root = root.canonicalize().unwrap();
+        let secret = temp.path().join("id_ed25519");
+        std::fs::write(&secret, "private key").unwrap();
+        // The request named a regular file; by the time it is read the file
+        // is a link to one outside the project.
+        let notes = root.join("notes.md");
+        std::os::unix::fs::symlink(&secret, &notes).unwrap();
+        let roots = [root.as_path()];
+        let refused =
+            read_for_agent(None, None, "project", &roots, &root, &notes, None, None).await;
+        assert_eq!(refused, Err((-32602, OUTSIDE.to_string())));
+        // A folder swapped for a link is refused the same way.
+        let outside = temp.path().join("outside");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::write(outside.join("a.tex"), "outside").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("chapters")).unwrap();
+        let refused = read_for_agent(
+            None,
+            None,
+            "project",
+            &roots,
+            &root,
+            &root.join("chapters/a.tex"),
+            None,
+            None,
+        )
+        .await;
+        assert_eq!(refused, Err((-32602, OUTSIDE.to_string())));
+        // A link that stays inside is read.
+        std::fs::write(root.join("main.tex"), "inside").unwrap();
+        std::os::unix::fs::symlink(root.join("main.tex"), root.join("alias.tex")).unwrap();
+        let text = read_for_agent(
+            None,
+            None,
+            "project",
+            &roots,
+            &root,
+            &root.join("alias.tex"),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(text, "inside");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_named_pipe_is_refused_without_waiting() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let pipe = root.join("pipe");
+        let name = std::ffi::CString::new(pipe.to_string_lossy().as_bytes()).unwrap();
+        assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
+        let roots = [root.as_path()];
+        let refused = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            read_for_agent(None, None, "project", &roots, &root, &pipe, None, None),
+        )
+        .await
+        .expect("the read does not wait for a writer");
+        assert_eq!(refused, Err((-32602, NOT_TEXT.to_string())));
     }
 
     #[test]

@@ -2183,14 +2183,10 @@ describe("ChatCore message actions", () => {
     expect(rendered.queryByText("notes.txt")).toBeNull();
     expect(rendered.getByText("plot.png")).toHaveAttribute("data-status", "ready");
     expect(rendered.queryByText("old.pdf")).toBeNull();
-    await waitFor(() =>
-      expect(composerDraft()?.attachments[0]?.thumbnailUrl).toBe("blob:attachment"),
-    );
-    expect(mocks.attachmentObjectUrl).toHaveBeenCalledWith(
-      useFilesStore.getState().projectId,
-      "sha-plot.png",
-      "image/png",
-    );
+    // The chip reads the stored image while it is shown; a cached URL kept in
+    // the draft could be revoked under it.
+    expect(composerDraft()?.attachments[0]).toMatchObject({ kind: "image", sha256: "sha-plot.png" });
+    expect(composerDraft()?.attachments[0]?.thumbnailUrl).toBeUndefined();
 
     await messageAction("edit", "u2");
     expect(rendered.getByTestId("ai-edit-banner")).toHaveTextContent(
@@ -2549,5 +2545,216 @@ describe("ChatCore message actions", () => {
     expect(mocks.agentThreadRead).not.toHaveBeenCalled();
     expect(rendered.queryByTestId("ai-edit-banner")).toBeNull();
     expect(composerBox()).toHaveValue("");
+  });
+});
+
+describe("ChatCore chats, runs and what each keeps", () => {
+  function otherChat(messages: ChatMessage[] = [{ id: "u9", role: "user", content: "Review section 2" }]): StoredChat {
+    const projectId = useFilesStore.getState().projectId as string;
+    const chat: StoredChat = { id: "chat-2", projectId, title: "Earlier review", createdAt: 1, updatedAt: 0, headOid: null, messages };
+    useChatsStore.setState((state) => ({ chats: [...state.chats, chat] }));
+    return chat;
+  }
+
+  async function runLoadImage(image: string) {
+    const run = mocks.runs[0].options;
+    await act(async () => {
+      await run.handlers.onToolCall({ id: "img-1", name: "load_image", args: { path: "plot.png" } });
+      await run.tools.load_image.execute?.({ image });
+      run.handlers.onToolResult({ id: "img-1", output: { loaded: true } });
+    });
+  }
+
+  it("keeps a screenshot stored during a run out of an attachment collection", async () => {
+    const { draftAttachmentRefs } = await import("@/store/composer-drafts");
+    mocks.storeToolImage.mockResolvedValue({ sha256: "sha-shot", mime: "image/png" });
+    await renderChat();
+    const projectId = useFilesStore.getState().projectId as string;
+    sendFromComposer("Look at the figure");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await runLoadImage("data:image/png;base64,UExPVA==");
+
+    // Deleting another chat now would collect every file not in this list.
+    await waitFor(() => expect(draftAttachmentRefs(projectId)).toContain("sha-shot"));
+    await completeRun(0, "It shows a rising curve.");
+    expect(savedMessages().at(-1)?.toolCalls?.[0]?.imageRef?.sha256).toBe("sha-shot");
+  });
+
+  it("puts a screenshot stored after the run ended into its own chat, not the one on show", async () => {
+    const other = otherChat();
+    let stored: (ref: { sha256: string; mime: string }) => void = () => {};
+    mocks.storeToolImage.mockReturnValue(new Promise((resolve) => { stored = resolve; }));
+    await renderChat();
+    sendFromComposer("Look at the figure");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    const image = "data:image/png;base64,UExPVA==";
+    await runLoadImage(image);
+    await completeRun(0, "It shows a rising curve.");
+    act(() => mocks.historyProps?.onOpen(other));
+    await waitFor(() => expect(useChatsStore.getState().activeId).toBe("chat-2"));
+
+    await act(async () => stored({ sha256: "sha-late", mime: "image/png" }));
+
+    await waitFor(() => expect(savedMessages("chat-1").at(-1)?.toolCalls?.[0]?.imageRef?.sha256).toBe("sha-late"));
+    expect(savedMessages("chat-1").at(-1)?.toolCalls?.[0]).not.toHaveProperty("image");
+    expect(savedMessages("chat-2")).toEqual(other.messages);
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(savedMessages("chat-2")).toEqual(other.messages);
+  });
+
+  it("shows a new or another chat without the last run's context and trimmed note", async () => {
+    const other = otherChat();
+    const rendered = await renderChat();
+    sendFromComposer("Measure the context");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    act(() =>
+      mocks.runs[0].options.handlers.onUsage?.(
+        { input: 1200, output: 340 },
+        { lastStep: { input: 160_000, output: 0 }, contextWindow: 200_000 },
+      ),
+    );
+    await completeRun(0, "Measured.");
+    expect(rendered.getByTestId("ai-context-ring")).toHaveAttribute("data-tone", "warning");
+
+    act(() => mocks.historyProps?.onOpen(other));
+    await waitFor(() => expect(rendered.getByTestId("ai-context-ring")).toHaveAttribute("data-state", "unknown"));
+
+    // Chat 1 shows its own saved usage again.
+    act(() => mocks.historyProps?.onOpen(useChatsStore.getState().byId("chat-1") as StoredChat));
+    await waitFor(() => expect(rendered.getByTestId("ai-context-ring")).toHaveAttribute("data-tone", "warning"));
+    fireEvent.click(rendered.getByRole("button", { name: enAi.header.newChat }));
+    await waitFor(() => expect(rendered.getByTestId("ai-context-ring")).toHaveAttribute("data-state", "unknown"));
+  });
+
+  it("does not open an older chat that finished loading after the project changed", async () => {
+    const projectId = useFilesStore.getState().projectId as string;
+    const stub: StoredChat = {
+      id: "chat-2", projectId, title: "Earlier review", createdAt: 1, updatedAt: 2, headOid: null,
+      messages: [], stub: true, messageCount: 2,
+    };
+    useChatsStore.setState((state) => ({ chats: [...state.chats, stub] }));
+    let read: (json: string) => void = () => {};
+    mocks.chatRead.mockReturnValue(new Promise((resolve) => { read = resolve; }));
+    const rendered = await renderChat();
+
+    act(() => mocks.historyProps?.onOpen(stub));
+    await waitFor(() => expect(mocks.chatRead).toHaveBeenCalledWith(projectId, "chat-2"));
+    act(() => {
+      useFilesStore.setState({ projectId: "composer-project-elsewhere", projectName: "Other project" });
+    });
+    await act(async () => {
+      read(JSON.stringify({ ...stub, stub: undefined, messageCount: undefined, messages: [{ id: "u2", role: "user", content: "Old" }] }));
+    });
+
+    expect(useChatsStore.getState().activeId).not.toBe("chat-2");
+    expect(rendered.container.querySelectorAll("[data-message-role]")).toHaveLength(0);
+  });
+
+  it("keeps an edit and its text when its new chat cannot be forked", async () => {
+    mocks.claimPrewarmed.mockResolvedValue("thread-1");
+    const rendered = await renderChat();
+    sendFromComposer("First request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await completeRun(0, "First reply.");
+    sendFromComposer("Second request");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    await completeRun(1, "Second reply.");
+    const original = savedMessages();
+    mocks.agentThreadRead.mockResolvedValue(
+      original
+        .filter((message) => message.role === "user")
+        .map((message, index) => ({ turnId: `turn-${index}`, clientTurnId: message.turnId })),
+    );
+    await waitFor(() => expect(rowProps(original[0].id as string)?.editable).toBe(true));
+    changeComposer("Half-written note");
+    await messageAction("edit", original[0].id as string);
+    mocks.agentThreadFork.mockRejectedValue(new Error("rollout missing"));
+
+    sendFromComposer("A long revised first request");
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(enAi.messageActions.failed));
+
+    expect(mocks.runs).toHaveLength(2);
+    expect(rendered.getByTestId("ai-edit-banner")).toBeTruthy();
+    expect(composerBox()).toHaveValue("A long revised first request");
+    expect(useChatsStore.getState().activeId).toBe("chat-1");
+  });
+
+  it("puts the draft from before an edit in the new chat when the edited chat is deleted", async () => {
+    seedChat([
+      { id: "u1", role: "user", content: "Plot the results", turnId: "turn-1" },
+      { id: "a1", role: "assistant", content: "Here is the plot." },
+    ]);
+    const rendered = await renderChat();
+    const projectId = useFilesStore.getState().projectId as string;
+    changeComposer("Half-written message");
+    await waitFor(() => expect(rowProps("u1")?.editable).toBe(true));
+    await messageAction("edit", "u1");
+    expect(composerBox()).toHaveValue("Plot the results");
+
+    act(() => mocks.historyProps?.onDelete("chat-1"));
+
+    await waitFor(() => expect(useChatsStore.getState().activeId).toBeNull());
+    expect(rendered.queryByTestId("ai-edit-banner")).toBeNull();
+    await waitFor(() => expect(composerBox()).toHaveValue("Half-written message"));
+    // Nothing is left behind for the chat that is gone.
+    expect(useComposerDrafts.getState().drafts[builtinComposerId(projectId, "chat-1")]).toBeUndefined();
+  });
+
+  it("saves a reply that streams without a pause every couple of seconds", async () => {
+    await renderChat();
+    const saveMessages = vi.spyOn(useChatsStore.getState(), "saveMessages");
+    let offset = 0;
+    const realNow = Date.now.bind(Date);
+    const now = vi.spyOn(Date, "now").mockImplementation(() => realNow() + offset);
+    try {
+      sendFromComposer("Stream a long reply");
+      await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      act(() => mocks.runs[0].options.handlers.onText("First part"));
+      await waitFor(() => expect(useChatsStore.getState().live["chat-1"]?.at(-1)?.content).toBe("First part"));
+      offset = 2_500;
+      act(() => mocks.runs[0].options.handlers.onText(", second part"));
+      await waitFor(() =>
+        expect(useChatsStore.getState().live["chat-1"]?.at(-1)?.content).toBe("First part, second part"),
+      );
+      // Saved now, not once the text stops for 400 ms.
+      expect(saveMessages).toHaveBeenCalledWith(
+        "chat-1",
+        expect.arrayContaining([expect.objectContaining({ content: "First part, second part" })]),
+        { index: false },
+      );
+      offset = 0;
+      await completeRun(0, " Done.");
+    } finally {
+      now.mockRestore();
+      saveMessages.mockRestore();
+    }
+  });
+
+  it("keeps what streamed, marked as stopped, when the project changes mid-reply", async () => {
+    await renderChat();
+    const firstProject = useFilesStore.getState().projectId as string;
+    const saveMessages = vi.spyOn(useChatsStore.getState(), "saveMessages");
+    try {
+      sendFromComposer("Write the introduction");
+      await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      act(() => mocks.runs[0].options.handlers.onText("The introduction so far"));
+      await waitFor(() =>
+        expect(useChatsStore.getState().live["chat-1"]?.at(-1)?.content).toBe("The introduction so far"),
+      );
+
+      act(() => {
+        useFilesStore.setState({ projectId: "composer-project-elsewhere", projectName: "Other project" });
+      });
+
+      expect(saveMessages).toHaveBeenCalledWith(
+        "chat-1",
+        expect.arrayContaining([
+          expect.objectContaining({ role: "assistant", content: "The introduction so far\n\n_Stopped._" }),
+        ]),
+        { projectId: firstProject },
+      );
+    } finally {
+      saveMessages.mockRestore();
+    }
   });
 });

@@ -16,6 +16,7 @@ vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => undefined) }));
 vi.mock("@/lib/attachments", () => ({
   attachmentRead: vi.fn(),
   attachmentObjectUrl: vi.fn(),
+  holdAttachmentObjectUrl: () => () => {},
 }));
 import { attachmentObjectUrl, attachmentRead } from "@/lib/attachments";
 import { logError } from "@/lib/log";

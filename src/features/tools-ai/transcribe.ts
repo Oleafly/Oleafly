@@ -2,7 +2,7 @@
 // equations and scanned PDF pages, for a general vision model, an OCR model
 // with its own prompt, or Mathpix. OCR Markdown goes through the bundled
 // Pandoc so tables and math survive in LaTeX, Typst and Markdown.
-import { isOutputLimitStop } from "@oleafly/ai-core";
+import { isOutputLimitStop, isRefusalStop } from "@oleafly/ai-core";
 import type { ConverterProgressReporter } from "@/features/ad-hoc-converters";
 import { i18n } from "@/i18n";
 import {
@@ -114,6 +114,10 @@ async function complete(model: ResolvedLlm, request: AgentCompletionRequest, sig
   if (isOutputLimitStop(response.stop_reason)) {
     throw new ToolsModelError(i18n.t(($) => $.researchTools.converterErrors.outputLimit));
   }
+  // So is a refused or filtered reply: a part of the page, or the refusal.
+  if (isRefusalStop(response.stop_reason)) {
+    throw new ToolsModelError(i18n.t(($) => $.researchTools.converterErrors.refused));
+  }
   return response.text;
 }
 
@@ -168,7 +172,9 @@ async function readImage(
 async function mathpixImage(image: ImageInput, options: TranscribeOptions): Promise<string> {
   const prepared = await prepareImage(image, IMAGE_BUDGETS.mathpix);
   throwIfAborted(options.signal);
-  const result = await mathpixText(prepared.base64, prepared.mime);
+  // The signal cancels the Mathpix request itself, so a cancelled read is
+  // not billed.
+  const result = await mathpixText(prepared.base64, prepared.mime, { signal: options.signal });
   throwIfAborted(options.signal);
   const latex = result.latexStyled?.trim() ?? "";
   if (options.mode === "equation") return nonEmpty(latex || extractSingleMath(result.text));
@@ -284,13 +290,20 @@ export async function transcribePdfPages(
     const markdown = await mathpixPdf(bytes, {
       pageRanges: pageRanges(pages),
       signal,
-      onProgress: (progress) =>
+      onProgress: (progress) => {
+        // Mathpix counts the pages it has finished; the page it reads now
+        // is the next one, never "page 0".
+        const total = progress.pagesTotal;
+        if (total < 1) return;
+        const page = Math.min(total, progress.pagesDone + 1);
         onProgress?.({
           step: "transcribingPage",
-          page: progress.pagesDone,
-          total: progress.pagesTotal,
+          page,
+          total,
+          ...(total === pages.length ? { pdfPage: pages[page - 1] } : {}),
           model: model.label,
-        }),
+        });
+      },
     });
     throwIfAborted(signal);
     onProgress?.({ step: "formattingTranscription", model: model.label });
@@ -298,15 +311,28 @@ export async function transcribePdfPages(
     return { text: nonEmpty(text), model: info };
   }
 
-  const { pdfPageToPng } = await import("@/lib/pdf-image");
+  const { renderPages } = await import("@/lib/pdf-image");
   const budget = model.hosted ? IMAGE_BUDGETS.hosted : IMAGE_BUDGETS.local;
   const transcribed: string[] = [];
-  for (let index = 0; index < pages.length; index += 1) {
-    throwIfAborted(signal);
-    onProgress?.({ step: "transcribingPage", page: index + 1, total: pages.length, model: model.label });
-    const image = dataUrlToImageInput(await pdfPageToPng(bytes, pages[index], SCAN_RENDER_SCALE, "#ffffff"));
-    const page = await readImage(model, image, target, "image", budget, signal);
-    transcribed.push(model.profile ? normalizeOcrMarkdown(page) : page);
+  // pdf.js loads the PDF once for all the pages, not once per page.
+  const rendered = renderPages(bytes, pages, SCAN_RENDER_SCALE, "#ffffff");
+  try {
+    for (let index = 0; index < pages.length; index += 1) {
+      throwIfAborted(signal);
+      onProgress?.({
+        step: "transcribingPage",
+        page: index + 1,
+        total: pages.length,
+        pdfPage: pages[index],
+        model: model.label,
+      });
+      const next = await rendered.next();
+      if (next.done) break;
+      const page = await readImage(model, dataUrlToImageInput(next.value), target, "image", budget, signal);
+      transcribed.push(model.profile ? normalizeOcrMarkdown(page) : page);
+    }
+  } finally {
+    await rendered.return(undefined);
   }
   throwIfAborted(signal);
   if (!transcribed.some((page) => page.trim())) throw emptyTranscription();

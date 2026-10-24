@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangle, CheckCircle2, type LucideIcon, MinusCircle } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import type { EvidenceCheckId, EvidenceItem, EvidenceReport, EvidenceStatus } from "@/lib/research-tasks";
@@ -101,6 +102,9 @@ interface EvidenceChecklistProps {
   onRefresh: () => Promise<void>;
 }
 
+/** Items one check lists before saying how many more it found. */
+const SHOWN_ITEMS = 50;
+
 /** Evidence checks on a task's result. They only warn; applying stays possible. */
 export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<EvidenceChecklistProps>) {
   const { t } = useTranslation(["researchTools"]);
@@ -128,8 +132,9 @@ export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<Evid
           </h5>
           <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.evidence.hint)}</p>
         </div>
-        <Button size="xs" variant="outline" disabled={busy} onClick={() => void refresh()}>
-          {busy ? t(($) => $.researchTools.evidence.running) : t(($) => $.researchTools.evidence.refresh)}
+        {/* A check the task started can be cut off by an exit and say "Checking" for good, so it never locks this out. */}
+        <Button size="xs" variant="outline" disabled={refreshing} onClick={() => void refresh()}>
+          {refreshing ? t(($) => $.researchTools.evidence.running) : t(($) => $.researchTools.evidence.refresh)}
         </Button>
       </div>
       {failure ? (
@@ -147,7 +152,7 @@ export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<Evid
               </div>
               {check.items.length > 0 ? (
                 <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                  {check.items.slice(0, 50).map((item, index) => (
+                  {check.items.slice(0, SHOWN_ITEMS).map((item, index) => (
                     <li key={`${item.code}-${index}`} className="select-text break-words">
                       {evidenceItemText(item)}
                       {item.file ? (
@@ -158,14 +163,26 @@ export function EvidenceChecklist({ report, checking, onRefresh }: Readonly<Evid
                       ) : null}
                     </li>
                   ))}
+                  {check.items.length > SHOWN_ITEMS ? (
+                    <li data-testid="research-evidence-more">
+                      {t(($) => $.researchTools.evidence.more, { count: check.items.length - SHOWN_ITEMS })}
+                    </li>
+                  ) : null}
                 </ul>
               ) : null}
             </li>
           ))}
         </ul>
       ) : null}
-      {!report && busy ? (
-        <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.evidence.running)}</p>
+      {busy ? (
+        <LoadingState size="compact" label={t(($) => $.researchTools.evidence.running)} />
+      ) : null}
+      {!report && !busy && !failure ? (
+        <EmptyState
+          size="compact"
+          className="rounded-md border border-dashed p-3"
+          description={t(($) => $.researchTools.evidence.empty)}
+        />
       ) : null}
     </section>
   );

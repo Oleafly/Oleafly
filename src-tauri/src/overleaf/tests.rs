@@ -627,6 +627,20 @@ fn app_cookie_header_keeps_only_cookies_for_the_service_host() {
 }
 
 #[test]
+fn the_copied_cookies_removed_after_sign_in_are_the_ones_sent_to_the_service() {
+    let cookies = vec![
+        app_cookie("session2", "abc", Some(".latex.example"), Some("/"), true),
+        app_cookie("other", "x", Some("evil-latex.example"), Some("/"), false),
+        app_cookie("gclb", "y", Some("www.latex.example"), Some("/"), true),
+    ];
+    assert_eq!(
+        super::copied_cookies(&cookies, "https://www.latex.example"),
+        [0, 2]
+    );
+    assert!(super::copied_cookies(&cookies, "not a server").is_empty());
+}
+
+#[test]
 fn app_cookie_header_refuses_when_nothing_matches() {
     let error = super::app_cookie_header(&[], "https://www.latex.example").unwrap_err();
     assert!(

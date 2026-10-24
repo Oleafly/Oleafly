@@ -560,6 +560,9 @@
     "title": "Back to library",
     "tooltip": "Go back to project library"
   },
+  "importDestination": {
+    "scansGoTo": "Scans go to {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -673,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Your unsaved changes are kept open. Stay to fix the problem, or quit anyway and lose them.",
+      "descriptionReload": "{{reason}} Your unsaved changes are kept open. Stay to fix the problem, or reload anyway and lose them.",
       "descriptionRestart": "{{reason}} Your unsaved changes are kept open. Stay to fix the problem, or restart anyway and lose them.",
       "quitAnyway": "Quit anyway",
+      "reloadAnyway": "Reload anyway",
       "restartAnyway": "Restart anyway",
       "stay": "Stay",
       "title": "Some files could not be saved"

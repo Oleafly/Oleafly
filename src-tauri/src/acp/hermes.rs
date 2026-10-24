@@ -163,15 +163,17 @@ pub(super) struct HermesOutput {
     pub stderr: String,
 }
 
+/// The first 64 KiB of a stream. The rest is read and dropped, so a command
+/// that prints more is never left blocked on a full pipe (or killed by a
+/// closed one).
 async fn read_limited<R: tokio::io::AsyncRead + Unpin>(reader: Option<R>) -> String {
     let Some(reader) = reader else {
         return String::new();
     };
     let mut buffer = Vec::new();
-    let _ = reader
-        .take(MAX_OUTPUT as u64)
-        .read_to_end(&mut buffer)
-        .await;
+    let mut limited = reader.take(MAX_OUTPUT as u64);
+    let _ = limited.read_to_end(&mut buffer).await;
+    let _ = tokio::io::copy(&mut limited.into_inner(), &mut tokio::io::sink()).await;
     String::from_utf8_lossy(&buffer).into_owned()
 }
 
@@ -751,6 +753,21 @@ else:
         .unwrap();
         assert!(saved.memory && saved.tool_gateway);
         assert_eq!(saved.profile, None);
+    }
+
+    #[tokio::test]
+    async fn output_past_the_cap_is_read_to_the_end() {
+        use tokio::io::AsyncWriteExt as _;
+        let (mut writer, reader) = tokio::io::duplex(1024);
+        let writing = tokio::spawn(async move {
+            let result = writer.write_all(&vec![b'x'; 3 * MAX_OUTPUT]).await;
+            drop(writer);
+            result
+        });
+        let text = read_limited(Some(reader)).await;
+        assert_eq!(text.len(), MAX_OUTPUT);
+        // The writer finished its whole output: it never saw a closed pipe.
+        writing.await.unwrap().unwrap();
     }
 
     #[test]

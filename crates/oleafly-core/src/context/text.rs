@@ -127,7 +127,7 @@ fn has_scheme(raw: &str) -> bool {
     false
 }
 
-fn has_extension(path: &str) -> bool {
+pub(crate) fn has_extension(path: &str) -> bool {
     let last = path.rsplit('/').next().unwrap_or(path);
     match last.rfind('.') {
         Some(dot) => {

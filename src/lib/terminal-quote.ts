@@ -58,6 +58,26 @@ export function terminalPathArg(kind: TerminalShellKind, platform: TerminalPlatf
   return quoteShellArg(kind, windowsShell ? path.replaceAll("/", "\\") : path);
 }
 
+/**
+ * A project path as an absolute path for the shell, from the project
+ * folder's path on this computer: `C:/…` for Git Bash (terminalPathArg turns
+ * it into backslashes for cmd and PowerShell) and `/mnt/c/…` under WSL.
+ * Null when WSL can't name the folder (a network share).
+ */
+export function absoluteTerminalPath(
+  root: string,
+  path: string,
+  platform: TerminalPlatform,
+  wsl: boolean,
+): string | null {
+  const joined = `${root.replace(/[\\/]+$/, "")}/${path}`;
+  if (platform !== "windows") return joined;
+  const forward = joined.replaceAll("\\", "/");
+  if (!wsl) return forward;
+  const drive = /^([A-Za-z]):\//.exec(forward);
+  return drive ? `/mnt/${drive[1].toLowerCase()}/${forward.slice(3)}` : null;
+}
+
 function segments(path: string): string[] {
   return path.split("/").filter((part) => part !== "" && part !== ".");
 }
@@ -79,4 +99,12 @@ export function hasControlCharacters(value: string): boolean {
     if (code < 0x20 || code === 0x7f) return true;
   }
   return false;
+}
+
+/**
+ * Pasted text without ESC. An ESC [201~ inside the text would end
+ * bracketed paste early, and the shell would run the rest as typed keys.
+ */
+export function withoutEscapes(value: string): string {
+  return value.replaceAll("\x1b", "");
 }

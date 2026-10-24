@@ -121,7 +121,7 @@ async fn run_server(ctx: &Context, mode: BridgeMode) -> Result<Outcome, CliError
             if !bridge::ping(&target, PING_TIMEOUT).await {
                 return Err(app_not_running());
             }
-            bridge::serve_bridge(data_root, target).await?;
+            bridge::serve_bridge(data_root, target, None).await?;
             return Ok(Outcome::printed());
         }
         BridgeMode::Auto => {
@@ -133,7 +133,7 @@ async fn run_server(ctx: &Context, mode: BridgeMode) -> Result<Outcome, CliError
                     .map(|identity| identity.id().to_string());
                 let open = bridge::app_project_id(&target).await;
                 if open.is_some() && open == ours {
-                    bridge::serve_bridge(data_root, target).await?;
+                    bridge::serve_bridge(data_root, target, open).await?;
                     return Ok(Outcome::printed());
                 }
                 if let (Some(_), Some(root)) = (open, root) {

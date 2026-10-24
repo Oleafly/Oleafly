@@ -41,14 +41,15 @@ fn with_metrics((mut record, metrics): (RunRecord, Option<String>)) -> Result<Ru
 }
 
 impl TaskStore {
-    /// Records a new run as starting.
+    /// Records a new run as starting, started by this process.
     pub fn insert_run(&self, record: &RunRecord) -> Result<(), String> {
         self.open()?
             .execute(
                 "INSERT INTO research_task_runs (
                    task_id, run_id, execution_generation, name, executor, command, cwd_rel,
-                   state, exit_code, started_at, finished_at, run_dir, metrics_json, reported
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL, ?9, NULL, ?10, NULL, 0)",
+                   state, exit_code, started_at, finished_at, run_dir, metrics_json, reported,
+                   starter_pid, starter_started
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL, ?9, NULL, ?10, NULL, 0, ?11, ?12)",
                 params![
                     record.task_id,
                     record.run_id,
@@ -59,10 +60,70 @@ impl TaskStore {
                     record.cwd_rel,
                     record.state.as_str(),
                     record.started_at,
-                    record.run_dir
+                    record.run_dir,
+                    i64::from(self.owner.pid),
+                    super::owner_started_column(self.owner)
                 ],
             )
             .map(|_| ())
+            .map_err(store_error)
+    }
+
+    /// Whether another process that is still alive started the run, so its
+    /// start (an upload can take half an hour) may still finish there.
+    pub fn run_starting_elsewhere(&self, task_id: &str, run_id: &str) -> Result<bool, String> {
+        let starter: Option<(Option<i64>, Option<i64>)> = self
+            .open()?
+            .query_row(
+                "SELECT starter_pid, starter_started FROM research_task_runs
+                 WHERE task_id = ?1 AND run_id = ?2 AND state = 'starting'",
+                params![task_id, run_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()
+            .map_err(store_error)?;
+        Ok(starter.is_some_and(|(pid, started)| {
+            pid.is_some() && !self.is_me(pid, started) && !self.owner_gone(pid, started)
+        }))
+    }
+
+    /// Records that the user cancelled a live run, so the cancel is sent
+    /// again while the run still reports running (its host may have been
+    /// out of reach).
+    pub fn request_run_cancel(&self, task_id: &str, run_id: &str) -> Result<(), String> {
+        self.open()?
+            .execute(
+                "UPDATE research_task_runs SET cancel_requested = 1
+                 WHERE task_id = ?1 AND run_id = ?2 AND state IN ('starting', 'running')",
+                params![task_id, run_id],
+            )
+            .map(|_| ())
+            .map_err(store_error)
+    }
+
+    pub fn run_cancel_requested(&self, task_id: &str, run_id: &str) -> Result<bool, String> {
+        self.open()?
+            .query_row(
+                "SELECT cancel_requested FROM research_task_runs WHERE task_id = ?1 AND run_id = ?2",
+                params![task_id, run_id],
+                |row| row.get::<_, bool>(0),
+            )
+            .optional()
+            .map(|requested| requested.unwrap_or(false))
+            .map_err(store_error)
+    }
+
+    /// How many of the task's runs came before its last fresh start: run
+    /// limits count only the runs after them.
+    pub fn runs_baseline(&self, task_id: &str) -> Result<usize, String> {
+        self.open()?
+            .query_row(
+                "SELECT runs_baseline FROM research_tasks WHERE id = ?1",
+                [task_id],
+                |row| row.get::<_, i64>(0),
+            )
+            .optional()
+            .map(|count| count.unwrap_or(0).max(0) as usize)
             .map_err(store_error)
     }
 

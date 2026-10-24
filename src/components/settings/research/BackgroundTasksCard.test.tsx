@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
@@ -94,17 +94,46 @@ describe("BackgroundTasksCard", () => {
     );
   });
 
-  it("Stop calls the command and refreshes", async () => {
-    api.getBackgroundHelperStatus.mockResolvedValue(status({ running: true, phase: "ready", taskCount: 1 }));
+  it("Stop asks first, naming the tasks that come back, then calls the command and refreshes", async () => {
+    api.getBackgroundHelperStatus.mockResolvedValue(status({ running: true, phase: "ready", taskCount: 2 }));
     api.stopBackgroundHelper.mockResolvedValue(status());
     render(<BackgroundTasksCard />);
-    await screen.findByText("Working on 1 task");
+    await screen.findByText("Working on 2 tasks");
     await userEvent.click(screen.getByRole("button", { name: strings.stop }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(strings.stopConfirm.title);
+    expect(dialog).toHaveTextContent("Its 2 tasks move back to Oleafly and keep running here.");
+    expect(api.stopBackgroundHelper).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: new RegExp(`^${strings.stop}`) }));
     expect(api.stopBackgroundHelper).toHaveBeenCalledTimes(1);
     await waitFor(() =>
       expect(screen.getByTestId("research-background-state").textContent).toBe(strings.status.stopped),
     );
     expect(screen.getByRole("button", { name: strings.stop })).toHaveProperty("disabled", true);
+  });
+
+  it("keeps the helper running when the stop question is cancelled", async () => {
+    api.getBackgroundHelperStatus.mockResolvedValue(status({ running: true, phase: "ready", taskCount: 1 }));
+    render(<BackgroundTasksCard />);
+    await screen.findByText("Working on 1 task");
+    await userEvent.click(screen.getByRole("button", { name: strings.stop }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Its 1 task moves back to Oleafly and keeps running here.");
+    await userEvent.click(within(dialog).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`) }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(api.stopBackgroundHelper).not.toHaveBeenCalled();
+  });
+
+  it("stops a helper with no tasks without asking, and says what Stop does", async () => {
+    api.getBackgroundHelperStatus.mockResolvedValue(status({ running: true, phase: "ready", taskCount: 0 }));
+    api.stopBackgroundHelper.mockResolvedValue(status());
+    render(<BackgroundTasksCard />);
+    const stop = await screen.findByRole("button", { name: strings.stop });
+    await waitFor(() => expect(stop).toHaveProperty("disabled", false));
+    expect(strings.stopHint).toBe("Its tasks move back to Oleafly and keep running here.");
+    await userEvent.click(stop);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(api.stopBackgroundHelper).toHaveBeenCalledTimes(1);
   });
 
   it("turning on sign-in start calls the command and explains a translocated app", async () => {

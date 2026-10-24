@@ -53,6 +53,7 @@ impl Plan<'_> {
                 scope,
                 access,
                 applied: false,
+                original: None,
             },
             chain,
         });
@@ -196,6 +197,7 @@ mod tests {
             project_read_only: Vec::new(),
             read_write: Vec::new(),
             protected: Vec::new(),
+            missing_protected: Vec::new(),
             hidden: Vec::new(),
             network: false,
             gpu: false,

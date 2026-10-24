@@ -200,6 +200,9 @@
     "closeRight": "Fermer tout à droite",
     "closeTab": "Fermer {{title}}",
     "color": "Couleur",
+    "dropRefused_one": "Le nom de ce fichier contient un caractère de contrôle, le terminal ne le saisira donc pas.",
+    "dropRefused_many": "{{count}} noms de fichiers contiennent des caractères de contrôle, le terminal ne les saisira donc pas.",
+    "dropRefused_other": "{{count}} noms de fichiers contiennent des caractères de contrôle, le terminal ne les saisira donc pas.",
     "errors": {
       "input": "Le shell n'a pas pu recevoir la saisie",
       "resize": "Le terminal n'a pas pu être redimensionné",
@@ -239,6 +242,7 @@
       "many_other": "Des programmes tournent encore dans {{count}} terminaux.",
       "named": "{{process}} tourne encore dans {{title}}.",
       "quit": "Quitter",
+      "reload": "Recharger",
       "restart": "Redémarrer",
       "switchProject": "Changer de projet",
       "titleMany": "Arrêter les programmes en cours ?",

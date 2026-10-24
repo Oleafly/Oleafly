@@ -99,11 +99,15 @@
       "title": "Desktop-apps",
       "action": "{{agent}} wil {{action}}.",
       "steps": "{{agent}} wil deze stappen uitvoeren in een desktop-app:",
-      "moreSteps": "Stappen die niet getoond worden: {{count}}",
-      "moreItems": "Nog {{count}} items niet getoond",
-      "cut": "(+{{count}} tekens niet getoond)",
+      "moreSteps": "Stappen die niet getoond en niet uitgevoerd worden: {{count}}",
+      "moreItems": "Items die niet getoond worden: {{count}}",
+      "cut": "(tekens die niet getoond worden: {{count}})",
       "signedIn": "Dit gebeurt in je eigen aangemelde browser.",
       "signedInOn": "Dit gebeurt in je eigen aangemelde browser, op {{origin}}.",
+      "task": "Taak: {{title}}",
+      "app": "App: {{name}}",
+      "window": "Venster: {{title}}",
+      "element": "Element: {{element}}",
       "text": "Tekst: '{{text}}'",
       "address": "Adres: {{url}}",
       "allowOnce": "Eén keer toestaan",
@@ -111,6 +115,7 @@
       "allowSession": "Toestaan voor deze sessie",
       "allowTask": "Toestaan voor deze taak",
       "deny": "Niet toestaan",
+      "pickedFile": "het bestand dat je hebt gekozen",
       "actions": {
         "launchApp": "een app openen",
         "click": "in een app klikken",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Bediening van de desktop toestaan?",
-      "message": "Agents kunnen het volgende gebruiken en vragen nog steeds voor elke actie:",
+      "message": "Agents kunnen het volgende gebruiken. Ze vragen het voor elke actie, en als je dit opslaat, vervallen alle keuzes voor 'Toestaan voor deze chat':",
       "confirm": "Toestaan",
       "enabled": "Desktop-apps",
-      "app": "App: {{name}} ({{identity}})",
+      "app": "App: {{identity}} ({{name}})",
       "more": "En nog {{count}}",
       "site": "Website: {{origin}}",
       "signedIn": "Je aangemelde browser op {{origin}}",
-      "scripted": "Cua-scripts"
+      "scripted": "Cua-scripts",
+      "spacesTitle": "Cua Spaces meer toegang geven?",
+      "spacesMessage": "Agents die Cua Spaces gebruiken, kunnen:",
+      "spacesChanges": "Spaces maken en verwijderen en er opdrachten in uitvoeren",
+      "spacesSignIns": "Je aanmelding bij Claude Code of Codex gebruiken in een Space"
     }
   },
   "errors": {

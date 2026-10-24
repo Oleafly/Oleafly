@@ -152,6 +152,48 @@ describe("Mathpix bridge", () => {
     expect(commands).toEqual(["mathpix_pdf_upload", "mathpix_pdf_cancel", "mathpix_pdf_wait"]);
   });
 
+  it("refuses a PDF over 256 MB before sending any of it", async () => {
+    const huge = { byteLength: 256 * 1024 * 1024 + 1 } as unknown as Uint8Array;
+    await expect(mathpixPdf(huge, { pageRanges: "1" })).rejects.toMatchObject({
+      name: "AppError",
+      code: "mathpix.pdf_too_large",
+    });
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
+  it("cancels an image read by its request id when the signal aborts", async () => {
+    const controller = new AbortController();
+    let failRead!: (reason: unknown) => void;
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "mathpix_text") {
+        return new Promise((_resolve, reject) => {
+          failRead = reject;
+        });
+      }
+      if (command === "mathpix_text_cancel") {
+        failRead(CANCELLED);
+        return Promise.resolve();
+      }
+      return Promise.resolve();
+    });
+    const running = mathpixText("iVBORw0KGgo=", "image/png", { signal: controller.signal });
+    await vi.waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("mathpix_text", expect.anything()));
+    const args = mocks.invoke.mock.calls[0][1] as { requestId: string };
+    expect(args).toEqual({ imageBase64: "iVBORw0KGgo=", mime: "image/png", requestId: expect.any(String) });
+    controller.abort();
+    await expect(running).rejects.toMatchObject({ name: "AbortError" });
+    expect(mocks.invoke).toHaveBeenCalledWith("mathpix_text_cancel", { requestId: args.requestId });
+  });
+
+  it("does not read an image when the signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(mathpixText("iVBORw0KGgo=", "image/png", { signal: controller.signal })).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
   it("does not upload when the signal is already aborted, and passes other errors through", async () => {
     const controller = new AbortController();
     controller.abort();

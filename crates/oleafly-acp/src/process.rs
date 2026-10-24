@@ -25,8 +25,9 @@ impl StderrTail {
         }
     }
 
-    /// The last 20 non-empty lines joined by spaces, at most 1,000
-    /// characters, without control characters.
+    /// The last 20 non-empty lines joined by spaces, without control
+    /// characters: their last 1,000 characters, so the final error line is
+    /// always there.
     pub(crate) fn text(&self) -> String {
         let bytes: Vec<u8> = self
             .0
@@ -39,11 +40,13 @@ impl StderrTail {
             .map(str::trim)
             .filter(|line| !line.is_empty())
             .collect();
-        lines[lines.len().saturating_sub(MAX_TAIL_LINES)..]
+        let joined: Vec<char> = lines[lines.len().saturating_sub(MAX_TAIL_LINES)..]
             .join(" ")
             .chars()
             .filter(|value| !value.is_control() && *value != '\u{fffd}')
-            .take(MAX_TAIL_CHARS)
+            .collect();
+        joined[joined.len().saturating_sub(MAX_TAIL_CHARS)..]
+            .iter()
             .collect::<String>()
             .trim()
             .to_owned()
@@ -64,5 +67,21 @@ mod tests {
         assert!(text.len() <= MAX_TAIL_CHARS);
         assert!(!text.contains('\u{7}'));
         assert!(text.ends_with("noise 1999"));
+    }
+
+    #[test]
+    fn a_long_traceback_keeps_its_closing_error_line() {
+        let tail = StderrTail::default();
+        tail.push(b"Traceback (most recent call last):\n");
+        for frame in 0..15 {
+            tail.push(format!("  File \"agent/module_{frame}.py\", line {frame}, in run_step_{frame}_with_a_long_name\n").as_bytes());
+        }
+        tail.push(b"ValueError: the model name is not valid\n");
+        let text = tail.text();
+        assert!(text.chars().count() <= MAX_TAIL_CHARS);
+        assert!(
+            text.ends_with("ValueError: the model name is not valid"),
+            "{text}"
+        );
     }
 }

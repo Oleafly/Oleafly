@@ -99,11 +99,15 @@
       "title": "Desktop-Apps",
       "action": "{{agent}} möchte {{action}}.",
       "steps": "{{agent}} möchte diese Schritte in einer Desktop-App ausführen:",
-      "moreSteps": "Nicht angezeigte Schritte: {{count}}",
-      "moreItems": "{{count}} weitere Einträge nicht angezeigt",
-      "cut": "(+{{count}} Zeichen nicht angezeigt)",
+      "moreSteps": "Nicht angezeigte und nicht ausgeführte Schritte: {{count}}",
+      "moreItems": "Nicht angezeigte Einträge: {{count}}",
+      "cut": "(nicht angezeigte Zeichen: {{count}})",
       "signedIn": "Dies geschieht in Ihrem eigenen angemeldeten Browser.",
       "signedInOn": "Dies geschieht in Ihrem eigenen angemeldeten Browser, auf {{origin}}.",
+      "task": "Aufgabe: {{title}}",
+      "app": "App: {{name}}",
+      "window": "Fenster: {{title}}",
+      "element": "Element: {{element}}",
       "text": "Text: „{{text}}“",
       "address": "Adresse: {{url}}",
       "allowOnce": "Einmal erlauben",
@@ -111,6 +115,7 @@
       "allowSession": "Für diese Sitzung erlauben",
       "allowTask": "Für diese Aufgabe erlauben",
       "deny": "Nicht erlauben",
+      "pickedFile": "die gewählte Datei",
       "actions": {
         "launchApp": "eine App öffnen",
         "click": "in einer App klicken",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Desktop-Steuerung erlauben?",
-      "message": "Agenten können dann Folgendes verwenden und fragen trotzdem vor jeder Aktion:",
+      "message": "Agenten können diese verwenden. Sie fragen vor jeder Aktion, und beim Speichern werden alle Entscheidungen „Für diesen Chat erlauben“ gelöscht:",
       "confirm": "Erlauben",
       "enabled": "Desktop-Apps",
-      "app": "App: {{name}} ({{identity}})",
+      "app": "App: {{identity}} ({{name}})",
       "more": "Und {{count}} weitere",
       "site": "Website: {{origin}}",
       "signedIn": "Ihr angemeldeter Browser auf {{origin}}",
-      "scripted": "Cua-Skripte"
+      "scripted": "Cua-Skripte",
+      "spacesTitle": "Cua Spaces mehr Zugriff geben?",
+      "spacesMessage": "Agenten, die Cua Spaces verwenden, können dann:",
+      "spacesChanges": "Spaces erstellen und löschen und darin Befehle ausführen",
+      "spacesSignIns": "Ihre Anmeldung bei Claude Code oder Codex in einem Space verwenden"
     }
   },
   "errors": {

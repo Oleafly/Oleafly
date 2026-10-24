@@ -1106,3 +1106,47 @@ fn output_limit_and_refusal_stops_are_recognised_on_every_wire() {
     }
     assert!(!is_refusal_stop(None));
 }
+
+#[test]
+fn a_reply_cut_off_by_the_context_window_is_an_output_limit_stop() {
+    assert!(is_output_limit_stop(Some("model_context_window_exceeded")));
+}
+
+#[test]
+fn made_up_call_ids_differ_from_one_stream_to_the_next() {
+    let gemini = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"functionCall\":{\"name\":\"read_file\",\"args\":{}}}]}}]}\n\n";
+    let (_, first) = run(WireKind::Google, gemini);
+    let (_, second) = run(WireKind::Google, gemini);
+    assert_ne!(first.tool_calls()[0].id, second.tool_calls()[0].id);
+    let chat = "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"name\":\"read_file\",\"arguments\":\"{}\"}}]}}]}\n\n";
+    let (_, first) = run(WireKind::OpenAi, chat);
+    let (_, second) = run(WireKind::OpenAi, chat);
+    assert_ne!(first.tool_calls()[0].id, second.tool_calls()[0].id);
+}
+
+#[test]
+fn a_responses_stream_failure_keeps_its_code_and_message() {
+    let (_, limited) = run(
+        WireKind::OpenAiResponses,
+        "event: error\ndata: {\"type\":\"error\",\"code\":\"rate_limit_exceeded\",\"message\":\"Slow down.\"}\n\n",
+    );
+    let error = limited.error().expect("a stream error");
+    assert!(
+        matches!(error, AgentError::Provider { status: 429, .. }),
+        "{error:?}"
+    );
+    assert!(error.retryable());
+    assert!(error.to_string().contains("Slow down."), "{error}");
+
+    let (_, server) = run(
+        WireKind::OpenAiResponses,
+        "event: response.failed\ndata: {\"response\":{\"error\":{\"code\":\"server_error\",\"message\":\"Try again.\"}}}\n\n",
+    );
+    assert!(server.error().unwrap().retryable());
+
+    let (_, overflow) = run(
+        WireKind::OpenAiResponses,
+        "event: response.failed\ndata: {\"response\":{\"error\":{\"code\":\"context_length_exceeded\",\"message\":\"Your input exceeds the limit.\"}}}\n\n",
+    );
+    assert!(overflow.error().unwrap().is_context_overflow());
+}

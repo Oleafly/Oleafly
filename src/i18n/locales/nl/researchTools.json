@@ -204,7 +204,8 @@
       "createTask": "Taak maken",
       "replaceText": "De titel en instructies die je hebt getypt vervangen door deze starter?",
       "keepText": "De mijne houden",
-      "replaceConfirm": "Vervangen"
+      "replaceConfirm": "Vervangen",
+      "cannotSave": "Los de hierboven gemarkeerde opties op en probeer het opnieuw."
     },
     "starter": {
       "literatureReview": {
@@ -306,16 +307,36 @@
         "budgetCost": "Gestopt bij de kostenlimiet.",
         "budgetRuns": "Gestopt bij de limiet voor runs."
       },
-      "startsAt": "Start op {{time}}"
+      "startsAt": "Start op {{time}}",
+      "olderActivity": "Eerdere activiteit van deze run wordt niet getoond.",
+      "tooLargeToDiff": "Dit bestand is te groot om hier te vergelijken, dus alleen de groottes worden getoond."
+    },
+    "confirm": {
+      "stopTitle": "Deze taak stoppen?",
+      "stopDescription": "\"{{title}}\" stopt na de huidige stap. Met Hervatten ga je er later mee verder vanuit de werkruimte.",
+      "cancelTitle": "Deze taak annuleren?",
+      "cancelDescription": "\"{{title}}\" wordt niet uitgevoerd. Je kunt het later opnieuw proberen.",
+      "cancelTask": "Taak annuleren",
+      "discardTitle": "Deze wijzigingen weggooien?",
+      "discardDescription": "Geen van de wijzigingen van \"{{title}}\" komt in je project terecht en de taak wordt als geannuleerd gemarkeerd. Met Hervatten draait de agent opnieuw.",
+      "keepTask": "Taak behouden",
+      "keepChanges": "Wijzigingen behouden",
+      "dependents_one": "Deze taak wacht erop en mislukt ook:",
+      "dependents_other": "Deze {{count}} taken wachten erop en mislukken ook:",
+      "runs_one": "Deze run stopt ook:",
+      "runs_other": "Deze {{count}} runs stoppen ook:"
     },
     "plan": {
       "title": "Plan",
       "description": "Lees het plan en pas het aan als je wilt. Keur het goed om de taak verder te laten gaan.",
       "approve": "Plan goedkeuren",
       "approveEdited": "Bewerkt plan goedkeuren",
-      "discard": "Taak verwerpen",
+      "discard": "Taak annuleren",
       "loading": "Plan laden…",
-      "missing": "Het planbestand ontbreekt. Probeer de taak opnieuw."
+      "missing": "Het planbestand ontbreekt. Probeer de taak opnieuw.",
+      "loadFailed": "Oleafly kon het plan niet laden.",
+      "truncated": "Dit plan is langer dan 64 KiB, dus alleen het begin wordt getoond. Kort het in tot de stappen die je wilt en keur het dan goed.",
+      "tooLong": "Een plan mag maximaal 64 KiB zijn. Kort het in voordat je het goedkeurt."
     },
     "approvals": {
       "title": "Wacht op je goedkeuring",
@@ -364,6 +385,9 @@
       "runsUsed": "{{used}} van {{limit}} runs",
       "runsUsedNoLimit": "{{used}} runs",
       "stopRun": "Run stoppen",
+      "stopRunTitle": "Deze run stoppen?",
+      "stopRunDescription": "\"{{name}}\" ({{run}}) stopt nu. Een job die de run op een andere machine of in een cluster uitvoert, wordt daar ook geannuleerd.",
+      "keepRun": "Blijven draaien",
       "viewLog": "Logboek bekijken",
       "columns": {
         "run": "Run",
@@ -867,6 +891,7 @@
     "progressCancelled": "Geannuleerd",
     "progressReadingPages": "Pagina's lezen",
     "progressTranscribingPage": "Pagina {{page}} van {{total}} overnemen met {{model}}",
+    "progressTranscribingPdfPage": "Pagina {{pdfPage}} ({{page}} van {{total}}) overnemen met {{model}}",
     "progressDocumentStructure": "Documentstructuur omzetten",
     "progressMermaid": "Het Mermaid-diagram weergeven",
     "progressFirstSheet": "Het eerste blad lezen",
@@ -910,7 +935,9 @@
     "progressConvertingSource": "De broncode omzetten naar Typst",
     "pageRange": "Pagina's",
     "pageRangePlaceholder": "Alle pagina's, of een bereik zoals 1-50",
-    "pageRangeInvalid": "Vul één paginanummer in, of een bereik zoals 1-50."
+    "pageRangeInvalid": "Vul één paginanummer in, of een bereik zoals 1-50.",
+    "pageCount_one": "Deze PDF heeft {{count}} pagina.",
+    "pageCount_other": "Deze PDF heeft {{count}} pagina's."
   },
   "converters": {
     "imageToLatex": {
@@ -1119,10 +1146,14 @@
     "arxivInputRequired": "Vul een arXiv-ID in of kies een bronarchief.",
     "equationToTypst": "Pandoc kon deze vergelijking niet omzetten naar Typst. Controleer de LaTeX-wiskunde en probeer het opnieuw.",
     "pdfTooManyPages": "Deze scan heeft {{pages}} pagina's, en Oleafly neemt er maximaal {{limit}} per keer over. Vul onder het bestand een paginabereik in zoals 1-{{limit}}.",
-    "outputLimit": "Het model kreeg niet genoeg ruimte om het af te maken, dus de transcriptie zou onvolledig zijn. Kies een model met een grotere uitvoerlimiet bij Instellingen, AI, Hulpmiddelen, of neem een kleiner deel over."
+    "outputLimit": "Het model kreeg niet genoeg ruimte om het af te maken, dus de transcriptie zou onvolledig zijn. Kies een model met een grotere uitvoerlimiet bij Instellingen, AI, Hulpmiddelen, of neem een kleiner deel over.",
+    "refused": "Het model weigerde dit over te nemen, dus er is niets toegevoegd. Kies een ander model bij Instellingen, AI, Hulpmiddelen.",
+    "pageRangePastEnd_one": "Deze PDF heeft {{count}} pagina. Vul 1 in, of laat Pagina's leeg.",
+    "pageRangePastEnd_other": "Deze PDF heeft {{count}} pagina's. Vul een bereik van 1 tot {{count}} in."
   },
   "converterNotes": {
-    "scannedPages": "{{pages}} gescande pagina's overgenomen met {{model}}. Controleer vergelijkingen en tabellen voordat je het resultaat gebruikt.",
+    "scannedPages_one": "{{count}} gescande pagina overgenomen met {{model}}. Controleer vergelijkingen en tabellen voordat je het resultaat gebruikt.",
+    "scannedPages_other": "{{count}} gescande pagina's overgenomen met {{model}}. Controleer vergelijkingen en tabellen voordat je het resultaat gebruikt.",
     "extracted": "{{pages}} pagina's en {{figures}} figuren lokaal eruit gehaald.",
     "mermaidTikz": "Dit stroomdiagram is omgezet in bewerkbare TikZ.",
     "mermaidRendered": "Dit diagram is lokaal weergegeven omdat de Mermaid-syntaxis niet netjes naar bewerkbare TikZ vertaalt.",
@@ -1149,6 +1180,9 @@
     "scansSentToHost": "Gescande pagina's worden naar Ollama op {{host}} gestuurd",
     "pdfSentToMathpix": "De hele PDF wordt naar Mathpix gestuurd",
     "transcribingHosted": "De afbeelding naar {{provider}} sturen…",
+    "transcribingFallback": "De afbeelding naar {{provider}} sturen (assistentmodel)…",
+    "sentFallback": "Gestuurd naar {{provider}} (assistentmodel)",
+    "editorFallback": "Afbeelding naar LaTeX in de editor stuurt afbeeldingen naar {{provider}} totdat Ollama een beeldmodel heeft",
     "progressUploading": "De PDF naar Mathpix sturen",
     "progressFormatting": "De transcriptie omzetten met Pandoc",
     "scannedTitle": "Deze PDF lijkt gescand",
@@ -1158,15 +1192,23 @@
     "estimateCost_other": "{{count}} pagina's. Ongeveer {{cost}} met {{model}}.",
     "estimateUnknown_one": "{{count}} pagina. {{provider}} rekent dit af op verbruik.",
     "estimateUnknown_other": "{{count}} pagina's. {{provider}} rekent deze af op verbruik.",
+    "estimatePlan_one": "{{count}} pagina. Dit zit bij {{provider}} in je abonnement.",
+    "estimatePlan_other": "{{count}} pagina's. Dit zit bij {{provider}} in je abonnement.",
+    "estimateLocal_one": "{{count}} pagina. Het model draait op deze computer, zonder kosten.",
+    "estimateLocal_other": "{{count}} pagina's. Het model draait op deze computer, zonder kosten.",
+    "estimateFree_one": "{{count}} pagina. Gratis met {{model}}.",
+    "estimateFree_other": "{{count}} pagina's. Gratis met {{model}}.",
     "transcribePages_one": "{{count}} pagina overnemen",
     "transcribePages_other": "{{count}} pagina's overnemen",
     "transcribedWith": "Overgenomen met {{model}}. Controleer vergelijkingen en tabellen.",
     "sentBadge": "Gestuurd naar {{provider}}",
     "openToolsSettings": "Instellingen voor Hulpmiddelen",
+    "openProviderSettings": "Instellingen van de provider",
     "errors": {
       "offline": "Oleafly staat in de offlinemodus. Kies een lokaal model of zet de offlinemodus uit.",
       "providerNotConfigured": "{{provider}} heeft geen API-sleutel. Voeg er een toe bij Instellingen of kies een ander model.",
       "modelDisabled": "{{model}} staat uit bij Instellingen. Zet het aan of kies een ander model.",
+      "modelUnavailable": "{{model}} is niet meer beschikbaar bij {{provider}}. Kies een ander model.",
       "cannotSeeImages": "{{model}} kan geen afbeeldingen lezen. Kies een beeldmodel.",
       "localModelGone": "{{model}} staat niet meer in Ollama. Haal het opnieuw op of kies een ander model.",
       "imagesOnly": "{{model}} leest alleen afbeeldingen. Kies een taalmodel om getypte vergelijkingen om te zetten.",
@@ -1764,6 +1806,8 @@
     "keepRunningHint": "Zet eerst Achtergrondtaken aan bij Instellingen, Onderzoek.",
     "invalidMetric": "Gebruik letters, cijfers, punten, streepjes of underscores.",
     "invalidCost": "Vul een bedrag boven nul in.",
+    "invalidCostMax": "Vul een bedrag in van maximaal {{max}}.",
+    "invalidCostNumber": "Vul het bedrag in als getal, zoals {{example}}.",
     "invalidRuns": "Vul een geheel getal van 1 tot 1.000 in.",
     "invalidStart": "Kies een starttijd binnen de komende 30 dagen.",
     "invalidStartFormat": "Gebruik het formaat {{example}}.",
@@ -1786,6 +1830,9 @@
     "hint": "Deze controles waarschuwen alleen. Ze houden het toepassen niet tegen.",
     "running": "Controleren…",
     "refresh": "Opnieuw controleren",
+    "empty": "Er zijn nog geen controles uitgevoerd op dit resultaat.",
+    "more_one": "Nog {{count}} staat niet in de lijst.",
+    "more_other": "Nog {{count}} staan niet in de lijst.",
     "status": {
       "pass": "Geslaagd",
       "warn": "Bekijk dit",
@@ -1893,7 +1940,8 @@
         "time": "Gebruik een Slurm-tijd zoals 2:00:00.",
         "name": "Gebruik letters, cijfers, punten, komma's, streepjes of underscores.",
         "mem": "Gebruik een geheel aantal gigabytes, zoals 16.",
-        "count": "Gebruik een geheel getal binnen het toegestane bereik."
+        "count": "Gebruik een geheel getal binnen het toegestane bereik.",
+        "prelude": "Houd de voorbereidende opdrachten op maximaal 4 KB. Letters met accenten en niet-Latijnse schriften nemen meer ruimte in."
       }
     },
     "test": {
@@ -1970,7 +2018,7 @@
       "movingBackHint": "Deze taak komt terug naar Oleafly als de huidige stap klaar is."
     },
     "earlierActivity": "Eerdere activiteit tonen",
-    "earlierTruncated": "Alleen de eerste {{limit}} items van deze eerdere run worden getoond.",
+    "earlierTruncated": "Alleen de laatste {{limit}} items van deze eerdere run worden getoond.",
     "keepRunningFailed": "Kon deze instelling niet wijzigen. Probeer het opnieuw."
   }
 }

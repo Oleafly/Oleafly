@@ -99,11 +99,15 @@
       "title": "Applications de bureau",
       "action": "{{agent}} veut {{action}}.",
       "steps": "{{agent}} veut effectuer ces étapes dans une application de bureau :",
-      "moreSteps": "Étapes non affichées : {{count}}",
-      "moreItems": "{{count}} éléments supplémentaires non affichés",
-      "cut": "(+{{count}} caractères non affichés)",
+      "moreSteps": "Étapes non affichées et non exécutées : {{count}}",
+      "moreItems": "Éléments non affichés : {{count}}",
+      "cut": "(caractères non affichés : {{count}})",
       "signedIn": "Cela se passe dans votre propre navigateur connecté.",
       "signedInOn": "Cela se passe dans votre propre navigateur connecté, sur {{origin}}.",
+      "task": "Tâche : {{title}}",
+      "app": "Application : {{name}}",
+      "window": "Fenêtre : {{title}}",
+      "element": "Élément : {{element}}",
       "text": "Texte : « {{text}} »",
       "address": "Adresse : {{url}}",
       "allowOnce": "Autoriser une fois",
@@ -111,6 +115,7 @@
       "allowSession": "Autoriser pour cette session",
       "allowTask": "Autoriser pour cette tâche",
       "deny": "Ne pas autoriser",
+      "pickedFile": "le fichier choisi",
       "actions": {
         "launchApp": "ouvrir une application",
         "click": "cliquer dans une application",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Autoriser le contrôle du bureau ?",
-      "message": "Les agents pourront utiliser les éléments suivants, et ils demanderont toujours avant chaque action :",
+      "message": "Les agents pourront utiliser les éléments suivants. Ils demandent avant chaque action, et l'enregistrement efface tous les choix « Autoriser pour cette discussion » :",
       "confirm": "Autoriser",
       "enabled": "Applications de bureau",
-      "app": "Application : {{name}} ({{identity}})",
+      "app": "Application : {{identity}} ({{name}})",
       "more": "Et {{count}} autres",
       "site": "Site web : {{origin}}",
       "signedIn": "Votre navigateur connecté sur {{origin}}",
-      "scripted": "Scripts Cua"
+      "scripted": "Scripts Cua",
+      "spacesTitle": "Donner plus d'accès à Cua Spaces ?",
+      "spacesMessage": "Les agents qui utilisent Cua Spaces pourront :",
+      "spacesChanges": "Créer et supprimer des Spaces, et y exécuter des commandes",
+      "spacesSignIns": "Utiliser votre connexion Claude Code ou Codex dans un Space"
     }
   },
   "errors": {

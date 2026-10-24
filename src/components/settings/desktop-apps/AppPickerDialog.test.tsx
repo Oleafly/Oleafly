@@ -4,6 +4,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import { buttonVariants } from "@/components/ui/button";
 import type { InstalledApp } from "@/lib/desktop-apps";
 
 const mocks = vi.hoisted(() => ({
@@ -50,11 +51,24 @@ describe("AppPickerDialog", () => {
     const terminal = await screen.findByRole("button", { name: /^Terminal/ });
     expect(terminal).toBeDisabled();
     expect(screen.getByText(copy.blocked.terminal)).toBeVisible();
-    expect(screen.getByText("Terminals run commands without Oleafly's command approval.")).toBeVisible();
+    expect(screen.getByText("Terminals and code editors run commands without Oleafly's command approval.")).toBeVisible();
 
     await user.click(screen.getByRole("button", { name: /^Zotero/ }));
     await user.click(screen.getByRole("button", { name: copy.dialog.add }));
     expect(onPick).toHaveBeenCalledWith({ name: "Zotero", bundleId: "org.zotero.zotero" });
+  });
+
+  it("draws each row with the kit's ghost button, so focus and disabled look like every other button", async () => {
+    mocks.installed.mockResolvedValue([
+      { name: "Terminal", bundleId: "com.apple.Terminal", blocked: "terminal" },
+      { name: "Zotero", bundleId: "org.zotero.zotero" },
+    ]);
+    renderPicker();
+    const zotero = await screen.findByRole("button", { name: /^Zotero/ });
+    for (const kitClass of buttonVariants({ variant: "ghost" }).split(" ").filter((name) => name.startsWith("disabled:"))) {
+      expect(zotero.className).toContain(kitClass);
+    }
+    expect(zotero).toHaveAttribute("aria-pressed", "false");
   });
 
   it("filters thousands of apps and shows at most 200", async () => {

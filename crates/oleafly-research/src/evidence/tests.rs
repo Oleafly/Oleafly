@@ -96,6 +96,7 @@ async fn a_number_without_a_recorded_run_is_flagged() {
             runs: vec![run("r002", &[("acc", 0.913), ("loss", 0.5)])],
             ledger: Vec::new(),
             workspace: None,
+            project_root: None,
         },
         &CancellationToken::new(),
         fake_verifier(),
@@ -150,6 +151,7 @@ async fn new_bib_entries_are_verified_and_mismatches_warn() {
             runs: Vec::new(),
             ledger: Vec::new(),
             workspace: None,
+            project_root: None,
         },
         &CancellationToken::new(),
         fake_verifier(),
@@ -188,6 +190,7 @@ async fn added_figures_must_be_used() {
             runs: Vec::new(),
             ledger: Vec::new(),
             workspace: None,
+            project_root: None,
         },
         &CancellationToken::new(),
         fake_verifier(),
@@ -223,6 +226,7 @@ async fn a_clean_result_passes_every_check_it_can_run() {
                 ..Default::default()
             }],
             workspace: None,
+            project_root: None,
         },
         &CancellationToken::new(),
         fake_verifier(),
@@ -248,4 +252,102 @@ fn a_library_that_links_back_to_itself_yields_no_entries_instead_of_crashing() {
         "refs.bib",
     );
     assert_eq!(entries.len(), 2);
+}
+
+/// Project maps by folder: the task's copy, then the baseline.
+struct Maps {
+    root: PathBuf,
+    after: Value,
+    before: Value,
+}
+
+impl WorkspaceTools for Maps {
+    fn compile(
+        &self,
+        _root: PathBuf,
+        _source: Option<PathBuf>,
+    ) -> crate::scheduler::TaskRuntimeFuture<crate::host::CompileSummary> {
+        Box::pin(async { Err("not used".to_string()) })
+    }
+
+    fn project_map(&self, root: PathBuf) -> crate::scheduler::TaskRuntimeFuture<Value> {
+        let map = if root == self.root {
+            self.after.clone()
+        } else {
+            self.before.clone()
+        };
+        Box::pin(async move { Ok(map) })
+    }
+}
+
+/// Workspace tools that keep the folder each build took its settings from.
+#[derive(Default)]
+struct Sources(std::sync::Mutex<Vec<Option<PathBuf>>>);
+
+impl WorkspaceTools for Sources {
+    fn compile(
+        &self,
+        _root: PathBuf,
+        source: Option<PathBuf>,
+    ) -> crate::scheduler::TaskRuntimeFuture<crate::host::CompileSummary> {
+        self.0.lock().unwrap().push(source);
+        Box::pin(async {
+            Ok(crate::host::CompileSummary {
+                ok: true,
+                ..Default::default()
+            })
+        })
+    }
+
+    fn project_map(&self, _root: PathBuf) -> crate::scheduler::TaskRuntimeFuture<Value> {
+        Box::pin(async { Ok(Value::Null) })
+    }
+}
+
+#[tokio::test]
+async fn a_task_copy_is_built_with_the_settings_of_the_folder_it_came_from() {
+    let tools = Sources::default();
+    let paper = PathBuf::from("paper");
+    let check = build_check(Some(&tools), Path::new("copy"), Some(paper.clone())).await;
+    assert_eq!(check.status, EvidenceStatus::Pass);
+    assert_eq!(*tools.0.lock().unwrap(), [Some(paper)]);
+}
+
+#[tokio::test]
+async fn a_capped_project_map_is_not_diffed_for_unresolved_citations() {
+    let temp = tempfile::tempdir().unwrap();
+    let (root, baseline) = (temp.path().join("work"), temp.path().join("base"));
+    let check = |after: Value, before: Value| {
+        let maps = Maps {
+            root: root.clone(),
+            after,
+            before,
+        };
+        let (root, baseline) = (root.clone(), baseline.clone());
+        async move { references_check(Some(&maps), &root, &baseline).await }
+    };
+    // Whole maps: what the task added is named.
+    let whole = check(
+        serde_json::json!({"unresolvedCites": ["old", "new"]}),
+        serde_json::json!({"unresolvedCites": ["old"]}),
+    )
+    .await;
+    assert_eq!(whole.status, EvidenceStatus::Warn);
+    assert_eq!(whole.items.len(), 1);
+    assert_eq!(whole.items[0].params["key"], "new");
+    // The baseline's list was cut: "old" would look new, so nothing is said.
+    let capped = check(
+        serde_json::json!({"unresolvedCites": ["old", "new"]}),
+        serde_json::json!({"unresolvedCites": [], "truncatedCounts": {"unresolvedCites": 1}}),
+    )
+    .await;
+    assert_eq!(capped.status, EvidenceStatus::Skipped);
+    assert_eq!(capped.items[0].code, "references.notChecked");
+    // Other lists cut do not matter.
+    let other = check(
+        serde_json::json!({"unresolvedCites": ["old", "new"], "truncatedCounts": {"bibKeys": 9}}),
+        serde_json::json!({"unresolvedCites": ["old"]}),
+    )
+    .await;
+    assert_eq!(other.status, EvidenceStatus::Warn);
 }

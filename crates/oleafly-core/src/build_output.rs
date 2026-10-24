@@ -104,6 +104,111 @@ impl Drop for BuildLock {
     }
 }
 
+/// Whether a [`BuildLock`] error says the file system can't lock files at
+/// all (NFS without a lock service, some cluster file systems), rather than
+/// that something is wrong with this lock file (a link, no permission, a
+/// full disk). Only then may a build take turns through a [`DirLock`]
+/// instead; any other lock error stops the build, because two builds in one
+/// folder overwrite each other's files. The app and the CLI both ask this.
+pub fn locks_unsupported(error: &io::Error) -> bool {
+    #[cfg(unix)]
+    {
+        error.raw_os_error().is_some_and(|code| {
+            [
+                libc::ENOLCK,
+                libc::ENOTSUP,
+                libc::EOPNOTSUPP,
+                libc::ENOSYS,
+                libc::EINVAL,
+            ]
+            .contains(&code)
+        })
+    }
+    #[cfg(windows)]
+    {
+        const ERROR_INVALID_FUNCTION: i32 = 1;
+        const ERROR_NOT_SUPPORTED: i32 = 50;
+        matches!(
+            error.raw_os_error(),
+            Some(ERROR_INVALID_FUNCTION | ERROR_NOT_SUPPORTED)
+        )
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = error;
+        false
+    }
+}
+
+/// The lock for build folders whose file system can't lock files: the
+/// folder `<build>.lock.d` beside the build folder, made with a create that
+/// fails when it is there, holding the process id and the time its build
+/// started. Removed when dropped. One older than `stale_after` (longer than
+/// any build may run) is a stopped build's and is taken over.
+#[derive(Debug)]
+pub struct DirLock {
+    path: PathBuf,
+}
+
+impl DirLock {
+    pub fn path_for(build_dir: &Path) -> PathBuf {
+        let mut name = build_lock_path(build_dir).into_os_string();
+        name.push(".d");
+        PathBuf::from(name)
+    }
+
+    /// The lock now, or `None` while another build holds it.
+    pub fn try_acquire(build_dir: &Path, stale_after: Duration) -> io::Result<Option<DirLock>> {
+        let path = Self::path_for(build_dir);
+        for _ in 0..2 {
+            match std::fs::create_dir(&path) {
+                Ok(()) => {
+                    let started = SystemTime::now()
+                        .duration_since(SystemTime::UNIX_EPOCH)
+                        .map(|elapsed| elapsed.as_millis())
+                        .unwrap_or_default();
+                    let _ = std::fs::write(
+                        path.join("owner"),
+                        format!("{} {started}\n", std::process::id()),
+                    );
+                    return Ok(Some(DirLock { path }));
+                }
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                    let metadata = std::fs::symlink_metadata(&path)?;
+                    let age = metadata
+                        .modified()
+                        .ok()
+                        .and_then(|modified| modified.elapsed().ok())
+                        .unwrap_or_default();
+                    if metadata.is_dir() && age <= stale_after {
+                        return Ok(None);
+                    }
+                    // A stopped build's folder, or something else in the way
+                    // (a file, a link, never followed): removed, then tried
+                    // once more.
+                    if metadata.is_dir() {
+                        std::fs::remove_dir_all(&path)?;
+                    } else {
+                        std::fs::remove_file(&path)?;
+                    }
+                }
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for DirLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.path);
+    }
+}
+
 /// A private folder inside the build folder for one build's outputs.
 #[derive(Debug)]
 pub struct OutputStaging {
@@ -308,6 +413,64 @@ mod tests {
         let _held = BuildLock::try_acquire(&build).unwrap().unwrap();
         let error = BuildLock::acquire(&build, Duration::from_millis(100), &mut || {}).unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn only_file_systems_without_locks_may_build_without_the_lock_file() {
+        for code in [libc::ENOLCK, libc::ENOTSUP, libc::ENOSYS, libc::EINVAL] {
+            assert!(locks_unsupported(&io::Error::from_raw_os_error(code)));
+        }
+        // A broken lock file is not a reason to build unlocked.
+        for code in [libc::EACCES, libc::ENOSPC, libc::EROFS] {
+            assert!(!locks_unsupported(&io::Error::from_raw_os_error(code)));
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("elsewhere");
+        std::fs::write(&target, b"keep").unwrap();
+        std::os::unix::fs::symlink(&target, dir.path().join("build.lock")).unwrap();
+        let linked = BuildLock::try_acquire(&dir.path().join("build")).unwrap_err();
+        assert!(!locks_unsupported(&linked));
+    }
+
+    #[test]
+    fn a_lock_folder_lets_one_build_in_at_a_time() {
+        let dir = tempfile::tempdir().unwrap();
+        let build = dir.path().join("build");
+        let hour = Duration::from_secs(3600);
+        let held = DirLock::try_acquire(&build, hour).unwrap().unwrap();
+        assert_eq!(held.path(), dir.path().join("build.lock.d"));
+        let owner = std::fs::read_to_string(held.path().join("owner")).unwrap();
+        assert!(owner.starts_with(&format!("{} ", std::process::id())));
+        assert!(DirLock::try_acquire(&build, hour).unwrap().is_none());
+        drop(held);
+        assert!(!dir.path().join("build.lock.d").exists());
+        assert!(DirLock::try_acquire(&build, hour).unwrap().is_some());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_stopped_builds_lock_folder_is_taken_over() {
+        let dir = tempfile::tempdir().unwrap();
+        let build = dir.path().join("build");
+        let left = DirLock::path_for(&build);
+        std::fs::create_dir(&left).unwrap();
+        let long_ago = SystemTime::now() - Duration::from_secs(3600);
+        std::fs::File::open(&left)
+            .unwrap()
+            .set_modified(long_ago)
+            .unwrap();
+        let taken = DirLock::try_acquire(&build, Duration::from_secs(60)).unwrap();
+        assert!(taken.is_some());
+        // A link in the way is removed, never followed.
+        drop(taken);
+        let elsewhere = tempfile::tempdir().unwrap();
+        std::os::unix::fs::symlink(elsewhere.path(), &left).unwrap();
+        assert!(DirLock::try_acquire(&build, Duration::from_secs(60))
+            .unwrap()
+            .is_some());
+        assert!(elsewhere.path().is_dir());
+        assert_eq!(std::fs::read_dir(elsewhere.path()).unwrap().count(), 0);
     }
 
     #[cfg(unix)]

@@ -72,6 +72,37 @@ describe("scan estimates", () => {
     expect(estimateScan(sizes(5), hosted({ cost: { input: 4 } }))).toMatchObject({ kind: "unknown" });
   });
 
+  it("says a plan covers a coding-plan model and Ollama Cloud, without a usage bill", () => {
+    const glm: ToolsChoiceSummary = {
+      engine: "llm",
+      providerId: "zai-coding",
+      modelId: "glm-4.6",
+      label: "GLM 4.6",
+      destination: { kind: "provider", providerId: "zai-coding", name: "Z.AI (GLM Coding Plan)" },
+    };
+    expect(estimateScan(sizes(3), glm)).toEqual({ kind: "plan", pages: 3, provider: "Z.AI (GLM Coding Plan)" });
+    const cloud: ToolsChoiceSummary = {
+      engine: "llm",
+      providerId: "ollama",
+      modelId: "qwen3-vl:235b-cloud",
+      label: "qwen3-vl:235b-cloud",
+      destination: { kind: "provider", providerId: "ollama", name: "Ollama Cloud" },
+    };
+    expect(estimateScan(sizes(4), cloud)).toEqual({ kind: "plan", pages: 4, provider: "Ollama Cloud" });
+  });
+
+  it("puts no price on a model server on this computer or a free model", () => {
+    const lmStudio: ToolsChoiceSummary = {
+      engine: "llm",
+      providerId: "custom-lmstudio",
+      modelId: "qwen2.5vl-unpriced",
+      label: "Qwen 2.5 VL",
+      destination: { kind: "device" },
+    };
+    expect(estimateScan(sizes(6), lmStudio)).toEqual({ kind: "local", pages: 6 });
+    expect(estimateScan(sizes(6), hosted({ cost: { input: 0, output: 0 } }))).toEqual({ kind: "free", pages: 6 });
+  });
+
   it("falls back to the price list for a known model", () => {
     const estimate = estimateScan(sizes(2), hosted(undefined, "gpt-6-luna"));
     expect(estimate.kind).toBe("cost");

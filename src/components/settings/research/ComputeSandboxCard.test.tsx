@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearch from "@/i18n/locales/en/researchTools.json" with { type: "json" };
-import type { SandboxStatus } from "./compute-api";
+import { COMPUTE_SANDBOX_CHANGED, type SandboxStatus } from "./compute-api";
 import { checkProblem, ComputeSandboxCard } from "./ComputeSandboxCard";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -91,6 +91,21 @@ describe("ComputeSandboxCard", () => {
     expect(screen.getByTestId("beta-badge")).toBeTruthy();
     await userEvent.click(toggle);
     expect(mockInvoke).toHaveBeenCalledWith("research_sandbox_set_windows", { enabled: true });
+  });
+
+  it("tells the rest of the app when the Windows sandbox switch is saved", async () => {
+    current = status({ platform: "windows", windowsEnabled: false });
+    const heard: SandboxStatus[] = [];
+    const listener = (event: Event) => heard.push((event as CustomEvent<SandboxStatus>).detail);
+    window.addEventListener(COMPUTE_SANDBOX_CHANGED, listener);
+    try {
+      render(<ComputeSandboxCard />);
+      await userEvent.click(await screen.findByTestId("compute-sandbox-windows"));
+      await waitFor(() => expect(heard).toHaveLength(1));
+      expect(heard[0].windowsEnabled).toBe(true);
+    } finally {
+      window.removeEventListener(COMPUTE_SANDBOX_CHANGED, listener);
+    }
   });
 
   it("lists interpreters with their notes and refreshes on demand", async () => {

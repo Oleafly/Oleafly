@@ -15,7 +15,9 @@ import type { ResearchTask } from "@/lib/research-tasks";
 import {
   mountResearchTaskSubscriptions,
   useResearchTasksStore,
+  type ResearchTaskDetailTab,
 } from "@/store/research-tasks";
+import { useSettingsStore } from "@/store/settings";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { i18n } from "@/i18n";
 import { composerDraftKey, TaskComposer } from "./TaskComposer";
@@ -70,7 +72,7 @@ const TaskRow = memo(function TaskRow({
   blocked: boolean;
   agentName?: string;
   modelName?: string;
-  onOpen: (taskId: string) => void;
+  onOpen: (taskId: string, tab?: ResearchTaskDetailTab) => void;
   t: ListT;
 }>) {
   return (
@@ -136,7 +138,7 @@ const TaskRow = memo(function TaskRow({
             size="xs"
             variant="outline"
             className="ml-auto shrink-0"
-            onClick={() => onOpen(task.id)}
+            onClick={() => onOpen(task.id, task.status === "running" ? "progress" : undefined)}
           >
             {task.status === "running"
               ? t(($) => $.researchTools.tasks.panel.viewProgress)
@@ -150,20 +152,19 @@ const TaskRow = memo(function TaskRow({
 
 type SelectedTaskDialogProps = Omit<
   ComponentProps<typeof TaskDetailDialog>,
-  "events" | "eventsLoading" | "canLoadMoreEvents" | "eventsLoadedThrough"
+  "events" | "eventsLoading" | "canLoadMoreEvents"
 >;
 
 function SelectedTaskDialog(props: Readonly<SelectedTaskDialogProps>) {
   const events = useResearchTasksStore((state) => state.events);
   const eventsLoading = useResearchTasksStore((state) => state.eventsLoading);
-  const eventsNextSequence = useResearchTasksStore((state) => state.eventsNextSequence);
+  const eventsPreviousSequence = useResearchTasksStore((state) => state.eventsPreviousSequence);
   return (
     <TaskDetailDialog
       {...props}
       events={events}
       eventsLoading={eventsLoading}
-      canLoadMoreEvents={eventsNextSequence !== null}
-      eventsLoadedThrough={eventsNextSequence}
+      canLoadMoreEvents={eventsPreviousSequence !== null}
     />
   );
 }
@@ -336,6 +337,28 @@ export function ResearchTasksPanel({
     composerGeneration.current += 1;
     setComposerProjectId(null);
     setEditingTaskId(null);
+  };
+
+  // A Settings link in the composer closes it (its draft kept) so Settings
+  // isn't under the composer's modal layer, and the composer comes back,
+  // reading the settings again, once Settings closes.
+  const [composerAfterSettings, setComposerAfterSettings] = useState<{
+    projectId: string | null;
+    taskId: string | null;
+  } | null>(null);
+  const settingsOpen = useSettingsStore((state) => state.settingsOpen);
+  useEffect(() => {
+    if (settingsOpen || !composerAfterSettings) return;
+    setComposerAfterSettings(null);
+    if (composerAfterSettings.projectId !== projectId) return;
+    setComposerInstance(++composerGeneration.current);
+    setEditingTaskId(composerAfterSettings.taskId);
+    setComposerProjectId(projectId);
+  }, [composerAfterSettings, projectId, settingsOpen]);
+
+  const openSettingsFromComposer = (open: () => void) => {
+    setComposerAfterSettings({ projectId, taskId: editingTaskId });
+    open();
   };
 
   const saveComposer = async (save: () => Promise<ResearchTask>, selectCreated = false) => {
@@ -583,6 +606,7 @@ export function ResearchTasksPanel({
           busy={savingComposerInstance === composerInstance}
           onCancel={closeComposer}
           onDismiss={closeComposer}
+          onOpenSettings={openSettingsFromComposer}
           onCreate={(draft) => saveComposer(() => createTask(draft), true)}
           onSave={(taskId, edit) => saveComposer(() => editTask(taskId, edit))}
         />

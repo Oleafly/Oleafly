@@ -493,12 +493,17 @@ async fn start_run(binding: &TaskBinding, args: &Value) -> Result<Value, String>
             .collect::<Result<_, _>>()?,
         _ => return Err("Give env as an object of names and text values.".into()),
     };
-    let env_names = env.keys().cloned().collect::<Vec<_>>().join(", ");
-    let detail = if env_names.is_empty() {
-        format!("{name}\n{command}")
-    } else {
-        format!("{name}\n{command}\nEnvironment: {env_names}")
-    };
+    crate::runs::validate_run_env(&env)?;
+    let timeout_minutes = args["timeout"]
+        .as_u64()
+        .map(|minutes| minutes.min(u64::from(u32::MAX)) as u32);
+    let detail = run_approval_detail(
+        name,
+        command,
+        text(args, "cwd"),
+        timeout_minutes.unwrap_or(task.brief.budget.run_timeout_minutes),
+        &env,
+    );
     gate(
         &binding.services,
         &binding.gate_context(),
@@ -527,12 +532,34 @@ async fn start_run(binding: &TaskBinding, args: &Value) -> Result<Value, String>
             command: command.to_owned(),
             cwd_rel: text(args, "cwd").map(str::to_owned),
             env,
-            timeout_minutes: args["timeout"]
-                .as_u64()
-                .map(|minutes| minutes.min(u64::from(u32::MAX)) as u32),
+            timeout_minutes,
         })
         .await?;
     Ok(json!({"id": record.run_id, "status": record.state.as_str()}))
+}
+
+/// What the user approves for a run: everything that decides what it does.
+/// Environment values are shown in full, since `PYTHONSTARTUP`,
+/// `NODE_OPTIONS` and the like change what an approved command runs.
+fn run_approval_detail(
+    name: &str,
+    command: &str,
+    cwd: Option<&str>,
+    minutes: u32,
+    env: &BTreeMap<String, String>,
+) -> String {
+    let mut detail = format!("{name}\n{command}");
+    if let Some(cwd) = cwd.filter(|cwd| !cwd.trim().is_empty()) {
+        detail.push_str(&format!("\nFolder: {cwd}"));
+    }
+    detail.push_str(&format!("\nTime limit: {minutes} minutes"));
+    if !env.is_empty() {
+        detail.push_str("\nEnvironment:");
+        for (key, value) in env {
+            detail.push_str(&format!("\n{key}={value}"));
+        }
+    }
+    detail
 }
 
 async fn wait_runs(binding: &TaskBinding, args: &Value) -> Result<Value, String> {
@@ -815,7 +842,7 @@ pub async fn call_task_tool(
         },
         "compile" => match &binding.services.workspace {
             Some(workspace) => workspace
-                .compile(binding.execution_root.clone())
+                .compile(binding.execution_root.clone(), binding.project_root.clone())
                 .await
                 .and_then(|summary| serde_json::to_value(summary).map_err(|error| error.to_string())),
             None => Ok(json!({"ok": false, "skipped": "The command-line tool isn't available."})),

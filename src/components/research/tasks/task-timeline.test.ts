@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { TaskRuntimeEvent, TaskTranscriptEvent } from "@/lib/research-tasks";
-import { buildTaskTimeline } from "./task-timeline";
+import {
+  buildTaskTimeline,
+  buildTaskTimelineIncremental,
+  latestTimelineUsage,
+  TIMELINE_LIVE_ROWS,
+  type TaskTimelineCache,
+} from "./task-timeline";
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 function transcript(events: TaskRuntimeEvent[]): TaskTranscriptEvent[] {
@@ -404,5 +410,105 @@ describe("buildTaskTimeline runs, approvals and phases", () => {
 
     expect(items.map((item) => item.kind)).toEqual(["message", "tool", "milestone", "milestone"]);
     expect(items.at(-1)).toMatchObject({ kind: "milestone", text: "Run baseline: Finished", sequence: 5 });
+  });
+});
+
+describe("buildTaskTimelineIncremental", () => {
+  /** A long run: text that streams, reasoning, paired tools, statuses and usage. */
+  function longRun(count: number): TaskTranscriptEvent[] {
+    const events: TaskRuntimeEvent[] = [];
+    for (let index = 0; events.length < count; index += 1) {
+      events.push(
+        { kind: "text", text: `Step ${index} starts. ` },
+        { kind: "text", text: `Step ${index} goes on.` },
+        { kind: "reasoning", text: `Why ${index}` },
+        { kind: "tool", callId: `call_${index}`, name: "read_file", phase: "request", detail: `{"n":${index}}`, status: "running" },
+        { kind: "tool", callId: `call_${index}`, name: "", phase: "result", detail: `{"ok":${index}}`, status: "done" },
+        { kind: "status", message: `Done ${index}` },
+        { kind: "usage", inputTokens: index * 10, outputTokens: index },
+      );
+    }
+    return transcript(events.slice(0, count));
+  }
+
+  it("builds what a full build builds, row by row and while the newest text grows", () => {
+    const rows = longRun(600);
+    let cache: TaskTimelineCache | null = null;
+    for (let length = 1; length <= rows.length; length += 37) {
+      const shown = rows.slice(0, length);
+      const last = shown[shown.length - 1];
+      // The newest row is replaced as its text grows, as a live delta does it.
+      if (last.event.kind === "text") shown[shown.length - 1] = { ...last, event: { ...last.event, text: `${last.event.text}+` } };
+      const built = buildTaskTimelineIncremental(shown, true, cache);
+      expect(built.timeline).toEqual(buildTaskTimeline(shown, true));
+      cache = built.cache;
+    }
+    const done = buildTaskTimelineIncremental(rows, false, cache);
+    expect(done.timeline).toEqual(buildTaskTimeline(rows, false));
+  });
+
+  it("keeps the settled items as the same objects when only the newest text changes", () => {
+    const rows = longRun(400);
+    const first = buildTaskTimelineIncremental(rows, true, null);
+    const grown = rows.slice();
+    const last = grown[grown.length - 1];
+    grown[grown.length - 1] = { ...last };
+    const second = buildTaskTimelineIncremental(grown, true, first.cache);
+
+    expect(first.cache.rows.length).toBeGreaterThan(0);
+    expect(first.cache.rows.length).toBeLessThanOrEqual(rows.length - TIMELINE_LIVE_ROWS);
+    expect(second.timeline.items[0]).toBe(first.timeline.items[0]);
+    expect(second.timeline).toEqual(buildTaskTimeline(grown, true));
+  });
+
+  it("builds everything again when older rows are loaded before the ones it holds", () => {
+    const rows = longRun(400);
+    const newest = rows.slice(100);
+    const first = buildTaskTimelineIncremental(newest, true, null);
+
+    const all = buildTaskTimelineIncremental(rows, true, first.cache);
+
+    expect(all.timeline).toEqual(buildTaskTimeline(rows, true));
+  });
+
+  it("builds everything again when a later row updates a tool from the settled part", () => {
+    const rows = longRun(400);
+    const first = buildTaskTimelineIncremental(rows, true, null);
+    const update: TaskTranscriptEvent = {
+      taskId: "task",
+      executionGeneration: 1,
+      sequence: rows.length + 1,
+      createdAt: 1,
+      event: { kind: "tool", callId: "call_0", name: "", phase: "update", detail: '{"late":true}', status: "done" },
+    };
+    const later = [...rows, update];
+
+    expect(buildTaskTimelineIncremental(later, true, first.cache).timeline).toEqual(buildTaskTimeline(later, true));
+  });
+
+  it("doesn't settle past a tool that still waits for its result", () => {
+    const waiting = transcript([
+      { kind: "tool", callId: "call_open", name: "run_command", phase: "request", detail: "{}", status: "running" },
+      ...Array.from({ length: 300 }, (_, index): TaskRuntimeEvent => ({ kind: "status", message: `Row ${index}` })),
+    ]);
+
+    const built = buildTaskTimelineIncremental(waiting, false, null);
+
+    expect(built.cache.rows).toHaveLength(0);
+    expect(built.timeline).toEqual(buildTaskTimeline(waiting, false));
+    expect(built.timeline.items[0]).toMatchObject({ kind: "tool", tool: { interrupted: true } });
+  });
+});
+
+describe("latestTimelineUsage", () => {
+  it("reports the usage a full timeline reports", () => {
+    const rows = transcript([
+      { kind: "usage", inputTokens: 10, outputTokens: null },
+      { kind: "text", text: "Answer" },
+      { kind: "usage", inputTokens: null, outputTokens: 7 },
+    ]);
+
+    expect(latestTimelineUsage(rows)).toEqual(buildTaskTimeline(rows).usage);
+    expect(latestTimelineUsage([])).toEqual({ inputTokens: null, outputTokens: null });
   });
 });

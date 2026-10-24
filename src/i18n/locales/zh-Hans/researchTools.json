@@ -203,7 +203,8 @@
       "createTask": "创建任务",
       "replaceText": "要将你输入的标题和指令替换为这个开始方式吗？",
       "keepText": "保留我的",
-      "replaceConfirm": "替换"
+      "replaceConfirm": "替换",
+      "cannotSave": "请修正上方标记的选项，然后重试。"
     },
     "starter": {
       "literatureReview": {
@@ -304,16 +305,34 @@
         "budgetCost": "已在费用上限处停止。",
         "budgetRuns": "已在运行次数上限处停止。"
       },
-      "startsAt": "开始时间：{{time}}"
+      "startsAt": "开始时间：{{time}}",
+      "olderActivity": "此次运行较早的活动未显示。",
+      "tooLargeToDiff": "此文件太大，无法在此处比较，因此只显示其大小。"
+    },
+    "confirm": {
+      "stopTitle": "停止此任务？",
+      "stopDescription": "“{{title}}”会在当前步骤结束后停止。之后点击“继续”，即可从它的工作区接着运行。",
+      "cancelTitle": "取消此任务？",
+      "cancelDescription": "“{{title}}”不会运行。你之后可以重试。",
+      "cancelTask": "取消任务",
+      "discardTitle": "丢弃这些更改？",
+      "discardDescription": "“{{title}}”的所有更改都不会进入你的项目，该任务会被标记为已取消。点击“继续”会再次运行代理。",
+      "keepTask": "保留任务",
+      "keepChanges": "保留更改",
+      "dependents_other": "以下 {{count}} 个等待它的任务也会失败：",
+      "runs_other": "以下 {{count}} 个运行也会停止："
     },
     "plan": {
       "title": "计划",
       "description": "阅读计划，如有需要可以编辑。批准后任务才会继续。",
       "approve": "批准计划",
       "approveEdited": "批准编辑后的计划",
-      "discard": "放弃任务",
+      "discard": "取消任务",
       "loading": "正在加载计划…",
-      "missing": "计划文件丢失。请重试任务。"
+      "missing": "计划文件丢失。请重试任务。",
+      "loadFailed": "Oleafly 无法加载计划。",
+      "truncated": "此计划超过 64 KiB，因此只显示开头部分。请将其编辑为你想要的步骤，然后批准。",
+      "tooLong": "计划最大为 64 KiB。请先缩短，再批准。"
     },
     "approvals": {
       "title": "等待你的批准",
@@ -362,6 +381,9 @@
       "runsUsed": "{{used}} / {{limit}} 次运行",
       "runsUsedNoLimit": "{{used}} 次运行",
       "stopRun": "停止运行",
+      "stopRunTitle": "停止此运行？",
+      "stopRunDescription": "“{{name}}”（{{run}}）将立即停止。它在其他机器或集群上运行的作业，也会在那边被取消。",
+      "keepRun": "继续运行",
       "viewLog": "查看日志",
       "columns": {
         "run": "运行",
@@ -862,6 +884,7 @@
     "progressCancelled": "已取消",
     "progressReadingPages": "正在读取页面",
     "progressTranscribingPage": "正在使用 {{model}} 转录第 {{page}} 页，共 {{total}} 页",
+    "progressTranscribingPdfPage": "正在使用 {{model}} 转录第 {{pdfPage}} 页（{{page}} / {{total}}）",
     "progressDocumentStructure": "正在转换文档结构",
     "progressMermaid": "正在渲染 Mermaid 图表",
     "progressFirstSheet": "正在读取第一个工作表",
@@ -905,7 +928,8 @@
     "progressConvertingSource": "正在将源码转换为 Typst",
     "pageRange": "页码",
     "pageRangePlaceholder": "全部页面，或 1-50 这样的范围",
-    "pageRangeInvalid": "请输入单个页码，或 1-50 这样的范围。"
+    "pageRangeInvalid": "请输入单个页码，或 1-50 这样的范围。",
+    "pageCount_other": "此 PDF 共有 {{count}} 页。"
   },
   "converters": {
     "imageToLatex": {
@@ -1114,10 +1138,12 @@
     "arxivInputRequired": "请输入 arXiv ID 或选择源码压缩包。",
     "equationToTypst": "Pandoc 无法将此公式转换为 Typst。请检查 LaTeX 公式后重试。",
     "pdfTooManyPages": "此扫描件共有 {{pages}} 页，而 Oleafly 每次最多转录 {{limit}} 页。请在文件下方输入 1-{{limit}} 这样的页码范围。",
-    "outputLimit": "模型在完成前就没有了输出空间，因此转录会不完整。请在“设置 → AI 助手 → 工具”中选择输出上限更大的模型，或只转录较小的部分。"
+    "outputLimit": "模型在完成前就没有了输出空间，因此转录会不完整。请在“设置 → AI 助手 → 工具”中选择输出上限更大的模型，或只转录较小的部分。",
+    "refused": "模型拒绝转录此内容，因此没有添加任何内容。请在“设置 → AI 助手 → 工具”中选择其他模型。",
+    "pageRangePastEnd_other": "此 PDF 共有 {{count}} 页。请输入 1 到 {{count}} 之间的范围。"
   },
   "converterNotes": {
-    "scannedPages": "已使用 {{model}} 转录 {{pages}} 页扫描页。使用结果前请检查公式和表格。",
+    "scannedPages_other": "已使用 {{model}} 转录 {{count}} 页扫描页。使用结果前请检查公式和表格。",
     "extracted": "已在本地提取 {{pages}} 页和 {{figures}} 张图片。",
     "mermaidTikz": "已将此流程图转换为可编辑的 TikZ。",
     "mermaidRendered": "此图表的 Mermaid 语法无法干净地映射为可编辑的 TikZ，因此已在本地渲染。",
@@ -1142,20 +1168,28 @@
     "scansSentToHost": "扫描页会发送到 {{host}} 上的 Ollama",
     "pdfSentToMathpix": "整个 PDF 会发送到 Mathpix",
     "transcribingHosted": "正在将图片发送到 {{provider}}…",
+    "transcribingFallback": "正在将图片发送到 {{provider}}（助手模型）…",
+    "sentFallback": "已发送到 {{provider}}（助手模型）",
+    "editorFallback": "在 Ollama 有视觉模型之前，编辑器中的图片转 LaTeX 会把图片发送到 {{provider}}",
     "progressUploading": "正在将 PDF 发送到 Mathpix",
     "progressFormatting": "正在使用 Pandoc 转换转录结果",
     "scannedTitle": "此 PDF 看起来是扫描件",
     "estimateOllama_other": "共 {{count}} 页。Ollama 会逐页读取，可能需要一段时间。",
     "estimateCost_other": "共 {{count}} 页。使用 {{model}} 约 {{cost}}。",
     "estimateUnknown_other": "共 {{count}} 页。{{provider}} 按用量计费。",
+    "estimatePlan_other": "共 {{count}} 页。{{provider}} 已将其包含在你的方案中。",
+    "estimateLocal_other": "共 {{count}} 页。模型在这台计算机上运行，无需费用。",
+    "estimateFree_other": "共 {{count}} 页。使用 {{model}} 免费。",
     "transcribePages_other": "转录 {{count}} 页",
     "transcribedWith": "已使用 {{model}} 转录。请检查公式和表格。",
     "sentBadge": "已发送到 {{provider}}",
     "openToolsSettings": "工具设置",
+    "openProviderSettings": "提供商设置",
     "errors": {
       "offline": "Oleafly 处于离线模式。请选择本地模型，或关闭离线模式。",
       "providerNotConfigured": "{{provider}} 没有 API 密钥。请在设置中添加，或选择其他模型。",
       "modelDisabled": "{{model}} 已在设置中关闭。请将其开启，或选择其他模型。",
+      "modelUnavailable": "{{provider}} 已不再提供 {{model}}。请选择其他模型。",
       "cannotSeeImages": "{{model}} 无法读取图片。请选择视觉模型。",
       "localModelGone": "{{model}} 已不在 Ollama 中。请重新拉取，或选择其他模型。",
       "imagesOnly": "{{model}} 只能读取图片。请选择语言模型来转换输入的公式。",
@@ -1740,6 +1774,8 @@
     "keepRunningHint": "请先在“设置 → 研究”中开启后台任务。",
     "invalidMetric": "请使用字母、数字、点、短横线或下划线。",
     "invalidCost": "请输入大于零的金额。",
+    "invalidCostMax": "请输入不超过 {{max}} 的金额。",
+    "invalidCostNumber": "请以数字输入金额，例如 {{example}}。",
     "invalidRuns": "请输入 1 到 1,000 之间的整数。",
     "invalidStart": "请选择今后 30 天内的开始时间。",
     "invalidStartFormat": "请使用 {{example}} 格式。",
@@ -1762,6 +1798,8 @@
     "hint": "这些检查只会发出警告，不会阻止应用结果。",
     "running": "正在检查…",
     "refresh": "重新检查",
+    "empty": "还没有对此结果运行任何检查。",
+    "more_other": "另有 {{count}} 项未列出。",
     "status": {
       "pass": "已通过",
       "warn": "请检查",
@@ -1869,7 +1907,8 @@
         "time": "请使用 Slurm 时间格式，例如 2:00:00。",
         "name": "请使用字母、数字、点、逗号、短横线或下划线。",
         "mem": "请使用以 GB 为单位的整数，例如 16。",
-        "count": "请使用允许范围内的整数。"
+        "count": "请使用允许范围内的整数。",
+        "prelude": "请将设置命令控制在 4 KB 以内。带重音的字母和非拉丁文字会占用更多空间。"
       }
     },
     "test": {
@@ -1945,7 +1984,7 @@
       "movingBackHint": "当前步骤结束后，此任务会回到 Oleafly。"
     },
     "earlierActivity": "显示较早的活动",
-    "earlierTruncated": "仅显示此较早运行的前 {{limit}} 项。",
+    "earlierTruncated": "仅显示此较早运行的最后 {{limit}} 项。",
     "keepRunningFailed": "无法更改此设置。请重试。"
   }
 }

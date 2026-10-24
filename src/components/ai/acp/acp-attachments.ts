@@ -70,19 +70,27 @@ export async function prepareImages(items: readonly DraftAttachment[], perImage:
   return images;
 }
 
-/** What one message sends: text, images inline, other files by reference. */
+/** The project files a message's text mentions (folders are left out). */
+export function promptMentions(text: string, tree: readonly FileEntry[]): string[] {
+  const filesByPath = new Map(tree.map((entry) => [entry.path, entry.is_dir]));
+  return composerMentionPaths(text, filesByPath.keys()).filter((path) => filesByPath.get(path) === false);
+}
+
+/**
+ * What one message sends: text, images inline, other files by reference.
+ * `tree` is the conversation's project as the window shows it; null when the
+ * window shows another project, and the mentions read when the message was
+ * queued are used instead.
+ */
 export async function toPromptInput(
   draft: AcpPromptDraft,
   session: AcpSession,
-  tree: readonly FileEntry[],
+  tree: readonly FileEntry[] | null,
 ): Promise<AcpPromptInput> {
   if (draft.attachments.some((item) => item.status !== "ready")) throw new AcpPromptError("notReady");
   const images = draft.attachments.filter((item) => item.kind === "image");
   if (images.length > 0 && !session.capabilities.image) throw new AcpPromptError("imagesUnsupported");
-  const filesByPath = new Map(tree.map((entry) => [entry.path, entry.is_dir]));
-  const mentioned = composerMentionPaths(draft.text, filesByPath.keys()).filter(
-    (path) => filesByPath.get(path) === false,
-  );
+  const mentioned = tree ? promptMentions(draft.text, tree) : [...draft.mentions];
   const files: AcpPromptFile[] = [];
   for (const item of draft.attachments) {
     if (item.kind === "image") continue;

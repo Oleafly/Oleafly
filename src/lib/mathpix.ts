@@ -2,6 +2,7 @@
 // Rust (src-tauri/src/mathpix.rs): this module can save or clear the keys and
 // ask whether they exist, but never reads the key back.
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { AppError } from "@/lib/app-error";
 
 export interface MathpixKeyStatus {
   configured: boolean;
@@ -23,6 +24,9 @@ export interface MathpixPdfProgress {
 
 const PAGE_RANGES_HEADER = "x-oleafly-page-ranges";
 const REQUEST_ID_HEADER = "x-oleafly-request-id";
+/** Rust's limit for a Mathpix PDF (`MAX_PDF_BYTES` in mathpix.rs), checked
+ * here first so a larger file is never copied into Rust. */
+const MATHPIX_MAX_PDF_BYTES = 256 * 1024 * 1024;
 
 export const mathpixKeyStatus = () => invoke<MathpixKeyStatus>("mathpix_key_status");
 
@@ -31,12 +35,37 @@ export const mathpixSaveKeys = (appId: string, appKey: string) =>
 
 export const mathpixClearKeys = () => invoke<void>("mathpix_clear_keys");
 
-/** Reads one PNG or JPEG image (base64, no data URL prefix). */
-export const mathpixText = (imageBase64: string, mime: string) =>
-  invoke<MathpixTextResult>("mathpix_text", { imageBase64, mime });
-
 function abortError(): DOMException {
   return new DOMException("Aborted", "AbortError");
+}
+
+/**
+ * Reads one PNG or JPEG image (base64, no data URL prefix). Cancelling
+ * through `signal` stops the request, or keeps it from being sent.
+ */
+export async function mathpixText(
+  imageBase64: string,
+  mime: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<MathpixTextResult> {
+  const { signal } = options;
+  if (!signal) return invoke<MathpixTextResult>("mathpix_text", { imageBase64, mime });
+  if (signal.aborted) throw abortError();
+  const requestId = crypto.randomUUID();
+  const stop = () => {
+    void invoke<void>("mathpix_text_cancel", { requestId }).catch(() => undefined);
+  };
+  signal.addEventListener("abort", stop, { once: true });
+  try {
+    const result = await invoke<MathpixTextResult>("mathpix_text", { imageBase64, mime, requestId });
+    if (signal.aborted) throw abortError();
+    return result;
+  } catch (error) {
+    if (signal.aborted) throw abortError();
+    throw error;
+  } finally {
+    signal.removeEventListener("abort", stop);
+  }
 }
 
 /**
@@ -56,6 +85,7 @@ export async function mathpixPdf(
 ): Promise<string> {
   const { signal } = options;
   if (signal?.aborted) throw abortError();
+  if (bytes.byteLength > MATHPIX_MAX_PDF_BYTES) throw new AppError("mathpix.pdf_too_large", {}, null);
   const requestId = crypto.randomUUID();
   // One cancel call, whenever it comes: during the upload, between it and
   // the wait, or during the wait.

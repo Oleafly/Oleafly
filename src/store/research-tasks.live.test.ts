@@ -153,12 +153,13 @@ beforeEach(async () => {
     tasks: [],
     selectedTaskId: null,
     events: [],
-    eventsNextSequence: null,
+    eventsPreviousSequence: null,
     loading: false,
     eventsLoading: false,
     action: null,
     error: null,
-    detailOpen: false,
+    // The dialog shows the selected task, so its rows load and stream.
+    detailOpen: true,
     detailTab: null,
     composerDrafts: {},
   });

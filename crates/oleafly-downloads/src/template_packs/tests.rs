@@ -897,7 +897,7 @@ async fn a_shared_file_is_copied_when_it_cannot_be_linked() {
     std::fs::write(&dest, b"stale").unwrap();
     link_or_copy(&source, &dest).await.unwrap();
     assert_eq!(std::fs::read(&dest).unwrap(), b"font");
-    assert!(!part_path(&dest).exists());
+    assert!(no_part_files(dir.path()));
 
     let missing = dir.path().join("c/fonts/simsun.ttc");
     let error = link_or_copy(&dir.path().join("gone.ttc"), &missing)
@@ -905,7 +905,100 @@ async fn a_shared_file_is_copied_when_it_cannot_be_linked() {
         .unwrap_err();
     assert!(!error.is_empty());
     assert!(!missing.exists());
-    assert!(!part_path(&missing).exists());
+    assert!(no_part_files(dir.path()));
+}
+
+/// No `.part` file anywhere below `dir`.
+fn no_part_files(dir: &Path) -> bool {
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(folder) = pending.pop() {
+        for entry in std::fs::read_dir(&folder).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else if path.to_string_lossy().ends_with(".part") {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+#[test]
+fn two_downloads_of_one_file_use_their_own_temporary_names() {
+    let dest = Path::new("/p/a/main.tex");
+    let (first, second) = (part_path(dest), part_path(dest));
+    assert_ne!(first, second);
+    assert!(first.to_string_lossy().starts_with("/p/a/main.tex."));
+    assert!(first.to_string_lossy().ends_with(".part"));
+}
+
+#[test]
+fn failures_say_what_went_wrong() {
+    assert_eq!(
+        download_failure("download failed: connection reset"),
+        DownloadFailure::Network
+    );
+    assert_eq!(
+        download_failure("download of https://x/a did not match its checksum"),
+        DownloadFailure::Integrity
+    );
+    assert_eq!(
+        download_failure("https://x/i.json sent more than 16 MB"),
+        DownloadFailure::Integrity
+    );
+    assert_eq!(
+        download_failure("No space left on device (os error 28)"),
+        DownloadFailure::Storage
+    );
+    assert_eq!(file_limit(0), MAX_FILE_BYTES);
+    assert_eq!(file_limit(1000), 1000 + SIZE_SLACK);
+}
+
+#[tokio::test]
+async fn a_file_larger_than_its_template_is_refused() {
+    let mut routes: HashMap<String, (u16, Vec<u8>)> = HashMap::new();
+    routes.insert("/files/a/main.tex".into(), (200, vec![b'x'; 200 * 1024]));
+    let server = serve(routes).await;
+    let dir = tempfile::tempdir().unwrap();
+    let plan = DownloadPlan {
+        jobs: vec![TemplateJob {
+            id: "a".into(),
+            missing: vec![served(&server.base, "a/main.tex")],
+            preview: None,
+            max_file_bytes: 1024,
+        }],
+        present: 0,
+        total: 1,
+    };
+    let error = download_templates(&test_client(), dir.path(), plan, &|_| {})
+        .await
+        .unwrap_err();
+    assert_eq!(
+        download_failure(&error),
+        DownloadFailure::Integrity,
+        "{error}"
+    );
+    assert!(!dir.path().join("a/main.tex").exists());
+    assert!(no_part_files(dir.path()));
+}
+
+#[tokio::test]
+async fn an_install_waits_for_another_install_of_the_pack() {
+    let dir = tempfile::tempdir().unwrap();
+    let held = install_lock(dir.path()).await.unwrap();
+    let waiting = tokio::spawn({
+        let dir = dir.path().to_path_buf();
+        async move { install_lock(&dir).await.map(|_| ()) }
+    });
+    tokio::time::sleep(Duration::from_millis(400)).await;
+    assert!(!waiting.is_finished(), "the second install must wait");
+    drop(held);
+    tokio::time::timeout(Duration::from_secs(5), waiting)
+        .await
+        .expect("it goes on once the first is done")
+        .unwrap()
+        .unwrap();
 }
 
 #[tokio::test]

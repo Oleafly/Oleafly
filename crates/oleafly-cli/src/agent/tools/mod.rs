@@ -68,6 +68,9 @@ pub struct ToolContext {
     pub events: EventSink,
     pub last_build: Mutex<Option<LastBuild>>,
     pub warned_unsandboxed: AtomicBool,
+    /// `--unsandboxed-commands`: a review run may run commands the sandbox
+    /// can't hold.
+    pub unsandboxed_commands: bool,
     pub skills: Arc<CliSkills>,
     /// Folders commands may read besides the run's folder (selected skills).
     pub read_paths: Vec<PathBuf>,
@@ -298,6 +301,7 @@ pub(crate) mod test_support {
             events: Arc::new(|_| {}),
             last_build: Mutex::new(None),
             warned_unsandboxed: AtomicBool::new(false),
+            unsandboxed_commands: false,
             skills: Arc::new(CliSkills::empty()),
             read_paths: Vec::new(),
             secrets: Arc::new(StoreSecrets::default()),

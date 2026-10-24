@@ -561,6 +561,19 @@ describe("GitHostingSection Git auto-init", () => {
     expect(screen.getByTestId("git-auto-init")).toBeInTheDocument();
   });
 
+  it("shows the stored value again when the save fails", async () => {
+    mocks.setConfig.mockRejectedValueOnce(new Error("disk full"));
+    const user = userEvent.setup();
+    render(<GitHostingSection />);
+
+    const toggle = await screen.findByRole("switch", { name: SWITCH_NAME });
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    await user.click(toggle);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(enSettings.github.config.saveFailed);
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
+  });
+
   it("reports a failed config load", async () => {
     mocks.getConfig.mockRejectedValueOnce(new Error("no config"));
     render(<GitHostingSection />);

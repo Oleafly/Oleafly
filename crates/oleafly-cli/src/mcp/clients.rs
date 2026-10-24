@@ -176,8 +176,10 @@ pub fn snippet(client: Client, name: &str, entry: &Value) -> String {
             .flatten()
             .map(|arg| format!("{arg}"))
             .collect();
+        // A name with dots or spaces must be a quoted key.
         format!(
-            "[mcp_servers.{name}]\ncommand = {}\nargs = [{}]\ntool_timeout_sec = {}\n",
+            "[mcp_servers.{}]\ncommand = {}\nargs = [{}]\ntool_timeout_sec = {}\n",
+            toml_edit::Key::new(name),
             entry["command"],
             args.join(", "),
             entry["tool_timeout_sec"]
@@ -353,8 +355,15 @@ fn updated_text(
     Ok((format!("{text}\n"), action))
 }
 
-/// Adds or updates `name` in the client's file. The old file is copied to
-/// `<file>.oleafly-backup` first; an identical entry writes nothing.
+/// A file outside the project couldn't be written (exit 4, not 3: the
+/// project is fine).
+fn not_written(error: std::io::Error) -> CliError {
+    CliError::new(ErrorKind::System, "io.failed", error.to_string())
+}
+
+/// Adds or updates `name` in the client's file. The file as it was before
+/// Oleafly first changed it is kept as `<file>.oleafly-backup` (a later
+/// write leaves that backup alone); an identical entry writes nothing.
 pub fn write_entry(
     client: Client,
     path: &Path,
@@ -379,8 +388,12 @@ pub fn write_entry(
                 .unwrap_or_default();
             name.push(BACKUP_SUFFIX);
             let backup = path.with_file_name(name);
-            // The client's config can hold its other servers' keys.
-            oleafly_core::atomic::write_atomic_private(&backup, bytes).map_err(CliError::from)?;
+            // The first backup is the user's own file; a second write must
+            // not replace it with Oleafly's earlier edit.
+            if std::fs::symlink_metadata(&backup).is_err() {
+                // The client's config can hold its other servers' keys.
+                oleafly_core::atomic::write_atomic_private(&backup, bytes).map_err(not_written)?;
+            }
             Some(backup)
         }
         None => None,
@@ -389,9 +402,9 @@ pub fn write_entry(
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
     {
-        std::fs::create_dir_all(parent).map_err(CliError::from)?;
+        std::fs::create_dir_all(parent).map_err(not_written)?;
     }
-    oleafly_core::atomic::write_atomic(path, text.as_bytes()).map_err(CliError::from)?;
+    oleafly_core::atomic::write_atomic(path, text.as_bytes()).map_err(not_written)?;
     Ok((action, backup))
 }
 
@@ -538,6 +551,31 @@ mod tests {
         assert!(text.contains("[mcp_servers.other]"));
         assert!(text.contains("[mcp_servers.oleafly]"));
         assert!(text.contains("tool_timeout_sec = 300"));
+    }
+
+    #[test]
+    fn the_codex_snippet_quotes_a_name_toml_needs_quoted() {
+        let entry = entry_for(Client::Codex, Scope::Project, "oleafly");
+        let text = snippet(Client::Codex, "oleafly thesis", &entry);
+        let document = text.parse::<toml_edit::DocumentMut>().expect("valid TOML");
+        assert_eq!(
+            document["mcp_servers"]["oleafly thesis"]["tool_timeout_sec"].as_integer(),
+            Some(300)
+        );
+        assert!(snippet(Client::Codex, "oleafly", &entry).starts_with("[mcp_servers.oleafly]"));
+    }
+
+    #[test]
+    fn a_second_write_keeps_the_users_original_as_the_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("mcp.json");
+        let original = r#"{"mcpServers":{"other":{"command":"x"}}}"#;
+        std::fs::write(&path, original).unwrap();
+        let first = entry_for(Client::Cursor, Scope::Project, "oleafly");
+        let (_, backup) = write_entry(Client::Cursor, &path, "oleafly", &first).unwrap();
+        let second = entry_for(Client::Cursor, Scope::Project, "/opt/oleafly");
+        write_entry(Client::Cursor, &path, "oleafly", &second).unwrap();
+        assert_eq!(std::fs::read_to_string(backup.unwrap()).unwrap(), original);
     }
 
     #[test]

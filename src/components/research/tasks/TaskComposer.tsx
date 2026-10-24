@@ -29,6 +29,7 @@ import {
 } from "@/lib/research-tasks";
 import { describeError } from "@/lib/app-error";
 import { getConfig } from "@/lib/tauri";
+import { COMPUTE_TARGETS_CHANGED, computeSettings } from "@/components/settings/research/compute-api";
 import { useResearchTasksStore, type ResearchTaskComposerDraft } from "@/store/research-tasks";
 import { i18n } from "@/i18n";
 import { statusLabel } from "./task-status";
@@ -113,6 +114,11 @@ interface TaskComposerProps {
   busy: boolean;
   onCancel: () => void;
   onDismiss?: () => void;
+  /**
+   * Opens Settings for a link in the brief. The composer has closed (its draft
+   * saved) by then; the caller can bring it back when Settings closes.
+   */
+  onOpenSettings?: (open: () => void) => void;
   onCreate: (input: ResearchTaskEdit & { projectId: string }) => Promise<void>;
   onSave: (taskId: string, input: ResearchTaskEdit) => Promise<void>;
 }
@@ -147,6 +153,30 @@ export function composerDraftKey(projectId: string, editingTaskId: string | null
   return `${projectId}\u0000${editingTaskId ?? ""}`;
 }
 
+/** Whether the brief's compute target is gone from Settings; `false` until the list loads, or when it can't. */
+function useComputeTargetMissing(target: string | null): boolean {
+  const [targets, setTargets] = useState<readonly string[] | null>(null);
+  useEffect(() => {
+    if (target === null) return;
+    let current = true;
+    const load = () => {
+      void computeSettings()
+        .then((view) => {
+          if (current) setTargets(view.targets.map((entry) => entry.id));
+        })
+        // A list that failed to load says nothing about whether the target still exists.
+        .catch(() => {});
+    };
+    load();
+    window.addEventListener(COMPUTE_TARGETS_CHANGED, load);
+    return () => {
+      current = false;
+      window.removeEventListener(COMPUTE_TARGETS_CHANGED, load);
+    };
+  }, [target]);
+  return target !== null && targets !== null && !targets.includes(target);
+}
+
 export function TaskComposer(props: Readonly<TaskComposerProps>) {
   return <TaskComposerDraft key={JSON.stringify([props.projectId, props.editingTask?.id ?? null])} {...props} />;
 }
@@ -159,6 +189,7 @@ function TaskComposerDraft({
   busy,
   onCancel,
   onDismiss,
+  onOpenSettings,
   onCreate,
   onSave,
 }: Readonly<TaskComposerProps>) {
@@ -196,7 +227,11 @@ function TaskComposerDraft({
   const briefTouched = useRef(Boolean(restored?.brief || editingTask));
   const [error, setError] = useState<string | null>(null);
   // The "Run on" fields found something that can't be saved (a removed target, bad Slurm text).
-  const [computeProblem, setComputeProblem] = useState(false);
+  const [computeFieldProblem, setComputeProblem] = useState(false);
+  // Those fields sit in the collapsed part of the brief, so the composer checks
+  // the target itself: a task saved with a removed target fails every run.
+  const targetMissing = useComputeTargetMissing(brief.compute.target);
+  const computeProblem = computeFieldProblem || targetMissing;
   // What the chosen starter set in the brief, and what each setting was before, so another choice can undo it.
   const starterBrief = useRef<StarterBrief | null>(restoredStarterBrief(restored?.starterId));
   const [pendingStarter, setPendingStarter] = useState<string | null>(null);
@@ -285,7 +320,15 @@ function TaskComposerDraft({
   const submit = async () => {
     const agent = agents.find((candidate) => selectedAgentKey(candidate) === agentKey);
     if (busy || !agent || agent.available === false || !title.trim() || !prompt.trim()) return;
-    if (Object.keys(briefErrors(brief)).length > 0 || startError(runAfter) !== undefined || computeProblem) return;
+    // A start time that passed while the form stayed open means "start now", as it does for a restored draft.
+    const start = upcomingStart(runAfter) ?? (runAfter !== null && Number.isNaN(runAfter) ? runAfter : null);
+    if (start !== runAfter) setRunAfter(start);
+    const refusal = startError(start);
+    if (Object.keys(briefErrors(brief)).length > 0 || refusal !== undefined || computeProblem) {
+      // Say why, so a click that saves nothing doesn't look like a dead button.
+      setError(refusal ?? t(($) => $.researchTools.tasks.composer.cannotSave));
+      return;
+    }
     const input: ResearchTaskEdit = {
       title: title.trim(),
       prompt: prompt.trim(),
@@ -295,7 +338,7 @@ function TaskComposerDraft({
       skillIds,
       dependencyIds,
       brief,
-      runAfter,
+      runAfter: start,
       keepRunningAfterQuit: keepRunning && backgroundEnabled,
     };
     setError(null);
@@ -327,6 +370,15 @@ function TaskComposerDraft({
   const cancel = () => {
     clearDraft(draftId);
     onCancel();
+  };
+
+  // Settings opens above the app, not inside this modal dialog: the composer
+  // closes first, keeping the draft.
+  const openSettingsFromBrief = (open: () => void) => {
+    if (busy) return;
+    dismiss();
+    if (onOpenSettings) onOpenSettings(open);
+    else open();
   };
 
   const selectableDependencies = tasks.filter(
@@ -458,6 +510,7 @@ function TaskComposerDraft({
             backgroundEnabled={backgroundEnabled}
             disabled={busy}
             computeProblem={computeProblem}
+            onOpenSettings={openSettingsFromBrief}
             renderCompute={(fieldId) => (
               <Suspense fallback={null}>
                 <ComputeBriefFields
@@ -466,6 +519,7 @@ function TaskComposerDraft({
                   disabled={busy}
                   onChange={(compute) => changeBrief({ ...brief, compute })}
                   onProblemChange={setComputeProblem}
+                  onOpenSettings={openSettingsFromBrief}
                 />
               </Suspense>
             )}

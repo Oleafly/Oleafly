@@ -35,6 +35,8 @@ pub struct EvidenceInputs<'a> {
     pub runs: Vec<RunRecord>,
     pub ledger: Vec<LedgerRow>,
     pub workspace: Option<Arc<dyn WorkspaceTools>>,
+    /// The project folder the task's workspace was copied from.
+    pub project_root: Option<PathBuf>,
 }
 
 pub async fn check_evidence(
@@ -52,23 +54,49 @@ pub(crate) async fn check_evidence_with(
     let root = PathBuf::from(&inputs.isolation.execution_root);
     let baseline = PathBuf::from(&inputs.isolation.baseline_root);
     let mut checks = Vec::with_capacity(5);
-    checks.push(build_check(inputs.workspace.as_deref(), &root).await);
+    checks.push(
+        build_check(
+            inputs.workspace.as_deref(),
+            &root,
+            inputs.project_root.clone(),
+        )
+        .await,
+    );
     if !cancel.is_cancelled() {
         checks.push(references_check(inputs.workspace.as_deref(), &root, &baseline).await);
     }
+    // The file checks below read up to thousands of files and parse
+    // BibTeX: they run on a blocking thread, off the async workers that
+    // also answer the app's commands.
     if !cancel.is_cancelled() {
-        checks.push(bibliography_check(inputs.changes, &root, &baseline, verify).await);
-    }
-    if !cancel.is_cancelled() {
-        checks.push(numbers_check(
-            inputs.changes,
-            &root,
-            &inputs.runs,
-            &inputs.ledger,
+        let (changes, root, baseline) = (inputs.changes.to_vec(), root.clone(), baseline.clone());
+        let entries =
+            tokio::task::spawn_blocking(move || bibliography_entries(&changes, &root, &baseline))
+                .await
+                .unwrap_or_default();
+        checks.push(check(
+            EvidenceCheckId::Bibliography,
+            bib::verify_entries(entries, verify).await,
         ));
     }
     if !cancel.is_cancelled() {
-        checks.push(figures_check(inputs.changes, &root));
+        let (changes, root, runs, ledger) = (
+            inputs.changes.to_vec(),
+            root.clone(),
+            inputs.runs,
+            inputs.ledger,
+        );
+        let cancel = cancel.clone();
+        let file_checks = tokio::task::spawn_blocking(move || {
+            let mut checks = vec![numbers_check(&changes, &root, &runs, &ledger)];
+            if !cancel.is_cancelled() {
+                checks.push(figures_check(&changes, &root));
+            }
+            checks
+        })
+        .await
+        .unwrap_or_default();
+        checks.extend(file_checks);
     }
     EvidenceReport {
         checked_at: now_ms(),
@@ -113,7 +141,11 @@ fn item(
     }
 }
 
-async fn build_check(workspace: Option<&dyn WorkspaceTools>, root: &Path) -> EvidenceCheck {
+async fn build_check(
+    workspace: Option<&dyn WorkspaceTools>,
+    root: &Path,
+    source: Option<PathBuf>,
+) -> EvidenceCheck {
     let Some(workspace) = workspace else {
         return skipped(
             EvidenceCheckId::Build,
@@ -125,7 +157,7 @@ async fn build_check(workspace: Option<&dyn WorkspaceTools>, root: &Path) -> Evi
             ),
         );
     };
-    match workspace.compile(root.to_path_buf()).await {
+    match workspace.compile(root.to_path_buf(), source).await {
         Ok(summary) => match summary.skipped {
             Some(reason) => skipped(
                 EvidenceCheckId::Build,
@@ -171,6 +203,20 @@ fn unresolved(map: &Value) -> BTreeSet<String> {
     .collect()
 }
 
+/// Whether a capped project map cut a list of unresolved references or
+/// citations (`truncatedCounts` names each cut list by its dotted path).
+fn unresolved_cut(map: &Value) -> bool {
+    map.get("truncatedCounts")
+        .and_then(Value::as_object)
+        .is_some_and(|cut| {
+            cut.keys().any(|path| {
+                path.rsplit('.')
+                    .next()
+                    .is_some_and(|list| list.to_ascii_lowercase().starts_with("unresolved"))
+            })
+        })
+}
+
 async fn references_check(
     workspace: Option<&dyn WorkspaceTools>,
     root: &Path,
@@ -191,6 +237,11 @@ async fn references_check(
     ) else {
         return not_checked();
     };
+    // A map cut to fit a tool result may leave out some unresolved keys: the
+    // diff would then name keys the task did not add (or miss ones it did).
+    if unresolved_cut(&after) || unresolved_cut(&before) {
+        return not_checked();
+    }
     let known = unresolved(&before);
     let items = unresolved(&after)
         .into_iter()
@@ -214,12 +265,12 @@ fn changed_after(changes: &[TaskFileChange]) -> impl Iterator<Item = &TaskFileCh
         .filter(|change| change.after_sha256.is_some())
 }
 
-async fn bibliography_check(
+/// The entries the task added to the `.bib` files it changed (blocking).
+fn bibliography_entries(
     changes: &[TaskFileChange],
     root: &Path,
     baseline: &Path,
-    verify: bib::Verifier,
-) -> EvidenceCheck {
+) -> Vec<bib::NewEntry> {
     let mut entries = Vec::new();
     for change in
         changed_after(changes).filter(|change| change.path.to_ascii_lowercase().ends_with(".bib"))
@@ -232,10 +283,7 @@ async fn bibliography_check(
             .flatten();
         entries.extend(bib::new_entries(before.as_deref(), &after, &change.path));
     }
-    check(
-        EvidenceCheckId::Bibliography,
-        bib::verify_entries(entries, verify).await,
-    )
+    entries
 }
 
 fn numbers_check(

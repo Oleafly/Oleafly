@@ -103,17 +103,17 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
             const reasonId = `${reasonIds}-reason-${index}`;
             return (
               <li key={appRowKey(app)}>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   disabled={unavailable}
                   aria-pressed={isSelected}
                   aria-describedby={unavailable ? reasonId : undefined}
                   onClick={() => setSelected(app)}
                   onDoubleClick={() => !unavailable && pick(app)}
                   className={cn(
-                    "flex w-full flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left transition-colors",
-                    "hover:bg-accent focus-visible:border-ring focus-visible:bg-accent",
-                    "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent",
+                    "flex h-auto w-full flex-col items-start justify-start gap-0.5 whitespace-normal border px-3 py-2 text-left font-normal",
+                    "focus-visible:border-ring",
                     isSelected ? "border-primary bg-accent" : "border-transparent",
                   )}
                 >
@@ -124,7 +124,7 @@ export default function AppPickerDialog({ open, onOpenChange, existing, onPick }
                       {app.blocked ? blockedText(app.blocked) : t(($) => $.settings.integrations.desktopApps.apps.dialog.added)}
                     </span>
                   ) : null}
-                </button>
+                </Button>
               </li>
             );
           })}

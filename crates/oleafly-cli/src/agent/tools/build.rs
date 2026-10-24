@@ -13,7 +13,9 @@ use serde_json::{json, Value};
 use super::{lock, schema, LastBuild, ToolContext, ToolSpec};
 use crate::agent::policy::Allow;
 use crate::contract::{CliError, ErrorKind};
-use crate::engine::{build_project, open_project, BuildRequest, BuildResult};
+use crate::engine::{
+    build_opened, open_project, BuildRequest, BuildResult, OpenedProject, ProjectOrigin,
+};
 
 const BUILD_TIMEOUT: Duration = Duration::from_secs(300);
 const MAX_ERRORS: usize = 50;
@@ -60,6 +62,33 @@ pub(crate) fn tail_bytes(text: &str, max: usize) -> &str {
     &text[start..]
 }
 
+/// The work root opened for a build. A review copy of a folder the app
+/// opened in place has no `project.json` (the app keeps the settings in its
+/// data folder, keyed by the real folder's path), so it is built with the
+/// real folder's settings (engine, main document, compiler, Typst) rather
+/// than ones detection guesses.
+fn opened_for_build(project: &Path, work_root: &Path) -> Result<OpenedProject, CliError> {
+    if project != work_root {
+        if let Ok(original) = open_project(project, None, None) {
+            if matches!(original.origin, ProjectOrigin::Linked { .. })
+                && !work_root.join("project.json").is_file()
+            {
+                let workspace = oleafly_core::Workspace::from_manifest_with_build(
+                    work_root,
+                    original.workspace.manifest().clone(),
+                    oleafly_core::BuildLocation::InTree,
+                )?;
+                return Ok(OpenedProject {
+                    workspace,
+                    origin: ProjectOrigin::Manifest,
+                    warnings: Vec::new(),
+                });
+            }
+        }
+    }
+    open_project(work_root, None, None)
+}
+
 /// `compile`: builds the work root (the copy in review mode).
 pub(super) async fn compile(ctx: &Arc<ToolContext>) -> Result<Value, String> {
     let root = ctx.workspace.work_root().to_path_buf();
@@ -67,8 +96,16 @@ pub(super) async fn compile(ctx: &Arc<ToolContext>) -> Result<Value, String> {
         timeout: BUILD_TIMEOUT,
         ..BuildRequest::default()
     };
+    let opened = {
+        let project = ctx.workspace.project().to_path_buf();
+        let work_root = root.clone();
+        tokio::task::spawn_blocking(move || opened_for_build(&project, &work_root))
+            .await
+            .map_err(|_| "The project could not be opened.".to_string())?
+            .map_err(|error| error.message)?
+    };
     let result = tokio::select! {
-        result = build_project(&root, &request) => result.map_err(|error| error.message)?,
+        result = build_opened(&opened, &request) => result.map_err(|error| error.message)?,
         _ = ctx.cancel.cancelled() => return Err("The run was stopped.".into()),
     };
     *lock(&ctx.last_build) = Some(LastBuild {
@@ -133,13 +170,32 @@ pub(super) async fn build_log(ctx: Arc<ToolContext>, arguments: Value) -> Result
 /// Builds and maps a research task's workspace with this CLI's engine.
 pub struct CliWorkspaceTools;
 
+/// A research task's copy at `root`, opened for a build. A copy of a folder
+/// the app opened in place takes `source`'s settings, as a review copy does.
+pub(crate) fn opened_for_task_copy(
+    root: &Path,
+    source: Option<&Path>,
+) -> Result<OpenedProject, CliError> {
+    opened_for_build(source.unwrap_or(root), root)
+}
+
 /// What a build reported, as a research task's checks read it.
-pub(crate) async fn compile_summary(root: PathBuf) -> Result<CompileSummary, String> {
+pub(crate) async fn compile_summary(
+    root: PathBuf,
+    source: Option<PathBuf>,
+) -> Result<CompileSummary, String> {
     let request = BuildRequest {
         timeout: BUILD_TIMEOUT,
         ..BuildRequest::default()
     };
-    summary_of(build_project(&root, &request).await)
+    let opened =
+        tokio::task::spawn_blocking(move || opened_for_task_copy(&root, source.as_deref()))
+            .await
+            .map_err(|_| "The project could not be opened.".to_string())?;
+    summary_of(match opened {
+        Ok(opened) => build_opened(&opened, &request).await,
+        Err(error) => Err(error),
+    })
 }
 
 /// A build's outcome as a [`CompileSummary`]: a missing compiler skips the
@@ -175,12 +231,12 @@ pub(crate) fn project_map_of(root: &Path) -> Result<Value, String> {
     let main = opened.workspace.manifest().main_doc.clone();
     let scan = scan_project(root, &main, &ContextLimits::default())
         .map_err(|error| error.message().to_string())?;
-    serde_json::to_value(scan.map).map_err(|error| error.to_string())
+    Ok(oleafly_core::context::map_view(&scan.map))
 }
 
 impl WorkspaceTools for CliWorkspaceTools {
-    fn compile(&self, root: PathBuf) -> TaskRuntimeFuture<CompileSummary> {
-        Box::pin(compile_summary(root))
+    fn compile(&self, root: PathBuf, source: Option<PathBuf>) -> TaskRuntimeFuture<CompileSummary> {
+        Box::pin(compile_summary(root, source))
     }
 
     fn project_map(&self, root: PathBuf) -> TaskRuntimeFuture<Value> {
@@ -221,6 +277,27 @@ mod tests {
         assert!(tail.len() <= LOG_READ_BYTES as usize);
         assert!(tail.trim_end().ends_with("the last line"));
         assert_eq!(value["truncated"], true);
+    }
+
+    #[test]
+    fn a_copy_without_a_manifest_builds_as_a_folder_with_one_does() {
+        let project = project_with_main();
+        std::fs::write(
+            project.path().join("project.json"),
+            r#"{"name":"P","main_doc":"main.tex","engine":"latexmk","tex_flavor":"lualatex"}"#,
+        )
+        .unwrap();
+        // Not linked: the copy is opened as itself.
+        let copy = tempfile::tempdir().unwrap();
+        std::fs::write(copy.path().join("main.tex"), "\\documentclass{article}").unwrap();
+        let opened = opened_for_build(project.path(), copy.path()).unwrap();
+        assert_eq!(opened.origin, ProjectOrigin::Detected);
+        // The same folder opens as it is.
+        let opened = opened_for_build(project.path(), project.path()).unwrap();
+        assert_eq!(
+            opened.workspace.manifest().tex_flavor.as_deref(),
+            Some("lualatex")
+        );
     }
 
     #[test]

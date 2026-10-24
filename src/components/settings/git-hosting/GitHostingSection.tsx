@@ -169,12 +169,26 @@ function GitAutoInitToggle() {
 
   const write = (value: boolean) => {
     if (!configState) return;
+    const previous = gitAutoInitEnabled(configState);
+    const request = ++configRequest.current;
     setConfigState({ ...configState, git_auto_init: value });
     setConfigError(null);
     configWrites.current = configWrites.current
       .then(() => getConfig())
       .then((latest) => setConfig({ ...latest, git_auto_init: value }))
-      .catch(() => setConfigError("save"));
+      .catch(async () => {
+        setConfigError("save");
+        // A later click brings its own value; otherwise show what is stored.
+        if (request !== configRequest.current) return;
+        try {
+          const stored = await getConfig();
+          if (request === configRequest.current) setConfigState(stored);
+        } catch {
+          if (request === configRequest.current) {
+            setConfigState((current) => (current ? { ...current, git_auto_init: previous } : current));
+          }
+        }
+      });
   };
 
   return (

@@ -99,11 +99,15 @@
       "title": "桌面应用",
       "action": "{{agent}} 想要{{action}}。",
       "steps": "{{agent}} 想要在桌面应用中执行以下步骤：",
-      "moreSteps": "未显示的步骤：{{count}}",
-      "moreItems": "还有 {{count}} 项未显示",
-      "cut": "（+{{count}} 个字符未显示）",
+      "moreSteps": "未显示且不会运行的步骤：{{count}}",
+      "moreItems": "未显示的项目：{{count}}",
+      "cut": "（未显示的字符：{{count}}）",
       "signedIn": "此操作会在你自己的已登录浏览器中进行。",
       "signedInOn": "此操作会在你自己的已登录浏览器中进行：{{origin}}。",
+      "task": "任务：{{title}}",
+      "app": "应用：{{name}}",
+      "window": "窗口：{{title}}",
+      "element": "元素：{{element}}",
       "text": "文本：“{{text}}”",
       "address": "地址：{{url}}",
       "allowOnce": "允许一次",
@@ -111,6 +115,7 @@
       "allowSession": "在此会话中允许",
       "allowTask": "在此任务中允许",
       "deny": "不允许",
+      "pickedFile": "你选择的文件",
       "actions": {
         "launchApp": "打开一个应用",
         "click": "在应用中点击",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "允许控制桌面？",
-      "message": "代理将能够使用以下内容，并且每次操作前仍会询问：",
+      "message": "代理将能够使用以下内容。每次操作前仍会询问，保存后所有“在此聊天中允许”的选择都会被清除：",
       "confirm": "允许",
       "enabled": "桌面应用",
-      "app": "应用：{{name}}（{{identity}}）",
+      "app": "应用：{{identity}}（{{name}}）",
       "more": "还有 {{count}} 个",
       "site": "网站：{{origin}}",
       "signedIn": "你在 {{origin}} 上已登录的浏览器",
-      "scripted": "Cua 脚本"
+      "scripted": "Cua 脚本",
+      "spacesTitle": "授予 Cua Spaces 更多访问权限？",
+      "spacesMessage": "使用 Cua Spaces 的代理将能够：",
+      "spacesChanges": "创建和删除 Space，并在其中运行命令",
+      "spacesSignIns": "在 Space 中使用你的 Claude Code 或 Codex 登录"
     }
   },
   "errors": {

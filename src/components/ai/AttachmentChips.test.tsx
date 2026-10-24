@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/ai.json" with { type: "json" };
 import type { ComposerAttachment } from "@/components/ai/composer/types";
+
+const mocks = vi.hoisted(() => ({ attachmentObjectUrl: vi.fn(), release: vi.fn() }));
+vi.mock("@/lib/attachments", () => ({
+  attachmentObjectUrl: mocks.attachmentObjectUrl,
+  holdAttachmentObjectUrl: () => mocks.release,
+}));
+
 import { AttachmentChips } from "./AttachmentChips";
 
 function item(patch: Partial<ComposerAttachment>): ComposerAttachment {
@@ -35,6 +42,16 @@ describe("AttachmentChips", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("shows a stored image without a thumbnail from the store, for as long as it is shown", async () => {
+    mocks.attachmentObjectUrl.mockResolvedValue("blob:plot");
+    const stored = { ...item({}), kind: "image" as const, sha256: "sha-plot", scope: "p1" };
+    const { container, unmount } = render(<AttachmentChips items={[stored]} />);
+    await waitFor(() => expect(container.querySelector("img")).toHaveAttribute("src", "blob:plot"));
+    expect(mocks.attachmentObjectUrl).toHaveBeenCalledWith("p1", "sha-plot", "image/png");
+    unmount();
+    expect(mocks.release).toHaveBeenCalled();
   });
 
   it("marks a preparing attachment busy and an errored one with its message", () => {

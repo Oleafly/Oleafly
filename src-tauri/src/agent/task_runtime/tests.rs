@@ -472,7 +472,15 @@ async fn acp_adapter_runs_confined_tools_and_replays_the_durable_transcript() {
     );
     assert_eq!(lock(&fixture.host.bridge.calls).len(), 1);
     fixture.assert_cleaned().await;
-    let id = outcome.native_session_id.unwrap();
+    // The outcome names the agent's own session, as the background helper's
+    // does; the conversation is the task's one saved session.
+    let native = outcome.native_session_id.unwrap();
+    let sessions = fixture.adapter.runtime.list("project").unwrap();
+    assert_eq!(
+        sessions[0].native_session_id.as_deref(),
+        Some(native.as_str())
+    );
+    let id = sessions[0].id.clone();
     let saved = fixture.saved_events(&id);
     assert_eq!(
         saved

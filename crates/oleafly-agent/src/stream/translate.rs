@@ -29,6 +29,9 @@ impl From<&Wire> for WireKind {
     }
 }
 
+/// The tag the next stream's made-up call ids carry.
+static NEXT_STREAM_TAG: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
 pub struct Translator {
     kind: WireKind,
     open: BTreeMap<i64, ToolCall>,
@@ -38,6 +41,9 @@ pub struct Translator {
     usage: Usage,
     done: bool,
     synthetic: i64,
+    /// Tells this stream's made-up call ids from every other stream's, so a
+    /// run's history never holds one id twice.
+    stream_tag: u64,
     error: Option<AgentError>,
     response_items: BTreeMap<i64, Value>,
     anthropic: AnthropicBlocks,
@@ -57,6 +63,7 @@ impl Translator {
             usage: Usage::default(),
             done: false,
             synthetic: 0,
+            stream_tag: NEXT_STREAM_TAG.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             error: None,
             response_items: BTreeMap::new(),
             anthropic: AnthropicBlocks::default(),
@@ -268,7 +275,7 @@ impl Translator {
                 .get("id")
                 .and_then(|i| i.as_str())
                 .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("call_{index}"));
+                .unwrap_or_else(|| format!("call_{}_{index}", self.stream_tag));
             out.extend(self.start_call(index, id, name.to_string()));
         }
         if let Some(fragment) = call
@@ -430,14 +437,21 @@ impl Translator {
                 self.openai_response_finished(kind, &value, &mut out);
             }
             "response.failed" | "error" => {
-                let message = value
-                    .pointer("/response/error/message")
-                    .or_else(|| value.pointer("/error/message"))
-                    .and_then(|message| message.as_str())
-                    .unwrap_or("OpenAI response stream failed")
-                    .to_string();
+                let field = |key: &str| {
+                    [
+                        format!("/response/error/{key}"),
+                        format!("/error/{key}"),
+                        format!("/{key}"),
+                    ]
+                    .iter()
+                    .find_map(|path| value.pointer(path).and_then(|found| found.as_str()))
+                    .filter(|found| !found.is_empty())
+                    .map(str::to_string)
+                };
+                let message =
+                    field("message").unwrap_or_else(|| "OpenAI response stream failed".to_string());
                 self.done = true;
-                self.error = Some(AgentError::provider(400, message));
+                self.error = Some(responses_stream_error(field("code").as_deref(), message));
             }
             _ => {}
         }
@@ -697,7 +711,7 @@ impl Translator {
         }
         self.synthetic += 1;
         let index = -self.synthetic;
-        let id = format!("call_{}_{}", name, self.synthetic);
+        let id = format!("call_{}_{}_{}", name, self.stream_tag, self.synthetic);
         let arguments = call
             .get("args")
             .map(|a| a.to_string())
@@ -749,6 +763,27 @@ fn web_search_call_events(item: &Value) -> Vec<AgentEvent> {
             output: serde_json::json!({ "sources": sources }).to_string(),
         },
     ]
+}
+
+/// A Responses stream failure as the error its code means: a rate limit or
+/// a server fault is retried, the rest are not. The code stays in the
+/// message, where overflow detection reads `context_length_exceeded`.
+fn responses_stream_error(code: Option<&str>, message: String) -> AgentError {
+    let Some(code) = code else {
+        return AgentError::provider(400, message);
+    };
+    let status = match code {
+        "rate_limit_exceeded" => 429,
+        "server_error" | "internal_error" | "server_is_overloaded" | "overloaded" => 500,
+        "service_unavailable" | "slow_down" => 503,
+        _ => 400,
+    };
+    let message = if message.contains(code) {
+        message
+    } else {
+        format!("{message} ({code})")
+    };
+    AgentError::provider(status, message)
 }
 
 fn anthropic_stream_error(kind: &str, message: String) -> AgentError {

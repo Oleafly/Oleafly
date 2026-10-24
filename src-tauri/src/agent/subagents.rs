@@ -1090,6 +1090,10 @@ fn spawn_child_run(
                         &ctx.client, resolved, request, &ctx.config, pipeline, Some(steer_rx), runner,
                         |event| {
                             usage.observe(&event);
+                            // A child's hosted search results are shared too.
+                            if let Some(web) = &ctx.web {
+                                web.observe_event(&event);
+                            }
                             let update = match &event {
                                 AgentEvent::StepStart { .. } => Some(("thinking", None)),
                                 AgentEvent::ToolCallStart { name, .. } => Some(("tool", Some(name.clone()))),

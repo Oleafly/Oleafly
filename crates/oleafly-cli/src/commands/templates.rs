@@ -568,15 +568,29 @@ async fn download_template(
     };
     oleafly_downloads::template_packs::install_templates_in(&data, pack, vec![template], &report)
         .await
-        .map_err(|message| {
-            CliError::new(
-                ErrorKind::Network,
-                "templates.download_failed",
-                format!("Oleafly couldn't download the template: {message}"),
-            )
-            .hint("Check your internet connection, then try again.")
-            .retryable()
-        })
+        .map_err(|message| download_error(&message))
+}
+
+/// A failed template download as what it was: the network (worth another
+/// try), what the server sent, or this computer's disk.
+fn download_error(message: &str) -> CliError {
+    use oleafly_downloads::template_packs::{download_failure, DownloadFailure};
+    let text = format!("Oleafly couldn't download the template: {message}");
+    match download_failure(message) {
+        DownloadFailure::Network => {
+            CliError::new(ErrorKind::Network, "templates.download_failed", text)
+                .hint("Check your internet connection, then try again.")
+                .retryable()
+        }
+        DownloadFailure::Integrity => {
+            CliError::new(ErrorKind::InvalidInput, "templates.download_invalid", text)
+                .hint("The server sent something other than the template's files. Try again later.")
+        }
+        DownloadFailure::Storage => {
+            CliError::new(ErrorKind::System, "templates.write_failed", text)
+                .hint("Check that Oleafly's data folder has free space and can be written to.")
+        }
+    }
 }
 
 async fn run_new(ctx: &Context, args: NewArgs) -> Result<Outcome, CliError> {
@@ -770,6 +784,25 @@ fn shell_word(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_full_disk_or_a_bad_checksum_is_not_a_network_problem() {
+        let network = download_error("download failed: reset");
+        assert_eq!(
+            (network.kind, network.retryable),
+            (ErrorKind::Network, true)
+        );
+        let checksum = download_error("download of https://x/a did not match its checksum");
+        assert_eq!(
+            (checksum.kind, checksum.retryable),
+            (ErrorKind::InvalidInput, false)
+        );
+        let disk = download_error("No space left on device (os error 28)");
+        assert_eq!(
+            (disk.kind, disk.code.as_ref()),
+            (ErrorKind::System, "templates.write_failed")
+        );
+    }
     use crate::contract::ContextOptions;
 
     fn context(project: &Path, data: &Path) -> Context {

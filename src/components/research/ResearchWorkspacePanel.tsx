@@ -83,6 +83,8 @@ export function ResearchWorkspacePanel() {
   })), [groups, targets]);
   const openSession = useCallback((task: ResearchTask) => {
     if (!projectId || task.runtimeId !== "acp" || !task.nativeSessionId) return;
+    // The task dialog is modal; the assistant it opens must not sit behind it.
+    useResearchTasksStore.getState().setDetailOpen(false);
     useAssistantRuntimeStore.getState().setRuntime("acp");
     useAcpSessionsStore.getState().setActive(projectId, task.nativeSessionId);
     void useAcpSessionsStore.getState().open(projectId, task.nativeSessionId).catch(() => {});

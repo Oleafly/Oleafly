@@ -184,7 +184,8 @@
   },
   "imageToLatex": {
     "failed": "Conversia din imagine în LaTeX a eșuat: {{detail}}",
-    "transcribing": "Se transcrie imaginea…"
+    "transcribing": "Se transcrie imaginea…",
+    "notInserted": "Fișierul activ s-a schimbat, așa că LaTeX nu a fost inserat. Copiază-l, apoi lipește-l unde vrei."
   },
   "import": {
     "chooseOfferedProjectType": "Alege unul dintre tipurile de proiect oferite pentru acest fișier.",
@@ -620,6 +621,8 @@
     "saveReason": "folderul proiectului nu este disponibil"
   },
   "imageToTypst": {
-    "failed": "Conversia din imagine în Typst a eșuat: {{detail}}"
+    "failed": "Conversia din imagine în Typst a eșuat: {{detail}}",
+    "copied": "Cod sursă Typst copiat",
+    "notInserted": "Fișierul activ s-a schimbat, așa că Typst nu a fost inserat. Copiază-l, apoi lipește-l unde vrei."
   }
 }

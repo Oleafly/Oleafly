@@ -347,7 +347,8 @@ impl ToolScope {
                         &self.binding.gate_context(),
                         ApprovalKind::Mcp,
                         &format!("Use {name}"),
-                        &bounded(&args.to_string(), 4096),
+                        // In full: a request too long to show is refused.
+                        &args.to_string(),
                         &token,
                     )
                     .await?;
@@ -621,27 +622,29 @@ impl BuiltinTaskAdapter {
         waited
     }
 
-    /// 0.4.8 L: saves the conversation for the next owner of the task.
-    fn save_conversation(
+    /// 0.4.8 L: saves the conversation for the next owner of the task. It
+    /// can be tens of MB written with fsync, so it goes to a blocking thread.
+    async fn save_conversation(
         &self,
         context: &TaskRunContext,
         resolved: &oleafly_agent::Resolved,
         messages: Vec<Message>,
         waiting_for_runs: bool,
     ) -> Result<String, String> {
-        conversation::save(
-            &self.services.tasks_root,
-            &ConversationSnapshot {
-                version: CONVERSATION_VERSION,
-                task_id: context.task_id.clone(),
-                generation: context.execution_generation,
-                provider_id: resolved.provider_id.clone(),
-                model_id: resolved.model_id.clone(),
-                messages,
-                waiting_for_runs,
-                saved_at: crate::model::now_ms(),
-            },
-        )
+        let root = self.services.tasks_root.clone();
+        let snapshot = ConversationSnapshot {
+            version: CONVERSATION_VERSION,
+            task_id: context.task_id.clone(),
+            generation: context.execution_generation,
+            provider_id: resolved.provider_id.clone(),
+            model_id: resolved.model_id.clone(),
+            messages,
+            waiting_for_runs,
+            saved_at: crate::model::now_ms(),
+        };
+        tokio::task::spawn_blocking(move || conversation::save(&root, &snapshot))
+            .await
+            .map_err(|error| format!("The conversation could not be saved: {error}"))?
     }
 
     /// 0.4.8 L: the conversation an earlier owner saved, when this
@@ -999,6 +1002,7 @@ impl TurnLoop<'_> {
                 return ControlFlow::Break(
                     adapter
                         .save_conversation(context, self.resolved, outcome.history.clone(), false)
+                        .await
                         .map(Some),
                 );
             }
@@ -1041,6 +1045,7 @@ impl TurnLoop<'_> {
             Ok(Waited::Suspended) => ControlFlow::Break(
                 adapter
                     .save_conversation(context, self.resolved, self.messages.clone(), true)
+                    .await
                     .map(Some),
             ),
             Ok(Waited::Finished(finished)) if finished.is_empty() => {

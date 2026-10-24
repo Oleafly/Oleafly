@@ -13,10 +13,12 @@ export function listOllamaModels(host: string): Promise<string[]> {
 }
 
 /** A pulled model and what it can do ("vision", "tools", ...); null when
- * Ollama did not say. */
+ * Ollama did not say. `remote` marks an Ollama Cloud model: the local Ollama
+ * lists it, but its requests go to another computer. */
 export interface OllamaModelInfo {
   name: string;
   capabilities: string[] | null;
+  remote?: boolean;
 }
 
 // Like listOllamaModels, with each model's capabilities. Older Ollama

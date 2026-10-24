@@ -50,14 +50,14 @@
       "platformLabel": "Platform",
       "refreshingStatus": "Ajan durumu yenileniyor. Geçerli liste yerinde kalır.",
       "registry": {
-        "description": "Başka ekiplerin yayımladığı ajanlar için ACP kayıt defterinde arayın.",
+        "description": "Başka ekiplerin yayımladığı CLI ajanları için ACP kayıt defterinde arayın.",
         "hideDistribution": "Dağıtımı gizle",
         "register": "Ajanı kaydet",
         "registered": "Kaydedildi",
         "reviewHint": "Kayıt defteri girdileri yazılımı yayıncılarının anlatımıyla tanıtır. Kaydetmeden veya kurmadan önce dağıtımı inceleyin.",
         "search": "Ara",
-        "searchLabel": "Bir ACP ajanı bul",
-        "searchPlaceholder": "ACP kayıt defterinde ara",
+        "searchLabel": "Bir CLI ajanı bul",
+        "searchPlaceholder": "CLI ajanı ara",
         "searching": "Aranıyor",
         "showDistribution": "Dağıtımı göster",
         "title": "Daha fazla ajan bul"
@@ -133,7 +133,8 @@
       "inactivity": {
         "label": "Sessiz bir ajanı şu süreden sonra durdur",
         "description": "Bir ajan bu süre boyunca hiçbir şey göndermezse Oleafly onu durdurur. Yeniden bağlanabilirsiniz.",
-        "minutes": "{{count}} dakika"
+        "minutes_one": "{{count}} dakika",
+        "minutes_other": "{{count}} dakika"
       },
       "protocolLabel": "Protokol",
       "remembered": {
@@ -1035,7 +1036,8 @@
         "path": {
           "ariaLabel": "Özel shell yolu",
           "description": "Yeni terminallerin çalıştırdığı program.",
-          "label": "Shell yolu"
+          "label": "Shell yolu",
+          "missing": "Bir shell'in tam yolunu girin. Siz girene kadar yeni terminaller başlayamaz."
         },
         "windowsOnly": "{{name}} (yalnızca Windows)",
         "windowsOnlyNote": "{{name}} yalnızca Windows'ta çalışır. Buradaki yeni terminaller bunun yerine {{fallback}} başlatır.",
@@ -1622,7 +1624,7 @@
     "desktopApps": {
       "tab": "Masaüstü uygulamaları",
       "title": "Masaüstü uygulamaları",
-      "description": "Ajanların bu bilgisayardaki uygulamaları ve web sitelerini Cua Driver aracılığıyla kullanmasına izin verin. Oleafly her tıklamadan veya tuş vuruşundan önce sorar.",
+      "description": "Ajanların bu bilgisayardaki uygulamaları ve web sitelerini Cua Driver aracılığıyla kullanmasına izin verin. Oleafly, o tür bir işleme sohbet, oturum veya görev için izin vermediğiniz sürece her işlemden önce sorar. Oturum açtığınız tarayıcınız ve betikler için her zaman sorulur.",
       "docsLink": "Cua Driver belgeleri",
       "status": {
         "installed": "Cua Driver {{version}} kurulu.",
@@ -1635,7 +1637,7 @@
       },
       "install": {
         "heading": "Cua Driver'ı kur",
-        "hint": "Bu komutu bir terminalde çalıştırın. Oleafly Cua Driver'ı hiçbir zaman sizin yerinize kurmaz.",
+        "hint": "Bu komutu bir terminalde çalıştırın ya da \"Terminalde çalıştır\" düğmesini kullanın. Komut, Cua'nın resmi yükleyicisini başlatır. Oleafly, Cua Driver'ı kendisi indirmez.",
         "run": "Terminalde çalıştır",
         "needsProject": "Bunu Oleafly terminalinde çalıştırmak için bir proje açın veya komutu kopyalayın.",
         "confirm": "Bu işlem Cua Driver yükleyicisini cua.ai adresinden indirir ve terminalinizde çalıştırır. Devam edilsin mi?",
@@ -1657,7 +1659,7 @@
       },
       "enable": {
         "label": "Ajanların masaüstü uygulamalarını kullanmasına izin ver",
-        "description": "Ajanlar aşağıdaki uygulamaları ve web sitelerini görebilir. Tıklama, yazma ve sayfa değişiklikleri için önce size sorulur."
+        "description": "Ajanlar aşağıdaki uygulamaları ve web sitelerini görebilir. Tıklama, yazma ve sayfa değişiklikleri için, bunlara sohbet, oturum veya görev için izin vermediğiniz sürece, önce size sorulur. Bir uygulama veya web sitesi eklemek bu seçimleri temizler."
       },
       "apps": {
         "heading": "İzin verilen uygulamalar",
@@ -1680,7 +1682,7 @@
         "blocked": {
           "oleafly": "Oleafly kendini denetleyemez.",
           "driver": "Cua Driver kendini denetleyemez.",
-          "terminal": "Terminaller, komutları Oleafly'nin komut onayı olmadan çalıştırır.",
+          "terminal": "Terminaller ve kod düzenleyiciler, komutları Oleafly'nin komut onayı olmadan çalıştırır.",
           "system_settings": "Sistem ayarları izinleri değiştirebilir.",
           "passwords": "Parola uygulamaları kapsam dışında kalır.",
           "scripting": "Betik çalıştırıcılar bu bilgisayarda her şeyi yapabilir.",
@@ -1714,7 +1716,7 @@
       },
       "tool": {
         "description": "Ayarlar'da izin verdiğiniz masaüstü uygulamalarını ve web sitelerini kullanın.",
-        "note": "Bakma hemen yapılır. Tıklama, yazma ve sayfa değişiklikleri için önce sorulur."
+        "note": "Bakma hemen yapılır. Tıklama, yazma ve sayfa değişiklikleri için, sohbet için izin vermediğiniz sürece önce sorulur."
       },
       "task": {
         "label": "Masaüstü uygulamaları",
@@ -1724,7 +1726,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "Cua Spaces'teki yalıtılmış masaüstlerini ve kapsayıcıları bir MCP sunucusu olarak bağlayın. Deneysel.",
+        "description": "Cua Spaces'teki yalıtılmış masaüstlerini ve kapsayıcıları bir MCP sunucusu olarak bağlayın.",
         "notInstalled": "cua komutu kurulu değil.",
         "connect": {
           "label": "Cua Spaces'i bağla",
@@ -1824,7 +1826,7 @@
         },
         "legend": "Onay ilkesi",
         "trust": {
-          "description": "Dosya değişiklikleri sormaz. Shell komutları ve bilgisayar denetimi her zaman onay gerektirir. MCP istemciniz ek bir kapı olarak kalır.",
+          "description": "Dosya değişiklikleri sormadan uygulanır. Shell komutları ve yeni araştırma görevleri her zaman önce sorar. MCP istemciniz yine de kendi başına sorabilir.",
           "label": "Bu bağlantıya güven"
         }
       },
@@ -2306,11 +2308,20 @@
         "tasks_other": "{{count}} görev üzerinde çalışıyor"
       },
       "stop": "Yardımcıyı durdur",
-      "stopHint": "Oleafly'yi yeniden açana kadar görevleri duraklar.",
+      "stopHint": "Görevleri Oleafly'ye geri taşınır ve burada çalışmaya devam eder.",
+      "stopConfirm": {
+        "title": "Arka plan yardımcısı durdurulsun mu?",
+        "description_one": "Arka plan yardımcısının {{count}} görevi Oleafly'ye geri taşınır ve burada çalışmaya devam eder.",
+        "description_other": "Arka plan yardımcısının {{count}} görevi Oleafly'ye geri taşınır ve burada çalışmaya devam eder."
+      },
       "stopFailed": "Yardımcı durmadı. Yeniden deneyin.",
       "openLog": "Günlüğü göster",
       "statusFailed": "Arka plan yardımcısının durumu okunamadı.",
       "toggleFailed": "Bu ayar değiştirilemedi. Yeniden deneyin."
+    },
+    "mcpServers": {
+      "loadFailed": "MCP sunucu listesi okunamadı.",
+      "missing": "{{name}} (bulunamadı)"
     }
   }
 }

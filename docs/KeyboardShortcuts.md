@@ -117,8 +117,13 @@ every other Command shortcut keeps working too, except Command-F, Command-K,
 Command-Left, Command-Right and Command-Backspace, which the terminal uses, so
 Command-K clears the terminal there instead of opening the command palette. On
 Windows and Linux, Ctrl with a letter, Alt combinations, function keys and keys
-such as Enter, Tab and the arrows go to the shell. Chords a shell has no use
-for, such as Ctrl-= and Ctrl-0, still reach Oleafly. Ctrl-Shift-F finds in the
+such as Enter, Tab and the arrows go to the shell. That includes the shortcuts
+above when they are bound to Ctrl with a letter, or to Ctrl with a key such as
+PageUp, PageDown or an arrow. With the default bindings, Ctrl-K, Ctrl-PageUp
+and Ctrl-PageDown reach the shell, so bind the command palette and the
+next and previous terminal shortcuts to other keys to use them from the
+terminal. Chords a shell has no use for, such as Ctrl-= and Ctrl-0, still
+reach Oleafly. Ctrl-Shift-F finds in the
 terminal output there instead of searching all documents, and plain Ctrl-F
 stays with the program, for vim, less and the shell's line editor. Characters
 typed with an input method or AltGr always reach the shell.
@@ -128,7 +133,7 @@ expect:
 
 | Key | macOS | Windows | Linux |
 | --- | --- | --- | --- |
-| Shift-Enter | New line (LF) | ESC CR, LF under WSL | New line (LF) |
+| Shift-Enter | ESC CR (as Option-Enter) | LF in Git Bash and under WSL, Enter in Command Prompt, ESC CR in PowerShell and other shells | ESC CR in zsh and fish, LF in other shells |
 | Option-Left, Option-Right | Word left, word right | | |
 | Alt-Left, Alt-Right | | Word left, word right (as Ctrl-Left, Ctrl-Right) | Word left, word right (as Ctrl-Left, Ctrl-Right) |
 | Alt-Up, Alt-Down (Option on macOS) | Sent as Ctrl-Up, Ctrl-Down | Sent as Ctrl-Up, Ctrl-Down | Sent as Ctrl-Up, Ctrl-Down |

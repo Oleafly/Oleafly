@@ -26,6 +26,7 @@ const {
   imageByteBudget,
   prepareImages,
   promptErrorMessage,
+  promptMentions,
   quoteSelection,
   toPromptInput,
 } = await import("./acp-attachments");
@@ -176,6 +177,20 @@ describe("CLI prompt attachments", () => {
       selections: [],
       skillId: "oleafly-literature-sweep",
     });
+  });
+
+  it("uses the mentions read when it was queued when the window shows another project", async () => {
+    const queued = draft({ text: "Tighten @chapters/results.tex", mentions: ["chapters/results.tex"] });
+    const input = await toPromptInput(queued, session("s"), null);
+    expect(input.files).toEqual([{ kind: "project", path: "chapters/results.tex" }]);
+    // With the conversation's project on show, its files now decide.
+    const shown = await toPromptInput(queued, session("s"), tree);
+    expect(shown.files).toEqual([]);
+  });
+
+  it("reads the files a message mentions, leaving folders out", () => {
+    expect(promptMentions("See @chapters/intro.tex and @figures/", tree)).toEqual(["chapters/intro.tex"]);
+    expect(promptMentions("Nothing here", tree)).toEqual([]);
   });
 
   it("sends images inline within the frame budget", async () => {

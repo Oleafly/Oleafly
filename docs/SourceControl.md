@@ -48,8 +48,8 @@ project already carries its own repository.
 
 Source Control works with GitHub, GitLab, Gitea, Forgejo and Codeberg, and
 with servers you run yourself. Add accounts in Settings, under Integrations and
-then Git hosting. For github.com and gitlab.com you can sign in with a one-time
-code in your browser. Every server also takes an access token.
+then Git hosting. For github.com you can sign in with a one-time code in your
+browser. Every server also takes an access token.
 
 **Publish** creates a repository on the account you pick and pushes the project
 to it, or links the project to one of your repositories. **Link by address**

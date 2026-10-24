@@ -182,7 +182,8 @@
   },
   "imageToLatex": {
     "failed": "Kuvasta LaTeXiin epäonnistui: {{detail}}",
-    "transcribing": "Litteroidaan kuvaa…"
+    "transcribing": "Litteroidaan kuvaa…",
+    "notInserted": "Aktiivinen tiedosto vaihtui, joten LaTeX-koodia ei lisätty. Kopioi se ja liitä se haluamaasi kohtaan."
   },
   "import": {
     "chooseOfferedProjectType": "Valitse jokin tälle tiedostolle tarjotuista projektityypeistä.",
@@ -603,6 +604,8 @@
     "saveReason": "projektikansio ei ole käytettävissä"
   },
   "imageToTypst": {
-    "failed": "Kuvan muunto Typst-muotoon epäonnistui: {{detail}}"
+    "failed": "Kuvan muunto Typst-muotoon epäonnistui: {{detail}}",
+    "copied": "Typst-lähdekoodi kopioitu",
+    "notInserted": "Aktiivinen tiedosto vaihtui, joten Typst-koodia ei lisätty. Kopioi se ja liitä se haluamaasi kohtaan."
   }
 }

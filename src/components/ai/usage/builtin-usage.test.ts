@@ -58,6 +58,10 @@ describe("built-in usage", () => {
     expect(extras.budget).toEqual({ spentUsd: 2.5, limitUsd: 10 });
     expect(extras.credit).toBeUndefined();
     expect(extras.session).toEqual({ costUsd: 0.75 });
-    expect(mocks.queryUsageReport.mock.calls[0][0]).toMatchObject({ sessionIds: ["t1"], pageSize: 1 });
+    expect(mocks.queryUsageReport.mock.calls[0][0]).toMatchObject({
+      sessionIds: ["t1"],
+      includeChildSessions: true,
+      pageSize: 1,
+    });
   });
 });

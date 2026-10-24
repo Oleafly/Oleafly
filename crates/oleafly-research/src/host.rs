@@ -144,8 +144,10 @@ pub struct CompileSummary {
 
 /// Project services task tools and evidence checks use.
 pub trait WorkspaceTools: Send + Sync {
-    /// Builds the workspace with the command-line tool.
-    fn compile(&self, root: PathBuf) -> TaskRuntimeFuture<CompileSummary>;
+    /// Builds the workspace with the command-line tool. `source` is the
+    /// project folder it was copied from: a copy of a folder the app opened
+    /// in place has no settings of its own, so it is built with the folder's.
+    fn compile(&self, root: PathBuf, source: Option<PathBuf>) -> TaskRuntimeFuture<CompileSummary>;
     /// The project's outline, labels, references and citations.
     fn project_map(&self, root: PathBuf) -> TaskRuntimeFuture<Value>;
 }

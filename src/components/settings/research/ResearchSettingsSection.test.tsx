@@ -58,6 +58,21 @@ function server(name: string) {
 
 const toggle = (name: string) => screen.getByRole("switch", { name });
 
+/** A config that keeps what was saved, the way the Rust side does. */
+function storeConfig(initial: AppConfig) {
+  let stored = initial;
+  mocks.getConfig.mockImplementation(async () => stored);
+  mocks.setConfig.mockImplementation(async (next: AppConfig) => {
+    stored = next;
+  });
+  return {
+    get: () => stored,
+    set: (next: AppConfig) => {
+      stored = next;
+    },
+  };
+}
+
 /** The time budget stays disabled until the config has loaded. */
 async function loaded() {
   await waitFor(() => expect(screen.getByRole("combobox", { name: copy.timeBudget })).toBeEnabled());
@@ -90,6 +105,7 @@ describe("ResearchSettingsSection", () => {
   });
 
   it("turns notifications and default network access on and off", async () => {
+    storeConfig(config());
     render(<ResearchSettingsSection />);
     await loaded();
     expect(toggle(copy.notifications)).toHaveAttribute("aria-checked", "true");
@@ -178,15 +194,38 @@ describe("ResearchSettingsSection", () => {
     );
   });
 
-  it("says when no MCP server is set up or the list cannot be read", async () => {
+  it("says when no MCP server is set up", async () => {
     mocks.mcpServersList.mockResolvedValue([]);
-    const view = render(<ResearchSettingsSection />);
-    expect(await screen.findByText(copy.noMcpServers)).toBeInTheDocument();
-    view.unmount();
-
-    mocks.mcpServersList.mockRejectedValue(new Error("MCP is off"));
+    mocks.getConfig.mockResolvedValue(config({ research_task_mcp_servers: [] }));
     render(<ResearchSettingsSection />);
     expect(await screen.findByText(copy.noMcpServers)).toBeInTheDocument();
+  });
+
+  it("says when the MCP server list cannot be read, and reads it again on retry", async () => {
+    mocks.mcpServersList.mockRejectedValueOnce(new Error("MCP is off"));
+    render(<ResearchSettingsSection />);
+    expect(await screen.findByText(enSettings.research.mcpServers.loadFailed)).toBeInTheDocument();
+    expect(screen.queryByText(copy.noMcpServers)).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+
+    expect(await screen.findByRole("checkbox", { name: "zotero" })).toBeChecked();
+    expect(screen.queryByText(enSettings.research.mcpServers.loadFailed)).toBeNull();
+  });
+
+  it("lists a chosen server that is gone so it can be unticked", async () => {
+    mocks.getConfig.mockResolvedValue(config({ research_task_mcp_servers: ["zotero", "old-notebook"] }));
+    render(<ResearchSettingsSection />);
+    await loaded();
+    const gone = await screen.findByRole("checkbox", { name: "old-notebook (not found)" });
+    expect(gone).toBeChecked();
+
+    await userEvent.click(gone);
+
+    expect(mocks.setConfig).toHaveBeenLastCalledWith(
+      expect.objectContaining({ research_task_mcp_servers: ["zotero"] }),
+    );
+    await waitFor(() => expect(screen.queryByRole("checkbox", { name: "old-notebook (not found)" })).toBeNull());
   });
 
   it("uses the defaults for a config from before the research settings", async () => {
@@ -261,6 +300,43 @@ describe("ResearchSettingsSection", () => {
     expect(mocks.setConfig).toHaveBeenCalledExactlyOnceWith(
       config({ ai_system_prompt: "Be brief.", research_keep_awake: false }),
     );
+  });
+
+  it("leaves a research setting another writer changed alone when saving a different one", async () => {
+    const store = storeConfig(config());
+    render(<ResearchSettingsSection />);
+    await loaded();
+    // A cloud settings round changed the time budget after this section loaded.
+    store.set(config({ research_time_budget_minutes: 480 }));
+
+    await userEvent.click(toggle(copy.keepAwake));
+
+    await waitFor(() => expect(mocks.setConfig).toHaveBeenCalledOnce());
+    expect(store.get()).toEqual(config({ research_time_budget_minutes: 480, research_keep_awake: false }));
+  });
+
+  it("shows the stored value when a save fails behind an earlier one", async () => {
+    const store = storeConfig(config());
+    render(<ResearchSettingsSection />);
+    await loaded();
+    let releaseRead: () => void = () => {};
+    mocks.getConfig.mockImplementationOnce(
+      () => new Promise<AppConfig>((resolve) => { releaseRead = () => resolve(store.get()); }),
+    );
+    mocks.setConfig
+      .mockImplementationOnce(async (next: AppConfig) => store.set(next))
+      .mockRejectedValueOnce(new Error("file locked"));
+
+    await userEvent.click(toggle(copy.keepAwake));
+    await userEvent.click(toggle(copy.network));
+    expect(toggle(copy.network)).toHaveAttribute("aria-checked", "true");
+    releaseRead();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.saveFailed);
+    // The first save set only keep awake, so the network stays off in the config and on screen.
+    await waitFor(() => expect(toggle(copy.network)).toHaveAttribute("aria-checked", "false"));
+    expect(store.get()).toEqual(config({ research_keep_awake: false }));
+    expect(toggle(copy.keepAwake)).toHaveAttribute("aria-checked", "false");
   });
 
   it("explains what allowing the network does", async () => {

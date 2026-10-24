@@ -7,7 +7,13 @@ import { useFolderAccessStore } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 
-export type TerminalStopReason = "close-tab" | "close-project" | "switch-project" | "quit" | "restart";
+export type TerminalStopReason =
+  | "close-tab"
+  | "close-project"
+  | "switch-project"
+  | "quit"
+  | "restart"
+  | "reload";
 
 export type TerminalPrompt =
   | {
@@ -97,7 +103,7 @@ export function waitForTerminalPromptHost(timeoutMs: number): Promise<boolean> {
  * Whether the programs running in the project's terminals (all, or
  * `tabIds`) may be stopped. True without asking when asking is off, nothing
  * runs, or the check fails; a confirmed close or switch of the same project
- * is remembered for a minute.
+ * is remembered for a minute, or until the project changes.
  */
 export async function confirmStopTerminals(request: {
   reason: TerminalStopReason;
@@ -123,6 +129,14 @@ export async function confirmStopTerminals(request: {
   });
   if (ok && leaving) confirmedLeaves.set(projectId, Date.now());
   return ok;
+}
+
+/**
+ * Ends the remembered leave of a project once the project has actually
+ * changed, so a program started after coming back is asked about again.
+ */
+export function forgetConfirmedLeave(projectId: string): void {
+  confirmedLeaves.delete(projectId);
 }
 
 /**

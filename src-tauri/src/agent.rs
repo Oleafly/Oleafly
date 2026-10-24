@@ -810,21 +810,27 @@ pub async fn agent_run(
         .await
         .map_err(|error| error.to_string())??;
         let mut request = resolved_request;
-        let (search_key, reasoning_summaries) = tauri::async_runtime::spawn_blocking(|| {
-            let summaries = crate::config::read_config()
-                .map(|cfg| cfg.ai_reasoning_summaries)
-                .unwrap_or(false);
-            (web::configured_search_key(), summaries)
-        })
-        .await
-        .map_err(|error| error.to_string())?;
+        let trust_project = pinned_project.clone();
+        let (search_key, reasoning_summaries, hosted_web) =
+            tauri::async_runtime::spawn_blocking(move || {
+                let summaries = crate::config::read_config()
+                    .map(|cfg| cfg.ai_reasoning_summaries)
+                    .unwrap_or(false);
+                // The provider's own web tools skip the folder-trust prompt.
+                let hosted_web = trust_project
+                    .as_deref()
+                    .is_none_or(crate::trust::is_trusted);
+                (web::configured_search_key(), summaries, hosted_web)
+            })
+            .await
+            .map_err(|error| error.to_string())?;
         if request.reasoning_summary.is_none() && reasoning_summaries {
             request.reasoning_summary = Some(true);
         }
         let web::RunWeb {
             ctx: web_ctx,
             notices: web_notices,
-        } = web::prepare_run_web(&mut request, &resolved, search_key)?;
+        } = web::prepare_run_web(&mut request, &resolved, search_key, hosted_web)?;
         notices.extend(web_notices);
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
         let client = agent_state.client()?;
@@ -912,6 +918,9 @@ pub async fn agent_run(
             web: web_ctx.clone(),
         };
         let subagent_manager_for_registry = subagent_manager.clone();
+        // Hosted search results reach the shared web context from the
+        // run's events, so subagents on other models can fetch them.
+        let event_web = web_ctx.clone();
         let run_tool = subagents::multi_agent_tool_runner(
             run_context,
             subagent_manager,
@@ -976,6 +985,9 @@ pub async fn agent_run(
             run_tool,
             |event| {
                 usage.observe(&event);
+                if let Some(web) = &event_web {
+                    web.observe_event(&event);
+                }
                 if let Some((_, shared)) = &record_sink {
                     if let Ok(mut recorder) = shared.lock() {
                         recorder.record(&event);

@@ -417,6 +417,31 @@ fn hidden_paths_cannot_be_read_or_changed_by_a_confined_command() {
     assert!(output.contains("secret-token"), "{output}");
 }
 
+#[cfg(unix)]
+#[test]
+fn a_confined_command_cannot_create_git_or_oleafly_state_in_its_workspace() {
+    if availability() != Availability::Available {
+        return;
+    }
+    let fixture = Fixture::new();
+    let workspace = fixture.workspace.path().canonicalize().unwrap();
+    let mut spec = fixture.spec(false);
+    spec.read_write = vec![workspace.clone()];
+    // A write the sandbox allows, so a sandbox that can't start here (it
+    // nests badly inside another one) skips the test.
+    let (code, _) = run_sh(&spec, "echo ok > fine.txt");
+    if code != 0 || !workspace.join("fine.txt").is_file() {
+        return;
+    }
+    let (_, output) = run_sh(
+        &spec,
+        "mkdir -p .git/hooks; echo '[core]' > .git/config; echo hook > .git/hooks/pre-commit; mkdir -p .oleafly; echo x > .oleafly/state",
+    );
+    assert!(!workspace.join(".git/config").exists(), "{output}");
+    assert!(!workspace.join(".git/hooks").exists(), "{output}");
+    assert!(!workspace.join(".oleafly/state").exists(), "{output}");
+}
+
 #[cfg(target_os = "macos")]
 #[test]
 fn child_processes_let_programs_that_posix_spawn_start_helpers() {

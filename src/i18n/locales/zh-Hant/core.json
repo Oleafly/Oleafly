@@ -180,7 +180,8 @@
   },
   "imageToLatex": {
     "failed": "圖片轉 LaTeX 失敗：{{detail}}",
-    "transcribing": "正在轉錄圖片…"
+    "transcribing": "正在轉錄圖片…",
+    "notInserted": "目前的檔案已變更，因此未插入 LaTeX。請複製後貼到你想要的位置。"
   },
   "import": {
     "chooseOfferedProjectType": "請選擇這個檔案可用的專案類型之一。",
@@ -586,6 +587,8 @@
     "saveReason": "專案資料夾無法使用"
   },
   "imageToTypst": {
-    "failed": "影像轉 Typst 失敗：{{detail}}"
+    "failed": "影像轉 Typst 失敗：{{detail}}",
+    "copied": "已複製 Typst 原始碼",
+    "notInserted": "目前的檔案已變更，因此未插入 Typst。請複製後貼到你想要的位置。"
   }
 }

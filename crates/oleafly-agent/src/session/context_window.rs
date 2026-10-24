@@ -54,7 +54,7 @@ impl HistoryBudget {
             return Err(history_limit_error("agent message count"));
         }
         if request.tools.len() > MAX_TOOL_DEFINITIONS {
-            return Err(history_limit_error("tool definition count"));
+            return Err(history_limit_error(TOOL_DEFINITION_COUNT));
         }
         let tool_calls = count_tool_calls(&request.messages)?;
         if tool_calls > MAX_AGENT_TOOL_CALLS {
@@ -133,8 +133,18 @@ pub(crate) fn history_limit_error(description: &str) -> AgentError {
     AgentError::Decode(format!("{description} exceeded its safety limit"))
 }
 
+/// The limit on the tools a request declares. Compaction never changes the
+/// tool list, so it is not a history limit.
+const TOOL_DEFINITION_COUNT: &str = "tool definition count";
+
+/// A limit that summarizing the history can bring the request back under.
 pub(crate) fn is_history_limit(error: &AgentError) -> bool {
-    matches!(error, AgentError::Decode(message) if message.contains("exceeded its safety limit"))
+    matches!(
+        error,
+        AgentError::Decode(message)
+            if message.contains("exceeded its safety limit")
+                && !message.starts_with(TOOL_DEFINITION_COUNT)
+    )
 }
 
 #[allow(dead_code)]
@@ -182,11 +192,26 @@ pub(crate) fn serialized_size_limited<T: Serialize>(value: &T, max_bytes: usize)
 }
 
 fn count_tool_calls(messages: &[Message]) -> Result<usize> {
+    // A call past the turn's limit was answered without running and comes
+    // back in a later reply, so it does not count against the history.
+    let skipped_output = crate::session::turn::skipped_call_output();
+    let skipped: std::collections::HashSet<&str> = messages
+        .iter()
+        .flat_map(|message| &message.content)
+        .filter_map(|part| match part {
+            ContentPart::ToolResult { id, output, .. } if *output == skipped_output => {
+                Some(id.as_str())
+            }
+            _ => None,
+        })
+        .collect();
     messages.iter().try_fold(0usize, |total, message| {
         let calls = message
             .content
             .iter()
-            .filter(|part| matches!(part, ContentPart::ToolUse { .. }))
+            .filter(|part| {
+                matches!(part, ContentPart::ToolUse { id, .. } if !skipped.contains(id.as_str()))
+            })
             .count();
         total
             .checked_add(calls)
@@ -397,6 +422,71 @@ mod tests {
             .unwrap()
             .context_chars;
         assert_eq!(HistoryBudget::new(&one).unwrap().context_chars, empty);
+    }
+
+    #[test]
+    fn the_tool_definition_limit_is_not_one_compaction_can_fix() {
+        let tools = (0..=MAX_TOOL_DEFINITIONS)
+            .map(|index| crate::tool::ToolSchema {
+                name: format!("t{index}"),
+                description: String::new(),
+                input_schema: serde_json::json!({"type": "object"}),
+            })
+            .collect();
+        let error = HistoryBudget::new(&CompletionRequest {
+            tools,
+            ..Default::default()
+        })
+        .unwrap_err();
+        assert!(!is_history_limit(&error));
+        assert!(error.to_string().contains("Oleafly's limits"), "{error}");
+        assert!(is_history_limit(&history_limit_error(
+            "agent message count"
+        )));
+    }
+
+    #[test]
+    fn calls_a_turn_skipped_do_not_count_against_the_history() {
+        // Two replies of 150 calls: 32 ran in each, the rest were answered
+        // without running and are sent again later.
+        let skipped = crate::session::turn::skipped_call_output();
+        let mut messages = Vec::new();
+        for reply in 0..2 {
+            let ids: Vec<String> = (0..150).map(|n| format!("r{reply}-{n}")).collect();
+            messages.push(Message {
+                role: Role::Assistant,
+                content: ids
+                    .iter()
+                    .map(|id| ContentPart::ToolUse {
+                        id: id.clone(),
+                        name: "read_file".into(),
+                        arguments: "{}".into(),
+                        thought_signature: None,
+                    })
+                    .collect(),
+            });
+            messages.push(Message {
+                role: Role::User,
+                content: ids
+                    .iter()
+                    .enumerate()
+                    .map(|(n, id)| {
+                        let output = if n < 32 {
+                            "ok".to_string()
+                        } else {
+                            skipped.clone()
+                        };
+                        ContentPart::tool_result(id.clone(), "read_file", output)
+                    })
+                    .collect(),
+            });
+        }
+        let budget = HistoryBudget::new(&CompletionRequest {
+            messages,
+            ..Default::default()
+        })
+        .unwrap();
+        assert_eq!(budget.tool_calls, 64);
     }
 
     #[test]

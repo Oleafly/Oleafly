@@ -2051,3 +2051,46 @@ fn doctor_shows_the_effective_typst_settings() {
         assert!(stdout.contains(expected), "{expected}: {stdout}");
     }
 }
+
+#[cfg(unix)]
+#[test]
+fn a_headless_mcp_server_exits_on_sigterm_while_its_client_keeps_stdin_open() {
+    let project = TempDir::new().unwrap();
+    let data = TempDir::new().unwrap();
+    std::fs::write(project.path().join("main.tex"), ARTICLE).unwrap();
+    let child = Command::new(env!("CARGO_BIN_EXE_oleaflyc"))
+        .args(["mcp", "--bridge", "never"])
+        .current_dir(project.path())
+        .env("OLEAFLY_DATA_DIR", data.path())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
+    let mut guard = ChildGuard(child);
+    // The server answers, so it is reading its input.
+    {
+        use std::io::Write;
+        let stdin = guard.0.stdin.as_mut().unwrap();
+        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":1,"method":"ping"}}"#).unwrap();
+        stdin.flush().unwrap();
+    }
+    let mut reader = BufReader::new(guard.0.stdout.take().unwrap());
+    let mut line = String::new();
+    reader.read_line(&mut line).unwrap();
+    assert!(line.contains("\"id\":1"), "{line}");
+    // SAFETY: signals the child this test started.
+    unsafe { libc::kill(guard.0.id() as i32, libc::SIGTERM) };
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        if let Some(status) = guard.0.try_wait().unwrap() {
+            assert_eq!(status.code(), Some(0));
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the server kept running after SIGTERM"
+        );
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}

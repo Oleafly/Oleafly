@@ -59,7 +59,10 @@ pub enum CommentsAction {
     },
     /// Reply to a thread
     Reply {
-        #[arg(value_name = "THREAD", help = "Thread ID (or its first 8 characters)")]
+        #[arg(
+            value_name = "THREAD",
+            help = "Thread ID, or its last 8 characters (the first ones are a timestamp threads share)"
+        )]
         thread: String,
         #[command(flatten)]
         body: BodyArgs,
@@ -68,7 +71,10 @@ pub enum CommentsAction {
     },
     /// Mark a thread resolved
     Resolve {
-        #[arg(value_name = "THREAD", help = "Thread ID (or its first 8 characters)")]
+        #[arg(
+            value_name = "THREAD",
+            help = "Thread ID, or its last 8 characters (the first ones are a timestamp threads share)"
+        )]
         thread: String,
         #[arg(long, help = "Show what would change without changing anything")]
         dry_run: bool,
@@ -242,7 +248,10 @@ fn file_at(doc: &ProjectDoc, path: &str) -> Result<String, CliError> {
         .ok_or_else(|| file_missing(&path))
 }
 
-/// The thread whose ID is `thread` or starts with it (8 characters or more).
+/// The thread whose ID is `thread`, or starts or ends with it (8
+/// characters or more). IDs are UUIDv7: their first characters are a
+/// timestamp that threads made the same minute share, their last ones
+/// random, so the end is the part worth typing.
 pub(crate) fn find_thread(
     doc: &ProjectDoc,
     thread: &str,
@@ -255,12 +264,8 @@ pub(crate) fn find_thread(
                 continue;
             };
             for candidate in threads {
-                if candidate
-                    .id
-                    .to_string()
-                    .to_ascii_lowercase()
-                    .starts_with(&wanted)
-                {
+                let id = candidate.id.to_string().to_ascii_lowercase();
+                if id.starts_with(&wanted) || id.ends_with(&wanted) {
                     found.push((file.clone(), candidate));
                 }
             }
@@ -583,30 +588,17 @@ impl LiveSession {
     }
 }
 
-/// Runs `work` on a caught-up copy of the project as this device and
-/// sends the result.
-async fn with_cli_live<T: Send>(
-    collab: &CliCollab,
-    target: &SharedTarget,
-    role: ProjectRole,
-    head: u64,
-    wait: Duration,
-    work: impl FnOnce(&mut LiveProject, AccountId) -> Result<T, CliError> + Send,
-) -> Result<(T, Delivery), CliError> {
-    let (done, delivery, _) = with_cli_live_checked(collab, target, role, head, wait, work).await?;
-    Ok((done, delivery))
-}
-
-/// [`with_cli_live`], also saying whether the copy had caught up with the
-/// server's head when `work` ran. A copy that hadn't is this computer's
-/// saved one, however long the wait.
+/// Runs `work` on the project as this device and sends the result. `work`
+/// learns whether the copy caught up with the server's head (a copy that
+/// didn't is this computer's saved one, however long the wait), and so
+/// does the caller.
 async fn with_cli_live_checked<T: Send>(
     collab: &CliCollab,
     target: &SharedTarget,
     role: ProjectRole,
     head: u64,
     wait: Duration,
-    work: impl FnOnce(&mut LiveProject, AccountId) -> Result<T, CliError> + Send,
+    work: impl FnOnce(&mut LiveProject, AccountId, bool) -> Result<T, CliError> + Send,
 ) -> Result<(T, Delivery, bool), CliError> {
     let mut session = LiveSession::open(collab, target, role).await?;
     let outcome = async {
@@ -614,7 +606,7 @@ async fn with_cli_live_checked<T: Send>(
         let account = session.account;
         let done = {
             let mut live = lock(&session.live);
-            work(&mut live, account)?
+            work(&mut live, account, caught_up)?
         };
         let delivery = session.delivered(wait).await?;
         Ok::<_, CliError>((done, delivery, caught_up))
@@ -803,7 +795,7 @@ async fn list(
         summary.role,
         summary.head_seq,
         LIVE_WAIT,
-        move |live, _| threads_in(live.doc(), file.as_deref(), all, &names),
+        move |live, _, _| threads_in(live.doc(), file.as_deref(), all, &names),
     )
     .await?;
     let (rows, lines) = listed;
@@ -873,11 +865,34 @@ fn may_comment(
     Ok(())
 }
 
-fn not_sent(report: Report, delivery: Delivery) -> Report {
+fn not_sent(report: Report, delivery: Delivery, caught_up: bool) -> Report {
+    let report = if caught_up {
+        report
+    } else {
+        report.warning(
+            "server.not_caught_up",
+            "The server didn't answer in time, so this went into the copy saved on this computer, which may be out of date.",
+        )
+    };
     match delivery {
         Delivery::Sent => report,
         Delivery::Pending => report.warning("server.not_sent", "The comment is saved on this computer but wasn't sent yet. Run the command again when you're online."),
     }
+}
+
+/// A line number counted on a copy that hasn't caught up may name another
+/// line than the one meant.
+fn stale_line(line: Option<&str>, quote: Option<&str>, caught_up: bool) -> Result<(), CliError> {
+    if caught_up || line.is_none() || quote.is_some() {
+        return Ok(());
+    }
+    Err(CliError::new(
+        ErrorKind::Conflict,
+        "server.not_caught_up",
+        "The server didn't answer in time, so line numbers would be counted on the copy saved on this computer.",
+    )
+    .hint("Try again, or point at the text with --quote.")
+    .retryable())
 }
 
 /// `add`, `reply` and `resolve` (and their dry runs).
@@ -915,13 +930,14 @@ async fn write(
         } => {
             let body = read_body(&body)?;
             let mentions_from = members.clone();
-            let ((thread, place), delivery) = with_cli_live(
+            let ((thread, place), delivery, caught_up) = with_cli_live_checked(
                 collab,
                 target,
                 summary.role,
                 summary.head_seq,
                 LIVE_WAIT,
-                move |live, account| {
+                move |live, account, caught_up| {
+                    stale_line(line.as_deref(), quote.as_deref(), caught_up)?;
                     let file_id = file_at(live.doc(), &file)?;
                     let text = live
                         .doc()
@@ -949,17 +965,17 @@ async fn write(
                 json!({"thread": thread.id.to_string(), "delivery": delivery, "dryRun": false}),
             )
             .line(format!("Comment added on {place}."));
-            Ok(not_sent(report, delivery))
+            Ok(not_sent(report, delivery, caught_up))
         }
         CommentsAction::Reply { thread, body, .. } => {
             let body = read_body(&body)?;
-            let (thread_id, delivery) = with_cli_live(
+            let (thread_id, delivery, caught_up) = with_cli_live_checked(
                 collab,
                 target,
                 summary.role,
                 summary.head_seq,
                 LIVE_WAIT,
-                move |live, account| {
+                move |live, account, _| {
                     let (file_id, found) = find_thread(live.doc(), &thread)?;
                     let mentions = mentions_in(&body, &members);
                     live.comment_doc()
@@ -973,16 +989,16 @@ async fn write(
                 json!({"thread": thread_id.to_string(), "delivery": delivery, "dryRun": false}),
             )
             .line("Reply added.");
-            Ok(not_sent(report, delivery))
+            Ok(not_sent(report, delivery, caught_up))
         }
         CommentsAction::Resolve { thread, .. } => {
-            let (thread_id, delivery) = with_cli_live(
+            let (thread_id, delivery, caught_up) = with_cli_live_checked(
                 collab,
                 target,
                 summary.role,
                 summary.head_seq,
                 LIVE_WAIT,
-                move |live, account| {
+                move |live, account, _| {
                     let (file_id, found) = find_thread(live.doc(), &thread)?;
                     live.comment_doc()
                         .resolve_comment_thread(&file_id, found.id, account, now_ms())
@@ -995,7 +1011,7 @@ async fn write(
                 json!({"thread": thread_id.to_string(), "delivery": delivery, "dryRun": false}),
             )
             .line("Thread resolved.");
-            Ok(not_sent(report, delivery))
+            Ok(not_sent(report, delivery, caught_up))
         }
         CommentsAction::List(_) => unreachable!("list is not a write"),
     }
@@ -1274,6 +1290,22 @@ mod tests {
     }
 
     #[test]
+    fn a_line_on_a_copy_that_never_caught_up_is_refused_and_writes_warn() {
+        assert_eq!(
+            stale_line(Some("120"), None, false).unwrap_err().code,
+            "server.not_caught_up"
+        );
+        assert!(stale_line(Some("120"), Some("cite?"), false).is_ok());
+        assert!(stale_line(None, None, false).is_ok());
+        assert!(stale_line(Some("120"), None, true).is_ok());
+        let stale = not_sent(Report::new(json!({})), Delivery::Sent, false);
+        assert_eq!(stale.warnings[0].code, "server.not_caught_up");
+        assert!(not_sent(Report::new(json!({})), Delivery::Sent, true)
+            .warnings
+            .is_empty());
+    }
+
+    #[test]
     fn threads_are_found_by_a_unique_prefix() {
         let dir = tempfile::tempdir().unwrap();
         let env = env_at(dir.path());
@@ -1283,6 +1315,9 @@ mod tests {
         // Thread ids are time-ordered (UUIDv7): two made in the same minute
         // share their first characters, so the prefix reaches the random part.
         let (_, found) = find_thread(live.doc(), &open_id[..open_id.len() - 4]).unwrap();
+        assert_eq!(found.id.to_string(), open_id);
+        // The random end is enough on its own.
+        let (_, found) = find_thread(live.doc(), &open_id[open_id.len() - 8..]).unwrap();
         assert_eq!(found.id.to_string(), open_id);
         assert_eq!(
             find_thread(live.doc(), "0000").unwrap_err().code,

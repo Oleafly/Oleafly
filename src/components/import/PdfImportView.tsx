@@ -25,10 +25,19 @@ import {
   Settings2,
   Sigma,
   Sparkles,
+  X,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
+import {
+  knownProviderConfig,
+  loadProviderConfig,
+  subscribeProviderConfig,
+} from "@/components/ai/provider-config";
+import { describeToolsChoice, destinationName } from "@/features/tools-ai/tools-choice";
+import type { AppConfig } from "@/lib/tauri";
 import { Tooltip } from "@/components/ui/tooltip";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { ToolSplitView } from "@/components/tools/ToolWorkspace";
@@ -53,6 +62,7 @@ import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
 import { SectionHeading } from "@/components/ui/section-heading";
 import type { PageSize } from "@/features/tools-ai/scan-estimate";
+import { scanProgressLabel } from "@/features/tools-ai/scan-progress";
 
 // The App shell loads this view eagerly, so the Tools model banner (model
 // list, estimate, Mathpix status) stays out of the entry chunk.
@@ -276,11 +286,12 @@ function PagePreviews() {
   );
 }
 
-function SourcePane() {
+/**
+ * Where a scanned PDF's pages go, the Tools model and the estimate. It sits
+ * above the panes, so every view shows it next to Transcribe scan.
+ */
+function ScanNotice() {
   const { t } = useTranslation(["library"]);
-  const tex = useImportStore((s) => s.result?.tex ?? "");
-  const likelyScanned = useImportStore((s) => s.result?.report.likelyScanned ?? false);
-  const scanTranscribed = useImportStore((s) => s.scanTranscribed);
   const storePages = useImportStore((s) => s.pages);
   const range = useImportStore((s) => s.options.pageRange);
   const sizes = useMemo<PageSize[]>(
@@ -288,18 +299,45 @@ function SourcePane() {
     [storePages],
   );
   return (
+    <Suspense
+      fallback={
+        <div className="border-b px-4 py-2 text-xs text-muted-foreground">
+          {t(($) => $.library.pdfImport.scannedLocal)}
+        </div>
+      }
+    >
+      <ScanTranscribeBanner pages={sizes} range={range} />
+    </Suspense>
+  );
+}
+
+/** The service Transcribe scan would send pages to, or null for this computer. */
+function usePendingScanDestination(pending: boolean): string | null {
+  const [config, setConfig] = useState<AppConfig | null>(() => knownProviderConfig());
+  useEffect(() => {
+    if (!pending) return;
+    let active = true;
+    const unsubscribe = subscribeProviderConfig((next) => {
+      if (active) setConfig(next);
+    });
+    void loadProviderConfig()
+      .then((next) => {
+        if (active) setConfig(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [pending]);
+  if (!pending || !config) return null;
+  return destinationName(describeToolsChoice(config).destination);
+}
+
+function SourcePane() {
+  const tex = useImportStore((s) => s.result?.tex ?? "");
+  return (
     <div className="flex h-full flex-col overflow-hidden">
-      {likelyScanned && !scanTranscribed && (
-        <Suspense
-          fallback={
-            <div className="border-b px-4 py-2 text-xs text-muted-foreground">
-              {t(($) => $.library.pdfImport.scannedLocal)}
-            </div>
-          }
-        >
-          <ScanTranscribeBanner pages={sizes} range={range} />
-        </Suspense>
-      )}
       <LatexSourceViewer source={tex} />
     </div>
   );
@@ -389,7 +427,7 @@ function FiguresStrip() {
 }
 
 export function PdfImportView() {
-  const { t } = useTranslation(["library", "researchTools"]);
+  const { t } = useTranslation(["library", "researchTools", "shell"]);
   const page = useHomeViewStore((s) => s.page);
   const pdfBytes = useImportStore((s) => s.pdfBytes);
   const busy = useImportStore((s) => s.busy);
@@ -402,11 +440,22 @@ export function PdfImportView() {
   const scanTranscribed = useImportStore((s) => s.scanTranscribed);
   const scanModel = useImportStore((s) => s.scanModel);
   const transcribeScan = useImportStore((s) => s.transcribeScan);
+  const scanProgress = useImportStore((s) => s.scanProgress);
+  const cancelScan = useImportStore((s) => s.cancelScan);
   const [refineable, setRefineable] = useState(false);
   const [creating, setCreating] = useState(false);
   const creatingRef = useRef(false);
   const fullscreen = useFullscreen();
   const active = page === "pdf-import";
+  const scanPending = Boolean(result?.report.likelyScanned) && !scanTranscribed;
+  // Before a transcription, the pill names where Transcribe scan would send the pages.
+  const pendingScanTo = usePendingScanDestination(active && scanPending);
+  let destinationLabel = t(($) => $.library.pdfImport.local);
+  if (scanModel?.sentTo) {
+    destinationLabel = t(($) => $.researchTools.converterModel.sentBadge, { provider: scanModel.sentTo });
+  } else if (pendingScanTo) {
+    destinationLabel = t(($) => $.shell.importDestination.scansGoTo, { provider: pendingScanTo });
+  }
   const viewLabels = {
     preview: t(($) => $.library.pdfImport.views.preview),
     source: t(($) => $.library.pdfImport.views.source),
@@ -517,23 +566,14 @@ export function PdfImportView() {
             </Button>
           </div>
         )}
-        <div
+        <Badge
           data-testid="import-destination"
-          className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium",
-            !pdfBytes && "ml-auto",
-          )}
+          data-destination={scanModel?.sentTo || pendingScanTo ? "remote" : "device"}
+          variant={scanModel?.sentTo || pendingScanTo ? "warning" : "success"}
+          className={cn("px-3 py-1", !pdfBytes && "ml-auto")}
         >
-          <span
-            className={cn(
-              "size-1.5 rounded-full",
-              scanModel?.sentTo ? "bg-amber-500" : "bg-emerald-500",
-            )}
-          />
-          {scanModel?.sentTo
-            ? t(($) => $.researchTools.converterModel.sentBadge, { provider: scanModel.sentTo })
-            : t(($) => $.library.pdfImport.local)}
-        </div>
+          {destinationLabel}
+        </Badge>
         <WindowControls />
       </div>
       {!pdfBytes ? (
@@ -553,9 +593,14 @@ export function PdfImportView() {
               </Button>
             ))}
             {busy && (
-              <span className="ml-3 text-xs text-muted-foreground">
-                {t(($) => $.library.pdfImport.converting)}
+              <span data-testid="import-progress" className="ml-3 text-xs text-muted-foreground">
+                {(scanProgress && scanProgressLabel(scanProgress)) ?? t(($) => $.library.pdfImport.converting)}
               </span>
+            )}
+            {scanProgress && (
+              <Button variant="ghost" size="xs" className="ml-1" onClick={cancelScan} data-testid="import-cancel-scan">
+                <X /> {t(($) => $.researchTools.converter.cancel)}
+              </Button>
             )}
             {error && <span className="ml-3 select-text text-xs text-destructive">{error}</span>}
             <span className="ml-auto text-xs text-muted-foreground">
@@ -566,6 +611,7 @@ export function PdfImportView() {
                 : t(($) => $.library.pdfImport.disclaimer)}
             </span>
           </div>
+          {scanPending && <ScanNotice />}
           {view === "split" ? (
             <ToolSplitView storageId="pdf-import-review">
               <div className="h-full min-w-0"><PagePreviews /></div>

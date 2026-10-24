@@ -76,6 +76,19 @@ describe("Tools model picker groups", () => {
     });
   });
 
+  it("keeps Ollama Cloud models out of the Local group", () => {
+    const groups = toolsModelGroups(
+      config(),
+      [
+        { name: "qwen3-vl:235b-cloud", capabilities: ["completion", "vision"], remote: true },
+        { name: "minimax-m2:cloud", capabilities: ["completion", "vision"] },
+        { name: "qwen2.5vl:7b", capabilities: ["completion", "vision"], remote: false },
+      ],
+      false,
+    );
+    expect(groups[0].models.map((model) => model.id)).toEqual(["", "qwen2.5vl:7b"]);
+  });
+
   it("an unreachable Ollama leaves only Automatic", () => {
     const groups = toolsModelGroups(config({ ai_keys: { ollama: "http://127.0.0.1:11434" } }), null, false);
     expect(groups).toHaveLength(1);

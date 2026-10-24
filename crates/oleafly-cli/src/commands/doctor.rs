@@ -69,24 +69,34 @@ async fn run_doctor(ctx: &Context) -> Result<Outcome, CliError> {
         Some(opened) => opened.workspace.root().to_path_buf(),
         None => std::env::current_dir().unwrap_or_default(),
     };
-    let discovery = Discovery::from_env(&root);
-    let engine = project
-        .as_ref()
-        .and_then(|opened| opened.workspace.manifest().engine().ok());
-    let inventory = TypstInventory::discover_with(&discovery);
-    let mut tools = match &project {
-        Some(opened) => build_tools(&opened.workspace, &discovery, Some(&inventory)),
-        None => BuildTools::discover_with(&discovery),
-    };
-    tools.resolve_pandoc(&discovery);
-    let reports = engine_reports(&tools, &inventory);
-
-    let mut report = match &project {
-        Some(opened) => project_checks(opened, &tools, &inventory),
-        None => DoctorReport {
-            ok: true,
-            checks: Vec::new(),
-        },
+    // Finding the engines runs each one (up to 5 seconds apiece): off the
+    // async threads, which also serve the MCP server's other calls.
+    let (discovery, engine, inventory, tools, reports, mut report) = {
+        let project = project.clone();
+        let root = root.clone();
+        tokio::task::spawn_blocking(move || {
+            let discovery = Discovery::from_env(&root);
+            let engine = project
+                .as_ref()
+                .and_then(|opened| opened.workspace.manifest().engine().ok());
+            let inventory = TypstInventory::discover_with(&discovery);
+            let mut tools = match &project {
+                Some(opened) => build_tools(&opened.workspace, &discovery, Some(&inventory)),
+                None => BuildTools::discover_with(&discovery),
+            };
+            tools.resolve_pandoc(&discovery);
+            let reports = engine_reports(&tools, &inventory);
+            let report = match &project {
+                Some(opened) => project_checks(opened, &tools, &inventory),
+                None => DoctorReport {
+                    ok: true,
+                    checks: Vec::new(),
+                },
+            };
+            (discovery, engine, inventory, tools, reports, report)
+        })
+        .await
+        .map_err(|_| CliError::internal("The checks stopped before they finished."))?
     };
     report
         .checks
@@ -495,7 +505,11 @@ async fn global_checks(
             "Oleafly's TinyTeX isn't installed; latexmk projects use your TeX distribution.",
         ),
     });
-    checks.push(git_check());
+    checks.push(
+        tokio::task::spawn_blocking(git_check)
+            .await
+            .unwrap_or_else(|_| check("git", DoctorStatus::Warning, "Git couldn't be checked.")),
+    );
     checks.push(mcp_server_check(data_root).await);
     checks.push(mcp_clients_check(root));
     if cfg!(not(any(target_os = "macos", windows))) {

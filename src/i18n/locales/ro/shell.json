@@ -563,6 +563,9 @@
     "title": "Înapoi la bibliotecă",
     "tooltip": "Revino la biblioteca de proiecte"
   },
+  "importDestination": {
+    "scansGoTo": "Scanările sunt trimise la {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -676,8 +679,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Modificările tale nesalvate rămân deschise. Rămâi ca să rezolvi problema sau ieși oricum și le pierzi.",
+      "descriptionReload": "{{reason}} Modificările tale nesalvate rămân deschise. Rămâi ca să rezolvi problema sau reîncarcă oricum și le pierzi.",
       "descriptionRestart": "{{reason}} Modificările tale nesalvate rămân deschise. Rămâi ca să rezolvi problema sau repornește oricum și le pierzi.",
       "quitAnyway": "Ieși oricum",
+      "reloadAnyway": "Reîncarcă oricum",
       "restartAnyway": "Repornește oricum",
       "stay": "Rămâi",
       "title": "Unele fișiere nu au putut fi salvate"

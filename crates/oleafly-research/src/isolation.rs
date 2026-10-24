@@ -1172,7 +1172,7 @@ fn allowed_file(path: &str) -> bool {
         .and_then(std::ffi::OsStr::to_str)
         .unwrap_or_default();
     let lower = file_name.to_ascii_lowercase();
-    if is_sensitive_component(&lower) {
+    if is_sensitive_component(&lower) || is_private_key_name(&lower) {
         return false;
     }
     // Every other file type is copied: data, models and build inputs.
@@ -1180,16 +1180,27 @@ fn allowed_file(path: &str) -> bool {
 }
 
 fn excluded_path(path: &str) -> bool {
-    path.split('/').any(|component| {
+    let components: Vec<&str> = path.split('/').collect();
+    components.iter().any(|component| {
         EXCLUDED_DIRECTORIES
             .iter()
             .any(|excluded| component.eq_ignore_ascii_case(excluded))
             || is_sensitive_component(component)
     })
+        // Google Cloud keeps its credentials in `.config/gcloud`.
+        || components.windows(2).any(|pair| {
+            pair[0].eq_ignore_ascii_case(".config") && pair[1].eq_ignore_ascii_case("gcloud")
+        })
 }
+
+/// SSH key files as `ssh-keygen` names them.
+const SSH_KEY_NAMES: &[&str] = &["id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", "id_xmss"];
 
 fn is_sensitive_component(component: &str) -> bool {
     let lower = component.to_ascii_lowercase();
+    let extension = Path::new(&lower)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str);
     lower == ".private"
         || lower == ".env"
         || lower.starts_with(".env.")
@@ -1202,13 +1213,30 @@ fn is_sensitive_component(component: &str) -> bool {
                 | ".git-credentials"
                 | ".npmrc"
                 | ".pypirc"
+                | ".netrc"
+                | "_netrc"
+                | ".pgpass"
+                // Folders of keys and cloud or cluster credentials.
+                | ".ssh"
+                | ".gnupg"
+                | ".aws"
+                | ".kube"
+                | ".docker"
         )
-        || matches!(
-            Path::new(&lower)
-                .extension()
-                .and_then(std::ffi::OsStr::to_str),
-            Some("key" | "pem" | "p12" | "pfx")
-        )
+        || matches!(extension, Some("key" | "pem" | "p12" | "pfx" | "kdbx"))
+}
+
+/// A private SSH key by its file name (`id_rsa`, `id_ed25519_work`,
+/// `deploy_key`), but not its `.pub` half or a data file such as
+/// `id_map.csv`.
+fn is_private_key_name(file_name: &str) -> bool {
+    let lower = file_name.to_ascii_lowercase();
+    let extension = Path::new(&lower)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str);
+    extension != Some("pub")
+        && (SSH_KEY_NAMES.iter().any(|name| lower.starts_with(name))
+            || (extension.is_none() && (lower.starts_with("id_") || lower.ends_with("_key"))))
 }
 
 /// Files of one research record a fresh retry copies at most.

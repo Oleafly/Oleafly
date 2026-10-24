@@ -7,6 +7,7 @@ import {
   destinationName,
   disabledModels,
   isLoopbackHost,
+  ollamaModelIsRemote,
   ollamaModelSeesImages,
   toolsChoice,
   toolsDestination,
@@ -207,6 +208,38 @@ describe("Tools model choice", () => {
         status: "active",
       }),
     ).toBe(true);
+  });
+
+  it("knows an Ollama Cloud model by Ollama's flag or its cloud tag", () => {
+    expect(ollamaModelIsRemote({ name: "shared-vl", remote: true })).toBe(true);
+    expect(ollamaModelIsRemote({ name: "qwen3-vl:235b-cloud" })).toBe(true);
+    expect(ollamaModelIsRemote({ name: "minimax-m2:cloud" })).toBe(true);
+    expect(ollamaModelIsRemote({ name: "GPT-OSS:120B-Cloud" })).toBe(true);
+    expect(ollamaModelIsRemote({ name: "qwen2.5vl:7b", remote: false })).toBe(false);
+    expect(ollamaModelIsRemote({ name: "wordcloud:latest" })).toBe(false);
+  });
+
+  it("never calls a picked Ollama Cloud model local, even with Ollama on this computer", () => {
+    const cloud = config({ ai_tools_model: { provider: "ollama", model: "qwen3-vl:235b-cloud" } });
+    expect(describeToolsChoice(cloud).destination).toEqual({
+      kind: "provider",
+      providerId: "ollama",
+      name: "Ollama Cloud",
+    });
+    expect(destinationName(describeToolsChoice(cloud).destination)).toBe("Ollama Cloud");
+    const local = config({ ai_tools_model: { provider: "ollama", model: "glm-ocr" } });
+    expect(describeToolsChoice(local).destination).toEqual({ kind: "device" });
+
+    // A cloud model copied under a plain name: Ollama's listing still says so.
+    const copied = config({ ai_tools_model: { provider: "ollama", model: "my-vl" } });
+    expect(describeToolsChoice(copied, [{ name: "my-vl", capabilities: null, remote: true }]).destination).toEqual({
+      kind: "provider",
+      providerId: "ollama",
+      name: "Ollama Cloud",
+    });
+    expect(describeToolsChoice(local, [{ name: "glm-ocr", capabilities: null, remote: false }]).destination).toEqual(
+      { kind: "device" },
+    );
   });
 
   it("trusts Ollama's capabilities and falls back to the model name", () => {

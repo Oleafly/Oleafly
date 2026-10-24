@@ -461,6 +461,16 @@ impl TaskStore {
         if updated != 1 {
             return Err("The task changed before it could start.".into());
         }
+        // Each generation keeps what it resumed, so its transcript's history
+        // stops at a fresh start.
+        transaction
+            .execute(
+                "INSERT OR REPLACE INTO research_task_generations
+                   (task_id, execution_generation, resumed_from)
+                 SELECT id, execution_generation, resumed_from FROM research_tasks WHERE id = ?1",
+                [&id],
+            )
+            .map_err(store_error)?;
         transaction.commit().map_err(store_error)?;
         self.require(&id).map(Some)
     }
@@ -904,6 +914,9 @@ impl TaskStore {
                    active_ms = CASE WHEN ?4 THEN 0 ELSE active_ms END,
                    todos_json = CASE WHEN ?4 THEN NULL ELSE todos_json END,
                    plan_approved = CASE WHEN ?4 THEN 0 ELSE plan_approved END,
+                   runs_baseline = CASE WHEN ?4
+                     THEN (SELECT COUNT(*) FROM research_task_runs WHERE task_id = ?1)
+                     ELSE runs_baseline END,
                    owner_kind = 'app', reclaim_requested = 0, handoff_json = NULL
                  WHERE id = ?1 AND status IN ('failed', 'cancelled')",
                 params![id, now_ms(), encode_json(&pending)?, fresh],
@@ -1225,19 +1238,35 @@ impl TaskStore {
         if applying.is_some() {
             return Err("This task is applying its result. Try again in a moment.".into());
         }
-        let dependents: i64 = transaction
+        // Only a dependent that has not finished still needs this task's
+        // result (one waiting for its plan's approval resumes and reads it).
+        let waiting: Option<String> = transaction
             .query_row(
-                "SELECT COUNT(*) FROM research_task_dependencies WHERE dependency_id = ?1",
+                "SELECT dependent.title FROM research_task_dependencies dependency
+                 JOIN research_tasks dependent ON dependent.id = dependency.task_id
+                 WHERE dependency.dependency_id = ?1
+                   AND dependent.status IN ('queued', 'running', 'plan_ready')
+                 ORDER BY dependent.created_at ASC LIMIT 1",
                 [id],
                 |row| row.get(0),
             )
+            .optional()
             .map_err(store_error)?;
-        if dependents > 0 {
-            return Err("Another task waits for this one. Remove that dependency first.".into());
+        if let Some(title) = waiting {
+            return Err(format!(
+                "\"{title}\" depends on this task and hasn't finished. Cancel it or wait for it to finish."
+            ));
         }
+        // Finished dependents keep their results; their link to this task goes.
         transaction
             .execute(
-                "DELETE FROM research_task_dependencies WHERE task_id = ?1",
+                "DELETE FROM research_task_dependencies WHERE task_id = ?1 OR dependency_id = ?1",
+                [id],
+            )
+            .map_err(store_error)?;
+        transaction
+            .execute(
+                "DELETE FROM research_task_generations WHERE task_id = ?1",
                 [id],
             )
             .map_err(store_error)?;
@@ -1251,7 +1280,42 @@ impl TaskStore {
     }
 
     pub fn recover_interrupted(&self) -> Result<Vec<ResearchTask>, String> {
-        self.recover_stopped("Oleafly closed before this run finished. Review its saved workspace or retry the task.")
+        let recovered = self.recover_stopped("Oleafly closed before this run finished. Review its saved workspace or retry the task.")?;
+        self.clear_stale_evidence_checks()?;
+        Ok(recovered)
+    }
+
+    /// An evidence check runs in the process that ran the task, untracked;
+    /// when that process exits during the check, nothing clears its phase
+    /// and the review would show "Checking" forever. Clears it for finished
+    /// tasks whose checking process is gone. Returns how many.
+    fn clear_stale_evidence_checks(&self) -> Result<usize, String> {
+        let connection = self.open()?;
+        let checking: Vec<OwnerRow> = connection
+            .prepare(
+                "SELECT id, owner_pid, owner_started FROM research_tasks
+                 WHERE status <> 'running' AND phase = 'checking_evidence'",
+            )
+            .and_then(|mut statement| {
+                statement
+                    .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .map_err(store_error)?;
+        let mut cleared = 0;
+        for (id, pid, started) in checking {
+            if !self.owner_gone(pid, started) {
+                continue;
+            }
+            cleared += connection
+                .execute(
+                    "UPDATE research_tasks SET phase = NULL, updated_at = ?2
+                     WHERE id = ?1 AND status <> 'running' AND phase = 'checking_evidence'",
+                    params![id, now_ms()],
+                )
+                .map_err(store_error)?;
+        }
+        Ok(cleared)
     }
 
     pub fn recover_after_failed_update(&self) -> Result<Vec<ResearchTask>, String> {
@@ -1352,33 +1416,85 @@ impl TaskStore {
         after_sequence: Option<u64>,
         limit: usize,
     ) -> Result<TaskTranscriptPage, String> {
+        self.events_page(id, generation, after_sequence, None, limit)
+    }
+
+    /// A page of a generation's transcript, oldest row first. Forward from
+    /// `after_sequence` (`next_sequence` continues it), or, with
+    /// `before_sequence`, the newest rows below it (`previous_sequence`
+    /// continues backwards; a value above every row reads the newest page).
+    pub fn events_page(
+        &self,
+        id: &str,
+        generation: u64,
+        after_sequence: Option<u64>,
+        before_sequence: Option<u64>,
+        limit: usize,
+    ) -> Result<TaskTranscriptPage, String> {
         let connection = self.open()?;
         let limit = limit.clamp(1, 200);
-        let after = after_sequence.unwrap_or(0);
-        let mut statement = connection
-            .prepare(
-                "SELECT sequence, event_json, created_at FROM research_task_events
-                 WHERE task_id = ?1 AND execution_generation = ?2 AND sequence > ?3
-                 ORDER BY sequence ASC LIMIT ?4",
-            )
-            .map_err(store_error)?;
-        let rows = statement
-            .query_map(
-                params![id, generation as i64, after as i64, (limit + 1) as i64],
-                |row| {
-                    Ok((
-                        row.get::<_, i64>(0)?,
-                        row.get::<_, String>(1)?,
-                        row.get::<_, i64>(2)?,
-                    ))
-                },
-            )
-            .map_err(store_error)?
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(store_error)?;
+        let read = |row: &rusqlite::Row<'_>| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        };
+        let (mut rows, backwards) = match before_sequence {
+            Some(before) => (
+                connection
+                    .prepare(
+                        "SELECT sequence, event_json, created_at FROM research_task_events
+                         WHERE task_id = ?1 AND execution_generation = ?2 AND sequence < ?3
+                         ORDER BY sequence DESC LIMIT ?4",
+                    )
+                    .and_then(|mut statement| {
+                        statement
+                            .query_map(
+                                params![
+                                    id,
+                                    generation as i64,
+                                    before.min(i64::MAX as u64) as i64,
+                                    (limit + 1) as i64
+                                ],
+                                read,
+                            )?
+                            .collect::<Result<Vec<_>, _>>()
+                    })
+                    .map_err(store_error)?,
+                true,
+            ),
+            None => (
+                connection
+                    .prepare(
+                        "SELECT sequence, event_json, created_at FROM research_task_events
+                         WHERE task_id = ?1 AND execution_generation = ?2 AND sequence > ?3
+                         ORDER BY sequence ASC LIMIT ?4",
+                    )
+                    .and_then(|mut statement| {
+                        statement
+                            .query_map(
+                                params![
+                                    id,
+                                    generation as i64,
+                                    after_sequence.unwrap_or(0) as i64,
+                                    (limit + 1) as i64
+                                ],
+                                read,
+                            )?
+                            .collect::<Result<Vec<_>, _>>()
+                    })
+                    .map_err(store_error)?,
+                false,
+            ),
+        };
         let has_more = rows.len() > limit;
-        let mut events = Vec::with_capacity(rows.len().min(limit));
-        for (sequence, encoded, created_at) in rows.into_iter().take(limit) {
+        rows.truncate(limit);
+        if backwards {
+            rows.reverse();
+        }
+        let mut events = Vec::with_capacity(rows.len());
+        for (sequence, encoded, created_at) in rows {
             events.push(TaskTranscriptEvent {
                 task_id: id.to_string(),
                 execution_generation: generation,
@@ -1387,12 +1503,32 @@ impl TaskStore {
                 created_at,
             });
         }
-        let next_sequence = has_more
-            .then(|| events.last().map(|event| event.sequence))
+        let (next_sequence, previous_sequence) = match (has_more, backwards) {
+            (true, false) => (events.last().map(|event| event.sequence), None),
+            (true, true) => (None, events.first().map(|event| event.sequence)),
+            (false, _) => (None, None),
+        };
+        // Rows from before 0.4.8's last schema have no generation record:
+        // the task row still knows what its current generation resumed.
+        let resumed_from: Option<i64> = connection
+            .query_row(
+                "SELECT resumed_from FROM research_task_generations
+                 WHERE task_id = ?1 AND execution_generation = ?2
+                 UNION ALL
+                 SELECT resumed_from FROM research_tasks
+                 WHERE id = ?1 AND execution_generation = ?2
+                 LIMIT 1",
+                params![id, generation as i64],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(store_error)?
             .flatten();
         Ok(TaskTranscriptPage {
             events,
             next_sequence,
+            previous_sequence,
+            resumed_from: resumed_from.and_then(|value| u64::try_from(value).ok()),
         })
     }
 
@@ -1998,14 +2134,16 @@ impl TaskStore {
         Ok(requeued)
     }
 
-    /// What this process runs, and the queued tasks of its owner kind that
-    /// can still run here.
+    /// What this process runs (with the evidence checks it still runs for
+    /// tasks it finished), and the queued tasks of its owner kind that can
+    /// still run here.
     pub fn owned_work(&self) -> Result<OwnedWork, String> {
         self.open()?
             .query_row(
                 "SELECT
                    (SELECT COUNT(*) FROM research_tasks
-                    WHERE status = 'running' AND owner_kind = ?1
+                    WHERE ((status = 'running' AND owner_kind = ?1)
+                           OR (status <> 'running' AND phase = 'checking_evidence'))
                       AND owner_pid = ?2 AND owner_started IS ?3),
                    (SELECT COUNT(*) FROM research_tasks task
                     WHERE task.status = 'queued' AND task.start_requested = 1 AND task.owner_kind = ?1
@@ -2633,12 +2771,84 @@ fn encode_json<T: serde::Serialize + ?Sized>(value: &T) -> Result<String, String
     serde_json::to_string(value).map_err(|error| format!("could not encode task data: {error}"))
 }
 
+/// Tool rows per generation that keep their whole detail. A tool row holds
+/// up to 48 KiB of arguments or output, so older ones keep only the start.
+const FULL_TOOL_ROWS: i64 = 500;
+const TRIMMED_TOOL_DETAIL_CHARS: i64 = 2 * 1024;
+
+/// Keeps the newest [`FULL_TOOL_ROWS`] tool rows of a generation whole and
+/// cuts the detail of older ones (never the rows themselves). Each row is
+/// cut once: the generation remembers how far it got.
+fn trim_old_tool_rows(
+    transaction: &Transaction<'_>,
+    id: &str,
+    generation: u64,
+    sequence: i64,
+) -> Result<(), String> {
+    if sequence <= FULL_TOOL_ROWS {
+        return Ok(());
+    }
+    let cutoff: Option<i64> = transaction
+        .query_row(
+            "SELECT sequence FROM research_task_events
+             WHERE task_id = ?1 AND execution_generation = ?2 AND kind = 'tool'
+             ORDER BY sequence DESC LIMIT 1 OFFSET ?3",
+            params![id, generation as i64, FULL_TOOL_ROWS],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(store_error)?;
+    let Some(cutoff) = cutoff else {
+        return Ok(());
+    };
+    let through: i64 = transaction
+        .query_row(
+            "SELECT trimmed_through FROM research_task_generations
+             WHERE task_id = ?1 AND execution_generation = ?2",
+            params![id, generation as i64],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(store_error)?
+        .unwrap_or(0);
+    if cutoff <= through {
+        return Ok(());
+    }
+    transaction
+        .execute(
+            "UPDATE research_task_events SET event_json = json_set(event_json, '$.detail',
+               substr(json_extract(event_json, '$.detail'), 1, ?5) || ?6)
+             WHERE task_id = ?1 AND execution_generation = ?2 AND kind = 'tool'
+               AND sequence > ?3 AND sequence <= ?4
+               AND length(json_extract(event_json, '$.detail')) > ?5 + length(?6)",
+            params![
+                id,
+                generation as i64,
+                through,
+                cutoff,
+                TRIMMED_TOOL_DETAIL_CHARS,
+                "\n[output truncated]"
+            ],
+        )
+        .map_err(store_error)?;
+    transaction
+        .execute(
+            "INSERT INTO research_task_generations (task_id, execution_generation, trimmed_through)
+             VALUES (?1, ?2, ?3)
+             ON CONFLICT(task_id, execution_generation) DO UPDATE SET trimmed_through = ?3",
+            params![id, generation as i64, cutoff],
+        )
+        .map_err(store_error)?;
+    Ok(())
+}
+
 fn prune_text_events(
     transaction: &Transaction<'_>,
     id: &str,
     generation: u64,
     sequence: i64,
 ) -> Result<(), String> {
+    trim_old_tool_rows(transaction, id, generation, sequence)?;
     if sequence as u64 <= MAX_EVENTS_PER_RUN {
         return Ok(());
     }
@@ -2705,14 +2915,16 @@ fn store_error(error: rusqlite::Error) -> String {
 const OWNER_SCHEMA_VERSION: i64 = 1;
 const BRIEF_SCHEMA_VERSION: i64 = 2;
 const HANDOFF_SCHEMA_VERSION: i64 = 3;
+const EVENT_KIND_SCHEMA_VERSION: i64 = 4;
 /// The store's `user_version`.
-pub const SCHEMA_VERSION: i64 = 4;
+pub const SCHEMA_VERSION: i64 = 5;
 
 /// Brings an older store up to [`SCHEMA_VERSION`] step by step. Version 1
 /// (0.4.7) added the run owner; version 2 (0.4.8) adds briefs, phases,
 /// budgets, runs and approvals; version 3 (0.4.8 L) adds handoffs between
 /// the app and the background helper; version 4 indexes the kind of every
-/// transcript row.
+/// transcript row; version 5 records the generation each one resumed, the
+/// runs a fresh start leaves behind, and run cancels still to deliver.
 fn migrate(connection: &mut Connection) -> Result<(), String> {
     if schema_version(connection)? >= SCHEMA_VERSION {
         return Ok(());
@@ -2817,7 +3029,7 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
     // The kind of each transcript row (`text`, `tool`, ...), read from its
     // JSON once when it is written, so pruning a long transcript counts rows
     // from the index instead of parsing every payload.
-    if version < SCHEMA_VERSION {
+    if version < EVENT_KIND_SCHEMA_VERSION {
         let has_kind = {
             let mut statement = transaction
                 .prepare("PRAGMA table_xinfo(research_task_events)")
@@ -2836,6 +3048,42 @@ fn migrate(connection: &mut Connection) -> Result<(), String> {
         upgrade(
             "CREATE INDEX IF NOT EXISTS research_task_events_kind
                ON research_task_events(task_id, execution_generation, kind, sequence);",
+        )?;
+    }
+    // Which generation each one resumed (a fresh start resumes none), the
+    // run count a fresh start leaves behind, and run cancels not delivered yet.
+    if version < SCHEMA_VERSION {
+        add_columns(&[("runs_baseline", "INTEGER NOT NULL DEFAULT 0")])?;
+        let run_columns: HashSet<String> = {
+            let mut statement = transaction
+                .prepare("PRAGMA table_info(research_task_runs)")
+                .map_err(store_error)?;
+            statement
+                .query_map([], |row| row.get::<_, String>(1))
+                .and_then(|rows| rows.collect::<Result<HashSet<_>, _>>())
+                .map_err(store_error)?
+        };
+        for (name, definition) in [
+            ("cancel_requested", "INTEGER NOT NULL DEFAULT 0"),
+            // The process that started the run, while its start is under way.
+            ("starter_pid", "INTEGER"),
+            ("starter_started", "INTEGER"),
+        ] {
+            if !run_columns.contains(name) {
+                upgrade(&format!(
+                    "ALTER TABLE research_task_runs ADD COLUMN {name} {definition};"
+                ))?;
+            }
+        }
+        upgrade(
+            "CREATE TABLE IF NOT EXISTS research_task_generations (
+               task_id TEXT NOT NULL REFERENCES research_tasks(id) ON DELETE CASCADE,
+               execution_generation INTEGER NOT NULL,
+               resumed_from INTEGER,
+               -- Tool rows up to this sequence keep only the start of their detail.
+               trimmed_through INTEGER NOT NULL DEFAULT 0,
+               PRIMARY KEY(task_id, execution_generation)
+             );",
         )?;
     }
     upgrade(&format!("PRAGMA user_version = {SCHEMA_VERSION};"))?;

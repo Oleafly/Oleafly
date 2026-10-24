@@ -182,7 +182,8 @@
   },
   "imageToLatex": {
     "failed": "Billede til LaTeX mislykkedes: {{detail}}",
-    "transcribing": "Transskriberer billedet…"
+    "transcribing": "Transskriberer billedet…",
+    "notInserted": "Den aktive fil blev ændret, så LaTeX-koden blev ikke indsat. Kopier den, og indsæt den, hvor du vil."
   },
   "import": {
     "chooseOfferedProjectType": "Vælg en af de projekttyper, der tilbydes til denne fil.",
@@ -603,6 +604,8 @@
     "saveReason": "projektmappen er ikke tilgængelig"
   },
   "imageToTypst": {
-    "failed": "Billede til Typst mislykkedes: {{detail}}"
+    "failed": "Billede til Typst mislykkedes: {{detail}}",
+    "copied": "Typst-kilden er kopieret",
+    "notInserted": "Den aktive fil blev ændret, så Typst-koden blev ikke indsat. Kopier den, og indsæt den, hvor du vil."
   }
 }

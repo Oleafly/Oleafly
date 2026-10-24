@@ -40,6 +40,57 @@ pub(crate) struct ServerLink {
     pub entry: ServerEntry,
     pub client: Arc<ServerClient>,
     pub sessions: Arc<SessionManager>,
+    /// The server at the address still is the one signed in to (checked
+    /// once before the first token goes out).
+    verified: std::sync::atomic::AtomicBool,
+}
+
+/// How long a sign-out waits for the server.
+const SIGN_OUT_WAIT: Duration = Duration::from_secs(10);
+
+/// Refuses a server whose id isn't the one this device pinned (the address
+/// now points at another server), before a token is sent to it.
+async fn check_pin(client: &ServerClient, entry: &ServerEntry) -> Result<(), CollabError> {
+    let advertised = client.capabilities().await?;
+    if advertised.server_id == entry.server_id {
+        Ok(())
+    } else {
+        Err(CollabError::ServerChanged {
+            expected: entry.server_id,
+            found: advertised.server_id,
+        })
+    }
+}
+
+/// Holds `<collab-cli>/servers.lock` while the server list is read,
+/// changed and saved, so two sign-ins never drop each other's entry.
+fn with_registry_lock<T>(
+    collab: &CliCollab,
+    change: impl FnOnce(&mut ServerRegistry) -> T,
+) -> Result<T, CliError> {
+    std::fs::create_dir_all(collab.paths.root()).map_err(CliError::from)?;
+    let lock_path = collab.paths.root().join("servers.lock");
+    if std::fs::symlink_metadata(&lock_path).is_ok_and(|metadata| !metadata.is_file()) {
+        return Err(CliError::new(
+            ErrorKind::UnsafePath,
+            "server.unsafe_path",
+            "The server list's lock isn't a regular file, so the CLI won't use it.",
+        ));
+    }
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&lock_path)
+        .map_err(CliError::from)?;
+    fs4::FileExt::lock(&file).map_err(CliError::from)?;
+    let mut registry = collab.registry()?;
+    let value = change(&mut registry);
+    registry
+        .save(&collab.paths)
+        .map_err(|error| collab.local(&error))?;
+    Ok(value)
 }
 
 impl CliCollab {
@@ -134,6 +185,7 @@ impl CliCollab {
             entry,
             client,
             sessions,
+            verified: std::sync::atomic::AtomicBool::new(false),
         })
     }
 
@@ -168,7 +220,23 @@ impl ServerLink {
         from_collab(error, &self.entry.url)
     }
 
+    /// Once per command, before the first token (or a refresh, which
+    /// sends the refresh token) goes to the address: the server there must
+    /// still be the one this device signed in to, as the app checks.
+    async fn verify(&self) -> Result<(), CliError> {
+        use std::sync::atomic::Ordering;
+        if self.verified.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        check_pin(&self.client, &self.entry)
+            .await
+            .map_err(|error| self.error(&error))?;
+        self.verified.store(true, Ordering::Release);
+        Ok(())
+    }
+
     pub(crate) async fn access(&self) -> Result<String, CliError> {
+        self.verify().await?;
         self.sessions
             .access_token(self.entry.server_id, &self.client)
             .await
@@ -185,6 +253,11 @@ impl ServerLink {
         let access = self.access().await?;
         match call(Arc::clone(&self.client), access.clone()).await {
             Err(CollabError::Unauthorized) => {
+                // The refresh sends the refresh token: the server is
+                // checked again first.
+                check_pin(&self.client, &self.entry)
+                    .await
+                    .map_err(|error| self.error(&error))?;
                 let fresh = self
                     .sessions
                     .refresh_rejected(self.entry.server_id, &self.client, &access)
@@ -258,7 +331,7 @@ pub(crate) async fn sign_in(
     let failed = |error: CollabError| from_collab(&error, &label);
     let client = ServerClient::new(server_url.clone()).map_err(failed)?;
     let advertised = client.capabilities().await.map_err(failed)?;
-    let mut registry = collab.registry()?;
+    let registry = collab.registry()?;
     if let Some(pinned) = registry.list().iter().find(|entry| entry.url == label) {
         if pinned.server_id != advertised.server_id {
             return Err(failed(CollabError::ServerChanged {
@@ -298,21 +371,22 @@ pub(crate) async fn sign_in(
             None
         }
     };
-    let added_at = registry
-        .get(server)
-        .map_or_else(now_ms, |entry| entry.added_at);
-    registry.upsert(ServerEntry {
-        server_id: server,
-        url: label.clone(),
-        name: manifest.name.clone(),
-        icon_url: manifest.icon_url.clone(),
-        account: account.clone(),
-        added_at,
-    });
-    registry.set_ended(server, None);
-    registry
-        .save(&collab.paths)
-        .map_err(|error| collab.local(&error))?;
+    // The approval can take minutes: the list is read again now, and only
+    // this server's entry changes, under the list's lock.
+    with_registry_lock(collab, |registry| {
+        let added_at = registry
+            .get(server)
+            .map_or_else(now_ms, |entry| entry.added_at);
+        registry.upsert(ServerEntry {
+            server_id: server,
+            url: label.clone(),
+            name: manifest.name.clone(),
+            icon_url: manifest.icon_url.clone(),
+            account: account.clone(),
+            added_at,
+        });
+        registry.set_ended(server, None);
+    })?;
     let who = account
         .as_ref()
         .map(account_name)
@@ -389,28 +463,43 @@ pub(crate) async fn sign_out(
             )),
         );
     }
+    let mut ended_on_server = true;
     if let Some(sessions) = collab.sessions(false)? {
-        if let Ok(Some(tokens)) = sessions.tokens(entry.server_id) {
-            if let Ok(client) = ServerUrl::parse(&entry.url).and_then(ServerClient::new) {
-                // Best effort: the server forgets the session too.
-                let _ = tokio::time::timeout(
-                    Duration::from_secs(10),
-                    client.sign_out(&tokens.access_token),
-                )
-                .await;
-            }
+        let stored = sessions.tokens(entry.server_id);
+        if !matches!(stored, Ok(None)) {
+            // The server forgets the device too. The stored access token
+            // lasts minutes, so a fresh one is taken (after the server is
+            // checked to be the one signed in to).
+            ended_on_server = stored.is_ok()
+                && match ServerUrl::parse(&entry.url).and_then(ServerClient::new) {
+                    Ok(client) => tokio::time::timeout(SIGN_OUT_WAIT, async {
+                        check_pin(&client, &entry).await?;
+                        let access = sessions.access_token(entry.server_id, &client).await?;
+                        client.sign_out(&access).await
+                    })
+                    .await
+                    .is_ok_and(|ended| ended.is_ok()),
+                    Err(_) => false,
+                };
         }
         sessions
             .sign_out(entry.server_id)
             .map_err(|error| collab.local(&error))?;
     }
-    let mut registry = collab.registry()?;
-    registry.remove(entry.server_id);
-    registry
-        .save(&collab.paths)
-        .map_err(|error| collab.local(&error))?;
-    Ok(Report::new(json!({"removed": removed, "dryRun": false}))
-        .line(format!("Signed out of {}.", entry.url)))
+    with_registry_lock(collab, |registry| registry.remove(entry.server_id))?;
+    let mut report =
+        Report::new(json!({"removed": removed, "dryRun": false, "endedOnServer": ended_on_server}))
+            .line(format!("Signed out of {}.", entry.url));
+    if !ended_on_server {
+        report = report.warning(
+            "server.sign_out_unconfirmed",
+            format!(
+                "{} didn't confirm the sign-out, so this device may still be listed there. Remove it from your devices on the server.",
+                entry.url
+            ),
+        );
+    }
+    Ok(report)
 }
 
 /// This device's current access token for a server (refreshed if needed).
@@ -630,12 +719,128 @@ mod tests {
         let dry = sign_out(&collab, "Lab", true).await.unwrap();
         assert_eq!(dry.data["dryRun"], true);
         assert!(collab.cli_signed_in(lab.server_id).unwrap());
-        sign_out(&collab, "Lab", false).await.unwrap();
+        let signed_out = sign_out(&collab, "Lab", false).await.unwrap();
+        // Nothing answers at that address: the sign-out there is unconfirmed.
+        assert_eq!(signed_out.data["endedOnServer"], false);
+        assert!(signed_out
+            .warnings
+            .iter()
+            .any(|warning| warning.code == "server.sign_out_unconfirmed"));
         assert!(!collab.cli_signed_in(lab.server_id).unwrap());
         assert_eq!(
             env.store.get(&account).unwrap().as_deref(),
             Some("app-tokens")
         );
         assert!(collab.registry().unwrap().list().is_empty());
+    }
+}
+
+#[cfg(test)]
+mod pin_tests {
+    use std::io::{BufRead, BufReader, Write};
+
+    use oleafly_collab_protocol::auth::SessionTokens;
+    use oleafly_collab_protocol::capabilities::{
+        CapabilityManifest, EncryptionSupport, Features, Limits, ProtocolRange,
+    };
+    use oleafly_collab_protocol::ids::ServerId;
+
+    use super::*;
+    use crate::auth::test_env::env_at;
+
+    /// Answers every request with `manifest` and returns what it was sent.
+    fn manifest_server(
+        manifest: CapabilityManifest,
+    ) -> (String, std::sync::mpsc::Receiver<String>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
+        let body = serde_json::to_string(&manifest).unwrap();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            for stream in listener.incoming().flatten() {
+                let mut stream = stream;
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                let mut request = String::new();
+                loop {
+                    let mut line = String::new();
+                    if reader.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
+                        break;
+                    }
+                    request.push_str(&line);
+                }
+                let _ = sender.send(request);
+                let reply = format!(
+                    "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = stream.write_all(reply.as_bytes());
+            }
+        });
+        (url, receiver)
+    }
+
+    fn manifest(server_id: ServerId) -> CapabilityManifest {
+        CapabilityManifest {
+            server_id,
+            name: "Other".into(),
+            icon_url: None,
+            version: "0.1.0".into(),
+            protocol: ProtocolRange { min: 1, max: 1 },
+            needs_setup: false,
+            providers: Vec::new(),
+            features: Features {
+                email: false,
+                guests: false,
+                link_sharing: false,
+                access_logs: false,
+                comments: false,
+                encryption: EncryptionSupport::None,
+            },
+            limits: Limits {
+                max_project_mb: 1,
+                max_file_mb: 1,
+                max_members_per_project: 1,
+            },
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn no_token_goes_to_an_address_that_now_has_another_server() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = env_at(dir.path());
+        let collab = CliCollab::open(&env);
+        let (url, requests) = manifest_server(manifest(ServerId::new_v7()));
+        let pinned = ServerEntry {
+            server_id: ServerId::new_v7(),
+            url: url.clone(),
+            name: "Lab".into(),
+            icon_url: None,
+            account: None,
+            added_at: 1,
+        };
+        let mut registry = ServerRegistry::default();
+        registry.upsert(pinned.clone());
+        registry.save(&collab.paths).unwrap();
+        let sessions = collab.sessions(true).unwrap().unwrap();
+        sessions
+            .store(
+                pinned.server_id,
+                &SessionTokens {
+                    account_id: "01920000-0000-7000-8000-000000000002".parse().unwrap(),
+                    device_id: "01920000-0000-7000-8000-000000000003".parse().unwrap(),
+                    access_token: "ACCESS-not-for-them".into(),
+                    access_expires_at: i64::MAX,
+                    refresh_token: "REFRESH-not-for-them".into(),
+                },
+            )
+            .unwrap();
+        let link = collab.link("Lab").unwrap();
+        let error = link.access().await.unwrap_err();
+        assert_eq!(error.code, "server.changed");
+        let seen: Vec<String> = requests.try_iter().collect();
+        assert!(!seen.is_empty());
+        assert!(seen
+            .iter()
+            .all(|request| !request.to_ascii_lowercase().contains("authorization")));
     }
 }

@@ -50,14 +50,14 @@
       "platformLabel": "平台",
       "refreshingStatus": "正在刷新代理状态。当前列表会保持不变。",
       "registry": {
-        "description": "在 ACP 注册表中搜索其他团队发布的代理。",
+        "description": "在 ACP 注册表中搜索其他团队发布的 CLI 代理。",
         "hideDistribution": "隐藏分发",
         "register": "注册代理",
         "registered": "已注册",
         "reviewHint": "注册表条目由发布者提供，用于描述相应软件。在注册或安装前，请先审查其分发内容。",
         "search": "搜索",
-        "searchLabel": "查找 ACP 代理",
-        "searchPlaceholder": "搜索 ACP 注册表",
+        "searchLabel": "查找 CLI 代理",
+        "searchPlaceholder": "搜索 CLI 代理",
         "searching": "正在搜索",
         "showDistribution": "显示分发信息",
         "title": "查找更多代理"
@@ -133,7 +133,7 @@
       "inactivity": {
         "label": "代理无响应多久后停止",
         "description": "代理在这段时间内没有发送任何内容时，Oleafly 会停止它。你可以重新连接。",
-        "minutes": "{{count}} 分钟"
+        "minutes_other": "{{count}} 分钟"
       },
       "protocolLabel": "协议",
       "remembered": {
@@ -1029,7 +1029,8 @@
         "path": {
           "ariaLabel": "自定义 shell 路径",
           "description": "新终端运行的程序。",
-          "label": "Shell 路径"
+          "label": "Shell 路径",
+          "missing": "请输入 shell 的完整路径。在此之前无法启动新的终端。"
         },
         "windowsOnly": "{{name}}（仅限 Windows）",
         "windowsOnlyNote": "{{name}} 只能在 Windows 上运行。这里的新终端会改为启动 {{fallback}}。",
@@ -1608,7 +1609,7 @@
     "desktopApps": {
       "tab": "桌面应用",
       "title": "桌面应用",
-      "description": "让代理通过 Cua Driver 使用这台计算机上的应用和网站。每次点击或按键前，Oleafly 都会询问。",
+      "description": "让代理通过 Cua Driver 使用这台计算机上的应用和网站。Oleafly 在每次操作前都会询问，除非你已在聊天、会话或任务中允许该类操作。你已登录的浏览器和脚本始终会询问。",
       "docsLink": "Cua Driver 文档",
       "status": {
         "installed": "已安装 Cua Driver {{version}}。",
@@ -1621,7 +1622,7 @@
       },
       "install": {
         "heading": "安装 Cua Driver",
-        "hint": "在终端中运行此命令。Oleafly 从不替你安装 Cua Driver。",
+        "hint": "在终端中运行此命令，或使用“在终端中运行”。该命令会启动 Cua 的官方安装程序，Oleafly 自己不会下载 Cua Driver。",
         "run": "在终端中运行",
         "needsProject": "打开一个项目以在 Oleafly 的终端中运行，或者复制该命令。",
         "confirm": "这会从 cua.ai 下载 Cua Driver 安装程序并在你的终端中运行。要继续吗？",
@@ -1643,7 +1644,7 @@
       },
       "enable": {
         "label": "允许代理使用桌面应用",
-        "description": "代理可以看到下方的应用和网站。点击、输入和页面变更都会先询问你。"
+        "description": "代理可以看到下方的应用和网站。点击、输入和页面变更都会先询问你，除非你已在聊天、会话或任务中允许。添加应用或网站会清除这些选择。"
       },
       "apps": {
         "heading": "允许的应用",
@@ -1666,7 +1667,7 @@
         "blocked": {
           "oleafly": "Oleafly 无法控制自身。",
           "driver": "Cua Driver 无法控制自身。",
-          "terminal": "终端会绕过 Oleafly 的命令审批运行命令。",
+          "terminal": "终端和代码编辑器会绕过 Oleafly 的命令审批运行命令。",
           "system_settings": "系统设置可以更改权限。",
           "passwords": "密码类应用不允许使用。",
           "scripting": "脚本运行器可以在这台计算机上执行任何操作。",
@@ -1700,7 +1701,7 @@
       },
       "tool": {
         "description": "使用你在设置中允许的桌面应用和网站。",
-        "note": "查看会立即进行。点击、输入和页面变更会先询问。"
+        "note": "查看会立即进行。点击、输入和页面变更会先询问，除非你已在聊天中允许。"
       },
       "task": {
         "label": "桌面应用",
@@ -1710,7 +1711,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "将 Cua Spaces 中隔离的桌面和容器作为 MCP 服务器连接。实验性功能。",
+        "description": "将 Cua Spaces 中隔离的桌面和容器作为 MCP 服务器连接。",
         "notInstalled": "尚未安装 cua 命令。",
         "connect": {
           "label": "连接 Cua Spaces",
@@ -1809,7 +1810,7 @@
         },
         "legend": "批准策略",
         "trust": {
-          "description": "文件更改不会弹出提示。Shell 命令和计算机控制始终需要批准。你的 MCP 客户端仍是一道额外的关卡。",
+          "description": "文件更改会直接应用，不会询问。Shell 命令和新建研究任务始终会先询问。你的 MCP 客户端仍可自行询问。",
           "label": "信任此连接"
         }
       },
@@ -2285,11 +2286,19 @@
         "tasks_other": "正在处理 {{count}} 个任务"
       },
       "stop": "停止辅助程序",
-      "stopHint": "在你再次打开 Oleafly 之前，它的任务会暂停。",
+      "stopHint": "它的任务会回到 Oleafly，并在这里继续运行。",
+      "stopConfirm": {
+        "title": "停止后台辅助程序？",
+        "description_other": "它的 {{count}} 个任务会回到 Oleafly，并在这里继续运行。"
+      },
       "stopFailed": "辅助程序未能停止。请重试。",
       "openLog": "显示日志",
       "statusFailed": "无法读取后台辅助程序的状态。",
       "toggleFailed": "无法更改此设置。请重试。"
+    },
+    "mcpServers": {
+      "loadFailed": "无法读取 MCP 服务器列表。",
+      "missing": "{{name}}（未找到）"
     }
   }
 }

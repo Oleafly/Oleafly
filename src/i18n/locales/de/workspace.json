@@ -196,6 +196,8 @@
     "closeRight": "Alle rechts schließen",
     "closeTab": "{{title}} schließen",
     "color": "Farbe",
+    "dropRefused_one": "Der Name dieser Datei enthält ein Steuerzeichen, deshalb tippt das Terminal ihn nicht ein.",
+    "dropRefused_other": "{{count}} Dateinamen enthalten Steuerzeichen, deshalb tippt das Terminal sie nicht ein.",
     "errors": {
       "input": "Die shell konnte keine Eingabe annehmen",
       "resize": "Die Größe des Terminals ließ sich nicht ändern",
@@ -234,6 +236,7 @@
       "many_other": "In {{count}} Terminals laufen noch Programme.",
       "named": "{{process}} läuft noch in {{title}}.",
       "quit": "Beenden",
+      "reload": "Neu laden",
       "restart": "Neu starten",
       "switchProject": "Projekt wechseln",
       "titleMany": "Die laufenden Programme stoppen?",

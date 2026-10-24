@@ -566,6 +566,9 @@
     "title": "Powrót do biblioteki",
     "tooltip": "Wróć do biblioteki projektów"
   },
+  "importDestination": {
+    "scansGoTo": "Skany są wysyłane do {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -679,8 +682,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Niezapisane zmiany pozostają otwarte. Zostań, aby rozwiązać problem, albo zakończ mimo to i je utrać.",
+      "descriptionReload": "{{reason}} Niezapisane zmiany pozostają otwarte. Zostań, aby rozwiązać problem, albo wczytaj ponownie mimo to i je utrać.",
       "descriptionRestart": "{{reason}} Niezapisane zmiany pozostają otwarte. Zostań, aby rozwiązać problem, albo uruchom ponownie mimo to i je utrać.",
       "quitAnyway": "Zakończ mimo to",
+      "reloadAnyway": "Wczytaj ponownie mimo to",
       "restartAnyway": "Uruchom ponownie mimo to",
       "stay": "Zostań",
       "title": "Nie udało się zapisać części plików"

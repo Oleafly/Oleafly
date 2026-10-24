@@ -39,8 +39,18 @@ export function AcpComposerChips({
   };
   const queueLabel = (item: AcpQueuedPrompt) => {
     if (item.failed) return t(($) => $.ai.acp.queue.sendFailed);
-    // Until the agent has connected there is no turn to wait for.
-    return session?.status === "connecting" ? t(($) => $.ai.acp.queue.queuedConnecting) : t(($) => $.ai.acp.queue.queued);
+    switch (session?.status) {
+      // A turn is on: the message waits for it to end.
+      case "running":
+      case "cancelling":
+      case "ready":
+        return t(($) => $.ai.acp.queue.queued);
+      case "auth_required":
+        return t(($) => $.ai.acp.queue.queuedSignIn);
+      // Until the agent has connected there is no turn to wait for.
+      default:
+        return t(($) => $.ai.acp.queue.queuedConnecting);
+    }
   };
   const steerable = !!session && session.status === "running" && !!session.capabilities.steering;
   return (

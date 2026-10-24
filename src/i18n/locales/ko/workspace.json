@@ -192,6 +192,7 @@
     "closeRight": "오른쪽 탭 모두 닫기",
     "closeTab": "{{title}} 닫기",
     "color": "색상",
+    "dropRefused_other": "파일 이름 {{count}}개에 제어 문자가 있어 터미널에 입력하지 않습니다.",
     "errors": {
       "input": "shell이 입력을 받지 못했습니다",
       "resize": "터미널 크기를 조절하지 못했습니다",
@@ -229,6 +230,7 @@
       "many_other": "터미널 {{count}}개에서 프로그램이 아직 실행 중입니다.",
       "named": "{{title}}에서 {{process}}이(가) 아직 실행 중입니다.",
       "quit": "종료",
+      "reload": "다시 불러오기",
       "restart": "다시 시작",
       "switchProject": "프로젝트 전환",
       "titleMany": "실행 중인 프로그램을 중지할까요?",

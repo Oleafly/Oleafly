@@ -602,6 +602,7 @@
       "sendNow": "立即发送",
       "sendFailed": "此消息未发送。请重新发送或将其移除。",
       "queuedConnecting": "已排队：代理就绪后发送",
+      "queuedSignIn": "已排队：登录后发送",
       "retry": "重新发送",
       "edit": "编辑"
     },

@@ -50,8 +50,16 @@ pub(crate) const QUIT_SUSPEND_DEADLINE: Duration = Duration::from_secs(15);
 pub(crate) const SPAWN_READY_WAIT: Duration = Duration::from_secs(3);
 /// A heartbeat unchanged this long means the helper stopped answering.
 pub(crate) const HUNG_OBSERVATION: Duration = Duration::from_secs(12);
-/// How long the helper gets to hand its tasks back and exit.
-const STOP_WAIT: Duration = Duration::from_secs(30);
+/// How long the helper gives its running tasks to stop when told to end
+/// (`STOP_SUSPEND` in `oleafly_cli::daemon::serve`).
+const HELPER_STOP_SUSPEND: Duration = Duration::from_secs(30);
+/// How long the helper gets to hand its tasks back and exit before it is
+/// ended: its stop budget, then the grace a stopped agent gets, and a
+/// margin for the handoffs and the transcript flush. Ending it sooner
+/// leaves its tasks running with a dead owner.
+const STOP_WAIT: Duration = Duration::from_secs(
+    HELPER_STOP_SUSPEND.as_secs() + oleafly_acp::limits::CANCEL_GRACE.as_secs() + 20,
+);
 /// How long a helper that was ended takes to let go of its lock.
 const AFTER_TERMINATE: Duration = Duration::from_secs(5);
 /// The helper writes its heartbeat every 5 seconds; older than this is late.
@@ -253,10 +261,12 @@ impl AppHelper {
 /// none runs, or the one that runs is on its way out. An exiting helper
 /// has taken its last look at the work, and a stopping one (a stop request,
 /// background tasks turned off, a sign-out) has already listed the tasks it
-/// hands back, so neither would see them. The new helper waits for the
-/// old one's lock.
+/// hands back, so neither would see them. A held lock with no state file is
+/// a helper that removed its state on the way out (or has not written it
+/// yet): a new one starts too, and at worst waits out the old one's lock.
+/// The new helper waits for the old one's lock.
 fn needs_new_helper(status: &HelperStatus) -> bool {
-    !status.running || matches!(status.phase, Some(Phase::Exiting | Phase::Stopping))
+    !status.running || matches!(status.phase, None | Some(Phase::Exiting | Phase::Stopping))
 }
 
 /// The running helper was started by another version of Oleafly (the app
@@ -445,16 +455,31 @@ impl<R: tauri::Runtime> AppGrants<R> {
             ),
             _ => (project_root.to_path_buf(), Vec::new()),
         };
-        let launch = runtime
-            .task_launch(
-                &task.agent_id,
-                &task.project_id,
-                &task.id,
-                &root,
-                &allowed,
-                &home,
-            )
-            .await?;
+        // A queued task may wait for the helper a long time: its home gets
+        // the sign-in files only when the helper starts it.
+        let launch = if task.status == ResearchTaskStatus::Queued {
+            runtime
+                .task_launch_without_sign_in(
+                    &task.agent_id,
+                    &task.project_id,
+                    &task.id,
+                    &root,
+                    &allowed,
+                    &home,
+                )
+                .await?
+        } else {
+            runtime
+                .task_launch(
+                    &task.agent_id,
+                    &task.project_id,
+                    &task.id,
+                    &root,
+                    &allowed,
+                    &home,
+                )
+                .await?
+        };
         Ok(AcpGrant {
             agent_id: task.agent_id.clone(),
             launch,
@@ -973,7 +998,15 @@ pub(crate) fn on_launch(app: &tauri::AppHandle, host: Arc<dyn ResearchHost>) {
         if summary.helper_hung {
             log("The background helper stopped answering, so Oleafly ended it and took its tasks back.".into());
         }
-        let _ = tasks.launch_ready().await;
+        // The tasks that came back start once recovery has found no apply
+        // left half done (it runs beside this and starts them itself when it
+        // ends later).
+        let starting = tasks.clone();
+        tauri::async_runtime::spawn(async move {
+            if crate::research_tasks::recovered_cleanly().await {
+                let _ = starting.launch_ready().await;
+            }
+        });
         let _ = app.emit(CHANGED_EVENT, ());
         if watch {
             start_watcher(app, tasks, host, data_root);
@@ -1121,6 +1154,27 @@ pub(crate) fn watch_tick(
     Ok(report)
 }
 
+/// Takes back the helper's tasks once its lock is free (blocking): a
+/// helper that died while the app was open (killed, crashed) never handed
+/// them back, so they would stay "running" with a dead owner. Not while the
+/// app quits, when the tasks it just queued for a helper that is still
+/// starting stay with that helper. Returns the ids adopted.
+pub(crate) fn adopt_if_helper_gone(tasks: &ResearchTaskState, lock: &Path) -> Vec<String> {
+    if !tasks.admitting() || !matches!(HelperLock::is_held_elsewhere(lock), Ok(false)) {
+        return Vec::new();
+    }
+    let Ok(store) = tasks.store() else {
+        return Vec::new();
+    };
+    let adopted = store.adopt_orphaned_daemon_tasks().unwrap_or_default();
+    for id in &adopted {
+        if let Ok(task) = store.require(id) {
+            tasks.emit_task(&task);
+        }
+    }
+    adopted
+}
+
 static WATCHING: AtomicBool = AtomicBool::new(false);
 
 /// Watches the helper's tasks while there are any (one watcher at a time):
@@ -1159,19 +1213,27 @@ fn start_watcher(
                 tauri::async_runtime::spawn_blocking(move || {
                     let report = watch_tick(&mut moved, &tasks, host.as_ref());
                     let _ = import_spool_into_ledger(&root);
-                    let running =
-                        HelperLock::is_held_elsewhere(&helper_paths(&root).lock).unwrap_or(false);
-                    (moved, report, running)
+                    let lock = helper_paths(&root).lock;
+                    let running = HelperLock::is_held_elsewhere(&lock).unwrap_or(false);
+                    let adopted = adopt_if_helper_gone(&tasks, &lock);
+                    (moved, report, running, adopted)
                 })
                 .await
             };
-            let Ok((returned, report, running)) = tick else {
+            let Ok((returned, report, running, adopted)) = tick else {
                 break;
             };
             state = returned;
             if helper_running != Some(running) {
                 helper_running = Some(running);
                 let _ = app.emit(CHANGED_EVENT, ());
+            }
+            if !adopted.is_empty() {
+                log(format!(
+                    "The background helper stopped without handing back {} task(s); they run here now.",
+                    adopted.len()
+                ));
+                let _ = tasks.launch_ready().await;
             }
             match report {
                 Ok(report) => {

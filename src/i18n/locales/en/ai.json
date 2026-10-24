@@ -613,6 +613,7 @@
       "sendNow": "Send now",
       "sendFailed": "This message was not sent. Send it again or remove it.",
       "queuedConnecting": "Queued: sends when the agent is ready",
+      "queuedSignIn": "Queued: sends after you sign in",
       "retry": "Send again",
       "edit": "Edit"
     },

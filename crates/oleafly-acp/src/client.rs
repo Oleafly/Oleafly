@@ -217,7 +217,10 @@ enum Routed {
         token: u64,
         result: Result<Value, agent_client_protocol::Error>,
     },
-    Closed,
+    /// The connection ended with this message. It is queued behind what the
+    /// agent sent before, so replies and updates already received are
+    /// handled first; pending requests fail only then.
+    Closed(String),
 }
 
 type Pending = Mutex<HashMap<u64, oneshot::Sender<Result<Value, RpcError>>>>;
@@ -233,6 +236,9 @@ struct Shared {
     /// after `closed`. True from the start for a client over plain streams.
     exited: watch::Sender<bool>,
     closed_routed: AtomicBool,
+    /// Set once the consumer failed the pending requests after the close: a
+    /// request registered later fails at once.
+    drained: AtomicBool,
     finished: watch::Sender<bool>,
     stderr: StderrTail,
     activity: watch::Sender<Instant>,
@@ -381,11 +387,32 @@ impl Shared {
         }
     }
 
-    /// Ends the connection: fails every pending request with `message` and
-    /// tells the host once.
-    fn close_with(&self, message: &str) {
+    /// Ends the connection. The close is queued behind everything the agent
+    /// sent before it: the consumer hands those to the host first, then
+    /// fails every pending request (and v2 turn) with `message` and tells
+    /// the host once.
+    fn close_with(self: &Arc<Self>, message: &str) {
         self.closed.send_replace(true);
         let _ = self.stop.send(true);
+        if !self.closed_routed.swap(true, Ordering::AcqRel) {
+            let route = self.route.clone();
+            let shared = self.clone();
+            let message = message.to_owned();
+            tokio::spawn(async move {
+                if let Err(unsent) = route.send(Routed::Closed(message)).await {
+                    // No consumer is left to drain them.
+                    if let Routed::Closed(message) = unsent.0 {
+                        shared.fail_pending(&message);
+                    }
+                }
+            });
+        }
+    }
+
+    /// Fails every pending request with `message` and ends every v2 turn
+    /// still waiting (its prompt sees the disconnect).
+    fn fail_pending(&self, message: &str) {
+        self.drained.store(true, Ordering::Release);
         let drained: Vec<_> = self
             .pending
             .lock()
@@ -394,11 +421,11 @@ impl Shared {
         for (_, sender) in drained {
             let _ = sender.send(Err(RpcError::local(message)));
         }
-        if !self.closed_routed.swap(true, Ordering::AcqRel) {
-            let route = self.route.clone();
-            tokio::spawn(async move {
-                let _ = route.send(Routed::Closed).await;
-            });
+        if let Ok(mut waiters) = self.turn_waiters.lock() {
+            waiters.clear();
+        }
+        if let Ok(mut turns) = self.turn_replies.lock() {
+            turns.clear();
         }
     }
 }
@@ -522,6 +549,7 @@ impl AcpClient {
             closed: watch::channel(false).0,
             exited: watch::channel(pid.is_none()).0,
             closed_routed: AtomicBool::new(false),
+            drained: AtomicBool::new(false),
             finished: watch::channel(false).0,
             stderr: StderrTail::default(),
             activity: watch::channel(Instant::now()).0,
@@ -590,7 +618,8 @@ impl AcpClient {
                     Routed::Reply { token, result } => {
                         consumer.route_reply(host.as_ref(), token, result);
                     }
-                    Routed::Closed => {
+                    Routed::Closed(message) => {
+                        consumer.fail_pending(&message);
                         host.on_disconnected();
                         break;
                     }
@@ -655,14 +684,19 @@ impl AcpClient {
             }
             pending.insert(token, sender);
         }
-        // Known before the request goes out, so the reply can't beat it.
-        if let (Some(session), Ok(mut turns)) = (turn_of, self.shared.turn_replies.lock()) {
-            turns.insert(token, session.to_owned());
-        }
         let guard = PendingGuard {
             shared: self.shared.clone(),
             token,
         };
+        // The close was handled while this request was being registered:
+        // nothing will answer or fail it.
+        if self.shared.drained.load(Ordering::Acquire) {
+            return Err(RpcError::local("The agent is disconnected."));
+        }
+        // Known before the request goes out, so the reply can't beat it.
+        if let (Some(session), Ok(mut turns)) = (turn_of, self.shared.turn_replies.lock()) {
+            turns.insert(token, session.to_owned());
+        }
         let message = UntypedMessage::new(method, params)
             .map_err(|_| RpcError::local("This ACP request could not be encoded."))?;
         let route = self.shared.route.clone();
@@ -978,6 +1012,37 @@ impl AcpClient {
         blocks: Vec<Value>,
         timing: TurnTiming,
     ) -> Result<Value, RpcError> {
+        self.prompt_with(session, blocks, timing, true).await
+    }
+
+    /// [`Self::prompt`] for a turn whose time limits end only the turn: when
+    /// one passes the agent is sent `session/cancel` and keeps running.
+    pub async fn prompt_or_cancel(
+        &self,
+        session: &str,
+        blocks: Vec<Value>,
+        timing: TurnTiming,
+    ) -> Result<Value, RpcError> {
+        self.prompt_with(session, blocks, timing, false).await
+    }
+
+    /// Ends a turn whose time ran out: stops the agent, or with `stop`
+    /// false only cancels the turn.
+    fn turn_timed_out(&self, session: &str, stop: bool) {
+        if stop {
+            let _ = self.shared.stop.send(true);
+        } else {
+            let _ = self.cancel(session);
+        }
+    }
+
+    async fn prompt_with(
+        &self,
+        session: &str,
+        blocks: Vec<Value>,
+        timing: TurnTiming,
+        stop_on_timeout: bool,
+    ) -> Result<Value, RpcError> {
         let waiter = if self.protocol() == ProtocolVersion::V2 {
             let (sender, receiver) = oneshot::channel();
             self.shared
@@ -1028,16 +1093,22 @@ impl AcpClient {
             if let Some(limit) = timing.absolute {
                 let end = started + limit;
                 if now >= end {
-                    let _ = self.shared.stop.send(true);
-                    return Err(RpcError::local(
-                        "The agent did not reply in time and was stopped.",
-                    ));
+                    self.turn_timed_out(session, stop_on_timeout);
+                    return Err(RpcError::local(if stop_on_timeout {
+                        "The agent did not reply in time and was stopped."
+                    } else {
+                        "The agent did not reply in time."
+                    }));
                 }
                 wake = Some(wake.map_or(end, |wake| wake.min(end)));
             }
             if let (Some(limit), false) = (timing.inactivity, held) {
                 let last = (*activity.borrow()).max(quiet_since);
                 let end = last + limit;
+                if now >= end && !stop_on_timeout {
+                    self.turn_timed_out(session, false);
+                    return Err(RpcError::local("The agent did not reply in time."));
+                }
                 if now >= end {
                     let _ = self.shared.stop.send(true);
                     let minutes = (limit.as_secs() / 60).max(1);

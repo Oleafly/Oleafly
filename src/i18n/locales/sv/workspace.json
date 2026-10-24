@@ -196,6 +196,8 @@
     "closeRight": "Stäng alla till höger",
     "closeTab": "Stäng {{title}}",
     "color": "Färg",
+    "dropRefused_one": "Filens namn innehåller ett styrtecken, så terminalen skriver inte in det.",
+    "dropRefused_other": "{{count}} filnamn innehåller styrtecken, så terminalen skriver inte in dem.",
     "errors": {
       "input": "Det gick inte att skicka indata till shell-sessionen",
       "resize": "Terminalen kunde inte ändra storlek",
@@ -234,6 +236,7 @@
       "many_other": "Program körs fortfarande i {{count}} terminaler.",
       "named": "{{process}} körs fortfarande i {{title}}.",
       "quit": "Avsluta",
+      "reload": "Läs in igen",
       "restart": "Starta om",
       "switchProject": "Byt projekt",
       "titleMany": "Vill du stoppa programmen som körs?",

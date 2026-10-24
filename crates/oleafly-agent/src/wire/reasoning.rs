@@ -45,6 +45,27 @@ fn named_family(model_id: &str) -> bool {
     id.contains("claude-fable-") || id.contains("claude-mythos-")
 }
 
+/// The default output ceiling for Claude models that check it against the
+/// window (see `anthropic_checks_output_room`).
+pub(crate) const OUTPUT_ROOM_MAX_TOKENS: u32 = 16_000;
+
+/// Claude models before 4.5 refuse a request whose input and `max_tokens`
+/// together pass the context window; later ones stop at the window instead.
+pub(crate) fn anthropic_checks_output_room(model_id: &str) -> bool {
+    if named_family(model_id) {
+        return false;
+    }
+    match claude_version(model_id) {
+        Some((_, major, minor)) => (major, minor) < (4, 5),
+        None => {
+            let id = model_id.to_ascii_lowercase();
+            ["claude-3", "claude-2", "claude-instant"]
+                .iter()
+                .any(|old| id.contains(old))
+        }
+    }
+}
+
 /// Claude models that think unless told not to: 5.x, Fable and Mythos.
 pub(crate) fn anthropic_thinks_by_default(model_id: &str) -> bool {
     named_family(model_id) || matches!(claude_version(model_id), Some((_, major, _)) if major >= 5)

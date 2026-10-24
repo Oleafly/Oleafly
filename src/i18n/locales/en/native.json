@@ -99,11 +99,15 @@
       "title": "Desktop apps",
       "action": "{{agent}} wants to {{action}}.",
       "steps": "{{agent}} wants to run these steps in a desktop app:",
-      "moreSteps": "Steps not shown: {{count}}",
-      "moreItems": "{{count}} more items not shown",
-      "cut": "(+{{count}} characters not shown)",
+      "moreSteps": "Steps not shown and not run: {{count}}",
+      "moreItems": "Items not shown: {{count}}",
+      "cut": "(characters not shown: {{count}})",
       "signedIn": "This acts in your own signed-in browser.",
       "signedInOn": "This acts in your own signed-in browser, on {{origin}}.",
+      "task": "Task: {{title}}",
+      "app": "App: {{name}}",
+      "window": "Window: {{title}}",
+      "element": "Element: {{element}}",
       "text": "Text: \"{{text}}\"",
       "address": "Address: {{url}}",
       "allowOnce": "Allow once",
@@ -111,6 +115,7 @@
       "allowSession": "Allow for this session",
       "allowTask": "Allow for this task",
       "deny": "Don't allow",
+      "pickedFile": "the file you picked",
       "actions": {
         "launchApp": "open an app",
         "click": "click in an app",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Allow desktop control?",
-      "message": "Agents will be able to use these, and they'll still ask before each action:",
+      "message": "Agents will be able to use these. They ask before each action, and saving this clears any \"Allow for this chat\" choices:",
       "confirm": "Allow",
       "enabled": "Desktop apps",
-      "app": "App: {{name}} ({{identity}})",
+      "app": "App: {{identity}} ({{name}})",
       "more": "And {{count}} more",
       "site": "Website: {{origin}}",
       "signedIn": "Your signed-in browser on {{origin}}",
-      "scripted": "Cua scripts"
+      "scripted": "Cua scripts",
+      "spacesTitle": "Give Cua Spaces more access?",
+      "spacesMessage": "Agents that use Cua Spaces will be able to:",
+      "spacesChanges": "Create and delete Spaces, and run commands in them",
+      "spacesSignIns": "Use your Claude Code or Codex sign-in inside a Space"
     }
   },
   "errors": {

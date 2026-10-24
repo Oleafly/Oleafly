@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2, Circle, CircleDot } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { ErrorState, LoadingState } from "@/components/ui/empty";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import { formatNumber } from "@/lib/intl";
@@ -81,6 +83,8 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<{ runId: string; text: string } | null>(null);
   const [stopping, setStopping] = useState<string | null>(null);
+  // Stopping a run can end hours of work on a cluster, so it asks first.
+  const [confirmRun, setConfirmRun] = useState<RunRecord | null>(null);
   const running = task.status === "running";
   const loadRequest = useRef(0);
   const loading = useRef(false);
@@ -142,6 +146,7 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
   };
 
   const stopRun = async (run: RunRecord) => {
+    setConfirmRun(null);
     setStopping(run.runId);
     try {
       await cancelResearchTaskRun(task.id, run.runId);
@@ -256,7 +261,7 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
                   size="xs"
                   variant="ghost"
                   disabled={stopping === run.runId}
-                  onClick={() => void stopRun(run)}
+                  onClick={() => setConfirmRun(run)}
                 >
                   {t(($) => $.researchTools.tasks.progress.stopRun)}
                 </Button>
@@ -333,40 +338,50 @@ export function TaskProgressTab({ task }: Readonly<{ task: ResearchTask }>) {
         {progress.ledger.length === 0 ? (
           <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.tasks.progress.noLedger)}</p>
         ) : (
-          <div className="overflow-x-auto rounded-md border">
-            <table className="w-full min-w-[40rem] text-left text-xs">
-              <thead className="bg-muted/40 text-muted-foreground">
-                <tr>
-                  <th className="px-2 py-1.5 font-medium">{t(($) => $.researchTools.tasks.progress.columns.run)}</th>
-                  <th className="px-2 py-1.5 font-medium">{t(($) => $.researchTools.tasks.progress.columns.time)}</th>
-                  <th className="px-2 py-1.5 font-medium">
-                    {t(($) => $.researchTools.tasks.progress.columns.hypothesis)}
-                  </th>
-                  <th className="px-2 py-1.5 font-medium">{t(($) => $.researchTools.tasks.progress.columns.change)}</th>
-                  <th className="px-2 py-1.5 font-medium">
-                    {t(($) => $.researchTools.tasks.progress.columns.metrics)}
-                  </th>
-                  <th className="px-2 py-1.5 font-medium">
-                    {t(($) => $.researchTools.tasks.progress.columns.verdict)}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {progress.ledger.map((row, index) => (
-                  <tr key={`${row.id}-${index}`} className="align-top">
-                    <td className="px-2 py-1.5 font-mono">{row.id}</td>
-                    <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-muted-foreground">{row.time}</td>
-                    <td className="px-2 py-1.5">{row.hypothesis}</td>
-                    <td className="px-2 py-1.5">{row.change}</td>
-                    <td className="px-2 py-1.5 font-mono">{metricsText(row.metrics)}</td>
-                    <td className="px-2 py-1.5">{verdictLabel(row.verdict)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table containerClassName="rounded-md border" className="min-w-[40rem]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t(($) => $.researchTools.tasks.progress.columns.run)}</TableHead>
+                <TableHead>{t(($) => $.researchTools.tasks.progress.columns.time)}</TableHead>
+                <TableHead>{t(($) => $.researchTools.tasks.progress.columns.hypothesis)}</TableHead>
+                <TableHead>{t(($) => $.researchTools.tasks.progress.columns.change)}</TableHead>
+                <TableHead>{t(($) => $.researchTools.tasks.progress.columns.metrics)}</TableHead>
+                <TableHead>{t(($) => $.researchTools.tasks.progress.columns.verdict)}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {progress.ledger.map((row, index) => (
+                <TableRow key={`${row.id}-${index}`} className="align-top">
+                  <TableCell className="align-top font-mono">{row.id}</TableCell>
+                  <TableCell className="whitespace-nowrap align-top tabular-nums text-muted-foreground">
+                    {row.time}
+                  </TableCell>
+                  <TableCell className="align-top">{row.hypothesis}</TableCell>
+                  <TableCell className="align-top">{row.change}</TableCell>
+                  <TableCell className="align-top font-mono">{metricsText(row.metrics)}</TableCell>
+                  <TableCell className="align-top">{verdictLabel(row.verdict)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
+
+      <ConfirmationDialog
+        open={confirmRun !== null}
+        destructive
+        title={t(($) => $.researchTools.tasks.progress.stopRunTitle)}
+        description={t(($) => $.researchTools.tasks.progress.stopRunDescription, {
+          name: confirmRun?.name ?? "",
+          run: confirmRun?.runId ?? "",
+        })}
+        confirmLabel={t(($) => $.researchTools.tasks.progress.stopRun)}
+        cancelLabel={t(($) => $.researchTools.tasks.progress.keepRun)}
+        onConfirm={() => {
+          if (confirmRun) void stopRun(confirmRun);
+        }}
+        onCancel={() => setConfirmRun(null)}
+      />
     </div>
   );
 }

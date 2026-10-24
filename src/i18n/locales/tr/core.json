@@ -182,7 +182,8 @@
   },
   "imageToLatex": {
     "failed": "Görselden LaTeX'e dönüştürme başarısız oldu: {{detail}}",
-    "transcribing": "Görsel metne dökülüyor…"
+    "transcribing": "Görsel metne dökülüyor…",
+    "notInserted": "Etkin dosya değiştiği için LaTeX eklenmedi. Kopyalayın, sonra istediğiniz yere yapıştırın."
   },
   "import": {
     "chooseOfferedProjectType": "Bu dosya için sunulan proje türlerinden birini seçin.",
@@ -603,6 +604,8 @@
     "saveReason": "proje klasörü kullanılamıyor"
   },
   "imageToTypst": {
-    "failed": "Görselden Typst'e dönüştürme başarısız oldu: {{detail}}"
+    "failed": "Görselden Typst'e dönüştürme başarısız oldu: {{detail}}",
+    "copied": "Typst kaynağı kopyalandı",
+    "notInserted": "Etkin dosya değiştiği için Typst eklenmedi. Kopyalayın, sonra istediğiniz yere yapıştırın."
   }
 }

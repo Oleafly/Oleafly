@@ -281,6 +281,24 @@ fn bibliographies_skip_generated_dirs_symlinks_and_placeholders() {
 }
 
 #[test]
+fn bibliographies_in_build_output_and_dot_folders_are_found() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    for (folder, file) in [
+        ("out", "refs.bib"),
+        (".refs", "library.bib"),
+        ("build", "b.bib"),
+    ] {
+        std::fs::create_dir_all(root.join(folder)).unwrap();
+        std::fs::write(root.join(folder).join(file), "@misc{a}").unwrap();
+    }
+    assert_eq!(
+        discover_bibliographies(root).unwrap(),
+        [".refs/library.bib", "build/b.bib", "out/refs.bib"]
+    );
+}
+
+#[test]
 fn crash_notes_name_the_signal_or_exception() {
     #[cfg(unix)]
     {

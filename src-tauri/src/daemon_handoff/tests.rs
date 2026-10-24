@@ -760,6 +760,45 @@ async fn a_hung_helper_is_stopped_and_its_tasks_adopted() {
     );
 }
 
+#[tokio::test]
+async fn a_helper_that_dies_while_the_app_is_open_gives_its_tasks_back() {
+    let fixture = Fixture::new();
+    let running = fixture.helper_running("Running");
+    // The helper was killed after the app opened: its row names a process
+    // that is gone.
+    fixture
+        .helper_store()
+        .set_owner(&running.id, Some(gone_owner()))
+        .unwrap();
+    let lock = fixture._temp.path().join("daemon").join("daemon.lock");
+    std::fs::create_dir_all(lock.parent().unwrap()).unwrap();
+    let held = HelperLock::acquire(&lock, Duration::from_secs(1))
+        .unwrap()
+        .expect("the test holds the helper's lock");
+    // While its lock is held, the helper may still hand its tasks back.
+    assert!(adopt_if_helper_gone(&fixture.state, &lock).is_empty());
+    drop(held);
+
+    assert_eq!(
+        adopt_if_helper_gone(&fixture.state, &lock),
+        std::slice::from_ref(&running.id)
+    );
+    let task = fixture.app_store().require(&running.id).unwrap();
+    assert_eq!(
+        (task.owner, task.status),
+        (OwnerKind::App, ResearchTaskStatus::Queued)
+    );
+
+    // While the app quits, tasks it just queued for a starting helper stay.
+    let waiting = fixture.helper_queued("For the new helper");
+    fixture.state.stop_admitting();
+    assert!(adopt_if_helper_gone(&fixture.state, &lock).is_empty());
+    assert_eq!(
+        fixture.app_store().require(&waiting.id).unwrap().owner,
+        OwnerKind::Daemon
+    );
+}
+
 // Watcher.
 
 fn status_event(message: &str) -> TaskRuntimeEvent {
@@ -1144,6 +1183,15 @@ fn a_helper_that_is_stopping_or_exiting_does_not_take_new_tasks() {
     // One on its way out has already looked at its work.
     assert!(needs_new_helper(&status(true, Some(Phase::Exiting))));
     assert!(needs_new_helper(&status(true, Some(Phase::Stopping))));
+    // Its lock is still held but its state file is gone: it is exiting.
+    assert!(needs_new_helper(&status(true, None)));
+}
+
+#[test]
+fn the_app_waits_out_the_helpers_whole_stop_before_ending_it() {
+    // The helper gives running tasks its stop budget, then a stopped agent
+    // its cancel grace, before it hands them back.
+    assert!(STOP_WAIT > HELPER_STOP_SUSPEND + oleafly_acp::limits::CANCEL_GRACE);
 }
 
 // Usage.
@@ -1340,7 +1388,9 @@ fn the_windows_installer_stops_the_helper_and_removes_its_sign_in_entry() {
     // The tool finds the data folder itself (a relocated one included) and
     // checks the helper's lock; the installer never looks at a state file,
     // which a crash leaves behind.
-    assert!(hooks.contains(r#"daemon stop --wait 30 --force"#));
+    // Long enough for the helper's whole stop budget (`STOP_WAIT`).
+    assert!(hooks.contains(r#"daemon stop --wait 60 --force"#));
+    assert!(STOP_WAIT <= Duration::from_secs(60));
     assert!(hooks.contains(r#"${FileExists} "$INSTDIR\oleafly-cli.exe""#));
     assert!(!hooks.contains(r"$PROFILE\.oleafly"));
     assert!(!hooks.contains("state.json"));
@@ -1350,6 +1400,17 @@ fn the_windows_installer_stops_the_helper_and_removes_its_sign_in_entry() {
     );
     let uninstall = &hooks[hooks.find("!macro NSIS_HOOK_PREUNINSTALL").unwrap()..];
     assert!(uninstall.contains("!insertmacro OLEAFLY_STOP_BACKGROUND_HELPER"));
+    // The MSI does the same: it stops the helper before any file is touched
+    // (an upgrade's removal of the old version included), and on a full
+    // uninstall removes the terminal command and this installation's
+    // sign-in entry.
+    let msi = include_str!("../../windows/explorer-menu.wxs");
+    assert!(msi.contains(r#"oleafly-cli.exe&quot; daemon stop --wait 60 --force"#));
+    assert!(msi.contains(r#"<Custom Action="StopOleaflyHelper" Before="RemoveExistingProducts">"#));
+    assert!(msi.contains(r#"oleafly-cli.exe&quot; internal remove-command-line-tool"#));
+    assert!(msi.contains(r#"<Custom Action="RemoveOleaflyCommandLineTool" Before="RemoveFiles">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>"#));
+    assert!(msi.contains(&format!(r#"/v {} /f"#, login_item::RUN_VALUE_NAME)));
+    assert!(msi.contains("OLEAFLY_BACKGROUND_RUN ~&lt;&lt; OLEAFLY_INSTALL_PREFIX"));
 }
 
 #[test]

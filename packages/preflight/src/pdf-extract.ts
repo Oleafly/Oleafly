@@ -289,6 +289,7 @@ interface PageScan {
   pageFacts: PdfFacts["pages"];
   linkCount: number;
   formFieldCount: number;
+  annotationAttachmentCount: number;
   fontFacts: Map<string, boolean | null>;
   inspectedFontIds: Set<string>;
 }
@@ -304,6 +305,7 @@ function createPageScan(): PageScan {
     pageFacts: [],
     linkCount: 0,
     formFieldCount: 0,
+    annotationAttachmentCount: 0,
     fontFacts: new Map(),
     inspectedFontIds: new Set(),
   };
@@ -333,6 +335,9 @@ function collectAnnotationFacts(annotations: PdfAnnotations, scan: PageScan): vo
       scan.links.push({ hasContents: typeof contents === "string" && contents.trim().length > 0 });
     }
     if (annotation.subtype === "Widget") scan.formFieldCount++;
+    // `\attachfile` embeds its file in an annotation, outside the
+    // catalog's EmbeddedFiles tree that getAttachments() reads.
+    if (annotation.subtype === "FileAttachment") scan.annotationAttachmentCount++;
   }
 }
 
@@ -349,8 +354,10 @@ function readCommonFont(
       missingFile?: unknown;
     };
     if (typeof font.name === "string" && font.name.trim()) name = font.name.trim();
-    if (font.data instanceof Uint8Array || font.data instanceof ArrayBuffer) embedded = true;
-    else if (font.missingFile === true) embedded = false;
+    // A substituted standard font can carry data too, so a missing file
+    // decides first. The data is only still there with fontExtraProperties.
+    if (font.missingFile === true) embedded = false;
+    else if (font.data instanceof Uint8Array || font.data instanceof ArrayBuffer) embedded = true;
   } catch {
   }
   return { name, embedded };
@@ -365,19 +372,51 @@ function fontResolved(page: PdfPage, fontId: string): boolean {
   }
 }
 
+/** How long a font that is still loading is waited for. */
+const FONT_WAIT_MS = 2_000;
+
+/** Resolves once pdf.js has resolved `fontId` (an embedded font loads
+ * asynchronously after the operator list that sent it), or after
+ * `FONT_WAIT_MS`. */
+function waitForFont(page: PdfPage, fontId: string): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, FONT_WAIT_MS);
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    try {
+      page.commonObjs.get(fontId, done);
+    } catch {
+      done();
+    }
+  });
+}
+
+/** The fonts of a page's text that no page has been read for yet and
+ * pdf.js hasn't resolved. */
+function unresolvedFontIds(page: PdfPage, items: PdfTextItems, scan: PageScan): string[] {
+  const ids = new Set<string>();
+  for (const item of items) {
+    if (!("str" in item) || scan.inspectedFontIds.has(item.fontName)) continue;
+    if (!fontResolved(page, item.fontName)) ids.add(item.fontName);
+  }
+  return [...ids];
+}
+
 /** pdf.js hands a font to `commonObjs` only while it builds a page's
- * operator list, so text alone leaves fonts as ids such as `g_d0_f1`. A page
- * that brings a font not seen yet is read once more for it. */
+ * operator list, so text alone leaves fonts as ids such as `g_d0_f1`. Only a
+ * page that brings a font not resolved yet is read once more for it (that
+ * decodes the page's images too), and its fonts are then waited for. */
 async function resolvePageFonts(page: PdfPage, items: PdfTextItems, scan: PageScan): Promise<void> {
-  const unresolved = items.some(
-    (item) => "str" in item && !scan.inspectedFontIds.has(item.fontName) && !fontResolved(page, item.fontName),
-  );
-  if (!unresolved) return;
+  if (unresolvedFontIds(page, items, scan).length === 0) return;
   try {
     await page.getOperatorList();
   } catch {
     // The fonts keep their ids and an unknown embedding, as before.
+    return;
   }
+  await Promise.all(unresolvedFontIds(page, items, scan).map((id) => waitForFont(page, id)));
 }
 
 function collectFontFacts(page: PdfPage, items: PdfTextItems, scan: PageScan): void {
@@ -538,7 +577,9 @@ async function destroyLoadingTask(task: pdfjsLib.PDFDocumentLoadingTask): Promis
 export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract> {
   const header = new TextDecoder("ascii").decode(bytes.slice(0, 16));
   const version = /%PDF-(\d+\.\d+)/.exec(header)?.[1] ?? null;
-  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice() });
+  // fontExtraProperties keeps each font's data after it loads; without it
+  // pdf.js clears the data and no font reads as embedded.
+  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(), fontExtraProperties: true });
   try {
     const doc = await loadingTask.promise;
 
@@ -603,7 +644,7 @@ export async function extractForPreflight(bytes: Uint8Array): Promise<PdfExtract
       pages: scan.pageFacts,
       outlineCount,
       linkCount: scan.linkCount,
-      attachmentCount,
+      attachmentCount: attachmentCount + scan.annotationAttachmentCount,
       formFieldCount: scan.formFieldCount,
       restricted,
       author: metadata.author,

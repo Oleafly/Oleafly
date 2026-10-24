@@ -344,3 +344,227 @@ async fn quitting_closes_all_sessions_within_eight_seconds() {
     runtime.shutdown_all().await;
     assert!(started.elapsed() < Duration::from_secs(11));
 }
+
+#[tokio::test]
+async fn a_reconnect_that_routes_nothing_clears_the_routed_provider() {
+    let (_temp, runtime, session) = runtime(Vec::new()).await;
+    let id = session.session.id.clone();
+    runtime.close(&id).await.unwrap();
+    let mut record = runtime.record(&id).unwrap();
+    record.routed_provider = Some("anthropic".into());
+    runtime.store.save(&record).unwrap();
+    let snapshot = runtime
+        .reconnect(&id, Some("fixture-window".into()))
+        .await
+        .unwrap();
+    assert_eq!(snapshot.session.routed_provider, None);
+    runtime.close(&id).await.unwrap();
+    assert_eq!(runtime.record(&id).unwrap().routed_provider, None);
+}
+
+#[tokio::test]
+async fn a_conversation_made_on_another_machine_is_not_resumed_here() {
+    let (_temp, runtime, session) = runtime(Vec::new()).await;
+    let id = session.session.id.clone();
+    runtime.close(&id).await.unwrap();
+    let mut record = runtime.record(&id).unwrap();
+    record.remote = Some(RemoteTarget {
+        host: "lab".into(),
+        folder: "/home/me/thesis".into(),
+    });
+    runtime.store.save(&record).unwrap();
+    let error = runtime
+        .reconnect(&id, Some("fixture-window".into()))
+        .await
+        .unwrap_err();
+    assert!(error.contains("another machine"), "{error}");
+}
+
+/// A task's workspace as the scheduler makes it: `<task>/<generation>`, with
+/// the agent's home from the background helper next to it.
+fn task_workspace(temp: &tempfile::TempDir) -> (std::path::PathBuf, std::path::PathBuf) {
+    let task = temp.path().join("workspaces").join("task-1");
+    let workspace = task.join("2");
+    std::fs::create_dir_all(&workspace).unwrap();
+    let home = task.join("acp-home-1");
+    std::fs::create_dir_all(&home).unwrap();
+    (workspace, home)
+}
+
+fn task_start(workspace: std::path::PathBuf, agent_id: &str) -> StartSession {
+    StartSession {
+        project_id: "test-project".into(),
+        project_path: workspace,
+        agent_id: agent_id.into(),
+        task_id: Some("task-1".into()),
+        owner: Some("research-task:task-1".into()),
+        allowed_paths: Some(Vec::new()),
+        ..StartSession::default()
+    }
+}
+
+#[tokio::test]
+async fn adopting_a_handoff_checks_that_the_agent_can_run_tasks() {
+    let temp = fixture_temp();
+    let (workspace, home) = task_workspace(&temp);
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    let error = runtime
+        .adopt_task_session(
+            &oleafly_research::handoff::AcpHandoff {
+                agent_session_id: "agent-session".into(),
+                home,
+            },
+            task_start(workspace, "hermes"),
+            Vec::new(),
+            None,
+        )
+        .await
+        .unwrap_err();
+    assert!(error.contains("gateway"), "{error}");
+}
+
+#[tokio::test]
+async fn a_handed_back_home_outside_the_tasks_folder_is_refused() {
+    let temp = fixture_temp();
+    let (workspace, _home) = task_workspace(&temp);
+    let elsewhere = temp.path().join("acp-home-9");
+    std::fs::create_dir_all(&elsewhere).unwrap();
+    std::fs::write(elsewhere.join("keep.txt"), "the user's files").unwrap();
+    let misnamed = temp
+        .path()
+        .join("workspaces")
+        .join("task-1")
+        .join("Documents");
+    std::fs::create_dir_all(&misnamed).unwrap();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    for home in [elsewhere.clone(), misnamed] {
+        let error = runtime
+            .adopt_task_session(
+                &oleafly_research::handoff::AcpHandoff {
+                    agent_session_id: "agent-session".into(),
+                    home,
+                },
+                task_start(workspace.clone(), "fixture-agent"),
+                Vec::new(),
+                None,
+            )
+            .await
+            .unwrap_err();
+        assert!(error.contains("not in this task's folder"), "{error}");
+    }
+    assert!(elsewhere.join("keep.txt").is_file());
+}
+
+#[test]
+fn this_apps_own_agents_are_never_reaped_as_orphans() {
+    let me = oleafly_sandbox::process::identity::current();
+    let owner = oleafly_acp::orphans::OwnerTag {
+        kind: "app".into(),
+        identity: me,
+    };
+    assert!(crate::acp::owner_alive(&owner, me));
+}
+
+#[tokio::test]
+async fn listing_paging_and_importing_start_the_agent_once() {
+    let library = crate::collab::testing::TempLibrary::new();
+    library.project("import-project", &[("main.tex", "x")]);
+    let temp = fixture_temp();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(
+            &serde_json::to_string(&fixture_definition(
+                vec![
+                    "--caps-v126".into(),
+                    "--fixture-any-cwd".into(),
+                    "--record-launch-count".into(),
+                ],
+                temp.path(),
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+    let first = runtime
+        .agent_sessions("import-project", "fixture-agent", None)
+        .await
+        .unwrap();
+    let second = runtime
+        .agent_sessions("import-project", "fixture-agent", first.next_cursor)
+        .await
+        .unwrap();
+    assert_eq!(second.sessions[0].native_session_id, "agent-two");
+    runtime
+        .import_sessions("import-project", "fixture-agent", vec!["agent-one".into()])
+        .await
+        .unwrap();
+    let launches = std::fs::read_to_string(temp.path().join("launches.log")).unwrap();
+    assert_eq!(launches.lines().count(), 1);
+    runtime.shutdown_all().await;
+    drop(library);
+}
+
+#[tokio::test]
+async fn task_homes_left_by_a_crash_are_removed_at_startup() {
+    let temp = fixture_temp();
+    let left = temp.path().join("acp/task-temp/abc/.claude");
+    std::fs::create_dir_all(&left).unwrap();
+    std::fs::write(left.join(".credentials.json"), "{\"refresh\":\"x\"}").unwrap();
+    let _runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    // Moved aside before any session can start, then deleted.
+    assert!(!temp.path().join("acp/task-temp").exists());
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let stale = std::fs::read_dir(temp.path().join("acp"))
+                .unwrap()
+                .flatten()
+                .any(|entry| entry.file_name().to_string_lossy().starts_with("task-temp"));
+            if !stale {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the old task homes are deleted");
+}
+
+#[tokio::test]
+async fn changing_one_remembered_choice_keeps_the_others() {
+    let temp = fixture_temp();
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(&serde_json::to_string(&fixture_definition(Vec::new(), temp.path())).unwrap())
+        .unwrap();
+    runtime
+        .set_agent_preference(
+            "fixture-agent",
+            "effort",
+            json!({"value": "high", "name": "High"}),
+        )
+        .await
+        .unwrap();
+    // Another window changes the mode with its own, older copy in hand.
+    let prefs = runtime
+        .set_agent_preference(
+            "fixture-agent",
+            "mode",
+            json!({"value": "plan", "name": "Plan"}),
+        )
+        .await
+        .unwrap();
+    assert_eq!(prefs.effort.unwrap().value, "high");
+    assert_eq!(prefs.mode.unwrap().value, "plan");
+    let cleared = runtime
+        .set_agent_preference("fixture-agent", "effort", json!(null))
+        .await
+        .unwrap();
+    assert!(cleared.effort.is_none() && cleared.mode.is_some());
+    assert!(runtime
+        .set_agent_preference("fixture-agent", "colour", json!("x"))
+        .await
+        .is_err());
+    assert!(runtime
+        .set_agent_preference("missing-agent", "mode", json!(null))
+        .await
+        .is_err());
+}

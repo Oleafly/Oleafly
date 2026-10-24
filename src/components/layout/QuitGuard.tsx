@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
 import { useTauriEvent, useTauriSubscription } from "@/hooks/use-tauri-event";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { cancelQuitFlush, confirmQuitFlush } from "@/lib/tauri";
+import { cancelQuitFlush, confirmQuitFlush, reloadViews } from "@/lib/tauri";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -23,18 +23,38 @@ function stayForRunningTerminals() {
   return cancelQuitFlush().catch((cancelError) => logError("stay for running terminals", cancelError));
 }
 
+/** The app menu's Reload Views, which the main window answers (menu.rs). */
+const RELOAD_VIEWS_REQUESTED = "menu://reload-views";
+
+/** What the guard is saving files for. */
+type LeaveAction = "quit" | "restart" | "reload";
+
+function actionFor(restart: boolean): LeaveAction {
+  return restart ? "restart" : "quit";
+}
+
 /**
  * Whether the programs running in the project's terminals may stop. Asks
  * (once) when one runs; loaded on demand so the quit path stays light.
  */
-async function terminalsMayStop(restart: boolean): Promise<boolean> {
+async function terminalsMayStop(action: LeaveAction): Promise<boolean> {
   try {
     const { confirmStopTerminals } = await import("@/lib/terminal-lifecycle");
-    return await confirmStopTerminals({ reason: restart ? "restart" : "quit" });
+    return await confirmStopTerminals({ reason: action });
   } catch (error) {
     void logError("ask about running terminals", error);
     return true;
   }
+}
+
+/** Quits, restarts or reloads once running terminal programs may stop. */
+async function leaveOnceTerminalsMayStop(action: LeaveAction): Promise<void> {
+  if (!(await terminalsMayStop(action))) {
+    if (action !== "reload") await stayForRunningTerminals();
+    return;
+  }
+  if (action === "reload") await reloadViews();
+  else await confirmQuitFlush(action === "restart");
 }
 
 /**
@@ -47,7 +67,7 @@ async function terminalsMayStop(restart: boolean): Promise<boolean> {
  */
 export function QuitGuard() {
   const { t } = useTranslation(["shell"]);
-  const [failure, setFailure] = useState<{ message: string; restart: boolean } | null>(null);
+  const [failure, setFailure] = useState<{ message: string; action: LeaveAction } | null>(null);
   const [installing, setInstalling] = useState(false);
   const installingRef = useRef(false);
   const native = isTauri();
@@ -63,31 +83,54 @@ export function QuitGuard() {
 
   useEffect(() => (native ? claimQuitRequests() : undefined), [native]);
 
+  const saveThenLeave = (action: LeaveAction) =>
+    answerQuitRequest(() =>
+      flushForQuitWithDeadline()
+        .then(() => leaveOnceTerminalsMayStop(action))
+        .catch(async (error: unknown) => {
+          setFailure({
+            message: error instanceof Error ? error.message : String(error),
+            action,
+          });
+          if (action !== "reload") await holdQuitAfterFailedSave();
+        }),
+    );
+
   useTauriEvent<boolean>(
     QUIT_FLUSH_REQUESTED,
     (payload) => {
-      const restart = payload === true;
       if (installingRef.current) return;
-      answerQuitRequest(() =>
-        flushForQuitWithDeadline()
-          .then(async () => {
-            if (!(await terminalsMayStop(restart))) {
-              await stayForRunningTerminals();
-              return;
-            }
-            await confirmQuitFlush(restart);
-          })
-          .catch(async (error: unknown) => {
-            setFailure({
-              message: error instanceof Error ? error.message : String(error),
-              restart,
-            });
-            await holdQuitAfterFailedSave();
-          }),
-      );
+      saveThenLeave(actionFor(payload === true));
     },
     native,
   );
+
+  // Reload Views stops the terminal sessions and drops unsaved edits like a
+  // restart, so it saves and asks the same way first.
+  useTauriEvent(
+    RELOAD_VIEWS_REQUESTED,
+    () => {
+      if (installingRef.current) return;
+      saveThenLeave("reload");
+    },
+    native,
+  );
+
+  const reason = failure?.message ?? "";
+  const failureCopy = {
+    quit: {
+      description: t(($) => $.shell.quitGuard.failure.descriptionQuit, { reason }),
+      confirm: t(($) => $.shell.quitGuard.failure.quitAnyway),
+    },
+    restart: {
+      description: t(($) => $.shell.quitGuard.failure.descriptionRestart, { reason }),
+      confirm: t(($) => $.shell.quitGuard.failure.restartAnyway),
+    },
+    reload: {
+      description: t(($) => $.shell.quitGuard.failure.descriptionReload, { reason }),
+      confirm: t(($) => $.shell.quitGuard.failure.reloadAnyway),
+    },
+  }[failure?.action ?? "quit"];
 
   return (
     <>
@@ -100,25 +143,22 @@ export function QuitGuard() {
     <ConfirmationDialog
       open={failure !== null}
       title={t(($) => $.shell.quitGuard.failure.title)}
-      description={
-        failure?.restart
-          ? t(($) => $.shell.quitGuard.failure.descriptionRestart, { reason: failure?.message ?? "" })
-          : t(($) => $.shell.quitGuard.failure.descriptionQuit, { reason: failure?.message ?? "" })
-      }
-      confirmLabel={
-        failure?.restart
-          ? t(($) => $.shell.quitGuard.failure.restartAnyway)
-          : t(($) => $.shell.quitGuard.failure.quitAnyway)
-      }
+      description={failureCopy.description}
+      confirmLabel={failureCopy.confirm}
       cancelLabel={t(($) => $.shell.quitGuard.failure.stay)}
       destructive
       onConfirm={() => {
-        const restart = failure?.restart ?? false;
+        const action = failure?.action ?? "quit";
         setFailure(null);
-        void confirmQuitFlush(restart).catch((error) => notifyError("quit anyway", error));
+        // Giving up the unsaved edits still asks before stopping running programs.
+        void leaveOnceTerminalsMayStop(action).catch((error) =>
+          notifyError(action === "reload" ? "reload anyway" : "quit anyway", error),
+        );
       }}
       onCancel={() => {
+        const action = failure?.action;
         setFailure(null);
+        if (action === "reload") return;
         void cancelQuitFlush().catch((error) => logError("stay after failed save", error));
       }}
     />

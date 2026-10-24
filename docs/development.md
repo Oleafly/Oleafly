@@ -198,10 +198,12 @@ To move to a newer Rust:
 
 The minimum Rust versions are separate promises. The shared crates
 (`oleafly-core`, `oleafly-secrets`, `oleafly-doctools`, `oleafly-downloads`,
-`oleafly-sandbox`, `oleafly-forge`) build on Rust 1.87. `oleafly-preflight` and
+`oleafly-sandbox`, `oleafly-forge`) and the agent crate `oleafly-agent` build
+on Rust 1.87. `oleafly-preflight` and
 `oleafly-research` need 1.88 because they read PDFs with lopdf 0.42, which uses
 let chains (it declares 1.85, which is too low); research gets it through
-pdf-extract. `oleafly-lint` builds on 1.88 without its `proofread` feature.
+pdf-extract. `oleafly-acp` needs 1.88 for the official Agent Client Protocol
+crates. `oleafly-lint` builds on 1.88 without its `proofread` feature.
 `oleafly-online` needs 1.89 for the `aes` crate that decrypts copied browser
 cookies, and `oleaflyc` needs 1.89 because it links the collaboration client.
 CI checks each group with explicit `cargo +1.87.0`, `cargo +1.88.0` and

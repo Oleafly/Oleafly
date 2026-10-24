@@ -313,8 +313,17 @@ fn portable(relative: &Path) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join("/"))
 }
 
-/// The project's files as the app captures them, with their hashes.
-fn walk_tree(root: &Path, linked: bool) -> Result<BTreeMap<String, ContentHash>, CliError> {
+/// The project's files as the app captures them, with their hashes. For a
+/// linked folder that follows the app's capture rules: OS metadata,
+/// Oleafly's names, links, reparse points and cloud placeholders (never
+/// opened, so never downloaded) are left out, and so are files over 25 MiB
+/// unless `captured` (the checkpoint compared with) holds them.
+fn walk_tree(
+    root: &Path,
+    linked: bool,
+    captured: &BTreeMap<String, ContentHash>,
+) -> Result<BTreeMap<String, ContentHash>, CliError> {
+    use oleafly_core::linked_capture;
     let mut files = BTreeMap::new();
     let mut pending = vec![root.to_path_buf()];
     while let Some(folder) = pending.pop() {
@@ -324,22 +333,26 @@ fn walk_tree(root: &Path, linked: bool) -> Result<BTreeMap<String, ContentHash>,
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name = name.to_string_lossy();
-            if oleafly_core::exclude::is_capture_excluded_component(&name) {
+            if oleafly_core::exclude::is_capture_excluded_component(&name)
+                || (linked && linked_capture::is_left_out_quietly(&name))
+            {
                 continue;
             }
-            let Ok(kind) = entry.file_type() else {
+            let Ok(metadata) = std::fs::symlink_metadata(entry.path()) else {
                 continue;
             };
-            if kind.is_symlink() {
+            if metadata.file_type().is_symlink()
+                || (linked && linked_capture::is_never_read(&metadata))
+            {
                 continue;
             }
             let path = entry.path();
-            if kind.is_dir() {
-                if linked && oleafly_core::exclude::is_linked_skipped_directory(&name) {
+            if metadata.is_dir() {
+                if linked && linked_capture::is_skipped_directory(&name) {
                     continue;
                 }
                 pending.push(path);
-            } else if kind.is_file() {
+            } else if metadata.is_file() {
                 if files.len() >= MAX_TREE_FILES {
                     return Err(CliError::new(
                         ErrorKind::InvalidInput,
@@ -350,6 +363,12 @@ fn walk_tree(root: &Path, linked: bool) -> Result<BTreeMap<String, ContentHash>,
                 let Some(relative) = path.strip_prefix(root).ok().and_then(portable) else {
                     continue;
                 };
+                if linked
+                    && linked_capture::is_large(metadata.len())
+                    && !captured.contains_key(&relative)
+                {
+                    continue;
+                }
                 let hash = ContentHash::digest_file(&path).map_err(CliError::from)?;
                 files.insert(relative, hash);
             }
@@ -403,6 +422,20 @@ fn readable_text(path: &Path) -> Option<String> {
     String::from_utf8(std::fs::read(path).ok()?).ok()
 }
 
+/// The project's copy of `path` for a patch: only a file the walk hashed,
+/// and only while it is a regular file. A path that became a link since is
+/// shown as removed, and the link's target is never read.
+fn project_file(
+    root: &Path,
+    path: &str,
+    hashed: &BTreeMap<String, ContentHash>,
+) -> Option<PathBuf> {
+    let file = root.join(path);
+    (hashed.contains_key(path)
+        && std::fs::symlink_metadata(&file).is_ok_and(|metadata| metadata.is_file()))
+    .then_some(file)
+}
+
 /// A unified diff of one file, or `None` for binary and large files.
 fn file_patch(path: &str, old: Option<&Path>, new: Option<&Path>) -> Option<String> {
     let old_text = match old {
@@ -432,7 +465,7 @@ fn run_diff(ctx: &Context, prepared: &Prepared, args: &DiffArgs) -> Result<Outco
         .transpose()?;
     let after = match &second {
         Some(checkpoint) => file_map(&checkpoint_files(&prepared.store, checkpoint)?),
-        None => walk_tree(&prepared.root, prepared.linked)?,
+        None => walk_tree(&prepared.root, prepared.linked, &before)?,
     };
     let changes = compare(&before, &after);
     let mut patches = Vec::new();
@@ -468,7 +501,10 @@ fn run_diff(ctx: &Context, prepared: &Prepared, args: &DiffArgs) -> Result<Outco
             .chain(&changes.removed);
         for path in all {
             let old = Some(old_root.join(path)).filter(|file| file.is_file());
-            let new = Some(new_root.join(path)).filter(|file| file.is_file());
+            let new = match second {
+                Some(_) => Some(new_root.join(path)).filter(|file| file.is_file()),
+                None => project_file(&new_root, path, &after),
+            };
             let patch = file_patch(path, old.as_deref(), new.as_deref());
             patches.push(json!({"path": path, "patch": patch, "binary": patch.is_none()}));
         }
@@ -572,8 +608,8 @@ fn run_restore(
 ) -> Result<Outcome, CliError> {
     let checkpoint = resolve(&prepared.store, &args.id)?;
     if args.dry_run {
-        let before = walk_tree(&prepared.root, prepared.linked)?;
         let after = file_map(&checkpoint_files(&prepared.store, &checkpoint)?);
+        let before = walk_tree(&prepared.root, prepared.linked, &after)?;
         let changes = compare(&before, &after);
         if !ctx.json() {
             ctx.say(format!(
@@ -703,14 +739,50 @@ mod tests {
         std::fs::write(root.path().join(".oleafly/build/out.pdf"), "pdf").unwrap();
         std::fs::write(root.path().join("build/out.log"), "log").unwrap();
         std::fs::write(root.path().join("main.tex"), "x").unwrap();
-        let library = walk_tree(root.path(), false).unwrap();
+        let library = walk_tree(root.path(), false, &BTreeMap::new()).unwrap();
         assert!(
             library.contains_key("main.tex")
                 && library.contains_key("build/out.log")
                 && !library.contains_key(".oleafly/build/out.pdf")
         );
-        let linked = walk_tree(root.path(), true).unwrap();
+        let linked = walk_tree(root.path(), true, &BTreeMap::new()).unwrap();
         assert_eq!(linked.keys().collect::<Vec<_>>(), ["main.tex"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_patch_never_reads_through_a_link_in_the_project() {
+        let root = tempfile::tempdir().unwrap();
+        let secret = tempfile::tempdir().unwrap();
+        std::fs::write(secret.path().join("id_ed25519"), "PRIVATE KEY").unwrap();
+        std::os::unix::fs::symlink(
+            secret.path().join("id_ed25519"),
+            root.path().join("notes.md"),
+        )
+        .unwrap();
+        std::fs::write(root.path().join("main.tex"), "x").unwrap();
+        let hashed = walk_tree(root.path(), false, &BTreeMap::new()).unwrap();
+        assert!(!hashed.contains_key("notes.md"));
+        assert_eq!(project_file(root.path(), "notes.md", &hashed), None);
+        assert!(project_file(root.path(), "main.tex", &hashed).is_some());
+    }
+
+    #[test]
+    fn a_linked_walk_leaves_out_os_metadata_and_large_files_as_captures_do() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("main.tex"), "x").unwrap();
+        std::fs::write(root.path().join(".DS_Store"), "junk").unwrap();
+        std::fs::write(root.path().join("._main.tex"), "junk").unwrap();
+        let large = std::fs::File::create(root.path().join("data.csv")).unwrap();
+        large
+            .set_len(oleafly_core::linked_capture::LARGE_FILE_BYTES + 1)
+            .unwrap();
+        let linked = walk_tree(root.path(), true, &BTreeMap::new()).unwrap();
+        assert_eq!(linked.keys().collect::<Vec<_>>(), ["main.tex"]);
+        // A large file the checkpoint holds (named by the build) is compared.
+        let captured = BTreeMap::from([("data.csv".to_string(), linked["main.tex"])]);
+        let linked = walk_tree(root.path(), true, &captured).unwrap();
+        assert!(linked.contains_key("data.csv"));
     }
 
     #[cfg(unix)]

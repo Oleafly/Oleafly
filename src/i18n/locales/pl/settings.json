@@ -50,14 +50,14 @@
       "platformLabel": "Platforma",
       "refreshingStatus": "Odświeżanie stanu agentów. Bieżąca lista pozostaje na miejscu.",
       "registry": {
-        "description": "Przeszukaj rejestr ACP w poszukiwaniu agentów publikowanych przez inne zespoły.",
+        "description": "Przeszukaj rejestr ACP w poszukiwaniu agentów CLI publikowanych przez inne zespoły.",
         "hideDistribution": "Ukryj dystrybucję",
         "register": "Zarejestruj agenta",
         "registered": "Zarejestrowany",
         "reviewHint": "Wpisy w rejestrze opisują oprogramowanie słowami jego wydawców. Obejrzyj dystrybucję przed rejestracją albo instalacją.",
         "search": "Szukaj",
-        "searchLabel": "Znajdź agenta ACP",
-        "searchPlaceholder": "Szukaj w rejestrze ACP",
+        "searchLabel": "Znajdź agenta CLI",
+        "searchPlaceholder": "Szukaj agentów CLI",
         "searching": "Wyszukiwanie",
         "showDistribution": "Pokaż dystrybucję",
         "title": "Znajdź więcej agentów"
@@ -133,7 +133,10 @@
       "inactivity": {
         "label": "Zatrzymaj milczącego agenta po",
         "description": "Gdy agent nic nie wysyła przez tyle czasu, Oleafly go zatrzymuje. Możesz połączyć się ponownie.",
-        "minutes": "{{count}} min"
+        "minutes_one": "{{count}} minuta",
+        "minutes_few": "{{count}} minuty",
+        "minutes_many": "{{count}} minut",
+        "minutes_other": "{{count}} minuty"
       },
       "protocolLabel": "Protokół",
       "remembered": {
@@ -1047,7 +1050,8 @@
         "path": {
           "ariaLabel": "Własna ścieżka do shell",
           "description": "Program uruchamiany przez nowe terminale.",
-          "label": "Ścieżka do shell"
+          "label": "Ścieżka do shell",
+          "missing": "Wpisz pełną ścieżkę do shell. Nowe terminale nie uruchomią się, dopóki tego nie zrobisz."
         },
         "windowsOnly": "{{name}} (tylko Windows)",
         "windowsOnlyNote": "{{name}} działa tylko w Windows. Nowe terminale uruchamiają tutaj {{fallback}}.",
@@ -1650,7 +1654,7 @@
     "desktopApps": {
       "tab": "Aplikacje na komputerze",
       "title": "Aplikacje na komputerze",
-      "description": "Pozwól agentom używać aplikacji i stron na tym komputerze za pomocą Cua Driver. Oleafly pyta przed każdym kliknięciem i naciśnięciem klawisza.",
+      "description": "Pozwól agentom używać aplikacji i stron na tym komputerze przez Cua Driver. Oleafly pyta przed każdą akcją, chyba że zezwolisz na taki rodzaj akcji w czacie, sesji lub zadaniu. Twoja zalogowana przeglądarka i skrypty zawsze wymagają pytania.",
       "docsLink": "Dokumentacja Cua Driver",
       "status": {
         "installed": "Cua Driver {{version}} jest zainstalowany.",
@@ -1663,7 +1667,7 @@
       },
       "install": {
         "heading": "Zainstaluj Cua Driver",
-        "hint": "Uruchom to polecenie w terminalu. Oleafly nigdy nie instaluje Cua Driver za Ciebie.",
+        "hint": "Uruchom to polecenie w terminalu albo użyj przycisku Uruchom w terminalu. Polecenie uruchamia oficjalny instalator Cua, a Oleafly sam nie pobiera Cua Driver.",
         "run": "Uruchom w terminalu",
         "needsProject": "Otwórz projekt, aby uruchomić to w terminalu Oleafly, albo skopiuj polecenie.",
         "confirm": "To polecenie pobierze instalator Cua Driver z cua.ai i uruchomi go w Twoim terminalu. Kontynuować?",
@@ -1685,7 +1689,7 @@
       },
       "enable": {
         "label": "Pozwól agentom używać aplikacji na komputerze",
-        "description": "Agenci widzą poniższe aplikacje i strony. Przed kliknięciami, pisaniem i zmianami stron najpierw Cię pytają."
+        "description": "Agenci widzą poniższe aplikacje i strony. Przed kliknięciami, pisaniem i zmianami stron najpierw pytają Cię, chyba że zezwolisz na nie w czacie, sesji lub zadaniu. Dodanie aplikacji lub strony usuwa te wybory."
       },
       "apps": {
         "heading": "Dozwolone aplikacje",
@@ -1708,7 +1712,7 @@
         "blocked": {
           "oleafly": "Oleafly nie może sterować sam sobą.",
           "driver": "Cua Driver nie może sterować sam sobą.",
-          "terminal": "Terminale uruchamiają polecenia z pominięciem zatwierdzania poleceń w Oleafly.",
+          "terminal": "Terminale i edytory kodu uruchamiają polecenia z pominięciem zatwierdzania poleceń w Oleafly.",
           "system_settings": "Ustawienia systemowe mogą zmieniać uprawnienia.",
           "passwords": "Menedżery haseł są wyłączone z użycia.",
           "scripting": "Programy uruchamiające skrypty mogą zrobić na tym komputerze wszystko.",
@@ -1742,7 +1746,7 @@
       },
       "tool": {
         "description": "Używaj aplikacji na komputerze i stron dozwolonych w Ustawieniach.",
-        "note": "Oglądanie działa od razu. Kliknięcia, pisanie i zmiany stron wymagają najpierw pytania."
+        "note": "Oglądanie działa od razu. Kliknięcia, pisanie i zmiany stron wymagają najpierw pytania, chyba że zezwolisz na nie w czacie."
       },
       "task": {
         "label": "Aplikacje na komputerze",
@@ -1752,7 +1756,7 @@
       },
       "spaces": {
         "title": "Cua Spaces",
-        "description": "Połącz odizolowane pulpity i kontenery z Cua Spaces jako serwer MCP. Funkcja eksperymentalna.",
+        "description": "Połącz odizolowane pulpity i kontenery z Cua Spaces jako serwer MCP.",
         "notInstalled": "Polecenie cua nie jest zainstalowane.",
         "connect": {
           "label": "Połącz Cua Spaces",
@@ -1854,7 +1858,7 @@
         },
         "legend": "Polityka zatwierdzania",
         "trust": {
-          "description": "Zmiany w plikach nie wymagają pytania. Polecenia powłoki i sterowanie komputerem zawsze wymagają zgody. Twój klient MCP pozostaje dodatkową bramką.",
+          "description": "Zmiany w plikach są stosowane bez pytania. Polecenia powłoki i nowe zadania badawcze zawsze wymagają zgody. Twój klient MCP nadal może zapytać sam.",
           "label": "Ufaj temu połączeniu"
         }
       },
@@ -2348,11 +2352,22 @@
         "tasks_other": "Zadania w toku: {{count}}"
       },
       "stop": "Zatrzymaj proces pomocniczy",
-      "stopHint": "Jego zadania czekają wstrzymane, dopóki ponownie nie otworzysz Oleafly.",
+      "stopHint": "Jego zadania wracają do Oleafly i dalej działają tutaj.",
+      "stopConfirm": {
+        "title": "Zatrzymać proces pomocniczy w tle?",
+        "description_one": "Jego {{count}} zadanie wróci do Oleafly i będzie tu dalej działać.",
+        "description_few": "Jego {{count}} zadania wrócą do Oleafly i będą tu dalej działać.",
+        "description_many": "Jego {{count}} zadań wróci do Oleafly i będzie tu dalej działać.",
+        "description_other": "Jego {{count}} zadania wróci do Oleafly i będzie tu dalej działać."
+      },
       "stopFailed": "Proces pomocniczy się nie zatrzymał. Spróbuj ponownie.",
       "openLog": "Pokaż dziennik",
       "statusFailed": "Nie udało się odczytać stanu procesu pomocniczego w tle.",
       "toggleFailed": "Nie udało się zmienić tego ustawienia. Spróbuj ponownie."
+    },
+    "mcpServers": {
+      "loadFailed": "Nie udało się odczytać listy serwerów MCP.",
+      "missing": "{{name}} (nie znaleziono)"
     }
   }
 }

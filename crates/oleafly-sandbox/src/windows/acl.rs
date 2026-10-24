@@ -7,22 +7,25 @@
 //! deny entry for the task, and the folder that holds it a deny entry for
 //! `FILE_DELETE_CHILD` on itself only: with that right on the parent, a task
 //! could delete or rename the protected entry whatever its own access list
-//! says, and put a new one in its place.
+//! says, and put a new one in its place. An excluded file's list from before
+//! is kept (SDDL) and written back when the exclusion ends.
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 
 use windows_sys::Win32::Foundation::{GetLastError, LocalFree, ERROR_SUCCESS};
 use windows_sys::Win32::Security::Authorization::{
-    GetNamedSecurityInfoW, SetEntriesInAclW, SetNamedSecurityInfoW, DENY_ACCESS, EXPLICIT_ACCESS_W,
-    GRANT_ACCESS, NO_MULTIPLE_TRUSTEE, SE_FILE_OBJECT, TRUSTEE_IS_SID, TRUSTEE_IS_UNKNOWN,
-    TRUSTEE_W,
+    ConvertSecurityDescriptorToStringSecurityDescriptorW,
+    ConvertStringSecurityDescriptorToSecurityDescriptorW, GetNamedSecurityInfoW, SetEntriesInAclW,
+    SetNamedSecurityInfoW, DENY_ACCESS, EXPLICIT_ACCESS_W, GRANT_ACCESS, NO_MULTIPLE_TRUSTEE,
+    SDDL_REVISION_1, SE_FILE_OBJECT, TRUSTEE_IS_SID, TRUSTEE_IS_UNKNOWN, TRUSTEE_W,
 };
 use windows_sys::Win32::Security::{
-    AddAce, EqualSid, GetAce, InitializeAcl, InitializeSecurityDescriptor, SetFileSecurityW,
-    SetSecurityDescriptorDacl, ACCESS_ALLOWED_ACE, ACE_FLAGS, ACE_HEADER, ACL,
-    DACL_SECURITY_INFORMATION, INHERITED_ACE, INHERIT_ONLY_ACE, NO_INHERITANCE,
-    PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID, SECURITY_DESCRIPTOR,
-    SUB_CONTAINERS_AND_OBJECTS_INHERIT,
+    AddAce, EqualSid, GetAce, GetSecurityDescriptorControl, GetSecurityDescriptorDacl,
+    InitializeAcl, InitializeSecurityDescriptor, SetFileSecurityW, SetSecurityDescriptorDacl,
+    ACCESS_ALLOWED_ACE, ACE_FLAGS, ACE_HEADER, ACL, DACL_SECURITY_INFORMATION, INHERITED_ACE,
+    INHERIT_ONLY_ACE, NO_INHERITANCE, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
+    PSID, SECURITY_DESCRIPTOR, SE_DACL_PROTECTED, SUB_CONTAINERS_AND_OBJECTS_INHERIT,
+    UNPROTECTED_DACL_SECURITY_INFORMATION,
 };
 use windows_sys::Win32::Storage::FileSystem::{
     DELETE, FILE_APPEND_DATA, FILE_DELETE_CHILD, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ,
@@ -332,7 +335,7 @@ pub(crate) fn revoke(path: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
     if current.dacl.is_null() {
         return Ok(());
     }
-    let acl = without_own_entries(&current, sid)
+    let acl = without_own_entries(&current, sid, true)
         .map_err(|code| error("updating the access list of", path, code))?;
     set_named(path, acl.as_ptr().cast::<ACL>(), 0)
 }
@@ -344,16 +347,16 @@ pub(crate) fn revoke_traverse(dir: &Path, sid: &OwnedSid) -> Result<(), SandboxE
     if current.dacl.is_null() {
         return Ok(());
     }
-    let acl = without_own_entries(&current, sid)
+    let acl = without_own_entries(&current, sid, true)
         .map_err(|code| error("updating the access list of", dir, code))?;
     set_this_only(dir, acl.as_ptr().cast::<ACL>())
 }
 
 /// A copy of `dacl` without the allow and deny entries set on it for `sid`.
-/// Inherited entries stay as they are: writing the copy recomputes them from
-/// the parent. Held in `u32`s because an ACL and its entries need 4-byte
-/// alignment.
-fn without_own_entries(dacl: &Dacl, sid: &OwnedSid) -> Result<Vec<u32>, u32> {
+/// Inherited entries stay as they are when `keep_inherited` (writing the
+/// copy recomputes them from the parent), and are left out otherwise. Held
+/// in `u32`s because an ACL and its entries need 4-byte alignment.
+fn without_own_entries(dacl: &Dacl, sid: &OwnedSid, keep_inherited: bool) -> Result<Vec<u32>, u32> {
     // SAFETY: `dacl.dacl` is a valid ACL owned by `dacl` (the caller checked
     // it isn't null); each entry is read within its own AceSize and copied
     // into an aligned buffer before AddAce reads it.
@@ -374,6 +377,9 @@ fn without_own_entries(dacl: &Dacl, sid: &OwnedSid) -> Result<Vec<u32>, u32> {
             let header = &*ace.cast::<ACE_HEADER>();
             let kind = u32::from(header.AceType);
             let own = u32::from(header.AceFlags) & INHERITED_ACE == 0;
+            if !own && !keep_inherited {
+                continue;
+            }
             if own && (kind == ACCESS_ALLOWED_ACE_TYPE || kind == ACCESS_DENIED_ACE_TYPE) {
                 // Both entry types put the SID at the same place.
                 let entry = ace.cast::<ACCESS_ALLOWED_ACE>();
@@ -393,12 +399,41 @@ fn without_own_entries(dacl: &Dacl, sid: &OwnedSid) -> Result<Vec<u32>, u32> {
     }
 }
 
+/// `dacl`'s descriptor as SDDL text (its DACL and whether it is protected).
+fn dacl_sddl(dacl: &Dacl) -> Result<String, u32> {
+    let mut text: *mut u16 = std::ptr::null_mut();
+    let mut length = 0u32;
+    // SAFETY: the descriptor is valid and owned by `dacl`; `text` is
+    // allocated by the call, read within `length` and freed here.
+    unsafe {
+        if ConvertSecurityDescriptorToStringSecurityDescriptorW(
+            dacl.descriptor,
+            SDDL_REVISION_1,
+            DACL_SECURITY_INFORMATION,
+            &mut text,
+            &mut length,
+        ) == 0
+        {
+            return Err(GetLastError());
+        }
+        let units = std::slice::from_raw_parts(text, length as usize);
+        let end = units
+            .iter()
+            .position(|&unit| unit == 0)
+            .unwrap_or(units.len());
+        let sddl = String::from_utf16_lossy(&units[..end]);
+        LocalFree(text.cast());
+        Ok(sddl)
+    }
+}
+
 /// Keeps `sid` from writing a protected file inside a writable folder: the
 /// file gets a protected DACL with its current entries minus the task's.
 /// The folder's grant reaches the file as an inherited entry, which
 /// REVOKE_ACCESS leaves in place and protecting a DACL keeps as an explicit
-/// one, so the entries are copied by hand without the task's.
-pub(crate) fn exclude_file(file: &Path, sid: &OwnedSid) -> Result<(), SandboxError> {
+/// one, so the entries are copied by hand without the task's. Returns the
+/// file's access list from before, for [`restore_file`].
+pub(crate) fn exclude_file(file: &Path, sid: &OwnedSid) -> Result<String, SandboxError> {
     if file.is_dir() {
         return Err(SandboxError::Invalid(format!(
             "{} is a folder; only files can be excluded.",
@@ -414,6 +449,8 @@ pub(crate) fn exclude_file(file: &Path, sid: &OwnedSid) -> Result<(), SandboxErr
             file.display()
         )));
     }
+    let original =
+        dacl_sddl(&current).map_err(|code| error("reading the access list of", file, code))?;
     let acl = without_sid(&current, sid)
         .map_err(|code| error("updating the access list of", file, code))?;
     let name = wide_path(file);
@@ -432,7 +469,80 @@ pub(crate) fn exclude_file(file: &Path, sid: &OwnedSid) -> Result<(), SandboxErr
     if code != ERROR_SUCCESS {
         return Err(error("writing the access list of", file, code));
     }
-    Ok(())
+    Ok(original)
+}
+
+/// Writes back an excluded file's access list from before the exclusion
+/// (`original`, SDDL), without `sid`'s own entries. A list that inherited
+/// from its folder inherits again: the inherited entries are recomputed from
+/// the folder, so the copies the exclusion made (of other runs' entries too)
+/// go. A protected list is written as it was. A folder found where the file
+/// was is left alone.
+pub(crate) fn restore_file(
+    file: &Path,
+    sid: &OwnedSid,
+    original: &str,
+) -> Result<(), SandboxError> {
+    if file.is_dir() {
+        return Ok(());
+    }
+    let text: Vec<u16> = std::ffi::OsStr::new(original)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
+    // SAFETY: `text` is NUL-terminated; the descriptor is freed by `Dacl`.
+    let parsed = unsafe {
+        ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            text.as_ptr(),
+            SDDL_REVISION_1,
+            &mut descriptor,
+            std::ptr::null_mut(),
+        )
+    };
+    if parsed == 0 {
+        // SAFETY: reads the calling thread's last error.
+        return Err(error("reading the saved access list of", file, unsafe {
+            GetLastError()
+        }));
+    }
+    let mut saved = Dacl {
+        dacl: std::ptr::null_mut(),
+        descriptor,
+    };
+    let mut present = 0;
+    let mut defaulted = 0;
+    let mut control = 0u16;
+    let mut revision = 0u32;
+    // SAFETY: the descriptor is valid and owned by `saved`; the DACL pointer
+    // points into it.
+    let read = unsafe {
+        GetSecurityDescriptorDacl(descriptor, &mut present, &mut saved.dacl, &mut defaulted) != 0
+            && GetSecurityDescriptorControl(descriptor, &mut control, &mut revision) != 0
+    };
+    if !read {
+        // SAFETY: reads the calling thread's last error.
+        return Err(error("reading the saved access list of", file, unsafe {
+            GetLastError()
+        }));
+    }
+    if present == 0 || saved.dacl.is_null() {
+        // Exclusion refuses a file without a DACL: nothing was saved to put back.
+        return Ok(());
+    }
+    let (acl, inheritance) = if control & SE_DACL_PROTECTED != 0 {
+        (
+            without_sid(&saved, sid),
+            PROTECTED_DACL_SECURITY_INFORMATION,
+        )
+    } else {
+        (
+            without_own_entries(&saved, sid, false),
+            UNPROTECTED_DACL_SECURITY_INFORMATION,
+        )
+    };
+    let acl = acl.map_err(|code| error("updating the access list of", file, code))?;
+    set_named(file, acl.as_ptr().cast::<ACL>(), inheritance)
 }
 
 /// A copy of `dacl` without `sid`'s allow and deny entries, every entry
@@ -600,5 +710,38 @@ mod tests {
         assert!(!has_allow(&protected, &sid, Access::ReadWrite).unwrap());
         assert!(has_allow(&other, &sid, Access::ReadWrite).unwrap());
         revoke(dir.path(), &sid).unwrap();
+    }
+
+    /// Whether the DACL of `path` is protected (inherits nothing).
+    fn is_protected(path: &Path) -> bool {
+        let dacl = read_dacl(path).unwrap();
+        let mut control = 0u16;
+        let mut revision = 0u32;
+        // SAFETY: the descriptor is owned by `dacl`.
+        unsafe {
+            assert_ne!(
+                GetSecurityDescriptorControl(dacl.descriptor, &mut control, &mut revision),
+                0
+            );
+        }
+        control & SE_DACL_PROTECTED != 0
+    }
+
+    #[test]
+    fn restoring_an_excluded_file_makes_it_inherit_again() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = dir.path().join(".env");
+        std::fs::write(&env, "SECRET=1").unwrap();
+        let sid = capability_sid(RUNTIME_CAPABILITY).unwrap();
+        assert!(!is_protected(&env));
+        grant(dir.path(), &sid, Access::ReadWrite, false).unwrap();
+        let original = exclude_file(&env, &sid).unwrap();
+        assert!(is_protected(&env));
+        restore_file(&env, &sid, &original).unwrap();
+        assert!(!is_protected(&env));
+        // The folder's entry reaches the file again, and goes with it.
+        assert!(has_allow(&env, &sid, Access::ReadWrite).unwrap());
+        revoke(dir.path(), &sid).unwrap();
+        assert!(!has_allow(&env, &sid, Access::ReadWrite).unwrap());
     }
 }

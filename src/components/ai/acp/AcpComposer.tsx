@@ -15,6 +15,7 @@ import { acpComposerId, useAcpSessionsStore, type AcpPromptDraft } from "@/store
 import { EMPTY_ATTACHMENTS, useComposerDrafts } from "@/store/composer-drafts";
 import { useFilesStore } from "@/store/files";
 import { acpAttachmentKinds, acpMentionItems, acpSlashItems, composerMode } from "./acp-composer";
+import { promptMentions } from "./acp-attachments";
 import { settleSelectionQuotes, unsettleSelectionQuote, useSelectionQuote } from "./selection-quote";
 
 /** The composer a conversation's draft lives in; before one starts, the chosen agent's. */
@@ -26,12 +27,14 @@ export function acpDraftId(projectId: string, agentId: string | null, session: A
 function takeDraft(projectId: string, composerId: string): AcpPromptDraft {
   const draft = useComposerDrafts.getState().drafts[composerId];
   const composer = useAcpSessionsStore.getState().composers[projectId];
+  const text = draft?.text ?? "";
   return {
-    text: draft?.text ?? "",
+    text,
     // A file that could not be prepared stays out of the message, as in the
     // built-in composer. Clearing the draft removes its chip.
     attachments: (draft?.attachments ?? EMPTY_ATTACHMENTS).filter((item) => item.status === "ready"),
-    mentions: [],
+    // Read now, from this project: a queued message may go while another one is open.
+    mentions: promptMentions(text, useFilesStore.getState().tree),
     selections: [...(composer?.selections ?? [])],
     skill: composer?.skill ?? null,
   };

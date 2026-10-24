@@ -56,6 +56,18 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
+      # `oleafly --version` names the commit it was built from. github.sha is
+      # the branch head on a manual run, not the tag that was checked out, so
+      # read the commit from the checkout. The build and the completions step
+      # both get it through the job environment.
+      - name: Record the commit being built
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit="$(git rev-parse --short=12 HEAD)"
+          echo "Building commit $commit"
+          echo "OLEAFLY_COMMIT=$commit" >> "$GITHUB_ENV"
+
       - name: Install Rust toolchain
         uses: ./.github/actions/rust-toolchain
         with:
@@ -76,7 +88,6 @@ jobs:
       - name: Build
         env:
           TARGET: ${{ matrix.target }}
-          OLEAFLY_COMMIT: ${{ github.sha }}
         run: cargo build --release --locked -p oleafly-cli --features proofread --target "$TARGET"
 
       - name: Check the version and run a smoke test
@@ -112,8 +123,9 @@ jobs:
           status=0
           "$bin" --json doctor > doctor.json || status=$?
           if [ "$status" -ne 0 ] && [ "$status" -ne 4 ]; then
-            echo "::warning::oleafly doctor exited with $status"
             cat doctor.json || true
+            echo "::error::oleafly doctor exited with $status. Only 0 (all found) and 4 (something missing) are expected; anything else is a crash."
+            exit 1
           fi
 
       - name: Generate completions and the manual page

@@ -53,11 +53,12 @@ export function RemoteMenu({
           side="bottom"
         >
           <DropdownMenuTrigger asChild>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               data-testid="remote-menu-account"
               aria-label={t(($) => $.shell.remoteMenu.accountLabel, { host, login: account.login })}
-              className="flex h-9 items-center gap-1.5 rounded-md pl-1 pr-2 text-xs font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent"
+              className="h-9 gap-1.5 pl-1 pr-2 text-xs text-foreground [&_svg]:size-3"
             >
               <Avatar
                 person={{ id: `${host}:${account.login}`, name: account.name ?? account.login, imageUrl: account.avatarUrl }}
@@ -65,7 +66,7 @@ export function RemoteMenu({
                 fallbackIcon={fallbackIcon}
               />
               <span className="max-w-[110px] truncate">{account.login}</span>
-            </button>
+            </Button>
           </DropdownMenuTrigger>
         </Tooltip>
       ) : (

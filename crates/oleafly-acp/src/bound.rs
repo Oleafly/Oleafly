@@ -36,6 +36,26 @@ pub fn bound_event(mut data: Value) -> Value {
             }
         }
     }
+    // A message's own text (`user_message`) is kept whole when cutting
+    // everything else is enough.
+    if let Some(text) = data.get("text").filter(|text| text.is_string()).cloned() {
+        let mut kept = data.clone();
+        if let Some(object) = kept.as_object_mut() {
+            object.remove("text");
+            let mut rest = Value::Object(std::mem::take(object));
+            let cut_any = truncate_strings(&mut rest, MAX_CONTENT_STRING);
+            if let Value::Object(rest) = rest {
+                *object = rest;
+            }
+            object.insert("text".into(), text);
+            if cut_any {
+                object.insert("truncated".into(), Value::Bool(true));
+            }
+        }
+        if fits(&kept) {
+            return kept;
+        }
+    }
     if truncate_strings(&mut data, MAX_CONTENT_STRING) {
         if let Some(object) = data.as_object_mut() {
             object.insert("truncated".into(), Value::Bool(true));
@@ -222,6 +242,22 @@ mod tests {
             bounded["content"]["text"].as_str().unwrap().len(),
             MAX_CONTENT_STRING
         );
+    }
+
+    #[test]
+    fn a_long_user_message_keeps_its_whole_text() {
+        // 180 KiB of LaTeX is 210 KiB once its backslashes and newlines are
+        // escaped; with a long file note the event is over the limit.
+        let text = "\\section{A}\n".repeat(180 * 1024 / 12);
+        let event = json!({
+            "text": text,
+            "images": [],
+            "files": [{"name": "n".repeat(60 * 1024)}],
+        });
+        let bounded = bound_event(event);
+        assert_eq!(bounded["text"].as_str(), Some(text.as_str()));
+        assert_eq!(bounded["truncated"], true);
+        assert!(size(&bounded) <= MAX_EVENT_BYTES);
     }
 
     #[test]

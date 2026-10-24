@@ -277,7 +277,15 @@ pub(crate) async fn context_value(
         .await
         .ok()
         .flatten();
-    let checkpoints = checkpoint_summary(opened.workspace.root(), data_root.as_deref());
+    // Opening the checkpoint store can wait for the app's lock (up to 30 s).
+    let checkpoints = {
+        let root = opened.workspace.root().to_path_buf();
+        let data_root = data_root.clone();
+        tokio::task::spawn_blocking(move || checkpoint_summary(&root, data_root.as_deref()))
+            .await
+            .ok()
+            .flatten()
+    };
     let value = json!({
         "project": project_value(&opened, data_root.as_deref()),
         "map": scan.map,

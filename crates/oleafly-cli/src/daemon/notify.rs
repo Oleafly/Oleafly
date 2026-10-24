@@ -7,6 +7,7 @@
 //! helper. A click opens Oleafly (Linux and Windows; macOS opens the app
 //! itself).
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use oleafly_research::host::{Notification, NotificationKind};
@@ -75,8 +76,35 @@ fn kind_key(kind: NotificationKind) -> &'static str {
     }
 }
 
+/// Notifications whose click is waited for at once. A notification server
+/// that never says a notification closed (GNOME keeps them in its tray)
+/// keeps the thread and its D-Bus connection waiting for the helper's
+/// whole life, so past this a notification shows without opening the app
+/// on a click.
+const MAX_WAITING: usize = 4;
+static WAITING: AtomicUsize = AtomicUsize::new(0);
+
+/// Runs `wait` (a wait for the notification's click) while fewer than
+/// [`MAX_WAITING`] others wait; `None` when that many already do.
+pub fn with_click_slot<T>(wait: impl FnOnce() -> T) -> Option<T> {
+    struct Slot;
+    impl Drop for Slot {
+        fn drop(&mut self) {
+            WAITING.fetch_sub(1, Ordering::AcqRel);
+        }
+    }
+    WAITING
+        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
+            (count < MAX_WAITING).then_some(count + 1)
+        })
+        .ok()?;
+    let _slot = Slot;
+    Some(wait())
+}
+
 pub struct Notifier {
-    enabled: bool,
+    /// The user's choice, read again while the helper runs.
+    enabled: AtomicBool,
     localize: Option<Localizer>,
     app_launch: Option<Arc<AppLaunch>>,
 }
@@ -84,10 +112,15 @@ pub struct Notifier {
 impl Notifier {
     pub fn new(enabled: bool, localize: Option<Localizer>, app_launch: Option<AppLaunch>) -> Self {
         Self {
-            enabled,
+            enabled: AtomicBool::new(enabled),
             localize,
             app_launch: app_launch.map(Arc::new),
         }
+    }
+
+    /// Notifications turned on or off in the app's settings since start.
+    pub fn set_enabled(&self, enabled: bool) {
+        self.enabled.store(enabled, Ordering::Release);
     }
 
     /// A text by its key; the English text when there is no localizer or
@@ -114,12 +147,12 @@ impl Notifier {
     }
 
     pub fn enabled(&self) -> bool {
-        self.enabled
+        self.enabled.load(Ordering::Acquire)
     }
 
     /// A research task's notification.
     pub fn notify(&self, notification: &Notification) {
-        if !self.enabled {
+        if !self.enabled() {
             return;
         }
         let key = kind_key(notification.kind);
@@ -136,7 +169,7 @@ impl Notifier {
 
     /// Once, when the helper takes over work after the app quit.
     pub fn started(&self) {
-        if !self.enabled {
+        if !self.enabled() {
             return;
         }
         let title = self.text("backgroundHelper.started.title", None);
@@ -191,12 +224,14 @@ fn show_now(title: &str, body: &str, launch: Option<Arc<AppLaunch>>) {
         .app_id(windows_app_id(shortcut))
         .show();
     if let Ok(handle) = shown {
-        handle.wait_for_action(|action| {
-            if action != "__closed" {
-                if let Some(launch) = &launch {
-                    launch.open();
+        with_click_slot(|| {
+            handle.wait_for_action(|action| {
+                if action != "__closed" {
+                    if let Some(launch) = &launch {
+                        launch.open();
+                    }
                 }
-            }
+            })
         });
     }
 }
@@ -211,12 +246,14 @@ fn show_now(title: &str, body: &str, launch: Option<Arc<AppLaunch>>) {
         .action("default", "Open Oleafly")
         .show();
     if let Ok(handle) = shown {
-        handle.wait_for_action(|action| {
-            if action == "default" {
-                if let Some(launch) = &launch {
-                    launch.open();
+        with_click_slot(|| {
+            handle.wait_for_action(|action| {
+                if action == "default" {
+                    if let Some(launch) = &launch {
+                        launch.open();
+                    }
                 }
-            }
+            })
         });
     }
 }
@@ -272,6 +309,35 @@ mod tests {
             project_id: "p".into(),
             task_title: "x".into(),
         });
+    }
+
+    #[test]
+    fn only_a_few_notifications_wait_for_a_click_at_once() {
+        let (entered, release) = (
+            std::sync::Arc::new(std::sync::Barrier::new(MAX_WAITING + 1)),
+            std::sync::Arc::new(std::sync::Barrier::new(MAX_WAITING + 1)),
+        );
+        let waiting: Vec<_> = (0..MAX_WAITING)
+            .map(|_| {
+                let (entered, release) = (entered.clone(), release.clone());
+                std::thread::spawn(move || {
+                    with_click_slot(|| {
+                        entered.wait();
+                        release.wait();
+                    })
+                })
+            })
+            .collect();
+        entered.wait();
+        assert!(with_click_slot(|| ()).is_none(), "no slot is left");
+        release.wait();
+        for thread in waiting {
+            assert!(thread.join().unwrap().is_some());
+        }
+        assert!(with_click_slot(|| ()).is_some());
+        let turned = Notifier::new(true, None, None);
+        turned.set_enabled(false);
+        assert!(!turned.enabled());
     }
 
     #[test]

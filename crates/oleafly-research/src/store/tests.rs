@@ -293,7 +293,10 @@ fn deleting_a_task_drops_its_transcript_and_spares_tasks_that_depend_on_it() {
         .unwrap();
 
     let error = store.delete(&dependency.id).unwrap_err();
-    assert!(error.contains("Another task waits for this one"));
+    assert_eq!(
+        error,
+        "\"Write the summary\" depends on this task and hasn't finished. Cancel it or wait for it to finish."
+    );
     assert!(store.require(&dependency.id).is_ok());
 
     store.delete(&dependent.id).unwrap();
@@ -311,6 +314,204 @@ fn deleting_a_task_drops_its_transcript_and_spares_tasks_that_depend_on_it() {
         .unwrap();
     assert_eq!(events, 0);
     assert!(store.delete(&dependency.id).is_err());
+}
+
+#[test]
+fn an_evidence_check_counts_as_work_until_it_ends_and_a_dead_one_is_cleared() {
+    let (_temp, store) = store();
+    let reviewed = reviewable_task(&store);
+    assert!(store
+        .set_phase(
+            &reviewed.id,
+            reviewed.execution_generation,
+            TaskPhase::CheckingEvidence
+        )
+        .unwrap());
+    // The process that ran the task checks its evidence: that is work, so
+    // the background helper does not exit in the middle of it.
+    assert_eq!(store.owned_work().unwrap().running, 1);
+    // This process is alive: startup recovery leaves its check alone.
+    store.recover_interrupted().unwrap();
+    assert_eq!(
+        store.require(&reviewed.id).unwrap().phase,
+        Some(TaskPhase::CheckingEvidence)
+    );
+
+    // The checking process exited; the next start clears what it left.
+    store.set_owner(&reviewed.id, Some(FOREIGN)).unwrap();
+    assert_eq!(store.owned_work().unwrap().running, 0);
+    let gone = TaskStore {
+        probe: |_| ProcessProbe::Gone,
+        ..store.clone()
+    };
+    gone.recover_interrupted().unwrap();
+    let cleared = store.require(&reviewed.id).unwrap();
+    assert_eq!(cleared.phase, None);
+    assert_eq!(cleared.status, ResearchTaskStatus::AwaitingReview);
+}
+
+#[test]
+fn older_tool_rows_keep_only_the_start_of_their_detail() {
+    let (_temp, store) = store();
+    let task = claimed(&store, "Many tool calls");
+    let generation = task.execution_generation;
+    let tool = |sequence: u64| EventWrite {
+        task_id: task.id.clone(),
+        generation,
+        sequence,
+        event_json: serde_json::to_string(&TaskRuntimeEvent::Tool {
+            call_id: Some(format!("call-{sequence}")),
+            name: "run_command".into(),
+            phase: crate::model::ToolPhase::Result,
+            detail: format!("{sequence}:{}", "x".repeat(8 * 1024)),
+            status: None,
+        })
+        .unwrap(),
+        created_at: 1,
+        replace: false,
+    };
+    let rows = (1..=502).map(tool).collect::<Vec<_>>();
+    store.write_events(&rows).unwrap();
+    let detail = |sequence: u64| {
+        let page = store
+            .events(&task.id, generation, Some(sequence - 1), 1)
+            .unwrap();
+        match &page.events[0].event {
+            TaskRuntimeEvent::Tool { detail, .. } => detail.clone(),
+            other => panic!("not a tool row: {other:?}"),
+        }
+    };
+    // The two oldest of 502 fall outside the newest 500 and are cut; every
+    // row stays.
+    for sequence in [1, 2] {
+        let cut = detail(sequence);
+        assert!(cut.starts_with(&format!("{sequence}:")), "{cut}");
+        assert!(cut.ends_with("\n[output truncated]"));
+        assert_eq!(cut.chars().count(), 2 * 1024 + "\n[output truncated]".len());
+    }
+    for sequence in [3, 502] {
+        assert_eq!(
+            detail(sequence).len(),
+            format!("{sequence}:").len() + 8 * 1024
+        );
+    }
+    // One more row cuts one more, once.
+    store.write_events(&[tool(503)]).unwrap();
+    assert!(detail(3).ends_with("\n[output truncated]"));
+    assert!(!detail(4).ends_with("\n[output truncated]"));
+}
+
+#[test]
+fn transcripts_page_backwards_from_the_newest_row_and_know_what_they_resumed() {
+    let (_temp, store) = store();
+    let task = claimed(&store, "Long run");
+    let first = task.execution_generation;
+    for index in 1..=5 {
+        store
+            .append_event(
+                &task.id,
+                first,
+                &TaskRuntimeEvent::Status {
+                    message: format!("step {index}"),
+                },
+            )
+            .unwrap();
+    }
+    let sequences = |page: &TaskTranscriptPage| -> Vec<u64> {
+        page.events.iter().map(|event| event.sequence).collect()
+    };
+    let newest = store
+        .events_page(&task.id, first, None, Some(u64::MAX), 2)
+        .unwrap();
+    assert_eq!(sequences(&newest), [4, 5]);
+    assert_eq!(newest.previous_sequence, Some(4));
+    assert_eq!(newest.next_sequence, None);
+    let older = store
+        .events_page(&task.id, first, None, newest.previous_sequence, 2)
+        .unwrap();
+    assert_eq!(sequences(&older), [2, 3]);
+    let oldest = store
+        .events_page(&task.id, first, None, older.previous_sequence, 2)
+        .unwrap();
+    assert_eq!(sequences(&oldest), [1]);
+    assert_eq!(oldest.previous_sequence, None);
+    // Forward pages are as before.
+    let forward = store.events(&task.id, first, None, 2).unwrap();
+    assert_eq!(sequences(&forward), [1, 2]);
+    assert_eq!(
+        (forward.next_sequence, forward.previous_sequence),
+        (Some(2), None)
+    );
+    assert_eq!(forward.resumed_from, None);
+
+    // A resumed generation knows the one it continues; a fresh start
+    // continues none, and the earlier generation keeps what it knew.
+    store.finish_failure(&task.id, first, "stopped").unwrap();
+    store.retry_with(&task.id, RetryMode::Resume).unwrap_err();
+    store.retry_with(&task.id, RetryMode::Fresh).unwrap();
+    store.request_start(&task.id).unwrap();
+    let fresh = store.claim_next().unwrap().unwrap().execution_generation;
+    assert_eq!(
+        store
+            .events(&task.id, fresh, None, 10)
+            .unwrap()
+            .resumed_from,
+        None
+    );
+    store.finish_failure(&task.id, fresh, "stopped").unwrap();
+    let isolation = TaskIsolation {
+        kind: crate::model::TaskIsolationKind::StagedProject,
+        execution_root: "/tmp/workspace".into(),
+        baseline_root: "/tmp/baseline".into(),
+        source_revision: "snapshot".into(),
+        baseline_hash: "hash".into(),
+        baseline: Vec::new(),
+        allowed_paths: Vec::new(),
+        created_at: 1,
+        skipped: Vec::new(),
+    };
+    let connection = store.open().unwrap();
+    connection
+        .execute(
+            "UPDATE research_tasks SET isolation_json = ?2 WHERE id = ?1",
+            params![task.id, serde_json::to_string(&isolation).unwrap()],
+        )
+        .unwrap();
+    store.retry_with(&task.id, RetryMode::Resume).unwrap();
+    store.request_start(&task.id).unwrap();
+    let resumed = store.claim_next().unwrap().unwrap().execution_generation;
+    assert_eq!(
+        store
+            .events(&task.id, resumed, None, 10)
+            .unwrap()
+            .resumed_from,
+        Some(fresh)
+    );
+    assert_eq!(
+        store
+            .events(&task.id, fresh, None, 10)
+            .unwrap()
+            .resumed_from,
+        None
+    );
+}
+
+#[test]
+fn a_task_whose_dependents_finished_can_be_deleted() {
+    let (_temp, store) = store();
+    let dependency = store.create(draft("paper", "Collect evidence")).unwrap();
+    let mut dependent = draft("paper", "Write the summary");
+    dependent.dependency_ids = vec![dependency.id.clone()];
+    let dependent = store.create(dependent).unwrap();
+    // The dependent finished (here: cancelled), so nothing waits any more,
+    // and a finished task's dependencies can't be edited.
+    store.request_cancel(&dependent.id).unwrap();
+
+    store.delete(&dependency.id).unwrap();
+    assert!(store.require(&dependency.id).is_err());
+    let kept = store.require(&dependent.id).unwrap();
+    assert_eq!(kept.status, ResearchTaskStatus::Cancelled);
+    assert!(kept.dependency_ids.is_empty());
 }
 
 #[test]
@@ -1202,7 +1403,7 @@ mod handoff {
             .unwrap()
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 4);
+        assert_eq!(version, SCHEMA_VERSION);
         let task = store.require("task-v2").unwrap();
         assert!(task.keep_running_after_quit);
         assert_eq!(task.owner, OwnerKind::Daemon);

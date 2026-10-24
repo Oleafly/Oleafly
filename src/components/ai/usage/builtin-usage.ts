@@ -62,7 +62,11 @@ async function projectBudget(projectId: string): Promise<UsageSnapshot["budget"]
   return { spentUsd: totals.cost_usd, limitUsd: limit };
 }
 
-/** The chat's cost from the usage ledger, when its records carry prices. */
+/**
+ * The chat's cost from the usage ledger, its subagents included (their rows
+ * carry their own session id and name the chat as their parent), when its
+ * records carry prices.
+ */
 export async function ledgerChatCost(threadId: string, chatCreatedAt: number): Promise<number | undefined> {
   const { createUsageReportFilter, queryUsageReport } = await import("@/lib/usage-report");
   const now = Date.now();
@@ -72,6 +76,7 @@ export async function ledgerChatCost(threadId: string, chatCreatedAt: number): P
         startMs: chatCreatedAt - DAY_MS,
         endMs: now + DAY_MS,
         sessionIds: [threadId],
+        includeChildSessions: true,
         pageSize: 1,
       },
       now,

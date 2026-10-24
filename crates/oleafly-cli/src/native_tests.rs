@@ -2465,3 +2465,26 @@ fn intermediate_files_seed_a_fresh_staging_folder() {
         ["_oleafly_entry.aux", "_oleafly_entry.toc", "chapter.aux"]
     );
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn a_lock_file_that_is_a_link_stops_the_build() {
+    let folder = TempDir::new().unwrap();
+    std::fs::write(folder.path().join("main.tex"), "\\documentclass{article}").unwrap();
+    let workspace = oleafly_core::Workspace::detected(folder.path(), None).unwrap();
+    let build = workspace.build_dir_path();
+    std::fs::create_dir_all(&build).unwrap();
+    let target = folder.path().join("elsewhere");
+    std::fs::write(&target, "").unwrap();
+    std::os::unix::fs::symlink(&target, oleafly_core::build_output::build_lock_path(&build))
+        .unwrap();
+    let compiler = NativeCompiler::new(BuildTools::default());
+    let error = compiler
+        .build(
+            &workspace,
+            oleafly_core::engine_spec::EngineFlags::default(),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "build.lock_failed", "{error:?}");
+}

@@ -16,7 +16,21 @@ use crate::provider::Resolved;
 use crate::stream::{is_output_limit_stop, is_refusal_stop};
 use crate::tasks::CancellationToken;
 
+/// The most messages the kept tail holds; it holds fewer when they are
+/// large (see `tail_char_budget`).
 pub(crate) const KEEP_LAST_MESSAGES: usize = 10;
+/// The window assumed when the model's is unknown: small, so a local model
+/// with a short window is not sent more than it holds.
+const UNKNOWN_WINDOW_TOKENS: u32 = 32_000;
+/// The kept tail gets at most this share of the window (a quarter).
+const TAIL_WINDOW_DIVISOR: usize = 4;
+const MIN_TAIL_CHARS: usize = 8_000;
+const MAX_TAIL_CHARS: usize = 400_000;
+/// The least a tool result in the kept tail is cut to.
+const MIN_TAIL_RESULT_CHARS: usize = 1_000;
+/// How many times a summary that overflows the window is retried with half
+/// the transcript.
+pub(crate) const MAX_SUMMARY_HALVINGS: u32 = 3;
 
 /// The opening tag of the message that holds a summary in history.
 const COMPACTION_OPEN: &str = "<context_compaction>";
@@ -39,12 +53,13 @@ you omit is gone. Reply with the summary only.";
 // conversation that does not open with a user turn), sized to the model's
 // window. The first request and any earlier summary always stay in it; the
 // newest messages win the rest of the budget.
-/// The transcript budget in characters when the model's window is unknown.
-pub(crate) const SUMMARY_INPUT_CHAR_BUDGET: usize = 400_000;
+/// The transcript budget in characters when the model's window is unknown:
+/// what a 32k-token window holds, so a small local model is not sent more.
+pub(crate) const SUMMARY_INPUT_CHAR_BUDGET: usize = 64_000;
 /// The most the transcript gets, however large the window.
 const MAX_SUMMARY_INPUT_CHARS: usize = 1_000_000;
 /// The least it gets, so a tiny window still sees something.
-const MIN_SUMMARY_INPUT_CHARS: usize = 8_000;
+pub(crate) const MIN_SUMMARY_INPUT_CHARS: usize = 8_000;
 /// Characters per token assumed when sizing the transcript: low, so code,
 /// LaTeX and CJK text still fit the window.
 const SUMMARY_CHARS_PER_TOKEN: usize = 2;
@@ -347,16 +362,23 @@ fn summary_input_budget(caps: &crate::caps::ModelCaps, max_tokens: u32) -> usize
         .clamp(MIN_SUMMARY_INPUT_CHARS, MAX_SUMMARY_INPUT_CHARS)
 }
 
-/// Summarize the full history into a compact continuation text. Runs under
-/// the turn's cancellation token so an interrupt does not wait on the
-/// summarization call. The caller checks the reply with `usable_summary`.
+/// The transcript budget a summary of this model's history starts with.
+pub(crate) fn summary_budget(caps: &crate::caps::ModelCaps) -> usize {
+    summary_input_budget(caps, summary_max_tokens(caps))
+}
+
+/// Summarize the full history into a compact continuation text, the
+/// transcript within `budget` characters. Runs under the turn's
+/// cancellation token so an interrupt does not wait on the summarization
+/// call. The caller checks the reply with `usable_summary`.
 pub(crate) async fn compact_history(
     client: &reqwest::Client,
     resolved: &Resolved,
     request: &CompletionRequest,
+    budget: usize,
     token: &CancellationToken,
 ) -> Result<CompletionResponse> {
-    let summary_request = summary_request(&request.messages, &resolved.caps);
+    let summary_request = summary_request_within(&request.messages, &resolved.caps, budget);
     let call = crate::complete(client, resolved, &summary_request);
     tokio::select! {
         response = call => response,
@@ -391,32 +413,192 @@ pub(crate) fn usable_summary(response: &CompletionResponse) -> Result<String> {
 /// The one-shot request that summarizes `messages`: the history as a text
 /// transcript in a single user message, low effort, no visible reasoning, no
 /// tools or web, and no more output than the model allows.
+#[cfg(test)]
 pub(crate) fn summary_request(
     messages: &[Message],
     caps: &crate::caps::ModelCaps,
 ) -> CompletionRequest {
+    summary_request_within(messages, caps, summary_budget(caps))
+}
+
+/// `summary_request` with the transcript cut to `budget` characters. The
+/// call is the largest of the run, so it gets the longest a blocking call
+/// may take rather than the default.
+fn summary_request_within(
+    messages: &[Message],
+    caps: &crate::caps::ModelCaps,
+    budget: usize,
+) -> CompletionRequest {
     let max_tokens = summary_max_tokens(caps);
     CompletionRequest {
         system: Some(DEFAULT_COMPACT_PROMPT.to_string()),
-        messages: vec![Message::user(summary_transcript(
-            messages,
-            summary_input_budget(caps, max_tokens),
-        ))],
+        messages: vec![Message::user(summary_transcript(messages, budget))],
         tools: Vec::new(),
         effort: Some(Effort::Low),
         reasoning_summary: Some(false),
         max_tokens: Some(max_tokens),
+        timeout_ms: Some(
+            u64::try_from(crate::complete::MAX_COMPLETION_DURATION.as_millis()).unwrap_or(u64::MAX),
+        ),
         web: None,
         ..CompletionRequest::default()
     }
 }
 
+/// What the kept tail may hold, in bytes of text: a quarter of the window
+/// at the planning ratio of two characters a token.
+fn tail_char_budget(caps: &crate::caps::ModelCaps) -> usize {
+    let window = caps
+        .context_window
+        .filter(|window| *window > 0)
+        .unwrap_or(UNKNOWN_WINDOW_TOKENS) as usize;
+    (window.saturating_mul(SUMMARY_CHARS_PER_TOKEN) / TAIL_WINDOW_DIVISOR)
+        .clamp(MIN_TAIL_CHARS, MAX_TAIL_CHARS)
+}
+
+/// About how much of the window `message` takes, in bytes of text. Images
+/// and documents are counted by their own limits.
+fn message_size(message: &Message) -> usize {
+    message
+        .content
+        .iter()
+        .map(|part| match part {
+            ContentPart::Text { text } => text.len(),
+            ContentPart::ToolUse { arguments, .. } => arguments.len(),
+            ContentPart::ToolResult { output, .. } => output.len(),
+            ContentPart::Thinking { thinking, .. } => thinking.len(),
+            ContentPart::ProviderBlock { block, .. } => {
+                serde_json::to_string(block).map_or(0, |text| text.len())
+            }
+            ContentPart::Image { .. }
+            | ContentPart::RedactedThinking { .. }
+            | ContentPart::Document { .. }
+            | ContentPart::Attachment { .. } => 0,
+        })
+        .fold(0, usize::saturating_add)
+}
+
+fn block_type(block: &Value) -> &str {
+    block
+        .get("type")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+}
+
+/// The calls whose hosted fetch results are in `tail`.
+fn hosted_fetch_ids(tail: &[Message]) -> HashSet<String> {
+    tail.iter()
+        .flat_map(|message| &message.content)
+        .filter_map(|part| match part {
+            ContentPart::ProviderBlock { block, .. }
+                if block_type(block) == "web_fetch_tool_result" =>
+            {
+                block
+                    .get("tool_use_id")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// A cited text block that points into a fetched document rather than a
+/// search result.
+fn cites_a_document(block: &Value) -> bool {
+    block_type(block) == "text"
+        && block
+            .get("citations")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .any(|citation| {
+                citation.get("type").and_then(Value::as_str) != Some("web_search_result_location")
+            })
+}
+
+/// Hosted fetch results in the kept tail as short text markers: a fetched
+/// PDF is otherwise sent again, whole, with every later request. Their
+/// calls and the text citing them become text too, since neither stands
+/// without the result.
+fn hosted_fetches_as_text(tail: &mut [Message]) {
+    let fetched = hosted_fetch_ids(tail);
+    if fetched.is_empty() {
+        return;
+    }
+    for message in tail.iter_mut() {
+        for part in &mut message.content {
+            let ContentPart::ProviderBlock { block, .. } = part else {
+                continue;
+            };
+            let text = match block_type(block) {
+                "web_fetch_tool_result" => provider_block_text(block),
+                "server_tool_use"
+                    if block
+                        .get("id")
+                        .and_then(Value::as_str)
+                        .is_some_and(|id| fetched.contains(id)) =>
+                {
+                    provider_block_text(block)
+                }
+                _ if cites_a_document(block) => block_text(block, "text"),
+                _ => continue,
+            };
+            *part = ContentPart::text(text);
+        }
+        message
+            .content
+            .retain(|part| !matches!(part, ContentPart::Text { text } if text.is_empty()));
+    }
+}
+
+/// The size each tool result in `tail` is cut to so the tail fits
+/// `budget`, or `None` when it fits as it is (or cutting results would not
+/// change it).
+fn tail_result_cap(tail: &[Message], budget: usize) -> Option<usize> {
+    let total = tail.iter().map(message_size).fold(0, usize::saturating_add);
+    if total <= budget {
+        return None;
+    }
+    let results: Vec<usize> = tail
+        .iter()
+        .flat_map(|message| &message.content)
+        .filter_map(|part| match part {
+            ContentPart::ToolResult { output, .. } => Some(output.len()),
+            _ => None,
+        })
+        .collect();
+    if results.is_empty() {
+        return None;
+    }
+    let other = total.saturating_sub(results.iter().sum());
+    let cap = (budget.saturating_sub(other) / results.len()).max(MIN_TAIL_RESULT_CHARS);
+    results.iter().any(|size| *size > cap).then_some(cap)
+}
+
+/// Whether compacting this history makes the request smaller: it drops
+/// messages, or the kept tail has tool results to cut or hosted fetches to
+/// turn into markers. When it does neither, summarizing only adds to it.
+pub(crate) fn compaction_would_shrink(messages: &[Message], caps: &crate::caps::ModelCaps) -> bool {
+    let budget = tail_char_budget(caps);
+    let start = compaction_tail_start(messages, budget);
+    let tail = &messages[start..];
+    start > 0 || tail_result_cap(tail, budget).is_some() || !hosted_fetch_ids(tail).is_empty()
+}
+
 /// Rewrite the request around the summary: `[summary, …kept tail]`. The
-/// stateless Responses continuation cannot survive summarization, so it is
-/// dropped and rebuilt from messages on the next tool turn. Returns how many
-/// messages were summarized away.
-pub(crate) fn apply_compaction(request: &mut CompletionRequest, summary: String) -> usize {
-    let tail_start = compaction_tail_start(&request.messages);
+/// tail fits a share of the model's window: it holds fewer messages when
+/// they are large, its tool results are cut to fit, and hosted fetch
+/// results in it become markers. The stateless Responses continuation
+/// cannot survive summarization, so it is dropped and rebuilt from messages
+/// on the next tool turn. Returns how many messages were summarized away.
+pub(crate) fn apply_compaction(
+    request: &mut CompletionRequest,
+    summary: String,
+    caps: &crate::caps::ModelCaps,
+) -> usize {
+    let budget = tail_char_budget(caps);
+    let tail_start = compaction_tail_start(&request.messages, budget);
     let dropped = tail_start;
     let mut tail = request.messages.split_off(tail_start);
     // Thinking is bound to the history before it, which the summary
@@ -428,6 +610,16 @@ pub(crate) fn apply_compaction(request: &mut CompletionRequest, summary: String)
                 ContentPart::Thinking { .. } | ContentPart::RedactedThinking { .. }
             )
         });
+    }
+    hosted_fetches_as_text(&mut tail);
+    if let Some(cap) = tail_result_cap(&tail, budget) {
+        for part in tail.iter_mut().flat_map(|message| &mut message.content) {
+            if let ContentPart::ToolResult { output, .. } = part {
+                if output.len() > cap {
+                    *output = clip(output, cap);
+                }
+            }
+        }
     }
     tail.retain(|message| !message.content.is_empty());
     request.messages.clear();
@@ -463,36 +655,42 @@ fn result_id(part: &ContentPart) -> Option<&str> {
     }
 }
 
-fn compaction_tail_start(messages: &[Message]) -> usize {
-    let mut start = messages.len().saturating_sub(KEEP_LAST_MESSAGES);
-    loop {
-        let tail_uses: std::collections::HashSet<&str> = messages[start..]
-            .iter()
-            .flat_map(|message| &message.content)
-            .filter_map(call_id)
-            .collect();
-        let tail_results: std::collections::HashSet<&str> = messages[start..]
-            .iter()
-            .flat_map(|message| &message.content)
-            .filter_map(result_id)
-            .filter(|id| !tail_uses.contains(id))
-            .collect();
-        let earlier_use = messages[..start]
-            .iter()
-            .enumerate()
-            .filter(|(_, message)| {
-                message
-                    .content
-                    .iter()
-                    .filter_map(call_id)
-                    .any(|id| tail_results.contains(id))
-            })
-            .map(|(index, _)| index)
-            .min();
-        match earlier_use {
-            Some(index) => start = index,
-            None => return start,
+/// Where the kept tail starts: the newest messages, at most
+/// `KEEP_LAST_MESSAGES` of them and no more than `budget` bytes (the last
+/// message always stays), then moved back so every result in it keeps the
+/// call it answers. That call is the nearest one before the result with its
+/// id: some providers' ids repeat from one reply to the next.
+fn compaction_tail_start(messages: &[Message], budget: usize) -> usize {
+    let mut start = messages.len();
+    let mut used = 0usize;
+    while start > 0 && messages.len() - start < KEEP_LAST_MESSAGES {
+        let size = message_size(&messages[start - 1]);
+        if start < messages.len() && used.saturating_add(size) > budget {
+            break;
         }
+        used = used.saturating_add(size);
+        start -= 1;
+    }
+    loop {
+        let mut earliest = start;
+        for at in start..messages.len() {
+            for id in messages[at].content.iter().filter_map(result_id) {
+                let call = (0..=at).rev().find(|index| {
+                    messages[*index]
+                        .content
+                        .iter()
+                        .filter_map(call_id)
+                        .any(|call| call == id)
+                });
+                if let Some(call) = call {
+                    earliest = earliest.min(call);
+                }
+            }
+        }
+        if earliest == start {
+            return start;
+        }
+        start = earliest;
     }
 }
 
@@ -521,7 +719,7 @@ mod tests {
     #[test]
     fn compaction_keeps_the_tail_and_injects_the_summary_before_it() {
         let mut request = request_with(25);
-        let dropped = apply_compaction(&mut request, "the summary".into());
+        let dropped = apply_compaction(&mut request, "the summary".into(), &caps());
 
         assert_eq!(dropped, 15);
         assert_eq!(request.messages.len(), KEEP_LAST_MESSAGES + 1);
@@ -537,7 +735,7 @@ mod tests {
     #[test]
     fn compaction_of_a_short_history_keeps_everything_and_adds_the_summary() {
         let mut request = request_with(3);
-        let dropped = apply_compaction(&mut request, "s".into());
+        let dropped = apply_compaction(&mut request, "s".into(), &caps());
         assert_eq!(dropped, 0);
         assert_eq!(request.messages.len(), 4);
         assert_eq!(request.messages[0].role, Role::User);
@@ -566,7 +764,7 @@ mod tests {
             }],
         };
 
-        let dropped = apply_compaction(&mut request, "summary".into());
+        let dropped = apply_compaction(&mut request, "summary".into(), &caps());
 
         assert_eq!(dropped, 1);
         assert!(matches!(
@@ -981,7 +1179,7 @@ mod tests {
     #[test]
     fn compaction_strips_thinking_from_the_kept_tail_only() {
         let mut request = history_with_thinking_tail();
-        apply_compaction(&mut request, "summary".into());
+        apply_compaction(&mut request, "summary".into(), &caps());
         assert!(!request
             .messages
             .iter()
@@ -1026,7 +1224,10 @@ mod tests {
                 ContentPart::text("Read it."),
             ],
         };
-        assert_eq!(compaction_tail_start(&request.messages), 13);
+        assert_eq!(
+            compaction_tail_start(&request.messages, tail_char_budget(&caps())),
+            13
+        );
     }
 
     #[test]
@@ -1061,6 +1262,206 @@ mod tests {
             summary_request(&[Message::user("x")], &large).max_tokens,
             Some(16_000)
         );
+    }
+
+    fn caps() -> crate::caps::ModelCaps {
+        crate::caps::ModelCaps::default()
+    }
+
+    fn window(tokens: u32) -> crate::caps::ModelCaps {
+        crate::caps::ModelCaps {
+            context_window: Some(tokens),
+            ..crate::caps::ModelCaps::default()
+        }
+    }
+
+    fn tool_round(id: &str, outputs: &[usize]) -> [Message; 2] {
+        let ids: Vec<String> = (0..outputs.len()).map(|n| format!("{id}-{n}")).collect();
+        [
+            Message {
+                role: Role::Assistant,
+                content: ids
+                    .iter()
+                    .map(|id| ContentPart::ToolUse {
+                        id: id.clone(),
+                        name: "read_file".into(),
+                        arguments: "{}".into(),
+                        thought_signature: None,
+                    })
+                    .collect(),
+            },
+            Message {
+                role: Role::User,
+                content: ids
+                    .iter()
+                    .zip(outputs)
+                    .map(|(id, size)| {
+                        ContentPart::tool_result(id.clone(), "read_file", "c".repeat(*size))
+                    })
+                    .collect(),
+            },
+        ]
+    }
+
+    fn tail_size(request: &CompletionRequest) -> usize {
+        request.messages[1..].iter().map(message_size).sum()
+    }
+
+    #[test]
+    fn large_recent_tool_results_are_cut_so_the_kept_tail_fits_the_window() {
+        // Five rounds of two 60 KB chapter reads on a 200k window: the old
+        // fixed ten-message tail kept all 600 KB.
+        let mut request = CompletionRequest {
+            messages: vec![Message::user("port the chapters".to_string())],
+            ..CompletionRequest::default()
+        };
+        for round in 0..5 {
+            request
+                .messages
+                .extend(tool_round(&format!("r{round}"), &[60_000, 60_000]));
+        }
+        let caps = window(200_000);
+        assert!(compaction_would_shrink(&request.messages, &caps));
+        let dropped = apply_compaction(&mut request, "summary".into(), &caps);
+        assert!(dropped > 0);
+        let budget = tail_char_budget(&caps);
+        // Every result is cut to fit, with room for the cut markers.
+        assert!(
+            tail_size(&request) <= budget + 2 * 64,
+            "{}",
+            tail_size(&request)
+        );
+        // The tail opens on a call, so no result is orphaned.
+        assert!(matches!(
+            request.messages[1].content.first(),
+            Some(ContentPart::ToolUse { .. })
+        ));
+        let kept = request.messages.last().unwrap();
+        assert!(matches!(
+            &kept.content[0],
+            ContentPart::ToolResult { output, .. } if output.contains("characters omitted")
+        ));
+    }
+
+    #[test]
+    fn the_kept_tail_holds_fewer_messages_when_they_are_large() {
+        let mut request = request_with(5);
+        for index in 0..10 {
+            request
+                .messages
+                .push(Message::user(format!("{index} {}", "t".repeat(30_000))));
+        }
+        let caps = window(200_000);
+        let dropped = apply_compaction(&mut request, "summary".into(), &caps);
+        // 100 KB of tail room holds three 30 KB messages, not ten.
+        assert_eq!(request.messages.len(), 4);
+        assert_eq!(dropped, 12);
+        assert!(text_of(request.messages.last().unwrap()).starts_with("9 "));
+    }
+
+    #[test]
+    fn a_history_that_compaction_cannot_shrink_is_not_summarized() {
+        // A single oversized first request: nothing to drop, nothing to cut.
+        let single = vec![Message::user("x".repeat(500_000))];
+        assert!(!compaction_would_shrink(&single, &window(200_000)));
+        // One huge tool result can still be cut.
+        let mut cut = vec![Message::user("task".to_string())];
+        cut.extend(tool_round("r", &[400_000]));
+        assert!(compaction_would_shrink(&cut, &window(200_000)));
+        assert!(compaction_would_shrink(&request_with(25).messages, &caps()));
+    }
+
+    #[test]
+    fn a_repeated_call_id_pulls_the_tail_back_to_the_nearest_call() {
+        // Gemini-style ids that repeat in every reply.
+        let mut messages = vec![Message::user("task".to_string())];
+        for _ in 0..12 {
+            messages.push(tool_call("call_read_file_1", "{}"));
+            messages.push(tool_result("call_read_file_1", "ok"));
+        }
+        messages.push(Message::user("next".to_string()));
+        // The newest ten start on a result; its call is just before it, not
+        // at the start of the history.
+        let start = compaction_tail_start(&messages, tail_char_budget(&caps()));
+        assert_eq!(start, messages.len() - KEEP_LAST_MESSAGES - 1);
+        assert!(matches!(
+            messages[start].content[0],
+            ContentPart::ToolUse { .. }
+        ));
+    }
+
+    #[test]
+    fn hosted_fetch_results_in_the_kept_tail_become_markers() {
+        let pdf = "J".repeat(200_000);
+        let mut request = request_with(3);
+        request.messages.push(Message {
+            role: Role::Assistant,
+            content: vec![
+                provider(
+                    serde_json::json!({"type":"server_tool_use","id":"srvtoolu_1","name":"web_fetch","input":{"url":"https://e.org/p.pdf"}}),
+                ),
+                provider(serde_json::json!({
+                    "type":"web_fetch_tool_result","tool_use_id":"srvtoolu_1",
+                    "content":{"type":"web_fetch_result","url":"https://e.org/p.pdf",
+                        "content":{"type":"document","source":{"type":"base64","data":pdf}}}
+                })),
+                provider(serde_json::json!({
+                    "type":"text","text":"The paper says so.",
+                    "citations":[{"type":"char_location","document_index":0,"cited_text":"so"}]
+                })),
+                provider(
+                    serde_json::json!({"type":"server_tool_use","id":"srvtoolu_2","name":"web_search","input":{"query":"q"}}),
+                ),
+            ],
+        });
+        request.messages.push(Message::user("go on".to_string()));
+        assert!(compaction_would_shrink(
+            &request.messages,
+            &window(1_000_000)
+        ));
+        apply_compaction(&mut request, "summary".into(), &window(1_000_000));
+        let parts: Vec<&ContentPart> = request
+            .messages
+            .iter()
+            .flat_map(|message| &message.content)
+            .collect();
+        let texts: Vec<&str> = parts
+            .iter()
+            .filter_map(|part| match part {
+                ContentPart::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(texts.contains(&"[web_fetch: https://e.org/p.pdf]"));
+        assert!(texts.contains(&"[fetched https://e.org/p.pdf]"));
+        assert!(texts.contains(&"The paper says so."));
+        // The search call has no fetch result and stays as it was.
+        let blocks: Vec<&Value> = parts
+            .iter()
+            .filter_map(|part| match part {
+                ContentPart::ProviderBlock { block, .. } => Some(block),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0]["id"], "srvtoolu_2");
+        assert!(tail_size(&request) < 1_000);
+    }
+
+    #[test]
+    fn the_summary_call_gets_the_longest_blocking_timeout() {
+        let request = summary_request(&[Message::user("x")], &caps());
+        assert_eq!(
+            request.timeout_ms,
+            Some(crate::complete::MAX_COMPLETION_DURATION.as_millis() as u64)
+        );
+    }
+
+    #[test]
+    fn an_unknown_window_gets_a_transcript_a_small_model_can_hold() {
+        assert_eq!(summary_budget(&caps()), 64_000);
+        // The kept tail is sized for a small window too.
+        assert_eq!(tail_char_budget(&caps()), 16_000);
     }
 
     #[test]

@@ -1,6 +1,8 @@
 //! Whether a terminal is busy: a program other than the shell runs in it,
 //! so closing the terminal, the project or the app would stop that program.
 
+use std::time::Duration;
+
 use serde::Serialize;
 
 /// A terminal with a running program, and that program's name when known.
@@ -53,6 +55,31 @@ pub(crate) fn windows_foreground_process(
         })
         .map(|(_, path)| path.clone())
         .next()
+}
+
+/// How long after its last output a WSL terminal still counts as busy.
+/// Programs inside WSL never show up in the terminal's job, so output is
+/// the only sign that one is running.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) const WSL_BUSY_WINDOW: Duration = Duration::from_secs(10);
+
+/// Whether a Windows terminal is busy, and with what: `Some(Some(image))`
+/// for a program found in its job, `Some(None)` for a WSL terminal that
+/// printed something within [`WSL_BUSY_WINDOW`] (`recent_output`), `None`
+/// when only the shell runs.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) fn windows_terminal_job(
+    shell_pid: u32,
+    processes: &[(u32, String)],
+    recent_output: bool,
+) -> Option<Option<String>> {
+    if let Some(image) = windows_foreground_process(shell_pid, processes) {
+        return Some(Some(image));
+    }
+    let wsl = processes
+        .iter()
+        .any(|(pid, path)| *pid == shell_pid && file_name(path).eq_ignore_ascii_case("wsl.exe"));
+    (wsl && recent_output).then_some(None)
 }
 
 /// A program's name for the confirmation dialog: the file name without
@@ -111,6 +138,26 @@ mod tests {
         assert_eq!(
             windows_foreground_process(8, &full_paths).as_deref(),
             Some(r"D:\Tools\Python 3.12\python.exe")
+        );
+    }
+
+    #[test]
+    fn a_wsl_terminal_is_busy_while_its_output_is_recent() {
+        let wsl = processes(&[
+            (30, r"C:\Windows\System32\wsl.exe"),
+            (31, "wslhost.exe"),
+            (32, "conhost.exe"),
+        ]);
+        // Programs inside WSL are invisible in the job: output is the sign.
+        assert_eq!(windows_terminal_job(30, &wsl, true), Some(None));
+        assert_eq!(windows_terminal_job(30, &wsl, false), None);
+        // Other shells are judged by their job alone.
+        let pwsh = processes(&[(40, "pwsh.exe"), (41, "conhost.exe")]);
+        assert_eq!(windows_terminal_job(40, &pwsh, true), None);
+        let node = processes(&[(40, "pwsh.exe"), (42, "node.exe")]);
+        assert_eq!(
+            windows_terminal_job(40, &node, false),
+            Some(Some("node.exe".to_string()))
         );
     }
 

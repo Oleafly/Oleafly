@@ -346,14 +346,31 @@ where
         .max_duration_ms
         .map(Duration::from_millis)
         .unwrap_or(MAX_AGENT_RUN_DURATION);
-    tokio::time::timeout(
+    let mut on_event = on_event;
+    let result = tokio::time::timeout(
         limit,
         crate::session::turn::run_turn(
-            client, resolved, request, config, &pipeline, steer_rx, run_tool, on_event,
+            client,
+            resolved,
+            request,
+            config,
+            &pipeline,
+            steer_rx,
+            run_tool,
+            &mut on_event,
         ),
     )
     .await
-    .map_err(|_| AgentError::Timeout)?
+    .unwrap_or(Err(AgentError::Timeout));
+    // A run that ends in an error says so in its events too, as a stream
+    // error does, so a recorded turn ends failed rather than completed.
+    if let Err(error) = &result {
+        on_event(AgentEvent::Error {
+            message: error.to_string(),
+            retryable: error.retryable(),
+        });
+    }
+    result
 }
 
 #[cfg(test)]
@@ -482,9 +499,15 @@ mod tests {
                 requests
             });
             let mut request = CompletionRequest::prompt("system", "prompt");
-            if !provider_overflow {
-                request.messages = (0..129).map(|_| Message::user("x".repeat(4000))).collect();
-            }
+            request.messages = if provider_overflow {
+                // A history compaction can shorten: a lone first request is
+                // not summarized at all.
+                (0..12)
+                    .map(|index| Message::user(format!("prompt {index}")))
+                    .collect()
+            } else {
+                (0..129).map(|_| Message::user("x".repeat(4000))).collect()
+            };
             let mut events = Vec::new();
             let outcome = tokio::time::timeout(
                 Duration::from_secs(5),

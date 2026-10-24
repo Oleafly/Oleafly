@@ -196,6 +196,8 @@
     "closeRight": "Luk alle til højre",
     "closeTab": "Luk {{title}}",
     "color": "Farve",
+    "dropRefused_one": "Filens navn indeholder et kontroltegn, så terminalen skriver det ikke.",
+    "dropRefused_other": "{{count}} filnavne indeholder kontroltegn, så terminalen skriver dem ikke.",
     "errors": {
       "input": "Din shell kunne ikke tage imod input",
       "resize": "Terminalen kunne ikke skifte størrelse",
@@ -234,6 +236,7 @@
       "many_other": "Programmer kører stadig i {{count}} terminaler.",
       "named": "{{process}} kører stadig i {{title}}.",
       "quit": "Afslut",
+      "reload": "Genindlæs",
       "restart": "Genstart",
       "switchProject": "Skift projekt",
       "titleMany": "Vil du stoppe de programmer, der kører?",

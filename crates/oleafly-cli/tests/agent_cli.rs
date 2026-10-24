@@ -262,7 +262,7 @@ fn a_missing_key_exits_6_and_names_the_variables() {
 }
 
 #[test]
-fn a_run_timeout_exits_1_with_what_was_done() {
+fn a_run_timeout_exits_10_with_what_was_done() {
     let mock = MockProvider::script(vec![
         tool_call("read_file", r#"{"path":"main.tex"}"#),
         Step::Stall,
@@ -276,11 +276,19 @@ fn a_run_timeout_exits_1_with_what_was_done() {
         "--timeout",
         "10",
     ]));
-    assert_eq!(output.status.code(), Some(1), "{}", both_streams(&output));
+    assert_eq!(output.status.code(), Some(10), "{}", both_streams(&output));
     let value = json(&output);
     assert_eq!(value["run"]["stopReason"], "timeout");
     assert_eq!(value["run"]["toolCalls"], 1);
     assert!(value["warnings"].to_string().contains("agent.timeout"));
+    assert_eq!(
+        (
+            value["ok"].clone(),
+            value["error"]["kind"].clone(),
+            value["error"]["code"].clone()
+        ),
+        (json!(false), json!("limit"), json!("agent.timeout"))
+    );
 }
 
 #[test]
@@ -323,7 +331,7 @@ fn a_rejected_key_exits_6_and_is_never_printed() {
 }
 
 #[test]
-fn the_step_limit_exits_1_and_names_the_limit() {
+fn the_step_limit_exits_10_and_names_the_limit() {
     let mock = MockProvider::script(vec![
         tool_call("read_file", r#"{"path":"main.tex"}"#),
         tool_call("read_file", r#"{"path":"main.tex"}"#),
@@ -337,10 +345,67 @@ fn the_step_limit_exits_1_and_names_the_limit() {
         "--max-steps",
         "1",
     ]));
-    assert_eq!(output.status.code(), Some(1), "{}", both_streams(&output));
+    assert_eq!(output.status.code(), Some(10), "{}", both_streams(&output));
     let value = json(&output);
     assert_eq!(value["run"]["stopReason"], "step_limit");
     assert!(value["warnings"].to_string().contains("agent.step_limit"));
+    assert_eq!(value["error"]["code"], "agent.step_limit");
+}
+
+#[test]
+fn a_provider_error_mid_run_names_the_saved_review() {
+    let mock = MockProvider::script(vec![
+        tool_call("write_file", r#"{"path":"notes.md","content":"hi"}"#),
+        Step::Status {
+            code: 400,
+            body: r#"{"error":{"message":"Bad request"}}"#.into(),
+        },
+    ]);
+    let fixture = Fixture::new(&mock);
+    let output = fixture.run(&with_mock(&[
+        "--json",
+        "agent",
+        "run",
+        "add notes",
+        "--allow",
+        "write",
+    ]));
+    assert_eq!(output.status.code(), Some(1), "{}", both_streams(&output));
+    let value = json(&output);
+    assert_eq!(value["error"]["code"], "agent.provider_error", "{value}");
+    let details = &value["error"]["details"];
+    assert_eq!(details["mode"], "review");
+    assert_eq!(details["changes"][0]["path"], "notes.md");
+    let review = PathBuf::from(details["reviewDir"].as_str().unwrap());
+    assert!(review.join("changes/notes.md").exists());
+}
+
+#[test]
+fn apply_mode_lists_the_files_a_command_changed() {
+    let mock = MockProvider::script(vec![
+        tool_call("run_command", r#"{"command":"echo made > made.txt"}"#),
+        text("Done"),
+    ]);
+    let fixture = Fixture::new(&mock);
+    let output = fixture.run(&with_mock(&[
+        "--json",
+        "agent",
+        "run",
+        "make a file",
+        "--apply",
+        "--allow",
+        "write,commands",
+    ]));
+    let value = json(&output);
+    assert_eq!(value["ok"], true, "{value}");
+    assert!(fixture.project.path().join("made.txt").is_file());
+    let changes = value["run"]["changes"].as_array().unwrap();
+    assert!(
+        changes
+            .iter()
+            .any(|change| change["path"] == "made.txt" && change["kind"] == "added"),
+        "{value}"
+    );
 }
 
 #[cfg(unix)]
@@ -529,6 +594,54 @@ fn compile_builds_the_staged_copy_and_leaves_the_project_alone() {
         .join(".oleafly")
         .join("build")
         .exists());
+}
+
+#[test]
+fn a_review_copy_of_a_linked_folder_builds_with_the_apps_settings() {
+    let mock = MockProvider::script(vec![tool_call("compile", "{}"), text("Built")]);
+    let fixture = Fixture::new(&mock);
+    std::fs::create_dir_all(fixture.project.path().join("notes")).unwrap();
+    std::fs::write(
+        fixture.project.path().join("notes/draft.tex"),
+        "\\documentclass{article}\n\\begin{document}\nDraft\n\\end{document}\n",
+    )
+    .unwrap();
+    let id = format!("linked-{}", "0".repeat(32));
+    let state = fixture.data.path().join("linked").join(&id);
+    std::fs::create_dir_all(&state).unwrap();
+    let canonical = fixture.project.path().canonicalize().unwrap();
+    std::fs::write(
+        state.join("link.json"),
+        json!({"version": 1, "id": id, "canonical_path": canonical}).to_string(),
+    )
+    .unwrap();
+    std::fs::write(
+        state.join("project.json"),
+        r#"{"name":"Draft","main_doc":"notes/draft.tex","engine":"xetex"}"#,
+    )
+    .unwrap();
+    let compiler = support::compiler_fixture(fixture.data.path(), false);
+    let output = fixture
+        .command(&with_mock(&[
+            "--json", "agent", "run", "build", "--allow", "write",
+        ]))
+        .env("OLEAFLY_TECTONIC", &compiler)
+        .output()
+        .unwrap();
+    let value = json(&output);
+    assert_eq!(value["ok"], true, "{value}");
+    // The copy has no project.json; detection would pick main.tex. The
+    // system prompt names draft.tex either way, so only the tool's answer
+    // is read.
+    let request = &mock.requests()[1];
+    let answer = request["messages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|message| message["role"] == "tool")
+        .map(|message| message["content"].to_string())
+        .collect::<String>();
+    assert!(answer.contains("draft.tex"), "{answer}");
 }
 
 #[test]

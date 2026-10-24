@@ -332,6 +332,10 @@ fn unix_command(
     args: &[OsString],
 ) -> Result<std::process::Command, SandboxError> {
     create_home_folders(&resolved.home);
+    // bubblewrap can only mount a path that exists; seatbelt denies one that
+    // doesn't as it is.
+    #[cfg(target_os = "linux")]
+    resolve::create_missing_protected(resolved)?;
     let mut readable = system_read_paths();
     readable.push(program.to_path_buf());
     readable.extend(resolved.read_only.iter().cloned());
@@ -469,10 +473,10 @@ pub fn release(owner: &str) -> Result<(), SandboxError> {
 }
 
 /// Releases every research task (`task:<id>`) not in `active_owners`
-/// (startup sweep) and takes off the entries that runs of other owners left
-/// on folders when they were cut off. Other owners that still hold a
-/// profile, such as a CLI run that is working now, are left alone. Returns
-/// how many tasks were released.
+/// (startup sweep), every other owner (a CLI run, a self-test) whose
+/// process is gone, and takes off the entries those runs left on folders
+/// when they were cut off. A CLI run that is working now is left alone.
+/// Returns how many owners were released.
 pub fn release_stale(active_owners: &[String]) -> Result<usize, SandboxError> {
     #[cfg(windows)]
     {
@@ -481,6 +485,24 @@ pub fn release_stale(active_owners: &[String]) -> Result<usize, SandboxError> {
     #[cfg(not(windows))]
     {
         let _ = active_owners;
+        Ok(0)
+    }
+}
+
+/// Releases what runs other than research tasks (a CLI run, a self-test)
+/// still hold although their process is gone, such as a run killed before
+/// it could release: the profile and the entries it put on folders that
+/// stay. Research tasks are left to the app, which knows which are active.
+/// The CLI calls this when it starts. Walks the folders, so call it off
+/// async and UI threads. Returns how many owners were released; nothing to
+/// do on macOS and Linux.
+pub fn release_abandoned() -> Result<usize, SandboxError> {
+    #[cfg(windows)]
+    {
+        windows::release_abandoned()
+    }
+    #[cfg(not(windows))]
+    {
         Ok(0)
     }
 }

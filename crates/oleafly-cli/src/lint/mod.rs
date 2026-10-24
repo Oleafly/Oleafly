@@ -4,6 +4,7 @@
 pub mod fix_writer;
 pub mod select;
 
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
 use clap::{Args, Subcommand, ValueEnum};
@@ -18,7 +19,7 @@ use oleafly_preflight::{describe_template, Severity, SourceText};
 use serde_json::{json, Value};
 
 use crate::check::report::{
-    deliver, summary, Delivery, Level, ReportArgs, ReportRow, RowRange, RuleMeta,
+    deliver, fingerprint_line, summary, Delivery, Level, ReportArgs, ReportRow, RowRange, RuleMeta,
 };
 use crate::check::sarif::sarif_base;
 use crate::commands::CommandModule;
@@ -162,13 +163,18 @@ fn rule_meta(
     }
 }
 
-fn row_of(diagnostic: &LintDiagnostic, file: &str, source: &SourceText) -> ReportRow {
+fn row_of(
+    diagnostic: &LintDiagnostic,
+    file: &str,
+    source: &SourceText,
+    lines: &mut HashMap<usize, String>,
+) -> ReportRow {
     let title = render(&diagnostic.message);
     let range = RowRange {
         from: diagnostic.from,
         to: diagnostic.to,
-        start: source.position(diagnostic.from),
-        end: source.position(diagnostic.to),
+        start: source.editor_position(diagnostic.from),
+        end: source.editor_position(diagnostic.to),
     };
     let json = json!({
         "rule_id": diagnostic.rule_id,
@@ -192,7 +198,7 @@ fn row_of(diagnostic: &LintDiagnostic, file: &str, source: &SourceText) -> Repor
         detail: None,
         file: Some(file.to_string()),
         range: Some(range),
-        line_text: Some(source.line_text(diagnostic.from)),
+        line_text: Some(fingerprint_line(source, diagnostic.from, lines)),
         json,
     }
 }
@@ -268,48 +274,64 @@ fn decode(bytes: Vec<u8>) -> (String, bool) {
     }
 }
 
+/// A planned fix: its range, its replacement and the finding it fixes (an
+/// index into the file's findings).
+type PlannedEdit = (usize, usize, (String, usize));
+
 /// The certain, non-overlapping fixes for a file's spelling and grammar
 /// problems. None for a file that isn't prose.
 fn planned_edits(
     diagnostics: &[LintDiagnostic],
     source: &SourceText,
     format: Option<ProseFormat>,
-) -> Vec<(usize, usize, String)> {
+) -> Vec<PlannedEdit> {
     let Some(prose) = format.map(|format| prose_for(format, source)) else {
         return Vec::new();
     };
     let edits = diagnostics
         .iter()
-        .filter_map(|diagnostic| safe_fix(diagnostic, source, &prose))
+        .enumerate()
+        .filter_map(|(index, diagnostic)| {
+            safe_fix(diagnostic, source, &prose)
+                .map(|(from, to, replacement)| (from, to, (replacement, index)))
+        })
         .collect();
     without_overlaps(edits)
 }
 
-/// The fixes of `edits` that were written, as the report lists them.
-/// `source` is the text before the fixes.
+/// The fixes of `edits` that were written, as the report lists them: one
+/// per edit, for the finding it was planned for (two rules flagging one
+/// span make one fix). `source` is the text before the fixes.
 fn applied_fixes(
     target: &str,
     diagnostics: &[LintDiagnostic],
-    edits: &[(usize, usize, String)],
+    edits: &[PlannedEdit],
     source: &SourceText,
 ) -> Vec<Value> {
-    let mut fixed = Vec::new();
-    for diagnostic in diagnostics {
-        let applied = edits.iter().find(|(from, to, _)| {
-            *from == diagnostic.from
-                && *to == diagnostic.to
-                && diagnostic.source == LintSource::Harper
-        });
-        if let Some((from, to, replacement)) = applied {
-            fixed.push(json!({
+    edits
+        .iter()
+        .filter_map(|(from, to, (replacement, index))| {
+            let diagnostic = diagnostics.get(*index)?;
+            Some(json!({
                 "file": target,
                 "rule_id": diagnostic.rule_id,
-                "range": {"from": from, "to": to, "start": source.position(*from), "end": source.position(*to)},
+                "range": {"from": from, "to": to, "start": source.editor_position(*from), "end": source.editor_position(*to)},
                 "replacement": replacement,
-            }));
+            }))
+        })
+        .collect()
+}
+
+/// Adds `more` to `warnings`, leaving out any already there.
+fn add_new_warnings(warnings: &mut Vec<Warning>, more: Vec<Warning>) {
+    for warning in more {
+        let known = warnings
+            .iter()
+            .any(|seen| seen.code == warning.code && seen.message == warning.message);
+        if !known {
+            warnings.push(warning);
         }
     }
-    fixed
 }
 
 /// Why a file was left unfixed.
@@ -330,26 +352,69 @@ fn fix_warning(target: &str, error: &FixError) -> Warning {
     }
 }
 
+/// Why a file was left unread.
+fn unreadable_warning(target: &str, error: &std::io::Error) -> Warning {
+    Warning::new(
+        "lint.file_unreadable",
+        format!("Skipped {target} because oleafly couldn't read it ({error})."),
+    )
+}
+
 /// Lints the targets (blocking: reads files, runs Harper on this thread).
 pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
-    let targets = select::lint_targets(&input.root, &input.paths, &input.cwd)?;
+    execute_lint_until(input, &std::sync::atomic::AtomicBool::new(false))
+}
+
+/// [`execute_lint`], stopping between files once `cancel` is set (an MCP
+/// client cancelled the call, whose blocking work can't be aborted).
+pub fn execute_lint_until(
+    input: LintInput,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Result<LintRun, CliError> {
+    let (targets, walk_cut) = select::lint_targets(&input.root, &input.paths, &input.cwd)?;
     let mut warnings = Vec::new();
+    if walk_cut {
+        warnings.push(Warning::new(
+            "lint.too_many_files",
+            format!(
+                "Linted only the first {} files, or folders up to {} levels deep. Name the folders to lint to check the rest.",
+                select::MAX_FILES,
+                select::MAX_DEPTH
+            ),
+        ));
+    }
     let ignored = IgnoredWords::from_lines(&input.words);
     let mut proofreader = if input.prose {
         start_proofreader(input.dialect, &ignored, &mut warnings)
     } else {
         None
     };
-    let harper_rules = oleafly_lint::proofread::rule_descriptions();
+    // Only Harper's findings need its rule descriptions.
+    let harper_rules = if proofreader.is_some() {
+        oleafly_lint::proofread::rule_descriptions()
+    } else {
+        BTreeMap::new()
+    };
     let mut rows = Vec::new();
     let mut rules: Vec<RuleMeta> = Vec::new();
     let mut fixed: Vec<Value> = Vec::new();
     let mut fixed_files = 0;
     let root = dunce::canonicalize(&input.root).map_err(CliError::from)?;
     for target in &targets {
+        if cancel.load(std::sync::atomic::Ordering::Acquire) {
+            return Err(CliError::new(
+                ErrorKind::Interrupted,
+                "interrupted",
+                "Stopped.",
+            ));
+        }
         let path = root.join(target);
-        let Ok(metadata) = std::fs::metadata(&path) else {
-            continue;
+        let metadata = match std::fs::metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(error) => {
+                warnings.push(unreadable_warning(target, &error));
+                continue;
+            }
         };
         if metadata.len() > MAX_FILE_BYTES {
             warnings.push(Warning::new(
@@ -358,9 +423,27 @@ pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
             ));
             continue;
         }
-        let stamp = FileStamp::of(&path).map_err(CliError::from)?;
-        let bytes = std::fs::read(&path).map_err(CliError::from)?;
+        let read =
+            FileStamp::of(&path).and_then(|stamp| std::fs::read(&path).map(|bytes| (stamp, bytes)));
+        let (stamp, bytes) = match read {
+            Ok(read) => read,
+            Err(error) => {
+                warnings.push(unreadable_warning(target, &error));
+                continue;
+            }
+        };
         let (original, utf8) = decode(bytes);
+        // The app won't open a file in another encoding, and a lossy read
+        // would report fragments of words as misspelled.
+        if !utf8 {
+            warnings.push(Warning::new(
+                "lint.not_utf8",
+                format!(
+                    "Skipped {target} because it isn't valid UTF-8. Save it as UTF-8 to lint it."
+                ),
+            ));
+            continue;
+        }
         let (normalized, map) = LineEndingMap::new(&original);
         let mut source = SourceText::new(normalized);
         let format = format_for_path(target);
@@ -368,13 +451,14 @@ pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
         if input.fix {
             let edits = planned_edits(&diagnostics, &source, format);
             if !edits.is_empty() {
-                let result = if utf8 {
-                    apply_fixes(&original, &map, &source, &edits).and_then(|text| {
+                let replacements: Vec<(usize, usize, String)> = edits
+                    .iter()
+                    .map(|(from, to, (replacement, _))| (*from, *to, replacement.clone()))
+                    .collect();
+                let result =
+                    apply_fixes(&original, &map, &source, &replacements).and_then(|text| {
                         write_if_unchanged(&path, &stamp, text.as_bytes()).map(|()| text)
-                    })
-                } else {
-                    Err(FixError::NotUtf8)
-                };
+                    });
                 match result {
                     Ok(fixed_text) => {
                         fixed_files += 1;
@@ -384,15 +468,17 @@ pub fn execute_lint(input: LintInput) -> Result<LintRun, CliError> {
                         // line, and one that joins lines moves every line.
                         let (after, _) = LineEndingMap::new(&fixed_text);
                         source = SourceText::new(after);
-                        diagnostics =
-                            diagnose(target, &source, proofreader.as_mut(), &mut Vec::new());
+                        let mut recheck = Vec::new();
+                        diagnostics = diagnose(target, &source, proofreader.as_mut(), &mut recheck);
+                        add_new_warnings(&mut warnings, recheck);
                     }
                     Err(error) => warnings.push(fix_warning(target, &error)),
                 }
             }
         }
+        let mut lines: HashMap<usize, String> = HashMap::new();
         for diagnostic in &diagnostics {
-            rows.push(row_of(diagnostic, target, &source));
+            rows.push(row_of(diagnostic, target, &source, &mut lines));
             if !rules.iter().any(|rule| rule.id == diagnostic.rule_id) {
                 rules.push(rule_meta(diagnostic, &harper_rules));
             }
@@ -540,12 +626,147 @@ mod tests {
     }
 
     #[test]
+    fn a_cancelled_lint_stops_before_its_next_file() {
+        use std::sync::atomic::AtomicBool;
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(project.path().join("main.tex"), "\\begin{figure}\nx\n").unwrap();
+        let error = execute_lint_until(input(project.path()), &AtomicBool::new(true))
+            .err()
+            .unwrap();
+        assert_eq!(error.code, "interrupted");
+        let run = execute_lint_until(input(project.path()), &AtomicBool::new(false)).unwrap();
+        assert!(!run.rows.is_empty());
+    }
+
+    #[test]
     fn invalid_utf8_is_read_with_replacement_characters_and_flagged() {
         assert_eq!(decode(b"abc".to_vec()), ("abc".to_string(), true));
         assert_eq!(
             decode(vec![b'a', 0xff, b'b']),
             ("a\u{fffd}b".to_string(), false)
         );
+    }
+
+    fn codes(run: &LintRun) -> Vec<&str> {
+        run.warnings
+            .iter()
+            .map(|warning| warning.code.as_ref())
+            .collect()
+    }
+
+    #[test]
+    fn a_file_that_is_not_utf8_is_skipped_with_a_warning() {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("latin1.tex"),
+            b"\\begin{figure}caf\xe9\n".as_slice(),
+        )
+        .unwrap();
+        let run = execute_lint(input(project.path())).unwrap();
+        assert!(run.rows.is_empty());
+        assert_eq!(codes(&run), ["lint.not_utf8"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_unreadable_file_is_a_warning_and_the_others_are_linted() {
+        use std::os::unix::fs::PermissionsExt;
+        let project = tempfile::tempdir().unwrap();
+        let locked = project.path().join("locked.tex");
+        std::fs::write(&locked, "x").unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\\begin{document}\n\\begin{figure}\n",
+        )
+        .unwrap();
+        let readable_anyway = std::fs::read(&locked).is_ok();
+        let run = execute_lint(input(project.path()));
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o644)).unwrap();
+        if readable_anyway {
+            return;
+        }
+        let run = run.unwrap();
+        assert_eq!(codes(&run), ["lint.file_unreadable"]);
+        assert!(run
+            .rows
+            .iter()
+            .all(|row| row.file.as_deref() == Some("main.tex")));
+        assert!(!run.rows.is_empty());
+    }
+
+    #[test]
+    fn a_byte_order_mark_takes_no_column() {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.tex"),
+            "\u{feff}\\begin{figure}\nx\n",
+        )
+        .unwrap();
+        let run = execute_lint(input(project.path())).unwrap();
+        let row = run
+            .rows
+            .iter()
+            .find(|row| row.range.is_some_and(|range| range.start.line == 1))
+            .expect("a finding on the first line");
+        assert_eq!(row.range.unwrap().start.column, 1);
+        assert_eq!(row.json["range"]["start"]["column"], 1);
+    }
+
+    #[test]
+    fn a_finding_on_a_very_long_line_keeps_a_digest_of_it() {
+        let project = tempfile::tempdir().unwrap();
+        let long = format!("\\begin{{figure}}{}\n", "x".repeat(100_000));
+        std::fs::write(project.path().join("main.tex"), &long).unwrap();
+        let run = execute_lint(input(project.path())).unwrap();
+        assert!(!run.rows.is_empty());
+        for row in &run.rows {
+            assert!(row.line_text.as_deref().is_some_and(|text| text.len() < 64));
+        }
+        let short = SourceText::new("  \\cite{x}\nnext".to_string());
+        assert_eq!(
+            fingerprint_line(&short, 3, &mut HashMap::new()),
+            "  \\cite{x}"
+        );
+    }
+
+    #[test]
+    fn two_findings_on_one_span_make_one_fix() {
+        let finding = |rule: &str| LintDiagnostic {
+            from: 3,
+            to: 6,
+            severity: Severity::Warning,
+            message: LintMessage::Text("Repeated word".into()),
+            source: LintSource::Harper,
+            rule_id: format!("harper/{rule}"),
+            suggestions: Vec::new(),
+            fixable: true,
+        };
+        let diagnostics = [finding("RepeatedWords"), finding("Other")];
+        let source = SourceText::new("the the".to_string());
+        let edits: Vec<PlannedEdit> = vec![(3, 6, (String::new(), 0))];
+        let fixed = applied_fixes("main.md", &diagnostics, &edits, &source);
+        assert_eq!(fixed.len(), 1);
+        assert_eq!(fixed[0]["rule_id"], "harper/RepeatedWords");
+        let planned = without_overlaps(vec![
+            (3, 6, ("a".to_string(), 1)),
+            (3, 6, ("b".to_string(), 0)),
+        ]);
+        assert_eq!(planned, [(3, 6, ("a".to_string(), 1))]);
+    }
+
+    #[test]
+    fn a_warning_already_given_is_not_repeated() {
+        let mut warnings = vec![Warning::new("lint.prose_too_large", "Skipped a.md")];
+        add_new_warnings(
+            &mut warnings,
+            vec![
+                Warning::new("lint.prose_too_large", "Skipped a.md"),
+                Warning::new("lint.proofread_failed", "Stopped in a.md"),
+            ],
+        );
+        assert_eq!(warnings.len(), 2);
+        assert_eq!(warnings[1].code, "lint.proofread_failed");
     }
 
     #[test]

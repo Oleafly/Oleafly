@@ -28,7 +28,7 @@ pub trait MirrorGit: Send + Sync {
 /// The variable the credential helper reads the token from.
 pub const MIRROR_TOKEN_VARIABLE: &str = "OLEAFLY_MIRROR_TOKEN";
 
-fn null_device() -> &'static str {
+pub(crate) fn null_device() -> &'static str {
     if cfg!(windows) {
         "NUL"
     } else {
@@ -185,10 +185,14 @@ impl SystemGit {
         {
             command.env_remove(variable);
         }
+        // Git's messages stay in English, which `classify_remote_failure`
+        // matches on; only the message language changes, not file names.
         command
             .env("GIT_TERMINAL_PROMPT", "0")
             .env("GIT_LITERAL_PATHSPECS", "1")
-            .env("GIT_OPTIONAL_LOCKS", "1");
+            .env("GIT_OPTIONAL_LOCKS", "1")
+            .env("LANGUAGE", "en")
+            .env("LC_MESSAGES", "C");
         if let Some((_, token)) = remote {
             command.env(MIRROR_TOKEN_VARIABLE, token);
         }
@@ -219,7 +223,7 @@ fn subcommand<'a>(args: &[&'a str]) -> Option<&'a str> {
 
 fn local_total(args: &[&str]) -> Duration {
     match subcommand(args) {
-        Some("add" | "checkout" | "clean" | "status" | "diff") => LOCAL_SLOW_TOTAL,
+        Some("add" | "checkout" | "clean" | "status" | "diff" | "gc") => LOCAL_SLOW_TOTAL,
         _ => LOCAL_TOTAL,
     }
 }
@@ -318,8 +322,11 @@ fn run_bounded(
         if elapsed > total || silent {
             let _ = child.kill();
             let _ = child.wait();
-            let _ = stdout.join();
-            let _ = stderr.join();
+            // The readers are left to finish on their own: a helper Git
+            // started (`git-remote-https`) can outlive it with the pipes
+            // open, stuck on the stalled transfer, and waiting for them
+            // would never end.
+            drop((stdout, stderr));
             return Err(OnlineError::new(if idle.is_some() {
                 OnlineErrorKind::SyncOffline
             } else {
@@ -387,6 +394,37 @@ mod tests {
     }
 
     #[test]
+    fn system_git_keeps_its_messages_in_english() {
+        let command =
+            SystemGit::new(PathBuf::from("git")).command(Path::new("repo"), &["fetch"], None);
+        let envs: HashMap<_, _> = command.get_envs().collect();
+        assert_eq!(envs.get(OsStr::new("LANGUAGE")).unwrap().unwrap(), "en");
+        assert_eq!(envs.get(OsStr::new("LC_MESSAGES")).unwrap().unwrap(), "C");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_timed_out_call_returns_while_a_child_still_holds_its_output() {
+        // The shell is stopped at the bound; the sleeper it started keeps
+        // stdout and stderr open, as a stalled `git-remote-https` does.
+        let mut command = Command::new("sh");
+        command.args(["-c", "sleep 15 & sleep 15"]);
+        let started = Instant::now();
+        let error = run_bounded(
+            command,
+            Some(Duration::from_millis(300)),
+            Duration::from_secs(60),
+        )
+        .unwrap_err();
+        assert_eq!(error.kind, OnlineErrorKind::SyncOffline);
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "{:?}",
+            started.elapsed()
+        );
+    }
+
+    #[test]
     fn a_missing_git_reports_git_not_installed() {
         let temp = tempfile::tempdir().unwrap();
         let git = SystemGit::new(temp.path().join("no-git"));
@@ -420,6 +458,10 @@ mod tests {
         assert_eq!(
             local_total(&["--git-dir=.git", "rev-parse", "HEAD"]),
             LOCAL_TOTAL
+        );
+        assert_eq!(
+            local_total(&["--git-dir=.git", "-c", "gc.auto=256", "gc", "--auto"]),
+            LOCAL_SLOW_TOTAL
         );
     }
 

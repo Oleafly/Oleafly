@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import enResearch from "@/i18n/locales/en/researchTools.json" with { type: "json" };
@@ -41,6 +41,19 @@ describe("ComputeTargetDialog", () => {
       expect.objectContaining({ kind: "ssh", host: "cluster.example.edu", port: 2222, remoteRoot: "scratch/runs" }),
     );
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("marks setup commands that are over Rust's 4 KB and keeps the dialog open", async () => {
+    const onSave = vi.fn(async (_target: ComputeTarget) => undefined);
+    render(<ComputeTargetDialog target={emptyTarget("ssh")} onClose={vi.fn()} onSave={onSave} />);
+    await userEvent.type(screen.getByLabelText(form.label), "Lab");
+    await userEvent.type(screen.getByLabelText(form.host), "cluster.example.edu");
+    const prelude = screen.getByLabelText(form.prelude);
+    fireEvent.change(prelude, { target: { value: "# 模块\n".repeat(700) } });
+    await userEvent.click(screen.getByTestId("compute-target-save"));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(prelude).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText(form.errors.prelude)).toBeTruthy();
   });
 
   it("turns Slurm text into the saved resources", () => {

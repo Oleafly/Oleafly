@@ -182,8 +182,11 @@ interface ChatsState {
     headOid: string | null,
     settings?: { effort?: EffortLevel; web?: WebSetting },
   ) => StoredChat;
-  /** `index: false` skips the search index (saves while a reply streams). */
-  saveMessages: (chatId: string, messages: ChatMessage[], opts?: { index?: boolean }) => void;
+  /**
+   * `index: false` skips the search index (saves while a reply streams).
+   * `projectId` saves into that project's chats instead of the one on show.
+   */
+  saveMessages: (chatId: string, messages: ChatMessage[], opts?: { index?: boolean; projectId?: string }) => void;
   patchTitleIfEmpty: (chatId: string, title: string) => void;
   addUsage: (chatId: string, delta: UsageDelta) => void;
   addUsageForProject: (projectId: string, chatId: string, delta: UsageDelta) => Promise<void>;
@@ -287,6 +290,13 @@ export function chatAttachmentRefs(chats: readonly StoredChat[]): Set<string> {
   for (const chat of chats) {
     for (const message of chat.messages) addMessageRefs(refs, message);
   }
+  return refs;
+}
+
+/** The stored attachments of one transcript, saved or not. */
+export function messageAttachmentRefs(messages: readonly ChatMessage[]): Set<string> {
+  const refs = new Set<string>();
+  for (const message of messages) addMessageRefs(refs, message);
   return refs;
 }
 
@@ -423,6 +433,9 @@ async function collectAttachments(projectId: string, remaining: readonly StoredC
   if (remaining.some((chat) => chat.stub)) return;
   const keep = new Set([
     ...chatAttachmentRefs(remaining),
+    // A reply still streaming has files the saved chat does not list yet (a
+    // screenshot stored a moment ago).
+    ...Object.values(useChatsStore.getState().live).flatMap((messages) => [...messageAttachmentRefs(messages)]),
     ...draftAttachmentRefs(projectId),
     ...queuedAttachmentRefs(),
   ]);
@@ -611,9 +624,11 @@ export const useChatsStore = create<ChatsState>((set, get) => {
     },
 
     saveMessages: (chatId, messages, opts) => {
-      const { projectId } = get();
+      const projectId = opts?.projectId ?? get().projectId;
       if (!projectId) return;
-      const chats = current(projectId);
+      // Another project's chats are edited only while they are cached.
+      const chats = projectId === get().projectId ? current(projectId) : memoryByProject.get(projectId);
+      if (!chats) return;
       // A debounced save can fire after the user switched projects (load
       // replaced projectId/chats). If the chat isn't in the current project's
       // list, writing here would put the update in the wrong place. A stub

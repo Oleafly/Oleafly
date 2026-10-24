@@ -20,7 +20,7 @@ import { getConfig, mcpServersList, setConfig as saveConfig, type AppConfig } fr
 import { ResearchCard } from "./ResearchCard";
 import { ResearchBackgroundSlot, ResearchComputeSlot } from "./slots";
 
-/** The config keys this section writes; everything else in the config is read fresh at each save. */
+/** The config keys this section writes; a save sets only the ones its change touched. */
 const OWNED_KEYS = [
   "research_keep_awake",
   "research_notifications",
@@ -42,13 +42,9 @@ function researchDefaults(): Pick<AppConfig, OwnedKey> {
   };
 }
 
-function ownedValues(config: AppConfig): Partial<AppConfig> {
-  return Object.fromEntries(OWNED_KEYS.map((key) => [key, config[key]])) as Partial<AppConfig>;
-}
-
 /** Settings › Research: defaults and behaviour of research tasks. */
 export function ResearchSettingsSection() {
-  const { t } = useTranslation(["common", "researchTools"]);
+  const { t } = useTranslation(["common", "researchTools", "settings"]);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [servers, setServers] = useState<string[] | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | null>(null);
@@ -58,14 +54,32 @@ export function ResearchSettingsSection() {
   // The settings as the switches show them, for the saves waiting in line.
   const shown = useRef<AppConfig | null>(null);
   const saves = useRef<Promise<void>>(Promise.resolve());
+  // The patches of the saves in line, oldest first.
+  const waiting = useRef<Partial<AppConfig>[]>([]);
+  const [serversFailed, setServersFailed] = useState(false);
+  const serversRequest = useRef(0);
+
+  const loadServers = useCallback(() => {
+    const current = ++serversRequest.current;
+    setServersFailed(false);
+    void mcpServersList()
+      .then((list) => {
+        if (current === serversRequest.current) setServers(list.map((server) => server.config.name));
+      })
+      .catch(() => {
+        if (current === serversRequest.current) setServersFailed(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    loadServers();
+    return () => {
+      serversRequest.current += 1;
+    };
+  }, [loadServers]);
 
   useEffect(() => {
     let live = true;
-    void mcpServersList()
-      .then((list) => {
-        if (live) setServers(list.map((server) => server.config.name));
-      })
-      .catch(() => setServers([]));
     void researchNotificationPermission(false)
       .then((state) => {
         if (live) setPermission(state);
@@ -104,23 +118,30 @@ export function ResearchSettingsSection() {
     shown.current = next;
     setConfig(next);
     setSaveFailed(false);
-    // Each save reads the config again and sets only this section's keys, so a
-    // change another window made to anything else is not written over.
+    waiting.current.push(patch);
+    // Changes when the section closes or loads the config again.
+    const generation = request.current;
+    // Each save reads the config again and sets only the keys of this change, so
+    // a change another writer made to anything else is not written over.
     saves.current = saves.current
-      .then(() => getConfig())
-      .then((latest) => saveConfig({ ...latest, ...ownedValues(shown.current ?? next) }))
-      .catch(() => {
-        // The change did not reach the config: its switch goes back, unless it changed again since.
-        const current = shown.current;
-        if (current) {
-          const restored: Record<string, unknown> = {};
-          for (const key of Object.keys(patch) as (keyof AppConfig)[]) {
-            if (Object.is(current[key], patch[key])) restored[key] = before[key];
+      .then(async () => {
+        try {
+          const latest = await getConfig();
+          await saveConfig({ ...latest, ...patch });
+        } catch {
+          setSaveFailed(true);
+          // Show what is stored, with the changes still waiting to be saved on top.
+          try {
+            const stored = await getConfig();
+            if (request.current !== generation) return;
+            shown.current = Object.assign({ ...stored }, ...waiting.current.slice(1)) as AppConfig;
+            setConfig(shown.current);
+          } catch {
+            // The switches keep what they showed.
           }
-          shown.current = { ...current, ...(restored as Partial<AppConfig>) };
-          setConfig(shown.current);
+        } finally {
+          waiting.current.shift();
         }
-        setSaveFailed(true);
       });
   };
 
@@ -133,6 +154,8 @@ export function ResearchSettingsSection() {
   };
 
   const chosenServers = config?.research_task_mcp_servers ?? [];
+  // Chosen names the server list no longer has (renamed or removed), so they can be unticked.
+  const missingServers = servers ? chosenServers.filter((name) => !servers.includes(name)) : [];
   const minutes = config?.research_time_budget_minutes ?? 120;
   const budgetOptions = TIME_BUDGET_OPTIONS.includes(minutes)
     ? TIME_BUDGET_OPTIONS
@@ -216,30 +239,43 @@ export function ResearchSettingsSection() {
           <p className="text-xs text-muted-foreground">
             {t(($) => $.researchTools.tasks.settings.mcpServersHint)}
           </p>
-          {servers?.length === 0 ? (
+          {serversFailed ? (
+            <ErrorState size="compact" message={t(($) => $.settings.research.mcpServers.loadFailed)}>
+              <Button size="xs" variant="outline" onClick={loadServers}>
+                {t(($) => $.common.actions.retry)}
+              </Button>
+            </ErrorState>
+          ) : null}
+          {!serversFailed && servers?.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t(($) => $.researchTools.tasks.settings.noMcpServers)}</p>
           ) : null}
-          {servers?.map((name) => {
-            const id = `research-mcp-${name}`;
-            return (
-              <label key={name} htmlFor={id} className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  id={id}
-                  disabled={!config}
-                  checked={chosenServers.includes(name)}
-                  onCheckedChange={(next) =>
-                    write({
-                      research_task_mcp_servers:
-                        next === true
-                          ? [...chosenServers, name]
-                          : chosenServers.filter((chosen) => chosen !== name),
-                    })
-                  }
-                />
-                <span className="truncate">{name}</span>
-              </label>
-            );
-          })}
+          {serversFailed
+            ? null
+            : [...(servers ?? []), ...missingServers].map((name) => {
+                const id = `research-mcp-${name}`;
+                return (
+                  <label key={name} htmlFor={id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      id={id}
+                      disabled={!config}
+                      checked={chosenServers.includes(name)}
+                      onCheckedChange={(next) =>
+                        write({
+                          research_task_mcp_servers:
+                            next === true
+                              ? [...chosenServers, name]
+                              : chosenServers.filter((chosen) => chosen !== name),
+                        })
+                      }
+                    />
+                    <span className="truncate">
+                      {missingServers.includes(name)
+                        ? t(($) => $.settings.research.mcpServers.missing, { name })
+                        : name}
+                    </span>
+                  </label>
+                );
+              })}
         </fieldset>
         {saveFailed ? (
           <p role="alert" className="text-xs text-destructive">

@@ -161,7 +161,18 @@ fn consume(
     event: &AcpEvent,
     session: &SessionRecord,
 ) -> Option<UsageEventInput> {
-    let turn_id = event.turn_id.as_ref()?;
+    let reported_cost = (event.kind == "usage" && event.data["source"] == "acp_context")
+        .then(|| event.data["costAmount"].as_f64())
+        .flatten()
+        .filter(|cost| cost.is_finite() && *cost >= 0.0);
+    // Outside any turn (a plan-usage refresh): the agent's total moves on,
+    // and no turn is charged for it.
+    let Some(turn_id) = event.turn_id.as_ref() else {
+        if let Some(cost) = reported_cost {
+            state.last_cost = Some(cost);
+        }
+        return None;
+    };
     if state
         .turn
         .as_ref()
@@ -169,11 +180,14 @@ fn consume(
     {
         state.turn = Some(TurnUsage::new(event, turn_id.clone(), state.last_cost));
     }
-    let reported_cost = (event.kind == "usage" && event.data["source"] == "acp_context")
-        .then(|| event.data["costAmount"].as_f64())
-        .flatten()
-        .filter(|cost| cost.is_finite() && *cost >= 0.0);
     if let Some(cost) = reported_cost {
+        // A total below the last one: the agent counts from zero again (a
+        // restart, a load or a fork), so this turn's cost is all of it.
+        if state.last_cost.is_some_and(|last| cost < last) {
+            if let Some(turn) = state.turn.as_mut() {
+                turn.cost_at_start = Some(0.0);
+            }
+        }
         state.last_cost = Some(cost);
     }
     let turn = state.turn.as_mut()?;
@@ -718,6 +732,45 @@ mod tests {
         assert!(
             (cost - 0.15).abs() < 1e-9,
             "only the new turn's cost: {cost}"
+        );
+    }
+
+    fn turn_cost_event(sequence: u64, turn: Option<&str>, cost: f64) -> AcpEvent {
+        let mut event = event(
+            sequence,
+            "usage",
+            serde_json::json!({"source":"acp_context","costAmount":cost,"costCurrency":"USD"}),
+        );
+        event.turn_id = turn.map(Into::into);
+        event
+    }
+
+    #[test]
+    fn a_cost_total_that_starts_again_charges_the_turn_all_of_it() {
+        let session = api_session();
+        let mut state = ReplayState::default();
+        consume(&mut state, &turn_cost_event(1, Some("t1"), 2.40), &session).unwrap();
+        // The app restarted: the agent counts from zero again.
+        let next = consume(&mut state, &turn_cost_event(2, Some("t2"), 0.30), &session).unwrap();
+        assert!(
+            (next.estimated_cost_usd.unwrap() - 0.30).abs() < 1e-9,
+            "{:?}",
+            next.estimated_cost_usd
+        );
+    }
+
+    #[test]
+    fn a_plan_usage_refresh_is_not_charged_to_the_next_turn() {
+        let session = api_session();
+        let mut state = ReplayState::default();
+        consume(&mut state, &turn_cost_event(1, Some("t1"), 1.00), &session).unwrap();
+        // The hidden refresh turn belongs to no turn.
+        assert!(consume(&mut state, &turn_cost_event(2, None, 1.04), &session).is_none());
+        let next = consume(&mut state, &turn_cost_event(3, Some("t2"), 1.10), &session).unwrap();
+        assert!(
+            (next.estimated_cost_usd.unwrap() - 0.06).abs() < 1e-9,
+            "{:?}",
+            next.estimated_cost_usd
         );
     }
 

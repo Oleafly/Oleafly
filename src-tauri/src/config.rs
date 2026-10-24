@@ -195,6 +195,11 @@ pub struct AppConfig {
     pub skills_share_with_agents: bool,
     #[serde(default = "default_ui_locale")]
     pub ui_locale: String,
+    /// Bumped by `oleafly config set --global` each time it changes one of
+    /// the settings the app also saves. A save from a copy read before that
+    /// keeps those settings as the CLI left them.
+    #[serde(default)]
+    pub cli_settings_revision: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub typst_default_version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -285,6 +290,7 @@ impl Default for AppConfig {
             mcp_servers: Vec::new(),
             skills_share_with_agents: true,
             ui_locale: default_ui_locale(),
+            cli_settings_revision: 0,
             typst_default_version: None,
             latex_default_engine: None,
             live_collaboration: false,
@@ -1107,6 +1113,7 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     drop_keys_for_moved_endpoints(&mut config, &stored, &restored);
     keep_newer_model_trust_records(&mut config, &stored);
     drop_probes_for_moved_endpoints(&mut config, &stored);
+    keep_cli_settings(&mut config, &stored);
     config.mcp_servers = stored.mcp_servers;
     config.typst_default_version = stored.typst_default_version;
     // 0.4.8 H: only set_ai_tools_model changes where Tools send images.
@@ -1120,6 +1127,20 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     config.research_background_at_login = stored.research_background_at_login;
     config.github_connected = false;
     write_config_unlocked(&config)
+}
+
+/// The settings `oleafly config set --global` writes, as the CLI left them
+/// when `config` was read before the CLI's last change (the settings views
+/// load once and save their whole copy later).
+fn keep_cli_settings(config: &mut AppConfig, stored: &AppConfig) {
+    if config.cli_settings_revision != stored.cli_settings_revision {
+        config.checkpoints_enabled = stored.checkpoints_enabled;
+        config.checkpoint_notifications = stored.checkpoint_notifications;
+        config.git_auto_init = stored.git_auto_init;
+        config.skills_share_with_agents = stored.skills_share_with_agents;
+        config.ui_locale = stored.ui_locale.clone();
+    }
+    config.cli_settings_revision = stored.cli_settings_revision;
 }
 
 fn keep_newer_model_trust_records(config: &mut AppConfig, stored: &AppConfig) {
@@ -1380,6 +1401,36 @@ mod tests {
 
         assert!(config.git_auto_init);
         assert!(AppConfig::default().git_auto_init);
+    }
+
+    #[test]
+    fn a_save_from_a_copy_older_than_the_clis_change_keeps_the_clis_settings() {
+        let stored = AppConfig {
+            git_auto_init: false,
+            checkpoints_enabled: false,
+            ui_locale: "de".into(),
+            cli_settings_revision: 2,
+            ..AppConfig::default()
+        };
+        // Read before the CLI's change: its copy still says true.
+        let mut stale = AppConfig {
+            cli_settings_revision: 1,
+            ai_model: "picked-in-the-app".into(),
+            ..AppConfig::default()
+        };
+        keep_cli_settings(&mut stale, &stored);
+        assert!(!stale.git_auto_init && !stale.checkpoints_enabled);
+        assert_eq!(stale.ui_locale, "de");
+        assert_eq!(stale.ai_model, "picked-in-the-app");
+        assert_eq!(stale.cli_settings_revision, 2);
+        // Read after it: the app's own change goes through.
+        let mut fresh = AppConfig {
+            cli_settings_revision: 2,
+            git_auto_init: true,
+            ..AppConfig::default()
+        };
+        keep_cli_settings(&mut fresh, &stored);
+        assert!(fresh.git_auto_init);
     }
 
     #[test]

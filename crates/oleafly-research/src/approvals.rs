@@ -24,6 +24,9 @@ const POLL: Duration = Duration::from_secs(1);
 pub const COMMANDS_OFF: &str = "Commands are turned off for this task.";
 pub const DENIED: &str = "The user didn't approve this command.";
 pub const EXPIRED: &str = "Nobody answered the approval request in 24 hours.";
+/// The request is larger than an approval shows (16 KiB).
+pub const TOO_LONG_TO_SHOW: &str =
+    "This request is too long to show for approval (over 16 KiB). Ask again with a shorter command or smaller arguments.";
 const CANCELLED: &str = "The task was cancelled.";
 /// 0.4.8 L: the result an approval wait gets when the task moves to another
 /// process before anyone answered. The next owner asks again.
@@ -121,7 +124,15 @@ impl ApprovalQueue {
     async fn wait_inner(&self, approval_id: &str, cancel: &CancellationToken) -> Decision {
         loop {
             let decided = self.decided.notified();
-            let record = match self.store().and_then(|store| store.approval(approval_id)) {
+            // Read every second for up to a day: off the async workers.
+            let (root, id) = (self.store_root.clone(), approval_id.to_owned());
+            let read = tokio::task::spawn_blocking(move || {
+                TaskStore::new(root).and_then(|store| store.approval(&id))
+            })
+            .await
+            .map_err(|error| error.to_string())
+            .and_then(|record| record);
+            let record = match read {
                 Ok(record) => record,
                 Err(error) => return Decision::Denied(error),
             };
@@ -229,6 +240,11 @@ pub async fn gate(
         CommandPolicy::Allow => return Ok(()),
         CommandPolicy::Off => return Err(COMMANDS_OFF.into()),
         CommandPolicy::Ask => {}
+    }
+    // The user approves exactly what runs: a request the approval could
+    // show only in part is refused instead of shortened.
+    if detail.len() > MAX_DETAIL_BYTES {
+        return Err(TOO_LONG_TO_SHOW.into());
     }
     // 0.4.8 L: a task moving to another process asks nothing more here; a
     // wait under way is withdrawn and the next owner asks again.
@@ -473,6 +489,48 @@ mod tests {
                 .pending_approvals,
             0
         );
+    }
+
+    #[tokio::test]
+    async fn a_request_too_long_to_show_is_refused_instead_of_shortened() {
+        let fixture = fixture();
+        let context = context(&fixture, CommandPolicy::Ask);
+        let refused = gate(
+            &fixture.services,
+            &context,
+            ApprovalKind::Mcp,
+            "Use search",
+            &"x".repeat(MAX_DETAIL_BYTES + 1),
+            &CancellationToken::new(),
+        )
+        .await;
+        assert_eq!(refused, Err(TOO_LONG_TO_SHOW.to_owned()));
+        assert!(fixture
+            .services
+            .approvals
+            .pending("paper")
+            .unwrap()
+            .is_empty());
+        // At the limit it is asked as it is.
+        let services = fixture.services.clone();
+        let asking = tokio::spawn(async move {
+            gate(
+                &services,
+                &context,
+                ApprovalKind::Mcp,
+                "Use search",
+                &"x".repeat(MAX_DETAIL_BYTES),
+                &CancellationToken::new(),
+            )
+            .await
+        });
+        let id = waiting_request(&fixture).await;
+        assert_eq!(
+            fixture.store.approval(&id).unwrap().detail.len(),
+            MAX_DETAIL_BYTES
+        );
+        fixture.services.approvals.decide(&id, true).unwrap();
+        assert_eq!(answer(asking).await, Ok(()));
     }
 
     #[tokio::test]

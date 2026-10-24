@@ -121,20 +121,34 @@ function send(data: string): TerminalKeyAction {
 
 /** Shells whose line editor inserts a new line on ESC CR (Alt+Enter). */
 const ESC_CR_SHELLS: ReadonlySet<string> = new Set(["zsh", "fish"]);
+/** Readline shells, where ESC CR is the vi-mode toggle. */
+const READLINE_SHELLS: ReadonlySet<string> = new Set(["bash", "sh"]);
+
+function shellProgram(ctx: TerminalKeyContext): string {
+  return ctx.shellName?.replace(/\.exe$/i, "").toLowerCase() ?? "";
+}
+
+function windowsShiftEnterBytes(ctx: TerminalKeyContext): string {
+  // WSL forwards raw input to Linux, where LF is the newline CLI agents read.
+  if (ctx.wsl) return "\n";
+  const shell = shellProgram(ctx);
+  // Git Bash is bash with the same readline binding as on Linux.
+  if (READLINE_SHELLS.has(shell)) return "\n";
+  // cmd has no multi-line input; Alt+Enter only submits the line there.
+  if (shell === "cmd") return "\r";
+  // ESC CR survives ConPTY and libuv and is a no-op at a PSReadLine prompt.
+  return "\x1b\r";
+}
 
 function shiftEnterBytes(ctx: TerminalKeyContext): string {
   if (ctx.shiftEnter === "enter") return "\r";
-  // ESC CR survives ConPTY and libuv on Windows and is a no-op at a
-  // PSReadLine prompt. WSL forwards raw input to Linux, where LF is the
-  // newline CLI agents read and ESC CR is bash's vi-mode toggle.
-  if (ctx.platform === "windows") return ctx.wsl ? "\n" : "\x1b\r";
+  if (ctx.platform === "windows") return windowsShiftEnterBytes(ctx);
   // ESC CR is Option+Enter: zsh and fish add a line to the command, and CLI
   // agents such as Claude Code add a line to the prompt. LF would run the
   // command at a zsh prompt. macOS's bash binds nothing to ESC CR; bash on
   // Linux may switch to vi mode on it, so it keeps LF.
   if (ctx.platform === "mac") return "\x1b\r";
-  const shell = ctx.shellName?.replace(/\.exe$/i, "").toLowerCase() ?? "";
-  return ESC_CR_SHELLS.has(shell) ? "\x1b\r" : "\n";
+  return ESC_CR_SHELLS.has(shellProgram(ctx)) ? "\x1b\r" : "\n";
 }
 
 /** Ctrl+Shift+C copies a selection (nothing else happens without one), Ctrl+Shift+V pastes. */
@@ -245,6 +259,21 @@ export function isTerminalKey(event: TerminalKeyEvent, platform: TerminalPlatfor
     return CTRL_SYMBOLS.has(event.key);
   }
   return true;
+}
+
+/**
+ * Whether Ctrl, alone, turns this key into something a program reads: a
+ * control character (Ctrl+K kills the line in readline and nano) or a named
+ * key (vim moves between tabs on Ctrl+PageDown). Off macOS an app shortcut
+ * bound to one of these gives way to a focused terminal.
+ */
+export function isCtrlTerminalKey(event: TerminalKeyEvent): boolean {
+  if (!event.ctrlKey || event.altKey || event.metaKey) return false;
+  if (event.key.length === 1) {
+    if (LETTER.test(event.key)) return !event.shiftKey;
+    return CTRL_SYMBOLS.has(event.key);
+  }
+  return !event.shiftKey && (NAMED_TERMINAL_KEYS.has(event.key) || FUNCTION_KEY.test(event.key));
 }
 
 /** Whether a capture-phase app handler must leave this key to the terminal. */

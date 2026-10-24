@@ -18,6 +18,7 @@ use oleafly_acp::capabilities::AgentCapabilities;
 use oleafly_acp::client::{
     AcpClient, ClientHost, ClientInfo, ClientOptions, IncomingRequest, TurnTiming,
 };
+use oleafly_acp::controls::{ConfigKind, ConfigValue, ModeSwitch, SessionControls};
 use oleafly_acp::limits::{CANCEL_GRACE, DEFAULT_INACTIVITY};
 use oleafly_acp::orphans::{OwnerTag, PidRegistry};
 use oleafly_acp::redact::{clear_value, Redactor};
@@ -64,6 +65,22 @@ const KNOWN_KINDS: [&str; 10] = [
     "other",
 ];
 const MAX_CREDENTIAL_BYTES: u64 = 256 * 1024;
+/// Permission requests that may wait for an approval at once (the app's
+/// cap); more are cancelled.
+const MAX_PENDING_REQUESTS: usize = 16;
+/// Paths kept per tool call; a call naming more is judged as outside.
+const MAX_TRACKED_PATHS: usize = 256;
+/// Tool calls remembered per session; past it the list starts again.
+const MAX_TRACKED_CALLS: usize = 64;
+/// A path no project contains, standing for the paths past the limit.
+const UNTRACKED_PATH: &str = "../untracked";
+/// Switches out of a mode with permission checks off before Oleafly says it
+/// couldn't (the app's limit).
+const MAX_MODE_SWITCHES: u32 = 3;
+/// The project's tool rules, which the app writes and the helper re-reads
+/// for each request.
+const APPROVALS_FILE: &str = "approvals.toml";
+const MAX_APPROVALS_BYTES: u64 = 4 * 1024 * 1024;
 
 fn lock<T>(value: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     value
@@ -101,6 +118,94 @@ pub fn credential_files(agent_id: &str) -> &'static [&'static str] {
         ],
         _ => &[],
     }
+}
+
+fn private_folder(path: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(path).map_err(|_| "The agent's home could not be made.".to_string())?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700))
+            .map_err(|_| "The agent's home could not be protected.".to_string())?;
+    }
+    Ok(())
+}
+
+fn write_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    use std::io::Write;
+    if let Some(parent) = path.parent() {
+        private_folder(parent)?;
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options
+        .open(path)
+        .map_err(|_| "The agent's sign-in file could not be created.".to_string())?;
+    file.write_all(bytes)
+        .map_err(|_| "The agent's sign-in file could not be written.".to_string())
+}
+
+/// Copies the agent's sign-in files from the user's own home into the
+/// task's home, as the app's `prepare_credentials` does: the app no longer
+/// copies them at quit for a task that is only queued, so the helper does
+/// when it starts the agent. A file already in the task's home (an older
+/// handoff, or the agent's own refreshed token) is kept. A source that is a
+/// link, leaves the home, is over 256 KiB or isn't JSON is refused.
+pub fn copy_credentials(user_home: &Path, task_home: &Path, agent_id: &str) -> Result<(), String> {
+    private_folder(task_home)?;
+    let Ok(user_home) = user_home.canonicalize() else {
+        // No home to sign in from: the agent says it needs a sign-in.
+        return Ok(());
+    };
+    for relative in credential_files(agent_id) {
+        let destination = task_home.join(relative);
+        if std::fs::symlink_metadata(&destination).is_ok() {
+            continue;
+        }
+        let source = user_home.join(relative);
+        let metadata = match source.symlink_metadata() {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => return Err("A CLI credential file could not be inspected.".into()),
+        };
+        if !metadata.is_file()
+            || metadata.file_type().is_symlink()
+            || metadata.len() > MAX_CREDENTIAL_BYTES
+            || !source
+                .canonicalize()
+                .is_ok_and(|path| path.starts_with(&user_home))
+        {
+            return Err(
+                "A CLI credential file is outside its account directory or too large.".into(),
+            );
+        }
+        let bytes = zeroize::Zeroizing::new(
+            std::fs::read(&source).map_err(|_| "A CLI credential file could not be read.")?,
+        );
+        if serde_json::from_slice::<serde::de::IgnoredAny>(&bytes).is_err() {
+            return Err(
+                "The CLI credential file is invalid. Sign in through the official CLI again."
+                    .into(),
+            );
+        }
+        write_private(&destination, &bytes)?;
+    }
+    let gemini_settings = task_home.join(".gemini/settings.json");
+    if agent_id == "gemini"
+        && task_home.join(".gemini/oauth_creds.json").is_file()
+        && std::fs::symlink_metadata(&gemini_settings).is_err()
+    {
+        write_private(
+            &gemini_settings,
+            br#"{"security":{"auth":{"selectedType":"oauth-personal"}}}"#,
+        )?;
+    }
+    Ok(())
 }
 
 /// A redactor for everything the agent sends: the sign-in values found in
@@ -213,29 +318,376 @@ pub fn map_update(
     }
 }
 
-/// One session update of the running turn: the tool kind is kept for its
-/// permission requests and the update goes to the transcript.
+/// What the agent announced about a tool call, for its later permission
+/// requests: adapters announce a call with its kind and paths and then ask
+/// with only its id (the app's `ToolCallView`, without the diff text).
+#[derive(Clone, Debug, Default)]
+struct CallView {
+    kind: Option<String>,
+    locations: Vec<String>,
+    input_paths: Vec<String>,
+    diff_paths: Vec<String>,
+    /// More paths came than are kept.
+    overflowed: bool,
+}
+
+fn kept_paths<'a>(paths: impl Iterator<Item = &'a str>, overflowed: &mut bool) -> Vec<String> {
+    let mut kept: Vec<String> = paths
+        .take(MAX_TRACKED_PATHS + 1)
+        .map(str::to_owned)
+        .collect();
+    if kept.len() > MAX_TRACKED_PATHS {
+        kept.truncate(MAX_TRACKED_PATHS);
+        *overflowed = true;
+    }
+    kept
+}
+
+impl CallView {
+    /// Applies the fields a `tool_call`, `tool_call_update` or permission
+    /// `toolCall` carries; fields it leaves out keep their earlier values.
+    fn apply(&mut self, update: &Value) {
+        if let Some(kind) = update["kind"].as_str() {
+            self.kind = Some(kind.chars().take(32).collect());
+        }
+        if let Some(locations) = update["locations"].as_array() {
+            let paths = locations
+                .iter()
+                .filter_map(|location| location["path"].as_str());
+            self.locations = kept_paths(paths, &mut self.overflowed);
+        }
+        if update["rawInput"].is_object() {
+            let paths = oleafly_acp::paths::raw_input_paths(update);
+            self.input_paths = kept_paths(paths, &mut self.overflowed);
+        }
+        if let Some(content) = update["content"].as_array() {
+            let paths = content
+                .iter()
+                .filter(|item| item["type"] == "diff")
+                .filter_map(|item| item["path"].as_str());
+            self.diff_paths = kept_paths(paths, &mut self.overflowed);
+        }
+    }
+
+    /// Every path the call names, for the path policy.
+    fn paths(&self) -> impl Iterator<Item = &str> {
+        self.locations
+            .iter()
+            .chain(&self.input_paths)
+            .chain(&self.diff_paths)
+            .map(String::as_str)
+            .chain(self.overflowed.then_some(UNTRACKED_PATH))
+    }
+}
+
+/// Remembers what a `tool_call` or `tool_call_update` says.
+fn track_call(calls: &mut HashMap<String, CallView>, update: &Value) {
+    let Some(id) = update["toolCallId"]
+        .as_str()
+        .filter(|id| !id.is_empty() && id.len() <= 512)
+    else {
+        return;
+    };
+    if !calls.contains_key(id) && calls.len() >= MAX_TRACKED_CALLS {
+        calls.clear();
+    }
+    calls.entry(id.to_owned()).or_default().apply(update);
+}
+
+/// A permission request as the helper judges it: its kind (or the
+/// announced call's) and every path the request and the call it refers to
+/// name, as the app's `policy_view` does.
+fn judged_request(
+    calls: &HashMap<String, CallView>,
+    tool: &Value,
+) -> (Option<String>, Vec<String>) {
+    let mut request = CallView::default();
+    request.apply(tool);
+    let remembered = tool["toolCallId"].as_str().and_then(|id| calls.get(id));
+    let kind = request
+        .kind
+        .clone()
+        .or_else(|| remembered.and_then(|call| call.kind.clone()));
+    let paths = remembered
+        .into_iter()
+        .flat_map(CallView::paths)
+        .chain(request.paths())
+        .map(str::to_owned)
+        .collect();
+    (kind, paths)
+}
+
+/// The task's folder as requests may name it: canonical (what a path must
+/// really be inside), and the spellings the agent may use (the plain form
+/// it was started in, and the stored one).
+struct TaskRoots {
+    canonical: PathBuf,
+    spellings: [PathBuf; 2],
+}
+
+impl TaskRoots {
+    /// Canonicalizes `stored` (file work: call it off the async threads).
+    fn resolve(stored: &Path) -> Result<Self, String> {
+        let canonical = std::fs::canonicalize(stored)
+            .map_err(|_| "The task's folder could not be found.".to_string())?;
+        let plain = dunce::simplified(&canonical).to_path_buf();
+        Ok(Self {
+            canonical,
+            spellings: [plain, stored.to_path_buf()],
+        })
+    }
+
+    /// Whether every path leads inside the folder.
+    fn contains_all<'a>(&self, mut paths: impl Iterator<Item = &'a str>) -> bool {
+        paths.all(|path| {
+            self.spellings.iter().any(|spelled| {
+                oleafly_acp::paths::path_within(&self.canonical, spelled, Path::new(path))
+            })
+        })
+    }
+}
+
+/// The Oleafly tools whose rules cover an ACP request of this kind (the
+/// app's `tools_for_acp_kind`).
+fn tools_for_kind(kind: Option<&str>) -> &'static [&'static str] {
+    match kind {
+        Some("execute") => &["run_command"],
+        Some("edit") => &["write_file", "replace_in_file", "create_file"],
+        Some("delete") => &["delete_file"],
+        Some("move") => &["rename_file"],
+        Some("read") => &["read_file"],
+        Some("search") => &["search_project"],
+        _ => &[],
+    }
+}
+
+/// The tools the project's rules deny, read from the app's approvals file
+/// now. `None` when the file can't be read or isn't what the app writes,
+/// which refuses everything, as in the app.
+fn denied_tools(data_root: &Path, project_id: &str) -> Option<Vec<String>> {
+    let path = data_root.join(APPROVALS_FILE);
+    let text = match std::fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Some(Vec::new()),
+        Err(_) => return None,
+        Ok(metadata) if !metadata.is_file() || metadata.len() > MAX_APPROVALS_BYTES => return None,
+        Ok(_) => std::fs::read_to_string(&path).ok()?,
+    };
+    let document = text.parse::<toml_edit::DocumentMut>().ok()?;
+    let mut denied = Vec::new();
+    for (project, item) in document.iter() {
+        if project == "$approval_modes" {
+            continue;
+        }
+        let tools = item.as_table_like()?;
+        for (tool, decision) in tools.iter() {
+            match decision.as_str()? {
+                "deny" if project == project_id => denied.push(tool.to_owned()),
+                "allow" | "deny" => {}
+                _ => return None,
+            }
+        }
+    }
+    Some(denied)
+}
+
+/// Whether the project's rules refuse a request of `kind` now (the app's
+/// `task_request_refused`): a deny rule for its tool refuses it, and while
+/// the project has any deny rule a kind no tool's rules cover is refused
+/// too. An unreadable rules file refuses.
+fn rules_refuse(data_root: &Path, project_id: &str, kind: Option<&str>) -> bool {
+    let Some(denied) = denied_tools(data_root, project_id) else {
+        return true;
+    };
+    let tools = tools_for_kind(kind);
+    tools
+        .iter()
+        .any(|tool| denied.iter().any(|denied| denied == tool))
+        || (tools.is_empty() && !denied.is_empty())
+}
+
+/// A request judged against the task's folder and the project's rules.
+struct Judged {
+    kind: Option<String>,
+    /// Every path it names is inside the task's folder.
+    in_root: bool,
+    /// It (or the call it refers to) names a path at all.
+    names_paths: bool,
+    /// The project's rules, read now, refuse it.
+    refused_now: bool,
+}
+
+/// How a judged request is answered: a read or change that names no path
+/// is refused rather than allowed on a guess, as are kinds the project's
+/// rules refuse now; then the grant's rules and the command policy.
+fn request_decision(grant: &AcpGrant, judged: &Judged, commands: CommandPolicy) -> PermissionPath {
+    let file_request = matches!(
+        judged.kind.as_deref(),
+        Some("read" | "edit" | "delete" | "move")
+    );
+    if (file_request && !judged.names_paths) || judged.refused_now {
+        return PermissionPath::Refuse;
+    }
+    permission_decision(grant, judged.kind.as_deref(), commands)
+}
+
+/// The agent's modes and options, kept to move it out of a mode with
+/// permission checks off (the app's `leave_blocked_mode`).
+#[derive(Default)]
+struct ModeGuard {
+    controls: SessionControls,
+    switches: u32,
+    /// A switch is on its way.
+    switching: bool,
+    warned: bool,
+}
+
+impl ModeGuard {
+    /// The switch to try now: the agent is in a blocked mode, it offers
+    /// another one, and attempts remain.
+    fn next_switch(&mut self) -> Option<ModeSwitch> {
+        if self.switching || self.switches >= MAX_MODE_SWITCHES {
+            return None;
+        }
+        let switch = self.controls.blocked_mode(None)?.switch?;
+        self.switches += 1;
+        Some(switch)
+    }
+
+    /// What to tell the user, once, when the agent stays in a blocked mode.
+    fn notice(&mut self, redactor: &Redactor) -> Option<String> {
+        if self.warned || self.switching {
+            return None;
+        }
+        let blocked = self.controls.blocked_mode(None)?;
+        self.warned = true;
+        Some(format!(
+            "Permission checks are off ({}). The agent can edit files and run commands without asking. Oleafly could not switch it to another mode. Change the mode in the agent's own settings.",
+            redactor.text(&blocked.name)
+        ))
+    }
+
+    /// Applies the agent's answer to a switch.
+    fn switched(&mut self, switch: &ModeSwitch, answer: &Value) {
+        self.switching = false;
+        if answer["configOptions"].is_array() {
+            self.controls.merge(answer);
+            return;
+        }
+        match &switch.config_id {
+            Some(config_id) => {
+                if let Some(ConfigKind::Select { current_value, .. }) = self
+                    .controls
+                    .options
+                    .iter_mut()
+                    .find(|option| &option.id == config_id)
+                    .map(|option| &mut option.kind)
+                {
+                    *current_value = Some(switch.to.clone());
+                }
+            }
+            None => {
+                self.controls.mode_id = Some(switch.to.clone());
+                self.controls.merge(answer);
+            }
+        }
+    }
+}
+
+async fn send_switch(
+    client: &AcpClient,
+    session_id: &str,
+    switch: &ModeSwitch,
+) -> Result<Value, String> {
+    match &switch.config_id {
+        Some(config_id) => {
+            client
+                .set_config_option(session_id, config_id, &ConfigValue::Id(switch.to.clone()))
+                .await
+        }
+        None => client.set_mode(session_id, &switch.to).await,
+    }
+    .map_err(|error| error.to_string())
+}
+
+/// During a turn: starts a switch out of a blocked mode in the background
+/// (its answer comes back as [`FromAgent::Switched`]), or says once that
+/// the agent stays in it.
+fn guard_mode(
+    guard: &mut ModeGuard,
+    client: &Arc<AcpClient>,
+    session_id: &str,
+    sender: &mpsc::UnboundedSender<FromAgent>,
+    redactor: &Redactor,
+    events: &TaskEventSink,
+) {
+    if let Some(switch) = guard.next_switch() {
+        guard.switching = true;
+        let client = client.clone();
+        let session_id = session_id.to_owned();
+        let sender = sender.clone();
+        tokio::spawn(async move {
+            let answer = send_switch(&client, &session_id, &switch).await.ok();
+            let _ = sender.send(FromAgent::Switched(switch, answer));
+        });
+    } else if let Some(message) = guard.notice(redactor) {
+        events(TaskRuntimeEvent::Status { message });
+    }
+}
+
+/// `work`, unless `cancel` fires first (the start-up requests each wait up
+/// to a minute for the agent).
+async fn until_cancelled<T>(
+    cancel: &CancellationToken,
+    work: impl std::future::Future<Output = T>,
+) -> Result<T, String> {
+    tokio::select! {
+        biased;
+        _ = cancel.cancelled() => Err(CANCELLED.into()),
+        value = work => Ok(value),
+    }
+}
+
+/// What the helper keeps about the running session: the announced tool
+/// calls and the agent's modes.
+#[derive(Default)]
+struct SessionView {
+    calls: HashMap<String, CallView>,
+    mode: ModeGuard,
+}
+
+/// One session update of the running turn: tool calls are kept for their
+/// permission requests, mode and option changes for the mode guard, and the
+/// update goes to the transcript. Whether the agent's modes or options
+/// changed.
 fn apply_update(
     params: &Value,
     session_id: &str,
     redactor: &Redactor,
-    kinds: &mut HashMap<String, String>,
+    view: &mut SessionView,
     outcome: &mut TaskRuntimeOutcome,
     events: &TaskEventSink,
-) {
+) -> bool {
     if params["sessionId"].as_str() != Some(session_id) {
-        return;
+        return false;
     }
     let update = redactor.value(&params["update"]);
     let Some(kind) = update["sessionUpdate"].as_str().map(str::to_owned) else {
-        return;
+        return false;
     };
-    if let (Some(id), Some(tool_kind)) = (update["toolCallId"].as_str(), update["kind"].as_str()) {
-        kinds.insert(id.to_owned(), tool_kind.to_owned());
+    let controls = matches!(
+        kind.as_str(),
+        "config_option_update" | "config_options_update" | "current_mode_update"
+    );
+    if controls {
+        view.mode.controls.apply_update(&update);
+    }
+    if matches!(kind.as_str(), "tool_call" | "tool_call_update") {
+        track_call(&mut view.calls, &update);
     }
     if let Some(event) = map_update(&kind, &update, outcome) {
         events(event);
     }
+    controls
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -310,6 +762,8 @@ enum FromAgent {
     Permission(Box<IncomingRequest>),
     Withdrawn,
     Disconnected,
+    /// A switch out of a blocked mode finished (`None`: it failed).
+    Switched(ModeSwitch, Option<Value>),
 }
 
 struct TaskClientHost {
@@ -350,6 +804,12 @@ pub struct DaemonAcpAdapter {
     registry: Option<Arc<PidRegistry>>,
     launcher: AcpLauncher,
     tokens: Arc<Mutex<HashMap<String, ActiveTaskRun>>>,
+    /// The step and approval-withdraw tokens of every run, instead of the
+    /// scheduler's (tests).
+    suspend_tokens: Option<(CancellationToken, CancellationToken)>,
+    /// The home the agents' sign-in files are copied from (the user's;
+    /// tests pass their own).
+    user_home: Option<PathBuf>,
 }
 
 impl DaemonAcpAdapter {
@@ -374,7 +834,33 @@ impl DaemonAcpAdapter {
             registry: Some(Arc::new(registry)),
             launcher,
             tokens: Arc::new(Mutex::new(HashMap::new())),
+            suspend_tokens: None,
+            user_home: crate::app_paths::home_dir(),
         })
+    }
+
+    #[cfg(test)]
+    fn with_suspend_tokens(mut self, step: CancellationToken, withdraw: CancellationToken) -> Self {
+        self.suspend_tokens = Some((step, withdraw));
+        self
+    }
+
+    #[cfg(test)]
+    fn with_user_home(mut self, home: PathBuf) -> Self {
+        self.user_home = Some(home);
+        self
+    }
+
+    /// The token that ends the task's generation at its next step and the
+    /// one that withdraws its approval waits.
+    fn suspend_tokens(&self, task_id: &str) -> (CancellationToken, CancellationToken) {
+        match &self.suspend_tokens {
+            Some(tokens) => tokens.clone(),
+            None => (
+                self.services.suspends.token(task_id),
+                self.services.suspends.approvals(task_id),
+            ),
+        }
     }
 }
 
@@ -482,7 +968,14 @@ impl DaemonAcpAdapter {
         if cancel.is_cancelled() {
             return Err(CANCELLED.into());
         }
-        let grant = self.host.grant(&context.task_id)?;
+        // The grant is a database read.
+        let grant = {
+            let host = self.host.clone();
+            let task_id = context.task_id.clone();
+            tokio::task::spawn_blocking(move || host.grant(&task_id))
+                .await
+                .map_err(|_| OPEN_OLEAFLY.to_string())??
+        };
         if !grant.allows(TRUST_AGENTS) {
             return Err(format!(
                 "@oleafly/error:{}",
@@ -499,7 +992,24 @@ impl DaemonAcpAdapter {
                 .await
                 .map_err(|_| "The agent's sandbox could not be prepared.".to_string())??
         };
-        let skills = self.host.skills(&context)?;
+        // The grant, skill and program-folder lookups read files and the
+        // task database: off the helper's two async threads.
+        let (skills, read_paths, linked_roots, search_dirs, project_root) = {
+            let host = self.host.clone();
+            let context = context.clone();
+            tokio::task::spawn_blocking(move || {
+                (
+                    host.skills(&context),
+                    host.skill_read_paths(&context),
+                    host.linked_folders(&context),
+                    host.program_search_dirs(),
+                    host.project_root(&context.project_id),
+                )
+            })
+            .await
+            .map_err(|_| OPEN_OLEAFLY.to_string())?
+        };
+        let skills = skills?;
         let root = PathBuf::from(&context.execution_root);
         let binding = TaskBinding {
             task_id: context.task_id.clone(),
@@ -510,10 +1020,10 @@ impl DaemonAcpAdapter {
             record_dir: context.record_dir.clone(),
             execution_root: root.clone(),
             allowed_paths: context.allowed_paths.clone(),
-            read_paths: self.host.skill_read_paths(&context),
-            linked_roots: self.host.linked_folders(&context),
-            search_dirs: self.host.program_search_dirs(),
-            project_root: self.host.project_root(&context.project_id),
+            read_paths,
+            linked_roots,
+            search_dirs,
+            project_root,
             services: self.services.clone(),
             host: self.host.clone(),
             events: Some(events.clone()),
@@ -552,7 +1062,23 @@ impl DaemonAcpAdapter {
         events: &TaskEventSink,
     ) -> Result<TaskRuntimeOutcome, String> {
         let mut servers = bridge.mcp_servers();
-        servers.extend(self.host.task_mcp_servers(context));
+        let task_servers = {
+            let host = self.host.clone();
+            let context = context.clone();
+            tokio::task::spawn_blocking(move || host.task_mcp_servers(&context))
+                .await
+                .unwrap_or_default()
+        };
+        servers.extend(task_servers);
+        // A task queued at quit comes with a home but without the agent's
+        // sign-in files; they are copied now, when the agent starts.
+        if let Some(user_home) = self.user_home.clone() {
+            let home = launch.sandbox.home.clone();
+            let agent = acp.agent_id.clone();
+            tokio::task::spawn_blocking(move || copy_credentials(&user_home, &home, &agent))
+                .await
+                .map_err(|_| "The agent's sign-in could not be prepared.".to_string())??;
+        }
         let redactor = Arc::new(redactor_for_home(
             &launch.sandbox.home,
             &acp.agent_id,
@@ -633,9 +1159,21 @@ impl DaemonAcpAdapter {
             prefer_v2: false,
             fs_read: false,
         };
-        let negotiated = client
-            .initialize(&options)
-            .await
+        // Requests name paths as the agent sees them; they are judged
+        // against the canonical folder (on Windows `\\?\C:\...`, which the
+        // stored path never equals) and its plain spellings.
+        let roots = {
+            let stored = PathBuf::from(&context.execution_root);
+            Arc::new(
+                tokio::task::spawn_blocking(move || TaskRoots::resolve(&stored))
+                    .await
+                    .map_err(|_| "The task's folder could not be found.".to_string())??,
+            )
+        };
+        // Each start-up request may wait a minute for the agent, so a stop
+        // or cancel ends the wait.
+        let negotiated = until_cancelled(cancel, client.initialize(&options))
+            .await?
             .map_err(|error| redactor.text(&error.to_string()))?;
         let capabilities = negotiated.capabilities.clone();
         if !capabilities.mcp_http {
@@ -644,34 +1182,53 @@ impl DaemonAcpAdapter {
         let cwd = context.execution_root.clone();
         let mut resumed = None;
         if let Some(handoff) = &handoff {
-            resumed =
-                restore_session(client, handoff, &capabilities, &cwd, &servers, receiver).await;
+            resumed = until_cancelled(
+                cancel,
+                restore_session(client, handoff, &capabilities, &cwd, &servers, receiver),
+            )
+            .await?;
             if resumed.is_none() {
                 events(TaskRuntimeEvent::Status {
                     message: RESUME_FAILED.into(),
                 });
             }
         }
-        let session_id = match resumed.clone() {
-            Some(id) => id,
-            None => start_session(client, &cwd, &servers, redactor).await?,
+        let was_resumed = resumed.is_some();
+        let (session_id, started) = match resumed {
+            Some(restored) => restored,
+            None => {
+                until_cancelled(cancel, start_session(client, &cwd, &servers, redactor)).await??
+            }
         };
+        // The agent's own session id, the same one the handoff carries.
         events(TaskRuntimeEvent::SessionBound {
             native_session_id: session_id.clone(),
         });
+        let mut view = SessionView::default();
+        view.mode.controls.merge(&redactor.value(&started));
+        // An agent may start in a mode with permission checks off (its own
+        // settings); move it out before the turn.
+        while let Some(switch) = view.mode.next_switch() {
+            match until_cancelled(cancel, send_switch(client, &session_id, &switch)).await? {
+                Ok(answer) => view.mode.switched(&switch, &redactor.value(&answer)),
+                Err(_) => break,
+            }
+        }
+        if let Some(message) = view.mode.notice(redactor) {
+            events(TaskRuntimeEvent::Status { message });
+        }
         let interrupted_before = context
             .handoff
             .as_ref()
             .is_some_and(|handoff| handoff.turn_interrupted);
-        let text = match (&resumed, &context.resume) {
-            (Some(_), resume) => {
+        let text = match (was_resumed, &context.resume) {
+            (true, resume) => {
                 continuation_prompt(resume.as_ref(), &context.record_dir, interrupted_before)
             }
-            (None, Some(resume)) => resume_message(resume, &context.record_dir),
-            (None, None) => task_prompt(context, skills),
+            (false, Some(resume)) => resume_message(resume, &context.record_dir),
+            (false, None) => task_prompt(context, skills),
         };
-        let step = self.services.suspends.token(&context.task_id);
-        let withdraw = self.services.suspends.approvals(&context.task_id);
+        let (step, withdraw) = self.suspend_tokens(&context.task_id);
         let (hold_sender, hold) = watch::channel(false);
         let timing = TurnTiming {
             inactivity: Some(DEFAULT_INACTIVITY),
@@ -685,7 +1242,6 @@ impl DaemonAcpAdapter {
             input_tokens: None,
             output_tokens: None,
         };
-        let mut kinds: HashMap<String, String> = HashMap::new();
         let pending_asks = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let hold_sender = Arc::new(hold_sender);
         // Cancelled while the agent started: the turn never begins.
@@ -722,6 +1278,13 @@ impl DaemonAcpAdapter {
                         let _ = client.cancel(&session_id);
                     }
                 }
+                // A reclaim waits for the turn; a quit, update or stop that
+                // comes while it does still ends the turn now.
+                _ = withdraw.cancelled(), if suspending && !turn_interrupted && !cancelling => {
+                    turn_interrupted = true;
+                    stop_at.get_or_insert_with(|| tokio::time::Instant::now() + CANCEL_GRACE);
+                    let _ = client.cancel(&session_id);
+                }
                 result = &mut prompt => {
                     // The client queues every update the agent sent before
                     // its reply, then resolves the reply. This task can still
@@ -731,10 +1294,12 @@ impl DaemonAcpAdapter {
                     while let Ok(message) = receiver.try_recv() {
                         match message {
                             FromAgent::Update(params) => {
-                                apply_update(&params, &session_id, redactor, &mut kinds, &mut outcome, events);
+                                apply_update(&params, &session_id, redactor, &mut view, &mut outcome, events);
                             }
                             FromAgent::Permission(request) => answer(*request, None),
-                            FromAgent::Withdrawn | FromAgent::Disconnected => {}
+                            FromAgent::Withdrawn
+                            | FromAgent::Disconnected
+                            | FromAgent::Switched(..) => {}
                         }
                     }
                     break match result {
@@ -751,24 +1316,55 @@ impl DaemonAcpAdapter {
                 }
                 message = receiver.recv() => match message {
                     Some(FromAgent::Update(params)) => {
-                        apply_update(&params, &session_id, redactor, &mut kinds, &mut outcome, events);
+                        if apply_update(&params, &session_id, redactor, &mut view, &mut outcome, events) {
+                            guard_mode(&mut view.mode, client, &session_id, &sender, redactor, events);
+                        }
+                    }
+                    Some(FromAgent::Switched(switch, result)) => {
+                        match result {
+                            Some(answer) => view.mode.switched(&switch, &redactor.value(&answer)),
+                            None => view.mode.switching = false,
+                        }
+                        guard_mode(&mut view.mode, client, &session_id, &sender, redactor, events);
                     }
                     Some(FromAgent::Permission(request)) => {
                         let request = *request;
                         let params = request.params().clone();
-                        let tool = &params["toolCall"];
-                        let in_root = oleafly_acp::paths::permission_paths_allowed(Path::new(&context.execution_root), Path::new(&context.execution_root), tool);
-                        if params["sessionId"].as_str() != Some(session_id.as_str()) || !in_root || cancelling {
+                        if params["sessionId"].as_str() != Some(session_id.as_str()) || cancelling {
                             answer(request, None);
                             continue;
                         }
-                        let kind = tool["kind"]
-                            .as_str()
-                            .map(str::to_owned)
-                            .or_else(|| tool["toolCallId"].as_str().and_then(|id| kinds.get(id).cloned()));
-                        match permission_decision(acp, kind.as_deref(), context.brief.permissions.commands) {
+                        // The request's paths with those the call it refers
+                        // to announced, and the project's rules as they are
+                        // now (the files are read off the async threads).
+                        let (kind, paths) = judged_request(&view.calls, &params["toolCall"]);
+                        let judged = {
+                            let roots = roots.clone();
+                            let data_root = self.host.data_root().to_path_buf();
+                            let project_id = context.project_id.clone();
+                            tokio::task::spawn_blocking(move || Judged {
+                                in_root: roots.contains_all(paths.iter().map(String::as_str)),
+                                names_paths: !paths.is_empty(),
+                                refused_now: rules_refuse(&data_root, &project_id, kind.as_deref()),
+                                kind,
+                            })
+                            .await
+                        };
+                        let Ok(judged) = judged else {
+                            answer(request, None);
+                            continue;
+                        };
+                        if !judged.in_root {
+                            answer(request, None);
+                            continue;
+                        }
+                        let tool = &params["toolCall"];
+                        match request_decision(acp, &judged, context.brief.permissions.commands) {
                             PermissionPath::Refuse => answer(request, option_id(&params, "reject_once")),
                             PermissionPath::Allow => answer(request, option_id(&params, "allow_once")),
+                            PermissionPath::Ask if pending_asks.load(std::sync::atomic::Ordering::Acquire) >= MAX_PENDING_REQUESTS => {
+                                answer(request, None);
+                            }
                             PermissionPath::Ask => {
                                 let services = self.services.clone();
                                 let gate_context = gate_context.clone();
@@ -909,8 +1505,8 @@ fn bridge_http_servers(servers: &mut [Value]) -> Result<(), String> {
 }
 
 /// Resumes the agent's own session when it can; a loaded session replays its
-/// history first, which is already in the transcript. The session's id when
-/// it came back.
+/// history first, which is already in the transcript. The session's id and
+/// the agent's answer (its modes and options) when it came back.
 async fn restore_session(
     client: &Arc<AcpClient>,
     handoff: &AcpHandoff,
@@ -918,27 +1514,30 @@ async fn restore_session(
     cwd: &str,
     servers: &[Value],
     receiver: &mut mpsc::UnboundedReceiver<FromAgent>,
-) -> Option<String> {
+) -> Option<(String, Value)> {
     let session = &handoff.agent_session_id;
     let restored = if capabilities.resume {
-        client.resume_session(session, cwd, servers).await.is_ok()
-    } else if capabilities.load_session && client.load_session(session, cwd, servers).await.is_ok()
-    {
-        while receiver.try_recv().is_ok() {}
-        true
+        client.resume_session(session, cwd, servers).await.ok()
+    } else if capabilities.load_session {
+        let loaded = client.load_session(session, cwd, servers).await.ok();
+        if loaded.is_some() {
+            while receiver.try_recv().is_ok() {}
+        }
+        loaded
     } else {
-        false
+        None
     };
-    restored.then(|| session.clone())
+    restored.map(|answer| (session.clone(), answer))
 }
 
-/// Starts a new session and returns its id, once the agent gave a usable one.
+/// Starts a new session; its id, once the agent gave a usable one, and the
+/// agent's answer.
 async fn start_session(
     client: &Arc<AcpClient>,
     cwd: &str,
     servers: &[Value],
     redactor: &Redactor,
-) -> Result<String, String> {
+) -> Result<(String, Value), String> {
     let value = client
         .new_session(cwd, servers)
         .await
@@ -947,7 +1546,8 @@ async fn start_session(
         .as_str()
         .filter(|id| !id.is_empty() && id.len() <= 512)
         .ok_or("The agent returned no valid session ID.")?;
-    redactor.opaque_id(id)
+    let id = redactor.opaque_id(id)?;
+    Ok((id, value))
 }
 
 /// Why a finished turn is not a finished task: its stop reason, unless it

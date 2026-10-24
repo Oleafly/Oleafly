@@ -18,7 +18,7 @@ vi.mock("@/lib/research-tasks", async (importOriginal) => ({
   acceptResearchTaskResult: vi.fn(), applyResearchTask: vi.fn(), cancelResearchTask: vi.fn(),
   createResearchTask: vi.fn(), deleteResearchTask: vi.fn(), editResearchTask: vi.fn(), listResearchTasks: vi.fn(),
   listenForResearchTaskChanges: vi.fn(), listenForResearchTaskEvents: vi.fn(),
-  loadResearchTaskEvents: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
+  loadResearchTaskEvents: vi.fn(), loadResearchTaskEventsBefore: vi.fn(), retryResearchTask: vi.fn(), startResearchTask: vi.fn(),
   previewResearchTaskFile: vi.fn(), previewResearchTaskArtifact: vi.fn(),
   // 0.4.8: live text, watching, plans, approvals, progress, evidence and keep running.
   listenForResearchTaskDeltas: vi.fn(async () => () => {}),
@@ -154,7 +154,7 @@ beforeEach(async () => {
   changedEvent = undefined;
   await useResearchTasksStore.getState().bindProject(null);
   vi.mocked(api.listResearchTasks).mockResolvedValue([]);
-  vi.mocked(api.loadResearchTaskEvents).mockResolvedValue({ events: [], nextSequence: null });
+  vi.mocked(api.loadResearchTaskEventsBefore).mockResolvedValue({ events: [], nextSequence: null });
   vi.mocked(api.listenForResearchTaskChanges).mockImplementation(async (listener) => { changedTask = listener; return unlistenTasks; });
   vi.mocked(api.listenForResearchTaskEvents).mockImplementation(async (listener) => { changedEvent = listener; return unlistenEvents; });
   vi.mocked(api.previewResearchTaskFile).mockImplementation(async (_id, path) => preview(path));
@@ -179,7 +179,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     const older = task("older");
     const newer = { ...task("newer"), createdAt: 2 };
     vi.mocked(api.listResearchTasks).mockReturnValue(pending.promise);
-    vi.mocked(api.loadResearchTaskEvents).mockImplementation(async (id) => ({ events: [{ taskId: id, executionGeneration: 1, sequence: 1, event: { kind: "text", text: `${id} activity` }, createdAt: 1 }], nextSequence: null }));
+    vi.mocked(api.loadResearchTaskEventsBefore).mockImplementation(async (id) => ({ events: [{ taskId: id, executionGeneration: 1, sequence: 1, event: { kind: "text", text: `${id} activity` }, createdAt: 1 }], nextSequence: null }));
     render(<ResearchTasksPanel projectId="paper" agents={agents} />);
     expect(page().getByRole("status")).toHaveTextContent("Loading research tasks");
     await act(async () => pending.resolve([older, newer]));
@@ -192,7 +192,7 @@ describe("ResearchTasksPanel lifecycle", () => {
     openActivity();
     await page().findByText("older activity");
     expect(page().queryByText("newer activity")).not.toBeInTheDocument();
-    expect(api.loadResearchTaskEvents).toHaveBeenLastCalledWith(older.id, 1);
+    expect(api.loadResearchTaskEventsBefore).toHaveBeenLastCalledWith(older.id, 1, api.NEWEST_EVENTS);
   });
 
   it("passes only previewed selections through the project mutation boundary and reports completion", async () => {
@@ -238,6 +238,9 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(onApplied).not.toHaveBeenCalled();
     fireEvent.click(page().getByRole("button", { name: "Dismiss" }));
     fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.discardChanges }));
+    fireEvent.click(
+      within(page().getByRole("alertdialog")).getByRole("button", { name: enResearchTools.tasks.detail.discardChanges }),
+    );
     fireEvent.click(await page().findByRole("button", { name: enCommon.actions.retry }));
     fireEvent.click(await page().findByRole("button", { name: enResearchTools.tasks.detail.start }));
     await page().findByRole("button", { name: enResearchTools.tasks.detail.stopTask });
@@ -635,6 +638,38 @@ describe("ResearchTasksPanel lifecycle", () => {
     expect(card(current.title)).toBeInTheDocument();
   });
 
+  it("opens a running task's Progress tab from View progress", async () => {
+    const running: ResearchTask = { ...task("live", "paper", "running"), result: null };
+    vi.mocked(api.listResearchTasks).mockResolvedValue([running]);
+    render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+    await page().findByRole("button", { name: /Task live/ });
+
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.panel.viewProgress }));
+
+    const dialog = await page().findByRole("dialog");
+    expect(within(dialog).getByRole("tab", { name: enResearchTools.tasks.detail.tabProgress })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+  });
+
+  it("brings the composer back with its draft after a Settings link closed it", async () => {
+    const { useSettingsStore } = await import("@/store/settings");
+    useSettingsStore.setState({ settingsOpen: false });
+    render(<ResearchTasksPanel projectId="paper" agents={agents} />);
+    fireEvent.click(await page().findByRole("button", { name: enResearchTools.tasks.panel.createTask }));
+    fireEvent.change(page().getByLabelText(enResearchTools.tasks.composer.titleLabel), { target: { value: "Half done" } });
+    fireEvent.click(page().getByTestId("research-brief-more"));
+
+    fireEvent.click(await page().findByTestId("research-brief-keep-running-settings"));
+
+    await waitFor(() => expect(page().queryByTestId("research-task-composer")).toBeNull());
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+    act(() => useSettingsStore.getState().setSettingsOpen(false));
+    expect(await page().findByTestId("research-task-composer")).toBeInTheDocument();
+    expect(page().getByLabelText(enResearchTools.tasks.composer.titleLabel)).toHaveValue("Half done");
+  });
+
   describe("autoresearch", () => {
     const squash = (value: string) => value.replace(/\s+/g, " ").trim();
     const workspace: TaskIsolationSummary = {
@@ -730,7 +765,7 @@ describe("ResearchTasksPanel lifecycle", () => {
       const ready: ResearchTask = { ...task("plan", "paper", "plan_ready"), result: null };
       const approved: ResearchTask = { ...ready, status: "queued", planApproved: true, startRequested: true, updatedAt: 2 };
       vi.mocked(api.listResearchTasks).mockResolvedValue([ready]);
-      vi.mocked(api.loadResearchTaskPlan).mockResolvedValue("- [ ] Measure the baseline");
+      vi.mocked(api.loadResearchTaskPlan).mockResolvedValue({ text: "- [ ] Measure the baseline", truncated: false });
       vi.mocked(api.approveResearchTaskPlan).mockResolvedValue(approved);
       render(<ResearchTasksPanel projectId="paper" agents={agents} />);
       await page().findByRole("button", { name: /Task plan/ });
@@ -810,7 +845,7 @@ describe("ResearchTasksPanel lifecycle", () => {
       const running: ResearchTask = { ...task("busy", "paper", "running"), result: null };
       vi.mocked(api.listResearchTasks).mockResolvedValue([running]);
       const timeline = await import("./task-timeline");
-      const build = vi.spyOn(timeline, "buildTaskTimeline");
+      const build = vi.spyOn(timeline, "buildTaskTimelineIncremental");
       render(<ResearchTasksPanel projectId="paper" agents={agents} />);
       await page().findByRole("button", { name: /Task busy/ });
       await waitFor(() => expect(useResearchTasksStore.getState().selectedTaskId).toBe(running.id));
@@ -892,6 +927,9 @@ describe("ResearchTasksPanel lifecycle", () => {
 
       openTask(running.title);
       fireEvent.click(page().getByRole("button", { name: enResearchTools.tasks.detail.stopTask }));
+      fireEvent.click(
+        within(page().getByRole("alertdialog")).getByRole("button", { name: enResearchTools.tasks.detail.stopTask }),
+      );
       closeDetail();
       await act(async () => {
         await useResearchTasksStore.getState().startTask(queued.id);

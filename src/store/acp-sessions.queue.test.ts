@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   refreshOpenFilesFromDisk: vi.fn(),
   toPromptInput: vi.fn(),
   bufferContent: vi.fn(),
+  // The project the window shows.
+  files: { projectId: "p" as string | null, tree: [] as { path: string; name: string; is_dir: boolean }[] },
 }));
 
 vi.mock("@/lib/acp", async (original) => ({
@@ -43,7 +45,7 @@ vi.mock("@/components/ai/acp/acp-attachments", async (original) => ({
 }));
 vi.mock("@/components/ai/acp/acp-buffers", () => ({ bufferContent: mocks.bufferContent }));
 vi.mock("@/store/files", () => ({
-  useFilesStore: { getState: () => ({ tree: [{ path: "main.tex", name: "main.tex", is_dir: false }] }) },
+  useFilesStore: { getState: () => mocks.files },
 }));
 
 import { AcpPromptError } from "@/components/ai/acp/acp-attachments";
@@ -76,7 +78,7 @@ const input = (text: string) => ({ text, images: [], files: [], selections: [], 
 function reset(sessions: AcpSession[], active: string | null = "s") {
   useAcpSessionsStore.setState({
     catalog: [], sessions: Object.fromEntries(sessions.map((value) => [value.id, value])), activeByProject: { p: active },
-    events: {}, permissions: {}, elicitations: {}, composers: {}, queues: {}, watched: {}, sending: {}, earlierLoaded: {}, errors: {}, starting: {},
+    events: {}, permissions: {}, elicitations: {}, composers: {}, queues: {}, watched: {}, sending: {}, earlierLoaded: {}, errors: {}, sessionErrors: {}, starting: {},
   });
 }
 
@@ -86,6 +88,7 @@ beforeEach(async () => {
   mocks.flushOpenFilesToDisk.mockResolvedValue(undefined);
   mocks.toPromptInput.mockImplementation(async (value: AcpPromptDraft) => input(value.text));
   mocks.acpEvents.mockResolvedValue({ events: [], hasMore: false });
+  mocks.files = { projectId: "p", tree: [{ path: "main.tex", name: "main.tex", is_dir: false }] };
   reset([session("s")]);
 });
 afterEach(() => {
@@ -255,7 +258,7 @@ describe("the send queue", () => {
     const queue = useAcpSessionsStore.getState().queues.s;
     expect(queue[0]).toMatchObject({ text: "first", sending: false, failed: true });
     expect(queue).toHaveLength(2);
-    expect(useAcpSessionsStore.getState().errors.p).toBe("The agent closed the connection.");
+    expect(useAcpSessionsStore.getState().sessionErrors.s).toBe("The agent closed the connection.");
     await store.dispatchQueued("p", "s");
     expect(mocks.acpPrompt).toHaveBeenCalledTimes(1);
   });
@@ -312,7 +315,7 @@ describe("the send queue", () => {
     const store = useAcpSessionsStore.getState();
     const id = store.enqueue("s", draft("more"));
     await store.steerQueued("p", "s", id);
-    expect(useAcpSessionsStore.getState().errors.p).toBe("Steering is not available now.");
+    expect(useAcpSessionsStore.getState().sessionErrors.s).toBe("Steering is not available now.");
     expect(useAcpSessionsStore.getState().queues.s).toHaveLength(1);
   });
 
@@ -368,7 +371,7 @@ describe("sending a prompt", () => {
     mocks.toPromptInput.mockRejectedValue(new AcpPromptError("tooMany"));
     mocks.acpSnapshot.mockResolvedValue(snapshot(session("s")));
     await expect(useAcpSessionsStore.getState().sendPrompt("p", "s", draft("Hi"))).resolves.toBe(false);
-    expect(useAcpSessionsStore.getState().errors.p).toBe("Attach up to 10 files to one message.");
+    expect(useAcpSessionsStore.getState().sessionErrors.s).toBe("Attach up to 10 files to one message.");
   });
 
   it("says nothing more when the agent asks to sign in", async () => {
@@ -383,7 +386,7 @@ describe("sending a prompt", () => {
     mocks.acpSnapshot.mockResolvedValue(snapshot(session("s", { status: "failed", lastSequence: 2 })));
     mocks.acpEvents.mockResolvedValueOnce({ events: [event(1, "user_message", { content: [] }), event(2, "status", { status: "failed" })], hasMore: false });
     await expect(useAcpSessionsStore.getState().sendPrompt("p", "s", draft("Hi"))).resolves.toBe(true);
-    expect(useAcpSessionsStore.getState().errors.p).toBe("The agent crashed.");
+    expect(useAcpSessionsStore.getState().sessionErrors.s).toBe("The agent crashed.");
   });
 });
 
@@ -609,5 +612,169 @@ describe("registering the listeners", () => {
     mocks.onAcpBufferRequest.mockRejectedValueOnce(new Error("no buffer bridge"));
     await expect(attachAcpListeners()).rejects.toThrow("no buffer bridge");
     for (const stop of stops) expect(stop).toHaveBeenCalledOnce();
+  });
+});
+
+describe("queued messages that would otherwise wait for nothing", () => {
+  it("sends a queued message when the one before it never reached the agent", async () => {
+    mocks.acpSnapshot.mockResolvedValue(snapshot(session("s")));
+    mocks.toPromptInput.mockRejectedValueOnce(new AcpPromptError("tooLarge"));
+    mocks.acpPrompt.mockResolvedValue(snapshot(session("s", { status: "ready", lastSequence: 2 })));
+    const store = useAcpSessionsStore.getState();
+    const first = store.sendPrompt("p", "s", draft("with a large image"));
+    store.enqueue("s", draft("follow-up"));
+    await expect(first).resolves.toBe(false);
+    await vi.waitFor(() => expect(mocks.acpPrompt).toHaveBeenCalledWith("p", "s", input("follow-up")));
+    await vi.waitFor(() => expect(useAcpSessionsStore.getState().queues.s).toEqual([]));
+  });
+
+  it("sends the next queued message when the turn ended before the prompt call returned", async () => {
+    // The turn_complete batch was applied while the first message was still on its way.
+    mocks.acpPrompt.mockResolvedValue(snapshot(session("s", { status: "ready", lastSequence: 3 })));
+    const store = useAcpSessionsStore.getState();
+    store.enqueue("s", draft("first"));
+    store.enqueue("s", draft("second"));
+    await store.dispatchQueued("p", "s");
+    await vi.waitFor(() => expect(mocks.acpPrompt).toHaveBeenCalledTimes(2));
+    expect(mocks.acpPrompt).toHaveBeenLastCalledWith("p", "s", input("second"));
+    await vi.waitFor(() => expect(useAcpSessionsStore.getState().queues.s).toEqual([]));
+  });
+
+  it("counts a message the agent got as sent when its turn fails in a hidden conversation", async () => {
+    reset([session("s"), session("other")], "other");
+    mocks.acpPrompt.mockRejectedValue({ delivered: true, message: "The agent stopped answering." });
+    mocks.acpSnapshot.mockResolvedValue(snapshot(session("s", { status: "ready", lastSequence: 4 })));
+    const store = useAcpSessionsStore.getState();
+    store.enqueue("s", draft("now write the conclusion"));
+    await store.dispatchQueued("p", "s");
+    const state = useAcpSessionsStore.getState();
+    // Not offered again: sending it twice would give the agent the same message twice.
+    expect(state.queues.s).toEqual([]);
+    expect(state.sessionErrors.s).toBe("The agent stopped answering.");
+    // The conversation on show does not get the other one's error.
+    expect(state.errors.p).toBeUndefined();
+  });
+
+  it("marks a message the backend did not deliver as not sent", async () => {
+    mocks.acpPrompt.mockRejectedValue("The agent is not connected.");
+    mocks.acpSnapshot.mockResolvedValue(snapshot(session("s")));
+    const store = useAcpSessionsStore.getState();
+    store.enqueue("s", draft("hello"));
+    await store.dispatchQueued("p", "s");
+    expect(useAcpSessionsStore.getState().queues.s[0]).toMatchObject({ text: "hello", failed: true });
+    expect(useAcpSessionsStore.getState().sessionErrors.s).toBe("The agent is not connected.");
+  });
+
+  it("sends a queued message with the mentions read when it was queued while another project is open", async () => {
+    mocks.files = { projectId: "elsewhere", tree: [{ path: "notes.tex", name: "notes.tex", is_dir: false }] };
+    mocks.acpPrompt.mockResolvedValue(snapshot(session("s", { status: "running", lastSequence: 1 })));
+    const store = useAcpSessionsStore.getState();
+    const queued = draft("@chapters/results.tex tighten this", { mentions: ["chapters/results.tex"] });
+    store.enqueue("s", queued);
+    await store.dispatchQueued("p", "s");
+    expect(mocks.toPromptInput).toHaveBeenCalledWith(queued, expect.objectContaining({ id: "s" }), null);
+  });
+
+  it("does not send a steered message again when the turn ends during the steer", async () => {
+    reset([session("s", { status: "running", capabilities: { ...session("s").capabilities, steering: true } })]);
+    let answer: (value: "injected" | "promptRequired") => void = () => {};
+    mocks.acpSteer.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    const store = useAcpSessionsStore.getState();
+    const id = store.enqueue("s", draft("Also check the figures"));
+    const steering = store.steerQueued("p", "s", id);
+    // The turn ends while the agent decides.
+    useAcpSessionsStore.setState((state) => ({ sessions: { ...state.sessions, s: { ...state.sessions.s, status: "ready" } } }));
+    await store.dispatchQueued("p", "s");
+    expect(mocks.acpPrompt).not.toHaveBeenCalled();
+    answer("injected");
+    await steering;
+    expect(mocks.acpPrompt).not.toHaveBeenCalled();
+    expect(useAcpSessionsStore.getState().queues.s).toEqual([]);
+  });
+
+  it("lets a message go as a turn of its own after steering it failed", async () => {
+    reset([session("s", { status: "running", capabilities: { ...session("s").capabilities, steering: true } })]);
+    mocks.acpSteer.mockRejectedValueOnce("Steering is not available now.");
+    mocks.acpPrompt.mockResolvedValue(snapshot(session("s", { status: "running", lastSequence: 1 })));
+    const store = useAcpSessionsStore.getState();
+    const id = store.enqueue("s", draft("Also check the figures"));
+    await store.steerQueued("p", "s", id);
+    // Not left marked as on its way, which would hold it back for good.
+    expect(useAcpSessionsStore.getState().queues.s[0]).toMatchObject({ id, sending: false });
+    useAcpSessionsStore.setState((state) => ({ sessions: { ...state.sessions, s: { ...state.sessions.s, status: "ready" } } }));
+    await store.dispatchQueued("p", "s");
+    expect(mocks.acpPrompt).toHaveBeenCalledWith("p", "s", input("Also check the figures"));
+  });
+});
+
+describe("listening while nothing shows the agents", () => {
+  function listen() {
+    const emitted: { event: (value: AcpEvent) => void; summary: (value: unknown) => void } = {
+      event: () => {},
+      summary: () => {},
+    };
+    const stopEvent = vi.fn();
+    mocks.onAcpEvent.mockImplementation(async (listener: (value: AcpEvent) => void) => { emitted.event = listener; return stopEvent; });
+    mocks.onAcpResync.mockResolvedValue(() => {});
+    mocks.onAcpSession.mockImplementation(async (listener: (value: unknown) => void) => { emitted.summary = listener; return () => {}; });
+    mocks.onAcpBufferRequest.mockResolvedValue(() => {});
+    return { emitted, stopEvent };
+  }
+
+  it("keeps listening after the assistant closes until the queued messages have gone", async () => {
+    vi.useFakeTimers();
+    reset([session("s", { status: "running" })]);
+    const { emitted, stopEvent } = listen();
+    mocks.acpSnapshot.mockResolvedValue(snapshot(session("s", { status: "ready", lastSequence: 1 })));
+    mocks.acpPrompt.mockResolvedValue(snapshot(session("s", { status: "ready", lastSequence: 3 })));
+    const detach = await attachAcpListeners();
+    useAcpSessionsStore.getState().enqueue("s", draft("now write the conclusion"));
+    detach();
+    expect(stopEvent).not.toHaveBeenCalled();
+    emitted.event(event(1, "turn_complete", { stopReason: "end_turn" }));
+    await vi.advanceTimersByTimeAsync(40);
+    await vi.waitFor(() => expect(mocks.acpPrompt).toHaveBeenCalledWith("p", "s", input("now write the conclusion")));
+    await vi.waitFor(() => expect(stopEvent).toHaveBeenCalledOnce());
+  });
+
+  it("applies the events still waiting when the listeners stop", async () => {
+    vi.useFakeTimers();
+    const { emitted } = listen();
+    const detach = await attachAcpListeners();
+    emitted.event(event(1, "session_info", { title: "Results section" }));
+    detach();
+    expect(useAcpSessionsStore.getState().sessions.s.title).toBe("Results section");
+  });
+
+  it("applies an event waiting in the batch before the summary sent with it", async () => {
+    vi.useFakeTimers();
+    reset([session("s", { lastSequence: 1 })]);
+    const { emitted } = listen();
+    const detach = await attachAcpListeners();
+    emitted.event(event(2, "controls", { controls: { modeId: "default" } }));
+    emitted.summary({ projectId: "p", sessionId: "s", agentId: "agent", title: "s", status: "ready", updatedAt: 5, lastSequence: 2 });
+    const value = useAcpSessionsStore.getState().sessions.s;
+    // Only the event carries the mode the agent switched to.
+    expect(value.controls.modeId).toBe("default");
+    expect(value.lastSequence).toBe(2);
+    detach();
+  });
+});
+
+describe("leaving a project", () => {
+  it("disconnects the project's idle conversations and leaves busy, delegated and queued ones", async () => {
+    reset([
+      session("idle"),
+      session("signin", { status: "auth_required" }),
+      session("busy", { status: "running" }),
+      session("task", { taskId: "t1" }),
+      session("child", { parentSessionId: "busy" }),
+      session("queued"),
+      session("elsewhere", { projectId: "q" }),
+    ]);
+    useAcpSessionsStore.getState().enqueue("queued", draft("waiting"));
+    mocks.acpDisconnect.mockResolvedValueOnce(undefined).mockRejectedValueOnce("This conversation belongs to another window.");
+    await useAcpSessionsStore.getState().releaseProject("p");
+    expect(mocks.acpDisconnect.mock.calls.map(([project, id]) => `${project}/${id}`).sort()).toEqual(["p/idle", "p/signin"]);
   });
 });

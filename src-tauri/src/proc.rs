@@ -86,9 +86,23 @@ pub fn spawn_contained(command: &mut Command) -> std::io::Result<()> {
     }
     #[cfg(not(windows))]
     {
-        command.spawn()?;
-        Ok(())
+        spawn_reaped(command).map(|_| ())
     }
+}
+
+/// Starts `command` and waits for it on a thread of its own, so the helper
+/// never stays behind as a zombie (nothing else reaps unknown children).
+/// Returns its process id.
+#[cfg(not(windows))]
+fn spawn_reaped(command: &mut Command) -> std::io::Result<u32> {
+    let mut child = command.spawn()?;
+    let pid = child.id();
+    std::thread::Builder::new()
+        .name("oleafly-child-reaper".into())
+        .spawn(move || {
+            let _ = child.wait();
+        })?;
+    Ok(pid)
 }
 
 // The process-tree helpers live in the sandbox crate so the CLI and the
@@ -116,6 +130,26 @@ pub async fn terminate_process_tree(pid: u32) {
             .stderr(std::process::Stdio::null())
             .kill_on_drop(true);
         let _ = tokio::time::timeout(std::time::Duration::from_secs(2), command.status()).await;
+    }
+}
+
+#[cfg(all(test, unix))]
+mod unix_tests {
+    use super::*;
+
+    #[test]
+    fn a_contained_helper_is_reaped_when_it_exits() {
+        let mut command = Command::new("/bin/sh");
+        command.args(["-c", "exit 0"]);
+        let pid = spawn_reaped(&mut command).unwrap() as libc::pid_t;
+        // The reaper waits from the start, so it collects the helper the
+        // moment it exits; by now nothing is left for anyone else.
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let mut status = 0;
+        let found = unsafe { libc::waitpid(pid, &mut status, libc::WNOHANG) };
+        let error = std::io::Error::last_os_error();
+        assert_eq!(found, -1, "the helper was left as a zombie");
+        assert_eq!(error.raw_os_error(), Some(libc::ECHILD));
     }
 }
 

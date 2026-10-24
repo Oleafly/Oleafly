@@ -99,11 +99,15 @@
       "title": "Aplikace v počítači",
       "action": "{{agent}} chce {{action}}.",
       "steps": "{{agent}} chce v aplikaci v počítači provést tyto kroky:",
-      "moreSteps": "Nezobrazené kroky: {{count}}",
+      "moreSteps": "Nezobrazené a nespuštěné kroky: {{count}}",
       "moreItems": "Nezobrazené položky: {{count}}",
-      "cut": "(+{{count}} znaků nezobrazeno)",
+      "cut": "(nezobrazené znaky: {{count}})",
       "signedIn": "Tato akce probíhá ve vašem vlastním přihlášeném prohlížeči.",
       "signedInOn": "Tato akce probíhá ve vašem vlastním přihlášeném prohlížeči, na adrese {{origin}}.",
+      "task": "Úloha: {{title}}",
+      "app": "Aplikace: {{name}}",
+      "window": "Okno: {{title}}",
+      "element": "Prvek: {{element}}",
       "text": "Text: „{{text}}“",
       "address": "Adresa: {{url}}",
       "allowOnce": "Povolit jednou",
@@ -111,6 +115,7 @@
       "allowSession": "Povolit pro tuto relaci",
       "allowTask": "Povolit pro tuto úlohu",
       "deny": "Nepovolit",
+      "pickedFile": "vámi vybraný soubor",
       "actions": {
         "launchApp": "otevřít aplikaci",
         "click": "kliknout v aplikaci",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Povolit ovládání počítače?",
-      "message": "Agenti budou moci používat následující a před každou akcí se budou dál ptát:",
+      "message": "Agenti budou moci tyto položky používat. Před každou akcí se zeptají a uložením se zruší všechny volby „Povolit pro tento chat“:",
       "confirm": "Povolit",
       "enabled": "Aplikace v počítači",
-      "app": "Aplikace: {{name}} ({{identity}})",
+      "app": "Aplikace: {{identity}} ({{name}})",
       "more": "A ještě {{count}}",
       "site": "Web: {{origin}}",
       "signedIn": "Váš přihlášený prohlížeč na {{origin}}",
-      "scripted": "Skripty Cua"
+      "scripted": "Skripty Cua",
+      "spacesTitle": "Udělit Cua Spaces širší přístup?",
+      "spacesMessage": "Agenti, kteří používají Cua Spaces, budou moci:",
+      "spacesChanges": "Vytvářet a mazat Spaces a spouštět v nich příkazy",
+      "spacesSignIns": "Používat ve Space vaše přihlášení ke Claude Code nebo Codex"
     }
   },
   "errors": {

@@ -357,13 +357,15 @@ export function AcpHistoryDialog({
                     onCancel={() => setRenaming(null)}
                   />
                 ) : (
-                  <button
+                  <Button
                     type="button"
-                    className="block w-full truncate rounded-sm text-left text-sm focus-visible:bg-accent"
+                    variant="ghost"
+                    size="xs"
+                    className="h-auto w-full justify-start rounded-sm px-0 text-left text-sm font-normal hover:bg-transparent"
                     onClick={() => { onOpenSession(session.id); onClose(); }}
                   >
-                    {session.title || t(($) => $.ai.acp.untitledConversation)}
-                  </button>
+                    <span className="truncate">{session.title || t(($) => $.ai.acp.untitledConversation)}</span>
+                  </Button>
                 )}
                 <p className="truncate text-[0.6875rem] text-muted-foreground">
                   {agentName(session.agentId)} · {formatRelativeTimeFrom(session.updatedAt)}

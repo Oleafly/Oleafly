@@ -560,6 +560,9 @@
     "title": "Terug naar de bibliotheek",
     "tooltip": "Terug naar de projectbibliotheek"
   },
+  "importDestination": {
+    "scansGoTo": "Scans gaan naar {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -673,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Je niet-opgeslagen wijzigingen blijven open staan. Blijf om het probleem op te lossen, of sluit toch af en raak ze kwijt.",
+      "descriptionReload": "{{reason}} Je niet-opgeslagen wijzigingen blijven open staan. Blijf om het probleem op te lossen, of laad toch opnieuw en raak ze kwijt.",
       "descriptionRestart": "{{reason}} Je niet-opgeslagen wijzigingen blijven open staan. Blijf om het probleem op te lossen, of start toch opnieuw en raak ze kwijt.",
       "quitAnyway": "Toch afsluiten",
+      "reloadAnyway": "Toch opnieuw laden",
       "restartAnyway": "Toch opnieuw starten",
       "stay": "Blijven",
       "title": "Sommige bestanden konden niet worden opgeslagen"

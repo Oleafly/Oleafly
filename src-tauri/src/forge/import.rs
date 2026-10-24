@@ -11,15 +11,16 @@ use oleafly_forge::repo_path::RepoPath;
 use oleafly_forge::ForgeError;
 
 /// Import a repository of an account as a new project. The webview can
-/// cancel it by emitting the import-cancel event: the download or the Git
-/// fetch stops and no project is created.
+/// cancel it by emitting the import-cancel event with `cancel_id`: the
+/// download or the Git fetch stops and no project is created.
 #[tauri::command]
 pub async fn forge_import_repo(
     app: tauri::AppHandle,
     base: String,
     full_name: String,
+    cancel_id: Option<String>,
 ) -> Result<String, String> {
-    let (cancel, _listener) = cancel_on_event(&app);
+    let (cancel, _listener) = cancel_on_event(&app, cancel_id);
     let (account, token, http) = account_and_token(&base).await?;
     let host = host_label(&account.base);
     let fail = |error: ForgeError| app_error(&error, &host);

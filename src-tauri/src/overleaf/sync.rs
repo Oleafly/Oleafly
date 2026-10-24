@@ -73,6 +73,60 @@ pub(crate) fn remove_link(project_id: &str) -> Result<(), String> {
     oleafly_online::sync::remove_link(&paths(project_id)?).map_err(app_error)
 }
 
+/// Where the local files that linking with Overleaf's versions replaced are
+/// kept once the mirror goes: `<data>/overleaf-sync-backups/<project id>`,
+/// outside the mirror and outside the project, so a later link never
+/// uploads them.
+pub(crate) fn backups_dir(project_id: &str) -> Result<PathBuf, String> {
+    crate::paths::validate_project_id(project_id)?;
+    Ok(crate::paths::oleafly_root()?
+        .join("overleaf-sync-backups")
+        .join(project_id))
+}
+
+/// Removes the mirror and the link record, first saving the copies of local
+/// files that linking with Overleaf's versions replaced (the mirror is their
+/// only home) under [`backups_dir`]. When they can't be read out, the whole
+/// mirror moves there instead of being deleted. Returns the folder when
+/// anything was kept.
+pub(crate) fn retire_mirror(project_id: &str) -> Result<Option<PathBuf>, String> {
+    let paths = paths(project_id)?;
+    let folder = backups_dir(project_id)?;
+    let kept = match oleafly_online::sync::export_link_backups(&AppMirrorGit, &paths, &folder) {
+        Ok(saved) if saved.is_empty() => None,
+        Ok(saved) => {
+            let names: Vec<&str> = saved.iter().map(|backup| backup.name.as_str()).collect();
+            let _ = crate::project::append_app_log(format!(
+                "Stopped syncing project {project_id} with Overleaf. The local files the link replaced are saved in {} ({}).",
+                folder.display(),
+                names.join(", ")
+            ));
+            Some(folder)
+        }
+        Err(error) => {
+            let error = app_error(error);
+            let aside = folder.join(format!("sync-copy-{}", now_seconds()));
+            std::fs::create_dir_all(&folder)
+                .and_then(|()| std::fs::rename(&paths.repo, &aside))
+                .map_err(|_| error.clone())?;
+            let _ = crate::project::append_app_log(format!(
+                "Stopped syncing project {project_id} with Overleaf. Its sync copy could not be read ({}), so it was kept in {}.",
+                crate::app_error::english_error(&error),
+                aside.display()
+            ));
+            Some(folder)
+        }
+    };
+    remove_link(project_id)?;
+    Ok(kept)
+}
+
+/// Tidies the mirror at most once a day; see
+/// [`oleafly_online::sync::maintain`]. Call it with the sync claim held.
+pub(crate) fn maintain(repo: &Path) {
+    oleafly_online::sync::maintain(&AppMirrorGit, repo);
+}
+
 pub(crate) fn remote_url(server: &str, remote_id: &str) -> Result<String, String> {
     oleafly_online::sync::remote_url(server, remote_id).map_err(app_error)
 }

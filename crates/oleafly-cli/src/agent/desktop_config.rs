@@ -384,6 +384,24 @@ fn read_secrets(
 
 /// Reads the app's settings under `root` (the data folder). A missing data
 /// folder gives the defaults and is not created.
+/// Only the helper's choices from the app's settings (no secrets are
+/// read), for the helper to follow changes while it runs.
+pub fn load_prefs(root: &Path) -> Result<Prefs, ConfigError> {
+    if !root.exists() {
+        return Ok(Prefs::default());
+    }
+    let raw = {
+        let _lock = lock_for_reading(root)?;
+        read_raw(root)?
+    };
+    Ok(Prefs {
+        background_enabled: raw.research_background_enabled,
+        background_at_login: raw.research_background_at_login,
+        keep_awake: raw.research_keep_awake,
+        notifications: raw.research_notifications,
+    })
+}
+
 pub fn load(root: &Path) -> Result<DesktopConfig, ConfigError> {
     if !root.exists() {
         return Ok(DesktopConfig::empty());
@@ -793,5 +811,11 @@ mod tests {
         );
         let prefs = load(root.path()).unwrap().prefs;
         assert!(!prefs.background_enabled && prefs.background_at_login);
+        // The helper reads them again without the secrets.
+        assert_eq!(load_prefs(root.path()).unwrap(), prefs);
+        let quiet =
+            data_root_with(r#"{"research_notifications":false,"research_keep_awake":false}"#);
+        let prefs = load_prefs(quiet.path()).unwrap();
+        assert!(!prefs.notifications && !prefs.keep_awake);
     }
 }

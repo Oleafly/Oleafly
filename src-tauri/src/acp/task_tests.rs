@@ -413,7 +413,8 @@ async fn adopting_a_handoff_resumes_the_agent_session() {
     let temp = super::tests::fixture_temp();
     let copy = temp.path().join("task-copy");
     std::fs::create_dir(&copy).unwrap();
-    let home = temp.path().join("agent-home");
+    // The helper's home for the task sits next to its workspace.
+    let home = temp.path().join("acp-home-1");
     std::fs::create_dir(&home).unwrap();
     // The sandboxed agent writes its request log in its home.
     let definition = super::tests::fixture_definition(
@@ -526,4 +527,235 @@ async fn the_task_launch_matches_the_command_the_app_runs() {
     rebuilt_env.sort();
     app_env.sort();
     assert_eq!(rebuilt_env, app_env);
+}
+
+/// A task agent started with its home (`acp-home-1`, next to the task's
+/// workspace) as its request log folder: the requests it got.
+fn requests_in(home: &std::path::Path) -> Vec<serde_json::Value> {
+    std::fs::read_to_string(home.join("requests.jsonl"))
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|line| serde_json::from_str(line).ok())
+        .collect()
+}
+
+fn logging_definition(
+    temp: &tempfile::TempDir,
+    home: &std::path::Path,
+    extra: &[&str],
+) -> super::AgentDefinition {
+    let mut args = vec![
+        String::new(),
+        "--record-requests".into(),
+        "--requests-dir".into(),
+        home.canonicalize().unwrap().to_string_lossy().into_owned(),
+    ];
+    args.extend(extra.iter().map(|arg| (*arg).to_string()));
+    super::tests::fixture_definition(args, temp.path())
+}
+
+#[tokio::test]
+async fn a_sandboxed_task_agent_is_never_offered_or_served_file_reads() {
+    let temp = super::tests::fixture_temp();
+    let copy = temp.path().join("task-copy");
+    std::fs::create_dir(&copy).unwrap();
+    std::fs::write(copy.join("paper.tex"), "task text").unwrap();
+    let home = temp.path().join("acp-home-1");
+    std::fs::create_dir(&home).unwrap();
+    let definition = logging_definition(&temp, &home, &["--caps-v126"]);
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(&serde_json::to_string(&definition).unwrap())
+        .unwrap();
+    let snapshot = runtime
+        .adopt_task_session(
+            &oleafly_research::handoff::AcpHandoff {
+                agent_session_id: "agent-session-x".into(),
+                home: home.clone(),
+            },
+            StartSession {
+                project_id: TASK_PROJECT.into(),
+                project_path: copy,
+                agent_id: definition.id,
+                task_id: Some("read-task".into()),
+                owner: Some("research-task:read".into()),
+                allowed_paths: Some(vec!["paper.tex".into()]),
+                ..StartSession::default()
+            },
+            Vec::new(),
+            None,
+        )
+        .await
+        .unwrap();
+    let id = snapshot.session.id;
+    let initialize = requests_in(&home)
+        .into_iter()
+        .find(|request| request["method"] == "initialize")
+        .unwrap();
+    assert_eq!(
+        initialize["params"]["clientCapabilities"]["fs"]["readTextFile"],
+        false
+    );
+    // An agent that asks anyway is refused: Oleafly reads outside the
+    // task's sandbox.
+    runtime
+        .prompt(&id, "read-file:paper.tex".into(), Vec::new())
+        .await
+        .unwrap();
+    let text: String = runtime
+        .events_all(&id)
+        .unwrap()
+        .iter()
+        .filter_map(|event| event.data["content"]["text"].as_str().map(str::to_owned))
+        .collect();
+    assert!(text.contains("Read failed -32601"), "{text}");
+    assert!(!text.contains("task text"));
+    runtime.close(&id).await.unwrap();
+}
+
+#[tokio::test]
+async fn the_v1_restart_keeps_a_handed_back_agent_home() {
+    let temp = super::tests::fixture_temp();
+    let copy = temp.path().join("task-copy");
+    std::fs::create_dir(&copy).unwrap();
+    let home = temp.path().join("acp-home-1");
+    std::fs::create_dir(&home).unwrap();
+    std::fs::write(home.join("session-history.json"), "{}").unwrap();
+    // The agent answers v1 to the v2 request, so it is started again.
+    let definition = logging_definition(&temp, &home, &["--caps-v126"]);
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(&serde_json::to_string(&definition).unwrap())
+        .unwrap();
+    runtime
+        .set_preferences(super::AcpPreferences {
+            experimental_v2: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    let snapshot = runtime
+        .adopt_task_session(
+            &oleafly_research::handoff::AcpHandoff {
+                agent_session_id: "agent-session-x".into(),
+                home: home.clone(),
+            },
+            StartSession {
+                project_id: TASK_PROJECT.into(),
+                project_path: copy,
+                agent_id: definition.id,
+                task_id: Some("v1-task".into()),
+                owner: Some("research-task:v1".into()),
+                allowed_paths: Some(vec!["paper.tex".into()]),
+                ..StartSession::default()
+            },
+            Vec::new(),
+            None,
+        )
+        .await
+        .unwrap();
+    assert!(home.join("session-history.json").is_file());
+    let requests = requests_in(&home);
+    let starts = requests
+        .iter()
+        .filter(|request| request["method"] == "initialize")
+        .count();
+    assert_eq!(starts, 2, "the v2 attempt, then the v1 restart");
+    assert!(requests
+        .iter()
+        .any(|request| request["method"] == "session/resume"
+            && request["params"]["sessionId"] == "agent-session-x"));
+    runtime.close(&snapshot.session.id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_retried_task_resumes_its_agent_session_in_the_home_it_kept() {
+    let temp = super::tests::fixture_temp();
+    let copy = temp.path().join("task-copy");
+    std::fs::create_dir(&copy).unwrap();
+    let definition =
+        super::tests::fixture_definition(vec![String::new(), "--caps-v126".into()], temp.path());
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(&serde_json::to_string(&definition).unwrap())
+        .unwrap();
+    let start = || StartSession {
+        project_id: TASK_PROJECT.into(),
+        project_path: copy.clone(),
+        agent_id: definition.id.clone(),
+        task_id: Some("retry-task".into()),
+        owner: Some("research-task:retry".into()),
+        allowed_paths: Some(vec!["paper.tex".into()]),
+        ..StartSession::default()
+    };
+    let first = runtime.start(start()).await.unwrap();
+    let id = first.session.id.clone();
+    let native = first.session.native_session_id.clone().unwrap();
+    // The agent keeps its own history in its home.
+    let task_temp = temp.path().join("acp/task-temp");
+    let home = std::fs::read_dir(&task_temp)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    std::fs::write(home.join("history.jsonl"), "turn 1").unwrap();
+    runtime.end_task_session(&id).await.unwrap();
+    let kept = temp.path().join("acp/task-homes").join(&id);
+    assert!(kept.join("history.jsonl").is_file());
+    assert_eq!(std::fs::read_dir(&task_temp).unwrap().count(), 0);
+    // The next generation finds the session by the agent's own id.
+    let resumed = runtime
+        .resume_task_session(&native, start(), Vec::new(), None)
+        .await
+        .unwrap();
+    assert_eq!(resumed.session.id, id);
+    assert!(kept.join("history.jsonl").is_file());
+    assert_eq!(std::fs::read_dir(&task_temp).unwrap().count(), 0);
+    runtime.end_task_session(&id).await.unwrap();
+    assert!(kept.join("history.jsonl").is_file(), "kept in place again");
+}
+
+#[tokio::test]
+async fn a_queued_handoff_launch_leaves_no_sign_in_copy_in_the_home() {
+    let temp = super::tests::fixture_temp();
+    let copy = temp.path().join("task-copy");
+    std::fs::create_dir(&copy).unwrap();
+    let home = temp.path().join("acp-home-1");
+    // A copy an earlier generation left.
+    std::fs::create_dir_all(home.join(".gemini")).unwrap();
+    std::fs::write(home.join(".gemini/settings.json"), "{}").unwrap();
+    std::fs::write(home.join("history.jsonl"), "kept").unwrap();
+    let definition = super::tests::fixture_definition(vec![String::new()], temp.path());
+    let runtime = AcpRuntime::new(temp.path().join("acp")).unwrap();
+    runtime
+        .register(&serde_json::to_string(&definition).unwrap())
+        .unwrap();
+    let allowed = vec!["paper.tex".to_string()];
+    let queued = runtime
+        .task_launch_without_sign_in(
+            &definition.id,
+            TASK_PROJECT,
+            "queued-task",
+            &copy,
+            &allowed,
+            &home,
+        )
+        .await
+        .unwrap();
+    assert!(!home.join(".gemini/settings.json").exists());
+    assert!(home.join("history.jsonl").is_file());
+    let started = runtime
+        .task_launch(
+            &definition.id,
+            TASK_PROJECT,
+            "queued-task",
+            &copy,
+            &allowed,
+            &home,
+        )
+        .await
+        .unwrap();
+    assert_eq!(queued.program, started.program);
+    assert_eq!(queued.args, started.args);
 }

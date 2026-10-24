@@ -76,9 +76,11 @@ pub(crate) fn profile(request: &PlatformRequest<'_>) -> Result<String, SandboxEr
         profile.push_str(&format!(" (allow file-write* ({filter} {quoted}))"));
     }
     // Later rules win: protected paths stay read-only inside write grants.
+    // One that isn't there yet is denied as a whole folder, so the command
+    // can't create it either.
     for path in request.protected {
         let quoted = quote(path)?;
-        let filter = if path.is_dir() { "subpath" } else { "literal" };
+        let filter = if path.is_file() { "literal" } else { "subpath" };
         profile.push_str(&format!(" (deny file-write* ({filter} {quoted}))"));
     }
     // Hidden paths can't be read or changed, whatever grant covers them.
@@ -156,11 +158,28 @@ mod tests {
         let writable = [PathBuf::from("/w")];
         let protected = [PathBuf::from("/w/.git")];
         let text = profile(&request(&writable, &protected, &[], false, false)).unwrap();
+        // `/w/.git` doesn't exist: the whole folder is denied, so the
+        // command can't create it with hooks inside.
         let deny = text
-            .find("(deny file-write* (literal \"/w/.git\"))")
+            .find("(deny file-write* (subpath \"/w/.git\"))")
             .unwrap();
         let allow = text.find("(allow file-write* (literal \"/w\"))").unwrap();
         assert!(deny > allow);
+    }
+
+    #[test]
+    fn a_protected_file_is_denied_as_itself_and_a_folder_as_a_subtree() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join(".git");
+        std::fs::write(&file, "gitdir: elsewhere").unwrap();
+        let folder = dir.path().join(".oleafly");
+        std::fs::create_dir(&folder).unwrap();
+        let protected = [file.clone(), folder.clone()];
+        let text = profile(&request(&[], &protected, &[], false, false)).unwrap();
+        let file_text = quote(&file).unwrap();
+        let folder_text = quote(&folder).unwrap();
+        assert!(text.contains(&format!("(deny file-write* (literal {file_text}))")));
+        assert!(text.contains(&format!("(deny file-write* (subpath {folder_text}))")));
     }
 
     #[test]

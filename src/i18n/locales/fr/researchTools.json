@@ -205,7 +205,8 @@
       "createTask": "Créer la tâche",
       "replaceText": "Remplacer le titre et les instructions que vous avez saisis par ce point de départ ?",
       "keepText": "Garder le mien",
-      "replaceConfirm": "Remplacer"
+      "replaceConfirm": "Remplacer",
+      "cannotSave": "Corrigez les options signalées ci-dessus, puis réessayez."
     },
     "starter": {
       "literatureReview": {
@@ -308,16 +309,38 @@
         "budgetCost": "Arrêtée à la limite de coût.",
         "budgetRuns": "Arrêtée à la limite d'exécutions."
       },
-      "startsAt": "Commence le {{time}}"
+      "startsAt": "Commence le {{time}}",
+      "olderActivity": "L'activité antérieure de cette exécution n'est pas affichée.",
+      "tooLargeToDiff": "Ce fichier est trop volumineux pour être comparé ici, seules ses tailles sont donc affichées."
+    },
+    "confirm": {
+      "stopTitle": "Arrêter cette tâche ?",
+      "stopDescription": "« {{title}} » s'arrête après son étape en cours. Reprendre permet de la poursuivre plus tard depuis son espace de travail.",
+      "cancelTitle": "Annuler cette tâche ?",
+      "cancelDescription": "« {{title}} » ne s'exécutera pas. Vous pourrez la relancer plus tard.",
+      "cancelTask": "Annuler la tâche",
+      "discardTitle": "Abandonner ces modifications ?",
+      "discardDescription": "Aucune des modifications faites par « {{title}} » n'arrive dans votre projet, et la tâche est marquée comme annulée. Reprendre relance l'agent.",
+      "keepTask": "Garder la tâche",
+      "keepChanges": "Garder les modifications",
+      "dependents_one": "Cette tâche l'attend et échoue aussi :",
+      "dependents_many": "Ces {{count}} tâches l'attendent et échouent aussi :",
+      "dependents_other": "Ces {{count}} tâches l'attendent et échouent aussi :",
+      "runs_one": "Cette exécution s'arrête aussi :",
+      "runs_many": "Ces {{count}} exécutions s'arrêtent aussi :",
+      "runs_other": "Ces {{count}} exécutions s'arrêtent aussi :"
     },
     "plan": {
       "title": "Plan",
       "description": "Lisez le plan et modifiez-le si vous le souhaitez. Approuvez-le pour que la tâche continue.",
       "approve": "Approuver le plan",
       "approveEdited": "Approuver le plan modifié",
-      "discard": "Abandonner la tâche",
+      "discard": "Annuler la tâche",
       "loading": "Chargement du plan…",
-      "missing": "Le fichier du plan est introuvable. Relancez la tâche."
+      "missing": "Le fichier du plan est introuvable. Relancez la tâche.",
+      "loadFailed": "Oleafly n'a pas pu charger le plan.",
+      "truncated": "Ce plan dépasse 64 Kio, seul son début est donc affiché. Réduisez-le aux étapes voulues, puis approuvez-le.",
+      "tooLong": "Un plan peut faire jusqu'à 64 Kio. Raccourcissez-le avant de l'approuver."
     },
     "approvals": {
       "title": "En attente de votre approbation",
@@ -366,6 +389,9 @@
       "runsUsed": "{{used}} exécutions sur {{limit}}",
       "runsUsedNoLimit": "{{used}} exécutions",
       "stopRun": "Arrêter l'exécution",
+      "stopRunTitle": "Arrêter cette exécution ?",
+      "stopRunDescription": "« {{name}} » ({{run}}) s'arrête maintenant. Un job lancé par cette exécution sur une autre machine ou un cluster y est aussi annulé.",
+      "keepRun": "Laisser tourner",
       "viewLog": "Voir le journal",
       "columns": {
         "run": "Exécution",
@@ -872,6 +898,7 @@
     "progressCancelled": "Annulé",
     "progressReadingPages": "Lecture des pages",
     "progressTranscribingPage": "Transcription de la page {{page}} sur {{total}} avec {{model}}",
+    "progressTranscribingPdfPage": "Transcription de la page {{pdfPage}} ({{page}} sur {{total}}) avec {{model}}",
     "progressDocumentStructure": "Conversion de la structure du document",
     "progressMermaid": "Rendu du diagramme Mermaid",
     "progressFirstSheet": "Lecture de la première feuille",
@@ -915,7 +942,10 @@
     "progressConvertingSource": "Conversion du source en Typst",
     "pageRange": "Pages",
     "pageRangePlaceholder": "Toutes les pages, ou une plage comme 1-50",
-    "pageRangeInvalid": "Saisissez un numéro de page, ou une plage comme 1-50."
+    "pageRangeInvalid": "Saisissez un numéro de page, ou une plage comme 1-50.",
+    "pageCount_one": "Ce PDF compte {{count}} page.",
+    "pageCount_many": "Ce PDF compte {{count}} pages.",
+    "pageCount_other": "Ce PDF compte {{count}} pages."
   },
   "converters": {
     "imageToLatex": {
@@ -1124,10 +1154,16 @@
     "arxivInputRequired": "Saisissez un identifiant arXiv ou choisissez une archive source.",
     "equationToTypst": "Pandoc n'a pas pu convertir cette équation en Typst. Vérifiez les maths LaTeX et réessayez.",
     "pdfTooManyPages": "Cette numérisation compte {{pages}} pages, et Oleafly transcrit au plus {{limit}} à la fois. Saisissez une plage de pages comme 1-{{limit}} sous le fichier.",
-    "outputLimit": "Le modèle a manqué de place avant de terminer, la transcription serait donc incomplète. Choisissez un modèle avec une limite de sortie plus élevée dans Paramètres, Assistant IA, Outils, ou transcrivez une plus petite partie."
+    "outputLimit": "Le modèle a manqué de place avant de terminer, la transcription serait donc incomplète. Choisissez un modèle avec une limite de sortie plus élevée dans Paramètres, Assistant IA, Outils, ou transcrivez une plus petite partie.",
+    "refused": "Le modèle a refusé de transcrire ceci, rien n'a donc été ajouté. Choisissez un autre modèle dans Paramètres, Assistant IA, Outils.",
+    "pageRangePastEnd_one": "Ce PDF compte {{count}} page. Saisissez 1, ou laissez le champ Pages vide.",
+    "pageRangePastEnd_many": "Ce PDF compte {{count}} pages. Saisissez une plage de 1 à {{count}}.",
+    "pageRangePastEnd_other": "Ce PDF compte {{count}} pages. Saisissez une plage de 1 à {{count}}."
   },
   "converterNotes": {
-    "scannedPages": "{{pages}} pages numérisées transcrites avec {{model}}. Vérifiez les équations et les tableaux avant d'utiliser le résultat.",
+    "scannedPages_one": "{{count}} page numérisée transcrite avec {{model}}. Vérifiez les équations et les tableaux avant d'utiliser le résultat.",
+    "scannedPages_many": "{{count}} pages numérisées transcrites avec {{model}}. Vérifiez les équations et les tableaux avant d'utiliser le résultat.",
+    "scannedPages_other": "{{count}} pages numérisées transcrites avec {{model}}. Vérifiez les équations et les tableaux avant d'utiliser le résultat.",
     "extracted": "{{pages}} pages et {{figures}} figures extraites en local.",
     "mermaidTikz": "Cet organigramme a été converti en TikZ modifiable.",
     "mermaidRendered": "Ce diagramme a été rendu en local car sa syntaxe Mermaid ne se traduit pas proprement en TikZ modifiable.",
@@ -1156,6 +1192,9 @@
     "scansSentToHost": "Les pages numérisées sont envoyées à Ollama sur {{host}}",
     "pdfSentToMathpix": "Le PDF entier est envoyé à Mathpix",
     "transcribingHosted": "Envoi de l'image à {{provider}}…",
+    "transcribingFallback": "Envoi de l'image à {{provider}} (modèle de l'assistant)…",
+    "sentFallback": "Envoyé à {{provider}} (modèle de l'assistant)",
+    "editorFallback": "La conversion d'image en LaTeX de l'éditeur envoie les images à {{provider}} tant qu'Ollama n'a pas de modèle de vision",
     "progressUploading": "Envoi du PDF à Mathpix",
     "progressFormatting": "Conversion de la transcription avec Pandoc",
     "scannedTitle": "Ce PDF semble numérisé",
@@ -1168,16 +1207,27 @@
     "estimateUnknown_one": "{{count}} page. {{provider}} la facture à l'usage.",
     "estimateUnknown_many": "{{count}} pages. {{provider}} les facture à l'usage.",
     "estimateUnknown_other": "{{count}} pages. {{provider}} les facture à l'usage.",
+    "estimatePlan_one": "{{count}} page. Elle est incluse dans votre abonnement {{provider}}.",
+    "estimatePlan_many": "{{count}} pages. Elles sont incluses dans votre abonnement {{provider}}.",
+    "estimatePlan_other": "{{count}} pages. Elles sont incluses dans votre abonnement {{provider}}.",
+    "estimateLocal_one": "{{count}} page. Le modèle s'exécute sur cet ordinateur, sans frais.",
+    "estimateLocal_many": "{{count}} pages. Le modèle s'exécute sur cet ordinateur, sans frais.",
+    "estimateLocal_other": "{{count}} pages. Le modèle s'exécute sur cet ordinateur, sans frais.",
+    "estimateFree_one": "{{count}} page. Sans frais avec {{model}}.",
+    "estimateFree_many": "{{count}} pages. Sans frais avec {{model}}.",
+    "estimateFree_other": "{{count}} pages. Sans frais avec {{model}}.",
     "transcribePages_one": "Transcrire {{count}} page",
     "transcribePages_many": "Transcrire {{count}} pages",
     "transcribePages_other": "Transcrire {{count}} pages",
     "transcribedWith": "Transcrit avec {{model}}. Vérifiez les équations et les tableaux.",
     "sentBadge": "Envoyé à {{provider}}",
     "openToolsSettings": "Paramètres des Outils",
+    "openProviderSettings": "Paramètres du fournisseur",
     "errors": {
       "offline": "Oleafly est en mode hors ligne. Choisissez un modèle local ou désactivez le mode hors ligne.",
       "providerNotConfigured": "{{provider}} n'a pas de clé API. Ajoutez-en une dans les Paramètres, ou choisissez un autre modèle.",
       "modelDisabled": "{{model}} est désactivé dans les Paramètres. Activez-le, ou choisissez un autre modèle.",
+      "modelUnavailable": "{{model}} n'est plus disponible chez {{provider}}. Choisissez un autre modèle.",
       "cannotSeeImages": "{{model}} ne peut pas lire les images. Choisissez un modèle de vision.",
       "localModelGone": "{{model}} n'est plus dans Ollama. Récupérez-le de nouveau, ou choisissez un autre modèle.",
       "imagesOnly": "{{model}} lit uniquement des images. Choisissez un modèle de langage pour convertir des équations saisies.",
@@ -1788,6 +1838,8 @@
     "keepRunningHint": "Activez d'abord Tâches en arrière-plan dans Paramètres, Recherche.",
     "invalidMetric": "Utilisez des lettres, des chiffres, des points, des tirets ou des tirets bas.",
     "invalidCost": "Saisissez un montant supérieur à zéro.",
+    "invalidCostMax": "Saisissez un montant ne dépassant pas {{max}}.",
+    "invalidCostNumber": "Saisissez le montant sous forme de nombre, par exemple {{example}}.",
     "invalidRuns": "Saisissez un nombre entier de 1 à 1 000.",
     "invalidStart": "Choisissez une heure de début dans les 30 prochains jours.",
     "invalidStartFormat": "Utilisez le format {{example}}.",
@@ -1810,6 +1862,10 @@
     "hint": "Ces vérifications ne font qu'avertir. Elles n'empêchent pas l'application.",
     "running": "Vérification…",
     "refresh": "Vérifier de nouveau",
+    "empty": "Aucune vérification n'a encore été exécutée sur ce résultat.",
+    "more_one": "{{count}} autre élément n'est pas listé.",
+    "more_many": "{{count}} autres éléments ne sont pas listés.",
+    "more_other": "{{count}} autres éléments ne sont pas listés.",
     "status": {
       "pass": "Réussi",
       "warn": "À vérifier",
@@ -1917,7 +1973,8 @@
         "time": "Utilisez une durée Slurm comme 2:00:00.",
         "name": "Utilisez des lettres, des chiffres, des points, des virgules, des tirets ou des tirets bas.",
         "mem": "Utilisez un nombre entier de gigaoctets, comme 16.",
-        "count": "Utilisez un nombre entier dans la plage autorisée."
+        "count": "Utilisez un nombre entier dans la plage autorisée.",
+        "prelude": "Limitez les commandes de préparation à 4 Ko. Les lettres accentuées et les écritures non latines occupent plus de place."
       }
     },
     "test": {
@@ -1995,7 +2052,7 @@
       "movingBackHint": "Cette tâche revient dans Oleafly à la fin de son étape en cours."
     },
     "earlierActivity": "Afficher l'activité précédente",
-    "earlierTruncated": "Seuls les {{limit}} premiers éléments de cette exécution antérieure sont affichés.",
+    "earlierTruncated": "Seuls les {{limit}} derniers éléments de cette exécution antérieure sont affichés.",
     "keepRunningFailed": "Impossible de modifier ce réglage. Réessayez."
   }
 }

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  isCtrlTerminalKey,
   isInsideTerminalDock,
   isTerminalKey,
   isTerminalTarget,
@@ -100,6 +101,36 @@ describe("terminal key router", () => {
       kind: "send",
       data: "\r",
     });
+  });
+
+  it("sends each Windows shell the Shift+Enter bytes its line editor reads", () => {
+    const shiftEnter = (shellName: string) =>
+      routeTerminalKey(key("Enter", { shift: true }), ctx("windows", { shellName }));
+    // Git Bash's readline toggles vi mode on ESC CR, as bash does on Linux.
+    expect(shiftEnter("bash")).toEqual({ kind: "send", data: "\n" });
+    expect(shiftEnter("bash.exe")).toEqual({ kind: "send", data: "\n" });
+    expect(shiftEnter("sh")).toEqual({ kind: "send", data: "\n" });
+    // cmd has no multi-line input, so Shift+Enter is Enter.
+    expect(shiftEnter("cmd")).toEqual({ kind: "send", data: "\r" });
+    for (const shell of ["pwsh", "powershell", "zsh", "fish"]) {
+      expect(shiftEnter(shell)).toEqual({ kind: "send", data: "\x1b\r" });
+    }
+    expect(
+      routeTerminalKey(key("Enter", { shift: true }), ctx("windows", { wsl: true, shellName: "wsl" })),
+    ).toEqual({ kind: "send", data: "\n" });
+  });
+
+  it("leaves Ctrl+letter and Ctrl+named keys to the program, not other chords", () => {
+    expect(isCtrlTerminalKey(key("k", { ctrl: true }))).toBe(true);
+    expect(isCtrlTerminalKey(key("PageDown", { ctrl: true }))).toBe(true);
+    expect(isCtrlTerminalKey(key("PageUp", { ctrl: true }))).toBe(true);
+    expect(isCtrlTerminalKey(key("]", { ctrl: true }))).toBe(true);
+    expect(isCtrlTerminalKey(key("k", { ctrl: true, shift: true }))).toBe(false);
+    expect(isCtrlTerminalKey(key("k", { ctrl: true, alt: true }))).toBe(false);
+    expect(isCtrlTerminalKey(key("`", { ctrl: true }))).toBe(false);
+    expect(isCtrlTerminalKey(key(",", { ctrl: true }))).toBe(false);
+    expect(isCtrlTerminalKey(key("PageDown", { ctrl: true, shift: true }))).toBe(false);
+    expect(isCtrlTerminalKey(key("k"))).toBe(false);
   });
 
   it("leaves Enter, Ctrl+Enter, Alt+Enter and Ctrl+Shift+Enter to xterm", () => {

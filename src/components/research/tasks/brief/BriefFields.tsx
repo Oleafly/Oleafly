@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { i18n } from "@/i18n";
+import { formatNumber } from "@/lib/intl";
 import type { CommandPolicy, MetricGoal, ResearchBrief, RunProfile } from "@/lib/research-tasks";
 import { useSettingsStore } from "@/store/settings";
 import { DesktopAppsBriefField } from "./DesktopAppsBriefField";
@@ -25,6 +26,8 @@ const RUN_TIMEOUT_OPTIONS: Record<RunProfile, number[]> = {
 // The same rule as the task store: a letter or underscore first, then up to
 // 63 letters, digits, dots, slashes, dashes or underscores.
 const METRIC_NAME = /^[A-Za-z_][A-Za-z0-9_./-]{0,63}$/;
+/** The highest cost limit the task store takes, in US dollars. */
+const MAX_COST = 10_000;
 
 /** "90 minutes" or "2 hours" for a minute count. */
 export function durationLabel(minutes: number): string {
@@ -47,8 +50,12 @@ export function briefErrors(brief: ResearchBrief): BriefErrors {
     errors.metric = i18n.t(($) => $.researchTools.brief.invalidMetric);
   }
   const cap = brief.budget.usdCap;
-  if (cap !== null && (!Number.isFinite(cap) || cap <= 0 || cap > 10_000)) {
+  if (cap !== null && !Number.isFinite(cap)) {
+    errors.cost = i18n.t(($) => $.researchTools.brief.invalidCostNumber, { example: formatNumber(2.5) });
+  } else if (cap !== null && cap <= 0) {
     errors.cost = i18n.t(($) => $.researchTools.brief.invalidCost);
+  } else if (cap !== null && cap > MAX_COST) {
+    errors.cost = i18n.t(($) => $.researchTools.brief.invalidCostMax, { max: formatNumber(MAX_COST) });
   }
   const runs = brief.budget.maxRuns;
   if (runs !== null && (!Number.isInteger(runs) || runs < 1 || runs > 1_000)) {
@@ -124,6 +131,23 @@ function parseNumber(text: string): number | null {
   if (!trimmed) return null;
   const value = Number(trimmed);
   return Number.isFinite(value) ? value : Number.NaN;
+}
+
+/** The decimal separator of the UI language, such as "," for German. */
+function decimalSeparator(): string {
+  try {
+    return new Intl.NumberFormat(i18n.language).formatToParts(1.5).find((part) => part.type === "decimal")?.value ?? ".";
+  } catch {
+    return ".";
+  }
+}
+
+/** An amount typed with a point or with the UI language's decimal separator, such as `1,5` in German. */
+export function parseAmount(text: string): number | null {
+  const trimmed = text.trim();
+  const separator = decimalSeparator();
+  if (separator === "." || trimmed.includes(".")) return parseNumber(trimmed);
+  return parseNumber(trimmed.replace(separator, "."));
 }
 
 /** The choices, plus the saved value when it is not one of them. */
@@ -248,7 +272,7 @@ function BudgetFields({
             aria-invalid={Boolean(errors.cost)}
             onChange={(event) => {
               onCostTextChange(event.target.value);
-              updateBudget({ usdCap: parseNumber(event.target.value) });
+              updateBudget({ usdCap: parseAmount(event.target.value) });
             }}
           />
           {errors.cost ? <p className="text-xs text-destructive">{errors.cost}</p> : null}
@@ -411,6 +435,7 @@ interface KeepRunningFieldProps {
   onKeepRunningChange: (keepRunning: boolean) => void;
   backgroundEnabled: boolean;
   onDropDesktopApps: () => void;
+  onOpenSettings?: (open: () => void) => void;
 }
 
 function KeepRunningField({
@@ -420,6 +445,7 @@ function KeepRunningField({
   onKeepRunningChange,
   backgroundEnabled,
   onDropDesktopApps,
+  onOpenSettings,
 }: Readonly<KeepRunningFieldProps>) {
   const { t } = useTranslation(["researchTools"]);
   return (
@@ -448,7 +474,7 @@ function KeepRunningField({
           variant="link"
           className="-mt-2 justify-start px-0"
           data-testid="research-brief-keep-running-settings"
-          onClick={openResearchSettings}
+          onClick={() => (onOpenSettings ? onOpenSettings(openResearchSettings) : openResearchSettings())}
         >
           {t(($) => $.researchTools.compute.brief.openSettings)}
         </Button>
@@ -473,6 +499,8 @@ interface BriefFieldsProps {
   renderCompute?: (fieldId: string) => ReactNode;
   /** The "Run on" choice has a problem the composer found (a removed target, a field that doesn't read). */
   computeProblem?: boolean;
+  /** Opens Settings for a link in the brief; the composer closes first, since Settings can't open inside it. */
+  onOpenSettings?: (open: () => void) => void;
 }
 
 export function BriefFields({
@@ -487,6 +515,7 @@ export function BriefFields({
   computeTargets = [],
   renderCompute,
   computeProblem = false,
+  onOpenSettings,
 }: Readonly<BriefFieldsProps>) {
   const { t } = useTranslation(["researchTools"]);
   const id = useId();
@@ -495,6 +524,10 @@ export function BriefFields({
   const hasProblem = Object.keys(errors).length > 0 || startProblem !== undefined || computeProblem;
   // A saved draft can hold a bad value, so the options open on the problem.
   const [open, setOpen] = useState(hasProblem);
+  // The composer finds a removed compute target after the brief first draws.
+  useEffect(() => {
+    if (computeProblem) setOpen(true);
+  }, [computeProblem]);
   const [startText, setStartText] = useState(() =>
     runAfter !== null && Number.isFinite(runAfter) ? localDateTime(runAfter) : "",
   );
@@ -660,6 +693,7 @@ export function BriefFields({
             unattended={unattended}
             checked={brief.permissions.desktopApps}
             onCheckedChange={(desktopApps) => update({ permissions: { ...brief.permissions, desktopApps } })}
+            onOpenSettings={onOpenSettings}
           />
 
           <BudgetFields
@@ -723,6 +757,7 @@ export function BriefFields({
             onKeepRunningChange={onKeepRunningChange}
             backgroundEnabled={backgroundEnabled}
             onDropDesktopApps={dropDesktopApps}
+            onOpenSettings={onOpenSettings}
           />
         </div>
       ) : null}

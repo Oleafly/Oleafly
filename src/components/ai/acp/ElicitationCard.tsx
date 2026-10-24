@@ -219,7 +219,8 @@ export function ElicitationCard({
 }: Readonly<{
   request: AcpElicitation;
   agentName: string;
-  onRespond(action: Action, content?: Record<string, unknown>): Promise<void>;
+  /** Resolves false when the answer did not reach the agent. */
+  onRespond(action: Action, content?: Record<string, unknown>): Promise<boolean>;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
   const initial = useMemo(
@@ -237,7 +238,9 @@ export function ElicitationCard({
 
   const respond = (action: Action, content?: Record<string, unknown>) => {
     setSending(true);
-    void onRespond(action, content).finally(() => setSending(false));
+    return onRespond(action, content)
+      .catch(() => false)
+      .finally(() => setSending(false));
   };
   const submit = () => {
     setChecked(true);
@@ -247,7 +250,7 @@ export function ElicitationCard({
       const value = values[field.name];
       if (value !== undefined && value !== "") content[field.name] = value;
     }
-    respond("accept", content);
+    void respond("accept", content);
   };
   const openLink = async () => {
     setConfirming(false);
@@ -259,7 +262,8 @@ export function ElicitationCard({
     }
     setLinkFailed(false);
     setWaiting(true);
-    respond("accept");
+    // The agent never heard the answer: the card offers the link and Decline again.
+    if (!(await respond("accept"))) setWaiting(false);
   };
 
   return (
@@ -305,10 +309,10 @@ export function ElicitationCard({
           ))}
           <div className="flex flex-wrap gap-2 pt-1">
             <Button type="submit" size="sm" disabled={sending}>{t(($) => $.ai.acp.elicitation.submit)}</Button>
-            <Button type="button" variant="outline" size="sm" disabled={sending} onClick={() => respond("decline")}>
+            <Button type="button" variant="outline" size="sm" disabled={sending} onClick={() => void respond("decline")}>
               {t(($) => $.ai.acp.elicitation.decline)}
             </Button>
-            <Button type="button" variant="ghost" size="sm" disabled={sending} onClick={() => respond("cancel")}>
+            <Button type="button" variant="ghost" size="sm" disabled={sending} onClick={() => void respond("cancel")}>
               {t(($) => $.ai.acp.elicitation.cancel)}
             </Button>
           </div>
@@ -317,9 +321,10 @@ export function ElicitationCard({
       {linkFailed && (
         <p role="alert" className="text-destructive">{t(($) => $.ai.acp.elicitation.openFailed)}</p>
       )}
-      {request.mode === "url" && !waiting && (
+      {/* Decline stays while the agent waits for the site: the step may never finish. */}
+      {request.mode === "url" && (
         <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" disabled={sending} onClick={() => respond("decline")}>
+          <Button type="button" variant="outline" size="sm" disabled={sending} onClick={() => void respond("decline")}>
             {t(($) => $.ai.acp.elicitation.decline)}
           </Button>
         </div>

@@ -272,16 +272,27 @@ pub fn read_record_file(
     name: &str,
     max_bytes: usize,
 ) -> Option<String> {
+    read_record_file_cut(execution_root, slug, name, max_bytes).map(|(text, _)| text)
+}
+
+/// [`read_record_file`], and whether the file was longer than `max_bytes`.
+pub fn read_record_file_cut(
+    execution_root: &Path,
+    slug: &str,
+    name: &str,
+    max_bytes: usize,
+) -> Option<(String, bool)> {
     let files = open_record(execution_root, slug).ok()?;
     let mut text = files.read(&format!("{}/{name}", record_dir(slug))).ok()?;
-    if text.len() > max_bytes {
+    let cut = text.len() > max_bytes;
+    if cut {
         let mut end = max_bytes;
         while !text.is_char_boundary(end) {
             end -= 1;
         }
         text.truncate(end);
     }
-    Some(text)
+    Some((text, cut))
 }
 
 /// The last `count` ledger lines (header first), for a resumed conversation.

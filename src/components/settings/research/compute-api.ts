@@ -115,6 +115,13 @@ export function announceTargetsChanged() {
   window.dispatchEvent(new CustomEvent(COMPUTE_TARGETS_CHANGED));
 }
 
+/** Fired on `window` after the Windows sandbox switch is saved; `detail` is the new `SandboxStatus`. */
+export const COMPUTE_SANDBOX_CHANGED = "oleafly:compute-sandbox-changed";
+
+export function announceSandboxChanged(status: SandboxStatus) {
+  window.dispatchEvent(new CustomEvent<SandboxStatus>(COMPUTE_SANDBOX_CHANGED, { detail: status }));
+}
+
 /** The executor that runs a target's runs (`local` for this computer). */
 export function executorFor(target: ComputeTarget | null | undefined): string {
   if (!target) return "local";
@@ -136,9 +143,23 @@ export type TargetField =
   | "gpus"
   | "cpus"
   | "space"
-  | "image";
+  | "image"
+  | "prelude";
 
-export type TargetError = "label" | "host" | "user" | "port" | "remoteRoot" | "time" | "name" | "mem" | "count";
+export type TargetError =
+  | "label"
+  | "host"
+  | "user"
+  | "port"
+  | "remoteRoot"
+  | "time"
+  | "name"
+  | "mem"
+  | "count"
+  | "prelude";
+
+/** Rust's limit on a target's setup lines, in UTF-8 bytes. */
+const MAX_PRELUDE_BYTES = 4 * 1024;
 
 const HOST = /^[A-Za-z0-9._:%-]{1,253}$/;
 const USER = /^[A-Za-z0-9._][A-Za-z0-9._-]{0,63}$/;
@@ -182,6 +203,11 @@ function validateRemoteHost(target: Exclude<ComputeTarget, CuaSpaceTarget>, erro
       target.remoteRoot.split("/").includes(".."))
   ) {
     errors.remoteRoot = "remoteRoot";
+  }
+  // Rust counts bytes, so accented or CJK setup lines reach the limit sooner than the character count suggests.
+  const prelude = target.prelude ?? "";
+  if (new TextEncoder().encode(prelude).length > MAX_PRELUDE_BYTES || prelude.includes("\0")) {
+    errors.prelude = "prelude";
   }
 }
 

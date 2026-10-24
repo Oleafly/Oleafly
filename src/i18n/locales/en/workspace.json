@@ -196,6 +196,8 @@
     "closeRight": "Close all to the right",
     "closeTab": "Close {{title}}",
     "color": "Color",
+    "dropRefused_one": "This file's name has a control character, so the terminal won't type it.",
+    "dropRefused_other": "{{count}} file names have control characters, so the terminal won't type them.",
     "errors": {
       "input": "The shell could not accept input",
       "resize": "The terminal could not resize",
@@ -234,6 +236,7 @@
       "many_other": "Programs are still running in {{count}} terminals.",
       "named": "{{process}} is still running in {{title}}.",
       "quit": "Quit",
+      "reload": "Reload",
       "restart": "Restart",
       "switchProject": "Switch project",
       "titleMany": "Stop the running programs?",

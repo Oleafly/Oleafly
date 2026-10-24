@@ -132,6 +132,75 @@ fn a_legacy_file_written_after_a_downgrade_is_merged_again() {
 }
 
 #[test]
+fn a_chat_deleted_here_stays_deleted_when_0_4_7_saves_the_legacy_file_again() {
+    let root = tempfile::tempdir().unwrap();
+    let chats = root.path().join("chats");
+    std::fs::create_dir_all(&chats).unwrap();
+    std::fs::write(
+        chats.join("p1.json"),
+        format!("[{},{}]", chat("a", 1.0, 1), chat("b", 2.0, 1)),
+    )
+    .unwrap();
+    assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
+    delete_chat(root.path(), "p1", "a").unwrap();
+    // 0.4.7 ran again: it still has a and changed it, and it added c.
+    std::fs::write(
+        chats.join("p1.json"),
+        format!(
+            "[{},{},{}]",
+            chat("a", 5.0, 3),
+            chat("b", 2.0, 1),
+            chat("c", 6.0, 1)
+        ),
+    )
+    .unwrap();
+    assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
+    assert_eq!(
+        ids(&read_project_chats(root.path(), "p1", usize::MAX).unwrap()),
+        ["c", "b"]
+    );
+}
+
+#[test]
+fn a_chat_continued_in_both_versions_keeps_both_copies() {
+    let root = tempfile::tempdir().unwrap();
+    let chats = root.path().join("chats");
+    std::fs::create_dir_all(&chats).unwrap();
+    std::fs::write(chats.join("p1.json"), format!("[{}]", chat("a", 1.0, 1))).unwrap();
+    assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
+    // Five messages added here, then one in 0.4.7 after a downgrade.
+    write_chat(root.path(), "p1", "a", &chat("a", 5.0, 6), false).unwrap();
+    std::fs::write(chats.join("p1.json"), format!("[{}]", chat("a", 7.0, 2))).unwrap();
+    assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
+    let messages = |id: &str| {
+        let value: serde_json::Value =
+            serde_json::from_str(&read_chat(root.path(), "p1", id).unwrap()).unwrap();
+        assert_eq!(value["id"], id);
+        value["messages"].as_array().unwrap().len()
+    };
+    let copy = legacy_copy_id("a", Some(7.0));
+    assert_eq!((messages("a"), messages(&copy)), (6, 2));
+    // 0.4.7 carries on with its copy: that copy follows, the chat here stays.
+    std::fs::write(chats.join("p1.json"), format!("[{}]", chat("a", 9.0, 3))).unwrap();
+    assert!(migrate_legacy_chats(root.path(), "p1").unwrap());
+    assert_eq!((messages("a"), messages(&copy)), (6, 3));
+    assert_eq!(
+        ids(&read_project_chats(root.path(), "p1", usize::MAX).unwrap()),
+        [copy.as_str(), "a"]
+    );
+}
+
+#[test]
+fn a_legacy_copy_id_is_a_valid_chat_id_even_for_the_longest_ids() {
+    let long = "a".repeat(MAX_CHAT_ID_LEN);
+    for id in ["chat_1739_ab12cd", long.as_str()] {
+        let copy = legacy_copy_id(id, Some(1_712_345_678_901.0));
+        assert!(validate_chat_id(&copy).is_ok(), "{copy}");
+        assert_ne!(copy, id);
+    }
+}
+
+#[test]
 fn legacy_chats_that_cannot_be_files_are_counted_and_stay_in_the_legacy_file() {
     let root = tempfile::tempdir().unwrap();
     let chats = root.path().join("chats");

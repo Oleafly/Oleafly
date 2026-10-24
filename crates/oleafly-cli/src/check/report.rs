@@ -1,13 +1,14 @@
 //! Findings as rows, the `--exit-code` rule, and where a report goes
 //! (people, JSON or SARIF; stdout or `--output`). Shared by `check` and
 //! `lint`.
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use clap::{Args, ValueEnum};
-use oleafly_preflight::Position;
+use oleafly_preflight::{Position, SourceText};
 use serde_json::{json, Value};
 
-use super::sarif::{sarif_document, SarifBase};
+use super::sarif::{line_hash, sarif_document, SarifBase};
 use crate::contract::{envelope, CliError, Context, ErrorKind, Exit, Outcome, Warning};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
@@ -78,10 +79,36 @@ pub struct ReportRow {
     /// Project-relative, forward slashes; `None` for project-wide findings.
     pub file: Option<String>,
     pub range: Option<RowRange>,
-    /// The start line, for SARIF fingerprints only (never printed).
+    /// The start line, for SARIF fingerprints only (never printed); a digest
+    /// of it when it is longer than [`MAX_LINE_TEXT_BYTES`].
     pub line_text: Option<String>,
     /// The row in the command's JSON report.
     pub json: Value,
+}
+
+/// The longest start line a row keeps for its SARIF fingerprint. A longer
+/// one is kept as a digest, so the findings on a 2 MB single-line file don't
+/// each hold a copy of it.
+pub const MAX_LINE_TEXT_BYTES: usize = 512;
+
+/// What a row keeps of the line at `unit` (its `line_text`), made once per
+/// line of a file: `made` holds the file's lines so far, by line index.
+pub fn fingerprint_line(
+    source: &SourceText,
+    unit: usize,
+    made: &mut HashMap<usize, String>,
+) -> String {
+    let line = source.line_index(unit.min(source.len_utf16()));
+    made.entry(line)
+        .or_insert_with(|| {
+            let text = source.line_text(unit);
+            if text.len() <= MAX_LINE_TEXT_BYTES {
+                text
+            } else {
+                format!("\u{0}{}", line_hash("", &text))
+            }
+        })
+        .clone()
 }
 
 /// A rule as SARIF describes it.
@@ -162,11 +189,17 @@ pub fn deliver(
     } else {
         FormatArg::Human
     });
-    if format == FormatArg::Sarif && ctx.json() && args.output.is_none() {
+    if matches!(format, FormatArg::Sarif | FormatArg::Human) && ctx.json() && args.output.is_none()
+    {
+        let name = if format == FormatArg::Sarif {
+            "sarif"
+        } else {
+            "human"
+        };
         return Err(CliError::new(
             ErrorKind::Usage,
             "usage.invalid",
-            "Use --output with --format sarif when --json is set.",
+            format!("Use --output with --format {name} when --json is set."),
         ));
     }
     let exit = exit_for(delivery.rows, args);
@@ -179,7 +212,8 @@ pub fn deliver(
     match format {
         FormatArg::Human => {
             write_out(args.output.as_deref(), delivery.human.as_bytes())?;
-            outcome.print_envelope = false;
+            // With --json (and --output), stdout still gets the envelope.
+            outcome.print_envelope = ctx.json();
         }
         FormatArg::Json if ctx.json() => {
             if let Some(path) = &args.output {
@@ -262,6 +296,47 @@ mod tests {
         assert_eq!(
             exit_for(&[row(Level::Note)], &args(true, FailOn::Info)),
             Exit::Findings
+        );
+    }
+
+    #[test]
+    fn json_with_a_human_report_keeps_the_envelope_on_stdout() {
+        let folder = tempfile::tempdir().unwrap();
+        let ctx = Context::for_test(crate::contract::ContextOptions {
+            project: folder.path().to_path_buf(),
+            json: true,
+            ..Default::default()
+        });
+        let base = SarifBase {
+            base_dir: folder.path().to_path_buf(),
+            project_prefix: String::new(),
+        };
+        let delivery = || Delivery {
+            command: "check",
+            key: "check",
+            automation_id: "oleafly-check",
+            rows: &[],
+            rules: &[],
+            payload: json!({}),
+            warnings: Vec::new(),
+            base: &base,
+            main_document: "main.tex",
+            human: "No problems.\n".into(),
+        };
+        let mut with_output = args(false, FailOn::Error);
+        with_output.format = Some(FormatArg::Human);
+        with_output.output = Some(folder.path().join("report.txt"));
+        let outcome = deliver(&ctx, &with_output, delivery()).unwrap();
+        assert!(outcome.print_envelope);
+        assert_eq!(
+            std::fs::read_to_string(folder.path().join("report.txt")).unwrap(),
+            "No problems.\n"
+        );
+        let mut without_output = args(false, FailOn::Error);
+        without_output.format = Some(FormatArg::Human);
+        assert_eq!(
+            deliver(&ctx, &without_output, delivery()).unwrap_err().code,
+            "usage.invalid"
         );
     }
 

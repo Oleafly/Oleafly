@@ -99,11 +99,15 @@
       "title": "Aplikacje na komputerze",
       "action": "{{agent}} chce {{action}}.",
       "steps": "{{agent}} chce wykonać te kroki w aplikacji na komputerze:",
-      "moreSteps": "Niewyświetlone kroki: {{count}}",
+      "moreSteps": "Niewyświetlone i niewykonane kroki: {{count}}",
       "moreItems": "Niewyświetlone elementy: {{count}}",
-      "cut": "(+{{count}} niewyświetlonych znaków)",
+      "cut": "(niewyświetlone znaki: {{count}})",
       "signedIn": "To działanie odbywa się w Twojej własnej zalogowanej przeglądarce.",
       "signedInOn": "To działanie odbywa się w Twojej własnej zalogowanej przeglądarce, na stronie {{origin}}.",
+      "task": "Zadanie: {{title}}",
+      "app": "Aplikacja: {{name}}",
+      "window": "Okno: {{title}}",
+      "element": "Element: {{element}}",
       "text": "Tekst: „{{text}}”",
       "address": "Adres: {{url}}",
       "allowOnce": "Zezwól raz",
@@ -111,6 +115,7 @@
       "allowSession": "Zezwól w tej sesji",
       "allowTask": "Zezwól dla tego zadania",
       "deny": "Nie zezwalaj",
+      "pickedFile": "wybranego przez Ciebie pliku",
       "actions": {
         "launchApp": "otworzyć aplikację",
         "click": "kliknąć w aplikacji",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Zezwolić na sterowanie komputerem?",
-      "message": "Agenci będą mogli używać poniższych elementów i nadal będą pytać przed każdą czynnością:",
+      "message": "Agenci będą mogli z nich korzystać. Przed każdą akcją zapytają, a zapisanie usunie wszystkie wybory „Zezwól w tym czacie”:",
       "confirm": "Zezwól",
       "enabled": "Aplikacje na komputerze",
-      "app": "Aplikacja: {{name}} ({{identity}})",
+      "app": "Aplikacja: {{identity}} ({{name}})",
       "more": "I jeszcze {{count}}",
       "site": "Strona: {{origin}}",
       "signedIn": "Twoja przeglądarka zalogowana na {{origin}}",
-      "scripted": "Skrypty Cua"
+      "scripted": "Skrypty Cua",
+      "spacesTitle": "Przyznać Cua Spaces większy dostęp?",
+      "spacesMessage": "Agenci korzystający z Cua Spaces będą mogli:",
+      "spacesChanges": "Tworzyć i usuwać Spaces oraz uruchamiać w nich polecenia",
+      "spacesSignIns": "Używać Twojego logowania do Claude Code lub Codex w Space"
     }
   },
   "errors": {

@@ -3,7 +3,8 @@
 //! reference (`attachment` part); the run resolves it into an image, a
 //! document or text for the model it talks to (see `resolve`).
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::sync::{Mutex, PoisonError};
+use std::time::{Duration, Instant, SystemTime};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -25,6 +26,12 @@ const _: () = assert!(MAX_JSON_UPLOAD_BYTES <= MAX_ATTACHMENT_BYTES);
 const STORE_DIR: &str = "attachments";
 const MAX_NAME_CHARS: usize = 255;
 const MAX_MIME_LEN: usize = 100;
+/// How long a stored or used blob is safe from `attachment_gc`.
+const GC_GRACE: Duration = Duration::from_secs(10 * 60);
+/// How often puts that add bytes walk the whole store to keep it under its
+/// cap. Between walks the store may pass the cap by what those puts added.
+const CAP_CHECK_INTERVAL: Duration = Duration::from_secs(30);
+static LAST_CAP_CHECK: Mutex<Option<Instant>> = Mutex::new(None);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -202,8 +209,8 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-/// Stores `bytes` by hash. A blob already stored with the same size is not
-/// rewritten, so a reader holding it open (Windows) never fails the put.
+/// [`store_bytes_reporting`] without the flag.
+#[cfg(test)]
 pub(crate) fn store_bytes(
     root: &Path,
     scope: &str,
@@ -212,6 +219,20 @@ pub(crate) fn store_bytes(
     bytes: &[u8],
     limit: usize,
 ) -> Result<AttachmentMeta, String> {
+    store_bytes_reporting(root, scope, name, mime, bytes, limit).map(|(meta, _)| meta)
+}
+
+/// Stores `bytes` by hash, and says whether the put added a blob. A blob
+/// already stored with the same size is not rewritten (`false`), so a reader
+/// holding it open (Windows) never fails the put.
+fn store_bytes_reporting(
+    root: &Path,
+    scope: &str,
+    name: &str,
+    mime: &str,
+    bytes: &[u8],
+    limit: usize,
+) -> Result<(AttachmentMeta, bool), String> {
     if bytes.len() > limit {
         return Err(too_large(limit));
     }
@@ -222,7 +243,8 @@ pub(crate) fn store_bytes(
     std::fs::create_dir_all(&dir).map_err(storage_failed)?;
     let blob = blob_path(root, scope, &hash);
     let size = bytes.len() as u64;
-    if !same_size(&blob, size) {
+    let added = !same_size(&blob, size);
+    if added {
         let mut staged = tempfile::NamedTempFile::new_in(&dir).map_err(storage_failed)?;
         std::io::Write::write_all(&mut staged, bytes).map_err(storage_failed)?;
         if let Err(error) = staged.persist(&blob) {
@@ -231,6 +253,10 @@ pub(crate) fn store_bytes(
                 return Err(storage_failed(error.error));
             }
         }
+    } else {
+        // Attaching it again is a use: it goes to the back of the eviction
+        // order, and the collection grace period starts again.
+        touch(&blob);
     }
     let previous = read_meta(root, scope, &hash).ok().flatten();
     let meta = AttachmentMeta {
@@ -242,7 +268,7 @@ pub(crate) fn store_bytes(
         has_text: previous.as_ref().is_some_and(|meta| meta.has_text),
     };
     write_meta(root, scope, &meta)?;
-    Ok(meta)
+    Ok((meta, added))
 }
 
 /// Stores text extracted from an attachment (a PDF's text layer, which the
@@ -353,16 +379,30 @@ fn blob_hashes(dir: &Path) -> Vec<String> {
         .collect()
 }
 
-/// Removes every blob in `scope` not listed in `keep`. Returns the bytes
-/// freed.
+/// Whether a blob was stored or used within [`GC_GRACE`] of `now`: a
+/// renderer may still be storing the rest of an attachment (a scanned PDF's
+/// text and page images) or holding a tool screenshot it has not saved to a
+/// chat yet, so `keep` does not list it.
+fn recently_used(path: &Path, now: SystemTime) -> bool {
+    std::fs::metadata(path)
+        .and_then(|metadata| metadata.modified())
+        .is_ok_and(|modified| {
+            now.duration_since(modified)
+                .map_or(true, |age| age < GC_GRACE)
+        })
+}
+
+/// Removes every blob in `scope` not listed in `keep`, except blobs stored
+/// or used in the last [`GC_GRACE`]. Returns the bytes freed.
 pub(crate) fn gc_scope(root: &Path, scope: &str, keep: &[String]) -> Result<u64, String> {
     let keep: Vec<String> = keep
         .iter()
         .filter_map(|hash| valid_hash(hash).ok())
         .collect();
+    let now = SystemTime::now();
     let mut freed = 0u64;
     for hash in blob_hashes(&scope_dir(root, scope)) {
-        if !keep.contains(&hash) {
+        if !keep.contains(&hash) && !recently_used(&blob_path(root, scope, &hash), now) {
             freed = freed.saturating_add(remove_blob(root, scope, &hash));
         }
     }
@@ -414,6 +454,18 @@ pub(crate) fn enforce_store_cap(
     Ok(freed)
 }
 
+/// Whether a put that added bytes walks the store for its cap now: at most
+/// once per [`CAP_CHECK_INTERVAL`], so a run that stores a screenshot every
+/// few seconds does not stat every blob each time.
+fn cap_check_due(last: &Mutex<Option<Instant>>, now: Instant) -> bool {
+    let mut last = last.lock().unwrap_or_else(PoisonError::into_inner);
+    if last.is_some_and(|checked| now.saturating_duration_since(checked) < CAP_CHECK_INTERVAL) {
+        return false;
+    }
+    *last = Some(now);
+    true
+}
+
 /// Deletes a project's attachments (the project was purged).
 pub(crate) fn remove_project(project_id: &str) -> Result<(), String> {
     crate::paths::validate_project_id(project_id)?;
@@ -448,7 +500,7 @@ pub async fn attachment_put(request: tauri::ipc::Request<'_>) -> Result<Attachme
         let (header, bytes) = decode_upload(&body)?;
         let scope = scope_name(header.project_id.as_deref())?;
         let root = store_root()?;
-        let meta = store_bytes(
+        let (meta, added) = store_bytes_reporting(
             &root,
             &scope,
             &header.name,
@@ -456,7 +508,9 @@ pub async fn attachment_put(request: tauri::ipc::Request<'_>) -> Result<Attachme
             bytes,
             MAX_ATTACHMENT_BYTES,
         )?;
-        let _ = enforce_store_cap(&root, STORE_CAP_BYTES, (&scope, &meta.sha256));
+        if added && cap_check_due(&LAST_CAP_CHECK, Instant::now()) {
+            let _ = enforce_store_cap(&root, STORE_CAP_BYTES, (&scope, &meta.sha256));
+        }
         Ok(meta)
     })
     .await

@@ -15,6 +15,7 @@ import {
   attachmentText,
   chatToDraftAttachment,
   draftToChatAttachment,
+  holdAttachmentObjectUrl,
   storeToolImage,
 } from "./attachments";
 
@@ -93,6 +94,27 @@ describe("attachment IPC", () => {
       await attachmentObjectUrl("p1", `other-${index}`, "image/png");
     }
     expect(revoke).toHaveBeenCalledWith(first);
+    revoke.mockRestore();
+  });
+
+  it("does not revoke an object URL something still shows until it lets go", async () => {
+    invoke.mockResolvedValue(new Uint8Array([1]).buffer);
+    const revoke = vi.spyOn(URL, "revokeObjectURL");
+    const shown = await attachmentObjectUrl("p1", "held", "image/png");
+    const release = holdAttachmentObjectUrl(shown);
+    const again = holdAttachmentObjectUrl(shown);
+    for (let index = 0; index < 48; index += 1) {
+      await attachmentObjectUrl("p1", `newer-${index}`, "image/png");
+    }
+    expect(revoke).not.toHaveBeenCalledWith(shown);
+    release();
+    release();
+    expect(revoke).not.toHaveBeenCalledWith(shown);
+    again();
+    expect(revoke).toHaveBeenCalledWith(shown);
+    // Asked for again, the file is read into a new URL.
+    const reread = await attachmentObjectUrl("p1", "held", "image/png");
+    expect(reread).not.toBe(shown);
     revoke.mockRestore();
   });
 

@@ -61,6 +61,17 @@ const NETWORK_RETRIES: usize = 3;
 const SLOW_DOWN: Duration = Duration::from_secs(5);
 const SHORTEST_WAIT: Duration = Duration::from_secs(1);
 const LONGEST_WAIT: Duration = Duration::from_secs(60);
+/// A code is waited for until it expires, plus this.
+const EXPIRY_SLACK: Duration = Duration::from_secs(30);
+/// The longest a sign-in waits for approval, whatever the server says.
+const LONGEST_APPROVAL: Duration = Duration::from_secs(15 * 60);
+
+/// How long to wait for a code that expires in `expires_in` seconds.
+fn approval_deadline(expires_in: u64) -> Duration {
+    Duration::from_secs(expires_in)
+        .saturating_add(EXPIRY_SLACK)
+        .min(LONGEST_APPROVAL)
+}
 
 fn server_wait(seconds: u64, at_least: Duration) -> Duration {
     Duration::from_secs(seconds)
@@ -68,8 +79,12 @@ fn server_wait(seconds: u64, at_least: Duration) -> Duration {
         .clamp(SHORTEST_WAIT, LONGEST_WAIT)
 }
 
+/// Polls until the code is approved, refused or expired. A server that
+/// keeps answering "pending" is given up on at `deadline` (the waits are
+/// counted), so a sign-in without a person never hangs.
 pub(crate) async fn wait_for_approval<Poll, Polled, Sleep, Slept>(
     interval: Duration,
+    deadline: Duration,
     mut poll: Poll,
     mut sleep: Sleep,
 ) -> Result<SessionTokens, CollabError>
@@ -81,8 +96,13 @@ where
 {
     let mut interval = interval.clamp(SHORTEST_WAIT, LONGEST_WAIT);
     let mut failures = 0;
+    let mut waited = Duration::ZERO;
     loop {
+        if waited >= deadline {
+            return Err(CollabError::SignInTimedOut);
+        }
         sleep(interval).await;
+        waited = waited.saturating_add(interval);
         match poll().await {
             Ok(DevicePoll::Approved { tokens }) => return Ok(tokens),
             Ok(DevicePoll::Pending { interval: next }) => {
@@ -207,6 +227,7 @@ pub async fn sign_in_with_code(
     let device_code = issued.device_code;
     let tokens = wait_for_approval(
         Duration::from_secs(issued.interval),
+        approval_deadline(issued.expires_in),
         || poll_once(&client, key, server_id, &device_code),
         tokio::time::sleep,
     )
@@ -244,11 +265,19 @@ mod tests {
     async fn run(
         replies: Vec<Result<DevicePoll, CollabError>>,
     ) -> (Result<SessionTokens, CollabError>, Vec<u64>, usize) {
+        run_until(replies, Duration::from_secs(3600)).await
+    }
+
+    async fn run_until(
+        replies: Vec<Result<DevicePoll, CollabError>>,
+        deadline: Duration,
+    ) -> (Result<SessionTokens, CollabError>, Vec<u64>, usize) {
         let replies = Arc::new(Mutex::new(VecDeque::from(replies)));
         let slept = Arc::new(Mutex::new(Vec::new()));
         let polls = Arc::new(Mutex::new(0usize));
         let result = wait_for_approval(
             Duration::from_secs(5),
+            deadline,
             || {
                 let replies = Arc::clone(&replies);
                 let polls = Arc::clone(&polls);
@@ -284,6 +313,18 @@ mod tests {
         assert_eq!(result.expect("tokens"), tokens());
         assert_eq!(slept, [5, 5, 10, 10]);
         assert_eq!(polls, 4);
+    }
+
+    #[tokio::test]
+    async fn a_server_that_never_stops_saying_pending_is_given_up_on() {
+        let pending = (0..100)
+            .map(|_| Ok(DevicePoll::Pending { interval: 5 }))
+            .collect();
+        let (result, slept, polls) = run_until(pending, Duration::from_secs(20)).await;
+        assert!(matches!(result, Err(CollabError::SignInTimedOut)));
+        assert_eq!((slept.iter().sum::<u64>(), polls), (20, 4));
+        assert_eq!(approval_deadline(600), Duration::from_secs(630));
+        assert_eq!(approval_deadline(u64::MAX), LONGEST_APPROVAL);
     }
 
     #[tokio::test]

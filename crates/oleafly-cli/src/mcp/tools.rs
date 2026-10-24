@@ -273,10 +273,10 @@ impl McpToolSet for CoreTools {
             "get_status" => Box::pin(get_status(ctx)),
             "project_map" => Box::pin(project_map(ctx)),
             "context" => Box::pin(async move {
-                let (value, _) =
+                let (value, scan) =
                     crate::commands::context::context_value(&ctx.root, ctx.data_root.clone())
                         .await?;
-                Ok(value)
+                Ok(bounded_context(value, &scan))
             }),
             "compile" => Box::pin(compile(ctx)),
             "get_log" => Box::pin(async move { get_log(ctx) }),
@@ -336,7 +336,25 @@ async fn project_map(ctx: &ToolContext) -> Result<Value, ToolError> {
     .await
     .map_err(|error| ToolError(format!("The project scan stopped: {error}")))?
     .map_err(|error| ToolError(error.to_string()))?;
-    serde_json::to_value(scan.map).map_err(|error| ToolError(error.to_string()))
+    Ok(oleafly_core::context::map_view(&scan.map))
+}
+
+/// `oleafly context --json` cut to fit a client's tool result: file roles
+/// counted rather than listed, and each list kept to a few hundred items
+/// (`truncated_counts` says what each lost).
+fn bounded_context(mut value: Value, scan: &oleafly_core::context::ContextScan) -> Value {
+    if let Some(fields) = value.as_object_mut() {
+        fields.remove("roles");
+        fields.insert(
+            "role_counts".into(),
+            json!(oleafly_core::context::role_counts(&scan.roles)),
+        );
+    }
+    oleafly_core::context::bounded_view(
+        value,
+        oleafly_core::context::VIEW_MAX_BYTES,
+        "truncated_counts",
+    )
 }
 
 async fn compile(ctx: &ToolContext) -> Result<Value, ToolError> {
@@ -652,6 +670,35 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[tokio::test]
+    async fn the_map_and_context_of_a_large_project_stay_small() {
+        let dir = tempfile::tempdir().unwrap();
+        let bib: String = (0..3_000)
+            .map(|index| format!("@misc{{reference-key-number-{index}, title={{T}}}}\n"))
+            .collect();
+        std::fs::write(dir.path().join("refs.bib"), bib).unwrap();
+        std::fs::write(
+            dir.path().join("main.tex"),
+            "\\documentclass{article}\\cite{ghost}\\bibliography{refs}",
+        )
+        .unwrap();
+        let ctx = context(dir.path());
+        let map = call_tool("project_map", &json!({}), &ctx).await.unwrap();
+        assert!(map.to_string().len() < 64 * 1024);
+        assert!(map["truncatedCounts"]["bibKeys"].as_u64().unwrap() > 0);
+        assert_eq!(map["unresolvedCites"], json!(["ghost"]));
+        let context = call_tool("context", &json!({}), &ctx).await.unwrap();
+        assert!(context.to_string().len() < 64 * 1024);
+        assert!(context.get("roles").is_none());
+        assert_eq!(context["role_counts"]["bibliography"], 1);
+        assert!(
+            context["truncated_counts"]["unused_cites"]
+                .as_u64()
+                .unwrap()
+                > 0
+        );
     }
 
     #[test]

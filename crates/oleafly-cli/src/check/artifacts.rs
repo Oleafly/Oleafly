@@ -21,7 +21,13 @@ pub struct BuildArtifacts {
     pub log_stale: bool,
     /// The PDF is what was left out (`stale` holds then too).
     pub pdf_stale: bool,
+    /// The last build was of this other main document, so its log and PDF
+    /// were left out.
+    pub other_document: Option<String>,
 }
+
+/// A margin for file systems that round times (as `record::latest_log`).
+const RECORD_MARGIN: Duration = Duration::from_secs(2);
 
 /// A regular file's time. A link in the build folder (a project can ship
 /// one) is not the build's output, and reading through it would read
@@ -51,13 +57,35 @@ pub fn discover(
         .file_stem()
         .map(|stem| stem.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let record = crate::record::read_record(build_dir)
-        .filter(|record| record.main_document == main_document);
-    let log = first_file(&[
-        build_dir.join(crate::record::LOG_FILE),
-        build_dir.join(format!("{ENTRY_STEM}.log")),
-        build_dir.join(format!("{stem}.log")),
-    ]);
+    // As `record::latest_log`: the CLI's record and log count while no
+    // engine log or PDF is newer than it (the app rebuilds them without
+    // touching the CLI's log); then the engine's newer output is the build.
+    let engine_log = build_dir.join(format!("{ENTRY_STEM}.log"));
+    let engine_time = [
+        modified(&engine_log),
+        modified(&build_dir.join(format!("{ENTRY_STEM}.pdf"))),
+    ]
+    .into_iter()
+    .flatten()
+    .max();
+    let record = crate::record::read_record(build_dir).filter(|record| {
+        let finished = SystemTime::UNIX_EPOCH + Duration::from_millis(record.finished_at_ms);
+        engine_time.is_none_or(|time| time <= finished + RECORD_MARGIN)
+    });
+    if let Some(other) = record
+        .as_ref()
+        .filter(|record| record.main_document != main_document)
+    {
+        // That build's log and PDF are another document's.
+        return BuildArtifacts {
+            other_document: Some(other.main_document.clone()),
+            ..BuildArtifacts::default()
+        };
+    }
+    let log = match &record {
+        Some(_) => first_file(&[build_dir.join(crate::record::LOG_FILE), engine_log]),
+        None => first_file(&[engine_log, build_dir.join(format!("{stem}.log"))]),
+    };
     let pdf = first_file(&[
         build_dir.join(format!("{ENTRY_STEM}.pdf")),
         build_dir.join(format!("{stem}.pdf")),
@@ -107,6 +135,34 @@ pub fn read_log_head(path: &Path) -> std::io::Result<String> {
     std::fs::File::open(path)?
         .take(MAX_LOG_BYTES)
         .read_to_end(&mut bytes)?;
+    Ok(log_text(bytes))
+}
+
+/// The end of a log longer than [`MAX_LOG_BYTES`]: its last 4 MiB (from a
+/// character), where TeX writes its fatal errors. `None` for a log the head
+/// already holds whole.
+pub fn read_log_tail(path: &Path) -> std::io::Result<Option<String>> {
+    use std::io::{Seek, SeekFrom};
+    let mut file = std::fs::File::open(path)?;
+    let length = file.metadata()?.len();
+    if length <= MAX_LOG_BYTES {
+        return Ok(None);
+    }
+    let start = length.saturating_sub(MAX_LOG_BYTES).max(MAX_LOG_BYTES);
+    file.seek(SeekFrom::Start(start))?;
+    let mut bytes = Vec::new();
+    file.take(MAX_LOG_BYTES).read_to_end(&mut bytes)?;
+    // A character cut at the start is dropped.
+    let skip = bytes
+        .iter()
+        .take(3)
+        .take_while(|byte| (**byte & 0xC0) == 0x80)
+        .count();
+    bytes.drain(..skip);
+    Ok(Some(log_text(bytes)))
+}
+
+fn log_text(bytes: Vec<u8>) -> String {
     let text = match String::from_utf8(bytes) {
         Ok(text) => text,
         Err(error) => {
@@ -121,7 +177,7 @@ pub fn read_log_head(path: &Path) -> std::io::Result<String> {
             String::from_utf8_lossy(&bytes).into_owned()
         }
     };
-    Ok(oleafly_preflight::normalize_line_endings(&text).into_owned())
+    oleafly_preflight::normalize_line_endings(&text).into_owned()
 }
 
 #[cfg(test)]
@@ -163,6 +219,79 @@ mod tests {
             discover(build.path(), "main.tex", None).log.unwrap().1,
             CompileStatus::Success
         );
+    }
+
+    fn record(build: &Path, main: &str, finished: SystemTime) {
+        let record = crate::record::BuildRecord {
+            schema_version: crate::record::RECORD_SCHEMA,
+            version: "0.4.8".into(),
+            engine: oleafly_core::Engine::Tectonic,
+            main_document: main.into(),
+            ok: false,
+            finished_at_ms: finished
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64,
+            compile_time_ms: 1,
+            output_id: None,
+            errors: Vec::new(),
+            diagnostics: Vec::new(),
+        };
+        crate::record::write_record(build, &record, "failed\n").unwrap();
+    }
+
+    #[test]
+    fn a_newer_app_build_wins_over_the_clis_older_log() {
+        let build = tempfile::tempdir().unwrap();
+        let now = SystemTime::now();
+        record(build.path(), "main.tex", now - Duration::from_secs(600));
+        touch(
+            &build.path().join(crate::record::LOG_FILE),
+            now - Duration::from_secs(600),
+        );
+        // The app rebuilt since: its log and PDF are new.
+        touch(&build.path().join(format!("{ENTRY_STEM}.log")), now);
+        touch(&build.path().join(format!("{ENTRY_STEM}.pdf")), now);
+        let found = discover(
+            build.path(),
+            "main.tex",
+            Some(now - Duration::from_secs(60)),
+        );
+        let (log, status) = found.log.expect("the app's log is checked");
+        assert_eq!(log, build.path().join(format!("{ENTRY_STEM}.log")));
+        assert_eq!(status, CompileStatus::Success);
+        assert!(!found.stale);
+    }
+
+    #[test]
+    fn another_documents_build_is_left_out() {
+        let build = tempfile::tempdir().unwrap();
+        let now = SystemTime::now();
+        record(build.path(), "slides.tex", now);
+        touch(&build.path().join(format!("{ENTRY_STEM}.log")), now);
+        touch(&build.path().join(format!("{ENTRY_STEM}.pdf")), now);
+        let found = discover(build.path(), "main.tex", None);
+        assert_eq!(
+            (found.log, found.pdf, found.other_document.as_deref()),
+            (None, None, Some("slides.tex"))
+        );
+    }
+
+    #[test]
+    fn the_end_of_a_long_log_is_read_too() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("big.log");
+        let mut bytes = vec![b'a'; MAX_LOG_BYTES as usize + 1024];
+        bytes.extend("\n! Emergency stop.\n".as_bytes());
+        std::fs::write(&path, &bytes).unwrap();
+        assert!(!read_log_head(&path).unwrap().contains("Emergency stop"));
+        assert!(read_log_tail(&path)
+            .unwrap()
+            .unwrap()
+            .contains("! Emergency stop."));
+        let small = folder.path().join("small.log");
+        std::fs::write(&small, "short\n").unwrap();
+        assert_eq!(read_log_tail(&small).unwrap(), None);
     }
 
     #[test]

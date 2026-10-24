@@ -88,6 +88,11 @@ pub struct AgentRunArgs {
     pub no_mcp: bool,
     #[arg(long, help = "Keep the working copy in the review folder")]
     pub keep_workspace: bool,
+    #[arg(
+        long,
+        help = "Where no sandbox works, let commands run as you in a review run too (they can change files outside the review copy)"
+    )]
+    pub unsandboxed_commands: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -168,9 +173,13 @@ impl crate::commands::CommandModule for Commands {
         }
     }
 
-    /// A run keeps the work done so far and prints its own result on Ctrl+C.
+    /// A run keeps the work done so far and prints its own result on Ctrl+C;
+    /// an apply finishes and says what it applied.
     fn handles_interrupt(&self) -> bool {
-        matches!(self, Self::Agent(AgentCommand::Run(_)) | Self::Ask(_))
+        matches!(
+            self,
+            Self::Agent(AgentCommand::Run(_) | AgentCommand::Apply(_)) | Self::Ask(_)
+        )
     }
 
     async fn run(self, ctx: &Context) -> Result<Outcome, CliError> {
@@ -310,7 +319,7 @@ mod tests {
     fn runs_and_questions_handle_ctrl_c_themselves() {
         assert!(parse("agent run x").handles_interrupt());
         assert!(parse("ask x").handles_interrupt());
-        assert!(!parse("agent apply r").handles_interrupt());
+        assert!(parse("agent apply r").handles_interrupt());
     }
 
     #[test]

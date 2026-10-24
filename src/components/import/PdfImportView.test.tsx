@@ -67,6 +67,17 @@ vi.mock("@/components/tools/ScanTranscribeBanner", () => ({
   ),
 }));
 
+const providerConfig = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }));
+
+vi.mock("@/components/ai/provider-config", () => ({
+  knownProviderConfig: () => providerConfig.current,
+  loadProviderConfig: async () => {
+    if (!providerConfig.current) throw new Error("no config in tests");
+    return providerConfig.current;
+  },
+  subscribeProviderConfig: () => () => {},
+}));
+
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     isFullscreen: () => Promise.resolve(false),
@@ -142,6 +153,7 @@ beforeEach(() => {
   notifyError.mockReset();
   writeText.mockReset();
   rerun.mockReset();
+  providerConfig.current = null;
   useHomeViewStore.setState({ page: "pdf-import" });
   useImportStore.setState({
     open: false,
@@ -156,6 +168,7 @@ beforeEach(() => {
     options: {},
     scanTranscribed: false,
     scanModel: null,
+    scanProgress: null,
   });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,
@@ -382,6 +395,42 @@ describe("PdfImportView converted document", () => {
     expect(JSON.parse(banner.getAttribute("data-range") ?? "null")).toEqual([2, 2]);
   });
 
+  it("shows where scanned pages go and the estimate in every view, not just the source pane", async () => {
+    seedConverted({
+      view: "preview",
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+    });
+    render(<PdfImportView />);
+    expect(await screen.findByTestId("scan-transcribe-banner")).toBeInTheDocument();
+    expect(screen.getByTestId("import-transcribe-scan")).toBeInTheDocument();
+  });
+
+  it("names the hosted Tools model's service in the header before a scan is transcribed", async () => {
+    providerConfig.current = {
+      ai_tools_model: { provider: "openai", model: "gpt-5" },
+      ai_keys: { openai: "sk-test" },
+    };
+    seedConverted({
+      view: "preview",
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      scanTranscribed: false,
+    });
+    render(<PdfImportView />);
+    const pill = screen.getByTestId("import-destination");
+    expect(pill).toHaveTextContent("Scans go to OpenAI");
+    expect(pill).toHaveAttribute("data-destination", "remote");
+  });
+
+  it("keeps the Local pill for a document that isn't scanned, whatever the Tools model", () => {
+    providerConfig.current = {
+      ai_tools_model: { provider: "openai", model: "gpt-5" },
+      ai_keys: { openai: "sk-test" },
+    };
+    seedConverted();
+    render(<PdfImportView />);
+    expect(screen.getByTestId("import-destination")).toHaveTextContent(enLibrary.pdfImport.local);
+  });
+
   it("labels the transcribe button without promising local", () => {
     seedConverted({
       result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
@@ -540,5 +589,26 @@ describe("PdfImportView converted document", () => {
     act(() => useImportStore.setState({ scanTranscribed: true }));
     expect(screen.queryByTestId("import-transcribe-scan")).toBeNull();
     expect(screen.queryByText(enLibrary.pdfImport.disclaimer)).toBeNull();
+  });
+
+  it("shows the page a scan transcription is on and cancels it without closing the PDF", () => {
+    const cancelScan = vi.fn();
+    seedConverted({
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      busy: true,
+      scanProgress: { step: "transcribingPage", page: 1, total: 10, pdfPage: 41, model: "glm-ocr" },
+      cancelScan,
+    });
+    render(<PdfImportView />);
+
+    expect(screen.getByTestId("import-progress")).toHaveTextContent("Transcribing page 41 (1 of 10) with glm-ocr");
+    expect(screen.getByTestId("import-cancel-scan")).toHaveTextContent(enResearchTools.converter.cancel);
+    fireEvent.click(screen.getByTestId("import-cancel-scan"));
+    expect(cancelScan).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("pdf-import-view")).toBeInTheDocument();
+
+    act(() => useImportStore.setState({ busy: true, scanProgress: null }));
+    expect(screen.getByTestId("import-progress")).toHaveTextContent(enLibrary.pdfImport.converting);
+    expect(screen.queryByTestId("import-cancel-scan")).toBeNull();
   });
 });

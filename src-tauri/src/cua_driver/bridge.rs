@@ -172,6 +172,7 @@ pub(crate) async fn acp_bridge(project_id: &str, agent_label: &str) -> Option<Cu
         project_id: Some(project_id.to_string()),
         agent_label: agent_label.to_string(),
         surface: Surface::Acp,
+        task_title: None,
     };
     match CuaBridge::start_with(scope, state).await {
         Ok(bridge) => Some(bridge),
@@ -344,6 +345,7 @@ mod tests {
             project_id: None,
             agent_label: "Test agent".into(),
             surface: Surface::Acp,
+            task_title: None,
         }
     }
 

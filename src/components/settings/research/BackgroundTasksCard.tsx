@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Moon } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { ErrorState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -33,6 +34,8 @@ export function BackgroundTasksCard() {
   const [status, setStatus] = useState<BackgroundHelperStatus | null>(null);
   const [statusFailed, setStatusFailed] = useState(false);
   const [busy, setBusy] = useState<Busy | null>(null);
+  // The task count the stop confirmation names, while it is open.
+  const [confirmStop, setConfirmStop] = useState<number | null>(null);
   const live = useRef(true);
 
   const refresh = useCallback(async () => {
@@ -70,6 +73,9 @@ export function BackgroundTasksCard() {
       if (live.current) setBusy(null);
     }
   };
+
+  const stop = () =>
+    void apply("stop", stopBackgroundHelper, t(($) => $.settings.research.background.stopFailed));
 
   const revealLog = async () => {
     try {
@@ -157,13 +163,11 @@ export function BackgroundTasksCard() {
                 size="sm"
                 variant="outline"
                 disabled={!status?.running || busy !== null}
-                onClick={() =>
-                  void apply(
-                    "stop",
-                    stopBackgroundHelper,
-                    t(($) => $.settings.research.background.stopFailed),
-                  )
-                }
+                onClick={() => {
+                  // Tasks in the helper come back and run here; with none, there is nothing to ask.
+                  if (status && status.taskCount > 0) setConfirmStop(status.taskCount);
+                  else stop();
+                }}
               >
                 {busy === "stop" ? <Spinner size="sm" aria-hidden /> : null}
                 {t(($) => $.settings.research.background.stop)}
@@ -171,6 +175,17 @@ export function BackgroundTasksCard() {
             </Tooltip>
           </div>
         }
+      />
+      <ConfirmationDialog
+        open={confirmStop !== null}
+        title={t(($) => $.settings.research.background.stopConfirm.title)}
+        description={t(($) => $.settings.research.background.stopConfirm.description, { count: confirmStop ?? 0 })}
+        confirmLabel={t(($) => $.settings.research.background.stop)}
+        onConfirm={() => {
+          setConfirmStop(null);
+          stop();
+        }}
+        onCancel={() => setConfirmStop(null)}
       />
     </ResearchCard>
   );

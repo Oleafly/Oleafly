@@ -99,11 +99,15 @@
       "title": "Työpöytäsovellukset",
       "action": "{{agent}} haluaa {{action}}.",
       "steps": "{{agent}} haluaa suorittaa nämä vaiheet työpöytäsovelluksessa:",
-      "moreSteps": "Näyttämättä jääneet vaiheet: {{count}}",
-      "moreItems": "{{count}} kohdetta ei näytetä",
-      "cut": "(+{{count}} merkkiä ei näytetä)",
+      "moreSteps": "Näyttämättä ja suorittamatta jääneet vaiheet: {{count}}",
+      "moreItems": "Näyttämättä jääneet kohteet: {{count}}",
+      "cut": "(näyttämättä jääneet merkit: {{count}})",
       "signedIn": "Toiminta tapahtuu omassa selaimessasi, johon olet kirjautunut.",
       "signedInOn": "Toiminta tapahtuu omassa selaimessasi, johon olet kirjautunut, osoitteessa {{origin}}.",
+      "task": "Tehtävä: {{title}}",
+      "app": "Sovellus: {{name}}",
+      "window": "Ikkuna: {{title}}",
+      "element": "Elementti: {{element}}",
       "text": "Teksti: ”{{text}}”",
       "address": "Osoite: {{url}}",
       "allowOnce": "Salli kerran",
@@ -111,6 +115,7 @@
       "allowSession": "Salli tässä istunnossa",
       "allowTask": "Salli tässä tehtävässä",
       "deny": "Älä salli",
+      "pickedFile": "valitsemaasi tiedostoa",
       "actions": {
         "launchApp": "avata sovelluksen",
         "click": "napsauttaa sovelluksessa",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Sallitaanko työpöydän hallinta?",
-      "message": "Agentit voivat käyttää seuraavia, ja ne kysyvät silti ennen jokaista toimintoa:",
+      "message": "Agentit voivat käyttää seuraavia. Ne kysyvät ennen jokaista toimintoa, ja tallentaminen poistaa kaikki ”Salli tässä keskustelussa” -valinnat:",
       "confirm": "Salli",
       "enabled": "Työpöytäsovellukset",
-      "app": "Sovellus: {{name}} ({{identity}})",
+      "app": "Sovellus: {{identity}} ({{name}})",
       "more": "Ja {{count}} lisää",
       "site": "Sivusto: {{origin}}",
       "signedIn": "Selaimesi, jolla olet kirjautunut sivustolle {{origin}}",
-      "scripted": "Cua-skriptit"
+      "scripted": "Cua-skriptit",
+      "spacesTitle": "Annetaanko Cua Spacesille lisää käyttöoikeuksia?",
+      "spacesMessage": "Cua Spacesia käyttävät agentit voivat:",
+      "spacesChanges": "Luoda ja poistaa Space-ympäristöjä ja suorittaa niissä komentoja",
+      "spacesSignIns": "Käyttää Claude Code- tai Codex-kirjautumistasi Space-ympäristössä"
     }
   },
   "errors": {

@@ -563,6 +563,9 @@
     "title": "Retour à la bibliothèque",
     "tooltip": "Revenir à la bibliothèque de projets"
   },
+  "importDestination": {
+    "scansGoTo": "Les numérisations sont envoyées à {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -676,8 +679,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Vos modifications non enregistrées restent ouvertes. Restez pour régler le problème, ou quittez quand même et perdez-les.",
+      "descriptionReload": "{{reason}} Vos modifications non enregistrées restent ouvertes. Restez pour régler le problème, ou rechargez quand même et perdez-les.",
       "descriptionRestart": "{{reason}} Vos modifications non enregistrées restent ouvertes. Restez pour régler le problème, ou redémarrez quand même et perdez-les.",
       "quitAnyway": "Quitter quand même",
+      "reloadAnyway": "Recharger quand même",
       "restartAnyway": "Redémarrer quand même",
       "stay": "Rester",
       "title": "Certains fichiers n'ont pas pu être enregistrés"

@@ -180,7 +180,8 @@
   },
   "imageToLatex": {
     "failed": "이미지를 LaTeX로 변환하지 못했습니다: {{detail}}",
-    "transcribing": "이미지를 옮겨 적는 중…"
+    "transcribing": "이미지를 옮겨 적는 중…",
+    "notInserted": "활성 파일이 바뀌어 LaTeX를 삽입하지 못했습니다. 복사한 뒤 원하는 위치에 붙여넣으세요."
   },
   "import": {
     "chooseOfferedProjectType": "이 파일에 제시된 프로젝트 형식 중 하나를 고르세요.",
@@ -586,6 +587,8 @@
     "saveReason": "프로젝트 폴더를 사용할 수 없음"
   },
   "imageToTypst": {
-    "failed": "이미지를 Typst로 변환하지 못했습니다: {{detail}}"
+    "failed": "이미지를 Typst로 변환하지 못했습니다: {{detail}}",
+    "copied": "Typst 소스를 복사했습니다",
+    "notInserted": "활성 파일이 바뀌어 Typst를 삽입하지 못했습니다. 복사한 뒤 원하는 위치에 붙여넣으세요."
   }
 }

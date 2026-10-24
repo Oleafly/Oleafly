@@ -146,15 +146,17 @@ function ModelPicker({
           return (
             <div key={choice.id}>
               {headings[index] && <SectionHeading as="div" className="px-2 pb-0.5 pt-2">{headings[index]}</SectionHeading>}
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="xs"
                 role="option"
                 aria-selected={selected}
                 aria-disabled={choice.blocked}
                 disabled={choice.blocked}
                 tabIndex={choice.id === entryChoice ? 0 : -1}
                 className={cn(
-                  "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent focus-visible:bg-accent disabled:opacity-50",
+                  "h-auto w-full justify-between gap-2 px-2 py-1.5 text-left text-xs font-normal [&_svg]:size-3.5",
                   selected && "bg-accent/60",
                 )}
                 onClick={() => {
@@ -162,8 +164,8 @@ function ModelPicker({
                 }}
               >
                 <span className="truncate">{choice.name}</span>
-                {selected && <Check className="size-3.5 shrink-0" />}
-              </button>
+                {selected && <Check />}
+              </Button>
             </div>
           );
         })}

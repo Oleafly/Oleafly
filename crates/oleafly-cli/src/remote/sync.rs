@@ -11,7 +11,7 @@ use oleafly_online::sync::{
     FILES_MAY_HAVE_CHANGED,
 };
 use oleafly_online::{OnlineError, OnlineErrorKind};
-use serde_json::json;
+use serde_json::{json, Value};
 
 use super::scope::{
     git_token_for, parse_remote_ref, project_url, resolve_scope, RemoteRef, RemoteScope,
@@ -24,6 +24,43 @@ use crate::native::{executable_name, resolve_executable, CandidateResolution};
 
 /// Patches are cut here; `--name-only` lists every file.
 pub(crate) const MAX_PATCH_BYTES: usize = 8 << 20;
+/// Files a report names before it says "and N more".
+const LISTED_FILES: usize = 20;
+
+/// `files` as a short list for people.
+fn listed(files: &[String]) -> String {
+    let shown: Vec<&str> = files
+        .iter()
+        .take(LISTED_FILES)
+        .map(String::as_str)
+        .collect();
+    let more = files.len().saturating_sub(shown.len());
+    if more > 0 {
+        format!("{} and {more} more", shown.join(", "))
+    } else {
+        shown.join(", ")
+    }
+}
+
+/// The files here the next sync would send online (those the online copy
+/// last fetched lacks, and with `modified` those it holds differently), as
+/// the sync stages them: for a folder, without what stays local
+/// (`kept_local`) or what its `.gitignore` names.
+fn pending_uploads(
+    deps: &RemoteDeps,
+    prepared: &Prepared,
+    worktree: Option<&online_sync::WorktreeLock>,
+    modified: bool,
+) -> Result<Vec<String>, CliError> {
+    online_sync::pending_uploads(
+        deps.git.as_ref(),
+        &prepared.paths,
+        prepared.scope.root(),
+        modified,
+        worktree,
+    )
+    .map_err(|error| online_error(error, &prepared.server))
+}
 
 /// "1 file", "3 files".
 pub(crate) fn files(count: usize) -> String {
@@ -274,6 +311,28 @@ pub(crate) fn link(
     } else {
         Ok(Vec::new())
     };
+    // The files here the first sync will send (those the online project
+    // lacks or holds differently), while the mirror still has the online
+    // copy.
+    let uploads = if linked {
+        let prepared = Prepared {
+            scope: scope.clone(),
+            paths: paths.clone(),
+            server: target.server.clone(),
+            url: url.clone(),
+            token: token.clone(),
+        };
+        let worktree = scope.worktree_lock(&env.data_root);
+        pending_uploads(
+            deps,
+            &prepared,
+            worktree.as_ref(),
+            args.prefer == Some(SideArg::Local),
+        )
+        .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
     if !existed && (args.dry_run || !linked) {
         // A check or a refused link leaves no private copy behind.
         let _ = remove_link(&paths);
@@ -318,8 +377,16 @@ pub(crate) fn link(
                 "written": written,
                 "dryRun": args.dry_run,
                 "backups": saved,
+                "uploads": uploads,
             }))
             .line(line);
+            if !uploads.is_empty() {
+                report = report.line(format!(
+                    "The first sync sends {} from here: {}.",
+                    files(uploads.len()),
+                    listed(&uploads)
+                ));
+            }
             for backup in &backups {
                 report = report.line(format!(
                     "Your versions of {} are saved in {}.",
@@ -342,6 +409,14 @@ pub(crate) fn sync(
     let resolutions = parse_resolutions(&args.resolve)?;
     let prepared = prepare_linked(env, deps, folder)?;
     let _claim = claim(&prepared.paths).map_err(|error| online_error(error, &prepared.server))?;
+    // A dry run lists what the sync would send, before the plan moves the
+    // mirror.
+    let uploads = if args.dry_run {
+        let worktree = prepared.scope.worktree_lock(&env.data_root);
+        pending_uploads(deps, &prepared, worktree.as_ref(), false)?
+    } else {
+        Vec::new()
+    };
     let options = SyncOptions {
         resolutions,
         mode: if args.dry_run {
@@ -412,9 +487,17 @@ pub(crate) fn sync(
             files(changed)
         ),
     };
-    let data =
+    let mut data =
         serde_json::to_value(&summary).map_err(|error| CliError::internal(error.to_string()))?;
-    Ok(Report::new(data).line(line))
+    let mut report = Report::new(Value::Null).line(line);
+    if args.dry_run {
+        if summary.would_push && !uploads.is_empty() {
+            report = report.line(format!("These would be sent online: {}.", listed(&uploads)));
+        }
+        data["uploads"] = json!(uploads);
+    }
+    report.data = data;
+    Ok(report)
 }
 
 /// `remote diff`: what differs from the online project, and which files
@@ -835,6 +918,44 @@ pub(crate) mod tests {
         assert_eq!(report.data["wouldPush"], true);
         assert!(
             report.lines[0].contains("would be sent online"),
+            "{:?}",
+            report.lines
+        );
+    }
+
+    #[test]
+    fn a_link_lists_what_the_first_sync_sends_without_what_stays_local() {
+        let world = World::linked();
+        let other = world.dir.path().join("other");
+        std::fs::create_dir_all(other.join(".private")).unwrap();
+        std::fs::write(other.join("main.tex"), "Hello\n").unwrap();
+        std::fs::write(other.join("notes.tex"), "Mine\n").unwrap();
+        std::fs::write(other.join(".env"), "API_KEY=x\n").unwrap();
+        std::fs::write(other.join(".private/notes.md"), "secret\n").unwrap();
+        let args = LinkArgs {
+            target: Some(world.reference()),
+            dry_run: true,
+            ..LinkArgs::default()
+        };
+        let report = link(&world.env, &deps(), &other, args).unwrap();
+        let uploads = report.data["uploads"].as_array().unwrap();
+        assert_eq!(uploads, &vec![json!("notes.tex")], "{uploads:?}");
+        assert!(report.lines.iter().any(|line| line.contains("notes.tex")));
+    }
+
+    #[test]
+    fn a_dry_run_sync_lists_what_it_would_send() {
+        let world = World::linked();
+        std::fs::write(world.project.join("chapter.tex"), "New\n").unwrap();
+        std::fs::write(world.project.join(".env.local"), "TOKEN=x\n").unwrap();
+        let dry = SyncArgs {
+            dry_run: true,
+            ..SyncArgs::default()
+        };
+        let report = sync(&world.env, &deps(), &world.project, dry).unwrap();
+        assert_eq!(report.data["uploads"], json!(["chapter.tex"]));
+        assert!(
+            report.lines.iter().any(|line| line.contains("chapter.tex")),
             "{:?}",
             report.lines
         );

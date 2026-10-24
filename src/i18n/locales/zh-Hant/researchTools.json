@@ -203,7 +203,8 @@
       "createTask": "建立任務",
       "replaceText": "要用這個起始方式取代你輸入的標題和指示嗎？",
       "keepText": "保留我的",
-      "replaceConfirm": "取代"
+      "replaceConfirm": "取代",
+      "cannotSave": "請修正上方標示的選項，然後再試一次。"
     },
     "starter": {
       "literatureReview": {
@@ -304,16 +305,34 @@
         "budgetCost": "已在費用上限處停止。",
         "budgetRuns": "已在執行次數上限處停止。"
       },
-      "startsAt": "開始時間：{{time}}"
+      "startsAt": "開始時間：{{time}}",
+      "olderActivity": "這次執行較早的活動未顯示。",
+      "tooLargeToDiff": "這個檔案太大，無法在這裡比較，因此只顯示它的大小。"
+    },
+    "confirm": {
+      "stopTitle": "要停止這個任務嗎？",
+      "stopDescription": "「{{title}}」會在目前的步驟結束後停止。之後按「繼續」，即可從它的工作區接續。",
+      "cancelTitle": "要取消這個任務嗎？",
+      "cancelDescription": "「{{title}}」不會執行。你之後可以重試。",
+      "cancelTask": "取消任務",
+      "discardTitle": "要捨棄這些變更嗎？",
+      "discardDescription": "「{{title}}」的所有變更都不會進入你的專案，任務會標示為已取消。按「繼續」會再次執行代理程式。",
+      "keepTask": "保留任務",
+      "keepChanges": "保留變更",
+      "dependents_other": "以下 {{count}} 項等待它的任務也會失敗：",
+      "runs_other": "以下 {{count}} 次執行也會停止："
     },
     "plan": {
       "title": "計畫",
       "description": "請閱讀計畫，需要時可以編輯。核准後任務才會繼續。",
       "approve": "核准計畫",
       "approveEdited": "核准編輯後的計畫",
-      "discard": "捨棄任務",
+      "discard": "取消任務",
       "loading": "正在載入計畫…",
-      "missing": "計畫檔案遺失。請重試任務。"
+      "missing": "計畫檔案遺失。請重試任務。",
+      "loadFailed": "Oleafly 無法載入計畫。",
+      "truncated": "這份計畫超過 64 KiB，因此只顯示開頭部分。請編輯成你想要的步驟，然後核准。",
+      "tooLong": "計畫最大為 64 KiB。請先縮短，再核准。"
     },
     "approvals": {
       "title": "等候你核准",
@@ -362,6 +381,9 @@
       "runsUsed": "{{used}} / {{limit}} 次執行",
       "runsUsedNoLimit": "{{used}} 次執行",
       "stopRun": "停止執行",
+      "stopRunTitle": "要停止這次執行嗎？",
+      "stopRunDescription": "「{{name}}」（{{run}}）會立即停止。它在其他機器或叢集上執行的作業，也會在那邊被取消。",
+      "keepRun": "繼續執行",
       "viewLog": "檢視記錄",
       "columns": {
         "run": "執行",
@@ -862,6 +884,7 @@
     "progressCancelled": "已取消",
     "progressReadingPages": "正在讀取頁面",
     "progressTranscribingPage": "正在使用 {{model}} 轉錄第 {{page}} 頁，共 {{total}} 頁",
+    "progressTranscribingPdfPage": "正在使用 {{model}} 轉錄第 {{pdfPage}} 頁（{{page}} / {{total}}）",
     "progressDocumentStructure": "正在轉換文件結構",
     "progressMermaid": "正在算繪 Mermaid 圖表",
     "progressFirstSheet": "正在讀取第一個工作表",
@@ -905,7 +928,8 @@
     "progressConvertingSource": "正在將原始碼轉換為 Typst",
     "pageRange": "頁面",
     "pageRangePlaceholder": "所有頁面，或 1-50 這樣的範圍",
-    "pageRangeInvalid": "請輸入單一頁碼，或 1-50 這樣的範圍。"
+    "pageRangeInvalid": "請輸入單一頁碼，或 1-50 這樣的範圍。",
+    "pageCount_other": "這份 PDF 共有 {{count}} 頁。"
   },
   "converters": {
     "imageToLatex": {
@@ -1114,10 +1138,12 @@
     "arxivInputRequired": "請輸入 arXiv ID 或選擇原始碼壓縮檔。",
     "equationToTypst": "Pandoc 無法將這個方程式轉換為 Typst。請檢查 LaTeX 數學式後再試一次。",
     "pdfTooManyPages": "這份掃描檔有 {{pages}} 頁，而 Oleafly 每次最多轉錄 {{limit}} 頁。請在檔案下方輸入 1-{{limit}} 這樣的頁面範圍。",
-    "outputLimit": "模型在完成前就用盡了輸出空間，因此轉錄結果會不完整。請在「設定 > AI 助理 > 工具」中選擇輸出上限較大的模型，或改為轉錄較小的部分。"
+    "outputLimit": "模型在完成前就用盡了輸出空間，因此轉錄結果會不完整。請在「設定 > AI 助理 > 工具」中選擇輸出上限較大的模型，或改為轉錄較小的部分。",
+    "refused": "模型拒絕轉錄這個內容，因此沒有新增任何內容。請在「設定 > AI 助理 > 工具」中選擇其他模型。",
+    "pageRangePastEnd_other": "這份 PDF 共有 {{count}} 頁。請輸入 1 到 {{count}} 之間的範圍。"
   },
   "converterNotes": {
-    "scannedPages": "已使用 {{model}} 轉錄 {{pages}} 頁掃描頁面。使用結果前請檢查方程式和表格。",
+    "scannedPages_other": "已使用 {{model}} 轉錄 {{count}} 頁掃描頁面。使用結果前請檢查方程式和表格。",
     "extracted": "已在本機擷取 {{pages}} 頁與 {{figures}} 張圖片。",
     "mermaidTikz": "已把這張流程圖轉換成可編輯的 TikZ。",
     "mermaidRendered": "這張圖表的 Mermaid 語法無法乾淨對應到可編輯的 TikZ，因此已在本機算繪。",
@@ -1142,20 +1168,28 @@
     "scansSentToHost": "掃描頁面會傳送到 {{host}} 上的 Ollama",
     "pdfSentToMathpix": "整個 PDF 會傳送到 Mathpix",
     "transcribingHosted": "正在將影像傳送到 {{provider}}…",
+    "transcribingFallback": "正在將影像傳送到 {{provider}}（助理模型）…",
+    "sentFallback": "已傳送到 {{provider}}（助理模型）",
+    "editorFallback": "在 Ollama 有視覺模型之前，編輯器中的影像轉 LaTeX 會將影像傳送到 {{provider}}",
     "progressUploading": "正在將 PDF 傳送到 Mathpix",
     "progressFormatting": "正在使用 Pandoc 轉換轉錄結果",
     "scannedTitle": "這個 PDF 看起來是掃描檔",
     "estimateOllama_other": "共 {{count}} 頁。Ollama 會逐頁讀取，可能需要一段時間。",
     "estimateCost_other": "共 {{count}} 頁。使用 {{model}} 約 {{cost}}。",
     "estimateUnknown_other": "共 {{count}} 頁。{{provider}} 依用量計費。",
+    "estimatePlan_other": "共 {{count}} 頁。{{provider}} 已包含在你的方案中。",
+    "estimateLocal_other": "共 {{count}} 頁。模型在這台電腦上執行，不需任何費用。",
+    "estimateFree_other": "共 {{count}} 頁。使用 {{model}} 免費。",
     "transcribePages_other": "轉錄 {{count}} 頁",
     "transcribedWith": "已使用 {{model}} 轉錄。請檢查方程式和表格。",
     "sentBadge": "已傳送到 {{provider}}",
     "openToolsSettings": "工具設定",
+    "openProviderSettings": "供應商設定",
     "errors": {
       "offline": "Oleafly 處於離線模式。請選擇本機模型，或關閉離線模式。",
       "providerNotConfigured": "{{provider}} 沒有 API 金鑰。請在設定中新增，或選擇其他模型。",
       "modelDisabled": "{{model}} 已在設定中關閉。請將它開啟，或選擇其他模型。",
+      "modelUnavailable": "{{provider}} 已不再提供 {{model}}。請選擇其他模型。",
       "cannotSeeImages": "{{model}} 無法讀取影像。請選擇視覺模型。",
       "localModelGone": "{{model}} 已不在 Ollama 中。請重新拉取，或選擇其他模型。",
       "imagesOnly": "{{model}} 只能讀取影像。請選擇語言模型來轉換輸入的方程式。",
@@ -1740,6 +1774,8 @@
     "keepRunningHint": "請先在「設定 > 研究」中開啟背景任務。",
     "invalidMetric": "請使用字母、數字、句點、連字號或底線。",
     "invalidCost": "請輸入大於零的金額。",
+    "invalidCostMax": "請輸入不超過 {{max}} 的金額。",
+    "invalidCostNumber": "請以數字輸入金額，例如 {{example}}。",
     "invalidRuns": "請輸入 1 到 1,000 之間的整數。",
     "invalidStart": "請選擇未來 30 天內的開始時間。",
     "invalidStartFormat": "請使用 {{example}} 這樣的格式。",
@@ -1762,6 +1798,8 @@
     "hint": "這些檢查只會發出警告，不會阻止套用結果。",
     "running": "正在檢查…",
     "refresh": "重新檢查",
+    "empty": "還沒有對這個結果執行任何檢查。",
+    "more_other": "另有 {{count}} 項未列出。",
     "status": {
       "pass": "已通過",
       "warn": "請檢查",
@@ -1869,7 +1907,8 @@
         "time": "請使用 Slurm 時間格式，例如 2:00:00。",
         "name": "請使用字母、數字、句點、逗號、連字號或底線。",
         "mem": "請使用以 GB 為單位的整數，例如 16。",
-        "count": "請使用允許範圍內的整數。"
+        "count": "請使用允許範圍內的整數。",
+        "prelude": "請將設定指令控制在 4 KB 以內。帶重音符號的字母和非拉丁文字會佔用更多空間。"
       }
     },
     "test": {
@@ -1945,7 +1984,7 @@
       "movingBackHint": "目前的步驟結束後，這項任務會回到 Oleafly。"
     },
     "earlierActivity": "顯示較早的活動",
-    "earlierTruncated": "這次較早的執行只顯示前 {{limit}} 個項目。",
+    "earlierTruncated": "這次較早的執行只顯示最後 {{limit}} 個項目。",
     "keepRunningFailed": "無法變更這項設定。請再試一次。"
   }
 }

@@ -569,6 +569,25 @@ fn missing_usage_is_not_zero_or_context_input() {
 }
 
 #[test]
+fn the_ledger_reads_prompt_usage_as_the_session_view_does() {
+    // An agent that reports a turn's tokens only in `_meta.quota`, in
+    // snake case.
+    let answer = json!({"stopReason":"end_turn","_meta":{"quota":{"token_count":{
+        "input_tokens": 12, "output_tokens": 3, "cached_read_tokens": 4}}}});
+    let counters = prompt_usage(&answer).unwrap();
+    assert_eq!(
+        (
+            counters.input_tokens,
+            counters.output_tokens,
+            counters.cache_read_tokens
+        ),
+        (Some(12), Some(3), Some(4))
+    );
+    let snake = prompt_usage(&json!({"usage":{"input_tokens":7}})).unwrap();
+    assert_eq!(snake.input_tokens, Some(7));
+}
+
+#[test]
 fn secrets_are_removed_from_text_tools_and_permission_payloads() {
     let redactor = Redactor::new(&[
         json!({"headers":[{"name":"Authorization","value":"Bearer bare-secret-123456"}]}),

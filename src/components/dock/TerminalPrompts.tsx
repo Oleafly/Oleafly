@@ -45,6 +45,8 @@ function useStopConfirmLabel(reason: TerminalStopReason, many: boolean): string 
       return t(($) => $.workspace.terminal.stop.quit);
     case "restart":
       return t(($) => $.workspace.terminal.stop.restart);
+    case "reload":
+      return t(($) => $.workspace.terminal.stop.reload);
     default:
       return many
         ? t(($) => $.workspace.terminal.stop.closeMany)

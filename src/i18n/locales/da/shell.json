@@ -560,6 +560,9 @@
     "title": "Tilbage til biblioteket",
     "tooltip": "Gå tilbage til projektbiblioteket"
   },
+  "importDestination": {
+    "scansGoTo": "Skanninger sendes til {{provider}}"
+  },
   "keys": {
     "enter": "Enter",
     "esc": "esc"
@@ -673,8 +676,10 @@
   "quitGuard": {
     "failure": {
       "descriptionQuit": "{{reason}} Dine ugemte ændringer er stadig åbne. Bliv her for at løse problemet, eller afslut alligevel og mist dem.",
+      "descriptionReload": "{{reason}} Dine ugemte ændringer er stadig åbne. Bliv her for at løse problemet, eller genindlæs alligevel og mist dem.",
       "descriptionRestart": "{{reason}} Dine ugemte ændringer er stadig åbne. Bliv her for at løse problemet, eller genstart alligevel og mist dem.",
       "quitAnyway": "Afslut alligevel",
+      "reloadAnyway": "Genindlæs alligevel",
       "restartAnyway": "Genstart alligevel",
       "stay": "Bliv her",
       "title": "Nogle filer kunne ikke gemmes"

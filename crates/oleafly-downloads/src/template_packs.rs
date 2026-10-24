@@ -28,6 +28,16 @@ const PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 const READ_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_REDIRECTS: usize = 5;
+/// The most a catalog or an index may hold.
+const MAX_TEXT_BYTES: usize = 16 << 20;
+/// The most one template file may hold (an index's size for the template
+/// is the tighter limit when it gives one).
+const MAX_FILE_BYTES: u64 = 256 << 20;
+/// Sizes in an index are rounded.
+const SIZE_SLACK: u64 = 64 << 10;
+/// How long an install waits for another one of the same pack.
+const INSTALL_LOCK_WAIT: Duration = Duration::from_secs(15 * 60);
+const INSTALL_LOCK: &str = ".install.lock";
 const MANIFEST: &str = "template.json";
 const PREVIEW_FILE: &str = "preview.webp";
 const V1_PREVIEW: &str = "preview.png";
@@ -760,16 +770,53 @@ pub fn shared_client() -> Result<reqwest::Client, String> {
 }
 
 pub async fn fetch_text(client: &reqwest::Client, url: &str) -> Result<String, String> {
-    client
+    let response = client
         .get(url)
         .send()
         .await
         .map_err(|e| format!("fetch failed: {e}"))?
         .error_for_status()
-        .map_err(|e| format!("fetch failed: {e}"))?
-        .text()
-        .await
-        .map_err(|e| format!("fetch failed: {e}"))
+        .map_err(|e| format!("fetch failed: {e}"))?;
+    let mut body = Vec::new();
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| format!("fetch failed: {e}"))?;
+        if body.len() + chunk.len() > MAX_TEXT_BYTES {
+            return Err(format!("{url} {TOO_LARGE} 16 MB"));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    String::from_utf8(body).map_err(|_| format!("{url} {NOT_TEXT}"))
+}
+
+const TOO_LARGE: &str = "sent more than";
+const NOT_TEXT: &str = "sent something that isn't text";
+const CHECKSUM: &str = "did not match its checksum";
+
+/// What a failed download was, from its message: the network, what the
+/// server sent (too large, not text, a wrong checksum), or this computer
+/// (writing the files).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DownloadFailure {
+    Network,
+    Integrity,
+    Storage,
+}
+
+pub fn download_failure(message: &str) -> DownloadFailure {
+    if [TOO_LARGE, NOT_TEXT, CHECKSUM]
+        .iter()
+        .any(|marker| message.contains(marker))
+    {
+        DownloadFailure::Integrity
+    } else if ["fetch failed", "download failed", "download interrupted"]
+        .iter()
+        .any(|marker| message.contains(marker))
+    {
+        DownloadFailure::Network
+    } else {
+        DownloadFailure::Storage
+    }
 }
 
 pub fn catalog_fresh(root: &Path, now: SystemTime) -> bool {
@@ -888,6 +935,18 @@ pub struct TemplateJob {
     pub id: String,
     pub missing: Vec<PackFile>,
     pub preview: Option<String>,
+    /// The most one of its files may hold.
+    pub max_file_bytes: u64,
+}
+
+/// The per-file limit for a template the index sizes at `bytes` (0: not
+/// sized).
+fn file_limit(bytes: u64) -> u64 {
+    if bytes == 0 {
+        MAX_FILE_BYTES
+    } else {
+        bytes.saturating_add(SIZE_SLACK).min(MAX_FILE_BYTES)
+    }
 }
 
 pub struct DownloadPlan {
@@ -924,6 +983,7 @@ pub fn plan_downloads(
                 id: template.info.id,
                 missing,
                 preview,
+                max_file_bytes: file_limit(template.info.bytes),
             });
         }
     }
@@ -962,9 +1022,17 @@ impl<F: Fn(DownloadProgress) + Sync> Tracker<'_, F> {
     }
 }
 
+/// A temporary name beside `dest`, of this process and this download only:
+/// two installs of one template (two `oleafly new`, or the app and the CLI)
+/// never write into the same file.
 fn part_path(dest: &Path) -> PathBuf {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
     let mut name = dest.as_os_str().to_owned();
-    name.push(".part");
+    name.push(format!(
+        ".{}-{}.part",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
     PathBuf::from(name)
 }
 
@@ -974,6 +1042,7 @@ async fn download_file(
     url: &str,
     sha256: Option<&str>,
     dest: &Path,
+    max_bytes: u64,
 ) -> Result<(u64, Option<u64>), String> {
     use tokio::io::AsyncWriteExt as _;
     let _permit = permits
@@ -1004,13 +1073,16 @@ async fn download_file(
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|e| format!("download interrupted: {e}"))?;
             received += chunk.len() as u64;
+            if received > max_bytes {
+                return Err(format!("{url} {TOO_LARGE} {max_bytes} bytes"));
+            }
             digest.update(&chunk);
             out.write_all(&chunk).await.map_err(|e| e.to_string())?;
         }
         out.flush().await.map_err(|e| e.to_string())?;
         drop(out);
         if !checksum_matches(sha256, &digest.finalize()) {
-            return Err(format!("download of {url} did not match its checksum"));
+            return Err(format!("download of {url} {CHECKSUM}"));
         }
         tokio::fs::rename(&tmp, dest)
             .await
@@ -1071,14 +1143,15 @@ async fn fetch_file(
     shared: &SharedFiles,
     file: &PackFile,
     dest: &Path,
+    max_bytes: u64,
 ) -> Result<(u64, Option<u64>), String> {
     let Some(sha256) = file.sha256.as_deref() else {
-        return download_file(client, permits, &file.url, None, dest).await;
+        return download_file(client, permits, &file.url, None, dest, max_bytes).await;
     };
     let slot = shared.slot(sha256);
     let (source, bytes) = slot
         .get_or_init(|| async {
-            download_file(client, permits, &file.url, Some(sha256), dest)
+            download_file(client, permits, &file.url, Some(sha256), dest, max_bytes)
                 .await
                 .map(|(received, _)| (dest.to_path_buf(), received))
         })
@@ -1101,9 +1174,20 @@ async fn download_job<F: Fn(DownloadProgress) + Sync>(
     let manifest = format!("{}/{MANIFEST}", job.id);
     let (manifests, rest): (Vec<PackFile>, Vec<PackFile>) =
         job.missing.into_iter().partition(|f| f.name == manifest);
+    let max_bytes = job.max_file_bytes;
     let fetch = |file: PackFile| async move {
+        let dest = dir.join(&file.name);
+        // Another install of the pack, which this one waited for, may have
+        // brought the file already.
+        if tokio::fs::symlink_metadata(&dest)
+            .await
+            .is_ok_and(|metadata| metadata.is_file())
+        {
+            tracker.complete(&file.name, 0, None);
+            return Ok(());
+        }
         let (received, total) =
-            fetch_file(client, permits, shared, &file, &dir.join(&file.name)).await?;
+            fetch_file(client, permits, shared, &file, &dest, max_bytes).await?;
         tracker.complete(&file.name, received, total);
         Ok::<(), String>(())
     };
@@ -1112,7 +1196,7 @@ async fn download_job<F: Fn(DownloadProgress) + Sync>(
         .await?;
     if let Some(url) = job.preview {
         let dest = dir.join(&job.id).join(PREVIEW_FILE);
-        let _ = download_file(client, permits, &url, None, &dest).await;
+        let _ = download_file(client, permits, &url, None, &dest, MAX_TEXT_BYTES as u64).await;
     }
     for file in manifests {
         fetch(file).await?;
@@ -1126,6 +1210,7 @@ pub async fn download_templates<F: Fn(DownloadProgress) + Sync>(
     plan: DownloadPlan,
     emit: &F,
 ) -> Result<(), String> {
+    let _install = install_lock(dir).await?;
     let permits = Semaphore::new(DOWNLOAD_CONCURRENCY);
     let shared = SharedFiles::default();
     let tracker = Tracker {
@@ -1140,6 +1225,41 @@ pub async fn download_templates<F: Fn(DownloadProgress) + Sync>(
             download_job(client, permits, shared, dir, job, tracker)
         })
         .await
+}
+
+/// The pack's install lock (`<pack>/.install.lock`), held for a whole
+/// install so two processes never write one template's files at once.
+async fn install_lock(dir: &Path) -> Result<std::fs::File, String> {
+    tokio::fs::create_dir_all(dir)
+        .await
+        .map_err(|e| e.to_string())?;
+    let path = dir.join(INSTALL_LOCK);
+    if tokio::fs::symlink_metadata(&path)
+        .await
+        .is_ok_and(|metadata| !metadata.is_file())
+    {
+        return Err(format!("{} isn't a regular file", path.display()));
+    }
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&path)
+        .map_err(|e| e.to_string())?;
+    let deadline = Instant::now() + INSTALL_LOCK_WAIT;
+    loop {
+        match fs4::FileExt::try_lock(&file) {
+            Ok(()) => return Ok(file),
+            Err(fs4::TryLockError::WouldBlock) if Instant::now() < deadline => {
+                tokio::time::sleep(Duration::from_millis(200)).await;
+            }
+            Err(fs4::TryLockError::WouldBlock) => {
+                return Err("another install of this template pack is still running".into())
+            }
+            Err(fs4::TryLockError::Error(error)) => return Err(error.to_string()),
+        }
+    }
 }
 
 /// Whether `actual` (a SHA-256 digest) matches the hex `expected`; no

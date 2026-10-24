@@ -28,6 +28,8 @@ pub enum Exit {
     Network = 7,
     Conflict = 8,
     Findings = 9,
+    /// An agent run stopped at its step or time limit.
+    Limit = 10,
     Interrupted = 130,
 }
 
@@ -40,6 +42,9 @@ pub enum ErrorKind {
     UnsafePath,
     MissingTool,
     Io,
+    /// A file outside the project (a client's settings, say) couldn't be
+    /// read or written.
+    System,
     Build,
     Usage,
     Internal,
@@ -47,6 +52,7 @@ pub enum ErrorKind {
     Network,
     Conflict,
     Findings,
+    Limit,
     Interrupted,
 }
 
@@ -58,7 +64,7 @@ impl ErrorKind {
             | Self::InvalidManifest
             | Self::UnsafePath
             | Self::Io => Exit::Project,
-            Self::MissingTool => Exit::Environment,
+            Self::MissingTool | Self::System => Exit::Environment,
             Self::Build => Exit::BuildFailed,
             Self::Usage => Exit::Usage,
             Self::Internal => Exit::Internal,
@@ -66,9 +72,45 @@ impl ErrorKind {
             Self::Network => Exit::Network,
             Self::Conflict => Exit::Conflict,
             Self::Findings => Exit::Findings,
+            Self::Limit => Exit::Limit,
             Self::Interrupted => Exit::Interrupted,
         }
     }
+}
+
+/// The error a failed result without one of its own carries, so `ok: false`
+/// always comes with `error` (its kind matches the exit code).
+fn exit_error(exit: Exit) -> CliError {
+    let (kind, code, message) = match exit {
+        Exit::Ok | Exit::Internal => (ErrorKind::Internal, "internal", "The command failed."),
+        Exit::Usage => (
+            ErrorKind::Usage,
+            "usage.invalid",
+            "The command was used wrongly.",
+        ),
+        Exit::Project => (
+            ErrorKind::InvalidInput,
+            "project.invalid_input",
+            "The project is missing or invalid.",
+        ),
+        Exit::Environment => (
+            ErrorKind::MissingTool,
+            "environment.missing_tool",
+            "A tool the command needs isn't ready.",
+        ),
+        Exit::BuildFailed => (ErrorKind::Build, "build.failed", "The build failed."),
+        Exit::Auth => (ErrorKind::Auth, "auth.required", "You need to sign in."),
+        Exit::Network => (ErrorKind::Network, "network.failed", "The network failed."),
+        Exit::Conflict => (
+            ErrorKind::Conflict,
+            "conflict",
+            "Something else holds the project.",
+        ),
+        Exit::Findings => (ErrorKind::Findings, "findings", "Problems were found."),
+        Exit::Limit => (ErrorKind::Limit, "limit", "The run stopped at its limit."),
+        Exit::Interrupted => (ErrorKind::Interrupted, "interrupted", "Stopped."),
+    };
+    CliError::new(kind, code, message)
 }
 
 /// An error as commands report it: a kind (which decides the exit code), a
@@ -223,6 +265,16 @@ impl Outcome {
         }
     }
 
+    /// A failure with its own `error` object; the exit code follows its kind.
+    pub fn failure_with(error: &CliError, value: Value) -> Self {
+        let mut outcome = Self::failure(error.exit(), value);
+        outcome.fields.insert(
+            "error".into(),
+            serde_json::to_value(error).unwrap_or(Value::Null),
+        );
+        outcome
+    }
+
     pub fn printed() -> Self {
         Self {
             ok: true,
@@ -242,6 +294,9 @@ pub fn envelope(command: &str, outcome: &Outcome, warnings: &[Warning]) -> Value
     value.insert("command".into(), json!(command));
     for (key, field) in &outcome.fields {
         value.insert(key.clone(), field.clone());
+    }
+    if !outcome.ok && !value.contains_key("error") {
+        value.insert("error".into(), json!(exit_error(outcome.exit)));
     }
     value.insert("warnings".into(), json!(warnings));
     Value::Object(value)
@@ -611,10 +666,47 @@ mod tests {
             (Network, 7),
             (Conflict, 8),
             (Findings, 9),
+            (Limit, 10),
+            (System, 4),
             (Interrupted, 130),
         ] {
             assert_eq!(kind.exit() as u8, exit, "{kind:?}");
         }
+    }
+
+    #[test]
+    fn a_failed_result_always_carries_an_error_matching_its_exit() {
+        let failed = envelope(
+            "build",
+            &Outcome::failure(Exit::BuildFailed, json!({"build": {"ok": false}})),
+            &[],
+        );
+        assert_eq!(
+            (
+                failed["error"]["kind"].clone(),
+                failed["error"]["code"].clone()
+            ),
+            (json!("build"), json!("build.failed"))
+        );
+        let limited = envelope(
+            "agent run",
+            &Outcome::failure_with(
+                &CliError::new(
+                    ErrorKind::Limit,
+                    "agent.step_limit",
+                    "Stopped after 3 steps.",
+                ),
+                json!({"run": {}}),
+            ),
+            &[],
+        );
+        assert_eq!(limited["error"]["code"], "agent.step_limit");
+        assert_eq!(
+            Outcome::failure_with(&CliError::new(ErrorKind::Limit, "x", "y"), json!({})).exit,
+            Exit::Limit
+        );
+        let ok = envelope("build", &Outcome::success(json!({})), &[]);
+        assert!(ok.get("error").is_none());
     }
 
     #[test]

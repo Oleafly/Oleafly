@@ -1,30 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { acpAgentPreferences, acpError, acpSetAgentPreferences, type AcpAgentPreferences } from "@/lib/acp";
+import type { AgentPreferences } from "./agent-preferences";
 
 /** The effort and mode an agent's new conversations start with, with "Forget". */
-export function AcpAgentChoices({ agentId }: Readonly<{ agentId: string }>) {
+export function AcpAgentChoices({
+  agentId,
+  preferences,
+}: Readonly<{ agentId: string; preferences: AgentPreferences }>) {
   const { t } = useTranslation(["common", "settings"]);
-  const [prefs, setPrefs] = useState<AcpAgentPreferences | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let current = true;
-    acpAgentPreferences(agentId)
-      .then((value) => { if (current) setPrefs(value); })
-      .catch((error_: unknown) => { if (current) setError(acpError(error_)); });
-    return () => { current = false; };
-  }, [agentId]);
+  const { prefs, loadError } = preferences;
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const error = saveError ?? loadError;
 
   const forget = (slot: "effort" | "mode") => {
     if (!prefs) return;
-    const next = { ...prefs, [slot]: null };
-    setError(null);
-    acpSetAgentPreferences(agentId, next)
-      .then(setPrefs)
-      .catch((error_: unknown) => setError(acpError(error_)));
+    setSaveError(null);
+    void preferences.save(slot, null).then(setSaveError);
   };
 
   const rows = prefs
@@ -54,5 +47,3 @@ export function AcpAgentChoices({ agentId }: Readonly<{ agentId: string }>) {
     </section>
   );
 }
-
-export default AcpAgentChoices;

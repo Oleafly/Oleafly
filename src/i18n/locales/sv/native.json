@@ -99,11 +99,15 @@
       "title": "Skrivbordsappar",
       "action": "{{agent}} vill {{action}}.",
       "steps": "{{agent}} vill köra de här stegen i en skrivbordsapp:",
-      "moreSteps": "Steg som inte visas: {{count}}",
-      "moreItems": "{{count}} objekt till visas inte",
-      "cut": "(+{{count}} tecken visas inte)",
+      "moreSteps": "Steg som inte visas och inte körs: {{count}}",
+      "moreItems": "Objekt som inte visas: {{count}}",
+      "cut": "(tecken som inte visas: {{count}})",
       "signedIn": "Det här sker i din egen inloggade webbläsare.",
       "signedInOn": "Det här sker i din egen inloggade webbläsare, på {{origin}}.",
+      "task": "Uppgift: {{title}}",
+      "app": "App: {{name}}",
+      "window": "Fönster: {{title}}",
+      "element": "Element: {{element}}",
       "text": "Text: \"{{text}}\"",
       "address": "Adress: {{url}}",
       "allowOnce": "Tillåt en gång",
@@ -111,6 +115,7 @@
       "allowSession": "Tillåt för den här sessionen",
       "allowTask": "Tillåt för den här uppgiften",
       "deny": "Tillåt inte",
+      "pickedFile": "filen du valde",
       "actions": {
         "launchApp": "öppna en app",
         "click": "klicka i en app",
@@ -131,14 +136,18 @@
     },
     "desktopAppsSettings": {
       "title": "Vill du tillåta styrning av skrivbordet?",
-      "message": "Agenter kommer att kunna använda följande, och de frågar fortfarande före varje åtgärd:",
+      "message": "Agenter kommer att kunna använda följande. De frågar före varje åtgärd, och när du sparar rensas alla val av \"Tillåt för den här chatten\":",
       "confirm": "Tillåt",
       "enabled": "Skrivbordsappar",
-      "app": "App: {{name}} ({{identity}})",
+      "app": "App: {{identity}} ({{name}})",
       "more": "Och {{count}} till",
       "site": "Webbplats: {{origin}}",
       "signedIn": "Din inloggade webbläsare på {{origin}}",
-      "scripted": "Cua-skript"
+      "scripted": "Cua-skript",
+      "spacesTitle": "Vill du ge Cua Spaces mer åtkomst?",
+      "spacesMessage": "Agenter som använder Cua Spaces kommer att kunna:",
+      "spacesChanges": "Skapa och radera Spaces och köra kommandon i dem",
+      "spacesSignIns": "Använda din inloggning för Claude Code eller Codex i ett Space"
     }
   },
   "errors": {

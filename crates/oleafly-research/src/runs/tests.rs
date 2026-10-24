@@ -761,3 +761,262 @@ async fn deleting_a_task_cleans_what_its_runs_left_elsewhere() {
     // A run that was still going is stopped before its folder is removed.
     assert_eq!(executor.calls(), vec!["cancel", "cleanup"]);
 }
+
+/// Moves a run's start back in time, as if it began `minutes` ago.
+fn started_minutes_ago(fixture: &Fixture, run_id: &str, minutes: i64) {
+    let connection = rusqlite::Connection::open(fixture.root.join("tasks.sqlite3")).unwrap();
+    connection
+        .execute(
+            "UPDATE research_task_runs SET started_at = ?3 WHERE task_id = ?1 AND run_id = ?2",
+            rusqlite::params![
+                fixture.task.id,
+                run_id,
+                crate::model::now_ms() - minutes * 60 * 1000
+            ],
+        )
+        .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_long_start_under_way_is_never_lost_for_taking_long() {
+    let fixture = fixture();
+    let manager = RunManager::new(fixture.root.clone(), tokio::runtime::Handle::current());
+    let executor = Controlled::new(false, vec!["r001"]);
+    manager.register_executor(Arc::new(executor.clone()));
+    let record = manager
+        .start(controlled_request(&fixture, "big upload"))
+        .await
+        .unwrap();
+    executor.entered.notified().await;
+    // The upload has taken longer than the start deadline.
+    started_minutes_ago(&fixture, &record.run_id, 30);
+    manager.reattach();
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    assert_eq!(
+        run_state(&manager, &fixture.task.id, &record.run_id),
+        crate::model::RunState::Starting
+    );
+    executor.release.add_permits(1);
+    run_becomes(
+        &manager,
+        &fixture.task.id,
+        &record.run_id,
+        crate::model::RunState::Running,
+    )
+    .await;
+    assert!(executor.calls().is_empty(), "{:?}", executor.calls());
+}
+
+/// A start a quit cut off: its row has no handle, but the executor wrote
+/// `handle.json` before it changed anything remotely.
+fn cut_off_start(fixture: &Fixture, run_id: &str) -> PathBuf {
+    let store = TaskStore::new(fixture.root.clone()).unwrap();
+    let run_dir = fixture
+        .root
+        .join("runs")
+        .join(&fixture.task.id)
+        .join(run_id);
+    std::fs::create_dir_all(&run_dir).unwrap();
+    store
+        .insert_run(&crate::model::RunRecord {
+            task_id: fixture.task.id.clone(),
+            run_id: run_id.into(),
+            execution_generation: fixture.task.execution_generation,
+            name: "upload".into(),
+            executor: "controlled".into(),
+            command: "python train.py".into(),
+            cwd_rel: String::new(),
+            state: crate::model::RunState::Starting,
+            exit_code: None,
+            started_at: crate::model::now_ms(),
+            finished_at: None,
+            run_dir: run_dir.to_string_lossy().into_owned(),
+            metrics: BTreeMap::new(),
+            reported: false,
+        })
+        .unwrap();
+    let handle = RunHandle {
+        version: HANDLE_VERSION,
+        executor: "controlled".into(),
+        task_id: fixture.task.id.clone(),
+        run_id: run_id.into(),
+        run_dir: run_dir.clone(),
+        started_at: crate::model::now_ms(),
+        data: serde_json::json!({}),
+    };
+    std::fs::write(
+        run_dir.join("handle.json"),
+        serde_json::to_vec(&handle).unwrap(),
+    )
+    .unwrap();
+    run_dir
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_start_cut_off_by_a_quit_is_lost_and_what_it_left_is_cleared() {
+    let fixture = fixture();
+    let manager = RunManager::new(fixture.root.clone(), tokio::runtime::Handle::current());
+    let executor = Controlled::new(false, Vec::new());
+    manager.register_executor(Arc::new(executor.clone()));
+    cut_off_start(&fixture, "r001");
+    started_minutes_ago(&fixture, "r001", 11);
+    manager.reattach();
+    run_becomes(
+        &manager,
+        &fixture.task.id,
+        "r001",
+        crate::model::RunState::Lost,
+    )
+    .await;
+    executor.calls_become(&["cancel", "discard"]).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn deleting_a_task_clears_what_a_cut_off_start_left() {
+    let fixture = fixture();
+    let manager = RunManager::new(fixture.root.clone(), tokio::runtime::Handle::current());
+    let executor = Controlled::new(false, Vec::new());
+    manager.register_executor(Arc::new(executor.clone()));
+    cut_off_start(&fixture, "r001");
+    let leftovers = manager.cleanup_handles(&fixture.task.id);
+    assert_eq!(leftovers.len(), 1);
+    manager.cleanup_task(&fixture.task.id, leftovers).await;
+    assert_eq!(executor.calls(), vec!["cancel", "cleanup"]);
+}
+
+/// A remote host that drops the first `failures` cancels, then stops the run.
+#[derive(Clone, Default)]
+struct Unreachable {
+    failures: Arc<std::sync::atomic::AtomicUsize>,
+    cancels: Arc<std::sync::atomic::AtomicUsize>,
+    stopped: Arc<std::sync::atomic::AtomicBool>,
+}
+
+#[async_trait::async_trait]
+impl RunExecutor for Unreachable {
+    fn id(&self) -> &'static str {
+        "controlled"
+    }
+
+    async fn start(&self, spec: &RunSpec) -> Result<RunHandle, RunError> {
+        Ok(RunHandle {
+            version: HANDLE_VERSION,
+            executor: self.id().into(),
+            task_id: spec.task_id.clone(),
+            run_id: spec.run_id.clone(),
+            run_dir: spec.run_dir.clone(),
+            started_at: crate::model::now_ms(),
+            data: serde_json::json!({}),
+        })
+    }
+
+    async fn poll(&self, handle: &RunHandle) -> Result<RunStatus, RunError> {
+        use std::sync::atomic::Ordering;
+        Ok(if self.stopped.load(Ordering::SeqCst) {
+            RunStatus::Finished {
+                exit_code: None,
+                finished_at: crate::model::now_ms(),
+                outcome: RunOutcomeKind::Cancelled,
+                note: None,
+            }
+        } else {
+            RunStatus::Running {
+                started_at: handle.started_at,
+                note: None,
+            }
+        })
+    }
+
+    async fn read_log(&self, _handle: &RunHandle, _query: LogQuery) -> Result<String, RunError> {
+        Ok(String::new())
+    }
+
+    async fn cancel(&self, _handle: &RunHandle) -> Result<(), RunError> {
+        use std::sync::atomic::Ordering;
+        self.cancels.fetch_add(1, Ordering::SeqCst);
+        let failed = self
+            .failures
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |left| {
+                left.checked_sub(1)
+            })
+            .is_ok();
+        if failed {
+            return Err(RunError::Network("The host is out of reach.".into()));
+        }
+        self.stopped.store(true, Ordering::SeqCst);
+        Ok(())
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_cancel_that_did_not_reach_the_host_is_sent_again() {
+    use std::sync::atomic::Ordering;
+    let fixture = fixture();
+    let manager = RunManager::new(fixture.root.clone(), tokio::runtime::Handle::current());
+    let executor = Unreachable::default();
+    executor.failures.store(2, Ordering::SeqCst);
+    manager.register_executor(Arc::new(executor.clone()));
+    let record = manager
+        .start(controlled_request(&fixture, "sweep"))
+        .await
+        .unwrap();
+    run_becomes(
+        &manager,
+        &fixture.task.id,
+        &record.run_id,
+        crate::model::RunState::Running,
+    )
+    .await;
+    // The VPN is down: the user's cancel fails, and so does the first retry.
+    assert!(manager
+        .cancel(&fixture.task.id, &record.run_id)
+        .await
+        .is_err());
+    run_becomes(
+        &manager,
+        &fixture.task.id,
+        &record.run_id,
+        crate::model::RunState::Cancelled,
+    )
+    .await;
+    assert_eq!(executor.cancels.load(Ordering::SeqCst), 3);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_fresh_start_does_not_count_the_runs_before_it() {
+    let fixture = fixture();
+    let store = TaskStore::new(fixture.root.clone()).unwrap();
+    let manager = RunManager::new(fixture.root.clone(), tokio::runtime::Handle::current());
+    let executor = Controlled::new(false, vec!["r001", "r002"]);
+    executor.release.add_permits(2);
+    manager.register_executor(Arc::new(executor.clone()));
+    let mut first = controlled_request(&fixture, "first");
+    first.task.brief.budget.max_runs = Some(1);
+    manager.start(first).await.unwrap();
+    let mut again = controlled_request(&fixture, "again");
+    again.task.brief.budget.max_runs = Some(1);
+    assert_eq!(
+        manager.start(again).await.unwrap_err(),
+        "The task reached its run limit of 1."
+    );
+
+    // "Start over": the new attempt gets its own run limit.
+    store
+        .finish_failure(
+            &fixture.task.id,
+            fixture.task.execution_generation,
+            "Stopped.",
+        )
+        .unwrap();
+    store
+        .retry_with(&fixture.task.id, crate::model::RetryMode::Fresh)
+        .unwrap();
+    store.request_start(&fixture.task.id).unwrap();
+    let fresh = store.claim_next().unwrap().unwrap();
+    let mut after = controlled_request(&fixture, "after");
+    after.task = fresh;
+    after.task.brief.compute.executor = "controlled".into();
+    after.task.brief.budget.max_runs = Some(1);
+    let record = manager.start(after).await.unwrap();
+    assert_eq!(record.run_id, "r002");
+}

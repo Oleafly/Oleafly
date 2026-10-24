@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/attachments", () => ({
   attachmentObjectUrl: mocks.attachmentObjectUrl,
   attachmentRead: mocks.attachmentRead,
+  holdAttachmentObjectUrl: () => () => {},
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/tauri", async (importOriginal) => ({

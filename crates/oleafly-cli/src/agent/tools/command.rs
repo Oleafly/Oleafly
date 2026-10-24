@@ -2,7 +2,9 @@
 //! sandbox works (macOS, Linux with bubblewrap, Windows once it is set up)
 //! the command can write only to the run's folder and reach the network
 //! only with `--allow network`. Elsewhere it runs as the user, with a
-//! warning, and never in a read-only run.
+//! warning given before the run starts, only with `--apply` or
+//! `--unsandboxed-commands`: never in a read-only run, and not in a review
+//! run otherwise (it could change the real project, not the review copy).
 //!
 //! Children never inherit provider keys.
 use std::ffi::OsString;
@@ -46,11 +48,51 @@ impl OwnerRelease {
             owner: sandbox_owner(run_id),
         }
     }
+
+    pub(crate) fn owner(&self) -> &str {
+        &self.owner
+    }
+
+    /// Releases now, on a blocking thread, saying so where it can take a
+    /// while (Windows takes the access entries off the project's folders).
+    /// `Drop` then has nothing left to do.
+    pub(crate) async fn release_now(mut self, ctx: &crate::contract::Context) {
+        let owner = std::mem::take(&mut self.owner);
+        if cfg!(windows) && !ctx.json() && !ctx.quiet() {
+            ctx.note("Removing the sandbox's access to the project's folders.");
+        }
+        let _ = tokio::task::spawn_blocking(move || oleafly_sandbox::release(&owner)).await;
+    }
 }
 
 impl Drop for OwnerRelease {
     fn drop(&mut self) {
-        let _ = oleafly_sandbox::release(&self.owner);
+        if !self.owner.is_empty() {
+            let _ = oleafly_sandbox::release(&self.owner);
+        }
+    }
+}
+
+/// Why a command may not run without the sandbox in a run of `mode`, if it
+/// may not. `allowed` is `--unsandboxed-commands`.
+pub(crate) fn unsandboxed_refusal(mode: &WriteMode, allowed: bool, reason: &str) -> Option<String> {
+    match mode {
+        WriteMode::ReadOnly => Some(format!("Commands need Oleafly's sandbox to run in a read-only run. {reason} Run again with --allow write.")),
+        WriteMode::Review { .. } if !allowed => Some(format!("Commands need Oleafly's sandbox to stay inside the review copy. {reason} Run again with --apply, or with --unsandboxed-commands to let them run as you.")),
+        WriteMode::Review { .. } | WriteMode::Apply => None,
+    }
+}
+
+/// The note a run with commands gets before it starts when the sandbox
+/// can't hold them: that they run as the user, or that they won't run.
+pub(crate) fn unsandboxed_note(
+    mode: &WriteMode,
+    allowed: bool,
+    reason: &str,
+) -> (&'static str, String) {
+    match unsandboxed_refusal(mode, allowed, reason) {
+        Some(refusal) => ("agent.commands_refused", refusal),
+        None => ("agent.unsandboxed", format!("{UNSANDBOXED} {reason}")),
     }
 }
 
@@ -58,7 +100,7 @@ impl Drop for OwnerRelease {
 /// sandbox is a beta with a switch in the app's settings, and it is checked
 /// first, as the app does: availability creates a probe profile, and a run
 /// with the switch off must never change a folder's permissions.
-fn sandbox_unavailable(data_root: Option<&Path>) -> Option<String> {
+pub(crate) fn sandbox_unavailable(data_root: Option<&Path>) -> Option<String> {
     if cfg!(windows)
         && !data_root.is_some_and(oleafly_research::runs::remote::settings::windows_sandbox_enabled)
     {
@@ -196,8 +238,10 @@ pub(crate) async fn run_command(
             .map_err(|_| "The command could not be prepared.".to_string())??
     } else {
         let reason = unavailable.unwrap_or_default();
-        if matches!(ctx.policy.mode, WriteMode::ReadOnly) {
-            return Err(format!("Commands need Oleafly's sandbox to run in a read-only run. {reason} Run again with --allow write."));
+        if let Some(refusal) =
+            unsandboxed_refusal(&ctx.policy.mode, ctx.unsandboxed_commands, &reason)
+        {
+            return Err(refusal);
         }
         ctx.warn_once(
             &ctx.warned_unsandboxed,
@@ -499,6 +543,58 @@ pub(crate) mod tests {
             std::fs::read_to_string(project.path().join(".git/config")).unwrap(),
             "[core]\n"
         );
+    }
+
+    #[test]
+    fn unsandboxed_commands_run_only_with_apply_or_the_flag() {
+        let review = WriteMode::Review {
+            dir: PathBuf::from("review"),
+        };
+        let refusal = unsandboxed_refusal(&review, false, "No sandbox.").unwrap();
+        assert!(refusal.contains("--unsandboxed-commands") && refusal.contains("No sandbox."));
+        assert_eq!(unsandboxed_refusal(&review, true, "No sandbox."), None);
+        assert_eq!(unsandboxed_refusal(&WriteMode::Apply, false, "x"), None);
+        assert!(unsandboxed_refusal(&WriteMode::ReadOnly, true, "x").is_some());
+        assert_eq!(
+            unsandboxed_note(&review, false, "x").0,
+            "agent.commands_refused"
+        );
+        assert_eq!(
+            unsandboxed_note(&WriteMode::Apply, false, "x").0,
+            "agent.unsandboxed"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_review_run_refuses_a_command_the_sandbox_cant_hold() {
+        let project = tempfile::tempdir().unwrap();
+        let ctx = context(
+            project.path(),
+            policy(
+                WriteMode::Review {
+                    dir: project.path().join("review"),
+                },
+                AllowSet {
+                    write: true,
+                    commands: true,
+                    ..AllowSet::default()
+                },
+                false,
+            ),
+        );
+        let Some(_) = sandbox_unavailable(None) else {
+            return;
+        };
+        let error = run_command(&ctx, "echo hi > ../outside.txt", 10)
+            .await
+            .unwrap_err();
+        assert!(error.contains("--unsandboxed-commands"), "{error}");
+        assert!(!project
+            .path()
+            .parent()
+            .unwrap()
+            .join("outside.txt")
+            .exists());
     }
 
     #[test]

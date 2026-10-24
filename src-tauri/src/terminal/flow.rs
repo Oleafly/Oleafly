@@ -19,6 +19,8 @@ struct FlowState {
     unacked: usize,
     paused: bool,
     closed: bool,
+    /// When output was last sent.
+    last_output: Option<Instant>,
 }
 
 /// Bytes sent to the frontend and not yet acknowledged, for one session.
@@ -42,6 +44,7 @@ impl OutputFlow {
     /// Count bytes just sent. Above the high watermark the pump pauses.
     pub(crate) fn charge(&self, bytes: usize) {
         let mut state = self.lock();
+        state.last_output = Some(Instant::now());
         state.unacked = state.unacked.saturating_add(bytes);
         if state.unacked > FLOW_HIGH_WATERMARK {
             state.paused = true;
@@ -70,6 +73,14 @@ impl OutputFlow {
                 .unwrap_or_else(PoisonError::into_inner);
         }
         !state.paused
+    }
+
+    /// Whether output was sent within the last `window`.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub(crate) fn output_within(&self, window: Duration) -> bool {
+        self.lock()
+            .last_output
+            .is_some_and(|at| at.elapsed() < window)
     }
 
     /// The session is stopping: release a paused pump.
@@ -168,6 +179,16 @@ mod tests {
         let open = OutputFlow::new();
         open.close();
         assert!(open.wait_for_room());
+    }
+
+    #[test]
+    fn output_counts_as_recent_only_within_the_window() {
+        let flow = OutputFlow::new();
+        assert!(!flow.output_within(Duration::from_secs(60)));
+        flow.charge(1);
+        assert!(flow.output_within(Duration::from_secs(60)));
+        std::thread::sleep(Duration::from_millis(20));
+        assert!(!flow.output_within(Duration::from_millis(10)));
     }
 
     #[test]

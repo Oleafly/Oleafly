@@ -264,6 +264,39 @@ describe("chat persistence on disk", () => {
     expect([...keep].sort()).toEqual(["draft", "other", "page", "queued", "shot"]);
   });
 
+  it("keeps the files of a reply still streaming when another chat is deleted", async () => {
+    putOnDisk(chat("p1", "gone", 1), chat("p1", "running", 2));
+    await store.getState().load("p1");
+    // The screenshot is in the live transcript; the saved chat does not list it yet.
+    store.getState().setLive("running", [
+      { role: "assistant", content: "", toolCalls: [{ name: "preview_figure", status: "done", imageRef: { sha256: "fresh-shot", mime: "image/png" } }] },
+    ]);
+
+    store.getState().remove("gone");
+    await settle();
+    await settle();
+
+    const [, keep] = mocks.attachmentGc.mock.calls[0];
+    expect(keep).toContain("fresh-shot");
+  });
+
+  it("saves a chat into the project it belongs to after the window moved to another", async () => {
+    putOnDisk(chat("p1", "a", 1));
+    await store.getState().load("p1");
+    await store.getState().load("p2");
+
+    store.getState().saveMessages("a", [{ role: "user", content: "kept" }], { projectId: "p1" });
+    // Another project's chats that are not cached, and the shown project's, are left alone.
+    store.getState().saveMessages("a", [{ role: "user", content: "lost" }], { projectId: "p9" });
+    store.getState().saveMessages("a", [{ role: "user", content: "lost" }]);
+    await settle();
+
+    expect(savedOnDisk("p1", "a")?.messages).toEqual([{ role: "user", content: "kept" }]);
+    expect(savedOnDisk("p9", "a")).toBeUndefined();
+    expect(store.getState().projectId).toBe("p2");
+    expect(store.getState().chats).toEqual([]);
+  });
+
   it("skips collection while older chats are still stubs", async () => {
     mocks.chatsLoad.mockResolvedValueOnce({
       json: JSON.stringify([chat("p1", "a", 2), { ...chat("p1", "old", 1), stub: true, messageCount: 3 }]),

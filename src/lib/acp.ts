@@ -395,6 +395,12 @@ export const acpPreferences = () => invoke<AcpPreferences>("acp_preferences");
 export const acpSetPreferences = (prefs: AcpPreferences) => invoke<AcpPreferences>("acp_set_preferences", { prefs });
 export const acpAgentPreferences = (agentId: string) => invoke<AcpAgentPreferences>("acp_agent_preferences", { agentId });
 export const acpSetAgentPreferences = (agentId: string, prefs: AcpAgentPreferences) => invoke<AcpAgentPreferences>("acp_set_agent_preferences", { agentId, prefs });
+/** Changes one remembered choice and keeps the others as stored (`null` forgets it). */
+export const acpSetAgentPreference = (
+  agentId: string,
+  slot: "effort" | "mode" | "provider",
+  value: AcpRememberedChoice | string | null,
+) => invoke<AcpAgentPreferences>("acp_set_agent_preference", { agentId, slot, value });
 export const acpProviderChoices = (agentId: string) => invoke<AcpProviderChoice[]>("acp_provider_choices", { agentId });
 export const acpHermesSettings = (projectId: string) => invoke<AcpHermesSettings>("acp_hermes_settings", { projectId });
 export const acpSetHermesSettings = (projectId: string, settings: AcpHermesSettings) => invoke<AcpHermesStatus>("acp_set_hermes_settings", { projectId, settings });
@@ -411,5 +417,22 @@ export const onAcpBufferRequest = (listener: (request: AcpBufferRequest) => void
 export function acpError(error: unknown): string {
   if (typeof error === "string") return error;
   if (error instanceof Error) return error.message;
+  // `acp_prompt` reports a turn that failed after the message went out as `{ delivered, message }`.
+  if (error && typeof error === "object" && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message;
+  }
   return i18n.t(($) => $.core.acp.requestFailed);
+}
+
+/**
+ * Whether a failed `acp_prompt` still delivered the message (the turn failed
+ * after the agent got it). Null when the error does not say: a plain string
+ * from an older build, or a failure before the request was made.
+ */
+export function acpPromptDelivered(error: unknown): boolean | null {
+  if (typeof error === "string") return null;
+  if (error && typeof error === "object" && typeof (error as { delivered?: unknown }).delivered === "boolean") {
+    return (error as { delivered: boolean }).delivered;
+  }
+  return null;
 }

@@ -89,6 +89,7 @@ fn apply_review_with_fault(
     if selected.is_empty() {
         return Err("Select at least one changed file to apply.".into());
     }
+    refuse_links(isolation, &selected)?;
     validate_real_directory(project_root, "project")?;
     let execution_root = PathBuf::from(&isolation.execution_root);
     validate_real_directory(&execution_root, "task workspace")?;
@@ -448,6 +449,33 @@ fn selected_changes(
                 .ok_or_else(|| format!("{path} is not part of the reviewed task result."))
         })
         .collect()
+}
+
+/// A file that is a link in the project was copied into the task as the file
+/// it points to, and apply never writes through a link: the selection may
+/// not hold one. The error names them, so the user knows what to deselect.
+fn refuse_links(isolation: &TaskIsolation, selected: &[TaskFileChange]) -> Result<(), String> {
+    let links: BTreeSet<&str> = isolation
+        .baseline
+        .iter()
+        .filter(|entry| entry.resolved_link)
+        .map(|entry| entry.path.as_str())
+        .collect();
+    let selected_links: Vec<&str> = selected
+        .iter()
+        .map(|change| change.path.as_str())
+        .filter(|path| links.contains(path))
+        .collect();
+    match selected_links.as_slice() {
+        [] => Ok(()),
+        [path] => Err(format!(
+            "{path} is a link in the project, so this change can't be applied. Deselect it and apply the other files."
+        )),
+        paths => Err(format!(
+            "{} are links in the project, so these changes can't be applied. Deselect them and apply the other files.",
+            paths.join(", ")
+        )),
+    }
 }
 
 fn validate_base(project_files: &RootFiles, changes: &[TaskFileChange]) -> Result<(), String> {
@@ -1052,6 +1080,73 @@ mod tests {
         assert_eq!(
             fs::read_to_string(project.join("main.tex")).unwrap(),
             "new user edit"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_change_to_a_linked_file_is_refused_by_name_before_anything_is_written() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("project");
+        let execution = temp.path().join("execution");
+        fs::create_dir_all(project.join("bib")).unwrap();
+        fs::create_dir(&execution).unwrap();
+        fs::write(project.join("main.tex"), "base").unwrap();
+        fs::write(execution.join("main.tex"), "task result").unwrap();
+        let mut task = task(&project, &execution, "base", "task result");
+        // The project's refs.bib links to bib/main.bib; the task copied the file.
+        fs::write(project.join("bib/main.bib"), "@misc{a}").unwrap();
+        std::os::unix::fs::symlink("bib/main.bib", project.join("refs.bib")).unwrap();
+        fs::write(execution.join("refs.bib"), "@misc{a}\n@misc{b}").unwrap();
+        let (before, before_size) = hash_file(&project.join("bib/main.bib")).unwrap();
+        let (after, after_size) = hash_file(&execution.join("refs.bib")).unwrap();
+        let isolation = task.isolation.as_mut().unwrap();
+        isolation.baseline.push(ManifestEntry {
+            path: "refs.bib".into(),
+            sha256: before.clone(),
+            size: before_size,
+            resolved_link: true,
+        });
+        isolation.allowed_paths.push("refs.bib".into());
+        task.result
+            .as_mut()
+            .unwrap()
+            .changed_files
+            .push(TaskFileChange {
+                path: "refs.bib".into(),
+                kind: TaskFileChangeKind::Modified,
+                before_sha256: Some(before),
+                after_sha256: Some(after),
+                before_size: Some(before_size),
+                after_size: Some(after_size),
+            });
+        let store = TaskStore::new(temp.path().join("store")).unwrap();
+
+        let error = apply_review(
+            &store,
+            &task,
+            &project,
+            &["main.tex".into(), "refs.bib".into()],
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error,
+            "refs.bib is a link in the project, so this change can't be applied. Deselect it and apply the other files."
+        );
+        assert_eq!(
+            fs::read_to_string(project.join("main.tex")).unwrap(),
+            "base"
+        );
+        assert_eq!(
+            fs::read_to_string(project.join("bib/main.bib")).unwrap(),
+            "@misc{a}"
+        );
+        // The other files still apply.
+        assert!(apply_review(&store, &task, &project, &["main.tex".into()]).unwrap());
+        assert_eq!(
+            fs::read_to_string(project.join("main.tex")).unwrap(),
+            "task result"
         );
     }
 
