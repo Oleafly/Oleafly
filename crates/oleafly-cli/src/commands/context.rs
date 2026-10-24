@@ -489,8 +489,12 @@ mod tests {
         let Some(git) = crate::typst_settings::find_git(repository.path()) else {
             return;
         };
+        // Under a commit hook GIT_DIR names the real repository: without
+        // clearing it, `init` and `config` here would rewrite that one.
         let git_in = |args: &[&str]| {
-            std::process::Command::new(&git)
+            let mut command = std::process::Command::new(&git);
+            crate::process::clear_inherited_git_env(&mut command);
+            command
                 .arg("-C")
                 .arg(repository.path())
                 .args(args)
