@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import {
   currentModeId, currentModelId, currentName, entryChoiceId, groupControls, groupHeadings, listboxFocusTarget,
-  modeChoices, modelChoices, type ModelChoice, type ModeControl, type ModelControl,
+  modeChoices, modelChoices, type ModeControl, type ModelControl,
 } from "./acp-controls";
 import { canRefreshPlan, toUsageSnapshot, usageTooltip } from "./acp-usage";
 
@@ -46,43 +46,6 @@ function moveOptionFocus(event: KeyboardEvent<HTMLDivElement>): void {
 }
 
 type SetOption = (option: AcpConfigOption, value: AcpConfigValue) => void;
-
-/** One model in the picker, under its group heading when it starts a group. */
-function ModelChoiceRow({
-  choice,
-  heading,
-  selected,
-  inTabOrder,
-  onChoose,
-}: Readonly<{
-  choice: ModelChoice;
-  heading: string | null;
-  selected: boolean;
-  inTabOrder: boolean;
-  onChoose(id: string): void;
-}>) {
-  return (
-    <div>
-      {heading && <SectionHeading as="div" className="px-2 pb-0.5 pt-2">{heading}</SectionHeading>}
-      <button
-        type="button"
-        role="option"
-        aria-selected={selected}
-        aria-disabled={choice.blocked}
-        disabled={choice.blocked}
-        tabIndex={inTabOrder ? 0 : -1}
-        className={cn(
-          "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent focus-visible:bg-accent disabled:opacity-50",
-          selected && "bg-accent/60",
-        )}
-        onClick={() => onChoose(choice.id)}
-      >
-        <span className="truncate">{choice.name}</span>
-        {selected && <Check className="size-3.5 shrink-0" />}
-      </button>
-    </div>
-  );
-}
 
 /** An option that belongs with the model: a switch, or a select of its own. */
 function ModelConfigRow({
@@ -178,18 +141,32 @@ function ModelPicker({
         className="flex flex-col"
         onKeyDown={moveOptionFocus}
       >
-        {choices.map((choice, index) => (
-          <ModelChoiceRow
-            key={choice.id}
-            choice={choice}
-            heading={headings[index]}
-            selected={choice.id === current}
-            inTabOrder={choice.id === entryChoice}
-            onChoose={(id) => {
-              if (id !== current) onChoose(model, id);
-            }}
-          />
-        ))}
+        {choices.map((choice, index) => {
+          const selected = choice.id === current;
+          return (
+            <div key={choice.id}>
+              {headings[index] && <SectionHeading as="div" className="px-2 pb-0.5 pt-2">{headings[index]}</SectionHeading>}
+              <button
+                type="button"
+                role="option"
+                aria-selected={selected}
+                aria-disabled={choice.blocked}
+                disabled={choice.blocked}
+                tabIndex={choice.id === entryChoice ? 0 : -1}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent focus-visible:bg-accent disabled:opacity-50",
+                  selected && "bg-accent/60",
+                )}
+                onClick={() => {
+                  if (!selected) onChoose(model, choice.id);
+                }}
+              >
+                <span className="truncate">{choice.name}</span>
+                {selected && <Check className="size-3.5 shrink-0" />}
+              </button>
+            </div>
+          );
+        })}
         {modelConfig.length > 0 && <div className="my-1 border-t" />}
         {modelConfig.map((option) => (
           <ModelConfigRow key={option.id} option={option} idPrefix={idPrefix} locked={locked} setOption={setOption} />
